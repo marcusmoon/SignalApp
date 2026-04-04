@@ -173,7 +173,19 @@
 
 프로젝트 루트(`SignalApp`)에서 진행한다. 최초 1회 `npm install`로 의존성을 설치한다.
 
-### 8.1 에뮬레이터(iOS 시뮬레이터 · Android 에뮬레이터)에서 실행
+### 8.1 Xcode에서 iOS 프로젝트 열기
+
+네이티브 빌드·서명·실기기 연결은 **Xcode**에서 다룬다. `ios` 폴더가 있을 때(예: `npx expo prebuild` 실행 후) 아래 중 편한 방법을 쓰면 된다.
+
+| 방법 | 설명 |
+|------|------|
+| **Finder** | `SignalApp/ios` 폴더로 이동한 뒤 **`SIGNAL.xcworkspace`**를 더블클릭한다. CocoaPods를 쓰는 프로젝트는 **`.xcodeproj`가 아니라 반드시 `.xcworkspace`**를 연다(그렇지 않으면 Pods 연결이 깨질 수 있다). |
+| **터미널** | 프로젝트 루트에서 `open ios/SIGNAL.xcworkspace` 를 실행한다. Xcode CLI가 잡혀 있으면 `xed ios/SIGNAL.xcworkspace` 도 동일하다. |
+| **Expo CLI** | `npx expo run:ios` 를 실행하면 필요 시 빌드 과정에서 Xcode가 함께 사용된다(워크스페이스를 직접 열지 않아도 됨). |
+
+**참고:** `ios` 폴더가 아직 없으면 먼저 `npx expo prebuild --platform ios` 로 생성한다. 워크스페이스 이름은 Xcode 프로젝트 이름과 같으며, 위 예시는 앱 이름이 **SIGNAL**인 경우다.
+
+### 8.2 에뮬레이터(iOS 시뮬레이터 · Android 에뮬레이터)에서 실행
 
 **공통**
 
@@ -196,7 +208,7 @@
 - 개발 중에는 Metro(`expo start`)가 켜져 있어야 핫 리로드가 동작한다.
 - iOS 시뮬레이터는 **macOS + Xcode**가 필요하며, Windows에서는 네이티브 iOS 시뮬레이터를 쓸 수 없다(실기기 또는 클라우드 빌드 등 대안).
 
-### 8.2 아이폰(실제 기기)에 배포·실행
+### 8.3 아이폰(실제 기기)에 배포·실행
 
 **USB로 바로 설치(개발용 · 가장 흔한 흐름)**
 

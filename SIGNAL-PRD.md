@@ -169,7 +169,58 @@
 
 ---
 
-## 8. 다음 액션 (구현 로드맵)
+## 8. 로컬 개발 및 배포 (Expo / React Native)
+
+프로젝트 루트(`SignalApp`)에서 진행한다. 최초 1회 `npm install`로 의존성을 설치한다.
+
+### 8.1 에뮬레이터(iOS 시뮬레이터 · Android 에뮬레이터)에서 실행
+
+**공통**
+
+1. 터미널에서 프로젝트 폴더로 이동한 뒤 `npx expo start`를 실행한다.
+2. Metro 번들러가 뜨면 터미널에서 `i`를 누르면 **iOS 시뮬레이터**, `a`를 누르면 **Android 에뮬레이터**로 앱을 연다.
+3. 시뮬레이터/에뮬레이터가 없으면 Xcode(맥) 또는 Android Studio에서 가상 기기를 먼저 만든다.
+
+**iOS 시뮬레이터**
+
+- **필수:** macOS, Xcode 설치(`xcode-select --install` 및 App Store에서 Xcode).
+- 한 번에 빌드까지 돌리려면: `npx expo run:ios` (첫 실행 시 시뮬레이터 선택·빌드에 시간이 걸릴 수 있음).
+- 특정 시뮬레이터 지정 예: `npx expo run:ios --simulator "iPhone 16"`.
+
+**Android 에뮬레이터**
+
+- **필수:** Android Studio에서 SDK·가상 디바이스(AVD) 생성 후 에뮬레이터를 실행해 둔 상태에서 `a` 또는 `npx expo run:android`.
+
+**참고**
+
+- 개발 중에는 Metro(`expo start`)가 켜져 있어야 핫 리로드가 동작한다.
+- iOS 시뮬레이터는 **macOS + Xcode**가 필요하며, Windows에서는 네이티브 iOS 시뮬레이터를 쓸 수 없다(실기기 또는 클라우드 빌드 등 대안).
+
+### 8.2 아이폰(실제 기기)에 배포·실행
+
+**USB로 바로 설치(개발용 · 가장 흔한 흐름)**
+
+1. 아이폰을 맥에 USB로 연결하고, 기기에서 이 컴퓨터를 **신뢰**한다.
+2. Xcode에서 `ios` 폴더의 **`.xcworkspace`**를 연다(`.xcodeproj`가 아님).
+3. 상단 실행 대상을 **연결된 아이폰**으로 선택한다.
+4. **Signing & Capabilities**에서 본인 **Apple ID / 팀**(무료 Personal Team 가능)을 선택한다. 번들 ID는 프로젝트의 `com.marcus.signal` 등과 일치해야 한다.
+5. **Product → Run**(⌘R)으로 빌드해 기기에 설치한다. 첫 설치 시 기기에서 **설정 → 일반 → VPN 및 기기 관리**에서 개발자 앱을 신뢰해야 할 수 있다.
+
+**CLI로 빌드·설치**
+
+- `npx expo run:ios --device` — 연결된 실기기로 네이티브 빌드 후 설치(위와 동일하게 Xcode 서명 설정이 필요).
+
+**무료(Personal) 개발자 계정 시 유의**
+
+- 원격 **푸시(APNs)** capability는 무료 팀에서 제한될 수 있어, 프로젝트에서 푸시 entitlement를 쓰지 않도록 구성되어 있다. 유료 Apple Developer Program 가입 후 스토어 배포·푸시를 본격 적용한다.
+
+**앱스토어 배포(요약)**
+
+- 내부/베타·스토어 제출은 보통 **EAS Build**(Expo Application Services) 또는 Xcode **Archive → Organizer → TestFlight / App Store Connect** 흐름을 쓴다. 인증서·프로비저닝·버전·스크린샷은 App Store Connect에서 관리한다.
+
+---
+
+## 9. 다음 액션 (구현 로드맵)
 
 1. Expo 프로젝트 세팅  
 2. Finnhub API 연동  
@@ -179,3 +230,4 @@
 ---
 
 *본 문서는 `signal-prd.jsx` 소스와 동기화된 PRD입니다.*
+

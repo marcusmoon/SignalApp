@@ -34,7 +34,7 @@
     "plugins": [
       "expo-router",
       [
-        "expo-notifications",
+        "./plugins/expoNotificationsAndroidOnly.js",
         {
           "icon": "./assets/images/icon.png",
           "color": "#00C087"
@@ -47,6 +47,7 @@
           "iosAppId": "ca-app-pub-3940256099942544~1458002511"
         }
       ],
+      "./plugins/withIosEmbedJsOnDevice.js",
       "./plugins/removeIosPushEntitlement.js"
     ],
     "experiments": {

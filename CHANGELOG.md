@@ -38,6 +38,22 @@
 | `app/(tabs)/index.tsx` | 상단 세그먼트 UI, 분기 로드 |
 | `locales/messages.ts` | 세그먼트 라벨·힌트·한국 빈 상태 문구 |
 
+### 공통: 탭 이탈 시 `refreshing` 상태 정리
+
+- 다른 탭으로 나가면 OS는 `RefreshControl` UI를 접는데, React `refreshing`만 `true`로 남아 복귀 시 멈춘 것처럼 보일 수 있음 → **포커스 블러 시** `setRefreshing(false)`를 한 경로로 통일.
+- `hooks/useResetRefreshingOnTabBlur.ts` 추가 후 뉴스·시세·컨콜·유튜브·캘린더 화면에서 중복 `useFocusEffect` cleanup 제거.
+
+#### 파일별
+
+| 파일 | 변경 내용 |
+|------|-----------|
+| `hooks/useResetRefreshingOnTabBlur.ts` | **신규** — `useFocusEffect` cleanup에서 `setRefreshing(false)` |
+| `app/(tabs)/calls.tsx` | 훅 적용, watchlist/scope 로드용 effect cleanup에서 리프레시 리셋 제거 |
+| `app/(tabs)/index.tsx` | refresh 전용 `useFocusEffect` 제거 → 훅으로 대체 |
+| `app/(tabs)/quotes.tsx` | 훅 적용, 폴링 effect cleanup에서 리프레시 리셋 제거 |
+| `app/(tabs)/youtube.tsx` | 훅 적용, 큐레이션 로드 effect cleanup에서 리프레시 리셋 제거 |
+| `app/calendar.tsx` | refresh 전용 `useFocusEffect` 제거 → 훅으로 대체 |
+
 ---
 
 ### 시세 · 설정

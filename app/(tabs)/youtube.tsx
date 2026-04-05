@@ -34,6 +34,7 @@ import {
 } from '@/constants/segmentTabBar';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
+import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
@@ -61,6 +62,7 @@ export default function YoutubeScreen() {
   const [sort, setSort] = useState<SortKey>('latest');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [isQuotaError, setIsQuotaError] = useState(false);
   const [quotaResetMs, setQuotaResetMs] = useState(() => msUntilNextPacificMidnight());
@@ -406,14 +408,14 @@ export default function YoutubeScreen() {
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    mainColumn: { flex: 1 },
+    mainColumn: { flex: 1, minHeight: 0 },
     topFixed: {
       flexShrink: 0,
       paddingHorizontal: 16,
       paddingTop: 8,
       backgroundColor: theme.bg,
     },
-    scrollView: { flex: 1 },
+    scrollView: { flex: 1, minHeight: 0 },
     scrollContent: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28 },
     section: { fontSize: 16, fontWeight: '800', color: theme.text, marginBottom: 4 },
     hint: { fontSize: 11, color: theme.textDim, marginBottom: 10 },

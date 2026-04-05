@@ -37,6 +37,7 @@ import { fetchConcallSummaries } from '@/services/concalls';
 import { hasFinnhub } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { ConcallSummary } from '@/types/signal';
+import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
 import { openYahooFinanceEarnings } from '@/utils/yahooFinance';
 
 export default function CallsScreen() {
@@ -48,6 +49,7 @@ export default function CallsScreen() {
   const isFocused = useIsFocused();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<ConcallSummary[]>([]);
   const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
@@ -83,16 +85,20 @@ export default function CallsScreen() {
     setItems(list);
   }, [t]);
 
+  const runFetchRef = useRef(runFetch);
+  runFetchRef.current = runFetch;
+
+  /** 마운트 1회만 — [runFetch] 재실행 시 seq 경합으로 로딩이 풀리지 않던 문제 방지 */
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     (async () => {
-      const loadedFiscal = await loadConcallFiscalFilter();
-      if (cancelled) return;
-      setFiscal(loadedFiscal);
-      fiscalRef.current = loadedFiscal;
       try {
-        await runFetch();
+        const loadedFiscal = await loadConcallFiscalFilter();
+        if (cancelled) return;
+        setFiscal(loadedFiscal);
+        fiscalRef.current = loadedFiscal;
+        await runFetchRef.current();
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : '컨콜 요약을 불러오지 못했습니다.');
@@ -105,7 +111,7 @@ export default function CallsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [runFetch]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -300,7 +306,8 @@ export default function CallsScreen() {
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    callsBody: { flex: 1, overflow: 'hidden' },
+    /** minHeight: 0 — flex 자식 ScrollView 높이 계산 완화. overflow hidden은 일부 기기에서 본문이 통째로 안 보이는 경우가 있어 쓰지 않음 */
+    callsBody: { flex: 1, minHeight: 0 },
     callsTop: {
       flexShrink: 0,
       zIndex: 2,
@@ -312,7 +319,7 @@ function makeStyles(theme: AppTheme) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
-    scrollView: { flex: 1 },
+    scrollView: { flex: 1, minHeight: 0 },
     scroll: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28 },
     section: { fontSize: 16, fontWeight: '800', color: theme.text, marginBottom: 4 },
     hint: { fontSize: 11, color: theme.textDim, marginBottom: 8 },

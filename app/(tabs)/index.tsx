@@ -57,6 +57,7 @@ import {
 } from '@/services/newsSegmentOrderPreference';
 import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreference';
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
+import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
 import { summarizeNewsWithClaude } from '@/services/anthropic';
 import type { NewsItem } from '@/types/signal';
 import type { MessageId } from '@/locales/messages';
@@ -90,6 +91,7 @@ export default function FeedScreen() {
   const [segmentOrder, setSegmentOrder] = useState<NewsSegmentKey[]>([...NEWS_SEGMENT_ORDER]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<NewsItem[]>([]);
   const [rawPool, setRawPool] = useState<FinnhubNewsRaw[]>([]);
@@ -360,6 +362,7 @@ function makeStyles(theme: AppTheme) {
     },
     scrollView: {
       flex: 1,
+      minHeight: 0,
     },
     scroll: {
       paddingHorizontal: 16,

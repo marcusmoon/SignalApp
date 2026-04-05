@@ -36,6 +36,7 @@ import {
   SEGMENT_TAB_PADDING,
 } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
+import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
@@ -130,6 +131,7 @@ export default function QuotesScreen() {
   const [segmentOrder, setSegmentOrder] = useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   /** 다음 자동 갱신(캐시 만료 또는 폴링) 예상 시각(ms) */
@@ -615,7 +617,7 @@ export default function QuotesScreen() {
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    mainColumn: { flex: 1, overflow: 'hidden' },
+    mainColumn: { flex: 1, minHeight: 0 },
     topFixed: {
       flexShrink: 0,
       zIndex: 2,
@@ -627,7 +629,7 @@ function makeStyles(theme: AppTheme) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
-    scrollView: { flex: 1 },
+    scrollView: { flex: 1, minHeight: 0 },
     scrollContent: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28 },
     section: { fontSize: 16, fontWeight: '800', color: theme.text, marginBottom: 4 },
     hint: { fontSize: 12, fontWeight: '500', color: theme.textDim, marginBottom: 10 },

@@ -14,6 +14,7 @@ import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import type { AppTheme } from '@/constants/theme';
+import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchCalendarEventsMergedCached } from '@/services/calendarCache';
@@ -61,6 +62,7 @@ export default function CalendarScreen() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
 
@@ -364,7 +366,7 @@ function makeStyles(theme: AppTheme) {
       borderBottomColor: theme.border,
       backgroundColor: theme.bg,
     },
-    listScroll: { flex: 1 },
+    listScroll: { flex: 1, minHeight: 0 },
     listContent: { paddingHorizontal: 16, paddingTop: 10 },
     listContentEmpty: { flexGrow: 1, justifyContent: 'center' },
     hint: { fontSize: 10, color: theme.textDim, marginBottom: 8 },

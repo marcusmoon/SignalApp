@@ -22,20 +22,12 @@ function levelFromPercent(percent: number): TabBarGlassLevel {
   return clampTabBarGlassLevel(Math.round((percent / 100) * 4));
 }
 
+/** 설정 화면용: 실제 하단 탭바와 동일한 높이의 글래스 막대만 보여준다. */
 export function TabBarGlassPreview({ percent }: Props) {
   const level = levelFromPercent(percent);
 
   return (
     <View style={styles.shell}>
-      <View style={styles.mockScreen}>
-        <View style={styles.mockBlock} />
-        <View style={styles.mockBlockAlt} />
-        <View style={styles.mockRow}>
-          <View style={styles.mockChip} />
-          <View style={[styles.mockChip, { backgroundColor: 'rgba(120,200,255,0.35)' }]} />
-          <View style={[styles.mockChip, { backgroundColor: 'rgba(255,200,120,0.4)' }]} />
-        </View>
-      </View>
       <View style={styles.tabDock}>
         <TabBarGlassSurface
           level={level}
@@ -64,41 +56,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#14141C',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.08)',
-  },
-  mockScreen: {
     paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 14,
-    gap: 8,
-  },
-  mockBlock: {
-    height: 10,
-    width: '72%',
-    borderRadius: 5,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  mockBlockAlt: {
-    height: 10,
-    width: '48%',
-    borderRadius: 5,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  mockRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
-  },
-  mockChip: {
-    flex: 1,
-    height: 22,
-    borderRadius: 6,
-    backgroundColor: 'rgba(90,200,140,0.25)',
+    paddingVertical: 12,
+    alignItems: 'center',
   },
   tabDock: {
     position: 'relative',
+    width: '100%',
+    maxWidth: 400,
     height: TAB_BAR_FLOAT_HEIGHT,
-    marginHorizontal: 10,
-    marginBottom: 10,
   },
   iconRow: {
     ...StyleSheet.absoluteFillObject,

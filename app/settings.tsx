@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Image,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -9,24 +11,34 @@ import {
   Switch,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
 import { Pressable as GHPressable } from 'react-native-gesture-handler';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import developerAvatar from '@/assets/images/developer-avatar.png';
+import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
 import {
   DEFAULT_TAB_BAR_GLASS_LEVEL,
   DEFAULT_TAB_BAR_GLASS_PERCENT,
+  TAB_BAR_GLASS_PARAMS,
   type TabBarGlassLevel,
 } from '@/constants/tabBarGlass';
+import {
+  TAB_BAR_FLOAT_MARGIN_BOTTOM,
+  TAB_BAR_FLOAT_MARGIN_H,
+  TAB_BAR_FLOAT_RADIUS,
+} from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/constants/youtubeDefaults';
 import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { TabBarGlassSurface } from '@/components/TabBarGlassSurface';
 import { TabBarGlassPreview } from '@/components/TabBarGlassPreview';
 import { TabBarGlassSlider } from '@/components/TabBarGlassSlider';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -38,7 +50,7 @@ import {
   type QuoteSegmentKey,
 } from '@/services/quotesSegmentOrderPreference';
 import type { AccentPresetId } from '@/services/accentPreference';
-import { ACCENT_PRESETS } from '@/services/accentPreference';
+import { ACCENT_PRESETS, normalizeHex } from '@/services/accentPreference';
 import { clearCalendarCache, CALENDAR_CACHE_TTL_MS } from '@/services/calendarCache';
 import { clearConcallCache, CONCALL_CACHE_TTL_MS } from '@/services/concallCache';
 import { clearNewsCache, NEWS_CACHE_TTL_MS } from '@/services/newsCache';
@@ -80,6 +92,11 @@ import {
 import { loadNewsSegmentOrder, saveNewsSegmentOrder } from '@/services/newsSegmentOrderPreference';
 import { loadNotificationPrefs, saveNotificationPrefs } from '@/services/notificationPreferences';
 import { loadTabBarGlassLevel, saveTabBarGlassLevel } from '@/services/tabBarGlassPreference';
+import {
+  ACCENT_PALETTE_COLS,
+  ACCENT_PALETTE_ROWS,
+  buildRainbowKoreanAccentPalette,
+} from '@/utils/accentSwatchPalette';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
   SEGMENT_TAB_BACKGROUND,
@@ -133,11 +150,12 @@ const ACCENT_LABEL: Record<AccentPresetId, MessageId> = {
   lime: 'accentLime',
   indigo: 'accentIndigo',
   rose: 'accentRose',
+  custom: 'accentCustom',
 };
 
 const ACCENT_SWATCH_ROWS: AccentPresetId[][] = [
   ['green', 'red', 'blue', 'yellow', 'orange', 'purple'],
-  ['cyan', 'teal', 'pink', 'lime', 'indigo', 'rose'],
+  ['cyan', 'teal', 'pink', 'lime', 'indigo', 'custom'],
 ];
 
 const LOCALE_ORDER: AppLocale[] = ['ko', 'en', 'ja'];
@@ -151,12 +169,13 @@ function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     scrollFlex: { flex: 1 },
-    scroll: { paddingHorizontal: 16, paddingBottom: 32 },
+    scroll: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 32 },
     tabBar: {
       flexShrink: 0,
       flexDirection: 'row',
       marginHorizontal: 16,
-      marginBottom: 8,
+      marginTop: 0,
+      marginBottom: 6,
       backgroundColor: SEGMENT_TAB_BACKGROUND,
       borderRadius: SEGMENT_TAB_OUTER_RADIUS,
       borderWidth: 1,
@@ -358,6 +377,142 @@ function makeStyles(theme: AppTheme) {
       flex: 1,
       borderRadius: 999,
     },
+    themeSwatchCustomPlaceholder: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#14141C',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.12)',
+    },
+    /** 커스텀 선택 시 색 위에 붓 표시(밝은/어두운 배경 모두 대비) */
+    themeSwatchCustomBadgeOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    themeSwatchCustomBadge: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      backgroundColor: 'rgba(0,0,0,0.52)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: 'rgba(255,255,255,0.45)',
+    },
+    accentModalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 24,
+    },
+    accentModalSheet: {
+      zIndex: 1,
+      width: '100%',
+      maxWidth: 340,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bg,
+      overflow: 'hidden',
+    },
+    accentModalTitle: {
+      paddingHorizontal: 8,
+      paddingVertical: 8,
+      fontSize: 15,
+      fontWeight: '800',
+      color: theme.text,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    accentModalHint: {
+      paddingHorizontal: 8,
+      paddingTop: 2,
+      paddingBottom: 6,
+      fontSize: 11,
+      fontWeight: '500',
+      color: theme.textDim,
+      lineHeight: 15,
+    },
+    accentPaletteScroll: {
+      flexGrow: 1,
+      paddingHorizontal: 3,
+      paddingTop: 2,
+      paddingBottom: 6,
+    },
+    accentPaletteGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignContent: 'flex-start',
+    },
+    accentSwatchCell: {
+      borderRadius: 6,
+      padding: 0,
+      overflow: 'hidden',
+    },
+    accentSwatchInner: {
+      position: 'relative',
+      width: '100%',
+      height: '100%',
+      borderRadius: 6,
+      overflow: 'hidden',
+    },
+    accentSwatchSelectedOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    accentSwatchSelectedBadge: {
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: 'rgba(255,255,255,0.5)',
+    },
+    accentSwatchFill: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: 6,
+    },
+    accentModalFooterActions: {
+      flexDirection: 'row',
+      gap: 6,
+      paddingHorizontal: 8,
+      paddingTop: 10,
+      paddingBottom: 6,
+    },
+    accentModalFooterBtnHalf: {
+      flex: 1,
+    },
+    accentModalCancelBtn: {
+      paddingVertical: 10,
+      alignItems: 'center',
+      borderRadius: 9,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: '#14141C',
+    },
+    accentModalCancelBtnText: {
+      fontSize: 13,
+      fontWeight: '800',
+      color: theme.text,
+    },
+    accentModalApplyBtn: {
+      paddingVertical: 10,
+      alignItems: 'center',
+      borderRadius: 9,
+      backgroundColor: theme.green,
+    },
+    accentModalApplyBtnText: {
+      fontSize: 13,
+      fontWeight: '800',
+      color: '#0B0B10',
+    },
     displayAccentName: {
       textAlign: 'center',
       fontSize: 13,
@@ -422,6 +577,27 @@ function makeStyles(theme: AppTheme) {
       fontWeight: '700',
       color: theme.green,
       paddingRight: 8,
+    },
+    /** 개발자 푸터 내부(플로팅 글래스 캡슐 위) */
+    settingsFooterPress: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    },
+    settingsFooterAvatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+    },
+    settingsFooterText: {
+      flexShrink: 1,
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.textMuted,
+      letterSpacing: 0.2,
     },
     cacheOneLiner: {
       fontSize: 12,
@@ -559,9 +735,13 @@ function makeStyles(theme: AppTheme) {
   });
 }
 
+/** 하단 플로팅 개발자 바 높이(탭바 캡슐과 비슷하게) */
+const SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT = 52;
+
 export default function SettingsScreen() {
-  const { theme, presetId, setPresetId } = useSignalTheme();
+  const { theme, presetId, setPresetId, customHex, setCustomAccent } = useSignalTheme();
   const { t, locale, setLocale } = useLocale();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const params = useLocalSearchParams<{ tab?: string }>();
   const router = useRouter();
@@ -606,10 +786,51 @@ export default function SettingsScreen() {
   const [tabBarGlassReady, setTabBarGlassReady] = useState(false);
   const [tabBarGlassPercent, setTabBarGlassPercent] = useState(() => DEFAULT_TAB_BAR_GLASS_PERCENT);
 
+  const [accentPickerOpen, setAccentPickerOpen] = useState(false);
+  const [accentPickerDraftHex, setAccentPickerDraftHex] = useState(customHex);
+
+  const openAccentPicker = useCallback(() => {
+    setAccentPickerDraftHex(customHex);
+    setAccentPickerOpen(true);
+  }, [customHex]);
+
+  const { width: winW, height: winH } = useWindowDimensions();
+  const accentPickerLayout = useMemo(() => {
+    const sheetW = Math.min(winW - 40, 340);
+    const cols = ACCENT_PALETTE_COLS;
+    const gap = 2;
+    const pad = 3;
+    const inner = sheetW - pad * 2;
+    const cell = Math.max(4, (inner - gap * (cols - 1)) / cols);
+    const paletteScrollMaxH = Math.min(
+      Math.ceil(
+        ACCENT_PALETTE_ROWS * cell + (ACCENT_PALETTE_ROWS - 1) * gap + 12,
+      ),
+      Math.round(winH * 0.42),
+      380,
+    );
+    const maxSheetH = Math.min(Math.round(winH * 0.86), winH - 24);
+    return { sheetW, cols, gap, cell, paletteScrollMaxH, maxSheetH, gridInnerW: inner };
+  }, [winW, winH]);
+
+  const accentSwatchPalette = useMemo(() => buildRainbowKoreanAccentPalette(), []);
+
   const quotesPickerOptions = useMemo(() => {
     if (!quotesLimitPicker) return [];
     return quotesListCountChoicesForField(quotesLimitPicker);
   }, [quotesLimitPicker]);
+
+  const glassParams = TAB_BAR_GLASS_PARAMS[tabBarGlassLevel];
+
+  const scrollContentBottomPad = useMemo(
+    () =>
+      32 +
+      insets.bottom +
+      TAB_BAR_FLOAT_MARGIN_BOTTOM +
+      SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT +
+      12,
+    [insets.bottom],
+  );
 
   const reloadCachePrefs = useCallback(async () => {
     const p = await loadCacheFeaturePrefs();
@@ -863,7 +1084,8 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    /** 상단 edge 없음 — 스택 헤더가 이미 안전 영역을 처리해 `edges.top`을 쓰면 헤더 아래 빈 여백이 커짐 */
+    <SafeAreaView style={styles.safe} edges={[]}>
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.tabBar}>
         <Pressable
@@ -935,7 +1157,7 @@ export default function SettingsScreen() {
       </View>
       <ScrollView
         style={styles.scrollFlex}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: scrollContentBottomPad }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         {tab === 'youtube' ? (
@@ -1263,6 +1485,26 @@ export default function SettingsScreen() {
             <Text style={styles.lead}>{t('settingsThemeLead')}</Text>
 
             <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsThemeLanguageSection')}</Text>
+              <View style={styles.langSegmentedTrack}>
+                {LOCALE_ORDER.map((loc) => (
+                  <Pressable
+                    key={loc}
+                    onPress={() => void setLocale(loc)}
+                    style={[styles.langSegment, locale === loc && styles.langSegmentActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: locale === loc }}
+                    accessibilityLabel={t(LOCALE_LABEL[loc])}>
+                    <Text
+                      style={[styles.langSegmentText, locale === loc && styles.langSegmentTextActive]}>
+                      {t(LOCALE_LABEL[loc])}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsThemeAccentSection')}</Text>
               <View style={styles.themePreviewShell}>
                 <Text style={styles.themePreviewLabel}>{t('settingsDisplayPreviewLabel')}</Text>
@@ -1289,6 +1531,41 @@ export default function SettingsScreen() {
                     rowIndex === ACCENT_SWATCH_ROWS.length - 1 && styles.themeSwatchRowLast,
                   ]}>
                   {rowIds.map((id) => {
+                    if (id === 'custom') {
+                      const isCustom = presetId === 'custom';
+                      return (
+                        <Pressable
+                          key="custom"
+                          onPress={openAccentPicker}
+                          style={[
+                            styles.themeSwatchOuter,
+                            isCustom && styles.themeSwatchOuterActive,
+                          ]}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected: isCustom }}
+                          accessibilityLabel={t(ACCENT_LABEL.custom)}>
+                          {isCustom ? (
+                            <View
+                              style={[
+                                styles.themeSwatchFill,
+                                { backgroundColor: customHex, overflow: 'hidden' },
+                              ]}>
+                              <View
+                                style={styles.themeSwatchCustomBadgeOverlay}
+                                pointerEvents="none">
+                                <View style={styles.themeSwatchCustomBadge}>
+                                  <FontAwesome name="paint-brush" size={11} color="#FFFFFF" />
+                                </View>
+                              </View>
+                            </View>
+                          ) : (
+                            <View style={[styles.themeSwatchFill, styles.themeSwatchCustomPlaceholder]}>
+                              <FontAwesome name="paint-brush" size={16} color={theme.textMuted} />
+                            </View>
+                          )}
+                        </Pressable>
+                      );
+                    }
                     const p = ACCENT_PRESETS.find((x) => x.id === id);
                     if (!p) return null;
                     return (
@@ -1309,28 +1586,11 @@ export default function SettingsScreen() {
                 </View>
               ))}
               <Text style={styles.displayAccentName}>
-                {t('settingsDisplaySelectedTheme', { name: t(ACCENT_LABEL[presetId]) })}
+                {t('settingsDisplaySelectedTheme', {
+                  name:
+                    presetId === 'custom' ? t('accentCustom') : t(ACCENT_LABEL[presetId]),
+                })}
               </Text>
-            </View>
-
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsThemeLanguageSection')}</Text>
-              <View style={styles.langSegmentedTrack}>
-                {LOCALE_ORDER.map((loc) => (
-                  <Pressable
-                    key={loc}
-                    onPress={() => void setLocale(loc)}
-                    style={[styles.langSegment, locale === loc && styles.langSegmentActive]}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: locale === loc }}
-                    accessibilityLabel={t(LOCALE_LABEL[loc])}>
-                    <Text
-                      style={[styles.langSegmentText, locale === loc && styles.langSegmentTextActive]}>
-                      {t(LOCALE_LABEL[loc])}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
             </View>
 
             <View style={styles.displayCard}>
@@ -1483,6 +1743,45 @@ export default function SettingsScreen() {
         ) : null}
       </ScrollView>
 
+      <View
+        pointerEvents="box-none"
+        style={[
+          {
+            position: 'absolute',
+            left: TAB_BAR_FLOAT_MARGIN_H,
+            right: TAB_BAR_FLOAT_MARGIN_H,
+            bottom: insets.bottom + TAB_BAR_FLOAT_MARGIN_BOTTOM,
+            borderRadius: TAB_BAR_FLOAT_RADIUS,
+            overflow: 'hidden',
+          },
+          Platform.OS === 'ios'
+            ? { shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 } }
+            : {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: glassParams.android.shadowOpacity,
+                shadowRadius: glassParams.android.shadowRadius,
+                elevation: glassParams.android.elevation,
+              },
+        ]}>
+        <TabBarGlassSurface level={tabBarGlassLevel} style={StyleSheet.absoluteFill} />
+        <Pressable
+          onPress={() => void Linking.openURL(DEVELOPER_LINKEDIN_URL)}
+          style={({ pressed }) => [styles.settingsFooterPress, pressed && { opacity: 0.88 }]}
+          accessibilityRole="link"
+          accessibilityLabel={t('settingsDeveloperLinkedInA11y')}>
+          <Image
+            source={developerAvatar}
+            style={styles.settingsFooterAvatar}
+            accessible={false}
+            importantForAccessibility="no"
+          />
+          <Text style={styles.settingsFooterText} numberOfLines={1}>
+            {t('settingsDeveloperFooterLine')}
+          </Text>
+        </Pressable>
+      </View>
+
       <Modal
         visible={quotesLimitPicker != null}
         transparent
@@ -1534,6 +1833,100 @@ export default function SettingsScreen() {
                 );
               })}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={accentPickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAccentPickerOpen(false)}>
+        <View style={styles.accentModalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setAccentPickerOpen(false)} />
+          <View
+            style={[
+              styles.accentModalSheet,
+              {
+                width: accentPickerLayout.sheetW,
+                maxHeight: accentPickerLayout.maxSheetH,
+                paddingBottom: Math.max(insets.bottom, 8),
+              },
+            ]}>
+            <Text style={styles.accentModalTitle}>{t('settingsAccentCustomModalTitle')}</Text>
+            <Text style={styles.accentModalHint}>{t('settingsAccentPaletteHint')}</Text>
+            <ScrollView
+              style={[styles.accentPaletteScroll, { maxHeight: accentPickerLayout.paletteScrollMaxH }]}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator>
+              <View
+                style={[
+                  styles.accentPaletteGrid,
+                  {
+                    width: accentPickerLayout.gridInnerW,
+                    gap: accentPickerLayout.gap,
+                  },
+                ]}>
+                {accentSwatchPalette.map((hex, swatchIndex) => {
+                  const selected = normalizeHex(hex) === normalizeHex(accentPickerDraftHex);
+                  const cell = accentPickerLayout.cell;
+                  const badge = Math.max(10, Math.min(20, Math.floor(Number(cell) * 0.52)));
+                  const iconSize = Math.max(7, Math.floor(badge * 0.42));
+                  return (
+                    <Pressable
+                      key={`swatch-${swatchIndex}-${hex}`}
+                      onPress={() => setAccentPickerDraftHex(hex)}
+                      style={[
+                        styles.accentSwatchCell,
+                        {
+                          width: cell,
+                          height: cell,
+                        },
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={hex}>
+                      <View style={styles.accentSwatchInner}>
+                        <View style={[styles.accentSwatchFill, { backgroundColor: hex }]} />
+                        {selected ? (
+                          <View style={styles.accentSwatchSelectedOverlay} pointerEvents="none">
+                            <View
+                              style={[
+                                styles.accentSwatchSelectedBadge,
+                                {
+                                  width: badge,
+                                  height: badge,
+                                  borderRadius: badge / 2,
+                                },
+                              ]}>
+                              <FontAwesome name="check" size={iconSize} color="#FFFFFF" />
+                            </View>
+                          </View>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </ScrollView>
+            <View style={styles.accentModalFooterActions}>
+              <Pressable
+                onPress={() => setAccentPickerOpen(false)}
+                style={[styles.accentModalCancelBtn, styles.accentModalFooterBtnHalf]}
+                accessibilityRole="button"
+                accessibilityLabel={t('commonCancel')}>
+                <Text style={styles.accentModalCancelBtnText}>{t('commonCancel')}</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  void setCustomAccent(accentPickerDraftHex);
+                  setAccentPickerOpen(false);
+                }}
+                style={[styles.accentModalApplyBtn, styles.accentModalFooterBtnHalf]}
+                accessibilityRole="button"
+                accessibilityLabel={t('settingsAccentApply')}>
+                <Text style={styles.accentModalApplyBtnText}>{t('settingsAccentApply')}</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>

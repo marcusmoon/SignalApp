@@ -3,6 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SIGNAL, buildAppTheme, type AppTheme } from '@/constants/theme';
 
 export const ACCENT_STORAGE_KEY = '@signal/accent_preset_v1';
+export const ACCENT_CUSTOM_HEX_KEY = '@signal/accent_custom_hex_v1';
+
+/** 기본 커스텀 액센트 (기존 로즈 프리셋과 동일) */
+export const DEFAULT_CUSTOM_ACCENT_HEX = '#F43F5E';
 
 export type AccentPresetId =
   | 'green'
@@ -16,7 +20,8 @@ export type AccentPresetId =
   | 'pink'
   | 'lime'
   | 'indigo'
-  | 'rose';
+  | 'rose'
+  | 'custom';
 
 export const ACCENT_PRESETS: readonly { id: AccentPresetId; accent: string }[] = [
   { id: 'green', accent: '#00C087' },
@@ -33,11 +38,41 @@ export const ACCENT_PRESETS: readonly { id: AccentPresetId; accent: string }[] =
   { id: 'rose', accent: '#F43F5E' },
 ];
 
-const PRESET_IDS = new Set(ACCENT_PRESETS.map((p) => p.id));
+const VALID_PRESET_IDS = new Set<string>([...ACCENT_PRESETS.map((p) => p.id), 'custom']);
+
+export function normalizeHex(input: string | null | undefined): string | null {
+  if (input == null || typeof input !== 'string') return null;
+  const s = input.trim();
+  if (!/^#?[0-9a-fA-F]{6}$/.test(s)) return null;
+  const hex = s.startsWith('#') ? s : `#${s}`;
+  return hex.toUpperCase();
+}
+
+export function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const h = normalizeHex(hex) ?? DEFAULT_CUSTOM_ACCENT_HEX;
+  const n = parseInt(h.slice(1), 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+export function rgbToHex(r: number, g: number, b: number): string {
+  const clamp = (x: number) => Math.max(0, Math.min(255, Math.round(x)));
+  return `#${[clamp(r), clamp(g), clamp(b)]
+    .map((x) => x.toString(16).padStart(2, '0'))
+    .join('')}`.toUpperCase();
+}
+
+export async function loadCustomAccentHex(): Promise<string> {
+  const v = await AsyncStorage.getItem(ACCENT_CUSTOM_HEX_KEY);
+  return normalizeHex(v) ?? DEFAULT_CUSTOM_ACCENT_HEX;
+}
+
+export async function saveCustomAccentHex(hex: string): Promise<void> {
+  await AsyncStorage.setItem(ACCENT_CUSTOM_HEX_KEY, normalizeHex(hex) ?? DEFAULT_CUSTOM_ACCENT_HEX);
+}
 
 export async function loadAccentPreset(): Promise<AccentPresetId> {
   const v = await AsyncStorage.getItem(ACCENT_STORAGE_KEY);
-  if (v && PRESET_IDS.has(v as AccentPresetId)) return v as AccentPresetId;
+  if (v && VALID_PRESET_IDS.has(v)) return v as AccentPresetId;
   return 'green';
 }
 
@@ -45,7 +80,11 @@ export async function saveAccentPreset(id: AccentPresetId): Promise<void> {
   await AsyncStorage.setItem(ACCENT_STORAGE_KEY, id);
 }
 
-export function getThemeForPreset(id: AccentPresetId): AppTheme {
+export function getThemeForPreset(id: AccentPresetId, customAccentHex?: string): AppTheme {
+  if (id === 'custom') {
+    const hex = normalizeHex(customAccentHex) ?? DEFAULT_CUSTOM_ACCENT_HEX;
+    return buildAppTheme(hex);
+  }
   const accent = ACCENT_PRESETS.find((p) => p.id === id)?.accent ?? SIGNAL.green;
   return buildAppTheme(accent);
 }

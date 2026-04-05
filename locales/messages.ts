@@ -74,6 +74,9 @@ const ko = {
   settingsTabCalendar: '캘린더',
   settingsTabNotifications: '알림',
 
+  settingsDeveloperFooterLine: 'Marcus · LinkedIn',
+  settingsDeveloperLinkedInA11y: 'Marcus LinkedIn 프로필 열기',
+
   settingsYoutubeLead:
     '경제 유튜브 탭의 큐레이션 채널 목록입니다. 기본으로 아래 핸들이 포함되어 있으며, 원하는 채널을 추가하거나 삭제할 수 있습니다.',
   settingsYoutubeSectionAdd: '채널 추가',
@@ -115,13 +118,13 @@ const ko = {
   settingsQuotesSegmentDragHandleA11y: '{{name}} 순서 바꾸기(드래그)',
 
   settingsThemeLead:
-    '표시 설정에서 앱 테마(강조색)와 언어를 바꿀 수 있습니다. 테마 색은 탭·버튼·새로고침 등에 적용되며, 언어는 즉시 저장됩니다.',
+    '표시 설정에서 언어와 앱 테마(강조색)를 바꿀 수 있습니다. 언어는 즉시 저장되며, 테마 색은 탭·버튼·새로고침 등에 적용됩니다.',
   settingsThemeAccentSection: '테마',
   settingsThemeLanguageSection: '언어',
-  settingsTabBarGlassKicker: '앱 메뉴 글래스',
+  settingsTabBarGlassKicker: '앱 글래스',
   settingsTabBarGlassHint:
     '가로 막대의 세로 손잡이를 드래그해 조절합니다. 오른쪽일수록 진하고 왼쪽일수록 투명합니다. 아래 미리보기는 적용 예시입니다. 변경 시 즉시 반영됩니다.',
-  settingsTabBarGlassA11y: '앱 메뉴 글래스 강도 {{percent}}퍼센트',
+  settingsTabBarGlassA11y: '앱 글래스 강도 {{percent}}퍼센트',
   settingsTabBarGlassPreviewKicker: '적용 예시',
   settingsDisplayPreviewLabel: '미리보기',
   settingsDisplaySelectedTheme: '선택: {{name}}',
@@ -174,6 +177,12 @@ const ko = {
   accentLime: '라임',
   accentIndigo: '인디고',
   accentRose: '로즈',
+  accentCustom: '커스텀',
+
+  settingsAccentCustomModalTitle: '커스텀 강조색',
+  settingsAccentPaletteHint:
+    '흰·빨·주·노·초·파·남·보 열마다 위가 밝고 아래로 갈수록 어두워집니다. 고른 뒤 적용을 누르세요.',
+  settingsAccentApply: '적용',
 
   alertTitleInputError: '입력 오류',
   alertEmptyHandle: '채널 핸들을 입력해 주세요.',
@@ -328,6 +337,9 @@ const en = {
   settingsTabCalendar: 'Calendar',
   settingsTabNotifications: 'Alerts',
 
+  settingsDeveloperFooterLine: 'Marcus · LinkedIn',
+  settingsDeveloperLinkedInA11y: 'Open Marcus LinkedIn profile',
+
   settingsYoutubeLead:
     'Curated channels for the Economy YouTube tab. Default handles are included below—add or remove as you like.',
   settingsYoutubeSectionAdd: 'Add channel',
@@ -369,13 +381,13 @@ const en = {
   settingsQuotesSegmentDragHandleA11y: 'Reorder {{name}} (drag)',
 
   settingsThemeLead:
-    'In Display, change the app theme (accent color) and language. Theme color applies to tabs, buttons, and refresh controls; language saves immediately.',
+    'In Display, change language and the app theme (accent color). Language saves immediately; theme color applies to tabs, buttons, and refresh controls.',
   settingsThemeAccentSection: 'Theme',
   settingsThemeLanguageSection: 'Language',
-  settingsTabBarGlassKicker: 'App menu glass',
+  settingsTabBarGlassKicker: 'App glass',
   settingsTabBarGlassHint:
     'Drag the vertical handle on the horizontal track. Right is stronger glass; left is more transparent. The preview below shows how it will look. Changes apply immediately.',
-  settingsTabBarGlassA11y: 'App menu glass strength {{percent}} percent',
+  settingsTabBarGlassA11y: 'App glass strength {{percent}} percent',
   settingsTabBarGlassPreviewKicker: 'Preview',
   settingsDisplayPreviewLabel: 'Preview',
   settingsDisplaySelectedTheme: 'Selected: {{name}}',
@@ -430,6 +442,12 @@ const en = {
   accentLime: 'Lime',
   accentIndigo: 'Indigo',
   accentRose: 'Rose',
+  accentCustom: 'Custom',
+
+  settingsAccentCustomModalTitle: 'Custom accent',
+  settingsAccentPaletteHint:
+    'Eight columns (white + ROYGBIV hues); each column is lighter at the top, darker at the bottom. Tap Apply to confirm.',
+  settingsAccentApply: 'Apply',
 
   alertTitleInputError: 'Input error',
   alertEmptyHandle: 'Enter a channel handle.',
@@ -585,6 +603,9 @@ const ja = {
   settingsTabCalendar: 'カレンダー',
   settingsTabNotifications: '通知',
 
+  settingsDeveloperFooterLine: 'Marcus · LinkedIn',
+  settingsDeveloperLinkedInA11y: 'Marcus の LinkedIn を開く',
+
   settingsYoutubeLead:
     '経済YouTubeタブのキュレーションチャンネル一覧です。デフォルトのハンドルに加え、追加・削除できます。',
   settingsYoutubeSectionAdd: 'チャンネルを追加',
@@ -626,13 +647,13 @@ const ja = {
   settingsQuotesSegmentDragHandleA11y: '{{name}}の順番を変更（ドラッグ）',
 
   settingsThemeLead:
-    '表示ではアプリのテーマ（アクセントカラー）と言語を変更できます。テーマ色はタブ・ボタン・更新などに反映され、言語はすぐに保存されます。',
+    '表示では言語とアプリのテーマ（アクセントカラー）を変更できます。言語はすぐに保存され、テーマ色はタブ・ボタン・更新などに反映されます。',
   settingsThemeAccentSection: 'テーマ',
   settingsThemeLanguageSection: '言語',
-  settingsTabBarGlassKicker: 'アプリメニューのガラス',
+  settingsTabBarGlassKicker: 'アプリのガラス',
   settingsTabBarGlassHint:
     '横のトラック上の縦のつまみをドラッグして調整します。右ほど濃く、左ほど透明です。下のプレビューが適用イメージです。変更はすぐに反映されます。',
-  settingsTabBarGlassA11y: 'アプリメニューのガラス強度 {{percent}}パーセント',
+  settingsTabBarGlassA11y: 'アプリのガラス強度 {{percent}}パーセント',
   settingsTabBarGlassPreviewKicker: 'プレビュー',
   settingsDisplayPreviewLabel: 'プレビュー',
   settingsDisplaySelectedTheme: '選択: {{name}}',
@@ -686,6 +707,12 @@ const ja = {
   accentLime: 'ライム',
   accentIndigo: 'インディゴ',
   accentRose: 'ローズ',
+  accentCustom: 'カスタム',
+
+  settingsAccentCustomModalTitle: 'カスタムアクセント',
+  settingsAccentPaletteHint:
+    '白・赤〜紫の8列。各列は上が明るく、下へ行くほど暗くなります。選んで適用を押してください。',
+  settingsAccentApply: '適用',
 
   alertTitleInputError: '入力エラー',
   alertEmptyHandle: 'チャンネルハンドルを入力してください。',

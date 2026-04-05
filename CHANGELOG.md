@@ -2,6 +2,27 @@
 
 ## 2026-04-04
 
+### 표시 · 커스텀 강조색 · 앱 글래스
+
+- **표시 탭 순서**: **언어** 카드를 맨 위로, 그다음 **테마**(강조색) · **앱 글래스** · 캐시 등. 리드 문구도 언어→테마 순으로 정리.
+- **앱 글래스** (구 “앱 메뉴 글래스”): 섹션·접근성 라벨을 **앱 글래스**로 통일 (ko/en/ja).
+- **글래스 미리보기** (`TabBarGlassPreview`): 화면 목업 제거, **하단 메뉴바(글래스 + 아이콘)** 만 표시.
+- **커스텀 강조색 모달**: 중앙 카드(`fade`), 좁은 시트 폭, 격자 **8열×10행**(흰·빨주노초파남보 열별 세로 명도 그라데이션, **위 밝음→아래 어두움**), 셀 간 **gap**, 둥근 스와치, **선택은 칸 안 체크 배지**; 탭은 드래프트만 바꾸고 **적용** 시 저장. 셀 너비는 `inner/cols`로 맞춰 열·데이터 정렬 유지.
+- **팔레트** (`utils/accentSwatchPalette.ts`): `buildRainbowKoreanAccentPalette`, `accentPreference`와 테마 컨텍스트 연동 보강.
+
+#### 파일별
+
+| 파일 | 변경 내용 |
+|------|-----------|
+| `app/settings.tsx` | 표시 탭 순서, 액센트 피커 모달·격자·적용/취소 |
+| `utils/accentSwatchPalette.ts` | **신규** — 무지개 8열×10행 팔레트 |
+| `components/TabBarGlassPreview.tsx` | 탭바만 미리보기 |
+| `locales/messages.ts` | 언어/테마 리드, 앱 글래스 명칭, 팔레트·모달 문구 |
+| `services/accentPreference.ts` | 커스텀 색 저장/로드 등 |
+| `contexts/SignalThemeContext.tsx` | 커스텀 액센트 연동 |
+| `tsconfig.json` | 이미지 타입 등 |
+| `types/images.d.ts`, `constants/developer.ts`, `assets/images/developer-avatar.png` | 개발자·이미지 에셋 |
+
 ### UI: 플로팅 탭바 · 시그널 로딩 (커밋 `c48e2d0`)
 
 - 플로팅·둥근 탭바, 웹 `backdrop-filter`·호버, 탭 화면 하단 패딩/FAB 정렬.

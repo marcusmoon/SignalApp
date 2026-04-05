@@ -5,14 +5,18 @@ import { Platform } from 'react-native';
 import { appendNotificationFromPayload } from '@/services/notificationHistory';
 
 if (Platform.OS !== 'web') {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-    }),
-  });
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      }),
+    });
+  } catch {
+    /* 일부 빌드/시뮬레이터에서 네이티브 모듈 미초기화 시 throw 가능 */
+  }
 }
 
 /**

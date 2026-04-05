@@ -65,3 +65,10 @@
 이후 변경도 이 파일에 누적하거나, 버전 섹션을 나누어 적어도 됩니다.
 
 **온보딩:** Claude·Cursor 등 도구용 참고는 **`AGENTS.md`**.
+
+### iOS 실기기 즉시 종료 완화
+
+- **`babel.config.js`**: `babel-preset-expo` + `react-native-reanimated/plugin` (마지막).
+- `NotificationListener`: `setNotificationHandler`를 **`try/catch`**.
+- **New Architecture**: Reanimated 4.x 요구로 `app.json` / `ios/Podfile.properties.json`에서 **`newArchEnabled` true** 유지. 끄면 `pod install` 실패 가능.
+- 적용 후 **iOS 앱 재빌드** 필요.

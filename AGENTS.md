@@ -177,4 +177,16 @@ assets/
 
 ---
 
+## 14. 실기기 iOS에서 앱이 바로 종료될 때 (체크리스트)
+
+| 조치 | 설명 |
+|------|------|
+| **New Architecture** | `react-native-reanimated` **4.x는 New Architecture 필수** (`RNReanimated.podspec`). `app.json`의 `newArchEnabled`와 `ios/Podfile.properties.json`의 `newArchEnabled`를 **둘 다 `true`**로 맞출 것. **끄면** `pod install` 단계에서 실패할 수 있음. |
+| **CocoaPods** | `The sandbox is not in sync with the Podfile.lock` → `cd ios && pod install`. `Podfile.lock` / `Pods`가 없거나 오래되었을 때 발생. |
+| **Babel** | 루트 `babel.config.js`에 `babel-preset-expo` + **`react-native-reanimated/plugin` (반드시 마지막)**. 변경 후 Metro/빌드 캐시 클리어 권장. |
+| **알림** | `expo-notifications`의 `setNotificationHandler`는 모듈 로드 시점에 실패할 수 있어 `try/catch`로 감쌈 (`NotificationListener.tsx`). |
+| **원인 확인** | Xcode → **Window → Devices and Simulators** → 기기 → **View Device Logs** 에서 크래시 스택 확인. |
+
+---
+
 *마지막으로 전체 맥락이 필요하면 `SIGNAL-PRD.md` → `CHANGELOG.md` → 본 문서 순으로 읽는 것을 권장합니다.*

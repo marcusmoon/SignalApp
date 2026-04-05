@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -42,6 +43,11 @@ import { loadCurationHandles } from '@/services/youtubeCurationList';
 import { peekYoutubeCache, fetchEconomyYoutubeCached, YOUTUBE_CACHE_TTL_MS } from '@/services/youtubeCache';
 import { fetchChannelDisplayNames, YOUTUBE_ERROR_QUOTA, type ChannelHandleMeta } from '@/services/youtube';
 import type { YoutubeItem } from '@/types/signal';
+import {
+  msUntilNextPacificMidnight,
+  quotaResetHoursMinutes,
+  YOUTUBE_DATA_API_QUOTAS_CONSOLE_URL,
+} from '@/utils/youtubeQuota';
 
 type SortKey = 'popular' | 'latest';
 
@@ -56,6 +62,8 @@ export default function YoutubeScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isQuotaError, setIsQuotaError] = useState(false);
+  const [quotaResetMs, setQuotaResetMs] = useState(() => msUntilNextPacificMidnight());
   const [items, setItems] = useState<YoutubeItem[]>([]);
   const [channelMeta, setChannelMeta] = useState<ChannelHandleMeta[]>([]);
   const [curationHandles, setCurationHandles] = useState<string[] | null>(null);
@@ -83,14 +91,39 @@ export default function YoutubeScreen() {
     }, []),
   );
 
+  const applyLoadError = useCallback(
+    (e: unknown, fallbackId: 'youtubeErrorLoad' | 'youtubeErrorRefresh') => {
+      const quota = e instanceof Error && e.message === YOUTUBE_ERROR_QUOTA;
+      setIsQuotaError(quota);
+      const msg =
+        e instanceof Error
+          ? quota
+            ? t('youtubeErrorQuota')
+            : e.message
+          : t(fallbackId);
+      setError(msg);
+    },
+    [t],
+  );
+
+  useEffect(() => {
+    if (!isQuotaError) return;
+    const tick = () => setQuotaResetMs(msUntilNextPacificMidnight());
+    tick();
+    const id = setInterval(tick, 30000);
+    return () => clearInterval(id);
+  }, [isQuotaError]);
+
   const load = useCallback(
     async (opts?: { forceRefresh?: boolean; channelHandles?: string[] }) => {
       setError(null);
+      setIsQuotaError(false);
       const handles = opts?.channelHandles ?? selectedHandles;
       if (handles === null) return;
 
       if (!hasYoutube()) {
         setItems([]);
+        setIsQuotaError(false);
         setError(t('youtubeErrorKeyMissing'));
         setLoading(false);
         return;
@@ -98,6 +131,7 @@ export default function YoutubeScreen() {
 
       if (handles.length === 0) {
         setItems([]);
+        setIsQuotaError(false);
         setError(t('youtubeErrorSelectChannel'));
         setLoading(false);
         return;
@@ -138,13 +172,7 @@ export default function YoutubeScreen() {
         await load();
       } catch (e) {
         if (!cancelled) {
-          const msg =
-            e instanceof Error
-              ? e.message === YOUTUBE_ERROR_QUOTA
-                ? t('youtubeErrorQuota')
-                : e.message
-              : t('youtubeErrorLoad');
-          setError(msg);
+          applyLoadError(e, 'youtubeErrorLoad');
           setItems([]);
           setLoading(false);
         }
@@ -153,7 +181,7 @@ export default function YoutubeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [load, selectedHandles, t]);
+  }, [applyLoadError, load, selectedHandles]);
 
   const onRefresh = useCallback(async () => {
     if (!selectedHandles?.length) return;
@@ -161,18 +189,13 @@ export default function YoutubeScreen() {
     try {
       await load({ forceRefresh: true, channelHandles: selectedHandles });
       setError(null);
+      setIsQuotaError(false);
     } catch (e) {
-      const msg =
-        e instanceof Error
-          ? e.message === YOUTUBE_ERROR_QUOTA
-            ? t('youtubeErrorQuota')
-            : e.message
-          : t('youtubeErrorRefresh');
-      setError(msg);
+      applyLoadError(e, 'youtubeErrorRefresh');
     } finally {
       setRefreshing(false);
     }
-  }, [load, selectedHandles, t]);
+  }, [applyLoadError, load, selectedHandles]);
 
   const toggleChannel = useCallback(
     async (handle: string) => {
@@ -201,6 +224,12 @@ export default function YoutubeScreen() {
 
   const titleForHandle = (handle: string) =>
     channelMeta.find((c) => c.handle === handle)?.title ?? `@${handle}`;
+
+  const quotaResetHintLine = useMemo(() => {
+    const { hours, minutes } = quotaResetHoursMinutes(quotaResetMs);
+    if (hours === 0 && minutes === 0) return t('youtubeErrorQuotaResetImminent');
+    return t('youtubeErrorQuotaResetHint', { hours, minutes });
+  }, [quotaResetMs, t]);
 
   const filterReady = Boolean(selectedHandles && curationHandles);
 
@@ -277,6 +306,18 @@ export default function YoutubeScreen() {
         {error ? (
           <View style={styles.errBox}>
             <Text style={styles.errText}>{error}</Text>
+            {isQuotaError ? (
+              <>
+                <Text style={styles.errSub}>{quotaResetHintLine}</Text>
+                <Pressable
+                  onPress={() => void Linking.openURL(YOUTUBE_DATA_API_QUOTAS_CONSOLE_URL)}
+                  style={({ pressed }) => [styles.errLinkWrap, pressed && { opacity: 0.85 }]}
+                  accessibilityRole="link"
+                  accessibilityLabel={t('youtubeErrorQuotaConsoleLink')}>
+                  <Text style={styles.errLink}>{t('youtubeErrorQuotaConsoleLink')}</Text>
+                </Pressable>
+              </>
+            ) : null}
           </View>
         ) : null}
 
@@ -547,6 +588,22 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 12,
     },
     errText: { fontSize: 12, color: '#E0A0A0', lineHeight: 18 },
+    errSub: {
+      fontSize: 11,
+      color: '#C89898',
+      lineHeight: 16,
+      marginTop: 8,
+    },
+    errLinkWrap: {
+      alignSelf: 'flex-start',
+      marginTop: 10,
+    },
+    errLink: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.green,
+      textDecorationLine: 'underline',
+    },
     loading: { fontSize: 13, color: theme.textMuted, marginBottom: 12 },
     empty: { fontSize: 13, color: theme.textMuted, marginTop: 8 },
     note: {

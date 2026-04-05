@@ -128,19 +128,22 @@ assets/
 - 시총순 심볼 정렬: `getSymbolsSortedByMarketCap()` (`finnhub.ts`), 유니버스·프로필 API 부하 고려
 - 메모리 캐시: `quotesCache.ts` (quote TTL = `QUOTES_POLL_INTERVAL_MS` 30초, 시총 **순서**는 별도 TTL)
 - **제스처:** 루트 `GestureHandlerRootView` (`app/_layout.tsx`). 시세 **탭 순서** 설정은 `react-native-draggable-flatlist` + RNGH `Pressable` (웹·네이티브 차이 있음)
+- **뉴스 탭** (`app/(tabs)/index.tsx`): 상단 세그먼트 순서는 `loadNewsSegmentOrder()` → `newsSegmentOrderPreference.ts`(기본 `NEWS_SEGMENT_ORDER`). **글로벌 / 코인 / 한국** — Finnhub `general`·`crypto`, 한국은 `general`+`forex` 후 키워드 필터(`services/newsKoreaFilter.ts`). **추가 키워드**는 설정의 「뉴스」탭 「한국 뉴스 키워드」에서 등록하며 `services/newsKoreaKeywordsPreference.ts`에 저장된다(내장 정규식과 OR). 저장 키가 없을 때(첫 실행) `DEFAULT_KOREA_NEWS_KEYWORDS`가 시드되며, 설정에서 `restoreKoreaNewsExtraKeywordsDefaults()`로 동일 목록을 다시 채울 수 있다. 한국 **전용 API**는 없어서 나중에 교체 가능.
 
 ---
 
 ## 9. 설정 화면
 
 - 파일: `app/settings.tsx` (단일 파일에 탭·모달 다수)
-- 시세 관련: 목록 개수 모달, 탭 순서 드래그 리스트 등
+- 상단 탭: **뉴스**(뉴스 탭 순서·한국 키워드) · 유튜브 · 시세 · 캘린더 · 표시 · 알림
+- 뉴스·시세: 드래그로 세그먼트 순서(`newsSegmentOrderPreference` / `quotesSegmentOrderPreference`), 시세는 목록 개수 모달 등
+- **표시:** 앱 메뉴(하단 탭바) 글래스 강도(1=가장 투명 … 5=가장 진함) — `tabBarGlassPreference.ts`, 단계별 수치는 `constants/tabBarGlass.ts`, 적용은 `app/(tabs)/_layout.tsx`의 `TabBarGlassBackground`
 
 ---
 
 ## 10. 의존성 특기사항
 
-- `react-native-reanimated`, `react-native-gesture-handler`, `react-native-draggable-flatlist` — 시세 순서 드래그 등에 사용
+- `react-native-reanimated`, `react-native-gesture-handler`, `react-native-draggable-flatlist` — 뉴스·시세 세그먼트 순서 드래그 등에 사용
 - `react-native-google-mobile-ads` — 네이티브 광고 (웹은 별도 처리)
 
 ---
@@ -151,6 +154,15 @@ assets/
 - 사용자가 명시한 **마크다운**만 추가/수정 (불필요한 README 남발 방지). **예외:** 본 `AGENTS.md`·`CHANGELOG.md`·`SIGNAL-PRD.md`는 유지보수 대상.
 - 문자열은 하드코딩보다 **`locales/messages.ts`**.
 - 변경 후 가능하면 **`npx tsc --noEmit`**.
+
+### 11.1 커밋 전 — 변경 내용을 파일별로 기록 (필수)
+
+**`git commit` 하기 전에** 반드시 `CHANGELOG.md`를 갱신한다.
+
+1. 작업일(또는 해당 날짜) 섹션을 쓰거나 기존 날짜 아래에 **하위 블록**을 추가한다.
+2. **변경한 각 파일**마다 한 줄 요약을 적는다. 권장 형식: 해당 날짜 아래 `### 파일별` 제목 + 표(`파일` / `변경 내용`).
+3. 커밋 해시를 알면 괄호에 적어두면 추적에 유리하다(선택).
+4. 소스 파일 상단에 **동일 내용을 주석으로 반복하지 않는다.** 기록의 단일 출처는 **`CHANGELOG.md`**이다.
 
 ---
 
@@ -165,8 +177,9 @@ assets/
 | 시세/캐시/Finnhub 동작 방식 변경 | `AGENTS.md` §6·8, `CHANGELOG.md` |
 | 제품 범위·MVP | `SIGNAL-PRD.md` |
 | 기능 완료·릴리즈 단위 요약 | `CHANGELOG.md` |
+| **커밋 직전** | `CHANGELOG.md`에 **파일별** 변경 한 줄씩 기록 (§11.1) |
 
-**에이전트/도구에게:** 위 표에 해당하는 작업을 마친 뒤, 한 번씩 이 파일과 `CHANGELOG.md`를 열어 **한 줄이라도** 반영할 점이 있으면 수정할 것.
+**에이전트/도구에게:** 위 표에 해당하는 작업을 마친 뒤, 한 번씩 이 파일과 `CHANGELOG.md`를 열어 **한 줄이라도** 반영할 점이 있으면 수정할 것. **커밋 전에는 §11.1을 먼저 수행할 것.**
 
 ---
 

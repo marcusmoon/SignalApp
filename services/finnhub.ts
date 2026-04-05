@@ -50,9 +50,26 @@ async function fh<T>(path: string, params: Record<string, string>): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export async function fetchGeneralNews(): Promise<FinnhubNewsRaw[]> {
-  const data = await fh<FinnhubNewsRaw[]>('/news', { category: 'general' });
+/** Finnhub 시장 뉴스: `general` · `forex` · `crypto` · `merger` */
+export type FinnhubMarketNewsCategory = 'general' | 'forex' | 'crypto' | 'merger';
+
+export async function fetchMarketNews(category: FinnhubMarketNewsCategory): Promise<FinnhubNewsRaw[]> {
+  const data = await fh<FinnhubNewsRaw[]>('/news', { category });
   return Array.isArray(data) ? data : [];
+}
+
+export async function fetchGeneralNews(): Promise<FinnhubNewsRaw[]> {
+  return fetchMarketNews('general');
+}
+
+export function mergeNewsById(...lists: FinnhubNewsRaw[][]): FinnhubNewsRaw[] {
+  const map = new Map<number, FinnhubNewsRaw>();
+  for (const list of lists) {
+    for (const r of list) {
+      if (!map.has(r.id)) map.set(r.id, r);
+    }
+  }
+  return [...map.values()].sort((a, b) => b.datetime - a.datetime);
 }
 
 export async function fetchEarningsCalendarRange(from: Date, to: Date): Promise<FinnhubEarningsRow[]> {

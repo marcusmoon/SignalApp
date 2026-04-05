@@ -2,6 +2,44 @@
 
 ## 2026-04-04
 
+### UI: 플로팅 탭바 · 시그널 로딩 (커밋 `c48e2d0`)
+
+- 플로팅·둥근 탭바, 웹 `backdrop-filter`·호버, 탭 화면 하단 패딩/FAB 정렬.
+- 시세: 세그먼트 전환 시 로딩, 로더를 헤더·세그 아래 가운데.
+- 컨콜: 상단(제목·힌트·쿼리 요약) 유지 후 아래 영역에 로딩.
+
+#### 파일별
+
+| 파일 | 변경 내용 |
+|------|-----------|
+| `constants/tabBar.ts` | 플로팅 좌우·하단 여백, 캡슐 반경 등 상수 |
+| `app/(tabs)/_layout.tsx` | 탭바 블러·틴트·플로팅 위치·그림자, 웹 반투명 glass |
+| `components/SlackTabBarButton.tsx` | 웹 `hoverEffect`; 선택 탭 둥근 필 배경 제거 |
+| `app/(tabs)/youtube.tsx` | 스크롤·FAB 하단 여백을 플로팅 탭바에 맞춤 |
+| `app/(tabs)/quotes.tsx` | `SignalLoadingIndicator`, 세그먼트 전환 로딩, 중앙 로더 레이아웃 |
+| `app/(tabs)/calls.tsx` | 상단 고정 블록 + 하단 로딩/스크롤 분리, 패딩 |
+| `components/signal/SignalLoadingIndicator.tsx` | **신규** — 헤더와 동일 막대 로고 애니메이션 로더 |
+
+### 뉴스 탭: 글로벌 / 코인 / 한국 세그먼트
+
+- **글로벌**: Finnhub `category=general`.
+- **코인**: Finnhub `category=crypto`.
+- **한국**: Finnhub에 한국 전용 카테고리 없음 → `general`+`forex` 풀을 합친 뒤 `services/newsKoreaFilter.ts`에서 키워드로 한국 관련만 표시. 전용 한국 뉴스 API를 붙이면 이 필터를 대체 가능.
+- 마지막 선택 세그먼트는 `services/newsSegmentPreference.ts`에 저장.
+
+#### 파일별
+
+| 파일 | 변경 내용 |
+|------|-----------|
+| `constants/newsSegment.ts` | **신규** — 세그먼트 키·기본값 |
+| `services/finnhub.ts` | `fetchMarketNews`, `mergeNewsById`, `FinnhubMarketNewsCategory` |
+| `services/newsKoreaFilter.ts` | **신규** — 한국 관련 키워드 필터 |
+| `services/newsSegmentPreference.ts` | **신규** — AsyncStorage에 세그먼트 저장 |
+| `app/(tabs)/index.tsx` | 상단 세그먼트 UI, 분기 로드 |
+| `locales/messages.ts` | 세그먼트 라벨·힌트·한국 빈 상태 문구 |
+
+---
+
 ### 시세 · 설정
 
 - **탭 순서(순서)**: `react-native-draggable-flatlist`로 드래그 정렬(핸들: RNGH `Pressable`). 루트에 `GestureHandlerRootView`.

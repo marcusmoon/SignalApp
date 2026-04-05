@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -17,10 +17,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
+import {
+  DEFAULT_TAB_BAR_GLASS_LEVEL,
+  DEFAULT_TAB_BAR_GLASS_PERCENT,
+  type TabBarGlassLevel,
+} from '@/constants/tabBarGlass';
 import type { AppTheme } from '@/constants/theme';
 import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/constants/youtubeDefaults';
 import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { TabBarGlassPreview } from '@/components/TabBarGlassPreview';
+import { TabBarGlassSlider } from '@/components/TabBarGlassSlider';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { formatMessage, type AppLocale, type MessageId } from '@/locales/messages';
 import {
@@ -33,6 +41,7 @@ import type { AccentPresetId } from '@/services/accentPreference';
 import { ACCENT_PRESETS } from '@/services/accentPreference';
 import { clearCalendarCache, CALENDAR_CACHE_TTL_MS } from '@/services/calendarCache';
 import { clearConcallCache, CONCALL_CACHE_TTL_MS } from '@/services/concallCache';
+import { clearNewsCache, NEWS_CACHE_TTL_MS } from '@/services/newsCache';
 import { clearQuotesCache, QUOTES_CACHE_TTL_MS } from '@/services/quotesCache';
 import { clearYoutubeCache, YOUTUBE_CACHE_TTL_MS } from '@/services/youtubeCache';
 import {
@@ -62,7 +71,15 @@ import {
   QUOTES_LIST_LIMITS_DEFAULTS,
   type QuotesListLimits,
 } from '@/services/quotesListLimitsPreference';
+import {
+  loadKoreaNewsExtraKeywords,
+  normalizeKoreaNewsExtraKeywords,
+  restoreKoreaNewsExtraKeywordsDefaults,
+  saveKoreaNewsExtraKeywords,
+} from '@/services/newsKoreaKeywordsPreference';
+import { loadNewsSegmentOrder, saveNewsSegmentOrder } from '@/services/newsSegmentOrderPreference';
 import { loadNotificationPrefs, saveNotificationPrefs } from '@/services/notificationPreferences';
+import { loadTabBarGlassLevel, saveTabBarGlassLevel } from '@/services/tabBarGlassPreference';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
   SEGMENT_TAB_BACKGROUND,
@@ -76,7 +93,7 @@ import {
   SEGMENT_TAB_PADDING,
 } from '@/constants/segmentTabBar';
 
-type SettingsTab = 'youtube' | 'quotes' | 'notifications' | 'display' | 'calendar';
+type SettingsTab = 'youtube' | 'news' | 'quotes' | 'notifications' | 'display' | 'calendar';
 
 const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
@@ -84,6 +101,20 @@ const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   mcap: 'quotesSegmentMcap',
   coin: 'quotesSegmentCoin',
 };
+
+const NEWS_FEED_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
+  global: 'feedSegmentGlobal',
+  korea: 'feedSegmentKorea',
+  crypto: 'feedSegmentCrypto',
+};
+
+/** 3 rows + gaps — 뉴스 글로벌/코인/한국 순서 */
+const NEWS_SEGMENT_ORDER_ROW_GAP = 8;
+const NEWS_SEGMENT_ORDER_LIST_HEIGHT = 54 * 3 + NEWS_SEGMENT_ORDER_ROW_GAP * 2 + 20;
+
+function tabBarGlassLevelToPercent(lv: TabBarGlassLevel): number {
+  return Math.round((lv / 4) * 100);
+}
 
 /** 4 rows + gaps; extra padding so last row is not clipped (FlatList viewport / card overflow). */
 const QUOTES_SEGMENT_ORDER_ROW_GAP = 8;
@@ -361,6 +392,21 @@ function makeStyles(theme: AppTheme) {
     langSegmentTextActive: {
       color: '#0A0A0F',
     },
+    tabBarGlassPercent: {
+      fontSize: 26,
+      fontWeight: '800',
+      color: theme.text,
+      textAlign: 'center',
+      marginBottom: 10,
+      letterSpacing: -0.5,
+    },
+    tabBarGlassPreviewKicker: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.textDim,
+      marginTop: 6,
+      letterSpacing: 0.2,
+    },
     megaCapListLink: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -520,7 +566,7 @@ export default function SettingsScreen() {
   const params = useLocalSearchParams<{ tab?: string }>();
   const router = useRouter();
   const isFocused = useIsFocused();
-  const [tab, setTab] = useState<SettingsTab>('youtube');
+  const [tab, setTab] = useState<SettingsTab>('news');
   const [handles, setHandles] = useState<string[]>([]);
   const [draft, setDraft] = useState('');
   const [ready, setReady] = useState(false);
@@ -537,6 +583,7 @@ export default function SettingsScreen() {
     concallEnabled: true,
     calendarEnabled: true,
     quotesEnabled: true,
+    newsEnabled: true,
   });
 
   const [quotesListLimits, setQuotesListLimits] = useState<QuotesListLimits>(() =>
@@ -547,6 +594,17 @@ export default function SettingsScreen() {
     useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
   const [quotesSegmentOrderReady, setQuotesSegmentOrderReady] = useState(false);
   const [quotesLimitPicker, setQuotesLimitPicker] = useState<'popular' | 'mcap' | 'coin' | null>(null);
+
+  const [koreaExtraKeywords, setKoreaExtraKeywords] = useState<string[]>([]);
+  const [koreaKeywordDraft, setKoreaKeywordDraft] = useState('');
+  const [koreaKeywordsReady, setKoreaKeywordsReady] = useState(false);
+
+  const [newsSegmentOrder, setNewsSegmentOrder] = useState<NewsSegmentKey[]>([...NEWS_SEGMENT_ORDER]);
+  const [newsSegmentOrderReady, setNewsSegmentOrderReady] = useState(false);
+
+  const [tabBarGlassLevel, setTabBarGlassLevel] = useState<TabBarGlassLevel>(DEFAULT_TAB_BAR_GLASS_LEVEL);
+  const [tabBarGlassReady, setTabBarGlassReady] = useState(false);
+  const [tabBarGlassPercent, setTabBarGlassPercent] = useState(() => DEFAULT_TAB_BAR_GLASS_PERCENT);
 
   const quotesPickerOptions = useMemo(() => {
     if (!quotesLimitPicker) return [];
@@ -563,6 +621,7 @@ export default function SettingsScreen() {
     const tabParam = Array.isArray(raw) ? raw[0] : raw;
     if (
       tabParam === 'youtube' ||
+      tabParam === 'news' ||
       tabParam === 'quotes' ||
       tabParam === 'display' ||
       tabParam === 'notifications' ||
@@ -603,6 +662,25 @@ export default function SettingsScreen() {
     setQuotesSegmentOrderReady(true);
   }, []);
 
+  const reloadKoreaKeywords = useCallback(async () => {
+    const k = await loadKoreaNewsExtraKeywords();
+    setKoreaExtraKeywords(k);
+    setKoreaKeywordsReady(true);
+  }, []);
+
+  const reloadNewsSegmentOrder = useCallback(async () => {
+    const o = await loadNewsSegmentOrder();
+    setNewsSegmentOrder(o);
+    setNewsSegmentOrderReady(true);
+  }, []);
+
+  const reloadTabBarGlassLevel = useCallback(async () => {
+    const v = await loadTabBarGlassLevel();
+    setTabBarGlassLevel(v);
+    setTabBarGlassPercent(tabBarGlassLevelToPercent(v));
+    setTabBarGlassReady(true);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       void reload();
@@ -611,6 +689,9 @@ export default function SettingsScreen() {
       void reloadCachePrefs();
       void reloadQuotesListLimits();
       void reloadQuotesSegmentOrder();
+      void reloadKoreaKeywords();
+      void reloadNewsSegmentOrder();
+      void reloadTabBarGlassLevel();
     }, [
       reload,
       reloadPrefs,
@@ -618,6 +699,9 @@ export default function SettingsScreen() {
       reloadCachePrefs,
       reloadQuotesListLimits,
       reloadQuotesSegmentOrder,
+      reloadKoreaKeywords,
+      reloadNewsSegmentOrder,
+      reloadTabBarGlassLevel,
     ]),
   );
 
@@ -674,16 +758,77 @@ export default function SettingsScreen() {
     );
   };
 
+  const onAddKoreaKeyword = async () => {
+    const normalized = normalizeKoreaNewsExtraKeywords([koreaKeywordDraft]);
+    if (normalized.length === 0) {
+      Alert.alert(t('alertTitleInputError'), t('alertEmptyKoreaKeyword'));
+      return;
+    }
+    const word = normalized[0];
+    if (koreaExtraKeywords.some((x) => x.toLowerCase() === word.toLowerCase())) {
+      Alert.alert(t('alertTitleDup'), t('alertDupKoreaKeyword'));
+      return;
+    }
+    setKoreaKeywordDraft('');
+    const next = [...koreaExtraKeywords, word];
+    await saveKoreaNewsExtraKeywords(next);
+    setKoreaExtraKeywords(next);
+  };
+
+  const onRemoveKoreaKeyword = async (word: string) => {
+    const next = koreaExtraKeywords.filter((x) => x !== word);
+    await saveKoreaNewsExtraKeywords(next);
+    setKoreaExtraKeywords(next);
+  };
+
+  const onKoreaKeywordsClearAll = () => {
+    Alert.alert(
+      t('settingsNewsKoreaKeywordsReset'),
+      t('settingsNewsKoreaKeywordsResetConfirmBody'),
+      [
+        { text: t('commonCancel'), style: 'cancel' },
+        {
+          text: t('alertReset'),
+          style: 'destructive',
+          onPress: async () => {
+            await saveKoreaNewsExtraKeywords([]);
+            setKoreaExtraKeywords([]);
+          },
+        },
+      ],
+    );
+  };
+
+  const onRestoreKoreaDefaults = () => {
+    Alert.alert(
+      t('settingsNewsKoreaKeywordsRestoreDefaults'),
+      t('settingsNewsKoreaKeywordsRestoreConfirmBody'),
+      [
+        { text: t('commonCancel'), style: 'cancel' },
+        {
+          text: t('settingsNewsKoreaKeywordsRestoreDefaults'),
+          onPress: async () => {
+            await restoreKoreaNewsExtraKeywordsDefaults();
+            const k = await loadKoreaNewsExtraKeywords();
+            setKoreaExtraKeywords(k);
+          },
+        },
+      ],
+    );
+  };
+
   const cacheYoutubeMinutes = Math.round(YOUTUBE_CACHE_TTL_MS / 60000);
   const cacheConcallMinutes = Math.round(CONCALL_CACHE_TTL_MS / 60000);
   const cacheCalendarMinutes = Math.round(CALENDAR_CACHE_TTL_MS / 60000);
   const cacheQuotesSeconds = Math.round(QUOTES_CACHE_TTL_MS / 1000);
+  const cacheNewsMinutes = Math.round(NEWS_CACHE_TTL_MS / 60000);
 
   const onClearMemoryCaches = () => {
     clearYoutubeCache();
     clearConcallCache();
     clearCalendarCache();
     clearQuotesCache();
+    clearNewsCache();
     Alert.alert(t('settingsCacheClearedTitle'), t('settingsCacheClearedBody'));
   };
 
@@ -711,10 +856,27 @@ export default function SettingsScreen() {
     if (!v) clearQuotesCache();
   };
 
+  const onNewsCacheEnabledChange = async (v: boolean) => {
+    setCachePrefs((prev) => ({ ...prev, newsEnabled: v }));
+    await saveCacheFeaturePrefs({ newsEnabled: v });
+    if (!v) clearNewsCache();
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.tabBar}>
+        <Pressable
+          onPress={() => setTab('news')}
+          style={[styles.tabBtn, tab === 'news' && styles.tabBtnActive]}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'news' }}>
+          <Text
+            style={[styles.tabText, tab === 'news' && styles.tabTextActive]}
+            numberOfLines={1}>
+            {t('settingsTabNews')}
+          </Text>
+        </Pressable>
         <Pressable
           onPress={() => setTab('youtube')}
           style={[styles.tabBtn, tab === 'youtube' && styles.tabBtnActive]}
@@ -935,6 +1097,129 @@ export default function SettingsScreen() {
           </>
         ) : null}
 
+        {tab === 'news' ? (
+          <>
+            <Text style={styles.lead}>{t('settingsNewsTabLead')}</Text>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsNewsSegmentOrderKicker')}</Text>
+              <Text style={styles.quotesCardHint}>{t('settingsNewsSegmentOrderHint')}</Text>
+              {!newsSegmentOrderReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <View style={styles.quotesSegmentOrderListWrap}>
+                  <DraggableFlatList
+                    data={newsSegmentOrder}
+                    scrollEnabled={false}
+                    removeClippedSubviews={false}
+                    style={{ height: NEWS_SEGMENT_ORDER_LIST_HEIGHT }}
+                    containerStyle={{ flexGrow: 0 }}
+                    contentContainerStyle={styles.quotesSegmentOrderListContent}
+                    keyExtractor={(item) => item}
+                    onDragEnd={({ data }) => {
+                      setNewsSegmentOrder(data);
+                      void saveNewsSegmentOrder(data);
+                    }}
+                    renderItem={({ item, drag, isActive, getIndex }) => {
+                      const idx = getIndex() ?? 0;
+                      const isLast = idx === newsSegmentOrder.length - 1;
+                      return (
+                        <ScaleDecorator>
+                          <View
+                            style={[
+                              styles.segmentOrderRow,
+                              !isLast && styles.segmentOrderRowGap,
+                              isActive && styles.segmentOrderRowActive,
+                            ]}>
+                            <Text style={styles.segmentOrderLabel}>{t(NEWS_FEED_SEGMENT_LABEL[item])}</Text>
+                            <GHPressable
+                              style={styles.segmentOrderDragHandle}
+                              {...(Platform.OS === 'web'
+                                ? { onPressIn: drag }
+                                : { onLongPress: drag, delayLongPress: 200 })}
+                              accessibilityRole="button"
+                              accessibilityLabel={formatMessage(t('settingsNewsSegmentDragHandleA11y'), {
+                                name: t(NEWS_FEED_SEGMENT_LABEL[item]),
+                              })}>
+                              <FontAwesome name="bars" size={16} color={theme.textMuted} />
+                            </GHPressable>
+                          </View>
+                        </ScaleDecorator>
+                      );
+                    }}
+                  />
+                </View>
+              )}
+            </View>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsNewsKoreaKeywordsKicker')}</Text>
+              <Text style={styles.quotesCardHint}>{t('settingsNewsKoreaKeywordsLead')}</Text>
+              <Text style={styles.hint}>{t('settingsNewsKoreaKeywordsHint')}</Text>
+              <View style={styles.addRow}>
+                <TextInput
+                  value={koreaKeywordDraft}
+                  onChangeText={setKoreaKeywordDraft}
+                  placeholder={t('settingsNewsKoreaKeywordsPlaceholder')}
+                  placeholderTextColor={theme.textDim}
+                  autoCapitalize="none"
+                  autoCorrect
+                  style={styles.input}
+                  onSubmitEditing={() => void onAddKoreaKeyword()}
+                  returnKeyType="done"
+                />
+                <Pressable
+                  onPress={() => void onAddKoreaKeyword()}
+                  style={styles.addBtn}
+                  accessibilityRole="button">
+                  <Text style={styles.addBtnText}>{t('commonAdd')}</Text>
+                </Pressable>
+              </View>
+              {!koreaKeywordsReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                koreaExtraKeywords.map((kw) => (
+                  <View key={kw} style={styles.row}>
+                    <Text style={styles.handleText} numberOfLines={2}>
+                      {kw}
+                    </Text>
+                    <Pressable
+                      onPress={() => void onRemoveKoreaKeyword(kw)}
+                      style={styles.removeBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel={kw}>
+                      <FontAwesome name="trash" size={16} color="#C08080" />
+                    </Pressable>
+                  </View>
+                ))
+              )}
+              {koreaKeywordsReady ? (
+                <>
+                  <Pressable
+                    onPress={onRestoreKoreaDefaults}
+                    style={({ pressed }) => [
+                      styles.cacheClearBtn,
+                      { marginTop: 8 },
+                      pressed && { opacity: 0.88 },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('settingsNewsKoreaKeywordsRestoreDefaults')}>
+                    <Text style={styles.cacheClearBtnText}>{t('settingsNewsKoreaKeywordsRestoreDefaults')}</Text>
+                  </Pressable>
+                  {koreaExtraKeywords.length > 0 ? (
+                    <Pressable
+                      onPress={onKoreaKeywordsClearAll}
+                      style={[styles.resetBtn, { marginTop: 8 }]}
+                      accessibilityRole="button">
+                      <Text style={styles.resetBtnText}>{t('settingsNewsKoreaKeywordsReset')}</Text>
+                    </Pressable>
+                  ) : null}
+                </>
+              ) : null}
+            </View>
+          </>
+        ) : null}
+
         {tab === 'notifications' ? (
           <>
             <Text style={styles.lead}>{t('settingsNotificationsLead')}</Text>
@@ -1049,6 +1334,36 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsTabBarGlassKicker')}</Text>
+              <Text style={styles.quotesCardHint}>{t('settingsTabBarGlassHint')}</Text>
+              {!tabBarGlassReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <>
+                  <Text style={styles.tabBarGlassPercent} accessibilityLiveRegion="polite">
+                    {tabBarGlassPercent}%
+                  </Text>
+                  <TabBarGlassSlider
+                    level={tabBarGlassLevel}
+                    accentColor={theme.green}
+                    accessibilityLabel={formatMessage(t('settingsTabBarGlassA11y'), {
+                      percent: tabBarGlassPercent,
+                    })}
+                    onPreviewChange={setTabBarGlassPercent}
+                    onCommit={(lv) => {
+                      setTabBarGlassLevel(lv);
+                      void saveTabBarGlassLevel(lv);
+                    }}
+                  />
+                  <Text style={styles.tabBarGlassPreviewKicker}>
+                    {t('settingsTabBarGlassPreviewKicker')}
+                  </Text>
+                  <TabBarGlassPreview percent={tabBarGlassPercent} />
+                </>
+              )}
+            </View>
+
+            <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsCacheSectionTitle')}</Text>
               <Text style={styles.cacheOneLiner}>
                 {formatMessage(t('settingsCacheOneLiner'), {
@@ -1056,8 +1371,18 @@ export default function SettingsScreen() {
                   cc: cacheConcallMinutes,
                   cal: cacheCalendarMinutes,
                   qt: cacheQuotesSeconds,
+                  news: cacheNewsMinutes,
                 })}
               </Text>
+              <View style={styles.prefRow}>
+                <Text style={styles.prefLabel}>{t('settingsCacheNewsToggle')}</Text>
+                <Switch
+                  value={cachePrefs.newsEnabled}
+                  onValueChange={(v) => void onNewsCacheEnabledChange(v)}
+                  trackColor={{ false: '#333', true: theme.green + '88' }}
+                  thumbColor={cachePrefs.newsEnabled ? theme.green : '#888'}
+                />
+              </View>
               <View style={styles.prefRow}>
                 <Text style={styles.prefLabel}>{t('settingsCacheYoutubeToggle')}</Text>
                 <Switch
@@ -1065,6 +1390,15 @@ export default function SettingsScreen() {
                   onValueChange={(v) => void onYoutubeCacheEnabledChange(v)}
                   trackColor={{ false: '#333', true: theme.green + '88' }}
                   thumbColor={cachePrefs.youtubeEnabled ? theme.green : '#888'}
+                />
+              </View>
+              <View style={styles.prefRow}>
+                <Text style={styles.prefLabel}>{t('settingsCacheQuotesToggle')}</Text>
+                <Switch
+                  value={cachePrefs.quotesEnabled}
+                  onValueChange={(v) => void onQuotesCacheEnabledChange(v)}
+                  trackColor={{ false: '#333', true: theme.green + '88' }}
+                  thumbColor={cachePrefs.quotesEnabled ? theme.green : '#888'}
                 />
               </View>
               <View style={styles.prefRow}>
@@ -1083,15 +1417,6 @@ export default function SettingsScreen() {
                   onValueChange={(v) => void onCalendarCacheEnabledChange(v)}
                   trackColor={{ false: '#333', true: theme.green + '88' }}
                   thumbColor={cachePrefs.calendarEnabled ? theme.green : '#888'}
-                />
-              </View>
-              <View style={styles.prefRow}>
-                <Text style={styles.prefLabel}>{t('settingsCacheQuotesToggle')}</Text>
-                <Switch
-                  value={cachePrefs.quotesEnabled}
-                  onValueChange={(v) => void onQuotesCacheEnabledChange(v)}
-                  trackColor={{ false: '#333', true: theme.green + '88' }}
-                  thumbColor={cachePrefs.quotesEnabled ? theme.green : '#888'}
                 />
               </View>
               <Pressable

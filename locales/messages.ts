@@ -41,14 +41,15 @@ const ko = {
 
   settingsCacheSectionTitle: '캐시',
   settingsCacheOneLiner:
-    '유튜브 {{yt}}분 · 컨콜 {{cc}}분 · 캘린더 {{cal}}분 · 시세 약 {{qt}}초 · 끄면 매번 새로 불러옴',
+    '뉴스 {{news}}분 · 유튜브 {{yt}}분 · 시세 약 {{qt}}초 · 컨콜 {{cc}}분 · 캘린더 {{cal}}분 · 끄면 매번 새로 불러옴',
   settingsCacheClearButton: '모두 비우기',
   settingsCacheClearedTitle: '캐시',
-  settingsCacheClearedBody: '유튜브·컨콜·캘린더·시세 메모리 캐시를 비웠습니다.',
+  settingsCacheClearedBody: '뉴스·유튜브·시세·컨콜·캘린더 메모리 캐시를 비웠습니다.',
   settingsCacheYoutubeToggle: '유튜브',
   settingsCacheConcallToggle: '컨콜',
   settingsCacheCalendarToggle: '캘린더',
   settingsCacheQuotesToggle: '시세',
+  settingsCacheNewsToggle: '뉴스',
 
   headerTagline: '노이즈는 걸러내고, 진짜 시그널만',
   a11yAlerts: '알림',
@@ -67,6 +68,7 @@ const ko = {
   otaUpdatePreviewBody: '실제 OTA가 아닙니다. 배너 모양만 확인한 것입니다.',
 
   settingsTabYoutube: '유튜브',
+  settingsTabNews: '뉴스',
   settingsTabQuotes: '시세',
   settingsTabDisplay: '표시',
   settingsTabCalendar: '캘린더',
@@ -86,6 +88,10 @@ const ko = {
   youtubeErrorSelectChannel: '채널을 1개 이상 선택해 주세요.',
   youtubeErrorQuota:
     'YouTube Data API 일일 쿼터가 소진되었습니다(태평양 자정 기준으로 갱신). Google Cloud 콘솔에서 사용량을 확인하거나, 새 프로젝트·키로 나누거나, 내일 다시 시도해 주세요.',
+  youtubeErrorQuotaResetHint:
+    '다음 일일 한도 갱신까지 약 {{hours}}시간 {{minutes}}분 (태평양 자정 기준).',
+  youtubeErrorQuotaResetImminent: '곧 일일 한도가 갱신될 수 있습니다(태평양 자정).',
+  youtubeErrorQuotaConsoleLink: 'Google Cloud에서 쿼터 확인',
   youtubeErrorLoad: '유튜브를 불러오지 못했습니다.',
   youtubeErrorRefresh: '새로고침 실패',
 
@@ -112,8 +118,29 @@ const ko = {
     '표시 설정에서 앱 테마(강조색)와 언어를 바꿀 수 있습니다. 테마 색은 탭·버튼·새로고침 등에 적용되며, 언어는 즉시 저장됩니다.',
   settingsThemeAccentSection: '테마',
   settingsThemeLanguageSection: '언어',
+  settingsTabBarGlassKicker: '앱 메뉴 글래스',
+  settingsTabBarGlassHint:
+    '가로 막대의 세로 손잡이를 드래그해 조절합니다. 오른쪽일수록 진하고 왼쪽일수록 투명합니다. 아래 미리보기는 적용 예시입니다. 변경 시 즉시 반영됩니다.',
+  settingsTabBarGlassA11y: '앱 메뉴 글래스 강도 {{percent}}퍼센트',
+  settingsTabBarGlassPreviewKicker: '적용 예시',
   settingsDisplayPreviewLabel: '미리보기',
   settingsDisplaySelectedTheme: '선택: {{name}}',
+
+  settingsNewsTabLead: '뉴스 화면에서 쓰는 옵션입니다. 이 기기에만 저장됩니다.',
+  settingsNewsSegmentOrderKicker: '뉴스 탭 순서',
+  settingsNewsSegmentOrderHint:
+    '뉴스 화면 상단의 글로벌·코인·한국 순서입니다. 오른쪽 ≡을 드래그해 바꿉니다.',
+  settingsNewsSegmentDragHandleA11y: '{{name}} 순서 바꾸기(드래그)',
+  settingsNewsKoreaKeywordsKicker: '한국 뉴스 키워드',
+  settingsNewsKoreaKeywordsLead:
+    '한국 탭은 Finnhub 일반·FX 뉴스를 제목·요약·관련 심볼에서 키워드로 거릅니다. 처음 실행 시 아래 목록에 앱 기본 키워드가 채워지며, 내장 정규식과 함께 OR로 적용됩니다. 삭제·추가로 조정할 수 있습니다.',
+  settingsNewsKoreaKeywordsHint: '한 줄에 하나씩 · 제목·요약·관련 심볼에 부분 일치(대소문자 무시)',
+  settingsNewsKoreaKeywordsPlaceholder: '예: NH투자증권, 한화에어로',
+  settingsNewsKoreaKeywordsReset: '추가 키워드 모두 지우기',
+  settingsNewsKoreaKeywordsRestoreDefaults: '기본 키워드로 채우기',
+  settingsNewsKoreaKeywordsRestoreConfirmBody: '현재 키워드 목록을 앱 기본값으로 덮어씁니다.',
+  settingsNewsKoreaKeywordsResetConfirmBody: '등록한 추가 키워드를 모두 삭제합니다. (앱 기본 키워드는 유지됩니다)',
+  alertEmptyKoreaKeyword: '키워드를 입력해 주세요.',
 
   settingsCalendarScopeTitle: '캘린더 · 컨콜',
   settingsCalendarTabLead: '캘린더·컨콜 화면의 실적 행 범위를 정합니다.',
@@ -154,6 +181,7 @@ const ko = {
   alertYoutubeHandleRule: '영문·숫자·._- 만 사용할 수 있습니다. @는 생략해도 됩니다.',
   alertTitleDup: '중복',
   alertDupHandle: '이미 목록에 있는 핸들입니다.',
+  alertDupKoreaKeyword: '이미 추가된 키워드입니다.',
   alertTitleMinOne: '최소 1개',
   alertMinChannel: '큐레이션 채널은 최소 1개 이상 유지해야 합니다.',
   alertMinNewsSource: '뉴스 제공사는 최소 1개 이상 선택해야 합니다.',
@@ -167,8 +195,13 @@ const ko = {
   alertDupTicker: '이미 목록에 있는 티커입니다.',
 
   feedSectionTitle: '실시간 뉴스',
+  feedSegmentGlobal: '글로벌',
+  feedSegmentKorea: '한국',
+  feedSegmentCrypto: '코인',
   feedHint:
-    'Finnhub 속보 · 한국어 3줄 요약 (Anthropic 키가 있으면 Claude) · 우하단 필터로 제공사(출처) 선택',
+    '상단: 글로벌(Finnhub general) · 코인(Finnhub crypto) · 한국(일반+FX 풀에서 키워드 필터) · 한국어 3줄 요약(Anthropic 키가 있으면 Claude) · 우하단 필터로 출처',
+  feedEmptyKorea:
+    '한국 관련 키워드가 포함된 기사가 없습니다. 글로벌 탭을 보거나 잠시 후 다시 새로고침해 주세요.',
   feedNewsFilterTitle: '뉴스 제공사',
   feedNewsFilterIncluded: '포함 출처',
   feedNewsFilterSelectAll: '전체 선택',
@@ -256,14 +289,15 @@ const en = {
 
   settingsCacheSectionTitle: 'Cache',
   settingsCacheOneLiner:
-    'YouTube {{yt}} min · Calls {{cc}} min · Calendar {{cal}} min · Quotes ~{{qt}}s · off = fetch every time',
+    'News {{news}} min · YouTube {{yt}} min · Quotes ~{{qt}}s · Calls {{cc}} min · Calendar {{cal}} min · off = fetch every time',
   settingsCacheClearButton: 'Clear all',
   settingsCacheClearedTitle: 'Cache',
-  settingsCacheClearedBody: 'YouTube, Calls, Calendar, and Quotes memory caches were cleared.',
+  settingsCacheClearedBody: 'News, YouTube, Quotes, Calls, and Calendar memory caches were cleared.',
   settingsCacheYoutubeToggle: 'YouTube',
   settingsCacheConcallToggle: 'Calls',
   settingsCacheCalendarToggle: 'Calendar',
   settingsCacheQuotesToggle: 'Quotes',
+  settingsCacheNewsToggle: 'News',
 
   headerTagline: 'Cut the noise. Keep the signal.',
   a11yAlerts: 'Alerts',
@@ -282,6 +316,7 @@ const en = {
   otaUpdatePreviewBody: 'This is not a real OTA. You are only previewing the banner UI.',
 
   settingsTabYoutube: 'YouTube',
+  settingsTabNews: 'News',
   settingsTabQuotes: 'Quotes',
   settingsTabDisplay: 'Display',
   settingsTabCalendar: 'Calendar',
@@ -301,6 +336,10 @@ const en = {
   youtubeErrorSelectChannel: 'Select at least one channel.',
   youtubeErrorQuota:
     'YouTube Data API daily quota is exhausted (resets at midnight Pacific). Check usage in Google Cloud, use another project/key, or try again tomorrow.',
+  youtubeErrorQuotaResetHint:
+    'Approx. {{hours}} h {{minutes}} m until the next daily reset (Pacific midnight).',
+  youtubeErrorQuotaResetImminent: 'Daily quota may reset very soon (Pacific midnight).',
+  youtubeErrorQuotaConsoleLink: 'View quota in Google Cloud',
   youtubeErrorLoad: 'Could not load YouTube.',
   youtubeErrorRefresh: 'Refresh failed',
 
@@ -327,8 +366,31 @@ const en = {
     'In Display, change the app theme (accent color) and language. Theme color applies to tabs, buttons, and refresh controls; language saves immediately.',
   settingsThemeAccentSection: 'Theme',
   settingsThemeLanguageSection: 'Language',
+  settingsTabBarGlassKicker: 'App menu glass',
+  settingsTabBarGlassHint:
+    'Drag the vertical handle on the horizontal track. Right is stronger glass; left is more transparent. The preview below shows how it will look. Changes apply immediately.',
+  settingsTabBarGlassA11y: 'App menu glass strength {{percent}} percent',
+  settingsTabBarGlassPreviewKicker: 'Preview',
   settingsDisplayPreviewLabel: 'Preview',
   settingsDisplaySelectedTheme: 'Selected: {{name}}',
+
+  settingsNewsTabLead: 'Options for the News screen. Stored on this device only.',
+  settingsNewsSegmentOrderKicker: 'News tab order',
+  settingsNewsSegmentOrderHint:
+    'Order of Global, Crypto, and Korea on the News screen. Drag the ≡ handle to reorder.',
+  settingsNewsSegmentDragHandleA11y: 'Reorder {{name}} (drag)',
+  settingsNewsKoreaKeywordsKicker: 'Korea news keywords',
+  settingsNewsKoreaKeywordsLead:
+    'The Korea tab filters general and FX Finnhub news by headline, summary, and related symbols. On first launch the list is pre-filled with defaults and matched with OR alongside built-in rules. You can edit the list anytime.',
+  settingsNewsKoreaKeywordsHint:
+    'One per line. Case-insensitive substring match on headline, summary, and related symbols.',
+  settingsNewsKoreaKeywordsPlaceholder: 'e.g. NH Investment, Hanwha Aerospace',
+  settingsNewsKoreaKeywordsReset: 'Clear added keywords',
+  settingsNewsKoreaKeywordsRestoreDefaults: 'Fill with defaults',
+  settingsNewsKoreaKeywordsRestoreConfirmBody: 'Replace your keyword list with the app default set.',
+  settingsNewsKoreaKeywordsResetConfirmBody:
+    'Remove all keywords you added. Built-in keywords stay applied.',
+  alertEmptyKoreaKeyword: 'Enter a keyword.',
 
   settingsCalendarScopeTitle: 'Calendar · calls',
   settingsCalendarTabLead: 'Set how earnings rows are scoped on Calendar and earnings-call screens.',
@@ -369,6 +431,7 @@ const en = {
   alertYoutubeHandleRule: 'Use letters, numbers, . _ - only. @ is optional.',
   alertTitleDup: 'Duplicate',
   alertDupHandle: 'This handle is already in the list.',
+  alertDupKoreaKeyword: 'That keyword is already in the list.',
   alertTitleMinOne: 'At least one',
   alertMinChannel: 'Keep at least one curated channel.',
   alertMinNewsSource: 'Select at least one news source.',
@@ -382,8 +445,13 @@ const en = {
   alertDupTicker: 'This ticker is already in the list.',
 
   feedSectionTitle: 'Live news',
+  feedSegmentGlobal: 'Global',
+  feedSegmentKorea: 'Korea',
+  feedSegmentCrypto: 'Crypto',
   feedHint:
-    'Finnhub headlines · 3-line summary (Claude if Anthropic key is set) · Filter sources via the button',
+    'Tabs: Global (Finnhub general) · Crypto (Finnhub crypto) · Korea (keyword filter on general+FX) · 3-line summary (Claude if key set) · FAB: sources',
+  feedEmptyKorea:
+    'No headlines matched Korea-related keywords. Try Global or refresh later.',
   feedNewsFilterTitle: 'News sources',
   feedNewsFilterIncluded: 'Included',
   feedNewsFilterSelectAll: 'Select all',
@@ -472,14 +540,15 @@ const ja = {
 
   settingsCacheSectionTitle: 'キャッシュ',
   settingsCacheOneLiner:
-    'YouTube {{yt}}分 · コール {{cc}}分 · カレンダー {{cal}}分 · 株価 約{{qt}}秒 · オフで毎回取得',
+    'ニュース {{news}}分 · YouTube {{yt}}分 · 株価 約{{qt}}秒 · コール {{cc}}分 · カレンダー {{cal}}分 · オフで毎回取得',
   settingsCacheClearButton: '全消去',
   settingsCacheClearedTitle: 'キャッシュ',
-  settingsCacheClearedBody: 'YouTube・決算コール・カレンダー・株価のメモリキャッシュを消去しました。',
+  settingsCacheClearedBody: 'ニュース・YouTube・株価・決算コール・カレンダーのメモリキャッシュを消去しました。',
   settingsCacheYoutubeToggle: 'YouTube',
   settingsCacheConcallToggle: 'コール',
   settingsCacheCalendarToggle: 'カレンダー',
   settingsCacheQuotesToggle: '株価',
+  settingsCacheNewsToggle: 'ニュース',
 
   headerTagline: 'ノイズを捨て、本当のシグナルだけを。',
   a11yAlerts: '通知',
@@ -498,6 +567,7 @@ const ja = {
   otaUpdatePreviewBody: '実際のOTAではありません。バナー表示の確認用です。',
 
   settingsTabYoutube: 'YouTube',
+  settingsTabNews: 'ニュース',
   settingsTabQuotes: '株価',
   settingsTabDisplay: '表示',
   settingsTabCalendar: 'カレンダー',
@@ -517,6 +587,10 @@ const ja = {
   youtubeErrorSelectChannel: 'チャンネルを1つ以上選んでください。',
   youtubeErrorQuota:
     'YouTube Data API の1日クォータを使い切りました（太平洋時間0時にリセット）。Google Cloud の使用量を確認するか、別プロジェクト・キーに分けるか、明日再度お試しください。',
+  youtubeErrorQuotaResetHint:
+    '次の日次リセットまで約 {{hours}} 時間 {{minutes}} 分（太平洋時間の深夜0時基準）。',
+  youtubeErrorQuotaResetImminent: 'まもなく日次クォータが更新される可能性があります（太平洋時間の深夜0時）。',
+  youtubeErrorQuotaConsoleLink: 'Google Cloud でクォータを確認',
   youtubeErrorLoad: 'YouTube を読み込めませんでした。',
   youtubeErrorRefresh: '更新に失敗しました',
 
@@ -543,8 +617,30 @@ const ja = {
     '表示ではアプリのテーマ（アクセントカラー）と言語を変更できます。テーマ色はタブ・ボタン・更新などに反映され、言語はすぐに保存されます。',
   settingsThemeAccentSection: 'テーマ',
   settingsThemeLanguageSection: '言語',
+  settingsTabBarGlassKicker: 'アプリメニューのガラス',
+  settingsTabBarGlassHint:
+    '横のトラック上の縦のつまみをドラッグして調整します。右ほど濃く、左ほど透明です。下のプレビューが適用イメージです。変更はすぐに反映されます。',
+  settingsTabBarGlassA11y: 'アプリメニューのガラス強度 {{percent}}パーセント',
+  settingsTabBarGlassPreviewKicker: 'プレビュー',
   settingsDisplayPreviewLabel: 'プレビュー',
   settingsDisplaySelectedTheme: '選択: {{name}}',
+
+  settingsNewsTabLead: 'ニュース画面のオプションです。この端末にのみ保存されます。',
+  settingsNewsSegmentOrderKicker: 'ニュースタブの順序',
+  settingsNewsSegmentOrderHint:
+    'ニュース画面上部のグローバル・コイン・韓国の並びです。右の≡をドラッグして並べ替えます。',
+  settingsNewsSegmentDragHandleA11y: '{{name}}の順番を変更（ドラッグ）',
+  settingsNewsKoreaKeywordsKicker: '韓国ニュース キーワード',
+  settingsNewsKoreaKeywordsLead:
+    '韓国タブは Finnhub の一般・FX ニュースを見出し・要約・関連シンボルでキーワードに合わせて絞り込みます。初回は下の一覧に既定キーワードが入り、組み込みルールと OR で照合されます。削除・追加で調整できます。',
+  settingsNewsKoreaKeywordsHint: '1行に1つ · 見出し・要約・関連シンボルに部分一致（大文字小文字無視）',
+  settingsNewsKoreaKeywordsPlaceholder: '例: NH Investment, ハンファ',
+  settingsNewsKoreaKeywordsReset: '追加キーワードをすべて削除',
+  settingsNewsKoreaKeywordsRestoreDefaults: '既定キーワードで埋める',
+  settingsNewsKoreaKeywordsRestoreConfirmBody: '現在のキーワード一覧をアプリ既定のセットに置き換えます。',
+  settingsNewsKoreaKeywordsResetConfirmBody:
+    '追加したキーワードをすべて削除します。アプリ既定のキーワードはそのままです。',
+  alertEmptyKoreaKeyword: 'キーワードを入力してください。',
 
   settingsCalendarScopeTitle: 'カレンダー・決算コール',
   settingsCalendarTabLead: 'カレンダー・決算コール画面の実績行の範囲を設定します。',
@@ -585,6 +681,7 @@ const ja = {
   alertYoutubeHandleRule: '英数字・._- のみ使えます。@は省略可です。',
   alertTitleDup: '重複',
   alertDupHandle: 'すでに一覧にあります。',
+  alertDupKoreaKeyword: 'すでに追加済みのキーワードです。',
   alertTitleMinOne: '最低1件',
   alertMinChannel: 'キュレーションは最低1チャンネル必要です。',
   alertMinNewsSource: 'ニュース提供元は最低1つ選択してください。',
@@ -598,8 +695,13 @@ const ja = {
   alertDupTicker: 'すでに一覧にあります。',
 
   feedSectionTitle: 'リアルタイムニュース',
+  feedSegmentGlobal: 'グローバル',
+  feedSegmentKorea: '韓国',
+  feedSegmentCrypto: 'コイン',
   feedHint:
-    'Finnhub速報・3行要約（AnthropicキーがあればClaude）· 右下フィルタで提供元を選択',
+    'タブ: グローバル(Finnhub general) · コイン(Finnhub crypto) · 韓国(一般+FXからキーワード) · 3行要約(AnthropicキーがあればClaude) · 右下で提供元',
+  feedEmptyKorea:
+    '韓国関連キーワードに一致する記事がありません。グローバルを見るか、しばらくして更新してください。',
   feedNewsFilterTitle: 'ニュース提供元',
   feedNewsFilterIncluded: '含める',
   feedNewsFilterSelectAll: 'すべて選択',

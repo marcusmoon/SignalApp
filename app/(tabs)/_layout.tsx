@@ -1,7 +1,7 @@
-import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Easing, Platform, StyleSheet, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { BlurView } from 'expo-blur';
+import type { BottomTabBarButtonProps, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,6 +11,16 @@ import {
   TAB_BAR_FLOAT_MARGIN_H,
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
+import {
+  DEFAULT_TAB_BAR_GLASS_LEVEL,
+  TAB_BAR_GLASS_PARAMS,
+  type TabBarGlassLevel,
+} from '@/constants/tabBarGlass';
+import { TabBarGlassSurface } from '@/components/TabBarGlassSurface';
+import {
+  loadTabBarGlassLevel,
+  subscribeTabBarGlassLevelChanged,
+} from '@/services/tabBarGlassPreference';
 import { SlackTabBarButton } from '@/components/SlackTabBarButton';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -38,70 +48,22 @@ const tabIconWrap = {
   height: TAB_ICON_SIZE + 2,
 };
 
-/** 애플 뮤직/시스템 탭바에 가까운 재질: 블러 + 어두운 틴트 + 상단 헤어라인(플로팅 캡슐) */
-function TabBarGlassBackground() {
-  const r = TAB_BAR_FLOAT_RADIUS;
-
-  if (Platform.OS === 'web') {
-    /** RN Web: 불투명만 쓰면 뒤 콘텐츠가 안 비쳐 ‘유리’가 아님 — blur + 낮은 알파 */
-    const webGlass = {
-      borderRadius: r,
-      overflow: 'hidden' as const,
-      backgroundColor: 'rgba(22,22,28,0.42)',
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: 'rgba(255,255,255,0.14)',
-      backdropFilter: 'blur(28px) saturate(180%)',
-      WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-    };
-    return (
-      <View style={[StyleSheet.absoluteFill, webGlass as object]} />
-    );
-  }
-
-  return (
-    <View
-      style={[
-        StyleSheet.absoluteFill,
-        {
-          borderRadius: r,
-          overflow: 'hidden',
-        },
-      ]}>
-      <BlurView
-        intensity={Platform.OS === 'ios' ? 95 : 80}
-        tint="dark"
-        experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
-        style={StyleSheet.absoluteFill}
-      />
-      <View
-        pointerEvents="none"
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            backgroundColor: 'rgba(18,18,24,0.28)',
-            borderRadius: r,
-          },
-        ]}
-      />
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: StyleSheet.hairlineWidth * 2,
-          backgroundColor: 'rgba(255,255,255,0.14)',
-        }}
-      />
-    </View>
-  );
-}
-
 export default function TabLayout() {
   const { theme } = useSignalTheme();
   const { t } = useLocale();
   const insets = useSafeAreaInsets();
+  const [tabBarGlassLevel, setTabBarGlassLevel] = useState<TabBarGlassLevel>(DEFAULT_TAB_BAR_GLASS_LEVEL);
+
+  useEffect(() => {
+    void loadTabBarGlassLevel().then(setTabBarGlassLevel);
+  }, []);
+
+  useEffect(() => {
+    return subscribeTabBarGlassLevelChanged(() => {
+      void loadTabBarGlassLevel().then(setTabBarGlassLevel);
+    });
+  }, []);
+
   const tabBarInnerPadBottom = 6;
   const tabBarInnerPadTop = 6;
   const tabBarContentHeight = TAB_BAR_FLOAT_HEIGHT;
@@ -109,9 +71,19 @@ export default function TabLayout() {
   const tabBarTotalHeight = tabBarContentHeight + tabBarInnerPadTop + tabBarInnerPadBottom;
   const tabBarBottom = insets.bottom + TAB_BAR_FLOAT_MARGIN_BOTTOM;
 
-  return (
-    <Tabs
-      screenOptions={{
+  const glassParams = TAB_BAR_GLASS_PARAMS[tabBarGlassLevel];
+
+  const screenOptions = useMemo(
+    (): BottomTabNavigationOptions => ({
+        /** 탭 전환: 기본 150ms는 체감이 거의 없음 → 조금 길게 */
+        animation: 'shift',
+        transitionSpec: {
+          animation: 'timing',
+          config: {
+            duration: 280,
+            easing: Easing.inOut(Easing.cubic),
+          },
+        },
         tabBarActiveTintColor: theme.green,
         tabBarInactiveTintColor: 'rgba(142,142,147,0.88)',
         tabBarStyle: {
@@ -128,13 +100,18 @@ export default function TabLayout() {
           borderRadius: TAB_BAR_FLOAT_RADIUS,
           overflow: 'hidden',
           paddingHorizontal: 2,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.22,
-          shadowRadius: 16,
-          elevation: 18,
+          /** iOS: shadow는 블러와 합성 시 ‘불투명 카드’처럼 보이는 경우가 많음 */
+          ...(Platform.OS === 'ios'
+            ? { shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 } }
+            : {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 3 },
+                shadowOpacity: glassParams.android.shadowOpacity,
+                shadowRadius: glassParams.android.shadowRadius,
+                elevation: glassParams.android.elevation,
+              }),
         },
-        tabBarBackground: TabBarGlassBackground,
+        tabBarBackground: () => <TabBarGlassSurface level={tabBarGlassLevel} style={StyleSheet.absoluteFill} />,
         tabBarLabelPosition: 'below-icon',
         tabBarAllowFontScaling: false,
         tabBarLabelStyle: {
@@ -157,9 +134,26 @@ export default function TabLayout() {
           marginTop: 0,
           marginBottom: 1,
         },
-        tabBarButton: (props) => <SlackTabBarButton {...props} />,
+        tabBarButton: (props: BottomTabBarButtonProps) => <SlackTabBarButton {...props} />,
         headerShown: false,
-      }}>
+      }),
+    [
+      glassParams.android.elevation,
+      glassParams.android.shadowOpacity,
+      glassParams.android.shadowRadius,
+      tabBarGlassLevel,
+      tabBarBottom,
+      tabBarTotalHeight,
+      tabBarInnerPadBottom,
+      tabBarInnerPadTop,
+      theme.green,
+      t,
+    ],
+  );
+
+  return (
+    <Tabs
+      screenOptions={screenOptions}>
       <Tabs.Screen
         name="index"
         options={{

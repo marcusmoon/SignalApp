@@ -8,6 +8,8 @@ export type CacheFeaturePrefs = {
   calendarEnabled: boolean;
   /** 시세 탭(관심·인기·시총·코인) 메모리 캐시 */
   quotesEnabled: boolean;
+  /** 뉴스 탭 Finnhub 원문 메모리 캐시 */
+  newsEnabled: boolean;
 };
 
 const DEFAULTS: CacheFeaturePrefs = {
@@ -15,6 +17,7 @@ const DEFAULTS: CacheFeaturePrefs = {
   concallEnabled: true,
   calendarEnabled: true,
   quotesEnabled: true,
+  newsEnabled: true,
 };
 
 export async function loadCacheFeaturePrefs(): Promise<CacheFeaturePrefs> {
@@ -27,6 +30,7 @@ export async function loadCacheFeaturePrefs(): Promise<CacheFeaturePrefs> {
       concallEnabled: typeof j.concallEnabled === 'boolean' ? j.concallEnabled : DEFAULTS.concallEnabled,
       calendarEnabled: typeof j.calendarEnabled === 'boolean' ? j.calendarEnabled : DEFAULTS.calendarEnabled,
       quotesEnabled: typeof j.quotesEnabled === 'boolean' ? j.quotesEnabled : DEFAULTS.quotesEnabled,
+      newsEnabled: typeof j.newsEnabled === 'boolean' ? j.newsEnabled : DEFAULTS.newsEnabled,
     };
   } catch {
     return { ...DEFAULTS };

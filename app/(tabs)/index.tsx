@@ -16,7 +16,20 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { BlurView } from 'expo-blur';
 
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
+import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
 import type { AppTheme } from '@/constants/theme';
+import {
+  SEGMENT_TAB_ACTIVE_TEXT,
+  SEGMENT_TAB_BACKGROUND,
+  SEGMENT_TAB_BTN_PADDING_V,
+  SEGMENT_TAB_BTN_RADIUS,
+  SEGMENT_TAB_FONT_SIZE,
+  SEGMENT_TAB_FONT_WEIGHT,
+  SEGMENT_TAB_GAP,
+  SEGMENT_TAB_LINE_HEIGHT,
+  SEGMENT_TAB_OUTER_RADIUS,
+  SEGMENT_TAB_PADDING,
+} from '@/constants/segmentTabBar';
 import { AdPlaceholder } from '@/components/signal/AdPlaceholder';
 import { NewsSourceFilterModal } from '@/components/signal/NewsSourceFilterModal';
 import { NewsCard } from '@/components/signal/NewsCard';
@@ -25,11 +38,34 @@ import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import { hasFinnhub } from '@/services/env';
-import { fetchGeneralNews, type FinnhubNewsRaw } from '@/services/finnhub';
+import {
+  fetchMarketNews,
+  mergeNewsById,
+  type FinnhubNewsRaw,
+} from '@/services/finnhub';
+import { buildNewsCacheKey, peekNewsCache, storeNewsCache } from '@/services/newsCache';
+import { filterKoreaRelatedNews } from '@/services/newsKoreaFilter';
+import {
+  loadKoreaNewsExtraKeywords,
+  subscribeKoreaNewsExtraKeywordsChanged,
+} from '@/services/newsKoreaKeywordsPreference';
+import {
+  loadNewsSegmentOrder,
+  subscribeNewsSegmentOrderChanged,
+} from '@/services/newsSegmentOrderPreference';
+import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreference';
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
 import { summarizeNewsWithClaude } from '@/services/anthropic';
 import type { NewsItem } from '@/types/signal';
+import type { MessageId } from '@/locales/messages';
+
+const NEWS_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
+  global: 'feedSegmentGlobal',
+  korea: 'feedSegmentKorea',
+  crypto: 'feedSegmentCrypto',
+};
 
 function normalizeSource(raw: FinnhubNewsRaw): string {
   const s = raw.source?.trim();
@@ -50,6 +86,8 @@ export default function FeedScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const [segment, setSegment] = useState<NewsSegmentKey>(DEFAULT_NEWS_SEGMENT);
+  const [segmentOrder, setSegmentOrder] = useState<NewsSegmentKey[]>([...NEWS_SEGMENT_ORDER]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,12 +97,26 @@ export default function FeedScreen() {
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
 
+  useEffect(() => {
+    void loadNewsSegment().then((s) => setSegment(s));
+  }, []);
+
+  useEffect(() => {
+    void loadNewsSegmentOrder().then((o) => setSegmentOrder(o));
+  }, []);
+
+  useEffect(() => {
+    return subscribeNewsSegmentOrderChanged(() => {
+      void loadNewsSegmentOrder().then((o) => setSegmentOrder(o));
+    });
+  }, []);
+
   const summarizeFromPool = useCallback(async (raw: FinnhubNewsRaw[], selected: string[]) => {
     const slice = sliceForDisplay(raw, selected);
     return summarizeNewsWithClaude(slice);
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (opts?: { forceRefresh?: boolean }) => {
     setError(null);
     if (!hasFinnhub()) {
       setItems([]);
@@ -74,7 +126,33 @@ export default function FeedScreen() {
       setError(t('feedErrorToken'));
       return;
     }
-    const raw = await fetchGeneralNews();
+
+    const cachePrefs = await loadCacheFeaturePrefs();
+    const newsCacheEnabled = cachePrefs.newsEnabled;
+    const cacheKey = await buildNewsCacheKey(segment);
+
+    let raw: FinnhubNewsRaw[];
+    const hit = newsCacheEnabled && !opts?.forceRefresh ? peekNewsCache(cacheKey) : null;
+    if (hit) {
+      raw = hit;
+    } else {
+      if (segment === 'global') {
+        raw = await fetchMarketNews('general');
+      } else if (segment === 'crypto') {
+        raw = await fetchMarketNews('crypto');
+      } else {
+        const [g, fx, extraKw] = await Promise.all([
+          fetchMarketNews('general'),
+          fetchMarketNews('forex'),
+          loadKoreaNewsExtraKeywords(),
+        ]);
+        raw = filterKoreaRelatedNews(mergeNewsById(g, fx), extraKw);
+      }
+      if (newsCacheEnabled) {
+        storeNewsCache(cacheKey, raw);
+      }
+    }
+
     const sources = [...new Set(raw.map((r) => normalizeSource(r)))].sort((a, b) => a.localeCompare(b));
     setRawPool(raw);
     setAvailableSources(sources);
@@ -82,7 +160,13 @@ export default function FeedScreen() {
     setSelectedSources(selected);
     const summarized = await summarizeFromPool(raw, selected);
     setItems(summarized);
-  }, [summarizeFromPool, t]);
+  }, [segment, summarizeFromPool, t]);
+
+  useEffect(() => {
+    return subscribeKoreaNewsExtraKeywordsChanged(() => {
+      if (segment === 'korea') void load();
+    });
+  }, [segment, load]);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,7 +193,7 @@ export default function FeedScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await load();
+      await load({ forceRefresh: true });
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('feedErrorRefresh'));
@@ -154,7 +238,19 @@ export default function FeedScreen() {
     await applySelection(next);
   }, [applySelection, availableSources]);
 
+  const onPickSegment = useCallback((key: NewsSegmentKey) => {
+    setSegment(key);
+    void saveNewsSegment(key);
+  }, []);
+
   const filterReady = availableSources.length > 0 && !error;
+
+  const emptyMessage =
+    !loading && items.length === 0 && !error
+      ? segment === 'korea'
+        ? t('feedEmptyKorea')
+        : t('feedEmpty')
+      : null;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -170,6 +266,21 @@ export default function FeedScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
         <Text style={styles.section}>{t('feedSectionTitle')}</Text>
         <Text style={styles.hint}>{t('feedHint')}</Text>
+
+        <View style={styles.segment}>
+          {segmentOrder.map((key) => (
+            <Pressable
+              key={key}
+              onPress={() => onPickSegment(key)}
+              style={[styles.segBtn, segment === key && styles.segBtnActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: segment === key }}>
+              <Text style={[styles.segText, segment === key && styles.segTextActive]}>
+                {t(NEWS_SEGMENT_LABEL[key])}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
 
         {error ? (
           <View style={styles.errBox}>
@@ -192,9 +303,7 @@ export default function FeedScreen() {
           ))
         )}
 
-        {!loading && items.length === 0 && !error ? (
-          <Text style={styles.empty}>{t('feedEmpty')}</Text>
-        ) : null}
+        {emptyMessage ? <Text style={styles.empty}>{emptyMessage}</Text> : null}
 
         {!loading ? (
           <View style={styles.disclaimer}>
@@ -266,7 +375,36 @@ function makeStyles(theme: AppTheme) {
     hint: {
       fontSize: 11,
       color: theme.textDim,
+      marginBottom: 10,
+    },
+    segment: {
+      flexDirection: 'row',
+      backgroundColor: SEGMENT_TAB_BACKGROUND,
+      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: SEGMENT_TAB_PADDING,
       marginBottom: 12,
+      gap: SEGMENT_TAB_GAP,
+    },
+    segBtn: {
+      flex: 1,
+      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
+      borderRadius: SEGMENT_TAB_BTN_RADIUS,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    segBtnActive: {
+      backgroundColor: theme.green,
+    },
+    segText: {
+      fontSize: SEGMENT_TAB_FONT_SIZE,
+      lineHeight: SEGMENT_TAB_LINE_HEIGHT,
+      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
+      color: theme.textDim,
+    },
+    segTextActive: {
+      color: SEGMENT_TAB_ACTIVE_TEXT,
     },
     errBox: {
       padding: 12,

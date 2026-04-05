@@ -42,6 +42,18 @@
       "expo-updates",
       "expo-router",
       [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0A0A0F",
+          "image": "./assets/images/splash-icon.png",
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#0A0A0F",
+            "image": "./assets/images/splash-icon.png"
+          }
+        }
+      ],
+      [
         "./plugins/expoNotificationsAndroidOnly.js",
         {
           "icon": "./assets/images/icon.png",

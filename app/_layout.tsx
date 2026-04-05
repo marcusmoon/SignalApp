@@ -9,6 +9,7 @@ import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
+import { AppSplashScreen } from '@/components/AppSplashScreen';
 import { NotificationListener } from '@/components/NotificationListener';
 import { OtaBannerProvider } from '@/contexts/OtaBannerContext';
 import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
@@ -52,7 +53,7 @@ export default function RootLayout() {
   }, []);
 
   if (!loaded) {
-    return null;
+    return <AppSplashScreen />;
   }
 
   return (

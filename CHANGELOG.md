@@ -22,6 +22,10 @@
 
 - `react-native-draggable-flatlist`, `react-native-gesture-handler` 등.
 
+### 문서
+
+- **에이전트·도구 공통 온보딩**: 저장소 루트 `AGENTS.md` (구조, env, 명령, 수정 위치). 이후 구조·환경 변경 시 함께 갱신.
+
 ---
 
 ## 최근 커밋 기준
@@ -59,3 +63,5 @@
 ---
 
 이후 변경도 이 파일에 누적하거나, 버전 섹션을 나누어 적어도 됩니다.
+
+**온보딩:** Claude·Cursor 등 도구용 참고는 **`AGENTS.md`**.

@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
+import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { loadNotificationHistory, type StoredNotification } from '@/services/notificationHistory';
 import { formatRelativeTime } from '@/utils/date';
@@ -15,6 +16,7 @@ export default function AlertsScreen() {
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const router = useRouter();
   const [items, setItems] = useState<StoredNotification[]>([]);
 
@@ -31,6 +33,7 @@ export default function AlertsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      {isFocused ? <OtaUpdateBanner /> : null}
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: 28 + insets.bottom }]}
         showsVerticalScrollIndicator={false}>

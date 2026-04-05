@@ -11,17 +11,23 @@ import {
   TAB_BAR_FLOAT_MARGIN_H,
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
+import { SlackTabBarButton } from '@/components/SlackTabBarButton';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 
-function TabBarIcon(props: {
+const TAB_ICON_SIZE = 17;
+
+function TabBarIcon({
+  name,
+  color,
+}: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
   color: string;
+  focused?: boolean;
 }) {
   return (
     <View style={tabIconWrap}>
-      <FontAwesome size={17} {...props} />
+      <FontAwesome name={name} size={TAB_ICON_SIZE} color={color} />
     </View>
   );
 }
@@ -29,7 +35,7 @@ function TabBarIcon(props: {
 const tabIconWrap = {
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
-  height: 18,
+  height: TAB_ICON_SIZE + 2,
 };
 
 /** 블러 글라스 + 라운드 클립 (슬랙식 플로팅 탭) */
@@ -79,7 +85,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: theme.green,
-        tabBarInactiveTintColor: 'rgba(224,224,240,0.42)',
+        tabBarInactiveTintColor: 'rgba(224,224,240,0.36)',
         tabBarStyle: {
           position: 'absolute',
           left: TAB_BAR_FLOAT_MARGIN_H,
@@ -91,7 +97,9 @@ export default function TabLayout() {
           borderTopWidth: 0,
           borderTopColor: 'transparent',
           overflow: 'hidden',
-          paddingHorizontal: 2,
+          paddingHorizontal: 4,
+          paddingTop: 2,
+          paddingBottom: 2,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 4 },
           shadowOpacity: 0.24,
@@ -102,15 +110,15 @@ export default function TabLayout() {
         tabBarLabelPosition: 'below-icon',
         tabBarAllowFontScaling: false,
         tabBarLabelStyle: {
-          fontSize: 9,
-          lineHeight: 11,
+          fontSize: 10,
+          lineHeight: 12,
           fontWeight: '600',
-          letterSpacing: 0,
+          letterSpacing: 0.12,
           marginTop: 0,
           marginBottom: 0,
         },
         tabBarItemStyle: {
-          paddingVertical: 1,
+          paddingVertical: 4,
           paddingHorizontal: 0,
           justifyContent: 'center',
           alignItems: 'center',
@@ -119,42 +127,37 @@ export default function TabLayout() {
         },
         tabBarIconStyle: {
           marginTop: 0,
-          marginBottom: 0,
+          marginBottom: 3,
         },
-        headerShown: useClientOnlyValue(false, true),
-        headerStyle: {
-          backgroundColor: theme.bg,
-        },
-        headerTitleStyle: { color: theme.text, fontWeight: '800' },
-        headerShadowVisible: false,
-        headerTransparent: false,
+        tabBarButton: (props) => <SlackTabBarButton {...props} />,
+        headerShown: false,
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: t('tabNews'),
-          tabBarIcon: ({ color }) => <TabBarIcon name="newspaper-o" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="newspaper-o" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="youtube"
         options={{
           title: t('tabYoutube'),
-          tabBarIcon: ({ color }) => <TabBarIcon name="youtube-play" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="youtube-play" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="quotes"
         options={{
           title: t('tabQuotes'),
-          tabBarIcon: ({ color }) => <TabBarIcon name="line-chart" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="line-chart" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="calls"
         options={{
           title: t('tabCalls'),
-          tabBarIcon: ({ color }) => <TabBarIcon name="microphone" color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="microphone" color={color} focused={focused} />,
         }}
       />
     </Tabs>

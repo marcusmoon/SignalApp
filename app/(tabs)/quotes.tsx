@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useIsFocused } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   Alert,
@@ -14,10 +15,13 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
+import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { fetchTopCoinsByMarketCapUsd } from '@/services/cryptoMarkets';
 import { hasFinnhub } from '@/services/env';
 import {
   type FinnhubQuote,
@@ -30,24 +34,43 @@ import { formatRelativeFromIso } from '@/utils/date';
 
 const POLL_MS = 30_000;
 
-type QuoteSegment = 'watch' | 'popular' | 'mcap';
+type QuoteSegment = 'watch' | 'popular' | 'mcap' | 'coin';
 
 type Row = {
   symbol: string;
+  name?: string;
   quote: FinnhubQuote | null;
   error?: string;
 };
 
 function formatPrice(n: number) {
   if (!Number.isFinite(n)) return '—';
-  return n >= 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 2 }) : n.toFixed(2);
+  if (n >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  if (n >= 1) return n.toFixed(2);
+  if (n >= 0.0001) return n.toFixed(6);
+  return n.toFixed(8);
+}
+
+function mapCoinToFinnhubQuote(price: number, change24h: number, pct24h: number): FinnhubQuote {
+  return {
+    c: price,
+    d: change24h,
+    dp: pct24h,
+    pc: price - change24h,
+    h: 0,
+    l: 0,
+    o: 0,
+    t: 0,
+  };
 }
 
 export default function QuotesScreen() {
   const { theme } = useSignalTheme();
+  const { t } = useLocale();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const [segment, setSegment] = useState<QuoteSegment>('watch');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -58,6 +81,37 @@ export default function QuotesScreen() {
 
   const load = useCallback(async () => {
     setError(null);
+
+    if (segment === 'coin') {
+      try {
+        const coins = await fetchTopCoinsByMarketCapUsd(20);
+        const list: Row[] = coins.map((c) => {
+          const sym = String(c.symbol ?? '')
+            .trim()
+            .toUpperCase();
+          const price =
+            typeof c.current_price === 'number' && Number.isFinite(c.current_price) ? c.current_price : null;
+          if (price == null) {
+            return { symbol: sym || '—', name: c.name, quote: null, error: '가격 없음' };
+          }
+          const d24 = typeof c.price_change_24h === 'number' ? c.price_change_24h : 0;
+          const dp24 = typeof c.price_change_percentage_24h === 'number' ? c.price_change_percentage_24h : 0;
+          return {
+            symbol: sym,
+            name: c.name,
+            quote: mapCoinToFinnhubQuote(price, d24, dp24),
+          };
+        });
+        setRows(list);
+        setUpdatedLabel(formatRelativeFromIso(new Date().toISOString()));
+      } catch (e) {
+        setRows([]);
+        setUpdatedLabel('');
+        setError(e instanceof Error ? e.message : '코인 시세를 불러오지 못했습니다.');
+      }
+      return;
+    }
+
     if (!hasFinnhub()) {
       setRows([]);
       setUpdatedLabel('');
@@ -158,21 +212,27 @@ export default function QuotesScreen() {
       ? '저장된 티커 · 아래에서 추가/삭제'
       : segment === 'popular'
         ? '거래·관심이 많은 순(고정 큐레이션)'
-        : 'Finnhub 시가총액 기준 상위 종목';
+        : segment === 'mcap'
+          ? 'Finnhub 시가총액 기준 상위 종목'
+          : t('quotesHintCoin');
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <SignalHeader />
+      {isFocused ? <OtaUpdateBanner /> : null}
       <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={[
           styles.scroll,
           { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
-        <SignalHeader />
         <Text style={styles.section}>실시간 시세</Text>
         <Text style={styles.hint}>
-          Finnhub · 약 {POLL_MS / 1000}초마다 갱신 (탭에 있을 때) · {segmentHint}
+          {segment === 'coin'
+            ? `CoinGecko · 약 ${POLL_MS / 1000}초마다 갱신 (탭에 있을 때) · ${segmentHint}`
+            : `Finnhub · 약 ${POLL_MS / 1000}초마다 갱신 (탭에 있을 때) · ${segmentHint}`}
         </Text>
 
         <View style={styles.segment}>
@@ -193,6 +253,12 @@ export default function QuotesScreen() {
             style={[styles.segBtn, segment === 'mcap' && styles.segBtnActive]}
             accessibilityState={{ selected: segment === 'mcap' }}>
             <Text style={[styles.segText, segment === 'mcap' && styles.segTextActive]}>시총순</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setSegment('coin')}
+            style={[styles.segBtn, segment === 'coin' && styles.segBtnActive]}
+            accessibilityState={{ selected: segment === 'coin' }}>
+            <Text style={[styles.segText, segment === 'coin' && styles.segTextActive]}>{t('quotesSegmentCoin')}</Text>
           </Pressable>
         </View>
 
@@ -227,9 +293,16 @@ export default function QuotesScreen() {
 
         {!loading &&
           rows.map((r) => (
-            <View key={r.symbol} style={styles.card}>
+            <View key={`${r.symbol}-${r.name ?? ''}`} style={styles.card}>
               <View style={styles.cardTop}>
-                <Text style={styles.sym}>{r.symbol}</Text>
+                <View style={styles.symCol}>
+                  <Text style={styles.sym}>{r.symbol}</Text>
+                  {segment === 'coin' && r.name ? (
+                    <Text style={styles.symSub} numberOfLines={1}>
+                      {r.name}
+                    </Text>
+                  ) : null}
+                </View>
                 <View style={styles.cardTopRight}>
                   {r.quote ? (
                     <Text style={styles.price}>{formatPrice(r.quote.c)}</Text>
@@ -255,7 +328,9 @@ export default function QuotesScreen() {
                     {formatPrice(r.quote.d)} ({r.quote.dp >= 0 ? '+' : ''}
                     {r.quote.dp.toFixed(2)}%)
                   </Text>
-                  <Text style={styles.pc}>전일 종 {formatPrice(r.quote.pc)}</Text>
+                  <Text style={styles.pc}>
+                    {segment === 'coin' ? t('quotesPrevRefCoin') : '전일 종'} {formatPrice(r.quote.pc)}
+                  </Text>
                 </View>
               ) : (
                 <Text style={styles.fail}>{r.error ?? '데이터 없음'}</Text>
@@ -273,8 +348,9 @@ export default function QuotesScreen() {
 
         <View style={styles.note}>
           <Text style={styles.noteText}>
-            인기순은 앱에서 지정한 순서입니다. 시총순은 Finnhub 프로필의 시가총액(백만 USD)으로 정렬합니다. 장 마감
-            후에는 마지막 거래가 기준일 수 있습니다.
+            {segment === 'coin'
+              ? t('quotesFooterCoin')
+              : '인기순은 앱에서 지정한 순서입니다. 시총순은 Finnhub 프로필의 시가총액(백만 USD)으로 정렬합니다. 장 마감 후에는 마지막 거래가 기준일 수 있습니다.'}
           </Text>
         </View>
       </ScrollView>
@@ -285,7 +361,8 @@ export default function QuotesScreen() {
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    scroll: { paddingHorizontal: 16, paddingBottom: 28 },
+    scrollView: { flex: 1 },
+    scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
     section: { fontSize: 16, fontWeight: '800', color: theme.text, marginBottom: 4 },
     hint: { fontSize: 11, color: theme.textDim, marginBottom: 10 },
     segment: {
@@ -369,7 +446,9 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 6,
     },
     cardTopRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    sym: { fontSize: 16, fontWeight: '900', color: theme.text, letterSpacing: 0.5, flex: 1 },
+    symCol: { flex: 1, minWidth: 0 },
+    sym: { fontSize: 16, fontWeight: '900', color: theme.text, letterSpacing: 0.5 },
+    symSub: { fontSize: 11, fontWeight: '600', color: theme.textMuted, marginTop: 2 },
     price: { fontSize: 18, fontWeight: '800', color: theme.text },
     na: { fontSize: 16, color: theme.textDim },
     removeBtn: { padding: 2 },

@@ -1,3 +1,5 @@
+import { MEGA_CAP_SET, normalizeEarningsSymbolForMatch } from '@/constants/megaCapUniverse';
+import type { CalendarConcallScope } from '@/services/calendarConcallScopePreference';
 import { env, hasFinnhub } from '@/services/env';
 import { addDays, toYmd } from '@/utils/date';
 import type { CalendarEvent } from '@/types/signal';
@@ -59,6 +61,35 @@ export async function fetchEarningsCalendarRange(from: Date, to: Date): Promise<
     to: toYmd(to),
   });
   return j.earningsCalendar ?? [];
+}
+
+/**
+ * 긴 기간을 한 번에 요청하면 Finnhub가 빈 배열·누락을 내는 경우가 있어 90일 단위로 나눠 합칩니다.
+ */
+export async function fetchEarningsCalendarRangeMerged(from: Date, to: Date): Promise<FinnhubEarningsRow[]> {
+  const seen = new Set<string>();
+  const out: FinnhubEarningsRow[] = [];
+  const cursor = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const endT = to.getTime();
+  while (cursor.getTime() <= endT) {
+    const chunkEnd = new Date(cursor);
+    chunkEnd.setDate(chunkEnd.getDate() + 89);
+    if (chunkEnd.getTime() > endT) {
+      chunkEnd.setTime(endT);
+    }
+    const chunk = await fetchEarningsCalendarRange(cursor, chunkEnd);
+    for (const r of chunk) {
+      const key = `${r.symbol}|${r.date}|${r.quarter}|${r.year}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(r);
+      }
+    }
+    const next = new Date(chunkEnd);
+    next.setDate(next.getDate() + 1);
+    cursor.setTime(next.getTime());
+  }
+  return out;
 }
 
 export async function fetchEconomicCalendarRange(from: Date, to: Date): Promise<FinnhubEconomicRow[]> {
@@ -239,7 +270,10 @@ export async function getSymbolsSortedByMarketCap(
   return withCap.slice(0, MCAP_TOP_N).map((r) => r.sym);
 }
 
-export async function fetchCalendarEventsMerged(daysAhead = 14): Promise<CalendarEvent[]> {
+export async function fetchCalendarEventsMerged(
+  daysAhead = 14,
+  options?: { scope: CalendarConcallScope; watchlistSymbols?: string[] },
+): Promise<CalendarEvent[]> {
   const from = new Date();
   const to = addDays(from, daysAhead);
   let earn: FinnhubEarningsRow[] = [];
@@ -248,6 +282,22 @@ export async function fetchCalendarEventsMerged(daysAhead = 14): Promise<Calenda
     earn = await fetchEarningsCalendarRange(from, to);
   } catch {
     earn = [];
+  }
+  const scope = options?.scope ?? 'mega';
+  if (scope === 'mega') {
+    earn = earn.filter(
+      (r) => r.symbol && MEGA_CAP_SET.has(normalizeEarningsSymbolForMatch(r.symbol)),
+    );
+  } else {
+    const syms = options?.watchlistSymbols ?? [];
+    const set = new Set(syms.map((s) => normalizeEarningsSymbolForMatch(s)).filter(Boolean));
+    if (set.size === 0) {
+      earn = [];
+    } else {
+      earn = earn.filter(
+        (r) => r.symbol && set.has(normalizeEarningsSymbolForMatch(r.symbol)),
+      );
+    }
   }
   try {
     eco = await fetchEconomicCalendarRange(from, to);

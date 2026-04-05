@@ -58,6 +58,38 @@ function parseYoutubeError(body: unknown): string | null {
   return null;
 }
 
+/** UI에서 `t('youtubeErrorQuota')` 로 매핑 */
+export const YOUTUBE_ERROR_QUOTA = 'YOUTUBE_QUOTA';
+
+function isYoutubeQuotaExceeded(status: number, body: unknown): boolean {
+  const err =
+    body && typeof body === 'object'
+      ? (body as { error?: { code?: number; message?: string; errors?: Array<{ reason?: string }> } }).error
+      : undefined;
+  if (!err) return false;
+  if (status !== 403 && err.code !== 403) return false;
+  const r0 = err.errors?.[0]?.reason;
+  if (r0 === 'quotaExceeded' || r0 === 'dailyLimitExceeded' || r0 === 'rateLimitExceeded') return true;
+  return (err.message ?? '').toLowerCase().includes('quota');
+}
+
+function throwYoutubeHttpError(res: Response, raw: unknown, label: string): never {
+  if (isYoutubeQuotaExceeded(res.status, raw)) {
+    throw new Error(YOUTUBE_ERROR_QUOTA);
+  }
+  const msg = parseYoutubeError(raw) ?? JSON.stringify(raw).slice(0, 200);
+  throw new Error(`YouTube ${label} ${res.status}: ${msg}`);
+}
+
+function throwYoutubeBodyError(res: Response, raw: unknown, label: string): never {
+  const errMsg = parseYoutubeError(raw);
+  if (errMsg) {
+    if (isYoutubeQuotaExceeded(res.status, raw)) throw new Error(YOUTUBE_ERROR_QUOTA);
+    throw new Error(`YouTube: ${errMsg}`);
+  }
+  throw new Error(`YouTube ${label}: unknown error`);
+}
+
 async function fetchChannelIdByHandle(handle: string): Promise<string | null> {
   const res = await fetch(apiUrl('channels', { part: 'id', forHandle: handle }));
   const raw = await res.json();
@@ -103,11 +135,10 @@ async function searchVideoIdsOnChannel(channelId: string, order: 'viewCount' | '
   );
   const raw = await search.json();
   if (!search.ok) {
-    const msg = parseYoutubeError(raw) ?? JSON.stringify(raw).slice(0, 200);
-    throw new Error(`YouTube search ${search.status}: ${msg}`);
+    throwYoutubeHttpError(search, raw, 'search');
   }
   const errMsg = parseYoutubeError(raw);
-  if (errMsg) throw new Error(`YouTube: ${errMsg}`);
+  if (errMsg) throwYoutubeBodyError(search, raw, 'search');
 
   const sjson = raw as SearchList;
   return (sjson.items ?? [])
@@ -128,11 +159,10 @@ async function searchVideoIdsByKeyword(order: 'viewCount' | 'date'): Promise<str
     );
     const raw = await search.json();
     if (!search.ok) {
-      const msg = parseYoutubeError(raw) ?? JSON.stringify(raw).slice(0, 200);
-      throw new Error(`YouTube search ${search.status}: ${msg}`);
+      throwYoutubeHttpError(search, raw, 'search');
     }
     const errMsg = parseYoutubeError(raw);
-    if (errMsg) throw new Error(`YouTube: ${errMsg}`);
+    if (errMsg) throwYoutubeBodyError(search, raw, 'search');
 
     const sjson = raw as SearchList;
     const ids = (sjson.items ?? [])
@@ -208,11 +238,10 @@ export async function fetchEconomyYoutube(
   );
   const rawV = await v.json();
   if (!v.ok) {
-    const msg = parseYoutubeError(rawV) ?? JSON.stringify(rawV).slice(0, 200);
-    throw new Error(`YouTube videos ${v.status}: ${msg}`);
+    throwYoutubeHttpError(v, rawV, 'videos');
   }
   const errV = parseYoutubeError(rawV);
-  if (errV) throw new Error(`YouTube: ${errV}`);
+  if (errV) throwYoutubeBodyError(v, rawV, 'videos');
 
   const vjson = rawV as VideoList;
   let meta = vjson.items ?? [];

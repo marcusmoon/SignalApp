@@ -1,6 +1,7 @@
 import { env, hasAnthropic } from '@/services/env';
 import type { ConcallSummary, NewsItem } from '@/types/signal';
 import type { FinnhubNewsRaw } from '@/services/finnhub';
+import { isFlashNews } from '@/services/newsFlash';
 import { formatRelativeFromUnix } from '@/utils/date';
 
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -66,6 +67,7 @@ export function newsItemFromFinnhubFallback(n: FinnhubNewsRaw): NewsItem {
     timeLabel: formatRelativeFromUnix(n.datetime),
     url: n.url,
     summarySource: 'finnhub',
+    isFlash: isFlashNews(n),
   };
 }
 
@@ -127,6 +129,7 @@ export async function summarizeNewsWithClaude(articles: FinnhubNewsRaw[]): Promi
       timeLabel: formatRelativeFromUnix(a.datetime),
       url: a.url,
       summarySource: 'claude',
+      isFlash: isFlashNews(a),
     };
   });
 }

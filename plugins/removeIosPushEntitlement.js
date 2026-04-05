@@ -8,7 +8,9 @@
 const fs = require('fs');
 const { globSync } = require('glob');
 
-const plist = require('@expo/plist');
+/** @expo/plist는 default export — require 시 .default에서 parse/build 사용 */
+const plistModule = require('@expo/plist');
+const plist = plistModule.default ?? plistModule;
 const {
   withEntitlementsPlist,
   withFinalizedMod,

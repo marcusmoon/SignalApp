@@ -14,27 +14,32 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 
+import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import { hasYoutube } from '@/services/env';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
 import { loadCurationHandles } from '@/services/youtubeCurationList';
 import { peekYoutubeCache, fetchEconomyYoutubeCached, YOUTUBE_CACHE_TTL_MS } from '@/services/youtubeCache';
-import { fetchChannelDisplayNames, type ChannelHandleMeta } from '@/services/youtube';
+import { fetchChannelDisplayNames, YOUTUBE_ERROR_QUOTA, type ChannelHandleMeta } from '@/services/youtube';
 import type { YoutubeItem } from '@/types/signal';
 
 type SortKey = 'popular' | 'latest';
 
 export default function YoutubeScreen() {
+  const { t } = useLocale();
   const { theme } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const [sort, setSort] = useState<SortKey>('latest');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -74,21 +79,22 @@ export default function YoutubeScreen() {
 
       if (!hasYoutube()) {
         setItems([]);
-        setError('EXPO_PUBLIC_YOUTUBE_API_KEY 가 필요합니다. Google Cloud에서 YouTube Data API v3를 활성화한 뒤 키를 .env에 넣으세요.');
+        setError(t('youtubeErrorKeyMissing'));
         setLoading(false);
         return;
       }
 
       if (handles.length === 0) {
         setItems([]);
-        setError('채널을 1개 이상 선택해 주세요.');
+        setError(t('youtubeErrorSelectChannel'));
         setLoading(false);
         return;
       }
 
       const order = sort === 'popular' ? 'viewCount' : 'date';
+      const { youtubeEnabled } = await loadCacheFeaturePrefs();
 
-      if (!opts?.forceRefresh) {
+      if (!opts?.forceRefresh && youtubeEnabled) {
         const cached = peekYoutubeCache(order, handles);
         if (cached) {
           setItems(cached);
@@ -102,13 +108,14 @@ export default function YoutubeScreen() {
         const list = await fetchEconomyYoutubeCached(order, {
           forceRefresh: opts?.forceRefresh,
           channelHandles: handles,
+          cacheEnabled: youtubeEnabled,
         });
         setItems(list);
       } finally {
         setLoading(false);
       }
     },
-    [sort, selectedHandles],
+    [sort, selectedHandles, t],
   );
 
   useEffect(() => {
@@ -119,7 +126,13 @@ export default function YoutubeScreen() {
         await load();
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : '유튜브를 불러오지 못했습니다.');
+          const msg =
+            e instanceof Error
+              ? e.message === YOUTUBE_ERROR_QUOTA
+                ? t('youtubeErrorQuota')
+                : e.message
+              : t('youtubeErrorLoad');
+          setError(msg);
           setItems([]);
           setLoading(false);
         }
@@ -128,7 +141,7 @@ export default function YoutubeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [load, selectedHandles]);
+  }, [load, selectedHandles, t]);
 
   const onRefresh = useCallback(async () => {
     if (!selectedHandles?.length) return;
@@ -137,11 +150,17 @@ export default function YoutubeScreen() {
       await load({ forceRefresh: true, channelHandles: selectedHandles });
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '새로고침 실패');
+      const msg =
+        e instanceof Error
+          ? e.message === YOUTUBE_ERROR_QUOTA
+            ? t('youtubeErrorQuota')
+            : e.message
+          : t('youtubeErrorRefresh');
+      setError(msg);
     } finally {
       setRefreshing(false);
     }
-  }, [load, selectedHandles]);
+  }, [load, selectedHandles, t]);
 
   const toggleChannel = useCallback(
     async (handle: string) => {
@@ -210,14 +229,16 @@ export default function YoutubeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <SignalHeader />
+      {isFocused ? <OtaUpdateBanner /> : null}
       <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={[
           styles.scroll,
           { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
-        <SignalHeader />
         <Text style={styles.section}>경제 유튜브</Text>
         <Text style={styles.hint}>
           우하단 필터로 큐레이션 채널 선택 · 최신순/인기순 · {Math.round(YOUTUBE_CACHE_TTL_MS / 60000)}분 캐시
@@ -328,7 +349,8 @@ export default function YoutubeScreen() {
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    scroll: { paddingHorizontal: 16, paddingBottom: 28 },
+    scrollView: { flex: 1 },
+    scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
     section: { fontSize: 16, fontWeight: '800', color: theme.text, marginBottom: 4 },
     hint: { fontSize: 11, color: theme.textDim, marginBottom: 10 },
     filterFab: {

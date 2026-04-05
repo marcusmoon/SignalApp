@@ -1,37 +1,95 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { BlurView } from 'expo-blur';
+import {
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
+import { ConcallFiscalFilterModal } from '@/components/signal/ConcallFiscalFilterModal';
+import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
+import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { formatMessage } from '@/locales/messages';
+import type { CalendarConcallScope } from '@/services/calendarConcallScopePreference';
+import { loadCalendarConcallScope } from '@/services/calendarConcallScopePreference';
+import {
+  defaultConcallFiscal,
+  loadConcallFiscalFilter,
+  saveConcallFiscalFilter,
+  type ConcallFiscalState,
+} from '@/services/concallFiscalFilter';
+import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import { fetchConcallSummaries } from '@/services/concalls';
+import { hasFinnhub } from '@/services/env';
+import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { ConcallSummary } from '@/types/signal';
 
 export default function CallsScreen() {
   const { theme } = useSignalTheme();
+  const { t } = useLocale();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<ConcallSummary[]>([]);
+  const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
+  const [calendarScope, setCalendarScope] = useState<CalendarConcallScope>('mega');
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [fiscal, setFiscal] = useState<ConcallFiscalState>(defaultConcallFiscal());
+  const fiscalRef = useRef(fiscal);
+  fiscalRef.current = fiscal;
 
-  const load = useCallback(async () => {
+  const runFetch = useCallback(async (forceRefresh?: boolean) => {
+    const f = fiscalRef.current;
     setError(null);
-    const list = await fetchConcallSummaries(3);
+    if (!hasFinnhub()) {
+      setItems([]);
+      setError(t('feedErrorToken'));
+      return;
+    }
+    const [{ concallEnabled }, watch, scope] = await Promise.all([
+      loadCacheFeaturePrefs(),
+      loadWatchlistSymbols(),
+      loadCalendarConcallScope(),
+    ]);
+    setWatchlistSymbols(watch);
+    setCalendarScope(scope);
+    const list = await fetchConcallSummaries(3, {
+      scope,
+      watchlistSymbols: watch,
+      fiscalYear: f.fiscalYear,
+      fiscalQuarter: f.fiscalQuarter,
+      forceRefresh: !!forceRefresh,
+      cacheEnabled: concallEnabled,
+    });
     setItems(list);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const loadedFiscal = await loadConcallFiscalFilter();
+      if (cancelled) return;
+      setFiscal(loadedFiscal);
+      fiscalRef.current = loadedFiscal;
       setLoading(true);
       try {
-        await load();
+        await runFetch();
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : '컨콜 요약을 불러오지 못했습니다.');
@@ -44,33 +102,83 @@ export default function CallsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [load]);
+  }, [runFetch]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadWatchlistSymbols().then(setWatchlistSymbols);
+      void loadCalendarConcallScope().then(setCalendarScope);
+    }, []),
+  );
+
+  const handleApplyQuery = useCallback(
+    async (next: ConcallFiscalState) => {
+      await saveConcallFiscalFilter(next);
+      setFiscal(next);
+      fiscalRef.current = next;
+      setFilterModalVisible(false);
+      setLoading(true);
+      setError(null);
+      try {
+        await runFetch();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : '컨콜 요약을 불러오지 못했습니다.');
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [runFetch],
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await load();
+      await runFetch(true);
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : '새로고침 실패');
     } finally {
       setRefreshing(false);
     }
-  }, [load]);
+  }, [runFetch]);
+
+  const filterReady = hasFinnhub();
+
+  const querySummaryText = useMemo(() => {
+    const qLabel = fiscal.fiscalQuarter === 0 ? t('callsFiscalAll') : `Q${fiscal.fiscalQuarter}`;
+    const base = formatMessage(t('callsQuerySummary'), {
+      year: fiscal.fiscalYear,
+      quarter: qLabel,
+    });
+    const scopeSuffix =
+      calendarScope === 'mega' ? t('callsQueryScopeSuffixMega') : t('callsQueryScopeSuffixWatch');
+    return base + scopeSuffix;
+  }, [fiscal.fiscalYear, fiscal.fiscalQuarter, calendarScope, t]);
+
+  const emptyMessage = useMemo(() => {
+    if (loading || error) return null;
+    if (items.length > 0) return null;
+    if (calendarScope === 'watch' && watchlistSymbols.length === 0) return t('callsEmptyWatchlistEmpty');
+    if (calendarScope === 'watch') return t('callsEmptyWatchFilter');
+    return t('callsEmptyGeneral');
+  }, [loading, error, items.length, calendarScope, watchlistSymbols.length, t]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <SignalHeader />
+      {isFocused ? <OtaUpdateBanner /> : null}
       <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={[
           styles.scroll,
           { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
-        <SignalHeader />
-        <Text style={styles.section}>컨콜 요약</Text>
-        <Text style={styles.hint}>
-          Finnhub 실적 일정 → API Ninjas 트랜스크립트 → Claude 요약 (Ninjas·Anthropic 키 권장)
-        </Text>
+        <Text style={styles.section}>{t('callsSectionTitle')}</Text>
+        <Text style={styles.hint}>{t('callsHint')}</Text>
+        {filterReady ? <Text style={styles.querySummary}>{querySummaryText}</Text> : null}
 
         {error ? (
           <View style={styles.errBox}>
@@ -78,7 +186,7 @@ export default function CallsScreen() {
           </View>
         ) : null}
 
-        {loading ? <Text style={styles.loading}>불러오는 중…</Text> : null}
+        {loading ? <Text style={styles.loading}>{t('commonLoading')}</Text> : null}
 
         {!loading &&
           items.map((c) => (
@@ -109,7 +217,44 @@ export default function CallsScreen() {
               </Text>
             </View>
           ))}
+
+        {!loading && emptyMessage ? <Text style={styles.empty}>{emptyMessage}</Text> : null}
       </ScrollView>
+
+      {filterReady ? (
+        <Pressable
+          onPress={() => setFilterModalVisible(true)}
+          style={({ pressed }) => [
+            styles.filterFab,
+            {
+              bottom: tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom + 8,
+            },
+            pressed && styles.filterFabPressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11yCallsFilter')}>
+          {Platform.OS === 'web' ? (
+            <View style={styles.filterFabBlurFallback} />
+          ) : (
+            <BlurView
+              intensity={Platform.OS === 'ios' ? 100 : 85}
+              tint="dark"
+              experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          <View pointerEvents="none" style={styles.filterFabRing} />
+          <FontAwesome name="filter" size={19} color={theme.green} />
+        </Pressable>
+      ) : null}
+
+      <ConcallFiscalFilterModal
+        visible={filterModalVisible}
+        onClose={() => setFilterModalVisible(false)}
+        appliedFiscal={fiscal}
+        onApplyQuery={(f) => void handleApplyQuery(f)}
+        bottomInset={insets.bottom}
+      />
     </SafeAreaView>
   );
 }
@@ -117,10 +262,18 @@ export default function CallsScreen() {
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    scroll: { paddingHorizontal: 16, paddingBottom: 28 },
+    scrollView: { flex: 1 },
+    scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
     section: { fontSize: 16, fontWeight: '800', color: theme.text, marginBottom: 4 },
-    hint: { fontSize: 11, color: theme.textDim, marginBottom: 12 },
+    hint: { fontSize: 11, color: theme.textDim, marginBottom: 8 },
+    querySummary: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: theme.textMuted,
+      marginBottom: 12,
+    },
     loading: { fontSize: 13, color: theme.textMuted, marginBottom: 12 },
+    empty: { fontSize: 13, color: theme.textMuted, marginTop: 8 },
     errBox: {
       padding: 12,
       borderRadius: 10,
@@ -153,5 +306,34 @@ function makeStyles(theme: AppTheme) {
     label: { fontSize: 10, fontWeight: '800', color: theme.accentBlue, marginBottom: 4 },
     body: { fontSize: 12, color: theme.textMuted, lineHeight: 18 },
     ai: { marginTop: 10, fontSize: 10, fontWeight: '700', color: theme.textDim },
+    filterFab: {
+      position: 'absolute',
+      right: 16,
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.3,
+      shadowRadius: 10,
+      elevation: 10,
+    },
+    filterFabBlurFallback: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(10,10,15,0.88)',
+      borderRadius: 26,
+    },
+    filterFabRing: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: 26,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: 'rgba(255,255,255,0.14)',
+    },
+    filterFabPressed: {
+      opacity: 0.9,
+    },
   });
 }

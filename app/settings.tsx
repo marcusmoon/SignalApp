@@ -11,16 +11,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useFocusEffect } from '@react-navigation/native';
-import { useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { AppTheme } from '@/constants/theme';
 import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/constants/youtubeDefaults';
 import { useLocale } from '@/contexts/LocaleContext';
+import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import type { AppLocale, MessageId } from '@/locales/messages';
+import { formatMessage, type AppLocale, type MessageId } from '@/locales/messages';
 import type { AccentPresetId } from '@/services/accentPreference';
 import { ACCENT_PRESETS } from '@/services/accentPreference';
-import { clearYoutubeCache } from '@/services/youtubeCache';
+import { clearConcallCache, CONCALL_CACHE_TTL_MS } from '@/services/concallCache';
+import { clearYoutubeCache, YOUTUBE_CACHE_TTL_MS } from '@/services/youtubeCache';
 import {
   isValidYoutubeHandle,
   loadCurationHandles,
@@ -36,9 +38,19 @@ import {
   resetWatchlistToDefaults,
   saveWatchlistSymbols,
 } from '@/services/quoteWatchlist';
+import {
+  loadCalendarConcallScope,
+  saveCalendarConcallScope,
+  type CalendarConcallScope,
+} from '@/services/calendarConcallScopePreference';
+import {
+  loadCacheFeaturePrefs,
+  saveCacheFeaturePrefs,
+  type CacheFeaturePrefs,
+} from '@/services/cacheFeaturePreferences';
 import { loadNotificationPrefs, saveNotificationPrefs } from '@/services/notificationPreferences';
 
-type SettingsTab = 'youtube' | 'quotes' | 'display' | 'notifications';
+type SettingsTab = 'youtube' | 'quotes' | 'notifications' | 'display';
 
 const ACCENT_LABEL: Record<AccentPresetId, MessageId> = {
   green: 'accentGreen',
@@ -83,7 +95,7 @@ function makeStyles(theme: AppTheme) {
     },
     tabBtn: {
       flex: 1,
-      paddingVertical: 10,
+      paddingVertical: 11,
       borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
@@ -92,7 +104,8 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.green,
     },
     tabText: {
-      fontSize: 9,
+      fontSize: 12,
+      lineHeight: 15,
       fontWeight: '800',
       color: theme.textDim,
     },
@@ -305,6 +318,38 @@ function makeStyles(theme: AppTheme) {
     langSegmentTextActive: {
       color: '#0A0A0F',
     },
+    megaCapListLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 14,
+      paddingTop: 14,
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(255,255,255,0.06)',
+    },
+    megaCapListLinkText: {
+      flex: 1,
+      fontSize: 13,
+      fontWeight: '700',
+      color: theme.green,
+      paddingRight: 8,
+    },
+    cacheOneLiner: {
+      fontSize: 11,
+      color: theme.textDim,
+      lineHeight: 16,
+      marginBottom: 10,
+    },
+    cacheClearBtn: {
+      marginTop: 8,
+      paddingVertical: 12,
+      alignItems: 'center',
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: '#14141C',
+    },
+    cacheClearBtnText: { fontSize: 13, fontWeight: '800', color: theme.green },
   });
 }
 
@@ -313,6 +358,8 @@ export default function SettingsScreen() {
   const { t, locale, setLocale } = useLocale();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const params = useLocalSearchParams<{ tab?: string }>();
+  const router = useRouter();
+  const isFocused = useIsFocused();
   const [tab, setTab] = useState<SettingsTab>('youtube');
   const [handles, setHandles] = useState<string[]>([]);
   const [draft, setDraft] = useState('');
@@ -325,6 +372,19 @@ export default function SettingsScreen() {
   const [pushEnabled, setPushEnabled] = useState(true);
   const [earningsOnly, setEarningsOnly] = useState(false);
   const [prefsReady, setPrefsReady] = useState(false);
+
+  const [calendarScope, setCalendarScope] = useState<CalendarConcallScope>('mega');
+  const [calendarScopeReady, setCalendarScopeReady] = useState(false);
+
+  const [cachePrefs, setCachePrefs] = useState<CacheFeaturePrefs>({
+    youtubeEnabled: true,
+    concallEnabled: true,
+  });
+
+  const reloadCachePrefs = useCallback(async () => {
+    const p = await loadCacheFeaturePrefs();
+    setCachePrefs(p);
+  }, []);
 
   useEffect(() => {
     const raw = params.tab;
@@ -346,6 +406,12 @@ export default function SettingsScreen() {
     setPrefsReady(true);
   }, []);
 
+  const reloadCalendarScope = useCallback(async () => {
+    const v = await loadCalendarConcallScope();
+    setCalendarScope(v);
+    setCalendarScopeReady(true);
+  }, []);
+
   const reload = useCallback(async () => {
     const list = await loadCurationHandles();
     setHandles(list);
@@ -363,7 +429,9 @@ export default function SettingsScreen() {
       void reload();
       void reloadWatch();
       void reloadPrefs();
-    }, [reload, reloadWatch, reloadPrefs]),
+      void reloadCalendarScope();
+      void reloadCachePrefs();
+    }, [reload, reloadWatch, reloadPrefs, reloadCalendarScope, reloadCachePrefs]),
   );
 
   const persist = async (next: string[]) => {
@@ -464,8 +532,30 @@ export default function SettingsScreen() {
     );
   };
 
+  const cacheYoutubeMinutes = Math.round(YOUTUBE_CACHE_TTL_MS / 60000);
+  const cacheConcallMinutes = Math.round(CONCALL_CACHE_TTL_MS / 60000);
+
+  const onClearMemoryCaches = () => {
+    clearYoutubeCache();
+    clearConcallCache();
+    Alert.alert(t('settingsCacheClearedTitle'), t('settingsCacheClearedBody'));
+  };
+
+  const onYoutubeCacheEnabledChange = async (v: boolean) => {
+    setCachePrefs((prev) => ({ ...prev, youtubeEnabled: v }));
+    await saveCacheFeaturePrefs({ youtubeEnabled: v });
+    if (!v) clearYoutubeCache();
+  };
+
+  const onConcallCacheEnabledChange = async (v: boolean) => {
+    setCachePrefs((prev) => ({ ...prev, concallEnabled: v }));
+    await saveCacheFeaturePrefs({ concallEnabled: v });
+    if (!v) clearConcallCache();
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      {isFocused ? <OtaUpdateBanner /> : null}
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -486,13 +576,6 @@ export default function SettingsScreen() {
             <Text style={[styles.tabText, tab === 'quotes' && styles.tabTextActive]}>{t('settingsTabQuotes')}</Text>
           </Pressable>
           <Pressable
-            onPress={() => setTab('display')}
-            style={[styles.tabBtn, tab === 'display' && styles.tabBtnActive]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === 'display' }}>
-            <Text style={[styles.tabText, tab === 'display' && styles.tabTextActive]}>{t('settingsTabDisplay')}</Text>
-          </Pressable>
-          <Pressable
             onPress={() => setTab('notifications')}
             style={[styles.tabBtn, tab === 'notifications' && styles.tabBtnActive]}
             accessibilityRole="tab"
@@ -500,6 +583,13 @@ export default function SettingsScreen() {
             <Text style={[styles.tabText, tab === 'notifications' && styles.tabTextActive]}>
               {t('settingsTabNotifications')}
             </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setTab('display')}
+            style={[styles.tabBtn, tab === 'display' && styles.tabBtnActive]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: tab === 'display' }}>
+            <Text style={[styles.tabText, tab === 'display' && styles.tabTextActive]}>{t('settingsTabDisplay')}</Text>
           </Pressable>
         </View>
 
@@ -611,6 +701,44 @@ export default function SettingsScreen() {
           </>
         ) : null}
 
+        {tab === 'notifications' ? (
+          <>
+            <Text style={styles.lead}>{t('settingsNotificationsLead')}</Text>
+            <View style={styles.card}>
+              {!prefsReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <>
+                  <View style={styles.prefRow}>
+                    <Text style={styles.prefLabel}>{t('settingsPushEnabled')}</Text>
+                    <Switch
+                      value={pushEnabled}
+                      onValueChange={async (v) => {
+                        setPushEnabled(v);
+                        await saveNotificationPrefs({ pushEnabled: v });
+                      }}
+                      trackColor={{ false: '#333', true: theme.green + '88' }}
+                      thumbColor={pushEnabled ? theme.green : '#888'}
+                    />
+                  </View>
+                  <View style={styles.prefRow}>
+                    <Text style={styles.prefLabel}>{t('settingsEarningsOnly')}</Text>
+                    <Switch
+                      value={earningsOnly}
+                      onValueChange={async (v) => {
+                        setEarningsOnly(v);
+                        await saveNotificationPrefs({ earningsOnly: v });
+                      }}
+                      trackColor={{ false: '#333', true: theme.green + '88' }}
+                      thumbColor={earningsOnly ? theme.green : '#888'}
+                    />
+                  </View>
+                </>
+              )}
+            </View>
+          </>
+        ) : null}
+
         {tab === 'display' ? (
           <>
             <Text style={styles.lead}>{t('settingsThemeLead')}</Text>
@@ -685,43 +813,87 @@ export default function SettingsScreen() {
                 ))}
               </View>
             </View>
-          </>
-        ) : null}
 
-        {tab === 'notifications' ? (
-          <>
-            <Text style={styles.lead}>{t('settingsNotificationsLead')}</Text>
-            <View style={styles.card}>
-              {!prefsReady ? (
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsCacheSectionTitle')}</Text>
+              <Text style={styles.cacheOneLiner}>
+                {formatMessage(t('settingsCacheOneLiner'), {
+                  yt: cacheYoutubeMinutes,
+                  cc: cacheConcallMinutes,
+                })}
+              </Text>
+              <View style={styles.prefRow}>
+                <Text style={styles.prefLabel}>{t('settingsCacheYoutubeToggle')}</Text>
+                <Switch
+                  value={cachePrefs.youtubeEnabled}
+                  onValueChange={(v) => void onYoutubeCacheEnabledChange(v)}
+                  trackColor={{ false: '#333', true: theme.green + '88' }}
+                  thumbColor={cachePrefs.youtubeEnabled ? theme.green : '#888'}
+                />
+              </View>
+              <View style={styles.prefRow}>
+                <Text style={styles.prefLabel}>{t('settingsCacheConcallToggle')}</Text>
+                <Switch
+                  value={cachePrefs.concallEnabled}
+                  onValueChange={(v) => void onConcallCacheEnabledChange(v)}
+                  trackColor={{ false: '#333', true: theme.green + '88' }}
+                  thumbColor={cachePrefs.concallEnabled ? theme.green : '#888'}
+                />
+              </View>
+              <Pressable
+                onPress={onClearMemoryCaches}
+                style={({ pressed }) => [styles.cacheClearBtn, pressed && { opacity: 0.88 }]}
+                accessibilityRole="button"
+                accessibilityLabel={t('settingsCacheClearButton')}>
+                <Text style={styles.cacheClearBtnText}>{t('settingsCacheClearButton')}</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsCalendarScopeTitle')}</Text>
+              <Text style={styles.lead}>{t('settingsCalendarScopeLead')}</Text>
+              {!calendarScopeReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
-                <>
-                  <View style={styles.prefRow}>
-                    <Text style={styles.prefLabel}>{t('settingsPushEnabled')}</Text>
-                    <Switch
-                      value={pushEnabled}
-                      onValueChange={async (v) => {
-                        setPushEnabled(v);
-                        await saveNotificationPrefs({ pushEnabled: v });
-                      }}
-                      trackColor={{ false: '#333', true: theme.green + '88' }}
-                      thumbColor={pushEnabled ? theme.green : '#888'}
-                    />
-                  </View>
-                  <View style={styles.prefRow}>
-                    <Text style={styles.prefLabel}>{t('settingsEarningsOnly')}</Text>
-                    <Switch
-                      value={earningsOnly}
-                      onValueChange={async (v) => {
-                        setEarningsOnly(v);
-                        await saveNotificationPrefs({ earningsOnly: v });
-                      }}
-                      trackColor={{ false: '#333', true: theme.green + '88' }}
-                      thumbColor={earningsOnly ? theme.green : '#888'}
-                    />
-                  </View>
-                </>
+                <View style={styles.langSegmentedTrack}>
+                  <Pressable
+                    onPress={() => {
+                      setCalendarScope('mega');
+                      void saveCalendarConcallScope('mega');
+                    }}
+                    style={[styles.langSegment, calendarScope === 'mega' && styles.langSegmentActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: calendarScope === 'mega' }}
+                    accessibilityLabel={t('settingsScopeMega')}>
+                    <Text
+                      style={[styles.langSegmentText, calendarScope === 'mega' && styles.langSegmentTextActive]}>
+                      {t('settingsScopeMega')}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      setCalendarScope('watch');
+                      void saveCalendarConcallScope('watch');
+                    }}
+                    style={[styles.langSegment, calendarScope === 'watch' && styles.langSegmentActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: calendarScope === 'watch' }}
+                    accessibilityLabel={t('settingsScopeWatch')}>
+                    <Text
+                      style={[styles.langSegmentText, calendarScope === 'watch' && styles.langSegmentTextActive]}>
+                      {t('settingsScopeWatch')}
+                    </Text>
+                  </Pressable>
+                </View>
               )}
+              <Pressable
+                onPress={() => router.push('/mega-cap-list')}
+                style={({ pressed }) => [styles.megaCapListLink, pressed && { opacity: 0.85 }]}
+                accessibilityRole="button"
+                accessibilityLabel={t('settingsMegaCapListLink')}>
+                <Text style={styles.megaCapListLinkText}>{t('settingsMegaCapListLink')}</Text>
+                <FontAwesome name="chevron-right" size={14} color={theme.green} />
+              </Pressable>
             </View>
           </>
         ) : null}

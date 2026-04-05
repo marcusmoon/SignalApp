@@ -1,14 +1,17 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { BannerAd, BannerAdSize } from 'react-native-google-mobile-ads';
 
+import type { AppTheme } from '@/constants/theme';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { getBannerAdUnitId } from '@/services/admob';
+import { getBannerAdUnitId, getGoogleMobileAdsModule } from '@/services/admob';
 
-/** 캘린더 하단 앵커 적응형 배너 */
+type AdsModule = typeof import('react-native-google-mobile-ads');
+
+/** 캘린더 하단 앵커 적응형 배너 — SDK 없으면 웹과 유사한 자리 표시 */
 export function SignalBannerAd() {
   const { theme } = useSignalTheme();
   const { width } = useWindowDimensions();
+  const ads = useMemo(() => getGoogleMobileAdsModule(), []) as AdsModule | null;
   const [hidden, setHidden] = useState(false);
 
   if (hidden) {
@@ -16,6 +19,12 @@ export function SignalBannerAd() {
   }
 
   const adWidth = Math.max(0, width - 32);
+
+  if (!ads) {
+    return <BannerFallback theme={theme} />;
+  }
+
+  const { BannerAd, BannerAdSize } = ads;
 
   return (
     <View style={[styles.wrap, { borderColor: theme.border, backgroundColor: theme.card }]} accessibilityLabel="광고">
@@ -26,6 +35,15 @@ export function SignalBannerAd() {
         width={adWidth}
         onAdFailedToLoad={() => setHidden(true)}
       />
+    </View>
+  );
+}
+
+function BannerFallback({ theme }: { theme: AppTheme }) {
+  return (
+    <View style={[styles.wrap, { borderColor: theme.border, backgroundColor: theme.card }]}>
+      <Text style={[styles.badge, { color: theme.textDim }]}>광고</Text>
+      <Text style={[styles.hint, { color: theme.textMuted }]}>모바일 빌드에서 배너가 표시됩니다</Text>
     </View>
   );
 }
@@ -44,5 +62,9 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: 6,
     letterSpacing: 0.5,
+  },
+  hint: {
+    fontSize: 12,
+    alignSelf: 'stretch',
   },
 });

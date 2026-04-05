@@ -18,10 +18,10 @@ export function SignalHeader() {
       <View style={styles.topRow}>
         <View style={styles.logoRow}>
           <View style={styles.bars}>
-            <View style={[styles.bar, { height: 20, opacity: 0.35 }]} />
-            <View style={[styles.bar, { height: 34, opacity: 0.6 }]} />
-            <View style={[styles.bar, { height: 50, opacity: 0.82 }]} />
-            <View style={[styles.bar, { height: 64, opacity: 1 }]} />
+            <View style={[styles.bar, { height: 14, opacity: 0.35 }]} />
+            <View style={[styles.bar, { height: 24, opacity: 0.6 }]} />
+            <View style={[styles.bar, { height: 34, opacity: 0.82 }]} />
+            <View style={[styles.bar, { height: 42, opacity: 1 }]} />
           </View>
           <View>
             <Text style={styles.brand}>SIGNAL</Text>
@@ -34,21 +34,21 @@ export function SignalHeader() {
             style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel={t('a11yAlerts')}>
-            <FontAwesome name="bell" size={21} color={theme.textDim} />
+            <FontAwesome name="bell" size={18} color={theme.textDim} />
           </Pressable>
           <Pressable
             onPress={() => router.push('/calendar')}
             style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel={t('a11yCalendar')}>
-            <FontAwesome name="calendar" size={20} color={theme.textDim} />
+            <FontAwesome name="calendar" size={17} color={theme.textDim} />
           </Pressable>
           <Pressable
             onPress={() => router.push('/settings')}
             style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel={t('a11ySettings')}>
-            <FontAwesome name="cog" size={22} color={theme.textDim} />
+            <FontAwesome name="cog" size={18} color={theme.textDim} />
           </Pressable>
         </View>
       </View>
@@ -59,51 +59,54 @@ export function SignalHeader() {
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     wrap: {
-      paddingBottom: 12,
+      paddingHorizontal: 16,
+      paddingTop: 6,
+      paddingBottom: 8,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
-      marginBottom: 12,
+      backgroundColor: theme.bg,
     },
     topRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 12,
+      gap: 8,
     },
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 2,
-      marginRight: -4,
+      gap: 0,
+      marginRight: -2,
     },
     iconBtn: {
-      padding: 8,
+      padding: 6,
     },
     logoRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: 8,
     },
     bars: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      gap: 6,
-      height: 64,
+      gap: 4,
+      height: 42,
     },
     bar: {
-      width: 12,
+      width: 9,
       backgroundColor: theme.green,
-      borderRadius: 4,
+      borderRadius: 3,
     },
     brand: {
-      fontSize: 22,
+      fontSize: 17,
       fontWeight: '900',
       color: theme.green,
-      letterSpacing: -0.5,
+      letterSpacing: -0.4,
     },
     tag: {
-      marginTop: 2,
-      fontSize: 12,
+      marginTop: 1,
+      fontSize: 10,
+      lineHeight: 13,
       color: theme.textDim,
     },
   });

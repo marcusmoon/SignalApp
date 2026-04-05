@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { AppTheme } from '@/constants/theme';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { loadCalendarConcallScope } from '@/services/calendarConcallScopePreference';
 import { hasFinnhub } from '@/services/env';
 import { fetchCalendarEventsMerged } from '@/services/finnhub';
+import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
+import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import type { CalendarEvent } from '@/types/signal';
 
@@ -28,6 +32,7 @@ export default function CalendarScreen() {
   );
 
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +45,9 @@ export default function CalendarScreen() {
       setError('EXPO_PUBLIC_FINNHUB_TOKEN 이 필요합니다.');
       return;
     }
-    const list = await fetchCalendarEventsMerged(14);
+    const scope = await loadCalendarConcallScope();
+    const watch = scope === 'watch' ? await loadWatchlistSymbols() : undefined;
+    const list = await fetchCalendarEventsMerged(14, { scope, watchlistSymbols: watch });
     setEvents(list);
   }, []);
 
@@ -77,6 +84,7 @@ export default function CalendarScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      {isFocused ? <OtaUpdateBanner /> : null}
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: 28 + insets.bottom }]}
         showsVerticalScrollIndicator={false}

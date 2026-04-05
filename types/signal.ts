@@ -7,6 +7,8 @@ export type NewsItem = {
   timeLabel: string;
   url: string;
   summarySource?: 'claude' | 'finnhub';
+  /** 속보·긴급 보도 강조 표시 */
+  isFlash?: boolean;
 };
 
 export type CalendarEvent = {

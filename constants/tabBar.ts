@@ -2,4 +2,5 @@
 export const TAB_BAR_FLOAT_MARGIN_H = 7;
 export const TAB_BAR_FLOAT_MARGIN_BOTTOM = 8;
 export const TAB_BAR_FLOAT_RADIUS = 18;
-export const TAB_BAR_FLOAT_HEIGHT = 58;
+/** 최소 터치 타깃(약 44pt)에 가깝게 여유 확보 */
+export const TAB_BAR_FLOAT_HEIGHT = 64;

@@ -9,9 +9,11 @@ import { Platform } from 'react-native';
 import 'react-native-reanimated';
 
 import { NotificationListener } from '@/components/NotificationListener';
+import { OtaBannerProvider } from '@/contexts/OtaBannerContext';
 import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
 import { SignalThemeProvider, useSignalTheme } from '@/contexts/SignalThemeContext';
 import { initializeAds } from '@/services/admob';
+import { getPreviewOtaBannerRaw } from '@/services/env';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -55,7 +57,9 @@ export default function RootLayout() {
   return (
     <SignalThemeProvider>
       <LocaleProvider>
-        <RootLayoutNav />
+        <OtaBannerProvider key={`ota-prev-${getPreviewOtaBannerRaw()}`}>
+          <RootLayoutNav />
+        </OtaBannerProvider>
       </LocaleProvider>
     </SignalThemeProvider>
   );
@@ -80,25 +84,32 @@ function RootLayoutNav() {
     [theme],
   );
 
-  const stackOptions = useMemo(
-    () => ({
-      settings: { title: t('screenSettings'), headerBackTitle: t('commonBack') } as const,
-      alerts: {
-        title: t('screenAlerts'),
-        headerBackTitle: t('commonBack'),
-        headerStyle: { backgroundColor: theme.bg },
-        headerTintColor: theme.green,
-        headerTitleStyle: { fontWeight: '800' as const, color: theme.text },
+  const rootScreenOptions = useMemo(
+    () =>
+      ({ route }: { route: { name: string } }) => {
+        if (route.name === '(tabs)') {
+          return { headerShown: false };
+        }
+        if (route.name === 'modal') {
+          return {
+            presentation: 'modal' as const,
+            title: t('screenInfo'),
+          };
+        }
+        const titleByName: Record<string, string> = {
+          settings: t('screenSettings'),
+          alerts: t('screenAlerts'),
+          calendar: t('screenCalendar'),
+          'mega-cap-list': t('screenMegaCapList'),
+        };
+        return {
+          title: titleByName[route.name] ?? route.name,
+          headerBackTitle: t('commonBack'),
+          headerStyle: { backgroundColor: theme.bg },
+          headerTintColor: theme.green,
+          headerTitleStyle: { fontWeight: '800' as const, color: theme.text },
+        };
       },
-      calendar: {
-        title: t('screenCalendar'),
-        headerBackTitle: t('commonBack'),
-        headerStyle: { backgroundColor: theme.bg },
-        headerTintColor: theme.green,
-        headerTitleStyle: { fontWeight: '800' as const, color: theme.text },
-      },
-      modal: { presentation: 'modal' as const, title: t('screenInfo') },
-    }),
     [t, theme],
   );
 
@@ -106,13 +117,7 @@ function RootLayoutNav() {
     <ThemeProvider value={navTheme}>
       <NotificationListener />
       <StatusBar style="light" />
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="settings" options={stackOptions.settings} />
-        <Stack.Screen name="alerts" options={stackOptions.alerts} />
-        <Stack.Screen name="calendar" options={stackOptions.calendar} />
-        <Stack.Screen name="modal" options={stackOptions.modal} />
-      </Stack>
+      <Stack screenOptions={rootScreenOptions} />
     </ThemeProvider>
   );
 }

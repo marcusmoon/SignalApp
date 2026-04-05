@@ -1,24 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import {
-  NativeAd,
-  NativeAdView,
-  NativeAsset,
-  NativeAssetType,
-  NativeMediaView,
-} from 'react-native-google-mobile-ads';
 
+import type { AppTheme } from '@/constants/theme';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { getNativeAdUnitId } from '@/services/admob';
+import { getGoogleMobileAdsModule, getNativeAdUnitId } from '@/services/admob';
 
-/** PRD: 피드 5개마다 1개 · "광고" 표기 */
+type AdsModule = typeof import('react-native-google-mobile-ads');
+
+/** PRD: 피드 5개마다 1개 · "광고" 표기 — SDK 없으면 자리만 */
 export function AdPlaceholder() {
   const { theme } = useSignalTheme();
-  const [nativeAd, setNativeAd] = useState<NativeAd | null>(null);
+  const ads = useMemo(() => getGoogleMobileAdsModule(), []) as AdsModule | null;
+  const [nativeAd, setNativeAd] = useState<unknown>(null);
 
   useEffect(() => {
+    if (!ads) return;
     let cancelled = false;
-    NativeAd.createForAdRequest(getNativeAdUnitId())
+    ads.NativeAd.createForAdRequest(getNativeAdUnitId())
       .then((ad) => {
         if (!cancelled) setNativeAd(ad);
         else ad.destroy();
@@ -29,41 +27,57 @@ export function AdPlaceholder() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [ads]);
 
   useEffect(() => {
-    if (!nativeAd) return;
+    if (!nativeAd || typeof nativeAd !== 'object') return;
+    const ad = nativeAd as { destroy: () => void };
     return () => {
-      nativeAd.destroy();
+      ad.destroy();
     };
   }, [nativeAd]);
+
+  if (!ads) {
+    return <FallbackAdPlaceholder theme={theme} reason="sdk" />;
+  }
 
   if (!nativeAd) {
     return null;
   }
 
+  const { NativeAdView, NativeAsset, NativeAssetType, NativeMediaView } = ads;
+  const ad = nativeAd as {
+    icon?: { url: string } | null;
+    headline?: string;
+    body?: string | null;
+    callToAction?: string | null;
+  };
+
   return (
-    <NativeAdView nativeAd={nativeAd} style={[styles.wrap, { borderColor: theme.border, backgroundColor: theme.card }]}>
+    <NativeAdView
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      nativeAd={nativeAd as any}
+      style={[styles.wrap, { borderColor: theme.border, backgroundColor: theme.card }]}>
       <Text style={[styles.badge, { color: theme.textDim }]} accessibilityLabel="광고">
         광고
       </Text>
 
       <View style={styles.row}>
-        {nativeAd.icon ? (
+        {ad.icon ? (
           <NativeAsset assetType={NativeAssetType.ICON}>
-            <Image source={{ uri: nativeAd.icon.url }} style={styles.icon} />
+            <Image source={{ uri: ad.icon.url }} style={styles.icon} />
           </NativeAsset>
         ) : null}
         <View style={styles.textCol}>
           <NativeAsset assetType={NativeAssetType.HEADLINE}>
             <Text style={[styles.headline, { color: theme.text }]} numberOfLines={2}>
-              {nativeAd.headline}
+              {ad.headline}
             </Text>
           </NativeAsset>
-          {nativeAd.body ? (
+          {ad.body ? (
             <NativeAsset assetType={NativeAssetType.BODY}>
               <Text style={[styles.body, { color: theme.textMuted }]} numberOfLines={2}>
-                {nativeAd.body}
+                {ad.body}
               </Text>
             </NativeAsset>
           ) : null}
@@ -72,12 +86,25 @@ export function AdPlaceholder() {
 
       <NativeMediaView resizeMode="cover" style={styles.media} />
 
-      {nativeAd.callToAction ? (
+      {ad.callToAction ? (
         <NativeAsset assetType={NativeAssetType.CALL_TO_ACTION}>
-          <Text style={[styles.cta, { backgroundColor: theme.green }]}>{nativeAd.callToAction}</Text>
+          <Text style={[styles.cta, { backgroundColor: theme.green }]}>{ad.callToAction}</Text>
         </NativeAsset>
       ) : null}
     </NativeAdView>
+  );
+}
+
+function FallbackAdPlaceholder({ theme, reason }: { theme: AppTheme; reason: 'sdk' }) {
+  return (
+    <View style={[styles.wrap, { borderColor: theme.border, backgroundColor: theme.card }]}>
+      <Text style={[styles.badge, { color: theme.textDim }]} accessibilityLabel="광고">
+        광고
+      </Text>
+      <Text style={[styles.fallback, { color: theme.textMuted }]}>
+        {reason === 'sdk' ? '광고 SDK를 불러오지 못했습니다.' : '광고를 불러오지 못했습니다.'}
+      </Text>
+    </View>
   );
 }
 
@@ -95,6 +122,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: 8,
     letterSpacing: 0.5,
+  },
+  fallback: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   icon: { width: 40, height: 40, borderRadius: 8 },

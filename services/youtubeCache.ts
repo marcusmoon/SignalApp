@@ -24,7 +24,12 @@ function resolvedHandles(handles?: string[]): string[] {
   return [...DEFAULT_YOUTUBE_CHANNEL_HANDLES];
 }
 
-export function peekYoutubeCache(order: YoutubeSortOrder, handles: string[]): YoutubeItem[] | null {
+export function peekYoutubeCache(
+  order: YoutubeSortOrder,
+  handles: string[],
+  cacheEnabled = true,
+): YoutubeItem[] | null {
+  if (!cacheEnabled) return null;
   const h = resolvedHandles(handles);
   const k = cacheKey(order, h);
   const e = cache.get(k);
@@ -39,9 +44,15 @@ export function peekYoutubeCache(order: YoutubeSortOrder, handles: string[]): Yo
  */
 export async function fetchEconomyYoutubeCached(
   order: YoutubeSortOrder,
-  options?: { forceRefresh?: boolean; channelHandles?: string[] },
+  options?: { forceRefresh?: boolean; channelHandles?: string[]; cacheEnabled?: boolean },
 ): Promise<YoutubeItem[]> {
   const handles = resolvedHandles(options?.channelHandles);
+  const cacheEnabled = options?.cacheEnabled !== false;
+
+  if (!cacheEnabled) {
+    return fetchEconomyYoutube(order, { channelHandles: handles });
+  }
+
   const k = cacheKey(order, handles);
 
   if (!options?.forceRefresh) {

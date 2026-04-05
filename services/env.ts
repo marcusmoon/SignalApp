@@ -1,3 +1,5 @@
+import Constants from 'expo-constants';
+
 /**
  * Expo: `.env`에 `EXPO_PUBLIC_*` 변수를 넣고 Metro를 재시작하면 주입됩니다.
  * 프로덕션에서는 Anthropic/Finnhub 키는 서버(BFF)에 두는 것이 안전합니다.
@@ -27,4 +29,20 @@ export function hasYoutube() {
 
 export function hasApiNinjas() {
   return env.apiNinjasKey.length > 0;
+}
+
+/** OTA 미리보기 배너: manifest extra 우선(런타임 .env 반영), 없으면 번들 process.env */
+export function getPreviewOtaBannerRaw(): string {
+  const fromExtra = Constants.expoConfig?.extra?.previewOtaBanner;
+  const fromEnv = process.env.EXPO_PUBLIC_PREVIEW_OTA_BANNER;
+  const raw = fromExtra ?? fromEnv;
+  return String(raw ?? '').trim();
+}
+
+/** __DEV__ 전용. '1' / 'true' / 'yes' 만 켜짐. 0·false·off·비우기·그 외는 끔 */
+export function isPreviewOtaBannerEnabled(): boolean {
+  if (!__DEV__) return false;
+  const v = getPreviewOtaBannerRaw().toLowerCase();
+  if (v === '' || v === '0' || v === 'false' || v === 'no' || v === 'off') return false;
+  return v === '1' || v === 'true' || v === 'yes';
 }

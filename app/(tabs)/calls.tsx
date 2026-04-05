@@ -18,6 +18,7 @@ import { ConcallFiscalFilterModal } from '@/components/signal/ConcallFiscalFilte
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -36,6 +37,7 @@ import { fetchConcallSummaries } from '@/services/concalls';
 import { hasFinnhub } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { ConcallSummary } from '@/types/signal';
+import { openYahooFinanceEarnings } from '@/utils/yahooFinance';
 
 export default function CallsScreen() {
   const { theme } = useSignalTheme();
@@ -83,12 +85,12 @@ export default function CallsScreen() {
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     (async () => {
       const loadedFiscal = await loadConcallFiscalFilter();
       if (cancelled) return;
       setFiscal(loadedFiscal);
       fiscalRef.current = loadedFiscal;
-      setLoading(true);
       try {
         await runFetch();
       } catch (e) {
@@ -111,6 +113,10 @@ export default function CallsScreen() {
       void loadCalendarConcallScope().then(setCalendarScope);
     }, []),
   );
+
+  const openYahooConcall = useCallback((ticker: string) => {
+    void openYahooFinanceEarnings(ticker);
+  }, []);
 
   const handleApplyQuery = useCallback(
     async (next: ConcallFiscalState) => {
@@ -182,51 +188,75 @@ export default function CallsScreen() {
           ) : null}
         </View>
 
-        {loading ? (
-          <View style={styles.loadingCenter}>
-            <SignalLoadingIndicator message={t('commonLoading')} />
-          </View>
-        ) : (
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={[
-              styles.scroll,
-              { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
-            ]}
-            showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
-            {items.map((c) => (
-              <View key={c.id} style={styles.card}>
-                <View style={styles.head}>
-                  <Text style={styles.ticker}>{c.ticker}</Text>
-                  <Text style={styles.q}>{c.quarter}</Text>
-                </View>
-                {c.bullets.map((b, i) => (
-                  <Text key={i} style={styles.bullet}>
-                    · {b}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scroll,
+            loading ? SCROLL_CONTENT_LOADING_STYLE : null,
+            { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
+          ]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            loading ? undefined : (
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />
+            )
+          }>
+          {loading ? (
+            <View style={SCROLL_LOADING_BODY_STYLE}>
+              <SignalLoadingIndicator message={t('commonLoading')} />
+            </View>
+          ) : (
+            <>
+              {items.map((c) => {
+                const symTrim = c.ticker?.trim() ?? '';
+                const yahooEnabled = symTrim.length > 0 && symTrim !== '—';
+                return (
+                <View key={c.id} style={styles.card}>
+                  <View style={styles.head}>
+                    <View style={styles.headTickerRow}>
+                      <Text style={styles.ticker}>{c.ticker}</Text>
+                      {yahooEnabled ? (
+                        <Pressable
+                          onPress={() => openYahooConcall(symTrim)}
+                          style={({ pressed }) => [styles.yahooInline, pressed && styles.yahooInlinePressed]}
+                          hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                          accessibilityRole="link"
+                          accessibilityLabel={t('callsYahooConcallA11y', { symbol: symTrim })}>
+                          <FontAwesome name="external-link" size={11} color={theme.green} />
+                          <Text style={styles.yahooInlineText}>{t('quotesYahooShort')}</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                    <Text style={styles.q}>{c.quarter}</Text>
+                  </View>
+                  {c.bullets.map((b, i) => (
+                    <Text key={i} style={styles.bullet}>
+                      · {b}
+                    </Text>
+                  ))}
+                  {c.guidance ? (
+                    <View style={styles.block}>
+                      <Text style={styles.label}>가이던스</Text>
+                      <Text style={styles.body}>{c.guidance}</Text>
+                    </View>
+                  ) : null}
+                  {c.risk ? (
+                    <View style={styles.block}>
+                      <Text style={styles.label}>리스크</Text>
+                      <Text style={styles.body}>{c.risk}</Text>
+                    </View>
+                  ) : null}
+                  <Text style={styles.ai}>
+                    {c.source === 'claude' ? 'Claude AI 요약' : '폴백 / 안내'}
                   </Text>
-                ))}
-                {c.guidance ? (
-                  <View style={styles.block}>
-                    <Text style={styles.label}>가이던스</Text>
-                    <Text style={styles.body}>{c.guidance}</Text>
-                  </View>
-                ) : null}
-                {c.risk ? (
-                  <View style={styles.block}>
-                    <Text style={styles.label}>리스크</Text>
-                    <Text style={styles.body}>{c.risk}</Text>
-                  </View>
-                ) : null}
-                <Text style={styles.ai}>
-                  {c.source === 'claude' ? 'Claude AI 요약' : '폴백 / 안내'}
-                </Text>
-              </View>
-            ))}
+                </View>
+              );
+              })}
 
-            {emptyMessage ? <Text style={styles.empty}>{emptyMessage}</Text> : null}
-          </ScrollView>
-        )}
+              {emptyMessage ? <Text style={styles.empty}>{emptyMessage}</Text> : null}
+            </>
+          )}
+        </ScrollView>
       </View>
 
       {filterReady ? (
@@ -270,17 +300,17 @@ export default function CallsScreen() {
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    callsBody: { flex: 1 },
+    callsBody: { flex: 1, overflow: 'hidden' },
     callsTop: {
+      flexShrink: 0,
+      zIndex: 2,
+      elevation: Platform.OS === 'android' ? 2 : 0,
       paddingHorizontal: 16,
       paddingTop: 8,
-      paddingBottom: 0,
+      paddingBottom: 10,
       backgroundColor: theme.bg,
-    },
-    loadingCenter: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
     },
     scrollView: { flex: 1 },
     scroll: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28 },
@@ -310,9 +340,31 @@ function makeStyles(theme: AppTheme) {
       padding: 14,
       marginBottom: 10,
     },
-    head: { flexDirection: 'row', alignItems: 'baseline', gap: 10, marginBottom: 10 },
+    head: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 10,
+      marginBottom: 10,
+    },
+    headTickerRow: {
+      flex: 1,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: 8,
+      minWidth: 0,
+    },
     ticker: { fontSize: 18, fontWeight: '900', color: theme.green },
-    q: { fontSize: 12, color: theme.textMuted, fontWeight: '600' },
+    q: { fontSize: 12, color: theme.textMuted, fontWeight: '600', flexShrink: 0, marginTop: 2 },
+    yahooInline: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 2,
+    },
+    yahooInlinePressed: { opacity: 0.75 },
+    yahooInlineText: { fontSize: 12, fontWeight: '700', color: theme.green },
     bullet: { fontSize: 13, color: theme.text, lineHeight: 20, marginBottom: 6 },
     block: {
       marginTop: 8,

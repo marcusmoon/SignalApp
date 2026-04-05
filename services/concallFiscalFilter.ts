@@ -10,9 +10,22 @@ export type ConcallFiscalState = {
   fiscalQuarter: FiscalQuarterFilter;
 };
 
+/** 로컬 날짜 기준 달력 분기 (1–4). Finnhub 필터의 분기 선택과 동일 스킴. */
+export function calendarQuarterFromDate(d: Date): Exclude<FiscalQuarterFilter, 0> {
+  const m = d.getMonth();
+  if (m < 3) return 1;
+  if (m < 6) return 2;
+  if (m < 9) return 3;
+  return 4;
+}
+
+/** 저장값이 없을 때: 현재 연도 + 이번 달력 분기 (전체 분기 `0`이 아님) */
 export function defaultConcallFiscal(): ConcallFiscalState {
-  const y = new Date().getFullYear();
-  return { fiscalYear: y, fiscalQuarter: 0 };
+  const d = new Date();
+  return {
+    fiscalYear: d.getFullYear(),
+    fiscalQuarter: calendarQuarterFromDate(d),
+  };
 }
 
 /** 컨콜 연도 칩 (현재 연도 기준 ±) */

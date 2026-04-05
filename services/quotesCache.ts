@@ -19,9 +19,12 @@ export type QuoteCacheRow = {
   error?: string;
 };
 
-type Entry = { rows: QuoteCacheRow[]; expiresAt: number };
+type Entry = { rows: QuoteCacheRow[]; expiresAt: number; storedAt: number };
 
 const cache = new Map<string, Entry>();
+
+/** 캐시 히트 시 행·저장 시각·만료 시각(TTL 끝 자동 갱신용) */
+export type QuoteCacheHit = { rows: QuoteCacheRow[]; storedAtMs: number; expiresAtMs: number };
 
 type McapOrderEntry = { symbols: string[]; expiresAt: number };
 const mcapSymbolsOrderByLimit = new Map<number, McapOrderEntry>();
@@ -53,14 +56,19 @@ export function buildQuotesCacheKey(
   return `${segment}|${[...symbolsSorted].join(',')}`;
 }
 
-export function peekQuotes(key: string): QuoteCacheRow[] | null {
+export function peekQuotes(key: string): QuoteCacheHit | null {
   const e = cache.get(key);
-  if (e && Date.now() < e.expiresAt) return e.rows;
-  return null;
+  if (!e || Date.now() >= e.expiresAt) return null;
+  const storedAtMs =
+    typeof e.storedAt === 'number' && Number.isFinite(e.storedAt)
+      ? e.storedAt
+      : e.expiresAt - QUOTES_CACHE_TTL_MS;
+  return { rows: e.rows, storedAtMs, expiresAtMs: e.expiresAt };
 }
 
 export function storeQuotes(key: string, rows: QuoteCacheRow[]): void {
-  cache.set(key, { rows, expiresAt: Date.now() + QUOTES_CACHE_TTL_MS });
+  const storedAt = Date.now();
+  cache.set(key, { rows, storedAt, expiresAt: storedAt + QUOTES_CACHE_TTL_MS });
 }
 
 export function clearQuotesCache(): void {

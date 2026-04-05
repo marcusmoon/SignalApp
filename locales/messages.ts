@@ -242,6 +242,7 @@ const ko = {
     '표시할 카드가 없습니다. 우하단 필터에서 연도·분기를 바꾼 뒤 조회를 누르거나, 아래 안내 카드를 확인해 주세요.',
   callsEmptyWatchlistEmpty:
     '관심 종목이 없습니다. 시세·설정에서 티커를 추가하거나, 표시 설정에서 메가캡 범위를 선택하세요.',
+  callsYahooConcallA11y: '{{symbol}} Yahoo Finance에서 실적·컨콜 보기',
 
   quotesSegmentWatch: '관심',
   quotesSegmentPopular: '인기순',
@@ -251,6 +252,11 @@ const ko = {
   quotesFooterCoin:
     '코인은 CoinGecko 공개 API 기준입니다. 시총·가격은 참고용이며 실제 거래와 다를 수 있습니다.',
   quotesPrevRefCoin: '24h 기준가',
+  quotesPrevCloseStock: '전일 종',
+  quotesWatchSwipeRemove: '삭제',
+  quotesNextRefresh: '다음 갱신까지 {{seconds}}초',
+  quotesYahooShort: 'Yahoo',
+  quotesYahooFinanceA11y: '{{symbol}} Yahoo Finance에서 보기',
 
   modalInfoTitle: 'SIGNAL 정보',
   modalInfoBody:
@@ -493,6 +499,7 @@ const en = {
     'Nothing to show. Change year/quarter in the filter (FAB) and tap Query, or read any guidance card below.',
   callsEmptyWatchlistEmpty:
     'No watchlist tickers. Add some in Quotes/Settings or choose mega-cap scope in Display.',
+  callsYahooConcallA11y: 'View {{symbol}} earnings and conference call on Yahoo Finance',
 
   quotesSegmentWatch: 'Watch',
   quotesSegmentPopular: 'Popular',
@@ -502,6 +509,11 @@ const en = {
   quotesFooterCoin:
     'Crypto data from CoinGecko public API. Market cap and prices are indicative and may differ from exchange fills.',
   quotesPrevRefCoin: '24h ref.',
+  quotesPrevCloseStock: 'Prev. close',
+  quotesWatchSwipeRemove: 'Remove',
+  quotesNextRefresh: 'Next refresh in {{seconds}}s',
+  quotesYahooShort: 'Yahoo',
+  quotesYahooFinanceA11y: 'Open {{symbol}} on Yahoo Finance',
 
   modalInfoTitle: 'About SIGNAL',
   modalInfoBody:
@@ -741,6 +753,7 @@ const ja = {
     '表示するカードがありません。右下フィルタで年度・四半期を変えて検索するか、案内カードを確認してください。',
   callsEmptyWatchlistEmpty:
     'ウォッチがありません。相場・設定でティッカーを追加するか、表示でメガキャップ範囲を選んでください。',
+  callsYahooConcallA11y: '{{symbol}} の決算・決算説明会を Yahoo Finance で開く',
 
   quotesSegmentWatch: 'ウォッチ',
   quotesSegmentPopular: '人気順',
@@ -750,6 +763,11 @@ const ja = {
   quotesFooterCoin:
     'CoinGecko 公開APIのデータです。時価・価格は参考値であり、実際の取引と異なる場合があります。',
   quotesPrevRefCoin: '24h基準',
+  quotesPrevCloseStock: '前日終値',
+  quotesWatchSwipeRemove: '削除',
+  quotesNextRefresh: '次の更新まであと{{seconds}}秒',
+  quotesYahooShort: 'Yahoo',
+  quotesYahooFinanceA11y: '{{symbol}} を Yahoo Finance で開く',
 
   modalInfoTitle: 'SIGNALについて',
   modalInfoBody:

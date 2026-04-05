@@ -17,6 +17,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ConcallFiscalFilterModal } from '@/components/signal/ConcallFiscalFilterModal';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
+import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -168,58 +169,65 @@ export default function CallsScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <SignalHeader />
       {isFocused ? <OtaUpdateBanner /> : null}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
-        <Text style={styles.section}>{t('callsSectionTitle')}</Text>
-        <Text style={styles.hint}>{t('callsHint')}</Text>
-        {filterReady ? <Text style={styles.querySummary}>{querySummaryText}</Text> : null}
+      <View style={styles.callsBody}>
+        <View style={styles.callsTop}>
+          <Text style={styles.section}>{t('callsSectionTitle')}</Text>
+          <Text style={styles.hint}>{t('callsHint')}</Text>
+          {filterReady ? <Text style={styles.querySummary}>{querySummaryText}</Text> : null}
 
-        {error ? (
-          <View style={styles.errBox}>
-            <Text style={styles.errText}>{error}</Text>
-          </View>
-        ) : null}
-
-        {loading ? <Text style={styles.loading}>{t('commonLoading')}</Text> : null}
-
-        {!loading &&
-          items.map((c) => (
-            <View key={c.id} style={styles.card}>
-              <View style={styles.head}>
-                <Text style={styles.ticker}>{c.ticker}</Text>
-                <Text style={styles.q}>{c.quarter}</Text>
-              </View>
-              {c.bullets.map((b, i) => (
-                <Text key={i} style={styles.bullet}>
-                  · {b}
-                </Text>
-              ))}
-              {c.guidance ? (
-                <View style={styles.block}>
-                  <Text style={styles.label}>가이던스</Text>
-                  <Text style={styles.body}>{c.guidance}</Text>
-                </View>
-              ) : null}
-              {c.risk ? (
-                <View style={styles.block}>
-                  <Text style={styles.label}>리스크</Text>
-                  <Text style={styles.body}>{c.risk}</Text>
-                </View>
-              ) : null}
-              <Text style={styles.ai}>
-                {c.source === 'claude' ? 'Claude AI 요약' : '폴백 / 안내'}
-              </Text>
+          {error ? (
+            <View style={styles.errBox}>
+              <Text style={styles.errText}>{error}</Text>
             </View>
-          ))}
+          ) : null}
+        </View>
 
-        {!loading && emptyMessage ? <Text style={styles.empty}>{emptyMessage}</Text> : null}
-      </ScrollView>
+        {loading ? (
+          <View style={styles.loadingCenter}>
+            <SignalLoadingIndicator message={t('commonLoading')} />
+          </View>
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={[
+              styles.scroll,
+              { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
+            ]}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
+            {items.map((c) => (
+              <View key={c.id} style={styles.card}>
+                <View style={styles.head}>
+                  <Text style={styles.ticker}>{c.ticker}</Text>
+                  <Text style={styles.q}>{c.quarter}</Text>
+                </View>
+                {c.bullets.map((b, i) => (
+                  <Text key={i} style={styles.bullet}>
+                    · {b}
+                  </Text>
+                ))}
+                {c.guidance ? (
+                  <View style={styles.block}>
+                    <Text style={styles.label}>가이던스</Text>
+                    <Text style={styles.body}>{c.guidance}</Text>
+                  </View>
+                ) : null}
+                {c.risk ? (
+                  <View style={styles.block}>
+                    <Text style={styles.label}>리스크</Text>
+                    <Text style={styles.body}>{c.risk}</Text>
+                  </View>
+                ) : null}
+                <Text style={styles.ai}>
+                  {c.source === 'claude' ? 'Claude AI 요약' : '폴백 / 안내'}
+                </Text>
+              </View>
+            ))}
+
+            {emptyMessage ? <Text style={styles.empty}>{emptyMessage}</Text> : null}
+          </ScrollView>
+        )}
+      </View>
 
       {filterReady ? (
         <Pressable
@@ -262,8 +270,20 @@ export default function CallsScreen() {
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
+    callsBody: { flex: 1 },
+    callsTop: {
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 0,
+      backgroundColor: theme.bg,
+    },
+    loadingCenter: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
     scrollView: { flex: 1 },
-    scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
+    scroll: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28 },
     section: { fontSize: 16, fontWeight: '800', color: theme.text, marginBottom: 4 },
     hint: { fontSize: 11, color: theme.textDim, marginBottom: 8 },
     querySummary: {
@@ -272,7 +292,6 @@ function makeStyles(theme: AppTheme) {
       color: theme.textMuted,
       marginBottom: 12,
     },
-    loading: { fontSize: 13, color: theme.textMuted, marginBottom: 12 },
     empty: { fontSize: 13, color: theme.textMuted, marginTop: 8 },
     errBox: {
       padding: 12,

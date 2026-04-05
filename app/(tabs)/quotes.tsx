@@ -17,6 +17,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
+import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
@@ -356,114 +357,117 @@ export default function QuotesScreen() {
           </View>
         </View>
 
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
-          ]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
-        {updatedLabel ? <Text style={styles.updated}>마지막 갱신 · {updatedLabel}</Text> : null}
-
-        {error ? (
-          <View style={styles.errBox}>
-            <Text style={styles.errText}>{error}</Text>
+        {loading ? (
+          <View style={styles.loadingCenter}>
+            <SignalLoadingIndicator message={t('commonLoading')} />
           </View>
-        ) : null}
+        ) : (
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
+            ]}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
+            {updatedLabel ? <Text style={styles.updated}>마지막 갱신 · {updatedLabel}</Text> : null}
 
-        {segment === 'watch' ? (
-          <View style={styles.addRow}>
-            <TextInput
-              value={draftTicker}
-              onChangeText={setDraftTicker}
-              placeholder="티커 (예: AAPL)"
-              placeholderTextColor={theme.textDim}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              style={styles.addInput}
-              onSubmitEditing={() => void onAddWatch()}
-              returnKeyType="done"
-            />
-            <Pressable onPress={() => void onAddWatch()} style={styles.addBtn} accessibilityRole="button">
-              <Text style={styles.addBtnText}>추가</Text>
-            </Pressable>
-            <Pressable
-              onPress={onResetWatchDefaults}
-              style={styles.watchResetBtn}
-              accessibilityRole="button"
-              accessibilityLabel={t('settingsQuotesReset')}>
-              <Text style={styles.watchResetBtnText} numberOfLines={1}>
-                {t('settingsQuotesReset')}
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
-
-        {loading && rows.length === 0 ? <Text style={styles.loading}>불러오는 중…</Text> : null}
-
-        {!loading &&
-          rows.map((r) => (
-            <View key={`${r.symbol}-${r.name ?? ''}`} style={styles.card}>
-              <View style={styles.cardTop}>
-                <View style={styles.symCol}>
-                  <Text style={styles.sym}>{r.symbol}</Text>
-                  {segment === 'coin' && r.name ? (
-                    <Text style={styles.symSub} numberOfLines={1}>
-                      {r.name}
-                    </Text>
-                  ) : null}
-                </View>
-                <View style={styles.cardTopRight}>
-                  {r.quote ? (
-                    <Text style={styles.price}>{formatUsd(r.quote.c)}</Text>
-                  ) : (
-                    <Text style={styles.na}>—</Text>
-                  )}
-                  {segment === 'watch' ? (
-                    <Pressable
-                      onPress={() => void onRemoveWatch(r.symbol)}
-                      style={styles.removeBtn}
-                      hitSlop={8}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${r.symbol} 관심 해제`}>
-                      <FontAwesome name="times-circle" size={18} color={theme.textDim} />
-                    </Pressable>
-                  ) : null}
-                </View>
+            {error ? (
+              <View style={styles.errBox}>
+                <Text style={styles.errText}>{error}</Text>
               </View>
-              {r.quote ? (
-                <View style={styles.cardMid}>
-                  <Text style={[styles.chg, r.quote.d >= 0 ? styles.chgUp : styles.chgDn]}>
-                    {formatUsdChange(r.quote.d)} ({r.quote.dp >= 0 ? '+' : ''}
-                    {r.quote.dp.toFixed(2)}%)
+            ) : null}
+
+            {segment === 'watch' ? (
+              <View style={styles.addRow}>
+                <TextInput
+                  value={draftTicker}
+                  onChangeText={setDraftTicker}
+                  placeholder="티커 (예: AAPL)"
+                  placeholderTextColor={theme.textDim}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  style={styles.addInput}
+                  onSubmitEditing={() => void onAddWatch()}
+                  returnKeyType="done"
+                />
+                <Pressable onPress={() => void onAddWatch()} style={styles.addBtn} accessibilityRole="button">
+                  <Text style={styles.addBtnText}>추가</Text>
+                </Pressable>
+                <Pressable
+                  onPress={onResetWatchDefaults}
+                  style={styles.watchResetBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('settingsQuotesReset')}>
+                  <Text style={styles.watchResetBtnText} numberOfLines={1}>
+                    {t('settingsQuotesReset')}
                   </Text>
-                  <Text style={styles.pc}>
-                    {segment === 'coin' ? t('quotesPrevRefCoin') : '전일 종'} {formatUsd(r.quote.pc)}
-                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {rows.map((r) => (
+              <View key={`${r.symbol}-${r.name ?? ''}`} style={styles.card}>
+                <View style={styles.cardTop}>
+                  <View style={styles.symCol}>
+                    <Text style={styles.sym}>{r.symbol}</Text>
+                    {segment === 'coin' && r.name ? (
+                      <Text style={styles.symSub} numberOfLines={1}>
+                        {r.name}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View style={styles.cardTopRight}>
+                    {r.quote ? (
+                      <Text style={styles.price}>{formatUsd(r.quote.c)}</Text>
+                    ) : (
+                      <Text style={styles.na}>—</Text>
+                    )}
+                    {segment === 'watch' ? (
+                      <Pressable
+                        onPress={() => void onRemoveWatch(r.symbol)}
+                        style={styles.removeBtn}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${r.symbol} 관심 해제`}>
+                        <FontAwesome name="times-circle" size={18} color={theme.textDim} />
+                      </Pressable>
+                    ) : null}
+                  </View>
                 </View>
-              ) : (
-                <Text style={styles.fail}>{r.error ?? '데이터 없음'}</Text>
-              )}
+                {r.quote ? (
+                  <View style={styles.cardMid}>
+                    <Text style={[styles.chg, r.quote.d >= 0 ? styles.chgUp : styles.chgDn]}>
+                      {formatUsdChange(r.quote.d)} ({r.quote.dp >= 0 ? '+' : ''}
+                      {r.quote.dp.toFixed(2)}%)
+                    </Text>
+                    <Text style={styles.pc}>
+                      {segment === 'coin' ? t('quotesPrevRefCoin') : '전일 종'} {formatUsd(r.quote.pc)}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.fail}>{r.error ?? '데이터 없음'}</Text>
+                )}
+              </View>
+            ))}
+
+            {rows.length === 0 && !error ? (
+              <Text style={styles.empty}>
+                {segment === 'watch'
+                  ? '관심 종목이 없습니다. 티커를 추가해 주세요.'
+                  : '표시할 시세가 없습니다.'}
+              </Text>
+            ) : null}
+
+            <View style={styles.note}>
+              <Text style={styles.noteText}>
+                {segment === 'coin'
+                  ? t('quotesFooterCoin')
+                  : '인기순은 앱에서 지정한 순서입니다. 시총순은 Finnhub 프로필의 시가총액(백만 USD)으로 정렬합니다. 장 마감 후에는 마지막 거래가 기준일 수 있습니다.'}
+              </Text>
             </View>
-          ))}
-
-        {!loading && rows.length === 0 && !error ? (
-          <Text style={styles.empty}>
-            {segment === 'watch'
-              ? '관심 종목이 없습니다. 티커를 추가해 주세요.'
-              : '표시할 시세가 없습니다.'}
-          </Text>
-        ) : null}
-
-        <View style={styles.note}>
-          <Text style={styles.noteText}>
-            {segment === 'coin'
-              ? t('quotesFooterCoin')
-              : '인기순은 앱에서 지정한 순서입니다. 시총순은 Finnhub 프로필의 시가총액(백만 USD)으로 정렬합니다. 장 마감 후에는 마지막 거래가 기준일 수 있습니다.'}
-          </Text>
-        </View>
-        </ScrollView>
+          </ScrollView>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -473,6 +477,11 @@ function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     mainColumn: { flex: 1 },
+    loadingCenter: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
     topFixed: {
       flexShrink: 0,
       paddingHorizontal: 16,
@@ -551,7 +560,6 @@ function makeStyles(theme: AppTheme) {
       justifyContent: 'center',
     },
     watchResetBtnText: { fontSize: 13, fontWeight: '700', color: '#E0A0A0' },
-    loading: { fontSize: 13, color: theme.textMuted, marginBottom: 12 },
     errBox: {
       padding: 12,
       borderRadius: 10,

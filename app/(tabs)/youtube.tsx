@@ -19,7 +19,6 @@ import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
-import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
   SEGMENT_TAB_BACKGROUND,
@@ -32,6 +31,7 @@ import {
   SEGMENT_TAB_OUTER_RADIUS,
   SEGMENT_TAB_PADDING,
 } from '@/constants/segmentTabBar';
+import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';

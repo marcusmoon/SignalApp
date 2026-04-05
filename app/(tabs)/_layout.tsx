@@ -15,7 +15,7 @@ import { SlackTabBarButton } from '@/components/SlackTabBarButton';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
-const TAB_ICON_SIZE = 17;
+const TAB_ICON_SIZE = 22;
 
 function TabBarIcon({
   name,
@@ -38,38 +38,61 @@ const tabIconWrap = {
   height: TAB_ICON_SIZE + 2,
 };
 
-/** 블러 글라스 + 라운드 클립 (슬랙식 플로팅 탭) */
+/** 애플 뮤직/시스템 탭바에 가까운 재질: 블러 + 어두운 틴트 + 상단 헤어라인(플로팅 캡슐) */
 function TabBarGlassBackground() {
   const r = TAB_BAR_FLOAT_RADIUS;
 
   if (Platform.OS === 'web') {
+    /** RN Web: 불투명만 쓰면 뒤 콘텐츠가 안 비쳐 ‘유리’가 아님 — blur + 낮은 알파 */
+    const webGlass = {
+      borderRadius: r,
+      overflow: 'hidden' as const,
+      backgroundColor: 'rgba(22,22,28,0.42)',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: 'rgba(255,255,255,0.14)',
+      backdropFilter: 'blur(28px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+    };
     return (
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            borderRadius: r,
-            overflow: 'hidden',
-            backgroundColor: 'rgba(10,10,15,0.9)',
-            borderWidth: StyleSheet.hairlineWidth,
-            borderColor: 'rgba(255,255,255,0.1)',
-          },
-        ]}
-      />
+      <View style={[StyleSheet.absoluteFill, webGlass as object]} />
     );
   }
 
   return (
-    <View style={[StyleSheet.absoluteFill, { borderRadius: r, overflow: 'hidden' }]}>
+    <View
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          borderRadius: r,
+          overflow: 'hidden',
+        },
+      ]}>
       <BlurView
-        intensity={Platform.OS === 'ios' ? 100 : 85}
+        intensity={Platform.OS === 'ios' ? 95 : 80}
         tint="dark"
         experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
         style={StyleSheet.absoluteFill}
       />
       <View
         pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { borderRadius: r, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.08)' }]}
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            backgroundColor: 'rgba(18,18,24,0.28)',
+            borderRadius: r,
+          },
+        ]}
+      />
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: StyleSheet.hairlineWidth * 2,
+          backgroundColor: 'rgba(255,255,255,0.14)',
+        }}
       />
     </View>
   );
@@ -79,46 +102,51 @@ export default function TabLayout() {
   const { theme } = useSignalTheme();
   const { t } = useLocale();
   const insets = useSafeAreaInsets();
-  const tabBarBottom = TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
+  const tabBarInnerPadBottom = 6;
+  const tabBarInnerPadTop = 6;
+  const tabBarContentHeight = TAB_BAR_FLOAT_HEIGHT;
+  /** 플로팅 바: 홈 인디케이터 위에 뜨므로 높이에 insets.bottom 미포함 */
+  const tabBarTotalHeight = tabBarContentHeight + tabBarInnerPadTop + tabBarInnerPadBottom;
+  const tabBarBottom = insets.bottom + TAB_BAR_FLOAT_MARGIN_BOTTOM;
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: theme.green,
-        tabBarInactiveTintColor: 'rgba(224,224,240,0.36)',
+        tabBarInactiveTintColor: 'rgba(142,142,147,0.88)',
         tabBarStyle: {
           position: 'absolute',
           left: TAB_BAR_FLOAT_MARGIN_H,
           right: TAB_BAR_FLOAT_MARGIN_H,
           bottom: tabBarBottom,
-          height: TAB_BAR_FLOAT_HEIGHT,
+          height: tabBarTotalHeight,
+          paddingBottom: tabBarInnerPadBottom,
+          paddingTop: tabBarInnerPadTop,
           backgroundColor: 'transparent',
-          borderRadius: TAB_BAR_FLOAT_RADIUS,
           borderTopWidth: 0,
           borderTopColor: 'transparent',
+          borderRadius: TAB_BAR_FLOAT_RADIUS,
           overflow: 'hidden',
-          paddingHorizontal: 4,
-          paddingTop: 2,
-          paddingBottom: 2,
+          paddingHorizontal: 2,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.24,
-          shadowRadius: 12,
-          elevation: 8,
+          shadowOpacity: 0.22,
+          shadowRadius: 16,
+          elevation: 18,
         },
         tabBarBackground: TabBarGlassBackground,
         tabBarLabelPosition: 'below-icon',
         tabBarAllowFontScaling: false,
         tabBarLabelStyle: {
-          fontSize: 11,
-          lineHeight: 14,
-          fontWeight: '700',
-          letterSpacing: 0.1,
-          marginTop: 0,
+          fontSize: 10,
+          lineHeight: 12,
+          fontWeight: '600',
+          letterSpacing: -0.08,
+          marginTop: 2,
           marginBottom: 0,
         },
         tabBarItemStyle: {
-          paddingVertical: 4,
+          paddingVertical: 2,
           paddingHorizontal: 0,
           justifyContent: 'center',
           alignItems: 'center',
@@ -127,7 +155,7 @@ export default function TabLayout() {
         },
         tabBarIconStyle: {
           marginTop: 0,
-          marginBottom: 3,
+          marginBottom: 1,
         },
         tabBarButton: (props) => <SlackTabBarButton {...props} />,
         headerShown: false,

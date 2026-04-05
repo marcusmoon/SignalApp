@@ -2,6 +2,23 @@
 
 ## 2026-04-04
 
+### 시세 관심 · 설정 상단 여백
+
+- **관심 종목 등록**: Finnhub **`/quote`**(유효 현재가) + **`/stock/profile2`**(프로필 존재) 둘 다 통과할 때만 저장. 없는 심볼은 알림 후 등록 안 됨.
+- **관심 로드**: 시세 조회 결과 `UNKNOWN_SYMBOL`인 티커는 저장 목록에서 자동 제거. 메모리 캐시 키 **`watch|v2|`** 로 이전 캐시 무효화.
+- **표시**: `dp` 누락 시 `toFixed` 크래시 방지 (`formatQuoteDpPct`, `quoteRowChangeUp`).
+- **설정 화면**: 상단 세그먼트 탭 **`marginTop`**, 스크롤 본문 **`paddingTop`** 으로 네비 헤더·탭 간격 완화.
+
+#### 파일별
+
+| 파일 | 변경 내용 |
+|------|-----------|
+| `app/(tabs)/quotes.tsx` | 추가 시 quote+profile2 검증, 관심 로드 시 미존재 심볼 제거, 등락률 안전 포맷 |
+| `services/finnhub.ts` | `finnhubQuoteHasValidPrice`, `fetchQuotesForSymbols`에 UNKNOWN_SYMBOL |
+| `services/quotesCache.ts` | 관심 캐시 키에 `v2` 접두(이전 메모리 캐시 무효화) |
+| `locales/messages.ts` | `alertTitleUnknownTicker`, `quotesTickerNotFoundBody` (ko/en/ja) |
+| `app/settings.tsx` | `tabBar`·`scroll` 상단 여백 |
+
 ### 표시 · 커스텀 강조색 · 앱 글래스 (커밋 `827a85c`)
 
 - **표시 탭 순서**: **언어** 카드를 맨 위로, 그다음 **테마**(강조색) · **앱 글래스** · 캐시 등. 리드 문구도 언어→테마 순으로 정리.

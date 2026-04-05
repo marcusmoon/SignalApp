@@ -266,6 +266,9 @@ const ko = {
   quotesNextRefresh: '다음 갱신까지 {{seconds}}초',
   quotesYahooShort: 'Yahoo',
   quotesYahooFinanceA11y: '{{symbol}} Yahoo Finance에서 보기',
+  alertTitleUnknownTicker: '티커 없음',
+  quotesTickerNotFoundBody:
+    'Finnhub에서 해당 티커 시세를 찾을 수 없습니다. 상장 심볼인지 확인해 주세요.',
 
   modalInfoTitle: 'SIGNAL 정보',
   modalInfoBody:
@@ -532,6 +535,9 @@ const en = {
   quotesNextRefresh: 'Next refresh in {{seconds}}s',
   quotesYahooShort: 'Yahoo',
   quotesYahooFinanceA11y: 'Open {{symbol}} on Yahoo Finance',
+  alertTitleUnknownTicker: 'Unknown ticker',
+  quotesTickerNotFoundBody:
+    'Finnhub has no quote for this symbol. Check that it is a valid listed ticker.',
 
   modalInfoTitle: 'About SIGNAL',
   modalInfoBody:
@@ -795,6 +801,9 @@ const ja = {
   quotesNextRefresh: '次の更新まであと{{seconds}}秒',
   quotesYahooShort: 'Yahoo',
   quotesYahooFinanceA11y: '{{symbol}} を Yahoo Finance で開く',
+  alertTitleUnknownTicker: 'ティッカー不明',
+  quotesTickerNotFoundBody:
+    'Finnhubでこのティッカーの相場が見つかりません。上場シンボルか確認してください。',
 
   modalInfoTitle: 'SIGNALについて',
   modalInfoBody:

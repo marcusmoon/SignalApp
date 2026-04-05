@@ -53,6 +53,8 @@ export function buildQuotesCacheKey(
   coinLimit?: number,
 ): string {
   if (segment === 'coin') return `coin|n${coinLimit ?? 20}`;
+  /** 관심: 미존재 티커 제외 로직 도입 후 이전 메모리 캐시 무효화 */
+  if (segment === 'watch') return `watch|v2|${[...symbolsSorted].join(',')}`;
   return `${segment}|${[...symbolsSorted].join(',')}`;
 }
 

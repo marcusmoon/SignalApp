@@ -169,12 +169,12 @@ function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     scrollFlex: { flex: 1 },
-    scroll: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 32 },
+    scroll: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 32 },
     tabBar: {
       flexShrink: 0,
       flexDirection: 'row',
       marginHorizontal: 16,
-      marginTop: 0,
+      marginTop: 10,
       marginBottom: 6,
       backgroundColor: SEGMENT_TAB_BACKGROUND,
       borderRadius: SEGMENT_TAB_OUTER_RADIUS,

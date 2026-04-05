@@ -147,7 +147,7 @@ export function mapEconomicToEvents(rows: FinnhubEconomicRow[]): CalendarEvent[]
   });
 }
 
-/** Finnhub `/stock/candle` 아님 — `/quote` 단일 심볼 시세 */
+/** Finnhub `/quote` 응답 — 미존재·잘못된 티커는 `{}` 등으로 `c`가 없을 수 있음 */
 export type FinnhubQuote = {
   /** 현재가(또는 마지막 거래가) */
   c: number;
@@ -162,6 +162,13 @@ export type FinnhubQuote = {
   pc: number;
   t: number;
 };
+
+/** `/quote` JSON에 유효한 현재가가 있는지 (없는 종목은 보통 `c` 누락) */
+export function finnhubQuoteHasValidPrice(q: unknown): boolean {
+  if (!q || typeof q !== 'object') return false;
+  const c = (q as { c?: unknown }).c;
+  return typeof c === 'number' && Number.isFinite(c);
+}
 
 /** 시세 · 관심 탭 기본값 (설정에서 초기화 시 동일) */
 export const DEFAULT_US_WATCHLIST = [
@@ -189,7 +196,10 @@ export async function fetchQuotesForSymbols(
       const s = sym.trim().toUpperCase();
       try {
         const quote = await fetchQuote(s);
-        return { symbol: s, quote };
+        if (!finnhubQuoteHasValidPrice(quote)) {
+          return { symbol: s, quote: null, error: 'UNKNOWN_SYMBOL' };
+        }
+        return { symbol: s, quote: quote as FinnhubQuote };
       } catch (e) {
         return {
           symbol: s,

@@ -45,7 +45,10 @@ import { hasFinnhub } from '@/services/env';
 import {
   type FinnhubQuote,
   POPULAR_SYMBOLS_ORDERED,
+  fetchProfile2,
+  fetchQuote,
   fetchQuotesForSymbols,
+  finnhubQuoteHasValidPrice,
   getSymbolsSortedByMarketCap,
 } from '@/services/finnhub';
 import { loadQuotesListLimits } from '@/services/quotesListLimitsPreference';
@@ -105,6 +108,21 @@ function formatUsdChange(n: number): string {
   if (n === 0) return '$0.00';
   const sign = n > 0 ? '+' : '-';
   return `${sign}$${formatUsdBody(Math.abs(n))}`;
+}
+
+/** Finnhub 일부 응답에서 `dp` 누락 가능 — `toFixed` 직접 호출 금지 */
+function formatQuoteDpPct(dp: unknown): string {
+  if (!Number.isFinite(dp)) return '—';
+  const p = dp as number;
+  return `${p >= 0 ? '+' : ''}${p.toFixed(2)}%`;
+}
+
+function quoteRowChangeUp(q: { d?: unknown; dp?: unknown }): boolean {
+  const d = Number(q.d);
+  if (Number.isFinite(d)) return d >= 0;
+  const dp = Number(q.dp);
+  if (Number.isFinite(dp)) return dp >= 0;
+  return true;
 }
 
 function mapCoinToFinnhubQuote(price: number, change24h: number, pct24h: number): FinnhubQuote {
@@ -278,6 +296,32 @@ export default function QuotesScreen() {
     }
 
     const list = await fetchQuotesForSymbols(symbols);
+
+    if (segment === 'watch') {
+      const symbolsNorm = symbols.map((s) => s.trim().toUpperCase());
+      const pruned = symbolsNorm.filter((s) => {
+        const r = list.find((x) => x.symbol === s);
+        return r != null && r.error !== 'UNKNOWN_SYMBOL';
+      });
+      if (pruned.length !== symbolsNorm.length) {
+        await saveWatchlistSymbols(pruned);
+      }
+      const displayList = pruned
+        .map((sym) => list.find((r) => r.symbol === sym))
+        .filter((x): x is Row => x != null);
+      const cacheKeyWatch = buildQuotesCacheKey(segment, [...pruned].sort());
+      setRows(displayList);
+      if (quotesEnabled) {
+        const nextAt = Date.now() + QUOTES_CACHE_TTL_MS;
+        storeQuotes(cacheKeyWatch, displayList);
+        setNextRefreshAtMs(nextAt);
+        scheduleRefreshAtCacheExpiry(nextAt);
+      } else {
+        setNextRefreshAtMs(Date.now() + POLL_MS);
+      }
+      return;
+    }
+
     setRows(list);
     if (quotesEnabled) {
       const nextAt = Date.now() + QUOTES_CACHE_TTL_MS;
@@ -347,6 +391,27 @@ export default function QuotesScreen() {
       return;
     }
     const sym = raw.toUpperCase().replace(/\s+/g, '');
+    if (!hasFinnhub()) {
+      setError('EXPO_PUBLIC_FINNHUB_TOKEN 이 필요합니다.');
+      return;
+    }
+    try {
+      const [profile, q] = await Promise.all([fetchProfile2(sym), fetchQuote(sym)]);
+      if (!profile) {
+        Alert.alert(t('alertTitleUnknownTicker'), t('quotesTickerNotFoundBody'));
+        return;
+      }
+      if (!finnhubQuoteHasValidPrice(q)) {
+        Alert.alert(t('alertTitleUnknownTicker'), t('quotesTickerNotFoundBody'));
+        return;
+      }
+    } catch (e) {
+      Alert.alert(
+        t('alertTitleFormatError'),
+        e instanceof Error ? e.message : '시세를 조회하지 못했습니다.',
+      );
+      return;
+    }
     const current = await loadWatchlistSymbols();
     if (current.includes(sym)) {
       Alert.alert('알림', '이미 관심 목록에 있습니다.');
@@ -355,7 +420,7 @@ export default function QuotesScreen() {
     await saveWatchlistSymbols([...current, sym]);
     setDraftTicker('');
     await load();
-  }, [draftTicker, load]);
+  }, [draftTicker, load, t]);
 
   const onRemoveWatch = useCallback(
     async (symbol: string) => {
@@ -550,9 +615,8 @@ export default function QuotesScreen() {
                         ) : null}
                       </View>
                       {r.quote ? (
-                        <Text style={[styles.chg, r.quote.d >= 0 ? styles.chgUp : styles.chgDn]}>
-                          {formatUsdChange(r.quote.d)} ({r.quote.dp >= 0 ? '+' : ''}
-                          {r.quote.dp.toFixed(2)}%)
+                        <Text style={[styles.chg, quoteRowChangeUp(r.quote) ? styles.chgUp : styles.chgDn]}>
+                          {formatUsdChange(r.quote.d)} ({formatQuoteDpPct(r.quote.dp)})
                         </Text>
                       ) : null}
                     </View>

@@ -322,8 +322,12 @@ export default function CalendarScreen() {
                             backgroundColor: theme.accentBlue + '22',
                           },
                           ev.type === 'fed' && {
-                            borderColor: theme.accentOrange + '88',
-                            backgroundColor: theme.accentOrange + '22',
+                            borderColor: theme.accentOrange + '77',
+                            backgroundColor: theme.accentOrange + '18',
+                          },
+                          ev.type === 'fomc' && {
+                            borderColor: theme.accentOrange + 'CC',
+                            backgroundColor: theme.accentOrange + '30',
                           },
                         ]}>
                         <Text
@@ -332,8 +336,15 @@ export default function CalendarScreen() {
                             ev.type === 'earnings' && { color: theme.green },
                             ev.type === 'macro' && { color: theme.accentBlue },
                             ev.type === 'fed' && { color: theme.accentOrange },
+                            ev.type === 'fomc' && { color: theme.accentOrange },
                           ]}>
-                          {ev.type === 'earnings' ? '실적' : ev.type === 'fed' ? 'Fed' : '지표'}
+                          {ev.type === 'earnings'
+                            ? t('calendarTagEarnings')
+                            : ev.type === 'fomc'
+                              ? t('calendarTagFomc')
+                              : ev.type === 'fed'
+                                ? t('calendarTagFed')
+                                : t('calendarTagMacro')}
                         </Text>
                       </View>
                       <Text style={styles.title} numberOfLines={3}>

@@ -32,6 +32,10 @@ const ko = {
   calendarScreenEmptyDay: '이 날짜에 일정이 없습니다.',
   calendarMonthPrevA11y: '이전 달',
   calendarMonthNextA11y: '다음 달',
+  calendarTagEarnings: '실적',
+  calendarTagFomc: 'FOMC',
+  calendarTagFed: '연준',
+  calendarTagMacro: '지표',
   screenInfo: '정보',
   screenMegaCapList: '메가캡 티커 목록',
   screenMegaCapListLead:
@@ -298,6 +302,10 @@ const en = {
   calendarScreenEmptyDay: 'No events on this date.',
   calendarMonthPrevA11y: 'Previous month',
   calendarMonthNextA11y: 'Next month',
+  calendarTagEarnings: 'Earnings',
+  calendarTagFomc: 'FOMC',
+  calendarTagFed: 'Fed',
+  calendarTagMacro: 'Macro',
   screenInfo: 'About',
   screenMegaCapList: 'Mega-cap tickers',
   screenMegaCapListLead:
@@ -567,6 +575,10 @@ const ja = {
   calendarScreenEmptyDay: 'この日の予定はありません。',
   calendarMonthPrevA11y: '前の月',
   calendarMonthNextA11y: '次の月',
+  calendarTagEarnings: '決算',
+  calendarTagFomc: 'FOMC',
+  calendarTagFed: 'FRB',
+  calendarTagMacro: '指標',
   screenInfo: '情報',
   screenMegaCapList: 'メガキャップのティッカー一覧',
   screenMegaCapListLead:

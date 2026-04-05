@@ -16,7 +16,7 @@ export type CalendarEvent = {
   date: string;
   time: string;
   title: string;
-  type: 'earnings' | 'macro' | 'fed';
+  type: 'earnings' | 'macro' | 'fed' | 'fomc';
 };
 
 export type ConcallSummary = {

@@ -127,9 +127,10 @@ export function mapEarningsToEvents(rows: FinnhubEarningsRow[]): CalendarEvent[]
   }));
 }
 
-function classifyMacro(event: string): 'fed' | 'macro' {
+function classifyMacro(event: string): 'fomc' | 'fed' | 'macro' {
   const u = event.toUpperCase();
-  if (u.includes('FOMC') || u.includes('FED ') || u.includes('FEDERAL RESERVE') || u.includes('Powell')) return 'fed';
+  if (u.includes('FOMC')) return 'fomc';
+  if (u.includes('FED ') || u.includes('FEDERAL RESERVE') || u.includes('Powell')) return 'fed';
   return 'macro';
 }
 

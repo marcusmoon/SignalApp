@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,6 +11,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
+import { Pressable as GHPressable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
@@ -19,9 +23,17 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { formatMessage, type AppLocale, type MessageId } from '@/locales/messages';
+import {
+  DEFAULT_QUOTES_SEGMENT_ORDER,
+  loadQuotesSegmentOrder,
+  saveQuotesSegmentOrder,
+  type QuoteSegmentKey,
+} from '@/services/quotesSegmentOrderPreference';
 import type { AccentPresetId } from '@/services/accentPreference';
 import { ACCENT_PRESETS } from '@/services/accentPreference';
+import { clearCalendarCache, CALENDAR_CACHE_TTL_MS } from '@/services/calendarCache';
 import { clearConcallCache, CONCALL_CACHE_TTL_MS } from '@/services/concallCache';
+import { clearQuotesCache, QUOTES_CACHE_TTL_MS } from '@/services/quotesCache';
 import { clearYoutubeCache, YOUTUBE_CACHE_TTL_MS } from '@/services/youtubeCache';
 import {
   isValidYoutubeHandle,
@@ -31,13 +43,6 @@ import {
   saveCurationHandles,
 } from '@/services/youtubeCurationList';
 import { reconcileSelectedChannels } from '@/services/youtubeChannelSelection';
-import { DEFAULT_US_WATCHLIST } from '@/services/finnhub';
-import {
-  isValidUsTicker,
-  loadWatchlistSymbols,
-  resetWatchlistToDefaults,
-  saveWatchlistSymbols,
-} from '@/services/quoteWatchlist';
 import {
   loadCalendarConcallScope,
   saveCalendarConcallScope,
@@ -48,9 +53,41 @@ import {
   saveCacheFeaturePrefs,
   type CacheFeaturePrefs,
 } from '@/services/cacheFeaturePreferences';
+import {
+  loadQuotesListLimits,
+  normalizeQuotesListLimits,
+  quotesListCountChoicesForField,
+  saveQuotesListLimits,
+  QUOTES_LIST_LIMIT_BOUNDS,
+  QUOTES_LIST_LIMITS_DEFAULTS,
+  type QuotesListLimits,
+} from '@/services/quotesListLimitsPreference';
 import { loadNotificationPrefs, saveNotificationPrefs } from '@/services/notificationPreferences';
+import {
+  SEGMENT_TAB_ACTIVE_TEXT,
+  SEGMENT_TAB_BACKGROUND,
+  SEGMENT_TAB_BTN_PADDING_V,
+  SEGMENT_TAB_BTN_RADIUS,
+  SEGMENT_TAB_FONT_SIZE,
+  SEGMENT_TAB_FONT_WEIGHT,
+  SEGMENT_TAB_GAP,
+  SEGMENT_TAB_LINE_HEIGHT,
+  SEGMENT_TAB_OUTER_RADIUS,
+  SEGMENT_TAB_PADDING,
+} from '@/constants/segmentTabBar';
 
-type SettingsTab = 'youtube' | 'quotes' | 'notifications' | 'display';
+type SettingsTab = 'youtube' | 'quotes' | 'notifications' | 'display' | 'calendar';
+
+const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
+  watch: 'quotesSegmentWatch',
+  popular: 'quotesSegmentPopular',
+  mcap: 'quotesSegmentMcap',
+  coin: 'quotesSegmentCoin',
+};
+
+/** 4 rows + gaps; extra padding so last row is not clipped (FlatList viewport / card overflow). */
+const QUOTES_SEGMENT_ORDER_ROW_GAP = 8;
+const QUOTES_SEGMENT_ORDER_LIST_HEIGHT = 54 * 4 + QUOTES_SEGMENT_ORDER_ROW_GAP * 3 + 20;
 
 const ACCENT_LABEL: Record<AccentPresetId, MessageId> = {
   green: 'accentGreen',
@@ -82,21 +119,25 @@ const LOCALE_LABEL: Record<AppLocale, MessageId> = {
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
+    scrollFlex: { flex: 1 },
     scroll: { paddingHorizontal: 16, paddingBottom: 32 },
     tabBar: {
+      flexShrink: 0,
       flexDirection: 'row',
-      backgroundColor: '#12121A',
-      borderRadius: 10,
+      marginHorizontal: 16,
+      marginBottom: 8,
+      backgroundColor: SEGMENT_TAB_BACKGROUND,
+      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
       borderWidth: 1,
       borderColor: theme.border,
-      padding: 4,
-      marginBottom: 16,
-      gap: 4,
+      padding: SEGMENT_TAB_PADDING,
+      gap: SEGMENT_TAB_GAP,
     },
     tabBtn: {
       flex: 1,
-      paddingVertical: 11,
-      borderRadius: 8,
+      minWidth: 0,
+      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
+      borderRadius: SEGMENT_TAB_BTN_RADIUS,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -104,13 +145,13 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.green,
     },
     tabText: {
-      fontSize: 12,
-      lineHeight: 15,
-      fontWeight: '800',
+      fontSize: SEGMENT_TAB_FONT_SIZE,
+      lineHeight: SEGMENT_TAB_LINE_HEIGHT,
+      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
       color: theme.textDim,
     },
     tabTextActive: {
-      color: '#0A0A0F',
+      color: SEGMENT_TAB_ACTIVE_TEXT,
     },
     lead: {
       fontSize: 13,
@@ -350,6 +391,121 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: '#14141C',
     },
     cacheClearBtnText: { fontSize: 13, fontWeight: '800', color: theme.green },
+    limitRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    limitRowLast: {
+      marginBottom: 0,
+    },
+    quotesCardHint: {
+      fontSize: 11,
+      color: theme.textDim,
+      lineHeight: 16,
+      marginBottom: 12,
+    },
+    quotesSegmentOrderListWrap: {
+      marginBottom: 2,
+    },
+    quotesSegmentOrderListContent: {
+      paddingBottom: 8,
+    },
+    limitPickerTrigger: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: '#14141C',
+      minWidth: 88,
+      justifyContent: 'flex-end',
+    },
+    limitPickerTriggerText: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: theme.text,
+    },
+    limitPickerBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 28,
+    },
+    limitPickerSheet: {
+      zIndex: 1,
+      width: '100%',
+      maxWidth: 320,
+      maxHeight: '56%',
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bg,
+      overflow: 'hidden',
+    },
+    limitPickerTitle: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      fontSize: 14,
+      fontWeight: '800',
+      color: theme.text,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    limitPickerScroll: {
+      maxHeight: 320,
+    },
+    limitPickerOption: {
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    limitPickerOptionActive: {
+      backgroundColor: theme.greenDim,
+    },
+    limitPickerOptionText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.text,
+      textAlign: 'center',
+    },
+    limitPickerOptionTextActive: {
+      color: theme.green,
+    },
+    segmentOrderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: '#14141C',
+    },
+    segmentOrderRowGap: {
+      marginBottom: QUOTES_SEGMENT_ORDER_ROW_GAP,
+    },
+    segmentOrderRowActive: {
+      borderColor: theme.green + '88',
+      backgroundColor: theme.greenDim,
+    },
+    segmentOrderLabel: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    segmentOrderDragHandle: {
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      marginRight: -4,
+    },
   });
 }
 
@@ -365,10 +521,6 @@ export default function SettingsScreen() {
   const [draft, setDraft] = useState('');
   const [ready, setReady] = useState(false);
 
-  const [watchSymbols, setWatchSymbols] = useState<string[]>([]);
-  const [watchDraft, setWatchDraft] = useState('');
-  const [watchReady, setWatchReady] = useState(false);
-
   const [pushEnabled, setPushEnabled] = useState(true);
   const [earningsOnly, setEarningsOnly] = useState(false);
   const [prefsReady, setPrefsReady] = useState(false);
@@ -379,7 +531,23 @@ export default function SettingsScreen() {
   const [cachePrefs, setCachePrefs] = useState<CacheFeaturePrefs>({
     youtubeEnabled: true,
     concallEnabled: true,
+    calendarEnabled: true,
+    quotesEnabled: true,
   });
+
+  const [quotesListLimits, setQuotesListLimits] = useState<QuotesListLimits>(() =>
+    normalizeQuotesListLimits(QUOTES_LIST_LIMITS_DEFAULTS),
+  );
+  const [quotesLimitsReady, setQuotesLimitsReady] = useState(false);
+  const [quotesSegmentOrder, setQuotesSegmentOrder] =
+    useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
+  const [quotesSegmentOrderReady, setQuotesSegmentOrderReady] = useState(false);
+  const [quotesLimitPicker, setQuotesLimitPicker] = useState<'popular' | 'mcap' | 'coin' | null>(null);
+
+  const quotesPickerOptions = useMemo(() => {
+    if (!quotesLimitPicker) return [];
+    return quotesListCountChoicesForField(quotesLimitPicker);
+  }, [quotesLimitPicker]);
 
   const reloadCachePrefs = useCallback(async () => {
     const p = await loadCacheFeaturePrefs();
@@ -393,7 +561,8 @@ export default function SettingsScreen() {
       tabParam === 'youtube' ||
       tabParam === 'quotes' ||
       tabParam === 'display' ||
-      tabParam === 'notifications'
+      tabParam === 'notifications' ||
+      tabParam === 'calendar'
     ) {
       setTab(tabParam);
     }
@@ -418,20 +587,34 @@ export default function SettingsScreen() {
     setReady(true);
   }, []);
 
-  const reloadWatch = useCallback(async () => {
-    const list = await loadWatchlistSymbols();
-    setWatchSymbols(list);
-    setWatchReady(true);
+  const reloadQuotesListLimits = useCallback(async () => {
+    const p = await loadQuotesListLimits();
+    setQuotesListLimits(p);
+    setQuotesLimitsReady(true);
+  }, []);
+
+  const reloadQuotesSegmentOrder = useCallback(async () => {
+    const o = await loadQuotesSegmentOrder();
+    setQuotesSegmentOrder(o);
+    setQuotesSegmentOrderReady(true);
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       void reload();
-      void reloadWatch();
       void reloadPrefs();
       void reloadCalendarScope();
       void reloadCachePrefs();
-    }, [reload, reloadWatch, reloadPrefs, reloadCalendarScope, reloadCachePrefs]),
+      void reloadQuotesListLimits();
+      void reloadQuotesSegmentOrder();
+    }, [
+      reload,
+      reloadPrefs,
+      reloadCalendarScope,
+      reloadCachePrefs,
+      reloadQuotesListLimits,
+      reloadQuotesSegmentOrder,
+    ]),
   );
 
   const persist = async (next: string[]) => {
@@ -487,57 +670,16 @@ export default function SettingsScreen() {
     );
   };
 
-  const persistWatch = async (next: string[]) => {
-    await saveWatchlistSymbols(next);
-    setWatchSymbols(next);
-  };
-
-  const onAddWatch = async () => {
-    const h = watchDraft.trim().toUpperCase().replace(/\s+/g, '');
-    if (!h) {
-      Alert.alert(t('alertTitleInputError'), t('alertEmptyTicker'));
-      return;
-    }
-    if (!isValidUsTicker(h)) {
-      Alert.alert(t('alertTitleFormatError'), t('alertTickerRule'));
-      return;
-    }
-    if (watchSymbols.includes(h)) {
-      Alert.alert(t('alertTitleDup'), t('alertDupTicker'));
-      return;
-    }
-    setWatchDraft('');
-    await persistWatch([...watchSymbols, h]);
-  };
-
-  const onRemoveWatch = async (ticker: string) => {
-    await persistWatch(watchSymbols.filter((x) => x !== ticker));
-  };
-
-  const onResetWatchDefaults = () => {
-    Alert.alert(
-      t('alertResetWatchTitle'),
-      t('alertResetWatchBody'),
-      [
-        { text: t('commonCancel'), style: 'cancel' },
-        {
-          text: t('alertReset'),
-          style: 'destructive',
-          onPress: async () => {
-            const next = await resetWatchlistToDefaults();
-            setWatchSymbols(next);
-          },
-        },
-      ],
-    );
-  };
-
   const cacheYoutubeMinutes = Math.round(YOUTUBE_CACHE_TTL_MS / 60000);
   const cacheConcallMinutes = Math.round(CONCALL_CACHE_TTL_MS / 60000);
+  const cacheCalendarMinutes = Math.round(CALENDAR_CACHE_TTL_MS / 60000);
+  const cacheQuotesSeconds = Math.round(QUOTES_CACHE_TTL_MS / 1000);
 
   const onClearMemoryCaches = () => {
     clearYoutubeCache();
     clearConcallCache();
+    clearCalendarCache();
+    clearQuotesCache();
     Alert.alert(t('settingsCacheClearedTitle'), t('settingsCacheClearedBody'));
   };
 
@@ -553,46 +695,83 @@ export default function SettingsScreen() {
     if (!v) clearConcallCache();
   };
 
+  const onCalendarCacheEnabledChange = async (v: boolean) => {
+    setCachePrefs((prev) => ({ ...prev, calendarEnabled: v }));
+    await saveCacheFeaturePrefs({ calendarEnabled: v });
+    if (!v) clearCalendarCache();
+  };
+
+  const onQuotesCacheEnabledChange = async (v: boolean) => {
+    setCachePrefs((prev) => ({ ...prev, quotesEnabled: v }));
+    await saveCacheFeaturePrefs({ quotesEnabled: v });
+    if (!v) clearQuotesCache();
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
+      <View style={styles.tabBar}>
+        <Pressable
+          onPress={() => setTab('youtube')}
+          style={[styles.tabBtn, tab === 'youtube' && styles.tabBtnActive]}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'youtube' }}>
+          <Text
+            style={[styles.tabText, tab === 'youtube' && styles.tabTextActive]}
+            numberOfLines={1}>
+            {t('settingsTabYoutube')}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setTab('quotes')}
+          style={[styles.tabBtn, tab === 'quotes' && styles.tabBtnActive]}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'quotes' }}>
+          <Text
+            style={[styles.tabText, tab === 'quotes' && styles.tabTextActive]}
+            numberOfLines={1}>
+            {t('settingsTabQuotes')}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setTab('calendar')}
+          style={[styles.tabBtn, tab === 'calendar' && styles.tabBtnActive]}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'calendar' }}>
+          <Text
+            style={[styles.tabText, tab === 'calendar' && styles.tabTextActive]}
+            numberOfLines={1}>
+            {t('settingsTabCalendar')}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setTab('display')}
+          style={[styles.tabBtn, tab === 'display' && styles.tabBtnActive]}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'display' }}>
+          <Text
+            style={[styles.tabText, tab === 'display' && styles.tabTextActive]}
+            numberOfLines={1}>
+            {t('settingsTabDisplay')}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setTab('notifications')}
+          style={[styles.tabBtn, tab === 'notifications' && styles.tabBtnActive]}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'notifications' }}>
+          <Text
+            style={[styles.tabText, tab === 'notifications' && styles.tabTextActive]}
+            numberOfLines={1}>
+            {t('settingsTabNotifications')}
+          </Text>
+        </Pressable>
+      </View>
       <ScrollView
+        style={styles.scrollFlex}
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
-        <View style={styles.tabBar}>
-          <Pressable
-            onPress={() => setTab('youtube')}
-            style={[styles.tabBtn, tab === 'youtube' && styles.tabBtnActive]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === 'youtube' }}>
-            <Text style={[styles.tabText, tab === 'youtube' && styles.tabTextActive]}>{t('settingsTabYoutube')}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setTab('quotes')}
-            style={[styles.tabBtn, tab === 'quotes' && styles.tabBtnActive]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === 'quotes' }}>
-            <Text style={[styles.tabText, tab === 'quotes' && styles.tabTextActive]}>{t('settingsTabQuotes')}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setTab('display')}
-            style={[styles.tabBtn, tab === 'display' && styles.tabBtnActive]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === 'display' }}>
-            <Text style={[styles.tabText, tab === 'display' && styles.tabTextActive]}>{t('settingsTabDisplay')}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setTab('notifications')}
-            style={[styles.tabBtn, tab === 'notifications' && styles.tabBtnActive]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === 'notifications' }}>
-            <Text style={[styles.tabText, tab === 'notifications' && styles.tabTextActive]}>
-              {t('settingsTabNotifications')}
-            </Text>
-          </Pressable>
-        </View>
-
         {tab === 'youtube' ? (
           <>
             <Text style={styles.lead}>{t('settingsYoutubeLead')}</Text>
@@ -649,55 +828,106 @@ export default function SettingsScreen() {
 
         {tab === 'quotes' ? (
           <>
-            <Text style={styles.lead}>{t('settingsQuotesLead')}</Text>
-
-            <Text style={styles.section}>{t('settingsQuotesSectionAdd')}</Text>
-            <Text style={styles.hint}>{t('settingsQuotesHintTicker')}</Text>
-            <View style={styles.addRow}>
-              <TextInput
-                value={watchDraft}
-                onChangeText={setWatchDraft}
-                placeholder={t('settingsQuotesPlaceholderTicker')}
-                placeholderTextColor={theme.textDim}
-                autoCapitalize="characters"
-                autoCorrect={false}
-                style={styles.input}
-                onSubmitEditing={() => void onAddWatch()}
-                returnKeyType="done"
-              />
-              <Pressable onPress={() => void onAddWatch()} style={styles.addBtn} accessibilityRole="button">
-                <Text style={styles.addBtnText}>{t('commonAdd')}</Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>{t('settingsQuotesDefaultWatchlist')}</Text>
-              <Text style={styles.cardHint}>{DEFAULT_US_WATCHLIST.join(', ')}</Text>
-            </View>
-
-            <Text style={styles.section}>{t('settingsQuotesCurrentList', { count: watchSymbols.length })}</Text>
-            {!watchReady ? (
-              <Text style={styles.muted}>{t('commonLoading')}</Text>
-            ) : (
-              watchSymbols.map((sym) => (
-                <View key={sym} style={styles.row}>
-                  <Text style={styles.handleText} numberOfLines={1}>
-                    {sym}
-                  </Text>
-                  <Pressable
-                    onPress={() => void onRemoveWatch(sym)}
-                    style={styles.removeBtn}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${sym} 제거`}>
-                    <FontAwesome name="trash" size={16} color="#C08080" />
-                  </Pressable>
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsQuotesSegmentOrderKicker')}</Text>
+              <Text style={styles.quotesCardHint}>{t('settingsQuotesSegmentOrderHint')}</Text>
+              {!quotesSegmentOrderReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <View style={styles.quotesSegmentOrderListWrap}>
+                  <DraggableFlatList
+                    data={quotesSegmentOrder}
+                    scrollEnabled={false}
+                    removeClippedSubviews={false}
+                    style={{ height: QUOTES_SEGMENT_ORDER_LIST_HEIGHT }}
+                    containerStyle={{ flexGrow: 0 }}
+                    contentContainerStyle={styles.quotesSegmentOrderListContent}
+                    keyExtractor={(item) => item}
+                    onDragEnd={({ data }) => {
+                      setQuotesSegmentOrder(data);
+                      void saveQuotesSegmentOrder(data);
+                    }}
+                    renderItem={({ item, drag, isActive, getIndex }) => {
+                      const idx = getIndex() ?? 0;
+                      const isLast = idx === quotesSegmentOrder.length - 1;
+                      return (
+                        <ScaleDecorator>
+                          <View
+                            style={[
+                              styles.segmentOrderRow,
+                              !isLast && styles.segmentOrderRowGap,
+                              isActive && styles.segmentOrderRowActive,
+                            ]}>
+                            <Text style={styles.segmentOrderLabel}>{t(QUOTE_SEGMENT_LABEL[item])}</Text>
+                            <GHPressable
+                              style={styles.segmentOrderDragHandle}
+                              {...(Platform.OS === 'web'
+                                ? { onPressIn: drag }
+                                : { onLongPress: drag, delayLongPress: 200 })}
+                              accessibilityRole="button"
+                              accessibilityLabel={formatMessage(t('settingsQuotesSegmentDragHandleA11y'), {
+                                name: t(QUOTE_SEGMENT_LABEL[item]),
+                              })}>
+                              <FontAwesome name="bars" size={16} color={theme.textMuted} />
+                            </GHPressable>
+                          </View>
+                        </ScaleDecorator>
+                      );
+                    }}
+                  />
                 </View>
-              ))
-            )}
+              )}
+            </View>
 
-            <Pressable onPress={onResetWatchDefaults} style={styles.resetBtn} accessibilityRole="button">
-              <Text style={styles.resetBtnText}>{t('settingsQuotesReset')}</Text>
-            </Pressable>
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsQuotesLimitsKicker')}</Text>
+              <Text style={styles.quotesCardHint}>
+                {formatMessage(t('settingsQuotesListLimitsHint'), {
+                  popMax: QUOTES_LIST_LIMIT_BOUNDS.popular.max,
+                  mcapMax: QUOTES_LIST_LIMIT_BOUNDS.mcap.max,
+                  coinMax: QUOTES_LIST_LIMIT_BOUNDS.coin.max,
+                })}
+              </Text>
+              {!quotesLimitsReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <>
+                  <View style={styles.limitRow}>
+                    <Text style={styles.prefLabel}>{t('settingsQuotesPopularCountLabel')}</Text>
+                    <Pressable
+                      onPress={() => setQuotesLimitPicker('popular')}
+                      style={styles.limitPickerTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settingsQuotesPopularCountLabel')}>
+                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.popularMax}</Text>
+                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                    </Pressable>
+                  </View>
+                  <View style={styles.limitRow}>
+                    <Text style={styles.prefLabel}>{t('settingsQuotesMcapCountLabel')}</Text>
+                    <Pressable
+                      onPress={() => setQuotesLimitPicker('mcap')}
+                      style={styles.limitPickerTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settingsQuotesMcapCountLabel')}>
+                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.mcapMax}</Text>
+                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                    </Pressable>
+                  </View>
+                  <View style={[styles.limitRow, styles.limitRowLast]}>
+                    <Text style={styles.prefLabel}>{t('settingsQuotesCoinCountLabel')}</Text>
+                    <Pressable
+                      onPress={() => setQuotesLimitPicker('coin')}
+                      style={styles.limitPickerTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settingsQuotesCoinCountLabel')}>
+                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.coinMax}</Text>
+                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                    </Pressable>
+                  </View>
+                </>
+              )}
+            </View>
           </>
         ) : null}
 
@@ -820,6 +1050,8 @@ export default function SettingsScreen() {
                 {formatMessage(t('settingsCacheOneLiner'), {
                   yt: cacheYoutubeMinutes,
                   cc: cacheConcallMinutes,
+                  cal: cacheCalendarMinutes,
+                  qt: cacheQuotesSeconds,
                 })}
               </Text>
               <View style={styles.prefRow}>
@@ -840,6 +1072,24 @@ export default function SettingsScreen() {
                   thumbColor={cachePrefs.concallEnabled ? theme.green : '#888'}
                 />
               </View>
+              <View style={styles.prefRow}>
+                <Text style={styles.prefLabel}>{t('settingsCacheCalendarToggle')}</Text>
+                <Switch
+                  value={cachePrefs.calendarEnabled}
+                  onValueChange={(v) => void onCalendarCacheEnabledChange(v)}
+                  trackColor={{ false: '#333', true: theme.green + '88' }}
+                  thumbColor={cachePrefs.calendarEnabled ? theme.green : '#888'}
+                />
+              </View>
+              <View style={styles.prefRow}>
+                <Text style={styles.prefLabel}>{t('settingsCacheQuotesToggle')}</Text>
+                <Switch
+                  value={cachePrefs.quotesEnabled}
+                  onValueChange={(v) => void onQuotesCacheEnabledChange(v)}
+                  trackColor={{ false: '#333', true: theme.green + '88' }}
+                  thumbColor={cachePrefs.quotesEnabled ? theme.green : '#888'}
+                />
+              </View>
               <Pressable
                 onPress={onClearMemoryCaches}
                 style={({ pressed }) => [styles.cacheClearBtn, pressed && { opacity: 0.88 }]}
@@ -848,10 +1098,15 @@ export default function SettingsScreen() {
                 <Text style={styles.cacheClearBtnText}>{t('settingsCacheClearButton')}</Text>
               </Pressable>
             </View>
+          </>
+        ) : null}
 
+        {tab === 'calendar' ? (
+          <>
+            <Text style={styles.lead}>{t('settingsCalendarTabLead')}</Text>
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsCalendarScopeTitle')}</Text>
-              <Text style={styles.lead}>{t('settingsCalendarScopeLead')}</Text>
+              <Text style={styles.quotesCardHint}>{t('settingsCalendarScopeLead')}</Text>
               {!calendarScopeReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
@@ -898,6 +1153,61 @@ export default function SettingsScreen() {
           </>
         ) : null}
       </ScrollView>
+
+      <Modal
+        visible={quotesLimitPicker != null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setQuotesLimitPicker(null)}>
+        <View style={styles.limitPickerBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setQuotesLimitPicker(null)} />
+          <View style={styles.limitPickerSheet}>
+            <Text style={styles.limitPickerTitle}>
+              {quotesLimitPicker === 'popular'
+                ? t('settingsQuotesPopularCountLabel')
+                : quotesLimitPicker === 'mcap'
+                  ? t('settingsQuotesMcapCountLabel')
+                  : quotesLimitPicker === 'coin'
+                    ? t('settingsQuotesCoinCountLabel')
+                    : ''}
+            </Text>
+            <ScrollView
+              style={styles.limitPickerScroll}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator>
+              {quotesPickerOptions.map((n) => {
+                const sel =
+                  quotesLimitPicker === 'popular'
+                    ? quotesListLimits.popularMax === n
+                    : quotesLimitPicker === 'mcap'
+                      ? quotesListLimits.mcapMax === n
+                      : quotesListLimits.coinMax === n;
+                return (
+                  <Pressable
+                    key={n}
+                    onPress={() => {
+                      setQuotesListLimits((prev) => {
+                        const patch =
+                          quotesLimitPicker === 'popular'
+                            ? { popularMax: n }
+                            : quotesLimitPicker === 'mcap'
+                              ? { mcapMax: n }
+                              : { coinMax: n };
+                        const next = normalizeQuotesListLimits({ ...prev, ...patch });
+                        void saveQuotesListLimits(next);
+                        return next;
+                      });
+                      setQuotesLimitPicker(null);
+                    }}
+                    style={[styles.limitPickerOption, sel && styles.limitPickerOptionActive]}>
+                    <Text style={[styles.limitPickerOptionText, sel && styles.limitPickerOptionTextActive]}>{n}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

@@ -18,9 +18,22 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
+import {
+  SEGMENT_TAB_ACTIVE_TEXT,
+  SEGMENT_TAB_BACKGROUND,
+  SEGMENT_TAB_BTN_PADDING_V,
+  SEGMENT_TAB_BTN_RADIUS,
+  SEGMENT_TAB_FONT_SIZE,
+  SEGMENT_TAB_FONT_WEIGHT,
+  SEGMENT_TAB_GAP,
+  SEGMENT_TAB_LINE_HEIGHT,
+  SEGMENT_TAB_OUTER_RADIUS,
+  SEGMENT_TAB_PADDING,
+} from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import { fetchTopCoinsByMarketCapUsd } from '@/services/cryptoMarkets';
 import { hasFinnhub } from '@/services/env';
 import {
@@ -29,26 +42,62 @@ import {
   fetchQuotesForSymbols,
   getSymbolsSortedByMarketCap,
 } from '@/services/finnhub';
-import { isValidUsTicker, loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatchlist';
+import { loadQuotesListLimits } from '@/services/quotesListLimitsPreference';
+import {
+  DEFAULT_QUOTES_SEGMENT_ORDER,
+  loadQuotesSegmentOrder,
+  type QuoteSegmentKey,
+} from '@/services/quotesSegmentOrderPreference';
+import {
+  buildQuotesCacheKey,
+  peekMcapSymbolsOrder,
+  peekQuotes,
+  QUOTES_POLL_INTERVAL_MS,
+  storeMcapSymbolsOrder,
+  storeQuotes,
+  type QuoteCacheRow,
+} from '@/services/quotesCache';
+import {
+  isValidUsTicker,
+  loadWatchlistSymbols,
+  resetWatchlistToDefaults,
+  saveWatchlistSymbols,
+} from '@/services/quoteWatchlist';
 import { formatRelativeFromIso } from '@/utils/date';
+import type { MessageId } from '@/locales/messages';
 
-const POLL_MS = 30_000;
+const POLL_MS = QUOTES_POLL_INTERVAL_MS;
 
-type QuoteSegment = 'watch' | 'popular' | 'mcap' | 'coin';
-
-type Row = {
-  symbol: string;
-  name?: string;
-  quote: FinnhubQuote | null;
-  error?: string;
+const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
+  watch: 'quotesSegmentWatch',
+  popular: 'quotesSegmentPopular',
+  mcap: 'quotesSegmentMcap',
+  coin: 'quotesSegmentCoin',
 };
 
-function formatPrice(n: number) {
+type Row = QuoteCacheRow;
+
+/** USD 금액 본문 (부호 없음, 0 이상) */
+function formatUsdBody(abs: number): string {
+  if (!Number.isFinite(abs) || abs < 0) return '—';
+  if (abs >= 1000) return abs.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  if (abs >= 1) return abs.toFixed(2);
+  if (abs >= 0.0001) return abs.toFixed(6);
+  return abs.toFixed(8);
+}
+
+/** 절대 가격·참고가 (예: $123.45) */
+function formatUsd(n: number): string {
   if (!Number.isFinite(n)) return '—';
-  if (n >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
-  if (n >= 1) return n.toFixed(2);
-  if (n >= 0.0001) return n.toFixed(6);
-  return n.toFixed(8);
+  return `$${formatUsdBody(Math.abs(n))}`;
+}
+
+/** 전일 대비 등 부호 있는 달러 변동 (예: +$1.23, -$0.45) */
+function formatUsdChange(n: number): string {
+  if (!Number.isFinite(n)) return '—';
+  if (n === 0) return '$0.00';
+  const sign = n > 0 ? '+' : '-';
+  return `${sign}$${formatUsdBody(Math.abs(n))}`;
 }
 
 function mapCoinToFinnhubQuote(price: number, change24h: number, pct24h: number): FinnhubQuote {
@@ -71,7 +120,8 @@ export default function QuotesScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const [segment, setSegment] = useState<QuoteSegment>('watch');
+  const [segment, setSegment] = useState<QuoteSegmentKey>('watch');
+  const [segmentOrder, setSegmentOrder] = useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,12 +129,23 @@ export default function QuotesScreen() {
   const [updatedLabel, setUpdatedLabel] = useState<string>('');
   const [draftTicker, setDraftTicker] = useState('');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (forceRefresh?: boolean) => {
     setError(null);
+    const { quotesEnabled } = await loadCacheFeaturePrefs();
+    const limits = await loadQuotesListLimits();
 
     if (segment === 'coin') {
+      const cacheKey = buildQuotesCacheKey('coin', [], limits.coinMax);
+      if (quotesEnabled && !forceRefresh) {
+        const hit = peekQuotes(cacheKey);
+        if (hit) {
+          setRows(hit);
+          setUpdatedLabel(formatRelativeFromIso(new Date().toISOString()));
+          return;
+        }
+      }
       try {
-        const coins = await fetchTopCoinsByMarketCapUsd(20);
+        const coins = await fetchTopCoinsByMarketCapUsd(limits.coinMax);
         const list: Row[] = coins.map((c) => {
           const sym = String(c.symbol ?? '')
             .trim()
@@ -104,6 +165,7 @@ export default function QuotesScreen() {
         });
         setRows(list);
         setUpdatedLabel(formatRelativeFromIso(new Date().toISOString()));
+        if (quotesEnabled) storeQuotes(cacheKey, list);
       } catch (e) {
         setRows([]);
         setUpdatedLabel('');
@@ -123,9 +185,17 @@ export default function QuotesScreen() {
     if (segment === 'watch') {
       symbols = await loadWatchlistSymbols();
     } else if (segment === 'popular') {
-      symbols = [...POPULAR_SYMBOLS_ORDERED];
+      symbols = [...POPULAR_SYMBOLS_ORDERED].slice(0, limits.popularMax);
     } else {
-      symbols = await getSymbolsSortedByMarketCap();
+      const cachedOrder = !forceRefresh ? peekMcapSymbolsOrder(limits.mcapMax) : null;
+      if (cachedOrder && cachedOrder.length > 0) {
+        symbols = cachedOrder;
+      } else {
+        symbols = await getSymbolsSortedByMarketCap(undefined, limits.mcapMax);
+        if (symbols.length > 0) {
+          storeMcapSymbolsOrder(limits.mcapMax, symbols);
+        }
+      }
     }
 
     if (symbols.length === 0) {
@@ -134,10 +204,34 @@ export default function QuotesScreen() {
       return;
     }
 
+    const symbolsSorted =
+      segment === 'watch'
+        ? [...symbols].map((s) => s.trim().toUpperCase()).sort()
+        : segment === 'popular'
+          ? [...symbols]
+          : [...symbols];
+
+    const cacheKey = buildQuotesCacheKey(segment, symbolsSorted);
+    if (quotesEnabled && !forceRefresh) {
+      const hit = peekQuotes(cacheKey);
+      if (hit) {
+        setRows(hit);
+        setUpdatedLabel(formatRelativeFromIso(new Date().toISOString()));
+        return;
+      }
+    }
+
     const list = await fetchQuotesForSymbols(symbols);
     setRows(list);
     setUpdatedLabel(formatRelativeFromIso(new Date().toISOString()));
+    if (quotesEnabled) storeQuotes(cacheKey, list);
   }, [segment]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadQuotesSegmentOrder().then(setSegmentOrder);
+    }, []),
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -172,7 +266,7 @@ export default function QuotesScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await load();
+      await load(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : '새로고침 실패');
     } finally {
@@ -207,6 +301,24 @@ export default function QuotesScreen() {
     [load],
   );
 
+  const onResetWatchDefaults = useCallback(() => {
+    Alert.alert(
+      t('alertResetWatchTitle'),
+      t('alertResetWatchBody'),
+      [
+        { text: t('commonCancel'), style: 'cancel' },
+        {
+          text: t('alertReset'),
+          style: 'destructive',
+          onPress: async () => {
+            await resetWatchlistToDefaults();
+            await load();
+          },
+        },
+      ],
+    );
+  }, [load, t]);
+
   const segmentHint =
     segment === 'watch'
       ? '저장된 티커 · 아래에서 추가/삭제'
@@ -220,48 +332,38 @@ export default function QuotesScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <SignalHeader />
       {isFocused ? <OtaUpdateBanner /> : null}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
-        <Text style={styles.section}>실시간 시세</Text>
-        <Text style={styles.hint}>
-          {segment === 'coin'
-            ? `CoinGecko · 약 ${POLL_MS / 1000}초마다 갱신 (탭에 있을 때) · ${segmentHint}`
-            : `Finnhub · 약 ${POLL_MS / 1000}초마다 갱신 (탭에 있을 때) · ${segmentHint}`}
-        </Text>
+      <View style={styles.mainColumn}>
+        <View style={styles.topFixed}>
+          <Text style={styles.section}>실시간 시세</Text>
+          <Text style={styles.hint}>
+            {segment === 'coin'
+              ? `CoinGecko · 약 ${POLL_MS / 1000}초마다 갱신 (탭에 있을 때) · ${segmentHint}`
+              : `Finnhub · 약 ${POLL_MS / 1000}초마다 갱신 (탭에 있을 때) · ${segmentHint}`}
+          </Text>
 
-        <View style={styles.segment}>
-          <Pressable
-            onPress={() => setSegment('watch')}
-            style={[styles.segBtn, segment === 'watch' && styles.segBtnActive]}
-            accessibilityState={{ selected: segment === 'watch' }}>
-            <Text style={[styles.segText, segment === 'watch' && styles.segTextActive]}>관심</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setSegment('popular')}
-            style={[styles.segBtn, segment === 'popular' && styles.segBtnActive]}
-            accessibilityState={{ selected: segment === 'popular' }}>
-            <Text style={[styles.segText, segment === 'popular' && styles.segTextActive]}>인기순</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setSegment('mcap')}
-            style={[styles.segBtn, segment === 'mcap' && styles.segBtnActive]}
-            accessibilityState={{ selected: segment === 'mcap' }}>
-            <Text style={[styles.segText, segment === 'mcap' && styles.segTextActive]}>시총순</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setSegment('coin')}
-            style={[styles.segBtn, segment === 'coin' && styles.segBtnActive]}
-            accessibilityState={{ selected: segment === 'coin' }}>
-            <Text style={[styles.segText, segment === 'coin' && styles.segTextActive]}>{t('quotesSegmentCoin')}</Text>
-          </Pressable>
+          <View style={styles.segment}>
+            {segmentOrder.map((key) => (
+              <Pressable
+                key={key}
+                onPress={() => setSegment(key)}
+                style={[styles.segBtn, segment === key && styles.segBtnActive]}
+                accessibilityState={{ selected: segment === key }}>
+                <Text style={[styles.segText, segment === key && styles.segTextActive]}>
+                  {t(QUOTE_SEGMENT_LABEL[key])}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
 
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
+          ]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
         {updatedLabel ? <Text style={styles.updated}>마지막 갱신 · {updatedLabel}</Text> : null}
 
         {error ? (
@@ -286,6 +388,15 @@ export default function QuotesScreen() {
             <Pressable onPress={() => void onAddWatch()} style={styles.addBtn} accessibilityRole="button">
               <Text style={styles.addBtnText}>추가</Text>
             </Pressable>
+            <Pressable
+              onPress={onResetWatchDefaults}
+              style={styles.watchResetBtn}
+              accessibilityRole="button"
+              accessibilityLabel={t('settingsQuotesReset')}>
+              <Text style={styles.watchResetBtnText} numberOfLines={1}>
+                {t('settingsQuotesReset')}
+              </Text>
+            </Pressable>
           </View>
         ) : null}
 
@@ -305,7 +416,7 @@ export default function QuotesScreen() {
                 </View>
                 <View style={styles.cardTopRight}>
                   {r.quote ? (
-                    <Text style={styles.price}>{formatPrice(r.quote.c)}</Text>
+                    <Text style={styles.price}>{formatUsd(r.quote.c)}</Text>
                   ) : (
                     <Text style={styles.na}>—</Text>
                   )}
@@ -324,12 +435,11 @@ export default function QuotesScreen() {
               {r.quote ? (
                 <View style={styles.cardMid}>
                   <Text style={[styles.chg, r.quote.d >= 0 ? styles.chgUp : styles.chgDn]}>
-                    {r.quote.d >= 0 ? '+' : ''}
-                    {formatPrice(r.quote.d)} ({r.quote.dp >= 0 ? '+' : ''}
+                    {formatUsdChange(r.quote.d)} ({r.quote.dp >= 0 ? '+' : ''}
                     {r.quote.dp.toFixed(2)}%)
                   </Text>
                   <Text style={styles.pc}>
-                    {segment === 'coin' ? t('quotesPrevRefCoin') : '전일 종'} {formatPrice(r.quote.pc)}
+                    {segment === 'coin' ? t('quotesPrevRefCoin') : '전일 종'} {formatUsd(r.quote.pc)}
                   </Text>
                 </View>
               ) : (
@@ -353,7 +463,8 @@ export default function QuotesScreen() {
               : '인기순은 앱에서 지정한 순서입니다. 시총순은 Finnhub 프로필의 시가총액(백만 USD)으로 정렬합니다. 장 마감 후에는 마지막 거래가 기준일 수 있습니다.'}
           </Text>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -361,24 +472,31 @@ export default function QuotesScreen() {
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
+    mainColumn: { flex: 1 },
+    topFixed: {
+      flexShrink: 0,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      backgroundColor: theme.bg,
+    },
     scrollView: { flex: 1 },
-    scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28 },
     section: { fontSize: 16, fontWeight: '800', color: theme.text, marginBottom: 4 },
     hint: { fontSize: 11, color: theme.textDim, marginBottom: 10 },
     segment: {
       flexDirection: 'row',
-      backgroundColor: '#12121A',
-      borderRadius: 10,
+      backgroundColor: SEGMENT_TAB_BACKGROUND,
+      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
       borderWidth: 1,
       borderColor: theme.border,
-      padding: 4,
+      padding: SEGMENT_TAB_PADDING,
       marginBottom: 8,
-      gap: 4,
+      gap: SEGMENT_TAB_GAP,
     },
     segBtn: {
       flex: 1,
-      paddingVertical: 8,
-      borderRadius: 8,
+      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
+      borderRadius: SEGMENT_TAB_BTN_RADIUS,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -386,12 +504,13 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.green,
     },
     segText: {
-      fontSize: 12,
-      fontWeight: '800',
+      fontSize: SEGMENT_TAB_FONT_SIZE,
+      lineHeight: SEGMENT_TAB_LINE_HEIGHT,
+      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
       color: theme.textDim,
     },
     segTextActive: {
-      color: '#0A0A0F',
+      color: SEGMENT_TAB_ACTIVE_TEXT,
     },
     updated: { fontSize: 10, color: theme.textMuted, marginBottom: 10 },
     addRow: {
@@ -412,6 +531,7 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: '#12121A',
     },
     addBtn: {
+      flexShrink: 0,
       paddingHorizontal: 14,
       paddingVertical: 9,
       borderRadius: 8,
@@ -420,6 +540,17 @@ function makeStyles(theme: AppTheme) {
       borderColor: theme.greenBorder,
     },
     addBtnText: { fontSize: 13, fontWeight: '800', color: theme.green },
+    watchResetBtn: {
+      flexShrink: 0,
+      paddingHorizontal: 10,
+      paddingVertical: 9,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: '#14141C',
+      justifyContent: 'center',
+    },
+    watchResetBtnText: { fontSize: 13, fontWeight: '700', color: '#E0A0A0' },
     loading: { fontSize: 13, color: theme.textMuted, marginBottom: 12 },
     errBox: {
       padding: 12,

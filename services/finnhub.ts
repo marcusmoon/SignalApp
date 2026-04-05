@@ -105,7 +105,7 @@ export function mapEarningsToEvents(rows: FinnhubEarningsRow[]): CalendarEvent[]
     id: `e-${r.symbol}-${r.date}-${r.quarter}-${r.year}`,
     date: r.date,
     time: r.hour === 'bmo' ? '프리마켓' : r.hour === 'amc' ? '애프터마켓' : r.hour || '—',
-    title: `${r.symbol} 실적 (FY${r.year} Q${r.quarter})`,
+    title: `${r.symbol} (FY${r.year} Q${r.quarter})`,
     type: 'earnings' as const,
   }));
 }
@@ -202,7 +202,7 @@ export async function fetchProfile2(symbol: string): Promise<FinnhubProfile2 | n
   }
 }
 
-/** 시총 상위 산출용 유니버스(미국 대형주·대표 ETF 일부) */
+/** 시총 상위 산출용 유니버스(미국 대형주 위주, 설정 개수 상한 100에 맞춤) */
 export const MCAP_SCREEN_UNIVERSE = [
   'AAPL',
   'MSFT',
@@ -229,9 +229,87 @@ export const MCAP_SCREEN_UNIVERSE = [
   'KO',
   'NFLX',
   'AMD',
+  'LLY',
+  'MRK',
+  'PEP',
+  'TMO',
+  'ABT',
+  'DHR',
+  'CSCO',
+  'ACN',
+  'DIS',
+  'CMCSA',
+  'NKE',
+  'PM',
+  'TXN',
+  'LIN',
+  'QCOM',
+  'AMGN',
+  'HON',
+  'UPS',
+  'LOW',
+  'SBUX',
+  'AMAT',
+  'INTU',
+  'ISRG',
+  'BKNG',
+  'ADBE',
+  'GE',
+  'CAT',
+  'DE',
+  'GS',
+  'MS',
+  'BLK',
+  'SCHW',
+  'SPGI',
+  'MDT',
+  'ZTS',
+  'CI',
+  'SYK',
+  'MO',
+  'PFE',
+  'T',
+  'CME',
+  'EQIX',
+  'ICE',
+  'AXP',
+  'TJX',
+  'REGN',
+  'CL',
+  'EL',
+  'NEE',
+  'DUK',
+  'SO',
+  'PLD',
+  'MMC',
+  'CB',
+  'AON',
+  'ECL',
+  'SHW',
+  'ITW',
+  'EMR',
+  'FCX',
+  'OXY',
+  'MET',
+  'PYPL',
+  'CRWD',
+  'NOW',
+  'UBER',
+  'ABNB',
+  'LRCX',
+  'MU',
+  'ADI',
+  'SNPS',
+  'CDNS',
+  'PANW',
+  'FTNT',
+  'MMM',
+  'RTX',
+  'BA',
+  'LMT',
 ] as const;
 
-/** 인기순: 거래·관심이 많은 순으로 큐레이션한 고정 순서 */
+/** 인기순: 거래·관심이 많은 순으로 큐레이션한 고정 순서 (20개) */
 export const POPULAR_SYMBOLS_ORDERED = [
   'NVDA',
   'TSLA',
@@ -247,35 +325,60 @@ export const POPULAR_SYMBOLS_ORDERED = [
   'SPY',
   'QQQ',
   'IWM',
+  'BRK-B',
+  'JPM',
+  'NFLX',
+  'UNH',
+  'AVGO',
+  'XOM',
 ] as const;
 
-const MCAP_TOP_N = 15;
+/** 기본 시총순 상위 개수 (설정에서 덮어쓸 수 있음) */
+export const DEFAULT_MCAP_TOP_N = 20;
 
-/** 시총(백만 USD) 내림차순 심볼 목록 */
+const MCAP_PROFILE_FETCH_CHUNK = 10;
+
+/** 시총(백만 USD) 내림차순 심볼 목록 상위 `topN`개 */
 export async function getSymbolsSortedByMarketCap(
   universe: readonly string[] = MCAP_SCREEN_UNIVERSE,
+  topN: number = DEFAULT_MCAP_TOP_N,
 ): Promise<string[]> {
-  const rows = await Promise.all(
-    universe.map(async (sym) => {
-      const p = await fetchProfile2(sym);
-      const cap = typeof p?.marketCapitalization === 'number' ? p.marketCapitalization : 0;
-      return { sym: sym.toUpperCase(), cap };
-    }),
+  const n = Math.min(
+    Math.max(1, Math.floor(topN)),
+    universe.length,
   );
+  const rows: { sym: string; cap: number }[] = [];
+  for (let i = 0; i < universe.length; i += MCAP_PROFILE_FETCH_CHUNK) {
+    const chunk = universe.slice(i, i + MCAP_PROFILE_FETCH_CHUNK);
+    const part = await Promise.all(
+      chunk.map(async (sym) => {
+        const p = await fetchProfile2(sym);
+        const cap = typeof p?.marketCapitalization === 'number' ? p.marketCapitalization : 0;
+        return { sym: sym.toUpperCase(), cap };
+      }),
+    );
+    rows.push(...part);
+  }
   rows.sort((a, b) => b.cap - a.cap);
   const withCap = rows.filter((r) => r.cap > 0);
   if (withCap.length === 0) {
-    return [...universe].slice(0, MCAP_TOP_N).map((s) => s.toUpperCase());
+    return [...universe].slice(0, n).map((s) => s.toUpperCase());
   }
-  return withCap.slice(0, MCAP_TOP_N).map((r) => r.sym);
+  return withCap.slice(0, n).map((r) => r.sym);
 }
 
 export async function fetchCalendarEventsMerged(
   daysAhead = 14,
-  options?: { scope: CalendarConcallScope; watchlistSymbols?: string[] },
+  options?: {
+    scope: CalendarConcallScope;
+    watchlistSymbols?: string[];
+    /** 지정 시 Finnhub from/to. 미지정 시 오늘부터 daysAhead일 */
+    rangeFrom?: Date;
+    rangeTo?: Date;
+  },
 ): Promise<CalendarEvent[]> {
-  const from = new Date();
-  const to = addDays(from, daysAhead);
+  const from = options?.rangeFrom ?? new Date();
+  const to = options?.rangeTo ?? addDays(from, daysAhead);
   let earn: FinnhubEarningsRow[] = [];
   let eco: FinnhubEconomicRow[] = [];
   try {

@@ -25,6 +25,13 @@ const ko = {
   screenSettings: '설정',
   screenAlerts: '알림',
   screenCalendar: '투자 캘린더',
+  calendarScreenHint: 'Finnhub 실적 · 경제지표 (무료 플랜은 일부 비어 있을 수 있음)',
+  calendarScreenMonthHeading: '이 달 일정',
+  calendarScreenEmptyMonth: '이 달에 표시할 일정이 없습니다.',
+  calendarScreenSectionTitle: '이 날의 일정',
+  calendarScreenEmptyDay: '이 날짜에 일정이 없습니다.',
+  calendarMonthPrevA11y: '이전 달',
+  calendarMonthNextA11y: '다음 달',
   screenInfo: '정보',
   screenMegaCapList: '메가캡 티커 목록',
   screenMegaCapListLead:
@@ -33,12 +40,15 @@ const ko = {
   settingsMegaCapListLink: '메가캡 티커 목록 보기',
 
   settingsCacheSectionTitle: '캐시',
-  settingsCacheOneLiner: '유튜브 {{yt}}분 · 컨콜 {{cc}}분 · 끄면 매번 새로 불러옴',
+  settingsCacheOneLiner:
+    '유튜브 {{yt}}분 · 컨콜 {{cc}}분 · 캘린더 {{cal}}분 · 시세 약 {{qt}}초 · 끄면 매번 새로 불러옴',
   settingsCacheClearButton: '모두 비우기',
   settingsCacheClearedTitle: '캐시',
-  settingsCacheClearedBody: '유튜브·컨콜 메모리 캐시를 비웠습니다.',
+  settingsCacheClearedBody: '유튜브·컨콜·캘린더·시세 메모리 캐시를 비웠습니다.',
   settingsCacheYoutubeToggle: '유튜브',
   settingsCacheConcallToggle: '컨콜',
+  settingsCacheCalendarToggle: '캘린더',
+  settingsCacheQuotesToggle: '시세',
 
   headerTagline: '노이즈는 걸러내고, 진짜 시그널만',
   a11yAlerts: '알림',
@@ -57,8 +67,9 @@ const ko = {
   otaUpdatePreviewBody: '실제 OTA가 아닙니다. 배너 모양만 확인한 것입니다.',
 
   settingsTabYoutube: '유튜브',
-  settingsTabQuotes: '관심종목',
+  settingsTabQuotes: '시세',
   settingsTabDisplay: '표시',
+  settingsTabCalendar: '캘린더',
   settingsTabNotifications: '알림',
 
   settingsYoutubeLead:
@@ -78,13 +89,24 @@ const ko = {
   youtubeErrorLoad: '유튜브를 불러오지 못했습니다.',
   youtubeErrorRefresh: '새로고침 실패',
 
-  settingsQuotesLead: '시세 탭의 「관심」에 표시되는 미국 주식 티커입니다. 여기서 바꾸면 앱에 저장됩니다.',
+  settingsQuotesLead: '시세 탭 「관심」에 쓰는 미국 주식 티커입니다. 이 기기에 저장됩니다.',
   settingsQuotesSectionAdd: '티커 추가',
   settingsQuotesHintTicker: '미국 티커 (예: AAPL, SPY)',
   settingsQuotesPlaceholderTicker: '티커 입력',
   settingsQuotesDefaultWatchlist: '기본 관심 종목 (앱 제공)',
   settingsQuotesCurrentList: '현재 목록 ({{count}})',
-  settingsQuotesReset: '기본 관심 종목으로 초기화',
+  settingsQuotesReset: '초기화',
+  settingsQuotesLimitsKicker: '개수',
+  settingsQuotesWatchKicker: '관심 종목',
+  settingsQuotesListLimitsHint:
+    '인기·시총·코인 모두 10~100까지 10개 단위로 선택합니다(기본 20). 시총은 유니버스 길이 이하만 표시됩니다. 상한: 인기 {{popMax}} · 시총 {{mcapMax}} · 코인 {{coinMax}}.',
+  settingsQuotesPopularCountLabel: '인기순',
+  settingsQuotesMcapCountLabel: '시총순',
+  settingsQuotesCoinCountLabel: '코인',
+  settingsQuotesSegmentOrderKicker: '순서',
+  settingsQuotesSegmentOrderHint:
+    '실시간 시세 화면 상단의 관심·인기순·시총순·코인 순서입니다. 오른쪽 ≡을 드래그해 바꿉니다.',
+  settingsQuotesSegmentDragHandleA11y: '{{name}} 순서 바꾸기(드래그)',
 
   settingsThemeLead:
     '표시 설정에서 앱 테마(강조색)와 언어를 바꿀 수 있습니다. 테마 색은 탭·버튼·새로고침 등에 적용되며, 언어는 즉시 저장됩니다.',
@@ -94,6 +116,7 @@ const ko = {
   settingsDisplaySelectedTheme: '선택: {{name}}',
 
   settingsCalendarScopeTitle: '캘린더 · 컨콜',
+  settingsCalendarTabLead: '캘린더·컨콜 화면의 실적 행 범위를 정합니다.',
   settingsCalendarScopeLead:
     '실적(earnings) 행은 메가캡 유니버스로 볼지, 시세·설정의 관심종목으로 볼지 선택합니다. 경제지표·매크로 일정은 항상 전체로 표시됩니다.',
   settingsScopeMega: '메가캡',
@@ -136,8 +159,8 @@ const ko = {
   alertMinNewsSource: '뉴스 제공사는 최소 1개 이상 선택해야 합니다.',
   alertResetCurationTitle: '기본값으로 초기화',
   alertResetCurationBody: '앱에서 제공하는 기본 큐레이션 채널 목록으로 되돌립니다. 계속할까요?',
-  alertResetWatchTitle: '기본 관심 종목으로 초기화',
-  alertResetWatchBody: '아래 기본 티커 목록으로 되돌립니다. 계속할까요?',
+  alertResetWatchTitle: '관심 목록',
+  alertResetWatchBody: '앱 기본 티커로 되돌립니다. 계속할까요?',
   alertReset: '초기화',
   alertEmptyTicker: '티커를 입력해 주세요.',
   alertTickerRule: '영문·숫자·.(점)·-(하이픈) 조합만 사용할 수 있습니다.',
@@ -187,8 +210,11 @@ const ko = {
   callsEmptyWatchlistEmpty:
     '관심 종목이 없습니다. 시세·설정에서 티커를 추가하거나, 표시 설정에서 메가캡 범위를 선택하세요.',
 
+  quotesSegmentWatch: '관심',
+  quotesSegmentPopular: '인기순',
+  quotesSegmentMcap: '시총순',
   quotesSegmentCoin: '코인',
-  quotesHintCoin: '글로벌 시가총액 기준 상위 20개 (CoinGecko · USD)',
+  quotesHintCoin: '글로벌 시가총액 기준 상위 코인 (CoinGecko · USD) — 개수는 설정에서 조절',
   quotesFooterCoin:
     '코인은 CoinGecko 공개 API 기준입니다. 시총·가격은 참고용이며 실제 거래와 다를 수 있습니다.',
   quotesPrevRefCoin: '24h 기준가',
@@ -214,6 +240,13 @@ const en = {
   screenSettings: 'Settings',
   screenAlerts: 'Alerts',
   screenCalendar: 'Invest calendar',
+  calendarScreenHint: 'Finnhub earnings & economic calendar (free tier may omit some items)',
+  calendarScreenMonthHeading: 'This month',
+  calendarScreenEmptyMonth: 'No events this month.',
+  calendarScreenSectionTitle: 'Events on this day',
+  calendarScreenEmptyDay: 'No events on this date.',
+  calendarMonthPrevA11y: 'Previous month',
+  calendarMonthNextA11y: 'Next month',
   screenInfo: 'About',
   screenMegaCapList: 'Mega-cap tickers',
   screenMegaCapListLead:
@@ -222,12 +255,15 @@ const en = {
   settingsMegaCapListLink: 'View mega-cap ticker list',
 
   settingsCacheSectionTitle: 'Cache',
-  settingsCacheOneLiner: 'YouTube {{yt}} min · Calls {{cc}} min · off = fetch every time',
+  settingsCacheOneLiner:
+    'YouTube {{yt}} min · Calls {{cc}} min · Calendar {{cal}} min · Quotes ~{{qt}}s · off = fetch every time',
   settingsCacheClearButton: 'Clear all',
   settingsCacheClearedTitle: 'Cache',
-  settingsCacheClearedBody: 'YouTube and Calls memory caches were cleared.',
+  settingsCacheClearedBody: 'YouTube, Calls, Calendar, and Quotes memory caches were cleared.',
   settingsCacheYoutubeToggle: 'YouTube',
   settingsCacheConcallToggle: 'Calls',
+  settingsCacheCalendarToggle: 'Calendar',
+  settingsCacheQuotesToggle: 'Quotes',
 
   headerTagline: 'Cut the noise. Keep the signal.',
   a11yAlerts: 'Alerts',
@@ -246,8 +282,9 @@ const en = {
   otaUpdatePreviewBody: 'This is not a real OTA. You are only previewing the banner UI.',
 
   settingsTabYoutube: 'YouTube',
-  settingsTabQuotes: 'Watchlist',
+  settingsTabQuotes: 'Quotes',
   settingsTabDisplay: 'Display',
+  settingsTabCalendar: 'Calendar',
   settingsTabNotifications: 'Alerts',
 
   settingsYoutubeLead:
@@ -267,13 +304,24 @@ const en = {
   youtubeErrorLoad: 'Could not load YouTube.',
   youtubeErrorRefresh: 'Refresh failed',
 
-  settingsQuotesLead: 'US tickers shown under Watch on the Quotes tab. Changes are saved on device.',
+  settingsQuotesLead: 'US tickers used for the Watch segment on the Quotes tab. Saved on this device.',
   settingsQuotesSectionAdd: 'Add ticker',
   settingsQuotesHintTicker: 'US ticker (e.g. AAPL, SPY)',
   settingsQuotesPlaceholderTicker: 'Ticker',
   settingsQuotesDefaultWatchlist: 'Default watchlist (app)',
   settingsQuotesCurrentList: 'Current list ({{count}})',
-  settingsQuotesReset: 'Reset to default watchlist',
+  settingsQuotesReset: 'Reset',
+  settingsQuotesLimitsKicker: 'Count',
+  settingsQuotesWatchKicker: 'WATCHLIST',
+  settingsQuotesListLimitsHint:
+    'Popular, market cap, and crypto: pick 10–100 in steps of 10 (default 20) from the scroll list. Market cap options are capped by the symbol universe. Max: Popular {{popMax}} · MCap {{mcapMax}} · Crypto {{coinMax}}.',
+  settingsQuotesPopularCountLabel: 'Popular',
+  settingsQuotesMcapCountLabel: 'Market cap',
+  settingsQuotesCoinCountLabel: 'Crypto',
+  settingsQuotesSegmentOrderKicker: 'Order',
+  settingsQuotesSegmentOrderHint:
+    'Order of Watch / Popular / Market cap / Crypto on the Quotes screen. Drag the ≡ handle to reorder.',
+  settingsQuotesSegmentDragHandleA11y: 'Reorder {{name}} (drag)',
 
   settingsThemeLead:
     'In Display, change the app theme (accent color) and language. Theme color applies to tabs, buttons, and refresh controls; language saves immediately.',
@@ -283,6 +331,7 @@ const en = {
   settingsDisplaySelectedTheme: 'Selected: {{name}}',
 
   settingsCalendarScopeTitle: 'Calendar · calls',
+  settingsCalendarTabLead: 'Set how earnings rows are scoped on Calendar and earnings-call screens.',
   settingsCalendarScopeLead:
     'Choose whether earnings rows use the app mega-cap universe or your Quotes/Settings watchlist. Macro/economic events are always shown in full.',
   settingsScopeMega: 'Mega-cap',
@@ -325,8 +374,8 @@ const en = {
   alertMinNewsSource: 'Select at least one news source.',
   alertResetCurationTitle: 'Reset to defaults',
   alertResetCurationBody: 'Restore the app’s default curation list. Continue?',
-  alertResetWatchTitle: 'Reset watchlist',
-  alertResetWatchBody: 'Restore the default ticker list below. Continue?',
+  alertResetWatchTitle: 'Watchlist',
+  alertResetWatchBody: 'Restore the app default tickers?',
   alertReset: 'Reset',
   alertEmptyTicker: 'Enter a ticker.',
   alertTickerRule: 'Use letters, numbers, . and - only.',
@@ -377,8 +426,11 @@ const en = {
   callsEmptyWatchlistEmpty:
     'No watchlist tickers. Add some in Quotes/Settings or choose mega-cap scope in Display.',
 
+  quotesSegmentWatch: 'Watch',
+  quotesSegmentPopular: 'Popular',
+  quotesSegmentMcap: 'MCap',
   quotesSegmentCoin: 'Crypto',
-  quotesHintCoin: 'Top 20 by global market cap (CoinGecko · USD)',
+  quotesHintCoin: 'Top cryptos by global market cap (CoinGecko · USD). Count in Settings.',
   quotesFooterCoin:
     'Crypto data from CoinGecko public API. Market cap and prices are indicative and may differ from exchange fills.',
   quotesPrevRefCoin: '24h ref.',
@@ -404,6 +456,13 @@ const ja = {
   screenSettings: '設定',
   screenAlerts: '通知',
   screenCalendar: '投資カレンダー',
+  calendarScreenHint: 'Finnhub 決算・経済カレンダー（無料枠では一部欠ける場合があります）',
+  calendarScreenMonthHeading: '今月の予定',
+  calendarScreenEmptyMonth: '今月の予定はありません。',
+  calendarScreenSectionTitle: 'この日の予定',
+  calendarScreenEmptyDay: 'この日の予定はありません。',
+  calendarMonthPrevA11y: '前の月',
+  calendarMonthNextA11y: '次の月',
   screenInfo: '情報',
   screenMegaCapList: 'メガキャップのティッカー一覧',
   screenMegaCapListLead:
@@ -412,12 +471,15 @@ const ja = {
   settingsMegaCapListLink: 'メガキャップのティッカー一覧を見る',
 
   settingsCacheSectionTitle: 'キャッシュ',
-  settingsCacheOneLiner: 'YouTube {{yt}}分 · コール {{cc}}分 · オフで毎回取得',
+  settingsCacheOneLiner:
+    'YouTube {{yt}}分 · コール {{cc}}分 · カレンダー {{cal}}分 · 株価 約{{qt}}秒 · オフで毎回取得',
   settingsCacheClearButton: '全消去',
   settingsCacheClearedTitle: 'キャッシュ',
-  settingsCacheClearedBody: 'YouTube・決算コールのメモリキャッシュを消去しました。',
+  settingsCacheClearedBody: 'YouTube・決算コール・カレンダー・株価のメモリキャッシュを消去しました。',
   settingsCacheYoutubeToggle: 'YouTube',
   settingsCacheConcallToggle: 'コール',
+  settingsCacheCalendarToggle: 'カレンダー',
+  settingsCacheQuotesToggle: '株価',
 
   headerTagline: 'ノイズを捨て、本当のシグナルだけを。',
   a11yAlerts: '通知',
@@ -436,8 +498,9 @@ const ja = {
   otaUpdatePreviewBody: '実際のOTAではありません。バナー表示の確認用です。',
 
   settingsTabYoutube: 'YouTube',
-  settingsTabQuotes: 'ウォッチ',
+  settingsTabQuotes: '株価',
   settingsTabDisplay: '表示',
+  settingsTabCalendar: 'カレンダー',
   settingsTabNotifications: '通知',
 
   settingsYoutubeLead:
@@ -457,13 +520,24 @@ const ja = {
   youtubeErrorLoad: 'YouTube を読み込めませんでした。',
   youtubeErrorRefresh: '更新に失敗しました',
 
-  settingsQuotesLead: '相場タブの「ウォッチ」に表示する米国株ティッカーです。変更は端末に保存されます。',
+  settingsQuotesLead: '相場タブ「ウォッチ」用の米国株ティッカーです。この端末に保存されます。',
   settingsQuotesSectionAdd: 'ティッカーを追加',
   settingsQuotesHintTicker: '米国ティッカー（例: AAPL, SPY）',
   settingsQuotesPlaceholderTicker: 'ティッカー',
   settingsQuotesDefaultWatchlist: 'デフォルトウォッチ（アプリ）',
   settingsQuotesCurrentList: '現在の一覧 ({{count}})',
-  settingsQuotesReset: 'デフォルトウォッチに戻す',
+  settingsQuotesReset: 'リセット',
+  settingsQuotesLimitsKicker: '件数',
+  settingsQuotesWatchKicker: 'ウォッチリスト',
+  settingsQuotesListLimitsHint:
+    '人気・時価・仮想通貨はいずれも10〜100を10件単位でスクロール選択（既定20）。時価はユニバース件数以下のみ表示。上限: 人気 {{popMax}} · 時価 {{mcapMax}} · コイン {{coinMax}}。',
+  settingsQuotesPopularCountLabel: '人気順',
+  settingsQuotesMcapCountLabel: '時価順',
+  settingsQuotesCoinCountLabel: '仮想通貨',
+  settingsQuotesSegmentOrderKicker: '順序',
+  settingsQuotesSegmentOrderHint:
+    '相場画面上部のウォッチ・人気・時価・仮想通貨の順です。右の≡をドラッグして並べ替えます。',
+  settingsQuotesSegmentDragHandleA11y: '{{name}}の順番を変更（ドラッグ）',
 
   settingsThemeLead:
     '表示ではアプリのテーマ（アクセントカラー）と言語を変更できます。テーマ色はタブ・ボタン・更新などに反映され、言語はすぐに保存されます。',
@@ -473,6 +547,7 @@ const ja = {
   settingsDisplaySelectedTheme: '選択: {{name}}',
 
   settingsCalendarScopeTitle: 'カレンダー・決算コール',
+  settingsCalendarTabLead: 'カレンダー・決算コール画面の実績行の範囲を設定します。',
   settingsCalendarScopeLead:
     '実績(earnings)行をメガキャップ候補にするか、相場・設定のウォッチティッカーにするか選びます。経済指標・マクロは常にすべて表示されます。',
   settingsScopeMega: 'メガキャップ',
@@ -515,8 +590,8 @@ const ja = {
   alertMinNewsSource: 'ニュース提供元は最低1つ選択してください。',
   alertResetCurationTitle: 'デフォルトに戻す',
   alertResetCurationBody: 'アプリ標準のキュレーション一覧に戻します。続行しますか？',
-  alertResetWatchTitle: 'ウォッチをデフォルトに',
-  alertResetWatchBody: '下記のデフォルトティッカー一覧に戻します。続行しますか？',
+  alertResetWatchTitle: 'ウォッチ',
+  alertResetWatchBody: 'アプリ既定のティッカーに戻します。よろしいですか？',
   alertReset: 'リセット',
   alertEmptyTicker: 'ティッカーを入力してください。',
   alertTickerRule: '英数字・.(ドット)·-(ハイフン) のみ使えます。',
@@ -565,8 +640,11 @@ const ja = {
   callsEmptyWatchlistEmpty:
     'ウォッチがありません。相場・設定でティッカーを追加するか、表示でメガキャップ範囲を選んでください。',
 
+  quotesSegmentWatch: 'ウォッチ',
+  quotesSegmentPopular: '人気順',
+  quotesSegmentMcap: '時価順',
   quotesSegmentCoin: '仮想通貨',
-  quotesHintCoin: '時価総額グローバル上位20件（CoinGecko · USD）',
+  quotesHintCoin: '時価総額グローバル上位（CoinGecko · USD）— 件数は設定で変更',
   quotesFooterCoin:
     'CoinGecko 公開APIのデータです。時価・価格は参考値であり、実際の取引と異なる場合があります。',
   quotesPrevRefCoin: '24h基準',

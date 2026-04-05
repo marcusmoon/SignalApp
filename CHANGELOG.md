@@ -1,5 +1,29 @@
 # SIGNAL — 변경 요약 (기능 위주)
 
+## 2026-04-04
+
+### 시세 · 설정
+
+- **탭 순서(순서)**: `react-native-draggable-flatlist`로 드래그 정렬(핸들: RNGH `Pressable`). 루트에 `GestureHandlerRootView`.
+- **섹션**: 키커를 **순서** / **개수**로 단순화; **순서** 블록을 **개수** 위로 배치.
+- **목록 개수**: 인기·시총·코인 모두 10~100(10단위) 동일 선택. 시총 탭 표시용 **`MCAP_SCREEN_UNIVERSE` 대폭 확장**, Finnhub `profile2`는 청크 단위 호출.
+- **캐시** (`services/quotesCache.ts`): 시세 quote 메모리 캐시 TTL을 **갱신 주기(30초)와 동일**하게 통일(`QUOTES_POLL_INTERVAL_MS`). **시총순 심볼 순서**는 별도 TTL(10분)으로 캐시해 profile2 반복 부담 완화; 새로고침 시 순서 재계산. 설정의 캐시 한 줄에서 시세는 **초 단위** 표기.
+- **저장**: 탭 순서(`quotesSegmentOrderPreference`), 목록 상한(`quotesListLimitsPreference`).
+
+### 캘린더
+
+- **투자 캘린더 UI** 보강(`InvestMonthCalendar.tsx` 등), **캘린더 메모리 캐시**(`calendarCache.ts`) 및 표시 설정의 캐시 스위치·연동.
+
+### 유튜브 · 기타
+
+- 유튜브 탭 일부 정리. **세그먼트 탭 스타일** 상수 분리(`constants/segmentTabBar.ts`).
+
+### 의존성
+
+- `react-native-draggable-flatlist`, `react-native-gesture-handler` 등.
+
+---
+
 ## 최근 커밋 기준
 
 ### 캘린더 · 컨콜 · 메가캡

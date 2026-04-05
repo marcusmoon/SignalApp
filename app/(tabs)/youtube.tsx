@@ -20,6 +20,18 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
+import {
+  SEGMENT_TAB_ACTIVE_TEXT,
+  SEGMENT_TAB_BACKGROUND,
+  SEGMENT_TAB_BTN_PADDING_V,
+  SEGMENT_TAB_BTN_RADIUS,
+  SEGMENT_TAB_FONT_SIZE,
+  SEGMENT_TAB_FONT_WEIGHT,
+  SEGMENT_TAB_GAP,
+  SEGMENT_TAB_LINE_HEIGHT,
+  SEGMENT_TAB_OUTER_RADIUS,
+  SEGMENT_TAB_PADDING,
+} from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -231,34 +243,37 @@ export default function YoutubeScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <SignalHeader />
       {isFocused ? <OtaUpdateBanner /> : null}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
-        <Text style={styles.section}>경제 유튜브</Text>
-        <Text style={styles.hint}>
-          우하단 필터로 큐레이션 채널 선택 · 최신순/인기순 · {Math.round(YOUTUBE_CACHE_TTL_MS / 60000)}분 캐시
-        </Text>
+      <View style={styles.mainColumn}>
+        <View style={styles.topFixed}>
+          <Text style={styles.section}>경제 유튜브</Text>
+          <Text style={styles.hint}>
+            우하단 필터로 큐레이션 채널 선택 · 최신순/인기순 · {Math.round(YOUTUBE_CACHE_TTL_MS / 60000)}분 캐시
+          </Text>
 
-        <View style={styles.segment}>
-          <Pressable
-            onPress={() => setSort('latest')}
-            style={[styles.segBtn, sort === 'latest' && styles.segBtnActive]}
-            accessibilityState={{ selected: sort === 'latest' }}>
-            <Text style={[styles.segText, sort === 'latest' && styles.segTextActive]}>최신순</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setSort('popular')}
-            style={[styles.segBtn, sort === 'popular' && styles.segBtnActive]}
-            accessibilityState={{ selected: sort === 'popular' }}>
-            <Text style={[styles.segText, sort === 'popular' && styles.segTextActive]}>인기순</Text>
-          </Pressable>
+          <View style={styles.segment}>
+            <Pressable
+              onPress={() => setSort('latest')}
+              style={[styles.segBtn, sort === 'latest' && styles.segBtnActive]}
+              accessibilityState={{ selected: sort === 'latest' }}>
+              <Text style={[styles.segText, sort === 'latest' && styles.segTextActive]}>최신순</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setSort('popular')}
+              style={[styles.segBtn, sort === 'popular' && styles.segBtnActive]}
+              accessibilityState={{ selected: sort === 'popular' }}>
+              <Text style={[styles.segText, sort === 'popular' && styles.segTextActive]}>인기순</Text>
+            </Pressable>
+          </View>
         </View>
 
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
+          ]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
         {error ? (
           <View style={styles.errBox}>
             <Text style={styles.errText}>{error}</Text>
@@ -285,7 +300,8 @@ export default function YoutubeScreen() {
             요약은 영상 설명(snippet.description)과 제목을 Claude에 넣어 생성합니다. 같은 탭·같은 채널 선택은 약 {Math.round(YOUTUBE_CACHE_TTL_MS / 60000)}분간 캐시됩니다.
           </Text>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       {filterReady ? (
         <Pressable
@@ -349,8 +365,15 @@ export default function YoutubeScreen() {
 function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
+    mainColumn: { flex: 1 },
+    topFixed: {
+      flexShrink: 0,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      backgroundColor: theme.bg,
+    },
     scrollView: { flex: 1 },
-    scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
+    scrollContent: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28 },
     section: { fontSize: 16, fontWeight: '800', color: theme.text, marginBottom: 4 },
     hint: { fontSize: 11, color: theme.textDim, marginBottom: 10 },
     filterFab: {
@@ -488,18 +511,18 @@ function makeStyles(theme: AppTheme) {
     },
     segment: {
       flexDirection: 'row',
-      backgroundColor: '#12121A',
-      borderRadius: 10,
+      backgroundColor: SEGMENT_TAB_BACKGROUND,
+      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
       borderWidth: 1,
       borderColor: theme.border,
-      padding: 4,
+      padding: SEGMENT_TAB_PADDING,
       marginBottom: 14,
-      gap: 4,
+      gap: SEGMENT_TAB_GAP,
     },
     segBtn: {
       flex: 1,
-      paddingVertical: 10,
-      borderRadius: 8,
+      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
+      borderRadius: SEGMENT_TAB_BTN_RADIUS,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -507,12 +530,13 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.green,
     },
     segText: {
-      fontSize: 13,
-      fontWeight: '800',
+      fontSize: SEGMENT_TAB_FONT_SIZE,
+      lineHeight: SEGMENT_TAB_LINE_HEIGHT,
+      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
       color: theme.textDim,
     },
     segTextActive: {
-      color: '#0A0A0F',
+      color: SEGMENT_TAB_ACTIVE_TEXT,
     },
     errBox: {
       padding: 12,

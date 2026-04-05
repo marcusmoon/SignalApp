@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo } from 'react';
 import { Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { NotificationListener } from '@/components/NotificationListener';
@@ -55,13 +56,15 @@ export default function RootLayout() {
   }
 
   return (
-    <SignalThemeProvider>
-      <LocaleProvider>
-        <OtaBannerProvider key={`ota-prev-${getPreviewOtaBannerRaw()}`}>
-          <RootLayoutNav />
-        </OtaBannerProvider>
-      </LocaleProvider>
-    </SignalThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SignalThemeProvider>
+        <LocaleProvider>
+          <OtaBannerProvider key={`ota-prev-${getPreviewOtaBannerRaw()}`}>
+            <RootLayoutNav />
+          </OtaBannerProvider>
+        </LocaleProvider>
+      </SignalThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 

@@ -154,9 +154,10 @@ function makeStyles(theme: AppTheme) {
       color: SEGMENT_TAB_ACTIVE_TEXT,
     },
     lead: {
-      fontSize: 13,
+      fontSize: 14,
+      fontWeight: '500',
       color: theme.textDim,
-      lineHeight: 20,
+      lineHeight: 21,
       marginBottom: 16,
     },
     card: {
@@ -168,15 +169,16 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 20,
     },
     cardTitle: {
-      fontSize: 12,
+      fontSize: 13,
       fontWeight: '800',
       color: theme.textMuted,
       marginBottom: 6,
     },
     cardHint: {
-      fontSize: 12,
+      fontSize: 13,
+      fontWeight: '500',
       color: theme.textDim,
-      lineHeight: 18,
+      lineHeight: 19,
     },
     prefRow: {
       flexDirection: 'row',
@@ -192,7 +194,7 @@ function makeStyles(theme: AppTheme) {
       color: theme.text,
       marginBottom: 8,
     },
-    muted: { fontSize: 13, color: theme.textMuted, marginBottom: 12 },
+    muted: { fontSize: 14, fontWeight: '500', color: theme.textMuted, marginBottom: 12 },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -206,7 +208,7 @@ function makeStyles(theme: AppTheme) {
     },
     handleText: { flex: 1, fontSize: 14, color: theme.text, fontWeight: '600' },
     removeBtn: { padding: 8 },
-    hint: { fontSize: 11, color: theme.textDim, marginBottom: 8 },
+    hint: { fontSize: 12, fontWeight: '500', color: theme.textDim, marginBottom: 8 },
     addRow: { flexDirection: 'row', gap: 8, marginBottom: 20, alignItems: 'center' },
     input: {
       flex: 1,
@@ -245,10 +247,10 @@ function makeStyles(theme: AppTheme) {
       overflow: 'hidden',
     },
     displayCardKicker: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '800',
       color: theme.textMuted,
-      letterSpacing: 1.2,
+      letterSpacing: 1.1,
       textTransform: 'uppercase',
       marginBottom: 12,
     },
@@ -261,8 +263,8 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 6,
     },
     themePreviewLabel: {
-      fontSize: 10,
-      fontWeight: '700',
+      fontSize: 11,
+      fontWeight: '800',
       color: theme.textDim,
       marginBottom: 8,
     },
@@ -352,8 +354,8 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.green,
     },
     langSegmentText: {
-      fontSize: 12,
-      fontWeight: '700',
+      fontSize: 13,
+      fontWeight: '800',
       color: theme.textDim,
     },
     langSegmentTextActive: {
@@ -376,9 +378,10 @@ function makeStyles(theme: AppTheme) {
       paddingRight: 8,
     },
     cacheOneLiner: {
-      fontSize: 11,
+      fontSize: 12,
+      fontWeight: '500',
       color: theme.textDim,
-      lineHeight: 16,
+      lineHeight: 17,
       marginBottom: 10,
     },
     cacheClearBtn: {
@@ -401,9 +404,10 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 0,
     },
     quotesCardHint: {
-      fontSize: 11,
+      fontSize: 12,
+      fontWeight: '500',
       color: theme.textDim,
-      lineHeight: 16,
+      lineHeight: 17,
       marginBottom: 12,
     },
     quotesSegmentOrderListWrap: {
@@ -451,7 +455,7 @@ function makeStyles(theme: AppTheme) {
     limitPickerTitle: {
       paddingHorizontal: 16,
       paddingVertical: 12,
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: '800',
       color: theme.text,
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -497,8 +501,8 @@ function makeStyles(theme: AppTheme) {
     },
     segmentOrderLabel: {
       flex: 1,
-      fontSize: 14,
-      fontWeight: '700',
+      fontSize: 15,
+      fontWeight: '800',
       color: theme.text,
     },
     segmentOrderDragHandle: {

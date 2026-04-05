@@ -482,7 +482,7 @@ function makeStyles(theme: AppTheme) {
     scrollView: { flex: 1 },
     scrollContent: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28 },
     section: { fontSize: 16, fontWeight: '800', color: theme.text, marginBottom: 4 },
-    hint: { fontSize: 11, color: theme.textDim, marginBottom: 10 },
+    hint: { fontSize: 12, fontWeight: '500', color: theme.textDim, marginBottom: 10 },
     segment: {
       flexDirection: 'row',
       backgroundColor: SEGMENT_TAB_BACKGROUND,
@@ -512,7 +512,7 @@ function makeStyles(theme: AppTheme) {
     segTextActive: {
       color: SEGMENT_TAB_ACTIVE_TEXT,
     },
-    updated: { fontSize: 10, color: theme.textMuted, marginBottom: 10 },
+    updated: { fontSize: 11, fontWeight: '600', color: theme.textMuted, marginBottom: 10 },
     addRow: {
       flexDirection: 'row',
       gap: 8,
@@ -579,7 +579,7 @@ function makeStyles(theme: AppTheme) {
     cardTopRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     symCol: { flex: 1, minWidth: 0 },
     sym: { fontSize: 16, fontWeight: '900', color: theme.text, letterSpacing: 0.5 },
-    symSub: { fontSize: 11, fontWeight: '600', color: theme.textMuted, marginTop: 2 },
+    symSub: { fontSize: 12, fontWeight: '700', color: theme.textMuted, marginTop: 2 },
     price: { fontSize: 18, fontWeight: '800', color: theme.text },
     na: { fontSize: 16, color: theme.textDim },
     removeBtn: { padding: 2 },
@@ -587,7 +587,7 @@ function makeStyles(theme: AppTheme) {
     chg: { fontSize: 13, fontWeight: '700' },
     chgUp: { color: theme.green },
     chgDn: { color: '#E08080' },
-    pc: { fontSize: 11, color: theme.textMuted },
+    pc: { fontSize: 12, fontWeight: '500', color: theme.textMuted },
     fail: { fontSize: 12, color: '#E0A0A0' },
     note: {
       marginTop: 6,
@@ -597,6 +597,6 @@ function makeStyles(theme: AppTheme) {
       borderWidth: 1,
       borderColor: theme.border,
     },
-    noteText: { fontSize: 11, color: theme.textDim, lineHeight: 16 },
+    noteText: { fontSize: 12, fontWeight: '500', color: theme.textDim, lineHeight: 17 },
   });
 }

@@ -18,10 +18,10 @@ export function SignalHeader() {
       <View style={styles.topRow}>
         <View style={styles.logoRow}>
           <View style={styles.bars}>
-            <View style={[styles.bar, { height: 14, opacity: 0.35 }]} />
-            <View style={[styles.bar, { height: 24, opacity: 0.6 }]} />
-            <View style={[styles.bar, { height: 34, opacity: 0.82 }]} />
-            <View style={[styles.bar, { height: 42, opacity: 1 }]} />
+            <View style={[styles.bar, { height: 16, opacity: 0.35 }]} />
+            <View style={[styles.bar, { height: 26, opacity: 0.6 }]} />
+            <View style={[styles.bar, { height: 36, opacity: 0.82 }]} />
+            <View style={[styles.bar, { height: 46, opacity: 1 }]} />
           </View>
           <View>
             <Text style={styles.brand}>SIGNAL</Text>
@@ -34,21 +34,21 @@ export function SignalHeader() {
             style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel={t('a11yAlerts')}>
-            <FontAwesome name="bell" size={18} color={theme.textDim} />
+            <FontAwesome name="bell" size={21} color={theme.textDim} />
           </Pressable>
           <Pressable
             onPress={() => router.push('/calendar')}
             style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel={t('a11yCalendar')}>
-            <FontAwesome name="calendar" size={17} color={theme.textDim} />
+            <FontAwesome name="calendar" size={20} color={theme.textDim} />
           </Pressable>
           <Pressable
             onPress={() => router.push('/settings')}
             style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel={t('a11ySettings')}>
-            <FontAwesome name="cog" size={18} color={theme.textDim} />
+            <FontAwesome name="cog" size={21} color={theme.textDim} />
           </Pressable>
         </View>
       </View>
@@ -60,8 +60,8 @@ function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     wrap: {
       paddingHorizontal: 16,
-      paddingTop: 6,
-      paddingBottom: 8,
+      paddingTop: 10,
+      paddingBottom: 12,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
       backgroundColor: theme.bg,
@@ -79,7 +79,12 @@ function makeStyles(theme: AppTheme) {
       marginRight: -2,
     },
     iconBtn: {
-      padding: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 10,
+      minWidth: 44,
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     logoRow: {
       flexDirection: 'row',
@@ -90,7 +95,7 @@ function makeStyles(theme: AppTheme) {
       flexDirection: 'row',
       alignItems: 'flex-end',
       gap: 4,
-      height: 42,
+      height: 46,
     },
     bar: {
       width: 9,
@@ -98,15 +103,16 @@ function makeStyles(theme: AppTheme) {
       borderRadius: 3,
     },
     brand: {
-      fontSize: 17,
+      fontSize: 18,
       fontWeight: '900',
       color: theme.green,
       letterSpacing: -0.4,
     },
     tag: {
       marginTop: 1,
-      fontSize: 10,
-      lineHeight: 13,
+      fontSize: 11,
+      lineHeight: 14,
+      fontWeight: '600',
       color: theme.textDim,
     },
   });

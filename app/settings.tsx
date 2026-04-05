@@ -576,6 +576,13 @@ export default function SettingsScreen() {
             <Text style={[styles.tabText, tab === 'quotes' && styles.tabTextActive]}>{t('settingsTabQuotes')}</Text>
           </Pressable>
           <Pressable
+            onPress={() => setTab('display')}
+            style={[styles.tabBtn, tab === 'display' && styles.tabBtnActive]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: tab === 'display' }}>
+            <Text style={[styles.tabText, tab === 'display' && styles.tabTextActive]}>{t('settingsTabDisplay')}</Text>
+          </Pressable>
+          <Pressable
             onPress={() => setTab('notifications')}
             style={[styles.tabBtn, tab === 'notifications' && styles.tabBtnActive]}
             accessibilityRole="tab"
@@ -583,13 +590,6 @@ export default function SettingsScreen() {
             <Text style={[styles.tabText, tab === 'notifications' && styles.tabTextActive]}>
               {t('settingsTabNotifications')}
             </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setTab('display')}
-            style={[styles.tabBtn, tab === 'display' && styles.tabBtnActive]}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: tab === 'display' }}>
-            <Text style={[styles.tabText, tab === 'display' && styles.tabTextActive]}>{t('settingsTabDisplay')}</Text>
           </Pressable>
         </View>
 

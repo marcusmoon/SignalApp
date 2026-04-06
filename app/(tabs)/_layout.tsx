@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Easing, Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import type { BottomTabBarButtonProps, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import { Tabs } from 'expo-router';
@@ -75,15 +75,11 @@ export default function TabLayout() {
 
   const screenOptions = useMemo(
     (): BottomTabNavigationOptions => ({
-        /** 탭 전환: 기본 150ms는 체감이 거의 없음 → 조금 길게 */
-        animation: 'shift',
-        transitionSpec: {
-          animation: 'timing',
-          config: {
-            duration: 280,
-            easing: Easing.inOut(Easing.cubic),
-          },
-        },
+        /**
+         * 'shift'/'fade'는 씬에 opacity 보간을 걸어, 전환 타이밍이 꼬이면 포커스된 탭이 투명(빈 화면)으로 남는 문제가 있다.
+         * 전환 애니메이션 없이 즉시 표시.
+         */
+        animation: 'none',
         tabBarActiveTintColor: theme.green,
         tabBarInactiveTintColor: 'rgba(142,142,147,0.88)',
         tabBarStyle: {
@@ -136,6 +132,10 @@ export default function TabLayout() {
         },
         tabBarButton: (props: BottomTabBarButtonProps) => <SlackTabBarButton {...props} />,
         headerShown: false,
+        /** 탭 복귀 시 화면이 비는(react-native-screens freeze) 경우 완화 */
+        freezeOnBlur: false,
+        /** 첫 탭 진입 시 레이아웃만 있고 내용이 안 그려지는 경우 완화 */
+        lazy: false,
       }),
     [
       glassParams.android.elevation,
@@ -153,7 +153,8 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      screenOptions={screenOptions}>
+      screenOptions={screenOptions}
+      detachInactiveScreens={false}>
       <Tabs.Screen
         name="index"
         options={{

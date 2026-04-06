@@ -260,6 +260,7 @@ export default function FeedScreen() {
       {isFocused ? <OtaUpdateBanner /> : null}
       <ScrollView
         style={styles.scrollView}
+        removeClippedSubviews={false}
         contentContainerStyle={[
           styles.scroll,
           { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },

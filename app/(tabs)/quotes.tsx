@@ -4,6 +4,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   Alert,
+  InteractionManager,
   Platform,
   Pressable,
   RefreshControl,
@@ -37,6 +38,7 @@ import {
 } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
+import { useTabScreenLoadingRecovery } from '@/hooks/useTabScreenLoadingRecovery';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
@@ -152,6 +154,9 @@ export default function QuotesScreen() {
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
+  const rowsRef = useRef<Row[]>([]);
+  rowsRef.current = rows;
+  useTabScreenLoadingRecovery(rows, setLoading);
   /** 다음 자동 갱신(캐시 만료 또는 폴링) 예상 시각(ms) */
   const [nextRefreshAtMs, setNextRefreshAtMs] = useState<number | null>(null);
   /** 남은 초 표시가 줄어들게 함 */
@@ -345,27 +350,30 @@ export default function QuotesScreen() {
     useCallback(() => {
       let cancelled = false;
       let interval: ReturnType<typeof setInterval> | undefined;
-
-      (async () => {
-        setLoading(true);
-        try {
-          await load();
-        } catch (e) {
-          if (!cancelled) {
-            setError(e instanceof Error ? e.message : '시세를 불러오지 못했습니다.');
-            setRows([]);
+      const task = InteractionManager.runAfterInteractions(() => {
+        if (cancelled) return;
+        void (async () => {
+          if (rowsRef.current.length === 0) setLoading(true);
+          try {
+            await load();
+          } catch (e) {
+            if (!cancelled) {
+              setError(e instanceof Error ? e.message : '시세를 불러오지 못했습니다.');
+              setRows([]);
+            }
+          } finally {
+            if (!cancelled) setLoading(false);
           }
-        } finally {
-          if (!cancelled) setLoading(false);
-        }
-      })();
+        })();
 
-      interval = setInterval(() => {
-        void load();
-      }, POLL_MS);
+        interval = setInterval(() => {
+          void load();
+        }, POLL_MS);
+      });
 
       return () => {
         cancelled = true;
+        task.cancel();
         if (interval) clearInterval(interval);
         clearTtlTimer();
       };
@@ -504,6 +512,7 @@ export default function QuotesScreen() {
 
         <ScrollView
           style={styles.scrollView}
+          removeClippedSubviews={false}
           contentContainerStyle={[
             styles.scrollContent,
             loading ? SCROLL_CONTENT_LOADING_STYLE : null,

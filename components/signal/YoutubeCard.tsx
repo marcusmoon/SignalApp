@@ -1,12 +1,11 @@
 import { FontAwesome } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import * as WebBrowser from 'expo-web-browser';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { youtubeOpenUrl } from '@/lib/youtubeEconomy';
+import { openYoutubeItem } from '@/lib/openYoutube';
 import type { YoutubeItem } from '@/types/signal';
 
 type Props = { item: YoutubeItem };
@@ -14,13 +13,12 @@ type Props = { item: YoutubeItem };
 export function YoutubeCard({ item }: Props) {
   const { theme } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const url = youtubeOpenUrl(item);
 
   return (
     <View style={styles.card}>
       <Pressable
         style={({ pressed }) => [styles.topRow, pressed && styles.pressed]}
-        onPress={() => void WebBrowser.openBrowserAsync(url)}
+        onPress={() => void openYoutubeItem(item)}
         accessibilityRole="button"
         accessibilityLabel={`${item.title}, ${item.channel}`}>
         <View style={styles.thumb}>
@@ -34,7 +32,20 @@ export function YoutubeCard({ item }: Props) {
         </View>
         <View style={styles.body}>
           <View style={styles.topicRow}>
-            <Text style={styles.topic}>{item.topic}</Text>
+            <View style={styles.topicWrap}>
+              <Text style={styles.topic} numberOfLines={1}>
+                {item.topic}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => void openYoutubeItem(item)}
+              style={({ pressed }) => [styles.linkChip, pressed && styles.linkChipPressed]}
+              hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+              accessibilityRole="link"
+              accessibilityLabel="YouTube에서 열기">
+              <FontAwesome name="external-link" size={10} color={theme.green} />
+              <Text style={styles.linkText}>YouTube</Text>
+            </Pressable>
           </View>
           <Text style={styles.title} numberOfLines={2}>
             {item.title}
@@ -59,14 +70,6 @@ export function YoutubeCard({ item }: Props) {
             · {line}
           </Text>
         ))}
-        <Pressable
-          onPress={() => void WebBrowser.openBrowserAsync(url)}
-          style={styles.linkRow}
-          accessibilityRole="link"
-          accessibilityLabel="유튜브에서 영상 열기">
-          <Text style={styles.linkText}>유튜브에서 보기</Text>
-          <FontAwesome name="external-link" size={11} color={theme.green} />
-        </Pressable>
       </View>
     </View>
   );
@@ -133,7 +136,17 @@ function makeStyles(theme: AppTheme) {
       justifyContent: 'center',
       minWidth: 0,
     },
-    topicRow: { marginBottom: 4 },
+    topicRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+      marginBottom: 4,
+    },
+    topicWrap: {
+      flex: 1,
+      minWidth: 0,
+    },
     topic: {
       alignSelf: 'flex-start',
       fontSize: 10,
@@ -164,7 +177,7 @@ function makeStyles(theme: AppTheme) {
       color: theme.textDim,
     },
     summaryBox: {
-      marginTop: 12,
+      marginTop: 8,
       paddingTop: 12,
       borderTopWidth: 1,
       borderTopColor: theme.border,
@@ -193,15 +206,19 @@ function makeStyles(theme: AppTheme) {
       lineHeight: 18,
       marginBottom: 5,
     },
-    linkRow: {
+    linkChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
-      marginTop: 8,
-      alignSelf: 'flex-start',
+      gap: 4,
+      flexShrink: 0,
+      paddingVertical: 2,
+      paddingLeft: 2,
+    },
+    linkChipPressed: {
+      opacity: 0.85,
     },
     linkText: {
-      fontSize: 12,
+      fontSize: 10,
       fontWeight: '700',
       color: theme.green,
     },

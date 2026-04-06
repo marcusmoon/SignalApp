@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
   Modal,
@@ -19,7 +19,9 @@ import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
+import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
+import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
   SEGMENT_TAB_BACKGROUND,
@@ -35,6 +37,7 @@ import {
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
+import { useTabScreenLoadingRecovery } from '@/hooks/useTabScreenLoadingRecovery';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
@@ -44,6 +47,7 @@ import { loadCurationHandles } from '@/services/youtubeCurationList';
 import { peekYoutubeCache, fetchEconomyYoutubeCached, YOUTUBE_CACHE_TTL_MS } from '@/services/youtubeCache';
 import { fetchChannelDisplayNames, YOUTUBE_ERROR_QUOTA, type ChannelHandleMeta } from '@/services/youtube';
 import type { YoutubeItem } from '@/types/signal';
+import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
 import {
   msUntilNextPacificMidnight,
   quotaResetHoursMinutes,
@@ -51,6 +55,11 @@ import {
 } from '@/utils/youtubeQuota';
 
 type SortKey = 'popular' | 'latest';
+
+/** 채널 배열이 동일하면 상태 갱신·load 재실행을 막기 위한 키 (탭 복귀 시 매번 새 배열 참조 방지) */
+function normalizeHandlesKey(handles: string[]): string {
+  return [...handles].map((h) => h.trim().toLowerCase()).sort().join('\0');
+}
 
 export default function YoutubeScreen() {
   const { t } = useLocale();
@@ -71,25 +80,38 @@ export default function YoutubeScreen() {
   const [curationHandles, setCurationHandles] = useState<string[] | null>(null);
   const [selectedHandles, setSelectedHandles] = useState<string[] | null>(null);
   const [channelModalVisible, setChannelModalVisible] = useState(false);
+  /** load() 안에서 이미 화면에 목록이 있는지 — 캐시 재적중 시 전체 로딩 스킵 */
+  const itemsRef = useRef<YoutubeItem[]>([]);
+  itemsRef.current = items;
+
+  useTabScreenLoadingRecovery(items, setLoading);
 
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-      (async () => {
+      /**
+       * 탭 이탈 시 cancelled 로 setState 를 건너뛰면 selectedHandles 가 영구 null 이 되거나
+       * 채널 로드가 끝나도 반영되지 않아 본문이 비는 경우가 있음 → 완료 시 항상 반영.
+       */
+      void (async () => {
         const curation = await loadCurationHandles();
         const [meta, saved] = await Promise.all([
           fetchChannelDisplayNames(curation),
           loadSelectedChannels(),
         ]);
-        if (!cancelled) {
-          setCurationHandles(curation);
-          setChannelMeta(meta);
-          setSelectedHandles(saved);
-        }
+        setCurationHandles((prev) => {
+          if (prev !== null && normalizeHandlesKey(prev) === normalizeHandlesKey(curation)) {
+            return prev;
+          }
+          return curation;
+        });
+        setChannelMeta(meta);
+        setSelectedHandles((prev) => {
+          if (prev !== null && normalizeHandlesKey(prev) === normalizeHandlesKey(saved)) {
+            return prev;
+          }
+          return saved;
+        });
       })();
-      return () => {
-        cancelled = true;
-      };
     }, []),
   );
 
@@ -117,7 +139,11 @@ export default function YoutubeScreen() {
   }, [isQuotaError]);
 
   const load = useCallback(
-    async (opts?: { forceRefresh?: boolean; channelHandles?: string[] }) => {
+    async (opts?: {
+      forceRefresh?: boolean;
+      channelHandles?: string[];
+      errorFallback?: 'youtubeErrorLoad' | 'youtubeErrorRefresh';
+    }) => {
       setError(null);
       setIsQuotaError(false);
       const handles = opts?.channelHandles ?? selectedHandles;
@@ -140,64 +166,58 @@ export default function YoutubeScreen() {
       }
 
       const order = sort === 'popular' ? 'viewCount' : 'date';
-      const { youtubeEnabled } = await loadCacheFeaturePrefs();
+      const errKey = opts?.errorFallback ?? 'youtubeErrorLoad';
 
-      if (!opts?.forceRefresh && youtubeEnabled) {
-        const cached = peekYoutubeCache(order, handles);
-        if (cached) {
-          setItems(cached);
-          setLoading(false);
-          return;
-        }
+      const hadItems = itemsRef.current.length > 0;
+      if (!hadItems) {
+        setLoading(true);
       }
-
-      setLoading(true);
       try {
+        const { youtubeEnabled } = await loadCacheFeaturePrefs();
+        if (!opts?.forceRefresh && youtubeEnabled) {
+          const cached = peekYoutubeCache(order, handles);
+          if (cached) {
+            setItems(cached);
+            return;
+          }
+        }
+        if (hadItems) {
+          setLoading(true);
+        }
         const list = await fetchEconomyYoutubeCached(order, {
           forceRefresh: opts?.forceRefresh,
           channelHandles: handles,
           cacheEnabled: youtubeEnabled,
         });
         setItems(list);
+      } catch (e) {
+        applyLoadError(e, errKey);
+        setItems([]);
       } finally {
         setLoading(false);
       }
     },
-    [sort, selectedHandles, t],
+    [sort, selectedHandles, t, applyLoadError],
   );
 
   useEffect(() => {
     if (selectedHandles === null) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await load();
-      } catch (e) {
-        if (!cancelled) {
-          applyLoadError(e, 'youtubeErrorLoad');
-          setItems([]);
-          setLoading(false);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [applyLoadError, load, selectedHandles]);
+    void load();
+  }, [load, selectedHandles]);
 
   const onRefresh = useCallback(async () => {
     if (!selectedHandles?.length) return;
     setRefreshing(true);
     try {
-      await load({ forceRefresh: true, channelHandles: selectedHandles });
-      setError(null);
-      setIsQuotaError(false);
-    } catch (e) {
-      applyLoadError(e, 'youtubeErrorRefresh');
+      await load({
+        forceRefresh: true,
+        channelHandles: selectedHandles,
+        errorFallback: 'youtubeErrorRefresh',
+      });
     } finally {
       setRefreshing(false);
     }
-  }, [applyLoadError, load, selectedHandles]);
+  }, [load, selectedHandles]);
 
   const toggleChannel = useCallback(
     async (handle: string) => {
@@ -234,6 +254,18 @@ export default function YoutubeScreen() {
   }, [quotaResetMs, t]);
 
   const filterReady = Boolean(selectedHandles && curationHandles);
+  /**
+   * 채널 부트스트랩 전: 목록이 있으면 가리지 않음(탭 복귀·경합).
+   * 채널 준비 후: 캐시 없이 최신↔인기 전환·강제 새로고침 등으로 `loading`이면 스크롤 영역에 로딩(이미 카드가 있어도 표시).
+   */
+  const showScrollLoading =
+    selectedHandles === null
+      ? shouldShowTabScrollFullScreenLoading({
+          itemsLength: items.length,
+          loading,
+          awaitingBootstrap: true,
+        })
+      : loading;
 
   const renderChannelFilterBody = () => (
     <>
@@ -299,50 +331,59 @@ export default function YoutubeScreen() {
 
         <ScrollView
           style={styles.scrollView}
+          removeClippedSubviews={false}
           contentContainerStyle={[
             styles.scrollContent,
+            showScrollLoading ? SCROLL_CONTENT_LOADING_STYLE : null,
             { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
           ]}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
-        {error ? (
-          <View style={styles.errBox}>
-            <Text style={styles.errText}>{error}</Text>
-            {isQuotaError ? (
-              <>
-                <Text style={styles.errSub}>{quotaResetHintLine}</Text>
-                <Pressable
-                  onPress={() => void Linking.openURL(YOUTUBE_DATA_API_QUOTAS_CONSOLE_URL)}
-                  style={({ pressed }) => [styles.errLinkWrap, pressed && { opacity: 0.85 }]}
-                  accessibilityRole="link"
-                  accessibilityLabel={t('youtubeErrorQuotaConsoleLink')}>
-                  <Text style={styles.errLink}>{t('youtubeErrorQuotaConsoleLink')}</Text>
-                </Pressable>
-              </>
-            ) : null}
-          </View>
-        ) : null}
+          refreshControl={
+            showScrollLoading ? undefined : (
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />
+            )
+          }>
+          {showScrollLoading ? (
+            <View style={SCROLL_LOADING_BODY_STYLE}>
+              <SignalLoadingIndicator message={t('commonLoading')} />
+            </View>
+          ) : (
+            <>
+              {error ? (
+                <View style={styles.errBox}>
+                  <Text style={styles.errText}>{error}</Text>
+                  {isQuotaError ? (
+                    <>
+                      <Text style={styles.errSub}>{quotaResetHintLine}</Text>
+                      <Pressable
+                        onPress={() => void Linking.openURL(YOUTUBE_DATA_API_QUOTAS_CONSOLE_URL)}
+                        style={({ pressed }) => [styles.errLinkWrap, pressed && { opacity: 0.85 }]}
+                        accessibilityRole="link"
+                        accessibilityLabel={t('youtubeErrorQuotaConsoleLink')}>
+                        <Text style={styles.errLink}>{t('youtubeErrorQuotaConsoleLink')}</Text>
+                      </Pressable>
+                    </>
+                  ) : null}
+                </View>
+              ) : null}
 
-        {loading && selectedHandles !== null ? <Text style={styles.loading}>불러오는 중…</Text> : null}
+              {items.map((item) => (
+                <YoutubeCard key={item.id} item={item} />
+              ))}
 
-        {selectedHandles === null ? <Text style={styles.loading}>채널 설정 불러오는 중…</Text> : null}
+              {!error && items.length === 0 ? (
+                <Text style={styles.empty}>
+                  검색 결과가 없습니다. YouTube Data API v3가 프로젝트에서 사용 설정돼 있는지, 일일 쿼터가 남아 있는지 확인한 뒤 앱을 새로고침해 보세요.
+                </Text>
+              ) : null}
 
-        {!loading &&
-          items.map((item) => (
-            <YoutubeCard key={item.id} item={item} />
-          ))}
-
-        {!loading && items.length === 0 && !error ? (
-          <Text style={styles.empty}>
-            검색 결과가 없습니다. YouTube Data API v3가 프로젝트에서 사용 설정돼 있는지, 일일 쿼터가 남아 있는지 확인한 뒤 앱을 새로고침해 보세요.
-          </Text>
-        ) : null}
-
-        <View style={styles.note}>
-          <Text style={styles.noteText}>
-            요약은 영상 설명(snippet.description)과 제목을 Claude에 넣어 생성합니다. 같은 탭·같은 채널 선택은 약 {Math.round(YOUTUBE_CACHE_TTL_MS / 60000)}분간 캐시됩니다.
-          </Text>
-        </View>
+              <View style={styles.note}>
+                <Text style={styles.noteText}>
+                  요약은 영상 설명(snippet.description)과 제목을 Claude에 넣어 생성합니다. 같은 탭·같은 채널 선택은 약 {Math.round(YOUTUBE_CACHE_TTL_MS / 60000)}분간 캐시됩니다.
+                </Text>
+              </View>
+            </>
+          )}
         </ScrollView>
       </View>
 
@@ -606,7 +647,6 @@ function makeStyles(theme: AppTheme) {
       color: theme.green,
       textDecorationLine: 'underline',
     },
-    loading: { fontSize: 13, color: theme.textMuted, marginBottom: 12 },
     empty: { fontSize: 13, color: theme.textMuted, marginTop: 8 },
     note: {
       marginTop: 6,

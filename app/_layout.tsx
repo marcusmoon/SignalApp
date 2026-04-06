@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo } from 'react';
 import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { enableFreeze } from 'react-native-screens';
 import 'react-native-reanimated';
 
 import { AppSplashScreen } from '@/components/AppSplashScreen';
@@ -29,6 +30,11 @@ export const unstable_settings = {
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
+/** 탭·스택에서 react-freeze 기본 활성화 시 복귀 화면이 비는 이슈 완화 */
+if (Platform.OS !== 'web') {
+  enableFreeze(false);
+}
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({

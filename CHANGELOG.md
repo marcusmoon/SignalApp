@@ -2,6 +2,32 @@
 
 ## 2026-04-04
 
+### 탭·로딩·유튜브 개선
+
+- **공통 훅/유틸**: `hooks/useTabScreenLoadingRecovery.ts` — 탭 포커스·블러 시 목록이 있으면 `loading`을 내려 탭 전환 경합으로 본문이 가려지는 현상 완화. `utils/tabScrollLoadingGate.ts` — `shouldShowTabScrollFullScreenLoading`로 “목록이 있으면 전체 스크롤 로딩 숨김” 규칙 공유.
+- **컨콜·유튜브**: 위 훅·게이트 적용; 컨콜은 마운트 `finally`에서 항상 `setLoading(false)` 유지.
+- **시세 탭**: 탭 포커스 시 **목록이 비어 있을 때만** 전체 로딩; `InteractionManager.runAfterInteractions`로 인터랙션 종료 후 첫 로드·폴링 시작; `useTabScreenLoadingRecovery`로 포커스 복귀 시 로딩 플래그 정리.
+- **탭 네비게이션**: `animation: 'none'`(shift/fade 시 빈 화면 이슈 회피), `detachInactiveScreens={false}`, `freezeOnBlur: false`, `lazy: false`. 루트 `enableFreeze(false)`(웹 제외)로 react-freeze로 인한 복귀 빈 화면 완화.
+- **유튜브 탭**: 채널 선택이 준비된 뒤에는 `loading`이면 **최신↔인기 전환·캐시 미스** 시에도 스크롤 영역에 `SignalLoadingIndicator` 표시(이전 목록이 남아 있어도 로딩 노출). 채널 부트스트랩 전(`selectedHandles === null`)은 기존 게이트 유지.
+- **유튜브 열기**: `lib/openYoutube.ts` — `videoId`가 있으면 iOS/Android에서 **YouTube 앱·인텐트·https** 순으로 시도, `app.json` iOS `LSApplicationQueriesSchemes`에 `youtube`, `vnd.youtube` 등록. `YoutubeCard`는 `openYoutubeItem` 사용, 토픽 행에 **YouTube** 링크 칩.
+- **뉴스 피드**: `ScrollView`에 `removeClippedSubviews={false}` — 탭 전환 시 클리핑으로 내용이 안 보이는 경우 완화.
+
+#### 파일별
+
+| 파일 | 변경 내용 |
+|------|-----------|
+| `hooks/useTabScreenLoadingRecovery.ts` | **신규** — 탭 포커스 시 목록 있으면 `loading` false |
+| `utils/tabScrollLoadingGate.ts` | **신규** — 전체 스크롤 로딩 표시 여부 |
+| `app/(tabs)/calls.tsx` | 훅·게이트, 포커스 이펙트 정리 |
+| `app/(tabs)/quotes.tsx` | 포커스 로딩 조건, `InteractionManager`, 훅 |
+| `app/(tabs)/youtube.tsx` | 로딩 게이트(채널 준비 후), 훅·게이트 |
+| `app/(tabs)/_layout.tsx` | 탭 애니·freeze·lazy·detach |
+| `app/_layout.tsx` | `enableFreeze(false)` |
+| `app/(tabs)/index.tsx` | `removeClippedSubviews={false}` |
+| `lib/openYoutube.ts` | **신규** — 유튜브 앱/링크 열기 |
+| `components/signal/YoutubeCard.tsx` | `openYoutubeItem`, 링크 칩 UI |
+| `app.json` | iOS `LSApplicationQueriesSchemes` |
+
 ### 시세 관심 · 설정 상단 여백 (커밋 `d7cbd6c`)
 
 - **관심 종목 등록**: Finnhub **`/quote`**(유효 현재가) + **`/stock/profile2`**(프로필 존재) 둘 다 통과할 때만 저장. 없는 심볼은 알림 후 등록 안 됨.

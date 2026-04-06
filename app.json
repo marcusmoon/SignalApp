@@ -22,7 +22,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.marcus.signal"
+      "bundleIdentifier": "com.marcus.signal",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": ["youtube", "vnd.youtube"]
+      }
     },
     "android": {
       "adaptiveIcon": {

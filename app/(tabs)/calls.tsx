@@ -38,6 +38,8 @@ import { hasFinnhub } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { ConcallSummary } from '@/types/signal';
 import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
+import { useTabScreenLoadingRecovery } from '@/hooks/useTabScreenLoadingRecovery';
+import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
 import { openYahooFinanceEarnings } from '@/utils/yahooFinance';
 
 export default function CallsScreen() {
@@ -58,6 +60,8 @@ export default function CallsScreen() {
   const [fiscal, setFiscal] = useState<ConcallFiscalState>(defaultConcallFiscal());
   const fiscalRef = useRef(fiscal);
   fiscalRef.current = fiscal;
+
+  useTabScreenLoadingRecovery(items, setLoading);
 
   const runFetch = useCallback(async (forceRefresh?: boolean) => {
     const f = fiscalRef.current;
@@ -105,7 +109,8 @@ export default function CallsScreen() {
           setItems([]);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        /** 탭 이탈로 cancelled면 setLoading(false)를 건너뛰면 loading이 영구 true로 남아 본문이 가려짐 */
+        setLoading(false);
       }
     })();
     return () => {
@@ -169,6 +174,11 @@ export default function CallsScreen() {
     return base + scopeSuffix;
   }, [fiscal.fiscalYear, fiscal.fiscalQuarter, calendarScope, t]);
 
+  const showScrollLoading = shouldShowTabScrollFullScreenLoading({
+    itemsLength: items.length,
+    loading,
+  });
+
   const emptyMessage = useMemo(() => {
     if (loading || error) return null;
     if (items.length > 0) return null;
@@ -196,18 +206,19 @@ export default function CallsScreen() {
 
         <ScrollView
           style={styles.scrollView}
+          removeClippedSubviews={false}
           contentContainerStyle={[
             styles.scroll,
-            loading ? SCROLL_CONTENT_LOADING_STYLE : null,
+            showScrollLoading ? SCROLL_CONTENT_LOADING_STYLE : null,
             { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
           ]}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            loading ? undefined : (
+            showScrollLoading ? undefined : (
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />
             )
           }>
-          {loading ? (
+          {showScrollLoading ? (
             <View style={SCROLL_LOADING_BODY_STYLE}>
               <SignalLoadingIndicator message={t('commonLoading')} />
             </View>

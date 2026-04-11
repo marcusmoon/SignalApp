@@ -557,12 +557,6 @@ function makeStyles(theme: AppTheme) {
     langSegmentTextActive: {
       color: '#0A0A0F',
     },
-    llmProviderDisabledNote: {
-      fontSize: 12,
-      fontWeight: '500',
-      color: theme.textMuted,
-      marginTop: 8,
-    },
     tabBarGlassPercent: {
       fontSize: 26,
       fontWeight: '800',
@@ -802,7 +796,7 @@ export default function SettingsScreen() {
   const [tabBarGlassReady, setTabBarGlassReady] = useState(false);
   const [tabBarGlassPercent, setTabBarGlassPercent] = useState(() => DEFAULT_TAB_BAR_GLASS_PERCENT);
 
-  const [llmProvider, setLlmProvider] = useState<LlmProviderId>('claude');
+  const [llmProvider, setLlmProvider] = useState<LlmProviderId>('none');
   const [llmProviderReady, setLlmProviderReady] = useState(false);
 
   const claudeAvailable = hasAnthropic();
@@ -927,8 +921,8 @@ export default function SettingsScreen() {
   const reloadLlmProvider = useCallback(async () => {
     const v = await loadLlmProvider();
     let resolved = v;
-    if (v === 'claude' && !claudeAvailable && openaiAvailable) resolved = 'openai';
-    if (v === 'openai' && !openaiAvailable && claudeAvailable) resolved = 'claude';
+    if (v === 'claude' && !claudeAvailable) resolved = 'none';
+    if (v === 'openai' && !openaiAvailable) resolved = 'none';
     if (resolved !== v) {
       await saveLlmProvider(resolved);
     }
@@ -1669,6 +1663,23 @@ export default function SettingsScreen() {
                   <View style={styles.langSegmentedTrack}>
                     <Pressable
                       onPress={() => {
+                        setLlmProvider('none');
+                        void saveLlmProvider('none');
+                      }}
+                      style={[styles.langSegment, llmProvider === 'none' && styles.langSegmentActive]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: llmProvider === 'none' }}
+                      accessibilityLabel={t('settingsLlmProviderNone')}>
+                      <Text
+                        style={[
+                          styles.langSegmentText,
+                          llmProvider === 'none' && styles.langSegmentTextActive,
+                        ]}>
+                        {t('settingsLlmProviderNone')}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => {
                         setLlmProvider('claude');
                         void saveLlmProvider('claude');
                       }}
@@ -1686,9 +1697,7 @@ export default function SettingsScreen() {
                           styles.langSegmentText,
                           llmProvider === 'claude' && claudeAvailable && styles.langSegmentTextActive,
                         ]}>
-                        {claudeAvailable
-                          ? t('settingsLlmProviderClaude')
-                          : `${t('settingsLlmProviderClaude')} · ${t('settingsLlmProviderUnavailable')}`}
+                        {t('settingsLlmProviderClaude')}
                       </Text>
                     </Pressable>
                     <Pressable
@@ -1710,17 +1719,10 @@ export default function SettingsScreen() {
                           styles.langSegmentText,
                           llmProvider === 'openai' && openaiAvailable && styles.langSegmentTextActive,
                         ]}>
-                        {openaiAvailable
-                          ? t('settingsLlmProviderOpenai')
-                          : `${t('settingsLlmProviderOpenai')} · ${t('settingsLlmProviderUnavailable')}`}
+                        {t('settingsLlmProviderOpenai')}
                       </Text>
                     </Pressable>
                   </View>
-                  {!claudeAvailable || !openaiAvailable ? (
-                    <Text style={styles.llmProviderDisabledNote}>
-                      {t('settingsLlmProviderDisabledNote')}
-                    </Text>
-                  ) : null}
                 </>
               )}
             </View>

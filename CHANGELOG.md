@@ -15,15 +15,18 @@
 | `components/signal/NewsCard.tsx` | 뉴스 카드에서 중간 3줄 요약을 제거하고 제목 중심 레이아웃으로 단순화 |
 | `components/signal/YoutubeCard.tsx` | 유튜브 카드에서 3줄 요약 블록을 제거하고 메타 정보 중심 레이아웃으로 단순화 |
 | `app/(tabs)/index.tsx` | 뉴스 탭이 3줄 요약 대신 제목 번역만 호출하도록 변경 |
-| `app/settings.tsx` | LLM 제공자 버튼을 API 키 유무에 따라 비활성화/자동 보정 |
+| `app/settings.tsx` | 표시 > AI 선택지를 사용 안함/Claude/ChatGPT 3단계로 정리하고 기본값을 사용 안함으로 변경 |
 | `.env.example` | `EXPO_PUBLIC_OPENAI_API_KEY` 예시 추가 |
 | `services/anthropic.ts` | 뉴스 3줄 요약 대신 제목 번역 전용 경로 추가 |
 | `services/openaiSummaries.ts` | 뉴스 3줄 요약 대신 제목 번역 전용 경로 추가, 개발 로그 유지 |
 | `services/openaiChat.ts` | OpenAI API 실패 시 개발 로그로 상태/본문 일부 출력 |
-| `services/aiSummaries.ts` | 뉴스는 제목 번역만 선택 제공자 경로로 호출하도록 정리 |
+| `services/aiSummaries.ts` | AI가 사용 안함이면 뉴스는 원문 제목, 컨콜은 AI 미사용 안내로 동작하도록 정리 |
 | `services/youtube.ts` | 유튜브 AI 요약 호출을 제거하고 메타데이터만 반환하도록 정리 |
-| `locales/messages.ts` | 뉴스/설정 힌트와 LLM 비활성화 안내 문구 반영 |
+| `locales/messages.ts` | 표시 > AI 라벨을 사용 안함/Claude/ChatGPT로 단순화하고 힌트 문구를 축약 |
+| `services/llmProviderPreference.ts` | AI 제공자 저장값에 `none` 추가, 기본값을 사용 안함으로 변경 |
 | `AGENTS.md` | `EXPO_PUBLIC_OPENAI_API_KEY` 및 뉴스 번역 동작 설명 추가 |
+| `types/signal.ts` | 뉴스/유튜브의 미사용 `summaryLines` 타입 필드 제거 |
+| `services/anthropic.ts`, `services/openaiSummaries.ts`, `services/aiSummaries.ts` | 뉴스 제목 번역과 컨콜 요약이 설정된 앱 언어(ko/en/ja)를 따르도록 로케일 연동 |
 
 ## 2026-04-04
 

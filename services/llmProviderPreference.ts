@@ -1,17 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const STORAGE_KEY = '@signal/llm_provider_v1';
+const STORAGE_KEY = '@signal/llm_provider_v2';
 
-export type LlmProviderId = 'claude' | 'openai';
+export type LlmProviderId = 'none' | 'claude' | 'openai';
 
-const DEFAULT_PROVIDER: LlmProviderId = 'claude';
+const DEFAULT_PROVIDER: LlmProviderId = 'none';
 
 const listeners = new Set<() => void>();
 
 export async function loadLlmProvider(): Promise<LlmProviderId> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (raw === 'openai' || raw === 'claude') return raw;
+    if (raw === 'none' || raw === 'openai' || raw === 'claude') return raw;
     return DEFAULT_PROVIDER;
   } catch {
     return DEFAULT_PROVIDER;

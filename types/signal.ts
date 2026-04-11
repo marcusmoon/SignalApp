@@ -2,7 +2,6 @@ export type NewsItem = {
   id: string;
   ticker: string;
   titleKo: string;
-  summaryLines: [string, string, string];
   source: string;
   timeLabel: string;
   url: string;
@@ -37,7 +36,6 @@ export type YoutubeItem = {
   viewLabel: string;
   publishedLabel: string;
   durationLabel: string;
-  summaryLines: [string, string, string];
   thumbnailUrl?: string | null;
   videoId?: string;
 };

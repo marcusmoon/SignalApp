@@ -54,13 +54,12 @@ const ko = {
   settingsCacheCalendarToggle: '캘린더',
   settingsCacheQuotesToggle: '시세',
   settingsCacheNewsToggle: '뉴스',
-  settingsLlmProviderKicker: 'AI 요약',
+  settingsLlmProviderKicker: 'AI',
   settingsLlmProviderHint:
-    '뉴스·유튜브·컨콜 요약에 사용합니다. 선택한 제공자의 API 키가 .env(EXPO_PUBLIC_*)에 있어야 합니다.',
-  settingsLlmProviderClaude: 'Claude (Anthropic)',
-  settingsLlmProviderOpenai: 'ChatGPT (OpenAI)',
-  settingsLlmProviderUnavailable: '키 없음',
-  settingsLlmProviderDisabledNote: 'API 키가 없는 제공자는 비활성화됩니다.',
+    '뉴스 제목 번역과 컨콜 요약에 사용합니다.',
+  settingsLlmProviderNone: '사용 안함',
+  settingsLlmProviderClaude: 'Claude',
+  settingsLlmProviderOpenai: 'ChatGPT',
 
 
   headerTagline: '노이즈는 걸러내고, 진짜 시그널만',
@@ -338,13 +337,12 @@ const en = {
   settingsCacheQuotesToggle: 'Quotes',
   settingsCacheNewsToggle: 'News',
 
-  settingsLlmProviderKicker: 'AI summaries',
+  settingsLlmProviderKicker: 'AI',
   settingsLlmProviderHint:
-    'Used for news translation/summaries, YouTube summaries, and earnings-call summaries. Put the selected provider API key in .env (EXPO_PUBLIC_*).',
-  settingsLlmProviderClaude: 'Claude (Anthropic)',
-  settingsLlmProviderOpenai: 'ChatGPT (OpenAI)',
-  settingsLlmProviderUnavailable: 'No key',
-  settingsLlmProviderDisabledNote: 'Providers without an API key are shown disabled.',
+    'Used for news title translation and earnings-call summaries.',
+  settingsLlmProviderNone: 'Off',
+  settingsLlmProviderClaude: 'Claude',
+  settingsLlmProviderOpenai: 'ChatGPT',
 
   headerTagline: 'Cut the noise. Keep the signal.',
   a11yAlerts: 'Alerts',
@@ -623,13 +621,12 @@ const ja = {
   settingsCacheCalendarToggle: 'カレンダー',
   settingsCacheQuotesToggle: '株価',
   settingsCacheNewsToggle: 'ニュース',
-  settingsLlmProviderKicker: 'AI要約',
+  settingsLlmProviderKicker: 'AI',
   settingsLlmProviderHint:
-    'ニュース翻訳/要約・YouTube要約・決算コール要約に使います。選んだ提供元のAPIキーを.env（EXPO_PUBLIC_*）に設定してください。',
-  settingsLlmProviderClaude: 'Claude (Anthropic)',
-  settingsLlmProviderOpenai: 'ChatGPT (OpenAI)',
-  settingsLlmProviderUnavailable: 'キーなし',
-  settingsLlmProviderDisabledNote: 'APIキーがない提供元は無効表示になります。',
+    'ニュース見出し翻訳と決算コール要約に使います。',
+  settingsLlmProviderNone: '使用しない',
+  settingsLlmProviderClaude: 'Claude',
+  settingsLlmProviderOpenai: 'ChatGPT',
 
 
   headerTagline: 'ノイズを捨て、本当のシグナルだけを。',

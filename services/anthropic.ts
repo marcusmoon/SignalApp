@@ -1,4 +1,5 @@
 import { env, hasAnthropic } from '@/services/env';
+import type { AppLocale } from '@/locales/messages';
 import type { ConcallSummary, NewsItem } from '@/types/signal';
 import type { FinnhubNewsRaw } from '@/services/finnhub';
 import { isFlashNews } from '@/services/newsFlash';
@@ -8,6 +9,28 @@ const ANTHROPIC_VERSION = '2023-06-01';
 const MODEL = 'claude-sonnet-4-20250514';
 
 type MsgContent = { type: 'text'; text: string };
+
+function localeLabel(locale: AppLocale): string {
+  if (locale === 'en') return 'English';
+  if (locale === 'ja') return 'Japanese';
+  return 'Korean';
+}
+
+function localizedConcallFallback(locale: AppLocale, kind: 'missing_key' | 'parse_failed' | 'empty'): [string, string] {
+  if (locale === 'en') {
+    if (kind === 'missing_key') return ['An Anthropic API key is required for AI call summaries.', '—'];
+    if (kind === 'parse_failed') return ['The AI summary response could not be parsed.', 'Please check the transcript manually.'];
+    return ['The summary could not be generated.', '—'];
+  }
+  if (locale === 'ja') {
+    if (kind === 'missing_key') return ['AIコール要約には Anthropic API キーが必要です。', '—'];
+    if (kind === 'parse_failed') return ['AI要約の応答を解析できませんでした。', 'トランスクリプトを直接確認してください。'];
+    return ['要約を生成できませんでした。', '—'];
+  }
+  if (kind === 'missing_key') return ['트랜스크립트 요약을 위해 Anthropic API 키가 필요합니다.', '—'];
+  if (kind === 'parse_failed') return ['요약 JSON 파싱에 실패했습니다.', '트랜스크립트 앞부분만 확인해 주세요.'];
+  return ['요약을 생성하지 못했습니다.', '—'];
+}
 
 async function messages(system: string, user: string, maxTokens = 8192): Promise<string> {
   if (!hasAnthropic()) throw new Error('ANTHROPIC_KEY_MISSING');
@@ -36,53 +59,12 @@ async function messages(system: string, user: string, maxTokens = 8192): Promise
   return block?.text ?? '';
 }
 
-function extractJsonArray<T>(raw: string): T[] {
-  const trimmed = raw.trim();
-  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-  const jsonStr = fence ? fence[1].trim() : trimmed;
-  const candidates = [
-    jsonStr,
-    jsonStr.slice(Math.max(0, jsonStr.indexOf('[')), jsonStr.lastIndexOf(']') + 1),
-  ].filter((candidate, index, arr) => candidate.length > 0 && arr.indexOf(candidate) === index);
-
-  let parsed: unknown = null;
-  let lastError: unknown = null;
-  for (const candidate of candidates) {
-    try {
-      parsed = JSON.parse(candidate) as unknown;
-      lastError = null;
-      break;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  if (lastError) throw lastError;
-  if (!Array.isArray(parsed)) throw new Error('Expected JSON array');
-  return parsed as T[];
-}
-
-function splitToThreeLines(text: string): [string, string, string] {
-  const t = text.replace(/\s+/g, ' ').trim();
-  const parts = t.split(/(?<=[.!?])\s+/).filter(Boolean);
-  const a = parts[0] ?? t.slice(0, 120);
-  const b = parts[1] ?? '추가 맥락은 원문을 참고하세요.';
-  const c = parts[2] ?? '—';
-  return [a, b, c];
-}
-
-function hasHangul(text: string): boolean {
-  return /[가-힣]/.test(text);
-}
-
 export function newsItemFromFinnhubFallback(n: FinnhubNewsRaw): NewsItem {
   const ticker = n.related.split(',')[0]?.trim() || 'GLOBAL';
-  const base = (n.summary || '').trim() || n.headline;
-  const [l1, l2, l3] = splitToThreeLines(base);
   return {
     id: String(n.id),
     ticker,
     titleKo: n.headline,
-    summaryLines: [l1, l2, l3],
     source: n.source,
     timeLabel: formatRelativeFromUnix(n.datetime),
     url: n.url,
@@ -91,19 +73,10 @@ export function newsItemFromFinnhubFallback(n: FinnhubNewsRaw): NewsItem {
   };
 }
 
-type NewsBatchRow = {
-  id: string;
-  titleKo: string;
-  ticker: string;
-  summaryLines: [string, string, string];
-};
-
-const NEWS_BATCH_SIZE = 4;
-
-async function translateNewsTitleWithClaude(article: FinnhubNewsRaw): Promise<string | null> {
+async function translateNewsTitleWithClaude(article: FinnhubNewsRaw, locale: AppLocale): Promise<string | null> {
   try {
     const system =
-      'Translate the following financial news headline into concise natural Korean. Return ONLY the translated Korean headline text.';
+      `Translate the following financial news headline into concise natural ${localeLabel(locale)}. Return ONLY the translated headline text in ${localeLabel(locale)}.`;
     const user = `Headline: ${article.headline}`;
     const text = (await messages(system, user, 256)).trim();
     if (!text) return null;
@@ -113,153 +86,21 @@ async function translateNewsTitleWithClaude(article: FinnhubNewsRaw): Promise<st
   }
 }
 
-export async function translateNewsTitlesWithClaude(articles: FinnhubNewsRaw[]): Promise<NewsItem[]> {
+export async function translateNewsTitlesWithClaude(
+  articles: FinnhubNewsRaw[],
+  locale: AppLocale,
+): Promise<NewsItem[]> {
   return Promise.all(
     articles.map(async (article) => {
       const fallback = newsItemFromFinnhubFallback(article);
-      const titleKo = await translateNewsTitleWithClaude(article);
+      const titleKo = await translateNewsTitleWithClaude(article, locale);
       return {
         ...fallback,
         titleKo: titleKo || fallback.titleKo,
-        summaryLines: ['', '', ''],
         summarySource: titleKo ? 'claude' : fallback.summarySource,
       };
     }),
   );
-}
-
-async function buildFallbackNewsItemWithClaudeTitle(article: FinnhubNewsRaw): Promise<NewsItem> {
-  const fallback = newsItemFromFinnhubFallback(article);
-  const titleKo = await translateNewsTitleWithClaude(article);
-  return {
-    ...fallback,
-    titleKo: titleKo || fallback.titleKo,
-    summarySource: titleKo ? 'claude' : fallback.summarySource,
-  };
-}
-
-async function ensureKoreanTitleWithClaude(article: FinnhubNewsRaw, candidate?: string | null): Promise<string> {
-  const normalized = String(candidate ?? '').trim();
-  if (normalized && hasHangul(normalized)) return normalized;
-  return (await translateNewsTitleWithClaude(article)) || normalized || article.headline;
-}
-
-async function summarizeNewsBatchWithClaude(articles: FinnhubNewsRaw[]): Promise<NewsItem[]> {
-  if (articles.length === 0) return [];
-
-  const payload = articles.map((a) => ({
-    id: String(a.id),
-    headline: a.headline,
-    summary: a.summary,
-    source: a.source,
-    related: a.related,
-    url: a.url,
-    datetime: a.datetime,
-  }));
-
-  const system =
-    'You are a financial editor for Korean retail investors in US stocks. Translate each headline and source summary into natural Korean, then write a concise 3-line Korean summary. Output MUST be valid JSON only: an array of objects with keys id, titleKo, ticker, summaryLines (exactly 3 Korean strings). titleKo must be Korean. summaryLines: 3 short Korean lines each starting with core fact. ticker: primary US symbol from related or GLOBAL. No markdown, no commentary outside JSON.';
-
-  const user = `Articles JSON:\n${JSON.stringify(payload, null, 0)}`;
-
-  let rows: NewsBatchRow[] = [];
-  try {
-    const text = await messages(system, user, 8192);
-    rows = extractJsonArray<NewsBatchRow>(text);
-  } catch {
-    return Promise.all(articles.map((article) => buildFallbackNewsItemWithClaudeTitle(article)));
-  }
-
-  const byId = new Map(rows.map((r) => [r.id, r]));
-  return Promise.all(
-    articles.map(async (a, i) => {
-    const id = String(a.id);
-    const row = byId.get(id) ?? rows[i];
-    if (!row?.summaryLines?.length) {
-      return buildFallbackNewsItemWithClaudeTitle(a);
-    }
-    const s = row.summaryLines;
-    const summaryLines: [string, string, string] = [
-      String(s[0] ?? ''),
-      String(s[1] ?? ''),
-      String(s[2] ?? ''),
-    ];
-    return {
-      id,
-      ticker: row.ticker || 'GLOBAL',
-      titleKo: await ensureKoreanTitleWithClaude(a, row.titleKo),
-      summaryLines,
-      source: a.source,
-      timeLabel: formatRelativeFromUnix(a.datetime),
-      url: a.url,
-      summarySource: 'claude',
-      isFlash: isFlashNews(a),
-    };
-    }),
-  );
-}
-
-export async function summarizeNewsWithClaude(articles: FinnhubNewsRaw[]): Promise<NewsItem[]> {
-  if (articles.length === 0) return [];
-  if (!hasAnthropic()) {
-    return articles.map(newsItemFromFinnhubFallback);
-  }
-
-  const out: NewsItem[] = [];
-  for (let i = 0; i < articles.length; i += NEWS_BATCH_SIZE) {
-    const batch = articles.slice(i, i + NEWS_BATCH_SIZE);
-    const summarized = await summarizeNewsBatchWithClaude(batch);
-    out.push(...summarized);
-  }
-  return out;
-}
-
-type YtBatchRow = {
-  id: string;
-  topic: string;
-  summaryLines: [string, string, string];
-};
-
-export async function summarizeYoutubeEconomy(
-  items: Array<{ id: string; title: string; channel: string; description: string }>,
-): Promise<Map<string, { topic: string; summaryLines: [string, string, string] }>> {
-  const out = new Map<string, { topic: string; summaryLines: [string, string, string] }>();
-  if (items.length === 0) return out;
-  if (!hasAnthropic()) {
-    for (const it of items) {
-      const [l1, l2, l3] = splitToThreeLines(it.description.slice(0, 800) || it.title);
-      out.set(it.id, { topic: '경제', summaryLines: [l1, l2, l3] });
-    }
-    return out;
-  }
-
-  const system =
-    'You analyze YouTube metadata for economy/finance videos. Return ONLY valid JSON array: objects with id, topic (short Korean label like 통화정책, 물가, 경기, 환율, 한국경제, 지표, 정책, 원자재, 속보), summaryLines (exactly 3 Korean lines: what the viewer learns without watching).';
-
-  const user = `Videos JSON:\n${JSON.stringify(items)}`;
-  let rows: YtBatchRow[] = [];
-  try {
-    const text = await messages(system, user, 8192);
-    rows = extractJsonArray<YtBatchRow>(text);
-  } catch {
-    rows = [];
-  }
-  for (const r of rows) {
-    const s = r.summaryLines;
-    const summaryLines: [string, string, string] = [
-      String(s?.[0] ?? ''),
-      String(s?.[1] ?? ''),
-      String(s?.[2] ?? ''),
-    ];
-    out.set(r.id, { topic: r.topic || '경제', summaryLines });
-  }
-  for (const it of items) {
-    if (!out.has(it.id)) {
-      const [l1, l2, l3] = splitToThreeLines(it.description.slice(0, 800) || it.title);
-      out.set(it.id, { topic: '경제', summaryLines: [l1, l2, l3] });
-    }
-  }
-  return out;
 }
 
 type ConcallJson = {
@@ -272,14 +113,16 @@ export async function summarizeConcallTranscript(
   ticker: string,
   quarterLabel: string,
   transcript: string,
+  locale: AppLocale,
 ): Promise<ConcallSummary> {
   const clipped = transcript.slice(0, 24_000);
   if (!hasAnthropic()) {
+    const bullets = localizedConcallFallback(locale, 'missing_key');
     return {
       id: `${ticker}-${quarterLabel}`,
       ticker,
       quarter: quarterLabel,
-      bullets: ['트랜스크립트 요약을 위해 Anthropic API 키가 필요합니다.', '—'],
+      bullets,
       guidance: undefined,
       risk: undefined,
       source: 'fallback',
@@ -287,7 +130,7 @@ export async function summarizeConcallTranscript(
   }
 
   const system =
-    'You summarize earnings call transcripts for Korean investors. Return ONLY valid JSON: {"bullets":[two Korean strings],"guidance":"Korean one sentence or empty","risk":"Korean one sentence or empty"}.';
+    `You summarize earnings call transcripts for investors. Return ONLY valid JSON: {"bullets":[two ${localeLabel(locale)} strings],"guidance":"${localeLabel(locale)} one sentence or empty","risk":"${localeLabel(locale)} one sentence or empty"}.`;
 
   const user = `Ticker ${ticker}, quarter ${quarterLabel}.\nTranscript:\n${clipped}`;
 
@@ -296,11 +139,12 @@ export async function summarizeConcallTranscript(
     const text = await messages(system, user, 4096);
     obj = JSON.parse(text.trim().replace(/^```(?:json)?\s*|\s*```$/g, '')) as ConcallJson;
   } catch {
+    const bullets = localizedConcallFallback(locale, 'parse_failed');
     return {
       id: `${ticker}-${quarterLabel}`,
       ticker,
       quarter: quarterLabel,
-      bullets: ['요약 JSON 파싱에 실패했습니다.', '트랜스크립트 앞부분만 확인해 주세요.'],
+      bullets,
       guidance: undefined,
       risk: undefined,
       source: 'fallback',
@@ -310,7 +154,7 @@ export async function summarizeConcallTranscript(
   const bullets =
     bulletsRaw.length >= 2
       ? [bulletsRaw[0], bulletsRaw[1]]
-      : [bulletsRaw[0] ?? '요약을 생성하지 못했습니다.', bulletsRaw[1] ?? '—'];
+      : [bulletsRaw[0] ?? localizedConcallFallback(locale, 'empty')[0], bulletsRaw[1] ?? localizedConcallFallback(locale, 'empty')[1]];
 
   return {
     id: `${ticker}-${quarterLabel}`,

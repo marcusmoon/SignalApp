@@ -1,63 +1,32 @@
 import {
-  summarizeNewsWithClaude,
+  newsItemFromFinnhubFallback,
   translateNewsTitlesWithClaude,
   summarizeConcallTranscript,
 } from '@/services/anthropic';
 import { hasAnthropic, hasOpenAI } from '@/services/env';
+import { loadLocale } from '@/services/localePreference';
 import { loadLlmProvider } from '@/services/llmProviderPreference';
 import type { FinnhubNewsRaw } from '@/services/finnhub';
 import {
   summarizeConcallTranscriptOpenAI,
-  summarizeNewsWithOpenAI,
   translateNewsTitlesWithOpenAI,
 } from '@/services/openaiSummaries';
 import type { ConcallSummary, NewsItem } from '@/types/signal';
 
-export async function summarizeNewsWithSelectedProvider(articles: FinnhubNewsRaw[]): Promise<NewsItem[]> {
-  const pref = await loadLlmProvider();
-  const primaryOpenAI = pref === 'openai' && hasOpenAI();
-  const primaryClaude = pref === 'claude' && hasAnthropic();
-
-  if (primaryOpenAI) {
-    const r = await summarizeNewsWithOpenAI(articles);
-    if (r.some((x) => x.summarySource === 'openai')) return r;
-    if (hasAnthropic()) return summarizeNewsWithClaude(articles);
-    return r;
-  }
-  if (primaryClaude) {
-    const r = await summarizeNewsWithClaude(articles);
-    if (r.some((x) => x.summarySource === 'claude')) return r;
-    if (hasOpenAI()) {
-      const o = await summarizeNewsWithOpenAI(articles);
-      if (o.some((x) => x.summarySource === 'openai')) return o;
-    }
-    return r;
-  }
-  if (hasOpenAI()) {
-    const o = await summarizeNewsWithOpenAI(articles);
-    if (o.some((x) => x.summarySource === 'openai')) return o;
-  }
-  return summarizeNewsWithClaude(articles);
-}
-
 export async function translateNewsTitlesWithSelectedProvider(
   articles: FinnhubNewsRaw[],
 ): Promise<NewsItem[]> {
-  const pref = await loadLlmProvider();
+  const [pref, locale] = await Promise.all([loadLlmProvider(), loadLocale()]);
+  if (pref === 'none') {
+    return articles.map(newsItemFromFinnhubFallback);
+  }
   if (pref === 'openai' && hasOpenAI()) {
-    return translateNewsTitlesWithOpenAI(articles);
+    return translateNewsTitlesWithOpenAI(articles, locale);
   }
   if (pref === 'claude' && hasAnthropic()) {
-    return translateNewsTitlesWithClaude(articles);
+    return translateNewsTitlesWithClaude(articles, locale);
   }
-  if (pref === 'openai' && hasAnthropic()) {
-    return translateNewsTitlesWithClaude(articles);
-  }
-  if (pref === 'claude' && hasOpenAI()) {
-    return translateNewsTitlesWithOpenAI(articles);
-  }
-  if (hasOpenAI()) return translateNewsTitlesWithOpenAI(articles);
-  return translateNewsTitlesWithClaude(articles);
+  return articles.map(newsItemFromFinnhubFallback);
 }
 
 export async function summarizeConcallTranscriptSelected(
@@ -65,23 +34,59 @@ export async function summarizeConcallTranscriptSelected(
   quarterLabel: string,
   transcript: string,
 ): Promise<ConcallSummary> {
-  const pref = await loadLlmProvider();
+  const [pref, locale] = await Promise.all([loadLlmProvider(), loadLocale()]);
+  if (pref === 'none') {
+    return {
+      id: `${ticker}-${quarterLabel}`,
+      ticker,
+      quarter: quarterLabel,
+      bullets:
+        locale === 'en'
+          ? ['AI features are turned off.', 'You can turn them back on in Settings > Display > AI.']
+          : locale === 'ja'
+            ? ['AI機能はオフになっています。', '設定 > 表示 > AI で再度オンにできます。']
+            : ['AI 기능을 사용하지 않도록 설정했습니다.', '표시 설정의 AI에서 다시 켤 수 있습니다.'],
+      guidance: undefined,
+      risk: undefined,
+      source: 'fallback',
+    };
+  }
   if (pref === 'openai') {
     if (hasOpenAI()) {
-      const r = await summarizeConcallTranscriptOpenAI(ticker, quarterLabel, transcript);
+      const r = await summarizeConcallTranscriptOpenAI(ticker, quarterLabel, transcript, locale);
       if (r.source === 'openai') return r;
     }
-    if (hasAnthropic()) {
-      return summarizeConcallTranscript(ticker, quarterLabel, transcript);
-    }
-    return summarizeConcallTranscriptOpenAI(ticker, quarterLabel, transcript);
+    return {
+      id: `${ticker}-${quarterLabel}`,
+      ticker,
+      quarter: quarterLabel,
+      bullets:
+        locale === 'en'
+          ? ['ChatGPT is selected, but no API key was found.', 'Choose Off or another provider in Settings > Display > AI.']
+          : locale === 'ja'
+            ? ['ChatGPT が選択されていますが、APIキーが見つかりません。', '設定 > 表示 > AI で使用しないか他の提供元を選んでください。']
+            : ['ChatGPT를 선택했지만 API 키를 찾지 못했습니다.', '표시 설정의 AI에서 사용 안함 또는 다른 제공자를 선택해 주세요.'],
+      guidance: undefined,
+      risk: undefined,
+      source: 'fallback',
+    };
   }
   if (hasAnthropic()) {
-    const r = await summarizeConcallTranscript(ticker, quarterLabel, transcript);
+    const r = await summarizeConcallTranscript(ticker, quarterLabel, transcript, locale);
     if (r.source === 'claude') return r;
   }
-  if (hasOpenAI()) {
-    return summarizeConcallTranscriptOpenAI(ticker, quarterLabel, transcript);
-  }
-  return summarizeConcallTranscript(ticker, quarterLabel, transcript);
+  return {
+    id: `${ticker}-${quarterLabel}`,
+    ticker,
+    quarter: quarterLabel,
+    bullets:
+      locale === 'en'
+        ? ['Claude is selected, but no API key was found.', 'Choose Off or another provider in Settings > Display > AI.']
+        : locale === 'ja'
+          ? ['Claude が選択されていますが、APIキーが見つかりません。', '設定 > 表示 > AI で使用しないか他の提供元を選んでください。']
+          : ['Claude를 선택했지만 API 키를 찾지 못했습니다.', '표시 설정의 AI에서 사용 안함 또는 다른 제공자를 선택해 주세요.'],
+    guidance: undefined,
+    risk: undefined,
+    source: 'fallback',
+  };
 }

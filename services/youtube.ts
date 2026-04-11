@@ -256,7 +256,6 @@ export async function fetchEconomyYoutube(
       viewLabel: formatViewCount(vc),
       publishedLabel: formatRelativeFromIso(it.snippet.publishedAt),
       durationLabel: formatIso8601Duration(it.contentDetails.duration),
-      summaryLines: ['', '', ''],
       thumbnailUrl: `https://i.ytimg.com/vi/${it.id}/mqdefault.jpg`,
       videoId: it.id,
     } satisfies YoutubeItem;

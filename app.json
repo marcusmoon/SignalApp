@@ -24,7 +24,17 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.marcus.signal",
       "infoPlist": {
-        "LSApplicationQueriesSchemes": ["youtube", "vnd.youtube"]
+        "LSApplicationQueriesSchemes": [
+          "youtube",
+          "vnd.youtube",
+          "yfinance",
+          "yahoo",
+          "upbit",
+          "supertoss",
+          "binance",
+          "bnc",
+          "coinbase"
+        ]
       }
     },
     "android": {
@@ -71,7 +81,8 @@
         }
       ],
       "./plugins/withIosEmbedJsOnDevice.js",
-      "./plugins/removeIosPushEntitlement.js"
+      "./plugins/removeIosPushEntitlement.js",
+      "./plugins/withAndroidExternalAppQueries.js"
     ],
     "experiments": {
       "typedRoutes": true

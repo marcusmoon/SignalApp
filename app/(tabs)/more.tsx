@@ -10,6 +10,7 @@ import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatli
 import { Pressable as GHPressable } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ReferenceLinksSection } from '@/components/more/ReferenceLinksSection';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
@@ -23,6 +24,10 @@ import {
   saveMoreHubOrder,
   subscribeMoreHubOrderChanged,
 } from '@/services/moreHubOrderPreference';
+import {
+  loadMoreReferenceLinksVisible,
+  subscribeMoreReferenceLinksVisibilityChanged,
+} from '@/services/moreReferenceLinksPreference';
 
 const HUB_META: Record<
   MoreHubRouteKey,
@@ -44,11 +49,17 @@ export default function MoreHubScreen() {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const [order, setOrder] = useState<MoreHubRouteKey[]>([]);
   const [orderReady, setOrderReady] = useState(false);
+  const [refLinksVisible, setRefLinksVisible] = useState(true);
 
   const reloadOrder = useCallback(async () => {
     const o = await loadMoreHubOrder();
     setOrder(o);
     setOrderReady(true);
+  }, []);
+
+  const reloadRefLinksPref = useCallback(async () => {
+    const v = await loadMoreReferenceLinksVisible();
+    setRefLinksVisible(v);
   }, []);
 
   useEffect(() => {
@@ -57,10 +68,17 @@ export default function MoreHubScreen() {
     });
   }, [reloadOrder]);
 
+  useEffect(() => {
+    return subscribeMoreReferenceLinksVisibilityChanged(() => {
+      void reloadRefLinksPref();
+    });
+  }, [reloadRefLinksPref]);
+
   useFocusEffect(
     useCallback(() => {
       void reloadOrder();
-    }, [reloadOrder]),
+      void reloadRefLinksPref();
+    }, [reloadOrder, reloadRefLinksPref]),
   );
 
   const listHeader = useMemo(
@@ -71,6 +89,11 @@ export default function MoreHubScreen() {
       </View>
     ),
     [styles.dragHint, styles.headerBlock, styles.lead, t],
+  );
+
+  const listFooter = useMemo(
+    () => (refLinksVisible ? <ReferenceLinksSection /> : null),
+    [refLinksVisible],
   );
 
   return (
@@ -90,6 +113,7 @@ export default function MoreHubScreen() {
           style={styles.list}
           contentContainerStyle={{ paddingBottom: 24 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM }}
           ListHeaderComponent={listHeader}
+          ListFooterComponent={listFooter}
           containerStyle={{ flex: 1 }}
           onDragEnd={({ data }) => {
             setOrder(data);

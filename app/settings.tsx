@@ -102,6 +102,10 @@ import {
   saveNotificationPrefs,
   type NotificationPrefs,
 } from '@/services/notificationPreferences';
+import {
+  loadMoreReferenceLinksVisible,
+  saveMoreReferenceLinksVisible,
+} from '@/services/moreReferenceLinksPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { loadTabBarGlassLevel, saveTabBarGlassLevel } from '@/services/tabBarGlassPreference';
 import {
@@ -809,6 +813,9 @@ export default function SettingsScreen() {
   const [llmProvider, setLlmProvider] = useState<LlmProviderId>('none');
   const [llmProviderReady, setLlmProviderReady] = useState(false);
 
+  const [moreRefLinksVisible, setMoreRefLinksVisible] = useState(true);
+  const [moreRefLinksReady, setMoreRefLinksReady] = useState(false);
+
   const claudeAvailable = hasAnthropic();
   const openaiAvailable = hasOpenAI();
 
@@ -948,6 +955,12 @@ export default function SettingsScreen() {
     setLlmProviderReady(true);
   }, [claudeAvailable, openaiAvailable]);
 
+  const reloadMoreReferenceLinksPref = useCallback(async () => {
+    const v = await loadMoreReferenceLinksVisible();
+    setMoreRefLinksVisible(v);
+    setMoreRefLinksReady(true);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       void reload();
@@ -960,6 +973,7 @@ export default function SettingsScreen() {
       void reloadNewsSegmentOrder();
       void reloadTabBarGlassLevel();
       void reloadLlmProvider();
+      void reloadMoreReferenceLinksPref();
     }, [
       reload,
       reloadPrefs,
@@ -971,6 +985,7 @@ export default function SettingsScreen() {
       reloadNewsSegmentOrder,
       reloadTabBarGlassLevel,
       reloadLlmProvider,
+      reloadMoreReferenceLinksPref,
     ]),
   );
 
@@ -1681,6 +1696,27 @@ export default function SettingsScreen() {
                     presetId === 'custom' ? t('accentCustom') : t(ACCENT_LABEL[presetId]),
                 })}
               </Text>
+            </View>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsMoreReferenceLinksKicker')}</Text>
+              <Text style={styles.quotesCardHint}>{t('settingsMoreReferenceLinksHint')}</Text>
+              {!moreRefLinksReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <View style={styles.prefRow}>
+                  <Text style={styles.prefLabel}>{t('settingsMoreReferenceLinksSwitch')}</Text>
+                  <Switch
+                    value={moreRefLinksVisible}
+                    onValueChange={(v) => {
+                      setMoreRefLinksVisible(v);
+                      void saveMoreReferenceLinksVisible(v);
+                    }}
+                    trackColor={{ false: '#333', true: theme.green + '88' }}
+                    thumbColor={moreRefLinksVisible ? theme.green : '#888'}
+                  />
+                </View>
+              )}
             </View>
 
             <View style={styles.displayCard}>

@@ -1,15 +1,20 @@
 import { type ElementRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type NativeMethods,
+  Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { BlurView } from 'expo-blur';
 import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CalendarEventTypeFilterModal } from '@/components/signal/CalendarEventTypeFilterModal';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
@@ -18,6 +23,12 @@ import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchCalendarEventsMergedCached } from '@/services/calendarCache';
+import {
+  CALENDAR_EVENT_TYPE_ORDER,
+  loadCalendarEventTypeFilter,
+  saveCalendarEventTypeFilter,
+  type CalendarEventTypeKey,
+} from '@/services/calendarEventTypeFilterPreference';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import { loadCalendarConcallScope } from '@/services/calendarConcallScopePreference';
 import { hasFinnhub } from '@/services/env';
@@ -65,6 +76,14 @@ export default function CalendarScreen() {
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [enabledTypes, setEnabledTypes] = useState(
+    () => new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER),
+  );
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+
+  useEffect(() => {
+    void loadCalendarEventTypeFilter().then(setEnabledTypes);
+  }, []);
 
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const n = new Date();
@@ -139,16 +158,21 @@ export default function CalendarScreen() {
     }
   }, [load]);
 
+  const filteredEvents = useMemo(
+    () => events.filter((e) => enabledTypes.has(e.type)),
+    [events, enabledTypes],
+  );
+
   const sections = useMemo((): EventSection[] => {
     const byDay = new Map<string, CalendarEvent[]>();
-    for (const e of events) {
+    for (const e of filteredEvents) {
       const k = e.date;
       if (!byDay.has(k)) byDay.set(k, []);
       byDay.get(k)!.push(e);
     }
     const keys = [...byDay.keys()].sort();
     return keys.map((ymd) => ({ title: ymd, data: byDay.get(ymd)! }));
-  }, [events]);
+  }, [filteredEvents]);
 
   const sectionsKey = useMemo(() => sections.map((s) => s.title).join('|'), [sections]);
 
@@ -158,7 +182,29 @@ export default function CalendarScreen() {
     dayBlockRefs.current = {};
   }
 
-  const eventDates = useMemo(() => new Set(events.map((e) => e.date)), [events]);
+  const eventDates = useMemo(() => new Set(filteredEvents.map((e) => e.date)), [filteredEvents]);
+
+  const onToggleEventType = useCallback((type: CalendarEventTypeKey) => {
+    setEnabledTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        if (next.size <= 1) return prev;
+        next.delete(type);
+      } else {
+        next.add(type);
+      }
+      void saveCalendarEventTypeFilter(next);
+      return next;
+    });
+  }, []);
+
+  const onSelectAllEventTypes = useCallback(() => {
+    const next = new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
+    setEnabledTypes(next);
+    void saveCalendarEventTypeFilter(next);
+  }, []);
+
+  const filterReady = !loading;
 
   const formatDayHeader = useCallback(
     (ymd: string) => {
@@ -248,6 +294,9 @@ export default function CalendarScreen() {
     );
   }
 
+  const emptyFiltered =
+    !loading && !error && events.length > 0 && filteredEvents.length === 0 && sections.length === 0;
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
@@ -279,7 +328,7 @@ export default function CalendarScreen() {
         style={styles.listScroll}
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: 28 + insets.bottom },
+          { paddingBottom: 28 + insets.bottom + 56 },
           sections.length === 0 && !loading ? styles.listContentEmpty : null,
         ]}
         showsVerticalScrollIndicator={false}
@@ -291,7 +340,9 @@ export default function CalendarScreen() {
         ) : null}
 
         {!loading && sections.length === 0 && !error ? (
-          <Text style={styles.empty}>{t('calendarScreenEmptyMonth')}</Text>
+          <Text style={styles.empty}>
+            {emptyFiltered ? t('calendarFilterEmptyFiltered') : t('calendarScreenEmptyMonth')}
+          </Text>
         ) : null}
 
         {sections.map((section) => (
@@ -361,6 +412,40 @@ export default function CalendarScreen() {
 
         <SignalBannerAd />
       </ScrollView>
+
+      {filterReady ? (
+        <Pressable
+          onPress={() => setFilterModalVisible(true)}
+          style={({ pressed }) => [
+            styles.filterFab,
+            { bottom: insets.bottom + 16 },
+            pressed && styles.filterFabPressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11yCalendarFilter')}>
+          {Platform.OS === 'web' ? (
+            <View style={styles.filterFabBlurFallback} />
+          ) : (
+            <BlurView
+              intensity={Platform.OS === 'ios' ? 100 : 85}
+              tint="dark"
+              experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          <View pointerEvents="none" style={styles.filterFabRing} />
+          <FontAwesome name="filter" size={19} color={theme.green} />
+        </Pressable>
+      ) : null}
+
+      <CalendarEventTypeFilterModal
+        visible={filterModalVisible}
+        onClose={() => setFilterModalVisible(false)}
+        enabled={enabledTypes}
+        onToggle={onToggleEventType}
+        onSelectAll={onSelectAllEventTypes}
+        bottomInset={insets.bottom}
+      />
     </SafeAreaView>
   );
 }
@@ -444,6 +529,35 @@ function makeStyles(theme: AppTheme) {
       fontWeight: '700',
       color: theme.text,
       lineHeight: 18,
+    },
+    filterFab: {
+      position: 'absolute',
+      right: 16,
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.3,
+      shadowRadius: 10,
+      elevation: 10,
+    },
+    filterFabBlurFallback: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(10,10,15,0.88)',
+      borderRadius: 26,
+    },
+    filterFabRing: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: 26,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: 'rgba(255,255,255,0.14)',
+    },
+    filterFabPressed: {
+      opacity: 0.9,
     },
   });
 }

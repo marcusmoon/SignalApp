@@ -1,5 +1,4 @@
-import * as WebBrowser from 'expo-web-browser';
-import { Linking } from 'react-native';
+import { openExternalLink, yahooFinanceAppLaunchUrls } from '@/utils/openExternalLink';
 
 /**
  * Yahoo Finance 웹 종목 페이지 경로.
@@ -22,22 +21,14 @@ export function yahooFinanceQuoteUrl(symbol: string, mode: 'coin' | 'stock'): st
   return `https://finance.yahoo.com/quote/${encodeURIComponent(path)}`;
 }
 
-async function openExternalUrl(url: string): Promise<void> {
-  try {
-    await Linking.openURL(url);
-    return;
-  } catch {
-    await WebBrowser.openBrowserAsync(url);
-  }
-}
-
 /**
- * 시스템 기본으로 https 링크를 연다. Yahoo Finance 앱이 설치돼 있고 유니버설/앱 링크가 잡혀 있으면 앱으로 열리는 경우가 많다(앱2앱).
- * 앱이 없으면 Safari/Chrome 등 기본 브라우저로 연다.
+ * Yahoo Finance 앱 우선(공통 `openExternalLink`), 실패 시 시스템 브라우저 → 그래도 실패하면 인앱 브라우저.
  */
 export async function openYahooFinanceQuote(symbol: string, mode: 'coin' | 'stock'): Promise<void> {
   const url = yahooFinanceQuoteUrl(symbol, mode);
-  await openExternalUrl(url);
+  await openExternalLink(url, yahooFinanceAppLaunchUrls(url), {
+    preferInAppBrowserOnLinkingFailure: true,
+  });
 }
 
 /** 실적·실적콜·트랜스크립트 등 종목별 실적 허브 (티커 페이지의 Earnings 탭) */
@@ -47,5 +38,8 @@ export function yahooFinanceEarningsUrl(symbol: string): string {
 }
 
 export async function openYahooFinanceEarnings(symbol: string): Promise<void> {
-  await openExternalUrl(yahooFinanceEarningsUrl(symbol));
+  const url = yahooFinanceEarningsUrl(symbol);
+  await openExternalLink(url, yahooFinanceAppLaunchUrls(url), {
+    preferInAppBrowserOnLinkingFailure: true,
+  });
 }

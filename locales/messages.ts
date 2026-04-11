@@ -54,6 +54,14 @@ const ko = {
   settingsCacheCalendarToggle: '캘린더',
   settingsCacheQuotesToggle: '시세',
   settingsCacheNewsToggle: '뉴스',
+  settingsLlmProviderKicker: 'AI 요약',
+  settingsLlmProviderHint:
+    '뉴스·유튜브·컨콜 요약에 사용합니다. 선택한 제공자의 API 키가 .env(EXPO_PUBLIC_*)에 있어야 합니다.',
+  settingsLlmProviderClaude: 'Claude (Anthropic)',
+  settingsLlmProviderOpenai: 'ChatGPT (OpenAI)',
+  settingsLlmProviderUnavailable: '키 없음',
+  settingsLlmProviderDisabledNote: 'API 키가 없는 제공자는 비활성화됩니다.',
+
 
   headerTagline: '노이즈는 걸러내고, 진짜 시그널만',
   a11yAlerts: '알림',
@@ -212,7 +220,7 @@ const ko = {
   feedSegmentKorea: '한국',
   feedSegmentCrypto: '코인',
   feedHint:
-    '상단: 글로벌(Finnhub general) · 코인(Finnhub crypto) · 한국(일반+FX 풀에서 키워드 필터) · 한국어 3줄 요약(Anthropic 키가 있으면 Claude) · 우하단 필터로 출처',
+    '상단: 글로벌(Finnhub general) · 코인(Finnhub crypto) · 한국(일반+FX 풀에서 키워드 필터) · 한국어 번역/3줄 요약(Claude 또는 ChatGPT) · 우하단 필터로 출처',
   feedEmptyKorea:
     '한국 관련 키워드가 포함된 기사가 없습니다. 글로벌 탭을 보거나 잠시 후 다시 새로고침해 주세요.',
   feedNewsFilterTitle: '뉴스 제공사',
@@ -228,6 +236,7 @@ const ko = {
   feedDisclaimer: '본 앱은 투자 권유가 아닌 정보 제공 목적입니다. AI 요약 오류가 있을 수 있습니다.',
 
   newsAiClaude: 'Claude AI 요약',
+  newsAiOpenai: 'ChatGPT 요약',
   newsAiFinnhub: '원문 요약 (Finnhub)',
   newsReadMore: '원문 보기 →',
   newsSourceLabel: '출처',
@@ -256,6 +265,10 @@ const ko = {
   callsEmptyWatchlistEmpty:
     '관심 종목이 없습니다. 시세·설정에서 티커를 추가하거나, 표시 설정에서 메가캡 범위를 선택하세요.',
   callsYahooConcallA11y: '{{symbol}} Yahoo Finance에서 실적·컨콜 보기',
+  callsAiProviderClaude: 'Claude AI 요약',
+  callsAiProviderOpenai: 'ChatGPT 요약',
+  callsAiProviderFallback: '폴백 / 안내',
+
 
   quotesSegmentWatch: '관심',
   quotesSegmentPopular: '인기순',
@@ -324,6 +337,14 @@ const en = {
   settingsCacheCalendarToggle: 'Calendar',
   settingsCacheQuotesToggle: 'Quotes',
   settingsCacheNewsToggle: 'News',
+
+  settingsLlmProviderKicker: 'AI summaries',
+  settingsLlmProviderHint:
+    'Used for news translation/summaries, YouTube summaries, and earnings-call summaries. Put the selected provider API key in .env (EXPO_PUBLIC_*).',
+  settingsLlmProviderClaude: 'Claude (Anthropic)',
+  settingsLlmProviderOpenai: 'ChatGPT (OpenAI)',
+  settingsLlmProviderUnavailable: 'No key',
+  settingsLlmProviderDisabledNote: 'Providers without an API key are shown disabled.',
 
   headerTagline: 'Cut the noise. Keep the signal.',
   a11yAlerts: 'Alerts',
@@ -484,7 +505,7 @@ const en = {
   feedSegmentKorea: 'Korea',
   feedSegmentCrypto: 'Crypto',
   feedHint:
-    'Tabs: Global (Finnhub general) · Crypto (Finnhub crypto) · Korea (keyword filter on general+FX) · 3-line summary (Claude if key set) · FAB: sources',
+    'Tabs: Global (Finnhub general) · Crypto (Finnhub crypto) · Korea (keyword filter on general+FX) · Korean translation + 3-line summary (Claude or ChatGPT) · FAB: sources',
   feedEmptyKorea:
     'No headlines matched Korea-related keywords. Try Global or refresh later.',
   feedNewsFilterTitle: 'News sources',
@@ -501,6 +522,7 @@ const en = {
     'For information only, not investment advice. AI summaries may contain errors.',
 
   newsAiClaude: 'Claude summary',
+  newsAiOpenai: 'ChatGPT summary',
   newsAiFinnhub: 'Source summary (Finnhub)',
   newsReadMore: 'Open article →',
   newsSourceLabel: 'Source',
@@ -529,6 +551,10 @@ const en = {
   callsEmptyWatchlistEmpty:
     'No watchlist tickers. Add some in Quotes/Settings or choose mega-cap scope in Display.',
   callsYahooConcallA11y: 'View {{symbol}} earnings and conference call on Yahoo Finance',
+  callsAiProviderClaude: 'Claude AI summary',
+  callsAiProviderOpenai: 'ChatGPT summary',
+  callsAiProviderFallback: 'Fallback / notice',
+
 
   quotesSegmentWatch: 'Watch',
   quotesSegmentPopular: 'Popular',
@@ -597,6 +623,14 @@ const ja = {
   settingsCacheCalendarToggle: 'カレンダー',
   settingsCacheQuotesToggle: '株価',
   settingsCacheNewsToggle: 'ニュース',
+  settingsLlmProviderKicker: 'AI要約',
+  settingsLlmProviderHint:
+    'ニュース翻訳/要約・YouTube要約・決算コール要約に使います。選んだ提供元のAPIキーを.env（EXPO_PUBLIC_*）に設定してください。',
+  settingsLlmProviderClaude: 'Claude (Anthropic)',
+  settingsLlmProviderOpenai: 'ChatGPT (OpenAI)',
+  settingsLlmProviderUnavailable: 'キーなし',
+  settingsLlmProviderDisabledNote: 'APIキーがない提供元は無効表示になります。',
+
 
   headerTagline: 'ノイズを捨て、本当のシグナルだけを。',
   a11yAlerts: '通知',
@@ -756,7 +790,7 @@ const ja = {
   feedSegmentKorea: '韓国',
   feedSegmentCrypto: 'コイン',
   feedHint:
-    'タブ: グローバル(Finnhub general) · コイン(Finnhub crypto) · 韓国(一般+FXからキーワード) · 3行要約(AnthropicキーがあればClaude) · 右下で提供元',
+    'タブ: グローバル(Finnhub general) · コイン(Finnhub crypto) · 韓国(一般+FXからキーワード) · 韓国語翻訳＋3行要約(Claude または ChatGPT) · 右下で提供元',
   feedEmptyKorea:
     '韓国関連キーワードに一致する記事がありません。グローバルを見るか、しばらくして更新してください。',
   feedNewsFilterTitle: 'ニュース提供元',
@@ -772,6 +806,7 @@ const ja = {
   feedDisclaimer: '投資勧誘ではなく情報提供です。AI要約に誤りがある場合があります。',
 
   newsAiClaude: 'Claude要約',
+  newsAiOpenai: 'ChatGPT要約',
   newsAiFinnhub: '原文要約（Finnhub）',
   newsReadMore: '原文を見る →',
   newsSourceLabel: '出所',
@@ -799,6 +834,10 @@ const ja = {
   callsEmptyWatchlistEmpty:
     'ウォッチがありません。相場・設定でティッカーを追加するか、表示でメガキャップ範囲を選んでください。',
   callsYahooConcallA11y: '{{symbol}} の決算・決算説明会を Yahoo Finance で開く',
+  callsAiProviderClaude: 'Claude AI要約',
+  callsAiProviderOpenai: 'ChatGPT要約',
+  callsAiProviderFallback: 'フォールバック / 案内',
+
 
   quotesSegmentWatch: 'ウォッチ',
   quotesSegmentPopular: '人気順',

@@ -7,7 +7,7 @@ import {
 import type { CalendarConcallScope } from '@/services/calendarConcallScopePreference';
 import { calendarRangeForFiscalYear } from '@/services/concallFiscalFilter';
 import { fetchEarningsCallTranscript } from '@/services/apiNinjas';
-import { summarizeConcallTranscript } from '@/services/anthropic';
+import { summarizeConcallTranscriptSelected } from '@/services/aiSummaries';
 import {
   fetchEarningsCalendarRange,
   fetchEarningsCalendarRangeMerged,
@@ -258,7 +258,7 @@ export async function fetchConcallSummaries(
     }
 
     try {
-      const summary = await summarizeConcallTranscript(sym, quarterLabel, text);
+      const summary = await summarizeConcallTranscriptSelected(sym, quarterLabel, text);
       out.push(summary);
     } catch {
       out.push({

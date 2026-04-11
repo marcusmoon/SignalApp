@@ -58,19 +58,6 @@ export function YoutubeCard({ item }: Props) {
           </Text>
         </View>
       </Pressable>
-
-      <View style={styles.summaryBox}>
-        <View style={styles.summaryHeader}>
-          <FontAwesome name="list-ul" size={12} color={theme.green} />
-          <Text style={styles.summaryLabel}>영상 요약</Text>
-        </View>
-        <Text style={styles.summaryHint}>메타데이터·설명 기반 요약 (Claude 또는 폴백)</Text>
-        {item.summaryLines.map((line, i) => (
-          <Text key={i} style={styles.summaryLine}>
-            · {line}
-          </Text>
-        ))}
-      </View>
     </View>
   );
 }
@@ -175,36 +162,6 @@ function makeStyles(theme: AppTheme) {
     meta: {
       fontSize: 11,
       color: theme.textDim,
-    },
-    summaryBox: {
-      marginTop: 8,
-      paddingTop: 12,
-      borderTopWidth: 1,
-      borderTopColor: theme.border,
-    },
-    summaryHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      marginBottom: 4,
-    },
-    summaryLabel: {
-      fontSize: 12,
-      fontWeight: '800',
-      color: theme.text,
-      letterSpacing: -0.2,
-    },
-    summaryHint: {
-      fontSize: 10,
-      color: theme.textDim,
-      marginBottom: 8,
-      lineHeight: 14,
-    },
-    summaryLine: {
-      fontSize: 12,
-      color: theme.textMuted,
-      lineHeight: 18,
-      marginBottom: 5,
     },
     linkChip: {
       flexDirection: 'row',

@@ -1,5 +1,30 @@
 # SIGNAL — 변경 요약 (기능 위주)
 
+## 2026-04-11
+
+### 뉴스 번역 · AI 요약 복원력
+
+- **뉴스 번역/요약 안정화**: Claude/OpenAI 뉴스 요약을 한 번에 전체 기사로 보내다 JSON이 조금만 흔들려도 전부 Finnhub 원문 폴백으로 내려가던 흐름을 **소배치(4건)** 처리로 바꿨다. 일부 배치 실패가 전체 번역 실패로 번지지 않게 했고, JSON 블록 추출도 더 관대하게 보강했다.
+- **프롬프트 보강**: 뉴스 요약 프롬프트를 “한국어 번역 제목 + 한국어 3줄 요약” 의도로 명시해 번역 기대값을 더 분명히 했다.
+- **문구·문서 정리**: 뉴스 탭/설정 힌트에 번역 지원을 반영했고, `AGENTS.md` env 표에 `EXPO_PUBLIC_OPENAI_API_KEY`를 추가했다.
+
+#### 파일별
+
+| 파일 | 변경 내용 |
+|------|-----------|
+| `components/signal/NewsCard.tsx` | 뉴스 카드에서 중간 3줄 요약을 제거하고 제목 중심 레이아웃으로 단순화 |
+| `components/signal/YoutubeCard.tsx` | 유튜브 카드에서 3줄 요약 블록을 제거하고 메타 정보 중심 레이아웃으로 단순화 |
+| `app/(tabs)/index.tsx` | 뉴스 탭이 3줄 요약 대신 제목 번역만 호출하도록 변경 |
+| `app/settings.tsx` | LLM 제공자 버튼을 API 키 유무에 따라 비활성화/자동 보정 |
+| `.env.example` | `EXPO_PUBLIC_OPENAI_API_KEY` 예시 추가 |
+| `services/anthropic.ts` | 뉴스 3줄 요약 대신 제목 번역 전용 경로 추가 |
+| `services/openaiSummaries.ts` | 뉴스 3줄 요약 대신 제목 번역 전용 경로 추가, 개발 로그 유지 |
+| `services/openaiChat.ts` | OpenAI API 실패 시 개발 로그로 상태/본문 일부 출력 |
+| `services/aiSummaries.ts` | 뉴스는 제목 번역만 선택 제공자 경로로 호출하도록 정리 |
+| `services/youtube.ts` | 유튜브 AI 요약 호출을 제거하고 메타데이터만 반환하도록 정리 |
+| `locales/messages.ts` | 뉴스/설정 힌트와 LLM 비활성화 안내 문구 반영 |
+| `AGENTS.md` | `EXPO_PUBLIC_OPENAI_API_KEY` 및 뉴스 번역 동작 설명 추가 |
+
 ## 2026-04-04
 
 ### 탭·로딩·유튜브 개선

@@ -1,7 +1,6 @@
 import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/constants/youtubeDefaults';
 import { ECONOMY_SEARCH_BOOST } from '@/lib/youtubeEconomy';
 import { env, hasYoutube } from '@/services/env';
-import { summarizeYoutubeEconomy } from '@/services/anthropic';
 import type { YoutubeItem } from '@/types/signal';
 import { formatIso8601Duration, formatViewCount } from '@/utils/format';
 import { formatRelativeFromIso } from '@/utils/date';
@@ -247,27 +246,17 @@ export async function fetchEconomyYoutube(
   let meta = vjson.items ?? [];
   meta = sortVideos(meta, order);
 
-  const forAi = meta.map((it) => ({
-    id: it.id,
-    title: it.snippet.title,
-    channel: it.snippet.channelTitle,
-    description: it.snippet.description ?? '',
-  }));
-
-  const sumMap = await summarizeYoutubeEconomy(forAi);
-
   return meta.map((it) => {
     const vc = it.statistics?.viewCount ? parseInt(it.statistics.viewCount, 10) : 0;
-    const s = sumMap.get(it.id);
     return {
       id: it.id,
-      topic: s?.topic ?? '경제',
+      topic: '경제',
       title: it.snippet.title,
       channel: it.snippet.channelTitle,
       viewLabel: formatViewCount(vc),
       publishedLabel: formatRelativeFromIso(it.snippet.publishedAt),
       durationLabel: formatIso8601Duration(it.contentDetails.duration),
-      summaryLines: s?.summaryLines ?? ['요약을 불러오지 못했습니다.', '—', '—'],
+      summaryLines: ['', '', ''],
       thumbnailUrl: `https://i.ytimg.com/vi/${it.id}/mqdefault.jpg`,
       videoId: it.id,
     } satisfies YoutubeItem;

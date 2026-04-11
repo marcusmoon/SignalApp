@@ -57,6 +57,7 @@ npx tsc --noEmit
 |------|------|
 | `EXPO_PUBLIC_FINNHUB_TOKEN` | 시세·캘린더 등 Finnhub (없으면 `hasFinnhub()` false) |
 | `EXPO_PUBLIC_ANTHROPIC_API_KEY` | Claude 요약 등 |
+| `EXPO_PUBLIC_OPENAI_API_KEY` | ChatGPT 요약·뉴스 번역 등 |
 | `EXPO_PUBLIC_YOUTUBE_API_KEY` | 유튜브 데이터 |
 | `EXPO_PUBLIC_API_NINJAS_KEY` | API Ninjas 등 |
 | `EXPO_PUBLIC_ADMOB_NATIVE_UNIT_ID` / `EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID` | AdMob (비우면 테스트 ID) |
@@ -128,7 +129,7 @@ assets/
 - 시총순 심볼 정렬: `getSymbolsSortedByMarketCap()` (`finnhub.ts`), 유니버스·프로필 API 부하 고려
 - 메모리 캐시: `quotesCache.ts` (quote TTL = `QUOTES_POLL_INTERVAL_MS` 30초, 시총 **순서**는 별도 TTL)
 - **제스처:** 루트 `GestureHandlerRootView` (`app/_layout.tsx`). 시세 **탭 순서** 설정은 `react-native-draggable-flatlist` + RNGH `Pressable` (웹·네이티브 차이 있음)
-- **뉴스 탭** (`app/(tabs)/index.tsx`): 상단 세그먼트 순서는 `loadNewsSegmentOrder()` → `newsSegmentOrderPreference.ts`(기본 `NEWS_SEGMENT_ORDER`). **글로벌 / 코인 / 한국** — Finnhub `general`·`crypto`, 한국은 `general`+`forex` 후 키워드 필터(`services/newsKoreaFilter.ts`). **추가 키워드**는 설정의 「뉴스」탭 「한국 뉴스 키워드」에서 등록하며 `services/newsKoreaKeywordsPreference.ts`에 저장된다(내장 정규식과 OR). 저장 키가 없을 때(첫 실행) `DEFAULT_KOREA_NEWS_KEYWORDS`가 시드되며, 설정에서 `restoreKoreaNewsExtraKeywordsDefaults()`로 동일 목록을 다시 채울 수 있다. 한국 **전용 API**는 없어서 나중에 교체 가능.
+- **뉴스 탭** (`app/(tabs)/index.tsx`): 상단 세그먼트 순서는 `loadNewsSegmentOrder()` → `newsSegmentOrderPreference.ts`(기본 `NEWS_SEGMENT_ORDER`). **글로벌 / 코인 / 한국** — Finnhub `general`·`crypto`, 한국은 `general`+`forex` 후 키워드 필터(`services/newsKoreaFilter.ts`). 뉴스 카드는 선택한 LLM 제공자(Claude/OpenAI)가 있으면 **한국어 번역 제목 + 3줄 요약**을 생성한다. **추가 키워드**는 설정의 「뉴스」탭 「한국 뉴스 키워드」에서 등록하며 `services/newsKoreaKeywordsPreference.ts`에 저장된다(내장 정규식과 OR). 저장 키가 없을 때(첫 실행) `DEFAULT_KOREA_NEWS_KEYWORDS`가 시드되며, 설정에서 `restoreKoreaNewsExtraKeywordsDefaults()`로 동일 목록을 다시 채울 수 있다. 한국 **전용 API**는 없어서 나중에 교체 가능.
 
 ---
 

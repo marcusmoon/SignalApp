@@ -264,7 +264,11 @@ export default function CallsScreen() {
                     </View>
                   ) : null}
                   <Text style={styles.ai}>
-                    {c.source === 'claude' ? 'Claude AI 요약' : '폴백 / 안내'}
+                    {c.source === 'claude'
+                      ? t('callsAiProviderClaude')
+                      : c.source === 'openai'
+                        ? t('callsAiProviderOpenai')
+                        : t('callsAiProviderFallback')}
                   </Text>
                 </View>
               );

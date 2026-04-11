@@ -41,14 +41,13 @@ export function NewsCard({ item }: Props) {
         </View>
       </View>
       <Text style={styles.title}>{item.titleKo}</Text>
-      {item.summaryLines.map((line, i) => (
-        <Text key={i} style={styles.line}>
-          · {line}
-        </Text>
-      ))}
       <View style={styles.footer}>
         <Text style={styles.aiLabel}>
-          {item.summarySource === 'claude' ? t('newsAiClaude') : t('newsAiFinnhub')}
+          {item.summarySource === 'claude'
+            ? t('newsAiClaude')
+            : item.summarySource === 'openai'
+              ? t('newsAiOpenai')
+              : t('newsAiFinnhub')}
         </Text>
         <Pressable
           onPress={() => {
@@ -150,14 +149,8 @@ function makeStyles(theme: AppTheme) {
       color: theme.text,
       fontSize: 15,
       fontWeight: '700',
-      marginBottom: 10,
+      marginBottom: 2,
       lineHeight: 21,
-    },
-    line: {
-      color: theme.textMuted,
-      fontSize: 13,
-      lineHeight: 20,
-      marginBottom: 4,
     },
     footer: {
       flexDirection: 'row',

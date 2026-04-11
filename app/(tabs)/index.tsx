@@ -58,7 +58,7 @@ import {
 import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreference';
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
 import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
-import { summarizeNewsWithClaude } from '@/services/anthropic';
+import { translateNewsTitlesWithSelectedProvider } from '@/services/aiSummaries';
 import type { NewsItem } from '@/types/signal';
 import type { MessageId } from '@/locales/messages';
 
@@ -115,7 +115,7 @@ export default function FeedScreen() {
 
   const summarizeFromPool = useCallback(async (raw: FinnhubNewsRaw[], selected: string[]) => {
     const slice = sliceForDisplay(raw, selected);
-    return summarizeNewsWithClaude(slice);
+    return translateNewsTitlesWithSelectedProvider(slice);
   }, []);
 
   const load = useCallback(async (opts?: { forceRefresh?: boolean }) => {

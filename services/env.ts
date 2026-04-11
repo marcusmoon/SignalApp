@@ -7,6 +7,7 @@ import Constants from 'expo-constants';
 export const env = {
   finnhubToken: process.env.EXPO_PUBLIC_FINNHUB_TOKEN ?? '',
   anthropicKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '',
+  openaiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? '',
   youtubeKey: process.env.EXPO_PUBLIC_YOUTUBE_API_KEY ?? '',
   apiNinjasKey: process.env.EXPO_PUBLIC_API_NINJAS_KEY ?? '',
   /** 비우면 AdMob 테스트 네이티브 단위 ID 사용 (네이티브 빌드만) */
@@ -21,6 +22,10 @@ export function hasFinnhub() {
 
 export function hasAnthropic() {
   return env.anthropicKey.length > 0;
+}
+
+export function hasOpenAI() {
+  return env.openaiKey.length > 0;
 }
 
 export function hasYoutube() {

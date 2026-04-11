@@ -1,40 +1,10 @@
-import { env, hasAnthropic } from '@/services/env';
-import type { ConcallSummary, NewsItem } from '@/types/signal';
 import type { FinnhubNewsRaw } from '@/services/finnhub';
-import { isFlashNews } from '@/services/newsFlash';
+import { newsItemFromFinnhubFallback } from '@/services/anthropic';
+import { openaiChatCompletion } from '@/services/openaiChat';
+import { hasOpenAI } from '@/services/env';
+import type { ConcallSummary, NewsItem } from '@/types/signal';
 import { formatRelativeFromUnix } from '@/utils/date';
-
-const ANTHROPIC_VERSION = '2023-06-01';
-const MODEL = 'claude-sonnet-4-20250514';
-
-type MsgContent = { type: 'text'; text: string };
-
-async function messages(system: string, user: string, maxTokens = 8192): Promise<string> {
-  if (!hasAnthropic()) throw new Error('ANTHROPIC_KEY_MISSING');
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': env.anthropicKey,
-      'anthropic-version': ANTHROPIC_VERSION,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: maxTokens,
-      system,
-      messages: [{ role: 'user', content: [{ type: 'text', text: user } satisfies MsgContent] }],
-    }),
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Anthropic ${res.status}: ${t.slice(0, 400)}`);
-  }
-  const data = (await res.json()) as {
-    content: Array<{ type: string; text?: string }>;
-  };
-  const block = data.content.find((c) => c.type === 'text');
-  return block?.text ?? '';
-}
+import { isFlashNews } from '@/services/newsFlash';
 
 function extractJsonArray<T>(raw: string): T[] {
   const trimmed = raw.trim();
@@ -65,30 +35,13 @@ function splitToThreeLines(text: string): [string, string, string] {
   const t = text.replace(/\s+/g, ' ').trim();
   const parts = t.split(/(?<=[.!?])\s+/).filter(Boolean);
   const a = parts[0] ?? t.slice(0, 120);
-  const b = parts[1] ?? '추가 맥락은 원문을 참고하세요.';
-  const c = parts[2] ?? '—';
+  const b = parts[1] ?? '\ucd94\uac00 \ub9e5\ub77d\uc740 \uc6d0\ubb38\uc744 \ucc38\uace0\ud558\uc138\uc694.';
+  const c = parts[2] ?? '\u2014';
   return [a, b, c];
 }
 
 function hasHangul(text: string): boolean {
   return /[가-힣]/.test(text);
-}
-
-export function newsItemFromFinnhubFallback(n: FinnhubNewsRaw): NewsItem {
-  const ticker = n.related.split(',')[0]?.trim() || 'GLOBAL';
-  const base = (n.summary || '').trim() || n.headline;
-  const [l1, l2, l3] = splitToThreeLines(base);
-  return {
-    id: String(n.id),
-    ticker,
-    titleKo: n.headline,
-    summaryLines: [l1, l2, l3],
-    source: n.source,
-    timeLabel: formatRelativeFromUnix(n.datetime),
-    url: n.url,
-    summarySource: 'finnhub',
-    isFlash: isFlashNews(n),
-  };
 }
 
 type NewsBatchRow = {
@@ -100,51 +53,54 @@ type NewsBatchRow = {
 
 const NEWS_BATCH_SIZE = 4;
 
-async function translateNewsTitleWithClaude(article: FinnhubNewsRaw): Promise<string | null> {
+async function translateNewsTitleWithOpenAI(article: FinnhubNewsRaw): Promise<string | null> {
   try {
     const system =
       'Translate the following financial news headline into concise natural Korean. Return ONLY the translated Korean headline text.';
     const user = `Headline: ${article.headline}`;
-    const text = (await messages(system, user, 256)).trim();
+    const text = (await openaiChatCompletion(system, user, 256)).trim();
     if (!text) return null;
     return text.replace(/^["'`]+|["'`]+$/g, '').trim() || null;
-  } catch {
+  } catch (error) {
+    if (__DEV__) {
+      console.warn('[translateNewsTitleWithOpenAI]', article.id, error);
+    }
     return null;
   }
 }
 
-export async function translateNewsTitlesWithClaude(articles: FinnhubNewsRaw[]): Promise<NewsItem[]> {
+export async function translateNewsTitlesWithOpenAI(articles: FinnhubNewsRaw[]): Promise<NewsItem[]> {
   return Promise.all(
     articles.map(async (article) => {
       const fallback = newsItemFromFinnhubFallback(article);
-      const titleKo = await translateNewsTitleWithClaude(article);
+      const titleKo = await translateNewsTitleWithOpenAI(article);
       return {
         ...fallback,
         titleKo: titleKo || fallback.titleKo,
         summaryLines: ['', '', ''],
-        summarySource: titleKo ? 'claude' : fallback.summarySource,
+        summarySource: titleKo ? 'openai' : fallback.summarySource,
       };
     }),
   );
 }
 
-async function buildFallbackNewsItemWithClaudeTitle(article: FinnhubNewsRaw): Promise<NewsItem> {
+async function buildFallbackNewsItemWithOpenAITitle(article: FinnhubNewsRaw): Promise<NewsItem> {
   const fallback = newsItemFromFinnhubFallback(article);
-  const titleKo = await translateNewsTitleWithClaude(article);
+  const titleKo = await translateNewsTitleWithOpenAI(article);
   return {
     ...fallback,
     titleKo: titleKo || fallback.titleKo,
-    summarySource: titleKo ? 'claude' : fallback.summarySource,
+    summarySource: titleKo ? 'openai' : fallback.summarySource,
   };
 }
 
-async function ensureKoreanTitleWithClaude(article: FinnhubNewsRaw, candidate?: string | null): Promise<string> {
+async function ensureKoreanTitleWithOpenAI(article: FinnhubNewsRaw, candidate?: string | null): Promise<string> {
   const normalized = String(candidate ?? '').trim();
   if (normalized && hasHangul(normalized)) return normalized;
-  return (await translateNewsTitleWithClaude(article)) || normalized || article.headline;
+  return (await translateNewsTitleWithOpenAI(article)) || normalized || article.headline;
 }
 
-async function summarizeNewsBatchWithClaude(articles: FinnhubNewsRaw[]): Promise<NewsItem[]> {
+async function summarizeNewsBatchWithOpenAI(articles: FinnhubNewsRaw[]): Promise<NewsItem[]> {
   if (articles.length === 0) return [];
 
   const payload = articles.map((a) => ({
@@ -164,10 +120,13 @@ async function summarizeNewsBatchWithClaude(articles: FinnhubNewsRaw[]): Promise
 
   let rows: NewsBatchRow[] = [];
   try {
-    const text = await messages(system, user, 8192);
+    const text = await openaiChatCompletion(system, user, 8192);
     rows = extractJsonArray<NewsBatchRow>(text);
-  } catch {
-    return Promise.all(articles.map((article) => buildFallbackNewsItemWithClaudeTitle(article)));
+  } catch (error) {
+    if (__DEV__) {
+      console.warn('[summarizeNewsBatchWithOpenAI]', articles.map((article) => article.id), error);
+    }
+    return Promise.all(articles.map((article) => buildFallbackNewsItemWithOpenAITitle(article)));
   }
 
   const byId = new Map(rows.map((r) => [r.id, r]));
@@ -176,7 +135,7 @@ async function summarizeNewsBatchWithClaude(articles: FinnhubNewsRaw[]): Promise
     const id = String(a.id);
     const row = byId.get(id) ?? rows[i];
     if (!row?.summaryLines?.length) {
-      return buildFallbackNewsItemWithClaudeTitle(a);
+      return buildFallbackNewsItemWithOpenAITitle(a);
     }
     const s = row.summaryLines;
     const summaryLines: [string, string, string] = [
@@ -187,28 +146,28 @@ async function summarizeNewsBatchWithClaude(articles: FinnhubNewsRaw[]): Promise
     return {
       id,
       ticker: row.ticker || 'GLOBAL',
-      titleKo: await ensureKoreanTitleWithClaude(a, row.titleKo),
+      titleKo: await ensureKoreanTitleWithOpenAI(a, row.titleKo),
       summaryLines,
       source: a.source,
       timeLabel: formatRelativeFromUnix(a.datetime),
       url: a.url,
-      summarySource: 'claude',
+      summarySource: 'openai',
       isFlash: isFlashNews(a),
     };
     }),
   );
 }
 
-export async function summarizeNewsWithClaude(articles: FinnhubNewsRaw[]): Promise<NewsItem[]> {
+export async function summarizeNewsWithOpenAI(articles: FinnhubNewsRaw[]): Promise<NewsItem[]> {
   if (articles.length === 0) return [];
-  if (!hasAnthropic()) {
+  if (!hasOpenAI()) {
     return articles.map(newsItemFromFinnhubFallback);
   }
 
   const out: NewsItem[] = [];
   for (let i = 0; i < articles.length; i += NEWS_BATCH_SIZE) {
     const batch = articles.slice(i, i + NEWS_BATCH_SIZE);
-    const summarized = await summarizeNewsBatchWithClaude(batch);
+    const summarized = await summarizeNewsBatchWithOpenAI(batch);
     out.push(...summarized);
   }
   return out;
@@ -220,26 +179,26 @@ type YtBatchRow = {
   summaryLines: [string, string, string];
 };
 
-export async function summarizeYoutubeEconomy(
+const YOUTUBE_SUMMARY_SYSTEM =
+  'You analyze YouTube metadata for economy/finance videos. Return ONLY valid JSON array: objects with id, topic (short Korean label like \ud1b5\ud654\uc815\ucc45, \ubb3c\uac00, \uacbd\uae30, \ud658\uc728, \ud55c\uad6d\uacbd\uc81c, \uc9c0\ud45c, \uc815\ucc45, \uc6d0\uc790\uc7ac, \uc18d\ubcf4), summaryLines (exactly 3 Korean lines: what the viewer learns without watching).';
+
+export async function summarizeYoutubeEconomyOpenAI(
   items: Array<{ id: string; title: string; channel: string; description: string }>,
 ): Promise<Map<string, { topic: string; summaryLines: [string, string, string] }>> {
   const out = new Map<string, { topic: string; summaryLines: [string, string, string] }>();
   if (items.length === 0) return out;
-  if (!hasAnthropic()) {
+  if (!hasOpenAI()) {
     for (const it of items) {
       const [l1, l2, l3] = splitToThreeLines(it.description.slice(0, 800) || it.title);
-      out.set(it.id, { topic: '경제', summaryLines: [l1, l2, l3] });
+      out.set(it.id, { topic: '\uacbd\uc81c', summaryLines: [l1, l2, l3] });
     }
     return out;
   }
 
-  const system =
-    'You analyze YouTube metadata for economy/finance videos. Return ONLY valid JSON array: objects with id, topic (short Korean label like 통화정책, 물가, 경기, 환율, 한국경제, 지표, 정책, 원자재, 속보), summaryLines (exactly 3 Korean lines: what the viewer learns without watching).';
-
   const user = `Videos JSON:\n${JSON.stringify(items)}`;
   let rows: YtBatchRow[] = [];
   try {
-    const text = await messages(system, user, 8192);
+    const text = await openaiChatCompletion(YOUTUBE_SUMMARY_SYSTEM, user, 8192);
     rows = extractJsonArray<YtBatchRow>(text);
   } catch {
     rows = [];
@@ -251,12 +210,12 @@ export async function summarizeYoutubeEconomy(
       String(s?.[1] ?? ''),
       String(s?.[2] ?? ''),
     ];
-    out.set(r.id, { topic: r.topic || '경제', summaryLines });
+    out.set(r.id, { topic: r.topic || '\uacbd\uc81c', summaryLines });
   }
   for (const it of items) {
     if (!out.has(it.id)) {
       const [l1, l2, l3] = splitToThreeLines(it.description.slice(0, 800) || it.title);
-      out.set(it.id, { topic: '경제', summaryLines: [l1, l2, l3] });
+      out.set(it.id, { topic: '\uacbd\uc81c', summaryLines: [l1, l2, l3] });
     }
   }
   return out;
@@ -268,18 +227,21 @@ type ConcallJson = {
   risk: string;
 };
 
-export async function summarizeConcallTranscript(
+export async function summarizeConcallTranscriptOpenAI(
   ticker: string,
   quarterLabel: string,
   transcript: string,
 ): Promise<ConcallSummary> {
   const clipped = transcript.slice(0, 24_000);
-  if (!hasAnthropic()) {
+  if (!hasOpenAI()) {
     return {
       id: `${ticker}-${quarterLabel}`,
       ticker,
       quarter: quarterLabel,
-      bullets: ['트랜스크립트 요약을 위해 Anthropic API 키가 필요합니다.', '—'],
+      bullets: [
+        '\ud2b8\ub79c\uc2a4\ud06c\ub9bd\ud2b8 \uc694\uc57d\uc744 \uc704\ud574 OpenAI API \ud0a4\uac00 \ud544\uc694\ud569\ub2c8\ub2e4.',
+        '\u2014',
+      ],
       guidance: undefined,
       risk: undefined,
       source: 'fallback',
@@ -293,14 +255,17 @@ export async function summarizeConcallTranscript(
 
   let obj: ConcallJson;
   try {
-    const text = await messages(system, user, 4096);
+    const text = await openaiChatCompletion(system, user, 4096);
     obj = JSON.parse(text.trim().replace(/^```(?:json)?\s*|\s*```$/g, '')) as ConcallJson;
   } catch {
     return {
       id: `${ticker}-${quarterLabel}`,
       ticker,
       quarter: quarterLabel,
-      bullets: ['요약 JSON 파싱에 실패했습니다.', '트랜스크립트 앞부분만 확인해 주세요.'],
+      bullets: [
+        '\uc694\uc57d JSON \ud30c\uc2f1\uc5d0 \uc2e4\ud328\ud588\uc2b5\ub2c8\ub2e4.',
+        '\ud2b8\ub79c\uc2a4\ud06c\ub9bd\ud2b8 \uc55e\ubd80\ubd84\ub9cc \ud655\uc778\ud574 \uc8fc\uc138\uc694.',
+      ],
       guidance: undefined,
       risk: undefined,
       source: 'fallback',
@@ -310,7 +275,10 @@ export async function summarizeConcallTranscript(
   const bullets =
     bulletsRaw.length >= 2
       ? [bulletsRaw[0], bulletsRaw[1]]
-      : [bulletsRaw[0] ?? '요약을 생성하지 못했습니다.', bulletsRaw[1] ?? '—'];
+      : [
+          bulletsRaw[0] ?? '\uc694\uc57d\uc744 \uc0dd\uc131\ud558\uc9c0 \ubabb\ud588\uc2b5\ub2c8\ub2e4.',
+          bulletsRaw[1] ?? '\u2014',
+        ];
 
   return {
     id: `${ticker}-${quarterLabel}`,
@@ -319,6 +287,6 @@ export async function summarizeConcallTranscript(
     bullets,
     guidance: obj.guidance || undefined,
     risk: obj.risk || undefined,
-    source: 'claude',
+    source: 'openai',
   };
 }

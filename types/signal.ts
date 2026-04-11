@@ -6,7 +6,7 @@ export type NewsItem = {
   source: string;
   timeLabel: string;
   url: string;
-  summarySource?: 'claude' | 'finnhub';
+  summarySource?: 'claude' | 'openai' | 'finnhub';
   /** 속보·긴급 보도 강조 표시 */
   isFlash?: boolean;
 };
@@ -26,7 +26,7 @@ export type ConcallSummary = {
   bullets: string[];
   guidance?: string;
   risk?: string;
-  source: 'claude' | 'fallback';
+  source: 'claude' | 'openai' | 'fallback';
 };
 
 export type YoutubeItem = {

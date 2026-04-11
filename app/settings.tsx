@@ -75,6 +75,12 @@ import {
   type CacheFeaturePrefs,
 } from '@/services/cacheFeaturePreferences';
 import {
+  loadLlmProvider,
+  saveLlmProvider,
+  type LlmProviderId,
+} from '@/services/llmProviderPreference';
+import { hasAnthropic, hasOpenAI } from '@/services/env';
+import {
   loadQuotesListLimits,
   normalizeQuotesListLimits,
   quotesListCountChoicesForField,
@@ -536,6 +542,9 @@ function makeStyles(theme: AppTheme) {
       alignItems: 'center',
       justifyContent: 'center',
     },
+    langSegmentDisabled: {
+      opacity: 0.38,
+    },
     langSegmentActive: {
       backgroundColor: theme.green,
     },
@@ -543,9 +552,16 @@ function makeStyles(theme: AppTheme) {
       fontSize: 13,
       fontWeight: '800',
       color: theme.textDim,
+      textAlign: 'center',
     },
     langSegmentTextActive: {
       color: '#0A0A0F',
+    },
+    llmProviderDisabledNote: {
+      fontSize: 12,
+      fontWeight: '500',
+      color: theme.textMuted,
+      marginTop: 8,
     },
     tabBarGlassPercent: {
       fontSize: 26,
@@ -786,6 +802,12 @@ export default function SettingsScreen() {
   const [tabBarGlassReady, setTabBarGlassReady] = useState(false);
   const [tabBarGlassPercent, setTabBarGlassPercent] = useState(() => DEFAULT_TAB_BAR_GLASS_PERCENT);
 
+  const [llmProvider, setLlmProvider] = useState<LlmProviderId>('claude');
+  const [llmProviderReady, setLlmProviderReady] = useState(false);
+
+  const claudeAvailable = hasAnthropic();
+  const openaiAvailable = hasOpenAI();
+
   const [accentPickerOpen, setAccentPickerOpen] = useState(false);
   const [accentPickerDraftHex, setAccentPickerDraftHex] = useState(customHex);
 
@@ -902,6 +924,18 @@ export default function SettingsScreen() {
     setTabBarGlassReady(true);
   }, []);
 
+  const reloadLlmProvider = useCallback(async () => {
+    const v = await loadLlmProvider();
+    let resolved = v;
+    if (v === 'claude' && !claudeAvailable && openaiAvailable) resolved = 'openai';
+    if (v === 'openai' && !openaiAvailable && claudeAvailable) resolved = 'claude';
+    if (resolved !== v) {
+      await saveLlmProvider(resolved);
+    }
+    setLlmProvider(resolved);
+    setLlmProviderReady(true);
+  }, [claudeAvailable, openaiAvailable]);
+
   useFocusEffect(
     useCallback(() => {
       void reload();
@@ -913,6 +947,7 @@ export default function SettingsScreen() {
       void reloadKoreaKeywords();
       void reloadNewsSegmentOrder();
       void reloadTabBarGlassLevel();
+      void reloadLlmProvider();
     }, [
       reload,
       reloadPrefs,
@@ -923,6 +958,7 @@ export default function SettingsScreen() {
       reloadKoreaKeywords,
       reloadNewsSegmentOrder,
       reloadTabBarGlassLevel,
+      reloadLlmProvider,
     ]),
   );
 
@@ -1619,6 +1655,72 @@ export default function SettingsScreen() {
                     {t('settingsTabBarGlassPreviewKicker')}
                   </Text>
                   <TabBarGlassPreview percent={tabBarGlassPercent} />
+                </>
+              )}
+            </View>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsLlmProviderKicker')}</Text>
+              <Text style={styles.quotesCardHint}>{t('settingsLlmProviderHint')}</Text>
+              {!llmProviderReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <>
+                  <View style={styles.langSegmentedTrack}>
+                    <Pressable
+                      onPress={() => {
+                        setLlmProvider('claude');
+                        void saveLlmProvider('claude');
+                      }}
+                      disabled={!claudeAvailable}
+                      style={[
+                        styles.langSegment,
+                        !claudeAvailable && styles.langSegmentDisabled,
+                        llmProvider === 'claude' && claudeAvailable && styles.langSegmentActive,
+                      ]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: llmProvider === 'claude', disabled: !claudeAvailable }}
+                      accessibilityLabel={t('settingsLlmProviderClaude')}>
+                      <Text
+                        style={[
+                          styles.langSegmentText,
+                          llmProvider === 'claude' && claudeAvailable && styles.langSegmentTextActive,
+                        ]}>
+                        {claudeAvailable
+                          ? t('settingsLlmProviderClaude')
+                          : `${t('settingsLlmProviderClaude')} · ${t('settingsLlmProviderUnavailable')}`}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => {
+                        setLlmProvider('openai');
+                        void saveLlmProvider('openai');
+                      }}
+                      disabled={!openaiAvailable}
+                      style={[
+                        styles.langSegment,
+                        !openaiAvailable && styles.langSegmentDisabled,
+                        llmProvider === 'openai' && openaiAvailable && styles.langSegmentActive,
+                      ]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: llmProvider === 'openai', disabled: !openaiAvailable }}
+                      accessibilityLabel={t('settingsLlmProviderOpenai')}>
+                      <Text
+                        style={[
+                          styles.langSegmentText,
+                          llmProvider === 'openai' && openaiAvailable && styles.langSegmentTextActive,
+                        ]}>
+                        {openaiAvailable
+                          ? t('settingsLlmProviderOpenai')
+                          : `${t('settingsLlmProviderOpenai')} · ${t('settingsLlmProviderUnavailable')}`}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  {!claudeAvailable || !openaiAvailable ? (
+                    <Text style={styles.llmProviderDisabledNote}>
+                      {t('settingsLlmProviderDisabledNote')}
+                    </Text>
+                  ) : null}
                 </>
               )}
             </View>

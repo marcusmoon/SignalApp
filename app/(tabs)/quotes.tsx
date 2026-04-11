@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useIsFocused } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import {
   Alert,
   InteractionManager,
@@ -143,6 +144,7 @@ function mapCoinToFinnhubQuote(price: number, change24h: number, pct24h: number)
 export default function QuotesScreen() {
   const { theme } = useSignalTheme();
   const { t } = useLocale();
+  const router = useRouter();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
@@ -178,6 +180,21 @@ export default function QuotesScreen() {
       return '';
     }
   }, [nextRefreshAtMs, countdownTick, t]);
+
+  const segmentHint = useMemo(() => {
+    if (segment === 'watch') return t('quotesSegmentHintWatch');
+    if (segment === 'popular') return t('quotesSegmentHintPopular');
+    if (segment === 'mcap') return t('quotesSegmentHintMcap');
+    return t('quotesHintCoin');
+  }, [segment, t]);
+
+  const pollHintLine = useMemo(
+    () =>
+      segment === 'coin'
+        ? t('quotesPollHintCoin', { seconds: String(POLL_MS / 1000), hint: segmentHint })
+        : t('quotesPollHintFinnhub', { seconds: String(POLL_MS / 1000), hint: segmentHint }),
+    [segment, segmentHint, t],
+  );
 
   const ttlTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadRef = useRef<(forceRefresh?: boolean) => Promise<void>>(async () => {});
@@ -225,7 +242,7 @@ export default function QuotesScreen() {
           const price =
             typeof c.current_price === 'number' && Number.isFinite(c.current_price) ? c.current_price : null;
           if (price == null) {
-            return { symbol: sym || '—', name: c.name, quote: null, error: '가격 없음' };
+            return { symbol: sym || '—', name: c.name, quote: null, error: t('quotesErrorNoPrice') };
           }
           const d24 = typeof c.price_change_24h === 'number' ? c.price_change_24h : 0;
           const dp24 = typeof c.price_change_percentage_24h === 'number' ? c.price_change_percentage_24h : 0;
@@ -247,7 +264,7 @@ export default function QuotesScreen() {
       } catch (e) {
         setRows([]);
         setNextRefreshAtMs(null);
-        setError(e instanceof Error ? e.message : '코인 시세를 불러오지 못했습니다.');
+        setError(e instanceof Error ? e.message : t('quotesErrorLoadCoin'));
       }
       return;
     }
@@ -255,7 +272,7 @@ export default function QuotesScreen() {
     if (!hasFinnhub()) {
       setRows([]);
       setNextRefreshAtMs(null);
-      setError('EXPO_PUBLIC_FINNHUB_TOKEN 이 필요합니다.');
+      setError(t('feedErrorToken'));
       return;
     }
 
@@ -336,7 +353,7 @@ export default function QuotesScreen() {
     } else {
       setNextRefreshAtMs(Date.now() + POLL_MS);
     }
-  }, [segment, scheduleRefreshAtCacheExpiry]);
+  }, [segment, scheduleRefreshAtCacheExpiry, t]);
 
   loadRef.current = load;
 
@@ -358,7 +375,7 @@ export default function QuotesScreen() {
             await load();
           } catch (e) {
             if (!cancelled) {
-              setError(e instanceof Error ? e.message : '시세를 불러오지 못했습니다.');
+              setError(e instanceof Error ? e.message : t('quotesErrorLoadQuotes'));
               setRows([]);
             }
           } finally {
@@ -385,7 +402,7 @@ export default function QuotesScreen() {
     try {
       await load(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '새로고침 실패');
+      setError(e instanceof Error ? e.message : t('quotesErrorRefresh'));
     } finally {
       setRefreshing(false);
     }
@@ -395,12 +412,12 @@ export default function QuotesScreen() {
     const raw = draftTicker.trim();
     if (!raw) return;
     if (!isValidUsTicker(raw)) {
-      Alert.alert('형식 오류', '영문·숫자·.(점)·-(하이픈) 조합 티커만 입력해 주세요.');
+      Alert.alert(t('alertTitleFormatError'), t('quotesAlertTickerFormatBody'));
       return;
     }
     const sym = raw.toUpperCase().replace(/\s+/g, '');
     if (!hasFinnhub()) {
-      setError('EXPO_PUBLIC_FINNHUB_TOKEN 이 필요합니다.');
+      setError(t('feedErrorToken'));
       return;
     }
     try {
@@ -416,13 +433,13 @@ export default function QuotesScreen() {
     } catch (e) {
       Alert.alert(
         t('alertTitleFormatError'),
-        e instanceof Error ? e.message : '시세를 조회하지 못했습니다.',
+        e instanceof Error ? e.message : t('quotesErrorLookup'),
       );
       return;
     }
     const current = await loadWatchlistSymbols();
     if (current.includes(sym)) {
-      Alert.alert('알림', '이미 관심 목록에 있습니다.');
+      Alert.alert(t('commonNotice'), t('quotesAlertDupWatchlist'));
       return;
     }
     await saveWatchlistSymbols([...current, sym]);
@@ -448,6 +465,15 @@ export default function QuotesScreen() {
     [segment],
   );
 
+  const openSymbolDetail = useCallback(
+    (symbol: string) => {
+      const trimmed = symbol.trim().toUpperCase();
+      if (!trimmed || trimmed === '—' || segment === 'coin') return;
+      router.push(`/symbol/${trimmed}`);
+    },
+    [router, segment],
+  );
+
   const onResetWatchDefaults = useCallback(() => {
     Alert.alert(
       t('alertResetWatchTitle'),
@@ -466,27 +492,14 @@ export default function QuotesScreen() {
     );
   }, [load, t]);
 
-  const segmentHint =
-    segment === 'watch'
-      ? '저장된 티커 · 아래에서 추가/삭제'
-      : segment === 'popular'
-        ? '거래·관심이 많은 순(고정 큐레이션)'
-        : segment === 'mcap'
-          ? 'Finnhub 시가총액 기준 상위 종목'
-          : t('quotesHintCoin');
-
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <SignalHeader />
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>
-          <Text style={styles.section}>실시간 시세</Text>
-          <Text style={styles.hint}>
-            {segment === 'coin'
-              ? `CoinGecko · 약 ${POLL_MS / 1000}초마다 갱신 (탭에 있을 때) · ${segmentHint}`
-              : `Finnhub · 약 ${POLL_MS / 1000}초마다 갱신 (탭에 있을 때) · ${segmentHint}`}
-          </Text>
+          <Text style={styles.section}>{t('quotesScreenTitle')}</Text>
+          <Text style={styles.hint}>{pollHintLine}</Text>
 
           <View style={styles.segment}>
             {segmentOrder.map((key) => (
@@ -543,7 +556,7 @@ export default function QuotesScreen() {
                 <TextInput
                   value={draftTicker}
                   onChangeText={setDraftTicker}
-                  placeholder="티커 (예: AAPL)"
+                  placeholder={t('quotesPlaceholderTicker')}
                   placeholderTextColor={theme.textDim}
                   autoCapitalize="characters"
                   autoCorrect={false}
@@ -552,7 +565,7 @@ export default function QuotesScreen() {
                   returnKeyType="done"
                 />
                 <Pressable onPress={() => void onAddWatch()} style={styles.addBtn} accessibilityRole="button">
-                  <Text style={styles.addBtnText}>추가</Text>
+                  <Text style={styles.addBtnText}>{t('quotesAddButton')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={onResetWatchDefaults}
@@ -579,7 +592,9 @@ export default function QuotesScreen() {
                     <View style={styles.symCol}>
                       <View style={styles.symBlock}>
                         <View style={styles.symRow}>
-                          <Text style={styles.sym}>{r.symbol}</Text>
+                          <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={6}>
+                            <Text style={styles.sym}>{r.symbol}</Text>
+                          </Pressable>
                           {yahooEnabled ? (
                             <Pressable
                               onPress={() => openYahooFinance(r)}
@@ -630,7 +645,7 @@ export default function QuotesScreen() {
                       ) : null}
                     </View>
                   </View>
-                  {!r.quote ? <Text style={styles.fail}>{r.error ?? '데이터 없음'}</Text> : null}
+                  {!r.quote ? <Text style={styles.fail}>{r.error ?? t('quotesDataUnavailable')}</Text> : null}
                 </>
               );
 
@@ -666,17 +681,13 @@ export default function QuotesScreen() {
 
             {rows.length === 0 && !error ? (
               <Text style={styles.empty}>
-                {segment === 'watch'
-                  ? '관심 종목이 없습니다. 티커를 추가해 주세요.'
-                  : '표시할 시세가 없습니다.'}
+                {segment === 'watch' ? t('quotesEmptyWatch') : t('quotesEmptyGeneric')}
               </Text>
             ) : null}
 
             <View style={styles.note}>
               <Text style={styles.noteText}>
-                {segment === 'coin'
-                  ? t('quotesFooterCoin')
-                  : '인기순은 앱에서 지정한 순서입니다. 시총순은 Finnhub 프로필의 시가총액(백만 USD)으로 정렬합니다. 장 마감 후에는 마지막 거래가 기준일 수 있습니다.'}
+                {segment === 'coin' ? t('quotesFooterCoin') : t('quotesFooterStocks')}
               </Text>
             </View>
             </>

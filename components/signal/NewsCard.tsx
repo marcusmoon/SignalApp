@@ -1,4 +1,5 @@
 import * as WebBrowser from 'expo-web-browser';
+import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -12,10 +13,13 @@ type Props = { item: NewsItem };
 export function NewsCard({ item }: Props) {
   const { theme } = useSignalTheme();
   const { t } = useLocale();
+  const router = useRouter();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const sourceName = item.source?.trim() || '—';
   const isFlash = Boolean(item.isFlash);
+  const symbol = item.ticker?.trim().toUpperCase() ?? '';
+  const canOpenSymbol = symbol.length > 0 && symbol !== 'GLOBAL' && symbol !== '—';
 
   return (
     <View style={[styles.card, isFlash && styles.cardFlash]}>
@@ -27,9 +31,17 @@ export function NewsCard({ item }: Props) {
         </View>
       ) : null}
       <View style={styles.row}>
-        <Text style={styles.ticker} numberOfLines={1}>
-          {item.ticker}
-        </Text>
+        {canOpenSymbol ? (
+          <Pressable onPress={() => router.push(`/symbol/${symbol}`)} hitSlop={6}>
+            <Text style={styles.ticker} numberOfLines={1}>
+              {item.ticker}
+            </Text>
+          </Pressable>
+        ) : (
+          <Text style={styles.ticker} numberOfLines={1}>
+            {item.ticker}
+          </Text>
+        )}
         <Text style={styles.time}>{item.timeLabel}</Text>
       </View>
       <View style={styles.sourceRow}>
@@ -40,7 +52,13 @@ export function NewsCard({ item }: Props) {
           </Text>
         </View>
       </View>
-      <Text style={styles.title}>{item.titleKo}</Text>
+      {canOpenSymbol ? (
+        <Pressable onPress={() => router.push(`/symbol/${symbol}`)} hitSlop={4}>
+          <Text style={styles.title}>{item.titleKo}</Text>
+        </Pressable>
+      ) : (
+        <Text style={styles.title}>{item.titleKo}</Text>
+      )}
       <View style={styles.footer}>
         <Text style={styles.aiLabel}>
           {item.summarySource === 'claude'

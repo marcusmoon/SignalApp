@@ -58,6 +58,16 @@ export async function fetchMarketNews(category: FinnhubMarketNewsCategory): Prom
   return Array.isArray(data) ? data : [];
 }
 
+/** 종목별 회사 뉴스 (관심 브리핑 등) */
+export async function fetchCompanyNews(symbol: string, from: Date, to: Date): Promise<FinnhubNewsRaw[]> {
+  const data = await fh<FinnhubNewsRaw[]>('/company-news', {
+    symbol: symbol.trim().toUpperCase(),
+    from: toYmd(from),
+    to: toYmd(to),
+  });
+  return Array.isArray(data) ? data : [];
+}
+
 export async function fetchGeneralNews(): Promise<FinnhubNewsRaw[]> {
   return fetchMarketNews('general');
 }
@@ -164,6 +174,16 @@ export type FinnhubQuote = {
   t: number;
 };
 
+export type FinnhubStockCandles = {
+  c: number[];
+  h: number[];
+  l: number[];
+  o: number[];
+  s: 'ok' | 'no_data';
+  t: number[];
+  v: number[];
+};
+
 /** `/quote` JSON에 유효한 현재가가 있는지 (없는 종목은 보통 `c` 누락) */
 export function finnhubQuoteHasValidPrice(q: unknown): boolean {
   if (!q || typeof q !== 'object') return false;
@@ -187,6 +207,84 @@ export const DEFAULT_US_WATCHLIST = [
 
 export async function fetchQuote(symbol: string): Promise<FinnhubQuote> {
   return fh<FinnhubQuote>('/quote', { symbol: symbol.trim().toUpperCase() });
+}
+
+/**
+ * 원/달러 등 FX는 주식용 `/quote?symbol=OANDA:USD_KRW`에 현재가가 안 오는 경우가 많아,
+ * `/forex/candle`(일봉 종가) → 실패 시 `/forex/rates?base=USD`의 `quote.KRW` 스팟으로 채웁니다.
+ */
+export async function fetchUsdKrwQuoteApprox(): Promise<FinnhubQuote | null> {
+  const now = Math.floor(Date.now() / 1000);
+  const from = now - 86400 * 21;
+  const candleSymbols = ['OANDA:USD_KRW', 'USD_KRW'];
+
+  for (const symbol of candleSymbols) {
+    try {
+      const j = await fh<FinnhubStockCandles>('/forex/candle', {
+        symbol,
+        resolution: 'D',
+        from: String(from),
+        to: String(now),
+      });
+      if (j.s === 'ok' && Array.isArray(j.c) && j.c.length > 0) {
+        const closes = j.c;
+        const last = closes[closes.length - 1]!;
+        const prev = closes.length >= 2 ? closes[closes.length - 2]! : last;
+        const dp = prev !== 0 ? ((last - prev) / prev) * 100 : 0;
+        const t = Array.isArray(j.t) && j.t.length > 0 ? j.t[j.t.length - 1]! : now;
+        return {
+          c: last,
+          d: last - prev,
+          dp,
+          h: last,
+          l: last,
+          o: last,
+          pc: prev,
+          t,
+        };
+      }
+    } catch {
+      /* try next symbol */
+    }
+  }
+
+  try {
+    const rates = await fh<{ quote?: Record<string, number> }>('/forex/rates', { base: 'USD' });
+    const krw = rates.quote?.KRW;
+    if (typeof krw === 'number' && Number.isFinite(krw)) {
+      return {
+        c: krw,
+        d: 0,
+        dp: 0,
+        h: krw,
+        l: krw,
+        o: krw,
+        pc: krw,
+        t: now,
+      };
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+export async function fetchStockCandles(
+  symbol: string,
+  resolution: 'D' | 'W' | 'M',
+  from: Date,
+  to: Date,
+): Promise<FinnhubStockCandles | null> {
+  const data = await fh<FinnhubStockCandles>('/stock/candle', {
+    symbol: symbol.trim().toUpperCase(),
+    resolution,
+    from: String(Math.floor(from.getTime() / 1000)),
+    to: String(Math.floor(to.getTime() / 1000)),
+  });
+  if (!data || data.s === 'no_data' || !Array.isArray(data.c) || data.c.length === 0) {
+    return null;
+  }
+  return data;
 }
 
 export async function fetchQuotesForSymbols(

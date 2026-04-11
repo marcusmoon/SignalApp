@@ -23,9 +23,11 @@ export function SignalHeader() {
             <View style={[styles.bar, { height: 36, opacity: 0.82 }]} />
             <View style={[styles.bar, { height: 46, opacity: 1 }]} />
           </View>
-          <View>
+          <View style={styles.brandCol}>
             <Text style={styles.brand}>SIGNAL</Text>
-            <Text style={styles.tag}>{t('headerTagline')}</Text>
+            <Text style={styles.tag} numberOfLines={2}>
+              {t('headerTagline')}
+            </Text>
           </View>
         </View>
         <View style={styles.headerActions}>
@@ -41,7 +43,7 @@ export function SignalHeader() {
             style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel={t('a11yCalendar')}>
-            <FontAwesome name="calendar" size={20} color={theme.textDim} />
+            <FontAwesome name="calendar" size={21} color={theme.textDim} />
           </Pressable>
           <Pressable
             onPress={() => router.push('/settings')}
@@ -75,7 +77,7 @@ function makeStyles(theme: AppTheme) {
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 0,
+      flexShrink: 0,
       marginRight: -2,
     },
     iconBtn: {
@@ -87,15 +89,22 @@ function makeStyles(theme: AppTheme) {
       justifyContent: 'center',
     },
     logoRow: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
+      minWidth: 0,
+    },
+    brandCol: {
+      flex: 1,
+      minWidth: 0,
     },
     bars: {
       flexDirection: 'row',
       alignItems: 'flex-end',
       gap: 4,
       height: 46,
+      flexShrink: 0,
     },
     bar: {
       width: 9,

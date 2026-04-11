@@ -80,6 +80,7 @@ app/                    # expo-router 화면
     calls.tsx           # 컨콜
   calendar.tsx          # 투자 캘린더 (하단 탭 밖 별도 화면; 링크로 진입)
   settings.tsx          # 설정(서브 탭: 유튜브·시세·캘린더·표시·알림 등)
+  symbol/[ticker].tsx   # 종목 상세 (뉴스/시세/컨콜에서 진입)
   mega-cap-list.tsx
   modal.tsx
 components/             # UI 조각

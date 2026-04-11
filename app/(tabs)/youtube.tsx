@@ -84,6 +84,16 @@ export default function YoutubeScreen() {
   const itemsRef = useRef<YoutubeItem[]>([]);
   itemsRef.current = items;
 
+  const youtubeCacheMinutesStr = useMemo(() => String(Math.round(YOUTUBE_CACHE_TTL_MS / 60000)), []);
+  const youtubeScreenHintLine = useMemo(
+    () => t('youtubeScreenHint', { minutes: youtubeCacheMinutesStr }),
+    [t, youtubeCacheMinutesStr],
+  );
+  const youtubeAiCacheHintLine = useMemo(
+    () => t('youtubeAiCacheHint', { minutes: youtubeCacheMinutesStr }),
+    [t, youtubeCacheMinutesStr],
+  );
+
   useTabScreenLoadingRecovery(items, setLoading);
 
   useFocusEffect(
@@ -270,12 +280,12 @@ export default function YoutubeScreen() {
   const renderChannelFilterBody = () => (
     <>
       <View style={styles.footerHead}>
-        <Text style={styles.footerTitle}>포함 채널</Text>
+        <Text style={styles.footerTitle}>{t('youtubeFooterIncluded')}</Text>
         <Pressable onPress={selectAllChannels} style={styles.allBtn} accessibilityRole="button">
-          <Text style={styles.allBtnText}>전체 선택</Text>
+          <Text style={styles.allBtnText}>{t('youtubeFooterSelectAll')}</Text>
         </Pressable>
       </View>
-      <Text style={styles.footerSub}>탭: 포함 on/off · 최소 1개</Text>
+      <Text style={styles.footerSub}>{t('youtubeFooterSub')}</Text>
       {selectedHandles &&
         curationHandles &&
         curationHandles.map((handle) => {
@@ -308,23 +318,25 @@ export default function YoutubeScreen() {
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>
-          <Text style={styles.section}>경제 유튜브</Text>
-          <Text style={styles.hint}>
-            우하단 필터로 큐레이션 채널 선택 · 최신순/인기순 · {Math.round(YOUTUBE_CACHE_TTL_MS / 60000)}분 캐시
-          </Text>
+          <Text style={styles.section}>{t('youtubeScreenTitle')}</Text>
+          <Text style={styles.hint}>{youtubeScreenHintLine}</Text>
 
           <View style={styles.segment}>
             <Pressable
               onPress={() => setSort('latest')}
               style={[styles.segBtn, sort === 'latest' && styles.segBtnActive]}
               accessibilityState={{ selected: sort === 'latest' }}>
-              <Text style={[styles.segText, sort === 'latest' && styles.segTextActive]}>최신순</Text>
+              <Text style={[styles.segText, sort === 'latest' && styles.segTextActive]}>
+                {t('youtubeSortLatest')}
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => setSort('popular')}
               style={[styles.segBtn, sort === 'popular' && styles.segBtnActive]}
               accessibilityState={{ selected: sort === 'popular' }}>
-              <Text style={[styles.segText, sort === 'popular' && styles.segTextActive]}>인기순</Text>
+              <Text style={[styles.segText, sort === 'popular' && styles.segTextActive]}>
+                {t('youtubeSortPopular')}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -372,15 +384,11 @@ export default function YoutubeScreen() {
               ))}
 
               {!error && items.length === 0 ? (
-                <Text style={styles.empty}>
-                  검색 결과가 없습니다. YouTube Data API v3가 프로젝트에서 사용 설정돼 있는지, 일일 쿼터가 남아 있는지 확인한 뒤 앱을 새로고침해 보세요.
-                </Text>
+                <Text style={styles.empty}>{t('youtubeEmptySearch')}</Text>
               ) : null}
 
               <View style={styles.note}>
-                <Text style={styles.noteText}>
-                  요약은 영상 설명(snippet.description)과 제목을 Claude에 넣어 생성합니다. 같은 탭·같은 채널 선택은 약 {Math.round(YOUTUBE_CACHE_TTL_MS / 60000)}분간 캐시됩니다.
-                </Text>
+                <Text style={styles.noteText}>{youtubeAiCacheHintLine}</Text>
               </View>
             </>
           )}
@@ -398,7 +406,7 @@ export default function YoutubeScreen() {
             pressed && styles.filterFabPressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="큐레이션 채널 필터 열기">
+          accessibilityLabel={t('a11yYoutubeFilter')}>
           {Platform.OS === 'web' ? (
             <View style={styles.filterFabBlurFallback} />
           ) : (
@@ -424,13 +432,13 @@ export default function YoutubeScreen() {
           <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
             <View style={styles.modalGrab} />
             <View style={styles.modalHead}>
-              <Text style={styles.modalTitle}>큐레이션 채널</Text>
+              <Text style={styles.modalTitle}>{t('youtubeModalTitle')}</Text>
               <Pressable
                 onPress={() => setChannelModalVisible(false)}
                 hitSlop={12}
                 accessibilityRole="button"
-                accessibilityLabel="닫기">
-                <Text style={styles.modalClose}>닫기</Text>
+                accessibilityLabel={t('youtubeModalClose')}>
+                <Text style={styles.modalClose}>{t('youtubeModalClose')}</Text>
               </Pressable>
             </View>
             <ScrollView

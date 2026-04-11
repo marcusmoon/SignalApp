@@ -96,7 +96,13 @@ import {
   saveKoreaNewsExtraKeywords,
 } from '@/services/newsKoreaKeywordsPreference';
 import { loadNewsSegmentOrder, saveNewsSegmentOrder } from '@/services/newsSegmentOrderPreference';
-import { loadNotificationPrefs, saveNotificationPrefs } from '@/services/notificationPreferences';
+import { syncCalendarLocalReminders } from '@/services/calendarLocalReminders';
+import {
+  loadNotificationPrefs,
+  saveNotificationPrefs,
+  type NotificationPrefs,
+} from '@/services/notificationPreferences';
+import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { loadTabBarGlassLevel, saveTabBarGlassLevel } from '@/services/tabBarGlassPreference';
 import {
   ACCENT_PALETTE_COLS,
@@ -244,6 +250,8 @@ function makeStyles(theme: AppTheme) {
       gap: 12,
     },
     prefLabel: { fontSize: 14, fontWeight: '600', color: theme.text, flex: 1 },
+    prefBlock: { marginTop: 4, marginBottom: 4 },
+    prefHint: { fontSize: 11, fontWeight: '500', color: theme.textDim, lineHeight: 15, marginTop: 2, marginBottom: 4 },
     section: {
       fontSize: 14,
       fontWeight: '800',
@@ -763,6 +771,8 @@ export default function SettingsScreen() {
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [earningsOnly, setEarningsOnly] = useState(false);
+  const [localMacroCalendar, setLocalMacroCalendar] = useState(false);
+  const [localWatchlistEarnings, setLocalWatchlistEarnings] = useState(false);
   const [prefsReady, setPrefsReady] = useState(false);
 
   const [calendarScope, setCalendarScope] = useState<CalendarConcallScope>('mega');
@@ -872,7 +882,15 @@ export default function SettingsScreen() {
     const p = await loadNotificationPrefs();
     setPushEnabled(p.pushEnabled);
     setEarningsOnly(p.earningsOnly);
+    setLocalMacroCalendar(p.localMacroCalendar);
+    setLocalWatchlistEarnings(p.localWatchlistEarnings);
     setPrefsReady(true);
+  }, []);
+
+  const syncLocalCalendarNotifications = useCallback(async (prefs?: NotificationPrefs) => {
+    const p = prefs ?? (await loadNotificationPrefs());
+    const watch = await loadWatchlistSymbols();
+    await syncCalendarLocalReminders(p, watch);
   }, []);
 
   const reloadCalendarScope = useCallback(async () => {
@@ -1503,6 +1521,48 @@ export default function SettingsScreen() {
                       trackColor={{ false: '#333', true: theme.green + '88' }}
                       thumbColor={earningsOnly ? theme.green : '#888'}
                     />
+                  </View>
+                  <View style={styles.prefBlock}>
+                    <View style={styles.prefRow}>
+                      <Text style={styles.prefLabel}>{t('settingsLocalMacroCalendar')}</Text>
+                      <Switch
+                        value={localMacroCalendar}
+                        onValueChange={async (v) => {
+                          setLocalMacroCalendar(v);
+                          await saveNotificationPrefs({ localMacroCalendar: v });
+                          await syncLocalCalendarNotifications({
+                            pushEnabled,
+                            earningsOnly,
+                            localMacroCalendar: v,
+                            localWatchlistEarnings,
+                          });
+                        }}
+                        trackColor={{ false: '#333', true: theme.green + '88' }}
+                        thumbColor={localMacroCalendar ? theme.green : '#888'}
+                      />
+                    </View>
+                    <Text style={styles.prefHint}>{t('settingsLocalMacroCalendarHint')}</Text>
+                  </View>
+                  <View style={styles.prefBlock}>
+                    <View style={styles.prefRow}>
+                      <Text style={styles.prefLabel}>{t('settingsLocalWatchlistEarnings')}</Text>
+                      <Switch
+                        value={localWatchlistEarnings}
+                        onValueChange={async (v) => {
+                          setLocalWatchlistEarnings(v);
+                          await saveNotificationPrefs({ localWatchlistEarnings: v });
+                          await syncLocalCalendarNotifications({
+                            pushEnabled,
+                            earningsOnly,
+                            localMacroCalendar,
+                            localWatchlistEarnings: v,
+                          });
+                        }}
+                        trackColor={{ false: '#333', true: theme.green + '88' }}
+                        thumbColor={localWatchlistEarnings ? theme.green : '#888'}
+                      />
+                    </View>
+                    <Text style={styles.prefHint}>{t('settingsLocalWatchlistEarningsHint')}</Text>
                   </View>
                 </>
               )}

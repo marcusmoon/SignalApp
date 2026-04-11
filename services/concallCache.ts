@@ -17,12 +17,19 @@ export type ConcallCacheKeyInput = {
   /** null이면 롤링 윈도(최근) 모드 */
   fiscalYear: number | null;
   fiscalQuarter: number;
+  /** 롤링 모드일 때 실적 캘린더 조회 일수(캐시 키 분리) */
+  rollingPastDays?: number;
+  rollingFutureDays?: number;
 };
 
 export function buildConcallCacheKey(p: ConcallCacheKeyInput): string {
   const watchPart = p.scope === 'watch' ? p.watchSorted.join(',') : '';
   const fy = p.fiscalYear == null ? 'roll' : String(p.fiscalYear);
-  return `v1|${p.scope}|${watchPart}|${fy}|${p.fiscalQuarter}|${p.symbolCap}`;
+  const roll =
+    p.fiscalYear == null
+      ? `${p.rollingPastDays ?? 14}:${p.rollingFutureDays ?? 21}`
+      : 'na';
+  return `v1|${p.scope}|${watchPart}|${fy}|${p.fiscalQuarter}|${p.symbolCap}|${roll}`;
 }
 
 export function peekConcallCache(key: string): ConcallSummary[] | null {

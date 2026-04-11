@@ -12,6 +12,24 @@
 
 | 파일 | 변경 내용 |
 |------|-----------|
+| `app/symbol/[ticker].tsx` | **신규** — 종목 상세 MVP 화면 추가, 현재가·회사명·관련 뉴스·실적 일정·최근 컨콜 요약을 한 화면에 표시 |
+| `app/symbol/[ticker].tsx` | 관련 뉴스 매칭을 `headline.includes()`에서 정확한 티커 토큰 매칭으로 보정해 `MU` 같은 짧은 티커 오탐을 줄임 |
+| `app/symbol/[ticker].tsx`, `services/finnhub.ts` | Finnhub `stock/candle` 기반 최근 1개월 미니 라인 차트를 종목 상세 상단에 추가 |
+| `app/symbol/[ticker].tsx`, `locales/messages.ts` | 차트 데이터가 없을 때 종목 상세 상단에 `최근 1개월 차트 데이터가 없습니다` 안내 문구를 표시 |
+| `app/symbol/[ticker].tsx` | 종목 상세 hero에서 하단 티커 보조 라벨을 제거하고 회사명만 메인 제목으로 표시 |
+| `locales/messages.ts` | 종목 상세 버튼 문구를 `Yahoo Finance 열기`에서 `Yahoo Finance`로 단순화 |
+| `app/symbol/[ticker].tsx` | 종목 상세 `Yahoo Finance` 버튼 앞에 작은 차트 아이콘을 추가 |
+| `locales/messages.ts` | 종목 상세 관심 버튼 문구를 `관심 종목 추가/제거`로 더 명확하게 조정 |
+| `app/symbol/[ticker].tsx` | 한눈 요약 카드 순서를 `시가총액 → 전일 종가` 기준으로 조정 |
+| `app/symbol/[ticker].tsx` | 회사명이 티커와 동일한 값으로 오는 경우 본문 제목에 그대로 반복 표시하지 않도록 보정 |
+| `app/symbol/[ticker].tsx` | 종목 상세 로딩 중에는 화면 중앙에 로딩 인디케이터만 보여주고, 실제 본문은 로드 후에만 렌더링하도록 조정 |
+| `utils/yahooFinance.ts` | Yahoo Finance 링크 열기를 `Linking.openURL()` 실패 시 `WebBrowser.openBrowserAsync()`로 폴백하도록 보강 |
+| `components/signal/NewsCard.tsx` | 뉴스 카드의 티커·제목을 눌러 종목 상세로 이동할 수 있게 연결 |
+| `app/(tabs)/quotes.tsx` | 시세 카드의 티커를 눌러 종목 상세로 이동할 수 있게 연결 (코인 제외) |
+| `app/(tabs)/calls.tsx` | 컨콜 카드의 티커를 눌러 종목 상세로 이동할 수 있게 연결 |
+| `app/_layout.tsx` | 종목 상세 스택 화면 제목 매핑 추가 |
+| `locales/messages.ts` | 종목 상세 화면용 섹션/버튼/빈 상태 문구 추가 |
+| `AGENTS.md` | `app/symbol/[ticker].tsx` 라우트를 앱 구조 문서에 반영 |
 | `components/signal/NewsCard.tsx` | 뉴스 카드에서 중간 3줄 요약을 제거하고 제목 중심 레이아웃으로 단순화 |
 | `components/signal/YoutubeCard.tsx` | 유튜브 카드에서 3줄 요약 블록을 제거하고 메타 정보 중심 레이아웃으로 단순화 |
 | `app/(tabs)/index.tsx` | 뉴스 탭이 3줄 요약 대신 제목 번역만 호출하도록 변경 |

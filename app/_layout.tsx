@@ -110,7 +110,11 @@ function RootLayoutNav() {
           settings: t('screenSettings'),
           alerts: t('screenAlerts'),
           calendar: t('screenCalendar'),
+          calls: t('callsSectionTitle'),
+          briefing: t('screenBriefing'),
+          market: t('screenMarket'),
           'mega-cap-list': t('screenMegaCapList'),
+          'symbol/[ticker]': t('screenSymbolDetail'),
         };
         return {
           title: titleByName[route.name] ?? route.name,

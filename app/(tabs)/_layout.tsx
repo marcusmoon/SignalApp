@@ -177,10 +177,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="calls"
+        name="more"
         options={{
-          title: t('tabCalls'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="microphone" color={color} focused={focused} />,
+          title: t('tabMore'),
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="th-large" color={color} focused={focused} />,
         }}
       />
     </Tabs>

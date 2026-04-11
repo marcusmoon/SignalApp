@@ -26,6 +26,8 @@ export type ConcallSummary = {
   guidance?: string;
   risk?: string;
   source: 'claude' | 'openai' | 'fallback';
+  /** 트랜스크립트가 확보된 경우 화면용 발췌(전문은 앱에 보관하지 않음) */
+  transcriptSnippet?: string;
 };
 
 export type YoutubeItem = {

@@ -1,3 +1,5 @@
+import type { AppLocale } from '@/locales/messages';
+
 function pad(n: number) {
   return String(n).padStart(2, '0');
 }
@@ -12,20 +14,17 @@ export function addDays(d: Date, days: number): Date {
   return x;
 }
 
-/** Unix seconds → relative label (ko) */
-export function formatRelativeFromUnix(sec: number): string {
-  const t = Date.now() - sec * 1000;
-  const m = Math.floor(t / 60000);
-  if (m < 1) return '방금';
-  if (m < 60) return `${m}분 전`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}시간 전`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `${d}일 전`;
-  return `${Math.floor(d / 7)}주 전`;
+/** Unix seconds → relative label (locale-aware; uses same rules as `formatRelativeTime`) */
+export function formatRelativeFromUnix(sec: number, locale: AppLocale): string {
+  const ms = sec * 1000;
+  if (!Number.isFinite(ms)) return '—';
+  return formatRelativeTime(new Date(ms).toISOString(), locale);
 }
 
-import type { AppLocale } from '@/locales/messages';
+/** ISO date string → relative (locale-aware) */
+export function formatRelativeFromIso(iso: string, locale: AppLocale): string {
+  return formatRelativeTime(iso, locale);
+}
 
 /** ISO → relative time (locale-aware, Intl + 폴백) */
 export function formatRelativeTime(iso: string, locale: AppLocale): string {
@@ -37,7 +36,6 @@ export function formatRelativeTime(iso: string, locale: AppLocale): string {
 
   const loc = locale === 'ja' ? 'ja' : locale === 'en' ? 'en' : 'ko';
 
-  /** Intl 미구현·NaN 등으로 실패 시 사용 */
   const fallback = (): string => {
     if (diffSec < 60) {
       if (locale === 'ko') return `${diffSec}초 전`;
@@ -82,18 +80,4 @@ export function formatRelativeTime(iso: string, locale: AppLocale): string {
   } catch {
     return fallback();
   }
-}
-
-/** ISO date string → relative */
-export function formatRelativeFromIso(iso: string): string {
-  const t = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(t / 60000);
-  if (m < 1) return '방금';
-  if (m < 60) return `${m}분 전`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}시간 전`;
-  const d = Math.floor(h / 24);
-  if (d === 1) return '어제';
-  if (d < 7) return `${d}일 전`;
-  return `${Math.floor(d / 7)}주 전`;
 }

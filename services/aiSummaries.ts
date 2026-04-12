@@ -1,16 +1,16 @@
 import {
   newsItemFromFinnhubFallback,
-  translateNewsTitlesWithClaude,
   summarizeConcallTranscript,
-} from '@/services/anthropic';
+  translateNewsTitlesWithClaude,
+} from '@/integrations/anthropic';
+import type { FinnhubNewsRaw } from '@/services/finnhub';
 import { hasAnthropic, hasOpenAI } from '@/services/env';
 import { loadLocale } from '@/services/localePreference';
 import { loadLlmProvider } from '@/services/llmProviderPreference';
-import type { FinnhubNewsRaw } from '@/services/finnhub';
 import {
   summarizeConcallTranscriptOpenAI,
   translateNewsTitlesWithOpenAI,
-} from '@/services/openaiSummaries';
+} from '@/integrations/openai/summaries';
 import type { ConcallSummary, NewsItem } from '@/types/signal';
 
 export async function translateNewsTitlesWithSelectedProvider(
@@ -18,7 +18,7 @@ export async function translateNewsTitlesWithSelectedProvider(
 ): Promise<NewsItem[]> {
   const [pref, locale] = await Promise.all([loadLlmProvider(), loadLocale()]);
   if (pref === 'none') {
-    return articles.map(newsItemFromFinnhubFallback);
+    return articles.map((a) => newsItemFromFinnhubFallback(a, locale));
   }
   if (pref === 'openai' && hasOpenAI()) {
     return translateNewsTitlesWithOpenAI(articles, locale);
@@ -26,7 +26,7 @@ export async function translateNewsTitlesWithSelectedProvider(
   if (pref === 'claude' && hasAnthropic()) {
     return translateNewsTitlesWithClaude(articles, locale);
   }
-  return articles.map(newsItemFromFinnhubFallback);
+  return articles.map((a) => newsItemFromFinnhubFallback(a, locale));
 }
 
 export async function summarizeConcallTranscriptSelected(

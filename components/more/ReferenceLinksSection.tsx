@@ -2,7 +2,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { REFERENCE_LINK_GROUPS } from '@/constants/referenceAppLinks';
+import { REFERENCE_LINK_ITEMS } from '@/constants/referenceAppLinks';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -13,10 +13,10 @@ const COLS = 4;
 const GAP = 8;
 
 export function ReferenceLinksSection() {
-  const { theme } = useSignalTheme();
+  const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const { width: winW } = useWindowDimensions();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   const cellW = useMemo(() => {
     const inner = winW - LIST_HORIZONTAL_PAD * 2;
@@ -26,39 +26,34 @@ export function ReferenceLinksSection() {
   return (
     <View style={styles.wrap}>
       <Text style={styles.kicker}>{t('moreRefLinksKicker')}</Text>
-      {REFERENCE_LINK_GROUPS.map((group) => (
-        <View key={group.id} style={styles.group}>
-          <Text style={styles.sectionTitle}>{t(group.sectionTitleKey)}</Text>
-          <View style={styles.grid}>
-            {group.items.map((item) => (
-              <Pressable
-                key={item.id}
-                style={[styles.cell, { width: cellW }]}
-                onPress={() => void openExternalLink(item.webUrl, item.appLaunchUrls)}
-                accessibilityRole="button"
-                accessibilityLabel={t(item.labelKey)}>
-                <View style={styles.iconCircle}>
-                  {item.iconMark != null ? (
-                    <Text style={styles.iconMarkText} numberOfLines={1}>
-                      {item.iconMark}
-                    </Text>
-                  ) : (
-                    <FontAwesome name={item.icon!} size={22} color={theme.green} />
-                  )}
-                </View>
-                <Text style={styles.cellLabel} numberOfLines={2}>
-                  {t(item.labelKey)}
+      <View style={styles.grid}>
+        {REFERENCE_LINK_ITEMS.map((item) => (
+          <Pressable
+            key={item.id}
+            style={[styles.cell, { width: cellW }]}
+            onPress={() => void openExternalLink(item.webUrl, item.appLaunchUrls)}
+            accessibilityRole="button"
+            accessibilityLabel={t(item.labelKey)}>
+            <View style={styles.iconCircle}>
+              {item.iconMark != null ? (
+                <Text style={styles.iconMarkText} numberOfLines={1}>
+                  {item.iconMark}
                 </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      ))}
+              ) : (
+                <FontAwesome name={item.icon!} size={22} color={theme.green} />
+              )}
+            </View>
+            <Text style={styles.cellLabel} numberOfLines={2}>
+              {t(item.labelKey)}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     wrap: {
       marginTop: 6,
@@ -68,21 +63,11 @@ function makeStyles(theme: AppTheme) {
       borderTopColor: theme.border,
     },
     kicker: {
-      fontSize: 11,
+      fontSize: sf(11),
       fontWeight: '800',
       color: theme.textMuted,
       letterSpacing: 0.2,
       marginBottom: 14,
-    },
-    group: {
-      marginBottom: 16,
-    },
-    sectionTitle: {
-      fontSize: 10,
-      fontWeight: '800',
-      color: theme.textDim,
-      letterSpacing: 0.35,
-      marginBottom: 10,
     },
     grid: {
       flexDirection: 'row',
@@ -105,18 +90,18 @@ function makeStyles(theme: AppTheme) {
       paddingHorizontal: 4,
     },
     iconMarkText: {
-      fontSize: 11,
+      fontSize: sf(11),
       fontWeight: '800',
       color: theme.green,
       letterSpacing: -0.2,
     },
     cellLabel: {
-      fontSize: 10,
+      fontSize: sf(10),
       fontWeight: '700',
       color: theme.text,
       textAlign: 'center',
-      lineHeight: 13,
-      minHeight: 26,
+      lineHeight: sf(13),
+      minHeight: Math.round(sf(26)),
     },
   });
 }

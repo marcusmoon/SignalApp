@@ -81,9 +81,9 @@ function sliceForDisplay(raw: FinnhubNewsRaw[], selected: string[]): FinnhubNews
 }
 
 export default function FeedScreen() {
-  const { theme } = useSignalTheme();
+  const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
@@ -268,7 +268,6 @@ export default function FeedScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
         <Text style={styles.section}>{t('feedSectionTitle')}</Text>
-        <Text style={styles.hint}>{t('feedHint')}</Text>
 
         <View style={styles.segment}>
           {segmentOrder.map((key) => (
@@ -307,12 +306,6 @@ export default function FeedScreen() {
         )}
 
         {emptyMessage ? <Text style={styles.empty}>{emptyMessage}</Text> : null}
-
-        {!loading ? (
-          <View style={styles.disclaimer}>
-            <Text style={styles.disclaimerText}>{t('feedDisclaimer')}</Text>
-          </View>
-        ) : null}
       </ScrollView>
 
       {filterReady ? (
@@ -355,7 +348,7 @@ export default function FeedScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: {
       flex: 1,
@@ -371,15 +364,10 @@ function makeStyles(theme: AppTheme) {
       paddingBottom: 28,
     },
     section: {
-      fontSize: 16,
+      fontSize: sf(16),
       fontWeight: '800',
       color: theme.text,
       marginBottom: 4,
-    },
-    hint: {
-      fontSize: 11,
-      color: theme.textDim,
-      marginBottom: 10,
     },
     segment: {
       flexDirection: 'row',
@@ -402,8 +390,8 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.green,
     },
     segText: {
-      fontSize: SEGMENT_TAB_FONT_SIZE,
-      lineHeight: SEGMENT_TAB_LINE_HEIGHT,
+      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
+      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
       fontWeight: SEGMENT_TAB_FONT_WEIGHT,
       color: theme.textDim,
     },
@@ -419,27 +407,14 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 12,
     },
     errText: {
-      fontSize: 12,
+      fontSize: sf(12),
       color: '#E0A0A0',
-      lineHeight: 18,
+      lineHeight: sf(18),
     },
     empty: {
-      fontSize: 13,
+      fontSize: sf(13),
       color: theme.textMuted,
       marginTop: 8,
-    },
-    disclaimer: {
-      marginTop: 8,
-      padding: 12,
-      borderRadius: 10,
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    disclaimerText: {
-      fontSize: 11,
-      color: theme.textDim,
-      lineHeight: 16,
     },
     filterFab: {
       position: 'absolute',

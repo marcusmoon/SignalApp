@@ -44,7 +44,7 @@ import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import { hasYoutube } from '@/services/env';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
 import { loadCurationHandles } from '@/services/youtubeCurationList';
-import { peekYoutubeCache, fetchEconomyYoutubeCached, YOUTUBE_CACHE_TTL_MS } from '@/services/youtubeCache';
+import { peekYoutubeCache, fetchEconomyYoutubeCached } from '@/services/youtubeCache';
 import { fetchChannelDisplayNames, YOUTUBE_ERROR_QUOTA, type ChannelHandleMeta } from '@/services/youtube';
 import type { YoutubeItem } from '@/types/signal';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
@@ -62,9 +62,9 @@ function normalizeHandlesKey(handles: string[]): string {
 }
 
 export default function YoutubeScreen() {
-  const { t } = useLocale();
-  const { theme } = useSignalTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { t, locale } = useLocale();
+  const { theme, scaleFont } = useSignalTheme();
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
@@ -83,16 +83,6 @@ export default function YoutubeScreen() {
   /** load() 안에서 이미 화면에 목록이 있는지 — 캐시 재적중 시 전체 로딩 스킵 */
   const itemsRef = useRef<YoutubeItem[]>([]);
   itemsRef.current = items;
-
-  const youtubeCacheMinutesStr = useMemo(() => String(Math.round(YOUTUBE_CACHE_TTL_MS / 60000)), []);
-  const youtubeScreenHintLine = useMemo(
-    () => t('youtubeScreenHint', { minutes: youtubeCacheMinutesStr }),
-    [t, youtubeCacheMinutesStr],
-  );
-  const youtubeAiCacheHintLine = useMemo(
-    () => t('youtubeAiCacheHint', { minutes: youtubeCacheMinutesStr }),
-    [t, youtubeCacheMinutesStr],
-  );
 
   useTabScreenLoadingRecovery(items, setLoading);
 
@@ -185,7 +175,7 @@ export default function YoutubeScreen() {
       try {
         const { youtubeEnabled } = await loadCacheFeaturePrefs();
         if (!opts?.forceRefresh && youtubeEnabled) {
-          const cached = peekYoutubeCache(order, handles);
+          const cached = peekYoutubeCache(order, handles, youtubeEnabled, locale);
           if (cached) {
             setItems(cached);
             return;
@@ -198,6 +188,7 @@ export default function YoutubeScreen() {
           forceRefresh: opts?.forceRefresh,
           channelHandles: handles,
           cacheEnabled: youtubeEnabled,
+          locale,
         });
         setItems(list);
       } catch (e) {
@@ -207,7 +198,7 @@ export default function YoutubeScreen() {
         setLoading(false);
       }
     },
-    [sort, selectedHandles, t, applyLoadError],
+    [sort, selectedHandles, t, locale, applyLoadError],
   );
 
   useEffect(() => {
@@ -319,7 +310,6 @@ export default function YoutubeScreen() {
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>
           <Text style={styles.section}>{t('youtubeScreenTitle')}</Text>
-          <Text style={styles.hint}>{youtubeScreenHintLine}</Text>
 
           <View style={styles.segment}>
             <Pressable
@@ -386,10 +376,6 @@ export default function YoutubeScreen() {
               {!error && items.length === 0 ? (
                 <Text style={styles.empty}>{t('youtubeEmptySearch')}</Text>
               ) : null}
-
-              <View style={styles.note}>
-                <Text style={styles.noteText}>{youtubeAiCacheHintLine}</Text>
-              </View>
             </>
           )}
         </ScrollView>
@@ -454,7 +440,7 @@ export default function YoutubeScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     mainColumn: { flex: 1, minHeight: 0 },
@@ -466,8 +452,7 @@ function makeStyles(theme: AppTheme) {
     },
     scrollView: { flex: 1, minHeight: 0 },
     scrollContent: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28 },
-    section: { fontSize: 16, fontWeight: '800', color: theme.text, marginBottom: 4 },
-    hint: { fontSize: 11, color: theme.textDim, marginBottom: 10 },
+    section: { fontSize: sf(16), fontWeight: '800', color: theme.text, marginBottom: 4 },
     filterFab: {
       position: 'absolute',
       right: 16,
@@ -529,12 +514,12 @@ function makeStyles(theme: AppTheme) {
       paddingTop: 4,
     },
     modalTitle: {
-      fontSize: 17,
+      fontSize: sf(17),
       fontWeight: '800',
       color: theme.text,
     },
     modalClose: {
-      fontSize: 15,
+      fontSize: sf(15),
       fontWeight: '700',
       color: theme.green,
     },
@@ -548,7 +533,7 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 3,
     },
     footerTitle: {
-      fontSize: 11,
+      fontSize: sf(11),
       fontWeight: '800',
       color: theme.textMuted,
       letterSpacing: 0.15,
@@ -562,15 +547,15 @@ function makeStyles(theme: AppTheme) {
       borderColor: theme.greenBorder,
     },
     allBtnText: {
-      fontSize: 10,
+      fontSize: sf(10),
       fontWeight: '800',
       color: theme.green,
     },
     footerSub: {
-      fontSize: 9,
+      fontSize: sf(9),
       color: theme.textDim,
       marginBottom: 6,
-      lineHeight: 12,
+      lineHeight: sf(12),
     },
     channelRow: {
       flexDirection: 'row',
@@ -592,10 +577,10 @@ function makeStyles(theme: AppTheme) {
     },
     channelName: {
       flex: 1,
-      fontSize: 11,
+      fontSize: sf(11),
       fontWeight: '600',
       color: theme.text,
-      lineHeight: 14,
+      lineHeight: sf(14),
     },
     channelNameOff: {
       color: theme.textDim,
@@ -622,8 +607,8 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.green,
     },
     segText: {
-      fontSize: SEGMENT_TAB_FONT_SIZE,
-      lineHeight: SEGMENT_TAB_LINE_HEIGHT,
+      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
+      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
       fontWeight: SEGMENT_TAB_FONT_WEIGHT,
       color: theme.textDim,
     },
@@ -638,11 +623,11 @@ function makeStyles(theme: AppTheme) {
       borderColor: '#553333',
       marginBottom: 12,
     },
-    errText: { fontSize: 12, color: '#E0A0A0', lineHeight: 18 },
+    errText: { fontSize: sf(12), color: '#E0A0A0', lineHeight: sf(18) },
     errSub: {
-      fontSize: 11,
+      fontSize: sf(11),
       color: '#C89898',
-      lineHeight: 16,
+      lineHeight: sf(16),
       marginTop: 8,
     },
     errLinkWrap: {
@@ -650,24 +635,11 @@ function makeStyles(theme: AppTheme) {
       marginTop: 10,
     },
     errLink: {
-      fontSize: 12,
+      fontSize: sf(12),
       fontWeight: '700',
       color: theme.green,
       textDecorationLine: 'underline',
     },
-    empty: { fontSize: 13, color: theme.textMuted, marginTop: 8 },
-    note: {
-      marginTop: 6,
-      padding: 12,
-      borderRadius: 10,
-      backgroundColor: '#12121A',
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    noteText: {
-      fontSize: 11,
-      color: theme.textDim,
-      lineHeight: 16,
-    },
+    empty: { fontSize: sf(13), color: theme.textMuted, marginTop: 8 },
   });
 }

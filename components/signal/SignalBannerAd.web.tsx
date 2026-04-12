@@ -1,13 +1,15 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 export function SignalBannerAd() {
   const { theme } = useSignalTheme();
+  const { t } = useLocale();
   return (
     <View style={[styles.wrap, { borderColor: theme.border, backgroundColor: '#12121A' }]}>
-      <Text style={[styles.badge, { color: theme.textDim }]}>광고</Text>
-      <Text style={[styles.hint, { color: theme.textMuted }]}>모바일 앱에서 배너 광고가 표시됩니다</Text>
+      <Text style={[styles.badge, { color: theme.textDim }]}>{t('commonAd')}</Text>
+      <Text style={[styles.hint, { color: theme.textMuted }]}>{t('adBannerWebHint')}</Text>
     </View>
   );
 }

@@ -11,10 +11,10 @@ import type { NewsItem } from '@/types/signal';
 type Props = { item: NewsItem };
 
 export function NewsCard({ item }: Props) {
-  const { theme } = useSignalTheme();
+  const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   const sourceName = item.source?.trim() || '—';
   const isFlash = Boolean(item.isFlash);
@@ -80,7 +80,7 @@ export function NewsCard({ item }: Props) {
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     card: {
       backgroundColor: theme.card,
@@ -109,7 +109,7 @@ function makeStyles(theme: AppTheme) {
       borderColor: 'rgba(255, 120, 120, 0.55)',
     },
     flashBadgeText: {
-      fontSize: 11,
+      fontSize: sf(11),
       fontWeight: '900',
       color: '#FF9A9A',
       letterSpacing: 0.8,
@@ -125,14 +125,14 @@ function makeStyles(theme: AppTheme) {
       flex: 1,
       minWidth: 0,
       color: theme.green,
-      fontSize: 13,
+      fontSize: sf(13),
       fontWeight: '800',
       letterSpacing: 0.5,
     },
     time: {
       flexShrink: 0,
       color: theme.textDim,
-      fontSize: 11,
+      fontSize: sf(11),
     },
     sourceRow: {
       flexDirection: 'row',
@@ -142,7 +142,7 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 10,
     },
     sourceLabel: {
-      fontSize: 10,
+      fontSize: sf(10),
       fontWeight: '800',
       color: theme.textMuted,
       letterSpacing: 0.4,
@@ -159,16 +159,16 @@ function makeStyles(theme: AppTheme) {
       borderColor: theme.greenBorder,
     },
     sourceName: {
-      fontSize: 12,
+      fontSize: sf(12),
       fontWeight: '700',
       color: theme.text,
     },
     title: {
       color: theme.text,
-      fontSize: 15,
+      fontSize: sf(15),
       fontWeight: '700',
       marginBottom: 2,
-      lineHeight: 21,
+      lineHeight: sf(21),
     },
     footer: {
       flexDirection: 'row',
@@ -180,13 +180,13 @@ function makeStyles(theme: AppTheme) {
       borderTopColor: theme.border,
     },
     aiLabel: {
-      fontSize: 10,
+      fontSize: sf(10),
       fontWeight: '700',
       color: theme.textDim,
       letterSpacing: 0.3,
     },
     link: {
-      fontSize: 12,
+      fontSize: sf(12),
       fontWeight: '700',
       color: theme.green,
     },

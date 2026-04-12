@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { getGoogleMobileAdsModule, getNativeAdUnitId } from '@/services/admob';
 
@@ -10,6 +11,7 @@ type AdsModule = typeof import('react-native-google-mobile-ads');
 /** PRD: 피드 5개마다 1개 · "광고" 표기 — SDK 없으면 자리만 */
 export function AdPlaceholder() {
   const { theme } = useSignalTheme();
+  const { t } = useLocale();
   const ads = useMemo(() => getGoogleMobileAdsModule(), []) as AdsModule | null;
   const [nativeAd, setNativeAd] = useState<unknown>(null);
 
@@ -38,7 +40,7 @@ export function AdPlaceholder() {
   }, [nativeAd]);
 
   if (!ads) {
-    return <FallbackAdPlaceholder theme={theme} reason="sdk" />;
+    return <FallbackAdPlaceholder theme={theme} />;
   }
 
   if (!nativeAd) {
@@ -58,8 +60,8 @@ export function AdPlaceholder() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       nativeAd={nativeAd as any}
       style={[styles.wrap, { borderColor: theme.border, backgroundColor: theme.card }]}>
-      <Text style={[styles.badge, { color: theme.textDim }]} accessibilityLabel="광고">
-        광고
+      <Text style={[styles.badge, { color: theme.textDim }]} accessibilityLabel={t('commonAd')}>
+        {t('commonAd')}
       </Text>
 
       <View style={styles.row}>
@@ -95,15 +97,14 @@ export function AdPlaceholder() {
   );
 }
 
-function FallbackAdPlaceholder({ theme, reason }: { theme: AppTheme; reason: 'sdk' }) {
+function FallbackAdPlaceholder({ theme }: { theme: AppTheme }) {
+  const { t } = useLocale();
   return (
     <View style={[styles.wrap, { borderColor: theme.border, backgroundColor: theme.card }]}>
-      <Text style={[styles.badge, { color: theme.textDim }]} accessibilityLabel="광고">
-        광고
+      <Text style={[styles.badge, { color: theme.textDim }]} accessibilityLabel={t('commonAd')}>
+        {t('commonAd')}
       </Text>
-      <Text style={[styles.fallback, { color: theme.textMuted }]}>
-        {reason === 'sdk' ? '광고 SDK를 불러오지 못했습니다.' : '광고를 불러오지 못했습니다.'}
-      </Text>
+      <Text style={[styles.fallback, { color: theme.textMuted }]}>{t('adSdkLoadFailed')}</Text>
     </View>
   );
 }

@@ -14,6 +14,8 @@ export type CalendarEvent = {
   id: string;
   date: string;
   time: string;
+  /** Finnhub earnings `hour` code (e.g. bmo, amc) — localized in UI */
+  earningsHourCode?: string;
   title: string;
   type: 'earnings' | 'macro' | 'fed' | 'fomc';
 };

@@ -24,11 +24,11 @@ function parseIntParam(v: string | string[] | undefined): number | null {
 }
 
 export default function CallsSummaryScreen() {
-  const { theme } = useSignalTheme();
+  const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const params = useLocalSearchParams<{
     ticker?: string;
     year?: string;
@@ -232,14 +232,14 @@ export default function CallsSummaryScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     scroll: { flex: 1 },
     scrollContent: { paddingHorizontal: 18, paddingTop: 14 },
     centerPad: { flex: 1, paddingHorizontal: 24, paddingTop: 32, justifyContent: 'center' },
-    emptyLead: { fontSize: 15, fontWeight: '700', color: theme.text, marginBottom: 10, lineHeight: 22 },
-    emptySub: { fontSize: 13, color: theme.textDim, lineHeight: 20, marginBottom: 20 },
+    emptyLead: { fontSize: sf(15), fontWeight: '700', color: theme.text, marginBottom: 10, lineHeight: sf(22) },
+    emptySub: { fontSize: sf(13), color: theme.textDim, lineHeight: sf(20), marginBottom: 20 },
     linkBtn: {
       alignSelf: 'flex-start',
       paddingVertical: 12,
@@ -249,7 +249,7 @@ function makeStyles(theme: AppTheme) {
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
     },
-    linkBtnText: { fontSize: 14, fontWeight: '800', color: theme.green },
+    linkBtnText: { fontSize: sf(14), fontWeight: '800', color: theme.green },
     errBox: {
       padding: 12,
       borderRadius: 10,
@@ -258,17 +258,17 @@ function makeStyles(theme: AppTheme) {
       borderColor: '#553333',
       marginBottom: 16,
     },
-    errText: { fontSize: 12, color: '#E0A0A0', lineHeight: 18 },
+    errText: { fontSize: sf(12), color: '#E0A0A0', lineHeight: sf(18) },
     metaBlock: {
       paddingBottom: 16,
       marginBottom: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
-    fyLine: { fontSize: 20, fontWeight: '900', color: theme.text, letterSpacing: -0.3, marginBottom: 4 },
-    dateLine: { fontSize: 13, fontWeight: '600', color: theme.textMuted },
+    fyLine: { fontSize: sf(20), fontWeight: '900', color: theme.text, letterSpacing: -0.3, marginBottom: 4 },
+    dateLine: { fontSize: sf(13), fontWeight: '600', color: theme.textMuted },
     sectionHeading: {
-      fontSize: 12,
+      fontSize: sf(12),
       fontWeight: '800',
       letterSpacing: 0.35,
       color: theme.textMuted,
@@ -276,8 +276,8 @@ function makeStyles(theme: AppTheme) {
     },
     sectionHeadingSpaced: { marginTop: 22 },
     transcript: {
-      fontSize: 12,
-      lineHeight: 19,
+      fontSize: sf(12),
+      lineHeight: sf(19),
       fontWeight: '400',
       color: theme.textDim,
       fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
@@ -286,15 +286,15 @@ function makeStyles(theme: AppTheme) {
     summaryBlock: { marginTop: 4 },
     summaryBlockNoTx: { marginTop: 12 },
     bullet: {
-      fontSize: 15,
+      fontSize: sf(15),
       color: theme.text,
-      lineHeight: 24,
+      lineHeight: sf(24),
       fontWeight: '500',
       marginBottom: 12,
     },
     inlineBlock: { marginTop: 14 },
-    inlineLabel: { fontSize: 11, fontWeight: '800', color: theme.accentBlue, marginBottom: 4 },
-    inlineBody: { fontSize: 14, color: theme.textDim, lineHeight: 22, fontWeight: '500' },
-    provider: { marginTop: 24, fontSize: 11, fontWeight: '600', color: theme.textDim },
+    inlineLabel: { fontSize: sf(11), fontWeight: '800', color: theme.accentBlue, marginBottom: 4 },
+    inlineBody: { fontSize: sf(14), color: theme.textDim, lineHeight: sf(22), fontWeight: '500' },
+    provider: { marginTop: 24, fontSize: sf(11), fontWeight: '600', color: theme.textDim },
   });
 }

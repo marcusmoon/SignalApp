@@ -20,14 +20,12 @@ export type ReferenceLinkItem = {
 
 export type ReferenceLinkGroup = {
   id: ReferenceLinkGroupId;
-  sectionTitleKey: MessageId;
   items: ReferenceLinkItem[];
 };
 
 export const REFERENCE_LINK_GROUPS: ReferenceLinkGroup[] = [
   {
     id: 'global',
-    sectionTitleKey: 'moreRefSectionGlobal',
     items: [
       {
         id: 'yahoo',
@@ -41,12 +39,6 @@ export const REFERENCE_LINK_GROUPS: ReferenceLinkGroup[] = [
         labelKey: 'moreRefTitleGoogleFinance',
         icon: 'google',
         webUrl: 'https://www.google.com/finance',
-      },
-      {
-        id: 'tradingview',
-        labelKey: 'moreRefTitleTradingView',
-        icon: 'line-chart',
-        webUrl: 'https://www.tradingview.com',
       },
       {
         id: 'bloomberg',
@@ -64,7 +56,6 @@ export const REFERENCE_LINK_GROUPS: ReferenceLinkGroup[] = [
   },
   {
     id: 'exchanges',
-    sectionTitleKey: 'moreRefSectionExchanges',
     items: [
       {
         id: 'upbit',
@@ -97,3 +88,6 @@ export const REFERENCE_LINK_GROUPS: ReferenceLinkGroup[] = [
     ],
   },
 ];
+
+/** 퀵 링크: 카테고리 없이 한 그리드 — 위 그룹 순서대로 이어붙임 */
+export const REFERENCE_LINK_ITEMS: ReferenceLinkItem[] = REFERENCE_LINK_GROUPS.flatMap((g) => g.items);

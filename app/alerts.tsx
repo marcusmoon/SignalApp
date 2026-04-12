@@ -12,9 +12,9 @@ import { loadNotificationHistory, type StoredNotification } from '@/services/not
 import { formatRelativeTime } from '@/utils/date';
 
 export default function AlertsScreen() {
-  const { theme } = useSignalTheme();
+  const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const router = useRouter();
@@ -57,7 +57,7 @@ export default function AlertsScreen() {
                 <Text style={styles.alertTitle}>{a.title}</Text>
                 {a.high ? (
                   <View style={styles.high}>
-                    <Text style={styles.highText}>HIGH</Text>
+                    <Text style={styles.highText}>{t('alertsHighBadge')}</Text>
                   </View>
                 ) : (
                   <Text style={styles.time}>{formatRelativeTime(a.receivedAt, locale)}</Text>
@@ -85,11 +85,11 @@ export default function AlertsScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
-    hint: { fontSize: 11, color: theme.textDim, marginBottom: 12 },
+    hint: { fontSize: sf(11), color: theme.textDim, marginBottom: 12 },
     emptyBox: {
       paddingVertical: 24,
       paddingHorizontal: 12,
@@ -99,7 +99,7 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.card,
       marginBottom: 12,
     },
-    emptyText: { fontSize: 13, color: theme.textMuted, lineHeight: 20, marginBottom: 14 },
+    emptyText: { fontSize: sf(13), color: theme.textMuted, lineHeight: sf(20), marginBottom: 14 },
     settingsLink: {
       alignSelf: 'flex-start',
       paddingVertical: 10,
@@ -109,13 +109,13 @@ function makeStyles(theme: AppTheme) {
       borderWidth: 1,
       borderColor: theme.greenBorder,
     },
-    settingsLinkText: { fontSize: 13, fontWeight: '800', color: theme.green },
+    settingsLinkText: { fontSize: sf(13), fontWeight: '800', color: theme.green },
     footerLink: {
       marginTop: 8,
       paddingVertical: 12,
       alignItems: 'center',
     },
-    footerLinkText: { fontSize: 13, fontWeight: '700', color: theme.green },
+    footerLinkText: { fontSize: sf(13), fontWeight: '700', color: theme.green },
     alertCard: {
       backgroundColor: theme.card,
       borderRadius: 12,
@@ -125,10 +125,10 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 10,
     },
     alertTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-    alertTitle: { fontSize: 13, fontWeight: '700', color: theme.text, flex: 1, paddingRight: 8 },
-    alertBody: { fontSize: 12, color: theme.textMuted, lineHeight: 18 },
-    time: { fontSize: 11, color: theme.textDim },
-    timeRight: { fontSize: 11, color: theme.textDim, marginTop: 6 },
+    alertTitle: { fontSize: sf(13), fontWeight: '700', color: theme.text, flex: 1, paddingRight: 8 },
+    alertBody: { fontSize: sf(12), color: theme.textMuted, lineHeight: sf(18) },
+    time: { fontSize: sf(11), color: theme.textDim },
+    timeRight: { fontSize: sf(11), color: theme.textDim, marginTop: 6 },
     high: {
       backgroundColor: '#FF3B3B22',
       borderWidth: 1,
@@ -137,6 +137,6 @@ function makeStyles(theme: AppTheme) {
       paddingVertical: 2,
       borderRadius: 6,
     },
-    highText: { fontSize: 10, fontWeight: '900', color: '#FF6B6B' },
+    highText: { fontSize: sf(10), fontWeight: '900', color: '#FF6B6B' },
   });
 }

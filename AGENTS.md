@@ -65,6 +65,15 @@ npx tsc --noEmit
 
 **보안:** 프로덕션에서는 민감 키는 클라이언트에 두지 말고 BFF 권장 (PRD와 동일 방향).
 
+### 외부 연동 표준 — `integrations/<provider>/` (Finnhub와 동일 형태)
+
+앞으로 **새 외부 API/SDK**는 아래를 지킨다.
+
+1. **`client.ts`** — 이 통합 폴더 안에서 **아웃바운드 요청에만** `services/env`의 키·토큰을 읽는다. (Finnhub: `fh()` · Anthropic: `postAnthropicMessages` · OpenAI: `postOpenAiChatCompletion` · YouTube: `youtubeDataApiUrl` · AdMob: 단위 ID getter)
+2. **`types.ts`** (선택) — DTO·응답 타입만 둔다.
+3. **`index.ts`** / `*Cache.ts` / 기타 — 도메인 조합·캐시·가공은 **클라이언트가 노출한 함수만** 호출한다. `env.*Key`를 이 레이어에서 직접 읽지 않는다.
+4. **`services/<name>.ts`** — 필요 시 기존 import 경로용 **re-export**만 유지한다.
+
 ---
 
 ## 5. 디렉터리 구조 (요약)
@@ -86,8 +95,10 @@ app/                    # expo-router 화면
 components/             # UI 조각
 constants/              # 테마, 탭바, 세그먼트 탭 스타일 등
 contexts/               # SignalTheme, Locale, OtaBanner
-locales/messages.ts     # ko / en / ja 문자열 (`MessageId`, `formatMessage`)
-services/               # API·캐시·AsyncStorage 기본 설정
+locales/ko.ts, en.ts, ja.ts  # 언어별 문자열 (키 기준은 `ko.ts` → `MessageId`)
+locales/messages.ts     # `formatMessage`, `messages` 합본, `AppLocale` re-export
+integrations/          # 외부 HTTP/SDK — 벤더별 폴더, `client.ts`에 키·토큰 집중
+services/               # 기기 설정·re-export·비-HTTP 유틸 (`env.ts`는 전역 키 객체)
 assets/
 ```
 
@@ -97,27 +108,29 @@ assets/
 
 ## 6. 주요 `services/` 모듈
 
-| 영역 | 파일 (예) |
-|------|-----------|
-| 환경 | `env.ts` |
-| Finnhub | `finnhub.ts` (시세·프로필·캘린더 등), `MCAP_SCREEN_UNIVERSE` 시총 유니버스 |
-| 시세 캐시 | `quotesCache.ts` — quote TTL, 시총 순서 캐시, `QUOTES_POLL_INTERVAL_MS` |
-| 시세 설정 저장 | `quotesListLimitsPreference.ts`, `quotesSegmentOrderPreference.ts` |
-| 유튜브 | `youtube.ts`, `youtubeCache.ts`, `youtubeCurationList.ts`, … |
-| 컨콜 | `concalls.ts`, `concallCache.ts`, … |
-| 캘린더 | `calendarCache.ts`, `calendarConcallScopePreference.ts` |
-| 코인 시세 | `cryptoMarkets.ts` (CoinGecko 등) |
-| 캐시 플래그 | `cacheFeaturePreferences.ts` (기능별 캐시 on/off) |
-| 알림 | `notificationPreferences.ts`, `notificationHistory.ts` |
-| 광고 | `admob.native.ts` / `admob.web.ts` |
-| OTA | `otaUpdates.ts` |
+외부 HTTP/SDK 연동은 **`integrations/<provider>/`** 에 두고, `services/*.ts` 는 대부분 **re-export** 또는 기기 저장·설정 전용이다.
+
+| 영역 | 구현 위치 (통합) | `services/` 쪽 |
+|------|------------------|------------------|
+| 환경 | — | `env.ts` |
+| Finnhub | `integrations/finnhub/` (`types`, `client`, `index`, 캘린더·뉴스·시세 **캐시**) | `finnhub.ts`, `calendarCache.ts`, `newsCache.ts`, `quotesCache.ts` |
+| 유튜브 | `integrations/youtube/` (`cache.ts` 포함) | `youtube.ts`, `youtubeCache.ts`, `youtubeCurationList.ts`, … |
+| Claude | `integrations/anthropic/` | `anthropic.ts` |
+| OpenAI | `integrations/openai/` (`chat.ts`, `summaries.ts`) | `openaiChat.ts`, `openaiSummaries.ts` |
+| 컨콜 캐시 | `integrations/concalls/cache.ts` | `concallCache.ts` + `concalls.ts` |
+| 캘린더 설정 | — | `calendarConcallScopePreference.ts` |
+| 코인 시세 | — | `cryptoMarkets.ts` (CoinGecko 등) |
+| 캐시 플래그 | — | `cacheFeaturePreferences.ts` |
+| 알림 | — | `notificationPreferences.ts`, `notificationHistory.ts` |
+| AdMob | `integrations/admob/native.ts`, `web.ts` | `admob.native.ts` / `admob.web.ts` (re-export) |
+| OTA | — | `otaUpdates.ts` |
 
 ---
 
 ## 7. UI · 테마 · i18n
 
 - **테마:** `contexts/SignalThemeContext.tsx`, `constants/theme.ts`, 악센트 `services/accentPreference.ts`
-- **로케일:** `contexts/LocaleContext.tsx`, 문자열 **`locales/messages.ts`** — 새 문구는 `ko`에 추가 후 `MessageId` 타입이 키를 추론
+- **로케일:** `contexts/LocaleContext.tsx`, 문자열 **`locales/ko.ts` / `en.ts` / `ja.ts`** (import는 `@/locales/messages` 유지) — 새 키는 **`ko.ts`에 먼저** 넣고 `en.ts`·`ja.ts`에 동일 키로 번역 추가 (`satisfies`로 키 누락 방지)
 - **세그먼트 탭 공통 스타일:** `constants/segmentTabBar.ts` (설정·시세 등에서 재사용)
 
 ---
@@ -128,7 +141,7 @@ assets/
 - 탭 순서(관심/인기/시총/코인): `loadQuotesSegmentOrder()` → `quotesSegmentOrderPreference.ts`
 - 목록 개수: `loadQuotesListLimits()` → `quotesListLimitsPreference.ts`
 - 시총순 심볼 정렬: `getSymbolsSortedByMarketCap()` (`finnhub.ts`), 유니버스·프로필 API 부하 고려
-- 메모리 캐시: `quotesCache.ts` (quote TTL = `QUOTES_POLL_INTERVAL_MS` 30초, 시총 **순서**는 별도 TTL)
+- 메모리 캐시: `integrations/finnhub/quotesCache.ts` (re-export `services/quotesCache.ts`) — quote TTL = `QUOTES_POLL_INTERVAL_MS` 30초, 시총 **순서**는 별도 TTL
 - **제스처:** 루트 `GestureHandlerRootView` (`app/_layout.tsx`). 시세 **탭 순서** 설정은 `react-native-draggable-flatlist` + RNGH `Pressable` (웹·네이티브 차이 있음)
 - **뉴스 탭** (`app/(tabs)/index.tsx`): 상단 세그먼트 순서는 `loadNewsSegmentOrder()` → `newsSegmentOrderPreference.ts`(기본 `NEWS_SEGMENT_ORDER`). **글로벌 / 코인 / 한국** — Finnhub `general`·`crypto`, 한국은 `general`+`forex` 후 키워드 필터(`services/newsKoreaFilter.ts`). 뉴스 카드는 선택한 LLM 제공자(Claude/OpenAI)가 있으면 **한국어 번역 제목 + 3줄 요약**을 생성한다. **추가 키워드**는 설정의 「뉴스」탭 「한국 뉴스 키워드」에서 등록하며 `services/newsKoreaKeywordsPreference.ts`에 저장된다(내장 정규식과 OR). 저장 키가 없을 때(첫 실행) `DEFAULT_KOREA_NEWS_KEYWORDS`가 시드되며, 설정에서 `restoreKoreaNewsExtraKeywordsDefaults()`로 동일 목록을 다시 채울 수 있다. 한국 **전용 API**는 없어서 나중에 교체 가능.
 
@@ -154,7 +167,7 @@ assets/
 
 - 요청 범위 밖 **리팩터·문서 남발 금지**; 기존 스타일·import 패턴 유지.
 - 사용자가 명시한 **마크다운**만 추가/수정 (불필요한 README 남발 방지). **예외:** 본 `AGENTS.md`·`CHANGELOG.md`·`SIGNAL-PRD.md`는 유지보수 대상.
-- 문자열은 하드코딩보다 **`locales/messages.ts`**.
+- 문자열은 하드코딩보다 **`locales/ko.ts`** 등 번들 파일 (`@/locales/messages`로 접근).
 - 변경 후 가능하면 **`npx tsc --noEmit`**.
 
 ### 11.1 커밋 전 — 변경 내용을 파일별로 기록 (필수)

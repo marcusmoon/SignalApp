@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ReferenceLinksSection } from '@/components/more/ReferenceLinksSection';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import type { MoreHubRouteKey } from '@/constants/moreHubOrder';
@@ -41,12 +42,12 @@ const ROW_HEIGHT = 76;
 const MORE_HUB_LIST_HEIGHT = ROW_HEIGHT + 16;
 
 export default function MoreHubScreen() {
-  const { theme } = useSignalTheme();
+  const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const [order, setOrder] = useState<MoreHubRouteKey[]>([]);
   const [orderReady, setOrderReady] = useState(false);
   const [refLinksVisible, setRefLinksVisible] = useState(true);
@@ -81,18 +82,13 @@ export default function MoreHubScreen() {
     }, [reloadOrder, reloadRefLinksPref]),
   );
 
-  const listHeader = useMemo(
+  const listFooter = useMemo(
     () => (
-      <View style={styles.headerBlock}>
-        <Text style={styles.lead}>{t('moreHubLead')}</Text>
-        <Text style={styles.dragHint}>{t('moreHubDragHint')}</Text>
+      <View>
+        {refLinksVisible ? <ReferenceLinksSection /> : null}
+        <SignalBannerAd />
       </View>
     ),
-    [styles.dragHint, styles.headerBlock, styles.lead, t],
-  );
-
-  const listFooter = useMemo(
-    () => (refLinksVisible ? <ReferenceLinksSection /> : null),
     [refLinksVisible],
   );
 
@@ -111,8 +107,10 @@ export default function MoreHubScreen() {
           scrollEnabled
           removeClippedSubviews={false}
           style={styles.list}
-          contentContainerStyle={{ paddingBottom: 24 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM }}
-          ListHeaderComponent={listHeader}
+          contentContainerStyle={{
+            paddingTop: 10,
+            paddingBottom: 24 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM,
+          }}
           ListFooterComponent={listFooter}
           containerStyle={{ flex: 1 }}
           onDragEnd={({ data }) => {
@@ -162,26 +160,12 @@ export default function MoreHubScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     list: { flex: 1, paddingHorizontal: 16 },
     loadingPad: { padding: 24 },
-    muted: { fontSize: 14, color: theme.textDim },
-    headerBlock: { paddingTop: 10, paddingBottom: 14 },
-    lead: {
-      fontSize: 13,
-      fontWeight: '500',
-      color: theme.textDim,
-      marginBottom: 8,
-      lineHeight: 19,
-    },
-    dragHint: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: theme.textMuted,
-      lineHeight: 16,
-    },
+    muted: { fontSize: sf(14), color: theme.textDim },
     rowWrap: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -225,7 +209,7 @@ function makeStyles(theme: AppTheme) {
     },
     rowTitle: {
       flex: 1,
-      fontSize: 16,
+      fontSize: sf(16),
       fontWeight: '800',
       color: theme.text,
     },

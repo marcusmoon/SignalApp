@@ -34,9 +34,19 @@ import { loadCalendarConcallScope } from '@/services/calendarConcallScopePrefere
 import { hasFinnhub } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { toYmd } from '@/utils/date';
+import type { MessageId } from '@/locales/messages';
 import type { CalendarEvent } from '@/types/signal';
 
 type EventSection = { title: string; data: CalendarEvent[] };
+
+function calendarEventTimeLabel(ev: CalendarEvent, t: (id: MessageId) => string): string {
+  const code = ev.earningsHourCode;
+  if (!code) return ev.time || '—';
+  if (code === 'bmo') return t('briefingEarnHourBmo');
+  if (code === 'amc') return t('briefingEarnHourAmc');
+  if (code === 'dmh' || code === 'dmt') return t('calendarEarningsHourIntraday');
+  return ev.time || '—';
+}
 
 function ymdInMonth(ymd: string, year: number, month0: number): boolean {
   const prefix = `${year}-${String(month0 + 1).padStart(2, '0')}-`;
@@ -61,9 +71,9 @@ function findScrollTargetYmd(sections: { title: string }[], ymd: string): string
 }
 
 export default function CalendarScreen() {
-  const { theme } = useSignalTheme();
+  const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
@@ -109,7 +119,7 @@ export default function CalendarScreen() {
       setError(null);
       if (!hasFinnhub()) {
         setEvents([]);
-        setError('EXPO_PUBLIC_FINNHUB_TOKEN 이 필요합니다.');
+        setError(t('errorFinnhubTokenShort'));
         return;
       }
       const scope = await loadCalendarConcallScope();
@@ -124,7 +134,7 @@ export default function CalendarScreen() {
       );
       setEvents(list);
     },
-    [visibleMonth],
+    [visibleMonth, t],
   );
 
   useEffect(() => {
@@ -135,7 +145,7 @@ export default function CalendarScreen() {
         await load();
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : '캘린더를 불러오지 못했습니다.');
+          setError(e instanceof Error ? e.message : t('calendarErrorLoad'));
           setEvents([]);
         }
       } finally {
@@ -152,11 +162,11 @@ export default function CalendarScreen() {
     try {
       await load(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '새로고침 실패');
+      setError(e instanceof Error ? e.message : t('feedErrorRefresh'));
     } finally {
       setRefreshing(false);
     }
-  }, [load]);
+  }, [load, t]);
 
   const filteredEvents = useMemo(
     () => events.filter((e) => enabledTypes.has(e.type)),
@@ -284,9 +294,8 @@ export default function CalendarScreen() {
         <ScrollView
           contentContainerStyle={[styles.scroll, { paddingBottom: 28 + insets.bottom }]}
           showsVerticalScrollIndicator={false}>
-          <Text style={styles.hint}>{t('calendarScreenHint')}</Text>
           <View style={styles.errBox}>
-            <Text style={styles.errText}>EXPO_PUBLIC_FINNHUB_TOKEN 이 필요합니다.</Text>
+            <Text style={styles.errText}>{t('errorFinnhubTokenShort')}</Text>
           </View>
           <SignalBannerAd />
         </ScrollView>
@@ -301,7 +310,6 @@ export default function CalendarScreen() {
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.fixedTop}>
-        <Text style={styles.hint}>{t('calendarScreenHint')}</Text>
         {error ? (
           <View style={styles.errBox}>
             <Text style={styles.errText}>{error}</Text>
@@ -403,7 +411,7 @@ export default function CalendarScreen() {
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.time}>{ev.time}</Text>
+                  <Text style={styles.time}>{calendarEventTimeLabel(ev, t)}</Text>
                 </View>
               </View>
             ))}
@@ -450,7 +458,7 @@ export default function CalendarScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
@@ -465,7 +473,6 @@ function makeStyles(theme: AppTheme) {
     listScroll: { flex: 1, minHeight: 0 },
     listContent: { paddingHorizontal: 16, paddingTop: 10 },
     listContentEmpty: { flexGrow: 1, justifyContent: 'center' },
-    hint: { fontSize: 10, color: theme.textDim, marginBottom: 8 },
     monthHeading: {
       fontSize: 13,
       fontWeight: '800',
@@ -479,8 +486,8 @@ function makeStyles(theme: AppTheme) {
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
     },
-    dayHeaderText: { fontSize: 12, fontWeight: '800', color: theme.green },
-    loading: { fontSize: 12, color: theme.textMuted, marginBottom: 8, paddingVertical: 4 },
+    dayHeaderText: { fontSize: sf(12), fontWeight: '800', color: theme.green },
+    loading: { fontSize: sf(12), color: theme.textMuted, marginBottom: 8, paddingVertical: 4 },
     errBox: {
       padding: 10,
       borderRadius: 10,
@@ -489,8 +496,8 @@ function makeStyles(theme: AppTheme) {
       borderColor: '#553333',
       marginBottom: 8,
     },
-    errText: { fontSize: 11, color: '#E0A0A0', lineHeight: 16 },
-    empty: { fontSize: 12, color: theme.textMuted, paddingVertical: 12, textAlign: 'center' },
+    errText: { fontSize: sf(11), color: '#E0A0A0', lineHeight: sf(16) },
+    empty: { fontSize: sf(12), color: theme.textMuted, paddingVertical: 12, textAlign: 'center' },
     card: {
       backgroundColor: theme.card,
       borderRadius: 10,
@@ -519,16 +526,16 @@ function makeStyles(theme: AppTheme) {
       paddingVertical: 2,
       marginTop: 1,
     },
-    typeTagText: { fontSize: 9, fontWeight: '800' },
-    time: { fontSize: 10, color: theme.textMuted, marginTop: 1, flexShrink: 0 },
+    typeTagText: { fontSize: sf(9), fontWeight: '800' },
+    time: { fontSize: sf(10), color: theme.textMuted, marginTop: 1, flexShrink: 0 },
     title: {
       flexGrow: 1,
       flexShrink: 1,
       minWidth: 0,
-      fontSize: 13,
+      fontSize: sf(13),
       fontWeight: '700',
       color: theme.text,
-      lineHeight: 18,
+      lineHeight: sf(18),
     },
     filterFab: {
       position: 'absolute',

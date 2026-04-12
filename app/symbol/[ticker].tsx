@@ -164,7 +164,7 @@ function Sparkline({
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     scroll: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 },
@@ -176,7 +176,7 @@ function makeStyles(theme: AppTheme) {
       padding: 16,
       marginBottom: 14,
     },
-    company: { fontSize: 26, fontWeight: '900', color: theme.text, marginBottom: 6 },
+    company: { fontSize: sf(26), fontWeight: '900', color: theme.text, marginBottom: 6 },
     companySkeleton: {
       width: '72%',
       height: 28,
@@ -197,9 +197,9 @@ function makeStyles(theme: AppTheme) {
       gap: 10,
       marginBottom: 8,
     },
-    chartLabel: { fontSize: 11, fontWeight: '800', color: theme.textDim },
-    chartValue: { fontSize: 12, fontWeight: '700', color: theme.textMuted },
-    chartEmpty: { fontSize: 12, color: theme.textMuted, lineHeight: 18 },
+    chartLabel: { fontSize: sf(11), fontWeight: '800', color: theme.textDim },
+    chartValue: { fontSize: sf(12), fontWeight: '700', color: theme.textMuted },
+    chartEmpty: { fontSize: sf(12), color: theme.textMuted, lineHeight: sf(18) },
     priceRow: {
       flexDirection: 'row',
       alignItems: 'flex-end',
@@ -207,7 +207,7 @@ function makeStyles(theme: AppTheme) {
       gap: 12,
       flexWrap: 'wrap',
     },
-    price: { fontSize: 28, fontWeight: '900', color: theme.text },
+    price: { fontSize: sf(28), fontWeight: '900', color: theme.text },
     priceMeta: { alignItems: 'flex-end', gap: 4 },
     priceSkeleton: {
       width: 120,
@@ -221,16 +221,16 @@ function makeStyles(theme: AppTheme) {
       borderRadius: 6,
       backgroundColor: theme.bgElevated,
     },
-    changeUp: { color: theme.green, fontSize: 13, fontWeight: '800' },
-    changeDn: { color: '#E06D6D', fontSize: 13, fontWeight: '800' },
+    changeUp: { color: theme.green, fontSize: sf(13), fontWeight: '800' },
+    changeDn: { color: '#E06D6D', fontSize: sf(13), fontWeight: '800' },
     heroMcap: {
-      fontSize: 12,
+      fontSize: sf(12),
       fontWeight: '700',
       color: theme.textMuted,
       marginTop: 10,
       letterSpacing: 0.1,
     },
-    section: { fontSize: 16, fontWeight: '800', color: theme.text, marginBottom: 10 },
+    section: { fontSize: sf(16), fontWeight: '800', color: theme.text, marginBottom: 10 },
     sectionCard: {
       backgroundColor: theme.card,
       borderRadius: 12,
@@ -261,7 +261,7 @@ function makeStyles(theme: AppTheme) {
       borderColor: theme.border,
     },
     actionBtnRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-    actionBtnText: { fontSize: 13, fontWeight: '800', color: theme.green },
+    actionBtnText: { fontSize: sf(13), fontWeight: '800', color: theme.green },
     actionBtnTextAlt: { color: theme.text },
     centeredLoadingWrap: {
       flex: 1,
@@ -284,11 +284,11 @@ function makeStyles(theme: AppTheme) {
       gap: 10,
       marginBottom: 8,
     },
-    newsSource: { fontSize: 11, fontWeight: '800', color: theme.textDim },
-    newsTime: { fontSize: 11, color: theme.textMuted },
-    newsTitle: { fontSize: 14, lineHeight: 20, color: theme.text, fontWeight: '700', marginBottom: 4 },
+    newsSource: { fontSize: sf(11), fontWeight: '800', color: theme.textDim },
+    newsTime: { fontSize: sf(11), color: theme.textMuted },
+    newsTitle: { fontSize: sf(14), lineHeight: sf(20), color: theme.text, fontWeight: '700', marginBottom: 4 },
     earningsSubheading: {
-      fontSize: 11,
+      fontSize: sf(11),
       fontWeight: '800',
       letterSpacing: 0.4,
       color: theme.textMuted,
@@ -316,7 +316,7 @@ function makeStyles(theme: AppTheme) {
     },
     earningsRowInner: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     earningsLeft: { flex: 1, minWidth: 0 },
-    earningsFyDate: { fontSize: 16, fontWeight: '900', color: theme.text, letterSpacing: -0.25, marginBottom: 8 },
+    earningsFyDate: { fontSize: sf(16), fontWeight: '900', color: theme.text, letterSpacing: -0.25, marginBottom: 8 },
     earningsHourBadge: {
       alignSelf: 'flex-start',
       paddingHorizontal: 8,
@@ -327,14 +327,14 @@ function makeStyles(theme: AppTheme) {
       borderColor: theme.border,
       marginBottom: 8,
     },
-    earningsHourBadgeText: { fontSize: 11, fontWeight: '800', color: theme.textMuted },
-    earningsMeta: { fontSize: 13, lineHeight: 20, color: theme.text, fontWeight: '600', opacity: 0.92 },
-    earningsFoot: { fontSize: 11, color: theme.textDim, marginTop: 12, lineHeight: 16 },
+    earningsHourBadgeText: { fontSize: sf(11), fontWeight: '800', color: theme.textMuted },
+    earningsMeta: { fontSize: sf(13), lineHeight: sf(20), color: theme.text, fontWeight: '600', opacity: 0.92 },
+    earningsFoot: { fontSize: sf(11), color: theme.textDim, marginTop: 12, lineHeight: sf(16) },
     earningsRowPressed: { opacity: 0.88 },
-    empty: { fontSize: 13, color: theme.textMuted },
+    empty: { fontSize: sf(13), color: theme.textMuted },
     sourceFootnote: {
-      fontSize: 11,
-      lineHeight: 16,
+      fontSize: sf(11),
+      lineHeight: sf(16),
       fontWeight: '500',
       color: theme.textMuted,
       marginTop: 12,
@@ -346,7 +346,7 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: '#2A1515',
       padding: 14,
     },
-    errorText: { fontSize: 13, color: '#E0A0A0', lineHeight: 20 },
+    errorText: { fontSize: sf(13), color: '#E0A0A0', lineHeight: sf(20) },
     loadingWrap: {
       paddingVertical: 24,
       alignItems: 'center',
@@ -438,9 +438,9 @@ export default function SymbolDetailScreen() {
   const { ticker: tickerParam } = useLocalSearchParams<{ ticker?: string | string[] }>();
   const ticker = useMemo(() => normalizeTicker(tickerParam), [tickerParam]);
   const router = useRouter();
-  const { theme } = useSignalTheme();
+  const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
@@ -530,9 +530,9 @@ export default function SymbolDetailScreen() {
   const chartColor = quote?.d != null ? (quote.d >= 0 ? theme.green : '#E06D6D') : theme.green;
 
   const chartRangeLabel = useMemo(() => {
-    if (chartCloses.length < 2) return '1M';
+    if (chartCloses.length < 2) return t('symbolDetailChartRange1M');
     return `${formatUsd(chartCloses[0]!)} → ${formatUsd(chartCloses[chartCloses.length - 1]!)}`;
-  }, [chartCloses]);
+  }, [chartCloses, t]);
 
   const displayCompanyName = useMemo(
     () => normalizeCompanyName(profile?.name, ticker) ?? t('symbolDetailCompanyUnknown'),
@@ -598,7 +598,7 @@ export default function SymbolDetailScreen() {
           {chartCloses.length > 1 ? (
             <View style={styles.chartWrap}>
               <View style={styles.chartMetaRow}>
-                <Text style={styles.chartLabel}>1M</Text>
+                <Text style={styles.chartLabel}>{t('symbolDetailChartRange1M')}</Text>
                 <Text style={styles.chartValue}>{chartRangeLabel}</Text>
               </View>
               <Sparkline closes={chartCloses} color={chartColor} />
@@ -606,7 +606,7 @@ export default function SymbolDetailScreen() {
           ) : (
             <View style={styles.chartWrap}>
               <View style={styles.chartMetaRow}>
-                <Text style={styles.chartLabel}>1M</Text>
+                <Text style={styles.chartLabel}>{t('symbolDetailChartRange1M')}</Text>
               </View>
               <Text style={styles.chartEmpty}>{t('symbolDetailNoChart')}</Text>
             </View>

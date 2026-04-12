@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { openYoutubeItem } from '@/lib/openYoutube';
 import type { YoutubeItem } from '@/types/signal';
@@ -11,8 +12,9 @@ import type { YoutubeItem } from '@/types/signal';
 type Props = { item: YoutubeItem };
 
 export function YoutubeCard({ item }: Props) {
-  const { theme } = useSignalTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { theme, scaleFont } = useSignalTheme();
+  const { t } = useLocale();
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   return (
     <View style={styles.card}>
@@ -42,7 +44,7 @@ export function YoutubeCard({ item }: Props) {
               style={({ pressed }) => [styles.linkChip, pressed && styles.linkChipPressed]}
               hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
               accessibilityRole="link"
-              accessibilityLabel="YouTube에서 열기">
+              accessibilityLabel={t('youtubeOpenLinkA11y')}>
               <FontAwesome name="external-link" size={10} color={theme.green} />
               <Text style={styles.linkText}>YouTube</Text>
             </Pressable>
@@ -54,7 +56,7 @@ export function YoutubeCard({ item }: Props) {
             {item.channel}
           </Text>
           <Text style={styles.meta}>
-            조회 {item.viewLabel} · {item.publishedLabel}
+            {t('youtubeMetaViewsLine', { views: item.viewLabel, published: item.publishedLabel })}
           </Text>
         </View>
       </Pressable>
@@ -62,7 +64,7 @@ export function YoutubeCard({ item }: Props) {
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     card: {
       backgroundColor: theme.card,
@@ -108,7 +110,7 @@ function makeStyles(theme: AppTheme) {
       position: 'absolute',
       bottom: 4,
       right: 4,
-      fontSize: 10,
+      fontSize: sf(10),
       fontWeight: '800',
       color: '#fff',
       backgroundColor: 'rgba(0,0,0,0.75)',
@@ -136,7 +138,7 @@ function makeStyles(theme: AppTheme) {
     },
     topic: {
       alignSelf: 'flex-start',
-      fontSize: 10,
+      fontSize: sf(10),
       fontWeight: '800',
       color: theme.green,
       backgroundColor: theme.greenDim,
@@ -148,19 +150,19 @@ function makeStyles(theme: AppTheme) {
       overflow: 'hidden',
     },
     title: {
-      fontSize: 14,
+      fontSize: sf(14),
       fontWeight: '700',
       color: theme.text,
-      lineHeight: 19,
+      lineHeight: sf(19),
       marginBottom: 4,
     },
     channel: {
-      fontSize: 12,
+      fontSize: sf(12),
       color: theme.textMuted,
       marginBottom: 2,
     },
     meta: {
-      fontSize: 11,
+      fontSize: sf(11),
       color: theme.textDim,
     },
     linkChip: {
@@ -175,7 +177,7 @@ function makeStyles(theme: AppTheme) {
       opacity: 0.85,
     },
     linkText: {
-      fontSize: 10,
+      fontSize: sf(10),
       fontWeight: '700',
       color: theme.green,
     },

@@ -1,13 +1,15 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { SIGNAL } from '@/constants/theme';
+import { useLocale } from '@/contexts/LocaleContext';
 
 /** 웹: AdMob 네이티브 SDK 없음 — 자리 표시만 */
 export function AdPlaceholder() {
+  const { t } = useLocale();
   return (
-    <View style={styles.wrap} accessibilityLabel="광고">
-      <Text style={styles.badge}>광고</Text>
-      <Text style={styles.title}>모바일 앱에서 광고가 표시됩니다</Text>
+    <View style={styles.wrap} accessibilityLabel={t('commonAd')}>
+      <Text style={styles.badge}>{t('commonAd')}</Text>
+      <Text style={styles.title}>{t('adPlaceholderWebMessage')}</Text>
     </View>
   );
 }

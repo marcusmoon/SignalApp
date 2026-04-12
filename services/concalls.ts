@@ -14,7 +14,7 @@ import {
   deleteConcallCache,
   peekConcallCache,
   storeConcallCache,
-} from '@/services/concallCache';
+} from '@/integrations/concalls/cache';
 import { hasApiNinjas, hasFinnhub } from '@/services/env';
 import type { ConcallSummary } from '@/types/signal';
 import { addDays } from '@/utils/date';

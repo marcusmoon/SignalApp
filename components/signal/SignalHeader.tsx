@@ -9,9 +9,9 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 export function SignalHeader() {
   const router = useRouter();
-  const { theme } = useSignalTheme();
+  const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   return (
     <View style={styles.wrap}>
@@ -58,7 +58,7 @@ export function SignalHeader() {
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     wrap: {
       paddingHorizontal: 16,
@@ -112,15 +112,15 @@ function makeStyles(theme: AppTheme) {
       borderRadius: 3,
     },
     brand: {
-      fontSize: 18,
+      fontSize: sf(18),
       fontWeight: '900',
       color: theme.green,
       letterSpacing: -0.4,
     },
     tag: {
       marginTop: 1,
-      fontSize: 11,
-      lineHeight: 14,
+      fontSize: sf(11),
+      lineHeight: sf(14),
       fontWeight: '600',
       color: theme.textDim,
     },

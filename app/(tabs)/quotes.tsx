@@ -142,10 +142,10 @@ function mapCoinToFinnhubQuote(price: number, change24h: number, pct24h: number)
 }
 
 export default function QuotesScreen() {
-  const { theme } = useSignalTheme();
+  const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
@@ -180,21 +180,6 @@ export default function QuotesScreen() {
       return '';
     }
   }, [nextRefreshAtMs, countdownTick, t]);
-
-  const segmentHint = useMemo(() => {
-    if (segment === 'watch') return t('quotesSegmentHintWatch');
-    if (segment === 'popular') return t('quotesSegmentHintPopular');
-    if (segment === 'mcap') return t('quotesSegmentHintMcap');
-    return t('quotesHintCoin');
-  }, [segment, t]);
-
-  const pollHintLine = useMemo(
-    () =>
-      segment === 'coin'
-        ? t('quotesPollHintCoin', { seconds: String(POLL_MS / 1000), hint: segmentHint })
-        : t('quotesPollHintFinnhub', { seconds: String(POLL_MS / 1000), hint: segmentHint }),
-    [segment, segmentHint, t],
-  );
 
   const ttlTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadRef = useRef<(forceRefresh?: boolean) => Promise<void>>(async () => {});
@@ -499,7 +484,6 @@ export default function QuotesScreen() {
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>
           <Text style={styles.section}>{t('quotesScreenTitle')}</Text>
-          <Text style={styles.hint}>{pollHintLine}</Text>
 
           <View style={styles.segment}>
             {segmentOrder.map((key) => (
@@ -645,7 +629,15 @@ export default function QuotesScreen() {
                       ) : null}
                     </View>
                   </View>
-                  {!r.quote ? <Text style={styles.fail}>{r.error ?? t('quotesDataUnavailable')}</Text> : null}
+                  {!r.quote ? (
+                    <Text style={styles.fail}>
+                      {r.error === 'UNKNOWN_SYMBOL'
+                        ? t('quotesErrorNoPrice')
+                        : r.error === 'QUOTE_FETCH_FAILED'
+                          ? t('quotesErrorLookup')
+                          : (r.error ?? t('quotesDataUnavailable'))}
+                    </Text>
+                  ) : null}
                 </>
               );
 
@@ -684,12 +676,6 @@ export default function QuotesScreen() {
                 {segment === 'watch' ? t('quotesEmptyWatch') : t('quotesEmptyGeneric')}
               </Text>
             ) : null}
-
-            <View style={styles.note}>
-              <Text style={styles.noteText}>
-                {segment === 'coin' ? t('quotesFooterCoin') : t('quotesFooterStocks')}
-              </Text>
-            </View>
             </>
           )}
         </ScrollView>
@@ -698,7 +684,7 @@ export default function QuotesScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     mainColumn: { flex: 1, minHeight: 0 },
@@ -715,8 +701,7 @@ function makeStyles(theme: AppTheme) {
     },
     scrollView: { flex: 1, minHeight: 0 },
     scrollContent: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28 },
-    section: { fontSize: 16, fontWeight: '800', color: theme.text, marginBottom: 4 },
-    hint: { fontSize: 12, fontWeight: '500', color: theme.textDim, marginBottom: 10 },
+    section: { fontSize: sf(16), fontWeight: '800', color: theme.text, marginBottom: 4 },
     segment: {
       flexDirection: 'row',
       backgroundColor: SEGMENT_TAB_BACKGROUND,
@@ -738,15 +723,15 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.green,
     },
     segText: {
-      fontSize: SEGMENT_TAB_FONT_SIZE,
-      lineHeight: SEGMENT_TAB_LINE_HEIGHT,
+      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
+      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
       fontWeight: SEGMENT_TAB_FONT_WEIGHT,
       color: theme.textDim,
     },
     segTextActive: {
       color: SEGMENT_TAB_ACTIVE_TEXT,
     },
-    updated: { fontSize: 11, fontWeight: '600', color: theme.textMuted, marginBottom: 10 },
+    updated: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted, marginBottom: 10 },
     addRow: {
       flexDirection: 'row',
       gap: 8,
@@ -760,7 +745,7 @@ function makeStyles(theme: AppTheme) {
       borderRadius: 8,
       paddingHorizontal: 10,
       paddingVertical: 8,
-      fontSize: 14,
+      fontSize: sf(14),
       color: theme.text,
       backgroundColor: '#12121A',
     },
@@ -773,7 +758,7 @@ function makeStyles(theme: AppTheme) {
       borderWidth: 1,
       borderColor: theme.greenBorder,
     },
-    addBtnText: { fontSize: 13, fontWeight: '800', color: theme.green },
+    addBtnText: { fontSize: sf(13), fontWeight: '800', color: theme.green },
     watchResetBtn: {
       flexShrink: 0,
       paddingHorizontal: 10,
@@ -784,7 +769,7 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: '#14141C',
       justifyContent: 'center',
     },
-    watchResetBtnText: { fontSize: 13, fontWeight: '700', color: '#E0A0A0' },
+    watchResetBtnText: { fontSize: sf(13), fontWeight: '700', color: '#E0A0A0' },
     errBox: {
       padding: 12,
       borderRadius: 10,
@@ -793,8 +778,8 @@ function makeStyles(theme: AppTheme) {
       borderColor: '#553333',
       marginBottom: 12,
     },
-    errText: { fontSize: 12, color: '#E0A0A0', lineHeight: 18 },
-    empty: { fontSize: 13, color: theme.textMuted, marginTop: 8 },
+    errText: { fontSize: sf(12), color: '#E0A0A0', lineHeight: sf(18) },
+    empty: { fontSize: sf(13), color: theme.textMuted, marginTop: 8 },
     card: {
       backgroundColor: theme.card,
       borderRadius: 12,
@@ -821,7 +806,7 @@ function makeStyles(theme: AppTheme) {
     },
     swipeDeleteText: {
       color: '#FFFFFF',
-      fontSize: 15,
+      fontSize: sf(15),
       fontWeight: '800',
     },
     cardTop: {
@@ -845,22 +830,22 @@ function makeStyles(theme: AppTheme) {
       flexWrap: 'wrap',
       gap: 8,
     },
-    sym: { fontSize: 16, fontWeight: '900', color: theme.text, letterSpacing: 0.5 },
+    sym: { fontSize: sf(16), fontWeight: '900', color: theme.text, letterSpacing: 0.5 },
     symPrev: {
-      fontSize: 12,
+      fontSize: sf(12),
       fontWeight: '500',
       color: theme.textMuted,
       marginTop: 4,
-      lineHeight: 17,
+      lineHeight: sf(17),
     },
-    symSub: { fontSize: 12, fontWeight: '700', color: theme.textMuted, marginTop: 4 },
-    price: { fontSize: 18, fontWeight: '800', color: theme.text },
-    na: { fontSize: 16, color: theme.textDim },
+    symSub: { fontSize: sf(12), fontWeight: '700', color: theme.textMuted, marginTop: 4 },
+    price: { fontSize: sf(18), fontWeight: '800', color: theme.text },
+    na: { fontSize: sf(16), color: theme.textDim },
     removeBtn: { padding: 2 },
-    chg: { fontSize: 13, fontWeight: '700', marginTop: 4, textAlign: 'right' },
+    chg: { fontSize: sf(13), fontWeight: '700', marginTop: 4, textAlign: 'right' },
     chgUp: { color: theme.green },
     chgDn: { color: '#E08080' },
-    fail: { fontSize: 12, color: '#E0A0A0' },
+    fail: { fontSize: sf(12), color: '#E0A0A0' },
     yahooInline: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -868,15 +853,6 @@ function makeStyles(theme: AppTheme) {
       paddingVertical: 2,
     },
     yahooInlinePressed: { opacity: 0.75 },
-    yahooInlineText: { fontSize: 12, fontWeight: '700', color: theme.green },
-    note: {
-      marginTop: 6,
-      padding: 12,
-      borderRadius: 10,
-      backgroundColor: '#12121A',
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    noteText: { fontSize: 12, fontWeight: '500', color: theme.textDim, lineHeight: 17 },
+    yahooInlineText: { fontSize: sf(12), fontWeight: '700', color: theme.green },
   });
 }

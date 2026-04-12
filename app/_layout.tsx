@@ -58,19 +58,19 @@ export default function RootLayout() {
     void initializeAds().catch(() => {});
   }, []);
 
-  if (!loaded) {
-    return <AppSplashScreen />;
-  }
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SignalThemeProvider>
-        <LocaleProvider>
-          <OtaBannerProvider key={`ota-prev-${getPreviewOtaBannerRaw()}`}>
-            <RootLayoutNav />
-          </OtaBannerProvider>
-        </LocaleProvider>
-      </SignalThemeProvider>
+      <LocaleProvider>
+        {!loaded ? (
+          <AppSplashScreen />
+        ) : (
+          <SignalThemeProvider>
+            <OtaBannerProvider key={`ota-prev-${getPreviewOtaBannerRaw()}`}>
+              <RootLayoutNav />
+            </OtaBannerProvider>
+          </SignalThemeProvider>
+        )}
+      </LocaleProvider>
     </GestureHandlerRootView>
   );
 }

@@ -51,6 +51,7 @@ import {
 } from '@/services/quotesSegmentOrderPreference';
 import type { AccentPresetId } from '@/services/accentPreference';
 import { ACCENT_PRESETS, normalizeHex } from '@/services/accentPreference';
+import type { FontSizePresetId } from '@/services/fontSizePreference';
 import { clearCalendarCache, CALENDAR_CACHE_TTL_MS } from '@/services/calendarCache';
 import { clearConcallCache, CONCALL_CACHE_TTL_MS } from '@/services/concallCache';
 import { clearNewsCache, NEWS_CACHE_TTL_MS } from '@/services/newsCache';
@@ -181,7 +182,14 @@ const LOCALE_LABEL: Record<AppLocale, MessageId> = {
   ja: 'localeNameJa',
 };
 
-function makeStyles(theme: AppTheme) {
+const FONT_SIZE_PRESET_ORDER: FontSizePresetId[] = ['compact', 'standard', 'comfortable'];
+const FONT_SIZE_PRESET_LABEL: Record<FontSizePresetId, MessageId> = {
+  compact: 'settingsFontSizeCompact',
+  standard: 'settingsFontSizeStandard',
+  comfortable: 'settingsFontSizeComfortable',
+};
+
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     scrollFlex: { flex: 1 },
@@ -211,8 +219,8 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.green,
     },
     tabText: {
-      fontSize: SEGMENT_TAB_FONT_SIZE,
-      lineHeight: SEGMENT_TAB_LINE_HEIGHT,
+      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
+      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
       fontWeight: SEGMENT_TAB_FONT_WEIGHT,
       color: theme.textDim,
     },
@@ -220,10 +228,10 @@ function makeStyles(theme: AppTheme) {
       color: SEGMENT_TAB_ACTIVE_TEXT,
     },
     lead: {
-      fontSize: 14,
+      fontSize: sf(14),
       fontWeight: '500',
       color: theme.textDim,
-      lineHeight: 21,
+      lineHeight: sf(21),
       marginBottom: 16,
     },
     card: {
@@ -235,16 +243,16 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 20,
     },
     cardTitle: {
-      fontSize: 13,
+      fontSize: sf(13),
       fontWeight: '800',
       color: theme.textMuted,
       marginBottom: 6,
     },
     cardHint: {
-      fontSize: 13,
+      fontSize: sf(13),
       fontWeight: '500',
       color: theme.textDim,
-      lineHeight: 19,
+      lineHeight: sf(19),
     },
     prefRow: {
       flexDirection: 'row',
@@ -253,16 +261,16 @@ function makeStyles(theme: AppTheme) {
       paddingVertical: 6,
       gap: 12,
     },
-    prefLabel: { fontSize: 14, fontWeight: '600', color: theme.text, flex: 1 },
+    prefLabel: { fontSize: sf(14), fontWeight: '600', color: theme.text, flex: 1 },
     prefBlock: { marginTop: 4, marginBottom: 4 },
-    prefHint: { fontSize: 11, fontWeight: '500', color: theme.textDim, lineHeight: 15, marginTop: 2, marginBottom: 4 },
+    prefHint: { fontSize: sf(11), fontWeight: '500', color: theme.textDim, lineHeight: sf(15), marginTop: 2, marginBottom: 4 },
     section: {
-      fontSize: 14,
+      fontSize: sf(14),
       fontWeight: '800',
       color: theme.text,
       marginBottom: 8,
     },
-    muted: { fontSize: 14, fontWeight: '500', color: theme.textMuted, marginBottom: 12 },
+    muted: { fontSize: sf(14), fontWeight: '500', color: theme.textMuted, marginBottom: 12 },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -274,9 +282,9 @@ function makeStyles(theme: AppTheme) {
       borderWidth: 1,
       borderColor: theme.border,
     },
-    handleText: { flex: 1, fontSize: 14, color: theme.text, fontWeight: '600' },
+    handleText: { flex: 1, fontSize: sf(14), color: theme.text, fontWeight: '600' },
     removeBtn: { padding: 8 },
-    hint: { fontSize: 12, fontWeight: '500', color: theme.textDim, marginBottom: 8 },
+    hint: { fontSize: sf(12), fontWeight: '500', color: theme.textDim, marginBottom: 8 },
     addRow: { flexDirection: 'row', gap: 8, marginBottom: 20, alignItems: 'center' },
     input: {
       flex: 1,
@@ -285,7 +293,7 @@ function makeStyles(theme: AppTheme) {
       borderRadius: 8,
       paddingHorizontal: 12,
       paddingVertical: 10,
-      fontSize: 15,
+      fontSize: sf(15),
       color: theme.text,
       backgroundColor: '#12121A',
     },
@@ -295,7 +303,7 @@ function makeStyles(theme: AppTheme) {
       borderRadius: 8,
       backgroundColor: theme.green,
     },
-    addBtnText: { fontSize: 14, fontWeight: '800', color: '#0A0A0F' },
+    addBtnText: { fontSize: sf(14), fontWeight: '800', color: '#0A0A0F' },
     resetBtn: {
       paddingVertical: 12,
       alignItems: 'center',
@@ -304,7 +312,7 @@ function makeStyles(theme: AppTheme) {
       borderColor: '#553333',
       backgroundColor: '#1A1212',
     },
-    resetBtnText: { fontSize: 13, fontWeight: '700', color: '#E0A0A0' },
+    resetBtnText: { fontSize: sf(13), fontWeight: '700', color: '#E0A0A0' },
     displayCard: {
       marginBottom: 16,
       borderRadius: 14,
@@ -315,7 +323,7 @@ function makeStyles(theme: AppTheme) {
       overflow: 'hidden',
     },
     displayCardKicker: {
-      fontSize: 11,
+      fontSize: sf(11),
       fontWeight: '800',
       color: theme.textMuted,
       letterSpacing: 1.1,
@@ -331,7 +339,7 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 6,
     },
     themePreviewLabel: {
-      fontSize: 11,
+      fontSize: sf(11),
       fontWeight: '800',
       color: theme.textDim,
       marginBottom: 8,
@@ -443,7 +451,7 @@ function makeStyles(theme: AppTheme) {
     accentModalTitle: {
       paddingHorizontal: 8,
       paddingVertical: 8,
-      fontSize: 15,
+      fontSize: sf(15),
       fontWeight: '800',
       color: theme.text,
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -453,10 +461,10 @@ function makeStyles(theme: AppTheme) {
       paddingHorizontal: 8,
       paddingTop: 2,
       paddingBottom: 6,
-      fontSize: 11,
+      fontSize: sf(11),
       fontWeight: '500',
       color: theme.textDim,
-      lineHeight: 15,
+      lineHeight: sf(15),
     },
     accentPaletteScroll: {
       flexGrow: 1,
@@ -516,7 +524,7 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: '#14141C',
     },
     accentModalCancelBtnText: {
-      fontSize: 13,
+      fontSize: sf(13),
       fontWeight: '800',
       color: theme.text,
     },
@@ -527,13 +535,13 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.green,
     },
     accentModalApplyBtnText: {
-      fontSize: 13,
+      fontSize: sf(13),
       fontWeight: '800',
       color: '#0B0B10',
     },
     displayAccentName: {
       textAlign: 'center',
-      fontSize: 13,
+      fontSize: sf(13),
       fontWeight: '700',
       color: theme.text,
       marginBottom: 4,
@@ -561,7 +569,7 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.green,
     },
     langSegmentText: {
-      fontSize: 13,
+      fontSize: sf(13),
       fontWeight: '800',
       color: theme.textDim,
       textAlign: 'center',
@@ -570,7 +578,7 @@ function makeStyles(theme: AppTheme) {
       color: '#0A0A0F',
     },
     tabBarGlassPercent: {
-      fontSize: 26,
+      fontSize: sf(26),
       fontWeight: '800',
       color: theme.text,
       textAlign: 'center',
@@ -578,7 +586,7 @@ function makeStyles(theme: AppTheme) {
       letterSpacing: -0.5,
     },
     tabBarGlassPreviewKicker: {
-      fontSize: 12,
+      fontSize: sf(12),
       fontWeight: '700',
       color: theme.textDim,
       marginTop: 6,
@@ -595,7 +603,7 @@ function makeStyles(theme: AppTheme) {
     },
     megaCapListLinkText: {
       flex: 1,
-      fontSize: 13,
+      fontSize: sf(13),
       fontWeight: '700',
       color: theme.green,
       paddingRight: 8,
@@ -616,16 +624,16 @@ function makeStyles(theme: AppTheme) {
     },
     settingsFooterText: {
       flexShrink: 1,
-      fontSize: 12,
+      fontSize: sf(12),
       fontWeight: '600',
       color: theme.textMuted,
       letterSpacing: 0.2,
     },
     cacheOneLiner: {
-      fontSize: 12,
+      fontSize: sf(12),
       fontWeight: '500',
       color: theme.textDim,
-      lineHeight: 17,
+      lineHeight: sf(17),
       marginBottom: 10,
     },
     cacheClearBtn: {
@@ -637,7 +645,7 @@ function makeStyles(theme: AppTheme) {
       borderColor: theme.border,
       backgroundColor: '#14141C',
     },
-    cacheClearBtnText: { fontSize: 13, fontWeight: '800', color: theme.green },
+    cacheClearBtnText: { fontSize: sf(13), fontWeight: '800', color: theme.green },
     limitRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -648,10 +656,10 @@ function makeStyles(theme: AppTheme) {
       marginBottom: 0,
     },
     quotesCardHint: {
-      fontSize: 12,
+      fontSize: sf(12),
       fontWeight: '500',
       color: theme.textDim,
-      lineHeight: 17,
+      lineHeight: sf(17),
       marginBottom: 12,
     },
     quotesSegmentOrderListWrap: {
@@ -674,7 +682,7 @@ function makeStyles(theme: AppTheme) {
       justifyContent: 'flex-end',
     },
     limitPickerTriggerText: {
-      fontSize: 15,
+      fontSize: sf(15),
       fontWeight: '800',
       color: theme.text,
     },
@@ -699,7 +707,7 @@ function makeStyles(theme: AppTheme) {
     limitPickerTitle: {
       paddingHorizontal: 16,
       paddingVertical: 12,
-      fontSize: 15,
+      fontSize: sf(15),
       fontWeight: '800',
       color: theme.text,
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -718,7 +726,7 @@ function makeStyles(theme: AppTheme) {
       backgroundColor: theme.greenDim,
     },
     limitPickerOptionText: {
-      fontSize: 16,
+      fontSize: sf(16),
       fontWeight: '700',
       color: theme.text,
       textAlign: 'center',
@@ -745,7 +753,7 @@ function makeStyles(theme: AppTheme) {
     },
     segmentOrderLabel: {
       flex: 1,
-      fontSize: 15,
+      fontSize: sf(15),
       fontWeight: '800',
       color: theme.text,
     },
@@ -761,10 +769,19 @@ function makeStyles(theme: AppTheme) {
 const SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT = 52;
 
 export default function SettingsScreen() {
-  const { theme, presetId, setPresetId, customHex, setCustomAccent } = useSignalTheme();
+  const {
+    theme,
+    presetId,
+    setPresetId,
+    customHex,
+    setCustomAccent,
+    fontSizePreset,
+    setFontSizePreset,
+    scaleFont,
+  } = useSignalTheme();
   const { t, locale, setLocale } = useLocale();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const params = useLocalSearchParams<{ tab?: string }>();
   const router = useRouter();
   const isFocused = useIsFocused();
@@ -1264,7 +1281,7 @@ export default function SettingsScreen() {
                     onPress={() => void onRemove(h)}
                     style={styles.removeBtn}
                     accessibilityRole="button"
-                    accessibilityLabel={`${h} 제거`}>
+                    accessibilityLabel={t('settingsYoutubeRemoveHandleA11y', { handle: `@${h}` })}>
                     <FontAwesome name="trash" size={16} color="#C08080" />
                   </Pressable>
                 </View>
@@ -1603,6 +1620,30 @@ export default function SettingsScreen() {
                     <Text
                       style={[styles.langSegmentText, locale === loc && styles.langSegmentTextActive]}>
                       {t(LOCALE_LABEL[loc])}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsFontSizeSection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsFontSizeHint')}</Text>
+              <View style={styles.langSegmentedTrack}>
+                {FONT_SIZE_PRESET_ORDER.map((id) => (
+                  <Pressable
+                    key={id}
+                    onPress={() => void setFontSizePreset(id)}
+                    style={[styles.langSegment, fontSizePreset === id && styles.langSegmentActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: fontSizePreset === id }}
+                    accessibilityLabel={t(FONT_SIZE_PRESET_LABEL[id])}>
+                    <Text
+                      style={[
+                        styles.langSegmentText,
+                        fontSizePreset === id && styles.langSegmentTextActive,
+                      ]}>
+                      {t(FONT_SIZE_PRESET_LABEL[id])}
                     </Text>
                   </Pressable>
                 ))}

@@ -112,11 +112,11 @@ function insightVsSma20(candles: FinnhubStockCandles, lastPrice: number): { vsSm
 }
 
 export default function BriefingScreen() {
-  const { theme } = useSignalTheme();
+  const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -295,6 +295,16 @@ export default function BriefingScreen() {
     return { weekEarnings: week, pulseLines: lines };
   }, [symbols, quoteBySymbol, earnings, newsBySymbol, macroDisplay, t]);
 
+  const digestHeadline = useMemo(() => {
+    if (symbols.length === 0) return t('briefingDigestEmptyWatch');
+    return pulseLines[0] ?? '';
+  }, [symbols.length, pulseLines, t]);
+
+  const digestTailLines = useMemo(() => {
+    if (symbols.length === 0) return [];
+    return pulseLines.slice(1);
+  }, [symbols.length, pulseLines]);
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <Stack.Screen options={{ title: t('screenBriefing') }} />
@@ -310,7 +320,6 @@ export default function BriefingScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />
           }>
           <OtaUpdateBanner />
-          <Text style={styles.lead}>{t('briefingLead')}</Text>
 
           {error ? (
             <View style={styles.errBox}>
@@ -318,73 +327,28 @@ export default function BriefingScreen() {
             </View>
           ) : null}
 
+          {!error ? (
+            <View style={styles.digestWrap}>
+              <Text style={styles.digestKicker}>{t('briefingDigestKicker')}</Text>
+              <Text style={styles.digestHeadline}>{digestHeadline}</Text>
+              {digestTailLines.length > 0 ? (
+                <View style={styles.digestMore}>
+                  {digestTailLines.map((line, i) => (
+                    <Text key={i} style={[styles.digestMoreLine, i > 0 && styles.digestMoreLineGap]}>
+                      {line}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
           {!error ? <MarketSnapshotSection tape={tape} macro={macro} /> : null}
 
           {!error ? (
             <>
-              <Text style={styles.blockTitle}>{t('briefingSectionWatchlist')}</Text>
-              {symbols.length === 0 ? (
-                <Text style={styles.muted}>{t('briefingEmptyWatchlist')}</Text>
-              ) : (
+              {symbols.length > 0 ? (
                 <>
-                  <Text style={[styles.blockTitle, styles.sectionHeadingTight]}>{t('briefingSectionMacroWeek')}</Text>
-                  {macroDisplay.length === 0 ? (
-                    <Text style={styles.macroEmpty}>{t('briefingMacroEmpty')}</Text>
-                  ) : (
-                    <View style={styles.macroCard}>
-                      {macroDisplay.map((r, idx) => (
-                        <View
-                          key={`${r.time}-${idx}`}
-                          style={[styles.macroRow, idx === macroDisplay.length - 1 && styles.macroRowLast]}>
-                          <Text style={styles.macroMeta} numberOfLines={1}>
-                            {r.country} · {macroWhenLabel(r.time)}
-                            {r.impact?.toLowerCase() === 'high' ? ` · ${t('briefingMacroImpactHigh')}` : ''}
-                          </Text>
-                          <Text style={styles.macroEvent} numberOfLines={2}>
-                            {r.event}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-
-                  <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingWeekEarningsTitle')}</Text>
-                  {weekEarnings.length === 0 ? (
-                    <Text style={styles.weekStripEmpty}>{t('briefingWeekEarningsEmpty')}</Text>
-                  ) : (
-                    <ScrollView
-                      horizontal
-                      nestedScrollEnabled
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.weekStripScroll}>
-                      {weekEarnings.map((r) => (
-                        <Pressable
-                          key={`${r.symbol}-${r.date}-${r.quarter}-${r.year}`}
-                          style={styles.weekChip}
-                          onPress={() => router.push(`/symbol/${r.symbol}`)}
-                          accessibilityRole="button"
-                          accessibilityLabel={`${r.symbol} ${r.date}`}>
-                          <Text style={styles.weekChipDate}>{shortMd(r.date)}</Text>
-                          <Text style={styles.weekChipSym} numberOfLines={1}>
-                            {r.symbol}
-                          </Text>
-                          <Text style={styles.weekChipMeta} numberOfLines={1}>
-                            FY{r.year} Q{r.quarter}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </ScrollView>
-                  )}
-
-                  <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingSectionPulse')}</Text>
-                  <View style={styles.pulseCard}>
-                    {pulseLines.map((line, i) => (
-                      <Text key={i} style={[styles.pulseLine, i > 0 && styles.pulseLineGap]}>
-                        {line}
-                      </Text>
-                    ))}
-                  </View>
-
                   <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingSectionInsights')}</Text>
                   {symbols.map((sym) => {
                     const q = quoteBySymbol[sym] ?? null;
@@ -398,8 +362,8 @@ export default function BriefingScreen() {
                       sma && Number.isFinite(sma.vsSmaPct)
                         ? t('briefingRowVsSma', { pct: formatPctOne(sma.vsSmaPct) })
                         : t('briefingRowVsSmaUnknown');
-
-                    let earnLine = t('briefingNoUpcomingEarning');
+                    const noEarn = t('briefingNoUpcomingEarning');
+                    let earnLine = noEarn;
                     if (nextE) {
                       const h = nextE.hour.trim().toLowerCase();
                       const hourLabel =
@@ -411,67 +375,157 @@ export default function BriefingScreen() {
                         hour: hourLabel,
                       });
                     }
+                    const headline = topNews?.headline?.trim() ?? '';
+                    const primaryStory = headline || (earnLine !== noEarn ? earnLine : vsLine);
+                    const subMeta: string[] = [];
+                    if (headline) {
+                      subMeta.push(vsLine);
+                      if (earnLine !== noEarn) subMeta.push(earnLine);
+                    } else if (earnLine !== noEarn) {
+                      subMeta.push(vsLine);
+                    }
 
                     return (
                       <Pressable
                         key={sym}
-                        style={styles.insightCard}
+                        style={styles.briefCard}
                         onPress={() => router.push(`/symbol/${sym}`)}
-                        accessibilityRole="button">
-                        <View style={styles.insightHead}>
-                          <Text style={styles.insightSym} numberOfLines={1}>
+                        accessibilityRole="button"
+                        accessibilityLabel={`${sym} ${primaryStory}`}>
+                        <View style={styles.briefCardHead}>
+                          <Text style={styles.briefCardSym} numberOfLines={1}>
                             {sym}
                           </Text>
-                          <View style={styles.insightValues}>
-                            <Text style={styles.insightPrice}>{q ? formatUsd(q.c) : '—'}</Text>
-                            <Text style={[styles.insightPct, up ? styles.up : styles.dn]}>
+                          <View style={styles.briefCardValues}>
+                            <Text style={styles.briefCardPrice}>{q ? formatUsd(q.c) : '—'}</Text>
+                            <Text style={[styles.briefCardPct, up ? styles.up : styles.dn]}>
                               {q ? formatPct(dp) : '—'}
                             </Text>
                           </View>
                         </View>
-                        <Text style={styles.insightSub}>{vsLine}</Text>
-                        <Text style={styles.insightSub}>{earnLine}</Text>
-                        <Text style={styles.insightNewsLabel}>{t('briefingRecentNewsLabel')}</Text>
-                        {topNews ? (
-                          <Text style={styles.insightNewsHead} numberOfLines={2}>
-                            {topNews.headline}
+                        <Text style={styles.briefCardStory} numberOfLines={3}>
+                          {primaryStory}
+                        </Text>
+                        {subMeta.map((line, i) => (
+                          <Text key={`${sym}-m-${i}`} style={styles.briefCardMeta}>
+                            {line}
                           </Text>
-                        ) : (
-                          <Text style={styles.insightMuted}>{t('briefingSymbolNoNews')}</Text>
-                        )}
+                        ))}
+                        {!headline ? (
+                          <Text style={styles.briefCardNewsCue}>{t('briefingSymbolNoNews')}</Text>
+                        ) : null}
                       </Pressable>
                     );
                   })}
                 </>
+              ) : (
+                <Text style={styles.muted}>{t('briefingEmptyWatchlist')}</Text>
+              )}
+
+              <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingWeekEarningsTitle')}</Text>
+              {weekEarnings.length === 0 ? (
+                <Text style={styles.weekStripEmpty}>{t('briefingWeekEarningsEmpty')}</Text>
+              ) : (
+                <ScrollView
+                  horizontal
+                  nestedScrollEnabled
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.weekStripScroll}>
+                  {weekEarnings.map((r) => (
+                    <Pressable
+                      key={`${r.symbol}-${r.date}-${r.quarter}-${r.year}`}
+                      style={styles.weekChip}
+                      onPress={() => router.push(`/symbol/${r.symbol}`)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${r.symbol} ${r.date}`}>
+                      <Text style={styles.weekChipDate}>{shortMd(r.date)}</Text>
+                      <Text style={styles.weekChipSym} numberOfLines={1}>
+                        {r.symbol}
+                      </Text>
+                      <Text style={styles.weekChipMeta} numberOfLines={1}>
+                        FY{r.year} Q{r.quarter}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )}
+
+              <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingSectionMacroWeek')}</Text>
+              {macroDisplay.length === 0 ? (
+                <Text style={styles.macroEmpty}>{t('briefingMacroEmpty')}</Text>
+              ) : (
+                <View style={styles.macroCard}>
+                  {macroDisplay.map((r, idx) => (
+                    <View
+                      key={`${r.time}-${idx}`}
+                      style={[styles.macroRow, idx === macroDisplay.length - 1 && styles.macroRowLast]}>
+                      <Text style={styles.macroMeta} numberOfLines={1}>
+                        {r.country} · {macroWhenLabel(r.time)}
+                        {r.impact?.toLowerCase() === 'high' ? ` · ${t('briefingMacroImpactHigh')}` : ''}
+                      </Text>
+                      <Text style={styles.macroEvent} numberOfLines={2}>
+                        {r.event}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
               )}
             </>
           ) : null}
-
-          {!error ? <Text style={styles.sourceFootnote}>{t('briefingNewsSourceFootnote')}</Text> : null}
         </ScrollView>
       )}
     </SafeAreaView>
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     scroll: { flex: 1 },
     content: { paddingHorizontal: 16, paddingTop: 10 },
-    lead: { fontSize: 12, fontWeight: '500', color: theme.textDim, lineHeight: 17, marginBottom: 10 },
-    muted: { fontSize: 12, color: theme.textDim, marginTop: 4, marginBottom: 8 },
+    digestWrap: {
+      marginBottom: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+      borderRadius: 16,
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    digestKicker: {
+      fontSize: sf(10),
+      fontWeight: '800',
+      letterSpacing: 1.2,
+      color: theme.green,
+      marginBottom: 8,
+      textTransform: 'uppercase',
+    },
+    digestHeadline: {
+      fontSize: sf(18),
+      fontWeight: '800',
+      color: theme.text,
+      lineHeight: sf(24),
+      letterSpacing: -0.3,
+    },
+    digestMore: {
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.border,
+    },
+    digestMoreLine: { fontSize: sf(12), fontWeight: '600', color: theme.textDim, lineHeight: sf(18) },
+    digestMoreLineGap: { marginTop: 8 },
+    muted: { fontSize: sf(12), color: theme.textDim, marginTop: 4, marginBottom: 12 },
     blockTitle: {
-      fontSize: 11,
+      fontSize: sf(11),
       fontWeight: '800',
       letterSpacing: 0.2,
       color: theme.textMuted,
       marginTop: 4,
       marginBottom: 6,
     },
-    sectionHeadingTight: { marginTop: 2 },
-    sectionHeading: { marginTop: 10 },
+    sectionHeading: { marginTop: 14 },
     macroCard: {
       marginBottom: 10,
       padding: 10,
@@ -481,10 +535,10 @@ function makeStyles(theme: AppTheme) {
       borderColor: theme.border,
     },
     macroEmpty: {
-      fontSize: 11,
+      fontSize: sf(11),
       color: theme.textDim,
       marginBottom: 10,
-      lineHeight: 16,
+      lineHeight: sf(16),
     },
     macroRow: {
       paddingVertical: 8,
@@ -492,13 +546,13 @@ function makeStyles(theme: AppTheme) {
       borderBottomColor: theme.border,
     },
     macroRowLast: { borderBottomWidth: 0 },
-    macroMeta: { fontSize: 10, fontWeight: '700', color: theme.textMuted, marginBottom: 4 },
-    macroEvent: { fontSize: 12, fontWeight: '600', color: theme.text, lineHeight: 16 },
+    macroMeta: { fontSize: sf(10), fontWeight: '700', color: theme.textMuted, marginBottom: 4 },
+    macroEvent: { fontSize: sf(12), fontWeight: '600', color: theme.text, lineHeight: sf(16) },
     weekStripEmpty: {
-      fontSize: 11,
+      fontSize: sf(11),
       color: theme.textDim,
       marginBottom: 10,
-      lineHeight: 16,
+      lineHeight: sf(16),
     },
     weekStripScroll: {
       paddingBottom: 10,
@@ -507,7 +561,7 @@ function makeStyles(theme: AppTheme) {
       alignItems: 'stretch',
     },
     weekChip: {
-      width: 108,
+      width: Math.round(sf(108)),
       paddingVertical: 10,
       paddingHorizontal: 10,
       borderRadius: 10,
@@ -517,59 +571,58 @@ function makeStyles(theme: AppTheme) {
       marginRight: 8,
     },
     weekChipDate: {
-      fontSize: 10,
+      fontSize: sf(10),
       fontWeight: '700',
       color: theme.textMuted,
       marginBottom: 4,
     },
-    weekChipSym: { fontSize: 13, fontWeight: '800', color: theme.green, marginBottom: 2 },
-    weekChipMeta: { fontSize: 10, color: theme.textDim },
-    pulseCard: {
+    weekChipSym: { fontSize: sf(13), fontWeight: '800', color: theme.green, marginBottom: 2 },
+    weekChipMeta: { fontSize: sf(10), color: theme.textDim },
+    briefCard: {
       marginBottom: 10,
-      padding: 12,
-      borderRadius: 12,
+      padding: 14,
+      borderRadius: 14,
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
     },
-    pulseLine: { fontSize: 12, fontWeight: '600', color: theme.text, lineHeight: 18 },
-    pulseLineGap: { marginTop: 8 },
-    insightCard: {
-      marginBottom: 10,
-      padding: 12,
-      borderRadius: 12,
-      backgroundColor: theme.card,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    insightHead: {
+    briefCardHead: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      marginBottom: 6,
+      marginBottom: 10,
     },
-    insightSym: {
+    briefCardSym: {
       flex: 1,
       minWidth: 0,
-      fontSize: 14,
+      fontSize: sf(15),
       fontWeight: '800',
       color: theme.green,
     },
-    insightValues: { flexDirection: 'row', alignItems: 'center', flexShrink: 0, gap: 8 },
-    insightPrice: { fontSize: 13, fontWeight: '700', color: theme.text, minWidth: 56, textAlign: 'right' },
-    insightPct: { fontSize: 12, fontWeight: '700', minWidth: 56, textAlign: 'right' },
+    briefCardValues: { flexDirection: 'row', alignItems: 'center', flexShrink: 0, gap: 8 },
+    briefCardPrice: { fontSize: sf(14), fontWeight: '700', color: theme.text, minWidth: 56, textAlign: 'right' },
+    briefCardPct: { fontSize: sf(13), fontWeight: '700', minWidth: 56, textAlign: 'right' },
     up: { color: theme.green },
     dn: { color: '#ff6b6b' },
-    insightSub: { fontSize: 11, fontWeight: '600', color: theme.textDim, lineHeight: 16, marginBottom: 2 },
-    insightNewsLabel: {
-      fontSize: 10,
-      fontWeight: '800',
-      color: theme.textMuted,
-      marginTop: 8,
-      marginBottom: 4,
+    briefCardStory: {
+      fontSize: sf(13),
+      fontWeight: '600',
+      color: theme.text,
+      lineHeight: sf(19),
     },
-    insightNewsHead: { fontSize: 11, fontWeight: '600', color: theme.text, lineHeight: 15 },
-    insightMuted: { fontSize: 11, color: theme.textDim, lineHeight: 15 },
+    briefCardMeta: {
+      marginTop: 6,
+      fontSize: sf(11),
+      fontWeight: '600',
+      color: theme.textDim,
+      lineHeight: sf(16),
+    },
+    briefCardNewsCue: {
+      marginTop: 8,
+      fontSize: sf(10),
+      fontWeight: '600',
+      color: theme.textMuted,
+    },
     errBox: {
       padding: 10,
       borderRadius: 12,
@@ -578,15 +631,6 @@ function makeStyles(theme: AppTheme) {
       borderColor: theme.border,
       marginBottom: 10,
     },
-    errText: { color: theme.text, fontSize: 12 },
-    sourceFootnote: {
-      fontSize: 10,
-      lineHeight: 15,
-      fontWeight: '500',
-      color: theme.textDim,
-      marginTop: 10,
-      marginBottom: 6,
-      opacity: 0.9,
-    },
+    errText: { color: theme.text, fontSize: sf(12) },
   });
 }

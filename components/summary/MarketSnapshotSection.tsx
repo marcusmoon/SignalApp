@@ -80,8 +80,8 @@ type Props = {
 
 export function MarketSnapshotSection({ tape, macro }: Props) {
   const { t } = useLocale();
-  const { theme } = useSignalTheme();
-  const styles = useMemo(() => makeMarketSnapshotStyles(theme), [theme]);
+  const { theme, scaleFont } = useSignalTheme();
+  const styles = useMemo(() => makeMarketSnapshotStyles(theme, scaleFont), [theme, scaleFont]);
 
   const tapeItems: QuoteTileItem[] = useMemo(
     () =>
@@ -135,17 +135,16 @@ export function MarketSnapshotSection({ tape, macro }: Props) {
       </View>
       <View style={styles.sectionCard}>
         <Text style={styles.cardTitle}>{t('marketSectionMacro')}</Text>
-        <Text style={styles.cardHint}>{t('marketMacroHint')}</Text>
         <QuoteRowList items={macroItems} styles={styles} />
       </View>
     </>
   );
 }
 
-function makeMarketSnapshotStyles(theme: AppTheme) {
+function makeMarketSnapshotStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     blockTitle: {
-      fontSize: 11,
+      fontSize: sf(11),
       fontWeight: '800',
       letterSpacing: 0.2,
       color: theme.textMuted,
@@ -160,13 +159,12 @@ function makeMarketSnapshotStyles(theme: AppTheme) {
       borderColor: theme.border,
     },
     cardTitle: {
-      fontSize: 12,
+      fontSize: sf(12),
       fontWeight: '800',
       letterSpacing: 0.2,
       color: theme.textMuted,
       marginBottom: 8,
     },
-    cardHint: { fontSize: 10, color: theme.textDim, lineHeight: 15, marginTop: -4, marginBottom: 8 },
     quoteList: { marginTop: 2 },
     quoteRow: {
       flexDirection: 'row',
@@ -179,18 +177,18 @@ function makeMarketSnapshotStyles(theme: AppTheme) {
     quoteRowLast: { borderBottomWidth: 0, paddingBottom: 2 },
     quoteRowLeft: { flex: 1, minWidth: 0, flexShrink: 1 },
     quoteTitle: {
-      fontSize: 12,
+      fontSize: sf(12),
       fontWeight: '800',
       color: theme.text,
-      lineHeight: 16,
+      lineHeight: sf(16),
       flexShrink: 1,
     },
     quoteSub: {
-      fontSize: 10,
+      fontSize: sf(10),
       fontWeight: '600',
       color: theme.textMuted,
       marginTop: 2,
-      lineHeight: 13,
+      lineHeight: sf(13),
       flexShrink: 1,
     },
     quoteRowValues: {
@@ -200,13 +198,13 @@ function makeMarketSnapshotStyles(theme: AppTheme) {
       gap: 8,
     },
     quotePrice: {
-      fontSize: 13,
+      fontSize: sf(13),
       fontWeight: '700',
       color: theme.text,
       minWidth: 72,
       textAlign: 'right',
     },
-    quotePct: { fontSize: 12, fontWeight: '700', minWidth: 58, textAlign: 'right' },
+    quotePct: { fontSize: sf(12), fontWeight: '700', minWidth: 58, textAlign: 'right' },
     up: { color: theme.green },
     dn: { color: '#ff6b6b' },
   });

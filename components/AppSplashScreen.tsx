@@ -2,11 +2,13 @@ import { useMemo } from 'react';
 import { ActivityIndicator, Image, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { SIGNAL } from '@/constants/theme';
+import { useLocale } from '@/contexts/LocaleContext';
 
 /**
  * 폰트·아이콘 로딩 전 전체 화면 스플래시. 네이티브 스플래시(app.json)와 톤을 맞춤.
  */
 export function AppSplashScreen() {
+  const { t } = useLocale();
   const styles = useMemo(() => makeStyles(), []);
   return (
     <View style={styles.root}>
@@ -22,12 +24,12 @@ export function AppSplashScreen() {
         <Text style={styles.wordmark} accessibilityRole="header">
           SIGNAL
         </Text>
-        <Text style={styles.tagline}>노이즈는 걸러내고, 진짜 시그널만</Text>
+        <Text style={styles.tagline}>{t('headerTagline')}</Text>
         <ActivityIndicator
           color={SIGNAL.green}
           size="small"
           style={styles.spinner}
-          accessibilityLabel="로딩"
+          accessibilityLabel={t('commonLoadingA11y')}
         />
       </View>
     </View>

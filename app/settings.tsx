@@ -35,7 +35,7 @@ import {
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
-import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/constants/youtubeDefaults';
+import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/integrations/youtube/constants';
 import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { TabBarGlassSurface } from '@/components/TabBarGlassSurface';
@@ -52,11 +52,11 @@ import {
 import type { AccentPresetId } from '@/services/accentPreference';
 import { ACCENT_PRESETS, normalizeHex } from '@/services/accentPreference';
 import type { FontSizePresetId } from '@/services/fontSizePreference';
-import { clearCalendarCache, CALENDAR_CACHE_TTL_MS } from '@/services/calendarCache';
-import { clearConcallCache, CONCALL_CACHE_TTL_MS } from '@/services/concallCache';
-import { clearNewsCache, NEWS_CACHE_TTL_MS } from '@/services/newsCache';
-import { clearQuotesCache, QUOTES_CACHE_TTL_MS } from '@/services/quotesCache';
-import { clearYoutubeCache, YOUTUBE_CACHE_TTL_MS } from '@/services/youtubeCache';
+import { clearCalendarCache, CALENDAR_CACHE_TTL_MS } from '@/integrations/finnhub/calendarCache';
+import { clearConcallCache, CONCALL_CACHE_TTL_MS } from '@/integrations/concalls/cache';
+import { clearNewsCache, NEWS_CACHE_TTL_MS } from '@/integrations/finnhub/newsCache';
+import { clearQuotesCache, QUOTES_CACHE_TTL_MS } from '@/integrations/finnhub/quotesCache';
+import { clearYoutubeCache, YOUTUBE_CACHE_TTL_MS } from '@/integrations/youtube/cache';
 import {
   isValidYoutubeHandle,
   loadCurationHandles,
@@ -90,7 +90,7 @@ import {
   QUOTES_LIST_LIMITS_DEFAULTS,
   type QuotesListLimits,
 } from '@/services/quotesListLimitsPreference';
-import { normalizeKoreaNewsExtraKeywords } from '@/domain/news/koreaKeywords';
+import { normalizeKoreaNewsExtraKeywords } from '@/domain/news';
 import {
   loadKoreaNewsExtraKeywords,
   restoreKoreaNewsExtraKeywordsDefaults,

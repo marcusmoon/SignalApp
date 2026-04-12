@@ -4,14 +4,14 @@ import {
   CALENDAR_EVENT_TYPE_ORDER,
   normalizeCalendarEventTypeFilterStored,
   type CalendarEventTypeKey,
-} from '@/domain/calendar/eventTypeFilter';
+} from '@/domain/calendar';
 
 const STORAGE_KEY = '@signal/calendar_event_type_filter_v1';
 
 export {
   CALENDAR_EVENT_TYPE_ORDER,
   type CalendarEventTypeKey,
-} from '@/domain/calendar/eventTypeFilter';
+} from '@/domain/calendar';
 
 export async function loadCalendarEventTypeFilter(): Promise<Set<CalendarEventTypeKey>> {
   try {

@@ -44,9 +44,9 @@ import {
   fetchMarketNews,
   mergeNewsById,
   type FinnhubNewsRaw,
-} from '@/services/finnhub';
-import { buildNewsCacheKey, peekNewsCache, storeNewsCache } from '@/services/newsCache';
-import { filterKoreaRelatedNews } from '@/domain/news/koreaFilter';
+} from '@/integrations/finnhub';
+import { buildNewsCacheKey, peekNewsCache, storeNewsCache } from '@/integrations/finnhub/newsCache';
+import { filterKoreaRelatedNews } from '@/domain/news';
 import {
   loadKoreaNewsExtraKeywords,
   subscribeKoreaNewsExtraKeywordsChanged,
@@ -57,7 +57,7 @@ import {
 } from '@/services/newsSegmentOrderPreference';
 import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreference';
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
-import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
+import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { translateNewsTitlesWithSelectedProvider } from '@/services/aiSummaries';
 import type { NewsItem } from '@/types/signal';
 import type { MessageId } from '@/locales/messages';

@@ -3,7 +3,7 @@ import {
   summarizeConcallTranscript,
   translateNewsTitlesWithClaude,
 } from '@/integrations/anthropic';
-import type { FinnhubNewsRaw } from '@/services/finnhub';
+import type { FinnhubNewsRaw } from '@/integrations/finnhub';
 import { hasAnthropic, hasOpenAI } from '@/services/env';
 import { loadLocale } from '@/services/localePreference';
 import { loadLlmProvider } from '@/services/llmProviderPreference';

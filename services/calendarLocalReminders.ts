@@ -9,7 +9,7 @@ import {
   fetchEconomicCalendarRange,
   type FinnhubEconomicRow,
   type FinnhubEarningsRow,
-} from '@/services/finnhub';
+} from '@/integrations/finnhub';
 import { addDays, toYmd } from '@/utils/date';
 
 const DATA_KIND = 'signal_calendar_local';

@@ -38,12 +38,11 @@ import {
   SEGMENT_TAB_PADDING,
 } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
-import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
-import { useTabScreenLoadingRecovery } from '@/hooks/useTabScreenLoadingRecovery';
+import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
-import { fetchTopCoinsByMarketCapUsd } from '@/services/cryptoMarkets';
+import { fetchTopCoinsByMarketCapUsd } from '@/integrations/coingecko';
 import { hasFinnhub } from '@/services/env';
 import {
   type FinnhubQuote,
@@ -53,7 +52,7 @@ import {
   fetchQuotesForSymbols,
   finnhubQuoteHasValidPrice,
   getSymbolsSortedByMarketCap,
-} from '@/services/finnhub';
+} from '@/integrations/finnhub';
 import { loadQuotesListLimits } from '@/services/quotesListLimitsPreference';
 import {
   DEFAULT_QUOTES_SEGMENT_ORDER,
@@ -69,7 +68,7 @@ import {
   storeMcapSymbolsOrder,
   storeQuotes,
   type QuoteCacheRow,
-} from '@/services/quotesCache';
+} from '@/integrations/finnhub/quotesCache';
 import {
   isValidUsTicker,
   loadWatchlistSymbols,

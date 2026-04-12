@@ -3,11 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   DEFAULT_KOREA_NEWS_KEYWORDS,
   normalizeKoreaNewsExtraKeywords,
-} from '@/domain/news/koreaKeywords';
+} from '@/domain/news';
 
 const STORAGE_KEY = '@signal/news_korea_extra_keywords_v1';
 
-export { DEFAULT_KOREA_NEWS_KEYWORDS, normalizeKoreaNewsExtraKeywords } from '@/domain/news/koreaKeywords';
+export { DEFAULT_KOREA_NEWS_KEYWORDS, normalizeKoreaNewsExtraKeywords } from '@/domain/news';
 
 type Listener = () => void;
 const listeners = new Set<Listener>();

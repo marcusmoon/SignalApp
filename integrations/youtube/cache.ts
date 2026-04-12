@@ -1,5 +1,5 @@
-import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/constants/youtubeDefaults';
-import { fetchEconomyYoutube } from '@/integrations/youtube';
+import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from './constants';
+import { fetchEconomyYoutube } from '@/integrations/youtube/economyFeed';
 import type { AppLocale } from '@/locales/messages';
 import type { YoutubeItem } from '@/types/signal';
 

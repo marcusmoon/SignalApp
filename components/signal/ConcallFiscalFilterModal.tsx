@@ -17,7 +17,7 @@ import {
   buildConcallYearOptions,
   type ConcallFiscalState,
   type FiscalQuarterFilter,
-} from '@/domain/concalls/fiscal';
+} from '@/domain/concalls';
 
 type Props = {
   visible: boolean;

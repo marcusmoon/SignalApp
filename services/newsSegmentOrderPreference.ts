@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { normalizeNewsSegmentOrder } from '@/domain/news/segmentOrder';
+import { normalizeNewsSegmentOrder } from '@/domain/news';
 import type { NewsSegmentKey } from '@/constants/newsSegment';
 import { NEWS_SEGMENT_ORDER } from '@/constants/newsSegment';
 

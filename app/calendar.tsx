@@ -19,10 +19,10 @@ import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import type { AppTheme } from '@/constants/theme';
-import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
+import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { fetchCalendarEventsMergedCached } from '@/services/calendarCache';
+import { fetchCalendarEventsMergedCached } from '@/integrations/finnhub/calendarCache';
 import {
   CALENDAR_EVENT_TYPE_ORDER,
   loadCalendarEventTypeFilter,

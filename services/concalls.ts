@@ -1,7 +1,7 @@
 import { MEGA_CAP_SET, normalizeEarningsSymbolForMatch } from '@/constants/megaCapUniverse';
 import type { CalendarConcallScope } from '@/services/calendarConcallScopePreference';
-import { calendarRangeForFiscalYear } from '@/domain/concalls/fiscal';
 import {
+  calendarRangeForFiscalYear,
   clipTranscriptForDisplay,
   CONCALL_TRANSCRIPT_SNIPPET_MAX_CHARS,
   isEarningsDateInFuture,
@@ -9,10 +9,10 @@ import {
   pickSymbolsFromEarningsRows,
   rowMatchesFiscalSelection,
   sortEarningsRowsForTranscript,
-} from '@/domain/concalls/earningsRows';
-import { fetchEarningsCallTranscript } from '@/services/apiNinjas';
+} from '@/domain/concalls';
+import { fetchEarningsCallTranscript } from '@/integrations/api-ninjas';
 import { summarizeConcallTranscriptSelected } from '@/services/aiSummaries';
-import { fetchEarningsCalendarRangeMerged, type FinnhubEarningsRow } from '@/services/finnhub';
+import { fetchEarningsCalendarRangeMerged, type FinnhubEarningsRow } from '@/integrations/finnhub';
 import {
   buildConcallCacheKey,
   deleteConcallCache,

@@ -1,13 +1,6 @@
-import type { CalendarEvent } from '@/types/signal';
+import { CALENDAR_EVENT_TYPE_ORDER, type CalendarEventTypeKey } from './constants';
 
-export type CalendarEventTypeKey = CalendarEvent['type'];
-
-export const CALENDAR_EVENT_TYPE_ORDER: CalendarEventTypeKey[] = [
-  'earnings',
-  'macro',
-  'fed',
-  'fomc',
-];
+export { CALENDAR_EVENT_TYPE_ORDER, type CalendarEventTypeKey };
 
 const ALL_SET = new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
 

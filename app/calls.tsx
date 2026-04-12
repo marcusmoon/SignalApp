@@ -13,7 +13,7 @@ import type { MessageId } from '@/locales/messages';
 import { fetchConcallSummaryForEarningsRow } from '@/services/concalls';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import { hasFinnhub } from '@/services/env';
-import type { FinnhubEarningsRow } from '@/services/finnhub';
+import type { FinnhubEarningsRow } from '@/integrations/finnhub';
 import type { ConcallSummary } from '@/types/signal';
 
 function parseIntParam(v: string | string[] | undefined): number | null {

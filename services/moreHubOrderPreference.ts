@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { normalizeMoreHubOrder } from '@/domain/moreHub/order';
+import { normalizeMoreHubOrder } from '@/domain/moreHub';
 import {
   MORE_HUB_ROUTE_ORDER_DEFAULT,
   type MoreHubRouteKey,

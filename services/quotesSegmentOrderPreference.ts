@@ -5,7 +5,7 @@ import {
   normalizeQuotesSegmentOrder,
   QUOTES_SEGMENT_KEYS,
   type QuoteSegmentKey,
-} from '@/domain/quotes/segmentOrder';
+} from '@/domain/quotes';
 
 const STORAGE_KEY = '@signal/quotes_segment_order_v1';
 
@@ -13,7 +13,7 @@ export {
   DEFAULT_QUOTES_SEGMENT_ORDER,
   QUOTES_SEGMENT_KEYS,
   type QuoteSegmentKey,
-} from '@/domain/quotes/segmentOrder';
+} from '@/domain/quotes';
 
 export async function loadQuotesSegmentOrder(): Promise<QuoteSegmentKey[]> {
   try {

@@ -4,7 +4,7 @@ import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { getBannerAdUnitId, getGoogleMobileAdsModule } from '@/services/admob';
+import { getBannerAdUnitId, getGoogleMobileAdsModule } from '@/integrations/admob/native';
 
 type AdsModule = typeof import('react-native-google-mobile-ads');
 

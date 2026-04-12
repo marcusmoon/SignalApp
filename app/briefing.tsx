@@ -29,7 +29,7 @@ import {
   type FinnhubNewsRaw,
   type FinnhubQuote,
   type FinnhubStockCandles,
-} from '@/services/finnhub';
+} from '@/integrations/finnhub';
 import { loadMarketSnapshotQuotes } from '@/services/marketSnapshotQuotes';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { addDays, toYmd } from '@/utils/date';

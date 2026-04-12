@@ -5,7 +5,7 @@ import {
   normalizeQuotesListLimits,
   type QuotesListLimits,
   QUOTES_LIST_LIMITS_DEFAULTS,
-} from '@/domain/quotes/listLimits';
+} from '@/domain/quotes';
 
 /** v2: 인기 큐레이션 20개·기본 20/20/20 반영 후 키 분리 */
 const STORAGE_KEY = '@signal/quotes_list_limits_v2';
@@ -21,7 +21,7 @@ export {
   QUOTES_COUNT_STEP,
   QUOTES_LIST_LIMIT_BOUNDS,
   QUOTES_LIST_LIMITS_DEFAULTS,
-} from '@/domain/quotes/listLimits';
+} from '@/domain/quotes';
 
 export async function loadQuotesListLimits(): Promise<QuotesListLimits> {
   try {

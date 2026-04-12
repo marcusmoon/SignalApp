@@ -1,7 +1,7 @@
 import { isAnthropicConfigured, postAnthropicMessages } from '@/integrations/anthropic/client';
 import type { FinnhubNewsRaw } from '@/integrations/finnhub/types';
 import { messages as appMessages, type AppLocale } from '@/locales/messages';
-import { isFlashNews } from '@/domain/news/flash';
+import { isFlashNews } from '@/domain/news';
 import type { ConcallSummary, NewsItem } from '@/types/signal';
 import { formatRelativeFromUnix } from '@/utils/date';
 

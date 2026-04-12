@@ -1,7 +1,7 @@
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
-import { youtubeOpenUrl } from '@/domain/youtube/economy';
+import { youtubeOpenUrl } from '@/domain/youtube';
 import type { YoutubeItem } from '@/types/signal';
 import { openExternalLink, youtubeWatchAppLaunchUrls } from '@/utils/openExternalLink';
 

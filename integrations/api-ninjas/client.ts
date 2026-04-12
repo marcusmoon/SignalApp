@@ -1,18 +1,17 @@
+/**
+ * API Ninjas — **이 파일만** `env.apiNinjasKey`를 읽어 아웃바운드 요청에 붙인다.
+ * https://api-ninjas.com/api/earningscalltranscript — 실제 경로 `/v1/earningstranscript`.
+ */
 import { env, hasApiNinjas } from '@/services/env';
+
+import type { NinjasTranscriptResult } from './types';
 
 /**
  * 공식 문서: https://api-ninjas.com/api/earningscalltranscript
- * 실제 경로는 `/v1/earningstranscript` (기존 `earningscalltranscript` 는 동작하지 않을 수 있음).
- * year 를 보내면 quarter 도 필수. 둘 다 생략 시 해당 티커 최신 트랜스크립트.
- * Premium 전용 API — 무료 키만으로는 403 이 날 수 있음.
+ * year를 지정하면 quarter도 필수. 둘 다 생략 시 해당 티커 최신 트랜스크립트.
+ * Premium 전용일 수 있음 — 무료 키만으로는 403 가능.
  */
 const EARNING_TRANSCRIPT_URL = 'https://api.api-ninjas.com/v1/earningstranscript';
-
-export type NinjasTranscriptResult = {
-  transcript: string | null;
-  /** 0 = 요청 안 함(hasApiNinjas false 등) */
-  httpStatus: number;
-};
 
 function parseTranscriptBody(data: unknown): string | null {
   if (typeof data === 'string') return data;
@@ -45,7 +44,7 @@ function parseTranscriptBody(data: unknown): string | null {
 }
 
 /**
- * @param yearQuarter — Finnhub 실적 행의 year·quarter. 생략 시 최신 분기(문서상 ticker 만으로 최신).
+ * @param yearQuarter — Finnhub 실적 행의 year·quarter. 생략 시 최신 분기.
  */
 export async function fetchEarningsCallTranscript(
   ticker: string,

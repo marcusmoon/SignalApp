@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { SIGNAL, buildAppTheme, type AppTheme } from '@/constants/theme';
-import { CANONICAL_CUSTOM_ACCENT_FALLBACK, normalizeHex } from '@/domain/theme/colorHex';
+import { CANONICAL_CUSTOM_ACCENT_FALLBACK, normalizeHex } from '@/domain/theme';
 
 export const ACCENT_STORAGE_KEY = '@signal/accent_preset_v1';
 export const ACCENT_CUSTOM_HEX_KEY = '@signal/accent_custom_hex_v1';
@@ -41,7 +41,7 @@ export const ACCENT_PRESETS: readonly { id: AccentPresetId; accent: string }[] =
 
 const VALID_PRESET_IDS = new Set<string>([...ACCENT_PRESETS.map((p) => p.id), 'custom']);
 
-export { hexToRgb, normalizeHex, rgbToHex } from '@/domain/theme/colorHex';
+export { hexToRgb, normalizeHex, rgbToHex } from '@/domain/theme';
 
 export async function loadCustomAccentHex(): Promise<string> {
   const v = await AsyncStorage.getItem(ACCENT_CUSTOM_HEX_KEY);

@@ -15,7 +15,6 @@ import { NotificationListener } from '@/components/NotificationListener';
 import { OtaBannerProvider } from '@/contexts/OtaBannerContext';
 import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
 import { SignalThemeProvider, useSignalTheme } from '@/contexts/SignalThemeContext';
-import { initializeAds } from '@/services/admob';
 import { getPreviewOtaBannerRaw } from '@/services/env';
 
 export {
@@ -55,7 +54,9 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
-    void initializeAds().catch(() => {});
+    void import('@/integrations/admob/native')
+      .then((m) => m.initializeAds())
+      .catch(() => {});
   }, []);
 
   return (

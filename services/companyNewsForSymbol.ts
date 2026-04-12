@@ -1,5 +1,5 @@
 import { COMPANY_NEWS_DISPLAY_MAX, COMPANY_NEWS_LOOKBACK_DAYS } from '@/constants/companyNewsDisplay';
-import { fetchCompanyNews, type FinnhubNewsRaw } from '@/services/finnhub';
+import { fetchCompanyNews, type FinnhubNewsRaw } from '@/integrations/finnhub';
 import { addDays } from '@/utils/date';
 
 /**

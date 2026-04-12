@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { isValidUsTicker, normalizeUsTickerSymbol } from '@/domain/quotes/ticker';
-import { DEFAULT_US_WATCHLIST } from '@/services/finnhub';
+import { isValidUsTicker, normalizeUsTickerSymbol } from '@/domain/quotes';
+import { DEFAULT_US_WATCHLIST } from '@/integrations/finnhub';
 
 const STORAGE_KEY = '@signal/quote_watchlist_v1';
 
-export { isValidUsTicker } from '@/domain/quotes/ticker';
+export { isValidUsTicker } from '@/domain/quotes';
 
 export async function loadWatchlistSymbols(): Promise<string[]> {
   try {

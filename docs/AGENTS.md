@@ -41,22 +41,23 @@ npx tsc --noEmit        # 타입 검사
 
 ### 외부 연동 — `integrations/<provider>/`
 
-1. **`client.ts`** 만 아웃바운드 요청 + `services/env` 키 사용.  
+1. **`client.ts`** 에서 아웃바운드 URL·요청 조립; **키가 있으면** 여기서만 `services/env` 사용 (공개 API는 키 없이 가능 — 예: `integrations/coingecko/`).  
 2. **`types.ts`** (선택) DTO.  
 3. **`index.ts`** / 캐시 — `client`만 호출; 이 레이어에서 `env` 직접 읽지 않음.  
-4. **`services/<name>.ts`** — 필요 시 **re-export**만.
+4. **`services/<name>.ts`** — 기존 경로 호환이 꼭 필요할 때만 **re-export** (신규 코드는 `integrations` 직접 import).
 
 ## 4. 디렉터리
 
 ```
 app/           # expo-router (경로 = URL)
 components/
-constants/
+hooks/         # 공용 훅 + `index.ts` 배럴 (`@/hooks`). Context 전용은 `contexts/`
+constants/     # 앱 전역 정적 값(테마·탭 UI·newsSegment 등). 영역 시드는 `domain/*/constants.ts`, 연동 시드는 `integrations/*/constants.ts`
 contexts/
 locales/       # ko 키 기준 → en, ja (satisfies)
-integrations/  # 벤더별 HTTP/SDK
-domain/        # 규칙만: news/*, concalls/*, youtube/*, quotes/*, theme/colorHex, calendar/*, moreHub/*
-services/      # AsyncStorage·설정·오케스트레이션·re-export
+integrations/  # 벤더별 HTTP/SDK (예: finnhub → client + news/calendar/quotes/constants)
+domain/        # 규칙만: 영역별 `constants.ts`(시드)·모듈 + `index.ts` 배럴(`@/domain/news` 등)
+services/      # AsyncStorage·설정·오케스트레이션 (필요 시만 re-export)
 utils/         # 날짜, 링크, openYoutube, …
 docs/          # 본 문서·PRD·CHANGELOG·ARCHITECTURE
 assets/
@@ -66,30 +67,31 @@ assets/
 
 | 화면/기능 | 참고 |
 |-----------|------|
-| 시세 탭 | `app/(tabs)/quotes.tsx`, 순서 `quotesSegmentOrderPreference`, 캐시 `integrations/finnhub/quotesCache.ts` |
-| 뉴스 탭 | `app/(tabs)/index.tsx`, 순서 `newsSegmentOrderPreference`, 한국 필터 `domain/news/koreaFilter.ts`, 추가 키워드 기본·정규화 `domain/news/koreaKeywords.ts`, 저장 `services/newsKoreaKeywordsPreference.ts`, LLM 있으면 **제목 번역** |
-| 컨콜 | `domain/concalls/fiscal.ts` (연도·분기·범위), 저장 `services/concallFiscalFilter.ts`, 흐름 `services/concalls.ts` |
-| 유튜브 검색 보조 | `domain/youtube/economy.ts`, 카드에서 열기 `utils/openYoutube.ts` |
+| 시세 탭 | `app/(tabs)/quotes.tsx`, 순서 `quotesSegmentOrderPreference`, Finnhub 캐시 `integrations/finnhub/quotesCache.ts`, 코인 시총 `integrations/coingecko/` |
+| 뉴스 탭 | `app/(tabs)/index.tsx`, 순서 `newsSegmentOrderPreference`, 한국·키워드 규칙 `@/domain/news`, 저장 `services/newsKoreaKeywordsPreference.ts`, LLM 있으면 **제목 번역** |
+| 컨콜 | `@/domain/concalls`(연도·분기·범위·실적 행), 저장 `services/concallFiscalFilter.ts`, 흐름 `services/concalls.ts` |
+| 유튜브 검색 보조 | `@/domain/youtube`, 카드에서 열기 `utils/openYoutube.ts` |
 | 설정 | `app/settings.tsx` — 뉴스·유튜브·시세·캘린더·표시·알림 |
 | 테마·문자열 | `SignalThemeContext`, `locales/*` (`@/locales/messages`) |
+| OTA 배너 | `contexts/OtaBannerContext.tsx`, `integrations/expo-updates/`, 미리보기 플래그 `services/env` (`EXPO_PUBLIC_PREVIEW_OTA_BANNER`) |
 
 **제스처:** 루트 `GestureHandlerRootView`. 시세/뉴스 세그먼트 순서 드래그는 `react-native-draggable-flatlist` 등.
 
 ## 6. `services/` vs `integrations/`
 
-Finnhub·YouTube·Anthropic·OpenAI·컨콜 캐시·AdMob 본체는 **`integrations/`**; **`services/`** 는 위 모듈 re-export, `env`, 관심종목·알림·OTA 등 **기기/조합** 담당.
+Finnhub·YouTube·Anthropic·OpenAI·컨콜 **메모리 캐시**·AdMob 등 **HTTP·SDK·캐시**는 **`integrations/<vendor>/`** (`client.ts`, `*Cache.ts`, AdMob은 `admob/native`·`admob/web` 등). **`services/`** 는 `env`, 관심종목·알림·**캐시 on/off**(`cacheFeaturePreferences`) 등 **기기·설정·오케스트레이션** — 벤더 API는 `@/integrations/...`에서 직접 import한다.
 
 ## 7. 코딩 메모
 
-- 요청 범위 밖 대규모 리팩터·불필요한 마크다운 추가 자제. **예외:** `docs/AGENTS.md`, `docs/CHANGELOG.md`, `docs/SIGNAL-PRD.md`.
+- 요청 범위 밖 대규모 리팩터·불필요한 마크다운 추가 자제. **예외:** `docs/AGENTS.md`, `docs/CHANGELOG.md`, `docs/SIGNAL-PRD.md`, `docs/ARCHITECTURE.md`(레이어·상수 규칙 변경 시).
 - 새 문자열은 **`locales/ko.ts`** 에 먼저, en/ja 동일 키.
-- 커밋 전 **`docs/CHANGELOG.md`** 에 이번 변경을 **날짜 아래** 짧게 남긴다(대형 작업이면 파일별 표, 소규모면 한 블록 요약으로 충분).
+- **`docs/CHANGELOG.md`** 는 **날짜 섹션만** 쌓는다. 커밋 전 **당일(또는 작업일) 블록**에 이번 변경을 짧게 남긴다(소규모면 목록 몇 줄, 대형이면 하위 소제목·작은 표).
 
 ## 8. 문서 갱신 체크리스트
 
 | 바꾼 것 | 같이 볼 문서 |
 |---------|----------------|
-| 라우트·탭·큰 폴더 | `docs/AGENTS.md` §4~5, `docs/ARCHITECTURE.md` |
+| 라우트·탭·큰 폴더·레이어·상수 위치 | `docs/AGENTS.md` §4~5, **`docs/ARCHITECTURE.md`** |
 | `EXPO_PUBLIC_*` | §3, `services/env.ts` 주석 |
 | 제품 범위 | `docs/SIGNAL-PRD.md` |
 | 눈에 띄는 동작 변경 | `docs/CHANGELOG.md` |

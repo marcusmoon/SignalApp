@@ -1,23 +1,19 @@
-export type QuotesListLimits = {
-  popularMax: number;
-  mcapMax: number;
-  coinMax: number;
-};
+import {
+  QUOTES_COUNT_MAX,
+  QUOTES_COUNT_MIN,
+  QUOTES_COUNT_STEP,
+  QUOTES_LIST_LIMIT_BOUNDS,
+  QUOTES_LIST_LIMITS_DEFAULTS,
+  type QuotesListLimits,
+} from './constants';
 
-export const QUOTES_COUNT_MIN = 10;
-export const QUOTES_COUNT_MAX = 100;
-export const QUOTES_COUNT_STEP = 10;
-
-export const QUOTES_LIST_LIMIT_BOUNDS = {
-  popular: { min: QUOTES_COUNT_MIN, max: QUOTES_COUNT_MAX },
-  mcap: { min: QUOTES_COUNT_MIN, max: QUOTES_COUNT_MAX },
-  coin: { min: QUOTES_COUNT_MIN, max: QUOTES_COUNT_MAX },
-} as const;
-
-export const QUOTES_LIST_LIMITS_DEFAULTS: QuotesListLimits = {
-  popularMax: 20,
-  mcapMax: 20,
-  coinMax: 20,
+export {
+  QUOTES_COUNT_MAX,
+  QUOTES_COUNT_MIN,
+  QUOTES_COUNT_STEP,
+  QUOTES_LIST_LIMIT_BOUNDS,
+  QUOTES_LIST_LIMITS_DEFAULTS,
+  type QuotesListLimits,
 };
 
 /** 10, 20, …, 100 */

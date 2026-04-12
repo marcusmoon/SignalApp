@@ -3,7 +3,7 @@ import { Alert, AppState, Platform } from 'react-native';
 
 import { useLocale } from '@/contexts/LocaleContext';
 import { isPreviewOtaBannerEnabled } from '@/services/env';
-import { checkOtaAvailable, fetchAndReloadOta } from '@/services/otaUpdates';
+import { checkOtaAvailable, fetchAndReloadOta } from '@/integrations/expo-updates';
 
 type OtaBannerContextValue = {
   visible: boolean;

@@ -36,16 +36,15 @@ import {
 } from '@/constants/segmentTabBar';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
-import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
-import { useTabScreenLoadingRecovery } from '@/hooks/useTabScreenLoadingRecovery';
+import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import { hasYoutube } from '@/services/env';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
 import { loadCurationHandles } from '@/services/youtubeCurationList';
-import { peekYoutubeCache, fetchEconomyYoutubeCached } from '@/services/youtubeCache';
-import { fetchChannelDisplayNames, YOUTUBE_ERROR_QUOTA, type ChannelHandleMeta } from '@/services/youtube';
+import { peekYoutubeCache, fetchEconomyYoutubeCached } from '@/integrations/youtube/cache';
+import { fetchChannelDisplayNames, YOUTUBE_ERROR_QUOTA, type ChannelHandleMeta } from '@/integrations/youtube';
 import type { YoutubeItem } from '@/types/signal';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
 import {

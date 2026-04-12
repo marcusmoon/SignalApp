@@ -1,7 +1,10 @@
-export const QUOTES_SEGMENT_KEYS = ['watch', 'popular', 'mcap', 'coin'] as const;
-export type QuoteSegmentKey = (typeof QUOTES_SEGMENT_KEYS)[number];
+import {
+  DEFAULT_QUOTES_SEGMENT_ORDER,
+  QUOTES_SEGMENT_KEYS,
+  type QuoteSegmentKey,
+} from './constants';
 
-export const DEFAULT_QUOTES_SEGMENT_ORDER: QuoteSegmentKey[] = [...QUOTES_SEGMENT_KEYS];
+export { DEFAULT_QUOTES_SEGMENT_ORDER, QUOTES_SEGMENT_KEYS, type QuoteSegmentKey };
 
 export function normalizeQuotesSegmentOrder(raw: unknown): QuoteSegmentKey[] {
   if (!Array.isArray(raw)) return [...DEFAULT_QUOTES_SEGMENT_ORDER];

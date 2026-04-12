@@ -20,7 +20,7 @@ import {
   type FinnhubProfile2,
   type FinnhubQuote,
   type FinnhubStockCandles,
-} from '@/services/finnhub';
+} from '@/integrations/finnhub';
 import { loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatchlist';
 import { translateNewsTitlesWithSelectedProvider } from '@/services/aiSummaries';
 import type { NewsItem } from '@/types/signal';

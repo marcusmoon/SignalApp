@@ -4,7 +4,7 @@ import {
   fetchUsdKrwQuoteApprox,
   finnhubQuoteHasValidPrice,
   type FinnhubQuote,
-} from '@/services/finnhub';
+} from '@/integrations/finnhub';
 
 export type MacroRowDef = { key: MessageId; symbol: string };
 

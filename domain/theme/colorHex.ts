@@ -1,5 +1,4 @@
-/** `accentPreference` 기본 커스텀과 동일 */
-export const CANONICAL_CUSTOM_ACCENT_FALLBACK = '#F43F5E';
+import { CANONICAL_CUSTOM_ACCENT_FALLBACK } from './constants';
 
 export function normalizeHex(input: string | null | undefined): string | null {
   if (input == null || typeof input !== 'string') return null;

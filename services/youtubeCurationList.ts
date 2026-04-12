@@ -1,18 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/constants/youtubeDefaults';
+import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/integrations/youtube/constants';
 import {
   dedupeStringsPreserveOrder,
   isValidYoutubeHandle,
   normalizeYoutubeHandle,
-} from '@/domain/youtube/handle';
+} from '@/domain/youtube';
 
 const STORAGE_KEY = '@signal/youtube_curation_handles_v1';
 
 export {
   isValidYoutubeHandle,
   normalizeYoutubeHandle,
-} from '@/domain/youtube/handle';
+} from '@/domain/youtube';
 
 export async function loadCurationHandles(): Promise<string[]> {
   try {

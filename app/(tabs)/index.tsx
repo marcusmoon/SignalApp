@@ -46,7 +46,7 @@ import {
   type FinnhubNewsRaw,
 } from '@/services/finnhub';
 import { buildNewsCacheKey, peekNewsCache, storeNewsCache } from '@/services/newsCache';
-import { filterKoreaRelatedNews } from '@/services/newsKoreaFilter';
+import { filterKoreaRelatedNews } from '@/domain/news/koreaFilter';
 import {
   loadKoreaNewsExtraKeywords,
   subscribeKoreaNewsExtraKeywordsChanged,

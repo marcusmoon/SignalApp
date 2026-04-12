@@ -1,6 +1,6 @@
 import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/constants/youtubeDefaults';
 import type { ChannelHandleMeta } from '@/integrations/youtube/types';
-import { ECONOMY_SEARCH_BOOST } from '@/lib/youtubeEconomy';
+import { ECONOMY_SEARCH_BOOST } from '@/domain/youtube/economy';
 import { isYoutubeDataApiConfigured, youtubeDataApiUrl } from '@/integrations/youtube/client';
 import { messages, type AppLocale } from '@/locales/messages';
 import type { YoutubeItem } from '@/types/signal';

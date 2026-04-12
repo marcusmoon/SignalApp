@@ -1,11 +1,15 @@
-import {
-  MEGA_CAP_SET,
-  megaCapRank,
-  normalizeEarningsSymbolForMatch,
-  normalizeMegaCapTicker,
-} from '@/constants/megaCapUniverse';
+import { MEGA_CAP_SET, normalizeEarningsSymbolForMatch } from '@/constants/megaCapUniverse';
 import type { CalendarConcallScope } from '@/services/calendarConcallScopePreference';
-import { calendarRangeForFiscalYear } from '@/services/concallFiscalFilter';
+import { calendarRangeForFiscalYear } from '@/domain/concalls/fiscal';
+import {
+  clipTranscriptForDisplay,
+  CONCALL_TRANSCRIPT_SNIPPET_MAX_CHARS,
+  isEarningsDateInFuture,
+  normalizeConcallWatchSet,
+  pickSymbolsFromEarningsRows,
+  rowMatchesFiscalSelection,
+  sortEarningsRowsForTranscript,
+} from '@/domain/concalls/earningsRows';
 import { fetchEarningsCallTranscript } from '@/services/apiNinjas';
 import { summarizeConcallTranscriptSelected } from '@/services/aiSummaries';
 import { fetchEarningsCalendarRangeMerged, type FinnhubEarningsRow } from '@/services/finnhub';
@@ -18,46 +22,6 @@ import {
 import { hasApiNinjas, hasFinnhub } from '@/services/env';
 import type { ConcallSummary } from '@/types/signal';
 import { addDays } from '@/utils/date';
-
-/** Finnhub `date` (YYYY-MM-DD) 로컬 자정 기준 */
-function parseYmdLocal(ymd: string): Date {
-  const [y, m, d] = ymd.split('-').map(Number);
-  return new Date(y, (m ?? 1) - 1, d ?? 1, 0, 0, 0, 0);
-}
-
-function isEarningsDateInFuture(ymd: string): boolean {
-  const t = parseYmdLocal(ymd).getTime();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return t > today.getTime();
-}
-
-function sortRowsForTranscript(rows: FinnhubEarningsRow[], useMegaRank: boolean): FinnhubEarningsRow[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return [...rows].sort((a, b) => {
-    const da = parseYmdLocal(a.date).getTime();
-    const db = parseYmdLocal(b.date).getTime();
-    const aPast = da <= today.getTime();
-    const bPast = db <= today.getTime();
-    if (aPast !== bPast) return aPast ? -1 : 1;
-    if (useMegaRank) {
-      const ra = megaCapRank(a.symbol);
-      const rb = megaCapRank(b.symbol);
-      if (ra !== rb) return ra - rb;
-    }
-    if (da !== db) return da - db;
-    return a.symbol.localeCompare(b.symbol);
-  });
-}
-
-const TRANSCRIPT_SNIPPET_MAX = 14_000;
-
-function clipTranscriptForDisplay(raw: string, maxChars: number): string {
-  const t = raw.trim();
-  if (t.length <= maxChars) return t;
-  return `${t.slice(0, maxChars).trimEnd()}…`;
-}
 
 function concallNinjaHint(ninjasStatus: number, row: FinnhubEarningsRow | undefined): string {
   if (!hasApiNinjas()) {
@@ -105,39 +69,6 @@ export type FetchConcallSummariesOptions = {
   cacheEnabled?: boolean;
 };
 
-function normalizeWatchSet(symbols: string[] | undefined): Set<string> {
-  return new Set(
-    (symbols ?? [])
-      .map((s) => normalizeMegaCapTicker(s.trim().toUpperCase()))
-      .filter((s) => s.length > 0),
-  );
-}
-
-function pickSymbolsFromRows(rows: FinnhubEarningsRow[], maxItems: number): string[] {
-  return Array.from(
-    new Set(
-      rows
-        .map((r) => r.symbol)
-        .filter(Boolean)
-        .slice(0, maxItems * 2),
-    ),
-  ).slice(0, maxItems);
-}
-
-function rowMatchesFiscalSelection(
-  r: FinnhubEarningsRow,
-  fiscalYear: number,
-  fiscalQuarter: 0 | 1 | 2 | 3 | 4,
-): boolean {
-  const y = String(fiscalYear);
-  const inCalendarYear = r.date >= `${y}-01-01` && r.date <= `${y}-12-31`;
-  const inFiscalYearField = r.year === fiscalYear;
-  const yearOk = inCalendarYear || inFiscalYearField;
-  if (!yearOk) return false;
-  if (fiscalQuarter === 0) return true;
-  return r.quarter === fiscalQuarter;
-}
-
 export async function fetchConcallSummaries(
   maxItemsParam = 3,
   options?: FetchConcallSummariesOptions,
@@ -146,7 +77,7 @@ export async function fetchConcallSummaries(
     throw new Error('FINNHUB_TOKEN_MISSING');
   }
   const scope = options?.scope ?? 'mega';
-  const watchSet = normalizeWatchSet(options?.watchlistSymbols);
+  const watchSet = normalizeConcallWatchSet(options?.watchlistSymbols);
   const watchSorted = [...watchSet].sort();
   const fiscalYearForKey = options?.fiscalYear != null ? options.fiscalYear : null;
   const useFiscal = fiscalYearForKey != null;
@@ -204,9 +135,9 @@ export async function fetchConcallSummaries(
   } else {
     rows = rows.filter((r) => r.symbol && watchSet.has(normalizeEarningsSymbolForMatch(r.symbol)));
   }
-  rows = sortRowsForTranscript(rows, scope === 'mega');
+  rows = sortEarningsRowsForTranscript(rows, scope === 'mega');
 
-  const symbols = pickSymbolsFromRows(rows, cap);
+  const symbols = pickSymbolsFromEarningsRows(rows, cap);
 
   const out: ConcallSummary[] = [];
 
@@ -348,7 +279,7 @@ export async function fetchConcallSummaryForEarningsRow(
     return summary;
   }
 
-  const snippet = clipTranscriptForDisplay(text, TRANSCRIPT_SNIPPET_MAX);
+  const snippet = clipTranscriptForDisplay(text, CONCALL_TRANSCRIPT_SNIPPET_MAX_CHARS);
 
   try {
     const summary = await summarizeConcallTranscriptSelected(sym, quarterLabel, text);

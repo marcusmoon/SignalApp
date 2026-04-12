@@ -1,12 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { SIGNAL, buildAppTheme, type AppTheme } from '@/constants/theme';
+import { CANONICAL_CUSTOM_ACCENT_FALLBACK, normalizeHex } from '@/domain/theme/colorHex';
 
 export const ACCENT_STORAGE_KEY = '@signal/accent_preset_v1';
 export const ACCENT_CUSTOM_HEX_KEY = '@signal/accent_custom_hex_v1';
 
 /** 기본 커스텀 액센트 (기존 로즈 프리셋과 동일) */
-export const DEFAULT_CUSTOM_ACCENT_HEX = '#F43F5E';
+export const DEFAULT_CUSTOM_ACCENT_HEX = CANONICAL_CUSTOM_ACCENT_FALLBACK;
 
 export type AccentPresetId =
   | 'green'
@@ -40,26 +41,7 @@ export const ACCENT_PRESETS: readonly { id: AccentPresetId; accent: string }[] =
 
 const VALID_PRESET_IDS = new Set<string>([...ACCENT_PRESETS.map((p) => p.id), 'custom']);
 
-export function normalizeHex(input: string | null | undefined): string | null {
-  if (input == null || typeof input !== 'string') return null;
-  const s = input.trim();
-  if (!/^#?[0-9a-fA-F]{6}$/.test(s)) return null;
-  const hex = s.startsWith('#') ? s : `#${s}`;
-  return hex.toUpperCase();
-}
-
-export function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  const h = normalizeHex(hex) ?? DEFAULT_CUSTOM_ACCENT_HEX;
-  const n = parseInt(h.slice(1), 16);
-  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
-}
-
-export function rgbToHex(r: number, g: number, b: number): string {
-  const clamp = (x: number) => Math.max(0, Math.min(255, Math.round(x)));
-  return `#${[clamp(r), clamp(g), clamp(b)]
-    .map((x) => x.toString(16).padStart(2, '0'))
-    .join('')}`.toUpperCase();
-}
+export { hexToRgb, normalizeHex, rgbToHex } from '@/domain/theme/colorHex';
 
 export async function loadCustomAccentHex(): Promise<string> {
   const v = await AsyncStorage.getItem(ACCENT_CUSTOM_HEX_KEY);

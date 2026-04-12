@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { openYoutubeItem } from '@/lib/openYoutube';
+import { openYoutubeItem } from '@/utils/openYoutube';
 import type { YoutubeItem } from '@/types/signal';
 
 type Props = { item: YoutubeItem };

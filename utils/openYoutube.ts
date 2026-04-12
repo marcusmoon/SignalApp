@@ -1,9 +1,9 @@
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
-import { youtubeOpenUrl } from '@/lib/youtubeEconomy';
-import { openExternalLink, youtubeWatchAppLaunchUrls } from '@/utils/openExternalLink';
+import { youtubeOpenUrl } from '@/domain/youtube/economy';
 import type { YoutubeItem } from '@/types/signal';
+import { openExternalLink, youtubeWatchAppLaunchUrls } from '@/utils/openExternalLink';
 
 /**
  * 단일 영상: `openExternalLink`(YouTube 앱 스킴·인텐트·https) 우선,

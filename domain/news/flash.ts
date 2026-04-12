@@ -1,4 +1,4 @@
-import type { FinnhubNewsRaw } from '@/services/finnhub';
+import type { FinnhubNewsRaw } from '@/integrations/finnhub/types';
 
 /** 키워드: 글로벌 속보·긴급 보도 흔적 */
 const FLASH_KEYWORD_RE =
@@ -9,9 +9,7 @@ const FLASH_MAX_AGE_MS = 18 * 60 * 1000;
 
 /**
  * Finnhub 기사가 속보(플래시)로 표시할지 판별합니다.
- * - 제목·요약·카테고리에 긴급 키워드가 있거나
- * - 카테고리에 breaking/flash 계열이 있거나
- * - 매우 최근(기본 18분 이내)이면 실시간 속보로 강조
+ * 외부 HTTP 없음 — 도메인 규칙만.
  */
 export function isFlashNews(n: FinnhubNewsRaw, nowMs = Date.now()): boolean {
   const blob = `${n.headline ?? ''} ${n.category ?? ''} ${n.summary ?? ''}`;

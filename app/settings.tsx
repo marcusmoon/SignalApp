@@ -90,9 +90,9 @@ import {
   QUOTES_LIST_LIMITS_DEFAULTS,
   type QuotesListLimits,
 } from '@/services/quotesListLimitsPreference';
+import { normalizeKoreaNewsExtraKeywords } from '@/domain/news/koreaKeywords';
 import {
   loadKoreaNewsExtraKeywords,
-  normalizeKoreaNewsExtraKeywords,
   restoreKoreaNewsExtraKeywordsDefaults,
   saveKoreaNewsExtraKeywords,
 } from '@/services/newsKoreaKeywordsPreference';

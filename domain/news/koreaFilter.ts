@@ -1,4 +1,4 @@
-import type { FinnhubNewsRaw } from '@/services/finnhub';
+import type { FinnhubNewsRaw } from '@/integrations/finnhub/types';
 
 /**
  * Finnhub에 한국 전용 카테고리가 없어, 헤드라인·요약·관련 심볼에서 키워드로 좁힙니다.

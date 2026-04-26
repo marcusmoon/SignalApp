@@ -4,23 +4,44 @@ import { applyAdminLanguage } from './i18n.js';
 import { $, state } from './state.js';
 import { applyTheme } from './theme.js';
 
-      let toastTimer = null;
-      function showToast(title, detail = '') {
+      const toastState = { items: [] };
+      function toastDurationMs(kind) {
+        if (kind === 'error') return 0; // manual close
+        return kind === 'warning' ? 4500 : 4000;
+      }
+      function renderToasts() {
         const host = $('toastHost');
         if (!host) return;
-        if (toastTimer) clearTimeout(toastTimer);
-        host.classList.remove('hidden');
-        host.innerHTML = `
-          <div class="toast">
-            <strong>${esc(title)}</strong>
-            <span class="muted">${esc(detail)}</span>
-          </div>
-        `;
-        toastTimer = setTimeout(() => {
+        const items = toastState.items.slice(0, 3);
+        if (items.length === 0) {
           host.classList.add('hidden');
           host.innerHTML = '';
-          toastTimer = null;
-        }, 2200);
+          return;
+        }
+        host.classList.remove('hidden');
+        host.innerHTML = items.map((t) => `
+          <div class="toast toast-${esc(t.kind)}" data-toast-id="${esc(t.id)}">
+            <div class="toastIcon" aria-hidden="true">${t.kind === 'success' ? '✅' : t.kind === 'error' ? '❌' : t.kind === 'warning' ? '⚠️' : 'ℹ️'}</div>
+            <div class="toastBody">
+              <strong>${esc(t.title)}</strong>
+              ${t.detail ? `<span class="muted">${esc(t.detail)}</span>` : ''}
+            </div>
+            <button class="toastClose secondary" data-toast-close="${esc(t.id)}" aria-label="close toast">✕</button>
+          </div>
+        `).join('');
+      }
+      function dismissToast(id) {
+        toastState.items = toastState.items.filter((t) => t.id !== id);
+        renderToasts();
+      }
+      function showToast(title, detail = '', { kind = 'success' } = {}) {
+        const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        toastState.items = [{ id, kind, title, detail }, ...toastState.items].slice(0, 3);
+        renderToasts();
+        const ms = toastDurationMs(kind);
+        if (ms > 0) {
+          setTimeout(() => dismissToast(id), ms);
+        }
       }
 
       function uniq(arr) {
@@ -33,6 +54,27 @@ import { applyTheme } from './theme.js';
         return out;
       }
 
+      // Confirm modal (docs/SIGNAL-ADMIN-UIUX.md 9.3)
+      const confirmState = { open: false, onConfirm: null };
+      function closeConfirm() {
+        confirmState.open = false;
+        confirmState.onConfirm = null;
+        $('confirmModal')?.classList.add('hidden');
+      }
+      function openConfirm({ title = '확인', desc = '', body = '', okText = '확인', danger = true, onConfirm } = {}) {
+        confirmState.open = true;
+        confirmState.onConfirm = typeof onConfirm === 'function' ? onConfirm : null;
+        if ($('confirmTitle')) $('confirmTitle').textContent = title;
+        if ($('confirmDesc')) $('confirmDesc').textContent = desc;
+        if ($('confirmBody')) $('confirmBody').textContent = body;
+        if ($('confirmOk')) {
+          $('confirmOk').textContent = okText;
+          $('confirmOk').classList.toggle('danger', !!danger);
+          $('confirmOk').classList.toggle('success', !danger);
+        }
+        $('confirmModal')?.classList.remove('hidden');
+      }
+
       function modelPresetsForProvider(provider, defaultModel) {
         const p = String(provider || '').trim().toLowerCase();
         const fromSettings = state.uiModelPresets && typeof state.uiModelPresets === 'object' ? state.uiModelPresets[p] : null;
@@ -43,6 +85,22 @@ import { applyTheme } from './theme.js';
       function renderModelOptions(options, selected) {
         const sel = String(selected || '');
         return (options || []).map((m) => `<option value="${esc(m)}" ${m === sel ? 'selected' : ''}>${esc(m)}</option>`).join('');
+      }
+
+      function renderTableSkeleton({ cols = 6, rows = 5 } = {}) {
+        const c = Math.max(1, Number(cols) || 6);
+        const r = Math.max(1, Number(rows) || 5);
+        return `
+          <table>
+            <tbody>
+              ${Array.from({ length: r }).map(() => `
+                <tr class="skeletonRow">
+                  ${Array.from({ length: c }).map(() => `<td><div class="skeletonBar"></div></td>`).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
       }
 
       function refreshTranslationTestModels(providerSettings) {
@@ -178,6 +236,20 @@ import { applyTheme } from './theme.js';
                     ? '데이터 초기화'
                     : 'Provider 키관리';
           }
+          const desc = $('settingsDesc');
+          if (desc) {
+            desc.textContent =
+              settingsTabFromView === 'theme'
+                ? '브라우저에 저장되는 UI 테마를 설정합니다.'
+                : settingsTabFromView === 'lists'
+                  ? '앱과 수집 Job이 공통으로 사용하는 마켓 리스트를 관리합니다.'
+                  : settingsTabFromView === 'danger'
+                    ? '외부 API에서 가져온 로컬 저장 데이터를 선택적으로 초기화합니다.'
+                    : '외부 Provider(API Key)와 LLM 기본 모델(defaultModel)을 관리합니다.';
+          }
+        }
+        if (resolvedView === 'jobs') {
+          setJobTab(state.jobTab || 'info');
         }
       }
 
@@ -187,6 +259,11 @@ import { applyTheme } from './theme.js';
         $('jobs').classList.toggle('hidden', tab !== 'info');
         $('jobRunsPanel').classList.toggle('hidden', tab !== 'runs');
         if (tab === 'runs') void loadJobRuns();
+        const params = new URLSearchParams(window.location.search);
+        params.set('tab', tab);
+        params.set('runSort', state.jobRunsSortKey || 'finishedAt');
+        params.set('runDir', state.jobRunsSortDir || 'desc');
+        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
       }
 
       function setSettingsTab(tab) {
@@ -200,11 +277,21 @@ import { applyTheme } from './theme.js';
         const body = await api('/admin/api/session');
         const loggedIn = !!body.adminId;
         $('session').textContent = loggedIn ? `${body.adminId}` : 'logout';
+        if ($('headerProfileName')) $('headerProfileName').textContent = loggedIn ? `${body.adminId}` : 'guest';
+        if ($('profileMenuTitle')) $('profileMenuTitle').textContent = loggedIn ? `${body.adminId}` : 'guest';
         document.body.classList.toggle('loginMode', !loggedIn);
         $('loginPanel').classList.toggle('hidden', loggedIn);
         $('adminPanel').classList.toggle('hidden', !loggedIn);
         $('logoutBtn').classList.toggle('hidden', !loggedIn);
         if (loggedIn) {
+          // Restore job tab from URL (?tab=info|runs)
+          const urlParams = new URLSearchParams(window.location.search);
+          const jobTabFromUrl = urlParams.get('tab');
+          if (jobTabFromUrl === 'info' || jobTabFromUrl === 'runs') state.jobTab = jobTabFromUrl;
+          const runSort = urlParams.get('runSort');
+          const runDir = urlParams.get('runDir');
+          if (runSort) state.jobRunsSortKey = runSort;
+          if (runDir === 'asc' || runDir === 'desc') state.jobRunsSortDir = runDir;
           setDatePreset();
           setJobRunDatePreset();
           setCalendarDatePreset();
@@ -222,6 +309,66 @@ import { applyTheme } from './theme.js';
             loadYoutube(),
           ]);
         }
+      }
+
+      function openPanel(id) { $(id)?.classList.remove('hidden'); }
+      function closePanel(id) { $(id)?.classList.add('hidden'); }
+      function isPanelOpen(id) { return !$(id)?.classList.contains('hidden'); }
+
+      async function refreshNotifications() {
+        if (!$('headerNotifBadge')) return;
+        try {
+          const summary = (await api('/admin/api/summary')).data;
+          const runs = Array.isArray(summary.recentRuns) ? summary.recentRuns : [];
+          const failed = runs.filter((r) => String(r.status) === 'failed');
+          const stale = runs.filter((r) => r.stale);
+          const count = failed.length + stale.length;
+          $('headerNotifBadge').textContent = String(count);
+          $('headerNotifBadge').style.display = count > 0 ? '' : 'none';
+          if ($('notifList')) {
+            $('notifList').innerHTML = count === 0
+              ? '<div class="muted">알림이 없습니다.</div>'
+              : `
+                ${failed.length ? `<div class="card"><strong>실패</strong><div class="muted" style="margin-top:6px">${failed.map((r) => esc(r.displayName || r.jobKey)).join('<br/>')}</div></div>` : ''}
+                ${stale.length ? `<div class="card"><strong>주기 초과</strong><div class="muted" style="margin-top:6px">${stale.map((r) => esc(r.displayName || r.jobKey)).join('<br/>')}</div></div>` : ''}
+              `;
+          }
+        } catch {
+          $('headerNotifBadge').style.display = 'none';
+        }
+      }
+
+      const searchIndex = { builtAt: 0, items: [] };
+      function buildSearchIndex() {
+        const items = [];
+        document.querySelectorAll('[data-view]').forEach((btn) => {
+          const view = btn.getAttribute('data-view');
+          const label = btn.textContent?.trim();
+          if (!view || !label) return;
+          items.push({ kind: 'menu', label, detail: 'menu', action: () => switchView(view) });
+        });
+        for (const job of state.jobs || []) {
+          const label = jobDisplayName(job);
+          items.push({ kind: 'job', label, detail: job.jobKey, action: async () => { await switchView('jobs'); setJobTab('info'); } });
+        }
+        searchIndex.items = items;
+        searchIndex.builtAt = Date.now();
+      }
+
+      function renderSearchResults(q) {
+        const query = String(q || '').trim().toLowerCase();
+        if (!query) return '<div class="muted">검색어를 입력하세요.</div>';
+        const hits = (searchIndex.items || [])
+          .map((it, index) => ({ it, index }))
+          .filter(({ it }) => `${it.label} ${it.detail}`.toLowerCase().includes(query))
+          .slice(0, 24);
+        if (hits.length === 0) return '<div class="muted">검색 결과가 없습니다. 다른 키워드로 시도해보세요.</div>';
+        return hits.map(({ it, index }) => `
+          <button class="secondary" style="width:100%;text-align:left" data-search-hit="${index}">
+            <strong>${esc(it.label)}</strong><br/>
+            <span class="muted">${esc(it.detail || it.kind)}</span>
+          </button>
+        `).join('');
       }
 
       function runButton(jobKey, label = '실행') {
@@ -380,74 +527,132 @@ import { applyTheme } from './theme.js';
           $('jobRunJob').value = current;
         }
         const jobsAll = body.data;
-        const jobsFiltered = state.operationFilter === 'all'
+        let jobsFiltered = state.operationFilter === 'all'
           ? jobsAll
           : jobsAll.filter((j) => (j.operation || 'latest') === state.operationFilter);
+
+        if (state.jobListEnabled === 'enabled') jobsFiltered = jobsFiltered.filter((j) => !!j.enabled);
+        if (state.jobListEnabled === 'disabled') jobsFiltered = jobsFiltered.filter((j) => !j.enabled);
+        if (state.jobListDomain !== 'all') jobsFiltered = jobsFiltered.filter((j) => (j.domain || 'other') === state.jobListDomain);
+        if (state.jobListProvider !== 'all') jobsFiltered = jobsFiltered.filter((j) => String(j.provider || '') === state.jobListProvider);
+        const q = String(state.jobListQuery || '').trim().toLowerCase();
+        if (q) {
+          jobsFiltered = jobsFiltered.filter((j) => {
+            const hay = `${j.jobKey} ${j.displayName || ''} ${j.description || ''} ${j.provider || ''} ${j.domain || ''}`.toLowerCase();
+            return hay.includes(q);
+          });
+        }
+        jobsFiltered = [...jobsFiltered].sort((a, b) => {
+          if (state.jobListSort === 'lastRunDesc') {
+            const at = new Date(a.lastRunAt || 0).getTime();
+            const bt = new Date(b.lastRunAt || 0).getTime();
+            return bt - at;
+          }
+          if (state.jobListSort === 'intervalAsc') return Number(a.intervalSeconds || 0) - Number(b.intervalSeconds || 0);
+          const an = String(jobDisplayName(a) || '').toLowerCase();
+          const bn = String(jobDisplayName(b) || '').toLowerCase();
+          return an.localeCompare(bn);
+        });
+
         const groups = new Map();
         for (const job of jobsFiltered) {
           const key = job.domain || 'other';
           if (!groups.has(key)) groups.set(key, []);
           groups.get(key).push(job);
         }
+        const domains = [...new Set(jobsAll.map((j) => j.domain || 'other'))];
+        const providers = [...new Set(jobsAll.map((j) => j.provider).filter(Boolean))];
+        const selectedJobs = new Set(state.jobRunsSelected || []);
         $('jobs').innerHTML = `
-          <div class="tabs" style="margin-bottom:10px">
-            <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">전체</button>
-            <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">최신</button>
-            <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">보정</button>
-          </div>
-        ` + [...groups.entries()].map(([domain, jobs]) => {
-          return `
-            <div class="jobGroup">
-              <div class="jobGroupHead">
-                <div class="jobGroupTitle">
-                  <span class="jobGroupIcon">${esc(domainIcons[domain] || 'J')}</span>
-                  <div>
-                    <h3 style="margin:0">${jobGroupTitle(domain)}</h3>
-                    <div class="muted" style="font-size:12px;margin-top:2px">최신 수집과 보정 수집을 같은 카테고리에서 관리합니다.</div>
-                  </div>
-                </div>
-                <span class="pill">${jobs.length}개</span>
+          <div class="filterBar">
+            <div class="filterBarTitle">검색 조건</div>
+            <div class="filterBarControls">
+              <div class="tabs" style="margin:0">
+                <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">전체</button>
+                <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">최신</button>
+                <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">보정</button>
               </div>
-              <div class="jobList">
-                ${jobs.map((job) => `
-                  <div class="card jobItem">
-                    <div class="jobMain">
-                      <div>
-                        <div class="jobTitleLine">
-                          <span class="jobName">${esc(jobDisplayName(job))}</span>
-                          ${operationBadge(job.operation)}
-                          <span class="pill">${job.enabled ? '활성' : '중지'}</span>
-                        </div>
-                        <div class="jobDescription">${esc(job.description || job.jobKey)}</div>
-                      </div>
-                      <div class="jobStatus">
-                        <span class="pill">${esc(job.provider)}</span>
-                        <span class="pill">${jobIntervalLabel(job.intervalSeconds)}</span>
-                        <span class="pill">Last ${formatDateTime(job.lastRunAt)}</span>
-                      </div>
-                      <div class="jobActions">
-                        <button data-job-run="${esc(job.jobKey)}" class="success">Run</button>
-                      </div>
-                    </div>
-                    <details class="jobSettings">
-                      <summary>설정 편집 · ${esc(job.jobKey)}</summary>
-                      <div class="jobSettingsBody">
-                        <label>표시 이름 <input data-job-name="${esc(job.jobKey)}" value="${esc(jobDisplayName(job))}" placeholder="표시 이름" /></label>
-                        <label>설명 <input data-job-desc="${esc(job.jobKey)}" value="${esc(job.description || '')}" placeholder="설명" /></label>
-                        <label>주기(초) <input data-job-interval="${esc(job.jobKey)}" value="${esc(job.intervalSeconds)}" /></label>
-                        <label>활성화 <span><input type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/> enabled</span></label>
-                        <label>Provider <input class="readonlyInput" value="${esc(job.provider)}" disabled /></label>
-                        <label>Handler <input class="readonlyInput" value="${esc(job.handler)}" disabled /></label>
-                        <label>Operation <input class="readonlyInput" value="${esc(job.operation || 'latest')}" disabled /></label>
-                        <button data-job-save="${esc(job.jobKey)}" class="success">Save</button>
-                      </div>
-                    </details>
-                  </div>
-                `).join('')}
-              </div>
+              <select id="jobListEnabled">
+                <option value="all" ${state.jobListEnabled === 'all' ? 'selected' : ''}>전체 상태</option>
+                <option value="enabled" ${state.jobListEnabled === 'enabled' ? 'selected' : ''}>활성</option>
+                <option value="disabled" ${state.jobListEnabled === 'disabled' ? 'selected' : ''}>중지</option>
+              </select>
+              <select id="jobListDomain">
+                <option value="all">전체 도메인</option>
+                ${domains.map((d) => `<option value="${esc(d)}" ${state.jobListDomain === d ? 'selected' : ''}>${esc(jobGroupTitle(d))}</option>`).join('')}
+              </select>
+              <select id="jobListProvider">
+                <option value="all">전체 Provider</option>
+                ${providers.map((p) => `<option value="${esc(p)}" ${state.jobListProvider === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}
+              </select>
+              <input id="jobListQuery" class="wide" placeholder="키워드: 이름, jobKey, 설명, provider" value="${esc(state.jobListQuery)}" />
+              <select id="jobListSort">
+                <option value="name" ${state.jobListSort === 'name' ? 'selected' : ''}>이름순</option>
+                <option value="lastRunDesc" ${state.jobListSort === 'lastRunDesc' ? 'selected' : ''}>최근 실행순</option>
+                <option value="intervalAsc" ${state.jobListSort === 'intervalAsc' ? 'selected' : ''}>주기 짧은순</option>
+              </select>
+              <button class="secondary" id="jobListReset">초기화</button>
             </div>
-          `;
-        }).join('');
+          </div>
+          <div class="card">
+            <table class="settingsTable">
+              <thead>
+                <tr>
+                  <th>Job</th>
+                  <th>Operation</th>
+                  <th>상태</th>
+                  <th>Provider</th>
+                  <th class="right">주기</th>
+                  <th>Last run</th>
+                  <th class="center">액션</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${jobsFiltered.map((job) => `
+                  <tr>
+                    <td>
+                      <strong>${esc(jobDisplayName(job))}</strong><br/>
+                      <span class="muted">${esc(job.jobKey)}</span>
+                      ${job.description ? `<div class="muted" style="margin-top:4px">${esc(job.description)}</div>` : ''}
+                    </td>
+                    <td>${operationBadge(job.operation)}</td>
+                    <td><span class="pill">${job.enabled ? '활성' : '중지'}</span></td>
+                    <td><span class="pill">${esc(job.provider)}</span></td>
+                    <td class="right">${esc(jobIntervalLabel(job.intervalSeconds))}</td>
+                    <td class="muted">${formatDateTime(job.lastRunAt)}</td>
+                    <td class="center">
+                      <div class="dataTableActions">
+                        <button data-job-run="${esc(job.jobKey)}" class="success">Run</button>
+                        <button class="secondary" data-job-edit-open="${esc(job.jobKey)}">설정</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="hidden" data-job-edit-row="${esc(job.jobKey)}">
+                    <td colspan="7">
+                      <div class="card" style="margin:6px 0 0">
+                        <div class="row" style="justify-content:space-between">
+                          <strong>설정 편집</strong>
+                          <button class="secondary" data-job-edit-close="${esc(job.jobKey)}">닫기</button>
+                        </div>
+                        <div class="jobSettingsBody" style="margin-top:10px">
+                          <label>표시 이름 <input data-job-name="${esc(job.jobKey)}" value="${esc(jobDisplayName(job))}" placeholder="표시 이름" /></label>
+                          <label>설명 <input data-job-desc="${esc(job.jobKey)}" value="${esc(job.description || '')}" placeholder="설명" /></label>
+                          <label>주기(초) <input data-job-interval="${esc(job.jobKey)}" value="${esc(job.intervalSeconds)}" /></label>
+                          <label>활성화 <span><input type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/> enabled</span></label>
+                          <label>Provider <input class="readonlyInput" value="${esc(job.provider)}" disabled /></label>
+                          <label>Handler <input class="readonlyInput" value="${esc(job.handler)}" disabled /></label>
+                          <label>Operation <input class="readonlyInput" value="${esc(job.operation || 'latest')}" disabled /></label>
+                          <button data-job-save="${esc(job.jobKey)}" class="success">Save</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            ${jobsFiltered.length === 0 ? '<p class="muted">조건에 맞는 Job이 없습니다.</p>' : ''}
+          </div>
+        `;
       }
 
       function jobRunsQueryParams() {
@@ -486,23 +691,69 @@ import { applyTheme } from './theme.js';
         return `${(Number(ms) / 1000).toFixed(1)}s`;
       }
 
+      function compareMaybeNumber(a, b) {
+        const an = Number(a);
+        const bn = Number(b);
+        if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
+        return String(a ?? '').localeCompare(String(b ?? ''));
+      }
+
+      function sortJobRuns(rows) {
+        const dir = state.jobRunsSortDir === 'asc' ? 1 : -1;
+        const key = state.jobRunsSortKey || 'finishedAt';
+        return [...(rows || [])].sort((a, b) => {
+          if (key === 'job') return dir * String(a.displayName || a.jobKey || '').localeCompare(String(b.displayName || b.jobKey || ''));
+          if (key === 'status') return dir * String(a.status || '').localeCompare(String(b.status || ''));
+          if (key === 'items') return dir * compareMaybeNumber(a.itemCount ?? 0, b.itemCount ?? 0);
+          if (key === 'duration') return dir * compareMaybeNumber(a.durationMs ?? 0, b.durationMs ?? 0);
+          if (key === 'progress') return dir * compareMaybeNumber(a.progressPercent ?? 0, b.progressPercent ?? 0);
+          if (key === 'startedAt') return dir * (new Date(a.startedAt || 0).getTime() - new Date(b.startedAt || 0).getTime());
+          if (key === 'finishedAt') return dir * (new Date(a.finishedAt || a.startedAt || 0).getTime() - new Date(b.finishedAt || b.startedAt || 0).getTime());
+          return 0;
+        });
+      }
+
       async function loadJobRuns() {
+        if ($('jobRuns')) $('jobRuns').innerHTML = renderTableSkeleton({ cols: 10, rows: 5 });
         const body = await api(`/admin/api/job-runs?${jobRunsQueryParams()}`);
         state.jobRunsPage = body.page;
         state.jobRunsTotalPages = body.totalPages;
         state.jobRunsTotal = body.total;
         renderJobRunsPager('jobRunsPagerTop');
         renderJobRunsPager('jobRunsPagerBottom');
+        const rows = sortJobRuns(body.data || []);
+        const selected = new Set(state.jobRunsSelected || []);
+        const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.jobKey));
         $('jobRuns').innerHTML = `
+          ${selected.size ? `
+            <div class="actionBox" style="margin-bottom:10px">
+              <span class="muted">선택됨 ${selected.size}개</span>
+              <div class="row">
+                <button class="warning" id="jobRunsBulkRetry">선택 재시도</button>
+                <button class="secondary" id="jobRunsBulkClear">선택 해제</button>
+              </div>
+            </div>
+          ` : ''}
           <table>
             <thead>
               <tr>
-                <th>Job</th><th>Status</th><th>Type</th><th>Trigger</th><th>Progress</th><th>Items</th><th>Duration</th><th>Started</th><th>Finished</th><th>Error</th>
+                <th class="center"><input type="checkbox" id="jobRunsSelectAll" ${allSelected ? 'checked' : ''} /></th>
+                <th data-run-sort="job">Job</th>
+                <th data-run-sort="status">Status</th>
+                <th>Type</th>
+                <th>Trigger</th>
+                <th data-run-sort="progress">Progress</th>
+                <th data-run-sort="items" class="right">Items</th>
+                <th data-run-sort="duration" class="right">Duration</th>
+                <th data-run-sort="startedAt">Started</th>
+                <th data-run-sort="finishedAt">Finished</th>
+                <th>Error</th>
               </tr>
             </thead>
             <tbody>
-              ${body.data.map((run) => `
+              ${rows.map((run) => `
                 <tr>
+                  <td class="center"><input type="checkbox" data-job-run-select="${esc(run.jobKey)}" ${selected.has(run.jobKey) ? 'checked' : ''} /></td>
                   <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
                   <td><span class="pill">${esc(run.status)}</span></td>
                   <td>
@@ -511,8 +762,8 @@ import { applyTheme } from './theme.js';
                   </td>
                   <td>${esc(run.trigger || '-')}</td>
                   <td class="muted">${run.status === 'running' && Number.isFinite(Number(run.progressPercent)) ? `${Number(run.progressPercent)}%` : '-'}</td>
-                  <td>${run.itemCount ?? 0}</td>
-                  <td>${formatDuration(run.durationMs)}</td>
+                  <td class="right">${run.itemCount ?? 0}</td>
+                  <td class="right">${formatDuration(run.durationMs)}</td>
                   <td class="muted">${formatDateTime(run.startedAt)}</td>
                   <td class="muted">${formatDateTime(run.finishedAt)}</td>
                   <td class="${run.errorMessage ? 'error' : 'muted'}">${esc(run.errorMessage || '-')}</td>
@@ -521,7 +772,7 @@ import { applyTheme } from './theme.js';
             </tbody>
           </table>
         `;
-        if (body.data.length === 0) $('jobRuns').innerHTML = '<p class="muted">검색 조건에 맞는 실행 로그가 없습니다.</p>';
+        if (rows.length === 0) $('jobRuns').innerHTML = '<p class="muted">검색 조건에 맞는 실행 로그가 없습니다.</p>';
       }
 
       async function loadUiModelPresets() {
@@ -962,6 +1213,7 @@ import { applyTheme } from './theme.js';
       }
 
       async function loadYoutube() {
+        if ($('youtube')) $('youtube').innerHTML = renderTableSkeleton({ cols: 2, rows: 4 });
         const body = await api(`/admin/api/youtube?${youtubeQueryParams()}`);
         state.youtubePage = body.page;
         state.youtubeTotalPages = body.totalPages;
@@ -999,6 +1251,7 @@ import { applyTheme } from './theme.js';
       }
 
       async function loadNews() {
+        if ($('news')) $('news').innerHTML = renderTableSkeleton({ cols: 2, rows: 4 });
         const body = await api(`/admin/api/news?${newsQueryParams()}`);
         state.newsPage = body.page;
         state.newsTotalPages = body.totalPages;
@@ -1057,6 +1310,104 @@ import { applyTheme } from './theme.js';
       document.addEventListener('click', async (event) => {
         const target = event.target;
         try {
+          if (target?.id === 'hamburgerBtn') {
+            document.body.classList.toggle('sideOpen');
+            if ($('sideOverlay')) $('sideOverlay').classList.toggle('hidden', !document.body.classList.contains('sideOpen'));
+            return;
+          }
+          if (target?.id === 'collapseBtn') {
+            document.body.classList.toggle('sideCollapsed');
+            return;
+          }
+          if (target?.id === 'sideOverlay') {
+            document.body.classList.remove('sideOpen');
+            $('sideOverlay')?.classList.add('hidden');
+            return;
+          }
+          if (target?.id === 'headerNotifBtn') {
+            await refreshNotifications();
+            openPanel('notifPanel');
+            return;
+          }
+          if (target?.id === 'closeNotifPanel') {
+            closePanel('notifPanel');
+            return;
+          }
+          if (target?.id === 'headerProfileBtn') {
+            openPanel('profileMenu');
+            return;
+          }
+          if (target?.id === 'closeProfileMenu') {
+            closePanel('profileMenu');
+            return;
+          }
+          if (target?.id === 'profileLogoutBtn') {
+            closePanel('profileMenu');
+            $('logoutBtn')?.click();
+            return;
+          }
+          if (target?.id === 'closeGlobalSearch') {
+            closePanel('globalSearchPanel');
+            return;
+          }
+          if (target?.dataset?.searchHit) {
+            const idx = Number(target.dataset.searchHit);
+            const hit = (searchIndex.items || [])[idx];
+            closePanel('globalSearchPanel');
+            if (hit?.action) await hit.action();
+            return;
+          }
+          if (target?.id === 'refreshJobsBtn') {
+            await Promise.all([loadJobs(), loadJobRuns(), loadDashboard()]);
+            showToast('새로고침', 'Jobs/Logs refreshed', { kind: 'info' });
+            return;
+          }
+          if (target?.id === 'jobRunsBulkClear') {
+            state.jobRunsSelected = [];
+            await loadJobRuns();
+            return;
+          }
+          if (target?.id === 'jobRunsBulkRetry') {
+            const keys = [...new Set(state.jobRunsSelected || [])].filter(Boolean);
+            openConfirm({
+              title: '선택 재시도',
+              desc: '선택한 Job을 수동 실행(강제)합니다.',
+              body: `대상: ${keys.length ? keys.join(', ') : '(없음)'}`,
+              okText: '재시도',
+              danger: false,
+              onConfirm: async () => {
+                for (const key of keys) {
+                  await api(`/admin/api/jobs/${encodeURIComponent(key)}/run`, { method: 'POST' });
+                }
+                showToast('재시도 요청', `${keys.length}개 job 실행`, { kind: 'success' });
+                state.jobRunsSelected = [];
+                await Promise.all([loadJobRuns(), loadDashboard()]);
+              },
+            });
+            return;
+          }
+          if (target?.dataset?.jobEditOpen) {
+            const key = target.dataset.jobEditOpen;
+            const row = document.querySelector(`[data-job-edit-row="${CSS.escape(key)}"]`);
+            if (row) row.classList.toggle('hidden');
+            return;
+          }
+          if (target?.dataset?.jobEditClose) {
+            const key = target.dataset.jobEditClose;
+            const row = document.querySelector(`[data-job-edit-row="${CSS.escape(key)}"]`);
+            if (row) row.classList.add('hidden');
+            return;
+          }
+          if (target?.id === 'confirmClose' || target?.id === 'confirmCancel') {
+            closeConfirm();
+            return;
+          }
+          if (target?.id === 'confirmOk') {
+            const fn = confirmState.onConfirm;
+            closeConfirm();
+            if (fn) await fn();
+            return;
+          }
           if (target.dataset && target.dataset.comingSoon === 'true') {
             showToast('준비중', '해당 메뉴는 아직 구현되지 않았습니다.');
             return;
@@ -1066,12 +1417,50 @@ import { applyTheme } from './theme.js';
             await switchView('translations');
             return;
           }
+          if (target?.id === 'jobListReset') {
+            state.operationFilter = 'all';
+            state.jobListEnabled = 'all';
+            state.jobListDomain = 'all';
+            state.jobListProvider = 'all';
+            state.jobListQuery = '';
+            state.jobListSort = 'name';
+            await loadJobs();
+            return;
+          }
           if (target.dataset.dashboardOp) {
             state.dashboardOperationFilter = target.dataset.dashboardOp || 'all';
             await loadDashboard();
             return;
           }
+          if (target?.id === 'jobRunsSelectAll') {
+            // handled by change listener
+            return;
+          }
+          if (target?.dataset?.jobRunSelect) {
+            // handled by change listener
+            return;
+          }
+          if (target?.dataset?.runSort) {
+            const key = target.dataset.runSort;
+            if (state.jobRunsSortKey === key) state.jobRunsSortDir = state.jobRunsSortDir === 'asc' ? 'desc' : 'asc';
+            else { state.jobRunsSortKey = key; state.jobRunsSortDir = 'desc'; }
+            await loadJobRuns();
+            const params = new URLSearchParams(window.location.search);
+            params.set('runSort', state.jobRunsSortKey || 'finishedAt');
+            params.set('runDir', state.jobRunsSortDir || 'desc');
+            window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+            return;
+          }
+          if (target.dataset.toastClose) {
+            dismissToast(target.dataset.toastClose);
+            return;
+          }
           if (target.dataset.view) await switchView(target.dataset.view);
+          // Close sidebar overlay after navigation (tablet)
+          if (document.body.classList.contains('sideOpen')) {
+            document.body.classList.remove('sideOpen');
+            $('sideOverlay')?.classList.add('hidden');
+          }
           if (target.dataset.jobTab) setJobTab(target.dataset.jobTab);
           if (target.dataset.settingsTab) setSettingsTab(target.dataset.settingsTab);
           if (target.dataset.opFilter) {
@@ -1151,12 +1540,22 @@ import { applyTheme } from './theme.js';
           }
           if (target.dataset.providerClear) {
             const provider = target.dataset.providerClear;
-            if (!confirm(`${provider} API key를 삭제할까요?`)) return;
-            await api(`/admin/api/provider-settings/${provider}`, {
-              method: 'PATCH',
-              body: JSON.stringify({ clearApiKey: true }),
+            openConfirm({
+              title: 'API Key 삭제',
+              desc: '해당 Provider의 API Key를 삭제합니다.',
+              body: `Provider: ${provider}`,
+              okText: '삭제',
+              danger: true,
+              onConfirm: async () => {
+                await api(`/admin/api/provider-settings/${provider}`, {
+                  method: 'PATCH',
+                  body: JSON.stringify({ clearApiKey: true }),
+                });
+                showToast('삭제 완료', provider, { kind: 'success' });
+                await loadProviderSettings();
+              },
             });
-            await loadProviderSettings();
+            return;
           }
           if (target.id === 'saveUiModelPresets') {
             const next = {
@@ -1283,20 +1682,53 @@ import { applyTheme } from './theme.js';
           }
           if (target.id === 'retranslateSelectedBtn') {
             const ids = selectedNewsIds();
-            await api('/admin/api/news/retranslate', { method: 'POST', body: JSON.stringify({ ids, locale: $('newsLocale').value }) });
-            await loadNews();
+            const locale = $('newsLocale').value;
+            openConfirm({
+              title: '선택 번역',
+              desc: '선택한 뉴스의 번역을 다시 생성합니다.',
+              body: `대상: ${ids.length}개 · locale=${locale}`,
+              okText: '번역',
+              danger: false,
+              onConfirm: async () => {
+                await api('/admin/api/news/retranslate', { method: 'POST', body: JSON.stringify({ ids, locale }) });
+                showToast('번역 요청', `${ids.length}개`, { kind: 'success' });
+                await loadNews();
+              },
+            });
+            return;
           }
           if (target.id === 'deleteSelectedNewsBtn') {
             const ids = selectedNewsIds();
             if (ids.length === 0) return;
-            if (!confirm(`선택한 뉴스 ${ids.length}개를 삭제할까요?`)) return;
-            await api('/admin/api/news/delete', { method: 'POST', body: JSON.stringify({ ids }) });
-            await Promise.all([loadNews(), loadDashboard()]);
+            openConfirm({
+              title: '선택 삭제',
+              desc: '선택한 뉴스와 번역을 삭제합니다.',
+              body: `대상: ${ids.length}개`,
+              okText: '삭제',
+              danger: true,
+              onConfirm: async () => {
+                await api('/admin/api/news/delete', { method: 'POST', body: JSON.stringify({ ids }) });
+                showToast('삭제 완료', `${ids.length}개`, { kind: 'success' });
+                await Promise.all([loadNews(), loadDashboard()]);
+              },
+            });
+            return;
           }
           if (target.id === 'refreshSelectedYoutubeBtn') {
             const ids = selectedYoutubeIds();
-            await api('/admin/api/youtube/refresh-selected', { method: 'POST', body: JSON.stringify({ ids }) });
-            await Promise.all([loadYoutube(), loadJobRuns(), loadDashboard()]);
+            openConfirm({
+              title: '선택 갱신',
+              desc: '선택한 유튜브 영상을 provider에서 다시 조회합니다.',
+              body: `대상: ${ids.length}개`,
+              okText: '갱신',
+              danger: false,
+              onConfirm: async () => {
+                await api('/admin/api/youtube/refresh-selected', { method: 'POST', body: JSON.stringify({ ids }) });
+                showToast('갱신 요청', `${ids.length}개`, { kind: 'success' });
+                await Promise.all([loadYoutube(), loadJobRuns(), loadDashboard()]);
+              },
+            });
+            return;
           }
           if (target.id === 'resetTranslationTestText') {
             $('translationTestText').value = 'Signal 앱을 이용해 주셔서 감사합니다. 앞으로도 좋은 기능들을 업데이트하겠습니다.';
@@ -1317,15 +1749,24 @@ import { applyTheme } from './theme.js';
             const targets = [...document.querySelectorAll('[data-reset-target]')]
               .filter((box) => box.checked)
               .map((box) => box.dataset.resetTarget);
-            const body = {
-              targets,
-              confirmText: $('resetConfirmText').value.trim(),
-            };
-            const result = await api('/admin/api/data-reset', { method: 'POST', body: JSON.stringify(body) });
-            $('resetResult').textContent = `초기화 완료: ${result.data.targets.join(', ')}`;
-            $('resetConfirmText').value = '';
-            document.querySelectorAll('[data-reset-target]').forEach((box) => { box.checked = false; });
-            await Promise.all([loadDashboard(), loadJobs(), loadJobRuns(), loadNews(), loadYoutube()]);
+            const confirmText = $('resetConfirmText').value.trim();
+            openConfirm({
+              title: '데이터 초기화',
+              desc: '이 작업은 되돌릴 수 없습니다.',
+              body: `대상: ${targets.length ? targets.join(', ') : '(선택 없음)'}\n확인문구: ${confirmText || '(없음)'}`,
+              okText: '초기화',
+              danger: true,
+              onConfirm: async () => {
+                const body = { targets, confirmText };
+                const result = await api('/admin/api/data-reset', { method: 'POST', body: JSON.stringify(body) });
+                $('resetResult').textContent = `초기화 완료: ${result.data.targets.join(', ')}`;
+                $('resetConfirmText').value = '';
+                document.querySelectorAll('[data-reset-target]').forEach((box) => { box.checked = false; });
+                showToast('초기화 완료', result.data.targets.join(', '), { kind: 'success' });
+                await Promise.all([loadDashboard(), loadJobs(), loadJobRuns(), loadNews(), loadYoutube()]);
+              },
+            });
+            return;
           }
           if (target.dataset.page === 'prev' && state.newsPage > 1) {
             state.newsPage -= 1;
@@ -1336,7 +1777,7 @@ import { applyTheme } from './theme.js';
             await loadNews();
           }
         } catch (error) {
-          alert(error.message);
+          showToast('오류', error.message, { kind: 'error' });
         }
       });
 
@@ -1362,6 +1803,9 @@ import { applyTheme } from './theme.js';
           localStorage.setItem('signalAdminTimeBasis', event.target.value);
           await Promise.all([loadDashboard(), loadJobs(), loadJobRuns(), loadNews(), loadYoutube()]);
         }
+        if (event.target.id === 'globalSearchQuery') {
+          if ($('globalSearchResults')) $('globalSearchResults').innerHTML = renderSearchResults(event.target.value);
+        }
         if (event.target.id === 'newsRange') {
           setDatePreset();
           state.newsPage = 1;
@@ -1370,6 +1814,37 @@ import { applyTheme } from './theme.js';
         if (event.target.id === 'dashboardSort') {
           state.dashboardSort = event.target.value || 'newest';
           await loadDashboard();
+        }
+        if (event.target.id === 'jobListEnabled') {
+          state.jobListEnabled = event.target.value || 'all';
+          await loadJobs();
+        }
+        if (event.target.id === 'jobListDomain') {
+          state.jobListDomain = event.target.value || 'all';
+          await loadJobs();
+        }
+        if (event.target.id === 'jobListProvider') {
+          state.jobListProvider = event.target.value || 'all';
+          await loadJobs();
+        }
+        if (event.target.id === 'jobListSort') {
+          state.jobListSort = event.target.value || 'name';
+          await loadJobs();
+        }
+        if (event.target.id === 'jobRunsSelectAll') {
+          const checked = !!event.target.checked;
+          const keys = [...document.querySelectorAll('[data-job-run-select]')]
+            .map((el) => el.dataset.jobRunSelect)
+            .filter(Boolean);
+          state.jobRunsSelected = checked ? [...new Set(keys)] : [];
+          await loadJobRuns();
+        }
+        if (event.target.dataset.jobRunSelect) {
+          const key = event.target.dataset.jobRunSelect;
+          const selected = new Set(state.jobRunsSelected || []);
+          if (event.target.checked) selected.add(key);
+          else selected.delete(key);
+          state.jobRunsSelected = [...selected];
         }
         if (event.target.id === 'jobRunRange') {
           setJobRunDatePreset();
@@ -1388,12 +1863,33 @@ import { applyTheme } from './theme.js';
       });
 
       document.addEventListener('keydown', async (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+          event.preventDefault();
+          buildSearchIndex();
+          if ($('globalSearchQuery')) $('globalSearchQuery').value = '';
+          if ($('globalSearchResults')) $('globalSearchResults').innerHTML = renderSearchResults('');
+          openPanel('globalSearchPanel');
+          setTimeout(() => $('globalSearchQuery')?.focus(), 0);
+        }
+        if (event.key === 'Escape') {
+          document.body.classList.remove('sideOpen');
+          if ($('sideOverlay')) $('sideOverlay').classList.add('hidden');
+          if (isPanelOpen('globalSearchPanel')) closePanel('globalSearchPanel');
+          if (isPanelOpen('notifPanel')) closePanel('notifPanel');
+          if (isPanelOpen('profileMenu')) closePanel('profileMenu');
+          if (confirmState.open) closeConfirm();
+        }
         if (event.key === 'Escape' && state.marketListDraft) {
           closeMarketListDialog();
         }
         if (event.key === 'Enter' && event.target.id === 'marketListAddSymbol') {
           event.preventDefault();
           document.getElementById('addMarketListSymbol')?.click();
+        }
+        if (event.key === 'Enter' && event.target.id === 'jobListQuery') {
+          event.preventDefault();
+          state.jobListQuery = $('jobListQuery')?.value || '';
+          await loadJobs();
         }
       });
 

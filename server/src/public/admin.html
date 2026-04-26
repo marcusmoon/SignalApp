@@ -18,6 +18,14 @@
         </div>
       </div>
       <div class="topTools">
+        <button id="hamburgerBtn" class="secondary hamburgerBtn" aria-label="menu">☰</button>
+        <button id="collapseBtn" class="secondary collapseBtn" aria-label="collapse sidebar">▸</button>
+        <label class="headerSearch" aria-label="Global search">
+          <input id="globalSearchInput" placeholder="메뉴, job, 콘텐츠 검색... (⌘K)" />
+        </label>
+        <button id="headerNotifBtn" class="secondary" aria-label="notifications">🔔<span id="headerNotifBadge" class="pill muted" style="margin-left:6px;display:none">0</span></button>
+        <button id="headerHelpBtn" class="secondary" aria-label="help">?</button>
+        <button id="headerProfileBtn" class="secondary" aria-label="profile menu"><span id="headerProfileName">admin</span> ▾</button>
         <span>🌐</span>
         <select id="adminLanguage">
           <option value="ko">한국어</option>
@@ -39,6 +47,7 @@
     </header>
 
     <main>
+      <div id="sideOverlay" class="sideOverlay hidden" aria-hidden="true"></div>
       <section id="loginPanel" class="loginShell">
         <div class="loginCard">
           <div class="signalLogo" aria-label="Signal Admin">
@@ -61,25 +70,25 @@
       <div id="adminPanel" class="layout hidden">
         <aside class="side">
           <div class="navGroup">
-            <button class="navBtn active" data-view="dashboard">📊 대시보드</button>
+            <button class="navBtn active" data-view="dashboard" data-icon="📊">📊 대시보드</button>
 
             <div class="navSectionTitle muted">📰 콘텐츠 관리</div>
-            <button class="navBtn secondary" data-view="news">뉴스 목록</button>
-            <button class="navBtn secondary" data-view="youtube">유튜브 관리</button>
-            <button class="navBtn secondary" data-view="concalls" data-coming-soon="true" aria-disabled="true">컨콜 요약</button>
-            <button class="navBtn secondary" data-view="calendar">투자 캘린더</button>
+            <button class="navBtn secondary" data-view="news" data-icon="📰">뉴스 목록</button>
+            <button class="navBtn secondary" data-view="youtube" data-icon="▶">유튜브 관리</button>
+            <button class="navBtn secondary" data-view="concalls" data-icon="📞" data-coming-soon="true" aria-disabled="true">컨콜 요약</button>
+            <button class="navBtn secondary" data-view="calendar" data-icon="📅">투자 캘린더</button>
 
             <div class="navSectionTitle muted" style="margin-top:10px">⚙️ 수집 서버</div>
-            <button class="navBtn secondary" data-view="monitoring">수집 현황</button>
-            <button class="navBtn secondary" data-view="jobs">스케줄 관리</button>
-            <button class="navBtn secondary" data-view="errors">오류 로그</button>
+            <button class="navBtn secondary" data-view="monitoring" data-icon="📈">수집 현황</button>
+            <button class="navBtn secondary" data-view="jobs" data-icon="⏱">스케줄 관리</button>
+            <button class="navBtn secondary" data-view="errors" data-icon="⚠️">오류 로그</button>
 
             <div class="navSectionTitle muted" style="margin-top:10px">🔧 시스템</div>
-            <button class="navBtn secondary" data-view="settings-keys">Provider 키관리</button>
-            <button class="navBtn secondary" data-view="settings-theme">테마</button>
-            <button class="navBtn secondary" data-view="settings-lists">마켓 리스트</button>
-            <button class="navBtn secondary" data-view="settings-danger">데이터 초기화</button>
-            <button class="navBtn secondary" data-view="translations">번역 설정</button>
+            <button class="navBtn secondary" data-view="settings-keys" data-icon="🔑">Provider 키관리</button>
+            <button class="navBtn secondary" data-view="settings-theme" data-icon="🎨">테마</button>
+            <button class="navBtn secondary" data-view="settings-lists" data-icon="📋">마켓 리스트</button>
+            <button class="navBtn secondary" data-view="settings-danger" data-icon="🧨">데이터 초기화</button>
+            <button class="navBtn secondary" data-view="translations" data-icon="🌐">번역 설정</button>
           </div>
           <a
             class="floatingProfile"
@@ -120,10 +129,16 @@
 
           <div id="view-jobs" class="view hidden">
             <div class="panel">
-              <h2>스케줄 관리</h2>
-              <div class="tabs">
-                <button class="tabBtn active" data-job-tab="info">Job 정보</button>
-                <button class="tabBtn" data-job-tab="runs">Job 로그</button>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle">스케줄 관리</div>
+                  <div class="pageDesc">Job 정의(활성/주기/설명)와 실행 로그를 운영 관점에서 관리합니다.</div>
+                </div>
+                <div class="pageHeaderActions">
+                  <button class="secondary" data-job-tab="info">Job 정보</button>
+                  <button class="secondary" data-job-tab="runs">Job 로그</button>
+                  <button class="secondary" id="refreshJobsBtn">새로고침</button>
+                </div>
               </div>
               <div id="jobs"></div>
               <div id="jobRunsPanel" class="hidden">
@@ -332,7 +347,15 @@
 
           <div id="view-settings" class="view hidden">
             <div class="panel">
-              <h2 id="settingsTitle">Provider 키관리</h2>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle" id="settingsTitle">Provider 키관리</div>
+                  <div class="pageDesc" id="settingsDesc">외부 Provider(API Key)와 LLM 기본 모델(defaultModel)을 관리합니다.</div>
+                </div>
+                <div class="pageHeaderActions">
+                  <button class="secondary" data-view="translations">번역 설정으로</button>
+                </div>
+              </div>
 
               <div id="settingsTab-keys" class="settingsTab">
                 <p class="muted">키는 화면에 전체 노출하지 않고 마스킹합니다. 저장 후 서버 재시작 없이 다음 호출부터 사용됩니다.</p>
@@ -378,6 +401,85 @@
       </div>
     </main>
     <div id="toastHost" class="toastHost hidden" aria-live="polite" aria-atomic="true"></div>
+    <div id="globalSearchPanel" class="dialogBackdrop hidden" role="dialog" aria-modal="true" aria-label="검색">
+      <div class="dialogPanel" style="width:min(720px,100%);grid-template-rows:auto minmax(0,1fr) auto">
+        <div class="dialogHead">
+          <div>
+            <h3>검색</h3>
+            <div class="muted">메뉴/Job/콘텐츠를 빠르게 찾습니다.</div>
+          </div>
+          <button id="closeGlobalSearch" class="secondary" aria-label="닫기">✕</button>
+        </div>
+        <div class="dialogBody">
+          <input id="globalSearchQuery" placeholder="검색어 입력..." />
+          <div id="globalSearchResults" style="margin-top:10px"></div>
+        </div>
+        <div class="dialogFoot">
+          <span class="muted">Enter: 이동 · Esc: 닫기</span>
+          <div class="row"></div>
+        </div>
+      </div>
+    </div>
+    <div id="notifPanel" class="dialogBackdrop hidden" role="dialog" aria-modal="true" aria-label="알림">
+      <div class="dialogPanel" style="width:min(520px,100%);grid-template-rows:auto minmax(0,1fr) auto">
+        <div class="dialogHead">
+          <div>
+            <h3>알림</h3>
+            <div class="muted">최근 실패/주기 초과를 보여줍니다.</div>
+          </div>
+          <button id="closeNotifPanel" class="secondary" aria-label="닫기">✕</button>
+        </div>
+        <div class="dialogBody">
+          <div id="notifList"></div>
+        </div>
+        <div class="dialogFoot">
+          <span class="muted"></span>
+          <div class="row">
+            <button class="secondary" data-view="errors">오류 로그로 이동</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="profileMenu" class="dialogBackdrop hidden" role="dialog" aria-modal="true" aria-label="프로필 메뉴">
+      <div class="dialogPanel" style="width:min(320px,100%);grid-template-rows:auto minmax(0,1fr) auto">
+        <div class="dialogHead">
+          <div>
+            <h3 id="profileMenuTitle">프로필</h3>
+            <div class="muted">관리자 메뉴</div>
+          </div>
+          <button id="closeProfileMenu" class="secondary" aria-label="닫기">✕</button>
+        </div>
+        <div class="dialogBody">
+          <div class="row" style="flex-direction:column;align-items:stretch">
+            <button class="secondary" data-view="settings-keys">Provider 키관리</button>
+            <button class="secondary" data-view="translations">번역 설정</button>
+            <button class="danger" id="profileLogoutBtn">로그아웃</button>
+          </div>
+        </div>
+        <div class="dialogFoot"><span class="muted"></span><div class="row"></div></div>
+      </div>
+    </div>
+    <div id="confirmModal" class="dialogBackdrop hidden" role="dialog" aria-modal="true" aria-label="확인">
+      <div class="dialogPanel" style="width:min(420px,100%);grid-template-rows:auto minmax(0,1fr) auto">
+        <div class="dialogHead">
+          <div>
+            <h3 id="confirmTitle">확인</h3>
+            <div id="confirmDesc" class="muted"></div>
+          </div>
+          <button id="confirmClose" class="secondary" aria-label="닫기">✕</button>
+        </div>
+        <div class="dialogBody">
+          <div id="confirmBody" class="summary"></div>
+        </div>
+        <div class="dialogFoot">
+          <span class="muted"></span>
+          <div class="row">
+            <button id="confirmCancel" class="secondary">취소</button>
+            <button id="confirmOk" class="danger">확인</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div id="marketListDialog" class="dialogBackdrop hidden" role="dialog" aria-modal="true" aria-label="마켓 리스트 편집">
       <div class="dialogPanel">
         <div class="dialogHead">

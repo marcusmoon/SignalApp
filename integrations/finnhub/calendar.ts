@@ -77,12 +77,19 @@ export function mapEconomicToEvents(rows: FinnhubEconomicRow[]): CalendarEvent[]
   return rows.map((r, i) => {
     const type = classifyMacro(r.event);
     const time = r.time && r.time.length >= 16 ? r.time.slice(11, 16) + ' ET' : r.time || '—';
+    const impact = r.impact?.trim().toLowerCase();
     return {
       id: `m-${r.country}-${i}-${r.time}`,
       date: r.time ? r.time.slice(0, 10) : '—',
       time,
       title: r.event,
       type,
+      impact: impact === 'high' || impact === 'medium' || impact === 'low' ? impact : undefined,
+      actual: r.actual,
+      estimate: r.estimate,
+      prev: r.prev,
+      unit: r.unit,
+      country: r.country,
     };
   });
 }

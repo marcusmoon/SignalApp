@@ -1,13 +1,15 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useIsFocused } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 
 import type { AppTheme } from '@/constants/theme';
 import { MEGA_CAP_TICKERS } from '@/constants/megaCapUniverse';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { fetchSignalMarketList } from '@/integrations/signal-api';
+import { useSignalApiBackend } from '@/services/env';
 
 const NUM_COLUMNS = 3;
 
@@ -17,24 +19,48 @@ export default function MegaCapListScreen() {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const [symbols, setSymbols] = useState<string[]>([...MEGA_CAP_TICKERS]);
+  const shouldUseSignalApi = useSignalApiBackend();
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      if (!shouldUseSignalApi) {
+        setSymbols([...MEGA_CAP_TICKERS]);
+        return () => {
+          cancelled = true;
+        };
+      }
+      void fetchSignalMarketList('mega_cap')
+        .then((list) => {
+          if (!cancelled && list.symbols.length > 0) setSymbols(list.symbols);
+        })
+        .catch(() => {
+          if (!cancelled) setSymbols([...MEGA_CAP_TICKERS]);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [shouldUseSignalApi]),
+  );
 
   const header = useMemo(
     () => (
       <View style={styles.leadBlock}>
         <Text style={styles.lead}>{t('screenMegaCapListLead')}</Text>
         <Text style={styles.count}>
-          {t('screenMegaCapListCount', { count: MEGA_CAP_TICKERS.length })}
+          {t('screenMegaCapListCount', { count: symbols.length })}
         </Text>
       </View>
     ),
-    [styles, t],
+    [styles, symbols.length, t],
   );
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
       <FlatList
-        data={[...MEGA_CAP_TICKERS]}
+        data={symbols}
         keyExtractor={(item) => item}
         numColumns={NUM_COLUMNS}
         columnWrapperStyle={styles.columnWrap}

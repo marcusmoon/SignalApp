@@ -1,6 +1,6 @@
-import { type ElementRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  type NativeMethods,
+  FlatList,
   Platform,
   Pressable,
   RefreshControl,
@@ -31,13 +31,12 @@ import {
 } from '@/services/calendarEventTypeFilterPreference';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import { loadCalendarConcallScope } from '@/services/calendarConcallScopePreference';
-import { hasFinnhub } from '@/services/env';
+import { hasFinnhub, useSignalApiBackend } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
+import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
 import { toYmd } from '@/utils/date';
 import type { MessageId } from '@/locales/messages';
 import type { CalendarEvent } from '@/types/signal';
-
-type EventSection = { title: string; data: CalendarEvent[] };
 
 function calendarEventTimeLabel(ev: CalendarEvent, t: (id: MessageId) => string): string {
   const code = ev.earningsHourCode;
@@ -48,26 +47,24 @@ function calendarEventTimeLabel(ev: CalendarEvent, t: (id: MessageId) => string)
   return ev.time || '—';
 }
 
+function formatCalendarMetric(n: number | null | undefined, unit?: string): string {
+  if (n == null || !Number.isFinite(n)) return '—';
+  const body = Math.abs(n) >= 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 1 }) : String(n);
+  return unit ? `${body}${unit}` : body;
+}
+
+function calendarSurpriseLabel(ev: CalendarEvent, t: (id: MessageId) => string): string | null {
+  if (ev.actual == null || ev.estimate == null || !Number.isFinite(ev.actual) || !Number.isFinite(ev.estimate)) {
+    return null;
+  }
+  if (ev.actual > ev.estimate) return t('calendarActualAboveEstimate');
+  if (ev.actual < ev.estimate) return t('calendarActualBelowEstimate');
+  return t('calendarActualInlineEstimate');
+}
+
 function ymdInMonth(ymd: string, year: number, month0: number): boolean {
   const prefix = `${year}-${String(month0 + 1).padStart(2, '0')}-`;
   return ymd.startsWith(prefix);
-}
-
-/** ScrollView 런타임 API — Fabric에서 measureLayout 상대 기준으로 inner content ref 필요 (TS에는 미기재) */
-function getScrollInnerContentRef(scroll: ScrollView): NativeMethods | null {
-  const s = scroll as ScrollView & { getInnerViewRef?: () => NativeMethods | null };
-  return s.getInnerViewRef?.() ?? null;
-}
-
-/** 스크롤할 섹션 날짜(YYYY-MM-DD). 일정이 없는 날이면 가장 가까운 이전 일정일 */
-function findScrollTargetYmd(sections: { title: string }[], ymd: string): string | null {
-  if (sections.length === 0) return null;
-  const exact = sections.find((s) => s.title === ymd);
-  if (exact) return exact.title;
-  const after = sections.findIndex((s) => s.title > ymd);
-  if (after === -1) return sections[sections.length - 1].title;
-  if (after === 0) return sections[0].title;
-  return sections[after - 1].title;
 }
 
 export default function CalendarScreen() {
@@ -77,9 +74,6 @@ export default function CalendarScreen() {
 
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const scrollRef = useRef<ScrollView>(null);
-  /** 날짜 블록 View — measureLayout로 inner content 기준 Y를 구해 scrollTo에 사용 */
-  const dayBlockRefs = useRef<Record<string, ElementRef<typeof View> | null>>({});
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -90,6 +84,7 @@ export default function CalendarScreen() {
     () => new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER),
   );
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const signalApiMode = useSignalApiBackend();
 
   useEffect(() => {
     void loadCalendarEventTypeFilter().then(setEnabledTypes);
@@ -117,6 +112,17 @@ export default function CalendarScreen() {
   const load = useCallback(
     async (forceRefresh?: boolean) => {
       setError(null);
+      if (signalApiMode) {
+        const rangeFrom = new Date(visibleMonth.year, visibleMonth.month, 1);
+        const rangeTo = new Date(visibleMonth.year, visibleMonth.month + 1, 0);
+        const list = await fetchSignalCalendar({
+          from: toYmd(rangeFrom),
+          to: toYmd(rangeTo),
+        });
+        setEvents(list.map(signalCalendarToCalendarEvent));
+        return;
+      }
+
       if (!hasFinnhub()) {
         setEvents([]);
         setError(t('errorFinnhubTokenShort'));
@@ -134,7 +140,7 @@ export default function CalendarScreen() {
       );
       setEvents(list);
     },
-    [visibleMonth, t],
+    [signalApiMode, visibleMonth, t],
   );
 
   useEffect(() => {
@@ -173,26 +179,14 @@ export default function CalendarScreen() {
     [events, enabledTypes],
   );
 
-  const sections = useMemo((): EventSection[] => {
-    const byDay = new Map<string, CalendarEvent[]>();
-    for (const e of filteredEvents) {
-      const k = e.date;
-      if (!byDay.has(k)) byDay.set(k, []);
-      byDay.get(k)!.push(e);
-    }
-    const keys = [...byDay.keys()].sort();
-    return keys.map((ymd) => ({ title: ymd, data: byDay.get(ymd)! }));
-  }, [filteredEvents]);
-
-  const sectionsKey = useMemo(() => sections.map((s) => s.title).join('|'), [sections]);
-
-  const prevSectionsKeyRef = useRef(sectionsKey);
-  if (prevSectionsKeyRef.current !== sectionsKey) {
-    prevSectionsKeyRef.current = sectionsKey;
-    dayBlockRefs.current = {};
-  }
-
   const eventDates = useMemo(() => new Set(filteredEvents.map((e) => e.date)), [filteredEvents]);
+  const selectedDayEvents = useMemo(
+    () =>
+      filteredEvents
+        .filter((event) => event.date === selectedYmd)
+        .sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')) || a.title.localeCompare(b.title)),
+    [filteredEvents, selectedYmd],
+  );
 
   const onToggleEventType = useCallback((type: CalendarEventTypeKey) => {
     setEnabledTypes((prev) => {
@@ -231,46 +225,6 @@ export default function CalendarScreen() {
     [locale],
   );
 
-  const scrollToSelectedBlock = useCallback(() => {
-    const targetYmd = findScrollTargetYmd(sections, selectedYmd);
-    if (!targetYmd) return;
-
-    const tryScroll = (attempt: number) => {
-      const scroll = scrollRef.current;
-      const block = dayBlockRefs.current[targetYmd];
-      if (!scroll || !block) {
-        if (attempt < 24) setTimeout(() => tryScroll(attempt + 1), 50);
-        return;
-      }
-      // Fabric: measureLayout은 node handle(number)가 아니라 native ref(HostInstance)만 허용
-      const inner = getScrollInnerContentRef(scroll);
-      if (inner == null) {
-        if (attempt < 24) setTimeout(() => tryScroll(attempt + 1), 50);
-        return;
-      }
-      block.measureLayout(
-        inner,
-        (_x, y) => {
-          scroll.scrollTo({ y: Math.max(0, y - 10), animated: true });
-        },
-        () => {
-          if (attempt < 24) setTimeout(() => tryScroll(attempt + 1), 80);
-        },
-      );
-    };
-
-    setTimeout(() => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => tryScroll(0));
-      });
-    }, 60);
-  }, [sections, selectedYmd]);
-
-  useEffect(() => {
-    if (loading || sections.length === 0) return;
-    scrollToSelectedBlock();
-  }, [selectedYmd, loading, sectionsKey, scrollToSelectedBlock]);
-
   const todayYmd = toYmd(new Date());
 
   const goPrevMonth = useCallback(() => {
@@ -287,7 +241,7 @@ export default function CalendarScreen() {
     });
   }, []);
 
-  if (!hasFinnhub()) {
+  if (!signalApiMode && !hasFinnhub()) {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         {isFocused ? <OtaUpdateBanner /> : null}
@@ -303,8 +257,112 @@ export default function CalendarScreen() {
     );
   }
 
-  const emptyFiltered =
-    !loading && !error && events.length > 0 && filteredEvents.length === 0 && sections.length === 0;
+  const emptyFiltered = !loading && !error && events.length > 0 && filteredEvents.length === 0;
+
+  const renderEventCard = useCallback(
+    (ev: CalendarEvent) => {
+      const surprise = calendarSurpriseLabel(ev, t);
+
+      return (
+        <View style={styles.card}>
+          <View style={styles.cardRow}>
+            <View style={styles.titleBlock}>
+              <View style={styles.titleLine}>
+                <View
+                  style={[
+                    styles.typeTag,
+                    ev.type === 'earnings' && {
+                      borderColor: theme.green + '88',
+                      backgroundColor: theme.green + '22',
+                    },
+                    ev.type === 'macro' && {
+                      borderColor: theme.accentBlue + '88',
+                      backgroundColor: theme.accentBlue + '22',
+                    },
+                    ev.type === 'fed' && {
+                      borderColor: theme.accentOrange + '77',
+                      backgroundColor: theme.accentOrange + '18',
+                    },
+                    ev.type === 'fomc' && {
+                      borderColor: theme.accentOrange + 'CC',
+                      backgroundColor: theme.accentOrange + '30',
+                    },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.typeTagText,
+                      ev.type === 'earnings' && { color: theme.green },
+                      ev.type === 'macro' && { color: theme.accentBlue },
+                      ev.type === 'fed' && { color: theme.accentOrange },
+                      ev.type === 'fomc' && { color: theme.accentOrange },
+                    ]}>
+                    {ev.type === 'earnings'
+                      ? t('calendarTagEarnings')
+                      : ev.type === 'fomc'
+                        ? t('calendarTagFomc')
+                        : ev.type === 'fed'
+                          ? t('calendarTagFed')
+                          : t('calendarTagMacro')}
+                  </Text>
+                </View>
+                {ev.impact ? (
+                  <View
+                    style={[
+                      styles.impactTag,
+                      ev.impact === 'high' && styles.impactHigh,
+                      ev.impact === 'medium' && styles.impactMedium,
+                    ]}>
+                    <Text
+                      style={[
+                        styles.impactTagText,
+                        ev.impact === 'high' && { color: theme.accentOrange },
+                        ev.impact === 'medium' && { color: theme.accentBlue },
+                      ]}>
+                      {ev.impact === 'high'
+                        ? t('calendarImpactHigh')
+                        : ev.impact === 'medium'
+                          ? t('calendarImpactMedium')
+                          : t('calendarImpactLow')}
+                    </Text>
+                  </View>
+                ) : null}
+                <Text style={styles.title} numberOfLines={3}>
+                  {ev.title}
+                </Text>
+              </View>
+              {ev.type !== 'earnings' &&
+              (ev.actual != null || ev.estimate != null || ev.prev != null) ? (
+                <View style={styles.metricRow}>
+                  <Text style={styles.metricText}>
+                    {t('calendarMetricActual')}: {formatCalendarMetric(ev.actual, ev.unit)}
+                  </Text>
+                  <Text style={styles.metricText}>
+                    {t('calendarMetricEstimate')}: {formatCalendarMetric(ev.estimate, ev.unit)}
+                  </Text>
+                  <Text style={styles.metricText}>
+                    {t('calendarMetricPrevious')}: {formatCalendarMetric(ev.prev, ev.unit)}
+                  </Text>
+                </View>
+              ) : null}
+              {surprise ? <Text style={styles.surpriseText}>{surprise}</Text> : null}
+            </View>
+            <Text style={styles.time}>{calendarEventTimeLabel(ev, t)}</Text>
+          </View>
+        </View>
+      );
+    },
+    [styles, t, theme],
+  );
+
+  const renderListEmpty = useCallback(() => {
+    if (loading) return <Text style={styles.loading}>{t('commonLoading')}</Text>;
+    if (error) return null;
+    return (
+      <Text style={styles.empty}>
+        {emptyFiltered ? t('calendarFilterEmptyFiltered') : t('calendarScreenEmptyDay')}
+      </Text>
+    );
+  }, [emptyFiltered, error, loading, styles, t]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -331,95 +389,27 @@ export default function CalendarScreen() {
           compact
         />
       </View>
-      <ScrollView
-        ref={scrollRef}
+      <FlatList
         style={styles.listScroll}
+        data={selectedDayEvents}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => renderEventCard(item)}
+        ListHeaderComponent={<Text style={styles.monthHeading}>{formatDayHeader(selectedYmd)}</Text>}
+        ListEmptyComponent={renderListEmpty}
+        ListFooterComponent={<SignalBannerAd />}
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: 28 + insets.bottom + 56 },
-          sections.length === 0 && !loading ? styles.listContentEmpty : null,
+          selectedDayEvents.length === 0 && !loading ? styles.listContentEmpty : null,
         ]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
-        <Text style={styles.monthHeading}>{t('calendarScreenMonthHeading')}</Text>
-
-        {loading ? (
-          <Text style={styles.loading}>{t('commonLoading')}</Text>
-        ) : null}
-
-        {!loading && sections.length === 0 && !error ? (
-          <Text style={styles.empty}>
-            {emptyFiltered ? t('calendarFilterEmptyFiltered') : t('calendarScreenEmptyMonth')}
-          </Text>
-        ) : null}
-
-        {sections.map((section) => (
-          <View
-            key={section.title}
-            collapsable={false}
-            ref={(el) => {
-              if (el) dayBlockRefs.current[section.title] = el;
-              else delete dayBlockRefs.current[section.title];
-            }}>
-            <View style={styles.dayHeader}>
-              <Text style={styles.dayHeaderText}>{formatDayHeader(section.title)}</Text>
-            </View>
-            {section.data.map((ev) => (
-              <View key={ev.id} style={styles.card}>
-                <View style={styles.cardRow}>
-                  <View style={styles.titleBlock}>
-                    <View style={styles.titleLine}>
-                      <View
-                        style={[
-                          styles.typeTag,
-                          ev.type === 'earnings' && {
-                            borderColor: theme.green + '88',
-                            backgroundColor: theme.green + '22',
-                          },
-                          ev.type === 'macro' && {
-                            borderColor: theme.accentBlue + '88',
-                            backgroundColor: theme.accentBlue + '22',
-                          },
-                          ev.type === 'fed' && {
-                            borderColor: theme.accentOrange + '77',
-                            backgroundColor: theme.accentOrange + '18',
-                          },
-                          ev.type === 'fomc' && {
-                            borderColor: theme.accentOrange + 'CC',
-                            backgroundColor: theme.accentOrange + '30',
-                          },
-                        ]}>
-                        <Text
-                          style={[
-                            styles.typeTagText,
-                            ev.type === 'earnings' && { color: theme.green },
-                            ev.type === 'macro' && { color: theme.accentBlue },
-                            ev.type === 'fed' && { color: theme.accentOrange },
-                            ev.type === 'fomc' && { color: theme.accentOrange },
-                          ]}>
-                          {ev.type === 'earnings'
-                            ? t('calendarTagEarnings')
-                            : ev.type === 'fomc'
-                              ? t('calendarTagFomc')
-                              : ev.type === 'fed'
-                                ? t('calendarTagFed')
-                                : t('calendarTagMacro')}
-                        </Text>
-                      </View>
-                      <Text style={styles.title} numberOfLines={3}>
-                        {ev.title}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={styles.time}>{calendarEventTimeLabel(ev, t)}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        ))}
-
-        <SignalBannerAd />
-      </ScrollView>
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}
+        initialNumToRender={18}
+        maxToRenderPerBatch={18}
+        updateCellsBatchingPeriod={32}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS !== 'web'}
+      />
 
       {filterReady ? (
         <Pressable
@@ -479,14 +469,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.text,
       marginBottom: 6,
     },
-    dayHeader: {
-      backgroundColor: theme.bg,
-      paddingVertical: 5,
-      marginTop: 2,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    dayHeaderText: { fontSize: sf(12), fontWeight: '800', color: theme.green },
     loading: { fontSize: sf(12), color: theme.textMuted, marginBottom: 8, paddingVertical: 4 },
     errBox: {
       padding: 10,
@@ -527,6 +509,24 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginTop: 1,
     },
     typeTagText: { fontSize: sf(9), fontWeight: '800' },
+    impactTag: {
+      borderWidth: 1,
+      borderRadius: 5,
+      paddingHorizontal: 5,
+      paddingVertical: 2,
+      marginTop: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+    },
+    impactHigh: {
+      borderColor: theme.accentOrange + '88',
+      backgroundColor: theme.accentOrange + '1A',
+    },
+    impactMedium: {
+      borderColor: theme.accentBlue + '77',
+      backgroundColor: theme.accentBlue + '18',
+    },
+    impactTagText: { fontSize: sf(9), fontWeight: '800', color: theme.textMuted },
     time: { fontSize: sf(10), color: theme.textMuted, marginTop: 1, flexShrink: 0 },
     title: {
       flexGrow: 1,
@@ -536,6 +536,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '700',
       color: theme.text,
       lineHeight: sf(18),
+    },
+    metricRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 7,
+      marginTop: 7,
+    },
+    metricText: { fontSize: sf(10), fontWeight: '700', color: theme.textMuted },
+    surpriseText: {
+      marginTop: 6,
+      fontSize: sf(10),
+      fontWeight: '800',
+      color: theme.textDim,
     },
     filterFab: {
       position: 'absolute',

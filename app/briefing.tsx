@@ -30,6 +30,7 @@ import {
   type FinnhubQuote,
   type FinnhubStockCandles,
 } from '@/integrations/finnhub';
+import { buildSignalScore, type SignalScore } from '@/domain/signals';
 import { loadMarketSnapshotQuotes } from '@/services/marketSnapshotQuotes';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { addDays, toYmd } from '@/utils/date';
@@ -109,6 +110,17 @@ function insightVsSma20(candles: FinnhubStockCandles, lastPrice: number): { vsSm
   const sma = last20.reduce((a, b) => a + b, 0) / 20;
   if (!Number.isFinite(sma) || sma === 0 || !Number.isFinite(lastPrice)) return null;
   return { vsSmaPct: ((lastPrice - sma) / sma) * 100 };
+}
+
+function signalReasonLabel(reason: string, t: ReturnType<typeof useLocale>['t']): string {
+  if (reason === 'news_dense') return t('signalReasonNewsDense');
+  if (reason === 'news_active') return t('signalReasonNewsActive');
+  if (reason === 'price_surge') return t('signalReasonPriceSurge');
+  if (reason === 'price_drop') return t('signalReasonPriceDrop');
+  if (reason === 'price_move') return t('signalReasonPriceMove');
+  if (reason === 'sma_stretched') return t('signalReasonSmaStretched');
+  if (reason === 'earnings_soon') return t('signalReasonEarningsSoon');
+  return t('signalReasonWatch');
 }
 
 export default function BriefingScreen() {
@@ -237,6 +249,23 @@ export default function BriefingScreen() {
     return economicWeek.slice(0, 10);
   }, [economicWeek]);
 
+  const signalRows = useMemo(() => {
+    const todayYmd = toYmd(startOfLocalDay(new Date()));
+    return symbols
+      .map((sym) =>
+        buildSignalScore({
+          symbol: sym,
+          quote: quoteBySymbol[sym],
+          news: newsBySymbol[sym] ?? [],
+          nextEarning: nextEarningForSymbol(earnings, sym),
+          vsSmaPct: smaBySymbol[sym]?.vsSmaPct ?? null,
+          todayYmd,
+        }),
+      )
+      .sort((a, b) => b.score - a.score || b.newsCount - a.newsCount || a.symbol.localeCompare(b.symbol))
+      .slice(0, 20);
+  }, [earnings, newsBySymbol, quoteBySymbol, smaBySymbol, symbols]);
+
   const { weekEarnings, pulseLines } = useMemo(() => {
     if (symbols.length === 0) {
       return { weekEarnings: [] as FinnhubEarningsRow[], pulseLines: [] as string[] };
@@ -347,6 +376,64 @@ export default function BriefingScreen() {
 
           {!error ? (
             <>
+              {signalRows.length > 0 ? (
+                <>
+                  <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingTodaySignalsTitle')}</Text>
+                  <View style={styles.signalBoard}>
+                    {signalRows.map((row: SignalScore, index) => {
+                      const q = quoteBySymbol[row.symbol] ?? null;
+                      const dp = q ? effectiveDp(q) : Number.NaN;
+                      const up = (Number.isFinite(dp) ? dp : 0) >= 0;
+                      const reasons = row.reasons.slice(0, 2).map((r) => signalReasonLabel(r, t));
+                      if (reasons.length === 0) reasons.push(t('signalReasonWatch'));
+                      return (
+                        <Pressable
+                          key={`signal-${row.symbol}`}
+                          style={[
+                            styles.signalRow,
+                            row.level === 'hot' && styles.signalRowHot,
+                            row.level === 'quiet' && styles.signalRowQuiet,
+                          ]}
+                          onPress={() => router.push(`/symbol/${row.symbol}`)}
+                          accessibilityRole="button"
+                          accessibilityLabel={t('briefingSignalOpenA11y', {
+                            symbol: row.symbol,
+                            score: String(row.score),
+                          })}>
+                          <Text style={styles.signalRank}>{index + 1}</Text>
+                          <View style={styles.signalMain}>
+                            <View style={styles.signalTitleRow}>
+                              <Text style={styles.signalSymbol}>{row.symbol}</Text>
+                              <Text style={[styles.signalMove, up ? styles.up : styles.dn]}>
+                                {q ? formatPct(dp) : '—'}
+                              </Text>
+                            </View>
+                            <Text style={styles.signalReasons} numberOfLines={1}>
+                              {reasons.join(' · ')}
+                            </Text>
+                          </View>
+                          <View
+                            style={[
+                              styles.signalScorePill,
+                              row.level === 'hot' && styles.signalScoreHot,
+                              row.level === 'quiet' && styles.signalScoreQuiet,
+                            ]}>
+                            <Text
+                              style={[
+                                styles.signalScoreText,
+                                row.level === 'hot' && styles.signalScoreTextHot,
+                                row.level === 'quiet' && styles.signalScoreTextQuiet,
+                              ]}>
+                              {row.score}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </>
+              ) : null}
+
               {symbols.length > 0 ? (
                 <>
                   <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingSectionInsights')}</Text>
@@ -623,6 +710,58 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '600',
       color: theme.textMuted,
     },
+    signalBoard: {
+      borderRadius: 14,
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      marginBottom: 10,
+      overflow: 'hidden',
+    },
+    signalRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 11,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    signalRowHot: {
+      backgroundColor: theme.accentOrange + '10',
+      borderLeftWidth: 3,
+      borderLeftColor: theme.accentOrange,
+    },
+    signalRowQuiet: {
+      backgroundColor: theme.bgElevated + '66',
+    },
+    signalRank: { width: 20, fontSize: sf(11), fontWeight: '900', color: theme.textMuted, textAlign: 'center' },
+    signalMain: { flex: 1, minWidth: 0 },
+    signalTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
+    signalSymbol: { fontSize: sf(14), fontWeight: '900', color: theme.text },
+    signalMove: { fontSize: sf(12), fontWeight: '800' },
+    signalReasons: { fontSize: sf(11), color: theme.textDim, fontWeight: '600' },
+    signalScorePill: {
+      minWidth: 38,
+      alignItems: 'center',
+      borderRadius: 999,
+      paddingHorizontal: 9,
+      paddingVertical: 5,
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+    },
+    signalScoreHot: {
+      backgroundColor: theme.accentOrange + '22',
+      borderColor: theme.accentOrange + '88',
+    },
+    signalScoreQuiet: {
+      backgroundColor: theme.bgElevated,
+      borderColor: theme.border,
+    },
+    signalScoreText: { fontSize: sf(12), fontWeight: '900', color: theme.text },
+    signalScoreTextHot: { color: theme.accentOrange },
+    signalScoreTextQuiet: { color: theme.textMuted },
     errBox: {
       padding: 10,
       borderRadius: 12,

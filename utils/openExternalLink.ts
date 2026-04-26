@@ -2,6 +2,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { Linking, Platform } from 'react-native';
 
 export type OpenExternalLinkOptions = {
+  /** 항상 인앱 브라우저(expo-web-browser)로 연다. */
+  preferInAppBrowser?: boolean;
   /**
    * 마지막에 `Linking.openURL(webUrl)`까지 실패하면 인앱 브라우저로 연다.
    * (야후 종목, 유튜브 영상 등 — 퀵 링크는 보통 false)
@@ -71,8 +73,13 @@ async function tryOpen(url: string): Promise<boolean> {
 
 async function openWebUrlWithOptionalInApp(
   webUrl: string,
+  preferInAppBrowser?: boolean,
   preferInAppBrowserOnLinkingFailure?: boolean,
 ): Promise<void> {
+  if (preferInAppBrowser) {
+    await WebBrowser.openBrowserAsync(webUrl);
+    return;
+  }
   try {
     await Linking.openURL(webUrl);
   } catch {
@@ -124,7 +131,8 @@ export async function openExternalLink(
   options?: OpenExternalLinkOptions,
 ): Promise<void> {
   const list = toLaunchList(appLaunchUrls);
-  const preferBrowser = options?.preferInAppBrowserOnLinkingFailure === true;
+  const preferInApp = options?.preferInAppBrowser === true;
+  const preferBrowserOnFailure = options?.preferInAppBrowserOnLinkingFailure === true;
 
   for (const url of list) {
     if (isIntentNavigationUrl(url)) {
@@ -168,5 +176,5 @@ export async function openExternalLink(
     }
   }
 
-  await openWebUrlWithOptionalInApp(webUrl, preferBrowser);
+  await openWebUrlWithOptionalInApp(webUrl, preferInApp, preferBrowserOnFailure);
 }

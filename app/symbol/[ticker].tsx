@@ -21,6 +21,7 @@ import {
   type FinnhubQuote,
   type FinnhubStockCandles,
 } from '@/integrations/finnhub';
+import { buildSignalScore } from '@/domain/signals';
 import { loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatchlist';
 import { translateNewsTitlesWithSelectedProvider } from '@/services/aiSummaries';
 import type { NewsItem } from '@/types/signal';
@@ -86,6 +87,17 @@ function hasCalendarMetrics(row: FinnhubEarningsRow): boolean {
   return [row.epsEstimate, row.epsActual, row.revenueEstimate, row.revenueActual].some(
     (v) => typeof v === 'number' && Number.isFinite(v),
   );
+}
+
+function signalReasonLabel(reason: string, t: ReturnType<typeof useLocale>['t']): string {
+  if (reason === 'news_dense') return t('signalReasonNewsDense');
+  if (reason === 'news_active') return t('signalReasonNewsActive');
+  if (reason === 'price_surge') return t('signalReasonPriceSurge');
+  if (reason === 'price_drop') return t('signalReasonPriceDrop');
+  if (reason === 'price_move') return t('signalReasonPriceMove');
+  if (reason === 'sma_stretched') return t('signalReasonSmaStretched');
+  if (reason === 'earnings_soon') return t('signalReasonEarningsSoon');
+  return t('signalReasonWatch');
 }
 
 function normalizeCompanyName(name: string | undefined, ticker: string): string | null {
@@ -239,6 +251,51 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       padding: 14,
       marginBottom: 12,
     },
+    signalOverviewHead: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 12,
+      alignItems: 'flex-start',
+      marginBottom: 12,
+    },
+    signalOverviewCopy: { flex: 1, minWidth: 0 },
+    signalOverviewSub: { fontSize: sf(12), color: theme.textDim, fontWeight: '700', lineHeight: sf(18) },
+    signalScoreBadge: {
+      minWidth: 62,
+      alignItems: 'center',
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+    },
+    signalScoreBadgeHot: {
+      borderColor: theme.accentOrange + '88',
+      backgroundColor: theme.accentOrange + '22',
+    },
+    signalScoreBadgeQuiet: {
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+    },
+    signalScoreNum: { fontSize: sf(22), fontWeight: '900', color: theme.text, lineHeight: sf(26) },
+    signalScoreNumHot: { color: theme.accentOrange },
+    signalScoreNumQuiet: { color: theme.textMuted },
+    signalScoreLabel: { fontSize: sf(9), fontWeight: '800', color: theme.textMuted },
+    signalScoreLabelHot: { color: theme.accentOrange },
+    signalStatGrid: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+    signalStat: {
+      flex: 1,
+      minWidth: 0,
+      borderRadius: 10,
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 9,
+    },
+    signalStatLabel: { fontSize: sf(10), fontWeight: '800', color: theme.textMuted, marginBottom: 5 },
+    signalStatValue: { fontSize: sf(12), fontWeight: '900', color: theme.text },
+    signalReasonLine: { fontSize: sf(12), fontWeight: '700', color: theme.textDim, lineHeight: sf(18) },
     actionRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
     actionBtn: {
       flex: 1,
@@ -529,6 +586,42 @@ export default function SymbolDetailScreen() {
 
   const chartColor = quote?.d != null ? (quote.d >= 0 ? theme.green : '#E06D6D') : theme.green;
 
+  const latestEarning = useMemo(() => {
+    const today = toYmd(new Date());
+    return earnings.find((r) => r.date >= today) ?? null;
+  }, [earnings]);
+
+  const symbolVsSma20Pct = useMemo(() => {
+    if (!quote || chartCloses.length < 20) return null;
+    const last20 = chartCloses.slice(-20);
+    const sma20 = last20.reduce((sum, close) => sum + close, 0) / last20.length;
+    if (!Number.isFinite(sma20) || sma20 === 0 || !Number.isFinite(quote.c)) return null;
+    return ((quote.c - sma20) / sma20) * 100;
+  }, [chartCloses, quote]);
+
+  const symbolSignal = useMemo(
+    () =>
+      buildSignalScore({
+        symbol: ticker,
+        quote,
+        news: newsItems.map((item) => ({
+          category: '',
+          datetime: 0,
+          headline: item.titleKo,
+          id: Number(item.id) || 0,
+          image: '',
+          related: ticker,
+          source: item.source,
+          summary: '',
+          url: item.url,
+        })),
+        nextEarning: latestEarning,
+        vsSmaPct: symbolVsSma20Pct,
+        todayYmd: toYmd(new Date()),
+      }),
+    [latestEarning, newsItems, quote, symbolVsSma20Pct, ticker],
+  );
+
   const chartRangeLabel = useMemo(() => {
     if (chartCloses.length < 2) return t('symbolDetailChartRange1M');
     return `${formatUsd(chartCloses[0]!)} → ${formatUsd(chartCloses[chartCloses.length - 1]!)}`;
@@ -631,6 +724,65 @@ export default function SymbolDetailScreen() {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
+
+        <View style={styles.sectionCard}>
+          <View style={styles.signalOverviewHead}>
+            <View style={styles.signalOverviewCopy}>
+              <Text style={styles.section}>{t('symbolDetailSignalOverview')}</Text>
+              <Text style={styles.signalOverviewSub}>
+                {symbolSignal.level === 'hot'
+                  ? t('symbolDetailSignalLevelHot')
+                  : symbolSignal.level === 'watch'
+                    ? t('symbolDetailSignalLevelWatch')
+                    : t('symbolDetailSignalLevelQuiet')}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.signalScoreBadge,
+                symbolSignal.level === 'hot' && styles.signalScoreBadgeHot,
+                symbolSignal.level === 'quiet' && styles.signalScoreBadgeQuiet,
+              ]}>
+              <Text
+                style={[
+                  styles.signalScoreNum,
+                  symbolSignal.level === 'hot' && styles.signalScoreNumHot,
+                  symbolSignal.level === 'quiet' && styles.signalScoreNumQuiet,
+                ]}>
+                {symbolSignal.score}
+              </Text>
+              <Text
+                style={[
+                  styles.signalScoreLabel,
+                  symbolSignal.level === 'hot' && styles.signalScoreLabelHot,
+                ]}>
+                {t('symbolDetailSignalScore')}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.signalStatGrid}>
+            <View style={styles.signalStat}>
+              <Text style={styles.signalStatLabel}>{t('symbolDetailSignalNews')}</Text>
+              <Text style={styles.signalStatValue}>{newsItems.length}</Text>
+            </View>
+            <View style={styles.signalStat}>
+              <Text style={styles.signalStatLabel}>{t('symbolDetailSignalMove')}</Text>
+              <Text style={styles.signalStatValue}>{quote ? formatPct(quote.dp) : '—'}</Text>
+            </View>
+            <View style={styles.signalStat}>
+              <Text style={styles.signalStatLabel}>{t('symbolDetailSignalNextEarning')}</Text>
+              <Text style={styles.signalStatValue} numberOfLines={1}>
+                {latestEarning?.date ?? '—'}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.signalReasonLine}>
+            {(symbolSignal.reasons.length > 0
+              ? symbolSignal.reasons.slice(0, 3).map((r) => signalReasonLabel(r, t))
+              : [t('signalReasonWatch')]
+            ).join(' · ')}
+          </Text>
+        </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.section}>{t('symbolDetailSectionNews')}</Text>

@@ -18,6 +18,12 @@ export type CalendarEvent = {
   earningsHourCode?: string;
   title: string;
   type: 'earnings' | 'macro' | 'fed' | 'fomc';
+  impact?: 'low' | 'medium' | 'high';
+  actual?: number | null;
+  estimate?: number | null;
+  prev?: number | null;
+  unit?: string;
+  country?: string;
 };
 
 export type ConcallSummary = {

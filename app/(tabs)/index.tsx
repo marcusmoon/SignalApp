@@ -39,7 +39,7 @@ import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
-import { hasFinnhub } from '@/services/env';
+import { hasFinnhub, useSignalApiBackend } from '@/services/env';
 import {
   fetchMarketNews,
   mergeNewsById,
@@ -59,6 +59,7 @@ import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreferen
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { translateNewsTitlesWithSelectedProvider } from '@/services/aiSummaries';
+import { fetchSignalNews, signalNewsToNewsItem } from '@/integrations/signal-api';
 import type { NewsItem } from '@/types/signal';
 import type { MessageId } from '@/locales/messages';
 
@@ -82,7 +83,7 @@ function sliceForDisplay(raw: FinnhubNewsRaw[], selected: string[]): FinnhubNews
 
 export default function FeedScreen() {
   const { theme, scaleFont } = useSignalTheme();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
@@ -98,6 +99,7 @@ export default function FeedScreen() {
   const [availableSources, setAvailableSources] = useState<string[]>([]);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const signalApiMode = useSignalApiBackend();
 
   useEffect(() => {
     void loadNewsSegment().then((s) => setSegment(s));
@@ -120,6 +122,33 @@ export default function FeedScreen() {
 
   const load = useCallback(async (opts?: { forceRefresh?: boolean }) => {
     setError(null);
+    if (signalApiMode) {
+      setRawPool([]);
+      setAvailableSources([]);
+      setSelectedSources([]);
+      const category = segment === 'crypto' ? 'crypto' : segment === 'korea' ? 'global' : 'global';
+      const serverItems = await fetchSignalNews({ locale, category, limit: segment === 'korea' ? 100 : 50 });
+      if (segment === 'korea') {
+        const extraKw = await loadKoreaNewsExtraKeywords();
+        const rawLike = serverItems.map((item, index) => ({
+          category: item.category,
+          datetime: item.publishedAt ? Math.floor(new Date(item.publishedAt).getTime() / 1000) : 0,
+          headline: item.originalTitle || item.title,
+          id: index,
+          image: item.imageUrl || '',
+          related: item.symbols?.join(',') || '',
+          source: item.sourceName,
+          summary: item.originalSummary || item.summary,
+          url: item.sourceUrl,
+        }));
+        const keep = new Set(filterKoreaRelatedNews(rawLike, extraKw).map((item) => item.url));
+        setItems(serverItems.filter((item) => keep.has(item.sourceUrl)).map((item) => signalNewsToNewsItem(item, locale)));
+        return;
+      }
+      setItems(serverItems.map((item) => signalNewsToNewsItem(item, locale)));
+      return;
+    }
+
     if (!hasFinnhub()) {
       setItems([]);
       setRawPool([]);
@@ -162,7 +191,7 @@ export default function FeedScreen() {
     setSelectedSources(selected);
     const summarized = await summarizeFromPool(raw, selected);
     setItems(summarized);
-  }, [segment, summarizeFromPool, t]);
+  }, [locale, segment, signalApiMode, summarizeFromPool, t]);
 
   useEffect(() => {
     return subscribeKoreaNewsExtraKeywordsChanged(() => {

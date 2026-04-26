@@ -40,11 +40,12 @@ import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hook
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
-import { hasYoutube } from '@/services/env';
+import { hasYoutube, useSignalApiBackend } from '@/services/env';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
 import { loadCurationHandles } from '@/services/youtubeCurationList';
 import { peekYoutubeCache, fetchEconomyYoutubeCached } from '@/integrations/youtube/cache';
 import { fetchChannelDisplayNames, YOUTUBE_ERROR_QUOTA, type ChannelHandleMeta } from '@/integrations/youtube';
+import { fetchSignalYoutube, signalYoutubeToYoutubeItem } from '@/integrations/signal-api';
 import type { YoutubeItem } from '@/types/signal';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
 import {
@@ -79,6 +80,7 @@ export default function YoutubeScreen() {
   const [curationHandles, setCurationHandles] = useState<string[] | null>(null);
   const [selectedHandles, setSelectedHandles] = useState<string[] | null>(null);
   const [channelModalVisible, setChannelModalVisible] = useState(false);
+  const signalApiMode = useSignalApiBackend();
   /** load() 안에서 이미 화면에 목록이 있는지 — 캐시 재적중 시 전체 로딩 스킵 */
   const itemsRef = useRef<YoutubeItem[]>([]);
   itemsRef.current = items;
@@ -148,6 +150,13 @@ export default function YoutubeScreen() {
       const handles = opts?.channelHandles ?? selectedHandles;
       if (handles === null) return;
 
+      if (signalApiMode) {
+        const list = await fetchSignalYoutube({ pageSize: 100 });
+        setItems(list.map((item) => signalYoutubeToYoutubeItem(item, locale)));
+        setLoading(false);
+        return;
+      }
+
       if (!hasYoutube()) {
         setItems([]);
         setIsQuotaError(false);
@@ -197,7 +206,7 @@ export default function YoutubeScreen() {
         setLoading(false);
       }
     },
-    [sort, selectedHandles, t, locale, applyLoadError],
+    [sort, selectedHandles, t, locale, applyLoadError, signalApiMode],
   );
 
   useEffect(() => {

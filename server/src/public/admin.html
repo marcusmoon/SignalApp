@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Signal Admin</title>
+    <link rel="stylesheet" href="/admin/admin.css?v=2026-04-26-1" />
+  </head>
+  <body>
+    <header>
+      <div class="signalLogo" aria-label="Signal Admin">
+        <div class="signalBars" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <div>
+          <div class="signalBrand">SIGNAL</div>
+          <div class="signalTag">Admin Console</div>
+        </div>
+      </div>
+      <div class="topTools">
+        <span>🌐</span>
+        <select id="adminLanguage">
+          <option value="ko">한국어</option>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+        </select>
+        <span class="pill muted" title="admin ui build">ui 2026-04-26-1</span>
+        <select id="adminTimeBasis">
+          <option value="ko-KR|Asia/Seoul">한국 시간</option>
+          <option value="en-US|America/New_York">미국 동부 시간</option>
+          <option value="en-US|America/Los_Angeles">미국 서부 시간</option>
+          <option value="ja-JP|Asia/Tokyo">일본 시간</option>
+          <option value="en-GB|Europe/London">영국 시간</option>
+          <option value="utc|UTC">UTC</option>
+        </select>
+        <span id="session" class="muted">checking...</span>
+        <button id="logoutBtn" class="secondary hidden">Logout</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="loginPanel" class="loginShell">
+        <div class="loginCard">
+          <div class="signalLogo" aria-label="Signal Admin">
+            <div class="signalBars" aria-hidden="true">
+              <span></span><span></span><span></span><span></span>
+            </div>
+            <div>
+              <div class="signalBrand">SIGNAL</div>
+              <div class="signalTag">Admin Console</div>
+            </div>
+          </div>
+          <h2>Login</h2>
+          <input id="loginId" placeholder="ID" value="admin" />
+          <input id="password" placeholder="Password" type="password" value="signal-local" />
+          <button id="loginBtn">Login</button>
+          <span id="loginMsg" class="error"></span>
+        </div>
+      </section>
+
+      <div id="adminPanel" class="layout hidden">
+        <aside class="side">
+          <div class="navGroup">
+            <button class="navBtn active" data-view="dashboard">📊 대시보드</button>
+
+            <div class="navSectionTitle muted">📰 콘텐츠 관리</div>
+            <button class="navBtn secondary" data-view="news">뉴스 목록</button>
+            <button class="navBtn secondary" data-view="youtube">유튜브 관리</button>
+            <button class="navBtn secondary" data-view="concalls" data-coming-soon="true" aria-disabled="true">컨콜 요약</button>
+            <button class="navBtn secondary" data-view="calendar">투자 캘린더</button>
+
+            <div class="navSectionTitle muted" style="margin-top:10px">⚙️ 수집 서버</div>
+            <button class="navBtn secondary" data-view="monitoring">수집 현황</button>
+            <button class="navBtn secondary" data-view="jobs">스케줄 관리</button>
+            <button class="navBtn secondary" data-view="errors">오류 로그</button>
+
+            <div class="navSectionTitle muted" style="margin-top:10px">🔧 시스템</div>
+            <button class="navBtn secondary" data-view="settings-keys">Provider 키관리</button>
+            <button class="navBtn secondary" data-view="settings-theme">테마</button>
+            <button class="navBtn secondary" data-view="settings-lists">마켓 리스트</button>
+            <button class="navBtn secondary" data-view="settings-danger">데이터 초기화</button>
+            <button class="navBtn secondary" data-view="translations">번역 설정</button>
+          </div>
+          <a
+            class="floatingProfile"
+            href="https://www.linkedin.com/in/marcus-moon/"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Marcus LinkedIn 프로필 열기">
+            <img class="profileAvatar" src="/assets/images/developer-avatar.png" alt="" />
+            <span class="profileText">
+              <strong>Marcus</strong>
+              <span>LinkedIn profile</span>
+            </span>
+            <span class="muted">↗</span>
+          </a>
+        </aside>
+
+        <section class="content">
+          <div id="view-dashboard" class="view">
+            <div class="panel">
+              <h2>대시보드</h2>
+              <div id="dashboard"></div>
+            </div>
+          </div>
+
+          <div id="view-monitoring" class="view hidden">
+            <div class="panel">
+              <h2>수집 현황</h2>
+              <div id="monitoring"></div>
+            </div>
+          </div>
+
+          <div id="view-errors" class="view hidden">
+            <div class="panel">
+              <h2>오류 로그</h2>
+              <div id="errors"></div>
+            </div>
+          </div>
+
+          <div id="view-jobs" class="view hidden">
+            <div class="panel">
+              <h2>스케줄 관리</h2>
+              <div class="tabs">
+                <button class="tabBtn active" data-job-tab="info">Job 정보</button>
+                <button class="tabBtn" data-job-tab="runs">Job 로그</button>
+              </div>
+              <div id="jobs"></div>
+              <div id="jobRunsPanel" class="hidden">
+                <div class="filterBox">
+                  <div class="filterBoxTitle">검색 조건</div>
+                  <div class="toolbar">
+                    <select id="jobRunRange">
+                      <option value="today">오늘</option>
+                      <option value="yesterday">어제</option>
+                      <option value="7d">일주일</option>
+                      <option value="30d">한달</option>
+                      <option value="all" selected>전체</option>
+                      <option value="custom">직접</option>
+                    </select>
+                    <input id="jobRunFrom" type="date" />
+                    <input id="jobRunTo" type="date" />
+                    <select id="jobRunStatus">
+                      <option value="">전체 상태</option>
+                      <option value="running">running</option>
+                      <option value="completed">completed</option>
+                      <option value="failed">failed</option>
+                    </select>
+                    <select id="jobRunType">
+                      <option value="">전체 타입</option>
+                      <option value="news">news</option>
+                      <option value="calendar">calendar</option>
+                      <option value="youtube">youtube</option>
+                      <option value="market">market</option>
+                      <option value="finnhub">finnhub</option>
+                      <option value="coingecko">coingecko</option>
+                      <option value="market_quotes">market_quotes</option>
+                      <option value="coin_markets">coin_markets</option>
+                    </select>
+                    <select id="jobRunJob">
+                      <option value="">전체 Job</option>
+                    </select>
+                    <select id="jobRunTrigger">
+                      <option value="">전체 실행방식</option>
+                      <option value="manual">manual</option>
+                      <option value="schedule">schedule</option>
+                    </select>
+                    <input id="jobRunQuery" class="wide" placeholder="키워드: job, provider, handler, 오류" />
+                    <select id="jobRunPageSize">
+                      <option value="20">20개</option>
+                      <option value="30" selected>30개</option>
+                      <option value="50">50개</option>
+                      <option value="100">100개</option>
+                    </select>
+                    <button id="loadJobRunsBtn" class="secondary">검색</button>
+                  </div>
+                </div>
+                <div id="jobRunsPagerTop" class="pager"></div>
+                <div id="jobRuns"></div>
+                <div id="jobRunsPagerBottom" class="pager"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="view-news" class="view hidden">
+            <div class="panel">
+              <h2>뉴스 목록</h2>
+              <div class="langTabs" id="newsLocaleTabs">
+                <button class="tabBtn active" data-news-locale="ko">한국어</button>
+                <button class="tabBtn" data-news-locale="ja">日本語</button>
+                <button class="tabBtn" data-news-locale="en">English</button>
+              </div>
+              <select id="newsLocale" class="hidden">
+                <option value="ko">ko</option>
+                <option value="ja">ja</option>
+                <option value="en">en</option>
+              </select>
+              <div class="filterBox">
+                <div class="filterBoxTitle">검색 조건</div>
+                <div class="toolbar">
+                <select id="newsRange">
+                  <option value="today">오늘</option>
+                  <option value="yesterday">어제</option>
+                  <option value="7d" selected>일주일</option>
+                  <option value="30d">한달</option>
+                  <option value="all">전체</option>
+                  <option value="custom">직접</option>
+                </select>
+                <input id="newsFrom" type="date" />
+                <input id="newsTo" type="date" />
+                <select id="newsCategory">
+                  <option value="">전체 카테고리</option>
+                  <option value="global">global</option>
+                  <option value="crypto">crypto</option>
+                  <option value="company">company</option>
+                </select>
+                <select id="newsTranslationStatus">
+                  <option value="">전체 번역상태</option>
+                  <option value="completed">completed</option>
+                  <option value="manual">manual</option>
+                  <option value="missing">missing</option>
+                  <option value="failed">failed</option>
+                </select>
+                <input id="newsQuery" class="wide" placeholder="키워드: 제목, 요약, 소스" />
+                <select id="newsPageSize">
+                  <option value="20">20개</option>
+                  <option value="30" selected>30개</option>
+                  <option value="50">50개</option>
+                  <option value="100">100개</option>
+                </select>
+                <button id="loadNewsBtn" class="secondary">검색</button>
+                </div>
+              </div>
+              <div class="actionBox">
+                <span id="newsSelectionInfo" class="muted">선택된 뉴스 0개</span>
+                <div class="row">
+                  <button id="selectPageBtn" class="secondary">현재 페이지 선택</button>
+                  <button id="retranslateSelectedBtn" class="warning" disabled>선택 번역</button>
+                  <button id="deleteSelectedNewsBtn" class="danger" disabled>선택 삭제</button>
+                </div>
+              </div>
+              <div id="newsPagerTop" class="pager"></div>
+              <div id="news"></div>
+              <div id="newsPagerBottom" class="pager"></div>
+            </div>
+          </div>
+
+          <div id="view-translations" class="view hidden">
+            <div class="panel">
+              <h2>번역 설정</h2>
+              <div id="translationSettings"></div>
+            </div>
+          </div>
+
+          <div id="view-calendar" class="view hidden">
+            <div class="panel">
+              <h2>투자 캘린더</h2>
+              <div class="filterBox">
+                <div class="filterBoxTitle">검색 조건</div>
+                <div class="toolbar">
+                  <select id="calendarRange">
+                    <option value="today">오늘</option>
+                    <option value="7d" selected>일주일</option>
+                    <option value="30d">한달</option>
+                    <option value="all">전체</option>
+                    <option value="custom">직접</option>
+                  </select>
+                  <input id="calendarFrom" type="date" />
+                  <input id="calendarTo" type="date" />
+                  <select id="calendarType">
+                    <option value="">전체 타입</option>
+                    <option value="economic">economic</option>
+                    <option value="earnings">earnings</option>
+                    <option value="ipo">ipo</option>
+                    <option value="dividend">dividend</option>
+                    <option value="split">split</option>
+                  </select>
+                  <input id="calendarQuery" class="wide" placeholder="키워드: 제목, 국가, 티커" />
+                  <select id="calendarPageSize">
+                    <option value="20">20개</option>
+                    <option value="30" selected>30개</option>
+                    <option value="50">50개</option>
+                    <option value="100">100개</option>
+                  </select>
+                  <button id="loadCalendarBtn" class="secondary">검색</button>
+                </div>
+              </div>
+              <div id="calendarPagerTop" class="pager"></div>
+              <div id="calendar"></div>
+              <div id="calendarPagerBottom" class="pager"></div>
+            </div>
+          </div>
+
+          <div id="view-concalls" class="view hidden">
+            <div class="panel">
+              <h2>컨콜 요약</h2>
+              <div class="muted">Coming soon</div>
+            </div>
+          </div>
+
+          <div id="view-youtube" class="view hidden">
+            <div class="panel">
+              <h2>유튜브 관리</h2>
+              <div class="filterBox">
+              <div class="filterBoxTitle">검색 조건</div>
+              <div class="toolbar">
+                <input id="youtubeQuery" class="wide" placeholder="키워드: 제목, 설명, 채널" />
+                <select id="youtubeChannel">
+                  <option value="">전체 채널</option>
+                </select>
+                <select id="youtubePageSize">
+                  <option value="20">20개</option>
+                  <option value="30" selected>30개</option>
+                  <option value="50">50개</option>
+                  <option value="100">100개</option>
+                </select>
+                <button id="loadYoutubeBtn" class="secondary">검색</button>
+              </div>
+              </div>
+              <div class="actionBox">
+                <span id="youtubeSelectionInfo" class="muted">선택된 영상 0개</span>
+                <div class="row">
+                  <button id="selectYoutubePageBtn" class="secondary">현재 페이지 선택</button>
+                  <button id="refreshSelectedYoutubeBtn" class="warning" disabled>선택 갱신</button>
+                </div>
+              </div>
+              <div id="youtubePagerTop" class="pager"></div>
+              <div id="youtube"></div>
+              <div id="youtubePagerBottom" class="pager"></div>
+            </div>
+          </div>
+
+          <div id="view-settings" class="view hidden">
+            <div class="panel">
+              <h2 id="settingsTitle">Provider 키관리</h2>
+
+              <div id="settingsTab-keys" class="settingsTab">
+                <p class="muted">키는 화면에 전체 노출하지 않고 마스킹합니다. 저장 후 서버 재시작 없이 다음 호출부터 사용됩니다.</p>
+                <div id="providerSettings"></div>
+              </div>
+
+              <div id="settingsTab-theme" class="settingsTab hidden">
+                <p class="muted">앱의 accent preset과 같은 색상 계열을 사용합니다. 이 브라우저에 저장됩니다.</p>
+                <div id="themeOptions" class="themeGrid"></div>
+                <div class="previewBar">
+                  <span class="muted">적용 예시</span>
+                  <span class="previewTab">Signal</span>
+                </div>
+              </div>
+
+              <div id="settingsTab-lists" class="settingsTab hidden">
+                <p class="muted">앱과 수집 Job이 같이 쓰는 종목 리스트입니다. 종목은 쉼표, 공백, 줄바꿈으로 구분해 입력할 수 있습니다.</p>
+                <div id="marketLists"></div>
+              </div>
+
+              <div id="settingsTab-danger" class="settingsTab hidden">
+                <p class="muted">외부 API에서 가져온 로컬 저장 데이터를 선택해서 비웁니다. 설정과 Job 정의는 유지됩니다.</p>
+                <div class="card dangerCard">
+                  <div class="row">
+                    <label><input type="checkbox" data-reset-target="newsItems" /> 뉴스 원본</label>
+                    <label><input type="checkbox" data-reset-target="newsTranslations" /> 뉴스 번역</label>
+                    <label><input type="checkbox" data-reset-target="calendarEvents" /> 캘린더 이벤트</label>
+                    <label><input type="checkbox" data-reset-target="youtubeVideos" /> 유튜브 영상</label>
+                    <label><input type="checkbox" data-reset-target="marketQuotes" /> 시세</label>
+                    <label><input type="checkbox" data-reset-target="coinMarkets" /> 코인</label>
+                    <label><input type="checkbox" data-reset-target="pollingJobRuns" /> Job 실행 로그</label>
+                  </div>
+                  <div class="row" style="margin-top:10px">
+                    <input id="resetConfirmText" placeholder="RESET 입력" />
+                    <button id="resetDataBtn" class="danger">선택 데이터 초기화</button>
+                    <span id="resetResult" class="muted"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+    <div id="toastHost" class="toastHost hidden" aria-live="polite" aria-atomic="true"></div>
+    <div id="marketListDialog" class="dialogBackdrop hidden" role="dialog" aria-modal="true" aria-label="마켓 리스트 편집">
+      <div class="dialogPanel">
+        <div class="dialogHead">
+          <div>
+            <h3 id="marketListDialogTitle">마켓 리스트 편집</h3>
+            <div id="marketListDialogMeta" class="muted"></div>
+          </div>
+          <button id="closeMarketListDialog" class="secondary">닫기</button>
+        </div>
+        <div class="dialogBody">
+          <div class="marketListMetaGrid">
+            <label class="fieldLabel">표시 이름
+              <input id="marketListDialogName" />
+            </label>
+            <label class="fieldLabel">설명
+              <input id="marketListDialogDesc" />
+            </label>
+          </div>
+          <div class="symbolAddRow">
+            <input id="marketListAddSymbol" placeholder="예: NVDA" />
+            <button id="addMarketListSymbol" class="secondary">추가</button>
+          </div>
+          <div id="marketListSymbolRows" class="symbolRows"></div>
+        </div>
+        <div class="dialogFoot">
+          <span id="marketListDialogCount" class="muted"></span>
+          <div class="row">
+            <button id="cancelMarketListDialog" class="secondary">취소</button>
+            <button id="saveMarketListDialog" class="success">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/admin/app.js?v=2026-04-26-1"></script>
+  </body>
+</html>

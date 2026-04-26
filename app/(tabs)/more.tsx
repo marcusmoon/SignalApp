@@ -51,6 +51,7 @@ export default function MoreHubScreen() {
   const [order, setOrder] = useState<MoreHubRouteKey[]>([]);
   const [orderReady, setOrderReady] = useState(false);
   const [refLinksVisible, setRefLinksVisible] = useState(true);
+  const canReorder = order.length > 1;
 
   const reloadOrder = useCallback(async () => {
     const o = await loadMoreHubOrder();
@@ -114,6 +115,7 @@ export default function MoreHubScreen() {
           ListFooterComponent={listFooter}
           containerStyle={{ flex: 1 }}
           onDragEnd={({ data }) => {
+            if (!canReorder) return;
             setOrder(data);
             void saveMoreHubOrder(data);
           }}
@@ -141,15 +143,17 @@ export default function MoreHubScreen() {
                     <Text style={styles.rowTitle}>{name}</Text>
                     <FontAwesome name="chevron-right" size={14} color={theme.textDim} />
                   </Pressable>
-                  <GHPressable
-                    style={styles.dragHandle}
-                    {...(Platform.OS === 'web'
-                      ? { onPressIn: drag }
-                      : { onLongPress: drag, delayLongPress: 200 })}
-                    accessibilityRole="button"
-                    accessibilityLabel={formatMessage(t('moreHubSegmentDragHandleA11y'), { name })}>
-                    <FontAwesome name="bars" size={16} color={theme.textMuted} />
-                  </GHPressable>
+                  {canReorder ? (
+                    <GHPressable
+                      style={styles.dragHandle}
+                      {...(Platform.OS === 'web'
+                        ? { onPressIn: drag }
+                        : { onLongPress: drag, delayLongPress: 200 })}
+                      accessibilityRole="button"
+                      accessibilityLabel={formatMessage(t('moreHubSegmentDragHandleA11y'), { name })}>
+                      <FontAwesome name="bars" size={16} color={theme.textMuted} />
+                    </GHPressable>
+                  ) : null}
                 </View>
               </ScaleDecorator>
             );

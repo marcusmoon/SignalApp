@@ -31,7 +31,11 @@ export function ReferenceLinksSection() {
           <Pressable
             key={item.id}
             style={[styles.cell, { width: cellW }]}
-            onPress={() => void openExternalLink(item.webUrl, item.appLaunchUrls)}
+            onPress={() =>
+              void openExternalLink(item.webUrl, item.appLaunchUrls, {
+                preferInAppBrowser: item.openInAppBrowser,
+              })
+            }
             accessibilityRole="button"
             accessibilityLabel={t(item.labelKey)}>
             <View style={styles.iconCircle}>

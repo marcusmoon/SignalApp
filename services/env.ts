@@ -5,6 +5,8 @@ import Constants from 'expo-constants';
  * 프로덕션에서는 Anthropic/Finnhub 키는 서버(BFF)에 두는 것이 안전합니다.
  */
 export const env = {
+  signalApiBaseUrl: process.env.EXPO_PUBLIC_SIGNAL_API_BASE_URL ?? '',
+  dataBackend: process.env.EXPO_PUBLIC_DATA_BACKEND ?? 'direct',
   finnhubToken: process.env.EXPO_PUBLIC_FINNHUB_TOKEN ?? '',
   anthropicKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '',
   openaiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? '',
@@ -15,6 +17,14 @@ export const env = {
   /** 비우면 AdMob 테스트 배너 단위 ID 사용 (네이티브 빌드만) */
   admobBannerUnitId: process.env.EXPO_PUBLIC_ADMOB_BANNER_UNIT_ID ?? '',
 };
+
+export function hasSignalApi() {
+  return env.signalApiBaseUrl.trim().length > 0;
+}
+
+export function useSignalApiBackend() {
+  return env.dataBackend.trim().toLowerCase() === 'signal-api' && hasSignalApi();
+}
 
 export function hasFinnhub() {
   return env.finnhubToken.length > 0;

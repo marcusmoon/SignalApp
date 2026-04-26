@@ -14,6 +14,8 @@ export type ReferenceLinkItem = {
   /** 원 안에 표시할 짧은 브랜드 텍스트(예: Upbit, Toss) — 있으면 `icon` 대신 사용 */
   iconMark?: string;
   webUrl: string;
+  /** 퀵 링크 탭 시 인앱 브라우저로 열기 */
+  openInAppBrowser?: boolean;
   /** 앱 우선: 순서대로 시도, 모두 실패 시 webUrl */
   appLaunchUrls?: string[];
 };
@@ -51,6 +53,13 @@ export const REFERENCE_LINK_GROUPS: ReferenceLinkGroup[] = [
         labelKey: 'moreRefTitleInvesting',
         icon: 'globe',
         webUrl: 'https://www.investing.com',
+      },
+      {
+        id: 'likeusstock-cafe',
+        labelKey: 'moreRefTitleLikeUsStock',
+        iconMark: 'Cafe',
+        webUrl: 'https://m.cafe.naver.com/likeusstock',
+        openInAppBrowser: true,
       },
     ],
   },

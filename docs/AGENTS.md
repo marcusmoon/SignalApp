@@ -1,6 +1,6 @@
 # SIGNAL — 에이전트·도구 공통 참고서
 
-저장소를 다룰 때 **먼저 읽을 단일 온보딩 문서**입니다. 제품 요약은 **[SIGNAL-PRD.md](./SIGNAL-PRD.md)** , 변경 이력은 **[CHANGELOG.md](./CHANGELOG.md)** , 레이어 구분은 **[ARCHITECTURE.md](./ARCHITECTURE.md)** 입니다.
+저장소를 다룰 때 **먼저 읽을 단일 온보딩 문서**입니다. 제품 요약은 **[SIGNAL-PRD.md](./SIGNAL-PRD.md)** , 변경 이력은 **[CHANGELOG.md](./CHANGELOG.md)** , 레이어 구분은 **[ARCHITECTURE.md](./ARCHITECTURE.md)** , 서버·스케줄러 실행은 **[SERVER.md](./SERVER.md)** 입니다.
 
 ## 1. 한줄 요약
 
@@ -19,6 +19,7 @@ npx expo start          # 개발 서버 (--web 가능)
 npx expo run:ios
 npx expo run:android
 npx tsc --noEmit        # 타입 검사
+npm run server:dev      # 로컬 Signal API + 어드민 + 스케줄러
 ```
 
 `postinstall`에 **patch-package** — `patches/` 변경 후 재설치.
@@ -29,6 +30,8 @@ npx tsc --noEmit        # 타입 검사
 
 | 변수 | 용도 |
 |------|------|
+| `EXPO_PUBLIC_SIGNAL_API_BASE_URL` | Signal API 서버 도메인 (예: 로컬 `http://127.0.0.1:4000`) |
+| `EXPO_PUBLIC_DATA_BACKEND` | 데이터 소스 전환 플래그 (`direct` / `signal-api`) |
 | `EXPO_PUBLIC_FINNHUB_TOKEN` | 시세·뉴스·캘린더 (없으면 Finnhub 비활성) |
 | `EXPO_PUBLIC_ANTHROPIC_API_KEY` | Claude |
 | `EXPO_PUBLIC_OPENAI_API_KEY` | OpenAI(요약·번역 등) |

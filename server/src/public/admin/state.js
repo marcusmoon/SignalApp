@@ -23,7 +23,8 @@ export const state = {
   jobRunsTotal: 0,
   jobRunsSortKey: 'finishedAt',
   jobRunsSortDir: 'desc', // asc|desc
-  jobRunsSelected: [],
+  jobRunsSelected: [], // job run row keys (prefer run.id)
+  jobRunsLastRows: [],
   jobs: [],
   jobTab: 'info',
   jobListEnabled: 'all', // all|enabled|disabled

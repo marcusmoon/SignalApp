@@ -1,47 +1,29 @@
 import { api } from './api.js';
 import { esc, formatDateTime, jobIntervalLabel, ymd } from './format.js';
 import { applyAdminLanguage } from './i18n.js';
+import { closeConfirm, confirmState, openConfirm } from './modal.js';
 import { $, state } from './state.js';
 import { applyTheme } from './theme.js';
+import { dismissToast, showToast } from './toast.js';
 
-      const toastState = { items: [] };
-      function toastDurationMs(kind) {
-        if (kind === 'error') return 0; // manual close
-        return kind === 'warning' ? 4500 : 4000;
+      function jobRunRowSelectKey(run) {
+        const id = String(run?.id || '').trim();
+        if (id) return id;
+        // Back-compat for very old local DB rows (should be rare)
+        return `${String(run?.jobKey || '').trim()}:${String(run?.startedAt || '').trim()}:${String(run?.finishedAt || '').trim()}`;
       }
-      function renderToasts() {
-        const host = $('toastHost');
-        if (!host) return;
-        const items = toastState.items.slice(0, 3);
-        if (items.length === 0) {
-          host.classList.add('hidden');
-          host.innerHTML = '';
-          return;
+
+      function jobKeysForSelectedJobRuns(rows, selectedKeys) {
+        const selected = new Set(selectedKeys || []);
+        const keys = [];
+        for (const run of rows || []) {
+          const k = jobRunRowSelectKey(run);
+          if (!selected.has(k)) continue;
+          const jobKey = String(run?.jobKey || '').trim();
+          if (!jobKey) continue;
+          if (!keys.includes(jobKey)) keys.push(jobKey);
         }
-        host.classList.remove('hidden');
-        host.innerHTML = items.map((t) => `
-          <div class="toast toast-${esc(t.kind)}" data-toast-id="${esc(t.id)}">
-            <div class="toastIcon" aria-hidden="true">${t.kind === 'success' ? '✅' : t.kind === 'error' ? '❌' : t.kind === 'warning' ? '⚠️' : 'ℹ️'}</div>
-            <div class="toastBody">
-              <strong>${esc(t.title)}</strong>
-              ${t.detail ? `<span class="muted">${esc(t.detail)}</span>` : ''}
-            </div>
-            <button class="toastClose secondary" data-toast-close="${esc(t.id)}" aria-label="close toast">✕</button>
-          </div>
-        `).join('');
-      }
-      function dismissToast(id) {
-        toastState.items = toastState.items.filter((t) => t.id !== id);
-        renderToasts();
-      }
-      function showToast(title, detail = '', { kind = 'success' } = {}) {
-        const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-        toastState.items = [{ id, kind, title, detail }, ...toastState.items].slice(0, 3);
-        renderToasts();
-        const ms = toastDurationMs(kind);
-        if (ms > 0) {
-          setTimeout(() => dismissToast(id), ms);
-        }
+        return keys;
       }
 
       function uniq(arr) {
@@ -52,27 +34,6 @@ import { applyTheme } from './theme.js';
           if (!out.includes(s)) out.push(s);
         }
         return out;
-      }
-
-      // Confirm modal (docs/SIGNAL-ADMIN-UIUX.md 9.3)
-      const confirmState = { open: false, onConfirm: null };
-      function closeConfirm() {
-        confirmState.open = false;
-        confirmState.onConfirm = null;
-        $('confirmModal')?.classList.add('hidden');
-      }
-      function openConfirm({ title = '확인', desc = '', body = '', okText = '확인', danger = true, onConfirm } = {}) {
-        confirmState.open = true;
-        confirmState.onConfirm = typeof onConfirm === 'function' ? onConfirm : null;
-        if ($('confirmTitle')) $('confirmTitle').textContent = title;
-        if ($('confirmDesc')) $('confirmDesc').textContent = desc;
-        if ($('confirmBody')) $('confirmBody').textContent = body;
-        if ($('confirmOk')) {
-          $('confirmOk').textContent = okText;
-          $('confirmOk').classList.toggle('danger', !!danger);
-          $('confirmOk').classList.toggle('success', !danger);
-        }
-        $('confirmModal')?.classList.remove('hidden');
       }
 
       function modelPresetsForProvider(provider, defaultModel) {
@@ -562,7 +523,6 @@ import { applyTheme } from './theme.js';
         }
         const domains = [...new Set(jobsAll.map((j) => j.domain || 'other'))];
         const providers = [...new Set(jobsAll.map((j) => j.provider).filter(Boolean))];
-        const selectedJobs = new Set(state.jobRunsSelected || []);
         $('jobs').innerHTML = `
           <div class="filterBar">
             <div class="filterBarTitle">검색 조건</div>
@@ -722,8 +682,17 @@ import { applyTheme } from './theme.js';
         renderJobRunsPager('jobRunsPagerTop');
         renderJobRunsPager('jobRunsPagerBottom');
         const rows = sortJobRuns(body.data || []);
+        state.jobRunsLastRows = rows;
+        const validKeys = new Set(rows.map((r) => jobRunRowSelectKey(r)));
+        state.jobRunsSelected = (state.jobRunsSelected || []).filter((k) => validKeys.has(String(k)));
         const selected = new Set(state.jobRunsSelected || []);
-        const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.jobKey));
+        const allSelected = rows.length > 0 && rows.every((r) => selected.has(jobRunRowSelectKey(r)));
+
+        if (rows.length === 0) {
+          $('jobRuns').innerHTML = '<p class="muted">검색 조건에 맞는 실행 로그가 없습니다.</p>';
+          return;
+        }
+
         $('jobRuns').innerHTML = `
           ${selected.size ? `
             <div class="actionBox" style="margin-bottom:10px">
@@ -751,9 +720,11 @@ import { applyTheme } from './theme.js';
               </tr>
             </thead>
             <tbody>
-              ${rows.map((run) => `
+              ${rows.map((run) => {
+                const rowKey = jobRunRowSelectKey(run);
+                return `
                 <tr>
-                  <td class="center"><input type="checkbox" data-job-run-select="${esc(run.jobKey)}" ${selected.has(run.jobKey) ? 'checked' : ''} /></td>
+                  <td class="center"><input type="checkbox" data-job-run-select="${esc(rowKey)}" ${selected.has(rowKey) ? 'checked' : ''} /></td>
                   <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
                   <td><span class="pill">${esc(run.status)}</span></td>
                   <td>
@@ -768,11 +739,11 @@ import { applyTheme } from './theme.js';
                   <td class="muted">${formatDateTime(run.finishedAt)}</td>
                   <td class="${run.errorMessage ? 'error' : 'muted'}">${esc(run.errorMessage || '-')}</td>
                 </tr>
-              `).join('')}
+              `;
+              }).join('')}
             </tbody>
           </table>
         `;
-        if (rows.length === 0) $('jobRuns').innerHTML = '<p class="muted">검색 조건에 맞는 실행 로그가 없습니다.</p>';
       }
 
       async function loadUiModelPresets() {
@@ -1368,33 +1339,43 @@ import { applyTheme } from './theme.js';
             return;
           }
           if (target?.id === 'jobRunsBulkRetry') {
-            const keys = [...new Set(state.jobRunsSelected || [])].filter(Boolean);
+            const selectedRunKeys = [...new Set(state.jobRunsSelected || [])].filter(Boolean);
+            const rows = Array.isArray(state.jobRunsLastRows) ? state.jobRunsLastRows : [];
+            const jobKeys = jobKeysForSelectedJobRuns(rows, selectedRunKeys);
             openConfirm({
               title: '선택 재시도',
-              desc: '선택한 Job을 수동 실행(강제)합니다.',
-              body: `대상: ${keys.length ? keys.join(', ') : '(없음)'}`,
+              desc: '선택한 실행 로그에 해당하는 Job을 수동 실행(강제)합니다.',
+              body: `실행 로그 ${selectedRunKeys.length}개 → Job ${jobKeys.length}개\n${jobKeys.length ? jobKeys.join(', ') : '(없음)'}`,
               okText: '재시도',
               danger: false,
               onConfirm: async () => {
-                for (const key of keys) {
+                for (const key of jobKeys) {
                   await api(`/admin/api/jobs/${encodeURIComponent(key)}/run`, { method: 'POST' });
                 }
-                showToast('재시도 요청', `${keys.length}개 job 실행`, { kind: 'success' });
+                showToast('재시도 요청', `${jobKeys.length}개 job 실행`, { kind: 'success' });
                 state.jobRunsSelected = [];
                 await Promise.all([loadJobRuns(), loadDashboard()]);
               },
             });
             return;
           }
+          if (target?.id === 'headerHelpBtn') {
+            showToast(
+              '도움말',
+              '전역 검색: ⌘/Ctrl+K · 알림/프로필은 상단 패널 · Job 로그는 행 단위 선택 후 일괄 재시도',
+              { kind: 'info' },
+            );
+            return;
+          }
           if (target?.dataset?.jobEditOpen) {
             const key = target.dataset.jobEditOpen;
-            const row = document.querySelector(`[data-job-edit-row="${CSS.escape(key)}"]`);
+            const row = document.querySelector(`[data-job-edit-row="${esc(key)}"]`);
             if (row) row.classList.toggle('hidden');
             return;
           }
           if (target?.dataset?.jobEditClose) {
             const key = target.dataset.jobEditClose;
-            const row = document.querySelector(`[data-job-edit-row="${CSS.escape(key)}"]`);
+            const row = document.querySelector(`[data-job-edit-row="${esc(key)}"]`);
             if (row) row.classList.add('hidden');
             return;
           }
@@ -1451,8 +1432,9 @@ import { applyTheme } from './theme.js';
             window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
             return;
           }
-          if (target.dataset.toastClose) {
-            dismissToast(target.dataset.toastClose);
+          const toastCloseBtn = typeof target.closest === 'function' ? target.closest('[data-toast-close]') : null;
+          if (toastCloseBtn instanceof HTMLElement && toastCloseBtn.dataset.toastClose) {
+            dismissToast(toastCloseBtn.dataset.toastClose);
             return;
           }
           if (target.dataset.view) await switchView(target.dataset.view);
@@ -1477,7 +1459,10 @@ import { applyTheme } from './theme.js';
           if (target.dataset.openJob) {
             await switchView('jobs');
             setJobTab('info');
-            setTimeout(() => document.querySelector(`[data-job-name="${target.dataset.openJob}"]`)?.closest('.jobItem')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0);
+            const key = target.dataset.openJob;
+            setTimeout(() => {
+              document.querySelector(`[data-job-name="${esc(key)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 0);
           }
           if (target.dataset.openJobLog) {
             await switchView('jobs');
@@ -1845,6 +1830,7 @@ import { applyTheme } from './theme.js';
           if (event.target.checked) selected.add(key);
           else selected.delete(key);
           state.jobRunsSelected = [...selected];
+          await loadJobRuns();
         }
         if (event.target.id === 'jobRunRange') {
           setJobRunDatePreset();

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Signal Admin</title>
-    <link rel="stylesheet" href="/admin/admin.css?v=2026-04-26-1" />
+    <link rel="stylesheet" href="/admin/admin.css?v=2026-04-27-2" />
   </head>
   <body>
     <header>
@@ -32,7 +32,7 @@
           <option value="en">English</option>
           <option value="ja">日本語</option>
         </select>
-        <span class="pill muted" title="admin ui build">ui 2026-04-26-1</span>
+        <span class="pill muted" title="admin ui build">ui 2026-04-27-2</span>
         <select id="adminTimeBasis">
           <option value="ko-KR|Asia/Seoul">한국 시간</option>
           <option value="en-US|America/New_York">미국 동부 시간</option>
@@ -108,21 +108,36 @@
         <section class="content">
           <div id="view-dashboard" class="view">
             <div class="panel">
-              <h2>대시보드</h2>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle">대시보드</div>
+                  <div class="pageDesc">수집/번역/시세 상태를 한 화면에서 빠르게 확인합니다.</div>
+                </div>
+              </div>
               <div id="dashboard"></div>
             </div>
           </div>
 
           <div id="view-monitoring" class="view hidden">
             <div class="panel">
-              <h2>수집 현황</h2>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle">수집 현황</div>
+                  <div class="pageDesc">도메인별 Job 흐름과 최근 실행 결과를 모니터링합니다.</div>
+                </div>
+              </div>
               <div id="monitoring"></div>
             </div>
           </div>
 
           <div id="view-errors" class="view hidden">
             <div class="panel">
-              <h2>오류 로그</h2>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle">오류 로그</div>
+                  <div class="pageDesc">운영 중 발생한 오류를 시간순으로 추적합니다.</div>
+                </div>
+              </div>
               <div id="errors"></div>
             </div>
           </div>
@@ -142,9 +157,9 @@
               </div>
               <div id="jobs"></div>
               <div id="jobRunsPanel" class="hidden">
-                <div class="filterBox">
-                  <div class="filterBoxTitle">검색 조건</div>
-                  <div class="toolbar">
+                <div class="filterBar filterBox">
+                  <div class="filterBarTitle filterBoxTitle">검색 조건</div>
+                  <div class="filterBarControls toolbar">
                     <select id="jobRunRange">
                       <option value="today">오늘</option>
                       <option value="yesterday">어제</option>
@@ -199,7 +214,12 @@
 
           <div id="view-news" class="view hidden">
             <div class="panel">
-              <h2>뉴스 목록</h2>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle">뉴스 목록</div>
+                  <div class="pageDesc">원문/번역 상태를 기준으로 뉴스를 검색·일괄 처리합니다.</div>
+                </div>
+              </div>
               <div class="langTabs" id="newsLocaleTabs">
                 <button class="tabBtn active" data-news-locale="ko">한국어</button>
                 <button class="tabBtn" data-news-locale="ja">日本語</button>
@@ -210,40 +230,40 @@
                 <option value="ja">ja</option>
                 <option value="en">en</option>
               </select>
-              <div class="filterBox">
-                <div class="filterBoxTitle">검색 조건</div>
-                <div class="toolbar">
-                <select id="newsRange">
-                  <option value="today">오늘</option>
-                  <option value="yesterday">어제</option>
-                  <option value="7d" selected>일주일</option>
-                  <option value="30d">한달</option>
-                  <option value="all">전체</option>
-                  <option value="custom">직접</option>
-                </select>
-                <input id="newsFrom" type="date" />
-                <input id="newsTo" type="date" />
-                <select id="newsCategory">
-                  <option value="">전체 카테고리</option>
-                  <option value="global">global</option>
-                  <option value="crypto">crypto</option>
-                  <option value="company">company</option>
-                </select>
-                <select id="newsTranslationStatus">
-                  <option value="">전체 번역상태</option>
-                  <option value="completed">completed</option>
-                  <option value="manual">manual</option>
-                  <option value="missing">missing</option>
-                  <option value="failed">failed</option>
-                </select>
-                <input id="newsQuery" class="wide" placeholder="키워드: 제목, 요약, 소스" />
-                <select id="newsPageSize">
-                  <option value="20">20개</option>
-                  <option value="30" selected>30개</option>
-                  <option value="50">50개</option>
-                  <option value="100">100개</option>
-                </select>
-                <button id="loadNewsBtn" class="secondary">검색</button>
+              <div class="filterBar filterBox">
+                <div class="filterBarTitle filterBoxTitle">검색 조건</div>
+                <div class="filterBarControls toolbar">
+                  <select id="newsRange">
+                    <option value="today">오늘</option>
+                    <option value="yesterday">어제</option>
+                    <option value="7d" selected>일주일</option>
+                    <option value="30d">한달</option>
+                    <option value="all">전체</option>
+                    <option value="custom">직접</option>
+                  </select>
+                  <input id="newsFrom" type="date" />
+                  <input id="newsTo" type="date" />
+                  <select id="newsCategory">
+                    <option value="">전체 카테고리</option>
+                    <option value="global">global</option>
+                    <option value="crypto">crypto</option>
+                    <option value="company">company</option>
+                  </select>
+                  <select id="newsTranslationStatus">
+                    <option value="">전체 번역상태</option>
+                    <option value="completed">completed</option>
+                    <option value="manual">manual</option>
+                    <option value="missing">missing</option>
+                    <option value="failed">failed</option>
+                  </select>
+                  <input id="newsQuery" class="wide" placeholder="키워드: 제목, 요약, 소스" />
+                  <select id="newsPageSize">
+                    <option value="20">20개</option>
+                    <option value="30" selected>30개</option>
+                    <option value="50">50개</option>
+                    <option value="100">100개</option>
+                  </select>
+                  <button id="loadNewsBtn" class="secondary">검색</button>
                 </div>
               </div>
               <div class="actionBox">
@@ -262,17 +282,27 @@
 
           <div id="view-translations" class="view hidden">
             <div class="panel">
-              <h2>번역 설정</h2>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle">번역 설정</div>
+                  <div class="pageDesc">로케일별 자동 번역/Provider/모델을 운영 정책에 맞게 조정합니다.</div>
+                </div>
+              </div>
               <div id="translationSettings"></div>
             </div>
           </div>
 
           <div id="view-calendar" class="view hidden">
             <div class="panel">
-              <h2>투자 캘린더</h2>
-              <div class="filterBox">
-                <div class="filterBoxTitle">검색 조건</div>
-                <div class="toolbar">
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle">투자 캘린더</div>
+                  <div class="pageDesc">이벤트 타입/기간/키워드로 캘린더 데이터를 조회합니다.</div>
+                </div>
+              </div>
+              <div class="filterBar filterBox">
+                <div class="filterBarTitle filterBoxTitle">검색 조건</div>
+                <div class="filterBarControls toolbar">
                   <select id="calendarRange">
                     <option value="today">오늘</option>
                     <option value="7d" selected>일주일</option>
@@ -308,29 +338,39 @@
 
           <div id="view-concalls" class="view hidden">
             <div class="panel">
-              <h2>컨콜 요약</h2>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle">컨콜 요약</div>
+                  <div class="pageDesc">실적/가이던스 요약 파이프라인을 연결할 예정입니다.</div>
+                </div>
+              </div>
               <div class="muted">Coming soon</div>
             </div>
           </div>
 
           <div id="view-youtube" class="view hidden">
             <div class="panel">
-              <h2>유튜브 관리</h2>
-              <div class="filterBox">
-              <div class="filterBoxTitle">검색 조건</div>
-              <div class="toolbar">
-                <input id="youtubeQuery" class="wide" placeholder="키워드: 제목, 설명, 채널" />
-                <select id="youtubeChannel">
-                  <option value="">전체 채널</option>
-                </select>
-                <select id="youtubePageSize">
-                  <option value="20">20개</option>
-                  <option value="30" selected>30개</option>
-                  <option value="50">50개</option>
-                  <option value="100">100개</option>
-                </select>
-                <button id="loadYoutubeBtn" class="secondary">검색</button>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle">유튜브 관리</div>
+                  <div class="pageDesc">채널/키워드로 영상을 검색하고 선택 갱신을 수행합니다.</div>
+                </div>
               </div>
+              <div class="filterBar filterBox">
+                <div class="filterBarTitle filterBoxTitle">검색 조건</div>
+                <div class="filterBarControls toolbar">
+                  <input id="youtubeQuery" class="wide" placeholder="키워드: 제목, 설명, 채널" />
+                  <select id="youtubeChannel">
+                    <option value="">전체 채널</option>
+                  </select>
+                  <select id="youtubePageSize">
+                    <option value="20">20개</option>
+                    <option value="30" selected>30개</option>
+                    <option value="50">50개</option>
+                    <option value="100">100개</option>
+                  </select>
+                  <button id="loadYoutubeBtn" class="secondary">검색</button>
+                </div>
               </div>
               <div class="actionBox">
                 <span id="youtubeSelectionInfo" class="muted">선택된 영상 0개</span>
@@ -400,7 +440,7 @@
         </section>
       </div>
     </main>
-    <div id="toastHost" class="toastHost hidden" aria-live="polite" aria-atomic="true"></div>
+    <div id="toastHost" class="toastHost hidden" aria-live="polite" aria-relevant="additions text" aria-atomic="true"></div>
     <div id="globalSearchPanel" class="dialogBackdrop hidden" role="dialog" aria-modal="true" aria-label="검색">
       <div class="dialogPanel" style="width:min(720px,100%);grid-template-rows:auto minmax(0,1fr) auto">
         <div class="dialogHead">
@@ -513,6 +553,6 @@
         </div>
       </div>
     </div>
-    <script type="module" src="/admin/app.js?v=2026-04-26-1"></script>
+    <script type="module" src="/admin/app.js?v=2026-04-27-2"></script>
   </body>
 </html>

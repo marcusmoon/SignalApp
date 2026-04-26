@@ -2,6 +2,7 @@ import { nowIso, readDb, updateDb, upsertById } from '../db.mjs';
 import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchFinnhubMarketQuotes, fetchFinnhubMcapQuotes } from '../providers/market/finnhub.mjs';
+import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
 import { fetchYoutubeEconomy, fetchYoutubeVideosByIds } from '../providers/youtube/youtube.mjs';
@@ -63,6 +64,9 @@ async function autoTranslateNews(db, newsItems) {
 async function executeHandler(job, dbBefore, { onProgress } = {}) {
   if (job.provider === 'finnhub' && job.handler === 'market_news') {
     return { kind: 'news', rows: await fetchFinnhubMarketNews(job.params || {}) };
+  }
+  if (job.provider === 'rss' && job.handler === 'financial_juice') {
+    return { kind: 'news', rows: await fetchFinancialJuiceRssNews(job.params || {}) };
   }
   if (job.provider === 'finnhub' && job.handler === 'economic_calendar') {
     return { kind: 'calendar', rows: await fetchFinnhubEconomicCalendar(job.params || {}) };

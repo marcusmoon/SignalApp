@@ -1,6 +1,6 @@
 import { api } from './api.js';
 import { esc, formatDateTime, jobIntervalLabel, ymd } from './format.js';
-import { applyAdminLanguage } from './i18n.js';
+import { applyAdminLanguage, textFor, textForVars } from './i18n.js';
 import { closeConfirm, confirmState, openConfirm } from './modal.js';
 import { $, state } from './state.js';
 import { applyTheme } from './theme.js';
@@ -77,7 +77,9 @@ import { dismissToast, showToast } from './toast.js';
       }
 
       function setDatePresetFor(prefix) {
-        const preset = $(`${prefix}Range`).value;
+        const rangeEl = $(`${prefix}Range`);
+        if (!rangeEl) return;
+        const preset = rangeEl.value;
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         let from = null;
@@ -116,23 +118,26 @@ import { dismissToast, showToast } from './toast.js';
         setDatePresetFor('calendar');
       }
 
-      if ($('calendarRange')) {
-        $('calendarRange').addEventListener('change', () => setCalendarDatePreset());
-        setCalendarDatePreset();
+      function domainLabel(domain) {
+        const d = domain || 'other';
+        const key =
+          d === 'news'
+            ? 'domainNews'
+            : d === 'calendar'
+              ? 'domainCalendar'
+              : d === 'youtube'
+                ? 'domainYoutube'
+                : d === 'market'
+                  ? 'domainMarket'
+                  : 'domainOther';
+        return textFor(key);
       }
 
-      const domainLabels = {
-        news: '뉴스',
-        calendar: '캘린더',
-        youtube: '유튜브',
-        market: '마켓',
-      };
-
-      const operationLabels = {
-        latest: '최신 수집',
-        reconcile: '보정 수집',
-        maintenance: '유지보수',
-      };
+      function operationLabel(operation) {
+        const op = operation || 'latest';
+        const key = op === 'reconcile' ? 'opReconcile' : op === 'maintenance' ? 'opMaintenance' : 'opLatest';
+        return textFor(key);
+      }
 
       const domainIcons = {
         news: '📰',
@@ -146,13 +151,33 @@ import { dismissToast, showToast } from './toast.js';
       }
 
       function jobGroupTitle(domain) {
-        return domainLabels[domain] || domain || '기타';
+        return domainLabel(domain);
       }
 
       function operationBadge(operation) {
         const op = operation || 'latest';
         const css = op === 'reconcile' ? 'opReconcile' : op === 'latest' ? 'opLatest' : 'opMaintenance';
-        return `<span class="pill ${css}">${esc(operationLabels[op] || op || '-')}</span>`;
+        return `<span class="pill ${css}">${esc(operationLabel(op))}</span>`;
+      }
+
+      function runStatusPill(status, stale) {
+        if (stale) return `<span class="pill pillStatus pillStatus--warn">${esc(textFor('runStale'))}</span>`;
+        const s = String(status || '').toLowerCase();
+        let cls = 'pillStatus--muted';
+        let key = 'statusUnknown';
+        if (s === 'completed' || s === 'complete' || s === 'success') {
+          cls = 'pillStatus--ok';
+          key = 'statusCompleted';
+        } else if (s === 'running') {
+          cls = 'pillStatus--run';
+          key = 'statusRunning';
+        } else if (s === 'failed' || s === 'error') {
+          cls = 'pillStatus--fail';
+          key = 'statusFailed';
+        } else if (!s || s === 'not run' || s === '-') {
+          key = 'statusNotRun';
+        }
+        return `<span class="pill pillStatus ${cls}">${esc(textFor(key))}</span>`;
       }
 
 
@@ -332,13 +357,9 @@ import { dismissToast, showToast } from './toast.js';
         `).join('');
       }
 
-      function runButton(jobKey, label = '실행') {
-        return `<button class="success" data-job-run="${esc(jobKey)}">${esc(label)}</button>`;
-      }
-
-      function statusPill(status) {
-        const s = String(status || '-');
-        return `<span class="pill">${esc(s)}</span>`;
+      function runButton(jobKey, label) {
+        const lab = label == null ? textFor('btnNowRun') : label;
+        return `<button class="success" data-job-run="${esc(jobKey)}">${esc(lab)}</button>`;
       }
 
       async function loadMonitoring() {
@@ -349,36 +370,36 @@ import { dismissToast, showToast } from './toast.js';
         const stale = runs.filter((r) => r.stale);
         $('monitoring').innerHTML = `
           <div class="tabs" style="margin-bottom:10px">
-            <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">전체</button>
-            <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">최신</button>
-            <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">보정</button>
+            <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">${esc(textFor('tabAll'))}</button>
+            <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">${esc(textFor('tabLatest'))}</button>
+            <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">${esc(textFor('tabReconcile'))}</button>
           </div>
           <div class="statGrid wideStats">
-            <div class="stat"><div class="muted">최근 실행</div><div class="statNum">${runs.length}</div></div>
-            <div class="stat"><div class="muted">주기 초과</div><div class="statNum">${stale.length}</div></div>
-            <div class="stat"><div class="muted">활성 Job</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
-            <div class="stat"><div class="muted">최근 실패</div><div class="statNum">${summary.counts.recentFailedRuns}</div></div>
+            <div class="stat"><div class="muted">${esc(textFor('statRecentRuns'))}</div><div class="statNum">${runs.length}</div></div>
+            <div class="stat"><div class="muted">${esc(textFor('statStale'))}</div><div class="statNum">${stale.length}</div></div>
+            <div class="stat"><div class="muted">${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
+            <div class="stat"><div class="muted">${esc(textFor('statRecentFailures'))}</div><div class="statNum">${summary.counts.recentFailedRuns}</div></div>
           </div>
-          <h3 style="margin-top:16px">워커 상태(최근 실행)</h3>
+          <h3 style="margin-top:16px">${esc(textFor('sectionRecentRuns'))}</h3>
           <table>
-            <thead><tr><th>Job</th><th>상태</th><th>타입</th><th>Items</th><th>Finished</th><th>액션</th></tr></thead>
+            <thead><tr><th>${esc(textFor('colJob'))}</th><th>${esc(textFor('colStatus'))}</th><th>${esc(textFor('colType'))}</th><th>${esc(textFor('colItems'))}</th><th>${esc(textFor('colFinished'))}</th><th>${esc(textFor('colAction'))}</th></tr></thead>
             <tbody>
-              ${runs.map((run) => `
+              ${runs.length === 0 ? `<tr><td colspan="6" class="muted">${esc(textFor('monitoringEmpty'))}</td></tr>` : runs.map((run) => `
                 <tr class="${run.stale ? 'staleRow' : ''}">
                   <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-                  <td>${run.stale ? '<span class="pill opReconcile">주기 초과</span>' : statusPill(run.status || 'not run')}</td>
+                  <td>${runStatusPill(run.status, !!run.stale)}</td>
                   <td>${operationBadge(run.operation)}<br/><span class="muted">${esc(run.resultKind || run.domain || '-')} · ${esc(run.provider || '-')}</span></td>
                   <td>${run.itemCount ?? 0}</td>
                   <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
                   <td class="row">
-                    ${runButton(run.jobKey, '즉시 실행')}
-                    <button class="secondary" data-open-job-log="${esc(run.jobKey)}">오류/로그</button>
+                    ${runButton(run.jobKey, textFor('btnNowRun'))}
+                    <button class="secondary" data-open-job-log="${esc(run.jobKey)}">${esc(textFor('btnLogErrors'))}</button>
                   </td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
-          <div class="muted" style="margin-top:10px">팁: 느린 Job(예: 시총 상위 시세)은 Job 로그에서 Progress(%)를 확인할 수 있습니다.</div>
+          <div class="muted" style="margin-top:10px">${esc(textFor('tipSlowJobs'))}</div>
         `;
       }
 
@@ -389,28 +410,28 @@ import { dismissToast, showToast } from './toast.js';
         const filtered = state.operationFilter === 'all' ? all : all.filter((r) => (r.operation || 'latest') === state.operationFilter);
         $('errors').innerHTML = `
           <div class="tabs" style="margin-bottom:10px">
-            <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">전체</button>
-            <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">최신</button>
-            <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">보정</button>
+            <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">${esc(textFor('tabAll'))}</button>
+            <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">${esc(textFor('tabLatest'))}</button>
+            <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">${esc(textFor('tabReconcile'))}</button>
           </div>
         ` + (filtered.length === 0
-          ? '<p class="muted">최근 오류가 없습니다.</p>'
+          ? `<p class="muted">${esc(textFor('errorsEmpty'))}</p>`
           : `
               <table>
                 <thead>
-                  <tr><th>Job</th><th>Status</th><th>Type</th><th>Trigger</th><th>Duration</th><th>Started</th><th>Error</th><th>액션</th></tr>
+                  <tr><th>${esc(textFor('colJob'))}</th><th>${esc(textFor('colStatus'))}</th><th>${esc(textFor('colType'))}</th><th>${esc(textFor('colTrigger'))}</th><th>${esc(textFor('colDuration'))}</th><th>${esc(textFor('colStarted'))}</th><th>${esc(textFor('colError'))}</th><th>${esc(textFor('colAction'))}</th></tr>
                 </thead>
                 <tbody>
                   ${filtered.map((run) => `
                     <tr>
                       <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-                      <td><span class="pill">${esc(run.status)}</span></td>
+                      <td>${runStatusPill(run.status, false)}</td>
                       <td>${operationBadge(run.operation)}<br/><span class="muted">${esc(run.resultKind || run.domain || '-')} · ${esc(run.provider || '-')}</span></td>
                       <td>${esc(run.trigger || '-')}</td>
                       <td>${formatDuration(run.durationMs)}</td>
                       <td class="muted">${formatDateTime(run.startedAt)}</td>
                       <td class="error">${esc(run.errorMessage || '-')}</td>
-                      <td>${runButton(run.jobKey, '재시도')}</td>
+                      <td>${runButton(run.jobKey, textFor('btnRetry'))}</td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -436,44 +457,44 @@ import { dismissToast, showToast } from './toast.js';
         });
         $('dashboard').innerHTML = `
           <div class="statGrid wideStats">
-            <div class="stat"><div class="muted">📰 뉴스</div><div class="statNum">${summary.counts.news}</div></div>
-            <div class="stat"><div class="muted">📅 캘린더</div><div class="statNum">${summary.counts.calendar}</div></div>
-            <div class="stat"><div class="muted">▶ 유튜브</div><div class="statNum">${summary.counts.youtube}</div></div>
-            <div class="stat"><div class="muted">💹 시세</div><div class="statNum">${summary.counts.marketQuotes || 0}</div></div>
-            <div class="stat"><div class="muted">🪙 코인</div><div class="statNum">${summary.counts.coinMarkets || 0}</div></div>
-            <div class="stat"><div class="muted">활성 Job</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
+            <div class="stat"><div class="muted">📰 ${esc(textFor('statNews'))}</div><div class="statNum">${summary.counts.news}</div></div>
+            <div class="stat"><div class="muted">📅 ${esc(textFor('statCalendar'))}</div><div class="statNum">${summary.counts.calendar}</div></div>
+            <div class="stat"><div class="muted">▶ ${esc(textFor('statYoutube'))}</div><div class="statNum">${summary.counts.youtube}</div></div>
+            <div class="stat"><div class="muted">💹 ${esc(textFor('statQuotes'))}</div><div class="statNum">${summary.counts.marketQuotes || 0}</div></div>
+            <div class="stat"><div class="muted">🪙 ${esc(textFor('statCoins'))}</div><div class="statNum">${summary.counts.coinMarkets || 0}</div></div>
+            <div class="stat"><div class="muted">${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
           </div>
           <div class="row" style="justify-content:space-between;margin-top:16px">
-            <h3 style="margin:0">최근 실행</h3>
+            <h3 style="margin:0">${esc(textFor('sectionRecentRuns'))}</h3>
             <div class="row">
               <div class="tabs" style="margin:0">
-                <button class="tabBtn ${state.dashboardOperationFilter === 'all' ? 'active' : ''}" data-dashboard-op="all">전체</button>
-                <button class="tabBtn ${state.dashboardOperationFilter === 'latest' ? 'active' : ''}" data-dashboard-op="latest">최신</button>
-                <button class="tabBtn ${state.dashboardOperationFilter === 'reconcile' ? 'active' : ''}" data-dashboard-op="reconcile">보정</button>
+                <button class="tabBtn ${state.dashboardOperationFilter === 'all' ? 'active' : ''}" data-dashboard-op="all">${esc(textFor('tabAll'))}</button>
+                <button class="tabBtn ${state.dashboardOperationFilter === 'latest' ? 'active' : ''}" data-dashboard-op="latest">${esc(textFor('tabLatest'))}</button>
+                <button class="tabBtn ${state.dashboardOperationFilter === 'reconcile' ? 'active' : ''}" data-dashboard-op="reconcile">${esc(textFor('tabReconcile'))}</button>
               </div>
               <select id="dashboardSort" style="min-width:140px">
-                <option value="newest" ${state.dashboardSort === 'newest' ? 'selected' : ''}>최신순</option>
-                <option value="oldest" ${state.dashboardSort === 'oldest' ? 'selected' : ''}>오래된순</option>
-                <option value="name" ${state.dashboardSort === 'name' ? 'selected' : ''}>이름순</option>
+                <option value="newest" ${state.dashboardSort === 'newest' ? 'selected' : ''}>${esc(textFor('sortNewest'))}</option>
+                <option value="oldest" ${state.dashboardSort === 'oldest' ? 'selected' : ''}>${esc(textFor('sortOldest'))}</option>
+                <option value="name" ${state.dashboardSort === 'name' ? 'selected' : ''}>${esc(textFor('sortName'))}</option>
               </select>
             </div>
           </div>
-          <table><thead><tr><th>Job</th><th>상태</th><th>타입</th><th>Items</th><th>Finished</th><th>이동</th></tr></thead>
+          <table><thead><tr><th>${esc(textFor('colJob'))}</th><th>${esc(textFor('colStatus'))}</th><th>${esc(textFor('colType'))}</th><th>${esc(textFor('colItems'))}</th><th>${esc(textFor('colFinished'))}</th><th>${esc(textFor('colAction'))}</th></tr></thead>
           <tbody>${sorted.map((run) => `
             <tr class="${run.stale ? 'staleRow' : ''}">
               <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-              <td>${run.stale ? '<span class="pill opReconcile">주기 초과</span>' : esc(run.status || 'not run')}</td>
+              <td>${runStatusPill(run.status, !!run.stale)}</td>
               <td>${operationBadge(run.operation)}<br/><span class="muted">${esc(run.resultKind || run.domain || '-')}</span></td>
               <td>${run.itemCount ?? 0}</td>
               <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
               <td>
-                <button class="success" data-job-run="${esc(run.jobKey)}">실행</button>
-                <button class="secondary" data-open-job="${esc(run.jobKey)}">설정</button>
-                <button class="secondary" data-open-job-log="${esc(run.jobKey)}">로그</button>
+                <button class="success" data-job-run="${esc(run.jobKey)}">${esc(textFor('btnRun'))}</button>
+                <button class="secondary" data-open-job="${esc(run.jobKey)}">${esc(textFor('btnSettings'))}</button>
+                <button class="secondary" data-open-job-log="${esc(run.jobKey)}">${esc(textFor('btnLog'))}</button>
               </td>
             </tr>
           `).join('')}</tbody></table>
-          ${sorted.length === 0 ? '<p class="muted" style="margin-top:10px">조건에 맞는 실행 로그가 없습니다.</p>' : ''}
+          ${sorted.length === 0 ? `<p class="muted" style="margin-top:10px">${esc(textFor('jobRunsEmpty'))}</p>` : ''}
         `;
       }
 
@@ -707,16 +728,16 @@ import { dismissToast, showToast } from './toast.js';
             <thead>
               <tr>
                 <th class="center"><input type="checkbox" id="jobRunsSelectAll" ${allSelected ? 'checked' : ''} /></th>
-                <th data-run-sort="job">Job</th>
-                <th data-run-sort="status">Status</th>
-                <th>Type</th>
-                <th>Trigger</th>
+                <th data-run-sort="job">${esc(textFor('colJob'))}</th>
+                <th data-run-sort="status">${esc(textFor('colStatus'))}</th>
+                <th>${esc(textFor('colType'))}</th>
+                <th>${esc(textFor('colTrigger'))}</th>
                 <th data-run-sort="progress">Progress</th>
-                <th data-run-sort="items" class="right">Items</th>
-                <th data-run-sort="duration" class="right">Duration</th>
-                <th data-run-sort="startedAt">Started</th>
-                <th data-run-sort="finishedAt">Finished</th>
-                <th>Error</th>
+                <th data-run-sort="items" class="right">${esc(textFor('colItems'))}</th>
+                <th data-run-sort="duration" class="right">${esc(textFor('colDuration'))}</th>
+                <th data-run-sort="startedAt">${esc(textFor('colStarted'))}</th>
+                <th data-run-sort="finishedAt">${esc(textFor('colFinished'))}</th>
+                <th>${esc(textFor('colError'))}</th>
               </tr>
             </thead>
             <tbody>
@@ -726,7 +747,7 @@ import { dismissToast, showToast } from './toast.js';
                 <tr>
                   <td class="center"><input type="checkbox" data-job-run-select="${esc(rowKey)}" ${selected.has(rowKey) ? 'checked' : ''} /></td>
                   <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-                  <td><span class="pill">${esc(run.status)}</span></td>
+                  <td>${runStatusPill(run.status, false)}</td>
                   <td>
                     ${operationBadge(run.operation)}
                     <br/><span class="muted">${esc(run.resultKind || run.domain || '-')} · ${esc(run.provider || '-')}</span>
@@ -1125,62 +1146,172 @@ import { dismissToast, showToast } from './toast.js';
         `;
       }
 
-      function calendarQueryParams() {
-        const params = new URLSearchParams({
-          page: String(state.calendarPage || 1),
-          pageSize: $('calendarPageSize')?.value || '30',
-        });
-        for (const [key, id] of [
-          ['q', 'calendarQuery'],
-          ['from', 'calendarFrom'],
-          ['to', 'calendarTo'],
-          ['type', 'calendarType'],
-        ]) {
-          const el = $(id);
-          const value = el ? el.value.trim() : '';
-          if (value) params.set(key, value);
-        }
-        return params.toString();
+      function pad2(n) {
+        return String(Math.max(0, Number(n) || 0)).padStart(2, '0');
       }
 
-      function renderCalendarPager(targetId) {
-        if (!$(targetId)) return;
-        $(targetId).innerHTML = `
-          <div class="muted">총 ${state.calendarTotal || 0}개 · ${state.calendarPage || 1} / ${state.calendarTotalPages || 1} 페이지</div>
-          <div class="row">
-            <button class="secondary" data-calendar-page="prev">이전</button>
-            <button class="secondary" data-calendar-page="next">다음</button>
-          </div>
-        `;
+      function ymdFromParts(y, m, d) {
+        return `${y}-${pad2(m)}-${pad2(d)}`;
+      }
+
+      function daysInMonth(y, m) {
+        return new Date(y, m, 0).getDate();
+      }
+
+      function calendarMonthMeta(ym) {
+        const parts = String(ym || '').split('-');
+        const y = Number(parts[0]);
+        const m = Number(parts[1]);
+        if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return null;
+        const first = ymdFromParts(y, m, 1);
+        const last = ymdFromParts(y, m, daysInMonth(y, m));
+        return { y, m, first, last };
+      }
+
+      function shiftCalendarMonth(ym, delta) {
+        const meta = calendarMonthMeta(ym);
+        if (!meta) return ym;
+        let { y, m } = meta;
+        m += delta;
+        while (m > 12) {
+          m -= 12;
+          y += 1;
+        }
+        while (m < 1) {
+          m += 12;
+          y -= 1;
+        }
+        return `${y}-${pad2(m)}`;
+      }
+
+      function initCalendarMonthIfNeeded() {
+        if (state.calendarMonthYm) return;
+        const t = new Date();
+        state.calendarMonthYm = `${t.getFullYear()}-${pad2(t.getMonth() + 1)}`;
+        state.calendarSelectedYmd = ymd(t);
+      }
+
+      function adminBcp47() {
+        const lang = localStorage.getItem('signalAdminLanguage') || 'ko';
+        if (lang === 'en') return 'en-US';
+        if (lang === 'ja') return 'ja-JP';
+        return 'ko-KR';
+      }
+
+      function formatAdminCalendarDayHeading(ymdStr) {
+        if (!ymdStr) return '';
+        const d = new Date(`${ymdStr}T12:00:00`);
+        if (!Number.isFinite(d.getTime())) return ymdStr;
+        return new Intl.DateTimeFormat(adminBcp47(), {
+          weekday: 'short',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        }).format(d);
+      }
+
+      function renderAdminCalendarGrid() {
+        const host = $('adminCalendarGrid');
+        if (!host) return;
+        const meta = calendarMonthMeta(state.calendarMonthYm);
+        if (!meta) return;
+        const { y, m, first } = meta;
+        const dim = daysInMonth(y, m);
+        const eventDates = new Set(
+          (state.calendarMonthRows || []).map((r) => String(r.date || '').slice(0, 10)).filter(Boolean),
+        );
+        const sel = state.calendarSelectedYmd;
+        const firstD = new Date(`${first}T12:00:00`);
+        const startWeekday = firstD.getDay();
+        const todayYmd = ymd(new Date());
+        const weekHtml = [0, 1, 2, 3, 4, 5, 6]
+          .map((w) => `<div class="calWeekday" aria-hidden="true">${esc(textFor(`calWeek${w}`))}</div>`)
+          .join('');
+        let cells = '';
+        for (let i = 0; i < startWeekday; i += 1) cells += '<div class="calCell calCell--pad" aria-hidden="true"></div>';
+        for (let d = 1; d <= dim; d += 1) {
+          const ymdStr = ymdFromParts(y, m, d);
+          const has = eventDates.has(ymdStr);
+          const isSel = sel === ymdStr;
+          const isToday = ymdStr === todayYmd;
+          cells += `<button type="button" class="calCell ${has ? 'calCell--has' : 'calCell--muted'} ${isSel ? 'calCell--selected' : ''} ${isToday ? 'calCell--today' : ''}" data-cal-day="${esc(ymdStr)}" aria-pressed="${isSel ? 'true' : 'false'}">${d}</button>`;
+        }
+        host.innerHTML = `
+          <div class="calendarMonthWrap">
+            <div class="calWeekdays">${weekHtml}</div>
+            <div class="calendarGrid" role="grid" aria-label="${esc(textFor('pageCalendarTitle'))}">${cells}</div>
+          </div>`;
+      }
+
+      function renderCalendarDayTable() {
+        const host = $('calendarDayList') || $('calendar');
+        if (!host) return;
+        const sel = state.calendarSelectedYmd;
+        const headEl = $('calendarDayHeadingText');
+        if (headEl) {
+          headEl.textContent = textForVars('calendarEventsForDayOn', { date: formatAdminCalendarDayHeading(sel) });
+        }
+        const rows = (state.calendarMonthRows || []).filter((r) => String(r.date || '').slice(0, 10) === sel);
+        host.innerHTML =
+          rows.length === 0
+            ? `<p class="muted">${esc(textFor('calendarEmptyDay'))}</p>`
+            : `
+            <table>
+              <thead>
+                <tr>
+                  <th>${esc(textFor('colDate'))}</th>
+                  <th>${esc(textFor('colType'))}</th>
+                  <th>${esc(textFor('colTitle'))}</th>
+                  <th>${esc(textFor('colMeta'))}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows
+                  .map(
+                    (item) => `
+                  <tr>
+                    <td class="muted">${esc(item.date || '-')}</td>
+                    <td><span class="pill">${esc(item.type || '-')}</span></td>
+                    <td><strong>${esc(item.title || '-')}</strong></td>
+                    <td class="muted">${esc(item.country || item.symbol || '-')}</td>
+                  </tr>
+                `,
+                  )
+                  .join('')}
+              </tbody>
+            </table>
+          `;
       }
 
       async function loadCalendar() {
-        if (!$('calendar')) return;
-        const body = await api(`/admin/api/calendar?${calendarQueryParams()}`);
+        const host = $('calendarDayList') || $('calendar');
+        if (!host) return;
+        initCalendarMonthIfNeeded();
+        if ($('calendarMonthPick')) $('calendarMonthPick').value = state.calendarMonthYm;
+        const meta = calendarMonthMeta(state.calendarMonthYm);
+        if (!meta) return;
+        if ($('calendarFrom')) $('calendarFrom').value = meta.first;
+        if ($('calendarTo')) $('calendarTo').value = meta.last;
+        const params = new URLSearchParams({ page: '1', pageSize: '500', from: meta.first, to: meta.last });
+        const ty = $('calendarType')?.value?.trim();
+        if (ty) params.set('type', ty);
+        const cq = $('calendarQuery')?.value?.trim();
+        if (cq) params.set('q', cq);
+        const sym = $('calendarSymbol')?.value?.trim();
+        if (sym) params.set('symbol', sym.toUpperCase());
+        const body = await api(`/admin/api/calendar?${params.toString()}`);
+        state.calendarMonthRows = Array.isArray(body.data) ? body.data : [];
+        state.calendarTotal = body.total;
         state.calendarPage = body.page;
         state.calendarTotalPages = body.totalPages;
-        state.calendarTotal = body.total;
-        renderCalendarPager('calendarPagerTop');
-        renderCalendarPager('calendarPagerBottom');
-        $('calendar').innerHTML = body.data.length === 0
-          ? '<p class="muted">검색 조건에 맞는 캘린더 이벤트가 없습니다.</p>'
-          : `
-              <table>
-                <thead>
-                  <tr><th>Date</th><th>Type</th><th>Title</th><th>Meta</th></tr>
-                </thead>
-                <tbody>
-                  ${body.data.map((item) => `
-                    <tr>
-                      <td class="muted">${esc(item.date || '-')}</td>
-                      <td><span class="pill">${esc(item.type || '-')}</span></td>
-                      <td><strong>${esc(item.title || '-')}</strong></td>
-                      <td class="muted">${esc(item.country || item.symbol || '-')}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            `;
+        if (!state.calendarSelectedYmd) state.calendarSelectedYmd = ymd(new Date());
+        if (!state.calendarMonthRows.some((r) => String(r.date || '').slice(0, 10) === state.calendarSelectedYmd)) {
+          const prefix = `${meta.y}-${pad2(meta.m)}`;
+          const firstHit = state.calendarMonthRows.find((r) => String(r.date || '').startsWith(prefix));
+          state.calendarSelectedYmd = firstHit ? String(firstHit.date).slice(0, 10) : meta.first;
+        }
+        renderAdminCalendarGrid();
+        renderCalendarDayTable();
       }
 
       async function loadYoutube() {
@@ -1634,8 +1765,26 @@ import { dismissToast, showToast } from './toast.js';
             await loadYoutube();
           }
           if (target.id === 'loadCalendarBtn') {
-            state.calendarPage = 1;
+            state.calendarSelectedYmd = '';
             await loadCalendar();
+          }
+          if (target.dataset.calMonthPrev != null) {
+            state.calendarMonthYm = shiftCalendarMonth(state.calendarMonthYm, -1);
+            state.calendarSelectedYmd = '';
+            await loadCalendar();
+            return;
+          }
+          if (target.dataset.calMonthNext != null) {
+            state.calendarMonthYm = shiftCalendarMonth(state.calendarMonthYm, 1);
+            state.calendarSelectedYmd = '';
+            await loadCalendar();
+            return;
+          }
+          if (target.dataset.calDay) {
+            state.calendarSelectedYmd = target.dataset.calDay;
+            renderAdminCalendarGrid();
+            renderCalendarDayTable();
+            return;
           }
           if (target.dataset.youtubePage === 'prev' && state.youtubePage > 1) {
             state.youtubePage -= 1;
@@ -1644,14 +1793,6 @@ import { dismissToast, showToast } from './toast.js';
           if (target.dataset.youtubePage === 'next' && state.youtubePage < state.youtubeTotalPages) {
             state.youtubePage += 1;
             await loadYoutube();
-          }
-          if (target.dataset.calendarPage === 'prev' && state.calendarPage > 1) {
-            state.calendarPage -= 1;
-            await loadCalendar();
-          }
-          if (target.dataset.calendarPage === 'next' && state.calendarPage < state.calendarTotalPages) {
-            state.calendarPage += 1;
-            await loadCalendar();
           }
           if (target.id === 'selectPageBtn') {
             const boxes = [...document.querySelectorAll('[data-news-id]')];
@@ -1783,6 +1924,10 @@ import { dismissToast, showToast } from './toast.js';
         if (event.target.id === 'adminLanguage') {
           localStorage.setItem('signalAdminLanguage', event.target.value);
           applyAdminLanguage();
+          if (state.view === 'calendar') {
+            renderAdminCalendarGrid();
+            renderCalendarDayTable();
+          }
         }
         if (event.target.id === 'adminTimeBasis') {
           localStorage.setItem('signalAdminTimeBasis', event.target.value);
@@ -1840,6 +1985,11 @@ import { dismissToast, showToast } from './toast.js';
         if (event.target.id === 'jobRunJob') {
           state.jobRunsPage = 1;
           await loadJobRuns();
+        }
+        if (event.target.id === 'calendarMonthPick') {
+          state.calendarMonthYm = event.target.value;
+          state.calendarSelectedYmd = '';
+          await loadCalendar();
         }
         if (event.target.id === 'marketListAddSymbol' && event.target.value.includes(',')) {
           event.target.value = event.target.value.replaceAll(',', ' ');

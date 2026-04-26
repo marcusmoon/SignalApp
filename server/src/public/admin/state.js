@@ -18,6 +18,12 @@ export const state = {
   calendarPage: 1,
   calendarTotalPages: 1,
   calendarTotal: 0,
+  /** `YYYY-MM` for admin month calendar */
+  calendarMonthYm: '',
+  /** `YYYY-MM-DD` selected day in month view */
+  calendarSelectedYmd: '',
+  /** Full rows for visible month (client-side day filter) */
+  calendarMonthRows: [],
   jobRunsPage: 1,
   jobRunsTotalPages: 1,
   jobRunsTotal: 0,

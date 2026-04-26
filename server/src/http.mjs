@@ -96,7 +96,15 @@ function filterNews(items, url) {
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
   let rows = [...items];
-  if (category) rows = rows.filter((item) => item.category === category);
+  if (category) {
+    if (category === 'global') {
+      rows = rows.filter(
+        (item) => item.category === 'global' || String(item.provider || '') === 'financialjuice',
+      );
+    } else {
+      rows = rows.filter((item) => item.category === category);
+    }
+  }
   if (symbol) rows = rows.filter((item) => item.symbols?.includes(symbol));
   if (from) rows = rows.filter((item) => !item.publishedAt || item.publishedAt.slice(0, 10) >= from);
   if (to) rows = rows.filter((item) => !item.publishedAt || item.publishedAt.slice(0, 10) <= to);
@@ -133,11 +141,19 @@ function filterCalendar(items, url) {
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
   const type = url.searchParams.get('type');
+  const symbol = url.searchParams.get('symbol')?.trim().toUpperCase();
   const q = url.searchParams.get('q')?.trim().toLowerCase();
   let rows = [...items];
   if (from) rows = rows.filter((item) => !item.date || item.date >= from);
   if (to) rows = rows.filter((item) => !item.date || item.date <= to);
   if (type) rows = rows.filter((item) => item.type === type);
+  if (symbol) {
+    rows = rows.filter((item) => {
+      const sym = String(item.symbol || '').toUpperCase();
+      const hay = `${item.title || ''} ${item.country || ''}`.toUpperCase();
+      return sym === symbol || hay.includes(symbol);
+    });
+  }
   if (q) {
     rows = rows.filter((item) =>
       [item.title, item.country, item.symbol, item.type].some((value) =>
@@ -564,7 +580,7 @@ export async function handleRequest(req, res) {
 
       if (req.method === 'GET' && pathname === '/admin/api/calendar') {
         const db = await readDb();
-        const page = paginate(filterCalendar(db.calendarEvents, url), url, 30, 100);
+        const page = paginate(filterCalendar(db.calendarEvents, url), url, 30, 500);
         json(res, 200, { data: page.rows, page: page.page, pageSize: page.pageSize, total: page.total, totalPages: page.totalPages });
         return;
       }

@@ -60,6 +60,7 @@ import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceS
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { translateNewsTitlesWithSelectedProvider } from '@/services/aiSummaries';
 import { fetchSignalNews, signalNewsToNewsItem } from '@/integrations/signal-api';
+import type { SignalApiNewsItem } from '@/integrations/signal-api/types';
 import type { NewsItem } from '@/types/signal';
 import type { MessageId } from '@/locales/messages';
 
@@ -81,6 +82,37 @@ function sliceForDisplay(raw: FinnhubNewsRaw[], selected: string[]): FinnhubNews
   return filtered.slice(0, 12);
 }
 
+function signalSourceLabel(item: SignalApiNewsItem): string {
+  const s = String(item.sourceName || '').trim();
+  return s.length > 0 ? s : 'Unknown';
+}
+
+function uniqueSignalSources(items: SignalApiNewsItem[]): string[] {
+  return [...new Set(items.map(signalSourceLabel))].sort((a, b) => a.localeCompare(b));
+}
+
+function filterSignalBySelectedSources(items: SignalApiNewsItem[], selected: string[]): SignalApiNewsItem[] {
+  const set = new Set(selected);
+  return items.filter((i) => set.has(signalSourceLabel(i)));
+}
+
+async function filterSignalNewsForKorea(items: SignalApiNewsItem[]): Promise<SignalApiNewsItem[]> {
+  const extraKw = await loadKoreaNewsExtraKeywords();
+  const rawLike = items.map((item, index) => ({
+    category: item.category,
+    datetime: item.publishedAt ? Math.floor(new Date(item.publishedAt).getTime() / 1000) : 0,
+    headline: item.originalTitle || item.title,
+    id: index,
+    image: item.imageUrl || '',
+    related: item.symbols?.join(',') || '',
+    source: item.sourceName,
+    summary: item.originalSummary || item.summary,
+    url: item.sourceUrl,
+  }));
+  const keep = new Set(filterKoreaRelatedNews(rawLike, extraKw).map((item) => item.url));
+  return items.filter((item) => keep.has(item.sourceUrl));
+}
+
 export default function FeedScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
@@ -99,6 +131,8 @@ export default function FeedScreen() {
   const [availableSources, setAvailableSources] = useState<string[]>([]);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  /** Signal API: full `category=global` fetch for source filtering (Finnhub + RSS 등 동일 DB). */
+  const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
   const signalApiMode = useSignalApiBackend();
 
   useEffect(() => {
@@ -124,28 +158,29 @@ export default function FeedScreen() {
     setError(null);
     if (signalApiMode) {
       setRawPool([]);
-      setAvailableSources([]);
-      setSelectedSources([]);
-      const category = segment === 'crypto' ? 'crypto' : segment === 'korea' ? 'global' : 'global';
-      const serverItems = await fetchSignalNews({ locale, category, limit: segment === 'korea' ? 100 : 50 });
-      if (segment === 'korea') {
-        const extraKw = await loadKoreaNewsExtraKeywords();
-        const rawLike = serverItems.map((item, index) => ({
-          category: item.category,
-          datetime: item.publishedAt ? Math.floor(new Date(item.publishedAt).getTime() / 1000) : 0,
-          headline: item.originalTitle || item.title,
-          id: index,
-          image: item.imageUrl || '',
-          related: item.symbols?.join(',') || '',
-          source: item.sourceName,
-          summary: item.originalSummary || item.summary,
-          url: item.sourceUrl,
-        }));
-        const keep = new Set(filterKoreaRelatedNews(rawLike, extraKw).map((item) => item.url));
-        setItems(serverItems.filter((item) => keep.has(item.sourceUrl)).map((item) => signalNewsToNewsItem(item, locale)));
+      if (segment === 'crypto') {
+        setSignalNewsPool([]);
+        setAvailableSources([]);
+        setSelectedSources([]);
+        const serverItems = await fetchSignalNews({ locale, category: 'crypto', limit: 50 });
+        setItems(serverItems.map((item) => signalNewsToNewsItem(item, locale)));
         return;
       }
-      setItems(serverItems.map((item) => signalNewsToNewsItem(item, locale)));
+
+      // Fetch a larger pool so newly added sources (e.g. Financial Juice RSS)
+      // are not accidentally excluded by the server-side `limit`.
+      const limit = segment === 'korea' ? 160 : 220;
+      const serverItems = await fetchSignalNews({ locale, category: 'global', limit });
+      setSignalNewsPool(serverItems);
+      const sources = uniqueSignalSources(serverItems);
+      setAvailableSources(sources);
+      const selected = await loadSelectedSources(sources);
+      setSelectedSources(selected);
+      let scoped = filterSignalBySelectedSources(serverItems, selected);
+      if (segment === 'korea') {
+        scoped = await filterSignalNewsForKorea(scoped);
+      }
+      setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
       return;
     }
 
@@ -157,6 +192,8 @@ export default function FeedScreen() {
       setError(t('feedErrorToken'));
       return;
     }
+
+    setSignalNewsPool([]);
 
     const cachePrefs = await loadCacheFeaturePrefs();
     const newsCacheEnabled = cachePrefs.newsEnabled;
@@ -238,13 +275,21 @@ export default function FeedScreen() {
       try {
         await saveSelectedSources(next);
         setSelectedSources(next);
+        if (signalApiMode && signalNewsPool.length > 0 && (segment === 'global' || segment === 'korea')) {
+          let scoped = filterSignalBySelectedSources(signalNewsPool, next);
+          if (segment === 'korea') {
+            scoped = await filterSignalNewsForKorea(scoped);
+          }
+          setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
+          return;
+        }
         const summarized = await summarizeFromPool(rawPool, next);
         setItems(summarized);
       } catch (e) {
         setError(e instanceof Error ? e.message : t('feedErrorLoad'));
       }
     },
-    [rawPool, summarizeFromPool, t],
+    [locale, rawPool, segment, signalApiMode, signalNewsPool, summarizeFromPool, t],
   );
 
   const toggleSource = useCallback(

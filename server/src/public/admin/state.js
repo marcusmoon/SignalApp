@@ -40,4 +40,7 @@ export const state = {
   jobListSort: 'name', // name|lastRunDesc|intervalAsc
   marketLists: [],
   marketListDraft: null,
+  newsSources: [],
+  newsSourceDraft: '',
+  newsSourcesCategory: 'global',
 };

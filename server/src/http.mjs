@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config } from './config.mjs';
-import { readDb, updateDb, upsertById, nowIso } from './db.mjs';
+import { ensureNewsSourcesFromItems, normalizeNewsSourceName, readDb, updateDb, upsertById, nowIso } from './db.mjs';
 import { retranslateNewsItems, runPollingJob } from './jobs/runner.mjs';
 import { translateNews } from './providers/translation/index.mjs';
 import { fetchYoutubeVideosByIds } from './providers/youtube/youtube.mjs';
@@ -402,11 +402,32 @@ export async function handleRequest(req, res) {
     if (req.method === 'GET' && pathname === '/v1/news') {
       const db = await readDb();
       const locale = url.searchParams.get('locale') || 'ko';
-      const limit = Math.min(Number(url.searchParams.get('limit') || 30), 100);
+      // App may request a larger pool to build the "source" filter list.
+      const limit = Math.min(Number(url.searchParams.get('limit') || 30), 500);
       const rows = filterNews(db.newsItems, url)
         .slice(0, limit)
         .map((item) => displayNews(item, db.newsTranslations, locale));
       json(res, 200, { data: rows });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/v1/news-sources') {
+      const db = await readDb();
+      ensureNewsSourcesFromItems(db);
+      const category = url.searchParams.get('category');
+      const cat = category ? String(category).trim().toLowerCase() : '';
+      const sources = [...(db.newsSources || [])]
+        .map((s) => ({
+          id: String(s.id || '').trim(),
+          name: normalizeNewsSourceName(s.name),
+          category: String(s.category || 'global'),
+          enabled: s.enabled !== false,
+          order: Number(s.order) || 0,
+        }))
+        .filter((s) => s.id && s.name)
+        .filter((s) => (!cat ? true : s.category === cat))
+        .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+      json(res, 200, { data: sources });
       return;
     }
 
@@ -674,6 +695,95 @@ export async function handleRequest(req, res) {
 
       if (req.method === 'GET' && pathname === '/admin/api/provider-settings') {
         json(res, 200, { data: await listProviderSettingsPublic() });
+        return;
+      }
+
+      if (req.method === 'GET' && pathname === '/admin/api/news-sources') {
+        const db = await readDb();
+        ensureNewsSourcesFromItems(db);
+        const category = url.searchParams.get('category');
+        const cat = category ? String(category).trim().toLowerCase() : '';
+        const sources = [...(db.newsSources || [])]
+          .map((s) => ({
+            id: String(s.id || '').trim(),
+            name: normalizeNewsSourceName(s.name),
+            category: String(s.category || 'global'),
+            enabled: s.enabled !== false,
+            order: Number(s.order) || 0,
+          }))
+          .filter((s) => s.id && s.name)
+          .filter((s) => (!cat ? true : s.category === cat))
+          .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+        json(res, 200, { data: sources });
+        return;
+      }
+
+      if (req.method === 'PUT' && pathname === '/admin/api/news-sources') {
+        const patch = await readBody(req);
+        const items = Array.isArray(patch?.items) ? patch.items : [];
+        const category = String(patch?.category || '').trim().toLowerCase();
+        const updated = await updateDb((db) => {
+          ensureNewsSourcesFromItems(db);
+          const cur = Array.isArray(db.newsSources) ? db.newsSources : [];
+          const byKey = new Map(cur.map((s) => [`${String(s.id || '').trim()}|${String(s.category || 'global')}`, s]));
+          const seen = new Set();
+          const next = [];
+          let order = 0;
+
+          for (const raw of items) {
+            const id = String(raw?.id || '').trim();
+            const cat = String(raw?.category || category || 'global').trim().toLowerCase() || 'global';
+            const key = `${id}|${cat}`;
+            if (!id || seen.has(key)) continue;
+            const prevHit = byKey.get(key) || {};
+            const name = normalizeNewsSourceName(raw?.name || prevHit?.name);
+            if (!name) continue;
+            seen.add(key);
+            order += 1;
+            next.push({
+              ...prevHit,
+              id,
+              name,
+              category: cat,
+              enabled: raw?.enabled !== false,
+              order: Number(raw?.order) || order,
+              updatedAt: nowIso(),
+            });
+          }
+
+          // Keep anything not explicitly mentioned (safety).
+          for (const s of cur) {
+            const id = String(s.id || '').trim();
+            const cat = String(s.category || 'global');
+            const key = `${id}|${cat}`;
+            if (!id || seen.has(key)) continue;
+            next.push({ ...s, enabled: s.enabled !== false });
+          }
+
+          next.sort(
+            (a, b) =>
+              String(a.category || 'global').localeCompare(String(b.category || 'global')) ||
+              (Number(a.order) || 0) - (Number(b.order) || 0) ||
+              String(a.name || '').localeCompare(String(b.name || '')),
+          );
+          // Normalize order within each category
+          const counters = new Map();
+          for (const s of next) {
+            const c = String(s.category || 'global');
+            const n = (counters.get(c) || 0) + 1;
+            counters.set(c, n);
+            s.order = n;
+          }
+          db.newsSources = next;
+          return next.map((s) => ({
+            id: String(s.id || '').trim(),
+            name: normalizeNewsSourceName(s.name),
+            category: String(s.category || 'global'),
+            enabled: s.enabled !== false,
+            order: Number(s.order) || 0,
+          }));
+        });
+        json(res, 200, { data: updated });
         return;
       }
 

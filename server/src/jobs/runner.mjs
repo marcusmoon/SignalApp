@@ -1,4 +1,4 @@
-import { nowIso, readDb, updateDb, upsertById } from '../db.mjs';
+import { ensureNewsSourcesFromItems, nowIso, readDb, updateDb, upsertById } from '../db.mjs';
 import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchFinnhubMarketQuotes, fetchFinnhubMcapQuotes } from '../providers/market/finnhub.mjs';
@@ -185,6 +185,7 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       const rows = result.rows || [];
       if (result.kind === 'news') {
         for (const row of rows) upsertById(db.newsItems, row);
+        ensureNewsSourcesFromItems(db);
         await autoTranslateNews(db, rows);
       } else if (result.kind === 'calendar') {
         for (const row of rows) upsertById(db.calendarEvents, row);

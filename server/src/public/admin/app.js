@@ -290,6 +290,7 @@ import { dismissToast, showToast } from './toast.js';
             loadTranslationSettings(),
             loadProviderSettings(),
             loadMarketLists(),
+            loadNewsSources(),
             loadNews(),
             loadCalendar(),
             loadYoutube(),
@@ -1045,6 +1046,95 @@ import { dismissToast, showToast } from './toast.js';
         `).join('');
       }
 
+      function renderNewsSources() {
+        const host = $('newsSources');
+        if (!host) return;
+        const cat = state.newsSourcesCategory || 'global';
+        const rows = [...(state.newsSources || [])].sort((a, b) => (a.order || 0) - (b.order || 0) || String(a.name).localeCompare(String(b.name)));
+        host.innerHTML = `
+          <div class="card">
+            <div class="row" style="justify-content:space-between; gap:10px; align-items:center;">
+              <strong>${esc(textFor('newsSourcesTitle') || '뉴스 출처')}</strong>
+              <div class="row">
+                <button class="secondary" id="refreshNewsSourcesBtn">${esc(textFor('btnRefresh'))}</button>
+              </div>
+            </div>
+            <div class="tabs" style="margin-top:10px">
+              <button type="button" class="tabBtn ${cat === 'global' ? 'active' : ''}" data-news-sources-tab="global">${esc(textFor('newsSourcesCatGlobal'))}</button>
+              <button type="button" class="tabBtn ${cat === 'crypto' ? 'active' : ''}" data-news-sources-tab="crypto">${esc(textFor('newsSourcesCatCrypto'))}</button>
+            </div>
+            <div class="muted" style="margin-top:6px">${esc(textFor('newsSourcesHint'))}</div>
+            <div class="row" style="margin-top:10px; gap:8px; align-items:center;">
+              <input id="newsSourceAddName" placeholder="${esc(textFor('newsSourceAddPh'))}" value="${esc(state.newsSourceDraft || '')}" />
+              <button class="secondary" id="addNewsSourceBtn">${esc(textFor('btnAdd'))}</button>
+            </div>
+            <div style="margin-top:10px; overflow-x:auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>${esc(textFor('colName'))}</th>
+                    <th>${esc(textFor('colEnabled'))}</th>
+                    <th>${esc(textFor('colOrder'))}</th>
+                    <th>${esc(textFor('colAction'))}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rows.map((s, idx) => `
+                    <tr>
+                      <td class="muted">${idx + 1}</td>
+                      <td><strong>${esc(s.name)}</strong></td>
+                      <td><input type="checkbox" data-news-source-enabled="${esc(s.id)}" ${s.enabled ? 'checked' : ''}/></td>
+                      <td class="muted">${Number(s.order) || (idx + 1)}</td>
+                      <td class="row">
+                        <button class="secondary" data-news-source-move="up" data-news-source-id="${esc(s.id)}">↑</button>
+                        <button class="secondary" data-news-source-move="down" data-news-source-id="${esc(s.id)}">↓</button>
+                        <button class="danger" data-news-source-delete="${esc(s.id)}">${esc(textFor('btnRemove'))}</button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+              ${rows.length === 0 ? `<p class="muted">${esc(textFor('newsSourcesEmpty'))}</p>` : ''}
+            </div>
+            <div class="row" style="margin-top:10px; justify-content:flex-end;">
+              <button class="success" id="saveNewsSourcesBtn">${esc(textFor('btnSave'))}</button>
+            </div>
+          </div>
+        `;
+      }
+
+      async function loadNewsSources() {
+        const cat = state.newsSourcesCategory || 'global';
+        const body = await api(`/admin/api/news-sources?category=${encodeURIComponent(cat)}`);
+        state.newsSources = Array.isArray(body.data) ? body.data : [];
+        renderNewsSources();
+      }
+
+      function normalizeNewsSourceIdFromName(name) {
+        const s = String(name || '').trim().toLowerCase();
+        let h = 0;
+        for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+        return `src-${h.toString(16)}`;
+      }
+
+      async function saveNewsSources() {
+        const category = state.newsSourcesCategory || 'global';
+        const next = [...(state.newsSources || [])]
+          .map((s, idx) => ({
+            id: String(s.id || '').trim(),
+            name: String(s.name || '').trim(),
+            category,
+            enabled: s.enabled !== false,
+            order: idx + 1,
+          }))
+          .filter((s) => s.id && s.name);
+        const body = await api('/admin/api/news-sources', { method: 'PUT', body: JSON.stringify({ category, items: next }) });
+        state.newsSources = Array.isArray(body.data) ? body.data : next;
+        showToast(textFor('toastSaved') || 'Saved', `${state.newsSources.length}`, { kind: 'success' });
+        renderNewsSources();
+      }
+
       function normalizeSymbolInput(value) {
         return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
       }
@@ -1688,6 +1778,59 @@ import { dismissToast, showToast } from './toast.js';
           if (target.dataset.marketListOpen) {
             openMarketListDialog(target.dataset.marketListOpen);
           }
+          if (target.id === 'refreshNewsSourcesBtn') {
+            await loadNewsSources();
+            return;
+          }
+          if (target.dataset.newsSourcesTab) {
+            state.newsSourcesCategory = target.dataset.newsSourcesTab || 'global';
+            await loadNewsSources();
+            return;
+          }
+          if (target.id === 'addNewsSourceBtn') {
+            const name = String($('newsSourceAddName')?.value || '').trim();
+            state.newsSourceDraft = name;
+            if (!name) return;
+            const id = normalizeNewsSourceIdFromName(name);
+            const existing = (state.newsSources || []).find((s) => s.id === id);
+            if (existing) {
+              existing.enabled = true;
+            } else {
+              const maxOrder = (state.newsSources || []).reduce((m, s) => Math.max(m, Number(s.order) || 0), 0);
+              (state.newsSources || []).push({ id, name, enabled: true, order: maxOrder + 1 });
+            }
+            state.newsSourceDraft = '';
+            if ($('newsSourceAddName')) $('newsSourceAddName').value = '';
+            renderNewsSources();
+            return;
+          }
+          if (target.dataset.newsSourceMove && target.dataset.newsSourceId) {
+            const dir = target.dataset.newsSourceMove;
+            const id = target.dataset.newsSourceId;
+            const list = [...(state.newsSources || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+            const idx = list.findIndex((s) => s.id === id);
+            if (idx < 0) return;
+            const swapWith = dir === 'up' ? idx - 1 : idx + 1;
+            if (swapWith < 0 || swapWith >= list.length) return;
+            const tmp = list[idx];
+            list[idx] = list[swapWith];
+            list[swapWith] = tmp;
+            list.forEach((s, i) => { s.order = i + 1; });
+            state.newsSources = list;
+            renderNewsSources();
+            return;
+          }
+          if (target.dataset.newsSourceDelete) {
+            const id = target.dataset.newsSourceDelete;
+            state.newsSources = (state.newsSources || []).filter((s) => s.id !== id);
+            state.newsSources.forEach((s, i) => { s.order = i + 1; });
+            renderNewsSources();
+            return;
+          }
+          if (target.id === 'saveNewsSourcesBtn') {
+            await saveNewsSources();
+            return;
+          }
           if (target.id === 'closeMarketListDialog' || target.id === 'cancelMarketListDialog') {
             closeMarketListDialog();
           }
@@ -1933,6 +2076,15 @@ import { dismissToast, showToast } from './toast.js';
           localStorage.setItem('signalAdminTimeBasis', event.target.value);
           await Promise.all([loadDashboard(), loadJobs(), loadJobRuns(), loadNews(), loadYoutube()]);
         }
+        if (event.target.dataset && event.target.dataset.newsSourceEnabled) {
+          const id = event.target.dataset.newsSourceEnabled;
+          const hit = (state.newsSources || []).find((s) => s.id === id);
+          if (hit) {
+            hit.enabled = !!event.target.checked;
+            renderNewsSources();
+          }
+        }
+        // category is managed via tabs in the News Sources section
         if (event.target.id === 'globalSearchQuery') {
           if ($('globalSearchResults')) $('globalSearchResults').innerHTML = renderSearchResults(event.target.value);
         }

@@ -16,6 +16,14 @@ export type SignalApiNewsItem = {
   fetchedAt: string;
 };
 
+export type SignalApiNewsSource = {
+  id: string;
+  name: string;
+  category: string;
+  enabled: boolean;
+  order: number;
+};
+
 export type SignalApiCalendarEvent = {
   id: string;
   provider: string;

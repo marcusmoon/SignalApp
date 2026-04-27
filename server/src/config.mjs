@@ -25,7 +25,6 @@ loadDotEnv();
 export const config = {
   rootDir,
   dataDir: path.join(rootDir, 'data'),
-  dataFile: path.join(rootDir, 'data', 'local-db.json'),
   host: process.env.HOST || '127.0.0.1',
   port: Number(process.env.PORT || 4000),
   adminId: process.env.ADMIN_ID || 'admin',

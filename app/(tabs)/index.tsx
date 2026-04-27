@@ -59,7 +59,7 @@ import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreferen
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { translateNewsTitlesWithSelectedProvider } from '@/services/aiSummaries';
-import { fetchSignalNews, signalNewsToNewsItem } from '@/integrations/signal-api';
+import { fetchSignalNews, fetchSignalNewsSources, signalNewsToNewsItem } from '@/integrations/signal-api';
 import type { SignalApiNewsItem } from '@/integrations/signal-api/types';
 import type { NewsItem } from '@/types/signal';
 import type { MessageId } from '@/locales/messages';
@@ -89,6 +89,36 @@ function signalSourceLabel(item: SignalApiNewsItem): string {
 
 function uniqueSignalSources(items: SignalApiNewsItem[]): string[] {
   return [...new Set(items.map(signalSourceLabel))].sort((a, b) => a.localeCompare(b));
+}
+
+function sortSourcesByCatalog(names: string[], catalog: { name: string; enabled: boolean; order: number }[]): string[] {
+  const byName = new Map(catalog.map((c) => [String(c.name || ''), c]));
+  return [...names].sort((a, b) => {
+    const ca = byName.get(a);
+    const cb = byName.get(b);
+    const oa = ca ? Number(ca.order) || 0 : 9999;
+    const ob = cb ? Number(cb.order) || 0 : 9999;
+    if (oa !== ob) return oa - ob;
+    return a.localeCompare(b);
+  });
+}
+
+function buildSourcesFromCatalog(params: {
+  rawSources: string[];
+  catalog: { name: string; enabled: boolean; order: number }[];
+}): string[] {
+  const { rawSources, catalog } = params;
+  const enabledCatalog = (catalog || [])
+    .filter((c) => c && c.enabled)
+    .slice()
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.name).localeCompare(String(b.name)))
+    .map((c) => String(c.name || '').trim())
+    .filter((s) => s.length > 0);
+
+  const set = new Set(enabledCatalog);
+  const extras = rawSources.filter((s) => !set.has(s));
+  const out = [...enabledCatalog, ...extras];
+  return out.length > 0 ? out : rawSources;
 }
 
 function filterSignalBySelectedSources(items: SignalApiNewsItem[], selected: string[]): SignalApiNewsItem[] {
@@ -133,6 +163,8 @@ export default function FeedScreen() {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   /** Signal API: full `category=global` fetch for source filtering (Finnhub + RSS 등 동일 DB). */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
+  const [signalSourceCatalog, setSignalSourceCatalog] =
+    useState<{ name: string; enabled: boolean; order: number }[]>([]);
   const signalApiMode = useSignalApiBackend();
 
   useEffect(() => {
@@ -158,6 +190,14 @@ export default function FeedScreen() {
     setError(null);
     if (signalApiMode) {
       setRawPool([]);
+      // Load server-managed source catalog (order/visibility for filter UI).
+      try {
+        const catKey = segment === 'crypto' ? 'crypto' : 'global';
+        const cat = await fetchSignalNewsSources({ category: catKey });
+        setSignalSourceCatalog(cat.map((c) => ({ name: c.name, enabled: c.enabled, order: c.order })));
+      } catch {
+        setSignalSourceCatalog([]);
+      }
       if (segment === 'crypto') {
         setSignalNewsPool([]);
         setAvailableSources([]);
@@ -172,7 +212,8 @@ export default function FeedScreen() {
       const limit = segment === 'korea' ? 160 : 220;
       const serverItems = await fetchSignalNews({ locale, category: 'global', limit });
       setSignalNewsPool(serverItems);
-      const sources = uniqueSignalSources(serverItems);
+      const rawSources = uniqueSignalSources(serverItems);
+      const sources = buildSourcesFromCatalog({ rawSources, catalog: signalSourceCatalog });
       setAvailableSources(sources);
       const selected = await loadSelectedSources(sources);
       setSelectedSources(selected);

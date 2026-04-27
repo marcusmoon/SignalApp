@@ -31,6 +31,11 @@ function defaultDb() {
     providerSettings: defaultProviderSettings(),
     translationSettings: defaultTranslationSettings(),
     uiModelPresets: defaultUiModelPresets(),
+    /**
+     * News source catalog used by the app filter & admin ordering.
+     * Each item: { id, name, enabled, order, createdAt, updatedAt }
+     */
+    newsSources: [],
   };
 }
 
@@ -347,7 +352,77 @@ function ensureDbShape(db) {
   if (!Array.isArray(db.uiModelPresets.claude)) db.uiModelPresets.claude = defaultUiModelPresets().claude;
   if (!Array.isArray(db.uiModelPresets.mock)) db.uiModelPresets.mock = defaultUiModelPresets().mock;
   if (!db.uiModelPresets.updatedAt) db.uiModelPresets.updatedAt = nowIso();
+  if (!Array.isArray(db.newsSources)) db.newsSources = [];
   return db;
+}
+
+function stableSourceId(name) {
+  const s = String(name || '').trim().toLowerCase();
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return `src-${h.toString(16)}`;
+}
+
+export function normalizeNewsSourceName(raw) {
+  const s = String(raw || '').trim();
+  return s.length > 0 ? s : 'Unknown';
+}
+
+function normalizeNewsCategory(raw) {
+  const c = String(raw || '').trim().toLowerCase();
+  if (c === 'crypto') return 'crypto';
+  // Treat unknown/legacy as global for app UX.
+  return 'global';
+}
+
+export function ensureNewsSourcesFromItems(db) {
+  if (!Array.isArray(db.newsSources)) db.newsSources = [];
+  const list = db.newsSources;
+  // Normalize legacy entries without category.
+  for (const s of list) {
+    if (!s) continue;
+    if (!s.category) s.category = 'global';
+    if (s.enabled == null) s.enabled = true;
+  }
+
+  const byKey = new Map(list.map((x) => [`${x.id}|${x.category || 'global'}`, x]));
+  const maxOrderByCat = new Map();
+  for (const s of list) {
+    const cat = normalizeNewsCategory(s?.category);
+    maxOrderByCat.set(cat, Math.max(maxOrderByCat.get(cat) || 0, Number(s?.order) || 0));
+  }
+  let changed = false;
+  for (const item of db.newsItems || []) {
+    const name = normalizeNewsSourceName(item?.sourceName);
+    const id = stableSourceId(name);
+    const category = normalizeNewsCategory(item?.category);
+    const key = `${id}|${category}`;
+    if (byKey.has(key)) continue;
+    const nextOrder = (maxOrderByCat.get(category) || 0) + 1;
+    maxOrderByCat.set(category, nextOrder);
+    const row = {
+      id,
+      name,
+      category,
+      enabled: true,
+      order: nextOrder,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    list.push(row);
+    byKey.set(key, row);
+    changed = true;
+  }
+  if (changed) {
+    // keep deterministic order
+    list.sort(
+      (a, b) =>
+        String(a.category || 'global').localeCompare(String(b.category || 'global')) ||
+        (Number(a.order) || 0) - (Number(b.order) || 0) ||
+        String(a.name).localeCompare(String(b.name)),
+    );
+  }
+  return changed;
 }
 
 async function readJsonFile(file, fallback) {
@@ -373,11 +448,12 @@ async function readSplitDb() {
     readJsonFile(storePath('market'), null),
   ]);
   if (!settings && !jobs && !news && !calendar && !youtube && !market) return null;
-  return ensureDbShape({
+  const shaped = ensureDbShape({
     meta: settings?.meta ?? { createdAt: nowIso(), updatedAt: nowIso(), schemaVersion: 1 },
     providerSettings: settings?.providerSettings ?? [],
     translationSettings: settings?.translationSettings ?? [],
     uiModelPresets: settings?.uiModelPresets ?? null,
+    newsSources: settings?.newsSources ?? [],
     pollingJobs: jobs?.pollingJobs ?? [],
     pollingJobRuns: jobs?.pollingJobRuns ?? [],
     newsItems: news?.newsItems ?? [],
@@ -388,22 +464,31 @@ async function readSplitDb() {
     coinMarkets: market?.coinMarkets ?? [],
     marketLists: market?.marketLists ?? [],
   });
+  ensureNewsSourcesFromItems(shaped);
+  return shaped;
 }
 
 export async function readDb() {
   const split = await readSplitDb();
   if (split) return split;
+
+  // Legacy fallback: older versions used a monolithic local-db.json.
+  // If it exists, migrate once into split stores then keep only a backup.
+  const legacyFile = path.join(config.dataDir, 'local-db.json');
   try {
-    const body = await fs.readFile(config.dataFile, 'utf8');
+    const body = await fs.readFile(legacyFile, 'utf8');
     const db = ensureDbShape(JSON.parse(body));
     await writeDb(db);
+    const backup = path.join(config.dataDir, `local-db.legacy.${Date.now()}.json`);
+    await fs.rename(legacyFile, backup).catch(() => {});
     return db;
   } catch (error) {
     if (error?.code !== 'ENOENT') throw error;
-    const db = defaultDb();
-    await writeDb(db);
-    return db;
   }
+
+  const db = defaultDb();
+  await writeDb(db);
+  return db;
 }
 
 export async function writeDb(db) {
@@ -416,6 +501,7 @@ export async function writeDb(db) {
       providerSettings: shaped.providerSettings,
       translationSettings: shaped.translationSettings,
       uiModelPresets: shaped.uiModelPresets,
+      newsSources: shaped.newsSources,
     }),
     writeStore('jobs', {
       pollingJobs: shaped.pollingJobs,

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Signal Admin</title>
-    <link rel="stylesheet" href="/admin/admin.css?v=2026-04-28-3" />
+    <link rel="stylesheet" href="/admin/admin.css?v=2026-04-27-dark-6" />
   </head>
   <body>
     <header>
@@ -23,16 +23,14 @@
         <label class="headerSearch" aria-label="Global search">
           <input id="globalSearchInput" placeholder="메뉴, job, 콘텐츠 검색... (⌘K)" />
         </label>
-        <button id="headerNotifBtn" class="secondary" aria-label="notifications">🔔<span id="headerNotifBadge" class="pill muted" style="margin-left:6px;display:none">0</span></button>
-        <button id="headerHelpBtn" class="secondary" aria-label="help">?</button>
+        <button id="headerNotifBtn" class="secondary iconOnly" aria-label="notifications">🔔<span id="headerNotifBadge" class="pill muted" style="margin-left:6px;display:none">0</span></button>
+        <button id="headerHelpBtn" class="secondary iconOnly" aria-label="help">?</button>
         <button id="headerProfileBtn" class="secondary" aria-label="profile menu"><span id="headerProfileName">admin</span> ▾</button>
-        <span>🌐</span>
         <select id="adminLanguage">
           <option value="ko">한국어</option>
           <option value="en">English</option>
           <option value="ja">日本語</option>
         </select>
-        <span class="pill muted" title="admin ui build">ui 2026-04-28-1</span>
         <select id="adminTimeBasis">
           <option value="ko-KR|Asia/Seoul">한국 시간</option>
           <option value="en-US|America/New_York">미국 동부 시간</option>
@@ -70,25 +68,26 @@
       <div id="adminPanel" class="layout hidden">
         <aside class="side">
           <div class="navGroup">
-            <button class="navBtn active" data-view="dashboard" data-icon="📊">📊 대시보드</button>
+            <button class="navBtn active" data-view="dashboard" data-icon="⌂">대시보드</button>
 
-            <div class="navSectionTitle muted">📰 콘텐츠 관리</div>
-            <button class="navBtn secondary" data-view="news" data-icon="📰">뉴스 목록</button>
-            <button class="navBtn secondary" data-view="youtube" data-icon="▶">유튜브 관리</button>
-            <button class="navBtn secondary" data-view="concalls" data-icon="📞" data-coming-soon="true" aria-disabled="true">컨콜 요약</button>
-            <button class="navBtn secondary" data-view="calendar" data-icon="📅">투자 캘린더</button>
+            <div class="navSectionTitle muted">콘텐츠 관리</div>
+            <button class="navBtn secondary" data-view="news" data-icon="N">뉴스 목록</button>
+            <button class="navBtn secondary" data-view="youtube" data-icon="Y">유튜브 관리</button>
+            <button class="navBtn secondary" data-view="concalls" data-icon="C" data-coming-soon="true" aria-disabled="true">컨콜 요약</button>
+            <button class="navBtn secondary" data-view="calendar" data-icon="D">투자 캘린더</button>
 
-            <div class="navSectionTitle muted" style="margin-top:10px">⚙️ 수집 서버</div>
-            <button class="navBtn secondary" data-view="jobs" data-icon="⏱">스케줄 관리</button>
-            <button class="navBtn secondary" data-view="monitoring" data-icon="📈">수집 현황</button>
-            <button class="navBtn secondary" data-view="errors" data-icon="⚠️">오류 로그</button>
+            <div class="navSectionTitle muted" style="margin-top:10px">수집 서버</div>
+            <button class="navBtn secondary" data-view="jobs" data-icon="J">스케줄 관리</button>
+            <button class="navBtn secondary" data-view="monitoring" data-icon="M">수집 현황</button>
+            <button class="navBtn secondary" data-view="errors" data-icon="!">오류 로그</button>
 
-            <div class="navSectionTitle muted" style="margin-top:10px">🔧 시스템</div>
-            <button class="navBtn secondary" data-view="settings-keys" data-icon="🔑">Provider 키관리</button>
-            <button class="navBtn secondary" data-view="settings-theme" data-icon="🎨">테마</button>
-            <button class="navBtn secondary" data-view="settings-lists" data-icon="📋">마켓 리스트</button>
-            <button class="navBtn secondary" data-view="settings-danger" data-icon="🧨">데이터 초기화</button>
-            <button class="navBtn secondary" data-view="translations" data-icon="🌐">번역 설정</button>
+            <div class="navSectionTitle muted" style="margin-top:10px">시스템</div>
+            <button class="navBtn secondary" data-view="settings-keys" data-icon="P">Provider</button>
+            <button class="navBtn secondary" data-view="settings-theme" data-icon="T">테마</button>
+            <button class="navBtn secondary" data-view="settings-lists" data-icon="L">마켓 리스트</button>
+            <button class="navBtn secondary" data-view="settings-sources" data-icon="S">뉴스 출처</button>
+            <button class="navBtn secondary" data-view="settings-danger" data-icon="R">데이터 초기화</button>
+            <button class="navBtn secondary" data-view="translations" data-icon="G">번역 설정</button>
           </div>
           <a
             class="floatingProfile"
@@ -393,7 +392,7 @@
             <div class="panel">
               <div class="pageHeader">
                 <div class="pageHeaderMain">
-                  <div class="pageTitle" id="settingsTitle">Provider 키관리</div>
+                  <div class="pageTitle" id="settingsTitle">Provider</div>
                   <div class="pageDesc" id="settingsDesc">외부 Provider(API Key)와 LLM 기본 모델(defaultModel)을 관리합니다.</div>
                 </div>
                 <div class="pageHeaderActions">
@@ -402,42 +401,132 @@
               </div>
 
               <div id="settingsTab-keys" class="settingsTab">
-                <p class="muted">키는 화면에 전체 노출하지 않고 마스킹합니다. 저장 후 서버 재시작 없이 다음 호출부터 사용됩니다.</p>
+                <div class="settingsHero">
+                  <span class="settingsHeroIcon">P</span>
+                  <div>
+                    <div class="cardKicker">Provider 연결 상태</div>
+                    <p class="summary">외부 데이터와 번역 Provider의 사용 여부, API Key, 기본 모델을 한 화면에서 관리합니다. 키는 저장 후 마스킹되어 표시됩니다.</p>
+                  </div>
+                </div>
                 <div id="providerSettings"></div>
               </div>
 
               <div id="settingsTab-theme" class="settingsTab hidden">
-                <p class="muted">앱의 accent preset과 같은 색상 계열을 사용합니다. 이 브라우저에 저장됩니다.</p>
-                <div id="themeOptions" class="themeGrid"></div>
-                <div class="previewBar">
-                  <span class="muted">적용 예시</span>
-                  <span class="previewTab">Signal</span>
+                <div class="settingsHero">
+                  <span class="settingsHeroIcon">T</span>
+                  <div>
+                    <div class="cardKicker">관리자 화면 테마</div>
+                    <p class="summary">앱의 accent preset과 같은 색상 계열을 사용합니다. 선택값은 이 브라우저에 저장됩니다.</p>
+                  </div>
+                </div>
+                <div class="card settingsControlCard">
+                  <div class="cardHead">
+                    <div class="cardHeadMain">
+                      <div class="cardKicker">Accent color</div>
+                      <div class="cardHint">버튼, 활성 메뉴, 상태 강조색에 반영됩니다.</div>
+                    </div>
+                  </div>
+                  <div id="themeOptions" class="themeGrid"></div>
+                  <div class="previewBar">
+                    <span class="muted">적용 예시</span>
+                    <span class="previewTab">Signal</span>
+                  </div>
                 </div>
               </div>
 
               <div id="settingsTab-lists" class="settingsTab hidden">
+                <div class="settingsHero">
+                  <span class="settingsHeroIcon">L</span>
+                  <div>
+                    <div class="cardKicker">앱 공용 리스트</div>
+                    <p class="summary">앱과 수집 Job이 함께 쓰는 마켓 리스트를 관리합니다. 종목 기준을 바꾸면 다음 수집과 앱 조회에 반영됩니다.</p>
+                  </div>
+                </div>
                 <div id="marketLists"></div>
-                <div class="divider settingsListsDivider"></div>
-                <p class="muted">뉴스 출처는 여기서 관리합니다.</p>
+              </div>
+
+              <div id="settingsTab-sources" class="settingsTab hidden">
+                <div class="settingsHero">
+                  <span class="settingsHeroIcon">S</span>
+                  <div>
+                    <div class="cardKicker">뉴스 출처 관리</div>
+                    <p class="summary">앱 뉴스 필터에 노출되는 출처 목록, 표시 여부, 순서, 별칭을 관리합니다.</p>
+                  </div>
+                </div>
                 <div id="newsSources"></div>
               </div>
 
               <div id="settingsTab-danger" class="settingsTab hidden">
-                <p class="muted">외부 API에서 가져온 로컬 저장 데이터를 선택해서 비웁니다. 설정과 Job 정의는 유지됩니다.</p>
-                <div class="card dangerCard">
-                  <div class="row">
-                    <label><input type="checkbox" data-reset-target="newsItems" /> 뉴스 원본</label>
-                    <label><input type="checkbox" data-reset-target="newsTranslations" /> 뉴스 번역</label>
-                    <label><input type="checkbox" data-reset-target="calendarEvents" /> 캘린더 이벤트</label>
-                    <label><input type="checkbox" data-reset-target="youtubeVideos" /> 유튜브 영상</label>
-                    <label><input type="checkbox" data-reset-target="marketQuotes" /> 시세</label>
-                    <label><input type="checkbox" data-reset-target="coinMarkets" /> 코인</label>
-                    <label><input type="checkbox" data-reset-target="pollingJobRuns" /> Job 실행 로그</label>
+                <div class="dangerIntro">
+                  <div>
+                    <div class="cardKicker">로컬 수집 데이터 초기화</div>
+                    <p class="summary">외부 API에서 가져와 저장한 데이터만 선택해서 비웁니다. Provider 키, 테마, Job 정의, 마켓 리스트 설정은 유지됩니다.</p>
                   </div>
-                  <div class="row" style="margin-top:10px">
-                    <input id="resetConfirmText" placeholder="RESET 입력" />
-                    <button id="resetDataBtn" class="danger">선택 데이터 초기화</button>
-                    <span id="resetResult" class="muted"></span>
+                  <span class="pill pillStatus--fail">되돌릴 수 없음</span>
+                </div>
+
+                <div class="resetLayout">
+                  <div class="card resetPanel">
+                    <div class="cardHead">
+                      <div class="cardHeadMain">
+                        <div class="cardKicker">초기화 대상</div>
+                        <div class="cardHint">지울 데이터 묶음을 선택하세요.</div>
+                      </div>
+                      <div class="cardHeadActions">
+                        <button id="resetSelectAllBtn" class="secondary">전체 선택</button>
+                        <button id="resetClearBtn" class="secondary">선택 해제</button>
+                      </div>
+                    </div>
+                    <div class="resetGrid">
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="newsItems" />
+                        <span class="resetGlyph">N</span>
+                        <span class="resetText"><strong>뉴스 원본</strong><small>수집된 기사 본문과 메타 정보</small></span>
+                      </label>
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="newsTranslations" />
+                        <span class="resetGlyph">T</span>
+                        <span class="resetText"><strong>뉴스 번역</strong><small>언어별 번역 결과와 상태</small></span>
+                      </label>
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="calendarEvents" />
+                        <span class="resetGlyph">C</span>
+                        <span class="resetText"><strong>캘린더 이벤트</strong><small>실적·경제지표 일정</small></span>
+                      </label>
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="youtubeVideos" />
+                        <span class="resetGlyph">Y</span>
+                        <span class="resetText"><strong>유튜브 영상</strong><small>수집된 영상 목록과 설명</small></span>
+                      </label>
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="marketQuotes" />
+                        <span class="resetGlyph">Q</span>
+                        <span class="resetText"><strong>시세</strong><small>메가캡 등 주식 시세 캐시</small></span>
+                      </label>
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="coinMarkets" />
+                        <span class="resetGlyph">B</span>
+                        <span class="resetText"><strong>코인</strong><small>코인 마켓 데이터 캐시</small></span>
+                      </label>
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="pollingJobRuns" />
+                        <span class="resetGlyph">J</span>
+                        <span class="resetText"><strong>Job 실행 로그</strong><small>수동·스케줄 실행 이력</small></span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="card dangerCard resetConfirmPanel">
+                    <div class="resetStep">1</div>
+                    <div>
+                      <div class="cardKicker">실행 확인</div>
+                      <p class="summary">선택한 데이터는 즉시 비워집니다. 계속하려면 아래에 <strong>RESET</strong>을 입력하세요.</p>
+                    </div>
+                    <div id="resetSelectedList" class="resetSelectedList muted">선택된 대상이 없습니다.</div>
+                    <input id="resetConfirmText" placeholder="RESET 입력" autocomplete="off" />
+                    <button id="resetDataBtn" class="danger" disabled>선택 데이터 초기화</button>
+                    <div id="resetSelectionInfo" class="muted">0개 선택됨</div>
+                    <div id="resetResult" class="resetResult muted"></div>
                   </div>
                 </div>
               </div>
@@ -497,7 +586,7 @@
         </div>
         <div class="dialogBody">
           <div class="row" style="flex-direction:column;align-items:stretch">
-            <button class="secondary" data-view="settings-keys">Provider 키관리</button>
+            <button class="secondary" data-view="settings-keys">Provider</button>
             <button class="secondary" data-view="translations">번역 설정</button>
             <button class="danger" id="profileLogoutBtn">로그아웃</button>
           </div>
@@ -584,6 +673,6 @@
         </div>
       </div>
     </div>
-    <script type="module" src="/admin/app.js?v=2026-04-28-3"></script>
+    <script type="module" src="/admin/app.js?v=2026-04-27-dark-6"></script>
   </body>
 </html>

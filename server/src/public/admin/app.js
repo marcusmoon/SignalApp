@@ -160,6 +160,16 @@ import { dismissToast, showToast } from './toast.js';
         return `<span class="pill ${css}">${esc(operationLabel(op))}</span>`;
       }
 
+      function domainBadge(domain) {
+        const d = String(domain || 'other');
+        const known = ['news', 'calendar', 'youtube', 'market', 'other'].includes(d);
+        return `<span class="pill">${esc(known ? domainLabel(d) : d)}</span>`;
+      }
+
+      function providerBadge(provider) {
+        return `<span class="pill pill--subtle">${esc(provider || '-')}</span>`;
+      }
+
       function runStatusPill(status, stale) {
         if (stale) return `<span class="pill pillStatus pillStatus--warn">${esc(textFor('runStale'))}</span>`;
         const s = String(status || '').toLowerCase();
@@ -190,9 +200,11 @@ import { dismissToast, showToast } from './toast.js';
               ? 'theme'
               : requestedView === 'settings-lists'
                 ? 'lists'
-                : requestedView === 'settings-danger'
-                  ? 'danger'
-                  : null;
+                : requestedView === 'settings-sources'
+                  ? 'sources'
+                  : requestedView === 'settings-danger'
+                    ? 'danger'
+                    : null;
         const actualView = settingsTabFromView ? 'settings' : requestedView;
 
         const panel = $(`view-${actualView}`);
@@ -218,9 +230,11 @@ import { dismissToast, showToast } from './toast.js';
                 ? '테마'
                 : settingsTabFromView === 'lists'
                   ? '마켓 리스트'
-                  : settingsTabFromView === 'danger'
-                    ? '데이터 초기화'
-                    : 'Provider 키관리';
+                  : settingsTabFromView === 'sources'
+                    ? '뉴스 출처'
+                    : settingsTabFromView === 'danger'
+                      ? '데이터 초기화'
+                      : 'Provider';
           }
           const desc = $('settingsDesc');
           if (desc) {
@@ -229,9 +243,11 @@ import { dismissToast, showToast } from './toast.js';
                 ? '브라우저에 저장되는 UI 테마를 설정합니다.'
                 : settingsTabFromView === 'lists'
                   ? '앱과 수집 Job이 공통으로 사용하는 마켓 리스트를 관리합니다.'
-                  : settingsTabFromView === 'danger'
-                    ? '외부 API에서 가져온 로컬 저장 데이터를 선택적으로 초기화합니다.'
-                    : '외부 Provider(API Key)와 LLM 기본 모델(defaultModel)을 관리합니다.';
+                  : settingsTabFromView === 'sources'
+                    ? '앱 뉴스 필터에 노출되는 출처와 별칭을 관리합니다.'
+                    : settingsTabFromView === 'danger'
+                      ? '외부 API에서 가져온 로컬 저장 데이터를 선택적으로 초기화합니다.'
+                      : '외부 Provider(API Key)와 LLM 기본 모델(defaultModel)을 관리합니다.';
           }
         }
         if (resolvedView === 'jobs') {
@@ -382,15 +398,15 @@ import { dismissToast, showToast } from './toast.js';
         const stale = runs.filter((r) => r.stale);
         $('monitoring').innerHTML = `
           <div class="statGrid wideStats">
-            <div class="stat"><div class="statLabel muted">🧾 ${esc(textFor('statRecentRuns'))}</div><div class="statNum">${runs.length}</div></div>
-            <div class="stat"><div class="statLabel muted">⏰ ${esc(textFor('statStale'))}</div><div class="statNum">${stale.length}</div></div>
-            <div class="stat"><div class="statLabel muted">⏱ ${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
-            <div class="stat"><div class="statLabel muted">⚠️ ${esc(textFor('statRecentFailures'))}</div><div class="statNum">${summary.counts.recentFailedRuns}</div></div>
+            <div class="stat"><div class="statLabel muted"><span class="statIcon">R</span>${esc(textFor('statRecentRuns'))}</div><div class="statNum">${runs.length}</div></div>
+            <div class="stat"><div class="statLabel muted"><span class="statIcon">S</span>${esc(textFor('statStale'))}</div><div class="statNum">${stale.length}</div></div>
+            <div class="stat"><div class="statLabel muted"><span class="statIcon">J</span>${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
+            <div class="stat"><div class="statLabel muted"><span class="statIcon">!</span>${esc(textFor('statRecentFailures'))}</div><div class="statNum">${summary.counts.recentFailedRuns}</div></div>
           </div>
           <div class="card card--elevated" style="margin-top:12px">
             <div class="cardHead">
               <div class="cardHeadMain">
-                <div class="cardKicker">📈 ${esc(textFor('pageMonitoringTitle'))}</div>
+                <div class="cardKicker">${esc(textFor('pageMonitoringTitle'))}</div>
                 <div class="cardHint">${esc(textFor('sectionRecentRuns'))}</div>
               </div>
               <div class="cardHeadActions">
@@ -412,7 +428,9 @@ import { dismissToast, showToast } from './toast.js';
                 <tr>
                   <th>${esc(textFor('colJob'))}</th>
                   <th>${esc(textFor('colStatus'))}</th>
-                  <th>${esc(textFor('colType'))}</th>
+                  <th>${esc(textFor('colOperation'))}</th>
+                  <th>${esc(textFor('colDomain'))}</th>
+                  <th>${esc(textFor('colProvider'))}</th>
                   <th class="right">${esc(textFor('colItems'))}</th>
                   <th>${esc(textFor('colFinished'))}</th>
                   <th class="center">${esc(textFor('colAction'))}</th>
@@ -420,12 +438,14 @@ import { dismissToast, showToast } from './toast.js';
               </thead>
               <tbody>
                 ${runs.length === 0
-                  ? `<tr><td colspan="6" class="muted">${esc(textFor('monitoringEmpty'))}</td></tr>`
+                  ? `<tr><td colspan="8" class="muted">${esc(textFor('monitoringEmpty'))}</td></tr>`
                   : runs.map((run) => `
                     <tr class="${run.stale ? 'staleRow' : ''}">
                       <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
                       <td>${runStatusPill(run.status, !!run.stale)}</td>
-                      <td>${operationBadge(run.operation)}<br/><span class="muted">${esc(run.resultKind || run.domain || '-')} · ${esc(run.provider || '-')}</span></td>
+                      <td>${operationBadge(run.operation)}</td>
+                      <td>${domainBadge(run.domain || run.resultKind)}</td>
+                      <td>${providerBadge(run.provider)}</td>
                       <td class="right">${run.itemCount ?? 0}</td>
                       <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
                       <td class="center">
@@ -461,14 +481,16 @@ import { dismissToast, showToast } from './toast.js';
           : `
               <table>
                 <thead>
-                  <tr><th>${esc(textFor('colJob'))}</th><th>${esc(textFor('colStatus'))}</th><th>${esc(textFor('colType'))}</th><th>${esc(textFor('colTrigger'))}</th><th>${esc(textFor('colDuration'))}</th><th>${esc(textFor('colStarted'))}</th><th>${esc(textFor('colError'))}</th><th>${esc(textFor('colAction'))}</th></tr>
+                  <tr><th>${esc(textFor('colJob'))}</th><th>${esc(textFor('colStatus'))}</th><th>${esc(textFor('colOperation'))}</th><th>${esc(textFor('colDomain'))}</th><th>${esc(textFor('colProvider'))}</th><th>${esc(textFor('colTrigger'))}</th><th>${esc(textFor('colDuration'))}</th><th>${esc(textFor('colStarted'))}</th><th>${esc(textFor('colError'))}</th><th>${esc(textFor('colAction'))}</th></tr>
                 </thead>
                 <tbody>
                   ${filtered.map((run) => `
                     <tr>
                       <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
                       <td>${runStatusPill(run.status, false)}</td>
-                      <td>${operationBadge(run.operation)}<br/><span class="muted">${esc(run.resultKind || run.domain || '-')} · ${esc(run.provider || '-')}</span></td>
+                      <td>${operationBadge(run.operation)}</td>
+                      <td>${domainBadge(run.domain || run.resultKind)}</td>
+                      <td>${providerBadge(run.provider)}</td>
                       <td>${esc(run.trigger || '-')}</td>
                       <td>${formatDuration(run.durationMs)}</td>
                       <td class="muted">${formatDateTime(run.startedAt)}</td>
@@ -499,12 +521,12 @@ import { dismissToast, showToast } from './toast.js';
         });
         $('dashboard').innerHTML = `
           <div class="statGrid wideStats">
-            <div class="stat"><div class="statLabel muted">📰 ${esc(textFor('statNews'))}</div><div class="statNum">${summary.counts.news}</div></div>
-            <div class="stat"><div class="statLabel muted">📅 ${esc(textFor('statCalendar'))}</div><div class="statNum">${summary.counts.calendar}</div></div>
-            <div class="stat"><div class="statLabel muted">▶ ${esc(textFor('statYoutube'))}</div><div class="statNum">${summary.counts.youtube}</div></div>
-            <div class="stat"><div class="statLabel muted">💹 ${esc(textFor('statQuotes'))}</div><div class="statNum">${summary.counts.marketQuotes || 0}</div></div>
-            <div class="stat"><div class="statLabel muted">🪙 ${esc(textFor('statCoins'))}</div><div class="statNum">${summary.counts.coinMarkets || 0}</div></div>
-            <div class="stat"><div class="statLabel muted">⏱ ${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
+            <div class="stat"><div class="statLabel muted"><span class="statIcon">N</span>${esc(textFor('statNews'))}</div><div class="statNum">${summary.counts.news}</div></div>
+            <div class="stat"><div class="statLabel muted"><span class="statIcon">C</span>${esc(textFor('statCalendar'))}</div><div class="statNum">${summary.counts.calendar}</div></div>
+            <div class="stat"><div class="statLabel muted"><span class="statIcon">Y</span>${esc(textFor('statYoutube'))}</div><div class="statNum">${summary.counts.youtube}</div></div>
+            <div class="stat"><div class="statLabel muted"><span class="statIcon">Q</span>${esc(textFor('statQuotes'))}</div><div class="statNum">${summary.counts.marketQuotes || 0}</div></div>
+            <div class="stat"><div class="statLabel muted"><span class="statIcon">B</span>${esc(textFor('statCoins'))}</div><div class="statNum">${summary.counts.coinMarkets || 0}</div></div>
+            <div class="stat"><div class="statLabel muted"><span class="statIcon">J</span>${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
           </div>
           <div class="card card--elevated" style="margin-top:12px">
             <div class="cardHead">
@@ -530,7 +552,9 @@ import { dismissToast, showToast } from './toast.js';
                 <tr>
                   <th>${esc(textFor('colJob'))}</th>
                   <th>${esc(textFor('colStatus'))}</th>
-                  <th>${esc(textFor('colType'))}</th>
+                  <th>${esc(textFor('colOperation'))}</th>
+                  <th>${esc(textFor('colDomain'))}</th>
+                  <th>${esc(textFor('colProvider'))}</th>
                   <th class="right">${esc(textFor('colItems'))}</th>
                   <th>${esc(textFor('colFinished'))}</th>
                   <th class="center">${esc(textFor('colAction'))}</th>
@@ -541,7 +565,9 @@ import { dismissToast, showToast } from './toast.js';
                   <tr class="${run.stale ? 'staleRow' : ''}">
                     <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
                     <td>${runStatusPill(run.status, !!run.stale)}</td>
-                    <td>${operationBadge(run.operation)}<br/><span class="muted">${esc(run.resultKind || run.domain || '-')}</span></td>
+                    <td>${operationBadge(run.operation)}</td>
+                    <td>${domainBadge(run.domain || run.resultKind)}</td>
+                    <td>${providerBadge(run.provider)}</td>
                     <td class="right">${run.itemCount ?? 0}</td>
                     <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
                     <td class="center">
@@ -607,9 +633,9 @@ import { dismissToast, showToast } from './toast.js';
         const domains = [...new Set(jobsAll.map((j) => j.domain || 'other'))];
         const providers = [...new Set(jobsAll.map((j) => j.provider).filter(Boolean))];
         $('jobs').innerHTML = `
-          <div class="filterBar">
-            <div class="filterBarTitle">검색 조건</div>
-            <div class="filterBarControls">
+          <div class="filterBar filterBox">
+            <div class="filterBarTitle filterBoxTitle">검색 조건</div>
+            <div class="filterBarControls toolbar">
               <div class="tabs" style="margin:0">
                 <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">전체</button>
                 <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">최신</button>
@@ -641,13 +667,14 @@ import { dismissToast, showToast } from './toast.js';
             <table class="settingsTable">
               <thead>
                 <tr>
-                  <th>Job</th>
-                  <th>Operation</th>
-                  <th>상태</th>
-                  <th>Provider</th>
-                  <th class="right">주기</th>
-                  <th>Last run</th>
-                  <th class="center">액션</th>
+                  <th>${esc(textFor('colJob'))}</th>
+                  <th>${esc(textFor('colStatus'))}</th>
+                  <th>${esc(textFor('colOperation'))}</th>
+                  <th>${esc(textFor('colDomain'))}</th>
+                  <th>${esc(textFor('colProvider'))}</th>
+                  <th class="right">${esc(textFor('colInterval'))}</th>
+                  <th>${esc(textFor('colLastRun'))}</th>
+                  <th class="center">${esc(textFor('colAction'))}</th>
                 </tr>
               </thead>
               <tbody>
@@ -658,9 +685,10 @@ import { dismissToast, showToast } from './toast.js';
                       <span class="muted">${esc(job.jobKey)}</span>
                       ${job.description ? `<div class="muted" style="margin-top:4px">${esc(job.description)}</div>` : ''}
                     </td>
-                    <td>${operationBadge(job.operation)}</td>
                     <td><span class="pill">${job.enabled ? '활성' : '중지'}</span></td>
-                    <td><span class="pill">${esc(job.provider)}</span></td>
+                    <td>${operationBadge(job.operation)}</td>
+                    <td>${domainBadge(job.domain)}</td>
+                    <td>${providerBadge(job.provider)}</td>
                     <td class="right">${esc(jobIntervalLabel(job.intervalSeconds))}</td>
                     <td class="muted">${formatDateTime(job.lastRunAt)}</td>
                     <td class="center">
@@ -671,7 +699,7 @@ import { dismissToast, showToast } from './toast.js';
                     </td>
                   </tr>
                   <tr class="hidden" data-job-edit-row="${esc(job.jobKey)}">
-                    <td colspan="7">
+                    <td colspan="8">
                       <div class="card" style="margin:6px 0 0">
                         <div class="row" style="justify-content:space-between">
                           <strong>설정 편집</strong>
@@ -757,7 +785,7 @@ import { dismissToast, showToast } from './toast.js';
       }
 
       async function loadJobRuns() {
-        if ($('jobRuns')) $('jobRuns').innerHTML = renderTableSkeleton({ cols: 10, rows: 5 });
+        if ($('jobRuns')) $('jobRuns').innerHTML = renderTableSkeleton({ cols: 13, rows: 5 });
         const body = await api(`/admin/api/job-runs?${jobRunsQueryParams()}`);
         state.jobRunsPage = body.page;
         state.jobRunsTotalPages = body.totalPages;
@@ -792,7 +820,9 @@ import { dismissToast, showToast } from './toast.js';
                 <th class="center"><input type="checkbox" id="jobRunsSelectAll" ${allSelected ? 'checked' : ''} /></th>
                 <th data-run-sort="job">${esc(textFor('colJob'))}</th>
                 <th data-run-sort="status">${esc(textFor('colStatus'))}</th>
-                <th>${esc(textFor('colType'))}</th>
+                <th>${esc(textFor('colOperation'))}</th>
+                <th>${esc(textFor('colDomain'))}</th>
+                <th>${esc(textFor('colProvider'))}</th>
                 <th>${esc(textFor('colTrigger'))}</th>
                 <th data-run-sort="progress">Progress</th>
                 <th data-run-sort="items" class="right">${esc(textFor('colItems'))}</th>
@@ -810,10 +840,9 @@ import { dismissToast, showToast } from './toast.js';
                   <td class="center"><input type="checkbox" data-job-run-select="${esc(rowKey)}" ${selected.has(rowKey) ? 'checked' : ''} /></td>
                   <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
                   <td>${runStatusPill(run.status, false)}</td>
-                  <td>
-                    ${operationBadge(run.operation)}
-                    <br/><span class="muted">${esc(run.resultKind || run.domain || '-')} · ${esc(run.provider || '-')}</span>
-                  </td>
+                  <td>${operationBadge(run.operation)}</td>
+                  <td>${domainBadge(run.domain || run.resultKind)}</td>
+                  <td>${providerBadge(run.provider)}</td>
                   <td>${esc(run.trigger || '-')}</td>
                   <td class="muted">${run.status === 'running' && Number.isFinite(Number(run.progressPercent)) ? `${Number(run.progressPercent)}%` : '-'}</td>
                   <td class="right">${run.itemCount ?? 0}</td>
@@ -897,27 +926,32 @@ import { dismissToast, showToast } from './toast.js';
           return renderModelOptions(list.length ? list : [''], effective);
         };
         $('translationSettings').innerHTML = `
-          <div class="card">
+          <div class="settingsHero">
+            <span class="settingsHeroIcon">G</span>
+            <div>
+              <div class="cardKicker">뉴스 번역 파이프라인</div>
+              <p class="summary">언어별 번역 정책, 테스트, 모델 프리셋을 한 흐름으로 관리합니다.</p>
+            </div>
+          </div>
+          <div class="card settingsControlCard">
             <div class="row" style="justify-content:space-between;gap:10px">
               <div>
-                <strong>번역 설정 가이드</strong>
+                <strong>번역 설정 흐름</strong>
                 <div class="muted" style="margin-top:4px">1) Locale별 번역 정책을 고르고 2) 번역 테스트로 확인한 뒤 3) 모델 프리셋(관리)에서 리스트를 관리하세요.</div>
-                ${missingKeys.length ? `<div class="muted" style="margin-top:6px"><span class="pill opReconcile">주의</span> ${esc(missingKeys.join(', '))} API 키가 없습니다. (Provider 키관리에서 설정)</div>` : ''}
+                ${missingKeys.length ? `<div class="muted" style="margin-top:6px"><span class="pill opReconcile">주의</span> ${esc(missingKeys.join(', '))} API 키가 없습니다. (Provider에서 설정)</div>` : ''}
               </div>
               <div class="row">
-                <button class="secondary" data-view="settings-keys">Provider 키관리</button>
+                <button class="secondary" data-view="settings-keys">Provider로 이동</button>
               </div>
             </div>
           </div>
-          <div class="card">
-            <div class="row" style="justify-content:space-between">
-              <div>
-                <strong>Locale별 번역 정책</strong>
-                <div class="muted" style="margin-top:4px">enabled / 자동 번역 / provider / 모델을 한 줄에서 관리합니다.</div>
+          <div class="card settingsControlCard">
+            <div class="cardHead">
+              <div class="cardHeadMain">
+                <div class="cardKicker">Locale별 번역 정책</div>
+                <div class="cardHint">Enabled / 자동 뉴스 번역 / Provider / 모델을 로케일별로 관리합니다.</div>
               </div>
             </div>
-          </div>
-          <div class="card">
             <table>
               <thead>
                 <tr>
@@ -953,14 +987,14 @@ import { dismissToast, showToast } from './toast.js';
               </tbody>
             </table>
           </div>
-          <div class="card">
-            <div class="row" style="justify-content:space-between">
-              <div>
-                <strong>번역 테스트</strong>
-                <div class="muted" style="margin-top:4px">현재 프리셋/기본 모델로 즉시 테스트합니다.</div>
+          <div class="card settingsControlCard">
+            <div class="cardHead">
+              <div class="cardHeadMain">
+                <div class="cardKicker">번역 테스트</div>
+                <div class="cardHint">현재 Provider/모델 설정으로 테스트 문구를 번역합니다.</div>
               </div>
             </div>
-            <div class="row" style="margin-top:10px">
+            <div class="settingsFormRow">
               <select id="translationTestProvider">
                 <option value="mock">mock</option>
                 <option value="openai">OpenAI</option>
@@ -1015,72 +1049,68 @@ import { dismissToast, showToast } from './toast.js';
         const renderRow = (s, { showModel }) => {
           const models = showModel ? modelPresetsForProvider(s.provider, s.defaultModel) : [];
           return `
-            <tr>
-              <td><strong>${esc(s.provider)}</strong></td>
-              <td><span class="pill">${s.hasApiKey ? `설정됨 ${esc(s.maskedApiKey)}` : '키 없음'}</span></td>
-              <td><input type="checkbox" data-provider-enabled="${esc(s.provider)}" ${s.enabled ? 'checked' : ''}/></td>
-              <td>
+            <div class="providerTile">
+              <div class="providerTileHead">
+                <span class="providerGlyph">${showModel ? 'AI' : 'API'}</span>
+                <div class="providerTitle">
+                  <strong>${esc(s.provider)}</strong>
+                  <span class="muted">${showModel ? '번역/요약 모델 Provider' : '데이터 수집 Provider'}</span>
+                </div>
+                <span class="pill ${s.hasApiKey ? 'pillStatus--ok' : 'pillStatus--warn'}">${s.hasApiKey ? `설정됨 ${esc(s.maskedApiKey)}` : '키 없음'}</span>
+              </div>
+              <div class="providerTileBody">
+                <label class="switchRow providerSwitch">
+                  <input class="switchInput" type="checkbox" data-provider-enabled="${esc(s.provider)}" ${s.enabled ? 'checked' : ''}/>
+                  <span class="switchUi" aria-hidden="true"></span>
+                  <span class="switchLabel">Enabled</span>
+                </label>
                 ${showModel ? `
-                  <select data-provider-model="${esc(s.provider)}">
-                    <option value="">모델 선택</option>
-                    ${renderModelOptions(models, s.defaultModel || '')}
-                  </select>
-                ` : '<span class="muted">-</span>'}
-              </td>
-              <td><input class="keyInput" data-provider-key="${esc(s.provider)}" type="password" placeholder="새 API key 입력 시 교체" /></td>
-              <td class="row">
+                  <label class="fieldLabel providerModel">기본 모델
+                    <select data-provider-model="${esc(s.provider)}">
+                      <option value="">모델 선택</option>
+                      ${renderModelOptions(models, s.defaultModel || '')}
+                    </select>
+                  </label>
+                ` : '<div class="providerModel muted">모델 설정 없음</div>'}
+                <label class="fieldLabel providerKey">API Key
+                  <input class="keyInput" data-provider-key="${esc(s.provider)}" type="password" placeholder="새 API key 입력 시 교체" />
+                </label>
+              </div>
+              <div class="providerActions">
                 <button data-provider-save="${esc(s.provider)}" class="success">Save</button>
                 <button data-provider-clear="${esc(s.provider)}" class="danger">키 삭제</button>
-              </td>
-            </tr>
+              </div>
+            </div>
           `;
         };
         $('providerSettings').innerHTML = `
-          <div class="card">
-            <div class="row" style="justify-content:space-between;gap:10px">
-              <div>
-                <strong>Provider 키관리</strong>
-                <div class="muted" style="margin-top:4px">API Key / enabled / 기본 모델(defaultModel)을 관리합니다.</div>
+          <div class="settingsSectionGrid">
+            <div class="card settingsControlCard">
+              <div class="cardHead">
+                <div class="cardHeadMain">
+                  <div class="cardKicker">LLM Provider</div>
+                  <div class="cardHint">OpenAI/Claude는 기본 모델과 API Key를 함께 관리합니다.</div>
+                </div>
+                <div class="cardHeadActions">
+                  <button class="secondary" data-open-model-presets="true">모델 프리셋 관리</button>
+                </div>
               </div>
-              <div class="row">
-                <button class="secondary" data-open-model-presets="true">모델 프리셋 관리</button>
+              <div class="providerTileGrid">
+                ${llm.map((s) => renderRow(s, { showModel: true })).join('') || '<p class="muted">LLM provider가 없습니다.</p>'}
               </div>
             </div>
-          </div>
-          <div class="card">
-            <strong>LLM (모델 + 키)</strong>
-            <div class="muted" style="margin-top:4px">OpenAI/Claude는 모델 선택과 키를 함께 관리합니다.</div>
-          </div>
-          <div class="card">
-            <table class="settingsTable">
-              <thead><tr><th>Provider</th><th>Status</th><th>Enabled</th><th>Model</th><th>API Key</th><th>Actions</th></tr></thead>
-              <tbody>${llm.map((s) => renderRow(s, { showModel: true })).join('') || ''}</tbody>
-            </table>
-            ${llm.length === 0 ? '<p class="muted">LLM provider가 없습니다.</p>' : ''}
-          </div>
-          <div class="card" style="margin-top:10px">
-            <strong>데이터 Provider (키)</strong>
-            <div class="muted" style="margin-top:4px">Finnhub/YouTube/CoinGecko 등은 키만 필요합니다.</div>
-          </div>
-          <div class="card">
-            <table class="settingsTable">
-              <thead><tr><th>Provider</th><th>Status</th><th>Enabled</th><th>API Key</th><th>Actions</th></tr></thead>
-              <tbody>
-                ${data.map((s) => `
-                  <tr>
-                    <td><strong>${esc(s.provider)}</strong></td>
-                    <td><span class="pill">${s.hasApiKey ? `설정됨 ${esc(s.maskedApiKey)}` : '키 없음'}</span></td>
-                    <td><input type="checkbox" data-provider-enabled="${esc(s.provider)}" ${s.enabled ? 'checked' : ''}/></td>
-                    <td><input class="keyInput" data-provider-key="${esc(s.provider)}" type="password" placeholder="새 API key 입력 시 교체" /></td>
-                    <td class="row">
-                      <button data-provider-save="${esc(s.provider)}" class="success">Save</button>
-                      <button data-provider-clear="${esc(s.provider)}" class="danger">키 삭제</button>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-            ${data.length === 0 ? '<p class="muted">데이터 provider가 없습니다.</p>' : ''}
+
+            <div class="card settingsControlCard">
+              <div class="cardHead">
+                <div class="cardHeadMain">
+                  <div class="cardKicker">Data Provider</div>
+                  <div class="cardHint">Finnhub, YouTube, CoinGecko 등 수집 Provider의 키와 활성 상태를 관리합니다.</div>
+                </div>
+              </div>
+              <div class="providerTileGrid">
+                ${data.map((s) => renderRow(s, { showModel: false })).join('') || '<p class="muted">데이터 provider가 없습니다.</p>'}
+              </div>
+            </div>
           </div>
           <div id="uiModelPresets"></div>
         `;
@@ -1091,10 +1121,11 @@ import { dismissToast, showToast } from './toast.js';
         state.marketLists = body.data;
         const lists = Array.isArray(body.data) ? body.data : [];
         $('marketLists').innerHTML = `
-          <div class="card card--elevated">
+          <div class="card settingsControlCard">
             <div class="cardHead">
               <div class="cardHeadMain">
-                <div class="cardKicker">📋 마켓 리스트</div>
+                <div class="cardKicker">마켓 리스트</div>
+                <div class="cardHint">앱 화면과 수집 Job이 공통으로 사용하는 종목 묶음입니다.</div>
               </div>
             </div>
             <div class="settingsSectionBody">
@@ -1131,7 +1162,7 @@ import { dismissToast, showToast } from './toast.js';
         const aliasTable = aliasesByCat[cat] || {};
         const aliasCountFor = (name) => Object.entries(aliasTable).filter(([, v]) => String(v || '') === String(name || '')).length;
         host.innerHTML = `
-          <div class="card card--elevated">
+          <div class="card settingsControlCard">
             <div class="cardHead">
               <div class="cardHeadMain">
                 <div class="cardKicker">${esc(textFor('newsSourcesTitle') || '뉴스 출처')}</div>
@@ -1141,30 +1172,50 @@ import { dismissToast, showToast } from './toast.js';
                 <button class="secondary" id="refreshNewsSourcesBtn">${esc(textFor('btnRefresh'))}</button>
               </div>
             </div>
-            <div class="tabs tabs--compact">
-              <button type="button" class="tabBtn ${cat === 'global' ? 'active' : ''}" data-news-sources-tab="global">${esc(textFor('newsSourcesCatGlobal'))}</button>
-              <button type="button" class="tabBtn ${cat === 'crypto' ? 'active' : ''}" data-news-sources-tab="crypto">${esc(textFor('newsSourcesCatCrypto'))}</button>
+            <div class="sourceControlGrid">
+              <div class="sourceControlBlock">
+                <div class="sourceControlLabel">카테고리</div>
+                <div class="tabs tabs--compact">
+                  <button type="button" class="tabBtn ${cat === 'global' ? 'active' : ''}" data-news-sources-tab="global">${esc(textFor('newsSourcesCatGlobal'))}</button>
+                  <button type="button" class="tabBtn ${cat === 'crypto' ? 'active' : ''}" data-news-sources-tab="crypto">${esc(textFor('newsSourcesCatCrypto'))}</button>
+                </div>
+              </div>
+              <div class="sourceControlBlock sourceControlBlock--wide">
+                <div class="sourceControlLabel">운영 정책</div>
+                <div class="sourceSwitches">
+                <label class="switchRow">
+                  <input class="switchInput" type="checkbox" id="newsSourcesAutoEnable" ${policy[cat] !== false ? 'checked' : ''} />
+                  <span class="switchUi" aria-hidden="true"></span>
+                  <span class="switchLabel">${esc(textFor('newsSourcesAutoEnable'))}</span>
+                </label>
+                <label class="switchRow">
+                  <input class="switchInput" type="checkbox" id="newsSourcesShowHidden" ${state.newsSourcesShowHidden ? 'checked' : ''} />
+                  <span class="switchUi" aria-hidden="true"></span>
+                  <span class="switchLabel">${esc(textFor('newsSourcesShowHidden'))}</span>
+                </label>
+                </div>
+              </div>
+              <div class="sourceControlBlock sourceControlBlock--actions">
+                <button class="secondary" id="saveNewsSourceSettingsBtn">${esc(textFor('btnSave'))}</button>
+              </div>
             </div>
-            <div class="newsSourcesMeta">
-              <label class="switchRow">
-                <input class="switchInput" type="checkbox" id="newsSourcesAutoEnable" ${policy[cat] !== false ? 'checked' : ''} />
-                <span class="switchUi" aria-hidden="true"></span>
-                <span class="switchLabel">${esc(textFor('newsSourcesAutoEnable'))}</span>
-              </label>
-              <label class="switchRow">
-                <input class="switchInput" type="checkbox" id="newsSourcesShowHidden" ${state.newsSourcesShowHidden ? 'checked' : ''} />
-                <span class="switchUi" aria-hidden="true"></span>
-                <span class="switchLabel">${esc(textFor('newsSourcesShowHidden'))}</span>
-              </label>
-              <div class="spacer"></div>
-              <button class="secondary" id="saveNewsSourceSettingsBtn">${esc(textFor('btnSave'))}</button>
-            </div>
-            <div class="newsSourcesAdd">
+            <div class="sourceAddPanel">
+              <div>
+                <div class="sourceControlLabel">출처 추가</div>
+                <div class="cardHint">새 출처명은 현재 카테고리에 추가됩니다.</div>
+              </div>
               <input id="newsSourceAddName" class="newsSourcesAddInput" placeholder="${esc(textFor('newsSourceAddPh'))}" value="${esc(state.newsSourceDraft || '')}" />
               <button class="secondary" id="addNewsSourceBtn">${esc(textFor('btnAdd'))}</button>
             </div>
             <div class="newsSourcesTable">
-              <table>
+              <div class="sourceListHead">
+                <div>
+                  <div class="cardKicker">출처 리스트</div>
+                  <div class="cardHint">${rows.length}개 출처 · 순서와 노출 상태를 관리합니다.</div>
+                </div>
+                <span class="pill">${esc(cat)}</span>
+              </div>
+              <table class="settingsTable sourceTable">
                 <thead>
                   <tr>
                     <th>#</th>
@@ -1184,8 +1235,8 @@ import { dismissToast, showToast } from './toast.js';
                       <td class="tableActions">
                         <button class="iconBtn" title="Move up" data-news-source-move="up" data-news-source-id="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>↑</button>
                         <button class="iconBtn" title="Move down" data-news-source-move="down" data-news-source-id="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>↓</button>
-                        <button class="secondary" data-news-source-alias-open="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>별칭 ${aliasCountFor(s.name) ? `(${aliasCountFor(s.name)})` : ''}</button>
-                        <button class="secondary" data-news-source-toggle-hidden="${esc(s.id)}">${esc(s.hidden ? textFor('newsSourcesUnhide') : textFor('newsSourcesHide'))}</button>
+                        <button class="secondary compactBtn" data-news-source-alias-open="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>별칭 ${aliasCountFor(s.name) ? `(${aliasCountFor(s.name)})` : ''}</button>
+                        <button class="secondary compactBtn" data-news-source-toggle-hidden="${esc(s.id)}">${esc(s.hidden ? textFor('newsSourcesUnhide') : textFor('newsSourcesHide'))}</button>
                       </td>
                     </tr>
                   `).join('')}
@@ -1745,6 +1796,21 @@ import { dismissToast, showToast } from './toast.js';
         if ($('youtubeSelectionInfo')) $('youtubeSelectionInfo').textContent = `선택된 영상 ${selected}개`;
         if ($('selectYoutubePageBtn')) $('selectYoutubePageBtn').textContent = selected === total && total > 0 ? '현재 페이지 선택 해제' : '현재 페이지 선택';
         if ($('refreshSelectedYoutubeBtn')) $('refreshSelectedYoutubeBtn').disabled = selected === 0;
+      }
+
+      function updateResetUi() {
+        const boxes = [...document.querySelectorAll('[data-reset-target]')];
+        const selectedBoxes = boxes.filter((box) => box.checked);
+        const selectedNames = selectedBoxes.map((box) => {
+          const title = box.closest('.resetOption')?.querySelector('strong')?.textContent;
+          return title || box.dataset.resetTarget;
+        });
+        const confirmText = $('resetConfirmText')?.value.trim() || '';
+        if ($('resetSelectionInfo')) $('resetSelectionInfo').textContent = `${selectedBoxes.length}개 선택됨`;
+        if ($('resetSelectedList')) {
+          $('resetSelectedList').textContent = selectedNames.length ? selectedNames.join(', ') : '선택된 대상이 없습니다.';
+        }
+        if ($('resetDataBtn')) $('resetDataBtn').disabled = selectedBoxes.length === 0 || confirmText !== 'RESET';
       }
 
       document.addEventListener('click', async (event) => {
@@ -2328,6 +2394,16 @@ import { dismissToast, showToast } from './toast.js';
             });
             $('translationTestResult').innerHTML = `<strong>${esc(result.data.title || '')}</strong><br/>${esc(result.data.summary || '')}`;
           }
+          if (target.id === 'resetSelectAllBtn') {
+            document.querySelectorAll('[data-reset-target]').forEach((box) => { box.checked = true; });
+            updateResetUi();
+            return;
+          }
+          if (target.id === 'resetClearBtn') {
+            document.querySelectorAll('[data-reset-target]').forEach((box) => { box.checked = false; });
+            updateResetUi();
+            return;
+          }
           if (target.id === 'resetDataBtn') {
             const targets = [...document.querySelectorAll('[data-reset-target]')]
               .filter((box) => box.checked)
@@ -2345,6 +2421,7 @@ import { dismissToast, showToast } from './toast.js';
                 $('resetResult').textContent = `초기화 완료: ${result.data.targets.join(', ')}`;
                 $('resetConfirmText').value = '';
                 document.querySelectorAll('[data-reset-target]').forEach((box) => { box.checked = false; });
+                updateResetUi();
                 showToast('초기화 완료', result.data.targets.join(', '), { kind: 'success' });
                 await Promise.all([loadDashboard(), loadJobs(), loadJobRuns(), loadNews(), loadYoutube()]);
               },
@@ -2470,6 +2547,11 @@ import { dismissToast, showToast } from './toast.js';
         }
         if (event.target.dataset.newsId) updateNewsSelectionInfo();
         if (event.target.dataset.youtubeId) updateYoutubeSelectionInfo();
+        if (event.target.dataset.resetTarget) updateResetUi();
+      });
+
+      document.addEventListener('input', (event) => {
+        if (event.target.id === 'resetConfirmText') updateResetUi();
       });
 
       document.addEventListener('keydown', async (event) => {
@@ -2519,5 +2601,6 @@ import { dismissToast, showToast } from './toast.js';
           : `${localStorage.getItem('signalAdminLocale') || 'ko-KR'}|${localStorage.getItem('signalAdminLocale') === 'en-US' ? 'America/New_York' : localStorage.getItem('signalAdminLocale') === 'ja-JP' ? 'Asia/Tokyo' : 'Asia/Seoul'}`);
       applyAdminLanguage();
       refreshSession().catch((error) => { $('session').textContent = error.message; });
+      updateResetUi();
       // Keep settings tab stable across refreshes
       if ($('settingsTab-keys')) setSettingsTab(state.settingsTab || 'keys');

@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config } from './config.mjs';
-import { ensureNewsSourcesFromItems, normalizeNewsSourceName, readDb, updateDb, upsertById, nowIso } from './db.mjs';
+import { ensureNewsSourcesFromItems, normalizeNewsSourceName, normalizeNewsSourceNameWithAliases, readDb, updateDb, upsertById, nowIso } from './db.mjs';
 import { retranslateNewsItems, runPollingJob } from './jobs/runner.mjs';
 import { translateNews } from './providers/translation/index.mjs';
 import { fetchYoutubeVideosByIds } from './providers/youtube/youtube.mjs';
@@ -421,11 +421,14 @@ export async function handleRequest(req, res) {
           id: String(s.id || '').trim(),
           name: normalizeNewsSourceName(s.name),
           category: String(s.category || 'global'),
+          hidden: s.hidden === true,
           enabled: s.enabled !== false,
           order: Number(s.order) || 0,
         }))
         .filter((s) => s.id && s.name)
         .filter((s) => (!cat ? true : s.category === cat))
+        .filter((s) => !s.hidden)
+        .filter((s) => s.enabled)
         .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
       json(res, 200, { data: sources });
       return;
@@ -703,18 +706,52 @@ export async function handleRequest(req, res) {
         ensureNewsSourcesFromItems(db);
         const category = url.searchParams.get('category');
         const cat = category ? String(category).trim().toLowerCase() : '';
+        const includeHidden = url.searchParams.get('includeHidden') === '1';
         const sources = [...(db.newsSources || [])]
           .map((s) => ({
             id: String(s.id || '').trim(),
             name: normalizeNewsSourceName(s.name),
             category: String(s.category || 'global'),
+            hidden: s.hidden === true,
             enabled: s.enabled !== false,
             order: Number(s.order) || 0,
           }))
           .filter((s) => s.id && s.name)
           .filter((s) => (!cat ? true : s.category === cat))
+          .filter((s) => (includeHidden ? true : !s.hidden))
           .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
         json(res, 200, { data: sources });
+        return;
+      }
+
+      if (req.method === 'GET' && pathname === '/admin/api/news-source-settings') {
+        const db = await readDb();
+        json(res, 200, { data: db.newsSourceSettings || null });
+        return;
+      }
+
+      if (req.method === 'PATCH' && pathname === '/admin/api/news-source-settings') {
+        const patch = await readBody(req);
+        const updated = await updateDb((db) => {
+          const cur = db.newsSourceSettings && typeof db.newsSourceSettings === 'object' ? db.newsSourceSettings : {};
+          const next = {
+            ...cur,
+            autoEnableNewSources: {
+              ...(cur.autoEnableNewSources || {}),
+              ...(patch.autoEnableNewSources && typeof patch.autoEnableNewSources === 'object' ? patch.autoEnableNewSources : {}),
+            },
+            aliases: {
+              ...(cur.aliases || {}),
+              ...(patch.aliases && typeof patch.aliases === 'object' ? patch.aliases : {}),
+            },
+            updatedAt: nowIso(),
+          };
+          db.newsSourceSettings = next;
+          // Re-normalize catalog names when aliases change.
+          ensureNewsSourcesFromItems(db);
+          return next;
+        });
+        json(res, 200, { data: updated });
         return;
       }
 
@@ -743,9 +780,10 @@ export async function handleRequest(req, res) {
             next.push({
               ...prevHit,
               id,
-              name,
+              name: normalizeNewsSourceNameWithAliases(name, cat, db.newsSourceSettings),
               category: cat,
               enabled: raw?.enabled !== false,
+              hidden: raw?.hidden === true,
               order: Number(raw?.order) || order,
               updatedAt: nowIso(),
             });
@@ -779,6 +817,7 @@ export async function handleRequest(req, res) {
             id: String(s.id || '').trim(),
             name: normalizeNewsSourceName(s.name),
             category: String(s.category || 'global'),
+            hidden: s.hidden === true,
             enabled: s.enabled !== false,
             order: Number(s.order) || 0,
           }));

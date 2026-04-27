@@ -36,6 +36,15 @@ function defaultDb() {
      * Each item: { id, name, enabled, order, createdAt, updatedAt }
      */
     newsSources: [],
+    /**
+     * News source settings:
+     * - autoEnableNewSources: per-category default for newly discovered sources
+     * - aliases: per-category mapping { "Bloomberg News": "Bloomberg" }
+     */
+    newsSourceSettings: {
+      autoEnableNewSources: { global: true, crypto: true },
+      aliases: { global: {}, crypto: {} },
+    },
   };
 }
 
@@ -353,6 +362,19 @@ function ensureDbShape(db) {
   if (!Array.isArray(db.uiModelPresets.mock)) db.uiModelPresets.mock = defaultUiModelPresets().mock;
   if (!db.uiModelPresets.updatedAt) db.uiModelPresets.updatedAt = nowIso();
   if (!Array.isArray(db.newsSources)) db.newsSources = [];
+  if (!db.newsSourceSettings || typeof db.newsSourceSettings !== 'object') {
+    db.newsSourceSettings = defaultDb().newsSourceSettings;
+  }
+  if (!db.newsSourceSettings.autoEnableNewSources || typeof db.newsSourceSettings.autoEnableNewSources !== 'object') {
+    db.newsSourceSettings.autoEnableNewSources = defaultDb().newsSourceSettings.autoEnableNewSources;
+  }
+  if (typeof db.newsSourceSettings.autoEnableNewSources.global !== 'boolean') db.newsSourceSettings.autoEnableNewSources.global = true;
+  if (typeof db.newsSourceSettings.autoEnableNewSources.crypto !== 'boolean') db.newsSourceSettings.autoEnableNewSources.crypto = true;
+  if (!db.newsSourceSettings.aliases || typeof db.newsSourceSettings.aliases !== 'object') {
+    db.newsSourceSettings.aliases = defaultDb().newsSourceSettings.aliases;
+  }
+  if (!db.newsSourceSettings.aliases.global || typeof db.newsSourceSettings.aliases.global !== 'object') db.newsSourceSettings.aliases.global = {};
+  if (!db.newsSourceSettings.aliases.crypto || typeof db.newsSourceSettings.aliases.crypto !== 'object') db.newsSourceSettings.aliases.crypto = {};
   return db;
 }
 
@@ -366,6 +388,19 @@ function stableSourceId(name) {
 export function normalizeNewsSourceName(raw) {
   const s = String(raw || '').trim();
   return s.length > 0 ? s : 'Unknown';
+}
+
+function aliasKey(raw) {
+  return String(raw || '').trim().toLowerCase();
+}
+
+export function normalizeNewsSourceNameWithAliases(raw, category, settings) {
+  const name = normalizeNewsSourceName(raw);
+  const cat = normalizeNewsCategory(category);
+  const aliases = settings?.aliases && typeof settings.aliases === 'object' ? settings.aliases : null;
+  const table = aliases && typeof aliases[cat] === 'object' ? aliases[cat] : null;
+  const mapped = table ? table[aliasKey(name)] : null;
+  return mapped ? normalizeNewsSourceName(mapped) : name;
 }
 
 function normalizeNewsCategory(raw) {
@@ -383,6 +418,7 @@ export function ensureNewsSourcesFromItems(db) {
     if (!s) continue;
     if (!s.category) s.category = 'global';
     if (s.enabled == null) s.enabled = true;
+    if (s.hidden == null) s.hidden = false;
   }
 
   const byKey = new Map(list.map((x) => [`${x.id}|${x.category || 'global'}`, x]));
@@ -393,18 +429,23 @@ export function ensureNewsSourcesFromItems(db) {
   }
   let changed = false;
   for (const item of db.newsItems || []) {
-    const name = normalizeNewsSourceName(item?.sourceName);
-    const id = stableSourceId(name);
     const category = normalizeNewsCategory(item?.category);
+    const name = normalizeNewsSourceNameWithAliases(item?.sourceName, category, db.newsSourceSettings);
+    const id = stableSourceId(name);
     const key = `${id}|${category}`;
     if (byKey.has(key)) continue;
     const nextOrder = (maxOrderByCat.get(category) || 0) + 1;
     maxOrderByCat.set(category, nextOrder);
+    const autoEnable =
+      category === 'crypto'
+        ? db.newsSourceSettings?.autoEnableNewSources?.crypto !== false
+        : db.newsSourceSettings?.autoEnableNewSources?.global !== false;
     const row = {
       id,
       name,
       category,
-      enabled: true,
+      enabled: !!autoEnable,
+      hidden: false,
       order: nextOrder,
       createdAt: nowIso(),
       updatedAt: nowIso(),
@@ -454,6 +495,7 @@ async function readSplitDb() {
     translationSettings: settings?.translationSettings ?? [],
     uiModelPresets: settings?.uiModelPresets ?? null,
     newsSources: settings?.newsSources ?? [],
+    newsSourceSettings: settings?.newsSourceSettings ?? null,
     pollingJobs: jobs?.pollingJobs ?? [],
     pollingJobRuns: jobs?.pollingJobRuns ?? [],
     newsItems: news?.newsItems ?? [],
@@ -502,6 +544,7 @@ export async function writeDb(db) {
       translationSettings: shaped.translationSettings,
       uiModelPresets: shaped.uiModelPresets,
       newsSources: shaped.newsSources,
+      newsSourceSettings: shaped.newsSourceSettings,
     }),
     writeStore('jobs', {
       pollingJobs: shaped.pollingJobs,

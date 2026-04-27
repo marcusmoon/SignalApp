@@ -290,6 +290,7 @@ import { dismissToast, showToast } from './toast.js';
             loadTranslationSettings(),
             loadProviderSettings(),
             loadMarketLists(),
+            loadNewsSourceSettings(),
             loadNewsSources(),
             loadNews(),
             loadCalendar(),
@@ -367,40 +368,80 @@ import { dismissToast, showToast } from './toast.js';
         if (!$('monitoring')) return;
         const summary = (await api('/admin/api/summary')).data;
         const runsAll = summary.recentRuns || [];
-        const runs = state.operationFilter === 'all' ? runsAll : runsAll.filter((r) => (r.operation || 'latest') === state.operationFilter);
+        const opRuns = state.operationFilter === 'all' ? runsAll : runsAll.filter((r) => (r.operation || 'latest') === state.operationFilter);
+        const runs = [...opRuns].sort((a, b) => {
+          if (state.monitoringSort === 'name') {
+            const an = String(a.displayName || a.jobKey || '').toLowerCase();
+            const bn = String(b.displayName || b.jobKey || '').toLowerCase();
+            return an.localeCompare(bn);
+          }
+          const at = new Date(a.finishedAt || a.startedAt || 0).getTime();
+          const bt = new Date(b.finishedAt || b.startedAt || 0).getTime();
+          return state.monitoringSort === 'oldest' ? (at - bt) : (bt - at);
+        });
         const stale = runs.filter((r) => r.stale);
         $('monitoring').innerHTML = `
-          <div class="tabs" style="margin-bottom:10px">
-            <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">${esc(textFor('tabAll'))}</button>
-            <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">${esc(textFor('tabLatest'))}</button>
-            <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">${esc(textFor('tabReconcile'))}</button>
-          </div>
           <div class="statGrid wideStats">
-            <div class="stat"><div class="muted">${esc(textFor('statRecentRuns'))}</div><div class="statNum">${runs.length}</div></div>
-            <div class="stat"><div class="muted">${esc(textFor('statStale'))}</div><div class="statNum">${stale.length}</div></div>
-            <div class="stat"><div class="muted">${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
-            <div class="stat"><div class="muted">${esc(textFor('statRecentFailures'))}</div><div class="statNum">${summary.counts.recentFailedRuns}</div></div>
+            <div class="stat"><div class="statLabel muted">🧾 ${esc(textFor('statRecentRuns'))}</div><div class="statNum">${runs.length}</div></div>
+            <div class="stat"><div class="statLabel muted">⏰ ${esc(textFor('statStale'))}</div><div class="statNum">${stale.length}</div></div>
+            <div class="stat"><div class="statLabel muted">⏱ ${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
+            <div class="stat"><div class="statLabel muted">⚠️ ${esc(textFor('statRecentFailures'))}</div><div class="statNum">${summary.counts.recentFailedRuns}</div></div>
           </div>
-          <h3 style="margin-top:16px">${esc(textFor('sectionRecentRuns'))}</h3>
-          <table>
-            <thead><tr><th>${esc(textFor('colJob'))}</th><th>${esc(textFor('colStatus'))}</th><th>${esc(textFor('colType'))}</th><th>${esc(textFor('colItems'))}</th><th>${esc(textFor('colFinished'))}</th><th>${esc(textFor('colAction'))}</th></tr></thead>
-            <tbody>
-              ${runs.length === 0 ? `<tr><td colspan="6" class="muted">${esc(textFor('monitoringEmpty'))}</td></tr>` : runs.map((run) => `
-                <tr class="${run.stale ? 'staleRow' : ''}">
-                  <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-                  <td>${runStatusPill(run.status, !!run.stale)}</td>
-                  <td>${operationBadge(run.operation)}<br/><span class="muted">${esc(run.resultKind || run.domain || '-')} · ${esc(run.provider || '-')}</span></td>
-                  <td>${run.itemCount ?? 0}</td>
-                  <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
-                  <td class="row">
-                    ${runButton(run.jobKey, textFor('btnNowRun'))}
-                    <button class="secondary" data-open-job-log="${esc(run.jobKey)}">${esc(textFor('btnLogErrors'))}</button>
-                  </td>
+          <div class="card card--elevated" style="margin-top:12px">
+            <div class="cardHead">
+              <div class="cardHeadMain">
+                <div class="cardKicker">📈 ${esc(textFor('pageMonitoringTitle'))}</div>
+                <div class="cardHint">${esc(textFor('sectionRecentRuns'))}</div>
+              </div>
+              <div class="cardHeadActions">
+                <div class="tabs" style="margin:0">
+                  <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">${esc(textFor('tabAll'))}</button>
+                  <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">${esc(textFor('tabLatest'))}</button>
+                  <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">${esc(textFor('tabReconcile'))}</button>
+                </div>
+                <select id="monitoringSort" style="min-width:140px">
+                  <option value="newest" ${state.monitoringSort === 'newest' ? 'selected' : ''}>${esc(textFor('sortNewest'))}</option>
+                  <option value="oldest" ${state.monitoringSort === 'oldest' ? 'selected' : ''}>${esc(textFor('sortOldest'))}</option>
+                  <option value="name" ${state.monitoringSort === 'name' ? 'selected' : ''}>${esc(textFor('sortName'))}</option>
+                </select>
+                <button class="secondary" id="refreshMonitoringBtn">${esc(textFor('btnRefresh'))}</button>
+              </div>
+            </div>
+            <table class="settingsTable">
+              <thead>
+                <tr>
+                  <th>${esc(textFor('colJob'))}</th>
+                  <th>${esc(textFor('colStatus'))}</th>
+                  <th>${esc(textFor('colType'))}</th>
+                  <th class="right">${esc(textFor('colItems'))}</th>
+                  <th>${esc(textFor('colFinished'))}</th>
+                  <th class="center">${esc(textFor('colAction'))}</th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          <div class="muted" style="margin-top:10px">${esc(textFor('tipSlowJobs'))}</div>
+              </thead>
+              <tbody>
+                ${runs.length === 0
+                  ? `<tr><td colspan="6" class="muted">${esc(textFor('monitoringEmpty'))}</td></tr>`
+                  : runs.map((run) => `
+                    <tr class="${run.stale ? 'staleRow' : ''}">
+                      <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
+                      <td>${runStatusPill(run.status, !!run.stale)}</td>
+                      <td>${operationBadge(run.operation)}<br/><span class="muted">${esc(run.resultKind || run.domain || '-')} · ${esc(run.provider || '-')}</span></td>
+                      <td class="right">${run.itemCount ?? 0}</td>
+                      <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
+                      <td class="center">
+                        <div class="dataTableActions">
+                          ${runButton(run.jobKey, textFor('btnNowRun'))}
+                          <button class="secondary" data-open-job-log="${esc(run.jobKey)}">${esc(textFor('btnLogErrors'))}</button>
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('')}
+              </tbody>
+            </table>
+            <div class="cardFoot">
+              <div class="muted">${esc(textFor('tipSlowJobs'))}</div>
+            </div>
+          </div>
         `;
       }
 
@@ -458,44 +499,64 @@ import { dismissToast, showToast } from './toast.js';
         });
         $('dashboard').innerHTML = `
           <div class="statGrid wideStats">
-            <div class="stat"><div class="muted">📰 ${esc(textFor('statNews'))}</div><div class="statNum">${summary.counts.news}</div></div>
-            <div class="stat"><div class="muted">📅 ${esc(textFor('statCalendar'))}</div><div class="statNum">${summary.counts.calendar}</div></div>
-            <div class="stat"><div class="muted">▶ ${esc(textFor('statYoutube'))}</div><div class="statNum">${summary.counts.youtube}</div></div>
-            <div class="stat"><div class="muted">💹 ${esc(textFor('statQuotes'))}</div><div class="statNum">${summary.counts.marketQuotes || 0}</div></div>
-            <div class="stat"><div class="muted">🪙 ${esc(textFor('statCoins'))}</div><div class="statNum">${summary.counts.coinMarkets || 0}</div></div>
-            <div class="stat"><div class="muted">${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
+            <div class="stat"><div class="statLabel muted">📰 ${esc(textFor('statNews'))}</div><div class="statNum">${summary.counts.news}</div></div>
+            <div class="stat"><div class="statLabel muted">📅 ${esc(textFor('statCalendar'))}</div><div class="statNum">${summary.counts.calendar}</div></div>
+            <div class="stat"><div class="statLabel muted">▶ ${esc(textFor('statYoutube'))}</div><div class="statNum">${summary.counts.youtube}</div></div>
+            <div class="stat"><div class="statLabel muted">💹 ${esc(textFor('statQuotes'))}</div><div class="statNum">${summary.counts.marketQuotes || 0}</div></div>
+            <div class="stat"><div class="statLabel muted">🪙 ${esc(textFor('statCoins'))}</div><div class="statNum">${summary.counts.coinMarkets || 0}</div></div>
+            <div class="stat"><div class="statLabel muted">⏱ ${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
           </div>
-          <div class="row" style="justify-content:space-between;margin-top:16px">
-            <h3 style="margin:0">${esc(textFor('sectionRecentRuns'))}</h3>
-            <div class="row">
-              <div class="tabs" style="margin:0">
-                <button class="tabBtn ${state.dashboardOperationFilter === 'all' ? 'active' : ''}" data-dashboard-op="all">${esc(textFor('tabAll'))}</button>
-                <button class="tabBtn ${state.dashboardOperationFilter === 'latest' ? 'active' : ''}" data-dashboard-op="latest">${esc(textFor('tabLatest'))}</button>
-                <button class="tabBtn ${state.dashboardOperationFilter === 'reconcile' ? 'active' : ''}" data-dashboard-op="reconcile">${esc(textFor('tabReconcile'))}</button>
+          <div class="card card--elevated" style="margin-top:12px">
+            <div class="cardHead">
+              <div class="cardHeadMain">
+                <div class="cardKicker">${esc(textFor('pageDashboardTitle'))}</div>
+                <div class="cardHint">${esc(textFor('sectionRecentRuns'))}</div>
               </div>
-              <select id="dashboardSort" style="min-width:140px">
-                <option value="newest" ${state.dashboardSort === 'newest' ? 'selected' : ''}>${esc(textFor('sortNewest'))}</option>
-                <option value="oldest" ${state.dashboardSort === 'oldest' ? 'selected' : ''}>${esc(textFor('sortOldest'))}</option>
-                <option value="name" ${state.dashboardSort === 'name' ? 'selected' : ''}>${esc(textFor('sortName'))}</option>
-              </select>
+              <div class="cardHeadActions">
+                <div class="tabs" style="margin:0">
+                  <button class="tabBtn ${state.dashboardOperationFilter === 'all' ? 'active' : ''}" data-dashboard-op="all">${esc(textFor('tabAll'))}</button>
+                  <button class="tabBtn ${state.dashboardOperationFilter === 'latest' ? 'active' : ''}" data-dashboard-op="latest">${esc(textFor('tabLatest'))}</button>
+                  <button class="tabBtn ${state.dashboardOperationFilter === 'reconcile' ? 'active' : ''}" data-dashboard-op="reconcile">${esc(textFor('tabReconcile'))}</button>
+                </div>
+                <select id="dashboardSort" style="min-width:140px">
+                  <option value="newest" ${state.dashboardSort === 'newest' ? 'selected' : ''}>${esc(textFor('sortNewest'))}</option>
+                  <option value="oldest" ${state.dashboardSort === 'oldest' ? 'selected' : ''}>${esc(textFor('sortOldest'))}</option>
+                  <option value="name" ${state.dashboardSort === 'name' ? 'selected' : ''}>${esc(textFor('sortName'))}</option>
+                </select>
+              </div>
             </div>
+            <table class="settingsTable">
+              <thead>
+                <tr>
+                  <th>${esc(textFor('colJob'))}</th>
+                  <th>${esc(textFor('colStatus'))}</th>
+                  <th>${esc(textFor('colType'))}</th>
+                  <th class="right">${esc(textFor('colItems'))}</th>
+                  <th>${esc(textFor('colFinished'))}</th>
+                  <th class="center">${esc(textFor('colAction'))}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${sorted.map((run) => `
+                  <tr class="${run.stale ? 'staleRow' : ''}">
+                    <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
+                    <td>${runStatusPill(run.status, !!run.stale)}</td>
+                    <td>${operationBadge(run.operation)}<br/><span class="muted">${esc(run.resultKind || run.domain || '-')}</span></td>
+                    <td class="right">${run.itemCount ?? 0}</td>
+                    <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
+                    <td class="center">
+                      <div class="dataTableActions">
+                        <button class="success" data-job-run="${esc(run.jobKey)}">${esc(textFor('btnRun'))}</button>
+                        <button class="secondary" data-open-job="${esc(run.jobKey)}">${esc(textFor('btnSettings'))}</button>
+                        <button class="secondary" data-open-job-log="${esc(run.jobKey)}">${esc(textFor('btnLog'))}</button>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            ${sorted.length === 0 ? `<p class="muted" style="margin-top:10px">${esc(textFor('jobRunsEmpty'))}</p>` : ''}
           </div>
-          <table><thead><tr><th>${esc(textFor('colJob'))}</th><th>${esc(textFor('colStatus'))}</th><th>${esc(textFor('colType'))}</th><th>${esc(textFor('colItems'))}</th><th>${esc(textFor('colFinished'))}</th><th>${esc(textFor('colAction'))}</th></tr></thead>
-          <tbody>${sorted.map((run) => `
-            <tr class="${run.stale ? 'staleRow' : ''}">
-              <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-              <td>${runStatusPill(run.status, !!run.stale)}</td>
-              <td>${operationBadge(run.operation)}<br/><span class="muted">${esc(run.resultKind || run.domain || '-')}</span></td>
-              <td>${run.itemCount ?? 0}</td>
-              <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
-              <td>
-                <button class="success" data-job-run="${esc(run.jobKey)}">${esc(textFor('btnRun'))}</button>
-                <button class="secondary" data-open-job="${esc(run.jobKey)}">${esc(textFor('btnSettings'))}</button>
-                <button class="secondary" data-open-job-log="${esc(run.jobKey)}">${esc(textFor('btnLog'))}</button>
-              </td>
-            </tr>
-          `).join('')}</tbody></table>
-          ${sorted.length === 0 ? `<p class="muted" style="margin-top:10px">${esc(textFor('jobRunsEmpty'))}</p>` : ''}
         `;
       }
 
@@ -1028,22 +1089,36 @@ import { dismissToast, showToast } from './toast.js';
       async function loadMarketLists() {
         const body = await api('/admin/api/market-lists');
         state.marketLists = body.data;
-        $('marketLists').innerHTML = body.data.map((list) => `
-          <div class="card marketListCard">
-            <div class="marketListHead">
-              <div>
-                <strong>${esc(list.displayName)}</strong>
-                <div class="muted">${esc(list.key)} · ${list.count}개 · ${formatDateTime(list.updatedAt)}</div>
+        const lists = Array.isArray(body.data) ? body.data : [];
+        $('marketLists').innerHTML = `
+          <div class="card card--elevated">
+            <div class="cardHead">
+              <div class="cardHeadMain">
+                <div class="cardKicker">📋 마켓 리스트</div>
               </div>
-              <button data-market-list-open="${esc(list.key)}" class="secondary">편집</button>
             </div>
-            <div class="summary">${esc(list.description || '')}</div>
-            <div class="symbolPreview">
-              ${(list.symbols || []).slice(0, 24).map((symbol) => `<span class="pill">${esc(symbol)}</span>`).join('')}
-              ${list.count > 24 ? `<span class="pill">+${list.count - 24}</span>` : ''}
+            <div class="settingsSectionBody">
+              ${lists.length === 0 ? '<p class="muted">리스트가 없습니다.</p>' : lists.map((list) => `
+                <div class="card marketListCard">
+                  <div class="cardHead">
+                    <div class="cardHeadMain">
+                      <div><strong>${esc(list.displayName)}</strong></div>
+                      <div class="summary">${esc(list.description || '')}</div>
+                      <div class="marketListMetaRow">
+                        <span class="pill pill--subtle">${esc(list.key)}</span>
+                        <span class="pill">${Number(list.count) || 0}개</span>
+                        <span class="marketListMetaItem muted"><span class="marketListMetaLabel">업데이트</span>${formatDateTime(list.updatedAt)}</span>
+                      </div>
+                    </div>
+                    <div class="cardHeadActions">
+                      <button data-market-list-open="${esc(list.key)}" class="secondary">관리</button>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
             </div>
           </div>
-        `).join('');
+        `;
       }
 
       function renderNewsSources() {
@@ -1051,24 +1126,44 @@ import { dismissToast, showToast } from './toast.js';
         if (!host) return;
         const cat = state.newsSourcesCategory || 'global';
         const rows = [...(state.newsSources || [])].sort((a, b) => (a.order || 0) - (b.order || 0) || String(a.name).localeCompare(String(b.name)));
+        const policy = state.newsSourceSettings?.autoEnableNewSources || { global: true, crypto: true };
+        const aliasesByCat = state.newsSourceSettings?.aliases || { global: {}, crypto: {} };
+        const aliasTable = aliasesByCat[cat] || {};
+        const aliasCountFor = (name) => Object.entries(aliasTable).filter(([, v]) => String(v || '') === String(name || '')).length;
         host.innerHTML = `
-          <div class="card">
-            <div class="row" style="justify-content:space-between; gap:10px; align-items:center;">
-              <strong>${esc(textFor('newsSourcesTitle') || '뉴스 출처')}</strong>
-              <div class="row">
+          <div class="card card--elevated">
+            <div class="cardHead">
+              <div class="cardHeadMain">
+                <div class="cardKicker">${esc(textFor('newsSourcesTitle') || '뉴스 출처')}</div>
+                <div class="cardHint">${esc(textFor('newsSourcesHint'))}</div>
+              </div>
+              <div class="cardHeadActions">
                 <button class="secondary" id="refreshNewsSourcesBtn">${esc(textFor('btnRefresh'))}</button>
               </div>
             </div>
-            <div class="tabs" style="margin-top:10px">
+            <div class="tabs tabs--compact">
               <button type="button" class="tabBtn ${cat === 'global' ? 'active' : ''}" data-news-sources-tab="global">${esc(textFor('newsSourcesCatGlobal'))}</button>
               <button type="button" class="tabBtn ${cat === 'crypto' ? 'active' : ''}" data-news-sources-tab="crypto">${esc(textFor('newsSourcesCatCrypto'))}</button>
             </div>
-            <div class="muted" style="margin-top:6px">${esc(textFor('newsSourcesHint'))}</div>
-            <div class="row" style="margin-top:10px; gap:8px; align-items:center;">
-              <input id="newsSourceAddName" placeholder="${esc(textFor('newsSourceAddPh'))}" value="${esc(state.newsSourceDraft || '')}" />
+            <div class="newsSourcesMeta">
+              <label class="switchRow">
+                <input class="switchInput" type="checkbox" id="newsSourcesAutoEnable" ${policy[cat] !== false ? 'checked' : ''} />
+                <span class="switchUi" aria-hidden="true"></span>
+                <span class="switchLabel">${esc(textFor('newsSourcesAutoEnable'))}</span>
+              </label>
+              <label class="switchRow">
+                <input class="switchInput" type="checkbox" id="newsSourcesShowHidden" ${state.newsSourcesShowHidden ? 'checked' : ''} />
+                <span class="switchUi" aria-hidden="true"></span>
+                <span class="switchLabel">${esc(textFor('newsSourcesShowHidden'))}</span>
+              </label>
+              <div class="spacer"></div>
+              <button class="secondary" id="saveNewsSourceSettingsBtn">${esc(textFor('btnSave'))}</button>
+            </div>
+            <div class="newsSourcesAdd">
+              <input id="newsSourceAddName" class="newsSourcesAddInput" placeholder="${esc(textFor('newsSourceAddPh'))}" value="${esc(state.newsSourceDraft || '')}" />
               <button class="secondary" id="addNewsSourceBtn">${esc(textFor('btnAdd'))}</button>
             </div>
-            <div style="margin-top:10px; overflow-x:auto">
+            <div class="newsSourcesTable">
               <table>
                 <thead>
                   <tr>
@@ -1081,15 +1176,16 @@ import { dismissToast, showToast } from './toast.js';
                 </thead>
                 <tbody>
                   ${rows.map((s, idx) => `
-                    <tr>
+                    <tr class="${s.hidden ? 'mutedRow' : ''}">
                       <td class="muted">${idx + 1}</td>
-                      <td><strong>${esc(s.name)}</strong></td>
-                      <td><input type="checkbox" data-news-source-enabled="${esc(s.id)}" ${s.enabled ? 'checked' : ''}/></td>
+                      <td><strong>${esc(s.name)}</strong>${s.hidden ? ` <span class="pill">${esc(textFor('newsSourcesHide'))}</span>` : ''}</td>
+                      <td><input type="checkbox" data-news-source-enabled="${esc(s.id)}" ${s.enabled ? 'checked' : ''} ${s.hidden ? 'disabled' : ''}/></td>
                       <td class="muted">${Number(s.order) || (idx + 1)}</td>
-                      <td class="row">
-                        <button class="secondary" data-news-source-move="up" data-news-source-id="${esc(s.id)}">↑</button>
-                        <button class="secondary" data-news-source-move="down" data-news-source-id="${esc(s.id)}">↓</button>
-                        <button class="danger" data-news-source-delete="${esc(s.id)}">${esc(textFor('btnRemove'))}</button>
+                      <td class="tableActions">
+                        <button class="iconBtn" title="Move up" data-news-source-move="up" data-news-source-id="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>↑</button>
+                        <button class="iconBtn" title="Move down" data-news-source-move="down" data-news-source-id="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>↓</button>
+                        <button class="secondary" data-news-source-alias-open="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>별칭 ${aliasCountFor(s.name) ? `(${aliasCountFor(s.name)})` : ''}</button>
+                        <button class="secondary" data-news-source-toggle-hidden="${esc(s.id)}">${esc(s.hidden ? textFor('newsSourcesUnhide') : textFor('newsSourcesHide'))}</button>
                       </td>
                     </tr>
                   `).join('')}
@@ -1097,7 +1193,7 @@ import { dismissToast, showToast } from './toast.js';
               </table>
               ${rows.length === 0 ? `<p class="muted">${esc(textFor('newsSourcesEmpty'))}</p>` : ''}
             </div>
-            <div class="row" style="margin-top:10px; justify-content:flex-end;">
+            <div class="cardFoot">
               <button class="success" id="saveNewsSourcesBtn">${esc(textFor('btnSave'))}</button>
             </div>
           </div>
@@ -1106,8 +1202,96 @@ import { dismissToast, showToast } from './toast.js';
 
       async function loadNewsSources() {
         const cat = state.newsSourcesCategory || 'global';
-        const body = await api(`/admin/api/news-sources?category=${encodeURIComponent(cat)}`);
+        const includeHidden = state.newsSourcesShowHidden ? '&includeHidden=1' : '';
+        const body = await api(`/admin/api/news-sources?category=${encodeURIComponent(cat)}${includeHidden}`);
         state.newsSources = Array.isArray(body.data) ? body.data : [];
+        renderNewsSources();
+      }
+
+      async function loadNewsSourceSettings() {
+        const body = await api('/admin/api/news-source-settings');
+        state.newsSourceSettings = body.data || state.newsSourceSettings;
+        renderNewsSources();
+      }
+
+      async function saveNewsSourceSettings() {
+        const cat = state.newsSourcesCategory || 'global';
+        const autoEnable = !!$('newsSourcesAutoEnable')?.checked;
+        const patch = {
+          autoEnableNewSources: { [cat]: autoEnable },
+        };
+        const body = await api('/admin/api/news-source-settings', { method: 'PATCH', body: JSON.stringify(patch) });
+        state.newsSourceSettings = body.data || state.newsSourceSettings;
+        showToast(textFor('toastSaved') || 'Saved', cat, { kind: 'success' });
+        await loadNewsSources();
+      }
+
+      function closeNewsSourceAliasDialog() {
+        state.newsSourceAliasDraft = null;
+        if ($('newsSourceAliasDialog')) $('newsSourceAliasDialog').classList.add('hidden');
+      }
+
+      function renderNewsSourceAliasDialog() {
+        const draft = state.newsSourceAliasDraft;
+        if (!draft) {
+          if ($('newsSourceAliasDialog')) $('newsSourceAliasDialog').classList.add('hidden');
+          return;
+        }
+        $('newsSourceAliasDialog').classList.remove('hidden');
+        $('newsSourceAliasDialogTitle').textContent = `${draft.sourceName} · 별칭`;
+        $('newsSourceAliasDialogMeta').textContent = `카테고리: ${draft.category} (global/crypto는 별칭이 분리 적용됩니다)`;
+        $('newsSourceAliasCount').textContent = `별칭 ${draft.aliases.length}개`;
+        $('newsSourceAliasRows').innerHTML = `
+          <div class="aliasPolicyHint muted">
+            매칭 규칙: 별칭/출처명은 저장 시 앞뒤 공백을 제거하고 소문자로 비교합니다. (대소문자만 다른 경우도 동일 처리)
+          </div>
+          ${draft.aliases.map((a, idx) => `
+          <div class="symbolRow">
+            <div class="muted">${idx + 1}</div>
+            <input class="readonlyInput" value="${esc(a)}" disabled />
+            <button class="danger" data-news-source-alias-remove="${idx}">삭제</button>
+          </div>
+        `).join('') || '<p class="muted">별칭이 없습니다.</p>'}
+        `;
+      }
+
+      function openNewsSourceAliasDialog(sourceId) {
+        const cat = state.newsSourcesCategory || 'global';
+        const src = (state.newsSources || []).find((s) => String(s.id) === String(sourceId));
+        if (!src) return;
+        const table = state.newsSourceSettings?.aliases?.[cat] || {};
+        const aliases = Object.entries(table)
+          .filter(([, v]) => String(v || '') === String(src.name || ''))
+          .map(([k]) => String(k || '').trim())
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b));
+        state.newsSourceAliasDraft = { category: cat, sourceId: src.id, sourceName: src.name, aliases };
+        if ($('newsSourceAliasAdd')) $('newsSourceAliasAdd').value = '';
+        renderNewsSourceAliasDialog();
+      }
+
+      async function saveNewsSourceAliasesFromDialog() {
+        const draft = state.newsSourceAliasDraft;
+        if (!draft) return;
+        const { category: cat, sourceName, aliases } = draft;
+        const prev = state.newsSourceSettings?.aliases?.[cat] || {};
+        const next = { ...prev };
+        // Remove existing aliases pointing to this sourceName.
+        for (const [k, v] of Object.entries(next)) {
+          if (String(v || '') === String(sourceName || '')) delete next[k];
+        }
+        // Add aliases (aliasKey is lowercased by server; keep simple normalization here).
+        for (const raw of aliases) {
+          const key = String(raw || '').trim().toLowerCase();
+          if (!key) continue;
+          if (key === String(sourceName || '').trim().toLowerCase()) continue;
+          next[key] = sourceName;
+        }
+        const patch = { aliases: { [cat]: next } };
+        const body = await api('/admin/api/news-source-settings', { method: 'PATCH', body: JSON.stringify(patch) });
+        state.newsSourceSettings = body.data || state.newsSourceSettings;
+        showToast(textFor('toastSaved') || 'Saved', `${sourceName}`, { kind: 'success' });
+        closeNewsSourceAliasDialog();
         renderNewsSources();
       }
 
@@ -1450,27 +1634,91 @@ import { dismissToast, showToast } from './toast.js';
         state.newsTotal = body.total;
         renderPager('newsPagerTop');
         renderPager('newsPagerBottom');
-        $('news').innerHTML = body.data.map((item) => {
-          const locale = $('newsLocale').value;
-          const translation = item.translations.find((t) => t.locale === locale) || {};
-          return `
-            <div class="card">
-              <div class="row">
-                <input type="checkbox" data-news-id="${esc(item.id)}" />
-                <span class="pill">${item.translationStatus}</span>
-                <span class="pill">${item.category || '-'}</span>
-                <span class="pill">${item.provider}</span>
-                <span class="muted">${formatDateTime(item.publishedAt)}</span>
+        const locale = $('newsLocale').value;
+        $('news').innerHTML =
+          !body.data || body.data.length === 0
+            ? '<p class="muted">검색 조건에 맞는 뉴스가 없습니다.</p>'
+            : `
+              <div class="card card--elevated">
+                <div class="cardHead">
+                  <div class="cardHeadMain">
+                    <div class="cardKicker">News</div>
+                    <div class="cardHint">행을 펼쳐 번역을 편집하고, 선택 후 일괄 작업을 수행합니다.</div>
+                  </div>
+                </div>
+                <div class="newsTable">
+                  <table class="newsTableTable">
+                    <thead>
+                      <tr>
+                        <th style="width:34px"></th>
+                        <th style="width:120px">시간</th>
+                        <th style="width:110px">출처</th>
+                        <th style="width:92px">카테고리</th>
+                        <th style="width:92px">상태</th>
+                        <th>제목</th>
+                        <th style="width:210px">액션</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${body.data
+                        .map((item) => {
+                          const translation = item.translations.find((t) => t.locale === locale) || {};
+                          const title = String(item.originalTitle || item.title || '-');
+                          const source = String(item.sourceName || '-');
+                          const published = formatDateTime(item.publishedAt);
+                          const category = String(item.category || '-');
+                          const status = String(item.translationStatus || '-');
+                          const provider = String(item.provider || '-');
+                          return `
+                            <tr class="newsRow" data-news-row="${esc(item.id)}">
+                              <td><input type="checkbox" data-news-id="${esc(item.id)}" /></td>
+                              <td class="muted">${esc(published)}</td>
+                              <td><span class="pill">${esc(source)}</span></td>
+                              <td><span class="pill">${esc(category)}</span></td>
+                              <td><span class="pill">${esc(status)}</span></td>
+                              <td>
+                                <div class="newsTitle">${esc(title)}</div>
+                                <div class="newsMeta muted">${esc(provider)}</div>
+                              </td>
+                              <td class="tableActions">
+                                <button class="secondary" data-news-expand="${esc(item.id)}">편집</button>
+                                <a class="developerLink" href="${esc(item.sourceUrl || '#')}" target="_blank" rel="noreferrer">원문 ↗</a>
+                              </td>
+                            </tr>
+                            <tr class="newsRowExpand hidden" data-news-expand-row="${esc(item.id)}">
+                              <td colspan="7">
+                                <div class="newsEdit">
+                                  <div class="newsEditHead">
+                                    <div>
+                                      <div class="muted">번역 (${esc(locale)})</div>
+                                      <div class="newsEditTitle">${esc(title)}</div>
+                                    </div>
+                                    <div class="row">
+                                      <button class="secondary" data-news-collapse="${esc(item.id)}">닫기</button>
+                                      <button data-save-translation="${esc(item.id)}" class="success">저장</button>
+                                    </div>
+                                  </div>
+                                  <div class="newsEditGrid">
+                                    <label class="fieldLabel">
+                                      <span>Title</span>
+                                      <textarea class="jsonEditor" data-title="${esc(item.id)}">${esc(translation.title || item.title || '')}</textarea>
+                                    </label>
+                                    <label class="fieldLabel">
+                                      <span>Summary</span>
+                                      <textarea class="jsonEditor" data-summary="${esc(item.id)}">${esc(translation.summary || item.summary || '')}</textarea>
+                                    </label>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          `;
+                        })
+                        .join('')}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <div class="title">${esc(item.originalTitle || '-')}</div>
-              <div class="summary">${esc(item.originalSummary || '')}</div>
-              <p class="muted">번역 (${locale})</p>
-              <textarea data-title="${esc(item.id)}">${esc(translation.title || item.title || '')}</textarea>
-              <textarea data-summary="${esc(item.id)}">${esc(translation.summary || item.summary || '')}</textarea>
-              <div class="row"><button data-save-translation="${item.id}" class="secondary">수동 저장</button></div>
-            </div>
-          `;
-        }).join('') || '<p class="muted">검색 조건에 맞는 뉴스가 없습니다.</p>';
+            `;
         updateNewsSelectionInfo();
       }
 
@@ -1502,6 +1750,18 @@ import { dismissToast, showToast } from './toast.js';
       document.addEventListener('click', async (event) => {
         const target = event.target;
         try {
+          if (target?.dataset?.newsExpand) {
+            const id = target.dataset.newsExpand;
+            const row = document.querySelector(`[data-news-expand-row="${CSS.escape(id)}"]`);
+            if (row) row.classList.remove('hidden');
+            return;
+          }
+          if (target?.dataset?.newsCollapse) {
+            const id = target.dataset.newsCollapse;
+            const row = document.querySelector(`[data-news-expand-row="${CSS.escape(id)}"]`);
+            if (row) row.classList.add('hidden');
+            return;
+          }
           if (target?.id === 'hamburgerBtn') {
             document.body.classList.toggle('sideOpen');
             if ($('sideOverlay')) $('sideOverlay').classList.toggle('hidden', !document.body.classList.contains('sideOpen'));
@@ -1552,6 +1812,46 @@ import { dismissToast, showToast } from './toast.js';
           if (target?.id === 'refreshJobsBtn') {
             await Promise.all([loadJobs(), loadJobRuns(), loadDashboard()]);
             showToast('새로고침', 'Jobs/Logs refreshed', { kind: 'info' });
+            return;
+          }
+          if (target?.id === 'refreshMonitoringBtn') {
+            await loadMonitoring();
+            showToast('새로고침', 'Monitoring refreshed', { kind: 'info' });
+            return;
+          }
+          if (target?.dataset?.newsSourceAliasOpen) {
+            openNewsSourceAliasDialog(target.dataset.newsSourceAliasOpen);
+            return;
+          }
+          if (target?.id === 'closeNewsSourceAliasDialog' || target?.id === 'cancelNewsSourceAliasDialog') {
+            closeNewsSourceAliasDialog();
+            return;
+          }
+          if (target?.id === 'newsSourceAliasDialog') {
+            closeNewsSourceAliasDialog();
+            return;
+          }
+          if (target?.id === 'addNewsSourceAlias') {
+            if (!state.newsSourceAliasDraft) return;
+            const raw = String($('newsSourceAliasAdd')?.value || '').trim();
+            if (!raw) return;
+            if (!state.newsSourceAliasDraft.aliases.includes(raw)) state.newsSourceAliasDraft.aliases.push(raw);
+            state.newsSourceAliasDraft.aliases = [...new Set(state.newsSourceAliasDraft.aliases)].filter(Boolean).sort((a, b) => a.localeCompare(b));
+            if ($('newsSourceAliasAdd')) $('newsSourceAliasAdd').value = '';
+            renderNewsSourceAliasDialog();
+            return;
+          }
+          if (target?.dataset?.newsSourceAliasRemove) {
+            if (!state.newsSourceAliasDraft) return;
+            const idx = Number(target.dataset.newsSourceAliasRemove);
+            if (Number.isInteger(idx) && idx >= 0) {
+              state.newsSourceAliasDraft.aliases.splice(idx, 1);
+              renderNewsSourceAliasDialog();
+            }
+            return;
+          }
+          if (target?.id === 'saveNewsSourceAliasDialog') {
+            await saveNewsSourceAliasesFromDialog();
             return;
           }
           if (target?.id === 'jobRunsBulkClear') {
@@ -1784,7 +2084,12 @@ import { dismissToast, showToast } from './toast.js';
           }
           if (target.dataset.newsSourcesTab) {
             state.newsSourcesCategory = target.dataset.newsSourcesTab || 'global';
+            await loadNewsSourceSettings();
             await loadNewsSources();
+            return;
+          }
+          if (target.id === 'saveNewsSourceSettingsBtn') {
+            await saveNewsSourceSettings();
             return;
           }
           if (target.id === 'addNewsSourceBtn') {
@@ -1824,6 +2129,15 @@ import { dismissToast, showToast } from './toast.js';
             const id = target.dataset.newsSourceDelete;
             state.newsSources = (state.newsSources || []).filter((s) => s.id !== id);
             state.newsSources.forEach((s, i) => { s.order = i + 1; });
+            renderNewsSources();
+            return;
+          }
+          if (target.dataset.newsSourceToggleHidden) {
+            const id = target.dataset.newsSourceToggleHidden;
+            const hit = (state.newsSources || []).find((s) => s.id === id);
+            if (!hit) return;
+            hit.hidden = !hit.hidden;
+            if (hit.hidden) hit.enabled = false;
             renderNewsSources();
             return;
           }
@@ -2084,6 +2398,10 @@ import { dismissToast, showToast } from './toast.js';
             renderNewsSources();
           }
         }
+        if (event.target.id === 'newsSourcesShowHidden') {
+          state.newsSourcesShowHidden = !!event.target.checked;
+          await loadNewsSources();
+        }
         // category is managed via tabs in the News Sources section
         if (event.target.id === 'globalSearchQuery') {
           if ($('globalSearchResults')) $('globalSearchResults').innerHTML = renderSearchResults(event.target.value);
@@ -2096,6 +2414,10 @@ import { dismissToast, showToast } from './toast.js';
         if (event.target.id === 'dashboardSort') {
           state.dashboardSort = event.target.value || 'newest';
           await loadDashboard();
+        }
+        if (event.target.id === 'monitoringSort') {
+          state.monitoringSort = event.target.value || 'newest';
+          await loadMonitoring();
         }
         if (event.target.id === 'jobListEnabled') {
           state.jobListEnabled = event.target.value || 'all';
@@ -2170,9 +2492,16 @@ import { dismissToast, showToast } from './toast.js';
         if (event.key === 'Escape' && state.marketListDraft) {
           closeMarketListDialog();
         }
+        if (event.key === 'Escape' && state.newsSourceAliasDraft) {
+          closeNewsSourceAliasDialog();
+        }
         if (event.key === 'Enter' && event.target.id === 'marketListAddSymbol') {
           event.preventDefault();
           document.getElementById('addMarketListSymbol')?.click();
+        }
+        if (event.key === 'Enter' && event.target.id === 'newsSourceAliasAdd') {
+          event.preventDefault();
+          document.getElementById('addNewsSourceAlias')?.click();
         }
         if (event.key === 'Enter' && event.target.id === 'jobListQuery') {
           event.preventDefault();

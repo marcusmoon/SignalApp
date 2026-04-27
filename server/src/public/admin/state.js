@@ -6,6 +6,7 @@ export const state = {
   operationFilter: 'all',
   dashboardOperationFilter: 'all',
   dashboardSort: 'newest',
+  monitoringSort: 'newest',
   uiModelPresets: null,
   providerSettings: [],
   openModelPresetsOnTranslations: false,
@@ -40,7 +41,13 @@ export const state = {
   jobListSort: 'name', // name|lastRunDesc|intervalAsc
   marketLists: [],
   marketListDraft: null,
+  newsSourceAliasDraft: null,
   newsSources: [],
   newsSourceDraft: '',
   newsSourcesCategory: 'global',
+  newsSourcesShowHidden: false,
+  newsSourceSettings: {
+    autoEnableNewSources: { global: true, crypto: true },
+    aliases: { global: {}, crypto: {} },
+  },
 };

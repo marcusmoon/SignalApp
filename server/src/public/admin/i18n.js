@@ -1,58 +1,11 @@
+import { baseKo } from './i18n/ko.js';
+import { baseEn } from './i18n/en.js';
+import { baseJa } from './i18n/ja.js';
+
 export const i18n = {
-  ko: {
-    navDashboard: '대시보드',
-    navMonitoring: '수집 현황',
-    navErrors: '오류 로그',
-    navJobs: '스케줄 관리',
-    navNews: '뉴스 목록',
-    navYoutube: '유튜브 관리',
-    navCalendar: '투자 캘린더',
-    navConcalls: '컨콜 요약',
-    navTranslations: '번역 설정',
-    navSettingsKeys: 'Provider 키관리',
-    navSettingsTheme: '테마',
-    navSettingsLists: '마켓 리스트',
-    navSettingsDanger: '데이터 초기화',
-    login: 'Login',
-    jobInfo: 'Job 정보',
-    jobRuns: 'Job 로그',
-  },
-  en: {
-    navDashboard: 'Dashboard',
-    navMonitoring: 'Monitoring',
-    navErrors: 'Errors',
-    navJobs: 'Jobs',
-    navNews: 'News',
-    navYoutube: 'YouTube',
-    navCalendar: 'Calendar',
-    navConcalls: 'Concall',
-    navTranslations: 'Translation',
-    navSettingsKeys: 'Provider Keys',
-    navSettingsTheme: 'Theme',
-    navSettingsLists: 'Market Lists',
-    navSettingsDanger: 'Data Reset',
-    login: 'Login',
-    jobInfo: 'Job Info',
-    jobRuns: 'Job Logs',
-  },
-  ja: {
-    navDashboard: 'ダッシュボード',
-    navMonitoring: '収集状況',
-    navErrors: 'エラーログ',
-    navJobs: 'Job 管理',
-    navNews: 'ニュース管理',
-    navYoutube: 'YouTube 管理',
-    navCalendar: '投資カレンダー',
-    navConcalls: 'コンコール要約',
-    navTranslations: '翻訳設定',
-    navSettingsKeys: 'プロバイダーキー管理',
-    navSettingsTheme: 'テーマ',
-    navSettingsLists: 'マーケットリスト',
-    navSettingsDanger: 'データ初期化',
-    login: 'Login',
-    jobInfo: 'Job 情報',
-    jobRuns: 'Job ログ',
-  },
+  ko: baseKo,
+  en: baseEn,
+  ja: baseJa,
 };
 
 export function textFor(key) {
@@ -60,8 +13,16 @@ export function textFor(key) {
   return i18n[lang]?.[key] || i18n.ko[key] || key;
 }
 
+/** Replace `{{name}}` placeholders (same pattern as app locales). */
+export function textForVars(key, vars = {}) {
+  let s = textFor(key);
+  for (const [k, v] of Object.entries(vars)) {
+    s = s.split(`{{${k}}}`).join(String(v));
+  }
+  return s;
+}
+
 export function applyAdminLanguage() {
-  // Map labels by view id instead of DOM order (order changed by IA refactor).
   const viewLabelKey = {
     dashboard: 'navDashboard',
     monitoring: 'navMonitoring',
@@ -75,6 +36,7 @@ export function applyAdminLanguage() {
     'settings-keys': 'navSettingsKeys',
     'settings-theme': 'navSettingsTheme',
     'settings-lists': 'navSettingsLists',
+    'settings-sources': 'navSettingsSources',
     'settings-danger': 'navSettingsDanger',
   };
   document.querySelectorAll('[data-view]').forEach((btn) => {
@@ -85,4 +47,35 @@ export function applyAdminLanguage() {
   const jobTabs = document.querySelectorAll('[data-job-tab]');
   if (jobTabs[0]) jobTabs[0].textContent = textFor('jobInfo');
   if (jobTabs[1]) jobTabs[1].textContent = textFor('jobRuns');
+
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    const key = el.getAttribute('data-i18n');
+    if (!key) return;
+    el.textContent = textFor(key);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (!key) return;
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) el.placeholder = textFor(key);
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+    const key = el.getAttribute('data-i18n-title');
+    if (!key) return;
+    const label = textFor(key);
+    el.title = label;
+    if (el instanceof HTMLButtonElement) el.setAttribute('aria-label', label);
+  });
+  document.querySelectorAll('option[data-i18n]').forEach((el) => {
+    const key = el.getAttribute('data-i18n');
+    if (!key) return;
+    el.textContent = textFor(key);
+  });
+  document.querySelectorAll('[data-i18n-aria-label]').forEach((el) => {
+    const key = el.getAttribute('data-i18n-aria-label');
+    if (!key) return;
+    el.setAttribute('aria-label', textFor(key));
+  });
+  const globalSearch = document.getElementById('globalSearchInput');
+  if (globalSearch instanceof HTMLInputElement) globalSearch.placeholder = textFor('headerSearchPh');
 }
+

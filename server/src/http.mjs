@@ -2,8 +2,9 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config } from './config.mjs';
-import { readDb, updateDb, upsertById, nowIso } from './db.mjs';
+import { ensureNewsSourcesFromItems, normalizeNewsSourceName, normalizeNewsSourceNameWithAliases, readDb, updateDb, upsertById, nowIso } from './db.mjs';
 import { retranslateNewsItems, runPollingJob } from './jobs/runner.mjs';
+import { fetchFinnhubMarketQuotes } from './providers/market/finnhub.mjs';
 import { translateNews } from './providers/translation/index.mjs';
 import { fetchYoutubeVideosByIds } from './providers/youtube/youtube.mjs';
 import { listProviderSettingsPublic, updateProviderSetting } from './providerSettings.mjs';
@@ -67,16 +68,39 @@ function requireAdmin(req, res) {
   return adminId;
 }
 
+function cleanTranslationText(value) {
+  return String(value || '')
+    .replace(/^\s*\[번역 대기\]\s*/u, '')
+    .replace(/^\s*\[翻訳待ち\]\s*/u, '')
+    .trim();
+}
+
+function hasUsableTranslation(tr, item) {
+  if (!tr || !(tr.status === 'completed' || tr.status === 'manual')) return false;
+  if (tr.provider === 'mock') return false;
+  const title = cleanTranslationText(tr.title);
+  const summary = cleanTranslationText(tr.summary);
+  if (!title && !summary) return false;
+  if (
+    title === String(item.titleOriginal || '').trim() &&
+    summary === String(item.summaryOriginal || '').trim() &&
+    tr.provider !== 'manual'
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function displayNews(item, translations, locale) {
   const tr = translations.find((t) => t.newsItemId === item.id && t.locale === locale);
-  const completed = tr && (tr.status === 'completed' || tr.status === 'manual');
+  const completed = hasUsableTranslation(tr, item);
   return {
     id: item.id,
     category: item.category,
-    title: completed ? tr.title : item.titleOriginal,
-    summary: completed ? tr.summary : item.summaryOriginal,
+    title: completed ? cleanTranslationText(tr.title) : item.titleOriginal,
+    summary: completed ? cleanTranslationText(tr.summary) : item.summaryOriginal,
     displayLocale: completed ? locale : 'en',
-    translationStatus: tr?.status || 'missing',
+    translationStatus: completed ? tr.status : 'missing',
     originalTitle: item.titleOriginal,
     originalSummary: item.summaryOriginal,
     sourceName: item.sourceName,
@@ -96,7 +120,15 @@ function filterNews(items, url) {
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
   let rows = [...items];
-  if (category) rows = rows.filter((item) => item.category === category);
+  if (category) {
+    if (category === 'global') {
+      rows = rows.filter(
+        (item) => item.category === 'global' || String(item.provider || '') === 'financialjuice',
+      );
+    } else {
+      rows = rows.filter((item) => item.category === category);
+    }
+  }
   if (symbol) rows = rows.filter((item) => item.symbols?.includes(symbol));
   if (from) rows = rows.filter((item) => !item.publishedAt || item.publishedAt.slice(0, 10) >= from);
   if (to) rows = rows.filter((item) => !item.publishedAt || item.publishedAt.slice(0, 10) <= to);
@@ -133,11 +165,19 @@ function filterCalendar(items, url) {
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
   const type = url.searchParams.get('type');
+  const symbol = url.searchParams.get('symbol')?.trim().toUpperCase();
   const q = url.searchParams.get('q')?.trim().toLowerCase();
   let rows = [...items];
   if (from) rows = rows.filter((item) => !item.date || item.date >= from);
   if (to) rows = rows.filter((item) => !item.date || item.date <= to);
   if (type) rows = rows.filter((item) => item.type === type);
+  if (symbol) {
+    rows = rows.filter((item) => {
+      const sym = String(item.symbol || '').toUpperCase();
+      const hay = `${item.title || ''} ${item.country || ''}`.toUpperCase();
+      return sym === symbol || hay.includes(symbol);
+    });
+  }
   if (q) {
     rows = rows.filter((item) =>
       [item.title, item.country, item.symbol, item.type].some((value) =>
@@ -188,6 +228,20 @@ function filterMarketQuotes(items, url) {
         String(value || '').toLowerCase().includes(q),
       ),
     );
+  }
+  // If the request is "by symbols" without a segment, return a single best row per symbol.
+  // (Otherwise duplicates can occur when the same symbol exists in multiple segments.)
+  if (symbols && !segment) {
+    const bestBySymbol = new Map();
+    for (const row of rows) {
+      const key = String(row.symbol || '').trim().toUpperCase();
+      if (!key) continue;
+      const prev = bestBySymbol.get(key);
+      const prevAt = prev?.fetchedAt ? new Date(prev.fetchedAt).getTime() : 0;
+      const nextAt = row?.fetchedAt ? new Date(row.fetchedAt).getTime() : 0;
+      if (!prev || nextAt >= prevAt) bestBySymbol.set(key, row);
+    }
+    rows = [...bestBySymbol.values()];
   }
   return rows.sort(
     (a, b) =>
@@ -259,6 +313,31 @@ function filterJobRuns(items, url, jobs = []) {
 
 function dashboardSummary(db) {
   const recentRuns = db.pollingJobRuns.slice(0, 200);
+  const latestNews = [...db.newsItems]
+    .sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')))
+    .slice(0, 20)
+    .map((item) => ({
+      id: item.id,
+      title: item.titleOriginal || '',
+      summary: item.summaryOriginal || '',
+      sourceName: item.sourceName || '',
+      sourceUrl: item.sourceUrl || '',
+      category: item.category || '',
+      provider: item.provider || '',
+      publishedAt: item.publishedAt || null,
+    }));
+  const latestYoutube = [...db.youtubeVideos]
+    .sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')))
+    .slice(0, 20)
+    .map((item) => ({
+      id: item.id,
+      title: item.title || '',
+      channel: item.channel || '',
+      videoId: item.videoId || '',
+      thumbnailUrl: item.thumbnailUrl || '',
+      viewCount: item.viewCount || 0,
+      publishedAt: item.publishedAt || null,
+    }));
   const latestRunByJob = db.pollingJobs.map((job) => {
     const run = recentRuns.find((item) => item.jobKey === job.jobKey);
     const enriched = run ? enrichJobRun(run, db.pollingJobs) : {};
@@ -293,6 +372,8 @@ function dashboardSummary(db) {
       recentFailedRuns: recentRuns.filter((run) => run.status === 'failed').length,
     },
     recentRuns: latestRunByJob,
+    latestNews,
+    latestYoutube,
   };
 }
 
@@ -313,9 +394,19 @@ async function serveAdmin(res) {
 }
 
 async function serveAdminStatic(res, pathname) {
-  const safeName = path.basename(pathname);
-  const file = path.join(config.rootDir, 'src', 'public', 'admin', safeName);
+  const rel = String(pathname || '').replace(/^\/admin\//, '');
+  const normalized = path.normalize(rel);
+  // Prevent path traversal and enforce that it stays within /admin.
+  if (!normalized || normalized.startsWith('..') || path.isAbsolute(normalized)) {
+    json(res, 404, { error: 'NOT_FOUND' });
+    return;
+  }
+  const file = path.join(config.rootDir, 'src', 'public', 'admin', normalized);
   const ext = path.extname(file);
+  if (ext !== '.js' && ext !== '.css') {
+    json(res, 404, { error: 'NOT_FOUND' });
+    return;
+  }
   const body = await fs.readFile(file);
   const contentType = ext === '.css' ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8';
   res.writeHead(200, { 'content-type': contentType, 'cache-control': 'no-store' });
@@ -386,11 +477,53 @@ export async function handleRequest(req, res) {
     if (req.method === 'GET' && pathname === '/v1/news') {
       const db = await readDb();
       const locale = url.searchParams.get('locale') || 'ko';
-      const limit = Math.min(Number(url.searchParams.get('limit') || 30), 100);
+      // App may request a larger pool to build the "source" filter list.
+      const limit = Math.min(Number(url.searchParams.get('limit') || 30), 500);
       const rows = filterNews(db.newsItems, url)
         .slice(0, limit)
         .map((item) => displayNews(item, db.newsTranslations, locale));
       json(res, 200, { data: rows });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/v1/news-sources') {
+      const db = await readDb();
+      ensureNewsSourcesFromItems(db);
+      const category = url.searchParams.get('category');
+      const cat = category ? String(category).trim().toLowerCase() : '';
+
+      // Category filtering must reflect the actual ingested items.
+      // Legacy data may have sources created under "global" before category was tracked.
+      let allowedNames = null;
+      if (cat) {
+        const set = new Set();
+        for (const item of db.newsItems || []) {
+          const itemCat = String(item?.category || '').trim().toLowerCase() === 'crypto' ? 'crypto' : 'global';
+          if (itemCat !== cat) continue;
+          const name = normalizeNewsSourceNameWithAliases(item?.sourceName, itemCat, db.newsSourceSettings);
+          if (name) set.add(normalizeNewsSourceName(name));
+        }
+        // Keep Financial Juice visible in global as it is treated as global in /v1/news.
+        if (cat === 'global') set.add('Financial Juice');
+        allowedNames = set;
+      }
+
+      const sources = [...(db.newsSources || [])]
+        .map((s) => ({
+          id: String(s.id || '').trim(),
+          name: normalizeNewsSourceName(s.name),
+          category: String(s.category || 'global'),
+          hidden: s.hidden === true,
+          enabled: s.enabled !== false,
+          order: Number(s.order) || 0,
+        }))
+        .filter((s) => s.id && s.name)
+        .filter((s) => (!cat ? true : s.category === cat))
+        .filter((s) => (!allowedNames ? true : allowedNames.has(s.name)))
+        .filter((s) => !s.hidden)
+        .filter((s) => s.enabled)
+        .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+      json(res, 200, { data: sources });
       return;
     }
 
@@ -409,6 +542,34 @@ export async function handleRequest(req, res) {
 
     if (req.method === 'GET' && pathname === '/v1/market-quotes') {
       const db = await readDb();
+
+      // If requested by explicit symbols, and some quotes are missing from DB,
+      // fetch the missing symbols on-demand from Finnhub and persist them.
+      const symbolsParam = url.searchParams.get('symbols');
+      if (symbolsParam) {
+        const requested = [...new Set(symbolsParam.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean))];
+        if (requested.length > 0) {
+          const existing = filterMarketQuotes(db.marketQuotes, url);
+          const have = new Set(existing.map((r) => String(r.symbol || '').trim().toUpperCase()).filter(Boolean));
+          const missing = requested.filter((sym) => !have.has(sym));
+          if (missing.length > 0) {
+            try {
+              const seg = url.searchParams.get('segment') || 'watch';
+              const fetched = await fetchFinnhubMarketQuotes({ symbols: missing, segment: seg });
+              if (fetched.length > 0) {
+                await updateDb((next) => {
+                  for (const row of fetched) upsertById(next.marketQuotes, row);
+                });
+                // Mutate local snapshot too, so the response includes the fetched rows.
+                for (const row of fetched) upsertById(db.marketQuotes, row);
+              }
+            } catch {
+              // If Finnhub is unavailable, keep response DB-only.
+            }
+          }
+        }
+      }
+
       const page = paginate(filterMarketQuotes(db.marketQuotes, url), url, 30, 100);
       json(res, 200, { data: page.rows, page: page.page, pageSize: page.pageSize, total: page.total, totalPages: page.totalPages });
       return;
@@ -445,7 +606,7 @@ export async function handleRequest(req, res) {
       return;
     }
 
-    if (req.method === 'GET' && /^\/admin\/[a-zA-Z0-9_-]+\.(?:js|css)$/.test(pathname)) {
+    if (req.method === 'GET' && /^\/admin\/.+\.(?:js|css)$/.test(pathname) && !pathname.includes('..')) {
       await serveAdminStatic(res, pathname);
       return;
     }
@@ -538,7 +699,15 @@ export async function handleRequest(req, res) {
         const translationStatus = url.searchParams.get('translationStatus');
         let filtered = filterNews(db.newsItems, url).map((item) => ({
           ...displayNews(item, db.newsTranslations, locale),
-          translations: db.newsTranslations.filter((t) => t.newsItemId === item.id),
+          translations: db.newsTranslations
+            .filter((t) => t.newsItemId === item.id)
+            .map((t) => ({
+              ...t,
+              title: cleanTranslationText(t.title),
+              summary: cleanTranslationText(t.summary),
+              content: cleanTranslationText(t.content),
+              status: hasUsableTranslation(t, item) ? t.status : 'missing',
+            })),
         }));
         if (translationStatus) {
           filtered = filtered.filter((item) => item.translationStatus === translationStatus);
@@ -564,7 +733,7 @@ export async function handleRequest(req, res) {
 
       if (req.method === 'GET' && pathname === '/admin/api/calendar') {
         const db = await readDb();
-        const page = paginate(filterCalendar(db.calendarEvents, url), url, 30, 100);
+        const page = paginate(filterCalendar(db.calendarEvents, url), url, 30, 500);
         json(res, 200, { data: page.rows, page: page.page, pageSize: page.pageSize, total: page.total, totalPages: page.totalPages });
         return;
       }
@@ -661,6 +830,131 @@ export async function handleRequest(req, res) {
         return;
       }
 
+      if (req.method === 'GET' && pathname === '/admin/api/news-sources') {
+        const db = await readDb();
+        ensureNewsSourcesFromItems(db);
+        const category = url.searchParams.get('category');
+        const cat = category ? String(category).trim().toLowerCase() : '';
+        const includeHidden = url.searchParams.get('includeHidden') === '1';
+        const sources = [...(db.newsSources || [])]
+          .map((s) => ({
+            id: String(s.id || '').trim(),
+            name: normalizeNewsSourceName(s.name),
+            category: String(s.category || 'global'),
+            hidden: s.hidden === true,
+            enabled: s.enabled !== false,
+            order: Number(s.order) || 0,
+          }))
+          .filter((s) => s.id && s.name)
+          .filter((s) => (!cat ? true : s.category === cat))
+          .filter((s) => (includeHidden ? true : !s.hidden))
+          .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+        json(res, 200, { data: sources });
+        return;
+      }
+
+      if (req.method === 'GET' && pathname === '/admin/api/news-source-settings') {
+        const db = await readDb();
+        json(res, 200, { data: db.newsSourceSettings || null });
+        return;
+      }
+
+      if (req.method === 'PATCH' && pathname === '/admin/api/news-source-settings') {
+        const patch = await readBody(req);
+        const updated = await updateDb((db) => {
+          const cur = db.newsSourceSettings && typeof db.newsSourceSettings === 'object' ? db.newsSourceSettings : {};
+          const next = {
+            ...cur,
+            autoEnableNewSources: {
+              ...(cur.autoEnableNewSources || {}),
+              ...(patch.autoEnableNewSources && typeof patch.autoEnableNewSources === 'object' ? patch.autoEnableNewSources : {}),
+            },
+            aliases: {
+              ...(cur.aliases || {}),
+              ...(patch.aliases && typeof patch.aliases === 'object' ? patch.aliases : {}),
+            },
+            updatedAt: nowIso(),
+          };
+          db.newsSourceSettings = next;
+          // Re-normalize catalog names when aliases change.
+          ensureNewsSourcesFromItems(db);
+          return next;
+        });
+        json(res, 200, { data: updated });
+        return;
+      }
+
+      if (req.method === 'PUT' && pathname === '/admin/api/news-sources') {
+        const patch = await readBody(req);
+        const items = Array.isArray(patch?.items) ? patch.items : [];
+        const category = String(patch?.category || '').trim().toLowerCase();
+        const updated = await updateDb((db) => {
+          ensureNewsSourcesFromItems(db);
+          const cur = Array.isArray(db.newsSources) ? db.newsSources : [];
+          const byKey = new Map(cur.map((s) => [`${String(s.id || '').trim()}|${String(s.category || 'global')}`, s]));
+          const seen = new Set();
+          const next = [];
+          let order = 0;
+
+          for (const raw of items) {
+            const id = String(raw?.id || '').trim();
+            const cat = String(raw?.category || category || 'global').trim().toLowerCase() || 'global';
+            const key = `${id}|${cat}`;
+            if (!id || seen.has(key)) continue;
+            const prevHit = byKey.get(key) || {};
+            const name = normalizeNewsSourceName(raw?.name || prevHit?.name);
+            if (!name) continue;
+            seen.add(key);
+            order += 1;
+            next.push({
+              ...prevHit,
+              id,
+              name: normalizeNewsSourceNameWithAliases(name, cat, db.newsSourceSettings),
+              category: cat,
+              enabled: raw?.enabled !== false,
+              hidden: raw?.hidden === true,
+              order: Number(raw?.order) || order,
+              updatedAt: nowIso(),
+            });
+          }
+
+          // Keep anything not explicitly mentioned (safety).
+          for (const s of cur) {
+            const id = String(s.id || '').trim();
+            const cat = String(s.category || 'global');
+            const key = `${id}|${cat}`;
+            if (!id || seen.has(key)) continue;
+            next.push({ ...s, enabled: s.enabled !== false });
+          }
+
+          next.sort(
+            (a, b) =>
+              String(a.category || 'global').localeCompare(String(b.category || 'global')) ||
+              (Number(a.order) || 0) - (Number(b.order) || 0) ||
+              String(a.name || '').localeCompare(String(b.name || '')),
+          );
+          // Normalize order within each category
+          const counters = new Map();
+          for (const s of next) {
+            const c = String(s.category || 'global');
+            const n = (counters.get(c) || 0) + 1;
+            counters.set(c, n);
+            s.order = n;
+          }
+          db.newsSources = next;
+          return next.map((s) => ({
+            id: String(s.id || '').trim(),
+            name: normalizeNewsSourceName(s.name),
+            category: String(s.category || 'global'),
+            hidden: s.hidden === true,
+            enabled: s.enabled !== false,
+            order: Number(s.order) || 0,
+          }));
+        });
+        json(res, 200, { data: updated });
+        return;
+      }
+
       if (req.method === 'GET' && pathname === '/admin/api/ui-model-presets') {
         const db = await readDb();
         json(res, 200, { data: db.uiModelPresets || null });
@@ -751,12 +1045,13 @@ export async function handleRequest(req, res) {
         const updated = await updateDb((db) => {
           let setting = db.translationSettings.find((s) => s.locale === locale);
           if (!setting) {
-            setting = { locale, provider: 'mock', model: 'mock-news-v1', enabled: false, autoTranslateNews: false };
+            setting = { locale, provider: 'mock', enabled: false, autoTranslateNews: false };
             db.translationSettings.push(setting);
           }
-          for (const key of ['provider', 'model']) {
+          for (const key of ['provider']) {
             if (typeof patch[key] === 'string') setting[key] = patch[key];
           }
+          if ('model' in setting) delete setting.model;
           for (const key of ['enabled', 'autoTranslateNews']) {
             if (typeof patch[key] === 'boolean') setting[key] = patch[key];
           }

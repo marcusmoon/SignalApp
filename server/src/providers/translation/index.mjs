@@ -13,8 +13,6 @@ function localeLabel(locale) {
 
 function mockTranslateText(text, locale) {
   if (!text) return '';
-  if (locale === 'ko') return `[번역 대기] ${text}`;
-  if (locale === 'ja') return `[翻訳待ち] ${text}`;
   return text;
 }
 

@@ -1,3 +1,5 @@
+import { textForVars } from './i18n.js';
+
 export function esc(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -58,8 +60,8 @@ export function formatDateTime(value) {
 export function jobIntervalLabel(seconds) {
   const n = Number(seconds);
   if (!Number.isFinite(n) || n <= 0) return '-';
-  if (n < 3600) return `${Math.round(n / 60)}분`;
-  if (n % 86400 === 0) return `${Math.round(n / 86400)}일`;
-  if (n % 3600 === 0) return `${Math.round(n / 3600)}시간`;
-  return `${n}초`;
+  if (n < 3600) return textForVars('durationMin', { n: Math.round(n / 60) });
+  if (n % 86400 === 0) return textForVars('durationDay', { n: Math.round(n / 86400) });
+  if (n % 3600 === 0) return textForVars('durationHour', { n: Math.round(n / 3600) });
+  return textForVars('durationSec', { n });
 }

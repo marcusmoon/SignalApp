@@ -311,6 +311,31 @@ export const ja = {
   callsFiscalYearShort: '年度',
   callsFiscalQuarterShort: '四半期',
   callsFiscalAll: '通年',
+  callsFiscalQuarterN: 'Q{{q}}',
+  concallFiscalYearWithAllQuarters: 'FY{{y}} {{all}}',
+  concallEmptyMegaFiscalLine1:
+    '{{fiscalSummary}} に一致する Finnhub の決算予定がありません（メガキャップとの積集合）。',
+  concallEmptyMegaFiscalLine2:
+    'Finnhub 無料枠では過去区間が空・制限されることがあります。最近の年度・通年で試してください。',
+  concallEmptyMegaRollingLine1: 'この期間にメガキャップと重なる Finnhub の決算予定がありません。',
+  concallEmptyMegaRollingLine2: 'トークン権限を確認するか、フィルタで年度・四半期を調べてください。',
+  concallHintNinjasKeyMissing:
+    'トランスクリプト用キー (EXPO_PUBLIC_API_NINJAS_KEY) が空です。.env に入れて Metro を再起動してください。',
+  concallHintNinjas401: '認証に失敗しました (401)。API キーを確認してください。',
+  concallHintNinjas403:
+    'アクセスが拒否されました (403)。決算説明会トランスクリプトは有料プランが必要な場合があります。',
+  concallHintNinjas429: 'レート制限に達しました (429)。しばらくしてから再試行してください。',
+  concallHintNinjas404:
+    'ティッカー・四半期の組み合わせが見つかりません。DBにないか別四半期のみの可能性があります。',
+  concallHintNinjasFutureDate:
+    'まだ発表前（または直後で未反映）の可能性があります。トランスクリプトはコール後に提供されることが多いです。',
+  concallHintNinjasPastNoTranscript:
+    '発表日を過ぎてもない場合、小型株などでは未カバー・未アップロードの可能性があります。大型株ほど揃いやすいです。',
+  concallHintNinjasGeneric: 'ネットワークと API キーを確認してください。テスト時は AAPL・MSFT などを試してください。',
+  concallFallbackTranscriptNotFound: 'この銘柄の決算説明会トランスクリプトが見つかりませんでした。',
+  concallFallbackSummaryFailed: '要約の生成中にエラーが発生しました。',
+  concallGuidanceEarningsDate: '予定/発表日: {{date}} ({{hour}})',
+  concallQuarterRecentFallback: '直近',
   callsModalFiscalLead:
     '会計年度・四半期を設定して検索します。実績範囲(メガキャップ/ウォッチ)は表示設定で変えられます。',
   callsFilterQuery: '検索',
@@ -351,6 +376,7 @@ export const ja = {
   symbolDetailEarningsMetrics: 'EPS 予想/実績 {{epsEst}} / {{epsAct}} · 売上 予想/実績 {{revEst}} / {{revAct}}',
   symbolDetailEarningsFootnote: '説明会要約はAI・トランスクリプト由来です。予定四半期は未提供の場合があります。',
   symbolDetailEarningsOpenSummaryA11y: '{{date}} FY{{fy}} Q{{q}} 説明会要約',
+  symbolDetailEarningsFyQuarterDate: 'FY{{fy}} Q{{q}} · {{date}}',
   symbolDetailPriceUnavailable: '相場なし',
   symbolDetailCompanyUnknown: '会社情報なし',
   symbolDetailMarketCap: '時価総額',
@@ -408,6 +434,7 @@ export const ja = {
   briefingEarnHourBmo: 'プレ',
   briefingEarnHourAmc: 'アフター',
   briefingWeekEarningsTitle: '7日以内の決算予定',
+  fiscalYearQuarterShort: 'FY{{y}} Q{{q}}',
   briefingWeekEarningsEmpty: '7日以内に予定されたウォッチ銘柄の決算はありません。',
   briefingNoUpcomingEarning: '予定がないか、カレンダーにありません。',
   briefingRecentNewsLabel: '直近ニュース',

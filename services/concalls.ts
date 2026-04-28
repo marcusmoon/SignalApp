@@ -1,4 +1,6 @@
 import { MEGA_CAP_SET, normalizeEarningsSymbolForMatch } from '@/constants/megaCapUniverse';
+import type { AppLocale, MessageId } from '@/locales/messages';
+import { formatMessage, messages } from '@/locales/messages';
 import type { CalendarConcallScope } from '@/services/calendarConcallScopePreference';
 import {
   calendarRangeForFiscalYear,
@@ -23,31 +25,39 @@ import { hasApiNinjas, hasFinnhub } from '@/services/env';
 import type { ConcallSummary } from '@/types/signal';
 import { addDays } from '@/utils/date';
 
-function concallNinjaHint(ninjasStatus: number, row: FinnhubEarningsRow | undefined): string {
+function locMsg(locale: AppLocale, id: MessageId, vars?: Record<string, string | number>): string {
+  return formatMessage(messages[locale][id], vars);
+}
+
+function concallNinjaHint(
+  ninjasStatus: number,
+  row: FinnhubEarningsRow | undefined,
+  locale: AppLocale,
+): string {
   if (!hasApiNinjas()) {
-    return '트랜스크립트용 키(EXPO_PUBLIC_API_NINJAS_KEY)가 비어 있습니다. .env에 넣고 Metro를 재시작하세요.';
+    return locMsg(locale, 'concallHintNinjasKeyMissing');
   }
   if (ninjasStatus === 401) {
-    return '인증에 실패했습니다(401). 키가 올바른지 확인하세요.';
+    return locMsg(locale, 'concallHintNinjas401');
   }
   if (ninjasStatus === 403) {
-    return '접근이 거부되었습니다(403). 실적콜 트랜스크립트는 유료 전용일 수 있습니다. 구독·권한을 확인하세요.';
+    return locMsg(locale, 'concallHintNinjas403');
   }
   if (ninjasStatus === 429) {
-    return '요청 한도에 도달했습니다(429). 잠시 후 다시 시도하세요.';
+    return locMsg(locale, 'concallHintNinjas429');
   }
   if (ninjasStatus === 404) {
-    return '요청한 티커·분기 조합을 찾지 못했습니다. DB에 없거나 다른 분기만 제공될 수 있습니다.';
+    return locMsg(locale, 'concallHintNinjas404');
   }
   if (row) {
     if (isEarningsDateInFuture(row.date)) {
-      return '이 일정은 아직 발표 전(또는 콜 직후 미반영)일 수 있습니다. 트랜스크립트는 실적콜이 끝난 뒤에 제공되는 경우가 많습니다.';
+      return locMsg(locale, 'concallHintNinjasFutureDate');
     }
     if (ninjasStatus === 200) {
-      return '발표일은 지났는데도 없으면, 이 티커·분기 조합이 없거나(소형·일부 종목), 아직 업로드되지 않았을 수 있습니다. 대형주 위주로 커버되는 경우가 많습니다.';
+      return locMsg(locale, 'concallHintNinjasPastNoTranscript');
     }
   }
-  return '네트워크와 API 키를 확인하세요. 테스트 시 AAPL·MSFT 등 대형주로 바꿔 보세요.';
+  return locMsg(locale, 'concallHintNinjasGeneric');
 }
 
 export type FetchConcallSummariesOptions = {
@@ -67,6 +77,8 @@ export type FetchConcallSummariesOptions = {
   forceRefresh?: boolean;
   /** false면 메모리 캐시를 읽지도 쓰지도 않음 (설정에서 끈 경우) */
   cacheEnabled?: boolean;
+  /** UI 로케(에러·힌트 문구). 기본 ko */
+  locale?: AppLocale;
 };
 
 export async function fetchConcallSummaries(
@@ -85,7 +97,8 @@ export async function fetchConcallSummaries(
   const symbolCap = useFiscal ? 10 : maxItemsParam;
   const rollPast = options?.rollingEarningsPastDays;
   const rollFuture = options?.rollingEarningsFutureDays;
-  const cacheKey = buildConcallCacheKey({
+  const locale: AppLocale = options?.locale ?? 'ko';
+  const cacheKey = `${buildConcallCacheKey({
     symbolCap,
     scope,
     watchSorted: scope === 'watch' ? watchSorted : [],
@@ -93,7 +106,7 @@ export async function fetchConcallSummaries(
     fiscalQuarter: fiscalQuarterForKey,
     rollingPastDays: rollPast,
     rollingFutureDays: rollFuture,
-  });
+  })}|${locale}`;
 
   const cacheEnabled = options?.cacheEnabled !== false;
 
@@ -146,8 +159,15 @@ export async function fetchConcallSummaries(
       if (cacheEnabled) storeConcallCache(cacheKey, []);
       return [];
     }
-    const fqLabel =
-      useFiscal && fiscalQuarter > 0 ? `Q${fiscalQuarter}` : '전체';
+    const fiscalSummary =
+      useFiscal && fiscalYear != null
+        ? fiscalQuarter > 0
+          ? locMsg(locale, 'fiscalYearQuarterShort', { y: fiscalYear, q: fiscalQuarter })
+          : locMsg(locale, 'concallFiscalYearWithAllQuarters', {
+              y: fiscalYear,
+              all: locMsg(locale, 'callsFiscalAll'),
+            })
+        : '';
     const emptyCal: ConcallSummary[] = [
       {
         id: 'empty-cal',
@@ -155,13 +175,10 @@ export async function fetchConcallSummaries(
         quarter: '—',
         bullets: useFiscal
           ? [
-              `FY${fiscalYear} ${fqLabel}에 해당하는 Finnhub 실적 일정이 없습니다(메가캡 목록과 교집합).`,
-              'Finnhub 무료 플랜은 과거 구간 일정이 비거나 제한될 수 있습니다. 최근 연도·전체 분기로 조회해 보세요.',
+              locMsg(locale, 'concallEmptyMegaFiscalLine1', { fiscalSummary }),
+              locMsg(locale, 'concallEmptyMegaFiscalLine2'),
             ]
-          : [
-              '해당 기간에 메가캡 목록과 겹치는 Finnhub 실적 일정이 없습니다.',
-              '토큰 권한을 확인하거나 필터에서 연도·분기를 조회해 보세요.',
-            ],
+          : [locMsg(locale, 'concallEmptyMegaRollingLine1'), locMsg(locale, 'concallEmptyMegaRollingLine2')],
         source: 'fallback',
       },
     ];
@@ -187,17 +204,21 @@ export async function fetchConcallSummaries(
       ninjasStatus = r2.httpStatus || ninjasStatus;
     }
 
-    const quarterLabel = row ? `FY${row.year} Q${row.quarter}` : '최근';
+    const quarterLabel = row
+      ? locMsg(locale, 'fiscalYearQuarterShort', { y: row.year, q: row.quarter })
+      : locMsg(locale, 'concallQuarterRecentFallback');
 
     if (!text || text.length < 200) {
-      const hint = concallNinjaHint(ninjasStatus, row);
+      const hint = concallNinjaHint(ninjasStatus, row, locale);
 
       out.push({
         id: `${sym}-pending`,
         ticker: sym,
         quarter: quarterLabel,
-        bullets: ['해당 티커의 실적콜 트랜스크립트를 찾지 못했습니다.', hint],
-        guidance: row ? `예정/발표일: ${row.date} (${row.hour})` : undefined,
+        bullets: [locMsg(locale, 'concallFallbackTranscriptNotFound'), hint],
+        guidance: row
+          ? locMsg(locale, 'concallGuidanceEarningsDate', { date: row.date, hour: row.hour })
+          : undefined,
         risk: undefined,
         source: 'fallback',
       });
@@ -212,7 +233,7 @@ export async function fetchConcallSummaries(
         id: `${sym}-err`,
         ticker: sym,
         quarter: quarterLabel,
-        bullets: ['요약 중 오류가 발생했습니다.', '—'],
+        bullets: [locMsg(locale, 'concallFallbackSummaryFailed'), '—'],
         source: 'fallback',
       });
     }
@@ -229,13 +250,14 @@ export async function fetchConcallSummaries(
 export async function fetchConcallSummaryForEarningsRow(
   ticker: string,
   row: FinnhubEarningsRow,
-  options?: { forceRefresh?: boolean; cacheEnabled?: boolean },
+  options?: { forceRefresh?: boolean; cacheEnabled?: boolean; locale?: AppLocale },
 ): Promise<ConcallSummary> {
   if (!hasFinnhub()) {
     throw new Error('FINNHUB_TOKEN_MISSING');
   }
   const sym = ticker.trim().toUpperCase();
-  const cacheKey = `v1|single|${normalizeEarningsSymbolForMatch(sym)}|${row.year}|${row.quarter}|${row.date}`;
+  const locale: AppLocale = options?.locale ?? 'ko';
+  const cacheKey = `v1|single|${normalizeEarningsSymbolForMatch(sym)}|${row.year}|${row.quarter}|${row.date}|${locale}`;
   const cacheEnabled = options?.cacheEnabled !== false;
 
   if (cacheEnabled) {
@@ -262,16 +284,16 @@ export async function fetchConcallSummaryForEarningsRow(
     ninjasStatus = r2.httpStatus || ninjasStatus;
   }
 
-  const quarterLabel = `FY${row.year} Q${row.quarter}`;
+  const quarterLabel = locMsg(locale, 'fiscalYearQuarterShort', { y: row.year, q: row.quarter });
 
   if (!text || text.length < 200) {
-    const hint = concallNinjaHint(ninjasStatus, row);
+    const hint = concallNinjaHint(ninjasStatus, row, locale);
     const summary: ConcallSummary = {
       id: `${sym}-pending`,
       ticker: sym,
       quarter: quarterLabel,
-      bullets: ['해당 티커의 실적콜 트랜스크립트를 찾지 못했습니다.', hint],
-      guidance: `예정/발표일: ${row.date} (${row.hour})`,
+      bullets: [locMsg(locale, 'concallFallbackTranscriptNotFound'), hint],
+      guidance: locMsg(locale, 'concallGuidanceEarningsDate', { date: row.date, hour: row.hour }),
       risk: undefined,
       source: 'fallback',
     };
@@ -291,7 +313,7 @@ export async function fetchConcallSummaryForEarningsRow(
       id: `${sym}-err`,
       ticker: sym,
       quarter: quarterLabel,
-      bullets: ['요약 중 오류가 발생했습니다.', '—'],
+      bullets: [locMsg(locale, 'concallFallbackSummaryFailed'), '—'],
       source: 'fallback',
       transcriptSnippet: snippet,
     };

@@ -1,7 +1,8 @@
-import { nowIso, readDb, updateDb, upsertById } from '../db.mjs';
+import { ensureNewsSourcesFromItems, nowIso, readDb, updateDb, upsertById } from '../db.mjs';
 import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchFinnhubMarketQuotes, fetchFinnhubMcapQuotes } from '../providers/market/finnhub.mjs';
+import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
 import { fetchYoutubeEconomy, fetchYoutubeVideosByIds } from '../providers/youtube/youtube.mjs';
@@ -30,7 +31,6 @@ async function autoTranslateNews(db, newsItems) {
           newsItem: item,
           locale: setting.locale,
           provider: setting.provider,
-          model: setting.model,
         });
         upsertById(db.newsTranslations, {
           id,
@@ -63,6 +63,9 @@ async function autoTranslateNews(db, newsItems) {
 async function executeHandler(job, dbBefore, { onProgress } = {}) {
   if (job.provider === 'finnhub' && job.handler === 'market_news') {
     return { kind: 'news', rows: await fetchFinnhubMarketNews(job.params || {}) };
+  }
+  if (job.provider === 'rss' && job.handler === 'financial_juice') {
+    return { kind: 'news', rows: await fetchFinancialJuiceRssNews(job.params || {}) };
   }
   if (job.provider === 'finnhub' && job.handler === 'economic_calendar') {
     return { kind: 'calendar', rows: await fetchFinnhubEconomicCalendar(job.params || {}) };
@@ -181,6 +184,7 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       const rows = result.rows || [];
       if (result.kind === 'news') {
         for (const row of rows) upsertById(db.newsItems, row);
+        ensureNewsSourcesFromItems(db);
         await autoTranslateNews(db, rows);
       } else if (result.kind === 'calendar') {
         for (const row of rows) upsertById(db.calendarEvents, row);

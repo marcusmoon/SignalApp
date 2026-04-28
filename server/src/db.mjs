@@ -31,6 +31,20 @@ function defaultDb() {
     providerSettings: defaultProviderSettings(),
     translationSettings: defaultTranslationSettings(),
     uiModelPresets: defaultUiModelPresets(),
+    /**
+     * News source catalog used by the app filter & admin ordering.
+     * Each item: { id, name, enabled, order, createdAt, updatedAt }
+     */
+    newsSources: [],
+    /**
+     * News source settings:
+     * - autoEnableNewSources: per-category default for newly discovered sources
+     * - aliases: per-category mapping { "Bloomberg News": "Bloomberg" }
+     */
+    newsSourceSettings: {
+      autoEnableNewSources: { global: true, crypto: true },
+      aliases: { global: {}, crypto: {} },
+    },
   };
 }
 
@@ -211,6 +225,21 @@ function defaultPollingJobs() {
         updatedAt: nowIso(),
       },
       {
+        jobKey: 'market_quotes_watchlist',
+        displayName: '관심종목 시세 최신 수집',
+        description: '기본 관심종목의 최신 시세를 Finnhub에서 가져옵니다.',
+        domain: 'market',
+        operation: 'latest',
+        provider: 'finnhub',
+        handler: 'market_quotes',
+        enabled: false,
+        intervalSeconds: 120,
+        params: { listKey: 'default_watchlist' },
+        lastRunAt: null,
+        nextRunAt: null,
+        updatedAt: nowIso(),
+      },
+      {
         jobKey: 'market_quotes_mcap',
         displayName: '시총 상위 시세 수집',
         description: '시총 상위 후보 종목의 최신 시세를 Finnhub에서 가져옵니다.',
@@ -249,7 +278,6 @@ function defaultProviderSettings() {
         provider: 'finnhub',
         enabled: true,
         apiKey: config.finnhubToken,
-        defaultModel: '',
         updatedAt: nowIso(),
       },
       {
@@ -270,14 +298,12 @@ function defaultProviderSettings() {
         provider: 'youtube',
         enabled: true,
         apiKey: config.youtubeApiKey,
-        defaultModel: '',
         updatedAt: nowIso(),
       },
       {
         provider: 'coingecko',
         enabled: true,
         apiKey: '',
-        defaultModel: '',
         updatedAt: nowIso(),
       },
     ];
@@ -288,7 +314,6 @@ function defaultTranslationSettings() {
       {
         locale: 'ko',
         provider: config.translationProvider,
-        model: config.translationModel,
         enabled: true,
         autoTranslateNews: true,
         updatedAt: nowIso(),
@@ -296,7 +321,6 @@ function defaultTranslationSettings() {
       {
         locale: 'ja',
         provider: config.translationProvider,
-        model: config.translationModel,
         enabled: false,
         autoTranslateNews: false,
         updatedAt: nowIso(),
@@ -329,6 +353,9 @@ function ensureDbShape(db) {
     if (existing.jobKey === 'market_quotes_popular' && !existing.params.listKey) {
       existing.params = { ...existing.params, listKey: 'popular_symbols' };
     }
+    if (existing.jobKey === 'market_quotes_watchlist' && !existing.params.listKey) {
+      existing.params = { ...existing.params, listKey: 'default_watchlist' };
+    }
     if (existing.jobKey === 'market_quotes_mcap' && !existing.params.listKey) {
       existing.params = { ...existing.params, listKey: 'mcap_universe' };
     }
@@ -347,7 +374,109 @@ function ensureDbShape(db) {
   if (!Array.isArray(db.uiModelPresets.claude)) db.uiModelPresets.claude = defaultUiModelPresets().claude;
   if (!Array.isArray(db.uiModelPresets.mock)) db.uiModelPresets.mock = defaultUiModelPresets().mock;
   if (!db.uiModelPresets.updatedAt) db.uiModelPresets.updatedAt = nowIso();
+  if (!Array.isArray(db.newsSources)) db.newsSources = [];
+  if (!db.newsSourceSettings || typeof db.newsSourceSettings !== 'object') {
+    db.newsSourceSettings = defaultDb().newsSourceSettings;
+  }
+  if (!db.newsSourceSettings.autoEnableNewSources || typeof db.newsSourceSettings.autoEnableNewSources !== 'object') {
+    db.newsSourceSettings.autoEnableNewSources = defaultDb().newsSourceSettings.autoEnableNewSources;
+  }
+  if (typeof db.newsSourceSettings.autoEnableNewSources.global !== 'boolean') db.newsSourceSettings.autoEnableNewSources.global = true;
+  if (typeof db.newsSourceSettings.autoEnableNewSources.crypto !== 'boolean') db.newsSourceSettings.autoEnableNewSources.crypto = true;
+  if (!db.newsSourceSettings.aliases || typeof db.newsSourceSettings.aliases !== 'object') {
+    db.newsSourceSettings.aliases = defaultDb().newsSourceSettings.aliases;
+  }
+  if (!db.newsSourceSettings.aliases.global || typeof db.newsSourceSettings.aliases.global !== 'object') db.newsSourceSettings.aliases.global = {};
+  if (!db.newsSourceSettings.aliases.crypto || typeof db.newsSourceSettings.aliases.crypto !== 'object') db.newsSourceSettings.aliases.crypto = {};
   return db;
+}
+
+function stableSourceId(name) {
+  const s = String(name || '').trim().toLowerCase();
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return `src-${h.toString(16)}`;
+}
+
+export function normalizeNewsSourceName(raw) {
+  const s = String(raw || '').trim();
+  return s.length > 0 ? s : 'Unknown';
+}
+
+function aliasKey(raw) {
+  return String(raw || '').trim().toLowerCase();
+}
+
+export function normalizeNewsSourceNameWithAliases(raw, category, settings) {
+  const name = normalizeNewsSourceName(raw);
+  const cat = normalizeNewsCategory(category);
+  const aliases = settings?.aliases && typeof settings.aliases === 'object' ? settings.aliases : null;
+  const table = aliases && typeof aliases[cat] === 'object' ? aliases[cat] : null;
+  const mapped = table ? table[aliasKey(name)] : null;
+  return mapped ? normalizeNewsSourceName(mapped) : name;
+}
+
+function normalizeNewsCategory(raw) {
+  const c = String(raw || '').trim().toLowerCase();
+  if (c === 'crypto') return 'crypto';
+  // Treat unknown/legacy as global for app UX.
+  return 'global';
+}
+
+export function ensureNewsSourcesFromItems(db) {
+  if (!Array.isArray(db.newsSources)) db.newsSources = [];
+  const list = db.newsSources;
+  // Normalize legacy entries without category.
+  for (const s of list) {
+    if (!s) continue;
+    if (!s.category) s.category = 'global';
+    if (s.enabled == null) s.enabled = true;
+    if (s.hidden == null) s.hidden = false;
+  }
+
+  const byKey = new Map(list.map((x) => [`${x.id}|${x.category || 'global'}`, x]));
+  const maxOrderByCat = new Map();
+  for (const s of list) {
+    const cat = normalizeNewsCategory(s?.category);
+    maxOrderByCat.set(cat, Math.max(maxOrderByCat.get(cat) || 0, Number(s?.order) || 0));
+  }
+  let changed = false;
+  for (const item of db.newsItems || []) {
+    const category = normalizeNewsCategory(item?.category);
+    const name = normalizeNewsSourceNameWithAliases(item?.sourceName, category, db.newsSourceSettings);
+    const id = stableSourceId(name);
+    const key = `${id}|${category}`;
+    if (byKey.has(key)) continue;
+    const nextOrder = (maxOrderByCat.get(category) || 0) + 1;
+    maxOrderByCat.set(category, nextOrder);
+    const autoEnable =
+      category === 'crypto'
+        ? db.newsSourceSettings?.autoEnableNewSources?.crypto !== false
+        : db.newsSourceSettings?.autoEnableNewSources?.global !== false;
+    const row = {
+      id,
+      name,
+      category,
+      enabled: !!autoEnable,
+      hidden: false,
+      order: nextOrder,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    list.push(row);
+    byKey.set(key, row);
+    changed = true;
+  }
+  if (changed) {
+    // keep deterministic order
+    list.sort(
+      (a, b) =>
+        String(a.category || 'global').localeCompare(String(b.category || 'global')) ||
+        (Number(a.order) || 0) - (Number(b.order) || 0) ||
+        String(a.name).localeCompare(String(b.name)),
+    );
+  }
+  return changed;
 }
 
 async function readJsonFile(file, fallback) {
@@ -373,11 +502,13 @@ async function readSplitDb() {
     readJsonFile(storePath('market'), null),
   ]);
   if (!settings && !jobs && !news && !calendar && !youtube && !market) return null;
-  return ensureDbShape({
+  const shaped = ensureDbShape({
     meta: settings?.meta ?? { createdAt: nowIso(), updatedAt: nowIso(), schemaVersion: 1 },
     providerSettings: settings?.providerSettings ?? [],
     translationSettings: settings?.translationSettings ?? [],
     uiModelPresets: settings?.uiModelPresets ?? null,
+    newsSources: settings?.newsSources ?? [],
+    newsSourceSettings: settings?.newsSourceSettings ?? null,
     pollingJobs: jobs?.pollingJobs ?? [],
     pollingJobRuns: jobs?.pollingJobRuns ?? [],
     newsItems: news?.newsItems ?? [],
@@ -388,22 +519,31 @@ async function readSplitDb() {
     coinMarkets: market?.coinMarkets ?? [],
     marketLists: market?.marketLists ?? [],
   });
+  ensureNewsSourcesFromItems(shaped);
+  return shaped;
 }
 
 export async function readDb() {
   const split = await readSplitDb();
   if (split) return split;
+
+  // Legacy fallback: older versions used a monolithic local-db.json.
+  // If it exists, migrate once into split stores then keep only a backup.
+  const legacyFile = path.join(config.dataDir, 'local-db.json');
   try {
-    const body = await fs.readFile(config.dataFile, 'utf8');
+    const body = await fs.readFile(legacyFile, 'utf8');
     const db = ensureDbShape(JSON.parse(body));
     await writeDb(db);
+    const backup = path.join(config.dataDir, `local-db.legacy.${Date.now()}.json`);
+    await fs.rename(legacyFile, backup).catch(() => {});
     return db;
   } catch (error) {
     if (error?.code !== 'ENOENT') throw error;
-    const db = defaultDb();
-    await writeDb(db);
-    return db;
   }
+
+  const db = defaultDb();
+  await writeDb(db);
+  return db;
 }
 
 export async function writeDb(db) {
@@ -416,6 +556,8 @@ export async function writeDb(db) {
       providerSettings: shaped.providerSettings,
       translationSettings: shaped.translationSettings,
       uiModelPresets: shaped.uiModelPresets,
+      newsSources: shaped.newsSources,
+      newsSourceSettings: shaped.newsSourceSettings,
     }),
     writeStore('jobs', {
       pollingJobs: shaped.pollingJobs,

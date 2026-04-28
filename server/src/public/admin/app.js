@@ -1,64 +1,134 @@
 import { api } from './api.js';
 import { esc, formatDateTime, jobIntervalLabel, ymd } from './format.js';
-import { applyAdminLanguage } from './i18n.js';
+import { applyAdminLanguage, textFor, textForVars } from './i18n.js';
+import { closeConfirm, confirmState, openConfirm } from './modal.js';
 import { $, state } from './state.js';
 import { applyTheme } from './theme.js';
+import { dismissToast, showToast } from './toast.js';
+import { loadDashboardView } from './views/dashboard.js';
+import { loadJobsView, loadJobRunsView } from './views/jobs.js';
+import { loadErrorsView, loadMonitoringView } from './views/monitoring.js';
+import {
+  closeNewsEditDialog as closeNewsEditDialogView,
+  loadNewsView,
+  loadYoutubeView,
+  openNewsEditDialog as openNewsEditDialogView,
+  renderNewsEditDialog as renderNewsEditDialogView,
+  selectedNewsIds as selectedNewsIdsView,
+  selectedYoutubeIds as selectedYoutubeIdsView,
+  updateNewsSelectionInfo as updateNewsSelectionInfoView,
+  updateYoutubeSelectionInfo as updateYoutubeSelectionInfoView,
+} from './views/content.js';
+import {
+  defaultModelForProvider as defaultModelForProviderView,
+  loadMarketListsView,
+  modelPresetsForProvider as modelPresetsForProviderView,
+  loadProviderSettingsView,
+  loadTranslationSettingsView,
+  loadUiModelPresetsView,
+  refreshTranslationTestModels as refreshTranslationTestModelsView,
+  renderUiModelPresetsEditorView,
+} from './views/settings.js';
+import {
+  initCalendarMonthIfNeeded as initCalendarMonthIfNeededView,
+  loadCalendarView,
+  renderAdminCalendarGrid as renderAdminCalendarGridView,
+  renderCalendarDayTable as renderCalendarDayTableView,
+  shiftCalendarMonth as shiftCalendarMonthView,
+} from './views/calendar.js';
+import {
+  closeNewsSourceAliasDialogView,
+  loadNewsSourceSettingsView,
+  loadNewsSourcesView,
+  openNewsSourceAliasDialogView,
+  renderNewsSourceAliasDialogView,
+  renderNewsSourcesView,
+  saveNewsSourceAliasesFromDialogView,
+  saveNewsSourceSettingsView,
+  saveNewsSourcesView,
+} from './views/newsSources.js';
+import {
+  closeMarketListDialogView,
+  openMarketListDialogView,
+  renderMarketListDialogView,
+  syncMarketListDraftFromInputsView,
+} from './views/marketLists.js';
+import { closeErrorDetailDialogView, openErrorDetailDialogView } from './views/dialogs.js';
+import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from './views/search.js';
 
-      let toastTimer = null;
-      function showToast(title, detail = '') {
-        const host = $('toastHost');
-        if (!host) return;
-        if (toastTimer) clearTimeout(toastTimer);
-        host.classList.remove('hidden');
-        host.innerHTML = `
-          <div class="toast">
-            <strong>${esc(title)}</strong>
-            <span class="muted">${esc(detail)}</span>
-          </div>
-        `;
-        toastTimer = setTimeout(() => {
-          host.classList.add('hidden');
-          host.innerHTML = '';
-          toastTimer = null;
-        }, 2200);
-      }
-
-      function uniq(arr) {
-        const out = [];
-        for (const v of arr || []) {
-          const s = String(v || '').trim();
-          if (!s) continue;
-          if (!out.includes(s)) out.push(s);
+      function getUrlParam(key) {
+        try {
+          return new URLSearchParams(window.location.search).get(key);
+        } catch {
+          return null;
         }
-        return out;
       }
 
-      function modelPresetsForProvider(provider, defaultModel) {
-        const p = String(provider || '').trim().toLowerCase();
-        const fromSettings = state.uiModelPresets && typeof state.uiModelPresets === 'object' ? state.uiModelPresets[p] : null;
-        const base = Array.isArray(fromSettings) ? fromSettings : [];
-        return uniq([defaultModel, ...base]);
+      function setUrlParam(key, value) {
+        try {
+          const url = new URL(window.location.href);
+          if (value == null || value === '') url.searchParams.delete(key);
+          else url.searchParams.set(key, String(value));
+          window.history.replaceState({}, '', url.toString());
+        } catch {
+          // ignore
+        }
       }
 
-      function renderModelOptions(options, selected) {
-        const sel = String(selected || '');
-        return (options || []).map((m) => `<option value="${esc(m)}" ${m === sel ? 'selected' : ''}>${esc(m)}</option>`).join('');
+      function normalizeAdminLang(value) {
+        const v = String(value || '').trim().toLowerCase();
+        if (v === 'ko' || v === 'en' || v === 'ja') return v;
+        return null;
+      }
+
+      function jobRunRowSelectKey(run) {
+        const id = String(run?.id || '').trim();
+        if (id) return id;
+        // Back-compat for very old local DB rows (should be rare)
+        return `${String(run?.jobKey || '').trim()}:${String(run?.startedAt || '').trim()}:${String(run?.finishedAt || '').trim()}`;
+      }
+
+      function jobKeysForSelectedJobRuns(rows, selectedKeys) {
+        const selected = new Set(selectedKeys || []);
+        const keys = [];
+        for (const run of rows || []) {
+          const k = jobRunRowSelectKey(run);
+          if (!selected.has(k)) continue;
+          const jobKey = String(run?.jobKey || '').trim();
+          if (!jobKey) continue;
+          if (!keys.includes(jobKey)) keys.push(jobKey);
+        }
+        return keys;
+      }
+
+      function defaultModelForProvider(provider, providerSettings = state.providerSettings) {
+        return defaultModelForProviderView({ provider, providerSettings, uiModelPresets: state.uiModelPresets });
+      }
+
+      function renderTableSkeleton({ cols = 6, rows = 5 } = {}) {
+        const c = Math.max(1, Number(cols) || 6);
+        const r = Math.max(1, Number(rows) || 5);
+        return `
+          <table>
+            <tbody>
+              ${Array.from({ length: r }).map(() => `
+                <tr class="skeletonRow">
+                  ${Array.from({ length: c }).map(() => `<td><div class="skeletonBar"></div></td>`).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
       }
 
       function refreshTranslationTestModels(providerSettings) {
-        const provider = $('translationTestProvider')?.value || 'mock';
-        const defaultModel =
-          (providerSettings || []).find((p) => p.provider === provider)?.defaultModel || '';
-        const models = modelPresetsForProvider(provider, defaultModel);
-        const current = $('translationTestModel')?.value || '';
-        if ($('translationTestModel')) {
-          $('translationTestModel').innerHTML =
-            models.length > 0 ? renderModelOptions(models, models.includes(current) ? current : (defaultModel || models[0])) : '<option value="">-</option>';
-        }
+        return refreshTranslationTestModelsView({ providerSettings, uiModelPresets: state.uiModelPresets, $, esc });
       }
 
       function setDatePresetFor(prefix) {
-        const preset = $(`${prefix}Range`).value;
+        const rangeEl = $(`${prefix}Range`);
+        if (!rangeEl) return;
+        const preset = rangeEl.value;
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         let from = null;
@@ -97,23 +167,26 @@ import { applyTheme } from './theme.js';
         setDatePresetFor('calendar');
       }
 
-      if ($('calendarRange')) {
-        $('calendarRange').addEventListener('change', () => setCalendarDatePreset());
-        setCalendarDatePreset();
+      function domainLabel(domain) {
+        const d = domain || 'other';
+        const key =
+          d === 'news'
+            ? 'domainNews'
+            : d === 'calendar'
+              ? 'domainCalendar'
+              : d === 'youtube'
+                ? 'domainYoutube'
+                : d === 'market'
+                  ? 'domainMarket'
+                  : 'domainOther';
+        return textFor(key);
       }
 
-      const domainLabels = {
-        news: '뉴스',
-        calendar: '캘린더',
-        youtube: '유튜브',
-        market: '마켓',
-      };
-
-      const operationLabels = {
-        latest: '최신 수집',
-        reconcile: '보정 수집',
-        maintenance: '유지보수',
-      };
+      function operationLabel(operation) {
+        const op = operation || 'latest';
+        const key = op === 'reconcile' ? 'opReconcile' : op === 'maintenance' ? 'opMaintenance' : 'opLatest';
+        return textFor(key);
+      }
 
       const domainIcons = {
         news: '📰',
@@ -127,13 +200,80 @@ import { applyTheme } from './theme.js';
       }
 
       function jobGroupTitle(domain) {
-        return domainLabels[domain] || domain || '기타';
+        return domainLabel(domain);
       }
 
       function operationBadge(operation) {
         const op = operation || 'latest';
         const css = op === 'reconcile' ? 'opReconcile' : op === 'latest' ? 'opLatest' : 'opMaintenance';
-        return `<span class="pill ${css}">${esc(operationLabels[op] || op || '-')}</span>`;
+        return `<span class="pill ${css}">${esc(operationLabel(op))}</span>`;
+      }
+
+      function domainBadge(domain) {
+        const d = String(domain || 'other');
+        const known = ['news', 'calendar', 'youtube', 'market', 'other'].includes(d);
+        return `<span class="pill">${esc(known ? domainLabel(d) : d)}</span>`;
+      }
+
+      function providerBadge(provider) {
+        return `<span class="pill pill--subtle">${esc(provider || '-')}</span>`;
+      }
+
+      function runStatusPill(status, stale) {
+        if (stale) return `<span class="pill pillStatus pillStatus--warn">${esc(textFor('runStale'))}</span>`;
+        const s = String(status || '').toLowerCase();
+        let cls = 'pillStatus--muted';
+        let key = 'statusUnknown';
+        if (s === 'completed' || s === 'complete' || s === 'success') {
+          cls = 'pillStatus--ok';
+          key = 'statusCompleted';
+        } else if (s === 'running') {
+          cls = 'pillStatus--run';
+          key = 'statusRunning';
+        } else if (s === 'failed' || s === 'error') {
+          cls = 'pillStatus--fail';
+          key = 'statusFailed';
+        } else if (!s || s === 'not run' || s === '-') {
+          key = 'statusNotRun';
+        }
+        return `<span class="pill pillStatus ${cls}">${esc(textFor(key))}</span>`;
+      }
+
+      function allVisibleRunRows() {
+        return [
+          ...(state.jobRunsLastRows || []),
+          ...(state.errorRows || []),
+        ];
+      }
+
+      function runRowByKey(key) {
+        const wanted = String(key || '');
+        return allVisibleRunRows().find((run) => jobRunRowSelectKey(run) === wanted) || null;
+      }
+
+      function runErrorButton(run) {
+        if (!run?.errorMessage) return `<span class="muted">-</span>`;
+        return `<button class="secondary compactBtn" data-error-detail="${esc(jobRunRowSelectKey(run))}">${esc(textFor('btnErrorDetail'))}</button>`;
+      }
+
+      function openErrorDetailDialog(key) {
+        return openErrorDetailDialogView({
+          key,
+          $,
+          textFor,
+          textForVars,
+          esc,
+          formatDateTime,
+          formatDuration,
+          runRowByKey,
+          operationBadge,
+          domainBadge,
+          providerBadge,
+        });
+      }
+
+      function closeErrorDetailDialog() {
+        return closeErrorDetailDialogView({ $ });
       }
 
 
@@ -146,9 +286,11 @@ import { applyTheme } from './theme.js';
               ? 'theme'
               : requestedView === 'settings-lists'
                 ? 'lists'
-                : requestedView === 'settings-danger'
-                  ? 'danger'
-                  : null;
+                : requestedView === 'settings-sources'
+                  ? 'sources'
+                  : requestedView === 'settings-danger'
+                    ? 'danger'
+                    : null;
         const actualView = settingsTabFromView ? 'settings' : requestedView;
 
         const panel = $(`view-${actualView}`);
@@ -171,13 +313,31 @@ import { applyTheme } from './theme.js';
           if (title) {
             title.textContent =
               settingsTabFromView === 'theme'
-                ? '테마'
+                ? textFor('settingsThemeTitle')
                 : settingsTabFromView === 'lists'
-                  ? '마켓 리스트'
-                  : settingsTabFromView === 'danger'
-                    ? '데이터 초기화'
-                    : 'Provider 키관리';
+                  ? textFor('settingsListsTitle')
+                  : settingsTabFromView === 'sources'
+                    ? textFor('settingsSourcesTitle')
+                    : settingsTabFromView === 'danger'
+                      ? textFor('settingsDangerTitle')
+                      : textFor('navSettingsKeys');
           }
+          const desc = $('settingsDesc');
+          if (desc) {
+            desc.textContent =
+              settingsTabFromView === 'theme'
+                ? textFor('settingsThemeDesc')
+                : settingsTabFromView === 'lists'
+                  ? textFor('settingsListsDesc')
+                  : settingsTabFromView === 'sources'
+                    ? textFor('settingsSourcesDesc')
+                    : settingsTabFromView === 'danger'
+                      ? textFor('settingsDangerDesc')
+                      : textFor('settingsProviderDesc');
+          }
+        }
+        if (resolvedView === 'jobs') {
+          setJobTab(state.jobTab || 'info');
         }
       }
 
@@ -187,6 +347,11 @@ import { applyTheme } from './theme.js';
         $('jobs').classList.toggle('hidden', tab !== 'info');
         $('jobRunsPanel').classList.toggle('hidden', tab !== 'runs');
         if (tab === 'runs') void loadJobRuns();
+        const params = new URLSearchParams(window.location.search);
+        params.set('tab', tab);
+        params.set('runSort', state.jobRunsSortKey || 'finishedAt');
+        params.set('runDir', state.jobRunsSortDir || 'desc');
+        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
       }
 
       function setSettingsTab(tab) {
@@ -196,288 +361,184 @@ import { applyTheme } from './theme.js';
         $(`settingsTab-${tab}`)?.classList.remove('hidden');
       }
 
+      function setNewsMode(mode) {
+        const m = mode === 'bulk' ? 'bulk' : 'filter';
+        state.newsMode = m;
+        document.querySelectorAll('[data-news-mode]').forEach((btn) => btn.classList.toggle('active', btn.dataset.newsMode === m));
+        $('newsFilterBox')?.classList.toggle('hidden', m !== 'filter');
+        $('newsBulkBox')?.classList.toggle('hidden', m !== 'bulk');
+      }
+
+      function setYoutubeMode(mode) {
+        const m = mode === 'bulk' ? 'bulk' : 'filter';
+        state.youtubeMode = m;
+        document.querySelectorAll('[data-youtube-mode]').forEach((btn) => btn.classList.toggle('active', btn.dataset.youtubeMode === m));
+        $('youtubeFilterBox')?.classList.toggle('hidden', m !== 'filter');
+        $('youtubeBulkBox')?.classList.toggle('hidden', m !== 'bulk');
+      }
+
+      /**
+       * Re-fetch and re-render all main admin panels. innerHTML views use textFor() at render time,
+       * so they must run again after signalAdminLanguage changes (applyAdminLanguage alone is not enough).
+       */
+      async function reloadAllAdminData() {
+        await Promise.all([
+          loadDashboard(),
+          loadMonitoring(),
+          loadErrors(),
+          loadJobs(),
+          loadJobRuns(),
+          loadTranslationSettings(),
+          loadProviderSettings(),
+          loadMarketLists(),
+          loadNewsSourceSettings(),
+          loadNewsSources(),
+          loadNews(),
+          loadCalendar(),
+          loadYoutube(),
+        ]);
+        buildSearchIndex();
+        const gsq = $('globalSearchQuery');
+        const gsr = $('globalSearchResults');
+        if (gsq instanceof HTMLInputElement && gsq.value && gsr) {
+          gsr.innerHTML = renderSearchResults(gsq.value);
+        }
+      }
+
       async function refreshSession() {
         const body = await api('/admin/api/session');
         const loggedIn = !!body.adminId;
         $('session').textContent = loggedIn ? `${body.adminId}` : 'logout';
+        if ($('headerProfileName')) $('headerProfileName').textContent = loggedIn ? `${body.adminId}` : 'guest';
+        if ($('profileMenuTitle')) $('profileMenuTitle').textContent = loggedIn ? `${body.adminId}` : 'guest';
         document.body.classList.toggle('loginMode', !loggedIn);
         $('loginPanel').classList.toggle('hidden', loggedIn);
         $('adminPanel').classList.toggle('hidden', !loggedIn);
         $('logoutBtn').classList.toggle('hidden', !loggedIn);
+        const collapse = $('sideCollapseBtn');
+        if (collapse) collapse.textContent = document.body.classList.contains('sideCollapsed') ? '▸' : '◂';
         if (loggedIn) {
+          // Restore job tab from URL (?tab=info|runs)
+          const urlParams = new URLSearchParams(window.location.search);
+          const jobTabFromUrl = urlParams.get('tab');
+          if (jobTabFromUrl === 'info' || jobTabFromUrl === 'runs') state.jobTab = jobTabFromUrl;
+          const runSort = urlParams.get('runSort');
+          const runDir = urlParams.get('runDir');
+          if (runSort) state.jobRunsSortKey = runSort;
+          if (runDir === 'asc' || runDir === 'desc') state.jobRunsSortDir = runDir;
           setDatePreset();
           setJobRunDatePreset();
           setCalendarDatePreset();
-          await Promise.all([
-            loadDashboard(),
-            loadMonitoring(),
-            loadErrors(),
-            loadJobs(),
-            loadJobRuns(),
-            loadTranslationSettings(),
-            loadProviderSettings(),
-            loadMarketLists(),
-            loadNews(),
-            loadCalendar(),
-            loadYoutube(),
-          ]);
+          await reloadAllAdminData();
         }
       }
 
-      function runButton(jobKey, label = '실행') {
-        return `<button class="success" data-job-run="${esc(jobKey)}">${esc(label)}</button>`;
+      function openPanel(id) { $(id)?.classList.remove('hidden'); }
+      function closePanel(id) { $(id)?.classList.add('hidden'); }
+      function isPanelOpen(id) { return !$(id)?.classList.contains('hidden'); }
+
+      async function refreshNotifications() {
+        if (!$('headerNotifBadge')) return;
+        try {
+          const summary = (await api('/admin/api/summary')).data;
+          const runs = Array.isArray(summary.recentRuns) ? summary.recentRuns : [];
+          const failed = runs.filter((r) => String(r.status) === 'failed');
+          const stale = runs.filter((r) => r.stale);
+          const count = failed.length + stale.length;
+          $('headerNotifBadge').textContent = String(count);
+          $('headerNotifBadge').style.display = count > 0 ? '' : 'none';
+          if ($('notifList')) {
+            $('notifList').innerHTML = count === 0
+              ? `<div class="muted">${esc(textFor('notifEmpty'))}</div>`
+              : `
+                ${failed.length ? `<div class="card"><strong>${esc(textFor('notifFailed'))}</strong><div class="muted" style="margin-top:6px">${failed.map((r) => esc(r.displayName || r.jobKey)).join('<br/>')}</div></div>` : ''}
+                ${stale.length ? `<div class="card"><strong>${esc(textFor('notifStaleLabel'))}</strong><div class="muted" style="margin-top:6px">${stale.map((r) => esc(r.displayName || r.jobKey)).join('<br/>')}</div></div>` : ''}
+              `;
+          }
+        } catch {
+          $('headerNotifBadge').style.display = 'none';
+        }
       }
 
-      function statusPill(status) {
-        const s = String(status || '-');
-        return `<span class="pill">${esc(s)}</span>`;
+      const searchIndex = createSearchIndex();
+      function buildSearchIndex() {
+        return buildSearchIndexView({ searchIndex, state, jobDisplayName, switchView, setJobTab });
+      }
+
+      function renderSearchResults(q) {
+        return renderSearchResultsView({ q, searchIndex, esc, textFor });
+      }
+
+      function runButton(jobKey, label) {
+        const lab = label == null ? textFor('btnNowRun') : label;
+        return `<button class="success" data-job-run="${esc(jobKey)}">${esc(lab)}</button>`;
       }
 
       async function loadMonitoring() {
-        if (!$('monitoring')) return;
-        const summary = (await api('/admin/api/summary')).data;
-        const runsAll = summary.recentRuns || [];
-        const runs = state.operationFilter === 'all' ? runsAll : runsAll.filter((r) => (r.operation || 'latest') === state.operationFilter);
-        const stale = runs.filter((r) => r.stale);
-        $('monitoring').innerHTML = `
-          <div class="tabs" style="margin-bottom:10px">
-            <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">전체</button>
-            <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">최신</button>
-            <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">보정</button>
-          </div>
-          <div class="statGrid wideStats">
-            <div class="stat"><div class="muted">최근 실행</div><div class="statNum">${runs.length}</div></div>
-            <div class="stat"><div class="muted">주기 초과</div><div class="statNum">${stale.length}</div></div>
-            <div class="stat"><div class="muted">활성 Job</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
-            <div class="stat"><div class="muted">최근 실패</div><div class="statNum">${summary.counts.recentFailedRuns}</div></div>
-          </div>
-          <h3 style="margin-top:16px">워커 상태(최근 실행)</h3>
-          <table>
-            <thead><tr><th>Job</th><th>상태</th><th>타입</th><th>Items</th><th>Finished</th><th>액션</th></tr></thead>
-            <tbody>
-              ${runs.map((run) => `
-                <tr class="${run.stale ? 'staleRow' : ''}">
-                  <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-                  <td>${run.stale ? '<span class="pill opReconcile">주기 초과</span>' : statusPill(run.status || 'not run')}</td>
-                  <td>${operationBadge(run.operation)}<br/><span class="muted">${esc(run.resultKind || run.domain || '-')} · ${esc(run.provider || '-')}</span></td>
-                  <td>${run.itemCount ?? 0}</td>
-                  <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
-                  <td class="row">
-                    ${runButton(run.jobKey, '즉시 실행')}
-                    <button class="secondary" data-open-job-log="${esc(run.jobKey)}">오류/로그</button>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          <div class="muted" style="margin-top:10px">팁: 느린 Job(예: 시총 상위 시세)은 Job 로그에서 Progress(%)를 확인할 수 있습니다.</div>
-        `;
+        return loadMonitoringView({
+          api,
+          $,
+          state,
+          esc,
+          textFor,
+          formatDateTime,
+          operationBadge,
+          providerBadge,
+          domainBadge,
+          runStatusPill,
+          runButton,
+        });
       }
 
       async function loadErrors() {
-        if (!$('errors')) return;
-        const body = await api(`/admin/api/job-runs?${new URLSearchParams({ status: 'failed', pageSize: '30', page: '1' }).toString()}`);
-        const all = Array.isArray(body.data) ? body.data : [];
-        const filtered = state.operationFilter === 'all' ? all : all.filter((r) => (r.operation || 'latest') === state.operationFilter);
-        $('errors').innerHTML = `
-          <div class="tabs" style="margin-bottom:10px">
-            <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">전체</button>
-            <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">최신</button>
-            <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">보정</button>
-          </div>
-        ` + (filtered.length === 0
-          ? '<p class="muted">최근 오류가 없습니다.</p>'
-          : `
-              <table>
-                <thead>
-                  <tr><th>Job</th><th>Status</th><th>Type</th><th>Trigger</th><th>Duration</th><th>Started</th><th>Error</th><th>액션</th></tr>
-                </thead>
-                <tbody>
-                  ${filtered.map((run) => `
-                    <tr>
-                      <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-                      <td><span class="pill">${esc(run.status)}</span></td>
-                      <td>${operationBadge(run.operation)}<br/><span class="muted">${esc(run.resultKind || run.domain || '-')} · ${esc(run.provider || '-')}</span></td>
-                      <td>${esc(run.trigger || '-')}</td>
-                      <td>${formatDuration(run.durationMs)}</td>
-                      <td class="muted">${formatDateTime(run.startedAt)}</td>
-                      <td class="error">${esc(run.errorMessage || '-')}</td>
-                      <td>${runButton(run.jobKey, '재시도')}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            `);
+        return loadErrorsView({
+          api,
+          $,
+          state,
+          esc,
+          textFor,
+          formatDateTime,
+          formatDuration,
+          operationBadge,
+          providerBadge,
+          domainBadge,
+          runStatusPill,
+          runErrorButton,
+          runButton,
+        });
       }
 
       async function loadDashboard() {
-        const summary = (await api('/admin/api/summary')).data;
-        const allRuns = Array.isArray(summary.recentRuns) ? summary.recentRuns : [];
-        const opFiltered = state.dashboardOperationFilter === 'all'
-          ? allRuns
-          : allRuns.filter((r) => (r.operation || 'latest') === state.dashboardOperationFilter);
-        const sorted = [...opFiltered].sort((a, b) => {
-          if (state.dashboardSort === 'name') {
-            const an = String(a.displayName || a.jobKey || '').toLowerCase();
-            const bn = String(b.displayName || b.jobKey || '').toLowerCase();
-            return an.localeCompare(bn);
-          }
-          const at = new Date(a.finishedAt || a.startedAt || 0).getTime();
-          const bt = new Date(b.finishedAt || b.startedAt || 0).getTime();
-          return state.dashboardSort === 'oldest' ? (at - bt) : (bt - at);
+        return loadDashboardView({
+          api,
+          $,
+          state,
+          esc,
+          textFor,
+          textForVars,
+          formatDateTime,
+          operationBadge,
+          providerBadge,
+          domainBadge,
+          runStatusPill,
         });
-        $('dashboard').innerHTML = `
-          <div class="statGrid wideStats">
-            <div class="stat"><div class="muted">📰 뉴스</div><div class="statNum">${summary.counts.news}</div></div>
-            <div class="stat"><div class="muted">📅 캘린더</div><div class="statNum">${summary.counts.calendar}</div></div>
-            <div class="stat"><div class="muted">▶ 유튜브</div><div class="statNum">${summary.counts.youtube}</div></div>
-            <div class="stat"><div class="muted">💹 시세</div><div class="statNum">${summary.counts.marketQuotes || 0}</div></div>
-            <div class="stat"><div class="muted">🪙 코인</div><div class="statNum">${summary.counts.coinMarkets || 0}</div></div>
-            <div class="stat"><div class="muted">활성 Job</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
-          </div>
-          <div class="row" style="justify-content:space-between;margin-top:16px">
-            <h3 style="margin:0">최근 실행</h3>
-            <div class="row">
-              <div class="tabs" style="margin:0">
-                <button class="tabBtn ${state.dashboardOperationFilter === 'all' ? 'active' : ''}" data-dashboard-op="all">전체</button>
-                <button class="tabBtn ${state.dashboardOperationFilter === 'latest' ? 'active' : ''}" data-dashboard-op="latest">최신</button>
-                <button class="tabBtn ${state.dashboardOperationFilter === 'reconcile' ? 'active' : ''}" data-dashboard-op="reconcile">보정</button>
-              </div>
-              <select id="dashboardSort" style="min-width:140px">
-                <option value="newest" ${state.dashboardSort === 'newest' ? 'selected' : ''}>최신순</option>
-                <option value="oldest" ${state.dashboardSort === 'oldest' ? 'selected' : ''}>오래된순</option>
-                <option value="name" ${state.dashboardSort === 'name' ? 'selected' : ''}>이름순</option>
-              </select>
-            </div>
-          </div>
-          <table><thead><tr><th>Job</th><th>상태</th><th>타입</th><th>Items</th><th>Finished</th><th>이동</th></tr></thead>
-          <tbody>${sorted.map((run) => `
-            <tr class="${run.stale ? 'staleRow' : ''}">
-              <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-              <td>${run.stale ? '<span class="pill opReconcile">주기 초과</span>' : esc(run.status || 'not run')}</td>
-              <td>${operationBadge(run.operation)}<br/><span class="muted">${esc(run.resultKind || run.domain || '-')}</span></td>
-              <td>${run.itemCount ?? 0}</td>
-              <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
-              <td>
-                <button class="success" data-job-run="${esc(run.jobKey)}">실행</button>
-                <button class="secondary" data-open-job="${esc(run.jobKey)}">설정</button>
-                <button class="secondary" data-open-job-log="${esc(run.jobKey)}">로그</button>
-              </td>
-            </tr>
-          `).join('')}</tbody></table>
-          ${sorted.length === 0 ? '<p class="muted" style="margin-top:10px">조건에 맞는 실행 로그가 없습니다.</p>' : ''}
-        `;
       }
 
       async function loadJobs() {
-        const body = await api('/admin/api/jobs');
-        state.jobs = body.data;
-        if ($('jobRunJob')) {
-          const current = $('jobRunJob').value;
-          $('jobRunJob').innerHTML = '<option value="">전체 Job</option>' + body.data.map((job) => `
-            <option value="${esc(job.jobKey)}">${esc(jobDisplayName(job))}</option>
-          `).join('');
-          $('jobRunJob').value = current;
-        }
-        const jobsAll = body.data;
-        const jobsFiltered = state.operationFilter === 'all'
-          ? jobsAll
-          : jobsAll.filter((j) => (j.operation || 'latest') === state.operationFilter);
-        const groups = new Map();
-        for (const job of jobsFiltered) {
-          const key = job.domain || 'other';
-          if (!groups.has(key)) groups.set(key, []);
-          groups.get(key).push(job);
-        }
-        $('jobs').innerHTML = `
-          <div class="tabs" style="margin-bottom:10px">
-            <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">전체</button>
-            <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">최신</button>
-            <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">보정</button>
-          </div>
-        ` + [...groups.entries()].map(([domain, jobs]) => {
-          return `
-            <div class="jobGroup">
-              <div class="jobGroupHead">
-                <div class="jobGroupTitle">
-                  <span class="jobGroupIcon">${esc(domainIcons[domain] || 'J')}</span>
-                  <div>
-                    <h3 style="margin:0">${jobGroupTitle(domain)}</h3>
-                    <div class="muted" style="font-size:12px;margin-top:2px">최신 수집과 보정 수집을 같은 카테고리에서 관리합니다.</div>
-                  </div>
-                </div>
-                <span class="pill">${jobs.length}개</span>
-              </div>
-              <div class="jobList">
-                ${jobs.map((job) => `
-                  <div class="card jobItem">
-                    <div class="jobMain">
-                      <div>
-                        <div class="jobTitleLine">
-                          <span class="jobName">${esc(jobDisplayName(job))}</span>
-                          ${operationBadge(job.operation)}
-                          <span class="pill">${job.enabled ? '활성' : '중지'}</span>
-                        </div>
-                        <div class="jobDescription">${esc(job.description || job.jobKey)}</div>
-                      </div>
-                      <div class="jobStatus">
-                        <span class="pill">${esc(job.provider)}</span>
-                        <span class="pill">${jobIntervalLabel(job.intervalSeconds)}</span>
-                        <span class="pill">Last ${formatDateTime(job.lastRunAt)}</span>
-                      </div>
-                      <div class="jobActions">
-                        <button data-job-run="${esc(job.jobKey)}" class="success">Run</button>
-                      </div>
-                    </div>
-                    <details class="jobSettings">
-                      <summary>설정 편집 · ${esc(job.jobKey)}</summary>
-                      <div class="jobSettingsBody">
-                        <label>표시 이름 <input data-job-name="${esc(job.jobKey)}" value="${esc(jobDisplayName(job))}" placeholder="표시 이름" /></label>
-                        <label>설명 <input data-job-desc="${esc(job.jobKey)}" value="${esc(job.description || '')}" placeholder="설명" /></label>
-                        <label>주기(초) <input data-job-interval="${esc(job.jobKey)}" value="${esc(job.intervalSeconds)}" /></label>
-                        <label>활성화 <span><input type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/> enabled</span></label>
-                        <label>Provider <input class="readonlyInput" value="${esc(job.provider)}" disabled /></label>
-                        <label>Handler <input class="readonlyInput" value="${esc(job.handler)}" disabled /></label>
-                        <label>Operation <input class="readonlyInput" value="${esc(job.operation || 'latest')}" disabled /></label>
-                        <button data-job-save="${esc(job.jobKey)}" class="success">Save</button>
-                      </div>
-                    </details>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          `;
-        }).join('');
-      }
-
-      function jobRunsQueryParams() {
-        const params = new URLSearchParams({
-          page: String(state.jobRunsPage),
-          pageSize: $('jobRunPageSize').value,
+        return loadJobsView({
+          api,
+          $,
+          state,
+          esc,
+          textFor,
+          jobDisplayName,
+          jobGroupTitle,
+          operationBadge,
+          domainBadge,
+          providerBadge,
+          jobIntervalLabel,
+          formatDateTime,
         });
-        for (const [key, id] of [
-          ['q', 'jobRunQuery'],
-          ['from', 'jobRunFrom'],
-          ['to', 'jobRunTo'],
-          ['status', 'jobRunStatus'],
-          ['type', 'jobRunType'],
-          ['jobKey', 'jobRunJob'],
-          ['trigger', 'jobRunTrigger'],
-        ]) {
-          const value = $(id).value.trim();
-          if (value) params.set(key, value);
-        }
-        return params.toString();
-      }
-
-      function renderJobRunsPager(targetId) {
-        $(targetId).innerHTML = `
-          <div class="muted">총 ${state.jobRunsTotal}개 · ${state.jobRunsPage} / ${state.jobRunsTotalPages} 페이지</div>
-          <div class="row">
-            <button class="secondary" data-job-runs-page="prev">이전</button>
-            <button class="secondary" data-job-runs-page="next">다음</button>
-          </div>
-        `;
       }
 
       function formatDuration(ms) {
@@ -487,608 +548,493 @@ import { applyTheme } from './theme.js';
       }
 
       async function loadJobRuns() {
-        const body = await api(`/admin/api/job-runs?${jobRunsQueryParams()}`);
-        state.jobRunsPage = body.page;
-        state.jobRunsTotalPages = body.totalPages;
-        state.jobRunsTotal = body.total;
-        renderJobRunsPager('jobRunsPagerTop');
-        renderJobRunsPager('jobRunsPagerBottom');
-        $('jobRuns').innerHTML = `
-          <table>
-            <thead>
-              <tr>
-                <th>Job</th><th>Status</th><th>Type</th><th>Trigger</th><th>Progress</th><th>Items</th><th>Duration</th><th>Started</th><th>Finished</th><th>Error</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${body.data.map((run) => `
-                <tr>
-                  <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-                  <td><span class="pill">${esc(run.status)}</span></td>
-                  <td>
-                    ${operationBadge(run.operation)}
-                    <br/><span class="muted">${esc(run.resultKind || run.domain || '-')} · ${esc(run.provider || '-')}</span>
-                  </td>
-                  <td>${esc(run.trigger || '-')}</td>
-                  <td class="muted">${run.status === 'running' && Number.isFinite(Number(run.progressPercent)) ? `${Number(run.progressPercent)}%` : '-'}</td>
-                  <td>${run.itemCount ?? 0}</td>
-                  <td>${formatDuration(run.durationMs)}</td>
-                  <td class="muted">${formatDateTime(run.startedAt)}</td>
-                  <td class="muted">${formatDateTime(run.finishedAt)}</td>
-                  <td class="${run.errorMessage ? 'error' : 'muted'}">${esc(run.errorMessage || '-')}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        `;
-        if (body.data.length === 0) $('jobRuns').innerHTML = '<p class="muted">검색 조건에 맞는 실행 로그가 없습니다.</p>';
+        return loadJobRunsView({
+          api,
+          $,
+          state,
+          esc,
+          textFor,
+          textForVars,
+          renderTableSkeleton,
+          jobRunRowSelectKey,
+          runStatusPill,
+          operationBadge,
+          domainBadge,
+          providerBadge,
+          formatDuration,
+          formatDateTime,
+          runErrorButton,
+        });
       }
 
       async function loadUiModelPresets() {
-        const body = await api('/admin/api/ui-model-presets');
-        state.uiModelPresets = body.data || null;
-        renderUiModelPresetsEditor();
-      }
-
-      function presetsTextareaValue(key) {
-        const list = state.uiModelPresets && Array.isArray(state.uiModelPresets[key]) ? state.uiModelPresets[key] : [];
-        return list.join('\n');
+        return loadUiModelPresetsView({ api, state, renderUiModelPresetsEditor });
       }
 
       function renderUiModelPresetsEditor() {
-        if (!$('uiModelPresets')) return;
-        $('uiModelPresets').innerHTML = `
-          <div class="card">
-            <strong>모델 프리셋(관리)</strong>
-            <div class="muted" style="margin-top:4px">번역 테스트/모델 선택 드롭다운에 표시되는 기본 리스트입니다. (한 줄에 1개)</div>
-            <div class="row" style="margin-top:10px;align-items:flex-start">
-              <label class="fieldLabel" style="min-width:220px">OpenAI
-                <textarea id="uiPresetOpenai" style="min-height:90px">${esc(presetsTextareaValue('openai'))}</textarea>
-              </label>
-              <label class="fieldLabel" style="min-width:220px">Claude
-                <textarea id="uiPresetClaude" style="min-height:90px">${esc(presetsTextareaValue('claude'))}</textarea>
-              </label>
-              <label class="fieldLabel" style="min-width:220px">Mock
-                <textarea id="uiPresetMock" style="min-height:90px">${esc(presetsTextareaValue('mock'))}</textarea>
-              </label>
-            </div>
-            <div class="row" style="margin-top:8px">
-              <button id="saveUiModelPresets" class="success">Save</button>
-              <span class="muted" id="uiModelPresetsStatus"></span>
-            </div>
-          </div>
-        `;
+        return renderUiModelPresetsEditorView({ $, state, esc, textFor, textForVars, formatDateTime });
       }
 
       function parsePresetLines(value) {
-        return uniq(String(value || '')
+        const raw = String(value || '')
           .split(/\r?\n/)
           .map((s) => s.trim())
-          .filter(Boolean));
+          .filter(Boolean);
+        return [...new Set(raw)];
       }
 
       async function loadTranslationSettings() {
-        const [body, providersBody, presetsBody] = await Promise.all([
-          api('/admin/api/translation-settings'),
-          api('/admin/api/provider-settings'),
-          api('/admin/api/ui-model-presets'),
-        ]);
-        const rows = Array.isArray(body.data) ? body.data : [];
-        const providers = Array.isArray(providersBody.data) ? providersBody.data : [];
-        state.providerSettings = providers;
-        state.uiModelPresets = presetsBody.data || null;
-        const providerInfo = (key) => (providers || []).find((p) => p.provider === key) || {};
-        const openaiInfo = providerInfo('openai');
-        const claudeInfo = providerInfo('claude');
-        const missingKeys = [
-          !openaiInfo?.hasApiKey ? 'OpenAI' : null,
-          !claudeInfo?.hasApiKey ? 'Claude' : null,
-        ].filter(Boolean);
-        const optionsForProvider = (provider, selected) => {
-          const p = String(provider || '');
-          const defaultModel = providers.find((x) => x.provider === p)?.defaultModel || '';
-          const list = modelPresetsForProvider(p, defaultModel);
-          const effective = list.includes(String(selected || '')) ? String(selected || '') : (defaultModel || list[0] || '');
-          return renderModelOptions(list.length ? list : [''], effective);
-        };
-        $('translationSettings').innerHTML = `
-          <div class="card">
-            <div class="row" style="justify-content:space-between;gap:10px">
-              <div>
-                <strong>번역 설정 가이드</strong>
-                <div class="muted" style="margin-top:4px">1) Locale별 번역 정책을 고르고 2) 번역 테스트로 확인한 뒤 3) 모델 프리셋(관리)에서 리스트를 관리하세요.</div>
-                ${missingKeys.length ? `<div class="muted" style="margin-top:6px"><span class="pill opReconcile">주의</span> ${esc(missingKeys.join(', '))} API 키가 없습니다. (Provider 키관리에서 설정)</div>` : ''}
-              </div>
-              <div class="row">
-                <button class="secondary" data-view="settings-keys">Provider 키관리</button>
-              </div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="row" style="justify-content:space-between">
-              <div>
-                <strong>Locale별 번역 정책</strong>
-                <div class="muted" style="margin-top:4px">enabled / 자동 번역 / provider / 모델을 한 줄에서 관리합니다.</div>
-              </div>
-            </div>
-          </div>
-          <div class="card">
-            <table>
-              <thead>
-                <tr>
-                  <th>Locale</th>
-                  <th>Enabled</th>
-                  <th>Auto News</th>
-                  <th>Provider</th>
-                  <th>Model</th>
-                  <th>Save</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rows.map((s) => `
-                  <tr>
-                    <td><span class="pill">${esc(s.locale)}</span></td>
-                    <td><input type="checkbox" data-ts-enabled="${esc(s.locale)}" ${s.enabled ? 'checked' : ''}/></td>
-                    <td><input type="checkbox" data-ts-auto="${esc(s.locale)}" ${s.autoTranslateNews ? 'checked' : ''}/></td>
-                    <td>
-                      <select data-ts-provider="${esc(s.locale)}">
-                        <option value="mock" ${s.provider === 'mock' ? 'selected' : ''}>mock</option>
-                        <option value="openai" ${s.provider === 'openai' ? 'selected' : ''}>OpenAI</option>
-                        <option value="claude" ${s.provider === 'claude' ? 'selected' : ''}>Claude</option>
-                      </select>
-                    </td>
-                    <td>
-                      <select data-ts-model="${esc(s.locale)}">
-                        ${optionsForProvider(s.provider, s.model)}
-                      </select>
-                    </td>
-                    <td><button data-ts-save="${esc(s.locale)}" class="success">Save</button></td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-          <div class="card">
-            <div class="row" style="justify-content:space-between">
-              <div>
-                <strong>번역 테스트</strong>
-                <div class="muted" style="margin-top:4px">현재 프리셋/기본 모델로 즉시 테스트합니다.</div>
-              </div>
-            </div>
-            <div class="row" style="margin-top:10px">
-              <select id="translationTestProvider">
-                <option value="mock">mock</option>
-                <option value="openai">OpenAI</option>
-                <option value="claude">Claude</option>
-              </select>
-              <select id="translationTestModel"></select>
-              <select id="translationTestLocale">
-                <option value="ko">ko</option>
-                <option value="ja">ja</option>
-              </select>
-              <button id="resetTranslationTestText" class="secondary">기본 문구</button>
-              <button id="runTranslationTest">번역 테스트</button>
-            </div>
-            <textarea id="translationTestText" style="margin-top:10px">Signal 앱을 이용해 주셔서 감사합니다. 앞으로도 좋은 기능들을 업데이트하겠습니다.</textarea>
-            <div id="translationTestResult" class="summary"></div>
-          </div>
-          <details class="card" style="padding:0">
-            <summary style="padding:14px 16px;cursor:pointer">
-              <strong>모델 프리셋(관리)</strong>
-              <span class="muted" style="margin-left:8px">OpenAI/Claude 모델 리스트 추가</span>
-            </summary>
-            <div style="padding:12px 16px" id="uiModelPresets"></div>
-          </details>
-        `;
-
-        renderUiModelPresetsEditor();
-        if ($('uiModelPresetsStatus') && state.uiModelPresets?.updatedAt) {
-          $('uiModelPresetsStatus').textContent = `최근 저장 · ${formatDateTime(state.uiModelPresets.updatedAt)}`;
-        }
-        if (state.openModelPresetsOnTranslations) {
-          const details = document.querySelector('#translationSettings details');
-          if (details instanceof HTMLDetailsElement) {
-            details.open = true;
-            details.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-          state.openModelPresetsOnTranslations = false;
-        }
-
-        // initialize model presets (provider → model list)
-        refreshTranslationTestModels(providers);
-        if ($('translationTestProvider')) {
-          $('translationTestProvider').addEventListener('change', () => refreshTranslationTestModels(providers));
-        }
+        return loadTranslationSettingsView({ api, $, state, esc, textFor, textForVars, formatDateTime, switchView });
       }
 
       async function loadProviderSettings() {
-        const body = await api('/admin/api/provider-settings');
-        const rows = Array.isArray(body.data) ? body.data : [];
-        state.providerSettings = rows;
-        const llm = rows.filter((r) => r.provider === 'openai' || r.provider === 'claude');
-        const data = rows.filter((r) => !(r.provider === 'openai' || r.provider === 'claude'));
-        const renderRow = (s, { showModel }) => {
-          const models = showModel ? modelPresetsForProvider(s.provider, s.defaultModel) : [];
-          return `
-            <tr>
-              <td><strong>${esc(s.provider)}</strong></td>
-              <td><span class="pill">${s.hasApiKey ? `설정됨 ${esc(s.maskedApiKey)}` : '키 없음'}</span></td>
-              <td><input type="checkbox" data-provider-enabled="${esc(s.provider)}" ${s.enabled ? 'checked' : ''}/></td>
-              <td>
-                ${showModel ? `
-                  <select data-provider-model="${esc(s.provider)}">
-                    <option value="">모델 선택</option>
-                    ${renderModelOptions(models, s.defaultModel || '')}
-                  </select>
-                ` : '<span class="muted">-</span>'}
-              </td>
-              <td><input class="keyInput" data-provider-key="${esc(s.provider)}" type="password" placeholder="새 API key 입력 시 교체" /></td>
-              <td class="row">
-                <button data-provider-save="${esc(s.provider)}" class="success">Save</button>
-                <button data-provider-clear="${esc(s.provider)}" class="danger">키 삭제</button>
-              </td>
-            </tr>
-          `;
-        };
-        $('providerSettings').innerHTML = `
-          <div class="card">
-            <div class="row" style="justify-content:space-between;gap:10px">
-              <div>
-                <strong>Provider 키관리</strong>
-                <div class="muted" style="margin-top:4px">API Key / enabled / 기본 모델(defaultModel)을 관리합니다.</div>
-              </div>
-              <div class="row">
-                <button class="secondary" data-open-model-presets="true">모델 프리셋 관리</button>
-              </div>
-            </div>
-          </div>
-          <div class="card">
-            <strong>LLM (모델 + 키)</strong>
-            <div class="muted" style="margin-top:4px">OpenAI/Claude는 모델 선택과 키를 함께 관리합니다.</div>
-          </div>
-          <div class="card">
-            <table class="settingsTable">
-              <thead><tr><th>Provider</th><th>Status</th><th>Enabled</th><th>Model</th><th>API Key</th><th>Actions</th></tr></thead>
-              <tbody>${llm.map((s) => renderRow(s, { showModel: true })).join('') || ''}</tbody>
-            </table>
-            ${llm.length === 0 ? '<p class="muted">LLM provider가 없습니다.</p>' : ''}
-          </div>
-          <div class="card" style="margin-top:10px">
-            <strong>데이터 Provider (키)</strong>
-            <div class="muted" style="margin-top:4px">Finnhub/YouTube/CoinGecko 등은 키만 필요합니다.</div>
-          </div>
-          <div class="card">
-            <table class="settingsTable">
-              <thead><tr><th>Provider</th><th>Status</th><th>Enabled</th><th>API Key</th><th>Actions</th></tr></thead>
-              <tbody>
-                ${data.map((s) => `
-                  <tr>
-                    <td><strong>${esc(s.provider)}</strong></td>
-                    <td><span class="pill">${s.hasApiKey ? `설정됨 ${esc(s.maskedApiKey)}` : '키 없음'}</span></td>
-                    <td><input type="checkbox" data-provider-enabled="${esc(s.provider)}" ${s.enabled ? 'checked' : ''}/></td>
-                    <td><input class="keyInput" data-provider-key="${esc(s.provider)}" type="password" placeholder="새 API key 입력 시 교체" /></td>
-                    <td class="row">
-                      <button data-provider-save="${esc(s.provider)}" class="success">Save</button>
-                      <button data-provider-clear="${esc(s.provider)}" class="danger">키 삭제</button>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-            ${data.length === 0 ? '<p class="muted">데이터 provider가 없습니다.</p>' : ''}
-          </div>
-          <div id="uiModelPresets"></div>
-        `;
+        return loadProviderSettingsView({
+          api,
+          $,
+          state,
+          esc,
+          textFor,
+          textForVars,
+          formatDateTime,
+          renderUiModelPresetsEditor,
+        });
       }
 
       async function loadMarketLists() {
-        const body = await api('/admin/api/market-lists');
-        state.marketLists = body.data;
-        $('marketLists').innerHTML = body.data.map((list) => `
-          <div class="card marketListCard">
-            <div class="marketListHead">
-              <div>
-                <strong>${esc(list.displayName)}</strong>
-                <div class="muted">${esc(list.key)} · ${list.count}개 · ${formatDateTime(list.updatedAt)}</div>
-              </div>
-              <button data-market-list-open="${esc(list.key)}" class="secondary">편집</button>
-            </div>
-            <div class="summary">${esc(list.description || '')}</div>
-            <div class="symbolPreview">
-              ${(list.symbols || []).slice(0, 24).map((symbol) => `<span class="pill">${esc(symbol)}</span>`).join('')}
-              ${list.count > 24 ? `<span class="pill">+${list.count - 24}</span>` : ''}
-            </div>
-          </div>
-        `).join('');
+        return loadMarketListsView({ api, $, state, esc, textFor, textForVars, formatDateTime });
       }
 
-      function normalizeSymbolInput(value) {
-        return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+      function renderNewsSources() {
+        return renderNewsSourcesView({ $, state, esc, textFor, textForVars });
+      }
+
+      async function loadNewsSources() {
+        return loadNewsSourcesView({ api, $, state, esc, textFor, textForVars });
+      }
+
+      async function loadNewsSourceSettings() {
+        return loadNewsSourceSettingsView({ api, $, state, esc, textFor, textForVars });
+      }
+
+      async function saveNewsSourceSettings() {
+        return saveNewsSourceSettingsView({ api, $, state, esc, textFor, textForVars, showToast });
+      }
+
+      function closeNewsSourceAliasDialog() {
+        return closeNewsSourceAliasDialogView({ state, $ });
+      }
+
+      function renderNewsSourceAliasDialog() {
+        return renderNewsSourceAliasDialogView({ state, $, esc, textFor, textForVars });
+      }
+
+      function openNewsSourceAliasDialog(sourceId) {
+        return openNewsSourceAliasDialogView({ sourceId, state, $, esc, textFor, textForVars });
+      }
+
+      async function saveNewsSourceAliasesFromDialog() {
+        return saveNewsSourceAliasesFromDialogView({ api, $, state, esc, textFor, textForVars, showToast });
+      }
+
+      async function saveNewsSources() {
+        return saveNewsSourcesView({ api, $, state, esc, textFor, textForVars, showToast });
       }
 
       function renderMarketListDialog() {
-        const draft = state.marketListDraft;
-        if (!draft) {
-          $('marketListDialog').classList.add('hidden');
-          return;
-        }
-        $('marketListDialog').classList.remove('hidden');
-        $('marketListDialogTitle').textContent = `${draft.displayName} 편집`;
-        $('marketListDialogMeta').textContent = `${draft.key} · 마지막 수정 ${formatDateTime(draft.updatedAt)}`;
-        $('marketListDialogName').value = draft.displayName;
-        $('marketListDialogDesc').value = draft.description || '';
-        $('marketListDialogCount').textContent = `총 ${draft.symbols.length}개`;
-        $('marketListSymbolRows').innerHTML = draft.symbols.map((symbol, index) => `
-          <div class="symbolRow">
-            <span class="muted">${index + 1}</span>
-            <input data-market-symbol-index="${index}" value="${esc(symbol)}" />
-            <button class="danger" data-market-symbol-delete="${index}">삭제</button>
-          </div>
-        `).join('') || '<p class="muted">아직 종목이 없습니다. 위 입력창에서 추가하세요.</p>';
+        return renderMarketListDialogView({ $, state, esc, textFor, textForVars, formatDateTime });
       }
 
       function openMarketListDialog(key) {
-        const list = state.marketLists.find((item) => item.key === key);
-        if (!list) return;
-        state.marketListDraft = {
-          ...list,
-          symbols: [...(list.symbols || [])],
-        };
-        $('marketListAddSymbol').value = '';
-        renderMarketListDialog();
+        return openMarketListDialogView({ key, $, state, esc, textFor, textForVars, formatDateTime });
       }
 
       function closeMarketListDialog() {
-        state.marketListDraft = null;
-        renderMarketListDialog();
+        return closeMarketListDialogView({ $, state, esc, textFor, textForVars, formatDateTime });
       }
 
       function syncMarketListDraftFromInputs() {
-        if (!state.marketListDraft) return;
-        state.marketListDraft.displayName = $('marketListDialogName').value.trim() || state.marketListDraft.key;
-        state.marketListDraft.description = $('marketListDialogDesc').value.trim();
-        state.marketListDraft.symbols = [...document.querySelectorAll('[data-market-symbol-index]')]
-          .map((input) => normalizeSymbolInput(input.value))
-          .filter(Boolean);
+        return syncMarketListDraftFromInputsView({ state, $ });
       }
 
-      function newsQueryParams() {
-        const params = new URLSearchParams({
-          locale: $('newsLocale').value,
-          page: String(state.newsPage),
-          pageSize: $('newsPageSize').value,
-        });
-        for (const [key, id] of [
-          ['q', 'newsQuery'],
-          ['from', 'newsFrom'],
-          ['to', 'newsTo'],
-          ['category', 'newsCategory'],
-          ['translationStatus', 'newsTranslationStatus'],
-        ]) {
-          const value = $(id).value.trim();
-          if (value) params.set(key, value);
-        }
-        return params.toString();
+      function closeNewsEditDialog() {
+        return closeNewsEditDialogView({ state, $ });
       }
 
-      function renderPager(targetId) {
-        $(targetId).innerHTML = `
-          <div class="muted">총 ${state.newsTotal}개 · ${state.newsPage} / ${state.newsTotalPages} 페이지</div>
-          <div class="row">
-            <button class="secondary" data-page="prev">이전</button>
-            <button class="secondary" data-page="next">다음</button>
-          </div>
-        `;
+      function renderNewsEditDialog() {
+        return renderNewsEditDialogView({ state, $, esc, textFor, formatDateTime });
       }
 
-      function youtubeQueryParams() {
-        const params = new URLSearchParams({
-          page: String(state.youtubePage),
-          pageSize: $('youtubePageSize').value,
-        });
-        for (const [key, id] of [['q', 'youtubeQuery'], ['channel', 'youtubeChannel']]) {
-          const value = $(id).value.trim();
-          if (value) params.set(key, value);
-        }
-        return params.toString();
-      }
-
-      function renderYoutubePager(targetId) {
-        $(targetId).innerHTML = `
-          <div class="muted">총 ${state.youtubeTotal}개 · ${state.youtubePage} / ${state.youtubeTotalPages} 페이지</div>
-          <div class="row">
-            <button class="secondary" data-youtube-page="prev">이전</button>
-            <button class="secondary" data-youtube-page="next">다음</button>
-          </div>
-        `;
-      }
-
-      function calendarQueryParams() {
-        const params = new URLSearchParams({
-          page: String(state.calendarPage || 1),
-          pageSize: $('calendarPageSize')?.value || '30',
-        });
-        for (const [key, id] of [
-          ['q', 'calendarQuery'],
-          ['from', 'calendarFrom'],
-          ['to', 'calendarTo'],
-          ['type', 'calendarType'],
-        ]) {
-          const el = $(id);
-          const value = el ? el.value.trim() : '';
-          if (value) params.set(key, value);
-        }
-        return params.toString();
-      }
-
-      function renderCalendarPager(targetId) {
-        if (!$(targetId)) return;
-        $(targetId).innerHTML = `
-          <div class="muted">총 ${state.calendarTotal || 0}개 · ${state.calendarPage || 1} / ${state.calendarTotalPages || 1} 페이지</div>
-          <div class="row">
-            <button class="secondary" data-calendar-page="prev">이전</button>
-            <button class="secondary" data-calendar-page="next">다음</button>
-          </div>
-        `;
-      }
-
-      async function loadCalendar() {
-        if (!$('calendar')) return;
-        const body = await api(`/admin/api/calendar?${calendarQueryParams()}`);
-        state.calendarPage = body.page;
-        state.calendarTotalPages = body.totalPages;
-        state.calendarTotal = body.total;
-        renderCalendarPager('calendarPagerTop');
-        renderCalendarPager('calendarPagerBottom');
-        $('calendar').innerHTML = body.data.length === 0
-          ? '<p class="muted">검색 조건에 맞는 캘린더 이벤트가 없습니다.</p>'
-          : `
-              <table>
-                <thead>
-                  <tr><th>Date</th><th>Type</th><th>Title</th><th>Meta</th></tr>
-                </thead>
-                <tbody>
-                  ${body.data.map((item) => `
-                    <tr>
-                      <td class="muted">${esc(item.date || '-')}</td>
-                      <td><span class="pill">${esc(item.type || '-')}</span></td>
-                      <td><strong>${esc(item.title || '-')}</strong></td>
-                      <td class="muted">${esc(item.country || item.symbol || '-')}</td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            `;
-      }
-
-      async function loadYoutube() {
-        const body = await api(`/admin/api/youtube?${youtubeQueryParams()}`);
-        state.youtubePage = body.page;
-        state.youtubeTotalPages = body.totalPages;
-        state.youtubeTotal = body.total;
-        if (Array.isArray(body.channels)) {
-          const current = $('youtubeChannel').value;
-          $('youtubeChannel').innerHTML = '<option value="">전체 채널</option>' + body.channels.map((channel) => `
-            <option value="${esc(channel)}">${esc(channel)}</option>
-          `).join('');
-          $('youtubeChannel').value = current;
-        }
-        renderYoutubePager('youtubePagerTop');
-        renderYoutubePager('youtubePagerBottom');
-        $('youtube').innerHTML = body.data.map((item) => `
-          <div class="card">
-            <div class="mediaCard">
-              <img class="thumb" src="${esc(item.thumbnailUrl || '')}" alt="" />
-              <div>
-                <div class="row">
-                  <input type="checkbox" data-youtube-id="${esc(item.id)}" />
-                  <span class="pill">${esc(item.channel || '-')}</span>
-                  <span class="pill">${Number(item.viewCount || 0).toLocaleString()} views</span>
-                  <span class="muted">${formatDateTime(item.publishedAt)}</span>
-                </div>
-                <div class="title">${esc(item.title || '-')}</div>
-                <div class="summary">${esc(item.description || '')}</div>
-                <div class="row" style="margin-top:8px">
-                  <a class="developerLink" style="margin:0;padding:0;border:0" href="https://www.youtube.com/watch?v=${esc(item.videoId)}" target="_blank" rel="noreferrer">YouTube 열기 ↗</a>
-                </div>
-              </div>
-            </div>
-          </div>
-        `).join('') || '<p class="muted">검색 조건에 맞는 영상이 없습니다.</p>';
-        updateYoutubeSelectionInfo();
-      }
-
-      async function loadNews() {
-        const body = await api(`/admin/api/news?${newsQueryParams()}`);
-        state.newsPage = body.page;
-        state.newsTotalPages = body.totalPages;
-        state.newsTotal = body.total;
-        renderPager('newsPagerTop');
-        renderPager('newsPagerBottom');
-        $('news').innerHTML = body.data.map((item) => {
-          const locale = $('newsLocale').value;
-          const translation = item.translations.find((t) => t.locale === locale) || {};
-          return `
-            <div class="card">
-              <div class="row">
-                <input type="checkbox" data-news-id="${esc(item.id)}" />
-                <span class="pill">${item.translationStatus}</span>
-                <span class="pill">${item.category || '-'}</span>
-                <span class="pill">${item.provider}</span>
-                <span class="muted">${formatDateTime(item.publishedAt)}</span>
-              </div>
-              <div class="title">${esc(item.originalTitle || '-')}</div>
-              <div class="summary">${esc(item.originalSummary || '')}</div>
-              <p class="muted">번역 (${locale})</p>
-              <textarea data-title="${esc(item.id)}">${esc(translation.title || item.title || '')}</textarea>
-              <textarea data-summary="${esc(item.id)}">${esc(translation.summary || item.summary || '')}</textarea>
-              <div class="row"><button data-save-translation="${item.id}" class="secondary">수동 저장</button></div>
-            </div>
-          `;
-        }).join('') || '<p class="muted">검색 조건에 맞는 뉴스가 없습니다.</p>';
-        updateNewsSelectionInfo();
+      function openNewsEditDialog(id) {
+        return openNewsEditDialogView({ id, state, $, esc, textFor, formatDateTime });
       }
 
       function selectedNewsIds() {
-        return [...document.querySelectorAll('[data-news-id]')].filter((box) => box.checked).map((box) => box.dataset.newsId);
+        return selectedNewsIdsView();
       }
 
       function updateNewsSelectionInfo() {
-        const total = document.querySelectorAll('[data-news-id]').length;
-        const selected = selectedNewsIds().length;
-        if ($('newsSelectionInfo')) $('newsSelectionInfo').textContent = `선택된 뉴스 ${selected}개`;
-        if ($('selectPageBtn')) $('selectPageBtn').textContent = selected === total && total > 0 ? '현재 페이지 선택 해제' : '현재 페이지 선택';
-        if ($('retranslateSelectedBtn')) $('retranslateSelectedBtn').disabled = selected === 0;
-        if ($('deleteSelectedNewsBtn')) $('deleteSelectedNewsBtn').disabled = selected === 0;
+        return updateNewsSelectionInfoView({ $, textForVars, textFor });
       }
 
       function selectedYoutubeIds() {
-        return [...document.querySelectorAll('[data-youtube-id]')].filter((box) => box.checked).map((box) => box.dataset.youtubeId);
+        return selectedYoutubeIdsView();
       }
 
       function updateYoutubeSelectionInfo() {
-        const total = document.querySelectorAll('[data-youtube-id]').length;
-        const selected = selectedYoutubeIds().length;
-        if ($('youtubeSelectionInfo')) $('youtubeSelectionInfo').textContent = `선택된 영상 ${selected}개`;
-        if ($('selectYoutubePageBtn')) $('selectYoutubePageBtn').textContent = selected === total && total > 0 ? '현재 페이지 선택 해제' : '현재 페이지 선택';
-        if ($('refreshSelectedYoutubeBtn')) $('refreshSelectedYoutubeBtn').disabled = selected === 0;
+        return updateYoutubeSelectionInfoView({ $, textForVars, textFor });
+      }
+
+      function shiftCalendarMonth(ym, delta) {
+        return shiftCalendarMonthView(ym, delta);
+      }
+
+      function initCalendarMonthIfNeeded() {
+        return initCalendarMonthIfNeededView({ state, ymd });
+      }
+
+      function renderAdminCalendarGrid() {
+        return renderAdminCalendarGridView({ state, $, esc, textFor, ymd });
+      }
+
+      function renderCalendarDayTable() {
+        return renderCalendarDayTableView({ state, $, esc, textFor, textForVars });
+      }
+
+      async function loadCalendar() {
+        return loadCalendarView({ api, $, state, esc, textFor, textForVars, ymd });
+      }
+
+      async function loadYoutube() {
+        return loadYoutubeView({ api, $, state, esc, textFor, textForVars, renderTableSkeleton, formatDateTime });
+      }
+
+      async function loadNews() {
+        return loadNewsView({ api, $, state, esc, textFor, textForVars, renderTableSkeleton, formatDateTime });
+      }
+
+      function updateResetUi() {
+        const boxes = [...document.querySelectorAll('[data-reset-target]')];
+        const selectedBoxes = boxes.filter((box) => box.checked);
+        const selectedNames = selectedBoxes.map((box) => {
+          const title = box.closest('.resetOption')?.querySelector('strong')?.textContent;
+          return title || box.dataset.resetTarget;
+        });
+        const confirmText = $('resetConfirmText')?.value.trim() || '';
+        if ($('resetSelectionInfo')) $('resetSelectionInfo').textContent = textForVars('settingsResetSelectionCount', { n: selectedBoxes.length });
+        if ($('resetSelectedList')) {
+          $('resetSelectedList').textContent = selectedNames.length ? selectedNames.join(', ') : textFor('settingsResetSelectedNone');
+        }
+        if ($('resetDataBtn')) $('resetDataBtn').disabled = selectedBoxes.length === 0 || confirmText !== 'RESET';
       }
 
       document.addEventListener('click', async (event) => {
         const target = event.target;
         try {
+          if (target?.dataset?.newsEdit) {
+            openNewsEditDialog(target.dataset.newsEdit);
+            return;
+          }
+          if (target?.dataset?.newsEditLocale) {
+            state.newsEditLocale = target.dataset.newsEditLocale;
+            renderNewsEditDialog();
+            return;
+          }
+          if (target?.id === 'closeNewsEditDialog' || target?.id === 'cancelNewsEditDialog') {
+            closeNewsEditDialog();
+            return;
+          }
+          if (target?.id === 'newsEditDialog') {
+            closeNewsEditDialog();
+            return;
+          }
+          if (target?.dataset?.errorDetail) {
+            openErrorDetailDialog(target.dataset.errorDetail);
+            return;
+          }
+          if (target?.id === 'closeErrorDetailDialog' || target?.id === 'cancelErrorDetailDialog') {
+            closeErrorDetailDialog();
+            return;
+          }
+          if (target?.id === 'errorDetailDialog') {
+            closeErrorDetailDialog();
+            return;
+          }
+          if (target?.id === 'hamburgerBtn') {
+            document.body.classList.toggle('sideOpen');
+            if ($('sideOverlay')) $('sideOverlay').classList.toggle('hidden', !document.body.classList.contains('sideOpen'));
+            return;
+          }
+          const sideGutter = target?.closest?.('#sideGutter');
+          const sideCollapseBtn = target?.closest?.('#sideCollapseBtn');
+          if (sideGutter || sideCollapseBtn) {
+            document.body.classList.toggle('sideCollapsed');
+            const btn = $('sideCollapseBtn');
+            if (btn) btn.textContent = document.body.classList.contains('sideCollapsed') ? '▸' : '◂';
+            return;
+          }
+          if (target?.id === 'sideOverlay') {
+            document.body.classList.remove('sideOpen');
+            $('sideOverlay')?.classList.add('hidden');
+            return;
+          }
+          if (target?.id === 'headerNotifBtn') {
+            await refreshNotifications();
+            openPanel('notifPanel');
+            return;
+          }
+          if (target?.id === 'closeNotifPanel') {
+            closePanel('notifPanel');
+            return;
+          }
+          if (target?.id === 'headerProfileBtn') {
+            openPanel('profileMenu');
+            return;
+          }
+          if (target?.id === 'closeProfileMenu') {
+            closePanel('profileMenu');
+            return;
+          }
+          if (target?.id === 'profileLogoutBtn') {
+            closePanel('profileMenu');
+            $('logoutBtn')?.click();
+            return;
+          }
+          if (target?.id === 'closeGlobalSearch') {
+            closePanel('globalSearchPanel');
+            return;
+          }
+          if (target?.dataset?.searchHit) {
+            const idx = Number(target.dataset.searchHit);
+            const hit = (searchIndex.items || [])[idx];
+            closePanel('globalSearchPanel');
+            if (hit?.action) await hit.action();
+            return;
+          }
+          if (target?.id === 'refreshJobsBtn') {
+            await Promise.all([loadJobs(), loadJobRuns(), loadDashboard()]);
+            showToast(textFor('btnRefresh'), textFor('toastJobsLogsRefreshed'), { kind: 'info' });
+            return;
+          }
+          if (target?.id === 'refreshNewsBtn') {
+            await Promise.all([loadNews(), loadDashboard()]);
+            showToast(textFor('btnRefresh'), textFor('btnRefreshThisView'), { kind: 'info' });
+            return;
+          }
+          if (target?.id === 'refreshYoutubeBtn') {
+            await Promise.all([loadYoutube(), loadDashboard()]);
+            showToast(textFor('btnRefresh'), textFor('btnRefreshThisView'), { kind: 'info' });
+            return;
+          }
+          if (target?.id === 'refreshSettingsBtn') {
+            const tab = state.settingsTab || 'keys';
+            if (tab === 'keys') await loadProviderSettings();
+            else if (tab === 'lists') await loadMarketLists();
+            else if (tab === 'sources') await Promise.all([loadNewsSourceSettings(), loadNewsSources()]);
+            // theme/danger are mostly local UI; still refresh dashboard counts for safety
+            await loadDashboard();
+            showToast(textFor('btnRefresh'), textFor('btnRefreshThisView'), { kind: 'info' });
+            return;
+          }
+          if (target?.id === 'refreshTranslationsBtn') {
+            await Promise.all([loadTranslationSettings(), loadDashboard()]);
+            showToast(textFor('btnRefresh'), textFor('btnRefreshThisView'), { kind: 'info' });
+            return;
+          }
+          if (target?.id === 'refreshMonitoringBtn') {
+            await loadMonitoring();
+            showToast(textFor('btnRefresh'), textFor('toastMonitoringRefreshed'), { kind: 'info' });
+            return;
+          }
+          if (target?.dataset?.newsSourceAliasOpen) {
+            openNewsSourceAliasDialog(target.dataset.newsSourceAliasOpen);
+            return;
+          }
+          if (target?.id === 'closeNewsSourceAliasDialog' || target?.id === 'cancelNewsSourceAliasDialog') {
+            closeNewsSourceAliasDialog();
+            return;
+          }
+          if (target?.id === 'newsSourceAliasDialog') {
+            closeNewsSourceAliasDialog();
+            return;
+          }
+          if (target?.id === 'addNewsSourceAlias') {
+            if (!state.newsSourceAliasDraft) return;
+            const raw = String($('newsSourceAliasAdd')?.value || '').trim();
+            if (!raw) return;
+            if (!state.newsSourceAliasDraft.aliases.includes(raw)) state.newsSourceAliasDraft.aliases.push(raw);
+            state.newsSourceAliasDraft.aliases = [...new Set(state.newsSourceAliasDraft.aliases)].filter(Boolean).sort((a, b) => a.localeCompare(b));
+            if ($('newsSourceAliasAdd')) $('newsSourceAliasAdd').value = '';
+            renderNewsSourceAliasDialog();
+            return;
+          }
+          if (target?.dataset?.newsSourceAliasRemove) {
+            if (!state.newsSourceAliasDraft) return;
+            const idx = Number(target.dataset.newsSourceAliasRemove);
+            if (Number.isInteger(idx) && idx >= 0) {
+              state.newsSourceAliasDraft.aliases.splice(idx, 1);
+              renderNewsSourceAliasDialog();
+            }
+            return;
+          }
+          if (target?.id === 'saveNewsSourceAliasDialog') {
+            await saveNewsSourceAliasesFromDialog();
+            return;
+          }
+          if (target?.id === 'jobRunsBulkClear') {
+            state.jobRunsSelected = [];
+            await loadJobRuns();
+            return;
+          }
+          if (target?.id === 'jobRunsBulkRetry') {
+            const selectedRunKeys = [...new Set(state.jobRunsSelected || [])].filter(Boolean);
+            const rows = Array.isArray(state.jobRunsLastRows) ? state.jobRunsLastRows : [];
+            const jobKeys = jobKeysForSelectedJobRuns(rows, selectedRunKeys);
+            openConfirm({
+              title: textFor('confirmJobRunsRetryTitle'),
+              desc: textFor('confirmJobRunsRetryDesc'),
+              body: textForVars('confirmJobRunsRetryBody', {
+                runs: selectedRunKeys.length,
+                jobs: jobKeys.length,
+                keys: jobKeys.length ? jobKeys.join(', ') : textFor('confirmJobRunsRetryKeysNone'),
+              }),
+              okText: textFor('btnRetry'),
+              danger: false,
+              onConfirm: async () => {
+                for (const key of jobKeys) {
+                  await api(`/admin/api/jobs/${encodeURIComponent(key)}/run`, { method: 'POST' });
+                }
+                showToast(textFor('toastRetryRequested'), textForVars('toastRetryJobsRun', { count: jobKeys.length }), { kind: 'success' });
+                state.jobRunsSelected = [];
+                await Promise.all([loadJobRuns(), loadDashboard()]);
+              },
+            });
+            return;
+          }
+          if (target?.id === 'headerHelpBtn') {
+            showToast(
+              textFor('ariaHelp'),
+              textFor('helpToastContent'),
+              { kind: 'info' },
+            );
+            return;
+          }
+          if (target?.dataset?.jobEditOpen) {
+            const key = target.dataset.jobEditOpen;
+            const row = document.querySelector(`[data-job-edit-row="${esc(key)}"]`);
+            if (row) row.classList.toggle('hidden');
+            return;
+          }
+          if (target?.dataset?.jobEditClose) {
+            const key = target.dataset.jobEditClose;
+            const row = document.querySelector(`[data-job-edit-row="${esc(key)}"]`);
+            if (row) row.classList.add('hidden');
+            return;
+          }
+          if (target?.id === 'confirmClose' || target?.id === 'confirmCancel') {
+            closeConfirm();
+            return;
+          }
+          if (target?.id === 'confirmOk') {
+            const fn = confirmState.onConfirm;
+            closeConfirm();
+            if (fn) await fn();
+            return;
+          }
           if (target.dataset && target.dataset.comingSoon === 'true') {
-            showToast('준비중', '해당 메뉴는 아직 구현되지 않았습니다.');
+            showToast(textFor('toastMenuNotReadyTitle'), textFor('toastMenuNotReadyBody'));
             return;
           }
           if (target.dataset.openModelPresets) {
-            state.openModelPresetsOnTranslations = true;
-            await switchView('translations');
+            await switchView('settings-keys');
+            return;
+          }
+          if (target?.id === 'jobListReset') {
+            state.operationFilter = 'all';
+            state.jobListEnabled = 'all';
+            state.jobListDomain = 'all';
+            state.jobListProvider = 'all';
+            state.jobListQuery = '';
+            state.jobListSort = 'name';
+            await loadJobs();
+            return;
+          }
+          if (target?.id === 'jobListSearch') {
+            state.jobListQuery = $('jobListQuery')?.value || '';
+            await loadJobs();
+            return;
+          }
+          if (target?.dataset?.newsMode) {
+            setNewsMode(target.dataset.newsMode);
+            return;
+          }
+          if (target?.dataset?.youtubeMode) {
+            setYoutubeMode(target.dataset.youtubeMode);
             return;
           }
           if (target.dataset.dashboardOp) {
-            state.dashboardOperationFilter = target.dataset.dashboardOp || 'all';
+            const next = target.dataset.dashboardOp === 'reconcile' ? 'reconcile' : 'latest';
+            state.dashboardOperationFilter = next;
             await loadDashboard();
             return;
           }
+          if (target.dataset.dashboardNewsTitle) {
+            if ($('newsQuery')) $('newsQuery').value = target.dataset.dashboardNewsTitle || '';
+            state.newsPage = 1;
+            await switchView('news');
+            await loadNews();
+            return;
+          }
+          if (target.dataset.dashboardYoutubeTitle) {
+            if ($('youtubeQuery')) $('youtubeQuery').value = target.dataset.dashboardYoutubeTitle || '';
+            state.youtubePage = 1;
+            await switchView('youtube');
+            await loadYoutube();
+            return;
+          }
+          if (target?.id === 'jobRunsSelectAll') {
+            // handled by change listener
+            return;
+          }
+          if (target?.dataset?.jobRunSelect) {
+            // handled by change listener
+            return;
+          }
+          if (target?.dataset?.runSort) {
+            const key = target.dataset.runSort;
+            if (state.jobRunsSortKey === key) state.jobRunsSortDir = state.jobRunsSortDir === 'asc' ? 'desc' : 'asc';
+            else { state.jobRunsSortKey = key; state.jobRunsSortDir = 'desc'; }
+            await loadJobRuns();
+            const params = new URLSearchParams(window.location.search);
+            params.set('runSort', state.jobRunsSortKey || 'finishedAt');
+            params.set('runDir', state.jobRunsSortDir || 'desc');
+            window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+            return;
+          }
+          const toastCloseBtn = typeof target.closest === 'function' ? target.closest('[data-toast-close]') : null;
+          if (toastCloseBtn instanceof HTMLElement && toastCloseBtn.dataset.toastClose) {
+            dismissToast(toastCloseBtn.dataset.toastClose);
+            return;
+          }
           if (target.dataset.view) await switchView(target.dataset.view);
+          // Close sidebar overlay after navigation (tablet)
+          if (document.body.classList.contains('sideOpen')) {
+            document.body.classList.remove('sideOpen');
+            $('sideOverlay')?.classList.add('hidden');
+          }
           if (target.dataset.jobTab) setJobTab(target.dataset.jobTab);
           if (target.dataset.settingsTab) setSettingsTab(target.dataset.settingsTab);
           if (target.dataset.opFilter) {
             state.operationFilter = target.dataset.opFilter;
             await Promise.all([loadMonitoring(), loadJobs(), loadErrors()]);
           }
-          if (target.dataset.newsLocale) {
-            $('newsLocale').value = target.dataset.newsLocale;
-            document.querySelectorAll('[data-news-locale]').forEach((btn) => btn.classList.toggle('active', btn.dataset.newsLocale === target.dataset.newsLocale));
-            state.newsPage = 1;
-            await loadNews();
-          }
           if (target.dataset.theme) applyTheme(target.dataset.theme);
           if (target.dataset.openJob) {
             await switchView('jobs');
             setJobTab('info');
-            setTimeout(() => document.querySelector(`[data-job-name="${target.dataset.openJob}"]`)?.closest('.jobItem')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0);
+            const key = target.dataset.openJob;
+            setTimeout(() => {
+              document.querySelector(`[data-job-name="${esc(key)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 0);
           }
           if (target.dataset.openJobLog) {
             await switchView('jobs');
@@ -1098,9 +1044,17 @@ import { applyTheme } from './theme.js';
             await loadJobRuns();
           }
           if (target.id === 'loginBtn') {
-            await api('/admin/api/login', { method: 'POST', body: JSON.stringify({ loginId: $('loginId').value, password: $('password').value }) });
-            $('loginMsg').textContent = '';
-            await refreshSession();
+            try {
+              await api('/admin/api/login', {
+                method: 'POST',
+                body: JSON.stringify({ loginId: $('loginId').value, password: $('password').value }),
+              });
+              $('loginMsg').textContent = '';
+              await refreshSession();
+            } catch (err) {
+              const code = String(err?.message || '').trim();
+              $('loginMsg').textContent = code === 'INVALID_LOGIN' ? textFor('loginInvalid') : textFor('loginFailed');
+            }
           }
           if (target.id === 'logoutBtn') {
             await api('/admin/api/logout', { method: 'POST' });
@@ -1125,38 +1079,132 @@ import { applyTheme } from './theme.js';
           }
           if (target.dataset.tsSave) {
             const locale = target.dataset.tsSave;
+            const provider = document.querySelector(`[data-ts-provider="${locale}"]`).value;
             await api(`/admin/api/translation-settings/${locale}`, {
               method: 'PATCH',
               body: JSON.stringify({
                 enabled: document.querySelector(`[data-ts-enabled="${locale}"]`).checked,
                 autoTranslateNews: document.querySelector(`[data-ts-auto="${locale}"]`).checked,
-                provider: document.querySelector(`[data-ts-provider="${locale}"]`).value,
-                model: document.querySelector(`[data-ts-model="${locale}"]`).value,
+                provider,
               }),
             });
             await loadTranslationSettings();
           }
-          if (target.dataset.providerSave) {
-            const provider = target.dataset.providerSave;
-            const apiKey = document.querySelector(`[data-provider-key="${provider}"]`).value.trim();
+          if (target.dataset.providerEditOpen) {
+            const provider = target.dataset.providerEditOpen;
+            const hit = (state.providerSettings || []).find((p) => String(p.provider || '') === String(provider));
+            if (!hit) return;
+            state.providerEditDraft = {
+              provider: hit.provider,
+              enabled: hit.enabled !== false,
+              hasApiKey: !!hit.hasApiKey,
+              maskedApiKey: hit.maskedApiKey || '',
+              defaultModel: hit.defaultModel || '',
+            };
+            // Render dialog fields
+            if ($('providerEditDialog')) $('providerEditDialog').classList.remove('hidden');
+            if ($('providerEditDialogMeta')) $('providerEditDialogMeta').textContent = String(hit.provider || '');
+            if ($('providerEditEnabled')) $('providerEditEnabled').checked = hit.enabled !== false;
+            if ($('providerEditDialogStatus')) $('providerEditDialogStatus').textContent = '';
+            if ($('providerEditApiKey')) $('providerEditApiKey').value = '';
+            if ($('providerEditApiKey')) $('providerEditApiKey').type = 'password';
+            if ($('toggleProviderEditApiKey')) $('toggleProviderEditApiKey').textContent = textFor('btnShow');
+
+            const isLlm = hit.provider === 'openai' || hit.provider === 'claude';
+            if ($('providerEditModelRow')) $('providerEditModelRow').classList.toggle('hidden', !isLlm);
+            if ($('providerEditDefaultModel')) {
+              const models = isLlm
+                ? modelPresetsForProviderView({ provider: hit.provider, defaultModel: hit.defaultModel, uiModelPresets: state.uiModelPresets })
+                : [];
+              const select = $('providerEditDefaultModel');
+              select.innerHTML =
+                `<option value="">${esc(textFor('providerSelectModel'))}</option>` +
+                (models || []).map((m) => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+              select.value = String(hit.defaultModel || '');
+            }
+            if ($('deleteProviderEditApiKey')) $('deleteProviderEditApiKey').disabled = !hit.hasApiKey;
+            return;
+          }
+          if (target.id === 'closeProviderEditDialog' || target.id === 'cancelProviderEditDialog') {
+            state.providerEditDraft = null;
+            $('providerEditDialog')?.classList.add('hidden');
+            return;
+          }
+          if (target.id === 'toggleProviderEditApiKey') {
+            const input = $('providerEditApiKey');
+            if (!input) return;
+            input.type = input.type === 'password' ? 'text' : 'password';
+            target.textContent = input.type === 'password' ? textFor('btnShow') : textFor('btnHide');
+            return;
+          }
+          if (target.id === 'providerEditDialog') {
+            state.providerEditDraft = null;
+            $('providerEditDialog')?.classList.add('hidden');
+            return;
+          }
+          if (target.id === 'deleteProviderEditApiKey') {
+            const draft = state.providerEditDraft;
+            if (!draft?.provider) return;
+            openConfirm({
+              title: textFor('confirmProviderDeleteKeyTitle'),
+              desc: textFor('confirmProviderDeleteKeyDesc'),
+              body: textForVars('confirmProviderDeleteKeyBody', { provider: draft.provider }),
+              okText: textFor('btnRemove'),
+              danger: true,
+              onConfirm: async () => {
+                await api(`/admin/api/provider-settings/${draft.provider}`, {
+                  method: 'PATCH',
+                  body: JSON.stringify({ clearApiKey: true }),
+                });
+                showToast(textFor('toastProviderKeyRemoved'), draft.provider, { kind: 'success' });
+                $('providerEditDialog')?.classList.add('hidden');
+                state.providerEditDraft = null;
+                await loadProviderSettings();
+              },
+            });
+            return;
+          }
+          if (target.id === 'saveProviderEditDialog') {
+            const draft = state.providerEditDraft;
+            if (!draft?.provider) return;
+            const provider = draft.provider;
+            const body = {
+              enabled: !!$('providerEditEnabled')?.checked,
+            };
+            const isLlm = provider === 'openai' || provider === 'claude';
+            if (isLlm && $('providerEditDefaultModel')) {
+              body.defaultModel = $('providerEditDefaultModel').value.trim();
+            }
+            const apiKey = String($('providerEditApiKey')?.value || '').trim();
+            if (apiKey) body.apiKey = apiKey;
             await api(`/admin/api/provider-settings/${provider}`, {
               method: 'PATCH',
-              body: JSON.stringify({
-                enabled: document.querySelector(`[data-provider-enabled="${provider}"]`).checked,
-                defaultModel: document.querySelector(`[data-provider-model="${provider}"]`).value.trim(),
-                apiKey,
-              }),
+              body: JSON.stringify(body),
             });
+            showToast(textFor('toastSaved'), provider, { kind: 'success' });
+            $('providerEditDialog')?.classList.add('hidden');
+            state.providerEditDraft = null;
             await loadProviderSettings();
+            return;
           }
           if (target.dataset.providerClear) {
             const provider = target.dataset.providerClear;
-            if (!confirm(`${provider} API key를 삭제할까요?`)) return;
-            await api(`/admin/api/provider-settings/${provider}`, {
-              method: 'PATCH',
-              body: JSON.stringify({ clearApiKey: true }),
+            openConfirm({
+              title: textFor('confirmProviderDeleteKeyTitle'),
+              desc: textFor('confirmProviderDeleteKeyDesc'),
+              body: textForVars('confirmProviderDeleteKeyBody', { provider }),
+              okText: textFor('btnRemove'),
+              danger: true,
+              onConfirm: async () => {
+                await api(`/admin/api/provider-settings/${provider}`, {
+                  method: 'PATCH',
+                  body: JSON.stringify({ clearApiKey: true }),
+                });
+                showToast(textFor('toastProviderKeyRemoved'), provider, { kind: 'success' });
+                await loadProviderSettings();
+              },
             });
-            await loadProviderSettings();
+            return;
           }
           if (target.id === 'saveUiModelPresets') {
             const next = {
@@ -1166,12 +1214,81 @@ import { applyTheme } from './theme.js';
             };
             const result = await api('/admin/api/ui-model-presets', { method: 'PATCH', body: JSON.stringify(next) });
             state.uiModelPresets = result.data || null;
-            if ($('uiModelPresetsStatus')) $('uiModelPresetsStatus').textContent = `저장됨 · ${formatDateTime(state.uiModelPresets?.updatedAt)}`;
-            showToast('저장 완료', '모델 프리셋이 업데이트되었습니다.');
-            await loadTranslationSettings();
+            if ($('uiModelPresetsStatus')) $('uiModelPresetsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.uiModelPresets?.updatedAt) });
+            showToast(textFor('toastSaved'), textFor('modelPresetTitle'));
+            if (state.view === 'settings-keys') {
+              await loadProviderSettings();
+            } else {
+              await loadTranslationSettings();
+            }
           }
           if (target.dataset.marketListOpen) {
             openMarketListDialog(target.dataset.marketListOpen);
+          }
+          if (target.id === 'refreshNewsSourcesBtn') {
+            await loadNewsSources();
+            return;
+          }
+          if (target.dataset.newsSourcesTab) {
+            state.newsSourcesCategory = target.dataset.newsSourcesTab || 'global';
+            state.newsSourceDraftRows = [''];
+            await loadNewsSourceSettings();
+            await loadNewsSources();
+            return;
+          }
+          if (target.id === 'saveNewsSourceSettingsBtn') {
+            await saveNewsSourceSettings();
+            return;
+          }
+          if (target.id === 'addNewsSourceDraftRow') {
+            syncNewsSourceDraftRows();
+            state.newsSourceDraftRows.push('');
+            renderNewsSources();
+            return;
+          }
+          if (target.dataset.newsSourceDraftRemove) {
+            syncNewsSourceDraftRows();
+            const idx = Number(target.dataset.newsSourceDraftRemove);
+            state.newsSourceDraftRows = (state.newsSourceDraftRows || []).filter((_, i) => i !== idx);
+            if (!state.newsSourceDraftRows.length) state.newsSourceDraftRows = [''];
+            renderNewsSources();
+            return;
+          }
+          if (target.dataset.newsSourceMove && target.dataset.newsSourceId) {
+            const dir = target.dataset.newsSourceMove;
+            const id = target.dataset.newsSourceId;
+            const list = [...(state.newsSources || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+            const idx = list.findIndex((s) => s.id === id);
+            if (idx < 0) return;
+            const swapWith = dir === 'up' ? idx - 1 : idx + 1;
+            if (swapWith < 0 || swapWith >= list.length) return;
+            const tmp = list[idx];
+            list[idx] = list[swapWith];
+            list[swapWith] = tmp;
+            list.forEach((s, i) => { s.order = i + 1; });
+            state.newsSources = list;
+            renderNewsSources();
+            return;
+          }
+          if (target.dataset.newsSourceDelete) {
+            const id = target.dataset.newsSourceDelete;
+            state.newsSources = (state.newsSources || []).filter((s) => s.id !== id);
+            state.newsSources.forEach((s, i) => { s.order = i + 1; });
+            renderNewsSources();
+            return;
+          }
+          if (target.dataset.newsSourceToggleHidden) {
+            const id = target.dataset.newsSourceToggleHidden;
+            const hit = (state.newsSources || []).find((s) => s.id === id);
+            if (!hit) return;
+            hit.hidden = !hit.hidden;
+            if (hit.hidden) hit.enabled = false;
+            renderNewsSources();
+            return;
+          }
+          if (target.id === 'saveNewsSourcesBtn') {
+            await saveNewsSources();
+            return;
           }
           if (target.id === 'closeMarketListDialog' || target.id === 'cancelMarketListDialog') {
             closeMarketListDialog();
@@ -1217,23 +1334,52 @@ import { applyTheme } from './theme.js';
             closeMarketListDialog();
             await Promise.all([loadMarketLists(), loadDashboard()]);
           }
-          if (target.dataset.saveTranslation) {
-            const id = target.dataset.saveTranslation;
-            const locale = $('newsLocale').value;
+          if (target.id === 'saveNewsEditDialog') {
+            const id = state.newsEditItemId;
+            const locale = state.newsEditLocale || 'en';
+            if (!id) return;
             await api(`/admin/api/news/${encodeURIComponent(id)}/translation/${locale}`, {
               method: 'PATCH',
               body: JSON.stringify({
-                title: document.querySelector(`[data-title="${id}"]`).value,
-                summary: document.querySelector(`[data-summary="${id}"]`).value,
+                title: $('newsEditTitleInput').value,
+                summary: $('newsEditSummaryInput').value,
               }),
             });
+            showToast(textFor('toastSaved'), textForVars('newsEditSaved', { locale: locale.toUpperCase() }), { kind: 'success' });
             await loadNews();
+            renderNewsEditDialog();
           }
           if (target.id === 'loadNewsBtn') {
             state.newsPage = 1;
             await loadNews();
           }
+          if (target.id === 'resetNewsBtn') {
+            if ($('newsRange')) $('newsRange').value = 'today';
+            if ($('newsFrom')) $('newsFrom').value = '';
+            if ($('newsTo')) $('newsTo').value = '';
+            if ($('newsCategory')) $('newsCategory').value = '';
+            if ($('newsTranslationStatus')) $('newsTranslationStatus').value = '';
+            if ($('newsQuery')) $('newsQuery').value = '';
+            if ($('newsPageSize')) $('newsPageSize').value = '30';
+            setDatePreset();
+            state.newsPage = 1;
+            await loadNews();
+          }
           if (target.id === 'loadJobRunsBtn') {
+            state.jobRunsPage = 1;
+            await loadJobRuns();
+          }
+          if (target.id === 'resetJobRunsBtn') {
+            if ($('jobRunRange')) $('jobRunRange').value = 'today';
+            if ($('jobRunFrom')) $('jobRunFrom').value = '';
+            if ($('jobRunTo')) $('jobRunTo').value = '';
+            if ($('jobRunStatus')) $('jobRunStatus').value = '';
+            if ($('jobRunType')) $('jobRunType').value = '';
+            if ($('jobRunJob')) $('jobRunJob').value = '';
+            if ($('jobRunTrigger')) $('jobRunTrigger').value = '';
+            if ($('jobRunQuery')) $('jobRunQuery').value = '';
+            if ($('jobRunPageSize')) $('jobRunPageSize').value = '30';
+            setJobRunDatePreset();
             state.jobRunsPage = 1;
             await loadJobRuns();
           }
@@ -1250,8 +1396,53 @@ import { applyTheme } from './theme.js';
             await loadYoutube();
           }
           if (target.id === 'loadCalendarBtn') {
-            state.calendarPage = 1;
+            state.calendarSelectedYmd = '';
             await loadCalendar();
+          }
+          if (target.id === 'resetCalendarBtn') {
+            if ($('calendarRange')) $('calendarRange').value = 'today';
+            setCalendarDatePreset();
+            if ($('calendarType')) $('calendarType').value = '';
+            if ($('calendarSymbol')) $('calendarSymbol').value = '';
+            if ($('calendarQuery')) $('calendarQuery').value = '';
+            state.calendarSelectedYmd = '';
+            await loadCalendar();
+          }
+          if (target.dataset.calMonthPrev != null) {
+            state.calendarMonthYm = shiftCalendarMonth(state.calendarMonthYm, -1);
+            state.calendarSelectedYmd = '';
+            await loadCalendar();
+            return;
+          }
+          if (target.dataset.calMonthNext != null) {
+            state.calendarMonthYm = shiftCalendarMonth(state.calendarMonthYm, 1);
+            state.calendarSelectedYmd = '';
+            await loadCalendar();
+            return;
+          }
+          if (target.dataset.calDay) {
+            state.calendarSelectedYmd = target.dataset.calDay;
+            renderAdminCalendarGrid();
+            renderCalendarDayTable();
+            return;
+          }
+          if (target.dataset.calendarRangePrev) {
+            const rows = [...(state.calendarMonthRows || [])];
+            const dates = [...new Set(rows.map((r) => String(r.date || '').slice(0, 10)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+            const cur = state.calendarRangeFocusYmd || dates[0] || '__all__';
+            const idx = dates.indexOf(cur);
+            if (idx > 0) state.calendarRangeFocusYmd = dates[idx - 1];
+            renderCalendarDayTable();
+            return;
+          }
+          if (target.dataset.calendarRangeNext) {
+            const rows = [...(state.calendarMonthRows || [])];
+            const dates = [...new Set(rows.map((r) => String(r.date || '').slice(0, 10)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+            const cur = state.calendarRangeFocusYmd || dates[0] || '__all__';
+            const idx = dates.indexOf(cur);
+            if (idx >= 0 && idx < dates.length - 1) state.calendarRangeFocusYmd = dates[idx + 1];
+            renderCalendarDayTable();
+            return;
           }
           if (target.dataset.youtubePage === 'prev' && state.youtubePage > 1) {
             state.youtubePage -= 1;
@@ -1260,14 +1451,6 @@ import { applyTheme } from './theme.js';
           if (target.dataset.youtubePage === 'next' && state.youtubePage < state.youtubeTotalPages) {
             state.youtubePage += 1;
             await loadYoutube();
-          }
-          if (target.dataset.calendarPage === 'prev' && state.calendarPage > 1) {
-            state.calendarPage -= 1;
-            await loadCalendar();
-          }
-          if (target.dataset.calendarPage === 'next' && state.calendarPage < state.calendarTotalPages) {
-            state.calendarPage += 1;
-            await loadCalendar();
           }
           if (target.id === 'selectPageBtn') {
             const boxes = [...document.querySelectorAll('[data-news-id]')];
@@ -1283,23 +1466,56 @@ import { applyTheme } from './theme.js';
           }
           if (target.id === 'retranslateSelectedBtn') {
             const ids = selectedNewsIds();
-            await api('/admin/api/news/retranslate', { method: 'POST', body: JSON.stringify({ ids, locale: $('newsLocale').value }) });
-            await loadNews();
+            const locale = $('newsLocale').value;
+            openConfirm({
+              title: textFor('confirmNewsRetranslateTitle'),
+              desc: textFor('confirmNewsRetranslateDesc'),
+              body: textForVars('confirmNewsRetranslateBody', { count: ids.length, locale }),
+              okText: textFor('confirmOkTranslate'),
+              danger: false,
+              onConfirm: async () => {
+                await api('/admin/api/news/retranslate', { method: 'POST', body: JSON.stringify({ ids, locale }) });
+                showToast(textFor('toastTranslateRequested'), textForVars('toastItemCount', { count: ids.length }), { kind: 'success' });
+                await loadNews();
+              },
+            });
+            return;
           }
           if (target.id === 'deleteSelectedNewsBtn') {
             const ids = selectedNewsIds();
             if (ids.length === 0) return;
-            if (!confirm(`선택한 뉴스 ${ids.length}개를 삭제할까요?`)) return;
-            await api('/admin/api/news/delete', { method: 'POST', body: JSON.stringify({ ids }) });
-            await Promise.all([loadNews(), loadDashboard()]);
+            openConfirm({
+              title: textFor('confirmNewsDeleteTitle'),
+              desc: textFor('confirmNewsDeleteDesc'),
+              body: textForVars('confirmNewsDeleteBody', { count: ids.length }),
+              okText: textFor('btnRemove'),
+              danger: true,
+              onConfirm: async () => {
+                await api('/admin/api/news/delete', { method: 'POST', body: JSON.stringify({ ids }) });
+                showToast(textFor('confirmNewsDeleteTitle'), textForVars('toastItemCount', { count: ids.length }), { kind: 'success' });
+                await Promise.all([loadNews(), loadDashboard()]);
+              },
+            });
+            return;
           }
           if (target.id === 'refreshSelectedYoutubeBtn') {
             const ids = selectedYoutubeIds();
-            await api('/admin/api/youtube/refresh-selected', { method: 'POST', body: JSON.stringify({ ids }) });
-            await Promise.all([loadYoutube(), loadJobRuns(), loadDashboard()]);
+            openConfirm({
+              title: textFor('confirmYoutubeRefreshTitle'),
+              desc: textFor('confirmYoutubeRefreshDesc'),
+              body: textForVars('confirmYoutubeRefreshBody', { count: ids.length }),
+              okText: textFor('confirmOkRefreshShort'),
+              danger: false,
+              onConfirm: async () => {
+                await api('/admin/api/youtube/refresh-selected', { method: 'POST', body: JSON.stringify({ ids }) });
+                showToast(textFor('toastRefreshRequested'), textForVars('toastItemCount', { count: ids.length }), { kind: 'success' });
+                await Promise.all([loadYoutube(), loadJobRuns(), loadDashboard()]);
+              },
+            });
+            return;
           }
           if (target.id === 'resetTranslationTestText') {
-            $('translationTestText').value = 'Signal 앱을 이용해 주셔서 감사합니다. 앞으로도 좋은 기능들을 업데이트하겠습니다.';
+            $('translationTestText').value = textFor('translationDefaultText');
           }
           if (target.id === 'runTranslationTest') {
             const result = await api('/admin/api/translation-test', {
@@ -1313,19 +1529,42 @@ import { applyTheme } from './theme.js';
             });
             $('translationTestResult').innerHTML = `<strong>${esc(result.data.title || '')}</strong><br/>${esc(result.data.summary || '')}`;
           }
+          if (target.id === 'resetSelectAllBtn') {
+            document.querySelectorAll('[data-reset-target]').forEach((box) => { box.checked = true; });
+            updateResetUi();
+            return;
+          }
+          if (target.id === 'resetClearBtn') {
+            document.querySelectorAll('[data-reset-target]').forEach((box) => { box.checked = false; });
+            updateResetUi();
+            return;
+          }
           if (target.id === 'resetDataBtn') {
             const targets = [...document.querySelectorAll('[data-reset-target]')]
               .filter((box) => box.checked)
               .map((box) => box.dataset.resetTarget);
-            const body = {
-              targets,
-              confirmText: $('resetConfirmText').value.trim(),
-            };
-            const result = await api('/admin/api/data-reset', { method: 'POST', body: JSON.stringify(body) });
-            $('resetResult').textContent = `초기화 완료: ${result.data.targets.join(', ')}`;
-            $('resetConfirmText').value = '';
-            document.querySelectorAll('[data-reset-target]').forEach((box) => { box.checked = false; });
-            await Promise.all([loadDashboard(), loadJobs(), loadJobRuns(), loadNews(), loadYoutube()]);
+            const confirmText = $('resetConfirmText').value.trim();
+            openConfirm({
+              title: textFor('confirmDataResetTitle'),
+              desc: textFor('confirmDataResetDesc'),
+              body: textForVars('confirmDataResetBody', {
+                targets: targets.length ? targets.join(', ') : textFor('confirmDataResetTargetsNone'),
+                confirm: confirmText || textFor('confirmDataResetConfirmNone'),
+              }),
+              okText: textFor('confirmOkResetShort'),
+              danger: true,
+              onConfirm: async () => {
+                const body = { targets, confirmText };
+                const result = await api('/admin/api/data-reset', { method: 'POST', body: JSON.stringify(body) });
+                $('resetResult').textContent = `${textFor('toastDataResetDone')}: ${result.data.targets.join(', ')}`;
+                $('resetConfirmText').value = '';
+                document.querySelectorAll('[data-reset-target]').forEach((box) => { box.checked = false; });
+                updateResetUi();
+                showToast(textFor('toastDataResetDone'), textForVars('toastDataResetDoneDetail', { targets: result.data.targets.join(', ') }), { kind: 'success' });
+                await Promise.all([loadDashboard(), loadJobs(), loadJobRuns(), loadNews(), loadYoutube()]);
+              },
+            });
+            return;
           }
           if (target.dataset.page === 'prev' && state.newsPage > 1) {
             state.newsPage -= 1;
@@ -1336,40 +1575,98 @@ import { applyTheme } from './theme.js';
             await loadNews();
           }
         } catch (error) {
-          alert(error.message);
+          showToast(textFor('toastErrorTitle'), error.message, { kind: 'error' });
         }
       });
 
       document.addEventListener('change', async (event) => {
-        // Provider changed in translation settings table → refresh model list for that locale row.
+        // Provider changed in translation settings table → show the provider default model.
         if (event.target instanceof HTMLSelectElement && event.target.dataset.tsProvider) {
           const locale = event.target.dataset.tsProvider;
           const provider = event.target.value || 'mock';
-          const defaultModel = (state.providerSettings || []).find((p) => p.provider === provider)?.defaultModel || '';
-          const list = modelPresetsForProvider(provider, defaultModel);
-          const modelSelect = document.querySelector(`[data-ts-model="${locale}"]`);
-          if (modelSelect instanceof HTMLSelectElement) {
-            const current = modelSelect.value || '';
-            const nextValue = list.includes(current) ? current : (defaultModel || list[0] || '');
-            modelSelect.innerHTML = renderModelOptions(list.length ? list : [''], nextValue);
-          }
+          const label = document.querySelector(`[data-ts-model-label="${locale}"]`);
+          if (label) label.textContent = defaultModelForProvider(provider) || textFor('providerDefaultModelNone');
         }
         if (event.target.id === 'adminLanguage') {
           localStorage.setItem('signalAdminLanguage', event.target.value);
+          setUrlParam('lang', event.target.value);
           applyAdminLanguage();
+          const adminOpen = $('adminPanel') && !$('adminPanel').classList.contains('hidden');
+          if (adminOpen) {
+            await reloadAllAdminData();
+            await switchView(state.view || 'dashboard');
+          }
         }
         if (event.target.id === 'adminTimeBasis') {
           localStorage.setItem('signalAdminTimeBasis', event.target.value);
           await Promise.all([loadDashboard(), loadJobs(), loadJobRuns(), loadNews(), loadYoutube()]);
+        }
+        if (event.target.dataset && event.target.dataset.newsSourceEnabled) {
+          const id = event.target.dataset.newsSourceEnabled;
+          const hit = (state.newsSources || []).find((s) => s.id === id);
+          if (hit) {
+            hit.enabled = !!event.target.checked;
+            renderNewsSources();
+          }
+        }
+        if (event.target.id === 'newsSourcesShowHidden') {
+          state.newsSourcesShowHidden = !!event.target.checked;
+          await loadNewsSources();
+        }
+        // category is managed via tabs in the News Sources section
+        if (event.target.id === 'globalSearchQuery') {
+          if ($('globalSearchResults')) $('globalSearchResults').innerHTML = renderSearchResults(event.target.value);
         }
         if (event.target.id === 'newsRange') {
           setDatePreset();
           state.newsPage = 1;
           await loadNews();
         }
-        if (event.target.id === 'dashboardSort') {
-          state.dashboardSort = event.target.value || 'newest';
+        if (event.target.id === 'calendarRange') {
+          setCalendarDatePreset();
+          state.calendarSelectedYmd = '';
+          await loadCalendar();
+        }
+        if (event.target.id === 'dashboardLimit') {
+          state.dashboardLimit = Number(event.target.value) || 5;
+          localStorage.setItem('signalAdminDashboardLimit', String(state.dashboardLimit));
           await loadDashboard();
+        }
+        if (event.target.id === 'monitoringSort') {
+          state.monitoringSort = event.target.value || 'newest';
+          await loadMonitoring();
+        }
+        if (event.target.id === 'jobListEnabled') {
+          state.jobListEnabled = event.target.value || 'all';
+          await loadJobs();
+        }
+        if (event.target.id === 'jobListDomain') {
+          state.jobListDomain = event.target.value || 'all';
+          await loadJobs();
+        }
+        if (event.target.id === 'jobListProvider') {
+          state.jobListProvider = event.target.value || 'all';
+          await loadJobs();
+        }
+        if (event.target.id === 'jobListSort') {
+          state.jobListSort = event.target.value || 'name';
+          await loadJobs();
+        }
+        if (event.target.id === 'jobRunsSelectAll') {
+          const checked = !!event.target.checked;
+          const keys = [...document.querySelectorAll('[data-job-run-select]')]
+            .map((el) => el.dataset.jobRunSelect)
+            .filter(Boolean);
+          state.jobRunsSelected = checked ? [...new Set(keys)] : [];
+          await loadJobRuns();
+        }
+        if (event.target.dataset.jobRunSelect) {
+          const key = event.target.dataset.jobRunSelect;
+          const selected = new Set(state.jobRunsSelected || []);
+          if (event.target.checked) selected.add(key);
+          else selected.delete(key);
+          state.jobRunsSelected = [...selected];
+          await loadJobRuns();
         }
         if (event.target.id === 'jobRunRange') {
           setJobRunDatePreset();
@@ -1380,24 +1677,83 @@ import { applyTheme } from './theme.js';
           state.jobRunsPage = 1;
           await loadJobRuns();
         }
+        if (event.target.id === 'calendarFrom' || event.target.id === 'calendarTo') {
+          state.calendarSelectedYmd = '';
+          await loadCalendar();
+        }
+        if (event.target.dataset && event.target.dataset.calendarRangeDay === 'pick') {
+          state.calendarSelectedYmd = '';
+          state.calendarRangeFocusYmd = event.target.value;
+          renderCalendarDayTable();
+        }
         if (event.target.id === 'marketListAddSymbol' && event.target.value.includes(',')) {
           event.target.value = event.target.value.replaceAll(',', ' ');
         }
         if (event.target.dataset.newsId) updateNewsSelectionInfo();
         if (event.target.dataset.youtubeId) updateYoutubeSelectionInfo();
+        if (event.target.dataset.resetTarget) updateResetUi();
+      });
+
+      document.addEventListener('input', (event) => {
+        if (event.target.id === 'resetConfirmText') updateResetUi();
+        if (event.target.dataset && event.target.dataset.newsSourceDraftIndex) syncNewsSourceDraftRows();
       });
 
       document.addEventListener('keydown', async (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+          event.preventDefault();
+          buildSearchIndex();
+          if ($('globalSearchQuery')) $('globalSearchQuery').value = '';
+          if ($('globalSearchResults')) $('globalSearchResults').innerHTML = renderSearchResults('');
+          openPanel('globalSearchPanel');
+          setTimeout(() => $('globalSearchQuery')?.focus(), 0);
+        }
+        if (event.key === 'Escape') {
+          document.body.classList.remove('sideOpen');
+          if ($('sideOverlay')) $('sideOverlay').classList.add('hidden');
+          if (isPanelOpen('globalSearchPanel')) closePanel('globalSearchPanel');
+          if (isPanelOpen('notifPanel')) closePanel('notifPanel');
+          if (isPanelOpen('profileMenu')) closePanel('profileMenu');
+          if (confirmState.open) closeConfirm();
+        }
         if (event.key === 'Escape' && state.marketListDraft) {
           closeMarketListDialog();
+        }
+        if (event.key === 'Escape' && state.newsSourceAliasDraft) {
+          closeNewsSourceAliasDialog();
+        }
+        if (event.key === 'Escape' && state.newsEditItemId) {
+          closeNewsEditDialog();
+        }
+        if (event.key === 'Escape' && isPanelOpen('errorDetailDialog')) {
+          closeErrorDetailDialog();
         }
         if (event.key === 'Enter' && event.target.id === 'marketListAddSymbol') {
           event.preventDefault();
           document.getElementById('addMarketListSymbol')?.click();
         }
+        if (event.key === 'Enter' && event.target.id === 'newsSourceAliasAdd') {
+          event.preventDefault();
+          document.getElementById('addNewsSourceAlias')?.click();
+        }
+        if (event.key === 'Enter' && event.target.id === 'jobListQuery') {
+          event.preventDefault();
+          state.jobListQuery = $('jobListQuery')?.value || '';
+          await loadJobs();
+        }
+        if (
+          event.key === 'Enter' &&
+          (event.target.id === 'jobRunQuery' || event.target.id === 'jobRunFrom' || event.target.id === 'jobRunTo')
+        ) {
+          event.preventDefault();
+          document.getElementById('loadJobRunsBtn')?.click();
+        }
       });
 
       applyTheme(localStorage.getItem('signalAdminAccent') || 'green');
+      state.dashboardLimit = Number(localStorage.getItem('signalAdminDashboardLimit') || '5') || 5;
+      const urlLang = normalizeAdminLang(getUrlParam('lang'));
+      if (urlLang) localStorage.setItem('signalAdminLanguage', urlLang);
       $('adminLanguage').value = localStorage.getItem('signalAdminLanguage') || 'ko';
       $('adminTimeBasis').value =
         localStorage.getItem('signalAdminTimeBasis') ||
@@ -1405,6 +1761,15 @@ import { applyTheme } from './theme.js';
           ? 'utc|UTC'
           : `${localStorage.getItem('signalAdminLocale') || 'ko-KR'}|${localStorage.getItem('signalAdminLocale') === 'en-US' ? 'America/New_York' : localStorage.getItem('signalAdminLocale') === 'ja-JP' ? 'Asia/Tokyo' : 'Asia/Seoul'}`);
       applyAdminLanguage();
+      setNewsMode(state.newsMode || 'filter');
+      setYoutubeMode(state.youtubeMode || 'filter');
+      updateNewsSelectionInfo();
+      updateYoutubeSelectionInfo();
+      // Ensure date preset defaults (today) hydrate from/to inputs.
+      setDatePreset();
+      setJobRunDatePreset();
+      setCalendarDatePreset();
       refreshSession().catch((error) => { $('session').textContent = error.message; });
+      updateResetUi();
       // Keep settings tab stable across refreshes
       if ($('settingsTab-keys')) setSettingsTab(state.settingsTab || 'keys');

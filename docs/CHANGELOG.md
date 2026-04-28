@@ -1,60 +1,24 @@
-# SIGNAL — 변경 기록
+# SIGNAL — 현재 스냅샷
 
-**기준:** 앱·문서 스냅샷 **1.0**. 이전 날짜별 세부 이력은 **2026-04-12**에 본 문서로 **한 번에 정리**했다. 이후 변경은 **날짜 섹션**만 아래에 추가한다.
+이 문서는 **과거 날짜별 이력**을 남기지 않고, **현재 버전의 기능/구조/운영 기준**만 유지합니다.
 
-## 2026-04-26
+## 앱 (Client)
 
-- **브리핑:** 관심종목 뉴스량·가격 변동·추세 이격·실적 임박도를 합산한 `Signal Score`와 “오늘의 시그널” 랭킹을 추가.
-- **캘린더:** 경제·정책 일정에 중요도, 실제/예상/이전 값, 예상 대비 결과 표시를 추가.
-- **종목 상세:** 가격·뉴스·다음 실적을 한눈에 보는 시그널 요약 카드 추가.
-- **서버 기반 전환 준비:** 로컬 `server/` API·어드민 MVP, provider/translation/job 골격, 앱 `EXPO_PUBLIC_SIGNAL_API_BASE_URL` 설정을 추가.
-- **Signal API 전환 경로:** `EXPO_PUBLIC_DATA_BACKEND=signal-api`일 때 뉴스·캘린더가 로컬/클라우드 Signal API를 조회하도록 병행 경로를 추가.
-- **서버 job 모듈 분리:** polling 실행기(`jobs/runner`)와 스케줄러(`jobs/scheduler`)를 분리하고 worker 전용 entrypoint를 추가.
-- **문서:** 로컬 서버·스케줄러 실행 문서 `docs/SERVER.md` 추가.
-- **어드민:** 대시보드·수집 Job·뉴스 관리·번역 설정 메뉴 구조로 개편하고 뉴스 검색/날짜범위/상태 필터/페이징을 추가.
-- **어드민 테마:** 앱의 Signal 다크 톤과 accent preset을 닮은 UI로 정리하고 브라우저 저장형 테마 설정 메뉴를 추가.
-- **어드민 푸터:** 앱 설정과 동일한 `Marcus · LinkedIn` 개발자 링크를 사이드바 하단에 추가.
-- **어드민 데이터 초기화:** 설정 메뉴에서 뉴스 원본·뉴스 번역·캘린더 이벤트·Job 실행 로그를 선택 초기화하는 기능을 추가.
-- **서버 번역:** 뉴스 번역 provider에 실제 OpenAI/Claude adapter를 추가하고 실패 상태를 번역 테이블에 남기도록 준비.
-- **어드민 provider 설정:** Finnhub/OpenAI/Claude API 키와 기본 모델을 `.env` 대신 어드민 설정에서 저장·마스킹·삭제할 수 있게 추가.
-- **로컬 DB 분리:** `server/data`를 settings/jobs/news/calendar/youtube 파일로 분리하고 기존 `local-db.json` 마이그레이션 경로를 추가.
-- **YouTube 서버화:** YouTube provider 설정, `youtube_economy_latest` polling job, `/v1/youtube` API, 어드민 유튜브 관리 메뉴, 앱 YouTube 탭의 `signal-api` 전환 경로를 추가.
-- **어드민 Job 로그:** 수동/스케줄 실행 이력에 타입·실행방식·성공/실패·소요시간을 저장하고 날짜/상태/타입/키워드 필터와 페이징 메뉴를 추가.
-- **캘린더 성능:** 월 전체 이벤트를 한 번에 렌더링하지 않고 선택한 날짜의 일정만 렌더링하도록 바꿔 대량 일정 표시 부담을 줄임.
-- **캘린더 표시:** 월 달력에는 일정 날짜 점을 유지하고, 아래 목록은 선택한 날짜의 일정만 보여주도록 변경해 날짜 이동 문제를 제거.
-- **Job 운영:** 최신 수집/보정 수집 job을 분리하고 캘린더·유튜브 보정 job, job 표시 이름/설명 설정, 어드민 job 그룹핑, 대시보드 데이터 개수 요약을 추가.
-- **어드민 UX:** Signal 로고와 테마 연동 accent를 헤더에 반영하고, Job 설정은 핵심 정보 중심의 접힌 편집 UI로 정리했으며 LinkedIn 프로필 링크를 플로팅 카드로 변경.
-- **어드민 2차 정리:** Job 관리를 정보/로그 탭으로 합치고 최신/보정 배지, Job 표시 이름 기반 필터, 로케일/UTC 날짜 표시 설정, 뉴스 선택 삭제·재번역, 유튜브 채널 필터·썸네일·선택 갱신, 번역 테스트 UI를 추가.
-- **마켓 수집:** Finnhub 시세와 CoinGecko 코인을 주기 수집 Job과 로컬 DB 저장소로 추가.
-- **뉴스 한국 필터:** Signal API 모드에서도 한국 탭 뉴스가 한국 관련 키워드 필터를 거치도록 수정.
-- **어드민 구조 분리:** 단일 `admin.html`의 스타일·스크립트를 `admin.css`와 ES module JS(`api/state/format/i18n/theme/app`)로 분리하고, 콤보박스·버튼·선택 액션 UI를 정돈.
-- **뉴스 Job 보정:** 글로벌/크립토 뉴스 보정 수집 Job을 추가해 최신 수집과 같은 뉴스 카테고리에서 관리하도록 변경.
-- **마켓 리스트 DB화:** 메가캡·시총 후보·인기 시세·기본 관심종목 리스트를 서버 `market.json`에 저장하고 어드민 설정/API에서 관리할 수 있게 추가.
-- **대시보드 Job 표시:** 최근 실행 목록에서 최신 수집과 보정 수집을 배지 색상으로 구분하도록 변경.
-- **어드민 시간 설정:** 상단 설정을 표시 언어와 시간 기준으로 단순화하고, Job 로그에도 최신/보정 배지를 표시하며 대시보드 최근 실행에 즉시 실행 버튼을 추가.
-- **마켓 리스트 편집:** 어드민 마켓 리스트 관리를 모달 편집 UI로 바꾸고 종목을 행 단위로 추가·수정·삭제할 수 있게 개선.
-- **앱 시세 리스트 연동:** `signal-api` 모드에서 인기 시세와 시총 후보 리스트를 서버의 `popular_symbols`/`mcap_universe`에서 우선 조회하도록 변경.
-- **앱 시세 DB 조회:** `signal-api` 모드에서 시세 탭의 관심·인기·시총·코인 데이터를 서버 DB의 `/v1/market-quotes`, `/v1/coins`에서 읽도록 변경.
+- **로케일**: `locales/*`에 UI 문자열을 모으고, 화면/도메인에서 재사용한다.
+- **컨콜**: `services/concalls`의 사용자 메시지와 캐시는 앱 언어를 따른다(캐시 키에 로케일 포함).
 
-## 2026-04-12
+## 서버 (API / Jobs)
 
-### 제품·기능 (요약)
+- **스케줄(Jobs)**: 운영 액션은 어드민에서 수행하고, 실행/로그는 서버 데이터와 API를 통해 관리한다.
+- **번역**: 로케일별 설정은 Provider 선택 중심이며, 실제 모델은 Provider 기본 모델을 따른다.
 
-- **뉴스:** 글로벌·코인·한국 세그먼트, Finnhub 피드, 한국은 키워드 필터(`@/domain/news`). LLM 설정 시 **제목 번역**.
-- **시세:** 관심·인기·시총·코인, Finnhub·Coingecko 연동, 탭 순서·목록 한도·글래스 등 로컬 설정.
-- **컨콜·캘린더:** 실적·일정, `@/domain/concalls`·`@/domain/calendar`, API Ninjas·Finnhub 조합은 `services/concalls` 등 오케스트레이션.
-- **유튜브:** 큐레이션·검색 부스트(`@/domain/youtube`), 기본 채널 시드는 `integrations/youtube/constants.ts`, 카드 링크는 `utils/openYoutube.ts`.
-- **설정:** `app/settings.tsx` — 뉴스·유튜브·시세·캘린더·표시·알림.
+## 어드민 (Admin Console)
 
-### 코드·레이어 (요약)
+- **다국어(i18n)**: 정적 문자열은 `data-i18n`로, 동적 영역은 렌더링 시 `textFor`/`textForVars`로 처리한다.
+- **언어 변경 반영**: 언어 변경 시 현재 화면의 동적 영역도 다시 렌더링/리로드되어야 한다.
+- **뉴스 편집**: 목록은 원문 중심, 번역 확인/수정은 모달에서 `English(Original) / 한국어 / 日本語` 탭으로 처리한다.
+- **사이드바 접기/펼치기**: 경계에 **투명 거터(gutter)**를 두고, hover 시 버튼을 노출한다(평소 숨김, 클릭 안정성 우선).
 
-- **`domain/`:** 뉴스·시세·컨콜·유튜브·테마·캘린더·더보기 허브 등 순수 규칙. **`@/domain/<영역>`** 배럴 import. 영역별 시드·순서는 **`domain/<영역>/constants.ts`**.
-- **`integrations/<vendor>/`:** Finnhub·YouTube·Anthropic·OpenAI·AdMob·Coingecko·API Ninjas·expo-updates 등. 화면·서비스는 **`@/integrations/...`** 직접 import. 메모리 캐시는 통합 폴더 내 `*Cache.ts`. Finnhub는 `news`·`calendar`·`quotes`·`constants` 등으로 분리.
-- **`services/`:** `env`, AsyncStorage 기반 설정, 오케스트레이션(레거시 re-export 최소화).
-- **`hooks/`:** 공용 훅 + **`@/hooks`** 배럴. Context 전용 훅은 `contexts/`.
-- **`constants/` (루트):** 테마 토큰(`SIGNAL`·`buildAppTheme`), 탭·세그먼트 UI, `newsSegment`, `megaCapUniverse` 등 **앱 전역** 정적 값.
-- **문서:** `docs/SIGNAL-PRD.md`, `docs/AGENTS.md`, `docs/ARCHITECTURE.md`, 본 `CHANGELOG.md`. 레이어·상수·훅 규칙의 **단일 상세 기준**은 **`docs/ARCHITECTURE.md`**. 루트 `AGENTS.md`는 `docs/`로 연결하는 인덱스.
+## UI/UX 기준 문서
 
-### 커밋 시
-
-- **`docs/CHANGELOG.md`** 해당 날짜 아래에 **무엇이 바뀌었는지** 짧게 남긴다(필요 시 소규모 표).
+- **단일 기준**: 어드민 UI/UX의 현행 기준은 `docs/SIGNAL-ADMIN-UIUX.md`를 따른다.

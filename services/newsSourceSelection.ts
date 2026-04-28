@@ -11,7 +11,14 @@ export async function loadSelectedSources(availableSources: string[]): Promise<s
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [...availableSources];
     const filtered = parsed.filter((s): s is string => typeof s === 'string' && valid.has(s));
-    return filtered.length > 0 ? filtered : [...availableSources];
+    // If new sources appear later (e.g. Financial Juice), include them by default so users
+    // don't "miss" newly ingested feeds due to old saved filters.
+    const selected = filtered.length > 0 ? filtered : [];
+    const out = [...selected];
+    for (const s of availableSources) {
+      if (!out.includes(s)) out.push(s);
+    }
+    return out.length > 0 ? out : [...availableSources];
   } catch {
     return [...availableSources];
   }

@@ -2,12 +2,14 @@ import { config } from './config.mjs';
 import { readDb, updateDb, nowIso } from './db.mjs';
 
 const FALLBACKS = {
-  finnhub: { apiKey: config.finnhubToken, defaultModel: '' },
+  finnhub: { apiKey: config.finnhubToken },
   openai: { apiKey: config.openaiApiKey, defaultModel: 'gpt-4o-mini' },
   claude: { apiKey: config.anthropicApiKey, defaultModel: 'claude-3-5-haiku-latest' },
-  youtube: { apiKey: config.youtubeApiKey, defaultModel: '' },
-  coingecko: { apiKey: '', defaultModel: '' },
+  youtube: { apiKey: config.youtubeApiKey },
+  coingecko: { apiKey: '' },
 };
+
+const LLM_PROVIDERS = new Set(['openai', 'claude']);
 
 export function maskSecret(value) {
   const s = String(value || '');
@@ -17,14 +19,17 @@ export function maskSecret(value) {
 }
 
 function normalizeProviderSetting(setting, provider) {
-  const fallback = FALLBACKS[provider] || { apiKey: '', defaultModel: '' };
-  return {
+  const fallback = FALLBACKS[provider] || { apiKey: '' };
+  const normalized = {
     provider,
     enabled: setting?.enabled !== false,
     apiKey: setting?.apiKey || fallback.apiKey || '',
-    defaultModel: setting?.defaultModel ?? fallback.defaultModel ?? '',
     updatedAt: setting?.updatedAt || nowIso(),
   };
+  if (LLM_PROVIDERS.has(provider)) {
+    normalized.defaultModel = setting?.defaultModel ?? fallback.defaultModel ?? '';
+  }
+  return normalized;
 }
 
 export async function getProviderSetting(provider) {
@@ -42,7 +47,7 @@ export async function listProviderSettingsPublic() {
       enabled: setting.enabled,
       hasApiKey: setting.apiKey.length > 0,
       maskedApiKey: maskSecret(setting.apiKey),
-      defaultModel: setting.defaultModel,
+      ...(LLM_PROVIDERS.has(provider) ? { defaultModel: setting.defaultModel } : {}),
       updatedAt: setting.updatedAt,
     };
   });
@@ -57,7 +62,8 @@ export async function updateProviderSetting(provider, patch) {
       db.providerSettings.push(setting);
     }
     if (typeof patch.enabled === 'boolean') setting.enabled = patch.enabled;
-    if (typeof patch.defaultModel === 'string') setting.defaultModel = patch.defaultModel;
+    if (LLM_PROVIDERS.has(provider) && typeof patch.defaultModel === 'string') setting.defaultModel = patch.defaultModel;
+    if (!LLM_PROVIDERS.has(provider) && 'defaultModel' in setting) delete setting.defaultModel;
     if (typeof patch.apiKey === 'string' && patch.apiKey.trim().length > 0) setting.apiKey = patch.apiKey.trim();
     if (patch.clearApiKey === true) setting.apiKey = '';
     setting.updatedAt = nowIso();
@@ -66,7 +72,7 @@ export async function updateProviderSetting(provider, patch) {
       enabled: setting.enabled,
       hasApiKey: setting.apiKey.length > 0,
       maskedApiKey: maskSecret(setting.apiKey),
-      defaultModel: setting.defaultModel,
+      ...(LLM_PROVIDERS.has(provider) ? { defaultModel: setting.defaultModel } : {}),
       updatedAt: setting.updatedAt,
     };
   });

@@ -4,41 +4,49 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Signal Admin</title>
-    <link rel="stylesheet" href="/admin/admin.css?v=2026-04-26-1" />
+    <link rel="stylesheet" href="/admin/admin.css?v=2026-04-28-dashboard-1" />
   </head>
   <body>
     <header>
-      <div class="signalLogo" aria-label="Signal Admin">
-        <div class="signalBars" aria-hidden="true">
-          <span></span><span></span><span></span><span></span>
-        </div>
-        <div>
-          <div class="signalBrand">SIGNAL</div>
-          <div class="signalTag">Admin Console</div>
+      <div class="headerLeft">
+        <button id="hamburgerBtn" class="secondary hamburgerBtn" data-i18n-aria-label="ariaHamburger">☰</button>
+        <div class="signalLogo" aria-label="Signal Admin">
+          <div class="signalBars" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <div>
+            <div class="signalBrand">SIGNAL</div>
+            <div class="signalTag" data-i18n="brandAdminConsole">Admin Console</div>
+          </div>
         </div>
       </div>
       <div class="topTools">
-        <span>🌐</span>
+        <label class="headerSearch" aria-label="Global search">
+          <input id="globalSearchInput" data-i18n-aria-label="ariaGlobalSearch" data-i18n-placeholder="headerSearchPh" placeholder="" />
+        </label>
+        <button id="headerNotifBtn" class="secondary iconOnly" data-i18n-aria-label="ariaNotifications">🔔<span id="headerNotifBadge" class="pill muted" style="margin-left:6px;display:none">0</span></button>
+        <button id="headerHelpBtn" class="secondary iconOnly" data-i18n-aria-label="ariaHelp">?</button>
+        <button id="headerProfileBtn" class="secondary" data-i18n-aria-label="ariaProfileMenu"><span id="headerProfileName">admin</span> ▾</button>
         <select id="adminLanguage">
           <option value="ko">한국어</option>
           <option value="en">English</option>
           <option value="ja">日本語</option>
         </select>
-        <span class="pill muted" title="admin ui build">ui 2026-04-26-1</span>
         <select id="adminTimeBasis">
-          <option value="ko-KR|Asia/Seoul">한국 시간</option>
-          <option value="en-US|America/New_York">미국 동부 시간</option>
-          <option value="en-US|America/Los_Angeles">미국 서부 시간</option>
-          <option value="ja-JP|Asia/Tokyo">일본 시간</option>
-          <option value="en-GB|Europe/London">영국 시간</option>
-          <option value="utc|UTC">UTC</option>
+          <option value="ko-KR|Asia/Seoul" data-i18n="timeBasisSeoul">한국 시간</option>
+          <option value="en-US|America/New_York" data-i18n="timeBasisUsEast">미국 동부 시간</option>
+          <option value="en-US|America/Los_Angeles" data-i18n="timeBasisUsWest">미국 서부 시간</option>
+          <option value="ja-JP|Asia/Tokyo" data-i18n="timeBasisTokyo">일본 시간</option>
+          <option value="en-GB|Europe/London" data-i18n="timeBasisLondon">영국 시간</option>
+          <option value="utc|UTC" data-i18n="timeBasisUtc">UTC</option>
         </select>
         <span id="session" class="muted">checking...</span>
-        <button id="logoutBtn" class="secondary hidden">Logout</button>
+        <button id="logoutBtn" class="secondary hidden" data-i18n="profileLogout">Logout</button>
       </div>
     </header>
 
     <main>
+      <div id="sideOverlay" class="sideOverlay hidden" aria-hidden="true"></div>
       <section id="loginPanel" class="loginShell">
         <div class="loginCard">
           <div class="signalLogo" aria-label="Signal Admin">
@@ -47,50 +55,61 @@
             </div>
             <div>
               <div class="signalBrand">SIGNAL</div>
-              <div class="signalTag">Admin Console</div>
+              <div class="signalTag" data-i18n="brandAdminConsole">Admin Console</div>
             </div>
           </div>
-          <h2>Login</h2>
-          <input id="loginId" placeholder="ID" value="admin" />
-          <input id="password" placeholder="Password" type="password" value="signal-local" />
-          <button id="loginBtn">Login</button>
+          <h2 data-i18n="loginTitle">Login</h2>
+          <input id="loginId" data-i18n-placeholder="loginIdPlaceholder" placeholder="" value="admin" />
+          <input id="password" data-i18n-placeholder="loginPasswordPlaceholder" placeholder="" type="password" value="signal-local" />
+          <button id="loginBtn" data-i18n="loginBtn">Login</button>
           <span id="loginMsg" class="error"></span>
         </div>
       </section>
 
       <div id="adminPanel" class="layout hidden">
         <aside class="side">
+          <div id="sideGutter" class="sideGutter" aria-hidden="true">
+            <button
+              id="sideCollapseBtn"
+              class="sideGutterBtn"
+              type="button"
+              data-i18n-aria-label="ariaCollapseSidebar"
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+            >◂</button>
+          </div>
           <div class="navGroup">
-            <button class="navBtn active" data-view="dashboard">📊 대시보드</button>
+            <button class="navBtn active" data-view="dashboard" data-icon="⌂">대시보드</button>
 
-            <div class="navSectionTitle muted">📰 콘텐츠 관리</div>
-            <button class="navBtn secondary" data-view="news">뉴스 목록</button>
-            <button class="navBtn secondary" data-view="youtube">유튜브 관리</button>
-            <button class="navBtn secondary" data-view="concalls" data-coming-soon="true" aria-disabled="true">컨콜 요약</button>
-            <button class="navBtn secondary" data-view="calendar">투자 캘린더</button>
+            <div class="navSectionTitle muted" data-i18n="navSectionContent">콘텐츠 관리</div>
+            <button class="navBtn secondary" data-view="news" data-icon="N">뉴스 목록</button>
+            <button class="navBtn secondary" data-view="youtube" data-icon="Y">유튜브 관리</button>
+            <button class="navBtn secondary" data-view="concalls" data-icon="C" data-coming-soon="true" aria-disabled="true">컨콜 요약</button>
+            <button class="navBtn secondary" data-view="calendar" data-icon="D">투자 캘린더</button>
 
-            <div class="navSectionTitle muted" style="margin-top:10px">⚙️ 수집 서버</div>
-            <button class="navBtn secondary" data-view="monitoring">수집 현황</button>
-            <button class="navBtn secondary" data-view="jobs">스케줄 관리</button>
-            <button class="navBtn secondary" data-view="errors">오류 로그</button>
+            <div class="navSectionTitle muted" style="margin-top:10px" data-i18n="navSectionIngest">수집 서버</div>
+            <button class="navBtn secondary" data-view="jobs" data-icon="J">스케줄 관리</button>
+            <button class="navBtn secondary" data-view="monitoring" data-icon="M">수집 현황</button>
+            <button class="navBtn secondary" data-view="errors" data-icon="!">오류 로그</button>
 
-            <div class="navSectionTitle muted" style="margin-top:10px">🔧 시스템</div>
-            <button class="navBtn secondary" data-view="settings-keys">Provider 키관리</button>
-            <button class="navBtn secondary" data-view="settings-theme">테마</button>
-            <button class="navBtn secondary" data-view="settings-lists">마켓 리스트</button>
-            <button class="navBtn secondary" data-view="settings-danger">데이터 초기화</button>
-            <button class="navBtn secondary" data-view="translations">번역 설정</button>
+            <div class="navSectionTitle muted" style="margin-top:10px" data-i18n="navSectionSystem">시스템</div>
+            <button class="navBtn secondary" data-view="settings-keys" data-icon="P">Provider</button>
+            <button class="navBtn secondary" data-view="translations" data-icon="G">번역 설정</button>
+            <button class="navBtn secondary" data-view="settings-sources" data-icon="S">뉴스 출처</button>
+            <button class="navBtn secondary" data-view="settings-lists" data-icon="L">마켓 리스트</button>
+            <button class="navBtn secondary" data-view="settings-theme" data-icon="T">테마</button>
+            <button class="navBtn secondary" data-view="settings-danger" data-icon="R">데이터 초기화</button>
           </div>
           <a
             class="floatingProfile"
             href="https://www.linkedin.com/in/marcus-moon/"
             target="_blank"
             rel="noreferrer"
-            aria-label="Marcus LinkedIn 프로필 열기">
+            data-i18n-aria-label="developerLinkedInA11y">
             <img class="profileAvatar" src="/assets/images/developer-avatar.png" alt="" />
             <span class="profileText">
               <strong>Marcus</strong>
-              <span>LinkedIn profile</span>
+              <span data-i18n="profileLinkedInSub">LinkedIn profile</span>
             </span>
             <span class="muted">↗</span>
           </a>
@@ -99,80 +118,115 @@
         <section class="content">
           <div id="view-dashboard" class="view">
             <div class="panel">
-              <h2>대시보드</h2>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle" data-i18n="pageDashboardTitle"></div>
+                  <div class="pageDesc" data-i18n="pageDashboardDesc"></div>
+                </div>
+              </div>
               <div id="dashboard"></div>
             </div>
           </div>
 
           <div id="view-monitoring" class="view hidden">
             <div class="panel">
-              <h2>수집 현황</h2>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle" data-i18n="pageMonitoringTitle"></div>
+                  <div class="pageDesc" data-i18n="pageMonitoringDesc"></div>
+                </div>
+              </div>
               <div id="monitoring"></div>
             </div>
           </div>
 
           <div id="view-errors" class="view hidden">
             <div class="panel">
-              <h2>오류 로그</h2>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle" data-i18n="pageErrorsTitle"></div>
+                  <div class="pageDesc" data-i18n="pageErrorsDesc"></div>
+                </div>
+              </div>
               <div id="errors"></div>
             </div>
           </div>
 
           <div id="view-jobs" class="view hidden">
             <div class="panel">
-              <h2>스케줄 관리</h2>
-              <div class="tabs">
-                <button class="tabBtn active" data-job-tab="info">Job 정보</button>
-                <button class="tabBtn" data-job-tab="runs">Job 로그</button>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle" data-i18n="pageJobsTitle"></div>
+                  <div class="pageDesc" data-i18n="pageJobsDesc"></div>
+                </div>
+                <div class="pageHeaderActions pageHeaderActions--jobs">
+                  <div class="segmented" role="tablist" aria-label="Job tabs">
+                    <button class="secondary segBtn" data-job-tab="info" data-i18n="jobInfo">Job 정보</button>
+                    <button class="secondary segBtn" data-job-tab="runs" data-i18n="jobRuns">Job 로그</button>
+                  </div>
+                  <button class="secondary refreshBtn" id="refreshJobsBtn" data-i18n="btnRefresh"></button>
+                </div>
               </div>
               <div id="jobs"></div>
               <div id="jobRunsPanel" class="hidden">
-                <div class="filterBox">
-                  <div class="filterBoxTitle">검색 조건</div>
-                  <div class="toolbar">
-                    <select id="jobRunRange">
-                      <option value="today">오늘</option>
-                      <option value="yesterday">어제</option>
-                      <option value="7d">일주일</option>
-                      <option value="30d">한달</option>
-                      <option value="all" selected>전체</option>
-                      <option value="custom">직접</option>
-                    </select>
-                    <input id="jobRunFrom" type="date" />
-                    <input id="jobRunTo" type="date" />
-                    <select id="jobRunStatus">
-                      <option value="">전체 상태</option>
-                      <option value="running">running</option>
-                      <option value="completed">completed</option>
-                      <option value="failed">failed</option>
-                    </select>
-                    <select id="jobRunType">
-                      <option value="">전체 타입</option>
-                      <option value="news">news</option>
-                      <option value="calendar">calendar</option>
-                      <option value="youtube">youtube</option>
-                      <option value="market">market</option>
-                      <option value="finnhub">finnhub</option>
-                      <option value="coingecko">coingecko</option>
-                      <option value="market_quotes">market_quotes</option>
-                      <option value="coin_markets">coin_markets</option>
-                    </select>
-                    <select id="jobRunJob">
-                      <option value="">전체 Job</option>
-                    </select>
-                    <select id="jobRunTrigger">
-                      <option value="">전체 실행방식</option>
-                      <option value="manual">manual</option>
-                      <option value="schedule">schedule</option>
-                    </select>
-                    <input id="jobRunQuery" class="wide" placeholder="키워드: job, provider, handler, 오류" />
-                    <select id="jobRunPageSize">
-                      <option value="20">20개</option>
-                      <option value="30" selected>30개</option>
-                      <option value="50">50개</option>
-                      <option value="100">100개</option>
-                    </select>
-                    <button id="loadJobRunsBtn" class="secondary">검색</button>
+                <div class="filterBar filterBox">
+                  <div class="filterBarTitle filterBoxTitle" data-i18n="filterSearchConditions">검색 조건</div>
+                  <div class="filterBarControls toolbar jobsFilterGroups">
+                    <div class="filterGroup filterGroup--date">
+                      <span class="filterGroupTitle" data-i18n="filterGroupDate">날짜</span>
+                      <select id="jobRunRange">
+                        <option value="today" data-i18n="datePresetToday">오늘</option>
+                        <option value="yesterday" data-i18n="datePresetYesterday">어제</option>
+                        <option value="7d" data-i18n="datePreset7d">일주일</option>
+                        <option value="30d" data-i18n="datePreset30d">한달</option>
+                      <option value="all" data-i18n="datePresetAll">전체</option>
+                        <option value="custom" data-i18n="datePresetCustom">직접</option>
+                      </select>
+                      <input id="jobRunFrom" type="date" />
+                    <span class="dateRangeSep" aria-hidden="true">~</span>
+                      <input id="jobRunTo" type="date" />
+                    </div>
+                    <div class="filterGroup filterGroup--facets">
+                      <span class="filterGroupTitle" data-i18n="filterGroupFilters">필터</span>
+                      <select id="jobRunStatus">
+                        <option value="" data-i18n="jobRunStatusAll">전체 상태</option>
+                        <option value="running">running</option>
+                        <option value="completed">completed</option>
+                        <option value="failed">failed</option>
+                      </select>
+                      <select id="jobRunType">
+                        <option value="" data-i18n="jobRunTypeAll">전체 타입</option>
+                        <option value="news">news</option>
+                        <option value="calendar">calendar</option>
+                        <option value="youtube">youtube</option>
+                        <option value="market">market</option>
+                        <option value="finnhub">finnhub</option>
+                        <option value="coingecko">coingecko</option>
+                        <option value="market_quotes">market_quotes</option>
+                        <option value="coin_markets">coin_markets</option>
+                        <option value="rss">rss</option>
+                      </select>
+                      <select id="jobRunJob">
+                        <option value="" data-i18n="jobRunJobAll">전체 Job</option>
+                      </select>
+                      <select id="jobRunTrigger">
+                        <option value="" data-i18n="jobRunTriggerAll">전체 실행방식</option>
+                        <option value="manual">manual</option>
+                        <option value="schedule">schedule</option>
+                      </select>
+                      <select id="jobRunPageSize">
+                        <option value="20" data-i18n="pageSize20">20개</option>
+                        <option value="30" selected data-i18n="pageSize30">30개</option>
+                        <option value="50" data-i18n="pageSize50">50개</option>
+                        <option value="100" data-i18n="pageSize100">100개</option>
+                      </select>
+                    </div>
+                    <div class="filterGroup filterGroup--search">
+                      <span class="filterGroupTitle" data-i18n="filterGroupSearch">검색</span>
+                      <input id="jobRunQuery" class="wide" data-i18n-placeholder="jobRunQueryPlaceholder" placeholder="" />
+                      <button id="loadJobRunsBtn" class="secondary" data-i18n="btnSearch">검색</button>
+                      <button id="resetJobRunsBtn" class="secondary" data-i18n="btnResetQuery">초기화</button>
+                    </div>
                   </div>
                 </div>
                 <div id="jobRunsPagerTop" class="pager"></div>
@@ -184,59 +238,76 @@
 
           <div id="view-news" class="view hidden">
             <div class="panel">
-              <h2>뉴스 목록</h2>
-              <div class="langTabs" id="newsLocaleTabs">
-                <button class="tabBtn active" data-news-locale="ko">한국어</button>
-                <button class="tabBtn" data-news-locale="ja">日本語</button>
-                <button class="tabBtn" data-news-locale="en">English</button>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle" data-i18n="pageNewsTitle"></div>
+                  <div class="pageDesc" data-i18n="pageNewsDesc"></div>
+                </div>
+                <div class="pageHeaderActions">
+                  <div class="segmented" role="tablist" aria-label="News view mode">
+                    <button type="button" class="secondary segBtn active" data-news-mode="filter" data-i18n="viewModeFilter">필터</button>
+                    <button type="button" class="secondary segBtn" data-news-mode="bulk" data-i18n="viewModeBulk">선택 작업</button>
+                  </div>
+                  <button type="button" class="secondary refreshBtn" id="refreshNewsBtn" data-i18n="btnRefreshThisView">새로고침</button>
+                </div>
               </div>
               <select id="newsLocale" class="hidden">
                 <option value="ko">ko</option>
                 <option value="ja">ja</option>
                 <option value="en">en</option>
               </select>
-              <div class="filterBox">
-                <div class="filterBoxTitle">검색 조건</div>
-                <div class="toolbar">
-                <select id="newsRange">
-                  <option value="today">오늘</option>
-                  <option value="yesterday">어제</option>
-                  <option value="7d" selected>일주일</option>
-                  <option value="30d">한달</option>
-                  <option value="all">전체</option>
-                  <option value="custom">직접</option>
-                </select>
-                <input id="newsFrom" type="date" />
-                <input id="newsTo" type="date" />
-                <select id="newsCategory">
-                  <option value="">전체 카테고리</option>
-                  <option value="global">global</option>
-                  <option value="crypto">crypto</option>
-                  <option value="company">company</option>
-                </select>
-                <select id="newsTranslationStatus">
-                  <option value="">전체 번역상태</option>
-                  <option value="completed">completed</option>
-                  <option value="manual">manual</option>
-                  <option value="missing">missing</option>
-                  <option value="failed">failed</option>
-                </select>
-                <input id="newsQuery" class="wide" placeholder="키워드: 제목, 요약, 소스" />
-                <select id="newsPageSize">
-                  <option value="20">20개</option>
-                  <option value="30" selected>30개</option>
-                  <option value="50">50개</option>
-                  <option value="100">100개</option>
-                </select>
-                <button id="loadNewsBtn" class="secondary">검색</button>
+              <div id="newsFilterBox" class="filterBar filterBox">
+                <div class="filterBarTitle filterBoxTitle" data-i18n="filterSearchConditions"></div>
+                <div class="filterBarControls toolbar jobsFilterGroups">
+                  <div class="filterGroup filterGroup--date">
+                    <span class="filterGroupTitle" data-i18n="filterGroupDate">날짜</span>
+                    <select id="newsRange">
+                      <option value="today" data-i18n="datePresetToday">오늘</option>
+                      <option value="yesterday" data-i18n="datePresetYesterday">어제</option>
+                      <option value="7d" data-i18n="datePreset7d">일주일</option>
+                      <option value="30d" data-i18n="datePreset30d">한달</option>
+                      <option value="all" data-i18n="datePresetAll">전체</option>
+                      <option value="custom" data-i18n="datePresetCustom">직접</option>
+                    </select>
+                    <input id="newsFrom" type="date" />
+                    <span class="dateRangeSep" aria-hidden="true">~</span>
+                    <input id="newsTo" type="date" />
+                  </div>
+                  <div class="filterGroup filterGroup--facets">
+                    <span class="filterGroupTitle" data-i18n="filterGroupFilters">필터</span>
+                    <select id="newsCategory">
+                      <option value="" data-i18n="newsCategoryAll">전체 카테고리</option>
+                      <option value="global">global</option>
+                      <option value="crypto">crypto</option>
+                    </select>
+                    <select id="newsTranslationStatus">
+                      <option value="" data-i18n="newsTranslationStatusAll">전체 번역상태</option>
+                      <option value="completed">completed</option>
+                      <option value="manual">manual</option>
+                      <option value="missing">missing</option>
+                      <option value="failed">failed</option>
+                    </select>
+                    <select id="newsPageSize">
+                      <option value="20" data-i18n="pageSize20">20개</option>
+                      <option value="30" selected data-i18n="pageSize30">30개</option>
+                      <option value="50" data-i18n="pageSize50">50개</option>
+                      <option value="100" data-i18n="pageSize100">100개</option>
+                    </select>
+                  </div>
+                  <div class="filterGroup filterGroup--search">
+                    <span class="filterGroupTitle" data-i18n="filterGroupSearch">검색</span>
+                    <input id="newsQuery" class="wide" data-i18n-placeholder="newsQueryPlaceholder" placeholder="" />
+                    <button id="loadNewsBtn" class="secondary" data-i18n="btnSearch">검색</button>
+                    <button id="resetNewsBtn" class="secondary" data-i18n="btnResetQuery">초기화</button>
+                  </div>
                 </div>
               </div>
-              <div class="actionBox">
+              <div id="newsBulkBox" class="actionBox hidden">
                 <span id="newsSelectionInfo" class="muted">선택된 뉴스 0개</span>
                 <div class="row">
-                  <button id="selectPageBtn" class="secondary">현재 페이지 선택</button>
-                  <button id="retranslateSelectedBtn" class="warning" disabled>선택 번역</button>
-                  <button id="deleteSelectedNewsBtn" class="danger" disabled>선택 삭제</button>
+                  <button id="selectPageBtn" class="secondary" data-i18n="newsSelectPage">현재 페이지 선택</button>
+                  <button id="retranslateSelectedBtn" class="warning" disabled data-i18n="btnRetranslateSelected">선택 번역</button>
+                  <button id="deleteSelectedNewsBtn" class="danger" disabled data-i18n="btnDeleteSelectedNews">선택 삭제</button>
                 </div>
               </div>
               <div id="newsPagerTop" class="pager"></div>
@@ -247,81 +318,130 @@
 
           <div id="view-translations" class="view hidden">
             <div class="panel">
-              <h2>번역 설정</h2>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle" data-i18n="pageTranslationsTitle"></div>
+                  <div class="pageDesc" data-i18n="pageTranslationsDesc"></div>
+                </div>
+                <div class="pageHeaderActions">
+                  <div class="segmented" role="tablist" aria-label="Settings sections">
+                    <button type="button" class="secondary segBtn" data-view="settings-keys" data-settings-tab="keys" data-i18n="navSettingsKeys">Provider</button>
+                    <button type="button" class="secondary segBtn active" data-view="translations" data-i18n="navTranslations">번역 설정</button>
+                    <button type="button" class="secondary segBtn" data-view="settings-sources" data-settings-tab="sources" data-i18n="navSettingsSources">뉴스 출처</button>
+                    <button type="button" class="secondary segBtn" data-view="settings-lists" data-settings-tab="lists" data-i18n="navSettingsLists">마켓 리스트</button>
+                    <button type="button" class="secondary segBtn" data-view="settings-theme" data-settings-tab="theme" data-i18n="navSettingsTheme">테마</button>
+                    <button type="button" class="secondary segBtn" data-view="settings-danger" data-settings-tab="danger" data-i18n="navSettingsDanger">데이터 초기화</button>
+                  </div>
+                  <button type="button" class="secondary refreshBtn" id="refreshTranslationsBtn" data-i18n="btnRefreshThisView">새로고침</button>
+                </div>
+              </div>
               <div id="translationSettings"></div>
             </div>
           </div>
 
           <div id="view-calendar" class="view hidden">
             <div class="panel">
-              <h2>투자 캘린더</h2>
-              <div class="filterBox">
-                <div class="filterBoxTitle">검색 조건</div>
-                <div class="toolbar">
-                  <select id="calendarRange">
-                    <option value="today">오늘</option>
-                    <option value="7d" selected>일주일</option>
-                    <option value="30d">한달</option>
-                    <option value="all">전체</option>
-                    <option value="custom">직접</option>
-                  </select>
-                  <input id="calendarFrom" type="date" />
-                  <input id="calendarTo" type="date" />
-                  <select id="calendarType">
-                    <option value="">전체 타입</option>
-                    <option value="economic">economic</option>
-                    <option value="earnings">earnings</option>
-                    <option value="ipo">ipo</option>
-                    <option value="dividend">dividend</option>
-                    <option value="split">split</option>
-                  </select>
-                  <input id="calendarQuery" class="wide" placeholder="키워드: 제목, 국가, 티커" />
-                  <select id="calendarPageSize">
-                    <option value="20">20개</option>
-                    <option value="30" selected>30개</option>
-                    <option value="50">50개</option>
-                    <option value="100">100개</option>
-                  </select>
-                  <button id="loadCalendarBtn" class="secondary">검색</button>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle" data-i18n="pageCalendarTitle"></div>
+                  <div class="pageDesc" data-i18n="pageCalendarDesc"></div>
                 </div>
               </div>
-              <div id="calendarPagerTop" class="pager"></div>
-              <div id="calendar"></div>
-              <div id="calendarPagerBottom" class="pager"></div>
+              <div class="filterBar filterBox calendarFilters">
+                <div class="filterBarTitle filterBoxTitle" data-i18n="calendarFilterTitle"></div>
+                <div class="filterBarControls calendarToolbar jobsFilterGroups">
+                  <div class="filterGroup filterGroup--date">
+                    <span class="filterGroupTitle" data-i18n="filterGroupDate">날짜</span>
+                      <select id="calendarRange">
+                        <option value="today" data-i18n="datePresetToday">오늘</option>
+                        <option value="yesterday" data-i18n="datePresetYesterday">어제</option>
+                        <option value="7d" data-i18n="datePreset7d">일주일</option>
+                        <option value="30d" data-i18n="datePreset30d">한달</option>
+                        <option value="all" data-i18n="datePresetAll">전체</option>
+                        <option value="custom" data-i18n="datePresetCustom">직접</option>
+                      </select>
+                      <input id="calendarFrom" type="date" />
+                      <span class="dateRangeSep" aria-hidden="true">~</span>
+                      <input id="calendarTo" type="date" />
+                  </div>
+                  <div class="filterGroup filterGroup--facets">
+                    <span class="filterGroupTitle" data-i18n="filterGroupFilters">필터</span>
+                    <select id="calendarType">
+                      <option value="" data-i18n="calendarTypeAll"></option>
+                      <option value="macro">macro</option>
+                      <option value="fed">fed</option>
+                      <option value="fomc">fomc</option>
+                      <option value="earnings">earnings</option>
+                    </select>
+                    <input id="calendarSymbol" class="narrowTicker" data-i18n-placeholder="calendarSymbolPh" placeholder="" />
+                  </div>
+                  <div class="filterGroup filterGroup--search">
+                    <span class="filterGroupTitle" data-i18n="filterGroupSearch">검색</span>
+                    <input id="calendarQuery" class="wide calendarQueryInput" data-i18n-placeholder="calendarQueryPh" placeholder="" />
+                    <button type="button" id="loadCalendarBtn" class="secondary" data-i18n="btnSearch"></button>
+                    <button type="button" id="resetCalendarBtn" class="secondary" data-i18n="btnResetQuery">초기화</button>
+                  </div>
+                </div>
+              </div>
+              <div id="adminCalendarGrid" class="adminCalendarHost"></div>
+              <p class="calendarGridHint muted" data-i18n="calendarGridHint"></p>
+              <section class="calendarEventsCard" aria-labelledby="calendarDayHeadingText" style="margin-top:14px">
+                <h3 class="calendarDayHeading">
+                  <span id="calendarDayHeadingText"></span>
+                </h3>
+                <div id="calendarDayList" class="calendarDayTableHost"></div>
+              </section>
             </div>
           </div>
 
           <div id="view-concalls" class="view hidden">
             <div class="panel">
-              <h2>컨콜 요약</h2>
-              <div class="muted">Coming soon</div>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle" data-i18n="pageConcallsTitle"></div>
+                  <div class="pageDesc" data-i18n="pageConcallsDesc"></div>
+                </div>
+              </div>
+              <div class="muted" data-i18n="concallsComingSoon"></div>
             </div>
           </div>
 
           <div id="view-youtube" class="view hidden">
             <div class="panel">
-              <h2>유튜브 관리</h2>
-              <div class="filterBox">
-              <div class="filterBoxTitle">검색 조건</div>
-              <div class="toolbar">
-                <input id="youtubeQuery" class="wide" placeholder="키워드: 제목, 설명, 채널" />
-                <select id="youtubeChannel">
-                  <option value="">전체 채널</option>
-                </select>
-                <select id="youtubePageSize">
-                  <option value="20">20개</option>
-                  <option value="30" selected>30개</option>
-                  <option value="50">50개</option>
-                  <option value="100">100개</option>
-                </select>
-                <button id="loadYoutubeBtn" class="secondary">검색</button>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle" data-i18n="pageYoutubeTitle"></div>
+                  <div class="pageDesc" data-i18n="pageYoutubeDesc"></div>
+                </div>
+                <div class="pageHeaderActions">
+                  <div class="segmented" role="tablist" aria-label="YouTube view mode">
+                    <button type="button" class="secondary segBtn active" data-youtube-mode="filter" data-i18n="viewModeFilter">필터</button>
+                    <button type="button" class="secondary segBtn" data-youtube-mode="bulk" data-i18n="viewModeBulk">선택 작업</button>
+                  </div>
+                  <button type="button" class="secondary refreshBtn" id="refreshYoutubeBtn" data-i18n="btnRefreshThisView">새로고침</button>
+                </div>
               </div>
+              <div id="youtubeFilterBox" class="filterBar filterBox">
+                <div class="filterBarTitle filterBoxTitle" data-i18n="filterSearchConditions">검색 조건</div>
+                <div class="filterBarControls toolbar">
+                  <input id="youtubeQuery" class="wide" data-i18n-placeholder="youtubeQueryPlaceholder" placeholder="" />
+                  <select id="youtubeChannel">
+                    <option value="" data-i18n="youtubeAllChannels">전체 채널</option>
+                  </select>
+                  <select id="youtubePageSize">
+                    <option value="20" data-i18n="pageSize20">20개</option>
+                    <option value="30" selected data-i18n="pageSize30">30개</option>
+                    <option value="50" data-i18n="pageSize50">50개</option>
+                    <option value="100" data-i18n="pageSize100">100개</option>
+                  </select>
+                  <button id="loadYoutubeBtn" class="secondary" data-i18n="btnSearch">검색</button>
+                </div>
               </div>
-              <div class="actionBox">
+              <div id="youtubeBulkBox" class="actionBox hidden">
                 <span id="youtubeSelectionInfo" class="muted">선택된 영상 0개</span>
                 <div class="row">
-                  <button id="selectYoutubePageBtn" class="secondary">현재 페이지 선택</button>
-                  <button id="refreshSelectedYoutubeBtn" class="warning" disabled>선택 갱신</button>
+                  <button id="selectYoutubePageBtn" class="secondary" data-i18n="youtubeSelectPage">현재 페이지 선택</button>
+                  <button id="refreshSelectedYoutubeBtn" class="warning" disabled data-i18n="btnRefreshSelectedYoutube">선택 갱신</button>
                 </div>
               </div>
               <div id="youtubePagerTop" class="pager"></div>
@@ -332,43 +452,151 @@
 
           <div id="view-settings" class="view hidden">
             <div class="panel">
-              <h2 id="settingsTitle">Provider 키관리</h2>
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle" id="settingsTitle">Provider</div>
+                  <div class="pageDesc" id="settingsDesc" data-i18n="settingsProviderDesc">외부 Provider API Key와 LLM 모델 프리셋을 관리합니다.</div>
+                </div>
+                <div class="pageHeaderActions">
+                  <div class="segmented" role="tablist" aria-label="Settings sections">
+                    <button type="button" class="secondary segBtn" data-view="settings-keys" data-settings-tab="keys" data-i18n="navSettingsKeys">Provider</button>
+                    <button type="button" class="secondary segBtn" data-view="translations" data-i18n="navTranslations">번역 설정</button>
+                    <button type="button" class="secondary segBtn" data-view="settings-sources" data-settings-tab="sources" data-i18n="navSettingsSources">뉴스 출처</button>
+                    <button type="button" class="secondary segBtn" data-view="settings-lists" data-settings-tab="lists" data-i18n="navSettingsLists">마켓 리스트</button>
+                    <button type="button" class="secondary segBtn" data-view="settings-theme" data-settings-tab="theme" data-i18n="navSettingsTheme">테마</button>
+                    <button type="button" class="secondary segBtn" data-view="settings-danger" data-settings-tab="danger" data-i18n="navSettingsDanger">데이터 초기화</button>
+                  </div>
+                  <button type="button" class="secondary refreshBtn" id="refreshSettingsBtn" data-i18n="btnRefreshThisView">새로고침</button>
+                </div>
+              </div>
 
               <div id="settingsTab-keys" class="settingsTab">
-                <p class="muted">키는 화면에 전체 노출하지 않고 마스킹합니다. 저장 후 서버 재시작 없이 다음 호출부터 사용됩니다.</p>
+                <div class="settingsHero">
+                  <span class="settingsHeroIcon">P</span>
+                  <div>
+                    <div class="cardKicker" data-i18n="settingsKeysHeroKicker">Provider 연결 상태</div>
+                    <p class="summary" data-i18n="settingsKeysHeroSummary">외부 데이터 Provider의 API Key와 LLM Provider의 모델·프리셋을 한 화면에서 관리합니다. 키는 저장 후 마스킹되어 표시됩니다.</p>
+                  </div>
+                </div>
                 <div id="providerSettings"></div>
               </div>
 
               <div id="settingsTab-theme" class="settingsTab hidden">
-                <p class="muted">앱의 accent preset과 같은 색상 계열을 사용합니다. 이 브라우저에 저장됩니다.</p>
-                <div id="themeOptions" class="themeGrid"></div>
-                <div class="previewBar">
-                  <span class="muted">적용 예시</span>
-                  <span class="previewTab">Signal</span>
+                <div class="settingsHero">
+                  <span class="settingsHeroIcon">T</span>
+                  <div>
+                    <div class="cardKicker" data-i18n="settingsThemeHeroKicker">관리자 화면 테마</div>
+                    <p class="summary" data-i18n="settingsThemeHeroSummary">앱의 accent preset과 같은 색상 계열을 사용합니다. 선택값은 이 브라우저에 저장됩니다.</p>
+                  </div>
+                </div>
+                <div class="card settingsControlCard">
+                  <div class="cardHead">
+                    <div class="cardHeadMain">
+                      <div class="cardKicker" data-i18n="settingsThemeAccentKicker">Accent color</div>
+                      <div class="cardHint" data-i18n="settingsThemeAccentHint">버튼, 활성 메뉴, 상태 강조색에 반영됩니다.</div>
+                    </div>
+                  </div>
+                  <div id="themeOptions" class="themeGrid"></div>
+                  <div class="previewBar">
+                    <span class="muted" data-i18n="settingsThemePreviewLabel">적용 예시</span>
+                    <span class="previewTab">Signal</span>
+                  </div>
                 </div>
               </div>
 
               <div id="settingsTab-lists" class="settingsTab hidden">
-                <p class="muted">앱과 수집 Job이 같이 쓰는 종목 리스트입니다. 종목은 쉼표, 공백, 줄바꿈으로 구분해 입력할 수 있습니다.</p>
+                <div class="settingsHero">
+                  <span class="settingsHeroIcon">L</span>
+                  <div>
+                    <div class="cardKicker" data-i18n="settingsListsHeroKicker">앱 공용 리스트</div>
+                    <p class="summary" data-i18n="settingsListsHeroSummary">앱과 수집 Job이 함께 쓰는 마켓 리스트를 관리합니다. 종목 기준을 바꾸면 다음 수집과 앱 조회에 반영됩니다.</p>
+                  </div>
+                </div>
                 <div id="marketLists"></div>
               </div>
 
-              <div id="settingsTab-danger" class="settingsTab hidden">
-                <p class="muted">외부 API에서 가져온 로컬 저장 데이터를 선택해서 비웁니다. 설정과 Job 정의는 유지됩니다.</p>
-                <div class="card dangerCard">
-                  <div class="row">
-                    <label><input type="checkbox" data-reset-target="newsItems" /> 뉴스 원본</label>
-                    <label><input type="checkbox" data-reset-target="newsTranslations" /> 뉴스 번역</label>
-                    <label><input type="checkbox" data-reset-target="calendarEvents" /> 캘린더 이벤트</label>
-                    <label><input type="checkbox" data-reset-target="youtubeVideos" /> 유튜브 영상</label>
-                    <label><input type="checkbox" data-reset-target="marketQuotes" /> 시세</label>
-                    <label><input type="checkbox" data-reset-target="coinMarkets" /> 코인</label>
-                    <label><input type="checkbox" data-reset-target="pollingJobRuns" /> Job 실행 로그</label>
+              <div id="settingsTab-sources" class="settingsTab hidden">
+                <div class="settingsHero">
+                  <span class="settingsHeroIcon">S</span>
+                  <div>
+                    <div class="cardKicker" data-i18n="settingsSourcesHeroKicker">뉴스 출처 관리</div>
+                    <p class="summary" data-i18n="settingsSourcesHeroSummary">앱 뉴스 필터에 노출되는 출처 목록, 표시 여부, 순서, 별칭을 관리합니다.</p>
                   </div>
-                  <div class="row" style="margin-top:10px">
-                    <input id="resetConfirmText" placeholder="RESET 입력" />
-                    <button id="resetDataBtn" class="danger">선택 데이터 초기화</button>
-                    <span id="resetResult" class="muted"></span>
+                </div>
+                <div id="newsSources"></div>
+              </div>
+
+              <div id="settingsTab-danger" class="settingsTab hidden">
+                <div class="dangerIntro">
+                  <div>
+                    <div class="cardKicker" data-i18n="settingsDangerHeroKicker">로컬 수집 데이터 초기화</div>
+                    <p class="summary" data-i18n="settingsDangerHeroSummary">외부 API에서 가져와 저장한 데이터만 선택해서 비웁니다. Provider 키, 테마, Job 정의, 마켓 리스트 설정은 유지됩니다.</p>
+                  </div>
+                  <span class="pill pillStatus--fail" data-i18n="settingsDangerIrreversible">되돌릴 수 없음</span>
+                </div>
+
+                <div class="resetLayout">
+                  <div class="card resetPanel">
+                    <div class="cardHead">
+                      <div class="cardHeadMain">
+                        <div class="cardKicker" data-i18n="settingsResetTargetsKicker">초기화 대상</div>
+                        <div class="cardHint" data-i18n="settingsResetTargetsHint">지울 데이터 묶음을 선택하세요.</div>
+                      </div>
+                      <div class="cardHeadActions">
+                        <button id="resetSelectAllBtn" class="secondary" data-i18n="settingsResetSelectAll">전체 선택</button>
+                        <button id="resetClearBtn" class="secondary" data-i18n="settingsResetClearSelection">선택 해제</button>
+                      </div>
+                    </div>
+                    <div class="resetGrid">
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="newsItems" />
+                        <span class="resetGlyph">N</span>
+                        <span class="resetText"><strong data-i18n="settingsResetNewsOriginal">뉴스 원본</strong><small data-i18n="settingsResetNewsOriginalSub">수집된 기사 본문과 메타 정보</small></span>
+                      </label>
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="newsTranslations" />
+                        <span class="resetGlyph">T</span>
+                        <span class="resetText"><strong data-i18n="settingsResetNewsTranslations">뉴스 번역</strong><small data-i18n="settingsResetNewsTranslationsSub">언어별 번역 결과와 상태</small></span>
+                      </label>
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="calendarEvents" />
+                        <span class="resetGlyph">C</span>
+                        <span class="resetText"><strong data-i18n="settingsResetCalendar">캘린더 이벤트</strong><small data-i18n="settingsResetCalendarSub">실적·경제지표 일정</small></span>
+                      </label>
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="youtubeVideos" />
+                        <span class="resetGlyph">Y</span>
+                        <span class="resetText"><strong data-i18n="settingsResetYoutube">유튜브 영상</strong><small data-i18n="settingsResetYoutubeSub">수집된 영상 목록과 설명</small></span>
+                      </label>
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="marketQuotes" />
+                        <span class="resetGlyph">Q</span>
+                        <span class="resetText"><strong data-i18n="settingsResetQuotes">시세</strong><small data-i18n="settingsResetQuotesSub">메가캡 등 주식 시세 캐시</small></span>
+                      </label>
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="coinMarkets" />
+                        <span class="resetGlyph">B</span>
+                        <span class="resetText"><strong data-i18n="settingsResetCoins">코인</strong><small data-i18n="settingsResetCoinsSub">코인 마켓 데이터 캐시</small></span>
+                      </label>
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="pollingJobRuns" />
+                        <span class="resetGlyph">J</span>
+                        <span class="resetText"><strong data-i18n="settingsResetJobRuns">Job 실행 로그</strong><small data-i18n="settingsResetJobRunsSub">수동·스케줄 실행 이력</small></span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="card dangerCard resetConfirmPanel">
+                    <div class="resetStep">1</div>
+                    <div>
+                      <div class="cardKicker" data-i18n="settingsResetConfirmKicker">실행 확인</div>
+                      <p class="summary" data-i18n="settingsResetConfirmSummary">선택한 데이터는 즉시 비워집니다. 계속하려면 아래에 RESET을 입력하세요.</p>
+                    </div>
+                    <div id="resetSelectedList" class="resetSelectedList muted" data-i18n="settingsResetSelectedNone">선택된 대상이 없습니다.</div>
+                    <input id="resetConfirmText" data-i18n-placeholder="settingsResetPlaceholder" placeholder="" autocomplete="off" />
+                    <button id="resetDataBtn" class="danger" disabled data-i18n="settingsResetRunButton">선택 데이터 초기화</button>
+                    <div id="resetSelectionInfo" class="muted">0개 선택됨</div>
+                    <div id="resetResult" class="resetResult muted"></div>
                   </div>
                 </div>
               </div>
@@ -377,40 +605,225 @@
         </section>
       </div>
     </main>
-    <div id="toastHost" class="toastHost hidden" aria-live="polite" aria-atomic="true"></div>
-    <div id="marketListDialog" class="dialogBackdrop hidden" role="dialog" aria-modal="true" aria-label="마켓 리스트 편집">
+    <div id="toastHost" class="toastHost hidden" aria-live="polite" aria-relevant="additions text" aria-atomic="true"></div>
+    <div id="globalSearchPanel" class="dialogBackdrop hidden" role="dialog" aria-modal="true" data-i18n-aria-label="ariaGlobalSearch">
+      <div class="dialogPanel" style="width:min(720px,100%);grid-template-rows:auto minmax(0,1fr) auto">
+        <div class="dialogHead">
+          <div>
+            <h3 data-i18n="globalSearchTitle">검색</h3>
+            <div class="muted" data-i18n="globalSearchLead">메뉴/Job/콘텐츠를 빠르게 찾습니다.</div>
+          </div>
+          <button id="closeGlobalSearch" class="secondary" data-i18n-aria-label="ariaCloseDialog">✕</button>
+        </div>
+        <div class="dialogBody">
+          <input id="globalSearchQuery" data-i18n-placeholder="globalSearchQueryPh" placeholder="" />
+          <div id="globalSearchResults" style="margin-top:10px"></div>
+        </div>
+        <div class="dialogFoot">
+          <span class="muted" data-i18n="globalSearchFoot">Enter: 이동 · Esc: 닫기</span>
+          <div class="row"></div>
+        </div>
+      </div>
+    </div>
+    <div id="notifPanel" class="dialogBackdrop hidden" role="dialog" aria-modal="true" data-i18n-aria-label="ariaNotifications">
+      <div class="dialogPanel" style="width:min(520px,100%);grid-template-rows:auto minmax(0,1fr) auto">
+        <div class="dialogHead">
+          <div>
+            <h3 data-i18n="notifPanelTitle">알림</h3>
+            <div class="muted" data-i18n="notifPanelLead">최근 실패/주기 초과를 보여줍니다.</div>
+          </div>
+          <button id="closeNotifPanel" class="secondary" data-i18n-aria-label="ariaCloseDialog">✕</button>
+        </div>
+        <div class="dialogBody">
+          <div id="notifList"></div>
+        </div>
+        <div class="dialogFoot">
+          <span class="muted"></span>
+          <div class="row">
+            <button class="secondary" data-view="errors" data-i18n="notifGotoErrors">오류 로그로 이동</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="profileMenu" class="dialogBackdrop hidden" role="dialog" aria-modal="true" data-i18n-aria-label="ariaProfileMenu">
+      <div class="dialogPanel" style="width:min(320px,100%);grid-template-rows:auto minmax(0,1fr) auto">
+        <div class="dialogHead">
+          <div>
+            <h3 id="profileMenuTitle">프로필</h3>
+            <div class="muted" data-i18n="profileMenuLead">관리자 메뉴</div>
+          </div>
+          <button id="closeProfileMenu" class="secondary" data-i18n-aria-label="ariaCloseDialog">✕</button>
+        </div>
+        <div class="dialogBody">
+          <div class="row" style="flex-direction:column;align-items:stretch">
+            <button class="secondary" data-view="settings-keys" data-i18n="navSettingsKeys">Provider</button>
+            <button class="secondary" data-view="translations" data-i18n="navTranslations">번역 설정</button>
+            <button class="danger" id="profileLogoutBtn" data-i18n="profileLogout">로그아웃</button>
+          </div>
+        </div>
+        <div class="dialogFoot"><span class="muted"></span><div class="row"></div></div>
+      </div>
+    </div>
+    <div id="confirmModal" class="dialogBackdrop hidden" role="dialog" aria-modal="true" data-i18n-aria-label="confirmDefaultTitle">
+      <div class="dialogPanel" style="width:min(420px,100%);grid-template-rows:auto minmax(0,1fr) auto">
+        <div class="dialogHead">
+          <div>
+            <h3 id="confirmTitle" data-i18n="confirmDefaultTitle">확인</h3>
+            <div id="confirmDesc" class="muted"></div>
+          </div>
+          <button id="confirmClose" class="secondary" data-i18n-aria-label="ariaCloseDialog">✕</button>
+        </div>
+        <div class="dialogBody">
+          <div id="confirmBody" class="summary"></div>
+        </div>
+        <div class="dialogFoot">
+          <span class="muted"></span>
+          <div class="row">
+            <button id="confirmCancel" class="secondary" data-i18n="confirmCancel">취소</button>
+            <button id="confirmOk" class="danger" data-i18n="confirmOk">확인</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="marketListDialog" class="dialogBackdrop hidden" role="dialog" aria-modal="true" data-i18n-aria-label="marketListDialogAria">
       <div class="dialogPanel">
         <div class="dialogHead">
           <div>
-            <h3 id="marketListDialogTitle">마켓 리스트 편집</h3>
+            <h3 id="marketListDialogTitle" data-i18n="marketListDialogTitleDefault">마켓 리스트 편집</h3>
             <div id="marketListDialogMeta" class="muted"></div>
           </div>
-          <button id="closeMarketListDialog" class="secondary">닫기</button>
+          <button id="closeMarketListDialog" class="secondary" data-i18n="btnClose">닫기</button>
         </div>
         <div class="dialogBody">
           <div class="marketListMetaGrid">
-            <label class="fieldLabel">표시 이름
+            <label class="fieldLabel"><span data-i18n="marketListFieldName">표시 이름</span>
               <input id="marketListDialogName" />
             </label>
-            <label class="fieldLabel">설명
+            <label class="fieldLabel"><span data-i18n="marketListFieldDesc">설명</span>
               <input id="marketListDialogDesc" />
             </label>
           </div>
           <div class="symbolAddRow">
-            <input id="marketListAddSymbol" placeholder="예: NVDA" />
-            <button id="addMarketListSymbol" class="secondary">추가</button>
+            <input id="marketListAddSymbol" data-i18n-placeholder="marketListAddSymbolPh" placeholder="" />
+            <button id="addMarketListSymbol" class="secondary" data-i18n="btnAdd">추가</button>
           </div>
           <div id="marketListSymbolRows" class="symbolRows"></div>
         </div>
         <div class="dialogFoot">
           <span id="marketListDialogCount" class="muted"></span>
           <div class="row">
-            <button id="cancelMarketListDialog" class="secondary">취소</button>
-            <button id="saveMarketListDialog" class="success">저장</button>
+            <button id="cancelMarketListDialog" class="secondary" data-i18n="confirmCancel">취소</button>
+            <button id="saveMarketListDialog" class="success" data-i18n="btnSave">저장</button>
           </div>
         </div>
       </div>
     </div>
-    <script type="module" src="/admin/app.js?v=2026-04-26-1"></script>
+    <div id="providerEditDialog" class="dialogBackdrop hidden" role="dialog" aria-modal="true" data-i18n-aria-label="providerEditDialogAria">
+      <div class="dialogPanel providerEditDialogPanel">
+        <div class="dialogHead">
+          <div>
+            <h3 id="providerEditDialogTitle" data-i18n="providerEditDialogTitle">Provider 편집</h3>
+            <div id="providerEditDialogMeta" class="muted"></div>
+          </div>
+          <button id="closeProviderEditDialog" class="secondary" data-i18n="btnClose">닫기</button>
+        </div>
+        <div class="dialogBody">
+          <div class="providerEditRows">
+            <label class="switchRow">
+              <input class="switchInput" type="checkbox" id="providerEditEnabled" />
+              <span class="switchUi" aria-hidden="true"></span>
+              <span class="switchLabel" data-i18n="providerEditEnabled">Enabled</span>
+            </label>
+            <label class="fieldLabel" id="providerEditModelRow">
+              <span data-i18n="providerEditDefaultModel">기본 모델</span>
+              <select id="providerEditDefaultModel"></select>
+            </label>
+            <label class="fieldLabel">
+              <span data-i18n="providerEditApiKey">API Key</span>
+              <div class="providerKeyInputRow">
+                <input id="providerEditApiKey" type="password" autocomplete="off" data-i18n-placeholder="providerApiKeyPh" placeholder="" />
+                <button id="toggleProviderEditApiKey" class="secondary compactBtn" type="button" data-i18n="btnShow">보기</button>
+              </div>
+              <div class="muted" style="margin-top:6px" data-i18n="providerEditApiKeyHint">비워두면 기존 키를 유지합니다.</div>
+            </label>
+          </div>
+        </div>
+        <div class="dialogFoot">
+          <span id="providerEditDialogStatus" class="muted"></span>
+          <div class="row">
+            <button id="cancelProviderEditDialog" class="secondary" data-i18n="confirmCancel">취소</button>
+            <button id="deleteProviderEditApiKey" class="danger" data-i18n="providerDeleteKey">키 삭제</button>
+            <button id="saveProviderEditDialog" class="success" data-i18n="btnSave">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="newsSourceAliasDialog" class="dialogBackdrop hidden" role="dialog" aria-modal="true" data-i18n-aria-label="newsSourceAliasDialogAria">
+      <div class="dialogPanel">
+        <div class="dialogHead">
+          <div>
+            <h3 id="newsSourceAliasDialogTitle">별칭 관리</h3>
+            <div id="newsSourceAliasDialogMeta" class="muted"></div>
+          </div>
+          <button id="closeNewsSourceAliasDialog" class="secondary" data-i18n="btnClose">닫기</button>
+        </div>
+        <div class="dialogBody">
+          <div class="symbolAddRow">
+            <input id="newsSourceAliasAdd" data-i18n-placeholder="newsAliasAddPh" placeholder="" />
+            <button id="addNewsSourceAlias" class="secondary" data-i18n="btnAdd">추가</button>
+          </div>
+          <div id="newsSourceAliasRows" class="symbolRows"></div>
+        </div>
+        <div class="dialogFoot">
+          <span id="newsSourceAliasCount" class="muted"></span>
+          <div class="row">
+            <button id="cancelNewsSourceAliasDialog" class="secondary" data-i18n="confirmCancel">취소</button>
+            <button id="saveNewsSourceAliasDialog" class="success" data-i18n="btnSave">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="newsEditDialog" class="dialogBackdrop hidden" role="dialog" aria-modal="true" data-i18n-aria-label="newsEditDialogAria">
+      <div class="dialogPanel newsEditDialogPanel">
+        <div class="dialogHead">
+          <div>
+            <h3 id="newsEditDialogTitle">뉴스 편집</h3>
+            <div id="newsEditDialogMeta" class="muted"></div>
+          </div>
+          <button id="closeNewsEditDialog" class="secondary" data-i18n="btnClose">닫기</button>
+        </div>
+        <div class="dialogBody">
+          <div id="newsEditDialogBody"></div>
+        </div>
+        <div class="dialogFoot">
+          <span id="newsEditDialogStatus" class="muted"></span>
+          <div class="row">
+            <button id="cancelNewsEditDialog" class="secondary" data-i18n="btnClose">닫기</button>
+            <button id="saveNewsEditDialog" class="success" data-i18n="btnSave">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="errorDetailDialog" class="dialogBackdrop hidden" role="dialog" aria-modal="true" data-i18n-aria-label="errorDetailDialogAria">
+      <div class="dialogPanel errorDetailDialogPanel">
+        <div class="dialogHead">
+          <div>
+            <h3 id="errorDetailDialogTitle">오류 정보</h3>
+            <div id="errorDetailDialogMeta" class="muted"></div>
+          </div>
+          <button id="closeErrorDetailDialog" class="secondary" data-i18n="btnClose">닫기</button>
+        </div>
+        <div class="dialogBody">
+          <div id="errorDetailDialogBody"></div>
+        </div>
+        <div class="dialogFoot">
+          <span class="muted"></span>
+          <div class="row">
+            <button id="cancelErrorDetailDialog" class="secondary" data-i18n="btnClose">닫기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/admin/app.js?v=2026-04-28-admin-i18n-appjs"></script>
   </body>
 </html>

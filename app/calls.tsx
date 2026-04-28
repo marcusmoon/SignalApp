@@ -25,7 +25,7 @@ function parseIntParam(v: string | string[] | undefined): number | null {
 
 export default function CallsSummaryScreen() {
   const { theme, scaleFont } = useSignalTheme();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -114,6 +114,7 @@ export default function CallsSummaryScreen() {
         const s = await fetchConcallSummaryForEarningsRow(ticker, rowStub, {
           forceRefresh: !!forceRefresh,
           cacheEnabled: concallEnabled,
+          locale,
         });
         setSummary(s);
       } catch (e) {
@@ -123,7 +124,7 @@ export default function CallsSummaryScreen() {
         setLoading(false);
       }
     },
-    [hasTarget, rowStub, t, ticker],
+    [hasTarget, locale, rowStub, t, ticker],
   );
 
   useEffect(() => {

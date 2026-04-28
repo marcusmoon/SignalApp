@@ -309,6 +309,30 @@ export const ko = {
   callsFiscalYearShort: '연도',
   callsFiscalQuarterShort: '분기',
   callsFiscalAll: '전체',
+  callsFiscalQuarterN: 'Q{{q}}',
+  concallFiscalYearWithAllQuarters: 'FY{{y}} {{all}}',
+  concallEmptyMegaFiscalLine1: '{{fiscalSummary}}에 해당하는 Finnhub 실적 일정이 없습니다(메가캡 목록과 교집합).',
+  concallEmptyMegaFiscalLine2:
+    'Finnhub 무료 플랜은 과거 구간 일정이 비거나 제한될 수 있습니다. 최근 연도·전체 분기로 조회해 보세요.',
+  concallEmptyMegaRollingLine1: '해당 기간에 메가캡 목록과 겹치는 Finnhub 실적 일정이 없습니다.',
+  concallEmptyMegaRollingLine2: '토큰 권한을 확인하거나 필터에서 연도·분기를 조회해 보세요.',
+  concallHintNinjasKeyMissing:
+    '트랜스크립트용 키(EXPO_PUBLIC_API_NINJAS_KEY)가 비어 있습니다. .env에 넣고 Metro를 재시작하세요.',
+  concallHintNinjas401: '인증에 실패했습니다(401). 키가 올바른지 확인하세요.',
+  concallHintNinjas403:
+    '접근이 거부되었습니다(403). 실적콜 트랜스크립트는 유료 전용일 수 있습니다. 구독·권한을 확인하세요.',
+  concallHintNinjas429: '요청 한도에 도달했습니다(429). 잠시 후 다시 시도하세요.',
+  concallHintNinjas404:
+    '요청한 티커·분기 조합을 찾지 못했습니다. DB에 없거나 다른 분기만 제공될 수 있습니다.',
+  concallHintNinjasFutureDate:
+    '이 일정은 아직 발표 전(또는 콜 직후 미반영)일 수 있습니다. 트랜스크립트는 실적콜이 끝난 뒤에 제공되는 경우가 많습니다.',
+  concallHintNinjasPastNoTranscript:
+    '발표일은 지났는데도 없으면, 이 티커·분기 조합이 없거나(소형·일부 종목), 아직 업로드되지 않았을 수 있습니다. 대형주 위주로 커버되는 경우가 많습니다.',
+  concallHintNinjasGeneric: '네트워크와 API 키를 확인하세요. 테스트 시 AAPL·MSFT 등 대형주로 바꿔 보세요.',
+  concallFallbackTranscriptNotFound: '해당 티커의 실적콜 트랜스크립트를 찾지 못했습니다.',
+  concallFallbackSummaryFailed: '요약 중 오류가 발생했습니다.',
+  concallGuidanceEarningsDate: '예정/발표일: {{date}} ({{hour}})',
+  concallQuarterRecentFallback: '최근',
   callsModalFiscalLead:
     '회계연도·분기를 설정한 뒤 조회합니다. 실적 범위(메가캡/관심종목)는 표시 설정에서 바꿀 수 있습니다.',
   callsFilterQuery: '조회',
@@ -349,6 +373,7 @@ export const ko = {
   symbolDetailEarningsMetrics: 'EPS 추정/실적 {{epsEst}} / {{epsAct}} · 매출 추정/실적 {{revEst}} / {{revAct}}',
   symbolDetailEarningsFootnote: '어닝 요약은 AI·트랜스크립트 기반이며, 예정 분기는 자료가 없을 수 있습니다.',
   symbolDetailEarningsOpenSummaryA11y: '{{date}} FY{{fy}} Q{{q}} 어닝 요약',
+  symbolDetailEarningsFyQuarterDate: 'FY{{fy}} Q{{q}} · {{date}}',
   symbolDetailPriceUnavailable: '시세 없음',
   symbolDetailCompanyUnknown: '회사 정보 없음',
   symbolDetailMarketCap: '시가총액',
@@ -407,6 +432,7 @@ export const ko = {
   briefingEarnHourBmo: '장전',
   briefingEarnHourAmc: '장후',
   briefingWeekEarningsTitle: '7일 내 실적 일정',
+  fiscalYearQuarterShort: 'FY{{y}} Q{{q}}',
   briefingWeekEarningsEmpty: '7일 안에 예정된 관심 종목 실적이 없습니다.',
   briefingNoUpcomingEarning: '예정된 실적이 없거나 캘린더에 없습니다.',
   briefingRecentNewsLabel: '최근 뉴스',

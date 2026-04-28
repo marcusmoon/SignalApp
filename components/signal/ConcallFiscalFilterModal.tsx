@@ -53,13 +53,13 @@ export function ConcallFiscalFilterModal({
     () =>
       ([0, 1, 2, 3, 4] as const).map((q) => ({
         value: q as FiscalQuarterFilter,
-        label: q === 0 ? t('callsFiscalAll') : `Q${q}`,
+        label: q === 0 ? t('callsFiscalAll') : t('callsFiscalQuarterN', { q }),
       })),
     [t],
   );
 
   const quarterLabel =
-    draft.fiscalQuarter === 0 ? t('callsFiscalAll') : `Q${draft.fiscalQuarter}`;
+    draft.fiscalQuarter === 0 ? t('callsFiscalAll') : t('callsFiscalQuarterN', { q: draft.fiscalQuarter });
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>

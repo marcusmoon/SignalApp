@@ -530,7 +530,7 @@ export default function BriefingScreen() {
                         {r.symbol}
                       </Text>
                       <Text style={styles.weekChipMeta} numberOfLines={1}>
-                        FY{r.year} Q{r.quarter}
+                        {t('fiscalYearQuarterShort', { y: r.year, q: r.quarter })}
                       </Text>
                     </Pressable>
                   ))}

@@ -379,9 +379,19 @@ async function serveAdmin(res) {
 }
 
 async function serveAdminStatic(res, pathname) {
-  const safeName = path.basename(pathname);
-  const file = path.join(config.rootDir, 'src', 'public', 'admin', safeName);
+  const rel = String(pathname || '').replace(/^\/admin\//, '');
+  const normalized = path.normalize(rel);
+  // Prevent path traversal and enforce that it stays within /admin.
+  if (!normalized || normalized.startsWith('..') || path.isAbsolute(normalized)) {
+    json(res, 404, { error: 'NOT_FOUND' });
+    return;
+  }
+  const file = path.join(config.rootDir, 'src', 'public', 'admin', normalized);
   const ext = path.extname(file);
+  if (ext !== '.js' && ext !== '.css') {
+    json(res, 404, { error: 'NOT_FOUND' });
+    return;
+  }
   const body = await fs.readFile(file);
   const contentType = ext === '.css' ? 'text/css; charset=utf-8' : 'text/javascript; charset=utf-8';
   res.writeHead(200, { 'content-type': contentType, 'cache-control': 'no-store' });
@@ -535,7 +545,7 @@ export async function handleRequest(req, res) {
       return;
     }
 
-    if (req.method === 'GET' && /^\/admin\/[a-zA-Z0-9_-]+\.(?:js|css)$/.test(pathname)) {
+    if (req.method === 'GET' && /^\/admin\/.+\.(?:js|css)$/.test(pathname) && !pathname.includes('..')) {
       await serveAdminStatic(res, pathname);
       return;
     }

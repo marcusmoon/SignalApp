@@ -5,6 +5,80 @@ import { closeConfirm, confirmState, openConfirm } from './modal.js';
 import { $, state } from './state.js';
 import { applyTheme } from './theme.js';
 import { dismissToast, showToast } from './toast.js';
+import { loadDashboardView } from './views/dashboard.js';
+import { loadJobsView, loadJobRunsView } from './views/jobs.js';
+import { loadErrorsView, loadMonitoringView } from './views/monitoring.js';
+import {
+  closeNewsEditDialog as closeNewsEditDialogView,
+  loadNewsView,
+  loadYoutubeView,
+  openNewsEditDialog as openNewsEditDialogView,
+  renderNewsEditDialog as renderNewsEditDialogView,
+  selectedNewsIds as selectedNewsIdsView,
+  selectedYoutubeIds as selectedYoutubeIdsView,
+  updateNewsSelectionInfo as updateNewsSelectionInfoView,
+  updateYoutubeSelectionInfo as updateYoutubeSelectionInfoView,
+} from './views/content.js';
+import {
+  defaultModelForProvider as defaultModelForProviderView,
+  loadMarketListsView,
+  loadProviderSettingsView,
+  loadTranslationSettingsView,
+  loadUiModelPresetsView,
+  refreshTranslationTestModels as refreshTranslationTestModelsView,
+  renderUiModelPresetsEditorView,
+} from './views/settings.js';
+import {
+  initCalendarMonthIfNeeded as initCalendarMonthIfNeededView,
+  loadCalendarView,
+  renderAdminCalendarGrid as renderAdminCalendarGridView,
+  renderCalendarDayTable as renderCalendarDayTableView,
+  shiftCalendarMonth as shiftCalendarMonthView,
+} from './views/calendar.js';
+import {
+  closeNewsSourceAliasDialogView,
+  loadNewsSourceSettingsView,
+  loadNewsSourcesView,
+  openNewsSourceAliasDialogView,
+  renderNewsSourceAliasDialogView,
+  renderNewsSourcesView,
+  saveNewsSourceAliasesFromDialogView,
+  saveNewsSourceSettingsView,
+  saveNewsSourcesView,
+} from './views/newsSources.js';
+import {
+  closeMarketListDialogView,
+  openMarketListDialogView,
+  renderMarketListDialogView,
+  syncMarketListDraftFromInputsView,
+} from './views/marketLists.js';
+import { closeErrorDetailDialogView, openErrorDetailDialogView } from './views/dialogs.js';
+import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from './views/search.js';
+
+      function getUrlParam(key) {
+        try {
+          return new URLSearchParams(window.location.search).get(key);
+        } catch {
+          return null;
+        }
+      }
+
+      function setUrlParam(key, value) {
+        try {
+          const url = new URL(window.location.href);
+          if (value == null || value === '') url.searchParams.delete(key);
+          else url.searchParams.set(key, String(value));
+          window.history.replaceState({}, '', url.toString());
+        } catch {
+          // ignore
+        }
+      }
+
+      function normalizeAdminLang(value) {
+        const v = String(value || '').trim().toLowerCase();
+        if (v === 'ko' || v === 'en' || v === 'ja') return v;
+        return null;
+      }
 
       function jobRunRowSelectKey(run) {
         const id = String(run?.id || '').trim();
@@ -26,33 +100,8 @@ import { dismissToast, showToast } from './toast.js';
         return keys;
       }
 
-      function uniq(arr) {
-        const out = [];
-        for (const v of arr || []) {
-          const s = String(v || '').trim();
-          if (!s) continue;
-          if (!out.includes(s)) out.push(s);
-        }
-        return out;
-      }
-
-      function modelPresetsForProvider(provider, defaultModel) {
-        const p = String(provider || '').trim().toLowerCase();
-        const fromSettings = state.uiModelPresets && typeof state.uiModelPresets === 'object' ? state.uiModelPresets[p] : null;
-        const base = Array.isArray(fromSettings) ? fromSettings : [];
-        return uniq([defaultModel, ...base]);
-      }
-
       function defaultModelForProvider(provider, providerSettings = state.providerSettings) {
-        const p = String(provider || '').trim().toLowerCase();
-        const configured = (providerSettings || []).find((x) => x.provider === p)?.defaultModel || '';
-        const presets = modelPresetsForProvider(p, configured);
-        return configured || presets[0] || '';
-      }
-
-      function renderModelOptions(options, selected) {
-        const sel = String(selected || '');
-        return (options || []).map((m) => `<option value="${esc(m)}" ${m === sel ? 'selected' : ''}>${esc(m)}</option>`).join('');
+        return defaultModelForProviderView({ provider, providerSettings, uiModelPresets: state.uiModelPresets });
       }
 
       function renderTableSkeleton({ cols = 6, rows = 5 } = {}) {
@@ -72,15 +121,7 @@ import { dismissToast, showToast } from './toast.js';
       }
 
       function refreshTranslationTestModels(providerSettings) {
-        const provider = $('translationTestProvider')?.value || 'mock';
-        const defaultModel =
-          (providerSettings || []).find((p) => p.provider === provider)?.defaultModel || '';
-        const models = modelPresetsForProvider(provider, defaultModel);
-        const current = $('translationTestModel')?.value || '';
-        if ($('translationTestModel')) {
-          $('translationTestModel').innerHTML =
-            models.length > 0 ? renderModelOptions(models, models.includes(current) ? current : (defaultModel || models[0])) : '<option value="">-</option>';
-        }
+        return refreshTranslationTestModelsView({ providerSettings, uiModelPresets: state.uiModelPresets, $, esc });
       }
 
       function setDatePresetFor(prefix) {
@@ -153,12 +194,6 @@ import { dismissToast, showToast } from './toast.js';
         market: '💹',
       };
 
-      const newsEditLocales = [
-        { locale: 'en', labelKey: 'localeOriginalEnglish' },
-        { locale: 'ko', labelKey: 'localeKorean' },
-        { locale: 'ja', labelKey: 'localeJapanese' },
-      ];
-
       function jobDisplayName(job) {
         return job.displayName || job.jobKey;
       }
@@ -221,42 +256,23 @@ import { dismissToast, showToast } from './toast.js';
       }
 
       function openErrorDetailDialog(key) {
-        const run = runRowByKey(key);
-        if (!run) return;
-        $('errorDetailDialog').classList.remove('hidden');
-        $('errorDetailDialogTitle').textContent = textFor('errorDetailTitle');
-        $('errorDetailDialogMeta').textContent = textForVars('errorDetailMeta', {
-          job: run.displayName || run.jobKey || '-',
-          status: run.status || '-',
-          time: formatDateTime(run.finishedAt || run.startedAt),
+        return openErrorDetailDialogView({
+          key,
+          $,
+          textFor,
+          textForVars,
+          esc,
+          formatDateTime,
+          formatDuration,
+          runRowByKey,
+          operationBadge,
+          domainBadge,
+          providerBadge,
         });
-        $('errorDetailDialogBody').innerHTML = `
-          <div class="errorDetailBody">
-            <section class="errorDetailSection">
-              <div class="cardKicker">${esc(textFor('errorDetailMessage'))}</div>
-              <pre class="errorDetailMessage">${esc(run.errorMessage || '-')}</pre>
-            </section>
-            <section class="errorDetailSection">
-              <div class="cardKicker">${esc(textFor('errorDetailContext'))}</div>
-              <div class="errorDetailGrid">
-                <span>${esc(textFor('colJob'))}</span><strong>${esc(run.displayName || run.jobKey || '-')}</strong>
-                <span>jobKey</span><code>${esc(run.jobKey || '-')}</code>
-                <span>${esc(textFor('colOperation'))}</span><div>${operationBadge(run.operation)}</div>
-                <span>${esc(textFor('colDomain'))}</span><div>${domainBadge(run.domain || run.resultKind)}</div>
-                <span>${esc(textFor('colProvider'))}</span><div>${providerBadge(run.provider)}</div>
-                <span>${esc(textFor('colTrigger'))}</span><strong>${esc(run.trigger || '-')}</strong>
-                <span>${esc(textFor('colItems'))}</span><strong>${esc(run.itemCount ?? 0)}</strong>
-                <span>${esc(textFor('colDuration'))}</span><strong>${esc(formatDuration(run.durationMs))}</strong>
-                <span>${esc(textFor('colStarted'))}</span><strong>${esc(formatDateTime(run.startedAt))}</strong>
-                <span>${esc(textFor('colFinished'))}</span><strong>${esc(formatDateTime(run.finishedAt))}</strong>
-              </div>
-            </section>
-          </div>
-        `;
       }
 
       function closeErrorDetailDialog() {
-        $('errorDetailDialog')?.classList.add('hidden');
+        return closeErrorDetailDialogView({ $ });
       }
 
 
@@ -441,37 +457,13 @@ import { dismissToast, showToast } from './toast.js';
         }
       }
 
-      const searchIndex = { builtAt: 0, items: [] };
+      const searchIndex = createSearchIndex();
       function buildSearchIndex() {
-        const items = [];
-        document.querySelectorAll('[data-view]').forEach((btn) => {
-          const view = btn.getAttribute('data-view');
-          const label = btn.textContent?.trim();
-          if (!view || !label) return;
-          items.push({ kind: 'menu', label, detail: 'menu', action: () => switchView(view) });
-        });
-        for (const job of state.jobs || []) {
-          const label = jobDisplayName(job);
-          items.push({ kind: 'job', label, detail: job.jobKey, action: async () => { await switchView('jobs'); setJobTab('info'); } });
-        }
-        searchIndex.items = items;
-        searchIndex.builtAt = Date.now();
+        return buildSearchIndexView({ searchIndex, state, jobDisplayName, switchView, setJobTab });
       }
 
       function renderSearchResults(q) {
-        const query = String(q || '').trim().toLowerCase();
-        if (!query) return `<div class="muted">${esc(textFor('searchPrompt'))}</div>`;
-        const hits = (searchIndex.items || [])
-          .map((it, index) => ({ it, index }))
-          .filter(({ it }) => `${it.label} ${it.detail}`.toLowerCase().includes(query))
-          .slice(0, 24);
-        if (hits.length === 0) return `<div class="muted">${esc(textFor('searchNoHits'))}</div>`;
-        return hits.map(({ it, index }) => `
-          <button class="secondary" style="width:100%;text-align:left" data-search-hit="${index}">
-            <strong>${esc(it.label)}</strong><br/>
-            <span class="muted">${esc(it.detail || it.kind)}</span>
-          </button>
-        `).join('');
+        return renderSearchResultsView({ q, searchIndex, esc, textFor });
       }
 
       function runButton(jobKey, label) {
@@ -480,453 +472,70 @@ import { dismissToast, showToast } from './toast.js';
       }
 
       async function loadMonitoring() {
-        if (!$('monitoring')) return;
-        const summary = (await api('/admin/api/summary')).data;
-        const runsAll = summary.recentRuns || [];
-        const opRuns = state.operationFilter === 'all' ? runsAll : runsAll.filter((r) => (r.operation || 'latest') === state.operationFilter);
-        const runs = [...opRuns].sort((a, b) => {
-          if (state.monitoringSort === 'name') {
-            const an = String(a.displayName || a.jobKey || '').toLowerCase();
-            const bn = String(b.displayName || b.jobKey || '').toLowerCase();
-            return an.localeCompare(bn);
-          }
-          const at = new Date(a.finishedAt || a.startedAt || 0).getTime();
-          const bt = new Date(b.finishedAt || b.startedAt || 0).getTime();
-          return state.monitoringSort === 'oldest' ? (at - bt) : (bt - at);
+        return loadMonitoringView({
+          api,
+          $,
+          state,
+          esc,
+          textFor,
+          formatDateTime,
+          operationBadge,
+          providerBadge,
+          domainBadge,
+          runStatusPill,
+          runButton,
         });
-        const stale = runs.filter((r) => r.stale);
-        $('monitoring').innerHTML = `
-          <div class="statGrid wideStats">
-            <div class="stat"><div class="statLabel muted"><span class="statIcon">R</span>${esc(textFor('statRecentRuns'))}</div><div class="statNum">${runs.length}</div></div>
-            <div class="stat"><div class="statLabel muted"><span class="statIcon">S</span>${esc(textFor('statStale'))}</div><div class="statNum">${stale.length}</div></div>
-            <div class="stat"><div class="statLabel muted"><span class="statIcon">J</span>${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
-            <div class="stat"><div class="statLabel muted"><span class="statIcon">!</span>${esc(textFor('statRecentFailures'))}</div><div class="statNum">${summary.counts.recentFailedRuns}</div></div>
-          </div>
-          <div class="card card--elevated" style="margin-top:12px">
-            <div class="cardHead">
-              <div class="cardHeadMain">
-                <div class="cardKicker">${esc(textFor('pageMonitoringTitle'))}</div>
-                <div class="cardHint">${esc(textFor('sectionRecentRuns'))}</div>
-              </div>
-              <div class="cardHeadActions">
-                <div class="tabs" style="margin:0">
-                  <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">${esc(textFor('tabAll'))}</button>
-                  <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">${esc(textFor('tabLatest'))}</button>
-                  <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">${esc(textFor('tabReconcile'))}</button>
-                </div>
-                <select id="monitoringSort" style="min-width:140px">
-                  <option value="newest" ${state.monitoringSort === 'newest' ? 'selected' : ''}>${esc(textFor('sortNewest'))}</option>
-                  <option value="oldest" ${state.monitoringSort === 'oldest' ? 'selected' : ''}>${esc(textFor('sortOldest'))}</option>
-                  <option value="name" ${state.monitoringSort === 'name' ? 'selected' : ''}>${esc(textFor('sortName'))}</option>
-                </select>
-                <button class="secondary" id="refreshMonitoringBtn">${esc(textFor('btnRefresh'))}</button>
-              </div>
-            </div>
-            <table class="settingsTable">
-              <thead>
-                <tr>
-                  <th>${esc(textFor('colJob'))}</th>
-                  <th>${esc(textFor('colStatus'))}</th>
-                  <th>${esc(textFor('colOperation'))}</th>
-                  <th>${esc(textFor('colDomain'))}</th>
-                  <th>${esc(textFor('colProvider'))}</th>
-                  <th class="right">${esc(textFor('colItems'))}</th>
-                  <th>${esc(textFor('colFinished'))}</th>
-                  <th class="center">${esc(textFor('colAction'))}</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${runs.length === 0
-                  ? `<tr><td colspan="8" class="muted">${esc(textFor('monitoringEmpty'))}</td></tr>`
-                  : runs.map((run) => `
-                    <tr class="${run.stale ? 'staleRow' : ''}">
-                      <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-                      <td>${runStatusPill(run.status, !!run.stale)}</td>
-                      <td>${operationBadge(run.operation)}</td>
-                      <td>${domainBadge(run.domain || run.resultKind)}</td>
-                      <td>${providerBadge(run.provider)}</td>
-                      <td class="right">${run.itemCount ?? 0}</td>
-                      <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
-                      <td class="center">
-                        <div class="dataTableActions">
-                          ${runButton(run.jobKey, textFor('btnNowRun'))}
-                          <button class="secondary" data-open-job-log="${esc(run.jobKey)}">${esc(textFor('btnLogErrors'))}</button>
-                        </div>
-                      </td>
-                    </tr>
-                  `).join('')}
-              </tbody>
-            </table>
-            <div class="cardFoot">
-              <div class="muted">${esc(textFor('tipSlowJobs'))}</div>
-            </div>
-          </div>
-        `;
       }
 
       async function loadErrors() {
-        if (!$('errors')) return;
-        const body = await api(`/admin/api/job-runs?${new URLSearchParams({ status: 'failed', pageSize: '30', page: '1' }).toString()}`);
-        const all = Array.isArray(body.data) ? body.data : [];
-        const filtered = state.operationFilter === 'all' ? all : all.filter((r) => (r.operation || 'latest') === state.operationFilter);
-        state.errorRows = filtered;
-        $('errors').innerHTML = `
-          <div class="tabs" style="margin-bottom:10px">
-            <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">${esc(textFor('tabAll'))}</button>
-            <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">${esc(textFor('tabLatest'))}</button>
-            <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">${esc(textFor('tabReconcile'))}</button>
-          </div>
-        ` + (filtered.length === 0
-          ? `<p class="muted">${esc(textFor('errorsEmpty'))}</p>`
-          : `
-              <table>
-                <thead>
-                  <tr>
-                    <th>${esc(textFor('colJob'))}</th>
-                    <th>${esc(textFor('colStatus'))}</th>
-                    <th>${esc(textFor('colRunInfo'))}</th>
-                    <th>${esc(textFor('colTiming'))}</th>
-                    <th class="center">${esc(textFor('colAction'))}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${filtered.map((run) => `
-                    <tr>
-                      <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-                      <td>${runStatusPill(run.status, false)}</td>
-                      <td>
-                        <div class="runMetaStack">
-                          ${operationBadge(run.operation)}
-                          ${domainBadge(run.domain || run.resultKind)}
-                          ${providerBadge(run.provider)}
-                          <span class="pill">${esc(run.trigger || '-')}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <strong>${esc(formatDuration(run.durationMs))}</strong><br/>
-                        <span class="muted">${esc(formatDateTime(run.startedAt))}</span>
-                      </td>
-                      <td class="center">
-                        <div class="dataTableActions">
-                          ${runErrorButton(run)}
-                          ${runButton(run.jobKey, textFor('btnRetry'))}
-                        </div>
-                      </td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            `);
+        return loadErrorsView({
+          api,
+          $,
+          state,
+          esc,
+          textFor,
+          formatDateTime,
+          formatDuration,
+          operationBadge,
+          providerBadge,
+          domainBadge,
+          runStatusPill,
+          runErrorButton,
+          runButton,
+        });
       }
 
       async function loadDashboard() {
-        const summary = (await api('/admin/api/summary')).data;
-        const allRuns = Array.isArray(summary.recentRuns) ? summary.recentRuns : [];
-        const latestNews = Array.isArray(summary.latestNews) ? summary.latestNews : [];
-        const latestYoutube = Array.isArray(summary.latestYoutube) ? summary.latestYoutube : [];
-        const limit = Math.max(3, Math.min(10, Number(state.dashboardLimit) || 5));
-        const op = state.dashboardOperationFilter === 'reconcile' ? 'reconcile' : 'latest';
-        const opFiltered = allRuns.filter((r) => (r.operation || 'latest') === op);
-        const sorted = [...opFiltered]
-          .sort((a, b) => new Date(b.finishedAt || b.startedAt || 0).getTime() - new Date(a.finishedAt || a.startedAt || 0).getTime())
-          .slice(0, limit);
-        const staleCount = allRuns.filter((r) => r.stale).length;
-        const failedCount = allRuns.filter((r) => String(r.status) === 'failed').length;
-        const newsRows = latestNews.slice(0, limit);
-        const youtubeRows = latestYoutube.slice(0, limit);
-        $('dashboard').innerHTML = `
-          <div class="statGrid wideStats">
-            <div class="stat"><div class="statLabel muted"><span class="statIcon">N</span>${esc(textFor('statNews'))}</div><div class="statNum">${summary.counts.news}</div></div>
-            <div class="stat"><div class="statLabel muted"><span class="statIcon">C</span>${esc(textFor('statCalendar'))}</div><div class="statNum">${summary.counts.calendar}</div></div>
-            <div class="stat"><div class="statLabel muted"><span class="statIcon">Y</span>${esc(textFor('statYoutube'))}</div><div class="statNum">${summary.counts.youtube}</div></div>
-            <div class="stat"><div class="statLabel muted"><span class="statIcon">Q</span>${esc(textFor('statQuotes'))}</div><div class="statNum">${summary.counts.marketQuotes || 0}</div></div>
-            <div class="stat"><div class="statLabel muted"><span class="statIcon">B</span>${esc(textFor('statCoins'))}</div><div class="statNum">${summary.counts.coinMarkets || 0}</div></div>
-            <div class="stat"><div class="statLabel muted"><span class="statIcon">J</span>${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
-          </div>
-          <div class="dashboardToolbar">
-            <div>
-              <div class="cardKicker">${esc(textFor('dashboardOverviewTitle'))}</div>
-              <div class="cardHint">${esc(textForVars('dashboardOverviewHint', { count: String(limit) }))}</div>
-            </div>
-            <label class="fieldLabel dashboardLimit">${esc(textFor('dashboardLimitLabel'))}
-              <select id="dashboardLimit">
-                ${[3, 5, 10].map((n) => `<option value="${n}" ${limit === n ? 'selected' : ''}>${n}</option>`).join('')}
-              </select>
-            </label>
-          </div>
-          <div class="dashboardGrid">
-            <section class="card card--elevated dashboardPanel">
-              <div class="cardHead">
-                <div class="cardHeadMain">
-                  <div class="cardKicker">${esc(textFor('dashboardNewsTitle'))}</div>
-                  <div class="cardHint">${esc(textFor('dashboardNewsHint'))}</div>
-                </div>
-                <button class="secondary" data-view="news">${esc(textFor('btnOpenList'))}</button>
-              </div>
-              <div class="dashboardList">
-                ${newsRows.map((item) => `
-                  <article class="dashboardListItem">
-                    <div class="dashboardItemMain">
-                      <div class="dashboardItemTitle">${esc(item.title || '-')}</div>
-                      <div class="dashboardItemMeta">
-                        <span>${esc(item.sourceName || '-')}</span>
-                        <span>${esc(item.category || '-')}</span>
-                        <span>${esc(formatDateTime(item.publishedAt))}</span>
-                      </div>
-                    </div>
-                    <button class="secondary compactBtn" data-dashboard-news-title="${esc(item.title || '')}">${esc(textFor('btnDetail'))}</button>
-                  </article>
-                `).join('') || `<p class="muted">${esc(textFor('dashboardEmpty'))}</p>`}
-              </div>
-            </section>
-            <section class="card card--elevated dashboardPanel">
-              <div class="cardHead">
-                <div class="cardHeadMain">
-                  <div class="cardKicker">${esc(textFor('dashboardYoutubeTitle'))}</div>
-                  <div class="cardHint">${esc(textFor('dashboardYoutubeHint'))}</div>
-                </div>
-                <button class="secondary" data-view="youtube">${esc(textFor('btnOpenList'))}</button>
-              </div>
-              <div class="dashboardList">
-                ${youtubeRows.map((item) => `
-                  <article class="dashboardListItem dashboardListItem--media">
-                    <img src="${esc(item.thumbnailUrl || '')}" alt="" />
-                    <div class="dashboardItemMain">
-                      <div class="dashboardItemTitle">${esc(item.title || '-')}</div>
-                      <div class="dashboardItemMeta">
-                        <span>${esc(item.channel || '-')}</span>
-                        <span>${Number(item.viewCount || 0).toLocaleString()} views</span>
-                        <span>${esc(formatDateTime(item.publishedAt))}</span>
-                      </div>
-                    </div>
-                    <button class="secondary compactBtn" data-dashboard-youtube-title="${esc(item.title || '')}">${esc(textFor('btnDetail'))}</button>
-                  </article>
-                `).join('') || `<p class="muted">${esc(textFor('dashboardEmpty'))}</p>`}
-              </div>
-            </section>
-          </div>
-          <div class="card card--elevated dashboardPanel" style="margin-top:12px">
-            <div class="cardHead">
-              <div class="cardHeadMain">
-                <div class="cardKicker">${esc(textFor('dashboardJobsTitle'))}</div>
-                <div class="cardHint"></div>
-              </div>
-              <div class="cardHeadActions">
-                <div class="dashboardJobsHint">${esc(textForVars('dashboardJobsHint', { failed: String(failedCount), stale: String(staleCount) }))}</div>
-                <div class="tabs" style="margin:0">
-                  <button class="tabBtn ${op === 'latest' ? 'active' : ''}" data-dashboard-op="latest">${esc(textFor('tabLatest'))}</button>
-                  <button class="tabBtn ${op === 'reconcile' ? 'active' : ''}" data-dashboard-op="reconcile">${esc(textFor('tabReconcile'))}</button>
-                </div>
-              </div>
-            </div>
-            <table class="settingsTable dashboardRunsTable">
-              <thead>
-                <tr>
-                  <th>${esc(textFor('colJob'))}</th>
-                  <th>${esc(textFor('colStatus'))}</th>
-                  <th>${esc(textFor('colRunInfo'))}</th>
-                  <th class="right">${esc(textFor('colItems'))}</th>
-                  <th>${esc(textFor('colFinished'))}</th>
-                  <th class="center">${esc(textFor('colAction'))}</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${sorted.map((run) => `
-                  <tr class="${run.stale ? 'staleRow' : ''}">
-                    <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-                    <td>${runStatusPill(run.status, !!run.stale)}</td>
-                    <td>
-                      <div class="runMetaStack">
-                        ${operationBadge(run.operation)}
-                        ${domainBadge(run.domain || run.resultKind)}
-                        ${providerBadge(run.provider)}
-                      </div>
-                    </td>
-                    <td class="right">${run.itemCount ?? 0}</td>
-                    <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
-                    <td class="center">
-                      <div class="dataTableActions">
-                        <button class="secondary" data-open-job="${esc(run.jobKey)}">${esc(textFor('btnSettings'))}</button>
-                        <button class="secondary" data-open-job-log="${esc(run.jobKey)}">${esc(textFor('btnLog'))}</button>
-                      </div>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-            ${sorted.length === 0 ? `<p class="muted" style="margin-top:10px">${esc(textFor('jobRunsEmpty'))}</p>` : ''}
-          </div>
-        `;
+        return loadDashboardView({
+          api,
+          $,
+          state,
+          esc,
+          textFor,
+          textForVars,
+          formatDateTime,
+          operationBadge,
+          providerBadge,
+          domainBadge,
+          runStatusPill,
+        });
       }
 
       async function loadJobs() {
-        const body = await api('/admin/api/jobs');
-        state.jobs = body.data;
-        if ($('jobRunJob')) {
-          const current = $('jobRunJob').value;
-          $('jobRunJob').innerHTML = `<option value="">${esc(textFor('jobListAllJobsOption'))}</option>` + body.data.map((job) => `
-            <option value="${esc(job.jobKey)}">${esc(jobDisplayName(job))}</option>
-          `).join('');
-          $('jobRunJob').value = current;
-        }
-        const jobsAll = body.data;
-        let jobsFiltered = state.operationFilter === 'all'
-          ? jobsAll
-          : jobsAll.filter((j) => (j.operation || 'latest') === state.operationFilter);
-
-        if (state.jobListEnabled === 'enabled') jobsFiltered = jobsFiltered.filter((j) => !!j.enabled);
-        if (state.jobListEnabled === 'disabled') jobsFiltered = jobsFiltered.filter((j) => !j.enabled);
-        if (state.jobListDomain !== 'all') jobsFiltered = jobsFiltered.filter((j) => (j.domain || 'other') === state.jobListDomain);
-        if (state.jobListProvider !== 'all') jobsFiltered = jobsFiltered.filter((j) => String(j.provider || '') === state.jobListProvider);
-        const q = String(state.jobListQuery || '').trim().toLowerCase();
-        if (q) {
-          jobsFiltered = jobsFiltered.filter((j) => {
-            const hay = `${j.jobKey} ${j.displayName || ''} ${j.description || ''} ${j.provider || ''} ${j.domain || ''}`.toLowerCase();
-            return hay.includes(q);
-          });
-        }
-        jobsFiltered = [...jobsFiltered].sort((a, b) => {
-          if (state.jobListSort === 'lastRunDesc') {
-            const at = new Date(a.lastRunAt || 0).getTime();
-            const bt = new Date(b.lastRunAt || 0).getTime();
-            return bt - at;
-          }
-          if (state.jobListSort === 'intervalAsc') return Number(a.intervalSeconds || 0) - Number(b.intervalSeconds || 0);
-          const an = String(jobDisplayName(a) || '').toLowerCase();
-          const bn = String(jobDisplayName(b) || '').toLowerCase();
-          return an.localeCompare(bn);
+        return loadJobsView({
+          api,
+          $,
+          state,
+          esc,
+          textFor,
+          jobDisplayName,
+          jobGroupTitle,
+          operationBadge,
+          domainBadge,
+          providerBadge,
+          jobIntervalLabel,
+          formatDateTime,
         });
-
-        const groups = new Map();
-        for (const job of jobsFiltered) {
-          const key = job.domain || 'other';
-          if (!groups.has(key)) groups.set(key, []);
-          groups.get(key).push(job);
-        }
-        const domains = [...new Set(jobsAll.map((j) => j.domain || 'other'))];
-        const providers = [...new Set(jobsAll.map((j) => j.provider).filter(Boolean))];
-        $('jobs').innerHTML = `
-          <div class="filterBar filterBox">
-            <div class="filterBarTitle filterBoxTitle">${esc(textFor('filterSearchConditions'))}</div>
-            <div class="filterBarControls toolbar">
-              <div class="tabs" style="margin:0">
-                <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">${esc(textFor('tabAll'))}</button>
-                <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">${esc(textFor('tabLatest'))}</button>
-                <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">${esc(textFor('tabReconcile'))}</button>
-              </div>
-              <select id="jobListEnabled">
-                <option value="all" ${state.jobListEnabled === 'all' ? 'selected' : ''}>${esc(textFor('jobListEnabledAll'))}</option>
-                <option value="enabled" ${state.jobListEnabled === 'enabled' ? 'selected' : ''}>${esc(textFor('jobListEnabledOn'))}</option>
-                <option value="disabled" ${state.jobListEnabled === 'disabled' ? 'selected' : ''}>${esc(textFor('jobListEnabledOff'))}</option>
-              </select>
-              <select id="jobListDomain">
-                <option value="all">${esc(textFor('jobListDomainAll'))}</option>
-                ${domains.map((d) => `<option value="${esc(d)}" ${state.jobListDomain === d ? 'selected' : ''}>${esc(jobGroupTitle(d))}</option>`).join('')}
-              </select>
-              <select id="jobListProvider">
-                <option value="all">${esc(textFor('jobListProviderAll'))}</option>
-                ${providers.map((p) => `<option value="${esc(p)}" ${state.jobListProvider === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}
-              </select>
-              <input id="jobListQuery" class="wide" placeholder="${esc(textFor('jobListQueryPlaceholder'))}" value="${esc(state.jobListQuery)}" />
-              <select id="jobListSort">
-                <option value="name" ${state.jobListSort === 'name' ? 'selected' : ''}>${esc(textFor('jobListSortName'))}</option>
-                <option value="lastRunDesc" ${state.jobListSort === 'lastRunDesc' ? 'selected' : ''}>${esc(textFor('jobListSortLastRun'))}</option>
-                <option value="intervalAsc" ${state.jobListSort === 'intervalAsc' ? 'selected' : ''}>${esc(textFor('jobListSortInterval'))}</option>
-              </select>
-              <button class="secondary" id="jobListReset">${esc(textFor('btnResetQuery'))}</button>
-            </div>
-          </div>
-          <div class="card">
-            <table class="settingsTable">
-              <thead>
-                <tr>
-                  <th>${esc(textFor('colJob'))}</th>
-                  <th>${esc(textFor('colStatus'))}</th>
-                  <th>${esc(textFor('colOperation'))}</th>
-                  <th>${esc(textFor('colDomain'))}</th>
-                  <th>${esc(textFor('colProvider'))}</th>
-                  <th class="right">${esc(textFor('colInterval'))}</th>
-                  <th>${esc(textFor('colLastRun'))}</th>
-                  <th class="center">${esc(textFor('colAction'))}</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${jobsFiltered.map((job) => `
-                  <tr>
-                    <td>
-                      <strong>${esc(jobDisplayName(job))}</strong><br/>
-                      <span class="muted">${esc(job.jobKey)}</span>
-                      ${job.description ? `<div class="muted" style="margin-top:4px">${esc(job.description)}</div>` : ''}
-                    </td>
-                    <td><span class="pill">${job.enabled ? esc(textFor('jobStatusEnabled')) : esc(textFor('jobStatusDisabled'))}</span></td>
-                    <td>${operationBadge(job.operation)}</td>
-                    <td>${domainBadge(job.domain)}</td>
-                    <td>${providerBadge(job.provider)}</td>
-                    <td class="right">${esc(jobIntervalLabel(job.intervalSeconds))}</td>
-                    <td class="muted">${formatDateTime(job.lastRunAt)}</td>
-                    <td class="center">
-                      <div class="dataTableActions">
-                        <button data-job-run="${esc(job.jobKey)}" class="success">${esc(textFor('btnRun'))}</button>
-                        <button class="secondary" data-job-edit-open="${esc(job.jobKey)}">${esc(textFor('jobOpenSettings'))}</button>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr class="hidden" data-job-edit-row="${esc(job.jobKey)}">
-                    <td colspan="8">
-                      <div class="card" style="margin:6px 0 0">
-                        <div class="row" style="justify-content:space-between">
-                          <strong>${esc(textFor('jobEditPanelTitle'))}</strong>
-                          <button class="secondary" data-job-edit-close="${esc(job.jobKey)}">${esc(textFor('btnClose'))}</button>
-                        </div>
-                        <div class="jobSettingsBody" style="margin-top:10px">
-                          <label>${esc(textFor('jobLabelName'))} <input data-job-name="${esc(job.jobKey)}" value="${esc(jobDisplayName(job))}" placeholder="${esc(textFor('jobLabelNamePh'))}" /></label>
-                          <label>${esc(textFor('jobLabelDesc'))} <input data-job-desc="${esc(job.jobKey)}" value="${esc(job.description || '')}" placeholder="${esc(textFor('jobLabelDescPh'))}" /></label>
-                          <label>${esc(textFor('jobLabelIntervalSec'))} <input data-job-interval="${esc(job.jobKey)}" value="${esc(job.intervalSeconds)}" /></label>
-                          <label>${esc(textFor('jobLabelEnabled'))} <span><input type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/> ${esc(textFor('jobEnabledFlag'))}</span></label>
-                          <label>Provider <input class="readonlyInput" value="${esc(job.provider)}" disabled /></label>
-                          <label>Handler <input class="readonlyInput" value="${esc(job.handler)}" disabled /></label>
-                          <label>Operation <input class="readonlyInput" value="${esc(job.operation || 'latest')}" disabled /></label>
-                          <button data-job-save="${esc(job.jobKey)}" class="success">${esc(textFor('btnSave'))}</button>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-            ${jobsFiltered.length === 0 ? `<p class="muted">${esc(textFor('jobsEmptyFiltered'))}</p>` : ''}
-          </div>
-        `;
-      }
-
-      function jobRunsQueryParams() {
-        const params = new URLSearchParams({
-          page: String(state.jobRunsPage),
-          pageSize: $('jobRunPageSize').value,
-        });
-        for (const [key, id] of [
-          ['q', 'jobRunQuery'],
-          ['from', 'jobRunFrom'],
-          ['to', 'jobRunTo'],
-          ['status', 'jobRunStatus'],
-          ['type', 'jobRunType'],
-          ['jobKey', 'jobRunJob'],
-          ['trigger', 'jobRunTrigger'],
-        ]) {
-          const value = $(id).value.trim();
-          if (value) params.set(key, value);
-        }
-        return params.toString();
-      }
-
-      function renderJobRunsPager(targetId) {
-        $(targetId).innerHTML = `
-          <div class="muted">${esc(textForVars('pagerSummary', { total: state.jobRunsTotal, page: state.jobRunsPage, pages: state.jobRunsTotalPages }))}</div>
-          <div class="row">
-            <button class="secondary" data-job-runs-page="prev">${esc(textFor('btnPrevious'))}</button>
-            <button class="secondary" data-job-runs-page="next">${esc(textFor('btnNext'))}</button>
-          </div>
-        `;
       }
 
       function formatDuration(ms) {
@@ -935,1112 +544,169 @@ import { dismissToast, showToast } from './toast.js';
         return `${(Number(ms) / 1000).toFixed(1)}s`;
       }
 
-      function compareMaybeNumber(a, b) {
-        const an = Number(a);
-        const bn = Number(b);
-        if (Number.isFinite(an) && Number.isFinite(bn)) return an - bn;
-        return String(a ?? '').localeCompare(String(b ?? ''));
-      }
-
-      function sortJobRuns(rows) {
-        const dir = state.jobRunsSortDir === 'asc' ? 1 : -1;
-        const key = state.jobRunsSortKey || 'finishedAt';
-        return [...(rows || [])].sort((a, b) => {
-          if (key === 'job') return dir * String(a.displayName || a.jobKey || '').localeCompare(String(b.displayName || b.jobKey || ''));
-          if (key === 'status') return dir * String(a.status || '').localeCompare(String(b.status || ''));
-          if (key === 'items') return dir * compareMaybeNumber(a.itemCount ?? 0, b.itemCount ?? 0);
-          if (key === 'duration') return dir * compareMaybeNumber(a.durationMs ?? 0, b.durationMs ?? 0);
-          if (key === 'progress') return dir * compareMaybeNumber(a.progressPercent ?? 0, b.progressPercent ?? 0);
-          if (key === 'startedAt') return dir * (new Date(a.startedAt || 0).getTime() - new Date(b.startedAt || 0).getTime());
-          if (key === 'finishedAt') return dir * (new Date(a.finishedAt || a.startedAt || 0).getTime() - new Date(b.finishedAt || b.startedAt || 0).getTime());
-          return 0;
-        });
-      }
-
       async function loadJobRuns() {
-        if ($('jobRuns')) $('jobRuns').innerHTML = renderTableSkeleton({ cols: 10, rows: 5 });
-        const body = await api(`/admin/api/job-runs?${jobRunsQueryParams()}`);
-        state.jobRunsPage = body.page;
-        state.jobRunsTotalPages = body.totalPages;
-        state.jobRunsTotal = body.total;
-        renderJobRunsPager('jobRunsPagerTop');
-        renderJobRunsPager('jobRunsPagerBottom');
-        const rows = sortJobRuns(body.data || []);
-        state.jobRunsLastRows = rows;
-        const validKeys = new Set(rows.map((r) => jobRunRowSelectKey(r)));
-        state.jobRunsSelected = (state.jobRunsSelected || []).filter((k) => validKeys.has(String(k)));
-        const selected = new Set(state.jobRunsSelected || []);
-        const allSelected = rows.length > 0 && rows.every((r) => selected.has(jobRunRowSelectKey(r)));
-
-        if (rows.length === 0) {
-          $('jobRuns').innerHTML = `<p class="muted">${esc(textFor('jobRunsEmptyMessage'))}</p>`;
-          return;
-        }
-
-        $('jobRuns').innerHTML = `
-          ${selected.size ? `
-            <div class="actionBox" style="margin-bottom:10px">
-              <span class="muted">${esc(textForVars('jobRunsSelectedLabel', { count: selected.size }))}</span>
-              <div class="row">
-                <button class="warning" id="jobRunsBulkRetry">${esc(textFor('jobRunsBulkRetry'))}</button>
-                <button class="secondary" id="jobRunsBulkClear">${esc(textFor('jobRunsBulkClearSelection'))}</button>
-              </div>
-            </div>
-          ` : ''}
-          <table>
-            <thead>
-              <tr>
-                <th class="center"><input type="checkbox" id="jobRunsSelectAll" ${allSelected ? 'checked' : ''} /></th>
-                <th data-run-sort="job">${esc(textFor('colJob'))}</th>
-                <th data-run-sort="status">${esc(textFor('colStatus'))}</th>
-                <th>${esc(textFor('colOperation'))}</th>
-                <th>${esc(textFor('colDomain'))}</th>
-                <th>${esc(textFor('colProvider'))}</th>
-                <th>${esc(textFor('colTrigger'))}</th>
-                <th data-run-sort="progress">${esc(textFor('colProgress'))}</th>
-                <th data-run-sort="items" class="right">${esc(textFor('colItems'))}</th>
-                <th data-run-sort="duration" class="right">${esc(textFor('colDuration'))}</th>
-                <th data-run-sort="finishedAt">${esc(textFor('colFinished'))}</th>
-                <th class="center">${esc(textFor('colAction'))}</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows.map((run) => {
-                const rowKey = jobRunRowSelectKey(run);
-                return `
-                <tr>
-                  <td class="center"><input type="checkbox" data-job-run-select="${esc(rowKey)}" ${selected.has(rowKey) ? 'checked' : ''} /></td>
-                  <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-                  <td>${runStatusPill(run.status, false)}</td>
-                  <td>${operationBadge(run.operation)}</td>
-                  <td>${domainBadge(run.domain || run.resultKind)}</td>
-                  <td>${providerBadge(run.provider)}</td>
-                  <td>${esc(run.trigger || '-')}</td>
-                  <td class="muted">${run.status === 'running' && Number.isFinite(Number(run.progressPercent)) ? `${Number(run.progressPercent)}%` : '-'}</td>
-                  <td class="right">${run.itemCount ?? 0}</td>
-                  <td class="right">${formatDuration(run.durationMs)}</td>
-                  <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
-                  <td class="center">${runErrorButton(run)}</td>
-                </tr>
-              `;
-              }).join('')}
-            </tbody>
-          </table>
-        `;
+        return loadJobRunsView({
+          api,
+          $,
+          state,
+          esc,
+          textFor,
+          textForVars,
+          renderTableSkeleton,
+          jobRunRowSelectKey,
+          runStatusPill,
+          operationBadge,
+          domainBadge,
+          providerBadge,
+          formatDuration,
+          formatDateTime,
+          runErrorButton,
+        });
       }
 
       async function loadUiModelPresets() {
-        const body = await api('/admin/api/ui-model-presets');
-        state.uiModelPresets = body.data || null;
-        renderUiModelPresetsEditor();
-      }
-
-      function presetsTextareaValue(key) {
-        const list = state.uiModelPresets && Array.isArray(state.uiModelPresets[key]) ? state.uiModelPresets[key] : [];
-        return list.join('\n');
+        return loadUiModelPresetsView({ api, state, renderUiModelPresetsEditor });
       }
 
       function renderUiModelPresetsEditor() {
-        if (!$('uiModelPresets')) return;
-        $('uiModelPresets').innerHTML = `
-          <div class="modelPresetPanel">
-            <div class="cardHead">
-              <div class="cardHeadMain">
-                <div class="cardKicker">${esc(textFor('modelPresetTitle'))}</div>
-                <div class="cardHint">${esc(textFor('modelPresetHint'))}</div>
-              </div>
-              <span class="muted" id="uiModelPresetsStatus"></span>
-            </div>
-            <div class="modelPresetGrid">
-              <label class="fieldLabel modelPresetCard">OpenAI
-                <textarea id="uiPresetOpenai" class="jsonEditor">${esc(presetsTextareaValue('openai'))}</textarea>
-              </label>
-              <label class="fieldLabel modelPresetCard">Claude
-                <textarea id="uiPresetClaude" class="jsonEditor">${esc(presetsTextareaValue('claude'))}</textarea>
-              </label>
-              <label class="fieldLabel modelPresetCard">Mock
-                <textarea id="uiPresetMock" class="jsonEditor">${esc(presetsTextareaValue('mock'))}</textarea>
-              </label>
-            </div>
-            <div class="modelPresetActions">
-              <button id="saveUiModelPresets" class="success">Save</button>
-            </div>
-          </div>
-        `;
+        return renderUiModelPresetsEditorView({ $, state, esc, textFor, textForVars, formatDateTime });
       }
 
       function parsePresetLines(value) {
-        return uniq(String(value || '')
+        const raw = String(value || '')
           .split(/\r?\n/)
           .map((s) => s.trim())
-          .filter(Boolean));
+          .filter(Boolean);
+        return [...new Set(raw)];
       }
 
       async function loadTranslationSettings() {
-        const [body, providersBody, presetsBody] = await Promise.all([
-          api('/admin/api/translation-settings'),
-          api('/admin/api/provider-settings'),
-          api('/admin/api/ui-model-presets'),
-        ]);
-        const rows = Array.isArray(body.data) ? body.data : [];
-        const providers = Array.isArray(providersBody.data) ? providersBody.data : [];
-        state.providerSettings = providers;
-        state.uiModelPresets = presetsBody.data || null;
-        const providerInfo = (key) => (providers || []).find((p) => p.provider === key) || {};
-        const openaiInfo = providerInfo('openai');
-        const claudeInfo = providerInfo('claude');
-        const missingKeys = [
-          !openaiInfo?.hasApiKey ? 'OpenAI' : null,
-          !claudeInfo?.hasApiKey ? 'Claude' : null,
-        ].filter(Boolean);
-        const modelLabelForProvider = (provider) => defaultModelForProvider(provider, providers) || textFor('providerDefaultModelNone');
-        $('translationSettings').innerHTML = `
-          <div class="settingsHero">
-            <span class="settingsHeroIcon">G</span>
-            <div>
-              <div class="cardKicker">${esc(textFor('translationPipelineTitle'))}</div>
-              <p class="summary">${esc(textFor('translationPipelineHint'))}</p>
-            </div>
-          </div>
-          <div class="card settingsControlCard">
-            <div class="row" style="justify-content:space-between;gap:10px">
-              <div>
-                <strong>${esc(textFor('translationFlowTitle'))}</strong>
-                <div class="muted" style="margin-top:4px">${esc(textFor('translationFlowHint'))}</div>
-                ${missingKeys.length ? `<div class="muted" style="margin-top:6px"><span class="pill opReconcile">${esc(textFor('providerMissingKeys'))}</span> ${esc(textForVars('providerMissingKeysHint', { providers: missingKeys.join(', ') }))}</div>` : ''}
-              </div>
-              <div class="row">
-                <button class="secondary" data-view="settings-keys">${esc(textFor('translationProviderLink'))}</button>
-              </div>
-            </div>
-          </div>
-          <div class="card settingsControlCard">
-            <div class="cardHead">
-              <div class="cardHeadMain">
-                <div class="cardKicker">${esc(textFor('translationLocalePolicyTitle'))}</div>
-                <div class="cardHint">${esc(textFor('translationLocalePolicyHint'))}</div>
-              </div>
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>${esc(textFor('colLocale'))}</th>
-                  <th>${esc(textFor('colEnabled'))}</th>
-                  <th>${esc(textFor('colAutoNews'))}</th>
-                  <th>${esc(textFor('colProvider'))}</th>
-                  <th>${esc(textFor('colModel'))}</th>
-                  <th>${esc(textFor('btnSave'))}</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rows.map((s) => `
-                  <tr>
-                    <td><span class="pill">${esc(s.locale)}</span></td>
-                    <td><input type="checkbox" data-ts-enabled="${esc(s.locale)}" ${s.enabled ? 'checked' : ''}/></td>
-                    <td><input type="checkbox" data-ts-auto="${esc(s.locale)}" ${s.autoTranslateNews ? 'checked' : ''}/></td>
-                    <td>
-                      <select data-ts-provider="${esc(s.locale)}">
-                        <option value="mock" ${s.provider === 'mock' ? 'selected' : ''}>mock</option>
-                        <option value="openai" ${s.provider === 'openai' ? 'selected' : ''}>OpenAI</option>
-                        <option value="claude" ${s.provider === 'claude' ? 'selected' : ''}>Claude</option>
-                      </select>
-                    </td>
-                    <td><span class="pill pill--subtle" data-ts-model-label="${esc(s.locale)}">${esc(modelLabelForProvider(s.provider))}</span></td>
-                    <td><button data-ts-save="${esc(s.locale)}" class="success">Save</button></td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-          <div class="card settingsControlCard">
-            <div class="cardHead">
-              <div class="cardHeadMain">
-                <div class="cardKicker">${esc(textFor('translationTestTitle'))}</div>
-                <div class="cardHint">${esc(textFor('translationTestHint'))}</div>
-              </div>
-            </div>
-            <div class="settingsFormRow">
-              <select id="translationTestProvider">
-                <option value="mock">mock</option>
-                <option value="openai">OpenAI</option>
-                <option value="claude">Claude</option>
-              </select>
-              <select id="translationTestModel"></select>
-              <select id="translationTestLocale">
-                <option value="ko">ko</option>
-                <option value="ja">ja</option>
-              </select>
-              <button id="resetTranslationTestText" class="secondary">${esc(textFor('translationDefaultButton'))}</button>
-              <button id="runTranslationTest">${esc(textFor('translationRunButton'))}</button>
-            </div>
-            <textarea id="translationTestText" style="margin-top:10px">${esc(textFor('translationDefaultText'))}</textarea>
-            <div id="translationTestResult" class="summary"></div>
-          </div>
-        `;
-        if (state.openModelPresetsOnTranslations) {
-          void switchView('settings-keys');
-          state.openModelPresetsOnTranslations = false;
-        }
-
-        // initialize model presets (provider → model list)
-        refreshTranslationTestModels(providers);
-        if ($('translationTestProvider')) {
-          $('translationTestProvider').addEventListener('change', () => refreshTranslationTestModels(providers));
-        }
+        return loadTranslationSettingsView({ api, $, state, esc, textFor, textForVars, formatDateTime, switchView });
       }
 
       async function loadProviderSettings() {
-        const [body, presetsBody] = await Promise.all([
-          api('/admin/api/provider-settings'),
-          api('/admin/api/ui-model-presets'),
-        ]);
-        const rows = Array.isArray(body.data) ? body.data : [];
-        state.providerSettings = rows;
-        state.uiModelPresets = presetsBody.data || null;
-        const llm = rows.filter((r) => r.provider === 'openai' || r.provider === 'claude');
-        const data = rows.filter((r) => !(r.provider === 'openai' || r.provider === 'claude'));
-        const renderRow = (s, { showModel }) => {
-          const models = showModel ? modelPresetsForProvider(s.provider, s.defaultModel) : [];
-          return `
-            <div class="providerTile ${showModel ? 'providerTile--llm' : 'providerTile--data'}">
-              <div class="providerTileHead">
-                <span class="providerGlyph">${showModel ? 'AI' : 'API'}</span>
-                <div class="providerTitle">
-                  <strong>${esc(s.provider)}</strong>
-                  <span class="muted">${esc(showModel ? textFor('providerLlmSubtitle') : textFor('providerDataSubtitle'))}</span>
-                </div>
-                <span class="pill ${s.hasApiKey ? 'pillStatus--ok' : 'pillStatus--warn'}">${esc(s.hasApiKey ? textForVars('providerConfigured', { key: s.maskedApiKey }) : textFor('providerKeyMissing'))}</span>
-              </div>
-              <div class="providerTileBody">
-                <label class="switchRow providerSwitch">
-                  <input class="switchInput" type="checkbox" data-provider-enabled="${esc(s.provider)}" ${s.enabled ? 'checked' : ''}/>
-                  <span class="switchUi" aria-hidden="true"></span>
-                  <span class="switchLabel">Enabled</span>
-                </label>
-                ${showModel ? `
-                  <label class="fieldLabel providerModel">${esc(textFor('providerDefaultModel'))}
-                    <select data-provider-model="${esc(s.provider)}">
-                      <option value="">${esc(textFor('providerSelectModel'))}</option>
-                      ${renderModelOptions(models, s.defaultModel || '')}
-                    </select>
-                  </label>
-                ` : ''}
-                <label class="fieldLabel providerKey">${esc(textFor('providerApiKey'))}
-                  <input class="keyInput" data-provider-key="${esc(s.provider)}" type="password" placeholder="${esc(textFor('providerApiKeyPh'))}" />
-                </label>
-              </div>
-              <div class="providerActions">
-                <button data-provider-save="${esc(s.provider)}" class="success">${esc(textFor('btnSave'))}</button>
-                <button data-provider-clear="${esc(s.provider)}" class="danger">${esc(textFor('providerDeleteKey'))}</button>
-              </div>
-            </div>
-          `;
-        };
-        $('providerSettings').innerHTML = `
-          <div class="settingsSectionGrid">
-            <div class="card settingsControlCard">
-              <div class="cardHead">
-                <div class="cardHeadMain">
-                  <div class="cardKicker">${esc(textFor('providerLlmTitle'))}</div>
-                  <div class="cardHint">${esc(textFor('providerLlmHint'))}</div>
-                </div>
-              </div>
-              <div class="providerTileGrid">
-                ${llm.map((s) => renderRow(s, { showModel: true })).join('') || `<p class="muted">${esc(textFor('providerLlmEmpty'))}</p>`}
-              </div>
-              <div id="uiModelPresets"></div>
-            </div>
-
-            <div class="card settingsControlCard">
-              <div class="cardHead">
-                <div class="cardHeadMain">
-                  <div class="cardKicker">${esc(textFor('providerDataTitle'))}</div>
-                  <div class="cardHint">${esc(textFor('providerDataHint'))}</div>
-                </div>
-              </div>
-              <div class="providerTileGrid">
-                ${data.map((s) => renderRow(s, { showModel: false })).join('') || `<p class="muted">${esc(textFor('providerDataEmpty'))}</p>`}
-              </div>
-            </div>
-          </div>
-        `;
-        renderUiModelPresetsEditor();
-        if ($('uiModelPresetsStatus') && state.uiModelPresets?.updatedAt) {
-          $('uiModelPresetsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.uiModelPresets.updatedAt) });
-        }
+        return loadProviderSettingsView({
+          api,
+          $,
+          state,
+          esc,
+          textFor,
+          textForVars,
+          formatDateTime,
+          renderUiModelPresetsEditor,
+        });
       }
 
       async function loadMarketLists() {
-        const body = await api('/admin/api/market-lists');
-        state.marketLists = body.data;
-        const lists = Array.isArray(body.data) ? body.data : [];
-        $('marketLists').innerHTML = `
-          <div class="card settingsControlCard">
-            <div class="cardHead">
-              <div class="cardHeadMain">
-                <div class="cardKicker">${esc(textFor('marketListsCardTitle'))}</div>
-                <div class="cardHint">${esc(textFor('marketListsCardHint'))}</div>
-              </div>
-            </div>
-            <div class="settingsSectionBody">
-              ${lists.length === 0 ? `<p class="muted">${esc(textFor('marketListsEmpty'))}</p>` : lists.map((list) => `
-                <div class="card marketListCard">
-                  <div class="cardHead">
-                    <div class="cardHeadMain">
-                      <div><strong>${esc(list.displayName)}</strong></div>
-                      <div class="summary">${esc(list.description || '')}</div>
-                      <div class="marketListMetaRow">
-                        <span class="pill pill--subtle">${esc(list.key)}</span>
-                        <span class="pill">${esc(textForVars('marketListRowCount', { n: Number(list.count) || 0 }))}</span>
-                        <span class="marketListMetaItem muted"><span class="marketListMetaLabel">${esc(textFor('marketListMetaUpdated'))}</span>${formatDateTime(list.updatedAt)}</span>
-                      </div>
-                    </div>
-                    <div class="cardHeadActions">
-                      <button data-market-list-open="${esc(list.key)}" class="secondary">${esc(textFor('marketListManage'))}</button>
-                    </div>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
+        return loadMarketListsView({ api, $, state, esc, textFor, textForVars, formatDateTime });
       }
 
       function renderNewsSources() {
-        const host = $('newsSources');
-        if (!host) return;
-        const cat = state.newsSourcesCategory || 'global';
-        const rows = [...(state.newsSources || [])].sort((a, b) => (a.order || 0) - (b.order || 0) || String(a.name).localeCompare(String(b.name)));
-        const policy = state.newsSourceSettings?.autoEnableNewSources || { global: true, crypto: true };
-        const aliasesByCat = state.newsSourceSettings?.aliases || { global: {}, crypto: {} };
-        const aliasTable = aliasesByCat[cat] || {};
-        const aliasCountFor = (name) => Object.entries(aliasTable).filter(([, v]) => String(v || '') === String(name || '')).length;
-        const draftRows = (Array.isArray(state.newsSourceDraftRows) && state.newsSourceDraftRows.length ? state.newsSourceDraftRows : ['']);
-        host.innerHTML = `
-          <div class="card settingsControlCard">
-            <div class="cardHead">
-              <div class="cardHeadMain">
-                <div class="cardKicker">${esc(textFor('newsSourcesTitle'))}</div>
-                <div class="cardHint">${esc(textFor('newsSourcesHint'))}</div>
-              </div>
-              <div class="cardHeadActions">
-                <button class="secondary" id="refreshNewsSourcesBtn">${esc(textFor('btnRefresh'))}</button>
-              </div>
-            </div>
-            <div class="newsSourcesWorkspace">
-              <div class="newsSourcesMain">
-                <div class="newsSourcesTable">
-                  <div class="sourceListHead">
-                    <div>
-                      <div class="cardKicker">${esc(textFor('newsSourceListTitle'))}</div>
-                      <div class="cardHint">${esc(textForVars('newsSourceListHint', { count: rows.length }))}</div>
-                    </div>
-                    <div class="tabs tabs--compact">
-                      <button type="button" class="tabBtn ${cat === 'global' ? 'active' : ''}" data-news-sources-tab="global">${esc(textFor('newsSourcesCatGlobal'))}</button>
-                      <button type="button" class="tabBtn ${cat === 'crypto' ? 'active' : ''}" data-news-sources-tab="crypto">${esc(textFor('newsSourcesCatCrypto'))}</button>
-                    </div>
-                  </div>
-                  <div class="sourceControlBlock sourceControlBlock--wide sourcePolicyInline">
-                    <div class="sourceControlLabel">${esc(textFor('newsSourcePolicyTitle'))}</div>
-                    <div class="sourceSwitches">
-                      <label class="switchRow">
-                        <input class="switchInput" type="checkbox" id="newsSourcesAutoEnableGlobal" ${policy.global !== false ? 'checked' : ''} />
-                        <span class="switchUi" aria-hidden="true"></span>
-                        <span class="switchLabel">${esc(textFor('newsSourcesCatGlobal'))} · ${esc(textFor('newsSourcesAutoEnable'))}</span>
-                      </label>
-                      <label class="switchRow">
-                        <input class="switchInput" type="checkbox" id="newsSourcesAutoEnableCrypto" ${policy.crypto !== false ? 'checked' : ''} />
-                        <span class="switchUi" aria-hidden="true"></span>
-                        <span class="switchLabel">${esc(textFor('newsSourcesCatCrypto'))} · ${esc(textFor('newsSourcesAutoEnable'))}</span>
-                      </label>
-                      <label class="switchRow">
-                        <input class="switchInput" type="checkbox" id="newsSourcesShowHidden" ${state.newsSourcesShowHidden ? 'checked' : ''} />
-                        <span class="switchUi" aria-hidden="true"></span>
-                        <span class="switchLabel">${esc(textFor('newsSourcesShowHidden'))}</span>
-                      </label>
-                    </div>
-                    <button class="secondary" id="saveNewsSourceSettingsBtn">${esc(textFor('btnSave'))}</button>
-                  </div>
-                  <table class="settingsTable sourceTable">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>${esc(textFor('colName'))}</th>
-                        <th>${esc(textFor('colEnabled'))}</th>
-                        <th>${esc(textFor('colOrder'))}</th>
-                        <th>${esc(textFor('colAction'))}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${rows.map((s, idx) => `
-                        <tr class="${s.hidden ? 'mutedRow' : ''}">
-                          <td class="muted">${idx + 1}</td>
-                          <td><strong>${esc(s.name)}</strong>${s.hidden ? ` <span class="pill">${esc(textFor('newsSourcesHide'))}</span>` : ''}</td>
-                          <td><input type="checkbox" data-news-source-enabled="${esc(s.id)}" ${s.enabled ? 'checked' : ''} ${s.hidden ? 'disabled' : ''}/></td>
-                          <td class="muted">${Number(s.order) || (idx + 1)}</td>
-                          <td class="tableActions">
-                            <button class="iconBtn" title="Move up" data-news-source-move="up" data-news-source-id="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>↑</button>
-                            <button class="iconBtn" title="Move down" data-news-source-move="down" data-news-source-id="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>↓</button>
-                            <button class="secondary compactBtn" data-news-source-alias-open="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>${esc(aliasCountFor(s.name) ? textForVars('newsSourceAliasButton', { count: `(${aliasCountFor(s.name)})` }) : textFor('newsSourcesAliasTitle'))}</button>
-                            <button class="secondary compactBtn" data-news-source-toggle-hidden="${esc(s.id)}">${esc(s.hidden ? textFor('newsSourcesUnhide') : textFor('newsSourcesHide'))}</button>
-                          </td>
-                        </tr>
-                      `).join('')}
-                    </tbody>
-                  </table>
-                  ${rows.length === 0 ? `<p class="muted">${esc(textFor('newsSourcesEmpty'))}</p>` : ''}
-                  <div class="sourceDraftPanel">
-                    <div class="sourceDraftHead">
-                      <div>
-                        <div class="sourceControlLabel">${esc(textFor('newsSourceAddTitle'))}</div>
-                        <div class="cardHint">${esc(textFor('newsSourceAddHint'))}</div>
-                      </div>
-                      <button class="iconBtn" id="addNewsSourceDraftRow" title="${esc(textFor('newsSourceAddTitle'))}">+</button>
-                    </div>
-                    <div class="sourceDraftRows">
-                      ${draftRows.map((value, idx) => `
-                        <div class="sourceDraftRow">
-                          <span class="muted">${idx + 1}</span>
-                          <input class="newsSourcesAddInput" data-news-source-draft-index="${idx}" placeholder="${esc(textFor('newsSourceAddPh'))}" value="${esc(value || '')}" />
-                          <button class="danger compactBtn" data-news-source-draft-remove="${idx}" ${draftRows.length <= 1 ? 'disabled' : ''}>${esc(textFor('btnRemove'))}</button>
-                        </div>
-                      `).join('')}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="cardFoot">
-              <button class="success" id="saveNewsSourcesBtn">${esc(textFor('btnSave'))}</button>
-            </div>
-          </div>
-        `;
+        return renderNewsSourcesView({ $, state, esc, textFor, textForVars });
       }
 
       async function loadNewsSources() {
-        const cat = state.newsSourcesCategory || 'global';
-        const includeHidden = state.newsSourcesShowHidden ? '&includeHidden=1' : '';
-        const body = await api(`/admin/api/news-sources?category=${encodeURIComponent(cat)}${includeHidden}`);
-        state.newsSources = Array.isArray(body.data) ? body.data : [];
-        renderNewsSources();
+        return loadNewsSourcesView({ api, $, state, esc, textFor, textForVars });
       }
 
       async function loadNewsSourceSettings() {
-        const body = await api('/admin/api/news-source-settings');
-        state.newsSourceSettings = body.data || state.newsSourceSettings;
-        renderNewsSources();
+        return loadNewsSourceSettingsView({ api, $, state, esc, textFor, textForVars });
       }
 
       async function saveNewsSourceSettings() {
-        const patch = {
-          autoEnableNewSources: {
-            global: !!$('newsSourcesAutoEnableGlobal')?.checked,
-            crypto: !!$('newsSourcesAutoEnableCrypto')?.checked,
-          },
-        };
-        const body = await api('/admin/api/news-source-settings', { method: 'PATCH', body: JSON.stringify(patch) });
-        state.newsSourceSettings = body.data || state.newsSourceSettings;
-        showToast(textFor('toastSaved') || 'Saved', textFor('newsSourcePolicyTitle'), { kind: 'success' });
-        await loadNewsSources();
+        return saveNewsSourceSettingsView({ api, $, state, esc, textFor, textForVars, showToast });
       }
 
       function closeNewsSourceAliasDialog() {
-        state.newsSourceAliasDraft = null;
-        if ($('newsSourceAliasDialog')) $('newsSourceAliasDialog').classList.add('hidden');
+        return closeNewsSourceAliasDialogView({ state, $ });
       }
 
       function renderNewsSourceAliasDialog() {
-        const draft = state.newsSourceAliasDraft;
-        if (!draft) {
-          if ($('newsSourceAliasDialog')) $('newsSourceAliasDialog').classList.add('hidden');
-          return;
-        }
-        $('newsSourceAliasDialog').classList.remove('hidden');
-        $('newsSourceAliasDialogTitle').textContent = textForVars('newsSourceAliasTitleFull', { source: draft.sourceName });
-        $('newsSourceAliasDialogMeta').textContent = textForVars('newsSourceAliasMeta', { category: draft.category });
-        $('newsSourceAliasCount').textContent = textForVars('newsSourceAliasCount', { count: draft.aliases.length });
-        $('newsSourceAliasRows').innerHTML = `
-          <div class="aliasPolicyHint muted">
-            ${esc(textFor('newsSourceAliasPolicy'))}
-          </div>
-          ${draft.aliases.map((a, idx) => `
-          <div class="symbolRow">
-            <div class="muted">${idx + 1}</div>
-            <input class="readonlyInput" value="${esc(a)}" disabled />
-            <button class="danger" data-news-source-alias-remove="${idx}">${esc(textFor('btnRemove'))}</button>
-          </div>
-        `).join('') || `<p class="muted">${esc(textFor('newsSourceAliasEmpty'))}</p>`}
-        `;
+        return renderNewsSourceAliasDialogView({ state, $, esc, textFor, textForVars });
       }
 
       function openNewsSourceAliasDialog(sourceId) {
-        const cat = state.newsSourcesCategory || 'global';
-        const src = (state.newsSources || []).find((s) => String(s.id) === String(sourceId));
-        if (!src) return;
-        const table = state.newsSourceSettings?.aliases?.[cat] || {};
-        const aliases = Object.entries(table)
-          .filter(([, v]) => String(v || '') === String(src.name || ''))
-          .map(([k]) => String(k || '').trim())
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b));
-        state.newsSourceAliasDraft = { category: cat, sourceId: src.id, sourceName: src.name, aliases };
-        if ($('newsSourceAliasAdd')) $('newsSourceAliasAdd').value = '';
-        renderNewsSourceAliasDialog();
+        return openNewsSourceAliasDialogView({ sourceId, state, $, esc, textFor, textForVars });
       }
 
       async function saveNewsSourceAliasesFromDialog() {
-        const draft = state.newsSourceAliasDraft;
-        if (!draft) return;
-        const { category: cat, sourceName, aliases } = draft;
-        const prev = state.newsSourceSettings?.aliases?.[cat] || {};
-        const next = { ...prev };
-        // Remove existing aliases pointing to this sourceName.
-        for (const [k, v] of Object.entries(next)) {
-          if (String(v || '') === String(sourceName || '')) delete next[k];
-        }
-        // Add aliases (aliasKey is lowercased by server; keep simple normalization here).
-        for (const raw of aliases) {
-          const key = String(raw || '').trim().toLowerCase();
-          if (!key) continue;
-          if (key === String(sourceName || '').trim().toLowerCase()) continue;
-          next[key] = sourceName;
-        }
-        const patch = { aliases: { [cat]: next } };
-        const body = await api('/admin/api/news-source-settings', { method: 'PATCH', body: JSON.stringify(patch) });
-        state.newsSourceSettings = body.data || state.newsSourceSettings;
-        showToast(textFor('toastSaved') || 'Saved', `${sourceName}`, { kind: 'success' });
-        closeNewsSourceAliasDialog();
-        renderNewsSources();
-      }
-
-      function normalizeNewsSourceIdFromName(name) {
-        const s = String(name || '').trim().toLowerCase();
-        let h = 0;
-        for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-        return `src-${h.toString(16)}`;
-      }
-
-      function syncNewsSourceDraftRows() {
-        const inputs = [...document.querySelectorAll('[data-news-source-draft-index]')];
-        if (!inputs.length) {
-          state.newsSourceDraftRows = Array.isArray(state.newsSourceDraftRows) && state.newsSourceDraftRows.length
-            ? state.newsSourceDraftRows
-            : [''];
-          return;
-        }
-        state.newsSourceDraftRows = inputs
-          .sort((a, b) => Number(a.dataset.newsSourceDraftIndex) - Number(b.dataset.newsSourceDraftIndex))
-          .map((input) => String(input.value || ''));
-        if (!state.newsSourceDraftRows.length) state.newsSourceDraftRows = [''];
+        return saveNewsSourceAliasesFromDialogView({ api, $, state, esc, textFor, textForVars, showToast });
       }
 
       async function saveNewsSources() {
-        const category = state.newsSourcesCategory || 'global';
-        syncNewsSourceDraftRows();
-        const next = [...(state.newsSources || [])]
-          .map((s, idx) => ({
-            id: String(s.id || '').trim(),
-            name: String(s.name || '').trim(),
-            category,
-            enabled: s.enabled !== false,
-            hidden: !!s.hidden,
-            order: idx + 1,
-          }))
-          .filter((s) => s.id && s.name);
-        const seenIds = new Set(next.map((s) => s.id));
-        const seenNames = new Set(next.map((s) => s.name.trim().toLowerCase()));
-        for (const rawName of state.newsSourceDraftRows || []) {
-          const name = String(rawName || '').trim();
-          if (!name) continue;
-          const id = normalizeNewsSourceIdFromName(name);
-          const lower = name.toLowerCase();
-          if (seenIds.has(id) || seenNames.has(lower)) continue;
-          next.push({ id, name, category, enabled: true, hidden: false, order: next.length + 1 });
-          seenIds.add(id);
-          seenNames.add(lower);
-        }
-        next.forEach((s, idx) => { s.order = idx + 1; });
-        const body = await api('/admin/api/news-sources', { method: 'PUT', body: JSON.stringify({ category, items: next }) });
-        state.newsSources = Array.isArray(body.data) ? body.data : next;
-        state.newsSourceDraftRows = [''];
-        showToast(textFor('toastSaved') || 'Saved', `${state.newsSources.length}`, { kind: 'success' });
-        renderNewsSources();
-      }
-
-      function normalizeSymbolInput(value) {
-        return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+        return saveNewsSourcesView({ api, $, state, esc, textFor, textForVars, showToast });
       }
 
       function renderMarketListDialog() {
-        const draft = state.marketListDraft;
-        if (!draft) {
-          $('marketListDialog').classList.add('hidden');
-          return;
-        }
-        $('marketListDialog').classList.remove('hidden');
-        $('marketListDialogTitle').textContent = textForVars('marketListEditTitle', { name: draft.displayName });
-        $('marketListDialogMeta').textContent = textForVars('marketListEditMetaLine', { key: draft.key, time: formatDateTime(draft.updatedAt) });
-        $('marketListDialogName').value = draft.displayName;
-        $('marketListDialogDesc').value = draft.description || '';
-        $('marketListDialogCount').textContent = textForVars('marketListSymbolTotal', { n: draft.symbols.length });
-        $('marketListSymbolRows').innerHTML = draft.symbols.map((symbol, index) => `
-          <div class="symbolRow">
-            <span class="muted">${index + 1}</span>
-            <input data-market-symbol-index="${index}" value="${esc(symbol)}" />
-            <button class="danger" data-market-symbol-delete="${index}">${esc(textFor('btnDeleteRow'))}</button>
-          </div>
-        `).join('') || `<p class="muted">${esc(textFor('marketListSymbolsEmpty'))}</p>`;
+        return renderMarketListDialogView({ $, state, esc, textFor, textForVars, formatDateTime });
       }
 
       function openMarketListDialog(key) {
-        const list = state.marketLists.find((item) => item.key === key);
-        if (!list) return;
-        state.marketListDraft = {
-          ...list,
-          symbols: [...(list.symbols || [])],
-        };
-        $('marketListAddSymbol').value = '';
-        renderMarketListDialog();
+        return openMarketListDialogView({ key, $, state, esc, textFor, textForVars, formatDateTime });
       }
 
       function closeMarketListDialog() {
-        state.marketListDraft = null;
-        renderMarketListDialog();
+        return closeMarketListDialogView({ $, state, esc, textFor, textForVars, formatDateTime });
       }
 
       function syncMarketListDraftFromInputs() {
-        if (!state.marketListDraft) return;
-        state.marketListDraft.displayName = $('marketListDialogName').value.trim() || state.marketListDraft.key;
-        state.marketListDraft.description = $('marketListDialogDesc').value.trim();
-        state.marketListDraft.symbols = [...document.querySelectorAll('[data-market-symbol-index]')]
-          .map((input) => normalizeSymbolInput(input.value))
-          .filter(Boolean);
-      }
-
-      function newsQueryParams() {
-        const params = new URLSearchParams({
-          locale: $('newsLocale').value,
-          page: String(state.newsPage),
-          pageSize: $('newsPageSize').value,
-        });
-        for (const [key, id] of [
-          ['q', 'newsQuery'],
-          ['from', 'newsFrom'],
-          ['to', 'newsTo'],
-          ['category', 'newsCategory'],
-          ['translationStatus', 'newsTranslationStatus'],
-        ]) {
-          const value = $(id).value.trim();
-          if (value) params.set(key, value);
-        }
-        return params.toString();
-      }
-
-      function renderPager(targetId) {
-        $(targetId).innerHTML = `
-          <div class="muted">${esc(textForVars('pagerSummary', { total: state.newsTotal, page: state.newsPage, pages: state.newsTotalPages }))}</div>
-          <div class="row">
-            <button class="secondary" data-page="prev">${esc(textFor('btnPrevious'))}</button>
-            <button class="secondary" data-page="next">${esc(textFor('btnNext'))}</button>
-          </div>
-        `;
-      }
-
-      function youtubeQueryParams() {
-        const params = new URLSearchParams({
-          page: String(state.youtubePage),
-          pageSize: $('youtubePageSize').value,
-        });
-        for (const [key, id] of [['q', 'youtubeQuery'], ['channel', 'youtubeChannel']]) {
-          const value = $(id).value.trim();
-          if (value) params.set(key, value);
-        }
-        return params.toString();
-      }
-
-      function renderYoutubePager(targetId) {
-        $(targetId).innerHTML = `
-          <div class="muted">${esc(textForVars('pagerSummary', { total: state.youtubeTotal, page: state.youtubePage, pages: state.youtubeTotalPages }))}</div>
-          <div class="row">
-            <button class="secondary" data-youtube-page="prev">${esc(textFor('btnPrevious'))}</button>
-            <button class="secondary" data-youtube-page="next">${esc(textFor('btnNext'))}</button>
-          </div>
-        `;
-      }
-
-      function pad2(n) {
-        return String(Math.max(0, Number(n) || 0)).padStart(2, '0');
-      }
-
-      function ymdFromParts(y, m, d) {
-        return `${y}-${pad2(m)}-${pad2(d)}`;
-      }
-
-      function daysInMonth(y, m) {
-        return new Date(y, m, 0).getDate();
-      }
-
-      function calendarMonthMeta(ym) {
-        const parts = String(ym || '').split('-');
-        const y = Number(parts[0]);
-        const m = Number(parts[1]);
-        if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return null;
-        const first = ymdFromParts(y, m, 1);
-        const last = ymdFromParts(y, m, daysInMonth(y, m));
-        return { y, m, first, last };
-      }
-
-      function shiftCalendarMonth(ym, delta) {
-        const meta = calendarMonthMeta(ym);
-        if (!meta) return ym;
-        let { y, m } = meta;
-        m += delta;
-        while (m > 12) {
-          m -= 12;
-          y += 1;
-        }
-        while (m < 1) {
-          m += 12;
-          y -= 1;
-        }
-        return `${y}-${pad2(m)}`;
-      }
-
-      function initCalendarMonthIfNeeded() {
-        if (state.calendarMonthYm) return;
-        const t = new Date();
-        state.calendarMonthYm = `${t.getFullYear()}-${pad2(t.getMonth() + 1)}`;
-        state.calendarSelectedYmd = ymd(t);
-      }
-
-      function adminBcp47() {
-        const lang = localStorage.getItem('signalAdminLanguage') || 'ko';
-        if (lang === 'en') return 'en-US';
-        if (lang === 'ja') return 'ja-JP';
-        return 'ko-KR';
-      }
-
-      function formatAdminCalendarDayHeading(ymdStr) {
-        if (!ymdStr) return '';
-        const d = new Date(`${ymdStr}T12:00:00`);
-        if (!Number.isFinite(d.getTime())) return ymdStr;
-        return new Intl.DateTimeFormat(adminBcp47(), {
-          weekday: 'short',
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        }).format(d);
-      }
-
-      function renderAdminCalendarGrid() {
-        const host = $('adminCalendarGrid');
-        if (!host) return;
-        const meta = calendarMonthMeta(state.calendarMonthYm);
-        if (!meta) return;
-        const { y, m, first } = meta;
-        const dim = daysInMonth(y, m);
-        const eventDates = new Set(
-          (state.calendarMonthRows || []).map((r) => String(r.date || '').slice(0, 10)).filter(Boolean),
-        );
-        const sel = state.calendarSelectedYmd;
-        const firstD = new Date(`${first}T12:00:00`);
-        const startWeekday = firstD.getDay();
-        const todayYmd = ymd(new Date());
-        const weekHtml = [0, 1, 2, 3, 4, 5, 6]
-          .map((w) => `<div class="calWeekday" aria-hidden="true">${esc(textFor(`calWeek${w}`))}</div>`)
-          .join('');
-        let cells = '';
-        for (let i = 0; i < startWeekday; i += 1) cells += '<div class="calCell calCell--pad" aria-hidden="true"></div>';
-        for (let d = 1; d <= dim; d += 1) {
-          const ymdStr = ymdFromParts(y, m, d);
-          const has = eventDates.has(ymdStr);
-          const isSel = sel === ymdStr;
-          const isToday = ymdStr === todayYmd;
-          cells += `<button type="button" class="calCell ${has ? 'calCell--has' : 'calCell--muted'} ${isSel ? 'calCell--selected' : ''} ${isToday ? 'calCell--today' : ''}" data-cal-day="${esc(ymdStr)}" aria-pressed="${isSel ? 'true' : 'false'}">${d}</button>`;
-        }
-        host.innerHTML = `
-          <div class="calendarMonthWrap">
-            <div class="calWeekdays">${weekHtml}</div>
-            <div class="calendarGrid" role="grid" aria-label="${esc(textFor('pageCalendarTitle'))}">${cells}</div>
-          </div>`;
-      }
-
-      function renderCalendarDayTable() {
-        const host = $('calendarDayList') || $('calendar');
-        if (!host) return;
-        const sel = state.calendarSelectedYmd;
-        const headEl = $('calendarDayHeadingText');
-        if (headEl) {
-          headEl.textContent = textForVars('calendarEventsForDayOn', { date: formatAdminCalendarDayHeading(sel) });
-        }
-        const rows = (state.calendarMonthRows || []).filter((r) => String(r.date || '').slice(0, 10) === sel);
-        host.innerHTML =
-          rows.length === 0
-            ? `<p class="muted">${esc(textFor('calendarEmptyDay'))}</p>`
-            : `
-            <table>
-              <thead>
-                <tr>
-                  <th>${esc(textFor('colDate'))}</th>
-                  <th>${esc(textFor('colType'))}</th>
-                  <th>${esc(textFor('colTitle'))}</th>
-                  <th>${esc(textFor('colMeta'))}</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rows
-                  .map(
-                    (item) => `
-                  <tr>
-                    <td class="muted">${esc(item.date || '-')}</td>
-                    <td><span class="pill">${esc(item.type || '-')}</span></td>
-                    <td><strong>${esc(item.title || '-')}</strong></td>
-                    <td class="muted">${esc(item.country || item.symbol || '-')}</td>
-                  </tr>
-                `,
-                  )
-                  .join('')}
-              </tbody>
-            </table>
-          `;
-      }
-
-      async function loadCalendar() {
-        const host = $('calendarDayList') || $('calendar');
-        if (!host) return;
-        initCalendarMonthIfNeeded();
-        if ($('calendarMonthPick')) $('calendarMonthPick').value = state.calendarMonthYm;
-        const meta = calendarMonthMeta(state.calendarMonthYm);
-        if (!meta) return;
-        if ($('calendarFrom')) $('calendarFrom').value = meta.first;
-        if ($('calendarTo')) $('calendarTo').value = meta.last;
-        const params = new URLSearchParams({ page: '1', pageSize: '500', from: meta.first, to: meta.last });
-        const ty = $('calendarType')?.value?.trim();
-        if (ty) params.set('type', ty);
-        const cq = $('calendarQuery')?.value?.trim();
-        if (cq) params.set('q', cq);
-        const sym = $('calendarSymbol')?.value?.trim();
-        if (sym) params.set('symbol', sym.toUpperCase());
-        const body = await api(`/admin/api/calendar?${params.toString()}`);
-        state.calendarMonthRows = Array.isArray(body.data) ? body.data : [];
-        state.calendarTotal = body.total;
-        state.calendarPage = body.page;
-        state.calendarTotalPages = body.totalPages;
-        if (!state.calendarSelectedYmd) state.calendarSelectedYmd = ymd(new Date());
-        if (!state.calendarMonthRows.some((r) => String(r.date || '').slice(0, 10) === state.calendarSelectedYmd)) {
-          const prefix = `${meta.y}-${pad2(meta.m)}`;
-          const firstHit = state.calendarMonthRows.find((r) => String(r.date || '').startsWith(prefix));
-          state.calendarSelectedYmd = firstHit ? String(firstHit.date).slice(0, 10) : meta.first;
-        }
-        renderAdminCalendarGrid();
-        renderCalendarDayTable();
-      }
-
-      async function loadYoutube() {
-        if ($('youtube')) $('youtube').innerHTML = renderTableSkeleton({ cols: 2, rows: 4 });
-        const body = await api(`/admin/api/youtube?${youtubeQueryParams()}`);
-        state.youtubePage = body.page;
-        state.youtubeTotalPages = body.totalPages;
-        state.youtubeTotal = body.total;
-        if (Array.isArray(body.channels)) {
-          const current = $('youtubeChannel').value;
-          $('youtubeChannel').innerHTML = `<option value="">${esc(textFor('youtubeAllChannels'))}</option>` + body.channels.map((channel) => `
-            <option value="${esc(channel)}">${esc(channel)}</option>
-          `).join('');
-          $('youtubeChannel').value = current;
-        }
-        renderYoutubePager('youtubePagerTop');
-        renderYoutubePager('youtubePagerBottom');
-        $('youtube').innerHTML = body.data.map((item) => `
-          <div class="card">
-            <div class="mediaCard">
-              <img class="thumb" src="${esc(item.thumbnailUrl || '')}" alt="" />
-              <div>
-                <div class="row">
-                  <input type="checkbox" data-youtube-id="${esc(item.id)}" />
-                  <span class="pill">${esc(item.channel || '-')}</span>
-                  <span class="pill">${Number(item.viewCount || 0).toLocaleString()} ${esc(textFor('colYoutubeViews'))}</span>
-                  <span class="muted">${formatDateTime(item.publishedAt)}</span>
-                </div>
-                <div class="title">${esc(item.title || '-')}</div>
-                <div class="summary">${esc(item.description || '')}</div>
-                <div class="row" style="margin-top:8px">
-                  <a class="developerLink" style="margin:0;padding:0;border:0" href="https://www.youtube.com/watch?v=${esc(item.videoId)}" target="_blank" rel="noreferrer">${esc(textFor('youtubeOpenOnYoutube'))}</a>
-                </div>
-              </div>
-            </div>
-          </div>
-        `).join('') || `<p class="muted">${esc(textFor('youtubeEmptyFilter'))}</p>`;
-        updateYoutubeSelectionInfo();
-      }
-
-      async function loadNews() {
-        if ($('news')) $('news').innerHTML = renderTableSkeleton({ cols: 2, rows: 4 });
-        const body = await api(`/admin/api/news?${newsQueryParams()}`);
-        state.newsPage = body.page;
-        state.newsTotalPages = body.totalPages;
-        state.newsTotal = body.total;
-        state.newsRows = Array.isArray(body.data) ? body.data : [];
-        renderPager('newsPagerTop');
-        renderPager('newsPagerBottom');
-        $('news').innerHTML =
-          state.newsRows.length === 0
-            ? `<p class="muted">${esc(textFor('newsEmpty'))}</p>`
-            : `
-              <div class="card card--elevated">
-                <div class="cardHead">
-                  <div class="cardHeadMain">
-                    <div class="cardKicker">${esc(textFor('pageNewsTitle'))}</div>
-                    <div class="cardHint">${esc(textFor('newsListHint'))}</div>
-                  </div>
-                </div>
-                <div class="newsTable">
-                  <table class="newsTableTable">
-                    <thead>
-                      <tr>
-                        <th style="width:34px"></th>
-                        <th style="width:120px">${esc(textFor('newsColTime'))}</th>
-                        <th style="width:110px">${esc(textFor('newsColSource'))}</th>
-                        <th style="width:92px">${esc(textFor('colCategory'))}</th>
-                        <th style="width:92px">${esc(textFor('newsColStatus'))}</th>
-                        <th>${esc(textFor('colTitle'))}</th>
-                        <th style="width:210px">${esc(textFor('colAction'))}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      ${state.newsRows
-                        .map((item) => {
-                          const title = String(item.originalTitle || item.title || '-');
-                          const source = String(item.sourceName || '-');
-                          const published = formatDateTime(item.publishedAt);
-                          const category = String(item.category || '-');
-                          const translations = Array.isArray(item.translations) ? item.translations : [];
-                          const statusFor = (locale) => translations.find((t) => t.locale === locale)?.status || 'missing';
-                          const provider = String(item.provider || '-');
-                          return `
-                            <tr class="newsRow" data-news-row="${esc(item.id)}">
-                              <td><input type="checkbox" data-news-id="${esc(item.id)}" /></td>
-                              <td class="muted">${esc(published)}</td>
-                              <td><span class="pill">${esc(source)}</span></td>
-                              <td><span class="pill">${esc(category)}</span></td>
-                              <td>
-                                <div class="newsStatusStack">
-                                  <span class="pill pill--subtle">KO ${esc(statusFor('ko'))}</span>
-                                  <span class="pill pill--subtle">JA ${esc(statusFor('ja'))}</span>
-                                </div>
-                              </td>
-                              <td>
-                                <div class="newsTitle">${esc(title)}</div>
-                                <div class="newsMeta muted">${esc(provider)}</div>
-                              </td>
-                              <td class="tableActions">
-                                <button class="secondary" data-news-edit="${esc(item.id)}">${esc(textFor('newsEdit'))}</button>
-                                <a class="developerLink" href="${esc(item.sourceUrl || '#')}" target="_blank" rel="noreferrer">${esc(textFor('newsOriginal'))} ↗</a>
-                              </td>
-                            </tr>
-                          `;
-                        })
-                        .join('')}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            `;
-        updateNewsSelectionInfo();
-      }
-
-      function newsTranslationFor(item, locale) {
-        return (Array.isArray(item?.translations) ? item.translations : []).find((t) => t.locale === locale) || {};
-      }
-
-      function newsEditValue(item, locale, field) {
-        const tr = newsTranslationFor(item, locale);
-        if (field === 'title') return tr.title || item.originalTitle || item.title || '';
-        if (field === 'summary') return tr.summary || item.originalSummary || item.summary || '';
-        return '';
+        return syncMarketListDraftFromInputsView({ state, $ });
       }
 
       function closeNewsEditDialog() {
-        state.newsEditItemId = '';
-        state.newsEditLocale = 'en';
-        if ($('newsEditDialog')) $('newsEditDialog').classList.add('hidden');
+        return closeNewsEditDialogView({ state, $ });
       }
 
       function renderNewsEditDialog() {
-        const item = (state.newsRows || []).find((row) => String(row.id) === String(state.newsEditItemId));
-        if (!item) {
-          closeNewsEditDialog();
-          return;
-        }
-        const locale = state.newsEditLocale || 'en';
-        const tr = newsTranslationFor(item, locale);
-        const titleValue = newsEditValue(item, locale, 'title');
-        const summaryValue = newsEditValue(item, locale, 'summary');
-        $('newsEditDialog').classList.remove('hidden');
-        $('newsEditDialogTitle').textContent = textFor('newsEditDialogTitle');
-        $('newsEditDialogMeta').textContent = `${item.sourceName || '-'} · ${formatDateTime(item.publishedAt)} · ${item.category || '-'}`;
-        $('newsEditDialogStatus').textContent = `${locale.toUpperCase()} · ${tr.status || (locale === 'en' ? 'original' : 'missing')}`;
-        $('newsEditDialogBody').innerHTML = `
-          <div class="newsEditModal">
-            <div class="tabs newsEditTabs" role="tablist">
-              ${newsEditLocales.map((entry) => `
-                <button
-                  type="button"
-                  class="tabBtn ${entry.locale === locale ? 'active' : ''}"
-                  data-news-edit-locale="${esc(entry.locale)}">
-                  ${esc(textFor(entry.labelKey))}
-                </button>
-              `).join('')}
-            </div>
-            <div class="newsEditSource">
-              <div class="newsEditSourceTitle">${esc(item.originalTitle || item.title || '-')}</div>
-              <div class="newsMeta muted">
-                ${item.sourceUrl ? `<a class="developerLink" href="${esc(item.sourceUrl)}" target="_blank" rel="noreferrer">${esc(textFor('newsOpenOriginal'))}</a>` : ''}
-              </div>
-            </div>
-            <div class="newsEditGrid">
-              <label class="fieldLabel">
-                <span>Title</span>
-                <textarea id="newsEditTitleInput" class="jsonEditor">${esc(titleValue)}</textarea>
-              </label>
-              <label class="fieldLabel">
-                <span>Summary</span>
-                <textarea id="newsEditSummaryInput" class="jsonEditor">${esc(summaryValue)}</textarea>
-              </label>
-            </div>
-          </div>
-        `;
+        return renderNewsEditDialogView({ state, $, esc, textFor, formatDateTime });
       }
 
       function openNewsEditDialog(id) {
-        state.newsEditItemId = String(id || '');
-        state.newsEditLocale = 'en';
-        renderNewsEditDialog();
+        return openNewsEditDialogView({ id, state, $, esc, textFor, formatDateTime });
       }
 
       function selectedNewsIds() {
-        return [...document.querySelectorAll('[data-news-id]')].filter((box) => box.checked).map((box) => box.dataset.newsId);
+        return selectedNewsIdsView();
       }
 
       function updateNewsSelectionInfo() {
-        const total = document.querySelectorAll('[data-news-id]').length;
-        const selected = selectedNewsIds().length;
-        if ($('newsSelectionInfo')) $('newsSelectionInfo').textContent = textForVars('newsSelectedCount', { count: selected });
-        if ($('selectPageBtn')) $('selectPageBtn').textContent = selected === total && total > 0 ? textFor('newsSelectPageClear') : textFor('newsSelectPage');
-        if ($('retranslateSelectedBtn')) $('retranslateSelectedBtn').disabled = selected === 0;
-        if ($('deleteSelectedNewsBtn')) $('deleteSelectedNewsBtn').disabled = selected === 0;
+        return updateNewsSelectionInfoView({ $, textForVars, textFor });
       }
 
       function selectedYoutubeIds() {
-        return [...document.querySelectorAll('[data-youtube-id]')].filter((box) => box.checked).map((box) => box.dataset.youtubeId);
+        return selectedYoutubeIdsView();
       }
 
       function updateYoutubeSelectionInfo() {
-        const total = document.querySelectorAll('[data-youtube-id]').length;
-        const selected = selectedYoutubeIds().length;
-        if ($('youtubeSelectionInfo')) $('youtubeSelectionInfo').textContent = textForVars('youtubeSelectedCount', { count: selected });
-        if ($('selectYoutubePageBtn')) $('selectYoutubePageBtn').textContent = selected === total && total > 0 ? textFor('youtubeSelectPageClear') : textFor('youtubeSelectPage');
-        if ($('refreshSelectedYoutubeBtn')) $('refreshSelectedYoutubeBtn').disabled = selected === 0;
+        return updateYoutubeSelectionInfoView({ $, textForVars, textFor });
+      }
+
+      function shiftCalendarMonth(ym, delta) {
+        return shiftCalendarMonthView(ym, delta);
+      }
+
+      function initCalendarMonthIfNeeded() {
+        return initCalendarMonthIfNeededView({ state, ymd });
+      }
+
+      function renderAdminCalendarGrid() {
+        return renderAdminCalendarGridView({ state, $, esc, textFor, ymd });
+      }
+
+      function renderCalendarDayTable() {
+        return renderCalendarDayTableView({ state, $, esc, textFor, textForVars });
+      }
+
+      async function loadCalendar() {
+        return loadCalendarView({ api, $, state, esc, textFor, textForVars, ymd });
+      }
+
+      async function loadYoutube() {
+        return loadYoutubeView({ api, $, state, esc, textFor, textForVars, renderTableSkeleton, formatDateTime });
+      }
+
+      async function loadNews() {
+        return loadNewsView({ api, $, state, esc, textFor, textForVars, renderTableSkeleton, formatDateTime });
       }
 
       function updateResetUi() {
@@ -2366,9 +1032,17 @@ import { dismissToast, showToast } from './toast.js';
             await loadJobRuns();
           }
           if (target.id === 'loginBtn') {
-            await api('/admin/api/login', { method: 'POST', body: JSON.stringify({ loginId: $('loginId').value, password: $('password').value }) });
-            $('loginMsg').textContent = '';
-            await refreshSession();
+            try {
+              await api('/admin/api/login', {
+                method: 'POST',
+                body: JSON.stringify({ loginId: $('loginId').value, password: $('password').value }),
+              });
+              $('loginMsg').textContent = '';
+              await refreshSession();
+            } catch (err) {
+              const code = String(err?.message || '').trim();
+              $('loginMsg').textContent = code === 'INVALID_LOGIN' ? textFor('loginInvalid') : textFor('loginFailed');
+            }
           }
           if (target.id === 'logoutBtn') {
             await api('/admin/api/logout', { method: 'POST' });
@@ -2770,6 +1444,7 @@ import { dismissToast, showToast } from './toast.js';
         }
         if (event.target.id === 'adminLanguage') {
           localStorage.setItem('signalAdminLanguage', event.target.value);
+          setUrlParam('lang', event.target.value);
           applyAdminLanguage();
           const adminOpen = $('adminPanel') && !$('adminPanel').classList.contains('hidden');
           if (adminOpen) {
@@ -2916,6 +1591,8 @@ import { dismissToast, showToast } from './toast.js';
 
       applyTheme(localStorage.getItem('signalAdminAccent') || 'green');
       state.dashboardLimit = Number(localStorage.getItem('signalAdminDashboardLimit') || '5') || 5;
+      const urlLang = normalizeAdminLang(getUrlParam('lang'));
+      if (urlLang) localStorage.setItem('signalAdminLanguage', urlLang);
       $('adminLanguage').value = localStorage.getItem('signalAdminLanguage') || 'ko';
       $('adminTimeBasis').value =
         localStorage.getItem('signalAdminTimeBasis') ||

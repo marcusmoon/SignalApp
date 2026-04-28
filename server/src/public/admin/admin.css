@@ -131,7 +131,6 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
       .hidden { display: none !important; }
       .layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: calc(100vh - 57px); }
       .side { position: sticky; top: 67px; height: calc(100vh - 67px); border-right: 1px solid var(--border); background: var(--bg-elevated); padding: 14px; display: flex; flex-direction: column; }
-      .sideTopTools { display: flex; justify-content: flex-end; margin-bottom: 10px; }
       .navGroup { flex: 1; min-height: 0; }
       .content { padding: 24px; min-width: 0; }
       .navBtn { width: 100%; text-align: left; margin-bottom: 8px; }
@@ -689,7 +688,7 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
 
       /* Responsive sidebar behavior (docs 12) */
       .hamburgerBtn { display: none; }
-      .collapseBtn { display: none; }
+      .sideGutter, .sideGutterBtn { display: none; }
       .sideOverlay { position: fixed; inset: 0; z-index: 25; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); }
       .sideOverlay.hidden { display: none !important; }
       body.sideCollapsed .layout { grid-template-columns: 64px minmax(0, 1fr); }
@@ -697,11 +696,45 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
       body.sideCollapsed .navBtn { width: 44px; min-width: 44px; overflow: hidden; text-indent: -999px; position: relative; }
       body.sideCollapsed .navBtn::after { content: attr(data-icon); text-indent: 0; position: absolute; left: 0; top: 0; width: 44px; height: 44px; display: grid; place-items: center; }
       body.sideCollapsed .navSectionTitle, body.sideCollapsed .floatingProfile { display: none; }
-      body.sideCollapsed .collapseBtn { display: inline-flex; }
       body.sideCollapsed .side { align-items: center; }
 
       @media (min-width: 1024px) {
-        .collapseBtn { display: inline-flex; }
+        .side { position: sticky; }
+        .sideGutter {
+          display: block;
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 14px;
+          height: 100%;
+          background: transparent;
+          z-index: 3;
+        }
+        .sideGutterBtn {
+          display: inline-flex;
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 22px;
+          height: 34px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px;
+          border: 1px solid var(--border);
+          background: color-mix(in srgb, var(--bg-elevated) 90%, black);
+          color: var(--text);
+          box-shadow: var(--shadow-xs);
+          font-size: 12px;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 120ms ease;
+        }
+        .sideGutter:hover .sideGutterBtn,
+        .sideGutter:focus-within .sideGutterBtn {
+          opacity: 1;
+          pointer-events: auto;
+        }
       }
       @media (max-width: 1023px) {
         .hamburgerBtn { display: inline-flex; }

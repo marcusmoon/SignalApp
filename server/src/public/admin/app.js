@@ -414,6 +414,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         $('loginPanel').classList.toggle('hidden', loggedIn);
         $('adminPanel').classList.toggle('hidden', !loggedIn);
         $('logoutBtn').classList.toggle('hidden', !loggedIn);
+        const collapse = $('sideCollapseBtn');
+        if (collapse) collapse.textContent = document.body.classList.contains('sideCollapsed') ? '▸' : '◂';
         if (loggedIn) {
           // Restore job tab from URL (?tab=info|runs)
           const urlParams = new URLSearchParams(window.location.search);
@@ -761,8 +763,12 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             if ($('sideOverlay')) $('sideOverlay').classList.toggle('hidden', !document.body.classList.contains('sideOpen'));
             return;
           }
-          if (target?.id === 'collapseBtn') {
+          const sideGutter = target?.closest?.('#sideGutter');
+          const sideCollapseBtn = target?.closest?.('#sideCollapseBtn');
+          if (sideGutter || sideCollapseBtn) {
             document.body.classList.toggle('sideCollapsed');
+            const btn = $('sideCollapseBtn');
+            if (btn) btn.textContent = document.body.classList.contains('sideCollapsed') ? '▸' : '◂';
             return;
           }
           if (target?.id === 'sideOverlay') {

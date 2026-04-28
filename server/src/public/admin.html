@@ -68,8 +68,15 @@
 
       <div id="adminPanel" class="layout hidden">
         <aside class="side">
-          <div class="sideTopTools">
-            <button id="collapseBtn" class="secondary collapseBtn" data-i18n-aria-label="ariaCollapseSidebar">▸</button>
+          <div id="sideGutter" class="sideGutter" aria-hidden="true">
+            <button
+              id="sideCollapseBtn"
+              class="sideGutterBtn"
+              type="button"
+              data-i18n-aria-label="ariaCollapseSidebar"
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+            >◂</button>
           </div>
           <div class="navGroup">
             <button class="navBtn active" data-view="dashboard" data-icon="⌂">대시보드</button>

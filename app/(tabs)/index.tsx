@@ -216,7 +216,16 @@ export default function FeedScreen() {
       const serverItems = await fetchSignalNews({ locale, category: 'global', limit });
       setSignalNewsPool(serverItems);
       const rawSources = uniqueSignalSources(serverItems);
-      const sources = buildSourcesFromCatalog({ rawSources, catalog: catalogRows });
+      // In Signal API mode, the server-side catalog is the source of truth for
+      // category-specific filtering. Avoid mixing in "extras" here, otherwise
+      // sources from other categories can leak into the filter UI.
+      const enabledCatalog = (catalogRows || [])
+        .filter((c) => c && c.enabled)
+        .slice()
+        .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.name).localeCompare(String(b.name)))
+        .map((c) => String(c.name || '').trim())
+        .filter((s) => s.length > 0);
+      const sources = enabledCatalog.length > 0 ? enabledCatalog : buildSourcesFromCatalog({ rawSources, catalog: catalogRows });
       setAvailableSources(sources);
       const selected = await loadSelectedSources(sources);
       setSelectedSources(selected);

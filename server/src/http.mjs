@@ -491,6 +491,23 @@ export async function handleRequest(req, res) {
       ensureNewsSourcesFromItems(db);
       const category = url.searchParams.get('category');
       const cat = category ? String(category).trim().toLowerCase() : '';
+
+      // Category filtering must reflect the actual ingested items.
+      // Legacy data may have sources created under "global" before category was tracked.
+      let allowedNames = null;
+      if (cat) {
+        const set = new Set();
+        for (const item of db.newsItems || []) {
+          const itemCat = String(item?.category || '').trim().toLowerCase() === 'crypto' ? 'crypto' : 'global';
+          if (itemCat !== cat) continue;
+          const name = normalizeNewsSourceNameWithAliases(item?.sourceName, itemCat, db.newsSourceSettings);
+          if (name) set.add(normalizeNewsSourceName(name));
+        }
+        // Keep Financial Juice visible in global as it is treated as global in /v1/news.
+        if (cat === 'global') set.add('Financial Juice');
+        allowedNames = set;
+      }
+
       const sources = [...(db.newsSources || [])]
         .map((s) => ({
           id: String(s.id || '').trim(),
@@ -502,6 +519,7 @@ export async function handleRequest(req, res) {
         }))
         .filter((s) => s.id && s.name)
         .filter((s) => (!cat ? true : s.category === cat))
+        .filter((s) => (!allowedNames ? true : allowedNames.has(s.name)))
         .filter((s) => !s.hidden)
         .filter((s) => s.enabled)
         .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));

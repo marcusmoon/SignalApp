@@ -22,6 +22,7 @@ import {
 import {
   defaultModelForProvider as defaultModelForProviderView,
   loadMarketListsView,
+  modelPresetsForProvider as modelPresetsForProviderView,
   loadProviderSettingsView,
   loadTranslationSettingsView,
   loadUiModelPresetsView,
@@ -957,6 +958,11 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await loadJobs();
             return;
           }
+          if (target?.id === 'jobListSearch') {
+            state.jobListQuery = $('jobListQuery')?.value || '';
+            await loadJobs();
+            return;
+          }
           if (target?.dataset?.newsMode) {
             setNewsMode(target.dataset.newsMode);
             return;
@@ -1084,22 +1090,102 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             });
             await loadTranslationSettings();
           }
-          if (target.dataset.providerSave) {
-            const provider = target.dataset.providerSave;
-            const apiKey = document.querySelector(`[data-provider-key="${provider}"]`).value.trim();
-            const modelSelect = document.querySelector(`[data-provider-model="${provider}"]`);
-            const body = {
-              enabled: document.querySelector(`[data-provider-enabled="${provider}"]`).checked,
-              apiKey,
+          if (target.dataset.providerEditOpen) {
+            const provider = target.dataset.providerEditOpen;
+            const hit = (state.providerSettings || []).find((p) => String(p.provider || '') === String(provider));
+            if (!hit) return;
+            state.providerEditDraft = {
+              provider: hit.provider,
+              enabled: hit.enabled !== false,
+              hasApiKey: !!hit.hasApiKey,
+              maskedApiKey: hit.maskedApiKey || '',
+              defaultModel: hit.defaultModel || '',
             };
-            if (modelSelect instanceof HTMLSelectElement) {
-              body.defaultModel = modelSelect.value.trim();
+            // Render dialog fields
+            if ($('providerEditDialog')) $('providerEditDialog').classList.remove('hidden');
+            if ($('providerEditDialogMeta')) $('providerEditDialogMeta').textContent = String(hit.provider || '');
+            if ($('providerEditEnabled')) $('providerEditEnabled').checked = hit.enabled !== false;
+            if ($('providerEditDialogStatus')) $('providerEditDialogStatus').textContent = '';
+            if ($('providerEditApiKey')) $('providerEditApiKey').value = '';
+            if ($('providerEditApiKey')) $('providerEditApiKey').type = 'password';
+            if ($('toggleProviderEditApiKey')) $('toggleProviderEditApiKey').textContent = textFor('btnShow');
+
+            const isLlm = hit.provider === 'openai' || hit.provider === 'claude';
+            if ($('providerEditModelRow')) $('providerEditModelRow').classList.toggle('hidden', !isLlm);
+            if ($('providerEditDefaultModel')) {
+              const models = isLlm
+                ? modelPresetsForProviderView({ provider: hit.provider, defaultModel: hit.defaultModel, uiModelPresets: state.uiModelPresets })
+                : [];
+              const select = $('providerEditDefaultModel');
+              select.innerHTML =
+                `<option value="">${esc(textFor('providerSelectModel'))}</option>` +
+                (models || []).map((m) => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+              select.value = String(hit.defaultModel || '');
             }
+            if ($('deleteProviderEditApiKey')) $('deleteProviderEditApiKey').disabled = !hit.hasApiKey;
+            return;
+          }
+          if (target.id === 'closeProviderEditDialog' || target.id === 'cancelProviderEditDialog') {
+            state.providerEditDraft = null;
+            $('providerEditDialog')?.classList.add('hidden');
+            return;
+          }
+          if (target.id === 'toggleProviderEditApiKey') {
+            const input = $('providerEditApiKey');
+            if (!input) return;
+            input.type = input.type === 'password' ? 'text' : 'password';
+            target.textContent = input.type === 'password' ? textFor('btnShow') : textFor('btnHide');
+            return;
+          }
+          if (target.id === 'providerEditDialog') {
+            state.providerEditDraft = null;
+            $('providerEditDialog')?.classList.add('hidden');
+            return;
+          }
+          if (target.id === 'deleteProviderEditApiKey') {
+            const draft = state.providerEditDraft;
+            if (!draft?.provider) return;
+            openConfirm({
+              title: textFor('confirmProviderDeleteKeyTitle'),
+              desc: textFor('confirmProviderDeleteKeyDesc'),
+              body: textForVars('confirmProviderDeleteKeyBody', { provider: draft.provider }),
+              okText: textFor('btnRemove'),
+              danger: true,
+              onConfirm: async () => {
+                await api(`/admin/api/provider-settings/${draft.provider}`, {
+                  method: 'PATCH',
+                  body: JSON.stringify({ clearApiKey: true }),
+                });
+                showToast(textFor('toastProviderKeyRemoved'), draft.provider, { kind: 'success' });
+                $('providerEditDialog')?.classList.add('hidden');
+                state.providerEditDraft = null;
+                await loadProviderSettings();
+              },
+            });
+            return;
+          }
+          if (target.id === 'saveProviderEditDialog') {
+            const draft = state.providerEditDraft;
+            if (!draft?.provider) return;
+            const provider = draft.provider;
+            const body = {
+              enabled: !!$('providerEditEnabled')?.checked,
+            };
+            const isLlm = provider === 'openai' || provider === 'claude';
+            if (isLlm && $('providerEditDefaultModel')) {
+              body.defaultModel = $('providerEditDefaultModel').value.trim();
+            }
+            const apiKey = String($('providerEditApiKey')?.value || '').trim();
+            if (apiKey) body.apiKey = apiKey;
             await api(`/admin/api/provider-settings/${provider}`, {
               method: 'PATCH',
               body: JSON.stringify(body),
             });
+            showToast(textFor('toastSaved'), provider, { kind: 'success' });
+            $('providerEditDialog')?.classList.add('hidden');
+            state.providerEditDraft = null;
             await loadProviderSettings();
+            return;
           }
           if (target.dataset.providerClear) {
             const provider = target.dataset.providerClear;
@@ -1267,7 +1353,33 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             state.newsPage = 1;
             await loadNews();
           }
+          if (target.id === 'resetNewsBtn') {
+            if ($('newsRange')) $('newsRange').value = 'today';
+            if ($('newsFrom')) $('newsFrom').value = '';
+            if ($('newsTo')) $('newsTo').value = '';
+            if ($('newsCategory')) $('newsCategory').value = '';
+            if ($('newsTranslationStatus')) $('newsTranslationStatus').value = '';
+            if ($('newsQuery')) $('newsQuery').value = '';
+            if ($('newsPageSize')) $('newsPageSize').value = '30';
+            setDatePreset();
+            state.newsPage = 1;
+            await loadNews();
+          }
           if (target.id === 'loadJobRunsBtn') {
+            state.jobRunsPage = 1;
+            await loadJobRuns();
+          }
+          if (target.id === 'resetJobRunsBtn') {
+            if ($('jobRunRange')) $('jobRunRange').value = 'today';
+            if ($('jobRunFrom')) $('jobRunFrom').value = '';
+            if ($('jobRunTo')) $('jobRunTo').value = '';
+            if ($('jobRunStatus')) $('jobRunStatus').value = '';
+            if ($('jobRunType')) $('jobRunType').value = '';
+            if ($('jobRunJob')) $('jobRunJob').value = '';
+            if ($('jobRunTrigger')) $('jobRunTrigger').value = '';
+            if ($('jobRunQuery')) $('jobRunQuery').value = '';
+            if ($('jobRunPageSize')) $('jobRunPageSize').value = '30';
+            setJobRunDatePreset();
             state.jobRunsPage = 1;
             await loadJobRuns();
           }
@@ -1287,6 +1399,15 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             state.calendarSelectedYmd = '';
             await loadCalendar();
           }
+          if (target.id === 'resetCalendarBtn') {
+            if ($('calendarRange')) $('calendarRange').value = 'today';
+            setCalendarDatePreset();
+            if ($('calendarType')) $('calendarType').value = '';
+            if ($('calendarSymbol')) $('calendarSymbol').value = '';
+            if ($('calendarQuery')) $('calendarQuery').value = '';
+            state.calendarSelectedYmd = '';
+            await loadCalendar();
+          }
           if (target.dataset.calMonthPrev != null) {
             state.calendarMonthYm = shiftCalendarMonth(state.calendarMonthYm, -1);
             state.calendarSelectedYmd = '';
@@ -1302,6 +1423,24 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           if (target.dataset.calDay) {
             state.calendarSelectedYmd = target.dataset.calDay;
             renderAdminCalendarGrid();
+            renderCalendarDayTable();
+            return;
+          }
+          if (target.dataset.calendarRangePrev) {
+            const rows = [...(state.calendarMonthRows || [])];
+            const dates = [...new Set(rows.map((r) => String(r.date || '').slice(0, 10)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+            const cur = state.calendarRangeFocusYmd || dates[0] || '__all__';
+            const idx = dates.indexOf(cur);
+            if (idx > 0) state.calendarRangeFocusYmd = dates[idx - 1];
+            renderCalendarDayTable();
+            return;
+          }
+          if (target.dataset.calendarRangeNext) {
+            const rows = [...(state.calendarMonthRows || [])];
+            const dates = [...new Set(rows.map((r) => String(r.date || '').slice(0, 10)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+            const cur = state.calendarRangeFocusYmd || dates[0] || '__all__';
+            const idx = dates.indexOf(cur);
+            if (idx >= 0 && idx < dates.length - 1) state.calendarRangeFocusYmd = dates[idx + 1];
             renderCalendarDayTable();
             return;
           }
@@ -1483,6 +1622,11 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           state.newsPage = 1;
           await loadNews();
         }
+        if (event.target.id === 'calendarRange') {
+          setCalendarDatePreset();
+          state.calendarSelectedYmd = '';
+          await loadCalendar();
+        }
         if (event.target.id === 'dashboardLimit') {
           state.dashboardLimit = Number(event.target.value) || 5;
           localStorage.setItem('signalAdminDashboardLimit', String(state.dashboardLimit));
@@ -1533,10 +1677,14 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           state.jobRunsPage = 1;
           await loadJobRuns();
         }
-        if (event.target.id === 'calendarMonthPick') {
-          state.calendarMonthYm = event.target.value;
+        if (event.target.id === 'calendarFrom' || event.target.id === 'calendarTo') {
           state.calendarSelectedYmd = '';
           await loadCalendar();
+        }
+        if (event.target.dataset && event.target.dataset.calendarRangeDay === 'pick') {
+          state.calendarSelectedYmd = '';
+          state.calendarRangeFocusYmd = event.target.value;
+          renderCalendarDayTable();
         }
         if (event.target.id === 'marketListAddSymbol' && event.target.value.includes(',')) {
           event.target.value = event.target.value.replaceAll(',', ' ');
@@ -1593,6 +1741,13 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           state.jobListQuery = $('jobListQuery')?.value || '';
           await loadJobs();
         }
+        if (
+          event.key === 'Enter' &&
+          (event.target.id === 'jobRunQuery' || event.target.id === 'jobRunFrom' || event.target.id === 'jobRunTo')
+        ) {
+          event.preventDefault();
+          document.getElementById('loadJobRunsBtn')?.click();
+        }
       });
 
       applyTheme(localStorage.getItem('signalAdminAccent') || 'green');
@@ -1610,6 +1765,10 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       setYoutubeMode(state.youtubeMode || 'filter');
       updateNewsSelectionInfo();
       updateYoutubeSelectionInfo();
+      // Ensure date preset defaults (today) hydrate from/to inputs.
+      setDatePreset();
+      setJobRunDatePreset();
+      setCalendarDatePreset();
       refreshSession().catch((error) => { $('session').textContent = error.message; });
       updateResetUi();
       // Keep settings tab stable across refreshes

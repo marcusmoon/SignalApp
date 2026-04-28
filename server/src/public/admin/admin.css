@@ -635,6 +635,9 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
       .fieldLabel > span { font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: 0.02em; }
       .newsEdit .jsonEditor { min-height: 92px; }
       .newsEditDialogPanel { width: min(880px, 100%); }
+      .providerEditDialogPanel { width: min(720px, 100%); }
+      .providerEditRows { display: grid; gap: 12px; }
+      .providerKeyInputRow { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
       .newsEditModal { display: grid; gap: 12px; }
       .newsEditTabs { margin: 0; width: fit-content; max-width: 100%; }
       .newsEditSource {
@@ -1281,6 +1284,85 @@ h3 { font-size: var(--font-card-title); font-weight: 600; }
   width: 100%;
 }
 
+/* Grouped filters (Jobs etc.) */
+.filterBarControls.jobsFilterGroups {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+/* Date group: keep date inputs readable */
+.filterGroup--date input[type='date'] {
+  min-width: 160px;
+}
+
+.dateRangeSep {
+  align-self: center;
+  height: 36px;
+  line-height: 36px;
+  padding: 0 6px;
+  color: var(--color-gray-600);
+  font-weight: 800;
+  user-select: none;
+}
+.filterGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  background: rgba(15, 23, 42, 0.38);
+}
+
+.filterGroupTitle {
+  flex: 0 0 auto;
+  padding: 0 6px;
+  margin-right: 2px;
+  border-radius: 999px;
+  border: 1px solid var(--color-gray-200);
+  background: rgba(15, 23, 42, 0.62);
+  color: var(--color-gray-600);
+  font-size: var(--font-caption);
+  font-weight: 800;
+  line-height: 22px;
+  height: 22px;
+  align-self: center;
+}
+.filterGroup .wide {
+  flex: 1 1 360px;
+  min-width: 260px;
+}
+
+.filterGroup--facets {
+  background: rgba(15, 23, 42, 0.34);
+}
+.filterGroup--search {
+  background: rgba(15, 23, 42, 0.46);
+}
+
+/* Keep controls visually consistent inside grouped filters */
+.filterGroup select,
+.filterGroup input,
+.filterGroup button {
+  min-height: 36px;
+}
+.filterGroup select {
+  min-width: 160px;
+}
+.filterGroup button {
+  min-width: 84px;
+}
+
+/* Operation tabs should remain compact inside group */
+.filterGroup .tabs.opTabs {
+  flex: 0 0 auto;
+}
+.filterGroup--facets .tabs.opTabs {
+  margin-right: 2px;
+}
+
 .filterBarHead {
   display: flex;
   align-items: center;
@@ -1314,6 +1396,12 @@ h3 { font-size: var(--font-card-title); font-weight: 600; }
   border: 1px solid var(--color-gray-200);
   border-radius: var(--radius-md);
   background: var(--color-gray-50);
+}
+
+/* Operation tabs (Jobs): keep compact, no wasted row */
+.filterBarControls .tabs.opTabs {
+  width: max-content;
+  flex-wrap: nowrap;
 }
 
 .tabBtn {
@@ -1695,7 +1783,7 @@ h3 { font-size: var(--font-card-title); font-weight: 600; }
 
 .providerTile {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) minmax(320px, 1.2fr) auto;
+  grid-template-columns: 1fr;
   gap: 12px;
   align-items: center;
   padding: 14px;
@@ -1709,6 +1797,10 @@ h3 { font-size: var(--font-card-title); font-weight: 600; }
   align-items: center;
   gap: 10px;
   min-width: 0;
+}
+
+.providerSwitch--head {
+  margin-left: auto;
 }
 
 .providerGlyph {
@@ -1738,18 +1830,49 @@ h3 { font-size: var(--font-card-title); font-weight: 600; }
 
 .providerTileBody {
   display: grid;
-  grid-template-columns: minmax(110px, auto) minmax(160px, 0.8fr) minmax(220px, 1fr);
-  gap: 10px;
-  align-items: end;
+  gap: 12px;
 }
 
 .providerTile--data .providerTileBody {
-  grid-template-columns: minmax(110px, auto) minmax(260px, 1fr);
+  display: grid;
+  gap: 12px;
 }
 
 .providerSwitch {
   align-self: center;
   min-height: 40px;
+}
+
+.providerFormRows {
+  display: grid;
+  gap: 10px;
+}
+.providerRow {
+  display: grid;
+  grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+.providerRowLabel {
+  font-size: var(--font-caption);
+  font-weight: 800;
+  color: var(--color-gray-600);
+  padding-top: 8px;
+}
+.providerRowControl select,
+.providerRowControl input {
+  width: 100%;
+}
+.providerKeyInline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 34px;
+}
+.providerKeyBody .keyInput {
+  width: 100%;
+  max-width: none;
 }
 
 .providerActions {

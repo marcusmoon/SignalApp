@@ -93,8 +93,81 @@ export function renderAdminCalendarGrid({ state, $, esc, textFor, ymd }) {
 export function renderCalendarDayTable({ state, $, esc, textFor, textForVars }) {
   const host = $('calendarDayList') || $('calendar');
   if (!host) return;
-  const sel = state.calendarSelectedYmd;
   const headEl = $('calendarDayHeadingText');
+  const sel = String(state.calendarSelectedYmd || '').slice(0, 10);
+  const rangeFrom = String(state.calendarRangeFrom || '').slice(0, 10);
+  const rangeTo = String(state.calendarRangeTo || '').slice(0, 10);
+
+  // Range mode: show all fetched rows in the selected date range.
+  if (!sel) {
+    const rowsAll = [...(state.calendarMonthRows || [])].sort(
+      (a, b) => String(a.date || '').localeCompare(String(b.date || '')) || String(a.title || '').localeCompare(String(b.title || '')),
+    );
+    const dates = [...new Set(rowsAll.map((r) => String(r.date || '').slice(0, 10)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    const focus = state.calendarRangeFocusYmd || (dates[0] || '__all__');
+    const focusIdx = dates.indexOf(focus);
+    const canPrev = focus !== '__all__' && focusIdx > 0;
+    const canNext = focus !== '__all__' && focusIdx >= 0 && focusIdx < dates.length - 1;
+
+    if (headEl) {
+      headEl.textContent =
+        focus === '__all__'
+          ? textForVars('calendarEventsForRange', { from: rangeFrom || '-', to: rangeTo || '-' })
+          : textForVars('calendarEventsForDayOn', { date: focus });
+    }
+
+    const rows =
+      focus === '__all__' ? rowsAll : rowsAll.filter((r) => String(r.date || '').slice(0, 10) === focus);
+
+    host.innerHTML =
+      dates.length === 0
+        ? `<p class="muted">${esc(textFor('calendarEmptyDay'))}</p>`
+        : `
+          <div class="pager" style="margin-bottom:10px">
+            <div class="muted">${esc(textForVars('calendarEventsForRange', { from: rangeFrom || '-', to: rangeTo || '-' }))}</div>
+            <div class="row">
+              <button class="secondary" data-calendar-range-prev="1" ${canPrev ? '' : 'disabled'}>${esc(textFor('btnPrevious'))}</button>
+              <select data-calendar-range-day="pick">
+                <option value="__all__"${focus === '__all__' ? ' selected' : ''}>${esc(textFor('tabAll'))}</option>
+                ${dates.map((d) => `<option value="${esc(d)}"${d === focus ? ' selected' : ''}>${esc(d)}</option>`).join('')}
+              </select>
+              <button class="secondary" data-calendar-range-next="1" ${canNext ? '' : 'disabled'}>${esc(textFor('btnNext'))}</button>
+            </div>
+          </div>
+          ${
+            rows.length === 0
+              ? `<p class="muted">${esc(textFor('calendarEmptyDay'))}</p>`
+              : `
+                <table>
+                  <thead>
+                    <tr>
+                      <th>${esc(textFor('colDate'))}</th>
+                      <th>${esc(textFor('colType'))}</th>
+                      <th>${esc(textFor('colTitle'))}</th>
+                      <th>${esc(textFor('colMeta'))}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rows
+                      .map(
+                        (item) => `
+                      <tr>
+                        <td class="muted">${esc(item.date || '-')}</td>
+                        <td><span class="pill">${esc(item.type || '-')}</span></td>
+                        <td><strong>${esc(item.title || '-')}</strong></td>
+                        <td class="muted">${esc(item.country || item.symbol || '-')}</td>
+                      </tr>
+                    `,
+                      )
+                      .join('')}
+                  </tbody>
+                </table>
+              `
+          }
+        `;
+    return;
+  }
+
   if (headEl) headEl.textContent = textForVars('calendarEventsForDayOn', { date: formatAdminCalendarDayHeading(sel) });
   const rows = (state.calendarMonthRows || []).filter((r) => String(r.date || '').slice(0, 10) === sel);
   host.innerHTML =
@@ -133,12 +206,22 @@ export async function loadCalendarView(ctx) {
   const host = $('calendarDayList') || $('calendar');
   if (!host) return;
   initCalendarMonthIfNeeded({ state, ymd });
-  if ($('calendarMonthPick')) $('calendarMonthPick').value = state.calendarMonthYm;
+
+  // Prefer explicit range (news-like) when inputs exist.
+  const fromValue = $('calendarFrom')?.value?.slice(0, 10) || '';
+  const toValue = $('calendarTo')?.value?.slice(0, 10) || '';
+  const from = fromValue || calendarMonthMeta(state.calendarMonthYm)?.first || '';
+  const to = toValue || calendarMonthMeta(state.calendarMonthYm)?.last || '';
+  if (!from || !to) return;
+
+  // Drive the month grid by the "from" month.
+  state.calendarMonthYm = from.slice(0, 7);
   const meta = calendarMonthMeta(state.calendarMonthYm);
   if (!meta) return;
-  if ($('calendarFrom')) $('calendarFrom').value = meta.first;
-  if ($('calendarTo')) $('calendarTo').value = meta.last;
-  const params = new URLSearchParams({ page: '1', pageSize: '500', from: meta.first, to: meta.last });
+
+  const params = new URLSearchParams({ page: '1', pageSize: '500', from, to });
+  state.calendarRangeFrom = from;
+  state.calendarRangeTo = to;
   const ty = $('calendarType')?.value?.trim();
   if (ty) params.set('type', ty);
   const cq = $('calendarQuery')?.value?.trim();
@@ -150,11 +233,21 @@ export async function loadCalendarView(ctx) {
   state.calendarTotal = body.total;
   state.calendarPage = body.page;
   state.calendarTotalPages = body.totalPages;
-  if (!state.calendarSelectedYmd) state.calendarSelectedYmd = ymd(new Date());
-  if (!state.calendarMonthRows.some((r) => String(r.date || '').slice(0, 10) === state.calendarSelectedYmd)) {
-    const prefix = `${meta.y}-${pad2(meta.m)}`;
-    const firstHit = state.calendarMonthRows.find((r) => String(r.date || '').startsWith(prefix));
-    state.calendarSelectedYmd = firstHit ? String(firstHit.date).slice(0, 10) : meta.first;
+  // If a specific day is selected (via grid click), keep it; otherwise show range mode.
+  if (state.calendarSelectedYmd) {
+    const sel = String(state.calendarSelectedYmd).slice(0, 10);
+    if (!state.calendarMonthRows.some((r) => String(r.date || '').slice(0, 10) === sel)) {
+      state.calendarSelectedYmd = '';
+    }
+  }
+  // Reset range navigator when query changes
+  if (!state.calendarSelectedYmd) {
+    const allDates = [...new Set((state.calendarMonthRows || []).map((r) => String(r.date || '').slice(0, 10)).filter(Boolean))].sort(
+      (a, b) => a.localeCompare(b),
+    );
+    if (!state.calendarRangeFocusYmd || (state.calendarRangeFocusYmd !== '__all__' && !allDates.includes(state.calendarRangeFocusYmd))) {
+      state.calendarRangeFocusYmd = allDates[0] || '__all__';
+    }
   }
   renderAdminCalendarGrid({ state, $, esc, textFor, ymd });
   renderCalendarDayTable({ state, $, esc, textFor, textForVars: ctx.textForVars });

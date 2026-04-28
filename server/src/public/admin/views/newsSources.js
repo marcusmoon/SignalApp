@@ -279,10 +279,11 @@ export async function saveNewsSourcesView(ctx) {
   next.forEach((s, idx) => {
     s.order = idx + 1;
   });
-  const body = await api('/admin/api/news-sources', { method: 'PUT', body: JSON.stringify({ category, items: next }) });
-  state.newsSources = Array.isArray(body.data) ? body.data : next;
   state.newsSourceDraftRows = [''];
-  showToast(textFor('toastSaved') || 'Saved', `${state.newsSources.length}`, { kind: 'success' });
-  renderNewsSourcesView(ctx);
+  await api('/admin/api/news-sources', { method: 'PUT', body: JSON.stringify({ category, items: next }) });
+  // After save, always re-fetch through the category/includeHidden filters to avoid
+  // temporarily showing merged/legacy rows that the server preserves for safety.
+  await loadNewsSourcesView(ctx);
+  showToast(textFor('toastSaved') || 'Saved', `${(state.newsSources || []).length}`, { kind: 'success' });
 }
 

@@ -171,51 +171,62 @@
               <div id="jobRunsPanel" class="hidden">
                 <div class="filterBar filterBox">
                   <div class="filterBarTitle filterBoxTitle" data-i18n="filterSearchConditions">검색 조건</div>
-                  <div class="filterBarControls toolbar">
-                    <select id="jobRunRange">
-                      <option value="today" data-i18n="datePresetToday">오늘</option>
-                      <option value="yesterday" data-i18n="datePresetYesterday">어제</option>
-                      <option value="7d" data-i18n="datePreset7d">일주일</option>
-                      <option value="30d" data-i18n="datePreset30d">한달</option>
-                      <option value="all" selected data-i18n="datePresetAll">전체</option>
-                      <option value="custom" data-i18n="datePresetCustom">직접</option>
-                    </select>
-                    <input id="jobRunFrom" type="date" />
-                    <input id="jobRunTo" type="date" />
-                    <select id="jobRunStatus">
-                      <option value="" data-i18n="jobRunStatusAll">전체 상태</option>
-                      <option value="running">running</option>
-                      <option value="completed">completed</option>
-                      <option value="failed">failed</option>
-                    </select>
-                    <select id="jobRunType">
-                      <option value="" data-i18n="jobRunTypeAll">전체 타입</option>
-                      <option value="news">news</option>
-                      <option value="calendar">calendar</option>
-                      <option value="youtube">youtube</option>
-                      <option value="market">market</option>
-                      <option value="finnhub">finnhub</option>
-                      <option value="coingecko">coingecko</option>
-                      <option value="market_quotes">market_quotes</option>
-                      <option value="coin_markets">coin_markets</option>
-                      <option value="rss">rss</option>
-                    </select>
-                    <select id="jobRunJob">
-                      <option value="" data-i18n="jobRunJobAll">전체 Job</option>
-                    </select>
-                    <select id="jobRunTrigger">
-                      <option value="" data-i18n="jobRunTriggerAll">전체 실행방식</option>
-                      <option value="manual">manual</option>
-                      <option value="schedule">schedule</option>
-                    </select>
-                    <input id="jobRunQuery" class="wide" data-i18n-placeholder="jobRunQueryPlaceholder" placeholder="" />
-                    <select id="jobRunPageSize">
-                      <option value="20" data-i18n="pageSize20">20개</option>
-                      <option value="30" selected data-i18n="pageSize30">30개</option>
-                      <option value="50" data-i18n="pageSize50">50개</option>
-                      <option value="100" data-i18n="pageSize100">100개</option>
-                    </select>
-                    <button id="loadJobRunsBtn" class="secondary" data-i18n="btnSearch">검색</button>
+                  <div class="filterBarControls toolbar jobsFilterGroups">
+                    <div class="filterGroup filterGroup--date">
+                      <span class="filterGroupTitle" data-i18n="filterGroupDate">날짜</span>
+                      <select id="jobRunRange">
+                        <option value="today" data-i18n="datePresetToday">오늘</option>
+                        <option value="yesterday" data-i18n="datePresetYesterday">어제</option>
+                        <option value="7d" data-i18n="datePreset7d">일주일</option>
+                        <option value="30d" data-i18n="datePreset30d">한달</option>
+                      <option value="all" data-i18n="datePresetAll">전체</option>
+                        <option value="custom" data-i18n="datePresetCustom">직접</option>
+                      </select>
+                      <input id="jobRunFrom" type="date" />
+                    <span class="dateRangeSep" aria-hidden="true">~</span>
+                      <input id="jobRunTo" type="date" />
+                    </div>
+                    <div class="filterGroup filterGroup--facets">
+                      <span class="filterGroupTitle" data-i18n="filterGroupFilters">필터</span>
+                      <select id="jobRunStatus">
+                        <option value="" data-i18n="jobRunStatusAll">전체 상태</option>
+                        <option value="running">running</option>
+                        <option value="completed">completed</option>
+                        <option value="failed">failed</option>
+                      </select>
+                      <select id="jobRunType">
+                        <option value="" data-i18n="jobRunTypeAll">전체 타입</option>
+                        <option value="news">news</option>
+                        <option value="calendar">calendar</option>
+                        <option value="youtube">youtube</option>
+                        <option value="market">market</option>
+                        <option value="finnhub">finnhub</option>
+                        <option value="coingecko">coingecko</option>
+                        <option value="market_quotes">market_quotes</option>
+                        <option value="coin_markets">coin_markets</option>
+                        <option value="rss">rss</option>
+                      </select>
+                      <select id="jobRunJob">
+                        <option value="" data-i18n="jobRunJobAll">전체 Job</option>
+                      </select>
+                      <select id="jobRunTrigger">
+                        <option value="" data-i18n="jobRunTriggerAll">전체 실행방식</option>
+                        <option value="manual">manual</option>
+                        <option value="schedule">schedule</option>
+                      </select>
+                      <select id="jobRunPageSize">
+                        <option value="20" data-i18n="pageSize20">20개</option>
+                        <option value="30" selected data-i18n="pageSize30">30개</option>
+                        <option value="50" data-i18n="pageSize50">50개</option>
+                        <option value="100" data-i18n="pageSize100">100개</option>
+                      </select>
+                    </div>
+                    <div class="filterGroup filterGroup--search">
+                      <span class="filterGroupTitle" data-i18n="filterGroupSearch">검색</span>
+                      <input id="jobRunQuery" class="wide" data-i18n-placeholder="jobRunQueryPlaceholder" placeholder="" />
+                      <button id="loadJobRunsBtn" class="secondary" data-i18n="btnSearch">검색</button>
+                      <button id="resetJobRunsBtn" class="secondary" data-i18n="btnResetQuery">초기화</button>
+                    </div>
                   </div>
                 </div>
                 <div id="jobRunsPagerTop" class="pager"></div>
@@ -247,37 +258,48 @@
               </select>
               <div id="newsFilterBox" class="filterBar filterBox">
                 <div class="filterBarTitle filterBoxTitle" data-i18n="filterSearchConditions"></div>
-                <div class="filterBarControls toolbar">
-                  <select id="newsRange">
-                    <option value="today" data-i18n="datePresetToday">오늘</option>
-                    <option value="yesterday" data-i18n="datePresetYesterday">어제</option>
-                    <option value="7d" selected data-i18n="datePreset7d">일주일</option>
-                    <option value="30d" data-i18n="datePreset30d">한달</option>
-                    <option value="all" data-i18n="datePresetAll">전체</option>
-                    <option value="custom" data-i18n="datePresetCustom">직접</option>
-                  </select>
-                  <input id="newsFrom" type="date" />
-                  <input id="newsTo" type="date" />
-                  <select id="newsCategory">
-                    <option value="" data-i18n="newsCategoryAll">전체 카테고리</option>
-                    <option value="global">global</option>
-                    <option value="crypto">crypto</option>
-                  </select>
-                  <select id="newsTranslationStatus">
-                    <option value="" data-i18n="newsTranslationStatusAll">전체 번역상태</option>
-                    <option value="completed">completed</option>
-                    <option value="manual">manual</option>
-                    <option value="missing">missing</option>
-                    <option value="failed">failed</option>
-                  </select>
-                  <input id="newsQuery" class="wide" data-i18n-placeholder="newsQueryPlaceholder" placeholder="" />
-                  <select id="newsPageSize">
-                    <option value="20" data-i18n="pageSize20">20개</option>
-                    <option value="30" selected data-i18n="pageSize30">30개</option>
-                    <option value="50" data-i18n="pageSize50">50개</option>
-                    <option value="100" data-i18n="pageSize100">100개</option>
-                  </select>
-                  <button id="loadNewsBtn" class="secondary" data-i18n="btnSearch">검색</button>
+                <div class="filterBarControls toolbar jobsFilterGroups">
+                  <div class="filterGroup filterGroup--date">
+                    <span class="filterGroupTitle" data-i18n="filterGroupDate">날짜</span>
+                    <select id="newsRange">
+                      <option value="today" data-i18n="datePresetToday">오늘</option>
+                      <option value="yesterday" data-i18n="datePresetYesterday">어제</option>
+                      <option value="7d" data-i18n="datePreset7d">일주일</option>
+                      <option value="30d" data-i18n="datePreset30d">한달</option>
+                      <option value="all" data-i18n="datePresetAll">전체</option>
+                      <option value="custom" data-i18n="datePresetCustom">직접</option>
+                    </select>
+                    <input id="newsFrom" type="date" />
+                    <span class="dateRangeSep" aria-hidden="true">~</span>
+                    <input id="newsTo" type="date" />
+                  </div>
+                  <div class="filterGroup filterGroup--facets">
+                    <span class="filterGroupTitle" data-i18n="filterGroupFilters">필터</span>
+                    <select id="newsCategory">
+                      <option value="" data-i18n="newsCategoryAll">전체 카테고리</option>
+                      <option value="global">global</option>
+                      <option value="crypto">crypto</option>
+                    </select>
+                    <select id="newsTranslationStatus">
+                      <option value="" data-i18n="newsTranslationStatusAll">전체 번역상태</option>
+                      <option value="completed">completed</option>
+                      <option value="manual">manual</option>
+                      <option value="missing">missing</option>
+                      <option value="failed">failed</option>
+                    </select>
+                    <select id="newsPageSize">
+                      <option value="20" data-i18n="pageSize20">20개</option>
+                      <option value="30" selected data-i18n="pageSize30">30개</option>
+                      <option value="50" data-i18n="pageSize50">50개</option>
+                      <option value="100" data-i18n="pageSize100">100개</option>
+                    </select>
+                  </div>
+                  <div class="filterGroup filterGroup--search">
+                    <span class="filterGroupTitle" data-i18n="filterGroupSearch">검색</span>
+                    <input id="newsQuery" class="wide" data-i18n-placeholder="newsQueryPlaceholder" placeholder="" />
+                    <button id="loadNewsBtn" class="secondary" data-i18n="btnSearch">검색</button>
+                    <button id="resetNewsBtn" class="secondary" data-i18n="btnResetQuery">초기화</button>
+                  </div>
                 </div>
               </div>
               <div id="newsBulkBox" class="actionBox hidden">
@@ -325,43 +347,50 @@
                   <div class="pageDesc" data-i18n="pageCalendarDesc"></div>
                 </div>
               </div>
-              <div class="calendarSplit">
-                <section class="calendarMonthPanel" aria-labelledby="calendarMonthHeading">
-                  <h3 id="calendarMonthHeading" class="calendarMonthHeading" data-i18n="calendarMonthPanelTitle"></h3>
-                  <input type="hidden" id="calendarFrom" />
-                  <input type="hidden" id="calendarTo" />
-                  <div class="calendarNav">
-                    <button type="button" class="secondary calendarNavBtn" data-cal-month-prev="" data-i18n-title="calendarMonthPrev">‹</button>
-                    <input type="month" id="calendarMonthPick" class="calendarMonthInput" />
-                    <button type="button" class="secondary calendarNavBtn" data-cal-month-next="" data-i18n-title="calendarMonthNext">›</button>
-                  </div>
-                  <div id="adminCalendarGrid" class="adminCalendarHost"></div>
-                  <p class="calendarGridHint muted" data-i18n="calendarGridHint"></p>
-                </section>
-                <div class="calendarSide">
-                  <div class="filterBar filterBox calendarFilters">
-                    <div class="filterBarTitle filterBoxTitle" data-i18n="calendarFilterTitle"></div>
-                    <div class="filterBarControls calendarToolbar">
-                      <select id="calendarType">
-                        <option value="" data-i18n="calendarTypeAll"></option>
-                        <option value="macro">macro</option>
-                        <option value="fed">fed</option>
-                        <option value="fomc">fomc</option>
-                        <option value="earnings">earnings</option>
+              <div class="filterBar filterBox calendarFilters">
+                <div class="filterBarTitle filterBoxTitle" data-i18n="calendarFilterTitle"></div>
+                <div class="filterBarControls calendarToolbar jobsFilterGroups">
+                  <div class="filterGroup filterGroup--date">
+                    <span class="filterGroupTitle" data-i18n="filterGroupDate">날짜</span>
+                      <select id="calendarRange">
+                        <option value="today" data-i18n="datePresetToday">오늘</option>
+                        <option value="yesterday" data-i18n="datePresetYesterday">어제</option>
+                        <option value="7d" data-i18n="datePreset7d">일주일</option>
+                        <option value="30d" data-i18n="datePreset30d">한달</option>
+                        <option value="all" data-i18n="datePresetAll">전체</option>
+                        <option value="custom" data-i18n="datePresetCustom">직접</option>
                       </select>
-                      <input id="calendarSymbol" class="narrowTicker" data-i18n-placeholder="calendarSymbolPh" placeholder="" />
-                      <input id="calendarQuery" class="wide calendarQueryInput" data-i18n-placeholder="calendarQueryPh" placeholder="" />
-                      <button type="button" id="loadCalendarBtn" class="secondary" data-i18n="btnSearch"></button>
-                    </div>
+                      <input id="calendarFrom" type="date" />
+                      <span class="dateRangeSep" aria-hidden="true">~</span>
+                      <input id="calendarTo" type="date" />
                   </div>
-                  <section class="calendarEventsCard" aria-labelledby="calendarDayHeadingText">
-                    <h3 class="calendarDayHeading">
-                      <span id="calendarDayHeadingText"></span>
-                    </h3>
-                    <div id="calendarDayList" class="calendarDayTableHost"></div>
-                  </section>
+                  <div class="filterGroup filterGroup--facets">
+                    <span class="filterGroupTitle" data-i18n="filterGroupFilters">필터</span>
+                    <select id="calendarType">
+                      <option value="" data-i18n="calendarTypeAll"></option>
+                      <option value="macro">macro</option>
+                      <option value="fed">fed</option>
+                      <option value="fomc">fomc</option>
+                      <option value="earnings">earnings</option>
+                    </select>
+                    <input id="calendarSymbol" class="narrowTicker" data-i18n-placeholder="calendarSymbolPh" placeholder="" />
+                  </div>
+                  <div class="filterGroup filterGroup--search">
+                    <span class="filterGroupTitle" data-i18n="filterGroupSearch">검색</span>
+                    <input id="calendarQuery" class="wide calendarQueryInput" data-i18n-placeholder="calendarQueryPh" placeholder="" />
+                    <button type="button" id="loadCalendarBtn" class="secondary" data-i18n="btnSearch"></button>
+                    <button type="button" id="resetCalendarBtn" class="secondary" data-i18n="btnResetQuery">초기화</button>
+                  </div>
                 </div>
               </div>
+              <div id="adminCalendarGrid" class="adminCalendarHost"></div>
+              <p class="calendarGridHint muted" data-i18n="calendarGridHint"></p>
+              <section class="calendarEventsCard" aria-labelledby="calendarDayHeadingText" style="margin-top:14px">
+                <h3 class="calendarDayHeading">
+                  <span id="calendarDayHeadingText"></span>
+                </h3>
+                <div id="calendarDayList" class="calendarDayTableHost"></div>
+              </section>
             </div>
           </div>
 
@@ -685,6 +714,46 @@
           <div class="row">
             <button id="cancelMarketListDialog" class="secondary" data-i18n="confirmCancel">취소</button>
             <button id="saveMarketListDialog" class="success" data-i18n="btnSave">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="providerEditDialog" class="dialogBackdrop hidden" role="dialog" aria-modal="true" data-i18n-aria-label="providerEditDialogAria">
+      <div class="dialogPanel providerEditDialogPanel">
+        <div class="dialogHead">
+          <div>
+            <h3 id="providerEditDialogTitle" data-i18n="providerEditDialogTitle">Provider 편집</h3>
+            <div id="providerEditDialogMeta" class="muted"></div>
+          </div>
+          <button id="closeProviderEditDialog" class="secondary" data-i18n="btnClose">닫기</button>
+        </div>
+        <div class="dialogBody">
+          <div class="providerEditRows">
+            <label class="switchRow">
+              <input class="switchInput" type="checkbox" id="providerEditEnabled" />
+              <span class="switchUi" aria-hidden="true"></span>
+              <span class="switchLabel" data-i18n="providerEditEnabled">Enabled</span>
+            </label>
+            <label class="fieldLabel" id="providerEditModelRow">
+              <span data-i18n="providerEditDefaultModel">기본 모델</span>
+              <select id="providerEditDefaultModel"></select>
+            </label>
+            <label class="fieldLabel">
+              <span data-i18n="providerEditApiKey">API Key</span>
+              <div class="providerKeyInputRow">
+                <input id="providerEditApiKey" type="password" autocomplete="off" data-i18n-placeholder="providerApiKeyPh" placeholder="" />
+                <button id="toggleProviderEditApiKey" class="secondary compactBtn" type="button" data-i18n="btnShow">보기</button>
+              </div>
+              <div class="muted" style="margin-top:6px" data-i18n="providerEditApiKeyHint">비워두면 기존 키를 유지합니다.</div>
+            </label>
+          </div>
+        </div>
+        <div class="dialogFoot">
+          <span id="providerEditDialogStatus" class="muted"></span>
+          <div class="row">
+            <button id="cancelProviderEditDialog" class="secondary" data-i18n="confirmCancel">취소</button>
+            <button id="deleteProviderEditApiKey" class="danger" data-i18n="providerDeleteKey">키 삭제</button>
+            <button id="saveProviderEditDialog" class="success" data-i18n="btnSave">저장</button>
           </div>
         </div>
       </div>

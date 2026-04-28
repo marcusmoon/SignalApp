@@ -126,32 +126,42 @@ export async function loadJobsView(ctx) {
   $('jobs').innerHTML = `
     <div class="filterBar filterBox">
       <div class="filterBarTitle filterBoxTitle">${esc(textFor('filterSearchConditions'))}</div>
-      <div class="filterBarControls toolbar">
-        <div class="tabs" style="margin:0">
-          <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">${esc(textFor('tabAll'))}</button>
-          <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">${esc(textFor('tabLatest'))}</button>
-          <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">${esc(textFor('tabReconcile'))}</button>
-        </div>
-        <select id="jobListEnabled">
+      <div class="filterBarControls toolbar jobsFilterGroups">
+        <div class="filterGroup filterGroup--facets">
+          <span class="filterGroupTitle">${esc(textFor('filterGroupFilters'))}</span>
+          <div class="tabs opTabs" style="margin:0">
+            <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">${esc(textFor('tabAll'))}</button>
+            <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">${esc(textFor('tabLatest'))}</button>
+            <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">${esc(textFor('tabReconcile'))}</button>
+          </div>
+          <select id="jobListEnabled">
           <option value="all" ${state.jobListEnabled === 'all' ? 'selected' : ''}>${esc(textFor('jobListEnabledAll'))}</option>
           <option value="enabled" ${state.jobListEnabled === 'enabled' ? 'selected' : ''}>${esc(textFor('jobListEnabledOn'))}</option>
           <option value="disabled" ${state.jobListEnabled === 'disabled' ? 'selected' : ''}>${esc(textFor('jobListEnabledOff'))}</option>
-        </select>
-        <select id="jobListDomain">
+          </select>
+          <select id="jobListDomain">
           <option value="all">${esc(textFor('jobListDomainAll'))}</option>
           ${domains.map((d) => `<option value="${esc(d)}" ${state.jobListDomain === d ? 'selected' : ''}>${esc(jobGroupTitle(d))}</option>`).join('')}
-        </select>
-        <select id="jobListProvider">
+          </select>
+          <select id="jobListProvider">
           <option value="all">${esc(textFor('jobListProviderAll'))}</option>
           ${providers.map((p) => `<option value="${esc(p)}" ${state.jobListProvider === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}
-        </select>
-        <input id="jobListQuery" class="wide" placeholder="${esc(textFor('jobListQueryPlaceholder'))}" value="${esc(state.jobListQuery)}" />
-        <select id="jobListSort">
-          <option value="name" ${state.jobListSort === 'name' ? 'selected' : ''}>${esc(textFor('jobListSortName'))}</option>
-          <option value="lastRunDesc" ${state.jobListSort === 'lastRunDesc' ? 'selected' : ''}>${esc(textFor('jobListSortLastRun'))}</option>
-          <option value="intervalAsc" ${state.jobListSort === 'intervalAsc' ? 'selected' : ''}>${esc(textFor('jobListSortInterval'))}</option>
-        </select>
-        <button class="secondary" id="jobListReset">${esc(textFor('btnResetQuery'))}</button>
+          </select>
+        </div>
+        <div class="filterGroup filterGroup--search">
+          <span class="filterGroupTitle">${esc(textFor('filterGroupSearch'))}</span>
+          <input id="jobListQuery" class="wide" placeholder="${esc(textFor('jobListQueryPlaceholder'))}" value="${esc(state.jobListQuery)}" />
+          <button class="secondary" id="jobListSearch">${esc(textFor('btnSearch'))}</button>
+          <button class="secondary" id="jobListReset">${esc(textFor('btnResetQuery'))}</button>
+        </div>
+        <div class="filterGroup filterGroup--sort">
+          <span class="filterGroupTitle">${esc(textFor('filterGroupSort'))}</span>
+          <select id="jobListSort">
+            <option value="name" ${state.jobListSort === 'name' ? 'selected' : ''}>${esc(textFor('jobListSortName'))}</option>
+            <option value="lastRunDesc" ${state.jobListSort === 'lastRunDesc' ? 'selected' : ''}>${esc(textFor('jobListSortLastRun'))}</option>
+            <option value="intervalAsc" ${state.jobListSort === 'intervalAsc' ? 'selected' : ''}>${esc(textFor('jobListSortInterval'))}</option>
+          </select>
+        </div>
       </div>
     </div>
     <div class="card">

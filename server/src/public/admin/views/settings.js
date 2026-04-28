@@ -227,7 +227,7 @@ export async function loadProviderSettingsView(ctx) {
       ? modelPresetsForProvider({ provider: s.provider, defaultModel: s.defaultModel, uiModelPresets: state.uiModelPresets })
       : [];
     return `
-      <div class="providerTile ${showModel ? 'providerTile--llm' : 'providerTile--data'}">
+      <div class="providerTile ${showModel ? 'providerTile--llm' : 'providerTile--data'}" data-provider="${esc(s.provider)}">
         <div class="providerTileHead">
           <span class="providerGlyph">${showModel ? 'AI' : 'API'}</span>
           <div class="providerTitle">
@@ -237,32 +237,11 @@ export async function loadProviderSettingsView(ctx) {
           <span class="pill ${s.hasApiKey ? 'pillStatus--ok' : 'pillStatus--warn'}">${esc(
             s.hasApiKey ? textForVars('providerConfigured', { key: s.maskedApiKey }) : textFor('providerKeyMissing'),
           )}</span>
-        </div>
-        <div class="providerTileBody">
-          <label class="switchRow providerSwitch">
+          <label class="switchRow providerSwitch providerSwitch--head">
             <input class="switchInput" type="checkbox" data-provider-enabled="${esc(s.provider)}" ${s.enabled ? 'checked' : ''}/>
             <span class="switchUi" aria-hidden="true"></span>
-            <span class="switchLabel">Enabled</span>
           </label>
-          ${
-            showModel
-              ? `
-            <label class="fieldLabel providerModel">${esc(textFor('providerDefaultModel'))}
-              <select data-provider-model="${esc(s.provider)}">
-                <option value="">${esc(textFor('providerSelectModel'))}</option>
-                ${renderModelOptions({ options: models, selected: s.defaultModel || '', esc })}
-              </select>
-            </label>
-          `
-              : ''
-          }
-          <label class="fieldLabel providerKey">${esc(textFor('providerApiKey'))}
-            <input class="keyInput" data-provider-key="${esc(s.provider)}" type="password" placeholder="${esc(textFor('providerApiKeyPh'))}" />
-          </label>
-        </div>
-        <div class="providerActions">
-          <button data-provider-save="${esc(s.provider)}" class="success">${esc(textFor('btnSave'))}</button>
-          <button data-provider-clear="${esc(s.provider)}" class="danger">${esc(textFor('providerDeleteKey'))}</button>
+          <button class="secondary compactBtn" type="button" data-provider-edit-open="${esc(s.provider)}">${esc(textFor('btnEdit'))}</button>
         </div>
       </div>
     `;

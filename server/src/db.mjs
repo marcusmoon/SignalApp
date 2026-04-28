@@ -225,6 +225,21 @@ function defaultPollingJobs() {
         updatedAt: nowIso(),
       },
       {
+        jobKey: 'market_quotes_watchlist',
+        displayName: '관심종목 시세 최신 수집',
+        description: '기본 관심종목의 최신 시세를 Finnhub에서 가져옵니다.',
+        domain: 'market',
+        operation: 'latest',
+        provider: 'finnhub',
+        handler: 'market_quotes',
+        enabled: false,
+        intervalSeconds: 120,
+        params: { listKey: 'default_watchlist' },
+        lastRunAt: null,
+        nextRunAt: null,
+        updatedAt: nowIso(),
+      },
+      {
         jobKey: 'market_quotes_mcap',
         displayName: '시총 상위 시세 수집',
         description: '시총 상위 후보 종목의 최신 시세를 Finnhub에서 가져옵니다.',
@@ -337,6 +352,9 @@ function ensureDbShape(db) {
     if (existing.params == null) existing.params = defaultJob.params;
     if (existing.jobKey === 'market_quotes_popular' && !existing.params.listKey) {
       existing.params = { ...existing.params, listKey: 'popular_symbols' };
+    }
+    if (existing.jobKey === 'market_quotes_watchlist' && !existing.params.listKey) {
+      existing.params = { ...existing.params, listKey: 'default_watchlist' };
     }
     if (existing.jobKey === 'market_quotes_mcap' && !existing.params.listKey) {
       existing.params = { ...existing.params, listKey: 'mcap_universe' };

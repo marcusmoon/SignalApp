@@ -4,6 +4,7 @@ import path from 'node:path';
 import { config } from './config.mjs';
 import { ensureNewsSourcesFromItems, normalizeNewsSourceName, normalizeNewsSourceNameWithAliases, readDb, updateDb, upsertById, nowIso } from './db.mjs';
 import { retranslateNewsItems, runPollingJob } from './jobs/runner.mjs';
+import { fetchFinnhubMarketQuotes } from './providers/market/finnhub.mjs';
 import { translateNews } from './providers/translation/index.mjs';
 import { fetchYoutubeVideosByIds } from './providers/youtube/youtube.mjs';
 import { listProviderSettingsPublic, updateProviderSetting } from './providerSettings.mjs';
@@ -227,6 +228,20 @@ function filterMarketQuotes(items, url) {
         String(value || '').toLowerCase().includes(q),
       ),
     );
+  }
+  // If the request is "by symbols" without a segment, return a single best row per symbol.
+  // (Otherwise duplicates can occur when the same symbol exists in multiple segments.)
+  if (symbols && !segment) {
+    const bestBySymbol = new Map();
+    for (const row of rows) {
+      const key = String(row.symbol || '').trim().toUpperCase();
+      if (!key) continue;
+      const prev = bestBySymbol.get(key);
+      const prevAt = prev?.fetchedAt ? new Date(prev.fetchedAt).getTime() : 0;
+      const nextAt = row?.fetchedAt ? new Date(row.fetchedAt).getTime() : 0;
+      if (!prev || nextAt >= prevAt) bestBySymbol.set(key, row);
+    }
+    rows = [...bestBySymbol.values()];
   }
   return rows.sort(
     (a, b) =>
@@ -509,6 +524,34 @@ export async function handleRequest(req, res) {
 
     if (req.method === 'GET' && pathname === '/v1/market-quotes') {
       const db = await readDb();
+
+      // If requested by explicit symbols, and some quotes are missing from DB,
+      // fetch the missing symbols on-demand from Finnhub and persist them.
+      const symbolsParam = url.searchParams.get('symbols');
+      if (symbolsParam) {
+        const requested = [...new Set(symbolsParam.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean))];
+        if (requested.length > 0) {
+          const existing = filterMarketQuotes(db.marketQuotes, url);
+          const have = new Set(existing.map((r) => String(r.symbol || '').trim().toUpperCase()).filter(Boolean));
+          const missing = requested.filter((sym) => !have.has(sym));
+          if (missing.length > 0) {
+            try {
+              const seg = url.searchParams.get('segment') || 'watch';
+              const fetched = await fetchFinnhubMarketQuotes({ symbols: missing, segment: seg });
+              if (fetched.length > 0) {
+                await updateDb((next) => {
+                  for (const row of fetched) upsertById(next.marketQuotes, row);
+                });
+                // Mutate local snapshot too, so the response includes the fetched rows.
+                for (const row of fetched) upsertById(db.marketQuotes, row);
+              }
+            } catch {
+              // If Finnhub is unavailable, keep response DB-only.
+            }
+          }
+        }
+      }
+
       const page = paginate(filterMarketQuotes(db.marketQuotes, url), url, 30, 100);
       json(res, 200, { data: page.rows, page: page.page, pageSize: page.pageSize, total: page.total, totalPages: page.totalPages });
       return;

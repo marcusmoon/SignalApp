@@ -191,11 +191,14 @@ export default function FeedScreen() {
     if (signalApiMode) {
       setRawPool([]);
       // Load server-managed source catalog (order/visibility for filter UI).
+      let catalogRows: { name: string; enabled: boolean; order: number }[] = [];
       try {
         const catKey = segment === 'crypto' ? 'crypto' : 'global';
         const cat = await fetchSignalNewsSources({ category: catKey });
-        setSignalSourceCatalog(cat.map((c) => ({ name: c.name, enabled: c.enabled, order: c.order })));
+        catalogRows = cat.map((c) => ({ name: c.name, enabled: c.enabled, order: c.order }));
+        setSignalSourceCatalog(catalogRows);
       } catch {
+        catalogRows = [];
         setSignalSourceCatalog([]);
       }
       if (segment === 'crypto') {
@@ -213,7 +216,7 @@ export default function FeedScreen() {
       const serverItems = await fetchSignalNews({ locale, category: 'global', limit });
       setSignalNewsPool(serverItems);
       const rawSources = uniqueSignalSources(serverItems);
-      const sources = buildSourcesFromCatalog({ rawSources, catalog: signalSourceCatalog });
+      const sources = buildSourcesFromCatalog({ rawSources, catalog: catalogRows });
       setAvailableSources(sources);
       const selected = await loadSelectedSources(sources);
       setSelectedSources(selected);

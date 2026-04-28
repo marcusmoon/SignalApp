@@ -419,6 +419,7 @@ function SymbolEarningsRowPressable({
   variant,
   styles,
   theme,
+  fiscalTitle,
   hourLabel,
   metricsText,
   onPress,
@@ -428,6 +429,7 @@ function SymbolEarningsRowPressable({
   variant: 'upcoming' | 'past';
   styles: SymbolDetailStyles;
   theme: AppTheme;
+  fiscalTitle: string;
   hourLabel: string;
   metricsText: string | null;
   onPress: () => void;
@@ -446,7 +448,7 @@ function SymbolEarningsRowPressable({
       accessibilityLabel={a11yLabel}>
       <View style={styles.earningsRowInner}>
         <View style={styles.earningsLeft}>
-          <Text style={styles.earningsFyDate}>{`FY${row.year} Q${row.quarter} · ${row.date}`}</Text>
+          <Text style={styles.earningsFyDate}>{fiscalTitle}</Text>
           <View style={styles.earningsHourBadge}>
             <Text style={styles.earningsHourBadgeText}>{hourLabel}</Text>
           </View>
@@ -825,6 +827,11 @@ export default function SymbolDetailScreen() {
                         variant="upcoming"
                         styles={styles}
                         theme={theme}
+                        fiscalTitle={t('symbolDetailEarningsFyQuarterDate', {
+                          fy: String(row.year),
+                          q: String(row.quarter),
+                          date: row.date,
+                        })}
                         hourLabel={hourLabel}
                         metricsText={
                           hasCalendarMetrics(row)
@@ -867,6 +874,11 @@ export default function SymbolDetailScreen() {
                         variant="past"
                         styles={styles}
                         theme={theme}
+                        fiscalTitle={t('symbolDetailEarningsFyQuarterDate', {
+                          fy: String(row.year),
+                          q: String(row.quarter),
+                          date: row.date,
+                        })}
                         hourLabel={hourLabel}
                         metricsText={
                           hasCalendarMetrics(row)

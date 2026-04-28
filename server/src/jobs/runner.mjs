@@ -31,7 +31,6 @@ async function autoTranslateNews(db, newsItems) {
           newsItem: item,
           locale: setting.locale,
           provider: setting.provider,
-          model: setting.model,
         });
         upsertById(db.newsTranslations, {
           id,

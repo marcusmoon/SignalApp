@@ -312,6 +312,31 @@ export const en = {
   callsFiscalYearShort: 'FY',
   callsFiscalQuarterShort: 'Qtr',
   callsFiscalAll: 'All',
+  callsFiscalQuarterN: 'Q{{q}}',
+  concallFiscalYearWithAllQuarters: 'FY{{y}} {{all}}',
+  concallEmptyMegaFiscalLine1:
+    'No Finnhub earnings match {{fiscalSummary}} for the mega-cap intersection.',
+  concallEmptyMegaFiscalLine2:
+    'Free-tier Finnhub may omit or limit past windows. Try a recent year and All quarters.',
+  concallEmptyMegaRollingLine1: 'No Finnhub earnings overlap mega-cap in this window.',
+  concallEmptyMegaRollingLine2: 'Check token access or adjust year/quarter in the filter.',
+  concallHintNinjasKeyMissing:
+    'Transcript key (EXPO_PUBLIC_API_NINJAS_KEY) is empty. Add it to .env and restart Metro.',
+  concallHintNinjas401: 'Authentication failed (401). Verify your API key.',
+  concallHintNinjas403:
+    'Access denied (403). Earnings transcripts may require a paid plan—check subscription/permissions.',
+  concallHintNinjas429: 'Rate limit reached (429). Try again shortly.',
+  concallHintNinjas404:
+    'Ticker/quarter combo not found. It may be missing from the provider or only other quarters exist.',
+  concallHintNinjasFutureDate:
+    'This date may be pre-release or not yet updated. Transcripts often appear after the call.',
+  concallHintNinjasPastNoTranscript:
+    'If the date has passed but there is still no transcript, coverage may be limited for smaller names; large caps are more often available.',
+  concallHintNinjasGeneric: 'Check network and API keys. For testing, try large caps like AAPL or MSFT.',
+  concallFallbackTranscriptNotFound: 'Could not find an earnings call transcript for this ticker.',
+  concallFallbackSummaryFailed: 'Something went wrong while generating the summary.',
+  concallGuidanceEarningsDate: 'Scheduled/reported: {{date}} ({{hour}})',
+  concallQuarterRecentFallback: 'Recent',
   callsModalFiscalLead:
     'Set fiscal year and quarter, then tap Query. Earnings scope (mega-cap vs watchlist) is in Display settings.',
   callsFilterQuery: 'Query',
@@ -353,6 +378,7 @@ export const en = {
   symbolDetailEarningsMetrics: 'EPS est/act {{epsEst}} / {{epsAct}} · Revenue est/act {{revEst}} / {{revAct}}',
   symbolDetailEarningsFootnote: 'Call summaries are AI/transcript-based; scheduled quarters may have no transcript yet.',
   symbolDetailEarningsOpenSummaryA11y: '{{date}} FY{{fy}} Q{{q}} call summary',
+  symbolDetailEarningsFyQuarterDate: 'FY{{fy}} Q{{q}} · {{date}}',
   symbolDetailPriceUnavailable: 'No quote',
   symbolDetailCompanyUnknown: 'Company info unavailable',
   symbolDetailMarketCap: 'Market cap',
@@ -410,6 +436,7 @@ export const en = {
   briefingEarnHourBmo: 'Pre-market',
   briefingEarnHourAmc: 'After-hours',
   briefingWeekEarningsTitle: 'Earnings in the next 7 days',
+  fiscalYearQuarterShort: 'FY{{y}} Q{{q}}',
   briefingWeekEarningsEmpty: 'No watchlist earnings scheduled in the next 7 days.',
   briefingNoUpcomingEarning: 'No scheduled earnings in range or calendar is empty.',
   briefingRecentNewsLabel: 'Recent news',

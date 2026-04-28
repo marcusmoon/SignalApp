@@ -4,8 +4,8 @@ export const state = {
   view: 'dashboard',
   settingsTab: 'keys',
   operationFilter: 'all',
-  dashboardOperationFilter: 'all',
-  dashboardSort: 'newest',
+  dashboardOperationFilter: 'latest',
+  dashboardLimit: 5,
   monitoringSort: 'newest',
   uiModelPresets: null,
   providerSettings: [],
@@ -13,6 +13,9 @@ export const state = {
   newsPage: 1,
   newsTotalPages: 1,
   newsTotal: 0,
+  newsRows: [],
+  newsEditItemId: '',
+  newsEditLocale: 'en',
   youtubePage: 1,
   youtubeTotalPages: 1,
   youtubeTotal: 0,
@@ -32,6 +35,7 @@ export const state = {
   jobRunsSortDir: 'desc', // asc|desc
   jobRunsSelected: [], // job run row keys (prefer run.id)
   jobRunsLastRows: [],
+  errorRows: [],
   jobs: [],
   jobTab: 'info',
   jobListEnabled: 'all', // all|enabled|disabled
@@ -43,7 +47,7 @@ export const state = {
   marketListDraft: null,
   newsSourceAliasDraft: null,
   newsSources: [],
-  newsSourceDraft: '',
+  newsSourceDraftRows: [''],
   newsSourcesCategory: 'global',
   newsSourcesShowHidden: false,
   newsSourceSettings: {

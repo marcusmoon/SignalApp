@@ -43,6 +43,13 @@ import { dismissToast, showToast } from './toast.js';
         return uniq([defaultModel, ...base]);
       }
 
+      function defaultModelForProvider(provider, providerSettings = state.providerSettings) {
+        const p = String(provider || '').trim().toLowerCase();
+        const configured = (providerSettings || []).find((x) => x.provider === p)?.defaultModel || '';
+        const presets = modelPresetsForProvider(p, configured);
+        return configured || presets[0] || '';
+      }
+
       function renderModelOptions(options, selected) {
         const sel = String(selected || '');
         return (options || []).map((m) => `<option value="${esc(m)}" ${m === sel ? 'selected' : ''}>${esc(m)}</option>`).join('');
@@ -146,6 +153,12 @@ import { dismissToast, showToast } from './toast.js';
         market: '💹',
       };
 
+      const newsEditLocales = [
+        { locale: 'en', labelKey: 'localeOriginalEnglish' },
+        { locale: 'ko', labelKey: 'localeKorean' },
+        { locale: 'ja', labelKey: 'localeJapanese' },
+      ];
+
       function jobDisplayName(job) {
         return job.displayName || job.jobKey;
       }
@@ -190,6 +203,62 @@ import { dismissToast, showToast } from './toast.js';
         return `<span class="pill pillStatus ${cls}">${esc(textFor(key))}</span>`;
       }
 
+      function allVisibleRunRows() {
+        return [
+          ...(state.jobRunsLastRows || []),
+          ...(state.errorRows || []),
+        ];
+      }
+
+      function runRowByKey(key) {
+        const wanted = String(key || '');
+        return allVisibleRunRows().find((run) => jobRunRowSelectKey(run) === wanted) || null;
+      }
+
+      function runErrorButton(run) {
+        if (!run?.errorMessage) return `<span class="muted">-</span>`;
+        return `<button class="secondary compactBtn" data-error-detail="${esc(jobRunRowSelectKey(run))}">${esc(textFor('btnErrorDetail'))}</button>`;
+      }
+
+      function openErrorDetailDialog(key) {
+        const run = runRowByKey(key);
+        if (!run) return;
+        $('errorDetailDialog').classList.remove('hidden');
+        $('errorDetailDialogTitle').textContent = textFor('errorDetailTitle');
+        $('errorDetailDialogMeta').textContent = textForVars('errorDetailMeta', {
+          job: run.displayName || run.jobKey || '-',
+          status: run.status || '-',
+          time: formatDateTime(run.finishedAt || run.startedAt),
+        });
+        $('errorDetailDialogBody').innerHTML = `
+          <div class="errorDetailBody">
+            <section class="errorDetailSection">
+              <div class="cardKicker">${esc(textFor('errorDetailMessage'))}</div>
+              <pre class="errorDetailMessage">${esc(run.errorMessage || '-')}</pre>
+            </section>
+            <section class="errorDetailSection">
+              <div class="cardKicker">${esc(textFor('errorDetailContext'))}</div>
+              <div class="errorDetailGrid">
+                <span>${esc(textFor('colJob'))}</span><strong>${esc(run.displayName || run.jobKey || '-')}</strong>
+                <span>jobKey</span><code>${esc(run.jobKey || '-')}</code>
+                <span>${esc(textFor('colOperation'))}</span><div>${operationBadge(run.operation)}</div>
+                <span>${esc(textFor('colDomain'))}</span><div>${domainBadge(run.domain || run.resultKind)}</div>
+                <span>${esc(textFor('colProvider'))}</span><div>${providerBadge(run.provider)}</div>
+                <span>${esc(textFor('colTrigger'))}</span><strong>${esc(run.trigger || '-')}</strong>
+                <span>${esc(textFor('colItems'))}</span><strong>${esc(run.itemCount ?? 0)}</strong>
+                <span>${esc(textFor('colDuration'))}</span><strong>${esc(formatDuration(run.durationMs))}</strong>
+                <span>${esc(textFor('colStarted'))}</span><strong>${esc(formatDateTime(run.startedAt))}</strong>
+                <span>${esc(textFor('colFinished'))}</span><strong>${esc(formatDateTime(run.finishedAt))}</strong>
+              </div>
+            </section>
+          </div>
+        `;
+      }
+
+      function closeErrorDetailDialog() {
+        $('errorDetailDialog')?.classList.add('hidden');
+      }
+
 
       async function switchView(view) {
         const requestedView = view;
@@ -227,27 +296,27 @@ import { dismissToast, showToast } from './toast.js';
           if (title) {
             title.textContent =
               settingsTabFromView === 'theme'
-                ? '테마'
+                ? textFor('settingsThemeTitle')
                 : settingsTabFromView === 'lists'
-                  ? '마켓 리스트'
+                  ? textFor('settingsListsTitle')
                   : settingsTabFromView === 'sources'
-                    ? '뉴스 출처'
+                    ? textFor('settingsSourcesTitle')
                     : settingsTabFromView === 'danger'
-                      ? '데이터 초기화'
-                      : 'Provider';
+                      ? textFor('settingsDangerTitle')
+                      : textFor('navSettingsKeys');
           }
           const desc = $('settingsDesc');
           if (desc) {
             desc.textContent =
               settingsTabFromView === 'theme'
-                ? '브라우저에 저장되는 UI 테마를 설정합니다.'
+                ? textFor('settingsThemeDesc')
                 : settingsTabFromView === 'lists'
-                  ? '앱과 수집 Job이 공통으로 사용하는 마켓 리스트를 관리합니다.'
+                  ? textFor('settingsListsDesc')
                   : settingsTabFromView === 'sources'
-                    ? '앱 뉴스 필터에 노출되는 출처와 별칭을 관리합니다.'
+                    ? textFor('settingsSourcesDesc')
                     : settingsTabFromView === 'danger'
-                      ? '외부 API에서 가져온 로컬 저장 데이터를 선택적으로 초기화합니다.'
-                      : '외부 Provider(API Key)와 LLM 기본 모델(defaultModel)을 관리합니다.';
+                      ? textFor('settingsDangerDesc')
+                      : textFor('settingsProviderDesc');
           }
         }
         if (resolvedView === 'jobs') {
@@ -275,6 +344,50 @@ import { dismissToast, showToast } from './toast.js';
         $(`settingsTab-${tab}`)?.classList.remove('hidden');
       }
 
+      function setNewsMode(mode) {
+        const m = mode === 'bulk' ? 'bulk' : 'filter';
+        state.newsMode = m;
+        document.querySelectorAll('[data-news-mode]').forEach((btn) => btn.classList.toggle('active', btn.dataset.newsMode === m));
+        $('newsFilterBox')?.classList.toggle('hidden', m !== 'filter');
+        $('newsBulkBox')?.classList.toggle('hidden', m !== 'bulk');
+      }
+
+      function setYoutubeMode(mode) {
+        const m = mode === 'bulk' ? 'bulk' : 'filter';
+        state.youtubeMode = m;
+        document.querySelectorAll('[data-youtube-mode]').forEach((btn) => btn.classList.toggle('active', btn.dataset.youtubeMode === m));
+        $('youtubeFilterBox')?.classList.toggle('hidden', m !== 'filter');
+        $('youtubeBulkBox')?.classList.toggle('hidden', m !== 'bulk');
+      }
+
+      /**
+       * Re-fetch and re-render all main admin panels. innerHTML views use textFor() at render time,
+       * so they must run again after signalAdminLanguage changes (applyAdminLanguage alone is not enough).
+       */
+      async function reloadAllAdminData() {
+        await Promise.all([
+          loadDashboard(),
+          loadMonitoring(),
+          loadErrors(),
+          loadJobs(),
+          loadJobRuns(),
+          loadTranslationSettings(),
+          loadProviderSettings(),
+          loadMarketLists(),
+          loadNewsSourceSettings(),
+          loadNewsSources(),
+          loadNews(),
+          loadCalendar(),
+          loadYoutube(),
+        ]);
+        buildSearchIndex();
+        const gsq = $('globalSearchQuery');
+        const gsr = $('globalSearchResults');
+        if (gsq instanceof HTMLInputElement && gsq.value && gsr) {
+          gsr.innerHTML = renderSearchResults(gsq.value);
+        }
+      }
+
       async function refreshSession() {
         const body = await api('/admin/api/session');
         const loggedIn = !!body.adminId;
@@ -297,21 +410,7 @@ import { dismissToast, showToast } from './toast.js';
           setDatePreset();
           setJobRunDatePreset();
           setCalendarDatePreset();
-          await Promise.all([
-            loadDashboard(),
-            loadMonitoring(),
-            loadErrors(),
-            loadJobs(),
-            loadJobRuns(),
-            loadTranslationSettings(),
-            loadProviderSettings(),
-            loadMarketLists(),
-            loadNewsSourceSettings(),
-            loadNewsSources(),
-            loadNews(),
-            loadCalendar(),
-            loadYoutube(),
-          ]);
+          await reloadAllAdminData();
         }
       }
 
@@ -331,10 +430,10 @@ import { dismissToast, showToast } from './toast.js';
           $('headerNotifBadge').style.display = count > 0 ? '' : 'none';
           if ($('notifList')) {
             $('notifList').innerHTML = count === 0
-              ? '<div class="muted">알림이 없습니다.</div>'
+              ? `<div class="muted">${esc(textFor('notifEmpty'))}</div>`
               : `
-                ${failed.length ? `<div class="card"><strong>실패</strong><div class="muted" style="margin-top:6px">${failed.map((r) => esc(r.displayName || r.jobKey)).join('<br/>')}</div></div>` : ''}
-                ${stale.length ? `<div class="card"><strong>주기 초과</strong><div class="muted" style="margin-top:6px">${stale.map((r) => esc(r.displayName || r.jobKey)).join('<br/>')}</div></div>` : ''}
+                ${failed.length ? `<div class="card"><strong>${esc(textFor('notifFailed'))}</strong><div class="muted" style="margin-top:6px">${failed.map((r) => esc(r.displayName || r.jobKey)).join('<br/>')}</div></div>` : ''}
+                ${stale.length ? `<div class="card"><strong>${esc(textFor('notifStaleLabel'))}</strong><div class="muted" style="margin-top:6px">${stale.map((r) => esc(r.displayName || r.jobKey)).join('<br/>')}</div></div>` : ''}
               `;
           }
         } catch {
@@ -361,12 +460,12 @@ import { dismissToast, showToast } from './toast.js';
 
       function renderSearchResults(q) {
         const query = String(q || '').trim().toLowerCase();
-        if (!query) return '<div class="muted">검색어를 입력하세요.</div>';
+        if (!query) return `<div class="muted">${esc(textFor('searchPrompt'))}</div>`;
         const hits = (searchIndex.items || [])
           .map((it, index) => ({ it, index }))
           .filter(({ it }) => `${it.label} ${it.detail}`.toLowerCase().includes(query))
           .slice(0, 24);
-        if (hits.length === 0) return '<div class="muted">검색 결과가 없습니다. 다른 키워드로 시도해보세요.</div>';
+        if (hits.length === 0) return `<div class="muted">${esc(textFor('searchNoHits'))}</div>`;
         return hits.map(({ it, index }) => `
           <button class="secondary" style="width:100%;text-align:left" data-search-hit="${index}">
             <strong>${esc(it.label)}</strong><br/>
@@ -470,6 +569,7 @@ import { dismissToast, showToast } from './toast.js';
         const body = await api(`/admin/api/job-runs?${new URLSearchParams({ status: 'failed', pageSize: '30', page: '1' }).toString()}`);
         const all = Array.isArray(body.data) ? body.data : [];
         const filtered = state.operationFilter === 'all' ? all : all.filter((r) => (r.operation || 'latest') === state.operationFilter);
+        state.errorRows = filtered;
         $('errors').innerHTML = `
           <div class="tabs" style="margin-bottom:10px">
             <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">${esc(textFor('tabAll'))}</button>
@@ -481,21 +581,37 @@ import { dismissToast, showToast } from './toast.js';
           : `
               <table>
                 <thead>
-                  <tr><th>${esc(textFor('colJob'))}</th><th>${esc(textFor('colStatus'))}</th><th>${esc(textFor('colOperation'))}</th><th>${esc(textFor('colDomain'))}</th><th>${esc(textFor('colProvider'))}</th><th>${esc(textFor('colTrigger'))}</th><th>${esc(textFor('colDuration'))}</th><th>${esc(textFor('colStarted'))}</th><th>${esc(textFor('colError'))}</th><th>${esc(textFor('colAction'))}</th></tr>
+                  <tr>
+                    <th>${esc(textFor('colJob'))}</th>
+                    <th>${esc(textFor('colStatus'))}</th>
+                    <th>${esc(textFor('colRunInfo'))}</th>
+                    <th>${esc(textFor('colTiming'))}</th>
+                    <th class="center">${esc(textFor('colAction'))}</th>
+                  </tr>
                 </thead>
                 <tbody>
                   ${filtered.map((run) => `
                     <tr>
                       <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
                       <td>${runStatusPill(run.status, false)}</td>
-                      <td>${operationBadge(run.operation)}</td>
-                      <td>${domainBadge(run.domain || run.resultKind)}</td>
-                      <td>${providerBadge(run.provider)}</td>
-                      <td>${esc(run.trigger || '-')}</td>
-                      <td>${formatDuration(run.durationMs)}</td>
-                      <td class="muted">${formatDateTime(run.startedAt)}</td>
-                      <td class="error">${esc(run.errorMessage || '-')}</td>
-                      <td>${runButton(run.jobKey, textFor('btnRetry'))}</td>
+                      <td>
+                        <div class="runMetaStack">
+                          ${operationBadge(run.operation)}
+                          ${domainBadge(run.domain || run.resultKind)}
+                          ${providerBadge(run.provider)}
+                          <span class="pill">${esc(run.trigger || '-')}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <strong>${esc(formatDuration(run.durationMs))}</strong><br/>
+                        <span class="muted">${esc(formatDateTime(run.startedAt))}</span>
+                      </td>
+                      <td class="center">
+                        <div class="dataTableActions">
+                          ${runErrorButton(run)}
+                          ${runButton(run.jobKey, textFor('btnRetry'))}
+                        </div>
+                      </td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -506,19 +622,18 @@ import { dismissToast, showToast } from './toast.js';
       async function loadDashboard() {
         const summary = (await api('/admin/api/summary')).data;
         const allRuns = Array.isArray(summary.recentRuns) ? summary.recentRuns : [];
-        const opFiltered = state.dashboardOperationFilter === 'all'
-          ? allRuns
-          : allRuns.filter((r) => (r.operation || 'latest') === state.dashboardOperationFilter);
-        const sorted = [...opFiltered].sort((a, b) => {
-          if (state.dashboardSort === 'name') {
-            const an = String(a.displayName || a.jobKey || '').toLowerCase();
-            const bn = String(b.displayName || b.jobKey || '').toLowerCase();
-            return an.localeCompare(bn);
-          }
-          const at = new Date(a.finishedAt || a.startedAt || 0).getTime();
-          const bt = new Date(b.finishedAt || b.startedAt || 0).getTime();
-          return state.dashboardSort === 'oldest' ? (at - bt) : (bt - at);
-        });
+        const latestNews = Array.isArray(summary.latestNews) ? summary.latestNews : [];
+        const latestYoutube = Array.isArray(summary.latestYoutube) ? summary.latestYoutube : [];
+        const limit = Math.max(3, Math.min(10, Number(state.dashboardLimit) || 5));
+        const op = state.dashboardOperationFilter === 'reconcile' ? 'reconcile' : 'latest';
+        const opFiltered = allRuns.filter((r) => (r.operation || 'latest') === op);
+        const sorted = [...opFiltered]
+          .sort((a, b) => new Date(b.finishedAt || b.startedAt || 0).getTime() - new Date(a.finishedAt || a.startedAt || 0).getTime())
+          .slice(0, limit);
+        const staleCount = allRuns.filter((r) => r.stale).length;
+        const failedCount = allRuns.filter((r) => String(r.status) === 'failed').length;
+        const newsRows = latestNews.slice(0, limit);
+        const youtubeRows = latestYoutube.slice(0, limit);
         $('dashboard').innerHTML = `
           <div class="statGrid wideStats">
             <div class="stat"><div class="statLabel muted"><span class="statIcon">N</span>${esc(textFor('statNews'))}</div><div class="statNum">${summary.counts.news}</div></div>
@@ -528,33 +643,88 @@ import { dismissToast, showToast } from './toast.js';
             <div class="stat"><div class="statLabel muted"><span class="statIcon">B</span>${esc(textFor('statCoins'))}</div><div class="statNum">${summary.counts.coinMarkets || 0}</div></div>
             <div class="stat"><div class="statLabel muted"><span class="statIcon">J</span>${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
           </div>
-          <div class="card card--elevated" style="margin-top:12px">
+          <div class="dashboardToolbar">
+            <div>
+              <div class="cardKicker">${esc(textFor('dashboardOverviewTitle'))}</div>
+              <div class="cardHint">${esc(textForVars('dashboardOverviewHint', { count: String(limit) }))}</div>
+            </div>
+            <label class="fieldLabel dashboardLimit">${esc(textFor('dashboardLimitLabel'))}
+              <select id="dashboardLimit">
+                ${[3, 5, 10].map((n) => `<option value="${n}" ${limit === n ? 'selected' : ''}>${n}</option>`).join('')}
+              </select>
+            </label>
+          </div>
+          <div class="dashboardGrid">
+            <section class="card card--elevated dashboardPanel">
+              <div class="cardHead">
+                <div class="cardHeadMain">
+                  <div class="cardKicker">${esc(textFor('dashboardNewsTitle'))}</div>
+                  <div class="cardHint">${esc(textFor('dashboardNewsHint'))}</div>
+                </div>
+                <button class="secondary" data-view="news">${esc(textFor('btnOpenList'))}</button>
+              </div>
+              <div class="dashboardList">
+                ${newsRows.map((item) => `
+                  <article class="dashboardListItem">
+                    <div class="dashboardItemMain">
+                      <div class="dashboardItemTitle">${esc(item.title || '-')}</div>
+                      <div class="dashboardItemMeta">
+                        <span>${esc(item.sourceName || '-')}</span>
+                        <span>${esc(item.category || '-')}</span>
+                        <span>${esc(formatDateTime(item.publishedAt))}</span>
+                      </div>
+                    </div>
+                    <button class="secondary compactBtn" data-dashboard-news-title="${esc(item.title || '')}">${esc(textFor('btnDetail'))}</button>
+                  </article>
+                `).join('') || `<p class="muted">${esc(textFor('dashboardEmpty'))}</p>`}
+              </div>
+            </section>
+            <section class="card card--elevated dashboardPanel">
+              <div class="cardHead">
+                <div class="cardHeadMain">
+                  <div class="cardKicker">${esc(textFor('dashboardYoutubeTitle'))}</div>
+                  <div class="cardHint">${esc(textFor('dashboardYoutubeHint'))}</div>
+                </div>
+                <button class="secondary" data-view="youtube">${esc(textFor('btnOpenList'))}</button>
+              </div>
+              <div class="dashboardList">
+                ${youtubeRows.map((item) => `
+                  <article class="dashboardListItem dashboardListItem--media">
+                    <img src="${esc(item.thumbnailUrl || '')}" alt="" />
+                    <div class="dashboardItemMain">
+                      <div class="dashboardItemTitle">${esc(item.title || '-')}</div>
+                      <div class="dashboardItemMeta">
+                        <span>${esc(item.channel || '-')}</span>
+                        <span>${Number(item.viewCount || 0).toLocaleString()} views</span>
+                        <span>${esc(formatDateTime(item.publishedAt))}</span>
+                      </div>
+                    </div>
+                    <button class="secondary compactBtn" data-dashboard-youtube-title="${esc(item.title || '')}">${esc(textFor('btnDetail'))}</button>
+                  </article>
+                `).join('') || `<p class="muted">${esc(textFor('dashboardEmpty'))}</p>`}
+              </div>
+            </section>
+          </div>
+          <div class="card card--elevated dashboardPanel" style="margin-top:12px">
             <div class="cardHead">
               <div class="cardHeadMain">
-                <div class="cardKicker">${esc(textFor('pageDashboardTitle'))}</div>
-                <div class="cardHint">${esc(textFor('sectionRecentRuns'))}</div>
+                <div class="cardKicker">${esc(textFor('dashboardJobsTitle'))}</div>
+                <div class="cardHint"></div>
               </div>
               <div class="cardHeadActions">
+                <div class="dashboardJobsHint">${esc(textForVars('dashboardJobsHint', { failed: String(failedCount), stale: String(staleCount) }))}</div>
                 <div class="tabs" style="margin:0">
-                  <button class="tabBtn ${state.dashboardOperationFilter === 'all' ? 'active' : ''}" data-dashboard-op="all">${esc(textFor('tabAll'))}</button>
-                  <button class="tabBtn ${state.dashboardOperationFilter === 'latest' ? 'active' : ''}" data-dashboard-op="latest">${esc(textFor('tabLatest'))}</button>
-                  <button class="tabBtn ${state.dashboardOperationFilter === 'reconcile' ? 'active' : ''}" data-dashboard-op="reconcile">${esc(textFor('tabReconcile'))}</button>
+                  <button class="tabBtn ${op === 'latest' ? 'active' : ''}" data-dashboard-op="latest">${esc(textFor('tabLatest'))}</button>
+                  <button class="tabBtn ${op === 'reconcile' ? 'active' : ''}" data-dashboard-op="reconcile">${esc(textFor('tabReconcile'))}</button>
                 </div>
-                <select id="dashboardSort" style="min-width:140px">
-                  <option value="newest" ${state.dashboardSort === 'newest' ? 'selected' : ''}>${esc(textFor('sortNewest'))}</option>
-                  <option value="oldest" ${state.dashboardSort === 'oldest' ? 'selected' : ''}>${esc(textFor('sortOldest'))}</option>
-                  <option value="name" ${state.dashboardSort === 'name' ? 'selected' : ''}>${esc(textFor('sortName'))}</option>
-                </select>
               </div>
             </div>
-            <table class="settingsTable">
+            <table class="settingsTable dashboardRunsTable">
               <thead>
                 <tr>
                   <th>${esc(textFor('colJob'))}</th>
                   <th>${esc(textFor('colStatus'))}</th>
-                  <th>${esc(textFor('colOperation'))}</th>
-                  <th>${esc(textFor('colDomain'))}</th>
-                  <th>${esc(textFor('colProvider'))}</th>
+                  <th>${esc(textFor('colRunInfo'))}</th>
                   <th class="right">${esc(textFor('colItems'))}</th>
                   <th>${esc(textFor('colFinished'))}</th>
                   <th class="center">${esc(textFor('colAction'))}</th>
@@ -565,14 +735,17 @@ import { dismissToast, showToast } from './toast.js';
                   <tr class="${run.stale ? 'staleRow' : ''}">
                     <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
                     <td>${runStatusPill(run.status, !!run.stale)}</td>
-                    <td>${operationBadge(run.operation)}</td>
-                    <td>${domainBadge(run.domain || run.resultKind)}</td>
-                    <td>${providerBadge(run.provider)}</td>
+                    <td>
+                      <div class="runMetaStack">
+                        ${operationBadge(run.operation)}
+                        ${domainBadge(run.domain || run.resultKind)}
+                        ${providerBadge(run.provider)}
+                      </div>
+                    </td>
                     <td class="right">${run.itemCount ?? 0}</td>
                     <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
                     <td class="center">
                       <div class="dataTableActions">
-                        <button class="success" data-job-run="${esc(run.jobKey)}">${esc(textFor('btnRun'))}</button>
                         <button class="secondary" data-open-job="${esc(run.jobKey)}">${esc(textFor('btnSettings'))}</button>
                         <button class="secondary" data-open-job-log="${esc(run.jobKey)}">${esc(textFor('btnLog'))}</button>
                       </div>
@@ -591,7 +764,7 @@ import { dismissToast, showToast } from './toast.js';
         state.jobs = body.data;
         if ($('jobRunJob')) {
           const current = $('jobRunJob').value;
-          $('jobRunJob').innerHTML = '<option value="">전체 Job</option>' + body.data.map((job) => `
+          $('jobRunJob').innerHTML = `<option value="">${esc(textFor('jobListAllJobsOption'))}</option>` + body.data.map((job) => `
             <option value="${esc(job.jobKey)}">${esc(jobDisplayName(job))}</option>
           `).join('');
           $('jobRunJob').value = current;
@@ -634,33 +807,33 @@ import { dismissToast, showToast } from './toast.js';
         const providers = [...new Set(jobsAll.map((j) => j.provider).filter(Boolean))];
         $('jobs').innerHTML = `
           <div class="filterBar filterBox">
-            <div class="filterBarTitle filterBoxTitle">검색 조건</div>
+            <div class="filterBarTitle filterBoxTitle">${esc(textFor('filterSearchConditions'))}</div>
             <div class="filterBarControls toolbar">
               <div class="tabs" style="margin:0">
-                <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">전체</button>
-                <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">최신</button>
-                <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">보정</button>
+                <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">${esc(textFor('tabAll'))}</button>
+                <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">${esc(textFor('tabLatest'))}</button>
+                <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">${esc(textFor('tabReconcile'))}</button>
               </div>
               <select id="jobListEnabled">
-                <option value="all" ${state.jobListEnabled === 'all' ? 'selected' : ''}>전체 상태</option>
-                <option value="enabled" ${state.jobListEnabled === 'enabled' ? 'selected' : ''}>활성</option>
-                <option value="disabled" ${state.jobListEnabled === 'disabled' ? 'selected' : ''}>중지</option>
+                <option value="all" ${state.jobListEnabled === 'all' ? 'selected' : ''}>${esc(textFor('jobListEnabledAll'))}</option>
+                <option value="enabled" ${state.jobListEnabled === 'enabled' ? 'selected' : ''}>${esc(textFor('jobListEnabledOn'))}</option>
+                <option value="disabled" ${state.jobListEnabled === 'disabled' ? 'selected' : ''}>${esc(textFor('jobListEnabledOff'))}</option>
               </select>
               <select id="jobListDomain">
-                <option value="all">전체 도메인</option>
+                <option value="all">${esc(textFor('jobListDomainAll'))}</option>
                 ${domains.map((d) => `<option value="${esc(d)}" ${state.jobListDomain === d ? 'selected' : ''}>${esc(jobGroupTitle(d))}</option>`).join('')}
               </select>
               <select id="jobListProvider">
-                <option value="all">전체 Provider</option>
+                <option value="all">${esc(textFor('jobListProviderAll'))}</option>
                 ${providers.map((p) => `<option value="${esc(p)}" ${state.jobListProvider === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}
               </select>
-              <input id="jobListQuery" class="wide" placeholder="키워드: 이름, jobKey, 설명, provider" value="${esc(state.jobListQuery)}" />
+              <input id="jobListQuery" class="wide" placeholder="${esc(textFor('jobListQueryPlaceholder'))}" value="${esc(state.jobListQuery)}" />
               <select id="jobListSort">
-                <option value="name" ${state.jobListSort === 'name' ? 'selected' : ''}>이름순</option>
-                <option value="lastRunDesc" ${state.jobListSort === 'lastRunDesc' ? 'selected' : ''}>최근 실행순</option>
-                <option value="intervalAsc" ${state.jobListSort === 'intervalAsc' ? 'selected' : ''}>주기 짧은순</option>
+                <option value="name" ${state.jobListSort === 'name' ? 'selected' : ''}>${esc(textFor('jobListSortName'))}</option>
+                <option value="lastRunDesc" ${state.jobListSort === 'lastRunDesc' ? 'selected' : ''}>${esc(textFor('jobListSortLastRun'))}</option>
+                <option value="intervalAsc" ${state.jobListSort === 'intervalAsc' ? 'selected' : ''}>${esc(textFor('jobListSortInterval'))}</option>
               </select>
-              <button class="secondary" id="jobListReset">초기화</button>
+              <button class="secondary" id="jobListReset">${esc(textFor('btnResetQuery'))}</button>
             </div>
           </div>
           <div class="card">
@@ -685,7 +858,7 @@ import { dismissToast, showToast } from './toast.js';
                       <span class="muted">${esc(job.jobKey)}</span>
                       ${job.description ? `<div class="muted" style="margin-top:4px">${esc(job.description)}</div>` : ''}
                     </td>
-                    <td><span class="pill">${job.enabled ? '활성' : '중지'}</span></td>
+                    <td><span class="pill">${job.enabled ? esc(textFor('jobStatusEnabled')) : esc(textFor('jobStatusDisabled'))}</span></td>
                     <td>${operationBadge(job.operation)}</td>
                     <td>${domainBadge(job.domain)}</td>
                     <td>${providerBadge(job.provider)}</td>
@@ -693,8 +866,8 @@ import { dismissToast, showToast } from './toast.js';
                     <td class="muted">${formatDateTime(job.lastRunAt)}</td>
                     <td class="center">
                       <div class="dataTableActions">
-                        <button data-job-run="${esc(job.jobKey)}" class="success">Run</button>
-                        <button class="secondary" data-job-edit-open="${esc(job.jobKey)}">설정</button>
+                        <button data-job-run="${esc(job.jobKey)}" class="success">${esc(textFor('btnRun'))}</button>
+                        <button class="secondary" data-job-edit-open="${esc(job.jobKey)}">${esc(textFor('jobOpenSettings'))}</button>
                       </div>
                     </td>
                   </tr>
@@ -702,18 +875,18 @@ import { dismissToast, showToast } from './toast.js';
                     <td colspan="8">
                       <div class="card" style="margin:6px 0 0">
                         <div class="row" style="justify-content:space-between">
-                          <strong>설정 편집</strong>
-                          <button class="secondary" data-job-edit-close="${esc(job.jobKey)}">닫기</button>
+                          <strong>${esc(textFor('jobEditPanelTitle'))}</strong>
+                          <button class="secondary" data-job-edit-close="${esc(job.jobKey)}">${esc(textFor('btnClose'))}</button>
                         </div>
                         <div class="jobSettingsBody" style="margin-top:10px">
-                          <label>표시 이름 <input data-job-name="${esc(job.jobKey)}" value="${esc(jobDisplayName(job))}" placeholder="표시 이름" /></label>
-                          <label>설명 <input data-job-desc="${esc(job.jobKey)}" value="${esc(job.description || '')}" placeholder="설명" /></label>
-                          <label>주기(초) <input data-job-interval="${esc(job.jobKey)}" value="${esc(job.intervalSeconds)}" /></label>
-                          <label>활성화 <span><input type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/> enabled</span></label>
+                          <label>${esc(textFor('jobLabelName'))} <input data-job-name="${esc(job.jobKey)}" value="${esc(jobDisplayName(job))}" placeholder="${esc(textFor('jobLabelNamePh'))}" /></label>
+                          <label>${esc(textFor('jobLabelDesc'))} <input data-job-desc="${esc(job.jobKey)}" value="${esc(job.description || '')}" placeholder="${esc(textFor('jobLabelDescPh'))}" /></label>
+                          <label>${esc(textFor('jobLabelIntervalSec'))} <input data-job-interval="${esc(job.jobKey)}" value="${esc(job.intervalSeconds)}" /></label>
+                          <label>${esc(textFor('jobLabelEnabled'))} <span><input type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/> ${esc(textFor('jobEnabledFlag'))}</span></label>
                           <label>Provider <input class="readonlyInput" value="${esc(job.provider)}" disabled /></label>
                           <label>Handler <input class="readonlyInput" value="${esc(job.handler)}" disabled /></label>
                           <label>Operation <input class="readonlyInput" value="${esc(job.operation || 'latest')}" disabled /></label>
-                          <button data-job-save="${esc(job.jobKey)}" class="success">Save</button>
+                          <button data-job-save="${esc(job.jobKey)}" class="success">${esc(textFor('btnSave'))}</button>
                         </div>
                       </div>
                     </td>
@@ -721,7 +894,7 @@ import { dismissToast, showToast } from './toast.js';
                 `).join('')}
               </tbody>
             </table>
-            ${jobsFiltered.length === 0 ? '<p class="muted">조건에 맞는 Job이 없습니다.</p>' : ''}
+            ${jobsFiltered.length === 0 ? `<p class="muted">${esc(textFor('jobsEmptyFiltered'))}</p>` : ''}
           </div>
         `;
       }
@@ -748,10 +921,10 @@ import { dismissToast, showToast } from './toast.js';
 
       function renderJobRunsPager(targetId) {
         $(targetId).innerHTML = `
-          <div class="muted">총 ${state.jobRunsTotal}개 · ${state.jobRunsPage} / ${state.jobRunsTotalPages} 페이지</div>
+          <div class="muted">${esc(textForVars('pagerSummary', { total: state.jobRunsTotal, page: state.jobRunsPage, pages: state.jobRunsTotalPages }))}</div>
           <div class="row">
-            <button class="secondary" data-job-runs-page="prev">이전</button>
-            <button class="secondary" data-job-runs-page="next">다음</button>
+            <button class="secondary" data-job-runs-page="prev">${esc(textFor('btnPrevious'))}</button>
+            <button class="secondary" data-job-runs-page="next">${esc(textFor('btnNext'))}</button>
           </div>
         `;
       }
@@ -785,7 +958,7 @@ import { dismissToast, showToast } from './toast.js';
       }
 
       async function loadJobRuns() {
-        if ($('jobRuns')) $('jobRuns').innerHTML = renderTableSkeleton({ cols: 13, rows: 5 });
+        if ($('jobRuns')) $('jobRuns').innerHTML = renderTableSkeleton({ cols: 10, rows: 5 });
         const body = await api(`/admin/api/job-runs?${jobRunsQueryParams()}`);
         state.jobRunsPage = body.page;
         state.jobRunsTotalPages = body.totalPages;
@@ -800,17 +973,17 @@ import { dismissToast, showToast } from './toast.js';
         const allSelected = rows.length > 0 && rows.every((r) => selected.has(jobRunRowSelectKey(r)));
 
         if (rows.length === 0) {
-          $('jobRuns').innerHTML = '<p class="muted">검색 조건에 맞는 실행 로그가 없습니다.</p>';
+          $('jobRuns').innerHTML = `<p class="muted">${esc(textFor('jobRunsEmptyMessage'))}</p>`;
           return;
         }
 
         $('jobRuns').innerHTML = `
           ${selected.size ? `
             <div class="actionBox" style="margin-bottom:10px">
-              <span class="muted">선택됨 ${selected.size}개</span>
+              <span class="muted">${esc(textForVars('jobRunsSelectedLabel', { count: selected.size }))}</span>
               <div class="row">
-                <button class="warning" id="jobRunsBulkRetry">선택 재시도</button>
-                <button class="secondary" id="jobRunsBulkClear">선택 해제</button>
+                <button class="warning" id="jobRunsBulkRetry">${esc(textFor('jobRunsBulkRetry'))}</button>
+                <button class="secondary" id="jobRunsBulkClear">${esc(textFor('jobRunsBulkClearSelection'))}</button>
               </div>
             </div>
           ` : ''}
@@ -824,12 +997,11 @@ import { dismissToast, showToast } from './toast.js';
                 <th>${esc(textFor('colDomain'))}</th>
                 <th>${esc(textFor('colProvider'))}</th>
                 <th>${esc(textFor('colTrigger'))}</th>
-                <th data-run-sort="progress">Progress</th>
+                <th data-run-sort="progress">${esc(textFor('colProgress'))}</th>
                 <th data-run-sort="items" class="right">${esc(textFor('colItems'))}</th>
                 <th data-run-sort="duration" class="right">${esc(textFor('colDuration'))}</th>
-                <th data-run-sort="startedAt">${esc(textFor('colStarted'))}</th>
                 <th data-run-sort="finishedAt">${esc(textFor('colFinished'))}</th>
-                <th>${esc(textFor('colError'))}</th>
+                <th class="center">${esc(textFor('colAction'))}</th>
               </tr>
             </thead>
             <tbody>
@@ -847,9 +1019,8 @@ import { dismissToast, showToast } from './toast.js';
                   <td class="muted">${run.status === 'running' && Number.isFinite(Number(run.progressPercent)) ? `${Number(run.progressPercent)}%` : '-'}</td>
                   <td class="right">${run.itemCount ?? 0}</td>
                   <td class="right">${formatDuration(run.durationMs)}</td>
-                  <td class="muted">${formatDateTime(run.startedAt)}</td>
-                  <td class="muted">${formatDateTime(run.finishedAt)}</td>
-                  <td class="${run.errorMessage ? 'error' : 'muted'}">${esc(run.errorMessage || '-')}</td>
+                  <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
+                  <td class="center">${runErrorButton(run)}</td>
                 </tr>
               `;
               }).join('')}
@@ -872,23 +1043,27 @@ import { dismissToast, showToast } from './toast.js';
       function renderUiModelPresetsEditor() {
         if (!$('uiModelPresets')) return;
         $('uiModelPresets').innerHTML = `
-          <div class="card">
-            <strong>모델 프리셋(관리)</strong>
-            <div class="muted" style="margin-top:4px">번역 테스트/모델 선택 드롭다운에 표시되는 기본 리스트입니다. (한 줄에 1개)</div>
-            <div class="row" style="margin-top:10px;align-items:flex-start">
-              <label class="fieldLabel" style="min-width:220px">OpenAI
-                <textarea id="uiPresetOpenai" style="min-height:90px">${esc(presetsTextareaValue('openai'))}</textarea>
+          <div class="modelPresetPanel">
+            <div class="cardHead">
+              <div class="cardHeadMain">
+                <div class="cardKicker">${esc(textFor('modelPresetTitle'))}</div>
+                <div class="cardHint">${esc(textFor('modelPresetHint'))}</div>
+              </div>
+              <span class="muted" id="uiModelPresetsStatus"></span>
+            </div>
+            <div class="modelPresetGrid">
+              <label class="fieldLabel modelPresetCard">OpenAI
+                <textarea id="uiPresetOpenai" class="jsonEditor">${esc(presetsTextareaValue('openai'))}</textarea>
               </label>
-              <label class="fieldLabel" style="min-width:220px">Claude
-                <textarea id="uiPresetClaude" style="min-height:90px">${esc(presetsTextareaValue('claude'))}</textarea>
+              <label class="fieldLabel modelPresetCard">Claude
+                <textarea id="uiPresetClaude" class="jsonEditor">${esc(presetsTextareaValue('claude'))}</textarea>
               </label>
-              <label class="fieldLabel" style="min-width:220px">Mock
-                <textarea id="uiPresetMock" style="min-height:90px">${esc(presetsTextareaValue('mock'))}</textarea>
+              <label class="fieldLabel modelPresetCard">Mock
+                <textarea id="uiPresetMock" class="jsonEditor">${esc(presetsTextareaValue('mock'))}</textarea>
               </label>
             </div>
-            <div class="row" style="margin-top:8px">
+            <div class="modelPresetActions">
               <button id="saveUiModelPresets" class="success">Save</button>
-              <span class="muted" id="uiModelPresetsStatus"></span>
             </div>
           </div>
         `;
@@ -918,49 +1093,43 @@ import { dismissToast, showToast } from './toast.js';
           !openaiInfo?.hasApiKey ? 'OpenAI' : null,
           !claudeInfo?.hasApiKey ? 'Claude' : null,
         ].filter(Boolean);
-        const optionsForProvider = (provider, selected) => {
-          const p = String(provider || '');
-          const defaultModel = providers.find((x) => x.provider === p)?.defaultModel || '';
-          const list = modelPresetsForProvider(p, defaultModel);
-          const effective = list.includes(String(selected || '')) ? String(selected || '') : (defaultModel || list[0] || '');
-          return renderModelOptions(list.length ? list : [''], effective);
-        };
+        const modelLabelForProvider = (provider) => defaultModelForProvider(provider, providers) || textFor('providerDefaultModelNone');
         $('translationSettings').innerHTML = `
           <div class="settingsHero">
             <span class="settingsHeroIcon">G</span>
             <div>
-              <div class="cardKicker">뉴스 번역 파이프라인</div>
-              <p class="summary">언어별 번역 정책, 테스트, 모델 프리셋을 한 흐름으로 관리합니다.</p>
+              <div class="cardKicker">${esc(textFor('translationPipelineTitle'))}</div>
+              <p class="summary">${esc(textFor('translationPipelineHint'))}</p>
             </div>
           </div>
           <div class="card settingsControlCard">
             <div class="row" style="justify-content:space-between;gap:10px">
               <div>
-                <strong>번역 설정 흐름</strong>
-                <div class="muted" style="margin-top:4px">1) Locale별 번역 정책을 고르고 2) 번역 테스트로 확인한 뒤 3) 모델 프리셋(관리)에서 리스트를 관리하세요.</div>
-                ${missingKeys.length ? `<div class="muted" style="margin-top:6px"><span class="pill opReconcile">주의</span> ${esc(missingKeys.join(', '))} API 키가 없습니다. (Provider에서 설정)</div>` : ''}
+                <strong>${esc(textFor('translationFlowTitle'))}</strong>
+                <div class="muted" style="margin-top:4px">${esc(textFor('translationFlowHint'))}</div>
+                ${missingKeys.length ? `<div class="muted" style="margin-top:6px"><span class="pill opReconcile">${esc(textFor('providerMissingKeys'))}</span> ${esc(textForVars('providerMissingKeysHint', { providers: missingKeys.join(', ') }))}</div>` : ''}
               </div>
               <div class="row">
-                <button class="secondary" data-view="settings-keys">Provider로 이동</button>
+                <button class="secondary" data-view="settings-keys">${esc(textFor('translationProviderLink'))}</button>
               </div>
             </div>
           </div>
           <div class="card settingsControlCard">
             <div class="cardHead">
               <div class="cardHeadMain">
-                <div class="cardKicker">Locale별 번역 정책</div>
-                <div class="cardHint">Enabled / 자동 뉴스 번역 / Provider / 모델을 로케일별로 관리합니다.</div>
+                <div class="cardKicker">${esc(textFor('translationLocalePolicyTitle'))}</div>
+                <div class="cardHint">${esc(textFor('translationLocalePolicyHint'))}</div>
               </div>
             </div>
             <table>
               <thead>
                 <tr>
-                  <th>Locale</th>
-                  <th>Enabled</th>
-                  <th>Auto News</th>
-                  <th>Provider</th>
-                  <th>Model</th>
-                  <th>Save</th>
+                  <th>${esc(textFor('colLocale'))}</th>
+                  <th>${esc(textFor('colEnabled'))}</th>
+                  <th>${esc(textFor('colAutoNews'))}</th>
+                  <th>${esc(textFor('colProvider'))}</th>
+                  <th>${esc(textFor('colModel'))}</th>
+                  <th>${esc(textFor('btnSave'))}</th>
                 </tr>
               </thead>
               <tbody>
@@ -976,11 +1145,7 @@ import { dismissToast, showToast } from './toast.js';
                         <option value="claude" ${s.provider === 'claude' ? 'selected' : ''}>Claude</option>
                       </select>
                     </td>
-                    <td>
-                      <select data-ts-model="${esc(s.locale)}">
-                        ${optionsForProvider(s.provider, s.model)}
-                      </select>
-                    </td>
+                    <td><span class="pill pill--subtle" data-ts-model-label="${esc(s.locale)}">${esc(modelLabelForProvider(s.provider))}</span></td>
                     <td><button data-ts-save="${esc(s.locale)}" class="success">Save</button></td>
                   </tr>
                 `).join('')}
@@ -990,8 +1155,8 @@ import { dismissToast, showToast } from './toast.js';
           <div class="card settingsControlCard">
             <div class="cardHead">
               <div class="cardHeadMain">
-                <div class="cardKicker">번역 테스트</div>
-                <div class="cardHint">현재 Provider/모델 설정으로 테스트 문구를 번역합니다.</div>
+                <div class="cardKicker">${esc(textFor('translationTestTitle'))}</div>
+                <div class="cardHint">${esc(textFor('translationTestHint'))}</div>
               </div>
             </div>
             <div class="settingsFormRow">
@@ -1005,31 +1170,15 @@ import { dismissToast, showToast } from './toast.js';
                 <option value="ko">ko</option>
                 <option value="ja">ja</option>
               </select>
-              <button id="resetTranslationTestText" class="secondary">기본 문구</button>
-              <button id="runTranslationTest">번역 테스트</button>
+              <button id="resetTranslationTestText" class="secondary">${esc(textFor('translationDefaultButton'))}</button>
+              <button id="runTranslationTest">${esc(textFor('translationRunButton'))}</button>
             </div>
-            <textarea id="translationTestText" style="margin-top:10px">Signal 앱을 이용해 주셔서 감사합니다. 앞으로도 좋은 기능들을 업데이트하겠습니다.</textarea>
+            <textarea id="translationTestText" style="margin-top:10px">${esc(textFor('translationDefaultText'))}</textarea>
             <div id="translationTestResult" class="summary"></div>
           </div>
-          <details class="card" style="padding:0">
-            <summary style="padding:14px 16px;cursor:pointer">
-              <strong>모델 프리셋(관리)</strong>
-              <span class="muted" style="margin-left:8px">OpenAI/Claude 모델 리스트 추가</span>
-            </summary>
-            <div style="padding:12px 16px" id="uiModelPresets"></div>
-          </details>
         `;
-
-        renderUiModelPresetsEditor();
-        if ($('uiModelPresetsStatus') && state.uiModelPresets?.updatedAt) {
-          $('uiModelPresetsStatus').textContent = `최근 저장 · ${formatDateTime(state.uiModelPresets.updatedAt)}`;
-        }
         if (state.openModelPresetsOnTranslations) {
-          const details = document.querySelector('#translationSettings details');
-          if (details instanceof HTMLDetailsElement) {
-            details.open = true;
-            details.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
+          void switchView('settings-keys');
           state.openModelPresetsOnTranslations = false;
         }
 
@@ -1041,22 +1190,26 @@ import { dismissToast, showToast } from './toast.js';
       }
 
       async function loadProviderSettings() {
-        const body = await api('/admin/api/provider-settings');
+        const [body, presetsBody] = await Promise.all([
+          api('/admin/api/provider-settings'),
+          api('/admin/api/ui-model-presets'),
+        ]);
         const rows = Array.isArray(body.data) ? body.data : [];
         state.providerSettings = rows;
+        state.uiModelPresets = presetsBody.data || null;
         const llm = rows.filter((r) => r.provider === 'openai' || r.provider === 'claude');
         const data = rows.filter((r) => !(r.provider === 'openai' || r.provider === 'claude'));
         const renderRow = (s, { showModel }) => {
           const models = showModel ? modelPresetsForProvider(s.provider, s.defaultModel) : [];
           return `
-            <div class="providerTile">
+            <div class="providerTile ${showModel ? 'providerTile--llm' : 'providerTile--data'}">
               <div class="providerTileHead">
                 <span class="providerGlyph">${showModel ? 'AI' : 'API'}</span>
                 <div class="providerTitle">
                   <strong>${esc(s.provider)}</strong>
-                  <span class="muted">${showModel ? '번역/요약 모델 Provider' : '데이터 수집 Provider'}</span>
+                  <span class="muted">${esc(showModel ? textFor('providerLlmSubtitle') : textFor('providerDataSubtitle'))}</span>
                 </div>
-                <span class="pill ${s.hasApiKey ? 'pillStatus--ok' : 'pillStatus--warn'}">${s.hasApiKey ? `설정됨 ${esc(s.maskedApiKey)}` : '키 없음'}</span>
+                <span class="pill ${s.hasApiKey ? 'pillStatus--ok' : 'pillStatus--warn'}">${esc(s.hasApiKey ? textForVars('providerConfigured', { key: s.maskedApiKey }) : textFor('providerKeyMissing'))}</span>
               </div>
               <div class="providerTileBody">
                 <label class="switchRow providerSwitch">
@@ -1065,20 +1218,20 @@ import { dismissToast, showToast } from './toast.js';
                   <span class="switchLabel">Enabled</span>
                 </label>
                 ${showModel ? `
-                  <label class="fieldLabel providerModel">기본 모델
+                  <label class="fieldLabel providerModel">${esc(textFor('providerDefaultModel'))}
                     <select data-provider-model="${esc(s.provider)}">
-                      <option value="">모델 선택</option>
+                      <option value="">${esc(textFor('providerSelectModel'))}</option>
                       ${renderModelOptions(models, s.defaultModel || '')}
                     </select>
                   </label>
-                ` : '<div class="providerModel muted">모델 설정 없음</div>'}
-                <label class="fieldLabel providerKey">API Key
-                  <input class="keyInput" data-provider-key="${esc(s.provider)}" type="password" placeholder="새 API key 입력 시 교체" />
+                ` : ''}
+                <label class="fieldLabel providerKey">${esc(textFor('providerApiKey'))}
+                  <input class="keyInput" data-provider-key="${esc(s.provider)}" type="password" placeholder="${esc(textFor('providerApiKeyPh'))}" />
                 </label>
               </div>
               <div class="providerActions">
-                <button data-provider-save="${esc(s.provider)}" class="success">Save</button>
-                <button data-provider-clear="${esc(s.provider)}" class="danger">키 삭제</button>
+                <button data-provider-save="${esc(s.provider)}" class="success">${esc(textFor('btnSave'))}</button>
+                <button data-provider-clear="${esc(s.provider)}" class="danger">${esc(textFor('providerDeleteKey'))}</button>
               </div>
             </div>
           `;
@@ -1088,32 +1241,33 @@ import { dismissToast, showToast } from './toast.js';
             <div class="card settingsControlCard">
               <div class="cardHead">
                 <div class="cardHeadMain">
-                  <div class="cardKicker">LLM Provider</div>
-                  <div class="cardHint">OpenAI/Claude는 기본 모델과 API Key를 함께 관리합니다.</div>
-                </div>
-                <div class="cardHeadActions">
-                  <button class="secondary" data-open-model-presets="true">모델 프리셋 관리</button>
+                  <div class="cardKicker">${esc(textFor('providerLlmTitle'))}</div>
+                  <div class="cardHint">${esc(textFor('providerLlmHint'))}</div>
                 </div>
               </div>
               <div class="providerTileGrid">
-                ${llm.map((s) => renderRow(s, { showModel: true })).join('') || '<p class="muted">LLM provider가 없습니다.</p>'}
+                ${llm.map((s) => renderRow(s, { showModel: true })).join('') || `<p class="muted">${esc(textFor('providerLlmEmpty'))}</p>`}
               </div>
+              <div id="uiModelPresets"></div>
             </div>
 
             <div class="card settingsControlCard">
               <div class="cardHead">
                 <div class="cardHeadMain">
-                  <div class="cardKicker">Data Provider</div>
-                  <div class="cardHint">Finnhub, YouTube, CoinGecko 등 수집 Provider의 키와 활성 상태를 관리합니다.</div>
+                  <div class="cardKicker">${esc(textFor('providerDataTitle'))}</div>
+                  <div class="cardHint">${esc(textFor('providerDataHint'))}</div>
                 </div>
               </div>
               <div class="providerTileGrid">
-                ${data.map((s) => renderRow(s, { showModel: false })).join('') || '<p class="muted">데이터 provider가 없습니다.</p>'}
+                ${data.map((s) => renderRow(s, { showModel: false })).join('') || `<p class="muted">${esc(textFor('providerDataEmpty'))}</p>`}
               </div>
             </div>
           </div>
-          <div id="uiModelPresets"></div>
         `;
+        renderUiModelPresetsEditor();
+        if ($('uiModelPresetsStatus') && state.uiModelPresets?.updatedAt) {
+          $('uiModelPresetsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.uiModelPresets.updatedAt) });
+        }
       }
 
       async function loadMarketLists() {
@@ -1124,12 +1278,12 @@ import { dismissToast, showToast } from './toast.js';
           <div class="card settingsControlCard">
             <div class="cardHead">
               <div class="cardHeadMain">
-                <div class="cardKicker">마켓 리스트</div>
-                <div class="cardHint">앱 화면과 수집 Job이 공통으로 사용하는 종목 묶음입니다.</div>
+                <div class="cardKicker">${esc(textFor('marketListsCardTitle'))}</div>
+                <div class="cardHint">${esc(textFor('marketListsCardHint'))}</div>
               </div>
             </div>
             <div class="settingsSectionBody">
-              ${lists.length === 0 ? '<p class="muted">리스트가 없습니다.</p>' : lists.map((list) => `
+              ${lists.length === 0 ? `<p class="muted">${esc(textFor('marketListsEmpty'))}</p>` : lists.map((list) => `
                 <div class="card marketListCard">
                   <div class="cardHead">
                     <div class="cardHeadMain">
@@ -1137,12 +1291,12 @@ import { dismissToast, showToast } from './toast.js';
                       <div class="summary">${esc(list.description || '')}</div>
                       <div class="marketListMetaRow">
                         <span class="pill pill--subtle">${esc(list.key)}</span>
-                        <span class="pill">${Number(list.count) || 0}개</span>
-                        <span class="marketListMetaItem muted"><span class="marketListMetaLabel">업데이트</span>${formatDateTime(list.updatedAt)}</span>
+                        <span class="pill">${esc(textForVars('marketListRowCount', { n: Number(list.count) || 0 }))}</span>
+                        <span class="marketListMetaItem muted"><span class="marketListMetaLabel">${esc(textFor('marketListMetaUpdated'))}</span>${formatDateTime(list.updatedAt)}</span>
                       </div>
                     </div>
                     <div class="cardHeadActions">
-                      <button data-market-list-open="${esc(list.key)}" class="secondary">관리</button>
+                      <button data-market-list-open="${esc(list.key)}" class="secondary">${esc(textFor('marketListManage'))}</button>
                     </div>
                   </div>
                 </div>
@@ -1161,88 +1315,100 @@ import { dismissToast, showToast } from './toast.js';
         const aliasesByCat = state.newsSourceSettings?.aliases || { global: {}, crypto: {} };
         const aliasTable = aliasesByCat[cat] || {};
         const aliasCountFor = (name) => Object.entries(aliasTable).filter(([, v]) => String(v || '') === String(name || '')).length;
+        const draftRows = (Array.isArray(state.newsSourceDraftRows) && state.newsSourceDraftRows.length ? state.newsSourceDraftRows : ['']);
         host.innerHTML = `
           <div class="card settingsControlCard">
             <div class="cardHead">
               <div class="cardHeadMain">
-                <div class="cardKicker">${esc(textFor('newsSourcesTitle') || '뉴스 출처')}</div>
+                <div class="cardKicker">${esc(textFor('newsSourcesTitle'))}</div>
                 <div class="cardHint">${esc(textFor('newsSourcesHint'))}</div>
               </div>
               <div class="cardHeadActions">
                 <button class="secondary" id="refreshNewsSourcesBtn">${esc(textFor('btnRefresh'))}</button>
               </div>
             </div>
-            <div class="sourceControlGrid">
-              <div class="sourceControlBlock">
-                <div class="sourceControlLabel">카테고리</div>
-                <div class="tabs tabs--compact">
-                  <button type="button" class="tabBtn ${cat === 'global' ? 'active' : ''}" data-news-sources-tab="global">${esc(textFor('newsSourcesCatGlobal'))}</button>
-                  <button type="button" class="tabBtn ${cat === 'crypto' ? 'active' : ''}" data-news-sources-tab="crypto">${esc(textFor('newsSourcesCatCrypto'))}</button>
+            <div class="newsSourcesWorkspace">
+              <div class="newsSourcesMain">
+                <div class="newsSourcesTable">
+                  <div class="sourceListHead">
+                    <div>
+                      <div class="cardKicker">${esc(textFor('newsSourceListTitle'))}</div>
+                      <div class="cardHint">${esc(textForVars('newsSourceListHint', { count: rows.length }))}</div>
+                    </div>
+                    <div class="tabs tabs--compact">
+                      <button type="button" class="tabBtn ${cat === 'global' ? 'active' : ''}" data-news-sources-tab="global">${esc(textFor('newsSourcesCatGlobal'))}</button>
+                      <button type="button" class="tabBtn ${cat === 'crypto' ? 'active' : ''}" data-news-sources-tab="crypto">${esc(textFor('newsSourcesCatCrypto'))}</button>
+                    </div>
+                  </div>
+                  <div class="sourceControlBlock sourceControlBlock--wide sourcePolicyInline">
+                    <div class="sourceControlLabel">${esc(textFor('newsSourcePolicyTitle'))}</div>
+                    <div class="sourceSwitches">
+                      <label class="switchRow">
+                        <input class="switchInput" type="checkbox" id="newsSourcesAutoEnableGlobal" ${policy.global !== false ? 'checked' : ''} />
+                        <span class="switchUi" aria-hidden="true"></span>
+                        <span class="switchLabel">${esc(textFor('newsSourcesCatGlobal'))} · ${esc(textFor('newsSourcesAutoEnable'))}</span>
+                      </label>
+                      <label class="switchRow">
+                        <input class="switchInput" type="checkbox" id="newsSourcesAutoEnableCrypto" ${policy.crypto !== false ? 'checked' : ''} />
+                        <span class="switchUi" aria-hidden="true"></span>
+                        <span class="switchLabel">${esc(textFor('newsSourcesCatCrypto'))} · ${esc(textFor('newsSourcesAutoEnable'))}</span>
+                      </label>
+                      <label class="switchRow">
+                        <input class="switchInput" type="checkbox" id="newsSourcesShowHidden" ${state.newsSourcesShowHidden ? 'checked' : ''} />
+                        <span class="switchUi" aria-hidden="true"></span>
+                        <span class="switchLabel">${esc(textFor('newsSourcesShowHidden'))}</span>
+                      </label>
+                    </div>
+                    <button class="secondary" id="saveNewsSourceSettingsBtn">${esc(textFor('btnSave'))}</button>
+                  </div>
+                  <table class="settingsTable sourceTable">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>${esc(textFor('colName'))}</th>
+                        <th>${esc(textFor('colEnabled'))}</th>
+                        <th>${esc(textFor('colOrder'))}</th>
+                        <th>${esc(textFor('colAction'))}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${rows.map((s, idx) => `
+                        <tr class="${s.hidden ? 'mutedRow' : ''}">
+                          <td class="muted">${idx + 1}</td>
+                          <td><strong>${esc(s.name)}</strong>${s.hidden ? ` <span class="pill">${esc(textFor('newsSourcesHide'))}</span>` : ''}</td>
+                          <td><input type="checkbox" data-news-source-enabled="${esc(s.id)}" ${s.enabled ? 'checked' : ''} ${s.hidden ? 'disabled' : ''}/></td>
+                          <td class="muted">${Number(s.order) || (idx + 1)}</td>
+                          <td class="tableActions">
+                            <button class="iconBtn" title="Move up" data-news-source-move="up" data-news-source-id="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>↑</button>
+                            <button class="iconBtn" title="Move down" data-news-source-move="down" data-news-source-id="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>↓</button>
+                            <button class="secondary compactBtn" data-news-source-alias-open="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>${esc(aliasCountFor(s.name) ? textForVars('newsSourceAliasButton', { count: `(${aliasCountFor(s.name)})` }) : textFor('newsSourcesAliasTitle'))}</button>
+                            <button class="secondary compactBtn" data-news-source-toggle-hidden="${esc(s.id)}">${esc(s.hidden ? textFor('newsSourcesUnhide') : textFor('newsSourcesHide'))}</button>
+                          </td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                  ${rows.length === 0 ? `<p class="muted">${esc(textFor('newsSourcesEmpty'))}</p>` : ''}
+                  <div class="sourceDraftPanel">
+                    <div class="sourceDraftHead">
+                      <div>
+                        <div class="sourceControlLabel">${esc(textFor('newsSourceAddTitle'))}</div>
+                        <div class="cardHint">${esc(textFor('newsSourceAddHint'))}</div>
+                      </div>
+                      <button class="iconBtn" id="addNewsSourceDraftRow" title="${esc(textFor('newsSourceAddTitle'))}">+</button>
+                    </div>
+                    <div class="sourceDraftRows">
+                      ${draftRows.map((value, idx) => `
+                        <div class="sourceDraftRow">
+                          <span class="muted">${idx + 1}</span>
+                          <input class="newsSourcesAddInput" data-news-source-draft-index="${idx}" placeholder="${esc(textFor('newsSourceAddPh'))}" value="${esc(value || '')}" />
+                          <button class="danger compactBtn" data-news-source-draft-remove="${idx}" ${draftRows.length <= 1 ? 'disabled' : ''}>${esc(textFor('btnRemove'))}</button>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="sourceControlBlock sourceControlBlock--wide">
-                <div class="sourceControlLabel">운영 정책</div>
-                <div class="sourceSwitches">
-                <label class="switchRow">
-                  <input class="switchInput" type="checkbox" id="newsSourcesAutoEnable" ${policy[cat] !== false ? 'checked' : ''} />
-                  <span class="switchUi" aria-hidden="true"></span>
-                  <span class="switchLabel">${esc(textFor('newsSourcesAutoEnable'))}</span>
-                </label>
-                <label class="switchRow">
-                  <input class="switchInput" type="checkbox" id="newsSourcesShowHidden" ${state.newsSourcesShowHidden ? 'checked' : ''} />
-                  <span class="switchUi" aria-hidden="true"></span>
-                  <span class="switchLabel">${esc(textFor('newsSourcesShowHidden'))}</span>
-                </label>
-                </div>
-              </div>
-              <div class="sourceControlBlock sourceControlBlock--actions">
-                <button class="secondary" id="saveNewsSourceSettingsBtn">${esc(textFor('btnSave'))}</button>
-              </div>
-            </div>
-            <div class="sourceAddPanel">
-              <div>
-                <div class="sourceControlLabel">출처 추가</div>
-                <div class="cardHint">새 출처명은 현재 카테고리에 추가됩니다.</div>
-              </div>
-              <input id="newsSourceAddName" class="newsSourcesAddInput" placeholder="${esc(textFor('newsSourceAddPh'))}" value="${esc(state.newsSourceDraft || '')}" />
-              <button class="secondary" id="addNewsSourceBtn">${esc(textFor('btnAdd'))}</button>
-            </div>
-            <div class="newsSourcesTable">
-              <div class="sourceListHead">
-                <div>
-                  <div class="cardKicker">출처 리스트</div>
-                  <div class="cardHint">${rows.length}개 출처 · 순서와 노출 상태를 관리합니다.</div>
-                </div>
-                <span class="pill">${esc(cat)}</span>
-              </div>
-              <table class="settingsTable sourceTable">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>${esc(textFor('colName'))}</th>
-                    <th>${esc(textFor('colEnabled'))}</th>
-                    <th>${esc(textFor('colOrder'))}</th>
-                    <th>${esc(textFor('colAction'))}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${rows.map((s, idx) => `
-                    <tr class="${s.hidden ? 'mutedRow' : ''}">
-                      <td class="muted">${idx + 1}</td>
-                      <td><strong>${esc(s.name)}</strong>${s.hidden ? ` <span class="pill">${esc(textFor('newsSourcesHide'))}</span>` : ''}</td>
-                      <td><input type="checkbox" data-news-source-enabled="${esc(s.id)}" ${s.enabled ? 'checked' : ''} ${s.hidden ? 'disabled' : ''}/></td>
-                      <td class="muted">${Number(s.order) || (idx + 1)}</td>
-                      <td class="tableActions">
-                        <button class="iconBtn" title="Move up" data-news-source-move="up" data-news-source-id="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>↑</button>
-                        <button class="iconBtn" title="Move down" data-news-source-move="down" data-news-source-id="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>↓</button>
-                        <button class="secondary compactBtn" data-news-source-alias-open="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>별칭 ${aliasCountFor(s.name) ? `(${aliasCountFor(s.name)})` : ''}</button>
-                        <button class="secondary compactBtn" data-news-source-toggle-hidden="${esc(s.id)}">${esc(s.hidden ? textFor('newsSourcesUnhide') : textFor('newsSourcesHide'))}</button>
-                      </td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-              ${rows.length === 0 ? `<p class="muted">${esc(textFor('newsSourcesEmpty'))}</p>` : ''}
             </div>
             <div class="cardFoot">
               <button class="success" id="saveNewsSourcesBtn">${esc(textFor('btnSave'))}</button>
@@ -1266,14 +1432,15 @@ import { dismissToast, showToast } from './toast.js';
       }
 
       async function saveNewsSourceSettings() {
-        const cat = state.newsSourcesCategory || 'global';
-        const autoEnable = !!$('newsSourcesAutoEnable')?.checked;
         const patch = {
-          autoEnableNewSources: { [cat]: autoEnable },
+          autoEnableNewSources: {
+            global: !!$('newsSourcesAutoEnableGlobal')?.checked,
+            crypto: !!$('newsSourcesAutoEnableCrypto')?.checked,
+          },
         };
         const body = await api('/admin/api/news-source-settings', { method: 'PATCH', body: JSON.stringify(patch) });
         state.newsSourceSettings = body.data || state.newsSourceSettings;
-        showToast(textFor('toastSaved') || 'Saved', cat, { kind: 'success' });
+        showToast(textFor('toastSaved') || 'Saved', textFor('newsSourcePolicyTitle'), { kind: 'success' });
         await loadNewsSources();
       }
 
@@ -1289,20 +1456,20 @@ import { dismissToast, showToast } from './toast.js';
           return;
         }
         $('newsSourceAliasDialog').classList.remove('hidden');
-        $('newsSourceAliasDialogTitle').textContent = `${draft.sourceName} · 별칭`;
-        $('newsSourceAliasDialogMeta').textContent = `카테고리: ${draft.category} (global/crypto는 별칭이 분리 적용됩니다)`;
-        $('newsSourceAliasCount').textContent = `별칭 ${draft.aliases.length}개`;
+        $('newsSourceAliasDialogTitle').textContent = textForVars('newsSourceAliasTitleFull', { source: draft.sourceName });
+        $('newsSourceAliasDialogMeta').textContent = textForVars('newsSourceAliasMeta', { category: draft.category });
+        $('newsSourceAliasCount').textContent = textForVars('newsSourceAliasCount', { count: draft.aliases.length });
         $('newsSourceAliasRows').innerHTML = `
           <div class="aliasPolicyHint muted">
-            매칭 규칙: 별칭/출처명은 저장 시 앞뒤 공백을 제거하고 소문자로 비교합니다. (대소문자만 다른 경우도 동일 처리)
+            ${esc(textFor('newsSourceAliasPolicy'))}
           </div>
           ${draft.aliases.map((a, idx) => `
           <div class="symbolRow">
             <div class="muted">${idx + 1}</div>
             <input class="readonlyInput" value="${esc(a)}" disabled />
-            <button class="danger" data-news-source-alias-remove="${idx}">삭제</button>
+            <button class="danger" data-news-source-alias-remove="${idx}">${esc(textFor('btnRemove'))}</button>
           </div>
-        `).join('') || '<p class="muted">별칭이 없습니다.</p>'}
+        `).join('') || `<p class="muted">${esc(textFor('newsSourceAliasEmpty'))}</p>`}
         `;
       }
 
@@ -1353,19 +1520,49 @@ import { dismissToast, showToast } from './toast.js';
         return `src-${h.toString(16)}`;
       }
 
+      function syncNewsSourceDraftRows() {
+        const inputs = [...document.querySelectorAll('[data-news-source-draft-index]')];
+        if (!inputs.length) {
+          state.newsSourceDraftRows = Array.isArray(state.newsSourceDraftRows) && state.newsSourceDraftRows.length
+            ? state.newsSourceDraftRows
+            : [''];
+          return;
+        }
+        state.newsSourceDraftRows = inputs
+          .sort((a, b) => Number(a.dataset.newsSourceDraftIndex) - Number(b.dataset.newsSourceDraftIndex))
+          .map((input) => String(input.value || ''));
+        if (!state.newsSourceDraftRows.length) state.newsSourceDraftRows = [''];
+      }
+
       async function saveNewsSources() {
         const category = state.newsSourcesCategory || 'global';
+        syncNewsSourceDraftRows();
         const next = [...(state.newsSources || [])]
           .map((s, idx) => ({
             id: String(s.id || '').trim(),
             name: String(s.name || '').trim(),
             category,
             enabled: s.enabled !== false,
+            hidden: !!s.hidden,
             order: idx + 1,
           }))
           .filter((s) => s.id && s.name);
+        const seenIds = new Set(next.map((s) => s.id));
+        const seenNames = new Set(next.map((s) => s.name.trim().toLowerCase()));
+        for (const rawName of state.newsSourceDraftRows || []) {
+          const name = String(rawName || '').trim();
+          if (!name) continue;
+          const id = normalizeNewsSourceIdFromName(name);
+          const lower = name.toLowerCase();
+          if (seenIds.has(id) || seenNames.has(lower)) continue;
+          next.push({ id, name, category, enabled: true, hidden: false, order: next.length + 1 });
+          seenIds.add(id);
+          seenNames.add(lower);
+        }
+        next.forEach((s, idx) => { s.order = idx + 1; });
         const body = await api('/admin/api/news-sources', { method: 'PUT', body: JSON.stringify({ category, items: next }) });
         state.newsSources = Array.isArray(body.data) ? body.data : next;
+        state.newsSourceDraftRows = [''];
         showToast(textFor('toastSaved') || 'Saved', `${state.newsSources.length}`, { kind: 'success' });
         renderNewsSources();
       }
@@ -1381,18 +1578,18 @@ import { dismissToast, showToast } from './toast.js';
           return;
         }
         $('marketListDialog').classList.remove('hidden');
-        $('marketListDialogTitle').textContent = `${draft.displayName} 편집`;
-        $('marketListDialogMeta').textContent = `${draft.key} · 마지막 수정 ${formatDateTime(draft.updatedAt)}`;
+        $('marketListDialogTitle').textContent = textForVars('marketListEditTitle', { name: draft.displayName });
+        $('marketListDialogMeta').textContent = textForVars('marketListEditMetaLine', { key: draft.key, time: formatDateTime(draft.updatedAt) });
         $('marketListDialogName').value = draft.displayName;
         $('marketListDialogDesc').value = draft.description || '';
-        $('marketListDialogCount').textContent = `총 ${draft.symbols.length}개`;
+        $('marketListDialogCount').textContent = textForVars('marketListSymbolTotal', { n: draft.symbols.length });
         $('marketListSymbolRows').innerHTML = draft.symbols.map((symbol, index) => `
           <div class="symbolRow">
             <span class="muted">${index + 1}</span>
             <input data-market-symbol-index="${index}" value="${esc(symbol)}" />
-            <button class="danger" data-market-symbol-delete="${index}">삭제</button>
+            <button class="danger" data-market-symbol-delete="${index}">${esc(textFor('btnDeleteRow'))}</button>
           </div>
-        `).join('') || '<p class="muted">아직 종목이 없습니다. 위 입력창에서 추가하세요.</p>';
+        `).join('') || `<p class="muted">${esc(textFor('marketListSymbolsEmpty'))}</p>`;
       }
 
       function openMarketListDialog(key) {
@@ -1441,10 +1638,10 @@ import { dismissToast, showToast } from './toast.js';
 
       function renderPager(targetId) {
         $(targetId).innerHTML = `
-          <div class="muted">총 ${state.newsTotal}개 · ${state.newsPage} / ${state.newsTotalPages} 페이지</div>
+          <div class="muted">${esc(textForVars('pagerSummary', { total: state.newsTotal, page: state.newsPage, pages: state.newsTotalPages }))}</div>
           <div class="row">
-            <button class="secondary" data-page="prev">이전</button>
-            <button class="secondary" data-page="next">다음</button>
+            <button class="secondary" data-page="prev">${esc(textFor('btnPrevious'))}</button>
+            <button class="secondary" data-page="next">${esc(textFor('btnNext'))}</button>
           </div>
         `;
       }
@@ -1463,10 +1660,10 @@ import { dismissToast, showToast } from './toast.js';
 
       function renderYoutubePager(targetId) {
         $(targetId).innerHTML = `
-          <div class="muted">총 ${state.youtubeTotal}개 · ${state.youtubePage} / ${state.youtubeTotalPages} 페이지</div>
+          <div class="muted">${esc(textForVars('pagerSummary', { total: state.youtubeTotal, page: state.youtubePage, pages: state.youtubeTotalPages }))}</div>
           <div class="row">
-            <button class="secondary" data-youtube-page="prev">이전</button>
-            <button class="secondary" data-youtube-page="next">다음</button>
+            <button class="secondary" data-youtube-page="prev">${esc(textFor('btnPrevious'))}</button>
+            <button class="secondary" data-youtube-page="next">${esc(textFor('btnNext'))}</button>
           </div>
         `;
       }
@@ -1647,7 +1844,7 @@ import { dismissToast, showToast } from './toast.js';
         state.youtubeTotal = body.total;
         if (Array.isArray(body.channels)) {
           const current = $('youtubeChannel').value;
-          $('youtubeChannel').innerHTML = '<option value="">전체 채널</option>' + body.channels.map((channel) => `
+          $('youtubeChannel').innerHTML = `<option value="">${esc(textFor('youtubeAllChannels'))}</option>` + body.channels.map((channel) => `
             <option value="${esc(channel)}">${esc(channel)}</option>
           `).join('');
           $('youtubeChannel').value = current;
@@ -1662,18 +1859,18 @@ import { dismissToast, showToast } from './toast.js';
                 <div class="row">
                   <input type="checkbox" data-youtube-id="${esc(item.id)}" />
                   <span class="pill">${esc(item.channel || '-')}</span>
-                  <span class="pill">${Number(item.viewCount || 0).toLocaleString()} views</span>
+                  <span class="pill">${Number(item.viewCount || 0).toLocaleString()} ${esc(textFor('colYoutubeViews'))}</span>
                   <span class="muted">${formatDateTime(item.publishedAt)}</span>
                 </div>
                 <div class="title">${esc(item.title || '-')}</div>
                 <div class="summary">${esc(item.description || '')}</div>
                 <div class="row" style="margin-top:8px">
-                  <a class="developerLink" style="margin:0;padding:0;border:0" href="https://www.youtube.com/watch?v=${esc(item.videoId)}" target="_blank" rel="noreferrer">YouTube 열기 ↗</a>
+                  <a class="developerLink" style="margin:0;padding:0;border:0" href="https://www.youtube.com/watch?v=${esc(item.videoId)}" target="_blank" rel="noreferrer">${esc(textFor('youtubeOpenOnYoutube'))}</a>
                 </div>
               </div>
             </div>
           </div>
-        `).join('') || '<p class="muted">검색 조건에 맞는 영상이 없습니다.</p>';
+        `).join('') || `<p class="muted">${esc(textFor('youtubeEmptyFilter'))}</p>`;
         updateYoutubeSelectionInfo();
       }
 
@@ -1683,18 +1880,18 @@ import { dismissToast, showToast } from './toast.js';
         state.newsPage = body.page;
         state.newsTotalPages = body.totalPages;
         state.newsTotal = body.total;
+        state.newsRows = Array.isArray(body.data) ? body.data : [];
         renderPager('newsPagerTop');
         renderPager('newsPagerBottom');
-        const locale = $('newsLocale').value;
         $('news').innerHTML =
-          !body.data || body.data.length === 0
-            ? '<p class="muted">검색 조건에 맞는 뉴스가 없습니다.</p>'
+          state.newsRows.length === 0
+            ? `<p class="muted">${esc(textFor('newsEmpty'))}</p>`
             : `
               <div class="card card--elevated">
                 <div class="cardHead">
                   <div class="cardHeadMain">
-                    <div class="cardKicker">News</div>
-                    <div class="cardHint">행을 펼쳐 번역을 편집하고, 선택 후 일괄 작업을 수행합니다.</div>
+                    <div class="cardKicker">${esc(textFor('pageNewsTitle'))}</div>
+                    <div class="cardHint">${esc(textFor('newsListHint'))}</div>
                   </div>
                 </div>
                 <div class="newsTable">
@@ -1702,23 +1899,23 @@ import { dismissToast, showToast } from './toast.js';
                     <thead>
                       <tr>
                         <th style="width:34px"></th>
-                        <th style="width:120px">시간</th>
-                        <th style="width:110px">출처</th>
-                        <th style="width:92px">카테고리</th>
-                        <th style="width:92px">상태</th>
-                        <th>제목</th>
-                        <th style="width:210px">액션</th>
+                        <th style="width:120px">${esc(textFor('newsColTime'))}</th>
+                        <th style="width:110px">${esc(textFor('newsColSource'))}</th>
+                        <th style="width:92px">${esc(textFor('colCategory'))}</th>
+                        <th style="width:92px">${esc(textFor('newsColStatus'))}</th>
+                        <th>${esc(textFor('colTitle'))}</th>
+                        <th style="width:210px">${esc(textFor('colAction'))}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      ${body.data
+                      ${state.newsRows
                         .map((item) => {
-                          const translation = item.translations.find((t) => t.locale === locale) || {};
                           const title = String(item.originalTitle || item.title || '-');
                           const source = String(item.sourceName || '-');
                           const published = formatDateTime(item.publishedAt);
                           const category = String(item.category || '-');
-                          const status = String(item.translationStatus || '-');
+                          const translations = Array.isArray(item.translations) ? item.translations : [];
+                          const statusFor = (locale) => translations.find((t) => t.locale === locale)?.status || 'missing';
                           const provider = String(item.provider || '-');
                           return `
                             <tr class="newsRow" data-news-row="${esc(item.id)}">
@@ -1726,40 +1923,19 @@ import { dismissToast, showToast } from './toast.js';
                               <td class="muted">${esc(published)}</td>
                               <td><span class="pill">${esc(source)}</span></td>
                               <td><span class="pill">${esc(category)}</span></td>
-                              <td><span class="pill">${esc(status)}</span></td>
+                              <td>
+                                <div class="newsStatusStack">
+                                  <span class="pill pill--subtle">KO ${esc(statusFor('ko'))}</span>
+                                  <span class="pill pill--subtle">JA ${esc(statusFor('ja'))}</span>
+                                </div>
+                              </td>
                               <td>
                                 <div class="newsTitle">${esc(title)}</div>
                                 <div class="newsMeta muted">${esc(provider)}</div>
                               </td>
                               <td class="tableActions">
-                                <button class="secondary" data-news-expand="${esc(item.id)}">편집</button>
-                                <a class="developerLink" href="${esc(item.sourceUrl || '#')}" target="_blank" rel="noreferrer">원문 ↗</a>
-                              </td>
-                            </tr>
-                            <tr class="newsRowExpand hidden" data-news-expand-row="${esc(item.id)}">
-                              <td colspan="7">
-                                <div class="newsEdit">
-                                  <div class="newsEditHead">
-                                    <div>
-                                      <div class="muted">번역 (${esc(locale)})</div>
-                                      <div class="newsEditTitle">${esc(title)}</div>
-                                    </div>
-                                    <div class="row">
-                                      <button class="secondary" data-news-collapse="${esc(item.id)}">닫기</button>
-                                      <button data-save-translation="${esc(item.id)}" class="success">저장</button>
-                                    </div>
-                                  </div>
-                                  <div class="newsEditGrid">
-                                    <label class="fieldLabel">
-                                      <span>Title</span>
-                                      <textarea class="jsonEditor" data-title="${esc(item.id)}">${esc(translation.title || item.title || '')}</textarea>
-                                    </label>
-                                    <label class="fieldLabel">
-                                      <span>Summary</span>
-                                      <textarea class="jsonEditor" data-summary="${esc(item.id)}">${esc(translation.summary || item.summary || '')}</textarea>
-                                    </label>
-                                  </div>
-                                </div>
+                                <button class="secondary" data-news-edit="${esc(item.id)}">${esc(textFor('newsEdit'))}</button>
+                                <a class="developerLink" href="${esc(item.sourceUrl || '#')}" target="_blank" rel="noreferrer">${esc(textFor('newsOriginal'))} ↗</a>
                               </td>
                             </tr>
                           `;
@@ -1773,6 +1949,75 @@ import { dismissToast, showToast } from './toast.js';
         updateNewsSelectionInfo();
       }
 
+      function newsTranslationFor(item, locale) {
+        return (Array.isArray(item?.translations) ? item.translations : []).find((t) => t.locale === locale) || {};
+      }
+
+      function newsEditValue(item, locale, field) {
+        const tr = newsTranslationFor(item, locale);
+        if (field === 'title') return tr.title || item.originalTitle || item.title || '';
+        if (field === 'summary') return tr.summary || item.originalSummary || item.summary || '';
+        return '';
+      }
+
+      function closeNewsEditDialog() {
+        state.newsEditItemId = '';
+        state.newsEditLocale = 'en';
+        if ($('newsEditDialog')) $('newsEditDialog').classList.add('hidden');
+      }
+
+      function renderNewsEditDialog() {
+        const item = (state.newsRows || []).find((row) => String(row.id) === String(state.newsEditItemId));
+        if (!item) {
+          closeNewsEditDialog();
+          return;
+        }
+        const locale = state.newsEditLocale || 'en';
+        const tr = newsTranslationFor(item, locale);
+        const titleValue = newsEditValue(item, locale, 'title');
+        const summaryValue = newsEditValue(item, locale, 'summary');
+        $('newsEditDialog').classList.remove('hidden');
+        $('newsEditDialogTitle').textContent = textFor('newsEditDialogTitle');
+        $('newsEditDialogMeta').textContent = `${item.sourceName || '-'} · ${formatDateTime(item.publishedAt)} · ${item.category || '-'}`;
+        $('newsEditDialogStatus').textContent = `${locale.toUpperCase()} · ${tr.status || (locale === 'en' ? 'original' : 'missing')}`;
+        $('newsEditDialogBody').innerHTML = `
+          <div class="newsEditModal">
+            <div class="tabs newsEditTabs" role="tablist">
+              ${newsEditLocales.map((entry) => `
+                <button
+                  type="button"
+                  class="tabBtn ${entry.locale === locale ? 'active' : ''}"
+                  data-news-edit-locale="${esc(entry.locale)}">
+                  ${esc(textFor(entry.labelKey))}
+                </button>
+              `).join('')}
+            </div>
+            <div class="newsEditSource">
+              <div class="newsEditSourceTitle">${esc(item.originalTitle || item.title || '-')}</div>
+              <div class="newsMeta muted">
+                ${item.sourceUrl ? `<a class="developerLink" href="${esc(item.sourceUrl)}" target="_blank" rel="noreferrer">${esc(textFor('newsOpenOriginal'))}</a>` : ''}
+              </div>
+            </div>
+            <div class="newsEditGrid">
+              <label class="fieldLabel">
+                <span>Title</span>
+                <textarea id="newsEditTitleInput" class="jsonEditor">${esc(titleValue)}</textarea>
+              </label>
+              <label class="fieldLabel">
+                <span>Summary</span>
+                <textarea id="newsEditSummaryInput" class="jsonEditor">${esc(summaryValue)}</textarea>
+              </label>
+            </div>
+          </div>
+        `;
+      }
+
+      function openNewsEditDialog(id) {
+        state.newsEditItemId = String(id || '');
+        state.newsEditLocale = 'en';
+        renderNewsEditDialog();
+      }
+
       function selectedNewsIds() {
         return [...document.querySelectorAll('[data-news-id]')].filter((box) => box.checked).map((box) => box.dataset.newsId);
       }
@@ -1780,8 +2025,8 @@ import { dismissToast, showToast } from './toast.js';
       function updateNewsSelectionInfo() {
         const total = document.querySelectorAll('[data-news-id]').length;
         const selected = selectedNewsIds().length;
-        if ($('newsSelectionInfo')) $('newsSelectionInfo').textContent = `선택된 뉴스 ${selected}개`;
-        if ($('selectPageBtn')) $('selectPageBtn').textContent = selected === total && total > 0 ? '현재 페이지 선택 해제' : '현재 페이지 선택';
+        if ($('newsSelectionInfo')) $('newsSelectionInfo').textContent = textForVars('newsSelectedCount', { count: selected });
+        if ($('selectPageBtn')) $('selectPageBtn').textContent = selected === total && total > 0 ? textFor('newsSelectPageClear') : textFor('newsSelectPage');
         if ($('retranslateSelectedBtn')) $('retranslateSelectedBtn').disabled = selected === 0;
         if ($('deleteSelectedNewsBtn')) $('deleteSelectedNewsBtn').disabled = selected === 0;
       }
@@ -1793,8 +2038,8 @@ import { dismissToast, showToast } from './toast.js';
       function updateYoutubeSelectionInfo() {
         const total = document.querySelectorAll('[data-youtube-id]').length;
         const selected = selectedYoutubeIds().length;
-        if ($('youtubeSelectionInfo')) $('youtubeSelectionInfo').textContent = `선택된 영상 ${selected}개`;
-        if ($('selectYoutubePageBtn')) $('selectYoutubePageBtn').textContent = selected === total && total > 0 ? '현재 페이지 선택 해제' : '현재 페이지 선택';
+        if ($('youtubeSelectionInfo')) $('youtubeSelectionInfo').textContent = textForVars('youtubeSelectedCount', { count: selected });
+        if ($('selectYoutubePageBtn')) $('selectYoutubePageBtn').textContent = selected === total && total > 0 ? textFor('youtubeSelectPageClear') : textFor('youtubeSelectPage');
         if ($('refreshSelectedYoutubeBtn')) $('refreshSelectedYoutubeBtn').disabled = selected === 0;
       }
 
@@ -1806,9 +2051,9 @@ import { dismissToast, showToast } from './toast.js';
           return title || box.dataset.resetTarget;
         });
         const confirmText = $('resetConfirmText')?.value.trim() || '';
-        if ($('resetSelectionInfo')) $('resetSelectionInfo').textContent = `${selectedBoxes.length}개 선택됨`;
+        if ($('resetSelectionInfo')) $('resetSelectionInfo').textContent = textForVars('settingsResetSelectionCount', { n: selectedBoxes.length });
         if ($('resetSelectedList')) {
-          $('resetSelectedList').textContent = selectedNames.length ? selectedNames.join(', ') : '선택된 대상이 없습니다.';
+          $('resetSelectedList').textContent = selectedNames.length ? selectedNames.join(', ') : textFor('settingsResetSelectedNone');
         }
         if ($('resetDataBtn')) $('resetDataBtn').disabled = selectedBoxes.length === 0 || confirmText !== 'RESET';
       }
@@ -1816,16 +2061,33 @@ import { dismissToast, showToast } from './toast.js';
       document.addEventListener('click', async (event) => {
         const target = event.target;
         try {
-          if (target?.dataset?.newsExpand) {
-            const id = target.dataset.newsExpand;
-            const row = document.querySelector(`[data-news-expand-row="${CSS.escape(id)}"]`);
-            if (row) row.classList.remove('hidden');
+          if (target?.dataset?.newsEdit) {
+            openNewsEditDialog(target.dataset.newsEdit);
             return;
           }
-          if (target?.dataset?.newsCollapse) {
-            const id = target.dataset.newsCollapse;
-            const row = document.querySelector(`[data-news-expand-row="${CSS.escape(id)}"]`);
-            if (row) row.classList.add('hidden');
+          if (target?.dataset?.newsEditLocale) {
+            state.newsEditLocale = target.dataset.newsEditLocale;
+            renderNewsEditDialog();
+            return;
+          }
+          if (target?.id === 'closeNewsEditDialog' || target?.id === 'cancelNewsEditDialog') {
+            closeNewsEditDialog();
+            return;
+          }
+          if (target?.id === 'newsEditDialog') {
+            closeNewsEditDialog();
+            return;
+          }
+          if (target?.dataset?.errorDetail) {
+            openErrorDetailDialog(target.dataset.errorDetail);
+            return;
+          }
+          if (target?.id === 'closeErrorDetailDialog' || target?.id === 'cancelErrorDetailDialog') {
+            closeErrorDetailDialog();
+            return;
+          }
+          if (target?.id === 'errorDetailDialog') {
+            closeErrorDetailDialog();
             return;
           }
           if (target?.id === 'hamburgerBtn') {
@@ -1877,12 +2139,37 @@ import { dismissToast, showToast } from './toast.js';
           }
           if (target?.id === 'refreshJobsBtn') {
             await Promise.all([loadJobs(), loadJobRuns(), loadDashboard()]);
-            showToast('새로고침', 'Jobs/Logs refreshed', { kind: 'info' });
+            showToast(textFor('btnRefresh'), textFor('toastJobsLogsRefreshed'), { kind: 'info' });
+            return;
+          }
+          if (target?.id === 'refreshNewsBtn') {
+            await Promise.all([loadNews(), loadDashboard()]);
+            showToast(textFor('btnRefresh'), textFor('btnRefreshThisView'), { kind: 'info' });
+            return;
+          }
+          if (target?.id === 'refreshYoutubeBtn') {
+            await Promise.all([loadYoutube(), loadDashboard()]);
+            showToast(textFor('btnRefresh'), textFor('btnRefreshThisView'), { kind: 'info' });
+            return;
+          }
+          if (target?.id === 'refreshSettingsBtn') {
+            const tab = state.settingsTab || 'keys';
+            if (tab === 'keys') await loadProviderSettings();
+            else if (tab === 'lists') await loadMarketLists();
+            else if (tab === 'sources') await Promise.all([loadNewsSourceSettings(), loadNewsSources()]);
+            // theme/danger are mostly local UI; still refresh dashboard counts for safety
+            await loadDashboard();
+            showToast(textFor('btnRefresh'), textFor('btnRefreshThisView'), { kind: 'info' });
+            return;
+          }
+          if (target?.id === 'refreshTranslationsBtn') {
+            await Promise.all([loadTranslationSettings(), loadDashboard()]);
+            showToast(textFor('btnRefresh'), textFor('btnRefreshThisView'), { kind: 'info' });
             return;
           }
           if (target?.id === 'refreshMonitoringBtn') {
             await loadMonitoring();
-            showToast('새로고침', 'Monitoring refreshed', { kind: 'info' });
+            showToast(textFor('btnRefresh'), textFor('toastMonitoringRefreshed'), { kind: 'info' });
             return;
           }
           if (target?.dataset?.newsSourceAliasOpen) {
@@ -1930,16 +2217,20 @@ import { dismissToast, showToast } from './toast.js';
             const rows = Array.isArray(state.jobRunsLastRows) ? state.jobRunsLastRows : [];
             const jobKeys = jobKeysForSelectedJobRuns(rows, selectedRunKeys);
             openConfirm({
-              title: '선택 재시도',
-              desc: '선택한 실행 로그에 해당하는 Job을 수동 실행(강제)합니다.',
-              body: `실행 로그 ${selectedRunKeys.length}개 → Job ${jobKeys.length}개\n${jobKeys.length ? jobKeys.join(', ') : '(없음)'}`,
-              okText: '재시도',
+              title: textFor('confirmJobRunsRetryTitle'),
+              desc: textFor('confirmJobRunsRetryDesc'),
+              body: textForVars('confirmJobRunsRetryBody', {
+                runs: selectedRunKeys.length,
+                jobs: jobKeys.length,
+                keys: jobKeys.length ? jobKeys.join(', ') : textFor('confirmJobRunsRetryKeysNone'),
+              }),
+              okText: textFor('btnRetry'),
               danger: false,
               onConfirm: async () => {
                 for (const key of jobKeys) {
                   await api(`/admin/api/jobs/${encodeURIComponent(key)}/run`, { method: 'POST' });
                 }
-                showToast('재시도 요청', `${jobKeys.length}개 job 실행`, { kind: 'success' });
+                showToast(textFor('toastRetryRequested'), textForVars('toastRetryJobsRun', { count: jobKeys.length }), { kind: 'success' });
                 state.jobRunsSelected = [];
                 await Promise.all([loadJobRuns(), loadDashboard()]);
               },
@@ -1948,8 +2239,8 @@ import { dismissToast, showToast } from './toast.js';
           }
           if (target?.id === 'headerHelpBtn') {
             showToast(
-              '도움말',
-              '전역 검색: ⌘/Ctrl+K · 알림/프로필은 상단 패널 · Job 로그는 행 단위 선택 후 일괄 재시도',
+              textFor('ariaHelp'),
+              textFor('helpToastContent'),
               { kind: 'info' },
             );
             return;
@@ -1977,12 +2268,11 @@ import { dismissToast, showToast } from './toast.js';
             return;
           }
           if (target.dataset && target.dataset.comingSoon === 'true') {
-            showToast('준비중', '해당 메뉴는 아직 구현되지 않았습니다.');
+            showToast(textFor('toastMenuNotReadyTitle'), textFor('toastMenuNotReadyBody'));
             return;
           }
           if (target.dataset.openModelPresets) {
-            state.openModelPresetsOnTranslations = true;
-            await switchView('translations');
+            await switchView('settings-keys');
             return;
           }
           if (target?.id === 'jobListReset') {
@@ -1995,9 +2285,32 @@ import { dismissToast, showToast } from './toast.js';
             await loadJobs();
             return;
           }
+          if (target?.dataset?.newsMode) {
+            setNewsMode(target.dataset.newsMode);
+            return;
+          }
+          if (target?.dataset?.youtubeMode) {
+            setYoutubeMode(target.dataset.youtubeMode);
+            return;
+          }
           if (target.dataset.dashboardOp) {
-            state.dashboardOperationFilter = target.dataset.dashboardOp || 'all';
+            const next = target.dataset.dashboardOp === 'reconcile' ? 'reconcile' : 'latest';
+            state.dashboardOperationFilter = next;
             await loadDashboard();
+            return;
+          }
+          if (target.dataset.dashboardNewsTitle) {
+            if ($('newsQuery')) $('newsQuery').value = target.dataset.dashboardNewsTitle || '';
+            state.newsPage = 1;
+            await switchView('news');
+            await loadNews();
+            return;
+          }
+          if (target.dataset.dashboardYoutubeTitle) {
+            if ($('youtubeQuery')) $('youtubeQuery').value = target.dataset.dashboardYoutubeTitle || '';
+            state.youtubePage = 1;
+            await switchView('youtube');
+            await loadYoutube();
             return;
           }
           if (target?.id === 'jobRunsSelectAll') {
@@ -2035,12 +2348,6 @@ import { dismissToast, showToast } from './toast.js';
           if (target.dataset.opFilter) {
             state.operationFilter = target.dataset.opFilter;
             await Promise.all([loadMonitoring(), loadJobs(), loadErrors()]);
-          }
-          if (target.dataset.newsLocale) {
-            $('newsLocale').value = target.dataset.newsLocale;
-            document.querySelectorAll('[data-news-locale]').forEach((btn) => btn.classList.toggle('active', btn.dataset.newsLocale === target.dataset.newsLocale));
-            state.newsPage = 1;
-            await loadNews();
           }
           if (target.dataset.theme) applyTheme(target.dataset.theme);
           if (target.dataset.openJob) {
@@ -2086,13 +2393,13 @@ import { dismissToast, showToast } from './toast.js';
           }
           if (target.dataset.tsSave) {
             const locale = target.dataset.tsSave;
+            const provider = document.querySelector(`[data-ts-provider="${locale}"]`).value;
             await api(`/admin/api/translation-settings/${locale}`, {
               method: 'PATCH',
               body: JSON.stringify({
                 enabled: document.querySelector(`[data-ts-enabled="${locale}"]`).checked,
                 autoTranslateNews: document.querySelector(`[data-ts-auto="${locale}"]`).checked,
-                provider: document.querySelector(`[data-ts-provider="${locale}"]`).value,
-                model: document.querySelector(`[data-ts-model="${locale}"]`).value,
+                provider,
               }),
             });
             await loadTranslationSettings();
@@ -2100,30 +2407,34 @@ import { dismissToast, showToast } from './toast.js';
           if (target.dataset.providerSave) {
             const provider = target.dataset.providerSave;
             const apiKey = document.querySelector(`[data-provider-key="${provider}"]`).value.trim();
+            const modelSelect = document.querySelector(`[data-provider-model="${provider}"]`);
+            const body = {
+              enabled: document.querySelector(`[data-provider-enabled="${provider}"]`).checked,
+              apiKey,
+            };
+            if (modelSelect instanceof HTMLSelectElement) {
+              body.defaultModel = modelSelect.value.trim();
+            }
             await api(`/admin/api/provider-settings/${provider}`, {
               method: 'PATCH',
-              body: JSON.stringify({
-                enabled: document.querySelector(`[data-provider-enabled="${provider}"]`).checked,
-                defaultModel: document.querySelector(`[data-provider-model="${provider}"]`).value.trim(),
-                apiKey,
-              }),
+              body: JSON.stringify(body),
             });
             await loadProviderSettings();
           }
           if (target.dataset.providerClear) {
             const provider = target.dataset.providerClear;
             openConfirm({
-              title: 'API Key 삭제',
-              desc: '해당 Provider의 API Key를 삭제합니다.',
-              body: `Provider: ${provider}`,
-              okText: '삭제',
+              title: textFor('confirmProviderDeleteKeyTitle'),
+              desc: textFor('confirmProviderDeleteKeyDesc'),
+              body: textForVars('confirmProviderDeleteKeyBody', { provider }),
+              okText: textFor('btnRemove'),
               danger: true,
               onConfirm: async () => {
                 await api(`/admin/api/provider-settings/${provider}`, {
                   method: 'PATCH',
                   body: JSON.stringify({ clearApiKey: true }),
                 });
-                showToast('삭제 완료', provider, { kind: 'success' });
+                showToast(textFor('toastProviderKeyRemoved'), provider, { kind: 'success' });
                 await loadProviderSettings();
               },
             });
@@ -2137,9 +2448,13 @@ import { dismissToast, showToast } from './toast.js';
             };
             const result = await api('/admin/api/ui-model-presets', { method: 'PATCH', body: JSON.stringify(next) });
             state.uiModelPresets = result.data || null;
-            if ($('uiModelPresetsStatus')) $('uiModelPresetsStatus').textContent = `저장됨 · ${formatDateTime(state.uiModelPresets?.updatedAt)}`;
-            showToast('저장 완료', '모델 프리셋이 업데이트되었습니다.');
-            await loadTranslationSettings();
+            if ($('uiModelPresetsStatus')) $('uiModelPresetsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.uiModelPresets?.updatedAt) });
+            showToast(textFor('toastSaved'), textFor('modelPresetTitle'));
+            if (state.view === 'settings-keys') {
+              await loadProviderSettings();
+            } else {
+              await loadTranslationSettings();
+            }
           }
           if (target.dataset.marketListOpen) {
             openMarketListDialog(target.dataset.marketListOpen);
@@ -2150,6 +2465,7 @@ import { dismissToast, showToast } from './toast.js';
           }
           if (target.dataset.newsSourcesTab) {
             state.newsSourcesCategory = target.dataset.newsSourcesTab || 'global';
+            state.newsSourceDraftRows = [''];
             await loadNewsSourceSettings();
             await loadNewsSources();
             return;
@@ -2158,20 +2474,17 @@ import { dismissToast, showToast } from './toast.js';
             await saveNewsSourceSettings();
             return;
           }
-          if (target.id === 'addNewsSourceBtn') {
-            const name = String($('newsSourceAddName')?.value || '').trim();
-            state.newsSourceDraft = name;
-            if (!name) return;
-            const id = normalizeNewsSourceIdFromName(name);
-            const existing = (state.newsSources || []).find((s) => s.id === id);
-            if (existing) {
-              existing.enabled = true;
-            } else {
-              const maxOrder = (state.newsSources || []).reduce((m, s) => Math.max(m, Number(s.order) || 0), 0);
-              (state.newsSources || []).push({ id, name, enabled: true, order: maxOrder + 1 });
-            }
-            state.newsSourceDraft = '';
-            if ($('newsSourceAddName')) $('newsSourceAddName').value = '';
+          if (target.id === 'addNewsSourceDraftRow') {
+            syncNewsSourceDraftRows();
+            state.newsSourceDraftRows.push('');
+            renderNewsSources();
+            return;
+          }
+          if (target.dataset.newsSourceDraftRemove) {
+            syncNewsSourceDraftRows();
+            const idx = Number(target.dataset.newsSourceDraftRemove);
+            state.newsSourceDraftRows = (state.newsSourceDraftRows || []).filter((_, i) => i !== idx);
+            if (!state.newsSourceDraftRows.length) state.newsSourceDraftRows = [''];
             renderNewsSources();
             return;
           }
@@ -2255,17 +2568,20 @@ import { dismissToast, showToast } from './toast.js';
             closeMarketListDialog();
             await Promise.all([loadMarketLists(), loadDashboard()]);
           }
-          if (target.dataset.saveTranslation) {
-            const id = target.dataset.saveTranslation;
-            const locale = $('newsLocale').value;
+          if (target.id === 'saveNewsEditDialog') {
+            const id = state.newsEditItemId;
+            const locale = state.newsEditLocale || 'en';
+            if (!id) return;
             await api(`/admin/api/news/${encodeURIComponent(id)}/translation/${locale}`, {
               method: 'PATCH',
               body: JSON.stringify({
-                title: document.querySelector(`[data-title="${id}"]`).value,
-                summary: document.querySelector(`[data-summary="${id}"]`).value,
+                title: $('newsEditTitleInput').value,
+                summary: $('newsEditSummaryInput').value,
               }),
             });
+            showToast(textFor('toastSaved'), textForVars('newsEditSaved', { locale: locale.toUpperCase() }), { kind: 'success' });
             await loadNews();
+            renderNewsEditDialog();
           }
           if (target.id === 'loadNewsBtn') {
             state.newsPage = 1;
@@ -2333,14 +2649,14 @@ import { dismissToast, showToast } from './toast.js';
             const ids = selectedNewsIds();
             const locale = $('newsLocale').value;
             openConfirm({
-              title: '선택 번역',
-              desc: '선택한 뉴스의 번역을 다시 생성합니다.',
-              body: `대상: ${ids.length}개 · locale=${locale}`,
-              okText: '번역',
+              title: textFor('confirmNewsRetranslateTitle'),
+              desc: textFor('confirmNewsRetranslateDesc'),
+              body: textForVars('confirmNewsRetranslateBody', { count: ids.length, locale }),
+              okText: textFor('confirmOkTranslate'),
               danger: false,
               onConfirm: async () => {
                 await api('/admin/api/news/retranslate', { method: 'POST', body: JSON.stringify({ ids, locale }) });
-                showToast('번역 요청', `${ids.length}개`, { kind: 'success' });
+                showToast(textFor('toastTranslateRequested'), textForVars('toastItemCount', { count: ids.length }), { kind: 'success' });
                 await loadNews();
               },
             });
@@ -2350,14 +2666,14 @@ import { dismissToast, showToast } from './toast.js';
             const ids = selectedNewsIds();
             if (ids.length === 0) return;
             openConfirm({
-              title: '선택 삭제',
-              desc: '선택한 뉴스와 번역을 삭제합니다.',
-              body: `대상: ${ids.length}개`,
-              okText: '삭제',
+              title: textFor('confirmNewsDeleteTitle'),
+              desc: textFor('confirmNewsDeleteDesc'),
+              body: textForVars('confirmNewsDeleteBody', { count: ids.length }),
+              okText: textFor('btnRemove'),
               danger: true,
               onConfirm: async () => {
                 await api('/admin/api/news/delete', { method: 'POST', body: JSON.stringify({ ids }) });
-                showToast('삭제 완료', `${ids.length}개`, { kind: 'success' });
+                showToast(textFor('confirmNewsDeleteTitle'), textForVars('toastItemCount', { count: ids.length }), { kind: 'success' });
                 await Promise.all([loadNews(), loadDashboard()]);
               },
             });
@@ -2366,21 +2682,21 @@ import { dismissToast, showToast } from './toast.js';
           if (target.id === 'refreshSelectedYoutubeBtn') {
             const ids = selectedYoutubeIds();
             openConfirm({
-              title: '선택 갱신',
-              desc: '선택한 유튜브 영상을 provider에서 다시 조회합니다.',
-              body: `대상: ${ids.length}개`,
-              okText: '갱신',
+              title: textFor('confirmYoutubeRefreshTitle'),
+              desc: textFor('confirmYoutubeRefreshDesc'),
+              body: textForVars('confirmYoutubeRefreshBody', { count: ids.length }),
+              okText: textFor('confirmOkRefreshShort'),
               danger: false,
               onConfirm: async () => {
                 await api('/admin/api/youtube/refresh-selected', { method: 'POST', body: JSON.stringify({ ids }) });
-                showToast('갱신 요청', `${ids.length}개`, { kind: 'success' });
+                showToast(textFor('toastRefreshRequested'), textForVars('toastItemCount', { count: ids.length }), { kind: 'success' });
                 await Promise.all([loadYoutube(), loadJobRuns(), loadDashboard()]);
               },
             });
             return;
           }
           if (target.id === 'resetTranslationTestText') {
-            $('translationTestText').value = 'Signal 앱을 이용해 주셔서 감사합니다. 앞으로도 좋은 기능들을 업데이트하겠습니다.';
+            $('translationTestText').value = textFor('translationDefaultText');
           }
           if (target.id === 'runTranslationTest') {
             const result = await api('/admin/api/translation-test', {
@@ -2410,19 +2726,22 @@ import { dismissToast, showToast } from './toast.js';
               .map((box) => box.dataset.resetTarget);
             const confirmText = $('resetConfirmText').value.trim();
             openConfirm({
-              title: '데이터 초기화',
-              desc: '이 작업은 되돌릴 수 없습니다.',
-              body: `대상: ${targets.length ? targets.join(', ') : '(선택 없음)'}\n확인문구: ${confirmText || '(없음)'}`,
-              okText: '초기화',
+              title: textFor('confirmDataResetTitle'),
+              desc: textFor('confirmDataResetDesc'),
+              body: textForVars('confirmDataResetBody', {
+                targets: targets.length ? targets.join(', ') : textFor('confirmDataResetTargetsNone'),
+                confirm: confirmText || textFor('confirmDataResetConfirmNone'),
+              }),
+              okText: textFor('confirmOkResetShort'),
               danger: true,
               onConfirm: async () => {
                 const body = { targets, confirmText };
                 const result = await api('/admin/api/data-reset', { method: 'POST', body: JSON.stringify(body) });
-                $('resetResult').textContent = `초기화 완료: ${result.data.targets.join(', ')}`;
+                $('resetResult').textContent = `${textFor('toastDataResetDone')}: ${result.data.targets.join(', ')}`;
                 $('resetConfirmText').value = '';
                 document.querySelectorAll('[data-reset-target]').forEach((box) => { box.checked = false; });
                 updateResetUi();
-                showToast('초기화 완료', result.data.targets.join(', '), { kind: 'success' });
+                showToast(textFor('toastDataResetDone'), textForVars('toastDataResetDoneDetail', { targets: result.data.targets.join(', ') }), { kind: 'success' });
                 await Promise.all([loadDashboard(), loadJobs(), loadJobRuns(), loadNews(), loadYoutube()]);
               },
             });
@@ -2437,30 +2756,25 @@ import { dismissToast, showToast } from './toast.js';
             await loadNews();
           }
         } catch (error) {
-          showToast('오류', error.message, { kind: 'error' });
+          showToast(textFor('toastErrorTitle'), error.message, { kind: 'error' });
         }
       });
 
       document.addEventListener('change', async (event) => {
-        // Provider changed in translation settings table → refresh model list for that locale row.
+        // Provider changed in translation settings table → show the provider default model.
         if (event.target instanceof HTMLSelectElement && event.target.dataset.tsProvider) {
           const locale = event.target.dataset.tsProvider;
           const provider = event.target.value || 'mock';
-          const defaultModel = (state.providerSettings || []).find((p) => p.provider === provider)?.defaultModel || '';
-          const list = modelPresetsForProvider(provider, defaultModel);
-          const modelSelect = document.querySelector(`[data-ts-model="${locale}"]`);
-          if (modelSelect instanceof HTMLSelectElement) {
-            const current = modelSelect.value || '';
-            const nextValue = list.includes(current) ? current : (defaultModel || list[0] || '');
-            modelSelect.innerHTML = renderModelOptions(list.length ? list : [''], nextValue);
-          }
+          const label = document.querySelector(`[data-ts-model-label="${locale}"]`);
+          if (label) label.textContent = defaultModelForProvider(provider) || textFor('providerDefaultModelNone');
         }
         if (event.target.id === 'adminLanguage') {
           localStorage.setItem('signalAdminLanguage', event.target.value);
           applyAdminLanguage();
-          if (state.view === 'calendar') {
-            renderAdminCalendarGrid();
-            renderCalendarDayTable();
+          const adminOpen = $('adminPanel') && !$('adminPanel').classList.contains('hidden');
+          if (adminOpen) {
+            await reloadAllAdminData();
+            await switchView(state.view || 'dashboard');
           }
         }
         if (event.target.id === 'adminTimeBasis') {
@@ -2488,8 +2802,9 @@ import { dismissToast, showToast } from './toast.js';
           state.newsPage = 1;
           await loadNews();
         }
-        if (event.target.id === 'dashboardSort') {
-          state.dashboardSort = event.target.value || 'newest';
+        if (event.target.id === 'dashboardLimit') {
+          state.dashboardLimit = Number(event.target.value) || 5;
+          localStorage.setItem('signalAdminDashboardLimit', String(state.dashboardLimit));
           await loadDashboard();
         }
         if (event.target.id === 'monitoringSort') {
@@ -2552,6 +2867,7 @@ import { dismissToast, showToast } from './toast.js';
 
       document.addEventListener('input', (event) => {
         if (event.target.id === 'resetConfirmText') updateResetUi();
+        if (event.target.dataset && event.target.dataset.newsSourceDraftIndex) syncNewsSourceDraftRows();
       });
 
       document.addEventListener('keydown', async (event) => {
@@ -2577,6 +2893,12 @@ import { dismissToast, showToast } from './toast.js';
         if (event.key === 'Escape' && state.newsSourceAliasDraft) {
           closeNewsSourceAliasDialog();
         }
+        if (event.key === 'Escape' && state.newsEditItemId) {
+          closeNewsEditDialog();
+        }
+        if (event.key === 'Escape' && isPanelOpen('errorDetailDialog')) {
+          closeErrorDetailDialog();
+        }
         if (event.key === 'Enter' && event.target.id === 'marketListAddSymbol') {
           event.preventDefault();
           document.getElementById('addMarketListSymbol')?.click();
@@ -2593,6 +2915,7 @@ import { dismissToast, showToast } from './toast.js';
       });
 
       applyTheme(localStorage.getItem('signalAdminAccent') || 'green');
+      state.dashboardLimit = Number(localStorage.getItem('signalAdminDashboardLimit') || '5') || 5;
       $('adminLanguage').value = localStorage.getItem('signalAdminLanguage') || 'ko';
       $('adminTimeBasis').value =
         localStorage.getItem('signalAdminTimeBasis') ||
@@ -2600,6 +2923,10 @@ import { dismissToast, showToast } from './toast.js';
           ? 'utc|UTC'
           : `${localStorage.getItem('signalAdminLocale') || 'ko-KR'}|${localStorage.getItem('signalAdminLocale') === 'en-US' ? 'America/New_York' : localStorage.getItem('signalAdminLocale') === 'ja-JP' ? 'Asia/Tokyo' : 'Asia/Seoul'}`);
       applyAdminLanguage();
+      setNewsMode(state.newsMode || 'filter');
+      setYoutubeMode(state.youtubeMode || 'filter');
+      updateNewsSelectionInfo();
+      updateYoutubeSelectionInfo();
       refreshSession().catch((error) => { $('session').textContent = error.message; });
       updateResetUi();
       // Keep settings tab stable across refreshes

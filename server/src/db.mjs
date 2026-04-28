@@ -263,7 +263,6 @@ function defaultProviderSettings() {
         provider: 'finnhub',
         enabled: true,
         apiKey: config.finnhubToken,
-        defaultModel: '',
         updatedAt: nowIso(),
       },
       {
@@ -284,14 +283,12 @@ function defaultProviderSettings() {
         provider: 'youtube',
         enabled: true,
         apiKey: config.youtubeApiKey,
-        defaultModel: '',
         updatedAt: nowIso(),
       },
       {
         provider: 'coingecko',
         enabled: true,
         apiKey: '',
-        defaultModel: '',
         updatedAt: nowIso(),
       },
     ];
@@ -302,7 +299,6 @@ function defaultTranslationSettings() {
       {
         locale: 'ko',
         provider: config.translationProvider,
-        model: config.translationModel,
         enabled: true,
         autoTranslateNews: true,
         updatedAt: nowIso(),
@@ -310,7 +306,6 @@ function defaultTranslationSettings() {
       {
         locale: 'ja',
         provider: config.translationProvider,
-        model: config.translationModel,
         enabled: false,
         autoTranslateNews: false,
         updatedAt: nowIso(),

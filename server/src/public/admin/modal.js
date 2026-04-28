@@ -1,3 +1,4 @@
+import { textFor } from './i18n.js';
 import { $ } from './state.js';
 
 // Confirm modal (docs/SIGNAL-ADMIN-UIUX.md 9.3)
@@ -9,7 +10,15 @@ export function closeConfirm() {
   $('confirmModal')?.classList.add('hidden');
 }
 
-export function openConfirm({ title = '확인', desc = '', body = '', okText = '확인', danger = true, onConfirm } = {}) {
+export function openConfirm(opts = {}) {
+  const {
+    desc = '',
+    body = '',
+    danger = true,
+    onConfirm,
+  } = opts;
+  const title = opts.title != null ? opts.title : textFor('confirmDefaultTitle');
+  const okText = opts.okText != null ? opts.okText : textFor('confirmOk');
   confirmState.open = true;
   confirmState.onConfirm = typeof onConfirm === 'function' ? onConfirm : null;
   if ($('confirmTitle')) $('confirmTitle').textContent = title;

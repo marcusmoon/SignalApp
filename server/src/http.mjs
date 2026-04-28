@@ -67,16 +67,39 @@ function requireAdmin(req, res) {
   return adminId;
 }
 
+function cleanTranslationText(value) {
+  return String(value || '')
+    .replace(/^\s*\[번역 대기\]\s*/u, '')
+    .replace(/^\s*\[翻訳待ち\]\s*/u, '')
+    .trim();
+}
+
+function hasUsableTranslation(tr, item) {
+  if (!tr || !(tr.status === 'completed' || tr.status === 'manual')) return false;
+  if (tr.provider === 'mock') return false;
+  const title = cleanTranslationText(tr.title);
+  const summary = cleanTranslationText(tr.summary);
+  if (!title && !summary) return false;
+  if (
+    title === String(item.titleOriginal || '').trim() &&
+    summary === String(item.summaryOriginal || '').trim() &&
+    tr.provider !== 'manual'
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function displayNews(item, translations, locale) {
   const tr = translations.find((t) => t.newsItemId === item.id && t.locale === locale);
-  const completed = tr && (tr.status === 'completed' || tr.status === 'manual');
+  const completed = hasUsableTranslation(tr, item);
   return {
     id: item.id,
     category: item.category,
-    title: completed ? tr.title : item.titleOriginal,
-    summary: completed ? tr.summary : item.summaryOriginal,
+    title: completed ? cleanTranslationText(tr.title) : item.titleOriginal,
+    summary: completed ? cleanTranslationText(tr.summary) : item.summaryOriginal,
     displayLocale: completed ? locale : 'en',
-    translationStatus: tr?.status || 'missing',
+    translationStatus: completed ? tr.status : 'missing',
     originalTitle: item.titleOriginal,
     originalSummary: item.summaryOriginal,
     sourceName: item.sourceName,
@@ -275,6 +298,31 @@ function filterJobRuns(items, url, jobs = []) {
 
 function dashboardSummary(db) {
   const recentRuns = db.pollingJobRuns.slice(0, 200);
+  const latestNews = [...db.newsItems]
+    .sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')))
+    .slice(0, 20)
+    .map((item) => ({
+      id: item.id,
+      title: item.titleOriginal || '',
+      summary: item.summaryOriginal || '',
+      sourceName: item.sourceName || '',
+      sourceUrl: item.sourceUrl || '',
+      category: item.category || '',
+      provider: item.provider || '',
+      publishedAt: item.publishedAt || null,
+    }));
+  const latestYoutube = [...db.youtubeVideos]
+    .sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')))
+    .slice(0, 20)
+    .map((item) => ({
+      id: item.id,
+      title: item.title || '',
+      channel: item.channel || '',
+      videoId: item.videoId || '',
+      thumbnailUrl: item.thumbnailUrl || '',
+      viewCount: item.viewCount || 0,
+      publishedAt: item.publishedAt || null,
+    }));
   const latestRunByJob = db.pollingJobs.map((job) => {
     const run = recentRuns.find((item) => item.jobKey === job.jobKey);
     const enriched = run ? enrichJobRun(run, db.pollingJobs) : {};
@@ -309,6 +357,8 @@ function dashboardSummary(db) {
       recentFailedRuns: recentRuns.filter((run) => run.status === 'failed').length,
     },
     recentRuns: latestRunByJob,
+    latestNews,
+    latestYoutube,
   };
 }
 
@@ -578,7 +628,15 @@ export async function handleRequest(req, res) {
         const translationStatus = url.searchParams.get('translationStatus');
         let filtered = filterNews(db.newsItems, url).map((item) => ({
           ...displayNews(item, db.newsTranslations, locale),
-          translations: db.newsTranslations.filter((t) => t.newsItemId === item.id),
+          translations: db.newsTranslations
+            .filter((t) => t.newsItemId === item.id)
+            .map((t) => ({
+              ...t,
+              title: cleanTranslationText(t.title),
+              summary: cleanTranslationText(t.summary),
+              content: cleanTranslationText(t.content),
+              status: hasUsableTranslation(t, item) ? t.status : 'missing',
+            })),
         }));
         if (translationStatus) {
           filtered = filtered.filter((item) => item.translationStatus === translationStatus);
@@ -916,12 +974,13 @@ export async function handleRequest(req, res) {
         const updated = await updateDb((db) => {
           let setting = db.translationSettings.find((s) => s.locale === locale);
           if (!setting) {
-            setting = { locale, provider: 'mock', model: 'mock-news-v1', enabled: false, autoTranslateNews: false };
+            setting = { locale, provider: 'mock', enabled: false, autoTranslateNews: false };
             db.translationSettings.push(setting);
           }
-          for (const key of ['provider', 'model']) {
+          for (const key of ['provider']) {
             if (typeof patch[key] === 'string') setting[key] = patch[key];
           }
+          if ('model' in setting) delete setting.model;
           for (const key of ['enabled', 'autoTranslateNews']) {
             if (typeof patch[key] === 'boolean') setting[key] = patch[key];
           }

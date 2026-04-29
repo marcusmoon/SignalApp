@@ -22,9 +22,16 @@ function loadDotEnv() {
 
 loadDotEnv();
 
+function resolveDataDir() {
+  const raw = String(process.env.DATA_DIR || '').trim();
+  if (!raw) return path.join(rootDir, 'data');
+  // Allow absolute paths (Railway volume mount) or relative paths.
+  return path.isAbsolute(raw) ? raw : path.join(rootDir, raw);
+}
+
 export const config = {
   rootDir,
-  dataDir: path.join(rootDir, 'data'),
+  dataDir: resolveDataDir(),
   host: process.env.HOST || '127.0.0.1',
   port: Number(process.env.PORT || 4000),
   adminId: process.env.ADMIN_ID || 'admin',

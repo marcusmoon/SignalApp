@@ -623,9 +623,12 @@ export async function handleRequest(req, res) {
 
     if (req.method === 'POST' && pathname === '/admin/api/login') {
       const body = await readBody(req);
-      if (body.loginId === config.adminId && body.password === config.adminPassword) {
-        res.setHeader('set-cookie', `signal_admin_session=${encodeURIComponent(sessionToken(config.adminId))}; HttpOnly; SameSite=Lax; Path=/`);
-        json(res, 200, { ok: true, adminId: config.adminId });
+      const loginId = String(body.loginId || '').trim();
+      const password = String(body.password || '');
+      const match = (config.adminUsers || []).find((u) => u.id === loginId && u.password === password);
+      if (match) {
+        res.setHeader('set-cookie', `signal_admin_session=${encodeURIComponent(sessionToken(match.id))}; HttpOnly; SameSite=Lax; Path=/`);
+        json(res, 200, { ok: true, adminId: match.id });
       } else {
         json(res, 401, { error: 'INVALID_LOGIN' });
       }

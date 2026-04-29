@@ -22,6 +22,32 @@ function loadDotEnv() {
 
 loadDotEnv();
 
+/** JSON array: [{"id":"...","password":"..."}, ...]. Empty → admin login disabled. */
+function parseAdminUsersFromEnv() {
+  const raw = String(process.env.ADMIN_USERS || '').trim();
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) {
+      console.warn('[config] ADMIN_USERS must be a JSON array; admin login disabled.');
+      return [];
+    }
+    const out = [];
+    for (const row of arr) {
+      if (!row || typeof row !== 'object') continue;
+      const id = String(row.id || row.loginId || '').trim();
+      const password = String(row.password || '').trim();
+      if (!id || !password) continue;
+      out.push({ id, password });
+    }
+    if (!out.length) console.warn('[config] ADMIN_USERS has no valid entries; admin login disabled.');
+    return out;
+  } catch {
+    console.warn('[config] ADMIN_USERS is not valid JSON; admin login disabled.');
+    return [];
+  }
+}
+
 function resolveDataDir() {
   const raw = String(process.env.DATA_DIR || '').trim();
   if (!raw) return path.join(rootDir, 'data');
@@ -34,8 +60,7 @@ export const config = {
   dataDir: resolveDataDir(),
   host: process.env.HOST || '127.0.0.1',
   port: Number(process.env.PORT || 4000),
-  adminId: process.env.ADMIN_ID || 'admin',
-  adminPassword: process.env.ADMIN_PASSWORD || 'signal-local',
+  adminUsers: parseAdminUsersFromEnv(),
   sessionSecret: process.env.SESSION_SECRET || 'change-me-local-session-secret',
   finnhubToken: process.env.FINNHUB_TOKEN || '',
   openaiApiKey: process.env.OPENAI_API_KEY || '',

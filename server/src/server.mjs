@@ -19,6 +19,9 @@ const server = http.createServer((req, res) => {
 server.listen(config.port, config.host, () => {
   console.log(`Signal server listening on http://${config.host}:${config.port}`);
   console.log(`Admin: http://${config.host}:${config.port}/admin`);
+  if (!config.adminUsers?.length) {
+    console.warn('[server] No ADMIN_USERS configured — /admin login will reject all credentials.');
+  }
 });
 
 const stopScheduler = startScheduler();

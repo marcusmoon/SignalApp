@@ -23,12 +23,13 @@ npm run server:dev
 | Coins API | `http://127.0.0.1:4000/v1/coins` |
 | Market Lists API | `http://127.0.0.1:4000/v1/market-lists/mega_cap` |
 
-어드민 기본 로그인은 `server/.env` 기준입니다.
+어드민 로그인은 **`ADMIN_USERS` 환경 변수**에만 의존합니다. 한 줄 JSON 배열로 계정을 넣습니다.
 
 ```env
-ADMIN_ID=admin
-ADMIN_PASSWORD=signal-local
+ADMIN_USERS=[{"id":"you","password":"secret"}]
 ```
+
+Railway 등에서는 Variable 값에 그대로 넣거나, UI에서 따옴표 이스케이프 규칙에 맞게 입력합니다.
 
 ## 2. 서버 환경 변수
 
@@ -43,7 +44,7 @@ cp server/.env.example server/.env
 | 변수 | 용도 |
 |------|------|
 | `PORT` / `HOST` | 로컬 서버 바인딩 (`127.0.0.1:4000`) |
-| `ADMIN_ID` / `ADMIN_PASSWORD` | 어드민 로그인 |
+| `ADMIN_USERS` | **필수(운영)**. 어드민 계정 JSON 배열 `[{"id","password"},…]`. 비우면 로그인 불가 |
 | `FINNHUB_TOKEN` | 선택 seed/fallback. 가능하면 어드민 설정에서 입력 |
 | `YOUTUBE_API_KEY` | 선택 seed/fallback. 가능하면 어드민 설정에서 입력 |
 | `TRANSLATION_PROVIDER` | 선택 seed/fallback (`mock` / `openai` / `claude`) |

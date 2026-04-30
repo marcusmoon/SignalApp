@@ -47,11 +47,11 @@ cp server/.env.example server/.env
 | `ADMIN_USERS` | **필수(운영)**. 어드민 계정 JSON 배열 `[{"id","password"},…]`. 비우면 로그인 불가 |
 | `FINNHUB_TOKEN` | 선택 seed/fallback. 가능하면 어드민 설정에서 입력 |
 | `YOUTUBE_API_KEY` | 선택 seed/fallback. 가능하면 어드민 설정에서 입력 |
-| `API_NINJAS_KEY` | 선택 seed/fallback. 컨콜 트랜스크립트 수집용 |
+| `NINJAS_KEY` | 선택 seed/fallback. 컨콜 트랜스크립트 수집용 |
 | `TRANSLATION_PROVIDER` | 선택 seed/fallback (`mock` / `openai` / `claude`) |
 | `TRANSLATION_MODEL` | 선택 seed/fallback 번역 모델 이름 |
 
-로컬 운영에서는 `.env`에 외부 API 키를 넣지 않아도 됩니다. **Admin > 설정 > 외부 API 키**에서 Finnhub/OpenAI/Claude/YouTube/API Ninjas 키를 저장하면 다음 호출부터 바로 사용합니다. 화면에는 전체 키를 노출하지 않고 마스킹해서 표시합니다.
+로컬 운영에서는 `.env`에 외부 API 키를 넣지 않아도 됩니다. **Admin > 설정 > 외부 API 키**에서 Finnhub/OpenAI/Claude/YouTube/Ninjas 키를 저장하면 다음 호출부터 바로 사용합니다. 화면에는 전체 키를 노출하지 않고 마스킹해서 표시합니다.
 
 `.env` 값은 새 로컬 DB를 만들 때 초기값으로 seed하거나, 아직 어드민 설정이 없을 때 fallback으로 쓰기 위한 용도입니다.
 

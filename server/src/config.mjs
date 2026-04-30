@@ -66,7 +66,7 @@ export const config = {
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
   youtubeApiKey: process.env.YOUTUBE_API_KEY || '',
-  apiNinjasKey: process.env.API_NINJAS_KEY || '',
+  ninjasKey: process.env.NINJAS_KEY || '',
   translationProvider: process.env.TRANSLATION_PROVIDER || 'mock',
   translationModel: process.env.TRANSLATION_MODEL || 'mock-ko-news-v1',
 };

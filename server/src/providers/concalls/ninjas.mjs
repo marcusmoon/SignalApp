@@ -44,10 +44,10 @@ function parseTranscriptBody(data) {
   return null;
 }
 
-async function fetchApiNinjasTranscript(symbol, { year, quarter } = {}) {
+async function fetchNinjasTranscript(symbol, { year, quarter } = {}) {
   const setting = await getProviderSetting('ninjas');
-  if (!setting.enabled) throw new Error('API_NINJAS_PROVIDER_DISABLED');
-  if (!setting.apiKey) throw new Error('API_NINJAS_KEY_MISSING');
+  if (!setting.enabled) throw new Error('NINJAS_PROVIDER_DISABLED');
+  if (!setting.apiKey) throw new Error('NINJAS_KEY_MISSING');
 
   const params = new URLSearchParams({ ticker: String(symbol || '').trim().toUpperCase() });
   if (year != null && quarter != null) {
@@ -60,7 +60,7 @@ async function fetchApiNinjasTranscript(symbol, { year, quarter } = {}) {
   });
   const rawText = await res.text();
   if (!res.ok) {
-    throw new Error(`API_NINJAS_TRANSCRIPT_${res.status}: ${rawText.slice(0, 240)}`);
+    throw new Error(`NINJAS_TRANSCRIPT_${res.status}: ${rawText.slice(0, 240)}`);
   }
   let raw;
   try {
@@ -113,12 +113,12 @@ export function normalizeConcallTranscript({
   };
 }
 
-export async function fetchApiNinjasConcallTranscript(target) {
+export async function fetchNinjasConcallTranscript(target) {
   const symbol = String(target?.symbol || '').trim().toUpperCase();
   if (!symbol) return null;
   const fiscalYear = target?.fiscalYear ?? target?.year ?? null;
   const fiscalQuarter = target?.fiscalQuarter ?? target?.quarter ?? null;
-  const first = await fetchApiNinjasTranscript(symbol, {
+  const first = await fetchNinjasTranscript(symbol, {
     year: fiscalYear,
     quarter: fiscalQuarter,
   });
@@ -127,7 +127,7 @@ export async function fetchApiNinjasConcallTranscript(target) {
   let raw = first.raw;
 
   if ((!fiscalYear || !fiscalQuarter) && (!transcript || cleanText(transcript).length < 200)) {
-    const fallback = await fetchApiNinjasTranscript(symbol);
+    const fallback = await fetchNinjasTranscript(symbol);
     transcript = fallback.transcript;
     httpStatus = fallback.httpStatus || httpStatus;
     raw = fallback.raw ?? raw;

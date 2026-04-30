@@ -1,5 +1,5 @@
 import { ensureNewsSourcesFromItems, nowIso, readDb, updateDb, upsertById } from '../db.mjs';
-import { fetchApiNinjasConcallTranscript } from '../providers/concalls/apiNinjas.mjs';
+import { fetchNinjasConcallTranscript } from '../providers/concalls/ninjas.mjs';
 import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchFinnhubMarketQuotes, fetchFinnhubMcapQuotes } from '../providers/market/finnhub.mjs';
@@ -105,16 +105,16 @@ async function fetchConcallTranscriptsFromCalendar(db, params = {}, { onProgress
   for (let i = 0; i < targets.length; i += 1) {
     const target = targets[i];
     try {
-      const row = await fetchApiNinjasConcallTranscript(target);
+      const row = await fetchNinjasConcallTranscript(target);
       if (row) rows.push(row);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       if (
-        message === 'API_NINJAS_KEY_MISSING' ||
-        message === 'API_NINJAS_PROVIDER_DISABLED' ||
-        message.startsWith('API_NINJAS_TRANSCRIPT_400') ||
-        message.startsWith('API_NINJAS_TRANSCRIPT_401') ||
-        message.startsWith('API_NINJAS_TRANSCRIPT_403')
+        message === 'NINJAS_KEY_MISSING' ||
+        message === 'NINJAS_PROVIDER_DISABLED' ||
+        message.startsWith('NINJAS_TRANSCRIPT_400') ||
+        message.startsWith('NINJAS_TRANSCRIPT_401') ||
+        message.startsWith('NINJAS_TRANSCRIPT_403')
       ) {
         throw error;
       }

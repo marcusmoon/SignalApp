@@ -350,7 +350,7 @@ function defaultProviderSettings() {
       {
         provider: 'ninjas',
         enabled: true,
-        apiKey: config.apiNinjasKey,
+        apiKey: config.ninjasKey,
         updatedAt: nowIso(),
       },
       {
@@ -385,21 +385,7 @@ function ensureDbShape(db) {
   if (!Array.isArray(db.providerSettings)) {
     db.providerSettings = defaultProviderSettings();
   }
-  const providerById = new Map();
-  db.providerSettings = db.providerSettings.filter((setting) => {
-    if (!setting || typeof setting !== 'object') return false;
-    if (setting.provider === 'api-ninjas') setting.provider = 'ninjas';
-    const existing = providerById.get(setting.provider);
-    if (!existing) {
-      providerById.set(setting.provider, setting);
-      return true;
-    }
-    if (!existing.apiKey && setting.apiKey) existing.apiKey = setting.apiKey;
-    if (existing.enabled == null && setting.enabled != null) existing.enabled = setting.enabled;
-    if (!existing.defaultModel && setting.defaultModel) existing.defaultModel = setting.defaultModel;
-    if (!existing.updatedAt && setting.updatedAt) existing.updatedAt = setting.updatedAt;
-    return false;
-  });
+  db.providerSettings = db.providerSettings.filter((setting) => setting && typeof setting === 'object');
   if (!db.providerSettings.some((s) => s.provider === 'youtube')) {
     db.providerSettings.push(defaultProviderSettings().find((s) => s.provider === 'youtube'));
   }
@@ -417,7 +403,6 @@ function ensureDbShape(db) {
       db.pollingJobs.push(defaultJob);
       continue;
     }
-    if (existing.provider === 'api-ninjas') existing.provider = 'ninjas';
     for (const key of ['displayName', 'description', 'domain', 'operation', 'provider', 'handler']) {
       if (existing[key] == null || existing[key] === '') existing[key] = defaultJob[key];
     }

@@ -6,7 +6,7 @@ const FALLBACKS = {
   openai: { apiKey: config.openaiApiKey, defaultModel: 'gpt-4o-mini' },
   claude: { apiKey: config.anthropicApiKey, defaultModel: 'claude-3-5-haiku-latest' },
   youtube: { apiKey: config.youtubeApiKey },
-  ninjas: { apiKey: config.apiNinjasKey },
+  ninjas: { apiKey: config.ninjasKey },
   coingecko: { apiKey: '' },
 };
 

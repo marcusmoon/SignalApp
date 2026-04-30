@@ -181,7 +181,7 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
   if (job.provider === 'finnhub' && job.handler === 'earnings_calendar') {
     return { kind: 'calendar', rows: await fetchFinnhubEarningsCalendar(job.params || {}) };
   }
-  if (job.provider === 'api-ninjas' && job.handler === 'earning_transcripts') {
+  if (job.provider === 'ninjas' && job.handler === 'earning_transcripts') {
     return { kind: 'concallTranscripts', rows: await fetchConcallTranscriptsFromCalendar(dbBefore, job.params || {}, { onProgress }) };
   }
   if (job.provider === 'youtube' && job.handler === 'youtube_economy') {

@@ -21,6 +21,10 @@ function stripTags(html) {
   return decodeEntities(String(html || '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
 }
 
+export function stripFinancialJuiceTitlePrefix(value) {
+  return String(value || '').replace(/^\s*Financial\s*Juice\s*:\s*/i, '').replace(/^\s*FinancialJuice\s*:\s*/i, '').trim();
+}
+
 function stripCdata(inner) {
   return String(inner || '').replace(/^<!\[CDATA\[([\s\S]*?)\]\]>$/m, '$1').trim();
 }
@@ -58,7 +62,7 @@ export function normalizeFinancialJuiceRssItem({ title, link, pubDate, descripti
     providerItemId,
     /** Same bucket as Finnhub general news; distinguish via `sourceName` / `provider`. */
     category: 'global',
-    titleOriginal: stripTags(title),
+    titleOriginal: stripFinancialJuiceTitlePrefix(stripTags(title)),
     summaryOriginal: stripTags(description).slice(0, 2000),
     contentOriginal: '',
     sourceName: 'Financial Juice',

@@ -12,6 +12,9 @@
 ## 서버 (API / Jobs)
 
 - **스케줄(Jobs)**: 운영 액션은 어드민에서 수행하고, 실행/로그는 서버 데이터와 API를 통해 관리한다.
+- **컨콜 Provider ID**: API Ninjas 컨콜 수집 provider는 내부적으로 `ninjas` ID를 사용한다.
+- **Financial Juice 뉴스**: RSS 제목의 `FinancialJuice:` 접두어는 수집·표시 단계에서 제거한다.
+- **어드민 뉴스 목록**: 기본 날짜 범위는 최근 일주일로 두어 오늘 수집분이 없어도 최신 뉴스가 보이게 한다.
 - **번역**: 로케일별 설정은 Provider 선택 중심이며, 실제 모델은 Provider 기본 모델을 따른다.
 
 ## 어드민 (Admin Console)

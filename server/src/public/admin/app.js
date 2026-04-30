@@ -1366,7 +1366,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await loadNews();
           }
           if (target.id === 'resetNewsBtn') {
-            if ($('newsRange')) $('newsRange').value = 'today';
+            if ($('newsRange')) $('newsRange').value = '7d';
             if ($('newsFrom')) $('newsFrom').value = '';
             if ($('newsTo')) $('newsTo').value = '';
             if ($('newsCategory')) $('newsCategory').value = '';
@@ -1777,7 +1777,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       setYoutubeMode(state.youtubeMode || 'filter');
       updateNewsSelectionInfo();
       updateYoutubeSelectionInfo();
-      // Ensure date preset defaults (today) hydrate from/to inputs.
+      // Ensure date preset defaults hydrate from/to inputs.
       setDatePreset();
       setJobRunDatePreset();
       setCalendarDatePreset();

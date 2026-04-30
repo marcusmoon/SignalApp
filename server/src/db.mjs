@@ -187,7 +187,7 @@ function defaultPollingJobs() {
         description: '최근 실적 캘린더의 컨콜 트랜스크립트를 API Ninjas에서 가져옵니다.',
         domain: 'concalls',
         operation: 'latest',
-        provider: 'api-ninjas',
+        provider: 'ninjas',
         handler: 'earning_transcripts',
         enabled: false,
         intervalSeconds: 21600,
@@ -348,7 +348,7 @@ function defaultProviderSettings() {
         updatedAt: nowIso(),
       },
       {
-        provider: 'api-ninjas',
+        provider: 'ninjas',
         enabled: true,
         apiKey: config.apiNinjasKey,
         updatedAt: nowIso(),
@@ -385,11 +385,26 @@ function ensureDbShape(db) {
   if (!Array.isArray(db.providerSettings)) {
     db.providerSettings = defaultProviderSettings();
   }
+  const providerById = new Map();
+  db.providerSettings = db.providerSettings.filter((setting) => {
+    if (!setting || typeof setting !== 'object') return false;
+    if (setting.provider === 'api-ninjas') setting.provider = 'ninjas';
+    const existing = providerById.get(setting.provider);
+    if (!existing) {
+      providerById.set(setting.provider, setting);
+      return true;
+    }
+    if (!existing.apiKey && setting.apiKey) existing.apiKey = setting.apiKey;
+    if (existing.enabled == null && setting.enabled != null) existing.enabled = setting.enabled;
+    if (!existing.defaultModel && setting.defaultModel) existing.defaultModel = setting.defaultModel;
+    if (!existing.updatedAt && setting.updatedAt) existing.updatedAt = setting.updatedAt;
+    return false;
+  });
   if (!db.providerSettings.some((s) => s.provider === 'youtube')) {
     db.providerSettings.push(defaultProviderSettings().find((s) => s.provider === 'youtube'));
   }
-  if (!db.providerSettings.some((s) => s.provider === 'api-ninjas')) {
-    db.providerSettings.push(defaultProviderSettings().find((s) => s.provider === 'api-ninjas'));
+  if (!db.providerSettings.some((s) => s.provider === 'ninjas')) {
+    db.providerSettings.push(defaultProviderSettings().find((s) => s.provider === 'ninjas'));
   }
   if (!db.providerSettings.some((s) => s.provider === 'coingecko')) {
     db.providerSettings.push(defaultProviderSettings().find((s) => s.provider === 'coingecko'));
@@ -402,6 +417,7 @@ function ensureDbShape(db) {
       db.pollingJobs.push(defaultJob);
       continue;
     }
+    if (existing.provider === 'api-ninjas') existing.provider = 'ninjas';
     for (const key of ['displayName', 'description', 'domain', 'operation', 'provider', 'handler']) {
       if (existing[key] == null || existing[key] === '') existing[key] = defaultJob[key];
     }

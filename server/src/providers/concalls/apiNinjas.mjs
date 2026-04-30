@@ -45,7 +45,7 @@ function parseTranscriptBody(data) {
 }
 
 async function fetchApiNinjasTranscript(symbol, { year, quarter } = {}) {
-  const setting = await getProviderSetting('api-ninjas');
+  const setting = await getProviderSetting('ninjas');
   if (!setting.enabled) throw new Error('API_NINJAS_PROVIDER_DISABLED');
   if (!setting.apiKey) throw new Error('API_NINJAS_KEY_MISSING');
 
@@ -89,7 +89,7 @@ export function normalizeConcallTranscript({
   const providerItemId = `${sym}|${year ?? ''}|${quarter ?? ''}`;
   return {
     id: `concall-${sym}-${year ?? 'latest'}-${quarter ?? 'latest'}`,
-    provider: 'api-ninjas',
+    provider: 'ninjas',
     providerItemId,
     symbol: sym,
     title: year && quarter ? `${sym} FY${year} Q${quarter} Earnings Call` : `${sym} Earnings Call`,

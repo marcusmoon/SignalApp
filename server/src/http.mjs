@@ -4,6 +4,7 @@ import path from 'node:path';
 import { config } from './config.mjs';
 import { ensureNewsSourcesFromItems, normalizeNewsSourceName, normalizeNewsSourceNameWithAliases, readDb, updateDb, upsertById, nowIso } from './db.mjs';
 import { retranslateNewsItems, runPollingJob } from './jobs/runner.mjs';
+import { stripFinancialJuiceTitlePrefix } from './providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketQuotes, fetchFinnhubProfile2, fetchFinnhubStockCandles } from './providers/market/finnhub.mjs';
 import { translateNews } from './providers/translation/index.mjs';
 import { fetchYoutubeVideosByIds } from './providers/youtube/youtube.mjs';
@@ -75,14 +76,22 @@ function cleanTranslationText(value) {
     .trim();
 }
 
+function cleanNewsTitleForDisplay(item, value) {
+  const text = cleanTranslationText(value);
+  if (String(item?.provider || '').toLowerCase() === 'financialjuice') {
+    return stripFinancialJuiceTitlePrefix(text);
+  }
+  return text;
+}
+
 function hasUsableTranslation(tr, item) {
   if (!tr || !(tr.status === 'completed' || tr.status === 'manual')) return false;
   if (tr.provider === 'mock') return false;
-  const title = cleanTranslationText(tr.title);
+  const title = cleanNewsTitleForDisplay(item, tr.title);
   const summary = cleanTranslationText(tr.summary);
   if (!title && !summary) return false;
   if (
-    title === String(item.titleOriginal || '').trim() &&
+    title === cleanNewsTitleForDisplay(item, item.titleOriginal) &&
     summary === String(item.summaryOriginal || '').trim() &&
     tr.provider !== 'manual'
   ) {
@@ -94,14 +103,15 @@ function hasUsableTranslation(tr, item) {
 function displayNews(item, translations, locale) {
   const tr = translations.find((t) => t.newsItemId === item.id && t.locale === locale);
   const completed = hasUsableTranslation(tr, item);
+  const titleOriginal = cleanNewsTitleForDisplay(item, item.titleOriginal);
   return {
     id: item.id,
     category: item.category,
-    title: completed ? cleanTranslationText(tr.title) : item.titleOriginal,
+    title: completed ? cleanNewsTitleForDisplay(item, tr.title) : titleOriginal,
     summary: completed ? cleanTranslationText(tr.summary) : item.summaryOriginal,
     displayLocale: completed ? locale : 'en',
     translationStatus: completed ? tr.status : 'missing',
-    originalTitle: item.titleOriginal,
+    originalTitle: titleOriginal,
     originalSummary: item.summaryOriginal,
     sourceName: item.sourceName,
     sourceUrl: item.sourceUrl,
@@ -352,7 +362,7 @@ function dashboardSummary(db) {
     .slice(0, 20)
     .map((item) => ({
       id: item.id,
-      title: item.titleOriginal || '',
+      title: cleanNewsTitleForDisplay(item, item.titleOriginal),
       summary: item.summaryOriginal || '',
       sourceName: item.sourceName || '',
       sourceUrl: item.sourceUrl || '',
@@ -815,7 +825,7 @@ export async function handleRequest(req, res) {
             .filter((t) => t.newsItemId === item.id)
             .map((t) => ({
               ...t,
-              title: cleanTranslationText(t.title),
+              title: cleanNewsTitleForDisplay(item, t.title),
               summary: cleanTranslationText(t.summary),
               content: cleanTranslationText(t.content),
               status: hasUsableTranslation(t, item) ? t.status : 'missing',
@@ -1128,7 +1138,7 @@ export async function handleRequest(req, res) {
       const providerSettingMatch = pathname.match(/^\/admin\/api\/provider-settings\/([^/]+)$/);
       if (req.method === 'PATCH' && providerSettingMatch) {
         const provider = decodeURIComponent(providerSettingMatch[1]);
-        if (!['finnhub', 'openai', 'claude', 'youtube', 'api-ninjas', 'coingecko'].includes(provider)) {
+        if (!['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko'].includes(provider)) {
           json(res, 400, { error: 'UNKNOWN_PROVIDER' });
           return;
         }

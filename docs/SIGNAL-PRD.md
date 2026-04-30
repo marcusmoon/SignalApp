@@ -44,4 +44,4 @@
 |------|------|
 | [docs/AGENTS.md](./AGENTS.md) | 실행·환경 변수·디렉터리·탭별 파일 연결 |
 | [docs/ARCHITECTURE.md](./ARCHITECTURE.md) | Domain / integrations / constants / hooks 레이어 규칙 |
-| [docs/CHANGELOG.md](./CHANGELOG.md) | 날짜별 변경 요약 |
+| [docs/CHANGELOG.md](./CHANGELOG.md) | 현재 운영/구조 스냅샷 (히스토리 없음) |

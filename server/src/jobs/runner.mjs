@@ -2,7 +2,7 @@ import { ensureNewsSourcesFromItems, nowIso, readDb, updateDb, upsertById } from
 import { fetchNinjasConcallTranscript } from '../providers/concalls/ninjas.mjs';
 import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
-import { fetchFinnhubMarketQuotes, fetchFinnhubMcapQuotes } from '../providers/market/finnhub.mjs';
+import { fetchMarketQuotes, fetchMcapQuotes } from '../providers/market/index.mjs';
 import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
@@ -203,12 +203,12 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
       : Array.isArray(job.params?.symbols) && job.params.symbols.length > 0
         ? job.params.symbols
         : [];
-    return { kind: 'marketQuotes', rows: await fetchFinnhubMarketQuotes({ ...(job.params || {}), symbols }) };
+    return { kind: 'marketQuotes', rows: await fetchMarketQuotes({ ...(job.params || {}), symbols }) };
   }
   if (job.provider === 'finnhub' && job.handler === 'market_quotes_mcap') {
     return {
       kind: 'marketQuotes',
-      rows: await fetchFinnhubMcapQuotes({
+      rows: await fetchMcapQuotes({
         ...(job.params || {}),
         symbols: marketListSymbols(dbBefore, job.params?.listKey || 'mcap_universe'),
         onProgress,

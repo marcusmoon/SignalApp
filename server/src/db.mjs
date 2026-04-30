@@ -20,6 +20,10 @@ const STORE_FILES = {
 function defaultDb() {
   return {
     meta: { createdAt: nowIso(), updatedAt: nowIso(), schemaVersion: 1 },
+    appSettings: {
+      marketQuotesMaxAgeSec: 10,
+      updatedAt: nowIso(),
+    },
     pollingJobs: defaultPollingJobs(),
     pollingJobRuns: [],
     newsItems: [],
@@ -382,6 +386,13 @@ function defaultTranslationSettings() {
 }
 
 function ensureDbShape(db) {
+  if (!db.appSettings || typeof db.appSettings !== 'object') {
+    db.appSettings = defaultDb().appSettings;
+  }
+  if (!Number.isFinite(Number(db.appSettings.marketQuotesMaxAgeSec))) db.appSettings.marketQuotesMaxAgeSec = 10;
+  db.appSettings.marketQuotesMaxAgeSec = Math.max(0, Math.min(300, Number(db.appSettings.marketQuotesMaxAgeSec) || 10));
+  if (!db.appSettings.updatedAt) db.appSettings.updatedAt = nowIso();
+
   if (!Array.isArray(db.providerSettings)) {
     db.providerSettings = defaultProviderSettings();
   }

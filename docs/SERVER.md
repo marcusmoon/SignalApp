@@ -143,6 +143,7 @@ Job에는 운영자가 보기 쉬운 `displayName`과 `description`이 있으며
 server/src/jobs/runner.mjs      # job 1개 실행
 server/src/jobs/scheduler.mjs   # due job 탐색 + runner 호출
 server/src/server.mjs           # API + admin + local scheduler
+server/src/http/               # HTTP 라우트(공용/관리자/공개 API) 도메인별 모듈
 server/src/worker.mjs           # scheduler-only entrypoint
 ```
 

@@ -216,12 +216,19 @@ export function renderUiModelPresetsEditorView({ $, state, esc, textFor, textFor
 
 export async function loadProviderSettingsView(ctx) {
   const { api, $, state, esc, textFor, textForVars, formatDateTime, renderUiModelPresetsEditor } = ctx;
-  const [body, presetsBody] = await Promise.all([api('/admin/api/provider-settings'), api('/admin/api/ui-model-presets')]);
+  const [body, presetsBody, appSettingsBody] = await Promise.all([
+    api('/admin/api/provider-settings'),
+    api('/admin/api/ui-model-presets'),
+    api('/admin/api/app-settings'),
+  ]);
   const rows = Array.isArray(body.data) ? body.data : [];
   state.providerSettings = rows;
   state.uiModelPresets = presetsBody.data || null;
+  state.appSettings = appSettingsBody.data || null;
   const llm = rows.filter((r) => r.provider === 'openai' || r.provider === 'claude');
   const data = rows.filter((r) => !(r.provider === 'openai' || r.provider === 'claude'));
+  const quotesMaxAge = Number(state.appSettings?.marketQuotesMaxAgeSec);
+  const quotesMaxAgeValue = Number.isFinite(quotesMaxAge) ? String(quotesMaxAge) : '10';
   const renderRow = (s, { showModel }) => {
     const models = showModel
       ? modelPresetsForProvider({ provider: s.provider, defaultModel: s.defaultModel, uiModelPresets: state.uiModelPresets })
@@ -272,11 +279,34 @@ export async function loadProviderSettingsView(ctx) {
           ${data.map((s) => renderRow(s, { showModel: false })).join('') || `<p class="muted">${esc(textFor('providerDataEmpty'))}</p>`}
         </div>
       </div>
+
+      <div class="card settingsControlCard">
+        <div class="cardHead">
+          <div class="cardHeadMain">
+            <div class="cardKicker">${esc(textFor('appSettingsQuotesTitle'))}</div>
+            <div class="cardHint">${esc(textFor('appSettingsQuotesHint'))}</div>
+          </div>
+          <span class="muted" id="appSettingsStatus"></span>
+        </div>
+        <div class="settingsSectionBody">
+          <label class="fieldLabel">
+            ${esc(textFor('appSettingsQuotesMaxAgeLabel'))}
+            <div class="row">
+              <input id="marketQuotesMaxAgeSecInput" type="number" min="0" max="300" step="1" value="${esc(quotesMaxAgeValue)}" />
+              <span class="muted">${esc(textFor('appSettingsQuotesSecondsUnit'))}</span>
+              <button class="success" id="saveAppSettingsBtn">${esc(textFor('btnSave'))}</button>
+            </div>
+          </label>
+        </div>
+      </div>
     </div>
   `;
   renderUiModelPresetsEditor();
   if ($('uiModelPresetsStatus') && state.uiModelPresets?.updatedAt) {
     $('uiModelPresetsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.uiModelPresets.updatedAt) });
+  }
+  if ($('appSettingsStatus') && state.appSettings?.updatedAt) {
+    $('appSettingsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.appSettings.updatedAt) });
   }
 }
 

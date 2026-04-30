@@ -21,7 +21,111 @@
 | `utils/` | 날짜·링크·`openYoutube` 등 범용 헬퍼. |
 | `constants/` | **앱 전역** 정적 값만. 아래 **「루트 `constants/`」** 참고. |
 | `locales/` | i18n (`ko` 키 기준 → `en`/`ja`). |
-| `docs/` | PRD, AGENTS, 본 문서, CHANGELOG 등. |
+| `docs/` | PRD, AGENTS, 본 문서, 운영 스냅샷(CHANGELOG) 등. |
+
+---
+
+## 1.1 서버 HTTP 라우트 모듈 (`server/src/http/`)
+
+- 서버의 HTTP 라우팅은 `server/src/http/index.mjs`가 엔트리이며, 아래처럼 **public/admin + 도메인별 파일**로 분리한다.
+- `server/src/http.mjs`는 과거 경로 호환을 위한 **re-export shim**으로만 유지한다.
+
+```text
+server/src/http/
+  shared.mjs              # json/text/readBody/paginate + filter*/displayNews 등 공용
+  public/
+    routes.mjs            # /health, /openapi.json, /docs, /v1/config
+    v1/
+      news.mjs            # /v1/news, /v1/news-sources
+      market.mjs          # /v1/market-quotes, /v1/coins, /v1/market-lists, /v1/stock-*
+      calendar.mjs        # /v1/calendar
+      youtube.mjs         # /v1/youtube
+      concalls.mjs        # /v1/concalls
+  admin/
+    static.mjs            # /admin + /admin/*.{js,css} + public assets
+    auth.mjs              # /admin/api/{session,login,logout} + requireAdmin
+    api/
+      jobs.mjs            # jobs + runs + dashboard summary
+      news.mjs            # news + translations + retranslate/delete
+      calendar.mjs
+      youtube.mjs
+      concalls.mjs
+      settings.mjs        # provider/translation/app/ui-presets/market-lists/news-sources
+      dataReset.mjs
+```
+
+---
+
+## 1.2 앱 라우팅 (`app/`)
+
+- 화면 경로는 `expo-router` 규칙을 따른다(디렉터리 = URL).
+- 화면에서 **네트워크 호출은 직접 하지 않고**, `@/integrations/signal-api/*`만 사용한다.
+
+```text
+app/
+  (tabs)/                 # 탭 루트(뉴스/시세/유튜브 등)
+  symbol/[ticker].tsx     # 종목 상세
+  briefing.tsx            # 브리핑
+  settings.tsx            # 앱 설정
+  _layout.tsx             # 라우팅 레이아웃/공통 Provider
+```
+
+---
+
+## 1.3 제품 규칙 레이어 (`domain/`)
+
+- **순수 규칙**만 둔다. URL/HTTP/API Key/스토리지 같은 인프라 의존은 금지.
+- 외부 노출은 각 도메인 루트의 `index.ts` 배럴을 통해서만 한다.
+
+```text
+domain/
+  news/                   # 뉴스 규칙/정규화/키워드(예: 한국 뉴스)
+  quotes/                 # 시세 세그먼트/정렬/기본값
+  calendar/               # 캘린더 규칙/표시 헬퍼
+  concalls/               # 컨콜 표시/필터 규칙
+```
+
+---
+
+## 1.4 인프라 레이어 (`integrations/`)
+
+- 앱에서 HTTP를 하는 곳은 `integrations/signal-api/`만 허용한다.
+- `integrations/<provider>/`는 **타입/상수/캐시 호환** 목적(직접 HTTP 금지).
+
+```text
+integrations/
+  signal-api/             # Signal Server API client (앱의 단일 네트워크 출구)
+  finnhub/                # (앱 호환용) DTO/캐시/상수
+  youtube/                # (앱 호환용) 상수/헬퍼
+  expo-updates/           # OTA 관련
+```
+
+---
+
+## 1.5 기기·설정·오케스트레이션 (`services/`)
+
+- AsyncStorage 기반 사용자 설정, 캐시 on/off, 워치리스트, 알림 등 **기기 상태**를 다룬다.
+- “데이터를 어디서 가져오나”는 integrations(singal-api)이 담당하고, services는 **언제/어떤 조건으로 호출할지**를 조합한다.
+
+```text
+services/
+  env.ts                              # EXPO_PUBLIC_* 런타임 env
+  cacheFeaturePreferences.ts          # 캐시 on/off
+  quoteWatchlist.ts                   # 관심종목
+  marketSnapshotQuotes.ts             # 시세 탭 데이터 로딩 오케스트레이션(서버 API 기반)
+```
+
+---
+
+## 1.6 서버 Provider / Jobs / 데이터 (`server/`)
+
+- 서버는 외부 provider를 호출하고(키는 Admin에서 관리), 결과를 로컬 DB(`server/data/*.json`)에 저장한 뒤 `/v1/*`와 `/admin/api/*`로 제공한다.
+
+```text
+server/src/providers/       # 외부 provider 호출 + 정규화(예: market/finnhub, market/index)
+server/src/jobs/            # scheduler/runner (수집 작업)
+server/data/                # settings/jobs/news/calendar/youtube/market 등 JSON 스토어
+```
 
 ---
 
@@ -75,5 +179,5 @@
 | 바꾼 범위 | 갱신 |
 |-----------|------|
 | 폴더 구조·레이어·상수 위치 | **본 문서** + 필요 시 `docs/AGENTS.md` §4 |
-| 기능·동작 | `docs/CHANGELOG.md` |
+| 기능·동작 | `docs/CHANGELOG.md` (현재 스냅샷 갱신) |
 | 제품 범위 | `docs/SIGNAL-PRD.md` |

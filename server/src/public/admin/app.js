@@ -1234,6 +1234,25 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
               await loadTranslationSettings();
             }
           }
+          if (target.id === 'saveAppSettingsBtn') {
+            const raw = $('marketQuotesMaxAgeSecInput')?.value;
+            const n = Math.floor(Number(raw));
+            if (!Number.isFinite(n) || n < 0 || n > 300) {
+              showToast(textFor('toastError'), textFor('appSettingsQuotesTitle'), { kind: 'danger' });
+              return;
+            }
+            const result = await api('/admin/api/app-settings', {
+              method: 'PATCH',
+              body: JSON.stringify({ marketQuotesMaxAgeSec: n }),
+            });
+            state.appSettings = result.data || null;
+            if ($('appSettingsStatus')) $('appSettingsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.appSettings?.updatedAt) });
+            showToast(textFor('toastSaved'), textFor('appSettingsQuotesTitle'));
+            if (state.view === 'settings-keys') {
+              await loadProviderSettings();
+            }
+            return;
+          }
           if (target.dataset.marketListOpen) {
             openMarketListDialog(target.dataset.marketListOpen);
           }

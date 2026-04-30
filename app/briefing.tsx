@@ -16,23 +16,26 @@ import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicat
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { hasFinnhub } from '@/services/env';
 import { fetchCompanyNewsForDisplay } from '@/services/companyNewsForSymbol';
+import { finnhubQuoteHasValidPrice } from '@/integrations/finnhub/quoteUtils';
+import type {
+  FinnhubEarningsRow,
+  FinnhubEconomicRow,
+  FinnhubNewsRaw,
+  FinnhubQuote,
+  FinnhubStockCandles,
+} from '@/integrations/finnhub/types';
 import {
-  fetchEarningsCalendarRange,
-  fetchEconomicCalendarRange,
-  fetchQuote,
-  fetchStockCandles,
-  finnhubQuoteHasValidPrice,
-  type FinnhubEarningsRow,
-  type FinnhubEconomicRow,
-  type FinnhubNewsRaw,
-  type FinnhubQuote,
-  type FinnhubStockCandles,
-} from '@/integrations/finnhub';
+  fetchSignalEarningsCalendarRangeMerged,
+  fetchSignalMacroCalendarRangeMerged,
+  signalMarketQuoteToFinnhubQuote,
+} from '@/integrations/signal-api/finnhubShim';
+import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
+import { fetchSignalStockCandles } from '@/integrations/signal-api/stock';
 import { buildSignalScore, type SignalScore } from '@/domain/signals';
 import { loadMarketSnapshotQuotes } from '@/services/marketSnapshotQuotes';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
+import { hasSignalApi } from '@/services/env';
 import { addDays, toYmd } from '@/utils/date';
 
 const WATCH_LIMIT = 10;
@@ -125,7 +128,7 @@ function signalReasonLabel(reason: string, t: ReturnType<typeof useLocale>['t'])
 
 export default function BriefingScreen() {
   const { theme, scaleFont } = useSignalTheme();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -143,8 +146,8 @@ export default function BriefingScreen() {
   const [smaBySymbol, setSmaBySymbol] = useState<Record<string, { vsSmaPct: number } | null>>({});
 
   const load = useCallback(async () => {
-    if (!hasFinnhub()) {
-      setError(t('feedErrorToken'));
+    if (!hasSignalApi()) {
+      setError(t('errorSignalApiShort'));
       setTape({});
       setMacro({});
       setSymbols([]);
@@ -166,17 +169,27 @@ export default function BriefingScreen() {
     const candleFrom = addDays(today, -CANDLE_LOOKBACK_DAYS);
     const candleTo = new Date();
 
-    const [snap, qRows, earnRows, newsLists, econRows] = await Promise.all([
+    const [snap, mqRows, earnRows, newsLists, econRows] = await Promise.all([
       loadMarketSnapshotQuotes().catch(() => ({ tape: {} as Record<string, FinnhubQuote | null>, macro: {} })),
-      Promise.all(syms.map(async (sym) => ({ symbol: sym, q: await fetchQuote(sym).catch(() => null) }))),
-      fetchEarningsCalendarRange(today, earnUntil).catch(() => [] as FinnhubEarningsRow[]),
-      Promise.all(syms.map((sym) => fetchCompanyNewsForDisplay(sym).catch(() => [] as FinnhubNewsRaw[]))),
-      fetchEconomicCalendarRange(today, macroUntil).catch(() => [] as FinnhubEconomicRow[]),
+      syms.length > 0
+        ? fetchSignalMarketQuotes({ symbols: syms, pageSize: Math.max(syms.length, 1) }).catch(() => [])
+        : Promise.resolve([]),
+      fetchSignalEarningsCalendarRangeMerged(today, earnUntil).catch(() => [] as FinnhubEarningsRow[]),
+      Promise.all(syms.map((sym) => fetchCompanyNewsForDisplay(sym, locale).catch(() => [] as FinnhubNewsRaw[]))),
+      fetchSignalMacroCalendarRangeMerged(today, macroUntil).catch(() => [] as FinnhubEconomicRow[]),
     ]);
 
     setTape(snap.tape);
     setMacro(snap.macro);
+
+    const qRows = syms.map((sym) => {
+      const row = mqRows.find((r) => String(r.symbol || '').trim().toUpperCase() === sym);
+      if (!row) return { symbol: sym, q: null };
+      const conv = signalMarketQuoteToFinnhubQuote(row);
+      return { symbol: sym, q: finnhubQuoteHasValidPrice(conv) ? conv : null };
+    });
     setQuotes(qRows);
+
     const watchSet = new Set(syms);
     setEarnings(
       earnRows
@@ -190,7 +203,9 @@ export default function BriefingScreen() {
     });
     setNewsBySymbol(nb);
 
-    const econSorted = [...econRows].filter((r) => r.time && r.time.length >= 10).sort((a, b) => a.time.localeCompare(b.time));
+    const econSorted = [...econRows]
+      .filter((r) => r.time && r.time.length >= 10)
+      .sort((a, b) => a.time.localeCompare(b.time));
     setEconomicWeek(econSorted);
 
     let smaOut: Record<string, { vsSmaPct: number } | null> = {};
@@ -198,7 +213,7 @@ export default function BriefingScreen() {
       const pairs = await Promise.all(
         syms.map((sym, i) => {
           const q = qRows[i]?.q ?? null;
-          return fetchStockCandles(sym, 'D', candleFrom, candleTo)
+          return fetchSignalStockCandles(sym, 'D', candleFrom, candleTo)
             .then((candles): [string, { vsSmaPct: number } | null] => {
               if (!candles || !q || !finnhubQuoteHasValidPrice(q)) return [sym, null];
               return [sym, insightVsSma20(candles, q.c)];
@@ -209,7 +224,7 @@ export default function BriefingScreen() {
       smaOut = Object.fromEntries(pairs);
     }
     setSmaBySymbol(smaOut);
-  }, [t]);
+  }, [locale, t]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

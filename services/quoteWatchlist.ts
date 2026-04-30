@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { isValidUsTicker, normalizeUsTickerSymbol } from '@/domain/quotes';
-import { DEFAULT_US_WATCHLIST } from '@/integrations/finnhub';
+import { DEFAULT_US_WATCHLIST } from '@/integrations/finnhub/constants';
 
 const STORAGE_KEY = '@signal/quote_watchlist_v1';
 

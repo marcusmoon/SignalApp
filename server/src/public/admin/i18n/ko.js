@@ -185,7 +185,7 @@ export const baseKo = {
   providerLlmTitle: 'LLM Provider',
   providerLlmHint: "OpenAI/Claude의 API Key, 기본 모델, 모델 프리셋을 한 곳에서 관리합니다.",
   providerDataTitle: 'Data Provider',
-  providerDataHint: 'Finnhub, YouTube, CoinGecko 등 수집 Provider의 키와 활성 상태를 관리합니다.',
+  providerDataHint: 'Finnhub, YouTube, API Ninjas, CoinGecko 등 수집 Provider의 키와 활성 상태를 관리합니다.',
   providerLlmEmpty: 'LLM provider가 없습니다.',
   providerDataEmpty: '데이터 provider가 없습니다.',
   recentSavedAt: '최근 저장 · {{time}}',
@@ -312,6 +312,8 @@ export const baseKo = {
   settingsResetNewsTranslationsSub: '언어별 번역 결과와 상태',
   settingsResetCalendar: '캘린더 이벤트',
   settingsResetCalendarSub: '실적·경제지표 일정',
+  settingsResetConcalls: '컨콜 트랜스크립트',
+  settingsResetConcallsSub: '수집된 실적콜 전문과 요약 메타',
   settingsResetYoutube: '유튜브 영상',
   settingsResetYoutubeSub: '수집된 영상 목록과 설명',
   settingsResetQuotes: '시세',
@@ -456,4 +458,3 @@ export const baseKo = {
   viewModeBulk: '선택 작업',
   btnRefreshThisView: '새로고침',
 };
-

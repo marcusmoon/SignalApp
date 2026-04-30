@@ -185,7 +185,7 @@ export const baseJa = {
   providerLlmTitle: 'LLM Provider',
   providerLlmHint: 'OpenAI/Claude の API Key、既定モデル、プリセットを管理します。',
   providerDataTitle: 'Data Provider',
-  providerDataHint: 'Finnhub, YouTube, CoinGecko などのキーと有効状態を管理します。',
+  providerDataHint: 'Finnhub, YouTube, API Ninjas, CoinGecko などのキーと有効状態を管理します。',
   providerLlmEmpty: 'LLM provider がありません。',
   providerDataEmpty: 'データ provider がありません。',
   recentSavedAt: '最近保存 · {{time}}',
@@ -311,6 +311,8 @@ export const baseJa = {
   settingsResetNewsTranslationsSub: '言語別の翻訳結果と状態',
   settingsResetCalendar: 'カレンダーイベント',
   settingsResetCalendarSub: '決算・指標スケジュール',
+  settingsResetConcalls: 'コンコールのトランスクリプト',
+  settingsResetConcallsSub: '収集した決算説明会の全文と要約メタ',
   settingsResetYoutube: 'YouTube 動画',
   settingsResetYoutubeSub: '収集した動画一覧と説明',
   settingsResetQuotes: '株価',
@@ -455,4 +457,3 @@ export const baseJa = {
   viewModeBulk: '選択操作',
   btnRefreshThisView: '更新',
 };
-

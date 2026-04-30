@@ -39,12 +39,10 @@ import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
-import { hasYoutube, useSignalApiBackend } from '@/services/env';
+import { hasSignalApi } from '@/services/env';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
 import { loadCurationHandles } from '@/services/youtubeCurationList';
-import { peekYoutubeCache, fetchEconomyYoutubeCached } from '@/integrations/youtube/cache';
-import { fetchChannelDisplayNames, YOUTUBE_ERROR_QUOTA, type ChannelHandleMeta } from '@/integrations/youtube';
+import type { ChannelHandleMeta } from '@/integrations/youtube/types';
 import { fetchSignalYoutube, signalYoutubeToYoutubeItem } from '@/integrations/signal-api';
 import type { YoutubeItem } from '@/types/signal';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
@@ -80,7 +78,6 @@ export default function YoutubeScreen() {
   const [curationHandles, setCurationHandles] = useState<string[] | null>(null);
   const [selectedHandles, setSelectedHandles] = useState<string[] | null>(null);
   const [channelModalVisible, setChannelModalVisible] = useState(false);
-  const signalApiMode = useSignalApiBackend();
   /** load() 안에서 이미 화면에 목록이 있는지 — 캐시 재적중 시 전체 로딩 스킵 */
   const itemsRef = useRef<YoutubeItem[]>([]);
   itemsRef.current = items;
@@ -95,10 +92,8 @@ export default function YoutubeScreen() {
        */
       void (async () => {
         const curation = await loadCurationHandles();
-        const [meta, saved] = await Promise.all([
-          fetchChannelDisplayNames(curation),
-          loadSelectedChannels(),
-        ]);
+        const saved = await loadSelectedChannels();
+        const meta: ChannelHandleMeta[] = curation.map((handle) => ({ handle, title: `@${handle}` }));
         setCurationHandles((prev) => {
           if (prev !== null && normalizeHandlesKey(prev) === normalizeHandlesKey(curation)) {
             return prev;
@@ -118,14 +113,8 @@ export default function YoutubeScreen() {
 
   const applyLoadError = useCallback(
     (e: unknown, fallbackId: 'youtubeErrorLoad' | 'youtubeErrorRefresh') => {
-      const quota = e instanceof Error && e.message === YOUTUBE_ERROR_QUOTA;
-      setIsQuotaError(quota);
-      const msg =
-        e instanceof Error
-          ? quota
-            ? t('youtubeErrorQuota')
-            : e.message
-          : t(fallbackId);
+      setIsQuotaError(false);
+      const msg = e instanceof Error ? e.message : t(fallbackId);
       setError(msg);
     },
     [t],
@@ -145,60 +134,28 @@ export default function YoutubeScreen() {
       channelHandles?: string[];
       errorFallback?: 'youtubeErrorLoad' | 'youtubeErrorRefresh';
     }) => {
+      void opts?.channelHandles;
+      void opts?.forceRefresh;
       setError(null);
       setIsQuotaError(false);
-      const handles = opts?.channelHandles ?? selectedHandles;
-      if (handles === null) return;
+      if (selectedHandles === null) return;
 
-      if (signalApiMode) {
-        const list = await fetchSignalYoutube({ pageSize: 100 });
-        setItems(list.map((item) => signalYoutubeToYoutubeItem(item, locale)));
-        setLoading(false);
-        return;
-      }
-
-      if (!hasYoutube()) {
-        setItems([]);
-        setIsQuotaError(false);
-        setError(t('youtubeErrorKeyMissing'));
-        setLoading(false);
-        return;
-      }
-
-      if (handles.length === 0) {
-        setItems([]);
-        setIsQuotaError(false);
-        setError(t('youtubeErrorSelectChannel'));
-        setLoading(false);
-        return;
-      }
-
-      const order = sort === 'popular' ? 'viewCount' : 'date';
       const errKey = opts?.errorFallback ?? 'youtubeErrorLoad';
+
+      if (!hasSignalApi()) {
+        setItems([]);
+        setError(t('errorSignalApiShort'));
+        setLoading(false);
+        return;
+      }
 
       const hadItems = itemsRef.current.length > 0;
       if (!hadItems) {
         setLoading(true);
       }
       try {
-        const { youtubeEnabled } = await loadCacheFeaturePrefs();
-        if (!opts?.forceRefresh && youtubeEnabled) {
-          const cached = peekYoutubeCache(order, handles, youtubeEnabled, locale);
-          if (cached) {
-            setItems(cached);
-            return;
-          }
-        }
-        if (hadItems) {
-          setLoading(true);
-        }
-        const list = await fetchEconomyYoutubeCached(order, {
-          forceRefresh: opts?.forceRefresh,
-          channelHandles: handles,
-          cacheEnabled: youtubeEnabled,
-          locale,
-        });
-        setItems(list);
+        const list = await fetchSignalYoutube({ pageSize: 100 });
+        setItems(list.map((item) => signalYoutubeToYoutubeItem(item, locale)));
       } catch (e) {
         applyLoadError(e, errKey);
         setItems([]);
@@ -206,7 +163,7 @@ export default function YoutubeScreen() {
         setLoading(false);
       }
     },
-    [sort, selectedHandles, t, locale, applyLoadError, signalApiMode],
+    [selectedHandles, locale, t, applyLoadError],
   );
 
   useEffect(() => {
@@ -215,12 +172,11 @@ export default function YoutubeScreen() {
   }, [load, selectedHandles]);
 
   const onRefresh = useCallback(async () => {
-    if (!selectedHandles?.length) return;
+    if (selectedHandles === null) return;
     setRefreshing(true);
     try {
       await load({
         forceRefresh: true,
-        channelHandles: selectedHandles,
         errorFallback: 'youtubeErrorRefresh',
       });
     } finally {

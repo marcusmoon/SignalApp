@@ -12,8 +12,8 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { MessageId } from '@/locales/messages';
 import { fetchConcallSummaryForEarningsRow } from '@/services/concalls';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
-import { hasFinnhub } from '@/services/env';
-import type { FinnhubEarningsRow } from '@/integrations/finnhub';
+import { hasSignalApi } from '@/services/env';
+import type { FinnhubEarningsRow } from '@/integrations/finnhub/types';
 import type { ConcallSummary } from '@/types/signal';
 
 function parseIntParam(v: string | string[] | undefined): number | null {
@@ -102,8 +102,8 @@ export default function CallsSummaryScreen() {
         setLoading(false);
         return;
       }
-      if (!hasFinnhub()) {
-        setError(t('feedErrorToken'));
+      if (!hasSignalApi()) {
+        setError(t('errorSignalApiShort'));
         setSummary(null);
         setLoading(false);
         return;

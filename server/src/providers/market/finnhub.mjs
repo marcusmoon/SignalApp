@@ -51,6 +51,32 @@ export async function fetchFinnhubMarketQuotes({ symbols = [], segment = 'popula
   return rows;
 }
 
+export async function fetchFinnhubProfile2(symbol) {
+  const sym = String(symbol || '').trim().toUpperCase();
+  if (!sym) return null;
+  try {
+    return await finnhub('/stock/profile2', { symbol: sym });
+  } catch {
+    return null;
+  }
+}
+
+/** @returns Finnhub-shaped candle payload (`s`, `t`, `o`, `h`, `l`, `c`, `v`) or null */
+export async function fetchFinnhubStockCandles(symbol, { resolution = 'D', from, to } = {}) {
+  const sym = String(symbol || '').trim().toUpperCase();
+  if (!sym || typeof from !== 'number' || typeof to !== 'number') return null;
+  try {
+    return await finnhub('/stock/candle', {
+      symbol: sym,
+      resolution: String(resolution || 'D'),
+      from,
+      to,
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchFinnhubMcapQuotes({ topN = 20, symbols = [], onProgress = null } = {}) {
   const cap = Math.max(1, Math.min(50, Number(topN) || 20));
   const universe = [...new Set(symbols.map((s) => String(s || '').trim().toUpperCase()).filter(Boolean))];

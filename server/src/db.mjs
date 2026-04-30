@@ -12,6 +12,7 @@ const STORE_FILES = {
   jobs: 'jobs.json',
   news: 'news.json',
   calendar: 'calendar.json',
+  concalls: 'concalls.json',
   youtube: 'youtube.json',
   market: 'market.json',
 };
@@ -24,6 +25,7 @@ function defaultDb() {
     newsItems: [],
     newsTranslations: [],
     calendarEvents: [],
+    concallTranscripts: [],
     youtubeVideos: [],
     marketQuotes: [],
     coinMarkets: [],
@@ -180,6 +182,21 @@ function defaultPollingJobs() {
         updatedAt: nowIso(),
       },
       {
+        jobKey: 'concall_transcripts_recent',
+        displayName: '컨콜 트랜스크립트 최신 수집',
+        description: '최근 실적 캘린더의 컨콜 트랜스크립트를 API Ninjas에서 가져옵니다.',
+        domain: 'concalls',
+        operation: 'latest',
+        provider: 'api-ninjas',
+        handler: 'earning_transcripts',
+        enabled: false,
+        intervalSeconds: 21600,
+        params: { daysBack: 45, daysAhead: 2, limit: 25, listKey: 'mcap_universe', fallbackLatest: true },
+        lastRunAt: null,
+        nextRunAt: null,
+        updatedAt: nowIso(),
+      },
+      {
         jobKey: 'youtube_economy_latest',
         displayName: '경제 유튜브 최신 수집',
         description: '설정된 경제/시장 채널의 최신 영상을 가져옵니다.',
@@ -331,6 +348,12 @@ function defaultProviderSettings() {
         updatedAt: nowIso(),
       },
       {
+        provider: 'api-ninjas',
+        enabled: true,
+        apiKey: config.apiNinjasKey,
+        updatedAt: nowIso(),
+      },
+      {
         provider: 'coingecko',
         enabled: true,
         apiKey: '',
@@ -365,6 +388,9 @@ function ensureDbShape(db) {
   if (!db.providerSettings.some((s) => s.provider === 'youtube')) {
     db.providerSettings.push(defaultProviderSettings().find((s) => s.provider === 'youtube'));
   }
+  if (!db.providerSettings.some((s) => s.provider === 'api-ninjas')) {
+    db.providerSettings.push(defaultProviderSettings().find((s) => s.provider === 'api-ninjas'));
+  }
   if (!db.providerSettings.some((s) => s.provider === 'coingecko')) {
     db.providerSettings.push(defaultProviderSettings().find((s) => s.provider === 'coingecko'));
   }
@@ -389,11 +415,15 @@ function ensureDbShape(db) {
     if (existing.jobKey === 'market_quotes_mcap' && !existing.params.listKey) {
       existing.params = { ...existing.params, listKey: 'mcap_universe' };
     }
+    if (existing.jobKey === 'concall_transcripts_recent' && existing.params.fallbackLatest == null) {
+      existing.params = { ...existing.params, fallbackLatest: true };
+    }
   }
   if (!Array.isArray(db.pollingJobRuns)) db.pollingJobRuns = [];
   if (!Array.isArray(db.newsItems)) db.newsItems = [];
   if (!Array.isArray(db.newsTranslations)) db.newsTranslations = [];
   if (!Array.isArray(db.calendarEvents)) db.calendarEvents = [];
+  if (!Array.isArray(db.concallTranscripts)) db.concallTranscripts = [];
   if (!Array.isArray(db.youtubeVideos)) db.youtubeVideos = [];
   if (!Array.isArray(db.marketQuotes)) db.marketQuotes = [];
   if (!Array.isArray(db.coinMarkets)) db.coinMarkets = [];
@@ -523,15 +553,16 @@ function storePath(store) {
 }
 
 async function readSplitDb() {
-  const [settings, jobs, news, calendar, youtube, market] = await Promise.all([
+  const [settings, jobs, news, calendar, concalls, youtube, market] = await Promise.all([
     readJsonFile(storePath('settings'), null),
     readJsonFile(storePath('jobs'), null),
     readJsonFile(storePath('news'), null),
     readJsonFile(storePath('calendar'), null),
+    readJsonFile(storePath('concalls'), null),
     readJsonFile(storePath('youtube'), null),
     readJsonFile(storePath('market'), null),
   ]);
-  if (!settings && !jobs && !news && !calendar && !youtube && !market) return null;
+  if (!settings && !jobs && !news && !calendar && !concalls && !youtube && !market) return null;
   const shaped = ensureDbShape({
     meta: settings?.meta ?? { createdAt: nowIso(), updatedAt: nowIso(), schemaVersion: 1 },
     providerSettings: settings?.providerSettings ?? [],
@@ -544,6 +575,7 @@ async function readSplitDb() {
     newsItems: news?.newsItems ?? [],
     newsTranslations: news?.newsTranslations ?? [],
     calendarEvents: calendar?.calendarEvents ?? [],
+    concallTranscripts: concalls?.concallTranscripts ?? [],
     youtubeVideos: youtube?.youtubeVideos ?? [],
     marketQuotes: market?.marketQuotes ?? [],
     coinMarkets: market?.coinMarkets ?? [],
@@ -599,6 +631,9 @@ export async function writeDb(db) {
     }),
     writeStore('calendar', {
       calendarEvents: shaped.calendarEvents,
+    }),
+    writeStore('concalls', {
+      concallTranscripts: shaped.concallTranscripts,
     }),
     writeStore('youtube', {
       youtubeVideos: shaped.youtubeVideos,

@@ -73,7 +73,9 @@ export const ja = {
   calendarActualAboveEstimate: '予想上回る',
   calendarActualBelowEstimate: '予想下回る',
   calendarActualInlineEstimate: '予想通り',
-  errorFinnhubTokenShort: 'EXPO_PUBLIC_FINNHUB_TOKEN が必要です。',
+  errorFinnhubTokenShort: 'Signal サーバーの Finnhub provider 設定が必要です。',
+  errorSignalApiShort:
+    'EXPO_PUBLIC_SIGNAL_API_BASE_URL が必要です。プロジェクト直下の .env に Signal サーバー URL を入れ、Metro を再起動してください。',
   screenInfo: '情報',
   screenMegaCapList: 'メガキャップのティッカー一覧',
   screenMegaCapListLead:
@@ -139,7 +141,7 @@ export const ja = {
   settingsYoutubeRemoveHandleA11y: '{{handle}} を削除',
 
   youtubeErrorKeyMissing:
-    'EXPO_PUBLIC_YOUTUBE_API_KEY が必要です。Google Cloud で YouTube Data API v3 を有効化し、.env にキーを入れて Metro を再起動してください。',
+    'Signal サーバーの YouTube provider 設定が必要です。Admin で YouTube キーと収集 Job を確認してください。',
   youtubeErrorSelectChannel: 'チャンネルを1つ以上選んでください。',
   youtubeErrorQuota:
     'YouTube Data API の1日クォータを使い切りました（太平洋時間0時にリセット）。Google Cloud の使用量を確認するか、別プロジェクト・キーに分けるか、明日再度お試しください。',
@@ -292,7 +294,7 @@ export const ja = {
   feedNewsFilterSub: '最新のFinnhub応答に含まれる提供元 · タップでon/off · 最低1件',
   feedNewsFilterClose: '閉じる',
   feedErrorToken:
-    'EXPO_PUBLIC_FINNHUB_TOKEN が必要です。プロジェクト直下の .env に設定し Metro を再起動してください。',
+    'Signal サーバーのニュース provider 設定が必要です。Admin で Finnhub/ニュース収集設定を確認してください。',
   feedErrorLoad: 'ニュースを読み込めませんでした。',
   feedErrorRefresh: '更新に失敗しました',
   feedEmpty: '表示するニュースがありません。',
@@ -320,7 +322,7 @@ export const ja = {
   concallEmptyMegaRollingLine1: 'この期間にメガキャップと重なる Finnhub の決算予定がありません。',
   concallEmptyMegaRollingLine2: 'トークン権限を確認するか、フィルタで年度・四半期を調べてください。',
   concallHintNinjasKeyMissing:
-    'トランスクリプト用キー (EXPO_PUBLIC_API_NINJAS_KEY) が空です。.env に入れて Metro を再起動してください。',
+    'アプリはトランスクリプト provider キーを直接使用しません。サーバー収集設定を確認してください。',
   concallHintNinjas401: '認証に失敗しました (401)。API キーを確認してください。',
   concallHintNinjas403:
     'アクセスが拒否されました (403)。決算説明会トランスクリプトは有料プランが必要な場合があります。',
@@ -357,6 +359,10 @@ export const ja = {
   callsErrorRefresh: '更新に失敗しました',
   callsAiAnthropicKeyMissing: 'AIコール要約には Anthropic API キーが必要です。',
   callsAiOpenaiKeyMissing: 'AIコール要約には OpenAI API キーが必要です。',
+  callsAiSignalServerOnly: 'アプリは Signal サーバーに保存されたデータのみを参照します。',
+  callsAiSignalServerOnlyHint: 'コールのトランスクリプト/要約はサーバー収集 API の準備後に表示されます。',
+  callsTranscriptStored: 'Signal サーバーに保存された決算説明会トランスクリプトを読み込みました。',
+  callsTranscriptStoredHint: '要約がない場合は、下の抜粋を先に確認してください。',
   callsAiSummaryParseFailedTitle: 'AI要約の応答を解析できませんでした。',
   callsAiSummaryParseFailedHint: 'トランスクリプトを直接確認してください。',
   callsAiSummaryGenerateFailed: '要約を生成できませんでした。',

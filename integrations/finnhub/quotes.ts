@@ -1,12 +1,9 @@
 import { fh } from '@/integrations/finnhub/client';
 import { DEFAULT_MCAP_TOP_N, MCAP_SCREEN_UNIVERSE } from '@/integrations/finnhub/constants';
+import { finnhubQuoteHasValidPrice } from '@/integrations/finnhub/quoteUtils';
 import type { FinnhubProfile2, FinnhubQuote, FinnhubStockCandles } from '@/integrations/finnhub/types';
 
-export function finnhubQuoteHasValidPrice(q: unknown): boolean {
-  if (!q || typeof q !== 'object') return false;
-  const c = (q as { c?: unknown }).c;
-  return typeof c === 'number' && Number.isFinite(c);
-}
+export { finnhubQuoteHasValidPrice };
 
 export async function fetchQuote(symbol: string): Promise<FinnhubQuote> {
   return fh<FinnhubQuote>('/quote', { symbol: symbol.trim().toUpperCase() });

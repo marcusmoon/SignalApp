@@ -134,6 +134,41 @@ export function getOpenApiSpec() {
           },
         },
       },
+      '/v1/concalls': {
+        get: {
+          tags: ['public'],
+          summary: 'List earnings call transcripts/summaries',
+          parameters: [
+            { name: 'symbol', in: 'query', schema: { type: 'string', example: 'AAPL' } },
+            { name: 'fiscalYear', in: 'query', schema: { type: 'integer', example: 2026 } },
+            { name: 'fiscalQuarter', in: 'query', schema: { type: 'integer', example: 1 } },
+            { name: 'from', in: 'query', schema: { type: 'string', example: '2026-04-01' } },
+            { name: 'to', in: 'query', schema: { type: 'string', example: '2026-05-01' } },
+            { name: 'includeTranscript', in: 'query', schema: { type: 'string', enum: ['0', '1'], default: '0' } },
+            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+            { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 30 } },
+          ],
+          responses: {
+            200: {
+              description: 'OK',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: { type: 'array', items: { type: 'object' } },
+                      page: { type: 'integer' },
+                      pageSize: { type: 'integer' },
+                      total: { type: 'integer' },
+                      totalPages: { type: 'integer' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       '/v1/market-quotes': {
         get: {
           tags: ['public'],
@@ -163,6 +198,47 @@ export function getOpenApiSpec() {
                 },
               },
             },
+          },
+        },
+      },
+      '/v1/stock-profile': {
+        get: {
+          tags: ['public'],
+          summary: 'Stock profile proxy (Finnhub /stock/profile2)',
+          parameters: [{ name: 'symbol', in: 'query', required: true, schema: { type: 'string', example: 'AAPL' } }],
+          responses: {
+            200: {
+              description: 'OK',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { data: { type: 'object' } } },
+                },
+              },
+            },
+            404: { description: 'Not found' },
+          },
+        },
+      },
+      '/v1/stock-candles': {
+        get: {
+          tags: ['public'],
+          summary: 'Stock OHLC candles proxy (Finnhub /stock/candle)',
+          parameters: [
+            { name: 'symbol', in: 'query', required: true, schema: { type: 'string', example: 'AAPL' } },
+            { name: 'resolution', in: 'query', schema: { type: 'string', default: 'D' } },
+            { name: 'from', in: 'query', required: true, schema: { type: 'integer' } },
+            { name: 'to', in: 'query', required: true, schema: { type: 'integer' } },
+          ],
+          responses: {
+            200: {
+              description: 'OK',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { data: { type: 'object' } } },
+                },
+              },
+            },
+            400: { description: 'Bad query' },
           },
         },
       },
@@ -255,4 +331,3 @@ export function getOpenApiSpec() {
     },
   };
 }
-

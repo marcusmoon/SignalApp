@@ -31,23 +31,16 @@ npm run server:dev      # 로컬 Signal API + 어드민 + 스케줄러
 | 변수 | 용도 |
 |------|------|
 | `EXPO_PUBLIC_SIGNAL_API_BASE_URL` | Signal API 서버 도메인 (예: 로컬 `http://127.0.0.1:4000`) |
-| `EXPO_PUBLIC_DATA_BACKEND` | 데이터 소스 전환 플래그 (`direct` / `signal-api`) |
-| `EXPO_PUBLIC_FINNHUB_TOKEN` | 시세·뉴스·캘린더 (없으면 Finnhub 비활성) |
-| `EXPO_PUBLIC_ANTHROPIC_API_KEY` | Claude |
-| `EXPO_PUBLIC_OPENAI_API_KEY` | OpenAI(요약·번역 등) |
-| `EXPO_PUBLIC_YOUTUBE_API_KEY` | YouTube Data API |
-| `EXPO_PUBLIC_API_NINJAS_KEY` | API Ninjas 등 |
 | `EXPO_PUBLIC_ADMOB_*_UNIT_ID` | AdMob (비우면 테스트 ID) |
 | `EXPO_PUBLIC_PREVIEW_OTA_BANNER` | 개발용 OTA 배너 |
 
-프로덕션 민감 키는 **BFF** 쪽이 안전.
+앱은 피처 데이터를 **Signal Server만** 통해 조회합니다. Finnhub/OpenAI/Claude/YouTube/CoinGecko 등 외부 provider 키는 서버/Admin에서 관리합니다.
 
 ### 외부 연동 — `integrations/<provider>/`
 
-1. **`client.ts`** 에서 아웃바운드 URL·요청 조립; **키가 있으면** 여기서만 `services/env` 사용 (공개 API는 키 없이 가능 — 예: `integrations/coingecko/`).  
-2. **`types.ts`** (선택) DTO.  
-3. **`index.ts`** / 캐시 — `client`만 호출; 이 레이어에서 `env` 직접 읽지 않음.  
-4. **`services/<name>.ts`** — 기존 경로 호환이 꼭 필요할 때만 **re-export** (신규 코드는 `integrations` 직접 import).
+1. 앱 피처 조회는 **`integrations/signal-api/`** 에서만 HTTP를 수행합니다.
+2. 외부 provider 폴더의 `types.ts` / `constants.ts` / 캐시는 DTO·상수·메모리 캐시 호환 용도로만 둡니다.
+3. 신규 화면·서비스는 Finnhub/YouTube/LLM provider client를 직접 import하지 않습니다.
 
 ## 4. 디렉터리
 
@@ -58,7 +51,7 @@ hooks/         # 공용 훅 + `index.ts` 배럴 (`@/hooks`). Context 전용은 `
 constants/     # 앱 전역 정적 값(테마·탭 UI·newsSegment 등). 영역 시드는 `domain/*/constants.ts`, 연동 시드는 `integrations/*/constants.ts`
 contexts/
 locales/       # ko 키 기준 → en, ja (satisfies)
-integrations/  # 벤더별 HTTP/SDK (예: finnhub → client + news/calendar/quotes/constants)
+integrations/  # Signal API HTTP, AdMob, provider DTO·상수·캐시 호환 모듈
 domain/        # 규칙만: 영역별 `constants.ts`(시드)·모듈 + `index.ts` 배럴(`@/domain/news` 등)
 services/      # AsyncStorage·설정·오케스트레이션 (필요 시만 re-export)
 utils/         # 날짜, 링크, openYoutube, …
@@ -70,9 +63,9 @@ assets/
 
 | 화면/기능 | 참고 |
 |-----------|------|
-| 시세 탭 | `app/(tabs)/quotes.tsx`, 순서 `quotesSegmentOrderPreference`, Finnhub 캐시 `integrations/finnhub/quotesCache.ts`, 코인 시총 `integrations/coingecko/` |
-| 뉴스 탭 | `app/(tabs)/index.tsx`, 순서 `newsSegmentOrderPreference`, 한국·키워드 규칙 `@/domain/news`, 저장 `services/newsKoreaKeywordsPreference.ts`, LLM 있으면 **제목 번역** |
-| 컨콜 | `@/domain/concalls`(연도·분기·범위·실적 행), 저장 `services/concallFiscalFilter.ts`, 흐름 `services/concalls.ts` |
+| 시세 탭 | `app/(tabs)/quotes.tsx`, 순서 `quotesSegmentOrderPreference`, Signal API 시세·코인, 캐시 `integrations/finnhub/quotesCache.ts` |
+| 뉴스 탭 | `app/(tabs)/index.tsx`, 순서 `newsSegmentOrderPreference`, 한국·키워드 규칙 `@/domain/news`, 저장 `services/newsKoreaKeywordsPreference.ts`, 서버 번역 결과 표시 |
+| 컨콜 | `@/domain/concalls`(연도·분기·범위·실적 행), 저장 `services/concallFiscalFilter.ts`, 서버 API `integrations/signal-api/concalls.ts`, 흐름 `services/concalls.ts` |
 | 유튜브 검색 보조 | `@/domain/youtube`, 카드에서 열기 `utils/openYoutube.ts` |
 | 설정 | `app/settings.tsx` — 뉴스·유튜브·시세·캘린더·표시·알림 |
 | 테마·문자열 | `SignalThemeContext`, `locales/*` (`@/locales/messages`) |
@@ -82,7 +75,7 @@ assets/
 
 ## 6. `services/` vs `integrations/`
 
-Finnhub·YouTube·Anthropic·OpenAI·컨콜 **메모리 캐시**·AdMob 등 **HTTP·SDK·캐시**는 **`integrations/<vendor>/`** (`client.ts`, `*Cache.ts`, AdMob은 `admob/native`·`admob/web` 등). **`services/`** 는 `env`, 관심종목·알림·**캐시 on/off**(`cacheFeaturePreferences`) 등 **기기·설정·오케스트레이션** — 벤더 API는 `@/integrations/...`에서 직접 import한다.
+Signal API·AdMob·메모리 캐시는 **`integrations/<vendor>/`** 에 둡니다. Finnhub·YouTube·OpenAI·Claude·CoinGecko 등 외부 provider HTTP는 서버가 담당하고, 앱은 `@/integrations/signal-api/...`만 호출합니다. **`services/`** 는 `env`, 관심종목·알림·**캐시 on/off**(`cacheFeaturePreferences`) 등 **기기·설정·오케스트레이션**을 담당합니다.
 
 ## 7. 코딩 메모
 

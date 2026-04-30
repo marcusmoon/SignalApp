@@ -73,7 +73,9 @@ export const en = {
   calendarActualAboveEstimate: 'Above estimate',
   calendarActualBelowEstimate: 'Below estimate',
   calendarActualInlineEstimate: 'In line',
-  errorFinnhubTokenShort: 'EXPO_PUBLIC_FINNHUB_TOKEN is required.',
+  errorFinnhubTokenShort: 'Signal Server Finnhub provider settings are required.',
+  errorSignalApiShort:
+    'EXPO_PUBLIC_SIGNAL_API_BASE_URL is required. Add your Signal Server base URL to .env and restart Metro.',
   screenInfo: 'About',
   screenMegaCapList: 'Mega-cap tickers',
   screenMegaCapListLead:
@@ -139,7 +141,7 @@ export const en = {
   settingsYoutubeRemoveHandleA11y: 'Remove {{handle}}',
 
   youtubeErrorKeyMissing:
-    'EXPO_PUBLIC_YOUTUBE_API_KEY is required. Enable YouTube Data API v3 in Google Cloud, add the key to .env, and restart Metro.',
+    'Signal Server YouTube provider settings are required. Check the YouTube key and collection job in Admin.',
   youtubeErrorSelectChannel: 'Select at least one channel.',
   youtubeErrorQuota:
     'YouTube Data API daily quota is exhausted (resets at midnight Pacific). Check usage in Google Cloud, use another project/key, or try again tomorrow.',
@@ -293,7 +295,7 @@ export const en = {
   feedNewsFilterSub: 'Based on sources in the latest Finnhub response · tap to toggle · keep at least one',
   feedNewsFilterClose: 'Close',
   feedErrorToken:
-    'EXPO_PUBLIC_FINNHUB_TOKEN is required. Add it to .env at the project root and restart Metro.',
+    'Signal Server news provider settings are required. Check Finnhub/news collection settings in Admin.',
   feedErrorLoad: 'Could not load news.',
   feedErrorRefresh: 'Refresh failed',
   feedEmpty: 'No news to show.',
@@ -321,7 +323,7 @@ export const en = {
   concallEmptyMegaRollingLine1: 'No Finnhub earnings overlap mega-cap in this window.',
   concallEmptyMegaRollingLine2: 'Check token access or adjust year/quarter in the filter.',
   concallHintNinjasKeyMissing:
-    'Transcript key (EXPO_PUBLIC_API_NINJAS_KEY) is empty. Add it to .env and restart Metro.',
+    'The app does not use transcript provider keys directly. Check server collection settings.',
   concallHintNinjas401: 'Authentication failed (401). Verify your API key.',
   concallHintNinjas403:
     'Access denied (403). Earnings transcripts may require a paid plan—check subscription/permissions.',
@@ -359,6 +361,10 @@ export const en = {
   callsErrorRefresh: 'Refresh failed',
   callsAiAnthropicKeyMissing: 'An Anthropic API key is required for AI call summaries.',
   callsAiOpenaiKeyMissing: 'An OpenAI API key is required for AI call summaries.',
+  callsAiSignalServerOnly: 'The app now reads stored data only from Signal Server.',
+  callsAiSignalServerOnlyHint: 'Call transcripts/summaries will appear after a server collection API is available.',
+  callsTranscriptStored: 'Loaded the earnings call transcript stored on Signal Server.',
+  callsTranscriptStoredHint: 'No summary is available yet, so start with the excerpt below.',
   callsAiSummaryParseFailedTitle: 'Could not parse the AI summary response.',
   callsAiSummaryParseFailedHint: 'Please check the transcript manually.',
   callsAiSummaryGenerateFailed: 'The summary could not be generated.',

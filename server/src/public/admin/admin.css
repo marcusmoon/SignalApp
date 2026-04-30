@@ -77,6 +77,9 @@
 }
       * { box-sizing: border-box; }
       body { margin: 0; background: var(--bg); }
+      /* Before /admin/api/session resolves, avoid flashing the login shell for already-authenticated sessions. */
+      body.sessionPending:not(.loginMode) #loginPanel { display: none !important; }
+      body.sessionPending:not(.loginMode) #adminPanel { display: none !important; }
       body.loginMode { min-height: 100vh; background:
         radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 28%),
         radial-gradient(circle at 80% 10%, rgba(77,159,255,0.15), transparent 26%),

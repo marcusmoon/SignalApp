@@ -9,7 +9,7 @@ import {
   MARKET_SNAPSHOT_MACRO_ROWS,
   MARKET_SNAPSHOT_TAPE_SYMBOLS,
 } from '@/services/marketSnapshotQuotes';
-import type { FinnhubQuote } from '@/integrations/finnhub';
+import type { FinnhubQuote } from '@/integrations/finnhub/types';
 
 function formatUsd(n: number): string {
   if (!Number.isFinite(n)) return '—';

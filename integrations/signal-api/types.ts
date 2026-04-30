@@ -44,6 +44,7 @@ export type SignalApiCalendarEvent = {
   fiscalQuarter: number | null;
   earningsHour: string | null;
   fetchedAt: string;
+  rawPayload?: unknown;
 };
 
 export type SignalApiYoutubeVideo = {
@@ -101,5 +102,28 @@ export type SignalApiCoinMarket = {
   marketCap: number | null;
   change24h: number | null;
   changePercent24h: number | null;
+  fetchedAt: string;
+};
+
+export type SignalApiConcall = {
+  id: string;
+  provider: string;
+  providerItemId: string;
+  symbol: string;
+  title: string;
+  fiscalYear: number | null;
+  fiscalQuarter: number | null;
+  earningsDate: string | null;
+  earningsHour: string | null;
+  transcriptSnippet: string;
+  transcript?: string;
+  transcriptHash: string;
+  transcriptCharCount: number;
+  summaryStatus: 'completed' | 'missing' | 'failed' | string;
+  summaryProvider: 'openai' | 'claude' | string | null;
+  summaryModel: string | null;
+  summaryBullets: string[];
+  guidance: string;
+  risk: string;
   fetchedAt: string;
 };

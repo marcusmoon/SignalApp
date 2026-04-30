@@ -80,7 +80,6 @@ import {
   saveLlmProvider,
   type LlmProviderId,
 } from '@/services/llmProviderPreference';
-import { hasAnthropic, hasOpenAI } from '@/services/env';
 import {
   loadQuotesListLimits,
   normalizeQuotesListLimits,
@@ -833,8 +832,8 @@ export default function SettingsScreen() {
   const [moreRefLinksVisible, setMoreRefLinksVisible] = useState(true);
   const [moreRefLinksReady, setMoreRefLinksReady] = useState(false);
 
-  const claudeAvailable = hasAnthropic();
-  const openaiAvailable = hasOpenAI();
+  const claudeAvailable = false;
+  const openaiAvailable = false;
 
   const [accentPickerOpen, setAccentPickerOpen] = useState(false);
   const [accentPickerDraftHex, setAccentPickerDraftHex] = useState(customHex);

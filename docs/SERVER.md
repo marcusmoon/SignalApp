@@ -47,10 +47,11 @@ cp server/.env.example server/.env
 | `ADMIN_USERS` | **필수(운영)**. 어드민 계정 JSON 배열 `[{"id","password"},…]`. 비우면 로그인 불가 |
 | `FINNHUB_TOKEN` | 선택 seed/fallback. 가능하면 어드민 설정에서 입력 |
 | `YOUTUBE_API_KEY` | 선택 seed/fallback. 가능하면 어드민 설정에서 입력 |
+| `API_NINJAS_KEY` | 선택 seed/fallback. 컨콜 트랜스크립트 수집용 |
 | `TRANSLATION_PROVIDER` | 선택 seed/fallback (`mock` / `openai` / `claude`) |
 | `TRANSLATION_MODEL` | 선택 seed/fallback 번역 모델 이름 |
 
-로컬 운영에서는 `.env`에 외부 API 키를 넣지 않아도 됩니다. **Admin > 설정 > 외부 API 키**에서 Finnhub/OpenAI/Claude/YouTube 키를 저장하면 다음 호출부터 바로 사용합니다. 화면에는 전체 키를 노출하지 않고 마스킹해서 표시합니다.
+로컬 운영에서는 `.env`에 외부 API 키를 넣지 않아도 됩니다. **Admin > 설정 > 외부 API 키**에서 Finnhub/OpenAI/Claude/YouTube/API Ninjas 키를 저장하면 다음 호출부터 바로 사용합니다. 화면에는 전체 키를 노출하지 않고 마스킹해서 표시합니다.
 
 `.env` 값은 새 로컬 DB를 만들 때 초기값으로 seed하거나, 아직 어드민 설정이 없을 때 fallback으로 쓰기 위한 용도입니다.
 
@@ -74,7 +75,7 @@ TRANSLATION_MODEL=claude-3-5-haiku-latest
 
 어드민의 **번역 설정** 메뉴에서도 locale별 provider/model/자동 번역 여부를 바꿀 수 있습니다. 번역 실패는 `news_translations`에 `failed` 상태로 남아 뉴스 관리에서 필터링할 수 있습니다.
 
-앱 루트 `.env`의 `EXPO_PUBLIC_FINNHUB_TOKEN`과 서버의 Finnhub provider 설정은 별개입니다. 서버 수집을 테스트하려면 **Admin > 설정 > 외부 API 키**에서 Finnhub 키를 저장하면 됩니다.
+앱 루트 `.env`에는 Signal 서버 주소만 둡니다. Finnhub/OpenAI/Claude/YouTube/CoinGecko 등 외부 provider 키는 서버/Admin에서 관리합니다.
 
 ## 3. 앱에서 로컬 서버 보기
 
@@ -82,19 +83,12 @@ TRANSLATION_MODEL=claude-3-5-haiku-latest
 
 ```env
 EXPO_PUBLIC_SIGNAL_API_BASE_URL=http://127.0.0.1:4000
-EXPO_PUBLIC_DATA_BACKEND=signal-api
 ```
 
 Metro 재시작:
 
 ```bash
 npx expo start -c
-```
-
-기존 클라이언트 직접 호출로 되돌리려면:
-
-```env
-EXPO_PUBLIC_DATA_BACKEND=direct
 ```
 
 기기별 주의:
@@ -125,6 +119,7 @@ EXPO_PUBLIC_DATA_BACKEND=direct
 | `youtube_economy_latest` | 경제 유튜브 최신 영상 수집 |
 | `calendar_economic_reconcile` | 최근 과거~미래 경제지표 보정 수집 |
 | `calendar_earnings_reconcile` | 실적 발표 전후 보정 수집 |
+| `concall_transcripts_recent` | 최근 실적 캘린더 기반 컨콜 트랜스크립트 수집 |
 | `youtube_economy_reconcile` | 저장된 유튜브 영상 상세/조회수 보정 수집 |
 | `market_quotes_popular` | 인기 시세 최신 수집 |
 | `market_quotes_mcap` | 시총 상위 시세 수집 |
@@ -138,7 +133,7 @@ Job에는 운영자가 보기 쉬운 `displayName`과 `description`이 있으며
 
 메가캡·시총 후보·인기 시세·기본 관심종목 리스트는 **Admin > 설정 > 마켓 리스트 관리**에서 수정합니다. 앱은 `/v1/market-lists/:key`를 통해 같은 리스트를 조회할 수 있고, 시총 상위 시세 Job은 `mcap_universe`, 인기 시세 Job은 `popular_symbols`를 사용합니다.
 
-앱이 `EXPO_PUBLIC_DATA_BACKEND=signal-api`이면 시세 탭도 서버 DB 값을 우선 사용합니다. 관심·인기·시총은 `/v1/market-quotes`, 코인은 `/v1/coins`를 조회합니다. 따라서 앱에 보이려면 해당 수집 Job이 먼저 실행되어 `server/data/market.json`에 값이 저장되어 있어야 합니다.
+앱은 시세 탭도 서버 DB 값을 사용합니다. 관심·인기·시총은 `/v1/market-quotes`, 코인은 `/v1/coins`를 조회합니다. 따라서 앱에 보이려면 해당 수집 Job이 먼저 실행되어 `server/data/market.json`에 값이 저장되어 있어야 합니다.
 
 ## 5. 소스 분리
 

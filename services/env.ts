@@ -2,16 +2,10 @@ import Constants from 'expo-constants';
 
 /**
  * Expo: `.env`에 `EXPO_PUBLIC_*` 변수를 넣고 Metro를 재시작하면 주입됩니다.
- * 프로덕션에서는 Anthropic/Finnhub 키는 서버(BFF)에 두는 것이 안전합니다.
+ * 앱 피처 데이터는 Signal Server만 바라봅니다. 외부 provider 키는 서버/Admin에서 관리합니다.
  */
 export const env = {
   signalApiBaseUrl: process.env.EXPO_PUBLIC_SIGNAL_API_BASE_URL ?? '',
-  dataBackend: process.env.EXPO_PUBLIC_DATA_BACKEND ?? 'direct',
-  finnhubToken: process.env.EXPO_PUBLIC_FINNHUB_TOKEN ?? '',
-  anthropicKey: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? '',
-  openaiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? '',
-  youtubeKey: process.env.EXPO_PUBLIC_YOUTUBE_API_KEY ?? '',
-  apiNinjasKey: process.env.EXPO_PUBLIC_API_NINJAS_KEY ?? '',
   /** 비우면 AdMob 테스트 네이티브 단위 ID 사용 (네이티브 빌드만) */
   admobNativeUnitId: process.env.EXPO_PUBLIC_ADMOB_NATIVE_UNIT_ID ?? '',
   /** 비우면 AdMob 테스트 배너 단위 ID 사용 (네이티브 빌드만) */
@@ -22,28 +16,9 @@ export function hasSignalApi() {
   return env.signalApiBaseUrl.trim().length > 0;
 }
 
+/** 앱 피처 데이터는 Signal Server(`EXPO_PUBLIC_SIGNAL_API_BASE_URL`)만 사용합니다. */
 export function useSignalApiBackend() {
-  return env.dataBackend.trim().toLowerCase() === 'signal-api' && hasSignalApi();
-}
-
-export function hasFinnhub() {
-  return env.finnhubToken.length > 0;
-}
-
-export function hasAnthropic() {
-  return env.anthropicKey.length > 0;
-}
-
-export function hasOpenAI() {
-  return env.openaiKey.length > 0;
-}
-
-export function hasYoutube() {
-  return env.youtubeKey.length > 0;
-}
-
-export function hasApiNinjas() {
-  return env.apiNinjasKey.length > 0;
+  return hasSignalApi();
 }
 
 /** OTA 미리보기 배너: manifest extra 우선(런타임 .env 반영), 없으면 번들 process.env */

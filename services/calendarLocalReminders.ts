@@ -2,14 +2,13 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { normalizeEarningsSymbolForMatch } from '@/constants/megaCapUniverse';
-import { hasFinnhub } from '@/services/env';
-import type { NotificationPrefs } from '@/services/notificationPreferences';
+import type { FinnhubEconomicRow, FinnhubEarningsRow } from '@/integrations/finnhub/types';
 import {
-  fetchEarningsCalendarRange,
-  fetchEconomicCalendarRange,
-  type FinnhubEconomicRow,
-  type FinnhubEarningsRow,
-} from '@/integrations/finnhub';
+  fetchSignalEarningsCalendarRangeMerged,
+  fetchSignalMacroCalendarRangeMerged,
+} from '@/integrations/signal-api/finnhubShim';
+import { hasSignalApi } from '@/services/env';
+import type { NotificationPrefs } from '@/services/notificationPreferences';
 import { addDays, toYmd } from '@/utils/date';
 
 const DATA_KIND = 'signal_calendar_local';
@@ -72,7 +71,7 @@ export async function syncCalendarLocalReminders(
   watchlistSymbols: string[],
 ): Promise<void> {
   if (Platform.OS === 'web') return;
-  if (!hasFinnhub()) return;
+  if (!hasSignalApi()) return;
   await cancelOurScheduled();
   if (!prefs.localMacroCalendar && !prefs.localWatchlistEarnings) return;
 
@@ -90,7 +89,7 @@ export async function syncCalendarLocalReminders(
 
   if (prefs.localMacroCalendar) {
     try {
-      const eco = await fetchEconomicCalendarRange(today, until);
+      const eco = await fetchSignalMacroCalendarRangeMerged(today, until);
       const byYmd = new Map<string, FinnhubEconomicRow[]>();
       for (const row of eco) {
         const dt = parseEconomicDateTime(row.time);
@@ -119,7 +118,7 @@ export async function syncCalendarLocalReminders(
 
   if (prefs.localWatchlistEarnings && watchSet.size > 0) {
     try {
-      const earn = await fetchEarningsCalendarRange(today, until);
+      const earn = await fetchSignalEarningsCalendarRangeMerged(today, until);
       const relevant = earn.filter(
         (r) => r.symbol && watchSet.has(normalizeEarningsSymbolForMatch(r.symbol)),
       );

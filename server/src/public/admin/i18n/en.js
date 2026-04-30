@@ -185,7 +185,7 @@ export const baseEn = {
   providerLlmTitle: 'LLM Provider',
   providerLlmHint: 'Manage OpenAI/Claude keys, default models, and presets.',
   providerDataTitle: 'Data Provider',
-  providerDataHint: 'Manage keys and enable flags for Finnhub, YouTube, CoinGecko, etc.',
+  providerDataHint: 'Manage keys and enable flags for Finnhub, YouTube, API Ninjas, CoinGecko, etc.',
   providerLlmEmpty: 'No LLM providers.',
   providerDataEmpty: 'No data providers.',
   recentSavedAt: 'Recently saved · {{time}}',
@@ -311,6 +311,8 @@ export const baseEn = {
   settingsResetNewsTranslationsSub: 'Per-locale translations and status',
   settingsResetCalendar: 'Calendar events',
   settingsResetCalendarSub: 'Earnings and macro schedule rows',
+  settingsResetConcalls: 'Concall transcripts',
+  settingsResetConcallsSub: 'Collected call transcripts and summary metadata',
   settingsResetYoutube: 'YouTube videos',
   settingsResetYoutubeSub: 'Collected video rows and descriptions',
   settingsResetQuotes: 'Quotes',
@@ -455,4 +457,3 @@ export const baseEn = {
   viewModeBulk: 'Bulk actions',
   btnRefreshThisView: 'Refresh',
 };
-

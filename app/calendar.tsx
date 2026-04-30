@@ -22,18 +22,14 @@ import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { fetchCalendarEventsMergedCached } from '@/integrations/finnhub/calendarCache';
+import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
+import { hasSignalApi } from '@/services/env';
 import {
   CALENDAR_EVENT_TYPE_ORDER,
   loadCalendarEventTypeFilter,
   saveCalendarEventTypeFilter,
   type CalendarEventTypeKey,
 } from '@/services/calendarEventTypeFilterPreference';
-import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
-import { loadCalendarConcallScope } from '@/services/calendarConcallScopePreference';
-import { hasFinnhub, useSignalApiBackend } from '@/services/env';
-import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
-import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
 import { toYmd } from '@/utils/date';
 import type { MessageId } from '@/locales/messages';
 import type { CalendarEvent } from '@/types/signal';
@@ -84,7 +80,6 @@ export default function CalendarScreen() {
     () => new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER),
   );
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const signalApiMode = useSignalApiBackend();
 
   useEffect(() => {
     void loadCalendarEventTypeFilter().then(setEnabledTypes);
@@ -110,37 +105,22 @@ export default function CalendarScreen() {
   }, [visibleMonth]);
 
   const load = useCallback(
-    async (forceRefresh?: boolean) => {
+    async (_forceRefresh?: boolean) => {
       setError(null);
-      if (signalApiMode) {
-        const rangeFrom = new Date(visibleMonth.year, visibleMonth.month, 1);
-        const rangeTo = new Date(visibleMonth.year, visibleMonth.month + 1, 0);
-        const list = await fetchSignalCalendar({
-          from: toYmd(rangeFrom),
-          to: toYmd(rangeTo),
-        });
-        setEvents(list.map(signalCalendarToCalendarEvent));
-        return;
-      }
-
-      if (!hasFinnhub()) {
+      if (!hasSignalApi()) {
         setEvents([]);
-        setError(t('errorFinnhubTokenShort'));
+        setError(t('errorSignalApiShort'));
         return;
       }
-      const scope = await loadCalendarConcallScope();
-      const watch = scope === 'watch' ? await loadWatchlistSymbols() : undefined;
-      const { calendarEnabled } = await loadCacheFeaturePrefs();
       const rangeFrom = new Date(visibleMonth.year, visibleMonth.month, 1);
       const rangeTo = new Date(visibleMonth.year, visibleMonth.month + 1, 0);
-      const list = await fetchCalendarEventsMergedCached(
-        14,
-        { scope, watchlistSymbols: watch, rangeFrom, rangeTo },
-        { cacheEnabled: calendarEnabled, forceRefresh: !!forceRefresh },
-      );
-      setEvents(list);
+      const list = await fetchSignalCalendar({
+        from: toYmd(rangeFrom),
+        to: toYmd(rangeTo),
+      });
+      setEvents(list.map(signalCalendarToCalendarEvent));
     },
-    [signalApiMode, visibleMonth, t],
+    [visibleMonth, t],
   );
 
   useEffect(() => {
@@ -241,7 +221,7 @@ export default function CalendarScreen() {
     });
   }, []);
 
-  if (!signalApiMode && !hasFinnhub()) {
+  if (!hasSignalApi()) {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         {isFocused ? <OtaUpdateBanner /> : null}
@@ -249,7 +229,7 @@ export default function CalendarScreen() {
           contentContainerStyle={[styles.scroll, { paddingBottom: 28 + insets.bottom }]}
           showsVerticalScrollIndicator={false}>
           <View style={styles.errBox}>
-            <Text style={styles.errText}>{t('errorFinnhubTokenShort')}</Text>
+            <Text style={styles.errText}>{t('errorSignalApiShort')}</Text>
           </View>
           <SignalBannerAd />
         </ScrollView>

@@ -10,21 +10,25 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchCompanyNewsForDisplay } from '@/services/companyNewsForSymbol';
+import { finnhubQuoteHasValidPrice } from '@/integrations/finnhub/quoteUtils';
+import type {
+  FinnhubEarningsRow,
+  FinnhubNewsRaw,
+  FinnhubProfile2,
+  FinnhubQuote,
+  FinnhubStockCandles,
+} from '@/integrations/finnhub/types';
 import {
-  fetchEarningsCalendarRangeMerged,
-  fetchProfile2,
-  fetchQuote,
-  fetchStockCandles,
-  type FinnhubEarningsRow,
-  type FinnhubNewsRaw,
-  type FinnhubProfile2,
-  type FinnhubQuote,
-  type FinnhubStockCandles,
-} from '@/integrations/finnhub';
+  fetchSignalEarningsCalendarRangeMerged,
+  signalMarketQuoteToFinnhubQuote,
+} from '@/integrations/signal-api/finnhubShim';
+import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
+import { fetchSignalStockCandles, fetchSignalStockProfile } from '@/integrations/signal-api/stock';
 import { buildSignalScore } from '@/domain/signals';
 import { loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatchlist';
 import { translateNewsTitlesWithSelectedProvider } from '@/services/aiSummaries';
 import type { NewsItem } from '@/types/signal';
+import { hasSignalApi } from '@/services/env';
 import { addDays, toYmd } from '@/utils/date';
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
 
@@ -498,7 +502,7 @@ export default function SymbolDetailScreen() {
   const ticker = useMemo(() => normalizeTicker(tickerParam), [tickerParam]);
   const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const insets = useSafeAreaInsets();
 
@@ -519,19 +523,37 @@ export default function SymbolDetailScreen() {
       return;
     }
 
+    if (!hasSignalApi()) {
+      setError(t('errorSignalApiShort'));
+      setProfile(null);
+      setQuote(null);
+      setCandles(null);
+      setNewsItems([]);
+      setEarnings([]);
+      setLoading(false);
+      return;
+    }
+
     setError(null);
     const earnFrom = addDays(new Date(), -EARN_LOOKBACK_DAYS);
     const earnTo = addDays(new Date(), EARN_FORWARD_DAYS);
 
     try {
-      const [watchlist, nextProfile, nextQuote, nextCandles, companyNews, earningsRows] = await Promise.all([
+      const [watchlist, nextProfile, mqRows, nextCandles, companyNews, earningsRows] = await Promise.all([
         loadWatchlistSymbols(),
-        fetchProfile2(ticker),
-        fetchQuote(ticker).catch(() => null),
-        fetchStockCandles(ticker, 'D', addDays(new Date(), -30), new Date()).catch(() => null),
-        fetchCompanyNewsForDisplay(ticker).catch(() => [] as FinnhubNewsRaw[]),
-        fetchEarningsCalendarRangeMerged(earnFrom, earnTo).catch(() => [] as FinnhubEarningsRow[]),
+        fetchSignalStockProfile(ticker),
+        fetchSignalMarketQuotes({ symbols: [ticker], pageSize: 1 }).catch(() => []),
+        fetchSignalStockCandles(ticker, 'D', addDays(new Date(), -30), new Date()).catch(() => null),
+        fetchCompanyNewsForDisplay(ticker, locale).catch(() => [] as FinnhubNewsRaw[]),
+        fetchSignalEarningsCalendarRangeMerged(earnFrom, earnTo).catch(() => [] as FinnhubEarningsRow[]),
       ]);
+
+      const row0 = mqRows[0];
+      let nextQuote: FinnhubQuote | null = null;
+      if (row0) {
+        const conv = signalMarketQuoteToFinnhubQuote(row0);
+        nextQuote = finnhubQuoteHasValidPrice(conv) ? conv : null;
+      }
 
       const relatedRaw = companyNews;
 
@@ -557,7 +579,7 @@ export default function SymbolDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [ticker, t]);
+  }, [locale, ticker, t]);
 
   useEffect(() => {
     setLoading(true);

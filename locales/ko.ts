@@ -71,7 +71,9 @@ export const ko = {
   calendarActualAboveEstimate: '예상 상회',
   calendarActualBelowEstimate: '예상 하회',
   calendarActualInlineEstimate: '예상 부합',
-  errorFinnhubTokenShort: 'EXPO_PUBLIC_FINNHUB_TOKEN이 필요합니다.',
+  errorFinnhubTokenShort: 'Signal 서버의 Finnhub provider 설정이 필요합니다.',
+  errorSignalApiShort:
+    'EXPO_PUBLIC_SIGNAL_API_BASE_URL이 필요합니다. 프로젝트 루트 .env에 Signal 서버 주소를 넣고 Metro를 재시작하세요.',
   screenInfo: '정보',
   screenMegaCapList: '메가캡 티커 목록',
   screenMegaCapListLead:
@@ -137,7 +139,7 @@ export const ko = {
   settingsYoutubeRemoveHandleA11y: '{{handle}} 제거',
 
   youtubeErrorKeyMissing:
-    'EXPO_PUBLIC_YOUTUBE_API_KEY가 필요합니다. Google Cloud에서 YouTube Data API v3를 활성화한 뒤 키를 .env에 넣고 Metro를 재시작하세요.',
+    'Signal 서버의 YouTube provider 설정이 필요합니다. Admin에서 YouTube 키와 수집 Job을 확인하세요.',
   youtubeErrorSelectChannel: '채널을 1개 이상 선택해 주세요.',
   youtubeErrorQuota:
     'YouTube Data API 일일 쿼터가 소진되었습니다(태평양 자정 기준으로 갱신). Google Cloud 콘솔에서 사용량을 확인하거나, 새 프로젝트·키로 나누거나, 내일 다시 시도해 주세요.',
@@ -289,7 +291,7 @@ export const ko = {
   feedNewsFilterSub: 'Finnhub 최신 응답에 나온 출처 기준 · 탭: 포함 on/off · 최소 1개',
   feedNewsFilterClose: '닫기',
   feedErrorToken:
-    'EXPO_PUBLIC_FINNHUB_TOKEN 이 필요합니다. 프로젝트 루트에 .env 를 만들고 토큰을 넣은 뒤 Metro를 재시작하세요.',
+    'Signal 서버의 뉴스 provider 설정이 필요합니다. Admin에서 Finnhub/뉴스 수집 설정을 확인하세요.',
   feedErrorLoad: '뉴스를 불러오지 못했습니다.',
   feedErrorRefresh: '새로고침 실패',
   feedEmpty: '표시할 뉴스가 없습니다.',
@@ -317,7 +319,7 @@ export const ko = {
   concallEmptyMegaRollingLine1: '해당 기간에 메가캡 목록과 겹치는 Finnhub 실적 일정이 없습니다.',
   concallEmptyMegaRollingLine2: '토큰 권한을 확인하거나 필터에서 연도·분기를 조회해 보세요.',
   concallHintNinjasKeyMissing:
-    '트랜스크립트용 키(EXPO_PUBLIC_API_NINJAS_KEY)가 비어 있습니다. .env에 넣고 Metro를 재시작하세요.',
+    '앱은 트랜스크립트 provider 키를 직접 사용하지 않습니다. 서버 수집 설정을 확인하세요.',
   concallHintNinjas401: '인증에 실패했습니다(401). 키가 올바른지 확인하세요.',
   concallHintNinjas403:
     '접근이 거부되었습니다(403). 실적콜 트랜스크립트는 유료 전용일 수 있습니다. 구독·권한을 확인하세요.',
@@ -354,6 +356,10 @@ export const ko = {
   callsErrorRefresh: '새로고침 실패',
   callsAiAnthropicKeyMissing: '트랜스크립트 요약을 위해 Anthropic API 키가 필요합니다.',
   callsAiOpenaiKeyMissing: '트랜스크립트 요약을 위해 OpenAI API 키가 필요합니다.',
+  callsAiSignalServerOnly: '앱은 이제 Signal 서버에 저장된 데이터만 사용합니다.',
+  callsAiSignalServerOnlyHint: '컨콜 트랜스크립트/요약은 서버 수집 API가 준비되면 표시됩니다.',
+  callsTranscriptStored: 'Signal 서버에 저장된 컨콜 트랜스크립트를 불러왔습니다.',
+  callsTranscriptStoredHint: '요약이 없으면 아래 발췌문을 먼저 확인해 주세요.',
   callsAiSummaryParseFailedTitle: '요약 JSON 파싱에 실패했습니다.',
   callsAiSummaryParseFailedHint: '트랜스크립트 앞부분만 확인해 주세요.',
   callsAiSummaryGenerateFailed: '요약을 생성하지 못했습니다.',

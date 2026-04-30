@@ -8,6 +8,8 @@ export async function fetchSignalNews(params: {
   category?: string;
   symbol?: string;
   limit?: number;
+  from?: string;
+  to?: string;
 }): Promise<SignalApiNewsItem[]> {
   const json = await signalApi<{ data: SignalApiNewsItem[] }>('/v1/news', params);
   return json.data;

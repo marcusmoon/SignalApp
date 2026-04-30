@@ -1,5 +1,5 @@
 import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from './constants';
-import { fetchEconomyYoutube } from '@/integrations/youtube/economyFeed';
+import { fetchSignalYoutube, signalYoutubeToYoutubeItem } from '@/integrations/signal-api/youtube';
 import type { AppLocale } from '@/locales/messages';
 import type { YoutubeItem } from '@/types/signal';
 
@@ -50,7 +50,8 @@ export async function fetchEconomyYoutubeCached(
   const locale = options?.locale ?? 'ko';
 
   if (!cacheEnabled) {
-    return fetchEconomyYoutube(order, { channelHandles: handles, locale });
+    const rows = await fetchSignalYoutube({ pageSize: 100 });
+    return rows.map((row) => signalYoutubeToYoutubeItem(row, locale));
   }
 
   const k = cacheKey(order, handles, locale);
@@ -64,7 +65,7 @@ export async function fetchEconomyYoutubeCached(
     cache.delete(k);
   }
 
-  const items = await fetchEconomyYoutube(order, { channelHandles: handles, locale });
+  const items = (await fetchSignalYoutube({ pageSize: 100 })).map((row) => signalYoutubeToYoutubeItem(row, locale));
   cache.set(k, { items, expiresAt: Date.now() + YOUTUBE_CACHE_TTL_MS });
   return items;
 }

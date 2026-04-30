@@ -42,7 +42,6 @@ import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hook
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
-import { fetchTopCoinsByMarketCapUsd } from '@/integrations/coingecko';
 import {
   fetchSignalCoins,
   fetchSignalMarketList,
@@ -50,16 +49,9 @@ import {
   type SignalApiCoinMarket,
   type SignalApiMarketQuote,
 } from '@/integrations/signal-api';
-import { hasFinnhub, useSignalApiBackend } from '@/services/env';
-import {
-  type FinnhubQuote,
-  POPULAR_SYMBOLS_ORDERED,
-  fetchProfile2,
-  fetchQuote,
-  fetchQuotesForSymbols,
-  finnhubQuoteHasValidPrice,
-  getSymbolsSortedByMarketCap,
-} from '@/integrations/finnhub';
+import { hasSignalApi } from '@/services/env';
+import { POPULAR_SYMBOLS_ORDERED } from '@/integrations/finnhub/constants';
+import type { FinnhubQuote } from '@/integrations/finnhub/types';
 import { loadQuotesListLimits } from '@/services/quotesListLimitsPreference';
 import {
   DEFAULT_QUOTES_SEGMENT_ORDER,
@@ -68,11 +60,9 @@ import {
 } from '@/services/quotesSegmentOrderPreference';
 import {
   buildQuotesCacheKey,
-  peekMcapSymbolsOrder,
   peekQuotes,
   QUOTES_CACHE_TTL_MS,
   QUOTES_POLL_INTERVAL_MS,
-  storeMcapSymbolsOrder,
   storeQuotes,
   type QuoteCacheRow,
 } from '@/integrations/finnhub/quotesCache';
@@ -212,7 +202,6 @@ export default function QuotesScreen() {
   /** 남은 초 표시가 줄어들게 함 */
   const [countdownTick, setCountdownTick] = useState(0);
   const [draftTicker, setDraftTicker] = useState('');
-  const shouldUseSignalApi = useSignalApiBackend();
 
   useEffect(() => {
     if (nextRefreshAtMs == null) return;
@@ -256,9 +245,16 @@ export default function QuotesScreen() {
     const { quotesEnabled } = await loadCacheFeaturePrefs();
     const limits = await loadQuotesListLimits();
 
+    if (!hasSignalApi()) {
+      setRows([]);
+      setNextRefreshAtMs(null);
+      setError(t('errorSignalApiShort'));
+      return;
+    }
+
     if (segment === 'coin') {
       const cacheKey = buildQuotesCacheKey('coin', [], limits.coinMax);
-      if (!shouldUseSignalApi && quotesEnabled && !forceRefresh) {
+      if (quotesEnabled && !forceRefresh) {
         const hit = peekQuotes(cacheKey);
         if (hit) {
           setRows(hit.rows);
@@ -267,31 +263,8 @@ export default function QuotesScreen() {
           return;
         }
       }
-      if (shouldUseSignalApi) {
-        const list = (await fetchSignalCoins({ pageSize: limits.coinMax })).slice(0, limits.coinMax).map(mapSignalCoinToRow);
-        setRows(list);
-        setNextRefreshAtMs(Date.now() + POLL_MS);
-        return;
-      }
       try {
-        const coins = await fetchTopCoinsByMarketCapUsd(limits.coinMax);
-        const list: Row[] = coins.map((c) => {
-          const sym = String(c.symbol ?? '')
-            .trim()
-            .toUpperCase();
-          const price =
-            typeof c.current_price === 'number' && Number.isFinite(c.current_price) ? c.current_price : null;
-          if (price == null) {
-            return { symbol: sym || '—', name: c.name, quote: null, error: t('quotesErrorNoPrice') };
-          }
-          const d24 = typeof c.price_change_24h === 'number' ? c.price_change_24h : 0;
-          const dp24 = typeof c.price_change_percentage_24h === 'number' ? c.price_change_percentage_24h : 0;
-          return {
-            symbol: sym,
-            name: c.name,
-            quote: mapCoinToFinnhubQuote(price, d24, dp24),
-          };
-        });
+        const list = (await fetchSignalCoins({ pageSize: limits.coinMax })).slice(0, limits.coinMax).map(mapSignalCoinToRow);
         setRows(list);
         if (quotesEnabled) {
           const nextAt = Date.now() + QUOTES_CACHE_TTL_MS;
@@ -309,120 +282,35 @@ export default function QuotesScreen() {
       return;
     }
 
-    if (!shouldUseSignalApi && !hasFinnhub()) {
-      setRows([]);
-      setNextRefreshAtMs(null);
-      setError(t('feedErrorToken'));
-      return;
-    }
-
     let symbols: string[] = [];
     if (segment === 'watch') {
       symbols = await loadWatchlistSymbols();
     } else if (segment === 'popular') {
-      if (shouldUseSignalApi) {
-        try {
-          const list = await fetchSignalMarketList('popular_symbols');
-          symbols = list.symbols.slice(0, limits.popularMax);
-        } catch {
-          symbols = [...POPULAR_SYMBOLS_ORDERED].slice(0, limits.popularMax);
-        }
-      } else {
+      try {
+        const list = await fetchSignalMarketList('popular_symbols');
+        symbols = list.symbols.slice(0, limits.popularMax);
+      } catch {
         symbols = [...POPULAR_SYMBOLS_ORDERED].slice(0, limits.popularMax);
-      }
-    } else {
-      // Market-cap segment:
-      // - signal-api backend: server already produces mcap quotes; don't call Finnhub directly.
-      // - direct backend: keep existing local ordering (profile2 market cap).
-      if (!shouldUseSignalApi) {
-        const cachedOrder = !forceRefresh ? peekMcapSymbolsOrder(limits.mcapMax) : null;
-        if (cachedOrder && cachedOrder.length > 0) {
-          symbols = cachedOrder;
-        } else {
-          symbols = await getSymbolsSortedByMarketCap(undefined, limits.mcapMax);
-          if (symbols.length > 0) {
-            storeMcapSymbolsOrder(limits.mcapMax, symbols);
-          }
-        }
       }
     }
 
-    // Only segments that fetch by symbol list require symbols.
     if ((segment === 'watch' || segment === 'popular') && symbols.length === 0) {
       setRows([]);
       setNextRefreshAtMs(null);
       return;
     }
 
-    if (shouldUseSignalApi) {
-      const serverRows =
-        segment === 'watch'
-          ? await fetchSignalMarketQuotes({ symbols, pageSize: Math.max(symbols.length, 1) })
-          : await fetchSignalMarketQuotes({
-              segment: segment === 'popular' ? 'popular' : 'mcap',
-              pageSize: segment === 'popular' ? limits.popularMax : limits.mcapMax,
-            });
-      const mapped = serverRows.map(mapSignalQuoteToRow);
-      setRows(segment === 'watch' ? applyQuoteOrder(mapped, symbols) : mapped);
-      setNextRefreshAtMs(Date.now() + POLL_MS);
-      return;
-    }
-
-    const symbolsSorted =
+    const serverRows =
       segment === 'watch'
-        ? [...symbols].map((s) => s.trim().toUpperCase()).sort()
-        : segment === 'popular'
-          ? [...symbols]
-          : [...symbols];
-
-    const cacheKey = buildQuotesCacheKey(segment, symbolsSorted);
-    if (quotesEnabled && !forceRefresh) {
-      const hit = peekQuotes(cacheKey);
-      if (hit) {
-        setRows(hit.rows);
-        setNextRefreshAtMs(hit.expiresAtMs);
-        scheduleRefreshAtCacheExpiry(hit.expiresAtMs);
-        return;
-      }
-    }
-
-    const list = await fetchQuotesForSymbols(symbols);
-
-    if (segment === 'watch') {
-      const symbolsNorm = symbols.map((s) => s.trim().toUpperCase());
-      const pruned = symbolsNorm.filter((s) => {
-        const r = list.find((x) => x.symbol === s);
-        return r != null && r.error !== 'UNKNOWN_SYMBOL';
-      });
-      if (pruned.length !== symbolsNorm.length) {
-        await saveWatchlistSymbols(pruned);
-      }
-      const displayList = pruned
-        .map((sym) => list.find((r) => r.symbol === sym))
-        .filter((x): x is Row => x != null);
-      const cacheKeyWatch = buildQuotesCacheKey(segment, [...pruned].sort());
-      setRows(displayList);
-      if (quotesEnabled) {
-        const nextAt = Date.now() + QUOTES_CACHE_TTL_MS;
-        storeQuotes(cacheKeyWatch, displayList);
-        setNextRefreshAtMs(nextAt);
-        scheduleRefreshAtCacheExpiry(nextAt);
-      } else {
-        setNextRefreshAtMs(Date.now() + POLL_MS);
-      }
-      return;
-    }
-
-    setRows(list);
-    if (quotesEnabled) {
-      const nextAt = Date.now() + QUOTES_CACHE_TTL_MS;
-      storeQuotes(cacheKey, list);
-      setNextRefreshAtMs(nextAt);
-      scheduleRefreshAtCacheExpiry(nextAt);
-    } else {
-      setNextRefreshAtMs(Date.now() + POLL_MS);
-    }
-  }, [segment, scheduleRefreshAtCacheExpiry, shouldUseSignalApi, t]);
+        ? await fetchSignalMarketQuotes({ symbols, pageSize: Math.max(symbols.length, 1) })
+        : await fetchSignalMarketQuotes({
+            segment: segment === 'popular' ? 'popular' : 'mcap',
+            pageSize: segment === 'popular' ? limits.popularMax : limits.mcapMax,
+          });
+    const mapped = serverRows.map(mapSignalQuoteToRow);
+    setRows(segment === 'watch' ? applyQuoteOrder(mapped, symbols) : mapped);
+    setNextRefreshAtMs(Date.now() + POLL_MS);
+  }, [segment, scheduleRefreshAtCacheExpiry, t]);
 
   loadRef.current = load;
 
@@ -485,42 +373,22 @@ export default function QuotesScreen() {
       return;
     }
     const sym = raw.toUpperCase().replace(/\s+/g, '');
-    if (shouldUseSignalApi) {
-      try {
-        const rows = await fetchSignalMarketQuotes({ symbols: [sym], pageSize: 1 });
-        if (rows.length === 0 || rows.every((row) => row.currentPrice == null)) {
-          Alert.alert(t('alertTitleUnknownTicker'), t('quotesTickerNotFoundBody'));
-          return;
-        }
-      } catch (e) {
-        Alert.alert(
-          t('alertTitleFormatError'),
-          e instanceof Error ? e.message : t('quotesErrorLookup'),
-        );
+    if (!hasSignalApi()) {
+      setError(t('errorSignalApiShort'));
+      return;
+    }
+    try {
+      const rows = await fetchSignalMarketQuotes({ symbols: [sym], pageSize: 1 });
+      if (rows.length === 0 || rows.every((row) => row.currentPrice == null)) {
+        Alert.alert(t('alertTitleUnknownTicker'), t('quotesTickerNotFoundBody'));
         return;
       }
-    } else {
-      if (!hasFinnhub()) {
-        setError(t('feedErrorToken'));
-        return;
-      }
-      try {
-        const [profile, q] = await Promise.all([fetchProfile2(sym), fetchQuote(sym)]);
-        if (!profile) {
-          Alert.alert(t('alertTitleUnknownTicker'), t('quotesTickerNotFoundBody'));
-          return;
-        }
-        if (!finnhubQuoteHasValidPrice(q)) {
-          Alert.alert(t('alertTitleUnknownTicker'), t('quotesTickerNotFoundBody'));
-          return;
-        }
-      } catch (e) {
-        Alert.alert(
-          t('alertTitleFormatError'),
-          e instanceof Error ? e.message : t('quotesErrorLookup'),
-        );
-        return;
-      }
+    } catch (e) {
+      Alert.alert(
+        t('alertTitleFormatError'),
+        e instanceof Error ? e.message : t('quotesErrorLookup'),
+      );
+      return;
     }
     const current = await loadWatchlistSymbols();
     if (current.includes(sym)) {
@@ -530,7 +398,7 @@ export default function QuotesScreen() {
     await saveWatchlistSymbols([...current, sym]);
     setDraftTicker('');
     await load();
-  }, [draftTicker, load, shouldUseSignalApi, t]);
+  }, [draftTicker, load, t]);
 
   const onRemoveWatch = useCallback(
     async (symbol: string) => {

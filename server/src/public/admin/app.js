@@ -406,11 +406,22 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       }
 
       async function refreshSession() {
-        const body = await api('/admin/api/session');
-        const loggedIn = !!body.adminId;
-        $('session').textContent = loggedIn ? `${body.adminId}` : 'logout';
-        if ($('headerProfileName')) $('headerProfileName').textContent = loggedIn ? `${body.adminId}` : 'guest';
-        if ($('profileMenuTitle')) $('profileMenuTitle').textContent = loggedIn ? `${body.adminId}` : 'guest';
+        let loggedIn = false;
+        let adminLabel = 'logout';
+        try {
+          const body = await api('/admin/api/session');
+          loggedIn = !!body.adminId;
+          adminLabel = loggedIn ? `${body.adminId}` : 'logout';
+          $('session').textContent = adminLabel;
+        } catch (e) {
+          const msg = e && typeof e.message === 'string' ? e.message : 'session error';
+          $('session').textContent = msg;
+          loggedIn = false;
+          adminLabel = 'guest';
+        }
+        const profileName = loggedIn ? adminLabel : 'guest';
+        if ($('headerProfileName')) $('headerProfileName').textContent = profileName;
+        if ($('profileMenuTitle')) $('profileMenuTitle').textContent = profileName;
         document.body.classList.toggle('loginMode', !loggedIn);
         $('loginPanel').classList.toggle('hidden', loggedIn);
         $('adminPanel').classList.toggle('hidden', !loggedIn);
@@ -431,6 +442,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           setCalendarDatePreset();
           await reloadAllAdminData();
         }
+        document.body.classList.remove('sessionPending');
       }
 
       function openPanel(id) { $(id)?.classList.remove('hidden'); }

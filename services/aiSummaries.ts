@@ -1,31 +1,30 @@
-import {
-  newsItemFromFinnhubFallback,
-  summarizeConcallTranscript,
-  translateNewsTitlesWithClaude,
-} from '@/integrations/anthropic';
-import type { FinnhubNewsRaw } from '@/integrations/finnhub';
-import { hasAnthropic, hasOpenAI } from '@/services/env';
+import type { FinnhubNewsRaw } from '@/integrations/finnhub/types';
+import { isFlashNews } from '@/domain/news';
+import type { AppLocale } from '@/locales/messages';
+import { messages } from '@/locales/messages';
 import { loadLocale } from '@/services/localePreference';
 import { loadLlmProvider } from '@/services/llmProviderPreference';
-import {
-  summarizeConcallTranscriptOpenAI,
-  translateNewsTitlesWithOpenAI,
-} from '@/integrations/openai/summaries';
 import type { ConcallSummary, NewsItem } from '@/types/signal';
+import { formatRelativeFromUnix } from '@/utils/date';
+
+function newsItemFromFinnhubFallback(n: FinnhubNewsRaw, locale: AppLocale): NewsItem {
+  const ticker = n.related.split(',')[0]?.trim() || 'GLOBAL';
+  return {
+    id: String(n.id),
+    ticker,
+    titleKo: n.headline,
+    source: n.source,
+    timeLabel: formatRelativeFromUnix(n.datetime, locale),
+    url: n.url,
+    summarySource: 'finnhub',
+    isFlash: isFlashNews(n),
+  };
+}
 
 export async function translateNewsTitlesWithSelectedProvider(
   articles: FinnhubNewsRaw[],
 ): Promise<NewsItem[]> {
-  const [pref, locale] = await Promise.all([loadLlmProvider(), loadLocale()]);
-  if (pref === 'none') {
-    return articles.map((a) => newsItemFromFinnhubFallback(a, locale));
-  }
-  if (pref === 'openai' && hasOpenAI()) {
-    return translateNewsTitlesWithOpenAI(articles, locale);
-  }
-  if (pref === 'claude' && hasAnthropic()) {
-    return translateNewsTitlesWithClaude(articles, locale);
-  }
+  const locale = await loadLocale();
   return articles.map((a) => newsItemFromFinnhubFallback(a, locale));
 }
 
@@ -35,6 +34,7 @@ export async function summarizeConcallTranscriptSelected(
   transcript: string,
 ): Promise<ConcallSummary> {
   const [pref, locale] = await Promise.all([loadLlmProvider(), loadLocale()]);
+  const row = messages[locale];
   if (pref === 'none') {
     return {
       id: `${ticker}-${quarterLabel}`,
@@ -51,40 +51,14 @@ export async function summarizeConcallTranscriptSelected(
       source: 'fallback',
     };
   }
-  if (pref === 'openai') {
-    if (hasOpenAI()) {
-      const r = await summarizeConcallTranscriptOpenAI(ticker, quarterLabel, transcript, locale);
-      if (r.source === 'openai') return r;
-    }
-    return {
-      id: `${ticker}-${quarterLabel}`,
-      ticker,
-      quarter: quarterLabel,
-      bullets:
-        locale === 'en'
-          ? ['ChatGPT is selected, but no API key was found.', 'Choose Off or another provider in Settings > Display > AI.']
-          : locale === 'ja'
-            ? ['ChatGPT が選択されていますが、APIキーが見つかりません。', '設定 > 表示 > AI で使用しないか他の提供元を選んでください。']
-            : ['ChatGPT를 선택했지만 API 키를 찾지 못했습니다.', '표시 설정의 AI에서 사용 안함 또는 다른 제공자를 선택해 주세요.'],
-      guidance: undefined,
-      risk: undefined,
-      source: 'fallback',
-    };
-  }
-  if (hasAnthropic()) {
-    const r = await summarizeConcallTranscript(ticker, quarterLabel, transcript, locale);
-    if (r.source === 'claude') return r;
-  }
+
+  void transcript;
+
   return {
     id: `${ticker}-${quarterLabel}`,
     ticker,
     quarter: quarterLabel,
-    bullets:
-      locale === 'en'
-        ? ['Claude is selected, but no API key was found.', 'Choose Off or another provider in Settings > Display > AI.']
-        : locale === 'ja'
-          ? ['Claude が選択されていますが、APIキーが見つかりません。', '設定 > 表示 > AI で使用しないか他の提供元を選んでください。']
-          : ['Claude를 선택했지만 API 키를 찾지 못했습니다.', '표시 설정의 AI에서 사용 안함 또는 다른 제공자를 선택해 주세요.'],
+    bullets: [row.callsAiSignalServerOnly, row.callsAiSignalServerOnlyHint],
     guidance: undefined,
     risk: undefined,
     source: 'fallback',

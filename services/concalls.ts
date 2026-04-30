@@ -4,24 +4,22 @@ import { formatMessage, messages } from '@/locales/messages';
 import type { CalendarConcallScope } from '@/services/calendarConcallScopePreference';
 import {
   calendarRangeForFiscalYear,
-  clipTranscriptForDisplay,
-  CONCALL_TRANSCRIPT_SNIPPET_MAX_CHARS,
-  isEarningsDateInFuture,
   normalizeConcallWatchSet,
   pickSymbolsFromEarningsRows,
   rowMatchesFiscalSelection,
   sortEarningsRowsForTranscript,
 } from '@/domain/concalls';
-import { fetchEarningsCallTranscript } from '@/integrations/api-ninjas';
-import { summarizeConcallTranscriptSelected } from '@/services/aiSummaries';
-import { fetchEarningsCalendarRangeMerged, type FinnhubEarningsRow } from '@/integrations/finnhub';
+import { fetchSignalEarningsCalendarRangeMerged } from '@/integrations/signal-api/finnhubShim';
+import type { FinnhubEarningsRow } from '@/integrations/finnhub/types';
 import {
   buildConcallCacheKey,
   deleteConcallCache,
   peekConcallCache,
   storeConcallCache,
 } from '@/integrations/concalls/cache';
-import { hasApiNinjas, hasFinnhub } from '@/services/env';
+import { fetchSignalConcalls } from '@/integrations/signal-api/concalls';
+import type { SignalApiConcall } from '@/integrations/signal-api/types';
+import { hasSignalApi } from '@/services/env';
 import type { ConcallSummary } from '@/types/signal';
 import { addDays } from '@/utils/date';
 
@@ -29,35 +27,46 @@ function locMsg(locale: AppLocale, id: MessageId, vars?: Record<string, string |
   return formatMessage(messages[locale][id], vars);
 }
 
-function concallNinjaHint(
-  ninjasStatus: number,
-  row: FinnhubEarningsRow | undefined,
+function sourceFromConcall(row: SignalApiConcall): ConcallSummary['source'] {
+  if (row.summaryProvider === 'openai' || row.summaryProvider === 'claude') return row.summaryProvider;
+  return 'fallback';
+}
+
+function summaryFromSignalConcall(row: SignalApiConcall, quarterLabel: string, locale: AppLocale): ConcallSummary {
+  const bullets = Array.isArray(row.summaryBullets) && row.summaryBullets.length > 0
+    ? row.summaryBullets.slice(0, 3)
+    : [locMsg(locale, 'callsTranscriptStored'), locMsg(locale, 'callsTranscriptStoredHint')];
+  return {
+    id: row.id,
+    ticker: row.symbol,
+    quarter: quarterLabel,
+    bullets,
+    guidance: row.guidance || undefined,
+    risk: row.risk || undefined,
+    source: sourceFromConcall(row),
+    transcriptSnippet: row.transcriptSnippet || row.transcript,
+  };
+}
+
+async function fetchSignalConcallForRow(
+  ticker: string,
+  row: FinnhubEarningsRow,
   locale: AppLocale,
-): string {
-  if (!hasApiNinjas()) {
-    return locMsg(locale, 'concallHintNinjasKeyMissing');
+): Promise<ConcallSummary | null> {
+  const list = await fetchSignalConcalls({
+    symbol: ticker,
+    fiscalYear: row.year,
+    fiscalQuarter: row.quarter,
+    pageSize: 1,
+  }).catch(() => []);
+  let hit = list[0];
+  if (!hit) {
+    const latest = await fetchSignalConcalls({ symbol: ticker, pageSize: 1 }).catch(() => []);
+    hit = latest[0];
   }
-  if (ninjasStatus === 401) {
-    return locMsg(locale, 'concallHintNinjas401');
-  }
-  if (ninjasStatus === 403) {
-    return locMsg(locale, 'concallHintNinjas403');
-  }
-  if (ninjasStatus === 429) {
-    return locMsg(locale, 'concallHintNinjas429');
-  }
-  if (ninjasStatus === 404) {
-    return locMsg(locale, 'concallHintNinjas404');
-  }
-  if (row) {
-    if (isEarningsDateInFuture(row.date)) {
-      return locMsg(locale, 'concallHintNinjasFutureDate');
-    }
-    if (ninjasStatus === 200) {
-      return locMsg(locale, 'concallHintNinjasPastNoTranscript');
-    }
-  }
-  return locMsg(locale, 'concallHintNinjasGeneric');
+  if (!hit) return null;
+  const quarterLabel = locMsg(locale, 'fiscalYearQuarterShort', { y: row.year, q: row.quarter });
+  return summaryFromSignalConcall(hit, quarterLabel, locale);
 }
 
 export type FetchConcallSummariesOptions = {
@@ -85,8 +94,8 @@ export async function fetchConcallSummaries(
   maxItemsParam = 3,
   options?: FetchConcallSummariesOptions,
 ): Promise<ConcallSummary[]> {
-  if (!hasFinnhub()) {
-    throw new Error('FINNHUB_TOKEN_MISSING');
+  if (!hasSignalApi()) {
+    throw new Error('SIGNAL_API_BASE_URL_MISSING');
   }
   const scope = options?.scope ?? 'mega';
   const watchSet = normalizeConcallWatchSet(options?.watchlistSymbols);
@@ -133,14 +142,14 @@ export async function fetchConcallSummaries(
   let rows: FinnhubEarningsRow[];
   if (useFiscal && fiscalYear != null) {
     const { from, to } = calendarRangeForFiscalYear(fiscalYear);
-    rows = await fetchEarningsCalendarRangeMerged(from, to);
+    rows = await fetchSignalEarningsCalendarRangeMerged(from, to);
     rows = rows.filter((r) => rowMatchesFiscalSelection(r, fiscalYear, fiscalQuarter));
   } else {
     const past = options?.rollingEarningsPastDays ?? 14;
     const future = options?.rollingEarningsFutureDays ?? 21;
     const from = addDays(new Date(), -past);
     const to = addDays(new Date(), future);
-    rows = await fetchEarningsCalendarRangeMerged(from, to);
+    rows = await fetchSignalEarningsCalendarRangeMerged(from, to);
   }
 
   if (scope === 'mega') {
@@ -190,53 +199,30 @@ export async function fetchConcallSummaries(
     const row = rows.find(
       (r) => normalizeEarningsSymbolForMatch(r.symbol) === normalizeEarningsSymbolForMatch(sym),
     );
-    let text: string | null = null;
-    let ninjasStatus = 0;
-
-    if (row) {
-      const r1 = await fetchEarningsCallTranscript(sym, { year: row.year, quarter: row.quarter });
-      text = r1.transcript;
-      ninjasStatus = r1.httpStatus;
-    }
-    if (!text || text.length < 200) {
-      const r2 = await fetchEarningsCallTranscript(sym);
-      text = r2.transcript;
-      ninjasStatus = r2.httpStatus || ninjasStatus;
-    }
 
     const quarterLabel = row
       ? locMsg(locale, 'fiscalYearQuarterShort', { y: row.year, q: row.quarter })
       : locMsg(locale, 'concallQuarterRecentFallback');
 
-    if (!text || text.length < 200) {
-      const hint = concallNinjaHint(ninjasStatus, row, locale);
-
-      out.push({
-        id: `${sym}-pending`,
-        ticker: sym,
-        quarter: quarterLabel,
-        bullets: [locMsg(locale, 'concallFallbackTranscriptNotFound'), hint],
-        guidance: row
-          ? locMsg(locale, 'concallGuidanceEarningsDate', { date: row.date, hour: row.hour })
-          : undefined,
-        risk: undefined,
-        source: 'fallback',
-      });
-      continue;
+    if (row) {
+      const stored = await fetchSignalConcallForRow(sym, row, locale);
+      if (stored) {
+        out.push(stored);
+        continue;
+      }
     }
 
-    try {
-      const summary = await summarizeConcallTranscriptSelected(sym, quarterLabel, text);
-      out.push(summary);
-    } catch {
-      out.push({
-        id: `${sym}-err`,
-        ticker: sym,
-        quarter: quarterLabel,
-        bullets: [locMsg(locale, 'concallFallbackSummaryFailed'), '—'],
-        source: 'fallback',
-      });
-    }
+    out.push({
+      id: `${sym}-server-only`,
+      ticker: sym,
+      quarter: quarterLabel,
+      bullets: [locMsg(locale, 'callsAiSignalServerOnly'), locMsg(locale, 'callsAiSignalServerOnlyHint')],
+      guidance: row
+        ? locMsg(locale, 'concallGuidanceEarningsDate', { date: row.date, hour: row.hour })
+        : undefined,
+      risk: undefined,
+      source: 'fallback',
+    });
   }
 
   if (cacheEnabled) storeConcallCache(cacheKey, out);
@@ -252,8 +238,8 @@ export async function fetchConcallSummaryForEarningsRow(
   row: FinnhubEarningsRow,
   options?: { forceRefresh?: boolean; cacheEnabled?: boolean; locale?: AppLocale },
 ): Promise<ConcallSummary> {
-  if (!hasFinnhub()) {
-    throw new Error('FINNHUB_TOKEN_MISSING');
+  if (!hasSignalApi()) {
+    throw new Error('SIGNAL_API_BASE_URL_MISSING');
   }
   const sym = ticker.trim().toUpperCase();
   const locale: AppLocale = options?.locale ?? 'ko';
@@ -273,51 +259,22 @@ export async function fetchConcallSummaryForEarningsRow(
     deleteConcallCache(cacheKey);
   }
 
-  let text: string | null = null;
-  let ninjasStatus = 0;
-  const r1 = await fetchEarningsCallTranscript(sym, { year: row.year, quarter: row.quarter });
-  text = r1.transcript;
-  ninjasStatus = r1.httpStatus;
-  if (!text || text.length < 200) {
-    const r2 = await fetchEarningsCallTranscript(sym);
-    text = r2.transcript;
-    ninjasStatus = r2.httpStatus || ninjasStatus;
-  }
-
   const quarterLabel = locMsg(locale, 'fiscalYearQuarterShort', { y: row.year, q: row.quarter });
-
-  if (!text || text.length < 200) {
-    const hint = concallNinjaHint(ninjasStatus, row, locale);
-    const summary: ConcallSummary = {
-      id: `${sym}-pending`,
-      ticker: sym,
-      quarter: quarterLabel,
-      bullets: [locMsg(locale, 'concallFallbackTranscriptNotFound'), hint],
-      guidance: locMsg(locale, 'concallGuidanceEarningsDate', { date: row.date, hour: row.hour }),
-      risk: undefined,
-      source: 'fallback',
-    };
-    if (cacheEnabled) storeConcallCache(cacheKey, [summary]);
-    return summary;
+  const stored = await fetchSignalConcallForRow(sym, row, locale);
+  if (stored) {
+    if (cacheEnabled) storeConcallCache(cacheKey, [stored]);
+    return stored;
   }
 
-  const snippet = clipTranscriptForDisplay(text, CONCALL_TRANSCRIPT_SNIPPET_MAX_CHARS);
-
-  try {
-    const summary = await summarizeConcallTranscriptSelected(sym, quarterLabel, text);
-    const withSnippet: ConcallSummary = { ...summary, transcriptSnippet: snippet };
-    if (cacheEnabled) storeConcallCache(cacheKey, [withSnippet]);
-    return withSnippet;
-  } catch {
-    const summary: ConcallSummary = {
-      id: `${sym}-err`,
-      ticker: sym,
-      quarter: quarterLabel,
-      bullets: [locMsg(locale, 'concallFallbackSummaryFailed'), '—'],
-      source: 'fallback',
-      transcriptSnippet: snippet,
-    };
-    if (cacheEnabled) storeConcallCache(cacheKey, [summary]);
-    return summary;
-  }
+  const summary: ConcallSummary = {
+    id: `${sym}-server-only`,
+    ticker: sym,
+    quarter: quarterLabel,
+    bullets: [locMsg(locale, 'callsAiSignalServerOnly'), locMsg(locale, 'callsAiSignalServerOnlyHint')],
+    guidance: locMsg(locale, 'concallGuidanceEarningsDate', { date: row.date, hour: row.hour }),
+    risk: undefined,
+    source: 'fallback',
+  };
+  if (cacheEnabled) storeConcallCache(cacheKey, [summary]);
+  return summary;
 }

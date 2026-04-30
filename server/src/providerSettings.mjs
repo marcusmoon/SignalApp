@@ -6,6 +6,7 @@ const FALLBACKS = {
   openai: { apiKey: config.openaiApiKey, defaultModel: 'gpt-4o-mini' },
   claude: { apiKey: config.anthropicApiKey, defaultModel: 'claude-3-5-haiku-latest' },
   youtube: { apiKey: config.youtubeApiKey },
+  'api-ninjas': { apiKey: config.apiNinjasKey },
   coingecko: { apiKey: '' },
 };
 
@@ -39,7 +40,7 @@ export async function getProviderSetting(provider) {
 
 export async function listProviderSettingsPublic() {
   const db = await readDb();
-  const providers = ['finnhub', 'openai', 'claude', 'youtube', 'coingecko'];
+  const providers = ['finnhub', 'openai', 'claude', 'youtube', 'api-ninjas', 'coingecko'];
   return providers.map((provider) => {
     const setting = normalizeProviderSetting(db.providerSettings?.find((s) => s.provider === provider), provider);
     return {

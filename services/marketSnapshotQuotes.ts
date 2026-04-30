@@ -1,10 +1,9 @@
 import type { MessageId } from '@/locales/messages';
-import {
-  fetchQuote,
-  fetchUsdKrwQuoteApprox,
-  finnhubQuoteHasValidPrice,
-  type FinnhubQuote,
-} from '@/integrations/finnhub';
+import { finnhubQuoteHasValidPrice } from '@/integrations/finnhub/quoteUtils';
+import type { FinnhubQuote } from '@/integrations/finnhub/types';
+import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
+import { signalMarketQuoteToFinnhubQuote } from '@/integrations/signal-api/finnhubShim';
+import { hasSignalApi } from '@/services/env';
 
 export type MacroRowDef = { key: MessageId; symbol: string };
 
@@ -19,41 +18,40 @@ export const MARKET_SNAPSHOT_MACRO_ROWS: MacroRowDef[] = [
 ];
 
 /**
- * 시장 요약 카드용 — 지수 테이프 + 매크로 ETF/FX 시세.
+ * 시장 요약 카드용 — 지수 테이프 + 매크로 ETF/FX 시세 (`/v1/market-quotes` 일괄).
  */
 export async function loadMarketSnapshotQuotes(): Promise<{
   tape: Record<string, FinnhubQuote | null>;
   macro: Record<string, FinnhubQuote | null>;
 }> {
-  const tapeSet = new Set<string>([...MARKET_SNAPSHOT_TAPE_SYMBOLS]);
+  const tapeSyms = [...MARKET_SNAPSHOT_TAPE_SYMBOLS];
   const macroSyms = MARKET_SNAPSHOT_MACRO_ROWS.map((r) => r.symbol);
-  const allSyms = [...MARKET_SNAPSHOT_TAPE_SYMBOLS, ...macroSyms];
+  const tapeSet = new Set<string>(tapeSyms);
+  const outTape: Record<string, FinnhubQuote | null> = {};
+  const outMacro: Record<string, FinnhubQuote | null> = {};
+  tapeSyms.forEach((s) => {
+    outTape[s] = null;
+  });
+  macroSyms.forEach((s) => {
+    outMacro[s] = null;
+  });
 
-  const quotes = await Promise.all(
-    allSyms.map(async (sym) => {
-      try {
-        if (sym === 'OANDA:USD_KRW') {
-          const raw = await fetchUsdKrwQuoteApprox();
-          const q = raw && finnhubQuoteHasValidPrice(raw) ? raw : null;
-          return { sym, q };
-        }
-        const raw = await fetchQuote(sym);
-        const q = finnhubQuoteHasValidPrice(raw) ? (raw as FinnhubQuote) : null;
-        return { sym, q };
-      } catch {
-        return { sym, q: null as FinnhubQuote | null };
-      }
-    }),
-  );
-
-  const tape: Record<string, FinnhubQuote | null> = {};
-  const macro: Record<string, FinnhubQuote | null> = {};
-  for (const { sym, q } of quotes) {
-    if (tapeSet.has(sym)) {
-      tape[sym] = q;
-    } else {
-      macro[sym] = q;
-    }
+  if (!hasSignalApi()) {
+    return { tape: outTape, macro: outMacro };
   }
-  return { tape, macro };
+
+  const uniq = [...new Set([...tapeSyms, ...macroSyms])];
+  let rows = await fetchSignalMarketQuotes({ symbols: uniq, pageSize: uniq.length }).catch(() => []);
+  const map = new Map(rows.map((r) => [String(r.symbol || '').trim().toUpperCase(), r] as const));
+  for (const sym of uniq) {
+    const row = map.get(sym);
+    let q: FinnhubQuote | null = null;
+    if (row) {
+      const conv = signalMarketQuoteToFinnhubQuote(row);
+      q = finnhubQuoteHasValidPrice(conv) ? conv : null;
+    }
+    if (tapeSet.has(sym)) outTape[sym] = q;
+    else outMacro[sym] = q;
+  }
+  return { tape: outTape, macro: outMacro };
 }

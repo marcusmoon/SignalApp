@@ -9,7 +9,7 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchSignalMarketList } from '@/integrations/signal-api';
-import { useSignalApiBackend } from '@/services/env';
+import { hasSignalApi } from '@/services/env';
 
 const NUM_COLUMNS = 3;
 
@@ -20,7 +20,7 @@ export default function MegaCapListScreen() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const [symbols, setSymbols] = useState<string[]>([...MEGA_CAP_TICKERS]);
-  const shouldUseSignalApi = useSignalApiBackend();
+  const shouldUseSignalApi = hasSignalApi();
 
   useFocusEffect(
     useCallback(() => {

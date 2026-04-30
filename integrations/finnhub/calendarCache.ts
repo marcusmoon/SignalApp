@@ -1,5 +1,5 @@
 import { normalizeEarningsSymbolForMatch } from '@/constants/megaCapUniverse';
-import { fetchCalendarEventsMerged } from '@/integrations/finnhub';
+import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api/calendar';
 import type { CalendarConcallScope } from '@/services/calendarConcallScopePreference';
 import type { CalendarEvent } from '@/types/signal';
 import { toYmd } from '@/utils/date';
@@ -64,9 +64,12 @@ export async function fetchCalendarEventsMergedCached(
 ): Promise<CalendarEvent[]> {
   const cacheEnabled = opts?.cacheEnabled !== false;
   const scope = options.scope ?? 'mega';
+  const from = options.rangeFrom ?? new Date();
+  const to = options.rangeTo ?? new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000);
 
   if (!cacheEnabled) {
-    return fetchCalendarEventsMerged(daysAhead, options);
+    const rows = await fetchSignalCalendar({ from: toYmd(from), to: toYmd(to) });
+    return rows.map(signalCalendarToCalendarEvent);
   }
 
   const key = buildCalendarCacheKey(
@@ -86,7 +89,7 @@ export async function fetchCalendarEventsMergedCached(
     }
   }
 
-  const events = await fetchCalendarEventsMerged(daysAhead, options);
+  const events = (await fetchSignalCalendar({ from: toYmd(from), to: toYmd(to) })).map(signalCalendarToCalendarEvent);
   store(key, events);
   return events;
 }

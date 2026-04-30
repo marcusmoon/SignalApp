@@ -4,7 +4,7 @@ import path from 'node:path';
 import { config } from './config.mjs';
 import { ensureNewsSourcesFromItems, normalizeNewsSourceName, normalizeNewsSourceNameWithAliases, readDb, updateDb, upsertById, nowIso } from './db.mjs';
 import { retranslateNewsItems, runPollingJob } from './jobs/runner.mjs';
-import { fetchFinnhubMarketQuotes } from './providers/market/finnhub.mjs';
+import { fetchFinnhubMarketQuotes, fetchFinnhubProfile2, fetchFinnhubStockCandles } from './providers/market/finnhub.mjs';
 import { translateNews } from './providers/translation/index.mjs';
 import { fetchYoutubeVideosByIds } from './providers/youtube/youtube.mjs';
 import { listProviderSettingsPublic, updateProviderSetting } from './providerSettings.mjs';
@@ -263,6 +263,40 @@ function filterCoinMarkets(items, url) {
   return rows.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
 }
 
+function filterConcalls(items, url) {
+  const symbol = url.searchParams.get('symbol')?.trim().toUpperCase();
+  const year = url.searchParams.get('year') || url.searchParams.get('fiscalYear');
+  const quarter = url.searchParams.get('quarter') || url.searchParams.get('fiscalQuarter');
+  const from = url.searchParams.get('from');
+  const to = url.searchParams.get('to');
+  const q = url.searchParams.get('q')?.trim().toLowerCase();
+  const includeTranscript = url.searchParams.get('includeTranscript') === '1';
+  let rows = [...items];
+  if (symbol) rows = rows.filter((item) => String(item.symbol || '').toUpperCase() === symbol);
+  if (year) rows = rows.filter((item) => String(item.fiscalYear ?? '') === String(year));
+  if (quarter) rows = rows.filter((item) => String(item.fiscalQuarter ?? '') === String(quarter));
+  if (from) rows = rows.filter((item) => !item.earningsDate || item.earningsDate >= from);
+  if (to) rows = rows.filter((item) => !item.earningsDate || item.earningsDate <= to);
+  if (q) {
+    rows = rows.filter((item) =>
+      [item.symbol, item.title, item.summaryProvider, item.provider].some((value) =>
+        String(value || '').toLowerCase().includes(q),
+      ),
+    );
+  }
+  return rows
+    .sort(
+      (a, b) =>
+        String(b.earningsDate || '').localeCompare(String(a.earningsDate || '')) ||
+        String(a.symbol || '').localeCompare(String(b.symbol || '')),
+    )
+    .map((item) => {
+      if (includeTranscript) return item;
+      const { transcript, rawPayload, ...rest } = item;
+      return rest;
+    });
+}
+
 function getMarketList(db, key) {
   return (db.marketLists || []).find((item) => item.key === key);
 }
@@ -365,6 +399,7 @@ function dashboardSummary(db) {
       newsTranslations: db.newsTranslations.length,
       calendar: db.calendarEvents.length,
       youtube: db.youtubeVideos.length,
+      concalls: db.concallTranscripts.length,
       marketQuotes: db.marketQuotes.length,
       coinMarkets: db.coinMarkets.length,
       jobs: db.pollingJobs.length,
@@ -382,6 +417,7 @@ const RESET_TARGETS = {
   newsTranslations: 'newsTranslations',
   calendarEvents: 'calendarEvents',
   youtubeVideos: 'youtubeVideos',
+  concallTranscripts: 'concallTranscripts',
   marketQuotes: 'marketQuotes',
   coinMarkets: 'coinMarkets',
   pollingJobRuns: 'pollingJobRuns',
@@ -443,8 +479,24 @@ function serveSwaggerUi(res) {
 }
 
 async function serveAsset(res, relativePath, contentType) {
-  const file = path.join(config.rootDir, '..', relativePath);
-  const body = await fs.readFile(file);
+  const candidates = [
+    path.join(config.rootDir, 'src', 'public', relativePath),
+    path.join(config.rootDir, relativePath),
+    path.join(config.rootDir, '..', relativePath),
+  ];
+  let body = null;
+  for (const file of candidates) {
+    try {
+      body = await fs.readFile(file);
+      break;
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+    }
+  }
+  if (!body) {
+    json(res, 404, { error: 'ASSET_NOT_FOUND' });
+    return;
+  }
   res.writeHead(200, { 'content-type': contentType, 'cache-control': 'public, max-age=3600' });
   res.end(body);
 }
@@ -537,6 +589,63 @@ export async function handleRequest(req, res) {
       const db = await readDb();
       const page = paginate(filterYoutube(db.youtubeVideos, url), url, 30, 100);
       json(res, 200, { data: page.rows, page: page.page, pageSize: page.pageSize, total: page.total, totalPages: page.totalPages });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/v1/concalls') {
+      const db = await readDb();
+      const page = paginate(filterConcalls(db.concallTranscripts, url), url, 30, 100);
+      json(res, 200, { data: page.rows, page: page.page, pageSize: page.pageSize, total: page.total, totalPages: page.totalPages });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/v1/stock-profile') {
+      const symbol = url.searchParams.get('symbol')?.trim().toUpperCase();
+      if (!symbol) {
+        json(res, 400, { error: 'SYMBOL_REQUIRED' });
+        return;
+      }
+      try {
+        const data = await fetchFinnhubProfile2(symbol);
+        if (!data || typeof data !== 'object') {
+          json(res, 404, { error: 'PROFILE_NOT_FOUND' });
+          return;
+        }
+        const hasId = String(data.ticker || data.symbol || data.name || '').trim();
+        if (!hasId) {
+          json(res, 404, { error: 'PROFILE_NOT_FOUND' });
+          return;
+        }
+        json(res, 200, { data });
+      } catch {
+        json(res, 502, { error: 'PROFILE_UNAVAILABLE' });
+      }
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/v1/stock-candles') {
+      const symbol = url.searchParams.get('symbol')?.trim().toUpperCase();
+      const resolution = url.searchParams.get('resolution') || 'D';
+      const from = Number(url.searchParams.get('from'));
+      const to = Number(url.searchParams.get('to'));
+      if (!symbol || !Number.isFinite(from) || !Number.isFinite(to)) {
+        json(res, 400, { error: 'BAD_QUERY' });
+        return;
+      }
+      try {
+        const data = await fetchFinnhubStockCandles(symbol, {
+          resolution,
+          from: Math.floor(from),
+          to: Math.floor(to),
+        });
+        if (!data) {
+          json(res, 502, { error: 'CANDLES_UNAVAILABLE' });
+          return;
+        }
+        json(res, 200, { data });
+      } catch {
+        json(res, 502, { error: 'CANDLES_UNAVAILABLE' });
+      }
       return;
     }
 
@@ -731,6 +840,13 @@ export async function handleRequest(req, res) {
         const page = paginate(filterYoutube(db.youtubeVideos, url), url, 30, 100);
         const channels = [...new Set(db.youtubeVideos.map((item) => item.channel).filter(Boolean))].sort((a, b) => a.localeCompare(b));
         json(res, 200, { data: page.rows, channels, page: page.page, pageSize: page.pageSize, total: page.total, totalPages: page.totalPages });
+        return;
+      }
+
+      if (req.method === 'GET' && pathname === '/admin/api/concalls') {
+        const db = await readDb();
+        const page = paginate(filterConcalls(db.concallTranscripts, url), url, 30, 100);
+        json(res, 200, { data: page.rows, page: page.page, pageSize: page.pageSize, total: page.total, totalPages: page.totalPages });
         return;
       }
 
@@ -1012,7 +1128,7 @@ export async function handleRequest(req, res) {
       const providerSettingMatch = pathname.match(/^\/admin\/api\/provider-settings\/([^/]+)$/);
       if (req.method === 'PATCH' && providerSettingMatch) {
         const provider = decodeURIComponent(providerSettingMatch[1]);
-        if (!['finnhub', 'openai', 'claude', 'youtube', 'coingecko'].includes(provider)) {
+        if (!['finnhub', 'openai', 'claude', 'youtube', 'api-ninjas', 'coingecko'].includes(provider)) {
           json(res, 400, { error: 'UNKNOWN_PROVIDER' });
           return;
         }

@@ -13,7 +13,7 @@
 
 | 영역 | 요약 |
 |------|------|
-| 뉴스 | 글로벌·코인·한국 세그먼트, Finnhub 소스, 한국은 키워드 필터, LLM 설정 시 **제목 번역** |
+| 뉴스 | 글로벌·코인·한국 세그먼트, Finnhub 소스, 한국은 키워드 필터, 서버 번역 설정 시 **제목 번역** |
 | 시세 | 관심·인기·시총·코인, Finnhub (+ 코인 시총 등 보조 연동) |
 | 컨콜 | 트랜스크립트 기반 요약(제공자·캐시 정책은 앱 설정 따름) |
 | 캘린더 | 실적·이벤트, 로컬 알림 연동 |
@@ -27,8 +27,8 @@
 ## 기술 (요약)
 
 - **스택:** Expo Router, TypeScript strict, 경로 별칭 `@/*`.
-- **데이터:** Finnhub, YouTube Data API, Anthropic / OpenAI(선택), API Ninjas, Coingecko 등은 **`integrations/<vendor>/`** 에서 캡슐화. 비즈니스 규칙은 **`domain/`**, 기기·설정은 **`services/`**.
-- **보안:** 민감 키는 장기적으로 **BFF** 이전을 전제로 한다. 클라이언트에는 `EXPO_PUBLIC_*`만.
+- **데이터:** 앱은 Signal Server API만 조회하고, Finnhub·YouTube Data API·Anthropic/OpenAI·CoinGecko 등 외부 provider는 서버/Admin에서 관리한다. 비즈니스 규칙은 **`domain/`**, 기기·설정은 **`services/`**.
+- **보안:** 클라이언트 공개 env에는 Signal API 주소와 광고/개발 플래그만 둔다.
 
 ## 로드맵 (개략)
 

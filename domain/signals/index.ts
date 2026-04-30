@@ -1,4 +1,4 @@
-import type { FinnhubEarningsRow, FinnhubNewsRaw, FinnhubQuote } from '@/integrations/finnhub';
+import type { FinnhubEarningsRow, FinnhubNewsRaw, FinnhubQuote } from '@/integrations/finnhub/types';
 
 export type SignalScoreInput = {
   symbol: string;
@@ -91,4 +91,3 @@ export function buildSignalScore(input: SignalScoreInput): SignalScore {
     absMovePct,
   };
 }
-

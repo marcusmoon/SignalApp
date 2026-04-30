@@ -4,9 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Signal Admin</title>
-    <link rel="stylesheet" href="/admin/admin.css?v=2026-04-28-dashboard-1" />
+    <link rel="stylesheet" href="/admin/admin.css?v=2026-04-30-session-pending" />
   </head>
-  <body>
+  <body class="sessionPending">
     <header>
       <div class="headerLeft">
         <button id="hamburgerBtn" class="secondary hamburgerBtn" data-i18n-aria-label="ariaHamburger">☰</button>
@@ -47,7 +47,7 @@
 
     <main>
       <div id="sideOverlay" class="sideOverlay hidden" aria-hidden="true"></div>
-      <section id="loginPanel" class="loginShell">
+      <section id="loginPanel" class="loginShell hidden">
         <div class="loginCard">
           <div class="signalLogo" aria-label="Signal Admin">
             <div class="signalBars" aria-hidden="true">
@@ -199,6 +199,8 @@
                         <option value="news">news</option>
                         <option value="calendar">calendar</option>
                         <option value="youtube">youtube</option>
+                        <option value="concalls">concalls</option>
+                        <option value="api-ninjas">api-ninjas</option>
                         <option value="market">market</option>
                         <option value="finnhub">finnhub</option>
                         <option value="coingecko">coingecko</option>
@@ -562,6 +564,11 @@
                         <input type="checkbox" data-reset-target="calendarEvents" />
                         <span class="resetGlyph">C</span>
                         <span class="resetText"><strong data-i18n="settingsResetCalendar">캘린더 이벤트</strong><small data-i18n="settingsResetCalendarSub">실적·경제지표 일정</small></span>
+                      </label>
+                      <label class="resetOption">
+                        <input type="checkbox" data-reset-target="concallTranscripts" />
+                        <span class="resetGlyph">C</span>
+                        <span class="resetText"><strong data-i18n="settingsResetConcalls">컨콜 트랜스크립트</strong><small data-i18n="settingsResetConcallsSub">수집된 실적콜 전문과 요약 메타</small></span>
                       </label>
                       <label class="resetOption">
                         <input type="checkbox" data-reset-target="youtubeVideos" />

@@ -1,39 +1,67 @@
 # Signal Local API Server
 
-Local-first server for polling external APIs, storing Signal-shaped data, and serving the mobile app/admin.
+Local-first Signal API server for collecting external provider data, normalizing it into Signal-shaped JSON stores, and serving both the mobile app and admin console.
+
+For the full Korean operations guide, see [`../docs/SERVER.md`](../docs/SERVER.md).
 
 ## Run
 
+From the repository root:
+
 ```bash
-cd server
-cp .env.example .env
-npm run dev
+cp server/.env.example server/.env
+npm run server:dev
 ```
 
 Open:
 
 - API health: `http://127.0.0.1:4000/health`
 - Admin: `http://127.0.0.1:4000/admin`
+- OpenAPI: `http://127.0.0.1:4000/openapi.json`
+- Docs: `http://127.0.0.1:4000/docs`
 
-Default local admin is `admin` / `signal-local` unless changed in `server/.env`.
+Admin login is configured only through `ADMIN_USERS` in `server/.env`:
 
-## Worker Split
+```env
+ADMIN_USERS=[{"id":"dev","password":"change-me"}]
+```
 
-The source is already split for a future dedicated worker:
+## Environment
 
+Provider keys can be seeded from env, but normal local operation should use Admin settings.
+
+- `FINNHUB_TOKEN`
+- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
+- `YOUTUBE_API_KEY`
+- `NINJAS_KEY`
+
+Translation defaults:
+
+- `TRANSLATION_PROVIDER=mock|openai|claude`
+- `TRANSLATION_MODEL=...`
+
+## Source Split
+
+- `src/server.mjs`: API + admin + scheduler for local MVP.
+- `src/worker.mjs`: scheduler-only future entrypoint.
+- `src/http/`: public/admin HTTP routes split by domain.
 - `src/jobs/runner.mjs`: executes one polling or translation job.
 - `src/jobs/scheduler.mjs`: finds due jobs and calls the runner.
-- `src/server.mjs`: API + admin + scheduler for local MVP.
-- `src/worker.mjs`: scheduler-only entrypoint for a future separate process.
+- `src/providers/`: external providers and normalization.
 
-For now, `npm run dev` starts the scheduler inside the API server. Later cloud deployment can run `npm run start` and `npm run worker` as separate services after DB locking is added.
+`npm run server:worker` is a future split-process entrypoint. Do not run it together with `server:dev` until an operational lock exists.
 
-## Shape
+## Persistence
 
-- `news_items`: original provider news normalized into Signal fields.
-- `news_translations`: locale-specific title/summary/content, editable by admin.
-- `calendar_events`: earnings/macro events normalized into Signal fields.
-- `polling_jobs`: enabled/interval/provider/params for periodic ingestion.
-- `translation_settings`: provider/model/autotranslate per target locale.
+Data is split by domain under `server/data/`:
 
-This MVP uses `server/data/local-db.json` for local persistence. It is intentionally shaped like tables so it can move to Postgres later.
+- `settings.json`: app settings, provider settings, translation settings, UI model presets, news source settings.
+- `jobs.json`: polling jobs and run history.
+- `news.json`: news items and translations, including hashtags.
+- `calendar.json`: macro/earnings calendar events.
+- `concalls.json`: concall transcripts.
+- `youtube.json`: YouTube videos.
+- `market.json`: market quotes, coin markets, market lists.
+
+Older `server/data/local-db.json` is read once and migrated into the split files.

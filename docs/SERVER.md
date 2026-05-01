@@ -22,6 +22,9 @@ npm run server:dev
 | Market Quotes API | `http://127.0.0.1:4000/v1/market-quotes?segment=popular` |
 | Coins API | `http://127.0.0.1:4000/v1/coins` |
 | Market Lists API | `http://127.0.0.1:4000/v1/market-lists/mega_cap` |
+| Stock Profile API | `http://127.0.0.1:4000/v1/stock-profile?symbol=AAPL` |
+| Stock Candles API | `http://127.0.0.1:4000/v1/stock-candles?symbol=AAPL&resolution=D` |
+| Concalls API | `http://127.0.0.1:4000/v1/concalls?symbol=AAPL` |
 
 어드민 로그인은 **`ADMIN_USERS` 환경 변수**에만 의존합니다. 한 줄 JSON 배열로 계정을 넣습니다.
 
@@ -75,7 +78,7 @@ TRANSLATION_MODEL=claude-3-5-haiku-latest
 
 어드민의 **번역 설정** 메뉴에서도 locale별 provider/model/자동 번역 여부를 바꿀 수 있습니다. 번역 실패는 `news_translations`에 `failed` 상태로 남아 뉴스 관리에서 필터링할 수 있습니다.
 
-앱 루트 `.env`에는 Signal 서버 주소만 둡니다. Finnhub/OpenAI/Claude/YouTube/CoinGecko 등 외부 provider 키는 서버/Admin에서 관리합니다.
+앱 루트 `.env`에는 Signal 서버 주소의 **번들 기본값**만 둡니다. Finnhub/OpenAI/Claude/YouTube/CoinGecko/Ninjas 등 외부 provider 키는 서버/Admin에서 관리합니다.
 
 ## 3. 앱에서 로컬 서버 보기
 
@@ -84,6 +87,8 @@ TRANSLATION_MODEL=claude-3-5-haiku-latest
 ```env
 EXPO_PUBLIC_SIGNAL_API_BASE_URL=http://127.0.0.1:4000
 ```
+
+이 값은 앱 설정의 **Signal 서버** 선택에서 `빌드(.env)` 모드일 때 쓰는 기본값입니다. 앱에서는 `bundle / dev / real / custom` 모드를 저장할 수 있고, 저장 위치는 `services/signalServerEndpoint.ts`의 AsyncStorage 키입니다.
 
 Metro 재시작:
 
@@ -114,6 +119,10 @@ npx expo start -c
 |-----|------|
 | `market_news_global` | 글로벌 뉴스 최신 수집 |
 | `market_news_crypto` | 코인 뉴스 최신 수집 |
+| `market_news_global_reconcile` | 글로벌 뉴스 보정 수집 |
+| `market_news_crypto_reconcile` | 코인 뉴스 보정 수집 |
+| `market_news_financial_juice` | Financial Juice RSS 최신 수집 |
+| `market_news_financial_juice_reconcile` | Financial Juice RSS 보정 수집 |
 | `calendar_economic` | 경제 캘린더 최신 수집 |
 | `calendar_earnings` | 실적 캘린더 최신 수집 |
 | `youtube_economy_latest` | 경제 유튜브 최신 영상 수집 |
@@ -122,6 +131,7 @@ npx expo start -c
 | `concall_transcripts_recent` | 최근 실적 캘린더 기반 컨콜 트랜스크립트 수집 |
 | `youtube_economy_reconcile` | 저장된 유튜브 영상 상세/조회수 보정 수집 |
 | `market_quotes_popular` | 인기 시세 최신 수집 |
+| `market_quotes_watchlist` | 기본 관심종목 시세 수집 |
 | `market_quotes_mcap` | 시총 상위 시세 수집 |
 | `market_coins_top` | 코인 시총 상위 수집 |
 
@@ -133,7 +143,9 @@ Job에는 운영자가 보기 쉬운 `displayName`과 `description`이 있으며
 
 메가캡·시총 후보·인기 시세·기본 관심종목 리스트는 **Admin > 설정 > 마켓 리스트 관리**에서 수정합니다. 앱은 `/v1/market-lists/:key`를 통해 같은 리스트를 조회할 수 있고, 시총 상위 시세 Job은 `mcap_universe`, 인기 시세 Job은 `popular_symbols`를 사용합니다.
 
-앱은 시세 탭도 서버 DB 값을 사용합니다. 관심·인기·시총은 `/v1/market-quotes`, 코인은 `/v1/coins`를 조회합니다. 따라서 앱에 보이려면 해당 수집 Job이 먼저 실행되어 `server/data/market.json`에 값이 저장되어 있어야 합니다.
+앱은 시세 탭도 서버 DB 값을 사용합니다. 관심·인기·시총은 `/v1/market-quotes`, 코인은 `/v1/coins`를 조회합니다. 상세 화면의 프로필·캔들은 `/v1/stock-profile`, `/v1/stock-candles`를 조회합니다. 따라서 앱에 보이려면 해당 수집 Job이 먼저 실행되어 `server/data/market.json`에 값이 저장되어 있어야 합니다.
+
+뉴스 번역은 `title/summary/content`와 함께 `hashtags`를 반환할 수 있습니다. 서버는 자동 태그를 `newsItems[].hashtags`에 저장하고, 어드민 뉴스 편집 모달에서 수동 태그로 고정하거나 자동 모드로 되돌릴 수 있습니다. `/v1/news`는 `tag` 쿼리로 해시태그 필터를 지원합니다.
 
 ## 5. 소스 분리
 
@@ -186,10 +198,11 @@ curl 'http://127.0.0.1:4000/v1/market-lists/mega_cap'
 로컬 저장 파일은 용도별로 나뉩니다.
 
 ```text
-server/data/settings.json   # providerSettings, translationSettings
+server/data/settings.json   # appSettings, providerSettings, translationSettings, UI/model/news-source settings
 server/data/jobs.json       # pollingJobs, pollingJobRuns
 server/data/news.json       # newsItems, newsTranslations
 server/data/calendar.json   # calendarEvents
+server/data/concalls.json   # concallTranscripts
 server/data/youtube.json    # youtubeVideos
 server/data/market.json     # marketQuotes, coinMarkets, marketLists
 ```

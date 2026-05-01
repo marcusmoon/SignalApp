@@ -1,7 +1,7 @@
 # SIGNAL — 아키텍처·레이어 (최신)
 
 **Domain** = 제품 규칙만. 네트워크·벤더 키·URL 조립 없음.  
-**Infrastructure** = Signal API HTTP·AdMob·OS 어댑터·provider DTO/캐시 호환 모듈 (`integrations/`).
+**Infrastructure** = Signal API HTTP·응답 캐시·AdMob·OS 어댑터 (`integrations/`).
 
 이 문서가 **폴더 역할·상수 위치·훅·import 규칙**의 단일 기준이다. 명령·환경 변수·탭별 파일 연결은 **[AGENTS.md](./AGENTS.md)**.
 
@@ -16,8 +16,8 @@
 | `hooks/` | 여러 화면에서 쓰는 **공용 React 훅**. `index.ts` 배럴 → **`import { … } from '@/hooks'`**. |
 | `contexts/` | React Context + **그 Provider와 짝인 훅** (`useLocale`, `useSignalTheme`, `useOtaBanner` 등). |
 | `domain/` | 순수 규칙·정규화·분류. 아래 **「Domain」** 참고. |
-| `integrations/<vendor>/` | Signal API client, AdMob, provider DTO·상수·캐시 호환 모듈. 아래 **「Integrations」** 참고. |
-| `services/` | AsyncStorage·설정·오케스트레이션. 앱 피처 데이터 HTTP는 **`@/integrations/signal-api/...`** 만 사용. |
+| `integrations/` | Signal API client/cache, AdMob, OTA 어댑터. 아래 **「Integrations」** 참고. |
+| `services/` | AsyncStorage·설정·오케스트레이션. Signal 서버 endpoint 선택과 캐시 on/off도 여기서 관리한다. 앱 피처 데이터 HTTP는 **`@/integrations/signal-api/...`** 만 사용. |
 | `utils/` | 날짜·링크·`openYoutube` 등 범용 헬퍼. |
 | `constants/` | **앱 전역** 정적 값만. 아래 **「루트 `constants/`」** 참고. |
 | `locales/` | i18n (`ko` 키 기준 → `en`/`ja`). |
@@ -98,7 +98,7 @@ domain/
 
 ```text
 integrations/
-  signal-api/             # Signal Server API client + cache/ (news, calendar, concalls, youtube)
+  signal-api/             # Signal Server API client + cache/ (news, calendar, concalls, youtube 등)
   admob/                  # 광고
   expo-updates/           # OTA 관련
 ```
@@ -113,8 +113,9 @@ integrations/
 ```text
 services/
   env.ts                              # EXPO_PUBLIC_* 런타임 env
+  signalServerEndpoint.ts             # 번들/dev/real/custom Signal 서버 endpoint 선택
   cacheFeaturePreferences.ts          # 캐시 on/off
-  cache/                              # 탭·피처 TTL, 설정 화면 캐시 클리어와 연동(예: quotes, news 레거리 엔트리)
+  cache/                              # 탭·피처 TTL, 설정 화면 캐시 클리어와 연동(예: quotes, news 레거시 엔트리)
   quoteWatchlist.ts                   # 관심종목
   marketSnapshotQuotes.ts             # 시세 탭 데이터 로딩 오케스트레이션(서버 API 기반)
 ```
@@ -126,9 +127,9 @@ services/
 - 서버는 외부 provider를 호출하고(키는 Admin에서 관리), 결과를 로컬 DB(`server/data/*.json`)에 저장한 뒤 `/v1/*`와 `/admin/api/*`로 제공한다.
 
 ```text
-server/src/providers/       # 외부 provider 호출 + 정규화(예: market/finnhub, market/index)
+server/src/providers/       # 외부 provider 호출 + 정규화(예: market/finnhub, market/index, concalls/ninjas)
 server/src/jobs/            # scheduler/runner (수집 작업)
-server/data/                # settings/jobs/news/calendar/youtube/market 등 JSON 스토어
+server/data/                # settings/jobs/news/calendar/concalls/youtube/market 등 JSON 스토어
 ```
 
 ---
@@ -144,7 +145,7 @@ server/data/                # settings/jobs/news/calendar/youtube/market 등 JSO
 ## 3. Integrations (`integrations/`)
 
 - **Signal API:** 앱 피처 데이터 HTTP는 `integrations/signal-api/`에서만 수행한다.
-- **Provider client:** Finnhub·YouTube·OpenAI·Claude·CoinGecko 등 외부 provider HTTP는 서버가 담당한다. 앱의 provider 폴더는 타입·상수·캐시 호환 레이어로만 사용한다.
+- **Provider client:** Finnhub·YouTube·OpenAI·Claude·CoinGecko·Ninjas 등 외부 provider HTTP는 서버가 담당한다. 앱에는 provider 클라이언트 폴더를 두지 않는다.
 - **도메인 상수:** 큐레이션·심볼 시드 등은 `domain/youtube/constants.ts`, `domain/quotes/constants.ts` 등 **제품 규칙과 함께 갈 값**에 둔다.
 - **`signal-api/index.ts`:** 외부에 노출하는 API·타입 re-export. `signal-api/cache/*`는 응답 캐시; 순환 참조 주의.
 - **서버 측 시장 데이터:** 수집·정규화는 `server/src/providers/` (예: `market/finnhub`) — 앱은 `/v1/*`만 호출한다.
@@ -173,8 +174,8 @@ server/data/                # settings/jobs/news/calendar/youtube/market 등 JSO
 
 ## 6. `services/` vs `integrations/`
 
-- **integrations:** Signal API HTTP, AdMob, 메모리 캐시, provider DTO·상수 호환 모듈.
-- **services:** `env`, 관심종목·알림·캐시 on/off 등 **기기·설정·오케스트레이션**. 새 피처 데이터 조회는 `@/integrations/signal-api/...`를 import한다.
+- **integrations:** Signal API HTTP, Signal API 응답 캐시, AdMob, OTA 어댑터.
+- **services:** `env`, Signal 서버 endpoint 선택, 관심종목·알림·캐시 on/off 등 **기기·설정·오케스트레이션**. 새 피처 데이터 조회는 `@/integrations/signal-api/...`를 import한다.
 
 ---
 

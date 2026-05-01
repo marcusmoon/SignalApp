@@ -40,7 +40,7 @@ npm run server:dev      # 로컬 Signal API + 어드민 + 스케줄러
 
 1. 앱 피처 조회는 **`integrations/signal-api/`** 에서만 HTTP를 수행합니다.
 2. 제품 시드·규칙은 **`domain/<영역>/`** 에 두고, API 응답 형태는 **`integrations/signal-api/types`** 등으로 맞춥니다.
-3. 신규 화면·서비스는 Finnhub·YouTube Data·LLM 등 **외부 provider 클라이언트를 앱에 두지 않습니다**(서버·Admin이 키와 수집을 담당).
+3. 신규 화면·서비스는 Finnhub·YouTube Data·LLM·CoinGecko·Ninjas 등 **외부 provider 클라이언트를 앱에 두지 않습니다**(서버·Admin이 키와 수집을 담당).
 
 ## 4. 디렉터리
 
@@ -64,10 +64,10 @@ assets/
 | 화면/기능 | 참고 |
 |-----------|------|
 | 시세 탭 | `app/(tabs)/quotes.tsx`, 순서 `quotesSegmentOrderPreference`, Signal API 시세·코인, 보조 캐시 `services/cache/quotesCache.ts` |
-| 뉴스 탭 | `app/(tabs)/index.tsx`, 순서 `newsSegmentOrderPreference`, `@/domain/news`, `components/signal/NewsCard`, `fetchSignalNews` / `integrations/signal-api/cache/newsCache`, 저장 `services/newsKoreaKeywordsPreference.ts` |
+| 뉴스 탭 | `app/(tabs)/index.tsx`, 순서 `newsSegmentOrderPreference`, `@/domain/news`, `components/signal/NewsCard`, 해시태그 표시 설정 `services/newsHashtagDisplayPreference.ts`, `fetchSignalNews` / `integrations/signal-api/cache/newsCache`, 저장 `services/newsKoreaKeywordsPreference.ts` |
 | 컨콜 | `@/domain/concalls`(연도·분기·범위·실적 행), 저장 `services/concallFiscalFilter.ts`, 서버 API `integrations/signal-api/concalls.ts`, 흐름 `services/concalls.ts` |
 | 유튜브 검색 보조 | `@/domain/youtube`, 카드에서 열기 `utils/openYoutube.ts` |
-| 설정 | `app/settings.tsx` — 뉴스·유튜브·시세·캘린더·표시·알림 |
+| 설정 | `app/settings.tsx` — 뉴스·유튜브·시세·캘린더·표시·알림, Signal 서버 endpoint 오버라이드 `services/signalServerEndpoint.ts` |
 | 테마·문자열 | `SignalThemeContext`, `locales/*` (`@/locales/messages`) |
 | OTA 배너 | `contexts/OtaBannerContext.tsx`, `integrations/expo-updates/`, 미리보기 플래그 `services/env` (`EXPO_PUBLIC_PREVIEW_OTA_BANNER`) |
 
@@ -75,7 +75,7 @@ assets/
 
 ## 6. `services/` vs `integrations/`
 
-Signal API·AdMob·메모리 캐시는 **`integrations/<vendor>/`** 에 둡니다. Finnhub·YouTube·OpenAI·Claude·CoinGecko 등 외부 provider HTTP는 서버가 담당하고, 앱은 `@/integrations/signal-api/...`만 호출합니다. **`services/`** 는 `env`, 관심종목·알림·**캐시 on/off**(`cacheFeaturePreferences`) 등 **기기·설정·오케스트레이션**을 담당합니다.
+Signal API HTTP와 그 응답 메모리 캐시는 **`integrations/signal-api/`**, AdMob·OTA 어댑터는 각 integration에 둡니다. Finnhub·YouTube·OpenAI·Claude·CoinGecko·Ninjas 등 외부 provider HTTP는 서버가 담당하고, 앱은 `@/integrations/signal-api/...`만 호출합니다. **`services/`** 는 `env`, Signal 서버 endpoint 선택, 관심종목·알림·**캐시 on/off**(`cacheFeaturePreferences`) 등 **기기·설정·오케스트레이션**을 담당합니다.
 
 ## 7. 코딩 메모
 

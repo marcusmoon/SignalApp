@@ -13,7 +13,7 @@ import type { MessageId } from '@/locales/messages';
 import { fetchConcallSummaryForEarningsRow } from '@/services/concalls';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import { hasSignalApi } from '@/services/env';
-import type { FinnhubEarningsRow } from '@/integrations/finnhub/types';
+import type { SignalApiCalendarEvent } from '@/integrations/signal-api/types';
 import type { ConcallSummary } from '@/types/signal';
 
 function parseIntParam(v: string | string[] | undefined): number | null {
@@ -57,18 +57,28 @@ export default function CallsSummaryScreen() {
     return String(s);
   }, [params.hour]);
 
-  const rowStub = useMemo((): FinnhubEarningsRow | null => {
+  const rowStub = useMemo((): SignalApiCalendarEvent | null => {
     if (!ticker || year == null || quarter == null || !earnDate) return null;
     return {
+      id: `stub-${ticker}-${earnDate}-Q${quarter}`,
+      provider: 'app',
+      providerItemId: `${ticker}-${earnDate}-${year}-Q${quarter}`,
+      type: 'earnings',
+      title: '',
+      country: null,
       symbol: ticker,
+      eventAt: null,
       date: earnDate,
-      epsActual: null,
-      epsEstimate: null,
-      hour: earnHour,
-      quarter,
-      revenueActual: null,
-      revenueEstimate: null,
-      year,
+      timeLabel: earnHour,
+      impact: null,
+      actual: null,
+      estimate: null,
+      previous: null,
+      unit: null,
+      fiscalYear: year,
+      fiscalQuarter: quarter,
+      earningsHour: earnHour,
+      fetchedAt: new Date().toISOString(),
     };
   }, [ticker, year, quarter, earnDate, earnHour]);
 

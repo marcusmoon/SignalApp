@@ -1,4 +1,5 @@
 import { config } from '../../config.mjs';
+import { normalizeNewsHashtagLabels } from '../../newsHashtags.mjs';
 import { getProviderSetting } from '../../providerSettings.mjs';
 
 const OPENAI_CHAT_URL = 'https://api.openai.com/v1/chat/completions';
@@ -21,11 +22,18 @@ function stripJsonFence(text) {
 }
 
 function parseTranslationJson(text) {
-  const parsed = JSON.parse(stripJsonFence(text));
+  let parsed;
+  try {
+    parsed = JSON.parse(stripJsonFence(text));
+  } catch {
+    return { title: '', summary: '', content: '', hashtagLabels: [] };
+  }
+  const rawTags = Array.isArray(parsed.hashtags) ? parsed.hashtags : [];
   return {
     title: String(parsed.title || '').trim(),
     summary: String(parsed.summary || '').trim(),
     content: String(parsed.content || '').trim(),
+    hashtagLabels: normalizeNewsHashtagLabels(rawTags),
   };
 }
 
@@ -36,7 +44,9 @@ function buildNewsTranslationPrompt(newsItem, locale) {
     `You translate financial news for Korean retail investors using the SIGNAL app. ` +
     `Translate into natural concise ${target}. Keep company names, tickers, numbers, and quoted facts accurate. ` +
     `Do not add analysis, advice, or facts not present in the source. ` +
-    `Return ONLY valid JSON with keys "title", "summary", and "content".`;
+    `Return ONLY valid JSON with keys "title", "summary", "content", and "hashtags". ` +
+    `"hashtags" must be a JSON array of 3 to 8 short strings for UI tags: include key US tickers in UPPERCASE when clearly relevant, ` +
+    `otherwise concise topical keywords in ${target}. No # prefix, no duplicates, no long sentences.`;
   const user =
     `${source}` +
     `Title: ${newsItem.titleOriginal || ''}\n` +
@@ -72,7 +82,8 @@ async function translateWithOpenAI(newsItem, locale, model) {
   const data = JSON.parse(raw);
   const content = data.choices?.[0]?.message?.content ?? '';
   const translated = parseTranslationJson(content);
-  return { ...translated, provider: 'openai', model: selectedModel };
+  const { hashtagLabels, ...rest } = translated;
+  return { ...rest, provider: 'openai', model: selectedModel, hashtagLabels };
 }
 
 async function translateWithClaude(newsItem, locale, model) {
@@ -101,7 +112,8 @@ async function translateWithClaude(newsItem, locale, model) {
   const data = JSON.parse(raw);
   const content = data.content?.find?.((part) => part.type === 'text')?.text ?? '';
   const translated = parseTranslationJson(content);
-  return { ...translated, provider: 'claude', model: selectedModel };
+  const { hashtagLabels, ...rest } = translated;
+  return { ...rest, provider: 'claude', model: selectedModel, hashtagLabels };
 }
 
 export async function translateNews({ newsItem, locale, provider, model }) {
@@ -119,6 +131,7 @@ export async function translateNews({ newsItem, locale, provider, model }) {
       content: newsItem.contentOriginal || '',
       errorMessage: null,
       translatedAt: new Date().toISOString(),
+      hashtagLabels: normalizeNewsHashtagLabels(newsItem.symbols || []),
     };
   }
 
@@ -134,11 +147,13 @@ export async function translateNews({ newsItem, locale, provider, model }) {
       title: mockTranslateText(newsItem.titleOriginal, locale),
       summary: mockTranslateText(newsItem.summaryOriginal, locale),
       content: mockTranslateText(newsItem.contentOriginal, locale),
+      hashtagLabels: normalizeNewsHashtagLabels(newsItem.symbols || []),
     };
   } else {
     throw new Error(`TRANSLATION_PROVIDER_NOT_IMPLEMENTED:${selectedProvider}`);
   }
 
+  const hashtagLabels = normalizeNewsHashtagLabels(translated.hashtagLabels);
   return {
     locale,
     provider: translated.provider,
@@ -149,5 +164,6 @@ export async function translateNews({ newsItem, locale, provider, model }) {
     content: translated.content || newsItem.contentOriginal || '',
     errorMessage: null,
     translatedAt: new Date().toISOString(),
+    hashtagLabels,
   };
 }

@@ -75,7 +75,7 @@ export const ja = {
   calendarActualInlineEstimate: '予想通り',
   errorFinnhubTokenShort: 'Signal サーバーの Finnhub provider 設定が必要です。',
   errorSignalApiShort:
-    'EXPO_PUBLIC_SIGNAL_API_BASE_URL が必要です。プロジェクト直下の .env に Signal サーバー URL を入れ、Metro を再起動してください。',
+    'Signal API のベース URL が空です。設定 → 表示 → 「Signal サーバー」で開発/本番/カスタムを選ぶか、.env の EXPO_PUBLIC_SIGNAL_API_BASE_URL を設定して Metro を再起動してください。',
   screenInfo: '情報',
   screenMegaCapList: 'メガキャップのティッカー一覧',
   screenMegaCapListLead:
@@ -126,6 +126,7 @@ export const ja = {
   settingsTabDisplay: '表示',
   settingsTabCalendar: 'カレンダー',
   settingsTabNotifications: '通知',
+  settingsTabServer: 'サーバー',
 
   settingsDeveloperFooterLine: 'Marcus · LinkedIn',
   settingsDeveloperLinkedInA11y: 'Marcus の LinkedIn を開く',
@@ -203,11 +204,30 @@ export const ja = {
   settingsDisplayPreviewLabel: 'プレビュー',
   settingsDisplaySelectedTheme: '選択: {{name}}',
 
+  settingsSignalServerShortNote: 'モード変更は /health が成功したときだけ保存されます。',
+  settingsSignalServerUrlA11y: 'Signal API のベース URL、{{url}}',
+  settingsSignalServerProbeFailTitle: '接続確認に失敗',
+  settingsSignalServerProbeTimeout: '10秒以内に応答がありません。URL・VPN・サーバー起動を確認してください。',
+  settingsSignalServerBundleEmpty:
+    'バンドル(.env) の EXPO_PUBLIC_SIGNAL_API_BASE_URL が空です。.env を設定するか別モードを選んでください。',
+  settingsSignalServerVerifying: '接続を確認しています…',
+  settingsSignalServerModeBundle: 'バンドル(.env)',
+  settingsSignalServerModeDev: '開発',
+  settingsSignalServerModeReal: '本番',
+  settingsSignalServerModeCustom: 'カスタム',
+  settingsSignalServerCustomLabel: '直接 URL',
+  settingsSignalServerCustomPlaceholder: 'https://example.com',
+  settingsSignalServerCustomEmpty: 'URL を入力してください。',
+
   settingsNewsTabLead: 'ニュース画面のオプションです。この端末にのみ保存されます。',
   settingsNewsSegmentOrderKicker: 'ニュースタブの順序',
   settingsNewsSegmentOrderHint:
     'ニュース画面上部のグローバル・コイン・韓国の並びです。右の≡をドラッグして並べ替えます。',
   settingsNewsSegmentDragHandleA11y: '{{name}}の順番を変更（ドラッグ）',
+  settingsNewsHashtagDisplayKicker: 'ニュースのハッシュタグ表示',
+  settingsNewsHashtagDisplayHint:
+    '各カードに表示するタグの数です（0で非表示）。並びはサーバー側の優先順に従います。',
+  settingsNewsHashtagDisplayValue: '{{max}}件表示',
   settingsNewsKoreaKeywordsKicker: '韓国ニュース キーワード',
   settingsNewsKoreaKeywordsLead:
     '韓国タブは Finnhub の一般・FX ニュースを見出し・要約・関連シンボルでキーワードに合わせて絞り込みます。初回は下の一覧に既定キーワードが入り、組み込みルールと OR で照合されます。削除・追加で調整できます。',
@@ -298,10 +318,10 @@ export const ja = {
   feedErrorLoad: 'ニュースを読み込めませんでした。',
   feedErrorRefresh: '更新に失敗しました',
   feedEmpty: '表示するニュースがありません。',
+  feedTagFilterActive: 'タグ: {{tag}}',
+  feedTagFilterClear: 'タグを解除',
+  feedLoadingMore: '読み込み中…',
 
-  newsAiClaude: 'Claude要約',
-  newsAiOpenai: 'ChatGPT要約',
-  newsAiFinnhub: '原文要約（Finnhub）',
   newsReadMore: '原文を見る →',
   newsSourceLabel: '出所',
   newsFlashBadge: '速報',

@@ -433,6 +433,20 @@ function ensureDbShape(db) {
   }
   if (!Array.isArray(db.pollingJobRuns)) db.pollingJobRuns = [];
   if (!Array.isArray(db.newsItems)) db.newsItems = [];
+  for (const item of db.newsItems) {
+    if (!item || typeof item !== 'object') continue;
+    if (!Array.isArray(item.hashtags)) item.hashtags = [];
+    else {
+      item.hashtags = item.hashtags
+        .filter((t) => t && typeof t === 'object' && String(t.label || '').trim())
+        .map((t, idx) => ({
+          label: String(t.label).trim(),
+          order: Number.isFinite(Number(t.order)) ? Number(t.order) : idx,
+          source: t.source === 'manual' ? 'manual' : 'auto',
+        }));
+    }
+    if (item.hashtagSource !== 'manual') item.hashtagSource = 'auto';
+  }
   if (!Array.isArray(db.newsTranslations)) db.newsTranslations = [];
   if (!Array.isArray(db.calendarEvents)) db.calendarEvents = [];
   if (!Array.isArray(db.concallTranscripts)) db.concallTranscripts = [];

@@ -10,12 +10,23 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/v1/news') {
     const db = await readDb();
     const locale = url.searchParams.get('locale') || 'ko';
-    // App may request a larger pool to build the "source" filter list.
-    const limit = Math.min(Number(url.searchParams.get('limit') || 30), 500);
-    const rows = filterNews(db.newsItems, url)
-      .slice(0, limit)
-      .map((item) => displayNews(item, db.newsTranslations, locale));
-    json(res, 200, { data: rows });
+    const filtered = filterNews(db.newsItems, url);
+    const total = filtered.length;
+    const limit = Math.min(Math.max(1, Number(url.searchParams.get('limit') || 20) || 20), 100);
+    const offset = Math.max(0, Number(url.searchParams.get('offset') || 0) || 0);
+    const slice = filtered.slice(offset, offset + limit);
+    const rows = slice.map((item) => displayNews(item, db.newsTranslations, locale));
+    const hasMore = offset + rows.length < total;
+    json(res, 200, {
+      data: rows,
+      meta: {
+        limit,
+        offset,
+        total,
+        hasMore,
+        nextOffset: hasMore ? offset + rows.length : null,
+      },
+    });
     return true;
   }
 

@@ -9,7 +9,7 @@ import {
   MARKET_SNAPSHOT_MACRO_ROWS,
   MARKET_SNAPSHOT_TAPE_SYMBOLS,
 } from '@/services/marketSnapshotQuotes';
-import type { FinnhubQuote } from '@/integrations/finnhub/types';
+import type { SignalApiMarketQuote } from '@/integrations/signal-api/types';
 
 function formatUsd(n: number): string {
   if (!Number.isFinite(n)) return '—';
@@ -22,10 +22,13 @@ function formatPct(n: number): string {
   return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
 }
 
-function effectiveDp(q: FinnhubQuote): number {
-  if (Number.isFinite(q.dp)) return q.dp;
-  if (Number.isFinite(q.pc) && q.pc !== 0 && Number.isFinite(q.c)) {
-    return ((q.c - q.pc) / q.pc) * 100;
+function effectiveDp(q: SignalApiMarketQuote): number {
+  const dp = Number(q.changePercent);
+  if (Number.isFinite(dp)) return dp;
+  const c = Number(q.currentPrice);
+  const pc = Number(q.previousClose);
+  if (Number.isFinite(c) && Number.isFinite(pc) && pc !== 0) {
+    return ((c - pc) / pc) * 100;
   }
   return Number.NaN;
 }
@@ -74,8 +77,8 @@ function QuoteRowList({
 }
 
 type Props = {
-  tape: Record<string, FinnhubQuote | null>;
-  macro: Record<string, FinnhubQuote | null>;
+  tape: Record<string, SignalApiMarketQuote | null>;
+  macro: Record<string, SignalApiMarketQuote | null>;
 };
 
 export function MarketSnapshotSection({ tape, macro }: Props) {
@@ -92,10 +95,11 @@ export function MarketSnapshotSection({ tape, macro }: Props) {
         }
         const dp = effectiveDp(q);
         const up = (Number.isFinite(dp) ? dp : 0) >= 0;
+        const c = Number(q.currentPrice);
         return {
           key: sym,
           title: sym,
-          price: `$${formatUsd(q.c)}`,
+          price: `$${formatUsd(c)}`,
           pct: formatPct(dp),
           up,
         };
@@ -114,11 +118,12 @@ export function MarketSnapshotSection({ tape, macro }: Props) {
         }
         const dp = effectiveDp(q);
         const up = (Number.isFinite(dp) ? dp : 0) >= 0;
+        const c = Number(q.currentPrice);
         return {
           key: row.symbol,
           title: t(row.key),
           sub,
-          price: isFx ? formatUsd(q.c) : `$${formatUsd(q.c)}`,
+          price: isFx ? formatUsd(c) : `$${formatUsd(c)}`,
           pct: formatPct(dp),
           up,
         };

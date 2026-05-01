@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/integrations/youtube/constants';
+import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/domain/youtube/constants';
 import {
   dedupeStringsPreserveOrder,
   isValidYoutubeHandle,

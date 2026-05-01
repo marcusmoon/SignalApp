@@ -1,4 +1,4 @@
-/** 시세 탭 관심 종목 기본값 (Finnhub 티커) */
+/** US watchlist seed (ticker symbols) */
 export const DEFAULT_US_WATCHLIST = [
   'NVDA',
   'GOOGL',
@@ -12,7 +12,7 @@ export const DEFAULT_US_WATCHLIST = [
   'QQQ',
 ] as const;
 
-/** 시총 탭 유니버스(프로필 병렬 조회로 시총 정렬) */
+/** Market-cap screen universe (used for sorting by market cap) */
 export const MCAP_SCREEN_UNIVERSE = [
   'AAPL',
   'MSFT',
@@ -143,3 +143,4 @@ export const POPULAR_SYMBOLS_ORDERED = [
 ] as const;
 
 export const DEFAULT_MCAP_TOP_N = 20;
+

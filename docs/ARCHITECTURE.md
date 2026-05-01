@@ -80,9 +80,13 @@ app/
 ```text
 domain/
   news/                   # 뉴스 규칙/정규화/키워드(예: 한국 뉴스)
-  quotes/                 # 시세 세그먼트/정렬/기본값
+  quotes/                 # 시세 세그먼트·US 심볼 시드 등
+  youtube/                # 큐레이션 핸들·타입(HTTP 없음)
   calendar/               # 캘린더 규칙/표시 헬퍼
   concalls/               # 컨콜 표시/필터 규칙
+  signals/                # 시그널 요약 규칙
+  theme/                  # 테마 HEX 등
+  moreHub/                # 더보기 허브 순서 등
 ```
 
 ---
@@ -90,13 +94,12 @@ domain/
 ## 1.4 인프라 레이어 (`integrations/`)
 
 - 앱에서 HTTP를 하는 곳은 `integrations/signal-api/`만 허용한다.
-- `integrations/<provider>/`는 **타입/상수/캐시 호환** 목적(직접 HTTP 금지).
+- 과거용 `integrations/finnhub`·`integrations/youtube` **클라이언트 폴더는 제거**했다. 시세·뉴스 DTO는 API 타입(`integrations/signal-api/types` 등)과 맞춘다.
 
 ```text
 integrations/
-  signal-api/             # Signal Server API client (앱의 단일 네트워크 출구)
-  finnhub/                # (앱 호환용) DTO/캐시/상수
-  youtube/                # (앱 호환용) 상수/헬퍼
+  signal-api/             # Signal Server API client + cache/ (news, calendar, concalls, youtube)
+  admob/                  # 광고
   expo-updates/           # OTA 관련
 ```
 
@@ -105,12 +108,13 @@ integrations/
 ## 1.5 기기·설정·오케스트레이션 (`services/`)
 
 - AsyncStorage 기반 사용자 설정, 캐시 on/off, 워치리스트, 알림 등 **기기 상태**를 다룬다.
-- “데이터를 어디서 가져오나”는 integrations(singal-api)이 담당하고, services는 **언제/어떤 조건으로 호출할지**를 조합한다.
+- “데이터를 어디서 가져오나”는 integrations(signal-api)이 담당하고, services는 **언제/어떤 조건으로 호출할지**를 조합한다.
 
 ```text
 services/
   env.ts                              # EXPO_PUBLIC_* 런타임 env
   cacheFeaturePreferences.ts          # 캐시 on/off
+  cache/                              # 탭·피처 TTL, 설정 화면 캐시 클리어와 연동(예: quotes, news 레거리 엔트리)
   quoteWatchlist.ts                   # 관심종목
   marketSnapshotQuotes.ts             # 시세 탭 데이터 로딩 오케스트레이션(서버 API 기반)
 ```
@@ -141,9 +145,9 @@ server/data/                # settings/jobs/news/calendar/youtube/market 등 JSO
 
 - **Signal API:** 앱 피처 데이터 HTTP는 `integrations/signal-api/`에서만 수행한다.
 - **Provider client:** Finnhub·YouTube·OpenAI·Claude·CoinGecko 등 외부 provider HTTP는 서버가 담당한다. 앱의 provider 폴더는 타입·상수·캐시 호환 레이어로만 사용한다.
-- **패키지별 `constants.ts`:** 그 연동·앱 기본 시드에 묶인 상수 (예: `integrations/youtube/constants.ts` — 기본 큐레이션 핸들). Finnhub처럼 **이미 큰 `constants.ts`가 있는 벤더**는 관심 종목 시드 등을 그 파일 안에 두어도 된다 (`DEFAULT_US_WATCHLIST` 등).
-- **`index.ts`:** 외부에 노출하는 API·타입 re-export. 캐시 모듈은 순환 참조 주의.
-- **예 (Finnhub):** `types.ts`, `constants.ts`, `quoteUtils.ts`, `*Cache.ts`는 앱 호환용. 실제 수집·provider 호출은 서버 provider가 담당한다.
+- **도메인 상수:** 큐레이션·심볼 시드 등은 `domain/youtube/constants.ts`, `domain/quotes/constants.ts` 등 **제품 규칙과 함께 갈 값**에 둔다.
+- **`signal-api/index.ts`:** 외부에 노출하는 API·타입 re-export. `signal-api/cache/*`는 응답 캐시; 순환 참조 주의.
+- **서버 측 시장 데이터:** 수집·정규화는 `server/src/providers/` (예: `market/finnhub`) — 앱은 `/v1/*`만 호출한다.
 
 ---
 

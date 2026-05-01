@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { loadNotificationHistory, type StoredNotification } from '@/services/notificationHistory';
 import { formatRelativeTime } from '@/utils/date';
 
@@ -19,6 +20,8 @@ export default function AlertsScreen() {
   const isFocused = useIsFocused();
   const router = useRouter();
   const [items, setItems] = useState<StoredNotification[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  useResetRefreshingOnTabBlur(setRefreshing);
 
   const reload = useCallback(async () => {
     const list = await loadNotificationHistory();
@@ -31,15 +34,69 @@ export default function AlertsScreen() {
     }, [reload]),
   );
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await reload();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [reload]);
+
+  const listHeader = useMemo(
+    () => (
+      <Text style={styles.hint} accessibilityRole="text">
+        {t('alertsListHint')}
+      </Text>
+    ),
+    [styles.hint, t],
+  );
+
+  const listFooter = useMemo(
+    () =>
+      items.length > 0 ? (
+        <Pressable
+          onPress={() => router.push('/settings?tab=notifications')}
+          style={styles.footerLink}
+          accessibilityRole="button"
+          accessibilityLabel={t('alertsOpenSettings')}>
+          <Text style={styles.footerLinkText}>{t('alertsOpenSettings')}</Text>
+        </Pressable>
+      ) : null,
+    [items.length, router, styles.footerLink, styles.footerLinkText, t],
+  );
+
+  const renderAlert = useCallback(
+    ({ item: a }: { item: StoredNotification }) => (
+      <View style={styles.alertCard}>
+        <View style={styles.alertTop}>
+          <Text style={styles.alertTitle}>{a.title}</Text>
+          {a.high ? (
+            <View style={styles.high}>
+              <Text style={styles.highText}>{t('alertsHighBadge')}</Text>
+            </View>
+          ) : (
+            <Text style={styles.time}>{formatRelativeTime(a.receivedAt, locale)}</Text>
+          )}
+        </View>
+        <Text style={styles.alertBody}>{a.body}</Text>
+        {a.high ? <Text style={styles.timeRight}>{formatRelativeTime(a.receivedAt, locale)}</Text> : null}
+      </View>
+    ),
+    [locale, styles, t],
+  );
+
+  const bottomPad = 28 + insets.bottom;
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
-      <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: 28 + insets.bottom }]}
-        showsVerticalScrollIndicator={false}>
-        <Text style={styles.hint}>{t('alertsListHint')}</Text>
-
-        {items.length === 0 ? (
+      <FlatList
+        data={items}
+        keyExtractor={(a) => a.id}
+        renderItem={renderAlert}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
           <View style={styles.emptyBox}>
             <Text style={styles.emptyText}>{t('alertsEmpty')}</Text>
             <Pressable
@@ -50,37 +107,20 @@ export default function AlertsScreen() {
               <Text style={styles.settingsLinkText}>{t('alertsOpenSettings')}</Text>
             </Pressable>
           </View>
-        ) : (
-          items.map((a) => (
-            <View key={a.id} style={styles.alertCard}>
-              <View style={styles.alertTop}>
-                <Text style={styles.alertTitle}>{a.title}</Text>
-                {a.high ? (
-                  <View style={styles.high}>
-                    <Text style={styles.highText}>{t('alertsHighBadge')}</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.time}>{formatRelativeTime(a.receivedAt, locale)}</Text>
-                )}
-              </View>
-              <Text style={styles.alertBody}>{a.body}</Text>
-              {a.high ? (
-                <Text style={styles.timeRight}>{formatRelativeTime(a.receivedAt, locale)}</Text>
-              ) : null}
-            </View>
-          ))
-        )}
-
-        {items.length > 0 ? (
-          <Pressable
-            onPress={() => router.push('/settings?tab=notifications')}
-            style={styles.footerLink}
-            accessibilityRole="button"
-            accessibilityLabel={t('alertsOpenSettings')}>
-            <Text style={styles.footerLinkText}>{t('alertsOpenSettings')}</Text>
-          </Pressable>
-        ) : null}
-      </ScrollView>
+        }
+        ListFooterComponent={listFooter}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: bottomPad },
+          items.length === 0 ? styles.listContentEmpty : null,
+        ]}
+        style={styles.list}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}
+        removeClippedSubviews={Platform.OS === 'android'}
+        initialNumToRender={12}
+        windowSize={7}
+      />
     </SafeAreaView>
   );
 }
@@ -88,7 +128,9 @@ export default function AlertsScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
+    list: { flex: 1, minHeight: 0 },
+    listContent: { paddingHorizontal: 16, paddingTop: 8 },
+    listContentEmpty: { flexGrow: 1 },
     hint: { fontSize: sf(11), color: theme.textDim, marginBottom: 12 },
     emptyBox: {
       paddingVertical: 24,

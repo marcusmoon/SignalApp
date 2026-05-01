@@ -1,4 +1,5 @@
 import { ensureNewsSourcesFromItems, nowIso, readDb, updateDb, upsertById } from '../db.mjs';
+import { mergeAutoHashtagsIntoNewsItem } from '../newsHashtags.mjs';
 import { fetchNinjasConcallTranscript } from '../providers/concalls/ninjas.mjs';
 import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
@@ -140,13 +141,18 @@ async function autoTranslateNews(db, newsItems) {
           locale: setting.locale,
           provider: setting.provider,
         });
+        const { hashtagLabels = [], ...trRest } = translated;
         upsertById(db.newsTranslations, {
           id,
           newsItemId: item.id,
-          ...translated,
+          ...trRest,
           editedByAdminId: null,
           editedAt: null,
         });
+        if (trRest.status === 'completed') {
+          const row = db.newsItems.find((n) => n.id === item.id);
+          mergeAutoHashtagsIntoNewsItem(row, hashtagLabels);
+        }
       } catch (error) {
         upsertById(db.newsTranslations, {
           id,
@@ -360,13 +366,17 @@ export async function retranslateNewsItems({ ids, locale, provider, model, admin
     const items = db.newsItems.filter((item) => ids.includes(item.id));
     for (const item of items) {
       const translated = await translateNews({ newsItem: item, locale, provider, model });
+      const { hashtagLabels = [], ...trRest } = translated;
       upsertById(db.newsTranslations, {
         id: translationId(item.id, locale),
         newsItemId: item.id,
-        ...translated,
+        ...trRest,
         editedByAdminId: adminId || null,
         editedAt: nowIso(),
       });
+      if (trRest.status === 'completed') {
+        mergeAutoHashtagsIntoNewsItem(item, hashtagLabels);
+      }
     }
     return { count: items.length };
   });

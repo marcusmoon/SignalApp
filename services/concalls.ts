@@ -9,19 +9,46 @@ import {
   rowMatchesFiscalSelection,
   sortEarningsRowsForTranscript,
 } from '@/domain/concalls';
-import { fetchSignalEarningsCalendarRangeMerged } from '@/integrations/signal-api/finnhubShim';
-import type { FinnhubEarningsRow } from '@/integrations/finnhub/types';
 import {
-  buildConcallCacheKey,
-  deleteConcallCache,
-  peekConcallCache,
-  storeConcallCache,
-} from '@/integrations/concalls/cache';
+  earningsRowDate,
+  earningsRowHour,
+  earningsRowQuarter,
+  earningsRowSymbol,
+  earningsRowYear,
+} from '@/domain/concalls/signalCalendarEarnings';
+import { fetchSignalEarningsCalendarRangeMerged } from '@/integrations/signal-api/calendarRange';
 import { fetchSignalConcalls } from '@/integrations/signal-api/concalls';
-import type { SignalApiConcall } from '@/integrations/signal-api/types';
+import {
+  clearSignalConcallsCache,
+  CONCALL_CACHE_TTL_MS,
+} from '@/integrations/signal-api/cache/concallsCache';
+import type { SignalApiCalendarEvent, SignalApiConcall } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import type { ConcallSummary } from '@/types/signal';
 import { addDays } from '@/utils/date';
+
+type SummaryEntry = { items: ConcallSummary[]; expiresAt: number };
+const concallSummaryByKey = new Map<string, SummaryEntry>();
+
+function peekConcallSummary(key: string): ConcallSummary[] | null {
+  const e = concallSummaryByKey.get(key);
+  if (e && Date.now() < e.expiresAt) return e.items;
+  return null;
+}
+
+function storeConcallSummary(key: string, items: ConcallSummary[]): void {
+  concallSummaryByKey.set(key, { items, expiresAt: Date.now() + CONCALL_CACHE_TTL_MS });
+}
+
+function deleteConcallSummary(key: string): void {
+  concallSummaryByKey.delete(key);
+}
+
+/** Clears Signal `/v1/concalls` response cache + in-memory concall summary list cache */
+export function clearConcallClientMemoryCaches(): void {
+  clearSignalConcallsCache();
+  concallSummaryByKey.clear();
+}
 
 function locMsg(locale: AppLocale, id: MessageId, vars?: Record<string, string | number>): string {
   return formatMessage(messages[locale][id], vars);
@@ -50,13 +77,15 @@ function summaryFromSignalConcall(row: SignalApiConcall, quarterLabel: string, l
 
 async function fetchSignalConcallForRow(
   ticker: string,
-  row: FinnhubEarningsRow,
+  row: SignalApiCalendarEvent,
   locale: AppLocale,
 ): Promise<ConcallSummary | null> {
+  const fy = earningsRowYear(row);
+  const fq = earningsRowQuarter(row);
   const list = await fetchSignalConcalls({
     symbol: ticker,
-    fiscalYear: row.year,
-    fiscalQuarter: row.quarter,
+    fiscalYear: fy,
+    fiscalQuarter: fq,
     pageSize: 1,
   }).catch(() => []);
   let hit = list[0];
@@ -65,7 +94,7 @@ async function fetchSignalConcallForRow(
     hit = latest[0];
   }
   if (!hit) return null;
-  const quarterLabel = locMsg(locale, 'fiscalYearQuarterShort', { y: row.year, q: row.quarter });
+  const quarterLabel = locMsg(locale, 'fiscalYearQuarterShort', { y: fy, q: fq });
   return summaryFromSignalConcall(hit, quarterLabel, locale);
 }
 
@@ -77,7 +106,7 @@ export type FetchConcallSummariesOptions = {
   fiscalYear?: number;
   fiscalQuarter?: 0 | 1 | 2 | 3 | 4;
   /**
-   * 롤링 모드(FY 미지정)에서 Finnhub 실적 캘린더 구간(일). 기본 과거 14·미래 21.
+   * 롤링 모드(FY 미지정)에서 실적 캘린더 구간(일). 기본 과거 14·미래 21.
    * 종목 상세 등에서는 넓혀 최근 분기 트랜스크립트 후보를 잡습니다.
    */
   rollingEarningsPastDays?: number;
@@ -107,31 +136,24 @@ export async function fetchConcallSummaries(
   const rollPast = options?.rollingEarningsPastDays;
   const rollFuture = options?.rollingEarningsFutureDays;
   const locale: AppLocale = options?.locale ?? 'ko';
-  const cacheKey = `${buildConcallCacheKey({
-    symbolCap,
-    scope,
-    watchSorted: scope === 'watch' ? watchSorted : [],
-    fiscalYear: fiscalYearForKey,
-    fiscalQuarter: fiscalQuarterForKey,
-    rollingPastDays: rollPast,
-    rollingFutureDays: rollFuture,
-  })}|${locale}`;
+  const scopeKey = scope === 'watch' ? `watch:${watchSorted.join(',')}` : 'mega';
+  const rollKey =
+    fiscalYearForKey == null ? `roll:${rollPast ?? 14}:${rollFuture ?? 21}:cap${symbolCap}` : '';
+  const cacheKey = `summary|${scopeKey}|${rollKey}|fy:${fiscalYearForKey ?? 'roll'}|fq:${fiscalQuarterForKey}|${locale}`;
 
   const cacheEnabled = options?.cacheEnabled !== false;
 
   if (cacheEnabled) {
     if (options?.forceRefresh) {
-      deleteConcallCache(cacheKey);
+      deleteConcallSummary(cacheKey);
     } else {
-      const hit = peekConcallCache(cacheKey);
-      if (hit) {
-        return hit;
-      }
+      const hit = peekConcallSummary(cacheKey);
+      if (hit) return hit;
     }
   }
 
   if (scope === 'watch' && watchSet.size === 0) {
-    if (cacheEnabled) storeConcallCache(cacheKey, []);
+    if (cacheEnabled) storeConcallSummary(cacheKey, []);
     return [];
   }
 
@@ -139,7 +161,7 @@ export async function fetchConcallSummaries(
   const fiscalQuarter = options?.fiscalQuarter ?? 0;
   const cap = symbolCap;
 
-  let rows: FinnhubEarningsRow[];
+  let rows: SignalApiCalendarEvent[];
   if (useFiscal && fiscalYear != null) {
     const { from, to } = calendarRangeForFiscalYear(fiscalYear);
     rows = await fetchSignalEarningsCalendarRangeMerged(from, to);
@@ -153,9 +175,9 @@ export async function fetchConcallSummaries(
   }
 
   if (scope === 'mega') {
-    rows = rows.filter((r) => r.symbol && MEGA_CAP_SET.has(normalizeEarningsSymbolForMatch(r.symbol)));
+    rows = rows.filter((r) => earningsRowSymbol(r) && MEGA_CAP_SET.has(normalizeEarningsSymbolForMatch(earningsRowSymbol(r))));
   } else {
-    rows = rows.filter((r) => r.symbol && watchSet.has(normalizeEarningsSymbolForMatch(r.symbol)));
+    rows = rows.filter((r) => earningsRowSymbol(r) && watchSet.has(normalizeEarningsSymbolForMatch(earningsRowSymbol(r))));
   }
   rows = sortEarningsRowsForTranscript(rows, scope === 'mega');
 
@@ -165,7 +187,7 @@ export async function fetchConcallSummaries(
 
   if (symbols.length === 0) {
     if (scope === 'watch') {
-      if (cacheEnabled) storeConcallCache(cacheKey, []);
+      if (cacheEnabled) storeConcallSummary(cacheKey, []);
       return [];
     }
     const fiscalSummary =
@@ -191,17 +213,17 @@ export async function fetchConcallSummaries(
         source: 'fallback',
       },
     ];
-    if (cacheEnabled) storeConcallCache(cacheKey, emptyCal);
+    if (cacheEnabled) storeConcallSummary(cacheKey, emptyCal);
     return emptyCal;
   }
 
   for (const sym of symbols) {
     const row = rows.find(
-      (r) => normalizeEarningsSymbolForMatch(r.symbol) === normalizeEarningsSymbolForMatch(sym),
+      (r) => normalizeEarningsSymbolForMatch(earningsRowSymbol(r)) === normalizeEarningsSymbolForMatch(sym),
     );
 
     const quarterLabel = row
-      ? locMsg(locale, 'fiscalYearQuarterShort', { y: row.year, q: row.quarter })
+      ? locMsg(locale, 'fiscalYearQuarterShort', { y: earningsRowYear(row), q: earningsRowQuarter(row) })
       : locMsg(locale, 'concallQuarterRecentFallback');
 
     if (row) {
@@ -218,14 +240,17 @@ export async function fetchConcallSummaries(
       quarter: quarterLabel,
       bullets: [locMsg(locale, 'callsAiSignalServerOnly'), locMsg(locale, 'callsAiSignalServerOnlyHint')],
       guidance: row
-        ? locMsg(locale, 'concallGuidanceEarningsDate', { date: row.date, hour: row.hour })
+        ? locMsg(locale, 'concallGuidanceEarningsDate', {
+            date: earningsRowDate(row),
+            hour: earningsRowHour(row),
+          })
         : undefined,
       risk: undefined,
       source: 'fallback',
     });
   }
 
-  if (cacheEnabled) storeConcallCache(cacheKey, out);
+  if (cacheEnabled) storeConcallSummary(cacheKey, out);
   return out;
 }
 
@@ -235,7 +260,7 @@ export async function fetchConcallSummaries(
  */
 export async function fetchConcallSummaryForEarningsRow(
   ticker: string,
-  row: FinnhubEarningsRow,
+  row: SignalApiCalendarEvent,
   options?: { forceRefresh?: boolean; cacheEnabled?: boolean; locale?: AppLocale },
 ): Promise<ConcallSummary> {
   if (!hasSignalApi()) {
@@ -243,26 +268,20 @@ export async function fetchConcallSummaryForEarningsRow(
   }
   const sym = ticker.trim().toUpperCase();
   const locale: AppLocale = options?.locale ?? 'ko';
-  const cacheKey = `v1|single|${normalizeEarningsSymbolForMatch(sym)}|${row.year}|${row.quarter}|${row.date}|${locale}`;
+  const cacheKey = `v1|single|${normalizeEarningsSymbolForMatch(sym)}|${earningsRowYear(row)}|${earningsRowQuarter(row)}|${earningsRowDate(row)}|${locale}`;
   const cacheEnabled = options?.cacheEnabled !== false;
 
-  if (cacheEnabled) {
-    if (options?.forceRefresh) {
-      deleteConcallCache(cacheKey);
-    } else {
-      const hit = peekConcallCache(cacheKey);
-      if (hit && hit.length > 0) {
-        return hit[0]!;
-      }
-    }
-  } else if (options?.forceRefresh) {
-    deleteConcallCache(cacheKey);
+  if (cacheEnabled && options?.forceRefresh) {
+    deleteConcallSummary(cacheKey);
   }
 
-  const quarterLabel = locMsg(locale, 'fiscalYearQuarterShort', { y: row.year, q: row.quarter });
+  const quarterLabel = locMsg(locale, 'fiscalYearQuarterShort', {
+    y: earningsRowYear(row),
+    q: earningsRowQuarter(row),
+  });
   const stored = await fetchSignalConcallForRow(sym, row, locale);
   if (stored) {
-    if (cacheEnabled) storeConcallCache(cacheKey, [stored]);
+    if (cacheEnabled) storeConcallSummary(cacheKey, [stored]);
     return stored;
   }
 
@@ -271,10 +290,13 @@ export async function fetchConcallSummaryForEarningsRow(
     ticker: sym,
     quarter: quarterLabel,
     bullets: [locMsg(locale, 'callsAiSignalServerOnly'), locMsg(locale, 'callsAiSignalServerOnlyHint')],
-    guidance: locMsg(locale, 'concallGuidanceEarningsDate', { date: row.date, hour: row.hour }),
+    guidance: locMsg(locale, 'concallGuidanceEarningsDate', {
+      date: earningsRowDate(row),
+      hour: earningsRowHour(row),
+    }),
     risk: undefined,
     source: 'fallback',
   };
-  if (cacheEnabled) storeConcallCache(cacheKey, [summary]);
+  if (cacheEnabled) storeConcallSummary(cacheKey, [summary]);
   return summary;
 }

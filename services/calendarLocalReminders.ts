@@ -2,21 +2,39 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 import { normalizeEarningsSymbolForMatch } from '@/constants/megaCapUniverse';
-import type { FinnhubEconomicRow, FinnhubEarningsRow } from '@/integrations/finnhub/types';
+import {
+  earningsRowDate,
+  earningsRowHour,
+  earningsRowQuarter,
+  earningsRowSymbol,
+  earningsRowYear,
+} from '@/domain/concalls/signalCalendarEarnings';
 import {
   fetchSignalEarningsCalendarRangeMerged,
   fetchSignalMacroCalendarRangeMerged,
-} from '@/integrations/signal-api/finnhubShim';
+} from '@/integrations/signal-api/calendarRange';
+import type { SignalApiCalendarEvent } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import type { NotificationPrefs } from '@/services/notificationPreferences';
 import { addDays, toYmd } from '@/utils/date';
 
 const DATA_KIND = 'signal_calendar_local';
 
-function parseEconomicDateTime(raw: string): Date | null {
-  if (!raw || raw.length < 10) return null;
-  const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? null : d;
+function calendarEventToLocalDate(ev: SignalApiCalendarEvent): Date | null {
+  const iso = ev.eventAt?.trim();
+  if (iso && iso.includes('T')) {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  if (ev.date && ev.timeLabel) {
+    const d = new Date(`${ev.date}T${ev.timeLabel}:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  if (ev.date) {
+    const d = new Date(`${ev.date}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  return null;
 }
 
 function startOfLocalDay(d: Date): Date {
@@ -54,10 +72,11 @@ async function cancelOurScheduled(): Promise<void> {
   }
 }
 
-function uniqEconomicByEvent(rows: FinnhubEconomicRow[]): FinnhubEconomicRow[] {
-  const m = new Map<string, FinnhubEconomicRow>();
+function uniqMacroByTitle(rows: SignalApiCalendarEvent[]): SignalApiCalendarEvent[] {
+  const m = new Map<string, SignalApiCalendarEvent>();
   for (const r of rows) {
-    const k = `${r.event}|${r.country ?? ''}`;
+    const title = String(r.title || '').trim();
+    const k = `${title}|${r.country ?? ''}`;
     if (!m.has(k)) m.set(k, r);
   }
   return [...m.values()];
@@ -90,9 +109,9 @@ export async function syncCalendarLocalReminders(
   if (prefs.localMacroCalendar) {
     try {
       const eco = await fetchSignalMacroCalendarRangeMerged(today, until);
-      const byYmd = new Map<string, FinnhubEconomicRow[]>();
+      const byYmd = new Map<string, SignalApiCalendarEvent[]>();
       for (const row of eco) {
-        const dt = parseEconomicDateTime(row.time);
+        const dt = calendarEventToLocalDate(row);
         if (!dt) continue;
         const ymd = toYmd(startOfLocalDay(dt));
         const arr = byYmd.get(ymd) ?? [];
@@ -100,13 +119,13 @@ export async function syncCalendarLocalReminders(
         byYmd.set(ymd, arr);
       }
       for (const [ymd, rows] of byYmd) {
-        const uniq = uniqEconomicByEvent(rows).slice(0, 8);
+        const uniq = uniqMacroByTitle(rows).slice(0, 8);
         if (uniq.length === 0) continue;
         const when = localDayTrigger(ymd, 8, 0);
         if (!when || when.getTime() <= Date.now()) continue;
-        const title = uniq.length === 1 ? uniq[0].event : `Macro · ${ymd}`;
+        const title = uniq.length === 1 ? String(uniq[0].title || '').trim() || 'Macro' : `Macro · ${ymd}`;
         const body = uniq
-          .map((r) => `• ${r.event}${r.country ? ` (${r.country})` : ''}`)
+          .map((r) => `• ${String(r.title || '').trim()}${r.country ? ` (${r.country})` : ''}`)
           .join('\n')
           .slice(0, 380);
         items.push({ id: `eco-day-${ymd}`, when, title, body });
@@ -120,20 +139,20 @@ export async function syncCalendarLocalReminders(
     try {
       const earn = await fetchSignalEarningsCalendarRangeMerged(today, until);
       const relevant = earn.filter(
-        (r) => r.symbol && watchSet.has(normalizeEarningsSymbolForMatch(r.symbol)),
+        (r) => earningsRowSymbol(r) && watchSet.has(normalizeEarningsSymbolForMatch(earningsRowSymbol(r))),
       );
-      const byYmd = new Map<string, FinnhubEarningsRow[]>();
+      const byYmd = new Map<string, SignalApiCalendarEvent[]>();
       for (const r of relevant) {
-        const p = r.date.split('-').map(Number);
-        if (p.length !== 3) continue;
-        const arr = byYmd.get(r.date) ?? [];
+        const d = earningsRowDate(r);
+        if (d.length < 10) continue;
+        const arr = byYmd.get(d) ?? [];
         arr.push(r);
-        byYmd.set(r.date, arr);
+        byYmd.set(d, arr);
       }
       for (const [ymd, rows] of byYmd) {
         const when = localDayTrigger(ymd, 7, 30);
         if (!when || when.getTime() <= Date.now()) continue;
-        const syms = [...new Set(rows.map((r) => r.symbol))].slice(0, 12);
+        const syms = [...new Set(rows.map((r) => earningsRowSymbol(r)))].slice(0, 12);
         if (syms.length === 0) continue;
         const title =
           syms.length === 1
@@ -141,7 +160,10 @@ export async function syncCalendarLocalReminders(
             : `Earnings · ${syms.slice(0, 3).join(', ')}${syms.length > 3 ? '…' : ''}`;
         const body = rows
           .slice(0, 8)
-          .map((r) => `• ${r.symbol} FY${r.year} Q${r.quarter} · ${r.hour}`)
+          .map(
+            (r) =>
+              `• ${earningsRowSymbol(r)} FY${earningsRowYear(r)} Q${earningsRowQuarter(r)} · ${earningsRowHour(r)}`,
+          )
           .join('\n')
           .slice(0, 380);
         items.push({ id: `earn-day-${ymd}`, when, title, body });

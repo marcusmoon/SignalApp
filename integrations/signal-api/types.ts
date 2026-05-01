@@ -1,3 +1,9 @@
+export type SignalApiNewsHashtag = {
+  label: string;
+  order: number;
+  source: 'auto' | 'manual' | string;
+};
+
 export type SignalApiNewsItem = {
   id: string;
   category: string;
@@ -11,9 +17,19 @@ export type SignalApiNewsItem = {
   sourceUrl: string;
   imageUrl?: string | null;
   symbols: string[];
+  /** 서버 관리: 노출 순서(order) 기준 정렬된 태그 */
+  hashtags?: SignalApiNewsHashtag[];
   provider: string;
   publishedAt: string | null;
   fetchedAt: string;
+};
+
+export type SignalNewsListMeta = {
+  limit: number;
+  offset: number;
+  total: number;
+  hasMore: boolean;
+  nextOffset: number | null;
 };
 
 export type SignalApiNewsSource = {
@@ -126,4 +142,22 @@ export type SignalApiConcall = {
   guidance: string;
   risk: string;
   fetchedAt: string;
+};
+
+/** `/v1/stock-profile` — shape matches server `data` payload */
+export type SignalApiStockProfile = {
+  symbol?: string;
+  name?: string;
+  marketCapitalization?: number;
+};
+
+/** `/v1/stock-candles` — shape matches server `data` payload */
+export type SignalApiStockCandles = {
+  c: number[];
+  h: number[];
+  l: number[];
+  o: number[];
+  s: 'ok' | 'no_data';
+  t: number[];
+  v: number[];
 };

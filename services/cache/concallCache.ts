@@ -5,7 +5,6 @@ import type { ConcallSummary } from '@/types/signal';
 export const CONCALL_CACHE_TTL_MS = 15 * 60 * 1000;
 
 type Entry = { items: ConcallSummary[]; expiresAt: number };
-
 const cache = new Map<string, Entry>();
 
 export type ConcallCacheKeyInput = {
@@ -28,9 +27,7 @@ export function buildConcallCacheKey(p: ConcallCacheKeyInput): string {
 
 export function peekConcallCache(key: string): ConcallSummary[] | null {
   const e = cache.get(key);
-  if (e && Date.now() < e.expiresAt) {
-    return e.items;
-  }
+  if (e && Date.now() < e.expiresAt) return e.items;
   return null;
 }
 
@@ -45,3 +42,4 @@ export function deleteConcallCache(key: string): void {
 export function clearConcallCache(): void {
   cache.clear();
 }
+

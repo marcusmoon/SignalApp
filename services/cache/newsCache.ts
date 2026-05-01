@@ -1,12 +1,11 @@
 import type { NewsSegmentKey } from '@/constants/newsSegment';
-import type { FinnhubNewsRaw } from '@/integrations/finnhub/types';
+import type { SignalApiNewsItem } from '@/integrations/signal-api/types';
 import { loadKoreaNewsExtraKeywords } from '@/services/newsKoreaKeywordsPreference';
 
-/** News tab Finnhub raw payload — memory cache TTL */
+/** News raw payload — memory cache TTL (legacy tab cache; items are Signal API rows) */
 export const NEWS_CACHE_TTL_MS = 5 * 60 * 1000;
 
-type Entry = { raw: FinnhubNewsRaw[]; expiresAt: number };
-
+type Entry = { raw: SignalApiNewsItem[]; expiresAt: number };
 const cache = new Map<string, Entry>();
 
 export async function buildNewsCacheKey(segment: NewsSegmentKey): Promise<string> {
@@ -17,13 +16,13 @@ export async function buildNewsCacheKey(segment: NewsSegmentKey): Promise<string
   return segment;
 }
 
-export function peekNewsCache(key: string): FinnhubNewsRaw[] | null {
+export function peekNewsCache(key: string): SignalApiNewsItem[] | null {
   const e = cache.get(key);
   if (e && Date.now() < e.expiresAt) return e.raw;
   return null;
 }
 
-export function storeNewsCache(key: string, raw: FinnhubNewsRaw[]): void {
+export function storeNewsCache(key: string, raw: SignalApiNewsItem[]): void {
   cache.set(key, { raw, expiresAt: Date.now() + NEWS_CACHE_TTL_MS });
 }
 

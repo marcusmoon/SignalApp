@@ -1,10 +1,11 @@
-import type { FinnhubEarningsRow, FinnhubNewsRaw, FinnhubQuote } from '@/integrations/finnhub/types';
+import type { SignalApiCalendarEvent, SignalApiMarketQuote, SignalApiNewsItem } from '@/integrations/signal-api/types';
+import { earningsRowDate } from '@/domain/concalls/signalCalendarEarnings';
 
 export type SignalScoreInput = {
   symbol: string;
-  quote?: FinnhubQuote | null;
-  news?: FinnhubNewsRaw[];
-  nextEarning?: FinnhubEarningsRow | null;
+  quote?: SignalApiMarketQuote | null;
+  news?: SignalApiNewsItem[];
+  nextEarning?: SignalApiCalendarEvent | null;
   vsSmaPct?: number | null;
   todayYmd: string;
 };
@@ -27,11 +28,14 @@ function daysBetweenYmd(a: string, b: string): number | null {
   return Math.round((db - da) / 86_400_000);
 }
 
-function effectiveMovePct(q?: FinnhubQuote | null): number {
+function effectiveMovePct(q?: SignalApiMarketQuote | null): number {
   if (!q) return 0;
-  if (Number.isFinite(q.dp)) return q.dp;
-  if (Number.isFinite(q.c) && Number.isFinite(q.pc) && q.pc !== 0) {
-    return ((q.c - q.pc) / q.pc) * 100;
+  const dp = Number(q.changePercent);
+  if (Number.isFinite(dp)) return dp;
+  const c = Number(q.currentPrice);
+  const pc = Number(q.previousClose);
+  if (Number.isFinite(c) && Number.isFinite(pc) && pc !== 0) {
+    return ((c - pc) / pc) * 100;
   }
   return 0;
 }
@@ -71,8 +75,9 @@ export function buildSignalScore(input: SignalScoreInput): SignalScore {
     score += 10;
   }
 
-  if (input.nextEarning?.date) {
-    const days = daysBetweenYmd(input.todayYmd, input.nextEarning.date);
+  const earnDate = input.nextEarning ? earningsRowDate(input.nextEarning) : '';
+  if (earnDate.length >= 10) {
+    const days = daysBetweenYmd(input.todayYmd, earnDate);
     if (days != null && days >= 0 && days <= 7) {
       score += 18;
       reasons.push('earnings_soon');

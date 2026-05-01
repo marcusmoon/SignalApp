@@ -36,11 +36,11 @@ npm run server:dev      # 로컬 Signal API + 어드민 + 스케줄러
 
 앱은 피처 데이터를 **Signal Server만** 통해 조회합니다. Finnhub/OpenAI/Claude/YouTube/CoinGecko 등 외부 provider 키는 서버/Admin에서 관리합니다.
 
-### 외부 연동 — `integrations/<provider>/`
+### 외부 연동
 
 1. 앱 피처 조회는 **`integrations/signal-api/`** 에서만 HTTP를 수행합니다.
-2. 외부 provider 폴더의 `types.ts` / `constants.ts` / 캐시는 DTO·상수·메모리 캐시 호환 용도로만 둡니다.
-3. 신규 화면·서비스는 Finnhub/YouTube/LLM provider client를 직접 import하지 않습니다.
+2. 제품 시드·규칙은 **`domain/<영역>/`** 에 두고, API 응답 형태는 **`integrations/signal-api/types`** 등으로 맞춥니다.
+3. 신규 화면·서비스는 Finnhub·YouTube Data·LLM 등 **외부 provider 클라이언트를 앱에 두지 않습니다**(서버·Admin이 키와 수집을 담당).
 
 ## 4. 디렉터리
 
@@ -48,12 +48,12 @@ npm run server:dev      # 로컬 Signal API + 어드민 + 스케줄러
 app/           # expo-router (경로 = URL)
 components/
 hooks/         # 공용 훅 + `index.ts` 배럴 (`@/hooks`). Context 전용은 `contexts/`
-constants/     # 앱 전역 정적 값(테마·탭 UI·newsSegment 등). 영역 시드는 `domain/*/constants.ts`, 연동 시드는 `integrations/*/constants.ts`
+constants/     # 앱 전역 정적 값(테마·탭 UI·newsSegment 등). 영역 시드·순서는 `domain/*/constants.ts`
 contexts/
 locales/       # ko 키 기준 → en, ja (satisfies)
-integrations/  # Signal API HTTP, AdMob, provider DTO·상수·캐시 호환 모듈
+integrations/  # Signal API(+cache), AdMob, expo-updates
 domain/        # 규칙만: 영역별 `constants.ts`(시드)·모듈 + `index.ts` 배럴(`@/domain/news` 등)
-services/      # AsyncStorage·설정·오케스트레이션 (필요 시만 re-export)
+services/      # AsyncStorage·설정·오케스트레이션, `services/cache/`(탭·TTL·캐시 클리어 보조)
 utils/         # 날짜, 링크, openYoutube, …
 docs/          # 본 문서·PRD·(운영 스냅샷)·ARCHITECTURE
 assets/
@@ -63,8 +63,8 @@ assets/
 
 | 화면/기능 | 참고 |
 |-----------|------|
-| 시세 탭 | `app/(tabs)/quotes.tsx`, 순서 `quotesSegmentOrderPreference`, Signal API 시세·코인, 캐시 `integrations/finnhub/quotesCache.ts` |
-| 뉴스 탭 | `app/(tabs)/index.tsx`, 순서 `newsSegmentOrderPreference`, 한국·키워드 규칙 `@/domain/news`, 저장 `services/newsKoreaKeywordsPreference.ts`, 서버 번역 결과 표시 |
+| 시세 탭 | `app/(tabs)/quotes.tsx`, 순서 `quotesSegmentOrderPreference`, Signal API 시세·코인, 보조 캐시 `services/cache/quotesCache.ts` |
+| 뉴스 탭 | `app/(tabs)/index.tsx`, 순서 `newsSegmentOrderPreference`, `@/domain/news`, `components/signal/NewsCard`, `fetchSignalNews` / `integrations/signal-api/cache/newsCache`, 저장 `services/newsKoreaKeywordsPreference.ts` |
 | 컨콜 | `@/domain/concalls`(연도·분기·범위·실적 행), 저장 `services/concallFiscalFilter.ts`, 서버 API `integrations/signal-api/concalls.ts`, 흐름 `services/concalls.ts` |
 | 유튜브 검색 보조 | `@/domain/youtube`, 카드에서 열기 `utils/openYoutube.ts` |
 | 설정 | `app/settings.tsx` — 뉴스·유튜브·시세·캘린더·표시·알림 |

@@ -109,16 +109,23 @@ export function renderNewsEditDialog({ state, $, esc, textFor, formatDateTime })
   const tr = newsTranslationFor(item, locale);
   const titleValue = newsEditValue(item, locale, 'title');
   const summaryValue = newsEditValue(item, locale, 'summary');
+  const tagsSorted = Array.isArray(item.hashtags)
+    ? [...item.hashtags].sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
+    : [];
+  const tagsText = tagsSorted.map((t) => String(t.label || '').trim()).filter(Boolean).join('\n');
+  const modeKey = item.hashtagSource === 'manual' ? 'newsHashtagModeManual' : 'newsHashtagModeAuto';
   $('newsEditDialog').classList.remove('hidden');
   $('newsEditDialogTitle').textContent = textFor('newsEditDialogTitle');
   $('newsEditDialogMeta').textContent = `${item.sourceName || '-'} · ${formatDateTime(item.publishedAt)} · ${item.category || '-'}`;
   $('newsEditDialogStatus').textContent = `${locale.toUpperCase()} · ${tr.status || (locale === 'en' ? 'original' : 'missing')}`;
   $('newsEditDialogBody').innerHTML = `
     <div class="newsEditModal">
-      <div class="tabs newsEditTabs" role="tablist">
-        ${newsEditLocales
-          .map(
-            (entry) => `
+      <section class="newsEditSection" aria-labelledby="newsEditSectionTranslationLabel">
+        <h4 id="newsEditSectionTranslationLabel" class="newsEditSectionHead">${esc(textFor('newsEditSectionTranslation'))}</h4>
+        <div class="tabs newsEditTabs" role="tablist">
+          ${newsEditLocales
+            .map(
+              (entry) => `
           <button
             type="button"
             class="tabBtn ${entry.locale === locale ? 'active' : ''}"
@@ -126,29 +133,45 @@ export function renderNewsEditDialog({ state, $, esc, textFor, formatDateTime })
             ${esc(textFor(entry.labelKey))}
           </button>
         `,
-          )
-          .join('')}
-      </div>
-      <div class="newsEditSource">
-        <div class="newsEditSourceTitle">${esc(item.originalTitle || item.title || '-')}</div>
-        <div class="newsMeta muted">
-          ${
-            item.sourceUrl
-              ? `<a class="developerLink" href="${esc(item.sourceUrl)}" target="_blank" rel="noreferrer">${esc(textFor('newsOpenOriginal'))}</a>`
-              : ''
-          }
+            )
+            .join('')}
         </div>
-      </div>
-      <div class="newsEditGrid">
-        <label class="fieldLabel">
-          <span>Title</span>
-          <textarea id="newsEditTitleInput" class="jsonEditor">${esc(titleValue)}</textarea>
-        </label>
-        <label class="fieldLabel">
-          <span>Summary</span>
-          <textarea id="newsEditSummaryInput" class="jsonEditor">${esc(summaryValue)}</textarea>
-        </label>
-      </div>
+        <div class="newsEditSource">
+          <div class="newsEditSourceTitle">${esc(item.originalTitle || item.title || '-')}</div>
+          <div class="newsMeta muted">
+            ${
+              item.sourceUrl
+                ? `<a class="developerLink" href="${esc(item.sourceUrl)}" target="_blank" rel="noreferrer">${esc(textFor('newsOpenOriginal'))}</a>`
+                : ''
+            }
+          </div>
+        </div>
+        <div class="newsEditGrid">
+          <label class="fieldLabel">
+            <span>${esc(textFor('newsEditFieldTitle'))}</span>
+            <textarea id="newsEditTitleInput" class="jsonEditor">${esc(titleValue)}</textarea>
+          </label>
+          <label class="fieldLabel">
+            <span>${esc(textFor('newsEditFieldSummary'))}</span>
+            <textarea id="newsEditSummaryInput" class="jsonEditor">${esc(summaryValue)}</textarea>
+          </label>
+        </div>
+        <div class="newsEditTranslationActions row">
+          <button type="button" class="success" id="saveNewsEditDialog">${esc(textFor('newsEditSaveTranslation'))}</button>
+        </div>
+      </section>
+      <section class="newsEditSection" aria-labelledby="newsEditSectionHashtagsLabel">
+        <h4 id="newsEditSectionHashtagsLabel" class="newsEditSectionHead">${esc(textFor('newsEditSectionHashtags'))}</h4>
+        <div class="newsHashtagEditor">
+          <p class="muted" style="margin:0 0 8px">${esc(textFor(modeKey))}</p>
+          <p class="muted" style="margin:0 0 8px;font-size:12px">${esc(textFor('newsHashtagsHint'))}</p>
+          <textarea id="newsEditHashtagsInput" class="jsonEditor" rows="5" placeholder="#">${esc(tagsText)}</textarea>
+          <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap">
+            <button type="button" class="secondary" id="newsEditHashtagResetAutoBtn">${esc(textFor('newsHashtagResetAuto'))}</button>
+            <button type="button" class="success" id="newsEditSaveHashtagsBtn">${esc(textFor('newsHashtagsSave'))}</button>
+          </div>
+        </div>
+      </section>
     </div>
   `;
 }
@@ -253,6 +276,19 @@ export async function loadNewsView(ctx) {
                     const translations = Array.isArray(item.translations) ? item.translations : [];
                     const statusFor = (locale) => translations.find((t) => t.locale === locale)?.status || 'missing';
                     const provider = String(item.provider || '-');
+                    const tagRows = Array.isArray(item.hashtags) ? item.hashtags : [];
+                    const tagSorted = [...tagRows].sort(
+                      (a, b) => (Number(a.order) || 0) - (Number(b.order) || 0),
+                    );
+                    const tagLine =
+                      tagSorted.length > 0
+                        ? `<div class="newsHashtagLine">${tagSorted
+                            .map(
+                              (t) =>
+                                `<span class="pill pill--subtle">#${esc(String(t.label || '').trim())}</span>`,
+                            )
+                            .join('')}</div>`
+                        : `<div class="newsHashtagLine muted">${esc(textFor('newsHashtagsEmpty'))}</div>`;
                     return `
                       <tr class="newsRow" data-news-row="${esc(item.id)}">
                         <td><input type="checkbox" data-news-id="${esc(item.id)}" /></td>
@@ -268,6 +304,7 @@ export async function loadNewsView(ctx) {
                         <td>
                           <div class="newsTitle">${esc(title)}</div>
                           <div class="newsMeta muted">${esc(provider)}</div>
+                          ${tagLine}
                         </td>
                         <td class="tableActions">
                           <button class="secondary" data-news-edit="${esc(item.id)}">${esc(textFor('newsEdit'))}</button>

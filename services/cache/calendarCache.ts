@@ -4,11 +4,10 @@ import type { CalendarConcallScope } from '@/services/calendarConcallScopePrefer
 import type { CalendarEvent } from '@/types/signal';
 import { toYmd } from '@/utils/date';
 
-/** Finnhub merged calendar — in-memory cache TTL */
+/** Calendar (merged) — in-memory cache TTL */
 export const CALENDAR_CACHE_TTL_MS = 15 * 60 * 1000;
 
 type Entry = { events: CalendarEvent[]; expiresAt: number };
-
 const cache = new Map<string, Entry>();
 
 function watchSortedForKey(symbols: string[] | undefined, scope: CalendarConcallScope): string[] {
@@ -34,9 +33,7 @@ function buildCalendarCacheKey(
 
 function peek(key: string): CalendarEvent[] | null {
   const e = cache.get(key);
-  if (e && Date.now() < e.expiresAt) {
-    return e.events;
-  }
+  if (e && Date.now() < e.expiresAt) return e.events;
   return null;
 }
 
@@ -68,7 +65,7 @@ export async function fetchCalendarEventsMergedCached(
   const to = options.rangeTo ?? new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000);
 
   if (!cacheEnabled) {
-    const rows = await fetchSignalCalendar({ from: toYmd(from), to: toYmd(to) });
+    const rows = await fetchSignalCalendar({ from: toYmd(from), to: toYmd(to) }, { cacheMode: 'bypass' });
     return rows.map(signalCalendarToCalendarEvent);
   }
 
@@ -84,12 +81,13 @@ export async function fetchCalendarEventsMergedCached(
     deleteKey(key);
   } else {
     const hit = peek(key);
-    if (hit) {
-      return hit;
-    }
+    if (hit) return hit;
   }
 
-  const events = (await fetchSignalCalendar({ from: toYmd(from), to: toYmd(to) })).map(signalCalendarToCalendarEvent);
+  const events = (await fetchSignalCalendar({ from: toYmd(from), to: toYmd(to) }, { cacheMode: 'bypass' })).map(
+    signalCalendarToCalendarEvent,
+  );
   store(key, events);
   return events;
 }
+

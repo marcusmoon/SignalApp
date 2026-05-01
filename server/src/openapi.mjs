@@ -65,17 +65,34 @@ export function getOpenApiSpec() {
             { name: 'locale', in: 'query', schema: { type: 'string', example: 'ko' } },
             { name: 'category', in: 'query', schema: { type: 'string', example: 'global' } },
             { name: 'symbol', in: 'query', schema: { type: 'string', example: 'AAPL' } },
+            { name: 'tag', in: 'query', schema: { type: 'string', description: 'Exact hashtag label match (case-insensitive)' } },
             { name: 'q', in: 'query', schema: { type: 'string' } },
             { name: 'from', in: 'query', schema: { type: 'string', example: '2026-04-01' } },
             { name: 'to', in: 'query', schema: { type: 'string', example: '2026-04-26' } },
-            { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 30 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+            { name: 'offset', in: 'query', schema: { type: 'integer', minimum: 0, default: 0 } },
           ],
           responses: {
             200: {
               description: 'OK',
               content: {
                 'application/json': {
-                  schema: { type: 'object', properties: { data: { type: 'array', items: { type: 'object' } } } },
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: { type: 'array', items: { type: 'object' } },
+                      meta: {
+                        type: 'object',
+                        properties: {
+                          limit: { type: 'integer' },
+                          offset: { type: 'integer' },
+                          total: { type: 'integer' },
+                          hasMore: { type: 'boolean' },
+                          nextOffset: { type: 'integer', nullable: true },
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },

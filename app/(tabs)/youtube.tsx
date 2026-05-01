@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  FlatList,
   Linking,
   Modal,
   Platform,
@@ -21,7 +22,7 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
-import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
+import { SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
   SEGMENT_TAB_BACKGROUND,
@@ -42,7 +43,7 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { hasSignalApi } from '@/services/env';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
 import { loadCurationHandles } from '@/services/youtubeCurationList';
-import type { ChannelHandleMeta } from '@/integrations/youtube/types';
+import type { ChannelHandleMeta } from '@/domain/youtube/types';
 import { fetchSignalYoutube, signalYoutubeToYoutubeItem } from '@/integrations/signal-api';
 import type { YoutubeItem } from '@/types/signal';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
@@ -154,7 +155,10 @@ export default function YoutubeScreen() {
         setLoading(true);
       }
       try {
-        const list = await fetchSignalYoutube({ pageSize: 100 });
+        const list = await fetchSignalYoutube(
+          { pageSize: 100 },
+          { cacheMode: opts?.forceRefresh ? 'bypass' : 'use' },
+        );
         setItems(list.map((item) => signalYoutubeToYoutubeItem(item, locale)));
       } catch (e) {
         applyLoadError(e, errKey);
@@ -232,6 +236,38 @@ export default function YoutubeScreen() {
         })
       : loading;
 
+  const bottomPad = 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
+
+  const youtubeListHeader = useMemo(
+    () => (
+      <>
+        {error ? (
+          <View style={styles.errBox}>
+            <Text style={styles.errText}>{error}</Text>
+            {isQuotaError ? (
+              <>
+                <Text style={styles.errSub}>{quotaResetHintLine}</Text>
+                <Pressable
+                  onPress={() => void Linking.openURL(YOUTUBE_DATA_API_QUOTAS_CONSOLE_URL)}
+                  style={({ pressed }) => [styles.errLinkWrap, pressed && { opacity: 0.85 }]}
+                  accessibilityRole="link"
+                  accessibilityLabel={t('youtubeErrorQuotaConsoleLink')}>
+                  <Text style={styles.errLink}>{t('youtubeErrorQuotaConsoleLink')}</Text>
+                </Pressable>
+              </>
+            ) : null}
+          </View>
+        ) : null}
+        {showScrollLoading ? (
+          <View style={SCROLL_LOADING_BODY_STYLE}>
+            <SignalLoadingIndicator message={t('commonLoading')} />
+          </View>
+        ) : null}
+      </>
+    ),
+    [error, isQuotaError, quotaResetHintLine, showScrollLoading, styles, t],
+  );
+
   const renderChannelFilterBody = () => (
     <>
       <View style={styles.footerHead}>
@@ -295,54 +331,29 @@ export default function YoutubeScreen() {
           </View>
         </View>
 
-        <ScrollView
-          style={styles.scrollView}
-          removeClippedSubviews={false}
-          contentContainerStyle={[
-            styles.scrollContent,
-            showScrollLoading ? SCROLL_CONTENT_LOADING_STYLE : null,
-            { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
-          ]}
+        <FlatList
+          data={showScrollLoading ? [] : items}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <YoutubeCard item={item} />}
+          ListHeaderComponent={youtubeListHeader}
+          ListEmptyComponent={
+            !error && !showScrollLoading && items.length === 0 ? (
+              <Text style={styles.empty}>{t('youtubeEmptySearch')}</Text>
+            ) : null
+          }
+          style={styles.list}
+          contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             showScrollLoading ? undefined : (
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />
             )
-          }>
-          {showScrollLoading ? (
-            <View style={SCROLL_LOADING_BODY_STYLE}>
-              <SignalLoadingIndicator message={t('commonLoading')} />
-            </View>
-          ) : (
-            <>
-              {error ? (
-                <View style={styles.errBox}>
-                  <Text style={styles.errText}>{error}</Text>
-                  {isQuotaError ? (
-                    <>
-                      <Text style={styles.errSub}>{quotaResetHintLine}</Text>
-                      <Pressable
-                        onPress={() => void Linking.openURL(YOUTUBE_DATA_API_QUOTAS_CONSOLE_URL)}
-                        style={({ pressed }) => [styles.errLinkWrap, pressed && { opacity: 0.85 }]}
-                        accessibilityRole="link"
-                        accessibilityLabel={t('youtubeErrorQuotaConsoleLink')}>
-                        <Text style={styles.errLink}>{t('youtubeErrorQuotaConsoleLink')}</Text>
-                      </Pressable>
-                    </>
-                  ) : null}
-                </View>
-              ) : null}
-
-              {items.map((item) => (
-                <YoutubeCard key={item.id} item={item} />
-              ))}
-
-              {!error && items.length === 0 ? (
-                <Text style={styles.empty}>{t('youtubeEmptySearch')}</Text>
-              ) : null}
-            </>
-          )}
-        </ScrollView>
+          }
+          removeClippedSubviews={Platform.OS === 'android'}
+          initialNumToRender={6}
+          windowSize={7}
+          maxToRenderPerBatch={10}
+        />
       </View>
 
       {filterReady ? (
@@ -414,8 +425,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingTop: 8,
       backgroundColor: theme.bg,
     },
-    scrollView: { flex: 1, minHeight: 0 },
-    scrollContent: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28 },
+    list: { flex: 1, minHeight: 0 },
+    listContent: { paddingHorizontal: 16, paddingTop: 0 },
     section: { fontSize: sf(16), fontWeight: '800', color: theme.text, marginBottom: 4 },
     filterFab: {
       position: 'absolute',

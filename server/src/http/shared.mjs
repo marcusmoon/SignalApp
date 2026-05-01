@@ -1,3 +1,4 @@
+import { hashtagLabelsForFilter, sortedHashtagsForPublic } from '../newsHashtags.mjs';
 import { stripFinancialJuiceTitlePrefix } from '../providers/news/financialJuiceRss.mjs';
 
 export function json(res, status, data) {
@@ -89,6 +90,7 @@ export function displayNews(item, translations, locale) {
     sourceUrl: item.sourceUrl,
     imageUrl: item.imageUrl,
     symbols: item.symbols,
+    hashtags: sortedHashtagsForPublic(item),
     provider: item.provider,
     publishedAt: item.publishedAt,
     fetchedAt: item.fetchedAt,
@@ -101,6 +103,7 @@ export function filterNews(items, url) {
   const q = url.searchParams.get('q')?.trim().toLowerCase();
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
+  const tag = url.searchParams.get('tag')?.trim().toLowerCase();
   let rows = [...items];
   if (category) {
     if (category === 'global') {
@@ -114,9 +117,14 @@ export function filterNews(items, url) {
   if (symbol) rows = rows.filter((item) => item.symbols?.includes(symbol));
   if (from) rows = rows.filter((item) => !item.publishedAt || item.publishedAt.slice(0, 10) >= from);
   if (to) rows = rows.filter((item) => !item.publishedAt || item.publishedAt.slice(0, 10) <= to);
+  if (tag) {
+    rows = rows.filter((item) =>
+      hashtagLabelsForFilter(item).some((label) => label.toLowerCase() === tag),
+    );
+  }
   if (q) {
     rows = rows.filter((item) =>
-      [item.titleOriginal, item.summaryOriginal, item.sourceName].some((value) =>
+      [item.titleOriginal, item.summaryOriginal, item.sourceName, ...hashtagLabelsForFilter(item)].some((value) =>
         String(value || '').toLowerCase().includes(q),
       ),
     );

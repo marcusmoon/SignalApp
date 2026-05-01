@@ -1,8 +1,9 @@
-import { env, hasSignalApi } from '@/services/env';
+import { hasSignalApi } from '@/services/env';
+import { getEffectiveSignalApiBaseUrl } from '@/services/signalServerEndpoint';
 
 export async function signalApi<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
   if (!hasSignalApi()) throw new Error('SIGNAL_API_BASE_URL_MISSING');
-  const base = env.signalApiBaseUrl.replace(/\/+$/, '');
+  const base = getEffectiveSignalApiBaseUrl().replace(/\/+$/, '');
   const q = new URLSearchParams();
   for (const [key, value] of Object.entries(params ?? {})) {
     if (value == null) continue;

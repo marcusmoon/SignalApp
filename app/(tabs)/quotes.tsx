@@ -5,11 +5,11 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import {
   Alert,
+  FlatList,
   InteractionManager,
   Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -23,7 +23,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
-import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
+import { SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
@@ -50,8 +50,8 @@ import {
   type SignalApiMarketQuote,
 } from '@/integrations/signal-api';
 import { hasSignalApi } from '@/services/env';
-import { POPULAR_SYMBOLS_ORDERED } from '@/integrations/finnhub/constants';
-import type { FinnhubQuote } from '@/integrations/finnhub/types';
+import { POPULAR_SYMBOLS_ORDERED } from '@/domain/quotes/usSymbols';
+import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
 import { loadQuotesListLimits } from '@/services/quotesListLimitsPreference';
 import {
   DEFAULT_QUOTES_SEGMENT_ORDER,
@@ -65,7 +65,7 @@ import {
   QUOTES_POLL_INTERVAL_MS,
   storeQuotes,
   type QuoteCacheRow,
-} from '@/integrations/finnhub/quotesCache';
+} from '@/services/cache/quotesCache';
 import {
   isValidUsTicker,
   loadWatchlistSymbols,
@@ -109,52 +109,52 @@ function formatUsdChange(n: number): string {
   return `${sign}$${formatUsdBody(Math.abs(n))}`;
 }
 
-/** Finnhub 일부 응답에서 `dp` 누락 가능 — `toFixed` 직접 호출 금지 */
+/** 일부 quote 응답에서 `dp` 누락 가능 — `toFixed` 직접 호출 금지 */
 function formatQuoteDpPct(dp: unknown): string {
   if (!Number.isFinite(dp)) return '—';
   const p = dp as number;
   return `${p >= 0 ? '+' : ''}${p.toFixed(2)}%`;
 }
 
-function quoteRowChangeUp(q: { d?: unknown; dp?: unknown }): boolean {
-  const d = Number(q.d);
+function quoteRowChangeUp(q: { change?: unknown; changePercent?: unknown }): boolean {
+  const d = Number(q.change);
   if (Number.isFinite(d)) return d >= 0;
-  const dp = Number(q.dp);
+  const dp = Number(q.changePercent);
   if (Number.isFinite(dp)) return dp >= 0;
   return true;
 }
 
-function mapCoinToFinnhubQuote(price: number, change24h: number, pct24h: number): FinnhubQuote {
+function mapCoinToSignalMarketQuote(item: SignalApiCoinMarket): SignalApiMarketQuote {
+  const price = item.currentPrice;
+  const c = typeof price === 'number' && Number.isFinite(price) ? price : Number.NaN;
+  const d = item.change24h ?? 0;
+  const dp = item.changePercent24h ?? 0;
+  const pc = Number.isFinite(c) ? c - d : Number.NaN;
   return {
-    c: price,
-    d: change24h,
-    dp: pct24h,
-    pc: price - change24h,
-    h: 0,
-    l: 0,
-    o: 0,
-    t: 0,
+    id: item.id,
+    provider: item.provider,
+    providerItemId: item.providerItemId,
+    segment: 'coin',
+    symbol: item.symbol,
+    name: item.name,
+    currentPrice: Number.isFinite(c) ? c : null,
+    change: d,
+    changePercent: dp,
+    high: null,
+    low: null,
+    open: null,
+    previousClose: Number.isFinite(pc) ? pc : null,
+    marketCapitalization: item.marketCap,
+    quoteTime: null,
+    fetchedAt: item.fetchedAt,
   };
 }
 
 function mapSignalQuoteToRow(item: SignalApiMarketQuote): Row {
-  const quoteTimeMs = item.quoteTime ? new Date(item.quoteTime).getTime() : NaN;
   return {
     symbol: item.symbol,
     name: item.name || undefined,
-    quote:
-      typeof item.currentPrice === 'number'
-        ? {
-            c: item.currentPrice,
-            d: item.change ?? 0,
-            dp: item.changePercent ?? 0,
-            h: item.high ?? 0,
-            l: item.low ?? 0,
-            o: item.open ?? 0,
-            pc: item.previousClose ?? item.currentPrice,
-            t: Number.isFinite(quoteTimeMs) ? Math.floor(quoteTimeMs / 1000) : 0,
-          }
-        : null,
+    quote: signalMarketQuoteHasValidPrice(item) ? item : null,
   };
 }
 
@@ -166,7 +166,7 @@ function mapSignalCoinToRow(item: SignalApiCoinMarket): Row {
   return {
     symbol: item.symbol,
     name: item.name,
-    quote: mapCoinToFinnhubQuote(price, item.change24h ?? 0, item.changePercent24h ?? 0),
+    quote: mapCoinToSignalMarketQuote(item),
   };
 }
 
@@ -445,6 +445,187 @@ export default function QuotesScreen() {
     );
   }, [load, t]);
 
+  const bottomPad = 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
+
+  const quotesListHeader = useMemo(
+    () => (
+      <>
+        {loading ? (
+          <View style={SCROLL_LOADING_BODY_STYLE}>
+            <SignalLoadingIndicator message={t('commonLoading')} />
+          </View>
+        ) : (
+          <>
+            {nextRefreshLine ? <Text style={styles.updated}>{nextRefreshLine}</Text> : null}
+            {error ? (
+              <View style={styles.errBox}>
+                <Text style={styles.errText}>{error}</Text>
+              </View>
+            ) : null}
+            {segment === 'watch' ? (
+              <View style={styles.addRow}>
+                <TextInput
+                  value={draftTicker}
+                  onChangeText={setDraftTicker}
+                  placeholder={t('quotesPlaceholderTicker')}
+                  placeholderTextColor={theme.textDim}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  style={styles.addInput}
+                  onSubmitEditing={() => void onAddWatch()}
+                  returnKeyType="done"
+                />
+                <Pressable onPress={() => void onAddWatch()} style={styles.addBtn} accessibilityRole="button">
+                  <Text style={styles.addBtnText}>{t('quotesAddButton')}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={onResetWatchDefaults}
+                  style={styles.watchResetBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('settingsQuotesReset')}>
+                  <Text style={styles.watchResetBtnText} numberOfLines={1}>
+                    {t('settingsQuotesReset')}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </>
+        )}
+      </>
+    ),
+    [
+      draftTicker,
+      error,
+      loading,
+      nextRefreshLine,
+      onAddWatch,
+      onResetWatchDefaults,
+      segment,
+      styles,
+      t,
+      theme.textDim,
+    ],
+  );
+
+  const renderQuoteItem = useCallback(
+    ({ item: r }: { item: Row }) => {
+      const symTrim = r.symbol?.trim() ?? '';
+      const yahooEnabled = symTrim.length > 0 && symTrim !== '—';
+      const watchSwipe = segment === 'watch' && Platform.OS !== 'web';
+      const watchRemoveIcon = segment === 'watch' && Platform.OS === 'web';
+
+      const cardInner = (
+        <>
+          <View style={styles.cardTop}>
+            <View style={styles.symCol}>
+              <View style={styles.symBlock}>
+                <View style={styles.symRow}>
+                  <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={6}>
+                    <Text style={styles.sym}>{r.symbol}</Text>
+                  </Pressable>
+                  {yahooEnabled ? (
+                    <Pressable
+                      onPress={() => openYahooFinance(r)}
+                      style={({ pressed }) => [styles.yahooInline, pressed && styles.yahooInlinePressed]}
+                      hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                      accessibilityRole="link"
+                      accessibilityLabel={t('quotesYahooFinanceA11y', { symbol: r.symbol })}>
+                      <FontAwesome name="external-link" size={11} color={theme.green} />
+                      <Text style={styles.yahooInlineText}>{t('quotesYahooShort')}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+                {r.quote ? (
+                  <Text style={styles.symPrev}>
+                    {segment === 'coin' ? t('quotesPrevRefCoin') : t('quotesPrevCloseStock')}{' '}
+                    {formatUsd(Number(r.quote.previousClose))}
+                  </Text>
+                ) : null}
+                {segment === 'coin' && r.name ? (
+                  <Text style={styles.symSub} numberOfLines={1}>
+                    {r.name}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+            <View style={styles.priceCol}>
+              <View style={styles.priceRow}>
+                {r.quote ? (
+                  <Text style={styles.price}>{formatUsd(Number(r.quote.currentPrice))}</Text>
+                ) : (
+                  <Text style={styles.na}>—</Text>
+                )}
+                {watchRemoveIcon ? (
+                  <Pressable
+                    onPress={() => void onRemoveWatch(r.symbol)}
+                    style={styles.removeBtn}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${r.symbol} ${t('quotesWatchSwipeRemove')}`}>
+                    <FontAwesome name="times-circle" size={18} color={theme.textDim} />
+                  </Pressable>
+                ) : null}
+              </View>
+              {r.quote ? (
+                <Text style={[styles.chg, quoteRowChangeUp(r.quote) ? styles.chgUp : styles.chgDn]}>
+                  {formatUsdChange(Number(r.quote.change ?? 0))} ({formatQuoteDpPct(r.quote.changePercent)})
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          {!r.quote ? (
+            <Text style={styles.fail}>
+              {r.error === 'UNKNOWN_SYMBOL'
+                ? t('quotesErrorNoPrice')
+                : r.error === 'QUOTE_FETCH_FAILED'
+                  ? t('quotesErrorLookup')
+                  : (r.error ?? t('quotesDataUnavailable'))}
+            </Text>
+          ) : null}
+        </>
+      );
+
+      if (watchSwipe) {
+        return (
+          <ReanimatedSwipeable
+            enabled={!loading}
+            overshootRight={false}
+            containerStyle={styles.swipeRow}
+            renderRightActions={() => (
+              <View style={styles.swipeRight}>
+                <RectButton
+                  style={styles.swipeDeleteBtn}
+                  onPress={() => void onRemoveWatch(r.symbol)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${r.symbol} ${t('quotesWatchSwipeRemove')}`}>
+                  <Text style={styles.swipeDeleteText}>{t('quotesWatchSwipeRemove')}</Text>
+                </RectButton>
+              </View>
+            )}>
+            <View style={styles.card}>{cardInner}</View>
+          </ReanimatedSwipeable>
+        );
+      }
+
+      return (
+        <View style={[styles.card, styles.cardGap]}>
+          {cardInner}
+        </View>
+      );
+    },
+    [
+      loading,
+      onRemoveWatch,
+      openSymbolDetail,
+      openYahooFinance,
+      segment,
+      styles,
+      t,
+      theme.green,
+      theme.textDim,
+    ],
+  );
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <SignalHeader />
@@ -475,178 +656,31 @@ export default function QuotesScreen() {
           </View>
         </View>
 
-        <ScrollView
-          style={styles.scrollView}
-          removeClippedSubviews={false}
-          contentContainerStyle={[
-            styles.scrollContent,
-            loading ? SCROLL_CONTENT_LOADING_STYLE : null,
-            { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
-          ]}
+        <FlatList
+          data={loading ? [] : rows}
+          keyExtractor={(r) => `${r.symbol}-${r.name ?? ''}`}
+          renderItem={renderQuoteItem}
+          ListHeaderComponent={quotesListHeader}
+          ListEmptyComponent={
+            !loading && !error && rows.length === 0 ? (
+              <Text style={styles.empty}>
+                {segment === 'watch' ? t('quotesEmptyWatch') : t('quotesEmptyGeneric')}
+              </Text>
+            ) : null
+          }
+          style={styles.list}
+          contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             loading ? undefined : (
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />
             )
-          }>
-          {loading ? (
-            <View style={SCROLL_LOADING_BODY_STYLE}>
-              <SignalLoadingIndicator message={t('commonLoading')} />
-            </View>
-          ) : (
-            <>
-            {nextRefreshLine ? <Text style={styles.updated}>{nextRefreshLine}</Text> : null}
-
-            {error ? (
-              <View style={styles.errBox}>
-                <Text style={styles.errText}>{error}</Text>
-              </View>
-            ) : null}
-
-            {segment === 'watch' ? (
-              <View style={styles.addRow}>
-                <TextInput
-                  value={draftTicker}
-                  onChangeText={setDraftTicker}
-                  placeholder={t('quotesPlaceholderTicker')}
-                  placeholderTextColor={theme.textDim}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  style={styles.addInput}
-                  onSubmitEditing={() => void onAddWatch()}
-                  returnKeyType="done"
-                />
-                <Pressable onPress={() => void onAddWatch()} style={styles.addBtn} accessibilityRole="button">
-                  <Text style={styles.addBtnText}>{t('quotesAddButton')}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={onResetWatchDefaults}
-                  style={styles.watchResetBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('settingsQuotesReset')}>
-                  <Text style={styles.watchResetBtnText} numberOfLines={1}>
-                    {t('settingsQuotesReset')}
-                  </Text>
-                </Pressable>
-              </View>
-            ) : null}
-
-            {rows.map((r) => {
-              const symTrim = r.symbol?.trim() ?? '';
-              const yahooEnabled = symTrim.length > 0 && symTrim !== '—';
-              const watchSwipe = segment === 'watch' && Platform.OS !== 'web';
-              const watchRemoveIcon = segment === 'watch' && Platform.OS === 'web';
-
-              const rowKey = `${r.symbol}-${r.name ?? ''}`;
-              const cardInner = (
-                <>
-                  <View style={styles.cardTop}>
-                    <View style={styles.symCol}>
-                      <View style={styles.symBlock}>
-                        <View style={styles.symRow}>
-                          <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={6}>
-                            <Text style={styles.sym}>{r.symbol}</Text>
-                          </Pressable>
-                          {yahooEnabled ? (
-                            <Pressable
-                              onPress={() => openYahooFinance(r)}
-                              style={({ pressed }) => [styles.yahooInline, pressed && styles.yahooInlinePressed]}
-                              hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-                              accessibilityRole="link"
-                              accessibilityLabel={t('quotesYahooFinanceA11y', { symbol: r.symbol })}>
-                              <FontAwesome name="external-link" size={11} color={theme.green} />
-                              <Text style={styles.yahooInlineText}>{t('quotesYahooShort')}</Text>
-                            </Pressable>
-                          ) : null}
-                        </View>
-                        {r.quote ? (
-                          <Text style={styles.symPrev}>
-                            {segment === 'coin' ? t('quotesPrevRefCoin') : t('quotesPrevCloseStock')}{' '}
-                            {formatUsd(r.quote.pc)}
-                          </Text>
-                        ) : null}
-                        {segment === 'coin' && r.name ? (
-                          <Text style={styles.symSub} numberOfLines={1}>
-                            {r.name}
-                          </Text>
-                        ) : null}
-                      </View>
-                    </View>
-                    <View style={styles.priceCol}>
-                      <View style={styles.priceRow}>
-                        {r.quote ? (
-                          <Text style={styles.price}>{formatUsd(r.quote.c)}</Text>
-                        ) : (
-                          <Text style={styles.na}>—</Text>
-                        )}
-                        {watchRemoveIcon ? (
-                          <Pressable
-                            onPress={() => void onRemoveWatch(r.symbol)}
-                            style={styles.removeBtn}
-                            hitSlop={8}
-                            accessibilityRole="button"
-                            accessibilityLabel={`${r.symbol} ${t('quotesWatchSwipeRemove')}`}>
-                            <FontAwesome name="times-circle" size={18} color={theme.textDim} />
-                          </Pressable>
-                        ) : null}
-                      </View>
-                      {r.quote ? (
-                        <Text style={[styles.chg, quoteRowChangeUp(r.quote) ? styles.chgUp : styles.chgDn]}>
-                          {formatUsdChange(r.quote.d)} ({formatQuoteDpPct(r.quote.dp)})
-                        </Text>
-                      ) : null}
-                    </View>
-                  </View>
-                  {!r.quote ? (
-                    <Text style={styles.fail}>
-                      {r.error === 'UNKNOWN_SYMBOL'
-                        ? t('quotesErrorNoPrice')
-                        : r.error === 'QUOTE_FETCH_FAILED'
-                          ? t('quotesErrorLookup')
-                          : (r.error ?? t('quotesDataUnavailable'))}
-                    </Text>
-                  ) : null}
-                </>
-              );
-
-              if (watchSwipe) {
-                return (
-                  <ReanimatedSwipeable
-                    key={rowKey}
-                    enabled={!loading}
-                    overshootRight={false}
-                    containerStyle={styles.swipeRow}
-                    renderRightActions={() => (
-                      <View style={styles.swipeRight}>
-                        <RectButton
-                          style={styles.swipeDeleteBtn}
-                          onPress={() => void onRemoveWatch(r.symbol)}
-                          accessibilityRole="button"
-                          accessibilityLabel={`${r.symbol} ${t('quotesWatchSwipeRemove')}`}>
-                          <Text style={styles.swipeDeleteText}>{t('quotesWatchSwipeRemove')}</Text>
-                        </RectButton>
-                      </View>
-                    )}>
-                    <View style={styles.card}>{cardInner}</View>
-                  </ReanimatedSwipeable>
-                );
-              }
-
-              return (
-                <View key={rowKey} style={[styles.card, styles.cardGap]}>
-                  {cardInner}
-                </View>
-              );
-            })}
-
-            {rows.length === 0 && !error ? (
-              <Text style={styles.empty}>
-                {segment === 'watch' ? t('quotesEmptyWatch') : t('quotesEmptyGeneric')}
-              </Text>
-            ) : null}
-            </>
-          )}
-        </ScrollView>
+          }
+          removeClippedSubviews={Platform.OS === 'android'}
+          initialNumToRender={12}
+          windowSize={8}
+          maxToRenderPerBatch={16}
+        />
       </View>
     </SafeAreaView>
   );
@@ -667,8 +701,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
-    scrollView: { flex: 1, minHeight: 0 },
-    scrollContent: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28 },
+    list: { flex: 1, minHeight: 0 },
+    listContent: { paddingHorizontal: 16, paddingTop: 0 },
     section: { fontSize: sf(16), fontWeight: '800', color: theme.text, marginBottom: 4 },
     segment: {
       flexDirection: 'row',

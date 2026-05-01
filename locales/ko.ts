@@ -73,7 +73,7 @@ export const ko = {
   calendarActualInlineEstimate: '예상 부합',
   errorFinnhubTokenShort: 'Signal 서버의 Finnhub provider 설정이 필요합니다.',
   errorSignalApiShort:
-    'EXPO_PUBLIC_SIGNAL_API_BASE_URL이 필요합니다. 프로젝트 루트 .env에 Signal 서버 주소를 넣고 Metro를 재시작하세요.',
+    'Signal API 주소가 비어 있습니다. 설정 → 표시 → 「Signal 서버」에서 개발/리얼/직접 입력을 선택하거나, .env의 EXPO_PUBLIC_SIGNAL_API_BASE_URL을 채운 뒤 Metro를 재시작하세요.',
   screenInfo: '정보',
   screenMegaCapList: '메가캡 티커 목록',
   screenMegaCapListLead:
@@ -124,6 +124,7 @@ export const ko = {
   settingsTabDisplay: '표시',
   settingsTabCalendar: '캘린더',
   settingsTabNotifications: '알림',
+  settingsTabServer: '서버',
 
   settingsDeveloperFooterLine: 'Marcus · LinkedIn',
   settingsDeveloperLinkedInA11y: 'Marcus LinkedIn 프로필 열기',
@@ -201,11 +202,29 @@ export const ko = {
   settingsDisplayPreviewLabel: '미리보기',
   settingsDisplaySelectedTheme: '선택: {{name}}',
 
+  settingsSignalServerShortNote: '모드 전환은 /health 통과 시에만 저장됩니다.',
+  settingsSignalServerUrlA11y: 'Signal API 주소, {{url}}',
+  settingsSignalServerProbeFailTitle: '연결 실패',
+  settingsSignalServerProbeTimeout: '10초 안에 응답이 없습니다. 주소·VPN·서버 기동을 확인해 주세요.',
+  settingsSignalServerBundleEmpty: '빌드(.env)에 Signal API URL이 비어 있습니다. .env를 채우거나 다른 모드를 선택하세요.',
+  settingsSignalServerVerifying: '연결 확인 중…',
+  settingsSignalServerModeBundle: '빌드(.env)',
+  settingsSignalServerModeDev: '개발',
+  settingsSignalServerModeReal: '리얼',
+  settingsSignalServerModeCustom: '직접 입력',
+  settingsSignalServerCustomLabel: '직접 URL',
+  settingsSignalServerCustomPlaceholder: 'https://example.com',
+  settingsSignalServerCustomEmpty: 'URL을 입력해 주세요.',
+
   settingsNewsTabLead: '뉴스 화면에서 쓰는 옵션입니다. 이 기기에만 저장됩니다.',
   settingsNewsSegmentOrderKicker: '뉴스 탭 순서',
   settingsNewsSegmentOrderHint:
     '뉴스 화면 상단의 글로벌·코인·한국 순서입니다. 오른쪽 ≡을 드래그해 바꿉니다.',
   settingsNewsSegmentDragHandleA11y: '{{name}} 순서 바꾸기(드래그)',
+  settingsNewsHashtagDisplayKicker: '뉴스 해시태그 표시',
+  settingsNewsHashtagDisplayHint:
+    '피드 카드에 보여 줄 태그 개수입니다(0이면 숨김). 서버가 정한 순서에서 앞에서부터 잘립니다.',
+  settingsNewsHashtagDisplayValue: '표시 {{max}}개',
   settingsNewsKoreaKeywordsKicker: '한국 뉴스 키워드',
   settingsNewsKoreaKeywordsLead:
     '한국 탭은 Finnhub 일반·FX 뉴스를 제목·요약·관련 심볼에서 키워드로 거릅니다. 처음 실행 시 아래 목록에 앱 기본 키워드가 채워지며, 내장 정규식과 함께 OR로 적용됩니다. 삭제·추가로 조정할 수 있습니다.',
@@ -295,10 +314,10 @@ export const ko = {
   feedErrorLoad: '뉴스를 불러오지 못했습니다.',
   feedErrorRefresh: '새로고침 실패',
   feedEmpty: '표시할 뉴스가 없습니다.',
+  feedTagFilterActive: '태그: {{tag}}',
+  feedTagFilterClear: '태그 해제',
+  feedLoadingMore: '불러오는 중…',
 
-  newsAiClaude: 'Claude AI 요약',
-  newsAiOpenai: 'ChatGPT 요약',
-  newsAiFinnhub: '원문 요약 (Finnhub)',
   newsReadMore: '원문 보기 →',
   newsSourceLabel: '출처',
   newsFlashBadge: '속보',

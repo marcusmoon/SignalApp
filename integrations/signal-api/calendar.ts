@@ -1,14 +1,28 @@
 import { signalApi } from '@/integrations/signal-api/client';
 import type { SignalApiCalendarEvent } from '@/integrations/signal-api/types';
+import { buildSignalCalendarCacheKey, peekSignalCalendarCache, storeSignalCalendarCache } from '@/integrations/signal-api/cache/calendarCache';
+import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import type { CalendarEvent } from '@/types/signal';
 
-export async function fetchSignalCalendar(params?: {
+export async function fetchSignalCalendar(
+  params?: {
   from?: string;
   to?: string;
   type?: string;
-}): Promise<SignalApiCalendarEvent[]> {
+},
+  options?: { cacheMode?: 'use' | 'bypass' },
+): Promise<SignalApiCalendarEvent[]> {
+  const cacheMode = options?.cacheMode || 'use';
+  const { calendarEnabled } = await loadCacheFeaturePrefs();
+  const cacheKey = buildSignalCalendarCacheKey(params);
+  if (cacheMode !== 'bypass' && calendarEnabled) {
+    const hit = peekSignalCalendarCache(cacheKey);
+    if (hit) return hit;
+  }
   const json = await signalApi<{ data: SignalApiCalendarEvent[] }>('/v1/calendar', params);
-  return json.data;
+  const rows = Array.isArray(json.data) ? json.data : [];
+  if (cacheMode !== 'bypass' && calendarEnabled) storeSignalCalendarCache(cacheKey, rows);
+  return rows;
 }
 
 export function signalCalendarToCalendarEvent(item: SignalApiCalendarEvent): CalendarEvent {

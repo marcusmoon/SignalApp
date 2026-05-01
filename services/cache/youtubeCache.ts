@@ -1,15 +1,14 @@
-import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from './constants';
 import { fetchSignalYoutube, signalYoutubeToYoutubeItem } from '@/integrations/signal-api/youtube';
 import type { AppLocale } from '@/locales/messages';
 import type { YoutubeItem } from '@/types/signal';
+import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/domain/youtube/constants';
 
-/** YouTube API — memory cache TTL */
+/** YouTube feed — memory cache TTL */
 export const YOUTUBE_CACHE_TTL_MS = 10 * 60 * 1000;
 
 export type YoutubeSortOrder = 'viewCount' | 'date';
 
 type Entry = { items: YoutubeItem[]; expiresAt: number };
-
 const cache = new Map<string, Entry>();
 
 export function channelFilterKey(handles: string[]): string {
@@ -35,9 +34,7 @@ export function peekYoutubeCache(
   const h = resolvedHandles(handles);
   const k = cacheKey(order, h, locale);
   const e = cache.get(k);
-  if (e && Date.now() < e.expiresAt) {
-    return e.items;
-  }
+  if (e && Date.now() < e.expiresAt) return e.items;
   return null;
 }
 
@@ -50,26 +47,26 @@ export async function fetchEconomyYoutubeCached(
   const locale = options?.locale ?? 'ko';
 
   if (!cacheEnabled) {
-    const rows = await fetchSignalYoutube({ pageSize: 100 });
+    const rows = await fetchSignalYoutube({ pageSize: 100 }, { cacheMode: 'bypass' });
     return rows.map((row) => signalYoutubeToYoutubeItem(row, locale));
   }
 
   const k = cacheKey(order, handles, locale);
-
   if (!options?.forceRefresh) {
     const hit = cache.get(k);
-    if (hit && Date.now() < hit.expiresAt) {
-      return hit.items;
-    }
+    if (hit && Date.now() < hit.expiresAt) return hit.items;
   } else {
     cache.delete(k);
   }
 
-  const items = (await fetchSignalYoutube({ pageSize: 100 })).map((row) => signalYoutubeToYoutubeItem(row, locale));
+  const items = (await fetchSignalYoutube({ pageSize: 100 }, { cacheMode: 'bypass' })).map((row) =>
+    signalYoutubeToYoutubeItem(row, locale),
+  );
   cache.set(k, { items, expiresAt: Date.now() + YOUTUBE_CACHE_TTL_MS });
   return items;
 }
 
-export function clearYoutubeCache() {
+export function clearYoutubeCache(): void {
   cache.clear();
 }
+

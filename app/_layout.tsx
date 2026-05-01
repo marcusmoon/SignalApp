@@ -4,7 +4,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { enableFreeze } from 'react-native-screens';
@@ -16,6 +16,10 @@ import { OtaBannerProvider } from '@/contexts/OtaBannerContext';
 import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
 import { SignalThemeProvider, useSignalTheme } from '@/contexts/SignalThemeContext';
 import { getPreviewOtaBannerRaw } from '@/services/env';
+import {
+  hydrateSignalServerEndpoint,
+  subscribeSignalServerEndpointChanged,
+} from '@/services/signalServerEndpoint';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -40,6 +44,7 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
   });
+  const [signalEndpointReady, setSignalEndpointReady] = useState(false);
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
@@ -47,10 +52,14 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    if (loaded) {
+    void hydrateSignalServerEndpoint().then(() => setSignalEndpointReady(true));
+  }, []);
+
+  useEffect(() => {
+    if (loaded && signalEndpointReady) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, signalEndpointReady]);
 
   useEffect(() => {
     if (Platform.OS === 'web') return;
@@ -62,7 +71,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <LocaleProvider>
-        {!loaded ? (
+        {!loaded || !signalEndpointReady ? (
           <AppSplashScreen />
         ) : (
           <SignalThemeProvider>
@@ -77,6 +86,13 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
+  const [_signalUrlTick, setSignalUrlTick] = useState(0);
+  useEffect(() => {
+    return subscribeSignalServerEndpointChanged(() => {
+      setSignalUrlTick((n) => n + 1);
+    });
+  }, []);
+
   const { theme } = useSignalTheme();
   const { t } = useLocale();
   const navTheme = useMemo(

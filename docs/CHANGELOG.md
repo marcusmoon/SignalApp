@@ -5,9 +5,11 @@
 ## 앱 (Client)
 
 - **로케일**: `locales/*`에 UI 문자열을 모으고, 화면/도메인에서 재사용한다.
-- **컨콜**: `services/concalls`의 사용자 메시지와 캐시는 앱 언어를 따른다(캐시 키에 로케일 포함).
-- **컨콜 서버화**: 서버가 최근 실적 캘린더 기준 컨콜 트랜스크립트를 Signal 포맷으로 저장하고, 앱은 `/v1/concalls`를 조회한다.
-- **데이터 경로**: 앱 피처 데이터는 Signal Server API만 조회한다. 외부 provider 키와 직접 호출은 서버/Admin 책임이다.
+- **데이터 경로**: 피처 데이터 HTTP는 **`integrations/signal-api/`** 만 사용한다. 응답 메모리 캐시는 **`integrations/signal-api/cache/*`** (뉴스·캘린더·컨콜·유튜브 등). 시세 탭 등 일부 TTL·보조 캐시는 **`services/cache/`** 와 설정 화면의 캐시 초기화와 연동한다.
+- **도메인**: 뉴스 규칙 `domain/news`, 시세·심볼 시드 `domain/quotes`(예: US 심볼), 유튜브 큐레이션·핸들 `domain/youtube`, 컨콜/캘린더/시그널 등은 각 `domain/<영역>` 배럴로만 참조한다.
+- **뉴스 UI**: `components/signal/NewsCard` — 해시태그·「원문 보기」푸터, 상대 시각은 **경과 시간** 기준(방금 / N분·시간 전; 로컬 날짜 전환과 무관).
+- **컨콜**: `services/concalls` 흐름과 앱 언어 기준 메시지; 서버 `/v1/concalls` 조회. 캐시 키에 로케일 포함.
+- **앱 내 provider 클라이언트**: Finnhub·YouTube Data·OpenAI·Claude·CoinGecko 등 **직접 HTTP 클라이언트 폴더는 사용하지 않는다**. 타입·호환은 필요 시 `types/`·`utils/` 등으로만 둔다.
 
 ## 서버 (API / Jobs)
 

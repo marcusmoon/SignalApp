@@ -2,19 +2,21 @@ export type NewsItem = {
   id: string;
   ticker: string;
   titleKo: string;
+  /** 기사 매체·출처명 (표시용) */
   source: string;
   timeLabel: string;
   url: string;
-  summarySource?: 'claude' | 'openai' | 'finnhub';
   /** 속보·긴급 보도 강조 표시 */
   isFlash?: boolean;
+  /** 서버 `hashtags` — UI는 `maxHashtagsToShow`로 일부만 표시 */
+  hashtags?: { label: string; order: number; source?: string }[];
 };
 
 export type CalendarEvent = {
   id: string;
   date: string;
   time: string;
-  /** Finnhub earnings `hour` code (e.g. bmo, amc) — localized in UI */
+  /** 실적 발표 시간대 코드(bmo, amc 등) — UI에서 로캘 처리 */
   earningsHourCode?: string;
   title: string;
   type: 'earnings' | 'macro' | 'fed' | 'fomc';

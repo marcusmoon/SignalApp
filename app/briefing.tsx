@@ -17,20 +17,25 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchCompanyNewsForDisplay } from '@/services/companyNewsForSymbol';
-import { finnhubQuoteHasValidPrice } from '@/integrations/finnhub/quoteUtils';
-import type {
-  FinnhubEarningsRow,
-  FinnhubEconomicRow,
-  FinnhubNewsRaw,
-  FinnhubQuote,
-  FinnhubStockCandles,
-} from '@/integrations/finnhub/types';
+import {
+  earningsRowDate,
+  earningsRowHour,
+  earningsRowQuarter,
+  earningsRowSymbol,
+  earningsRowYear,
+} from '@/domain/concalls/signalCalendarEarnings';
 import {
   fetchSignalEarningsCalendarRangeMerged,
   fetchSignalMacroCalendarRangeMerged,
-  signalMarketQuoteToFinnhubQuote,
-} from '@/integrations/signal-api/finnhubShim';
+} from '@/integrations/signal-api/calendarRange';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
+import type {
+  SignalApiCalendarEvent,
+  SignalApiMarketQuote,
+  SignalApiNewsItem,
+  SignalApiStockCandles,
+} from '@/integrations/signal-api/types';
+import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
 import { fetchSignalStockCandles } from '@/integrations/signal-api/stock';
 import { buildSignalScore, type SignalScore } from '@/domain/signals';
 import { loadMarketSnapshotQuotes } from '@/services/marketSnapshotQuotes';
@@ -63,19 +68,22 @@ function formatUsd(n: number): string {
   return `$${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
 }
 
-function effectiveDp(q: FinnhubQuote): number {
-  if (Number.isFinite(q.dp)) return q.dp;
-  if (Number.isFinite(q.pc) && q.pc !== 0 && Number.isFinite(q.c)) {
-    return ((q.c - q.pc) / q.pc) * 100;
+function effectiveDp(q: SignalApiMarketQuote): number {
+  const dp = Number(q.changePercent);
+  if (Number.isFinite(dp)) return dp;
+  const c = Number(q.currentPrice);
+  const pc = Number(q.previousClose);
+  if (Number.isFinite(c) && Number.isFinite(pc) && pc !== 0) {
+    return ((c - pc) / pc) * 100;
   }
   return Number.NaN;
 }
 
-function nextEarningForSymbol(rows: FinnhubEarningsRow[], sym: string): FinnhubEarningsRow | null {
+function nextEarningForSymbol(rows: SignalApiCalendarEvent[], sym: string): SignalApiCalendarEvent | null {
   const u = sym.toUpperCase();
   const hits = rows
-    .filter((r) => r.symbol && r.symbol.trim().toUpperCase() === u)
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .filter((r) => earningsRowSymbol(r) === u)
+    .sort((a, b) => earningsRowDate(a).localeCompare(earningsRowDate(b)));
   return hits[0] ?? null;
 }
 
@@ -86,13 +94,24 @@ function shortMd(isoDate: string): string {
   return `${Number(m[2])}/${Number(m[3])}`;
 }
 
-function earningsInInclusiveRange(rows: FinnhubEarningsRow[], fromYmd: string, toYmdInclusive: string): FinnhubEarningsRow[] {
+function earningsInInclusiveRange(
+  rows: SignalApiCalendarEvent[],
+  fromYmd: string,
+  toYmdInclusive: string,
+): SignalApiCalendarEvent[] {
   return rows
-    .filter((r) => r.date >= fromYmd && r.date <= toYmdInclusive)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.symbol.localeCompare(b.symbol));
+    .filter((r) => {
+      const d = earningsRowDate(r);
+      return d >= fromYmd && d <= toYmdInclusive;
+    })
+    .sort(
+      (a, b) =>
+        earningsRowDate(a).localeCompare(earningsRowDate(b)) ||
+        earningsRowSymbol(a).localeCompare(earningsRowSymbol(b)),
+    );
 }
 
-/** Finnhub economic `time` (예: `2025-04-02 08:30:00`) → 표시용 */
+/** 경제 이벤트 `time` (예: `2025-04-02 08:30:00`) → 표시용 */
 function macroWhenLabel(time: string): string {
   if (time.length >= 16) {
     const ymd = time.slice(0, 10);
@@ -102,7 +121,16 @@ function macroWhenLabel(time: string): string {
   return time;
 }
 
-function insightVsSma20(candles: FinnhubStockCandles, lastPrice: number): { vsSmaPct: number } | null {
+function macroEventTimeLabel(ev: SignalApiCalendarEvent): string {
+  const iso = ev.eventAt?.trim();
+  if (iso && iso.length >= 16) {
+    return `${shortMd(iso.slice(0, 10))} ${iso.slice(11, 16)}`;
+  }
+  if (ev.date && ev.timeLabel) return `${shortMd(ev.date)} ${ev.timeLabel.slice(0, 5)}`;
+  return ev.date ? shortMd(ev.date) : '—';
+}
+
+function insightVsSma20(candles: SignalApiStockCandles, lastPrice: number): { vsSmaPct: number } | null {
   const { c, t } = candles;
   if (!Array.isArray(c) || !Array.isArray(t) || c.length !== t.length || c.length < 20) return null;
   const ordered = t
@@ -136,13 +164,13 @@ export default function BriefingScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tape, setTape] = useState<Record<string, FinnhubQuote | null>>({});
-  const [macro, setMacro] = useState<Record<string, FinnhubQuote | null>>({});
+  const [tape, setTape] = useState<Record<string, SignalApiMarketQuote | null>>({});
+  const [macro, setMacro] = useState<Record<string, SignalApiMarketQuote | null>>({});
   const [symbols, setSymbols] = useState<string[]>([]);
-  const [quotes, setQuotes] = useState<{ symbol: string; q: FinnhubQuote | null }[]>([]);
-  const [newsBySymbol, setNewsBySymbol] = useState<Record<string, FinnhubNewsRaw[]>>({});
-  const [earnings, setEarnings] = useState<FinnhubEarningsRow[]>([]);
-  const [economicWeek, setEconomicWeek] = useState<FinnhubEconomicRow[]>([]);
+  const [quotes, setQuotes] = useState<{ symbol: string; q: SignalApiMarketQuote | null }[]>([]);
+  const [newsBySymbol, setNewsBySymbol] = useState<Record<string, SignalApiNewsItem[]>>({});
+  const [earnings, setEarnings] = useState<SignalApiCalendarEvent[]>([]);
+  const [economicWeek, setEconomicWeek] = useState<SignalApiCalendarEvent[]>([]);
   const [smaBySymbol, setSmaBySymbol] = useState<Record<string, { vsSmaPct: number } | null>>({});
 
   const load = useCallback(async () => {
@@ -170,13 +198,13 @@ export default function BriefingScreen() {
     const candleTo = new Date();
 
     const [snap, mqRows, earnRows, newsLists, econRows] = await Promise.all([
-      loadMarketSnapshotQuotes().catch(() => ({ tape: {} as Record<string, FinnhubQuote | null>, macro: {} })),
+      loadMarketSnapshotQuotes().catch(() => ({ tape: {} as Record<string, SignalApiMarketQuote | null>, macro: {} })),
       syms.length > 0
         ? fetchSignalMarketQuotes({ symbols: syms, pageSize: Math.max(syms.length, 1) }).catch(() => [])
         : Promise.resolve([]),
-      fetchSignalEarningsCalendarRangeMerged(today, earnUntil).catch(() => [] as FinnhubEarningsRow[]),
-      Promise.all(syms.map((sym) => fetchCompanyNewsForDisplay(sym, locale).catch(() => [] as FinnhubNewsRaw[]))),
-      fetchSignalMacroCalendarRangeMerged(today, macroUntil).catch(() => [] as FinnhubEconomicRow[]),
+      fetchSignalEarningsCalendarRangeMerged(today, earnUntil).catch(() => [] as SignalApiCalendarEvent[]),
+      Promise.all(syms.map((sym) => fetchCompanyNewsForDisplay(sym, locale).catch(() => [] as SignalApiNewsItem[]))),
+      fetchSignalMacroCalendarRangeMerged(today, macroUntil).catch(() => [] as SignalApiCalendarEvent[]),
     ]);
 
     setTape(snap.tape);
@@ -185,27 +213,28 @@ export default function BriefingScreen() {
     const qRows = syms.map((sym) => {
       const row = mqRows.find((r) => String(r.symbol || '').trim().toUpperCase() === sym);
       if (!row) return { symbol: sym, q: null };
-      const conv = signalMarketQuoteToFinnhubQuote(row);
-      return { symbol: sym, q: finnhubQuoteHasValidPrice(conv) ? conv : null };
+      return { symbol: sym, q: signalMarketQuoteHasValidPrice(row) ? row : null };
     });
     setQuotes(qRows);
 
     const watchSet = new Set(syms);
     setEarnings(
       earnRows
-        .filter((r) => r.symbol && watchSet.has(r.symbol.trim().toUpperCase()))
-        .sort((a, b) => a.date.localeCompare(b.date)),
+        .filter((r) => earningsRowSymbol(r) && watchSet.has(earningsRowSymbol(r)))
+        .sort((a, b) => earningsRowDate(a).localeCompare(earningsRowDate(b))),
     );
 
-    const nb: Record<string, FinnhubNewsRaw[]> = {};
+    const nb: Record<string, SignalApiNewsItem[]> = {};
     syms.forEach((sym, i) => {
       nb[sym] = newsLists[i] ?? [];
     });
     setNewsBySymbol(nb);
 
-    const econSorted = [...econRows]
-      .filter((r) => r.time && r.time.length >= 10)
-      .sort((a, b) => a.time.localeCompare(b.time));
+    const econSorted = [...econRows].sort((a, b) => {
+      const ka = String(a.eventAt || a.date || '');
+      const kb = String(b.eventAt || b.date || '');
+      return ka.localeCompare(kb);
+    });
     setEconomicWeek(econSorted);
 
     let smaOut: Record<string, { vsSmaPct: number } | null> = {};
@@ -215,8 +244,9 @@ export default function BriefingScreen() {
           const q = qRows[i]?.q ?? null;
           return fetchSignalStockCandles(sym, 'D', candleFrom, candleTo)
             .then((candles): [string, { vsSmaPct: number } | null] => {
-              if (!candles || !q || !finnhubQuoteHasValidPrice(q)) return [sym, null];
-              return [sym, insightVsSma20(candles, q.c)];
+              if (!candles || !q || !signalMarketQuoteHasValidPrice(q)) return [sym, null];
+              const last = Number(q.currentPrice);
+              return [sym, insightVsSma20(candles, last)];
             })
             .catch((): [string, null] => [sym, null]);
         }),
@@ -253,7 +283,7 @@ export default function BriefingScreen() {
   }, [load, t]);
 
   const quoteBySymbol = useMemo(() => {
-    const m: Record<string, FinnhubQuote | null> = {};
+    const m: Record<string, SignalApiMarketQuote | null> = {};
     for (const { symbol, q } of quotes) {
       m[symbol] = q;
     }
@@ -283,7 +313,7 @@ export default function BriefingScreen() {
 
   const { weekEarnings, pulseLines } = useMemo(() => {
     if (symbols.length === 0) {
-      return { weekEarnings: [] as FinnhubEarningsRow[], pulseLines: [] as string[] };
+      return { weekEarnings: [] as SignalApiCalendarEvent[], pulseLines: [] as string[] };
     }
     const today0 = startOfLocalDay(new Date());
     const fromY = toYmd(today0);
@@ -330,8 +360,8 @@ export default function BriefingScreen() {
       lines.push(
         t('briefingPulseMacroNext', {
           country: m0.country || '—',
-          when: macroWhenLabel(m0.time),
-          event: m0.event,
+          when: macroEventTimeLabel(m0),
+          event: String(m0.title || '').trim() || '—',
         }),
       );
     }
@@ -467,17 +497,17 @@ export default function BriefingScreen() {
                     const noEarn = t('briefingNoUpcomingEarning');
                     let earnLine = noEarn;
                     if (nextE) {
-                      const h = nextE.hour.trim().toLowerCase();
+                      const h = earningsRowHour(nextE).trim().toLowerCase();
                       const hourLabel =
-                        h === 'bmo' ? t('briefingEarnHourBmo') : h === 'amc' ? t('briefingEarnHourAmc') : nextE.hour || '—';
+                        h === 'bmo' ? t('briefingEarnHourBmo') : h === 'amc' ? t('briefingEarnHourAmc') : earningsRowHour(nextE) || '—';
                       earnLine = t('briefingRowEarnLine', {
-                        date: shortMd(nextE.date),
-                        y: String(nextE.year),
-                        q: String(nextE.quarter),
+                        date: shortMd(earningsRowDate(nextE)),
+                        y: String(earningsRowYear(nextE)),
+                        q: String(earningsRowQuarter(nextE)),
                         hour: hourLabel,
                       });
                     }
-                    const headline = topNews?.headline?.trim() ?? '';
+                    const headline = (topNews?.originalTitle || topNews?.title || '').trim();
                     const primaryStory = headline || (earnLine !== noEarn ? earnLine : vsLine);
                     const subMeta: string[] = [];
                     if (headline) {
@@ -499,7 +529,9 @@ export default function BriefingScreen() {
                             {sym}
                           </Text>
                           <View style={styles.briefCardValues}>
-                            <Text style={styles.briefCardPrice}>{q ? formatUsd(q.c) : '—'}</Text>
+                            <Text style={styles.briefCardPrice}>
+                              {q && typeof q.currentPrice === 'number' ? formatUsd(q.currentPrice) : '—'}
+                            </Text>
                             <Text style={[styles.briefCardPct, up ? styles.up : styles.dn]}>
                               {q ? formatPct(dp) : '—'}
                             </Text>
@@ -535,17 +567,17 @@ export default function BriefingScreen() {
                   contentContainerStyle={styles.weekStripScroll}>
                   {weekEarnings.map((r) => (
                     <Pressable
-                      key={`${r.symbol}-${r.date}-${r.quarter}-${r.year}`}
+                      key={`${earningsRowSymbol(r)}-${earningsRowDate(r)}-${earningsRowQuarter(r)}-${earningsRowYear(r)}`}
                       style={styles.weekChip}
-                      onPress={() => router.push(`/symbol/${r.symbol}`)}
+                      onPress={() => router.push(`/symbol/${earningsRowSymbol(r)}`)}
                       accessibilityRole="button"
-                      accessibilityLabel={`${r.symbol} ${r.date}`}>
-                      <Text style={styles.weekChipDate}>{shortMd(r.date)}</Text>
+                      accessibilityLabel={`${earningsRowSymbol(r)} ${earningsRowDate(r)}`}>
+                      <Text style={styles.weekChipDate}>{shortMd(earningsRowDate(r))}</Text>
                       <Text style={styles.weekChipSym} numberOfLines={1}>
-                        {r.symbol}
+                        {earningsRowSymbol(r)}
                       </Text>
                       <Text style={styles.weekChipMeta} numberOfLines={1}>
-                        {t('fiscalYearQuarterShort', { y: r.year, q: r.quarter })}
+                        {t('fiscalYearQuarterShort', { y: earningsRowYear(r), q: earningsRowQuarter(r) })}
                       </Text>
                     </Pressable>
                   ))}
@@ -559,14 +591,14 @@ export default function BriefingScreen() {
                 <View style={styles.macroCard}>
                   {macroDisplay.map((r, idx) => (
                     <View
-                      key={`${r.time}-${idx}`}
+                      key={`${r.id}-${idx}`}
                       style={[styles.macroRow, idx === macroDisplay.length - 1 && styles.macroRowLast]}>
                       <Text style={styles.macroMeta} numberOfLines={1}>
-                        {r.country} · {macroWhenLabel(r.time)}
+                        {r.country || '—'} · {macroEventTimeLabel(r)}
                         {r.impact?.toLowerCase() === 'high' ? ` · ${t('briefingMacroImpactHigh')}` : ''}
                       </Text>
                       <Text style={styles.macroEvent} numberOfLines={2}>
-                        {r.event}
+                        {r.title}
                       </Text>
                     </View>
                   ))}

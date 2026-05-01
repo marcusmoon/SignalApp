@@ -75,7 +75,7 @@ export const en = {
   calendarActualInlineEstimate: 'In line',
   errorFinnhubTokenShort: 'Signal Server Finnhub provider settings are required.',
   errorSignalApiShort:
-    'EXPO_PUBLIC_SIGNAL_API_BASE_URL is required. Add your Signal Server base URL to .env and restart Metro.',
+    'Signal API base URL is empty. Open Settings → Display → Signal server and pick Dev / Real / Custom, or set EXPO_PUBLIC_SIGNAL_API_BASE_URL in .env and restart Metro.',
   screenInfo: 'About',
   screenMegaCapList: 'Mega-cap tickers',
   screenMegaCapListLead:
@@ -126,6 +126,7 @@ export const en = {
   settingsTabDisplay: 'Display',
   settingsTabCalendar: 'Calendar',
   settingsTabNotifications: 'Alerts',
+  settingsTabServer: 'Server',
 
   settingsDeveloperFooterLine: 'Marcus · LinkedIn',
   settingsDeveloperLinkedInA11y: 'Open Marcus LinkedIn profile',
@@ -203,11 +204,30 @@ export const en = {
   settingsDisplayPreviewLabel: 'Preview',
   settingsDisplaySelectedTheme: 'Selected: {{name}}',
 
+  settingsSignalServerShortNote: 'A mode change saves only after /health succeeds.',
+  settingsSignalServerUrlA11y: 'Signal API base URL, {{url}}',
+  settingsSignalServerProbeFailTitle: 'Connection check failed',
+  settingsSignalServerProbeTimeout: 'No response within 10s. Check the URL, VPN, and that the server is running.',
+  settingsSignalServerBundleEmpty:
+    'EXPO_PUBLIC_SIGNAL_API_BASE_URL is empty in the bundle. Fill .env or pick another mode.',
+  settingsSignalServerVerifying: 'Checking connection…',
+  settingsSignalServerModeBundle: 'Bundle (.env)',
+  settingsSignalServerModeDev: 'Development',
+  settingsSignalServerModeReal: 'Production',
+  settingsSignalServerModeCustom: 'Custom',
+  settingsSignalServerCustomLabel: 'Custom URL',
+  settingsSignalServerCustomPlaceholder: 'https://example.com',
+  settingsSignalServerCustomEmpty: 'Enter a URL.',
+
   settingsNewsTabLead: 'Options for the News screen. Stored on this device only.',
   settingsNewsSegmentOrderKicker: 'News tab order',
   settingsNewsSegmentOrderHint:
     'Order of Global, Crypto, and Korea on the News screen. Drag the ≡ handle to reorder.',
   settingsNewsSegmentDragHandleA11y: 'Reorder {{name}} (drag)',
+  settingsNewsHashtagDisplayKicker: 'News hashtag chips',
+  settingsNewsHashtagDisplayHint:
+    'How many hashtag chips to show on each card (0 hides them). Tags follow the server order.',
+  settingsNewsHashtagDisplayValue: 'Show {{max}}',
   settingsNewsKoreaKeywordsKicker: 'Korea news keywords',
   settingsNewsKoreaKeywordsLead:
     'The Korea tab filters general and FX Finnhub news by headline, summary, and related symbols. On first launch the list is pre-filled with defaults and matched with OR alongside built-in rules. You can edit the list anytime.',
@@ -299,10 +319,10 @@ export const en = {
   feedErrorLoad: 'Could not load news.',
   feedErrorRefresh: 'Refresh failed',
   feedEmpty: 'No news to show.',
+  feedTagFilterActive: 'Tag: {{tag}}',
+  feedTagFilterClear: 'Clear tag',
+  feedLoadingMore: 'Loading…',
 
-  newsAiClaude: 'Claude summary',
-  newsAiOpenai: 'ChatGPT summary',
-  newsAiFinnhub: 'Source summary (Finnhub)',
   newsReadMore: 'Open article →',
   newsSourceLabel: 'Source',
   newsFlashBadge: 'Breaking',

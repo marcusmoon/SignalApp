@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Linking,
@@ -35,7 +36,7 @@ import {
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
-import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/integrations/youtube/constants';
+import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/domain/youtube/constants';
 import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { TabBarGlassSurface } from '@/components/TabBarGlassSurface';
@@ -52,11 +53,13 @@ import {
 import type { AccentPresetId } from '@/services/accentPreference';
 import { ACCENT_PRESETS, normalizeHex } from '@/services/accentPreference';
 import type { FontSizePresetId } from '@/services/fontSizePreference';
-import { clearCalendarCache, CALENDAR_CACHE_TTL_MS } from '@/integrations/finnhub/calendarCache';
-import { clearConcallCache, CONCALL_CACHE_TTL_MS } from '@/integrations/concalls/cache';
-import { clearNewsCache, NEWS_CACHE_TTL_MS } from '@/integrations/finnhub/newsCache';
-import { clearQuotesCache, QUOTES_CACHE_TTL_MS } from '@/integrations/finnhub/quotesCache';
-import { clearYoutubeCache, YOUTUBE_CACHE_TTL_MS } from '@/integrations/youtube/cache';
+import { clearCalendarCache, CALENDAR_CACHE_TTL_MS } from '@/services/cache/calendarCache';
+import { clearNewsCache, NEWS_CACHE_TTL_MS } from '@/services/cache/newsCache';
+import { clearQuotesCache, QUOTES_CACHE_TTL_MS } from '@/services/cache/quotesCache';
+import { clearYoutubeCache, YOUTUBE_CACHE_TTL_MS } from '@/services/cache/youtubeCache';
+import { CONCALL_CACHE_TTL_MS } from '@/integrations/signal-api/cache/concallsCache';
+import { clearSignalApiCache } from '@/integrations/signal-api/cache';
+import { clearConcallClientMemoryCaches } from '@/services/concalls';
 import {
   isValidYoutubeHandle,
   loadCurationHandles,
@@ -76,11 +79,6 @@ import {
   type CacheFeaturePrefs,
 } from '@/services/cacheFeaturePreferences';
 import {
-  loadLlmProvider,
-  saveLlmProvider,
-  type LlmProviderId,
-} from '@/services/llmProviderPreference';
-import {
   loadQuotesListLimits,
   normalizeQuotesListLimits,
   quotesListCountChoicesForField,
@@ -95,6 +93,13 @@ import {
   restoreKoreaNewsExtraKeywordsDefaults,
   saveKoreaNewsExtraKeywords,
 } from '@/services/newsKoreaKeywordsPreference';
+import {
+  DEFAULT_NEWS_HASHTAG_DISPLAY_MAX,
+  loadNewsHashtagDisplayMax,
+  MAX_NEWS_HASHTAG_DISPLAY_MAX,
+  MIN_NEWS_HASHTAG_DISPLAY_MAX,
+  saveNewsHashtagDisplayMax,
+} from '@/services/newsHashtagDisplayPreference';
 import { loadNewsSegmentOrder, saveNewsSegmentOrder } from '@/services/newsSegmentOrderPreference';
 import { syncCalendarLocalReminders } from '@/services/calendarLocalReminders';
 import {
@@ -108,6 +113,15 @@ import {
 } from '@/services/moreReferenceLinksPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { loadTabBarGlassLevel, saveTabBarGlassLevel } from '@/services/tabBarGlassPreference';
+import {
+  getEffectiveSignalApiBaseUrl,
+  loadSignalServerPrefs,
+  probeSignalServerBaseUrl,
+  resolveSignalServerProbeTarget,
+  saveSignalServerPrefs,
+  SIGNAL_SERVER_MODES,
+  type SignalServerMode,
+} from '@/services/signalServerEndpoint';
 import {
   ACCENT_PALETTE_COLS,
   ACCENT_PALETTE_ROWS,
@@ -126,7 +140,14 @@ import {
   SEGMENT_TAB_PADDING,
 } from '@/constants/segmentTabBar';
 
-type SettingsTab = 'youtube' | 'news' | 'quotes' | 'notifications' | 'display' | 'calendar';
+type SettingsTab =
+  | 'youtube'
+  | 'news'
+  | 'quotes'
+  | 'notifications'
+  | 'display'
+  | 'calendar'
+  | 'server';
 
 const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
@@ -139,6 +160,13 @@ const NEWS_FEED_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
   global: 'feedSegmentGlobal',
   korea: 'feedSegmentKorea',
   crypto: 'feedSegmentCrypto',
+};
+
+const SIGNAL_SERVER_LABEL: Record<SignalServerMode, MessageId> = {
+  bundle: 'settingsSignalServerModeBundle',
+  dev: 'settingsSignalServerModeDev',
+  real: 'settingsSignalServerModeReal',
+  custom: 'settingsSignalServerModeCustom',
 };
 
 /** 3 rows + gaps — 뉴스 글로벌/코인/한국 순서 */
@@ -821,13 +849,17 @@ export default function SettingsScreen() {
 
   const [newsSegmentOrder, setNewsSegmentOrder] = useState<NewsSegmentKey[]>([...NEWS_SEGMENT_ORDER]);
   const [newsSegmentOrderReady, setNewsSegmentOrderReady] = useState(false);
+  const [newsHashtagDisplayMax, setNewsHashtagDisplayMax] = useState(DEFAULT_NEWS_HASHTAG_DISPLAY_MAX);
+  const [newsHashtagDisplayReady, setNewsHashtagDisplayReady] = useState(false);
+  const [signalServerMode, setSignalServerMode] = useState<SignalServerMode>('bundle');
+  const [signalCustomDraft, setSignalCustomDraft] = useState('');
+  const [signalServerPrefsReady, setSignalServerPrefsReady] = useState(false);
+  const [signalServerVerifying, setSignalServerVerifying] = useState(false);
 
   const [tabBarGlassLevel, setTabBarGlassLevel] = useState<TabBarGlassLevel>(DEFAULT_TAB_BAR_GLASS_LEVEL);
   const [tabBarGlassReady, setTabBarGlassReady] = useState(false);
   const [tabBarGlassPercent, setTabBarGlassPercent] = useState(() => DEFAULT_TAB_BAR_GLASS_PERCENT);
 
-  const [llmProvider, setLlmProvider] = useState<LlmProviderId>('none');
-  const [llmProviderReady, setLlmProviderReady] = useState(false);
 
   const [moreRefLinksVisible, setMoreRefLinksVisible] = useState(true);
   const [moreRefLinksReady, setMoreRefLinksReady] = useState(false);
@@ -895,7 +927,8 @@ export default function SettingsScreen() {
       tabParam === 'quotes' ||
       tabParam === 'display' ||
       tabParam === 'notifications' ||
-      tabParam === 'calendar'
+      tabParam === 'calendar' ||
+      tabParam === 'server'
     ) {
       setTab(tabParam);
     }
@@ -952,6 +985,65 @@ export default function SettingsScreen() {
     setNewsSegmentOrderReady(true);
   }, []);
 
+  const reloadNewsHashtagDisplayMax = useCallback(async () => {
+    const v = await loadNewsHashtagDisplayMax();
+    setNewsHashtagDisplayMax(v);
+    setNewsHashtagDisplayReady(true);
+  }, []);
+
+  const reloadSignalServerPrefs = useCallback(async () => {
+    const p = await loadSignalServerPrefs();
+    setSignalServerMode(p.mode);
+    setSignalCustomDraft(p.customUrl);
+    setSignalServerPrefsReady(true);
+  }, []);
+
+  const bumpNewsHashtagDisplayMax = useCallback(async (delta: number) => {
+    const v = await loadNewsHashtagDisplayMax();
+    const next = Math.min(
+      MAX_NEWS_HASHTAG_DISPLAY_MAX,
+      Math.max(MIN_NEWS_HASHTAG_DISPLAY_MAX, v + delta),
+    );
+    await saveNewsHashtagDisplayMax(next);
+    setNewsHashtagDisplayMax(next);
+  }, []);
+
+  const onPickSignalServerMode = useCallback(
+    async (m: SignalServerMode) => {
+      if (signalServerVerifying) return;
+      if (m === 'custom') {
+        const u = signalCustomDraft.trim();
+        if (!u) {
+          Alert.alert(t('alertTitleInputError'), t('settingsSignalServerCustomEmpty'));
+          return;
+        }
+      }
+      const target = resolveSignalServerProbeTarget(m, signalCustomDraft);
+      setSignalServerVerifying(true);
+      try {
+        await probeSignalServerBaseUrl(target);
+        if (m === 'custom') {
+          await saveSignalServerPrefs({ mode: 'custom', customUrl: signalCustomDraft.trim() });
+        } else {
+          await saveSignalServerPrefs({ mode: m });
+        }
+        clearSignalApiCache();
+        await reloadSignalServerPrefs();
+      } catch (e) {
+        let body = e instanceof Error ? e.message : String(e);
+        if (e instanceof Error && e.name === 'AbortError') {
+          body = t('settingsSignalServerProbeTimeout');
+        } else if (e instanceof Error && body === 'EMPTY_URL') {
+          body = t('settingsSignalServerBundleEmpty');
+        }
+        Alert.alert(t('settingsSignalServerProbeFailTitle'), body);
+      } finally {
+        setSignalServerVerifying(false);
+      }
+    },
+    [reloadSignalServerPrefs, signalCustomDraft, signalServerVerifying, t],
+  );
+
   const reloadTabBarGlassLevel = useCallback(async () => {
     const v = await loadTabBarGlassLevel();
     setTabBarGlassLevel(v);
@@ -959,17 +1051,6 @@ export default function SettingsScreen() {
     setTabBarGlassReady(true);
   }, []);
 
-  const reloadLlmProvider = useCallback(async () => {
-    const v = await loadLlmProvider();
-    let resolved = v;
-    if (v === 'claude' && !claudeAvailable) resolved = 'none';
-    if (v === 'openai' && !openaiAvailable) resolved = 'none';
-    if (resolved !== v) {
-      await saveLlmProvider(resolved);
-    }
-    setLlmProvider(resolved);
-    setLlmProviderReady(true);
-  }, [claudeAvailable, openaiAvailable]);
 
   const reloadMoreReferenceLinksPref = useCallback(async () => {
     const v = await loadMoreReferenceLinksVisible();
@@ -987,8 +1068,9 @@ export default function SettingsScreen() {
       void reloadQuotesSegmentOrder();
       void reloadKoreaKeywords();
       void reloadNewsSegmentOrder();
+      void reloadNewsHashtagDisplayMax();
+      void reloadSignalServerPrefs();
       void reloadTabBarGlassLevel();
-      void reloadLlmProvider();
       void reloadMoreReferenceLinksPref();
     }, [
       reload,
@@ -999,8 +1081,9 @@ export default function SettingsScreen() {
       reloadQuotesSegmentOrder,
       reloadKoreaKeywords,
       reloadNewsSegmentOrder,
+      reloadNewsHashtagDisplayMax,
+      reloadSignalServerPrefs,
       reloadTabBarGlassLevel,
-      reloadLlmProvider,
       reloadMoreReferenceLinksPref,
     ]),
   );
@@ -1125,7 +1208,7 @@ export default function SettingsScreen() {
 
   const onClearMemoryCaches = () => {
     clearYoutubeCache();
-    clearConcallCache();
+    clearConcallClientMemoryCaches();
     clearCalendarCache();
     clearQuotesCache();
     clearNewsCache();
@@ -1141,7 +1224,7 @@ export default function SettingsScreen() {
   const onConcallCacheEnabledChange = async (v: boolean) => {
     setCachePrefs((prev) => ({ ...prev, concallEnabled: v }));
     await saveCacheFeaturePrefs({ concallEnabled: v });
-    if (!v) clearConcallCache();
+    if (!v) clearConcallClientMemoryCaches();
   };
 
   const onCalendarCacheEnabledChange = async (v: boolean) => {
@@ -1231,6 +1314,17 @@ export default function SettingsScreen() {
             style={[styles.tabText, tab === 'notifications' && styles.tabTextActive]}
             numberOfLines={1}>
             {t('settingsTabNotifications')}
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setTab('server')}
+          style={[styles.tabBtn, tab === 'server' && styles.tabBtnActive]}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'server' }}>
+          <Text
+            style={[styles.tabText, tab === 'server' && styles.tabTextActive]}
+            numberOfLines={1}>
+            {t('settingsTabServer')}
           </Text>
         </Pressable>
       </View>
@@ -1454,6 +1548,42 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsNewsHashtagDisplayKicker')}</Text>
+              <Text style={styles.quotesCardHint}>{t('settingsNewsHashtagDisplayHint')}</Text>
+              {!newsHashtagDisplayReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <View style={[styles.row, { marginTop: 8 }]}>
+                  <Text style={styles.handleText}>
+                    {t('settingsNewsHashtagDisplayValue', { max: newsHashtagDisplayMax })}
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Pressable
+                      onPress={() => void bumpNewsHashtagDisplayMax(-1)}
+                      disabled={newsHashtagDisplayMax <= MIN_NEWS_HASHTAG_DISPLAY_MAX}
+                      style={({ pressed }) => [
+                        styles.addBtn,
+                        (newsHashtagDisplayMax <= MIN_NEWS_HASHTAG_DISPLAY_MAX || pressed) && { opacity: 0.55 },
+                      ]}
+                      accessibilityRole="button">
+                      <Text style={styles.addBtnText}>−</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => void bumpNewsHashtagDisplayMax(1)}
+                      disabled={newsHashtagDisplayMax >= MAX_NEWS_HASHTAG_DISPLAY_MAX}
+                      style={({ pressed }) => [
+                        styles.addBtn,
+                        (newsHashtagDisplayMax >= MAX_NEWS_HASHTAG_DISPLAY_MAX || pressed) && { opacity: 0.55 },
+                      ]}
+                      accessibilityRole="button">
+                      <Text style={styles.addBtnText}>+</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsNewsKoreaKeywordsKicker')}</Text>
               <Text style={styles.quotesCardHint}>{t('settingsNewsKoreaKeywordsLead')}</Text>
               <Text style={styles.hint}>{t('settingsNewsKoreaKeywordsHint')}</Text>
@@ -1595,6 +1725,78 @@ export default function SettingsScreen() {
                     </View>
                     <Text style={styles.prefHint}>{t('settingsLocalWatchlistEarningsHint')}</Text>
                   </View>
+                </>
+              )}
+            </View>
+          </>
+        ) : null}
+
+        {tab === 'server' ? (
+          <>
+            <View style={styles.displayCard}>
+              <Text
+                style={[styles.handleText, { marginBottom: 6 }]}
+                selectable
+                accessibilityRole="text"
+                accessibilityLabel={formatMessage(t('settingsSignalServerUrlA11y'), {
+                  url: getEffectiveSignalApiBaseUrl() || '—',
+                })}>
+                {getEffectiveSignalApiBaseUrl() || '—'}
+              </Text>
+              <Text style={[styles.muted, { fontSize: 12, lineHeight: 17, marginBottom: 10 }]}>
+                {t('settingsSignalServerShortNote')}
+              </Text>
+              {!signalServerPrefsReady ? (
+                <Text style={[styles.muted, { marginTop: 10 }]}>{t('commonLoading')}</Text>
+              ) : (
+                <>
+                  <View style={[styles.langSegmentedTrack, { marginTop: 0, flexWrap: 'wrap' }]}>
+                    {SIGNAL_SERVER_MODES.map((m) => (
+                      <Pressable
+                        key={m}
+                        disabled={signalServerVerifying}
+                        onPress={() => void onPickSignalServerMode(m)}
+                        style={[
+                          styles.langSegment,
+                          signalServerMode === m && styles.langSegmentActive,
+                          signalServerVerifying && { opacity: 0.45 },
+                        ]}
+                        accessibilityRole="radio"
+                        accessibilityState={{
+                          selected: signalServerMode === m,
+                          disabled: signalServerVerifying,
+                        }}
+                        accessibilityLabel={t(SIGNAL_SERVER_LABEL[m])}>
+                        <Text
+                          style={[
+                            styles.langSegmentText,
+                            signalServerMode === m && styles.langSegmentTextActive,
+                          ]}>
+                          {t(SIGNAL_SERVER_LABEL[m])}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  {signalServerVerifying ? (
+                    <View
+                      style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                      accessibilityLiveRegion="polite">
+                      <ActivityIndicator size="small" color={theme.text} />
+                      <Text style={styles.muted}>{t('settingsSignalServerVerifying')}</Text>
+                    </View>
+                  ) : null}
+                  <Text style={[styles.prefHint, { marginTop: 12 }]}>{t('settingsSignalServerCustomLabel')}</Text>
+                  <TextInput
+                    value={signalCustomDraft}
+                    onChangeText={setSignalCustomDraft}
+                    editable={!signalServerVerifying}
+                    placeholder={t('settingsSignalServerCustomPlaceholder')}
+                    placeholderTextColor={theme.textDim}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                    style={[styles.input, { marginTop: 6 }]}
+                  />
                 </>
               )}
             </View>
@@ -1785,80 +1987,6 @@ export default function SettingsScreen() {
                     {t('settingsTabBarGlassPreviewKicker')}
                   </Text>
                   <TabBarGlassPreview percent={tabBarGlassPercent} />
-                </>
-              )}
-            </View>
-
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsLlmProviderKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsLlmProviderHint')}</Text>
-              {!llmProviderReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
-              ) : (
-                <>
-                  <View style={styles.langSegmentedTrack}>
-                    <Pressable
-                      onPress={() => {
-                        setLlmProvider('none');
-                        void saveLlmProvider('none');
-                      }}
-                      style={[styles.langSegment, llmProvider === 'none' && styles.langSegmentActive]}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: llmProvider === 'none' }}
-                      accessibilityLabel={t('settingsLlmProviderNone')}>
-                      <Text
-                        style={[
-                          styles.langSegmentText,
-                          llmProvider === 'none' && styles.langSegmentTextActive,
-                        ]}>
-                        {t('settingsLlmProviderNone')}
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => {
-                        setLlmProvider('claude');
-                        void saveLlmProvider('claude');
-                      }}
-                      disabled={!claudeAvailable}
-                      style={[
-                        styles.langSegment,
-                        !claudeAvailable && styles.langSegmentDisabled,
-                        llmProvider === 'claude' && claudeAvailable && styles.langSegmentActive,
-                      ]}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: llmProvider === 'claude', disabled: !claudeAvailable }}
-                      accessibilityLabel={t('settingsLlmProviderClaude')}>
-                      <Text
-                        style={[
-                          styles.langSegmentText,
-                          llmProvider === 'claude' && claudeAvailable && styles.langSegmentTextActive,
-                        ]}>
-                        {t('settingsLlmProviderClaude')}
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => {
-                        setLlmProvider('openai');
-                        void saveLlmProvider('openai');
-                      }}
-                      disabled={!openaiAvailable}
-                      style={[
-                        styles.langSegment,
-                        !openaiAvailable && styles.langSegmentDisabled,
-                        llmProvider === 'openai' && openaiAvailable && styles.langSegmentActive,
-                      ]}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: llmProvider === 'openai', disabled: !openaiAvailable }}
-                      accessibilityLabel={t('settingsLlmProviderOpenai')}>
-                      <Text
-                        style={[
-                          styles.langSegmentText,
-                          llmProvider === 'openai' && openaiAvailable && styles.langSegmentTextActive,
-                        ]}>
-                        {t('settingsLlmProviderOpenai')}
-                      </Text>
-                    </Pressable>
-                  </View>
                 </>
               )}
             </View>

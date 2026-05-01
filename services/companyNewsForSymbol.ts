@@ -1,7 +1,6 @@
 import { COMPANY_NEWS_DISPLAY_MAX, COMPANY_NEWS_LOOKBACK_DAYS } from '@/constants/companyNewsDisplay';
 import { fetchSignalNews } from '@/integrations/signal-api/news';
-import { signalNewsItemToFinnhubNewsRaw } from '@/integrations/signal-api/finnhubShim';
-import type { FinnhubNewsRaw } from '@/integrations/finnhub/types';
+import type { SignalApiNewsItem } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import { addDays, toYmd } from '@/utils/date';
 
@@ -12,22 +11,26 @@ import { addDays, toYmd } from '@/utils/date';
 export async function fetchCompanyNewsForDisplay(
   symbol: string,
   locale = 'ko',
-): Promise<FinnhubNewsRaw[]> {
+): Promise<SignalApiNewsItem[]> {
   const sym = symbol.trim().toUpperCase();
   if (!sym || !hasSignalApi()) return [];
   const to = new Date();
   const from = addDays(to, -COMPANY_NEWS_LOOKBACK_DAYS);
   try {
-    const items = await fetchSignalNews({
+    const { items } = await fetchSignalNews({
       symbol: sym,
       limit: Math.min(COMPANY_NEWS_DISPLAY_MAX * 6, 200),
+      offset: 0,
       locale,
       from: toYmd(from),
       to: toYmd(to),
     });
     return [...items]
-      .map(signalNewsItemToFinnhubNewsRaw)
-      .sort((a, b) => b.datetime - a.datetime)
+      .sort((a, b) => {
+        const ta = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+        const tb = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+        return tb - ta;
+      })
       .slice(0, COMPANY_NEWS_DISPLAY_MAX);
   } catch {
     return [];

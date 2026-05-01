@@ -1,4 +1,4 @@
-import type { FinnhubNewsRaw } from '@/integrations/finnhub/types';
+import type { SignalApiNewsItem } from '@/integrations/signal-api/types';
 
 /** 키워드: 글로벌 속보·긴급 보도 흔적 */
 const FLASH_KEYWORD_RE =
@@ -8,17 +8,18 @@ const FLASH_KEYWORD_RE =
 const FLASH_MAX_AGE_MS = 18 * 60 * 1000;
 
 /**
- * Finnhub 기사가 속보(플래시)로 표시할지 판별합니다.
+ * 뉴스 항목이 속보(플래시)로 표시할지 판별합니다.
  * 외부 HTTP 없음 — 도메인 규칙만.
  */
-export function isFlashNews(n: FinnhubNewsRaw, nowMs = Date.now()): boolean {
-  const blob = `${n.headline ?? ''} ${n.category ?? ''} ${n.summary ?? ''}`;
+export function isFlashNews(n: SignalApiNewsItem, nowMs = Date.now()): boolean {
+  const blob = `${n.originalTitle ?? ''} ${n.title ?? ''} ${n.category ?? ''} ${n.originalSummary ?? ''} ${n.summary ?? ''}`;
   if (FLASH_KEYWORD_RE.test(blob)) return true;
 
   const cat = (n.category || '').toLowerCase();
   if (cat.includes('breaking') || cat.includes('flash') || cat.includes('hot')) return true;
 
-  const ageMs = nowMs - n.datetime * 1000;
+  const publishedMs = n.publishedAt ? new Date(n.publishedAt).getTime() : 0;
+  const ageMs = nowMs - publishedMs;
   if (ageMs >= 0 && ageMs <= FLASH_MAX_AGE_MS) return true;
 
   return false;

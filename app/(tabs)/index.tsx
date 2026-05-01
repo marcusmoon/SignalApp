@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useIsFocused } from '@react-navigation/native';
 import {
+  ActivityIndicator,
   Alert,
+  FlatList,
   Platform,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -45,6 +46,11 @@ import {
   subscribeKoreaNewsExtraKeywordsChanged,
 } from '@/services/newsKoreaKeywordsPreference';
 import {
+  DEFAULT_NEWS_HASHTAG_DISPLAY_MAX,
+  loadNewsHashtagDisplayMax,
+  subscribeNewsHashtagDisplayMaxChanged,
+} from '@/services/newsHashtagDisplayPreference';
+import {
   loadNewsSegmentOrder,
   subscribeNewsSegmentOrderChanged,
 } from '@/services/newsSegmentOrderPreference';
@@ -56,11 +62,18 @@ import type { SignalApiNewsItem } from '@/integrations/signal-api/types';
 import type { NewsItem } from '@/types/signal';
 import type { MessageId } from '@/locales/messages';
 
+const FEED_PAGE_GLOBAL = 20;
+const FEED_PAGE_KOREA = 40;
+const FEED_PAGE_CRYPTO = 25;
+const SOURCE_PROBE_LIMIT = 100;
+
 const NEWS_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
   global: 'feedSegmentGlobal',
   korea: 'feedSegmentKorea',
   crypto: 'feedSegmentCrypto',
 };
+
+type FeedRow = { kind: 'news'; news: NewsItem } | { kind: 'ad'; key: string };
 
 function signalSourceLabel(item: SignalApiNewsItem): string {
   const s = String(item.sourceName || '').trim();
@@ -96,19 +109,7 @@ function filterSignalBySelectedSources(items: SignalApiNewsItem[], selected: str
 
 async function filterSignalNewsForKorea(items: SignalApiNewsItem[]): Promise<SignalApiNewsItem[]> {
   const extraKw = await loadKoreaNewsExtraKeywords();
-  const rawLike = items.map((item, index) => ({
-    category: item.category,
-    datetime: item.publishedAt ? Math.floor(new Date(item.publishedAt).getTime() / 1000) : 0,
-    headline: item.originalTitle || item.title,
-    id: index,
-    image: item.imageUrl || '',
-    related: item.symbols?.join(',') || '',
-    source: item.sourceName,
-    summary: item.originalSummary || item.summary,
-    url: item.sourceUrl,
-  }));
-  const keep = new Set(filterKoreaRelatedNews(rawLike, extraKw).map((item) => item.url));
-  return items.filter((item) => keep.has(item.sourceUrl));
+  return filterKoreaRelatedNews(items, extraKw);
 }
 
 export default function FeedScreen() {
@@ -125,10 +126,15 @@ export default function FeedScreen() {
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<NewsItem[]>([]);
+  const [serverRows, setServerRows] = useState<SignalApiNewsItem[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [maxHashtagDisplay, setMaxHashtagDisplay] = useState(DEFAULT_NEWS_HASHTAG_DISPLAY_MAX);
   const [availableSources, setAvailableSources] = useState<string[]>([]);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  /** 서버 저장소 기준 원문 풀 (출처 필터 UI) */
+  /** 출처 필터 UI용(카탈로그 비었을 때 샘플 + 첫 페이지 병합) */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
 
   useEffect(() => {
@@ -145,60 +151,160 @@ export default function FeedScreen() {
     });
   }, []);
 
+  useEffect(() => {
+    void loadNewsHashtagDisplayMax().then(setMaxHashtagDisplay);
+    return subscribeNewsHashtagDisplayMaxChanged(() => {
+      void loadNewsHashtagDisplayMax().then(setMaxHashtagDisplay);
+    });
+  }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(
+    async (forceRefresh?: boolean) => {
+      setError(null);
+      setHasMore(false);
+      setLoadingMore(false);
+      if (!hasSignalApi()) {
+        setItems([]);
+        setServerRows([]);
+        setSignalNewsPool([]);
+        setAvailableSources([]);
+        setSelectedSources([]);
+        setError(t('errorSignalApiShort'));
+        return;
+      }
+
+      const cacheMode = forceRefresh ? 'bypass' : 'use';
+
+      let catalogRows: { name: string; enabled: boolean; order: number }[] = [];
+      try {
+        const catKey = segment === 'crypto' ? 'crypto' : 'global';
+        const cat = await fetchSignalNewsSources({ category: catKey }, { cacheMode });
+        catalogRows = cat.map((c) => ({ name: c.name, enabled: c.enabled, order: c.order }));
+      } catch {
+        catalogRows = [];
+      }
+
+      if (segment === 'crypto') {
+        setSignalNewsPool([]);
+        setAvailableSources([]);
+        setSelectedSources([]);
+        const { items: rows, meta } = await fetchSignalNews(
+          {
+            locale,
+            category: 'crypto',
+            limit: FEED_PAGE_CRYPTO,
+            offset: 0,
+            tag: activeTag || undefined,
+          },
+          { cacheMode },
+        );
+        setServerRows(rows);
+        setHasMore(meta.hasMore);
+        setItems(rows.map((item) => signalNewsToNewsItem(item, locale)));
+        return;
+      }
+
+      const enabledCatalog = (catalogRows || [])
+        .filter((c) => c && c.enabled)
+        .slice()
+        .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.name).localeCompare(String(b.name)))
+        .map((c) => String(c.name || '').trim())
+        .filter((s) => s.length > 0);
+
+      let probe: SignalApiNewsItem[] = [];
+      if (enabledCatalog.length === 0) {
+        const p = await fetchSignalNews(
+          {
+            locale,
+            category: 'global',
+            limit: SOURCE_PROBE_LIMIT,
+            offset: 0,
+            tag: activeTag || undefined,
+          },
+          { cacheMode },
+        );
+        probe = p.items;
+      }
+
+      const pageLimit = segment === 'korea' ? FEED_PAGE_KOREA : FEED_PAGE_GLOBAL;
+      const { items: firstPage, meta } = await fetchSignalNews(
+        {
+          locale,
+          category: 'global',
+          limit: pageLimit,
+          offset: 0,
+          tag: activeTag || undefined,
+        },
+        { cacheMode },
+      );
+      setServerRows(firstPage);
+      setHasMore(meta.hasMore);
+
+      const mergedForSources = [...probe, ...firstPage];
+      setSignalNewsPool(mergedForSources);
+      const rawSources = uniqueSignalSources(mergedForSources);
+      const sources =
+        enabledCatalog.length > 0 ? enabledCatalog : buildSourcesFromCatalog({ rawSources, catalog: catalogRows });
+      setAvailableSources(sources);
+      const selected = await loadSelectedSources(sources);
+      setSelectedSources(selected);
+      let scoped = filterSignalBySelectedSources(firstPage, selected);
+      if (segment === 'korea') {
+        scoped = await filterSignalNewsForKorea(scoped);
+      }
+      setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
+    },
+    [activeTag, locale, segment, t],
+  );
+
+  const loadMore = useCallback(async () => {
+    if (!hasMore || loadingMore || loading || !hasSignalApi()) return;
+    if (segment !== 'crypto' && segment !== 'global' && segment !== 'korea') return;
+
+    setLoadingMore(true);
     setError(null);
-    if (!hasSignalApi()) {
-      setItems([]);
-      setSignalNewsPool([]);
-      setAvailableSources([]);
-      setSelectedSources([]);
-      setError(t('errorSignalApiShort'));
-      return;
-    }
-
-    let catalogRows: { name: string; enabled: boolean; order: number }[] = [];
     try {
-      const catKey = segment === 'crypto' ? 'crypto' : 'global';
-      const cat = await fetchSignalNewsSources({ category: catKey });
-      catalogRows = cat.map((c) => ({ name: c.name, enabled: c.enabled, order: c.order }));
-    } catch {
-      catalogRows = [];
+      const pageLimit =
+        segment === 'korea' ? FEED_PAGE_KOREA : segment === 'crypto' ? FEED_PAGE_CRYPTO : FEED_PAGE_GLOBAL;
+      const category = segment === 'crypto' ? 'crypto' : 'global';
+      const { items: nextRows, meta } = await fetchSignalNews(
+        {
+          locale,
+          category,
+          limit: pageLimit,
+          offset: serverRows.length,
+          tag: activeTag || undefined,
+        },
+        { cacheMode: 'use' },
+      );
+      const merged = [...serverRows, ...nextRows];
+      setServerRows(merged);
+      setHasMore(meta.hasMore);
+      let scoped = filterSignalBySelectedSources(merged, selectedSources);
+      if (segment === 'korea') {
+        scoped = await filterSignalNewsForKorea(scoped);
+      }
+      setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('feedErrorLoad'));
+    } finally {
+      setLoadingMore(false);
     }
-
-    if (segment === 'crypto') {
-      setSignalNewsPool([]);
-      setAvailableSources([]);
-      setSelectedSources([]);
-      const serverItems = await fetchSignalNews({ locale, category: 'crypto', limit: 50 });
-      setItems(serverItems.map((item) => signalNewsToNewsItem(item, locale)));
-      return;
-    }
-
-    const limit = segment === 'korea' ? 160 : 220;
-    const serverItems = await fetchSignalNews({ locale, category: 'global', limit });
-    setSignalNewsPool(serverItems);
-    const rawSources = uniqueSignalSources(serverItems);
-    const enabledCatalog = (catalogRows || [])
-      .filter((c) => c && c.enabled)
-      .slice()
-      .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.name).localeCompare(String(b.name)))
-      .map((c) => String(c.name || '').trim())
-      .filter((s) => s.length > 0);
-    const sources = enabledCatalog.length > 0 ? enabledCatalog : buildSourcesFromCatalog({ rawSources, catalog: catalogRows });
-    setAvailableSources(sources);
-    const selected = await loadSelectedSources(sources);
-    setSelectedSources(selected);
-    let scoped = filterSignalBySelectedSources(serverItems, selected);
-    if (segment === 'korea') {
-      scoped = await filterSignalNewsForKorea(scoped);
-    }
-    setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
-  }, [locale, segment, t]);
+  }, [
+    activeTag,
+    hasMore,
+    loading,
+    loadingMore,
+    locale,
+    segment,
+    selectedSources,
+    serverRows,
+    t,
+  ]);
 
   useEffect(() => {
     return subscribeKoreaNewsExtraKeywordsChanged(() => {
-      if (segment === 'korea') void load();
+      if (segment === 'korea') void load(false);
     });
   }, [segment, load]);
 
@@ -207,11 +313,12 @@ export default function FeedScreen() {
     (async () => {
       setLoading(true);
       try {
-        await load();
+        await load(false);
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : t('feedErrorLoad'));
           setItems([]);
+          setServerRows([]);
           setAvailableSources([]);
         }
       } finally {
@@ -226,7 +333,7 @@ export default function FeedScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await load();
+      await load(true);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('feedErrorRefresh'));
@@ -240,8 +347,8 @@ export default function FeedScreen() {
       try {
         await saveSelectedSources(next);
         setSelectedSources(next);
-        if (signalNewsPool.length > 0 && (segment === 'global' || segment === 'korea')) {
-          let scoped = filterSignalBySelectedSources(signalNewsPool, next);
+        if (serverRows.length > 0 && (segment === 'global' || segment === 'korea')) {
+          let scoped = filterSignalBySelectedSources(serverRows, next);
           if (segment === 'korea') {
             scoped = await filterSignalNewsForKorea(scoped);
           }
@@ -251,7 +358,7 @@ export default function FeedScreen() {
         setError(e instanceof Error ? e.message : t('feedErrorLoad'));
       }
     },
-    [locale, segment, signalNewsPool, t],
+    [locale, segment, serverRows, t],
   );
 
   const toggleSource = useCallback(
@@ -283,6 +390,17 @@ export default function FeedScreen() {
 
   const filterReady = availableSources.length > 0 && !error;
 
+  const listData: FeedRow[] = useMemo(() => {
+    const out: FeedRow[] = [];
+    items.forEach((news, i) => {
+      out.push({ kind: 'news', news });
+      if ((i + 1) % 5 === 0) {
+        out.push({ kind: 'ad', key: `ad-${news.id}` });
+      }
+    });
+    return out;
+  }, [items]);
+
   const emptyMessage =
     !loading && items.length === 0 && !error
       ? segment === 'korea'
@@ -290,19 +408,11 @@ export default function FeedScreen() {
         : t('feedEmpty')
       : null;
 
-  return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <SignalHeader />
-      {isFocused ? <OtaUpdateBanner /> : null}
-      <ScrollView
-        style={styles.scrollView}
-        removeClippedSubviews={false}
-        contentContainerStyle={[
-          styles.scroll,
-          { paddingBottom: 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom },
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
+  const bottomPad = 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
+
+  const listHeaderEl = useMemo(
+    () => (
+      <View style={styles.listHeader}>
         <Text style={styles.section}>{t('feedSectionTitle')}</Text>
 
         <View style={styles.segment}>
@@ -320,6 +430,21 @@ export default function FeedScreen() {
           ))}
         </View>
 
+        {activeTag ? (
+          <View style={styles.tagFilterRow}>
+            <Text style={styles.tagFilterText} numberOfLines={1}>
+              {t('feedTagFilterActive', { tag: activeTag })}
+            </Text>
+            <Pressable
+              onPress={() => setActiveTag(null)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('feedTagFilterClear')}>
+              <Text style={styles.tagFilterClear}>{t('feedTagFilterClear')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {error ? (
           <View style={styles.errBox}>
             <Text style={styles.errText}>{error}</Text>
@@ -327,22 +452,63 @@ export default function FeedScreen() {
         ) : null}
 
         {loading ? (
-          <>
+          <View style={styles.skeletonBlock}>
             <SkeletonFeed />
             <SkeletonFeed />
             <SkeletonFeed />
-          </>
-        ) : (
-          items.map((item, index) => (
-            <View key={item.id}>
-              <NewsCard item={item} />
-              {(index + 1) % 5 === 0 ? <AdPlaceholder /> : null}
-            </View>
-          ))
-        )}
+          </View>
+        ) : null}
+      </View>
+    ),
+    [activeTag, error, loading, onPickSegment, segment, segmentOrder, styles, t],
+  );
 
-        {emptyMessage ? <Text style={styles.empty}>{emptyMessage}</Text> : null}
-      </ScrollView>
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <SignalHeader />
+      {isFocused ? <OtaUpdateBanner /> : null}
+      <FlatList
+        data={loading ? [] : listData}
+        keyExtractor={(row) => (row.kind === 'ad' ? row.key : row.news.id)}
+        renderItem={({ item }) =>
+          item.kind === 'ad' ? (
+            <AdPlaceholder />
+          ) : (
+            <NewsCard
+              item={item.news}
+              maxHashtagsToShow={maxHashtagDisplay}
+              onTagPress={(label) => {
+                const next = label.trim();
+                if (next) setActiveTag(next);
+              }}
+            />
+          )
+        }
+        ListHeaderComponent={listHeaderEl}
+        ListEmptyComponent={
+          emptyMessage ? (
+            <Text style={[styles.empty, { paddingHorizontal: 16 }]}>{emptyMessage}</Text>
+          ) : null
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={styles.footerLoading}>
+              <ActivityIndicator color={theme.green} />
+              <Text style={styles.footerLoadingText}>{t('feedLoadingMore')}</Text>
+            </View>
+          ) : null
+        }
+        onEndReached={() => void loadMore()}
+        onEndReachedThreshold={0.35}
+        style={styles.list}
+        contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}
+        removeClippedSubviews={Platform.OS === 'android'}
+        initialNumToRender={8}
+        windowSize={7}
+        maxToRenderPerBatch={12}
+      />
 
       {filterReady ? (
         <Pressable
@@ -390,14 +556,55 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
       backgroundColor: theme.bg,
     },
-    scrollView: {
+    list: {
       flex: 1,
       minHeight: 0,
     },
-    scroll: {
+    listContent: {
       paddingHorizontal: 16,
       paddingTop: 8,
-      paddingBottom: 28,
+    },
+    listHeader: {
+      paddingBottom: 4,
+    },
+    skeletonBlock: {
+      marginTop: 4,
+    },
+    tagFilterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginBottom: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      borderRadius: 10,
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+    },
+    tagFilterText: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: sf(12),
+      fontWeight: '800',
+      color: theme.text,
+    },
+    tagFilterClear: {
+      fontSize: sf(12),
+      fontWeight: '800',
+      color: theme.green,
+    },
+    footerLoading: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      paddingVertical: 16,
+    },
+    footerLoadingText: {
+      fontSize: sf(12),
+      color: theme.textMuted,
     },
     section: {
       fontSize: sf(16),

@@ -1,16 +1,21 @@
 import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { NewsItem } from '@/types/signal';
 
-type Props = { item: NewsItem };
+type Props = {
+  item: NewsItem;
+  /** 0이면 태그 행 숨김 */
+  maxHashtagsToShow?: number;
+  onTagPress?: (label: string) => void;
+};
 
-export function NewsCard({ item }: Props) {
+export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
@@ -20,6 +25,14 @@ export function NewsCard({ item }: Props) {
   const isFlash = Boolean(item.isFlash);
   const symbol = item.ticker?.trim().toUpperCase() ?? '';
   const canOpenSymbol = symbol.length > 0 && symbol !== 'GLOBAL' && symbol !== '—';
+
+  const tags =
+    maxHashtagsToShow > 0
+      ? (item.hashtags || [])
+          .slice()
+          .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
+          .slice(0, maxHashtagsToShow)
+      : [];
 
   return (
     <View style={[styles.card, isFlash && styles.cardFlash]}>
@@ -60,34 +73,50 @@ export function NewsCard({ item }: Props) {
         <Text style={styles.title}>{item.titleKo}</Text>
       )}
       <View style={styles.footer}>
-        <Text style={styles.aiLabel}>
-          {item.summarySource === 'claude'
-            ? t('newsAiClaude')
-            : item.summarySource === 'openai'
-              ? t('newsAiOpenai')
-              : t('newsAiFinnhub')}
-        </Text>
-        <Pressable
-          onPress={() => {
-            void WebBrowser.openBrowserAsync(item.url);
-          }}
-          accessibilityRole="link"
-          accessibilityLabel={t('newsReadMore')}>
-          <Text style={styles.link}>{t('newsReadMore')}</Text>
-        </Pressable>
+        <View style={[styles.footerRow, tags.length === 0 && styles.footerRowLinkOnly]}>
+          {tags.length > 0 ? (
+            <View style={styles.footerTagsCol}>
+              {tags.map((tag) => (
+                <Pressable
+                  key={`${item.id}-${tag.label}`}
+                  onPress={() => onTagPress?.(tag.label)}
+                  disabled={!onTagPress}
+                  style={({ pressed }) => [styles.tagChip, pressed && onTagPress && styles.tagChipPressed]}
+                  accessibilityRole={onTagPress ? 'button' : 'text'}
+                  accessibilityLabel={tag.label}>
+                  <Text style={styles.tagChipText}>#{tag.label}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          <Pressable
+            onPress={() => {
+              void WebBrowser.openBrowserAsync(item.url);
+            }}
+            style={styles.footerReadMore}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+            accessibilityRole="link"
+            accessibilityLabel={t('newsReadMore')}>
+            <Text style={styles.link}>{t('newsReadMore')}</Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+  const linkAndroid = Platform.OS === 'android' ? ({ includeFontPadding: false } as const) : {};
   return StyleSheet.create({
     card: {
       backgroundColor: theme.card,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.border,
-      padding: 14,
+      paddingHorizontal: 14,
+      paddingTop: 14,
+      /** 푸터 아래 빈 띠가 과해 보이지 않도록 하단만 약간 축소 */
+      paddingBottom: 6,
       marginBottom: 10,
     },
     cardFlash: {
@@ -167,28 +196,72 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.text,
       fontSize: sf(15),
       fontWeight: '700',
-      marginBottom: 2,
+      marginBottom: 6,
       lineHeight: sf(21),
     },
-    footer: {
+    footerTagsCol: {
+      flex: 1,
+      minWidth: 0,
       flexDirection: 'row',
-      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: 4,
       alignItems: 'center',
-      marginTop: 12,
-      paddingTop: 10,
+      alignContent: 'center',
+      justifyContent: 'flex-start',
+      paddingRight: 4,
+    },
+    /** 인스타그램 등 링크형 해시태그와 비슷한 블루 톤 — 본문(제목)과 색·채도로 구분 */
+    tagChip: {
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 7,
+      backgroundColor: 'rgba(77, 159, 255, 0.12)',
+      borderWidth: 1,
+      borderColor: 'rgba(77, 159, 255, 0.28)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    tagChipPressed: {
+      opacity: 1,
+      backgroundColor: 'rgba(77, 159, 255, 0.2)',
+      borderColor: 'rgba(77, 159, 255, 0.45)',
+    },
+    tagChipText: {
+      fontSize: sf(10),
+      lineHeight: sf(14),
+      fontWeight: '600',
+      letterSpacing: 0.1,
+      color: '#9EC9FF',
+      textAlignVertical: Platform.OS === 'android' ? 'center' : undefined,
+    },
+    footer: {
+      marginTop: 6,
+      paddingTop: 8,
+      paddingBottom: 2,
       borderTopWidth: 1,
       borderTopColor: theme.border,
     },
-    aiLabel: {
-      fontSize: sf(10),
-      fontWeight: '700',
-      color: theme.textDim,
-      letterSpacing: 0.3,
+    /** 태그·원문 보기 — 푸터 패딩 안에서 세로 중앙 */
+    footerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    footerRowLinkOnly: {
+      justifyContent: 'flex-end',
+    },
+    footerReadMore: {
+      flexShrink: 0,
+      justifyContent: 'center',
     },
     link: {
       fontSize: sf(12),
+      lineHeight: sf(14),
       fontWeight: '700',
       color: theme.green,
+      ...linkAndroid,
+      textAlignVertical: Platform.OS === 'android' ? 'center' : undefined,
     },
   });
 }

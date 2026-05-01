@@ -1365,7 +1365,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             closeMarketListDialog();
             await Promise.all([loadMarketLists(), loadDashboard()]);
           }
-          if (target.id === 'saveNewsEditDialog') {
+          if (target?.closest?.('#saveNewsEditDialog')) {
             const id = state.newsEditItemId;
             const locale = state.newsEditLocale || 'en';
             if (!id) return;
@@ -1379,6 +1379,46 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             showToast(textFor('toastSaved'), textForVars('newsEditSaved', { locale: locale.toUpperCase() }), { kind: 'success' });
             await loadNews();
             renderNewsEditDialog();
+          }
+          {
+            const tagBtn = target instanceof Element ? target.closest('button') : null;
+            if (tagBtn?.id === 'newsEditSaveHashtagsBtn') {
+              const id = state.newsEditItemId;
+              if (!id) return;
+              const loc = $('newsLocale').value || 'ko';
+              const raw = $('newsEditHashtagsInput')?.value ?? '';
+              const lines = raw
+                .split(/[\n,]+/)
+                .map((s) => String(s).trim().replace(/^#+/u, ''))
+                .filter(Boolean);
+              await api(
+                `/admin/api/news/${encodeURIComponent(id)}/hashtags?locale=${encodeURIComponent(loc)}`,
+                {
+                  method: 'PATCH',
+                  body: JSON.stringify({ hashtags: lines }),
+                },
+              );
+              showToast(textFor('toastSaved'), textFor('newsHashtagsSaved'), { kind: 'success' });
+              await loadNews();
+              renderNewsEditDialog();
+              return;
+            }
+            if (tagBtn?.id === 'newsEditHashtagResetAutoBtn') {
+              const id = state.newsEditItemId;
+              if (!id) return;
+              const loc = $('newsLocale').value || 'ko';
+              await api(
+                `/admin/api/news/${encodeURIComponent(id)}/hashtags?locale=${encodeURIComponent(loc)}`,
+                {
+                  method: 'PATCH',
+                  body: JSON.stringify({ hashtagSource: 'auto' }),
+                },
+              );
+              showToast(textFor('toastSaved'), textFor('newsHashtagResetSaved'), { kind: 'success' });
+              await loadNews();
+              renderNewsEditDialog();
+              return;
+            }
           }
           if (target.id === 'loadNewsBtn') {
             state.newsPage = 1;

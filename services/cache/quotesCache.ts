@@ -1,4 +1,4 @@
-import type { FinnhubQuote } from '@/integrations/finnhub/types';
+import type { SignalApiMarketQuote } from '@/integrations/signal-api/types';
 
 /** Same interval as quotes tab refresh — keeps poll vs cache aligned */
 export const QUOTES_POLL_INTERVAL_MS = 30 * 1000;
@@ -10,12 +10,11 @@ export const MCAP_SYMBOLS_ORDER_TTL_MS = 10 * 60 * 1000;
 export type QuoteCacheRow = {
   symbol: string;
   name?: string;
-  quote: FinnhubQuote | null;
+  quote: SignalApiMarketQuote | null;
   error?: string;
 };
 
 type Entry = { rows: QuoteCacheRow[]; expiresAt: number; storedAt: number };
-
 const cache = new Map<string, Entry>();
 
 export type QuoteCacheHit = { rows: QuoteCacheRow[]; storedAtMs: number; expiresAtMs: number };
@@ -69,3 +68,4 @@ export function clearQuotesCache(): void {
   cache.clear();
   mcapSymbolsOrderByLimit.clear();
 }
+

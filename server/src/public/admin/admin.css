@@ -627,6 +627,14 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
         border-bottom: 1px solid var(--border);
       }
       .newsTitle { font-weight: 900; line-height: 1.25; margin-bottom: 2px; }
+      .newsHashtagLine {
+        margin-top: 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 6px;
+        align-items: center;
+        max-width: 100%;
+      }
       .newsMeta { font-size: 11px; }
       .newsStatusStack { display: flex; flex-wrap: wrap; gap: 4px; }
       .newsRowExpand td { background: color-mix(in srgb, var(--panel) 88%, black); }
@@ -641,7 +649,33 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
       .providerEditDialogPanel { width: min(720px, 100%); }
       .providerEditRows { display: grid; gap: 12px; }
       .providerKeyInputRow { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
-      .newsEditModal { display: grid; gap: 12px; }
+      .newsEditModal { display: grid; gap: 14px; }
+      .newsEditSection {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 14px;
+        display: grid;
+        gap: 12px;
+        background: color-mix(in srgb, var(--panel) 88%, var(--bg));
+      }
+      .newsEditSectionHead {
+        margin: 0;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .newsEditSection .newsHashtagEditor {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+      }
+      .newsEditTranslationActions {
+        margin-top: 4px;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+      }
       .newsEditTabs { margin: 0; width: fit-content; max-width: 100%; }
       .newsEditSource {
         display: grid;
@@ -658,6 +692,14 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
         line-height: 1.35;
       }
       .newsEditModal .jsonEditor { min-height: 128px; }
+      .newsHashtagEditor {
+        margin-top: 4px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+      }
+      .newsHashtagEditor .jsonEditor {
+        min-height: 100px;
+      }
 
       @media (max-width: 900px) {
         .calendarSplit {

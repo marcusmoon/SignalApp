@@ -1,8 +1,13 @@
 import Constants from 'expo-constants';
 
+import { hasSignalApiEndpoint } from '@/services/signalServerEndpoint';
+
 /**
  * Expo: `.env`에 `EXPO_PUBLIC_*` 변수를 넣고 Metro를 재시작하면 주입됩니다.
  * 앱 피처 데이터는 Signal Server만 바라봅니다. 외부 provider 키는 서버/Admin에서 관리합니다.
+ *
+ * `signalApiBaseUrl`은 **번들(.env) 기본값**입니다. 런타임 오버라이드는
+ * `getEffectiveSignalApiBaseUrl()` / 설정「표시」탭을 사용합니다.
  */
 export const env = {
   signalApiBaseUrl: process.env.EXPO_PUBLIC_SIGNAL_API_BASE_URL ?? '',
@@ -13,7 +18,7 @@ export const env = {
 };
 
 export function hasSignalApi() {
-  return env.signalApiBaseUrl.trim().length > 0;
+  return hasSignalApiEndpoint();
 }
 
 /** 앱 피처 데이터는 Signal Server(`EXPO_PUBLIC_SIGNAL_API_BASE_URL`)만 사용합니다. */

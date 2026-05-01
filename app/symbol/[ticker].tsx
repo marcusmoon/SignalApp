@@ -10,29 +10,33 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchCompanyNewsForDisplay } from '@/services/companyNewsForSymbol';
-import { finnhubQuoteHasValidPrice } from '@/integrations/finnhub/quoteUtils';
-import type {
-  FinnhubEarningsRow,
-  FinnhubNewsRaw,
-  FinnhubProfile2,
-  FinnhubQuote,
-  FinnhubStockCandles,
-} from '@/integrations/finnhub/types';
 import {
-  fetchSignalEarningsCalendarRangeMerged,
-  signalMarketQuoteToFinnhubQuote,
-} from '@/integrations/signal-api/finnhubShim';
+  earningsRowDate,
+  earningsRowHour,
+  earningsRowQuarter,
+  earningsRowSymbol,
+  earningsRowYear,
+} from '@/domain/concalls/signalCalendarEarnings';
+import { fetchSignalEarningsCalendarRangeMerged } from '@/integrations/signal-api/calendarRange';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
+import { signalNewsToNewsItem } from '@/integrations/signal-api/news';
 import { fetchSignalStockCandles, fetchSignalStockProfile } from '@/integrations/signal-api/stock';
+import type {
+  SignalApiCalendarEvent,
+  SignalApiMarketQuote,
+  SignalApiNewsItem,
+  SignalApiStockCandles,
+  SignalApiStockProfile,
+} from '@/integrations/signal-api/types';
+import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
 import { buildSignalScore } from '@/domain/signals';
 import { loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatchlist';
-import { translateNewsTitlesWithSelectedProvider } from '@/services/aiSummaries';
 import type { NewsItem } from '@/types/signal';
 import { hasSignalApi } from '@/services/env';
 import { addDays, toYmd } from '@/utils/date';
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
 
-/** Finnhub 실적 캘린더 과거 구간(일) — 지난 분기 행이 보이도록 넉넉히 */
+/** 실적 캘린더 과거 구간(일) — 지난 분기 행이 보이도록 넉넉히 */
 const EARN_LOOKBACK_DAYS = 800;
 const EARN_FORWARD_DAYS = 540;
 const EARN_ROWS_MAX = 24;
@@ -87,10 +91,8 @@ function fmtFinMetric(n: number | null | undefined): string {
   return Math.abs(n) >= 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 0 }) : String(n);
 }
 
-function hasCalendarMetrics(row: FinnhubEarningsRow): boolean {
-  return [row.epsEstimate, row.epsActual, row.revenueEstimate, row.revenueActual].some(
-    (v) => typeof v === 'number' && Number.isFinite(v),
-  );
+function hasCalendarMetrics(row: SignalApiCalendarEvent): boolean {
+  return [row.estimate, row.actual, row.previous].some((v) => typeof v === 'number' && Number.isFinite(v));
 }
 
 function signalReasonLabel(reason: string, t: ReturnType<typeof useLocale>['t']): string {
@@ -429,7 +431,7 @@ function SymbolEarningsRowPressable({
   onPress,
   a11yLabel,
 }: {
-  row: FinnhubEarningsRow;
+  row: SignalApiCalendarEvent;
   variant: 'upcoming' | 'past';
   styles: SymbolDetailStyles;
   theme: AppTheme;
@@ -509,11 +511,12 @@ export default function SymbolDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [profile, setProfile] = useState<FinnhubProfile2 | null>(null);
-  const [quote, setQuote] = useState<FinnhubQuote | null>(null);
-  const [candles, setCandles] = useState<FinnhubStockCandles | null>(null);
+  const [profile, setProfile] = useState<SignalApiStockProfile | null>(null);
+  const [quote, setQuote] = useState<SignalApiMarketQuote | null>(null);
+  const [candles, setCandles] = useState<SignalApiStockCandles | null>(null);
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
-  const [earnings, setEarnings] = useState<FinnhubEarningsRow[]>([]);
+  const [signalNews, setSignalNews] = useState<SignalApiNewsItem[]>([]);
+  const [earnings, setEarnings] = useState<SignalApiCalendarEvent[]>([]);
   const [watching, setWatching] = useState(false);
 
   const load = useCallback(async () => {
@@ -529,6 +532,7 @@ export default function SymbolDetailScreen() {
       setQuote(null);
       setCandles(null);
       setNewsItems([]);
+      setSignalNews([]);
       setEarnings([]);
       setLoading(false);
       return;
@@ -544,28 +548,25 @@ export default function SymbolDetailScreen() {
         fetchSignalStockProfile(ticker),
         fetchSignalMarketQuotes({ symbols: [ticker], pageSize: 1 }).catch(() => []),
         fetchSignalStockCandles(ticker, 'D', addDays(new Date(), -30), new Date()).catch(() => null),
-        fetchCompanyNewsForDisplay(ticker, locale).catch(() => [] as FinnhubNewsRaw[]),
-        fetchSignalEarningsCalendarRangeMerged(earnFrom, earnTo).catch(() => [] as FinnhubEarningsRow[]),
+        fetchCompanyNewsForDisplay(ticker, locale).catch(() => [] as SignalApiNewsItem[]),
+        fetchSignalEarningsCalendarRangeMerged(earnFrom, earnTo).catch(() => [] as SignalApiCalendarEvent[]),
       ]);
 
       const row0 = mqRows[0];
-      let nextQuote: FinnhubQuote | null = null;
-      if (row0) {
-        const conv = signalMarketQuoteToFinnhubQuote(row0);
-        nextQuote = finnhubQuoteHasValidPrice(conv) ? conv : null;
-      }
+      const nextQuote = row0 && signalMarketQuoteHasValidPrice(row0) ? row0 : null;
 
       const relatedRaw = companyNews;
-
-      const translatedNews =
-        relatedRaw.length > 0 ? await translateNewsTitlesWithSelectedProvider(relatedRaw) : [];
+      setSignalNews(relatedRaw);
+      const translatedNews = relatedRaw.map((a) => signalNewsToNewsItem(a, locale));
 
       const todayYmd = toYmd(new Date());
       const matchedAll = earningsRows
-        .filter((row) => row.symbol?.trim().toUpperCase() === ticker)
-        .sort((a, b) => a.date.localeCompare(b.date));
-      const upcoming = matchedAll.filter((r) => r.date >= todayYmd);
-      const past = matchedAll.filter((r) => r.date < todayYmd).sort((a, b) => b.date.localeCompare(a.date));
+        .filter((row) => earningsRowSymbol(row) === ticker)
+        .sort((a, b) => earningsRowDate(a).localeCompare(earningsRowDate(b)));
+      const upcoming = matchedAll.filter((r) => earningsRowDate(r) >= todayYmd);
+      const past = matchedAll
+        .filter((r) => earningsRowDate(r) < todayYmd)
+        .sort((a, b) => earningsRowDate(b).localeCompare(earningsRowDate(a)));
       const matchedEarnings = [...upcoming, ...past].slice(0, EARN_ROWS_MAX);
 
       setWatching(watchlist.includes(ticker));
@@ -608,19 +609,20 @@ export default function SymbolDetailScreen() {
     return closes.slice(-24);
   }, [candles]);
 
-  const chartColor = quote?.d != null ? (quote.d >= 0 ? theme.green : '#E06D6D') : theme.green;
+  const chartColor = quote?.change != null ? (quote.change >= 0 ? theme.green : '#E06D6D') : theme.green;
 
   const latestEarning = useMemo(() => {
     const today = toYmd(new Date());
-    return earnings.find((r) => r.date >= today) ?? null;
+    return earnings.find((r) => earningsRowDate(r) >= today) ?? null;
   }, [earnings]);
 
   const symbolVsSma20Pct = useMemo(() => {
     if (!quote || chartCloses.length < 20) return null;
     const last20 = chartCloses.slice(-20);
     const sma20 = last20.reduce((sum, close) => sum + close, 0) / last20.length;
-    if (!Number.isFinite(sma20) || sma20 === 0 || !Number.isFinite(quote.c)) return null;
-    return ((quote.c - sma20) / sma20) * 100;
+    const last = Number(quote.currentPrice);
+    if (!Number.isFinite(sma20) || sma20 === 0 || !Number.isFinite(last)) return null;
+    return ((last - sma20) / sma20) * 100;
   }, [chartCloses, quote]);
 
   const symbolSignal = useMemo(
@@ -628,22 +630,12 @@ export default function SymbolDetailScreen() {
       buildSignalScore({
         symbol: ticker,
         quote,
-        news: newsItems.map((item) => ({
-          category: '',
-          datetime: 0,
-          headline: item.titleKo,
-          id: Number(item.id) || 0,
-          image: '',
-          related: ticker,
-          source: item.source,
-          summary: '',
-          url: item.url,
-        })),
+        news: signalNews,
         nextEarning: latestEarning,
         vsSmaPct: symbolVsSma20Pct,
         todayYmd: toYmd(new Date()),
       }),
-    [latestEarning, newsItems, quote, symbolVsSma20Pct, ticker],
+    [latestEarning, signalNews, quote, symbolVsSma20Pct, ticker],
   );
 
   const chartRangeLabel = useMemo(() => {
@@ -658,22 +650,22 @@ export default function SymbolDetailScreen() {
 
   const earningsSplit = useMemo(() => {
     const y = toYmd(new Date());
-    const idx = earnings.findIndex((r) => r.date < y);
+    const idx = earnings.findIndex((r) => earningsRowDate(r) < y);
     const upcomingEarnings = idx === -1 ? earnings : earnings.slice(0, idx);
     const pastEarnings = idx === -1 ? [] : earnings.slice(idx);
     return { upcomingEarnings, pastEarnings };
   }, [earnings]);
 
   const openEarningsSummary = useCallback(
-    (row: FinnhubEarningsRow) => {
+    (row: SignalApiCalendarEvent) => {
       router.push({
         pathname: '/calls',
         params: {
           ticker,
-          year: String(row.year),
-          quarter: String(row.quarter),
-          date: row.date,
-          hour: row.hour,
+          year: String(earningsRowYear(row)),
+          quarter: String(earningsRowQuarter(row)),
+          date: earningsRowDate(row),
+          hour: earningsRowHour(row),
         },
       });
     },
@@ -696,13 +688,19 @@ export default function SymbolDetailScreen() {
           <Text style={styles.company}>{displayCompanyName}</Text>
           <View style={styles.priceRow}>
             <Text style={styles.price}>
-              {quote ? formatUsd(quote.c) : t('symbolDetailPriceUnavailable')}
+              {quote && typeof quote.currentPrice === 'number'
+                ? formatUsd(quote.currentPrice)
+                : t('symbolDetailPriceUnavailable')}
             </Text>
             <View style={styles.priceMeta}>
               {quote ? (
                 <>
-                  <Text style={quote.d >= 0 ? styles.changeUp : styles.changeDn}>{formatUsdChange(quote.d)}</Text>
-                  <Text style={quote.dp >= 0 ? styles.changeUp : styles.changeDn}>{formatPct(quote.dp)}</Text>
+                  <Text style={(quote.change ?? 0) >= 0 ? styles.changeUp : styles.changeDn}>
+                    {formatUsdChange(Number(quote.change ?? 0))}
+                  </Text>
+                  <Text style={(quote.changePercent ?? 0) >= 0 ? styles.changeUp : styles.changeDn}>
+                    {formatPct(Number(quote.changePercent ?? 0))}
+                  </Text>
                 </>
               ) : null}
             </View>
@@ -791,12 +789,14 @@ export default function SymbolDetailScreen() {
             </View>
             <View style={styles.signalStat}>
               <Text style={styles.signalStatLabel}>{t('symbolDetailSignalMove')}</Text>
-              <Text style={styles.signalStatValue}>{quote ? formatPct(quote.dp) : '—'}</Text>
+              <Text style={styles.signalStatValue}>
+                {quote ? formatPct(Number(quote.changePercent ?? 0)) : '—'}
+              </Text>
             </View>
             <View style={styles.signalStat}>
               <Text style={styles.signalStatLabel}>{t('symbolDetailSignalNextEarning')}</Text>
               <Text style={styles.signalStatValue} numberOfLines={1}>
-                {latestEarning?.date ?? '—'}
+                {latestEarning ? earningsRowDate(latestEarning) : '—'}
               </Text>
             </View>
           </View>
@@ -839,37 +839,38 @@ export default function SymbolDetailScreen() {
                 <>
                   <Text style={styles.earningsSubheading}>{t('symbolDetailEarningsSubUpcoming')}</Text>
                   {earningsSplit.upcomingEarnings.map((row) => {
-                    const h = row.hour.trim().toLowerCase();
+                    const hourRaw = earningsRowHour(row);
+                    const h = hourRaw.trim().toLowerCase();
                     const hourLabel =
-                      h === 'bmo' ? t('briefingEarnHourBmo') : h === 'amc' ? t('briefingEarnHourAmc') : row.hour || '—';
+                      h === 'bmo' ? t('briefingEarnHourBmo') : h === 'amc' ? t('briefingEarnHourAmc') : hourRaw || '—';
                     return (
                       <SymbolEarningsRowPressable
-                        key={`up-${row.symbol}-${row.date}-${row.quarter}-${row.year}`}
+                        key={`up-${earningsRowSymbol(row)}-${earningsRowDate(row)}-${earningsRowQuarter(row)}-${earningsRowYear(row)}`}
                         row={row}
                         variant="upcoming"
                         styles={styles}
                         theme={theme}
                         fiscalTitle={t('symbolDetailEarningsFyQuarterDate', {
-                          fy: String(row.year),
-                          q: String(row.quarter),
-                          date: row.date,
+                          fy: String(earningsRowYear(row)),
+                          q: String(earningsRowQuarter(row)),
+                          date: earningsRowDate(row),
                         })}
                         hourLabel={hourLabel}
                         metricsText={
                           hasCalendarMetrics(row)
                             ? t('symbolDetailEarningsMetrics', {
-                                epsEst: fmtFinMetric(row.epsEstimate),
-                                epsAct: fmtFinMetric(row.epsActual),
-                                revEst: fmtFinMetric(row.revenueEstimate),
-                                revAct: fmtFinMetric(row.revenueActual),
+                                epsEst: fmtFinMetric(row.estimate),
+                                epsAct: fmtFinMetric(row.actual),
+                                revEst: fmtFinMetric(null),
+                                revAct: fmtFinMetric(null),
                               })
                             : null
                         }
                         onPress={() => openEarningsSummary(row)}
                         a11yLabel={t('symbolDetailEarningsOpenSummaryA11y', {
-                          date: row.date,
-                          fy: String(row.year),
-                          q: String(row.quarter),
+                          date: earningsRowDate(row),
+                          fy: String(earningsRowYear(row)),
+                          q: String(earningsRowQuarter(row)),
                         })}
                       />
                     );
@@ -886,37 +887,38 @@ export default function SymbolDetailScreen() {
                     {t('symbolDetailEarningsSubPast')}
                   </Text>
                   {earningsSplit.pastEarnings.map((row) => {
-                    const h = row.hour.trim().toLowerCase();
+                    const hourRaw = earningsRowHour(row);
+                    const h = hourRaw.trim().toLowerCase();
                     const hourLabel =
-                      h === 'bmo' ? t('briefingEarnHourBmo') : h === 'amc' ? t('briefingEarnHourAmc') : row.hour || '—';
+                      h === 'bmo' ? t('briefingEarnHourBmo') : h === 'amc' ? t('briefingEarnHourAmc') : hourRaw || '—';
                     return (
                       <SymbolEarningsRowPressable
-                        key={`past-${row.symbol}-${row.date}-${row.quarter}-${row.year}`}
+                        key={`past-${earningsRowSymbol(row)}-${earningsRowDate(row)}-${earningsRowQuarter(row)}-${earningsRowYear(row)}`}
                         row={row}
                         variant="past"
                         styles={styles}
                         theme={theme}
                         fiscalTitle={t('symbolDetailEarningsFyQuarterDate', {
-                          fy: String(row.year),
-                          q: String(row.quarter),
-                          date: row.date,
+                          fy: String(earningsRowYear(row)),
+                          q: String(earningsRowQuarter(row)),
+                          date: earningsRowDate(row),
                         })}
                         hourLabel={hourLabel}
                         metricsText={
                           hasCalendarMetrics(row)
                             ? t('symbolDetailEarningsMetrics', {
-                                epsEst: fmtFinMetric(row.epsEstimate),
-                                epsAct: fmtFinMetric(row.epsActual),
-                                revEst: fmtFinMetric(row.revenueEstimate),
-                                revAct: fmtFinMetric(row.revenueActual),
+                                epsEst: fmtFinMetric(row.estimate),
+                                epsAct: fmtFinMetric(row.actual),
+                                revEst: fmtFinMetric(null),
+                                revAct: fmtFinMetric(null),
                               })
                             : null
                         }
                         onPress={() => openEarningsSummary(row)}
                         a11yLabel={t('symbolDetailEarningsOpenSummaryA11y', {
-                          date: row.date,
-                          fy: String(row.year),
-                          q: String(row.quarter),
+                          date: earningsRowDate(row),
+                          fy: String(earningsRowYear(row)),
+                          q: String(earningsRowQuarter(row)),
                         })}
                       />
                     );

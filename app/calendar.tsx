@@ -105,7 +105,7 @@ export default function CalendarScreen() {
   }, [visibleMonth]);
 
   const load = useCallback(
-    async (_forceRefresh?: boolean) => {
+    async (forceRefresh?: boolean) => {
       setError(null);
       if (!hasSignalApi()) {
         setEvents([]);
@@ -114,10 +114,13 @@ export default function CalendarScreen() {
       }
       const rangeFrom = new Date(visibleMonth.year, visibleMonth.month, 1);
       const rangeTo = new Date(visibleMonth.year, visibleMonth.month + 1, 0);
-      const list = await fetchSignalCalendar({
-        from: toYmd(rangeFrom),
-        to: toYmd(rangeTo),
-      });
+      const list = await fetchSignalCalendar(
+        {
+          from: toYmd(rangeFrom),
+          to: toYmd(rangeTo),
+        },
+        { cacheMode: forceRefresh ? 'bypass' : 'use' },
+      );
       setEvents(list.map(signalCalendarToCalendarEvent));
     },
     [visibleMonth, t],

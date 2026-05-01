@@ -139,6 +139,8 @@ npx expo start -c
 
 각 실행은 `server/data/jobs.json`의 `pollingJobRuns`에 남습니다. 로그에는 `jobKey`, `domain`, `provider`, `handler`, `trigger`, `status`, `startedAt`, `finishedAt`, `durationMs`, `resultKind`, `itemCount`, `errorMessage`가 포함됩니다. 수동 실행은 `trigger: manual`, 스케줄 실행은 `trigger: schedule`로 구분합니다.
 
+어드민 대시보드의 `/admin/api/summary`는 영역별 저장 수와 함께 `dataAreas`를 내려줍니다. `dataAreas`에는 마지막 저장 데이터 시각, 마지막 실행/성공/실패, 활성 Job 수, 0건 완료 실행 수, 컨콜 트랜스크립트·뉴스 번역·채널/심볼 수 같은 품질 보조 지표가 포함됩니다.
+
 Job에는 운영자가 보기 쉬운 `displayName`과 `description`이 있으며, 어드민 **수집 Job** 메뉴에서 수정할 수 있습니다. 내부 `jobKey`는 로그 추적용으로 유지됩니다.
 
 메가캡·시총 후보·인기 시세·기본 관심종목 리스트는 **Admin > 설정 > 마켓 리스트 관리**에서 수정합니다. 앱은 `/v1/market-lists/:key`를 통해 같은 리스트를 조회할 수 있고, 시총 상위 시세 Job은 `mcap_universe`, 인기 시세 Job은 `popular_symbols`를 사용합니다.

@@ -310,7 +310,7 @@ export async function loadJobRunsView(ctx) {
           .map((run) => {
             const rowKey = jobRunRowSelectKey(run);
             return `
-            <tr>
+            <tr class="${String(run.status) === 'failed' ? 'failedRow' : ''}">
               <td class="center"><input type="checkbox" data-job-run-select="${esc(rowKey)}" ${selected.has(rowKey) ? 'checked' : ''} /></td>
               <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
               <td>${runStatusPill(run.status, false)}</td>

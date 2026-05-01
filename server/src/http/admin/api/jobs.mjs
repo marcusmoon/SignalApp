@@ -47,8 +47,161 @@ function filterJobRuns(items, url, jobs = []) {
   return rows.sort((a, b) => String(b.startedAt || '').localeCompare(String(a.startedAt || '')));
 }
 
+function validTime(value) {
+  const ms = new Date(value || 0).getTime();
+  return Number.isFinite(ms) && ms > 0 ? ms : null;
+}
+
+function dateOnlyToIso(value) {
+  const text = String(value || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? `${text}T00:00:00.000Z` : null;
+}
+
+function latestIso(rows, fields) {
+  let best = null;
+  for (const row of rows || []) {
+    for (const field of fields) {
+      const raw = row?.[field];
+      const ms = validTime(raw);
+      const fallbackMs = ms ?? validTime(dateOnlyToIso(raw));
+      if (fallbackMs != null && (best == null || fallbackMs > best)) best = fallbackMs;
+    }
+  }
+  return best == null ? null : new Date(best).toISOString();
+}
+
+function compactRun(run) {
+  if (!run) return null;
+  return {
+    id: run.id || null,
+    jobKey: run.jobKey || null,
+    displayName: run.displayName || run.jobKey || null,
+    status: run.status || null,
+    startedAt: run.startedAt || null,
+    finishedAt: run.finishedAt || null,
+    itemCount: Number.isFinite(Number(run.itemCount)) ? Number(run.itemCount) : 0,
+    errorMessage: run.errorMessage || null,
+    progressPercent: Number.isFinite(Number(run.progressPercent)) ? Number(run.progressPercent) : null,
+    trigger: run.trigger || null,
+  };
+}
+
+function areaJobMatch(area, run) {
+  if (area.id === 'marketQuotes') {
+    return (
+      run.domain === 'market' &&
+      (run.resultKind === 'marketQuotes' || run.handler === 'market_quotes' || run.handler === 'market_quotes_mcap')
+    );
+  }
+  if (area.id === 'coinMarkets') {
+    return run.domain === 'market' && (run.resultKind === 'coinMarkets' || run.handler === 'coin_markets');
+  }
+  return run.domain === area.domain || run.resultKind === area.resultKind;
+}
+
+function areaJobDefinitionMatch(area, job) {
+  if (area.id === 'marketQuotes') {
+    return job.domain === 'market' && (job.handler === 'market_quotes' || job.handler === 'market_quotes_mcap');
+  }
+  if (area.id === 'coinMarkets') return job.domain === 'market' && job.handler === 'coin_markets';
+  return job.domain === area.domain;
+}
+
+function dataAreaSummary(db, recentRuns, latestRunByJob) {
+  const areas = [
+    {
+      id: 'news',
+      domain: 'news',
+      resultKind: 'news',
+      count: db.newsItems.length,
+      latestItemAt: latestIso(db.newsItems, ['publishedAt', 'fetchedAt', 'updatedAt', 'createdAt']),
+      quality: {
+        translations: db.newsTranslations.length,
+        sources: new Set(db.newsItems.map((item) => item.sourceName || item.provider).filter(Boolean)).size,
+      },
+    },
+    {
+      id: 'calendar',
+      domain: 'calendar',
+      resultKind: 'calendar',
+      count: db.calendarEvents.length,
+      latestItemAt: latestIso(db.calendarEvents, ['fetchedAt', 'eventAt', 'date', 'updatedAt', 'createdAt']),
+      quality: {
+        futureEvents: db.calendarEvents.filter((item) => String(item.date || '') >= new Date().toISOString().slice(0, 10)).length,
+      },
+    },
+    {
+      id: 'concalls',
+      domain: 'concalls',
+      resultKind: 'concallTranscripts',
+      count: db.concallTranscripts.length,
+      latestItemAt: latestIso(db.concallTranscripts, ['fetchedAt', 'earningsDate', 'updatedAt', 'createdAt']),
+      quality: {
+        withTranscript: db.concallTranscripts.filter((item) => Number(item.transcriptCharCount || 0) > 0 || item.transcript).length,
+        summarized: db.concallTranscripts.filter((item) => item.summaryStatus === 'completed').length,
+        symbols: new Set(db.concallTranscripts.map((item) => item.symbol).filter(Boolean)).size,
+      },
+    },
+    {
+      id: 'youtube',
+      domain: 'youtube',
+      resultKind: 'youtube',
+      count: db.youtubeVideos.length,
+      latestItemAt: latestIso(db.youtubeVideos, ['publishedAt', 'fetchedAt', 'updatedAt', 'createdAt']),
+      quality: {
+        channels: new Set(db.youtubeVideos.map((item) => item.channel).filter(Boolean)).size,
+      },
+    },
+    {
+      id: 'marketQuotes',
+      domain: 'market',
+      resultKind: 'marketQuotes',
+      count: db.marketQuotes.length,
+      latestItemAt: latestIso(db.marketQuotes, ['quoteTime', 'fetchedAt', 'updatedAt', 'createdAt']),
+      quality: {
+        segments: new Set(db.marketQuotes.map((item) => item.segment).filter(Boolean)).size,
+        symbols: new Set(db.marketQuotes.map((item) => item.symbol).filter(Boolean)).size,
+      },
+    },
+    {
+      id: 'coinMarkets',
+      domain: 'market',
+      resultKind: 'coinMarkets',
+      count: db.coinMarkets.length,
+      latestItemAt: latestIso(db.coinMarkets, ['fetchedAt', 'updatedAt', 'createdAt']),
+      quality: {
+        symbols: new Set(db.coinMarkets.map((item) => item.symbol).filter(Boolean)).size,
+      },
+    },
+  ];
+
+  return areas.map((area) => {
+    const jobs = db.pollingJobs.filter((job) => areaJobDefinitionMatch(area, job));
+    const runs = recentRuns.filter((run) => areaJobMatch(area, run));
+    const latestRun = runs[0] || null;
+    const latestSuccess = runs.find((run) => run.status === 'completed') || null;
+    const latestFailure = runs.find((run) => run.status === 'failed') || null;
+    const runningRun = runs.find((run) => run.status === 'running') || null;
+    const jobStates = latestRunByJob.filter((run) => areaJobMatch(area, run));
+    return {
+      id: area.id,
+      count: area.count,
+      latestItemAt: area.latestItemAt,
+      enabledJobs: jobs.filter((job) => job.enabled).length,
+      totalJobs: jobs.length,
+      staleJobs: jobStates.filter((run) => run.stale).length,
+      latestRun: compactRun(latestRun),
+      latestSuccess: compactRun(latestSuccess),
+      latestFailure: compactRun(latestFailure),
+      runningRun: compactRun(runningRun),
+      recentZeroItemRuns: runs.filter((run) => run.status === 'completed' && Number(run.itemCount || 0) === 0).length,
+      quality: area.quality,
+    };
+  });
+}
+
 function dashboardSummary(db) {
-  const recentRuns = db.pollingJobRuns.slice(0, 200);
+  const recentRuns = db.pollingJobRuns.slice(0, 200).map((run) => enrichJobRun(run, db.pollingJobs));
   const latestNews = [...db.newsItems]
     .sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')))
     .slice(0, 20)
@@ -75,8 +228,7 @@ function dashboardSummary(db) {
       publishedAt: item.publishedAt || null,
     }));
   const latestRunByJob = db.pollingJobs.map((job) => {
-    const run = recentRuns.find((item) => item.jobKey === job.jobKey);
-    const enriched = run ? enrichJobRun(run, db.pollingJobs) : {};
+    const enriched = recentRuns.find((item) => item.jobKey === job.jobKey) || {};
     const lastMs = enriched.finishedAt || enriched.startedAt ? new Date(enriched.finishedAt || enriched.startedAt).getTime() : NaN;
     const stale =
       job.enabled &&
@@ -109,6 +261,7 @@ function dashboardSummary(db) {
       recentFailedRuns: recentRuns.filter((run) => run.status === 'failed').length,
     },
     recentRuns: latestRunByJob,
+    dataAreas: dataAreaSummary(db, recentRuns, latestRunByJob),
     latestNews,
     latestYoutube,
   };

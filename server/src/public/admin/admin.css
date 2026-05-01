@@ -85,6 +85,7 @@
         radial-gradient(circle at 80% 10%, rgba(77,159,255,0.15), transparent 26%),
         linear-gradient(145deg, #07070c, var(--bg) 52%, #101018); }
 header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 12px 18px; background: color-mix(in srgb, var(--bg-elevated) 92%, black); border-bottom: 1px solid var(--border); backdrop-filter: blur(14px); }
+      .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
       .headerLeft { display: flex; align-items: center; gap: 10px; min-width: 0; }
       .headerSearch { flex: 1; max-width: 420px; }
       .headerSearch input { width: 100%; }
@@ -280,9 +281,64 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
       .statNum { font-size: 22px; font-weight: 900; margin-top: 4px; }
       .dashboardToolbar { display: flex; justify-content: space-between; gap: 12px; align-items: end; margin: 14px 0 12px; }
       .dashboardLimit { min-width: 120px; }
+      .dashboardLimit--compact { min-width: 76px; }
       .dashboardGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
       .dashboardPanel { min-width: 0; }
       .dashboardPanel .cardHead { align-items: flex-start; }
+      .dashboardHealthPanel { margin-bottom: 12px; }
+      .dashboardHealthPanel,
+      .dashboardContentPanel,
+      .dashboardJobsPanel {
+        border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+        background:
+          linear-gradient(180deg, color-mix(in srgb, var(--accent) 5%, transparent), transparent 42%),
+          var(--bg-elevated);
+      }
+      .dashboardJobsPanel { margin-top: 12px; }
+      .dashboardContentPanel .dashboardToolbar { margin: 0 0 12px; }
+      .dashboardSubPanel {
+        min-width: 0;
+        padding: 10px;
+        border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border));
+        border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--bg) 48%, transparent);
+      }
+      .dashboardDataGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+      .dashboardDataCard {
+        --dashboard-status-color: var(--accent);
+        min-width: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px 10px;
+        padding: 10px;
+        border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+        border-left: 4px solid var(--dashboard-status-color);
+        border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--bg) 54%, transparent);
+      }
+      .dashboardDataCard--ok { --dashboard-status-color: var(--accent); }
+      .dashboardDataCard--warn { --dashboard-status-color: var(--color-warning); }
+      .dashboardDataCard--fail { --dashboard-status-color: var(--color-error); }
+      .dashboardDataCard--run { --dashboard-status-color: var(--color-info); }
+      .dashboardDataCard--muted { --dashboard-status-color: var(--dim); }
+      .dashboardDataHead { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 10px; align-items: center; min-width: 0; }
+      .dashboardDataTitle { min-width: 0; display: flex; align-items: center; gap: 7px; color: var(--text); font-size: 13px; font-weight: 950; }
+      .dashboardDataActions { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+      .dashboardLogPill {
+        min-height: 0;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 850;
+        line-height: 1.25;
+        color: var(--muted);
+        background: color-mix(in srgb, var(--bg-elevated) 86%, transparent);
+        border: 1px solid var(--border);
+      }
+      .dashboardLogPill:hover:not(:disabled) { color: var(--text); border-color: var(--accent-border); background: var(--accent-dim); }
+      .dashboardDataLine { min-width: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 12px; line-height: 1.3; }
+      .dashboardDataLine strong { color: var(--text); font-size: 17px; font-weight: 950; }
+      .dashboardDataMetaLine { grid-column: 1 / -1; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px 10px; color: var(--muted); font-size: 11px; line-height: 1.35; }
       .dashboardJobsHint {
         font-size: 13px;
         font-weight: 950;
@@ -417,7 +473,10 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
       .opReconcile { border-color: rgba(255,140,0,0.46); color: #FFB15C; background: rgba(255,140,0,0.10); }
       .opMaintenance { border-color: rgba(77,159,255,0.42); color: #8FC5FF; background: rgba(77,159,255,0.10); }
       .readonlyInput { opacity: 0.58; background: color-mix(in srgb, var(--bg-elevated) 80%, white 4%); }
-      .staleRow { background: rgba(255,77,109,0.09); }
+      .failedRow td { background: color-mix(in srgb, var(--color-error) 8%, transparent); }
+      .failedRow td:first-child { border-left: 3px solid var(--color-error); }
+      .staleRow td { background: color-mix(in srgb, var(--color-warning) 8%, transparent); }
+      .staleRow td:first-child { border-left: 3px solid var(--color-warning); }
       .thumb { width: 112px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); }
       .mediaCard { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 12px; align-items: start; }
       .langTabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }

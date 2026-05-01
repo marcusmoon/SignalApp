@@ -75,7 +75,7 @@ export async function loadMonitoringView(ctx) {
               : runs
                   .map(
                     (run) => `
-              <tr class="${run.stale ? 'staleRow' : ''}">
+              <tr class="${String(run.status) === 'failed' ? 'failedRow' : run.stale ? 'staleRow' : ''}">
                 <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
                 <td>${runStatusPill(run.status, !!run.stale)}</td>
                 <td>${operationBadge(run.operation)}</td>
@@ -150,7 +150,7 @@ export async function loadErrorsView(ctx) {
               ${filtered
                 .map(
                   (run) => `
-                <tr>
+                <tr class="${String(run.status) === 'failed' ? 'failedRow' : ''}">
                   <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
                   <td>${runStatusPill(run.status, false)}</td>
                   <td>
@@ -179,4 +179,3 @@ export async function loadErrorsView(ctx) {
           </table>
         `);
 }
-

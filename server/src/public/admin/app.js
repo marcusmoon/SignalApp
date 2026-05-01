@@ -1011,6 +1011,17 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await loadDashboard();
             return;
           }
+          if (target.dataset.dashboardRunType) {
+            await switchView('jobs');
+            setJobTab('runs');
+            if ($('jobRunRange')) $('jobRunRange').value = '7d';
+            setJobRunDatePreset();
+            if ($('jobRunType')) $('jobRunType').value = target.dataset.dashboardRunType;
+            if ($('jobRunJob')) $('jobRunJob').value = '';
+            state.jobRunsPage = 1;
+            await loadJobRuns();
+            return;
+          }
           if (target.dataset.dashboardNewsTitle) {
             if ($('newsQuery')) $('newsQuery').value = target.dataset.dashboardNewsTitle || '';
             state.newsPage = 1;

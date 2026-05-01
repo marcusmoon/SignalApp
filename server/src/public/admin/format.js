@@ -10,7 +10,12 @@ export function esc(value) {
 }
 
 export function ymd(date) {
-  return date.toISOString().slice(0, 10);
+  const d = date instanceof Date ? date : new Date(date);
+  if (!Number.isFinite(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 export function adminLocale() {

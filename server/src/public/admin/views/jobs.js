@@ -1,3 +1,5 @@
+import { timeBasis } from '../format.js';
+
 export function createJobRunsSort({ state }) {
   function compareMaybeNumber(a, b) {
     const an = Number(a);
@@ -43,6 +45,7 @@ function jobRunsQueryParams({ state, $ }) {
     const value = $(id).value.trim();
     if (value) params.set(key, value);
   }
+  if (params.has('from') || params.has('to')) params.set('timeZone', timeBasis().timeZone);
   return params.toString();
 }
 
@@ -328,4 +331,3 @@ export async function loadJobRunsView(ctx) {
     </table>
   `;
 }
-

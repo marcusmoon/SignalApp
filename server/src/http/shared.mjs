@@ -57,6 +57,26 @@ export function cleanNewsTitleForDisplay(item, value) {
   return cleaned;
 }
 
+export function dateKeyInTimeZone(value, timeZone) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return String(value || '').slice(0, 10);
+  const tz = String(timeZone || '').trim();
+  if (!tz) return date.toISOString().slice(0, 10);
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+    const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    if (byType.year && byType.month && byType.day) return `${byType.year}-${byType.month}-${byType.day}`;
+  } catch {
+    // Fall back to stored UTC date when an unknown timezone is supplied.
+  }
+  return date.toISOString().slice(0, 10);
+}
+
 export function hasUsableTranslation(tr, item) {
   if (!tr || !(tr.status === 'completed' || tr.status === 'manual')) return false;
   if (tr.provider === 'mock') return false;
@@ -104,6 +124,7 @@ export function filterNews(items, url) {
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
   const tag = url.searchParams.get('tag')?.trim().toLowerCase();
+  const timeZone = url.searchParams.get('timeZone');
   let rows = [...items];
   if (category) {
     if (category === 'global') {
@@ -115,8 +136,8 @@ export function filterNews(items, url) {
     }
   }
   if (symbol) rows = rows.filter((item) => item.symbols?.includes(symbol));
-  if (from) rows = rows.filter((item) => !item.publishedAt || item.publishedAt.slice(0, 10) >= from);
-  if (to) rows = rows.filter((item) => !item.publishedAt || item.publishedAt.slice(0, 10) <= to);
+  if (from) rows = rows.filter((item) => !item.publishedAt || dateKeyInTimeZone(item.publishedAt, timeZone) >= from);
+  if (to) rows = rows.filter((item) => !item.publishedAt || dateKeyInTimeZone(item.publishedAt, timeZone) <= to);
   if (tag) {
     rows = rows.filter((item) =>
       hashtagLabelsForFilter(item).some((label) => label.toLowerCase() === tag),

@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { esc, formatDateTime, jobIntervalLabel, ymd } from './format.js';
+import { esc, formatDateTime, jobIntervalLabel, timeBasis, ymd } from './format.js';
 import { applyAdminLanguage, textFor, textForVars } from './i18n.js';
 import { closeConfirm, confirmState, openConfirm } from './modal.js';
 import { $, state } from './state.js';
@@ -129,30 +129,52 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         const rangeEl = $(`${prefix}Range`);
         if (!rangeEl) return;
         const preset = rangeEl.value;
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        let from = null;
-        let to = null;
+        const today = ymdInAdminTime(new Date());
+        let from = '';
+        let to = '';
         if (preset === 'today') from = to = today;
         if (preset === 'yesterday') {
-          from = new Date(today);
-          from.setDate(from.getDate() - 1);
+          from = shiftYmd(today, -1);
           to = from;
         }
         if (preset === '7d') {
-          from = new Date(today);
-          from.setDate(from.getDate() - 6);
+          from = shiftYmd(today, -6);
           to = today;
         }
         if (preset === '30d') {
-          from = new Date(today);
-          from.setDate(from.getDate() - 29);
+          from = shiftYmd(today, -29);
           to = today;
         }
         if (preset !== 'custom') {
-          $(`${prefix}From`).value = from ? ymd(from) : '';
-          $(`${prefix}To`).value = to ? ymd(to) : '';
+          $(`${prefix}From`).value = from;
+          $(`${prefix}To`).value = to;
         }
+      }
+
+      function ymdInAdminTime(date) {
+        const basis = timeBasis();
+        if (basis.timeZone === 'UTC') return date.toISOString().slice(0, 10);
+        try {
+          const parts = new Intl.DateTimeFormat('en-US', {
+            timeZone: basis.timeZone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          }).formatToParts(date);
+          const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+          if (byType.year && byType.month && byType.day) return `${byType.year}-${byType.month}-${byType.day}`;
+        } catch {
+          // Fall through to browser-local date.
+        }
+        return ymd(date);
+      }
+
+      function shiftYmd(value, days) {
+        const [year, month, day] = String(value || '').split('-').map((part) => Number(part));
+        if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return '';
+        const date = new Date(Date.UTC(year, month - 1, day));
+        date.setUTCDate(date.getUTCDate() + days);
+        return date.toISOString().slice(0, 10);
       }
 
       function setDatePreset() {
@@ -1670,6 +1692,9 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         }
         if (event.target.id === 'adminTimeBasis') {
           localStorage.setItem('signalAdminTimeBasis', event.target.value);
+          setDatePreset();
+          setJobRunDatePreset();
+          setCalendarDatePreset();
           await Promise.all([loadDashboard(), loadJobs(), loadJobRuns(), loadNews(), loadYoutube()]);
         }
         if (event.target.dataset && event.target.dataset.newsSourceEnabled) {

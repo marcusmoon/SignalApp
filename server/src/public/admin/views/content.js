@@ -1,3 +1,5 @@
+import { timeBasis } from '../format.js';
+
 const newsEditLocales = [
   { locale: 'en', labelKey: 'localeOriginalEnglish' },
   { locale: 'ko', labelKey: 'localeKorean' },
@@ -20,6 +22,7 @@ function newsQueryParams({ state, $, }) {
     const value = $(id).value.trim();
     if (value) params.set(key, value);
   }
+  if (params.has('from') || params.has('to')) params.set('timeZone', timeBasis().timeZone);
   return params.toString();
 }
 
@@ -321,4 +324,3 @@ export async function loadNewsView(ctx) {
       `;
   updateNewsSelectionInfo({ $, textForVars, textFor });
 }
-

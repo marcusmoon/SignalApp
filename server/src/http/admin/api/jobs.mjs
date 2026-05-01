@@ -1,6 +1,6 @@
 import { nowIso, readDb, updateDb } from '../../../db.mjs';
 import { runPollingJob } from '../../../jobs/runner.mjs';
-import { cleanNewsTitleForDisplay, json, paginate, readBody } from '../../shared.mjs';
+import { cleanNewsTitleForDisplay, dateKeyInTimeZone, json, paginate, readBody } from '../../shared.mjs';
 
 function enrichJobRun(item, jobs) {
   const job = jobs.find((candidate) => candidate.jobKey === item.jobKey);
@@ -25,6 +25,7 @@ function filterJobRuns(items, url, jobs = []) {
   const trigger = url.searchParams.get('trigger');
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
+  const timeZone = url.searchParams.get('timeZone');
   let rows = items.map((item) => enrichJobRun(item, jobs));
   if (status) rows = rows.filter((item) => item.status === status);
   if (jobKey) rows = rows.filter((item) => item.jobKey === jobKey);
@@ -34,8 +35,8 @@ function filterJobRuns(items, url, jobs = []) {
       [item.domain, item.provider, item.handler, item.resultKind].some((value) => value === type),
     );
   }
-  if (from) rows = rows.filter((item) => !item.startedAt || item.startedAt.slice(0, 10) >= from);
-  if (to) rows = rows.filter((item) => !item.startedAt || item.startedAt.slice(0, 10) <= to);
+  if (from) rows = rows.filter((item) => !item.startedAt || dateKeyInTimeZone(item.startedAt, timeZone) >= from);
+  if (to) rows = rows.filter((item) => !item.startedAt || dateKeyInTimeZone(item.startedAt, timeZone) <= to);
   if (q) {
     rows = rows.filter((item) =>
       [item.displayName, item.jobKey, item.domain, item.provider, item.handler, item.resultKind, item.errorMessage].some(

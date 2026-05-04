@@ -59,6 +59,27 @@ function renderJobRunsPager({ targetId, state, $, esc, textForVars, textFor }) {
   `;
 }
 
+function renderJobEditPanel({ job, esc, textFor, jobDisplayName }) {
+  return `
+    <div class="jobEditPanel" data-job-edit-scope="${esc(job.jobKey)}">
+      <div class="row jobEditPanelHead">
+        <strong>${esc(textFor('jobEditPanelTitle'))}</strong>
+        <button class="secondary compactBtn" data-job-edit-close="${esc(job.jobKey)}">${esc(textFor('btnClose'))}</button>
+      </div>
+      <div class="jobSettingsBody" style="margin-top:10px">
+        <label>${esc(textFor('jobLabelName'))} <input data-job-name="${esc(job.jobKey)}" value="${esc(jobDisplayName(job))}" placeholder="${esc(textFor('jobLabelNamePh'))}" /></label>
+        <label>${esc(textFor('jobLabelDesc'))} <input data-job-desc="${esc(job.jobKey)}" value="${esc(job.description || '')}" placeholder="${esc(textFor('jobLabelDescPh'))}" /></label>
+        <label>${esc(textFor('jobLabelIntervalSec'))} <input data-job-interval="${esc(job.jobKey)}" value="${esc(job.intervalSeconds)}" /></label>
+        <label>${esc(textFor('jobLabelEnabled'))} <span><input type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/> ${esc(textFor('jobEnabledFlag'))}</span></label>
+        <label>Provider <input class="readonlyInput" value="${esc(job.provider)}" disabled /></label>
+        <label>Handler <input class="readonlyInput" value="${esc(job.handler)}" disabled /></label>
+        <label>Operation <input class="readonlyInput" value="${esc(job.operation || 'latest')}" disabled /></label>
+        <button data-job-save="${esc(job.jobKey)}" class="success">${esc(textFor('btnSave'))}</button>
+      </div>
+    </div>
+  `;
+}
+
 export async function loadJobsView(ctx) {
   const {
     api,
@@ -167,7 +188,7 @@ export async function loadJobsView(ctx) {
         </div>
       </div>
     </div>
-    <div class="card">
+    <div class="card jobDesktopTableCard">
       <table class="settingsTable">
         <thead>
           <tr>
@@ -207,20 +228,7 @@ export async function loadJobsView(ctx) {
             <tr class="hidden" data-job-edit-row="${esc(job.jobKey)}">
               <td colspan="8">
                 <div class="card" style="margin:6px 0 0">
-                  <div class="row" style="justify-content:space-between">
-                    <strong>${esc(textFor('jobEditPanelTitle'))}</strong>
-                    <button class="secondary" data-job-edit-close="${esc(job.jobKey)}">${esc(textFor('btnClose'))}</button>
-                  </div>
-                  <div class="jobSettingsBody" style="margin-top:10px">
-                    <label>${esc(textFor('jobLabelName'))} <input data-job-name="${esc(job.jobKey)}" value="${esc(jobDisplayName(job))}" placeholder="${esc(textFor('jobLabelNamePh'))}" /></label>
-                    <label>${esc(textFor('jobLabelDesc'))} <input data-job-desc="${esc(job.jobKey)}" value="${esc(job.description || '')}" placeholder="${esc(textFor('jobLabelDescPh'))}" /></label>
-                    <label>${esc(textFor('jobLabelIntervalSec'))} <input data-job-interval="${esc(job.jobKey)}" value="${esc(job.intervalSeconds)}" /></label>
-                    <label>${esc(textFor('jobLabelEnabled'))} <span><input type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/> ${esc(textFor('jobEnabledFlag'))}</span></label>
-                    <label>Provider <input class="readonlyInput" value="${esc(job.provider)}" disabled /></label>
-                    <label>Handler <input class="readonlyInput" value="${esc(job.handler)}" disabled /></label>
-                    <label>Operation <input class="readonlyInput" value="${esc(job.operation || 'latest')}" disabled /></label>
-                    <button data-job-save="${esc(job.jobKey)}" class="success">${esc(textFor('btnSave'))}</button>
-                  </div>
+                  ${renderJobEditPanel({ job, esc, textFor, jobDisplayName })}
                 </div>
               </td>
             </tr>
@@ -230,6 +238,42 @@ export async function loadJobsView(ctx) {
         </tbody>
       </table>
       ${jobsFiltered.length === 0 ? `<p class="muted">${esc(textFor('jobsEmptyFiltered'))}</p>` : ''}
+    </div>
+    <div class="mobileJobList">
+      ${
+        jobsFiltered
+          .map(
+            (job) => `
+              <article class="mobileJobCard">
+                <div class="mobileJobCardHead">
+                  <div class="mobileJobTitle">
+                    <strong>${esc(jobDisplayName(job))}</strong>
+                    <span class="muted">${esc(job.jobKey)}</span>
+                  </div>
+                  <span class="pill ${job.enabled ? 'pillStatus--ok' : 'pillStatus--warn'}">${job.enabled ? esc(textFor('jobStatusEnabled')) : esc(textFor('jobStatusDisabled'))}</span>
+                </div>
+                ${job.description ? `<div class="mobileJobDesc muted">${esc(job.description)}</div>` : ''}
+                <div class="mobileJobMeta">
+                  ${operationBadge(job.operation)}
+                  ${domainBadge(job.domain)}
+                  ${providerBadge(job.provider)}
+                  <span class="pill pill--subtle">${esc(jobIntervalLabel(job.intervalSeconds))}</span>
+                </div>
+                <div class="mobileJobFoot">
+                  <span class="muted">${formatDateTime(job.lastRunAt)}</span>
+                  <div class="dataTableActions">
+                    <button data-job-run="${esc(job.jobKey)}" class="success compactBtn">${esc(textFor('btnRun'))}</button>
+                    <button class="secondary compactBtn" data-job-edit-open="${esc(job.jobKey)}">${esc(textFor('jobOpenSettings'))}</button>
+                  </div>
+                </div>
+                <div class="mobileJobEdit hidden" data-job-edit-row="${esc(job.jobKey)}">
+                  ${renderJobEditPanel({ job, esc, textFor, jobDisplayName })}
+                </div>
+              </article>
+            `,
+          )
+          .join('') || `<p class="muted">${esc(textFor('jobsEmptyFiltered'))}</p>`
+      }
     </div>
   `;
 }
@@ -329,5 +373,42 @@ export async function loadJobRunsView(ctx) {
           .join('')}
       </tbody>
     </table>
+    <div class="mobileRunList">
+      ${rows
+        .map((run) => {
+          const rowKey = jobRunRowSelectKey(run);
+          return `
+            <article class="mobileRunCard ${String(run.status) === 'failed' ? 'mobileRunCard--failed' : ''}">
+              <div class="mobileRunCardHead">
+                <label class="mobileRunSelect">
+                  <input type="checkbox" data-job-run-select="${esc(rowKey)}" ${selected.has(rowKey) ? 'checked' : ''} />
+                  <span class="srOnly">${esc(run.displayName || run.jobKey)}</span>
+                </label>
+                <div class="mobileJobTitle">
+                  <strong>${esc(run.displayName || run.jobKey)}</strong>
+                  <span class="muted">${esc(run.jobKey)}</span>
+                </div>
+                ${runStatusPill(run.status, false)}
+              </div>
+              <div class="mobileJobMeta">
+                ${operationBadge(run.operation)}
+                ${domainBadge(run.domain || run.resultKind)}
+                ${providerBadge(run.provider)}
+                <span class="pill pill--subtle">${esc(run.trigger || '-')}</span>
+              </div>
+              <div class="mobileRunStats">
+                <span>${esc(textFor('colItems'))} <strong>${run.itemCount ?? 0}</strong></span>
+                <span>${esc(textFor('colDuration'))} <strong>${esc(formatDuration(run.durationMs))}</strong></span>
+                <span>${esc(textFor('colFinished'))} <strong>${esc(formatDateTime(run.finishedAt || run.startedAt))}</strong></span>
+              </div>
+              <div class="mobileJobFoot">
+                <span class="muted">${run.status === 'running' && Number.isFinite(Number(run.progressPercent)) ? `${Number(run.progressPercent)}%` : '-'}</span>
+                ${runErrorButton(run)}
+              </div>
+            </article>
+          `;
+        })
+        .join('')}
+    </div>
   `;
 }

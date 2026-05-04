@@ -75,6 +75,71 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         }
       }
 
+      /** Keep drawer `top` / `height` in sync when the header wraps on narrow viewports. */
+      function initAdminHeaderHeightSync() {
+        const el = document.querySelector('header');
+        if (!el) return;
+        const apply = () => {
+          const h = Math.ceil(el.getBoundingClientRect().height);
+          document.documentElement.style.setProperty('--admin-header-h', `${h}px`);
+        };
+        apply();
+        if (typeof ResizeObserver !== 'undefined') {
+          const ro = new ResizeObserver(() => apply());
+          ro.observe(el);
+        } else {
+          window.addEventListener('resize', apply);
+        }
+      }
+
+      function updateMobileFilterToggle(bar) {
+        const toggle = bar?.querySelector?.('[data-mobile-filter-toggle]');
+        if (!toggle) return;
+        const expanded = !bar.classList.contains('mobileFilterCollapsed');
+        toggle.textContent = textFor(expanded ? 'mobileFilterClose' : 'mobileFilterOpen');
+        toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+      }
+
+      function enhanceMobileAdminSurfaces(root = document) {
+        const host = root && typeof root.querySelectorAll === 'function' ? root : document;
+        host.querySelectorAll('.filterBar').forEach((bar) => {
+          if (!bar.querySelector('.filterBarControls')) return;
+          bar.classList.add('mobileFilterEnhanced');
+          if (!bar.querySelector('[data-mobile-filter-toggle]')) {
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'secondary mobileFilterToggle';
+            toggle.dataset.mobileFilterToggle = 'true';
+            const title = bar.querySelector('.filterBarTitle, .filterBoxTitle');
+            if (title) title.insertAdjacentElement('afterend', toggle);
+            else bar.insertAdjacentElement('afterbegin', toggle);
+            bar.classList.add('mobileFilterCollapsed');
+          }
+          updateMobileFilterToggle(bar);
+        });
+      }
+
+      function initScrollTopButton() {
+        const btn = $('scrollTopBtn');
+        if (!btn) return;
+        let ticking = false;
+        const update = () => {
+          ticking = false;
+          document.body.classList.toggle('showScrollTop', window.scrollY > 420);
+        };
+        window.addEventListener(
+          'scroll',
+          () => {
+            if (ticking) return;
+            ticking = true;
+            window.requestAnimationFrame(update);
+          },
+          { passive: true },
+        );
+        btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+        update();
+      }
+
       function normalizeAdminLang(value) {
         const v = String(value || '').trim().toLowerCase();
         if (v === 'ko' || v === 'en' || v === 'ja') return v;
@@ -462,7 +527,12 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           setDatePreset();
           setJobRunDatePreset();
           setCalendarDatePreset();
-          await reloadAllAdminData();
+          try {
+            await reloadAllAdminData();
+          } catch (error) {
+            console.error('[admin] initial data load failed', error);
+            showToast(textFor('toastErrorTitle'), error?.message || 'initial data load failed', { kind: 'error' });
+          }
         }
         document.body.classList.remove('sessionPending');
       }
@@ -505,7 +575,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
 
       function runButton(jobKey, label) {
         const lab = label == null ? textFor('btnNowRun') : label;
-        return `<button class="success" data-job-run="${esc(jobKey)}">${esc(lab)}</button>`;
+        const kind = lab === textFor('btnRetry') ? 'warning' : 'success';
+        return `<button class="${kind}" data-job-run="${esc(jobKey)}">${esc(lab)}</button>`;
       }
 
       async function loadMonitoring() {
@@ -543,7 +614,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       }
 
       async function loadDashboard() {
-        return loadDashboardView({
+        const result = await loadDashboardView({
           api,
           $,
           state,
@@ -556,10 +627,12 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           domainBadge,
           runStatusPill,
         });
+        enhanceMobileAdminSurfaces();
+        return result;
       }
 
       async function loadJobs() {
-        return loadJobsView({
+        const result = await loadJobsView({
           api,
           $,
           state,
@@ -573,6 +646,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           jobIntervalLabel,
           formatDateTime,
         });
+        enhanceMobileAdminSurfaces();
+        return result;
       }
 
       function formatDuration(ms) {
@@ -582,7 +657,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       }
 
       async function loadJobRuns() {
-        return loadJobRunsView({
+        const result = await loadJobRunsView({
           api,
           $,
           state,
@@ -599,6 +674,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           formatDateTime,
           runErrorButton,
         });
+        enhanceMobileAdminSurfaces();
+        return result;
       }
 
       async function loadUiModelPresets() {
@@ -618,11 +695,13 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       }
 
       async function loadTranslationSettings() {
-        return loadTranslationSettingsView({ api, $, state, esc, textFor, textForVars, formatDateTime, switchView });
+        const result = await loadTranslationSettingsView({ api, $, state, esc, textFor, textForVars, formatDateTime, switchView });
+        enhanceMobileAdminSurfaces();
+        return result;
       }
 
       async function loadProviderSettings() {
-        return loadProviderSettingsView({
+        const result = await loadProviderSettingsView({
           api,
           $,
           state,
@@ -632,10 +711,14 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           formatDateTime,
           renderUiModelPresetsEditor,
         });
+        enhanceMobileAdminSurfaces();
+        return result;
       }
 
       async function loadMarketLists() {
-        return loadMarketListsView({ api, $, state, esc, textFor, textForVars, formatDateTime });
+        const result = await loadMarketListsView({ api, $, state, esc, textFor, textForVars, formatDateTime });
+        enhanceMobileAdminSurfaces();
+        return result;
       }
 
       function renderNewsSources() {
@@ -643,7 +726,9 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       }
 
       async function loadNewsSources() {
-        return loadNewsSourcesView({ api, $, state, esc, textFor, textForVars });
+        const result = await loadNewsSourcesView({ api, $, state, esc, textFor, textForVars });
+        enhanceMobileAdminSurfaces();
+        return result;
       }
 
       async function loadNewsSourceSettings() {
@@ -735,15 +820,21 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       }
 
       async function loadCalendar() {
-        return loadCalendarView({ api, $, state, esc, textFor, textForVars, ymd });
+        const result = await loadCalendarView({ api, $, state, esc, textFor, textForVars, ymd });
+        enhanceMobileAdminSurfaces();
+        return result;
       }
 
       async function loadYoutube() {
-        return loadYoutubeView({ api, $, state, esc, textFor, textForVars, renderTableSkeleton, formatDateTime });
+        const result = await loadYoutubeView({ api, $, state, esc, textFor, textForVars, renderTableSkeleton, formatDateTime });
+        enhanceMobileAdminSurfaces();
+        return result;
       }
 
       async function loadNews() {
-        return loadNewsView({ api, $, state, esc, textFor, textForVars, renderTableSkeleton, formatDateTime });
+        const result = await loadNewsView({ api, $, state, esc, textFor, textForVars, renderTableSkeleton, formatDateTime });
+        enhanceMobileAdminSurfaces();
+        return result;
       }
 
       function updateResetUi() {
@@ -798,6 +889,12 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             if ($('sideOverlay')) $('sideOverlay').classList.toggle('hidden', !document.body.classList.contains('sideOpen'));
             return;
           }
+          if (target?.dataset?.mobileFilterToggle) {
+            const bar = target.closest('.filterBar');
+            bar?.classList.toggle('mobileFilterCollapsed');
+            updateMobileFilterToggle(bar);
+            return;
+          }
           const sideGutter = target?.closest?.('#sideGutter');
           const sideCollapseBtn = target?.closest?.('#sideCollapseBtn');
           if (sideGutter || sideCollapseBtn) {
@@ -831,6 +928,13 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           if (target?.id === 'profileLogoutBtn') {
             closePanel('profileMenu');
             $('logoutBtn')?.click();
+            return;
+          }
+          if (target?.id === 'headerSearchBtn') {
+            if ($('globalSearchQuery')) $('globalSearchQuery').value = '';
+            if ($('globalSearchResults')) $('globalSearchResults').innerHTML = renderSearchResults('');
+            openPanel('globalSearchPanel');
+            setTimeout(() => $('globalSearchQuery')?.focus(), 0);
             return;
           }
           if (target?.id === 'closeGlobalSearch') {
@@ -954,14 +1058,12 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           }
           if (target?.dataset?.jobEditOpen) {
             const key = target.dataset.jobEditOpen;
-            const row = document.querySelector(`[data-job-edit-row="${esc(key)}"]`);
-            if (row) row.classList.toggle('hidden');
+            document.querySelectorAll(`[data-job-edit-row="${esc(key)}"]`).forEach((row) => row.classList.toggle('hidden'));
             return;
           }
           if (target?.dataset?.jobEditClose) {
             const key = target.dataset.jobEditClose;
-            const row = document.querySelector(`[data-job-edit-row="${esc(key)}"]`);
-            if (row) row.classList.add('hidden');
+            document.querySelectorAll(`[data-job-edit-row="${esc(key)}"]`).forEach((row) => row.classList.add('hidden'));
             return;
           }
           if (target?.id === 'confirmClose' || target?.id === 'confirmCancel') {
@@ -1107,13 +1209,14 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           }
           if (target.dataset.jobSave) {
             const key = target.dataset.jobSave;
+            const scope = target.closest(`[data-job-edit-scope="${key}"]`) || document;
             await api(`/admin/api/jobs/${encodeURIComponent(key)}`, {
               method: 'PATCH',
               body: JSON.stringify({
-                enabled: document.querySelector(`[data-job-enabled="${key}"]`).checked,
-                displayName: document.querySelector(`[data-job-name="${key}"]`).value,
-                description: document.querySelector(`[data-job-desc="${key}"]`).value,
-                intervalSeconds: Number(document.querySelector(`[data-job-interval="${key}"]`).value),
+                enabled: scope.querySelector(`[data-job-enabled="${key}"]`).checked,
+                displayName: scope.querySelector(`[data-job-name="${key}"]`).value,
+                description: scope.querySelector(`[data-job-desc="${key}"]`).value,
+                intervalSeconds: Number(scope.querySelector(`[data-job-interval="${key}"]`).value),
               }),
             });
             await Promise.all([loadJobs(), loadDashboard()]);
@@ -1880,3 +1983,6 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       updateResetUi();
       // Keep settings tab stable across refreshes
       if ($('settingsTab-keys')) setSettingsTab(state.settingsTab || 'keys');
+      initAdminHeaderHeightSync();
+      initScrollTopButton();
+      enhanceMobileAdminSurfaces();

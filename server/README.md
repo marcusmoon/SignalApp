@@ -64,4 +64,4 @@ Data is split by domain under `server/data/`:
 - `youtube.json`: YouTube videos.
 - `market.json`: market quotes, coin markets, market lists.
 
-Older `server/data/local-db.json` is read once and migrated into the split files.
+The server does **not** read legacy monolithic `local-db.json` (no auto-migration). If a store file is invalid JSON, startup reads log details to stderr and throw (no silent partial parse).

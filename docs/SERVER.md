@@ -209,4 +209,5 @@ server/data/youtube.json    # youtubeVideos
 server/data/market.json     # marketQuotes, coinMarkets, marketLists
 ```
 
-기존 `server/data/local-db.json`이 있으면 서버가 첫 실행 시 새 파일 구조로 마이그레이션해 씁니다.
+- 과거 단일 `local-db.json`을 읽어 자동 분할하는 경로는 **제거**되었다. 배포 시에도 위 분할 파일만을 전제로 한다.
+- 스토어 JSON이 깨져 `JSON.parse`가 실패하면 서버는 **표준 에러에 진단 로그**(경로, 길이, 메시지, 가능하면 position 주변·head/tail)를 남기고 예외를 올린다. 잘린 뒤쪽을 임의로 잘라 복구하지 않는다.

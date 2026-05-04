@@ -302,6 +302,7 @@ export const baseKo = {
   ariaProfileMenu: '프로필 메뉴',
   ariaCollapseSidebar: '사이드바 접기',
   ariaCloseDialog: '닫기',
+  ariaScrollTop: '맨 위로',
   developerLinkedInA11y: 'Marcus LinkedIn 프로필 열기',
   profileLinkedInSub: 'LinkedIn profile',
   globalSearchTitle: '검색',
@@ -494,5 +495,7 @@ export const baseKo = {
   headerSearchPh: '메뉴, 스케줄, 콘텐츠 검색... (⌘K)',
   viewModeFilter: '필터',
   viewModeBulk: '선택 작업',
+  mobileFilterOpen: '조건',
+  mobileFilterClose: '접기',
   btnRefreshThisView: '새로고침',
 };

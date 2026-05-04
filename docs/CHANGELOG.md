@@ -14,6 +14,8 @@
 
 ## 서버 (API / Jobs)
 
+- **로컬 데이터**: `server/data/*.json` 분할 스토어만 사용한다. 과거 단일 `local-db.json` 자동 마이그레이션은 제거되었다.
+- **스토어 JSON 손상**: `readJsonFile`에서 `JSON.parse` 실패 시 파일 경로·길이·오류 메시지 및(가능하면) position 주변·head/tail을 `stderr`에 남긴 뒤 예외를 전파한다(잘린 문서를 임의로 삼키지 않는다).
 - **스케줄(Jobs)**: 운영 액션은 어드민에서 수행하고, 실행/로그는 서버 데이터와 API를 통해 관리한다.
 - **컨콜 Provider ID**: 컨콜 수집 provider와 seed 환경변수는 내부적으로 `ninjas` / `NINJAS_KEY`를 사용한다.
 - **Financial Juice 뉴스**: RSS 제목의 `FinancialJuice:` 접두어는 수집·표시 단계에서 제거한다.
@@ -28,7 +30,11 @@
 - **다국어(i18n)**: 정적 문자열은 `data-i18n`로, 동적 영역은 렌더링 시 `textFor`/`textForVars`로 처리한다.
 - **언어 변경 반영**: 언어 변경 시 현재 화면의 동적 영역도 다시 렌더링/리로드되어야 한다.
 - **뉴스 편집**: 목록은 원문 중심, 번역 확인/수정은 모달에서 `English(Original) / 한국어 / 日本語` 탭으로 처리한다.
-- **사이드바 접기/펼치기**: 경계에 **투명 거터(gutter)**를 두고, hover 시 버튼을 노출한다(평소 숨김, 클릭 안정성 우선).
+- **사이드바 접기/펼치기**: 경계에 **투명 거터(gutter)**를 두고, hover 시 버튼을 노출한다(평소 숨김, 클릭 안정성 우선). **데스크톱(1024px 이상)** 에서만 적용한다.
+- **모바일 레이아웃 (`admin.css` / `app.js`)**: `1024px` 미만은 본문 1열·사이드 **햄버거 드로어**(`fixed`, 오버레이). production 스타일의 2열·sticky 사이드는 `@media (min-width: 1024px)`에만 둬 모바일 규칙을 덮어쓰지 않게 한다. 드로어 안 메뉴는 **세로**(`navGroup` column).
+- **모바일 헤더**: `flex-direction: column` — 1행 햄버거+브랜드(서브타이틀 숨김), 2행 `topTools`에서 글로벌 검색을 **전체 폭**으로 두고(`order`) 알림·도움말·프로필·언어·타임존·세션·로그아웃은 줄바꿈. 헤더 높이는 `ResizeObserver`로 재서 `--admin-header-h`에 넣고 드로어 `top`/`height`와 본문 `min-height`에 반영한다.
+- **모바일 콘텐츠**: 검색·필터 일부는 접힘 패널·카드형 행 등 `docs/SIGNAL-ADMIN-UIUX.md` 기준을 따른다. 뉴스·스케줄·실행 로그·유튜브 등 화면별 뷰는 해당 문서와 `server/src/public/admin/views/*`를 본다.
+- **모바일 보조 이동**: 긴 화면에서 일정 거리 스크롤 시 하단 우측 `맨 위로` 플로팅 버튼(있는 화면).
 
 ## UI/UX 기준 문서
 

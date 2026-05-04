@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Signal Admin</title>
-    <link rel="stylesheet" href="/admin/admin.css?v=2026-04-30-session-pending" />
+    <link rel="stylesheet" href="/admin/admin.css?v=2026-05-04-mobile-ios-zoom" />
   </head>
   <body class="sessionPending">
     <header>
@@ -24,6 +24,7 @@
         <label class="headerSearch" aria-label="Global search">
           <input id="globalSearchInput" data-i18n-aria-label="ariaGlobalSearch" data-i18n-placeholder="headerSearchPh" placeholder="" />
         </label>
+        <button id="headerSearchBtn" class="secondary iconOnly mobileOnly" data-i18n-aria-label="ariaGlobalSearch">⌕</button>
         <button id="headerNotifBtn" class="secondary iconOnly" data-i18n-aria-label="ariaNotifications">🔔<span id="headerNotifBadge" class="pill muted" style="margin-left:6px;display:none">0</span></button>
         <button id="headerHelpBtn" class="secondary iconOnly" data-i18n-aria-label="ariaHelp">?</button>
         <button id="headerProfileBtn" class="secondary" data-i18n-aria-label="ariaProfileMenu"><span id="headerProfileName">admin</span> ▾</button>
@@ -423,7 +424,7 @@
                   <button type="button" class="secondary refreshBtn" id="refreshYoutubeBtn" data-i18n="btnRefreshThisView">새로고침</button>
                 </div>
               </div>
-              <div id="youtubeFilterBox" class="filterBar filterBox">
+              <div id="youtubeFilterBox" class="filterBar filterBox youtubeFilterBar">
                 <div class="filterBarTitle filterBoxTitle" data-i18n="filterSearchConditions">검색 조건</div>
                 <div class="filterBarControls toolbar">
                   <input id="youtubeQuery" class="wide" data-i18n-placeholder="youtubeQueryPlaceholder" placeholder="" />
@@ -830,6 +831,15 @@
         </div>
       </div>
     </div>
-    <script type="module" src="/admin/app.js?v=2026-05-01-news-range"></script>
+    <button
+      id="scrollTopBtn"
+      class="secondary scrollTopBtn"
+      type="button"
+      data-i18n-aria-label="ariaScrollTop"
+      data-i18n-title="ariaScrollTop"
+      aria-label="맨 위로"
+      title="맨 위로"
+    >↑</button>
+    <script type="module" src="/admin/app.js?v=2026-05-04-session-guard"></script>
   </body>
 </html>

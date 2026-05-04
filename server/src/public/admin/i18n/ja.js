@@ -302,6 +302,7 @@ export const baseJa = {
   ariaProfileMenu: 'プロフィールメニュー',
   ariaCollapseSidebar: 'サイドバーを畳む',
   ariaCloseDialog: '閉じる',
+  ariaScrollTop: '先頭へ戻る',
   developerLinkedInA11y: 'Marcus の LinkedIn を開く',
   profileLinkedInSub: 'LinkedIn プロフィール',
   globalSearchTitle: '検索',
@@ -493,5 +494,7 @@ export const baseJa = {
   headerSearchPh: 'メニュー、スケジュール、コンテンツ検索... (⌘K)',
   viewModeFilter: 'フィルター',
   viewModeBulk: '選択操作',
+  mobileFilterOpen: '条件',
+  mobileFilterClose: '閉じる',
   btnRefreshThisView: '更新',
 };

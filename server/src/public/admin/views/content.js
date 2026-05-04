@@ -211,20 +211,23 @@ export async function loadYoutubeView(ctx) {
     body.data
       .map(
         (item) => `
-      <div class="card">
-        <div class="mediaCard">
-          <img class="thumb" src="${esc(item.thumbnailUrl || '')}" alt="" />
-          <div>
-            <div class="row">
-              <input type="checkbox" data-youtube-id="${esc(item.id)}" />
+      <div class="card youtubeCard">
+        <div class="mediaCard youtubeMediaCard">
+          <img class="thumb youtubeThumb" src="${esc(item.thumbnailUrl || '')}" alt="" />
+          <div class="youtubeCardBody">
+            <div class="youtubeMetaRow">
+              <label class="youtubeSelectLine">
+                <input type="checkbox" data-youtube-id="${esc(item.id)}" />
+                <span class="srOnly">${esc(item.title || '-')}</span>
+              </label>
               <span class="pill">${esc(item.channel || '-')}</span>
               <span class="pill">${Number(item.viewCount || 0).toLocaleString()} ${esc(textFor('colYoutubeViews'))}</span>
               <span class="muted">${formatDateTime(item.publishedAt)}</span>
             </div>
             <div class="title">${esc(item.title || '-')}</div>
             <div class="summary">${esc(item.description || '')}</div>
-            <div class="row" style="margin-top:8px">
-              <a class="developerLink" style="margin:0;padding:0;border:0" href="https://www.youtube.com/watch?v=${esc(item.videoId)}" target="_blank" rel="noreferrer">${esc(textFor('youtubeOpenOnYoutube'))}</a>
+            <div class="youtubeCardActions">
+              <a class="developerLink" href="https://www.youtube.com/watch?v=${esc(item.videoId)}" target="_blank" rel="noreferrer">${esc(textFor('youtubeOpenOnYoutube'))}</a>
             </div>
           </div>
         </div>
@@ -294,22 +297,22 @@ export async function loadNewsView(ctx) {
                         : `<div class="newsHashtagLine muted">${esc(textFor('newsHashtagsEmpty'))}</div>`;
                     return `
                       <tr class="newsRow" data-news-row="${esc(item.id)}">
-                        <td><input type="checkbox" data-news-id="${esc(item.id)}" /></td>
-                        <td class="muted">${esc(published)}</td>
-                        <td><span class="pill">${esc(source)}</span></td>
-                        <td><span class="pill">${esc(category)}</span></td>
-                        <td>
+                        <td class="newsSelectCell"><input type="checkbox" data-news-id="${esc(item.id)}" /></td>
+                        <td class="muted" data-label="${esc(textFor('newsColTime'))}">${esc(published)}</td>
+                        <td data-label="${esc(textFor('newsColSource'))}"><span class="pill">${esc(source)}</span></td>
+                        <td data-label="${esc(textFor('colCategory'))}"><span class="pill">${esc(category)}</span></td>
+                        <td data-label="${esc(textFor('newsColStatus'))}">
                           <div class="newsStatusStack">
                             <span class="pill pill--subtle">KO ${esc(statusFor('ko'))}</span>
                             <span class="pill pill--subtle">JA ${esc(statusFor('ja'))}</span>
                           </div>
                         </td>
-                        <td>
+                        <td class="newsTitleCell" data-label="${esc(textFor('colTitle'))}">
                           <div class="newsTitle">${esc(title)}</div>
                           <div class="newsMeta muted">${esc(provider)}</div>
                           ${tagLine}
                         </td>
-                        <td class="tableActions">
+                        <td class="tableActions" data-label="${esc(textFor('colAction'))}">
                           <button class="secondary" data-news-edit="${esc(item.id)}">${esc(textFor('newsEdit'))}</button>
                           <a class="developerLink" href="${esc(item.sourceUrl || '#')}" target="_blank" rel="noreferrer">${esc(textFor('newsOriginal'))} ↗</a>
                         </td>

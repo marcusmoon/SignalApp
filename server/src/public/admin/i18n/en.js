@@ -302,6 +302,7 @@ export const baseEn = {
   ariaProfileMenu: 'Profile menu',
   ariaCollapseSidebar: 'Collapse sidebar',
   ariaCloseDialog: 'Close',
+  ariaScrollTop: 'Back to top',
   developerLinkedInA11y: 'Open Marcus LinkedIn profile',
   profileLinkedInSub: 'LinkedIn profile',
   globalSearchTitle: 'Search',
@@ -493,5 +494,7 @@ export const baseEn = {
   headerSearchPh: 'Search menus, schedules, content... (⌘K)',
   viewModeFilter: 'Filters',
   viewModeBulk: 'Bulk actions',
+  mobileFilterOpen: 'Filters',
+  mobileFilterClose: 'Close',
   btnRefreshThisView: 'Refresh',
 };

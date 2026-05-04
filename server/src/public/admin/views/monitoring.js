@@ -55,7 +55,7 @@ export async function loadMonitoringView(ctx) {
           <button class="secondary" id="refreshMonitoringBtn">${esc(textFor('btnRefresh'))}</button>
         </div>
       </div>
-      <table class="settingsTable">
+      <table class="settingsTable monitoringDesktopTable">
         <thead>
           <tr>
             <th>${esc(textFor('colJob'))}</th>
@@ -96,6 +96,43 @@ export async function loadMonitoringView(ctx) {
           }
         </tbody>
       </table>
+      <div class="mobileRunList monitoringMobileList">
+        ${
+          runs.length === 0
+            ? `<p class="muted">${esc(textFor('monitoringEmpty'))}</p>`
+            : runs
+                .map(
+                  (run) => `
+                    <article class="mobileRunCard ${String(run.status) === 'failed' ? 'mobileRunCard--failed' : run.stale ? 'mobileRunCard--stale' : ''}">
+                      <div class="mobileRunCardHead">
+                        <div class="mobileJobTitle">
+                          <strong>${esc(run.displayName || run.jobKey)}</strong>
+                          <span class="muted">${esc(run.jobKey)}</span>
+                        </div>
+                        ${runStatusPill(run.status, !!run.stale)}
+                      </div>
+                      <div class="mobileJobMeta">
+                        ${operationBadge(run.operation)}
+                        ${domainBadge(run.domain || run.resultKind)}
+                        ${providerBadge(run.provider)}
+                      </div>
+                      <div class="mobileRunStats">
+                        <span>${esc(textFor('colItems'))} <strong>${run.itemCount ?? 0}</strong></span>
+                        <span>${esc(textFor('colFinished'))} <strong>${esc(formatDateTime(run.finishedAt || run.startedAt))}</strong></span>
+                      </div>
+                      <div class="mobileJobFoot">
+                        <span class="muted">${run.stale ? esc(textFor('statStale')) : ''}</span>
+                        <div class="dataTableActions">
+                          ${runButton(run.jobKey, textFor('btnNowRun'))}
+                          <button class="secondary compactBtn" data-open-job-log="${esc(run.jobKey)}">${esc(textFor('btnLogErrors'))}</button>
+                        </div>
+                      </div>
+                    </article>
+                  `,
+                )
+                .join('')
+        }
+      </div>
       <div class="cardFoot">
         <div class="muted">${esc(textFor('tipSlowJobs'))}</div>
       </div>
@@ -136,7 +173,7 @@ export async function loadErrorsView(ctx) {
     (filtered.length === 0
       ? `<p class="muted">${esc(textFor('errorsEmpty'))}</p>`
       : `
-          <table>
+          <table class="errorsDesktopTable">
             <thead>
               <tr>
                 <th>${esc(textFor('colJob'))}</th>
@@ -177,5 +214,39 @@ export async function loadErrorsView(ctx) {
                 .join('')}
             </tbody>
           </table>
+          <div class="mobileRunList errorsMobileList">
+            ${filtered
+              .map(
+                (run) => `
+                  <article class="mobileRunCard mobileRunCard--failed">
+                    <div class="mobileRunCardHead">
+                      <div class="mobileJobTitle">
+                        <strong>${esc(run.displayName || run.jobKey)}</strong>
+                        <span class="muted">${esc(run.jobKey)}</span>
+                      </div>
+                      ${runStatusPill(run.status, false)}
+                    </div>
+                    <div class="mobileJobMeta">
+                      ${operationBadge(run.operation)}
+                      ${domainBadge(run.domain || run.resultKind)}
+                      ${providerBadge(run.provider)}
+                      <span class="pill">${esc(run.trigger || '-')}</span>
+                    </div>
+                    <div class="mobileRunStats">
+                      <span>${esc(textFor('colDuration'))} <strong>${esc(formatDuration(run.durationMs))}</strong></span>
+                      <span>${esc(textFor('colTiming'))} <strong>${esc(formatDateTime(run.startedAt))}</strong></span>
+                    </div>
+                    <div class="mobileJobFoot">
+                      <span class="muted"></span>
+                      <div class="dataTableActions">
+                        ${runErrorButton(run)}
+                        ${runButton(run.jobKey, textFor('btnRetry'))}
+                      </div>
+                    </div>
+                  </article>
+                `,
+              )
+              .join('')}
+          </div>
         `);
 }

@@ -565,12 +565,51 @@ export function ensureNewsSourcesFromItems(db) {
   return changed;
 }
 
+/** Log parse context so corrupted store files can be diagnosed from server logs. */
+function logJsonParseFailure(filePath, text, err) {
+  const len = text.length;
+  const msg = err instanceof Error ? err.message : String(err);
+  let pos = null;
+  const m = msg.match(/position\s+(\d+)/i);
+  if (m) pos = Number(m[1]);
+  console.error(`[db] JSON.parse failed: ${filePath}`);
+  console.error(`[db] length=${len} message=${msg}`);
+  if (pos != null && Number.isFinite(pos) && pos >= 0 && pos <= len) {
+    const a = Math.max(0, pos - 120);
+    const b = Math.min(len, pos + 120);
+    console.error(`[db] context around position ${pos} (chars ${a}–${b}):`);
+    console.error(text.slice(a, b));
+  } else {
+    const head = text.slice(0, 160).replace(/\r?\n/g, '↵');
+    const tail = text.slice(Math.max(0, len - 240)).replace(/\r?\n/g, '↵');
+    console.error(`[db] head (first 160): ${head}`);
+    console.error(`[db] tail (last 240): ${tail}`);
+  }
+}
+
 async function readJsonFile(file, fallback) {
+  let raw;
   try {
-    return JSON.parse(await fs.readFile(file, 'utf8'));
+    raw = await fs.readFile(file, 'utf8');
   } catch (error) {
     if (error?.code === 'ENOENT') return fallback;
     throw error;
+  }
+  const text = raw.replace(/^\uFEFF/, '').trim();
+  if (!text) {
+    const err = new SyntaxError(`empty JSON (${file})`);
+    console.error(`[db] ${err.message}`);
+    throw err;
+  }
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    logJsonParseFailure(file, text, err);
+    const wrapped = err instanceof Error ? err : new Error(String(err));
+    if (!wrapped.message.includes(file)) {
+      wrapped.message = `${wrapped.message} (${file})`;
+    }
+    throw wrapped;
   }
 }
 
@@ -614,20 +653,6 @@ async function readSplitDb() {
 export async function readDb() {
   const split = await readSplitDb();
   if (split) return split;
-
-  // Legacy fallback: older versions used a monolithic local-db.json.
-  // If it exists, migrate once into split stores then keep only a backup.
-  const legacyFile = path.join(config.dataDir, 'local-db.json');
-  try {
-    const body = await fs.readFile(legacyFile, 'utf8');
-    const db = ensureDbShape(JSON.parse(body));
-    await writeDb(db);
-    const backup = path.join(config.dataDir, `local-db.legacy.${Date.now()}.json`);
-    await fs.rename(legacyFile, backup).catch(() => {});
-    return db;
-  } catch (error) {
-    if (error?.code !== 'ENOENT') throw error;
-  }
 
   const db = defaultDb();
   await writeDb(db);

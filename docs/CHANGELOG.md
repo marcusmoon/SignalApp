@@ -15,7 +15,7 @@
 ## 서버 (API / Jobs)
 
 - **로컬 데이터**: `server/data/*.json` 분할 스토어만 사용한다. 과거 단일 `local-db.json` 자동 마이그레이션은 제거되었다.
-- **스토어 JSON 손상**: `readJsonFile`에서 `JSON.parse` 실패 시 파일 경로·길이·오류 메시지 및(가능하면) position 주변·head/tail을 `stderr`에 남긴 뒤 예외를 전파한다(잘린 문서를 임의로 삼키지 않는다).
+- **스토어 JSON 손상**: `JSON.parse` 실패 시 진단 로그를 남긴 뒤, **첫 번째 완전한 최상위 JSON 값**만 다시 파싱해 복구한다(예: 끝에 `}` 등 트레일링 쓰레기). 복구된 스토어는 그 `readDb` 호출 안에서 **`writeDb`로 한 번 다시 써** 디스크를 정리한다. 구조가 완전히 깨진 파일은 그대로 예외다.
 - **스케줄(Jobs)**: 운영 액션은 어드민에서 수행하고, 실행/로그는 서버 데이터와 API를 통해 관리한다.
 - **컨콜 Provider ID**: 컨콜 수집 provider와 seed 환경변수는 내부적으로 `ninjas` / `NINJAS_KEY`를 사용한다.
 - **Financial Juice 뉴스**: RSS 제목의 `FinancialJuice:` 접두어는 수집·표시 단계에서 제거한다.

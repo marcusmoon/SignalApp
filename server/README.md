@@ -64,4 +64,4 @@ Data is split by domain under `server/data/`:
 - `youtube.json`: YouTube videos.
 - `market.json`: market quotes, coin markets, market lists.
 
-The server does **not** read legacy monolithic `local-db.json` (no auto-migration). If a store file is invalid JSON, startup reads log details to stderr and throw (no silent partial parse).
+The server does **not** read legacy monolithic `local-db.json` (no auto-migration). If a store file has trailing garbage after valid JSON, the reader logs diagnostics, parses the first complete value, and **rewrites split stores** on that `readDb` pass. Unrecoverable syntax still throws.

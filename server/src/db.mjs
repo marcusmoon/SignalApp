@@ -17,6 +17,9 @@ const STORE_FILES = {
   market: 'market.json',
 };
 
+/** Split-store keys whose file JSON was repaired on read; `readDb` rewrites them to disk. */
+const dirtyStores = new Set();
+
 function defaultDb() {
   return {
     meta: { createdAt: nowIso(), updatedAt: nowIso(), schemaVersion: 1 },
@@ -587,7 +590,54 @@ function logJsonParseFailure(filePath, text, err) {
   }
 }
 
-async function readJsonFile(file, fallback) {
+/**
+ * End index (exclusive) of first top-level `{...}` or `[...]`, respecting strings.
+ * Used when a store file has trailing garbage (e.g. duplicate `}`).
+ */
+function findTopLevelJsonEnd(str) {
+  let i = 0;
+  while (i < str.length && /\s/.test(str[i])) i += 1;
+  if (i >= str.length) return -1;
+  if (str[i] !== '{' && str[i] !== '[') return -1;
+  const stack = [];
+  let inString = false;
+  let escape = false;
+  for (; i < str.length; i += 1) {
+    const c = str[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (inString) {
+      if (c === '\\') {
+        escape = true;
+        continue;
+      }
+      if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      continue;
+    }
+    if (c === '{') {
+      stack.push('}');
+      continue;
+    }
+    if (c === '[') {
+      stack.push(']');
+      continue;
+    }
+    if (c === '}' || c === ']') {
+      const want = stack.pop();
+      if (c !== want) return -1;
+      if (stack.length === 0) return i + 1;
+    }
+  }
+  return -1;
+}
+
+async function readJsonFile(file, fallback, storeName = null) {
   let raw;
   try {
     raw = await fs.readFile(file, 'utf8');
@@ -605,11 +655,32 @@ async function readJsonFile(file, fallback) {
     return JSON.parse(text);
   } catch (err) {
     logJsonParseFailure(file, text, err);
-    const wrapped = err instanceof Error ? err : new Error(String(err));
-    if (!wrapped.message.includes(file)) {
-      wrapped.message = `${wrapped.message} (${file})`;
+    const end = findTopLevelJsonEnd(text);
+    if (end <= 0) {
+      const wrapped = err instanceof Error ? err : new Error(String(err));
+      if (!wrapped.message.includes(file)) {
+        wrapped.message = `${wrapped.message} (${file})`;
+      }
+      throw wrapped;
     }
-    throw wrapped;
+    const slice = text.slice(0, end).trimEnd();
+    const tail = text.slice(end).trim();
+    try {
+      const value = JSON.parse(slice);
+      if (tail.length > 0) {
+        console.error(
+          `[db] recovered JSON in ${file}: dropped ${tail.length} trailing chars after first document (position ${end}). Disk will be rewritten on this read.`,
+        );
+        if (storeName) dirtyStores.add(storeName);
+      }
+      return value;
+    } catch {
+      const wrapped = err instanceof Error ? err : new Error(String(err));
+      if (!wrapped.message.includes(file)) {
+        wrapped.message = `${wrapped.message} (${file})`;
+      }
+      throw wrapped;
+    }
   }
 }
 
@@ -618,14 +689,15 @@ function storePath(store) {
 }
 
 async function readSplitDb() {
+  dirtyStores.clear();
   const [settings, jobs, news, calendar, concalls, youtube, market] = await Promise.all([
-    readJsonFile(storePath('settings'), null),
-    readJsonFile(storePath('jobs'), null),
-    readJsonFile(storePath('news'), null),
-    readJsonFile(storePath('calendar'), null),
-    readJsonFile(storePath('concalls'), null),
-    readJsonFile(storePath('youtube'), null),
-    readJsonFile(storePath('market'), null),
+    readJsonFile(storePath('settings'), null, 'settings'),
+    readJsonFile(storePath('jobs'), null, 'jobs'),
+    readJsonFile(storePath('news'), null, 'news'),
+    readJsonFile(storePath('calendar'), null, 'calendar'),
+    readJsonFile(storePath('concalls'), null, 'concalls'),
+    readJsonFile(storePath('youtube'), null, 'youtube'),
+    readJsonFile(storePath('market'), null, 'market'),
   ]);
   if (!settings && !jobs && !news && !calendar && !concalls && !youtube && !market) return null;
   const shaped = ensureDbShape({
@@ -652,7 +724,15 @@ async function readSplitDb() {
 
 export async function readDb() {
   const split = await readSplitDb();
-  if (split) return split;
+  if (split) {
+    if (dirtyStores.size > 0) {
+      const keys = [...dirtyStores].sort().join(', ');
+      dirtyStores.clear();
+      console.error(`[db] rewriting split stores after JSON recovery: ${keys}`);
+      await writeDb(split);
+    }
+    return split;
+  }
 
   const db = defaultDb();
   await writeDb(db);

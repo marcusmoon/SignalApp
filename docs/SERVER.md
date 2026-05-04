@@ -210,4 +210,4 @@ server/data/market.json     # marketQuotes, coinMarkets, marketLists
 ```
 
 - 과거 단일 `local-db.json`을 읽어 자동 분할하는 경로는 **제거**되었다. 배포 시에도 위 분할 파일만을 전제로 한다.
-- 스토어 JSON이 깨져 `JSON.parse`가 실패하면 서버는 **표준 에러에 진단 로그**(경로, 길이, 메시지, 가능하면 position 주변·head/tail)를 남기고 예외를 올린다. 잘린 뒤쪽을 임의로 잘라 복구하지 않는다.
+- 스토어 JSON이 깨져 `JSON.parse`가 실패하면 **진단 로그** 후, 문서 앞쪽의 **첫 완전한 JSON 값**만 잘라 재파싱을 시도한다(끝에 붙은 `}` 등). 복구되면 해당 `readDb` 안에서 **분할 파일을 다시 써** 정상화한다. 애초부터 문법이 망가진 경우는 예외다.

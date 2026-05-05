@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useIsFocused } from '@react-navigation/native';
@@ -34,6 +35,7 @@ import {
 } from '@/constants/segmentTabBar';
 import { AdPlaceholder } from '@/components/signal/AdPlaceholder';
 import { NewsSourceFilterModal } from '@/components/signal/NewsSourceFilterModal';
+import { InsightCard } from '@/components/signal/InsightCard';
 import { NewsCard } from '@/components/signal/NewsCard';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
@@ -57,6 +59,10 @@ import {
 } from '@/services/newsSegmentOrderPreference';
 import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreference';
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
+import {
+  loadInsightFeedExpanded,
+  saveInsightFeedExpanded,
+} from '@/services/insightFeedExpandedPreference';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { fetchSignalInsights, fetchSignalNews, fetchSignalNewsSources, signalNewsToNewsItem } from '@/integrations/signal-api';
 import type { SignalApiInsight, SignalApiNewsItem } from '@/integrations/signal-api/types';
@@ -67,6 +73,8 @@ const FEED_PAGE_GLOBAL = 20;
 const FEED_PAGE_KOREA = 40;
 const FEED_PAGE_CRYPTO = 25;
 const SOURCE_PROBE_LIMIT = 100;
+/** 미리보기 카드 개수(요약은 meta.total로 표시) */
+const INSIGHT_HOME_PREVIEW = 1;
 
 const NEWS_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
   global: 'feedSegmentGlobal',
@@ -114,6 +122,7 @@ async function filterSignalNewsForKorea(items: SignalApiNewsItem[]): Promise<Sig
 }
 
 export default function FeedScreen() {
+  const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -136,6 +145,9 @@ export default function FeedScreen() {
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [insights, setInsights] = useState<SignalApiInsight[]>([]);
+  /** 서버 meta.total — 미리보기 limit과 무관한 전체 개수 */
+  const [insightTotal, setInsightTotal] = useState(0);
+  const [insightFeedExpanded, setInsightFeedExpanded] = useState(true);
   /** 출처 필터 UI용(카탈로그 비었을 때 샘플 + 첫 페이지 병합) */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
 
@@ -160,6 +172,10 @@ export default function FeedScreen() {
     });
   }, []);
 
+  useEffect(() => {
+    void loadInsightFeedExpanded().then(setInsightFeedExpanded);
+  }, []);
+
   const load = useCallback(
     async (forceRefresh?: boolean) => {
       setError(null);
@@ -172,6 +188,7 @@ export default function FeedScreen() {
         setAvailableSources([]);
         setSelectedSources([]);
         setInsights([]);
+        setInsightTotal(0);
         setError(t('errorSignalApiShort'));
         return;
       }
@@ -180,10 +197,15 @@ export default function FeedScreen() {
 
       let catalogRows: { name: string; enabled: boolean; order: number }[] = [];
       try {
-        const rows = await fetchSignalInsights({ limit: 6 });
-        setInsights(rows);
+        const { items: insightRows, meta } = await fetchSignalInsights({
+          limit: INSIGHT_HOME_PREVIEW,
+          offset: 0,
+        });
+        setInsights(insightRows);
+        setInsightTotal(meta.total);
       } catch {
         setInsights([]);
+        setInsightTotal(0);
       }
 
       try {
@@ -423,44 +445,65 @@ export default function FeedScreen() {
   const listHeaderEl = useMemo(
     () => (
       <View style={styles.listHeader}>
-        {insights.length > 0 ? (
-          <View style={styles.insightSection}>
-            <View style={styles.insightSectionHead}>
-              <Text style={styles.insightKicker}>{t('insightSectionKicker')}</Text>
-              <Text style={styles.insightCount}>{t('insightSectionCount', { count: insights.length })}</Text>
-            </View>
-            {insights.slice(0, 3).map((insight) => {
-              const primaryRef = insight.sourceRefs?.find((ref) => ref.url);
-              return (
+        {insights.length > 0 && insightTotal > 0 ? (
+            <View style={styles.insightSection}>
+              <View style={styles.insightSectionHead}>
+                <View style={styles.insightTitleRow}>
+                  <FontAwesome name="bolt" size={13} color={theme.green} style={styles.insightTitleGlyph} />
+                  <Text style={styles.insightKicker} numberOfLines={1}>
+                    {t('insightSectionKicker')}
+                  </Text>
+                  <Pressable
+                    onPress={() => {
+                      setInsightFeedExpanded((prev) => {
+                        const next = !prev;
+                        void saveInsightFeedExpanded(next);
+                        return next;
+                      });
+                    }}
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: insightFeedExpanded }}
+                    accessibilityLabel={
+                      insightFeedExpanded ? t('insightSectionCollapseA11y') : t('insightSectionExpandA11y')
+                    }
+                    style={({ pressed }) => [
+                      styles.insightCollapseInline,
+                      pressed && styles.insightCollapseInlinePressed,
+                    ]}>
+                    <FontAwesome
+                      name={insightFeedExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={12}
+                      color={theme.textMuted}
+                    />
+                  </Pressable>
+                </View>
                 <Pressable
-                  key={insight.id}
-                  onPress={() => {
-                    if (primaryRef?.url) void WebBrowser.openBrowserAsync(primaryRef.url);
-                  }}
-                  disabled={!primaryRef?.url}
-                  style={({ pressed }) => [styles.insightCard, pressed && Boolean(primaryRef?.url) && styles.insightCardPressed]}>
-                  <View style={styles.insightCardHead}>
-                    <Text style={styles.insightLevel}>{insight.level.toUpperCase()}</Text>
-                    <Text style={styles.insightScore}>{insight.score}</Text>
-                  </View>
-                  <Text style={styles.insightTitle}>{insight.title}</Text>
-                  <Text style={styles.insightSummary}>{insight.summary}</Text>
-                  <View style={styles.insightMetaRow}>
-                    {insight.symbols.slice(0, 3).map((symbol) => (
-                      <Text key={`${insight.id}-${symbol}`} style={styles.insightSymbol}>
-                        {symbol}
-                      </Text>
-                    ))}
-                    {primaryRef?.sourceName ? (
-                      <Text style={styles.insightRef} numberOfLines={1}>
-                        {primaryRef.sourceName}
-                      </Text>
-                    ) : null}
-                  </View>
+                  onPress={() => router.push('/insights')}
+                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                  accessibilityRole="link"
+                  accessibilityLabel={t('insightSeeAll')}
+                  style={({ pressed }) => [
+                    styles.insightSeeAllWrap,
+                    pressed && styles.insightSeeAllWrapPressed,
+                  ]}>
+                  <Text style={styles.insightSeeAllLink}>{t('insightSeeAll')}</Text>
                 </Pressable>
-              );
-            })}
-          </View>
+              </View>
+              {insightFeedExpanded
+                ? insights.slice(0, INSIGHT_HOME_PREVIEW).map((insight) => (
+                    <InsightCard
+                      key={insight.id}
+                      insight={insight}
+                      theme={theme}
+                      scaleFont={scaleFont}
+                      compact
+                      embedded
+                      onOpenUrl={(url) => void WebBrowser.openBrowserAsync(url)}
+                    />
+                  ))
+                : null}
+            </View>
         ) : null}
 
         <Text style={styles.section}>{t('feedSectionTitle')}</Text>
@@ -510,7 +553,22 @@ export default function FeedScreen() {
         ) : null}
       </View>
     ),
-    [activeTag, error, insights, loading, onPickSegment, segment, segmentOrder, styles, t],
+    [
+      activeTag,
+      error,
+      insightFeedExpanded,
+      insightTotal,
+      insights,
+      loading,
+      onPickSegment,
+      router,
+      scaleFont,
+      segment,
+      segmentOrder,
+      styles,
+      t,
+      theme,
+    ],
   );
 
   return (
@@ -622,7 +680,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     insightSection: {
       marginBottom: 14,
-      gap: 8,
+      gap: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 11,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: theme.greenBorder,
+      backgroundColor:
+        theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}10` : theme.bgElevated,
     },
     insightSectionHead: {
       flexDirection: 'row',
@@ -630,80 +695,52 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'space-between',
       gap: 10,
     },
-    insightKicker: {
-      color: theme.text,
-      fontSize: sf(16),
-      fontWeight: '900',
-    },
-    insightCount: {
-      color: theme.textMuted,
-      fontSize: sf(12),
-      fontWeight: '800',
-    },
-    insightCard: {
-      padding: 13,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderLeftWidth: 3,
-      borderColor: theme.greenBorder,
-      borderLeftColor: theme.green,
-      backgroundColor: theme.card,
-      gap: 7,
-    },
-    insightCardPressed: {
-      opacity: 0.88,
-    },
-    insightCardHead: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    insightLevel: {
-      color: theme.green,
-      fontSize: sf(11),
-      fontWeight: '900',
-    },
-    insightScore: {
-      color: theme.textMuted,
-      fontSize: sf(12),
-      fontWeight: '900',
-    },
-    insightTitle: {
-      color: theme.text,
-      fontSize: sf(15),
-      lineHeight: sf(20),
-      fontWeight: '900',
-    },
-    insightSummary: {
-      color: theme.textMuted,
-      fontSize: sf(12),
-      lineHeight: sf(18),
-      fontWeight: '600',
-    },
-    insightMetaRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'center',
-      gap: 6,
-    },
-    insightSymbol: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 8,
-      overflow: 'hidden',
-      color: theme.green,
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      fontSize: sf(11),
-      fontWeight: '900',
-    },
-    insightRef: {
+    insightTitleRow: {
       flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      gap: 0,
       minWidth: 0,
-      color: theme.textDim,
-      fontSize: sf(11),
+    },
+    insightTitleGlyph: {
+      marginRight: 7,
+      flexShrink: 0,
+    },
+    insightSeeAllWrap: {
+      flexShrink: 0,
+      justifyContent: 'center',
+    },
+    insightSeeAllWrapPressed: {
+      opacity: 0.85,
+    },
+    insightSeeAllLink: {
+      fontSize: sf(12),
+      lineHeight: sf(14),
       fontWeight: '700',
+      color: theme.green,
+      ...(Platform.OS === 'android' ? ({ includeFontPadding: false } as const) : {}),
+      textAlignVertical: Platform.OS === 'android' ? 'center' : undefined,
+    },
+    insightCollapseInline: {
+      marginLeft: 4,
+      paddingVertical: 6,
+      paddingHorizontal: 2,
+      justifyContent: 'center',
+      alignItems: 'center',
+      flexShrink: 0,
+    },
+    insightCollapseInlinePressed: {
+      opacity: 0.65,
+    },
+    insightKicker: {
+      flexGrow: 0,
+      flexShrink: 1,
+      minWidth: 0,
+      color: theme.green,
+      fontSize: sf(14),
+      fontWeight: '900',
+      letterSpacing: -0.15,
     },
     tagFilterRow: {
       flexDirection: 'row',

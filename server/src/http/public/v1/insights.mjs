@@ -47,8 +47,16 @@ export async function handlePublicInsightRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/v1/insights') {
     const db = await readDb();
     const limit = Math.min(Math.max(1, Number(url.searchParams.get('limit') || 10) || 10), 50);
-    const rows = filterInsights(db.insightItems, url).slice(0, limit).map(publicInsight);
-    json(res, 200, { data: rows });
+    const offsetRaw = Number(url.searchParams.get('offset') || 0) || 0;
+    const filtered = filterInsights(db.insightItems, url);
+    const total = filtered.length;
+    const offset = Math.min(Math.max(0, offsetRaw), total);
+    const page = filtered.slice(offset, offset + limit).map(publicInsight);
+    const hasMore = offset + page.length < total;
+    json(res, 200, {
+      data: page,
+      meta: { total, limit, offset, hasMore },
+    });
     return true;
   }
   return false;

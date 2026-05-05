@@ -129,6 +129,7 @@ function RootLayoutNav() {
           calendar: t('screenCalendar'),
           calls: t('callsSectionTitle'),
           briefing: t('screenBriefing'),
+          insights: t('screenInsights'),
           market: t('screenMarket'),
           'mega-cap-list': t('screenMegaCapList'),
           'symbol/[ticker]': t('screenSymbolDetail'),

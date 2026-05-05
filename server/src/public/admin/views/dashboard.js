@@ -1,3 +1,5 @@
+import { mobileRunClass, runRowClass, runStatusPillFor } from './runVisuals.js';
+
 export async function loadDashboardView(ctx) {
   const {
     api,
@@ -40,6 +42,7 @@ export async function loadDashboardView(ctx) {
       youtube: { label: textFor('statYoutube'), icon: 'Y', runType: 'youtube' },
       marketQuotes: { label: textFor('statQuotes'), icon: 'Q', runType: 'market_quotes' },
       coinMarkets: { label: textFor('statCoins'), icon: 'B', runType: 'coin_markets' },
+      insights: { label: textFor('statInsights'), icon: 'I', runType: 'insights' },
     };
     return map[id] || { label: id, icon: '?', runType: id };
   }
@@ -67,6 +70,7 @@ export async function loadDashboardView(ctx) {
     if (area.id === 'youtube') return textForVars('dashboardQualityYoutube', { channels: q.channels || 0 });
     if (area.id === 'marketQuotes') return textForVars('dashboardQualityQuotes', { symbols: q.symbols || 0, segments: q.segments || 0 });
     if (area.id === 'coinMarkets') return textForVars('dashboardQualityCoins', { symbols: q.symbols || 0 });
+    if (area.id === 'insights') return textForVars('dashboardQualityInsights', { push: q.pushCandidates || 0, hot: q.hotSignals || 0 });
     return '';
   }
 
@@ -92,6 +96,16 @@ export async function loadDashboardView(ctx) {
           <span>${esc(areaQuality(area))}</span>
         </div>
       </article>
+    `;
+  }
+
+  function runMeta(run) {
+    return `
+      <div class="runMetaStack">
+        ${operationBadge(run.operation)}
+        ${domainBadge(run.domain || run.resultKind)}
+        ${providerBadge(run.provider)}
+      </div>
     `;
   }
 
@@ -199,16 +213,10 @@ export async function loadDashboardView(ctx) {
         </thead>
         <tbody>
           ${sorted.map((run) => `
-            <tr class="${String(run.status) === 'failed' ? 'failedRow' : run.stale ? 'staleRow' : ''}">
+            <tr class="${runRowClass(run)}">
               <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-              <td>${runStatusPill(run.status, !!run.stale)}</td>
-              <td>
-                <div class="runMetaStack">
-                  ${operationBadge(run.operation)}
-                  ${domainBadge(run.domain || run.resultKind)}
-                  ${providerBadge(run.provider)}
-                </div>
-              </td>
+              <td>${runStatusPillFor({ run, runStatusPill, textFor, esc })}</td>
+              <td>${runMeta(run)}</td>
               <td class="right">${run.itemCount ?? 0}</td>
               <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
               <td class="center">
@@ -221,6 +229,31 @@ export async function loadDashboardView(ctx) {
           `).join('')}
         </tbody>
       </table>
+      <div class="mobileRunList dashboardRunsMobileList">
+        ${sorted.map((run) => `
+          <article class="mobileRunCard ${mobileRunClass(run)}">
+            <div class="mobileRunCardHead">
+              <div class="mobileJobTitle">
+                <strong>${esc(run.displayName || run.jobKey)}</strong>
+                <span class="muted">${esc(run.jobKey)}</span>
+              </div>
+              ${runStatusPillFor({ run, runStatusPill, textFor, esc })}
+            </div>
+            <div class="mobileJobMeta">${runMeta(run)}</div>
+            <div class="mobileRunStats">
+              <span>${esc(textFor('colItems'))} <strong>${run.itemCount ?? 0}</strong></span>
+              <span>${esc(textFor('colFinished'))} <strong>${esc(formatDateTime(run.finishedAt || run.startedAt))}</strong></span>
+            </div>
+            <div class="mobileJobFoot">
+              <span class="muted">${run.stale ? esc(textFor('statStale')) : ''}</span>
+              <div class="dataTableActions">
+                <button class="secondary compactBtn" data-open-job="${esc(run.jobKey)}">${esc(textFor('btnSettings'))}</button>
+                <button class="secondary compactBtn" data-open-job-log="${esc(run.jobKey)}">${esc(textFor('btnLog'))}</button>
+              </div>
+            </div>
+          </article>
+        `).join('')}
+      </div>
       ${sorted.length === 0 ? `<p class="muted" style="margin-top:10px">${esc(textFor('jobRunsEmpty'))}</p>` : ''}
     </div>
   `;

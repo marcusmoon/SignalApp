@@ -9,6 +9,7 @@ import { handleAdminSessionRoutes, requireAdmin } from './admin/auth.mjs';
 import { handleAdminStaticRoutes } from './admin/static.mjs';
 import { handlePublicCalendarRoutes } from './public/v1/calendar.mjs';
 import { handlePublicConcallsRoutes } from './public/v1/concalls.mjs';
+import { handlePublicInsightRoutes } from './public/v1/insights.mjs';
 import { handlePublicMarketRoutes } from './public/v1/market.mjs';
 import { handlePublicNewsRoutes } from './public/v1/news.mjs';
 import { handlePublicYoutubeRoutes } from './public/v1/youtube.mjs';
@@ -19,6 +20,7 @@ const PUBLIC_ROUTE_HANDLERS = [
   handlePublicMiscRoutes,
   handlePublicNewsRoutes,
   handlePublicCalendarRoutes,
+  handlePublicInsightRoutes,
   handlePublicYoutubeRoutes,
   handlePublicConcallsRoutes,
   handlePublicMarketRoutes,

@@ -15,6 +15,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { BlurView } from 'expo-blur';
+import * as WebBrowser from 'expo-web-browser';
 
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
@@ -57,8 +58,8 @@ import {
 import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreference';
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
-import { fetchSignalNews, fetchSignalNewsSources, signalNewsToNewsItem } from '@/integrations/signal-api';
-import type { SignalApiNewsItem } from '@/integrations/signal-api/types';
+import { fetchSignalInsights, fetchSignalNews, fetchSignalNewsSources, signalNewsToNewsItem } from '@/integrations/signal-api';
+import type { SignalApiInsight, SignalApiNewsItem } from '@/integrations/signal-api/types';
 import type { NewsItem } from '@/types/signal';
 import type { MessageId } from '@/locales/messages';
 
@@ -134,6 +135,7 @@ export default function FeedScreen() {
   const [availableSources, setAvailableSources] = useState<string[]>([]);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [insights, setInsights] = useState<SignalApiInsight[]>([]);
   /** 출처 필터 UI용(카탈로그 비었을 때 샘플 + 첫 페이지 병합) */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
 
@@ -169,6 +171,7 @@ export default function FeedScreen() {
         setSignalNewsPool([]);
         setAvailableSources([]);
         setSelectedSources([]);
+        setInsights([]);
         setError(t('errorSignalApiShort'));
         return;
       }
@@ -176,6 +179,13 @@ export default function FeedScreen() {
       const cacheMode = forceRefresh ? 'bypass' : 'use';
 
       let catalogRows: { name: string; enabled: boolean; order: number }[] = [];
+      try {
+        const rows = await fetchSignalInsights({ limit: 6 });
+        setInsights(rows);
+      } catch {
+        setInsights([]);
+      }
+
       try {
         const catKey = segment === 'crypto' ? 'crypto' : 'global';
         const cat = await fetchSignalNewsSources({ category: catKey }, { cacheMode });
@@ -413,6 +423,46 @@ export default function FeedScreen() {
   const listHeaderEl = useMemo(
     () => (
       <View style={styles.listHeader}>
+        {insights.length > 0 ? (
+          <View style={styles.insightSection}>
+            <View style={styles.insightSectionHead}>
+              <Text style={styles.insightKicker}>{t('insightSectionKicker')}</Text>
+              <Text style={styles.insightCount}>{t('insightSectionCount', { count: insights.length })}</Text>
+            </View>
+            {insights.slice(0, 3).map((insight) => {
+              const primaryRef = insight.sourceRefs?.find((ref) => ref.url);
+              return (
+                <Pressable
+                  key={insight.id}
+                  onPress={() => {
+                    if (primaryRef?.url) void WebBrowser.openBrowserAsync(primaryRef.url);
+                  }}
+                  disabled={!primaryRef?.url}
+                  style={({ pressed }) => [styles.insightCard, pressed && Boolean(primaryRef?.url) && styles.insightCardPressed]}>
+                  <View style={styles.insightCardHead}>
+                    <Text style={styles.insightLevel}>{insight.level.toUpperCase()}</Text>
+                    <Text style={styles.insightScore}>{insight.score}</Text>
+                  </View>
+                  <Text style={styles.insightTitle}>{insight.title}</Text>
+                  <Text style={styles.insightSummary}>{insight.summary}</Text>
+                  <View style={styles.insightMetaRow}>
+                    {insight.symbols.slice(0, 3).map((symbol) => (
+                      <Text key={`${insight.id}-${symbol}`} style={styles.insightSymbol}>
+                        {symbol}
+                      </Text>
+                    ))}
+                    {primaryRef?.sourceName ? (
+                      <Text style={styles.insightRef} numberOfLines={1}>
+                        {primaryRef.sourceName}
+                      </Text>
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+
         <Text style={styles.section}>{t('feedSectionTitle')}</Text>
 
         <View style={styles.segment}>
@@ -460,7 +510,7 @@ export default function FeedScreen() {
         ) : null}
       </View>
     ),
-    [activeTag, error, loading, onPickSegment, segment, segmentOrder, styles, t],
+    [activeTag, error, insights, loading, onPickSegment, segment, segmentOrder, styles, t],
   );
 
   return (
@@ -569,6 +619,91 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     skeletonBlock: {
       marginTop: 4,
+    },
+    insightSection: {
+      marginBottom: 14,
+      gap: 8,
+    },
+    insightSectionHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    insightKicker: {
+      color: theme.text,
+      fontSize: sf(16),
+      fontWeight: '900',
+    },
+    insightCount: {
+      color: theme.textMuted,
+      fontSize: sf(12),
+      fontWeight: '800',
+    },
+    insightCard: {
+      padding: 13,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderLeftWidth: 3,
+      borderColor: theme.greenBorder,
+      borderLeftColor: theme.green,
+      backgroundColor: theme.card,
+      gap: 7,
+    },
+    insightCardPressed: {
+      opacity: 0.88,
+    },
+    insightCardHead: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    insightLevel: {
+      color: theme.green,
+      fontSize: sf(11),
+      fontWeight: '900',
+    },
+    insightScore: {
+      color: theme.textMuted,
+      fontSize: sf(12),
+      fontWeight: '900',
+    },
+    insightTitle: {
+      color: theme.text,
+      fontSize: sf(15),
+      lineHeight: sf(20),
+      fontWeight: '900',
+    },
+    insightSummary: {
+      color: theme.textMuted,
+      fontSize: sf(12),
+      lineHeight: sf(18),
+      fontWeight: '600',
+    },
+    insightMetaRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: 6,
+    },
+    insightSymbol: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+      overflow: 'hidden',
+      color: theme.green,
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      fontSize: sf(11),
+      fontWeight: '900',
+    },
+    insightRef: {
+      flex: 1,
+      minWidth: 0,
+      color: theme.textDim,
+      fontSize: sf(11),
+      fontWeight: '700',
     },
     tagFilterRow: {
       flexDirection: 'row',

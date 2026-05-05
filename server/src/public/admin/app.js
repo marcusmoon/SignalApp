@@ -266,6 +266,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                 ? 'domainYoutube'
                 : d === 'market'
                   ? 'domainMarket'
+                  : d === 'insights'
+                    ? 'domainInsights'
                   : 'domainOther';
         return textFor(key);
       }
@@ -281,6 +283,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         calendar: '📅',
         youtube: '▶',
         market: '💹',
+        insights: 'I',
       };
 
       function jobDisplayName(job) {
@@ -299,7 +302,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
 
       function domainBadge(domain) {
         const d = String(domain || 'other');
-        const known = ['news', 'calendar', 'youtube', 'market', 'other'].includes(d);
+        const known = ['news', 'calendar', 'youtube', 'market', 'insights', 'other'].includes(d);
         return `<span class="pill">${esc(known ? domainLabel(d) : d)}</span>`;
       }
 
@@ -385,12 +388,14 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
 
         const panel = $(`view-${actualView}`);
         const resolvedView = panel ? actualView : 'dashboard';
-        state.view = requestedView;
+        const resolvedRequestedView = panel ? requestedView : 'dashboard';
+        state.view = resolvedRequestedView;
+        setUrlParam('view', resolvedRequestedView);
         document.querySelectorAll('.view').forEach((el) => el.classList.add('hidden'));
         $(`view-${resolvedView}`)?.classList.remove('hidden');
         document.querySelectorAll('[data-view]').forEach((btn) => {
-          btn.classList.toggle('active', btn.dataset.view === requestedView);
-          btn.classList.toggle('secondary', btn.dataset.view !== requestedView);
+          btn.classList.toggle('active', btn.dataset.view === resolvedRequestedView);
+          btn.classList.toggle('secondary', btn.dataset.view !== resolvedRequestedView);
         });
 
         // Lazy-load data for views that need it.
@@ -398,34 +403,35 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         if (resolvedView === 'monitoring') void loadMonitoring();
         if (resolvedView === 'errors') void loadErrors();
         if (resolvedView === 'settings') {
-          setSettingsTab(settingsTabFromView || state.settingsTab || 'keys');
+          const activeSettingsTab = settingsTabFromView || state.settingsTab || 'users';
+          setSettingsTab(activeSettingsTab);
           const title = $('settingsTitle');
           if (title) {
             title.textContent =
-              settingsTabFromView === 'theme'
+              activeSettingsTab === 'theme'
                 ? textFor('settingsThemeTitle')
-                : settingsTabFromView === 'users'
+                : activeSettingsTab === 'users'
                   ? textFor('settingsUsersTitle')
-                : settingsTabFromView === 'lists'
+                : activeSettingsTab === 'lists'
                   ? textFor('settingsListsTitle')
-                  : settingsTabFromView === 'sources'
+                  : activeSettingsTab === 'sources'
                     ? textFor('settingsSourcesTitle')
-                    : settingsTabFromView === 'danger'
+                    : activeSettingsTab === 'danger'
                       ? textFor('settingsDangerTitle')
                       : textFor('navSettingsKeys');
           }
           const desc = $('settingsDesc');
           if (desc) {
             desc.textContent =
-              settingsTabFromView === 'theme'
+              activeSettingsTab === 'theme'
                 ? textFor('settingsThemeDesc')
-                : settingsTabFromView === 'users'
+                : activeSettingsTab === 'users'
                   ? textFor('settingsUsersDesc')
-                : settingsTabFromView === 'lists'
+                : activeSettingsTab === 'lists'
                   ? textFor('settingsListsDesc')
-                  : settingsTabFromView === 'sources'
+                  : activeSettingsTab === 'sources'
                     ? textFor('settingsSourcesDesc')
-                    : settingsTabFromView === 'danger'
+                    : activeSettingsTab === 'danger'
                       ? textFor('settingsDangerDesc')
                       : textFor('settingsProviderDesc');
           }
@@ -526,6 +532,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         if (loggedIn) {
           // Restore job tab from URL (?tab=info|runs)
           const urlParams = new URLSearchParams(window.location.search);
+          const viewFromUrl = urlParams.get('view');
+          if (viewFromUrl) state.view = viewFromUrl;
           const jobTabFromUrl = urlParams.get('tab');
           if (jobTabFromUrl === 'info' || jobTabFromUrl === 'runs') state.jobTab = jobTabFromUrl;
           const runSort = urlParams.get('runSort');
@@ -537,6 +545,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           setCalendarDatePreset();
           try {
             await reloadAllAdminData();
+            await switchView(state.view || 'dashboard');
           } catch (error) {
             console.error('[admin] initial data load failed', error);
             showToast(textFor('toastErrorTitle'), error?.message || 'initial data load failed', { kind: 'error' });
@@ -555,8 +564,9 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           const summary = (await api('/admin/api/summary')).data;
           const runs = Array.isArray(summary.recentRuns) ? summary.recentRuns : [];
           const failed = runs.filter((r) => String(r.status) === 'failed');
+          const stuck = runs.filter((r) => r.stuck);
           const stale = runs.filter((r) => r.stale);
-          const count = failed.length + stale.length;
+          const count = failed.length + stuck.length + stale.length;
           $('headerNotifBadge').textContent = String(count);
           $('headerNotifBadge').style.display = count > 0 ? '' : 'none';
           if ($('notifList')) {
@@ -564,6 +574,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
               ? `<div class="muted">${esc(textFor('notifEmpty'))}</div>`
               : `
                 ${failed.length ? `<div class="card"><strong>${esc(textFor('notifFailed'))}</strong><div class="muted" style="margin-top:6px">${failed.map((r) => esc(r.displayName || r.jobKey)).join('<br/>')}</div></div>` : ''}
+                ${stuck.length ? `<div class="card"><strong>${esc(textFor('notifStuckLabel'))}</strong><div class="muted" style="margin-top:6px">${stuck.map((r) => esc(r.displayName || r.jobKey)).join('<br/>')}</div></div>` : ''}
                 ${stale.length ? `<div class="card"><strong>${esc(textFor('notifStaleLabel'))}</strong><div class="muted" style="margin-top:6px">${stale.map((r) => esc(r.displayName || r.jobKey)).join('<br/>')}</div></div>` : ''}
               `;
           }
@@ -979,7 +990,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             return;
           }
           if (target?.id === 'refreshSettingsBtn') {
-            const tab = state.settingsTab || 'keys';
+            const tab = state.settingsTab || 'users';
             if (tab === 'keys') await loadProviderSettings();
             else if (tab === 'users') await loadAdminUsers();
             else if (tab === 'lists') await loadMarketLists();
@@ -2067,7 +2078,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       refreshSession().catch((error) => { $('session').textContent = error.message; });
       updateResetUi();
       // Keep settings tab stable across refreshes
-      if ($('settingsTab-keys')) setSettingsTab(state.settingsTab || 'keys');
+      if ($('settingsTab-users')) setSettingsTab(state.settingsTab || 'users');
       initAdminHeaderHeightSync();
       initScrollTopButton();
       enhanceMobileAdminSurfaces();

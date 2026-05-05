@@ -5,6 +5,7 @@ export * from '@/integrations/signal-api/concalls';
 export * from '@/integrations/signal-api/calendarRange';
 export * from '@/integrations/signal-api/market';
 export * from '@/integrations/signal-api/marketLists';
+export * from '@/integrations/signal-api/insights';
 export * from '@/integrations/signal-api/news';
 export * from '@/integrations/signal-api/cache/newsCache';
 export * from '@/integrations/signal-api/newsSources';

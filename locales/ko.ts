@@ -299,6 +299,8 @@ export const ko = {
   alertDupTicker: '이미 목록에 있는 티커입니다.',
 
   feedSectionTitle: '실시간 뉴스',
+  insightSectionKicker: '오늘의 시그널',
+  insightSectionCount: '{{count}}개 업데이트',
   feedSegmentGlobal: '글로벌',
   feedSegmentKorea: '한국',
   feedSegmentCrypto: '코인',

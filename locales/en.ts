@@ -304,6 +304,8 @@ export const en = {
   alertDupTicker: 'This ticker is already in the list.',
 
   feedSectionTitle: 'Live news',
+  insightSectionKicker: 'Today’s signals',
+  insightSectionCount: '{{count}} updates',
   feedSegmentGlobal: 'Global',
   feedSegmentKorea: 'Korea',
   feedSegmentCrypto: 'Crypto',

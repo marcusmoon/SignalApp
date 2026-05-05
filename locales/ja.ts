@@ -303,6 +303,8 @@ export const ja = {
   alertDupTicker: 'すでに一覧にあります。',
 
   feedSectionTitle: 'リアルタイムニュース',
+  insightSectionKicker: '今日のシグナル',
+  insightSectionCount: '{{count}}件更新',
   feedSegmentGlobal: 'グローバル',
   feedSegmentKorea: '韓国',
   feedSegmentCrypto: 'コイン',

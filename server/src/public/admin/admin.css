@@ -2204,12 +2204,14 @@ tbody tr:hover td {
 }
 
 .mobileJobList,
-.mobileRunList {
+.mobileRunList,
+.mobileCalendarList {
   display: none;
 }
 
 .mobileJobCard,
-.mobileRunCard {
+.mobileRunCard,
+.mobileCalendarCard {
   min-width: 0;
 }
 
@@ -2349,6 +2351,65 @@ tbody tr:hover td {
   color: var(--color-error);
 }
 
+.ingestWorkflow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.ingestWorkflowItem {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  text-align: left;
+  color: var(--text);
+  background: color-mix(in srgb, var(--panel) 92%, var(--accent) 8%);
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border));
+  border-left: 4px solid color-mix(in srgb, var(--accent) 42%, var(--border));
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+
+.ingestWorkflowItem:hover {
+  border-color: color-mix(in srgb, var(--accent) 46%, var(--border));
+  background: color-mix(in srgb, var(--panel) 86%, var(--accent) 14%);
+}
+
+.ingestWorkflowItem.active {
+  border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--panel) 78%, var(--accent) 22%);
+}
+
+.ingestWorkflowIcon {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  font-weight: 800;
+}
+
+.ingestWorkflowText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ingestWorkflowText strong,
+.ingestWorkflowText small {
+  overflow-wrap: anywhere;
+}
+
+.ingestWorkflowText small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 @media (max-width: 1023px) {
   .providerTile,
   .providerTileBody {
@@ -2376,6 +2437,10 @@ tbody tr:hover td {
   .dashboardToolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .ingestWorkflow {
+    grid-template-columns: 1fr;
   }
 
   .pageHeader {
@@ -2968,18 +3033,22 @@ tbody tr:hover td {
   .jobDesktopTableCard,
   #jobRuns > table,
   .monitoringDesktopTable,
-  .errorsDesktopTable {
+  .errorsDesktopTable,
+  .dashboardRunsTable,
+  .calendarEventsTable {
     display: none;
   }
 
   .mobileJobList,
-  .mobileRunList {
+  .mobileRunList,
+  .mobileCalendarList {
     display: grid;
     gap: 10px;
   }
 
   .mobileJobCard,
-  .mobileRunCard {
+  .mobileRunCard,
+  .mobileCalendarCard {
     display: grid;
     gap: 10px;
     padding: 12px;
@@ -3082,6 +3151,27 @@ tbody tr:hover td {
     color: var(--color-gray-900);
     font-weight: 700;
     text-align: right;
+  }
+
+  .mobileCalendarCard {
+    border-left: 4px solid var(--accent);
+  }
+
+  .mobileCalendarCardHead {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  .mobileCalendarCardHead strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .calendarDayTableHost {
+    overflow-x: visible;
   }
 }
 

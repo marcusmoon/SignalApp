@@ -121,6 +121,37 @@ export type SignalApiCoinMarket = {
   fetchedAt: string;
 };
 
+export type SignalApiInsightSourceRef = {
+  type: 'news' | 'youtube' | string;
+  id: string;
+  title: string;
+  url?: string;
+  sourceName?: string;
+  publishedAt?: string | null;
+};
+
+export type SignalApiInsight = {
+  id: string;
+  kind: 'market_brief' | 'asset_signal' | string;
+  level: 'brief' | 'watch' | 'alert' | string;
+  score: number;
+  title: string;
+  summary: string;
+  symbols: string[];
+  topics: string[];
+  reasoning: string[];
+  sourceRefs: SignalApiInsightSourceRef[];
+  pushCandidate: boolean;
+  generatedAt: string | null;
+  expiresAt: string | null;
+  provider: string;
+  llm?: {
+    status?: string;
+    provider?: string | null;
+    model?: string | null;
+  } | null;
+};
+
 export type SignalApiConcall = {
   id: string;
   provider: string;

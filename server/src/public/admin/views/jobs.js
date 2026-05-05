@@ -1,4 +1,6 @@
 import { timeBasis } from '../format.js';
+import { renderIngestWorkflowNav } from './ingestNav.js';
+import { mobileRunClass, runProgressText, runRowClass, runStatusPillFor } from './runVisuals.js';
 
 export function createJobRunsSort({ state }) {
   function compareMaybeNumber(a, b) {
@@ -80,38 +82,6 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName }) {
   `;
 }
 
-function jobRunRowClass(run) {
-  if (String(run.status) === 'failed') return 'failedRow';
-  if (run.stuck) return 'stuckRow';
-  if (String(run.status) === 'running') return 'runningRow';
-  return '';
-}
-
-function mobileJobRunClass(run) {
-  if (String(run.status) === 'failed') return 'mobileRunCard--failed';
-  if (run.stuck) return 'mobileRunCard--stuck';
-  if (String(run.status) === 'running') return 'mobileRunCard--running';
-  return '';
-}
-
-function jobRunStatus({ run, runStatusPill, textFor, esc }) {
-  if (run.stuck) return `<span class="pill pillStatus pillStatus--fail">${esc(textFor('jobRunStuck'))}</span>`;
-  return runStatusPill(run.status, false);
-}
-
-function jobRunProgressText({ run, formatDuration, textFor }) {
-  if (String(run.status) !== 'running') return '-';
-  const parts = [];
-  if (Number.isFinite(Number(run.progressPercent))) parts.push(`${Number(run.progressPercent)}%`);
-  if (run.progressPhase) parts.push(String(run.progressPhase));
-  if (Number.isFinite(Number(run.progressDone)) && Number.isFinite(Number(run.progressTotal)) && Number(run.progressTotal) > 0) {
-    parts.push(`${Number(run.progressDone)}/${Number(run.progressTotal)}`);
-  }
-  if (Number.isFinite(Number(run.elapsedMs))) parts.push(`${textFor('jobRunElapsed')} ${formatDuration(run.elapsedMs)}`);
-  if (Number.isFinite(Number(run.quietMs))) parts.push(`${textFor('jobRunQuiet')} ${formatDuration(run.quietMs)}`);
-  return parts.join(' · ') || '-';
-}
-
 export async function loadJobsView(ctx) {
   const {
     api,
@@ -180,6 +150,7 @@ export async function loadJobsView(ctx) {
   const domains = [...new Set(jobsAll.map((j) => j.domain || 'other'))];
   const providers = [...new Set(jobsAll.map((j) => j.provider).filter(Boolean))];
   $('jobs').innerHTML = `
+    ${renderIngestWorkflowNav({ activeView: 'jobs', esc, textFor })}
     <div class="filterBar filterBox">
       <div class="filterBarTitle filterBoxTitle">${esc(textFor('filterSearchConditions'))}</div>
       <div class="filterBarControls toolbar jobsFilterGroups">
@@ -346,11 +317,15 @@ export async function loadJobRunsView(ctx) {
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(jobRunRowSelectKey(r)));
 
   if (rows.length === 0) {
-    $('jobRuns').innerHTML = `<p class="muted">${esc(textFor('jobRunsEmptyMessage'))}</p>`;
+    $('jobRuns').innerHTML = `
+      ${renderIngestWorkflowNav({ activeView: 'jobs', esc, textFor })}
+      <p class="muted">${esc(textFor('jobRunsEmptyMessage'))}</p>
+    `;
     return;
   }
 
   $('jobRuns').innerHTML = `
+    ${renderIngestWorkflowNav({ activeView: 'jobs', esc, textFor })}
     ${
       selected.size
         ? `
@@ -386,15 +361,15 @@ export async function loadJobRunsView(ctx) {
           .map((run) => {
             const rowKey = jobRunRowSelectKey(run);
             return `
-            <tr class="${jobRunRowClass(run)}">
+            <tr class="${runRowClass(run, { includeStale: false })}">
               <td class="center"><input type="checkbox" data-job-run-select="${esc(rowKey)}" ${selected.has(rowKey) ? 'checked' : ''} /></td>
               <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-              <td>${jobRunStatus({ run, runStatusPill, textFor, esc })}</td>
+              <td>${runStatusPillFor({ run, runStatusPill, textFor, esc, includeStale: false })}</td>
               <td>${operationBadge(run.operation)}</td>
               <td>${domainBadge(run.domain || run.resultKind)}</td>
               <td>${providerBadge(run.provider)}</td>
               <td>${esc(run.trigger || '-')}</td>
-              <td class="muted">${esc(jobRunProgressText({ run, formatDuration, textFor }))}</td>
+              <td class="muted">${esc(runProgressText({ run, formatDuration, textFor }))}</td>
               <td class="right">${run.itemCount ?? 0}</td>
               <td class="right">${formatDuration(run.durationMs ?? run.elapsedMs)}</td>
               <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
@@ -410,7 +385,7 @@ export async function loadJobRunsView(ctx) {
         .map((run) => {
           const rowKey = jobRunRowSelectKey(run);
           return `
-            <article class="mobileRunCard ${mobileJobRunClass(run)}">
+            <article class="mobileRunCard ${mobileRunClass(run, { includeStale: false })}">
               <div class="mobileRunCardHead">
                 <label class="mobileRunSelect">
                   <input type="checkbox" data-job-run-select="${esc(rowKey)}" ${selected.has(rowKey) ? 'checked' : ''} />
@@ -420,7 +395,7 @@ export async function loadJobRunsView(ctx) {
                   <strong>${esc(run.displayName || run.jobKey)}</strong>
                   <span class="muted">${esc(run.jobKey)}</span>
                 </div>
-                ${jobRunStatus({ run, runStatusPill, textFor, esc })}
+                ${runStatusPillFor({ run, runStatusPill, textFor, esc, includeStale: false })}
               </div>
               <div class="mobileJobMeta">
                 ${operationBadge(run.operation)}
@@ -434,7 +409,7 @@ export async function loadJobRunsView(ctx) {
                 <span>${esc(textFor('colFinished'))} <strong>${esc(formatDateTime(run.finishedAt || run.startedAt))}</strong></span>
               </div>
               <div class="mobileJobFoot">
-                <span class="muted">${esc(jobRunProgressText({ run, formatDuration, textFor }))}</span>
+                <span class="muted">${esc(runProgressText({ run, formatDuration, textFor }))}</span>
                 ${runErrorButton(run)}
               </div>
             </article>

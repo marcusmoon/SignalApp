@@ -2,7 +2,7 @@ export const $ = (id) => document.getElementById(id);
 
 export const state = {
   view: 'dashboard',
-  settingsTab: 'keys',
+  settingsTab: 'users',
   operationFilter: 'all',
   dashboardOperationFilter: 'latest',
   dashboardLimit: 5,

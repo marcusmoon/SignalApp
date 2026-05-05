@@ -41,6 +41,7 @@ server/src/http/
       calendar.mjs        # /v1/calendar
       youtube.mjs         # /v1/youtube
       concalls.mjs        # /v1/concalls
+      insights.mjs        # /v1/insights
   admin/
     static.mjs            # /admin + /admin/*.{js,css} + public assets
     auth.mjs              # /admin/api/{session,login,logout} + requireAdmin
@@ -124,12 +125,15 @@ services/
 
 ## 1.6 서버 Provider / Jobs / 데이터 (`server/`)
 
-- 서버는 외부 provider를 호출하고(키는 Admin에서 관리), 결과를 로컬 DB(`server/data/*.json`)에 저장한 뒤 `/v1/*`와 `/admin/api/*`로 제공한다.
+- 서버는 외부 provider를 호출하고(키는 Admin에서 관리), 결과를 로컬 SQLite DB(`server/data/signal.sqlite`)의 기능별 테이블에 저장한 뒤 `/v1/*`와 `/admin/api/*`로 제공한다.
 
 ```text
 server/src/providers/       # 외부 provider 호출 + 정규화(예: market/finnhub, market/index, concalls/ninjas)
 server/src/jobs/            # scheduler/runner (수집 작업)
-server/data/                # settings/jobs/news/calendar/concalls/youtube/market 등 JSON 스토어
+server/src/insights/        # 저장 데이터 기반 인사이트 생성 규칙(LLM 연결 전 MVP 포함)
+server/src/db/              # DB shape/defaults/sqlite store helper
+server/src/db/sqlite/       # SQLite schema/table 유틸
+server/data/                # signal.sqlite (+ WAL/SHM)
 ```
 
 ---

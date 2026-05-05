@@ -4,6 +4,7 @@ import { fetchNinjasConcallTranscript } from '../providers/concalls/ninjas.mjs';
 import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes } from '../providers/market/index.mjs';
+import { generateMarketInsights } from '../insights/rules.mjs';
 import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
@@ -224,6 +225,9 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
   if (job.provider === 'coingecko' && job.handler === 'coin_markets') {
     return { kind: 'coinMarkets', rows: await fetchCoinGeckoMarkets(job.params || {}) };
   }
+  if (job.provider === 'signal' && job.handler === 'market_insights') {
+    return { kind: 'insights', rows: generateMarketInsights(dbBefore, job.params || {}) };
+  }
   throw new Error(`UNKNOWN_JOB_HANDLER:${job.provider}:${job.handler}`);
 }
 
@@ -316,6 +320,8 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
         for (const row of rows) upsertById(db.marketQuotes, row);
       } else if (result.kind === 'coinMarkets') {
         for (const row of rows) upsertById(db.coinMarkets, row);
+      } else if (result.kind === 'insights') {
+        for (const row of rows) upsertById(db.insightItems, row);
       }
 
       const savedJob = db.pollingJobs.find((j) => j.jobKey === jobKey);

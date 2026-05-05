@@ -1,3 +1,6 @@
+import { renderIngestWorkflowNav } from './ingestNav.js';
+import { mobileRunClass, runProgressText, runRowClass, runStatusPillFor } from './runVisuals.js';
+
 export async function loadMonitoringView(ctx) {
   const {
     api,
@@ -31,33 +34,8 @@ export async function loadMonitoringView(ctx) {
   const stale = runs.filter((r) => r.stale);
   const running = runs.filter((r) => String(r.status) === 'running');
   const stuck = runs.filter((r) => r.stuck);
-  const statusPill = (run) =>
-    run.stuck ? `<span class="pill pillStatus pillStatus--fail">${esc(textFor('jobRunStuck'))}</span>` : runStatusPill(run.status, !!run.stale);
-  const rowClass = (run) => {
-    if (String(run.status) === 'failed') return 'failedRow';
-    if (run.stuck) return 'stuckRow';
-    if (String(run.status) === 'running') return 'runningRow';
-    return run.stale ? 'staleRow' : '';
-  };
-  const mobileClass = (run) => {
-    if (String(run.status) === 'failed') return 'mobileRunCard--failed';
-    if (run.stuck) return 'mobileRunCard--stuck';
-    if (String(run.status) === 'running') return 'mobileRunCard--running';
-    return run.stale ? 'mobileRunCard--stale' : '';
-  };
-  const progressText = (run) => {
-    if (String(run.status) !== 'running') return '-';
-    const parts = [];
-    if (Number.isFinite(Number(run.progressPercent))) parts.push(`${Number(run.progressPercent)}%`);
-    if (run.progressPhase) parts.push(String(run.progressPhase));
-    if (Number.isFinite(Number(run.progressDone)) && Number.isFinite(Number(run.progressTotal)) && Number(run.progressTotal) > 0) {
-      parts.push(`${Number(run.progressDone)}/${Number(run.progressTotal)}`);
-    }
-    if (Number.isFinite(Number(run.elapsedMs))) parts.push(`${textFor('jobRunElapsed')} ${formatDuration(run.elapsedMs)}`);
-    if (Number.isFinite(Number(run.quietMs))) parts.push(`${textFor('jobRunQuiet')} ${formatDuration(run.quietMs)}`);
-    return parts.join(' · ') || '-';
-  };
   $('monitoring').innerHTML = `
+    ${renderIngestWorkflowNav({ activeView: 'monitoring', esc, textFor })}
     <div class="statGrid wideStats">
       <div class="stat"><div class="statLabel muted"><span class="statIcon">R</span>${esc(textFor('statRecentRuns'))}</div><div class="statNum">${runs.length}</div></div>
       <div class="stat"><div class="statLabel muted"><span class="statIcon">P</span>${esc(textFor('statRunningRuns'))}</div><div class="statNum">${running.length}</div></div>
@@ -107,13 +85,13 @@ export async function loadMonitoringView(ctx) {
               : runs
                   .map(
                     (run) => `
-              <tr class="${rowClass(run)}">
+              <tr class="${runRowClass(run)}">
                 <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-                <td>${statusPill(run)}</td>
+                <td>${runStatusPillFor({ run, runStatusPill, textFor, esc })}</td>
                 <td>${operationBadge(run.operation)}</td>
                 <td>${domainBadge(run.domain || run.resultKind)}</td>
                 <td>${providerBadge(run.provider)}</td>
-                <td class="muted">${esc(progressText(run))}</td>
+                <td class="muted">${esc(runProgressText({ run, formatDuration, textFor }))}</td>
                 <td class="right">${run.itemCount ?? 0}</td>
                 <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
                 <td class="center">
@@ -136,13 +114,13 @@ export async function loadMonitoringView(ctx) {
             : runs
                 .map(
                   (run) => `
-                    <article class="mobileRunCard ${mobileClass(run)}">
+                    <article class="mobileRunCard ${mobileRunClass(run)}">
                       <div class="mobileRunCardHead">
                         <div class="mobileJobTitle">
                           <strong>${esc(run.displayName || run.jobKey)}</strong>
                           <span class="muted">${esc(run.jobKey)}</span>
                         </div>
-                        ${statusPill(run)}
+                        ${runStatusPillFor({ run, runStatusPill, textFor, esc })}
                       </div>
                       <div class="mobileJobMeta">
                         ${operationBadge(run.operation)}
@@ -151,7 +129,7 @@ export async function loadMonitoringView(ctx) {
                       </div>
                       <div class="mobileRunStats">
                         <span>${esc(textFor('colItems'))} <strong>${run.itemCount ?? 0}</strong></span>
-                        <span>${esc(textFor('colProgress'))} <strong>${esc(progressText(run))}</strong></span>
+                        <span>${esc(textFor('colProgress'))} <strong>${esc(runProgressText({ run, formatDuration, textFor }))}</strong></span>
                         <span>${esc(textFor('colFinished'))} <strong>${esc(formatDateTime(run.finishedAt || run.startedAt))}</strong></span>
                       </div>
                       <div class="mobileJobFoot">
@@ -198,6 +176,7 @@ export async function loadErrorsView(ctx) {
   state.errorRows = filtered;
   $('errors').innerHTML =
     `
+      ${renderIngestWorkflowNav({ activeView: 'errors', esc, textFor })}
       <div class="tabs" style="margin-bottom:10px">
         <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">${esc(textFor('tabAll'))}</button>
         <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">${esc(textFor('tabLatest'))}</button>

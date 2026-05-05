@@ -61,6 +61,58 @@ function formatAdminCalendarDayHeading(ymdValue) {
   }
 }
 
+function calendarEventTable({ rows, esc, textFor }) {
+  return `
+    <table class="calendarEventsTable">
+      <thead>
+        <tr>
+          <th>${esc(textFor('colDate'))}</th>
+          <th>${esc(textFor('colType'))}</th>
+          <th>${esc(textFor('colTitle'))}</th>
+          <th>${esc(textFor('colMeta'))}</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (item) => `
+          <tr>
+            <td class="muted">${esc(item.date || '-')}</td>
+            <td><span class="pill">${esc(item.type || '-')}</span></td>
+            <td><strong>${esc(item.title || '-')}</strong></td>
+            <td class="muted">${esc(item.country || item.symbol || '-')}</td>
+          </tr>
+        `,
+          )
+          .join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function calendarEventCards({ rows, esc, textFor }) {
+  return `
+    <div class="mobileCalendarList">
+      ${rows
+        .map(
+          (item) => `
+        <article class="mobileCalendarCard">
+          <div class="mobileCalendarCardHead">
+            <strong>${esc(item.title || '-')}</strong>
+            <span class="pill">${esc(item.type || '-')}</span>
+          </div>
+          <div class="mobileRunStats">
+            <span>${esc(textFor('colDate'))} <strong>${esc(item.date || '-')}</strong></span>
+            <span>${esc(textFor('colMeta'))} <strong>${esc(item.country || item.symbol || '-')}</strong></span>
+          </div>
+        </article>
+      `,
+        )
+        .join('')}
+    </div>
+  `;
+}
+
 export function renderAdminCalendarGrid({ state, $, esc, textFor, ymd }) {
   const host = $('calendarGrid');
   if (!host) return;
@@ -137,32 +189,7 @@ export function renderCalendarDayTable({ state, $, esc, textFor, textForVars }) 
           ${
             rows.length === 0
               ? `<p class="muted">${esc(textFor('calendarEmptyDay'))}</p>`
-              : `
-                <table>
-                  <thead>
-                    <tr>
-                      <th>${esc(textFor('colDate'))}</th>
-                      <th>${esc(textFor('colType'))}</th>
-                      <th>${esc(textFor('colTitle'))}</th>
-                      <th>${esc(textFor('colMeta'))}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${rows
-                      .map(
-                        (item) => `
-                      <tr>
-                        <td class="muted">${esc(item.date || '-')}</td>
-                        <td><span class="pill">${esc(item.type || '-')}</span></td>
-                        <td><strong>${esc(item.title || '-')}</strong></td>
-                        <td class="muted">${esc(item.country || item.symbol || '-')}</td>
-                      </tr>
-                    `,
-                      )
-                      .join('')}
-                  </tbody>
-                </table>
-              `
+              : `${calendarEventTable({ rows, esc, textFor })}${calendarEventCards({ rows, esc, textFor })}`
           }
         `;
     return;
@@ -173,32 +200,7 @@ export function renderCalendarDayTable({ state, $, esc, textFor, textForVars }) 
   host.innerHTML =
     rows.length === 0
       ? `<p class="muted">${esc(textFor('calendarEmptyDay'))}</p>`
-      : `
-        <table>
-          <thead>
-            <tr>
-              <th>${esc(textFor('colDate'))}</th>
-              <th>${esc(textFor('colType'))}</th>
-              <th>${esc(textFor('colTitle'))}</th>
-              <th>${esc(textFor('colMeta'))}</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows
-              .map(
-                (item) => `
-              <tr>
-                <td class="muted">${esc(item.date || '-')}</td>
-                <td><span class="pill">${esc(item.type || '-')}</span></td>
-                <td><strong>${esc(item.title || '-')}</strong></td>
-                <td class="muted">${esc(item.country || item.symbol || '-')}</td>
-              </tr>
-            `,
-              )
-              .join('')}
-          </tbody>
-        </table>
-      `;
+      : `${calendarEventTable({ rows, esc, textFor })}${calendarEventCards({ rows, esc, textFor })}`;
 }
 
 export async function loadCalendarView(ctx) {
@@ -252,4 +254,3 @@ export async function loadCalendarView(ctx) {
   renderAdminCalendarGrid({ state, $, esc, textFor, ymd });
   renderCalendarDayTable({ state, $, esc, textFor, textForVars: ctx.textForVars });
 }
-

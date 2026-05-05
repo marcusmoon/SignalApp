@@ -522,8 +522,10 @@ export default function QuotesScreen() {
             <View style={styles.symCol}>
               <View style={styles.symBlock}>
                 <View style={styles.symRow}>
-                  <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={6}>
-                    <Text style={styles.sym}>{r.symbol}</Text>
+                  <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={6} style={styles.symPressable}>
+                    <Text style={styles.sym} numberOfLines={1}>
+                      {r.symbol}
+                    </Text>
                   </Pressable>
                   {yahooEnabled ? (
                     <Pressable
@@ -538,7 +540,7 @@ export default function QuotesScreen() {
                   ) : null}
                 </View>
                 {r.quote ? (
-                  <Text style={styles.symPrev}>
+                  <Text style={styles.symPrev} numberOfLines={1}>
                     {segment === 'coin' ? t('quotesPrevRefCoin') : t('quotesPrevCloseStock')}{' '}
                     {formatUsd(Number(r.quote.previousClose))}
                   </Text>
@@ -553,7 +555,9 @@ export default function QuotesScreen() {
             <View style={styles.priceCol}>
               <View style={styles.priceRow}>
                 {r.quote ? (
-                  <Text style={styles.price}>{formatUsd(Number(r.quote.currentPrice))}</Text>
+                  <Text style={styles.price} numberOfLines={1}>
+                    {formatUsd(Number(r.quote.currentPrice))}
+                  </Text>
                 ) : (
                   <Text style={styles.na}>—</Text>
                 )}
@@ -569,7 +573,7 @@ export default function QuotesScreen() {
                 ) : null}
               </View>
               {r.quote ? (
-                <Text style={[styles.chg, quoteRowChangeUp(r.quote) ? styles.chgUp : styles.chgDn]}>
+                <Text style={[styles.chg, quoteRowChangeUp(r.quote) ? styles.chgUp : styles.chgDn]} numberOfLines={1}>
                   {formatUsdChange(Number(r.quote.change ?? 0))} ({formatQuoteDpPct(r.quote.changePercent)})
                 </Text>
               ) : null}
@@ -822,16 +826,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
+      gap: 10,
       marginBottom: 6,
     },
-    priceCol: { flexShrink: 0, alignItems: 'flex-end' },
+    priceCol: {
+      flexShrink: 1,
+      alignItems: 'flex-end',
+      minWidth: 104,
+      maxWidth: '48%',
+    },
     priceRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-end',
       gap: 8,
     },
-    symCol: { flex: 1, minWidth: 0 },
+    symCol: { flex: 1, minWidth: 0, flexShrink: 1 },
     symBlock: { alignSelf: 'flex-start', maxWidth: '100%' },
     symRow: {
       flexDirection: 'row',
@@ -839,6 +849,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexWrap: 'wrap',
       gap: 8,
     },
+    symPressable: { flexShrink: 1, minWidth: 0 },
     sym: { fontSize: sf(16), fontWeight: '900', color: theme.text, letterSpacing: 0.5 },
     symPrev: {
       fontSize: sf(12),
@@ -848,10 +859,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       lineHeight: sf(17),
     },
     symSub: { fontSize: sf(12), fontWeight: '700', color: theme.textMuted, marginTop: 4 },
-    price: { fontSize: sf(18), fontWeight: '800', color: theme.text },
+    price: { maxWidth: '100%', fontSize: sf(18), fontWeight: '800', color: theme.text },
     na: { fontSize: sf(16), color: theme.textDim },
     removeBtn: { padding: 2 },
-    chg: { fontSize: sf(13), fontWeight: '700', marginTop: 4, textAlign: 'right' },
+    chg: { maxWidth: '100%', fontSize: sf(13), fontWeight: '700', marginTop: 4, textAlign: 'right' },
     chgUp: { color: theme.green },
     chgDn: { color: '#E08080' },
     fail: { fontSize: sf(12), color: '#E0A0A0' },

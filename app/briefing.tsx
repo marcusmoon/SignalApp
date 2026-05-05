@@ -377,6 +377,78 @@ export default function BriefingScreen() {
     return pulseLines.slice(1);
   }, [symbols.length, pulseLines]);
 
+  const focusCards = useMemo(() => {
+    const cards: { key: string; title: string; headline: string; meta: string; symbol?: string }[] = [];
+
+    const topSignal = signalRows[0];
+    if (topSignal) {
+      const reasons = topSignal.reasons.slice(0, 2).map((reason) => signalReasonLabel(reason, t));
+      cards.push({
+        key: 'signal',
+        title: t('briefingFocusSignal'),
+        headline: t('briefingFocusSignalHeadline', {
+          symbol: topSignal.symbol,
+          score: String(topSignal.score),
+        }),
+        meta: reasons.length > 0 ? reasons.join(' · ') : t('signalReasonWatch'),
+        symbol: topSignal.symbol,
+      });
+    }
+
+    const topMover = symbols
+      .map((sym) => {
+        const move = signalQuoteMovePct(quoteBySymbol[sym]);
+        return { sym, move, abs: Number.isFinite(move) ? Math.abs(move) : 0 };
+      })
+      .filter((row) => row.abs > 0)
+      .sort((a, b) => b.abs - a.abs)[0];
+    if (topMover) {
+      cards.push({
+        key: 'mover',
+        title: t('briefingFocusMover'),
+        headline: t('briefingFocusMoverHeadline', {
+          symbol: topMover.sym,
+          move: formatPct(topMover.move),
+        }),
+        meta: t('briefingFocusMoverMeta'),
+        symbol: topMover.sym,
+      });
+    }
+
+    const nextEarning = weekEarnings[0] ?? earnings[0];
+    if (nextEarning) {
+      const symbol = earningsRowSymbol(nextEarning);
+      cards.push({
+        key: 'earnings',
+        title: t('briefingFocusEarnings'),
+        headline: t('briefingFocusEarningsHeadline', {
+          symbol,
+          date: shortMd(earningsRowDate(nextEarning)),
+        }),
+        meta: t('fiscalYearQuarterShort', {
+          y: earningsRowYear(nextEarning),
+          q: earningsRowQuarter(nextEarning),
+        }),
+        symbol,
+      });
+    }
+
+    if (cards.length < 3 && macroDisplay[0]) {
+      const ev = macroDisplay[0];
+      cards.push({
+        key: 'macro',
+        title: t('briefingFocusMacro'),
+        headline: t('briefingFocusMacroHeadline', {
+          country: ev.country || '—',
+          event: String(ev.title || '').trim() || '—',
+        }),
+        meta: macroEventTimeLabel(ev),
+      });
+    }
+
+    return cards.slice(0, 3);
+  }, [earnings, macroDisplay, quoteBySymbol, signalRows, symbols, t, weekEarnings]);
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <Stack.Screen options={{ title: t('screenBriefing') }} />
@@ -413,6 +485,35 @@ export default function BriefingScreen() {
                 </View>
               ) : null}
             </View>
+          ) : null}
+
+          {!error && focusCards.length > 0 ? (
+            <>
+              <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingFocusTitle')}</Text>
+              <View style={styles.focusGrid}>
+                {focusCards.map((card) => (
+                  <Pressable
+                    key={card.key}
+                    disabled={!card.symbol}
+                    onPress={() => {
+                      if (card.symbol) router.push(`/symbol/${card.symbol}`);
+                    }}
+                    accessibilityRole={card.symbol ? 'button' : 'text'}
+                    style={({ pressed }) => [
+                      styles.focusCard,
+                      pressed && Boolean(card.symbol) && styles.focusCardPressed,
+                    ]}>
+                    <Text style={styles.focusTitle}>{card.title}</Text>
+                    <Text style={styles.focusHeadline} numberOfLines={2}>
+                      {card.headline}
+                    </Text>
+                    <Text style={styles.focusMeta} numberOfLines={1}>
+                      {card.meta}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
           ) : null}
 
           {!error ? <MarketSnapshotSection tape={tape} macro={macro} /> : null}
@@ -659,6 +760,44 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginBottom: 6,
     },
     sectionHeading: { marginTop: 14 },
+    focusGrid: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 12,
+    },
+    focusCard: {
+      flex: 1,
+      minWidth: 0,
+      paddingVertical: 11,
+      paddingHorizontal: 10,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor:
+        theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}10` : theme.bgElevated,
+    },
+    focusCardPressed: {
+      opacity: 0.82,
+    },
+    focusTitle: {
+      fontSize: sf(10),
+      fontWeight: '900',
+      color: theme.green,
+      marginBottom: 6,
+    },
+    focusHeadline: {
+      fontSize: sf(13),
+      lineHeight: sf(17),
+      fontWeight: '900',
+      color: theme.text,
+      marginBottom: 6,
+    },
+    focusMeta: {
+      fontSize: sf(10),
+      lineHeight: sf(14),
+      fontWeight: '700',
+      color: theme.textDim,
+    },
     sectionHint: {
       fontSize: sf(11),
       color: theme.textDim,

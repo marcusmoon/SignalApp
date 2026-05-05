@@ -23,6 +23,7 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchSignalInsights } from '@/integrations/signal-api';
 import type { SignalApiInsight } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
+import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { addDays, toYmd } from '@/utils/date';
 
 const PAGE_SIZE = 20;
@@ -71,6 +72,8 @@ export default function InsightsScreen() {
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => monthFromYmd(todayYmd));
   const [items, setItems] = useState<SignalApiInsight[]>([]);
+  const [watchlistSymbols, setWatchlistSymbols] = useState<string[]>([]);
+  const [watchlistOnly, setWatchlistOnly] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -78,6 +81,21 @@ export default function InsightsScreen() {
   const [error, setError] = useState<string | null>(null);
   const selectedDateLabel = useMemo(() => formatSelectedDate(selectedYmd, locale), [locale, selectedYmd]);
   const selectedIsToday = selectedYmd >= todayYmd;
+  const activeWatchlistSymbols = watchlistOnly && watchlistSymbols.length > 0 ? watchlistSymbols : undefined;
+
+  useEffect(() => {
+    let cancelled = false;
+    loadWatchlistSymbols()
+      .then((symbols) => {
+        if (!cancelled) setWatchlistSymbols(symbols);
+      })
+      .catch(() => {
+        if (!cancelled) setWatchlistSymbols([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadFirstPage = useCallback(
     async ({ refresh = false, cancelled = () => false }: { refresh?: boolean; cancelled?: () => boolean } = {}) => {
@@ -98,6 +116,7 @@ export default function InsightsScreen() {
           from: selectedYmd,
           to: selectedYmd,
           timeZone: CLIENT_TIME_ZONE,
+          symbols: activeWatchlistSymbols,
           limit: PAGE_SIZE,
           offset: 0,
         });
@@ -118,7 +137,7 @@ export default function InsightsScreen() {
         }
       }
     },
-    [selectedYmd, t],
+    [activeWatchlistSymbols, selectedYmd, t],
   );
 
   useEffect(() => {
@@ -139,6 +158,7 @@ export default function InsightsScreen() {
         from: selectedYmd,
         to: selectedYmd,
         timeZone: CLIENT_TIME_ZONE,
+        symbols: activeWatchlistSymbols,
         limit: PAGE_SIZE,
         offset: off,
       });
@@ -150,7 +170,7 @@ export default function InsightsScreen() {
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loading, loadingMore, selectedYmd]);
+  }, [activeWatchlistSymbols, hasMore, loading, loadingMore, selectedYmd]);
 
   const onRefresh = useCallback(async () => {
     await loadFirstPage({ refresh: true });
@@ -257,6 +277,23 @@ export default function InsightsScreen() {
               </Text>
             </Pressable>
           </View>
+          {watchlistSymbols.length > 0 ? (
+            <Pressable
+              onPress={() => setWatchlistOnly((prev) => !prev)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: watchlistOnly }}
+              accessibilityLabel={t('insightWatchlistOnly', { count: watchlistSymbols.length })}
+              style={({ pressed }) => [
+                styles.watchlistFilter,
+                watchlistOnly && styles.watchlistFilterActive,
+                pressed && styles.dateActionBtnPressed,
+              ]}>
+              <FontAwesome name={watchlistOnly ? 'star' : 'star-o'} size={12} color={theme.green} />
+              <Text style={styles.watchlistFilterText}>
+                {t('insightWatchlistOnly', { count: watchlistSymbols.length })}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
       {loading ? (
@@ -284,7 +321,9 @@ export default function InsightsScreen() {
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}
-          ListEmptyComponent={<Text style={styles.muted}>{t('insightListEmpty')}</Text>}
+          ListEmptyComponent={
+            <Text style={styles.muted}>{t(watchlistOnly ? 'insightListEmptyWatchlist' : 'insightListEmpty')}</Text>
+          }
           ListFooterComponent={listFooter}
           onEndReached={() => void loadMore()}
           onEndReachedThreshold={0.35}
@@ -438,6 +477,26 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     dateActionTextDisabled: {
       color: theme.textDim,
+    },
+    watchlistFilter: {
+      minHeight: 34,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.bgElevated,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+      paddingHorizontal: 10,
+    },
+    watchlistFilterActive: {
+      backgroundColor: theme.greenDim,
+    },
+    watchlistFilterText: {
+      color: theme.green,
+      fontSize: sf(12),
+      fontWeight: '900',
     },
     listContent: {
       paddingHorizontal: 16,

@@ -16,6 +16,7 @@ export type FetchSignalInsightsResult = {
 export async function fetchSignalInsights(
   params: {
     symbol?: string;
+    symbols?: string[];
     level?: string;
     kind?: string;
     pushCandidate?: boolean;
@@ -29,6 +30,7 @@ export async function fetchSignalInsights(
 ): Promise<FetchSignalInsightsResult> {
   const json = await signalApi<{ data: SignalApiInsight[]; meta?: FetchSignalInsightsMeta }>('/v1/insights', {
     symbol: params.symbol,
+    symbols: params.symbols && params.symbols.length > 0 ? params.symbols.join(',') : undefined,
     level: params.level,
     kind: params.kind,
     pushCandidate: params.pushCandidate ? 'true' : undefined,

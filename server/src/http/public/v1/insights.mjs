@@ -29,6 +29,12 @@ function newestLogicalInsights(rows) {
 
 function insightRequestParams(url) {
   const symbol = url.searchParams.get('symbol')?.trim().toUpperCase();
+  const symbolsParam = url.searchParams.get('symbols') || '';
+  const symbols = new Set(
+    [symbol, ...symbolsParam.split(',')]
+      .map((value) => String(value || '').trim().toUpperCase())
+      .filter(Boolean),
+  );
   const level = url.searchParams.get('level')?.trim();
   const kind = url.searchParams.get('kind')?.trim();
   const from = url.searchParams.get('from');
@@ -40,6 +46,7 @@ function insightRequestParams(url) {
   const today = todayInTimeZone(timeZone);
   return {
     symbol,
+    symbols,
     level,
     kind,
     from,
@@ -74,8 +81,8 @@ function filterInsights(items, params) {
       (item) => !item.generatedAt || dateKeyInTimeZone(item.generatedAt, params.timeZone) <= params.to,
     );
   }
-  if (params.symbol)
-    rows = rows.filter((item) => (item.symbols || []).map((s) => String(s).toUpperCase()).includes(params.symbol));
+  if (params.symbols?.size > 0)
+    rows = rows.filter((item) => (item.symbols || []).some((s) => params.symbols.has(String(s).toUpperCase())));
   if (params.level) rows = rows.filter((item) => item.level === params.level);
   if (params.kind) rows = rows.filter((item) => item.kind === params.kind);
   if (params.pushOnly) rows = rows.filter((item) => item.pushCandidate === true);

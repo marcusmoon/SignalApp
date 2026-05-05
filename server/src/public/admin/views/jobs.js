@@ -80,6 +80,38 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName }) {
   `;
 }
 
+function jobRunRowClass(run) {
+  if (String(run.status) === 'failed') return 'failedRow';
+  if (run.stuck) return 'stuckRow';
+  if (String(run.status) === 'running') return 'runningRow';
+  return '';
+}
+
+function mobileJobRunClass(run) {
+  if (String(run.status) === 'failed') return 'mobileRunCard--failed';
+  if (run.stuck) return 'mobileRunCard--stuck';
+  if (String(run.status) === 'running') return 'mobileRunCard--running';
+  return '';
+}
+
+function jobRunStatus({ run, runStatusPill, textFor, esc }) {
+  if (run.stuck) return `<span class="pill pillStatus pillStatus--fail">${esc(textFor('jobRunStuck'))}</span>`;
+  return runStatusPill(run.status, false);
+}
+
+function jobRunProgressText({ run, formatDuration, textFor }) {
+  if (String(run.status) !== 'running') return '-';
+  const parts = [];
+  if (Number.isFinite(Number(run.progressPercent))) parts.push(`${Number(run.progressPercent)}%`);
+  if (run.progressPhase) parts.push(String(run.progressPhase));
+  if (Number.isFinite(Number(run.progressDone)) && Number.isFinite(Number(run.progressTotal)) && Number(run.progressTotal) > 0) {
+    parts.push(`${Number(run.progressDone)}/${Number(run.progressTotal)}`);
+  }
+  if (Number.isFinite(Number(run.elapsedMs))) parts.push(`${textFor('jobRunElapsed')} ${formatDuration(run.elapsedMs)}`);
+  if (Number.isFinite(Number(run.quietMs))) parts.push(`${textFor('jobRunQuiet')} ${formatDuration(run.quietMs)}`);
+  return parts.join(' · ') || '-';
+}
+
 export async function loadJobsView(ctx) {
   const {
     api,
@@ -354,17 +386,17 @@ export async function loadJobRunsView(ctx) {
           .map((run) => {
             const rowKey = jobRunRowSelectKey(run);
             return `
-            <tr class="${String(run.status) === 'failed' ? 'failedRow' : ''}">
+            <tr class="${jobRunRowClass(run)}">
               <td class="center"><input type="checkbox" data-job-run-select="${esc(rowKey)}" ${selected.has(rowKey) ? 'checked' : ''} /></td>
               <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-              <td>${runStatusPill(run.status, false)}</td>
+              <td>${jobRunStatus({ run, runStatusPill, textFor, esc })}</td>
               <td>${operationBadge(run.operation)}</td>
               <td>${domainBadge(run.domain || run.resultKind)}</td>
               <td>${providerBadge(run.provider)}</td>
               <td>${esc(run.trigger || '-')}</td>
-              <td class="muted">${run.status === 'running' && Number.isFinite(Number(run.progressPercent)) ? `${Number(run.progressPercent)}%` : '-'}</td>
+              <td class="muted">${esc(jobRunProgressText({ run, formatDuration, textFor }))}</td>
               <td class="right">${run.itemCount ?? 0}</td>
-              <td class="right">${formatDuration(run.durationMs)}</td>
+              <td class="right">${formatDuration(run.durationMs ?? run.elapsedMs)}</td>
               <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
               <td class="center">${runErrorButton(run)}</td>
             </tr>
@@ -378,7 +410,7 @@ export async function loadJobRunsView(ctx) {
         .map((run) => {
           const rowKey = jobRunRowSelectKey(run);
           return `
-            <article class="mobileRunCard ${String(run.status) === 'failed' ? 'mobileRunCard--failed' : ''}">
+            <article class="mobileRunCard ${mobileJobRunClass(run)}">
               <div class="mobileRunCardHead">
                 <label class="mobileRunSelect">
                   <input type="checkbox" data-job-run-select="${esc(rowKey)}" ${selected.has(rowKey) ? 'checked' : ''} />
@@ -388,7 +420,7 @@ export async function loadJobRunsView(ctx) {
                   <strong>${esc(run.displayName || run.jobKey)}</strong>
                   <span class="muted">${esc(run.jobKey)}</span>
                 </div>
-                ${runStatusPill(run.status, false)}
+                ${jobRunStatus({ run, runStatusPill, textFor, esc })}
               </div>
               <div class="mobileJobMeta">
                 ${operationBadge(run.operation)}
@@ -398,11 +430,11 @@ export async function loadJobRunsView(ctx) {
               </div>
               <div class="mobileRunStats">
                 <span>${esc(textFor('colItems'))} <strong>${run.itemCount ?? 0}</strong></span>
-                <span>${esc(textFor('colDuration'))} <strong>${esc(formatDuration(run.durationMs))}</strong></span>
+                <span>${esc(textFor('colDuration'))} <strong>${esc(formatDuration(run.durationMs ?? run.elapsedMs))}</strong></span>
                 <span>${esc(textFor('colFinished'))} <strong>${esc(formatDateTime(run.finishedAt || run.startedAt))}</strong></span>
               </div>
               <div class="mobileJobFoot">
-                <span class="muted">${run.status === 'running' && Number.isFinite(Number(run.progressPercent)) ? `${Number(run.progressPercent)}%` : '-'}</span>
+                <span class="muted">${esc(jobRunProgressText({ run, formatDuration, textFor }))}</span>
                 ${runErrorButton(run)}
               </div>
             </article>

@@ -9,6 +9,7 @@ export const state = {
   monitoringSort: 'newest',
   uiModelPresets: null,
   providerSettings: [],
+  adminUsers: [],
   appSettings: null,
   openModelPresetsOnTranslations: false,
   newsPage: 1,

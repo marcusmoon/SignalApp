@@ -12,6 +12,7 @@ function enrichJobRun(item, jobs) {
     operation: item.operation || job?.operation || null,
     provider: item.provider || job?.provider || null,
     handler: item.handler || job?.handler || null,
+    intervalSeconds: job?.intervalSeconds ?? item.intervalSeconds ?? null,
     trigger: item.trigger || 'manual',
     resultKind: item.resultKind || item.domain || job?.domain || null,
   };
@@ -44,12 +45,36 @@ function filterJobRuns(items, url, jobs = []) {
       ),
     );
   }
-  return rows.sort((a, b) => String(b.startedAt || '').localeCompare(String(a.startedAt || '')));
+  return rows
+    .map((row) => ({ ...row, ...runTiming(row, row) }))
+    .sort((a, b) => String(b.startedAt || '').localeCompare(String(a.startedAt || '')));
 }
 
 function validTime(value) {
   const ms = new Date(value || 0).getTime();
   return Number.isFinite(ms) && ms > 0 ? ms : null;
+}
+
+function runTiming(run, job = null) {
+  const now = Date.now();
+  const startedMs = validTime(run?.startedAt);
+  const finishedMs = validTime(run?.finishedAt);
+  const lastSignalMs = validTime(run?.progressUpdatedAt) || finishedMs || startedMs;
+  const elapsedMs =
+    run?.status === 'running' && startedMs != null
+      ? now - startedMs
+      : Number.isFinite(Number(run?.durationMs))
+        ? Number(run.durationMs)
+        : finishedMs != null && startedMs != null
+          ? finishedMs - startedMs
+          : null;
+  const quietMs = run?.status === 'running' && lastSignalMs != null ? now - lastSignalMs : null;
+  const intervalMs = Math.max(0, Number(job?.intervalSeconds || run?.intervalSeconds || 0) * 1000);
+  const stuckThresholdMs = Math.max(5 * 60 * 1000, intervalMs > 0 ? intervalMs * 1.5 : 0);
+  const stuck =
+    run?.status === 'running' &&
+    ((elapsedMs != null && elapsedMs > stuckThresholdMs) || (quietMs != null && quietMs > 5 * 60 * 1000));
+  return { elapsedMs, quietMs, stuck, lastSignalAt: lastSignalMs == null ? null : new Date(lastSignalMs).toISOString() };
 }
 
 function dateOnlyToIso(value) {
@@ -70,8 +95,9 @@ function latestIso(rows, fields) {
   return best == null ? null : new Date(best).toISOString();
 }
 
-function compactRun(run) {
+function compactRun(run, job = null) {
   if (!run) return null;
+  const timing = runTiming(run, job);
   return {
     id: run.id || null,
     jobKey: run.jobKey || null,
@@ -82,6 +108,14 @@ function compactRun(run) {
     itemCount: Number.isFinite(Number(run.itemCount)) ? Number(run.itemCount) : 0,
     errorMessage: run.errorMessage || null,
     progressPercent: Number.isFinite(Number(run.progressPercent)) ? Number(run.progressPercent) : null,
+    progressPhase: run.progressPhase || null,
+    progressDone: Number.isFinite(Number(run.progressDone)) ? Number(run.progressDone) : null,
+    progressTotal: Number.isFinite(Number(run.progressTotal)) ? Number(run.progressTotal) : null,
+    progressUpdatedAt: run.progressUpdatedAt || null,
+    elapsedMs: timing.elapsedMs,
+    quietMs: timing.quietMs,
+    lastSignalAt: timing.lastSignalAt,
+    stuck: timing.stuck,
     trigger: run.trigger || null,
   };
 }
@@ -229,6 +263,7 @@ function dashboardSummary(db) {
     }));
   const latestRunByJob = db.pollingJobs.map((job) => {
     const enriched = recentRuns.find((item) => item.jobKey === job.jobKey) || {};
+    const timing = runTiming(enriched, job);
     const lastMs = enriched.finishedAt || enriched.startedAt ? new Date(enriched.finishedAt || enriched.startedAt).getTime() : NaN;
     const stale =
       job.enabled &&
@@ -245,8 +280,10 @@ function dashboardSummary(db) {
       intervalSeconds: job.intervalSeconds,
       enabled: job.enabled,
       stale,
+      ...timing,
     };
   });
+  const runningRuns = recentRuns.filter((run) => run.status === 'running').map((run) => ({ ...run, ...runTiming(run, run) }));
   return {
     counts: {
       news: db.newsItems.length,
@@ -259,6 +296,8 @@ function dashboardSummary(db) {
       jobs: db.pollingJobs.length,
       enabledJobs: db.pollingJobs.filter((job) => job.enabled).length,
       recentFailedRuns: recentRuns.filter((run) => run.status === 'failed').length,
+      runningRuns: runningRuns.length,
+      stuckRuns: runningRuns.filter((run) => run.stuck).length,
     },
     recentRuns: latestRunByJob,
     dataAreas: dataAreaSummary(db, recentRuns, latestRunByJob),
@@ -295,8 +334,16 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
 
   const jobRunMatch = pathname.match(/^\/admin\/api\/jobs\/([^/]+)\/run$/);
   if (req.method === 'POST' && jobRunMatch) {
-    const result = await runPollingJob(decodeURIComponent(jobRunMatch[1]), { force: true, trigger: 'manual' });
-    json(res, 200, { data: result });
+    const jobKey = decodeURIComponent(jobRunMatch[1]);
+    const db = await readDb();
+    if (!db.pollingJobs.some((job) => job.jobKey === jobKey)) {
+      json(res, 404, { error: `JOB_NOT_FOUND:${jobKey}` });
+      return true;
+    }
+    runPollingJob(jobKey, { force: true, trigger: 'manual' }).catch((error) => {
+      console.error(`[job:${jobKey}] manual run failed`, error);
+    });
+    json(res, 202, { data: { accepted: true, jobKey } });
     return true;
   }
 

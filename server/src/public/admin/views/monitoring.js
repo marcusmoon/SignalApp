@@ -6,6 +6,7 @@ export async function loadMonitoringView(ctx) {
     esc,
     textFor,
     formatDateTime,
+    formatDuration,
     operationBadge,
     providerBadge,
     domainBadge,
@@ -28,9 +29,39 @@ export async function loadMonitoringView(ctx) {
     return state.monitoringSort === 'oldest' ? at - bt : bt - at;
   });
   const stale = runs.filter((r) => r.stale);
+  const running = runs.filter((r) => String(r.status) === 'running');
+  const stuck = runs.filter((r) => r.stuck);
+  const statusPill = (run) =>
+    run.stuck ? `<span class="pill pillStatus pillStatus--fail">${esc(textFor('jobRunStuck'))}</span>` : runStatusPill(run.status, !!run.stale);
+  const rowClass = (run) => {
+    if (String(run.status) === 'failed') return 'failedRow';
+    if (run.stuck) return 'stuckRow';
+    if (String(run.status) === 'running') return 'runningRow';
+    return run.stale ? 'staleRow' : '';
+  };
+  const mobileClass = (run) => {
+    if (String(run.status) === 'failed') return 'mobileRunCard--failed';
+    if (run.stuck) return 'mobileRunCard--stuck';
+    if (String(run.status) === 'running') return 'mobileRunCard--running';
+    return run.stale ? 'mobileRunCard--stale' : '';
+  };
+  const progressText = (run) => {
+    if (String(run.status) !== 'running') return '-';
+    const parts = [];
+    if (Number.isFinite(Number(run.progressPercent))) parts.push(`${Number(run.progressPercent)}%`);
+    if (run.progressPhase) parts.push(String(run.progressPhase));
+    if (Number.isFinite(Number(run.progressDone)) && Number.isFinite(Number(run.progressTotal)) && Number(run.progressTotal) > 0) {
+      parts.push(`${Number(run.progressDone)}/${Number(run.progressTotal)}`);
+    }
+    if (Number.isFinite(Number(run.elapsedMs))) parts.push(`${textFor('jobRunElapsed')} ${formatDuration(run.elapsedMs)}`);
+    if (Number.isFinite(Number(run.quietMs))) parts.push(`${textFor('jobRunQuiet')} ${formatDuration(run.quietMs)}`);
+    return parts.join(' · ') || '-';
+  };
   $('monitoring').innerHTML = `
     <div class="statGrid wideStats">
       <div class="stat"><div class="statLabel muted"><span class="statIcon">R</span>${esc(textFor('statRecentRuns'))}</div><div class="statNum">${runs.length}</div></div>
+      <div class="stat"><div class="statLabel muted"><span class="statIcon">P</span>${esc(textFor('statRunningRuns'))}</div><div class="statNum">${running.length}</div></div>
+      <div class="stat"><div class="statLabel muted"><span class="statIcon">!</span>${esc(textFor('statStuckRuns'))}</div><div class="statNum">${stuck.length}</div></div>
       <div class="stat"><div class="statLabel muted"><span class="statIcon">S</span>${esc(textFor('statStale'))}</div><div class="statNum">${stale.length}</div></div>
       <div class="stat"><div class="statLabel muted"><span class="statIcon">J</span>${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
       <div class="stat"><div class="statLabel muted"><span class="statIcon">!</span>${esc(textFor('statRecentFailures'))}</div><div class="statNum">${summary.counts.recentFailedRuns}</div></div>
@@ -63,6 +94,7 @@ export async function loadMonitoringView(ctx) {
             <th>${esc(textFor('colOperation'))}</th>
             <th>${esc(textFor('colDomain'))}</th>
             <th>${esc(textFor('colProvider'))}</th>
+            <th>${esc(textFor('colProgress'))}</th>
             <th class="right">${esc(textFor('colItems'))}</th>
             <th>${esc(textFor('colFinished'))}</th>
             <th class="center">${esc(textFor('colAction'))}</th>
@@ -71,16 +103,17 @@ export async function loadMonitoringView(ctx) {
         <tbody>
           ${
             runs.length === 0
-              ? `<tr><td colspan="8" class="muted">${esc(textFor('monitoringEmpty'))}</td></tr>`
+              ? `<tr><td colspan="9" class="muted">${esc(textFor('monitoringEmpty'))}</td></tr>`
               : runs
                   .map(
                     (run) => `
-              <tr class="${String(run.status) === 'failed' ? 'failedRow' : run.stale ? 'staleRow' : ''}">
+              <tr class="${rowClass(run)}">
                 <td><strong>${esc(run.displayName || run.jobKey)}</strong><br/><span class="muted">${esc(run.jobKey)}</span></td>
-                <td>${runStatusPill(run.status, !!run.stale)}</td>
+                <td>${statusPill(run)}</td>
                 <td>${operationBadge(run.operation)}</td>
                 <td>${domainBadge(run.domain || run.resultKind)}</td>
                 <td>${providerBadge(run.provider)}</td>
+                <td class="muted">${esc(progressText(run))}</td>
                 <td class="right">${run.itemCount ?? 0}</td>
                 <td class="muted">${formatDateTime(run.finishedAt || run.startedAt)}</td>
                 <td class="center">
@@ -103,13 +136,13 @@ export async function loadMonitoringView(ctx) {
             : runs
                 .map(
                   (run) => `
-                    <article class="mobileRunCard ${String(run.status) === 'failed' ? 'mobileRunCard--failed' : run.stale ? 'mobileRunCard--stale' : ''}">
+                    <article class="mobileRunCard ${mobileClass(run)}">
                       <div class="mobileRunCardHead">
                         <div class="mobileJobTitle">
                           <strong>${esc(run.displayName || run.jobKey)}</strong>
                           <span class="muted">${esc(run.jobKey)}</span>
                         </div>
-                        ${runStatusPill(run.status, !!run.stale)}
+                        ${statusPill(run)}
                       </div>
                       <div class="mobileJobMeta">
                         ${operationBadge(run.operation)}
@@ -118,6 +151,7 @@ export async function loadMonitoringView(ctx) {
                       </div>
                       <div class="mobileRunStats">
                         <span>${esc(textFor('colItems'))} <strong>${run.itemCount ?? 0}</strong></span>
+                        <span>${esc(textFor('colProgress'))} <strong>${esc(progressText(run))}</strong></span>
                         <span>${esc(textFor('colFinished'))} <strong>${esc(formatDateTime(run.finishedAt || run.startedAt))}</strong></span>
                       </div>
                       <div class="mobileJobFoot">

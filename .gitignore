@@ -34,6 +34,11 @@ yarn-error.*
 .env
 .env*.local
 
+# local server SQLite runtime files
+server/data/*.sqlite
+server/data/*.sqlite-shm
+server/data/*.sqlite-wal
+
 # typescript
 *.tsbuildinfo
 

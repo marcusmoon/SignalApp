@@ -14,9 +14,12 @@
 
 ## 서버 (API / Jobs)
 
-- **로컬 데이터**: `server/data/*.json` 분할 스토어만 사용한다. 과거 단일 `local-db.json` 자동 마이그레이션은 제거되었다.
-- **스토어 JSON 손상**: `JSON.parse` 실패 시 진단 로그를 남긴 뒤, **첫 번째 완전한 최상위 JSON 값**만 다시 파싱해 복구한다(예: 끝에 `}` 등 트레일링 쓰레기). 복구된 스토어는 그 `readDb` 호출 안에서 **`writeDb`로 한 번 다시 써** 디스크를 정리한다. 구조가 완전히 깨진 파일은 그대로 예외다.
-- **스케줄(Jobs)**: 운영 액션은 어드민에서 수행하고, 실행/로그는 서버 데이터와 API를 통해 관리한다.
+- **로컬 데이터**: Node 24 내장 SQLite 기반 embedded DB를 사용한다. 기본 경로는 `${DATA_DIR}/signal.sqlite`이며, Railway에서는 기존처럼 `DATA_DIR`를 볼륨 마운트 경로로 지정한다. `SQLITE_DB_PATH`로 파일 경로를 직접 지정할 수 있다.
+- **초기 DB seed**: SQLite가 비어 있으면 `defaultDb()`를 저장해 기본 설정과 Job 리스트를 생성한다. 기존 `server/data/*.json` 분할 스토어와 과거 단일 `local-db.json`은 읽지 않는다.
+- **어드민 사용자**: 로그인 계정은 SQLite `admin_users` 테이블에 저장한다. `ADMIN_USERS`는 테이블이 비어 있을 때만 초기 seed로 사용하며, 비밀번호는 salt + scrypt hash로 저장한다. **Admin > 설정 > 사용자 관리**에서 계정 추가·비밀번호 변경·활성화·삭제를 관리한다.
+- **DB 접근 직렬화**: 동일 Node 프로세스 안에서 `readDb` / `writeDb` / `updateDb`는 큐로 **한 번에 하나씩** 실행된다. SQLite는 WAL 모드로 열고, 현재는 `signal_stores` 테이블에 `settings/jobs/news/calendar/concalls/youtube/market` payload를 저장한다. **프로세스가 둘 이상**이면 마지막 쓰기가 이길 수 있어 논리적 경쟁은 남는다.
+- **스토어 JSON 손상**: SQLite payload `JSON.parse` 실패 시 DB 파일·스토어 이름·길이·오류 위치 주변 내용을 진단 로그로 남기고 예외를 던진다. 끝에 붙은 `}` 같은 트레일링 쓰레기를 잘라 자동 복구하지 않는다.
+- **스케줄(Jobs)**: 운영 액션은 어드민에서 수행하고, 실행/로그는 서버 데이터와 API를 통해 관리한다. 수동 실행 요청은 즉시 accepted로 응답하고 백그라운드 실행으로 이어지며, 어드민 수집 현황/실행 로그에서 진행률·경과 시간·무응답 시간·멈춤 의심 상태를 확인한다.
 - **컨콜 Provider ID**: 컨콜 수집 provider와 seed 환경변수는 내부적으로 `ninjas` / `NINJAS_KEY`를 사용한다.
 - **Financial Juice 뉴스**: RSS 제목의 `FinancialJuice:` 접두어는 수집·표시 단계에서 제거한다.
 - **어드민 뉴스 목록**: 기본 날짜 범위는 최근 일주일로 두어 오늘 수집분이 없어도 최신 뉴스가 보이게 한다.

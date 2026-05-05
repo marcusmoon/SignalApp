@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { config } from './config.mjs';
+import { hasAdminUsers } from './db.mjs';
 import { handleRequest } from './http.mjs';
 import { startScheduler } from './jobs/scheduler.mjs';
 
@@ -19,9 +20,12 @@ const server = http.createServer((req, res) => {
 server.listen(config.port, config.host, () => {
   console.log(`Signal server listening on http://${config.host}:${config.port}`);
   console.log(`Admin: http://${config.host}:${config.port}/admin`);
-  if (!config.adminUsers?.length) {
-    console.warn('[server] No ADMIN_USERS configured — /admin login will reject all credentials.');
-  }
+  console.log(`SQLite DB: ${config.sqlitePath}`);
+  hasAdminUsers()
+    .then((exists) => {
+      if (!exists) console.warn('[server] No active admin users in SQLite — /admin login will reject all credentials.');
+    })
+    .catch((error) => console.warn('[server] Failed to inspect admin users:', error?.message || error));
 });
 
 const stopScheduler = startScheduler();

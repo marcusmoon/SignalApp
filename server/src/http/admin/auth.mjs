@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { config } from '../../config.mjs';
+import { verifyAdminLogin } from '../../db.mjs';
 import { json, readBody } from '../shared.mjs';
 
 function parseCookies(req) {
@@ -48,7 +49,7 @@ export async function handleAdminSessionRoutes({ req, res, pathname }) {
     const body = await readBody(req);
     const loginId = String(body.loginId || '').trim();
     const password = String(body.password || '');
-    const match = (config.adminUsers || []).find((u) => u.id === loginId && u.password === password);
+    const match = await verifyAdminLogin(loginId, password);
     if (match) {
       res.setHeader(
         'set-cookie',

@@ -475,6 +475,10 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
       .readonlyInput { opacity: 0.58; background: color-mix(in srgb, var(--bg-elevated) 80%, white 4%); }
       .failedRow td { background: color-mix(in srgb, var(--color-error) 8%, transparent); }
       .failedRow td:first-child { border-left: 3px solid var(--color-error); }
+      .runningRow td { background: color-mix(in srgb, var(--color-info) 7%, transparent); }
+      .runningRow td:first-child { border-left: 3px solid var(--color-info); }
+      .stuckRow td { background: color-mix(in srgb, var(--color-error) 10%, transparent); }
+      .stuckRow td:first-child { border-left: 4px solid var(--color-error); }
       .staleRow td { background: color-mix(in srgb, var(--color-warning) 8%, transparent); }
       .staleRow td:first-child { border-left: 3px solid var(--color-warning); }
       .thumb { width: 112px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); }
@@ -1914,6 +1918,14 @@ h3 { font-size: var(--font-card-title); font-weight: 600; }
   gap: 8px;
 }
 
+.settingsFormRow--compact {
+  gap: 6px;
+}
+
+.settingsFormRow--compact input {
+  min-height: 34px;
+}
+
 .providerTileGrid {
   display: grid;
   gap: 10px;
@@ -2570,9 +2582,11 @@ tbody tr:hover td {
   }
 
   header .topTools select,
+  #adminLanguage,
+  #adminTimeBasis,
   #session,
   #logoutBtn {
-    display: none;
+    display: none !important;
   }
 
   .iconOnly,
@@ -2980,6 +2994,16 @@ tbody tr:hover td {
     background: color-mix(in srgb, var(--color-error) 7%, var(--color-bg-card));
   }
 
+  .mobileRunCard--running {
+    border-left: 4px solid var(--color-info);
+    background: color-mix(in srgb, var(--color-info) 7%, var(--color-bg-card));
+  }
+
+  .mobileRunCard--stuck {
+    border-left: 4px solid var(--color-error);
+    background: color-mix(in srgb, var(--color-error) 10%, var(--color-bg-card));
+  }
+
   .mobileRunCard--stale {
     border-left: 4px solid var(--color-warning);
     background: color-mix(in srgb, var(--color-warning) 7%, var(--color-bg-card));
@@ -3207,6 +3231,7 @@ tbody tr:hover td {
   }
 
   #logoutBtn {
+    display: none !important;
     padding: 6px 10px;
     font-size: 12px;
   }

@@ -177,6 +177,87 @@ export async function loadUiModelPresetsView({ api, state, renderUiModelPresetsE
   renderUiModelPresetsEditor();
 }
 
+export async function loadAdminUsersView({ api, $, state, esc, textFor, textForVars, formatDateTime }) {
+  const body = await api('/admin/api/admin-users');
+  const rows = Array.isArray(body.data) ? body.data : [];
+  state.adminUsers = rows;
+  if (!$('adminUsers')) return;
+  $('adminUsers').innerHTML = `
+    <div class="settingsSectionGrid">
+      <div class="card settingsControlCard">
+        <div class="cardHead">
+          <div class="cardHeadMain">
+            <div class="cardKicker">${esc(textFor('adminUsersCreateTitle'))}</div>
+            <div class="cardHint">${esc(textFor('adminUsersCreateHint'))}</div>
+          </div>
+        </div>
+        <div class="settingsFormRow">
+          <input id="adminUserNewId" autocomplete="username" placeholder="${esc(textFor('adminUserIdPh'))}" />
+          <input id="adminUserNewPassword" type="password" autocomplete="new-password" placeholder="${esc(textFor('adminUserPasswordPh'))}" />
+          <label class="switchRow">
+            <input class="switchInput" type="checkbox" id="adminUserNewActive" checked />
+            <span class="switchUi" aria-hidden="true"></span>
+            <span>${esc(textFor('adminUserActive'))}</span>
+          </label>
+          <button class="success" id="createAdminUserBtn">${esc(textFor('adminUsersCreateButton'))}</button>
+        </div>
+      </div>
+
+      <div class="card settingsControlCard">
+        <div class="cardHead">
+          <div class="cardHeadMain">
+            <div class="cardKicker">${esc(textFor('adminUsersListTitle'))}</div>
+            <div class="cardHint">${esc(textForVars('adminUsersListHint', { count: rows.length }))}</div>
+          </div>
+        </div>
+        <table class="settingsTable adminUsersTable">
+          <thead>
+            <tr>
+              <th>${esc(textFor('colName'))}</th>
+              <th>${esc(textFor('colStatus'))}</th>
+              <th>${esc(textFor('adminUserPasswordReset'))}</th>
+              <th>${esc(textFor('colDate'))}</th>
+              <th class="center">${esc(textFor('colAction'))}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              rows.length === 0
+                ? `<tr><td colspan="5" class="muted">${esc(textFor('adminUsersEmpty'))}</td></tr>`
+                : rows
+                    .map(
+                      (user) => `
+              <tr>
+                <td><strong>${esc(user.id)}</strong></td>
+                <td>
+                  <label class="switchRow">
+                    <input class="switchInput" type="checkbox" data-admin-user-active="${esc(user.id)}" ${user.active ? 'checked' : ''} />
+                    <span class="switchUi" aria-hidden="true"></span>
+                    <span class="pill ${user.active ? 'pillStatus--ok' : 'pillStatus--warn'}">${esc(user.active ? textFor('adminUserActive') : textFor('adminUserInactive'))}</span>
+                  </label>
+                </td>
+                <td>
+                  <div class="settingsFormRow settingsFormRow--compact">
+                    <input type="password" autocomplete="new-password" data-admin-user-password="${esc(user.id)}" placeholder="${esc(textFor('adminUserPasswordNewPh'))}" />
+                    <button class="secondary compactBtn" data-admin-user-password-save="${esc(user.id)}">${esc(textFor('btnChange'))}</button>
+                  </div>
+                </td>
+                <td class="muted">${esc(formatDateTime(user.updatedAt || user.createdAt))}</td>
+                <td class="center">
+                  <button class="danger compactBtn" data-admin-user-delete="${esc(user.id)}">${esc(textFor('btnRemove'))}</button>
+                </td>
+              </tr>
+            `,
+                    )
+                    .join('')
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
 function presetsTextareaValue({ state, key }) {
   const list = state.uiModelPresets && Array.isArray(state.uiModelPresets[key]) ? state.uiModelPresets[key] : [];
   return list.join('\n');
@@ -354,4 +435,3 @@ export async function loadMarketListsView(ctx) {
     </div>
   `;
 }
-

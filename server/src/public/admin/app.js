@@ -23,6 +23,7 @@ import {
   defaultModelForProvider as defaultModelForProviderView,
   loadMarketListsView,
   modelPresetsForProvider as modelPresetsForProviderView,
+  loadAdminUsersView,
   loadProviderSettingsView,
   loadTranslationSettingsView,
   loadUiModelPresetsView,
@@ -371,6 +372,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             ? 'keys'
             : requestedView === 'settings-theme'
               ? 'theme'
+              : requestedView === 'settings-users'
+                ? 'users'
               : requestedView === 'settings-lists'
                 ? 'lists'
                 : requestedView === 'settings-sources'
@@ -401,6 +404,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             title.textContent =
               settingsTabFromView === 'theme'
                 ? textFor('settingsThemeTitle')
+                : settingsTabFromView === 'users'
+                  ? textFor('settingsUsersTitle')
                 : settingsTabFromView === 'lists'
                   ? textFor('settingsListsTitle')
                   : settingsTabFromView === 'sources'
@@ -414,6 +419,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             desc.textContent =
               settingsTabFromView === 'theme'
                 ? textFor('settingsThemeDesc')
+                : settingsTabFromView === 'users'
+                  ? textFor('settingsUsersDesc')
                 : settingsTabFromView === 'lists'
                   ? textFor('settingsListsDesc')
                   : settingsTabFromView === 'sources'
@@ -477,6 +484,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           loadJobRuns(),
           loadTranslationSettings(),
           loadProviderSettings(),
+          loadAdminUsers(),
           loadMarketLists(),
           loadNewsSourceSettings(),
           loadNewsSources(),
@@ -587,6 +595,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           esc,
           textFor,
           formatDateTime,
+          formatDuration,
           operationBadge,
           providerBadge,
           domainBadge,
@@ -711,6 +720,12 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           formatDateTime,
           renderUiModelPresetsEditor,
         });
+        enhanceMobileAdminSurfaces();
+        return result;
+      }
+
+      async function loadAdminUsers() {
+        const result = await loadAdminUsersView({ api, $, state, esc, textFor, textForVars, formatDateTime });
         enhanceMobileAdminSurfaces();
         return result;
       }
@@ -966,6 +981,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           if (target?.id === 'refreshSettingsBtn') {
             const tab = state.settingsTab || 'keys';
             if (tab === 'keys') await loadProviderSettings();
+            else if (tab === 'users') await loadAdminUsers();
             else if (tab === 'lists') await loadMarketLists();
             else if (tab === 'sources') await Promise.all([loadNewsSourceSettings(), loadNewsSources()]);
             // theme/danger are mostly local UI; still refresh dashboard counts for safety
@@ -1169,7 +1185,13 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             $('sideOverlay')?.classList.add('hidden');
           }
           if (target.dataset.jobTab) setJobTab(target.dataset.jobTab);
-          if (target.dataset.settingsTab) setSettingsTab(target.dataset.settingsTab);
+          if (target.dataset.settingsTab) {
+            setSettingsTab(target.dataset.settingsTab);
+            if (target.dataset.settingsTab === 'keys') await loadProviderSettings();
+            if (target.dataset.settingsTab === 'users') await loadAdminUsers();
+            if (target.dataset.settingsTab === 'lists') await loadMarketLists();
+            if (target.dataset.settingsTab === 'sources') await Promise.all([loadNewsSourceSettings(), loadNewsSources()]);
+          }
           if (target.dataset.opFilter) {
             state.operationFilter = target.dataset.opFilter;
             await Promise.all([loadMonitoring(), loadJobs(), loadErrors()]);
@@ -1223,7 +1245,9 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           }
           if (target.dataset.jobRun) {
             await api(`/admin/api/jobs/${encodeURIComponent(target.dataset.jobRun)}/run`, { method: 'POST' });
-            await Promise.all([loadJobs(), loadJobRuns(), loadDashboard(), loadNews(), loadYoutube()]);
+            showToast(textFor('toastRunAcceptedTitle'), textFor('toastRunAcceptedBody'), { kind: 'success' });
+            await new Promise((resolve) => setTimeout(resolve, 350));
+            await Promise.all([loadJobs(), loadJobRuns(), loadDashboard(), loadMonitoring(), loadNews(), loadYoutube()]);
           }
           if (target.dataset.tsSave) {
             const locale = target.dataset.tsSave;
@@ -1387,6 +1411,53 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             if (state.view === 'settings-keys') {
               await loadProviderSettings();
             }
+            return;
+          }
+          if (target.id === 'createAdminUserBtn') {
+            const id = String($('adminUserNewId')?.value || '').trim();
+            const password = String($('adminUserNewPassword')?.value || '');
+            if (!id || !password) {
+              showToast(textFor('toastErrorTitle'), textFor('adminUserMissingFields'), { kind: 'danger' });
+              return;
+            }
+            await api('/admin/api/admin-users', {
+              method: 'POST',
+              body: JSON.stringify({ id, password, active: $('adminUserNewActive')?.checked !== false }),
+            });
+            showToast(textFor('toastSaved'), id, { kind: 'success' });
+            await loadAdminUsers();
+            return;
+          }
+          if (target.dataset.adminUserPasswordSave) {
+            const id = target.dataset.adminUserPasswordSave;
+            const input = document.querySelector(`[data-admin-user-password="${CSS.escape(id)}"]`);
+            const password = String(input?.value || '');
+            if (!password) {
+              showToast(textFor('toastErrorTitle'), textFor('adminUserPasswordRequired'), { kind: 'danger' });
+              return;
+            }
+            await api(`/admin/api/admin-users/${encodeURIComponent(id)}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ password }),
+            });
+            showToast(textFor('toastSaved'), id, { kind: 'success' });
+            await loadAdminUsers();
+            return;
+          }
+          if (target.dataset.adminUserDelete) {
+            const id = target.dataset.adminUserDelete;
+            openConfirm({
+              title: textFor('adminUserDeleteTitle'),
+              desc: textFor('adminUserDeleteDesc'),
+              body: textForVars('adminUserDeleteBody', { id }),
+              okText: textFor('btnRemove'),
+              danger: true,
+              onConfirm: async () => {
+                await api(`/admin/api/admin-users/${encodeURIComponent(id)}`, { method: 'DELETE' });
+                showToast(textFor('toastDataResetDone'), id, { kind: 'success' });
+                await loadAdminUsers();
+              },
+            });
             return;
           }
           if (target.dataset.marketListOpen) {
@@ -1877,6 +1948,20 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           else selected.delete(key);
           state.jobRunsSelected = [...selected];
           await loadJobRuns();
+        }
+        if (event.target.dataset.adminUserActive) {
+          const id = event.target.dataset.adminUserActive;
+          try {
+            await api(`/admin/api/admin-users/${encodeURIComponent(id)}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ active: !!event.target.checked }),
+            });
+            showToast(textFor('toastSaved'), id, { kind: 'success' });
+            await loadAdminUsers();
+          } catch (error) {
+            event.target.checked = !event.target.checked;
+            showToast(textFor('toastErrorTitle'), error?.message || textFor('loginFailed'), { kind: 'danger' });
+          }
         }
         if (event.target.id === 'jobRunRange') {
           setJobRunDatePreset();

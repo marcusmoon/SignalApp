@@ -1,5 +1,7 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { config } from './config.mjs';
 import { ensureMarketListsShape } from './marketLists.mjs';
 
@@ -7,18 +9,71 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-const STORE_FILES = {
-  settings: 'settings.json',
-  jobs: 'jobs.json',
-  news: 'news.json',
-  calendar: 'calendar.json',
-  concalls: 'concalls.json',
-  youtube: 'youtube.json',
-  market: 'market.json',
-};
+const STORE_KEYS = ['settings', 'jobs', 'news', 'calendar', 'concalls', 'youtube', 'market'];
 
-/** Split-store keys whose file JSON was repaired on read; `readDb` rewrites them to disk. */
-const dirtyStores = new Set();
+/**
+ * Single-process: concurrent HTTP + scheduler + jobs can otherwise interleave read/modify/write
+ * and lose updates. SQLite protects the file; this queue protects object-level read/modify/write.
+ */
+let dbExclusiveChain = Promise.resolve();
+let sqliteDb = null;
+let adminUsersSeedChecked = false;
+
+/**
+ * @template T
+ * @param {() => Promise<T>} fn
+ * @returns {Promise<T>}
+ */
+async function withDbExclusive(fn) {
+  const prev = dbExclusiveChain;
+  let release;
+  dbExclusiveChain = new Promise((resolve) => {
+    release = resolve;
+  });
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release();
+  }
+}
+
+function getSqliteDb() {
+  if (sqliteDb) return sqliteDb;
+  sqliteDb = new DatabaseSync(config.sqlitePath);
+  sqliteDb.exec(`
+    PRAGMA journal_mode = WAL;
+    PRAGMA synchronous = NORMAL;
+    PRAGMA busy_timeout = 5000;
+    CREATE TABLE IF NOT EXISTS signal_stores (
+      name TEXT PRIMARY KEY,
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS admin_users (
+      id TEXT PRIMARY KEY,
+      password_hash TEXT NOT NULL,
+      password_salt TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
+  return sqliteDb;
+}
+
+function hashAdminPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
+  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+  return { hash, salt };
+}
+
+function verifyAdminPassword(password, row) {
+  if (!row?.password_hash || !row?.password_salt) return false;
+  const { hash } = hashAdminPassword(password, row.password_salt);
+  const saved = Buffer.from(String(row.password_hash), 'hex');
+  const candidate = Buffer.from(hash, 'hex');
+  return saved.length === candidate.length && crypto.timingSafeEqual(saved, candidate);
+}
 
 function defaultDb() {
   return {
@@ -77,7 +132,7 @@ function defaultPollingJobs() {
         provider: 'finnhub',
         handler: 'market_news',
         enabled: false,
-        intervalSeconds: 300,
+        intervalSeconds: 1800,
         params: { category: 'general' },
         lastRunAt: null,
         nextRunAt: null,
@@ -92,7 +147,7 @@ function defaultPollingJobs() {
         provider: 'finnhub',
         handler: 'market_news',
         enabled: false,
-        intervalSeconds: 300,
+        intervalSeconds: 1800,
         params: { category: 'crypto' },
         lastRunAt: null,
         nextRunAt: null,
@@ -167,7 +222,7 @@ function defaultPollingJobs() {
         provider: 'finnhub',
         handler: 'economic_calendar',
         enabled: false,
-        intervalSeconds: 3600,
+        intervalSeconds: 1800,
         params: { daysAhead: 14 },
         lastRunAt: null,
         nextRunAt: null,
@@ -272,7 +327,7 @@ function defaultPollingJobs() {
         provider: 'finnhub',
         handler: 'market_quotes',
         enabled: false,
-        intervalSeconds: 60,
+        intervalSeconds: 1800,
         params: { segment: 'popular', listKey: 'popular_symbols' },
         lastRunAt: null,
         nextRunAt: null,
@@ -287,7 +342,7 @@ function defaultPollingJobs() {
         provider: 'finnhub',
         handler: 'market_quotes',
         enabled: false,
-        intervalSeconds: 120,
+        intervalSeconds: 1800,
         params: { listKey: 'default_watchlist' },
         lastRunAt: null,
         nextRunAt: null,
@@ -302,7 +357,7 @@ function defaultPollingJobs() {
         provider: 'finnhub',
         handler: 'market_quotes_mcap',
         enabled: false,
-        intervalSeconds: 600,
+        intervalSeconds: 1800,
         params: { topN: 20, listKey: 'mcap_universe' },
         lastRunAt: null,
         nextRunAt: null,
@@ -317,7 +372,7 @@ function defaultPollingJobs() {
         provider: 'coingecko',
         handler: 'coin_markets',
         enabled: false,
-        intervalSeconds: 300,
+        intervalSeconds: 1800,
         params: { limit: 30 },
         lastRunAt: null,
         nextRunAt: null,
@@ -590,205 +645,289 @@ function logJsonParseFailure(filePath, text, err) {
   }
 }
 
-/**
- * End index (exclusive) of first top-level `{...}` or `[...]`, respecting strings.
- * Used when a store file has trailing garbage (e.g. duplicate `}`).
- */
-function findTopLevelJsonEnd(str) {
-  let i = 0;
-  while (i < str.length && /\s/.test(str[i])) i += 1;
-  if (i >= str.length) return -1;
-  if (str[i] !== '{' && str[i] !== '[') return -1;
-  const stack = [];
-  let inString = false;
-  let escape = false;
-  for (; i < str.length; i += 1) {
-    const c = str[i];
-    if (escape) {
-      escape = false;
-      continue;
-    }
-    if (inString) {
-      if (c === '\\') {
-        escape = true;
-        continue;
-      }
-      if (c === '"') inString = false;
-      continue;
-    }
-    if (c === '"') {
-      inString = true;
-      continue;
-    }
-    if (c === '{') {
-      stack.push('}');
-      continue;
-    }
-    if (c === '[') {
-      stack.push(']');
-      continue;
-    }
-    if (c === '}' || c === ']') {
-      const want = stack.pop();
-      if (c !== want) return -1;
-      if (stack.length === 0) return i + 1;
-    }
+function throwJsonParseError(file, err) {
+  const wrapped = err instanceof Error ? err : new Error(String(err));
+  if (!wrapped.message.includes(file)) {
+    wrapped.message = `${wrapped.message} (${file})`;
   }
-  return -1;
+  throw wrapped;
 }
 
-async function readJsonFile(file, fallback, storeName = null) {
-  let raw;
-  try {
-    raw = await fs.readFile(file, 'utf8');
-  } catch (error) {
-    if (error?.code === 'ENOENT') return fallback;
-    throw error;
-  }
-  const text = raw.replace(/^\uFEFF/, '').trim();
-  if (!text) {
-    const err = new SyntaxError(`empty JSON (${file})`);
-    console.error(`[db] ${err.message}`);
-    throw err;
-  }
-  try {
-    return JSON.parse(text);
-  } catch (err) {
-    logJsonParseFailure(file, text, err);
-    const end = findTopLevelJsonEnd(text);
-    if (end <= 0) {
-      const wrapped = err instanceof Error ? err : new Error(String(err));
-      if (!wrapped.message.includes(file)) {
-        wrapped.message = `${wrapped.message} (${file})`;
-      }
-      throw wrapped;
-    }
-    const slice = text.slice(0, end).trimEnd();
-    const tail = text.slice(end).trim();
-    try {
-      const value = JSON.parse(slice);
-      if (tail.length > 0) {
-        console.error(
-          `[db] recovered JSON in ${file}: dropped ${tail.length} trailing chars after first document (position ${end}). Disk will be rewritten on this read.`,
-        );
-        if (storeName) dirtyStores.add(storeName);
-      }
-      return value;
-    } catch {
-      const wrapped = err instanceof Error ? err : new Error(String(err));
-      if (!wrapped.message.includes(file)) {
-        wrapped.message = `${wrapped.message} (${file})`;
-      }
-      throw wrapped;
-    }
-  }
-}
-
-function storePath(store) {
-  return path.join(config.dataDir, STORE_FILES[store]);
-}
-
-async function readSplitDb() {
-  dirtyStores.clear();
-  const [settings, jobs, news, calendar, concalls, youtube, market] = await Promise.all([
-    readJsonFile(storePath('settings'), null, 'settings'),
-    readJsonFile(storePath('jobs'), null, 'jobs'),
-    readJsonFile(storePath('news'), null, 'news'),
-    readJsonFile(storePath('calendar'), null, 'calendar'),
-    readJsonFile(storePath('concalls'), null, 'concalls'),
-    readJsonFile(storePath('youtube'), null, 'youtube'),
-    readJsonFile(storePath('market'), null, 'market'),
-  ]);
-  if (!settings && !jobs && !news && !calendar && !concalls && !youtube && !market) return null;
-  const shaped = ensureDbShape({
-    meta: settings?.meta ?? { createdAt: nowIso(), updatedAt: nowIso(), schemaVersion: 1 },
-    providerSettings: settings?.providerSettings ?? [],
-    translationSettings: settings?.translationSettings ?? [],
-    uiModelPresets: settings?.uiModelPresets ?? null,
-    newsSources: settings?.newsSources ?? [],
-    newsSourceSettings: settings?.newsSourceSettings ?? null,
-    pollingJobs: jobs?.pollingJobs ?? [],
-    pollingJobRuns: jobs?.pollingJobRuns ?? [],
-    newsItems: news?.newsItems ?? [],
-    newsTranslations: news?.newsTranslations ?? [],
-    calendarEvents: calendar?.calendarEvents ?? [],
-    concallTranscripts: concalls?.concallTranscripts ?? [],
-    youtubeVideos: youtube?.youtubeVideos ?? [],
-    marketQuotes: market?.marketQuotes ?? [],
-    coinMarkets: market?.coinMarkets ?? [],
-    marketLists: market?.marketLists ?? [],
-  });
-  ensureNewsSourcesFromItems(shaped);
-  return shaped;
-}
-
-export async function readDb() {
-  const split = await readSplitDb();
-  if (split) {
-    if (dirtyStores.size > 0) {
-      const keys = [...dirtyStores].sort().join(', ');
-      dirtyStores.clear();
-      console.error(`[db] rewriting split stores after JSON recovery: ${keys}`);
-      await writeDb(split);
-    }
-    return split;
-  }
-
-  const db = defaultDb();
-  await writeDb(db);
-  return db;
-}
-
-export async function writeDb(db) {
+function splitStoresFromDb(db) {
   const shaped = ensureDbShape(db);
   shaped.meta = { ...(shaped.meta || {}), updatedAt: nowIso(), schemaVersion: 1 };
-  await fs.mkdir(config.dataDir, { recursive: true });
-  await Promise.all([
-    writeStore('settings', {
+  return {
+    settings: {
       meta: shaped.meta,
+      appSettings: shaped.appSettings,
       providerSettings: shaped.providerSettings,
       translationSettings: shaped.translationSettings,
       uiModelPresets: shaped.uiModelPresets,
       newsSources: shaped.newsSources,
       newsSourceSettings: shaped.newsSourceSettings,
-    }),
-    writeStore('jobs', {
+    },
+    jobs: {
       pollingJobs: shaped.pollingJobs,
       pollingJobRuns: shaped.pollingJobRuns,
-    }),
-    writeStore('news', {
+    },
+    news: {
       newsItems: shaped.newsItems,
       newsTranslations: shaped.newsTranslations,
-    }),
-    writeStore('calendar', {
+    },
+    calendar: {
       calendarEvents: shaped.calendarEvents,
-    }),
-    writeStore('concalls', {
+    },
+    concalls: {
       concallTranscripts: shaped.concallTranscripts,
-    }),
-    writeStore('youtube', {
+    },
+    youtube: {
       youtubeVideos: shaped.youtubeVideos,
-    }),
-    writeStore('market', {
+    },
+    market: {
       marketQuotes: shaped.marketQuotes,
       coinMarkets: shaped.coinMarkets,
       marketLists: shaped.marketLists,
-    }),
-  ]);
+    },
+  };
 }
 
-async function writeStore(store, data) {
-  const file = storePath(store);
-  const tmp = `${file}.tmp`;
-  await fs.writeFile(tmp, `${JSON.stringify(data, null, 2)}\n`);
-  await fs.rename(tmp, file);
+function shapeDbFromStores(stores) {
+  const shaped = ensureDbShape({
+    meta: stores.settings?.meta ?? { createdAt: nowIso(), updatedAt: nowIso(), schemaVersion: 1 },
+    appSettings: stores.settings?.appSettings ?? null,
+    providerSettings: stores.settings?.providerSettings ?? [],
+    translationSettings: stores.settings?.translationSettings ?? [],
+    uiModelPresets: stores.settings?.uiModelPresets ?? null,
+    newsSources: stores.settings?.newsSources ?? [],
+    newsSourceSettings: stores.settings?.newsSourceSettings ?? null,
+    pollingJobs: stores.jobs?.pollingJobs ?? [],
+    pollingJobRuns: stores.jobs?.pollingJobRuns ?? [],
+    newsItems: stores.news?.newsItems ?? [],
+    newsTranslations: stores.news?.newsTranslations ?? [],
+    calendarEvents: stores.calendar?.calendarEvents ?? [],
+    concallTranscripts: stores.concalls?.concallTranscripts ?? [],
+    youtubeVideos: stores.youtube?.youtubeVideos ?? [],
+    marketQuotes: stores.market?.marketQuotes ?? [],
+    coinMarkets: stores.market?.coinMarkets ?? [],
+    marketLists: stores.market?.marketLists ?? [],
+  });
+  ensureNewsSourcesFromItems(shaped);
+  return shaped;
+}
+
+function parseStorePayload(store, payload) {
+  try {
+    return JSON.parse(payload);
+  } catch (err) {
+    logJsonParseFailure(`${config.sqlitePath}#${store}`, payload, err);
+    // Avoid partial "repairs"; trimming trailing garbage can silently discard store data.
+    throwJsonParseError(`${config.sqlitePath}#${store}`, err);
+  }
+}
+
+async function ensureSqliteStore() {
+  await fs.mkdir(path.dirname(config.sqlitePath), { recursive: true });
+  const db = getSqliteDb();
+  seedAdminUsersFromEnvIfEmpty(db);
+  return db;
+}
+
+function seedAdminUsersFromEnvIfEmpty(db) {
+  if (adminUsersSeedChecked) return;
+  adminUsersSeedChecked = true;
+  const count = db.prepare('SELECT COUNT(*) AS count FROM admin_users').get()?.count || 0;
+  if (count > 0) return;
+  const users = Array.isArray(config.adminUsers) ? config.adminUsers : [];
+  if (users.length === 0) return;
+
+  const now = nowIso();
+  const stmt = db.prepare(`
+    INSERT OR IGNORE INTO admin_users (id, password_hash, password_salt, active, created_at, updated_at)
+    VALUES (?, ?, ?, 1, ?, ?)
+  `);
+  let inserted = 0;
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    for (const user of users) {
+      const id = String(user?.id || '').trim();
+      const password = String(user?.password || '');
+      if (!id || !password) continue;
+      const { hash, salt } = hashAdminPassword(password);
+      const result = stmt.run(id, hash, salt, now, now);
+      inserted += Number(result.changes) || 0;
+    }
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+  if (inserted > 0) console.log(`[db] seeded ${inserted} admin user(s) into SQLite`);
+}
+
+async function readSqliteDbBody() {
+  const db = await ensureSqliteStore();
+  const rows = db.prepare('SELECT name, payload FROM signal_stores').all();
+  if (rows.length === 0) return null;
+
+  const stores = {};
+  for (const row of rows) {
+    if (!STORE_KEYS.includes(row.name)) continue;
+    stores[row.name] = parseStorePayload(row.name, row.payload);
+  }
+  if (Object.keys(stores).length === 0) return null;
+  return shapeDbFromStores(stores);
+}
+
+async function writeSqliteDbBody(dbObject) {
+  const db = await ensureSqliteStore();
+  const stores = splitStoresFromDb(dbObject);
+  const updatedAt = nowIso();
+  const stmt = db.prepare(`
+    INSERT INTO signal_stores (name, payload, updated_at)
+    VALUES (?, ?, ?)
+    ON CONFLICT(name) DO UPDATE SET
+      payload = excluded.payload,
+      updated_at = excluded.updated_at
+  `);
+
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    for (const key of STORE_KEYS) {
+      stmt.run(key, JSON.stringify(stores[key]), updatedAt);
+    }
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+}
+
+async function readDbBody() {
+  const sqliteDbObject = await readSqliteDbBody();
+  if (sqliteDbObject) return sqliteDbObject;
+
+  const dbObject = defaultDb();
+  await writeSqliteDbBody(dbObject);
+  return dbObject;
+}
+
+async function writeDbBody(db) {
+  await writeSqliteDbBody(db);
+}
+
+export async function readDb() {
+  return withDbExclusive(() => readDbBody());
+}
+
+export async function writeDb(db) {
+  return withDbExclusive(() => writeDbBody(db));
 }
 
 export async function updateDb(mutator) {
-  const db = await readDb();
-  const result = await mutator(db);
-  await writeDb(db);
-  return result;
+  return withDbExclusive(async () => {
+    const db = await readDbBody();
+    const result = await mutator(db);
+    await writeDbBody(db);
+    return result;
+  });
+}
+
+export async function verifyAdminLogin(loginId, password) {
+  const db = await ensureSqliteStore();
+  const id = String(loginId || '').trim();
+  if (!id || !password) return null;
+  const row = db
+    .prepare('SELECT id, password_hash, password_salt, active FROM admin_users WHERE id = ?')
+    .get(id);
+  if (!row || Number(row.active) !== 1) return null;
+  return verifyAdminPassword(password, row) ? { id: row.id } : null;
+}
+
+export async function hasAdminUsers() {
+  const db = await ensureSqliteStore();
+  const count = db.prepare('SELECT COUNT(*) AS count FROM admin_users WHERE active = 1').get()?.count || 0;
+  return count > 0;
+}
+
+export async function listAdminUsers() {
+  const db = await ensureSqliteStore();
+  return db
+    .prepare(
+      `
+        SELECT id, active, created_at AS createdAt, updated_at AS updatedAt
+        FROM admin_users
+        ORDER BY id COLLATE NOCASE
+      `,
+    )
+    .all()
+    .map((row) => ({
+      id: row.id,
+      active: Number(row.active) === 1,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }));
+}
+
+function activeAdminCount(db) {
+  return Number(db.prepare('SELECT COUNT(*) AS count FROM admin_users WHERE active = 1').get()?.count) || 0;
+}
+
+export async function createAdminUser({ id, password, active = true }) {
+  const db = await ensureSqliteStore();
+  const userId = String(id || '').trim();
+  const userPassword = String(password || '');
+  if (!userId) throw new Error('ADMIN_USER_ID_REQUIRED');
+  if (!userPassword) throw new Error('ADMIN_USER_PASSWORD_REQUIRED');
+  const exists = db.prepare('SELECT id FROM admin_users WHERE id = ?').get(userId);
+  if (exists) throw new Error('ADMIN_USER_EXISTS');
+  const { hash, salt } = hashAdminPassword(userPassword);
+  const now = nowIso();
+  db.prepare(
+    `
+      INSERT INTO admin_users (id, password_hash, password_salt, active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `,
+  ).run(userId, hash, salt, active === false ? 0 : 1, now, now);
+  return { id: userId, active: active !== false, createdAt: now, updatedAt: now };
+}
+
+export async function updateAdminUser(id, patch = {}) {
+  const db = await ensureSqliteStore();
+  const userId = String(id || '').trim();
+  if (!userId) throw new Error('ADMIN_USER_ID_REQUIRED');
+  const existing = db.prepare('SELECT id, active FROM admin_users WHERE id = ?').get(userId);
+  if (!existing) throw new Error('ADMIN_USER_NOT_FOUND');
+  const updates = [];
+  const params = [];
+  if (typeof patch.active === 'boolean') {
+    if (Number(existing.active) === 1 && patch.active === false && activeAdminCount(db) <= 1) {
+      throw new Error('ADMIN_USER_LAST_ACTIVE');
+    }
+    updates.push('active = ?');
+    params.push(patch.active ? 1 : 0);
+  }
+  if (typeof patch.password === 'string' && patch.password.length > 0) {
+    const { hash, salt } = hashAdminPassword(patch.password);
+    updates.push('password_hash = ?', 'password_salt = ?');
+    params.push(hash, salt);
+  }
+  if (updates.length === 0) return (await listAdminUsers()).find((user) => user.id === userId) || null;
+  const now = nowIso();
+  updates.push('updated_at = ?');
+  params.push(now, userId);
+  db.prepare(`UPDATE admin_users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  return (await listAdminUsers()).find((user) => user.id === userId) || null;
+}
+
+export async function deleteAdminUser(id) {
+  const db = await ensureSqliteStore();
+  const userId = String(id || '').trim();
+  if (!userId) throw new Error('ADMIN_USER_ID_REQUIRED');
+  const existing = db.prepare('SELECT id, active FROM admin_users WHERE id = ?').get(userId);
+  if (!existing) throw new Error('ADMIN_USER_NOT_FOUND');
+  if (Number(existing.active) === 1 && activeAdminCount(db) <= 1) throw new Error('ADMIN_USER_LAST_ACTIVE');
+  db.prepare('DELETE FROM admin_users WHERE id = ?').run(userId);
+  return { id: userId };
 }
 
 export function upsertById(list, item) {

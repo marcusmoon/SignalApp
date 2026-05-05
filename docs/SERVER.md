@@ -10,6 +10,8 @@ Signal API 서버는 외부 API 데이터를 서버에서 수집·정규화·번
 npm run server:dev
 ```
 
+서버는 Node 내장 SQLite를 사용하므로 Node 24 런타임을 전제로 합니다.
+
 열리는 주소:
 
 | 항목 | 주소 |
@@ -26,7 +28,7 @@ npm run server:dev
 | Stock Candles API | `http://127.0.0.1:4000/v1/stock-candles?symbol=AAPL&resolution=D` |
 | Concalls API | `http://127.0.0.1:4000/v1/concalls?symbol=AAPL` |
 
-어드민 로그인은 **`ADMIN_USERS` 환경 변수**에만 의존합니다. 한 줄 JSON 배열로 계정을 넣습니다.
+어드민 로그인 계정은 SQLite `admin_users` 테이블에 저장됩니다. `ADMIN_USERS` 환경 변수는 `admin_users`가 비어 있을 때만 초기 seed로 사용합니다. 한 줄 JSON 배열로 계정을 넣습니다.
 
 ```env
 ADMIN_USERS=[{"id":"you","password":"secret"}]
@@ -47,7 +49,9 @@ cp server/.env.example server/.env
 | 변수 | 용도 |
 |------|------|
 | `PORT` / `HOST` | 로컬 서버 바인딩 (`127.0.0.1:4000`) |
-| `ADMIN_USERS` | **필수(운영)**. 어드민 계정 JSON 배열 `[{"id","password"},…]`. 비우면 로그인 불가 |
+| `DATA_DIR` | 서버 데이터 디렉터리. Railway 볼륨 마운트 경로를 지정하면 SQLite 파일도 여기에 저장 |
+| `SQLITE_DB_PATH` | 선택. SQLite 파일 경로. 비우면 `${DATA_DIR}/signal.sqlite` |
+| `ADMIN_USERS` | 선택 초기 seed. SQLite `admin_users`가 비어 있을 때만 넣는 어드민 계정 JSON 배열 `[{"id","password"},…]` |
 | `FINNHUB_TOKEN` | 선택 seed/fallback. 가능하면 어드민 설정에서 입력 |
 | `YOUTUBE_API_KEY` | 선택 seed/fallback. 가능하면 어드민 설정에서 입력 |
 | `NINJAS_KEY` | 선택 seed/fallback. 컨콜 트랜스크립트 수집용 |
@@ -112,6 +116,7 @@ npx expo start -c
 - `Enabled` 체크 + `Save`: 서버가 켜져 있는 동안 주기 실행
 - `Interval` 수정 + `Save`: 자동 실행 주기 변경
 - `Job 실행 로그`: 수동/스케줄 실행 이력을 날짜·상태·타입·실행방식·키워드로 필터링
+- `수집 현황`: 실행 중/멈춤 의심/주기 초과/최근 실패를 함께 보고, 실행 중 job의 진행률·경과 시간·마지막 진행 신호를 확인
 
 현재 기본 job:
 
@@ -137,7 +142,9 @@ npx expo start -c
 
 스케줄러는 10초마다 due job을 확인합니다. `enabled: true`이고 `nextRunAt`이 비었거나 현재 시각 이전이면 실행합니다.
 
-각 실행은 `server/data/jobs.json`의 `pollingJobRuns`에 남습니다. 로그에는 `jobKey`, `domain`, `provider`, `handler`, `trigger`, `status`, `startedAt`, `finishedAt`, `durationMs`, `resultKind`, `itemCount`, `errorMessage`가 포함됩니다. 수동 실행은 `trigger: manual`, 스케줄 실행은 `trigger: schedule`로 구분합니다.
+각 실행은 SQLite의 `jobs` 스토어 payload 안 `pollingJobRuns`에 남습니다. 로그에는 `jobKey`, `domain`, `provider`, `handler`, `trigger`, `status`, `startedAt`, `finishedAt`, `durationMs`, `resultKind`, `itemCount`, `errorMessage`, `progressPercent`, `progressPhase`, `progressUpdatedAt`가 포함됩니다. 수동 실행은 `trigger: manual`, 스케줄 실행은 `trigger: schedule`로 구분합니다.
+
+어드민에서 수동 실행을 누르면 HTTP 응답은 즉시 `accepted`로 돌아오고, 실제 실행은 백그라운드에서 진행됩니다. 실행 중인 run은 경과 시간과 마지막 진행 신호가 표시되며, 기본 5분 또는 job 주기 대비 과도하게 오래 신호가 없으면 `멈춤 의심`으로 표시합니다.
 
 어드민 대시보드의 `/admin/api/summary`는 영역별 저장 수와 함께 `dataAreas`를 내려줍니다. `dataAreas`에는 마지막 저장 데이터 시각, 마지막 실행/성공/실패, 활성 Job 수, 0건 완료 실행 수, 컨콜 트랜스크립트·뉴스 번역·채널/심볼 수 같은 품질 보조 지표가 포함됩니다.
 
@@ -145,7 +152,7 @@ Job에는 운영자가 보기 쉬운 `displayName`과 `description`이 있으며
 
 메가캡·시총 후보·인기 시세·기본 관심종목 리스트는 **Admin > 설정 > 마켓 리스트 관리**에서 수정합니다. 앱은 `/v1/market-lists/:key`를 통해 같은 리스트를 조회할 수 있고, 시총 상위 시세 Job은 `mcap_universe`, 인기 시세 Job은 `popular_symbols`를 사용합니다.
 
-앱은 시세 탭도 서버 DB 값을 사용합니다. 관심·인기·시총은 `/v1/market-quotes`, 코인은 `/v1/coins`를 조회합니다. 상세 화면의 프로필·캔들은 `/v1/stock-profile`, `/v1/stock-candles`를 조회합니다. 따라서 앱에 보이려면 해당 수집 Job이 먼저 실행되어 `server/data/market.json`에 값이 저장되어 있어야 합니다.
+앱은 시세 탭도 서버 DB 값을 사용합니다. 관심·인기·시총은 `/v1/market-quotes`, 코인은 `/v1/coins`를 조회합니다. 상세 화면의 프로필·캔들은 `/v1/stock-profile`, `/v1/stock-candles`를 조회합니다. 따라서 앱에 보이려면 해당 수집 Job이 먼저 실행되어 SQLite의 `market` 스토어 payload에 값이 저장되어 있어야 합니다.
 
 뉴스 번역은 `title/summary/content`와 함께 `hashtags`를 반환할 수 있습니다. 서버는 자동 태그를 `newsItems[].hashtags`에 저장하고, 어드민 뉴스 편집 모달에서 수동 태그로 고정하거나 자동 모드로 되돌릴 수 있습니다. `/v1/news`는 `tag` 쿼리로 해시태그 필터를 지원합니다.
 
@@ -197,17 +204,16 @@ curl 'http://127.0.0.1:4000/v1/youtube'
 curl 'http://127.0.0.1:4000/v1/market-lists/mega_cap'
 ```
 
-로컬 저장 파일은 용도별로 나뉩니다.
+로컬 저장소는 SQLite embedded DB입니다. 기본 파일은 `server/data/signal.sqlite`이고, Railway에서는 `DATA_DIR`를 볼륨 마운트 경로로 두면 `${DATA_DIR}/signal.sqlite`에 저장됩니다. 필요하면 `SQLITE_DB_PATH`로 파일명을 직접 지정할 수 있습니다.
 
 ```text
-server/data/settings.json   # appSettings, providerSettings, translationSettings, UI/model/news-source settings
-server/data/jobs.json       # pollingJobs, pollingJobRuns
-server/data/news.json       # newsItems, newsTranslations
-server/data/calendar.json   # calendarEvents
-server/data/concalls.json   # concallTranscripts
-server/data/youtube.json    # youtubeVideos
-server/data/market.json     # marketQuotes, coinMarkets, marketLists
+server/data/signal.sqlite      # SQLite DB
+server/data/signal.sqlite-wal  # SQLite WAL 파일(생성될 수 있음)
+server/data/signal.sqlite-shm  # SQLite shared-memory 파일(생성될 수 있음)
 ```
 
-- 과거 단일 `local-db.json`을 읽어 자동 분할하는 경로는 **제거**되었다. 배포 시에도 위 분할 파일만을 전제로 한다.
-- 스토어 JSON이 깨져 `JSON.parse`가 실패하면 **진단 로그** 후, 문서 앞쪽의 **첫 완전한 JSON 값**만 잘라 재파싱을 시도한다(끝에 붙은 `}` 등). 복구되면 해당 `readDb` 안에서 **분할 파일을 다시 써** 정상화한다. 애초부터 문법이 망가진 경우는 예외다.
+- SQLite가 비어 있으면 첫 실행 시 `defaultDb()`를 저장해 기본 설정과 Job 리스트를 생성한다.
+- 어드민 계정은 SQLite `admin_users` 테이블에 저장한다. `ADMIN_USERS` env는 `admin_users`가 비어 있을 때만 초기 seed로 쓰고, 비밀번호는 salt + scrypt hash로 저장한다. 이후 계정 추가·비밀번호 변경·활성화·삭제는 **Admin > 설정 > 사용자 관리**에서 한다.
+- 기존 `server/data/*.json` 분할 스토어와 과거 단일 `local-db.json`은 읽지 않는다.
+- `readDb` / `writeDb` / `updateDb`는 동일 Node 프로세스 안에서 큐로 직렬화된다. SQLite는 WAL 모드로 열고, 현재는 `signal_stores` 테이블에 `settings/jobs/news/calendar/concalls/youtube/market` payload를 저장한다.
+- 스토어 payload JSON이 깨져 `JSON.parse`가 실패하면 파일 경로·스토어 이름·길이·오류 위치 주변 내용을 **진단 로그**로 남기고 예외를 던진다. 끝에 붙은 `}` 같은 트레일링 쓰레기를 잘라 자동 복구하지 않는다.

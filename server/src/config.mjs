@@ -22,14 +22,14 @@ function loadDotEnv() {
 
 loadDotEnv();
 
-/** JSON array: [{"id":"...","password":"..."}, ...]. Empty → admin login disabled. */
+/** Initial SQLite admin seed: [{"id":"...","password":"..."}]. Used only when admin_users is empty. */
 function parseAdminUsersFromEnv() {
   const raw = String(process.env.ADMIN_USERS || '').trim();
   if (!raw) return [];
   try {
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr)) {
-      console.warn('[config] ADMIN_USERS must be a JSON array; admin login disabled.');
+      console.warn('[config] ADMIN_USERS must be a JSON array; admin seed skipped.');
       return [];
     }
     const out = [];
@@ -40,10 +40,10 @@ function parseAdminUsersFromEnv() {
       if (!id || !password) continue;
       out.push({ id, password });
     }
-    if (!out.length) console.warn('[config] ADMIN_USERS has no valid entries; admin login disabled.');
+    if (!out.length) console.warn('[config] ADMIN_USERS has no valid entries; admin seed skipped.');
     return out;
   } catch {
-    console.warn('[config] ADMIN_USERS is not valid JSON; admin login disabled.');
+    console.warn('[config] ADMIN_USERS is not valid JSON; admin seed skipped.');
     return [];
   }
 }
@@ -55,9 +55,19 @@ function resolveDataDir() {
   return path.isAbsolute(raw) ? raw : path.join(rootDir, raw);
 }
 
+const dataDir = resolveDataDir();
+
+function resolveSqlitePath() {
+  const raw = String(process.env.SQLITE_DB_PATH || '').trim();
+  if (!raw) return path.join(dataDir, 'signal.sqlite');
+  // Allow absolute paths (Railway volume mount) or relative paths.
+  return path.isAbsolute(raw) ? raw : path.join(rootDir, raw);
+}
+
 export const config = {
   rootDir,
-  dataDir: resolveDataDir(),
+  dataDir,
+  sqlitePath: resolveSqlitePath(),
   host: process.env.HOST || '127.0.0.1',
   port: Number(process.env.PORT || 4000),
   adminUsers: parseAdminUsersFromEnv(),

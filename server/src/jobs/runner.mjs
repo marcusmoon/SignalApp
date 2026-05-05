@@ -254,6 +254,7 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
     progressDone: 0,
     progressTotal: 0,
     progressPercent: 0,
+    progressUpdatedAt: new Date(startedTime).toISOString(),
   };
 
   await updateDb((db) => {
@@ -292,6 +293,7 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
                 savedRun.progressDone = safeDone;
                 savedRun.progressTotal = safeTotal;
                 savedRun.progressPercent = percent;
+                savedRun.progressUpdatedAt = nowIso();
               });
             }
           }
@@ -324,12 +326,14 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       }
       const savedRun = db.pollingJobRuns.find((r) => r.id === run.id);
       if (savedRun) {
+        const finishedAt = nowIso();
         savedRun.status = 'completed';
-        savedRun.finishedAt = nowIso();
+        savedRun.finishedAt = finishedAt;
         savedRun.durationMs = Date.now() - startedTime;
         savedRun.resultKind = result.kind;
         savedRun.itemCount = rows.length;
         if (savedRun.progressPercent != null) savedRun.progressPercent = 100;
+        savedRun.progressUpdatedAt = finishedAt;
       }
     });
     return {
@@ -351,10 +355,12 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       }
       const savedRun = db.pollingJobRuns.find((r) => r.id === run.id);
       if (savedRun) {
+        const finishedAt = nowIso();
         savedRun.status = 'failed';
-        savedRun.finishedAt = nowIso();
+        savedRun.finishedAt = finishedAt;
         savedRun.durationMs = Date.now() - startedTime;
         savedRun.errorMessage = message;
+        savedRun.progressUpdatedAt = finishedAt;
       }
     });
     throw error;

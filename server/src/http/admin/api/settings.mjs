@@ -4,6 +4,10 @@ import {
   normalizeNewsSourceNameWithAliases,
   nowIso,
   readDb,
+  listAdminUsers,
+  createAdminUser,
+  updateAdminUser,
+  deleteAdminUser,
   updateDb,
 } from '../../../db.mjs';
 import { MARKET_LIST_KEYS, normalizeMarketSymbols, publicMarketList } from '../../../marketLists.mjs';
@@ -13,7 +17,15 @@ import { getMarketList, json, readBody } from '../../shared.mjs';
 
 const SUPPORTED_PROVIDERS = ['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko'];
 
-export async function handleAdminSettingsRoutes({ req, res, url, pathname }) {
+function adminUserErrorStatus(error) {
+  const code = error instanceof Error ? error.message : String(error || '');
+  if (code === 'ADMIN_USER_NOT_FOUND') return 404;
+  if (code === 'ADMIN_USER_EXISTS') return 409;
+  if (code.startsWith('ADMIN_USER_')) return 400;
+  return 500;
+}
+
+export async function handleAdminSettingsRoutes({ req, res, url, pathname, adminId }) {
   if (req.method === 'GET' && pathname === '/admin/api/translation-settings') {
     const db = await readDb();
     json(res, 200, { data: db.translationSettings });
@@ -45,6 +57,60 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname }) {
       return next;
     });
     json(res, 200, { data: updated });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/admin/api/admin-users') {
+    json(res, 200, { data: await listAdminUsers() });
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/admin/api/admin-users') {
+    try {
+      const body = await readBody(req);
+      const created = await createAdminUser({
+        id: body.id,
+        password: body.password,
+        active: body.active !== false,
+      });
+      json(res, 200, { data: created });
+    } catch (error) {
+      json(res, adminUserErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+    }
+    return true;
+  }
+
+  const adminUserMatch = pathname.match(/^\/admin\/api\/admin-users\/([^/]+)$/);
+  if (adminUserMatch && req.method === 'PATCH') {
+    const id = decodeURIComponent(adminUserMatch[1]);
+    const body = await readBody(req);
+    if (id === adminId && body.active === false) {
+      json(res, 400, { error: 'ADMIN_USER_SELF_DEACTIVATE' });
+      return true;
+    }
+    try {
+      const updated = await updateAdminUser(id, {
+        active: typeof body.active === 'boolean' ? body.active : undefined,
+        password: typeof body.password === 'string' ? body.password : undefined,
+      });
+      json(res, 200, { data: updated });
+    } catch (error) {
+      json(res, adminUserErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+    }
+    return true;
+  }
+
+  if (adminUserMatch && req.method === 'DELETE') {
+    const id = decodeURIComponent(adminUserMatch[1]);
+    if (id === adminId) {
+      json(res, 400, { error: 'ADMIN_USER_SELF_DELETE' });
+      return true;
+    }
+    try {
+      json(res, 200, { data: await deleteAdminUser(id) });
+    } catch (error) {
+      json(res, adminUserErrorStatus(error), { error: error instanceof Error ? error.message : String(error) });
+    }
     return true;
   }
 

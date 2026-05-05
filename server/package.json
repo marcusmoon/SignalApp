@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20 <23"
+    "node": ">=24 <25"
   },
   "scripts": {
-    "dev": "node src/server.mjs",
-    "start": "node src/server.mjs",
-    "worker": "node src/worker.mjs"
+    "dev": "node --disable-warning=ExperimentalWarning src/server.mjs",
+    "start": "node --disable-warning=ExperimentalWarning src/server.mjs",
+    "worker": "node --disable-warning=ExperimentalWarning src/worker.mjs"
   }
 }

@@ -488,7 +488,7 @@ export const ja = {
   briefingPulseVolatility: '変動が大きい銘柄(おおよそ±2%以上): {{list}}',
   briefingPulseMacroNext: 'もっとも近い予定: [{{country}}] {{when}} — {{event}}',
   briefingSectionInsights: '今日見る銘柄',
-  briefingSectionInsightsHint: 'ニュース・値動き・決算予定があるウォッチ銘柄を優先します。',
+  briefingSectionInsightsHint: 'スコア・ニュース・値動き・決算予定を1枚にまとめ、見る銘柄だけを絞ります。',
   briefingRowVsSma: '20日移動平均比 {{pct}}',
   briefingRowVsSmaUnknown: '20日線比 — (日足が不足)',
   briefingRowEarnLine: '次の決算: {{date}} · FY{{y}} Q{{q}} · {{hour}}',

@@ -485,7 +485,7 @@ export const ko = {
   briefingPulseVolatility: '변동 큰 종목(±2% 이상): {{list}}',
   briefingPulseMacroNext: '가장 가까운 일정: [{{country}}] {{when}} — {{event}}',
   briefingSectionInsights: '오늘 볼 종목',
-  briefingSectionInsightsHint: '뉴스·변동·실적 일정이 있는 관심종목을 우선 추렸습니다.',
+  briefingSectionInsightsHint: '점수·뉴스·변동·실적 일정을 한 카드에 묶어 오늘 볼 종목만 추렸습니다.',
   briefingRowVsSma: '20일 이동평균 대비 {{pct}}',
   briefingRowVsSmaUnknown: '20일선 대비 — (일봉 부족)',
   briefingRowEarnLine: '다가오는 실적: {{date}} · FY{{y}} Q{{q}} · {{hour}}',

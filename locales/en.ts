@@ -490,7 +490,7 @@ export const en = {
   briefingPulseVolatility: 'Larger movers (about ±2%+): {{list}}',
   briefingPulseMacroNext: 'Next up: [{{country}}] {{when}} — {{event}}',
   briefingSectionInsights: 'Stocks to review',
-  briefingSectionInsightsHint: 'Prioritizes watchlist names with news, movement, or earnings dates.',
+  briefingSectionInsightsHint: 'Combines score, news, movement, and earnings into one focused watchlist.',
   briefingRowVsSma: 'vs 20-day average: {{pct}}',
   briefingRowVsSmaUnknown: 'vs 20-day average: — (not enough daily bars)',
   briefingRowEarnLine: 'Next earnings: {{date}} · FY{{y}} Q{{q}} · {{hour}}',

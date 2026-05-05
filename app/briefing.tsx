@@ -290,6 +290,25 @@ export default function BriefingScreen() {
       .slice(0, 20);
   }, [earnings, newsBySymbol, quoteBySymbol, smaBySymbol, symbols]);
 
+  const notableSymbols = useMemo(() => {
+    const today0 = startOfLocalDay(new Date());
+    const toY = toYmd(addDays(today0, 6));
+    const ranked = signalRows.map((row) => row.symbol);
+    const picked = ranked.filter((sym) => {
+      const row = signalRows.find((r) => r.symbol === sym);
+      const dp = signalQuoteMovePct(quoteBySymbol[sym]);
+      const nextE = nextEarningForSymbol(earnings, sym);
+      const nextEarningSoon = nextE ? earningsRowDate(nextE) <= toY : false;
+      return (
+        row?.level !== 'quiet' ||
+        (newsBySymbol[sym]?.length ?? 0) > 0 ||
+        Math.abs(Number.isFinite(dp) ? dp : 0) >= 2 ||
+        nextEarningSoon
+      );
+    });
+    return (picked.length > 0 ? picked : ranked.slice(0, 3)).slice(0, 6);
+  }, [earnings, newsBySymbol, quoteBySymbol, signalRows]);
+
   const { weekEarnings, pulseLines } = useMemo(() => {
     if (symbols.length === 0) {
       return { weekEarnings: [] as SignalApiCalendarEvent[], pulseLines: [] as string[] };
@@ -461,7 +480,8 @@ export default function BriefingScreen() {
               {symbols.length > 0 ? (
                 <>
                   <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingSectionInsights')}</Text>
-                  {symbols.map((sym) => {
+                  <Text style={styles.sectionHint}>{t('briefingSectionInsightsHint')}</Text>
+                  {notableSymbols.map((sym) => {
                     const q = quoteBySymbol[sym] ?? null;
                     const list = newsBySymbol[sym] ?? [];
                     const topNews = list[0];
@@ -639,6 +659,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginBottom: 6,
     },
     sectionHeading: { marginTop: 14 },
+    sectionHint: {
+      fontSize: sf(11),
+      color: theme.textDim,
+      fontWeight: '600',
+      lineHeight: sf(16),
+      marginTop: -2,
+      marginBottom: 8,
+    },
     macroCard: {
       marginBottom: 10,
       padding: 10,

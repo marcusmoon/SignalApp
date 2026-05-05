@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { InsightCard } from '@/components/signal/InsightCard';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -18,11 +19,13 @@ import {
   earningsRowYear,
 } from '@/domain/concalls/signalCalendarEarnings';
 import { fetchSignalEarningsCalendarRangeMerged } from '@/integrations/signal-api/calendarRange';
+import { fetchSignalInsights } from '@/integrations/signal-api/insights';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { signalNewsToNewsItem } from '@/integrations/signal-api/news';
 import { fetchSignalStockCandles, fetchSignalStockProfile } from '@/integrations/signal-api/stock';
 import type {
   SignalApiCalendarEvent,
+  SignalApiInsight,
   SignalApiMarketQuote,
   SignalApiNewsItem,
   SignalApiStockCandles,
@@ -506,12 +509,14 @@ export default function SymbolDetailScreen() {
   const [candles, setCandles] = useState<SignalApiStockCandles | null>(null);
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
   const [signalNews, setSignalNews] = useState<SignalApiNewsItem[]>([]);
+  const [serverInsights, setServerInsights] = useState<SignalApiInsight[]>([]);
   const [earnings, setEarnings] = useState<SignalApiCalendarEvent[]>([]);
   const [watching, setWatching] = useState(false);
 
   const load = useCallback(async () => {
     if (!ticker) {
       setError(t('symbolDetailErrorLoad'));
+      setServerInsights([]);
       setLoading(false);
       return;
     }
@@ -523,6 +528,7 @@ export default function SymbolDetailScreen() {
       setCandles(null);
       setNewsItems([]);
       setSignalNews([]);
+      setServerInsights([]);
       setEarnings([]);
       setLoading(false);
       return;
@@ -533,13 +539,22 @@ export default function SymbolDetailScreen() {
     const earnTo = addDays(new Date(), EARN_FORWARD_DAYS);
 
     try {
-      const [watchlist, nextProfile, mqRows, nextCandles, companyNews, earningsRows] = await Promise.all([
+      const [watchlist, nextProfile, mqRows, nextCandles, companyNews, earningsRows, insightRows] = await Promise.all([
         loadWatchlistSymbols(),
         fetchSignalStockProfile(ticker),
         fetchSignalMarketQuotes({ symbols: [ticker], pageSize: 1 }).catch(() => []),
         fetchSignalStockCandles(ticker, 'D', addDays(new Date(), -30), new Date()).catch(() => null),
         fetchCompanyNewsForDisplay(ticker, locale).catch(() => [] as SignalApiNewsItem[]),
         fetchSignalEarningsCalendarRangeMerged(earnFrom, earnTo).catch(() => [] as SignalApiCalendarEvent[]),
+        fetchSignalInsights({
+          symbol: ticker,
+          date: 'today',
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          limit: 1,
+          offset: 0,
+        })
+          .then((result) => result.items)
+          .catch(() => [] as SignalApiInsight[]),
       ]);
 
       const row0 = mqRows[0];
@@ -564,8 +579,10 @@ export default function SymbolDetailScreen() {
       setQuote(nextQuote);
       setCandles(nextCandles);
       setNewsItems(translatedNews);
+      setServerInsights(insightRows);
       setEarnings(matchedEarnings);
     } catch (e) {
+      setServerInsights([]);
       setError(e instanceof Error ? e.message : t('symbolDetailErrorLoad'));
     } finally {
       setLoading(false);
@@ -797,6 +814,21 @@ export default function SymbolDetailScreen() {
             ).join(' · ')}
           </Text>
         </View>
+
+        {serverInsights.length > 0 ? (
+          <View style={styles.sectionCard}>
+            <Text style={styles.section}>{t('symbolDetailSectionTodaySignal')}</Text>
+            <InsightCard
+              insight={serverInsights[0]!}
+              theme={theme}
+              scaleFont={scaleFont}
+              compact
+              embedded
+              onOpenUrl={(url) => void WebBrowser.openBrowserAsync(url)}
+              onOpenSymbol={(symbol) => router.push(`/symbol/${symbol}`)}
+            />
+          </View>
+        ) : null}
 
         <View style={styles.sectionCard}>
           <Text style={styles.section}>{t('symbolDetailSectionNews')}</Text>

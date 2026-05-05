@@ -63,7 +63,7 @@ export async function fetchSignalNews(
   const rows = Array.isArray(json.data) ? json.data : [];
   const meta = normalizeMeta({ ...json, data: rows }, params);
   const value = { items: rows, meta };
-  if (cacheMode !== 'bypass' && newsEnabled) storeSignalNewsCache(cacheKey, value);
+  if (newsEnabled) storeSignalNewsCache(cacheKey, value);
   return value;
 }
 

@@ -183,6 +183,7 @@ export function filterCalendar(items, url) {
 export function filterYoutube(items, url) {
   const q = url.searchParams.get('q')?.trim().toLowerCase();
   const channel = url.searchParams.get('channel')?.trim().toLowerCase();
+  const sort = url.searchParams.get('sort') === 'popular' ? 'popular' : 'latest';
   let rows = [...items];
   if (channel) rows = rows.filter((item) => String(item.channel || '').toLowerCase().includes(channel));
   if (q) {
@@ -192,10 +193,17 @@ export function filterYoutube(items, url) {
       ),
     );
   }
+  if (sort === 'popular') {
+    return rows.sort(
+      (a, b) =>
+        (Number(b.viewCount) || 0) - (Number(a.viewCount) || 0) ||
+        new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime(),
+    );
+  }
   return rows.sort(
     (a, b) =>
       new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime() ||
-      (b.viewCount || 0) - (a.viewCount || 0),
+      (Number(b.viewCount) || 0) - (Number(a.viewCount) || 0),
   );
 }
 

@@ -12,6 +12,7 @@ export async function fetchSignalYoutube(
   params?: {
   q?: string;
   channel?: string;
+  sort?: 'latest' | 'popular';
   page?: number;
   pageSize?: number;
 },
@@ -26,7 +27,7 @@ export async function fetchSignalYoutube(
   }
   const json = await signalApi<{ data: SignalApiYoutubeVideo[] }>('/v1/youtube', params);
   const rows = Array.isArray(json.data) ? json.data : [];
-  if (cacheMode !== 'bypass' && youtubeEnabled) storeSignalYoutubeCache(cacheKey, rows);
+  if (youtubeEnabled) storeSignalYoutubeCache(cacheKey, rows);
   return rows;
 }
 

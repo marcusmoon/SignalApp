@@ -20,7 +20,6 @@ export async function fetchSignalNewsSources(
   }
   const json = await signalApi<{ data: SignalApiNewsSource[] }>('/v1/news-sources', params);
   const rows = Array.isArray(json.data) ? json.data : [];
-  if (cacheMode !== 'bypass' && newsEnabled) storeSignalNewsSourcesCache(cacheKey, rows);
+  if (newsEnabled) storeSignalNewsSourcesCache(cacheKey, rows);
   return rows;
 }
-

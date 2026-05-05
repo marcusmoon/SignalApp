@@ -7,16 +7,18 @@ const youtubeCache = new Map<string, { value: SignalApiYoutubeVideo[]; expiresAt
 export function buildSignalYoutubeCacheKey(params?: {
   q?: string;
   channel?: string;
+  sort?: 'latest' | 'popular';
   page?: number;
   pageSize?: number;
 }): string {
   const p = {
     q: String(params?.q || '').trim().toLowerCase(),
     channel: String(params?.channel || '').trim().toLowerCase(),
+    sort: String(params?.sort || '').trim().toLowerCase(),
     page: Number(params?.page) || 0,
     pageSize: Number(params?.pageSize) || 0,
   };
-  return `youtube|${p.q}|${p.channel}|${p.page}|${p.pageSize}`;
+  return `youtube|${p.q}|${p.channel}|${p.sort}|${p.page}|${p.pageSize}`;
 }
 
 export function peekSignalYoutubeCache(key: string): SignalApiYoutubeVideo[] | null {
@@ -30,4 +32,3 @@ export function storeSignalYoutubeCache(key: string, value: SignalApiYoutubeVide
 export function clearSignalYoutubeCache(): void {
   youtubeCache.clear();
 }
-

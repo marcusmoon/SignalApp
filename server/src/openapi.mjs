@@ -127,6 +127,7 @@ export function getOpenApiSpec() {
           parameters: [
             { name: 'q', in: 'query', schema: { type: 'string' } },
             { name: 'channel', in: 'query', schema: { type: 'string' } },
+            { name: 'sort', in: 'query', schema: { type: 'string', enum: ['latest', 'popular'], default: 'latest' } },
             { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
             { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 30 } },
           ],

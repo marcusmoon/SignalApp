@@ -83,6 +83,7 @@ const NEWS_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
 };
 
 type FeedRow = { kind: 'news'; news: NewsItem } | { kind: 'ad'; key: string };
+type FeedLoadResult = { newsIds: string[]; insightIds: string[] };
 
 function signalSourceLabel(item: SignalApiNewsItem): string {
   const s = String(item.sourceName || '').trim();
@@ -148,8 +149,15 @@ export default function FeedScreen() {
   /** 서버 meta.total — 미리보기 limit과 무관한 전체 개수 */
   const [insightTotal, setInsightTotal] = useState(0);
   const [insightFeedExpanded, setInsightFeedExpanded] = useState(true);
+  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   /** 출처 필터 UI용(카탈로그 비었을 때 샘플 + 첫 페이지 병합) */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
+
+  useEffect(() => {
+    if (!refreshNotice) return;
+    const timeout = setTimeout(() => setRefreshNotice(null), 4500);
+    return () => clearTimeout(timeout);
+  }, [refreshNotice]);
 
   useEffect(() => {
     void loadNewsSegment().then((s) => setSegment(s));
@@ -177,7 +185,7 @@ export default function FeedScreen() {
   }, []);
 
   const load = useCallback(
-    async (forceRefresh?: boolean) => {
+    async (forceRefresh?: boolean): Promise<FeedLoadResult> => {
       setError(null);
       setHasMore(false);
       setLoadingMore(false);
@@ -190,10 +198,11 @@ export default function FeedScreen() {
         setInsights([]);
         setInsightTotal(0);
         setError(t('errorSignalApiShort'));
-        return;
+        return { newsIds: [], insightIds: [] };
       }
 
       const cacheMode = forceRefresh ? 'bypass' : 'use';
+      let loadedInsightIds: string[] = [];
 
       let catalogRows: { name: string; enabled: boolean; order: number }[] = [];
       try {
@@ -205,6 +214,7 @@ export default function FeedScreen() {
         });
         setInsights(insightRows);
         setInsightTotal(meta.total);
+        loadedInsightIds = insightRows.map((item) => item.id);
       } catch {
         setInsights([]);
         setInsightTotal(0);
@@ -234,8 +244,9 @@ export default function FeedScreen() {
         );
         setServerRows(rows);
         setHasMore(meta.hasMore);
-        setItems(rows.map((item) => signalNewsToNewsItem(item, locale)));
-        return;
+        const mapped = rows.map((item) => signalNewsToNewsItem(item, locale));
+        setItems(mapped);
+        return { newsIds: mapped.map((item) => item.id), insightIds: loadedInsightIds };
       }
 
       const enabledCatalog = (catalogRows || [])
@@ -286,7 +297,9 @@ export default function FeedScreen() {
       if (segment === 'korea') {
         scoped = await filterSignalNewsForKorea(scoped);
       }
-      setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
+      const mapped = scoped.map((item) => signalNewsToNewsItem(item, locale));
+      setItems(mapped);
+      return { newsIds: mapped.map((item) => item.id), insightIds: loadedInsightIds };
     },
     [activeTag, locale, segment, t],
   );
@@ -365,16 +378,28 @@ export default function FeedScreen() {
   }, [load, t]);
 
   const onRefresh = useCallback(async () => {
+    const prevNewsIds = new Set(items.map((item) => item.id));
+    const prevInsightIds = new Set(insights.map((item) => item.id));
     setRefreshing(true);
+    setRefreshNotice(null);
     try {
-      await load(true);
+      const result = await load(true);
       setError(null);
+      const newNewsCount = result.newsIds.filter((id) => !prevNewsIds.has(id)).length;
+      const hasNewInsight = result.insightIds.some((id) => !prevInsightIds.has(id));
+      if (hasNewInsight && newNewsCount > 0) {
+        setRefreshNotice(t('feedRefreshNoticeBoth', { count: String(newNewsCount) }));
+      } else if (hasNewInsight) {
+        setRefreshNotice(t('feedRefreshNoticeInsight'));
+      } else if (newNewsCount > 0) {
+        setRefreshNotice(t('feedRefreshNoticeNews', { count: String(newNewsCount) }));
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : t('feedErrorRefresh'));
     } finally {
       setRefreshing(false);
     }
-  }, [load, t]);
+  }, [insights, items, load, t]);
 
   const applySelection = useCallback(
     async (next: string[]) => {
@@ -418,9 +443,16 @@ export default function FeedScreen() {
   }, [applySelection, availableSources]);
 
   const onPickSegment = useCallback((key: NewsSegmentKey) => {
+    if (segment === key) return;
+    setLoading(true);
+    setItems([]);
+    setServerRows([]);
+    setHasMore(false);
+    setError(null);
+    setRefreshNotice(null);
     setSegment(key);
     void saveNewsSegment(key);
-  }, []);
+  }, [segment]);
 
   const filterReady = availableSources.length > 0 && !error;
 
@@ -445,85 +477,86 @@ export default function FeedScreen() {
   const bottomPad = 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
   const fabStackBottom = tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom + 8;
 
+  const insightSectionEl = useMemo(
+    () => (
+      <>
+        {insights.length > 0 && insightTotal > 0 ? (
+          <View style={styles.insightSection}>
+            <View style={styles.insightSectionHead}>
+              <View style={styles.insightTitleRow}>
+                <FontAwesome name="bolt" size={13} color={theme.green} style={styles.insightTitleGlyph} />
+                <Text style={styles.insightKicker} numberOfLines={1}>
+                  {t('insightSectionKicker')}
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    setInsightFeedExpanded((prev) => {
+                      const next = !prev;
+                      void saveInsightFeedExpanded(next);
+                      return next;
+                    });
+                  }}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: insightFeedExpanded }}
+                  accessibilityLabel={
+                    insightFeedExpanded ? t('insightSectionCollapseA11y') : t('insightSectionExpandA11y')
+                  }
+                  style={({ pressed }) => [
+                    styles.insightCollapseInline,
+                    pressed && styles.insightCollapseInlinePressed,
+                  ]}>
+                  <FontAwesome
+                    name={insightFeedExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={12}
+                    color={theme.textMuted}
+                  />
+                </Pressable>
+              </View>
+              <Pressable
+                onPress={() => router.push('/insights')}
+                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                accessibilityRole="link"
+                accessibilityLabel={t('insightSeeAll')}
+                style={({ pressed }) => [
+                  styles.insightSeeAllWrap,
+                  pressed && styles.insightSeeAllWrapPressed,
+                ]}>
+                <Text style={styles.insightSeeAllLink}>{t('insightSeeAll')}</Text>
+              </Pressable>
+            </View>
+            {insightFeedExpanded
+              ? insights.slice(0, INSIGHT_HOME_PREVIEW).map((insight) => (
+                  <InsightCard
+                    key={insight.id}
+                    insight={insight}
+                    theme={theme}
+                    scaleFont={scaleFont}
+                    compact
+                    embedded
+                    onOpenUrl={(url) => void WebBrowser.openBrowserAsync(url)}
+                  />
+                ))
+              : null}
+          </View>
+        ) : null}
+      </>
+    ),
+    [
+      insightFeedExpanded,
+      insightTotal,
+      insights,
+      router,
+      scaleFont,
+      styles,
+      t,
+      theme,
+    ],
+  );
+
   const listHeaderEl = useMemo(
     () => (
       <View style={styles.listHeader}>
-        {insights.length > 0 && insightTotal > 0 ? (
-            <View style={styles.insightSection}>
-              <View style={styles.insightSectionHead}>
-                <View style={styles.insightTitleRow}>
-                  <FontAwesome name="bolt" size={13} color={theme.green} style={styles.insightTitleGlyph} />
-                  <Text style={styles.insightKicker} numberOfLines={1}>
-                    {t('insightSectionKicker')}
-                  </Text>
-                  <Pressable
-                    onPress={() => {
-                      setInsightFeedExpanded((prev) => {
-                        const next = !prev;
-                        void saveInsightFeedExpanded(next);
-                        return next;
-                      });
-                    }}
-                    hitSlop={6}
-                    accessibilityRole="button"
-                    accessibilityState={{ expanded: insightFeedExpanded }}
-                    accessibilityLabel={
-                      insightFeedExpanded ? t('insightSectionCollapseA11y') : t('insightSectionExpandA11y')
-                    }
-                    style={({ pressed }) => [
-                      styles.insightCollapseInline,
-                      pressed && styles.insightCollapseInlinePressed,
-                    ]}>
-                    <FontAwesome
-                      name={insightFeedExpanded ? 'chevron-up' : 'chevron-down'}
-                      size={12}
-                      color={theme.textMuted}
-                    />
-                  </Pressable>
-                </View>
-                <Pressable
-                  onPress={() => router.push('/insights')}
-                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                  accessibilityRole="link"
-                  accessibilityLabel={t('insightSeeAll')}
-                  style={({ pressed }) => [
-                    styles.insightSeeAllWrap,
-                    pressed && styles.insightSeeAllWrapPressed,
-                  ]}>
-                  <Text style={styles.insightSeeAllLink}>{t('insightSeeAll')}</Text>
-                </Pressable>
-              </View>
-              {insightFeedExpanded
-                ? insights.slice(0, INSIGHT_HOME_PREVIEW).map((insight) => (
-                    <InsightCard
-                      key={insight.id}
-                      insight={insight}
-                      theme={theme}
-                      scaleFont={scaleFont}
-                      compact
-                      embedded
-                      onOpenUrl={(url) => void WebBrowser.openBrowserAsync(url)}
-                    />
-                  ))
-                : null}
-            </View>
-        ) : null}
-
-        <View style={styles.segment}>
-          {segmentOrder.map((key) => (
-            <Pressable
-              key={key}
-              onPress={() => onPickSegment(key)}
-              style={[styles.segBtn, segment === key && styles.segBtnActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: segment === key }}>
-              <Text style={[styles.segText, segment === key && styles.segTextActive]}>
-                {t(NEWS_SEGMENT_LABEL[key])}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
         {activeTag ? (
           <View style={styles.tagFilterRow}>
             <Text style={styles.tagFilterText} numberOfLines={1}>
@@ -557,18 +590,9 @@ export default function FeedScreen() {
     [
       activeTag,
       error,
-      insightFeedExpanded,
-      insightTotal,
-      insights,
       loading,
-      onPickSegment,
-      router,
-      scaleFont,
-      segment,
-      segmentOrder,
       styles,
       t,
-      theme,
     ],
   );
 
@@ -576,48 +600,80 @@ export default function FeedScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <SignalHeader />
       {isFocused ? <OtaUpdateBanner /> : null}
-      <FlatList
-        data={loading ? [] : listData}
-        keyExtractor={(row) => (row.kind === 'ad' ? row.key : row.news.id)}
-        renderItem={({ item }) =>
-          item.kind === 'ad' ? (
-            <AdPlaceholder />
-          ) : (
-            <NewsCard
-              item={item.news}
-              maxHashtagsToShow={maxHashtagDisplay}
-              onTagPress={(label) => {
-                const next = label.trim();
-                if (next) setActiveTag(next);
-              }}
-            />
-          )
-        }
-        ListHeaderComponent={listHeaderEl}
-        ListEmptyComponent={
-          emptyMessage ? (
-            <Text style={[styles.empty, { paddingHorizontal: 16 }]}>{emptyMessage}</Text>
-          ) : null
-        }
-        ListFooterComponent={
-          loadingMore ? (
-            <View style={styles.footerLoading}>
-              <ActivityIndicator color={theme.green} />
-              <Text style={styles.footerLoadingText}>{t('feedLoadingMore')}</Text>
+      <View style={styles.mainColumn}>
+        <View style={styles.topFixed}>
+          {insightSectionEl}
+          <View style={styles.segment}>
+            {segmentOrder.map((key) => (
+              <Pressable
+                key={key}
+                onPress={() => onPickSegment(key)}
+                style={[styles.segBtn, segment === key && styles.segBtnActive]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: segment === key }}>
+                <Text style={[styles.segText, segment === key && styles.segTextActive]}>
+                  {t(NEWS_SEGMENT_LABEL[key])}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          {refreshNotice ? (
+            <View style={styles.refreshNotice}>
+              <FontAwesome name="check-circle" size={13} color={theme.green} />
+              <Text style={styles.refreshNoticeText} numberOfLines={2}>
+                {refreshNotice}
+              </Text>
             </View>
-          ) : null
-        }
-        onEndReached={() => void loadMore()}
-        onEndReachedThreshold={0.35}
-        style={styles.list}
-        contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}
-        removeClippedSubviews={Platform.OS === 'android'}
-        initialNumToRender={8}
-        windowSize={7}
-        maxToRenderPerBatch={12}
-      />
+          ) : null}
+        </View>
+
+        <FlatList
+          data={loading ? [] : listData}
+          keyExtractor={(row) => (row.kind === 'ad' ? row.key : row.news.id)}
+          renderItem={({ item }) =>
+            item.kind === 'ad' ? (
+              <AdPlaceholder />
+            ) : (
+              <NewsCard
+                item={item.news}
+                maxHashtagsToShow={maxHashtagDisplay}
+                onTagPress={(label) => {
+                  const next = label.trim();
+                  if (next) setActiveTag(next);
+                }}
+              />
+            )
+          }
+          ListHeaderComponent={listHeaderEl}
+          ListEmptyComponent={
+            emptyMessage ? (
+              <Text style={[styles.empty, { paddingHorizontal: 16 }]}>{emptyMessage}</Text>
+            ) : null
+          }
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.footerLoading}>
+                <ActivityIndicator color={theme.green} />
+                <Text style={styles.footerLoadingText}>{t('feedLoadingMore')}</Text>
+              </View>
+            ) : null
+          }
+          onEndReached={() => void loadMore()}
+          onEndReachedThreshold={0.35}
+          style={styles.list}
+          contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            loading ? undefined : (
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />
+            )
+          }
+          removeClippedSubviews={Platform.OS === 'android'}
+          initialNumToRender={8}
+          windowSize={7}
+          maxToRenderPerBatch={12}
+        />
+      </View>
 
       {hasSignalApi() ? (
         <FloatingGlassFab
@@ -627,7 +683,7 @@ export default function FeedScreen() {
           onPress={() => void onRefresh()}
           iconName="refresh"
           accessibilityLabel={t('fabRefreshA11y')}
-          disabled={refreshing}
+          disabled={refreshing || loading}
         />
       ) : null}
 
@@ -659,6 +715,21 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
       backgroundColor: theme.bg,
     },
+    mainColumn: {
+      flex: 1,
+      minHeight: 0,
+    },
+    topFixed: {
+      flexShrink: 0,
+      zIndex: 2,
+      elevation: Platform.OS === 'android' ? 2 : 0,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 10,
+      backgroundColor: theme.bg,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
     list: {
       flex: 1,
       minHeight: 0,
@@ -669,6 +740,27 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     listHeader: {
       paddingBottom: 4,
+    },
+    refreshNotice: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 8,
+      paddingVertical: 9,
+      paddingHorizontal: 11,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor:
+        theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}12` : theme.greenDim,
+    },
+    refreshNoticeText: {
+      flex: 1,
+      minWidth: 0,
+      color: theme.green,
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '800',
     },
     skeletonBlock: {
       marginTop: 4,
@@ -780,7 +872,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.border,
       padding: SEGMENT_TAB_PADDING,
-      marginBottom: 12,
+      marginBottom: 0,
       gap: SEGMENT_TAB_GAP,
     },
     segBtn: {

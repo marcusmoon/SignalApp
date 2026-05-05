@@ -156,7 +156,7 @@ export default function YoutubeScreen() {
       }
       try {
         const list = await fetchSignalYoutube(
-          { pageSize: 100 },
+          { pageSize: 100, sort },
           { cacheMode: opts?.forceRefresh ? 'bypass' : 'use' },
         );
         setItems(list.map((item) => signalYoutubeToYoutubeItem(item, locale)));
@@ -167,7 +167,7 @@ export default function YoutubeScreen() {
         setLoading(false);
       }
     },
-    [selectedHandles, locale, t, applyLoadError],
+    [selectedHandles, locale, sort, t, applyLoadError],
   );
 
   useEffect(() => {
@@ -312,7 +312,12 @@ export default function YoutubeScreen() {
         <View style={styles.topFixed}>
           <View style={styles.segment}>
             <Pressable
-              onPress={() => setSort('latest')}
+              onPress={() => {
+                if (sort === 'latest') return;
+                setLoading(true);
+                setItems([]);
+                setSort('latest');
+              }}
               style={[styles.segBtn, sort === 'latest' && styles.segBtnActive]}
               accessibilityState={{ selected: sort === 'latest' }}>
               <Text style={[styles.segText, sort === 'latest' && styles.segTextActive]}>
@@ -320,7 +325,12 @@ export default function YoutubeScreen() {
               </Text>
             </Pressable>
             <Pressable
-              onPress={() => setSort('popular')}
+              onPress={() => {
+                if (sort === 'popular') return;
+                setLoading(true);
+                setItems([]);
+                setSort('popular');
+              }}
               style={[styles.segBtn, sort === 'popular' && styles.segBtnActive]}
               accessibilityState={{ selected: sort === 'popular' }}>
               <Text style={[styles.segText, sort === 'popular' && styles.segTextActive]}>

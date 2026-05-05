@@ -115,6 +115,8 @@ export const baseJa = {
   dashboardNewsHint: '原文ニュース基準の最新項目です。',
   dashboardYoutubeTitle: '最新 YouTube',
   dashboardYoutubeHint: '収集済み動画の最新項目です。',
+  dashboardInsightsTitle: '最近のシグナル',
+  dashboardInsightsHint: 'Insight Job が生成した最新シグナルです。',
   dashboardJobsTitle: 'スケジュール状況',
   dashboardJobsHint: '失敗 {{failed}}件 · 周期超過 {{stale}}件',
   dashboardEmpty: '表示する項目がありません。',

@@ -36,3 +36,40 @@ export async function fetchCompanyNewsForDisplay(
     return [];
   }
 }
+
+export async function fetchCompanyNewsForSymbolsDisplay(
+  symbols: string[],
+  locale = 'ko',
+): Promise<Record<string, SignalApiNewsItem[]>> {
+  const syms = [...new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))];
+  const empty = Object.fromEntries(syms.map((sym) => [sym, [] as SignalApiNewsItem[]]));
+  if (syms.length === 0 || !hasSignalApi()) return empty;
+
+  const to = new Date();
+  const from = addDays(to, -COMPANY_NEWS_LOOKBACK_DAYS);
+  try {
+    const { items } = await fetchSignalNews({
+      symbols: syms.join(','),
+      limit: Math.min(COMPANY_NEWS_DISPLAY_MAX * syms.length, 100),
+      offset: 0,
+      locale,
+      from: toYmd(from),
+      to: toYmd(to),
+    });
+    const out: Record<string, SignalApiNewsItem[]> = { ...empty };
+    for (const item of [...items].sort((a, b) => {
+      const ta = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+      const tb = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+      return tb - ta;
+    })) {
+      for (const symbol of item.symbols || []) {
+        const sym = String(symbol || '').trim().toUpperCase();
+        if (!out[sym] || out[sym].length >= COMPANY_NEWS_DISPLAY_MAX) continue;
+        out[sym].push(item);
+      }
+    }
+    return out;
+  } catch {
+    return empty;
+  }
+}

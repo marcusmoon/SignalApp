@@ -65,6 +65,7 @@ export function getOpenApiSpec() {
             { name: 'locale', in: 'query', schema: { type: 'string', example: 'ko' } },
             { name: 'category', in: 'query', schema: { type: 'string', example: 'global' } },
             { name: 'symbol', in: 'query', schema: { type: 'string', example: 'AAPL' } },
+            { name: 'symbols', in: 'query', schema: { type: 'string', example: 'AAPL,MSFT,NVDA' } },
             { name: 'tag', in: 'query', schema: { type: 'string', description: 'Exact hashtag label match (case-insensitive)' } },
             { name: 'q', in: 'query', schema: { type: 'string' } },
             { name: 'from', in: 'query', schema: { type: 'string', example: '2026-04-01' } },

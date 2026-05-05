@@ -120,6 +120,7 @@ export function displayNews(item, translations, locale) {
 export function filterNews(items, url) {
   const category = url.searchParams.get('category');
   const symbol = url.searchParams.get('symbol')?.trim().toUpperCase();
+  const symbols = url.searchParams.get('symbols');
   const q = url.searchParams.get('q')?.trim().toLowerCase();
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
@@ -135,7 +136,16 @@ export function filterNews(items, url) {
       rows = rows.filter((item) => item.category === category);
     }
   }
-  if (symbol) rows = rows.filter((item) => item.symbols?.includes(symbol));
+  const symbolSet = new Set([
+    ...(symbol ? [symbol] : []),
+    ...(symbols
+      ? symbols
+          .split(',')
+          .map((s) => s.trim().toUpperCase())
+          .filter(Boolean)
+      : []),
+  ]);
+  if (symbolSet.size > 0) rows = rows.filter((item) => item.symbols?.some((s) => symbolSet.has(String(s).toUpperCase())));
   if (from) rows = rows.filter((item) => !item.publishedAt || dateKeyInTimeZone(item.publishedAt, timeZone) >= from);
   if (to) rows = rows.filter((item) => !item.publishedAt || dateKeyInTimeZone(item.publishedAt, timeZone) <= to);
   if (tag) {

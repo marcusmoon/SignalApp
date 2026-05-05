@@ -1220,6 +1220,18 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await loadYoutube();
             return;
           }
+          if (target.dataset.dashboardInsightTitle) {
+            state.insightFilters = {
+              ...(state.insightFilters || {}),
+              range: '30d',
+              q: target.dataset.dashboardInsightTitle || '',
+              pageSize: state.insightFilters?.pageSize || '30',
+            };
+            applyInsightDatePresetToState();
+            state.insightsPage = 1;
+            await switchView('insights');
+            return;
+          }
           if (target?.id === 'jobRunsSelectAll') {
             // handled by change listener
             return;

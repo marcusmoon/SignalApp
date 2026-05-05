@@ -478,6 +478,14 @@ export default function FeedScreen() {
 
   const filterReady = availableSources.length > 0 && !error;
 
+  const toggleInsightFeedExpanded = useCallback(() => {
+    setInsightFeedExpanded((prev) => {
+      const next = !prev;
+      void saveInsightFeedExpanded(next);
+      return next;
+    });
+  }, []);
+
   const listData: FeedRow[] = useMemo(() => {
     const out: FeedRow[] = [];
     items.forEach((news, i) => {
@@ -505,41 +513,36 @@ export default function FeedScreen() {
         {insights.length > 0 && insightTotal > 0 ? (
           <View style={styles.insightSection}>
             <View style={styles.insightSectionHead}>
-              <View style={styles.insightTitleRow}>
-                <FontAwesome name="bolt" size={13} color={theme.green} style={styles.insightTitleGlyph} />
-                <Text style={styles.insightKicker} numberOfLines={1}>
-                  {t('insightSectionKicker')}
-                </Text>
-                {insightWatchlistSymbols.length > 0 ? (
-                  <Text style={styles.insightWatchPill} numberOfLines={1}>
-                    {t('insightWatchlistMatch', { symbols: insightWatchlistSymbols.join(', ') })}
+              <Pressable
+                onPress={toggleInsightFeedExpanded}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: insightFeedExpanded }}
+                accessibilityLabel={
+                  insightFeedExpanded ? t('insightSectionCollapseA11y') : t('insightSectionExpandA11y')
+                }
+                style={({ pressed }) => [
+                  styles.insightToggleHead,
+                  pressed && styles.insightToggleHeadPressed,
+                ]}>
+                <View style={styles.insightTitleRow}>
+                  <FontAwesome name="bolt" size={13} color={theme.green} style={styles.insightTitleGlyph} />
+                  <Text style={styles.insightKicker} numberOfLines={1}>
+                    {t('insightSectionKicker')}
                   </Text>
-                ) : null}
-                <Pressable
-                  onPress={() => {
-                    setInsightFeedExpanded((prev) => {
-                      const next = !prev;
-                      void saveInsightFeedExpanded(next);
-                      return next;
-                    });
-                  }}
-                  hitSlop={6}
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded: insightFeedExpanded }}
-                  accessibilityLabel={
-                    insightFeedExpanded ? t('insightSectionCollapseA11y') : t('insightSectionExpandA11y')
-                  }
-                  style={({ pressed }) => [
-                    styles.insightCollapseInline,
-                    pressed && styles.insightCollapseInlinePressed,
-                  ]}>
+                  {insightWatchlistSymbols.length > 0 ? (
+                    <Text style={styles.insightWatchPill} numberOfLines={1}>
+                      {t('insightWatchlistMatch', { symbols: insightWatchlistSymbols.join(', ') })}
+                    </Text>
+                  ) : null}
                   <FontAwesome
                     name={insightFeedExpanded ? 'chevron-up' : 'chevron-down'}
                     size={12}
                     color={theme.textMuted}
+                    style={styles.insightChevron}
                   />
-                </Pressable>
-              </View>
+                </View>
+              </Pressable>
               <Pressable
                 onPress={() => router.push('/insights')}
                 hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
@@ -580,6 +583,7 @@ export default function FeedScreen() {
       styles,
       t,
       theme,
+      toggleInsightFeedExpanded,
     ],
   );
 
@@ -812,6 +816,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'space-between',
       gap: 10,
     },
+    insightToggleHead: {
+      flex: 1,
+      minWidth: 0,
+      paddingVertical: 4,
+      paddingRight: 4,
+      borderRadius: 10,
+    },
+    insightToggleHeadPressed: {
+      opacity: 0.72,
+    },
     insightTitleRow: {
       flex: 1,
       flexDirection: 'row',
@@ -839,16 +853,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       ...(Platform.OS === 'android' ? ({ includeFontPadding: false } as const) : {}),
       textAlignVertical: Platform.OS === 'android' ? 'center' : undefined,
     },
-    insightCollapseInline: {
+    insightChevron: {
       marginLeft: 4,
-      paddingVertical: 6,
-      paddingHorizontal: 2,
-      justifyContent: 'center',
-      alignItems: 'center',
       flexShrink: 0,
-    },
-    insightCollapseInlinePressed: {
-      opacity: 0.65,
     },
     insightKicker: {
       flexGrow: 0,

@@ -20,6 +20,7 @@ export async function loadDashboardView(ctx) {
   const dataAreas = Array.isArray(summary.dataAreas) ? summary.dataAreas : [];
   const latestNews = Array.isArray(summary.latestNews) ? summary.latestNews : [];
   const latestYoutube = Array.isArray(summary.latestYoutube) ? summary.latestYoutube : [];
+  const latestInsights = Array.isArray(summary.latestInsights) ? summary.latestInsights : [];
   const limit = Math.max(3, Math.min(10, Number(state.dashboardLimit) || 5));
   const op = state.dashboardOperationFilter === 'reconcile' ? 'reconcile' : 'latest';
   const opFiltered = allRuns.filter((r) => (r.operation || 'latest') === op);
@@ -33,6 +34,7 @@ export async function loadDashboardView(ctx) {
   const failedCount = allRuns.filter((r) => String(r.status) === 'failed').length;
   const newsRows = latestNews.slice(0, limit);
   const youtubeRows = latestYoutube.slice(0, limit);
+  const insightRows = latestInsights.slice(0, limit);
 
   function areaMeta(id) {
     const map = {
@@ -180,6 +182,30 @@ export async function loadDashboardView(ctx) {
                   </div>
                 </div>
                 <button class="secondary compactBtn" data-dashboard-youtube-title="${esc(item.title || '')}">${esc(textFor('btnDetail'))}</button>
+              </article>
+            `).join('') || `<p class="muted">${esc(textFor('dashboardEmpty'))}</p>`}
+          </div>
+        </section>
+        <section class="dashboardPanel dashboardSubPanel">
+          <div class="cardHead">
+            <div class="cardHeadMain">
+              <div class="cardKicker">${esc(textFor('dashboardInsightsTitle'))}</div>
+              <div class="cardHint">${esc(textFor('dashboardInsightsHint'))}</div>
+            </div>
+            <button class="secondary" data-view="insights">${esc(textFor('btnOpenList'))}</button>
+          </div>
+          <div class="dashboardList">
+            ${insightRows.map((item) => `
+              <article class="dashboardListItem">
+                <div class="dashboardItemMain">
+                  <div class="dashboardItemTitle">${esc(item.title || '-')}</div>
+                  <div class="dashboardItemMeta">
+                    <span>${esc(item.kind || '-')}</span>
+                    <span>${esc(textFor('colScore'))} ${Number(item.score || 0)}</span>
+                    <span>${esc(formatDateTime(item.generatedAt))}</span>
+                  </div>
+                </div>
+                <button class="secondary compactBtn" data-dashboard-insight-title="${esc(item.title || '')}">${esc(textFor('btnDetail'))}</button>
               </article>
             `).join('') || `<p class="muted">${esc(textFor('dashboardEmpty'))}</p>`}
           </div>

@@ -23,6 +23,7 @@ export function buildSignalNewsCacheKey(params: {
   locale: string;
   category?: string;
   symbol?: string;
+  symbols?: string;
   limit?: number;
   offset?: number;
   tag?: string;
@@ -33,6 +34,12 @@ export function buildSignalNewsCacheKey(params: {
     locale: String(params.locale || '').trim(),
     category: String(params.category || '').trim(),
     symbol: String(params.symbol || '').trim().toUpperCase(),
+    symbols: String(params.symbols || '')
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean)
+      .sort()
+      .join(','),
     limit: Number(params.limit) || 0,
     offset: Number(params.offset) || 0,
     tag: String(params.tag || '')
@@ -41,7 +48,7 @@ export function buildSignalNewsCacheKey(params: {
     from: String(params.from || '').trim(),
     to: String(params.to || '').trim(),
   };
-  return `news|${p.locale}|${p.category}|${p.symbol}|${p.limit}|${p.offset}|${p.tag}|${p.from}|${p.to}`;
+  return `news|${p.locale}|${p.category}|${p.symbol}|${p.symbols}|${p.limit}|${p.offset}|${p.tag}|${p.from}|${p.to}`;
 }
 
 export function buildSignalNewsSourcesCacheKey(params?: { category?: string }): string {
@@ -69,4 +76,3 @@ export function clearSignalNewsCache(): void {
   newsCache.clear();
   sourcesCache.clear();
 }
-

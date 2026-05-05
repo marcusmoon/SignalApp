@@ -41,6 +41,7 @@ export async function fetchSignalNews(
     locale: string;
     category?: string;
     symbol?: string;
+    symbols?: string;
     tag?: string;
     limit?: number;
     offset?: number;

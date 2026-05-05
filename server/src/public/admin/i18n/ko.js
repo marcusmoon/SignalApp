@@ -115,6 +115,8 @@ export const baseKo = {
   dashboardNewsHint: '원문 뉴스 기준 최신 항목입니다.',
   dashboardYoutubeTitle: '최신 유튜브',
   dashboardYoutubeHint: '수집된 영상 중 최신 항목입니다.',
+  dashboardInsightsTitle: '최근 시그널',
+  dashboardInsightsHint: 'Insight Job이 생성한 최신 시그널입니다.',
   dashboardJobsTitle: '스케줄 현황',
   dashboardJobsHint: '실패 {{failed}}개 · 주기 초과 {{stale}}개',
   dashboardEmpty: '표시할 항목이 없습니다.',

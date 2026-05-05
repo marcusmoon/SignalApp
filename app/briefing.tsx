@@ -16,7 +16,7 @@ import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicat
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { fetchCompanyNewsForDisplay } from '@/services/companyNewsForSymbol';
+import { fetchCompanyNewsForSymbolsDisplay } from '@/services/companyNewsForSymbol';
 import {
   earningsRowDate,
   earningsRowHour,
@@ -33,12 +33,13 @@ import type {
   SignalApiCalendarEvent,
   SignalApiMarketQuote,
   SignalApiNewsItem,
-  SignalApiStockCandles,
 } from '@/integrations/signal-api/types';
 import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
-import { fetchSignalStockCandles } from '@/integrations/signal-api/stock';
 import { buildSignalScore } from '@/domain/signals';
-import { loadMarketSnapshotQuotes } from '@/services/marketSnapshotQuotes';
+import {
+  MARKET_SNAPSHOT_MACRO_ROWS,
+  MARKET_SNAPSHOT_TAPE_SYMBOLS,
+} from '@/services/marketSnapshotQuotes';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { hasSignalApi } from '@/services/env';
 import { addDays, toYmd } from '@/utils/date';
@@ -47,7 +48,6 @@ import { signalQuoteMovePct, signalReasonLabel } from '@/utils/signalDisplay';
 const WATCH_LIMIT = 10;
 const EARN_DAYS = 21;
 const MACRO_DAYS = 7;
-const CANDLE_LOOKBACK_DAYS = 70;
 const NEWS_DENSE_MIN = 4;
 
 function startOfLocalDay(d: Date): Date {
@@ -57,11 +57,6 @@ function startOfLocalDay(d: Date): Date {
 function formatPct(n: number): string {
   if (!Number.isFinite(n)) return '—';
   return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
-}
-
-function formatPctOne(n: number): string {
-  if (!Number.isFinite(n)) return '—';
-  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
 }
 
 function formatUsd(n: number): string {
@@ -120,19 +115,6 @@ function macroEventTimeLabel(ev: SignalApiCalendarEvent): string {
   return ev.date ? shortMd(ev.date) : '—';
 }
 
-function insightVsSma20(candles: SignalApiStockCandles, lastPrice: number): { vsSmaPct: number } | null {
-  const { c, t } = candles;
-  if (!Array.isArray(c) || !Array.isArray(t) || c.length !== t.length || c.length < 20) return null;
-  const ordered = t
-    .map((unix, i) => ({ unix, close: c[i]! }))
-    .sort((a, b) => a.unix - b.unix)
-    .map((x) => x.close);
-  const last20 = ordered.slice(-20);
-  const sma = last20.reduce((a, b) => a + b, 0) / 20;
-  if (!Number.isFinite(sma) || sma === 0 || !Number.isFinite(lastPrice)) return null;
-  return { vsSmaPct: ((lastPrice - sma) / sma) * 100 };
-}
-
 export default function BriefingScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
@@ -150,7 +132,6 @@ export default function BriefingScreen() {
   const [newsBySymbol, setNewsBySymbol] = useState<Record<string, SignalApiNewsItem[]>>({});
   const [earnings, setEarnings] = useState<SignalApiCalendarEvent[]>([]);
   const [economicWeek, setEconomicWeek] = useState<SignalApiCalendarEvent[]>([]);
-  const [smaBySymbol, setSmaBySymbol] = useState<Record<string, { vsSmaPct: number } | null>>({});
 
   const load = useCallback(async () => {
     if (!hasSignalApi()) {
@@ -162,7 +143,6 @@ export default function BriefingScreen() {
       setNewsBySymbol({});
       setEarnings([]);
       setEconomicWeek([]);
-      setSmaBySymbol({});
       return;
     }
     setError(null);
@@ -173,26 +153,33 @@ export default function BriefingScreen() {
     const today = startOfLocalDay(new Date());
     const earnUntil = addDays(today, EARN_DAYS);
     const macroUntil = addDays(today, MACRO_DAYS);
-    const candleFrom = addDays(today, -CANDLE_LOOKBACK_DAYS);
-    const candleTo = new Date();
+    const snapshotTapeSyms = [...MARKET_SNAPSHOT_TAPE_SYMBOLS];
+    const snapshotMacroSyms = MARKET_SNAPSHOT_MACRO_ROWS.map((row) => row.symbol);
+    const quoteSymbols = [...new Set([...syms, ...snapshotTapeSyms, ...snapshotMacroSyms])];
 
-    const [snap, mqRows, earnRows, newsLists, econRows] = await Promise.all([
-      loadMarketSnapshotQuotes().catch(() => ({ tape: {} as Record<string, SignalApiMarketQuote | null>, macro: {} })),
-      syms.length > 0
-        ? fetchSignalMarketQuotes({ symbols: syms, pageSize: Math.max(syms.length, 1) }).catch(() => [])
+    const [mqRows, earnRows, newsMap, econRows] = await Promise.all([
+      quoteSymbols.length > 0
+        ? fetchSignalMarketQuotes({ symbols: quoteSymbols, pageSize: Math.max(quoteSymbols.length, 1) }).catch(() => [])
         : Promise.resolve([]),
       fetchSignalEarningsCalendarRangeMerged(today, earnUntil).catch(() => [] as SignalApiCalendarEvent[]),
-      Promise.all(syms.map((sym) => fetchCompanyNewsForDisplay(sym, locale).catch(() => [] as SignalApiNewsItem[]))),
+      fetchCompanyNewsForSymbolsDisplay(syms, locale).catch(() => ({} as Record<string, SignalApiNewsItem[]>)),
       fetchSignalMacroCalendarRangeMerged(today, macroUntil).catch(() => [] as SignalApiCalendarEvent[]),
     ]);
 
-    setTape(snap.tape);
-    setMacro(snap.macro);
+    const quoteMap = new Map(
+      mqRows.map((r) => [String(r.symbol || '').trim().toUpperCase(), signalMarketQuoteHasValidPrice(r) ? r : null] as const),
+    );
+
+    const nextTape: Record<string, SignalApiMarketQuote | null> = {};
+    for (const sym of snapshotTapeSyms) nextTape[sym] = quoteMap.get(sym) ?? null;
+    setTape(nextTape);
+
+    const nextMacro: Record<string, SignalApiMarketQuote | null> = {};
+    for (const sym of snapshotMacroSyms) nextMacro[sym] = quoteMap.get(sym) ?? null;
+    setMacro(nextMacro);
 
     const qRows = syms.map((sym) => {
-      const row = mqRows.find((r) => String(r.symbol || '').trim().toUpperCase() === sym);
-      if (!row) return { symbol: sym, q: null };
-      return { symbol: sym, q: signalMarketQuoteHasValidPrice(row) ? row : null };
+      return { symbol: sym, q: quoteMap.get(sym) ?? null };
     });
     setQuotes(qRows);
 
@@ -203,11 +190,7 @@ export default function BriefingScreen() {
         .sort((a, b) => earningsRowDate(a).localeCompare(earningsRowDate(b))),
     );
 
-    const nb: Record<string, SignalApiNewsItem[]> = {};
-    syms.forEach((sym, i) => {
-      nb[sym] = newsLists[i] ?? [];
-    });
-    setNewsBySymbol(nb);
+    setNewsBySymbol(Object.fromEntries(syms.map((sym) => [sym, newsMap[sym] ?? []])));
 
     const econSorted = [...econRows].sort((a, b) => {
       const ka = String(a.eventAt || a.date || '');
@@ -215,24 +198,6 @@ export default function BriefingScreen() {
       return ka.localeCompare(kb);
     });
     setEconomicWeek(econSorted);
-
-    let smaOut: Record<string, { vsSmaPct: number } | null> = {};
-    if (syms.length > 0) {
-      const pairs = await Promise.all(
-        syms.map((sym, i) => {
-          const q = qRows[i]?.q ?? null;
-          return fetchSignalStockCandles(sym, 'D', candleFrom, candleTo)
-            .then((candles): [string, { vsSmaPct: number } | null] => {
-              if (!candles || !q || !signalMarketQuoteHasValidPrice(q)) return [sym, null];
-              const last = Number(q.currentPrice);
-              return [sym, insightVsSma20(candles, last)];
-            })
-            .catch((): [string, null] => [sym, null]);
-        }),
-      );
-      smaOut = Object.fromEntries(pairs);
-    }
-    setSmaBySymbol(smaOut);
   }, [locale, t]);
 
   const onRefresh = useCallback(async () => {
@@ -282,13 +247,13 @@ export default function BriefingScreen() {
           quote: quoteBySymbol[sym],
           news: newsBySymbol[sym] ?? [],
           nextEarning: nextEarningForSymbol(earnings, sym),
-          vsSmaPct: smaBySymbol[sym]?.vsSmaPct ?? null,
+          vsSmaPct: null,
           todayYmd,
         }),
       )
       .sort((a, b) => b.score - a.score || b.newsCount - a.newsCount || a.symbol.localeCompare(b.symbol))
       .slice(0, 20);
-  }, [earnings, newsBySymbol, quoteBySymbol, smaBySymbol, symbols]);
+  }, [earnings, newsBySymbol, quoteBySymbol, symbols]);
 
   const notableSymbols = useMemo(() => {
     const today0 = startOfLocalDay(new Date());
@@ -484,6 +449,13 @@ export default function BriefingScreen() {
                   ))}
                 </View>
               ) : null}
+              <Pressable
+                onPress={() => router.push('/insights')}
+                accessibilityRole="button"
+                accessibilityLabel={t('briefingOpenTodaySignal')}
+                style={({ pressed }) => [styles.digestSignalLink, pressed && styles.digestSignalLinkPressed]}>
+                <Text style={styles.digestSignalLinkText}>{t('briefingOpenTodaySignal')}</Text>
+              </Pressable>
             </View>
           ) : null}
 
@@ -530,11 +502,7 @@ export default function BriefingScreen() {
                     const nextE = nextEarningForSymbol(earnings, sym);
                     const dp = signalQuoteMovePct(q);
                     const up = (Number.isFinite(dp) ? dp : 0) >= 0;
-                    const sma = smaBySymbol[sym];
-                    const vsLine =
-                      sma && Number.isFinite(sma.vsSmaPct)
-                        ? t('briefingRowVsSma', { pct: formatPctOne(sma.vsSmaPct) })
-                        : t('briefingRowVsSmaUnknown');
+                    const newsLine = t('briefingRowNewsCount', { count: String(list.length) });
                     const noEarn = t('briefingNoUpcomingEarning');
                     let earnLine = noEarn;
                     if (nextE) {
@@ -549,17 +517,17 @@ export default function BriefingScreen() {
                       });
                     }
                     const headline = (topNews?.originalTitle || topNews?.title || '').trim();
-                    const primaryStory = headline || (earnLine !== noEarn ? earnLine : vsLine);
+                    const primaryStory = headline || (earnLine !== noEarn ? earnLine : newsLine);
                     const subMeta: string[] = [];
                     const reasons =
                       signal?.reasons && signal.reasons.length > 0
                         ? signal.reasons.slice(0, 2).map((r) => signalReasonLabel(r, t))
                         : [t('signalReasonWatch')];
                     if (headline) {
-                      subMeta.push(vsLine);
+                      subMeta.push(newsLine);
                       if (earnLine !== noEarn) subMeta.push(earnLine);
                     } else if (earnLine !== noEarn) {
-                      subMeta.push(vsLine);
+                      subMeta.push(newsLine);
                     }
 
                     return (
@@ -723,6 +691,25 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     digestMoreLine: { fontSize: sf(12), fontWeight: '600', color: theme.textDim, lineHeight: sf(18) },
     digestMoreLineGap: { marginTop: 8 },
+    digestSignalLink: {
+      alignSelf: 'flex-start',
+      marginTop: 12,
+      paddingVertical: 7,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    digestSignalLinkPressed: {
+      opacity: 0.78,
+    },
+    digestSignalLinkText: {
+      fontSize: sf(11),
+      lineHeight: sf(14),
+      fontWeight: '900',
+      color: theme.green,
+    },
     muted: { fontSize: sf(12), color: theme.textDim, marginTop: 4, marginBottom: 12 },
     blockTitle: {
       fontSize: sf(11),

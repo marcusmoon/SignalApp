@@ -303,6 +303,7 @@ export const ko = {
   feedSectionTitle: '실시간 뉴스',
   insightSectionKicker: '오늘의 시그널',
   insightSectionCount: '{{count}}개 업데이트',
+  insightWatchlistMatch: '관심 {{symbols}}',
   insightSeeAll: '전체 보기 →',
   insightSectionCollapseA11y: '오늘의 시그널 접기',
   insightSectionExpandA11y: '오늘의 시그널 펼치기',

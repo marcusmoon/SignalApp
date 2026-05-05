@@ -308,6 +308,7 @@ export const en = {
   feedSectionTitle: 'Live news',
   insightSectionKicker: 'Today’s signals',
   insightSectionCount: '{{count}} updates',
+  insightWatchlistMatch: 'Watch {{symbols}}',
   insightSeeAll: 'See all →',
   insightSectionCollapseA11y: 'Collapse Today’s signals',
   insightSectionExpandA11y: 'Expand Today’s signals',

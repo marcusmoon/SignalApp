@@ -63,6 +63,7 @@ import {
   loadInsightFeedExpanded,
   saveInsightFeedExpanded,
 } from '@/services/insightFeedExpandedPreference';
+import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { fetchSignalInsights, fetchSignalNews, fetchSignalNewsSources, signalNewsToNewsItem } from '@/integrations/signal-api';
 import type { SignalApiInsight, SignalApiNewsItem } from '@/integrations/signal-api/types';
@@ -75,6 +76,7 @@ const FEED_PAGE_CRYPTO = 25;
 const SOURCE_PROBE_LIMIT = 100;
 /** 미리보기 카드 개수(요약은 meta.total로 표시) */
 const INSIGHT_HOME_PREVIEW = 1;
+const INSIGHT_HOME_CANDIDATE_LIMIT = 8;
 
 const NEWS_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
   global: 'feedSegmentGlobal',
@@ -84,6 +86,17 @@ const NEWS_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
 
 type FeedRow = { kind: 'news'; news: NewsItem } | { kind: 'ad'; key: string };
 type FeedLoadResult = { newsIds: string[]; insightIds: string[] };
+
+function insightMatchesSymbols(insight: SignalApiInsight, symbols: Set<string>): boolean {
+  return (insight.symbols || []).some((symbol) => symbols.has(String(symbol || '').trim().toUpperCase()));
+}
+
+function prioritizeHomeInsights(rows: SignalApiInsight[], watchlist: string[]): SignalApiInsight[] {
+  const symbols = new Set(watchlist.map((symbol) => String(symbol || '').trim().toUpperCase()).filter(Boolean));
+  if (symbols.size === 0) return rows.slice(0, INSIGHT_HOME_PREVIEW);
+  const watchInsight = rows.find((insight) => insightMatchesSymbols(insight, symbols));
+  return (watchInsight ? [watchInsight] : rows).slice(0, INSIGHT_HOME_PREVIEW);
+}
 
 function signalSourceLabel(item: SignalApiNewsItem): string {
   const s = String(item.sourceName || '').trim();
@@ -149,6 +162,7 @@ export default function FeedScreen() {
   /** 서버 meta.total — 미리보기 limit과 무관한 전체 개수 */
   const [insightTotal, setInsightTotal] = useState(0);
   const [insightFeedExpanded, setInsightFeedExpanded] = useState(true);
+  const [insightWatchlistSymbols, setInsightWatchlistSymbols] = useState<string[]>([]);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   /** 출처 필터 UI용(카탈로그 비었을 때 샘플 + 첫 페이지 병합) */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
@@ -197,6 +211,7 @@ export default function FeedScreen() {
         setSelectedSources([]);
         setInsights([]);
         setInsightTotal(0);
+        setInsightWatchlistSymbols([]);
         setError(t('errorSignalApiShort'));
         return { newsIds: [], insightIds: [] };
       }
@@ -206,18 +221,25 @@ export default function FeedScreen() {
 
       let catalogRows: { name: string; enabled: boolean; order: number }[] = [];
       try {
+        const watchlistSymbols = await loadWatchlistSymbols();
         const { items: insightRows, meta } = await fetchSignalInsights({
           date: 'today',
           timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          limit: INSIGHT_HOME_PREVIEW,
+          limit: INSIGHT_HOME_CANDIDATE_LIMIT,
           offset: 0,
         });
-        setInsights(insightRows);
+        const homeInsights = prioritizeHomeInsights(insightRows, watchlistSymbols);
+        const watchSet = new Set(watchlistSymbols.map((symbol) => symbol.toUpperCase()));
+        setInsights(homeInsights);
         setInsightTotal(meta.total);
-        loadedInsightIds = insightRows.map((item) => item.id);
+        setInsightWatchlistSymbols(
+          homeInsights[0]?.symbols?.filter((symbol) => watchSet.has(String(symbol || '').toUpperCase())).slice(0, 3) || [],
+        );
+        loadedInsightIds = homeInsights.map((item) => item.id);
       } catch {
         setInsights([]);
         setInsightTotal(0);
+        setInsightWatchlistSymbols([]);
       }
 
       try {
@@ -488,6 +510,11 @@ export default function FeedScreen() {
                 <Text style={styles.insightKicker} numberOfLines={1}>
                   {t('insightSectionKicker')}
                 </Text>
+                {insightWatchlistSymbols.length > 0 ? (
+                  <Text style={styles.insightWatchPill} numberOfLines={1}>
+                    {t('insightWatchlistMatch', { symbols: insightWatchlistSymbols.join(', ') })}
+                  </Text>
+                ) : null}
                 <Pressable
                   onPress={() => {
                     setInsightFeedExpanded((prev) => {
@@ -545,6 +572,7 @@ export default function FeedScreen() {
     [
       insightFeedExpanded,
       insightTotal,
+      insightWatchlistSymbols,
       insights,
       router,
       scaleFont,
@@ -828,6 +856,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(14),
       fontWeight: '900',
       letterSpacing: -0.15,
+    },
+    insightWatchPill: {
+      flexShrink: 0,
+      maxWidth: 130,
+      marginLeft: 7,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 999,
+      overflow: 'hidden',
+      color: theme.green,
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      fontSize: sf(10),
+      lineHeight: sf(12),
+      fontWeight: '900',
     },
     tagFilterRow: {
       flexDirection: 'row',

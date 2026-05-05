@@ -307,6 +307,7 @@ export const ja = {
   feedSectionTitle: 'リアルタイムニュース',
   insightSectionKicker: '今日のシグナル',
   insightSectionCount: '{{count}}件更新',
+  insightWatchlistMatch: 'ウォッチ {{symbols}}',
   insightSeeAll: 'すべて見る →',
   insightSectionCollapseA11y: '今日のシグナルを閉じる',
   insightSectionExpandA11y: '今日のシグナルを開く',

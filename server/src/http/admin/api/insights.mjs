@@ -24,12 +24,16 @@ function filterAdminInsights(items, url) {
         item.level,
         item.title,
         item.summary,
+        item.whyNow,
+        item.actionLabel,
         item.provider,
         item.llm?.provider,
         item.llm?.model,
         ...(item.symbols || []),
         ...(item.topics || []),
         ...(item.reasoning || []),
+        ...(item.nextSteps || []),
+        ...(item.signalDrivers || []),
         ...(item.sourceRefs || []).map((ref) => `${ref.title || ''} ${ref.sourceName || ''}`),
       ].some((value) => String(value || '').toLowerCase().includes(q)),
     );
@@ -49,6 +53,13 @@ function adminInsight(item) {
     score: Number.isFinite(Number(item.score)) ? Number(item.score) : 0,
     title: item.title || '',
     summary: item.summary || '',
+    whyNow: item.whyNow || '',
+    actionLabel: item.actionLabel || '',
+    signalDrivers: Array.isArray(item.signalDrivers) ? item.signalDrivers : [],
+    sourceStats: item.sourceStats && typeof item.sourceStats === 'object' ? item.sourceStats : null,
+    nextSteps: Array.isArray(item.nextSteps) ? item.nextSteps : [],
+    priceMovePercent: Number.isFinite(Number(item.priceMovePercent)) ? Number(item.priceMovePercent) : null,
+    earningsDate: item.earningsDate || null,
     symbols: Array.isArray(item.symbols) ? item.symbols : [],
     topics: Array.isArray(item.topics) ? item.topics : [],
     reasoning: Array.isArray(item.reasoning) ? item.reasoning : [],
@@ -67,13 +78,19 @@ function adminInsight(item) {
 export async function handleAdminInsightsRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/admin/api/insights') {
     const db = await readDb();
-    const page = paginate(filterAdminInsights(db.insightItems, url).map(adminInsight), url, 30, 100);
+    const filtered = filterAdminInsights(db.insightItems, url).map(adminInsight);
+    const page = paginate(filtered, url, 30, 100);
     json(res, 200, {
       data: page.rows,
       page: page.page,
       pageSize: page.pageSize,
       total: page.total,
       totalPages: page.totalPages,
+      summary: {
+        pushCandidates: filtered.filter((item) => item.pushCandidate).length,
+        alerts: filtered.filter((item) => item.level === 'alert').length,
+        llmReady: filtered.filter((item) => item.llm?.status === 'ready').length,
+      },
     });
     return true;
   }

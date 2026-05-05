@@ -2438,6 +2438,42 @@ tbody tr:hover td {
   margin-top: 7px;
 }
 
+.insightReasonBlock {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.insightReasonBlock div {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.insightReasonBlock strong {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.insightReasonBlock span {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.miniMeta {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .inlineSourceLink {
   color: var(--accent);
   font-weight: 850;

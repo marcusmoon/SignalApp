@@ -8,8 +8,8 @@
 - **데이터 경로**: 피처 데이터 HTTP는 **`integrations/signal-api/`** 만 사용한다. 응답 메모리 캐시는 **`integrations/signal-api/cache/*`** (뉴스·캘린더·컨콜·유튜브 등). 시세 탭 등 일부 TTL·보조 캐시는 **`services/cache/`** 와 설정 화면의 캐시 초기화와 연동한다.
 - **도메인**: 뉴스 규칙 `domain/news`, 시세·심볼 시드 `domain/quotes`(예: US 심볼), 유튜브 큐레이션·핸들 `domain/youtube`, 컨콜/캘린더/시그널 등은 각 `domain/<영역>` 배럴로만 참조한다.
 - **뉴스 UI**: `components/signal/NewsCard` — 해시태그·「원문 보기」푸터, 상대 시각은 **경과 시간** 기준(방금 / N분·시간 전; 로컬 날짜 전환과 무관). 뉴스 탭은 상단 헤더와 글로벌/코인/한국 세그먼트를 고정하고, 새로고침 시 현재 세그먼트 뉴스와 오늘의 시그널을 함께 최신화한다.
-- **오늘의 시그널**: 앱 첫 화면은 서버 `/v1/insights`가 내려주는 오늘 생성 인사이트가 있으면 최신 뉴스보다 위에 `오늘의 시그널` 카드로 보여준다. 전체 리스트 화면은 인사이트 `generatedAt` 생성일 기준 날짜 선택/좌우 이동으로 과거 시그널을 조회하며, 같은 날짜의 반복 생성분은 브리핑/심볼별 최신 1건만 노출한다. 카드는 인사이트 생성에 쓰인 대표 기사/영상 원문으로 이동한다.
-- **유튜브 탭**: 최신순/인기순 선택은 `/v1/youtube?sort=latest|popular`로 전달되며, 인기순은 저장된 YouTube 조회수(`viewCount`) 기준으로 정렬한다.
+- **오늘의 시그널**: 앱 첫 화면은 서버 `/v1/insights`가 내려주는 오늘 생성 인사이트가 있으면 최신 뉴스보다 위에 `오늘의 시그널` 카드로 보여준다. 카드에는 왜 지금 봐야 하는지(`whyNow`), 다음 확인 포인트, 뉴스·유튜브·시세·실적 소스 구성을 함께 표시한다. 전체 리스트 화면은 인사이트 `generatedAt` 생성일 기준 날짜 선택/좌우 이동으로 과거 시그널을 조회하며, 같은 날짜의 반복 생성분은 브리핑/심볼별 최신 1건만 노출한다. 카드는 인사이트 생성에 쓰인 대표 기사/영상 원문으로 이동한다.
+- **유튜브 탭**: 최신순/인기순 선택은 `/v1/youtube?sort=latest|popular`로 전달된다. `youtube_economy_latest` / `youtube_economy_popular` Job이 각각 최신/인기 수집 버킷을 저장하고, 인기순은 인기 버킷이 있으면 우선 사용한 뒤 YouTube 조회수(`viewCount`) 기준으로 정렬한다.
 - **Signal 서버 선택**: `.env`의 `EXPO_PUBLIC_SIGNAL_API_BASE_URL`은 번들 기본값이며, 앱 설정에서 `bundle / dev / real / custom` endpoint를 저장해 런타임에 바꿀 수 있다.
 - **컨콜**: `services/concalls` 흐름과 앱 언어 기준 메시지; 서버 `/v1/concalls` 조회. 캐시 키에 로케일 포함.
 - **앱 내 provider 클라이언트**: Finnhub·YouTube Data·OpenAI·Claude·CoinGecko 등 **직접 HTTP 클라이언트 폴더는 사용하지 않는다**. 타입·호환은 필요 시 `types/`·`utils/` 등으로만 둔다.
@@ -23,7 +23,7 @@
 - **DB 테이블 구조**: 운영 데이터는 `signal_stores` 같은 통 payload가 아니라 기능별 SQLite 테이블(`polling_jobs`, `polling_job_runs`, `news_items`, `news_translations`, `calendar_events`, `concall_transcripts`, `youtube_videos`, `market_quotes`, `coin_markets`, `market_lists`, `provider_settings`, `translation_settings`, `news_sources`, `insight_items` 등)에 저장한다. 각 테이블은 대표 검색 컬럼과 payload를 같이 둬 추후 MySQL 전환 시 테이블 경계를 유지한다.
 - **DB 접근 직렬화**: 동일 Node 프로세스 안에서 `readDb` / `writeDb` / `updateDb`는 큐로 **한 번에 하나씩** 실행된다. `updateDb`는 SQLite `BEGIN IMMEDIATE` 트랜잭션 안에서 읽기와 쓰기를 묶어 보정 수집·번역 갱신 같은 read/modify/write 경쟁을 줄인다.
 - **스케줄(Jobs)**: 운영 액션은 어드민에서 수행하고, 실행/로그는 서버 데이터와 API를 통해 관리한다. 수동 실행 요청은 즉시 accepted로 응답하고 백그라운드 실행으로 이어지며, 어드민 실행 모니터링/실행 이력에서 진행률·경과 시간·무응답 시간·멈춤 의심 상태를 확인한다.
-- **인사이트 Job**: `insights_market_brief`는 저장된 뉴스·유튜브·시세·캘린더를 조합해 `market_brief` / `asset_signal` 형식의 인사이트를 생성하고 `insight_items`에 저장한다. 현재 MVP는 규칙 기반이며, Claude/OpenAI provider가 설정되면 LLM 호출에 필요한 provider/model 상태와 prompt 입력 데이터를 함께 보관한다.
+- **인사이트 Job**: `insights_market_brief`는 저장된 뉴스·유튜브·시세·캘린더를 조합해 `market_brief` / `asset_signal` 형식의 인사이트를 생성하고 `insight_items`에 저장한다. 현재 MVP는 규칙 기반이며, 각 결과에는 `whyNow`, `sourceStats`, `signalDrivers`, `nextSteps`를 포함한다. Claude/OpenAI provider가 설정되면 LLM 호출에 필요한 provider/model 상태와 prompt 입력 데이터를 함께 보관한다.
 - **인사이트 조회 기준**: 앱용 `/v1/insights`는 SQLite `insight_items` 테이블에서 날짜·종류·레벨·푸시 후보 조건으로 후보를 먼저 조회한 뒤, 클라이언트 시간대 기준 날짜와 브리핑/심볼별 최신 1건 규칙을 적용한다. 기본값은 클라이언트 시간대의 `오늘` 생성분이며, 어드민은 **오늘의 시그널** 화면에서 최근 7일/30일/전체 인사이트와 LLM 준비 상태, 연결 원문을 확인한다.
 - **컨콜 Provider ID**: 컨콜 수집 provider와 seed 환경변수는 내부적으로 `ninjas` / `NINJAS_KEY`를 사용한다.
 - **Financial Juice 뉴스**: RSS 제목의 `FinancialJuice:` 접두어는 수집·표시 단계에서 제거한다.

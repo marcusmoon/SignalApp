@@ -74,7 +74,7 @@ async function collectVideoIds(order, handles) {
 
 function normalizeYoutubeVideo(raw, order) {
   const viewCount = Number.parseInt(raw.statistics?.viewCount || '0', 10) || 0;
-  return {
+  const item = {
     id: `youtube-${raw.id}`,
     provider: 'youtube',
     providerItemId: raw.id,
@@ -89,9 +89,10 @@ function normalizeYoutubeVideo(raw, order) {
     viewCount,
     thumbnailUrl: `https://i.ytimg.com/vi/${raw.id}/mqdefault.jpg`,
     fetchedAt: new Date().toISOString(),
-    sortBucket: order === 'viewCount' ? 'popular' : 'latest',
     rawPayload: raw,
   };
+  if (order !== 'preserve') item.sortBucket = order === 'viewCount' ? 'popular' : 'latest';
+  return item;
 }
 
 export async function fetchYoutubeEconomy({ order = 'date', handles } = {}) {

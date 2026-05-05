@@ -141,6 +141,33 @@ function sourceRefFromYoutube(item) {
   };
 }
 
+function sourceStats({ news = [], videos = [], quote = null, earning = null }) {
+  return {
+    news: news.length,
+    youtube: videos.length,
+    quote: quote ? 1 : 0,
+    earnings: earning ? 1 : 0,
+  };
+}
+
+function sourceStatsSummary(stats) {
+  const parts = [];
+  if (stats.news > 0) parts.push(`뉴스 ${stats.news}건`);
+  if (stats.youtube > 0) parts.push(`유튜브 ${stats.youtube}건`);
+  if (stats.quote > 0) parts.push('시세');
+  if (stats.earnings > 0) parts.push('실적 일정');
+  return parts.join(' · ') || '수집 데이터';
+}
+
+function driverForSymbol({ news, movePct, earningsSoon, videos }) {
+  const drivers = [];
+  if (news.length >= 3) drivers.push('news_cluster');
+  if (Math.abs(movePct) >= 2) drivers.push(movePct > 0 ? 'price_breakout' : 'price_pressure');
+  if (earningsSoon) drivers.push('earnings_near');
+  if (videos.length > 0) drivers.push('youtube_context');
+  return drivers;
+}
+
 function titleForSymbol(symbol, score, newsCount, movePct, earningsSoon) {
   const moveText = Math.abs(movePct) >= 1 ? `${movePct > 0 ? '+' : ''}${movePct.toFixed(1)}%` : '시세 변동 낮음';
   if (earningsSoon) return `${symbol} 실적 전후 신호 점검`;
@@ -156,14 +183,17 @@ function buildSymbolInsight({ symbol, news, quote, earning, videos, today, gener
   const earningDays = earningDate ? daysBetweenYmd(today, earningDate) : null;
   const earningsSoon = earningDays != null && earningDays >= 0 && earningDays <= 7;
   const reasons = [];
+  const nextSteps = [];
   let score = 0;
 
   if (news.length >= 6) {
     score += 32;
     reasons.push(`최근 ${news.length}건의 관련 뉴스가 집중됐습니다.`);
+    nextSteps.push('반복 등장한 키워드와 출처를 먼저 확인하세요.');
   } else if (news.length >= 3) {
     score += 22;
     reasons.push(`최근 ${news.length}건의 관련 뉴스가 확인됐습니다.`);
+    nextSteps.push('관련 원문에서 이벤트의 방향성을 확인하세요.');
   } else if (news.length > 0) {
     score += 10;
     reasons.push('관련 뉴스가 새로 들어왔습니다.');
@@ -172,9 +202,11 @@ function buildSymbolInsight({ symbol, news, quote, earning, videos, today, gener
   if (absMove >= 5) {
     score += 34;
     reasons.push(`시세가 ${movePct > 0 ? '상승' : '하락'} 방향으로 ${absMove.toFixed(1)}% 움직였습니다.`);
+    nextSteps.push('뉴스와 가격 변동이 같은 방향인지 비교하세요.');
   } else if (absMove >= 2) {
     score += 22;
     reasons.push(`시세 변동폭이 ${absMove.toFixed(1)}%로 커졌습니다.`);
+    nextSteps.push('변동 원인이 단기 이슈인지 추세 변화인지 확인하세요.');
   } else if (absMove >= 1) {
     score += 8;
   }
@@ -182,11 +214,13 @@ function buildSymbolInsight({ symbol, news, quote, earning, videos, today, gener
   if (earningsSoon) {
     score += 20;
     reasons.push(`실적 발표가 ${earningDays === 0 ? '오늘' : `${earningDays}일 뒤`} 예정되어 있습니다.`);
+    nextSteps.push('실적 전후 가이던스와 컨콜 일정을 함께 보세요.');
   }
 
   if (videos.length > 0) {
     score += Math.min(10, videos.length * 4);
     reasons.push(`관련 유튜브 ${videos.length}건이 최근 업데이트됐습니다.`);
+    nextSteps.push('영상 해설이 뉴스와 같은 맥락인지 비교하세요.');
   }
 
   const capped = Math.min(100, Math.round(score));
@@ -200,7 +234,10 @@ function buildSymbolInsight({ symbol, news, quote, earning, videos, today, gener
   if (Math.abs(movePct) >= 1) summaryParts.push(`시세 ${movePct > 0 ? '+' : ''}${movePct.toFixed(1)}%`);
   if (earningsSoon) summaryParts.push(`실적 D-${earningDays}`);
   if (videos.length > 0) summaryParts.push(`유튜브 ${videos.length}건`);
-  const summary = `${summaryParts.join(' · ') || '수집 데이터'} 기준으로 관심도가 상승했습니다. 관련 원문을 확인해 맥락을 이어서 볼 수 있습니다.`;
+  const stats = sourceStats({ news, videos, quote, earning: earningsSoon ? earning : null });
+  const drivers = driverForSymbol({ news, movePct, earningsSoon, videos });
+  const whyNow = `${sourceStatsSummary(stats)} 등 신호가 같은 시간대에 겹치며 관심도가 올라왔습니다.`;
+  const summary = `${summaryParts.join(' · ') || '수집 데이터'} 기준으로 관심도가 상승했습니다. ${nextSteps[0] || '관련 원문을 확인해 맥락을 이어서 볼 수 있습니다.'}`;
 
   return {
     id: `insight:${symbol}:${generatedAt.slice(0, 13)}`,
@@ -209,6 +246,13 @@ function buildSymbolInsight({ symbol, news, quote, earning, videos, today, gener
     score: capped,
     title: titleForSymbol(symbol, capped, news.length, movePct, earningsSoon),
     summary,
+    whyNow,
+    actionLabel: '관련 원문 확인',
+    signalDrivers: drivers,
+    sourceStats: stats,
+    nextSteps: [...new Set(nextSteps)].slice(0, 3),
+    priceMovePercent: Number.isFinite(movePct) ? Number(movePct.toFixed(2)) : null,
+    earningsDate: earningsSoon ? earningDate : null,
     symbols: [symbol],
     topics: ['asset', ...(earningsSoon ? ['earnings'] : []), ...(news.length ? ['news'] : []), ...(absMove >= 2 ? ['price_move'] : [])],
     reasoning: reasons,
@@ -240,14 +284,36 @@ function buildBriefInsight({ recentNews, recentVideos, generatedAt, expiresAt, l
   const topNews = recentNews.slice(0, 5);
   const topVideos = recentVideos.slice(0, 3);
   const refs = [...topNews.map(sourceRefFromNews), ...topVideos.map(sourceRefFromYoutube)];
+  const symbolCounts = new Map();
+  for (const item of topNews) {
+    for (const symbol of item.symbols || []) {
+      const s = normalizeSymbol(symbol);
+      if (!s) continue;
+      symbolCounts.set(s, (symbolCounts.get(s) || 0) + 1);
+    }
+  }
+  const hotSymbols = [...symbolCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([symbol]) => symbol)
+    .slice(0, 6);
+  const stats = sourceStats({ news: recentNews, videos: recentVideos });
+  const summaryFocus = hotSymbols.length ? `반복 노출 종목은 ${hotSymbols.join(', ')}입니다.` : '주요 원문에서 세부 맥락을 확인하세요.';
   return {
     id: `insight:market-brief:${generatedAt.slice(0, 13)}`,
     kind: 'market_brief',
     level: topNews.length >= 8 ? 'watch' : 'brief',
     score: Math.min(60, 20 + topNews.length * 4 + topVideos.length * 3),
     title: '오늘의 시장 브리핑',
-    summary: `최근 뉴스 ${recentNews.length}건과 유튜브 ${recentVideos.length}건을 기준으로 시장 흐름을 묶었습니다. 주요 원문에서 세부 맥락을 확인하세요.`,
-    symbols: [...new Set(topNews.flatMap((item) => item.symbols || []).map(normalizeSymbol).filter(Boolean))].slice(0, 6),
+    summary: `최근 뉴스 ${recentNews.length}건과 유튜브 ${recentVideos.length}건을 기준으로 시장 흐름을 묶었습니다. ${summaryFocus}`,
+    whyNow: `오늘 새로 수집된 ${sourceStatsSummary(stats)} 기준으로 브리핑을 갱신했습니다.`,
+    actionLabel: '브리핑 원문 보기',
+    signalDrivers: ['market_brief', ...(hotSymbols.length ? ['symbol_cluster'] : []), ...(topVideos.length ? ['youtube_context'] : [])],
+    sourceStats: stats,
+    nextSteps: [
+      hotSymbols.length ? '주요 종목부터 상세 흐름을 확인하세요.' : '상단 원문부터 시장 이슈를 훑어보세요.',
+      topVideos.length ? '영상 해설과 기사 흐름이 같은지 비교하세요.' : null,
+    ].filter(Boolean),
+    symbols: hotSymbols,
     topics: ['market_brief', 'news', ...(topVideos.length ? ['youtube'] : [])],
     reasoning: ['최근 수집된 콘텐츠를 시간순으로 묶은 브리핑입니다.'],
     sourceRefs: refs,

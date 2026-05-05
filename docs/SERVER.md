@@ -154,11 +154,11 @@ Job에는 운영자가 보기 쉬운 `displayName`과 `description`이 있으며
 
 메가캡·시총 후보·인기 시세·기본 관심종목 리스트는 **Admin > 설정 > 마켓 리스트 관리**에서 수정합니다. 앱은 `/v1/market-lists/:key`를 통해 같은 리스트를 조회할 수 있고, 시총 상위 시세 Job은 `mcap_universe`, 인기 시세 Job은 `popular_symbols`를 사용합니다.
 
-앱은 시세 탭도 서버 DB 값을 사용합니다. 관심·인기·시총은 `/v1/market-quotes`, 코인은 `/v1/coins`를 조회합니다. 상세 화면의 프로필·캔들은 `/v1/stock-profile`, `/v1/stock-candles`를 조회합니다. 따라서 앱에 보이려면 해당 수집 Job이 먼저 실행되어 SQLite의 `market_quotes` / `coin_markets` 테이블에 값이 저장되어 있어야 합니다.
+앱은 시세 탭도 서버 DB 값을 사용합니다. 관심·인기·시총은 `/v1/market-quotes`, 코인은 `/v1/coins`를 조회합니다. 상세 화면의 프로필·캔들은 `/v1/stock-profile`, `/v1/stock-candles`를 조회합니다. 따라서 앱에 보이려면 해당 수집 Job이 먼저 실행되어 SQLite의 `market_quotes` / `coin_markets` 테이블에 값이 저장되어 있어야 합니다. 유튜브는 `youtube_economy_latest`와 `youtube_economy_popular` Job이 각각 최신/인기 버킷을 저장하고, 앱의 `/v1/youtube?sort=latest|popular`는 해당 버킷이 있으면 우선 사용합니다.
 
 뉴스 번역은 `title/summary/content`와 함께 `hashtags`를 반환할 수 있습니다. 서버는 자동 태그를 `newsItems[].hashtags`에 저장하고, 어드민 뉴스 편집 모달에서 수동 태그로 고정하거나 자동 모드로 되돌릴 수 있습니다. `/v1/news`는 `tag` 쿼리로 해시태그 필터를 지원합니다.
 
-시장 인사이트 Job(`insights_market_brief`)은 이미 저장된 뉴스·유튜브·시세·캘린더 데이터를 기반으로 `market_brief` / `asset_signal` 형식의 시그널을 생성해 SQLite `insight_items` 테이블에 저장합니다. 기본 파라미터는 `dateMode: today`, `timeZone: Asia/Seoul`이라 너무 오래된 원천 데이터가 오늘의 시그널을 만들지 않게 합니다. 현재 MVP는 규칙 기반으로 동작하며, Provider 설정에 Claude/OpenAI 키와 기본 모델이 설정되어 있으면 각 인사이트에 LLM provider/model 상태와 추후 호출용 `llmPromptInput`을 함께 저장합니다. 앱은 `/v1/insights`를 통해 공개 필드만 조회하고, 이 API는 SQLite `insight_items`에서 날짜·종류·레벨·푸시 후보 조건으로 후보를 먼저 좁힌 뒤 요청 시간대의 생성일과 브리핑/심볼별 최신 1건 규칙을 적용합니다. 어드민 **오늘의 시그널** 화면에서는 저장된 결과, 연결 원문, LLM 준비 상태를 확인할 수 있습니다.
+시장 인사이트 Job(`insights_market_brief`)은 이미 저장된 뉴스·유튜브·시세·캘린더 데이터를 기반으로 `market_brief` / `asset_signal` 형식의 시그널을 생성해 SQLite `insight_items` 테이블에 저장합니다. 기본 파라미터는 `dateMode: today`, `timeZone: Asia/Seoul`이라 너무 오래된 원천 데이터가 오늘의 시그널을 만들지 않게 합니다. 현재 MVP는 규칙 기반으로 동작하며, 각 결과에는 왜 지금 봐야 하는지(`whyNow`), 소스 구성(`sourceStats`), 신호 드라이버(`signalDrivers`), 다음 확인 포인트(`nextSteps`)가 포함됩니다. Provider 설정에 Claude/OpenAI 키와 기본 모델이 설정되어 있으면 각 인사이트에 LLM provider/model 상태와 추후 호출용 `llmPromptInput`을 함께 저장합니다. 앱은 `/v1/insights`를 통해 공개 필드만 조회하고, 이 API는 SQLite `insight_items`에서 날짜·종류·레벨·푸시 후보 조건으로 후보를 먼저 좁힌 뒤 요청 시간대의 생성일과 브리핑/심볼별 최신 1건 규칙을 적용합니다. 어드민 **오늘의 시그널** 화면에서는 저장된 결과, 연결 원문, 근거, 소스 구성, LLM 준비 상태를 확인할 수 있습니다.
 
 ## 5. 소스 분리
 

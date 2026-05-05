@@ -77,6 +77,7 @@ export type SignalApiYoutubeVideo = {
   duration: string;
   viewCount: number;
   thumbnailUrl?: string | null;
+  sortBucket?: 'latest' | 'popular' | string;
   fetchedAt: string;
 };
 
@@ -137,6 +138,18 @@ export type SignalApiInsight = {
   score: number;
   title: string;
   summary: string;
+  whyNow?: string;
+  actionLabel?: string;
+  signalDrivers?: string[];
+  sourceStats?: {
+    news?: number;
+    youtube?: number;
+    quote?: number;
+    earnings?: number;
+  } | null;
+  nextSteps?: string[];
+  priceMovePercent?: number | null;
+  earningsDate?: string | null;
   symbols: string[];
   topics: string[];
   reasoning: string[];

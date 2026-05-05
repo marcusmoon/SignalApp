@@ -56,6 +56,32 @@ function llmText(item, textFor) {
   return textFor('insightLlmNotConfigured');
 }
 
+function sourceStatsText(item, textFor) {
+  const stats = item.sourceStats || {};
+  const parts = [];
+  if (stats.news) parts.push(`${textFor('statNews')} ${Number(stats.news)}`);
+  if (stats.youtube) parts.push(`${textFor('statYoutube')} ${Number(stats.youtube)}`);
+  if (stats.quote) parts.push('Quote');
+  if (stats.earnings) parts.push('Earnings');
+  return parts.join(' · ') || '-';
+}
+
+function insightReasoningHtml(item, esc, textFor) {
+  const whyNow = String(item.whyNow || '').trim();
+  const nextSteps = Array.isArray(item.nextSteps) ? item.nextSteps.filter(Boolean).slice(0, 3) : [];
+  const reasoning = Array.isArray(item.reasoning) ? item.reasoning.filter(Boolean).slice(0, 3) : [];
+  const chips = Array.isArray(item.signalDrivers) ? item.signalDrivers.filter(Boolean).slice(0, 5) : [];
+  if (!whyNow && nextSteps.length === 0 && reasoning.length === 0 && chips.length === 0) return '';
+  return `
+    <div class="insightReasonBlock">
+      ${whyNow ? `<div><strong>${esc(textFor('insightWhyNow'))}</strong><span>${esc(whyNow)}</span></div>` : ''}
+      ${reasoning.length ? `<div><strong>${esc(textFor('insightReasoning'))}</strong><span>${reasoning.map(esc).join(' · ')}</span></div>` : ''}
+      ${nextSteps.length ? `<div><strong>${esc(textFor('insightNextSteps'))}</strong><span>${nextSteps.map(esc).join(' · ')}</span></div>` : ''}
+      ${chips.length ? `<div class="insightSymbolRow">${chips.map((chip) => `<span class="pill">${esc(chip)}</span>`).join('')}</div>` : ''}
+    </div>
+  `;
+}
+
 function renderPager({ targetId, state, $, esc, textForVars, textFor }) {
   $(targetId).innerHTML = `
     <div class="muted">${esc(textForVars('pagerSummary', { total: state.insightsTotal, page: state.insightsPage, pages: state.insightsTotalPages }))}</div>
@@ -71,6 +97,7 @@ export async function loadInsightsView(ctx) {
   const filters = state.insightFilters || {};
   const body = await api(`/admin/api/insights?${insightQueryParams({ state, $ })}`);
   const rows = Array.isArray(body.data) ? body.data : [];
+  const summary = body.summary || {};
   state.insightRows = rows;
   state.insightsPage = body.page || 1;
   state.insightsTotalPages = body.totalPages || 1;
@@ -83,7 +110,12 @@ export async function loadInsightsView(ctx) {
         <div class="cardKicker">${esc(textFor('insightAdminSummaryTitle'))}</div>
         <p class="summary">${esc(textFor('insightAdminSummaryDesc'))}</p>
       </div>
-      <span class="pill pillStatus--ok">${esc(textForVars('insightAdminTotal', { count: state.insightsTotal }))}</span>
+      <div class="row">
+        <span class="pill pillStatus--ok">${esc(textForVars('insightAdminTotal', { count: state.insightsTotal }))}</span>
+        <span class="pill pillStatus--warn">${esc(textForVars('insightAdminPushCount', { count: Number(summary.pushCandidates || 0) }))}</span>
+        <span class="pill pillStatus--error">${esc(textForVars('insightAdminAlertCount', { count: Number(summary.alerts || 0) }))}</span>
+        <span class="pill">${esc(textForVars('insightAdminLlmReadyCount', { count: Number(summary.llmReady || 0) }))}</span>
+      </div>
     </div>
     <div class="filterBar filterBox">
       <div class="filterBarTitle filterBoxTitle">${esc(textFor('filterSearchConditions'))}</div>
@@ -154,11 +186,15 @@ export async function loadInsightsView(ctx) {
                 <strong>${esc(item.title || '-')}</strong>
                 <div class="muted insightSummaryCell">${esc(item.summary || '')}</div>
                 <div class="insightSymbolRow">${(item.symbols || []).slice(0, 5).map((symbol) => `<span class="pill">${esc(symbol)}</span>`).join('')}</div>
+                ${insightReasoningHtml(item, esc, textFor)}
               </td>
               <td><span class="pill">${esc(item.kind || '-')}</span><br/><span class="pill pillStatus ${item.pushCandidate ? 'pillStatus--warn' : 'pillStatus--muted'}">${esc(item.level || '-')}</span></td>
               <td class="right"><strong>${Number(item.score || 0)}</strong></td>
               <td class="muted">${esc(formatDateTime(item.generatedAt))}</td>
-              <td class="muted">${sourceLinks(item, esc)}</td>
+              <td class="muted">
+                <div>${sourceLinks(item, esc)}</div>
+                <div class="miniMeta">${esc(textFor('insightSourceStats'))}: ${esc(sourceStatsText(item, textFor))}</div>
+              </td>
               <td class="muted">${esc(llmText(item, textFor))}</td>
             </tr>
           `).join('')}
@@ -177,12 +213,14 @@ export async function loadInsightsView(ctx) {
             <span class="pill pillStatus ${item.pushCandidate ? 'pillStatus--warn' : 'pillStatus--muted'}">${esc(item.level || '-')} · ${Number(item.score || 0)}</span>
           </div>
           <p class="summary">${esc(item.summary || '')}</p>
+          ${insightReasoningHtml(item, esc, textFor)}
           <div class="mobileJobMeta">
             <span class="pill">${esc(item.kind || '-')}</span>
             ${(item.symbols || []).slice(0, 4).map((symbol) => `<span class="pill">${esc(symbol)}</span>`).join('')}
           </div>
           <div class="mobileRunStats">
             <span>${esc(textFor('insightSources'))} <strong>${sourceLinks(item, esc)}</strong></span>
+            <span>${esc(textFor('insightSourceStats'))} <strong>${esc(sourceStatsText(item, textFor))}</strong></span>
             <span>${esc(textFor('insightLlm'))} <strong>${esc(llmText(item, textFor))}</strong></span>
           </div>
         </article>

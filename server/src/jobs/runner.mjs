@@ -201,7 +201,7 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
       .slice(0, limit)
       .map((item) => item.videoId || item.providerItemId)
       .filter(Boolean);
-    return { kind: 'youtube', rows: await fetchYoutubeVideosByIds(ids, { order: 'date' }) };
+    return { kind: 'youtube', rows: await fetchYoutubeVideosByIds(ids, { order: 'preserve' }) };
   }
   if (job.provider === 'finnhub' && job.handler === 'market_quotes') {
     const listKey = job.params?.listKey || (job.params?.segment === 'popular' ? 'popular_symbols' : null);

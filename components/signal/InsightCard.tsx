@@ -24,6 +24,16 @@ export function InsightCard({ insight, theme, scaleFont, onOpenUrl, compact, emb
   const primaryRef = primaryInsightSourceRef(insight);
   const url = primaryRef?.url?.trim();
   const summaryLines = compact ? 2 : 4;
+  const whyNow = String(insight.whyNow || '').trim();
+  const nextSteps = Array.isArray(insight.nextSteps) ? insight.nextSteps.filter(Boolean).slice(0, compact ? 1 : 2) : [];
+  const sourceStats = insight.sourceStats || null;
+  const sourceChips = [
+    sourceStats?.news ? `N ${sourceStats.news}` : null,
+    sourceStats?.youtube ? `Y ${sourceStats.youtube}` : null,
+    sourceStats?.quote ? 'Quote' : null,
+    sourceStats?.earnings ? 'Earnings' : null,
+  ].filter(Boolean) as string[];
+  const actionLabel = String(insight.actionLabel || '').trim();
 
   return (
     <Pressable
@@ -42,10 +52,29 @@ export function InsightCard({ insight, theme, scaleFont, onOpenUrl, compact, emb
       <Text style={styles.summary} numberOfLines={summaryLines}>
         {insight.summary}
       </Text>
+      {whyNow ? (
+        <Text style={styles.whyNow} numberOfLines={compact ? 2 : 3}>
+          {whyNow}
+        </Text>
+      ) : null}
+      {nextSteps.length > 0 ? (
+        <View style={styles.reasonList}>
+          {nextSteps.map((step) => (
+            <Text key={`${insight.id}-${step}`} style={styles.reason} numberOfLines={2}>
+              {step}
+            </Text>
+          ))}
+        </View>
+      ) : null}
       <View style={styles.metaRow}>
         {insight.symbols.slice(0, compact ? 3 : 6).map((symbol) => (
           <Text key={`${insight.id}-${symbol}`} style={styles.symbol}>
             {symbol}
+          </Text>
+        ))}
+        {sourceChips.map((chip) => (
+          <Text key={`${insight.id}-${chip}`} style={styles.sourceChip}>
+            {chip}
           </Text>
         ))}
         {primaryRef?.sourceName ? (
@@ -54,6 +83,7 @@ export function InsightCard({ insight, theme, scaleFont, onOpenUrl, compact, emb
           </Text>
         ) : null}
       </View>
+      {actionLabel && url ? <Text style={styles.action}>{actionLabel}</Text> : null}
     </Pressable>
   );
 }
@@ -104,6 +134,21 @@ function makeInsightCardStyles(theme: AppTheme, sf: (n: number) => number, embed
       lineHeight: sf(18),
       fontWeight: '600',
     },
+    whyNow: {
+      color: theme.text,
+      fontSize: sf(12),
+      lineHeight: sf(18),
+      fontWeight: '800',
+    },
+    reasonList: {
+      gap: 4,
+    },
+    reason: {
+      color: theme.textDim,
+      fontSize: sf(11),
+      lineHeight: sf(16),
+      fontWeight: '700',
+    },
     metaRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -122,12 +167,31 @@ function makeInsightCardStyles(theme: AppTheme, sf: (n: number) => number, embed
       fontSize: sf(11),
       fontWeight: '900',
     },
+    sourceChip: {
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 8,
+      overflow: 'hidden',
+      color: theme.textDim,
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
+      borderColor: theme.border,
+      fontSize: sf(10),
+      fontWeight: '900',
+    },
     ref: {
       flex: 1,
       minWidth: 0,
       color: theme.textDim,
       fontSize: sf(11),
       fontWeight: '700',
+    },
+    action: {
+      alignSelf: 'flex-start',
+      color: theme.green,
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '900',
     },
   });
 }

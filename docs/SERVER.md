@@ -154,7 +154,7 @@ Job에는 운영자가 보기 쉬운 `displayName`과 `description`이 있으며
 
 메가캡·시총 후보·인기 시세·기본 관심종목 리스트는 **Admin > 설정 > 마켓 리스트 관리**에서 수정합니다. 앱은 `/v1/market-lists/:key`를 통해 같은 리스트를 조회할 수 있고, 시총 상위 시세 Job은 `mcap_universe`, 인기 시세 Job은 `popular_symbols`를 사용합니다.
 
-앱은 시세 탭도 서버 DB 값을 사용합니다. 관심·인기·시총은 `/v1/market-quotes`, 코인은 `/v1/coins`를 조회합니다. 상세 화면의 프로필·캔들은 `/v1/stock-profile`, `/v1/stock-candles`를 조회합니다. 따라서 앱에 보이려면 해당 수집 Job이 먼저 실행되어 SQLite의 `market_quotes` / `coin_markets` 테이블에 값이 저장되어 있어야 합니다. 유튜브는 `youtube_economy_latest`와 `youtube_economy_popular` Job이 각각 최신/인기 버킷을 저장하고, 앱의 `/v1/youtube?sort=latest|popular`는 해당 버킷이 있으면 우선 사용합니다.
+앱은 시세 탭도 서버 DB 값을 사용합니다. 관심·인기·시총은 `/v1/market-quotes`, 코인은 `/v1/coins`를 조회합니다. 상세 화면의 프로필·캔들은 `/v1/stock-profile`, `/v1/stock-candles`를 조회합니다. 따라서 앱에 보이려면 해당 수집 Job이 먼저 실행되어 SQLite의 `market_quotes` / `coin_markets` 테이블에 값이 저장되어 있어야 합니다. 유튜브는 `youtube_economy_latest`와 `youtube_economy_popular` Job이 각각 최신/인기 버킷을 저장하고, 같은 영상이 양쪽에 걸리면 `sortBuckets`로 함께 보관합니다. 앱의 `/v1/youtube?sort=latest|popular`는 해당 버킷이 있으면 우선 사용합니다.
 
 뉴스 번역은 `title/summary/content`와 함께 `hashtags`를 반환할 수 있습니다. 서버는 자동 태그를 `newsItems[].hashtags`에 저장하고, 어드민 뉴스 편집 모달에서 수동 태그로 고정하거나 자동 모드로 되돌릴 수 있습니다. `/v1/news`는 `tag` 쿼리로 해시태그 필터를 지원합니다.
 

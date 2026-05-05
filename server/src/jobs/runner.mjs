@@ -36,6 +36,23 @@ function normalizeSymbol(value) {
   return String(value || '').trim().toUpperCase();
 }
 
+function bucketList(item) {
+  const buckets = Array.isArray(item?.sortBuckets) ? item.sortBuckets : [];
+  if (item?.sortBucket) buckets.push(item.sortBucket);
+  return [...new Set(buckets.map((bucket) => String(bucket || '').trim()).filter(Boolean))];
+}
+
+function upsertYoutubeVideo(list, row) {
+  const previous = list.find((item) => item.id === row.id);
+  const mergedBuckets = [...new Set([...bucketList(previous), ...bucketList(row)])];
+  const next = { ...row };
+  if (mergedBuckets.length > 0) {
+    next.sortBuckets = mergedBuckets;
+    next.sortBucket = row.sortBucket || previous?.sortBucket || mergedBuckets[0];
+  }
+  return upsertById(list, next);
+}
+
 function selectConcallTargets(db, params = {}) {
   const from = ymd(addDays(new Date(), -Math.max(0, Number(params.daysBack) || 45)));
   const to = ymd(addDays(new Date(), Number(params.daysAhead) || 2));
@@ -315,7 +332,7 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       } else if (result.kind === 'concallTranscripts') {
         for (const row of rows) upsertById(db.concallTranscripts, row);
       } else if (result.kind === 'youtube') {
-        for (const row of rows) upsertById(db.youtubeVideos, row);
+        for (const row of rows) upsertYoutubeVideo(db.youtubeVideos, row);
       } else if (result.kind === 'marketQuotes') {
         for (const row of rows) upsertById(db.marketQuotes, row);
       } else if (result.kind === 'coinMarkets') {

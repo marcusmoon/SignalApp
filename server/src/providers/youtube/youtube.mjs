@@ -74,6 +74,7 @@ async function collectVideoIds(order, handles) {
 
 function normalizeYoutubeVideo(raw, order) {
   const viewCount = Number.parseInt(raw.statistics?.viewCount || '0', 10) || 0;
+  const sortBucket = order === 'viewCount' ? 'popular' : 'latest';
   const item = {
     id: `youtube-${raw.id}`,
     provider: 'youtube',
@@ -91,7 +92,10 @@ function normalizeYoutubeVideo(raw, order) {
     fetchedAt: new Date().toISOString(),
     rawPayload: raw,
   };
-  if (order !== 'preserve') item.sortBucket = order === 'viewCount' ? 'popular' : 'latest';
+  if (order !== 'preserve') {
+    item.sortBucket = sortBucket;
+    item.sortBuckets = [sortBucket];
+  }
   return item;
 }
 

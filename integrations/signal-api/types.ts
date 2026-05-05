@@ -78,6 +78,7 @@ export type SignalApiYoutubeVideo = {
   viewCount: number;
   thumbnailUrl?: string | null;
   sortBucket?: 'latest' | 'popular' | string;
+  sortBuckets?: string[];
   fetchedAt: string;
 };
 

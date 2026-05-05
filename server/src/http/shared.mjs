@@ -193,7 +193,7 @@ export function filterYoutube(items, url) {
       ),
     );
   }
-  const bucketRows = rows.filter((item) => item.sortBucket === sort);
+  const bucketRows = rows.filter((item) => item.sortBucket === sort || item.sortBuckets?.includes(sort));
   if (bucketRows.length > 0) rows = bucketRows;
   if (sort === 'popular') {
     return rows.sort(

@@ -1,4 +1,5 @@
 import { ensureDbShape, shapeDbFromStores } from './shape.mjs';
+import { insightGeneratedDate, normalizeInsightDisplayKey } from './insights.mjs';
 import { collectionTables, ensureStructuredSchema, tableCount, tableExists } from './sqlite/schema.mjs';
 import { nowIso } from './time.mjs';
 
@@ -324,11 +325,22 @@ const collectionSpecs = [
     table: 'insight_items',
     keyColumn: 'id',
     keyOf: (row) => row.id,
-    extraColumns: ['kind', 'level', 'score', 'generated_at', 'expires_at', 'push_candidate'],
+    extraColumns: [
+      'kind',
+      'display_key',
+      'level',
+      'score',
+      'generated_date',
+      'generated_at',
+      'expires_at',
+      'push_candidate',
+    ],
     extra: (row) => ({
       kind: textOrNull(row.kind),
+      display_key: textOrNull(normalizeInsightDisplayKey(row)),
       level: textOrNull(row.level),
       score: Number.isFinite(Number(row.score)) ? Math.round(Number(row.score)) : null,
+      generated_date: textOrNull(insightGeneratedDate(row)),
       generated_at: textOrNull(row.generatedAt),
       expires_at: textOrNull(row.expiresAt),
       push_candidate: boolInt(row.pushCandidate === true),

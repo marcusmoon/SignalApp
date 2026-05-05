@@ -12,6 +12,7 @@ import {
   verifyAdminLoginInDb,
 } from './db/adminUsers.mjs';
 import { defaultDb } from './db/defaults.mjs';
+import { queryInsightItemsInDb } from './db/insights.mjs';
 import {
   ensureNewsSourcesFromItems,
   normalizeNewsSourceName,
@@ -126,6 +127,13 @@ export async function updateDb(mutator) {
       conn.exec('ROLLBACK');
       throw error;
     }
+  });
+}
+
+export async function queryInsightItems(options = {}) {
+  return withDbExclusive(async () => {
+    const conn = await ensureSqliteStore();
+    return queryInsightItemsInDb(conn, options);
   });
 }
 

@@ -26,6 +26,16 @@ export function tableCount(db, table) {
   return Number(db.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get()?.count) || 0;
 }
 
+function columnExists(db, table, column) {
+  if (!tableExists(db, table)) return false;
+  return db.prepare(`PRAGMA table_info(${table})`).all().some((row) => row.name === column);
+}
+
+function ensureColumn(db, table, column, ddl) {
+  if (columnExists(db, table, column)) return;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl};`);
+}
+
 export function ensureStructuredSchema(db) {
   db.exec(`
     PRAGMA journal_mode = WAL;
@@ -197,8 +207,10 @@ export function ensureStructuredSchema(db) {
       id TEXT PRIMARY KEY,
       position INTEGER NOT NULL DEFAULT 0,
       kind TEXT,
+      display_key TEXT,
       level TEXT,
       score INTEGER,
+      generated_date TEXT,
       generated_at TEXT,
       expires_at TEXT,
       push_candidate INTEGER NOT NULL DEFAULT 0,
@@ -215,5 +227,11 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_market_quotes_symbol ON market_quotes(symbol, segment);
     CREATE INDEX IF NOT EXISTS idx_coin_markets_symbol ON coin_markets(symbol);
     CREATE INDEX IF NOT EXISTS idx_insight_items_generated ON insight_items(generated_at, score);
+    CREATE INDEX IF NOT EXISTS idx_insight_items_lookup ON insight_items(kind, level, push_candidate, generated_at);
+  `);
+  ensureColumn(db, 'insight_items', 'display_key', 'TEXT');
+  ensureColumn(db, 'insight_items', 'generated_date', 'TEXT');
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_insight_items_display ON insight_items(generated_date, display_key, generated_at);
   `);
 }

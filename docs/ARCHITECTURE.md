@@ -132,7 +132,7 @@ services/
 server/src/providers/       # 외부 provider 호출 + 정규화(예: market/finnhub, market/index, concalls/ninjas)
 server/src/jobs/            # scheduler/runner (수집 작업)
 server/src/insights/        # 저장 데이터 기반 인사이트 생성 규칙(LLM 연결 전 MVP 포함)
-server/src/db/              # DB shape/defaults/sqlite store helper
+server/src/db/              # DB shape/defaults/sqlite store/인사이트 조회 helper
 server/src/db/sqlite/       # SQLite schema/table 유틸
 server/data/                # signal.sqlite (+ WAL/SHM)
 ```

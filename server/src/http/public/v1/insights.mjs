@@ -1,4 +1,5 @@
-import { readDb } from '../../../db.mjs';
+import { queryInsightItems } from '../../../db.mjs';
+import { normalizeInsightDisplayKey } from '../../../db/insights.mjs';
 import { dateKeyInTimeZone, json } from '../../shared.mjs';
 
 function todayInTimeZone(timeZone) {
@@ -6,11 +7,7 @@ function todayInTimeZone(timeZone) {
 }
 
 function insightLogicalKey(item) {
-  const kind = String(item?.kind || 'insight');
-  if (kind === 'market_brief') return kind;
-  const symbol = (item?.symbols || []).map((s) => String(s || '').trim().toUpperCase()).find(Boolean);
-  if (kind === 'asset_signal' && symbol) return `${kind}:${symbol}`;
-  return item?.id || `${kind}:${item?.title || ''}`;
+  return normalizeInsightDisplayKey(item);
 }
 
 function newestLogicalInsights(rows) {
@@ -30,7 +27,7 @@ function newestLogicalInsights(rows) {
   return out;
 }
 
-function filterInsights(items, url) {
+function insightRequestParams(url) {
   const symbol = url.searchParams.get('symbol')?.trim().toUpperCase();
   const level = url.searchParams.get('level')?.trim();
   const kind = url.searchParams.get('kind')?.trim();
@@ -39,23 +36,50 @@ function filterInsights(items, url) {
   const timeZone = url.searchParams.get('timeZone') || 'Asia/Seoul';
   const dateMode = String(url.searchParams.get('date') || 'today').toLowerCase();
   const pushOnly = url.searchParams.get('pushCandidate') === 'true';
+  const history = url.searchParams.get('history') === 'true';
+  const today = todayInTimeZone(timeZone);
+  return {
+    symbol,
+    level,
+    kind,
+    from,
+    to,
+    timeZone,
+    dateMode,
+    pushOnly,
+    history,
+    queryFrom: dateMode !== 'all' ? from || today : from,
+    queryTo: dateMode !== 'all' ? to || today : to,
+  };
+}
+
+function filterInsights(items, params) {
   const now = Date.now();
   let rows = [...(items || [])];
   rows = rows.filter((item) => {
     const expiresAt = item?.expiresAt ? new Date(item.expiresAt).getTime() : null;
     return !Number.isFinite(expiresAt) || expiresAt >= now;
   });
-  if (dateMode !== 'all') {
-    const today = todayInTimeZone(timeZone);
-    rows = rows.filter((item) => item.generatedAt && dateKeyInTimeZone(item.generatedAt, timeZone) === today);
+  if (params.dateMode !== 'all') {
+    const today = todayInTimeZone(params.timeZone);
+    rows = rows.filter((item) => item.generatedAt && dateKeyInTimeZone(item.generatedAt, params.timeZone) === today);
   }
-  if (from) rows = rows.filter((item) => !item.generatedAt || dateKeyInTimeZone(item.generatedAt, timeZone) >= from);
-  if (to) rows = rows.filter((item) => !item.generatedAt || dateKeyInTimeZone(item.generatedAt, timeZone) <= to);
-  if (symbol) rows = rows.filter((item) => (item.symbols || []).map((s) => String(s).toUpperCase()).includes(symbol));
-  if (level) rows = rows.filter((item) => item.level === level);
-  if (kind) rows = rows.filter((item) => item.kind === kind);
-  if (pushOnly) rows = rows.filter((item) => item.pushCandidate === true);
-  if (url.searchParams.get('history') !== 'true') rows = newestLogicalInsights(rows);
+  if (params.from) {
+    rows = rows.filter(
+      (item) => !item.generatedAt || dateKeyInTimeZone(item.generatedAt, params.timeZone) >= params.from,
+    );
+  }
+  if (params.to) {
+    rows = rows.filter(
+      (item) => !item.generatedAt || dateKeyInTimeZone(item.generatedAt, params.timeZone) <= params.to,
+    );
+  }
+  if (params.symbol)
+    rows = rows.filter((item) => (item.symbols || []).map((s) => String(s).toUpperCase()).includes(params.symbol));
+  if (params.level) rows = rows.filter((item) => item.level === params.level);
+  if (params.kind) rows = rows.filter((item) => item.kind === params.kind);
+  if (params.pushOnly) rows = rows.filter((item) => item.pushCandidate === true);
+  if (!params.history) rows = newestLogicalInsights(rows);
   return rows.sort(
     (a, b) =>
       Number(b.score || 0) - Number(a.score || 0) ||
@@ -85,10 +109,17 @@ function publicInsight(item) {
 
 export async function handlePublicInsightRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/v1/insights') {
-    const db = await readDb();
     const limit = Math.min(Math.max(1, Number(url.searchParams.get('limit') || 10) || 10), 50);
     const offsetRaw = Number(url.searchParams.get('offset') || 0) || 0;
-    const filtered = filterInsights(db.insightItems, url);
+    const params = insightRequestParams(url);
+    const candidates = await queryInsightItems({
+      from: params.queryFrom,
+      to: params.queryTo,
+      kind: params.kind,
+      level: params.level,
+      pushOnly: params.pushOnly,
+    });
+    const filtered = filterInsights(candidates, params);
     const total = filtered.length;
     const offset = Math.min(Math.max(0, offsetRaw), total);
     const page = filtered.slice(offset, offset + limit).map(publicInsight);

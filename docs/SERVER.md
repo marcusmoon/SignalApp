@@ -158,7 +158,7 @@ Job에는 운영자가 보기 쉬운 `displayName`과 `description`이 있으며
 
 뉴스 번역은 `title/summary/content`와 함께 `hashtags`를 반환할 수 있습니다. 서버는 자동 태그를 `newsItems[].hashtags`에 저장하고, 어드민 뉴스 편집 모달에서 수동 태그로 고정하거나 자동 모드로 되돌릴 수 있습니다. `/v1/news`는 `tag` 쿼리로 해시태그 필터를 지원합니다.
 
-시장 인사이트 Job(`insights_market_brief`)은 이미 저장된 뉴스·유튜브·시세·캘린더 데이터를 기반으로 `market_brief` / `asset_signal` 형식의 시그널을 생성해 SQLite `insight_items` 테이블에 저장합니다. 기본 파라미터는 `dateMode: today`, `timeZone: Asia/Seoul`이라 너무 오래된 원천 데이터가 오늘의 시그널을 만들지 않게 합니다. 현재 MVP는 규칙 기반으로 동작하며, Provider 설정에 Claude/OpenAI 키와 기본 모델이 설정되어 있으면 각 인사이트에 LLM provider/model 상태와 추후 호출용 `llmPromptInput`을 함께 저장합니다. 앱은 `/v1/insights`를 통해 공개 필드만 조회하고, 이 API는 기본적으로 요청 시간대의 오늘 생성분만 반환합니다. 어드민 **오늘의 시그널** 화면에서는 저장된 결과, 연결 원문, LLM 준비 상태를 확인할 수 있습니다.
+시장 인사이트 Job(`insights_market_brief`)은 이미 저장된 뉴스·유튜브·시세·캘린더 데이터를 기반으로 `market_brief` / `asset_signal` 형식의 시그널을 생성해 SQLite `insight_items` 테이블에 저장합니다. 기본 파라미터는 `dateMode: today`, `timeZone: Asia/Seoul`이라 너무 오래된 원천 데이터가 오늘의 시그널을 만들지 않게 합니다. 현재 MVP는 규칙 기반으로 동작하며, Provider 설정에 Claude/OpenAI 키와 기본 모델이 설정되어 있으면 각 인사이트에 LLM provider/model 상태와 추후 호출용 `llmPromptInput`을 함께 저장합니다. 앱은 `/v1/insights`를 통해 공개 필드만 조회하고, 이 API는 SQLite `insight_items`에서 날짜·종류·레벨·푸시 후보 조건으로 후보를 먼저 좁힌 뒤 요청 시간대의 생성일과 브리핑/심볼별 최신 1건 규칙을 적용합니다. 어드민 **오늘의 시그널** 화면에서는 저장된 결과, 연결 원문, LLM 준비 상태를 확인할 수 있습니다.
 
 ## 5. 소스 분리
 
@@ -171,6 +171,7 @@ server/src/server.mjs           # API + admin + local scheduler
 server/src/http/               # HTTP 라우트(공용/관리자/공개 API) 도메인별 모듈
 server/src/db.mjs               # DB 공개 facade(readDb/updateDb/admin users/news source helpers)
 server/src/db/                  # SQLite store shape/default seed/admin user/news source 내부 모듈
+server/src/db/insights.mjs      # 인사이트 표시 키/생성일/후보 조회 헬퍼
 server/src/db/sqlite/           # SQLite schema/table 유틸
 server/src/insights/            # 수집 데이터 기반 인사이트 생성 규칙
 server/src/worker.mjs           # scheduler-only entrypoint

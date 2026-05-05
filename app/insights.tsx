@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
@@ -63,6 +64,7 @@ function monthFromYmd(value: string): { year: number; month: number } {
 }
 
 export default function InsightsScreen() {
+  const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -316,6 +318,7 @@ export default function InsightsScreen() {
               scaleFont={scaleFont}
               compact={false}
               onOpenUrl={(url) => void WebBrowser.openBrowserAsync(url)}
+              onOpenSymbol={(symbol) => router.push(`/symbol/${symbol}`)}
             />
           )}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}

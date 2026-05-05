@@ -458,7 +458,7 @@ export const ko = {
   quotesEmptyGeneric: '표시할 시세가 없습니다.',
 
   briefingDigestKicker: '오늘의 브리핑',
-  briefingTodaySignalsTitle: '오늘의 시그널',
+  briefingTodaySignalsTitle: '관심종목 점수',
   briefingSignalOpenA11y: '{{symbol}} 시그널 점수 {{score}}점 상세 보기',
   briefingDigestEmptyWatch: '관심 종목이 없어요. 시세 탭에서 티커를 추가하면 여기가 채워집니다.',
   briefingErrorLoad: '브리핑을 불러오지 못했습니다.',

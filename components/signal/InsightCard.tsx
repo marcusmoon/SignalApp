@@ -10,13 +10,14 @@ type Props = {
   theme: AppTheme;
   scaleFont: (n: number) => number;
   onOpenUrl: (url: string) => void;
+  onOpenSymbol?: (symbol: string) => void;
   /** 홈 피드용 짧은 요약 */
   compact?: boolean;
   /** 홈 시그널 블록 안 — 바깥 테두리와 맞춰 더 옅은 면·약한 테두리 */
   embedded?: boolean;
 };
 
-export function InsightCard({ insight, theme, scaleFont, onOpenUrl, compact, embedded }: Props) {
+export function InsightCard({ insight, theme, scaleFont, onOpenUrl, onOpenSymbol, compact, embedded }: Props) {
   const styles = useMemo(
     () => makeInsightCardStyles(theme, scaleFont, embedded === true),
     [embedded, theme, scaleFont],
@@ -67,11 +68,21 @@ export function InsightCard({ insight, theme, scaleFont, onOpenUrl, compact, emb
         </View>
       ) : null}
       <View style={styles.metaRow}>
-        {insight.symbols.slice(0, compact ? 3 : 6).map((symbol) => (
-          <Text key={`${insight.id}-${symbol}`} style={styles.symbol}>
-            {symbol}
-          </Text>
-        ))}
+        {insight.symbols.slice(0, compact ? 3 : 6).map((symbol) =>
+          onOpenSymbol ? (
+            <Pressable
+              key={`${insight.id}-${symbol}`}
+              onPress={() => onOpenSymbol(symbol)}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.symbol, pressed && styles.symbolPressed]}>
+              <Text style={styles.symbolText}>{symbol}</Text>
+            </Pressable>
+          ) : (
+            <Text key={`${insight.id}-${symbol}`} style={styles.symbolStatic}>
+              {symbol}
+            </Text>
+          ),
+        )}
         {sourceChips.map((chip) => (
           <Text key={`${insight.id}-${chip}`} style={styles.sourceChip}>
             {chip}
@@ -156,6 +167,22 @@ function makeInsightCardStyles(theme: AppTheme, sf: (n: number) => number, embed
       gap: 6,
     },
     symbol: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 8,
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+    },
+    symbolPressed: {
+      opacity: 0.72,
+    },
+    symbolText: {
+      color: theme.green,
+      fontSize: sf(11),
+      fontWeight: '900',
+    },
+    symbolStatic: {
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 8,

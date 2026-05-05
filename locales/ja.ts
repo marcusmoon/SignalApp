@@ -461,7 +461,7 @@ export const ja = {
   quotesEmptyGeneric: '表示する相場がありません。',
 
   briefingDigestKicker: '今日のブリーフ',
-  briefingTodaySignalsTitle: '今日のシグナル',
+  briefingTodaySignalsTitle: 'ウォッチスコア',
   briefingSignalOpenA11y: '{{symbol}} シグナルスコア {{score}} の詳細を開く',
   briefingDigestEmptyWatch: 'ウォッチがありません。相場タブでティッカーを追加するとここに表示されます。',
   briefingErrorLoad: 'ブリーフィングを読み込めませんでした。',

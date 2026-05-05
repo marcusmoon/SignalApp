@@ -463,7 +463,7 @@ export const en = {
   quotesEmptyGeneric: 'No quotes to show.',
 
   briefingDigestKicker: "Today's brief",
-  briefingTodaySignalsTitle: "Today's signals",
+  briefingTodaySignalsTitle: 'Watchlist scores',
   briefingSignalOpenA11y: 'Open {{symbol}} detail with signal score {{score}}',
   briefingDigestEmptyWatch: 'No watchlist tickers yet. Add some on Quotes to fill this in.',
   briefingErrorLoad: 'Could not load briefing.',

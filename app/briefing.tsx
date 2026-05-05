@@ -42,6 +42,7 @@ import { loadMarketSnapshotQuotes } from '@/services/marketSnapshotQuotes';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { hasSignalApi } from '@/services/env';
 import { addDays, toYmd } from '@/utils/date';
+import { signalQuoteMovePct, signalReasonLabel } from '@/utils/signalDisplay';
 
 const WATCH_LIMIT = 10;
 const EARN_DAYS = 21;
@@ -66,17 +67,6 @@ function formatPctOne(n: number): string {
 function formatUsd(n: number): string {
   if (!Number.isFinite(n)) return '—';
   return `$${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
-}
-
-function effectiveDp(q: SignalApiMarketQuote): number {
-  const dp = Number(q.changePercent);
-  if (Number.isFinite(dp)) return dp;
-  const c = Number(q.currentPrice);
-  const pc = Number(q.previousClose);
-  if (Number.isFinite(c) && Number.isFinite(pc) && pc !== 0) {
-    return ((c - pc) / pc) * 100;
-  }
-  return Number.NaN;
 }
 
 function nextEarningForSymbol(rows: SignalApiCalendarEvent[], sym: string): SignalApiCalendarEvent | null {
@@ -141,17 +131,6 @@ function insightVsSma20(candles: SignalApiStockCandles, lastPrice: number): { vs
   const sma = last20.reduce((a, b) => a + b, 0) / 20;
   if (!Number.isFinite(sma) || sma === 0 || !Number.isFinite(lastPrice)) return null;
   return { vsSmaPct: ((lastPrice - sma) / sma) * 100 };
-}
-
-function signalReasonLabel(reason: string, t: ReturnType<typeof useLocale>['t']): string {
-  if (reason === 'news_dense') return t('signalReasonNewsDense');
-  if (reason === 'news_active') return t('signalReasonNewsActive');
-  if (reason === 'price_surge') return t('signalReasonPriceSurge');
-  if (reason === 'price_drop') return t('signalReasonPriceDrop');
-  if (reason === 'price_move') return t('signalReasonPriceMove');
-  if (reason === 'sma_stretched') return t('signalReasonSmaStretched');
-  if (reason === 'earnings_soon') return t('signalReasonEarningsSoon');
-  return t('signalReasonWatch');
 }
 
 export default function BriefingScreen() {
@@ -325,7 +304,7 @@ export default function BriefingScreen() {
     let flat = 0;
     for (const sym of symbols) {
       const q = quoteBySymbol[sym];
-      const dp = q ? effectiveDp(q) : Number.NaN;
+      const dp = signalQuoteMovePct(q);
       if (!Number.isFinite(dp)) continue;
       if (dp > 0.01) up += 1;
       else if (dp < -0.01) down += 1;
@@ -344,7 +323,7 @@ export default function BriefingScreen() {
     const movers = symbols
       .map((sym) => {
         const q = quoteBySymbol[sym];
-        const dp = q ? effectiveDp(q) : Number.NaN;
+        const dp = signalQuoteMovePct(q);
         return { sym, abs: Number.isFinite(dp) ? Math.abs(dp) : 0, dp };
       })
       .filter((x) => x.abs >= 2)
@@ -427,7 +406,7 @@ export default function BriefingScreen() {
                   <View style={styles.signalBoard}>
                     {signalRows.map((row: SignalScore, index) => {
                       const q = quoteBySymbol[row.symbol] ?? null;
-                      const dp = q ? effectiveDp(q) : Number.NaN;
+                      const dp = signalQuoteMovePct(q);
                       const up = (Number.isFinite(dp) ? dp : 0) >= 0;
                       const reasons = row.reasons.slice(0, 2).map((r) => signalReasonLabel(r, t));
                       if (reasons.length === 0) reasons.push(t('signalReasonWatch'));
@@ -487,7 +466,7 @@ export default function BriefingScreen() {
                     const list = newsBySymbol[sym] ?? [];
                     const topNews = list[0];
                     const nextE = nextEarningForSymbol(earnings, sym);
-                    const dp = q ? effectiveDp(q) : Number.NaN;
+                    const dp = signalQuoteMovePct(q);
                     const up = (Number.isFinite(dp) ? dp : 0) >= 0;
                     const sma = smaBySymbol[sym];
                     const vsLine =

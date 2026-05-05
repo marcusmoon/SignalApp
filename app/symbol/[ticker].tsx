@@ -34,6 +34,7 @@ import { loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatc
 import type { NewsItem } from '@/types/signal';
 import { hasSignalApi } from '@/services/env';
 import { addDays, toYmd } from '@/utils/date';
+import { signalReasonLabel } from '@/utils/signalDisplay';
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
 
 /** 실적 캘린더 과거 구간(일) — 지난 분기 행이 보이도록 넉넉히 */
@@ -93,17 +94,6 @@ function fmtFinMetric(n: number | null | undefined): string {
 
 function hasCalendarMetrics(row: SignalApiCalendarEvent): boolean {
   return [row.estimate, row.actual, row.previous].some((v) => typeof v === 'number' && Number.isFinite(v));
-}
-
-function signalReasonLabel(reason: string, t: ReturnType<typeof useLocale>['t']): string {
-  if (reason === 'news_dense') return t('signalReasonNewsDense');
-  if (reason === 'news_active') return t('signalReasonNewsActive');
-  if (reason === 'price_surge') return t('signalReasonPriceSurge');
-  if (reason === 'price_drop') return t('signalReasonPriceDrop');
-  if (reason === 'price_move') return t('signalReasonPriceMove');
-  if (reason === 'sma_stretched') return t('signalReasonSmaStretched');
-  if (reason === 'earnings_soon') return t('signalReasonEarningsSoon');
-  return t('signalReasonWatch');
 }
 
 function normalizeCompanyName(name: string | undefined, ticker: string): string | null {

@@ -562,6 +562,7 @@ export default function FeedScreen() {
                     compact
                     embedded
                     onOpenUrl={(url) => void WebBrowser.openBrowserAsync(url)}
+                    onOpenSymbol={(symbol) => router.push(`/symbol/${symbol}`)}
                   />
                 ))
               : null}
@@ -631,6 +632,14 @@ export default function FeedScreen() {
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>
           {insightSectionEl}
+          {refreshNotice ? (
+            <View style={styles.refreshNotice}>
+              <FontAwesome name="check-circle" size={13} color={theme.green} />
+              <Text style={styles.refreshNoticeText} numberOfLines={2}>
+                {refreshNotice}
+              </Text>
+            </View>
+          ) : null}
           <View style={styles.segment}>
             {segmentOrder.map((key) => (
               <Pressable
@@ -645,14 +654,6 @@ export default function FeedScreen() {
               </Pressable>
             ))}
           </View>
-          {refreshNotice ? (
-            <View style={styles.refreshNotice}>
-              <FontAwesome name="check-circle" size={13} color={theme.green} />
-              <Text style={styles.refreshNoticeText} numberOfLines={2}>
-                {refreshNotice}
-              </Text>
-            </View>
-          ) : null}
         </View>
 
         <FlatList
@@ -774,6 +775,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignItems: 'center',
       gap: 8,
       marginTop: 8,
+      marginBottom: 8,
       paddingVertical: 9,
       paddingHorizontal: 11,
       borderRadius: 10,

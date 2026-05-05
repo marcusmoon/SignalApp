@@ -22,6 +22,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
+import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
@@ -446,6 +447,7 @@ export default function QuotesScreen() {
   }, [load, t]);
 
   const bottomPad = 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
+  const fabStackBottom = tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom + 8;
 
   const quotesListHeader = useMemo(
     () => (
@@ -632,8 +634,6 @@ export default function QuotesScreen() {
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>
-          <Text style={styles.section}>{t('quotesScreenTitle')}</Text>
-
           <View style={styles.segment}>
             {segmentOrder.map((key) => (
               <Pressable
@@ -682,6 +682,14 @@ export default function QuotesScreen() {
           maxToRenderPerBatch={16}
         />
       </View>
+
+      <FloatingGlassFab
+        bottom={fabStackBottom}
+        onPress={() => void onRefresh()}
+        iconName="refresh"
+        accessibilityLabel={t('fabRefreshA11y')}
+        disabled={refreshing || loading}
+      />
     </SafeAreaView>
   );
 }
@@ -703,7 +711,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     list: { flex: 1, minHeight: 0 },
     listContent: { paddingHorizontal: 16, paddingTop: 0 },
-    section: { fontSize: sf(16), fontWeight: '800', color: theme.text, marginBottom: 4 },
     segment: {
       flexDirection: 'row',
       backgroundColor: SEGMENT_TAB_BACKGROUND,

@@ -11,7 +11,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -22,6 +21,7 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
+import { FloatingGlassFab, FLOATING_GLASS_FAB_GAP, FLOATING_GLASS_FAB_SIZE } from '@/components/signal/FloatingGlassFab';
 import { SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
@@ -237,6 +237,7 @@ export default function YoutubeScreen() {
       : loading;
 
   const bottomPad = 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
+  const fabStackBottom = tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom + 8;
 
   const youtubeListHeader = useMemo(
     () => (
@@ -309,8 +310,6 @@ export default function YoutubeScreen() {
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>
-          <Text style={styles.section}>{t('youtubeScreenTitle')}</Text>
-
           <View style={styles.segment}>
             <Pressable
               onPress={() => setSort('latest')}
@@ -356,31 +355,25 @@ export default function YoutubeScreen() {
         />
       </View>
 
+      {hasSignalApi() ? (
+        <FloatingGlassFab
+          bottom={
+            fabStackBottom + (filterReady ? FLOATING_GLASS_FAB_SIZE + FLOATING_GLASS_FAB_GAP : 0)
+          }
+          onPress={() => void onRefresh()}
+          iconName="refresh"
+          accessibilityLabel={t('fabRefreshA11y')}
+          disabled={refreshing}
+        />
+      ) : null}
+
       {filterReady ? (
-        <Pressable
+        <FloatingGlassFab
+          bottom={fabStackBottom}
           onPress={() => setChannelModalVisible(true)}
-          style={({ pressed }) => [
-            styles.filterFab,
-            {
-              bottom: tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom + 8,
-            },
-            pressed && styles.filterFabPressed,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={t('a11yYoutubeFilter')}>
-          {Platform.OS === 'web' ? (
-            <View style={styles.filterFabBlurFallback} />
-          ) : (
-            <BlurView
-              intensity={Platform.OS === 'ios' ? 100 : 85}
-              tint="dark"
-              experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
-              style={StyleSheet.absoluteFill}
-            />
-          )}
-          <View pointerEvents="none" style={styles.filterFabRing} />
-          <FontAwesome name="filter" size={19} color={theme.green} />
-        </Pressable>
+          iconName="filter"
+          accessibilityLabel={t('a11yYoutubeFilter')}
+        />
       ) : null}
 
       <Modal
@@ -427,36 +420,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     list: { flex: 1, minHeight: 0 },
     listContent: { paddingHorizontal: 16, paddingTop: 0 },
-    section: { fontSize: sf(16), fontWeight: '800', color: theme.text, marginBottom: 4 },
-    filterFab: {
-      position: 'absolute',
-      right: 16,
-      width: 52,
-      height: 52,
-      borderRadius: 26,
-      overflow: 'hidden',
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.3,
-      shadowRadius: 10,
-      elevation: 10,
-    },
-    filterFabBlurFallback: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(10,10,15,0.88)',
-      borderRadius: 26,
-    },
-    filterFabRing: {
-      ...StyleSheet.absoluteFillObject,
-      borderRadius: 26,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: 'rgba(255,255,255,0.14)',
-    },
-    filterFabPressed: {
-      opacity: 0.9,
-    },
     modalBackdrop: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.55)',

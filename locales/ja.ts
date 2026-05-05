@@ -11,6 +11,7 @@ export const ja = {
   commonLoading: '読み込み中…',
   commonAd: '広告',
   commonLoadingA11y: '読み込み中',
+  fabRefreshA11y: '一覧を更新',
   notFoundTitle: 'おっと',
   notFoundMessage: 'この画面は存在しません。',
   notFoundGoHome: 'ホームへ',

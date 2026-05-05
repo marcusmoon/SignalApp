@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { BlurView } from 'expo-blur';
 import * as WebBrowser from 'expo-web-browser';
 
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
@@ -36,6 +35,7 @@ import {
 import { AdPlaceholder } from '@/components/signal/AdPlaceholder';
 import { NewsSourceFilterModal } from '@/components/signal/NewsSourceFilterModal';
 import { InsightCard } from '@/components/signal/InsightCard';
+import { FloatingGlassFab, FLOATING_GLASS_FAB_GAP, FLOATING_GLASS_FAB_SIZE } from '@/components/signal/FloatingGlassFab';
 import { NewsCard } from '@/components/signal/NewsCard';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
@@ -441,6 +441,7 @@ export default function FeedScreen() {
       : null;
 
   const bottomPad = 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
+  const fabStackBottom = tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom + 8;
 
   const listHeaderEl = useMemo(
     () => (
@@ -505,8 +506,6 @@ export default function FeedScreen() {
                 : null}
             </View>
         ) : null}
-
-        <Text style={styles.section}>{t('feedSectionTitle')}</Text>
 
         <View style={styles.segment}>
           {segmentOrder.map((key) => (
@@ -618,31 +617,25 @@ export default function FeedScreen() {
         maxToRenderPerBatch={12}
       />
 
+      {hasSignalApi() ? (
+        <FloatingGlassFab
+          bottom={
+            fabStackBottom + (filterReady ? FLOATING_GLASS_FAB_SIZE + FLOATING_GLASS_FAB_GAP : 0)
+          }
+          onPress={() => void onRefresh()}
+          iconName="refresh"
+          accessibilityLabel={t('fabRefreshA11y')}
+          disabled={refreshing}
+        />
+      ) : null}
+
       {filterReady ? (
-        <Pressable
+        <FloatingGlassFab
+          bottom={fabStackBottom}
           onPress={() => setFilterModalVisible(true)}
-          style={({ pressed }) => [
-            styles.filterFab,
-            {
-              bottom: tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom + 8,
-            },
-            pressed && styles.filterFabPressed,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={t('a11yNewsFilter')}>
-          {Platform.OS === 'web' ? (
-            <View style={styles.filterFabBlurFallback} />
-          ) : (
-            <BlurView
-              intensity={Platform.OS === 'ios' ? 100 : 85}
-              tint="dark"
-              experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
-              style={StyleSheet.absoluteFill}
-            />
-          )}
-          <View pointerEvents="none" style={styles.filterFabRing} />
-          <FontAwesome name="filter" size={19} color={theme.green} />
-        </Pressable>
+          iconName="filter"
+          accessibilityLabel={t('a11yNewsFilter')}
+        />
       ) : null}
 
       <NewsSourceFilterModal
@@ -778,12 +771,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(12),
       color: theme.textMuted,
     },
-    section: {
-      fontSize: sf(16),
-      fontWeight: '800',
-      color: theme.text,
-      marginBottom: 4,
-    },
     segment: {
       flexDirection: 'row',
       backgroundColor: SEGMENT_TAB_BACKGROUND,
@@ -830,35 +817,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(13),
       color: theme.textMuted,
       marginTop: 8,
-    },
-    filterFab: {
-      position: 'absolute',
-      right: 16,
-      width: 52,
-      height: 52,
-      borderRadius: 26,
-      overflow: 'hidden',
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.3,
-      shadowRadius: 10,
-      elevation: 10,
-    },
-    filterFabBlurFallback: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(10,10,15,0.88)',
-      borderRadius: 26,
-    },
-    filterFabRing: {
-      ...StyleSheet.absoluteFillObject,
-      borderRadius: 26,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: 'rgba(255,255,255,0.14)',
-    },
-    filterFabPressed: {
-      opacity: 0.9,
     },
   });
 }

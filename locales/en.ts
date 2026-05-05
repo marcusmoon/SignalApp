@@ -11,6 +11,7 @@ export const en = {
   commonLoading: 'Loading…',
   commonAd: 'Ad',
   commonLoadingA11y: 'Loading',
+  fabRefreshA11y: 'Refresh list',
   notFoundTitle: 'Oops!',
   notFoundMessage: "This screen doesn't exist.",
   notFoundGoHome: 'Go to home',

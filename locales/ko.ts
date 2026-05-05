@@ -9,6 +9,7 @@ export const ko = {
   commonLoading: '불러오는 중…',
   commonAd: '광고',
   commonLoadingA11y: '불러오는 중',
+  fabRefreshA11y: '목록 새로고침',
   notFoundTitle: '앗!',
   notFoundMessage: '이 화면은 존재하지 않습니다.',
   notFoundGoHome: '홈으로 이동',

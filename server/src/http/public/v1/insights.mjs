@@ -5,6 +5,31 @@ function todayInTimeZone(timeZone) {
   return dateKeyInTimeZone(new Date().toISOString(), timeZone);
 }
 
+function insightLogicalKey(item) {
+  const kind = String(item?.kind || 'insight');
+  if (kind === 'market_brief') return kind;
+  const symbol = (item?.symbols || []).map((s) => String(s || '').trim().toUpperCase()).find(Boolean);
+  if (kind === 'asset_signal' && symbol) return `${kind}:${symbol}`;
+  return item?.id || `${kind}:${item?.title || ''}`;
+}
+
+function newestLogicalInsights(rows) {
+  const latestFirst = [...rows].sort(
+    (a, b) =>
+      String(b.generatedAt || '').localeCompare(String(a.generatedAt || '')) ||
+      Number(b.score || 0) - Number(a.score || 0),
+  );
+  const seen = new Set();
+  const out = [];
+  for (const item of latestFirst) {
+    const key = insightLogicalKey(item);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
 function filterInsights(items, url) {
   const symbol = url.searchParams.get('symbol')?.trim().toUpperCase();
   const level = url.searchParams.get('level')?.trim();
@@ -30,6 +55,7 @@ function filterInsights(items, url) {
   if (level) rows = rows.filter((item) => item.level === level);
   if (kind) rows = rows.filter((item) => item.kind === kind);
   if (pushOnly) rows = rows.filter((item) => item.pushCandidate === true);
+  if (url.searchParams.get('history') !== 'true') rows = newestLogicalInsights(rows);
   return rows.sort(
     (a, b) =>
       Number(b.score || 0) - Number(a.score || 0) ||

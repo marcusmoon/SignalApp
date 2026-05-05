@@ -19,6 +19,8 @@ export type InvestMonthCalendarProps = {
   monthNextA11y: string;
   /** 오늘 날짜 YYYY-MM-DD (부모에서 한 번만 계산) */
   todayYmd: string;
+  /** 선택 가능한 마지막 날짜 YYYY-MM-DD */
+  maxYmd?: string;
   theme: AppTheme;
   locale: AppLocale;
   /** 상단 고정 등 좁은 영역용 — 패딩·셀 높이 축소 */
@@ -47,6 +49,7 @@ export function InvestMonthCalendar({
   monthPrevA11y,
   monthNextA11y,
   todayYmd,
+  maxYmd,
   theme,
   locale,
   compact = false,
@@ -119,25 +122,29 @@ export function InvestMonthCalendar({
           const isToday = cell.ymd === todayYmd;
           const isSelected = cell.ymd === selectedYmd;
           const hasDot = eventDates.has(cell.ymd);
+          const disabled = Boolean(maxYmd && cell.ymd > maxYmd);
           const dayNum = Number(cell.ymd.slice(8, 10));
           return (
             <Pressable
               key={cell.ymd}
               onPress={() => onSelectYmd(cell.ymd!)}
+              disabled={disabled}
               style={({ pressed }) => [
                 styles.cell,
                 isSelected && styles.cellSelected,
                 isToday && !isSelected && styles.cellToday,
-                pressed && styles.cellPressed,
+                disabled && styles.cellDisabled,
+                pressed && !disabled && styles.cellPressed,
               ]}
               accessibilityRole="button"
-              accessibilityState={{ selected: isSelected }}
+              accessibilityState={{ selected: isSelected, disabled }}
               accessibilityLabel={cell.ymd}>
               <Text
                 style={[
                   styles.dayNum,
                   isSelected && styles.dayNumSelected,
                   isToday && !isSelected && styles.dayNumToday,
+                  disabled && styles.dayNumDisabled,
                 ]}>
                 {dayNum}
               </Text>
@@ -200,9 +207,11 @@ function makeStyles(theme: AppTheme, compact: boolean) {
       borderRadius: 999,
     },
     cellPressed: { opacity: 0.85 },
+    cellDisabled: { opacity: 0.32 },
     dayNum: { fontSize: compact ? 12 : 13, fontWeight: '700', color: theme.text },
     dayNumSelected: { color: '#0A0A0F' },
     dayNumToday: { color: theme.green },
+    dayNumDisabled: { color: theme.textDim },
     dot: {
       width: 4,
       height: 4,

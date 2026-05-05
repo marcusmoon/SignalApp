@@ -9,6 +9,26 @@ function ymd(date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
+function dateKeyInTimeZone(value, timeZone) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return String(value || '').slice(0, 10);
+  const tz = String(timeZone || '').trim();
+  if (!tz) return date.toISOString().slice(0, 10);
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+    const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    if (byType.year && byType.month && byType.day) return `${byType.year}-${byType.month}-${byType.day}`;
+  } catch {
+    // Fall back to UTC when an unknown timezone is supplied.
+  }
+  return date.toISOString().slice(0, 10);
+}
+
 function daysBetweenYmd(a, b) {
   const ma = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(a || ''));
   const mb = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(b || ''));
@@ -45,12 +65,17 @@ function bestQuoteBySymbol(quotes) {
   return map;
 }
 
-function recentRows(rows, fields, sinceMs, limit = 200) {
+function recentRows(rows, fields, sinceMs, limit = 200, { dateMode = 'today', timeZone = 'Asia/Seoul', targetYmd = null } = {}) {
   return [...(rows || [])]
-    .filter((row) => fields.some((field) => {
-      const t = validTime(row?.[field]);
-      return t != null && t >= sinceMs;
-    }))
+    .filter((row) =>
+      fields.some((field) => {
+        const raw = row?.[field];
+        const t = validTime(raw);
+        if (t == null || t < sinceMs) return false;
+        if (dateMode === 'today' && targetYmd) return dateKeyInTimeZone(raw, timeZone) === targetYmd;
+        return true;
+      }),
+    )
     .sort((a, b) => {
       const at = Math.max(...fields.map((field) => validTime(a?.[field]) || 0));
       const bt = Math.max(...fields.map((field) => validTime(b?.[field]) || 0));
@@ -249,17 +274,21 @@ function buildBriefInsight({ recentNews, recentVideos, generatedAt, expiresAt, l
 export function generateMarketInsights(db, params = {}) {
   const generatedAt = nowIso();
   const now = new Date(generatedAt);
-  const today = ymd(now);
+  const timeZone = String(params.timeZone || 'Asia/Seoul').trim() || 'Asia/Seoul';
+  const dateMode = String(params.dateMode || 'today').toLowerCase() === 'all' ? 'all' : 'today';
+  const today = dateMode === 'today' ? dateKeyInTimeZone(generatedAt, timeZone) : ymd(now);
   const windowHours = Math.max(1, Math.min(168, Number(params.windowHours) || 24));
   const maxItems = Math.max(1, Math.min(50, Number(params.maxItems) || 8));
   const minScore = Math.max(0, Math.min(100, Number(params.minScore) || 20));
   const expiresAt = new Date(now.getTime() + windowHours * 60 * 60 * 1000).toISOString();
   const sinceMs = now.getTime() - windowHours * 60 * 60 * 1000;
   const llm = selectInsightLlm(db, params.llmProvider || 'auto');
+  const recency = { dateMode, timeZone, targetYmd: today };
 
-  const recentNews = recentRows(db.newsItems, ['publishedAt', 'fetchedAt', 'updatedAt'], sinceMs, 300);
-  const recentVideos = recentRows(db.youtubeVideos, ['publishedAt', 'fetchedAt', 'updatedAt'], sinceMs, 120);
-  const quoteMap = bestQuoteBySymbol(db.marketQuotes);
+  const recentNews = recentRows(db.newsItems, ['publishedAt', 'fetchedAt', 'updatedAt'], sinceMs, 300, recency);
+  const recentVideos = recentRows(db.youtubeVideos, ['publishedAt', 'fetchedAt', 'updatedAt'], sinceMs, 120, recency);
+  const recentQuotes = recentRows(db.marketQuotes, ['quoteTime', 'fetchedAt', 'updatedAt'], sinceMs, 500, recency);
+  const quoteMap = bestQuoteBySymbol(recentQuotes);
   const earningsMap = nextEarningsBySymbol(db.calendarEvents, today);
   const videosBySymbol = new Map();
   for (const video of recentVideos) {
@@ -306,6 +335,8 @@ export function generateMarketInsights(db, params = {}) {
     .sort((a, b) => b.score - a.score || a.title.localeCompare(b.title))
     .slice(0, maxItems);
 
-  const brief = buildBriefInsight({ recentNews, recentVideos, generatedAt, expiresAt, llm });
-  return [brief, ...assetInsights].slice(0, maxItems);
+  const brief = recentNews.length > 0 || recentVideos.length > 0
+    ? buildBriefInsight({ recentNews, recentVideos, generatedAt, expiresAt, llm })
+    : null;
+  return [brief, ...assetInsights].filter(Boolean).slice(0, maxItems);
 }

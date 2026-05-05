@@ -28,12 +28,14 @@ export function applyAdminLanguage() {
     monitoring: 'navMonitoring',
     errors: 'navErrors',
     jobs: 'navJobs',
+    insights: 'navInsights',
     news: 'navNews',
     youtube: 'navYoutube',
     calendar: 'navCalendar',
     concalls: 'navConcalls',
     translations: 'navTranslations',
     'settings-keys': 'navSettingsKeys',
+    'settings-users': 'navSettingsUsers',
     'settings-theme': 'navSettingsTheme',
     'settings-lists': 'navSettingsLists',
     'settings-sources': 'navSettingsSources',
@@ -78,4 +80,3 @@ export function applyAdminLanguage() {
   const globalSearch = document.getElementById('globalSearchInput');
   if (globalSearch instanceof HTMLInputElement) globalSearch.placeholder = textFor('headerSearchPh');
 }
-

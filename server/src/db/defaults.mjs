@@ -280,6 +280,8 @@ export function defaultPollingJobs() {
       intervalSeconds: 1800,
       params: {
         windowHours: 24,
+        dateMode: 'today',
+        timeZone: 'Asia/Seoul',
         maxItems: 8,
         minScore: 20,
         llmProvider: 'auto',

@@ -21,6 +21,7 @@ import type { SignalApiInsight } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 
 const PAGE_SIZE = 20;
+const CLIENT_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export default function InsightsScreen() {
   const { theme, scaleFont } = useSignalTheme();
@@ -46,7 +47,12 @@ export default function InsightsScreen() {
       setError(null);
       try {
         nextOffsetRef.current = 0;
-        const { items: rows, meta } = await fetchSignalInsights({ limit: PAGE_SIZE, offset: 0 });
+        const { items: rows, meta } = await fetchSignalInsights({
+          date: 'today',
+          timeZone: CLIENT_TIME_ZONE,
+          limit: PAGE_SIZE,
+          offset: 0,
+        });
         if (cancelled) return;
         setItems(rows);
         nextOffsetRef.current = rows.length;
@@ -71,7 +77,12 @@ export default function InsightsScreen() {
     setLoadingMore(true);
     try {
       const off = nextOffsetRef.current;
-      const { items: rows, meta } = await fetchSignalInsights({ limit: PAGE_SIZE, offset: off });
+      const { items: rows, meta } = await fetchSignalInsights({
+        date: 'today',
+        timeZone: CLIENT_TIME_ZONE,
+        limit: PAGE_SIZE,
+        offset: off,
+      });
       setItems((prev) => [...prev, ...rows]);
       nextOffsetRef.current = off + rows.length;
       setHasMore(meta.hasMore);
@@ -91,7 +102,12 @@ export default function InsightsScreen() {
         return;
       }
       nextOffsetRef.current = 0;
-      const { items: rows, meta } = await fetchSignalInsights({ limit: PAGE_SIZE, offset: 0 });
+      const { items: rows, meta } = await fetchSignalInsights({
+        date: 'today',
+        timeZone: CLIENT_TIME_ZONE,
+        limit: PAGE_SIZE,
+        offset: 0,
+      });
       setItems(rows);
       nextOffsetRef.current = rows.length;
       setHasMore(meta.hasMore);

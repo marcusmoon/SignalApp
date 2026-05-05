@@ -1,10 +1,18 @@
 import { readDb } from '../../../db.mjs';
-import { json } from '../../shared.mjs';
+import { dateKeyInTimeZone, json } from '../../shared.mjs';
+
+function todayInTimeZone(timeZone) {
+  return dateKeyInTimeZone(new Date().toISOString(), timeZone);
+}
 
 function filterInsights(items, url) {
   const symbol = url.searchParams.get('symbol')?.trim().toUpperCase();
   const level = url.searchParams.get('level')?.trim();
   const kind = url.searchParams.get('kind')?.trim();
+  const from = url.searchParams.get('from');
+  const to = url.searchParams.get('to');
+  const timeZone = url.searchParams.get('timeZone') || 'Asia/Seoul';
+  const dateMode = String(url.searchParams.get('date') || 'today').toLowerCase();
   const pushOnly = url.searchParams.get('pushCandidate') === 'true';
   const now = Date.now();
   let rows = [...(items || [])];
@@ -12,6 +20,12 @@ function filterInsights(items, url) {
     const expiresAt = item?.expiresAt ? new Date(item.expiresAt).getTime() : null;
     return !Number.isFinite(expiresAt) || expiresAt >= now;
   });
+  if (dateMode !== 'all') {
+    const today = todayInTimeZone(timeZone);
+    rows = rows.filter((item) => item.generatedAt && dateKeyInTimeZone(item.generatedAt, timeZone) === today);
+  }
+  if (from) rows = rows.filter((item) => !item.generatedAt || dateKeyInTimeZone(item.generatedAt, timeZone) >= from);
+  if (to) rows = rows.filter((item) => !item.generatedAt || dateKeyInTimeZone(item.generatedAt, timeZone) <= to);
   if (symbol) rows = rows.filter((item) => (item.symbols || []).map((s) => String(s).toUpperCase()).includes(symbol));
   if (level) rows = rows.filter((item) => item.level === level);
   if (kind) rows = rows.filter((item) => item.kind === kind);

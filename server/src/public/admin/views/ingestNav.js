@@ -12,6 +12,12 @@ const steps = [
     descKey: 'ingestStepMonitorDesc',
   },
   {
+    view: 'insights',
+    icon: 'I',
+    titleKey: 'ingestStepInsightsTitle',
+    descKey: 'ingestStepInsightsDesc',
+  },
+  {
     view: 'errors',
     icon: '!',
     titleKey: 'ingestStepErrorsTitle',

@@ -198,6 +198,8 @@ export default function FeedScreen() {
       let catalogRows: { name: string; enabled: boolean; order: number }[] = [];
       try {
         const { items: insightRows, meta } = await fetchSignalInsights({
+          date: 'today',
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           limit: INSIGHT_HOME_PREVIEW,
           offset: 0,
         });

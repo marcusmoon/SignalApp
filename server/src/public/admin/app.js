@@ -6,6 +6,7 @@ import { $, state } from './state.js';
 import { applyTheme } from './theme.js';
 import { dismissToast, showToast } from './toast.js';
 import { loadDashboardView } from './views/dashboard.js';
+import { loadInsightsView } from './views/insights.js';
 import { loadJobsView, loadJobRunsView } from './views/jobs.js';
 import { loadErrorsView, loadMonitoringView } from './views/monitoring.js';
 import {
@@ -255,6 +256,45 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         setDatePresetFor('calendar');
       }
 
+      function setInsightDatePreset() {
+        setDatePresetFor('insight');
+      }
+
+      function applyInsightDatePresetToState() {
+        const filters = state.insightFilters || {};
+        const preset = filters.range || '7d';
+        const today = ymdInAdminTime(new Date());
+        let from = filters.from || '';
+        let to = filters.to || '';
+        if (preset === 'today') from = to = today;
+        if (preset === '7d') {
+          from = shiftYmd(today, -6);
+          to = today;
+        }
+        if (preset === '30d') {
+          from = shiftYmd(today, -29);
+          to = today;
+        }
+        if (preset === 'all') {
+          from = '';
+          to = '';
+        }
+        state.insightFilters = { ...filters, range: preset, from, to };
+      }
+
+      function syncInsightFiltersFromDom() {
+        state.insightFilters = {
+          range: $('insightRange')?.value || state.insightFilters?.range || '7d',
+          from: $('insightFrom')?.value || '',
+          to: $('insightTo')?.value || '',
+          kind: $('insightKind')?.value || '',
+          level: $('insightLevel')?.value || '',
+          push: $('insightPush')?.value || '',
+          q: $('insightQuery')?.value || '',
+          pageSize: $('insightPageSize')?.value || state.insightFilters?.pageSize || '30',
+        };
+      }
+
       function domainLabel(domain) {
         const d = domain || 'other';
         const key =
@@ -402,6 +442,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         if (resolvedView === 'calendar') void loadCalendar();
         if (resolvedView === 'monitoring') void loadMonitoring();
         if (resolvedView === 'errors') void loadErrors();
+        if (resolvedView === 'insights') void loadInsights();
         if (resolvedView === 'settings') {
           const activeSettingsTab = settingsTabFromView || state.settingsTab || 'users';
           setSettingsTab(activeSettingsTab);
@@ -485,6 +526,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         await Promise.all([
           loadDashboard(),
           loadMonitoring(),
+          loadInsights(),
           loadErrors(),
           loadJobs(),
           loadJobRuns(),
@@ -863,6 +905,14 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         return result;
       }
 
+      async function loadInsights() {
+        applyInsightDatePresetToState();
+        const result = await loadInsightsView({ api, $, state, esc, textFor, textForVars, formatDateTime });
+        setInsightDatePreset();
+        enhanceMobileAdminSurfaces();
+        return result;
+      }
+
       function updateResetUi() {
         const boxes = [...document.querySelectorAll('[data-reset-target]')];
         const selectedBoxes = boxes.filter((box) => box.checked);
@@ -977,6 +1027,11 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           if (target?.id === 'refreshJobsBtn') {
             await Promise.all([loadJobs(), loadJobRuns(), loadDashboard()]);
             showToast(textFor('btnRefresh'), textFor('toastJobsLogsRefreshed'), { kind: 'info' });
+            return;
+          }
+          if (target?.id === 'refreshInsightsBtn') {
+            await Promise.all([loadInsights(), loadDashboard()]);
+            showToast(textFor('btnRefresh'), textFor('btnRefreshThisView'), { kind: 'info' });
             return;
           }
           if (target?.id === 'refreshNewsBtn') {
@@ -1189,19 +1244,24 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             dismissToast(toastCloseBtn.dataset.toastClose);
             return;
           }
-          if (target.dataset.view) await switchView(target.dataset.view);
-          // Close sidebar overlay after navigation (tablet)
-          if (document.body.classList.contains('sideOpen')) {
-            document.body.classList.remove('sideOpen');
-            $('sideOverlay')?.classList.add('hidden');
+          const viewTarget = target instanceof Element ? target.closest('[data-view]') : null;
+          if (viewTarget?.dataset?.view) {
+            await switchView(viewTarget.dataset.view);
+            // Close sidebar overlay after navigation (tablet)
+            if (document.body.classList.contains('sideOpen')) {
+              document.body.classList.remove('sideOpen');
+              $('sideOverlay')?.classList.add('hidden');
+            }
           }
-          if (target.dataset.jobTab) setJobTab(target.dataset.jobTab);
-          if (target.dataset.settingsTab) {
-            setSettingsTab(target.dataset.settingsTab);
-            if (target.dataset.settingsTab === 'keys') await loadProviderSettings();
-            if (target.dataset.settingsTab === 'users') await loadAdminUsers();
-            if (target.dataset.settingsTab === 'lists') await loadMarketLists();
-            if (target.dataset.settingsTab === 'sources') await Promise.all([loadNewsSourceSettings(), loadNewsSources()]);
+          const jobTabTarget = target instanceof Element ? target.closest('[data-job-tab]') : null;
+          if (jobTabTarget?.dataset?.jobTab) setJobTab(jobTabTarget.dataset.jobTab);
+          const settingsTabTarget = target instanceof Element ? target.closest('[data-settings-tab]') : null;
+          if (settingsTabTarget?.dataset?.settingsTab) {
+            setSettingsTab(settingsTabTarget.dataset.settingsTab);
+            if (settingsTabTarget.dataset.settingsTab === 'keys') await loadProviderSettings();
+            if (settingsTabTarget.dataset.settingsTab === 'users') await loadAdminUsers();
+            if (settingsTabTarget.dataset.settingsTab === 'lists') await loadMarketLists();
+            if (settingsTabTarget.dataset.settingsTab === 'sources') await Promise.all([loadNewsSourceSettings(), loadNewsSources()]);
           }
           if (target.dataset.opFilter) {
             state.operationFilter = target.dataset.opFilter;
@@ -1680,6 +1740,35 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             state.jobRunsPage += 1;
             await loadJobRuns();
           }
+          if (target.id === 'loadInsightsBtn') {
+            syncInsightFiltersFromDom();
+            state.insightsPage = 1;
+            await loadInsights();
+          }
+          if (target.id === 'resetInsightsBtn') {
+            state.insightFilters = {
+              range: '7d',
+              from: '',
+              to: '',
+              kind: '',
+              level: '',
+              push: '',
+              q: '',
+              pageSize: '30',
+            };
+            state.insightsPage = 1;
+            await loadInsights();
+          }
+          if (target.dataset.insightsPage === 'prev' && state.insightsPage > 1) {
+            syncInsightFiltersFromDom();
+            state.insightsPage -= 1;
+            await loadInsights();
+          }
+          if (target.dataset.insightsPage === 'next' && state.insightsPage < state.insightsTotalPages) {
+            syncInsightFiltersFromDom();
+            state.insightsPage += 1;
+            await loadInsights();
+          }
           if (target.id === 'loadYoutubeBtn') {
             state.youtubePage = 1;
             await loadYoutube();
@@ -1891,7 +1980,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           setDatePreset();
           setJobRunDatePreset();
           setCalendarDatePreset();
-          await Promise.all([loadDashboard(), loadJobs(), loadJobRuns(), loadNews(), loadYoutube()]);
+          await Promise.all([loadDashboard(), loadJobs(), loadJobRuns(), loadInsights(), loadNews(), loadYoutube()]);
         }
         if (event.target.dataset && event.target.dataset.newsSourceEnabled) {
           const id = event.target.dataset.newsSourceEnabled;
@@ -1979,6 +2068,12 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           state.jobRunsPage = 1;
           await loadJobRuns();
         }
+        if (event.target.id === 'insightRange') {
+          state.insightFilters = { ...(state.insightFilters || {}), range: event.target.value || '7d' };
+          applyInsightDatePresetToState();
+          state.insightsPage = 1;
+          await loadInsights();
+        }
         if (event.target.id === 'jobRunJob') {
           state.jobRunsPage = 1;
           await loadJobRuns();
@@ -2053,6 +2148,13 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         ) {
           event.preventDefault();
           document.getElementById('loadJobRunsBtn')?.click();
+        }
+        if (
+          event.key === 'Enter' &&
+          (event.target.id === 'insightQuery' || event.target.id === 'insightFrom' || event.target.id === 'insightTo')
+        ) {
+          event.preventDefault();
+          document.getElementById('loadInsightsBtn')?.click();
         }
       });
 

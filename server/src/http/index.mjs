@@ -1,6 +1,7 @@
 import { handleAdminCalendarRoutes } from './admin/api/calendar.mjs';
 import { handleAdminConcallsRoutes } from './admin/api/concalls.mjs';
 import { handleAdminDataResetRoutes } from './admin/api/dataReset.mjs';
+import { handleAdminInsightsRoutes } from './admin/api/insights.mjs';
 import { handleAdminJobsRoutes } from './admin/api/jobs.mjs';
 import { handleAdminNewsRoutes } from './admin/api/news.mjs';
 import { handleAdminSettingsRoutes } from './admin/api/settings.mjs';
@@ -28,6 +29,7 @@ const PUBLIC_ROUTE_HANDLERS = [
 
 const ADMIN_API_HANDLERS = [
   handleAdminJobsRoutes,
+  handleAdminInsightsRoutes,
   handleAdminNewsRoutes,
   handleAdminCalendarRoutes,
   handleAdminConcallsRoutes,

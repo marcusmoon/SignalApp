@@ -83,6 +83,7 @@
             <button class="navBtn active" data-view="dashboard" data-icon="⌂">대시보드</button>
 
             <div class="navSectionTitle muted" data-i18n="navSectionContent">콘텐츠 관리</div>
+            <button class="navBtn secondary" data-view="insights" data-icon="I">오늘의 시그널</button>
             <button class="navBtn secondary" data-view="news" data-icon="N">뉴스 목록</button>
             <button class="navBtn secondary" data-view="youtube" data-icon="Y">유튜브 관리</button>
             <button class="navBtn secondary" data-view="concalls" data-icon="C" data-coming-soon="true" aria-disabled="true">컨콜 요약</button>
@@ -151,6 +152,21 @@
                 </div>
               </div>
               <div id="errors"></div>
+            </div>
+          </div>
+
+          <div id="view-insights" class="view hidden">
+            <div class="panel">
+              <div class="pageHeader">
+                <div class="pageHeaderMain">
+                  <div class="pageTitle" data-i18n="pageInsightsTitle">오늘의 시그널</div>
+                  <div class="pageDesc" data-i18n="pageInsightsDesc">Insight Job이 생성한 시그널과 원문 연결 상태를 확인합니다.</div>
+                </div>
+                <div class="pageHeaderActions">
+                  <button type="button" class="secondary refreshBtn" id="refreshInsightsBtn" data-i18n="btnRefreshThisView">새로고침</button>
+                </div>
+              </div>
+              <div id="insights"></div>
             </div>
           </div>
 

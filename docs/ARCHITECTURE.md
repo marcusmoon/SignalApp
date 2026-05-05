@@ -47,6 +47,7 @@ server/src/http/
     auth.mjs              # /admin/api/{session,login,logout} + requireAdmin
     api/
       jobs.mjs            # jobs + runs + dashboard summary
+      insights.mjs        # admin insight result list
       news.mjs            # news + translations + retranslate/delete
       calendar.mjs
       youtube.mjs

@@ -79,9 +79,10 @@ function QuoteRowList({
 type Props = {
   tape: Record<string, SignalApiMarketQuote | null>;
   macro: Record<string, SignalApiMarketQuote | null>;
+  compact?: boolean;
 };
 
-export function MarketSnapshotSection({ tape, macro }: Props) {
+export function MarketSnapshotSection({ tape, macro, compact = false }: Props) {
   const { t } = useLocale();
   const { theme, scaleFont } = useSignalTheme();
   const styles = useMemo(() => makeMarketSnapshotStyles(theme, scaleFont), [theme, scaleFont]);
@@ -131,16 +132,19 @@ export function MarketSnapshotSection({ tape, macro }: Props) {
     [macro, t],
   );
 
+  const visibleTapeItems = compact ? tapeItems.slice(0, 3) : tapeItems;
+  const visibleMacroItems = compact ? macroItems.slice(0, 4) : macroItems;
+
   return (
     <>
       <Text style={styles.blockTitle}>{t('briefingSectionMarket')}</Text>
-      <View style={styles.sectionCard}>
+      <View style={[styles.sectionCard, compact && styles.sectionCardCompact]}>
         <Text style={styles.cardTitle}>{t('marketSectionTape')}</Text>
-        <QuoteRowList items={tapeItems} styles={styles} />
+        <QuoteRowList items={visibleTapeItems} styles={styles} />
       </View>
-      <View style={styles.sectionCard}>
+      <View style={[styles.sectionCard, compact && styles.sectionCardCompact]}>
         <Text style={styles.cardTitle}>{t('marketSectionMacro')}</Text>
-        <QuoteRowList items={macroItems} styles={styles} />
+        <QuoteRowList items={visibleMacroItems} styles={styles} />
       </View>
     </>
   );
@@ -162,6 +166,9 @@ function makeMarketSnapshotStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
+    },
+    sectionCardCompact: {
+      marginBottom: 8,
     },
     cardTitle: {
       fontSize: sf(12),

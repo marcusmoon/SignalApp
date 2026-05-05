@@ -621,51 +621,57 @@ export default function BriefingScreen() {
                 <Text style={styles.muted}>{t('briefingEmptyWatchlist')}</Text>
               )}
 
-              <MarketSnapshotSection tape={tape} macro={macro} />
+              <MarketSnapshotSection tape={tape} macro={macro} compact />
 
               <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingWeekEarningsTitle')}</Text>
               {weekEarnings.length === 0 ? (
                 <Text style={styles.weekStripEmpty}>{t('briefingWeekEarningsEmpty')}</Text>
               ) : (
-                <ScrollView
-                  horizontal
-                  nestedScrollEnabled
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.weekStripScroll}>
-                  {weekEarnings.map((r) => (
+                <View style={styles.compactList}>
+                  {weekEarnings.slice(0, 4).map((r) => (
                     <Pressable
                       key={`${earningsRowSymbol(r)}-${earningsRowDate(r)}-${earningsRowQuarter(r)}-${earningsRowYear(r)}`}
-                      style={styles.weekChip}
+                      style={styles.compactEventRow}
                       onPress={() => router.push(`/symbol/${earningsRowSymbol(r)}`)}
                       accessibilityRole="button"
                       accessibilityLabel={`${earningsRowSymbol(r)} ${earningsRowDate(r)}`}>
-                      <Text style={styles.weekChipDate}>{shortMd(earningsRowDate(r))}</Text>
-                      <Text style={styles.weekChipSym} numberOfLines={1}>
-                        {earningsRowSymbol(r)}
-                      </Text>
-                      <Text style={styles.weekChipMeta} numberOfLines={1}>
-                        {t('fiscalYearQuarterShort', { y: earningsRowYear(r), q: earningsRowQuarter(r) })}
-                      </Text>
+                      <View style={styles.compactEventMain}>
+                        <Text style={styles.compactEventTitle} numberOfLines={1}>
+                          {earningsRowSymbol(r)}
+                        </Text>
+                        <Text style={styles.compactEventMeta} numberOfLines={1}>
+                          {t('fiscalYearQuarterShort', { y: earningsRowYear(r), q: earningsRowQuarter(r) })}
+                        </Text>
+                      </View>
+                      <Text style={styles.compactEventDate}>{shortMd(earningsRowDate(r))}</Text>
                     </Pressable>
                   ))}
-                </ScrollView>
+                </View>
               )}
 
               <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingSectionMacroWeek')}</Text>
               {macroDisplay.length === 0 ? (
                 <Text style={styles.macroEmpty}>{t('briefingMacroEmpty')}</Text>
               ) : (
-                <View style={styles.macroCard}>
-                  {macroDisplay.map((r, idx) => (
+                <View style={styles.compactList}>
+                  {macroDisplay.slice(0, 5).map((r) => (
                     <View
-                      key={`${r.id}-${idx}`}
-                      style={[styles.macroRow, idx === macroDisplay.length - 1 && styles.macroRowLast]}>
-                      <Text style={styles.macroMeta} numberOfLines={1}>
-                        {r.country || '—'} · {macroEventTimeLabel(r)}
-                        {r.impact?.toLowerCase() === 'high' ? ` · ${t('briefingMacroImpactHigh')}` : ''}
-                      </Text>
-                      <Text style={styles.macroEvent} numberOfLines={2}>
-                        {r.title}
+                      key={`${r.id}-${r.eventAt || r.date || r.title}`}
+                      style={[
+                        styles.compactEventRow,
+                        r.impact?.toLowerCase() === 'high' && styles.compactEventRowHot,
+                      ]}>
+                      <View style={styles.compactEventMain}>
+                        <Text style={styles.compactEventTitle} numberOfLines={2}>
+                          {r.title}
+                        </Text>
+                        <Text style={styles.compactEventMeta} numberOfLines={1}>
+                          {r.country || '—'}
+                          {r.impact?.toLowerCase() === 'high' ? ` · ${t('briefingMacroImpactHigh')}` : ''}
+                        </Text>
+                      </View>
+                      <Text style={styles.compactEventDate} numberOfLines={1}>
+                        {macroEventTimeLabel(r)}
                       </Text>
                     </View>
                   ))}
@@ -773,58 +779,62 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginTop: -2,
       marginBottom: 8,
     },
-    macroCard: {
-      marginBottom: 10,
-      padding: 10,
-      borderRadius: 12,
-      backgroundColor: theme.card,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
     macroEmpty: {
       fontSize: sf(11),
       color: theme.textDim,
       marginBottom: 10,
       lineHeight: sf(16),
     },
-    macroRow: {
-      paddingVertical: 8,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    macroRowLast: { borderBottomWidth: 0 },
-    macroMeta: { fontSize: sf(10), fontWeight: '700', color: theme.textMuted, marginBottom: 4 },
-    macroEvent: { fontSize: sf(12), fontWeight: '600', color: theme.text, lineHeight: sf(16) },
     weekStripEmpty: {
       fontSize: sf(11),
       color: theme.textDim,
       marginBottom: 10,
       lineHeight: sf(16),
     },
-    weekStripScroll: {
-      paddingBottom: 10,
+    compactList: {
       gap: 8,
-      flexDirection: 'row',
-      alignItems: 'stretch',
+      marginBottom: 10,
     },
-    weekChip: {
-      width: Math.round(sf(108)),
-      paddingVertical: 10,
-      paddingHorizontal: 10,
-      borderRadius: 10,
-      backgroundColor: theme.bgElevated,
+    compactEventRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.border,
-      marginRight: 8,
+      backgroundColor: theme.card,
+      paddingVertical: 11,
+      paddingHorizontal: 12,
     },
-    weekChipDate: {
+    compactEventRowHot: {
+      borderLeftWidth: 4,
+      borderLeftColor: theme.accentOrange,
+    },
+    compactEventMain: {
+      flex: 1,
+      minWidth: 0,
+    },
+    compactEventTitle: {
+      fontSize: sf(13),
+      fontWeight: '800',
+      color: theme.text,
+      lineHeight: sf(17),
+    },
+    compactEventMeta: {
+      marginTop: 3,
       fontSize: sf(10),
       fontWeight: '700',
       color: theme.textMuted,
-      marginBottom: 4,
+      lineHeight: sf(13),
     },
-    weekChipSym: { fontSize: sf(13), fontWeight: '800', color: theme.green, marginBottom: 2 },
-    weekChipMeta: { fontSize: sf(10), color: theme.textDim },
+    compactEventDate: {
+      flexShrink: 0,
+      maxWidth: 86,
+      fontSize: sf(11),
+      fontWeight: '800',
+      color: theme.green,
+      textAlign: 'right',
+    },
     briefCard: {
       marginBottom: 10,
       padding: 14,

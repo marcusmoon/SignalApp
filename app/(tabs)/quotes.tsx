@@ -77,6 +77,7 @@ import { openYahooFinanceQuote } from '@/utils/yahooFinance';
 import type { MessageId } from '@/locales/messages';
 
 const POLL_MS = QUOTES_POLL_INTERVAL_MS;
+const QUOTE_CARD_TEXT_MAX_SCALE = 1.12;
 
 const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
@@ -523,7 +524,7 @@ export default function QuotesScreen() {
               <View style={styles.symBlock}>
                 <View style={styles.symRow}>
                   <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={6} style={styles.symPressable}>
-                    <Text style={styles.sym} numberOfLines={1}>
+                    <Text style={styles.sym} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                       {r.symbol}
                     </Text>
                   </Pressable>
@@ -535,18 +536,23 @@ export default function QuotesScreen() {
                       accessibilityRole="link"
                       accessibilityLabel={t('quotesYahooFinanceA11y', { symbol: r.symbol })}>
                       <FontAwesome name="external-link" size={11} color={theme.green} />
-                      <Text style={styles.yahooInlineText}>{t('quotesYahooShort')}</Text>
+                      <Text
+                        style={styles.yahooInlineText}
+                        numberOfLines={1}
+                        maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                        {t('quotesYahooShort')}
+                      </Text>
                     </Pressable>
                   ) : null}
                 </View>
                 {r.quote ? (
-                  <Text style={styles.symPrev} numberOfLines={1}>
+                  <Text style={styles.symPrev} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                     {segment === 'coin' ? t('quotesPrevRefCoin') : t('quotesPrevCloseStock')}{' '}
                     {formatUsd(Number(r.quote.previousClose))}
                   </Text>
                 ) : null}
                 {segment === 'coin' && r.name ? (
-                  <Text style={styles.symSub} numberOfLines={1}>
+                  <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                     {r.name}
                   </Text>
                 ) : null}
@@ -555,7 +561,7 @@ export default function QuotesScreen() {
             <View style={styles.priceCol}>
               <View style={styles.priceRow}>
                 {r.quote ? (
-                  <Text style={styles.price} numberOfLines={1}>
+                  <Text style={styles.price} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                     {formatUsd(Number(r.quote.currentPrice))}
                   </Text>
                 ) : (
@@ -573,7 +579,10 @@ export default function QuotesScreen() {
                 ) : null}
               </View>
               {r.quote ? (
-                <Text style={[styles.chg, quoteRowChangeUp(r.quote) ? styles.chgUp : styles.chgDn]} numberOfLines={1}>
+                <Text
+                  style={[styles.chg, quoteRowChangeUp(r.quote) ? styles.chgUp : styles.chgDn]}
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                   {formatUsdChange(Number(r.quote.change ?? 0))} ({formatQuoteDpPct(r.quote.changePercent)})
                 </Text>
               ) : null}
@@ -846,11 +855,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     symRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: 8,
+      flexWrap: 'nowrap',
     },
-    symPressable: { flexShrink: 1, minWidth: 0 },
-    sym: { fontSize: sf(16), fontWeight: '900', color: theme.text, letterSpacing: 0.5 },
+    symPressable: { flexShrink: 0, minWidth: 0 },
+    sym: {
+      fontSize: sf(16),
+      lineHeight: sf(20),
+      fontWeight: '900',
+      color: theme.text,
+      letterSpacing: 0.5,
+    },
     symPrev: {
       fontSize: sf(12),
       fontWeight: '500',
@@ -858,11 +872,30 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginTop: 4,
       lineHeight: sf(17),
     },
-    symSub: { fontSize: sf(12), fontWeight: '700', color: theme.textMuted, marginTop: 4 },
-    price: { maxWidth: '100%', fontSize: sf(18), fontWeight: '800', color: theme.text },
+    symSub: {
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '700',
+      color: theme.textMuted,
+      marginTop: 4,
+    },
+    price: {
+      maxWidth: '100%',
+      fontSize: sf(18),
+      lineHeight: sf(22),
+      fontWeight: '800',
+      color: theme.text,
+    },
     na: { fontSize: sf(16), color: theme.textDim },
     removeBtn: { padding: 2 },
-    chg: { maxWidth: '100%', fontSize: sf(13), fontWeight: '700', marginTop: 4, textAlign: 'right' },
+    chg: {
+      maxWidth: '100%',
+      fontSize: sf(13),
+      lineHeight: sf(17),
+      fontWeight: '700',
+      marginTop: 4,
+      textAlign: 'right',
+    },
     chgUp: { color: theme.green },
     chgDn: { color: '#E08080' },
     fail: { fontSize: sf(12), color: '#E0A0A0' },
@@ -870,9 +903,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
+      flexShrink: 1,
+      minWidth: 0,
+      marginLeft: 8,
       paddingVertical: 2,
     },
     yahooInlinePressed: { opacity: 0.75 },
-    yahooInlineText: { fontSize: sf(12), fontWeight: '700', color: theme.green },
+    yahooInlineText: {
+      flexShrink: 1,
+      minWidth: 0,
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '700',
+      color: theme.green,
+    },
   });
 }

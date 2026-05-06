@@ -1,13 +1,14 @@
-import { readDb, updateDb, upsertById } from '../../../db.mjs';
+import {
+  queryPublicCoinMarkets,
+  queryPublicMarketQuotes,
+  readAppSettings,
+  readPublicMarketList,
+  readPublicMarketLists,
+  upsertMarketQuotes,
+} from '../../../db.mjs';
 import { publicMarketList } from '../../../marketLists.mjs';
 import { fetchMarketQuotes, fetchStockCandles, fetchStockProfile } from '../../../providers/market/index.mjs';
-import {
-  filterCoinMarkets,
-  filterMarketQuotes,
-  getMarketList,
-  json,
-  paginate,
-} from '../../shared.mjs';
+import { json } from '../../shared.mjs';
 
 export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/v1/stock-profile') {
@@ -61,18 +62,23 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
   }
 
   if (req.method === 'GET' && pathname === '/v1/market-quotes') {
-    const db = await readDb();
-
     // If requested by explicit symbols, and some quotes are missing/stale in DB,
     // fetch them on-demand from the active market provider and persist them.
     const symbolsParam = url.searchParams.get('symbols');
     if (symbolsParam) {
       const requested = [...new Set(symbolsParam.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean))];
       if (requested.length > 0) {
-        const existing = filterMarketQuotes(db.marketQuotes, url);
+        const existingPage = await queryPublicMarketQuotes({
+          segment: url.searchParams.get('segment') || '',
+          symbols: symbolsParam,
+          q: url.searchParams.get('q') || '',
+          pageSize: String(Math.max(100, requested.length)),
+        });
+        const existing = existingPage.rows || [];
         const have = new Set(existing.map((r) => String(r.symbol || '').trim().toUpperCase()).filter(Boolean));
         const missing = requested.filter((sym) => !have.has(sym));
-        const maxAgeSec = Math.max(0, Number(db.appSettings?.marketQuotesMaxAgeSec ?? 10) || 10);
+        const appSettings = await readAppSettings();
+        const maxAgeSec = Math.max(0, Number(appSettings?.marketQuotesMaxAgeSec ?? 10) || 10);
         const stale = [];
         if (maxAgeSec > 0) {
           const staleBefore = Date.now() - maxAgeSec * 1000;
@@ -95,11 +101,7 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
             const seg = url.searchParams.get('segment') || 'watch';
             const fetched = await fetchMarketQuotes({ symbols: needFetch, segment: seg });
             if (fetched.length > 0) {
-              await updateDb((next) => {
-                for (const row of fetched) upsertById(next.marketQuotes, row);
-              });
-              // Mutate local snapshot too, so the response includes the fetched rows.
-              for (const row of fetched) upsertById(db.marketQuotes, row);
+              await upsertMarketQuotes(fetched);
             }
           } catch {
             // If the upstream provider is unavailable, keep the response DB-only.
@@ -108,7 +110,13 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
       }
     }
 
-    const page = paginate(filterMarketQuotes(db.marketQuotes, url), url, 30, 100);
+    const page = await queryPublicMarketQuotes({
+      segment: url.searchParams.get('segment') || '',
+      symbols: url.searchParams.get('symbols') || '',
+      q: url.searchParams.get('q') || '',
+      page: url.searchParams.get('page') || '1',
+      pageSize: url.searchParams.get('pageSize') || '30',
+    });
     json(res, 200, {
       data: page.rows,
       page: page.page,
@@ -120,8 +128,11 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
   }
 
   if (req.method === 'GET' && pathname === '/v1/coins') {
-    const db = await readDb();
-    const page = paginate(filterCoinMarkets(db.coinMarkets, url), url, 30, 100);
+    const page = await queryPublicCoinMarkets({
+      q: url.searchParams.get('q') || '',
+      page: url.searchParams.get('page') || '1',
+      pageSize: url.searchParams.get('pageSize') || '30',
+    });
     json(res, 200, {
       data: page.rows,
       page: page.page,
@@ -133,16 +144,15 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
   }
 
   if (req.method === 'GET' && pathname === '/v1/market-lists') {
-    const db = await readDb();
-    json(res, 200, { data: (db.marketLists || []).map(publicMarketList) });
+    const lists = await readPublicMarketLists();
+    json(res, 200, { data: lists.map(publicMarketList) });
     return true;
   }
 
   const publicMarketListMatch = pathname.match(/^\/v1\/market-lists\/([^/]+)$/);
   if (req.method === 'GET' && publicMarketListMatch) {
-    const db = await readDb();
     const key = decodeURIComponent(publicMarketListMatch[1]);
-    const list = getMarketList(db, key);
+    const list = await readPublicMarketList(key);
     if (!list) {
       json(res, 404, { error: 'MARKET_LIST_NOT_FOUND' });
       return true;

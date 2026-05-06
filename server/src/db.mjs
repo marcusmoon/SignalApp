@@ -35,6 +35,19 @@ import {
   upsertNotificationItemInDb,
 } from './db/notifications.mjs';
 import {
+  queryPublicCalendarInDb,
+  queryPublicCoinMarketsInDb,
+  queryPublicConcallsInDb,
+  queryPublicMarketQuotesInDb,
+  queryPublicNewsInDb,
+  queryPublicNewsSourcesInDb,
+  queryPublicYoutubeInDb,
+  readAppSettingsInDb,
+  readPublicMarketListInDb,
+  readPublicMarketListsInDb,
+  upsertMarketQuoteRowsInDb,
+} from './db/publicQueries.mjs';
+import {
   migrateLegacySignalStoresIfNeeded,
   readStructuredDb,
   writeStructuredDb,
@@ -263,6 +276,91 @@ export async function queryPublicNotificationsForUser(userId, options = {}) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
     return queryPublicNotificationsForUserInDb(db, userId, options);
+  });
+}
+
+export async function queryPublicNews(options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return queryPublicNewsInDb(db, options);
+  });
+}
+
+export async function queryPublicNewsSources(options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return queryPublicNewsSourcesInDb(db, options);
+  });
+}
+
+export async function queryPublicYoutube(options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return queryPublicYoutubeInDb(db, options);
+  });
+}
+
+export async function queryPublicMarketQuotes(options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return queryPublicMarketQuotesInDb(db, options);
+  });
+}
+
+export async function queryPublicCalendar(options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return queryPublicCalendarInDb(db, options);
+  });
+}
+
+export async function queryPublicConcalls(options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return queryPublicConcallsInDb(db, options);
+  });
+}
+
+export async function queryPublicCoinMarkets(options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return queryPublicCoinMarketsInDb(db, options);
+  });
+}
+
+export async function readPublicMarketLists() {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return readPublicMarketListsInDb(db);
+  });
+}
+
+export async function readPublicMarketList(key) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return readPublicMarketListInDb(db, key);
+  });
+}
+
+export async function readAppSettings() {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return readAppSettingsInDb(db);
+  });
+}
+
+export async function upsertMarketQuotes(rows = []) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      upsertMarketQuoteRowsInDb(db, rows);
+      db.exec('COMMIT');
+      return rows;
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
   });
 }
 

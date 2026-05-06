@@ -1,4 +1,12 @@
-import { getAppUser, listAppUsers, queryNotifications, updateAppUserAdmin, upsertNotification } from '../../../db.mjs';
+import {
+  getAppUser,
+  listAppUserDevices,
+  listAppUsers,
+  queryNotifications,
+  updateAppUserAdmin,
+  updateAppUserDeviceAdmin,
+  upsertNotification,
+} from '../../../db.mjs';
 import { createNotificationItem } from '../../../notifications/outbox.mjs';
 import { json, readBody } from '../../shared.mjs';
 
@@ -31,6 +39,43 @@ function userIdFromPath(pathname, suffix = '') {
 }
 
 export async function handleAdminAppUsersRoutes({ req, res, url, pathname }) {
+  if (req.method === 'GET' && pathname === '/admin/api/app-user-devices') {
+    const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number.parseInt(url.searchParams.get('pageSize') || '30', 10) || 30));
+    const body = await listAppUserDevices({
+      q: url.searchParams.get('q') || '',
+      active: url.searchParams.get('active') || '',
+      platform: url.searchParams.get('platform') || '',
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+    });
+    const totalPages = Math.max(1, Math.ceil(body.total / body.limit));
+    json(res, 200, {
+      data: body.rows,
+      page: Math.min(page, totalPages),
+      pageSize: body.limit,
+      total: body.total,
+      totalPages,
+      summary: {
+        total: body.total,
+        active: body.rows.filter((row) => row.active).length,
+        inactive: body.rows.filter((row) => !row.active).length,
+      },
+    });
+    return true;
+  }
+
+  const deviceMatch = pathname.match(/^\/admin\/api\/app-user-devices\/([^/]+)$/);
+  if (req.method === 'PATCH' && deviceMatch) {
+    const id = decodeURIComponent(deviceMatch[1]);
+    const body = await readBody(req);
+    const device = await updateAppUserDeviceAdmin(id, {
+      active: typeof body.active === 'boolean' ? body.active : undefined,
+    });
+    json(res, 200, { data: device });
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/admin/api/app-users') {
     const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
     const pageSize = Math.min(100, Math.max(1, Number.parseInt(url.searchParams.get('pageSize') || '30', 10) || 30));

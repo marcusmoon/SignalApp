@@ -213,6 +213,103 @@ export function listAppUsersInDb(db, { q = '', active = '', limit = 50, offset =
   return { rows: rows.map(adminUserRow), total, limit: safeLimit, offset: safeOffset };
 }
 
+export function listAppUserDevicesInDb(db, { q = '', active = '', platform = '', limit = 50, offset = 0 } = {}) {
+  const params = {};
+  const where = [];
+  const query = cleanText(q).toLowerCase();
+  if (query) {
+    params.q = `%${query}%`;
+    where.push(
+      '(LOWER(COALESCE(u.email, "")) LIKE @q OR LOWER(COALESCE(u.nickname, "")) LIKE @q OR LOWER(COALESCE(d.device_name, "")) LIKE @q OR LOWER(COALESCE(d.push_token, "")) LIKE @q)',
+    );
+  }
+  if (active === '1' || active === 'true') where.push('d.active = 1');
+  if (active === '0' || active === 'false') where.push('d.active = 0');
+  const cleanPlatform = cleanText(platform).toLowerCase();
+  if (cleanPlatform) {
+    params.platform = cleanPlatform;
+    where.push('LOWER(COALESCE(d.platform, "")) = @platform');
+  }
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const safeLimit = Math.min(100, Math.max(1, Math.floor(Number(limit)) || 50));
+  const safeOffset = Math.max(0, Math.floor(Number(offset)) || 0);
+  const total = Number(
+    db
+      .prepare(
+        `
+          SELECT COUNT(*) AS count
+          FROM app_user_devices d
+          LEFT JOIN app_users u ON u.id = d.user_id
+          ${whereSql}
+        `,
+      )
+      .get(params)?.count,
+  ) || 0;
+  const rows = db
+    .prepare(
+      `
+        SELECT
+          d.id,
+          d.user_id,
+          d.platform,
+          d.push_token,
+          d.device_name,
+          d.active,
+          d.created_at,
+          d.updated_at,
+          u.email,
+          u.nickname
+        FROM app_user_devices d
+        LEFT JOIN app_users u ON u.id = d.user_id
+        ${whereSql}
+        ORDER BY d.updated_at DESC
+        LIMIT @limit OFFSET @offset
+      `,
+    )
+    .all({ ...params, limit: safeLimit, offset: safeOffset })
+    .map((row) => ({
+      id: row.id,
+      userId: row.user_id,
+      email: row.email || '',
+      nickname: row.nickname || '',
+      platform: row.platform || '',
+      pushToken: row.push_token || '',
+      deviceName: row.device_name || '',
+      active: Number(row.active) === 1,
+      createdAt: row.created_at || null,
+      updatedAt: row.updated_at || null,
+    }));
+  return { rows, total, limit: safeLimit, offset: safeOffset };
+}
+
+export function updateAppUserDeviceAdminInDb(db, deviceId, patch = {}) {
+  const id = cleanText(deviceId);
+  const existing = db.prepare('SELECT * FROM app_user_devices WHERE id = ?').get(id);
+  if (!existing) throw new Error('APP_USER_DEVICE_NOT_FOUND');
+  const updates = [];
+  const params = [];
+  if (typeof patch.active === 'boolean') {
+    updates.push('active = ?');
+    params.push(patch.active ? 1 : 0);
+  }
+  if (updates.length === 0) return existing;
+  const now = nowIso();
+  updates.push('updated_at = ?');
+  params.push(now, id);
+  db.prepare(`UPDATE app_user_devices SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  const row = db.prepare('SELECT * FROM app_user_devices WHERE id = ?').get(id);
+  return {
+    id: row.id,
+    userId: row.user_id,
+    platform: row.platform || '',
+    pushToken: row.push_token || '',
+    deviceName: row.device_name || '',
+    active: Number(row.active) === 1,
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
+  };
+}
+
 export function getAppUserInDb(db, userId) {
   const params = { userId: String(userId || ''), now: nowIso() };
   const row = db

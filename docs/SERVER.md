@@ -55,6 +55,10 @@ cp server/.env.example server/.env
 | `PORT` / `HOST` | 로컬 서버 바인딩 (`127.0.0.1:4000`) |
 | `DATA_DIR` | 서버 데이터 디렉터리. Railway 볼륨 마운트 경로를 지정하면 SQLite 파일도 여기에 저장 |
 | `SQLITE_DB_PATH` | 선택. SQLite 파일 경로. 비우면 `${DATA_DIR}/signal.sqlite` |
+| `SIGNAL_SCHEDULER_ENABLED` | 선택. 기본 `true`. API 전용 Railway 서비스에서는 `false`, worker 서비스에서는 `true` |
+| `SIGNAL_SLOW_REQUEST_MS` | 선택. 기본 `1200`. 이 시간 이상 걸린 요청은 `[http:slow]`로 로그 |
+| `SIGNAL_VERY_SLOW_REQUEST_MS` | 선택. 기본 `5000`. 이 시간 이상 걸린 요청은 `[http:very-slow]`로 로그 |
+| `SIGNAL_JOB_LOCK_TTL_MS` | 선택. 기본 `7200000`(2시간). worker/API 중복 실행 방지용 SQLite Job lock TTL |
 | `ADMIN_USERS` | 선택 초기 seed. SQLite `admin_users`가 비어 있을 때만 넣는 어드민 계정 JSON 배열 `[{"id","password"},…]` |
 | `FINNHUB_TOKEN` | 선택 seed/fallback. 가능하면 어드민 설정에서 입력 |
 | `YOUTUBE_API_KEY` | 선택 seed/fallback. 가능하면 어드민 설정에서 입력 |
@@ -145,7 +149,7 @@ npx expo start -c
 | `market_coins_top` | 코인 시총 상위 수집 |
 | `insights_market_brief` | 수집 데이터 기반 시장 인사이트 생성 |
 
-스케줄러는 10초마다 due job을 확인합니다. `enabled: true`이고 `nextRunAt`이 비었거나 현재 시각 이전이면 실행합니다. 이 확인은 전체 DB 스냅샷을 만들지 않고 SQLite `polling_jobs` 테이블만 직접 조회하며, 같은 Node 프로세스 안에서 이미 실행 중인 동일 job은 다시 시작하지 않습니다.
+스케줄러는 10초마다 due job을 확인합니다. `enabled: true`이고 `nextRunAt`이 비었거나 현재 시각 이전이면 실행합니다. 이 확인은 전체 DB 스냅샷을 만들지 않고 SQLite `polling_jobs` 테이블만 직접 조회하며, 같은 Node 프로세스 안에서 이미 실행 중인 동일 job은 다시 시작하지 않습니다. 여러 프로세스가 같은 DB를 보더라도 `polling_job_locks` 테이블의 TTL lock으로 동일 job 중복 실행을 막습니다.
 
 각 실행은 SQLite의 `polling_job_runs` 테이블에 남습니다. 로그 payload에는 `jobKey`, `domain`, `provider`, `handler`, `trigger`, `status`, `startedAt`, `finishedAt`, `durationMs`, `resultKind`, `itemCount`, `errorMessage`, `progressPercent`, `progressPhase`, `progressUpdatedAt`가 포함됩니다. 긴 수집 job의 진행률 저장은 응답 API가 DB 큐에서 밀리지 않도록 5초 단위 또는 큰 진행률 변화 위주로 반영합니다. 수동 실행은 `trigger: manual`, 스케줄 실행은 `trigger: schedule`로 구분합니다.
 
@@ -165,13 +169,13 @@ Job에는 운영자가 보기 쉬운 `displayName`과 `description`이 있으며
 
 시장 인사이트 Job(`insights_market_brief`)은 이미 저장된 뉴스·유튜브·시세·캘린더 데이터를 기반으로 `market_brief` / `asset_signal` 형식의 시그널을 생성해 SQLite `insight_items` 테이블에 저장합니다. 기본 파라미터는 `dateMode: today`, `timeZone: Asia/Seoul`이라 너무 오래된 원천 데이터가 오늘의 시그널을 만들지 않게 합니다. 현재 MVP는 규칙 기반으로 동작하며, 각 결과에는 왜 지금 봐야 하는지(`whyNow`), 소스 구성(`sourceStats`), 신호 드라이버(`signalDrivers`), 다음 확인 포인트(`nextSteps`)가 포함됩니다. Provider 설정에 Claude/OpenAI 키와 기본 모델이 설정되어 있으면 각 인사이트에 LLM provider/model 상태와 추후 호출용 `llmPromptInput`을 함께 저장합니다. 앱은 `/v1/insights`를 통해 공개 필드만 조회하고, 이 API는 SQLite `insight_items`에서 날짜·종류·레벨·푸시 후보 조건으로 후보를 먼저 좁힌 뒤 요청 시간대의 생성일과 브리핑/심볼별 최신 1건 규칙을 적용합니다. `pushCandidate` 인사이트는 같은 Job 완료 트랜잭션에서 `notification_items`에 `channel=push`, `status=queued`, `type=insight_signal` outbox 레코드로 함께 저장합니다. 실제 Expo/FCM 발송 연동이 붙으면 sender는 이 대기 레코드를 처리하고 발송 결과를 같은 레코드에 기록합니다. 어드민 **오늘의 시그널** 화면에서는 저장된 결과, 연결 원문, 근거, 소스 구성, LLM 준비 상태를 확인할 수 있습니다.
 
-앱 사용자 계정은 `/v1/auth/register`, `/v1/auth/login`, `/v1/auth/me`, `/v1/auth/logout`으로 시작합니다. 현재는 이메일/비밀번호/닉네임/프로필 이미지 URL 기반이며, 세션은 bearer token으로 내려줍니다. 서버에는 `app_users`, `app_user_sessions`, `app_user_devices`, `app_user_identities` 테이블이 있고, `app_user_identities`는 카카오·네이버·구글 같은 소셜 로그인 연결을 위한 확장 지점입니다. Admin > 앱 사용자에서는 가입 사용자 검색, 활성/비활성 전환, 사용자별 알림 조회, 개별 알림 등록을 지원합니다.
+앱 사용자 계정은 `/v1/auth/register`, `/v1/auth/login`, `/v1/auth/me`, `/v1/auth/logout`으로 시작합니다. 현재는 이메일/비밀번호/닉네임/프로필 이미지 URL 기반이며, 세션은 bearer token으로 내려줍니다. 서버에는 `app_users`, `app_user_sessions`, `app_user_devices`, `app_user_identities` 테이블이 있고, `app_user_identities`는 카카오·네이버·구글 같은 소셜 로그인 연결을 위한 확장 지점입니다. Admin의 **앱 사용자** 섹션은 사용자 관리, 디바이스 관리, 알림 조회, 푸시/알림 발송으로 나뉘며, 가입 사용자 검색, 활성/비활성 전환, 디바이스 비활성화, 사용자별·공지성 알림 등록을 지원합니다.
 
 알림 outbox는 인사이트 외에도 앱 업데이트(`app_update`), 서비스 공지(`service_notice`), 실적 리마인더(`earnings_reminder`), 시장 경고(`market_alert`) 같은 타입을 같은 테이블에 저장할 수 있게 구성합니다. 각 레코드는 `type`, `channel`, `status`, `priority`, `appUserId`, `targetType`, `targetKey`, `sourceType`, `sourceId`, `scheduledAt`, `expiresAt`를 가집니다. 앱은 bearer token으로 `/v1/notifications`를 호출해 본인 대상(`appUserId`/`targetType=user`)과 전체 공지(`targetType=all`)를 조회합니다. Admin API `/admin/api/notifications`는 조회와 수동 생성을 지원하고, `/admin/api/app-users/:id/notifications`는 특정 사용자 알림 이력 조회/개별 등록을 지원합니다. 이 알림 경로들은 전체 `readDb()` 스냅샷을 만들지 않고 `notification_items` 테이블을 직접 조회/업서트해 대량 뉴스·유튜브·시세 데이터가 쌓여도 알림 응답이 커지지 않게 합니다. 공지성 알림은 `targetType=all|segment`로 먼저 DB에 적재하고, sender Job은 추후 사용자/기기 기준으로 `status=queued`만 처리하면 됩니다.
 
 ## 5. 소스 분리
 
-나중에 API 서버와 worker를 클라우드에서 분리하기 위해 소스는 이미 나뉘어 있습니다.
+API 서버와 worker를 클라우드에서 분리하기 위해 소스는 이미 나뉘어 있습니다. Railway에서는 API 서비스에 `SIGNAL_SCHEDULER_ENABLED=false`를 두고 `npm --prefix server run start` 또는 기존 start command를 사용하고, 별도 worker 서비스는 같은 볼륨/DB 경로와 `SIGNAL_SCHEDULER_ENABLED=true`로 `npm run server:worker`를 실행하는 구성이 권장됩니다.
 
 ```text
 server/src/jobs/runner.mjs      # job 1개 실행
@@ -188,7 +192,7 @@ server/src/worker.mjs           # scheduler-only entrypoint
 
 현재는 **`npm run server:dev`만 사용**합니다.
 
-`npm run server:worker`는 future entrypoint입니다. 지금 API 서버와 동시에 켜면 job이 중복 실행될 수 있으므로 운영 lock이 들어가기 전까지는 같이 띄우지 않습니다.
+`npm run server:worker`는 scheduler 전용 entrypoint입니다. API와 worker가 동시에 떠도 SQLite Job lock이 중복 실행을 막지만, API 응답 안정성을 위해 운영에서는 API 프로세스의 스케줄러를 끄는 구성을 권장합니다.
 
 ## 6. 확인 명령
 
@@ -236,6 +240,7 @@ server/data/signal.sqlite-shm  # SQLite shared-memory 파일(생성될 수 있�
 - 어드민 계정은 SQLite `admin_users` 테이블에 저장한다. `ADMIN_USERS` env는 `admin_users`가 비어 있을 때만 초기 seed로 쓰고, 비밀번호는 salt + scrypt hash로 저장한다. 이후 계정 추가·비밀번호 변경·활성화·삭제는 **Admin > 설정 > 사용자 관리**에서 한다.
 - 기존 `server/data/*.json` 분할 스토어와 과거 단일 `local-db.json`은 읽지 않는다.
 - `readDb` / `writeDb` / `updateDb`는 동일 Node 프로세스 안에서 큐로 직렬화된다. `updateDb`는 SQLite `BEGIN IMMEDIATE` 트랜잭션 안에서 읽기와 쓰기를 묶어 보정 수집·번역 갱신 같은 read/modify/write 경쟁을 줄인다. 앱 공개 조회 API와 스케줄 due 확인처럼 단일 테이블로 충분한 경로는 전체 스냅샷을 복원하지 않고 SQLite 테이블을 직접 조회한다.
+- `polling_job_locks`는 API/worker 복수 프로세스 구성에서 동일 Job이 동시에 실행되는 것을 막는 TTL lock 테이블이다.
 - 주요 운영 테이블은 `polling_jobs`, `polling_job_runs`, `news_items`, `news_translations`, `calendar_events`, `concall_transcripts`, `youtube_videos`, `market_quotes`, `coin_markets`, `market_lists`, `provider_settings`, `translation_settings`, `news_sources`, `insight_items`, `notification_items`, `app_users`, `app_user_sessions`, `app_user_devices`, `app_user_identities`, `admin_users`다.
 - 운영 데이터는 기능별 테이블에 저장한다. 주요 테이블은 `provider_settings`, `translation_settings`, `polling_jobs`, `polling_job_runs`, `news_items`, `news_translations`, `calendar_events`, `concall_transcripts`, `youtube_videos`, `market_quotes`, `coin_markets`, `market_lists`, `news_sources`다. 각 테이블은 검색·정렬용 대표 컬럼과 원본 payload를 함께 둬 SQLite에서 운영하고, 추후 MySQL에서는 같은 테이블 경계로 repository를 옮긴다.
 - 과거 `signal_stores` payload 테이블이 남아 있고 새 구조 테이블이 비어 있으면 첫 실행 시 한 번만 새 테이블로 마이그레이션한 뒤 `signal_stores`를 제거한다. 새 DB에서는 `signal_stores`를 만들지 않는다.

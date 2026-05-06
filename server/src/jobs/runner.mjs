@@ -1,4 +1,13 @@
-import { ensureNewsSourcesFromItems, nowIso, readDb, updateDb, upsertById } from '../db.mjs';
+import {
+  acquirePollingJobLock,
+  ensureNewsSourcesFromItems,
+  nowIso,
+  readDb,
+  releasePollingJobLock,
+  updateDb,
+  upsertById,
+} from '../db.mjs';
+import { config } from '../config.mjs';
 import { mergeAutoHashtagsIntoNewsItem } from '../newsHashtags.mjs';
 import { fetchNinjasConcallTranscript } from '../providers/concalls/ninjas.mjs';
 import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../providers/calendar/finnhub.mjs';
@@ -250,46 +259,64 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
 }
 
 export async function runPollingJob(jobKey, { force = false, trigger = 'schedule' } = {}) {
-  const dbBefore = await readDb();
-  const job = dbBefore.pollingJobs.find((j) => j.jobKey === jobKey);
-  if (!job) throw new Error(`JOB_NOT_FOUND:${jobKey}`);
-  if (!force && !job.enabled) throw new Error(`JOB_DISABLED:${jobKey}`);
+  const lock = await acquirePollingJobLock(jobKey, { ttlMs: config.jobLockTtlMs });
+  if (!lock) {
+    console.warn(`[job:${jobKey}] skipped because another worker holds the lock`);
+    return {
+      jobKey,
+      trigger,
+      status: 'skipped',
+      errorMessage: 'JOB_ALREADY_RUNNING',
+      startedAt: nowIso(),
+      finishedAt: nowIso(),
+      durationMs: 0,
+      resultKind: null,
+      itemCount: 0,
+    };
+  }
 
-  const startedTime = Date.now();
-  const run = {
-    id: `${jobKey}:${Date.now()}`,
-    jobKey,
-    displayName: job.displayName || job.jobKey,
-    domain: job.domain || null,
-    operation: job.operation || null,
-    provider: job.provider || null,
-    handler: job.handler || null,
-    trigger,
-    status: 'running',
-    startedAt: new Date(startedTime).toISOString(),
-    finishedAt: null,
-    durationMs: null,
-    resultKind: null,
-    itemCount: 0,
-    errorMessage: null,
-    progressPhase: null,
-    progressDone: 0,
-    progressTotal: 0,
-    progressPercent: 0,
-    progressUpdatedAt: new Date(startedTime).toISOString(),
-  };
-
-  await updateDb((db) => {
-    db.pollingJobRuns.unshift(run);
-    const savedJob = db.pollingJobs.find((j) => j.jobKey === jobKey);
-    if (savedJob) {
-      savedJob.lastRunAt = run.startedAt;
-      savedJob.nextRunAt = addSecondsIso(savedJob.intervalSeconds);
-      savedJob.updatedAt = run.startedAt;
-    }
-  });
-
+  let startedTime = Date.now();
+  let run = null;
   try {
+    const dbBefore = await readDb();
+    const job = dbBefore.pollingJobs.find((j) => j.jobKey === jobKey);
+    if (!job) throw new Error(`JOB_NOT_FOUND:${jobKey}`);
+    if (!force && !job.enabled) throw new Error(`JOB_DISABLED:${jobKey}`);
+
+    startedTime = Date.now();
+    run = {
+      id: `${jobKey}:${Date.now()}`,
+      jobKey,
+      displayName: job.displayName || job.jobKey,
+      domain: job.domain || null,
+      operation: job.operation || null,
+      provider: job.provider || null,
+      handler: job.handler || null,
+      trigger,
+      status: 'running',
+      startedAt: new Date(startedTime).toISOString(),
+      finishedAt: null,
+      durationMs: null,
+      resultKind: null,
+      itemCount: 0,
+      errorMessage: null,
+      progressPhase: null,
+      progressDone: 0,
+      progressTotal: 0,
+      progressPercent: 0,
+      progressUpdatedAt: new Date(startedTime).toISOString(),
+    };
+
+    await updateDb((db) => {
+      db.pollingJobRuns.unshift(run);
+      const savedJob = db.pollingJobs.find((j) => j.jobKey === jobKey);
+      if (savedJob) {
+        savedJob.lastRunAt = run.startedAt;
+        savedJob.nextRunAt = addSecondsIso(savedJob.intervalSeconds);
+        savedJob.updatedAt = run.startedAt;
+      }
+    });
+
     let lastProgressAt = 0;
     let lastProgressPercent = -1;
     const onProgress =
@@ -390,7 +417,7 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
         savedJob.nextRunAt = addSecondsIso(savedJob.intervalSeconds);
         savedJob.updatedAt = nowIso();
       }
-      const savedRun = db.pollingJobRuns.find((r) => r.id === run.id);
+      const savedRun = run ? db.pollingJobRuns.find((r) => r.id === run.id) : null;
       if (savedRun) {
         const finishedAt = nowIso();
         savedRun.status = 'failed';
@@ -401,6 +428,10 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       }
     });
     throw error;
+  } finally {
+    await releasePollingJobLock(jobKey, lock.token).catch((error) => {
+      console.warn(`[job:${jobKey}] failed to release lock`, error?.message || error);
+    });
   }
 }
 

@@ -411,6 +411,16 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
 
       async function switchView(view) {
         const requestedView = view;
+        const appUsersTabFromView =
+          requestedView === 'app-users'
+            ? 'users'
+            : requestedView === 'app-devices'
+              ? 'devices'
+              : requestedView === 'app-notifications'
+                ? 'notifications'
+                : requestedView === 'app-push'
+                  ? 'composer'
+                  : null;
         const settingsTabFromView =
           requestedView === 'settings-keys'
             ? 'keys'
@@ -425,12 +435,13 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                   : requestedView === 'settings-danger'
                     ? 'danger'
                     : null;
-        const actualView = settingsTabFromView ? 'settings' : requestedView;
+        const actualView = appUsersTabFromView ? 'app-users' : settingsTabFromView ? 'settings' : requestedView;
 
         const panel = $(`view-${actualView}`);
         const resolvedView = panel ? actualView : 'dashboard';
         const resolvedRequestedView = panel ? requestedView : 'dashboard';
         state.view = resolvedRequestedView;
+        if (appUsersTabFromView) state.appUsersTab = appUsersTabFromView;
         setUrlParam('view', resolvedRequestedView);
         document.querySelectorAll('.view').forEach((el) => el.classList.add('hidden'));
         $(`view-${resolvedView}`)?.classList.remove('hidden');
@@ -441,7 +452,32 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
 
         // Lazy-load data for views that need it.
         if (resolvedView === 'calendar') void loadCalendar();
-        if (resolvedView === 'app-users') void loadAppUsers();
+        if (resolvedView === 'app-users') {
+          const title = $('appUsersPageTitle');
+          if (title) {
+            title.textContent =
+              state.appUsersTab === 'devices'
+                ? textFor('pageAppDevicesTitle')
+                : state.appUsersTab === 'notifications'
+                  ? textFor('pageAppNotificationsTitle')
+                  : state.appUsersTab === 'composer'
+                    ? textFor('pageAppPushTitle')
+                    : textFor('pageAppUsersTitle');
+          }
+          const desc = $('appUsersPageDesc');
+          if (desc) {
+            desc.textContent =
+              state.appUsersTab === 'devices'
+                ? textFor('pageAppDevicesDesc')
+                : state.appUsersTab === 'notifications'
+                  ? textFor('pageAppNotificationsDesc')
+                  : state.appUsersTab === 'composer'
+                    ? textFor('pageAppPushDesc')
+                    : textFor('pageAppUsersDesc');
+          }
+          document.querySelectorAll('[data-app-users-tab]').forEach((btn) => btn.classList.toggle('active', btn.dataset.appUsersTab === state.appUsersTab));
+          void loadAppUsers();
+        }
         if (resolvedView === 'monitoring') void loadMonitoring();
         if (resolvedView === 'errors') void loadErrors();
         if (resolvedView === 'insights') void loadInsights();
@@ -1274,6 +1310,17 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
               $('sideOverlay')?.classList.add('hidden');
             }
           }
+          const appUsersTabTarget = target instanceof Element ? target.closest('[data-app-users-tab]') : null;
+          if (appUsersTabTarget?.dataset?.appUsersTab) {
+            const tabToView = {
+              users: 'app-users',
+              devices: 'app-devices',
+              notifications: 'app-notifications',
+              composer: 'app-push',
+            };
+            await switchView(tabToView[appUsersTabTarget.dataset.appUsersTab] || 'app-users');
+            return;
+          }
           const jobTabTarget = target instanceof Element ? target.closest('[data-job-tab]') : null;
           if (jobTabTarget?.dataset?.jobTab) setJobTab(jobTabTarget.dataset.jobTab);
           const settingsTabTarget = target instanceof Element ? target.closest('[data-settings-tab]') : null;
@@ -1561,6 +1608,16 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await loadAppUsers();
             return;
           }
+          if (target.id === 'searchAppDevicesBtn') {
+            state.appDevicesPage = 1;
+            await loadAppUsers();
+            return;
+          }
+          if (target.id === 'searchAppNotificationsBtn') {
+            state.appNotificationsPage = 1;
+            await loadAppUsers();
+            return;
+          }
           if (target.dataset.appUsersPage === 'prev' && state.appUsersPage > 1) {
             state.appUsersPage -= 1;
             await loadAppUsers();
@@ -1568,6 +1625,26 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           }
           if (target.dataset.appUsersPage === 'next' && state.appUsersPage < state.appUsersTotalPages) {
             state.appUsersPage += 1;
+            await loadAppUsers();
+            return;
+          }
+          if (target.dataset.appDevicesPage === 'prev' && state.appDevicesPage > 1) {
+            state.appDevicesPage -= 1;
+            await loadAppUsers();
+            return;
+          }
+          if (target.dataset.appDevicesPage === 'next' && state.appDevicesPage < state.appDevicesTotalPages) {
+            state.appDevicesPage += 1;
+            await loadAppUsers();
+            return;
+          }
+          if (target.dataset.appNotificationsPage === 'prev' && state.appNotificationsPage > 1) {
+            state.appNotificationsPage -= 1;
+            await loadAppUsers();
+            return;
+          }
+          if (target.dataset.appNotificationsPage === 'next' && state.appNotificationsPage < state.appNotificationsTotalPages) {
+            state.appNotificationsPage += 1;
             await loadAppUsers();
             return;
           }
@@ -2171,8 +2248,35 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             showToast(textFor('toastErrorTitle'), error?.message || textFor('loginFailed'), { kind: 'danger' });
           }
         }
+        if (event.target.dataset.appDeviceActive) {
+          const id = event.target.dataset.appDeviceActive;
+          try {
+            await api(`/admin/api/app-user-devices/${encodeURIComponent(id)}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ active: !!event.target.checked }),
+            });
+            showToast(textFor('toastSaved'), id, { kind: 'success' });
+            await loadAppUsers();
+          } catch (error) {
+            event.target.checked = !event.target.checked;
+            showToast(textFor('toastErrorTitle'), error?.message || textFor('loginFailed'), { kind: 'danger' });
+          }
+        }
         if (event.target.id === 'appUsersActive' || event.target.id === 'appUsersPageSize') {
           state.appUsersPage = 1;
+          await loadAppUsers();
+        }
+        if (event.target.id === 'appDevicesActive' || event.target.id === 'appDevicesPageSize' || event.target.id === 'appDevicesPlatform') {
+          state.appDevicesPage = 1;
+          await loadAppUsers();
+        }
+        if (
+          event.target.id === 'appNotificationsStatus' ||
+          event.target.id === 'appNotificationsType' ||
+          event.target.id === 'appNotificationsTargetType' ||
+          event.target.id === 'appNotificationsPageSize'
+        ) {
+          state.appNotificationsPage = 1;
           await loadAppUsers();
         }
         if (event.target.id === 'jobRunRange') {

@@ -4,6 +4,12 @@ function typeOptions(esc, selected = 'service_notice') {
     .join('');
 }
 
+function maskToken(token) {
+  const text = String(token || '');
+  if (text.length <= 14) return text || '-';
+  return `${text.slice(0, 8)}...${text.slice(-6)}`;
+}
+
 function notificationRows(rows, { esc, textFor, formatDateTime }) {
   if (!rows.length) return `<p class="muted">${esc(textFor('appUsersNotificationsEmpty'))}</p>`;
   return `
@@ -20,6 +26,7 @@ function notificationRows(rows, { esc, textFor, formatDateTime }) {
               <div class="row muted">
                 <span>${esc(item.type || '-')}</span>
                 <span>${esc(item.channel || 'push')}</span>
+                <span>${esc(item.targetType || 'all')}${item.targetKey ? `:${esc(item.targetKey)}` : ''}</span>
                 <span>${esc(formatDateTime(item.scheduledAt || item.createdAt))}</span>
               </div>
             </article>
@@ -56,35 +63,19 @@ function userCard(user, { esc, textFor, formatDateTime }) {
   `;
 }
 
-export async function loadAppUsersView(ctx) {
-  const { api, $, state, esc, textFor, textForVars, formatDateTime } = ctx;
-  if (!$('appUsers')) return;
-  const q = String($('appUsersQuery')?.value || '').trim();
-  const active = String($('appUsersActive')?.value || '');
-  const pageSize = String($('appUsersPageSize')?.value || '30');
-  const params = new URLSearchParams({
-    page: String(state.appUsersPage || 1),
-    pageSize,
-  });
-  if (q) params.set('q', q);
-  if (active) params.set('active', active);
-  const body = await api(`/admin/api/app-users?${params.toString()}`);
-  const rows = Array.isArray(body.data) ? body.data : [];
-  state.appUsers = rows;
-  state.appUsersTotal = body.total || rows.length;
-  state.appUsersTotalPages = body.totalPages || 1;
-  if (!state.appUsersSelectedId && rows[0]?.id) state.appUsersSelectedId = rows[0].id;
-  const selected = rows.find((row) => row.id === state.appUsersSelectedId) || rows[0] || null;
-  state.appUsersSelectedId = selected?.id || '';
-  let notificationBody = { data: [] };
-  if (selected?.id) {
-    notificationBody = await api(`/admin/api/app-users/${encodeURIComponent(selected.id)}/notifications?pageSize=10`);
-  }
-  const notificationRowsData = Array.isArray(notificationBody.data) ? notificationBody.data : [];
-  state.appUsersNotificationRows = notificationRowsData;
+function pager({ page, totalPages, prefix, esc }) {
+  return `
+    <div class="pager">
+      <button class="secondary" data-${prefix}-page="prev" ${Number(page || 1) <= 1 ? 'disabled' : ''}>‹</button>
+      <span class="muted">${esc(page || 1)} / ${esc(totalPages || 1)}</span>
+      <button class="secondary" data-${prefix}-page="next" ${Number(page || 1) >= Number(totalPages || 1) ? 'disabled' : ''}>›</button>
+    </div>
+  `;
+}
 
-  $('appUsers').innerHTML = `
-    <div class="appUsersLayout">
+function renderUserManagement({ body, rows, selected, notificationRowsData, q, active, pageSize, esc, textFor, textForVars, formatDateTime }) {
+  return `
+    <div class="appUsersLayout appUsersLayout--users">
       <section class="card settingsControlCard">
         <div class="cardHead">
           <div class="cardHeadMain">
@@ -112,19 +103,142 @@ export async function loadAppUsersView(ctx) {
           </div>
         </div>
         <div class="appUserList">
-          ${
-            rows.length === 0
-              ? `<p class="muted">${esc(textFor('appUsersEmpty'))}</p>`
-              : rows.map((user) => userCard(user, { esc, textFor, formatDateTime })).join('')
-          }
+          ${rows.length === 0 ? `<p class="muted">${esc(textFor('appUsersEmpty'))}</p>` : rows.map((user) => userCard(user, { esc, textFor, formatDateTime })).join('')}
         </div>
-        <div class="pager">
-          <button class="secondary" data-app-users-page="prev" ${Number(body.page || 1) <= 1 ? 'disabled' : ''}>‹</button>
-          <span class="muted">${esc(body.page || 1)} / ${esc(body.totalPages || 1)}</span>
-          <button class="secondary" data-app-users-page="next" ${Number(body.page || 1) >= Number(body.totalPages || 1) ? 'disabled' : ''}>›</button>
-        </div>
+        ${pager({ page: body.page, totalPages: body.totalPages, prefix: 'app-users', esc })}
       </section>
 
+      <section class="card settingsControlCard appUserDetailCard">
+        <div class="cardHead">
+          <div class="cardHeadMain">
+            <div class="cardKicker">${esc(textFor('appUsersSelectedTitle'))}</div>
+            <div class="cardHint">${selected ? esc(selected.email) : esc(textFor('appUsersSelectUserHint'))}</div>
+          </div>
+        </div>
+        ${
+          selected
+            ? `
+              <div class="appUserSelected">
+                ${userCard(selected, { esc, textFor, formatDateTime })}
+              </div>
+              <div class="appUsersNotifications">
+                <div class="cardKicker" style="margin-bottom:8px">${esc(textFor('appUsersNotificationsTitle'))}</div>
+                ${notificationRows(notificationRowsData, { esc, textFor, formatDateTime })}
+              </div>
+            `
+            : `<p class="muted">${esc(textFor('appUsersEmpty'))}</p>`
+        }
+      </section>
+    </div>
+  `;
+}
+
+function renderDeviceManagement({ body, rows, q, active, platform, pageSize, esc, textFor, formatDateTime }) {
+  return `
+    <section class="card settingsControlCard">
+      <div class="cardHead">
+        <div class="cardHeadMain">
+          <div class="cardKicker">${esc(textFor('appDevicesTitle'))}</div>
+          <div class="cardHint">${esc(textFor('appDevicesHint'))}</div>
+        </div>
+        <div class="cardHeadActions">
+          <button class="secondary" id="refreshAppUsersBtn">${esc(textFor('btnRefresh'))}</button>
+        </div>
+      </div>
+      <div class="filterBar compactFilterBar">
+        <div class="filterBarControls toolbar jobsFilterGroups">
+          <input id="appDevicesQuery" value="${esc(q)}" class="wide" placeholder="${esc(textFor('appDevicesSearchPlaceholder'))}" />
+          <select id="appDevicesActive">
+            <option value="" ${active === '' ? 'selected' : ''}>${esc(textFor('statusAll'))}</option>
+            <option value="1" ${active === '1' ? 'selected' : ''}>${esc(textFor('statusActive'))}</option>
+            <option value="0" ${active === '0' ? 'selected' : ''}>${esc(textFor('statusInactive'))}</option>
+          </select>
+          <input id="appDevicesPlatform" value="${esc(platform)}" placeholder="${esc(textFor('appDevicesPlatformPlaceholder'))}" />
+          <select id="appDevicesPageSize">
+            <option value="20" ${pageSize === '20' ? 'selected' : ''}>20</option>
+            <option value="30" ${pageSize === '30' ? 'selected' : ''}>30</option>
+            <option value="50" ${pageSize === '50' ? 'selected' : ''}>50</option>
+          </select>
+          <button class="secondary" id="searchAppDevicesBtn">${esc(textFor('btnSearch'))}</button>
+        </div>
+      </div>
+      <div class="tableScroll">
+        <table>
+          <thead><tr><th>${esc(textFor('appDevicesUser'))}</th><th>${esc(textFor('appDevicesDevice'))}</th><th>${esc(textFor('appDevicesToken'))}</th><th>${esc(textFor('colStatus'))}</th><th>${esc(textFor('colDate'))}</th><th>${esc(textFor('colAction'))}</th></tr></thead>
+          <tbody>
+            ${
+              rows.length === 0
+                ? `<tr><td colspan="6" class="muted">${esc(textFor('appDevicesEmpty'))}</td></tr>`
+                : rows.map((row) => `
+                  <tr>
+                    <td><strong>${esc(row.nickname || '-')}</strong><br/><span class="muted">${esc(row.email || row.userId || '-')}</span></td>
+                    <td>${esc(row.deviceName || '-')}<br/><span class="pill">${esc(row.platform || '-')}</span></td>
+                    <td><code>${esc(maskToken(row.pushToken))}</code></td>
+                    <td>${row.active ? esc(textFor('statusActive')) : esc(textFor('statusInactive'))}</td>
+                    <td>${esc(formatDateTime(row.updatedAt || row.createdAt))}</td>
+                    <td>
+                      <label class="switchRow compactSwitch">
+                        <input class="switchInput" type="checkbox" data-app-device-active="${esc(row.id)}" ${row.active ? 'checked' : ''}/>
+                        <span class="switchUi" aria-hidden="true"></span>
+                      </label>
+                    </td>
+                  </tr>
+                `).join('')
+            }
+          </tbody>
+        </table>
+      </div>
+      ${pager({ page: body.page, totalPages: body.totalPages, prefix: 'app-devices', esc })}
+    </section>
+  `;
+}
+
+function renderNotificationSearch({ body, rows, q, status, type, targetType, pageSize, esc, textFor, formatDateTime }) {
+  return `
+    <section class="card settingsControlCard">
+      <div class="cardHead">
+        <div class="cardHeadMain">
+          <div class="cardKicker">${esc(textFor('appNotificationsTitle'))}</div>
+          <div class="cardHint">${esc(textFor('appNotificationsHint'))}</div>
+        </div>
+        <div class="cardHeadActions">
+          <button class="secondary" id="refreshAppUsersBtn">${esc(textFor('btnRefresh'))}</button>
+        </div>
+      </div>
+      <div class="filterBar compactFilterBar">
+        <div class="filterBarControls toolbar jobsFilterGroups">
+          <input id="appNotificationsQuery" value="${esc(q)}" class="wide" placeholder="${esc(textFor('appNotificationsSearchPlaceholder'))}" />
+          <select id="appNotificationsStatus">
+            <option value="" ${status === '' ? 'selected' : ''}>${esc(textFor('statusAll'))}</option>
+            <option value="queued" ${status === 'queued' ? 'selected' : ''}>queued</option>
+            <option value="sent" ${status === 'sent' ? 'selected' : ''}>sent</option>
+            <option value="failed" ${status === 'failed' ? 'selected' : ''}>failed</option>
+            <option value="cancelled" ${status === 'cancelled' ? 'selected' : ''}>cancelled</option>
+          </select>
+          <select id="appNotificationsType"><option value="">${esc(textFor('appNotificationsTypeAll'))}</option>${typeOptions(esc, type)}</select>
+          <select id="appNotificationsTargetType">
+            <option value="" ${targetType === '' ? 'selected' : ''}>${esc(textFor('appNotificationsTargetAll'))}</option>
+            <option value="all" ${targetType === 'all' ? 'selected' : ''}>all</option>
+            <option value="segment" ${targetType === 'segment' ? 'selected' : ''}>segment</option>
+            <option value="user" ${targetType === 'user' ? 'selected' : ''}>user</option>
+          </select>
+          <select id="appNotificationsPageSize">
+            <option value="20" ${pageSize === '20' ? 'selected' : ''}>20</option>
+            <option value="30" ${pageSize === '30' ? 'selected' : ''}>30</option>
+            <option value="50" ${pageSize === '50' ? 'selected' : ''}>50</option>
+          </select>
+          <button class="secondary" id="searchAppNotificationsBtn">${esc(textFor('btnSearch'))}</button>
+        </div>
+      </div>
+      ${notificationRows(rows, { esc, textFor, formatDateTime })}
+      ${pager({ page: body.page, totalPages: body.totalPages, prefix: 'app-notifications', esc })}
+    </section>
+  `;
+}
+
+function renderComposer({ rows, selected, esc, textFor }) {
+  return `
+    <div class="appUsersLayout appUsersLayout--composer">
       <section class="card settingsControlCard">
         <div class="cardHead">
           <div class="cardHeadMain">
@@ -142,33 +256,133 @@ export async function loadAppUsersView(ctx) {
         </div>
       </section>
 
-      <section class="card settingsControlCard appUserDetailCard">
+      <section class="card settingsControlCard">
         <div class="cardHead">
           <div class="cardHeadMain">
-            <div class="cardKicker">${esc(textFor('appUsersSelectedTitle'))}</div>
+            <div class="cardKicker">${esc(textFor('appUsersSendUserNotice'))}</div>
             <div class="cardHint">${selected ? esc(selected.email) : esc(textFor('appUsersSelectUserHint'))}</div>
           </div>
+        </div>
+        <div class="appUserList" style="margin-bottom:12px">
+          ${rows.slice(0, 8).map((user) => userCard(user, { esc, textFor, formatDateTime: (v) => v || '-' })).join('') || `<p class="muted">${esc(textFor('appUsersEmpty'))}</p>`}
         </div>
         ${
           selected
             ? `
-              <div class="appUserSelected">
-                ${userCard(selected, { esc, textFor, formatDateTime })}
-              </div>
-              <div class="settingsFormGrid appUsersNoticeForm" style="margin-top:12px">
+              <div class="settingsFormGrid appUsersNoticeForm">
                 <label class="fieldLabel">${esc(textFor('colType'))}<select id="userNotificationType">${typeOptions(esc)}</select></label>
                 <label class="fieldLabel appUsersWideField">${esc(textFor('colTitle'))}<input id="userNotificationTitle" placeholder="${esc(textFor('appUsersNoticeTitlePlaceholder'))}" /></label>
                 <label class="fieldLabel appUsersWideField">${esc(textFor('colBody'))}<textarea id="userNotificationBody" rows="3" placeholder="${esc(textFor('appUsersNoticeBodyPlaceholder'))}"></textarea></label>
                 <button class="success appUsersWideField" id="sendUserNotificationBtn">${esc(textFor('appUsersSendUserNotice'))}</button>
               </div>
-              <div class="appUsersNotifications">
-                <div class="cardKicker" style="margin-bottom:8px">${esc(textFor('appUsersNotificationsTitle'))}</div>
-                ${notificationRows(notificationRowsData, { esc, textFor, formatDateTime })}
-              </div>
             `
-            : `<p class="muted">${esc(textFor('appUsersEmpty'))}</p>`
+            : ''
         }
       </section>
     </div>
   `;
+}
+
+export async function loadAppUsersView(ctx) {
+  const { api, $, state, esc, textFor, textForVars, formatDateTime } = ctx;
+  if (!$('appUsers')) return;
+
+  const tab = state.appUsersTab || 'users';
+  const q = String($('appUsersQuery')?.value || state.appUsersQuery || '').trim();
+  const active = String($('appUsersActive')?.value ?? state.appUsersActive ?? '');
+  const pageSize = String($('appUsersPageSize')?.value || state.appUsersPageSize || '30');
+  state.appUsersQuery = q;
+  state.appUsersActive = active;
+  state.appUsersPageSize = pageSize;
+
+  const userParams = new URLSearchParams({ page: String(state.appUsersPage || 1), pageSize });
+  if (q) userParams.set('q', q);
+  if (active) userParams.set('active', active);
+  const body = await api(`/admin/api/app-users?${userParams.toString()}`);
+  const rows = Array.isArray(body.data) ? body.data : [];
+  state.appUsers = rows;
+  state.appUsersTotal = body.total || rows.length;
+  state.appUsersTotalPages = body.totalPages || 1;
+  if (!state.appUsersSelectedId && rows[0]?.id) state.appUsersSelectedId = rows[0].id;
+  const selected = rows.find((row) => row.id === state.appUsersSelectedId) || rows[0] || null;
+  state.appUsersSelectedId = selected?.id || '';
+
+  let selectedNotifications = { data: [] };
+  if (selected?.id) {
+    selectedNotifications = await api(`/admin/api/app-users/${encodeURIComponent(selected.id)}/notifications?pageSize=10`);
+  }
+
+  if (tab === 'devices') {
+    const deviceQ = String($('appDevicesQuery')?.value || state.appDevicesQuery || '').trim();
+    const deviceActive = String($('appDevicesActive')?.value ?? state.appDevicesActive ?? '');
+    const platform = String($('appDevicesPlatform')?.value || state.appDevicesPlatform || '').trim();
+    const devicePageSize = String($('appDevicesPageSize')?.value || state.appDevicesPageSize || '30');
+    Object.assign(state, { appDevicesQuery: deviceQ, appDevicesActive: deviceActive, appDevicesPlatform: platform, appDevicesPageSize: devicePageSize });
+    const params = new URLSearchParams({ page: String(state.appDevicesPage || 1), pageSize: devicePageSize });
+    if (deviceQ) params.set('q', deviceQ);
+    if (deviceActive) params.set('active', deviceActive);
+    if (platform) params.set('platform', platform);
+    const deviceBody = await api(`/admin/api/app-user-devices?${params.toString()}`);
+    $('appUsers').innerHTML = renderDeviceManagement({
+      body: deviceBody,
+      rows: Array.isArray(deviceBody.data) ? deviceBody.data : [],
+      q: deviceQ,
+      active: deviceActive,
+      platform,
+      pageSize: devicePageSize,
+      esc,
+      textFor,
+      formatDateTime,
+    });
+    state.appDevicesTotalPages = deviceBody.totalPages || 1;
+    return;
+  }
+
+  if (tab === 'notifications') {
+    const nq = String($('appNotificationsQuery')?.value || state.appNotificationsQuery || '').trim();
+    const status = String($('appNotificationsStatus')?.value ?? state.appNotificationsStatus ?? '');
+    const type = String($('appNotificationsType')?.value ?? state.appNotificationsType ?? '');
+    const targetType = String($('appNotificationsTargetType')?.value ?? state.appNotificationsTargetType ?? '');
+    const nPageSize = String($('appNotificationsPageSize')?.value || state.appNotificationsPageSize || '30');
+    Object.assign(state, { appNotificationsQuery: nq, appNotificationsStatus: status, appNotificationsType: type, appNotificationsTargetType: targetType, appNotificationsPageSize: nPageSize });
+    const params = new URLSearchParams({ page: String(state.appNotificationsPage || 1), pageSize: nPageSize });
+    if (nq) params.set('q', nq);
+    if (status) params.set('status', status);
+    if (type) params.set('type', type);
+    if (targetType) params.set('targetType', targetType);
+    const notificationBody = await api(`/admin/api/notifications?${params.toString()}`);
+    $('appUsers').innerHTML = renderNotificationSearch({
+      body: notificationBody,
+      rows: Array.isArray(notificationBody.data) ? notificationBody.data : [],
+      q: nq,
+      status,
+      type,
+      targetType,
+      pageSize: nPageSize,
+      esc,
+      textFor,
+      formatDateTime,
+    });
+    state.appNotificationsTotalPages = notificationBody.totalPages || 1;
+    return;
+  }
+
+  if (tab === 'composer') {
+    $('appUsers').innerHTML = renderComposer({ rows, selected, esc, textFor });
+    return;
+  }
+
+  $('appUsers').innerHTML = renderUserManagement({
+    body,
+    rows,
+    selected,
+    notificationRowsData: Array.isArray(selectedNotifications.data) ? selectedNotifications.data : [],
+    q,
+    active,
+    pageSize,
+    esc,
+    textFor,
+    textForVars,
+    formatDateTime,
+  });
 }

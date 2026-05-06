@@ -154,6 +154,13 @@ export function ensureStructuredSchema(db) {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS polling_job_locks (
+      job_key TEXT PRIMARY KEY,
+      lock_token TEXT NOT NULL,
+      locked_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS polling_job_runs (
       id TEXT PRIMARY KEY,
       position INTEGER NOT NULL DEFAULT 0,
@@ -284,6 +291,7 @@ export function ensureStructuredSchema(db) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_polling_job_runs_job ON polling_job_runs(job_key, started_at);
+    CREATE INDEX IF NOT EXISTS idx_polling_job_locks_expires ON polling_job_locks(expires_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_sessions_user ON app_user_sessions(user_id, expires_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_devices_user ON app_user_devices(user_id, active);
     CREATE INDEX IF NOT EXISTS idx_news_items_published ON news_items(category, published_at);

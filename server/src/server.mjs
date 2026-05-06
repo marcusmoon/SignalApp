@@ -8,7 +8,10 @@ const server = http.createServer((req, res) => {
   const startedAt = Date.now();
   res.on('finish', () => {
     const elapsed = Date.now() - startedAt;
-    console.log(`${req.method} ${req.url} ${res.statusCode} ${elapsed}ms`);
+    const verySlowMs = Math.max(config.slowRequestMs, config.verySlowRequestMs);
+    const level = elapsed >= verySlowMs ? 'very-slow' : elapsed >= config.slowRequestMs ? 'slow' : 'ok';
+    const prefix = level === 'ok' ? '[http]' : `[http:${level}]`;
+    console.log(`${prefix} ${req.method} ${req.url} ${res.statusCode} ${elapsed}ms`);
   });
   handleRequest(req, res).catch((error) => {
     console.error('[server] unhandled request error', error);
@@ -28,7 +31,13 @@ server.listen(config.port, config.host, () => {
     .catch((error) => console.warn('[server] Failed to inspect admin users:', error?.message || error));
 });
 
-const stopScheduler = startScheduler();
+const stopScheduler = config.schedulerEnabled
+  ? startScheduler()
+  : () => {};
+
+if (!config.schedulerEnabled) {
+  console.log('[server] scheduler disabled by SIGNAL_SCHEDULER_ENABLED=false');
+}
 
 process.on('SIGINT', () => {
   stopScheduler();

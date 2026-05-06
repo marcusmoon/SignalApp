@@ -5,10 +5,12 @@ import { config } from './config.mjs';
 import {
   createAppUserInDb,
   getAppUserInDb,
+  listAppUserDevicesInDb,
   listAppUsersInDb,
   loginAppUserInDb,
   revokeAppUserTokenInDb,
   updateAppUserAdminInDb,
+  updateAppUserDeviceAdminInDb,
   updateAppUserProfileInDb,
   upsertAppUserDeviceInDb,
   verifyAppUserTokenInDb,
@@ -24,7 +26,12 @@ import {
 } from './db/adminUsers.mjs';
 import { defaultDb } from './db/defaults.mjs';
 import { queryInsightItemsInDb } from './db/insights.mjs';
-import { getPollingJobInDb, listDuePollingJobsInDb } from './db/jobs.mjs';
+import {
+  acquirePollingJobLockInDb,
+  getPollingJobInDb,
+  listDuePollingJobsInDb,
+  releasePollingJobLockInDb,
+} from './db/jobs.mjs';
 import {
   ensureNewsSourcesFromItems,
   normalizeNewsSourceName,
@@ -187,6 +194,36 @@ export async function getPollingJob(jobKey) {
   });
 }
 
+export async function acquirePollingJobLock(jobKey, options = {}) {
+  return withDbExclusive(async () => {
+    const conn = await ensureSqliteStore();
+    conn.exec('BEGIN IMMEDIATE');
+    try {
+      const lock = acquirePollingJobLockInDb(conn, jobKey, options);
+      conn.exec('COMMIT');
+      return lock;
+    } catch (error) {
+      conn.exec('ROLLBACK');
+      throw error;
+    }
+  });
+}
+
+export async function releasePollingJobLock(jobKey, token) {
+  return withDbExclusive(async () => {
+    const conn = await ensureSqliteStore();
+    conn.exec('BEGIN IMMEDIATE');
+    try {
+      const released = releasePollingJobLockInDb(conn, jobKey, token);
+      conn.exec('COMMIT');
+      return released;
+    } catch (error) {
+      conn.exec('ROLLBACK');
+      throw error;
+    }
+  });
+}
+
 export async function verifyAdminLogin(loginId, password) {
   const db = await ensureSqliteStore();
   return verifyAdminLoginInDb(db, loginId, password);
@@ -239,6 +276,13 @@ export async function listAppUsers(options = {}) {
   });
 }
 
+export async function listAppUserDevices(options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return listAppUserDevicesInDb(db, options);
+  });
+}
+
 export async function getAppUser(userId) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
@@ -250,6 +294,13 @@ export async function updateAppUserAdmin(userId, patch) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
     return updateAppUserAdminInDb(db, userId, patch);
+  });
+}
+
+export async function updateAppUserDeviceAdmin(deviceId, patch) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return updateAppUserDeviceAdminInDb(db, deviceId, patch);
   });
 }
 

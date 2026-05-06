@@ -64,12 +64,25 @@ function resolveSqlitePath() {
   return path.isAbsolute(raw) ? raw : path.join(rootDir, raw);
 }
 
+function boolEnv(name, defaultValue) {
+  const raw = process.env[name];
+  if (raw == null || raw === '') return defaultValue;
+  const value = String(raw).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(value)) return true;
+  if (['0', 'false', 'no', 'off'].includes(value)) return false;
+  return defaultValue;
+}
+
 export const config = {
   rootDir,
   dataDir,
   sqlitePath: resolveSqlitePath(),
   host: process.env.HOST || '127.0.0.1',
   port: Number(process.env.PORT || 4000),
+  schedulerEnabled: boolEnv('SIGNAL_SCHEDULER_ENABLED', true),
+  slowRequestMs: Number(process.env.SIGNAL_SLOW_REQUEST_MS || 1200),
+  verySlowRequestMs: Number(process.env.SIGNAL_VERY_SLOW_REQUEST_MS || 5000),
+  jobLockTtlMs: Number(process.env.SIGNAL_JOB_LOCK_TTL_MS || 2 * 60 * 60 * 1000),
   adminUsers: parseAdminUsersFromEnv(),
   sessionSecret: process.env.SESSION_SECRET || 'change-me-local-session-secret',
   finnhubToken: process.env.FINNHUB_TOKEN || '',

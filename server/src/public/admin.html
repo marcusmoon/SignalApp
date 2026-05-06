@@ -94,8 +94,13 @@
             <button class="navBtn secondary" data-view="monitoring" data-icon="M">실행 모니터링</button>
             <button class="navBtn secondary" data-view="errors" data-icon="!">실패/오류 로그</button>
 
+            <div class="navSectionTitle muted" style="margin-top:10px" data-i18n="navSectionAppUsers">앱 사용자</div>
+            <button class="navBtn secondary" data-view="app-users" data-icon="U" data-i18n="navAppUserManagement">사용자 관리</button>
+            <button class="navBtn secondary" data-view="app-devices" data-icon="D" data-i18n="navAppDevices">디바이스 관리</button>
+            <button class="navBtn secondary" data-view="app-notifications" data-icon="A" data-i18n="navAppNotifications">알림 조회</button>
+            <button class="navBtn secondary" data-view="app-push" data-icon="P" data-i18n="navAppNotificationComposer">푸시/알림 발송</button>
+
             <div class="navSectionTitle muted" style="margin-top:10px" data-i18n="navSectionSystem">시스템</div>
-            <button class="navBtn secondary" data-view="app-users" data-icon="A">앱 사용자</button>
             <button class="navBtn secondary" data-view="settings-users" data-icon="U">어드민 사용자</button>
             <button class="navBtn secondary" data-view="settings-keys" data-icon="P">Provider</button>
             <button class="navBtn secondary" data-view="translations" data-icon="G">번역 설정</button>
@@ -348,7 +353,6 @@
                 </div>
                 <div class="pageHeaderActions">
                   <div class="segmented" role="tablist" aria-label="Settings sections">
-                    <button type="button" class="secondary segBtn" data-view="app-users" data-i18n="navAppUsers">앱 사용자</button>
                     <button type="button" class="secondary segBtn" data-view="settings-users" data-settings-tab="users" data-i18n="navSettingsUsers">어드민 사용자</button>
                     <button type="button" class="secondary segBtn" data-view="settings-keys" data-settings-tab="keys" data-i18n="navSettingsKeys">Provider</button>
                     <button type="button" class="secondary segBtn active" data-view="translations" data-i18n="navTranslations">번역 설정</button>
@@ -478,11 +482,17 @@
           <div id="view-app-users" class="view hidden">
             <div class="panel">
               <div class="pageHeader">
-                <div class="pageHeaderMain">
-                  <div class="pageTitle" data-i18n="pageAppUsersTitle">앱 사용자</div>
-                  <div class="pageDesc" data-i18n="pageAppUsersDesc">앱 가입 사용자, 사용자별 알림, 공지성 발송 대상을 관리합니다.</div>
+                  <div class="pageHeaderMain">
+                  <div class="pageTitle" id="appUsersPageTitle" data-i18n="pageAppUsersTitle">앱 사용자</div>
+                  <div class="pageDesc" id="appUsersPageDesc" data-i18n="pageAppUsersDesc">앱 가입 사용자, 사용자별 알림, 공지성 발송 대상을 관리합니다.</div>
                 </div>
                 <div class="pageHeaderActions">
+                  <div class="segmented" role="tablist" aria-label="App user sections">
+                    <button type="button" class="secondary segBtn active" data-app-users-tab="users" data-i18n="navAppUserManagement">사용자 관리</button>
+                    <button type="button" class="secondary segBtn" data-app-users-tab="devices" data-i18n="navAppDevices">디바이스 관리</button>
+                    <button type="button" class="secondary segBtn" data-app-users-tab="notifications" data-i18n="navAppNotifications">알림 조회</button>
+                    <button type="button" class="secondary segBtn" data-app-users-tab="composer" data-i18n="navAppNotificationComposer">푸시/알림 발송</button>
+                  </div>
                   <button type="button" class="secondary refreshBtn" id="refreshAppUsersHeaderBtn" data-i18n="btnRefreshThisView">새로고침</button>
                 </div>
               </div>
@@ -499,7 +509,6 @@
                 </div>
                 <div class="pageHeaderActions">
                   <div class="segmented" role="tablist" aria-label="Settings sections">
-                    <button type="button" class="secondary segBtn" data-view="app-users" data-i18n="navAppUsers">앱 사용자</button>
                     <button type="button" class="secondary segBtn" data-view="settings-users" data-settings-tab="users" data-i18n="navSettingsUsers">어드민 사용자</button>
                     <button type="button" class="secondary segBtn" data-view="settings-keys" data-settings-tab="keys" data-i18n="navSettingsKeys">Provider</button>
                     <button type="button" class="secondary segBtn" data-view="translations" data-i18n="navTranslations">번역 설정</button>

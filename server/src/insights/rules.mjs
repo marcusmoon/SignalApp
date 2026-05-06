@@ -176,7 +176,45 @@ function titleForSymbol(symbol, score, newsCount, movePct, earningsSoon) {
   return `${symbol} 관심 신호 업데이트`;
 }
 
-function buildSymbolInsight({ symbol, news, quote, earning, videos, today, generatedAt, expiresAt, llm }) {
+function pushProfileForSignal({
+  score,
+  pushMinScore,
+  news,
+  videos,
+  movePct,
+  earningsSoon,
+  sourceRefs,
+}) {
+  const absMove = Math.abs(movePct);
+  const hasContent = news.length > 0 || videos.length > 0;
+  const hasCatalyst = hasContent || earningsSoon;
+  const sourceTypes = new Set(sourceRefs.map((ref) => ref.type).filter(Boolean));
+  const sourceMix = sourceTypes.size;
+  const urgentMove = absMove >= 5 && hasContent;
+  const denseNews = news.length >= 3;
+  const scorePass = score >= pushMinScore;
+  const candidate = hasCatalyst && (scorePass || urgentMove || (earningsSoon && score >= Math.max(40, pushMinScore - 10)));
+  const priority =
+    candidate && (score >= 70 || urgentMove || (earningsSoon && denseNews))
+      ? 'high'
+      : candidate
+        ? 'normal'
+        : 'none';
+  const reasonParts = [];
+  if (scorePass) reasonParts.push(`score>=${pushMinScore}`);
+  if (urgentMove) reasonParts.push('large_move_with_content');
+  if (earningsSoon) reasonParts.push('earnings_near');
+  if (sourceMix >= 2) reasonParts.push('multi_source');
+  if (denseNews) reasonParts.push('news_cluster');
+  return {
+    candidate,
+    priority,
+    reason: reasonParts.join(',') || (candidate ? 'signal_rule' : 'below_threshold'),
+    sourceMix,
+  };
+}
+
+function buildSymbolInsight({ symbol, news, quote, earning, videos, today, generatedAt, expiresAt, llm, pushMinScore }) {
   const movePct = quoteMovePct(quote);
   const absMove = Math.abs(movePct);
   const earningDate = String(earning?.date || earning?.eventAt || '').slice(0, 10);
@@ -238,6 +276,15 @@ function buildSymbolInsight({ symbol, news, quote, earning, videos, today, gener
   const drivers = driverForSymbol({ news, movePct, earningsSoon, videos });
   const whyNow = `${sourceStatsSummary(stats)} 등 신호가 같은 시간대에 겹치며 관심도가 올라왔습니다.`;
   const summary = `${summaryParts.join(' · ') || '수집 데이터'} 기준으로 관심도가 상승했습니다. ${nextSteps[0] || '관련 원문을 확인해 맥락을 이어서 볼 수 있습니다.'}`;
+  const pushProfile = pushProfileForSignal({
+    score: capped,
+    pushMinScore,
+    news,
+    videos,
+    movePct,
+    earningsSoon,
+    sourceRefs,
+  });
 
   return {
     id: `insight:${symbol}:${generatedAt.slice(0, 13)}`,
@@ -260,7 +307,10 @@ function buildSymbolInsight({ symbol, news, quote, earning, videos, today, gener
     relatedNewsIds: news.map((item) => item.id),
     relatedYoutubeIds: videos.map((item) => item.id),
     relatedQuoteIds: quote?.id ? [quote.id] : [],
-    pushCandidate: capped >= 55,
+    pushCandidate: pushProfile.candidate,
+    pushPriority: pushProfile.priority,
+    pushReason: pushProfile.reason,
+    pushSourceMix: pushProfile.sourceMix,
     pushTitle: `${symbol} 관심 신호`,
     pushBody: summary,
     provider: 'rules',
@@ -346,6 +396,7 @@ export function generateMarketInsights(db, params = {}) {
   const windowHours = Math.max(1, Math.min(168, Number(params.windowHours) || 24));
   const maxItems = Math.max(1, Math.min(50, Number(params.maxItems) || 8));
   const minScore = Math.max(0, Math.min(100, Number(params.minScore) || 20));
+  const pushMinScore = Math.max(25, Math.min(95, Number(params.pushMinScore) || 55));
   const expiresAt = new Date(now.getTime() + windowHours * 60 * 60 * 1000).toISOString();
   const sinceMs = now.getTime() - windowHours * 60 * 60 * 1000;
   const llm = selectInsightLlm(db, params.llmProvider || 'auto');
@@ -395,6 +446,7 @@ export function generateMarketInsights(db, params = {}) {
         generatedAt,
         expiresAt,
         llm,
+        pushMinScore,
       }),
     )
     .filter((item) => item.score >= minScore)

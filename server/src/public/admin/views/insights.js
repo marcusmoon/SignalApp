@@ -113,7 +113,10 @@ export async function loadInsightsView(ctx) {
       <div class="row">
         <span class="pill pillStatus--ok">${esc(textForVars('insightAdminTotal', { count: state.insightsTotal }))}</span>
         <span class="pill pillStatus--warn">${esc(textForVars('insightAdminPushCount', { count: Number(summary.pushCandidates || 0) }))}</span>
+        <span class="pill pillStatus--ok">${esc(textForVars('insightAdminPushReadyCount', { count: Number(summary.pushReady || 0) }))}</span>
+        <span class="pill">${esc(textForVars('insightAdminSourceLinkedCount', { count: Number(summary.sourceLinked || 0) }))}</span>
         <span class="pill pillStatus--error">${esc(textForVars('insightAdminAlertCount', { count: Number(summary.alerts || 0) }))}</span>
+        <span class="pill pillStatus--muted">${esc(textForVars('insightAdminExpiredCount', { count: Number(summary.expired || 0) }))}</span>
         <span class="pill">${esc(textForVars('insightAdminLlmReadyCount', { count: Number(summary.llmReady || 0) }))}</span>
       </div>
     </div>

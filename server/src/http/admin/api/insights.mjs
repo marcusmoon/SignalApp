@@ -79,6 +79,13 @@ export async function handleAdminInsightsRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/admin/api/insights') {
     const db = await readDb();
     const filtered = filterAdminInsights(db.insightItems, url).map(adminInsight);
+    const now = Date.now();
+    const pushReady = filtered.filter((item) => item.pushCandidate && item.pushTitle && item.pushBody).length;
+    const sourceLinked = filtered.filter((item) => item.sourceRefs.length > 0).length;
+    const expired = filtered.filter((item) => {
+      const expiresAt = item.expiresAt ? new Date(item.expiresAt).getTime() : null;
+      return Number.isFinite(expiresAt) && expiresAt < now;
+    }).length;
     const page = paginate(filtered, url, 30, 100);
     json(res, 200, {
       data: page.rows,
@@ -88,6 +95,9 @@ export async function handleAdminInsightsRoutes({ req, res, url, pathname }) {
       totalPages: page.totalPages,
       summary: {
         pushCandidates: filtered.filter((item) => item.pushCandidate).length,
+        pushReady,
+        sourceLinked,
+        expired,
         alerts: filtered.filter((item) => item.level === 'alert').length,
         llmReady: filtered.filter((item) => item.llm?.status === 'ready').length,
       },

@@ -10,6 +10,11 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { loadNotificationHistory, type StoredNotification } from '@/services/notificationHistory';
+import { loadNotificationPrefs } from '@/services/notificationPreferences';
+import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
+import { hasSignalApi } from '@/services/env';
+import { fetchSignalInsights } from '@/integrations/signal-api/insights';
+import type { SignalApiInsight } from '@/integrations/signal-api/types';
 import { formatRelativeTime } from '@/utils/date';
 
 export default function AlertsScreen() {
@@ -20,12 +25,34 @@ export default function AlertsScreen() {
   const isFocused = useIsFocused();
   const router = useRouter();
   const [items, setItems] = useState<StoredNotification[]>([]);
+  const [candidates, setCandidates] = useState<SignalApiInsight[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
 
   const reload = useCallback(async () => {
-    const list = await loadNotificationHistory();
+    const [list, prefs, watchlist] = await Promise.all([
+      loadNotificationHistory(),
+      loadNotificationPrefs(),
+      loadWatchlistSymbols().catch(() => [] as string[]),
+    ]);
     setItems(list);
+    if (!hasSignalApi() || !prefs.pushEnabled || !prefs.signalAlertsEnabled) {
+      setCandidates([]);
+      return;
+    }
+    const symbols = prefs.signalWatchlistOnly ? watchlist.map((s) => s.trim().toUpperCase()).filter(Boolean) : [];
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul';
+    const { items: rows } = await fetchSignalInsights({
+      pushCandidate: true,
+      symbols: symbols.length > 0 ? symbols : undefined,
+      date: 'today',
+      timeZone,
+      limit: 10,
+    }).catch(() => ({ items: [] as SignalApiInsight[], meta: { total: 0, limit: 10, offset: 0, hasMore: false } }));
+    const filtered = prefs.earningsOnly
+      ? rows.filter((row) => row.topics?.includes('earnings') || row.signalDrivers?.includes('earnings_near'))
+      : rows;
+    setCandidates(filtered);
   }, []);
 
   useFocusEffect(
@@ -45,11 +72,56 @@ export default function AlertsScreen() {
 
   const listHeader = useMemo(
     () => (
-      <Text style={styles.hint} accessibilityRole="text">
-        {t('alertsListHint')}
-      </Text>
+      <>
+        <Text style={styles.hint} accessibilityRole="text">
+          {t('alertsListHint')}
+        </Text>
+        {candidates.length > 0 ? (
+          <View style={styles.candidateSection}>
+            <View style={styles.candidateHead}>
+              <Text style={styles.candidateTitle}>{t('alertsCandidateTitle')}</Text>
+              <Pressable
+                onPress={() => router.push('/insights')}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t('alertsCandidateOpenAll')}>
+                <Text style={styles.candidateLink}>{t('alertsCandidateOpenAll')}</Text>
+              </Pressable>
+            </View>
+            <Text style={styles.candidateHint}>{t('alertsCandidateHint')}</Text>
+            {candidates.slice(0, 3).map((item) => (
+              <Pressable
+                key={item.id}
+                onPress={() => router.push('/insights')}
+                accessibilityRole="button"
+                accessibilityLabel={item.pushTitle || item.title}
+                style={({ pressed }) => [styles.candidateCard, pressed && styles.candidateCardPressed]}>
+                <View style={styles.alertTop}>
+                  <Text style={styles.alertTitle} numberOfLines={2}>
+                    {item.pushTitle || item.title}
+                  </Text>
+                  {item.pushPriority === 'high' || item.level === 'alert' ? (
+                    <View style={styles.high}>
+                      <Text style={styles.highText}>{t('alertsHighBadge')}</Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={styles.alertBody} numberOfLines={3}>
+                  {item.pushBody || item.summary}
+                </Text>
+                <View style={styles.candidateMetaRow}>
+                  <Text style={styles.candidateMeta} numberOfLines={1}>
+                    {(item.symbols || []).slice(0, 4).join(', ') || t('insightSectionKicker')}
+                  </Text>
+                  <Text style={styles.candidateMeta}>{formatRelativeTime(item.generatedAt || '', locale)}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+      </>
     ),
-    [styles.hint, t],
+    [candidates, locale, router, styles, t],
   );
 
   const listFooter = useMemo(
@@ -97,22 +169,24 @@ export default function AlertsScreen() {
         renderItem={renderAlert}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>{t('alertsEmpty')}</Text>
-            <Pressable
-              onPress={() => router.push('/settings?tab=notifications')}
-              style={styles.settingsLink}
-              accessibilityRole="button"
-              accessibilityLabel={t('alertsOpenSettings')}>
-              <Text style={styles.settingsLinkText}>{t('alertsOpenSettings')}</Text>
-            </Pressable>
-          </View>
+          candidates.length > 0 ? null : (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>{t('alertsEmpty')}</Text>
+              <Pressable
+                onPress={() => router.push('/settings?tab=notifications')}
+                style={styles.settingsLink}
+                accessibilityRole="button"
+                accessibilityLabel={t('alertsOpenSettings')}>
+                <Text style={styles.settingsLinkText}>{t('alertsOpenSettings')}</Text>
+              </Pressable>
+            </View>
+          )
         }
         ListFooterComponent={listFooter}
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: bottomPad },
-          items.length === 0 ? styles.listContentEmpty : null,
+          items.length === 0 && candidates.length === 0 ? styles.listContentEmpty : null,
         ]}
         style={styles.list}
         showsVerticalScrollIndicator={false}
@@ -132,6 +206,41 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     listContent: { paddingHorizontal: 16, paddingTop: 8 },
     listContentEmpty: { flexGrow: 1 },
     hint: { fontSize: sf(11), color: theme.textDim, marginBottom: 12 },
+    candidateSection: {
+      marginBottom: 14,
+      padding: 14,
+      borderRadius: 14,
+      borderWidth: 2,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    candidateHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      marginBottom: 4,
+    },
+    candidateTitle: { flex: 1, fontSize: sf(14), fontWeight: '900', color: theme.text },
+    candidateLink: { fontSize: sf(12), fontWeight: '800', color: theme.green },
+    candidateHint: { fontSize: sf(11), color: theme.textMuted, lineHeight: sf(16), marginBottom: 10 },
+    candidateCard: {
+      paddingVertical: 12,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.card,
+      marginTop: 8,
+    },
+    candidateCardPressed: { opacity: 0.78 },
+    candidateMetaRow: {
+      marginTop: 9,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    candidateMeta: { flexShrink: 1, fontSize: sf(11), color: theme.textDim, fontWeight: '700' },
     emptyBox: {
       paddingVertical: 24,
       paddingHorizontal: 12,

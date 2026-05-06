@@ -156,6 +156,10 @@ export type SignalApiInsight = {
   reasoning: string[];
   sourceRefs: SignalApiInsightSourceRef[];
   pushCandidate: boolean;
+  pushPriority?: 'high' | 'normal' | 'none' | string;
+  pushReason?: string;
+  pushTitle?: string;
+  pushBody?: string;
   generatedAt: string | null;
   expiresAt: string | null;
   provider: string;

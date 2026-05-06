@@ -819,6 +819,8 @@ export default function SettingsScreen() {
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [earningsOnly, setEarningsOnly] = useState(false);
+  const [signalAlertsEnabled, setSignalAlertsEnabled] = useState(true);
+  const [signalWatchlistOnly, setSignalWatchlistOnly] = useState(true);
   const [localMacroCalendar, setLocalMacroCalendar] = useState(false);
   const [localWatchlistEarnings, setLocalWatchlistEarnings] = useState(false);
   const [prefsReady, setPrefsReady] = useState(false);
@@ -938,6 +940,8 @@ export default function SettingsScreen() {
     const p = await loadNotificationPrefs();
     setPushEnabled(p.pushEnabled);
     setEarningsOnly(p.earningsOnly);
+    setSignalAlertsEnabled(p.signalAlertsEnabled);
+    setSignalWatchlistOnly(p.signalWatchlistOnly);
     setLocalMacroCalendar(p.localMacroCalendar);
     setLocalWatchlistEarnings(p.localWatchlistEarnings);
     setPrefsReady(true);
@@ -1685,6 +1689,36 @@ export default function SettingsScreen() {
                   </View>
                   <View style={styles.prefBlock}>
                     <View style={styles.prefRow}>
+                      <Text style={styles.prefLabel}>{t('settingsSignalAlertsEnabled')}</Text>
+                      <Switch
+                        value={signalAlertsEnabled}
+                        onValueChange={async (v) => {
+                          setSignalAlertsEnabled(v);
+                          await saveNotificationPrefs({ signalAlertsEnabled: v });
+                        }}
+                        trackColor={{ false: '#333', true: theme.green + '88' }}
+                        thumbColor={signalAlertsEnabled ? theme.green : '#888'}
+                      />
+                    </View>
+                    <Text style={styles.prefHint}>{t('settingsSignalAlertsHint')}</Text>
+                  </View>
+                  <View style={styles.prefBlock}>
+                    <View style={styles.prefRow}>
+                      <Text style={styles.prefLabel}>{t('settingsSignalWatchlistOnly')}</Text>
+                      <Switch
+                        value={signalWatchlistOnly}
+                        onValueChange={async (v) => {
+                          setSignalWatchlistOnly(v);
+                          await saveNotificationPrefs({ signalWatchlistOnly: v });
+                        }}
+                        trackColor={{ false: '#333', true: theme.green + '88' }}
+                        thumbColor={signalWatchlistOnly ? theme.green : '#888'}
+                      />
+                    </View>
+                    <Text style={styles.prefHint}>{t('settingsSignalWatchlistOnlyHint')}</Text>
+                  </View>
+                  <View style={styles.prefBlock}>
+                    <View style={styles.prefRow}>
                       <Text style={styles.prefLabel}>{t('settingsLocalMacroCalendar')}</Text>
                       <Switch
                         value={localMacroCalendar}
@@ -1694,6 +1728,8 @@ export default function SettingsScreen() {
                           await syncLocalCalendarNotifications({
                             pushEnabled,
                             earningsOnly,
+                            signalAlertsEnabled,
+                            signalWatchlistOnly,
                             localMacroCalendar: v,
                             localWatchlistEarnings,
                           });
@@ -1715,6 +1751,8 @@ export default function SettingsScreen() {
                           await syncLocalCalendarNotifications({
                             pushEnabled,
                             earningsOnly,
+                            signalAlertsEnabled,
+                            signalWatchlistOnly,
                             localMacroCalendar,
                             localWatchlistEarnings: v,
                           });

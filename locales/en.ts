@@ -78,6 +78,13 @@ export const en = {
   errorFinnhubTokenShort: 'Signal Server Finnhub provider settings are required.',
   errorSignalApiShort:
     'Signal API base URL is empty. Open Settings → Display → Signal server and pick Dev / Real / Custom, or set EXPO_PUBLIC_SIGNAL_API_BASE_URL in .env and restart Metro.',
+  signalApiErrorConfig: 'Signal API is not configured. Check the server URL in Settings.',
+  signalApiErrorTimeout: 'Signal Server is taking too long to respond. Try again in a moment.',
+  signalApiErrorNetwork: 'Could not reach Signal Server. Check your network and server status.',
+  signalApiErrorServer: 'Signal Server had a temporary problem. Try again in a moment.',
+  signalApiErrorHttp: 'The request could not be processed. Adjust the filters and try again.',
+  signalApiErrorParse: 'Could not read the server response. Refresh the app and try again.',
+  commonRetry: 'Retry',
   screenInfo: 'About',
   screenMegaCapList: 'Mega-cap tickers',
   screenMegaCapListLead:

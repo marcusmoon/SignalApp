@@ -189,6 +189,8 @@ server/src/worker.mjs           # scheduler-only entrypoint
 curl http://127.0.0.1:4000/health
 ```
 
+`/health`는 서버 프로세스와 SQLite read 가능 여부를 함께 확인한다. 정상은 `200`과 `db.ok=true`, SQLite 확인 실패는 `503`과 `db.ok=false`를 반환한다.
+
 뉴스 확인:
 
 ```bash

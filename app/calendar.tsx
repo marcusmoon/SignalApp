@@ -18,11 +18,14 @@ import { CalendarEventTypeFilterModal } from '@/components/signal/CalendarEventT
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
+import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
+import { formatSignalApiError } from '@/integrations/signal-api/client';
 import { hasSignalApi } from '@/services/env';
 import {
   CALENDAR_EVENT_TYPE_ORDER,
@@ -134,7 +137,7 @@ export default function CalendarScreen() {
         await load();
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : t('calendarErrorLoad'));
+          setError(formatSignalApiError(e, t, 'calendarErrorLoad'));
           setEvents([]);
         }
       } finally {
@@ -151,7 +154,7 @@ export default function CalendarScreen() {
     try {
       await load(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('feedErrorRefresh'));
+      setError(formatSignalApiError(e, t, 'feedErrorRefresh'));
     } finally {
       setRefreshing(false);
     }
@@ -338,7 +341,13 @@ export default function CalendarScreen() {
   );
 
   const renderListEmpty = useCallback(() => {
-    if (loading) return <Text style={styles.loading}>{t('commonLoading')}</Text>;
+    if (loading) {
+      return (
+        <View style={SCROLL_LOADING_BODY_STYLE}>
+          <SignalLoadingIndicator message={t('commonLoading')} />
+        </View>
+      );
+    }
     if (error) return null;
     return (
       <Text style={styles.empty}>
@@ -382,6 +391,7 @@ export default function CalendarScreen() {
         ListFooterComponent={<SignalBannerAd />}
         contentContainerStyle={[
           styles.listContent,
+          loading ? SCROLL_CONTENT_LOADING_STYLE : null,
           { paddingBottom: 28 + insets.bottom + 56 },
           selectedDayEvents.length === 0 && !loading ? styles.listContentEmpty : null,
         ]}
@@ -452,7 +462,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.text,
       marginBottom: 6,
     },
-    loading: { fontSize: sf(12), color: theme.textMuted, marginBottom: 8, paddingVertical: 4 },
     errBox: {
       padding: 10,
       borderRadius: 10,

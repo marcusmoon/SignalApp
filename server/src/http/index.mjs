@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 import { handleAdminCalendarRoutes } from './admin/api/calendar.mjs';
 import { handleAdminConcallsRoutes } from './admin/api/concalls.mjs';
 import { handleAdminDataResetRoutes } from './admin/api/dataReset.mjs';
@@ -65,7 +67,8 @@ export async function handleRequest(req, res) {
 
     json(res, 404, { error: 'NOT_FOUND' });
   } catch (error) {
-    console.error(error);
-    json(res, 500, { error: error instanceof Error ? error.message : String(error) });
+    const requestId = crypto.randomUUID();
+    console.error(`[request:${requestId}]`, error);
+    json(res, 500, { error: 'INTERNAL_SERVER_ERROR', requestId });
   }
 }

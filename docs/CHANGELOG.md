@@ -6,6 +6,7 @@
 
 - **로케일**: `locales/*`에 UI 문자열을 모으고, 화면/도메인에서 재사용한다.
 - **데이터 경로**: 피처 데이터 HTTP는 **`integrations/signal-api/`** 만 사용한다. 응답 메모리 캐시는 **`integrations/signal-api/cache/*`** (뉴스·캘린더·컨콜·유튜브 등). 시세 탭 등 일부 TTL·보조 캐시는 **`services/cache/`** 와 설정 화면의 캐시 초기화와 연동한다.
+- **Signal API 요청 품질**: 앱의 Signal API 클라이언트는 GET 요청에 기본 12초 타임아웃과 1회 재시도를 적용한다. 네트워크/타임아웃/서버 오류는 원문 body를 그대로 노출하지 않고 로케일별 안내 문구로 표시한다.
 - **도메인**: 뉴스 규칙 `domain/news`, 시세·심볼 시드 `domain/quotes`(예: US 심볼), 유튜브 큐레이션·핸들 `domain/youtube`, 컨콜/캘린더/시그널 등은 각 `domain/<영역>` 배럴로만 참조한다.
 - **뉴스 UI**: `components/signal/NewsCard` — 해시태그·「원문 보기」푸터, 상대 시각은 **경과 시간** 기준(방금 / N분·시간 전; 로컬 날짜 전환과 무관). 뉴스 탭은 상단 헤더와 글로벌/코인/한국 세그먼트를 고정하고, 새로고침 시 현재 세그먼트 뉴스와 오늘의 시그널을 함께 최신화한다. 오늘의 시그널은 제목/헤더 영역을 눌러 접거나 펼 수 있고, 새 업데이트 안내는 오늘의 시그널 영역 아래, 세그먼트 탭 위에 표시한다.
 - **오늘의 시그널**: 앱 첫 화면은 서버 `/v1/insights`가 내려주는 오늘 생성 인사이트가 있으면 최신 뉴스보다 위에 `오늘의 시그널` 카드로 보여준다. 홈 미리보기는 후보 여러 건을 받아 기기 관심종목과 맞는 신호를 우선 노출하고, 카드에는 왜 지금 봐야 하는지(`whyNow`), 다음 확인 포인트, 뉴스·유튜브·시세·실적 소스 구성을 함께 표시한다. 전체 리스트 화면은 인사이트 `generatedAt` 생성일 기준 날짜 선택/좌우 이동으로 과거 시그널을 조회하며, 관심종목만 보기로 개인 티커와 연결된 시그널만 좁혀 볼 수 있다. 같은 날짜의 반복 생성분은 브리핑/심볼별 최신 1건만 노출한다. 카드는 인사이트 생성에 쓰인 대표 기사/영상 원문으로 이동하고, 심볼 칩은 해당 종목 상세로 이동한다.
@@ -21,6 +22,8 @@
 ## 서버 (API / Jobs)
 
 - **로컬 데이터**: Node 24 내장 SQLite 기반 embedded DB를 사용한다. 기본 경로는 `${DATA_DIR}/signal.sqlite`이며, Railway에서는 기존처럼 `DATA_DIR`를 볼륨 마운트 경로로 지정한다. `SQLITE_DB_PATH`로 파일 경로를 직접 지정할 수 있다.
+- **Health check**: `/health`는 프로세스 응답뿐 아니라 SQLite read 가능 여부까지 확인한다. DB 확인에 실패하면 `503`과 `db.ok=false`를 반환해 Railway/운영 모니터링에서 readiness 문제를 감지할 수 있게 한다.
+- **API 오류 노출 기준**: 예상치 못한 서버 500 오류는 내부 메시지를 클라이언트에 그대로 내려주지 않고 `INTERNAL_SERVER_ERROR`와 `requestId`만 반환한다. 상세 원인은 서버 로그의 같은 requestId로 추적한다.
 - **DB 모듈 구성**: 공개 import 경로는 `server/src/db.mjs`로 유지하고, 내부 구현은 `server/src/db/`의 `defaults`, `shape`, `sqliteStore`, `adminUsers`, `newsSources`, `time` 모듈과 `server/src/db/sqlite/schema.mjs`로 나눠 관리한다.
 - **초기 DB seed**: SQLite가 비어 있으면 `defaultDb()`를 저장해 기본 설정과 Job 리스트를 생성한다. 기존 `server/data/*.json` 분할 스토어와 과거 단일 `local-db.json`은 읽지 않는다.
 - **어드민 사용자**: 로그인 계정은 SQLite `admin_users` 테이블에 저장한다. `ADMIN_USERS`는 테이블이 비어 있을 때만 초기 seed로 사용하며, 비밀번호는 salt + scrypt hash로 저장한다. **Admin > 설정 > 사용자 관리**에서 계정 추가·비밀번호 변경·활성화·삭제를 관리한다.

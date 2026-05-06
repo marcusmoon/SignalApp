@@ -22,6 +22,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchSignalInsights } from '@/integrations/signal-api';
+import { formatSignalApiError } from '@/integrations/signal-api/client';
 import type { SignalApiInsight } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
@@ -128,7 +129,7 @@ export default function InsightsScreen() {
         setHasMore(meta.hasMore);
       } catch (e) {
         if (!cancelled()) {
-          setError(e instanceof Error ? e.message : t('insightListError'));
+          setError(formatSignalApiError(e, t, 'insightListError'));
           setItems([]);
           setHasMore(false);
         }
@@ -306,6 +307,13 @@ export default function InsightsScreen() {
       ) : error ? (
         <View style={styles.center}>
           <Text style={styles.err}>{error}</Text>
+          <Pressable
+            onPress={() => void loadFirstPage()}
+            accessibilityRole="button"
+            accessibilityLabel={t('commonRetry')}
+            style={({ pressed }) => [styles.retryBtn, pressed && styles.retryBtnPressed]}>
+            <Text style={styles.retryBtnText}>{t('commonRetry')}</Text>
+          </Pressable>
         </View>
       ) : (
         <FlatList
@@ -522,6 +530,25 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: '#E0A0A0',
       textAlign: 'center',
       lineHeight: sf(19),
+    },
+    retryBtn: {
+      minHeight: 38,
+      minWidth: 112,
+      paddingHorizontal: 16,
+      borderRadius: 11,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    retryBtnPressed: {
+      opacity: 0.84,
+    },
+    retryBtnText: {
+      color: theme.green,
+      fontSize: sf(13),
+      fontWeight: '900',
     },
     footerLoading: {
       flexDirection: 'row',

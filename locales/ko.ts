@@ -76,6 +76,13 @@ export const ko = {
   errorFinnhubTokenShort: 'Signal 서버의 Finnhub provider 설정이 필요합니다.',
   errorSignalApiShort:
     'Signal API 주소가 비어 있습니다. 설정 → 표시 → 「Signal 서버」에서 개발/리얼/직접 입력을 선택하거나, .env의 EXPO_PUBLIC_SIGNAL_API_BASE_URL을 채운 뒤 Metro를 재시작하세요.',
+  signalApiErrorConfig: 'Signal API 주소가 설정되어 있지 않습니다. 설정에서 서버 주소를 확인해 주세요.',
+  signalApiErrorTimeout: 'Signal 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.',
+  signalApiErrorNetwork: 'Signal 서버에 연결하지 못했습니다. 네트워크와 서버 상태를 확인해 주세요.',
+  signalApiErrorServer: 'Signal 서버에서 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+  signalApiErrorHttp: '요청을 처리하지 못했습니다. 조건을 바꿔 다시 시도해 주세요.',
+  signalApiErrorParse: '서버 응답을 해석하지 못했습니다. 앱을 새로고침해 주세요.',
+  commonRetry: '다시 시도',
   screenInfo: '정보',
   screenMegaCapList: '메가캡 티커 목록',
   screenMegaCapListLead:

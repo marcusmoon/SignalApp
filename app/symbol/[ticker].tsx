@@ -20,6 +20,7 @@ import {
 } from '@/domain/concalls/signalCalendarEarnings';
 import { fetchSignalEarningsCalendarRangeMerged } from '@/integrations/signal-api/calendarRange';
 import { fetchSignalInsights } from '@/integrations/signal-api/insights';
+import { formatSignalApiError } from '@/integrations/signal-api/client';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { signalNewsToNewsItem } from '@/integrations/signal-api/news';
 import { fetchSignalStockCandles, fetchSignalStockProfile } from '@/integrations/signal-api/stock';
@@ -583,7 +584,7 @@ export default function SymbolDetailScreen() {
       setEarnings(matchedEarnings);
     } catch (e) {
       setServerInsights([]);
-      setError(e instanceof Error ? e.message : t('symbolDetailErrorLoad'));
+      setError(formatSignalApiError(e, t, 'symbolDetailErrorLoad'));
     } finally {
       setLoading(false);
     }

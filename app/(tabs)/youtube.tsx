@@ -22,7 +22,7 @@ import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { FloatingGlassFab, FLOATING_GLASS_FAB_GAP, FLOATING_GLASS_FAB_SIZE } from '@/components/signal/FloatingGlassFab';
-import { SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
+import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
   SEGMENT_TAB_BACKGROUND,
@@ -45,6 +45,7 @@ import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeCh
 import { loadCurationHandles } from '@/services/youtubeCurationList';
 import type { ChannelHandleMeta } from '@/domain/youtube/types';
 import { fetchSignalYoutube, signalYoutubeToYoutubeItem } from '@/integrations/signal-api';
+import { formatSignalApiError } from '@/integrations/signal-api/client';
 import type { YoutubeItem } from '@/types/signal';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
 import {
@@ -115,8 +116,7 @@ export default function YoutubeScreen() {
   const applyLoadError = useCallback(
     (e: unknown, fallbackId: 'youtubeErrorLoad' | 'youtubeErrorRefresh') => {
       setIsQuotaError(false);
-      const msg = e instanceof Error ? e.message : t(fallbackId);
-      setError(msg);
+      setError(formatSignalApiError(e, t, fallbackId));
     },
     [t],
   );
@@ -351,7 +351,11 @@ export default function YoutubeScreen() {
             ) : null
           }
           style={styles.list}
-          contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
+          contentContainerStyle={[
+            styles.listContent,
+            showScrollLoading ? SCROLL_CONTENT_LOADING_STYLE : null,
+            { paddingBottom: bottomPad },
+          ]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             showScrollLoading ? undefined : (

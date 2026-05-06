@@ -66,6 +66,7 @@ import {
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { fetchSignalInsights, fetchSignalNews, fetchSignalNewsSources, signalNewsToNewsItem } from '@/integrations/signal-api';
+import { formatSignalApiError } from '@/integrations/signal-api/client';
 import type { SignalApiInsight, SignalApiNewsItem } from '@/integrations/signal-api/types';
 import type { NewsItem } from '@/types/signal';
 import type { MessageId } from '@/locales/messages';
@@ -355,7 +356,7 @@ export default function FeedScreen() {
       }
       setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('feedErrorLoad'));
+      setError(formatSignalApiError(e, t, 'feedErrorLoad'));
     } finally {
       setLoadingMore(false);
     }
@@ -385,7 +386,7 @@ export default function FeedScreen() {
         await load(false);
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : t('feedErrorLoad'));
+          setError(formatSignalApiError(e, t, 'feedErrorLoad'));
           setItems([]);
           setServerRows([]);
           setAvailableSources([]);
@@ -417,7 +418,7 @@ export default function FeedScreen() {
         setRefreshNotice(t('feedRefreshNoticeNews', { count: String(newNewsCount) }));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('feedErrorRefresh'));
+      setError(formatSignalApiError(e, t, 'feedErrorRefresh'));
     } finally {
       setRefreshing(false);
     }
@@ -436,7 +437,7 @@ export default function FeedScreen() {
           setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : t('feedErrorLoad'));
+        setError(formatSignalApiError(e, t, 'feedErrorLoad'));
       }
     },
     [locale, segment, serverRows, t],

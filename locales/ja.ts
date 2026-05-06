@@ -78,6 +78,13 @@ export const ja = {
   errorFinnhubTokenShort: 'Signal サーバーの Finnhub provider 設定が必要です。',
   errorSignalApiShort:
     'Signal API のベース URL が空です。設定 → 表示 → 「Signal サーバー」で開発/本番/カスタムを選ぶか、.env の EXPO_PUBLIC_SIGNAL_API_BASE_URL を設定して Metro を再起動してください。',
+  signalApiErrorConfig: 'Signal API が設定されていません。設定でサーバー URL を確認してください。',
+  signalApiErrorTimeout: 'Signal サーバーの応答に時間がかかっています。しばらくしてから再試行してください。',
+  signalApiErrorNetwork: 'Signal サーバーに接続できません。ネットワークとサーバー状態を確認してください。',
+  signalApiErrorServer: 'Signal サーバーで一時的な問題が発生しました。しばらくしてから再試行してください。',
+  signalApiErrorHttp: 'リクエストを処理できませんでした。条件を変更して再試行してください。',
+  signalApiErrorParse: 'サーバー応答を読み取れませんでした。アプリを更新して再試行してください。',
+  commonRetry: '再試行',
   screenInfo: '情報',
   screenMegaCapList: 'メガキャップのティッカー一覧',
   screenMegaCapListLead:

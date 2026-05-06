@@ -28,11 +28,21 @@ export function getOpenApiSpec() {
                       ok: { type: 'boolean' },
                       service: { type: 'string' },
                       now: { type: 'string' },
+                      db: {
+                        type: 'object',
+                        properties: {
+                          ok: { type: 'boolean' },
+                          jobs: { type: 'integer' },
+                        },
+                      },
                     },
-                    required: ['ok', 'service', 'now'],
+                    required: ['ok', 'service', 'now', 'db'],
                   },
                 },
               },
+            },
+            503: {
+              description: 'SQLite readiness check failed',
             },
           },
         },

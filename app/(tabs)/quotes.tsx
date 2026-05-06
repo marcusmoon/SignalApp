@@ -24,7 +24,7 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
-import { SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
+import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
@@ -50,6 +50,7 @@ import {
   type SignalApiCoinMarket,
   type SignalApiMarketQuote,
 } from '@/integrations/signal-api';
+import { formatSignalApiError } from '@/integrations/signal-api/client';
 import { hasSignalApi } from '@/services/env';
 import { POPULAR_SYMBOLS_ORDERED } from '@/domain/quotes/usSymbols';
 import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
@@ -279,7 +280,7 @@ export default function QuotesScreen() {
       } catch (e) {
         setRows([]);
         setNextRefreshAtMs(null);
-        setError(e instanceof Error ? e.message : t('quotesErrorLoadCoin'));
+        setError(formatSignalApiError(e, t, 'quotesErrorLoadCoin'));
       }
       return;
     }
@@ -334,7 +335,7 @@ export default function QuotesScreen() {
             await load();
           } catch (e) {
             if (!cancelled) {
-              setError(e instanceof Error ? e.message : t('quotesErrorLoadQuotes'));
+              setError(formatSignalApiError(e, t, 'quotesErrorLoadQuotes'));
               setRows([]);
             }
           } finally {
@@ -361,7 +362,7 @@ export default function QuotesScreen() {
     try {
       await load(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('quotesErrorRefresh'));
+      setError(formatSignalApiError(e, t, 'quotesErrorRefresh'));
     } finally {
       setRefreshing(false);
     }
@@ -388,7 +389,7 @@ export default function QuotesScreen() {
     } catch (e) {
       Alert.alert(
         t('alertTitleFormatError'),
-        e instanceof Error ? e.message : t('quotesErrorLookup'),
+        formatSignalApiError(e, t, 'quotesErrorLookup'),
       );
       return;
     }
@@ -682,7 +683,11 @@ export default function QuotesScreen() {
             ) : null
           }
           style={styles.list}
-          contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
+          contentContainerStyle={[
+            styles.listContent,
+            loading ? SCROLL_CONTENT_LOADING_STYLE : null,
+            { paddingBottom: bottomPad },
+          ]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             loading ? undefined : (

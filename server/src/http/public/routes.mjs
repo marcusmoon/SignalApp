@@ -1,4 +1,4 @@
-import { nowIso } from '../../db.mjs';
+import { nowIso, readDb } from '../../db.mjs';
 import { getOpenApiSpec } from '../../openapi.mjs';
 import { json, text } from '../shared.mjs';
 
@@ -34,7 +34,25 @@ function serveSwaggerUi(res) {
 /** Health, openapi, docs, /v1/config. Returns true if handled. */
 export async function handlePublicMiscRoutes({ req, res, pathname }) {
   if (req.method === 'GET' && pathname === '/health') {
-    json(res, 200, { ok: true, service: 'signal-server', now: nowIso() });
+    try {
+      const db = await readDb();
+      json(res, 200, {
+        ok: true,
+        service: 'signal-server',
+        now: nowIso(),
+        db: {
+          ok: true,
+          jobs: Array.isArray(db.pollingJobs) ? db.pollingJobs.length : 0,
+        },
+      });
+    } catch {
+      json(res, 503, {
+        ok: false,
+        service: 'signal-server',
+        now: nowIso(),
+        db: { ok: false },
+      });
+    }
     return true;
   }
 

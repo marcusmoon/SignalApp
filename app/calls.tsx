@@ -13,6 +13,7 @@ import type { MessageId } from '@/locales/messages';
 import { fetchConcallSummaryForEarningsRow } from '@/services/concalls';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import { hasSignalApi } from '@/services/env';
+import { formatSignalApiError } from '@/integrations/signal-api/client';
 import type { SignalApiCalendarEvent } from '@/integrations/signal-api/types';
 import type { ConcallSummary } from '@/types/signal';
 
@@ -128,7 +129,7 @@ export default function CallsSummaryScreen() {
         });
         setSummary(s);
       } catch (e) {
-        setError(e instanceof Error ? e.message : t('callsErrorLoad'));
+        setError(formatSignalApiError(e, t, 'callsErrorLoad'));
         setSummary(null);
       } finally {
         setLoading(false);

@@ -35,6 +35,7 @@ import type {
   SignalApiMarketQuote,
   SignalApiNewsItem,
 } from '@/integrations/signal-api/types';
+import { formatSignalApiError } from '@/integrations/signal-api/client';
 import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
 import { buildSignalScore } from '@/domain/signals';
 import {
@@ -257,7 +258,7 @@ export default function BriefingScreen() {
       try {
         await load();
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : t('briefingErrorLoad'));
+        if (!cancelled) setError(formatSignalApiError(e, t, 'briefingErrorLoad'));
       } finally {
         if (!cancelled) setLoading(false);
       }

@@ -11,6 +11,7 @@ import { handleAdminSettingsRoutes } from './admin/api/settings.mjs';
 import { handleAdminYoutubeRoutes } from './admin/api/youtube.mjs';
 import { handleAdminSessionRoutes, requireAdmin } from './admin/auth.mjs';
 import { handleAdminStaticRoutes } from './admin/static.mjs';
+import { handlePublicAuthRoutes } from './public/v1/auth.mjs';
 import { handlePublicCalendarRoutes } from './public/v1/calendar.mjs';
 import { handlePublicConcallsRoutes } from './public/v1/concalls.mjs';
 import { handlePublicInsightRoutes } from './public/v1/insights.mjs';
@@ -22,6 +23,7 @@ import { json } from './shared.mjs';
 
 const PUBLIC_ROUTE_HANDLERS = [
   handlePublicMiscRoutes,
+  handlePublicAuthRoutes,
   handlePublicNewsRoutes,
   handlePublicCalendarRoutes,
   handlePublicInsightRoutes,

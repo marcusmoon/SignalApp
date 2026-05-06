@@ -125,6 +125,7 @@ function RootLayoutNav() {
         }
         const titleByName: Record<string, string> = {
           settings: t('screenSettings'),
+          account: t('screenAccount'),
           alerts: t('screenAlerts'),
           calendar: t('screenCalendar'),
           calls: t('callsSectionTitle'),

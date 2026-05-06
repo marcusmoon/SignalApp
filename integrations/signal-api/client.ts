@@ -30,13 +30,14 @@ function isRetriable(error: unknown): boolean {
   return isAbortError(error);
 }
 
-async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+async function fetchWithTimeout(url: string, timeoutMs: number, init?: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(url, {
+      ...init,
       signal: controller.signal,
-      headers: { accept: 'application/json' },
+      headers: { accept: 'application/json', ...(init?.headers || {}) },
     });
   } catch (error) {
     if (isAbortError(error)) throw new SignalApiError('timeout', 'SIGNAL_API_TIMEOUT');
@@ -64,22 +65,38 @@ export function formatSignalApiError(
   return t(messageKeyForSignalApiError(error, fallbackId));
 }
 
-export async function signalApi<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
+export async function signalApiRequest<T>(
+  path: string,
+  options: {
+    params?: Record<string, string | number | undefined>;
+    method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+    body?: unknown;
+    token?: string | null;
+  } = {},
+): Promise<T> {
   if (!hasSignalApi()) throw new SignalApiError('config', 'SIGNAL_API_BASE_URL_MISSING');
   const base = getEffectiveSignalApiBaseUrl().replace(/\/+$/, '');
   const q = new URLSearchParams();
-  for (const [key, value] of Object.entries(params ?? {})) {
+  for (const [key, value] of Object.entries(options.params ?? {})) {
     if (value == null) continue;
     q.set(key, String(value));
   }
   const suffix = q.toString() ? `${path}?${q.toString()}` : path;
+  const method = options.method || 'GET';
+  const headers: Record<string, string> = {};
+  if (options.body != null) headers['content-type'] = 'application/json';
+  if (options.token) headers.authorization = `Bearer ${options.token}`;
   if (__DEV__) {
-    console.log(`[Signal API] GET ${suffix}`);
+    console.log(`[Signal API] ${method} ${suffix}`);
   }
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     try {
-      const res = await fetchWithTimeout(`${base}${suffix}`, DEFAULT_TIMEOUT_MS);
+      const res = await fetchWithTimeout(`${base}${suffix}`, DEFAULT_TIMEOUT_MS, {
+        method,
+        headers,
+        body: options.body == null ? undefined : JSON.stringify(options.body),
+      });
       if (__DEV__) {
         console.log(`[Signal API] ${res.status} ${suffix}`);
       }
@@ -103,4 +120,8 @@ export async function signalApi<T>(path: string, params?: Record<string, string 
     }
   }
   throw lastError instanceof Error ? lastError : new SignalApiError('network', 'SIGNAL_API_NETWORK');
+}
+
+export async function signalApi<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
+  return signalApiRequest<T>(path, { params });
 }

@@ -40,6 +40,7 @@ export const ko = {
   settingsMoreReferenceLinksSwitch: '퀵 링크 표시',
 
   screenSettings: '설정',
+  screenAccount: '계정',
   screenAlerts: '알림',
   screenCalendar: '투자 캘린더',
   screenBriefing: '관심 브리핑',
@@ -89,6 +90,25 @@ export const ko = {
     '캘린더·어닝에서 「메가캡」을 선택했을 때 실적 후보에 사용하는 티커입니다. 시총 상위권에 가까운 미국 대형주를 앱에서 큐레이션한 목록이며, 투자 권유가 아닙니다.',
   screenMegaCapListCount: '총 {{count}}개',
   settingsMegaCapListLink: '메가캡 티커 목록 보기',
+
+  accountKicker: 'SIGNAL 계정',
+  accountAuthTitle: '로그인하고 개인화된 알림을 준비하세요',
+  accountAuthLead: '이메일 계정으로 먼저 시작하고, 이후 카카오·네이버·구글 간편 로그인도 같은 사용자 구조에 연결합니다.',
+  accountProfileTitle: '내 계정',
+  accountProfileLead: '알림과 푸시 발송은 이 사용자 정보를 기준으로 저장·관리됩니다.',
+  accountModeLogin: '로그인',
+  accountModeRegister: '가입',
+  accountEmailPlaceholder: '이메일',
+  accountPasswordPlaceholder: '비밀번호 (8자 이상)',
+  accountNicknamePlaceholder: '닉네임',
+  accountProfileImagePlaceholder: '프로필 이미지 URL',
+  accountLoginButton: '로그인',
+  accountRegisterButton: '계정 만들기',
+  accountSaveProfile: '프로필 저장',
+  accountLogout: '로그아웃',
+  accountSocialHint: '카카오·네이버·구글 간편 로그인은 이후 같은 계정/identity 구조에 연결됩니다.',
+  accountAuthError: '계정 요청을 처리하지 못했습니다. 입력값을 확인해 주세요.',
+  accountProfileError: '프로필을 저장하지 못했습니다.',
 
   settingsCacheSectionTitle: '캐시',
   settingsCacheOneLiner:

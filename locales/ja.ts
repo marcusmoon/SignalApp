@@ -42,6 +42,7 @@ export const ja = {
   settingsMoreReferenceLinksSwitch: 'クイックリンクを表示',
 
   screenSettings: '設定',
+  screenAccount: 'アカウント',
   screenAlerts: '通知',
   screenCalendar: '投資カレンダー',
   screenBriefing: 'ウォッチブリーフィング',
@@ -91,6 +92,25 @@ export const ja = {
     'カレンダー・カンファレンス・コールで「メガキャップ」を選んだときの実績候補に使うティッカーです。アプリがキュレーションした米国大型株の一覧であり、投資勧誘ではありません。',
   screenMegaCapListCount: '全{{count}}件',
   settingsMegaCapListLink: 'メガキャップのティッカー一覧を見る',
+
+  accountKicker: 'SIGNAL アカウント',
+  accountAuthTitle: 'ログインして個別通知を準備',
+  accountAuthLead: 'まずはメールで開始します。今後 Kakao・Naver・Google ログインも同じユーザー構造に接続します。',
+  accountProfileTitle: 'マイアカウント',
+  accountProfileLead: '通知とプッシュ配信はこのユーザー情報を基準に保存・管理されます。',
+  accountModeLogin: 'ログイン',
+  accountModeRegister: '登録',
+  accountEmailPlaceholder: 'メール',
+  accountPasswordPlaceholder: 'パスワード（8文字以上）',
+  accountNicknamePlaceholder: 'ニックネーム',
+  accountProfileImagePlaceholder: 'プロフィール画像 URL',
+  accountLoginButton: 'ログイン',
+  accountRegisterButton: 'アカウント作成',
+  accountSaveProfile: 'プロフィール保存',
+  accountLogout: 'ログアウト',
+  accountSocialHint: 'Kakao・Naver・Google ログインは今後同じアカウント/identity 構造に接続します。',
+  accountAuthError: 'アカウントリクエストを処理できませんでした。入力内容を確認してください。',
+  accountProfileError: 'プロフィールを保存できませんでした。',
 
   settingsCacheSectionTitle: 'キャッシュ',
   settingsCacheOneLiner:

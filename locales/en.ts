@@ -42,6 +42,7 @@ export const en = {
   settingsMoreReferenceLinksSwitch: 'Show quick links',
 
   screenSettings: 'Settings',
+  screenAccount: 'Account',
   screenAlerts: 'Alerts',
   screenCalendar: 'Invest calendar',
   screenBriefing: 'Watchlist briefing',
@@ -91,6 +92,25 @@ export const en = {
     'Tickers used for earnings rows when Calendar & conference calls is set to mega-cap. This is an app-curated list of large U.S. names—not investment advice.',
   screenMegaCapListCount: '{{count}} tickers',
   settingsMegaCapListLink: 'View mega-cap ticker list',
+
+  accountKicker: 'SIGNAL account',
+  accountAuthTitle: 'Sign in to prepare personalized alerts',
+  accountAuthLead: 'Start with email first. Kakao, Naver, and Google sign-in will attach to the same user identity structure later.',
+  accountProfileTitle: 'My account',
+  accountProfileLead: 'Alerts and push delivery will be stored and managed against this user.',
+  accountModeLogin: 'Log in',
+  accountModeRegister: 'Sign up',
+  accountEmailPlaceholder: 'Email',
+  accountPasswordPlaceholder: 'Password (8+ characters)',
+  accountNicknamePlaceholder: 'Nickname',
+  accountProfileImagePlaceholder: 'Profile image URL',
+  accountLoginButton: 'Log in',
+  accountRegisterButton: 'Create account',
+  accountSaveProfile: 'Save profile',
+  accountLogout: 'Log out',
+  accountSocialHint: 'Kakao, Naver, and Google sign-in will connect to the same account/identity structure later.',
+  accountAuthError: 'Could not process the account request. Check your input and try again.',
+  accountProfileError: 'Could not save your profile.',
 
   settingsCacheSectionTitle: 'Cache',
   settingsCacheOneLiner:

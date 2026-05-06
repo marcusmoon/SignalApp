@@ -3,6 +3,14 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { config } from './config.mjs';
 import {
+  createAppUserInDb,
+  loginAppUserInDb,
+  revokeAppUserTokenInDb,
+  updateAppUserProfileInDb,
+  upsertAppUserDeviceInDb,
+  verifyAppUserTokenInDb,
+} from './db/appUsers.mjs';
+import {
   createAdminUserInDb,
   deleteAdminUserInDb,
   hasAdminUsersInDb,
@@ -165,6 +173,54 @@ export async function updateAdminUser(id, patch = {}) {
 export async function deleteAdminUser(id) {
   const db = await ensureSqliteStore();
   return deleteAdminUserInDb(db, id);
+}
+
+export async function createAppUser(payload) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const result = createAppUserInDb(db, payload);
+      db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  });
+}
+
+export async function loginAppUser(payload) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return loginAppUserInDb(db, payload);
+  });
+}
+
+export async function verifyAppUserToken(token) {
+  const db = await ensureSqliteStore();
+  return verifyAppUserTokenInDb(db, token);
+}
+
+export async function revokeAppUserToken(token) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return revokeAppUserTokenInDb(db, token);
+  });
+}
+
+export async function updateAppUserProfile(userId, patch) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return updateAppUserProfileInDb(db, userId, patch);
+  });
+}
+
+export async function upsertAppUserDevice(userId, payload) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return upsertAppUserDeviceInDb(db, userId, payload);
+  });
 }
 
 export function upsertById(list, item) {

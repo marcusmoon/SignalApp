@@ -78,6 +78,50 @@ export function ensureStructuredSchema(db) {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS app_users (
+      id TEXT PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      nickname TEXT NOT NULL,
+      profile_image_url TEXT,
+      password_hash TEXT,
+      password_salt TEXT,
+      auth_provider TEXT NOT NULL DEFAULT 'password',
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS app_user_sessions (
+      token_hash TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      revoked_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS app_user_identities (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      provider_user_id TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(provider, provider_user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS app_user_devices (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      platform TEXT,
+      push_token TEXT,
+      device_name TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(user_id, push_token)
+    );
+
     CREATE TABLE IF NOT EXISTS news_source_settings (
       id TEXT PRIMARY KEY,
       payload TEXT NOT NULL,
@@ -227,6 +271,7 @@ export function ensureStructuredSchema(db) {
       status TEXT,
       priority TEXT,
       title TEXT,
+      app_user_id TEXT,
       target_type TEXT,
       target_key TEXT,
       scheduled_at TEXT,
@@ -239,6 +284,8 @@ export function ensureStructuredSchema(db) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_polling_job_runs_job ON polling_job_runs(job_key, started_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_sessions_user ON app_user_sessions(user_id, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_devices_user ON app_user_devices(user_id, active);
     CREATE INDEX IF NOT EXISTS idx_news_items_published ON news_items(category, published_at);
     CREATE INDEX IF NOT EXISTS idx_news_translations_item ON news_translations(news_item_id, locale);
     CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(event_date, event_type);
@@ -250,16 +297,19 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_insight_items_lookup ON insight_items(kind, level, push_candidate, generated_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_status ON notification_items(status, scheduled_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_type ON notification_items(type, status, scheduled_at);
+    CREATE INDEX IF NOT EXISTS idx_notification_items_user ON notification_items(app_user_id, status, scheduled_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_source ON notification_items(source_type, source_id);
   `);
   ensureColumn(db, 'insight_items', 'display_key', 'TEXT');
   ensureColumn(db, 'insight_items', 'generated_date', 'TEXT');
   ensureColumn(db, 'notification_items', 'title', 'TEXT');
+  ensureColumn(db, 'notification_items', 'app_user_id', 'TEXT');
   ensureColumn(db, 'notification_items', 'target_type', 'TEXT');
   ensureColumn(db, 'notification_items', 'target_key', 'TEXT');
   ensureColumn(db, 'notification_items', 'expires_at', 'TEXT');
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_insight_items_display ON insight_items(generated_date, display_key, generated_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_type ON notification_items(type, status, scheduled_at);
+    CREATE INDEX IF NOT EXISTS idx_notification_items_user ON notification_items(app_user_id, status, scheduled_at);
   `);
 }

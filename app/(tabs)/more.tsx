@@ -34,6 +34,7 @@ const HUB_META: Record<
   MoreHubRouteKey,
   { href: Href; icon: ComponentProps<typeof FontAwesome>['name']; titleId: MessageId }
 > = {
+  account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
   briefing: { href: '/briefing', icon: 'briefcase', titleId: 'screenBriefing' },
 };
 

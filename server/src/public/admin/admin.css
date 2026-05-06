@@ -255,6 +255,58 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
 
       /* DataTable helpers */
       .dataTableActions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+      .appUsersLayout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+        gap: 12px;
+        align-items: start;
+      }
+      .appUserList,
+      .notificationMiniList { display: grid; gap: 8px; }
+      .appUserCard {
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        padding: 10px;
+        border: 1px solid var(--accent-border);
+        border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--accent) 7%, var(--card));
+      }
+      .appUserAvatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        background: var(--accent-dim);
+        border: 1px solid var(--accent-border);
+        color: var(--accent);
+        font-weight: 900;
+      }
+      .appUserMain { display: grid; gap: 4px; min-width: 0; }
+      .appUserMain strong,
+      .appUserMain span { min-width: 0; overflow-wrap: anywhere; }
+      .appUserMeta { display: flex; gap: 5px; flex-wrap: wrap; }
+      .appUserActions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+      .compactSwitch { margin: 0; }
+      .appUserDetailCard { grid-column: 2; grid-row: span 2; }
+      .appUserSelected .appUserCard { background: color-mix(in srgb, var(--accent) 12%, var(--card)); }
+      .settingsFormGrid { display: grid; gap: 8px; }
+      .appUsersNoticeForm { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .appUsersWideField { grid-column: 1 / -1; }
+      .appUsersNotifications { margin-top: 14px; }
+      .notificationMiniCard {
+        padding: 10px 10px 10px 12px;
+        border: 1px solid var(--accent-border);
+        border-left: 4px solid var(--accent);
+        border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--accent) 6%, var(--card));
+      }
+      .notificationMiniHead { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 5px; }
+      .statusSide--failed,
+      .statusSide--cancelled { border-left-color: var(--danger); }
+      .statusSide--sent { border-left-color: var(--accent); }
       .right { text-align: right; }
       .center { text-align: center; }
 
@@ -2602,6 +2654,22 @@ tbody tr:hover td {
   }
 
   .providerActions {
+    justify-content: flex-start;
+  }
+
+  .appUsersLayout,
+  .appUserDetailCard,
+  .appUsersNoticeForm {
+    grid-template-columns: 1fr;
+    grid-column: auto;
+  }
+
+  .appUserCard {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .appUserActions {
+    grid-column: 1 / -1;
     justify-content: flex-start;
   }
 

@@ -8,6 +8,7 @@ export * from '@/integrations/signal-api/market';
 export * from '@/integrations/signal-api/marketLists';
 export * from '@/integrations/signal-api/insights';
 export * from '@/integrations/signal-api/news';
+export * from '@/integrations/signal-api/notifications';
 export * from '@/integrations/signal-api/cache/newsCache';
 export * from '@/integrations/signal-api/newsSources';
 export * from '@/integrations/signal-api/stock';

@@ -4,8 +4,11 @@ import { DatabaseSync } from 'node:sqlite';
 import { config } from './config.mjs';
 import {
   createAppUserInDb,
+  getAppUserInDb,
+  listAppUsersInDb,
   loginAppUserInDb,
   revokeAppUserTokenInDb,
+  updateAppUserAdminInDb,
   updateAppUserProfileInDb,
   upsertAppUserDeviceInDb,
   verifyAppUserTokenInDb,
@@ -26,6 +29,11 @@ import {
   normalizeNewsSourceName,
   normalizeNewsSourceNameWithAliases,
 } from './db/newsSources.mjs';
+import {
+  queryNotificationsInDb,
+  queryPublicNotificationsForUserInDb,
+  upsertNotificationItemInDb,
+} from './db/notifications.mjs';
 import {
   migrateLegacySignalStoresIfNeeded,
   readStructuredDb,
@@ -190,6 +198,27 @@ export async function createAppUser(payload) {
   });
 }
 
+export async function listAppUsers(options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return listAppUsersInDb(db, options);
+  });
+}
+
+export async function getAppUser(userId) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return getAppUserInDb(db, userId);
+  });
+}
+
+export async function updateAppUserAdmin(userId, patch) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return updateAppUserAdminInDb(db, userId, patch);
+  });
+}
+
 export async function loginAppUser(payload) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
@@ -220,6 +249,35 @@ export async function upsertAppUserDevice(userId, payload) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
     return upsertAppUserDeviceInDb(db, userId, payload);
+  });
+}
+
+export async function queryNotifications(options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return queryNotificationsInDb(db, options);
+  });
+}
+
+export async function queryPublicNotificationsForUser(userId, options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return queryPublicNotificationsForUserInDb(db, userId, options);
+  });
+}
+
+export async function upsertNotification(next) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const saved = upsertNotificationItemInDb(db, next);
+      db.exec('COMMIT');
+      return saved;
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
   });
 }
 

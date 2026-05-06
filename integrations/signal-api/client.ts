@@ -91,6 +91,7 @@ export async function signalApiRequest<T>(
   }
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    const startedAt = Date.now();
     try {
       const res = await fetchWithTimeout(`${base}${suffix}`, DEFAULT_TIMEOUT_MS, {
         method,
@@ -98,7 +99,9 @@ export async function signalApiRequest<T>(
         body: options.body == null ? undefined : JSON.stringify(options.body),
       });
       if (__DEV__) {
-        console.log(`[Signal API] ${res.status} ${suffix}`);
+        const elapsed = Date.now() - startedAt;
+        console.log(`[Signal API] ${res.status} ${suffix} ${elapsed}ms`);
+        if (elapsed > 1200) console.warn(`[Signal API] slow ${method} ${suffix} ${elapsed}ms`);
       }
       if (!res.ok) {
         if (__DEV__) {

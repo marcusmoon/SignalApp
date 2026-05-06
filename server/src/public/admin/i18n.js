@@ -33,6 +33,7 @@ export function applyAdminLanguage() {
     youtube: 'navYoutube',
     calendar: 'navCalendar',
     concalls: 'navConcalls',
+    'app-users': 'navAppUsers',
     translations: 'navTranslations',
     'settings-keys': 'navSettingsKeys',
     'settings-users': 'navSettingsUsers',

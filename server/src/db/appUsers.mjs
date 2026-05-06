@@ -36,8 +36,22 @@ function publicUser(row) {
     nickname: row.nickname,
     profileImageUrl: row.profile_image_url || '',
     authProvider: row.auth_provider || 'password',
+    active: Number(row.active) === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function adminUserRow(row) {
+  if (!row) return null;
+  return {
+    ...publicUser(row),
+    activeSessionCount: Number(row.active_session_count) || 0,
+    deviceCount: Number(row.device_count) || 0,
+    latestSessionAt: row.latest_session_at || null,
+    latestDeviceAt: row.latest_device_at || null,
+    notificationCount: Number(row.notification_count) || 0,
+    queuedNotificationCount: Number(row.queued_notification_count) || 0,
   };
 }
 
@@ -132,6 +146,146 @@ export function updateAppUserProfileInDb(db, userId, patch = {}) {
   params.push(now, existing.id);
   db.prepare(`UPDATE app_users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
   return publicUser(db.prepare('SELECT * FROM app_users WHERE id = ?').get(existing.id));
+}
+
+export function listAppUsersInDb(db, { q = '', active = '', limit = 50, offset = 0 } = {}) {
+  const params = {};
+  const where = [];
+  const query = cleanText(q).toLowerCase();
+  if (query) {
+    params.q = `%${query}%`;
+    where.push('(LOWER(u.email) LIKE @q OR LOWER(u.nickname) LIKE @q OR LOWER(u.id) LIKE @q)');
+  }
+  if (active === '1' || active === 'true') where.push('u.active = 1');
+  if (active === '0' || active === 'false') where.push('u.active = 0');
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const safeLimit = Math.min(100, Math.max(1, Math.floor(Number(limit)) || 50));
+  const safeOffset = Math.max(0, Math.floor(Number(offset)) || 0);
+  const total = Number(
+    db.prepare(`SELECT COUNT(*) AS count FROM app_users u ${whereSql}`).get(params)?.count,
+  ) || 0;
+  const now = nowIso();
+  const rows = db
+    .prepare(
+      `
+        SELECT
+          u.*,
+          (
+            SELECT COUNT(*)
+            FROM app_user_sessions s
+            WHERE s.user_id = u.id
+              AND s.revoked_at IS NULL
+              AND s.expires_at > @now
+          ) AS active_session_count,
+          (
+            SELECT COUNT(*)
+            FROM app_user_devices d
+            WHERE d.user_id = u.id AND d.active = 1
+          ) AS device_count,
+          (
+            SELECT MAX(s.created_at)
+            FROM app_user_sessions s
+            WHERE s.user_id = u.id
+          ) AS latest_session_at,
+          (
+            SELECT MAX(d.updated_at)
+            FROM app_user_devices d
+            WHERE d.user_id = u.id
+          ) AS latest_device_at,
+          (
+            SELECT COUNT(*)
+            FROM notification_items n
+            WHERE n.app_user_id = u.id OR (n.target_type = 'user' AND n.target_key = u.id)
+          ) AS notification_count,
+          (
+            SELECT COUNT(*)
+            FROM notification_items n
+            WHERE (n.app_user_id = u.id OR (n.target_type = 'user' AND n.target_key = u.id))
+              AND COALESCE(n.status, 'queued') = 'queued'
+          ) AS queued_notification_count
+        FROM app_users u
+        ${whereSql}
+        ORDER BY u.created_at DESC
+        LIMIT @limit OFFSET @offset
+      `,
+    )
+    .all({ ...params, now, limit: safeLimit, offset: safeOffset });
+  return { rows: rows.map(adminUserRow), total, limit: safeLimit, offset: safeOffset };
+}
+
+export function getAppUserInDb(db, userId) {
+  const params = { userId: String(userId || ''), now: nowIso() };
+  const row = db
+    .prepare(
+      `
+        SELECT
+          u.*,
+          (
+            SELECT COUNT(*)
+            FROM app_user_sessions s
+            WHERE s.user_id = u.id
+              AND s.revoked_at IS NULL
+              AND s.expires_at > @now
+          ) AS active_session_count,
+          (
+            SELECT COUNT(*)
+            FROM app_user_devices d
+            WHERE d.user_id = u.id AND d.active = 1
+          ) AS device_count,
+          (
+            SELECT MAX(s.created_at)
+            FROM app_user_sessions s
+            WHERE s.user_id = u.id
+          ) AS latest_session_at,
+          (
+            SELECT MAX(d.updated_at)
+            FROM app_user_devices d
+            WHERE d.user_id = u.id
+          ) AS latest_device_at,
+          (
+            SELECT COUNT(*)
+            FROM notification_items n
+            WHERE n.app_user_id = u.id OR (n.target_type = 'user' AND n.target_key = u.id)
+          ) AS notification_count,
+          (
+            SELECT COUNT(*)
+            FROM notification_items n
+            WHERE (n.app_user_id = u.id OR (n.target_type = 'user' AND n.target_key = u.id))
+              AND COALESCE(n.status, 'queued') = 'queued'
+          ) AS queued_notification_count
+        FROM app_users u
+        WHERE u.id = @userId
+      `,
+    )
+    .get(params);
+  return adminUserRow(row);
+}
+
+export function updateAppUserAdminInDb(db, userId, patch = {}) {
+  const existing = db.prepare('SELECT * FROM app_users WHERE id = ?').get(String(userId || ''));
+  if (!existing) throw new Error('APP_USER_NOT_FOUND');
+  const updates = [];
+  const params = [];
+  if (typeof patch.active === 'boolean') {
+    updates.push('active = ?');
+    params.push(patch.active ? 1 : 0);
+  }
+  if (typeof patch.nickname === 'string') {
+    const nickname = cleanText(patch.nickname);
+    if (nickname.length < 2) throw new Error('APP_USER_NICKNAME_REQUIRED');
+    updates.push('nickname = ?');
+    params.push(nickname);
+  }
+  if (typeof patch.profileImageUrl === 'string') {
+    updates.push('profile_image_url = ?');
+    params.push(cleanText(patch.profileImageUrl));
+  }
+  if (updates.length === 0) return getAppUserInDb(db, existing.id);
+  const now = nowIso();
+  updates.push('updated_at = ?');
+  params.push(now, existing.id);
+  db.prepare(`UPDATE app_users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+  return getAppUserInDb(db, existing.id);
 }
 
 export function upsertAppUserDeviceInDb(db, userId, { platform, pushToken, deviceName }) {

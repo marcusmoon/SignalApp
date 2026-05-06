@@ -74,9 +74,10 @@ export function createNotificationItem(input, generatedAt = nowIso()) {
   const targetType = normalizeTargetType(input?.targetType);
   const targetKey = cleanText(input?.targetKey);
   const appUserId = cleanText(input?.appUserId || input?.userId);
+  const effectiveTargetKey = targetKey || appUserId;
   const sourceType = cleanText(input?.sourceType || type);
   const sourceId = cleanText(input?.sourceId || input?.id);
-  const id = cleanText(input?.id) || notificationIdFor({ type, sourceType, sourceId, targetType, targetKey, channel });
+  const id = cleanText(input?.id) || notificationIdFor({ type, sourceType, sourceId, targetType, targetKey: effectiveTargetKey, channel });
   return {
     id,
     type,
@@ -87,7 +88,7 @@ export function createNotificationItem(input, generatedAt = nowIso()) {
     body,
     appUserId: appUserId || null,
     targetType,
-    targetKey: targetKey || appUserId || null,
+    targetKey: effectiveTargetKey || null,
     sourceType,
     sourceId: sourceId || id,
     symbols: safeSymbols(input?.symbols),

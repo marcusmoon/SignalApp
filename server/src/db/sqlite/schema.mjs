@@ -298,6 +298,7 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_notification_items_status ON notification_items(status, scheduled_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_type ON notification_items(type, status, scheduled_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_user ON notification_items(app_user_id, status, scheduled_at);
+    CREATE INDEX IF NOT EXISTS idx_notification_items_target ON notification_items(target_type, target_key, scheduled_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_source ON notification_items(source_type, source_id);
   `);
   ensureColumn(db, 'insight_items', 'display_key', 'TEXT');
@@ -311,5 +312,6 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_insight_items_display ON insight_items(generated_date, display_key, generated_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_type ON notification_items(type, status, scheduled_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_user ON notification_items(app_user_id, status, scheduled_at);
+    CREATE INDEX IF NOT EXISTS idx_notification_items_target ON notification_items(target_type, target_key, scheduled_at);
   `);
 }

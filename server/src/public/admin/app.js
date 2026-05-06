@@ -6,6 +6,7 @@ import { $, state } from './state.js';
 import { applyTheme } from './theme.js';
 import { dismissToast, showToast } from './toast.js';
 import { loadDashboardView } from './views/dashboard.js';
+import { loadAppUsersView } from './views/appUsers.js';
 import { loadInsightsView } from './views/insights.js';
 import { loadJobsView, loadJobRunsView } from './views/jobs.js';
 import { loadErrorsView, loadMonitoringView } from './views/monitoring.js';
@@ -440,6 +441,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
 
         // Lazy-load data for views that need it.
         if (resolvedView === 'calendar') void loadCalendar();
+        if (resolvedView === 'app-users') void loadAppUsers();
         if (resolvedView === 'monitoring') void loadMonitoring();
         if (resolvedView === 'errors') void loadErrors();
         if (resolvedView === 'insights') void loadInsights();
@@ -533,6 +535,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           loadTranslationSettings(),
           loadProviderSettings(),
           loadAdminUsers(),
+          loadAppUsers(),
           loadMarketLists(),
           loadNewsSourceSettings(),
           loadNewsSources(),
@@ -779,6 +782,12 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
 
       async function loadAdminUsers() {
         const result = await loadAdminUsersView({ api, $, state, esc, textFor, textForVars, formatDateTime });
+        enhanceMobileAdminSurfaces();
+        return result;
+      }
+
+      async function loadAppUsers() {
+        const result = await loadAppUsersView({ api, $, state, esc, textFor, textForVars, formatDateTime });
         enhanceMobileAdminSurfaces();
         return result;
       }
@@ -1543,6 +1552,79 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             });
             return;
           }
+          if (target.id === 'refreshAppUsersBtn' || target.id === 'refreshAppUsersHeaderBtn') {
+            await loadAppUsers();
+            return;
+          }
+          if (target.id === 'searchAppUsersBtn') {
+            state.appUsersPage = 1;
+            await loadAppUsers();
+            return;
+          }
+          if (target.dataset.appUsersPage === 'prev' && state.appUsersPage > 1) {
+            state.appUsersPage -= 1;
+            await loadAppUsers();
+            return;
+          }
+          if (target.dataset.appUsersPage === 'next' && state.appUsersPage < state.appUsersTotalPages) {
+            state.appUsersPage += 1;
+            await loadAppUsers();
+            return;
+          }
+          if (target.dataset.appUserSelect) {
+            state.appUsersSelectedId = target.dataset.appUserSelect;
+            await loadAppUsers();
+            return;
+          }
+          if (target.id === 'sendBroadcastNotificationBtn') {
+            const title = String($('broadcastTitle')?.value || '').trim();
+            const body = String($('broadcastBody')?.value || '').trim();
+            if (!title || !body) {
+              showToast(textFor('toastErrorTitle'), textFor('appUsersNoticeMissingFields'), { kind: 'danger' });
+              return;
+            }
+            await api('/admin/api/notifications', {
+              method: 'POST',
+              body: JSON.stringify({
+                type: $('broadcastNotificationType')?.value || 'service_notice',
+                targetType: $('broadcastTargetType')?.value || 'all',
+                targetKey: String($('broadcastTargetKey')?.value || '').trim(),
+                channel: 'push',
+                priority: 'normal',
+                title,
+                body,
+                sourceType: 'admin',
+                sourceId: `broadcast:${Date.now()}`,
+                deepLink: '/alerts',
+              }),
+            });
+            showToast(textFor('toastSaved'), textFor('appUsersSendBroadcast'), { kind: 'success' });
+            await loadAppUsers();
+            return;
+          }
+          if (target.id === 'sendUserNotificationBtn') {
+            const userId = state.appUsersSelectedId;
+            const title = String($('userNotificationTitle')?.value || '').trim();
+            const body = String($('userNotificationBody')?.value || '').trim();
+            if (!userId || !title || !body) {
+              showToast(textFor('toastErrorTitle'), textFor('appUsersNoticeMissingFields'), { kind: 'danger' });
+              return;
+            }
+            await api(`/admin/api/app-users/${encodeURIComponent(userId)}/notifications`, {
+              method: 'POST',
+              body: JSON.stringify({
+                type: $('userNotificationType')?.value || 'service_notice',
+                channel: 'push',
+                priority: 'normal',
+                title,
+                body,
+                deepLink: '/alerts',
+              }),
+            });
+            showToast(textFor('toastSaved'), textFor('appUsersSendUserNotice'), { kind: 'success' });
+            await loadAppUsers();
+            return;
+          }
           if (target.dataset.marketListOpen) {
             openMarketListDialog(target.dataset.marketListOpen);
           }
@@ -2074,6 +2156,24 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             event.target.checked = !event.target.checked;
             showToast(textFor('toastErrorTitle'), error?.message || textFor('loginFailed'), { kind: 'danger' });
           }
+        }
+        if (event.target.dataset.appUserActive) {
+          const id = event.target.dataset.appUserActive;
+          try {
+            await api(`/admin/api/app-users/${encodeURIComponent(id)}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ active: !!event.target.checked }),
+            });
+            showToast(textFor('toastSaved'), id, { kind: 'success' });
+            await loadAppUsers();
+          } catch (error) {
+            event.target.checked = !event.target.checked;
+            showToast(textFor('toastErrorTitle'), error?.message || textFor('loginFailed'), { kind: 'danger' });
+          }
+        }
+        if (event.target.id === 'appUsersActive' || event.target.id === 'appUsersPageSize') {
+          state.appUsersPage = 1;
+          await loadAppUsers();
         }
         if (event.target.id === 'jobRunRange') {
           setJobRunDatePreset();

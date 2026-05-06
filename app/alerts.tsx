@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
@@ -13,7 +13,9 @@ import { loadNotificationHistory, type StoredNotification } from '@/services/not
 import { loadNotificationPrefs } from '@/services/notificationPreferences';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { hasSignalApi } from '@/services/env';
+import { loadAppAuthSession, type StoredAppAuthSession } from '@/services/appAuthSession';
 import { fetchSignalInsights } from '@/integrations/signal-api/insights';
+import { fetchSignalNotifications } from '@/integrations/signal-api/notifications';
 import type { SignalApiInsight } from '@/integrations/signal-api/types';
 import { formatRelativeTime } from '@/utils/date';
 
@@ -26,16 +28,43 @@ export default function AlertsScreen() {
   const router = useRouter();
   const [items, setItems] = useState<StoredNotification[]>([]);
   const [candidates, setCandidates] = useState<SignalApiInsight[]>([]);
+  const [authSession, setAuthSession] = useState<StoredAppAuthSession | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
 
   const reload = useCallback(async () => {
-    const [list, prefs, watchlist] = await Promise.all([
+    const savedSession = await loadAppAuthSession();
+    setAuthSession(savedSession);
+    setAuthChecked(true);
+    if (!savedSession?.token) {
+      setItems([]);
+      setCandidates([]);
+      return;
+    }
+    const [list, serverNotifications, prefs, watchlist] = await Promise.all([
       loadNotificationHistory(),
+      hasSignalApi() ? fetchSignalNotifications(savedSession.token, 50).catch(() => []) : Promise.resolve([]),
       loadNotificationPrefs(),
       loadWatchlistSymbols().catch(() => [] as string[]),
     ]);
-    setItems(list);
+    const serverItems: StoredNotification[] = serverNotifications.map((item) => ({
+      id: `server:${item.id}`,
+      title: item.title,
+      body: item.body,
+      receivedAt: item.scheduledAt || item.createdAt || new Date().toISOString(),
+      high: item.priority === 'high',
+    }));
+    const seen = new Set<string>();
+    setItems(
+      [...serverItems, ...list]
+        .filter((item) => {
+          if (seen.has(item.id)) return false;
+          seen.add(item.id);
+          return true;
+        })
+        .sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime()),
+    );
     if (!hasSignalApi() || !prefs.pushEnabled || !prefs.signalAlertsEnabled) {
       setCandidates([]);
       return;
@@ -159,6 +188,38 @@ export default function AlertsScreen() {
   );
 
   const bottomPad = 28 + insets.bottom;
+
+  if (!authChecked) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['bottom']}>
+        <View style={styles.loadingCenter} accessibilityRole="progressbar" accessibilityLabel={t('commonLoadingA11y')}>
+          <ActivityIndicator color={theme.green} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (authChecked && !authSession?.token) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['bottom']}>
+        {isFocused ? <OtaUpdateBanner /> : null}
+        <View style={[styles.authGate, { paddingBottom: bottomPad }]}>
+          <View style={styles.authGateCard}>
+            <Text style={styles.authGateKicker}>{t('screenAlerts')}</Text>
+            <Text style={styles.authGateTitle}>{t('alertsLoginRequiredTitle')}</Text>
+            <Text style={styles.authGateBody}>{t('alertsLoginRequiredBody')}</Text>
+            <Pressable
+              onPress={() => router.push('/account')}
+              style={styles.authGateButton}
+              accessibilityRole="button"
+              accessibilityLabel={t('alertsLoginRequiredButton')}>
+              <Text style={styles.authGateButtonText}>{t('alertsLoginRequiredButton')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -289,5 +350,27 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderRadius: 6,
     },
     highText: { fontSize: sf(10), fontWeight: '900', color: '#FF6B6B' },
+    loadingCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    authGate: { flex: 1, justifyContent: 'center', paddingHorizontal: 16 },
+    authGateCard: {
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.card,
+      padding: 18,
+      gap: 10,
+    },
+    authGateKicker: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
+    authGateTitle: { color: theme.text, fontSize: sf(21), lineHeight: sf(27), fontWeight: '900' },
+    authGateBody: { color: theme.textMuted, fontSize: sf(13), lineHeight: sf(19) },
+    authGateButton: {
+      minHeight: 44,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.green,
+      marginTop: 4,
+    },
+    authGateButtonText: { color: '#06100B', fontSize: sf(14), fontWeight: '900' },
   });
 }

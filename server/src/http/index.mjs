@@ -6,6 +6,7 @@ import { handleAdminDataResetRoutes } from './admin/api/dataReset.mjs';
 import { handleAdminInsightsRoutes } from './admin/api/insights.mjs';
 import { handleAdminJobsRoutes } from './admin/api/jobs.mjs';
 import { handleAdminNewsRoutes } from './admin/api/news.mjs';
+import { handleAdminNotificationsRoutes } from './admin/api/notifications.mjs';
 import { handleAdminSettingsRoutes } from './admin/api/settings.mjs';
 import { handleAdminYoutubeRoutes } from './admin/api/youtube.mjs';
 import { handleAdminSessionRoutes, requireAdmin } from './admin/auth.mjs';
@@ -31,6 +32,7 @@ const PUBLIC_ROUTE_HANDLERS = [
 
 const ADMIN_API_HANDLERS = [
   handleAdminJobsRoutes,
+  handleAdminNotificationsRoutes,
   handleAdminInsightsRoutes,
   handleAdminNewsRoutes,
   handleAdminCalendarRoutes,

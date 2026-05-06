@@ -388,6 +388,7 @@ export function defaultDb() {
     marketQuotes: [],
     coinMarkets: [],
     insightItems: [],
+    notificationItems: [],
     marketLists: ensureMarketListsShape([], nowIso),
     providerSettings: defaultProviderSettings(),
     translationSettings: defaultTranslationSettings(),

@@ -5,6 +5,7 @@ import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../p
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes } from '../providers/market/index.mjs';
 import { generateMarketInsights } from '../insights/rules.mjs';
+import { notificationsFromInsights, upsertNotificationItem } from '../notifications/outbox.mjs';
 import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
@@ -339,6 +340,8 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
         for (const row of rows) upsertById(db.coinMarkets, row);
       } else if (result.kind === 'insights') {
         for (const row of rows) upsertById(db.insightItems, row);
+        const notificationRows = notificationsFromInsights(rows);
+        for (const row of notificationRows) upsertNotificationItem(db.notificationItems, row);
       }
 
       const savedJob = db.pollingJobs.find((j) => j.jobKey === jobKey);

@@ -216,6 +216,7 @@ function dataAreaSummary(db, recentRuns, latestRunByJob) {
       quality: {
         pushCandidates: db.insightItems.filter((item) => item.pushCandidate).length,
         hotSignals: db.insightItems.filter((item) => Number(item.score || 0) >= 55).length,
+        queuedNotifications: db.notificationItems.filter((item) => item.channel === 'push' && item.status === 'queued').length,
       },
     },
   ];
@@ -305,6 +306,8 @@ function dashboardSummary(db) {
       marketQuotes: db.marketQuotes.length,
       coinMarkets: db.coinMarkets.length,
       insights: db.insightItems.length,
+      notifications: db.notificationItems.length,
+      queuedNotifications: db.notificationItems.filter((item) => item.channel === 'push' && item.status === 'queued').length,
       jobs: db.pollingJobs.length,
       enabledJobs: db.pollingJobs.filter((job) => job.enabled).length,
       recentFailedRuns: recentRuns.filter((run) => run.status === 'failed').length,

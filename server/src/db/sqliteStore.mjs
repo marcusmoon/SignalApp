@@ -75,6 +75,7 @@ export function readStructuredDb(db) {
     coinMarkets: readCollection(db, 'coin_markets'),
     marketLists: readCollection(db, 'market_lists'),
     insightItems: readCollection(db, 'insight_items'),
+    notificationItems: readCollection(db, 'notification_items'),
   });
   return shapeDbFromStores({
     settings: {
@@ -102,7 +103,7 @@ export function readStructuredDb(db) {
       coinMarkets: shaped.coinMarkets,
       marketLists: shaped.marketLists,
     },
-    insights: { insightItems: shaped.insightItems },
+    insights: { insightItems: shaped.insightItems, notificationItems: shaped.notificationItems },
   });
 }
 
@@ -346,6 +347,39 @@ const collectionSpecs = [
       push_candidate: boolInt(row.pushCandidate === true),
     }),
   },
+  {
+    table: 'notification_items',
+    keyColumn: 'id',
+    keyOf: (row) => row.id,
+    extraColumns: [
+      'type',
+      'channel',
+      'status',
+      'priority',
+      'title',
+      'target_type',
+      'target_key',
+      'scheduled_at',
+      'expires_at',
+      'sent_at',
+      'source_type',
+      'source_id',
+    ],
+    extra: (row) => ({
+      type: textOrNull(row.type),
+      channel: textOrNull(row.channel),
+      status: textOrNull(row.status),
+      priority: textOrNull(row.priority),
+      title: textOrNull(row.title),
+      target_type: textOrNull(row.targetType),
+      target_key: textOrNull(row.targetKey),
+      scheduled_at: textOrNull(row.scheduledAt),
+      expires_at: textOrNull(row.expiresAt),
+      sent_at: textOrNull(row.sentAt),
+      source_type: textOrNull(row.sourceType),
+      source_id: textOrNull(row.sourceId),
+    }),
+  },
 ];
 
 function writeStructuredDbInner(db, dbObject) {
@@ -370,6 +404,7 @@ function writeStructuredDbInner(db, dbObject) {
   syncCollection(db, collectionSpecs[11], shaped.coinMarkets, updatedAt);
   syncCollection(db, collectionSpecs[12], shaped.marketLists, updatedAt);
   syncCollection(db, collectionSpecs[13], shaped.insightItems, updatedAt);
+  syncCollection(db, collectionSpecs[14], shaped.notificationItems, updatedAt);
 }
 
 export function writeStructuredDb(db, dbObject, { transaction = true } = {}) {

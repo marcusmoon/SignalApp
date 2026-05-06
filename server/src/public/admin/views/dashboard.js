@@ -72,7 +72,12 @@ export async function loadDashboardView(ctx) {
     if (area.id === 'youtube') return textForVars('dashboardQualityYoutube', { channels: q.channels || 0 });
     if (area.id === 'marketQuotes') return textForVars('dashboardQualityQuotes', { symbols: q.symbols || 0, segments: q.segments || 0 });
     if (area.id === 'coinMarkets') return textForVars('dashboardQualityCoins', { symbols: q.symbols || 0 });
-    if (area.id === 'insights') return textForVars('dashboardQualityInsights', { push: q.pushCandidates || 0, hot: q.hotSignals || 0 });
+    if (area.id === 'insights')
+      return textForVars('dashboardQualityInsights', {
+        push: q.pushCandidates || 0,
+        hot: q.hotSignals || 0,
+        queued: q.queuedNotifications || 0,
+      });
     return '';
   }
 

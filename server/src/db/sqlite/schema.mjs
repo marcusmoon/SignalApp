@@ -13,6 +13,7 @@ export const collectionTables = [
   'coin_markets',
   'market_lists',
   'insight_items',
+  'notification_items',
 ];
 
 export function tableExists(db, table) {
@@ -218,6 +219,25 @@ export function ensureStructuredSchema(db) {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS notification_items (
+      id TEXT PRIMARY KEY,
+      position INTEGER NOT NULL DEFAULT 0,
+      type TEXT,
+      channel TEXT,
+      status TEXT,
+      priority TEXT,
+      title TEXT,
+      target_type TEXT,
+      target_key TEXT,
+      scheduled_at TEXT,
+      expires_at TEXT,
+      sent_at TEXT,
+      source_type TEXT,
+      source_id TEXT,
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_polling_job_runs_job ON polling_job_runs(job_key, started_at);
     CREATE INDEX IF NOT EXISTS idx_news_items_published ON news_items(category, published_at);
     CREATE INDEX IF NOT EXISTS idx_news_translations_item ON news_translations(news_item_id, locale);
@@ -228,10 +248,18 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_coin_markets_symbol ON coin_markets(symbol);
     CREATE INDEX IF NOT EXISTS idx_insight_items_generated ON insight_items(generated_at, score);
     CREATE INDEX IF NOT EXISTS idx_insight_items_lookup ON insight_items(kind, level, push_candidate, generated_at);
+    CREATE INDEX IF NOT EXISTS idx_notification_items_status ON notification_items(status, scheduled_at);
+    CREATE INDEX IF NOT EXISTS idx_notification_items_type ON notification_items(type, status, scheduled_at);
+    CREATE INDEX IF NOT EXISTS idx_notification_items_source ON notification_items(source_type, source_id);
   `);
   ensureColumn(db, 'insight_items', 'display_key', 'TEXT');
   ensureColumn(db, 'insight_items', 'generated_date', 'TEXT');
+  ensureColumn(db, 'notification_items', 'title', 'TEXT');
+  ensureColumn(db, 'notification_items', 'target_type', 'TEXT');
+  ensureColumn(db, 'notification_items', 'target_key', 'TEXT');
+  ensureColumn(db, 'notification_items', 'expires_at', 'TEXT');
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_insight_items_display ON insight_items(generated_date, display_key, generated_at);
+    CREATE INDEX IF NOT EXISTS idx_notification_items_type ON notification_items(type, status, scheduled_at);
   `);
 }

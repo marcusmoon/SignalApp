@@ -78,6 +78,7 @@ export function ensureDbShape(db) {
   if (!Array.isArray(db.marketQuotes)) db.marketQuotes = [];
   if (!Array.isArray(db.coinMarkets)) db.coinMarkets = [];
   if (!Array.isArray(db.insightItems)) db.insightItems = [];
+  if (!Array.isArray(db.notificationItems)) db.notificationItems = [];
   db.marketLists = ensureMarketListsShape(db.marketLists, nowIso);
   if (!Array.isArray(db.translationSettings)) db.translationSettings = defaultTranslationSettings();
   if (!db.uiModelPresets || typeof db.uiModelPresets !== 'object') db.uiModelPresets = defaultUiModelPresets();
@@ -139,6 +140,7 @@ export function splitStoresFromDb(db) {
     },
     insights: {
       insightItems: shaped.insightItems,
+      notificationItems: shaped.notificationItems,
     },
   };
 }
@@ -163,6 +165,7 @@ export function shapeDbFromStores(stores) {
     coinMarkets: stores.market?.coinMarkets ?? [],
     marketLists: stores.market?.marketLists ?? [],
     insightItems: stores.insights?.insightItems ?? [],
+    notificationItems: stores.insights?.notificationItems ?? [],
   });
   ensureNewsSourcesFromItems(shaped);
   return shaped;

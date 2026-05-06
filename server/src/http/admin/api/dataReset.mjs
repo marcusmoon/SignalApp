@@ -10,6 +10,7 @@ const RESET_TARGETS = {
   marketQuotes: 'marketQuotes',
   coinMarkets: 'coinMarkets',
   insightItems: 'insightItems',
+  notificationItems: 'notificationItems',
   pollingJobRuns: 'pollingJobRuns',
 };
 

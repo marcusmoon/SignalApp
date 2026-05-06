@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,6 +45,19 @@ import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { hasSignalApi } from '@/services/env';
 import { addDays, toYmd } from '@/utils/date';
 import { signalQuoteMovePct, signalReasonLabel } from '@/utils/signalDisplay';
+import type { MessageId } from '@/locales/messages';
+import {
+  SEGMENT_TAB_ACTIVE_TEXT,
+  SEGMENT_TAB_BACKGROUND,
+  SEGMENT_TAB_BTN_PADDING_V,
+  SEGMENT_TAB_BTN_RADIUS,
+  SEGMENT_TAB_FONT_SIZE,
+  SEGMENT_TAB_FONT_WEIGHT,
+  SEGMENT_TAB_GAP,
+  SEGMENT_TAB_LINE_HEIGHT,
+  SEGMENT_TAB_OUTER_RADIUS,
+  SEGMENT_TAB_PADDING,
+} from '@/constants/segmentTabBar';
 
 const WATCH_LIMIT = 10;
 const EARN_DAYS = 21;
@@ -115,12 +129,38 @@ function macroEventTimeLabel(ev: SignalApiCalendarEvent): string {
   return ev.date ? shortMd(ev.date) : '—';
 }
 
+function earningSortKey(r: SignalApiCalendarEvent): string {
+  return `${earningsRowDate(r)}T12:00:00`;
+}
+
+function macroSortKey(ev: SignalApiCalendarEvent): string {
+  const iso = ev.eventAt?.trim();
+  if (iso && iso.length >= 19) return iso.replace(' ', 'T').slice(0, 19);
+  if (iso && iso.length >= 16) return `${iso.slice(0, 10)}T${iso.slice(11, 16)}:00`;
+  if (ev.date) {
+    const tl = (ev.timeLabel || '12:00').trim();
+    const hhmm = tl.length >= 5 ? tl.slice(0, 5) : '12:00';
+    return `${ev.date}T${hhmm}:00`;
+  }
+  return '9999-12-31T23:59:59';
+}
+
+type ScheduleTabKey = 'all' | 'earnings' | 'macro';
+
+const SCHEDULE_TAB_DEF: readonly { key: ScheduleTabKey; label: MessageId }[] = [
+  { key: 'all', label: 'briefingScheduleTabAll' },
+  { key: 'earnings', label: 'briefingScheduleTabEarnings' },
+  { key: 'macro', label: 'briefingScheduleTabMacro' },
+];
+
 export default function BriefingScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { width: windowWidth } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const focusCardWidth = Math.round(Math.min(300, Math.max(248, windowWidth * 0.74)));
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -132,6 +172,7 @@ export default function BriefingScreen() {
   const [newsBySymbol, setNewsBySymbol] = useState<Record<string, SignalApiNewsItem[]>>({});
   const [earnings, setEarnings] = useState<SignalApiCalendarEvent[]>([]);
   const [economicWeek, setEconomicWeek] = useState<SignalApiCalendarEvent[]>([]);
+  const [scheduleTab, setScheduleTab] = useState<ScheduleTabKey>('all');
 
   const load = useCallback(async () => {
     if (!hasSignalApi()) {
@@ -414,6 +455,21 @@ export default function BriefingScreen() {
     return cards.slice(0, 3);
   }, [earnings, macroDisplay, quoteBySymbol, signalRows, symbols, t, weekEarnings]);
 
+  const scheduleMerged = useMemo(() => {
+    type Entry =
+      | { kind: 'earning'; sortKey: string; row: SignalApiCalendarEvent }
+      | { kind: 'macro'; sortKey: string; row: SignalApiCalendarEvent };
+    const out: Entry[] = [];
+    for (const row of weekEarnings) {
+      out.push({ kind: 'earning', sortKey: earningSortKey(row), row });
+    }
+    for (const row of macroDisplay) {
+      out.push({ kind: 'macro', sortKey: macroSortKey(row), row });
+    }
+    out.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+    return out.slice(0, 14);
+  }, [weekEarnings, macroDisplay]);
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <Stack.Screen options={{ title: t('screenBriefing') }} />
@@ -438,7 +494,16 @@ export default function BriefingScreen() {
 
           {!error ? (
             <View style={styles.digestWrap}>
-              <Text style={styles.digestKicker}>{t('briefingDigestKicker')}</Text>
+              <View style={styles.digestTopRow}>
+                <Text style={styles.digestKicker}>{t('briefingDigestKicker')}</Text>
+                <Pressable
+                  onPress={() => router.push('/insights')}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('briefingOpenTodaySignal')}
+                  style={({ pressed }) => [styles.digestSignalLink, pressed && styles.digestSignalLinkPressed]}>
+                  <Text style={styles.digestSignalLinkText}>{t('briefingOpenTodaySignal')}</Text>
+                </Pressable>
+              </View>
               <Text style={styles.digestHeadline}>{digestHeadline}</Text>
               {digestTailLines.length > 0 ? (
                 <View style={styles.digestMore}>
@@ -449,20 +514,20 @@ export default function BriefingScreen() {
                   ))}
                 </View>
               ) : null}
-              <Pressable
-                onPress={() => router.push('/insights')}
-                accessibilityRole="button"
-                accessibilityLabel={t('briefingOpenTodaySignal')}
-                style={({ pressed }) => [styles.digestSignalLink, pressed && styles.digestSignalLinkPressed]}>
-                <Text style={styles.digestSignalLinkText}>{t('briefingOpenTodaySignal')}</Text>
-              </Pressable>
             </View>
           ) : null}
 
           {!error && focusCards.length > 0 ? (
             <>
-              <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingFocusTitle')}</Text>
-              <View style={styles.focusGrid}>
+              <View style={styles.sectionTitleRow}>
+                <View style={styles.sectionTitleAccent} />
+                <Text style={styles.blockTitleFlat}>{t('briefingFocusTitle')}</Text>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.focusCarousel}
+                contentContainerStyle={styles.focusCarouselContent}>
                 {focusCards.map((card) => (
                   <Pressable
                     key={card.key}
@@ -473,18 +538,19 @@ export default function BriefingScreen() {
                     accessibilityRole={card.symbol ? 'button' : 'text'}
                     style={({ pressed }) => [
                       styles.focusCard,
+                      { width: focusCardWidth },
                       pressed && Boolean(card.symbol) && styles.focusCardPressed,
                     ]}>
                     <Text style={styles.focusTitle}>{card.title}</Text>
                     <Text style={styles.focusHeadline} numberOfLines={2}>
                       {card.headline}
                     </Text>
-                    <Text style={styles.focusMeta} numberOfLines={1}>
+                    <Text style={styles.focusMeta} numberOfLines={2}>
                       {card.meta}
                     </Text>
                   </Pressable>
                 ))}
-              </View>
+              </ScrollView>
             </>
           ) : null}
 
@@ -492,7 +558,10 @@ export default function BriefingScreen() {
             <>
               {symbols.length > 0 ? (
                 <>
-                  <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingSectionInsights')}</Text>
+                  <View style={styles.sectionTitleRow}>
+                    <View style={styles.sectionTitleAccent} />
+                    <Text style={styles.blockTitleFlat}>{t('briefingSectionInsights')}</Text>
+                  </View>
                   <Text style={styles.sectionHint}>{t('briefingSectionInsightsHint')}</Text>
                   {notableSymbols.map((sym) => {
                     const signal = signalRows.find((row) => row.symbol === sym);
@@ -533,7 +602,12 @@ export default function BriefingScreen() {
                     return (
                       <Pressable
                         key={sym}
-                        style={styles.briefCard}
+                        style={[
+                          styles.briefCard,
+                          signal?.level === 'hot' && styles.briefCardHot,
+                          signal?.level === 'watch' && styles.briefCardWatch,
+                          signal?.level === 'quiet' && styles.briefCardQuiet,
+                        ]}
                         onPress={() => router.push(`/symbol/${sym}`)}
                         accessibilityRole="button"
                         accessibilityLabel={`${sym} ${primaryStory}`}>
@@ -589,40 +663,115 @@ export default function BriefingScreen() {
                 <Text style={styles.muted}>{t('briefingEmptyWatchlist')}</Text>
               )}
 
-              <MarketSnapshotSection tape={tape} macro={macro} compact />
+              <View style={styles.marketSnapshotSpacing}>
+                <MarketSnapshotSection tape={tape} macro={macro} compact />
+              </View>
 
-              <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingWeekEarningsTitle')}</Text>
-              {weekEarnings.length === 0 ? (
-                <Text style={styles.weekStripEmpty}>{t('briefingWeekEarningsEmpty')}</Text>
-              ) : (
-                <View style={styles.compactList}>
-                  {weekEarnings.slice(0, 4).map((r) => (
-                    <Pressable
-                      key={`${earningsRowSymbol(r)}-${earningsRowDate(r)}-${earningsRowQuarter(r)}-${earningsRowYear(r)}`}
-                      style={styles.compactEventRow}
-                      onPress={() => router.push(`/symbol/${earningsRowSymbol(r)}`)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${earningsRowSymbol(r)} ${earningsRowDate(r)}`}>
-                      <View style={styles.compactEventMain}>
-                        <Text style={styles.compactEventTitle} numberOfLines={1}>
-                          {earningsRowSymbol(r)}
-                        </Text>
-                        <Text style={styles.compactEventMeta} numberOfLines={1}>
-                          {t('fiscalYearQuarterShort', { y: earningsRowYear(r), q: earningsRowQuarter(r) })}
-                        </Text>
-                      </View>
-                      <Text style={styles.compactEventDate}>{shortMd(earningsRowDate(r))}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
-
-              <Text style={[styles.blockTitle, styles.sectionHeading]}>{t('briefingSectionMacroWeek')}</Text>
-              {macroDisplay.length === 0 ? (
-                <Text style={styles.macroEmpty}>{t('briefingMacroEmpty')}</Text>
-              ) : (
-                <View style={styles.compactList}>
-                  {macroDisplay.slice(0, 5).map((r) => (
+              <View style={[styles.sectionTitleRow, styles.scheduleBlockTitle]}>
+                <View style={styles.sectionTitleAccent} />
+                <Text style={styles.blockTitleFlat}>{t('briefingScheduleSectionTitle')}</Text>
+              </View>
+              <View style={styles.scheduleSegment}>
+                {SCHEDULE_TAB_DEF.map(({ key, label }) => (
+                  <Pressable
+                    key={key}
+                    onPress={() => setScheduleTab(key)}
+                    style={[styles.scheduleSegBtn, scheduleTab === key && styles.scheduleSegBtnActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: scheduleTab === key }}>
+                    <Text
+                      style={[styles.scheduleSegText, scheduleTab === key && styles.scheduleSegTextActive]}>
+                      {t(label)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <View style={styles.compactList}>
+                {scheduleTab === 'all' ? (
+                  scheduleMerged.length === 0 ? (
+                    <Text style={styles.weekStripEmpty}>{t('briefingScheduleMergedEmpty')}</Text>
+                  ) : (
+                    scheduleMerged.map((entry, idx) =>
+                      entry.kind === 'earning' ? (
+                        <Pressable
+                          key={`sched-e-${earningsRowSymbol(entry.row)}-${idx}`}
+                          style={styles.compactEventRow}
+                          onPress={() => router.push(`/symbol/${earningsRowSymbol(entry.row)}`)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${earningsRowSymbol(entry.row)} ${earningsRowDate(entry.row)}`}>
+                          <View style={styles.scheduleKindBadge}>
+                            <Text style={styles.scheduleKindBadgeText}>{t('briefingScheduleKindEarning')}</Text>
+                          </View>
+                          <View style={styles.compactEventMain}>
+                            <Text style={styles.compactEventTitle} numberOfLines={1}>
+                              {earningsRowSymbol(entry.row)}
+                            </Text>
+                            <Text style={styles.compactEventMeta} numberOfLines={1}>
+                              {t('fiscalYearQuarterShort', {
+                                y: earningsRowYear(entry.row),
+                                q: earningsRowQuarter(entry.row),
+                              })}
+                            </Text>
+                          </View>
+                          <Text style={styles.compactEventDate}>{shortMd(earningsRowDate(entry.row))}</Text>
+                        </Pressable>
+                      ) : (
+                        <View
+                          key={`sched-m-${entry.row.id ?? 'x'}-${idx}-${entry.row.eventAt || entry.row.date || ''}`}
+                          style={[
+                            styles.compactEventRow,
+                            entry.row.impact?.toLowerCase() === 'high' && styles.compactEventRowHot,
+                          ]}>
+                          <View style={[styles.scheduleKindBadge, styles.scheduleKindBadgeMacro]}>
+                            <Text style={[styles.scheduleKindBadgeText, styles.scheduleKindBadgeTextMacro]}>
+                              {t('briefingScheduleKindMacro')}
+                            </Text>
+                          </View>
+                          <View style={styles.compactEventMain}>
+                            <Text style={styles.compactEventTitle} numberOfLines={2}>
+                              {entry.row.title}
+                            </Text>
+                            <Text style={styles.compactEventMeta} numberOfLines={1}>
+                              {entry.row.country || '—'}
+                              {entry.row.impact?.toLowerCase() === 'high'
+                                ? ` · ${t('briefingMacroImpactHigh')}`
+                                : ''}
+                            </Text>
+                          </View>
+                          <Text style={styles.compactEventDate} numberOfLines={1}>
+                            {macroEventTimeLabel(entry.row)}
+                          </Text>
+                        </View>
+                      ),
+                    )
+                  )
+                ) : scheduleTab === 'earnings' ? (
+                  weekEarnings.length === 0 ? (
+                    <Text style={styles.weekStripEmpty}>{t('briefingWeekEarningsEmpty')}</Text>
+                  ) : (
+                    weekEarnings.slice(0, 8).map((r) => (
+                      <Pressable
+                        key={`${earningsRowSymbol(r)}-${earningsRowDate(r)}-${earningsRowQuarter(r)}-${earningsRowYear(r)}`}
+                        style={styles.compactEventRow}
+                        onPress={() => router.push(`/symbol/${earningsRowSymbol(r)}`)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${earningsRowSymbol(r)} ${earningsRowDate(r)}`}>
+                        <View style={styles.compactEventMain}>
+                          <Text style={styles.compactEventTitle} numberOfLines={1}>
+                            {earningsRowSymbol(r)}
+                          </Text>
+                          <Text style={styles.compactEventMeta} numberOfLines={1}>
+                            {t('fiscalYearQuarterShort', { y: earningsRowYear(r), q: earningsRowQuarter(r) })}
+                          </Text>
+                        </View>
+                        <Text style={styles.compactEventDate}>{shortMd(earningsRowDate(r))}</Text>
+                      </Pressable>
+                    ))
+                  )
+                ) : macroDisplay.length === 0 ? (
+                  <Text style={styles.macroEmpty}>{t('briefingMacroEmpty')}</Text>
+                ) : (
+                  macroDisplay.slice(0, 8).map((r) => (
                     <View
                       key={`${r.id}-${r.eventAt || r.date || r.title}`}
                       style={[
@@ -642,9 +791,9 @@ export default function BriefingScreen() {
                         {macroEventTimeLabel(r)}
                       </Text>
                     </View>
-                  ))}
-                </View>
-              )}
+                  ))
+                )}
+              </View>
             </>
           ) : null}
         </ScrollView>
@@ -654,48 +803,58 @@ export default function BriefingScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+  const digestBg =
+    theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}10` : theme.bgElevated;
+
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     scroll: { flex: 1 },
-    content: { paddingHorizontal: 16, paddingTop: 10 },
+    content: { paddingHorizontal: 16, paddingTop: 8 },
     digestWrap: {
-      marginBottom: 14,
-      paddingVertical: 14,
-      paddingHorizontal: 14,
-      borderRadius: 16,
-      backgroundColor: theme.card,
-      borderWidth: 1,
-      borderColor: theme.border,
+      marginBottom: 16,
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+      borderRadius: 14,
+      borderWidth: 2,
+      borderColor: theme.greenBorder,
+      backgroundColor: digestBg,
+    },
+    digestTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      marginBottom: 10,
     },
     digestKicker: {
       fontSize: sf(10),
       fontWeight: '800',
-      letterSpacing: 1.2,
+      letterSpacing: 1.1,
       color: theme.green,
-      marginBottom: 8,
       textTransform: 'uppercase',
+      flex: 1,
+      minWidth: 0,
     },
     digestHeadline: {
       fontSize: sf(18),
       fontWeight: '800',
       color: theme.text,
-      lineHeight: sf(24),
-      letterSpacing: -0.3,
+      lineHeight: sf(25),
+      letterSpacing: -0.35,
     },
     digestMore: {
       marginTop: 12,
       paddingTop: 12,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.border,
+      borderTopColor: theme.greenBorder,
     },
     digestMoreLine: { fontSize: sf(12), fontWeight: '600', color: theme.textDim, lineHeight: sf(18) },
     digestMoreLineGap: { marginTop: 8 },
     digestSignalLink: {
-      alignSelf: 'flex-start',
-      marginTop: 12,
-      paddingVertical: 7,
-      paddingHorizontal: 10,
+      flexShrink: 0,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
       borderRadius: 999,
       borderWidth: 1,
       borderColor: theme.greenBorder,
@@ -711,30 +870,47 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.green,
     },
     muted: { fontSize: sf(12), color: theme.textDim, marginTop: 4, marginBottom: 12 },
-    blockTitle: {
-      fontSize: sf(11),
-      fontWeight: '800',
-      letterSpacing: 0.2,
-      color: theme.textMuted,
-      marginTop: 4,
-      marginBottom: 6,
-    },
-    sectionHeading: { marginTop: 14 },
-    focusGrid: {
-      flexDirection: 'row',
-      gap: 8,
-      marginBottom: 12,
-    },
-    focusCard: {
+    blockTitleFlat: {
+      fontSize: sf(13),
+      fontWeight: '900',
+      letterSpacing: -0.2,
+      color: theme.text,
       flex: 1,
       minWidth: 0,
-      paddingVertical: 11,
-      paddingHorizontal: 10,
-      borderRadius: 12,
+    },
+    sectionTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginTop: 6,
+      marginBottom: 8,
+    },
+    sectionTitleAccent: {
+      width: 4,
+      height: 18,
+      borderRadius: 2,
+      backgroundColor: theme.green,
+    },
+    scheduleBlockTitle: {
+      marginTop: 14,
+    },
+    focusCarousel: {
+      marginHorizontal: -16,
+      marginBottom: 14,
+    },
+    focusCarouselContent: {
+      paddingHorizontal: 16,
+      gap: 10,
+      paddingBottom: 2,
+    },
+    focusCard: {
+      minWidth: 0,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+      borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.greenBorder,
-      backgroundColor:
-        theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}10` : theme.bgElevated,
+      backgroundColor: digestBg,
     },
     focusCardPressed: {
       opacity: 0.82,
@@ -743,28 +919,85 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(10),
       fontWeight: '900',
       color: theme.green,
-      marginBottom: 6,
+      marginBottom: 8,
+      letterSpacing: 0.4,
+      textTransform: 'uppercase',
     },
     focusHeadline: {
-      fontSize: sf(13),
-      lineHeight: sf(17),
+      fontSize: sf(15),
+      lineHeight: sf(20),
       fontWeight: '900',
       color: theme.text,
-      marginBottom: 6,
+      marginBottom: 8,
     },
     focusMeta: {
-      fontSize: sf(10),
-      lineHeight: sf(14),
+      fontSize: sf(11),
+      lineHeight: sf(15),
       fontWeight: '700',
       color: theme.textDim,
+    },
+    marketSnapshotSpacing: {
+      marginTop: 6,
+      marginBottom: 8,
+    },
+    scheduleSegment: {
+      flexDirection: 'row',
+      backgroundColor: SEGMENT_TAB_BACKGROUND,
+      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: SEGMENT_TAB_PADDING,
+      marginBottom: 10,
+      gap: SEGMENT_TAB_GAP,
+    },
+    scheduleSegBtn: {
+      flex: 1,
+      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
+      borderRadius: SEGMENT_TAB_BTN_RADIUS,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scheduleSegBtnActive: {
+      backgroundColor: theme.green,
+    },
+    scheduleSegText: {
+      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
+      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
+      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
+      color: theme.textDim,
+    },
+    scheduleSegTextActive: {
+      color: SEGMENT_TAB_ACTIVE_TEXT,
+    },
+    scheduleKindBadge: {
+      flexShrink: 0,
+      paddingVertical: 4,
+      paddingHorizontal: 7,
+      borderRadius: 8,
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      alignSelf: 'center',
+    },
+    scheduleKindBadgeMacro: {
+      backgroundColor: `${theme.accentBlue}22`,
+      borderColor: `${theme.accentBlue}66`,
+    },
+    scheduleKindBadgeText: {
+      fontSize: sf(9),
+      fontWeight: '900',
+      color: theme.green,
+    },
+    scheduleKindBadgeTextMacro: {
+      color: theme.accentBlue,
     },
     sectionHint: {
       fontSize: sf(11),
       color: theme.textDim,
       fontWeight: '600',
       lineHeight: sf(16),
-      marginTop: -2,
-      marginBottom: 8,
+      marginTop: -4,
+      marginBottom: 10,
     },
     macroEmpty: {
       fontSize: sf(11),
@@ -780,7 +1013,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     compactList: {
       gap: 8,
-      marginBottom: 10,
+      marginBottom: 14,
     },
     compactEventRow: {
       flexDirection: 'row',
@@ -823,25 +1056,45 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       textAlign: 'right',
     },
     briefCard: {
-      marginBottom: 10,
-      padding: 14,
+      marginBottom: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+      paddingLeft: 13,
       borderRadius: 14,
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
     },
+    briefCardHot: {
+      borderLeftWidth: 4,
+      paddingLeft: 11,
+      borderLeftColor: theme.accentOrange,
+      backgroundColor: theme.accentOrange + '0C',
+    },
+    briefCardWatch: {
+      borderLeftWidth: 4,
+      paddingLeft: 11,
+      borderLeftColor: theme.green,
+      backgroundColor: digestBg,
+    },
+    briefCardQuiet: {
+      borderLeftWidth: 3,
+      paddingLeft: 12,
+      borderLeftColor: theme.border,
+    },
     briefCardHead: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      marginBottom: 10,
+      gap: 10,
+      marginBottom: 8,
     },
     briefCardSym: {
       flex: 1,
       minWidth: 0,
-      fontSize: sf(15),
-      fontWeight: '800',
+      fontSize: sf(17),
+      fontWeight: '900',
       color: theme.green,
+      letterSpacing: -0.3,
     },
     briefScorePill: {
       flexShrink: 0,
@@ -873,26 +1126,26 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     briefScoreTextQuiet: {
       color: theme.textMuted,
     },
-    briefCardValues: { flexDirection: 'row', alignItems: 'center', flexShrink: 0, gap: 8 },
-    briefCardPrice: { fontSize: sf(14), fontWeight: '700', color: theme.text, minWidth: 56, textAlign: 'right' },
-    briefCardPct: { fontSize: sf(13), fontWeight: '700', minWidth: 56, textAlign: 'right' },
+    briefCardValues: { flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0, gap: 2 },
+    briefCardPrice: { fontSize: sf(15), fontWeight: '800', color: theme.text, textAlign: 'right' },
+    briefCardPct: { fontSize: sf(13), fontWeight: '800', textAlign: 'right' },
     up: { color: theme.green },
     dn: { color: '#ff6b6b' },
     briefCardStory: {
-      fontSize: sf(13),
+      fontSize: sf(14),
       fontWeight: '600',
       color: theme.text,
-      lineHeight: sf(19),
+      lineHeight: sf(21),
     },
     briefCardReason: {
-      marginTop: 8,
+      marginTop: 10,
       fontSize: sf(11),
       fontWeight: '800',
       color: theme.green,
       lineHeight: sf(16),
     },
     briefCardMeta: {
-      marginTop: 6,
+      marginTop: 5,
       fontSize: sf(11),
       fontWeight: '600',
       color: theme.textDim,

@@ -1,4 +1,4 @@
-import { readDb } from '../db.mjs';
+import { listDuePollingJobs } from '../db.mjs';
 import { runPollingJob } from './runner.mjs';
 
 export function findDuePollingJobs(db, now = Date.now()) {
@@ -10,13 +10,20 @@ export function findDuePollingJobs(db, now = Date.now()) {
 }
 
 export function startScheduler({ intervalMs = 10_000 } = {}) {
+  const runningJobKeys = new Set();
+
   const tick = async () => {
-    const db = await readDb();
-    const due = findDuePollingJobs(db);
+    const due = await listDuePollingJobs();
     for (const job of due) {
-      runPollingJob(job.jobKey, { trigger: 'schedule' }).catch((error) => {
-        console.error(`[scheduler] ${job.jobKey} failed`, error);
-      });
+      if (runningJobKeys.has(job.jobKey)) continue;
+      runningJobKeys.add(job.jobKey);
+      runPollingJob(job.jobKey, { trigger: 'schedule' })
+        .catch((error) => {
+          console.error(`[scheduler] ${job.jobKey} failed`, error);
+        })
+        .finally(() => {
+          runningJobKeys.delete(job.jobKey);
+        });
     }
   };
 

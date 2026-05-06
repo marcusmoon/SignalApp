@@ -145,9 +145,9 @@ npx expo start -c
 | `market_coins_top` | 코인 시총 상위 수집 |
 | `insights_market_brief` | 수집 데이터 기반 시장 인사이트 생성 |
 
-스케줄러는 10초마다 due job을 확인합니다. `enabled: true`이고 `nextRunAt`이 비었거나 현재 시각 이전이면 실행합니다.
+스케줄러는 10초마다 due job을 확인합니다. `enabled: true`이고 `nextRunAt`이 비었거나 현재 시각 이전이면 실행합니다. 이 확인은 전체 DB 스냅샷을 만들지 않고 SQLite `polling_jobs` 테이블만 직접 조회하며, 같은 Node 프로세스 안에서 이미 실행 중인 동일 job은 다시 시작하지 않습니다.
 
-각 실행은 SQLite의 `polling_job_runs` 테이블에 남습니다. 로그 payload에는 `jobKey`, `domain`, `provider`, `handler`, `trigger`, `status`, `startedAt`, `finishedAt`, `durationMs`, `resultKind`, `itemCount`, `errorMessage`, `progressPercent`, `progressPhase`, `progressUpdatedAt`가 포함됩니다. 수동 실행은 `trigger: manual`, 스케줄 실행은 `trigger: schedule`로 구분합니다.
+각 실행은 SQLite의 `polling_job_runs` 테이블에 남습니다. 로그 payload에는 `jobKey`, `domain`, `provider`, `handler`, `trigger`, `status`, `startedAt`, `finishedAt`, `durationMs`, `resultKind`, `itemCount`, `errorMessage`, `progressPercent`, `progressPhase`, `progressUpdatedAt`가 포함됩니다. 긴 수집 job의 진행률 저장은 응답 API가 DB 큐에서 밀리지 않도록 5초 단위 또는 큰 진행률 변화 위주로 반영합니다. 수동 실행은 `trigger: manual`, 스케줄 실행은 `trigger: schedule`로 구분합니다.
 
 어드민에서 수동 실행을 누르면 HTTP 응답은 즉시 `accepted`로 돌아오고, 실제 실행은 백그라운드에서 진행됩니다. 실행 중인 run은 경과 시간과 마지막 진행 신호가 표시되며, 기본 5분 또는 job 주기 대비 과도하게 오래 신호가 없으면 `멈춤 의심`으로 표시합니다.
 
@@ -235,7 +235,7 @@ server/data/signal.sqlite-shm  # SQLite shared-memory 파일(생성될 수 있�
 - SQLite가 비어 있으면 첫 실행 시 `defaultDb()`를 저장해 기본 설정과 Job 리스트를 생성한다.
 - 어드민 계정은 SQLite `admin_users` 테이블에 저장한다. `ADMIN_USERS` env는 `admin_users`가 비어 있을 때만 초기 seed로 쓰고, 비밀번호는 salt + scrypt hash로 저장한다. 이후 계정 추가·비밀번호 변경·활성화·삭제는 **Admin > 설정 > 사용자 관리**에서 한다.
 - 기존 `server/data/*.json` 분할 스토어와 과거 단일 `local-db.json`은 읽지 않는다.
-- `readDb` / `writeDb` / `updateDb`는 동일 Node 프로세스 안에서 큐로 직렬화된다. `updateDb`는 SQLite `BEGIN IMMEDIATE` 트랜잭션 안에서 읽기와 쓰기를 묶어 보정 수집·번역 갱신 같은 read/modify/write 경쟁을 줄인다.
+- `readDb` / `writeDb` / `updateDb`는 동일 Node 프로세스 안에서 큐로 직렬화된다. `updateDb`는 SQLite `BEGIN IMMEDIATE` 트랜잭션 안에서 읽기와 쓰기를 묶어 보정 수집·번역 갱신 같은 read/modify/write 경쟁을 줄인다. 앱 공개 조회 API와 스케줄 due 확인처럼 단일 테이블로 충분한 경로는 전체 스냅샷을 복원하지 않고 SQLite 테이블을 직접 조회한다.
 - 주요 운영 테이블은 `polling_jobs`, `polling_job_runs`, `news_items`, `news_translations`, `calendar_events`, `concall_transcripts`, `youtube_videos`, `market_quotes`, `coin_markets`, `market_lists`, `provider_settings`, `translation_settings`, `news_sources`, `insight_items`, `notification_items`, `app_users`, `app_user_sessions`, `app_user_devices`, `app_user_identities`, `admin_users`다.
 - 운영 데이터는 기능별 테이블에 저장한다. 주요 테이블은 `provider_settings`, `translation_settings`, `polling_jobs`, `polling_job_runs`, `news_items`, `news_translations`, `calendar_events`, `concall_transcripts`, `youtube_videos`, `market_quotes`, `coin_markets`, `market_lists`, `news_sources`다. 각 테이블은 검색·정렬용 대표 컬럼과 원본 payload를 함께 둬 SQLite에서 운영하고, 추후 MySQL에서는 같은 테이블 경계로 repository를 옮긴다.
 - 과거 `signal_stores` payload 테이블이 남아 있고 새 구조 테이블이 비어 있으면 첫 실행 시 한 번만 새 테이블로 마이그레이션한 뒤 `signal_stores`를 제거한다. 새 DB에서는 `signal_stores`를 만들지 않는다.

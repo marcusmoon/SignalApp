@@ -281,6 +281,12 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
 
   await updateDb((db) => {
     db.pollingJobRuns.unshift(run);
+    const savedJob = db.pollingJobs.find((j) => j.jobKey === jobKey);
+    if (savedJob) {
+      savedJob.lastRunAt = run.startedAt;
+      savedJob.nextRunAt = addSecondsIso(savedJob.intervalSeconds);
+      savedJob.updatedAt = run.startedAt;
+    }
   });
 
   try {
@@ -298,9 +304,14 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
             else if (phase === 'quotes') percent = safeTotal > 0 ? 50 + Math.round((safeDone / safeTotal) * 50) : 50;
             else if (phase === 'transcripts') percent = safeTotal > 0 ? Math.round((safeDone / safeTotal) * 100) : 0;
 
+            const percentDelta = Math.abs(percent - lastProgressPercent);
             const shouldPersist =
               percent !== lastProgressPercent &&
-              (now - lastProgressAt > 750 || percent === 0 || percent === 100 || safeDone === safeTotal);
+              (now - lastProgressAt > 5000 ||
+                percent === 0 ||
+                percent === 100 ||
+                safeDone === safeTotal ||
+                percentDelta >= 10);
 
             if (shouldPersist) {
               lastProgressAt = now;

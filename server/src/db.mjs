@@ -24,6 +24,7 @@ import {
 } from './db/adminUsers.mjs';
 import { defaultDb } from './db/defaults.mjs';
 import { queryInsightItemsInDb } from './db/insights.mjs';
+import { getPollingJobInDb, listDuePollingJobsInDb } from './db/jobs.mjs';
 import {
   ensureNewsSourcesFromItems,
   normalizeNewsSourceName,
@@ -48,6 +49,7 @@ import {
   upsertMarketQuoteRowsInDb,
 } from './db/publicQueries.mjs';
 import {
+  hasStructuredData,
   migrateLegacySignalStoresIfNeeded,
   readStructuredDb,
   writeStructuredDb,
@@ -63,6 +65,7 @@ import { nowIso } from './db/time.mjs';
 let dbExclusiveChain = Promise.resolve();
 let sqliteDb = null;
 let structuredMigrationChecked = false;
+let defaultDbSeedChecked = false;
 
 /**
  * @template T
@@ -106,6 +109,10 @@ async function ensureSqliteStore() {
   if (!structuredMigrationChecked) {
     migrateLegacySignalStoresIfNeeded(db);
     structuredMigrationChecked = true;
+  }
+  if (!defaultDbSeedChecked) {
+    if (!hasStructuredData(db)) await writeSqliteDbBody(defaultDb(), { db });
+    defaultDbSeedChecked = true;
   }
   seedAdminUsersFromEnvIfEmpty(db);
   return db;
@@ -163,6 +170,20 @@ export async function queryInsightItems(options = {}) {
   return withDbExclusive(async () => {
     const conn = await ensureSqliteStore();
     return queryInsightItemsInDb(conn, options);
+  });
+}
+
+export async function listDuePollingJobs(now = Date.now()) {
+  return withDbExclusive(async () => {
+    const conn = await ensureSqliteStore();
+    return listDuePollingJobsInDb(conn, new Date(now));
+  });
+}
+
+export async function getPollingJob(jobKey) {
+  return withDbExclusive(async () => {
+    const conn = await ensureSqliteStore();
+    return getPollingJobInDb(conn, jobKey);
   });
 }
 

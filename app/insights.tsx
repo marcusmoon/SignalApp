@@ -226,7 +226,6 @@ export default function InsightsScreen() {
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <OtaUpdateBanner />
       <View style={styles.header}>
-        <Text style={styles.lead}>{t('insightListLead')}</Text>
         <View style={styles.datePicker}>
           <View style={styles.datePickerTop}>
             <Pressable
@@ -395,14 +394,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     safe: {
       flex: 1,
       backgroundColor: theme.bg,
-    },
-    lead: {
-      paddingHorizontal: 16,
-      paddingTop: 10,
-      fontSize: sf(13),
-      fontWeight: '700',
-      color: theme.textMuted,
-      lineHeight: sf(19),
     },
     header: {
       paddingBottom: 12,

@@ -102,6 +102,7 @@
 
             <div class="navSectionTitle muted" style="margin-top:10px" data-i18n="navSectionSystem">시스템</div>
             <button class="navBtn secondary" data-view="settings-users" data-icon="U">어드민 사용자</button>
+            <button class="navBtn secondary" data-view="settings-legal" data-icon="T">약관</button>
             <button class="navBtn secondary" data-view="settings-keys" data-icon="P">Provider</button>
             <button class="navBtn secondary" data-view="translations" data-icon="G">번역 설정</button>
             <button class="navBtn secondary" data-view="settings-sources" data-icon="S">뉴스 출처</button>
@@ -354,6 +355,7 @@
                 <div class="pageHeaderActions">
                   <div class="segmented" role="tablist" aria-label="Settings sections">
                     <button type="button" class="secondary segBtn" data-view="settings-users" data-settings-tab="users" data-i18n="navSettingsUsers">어드민 사용자</button>
+                    <button type="button" class="secondary segBtn" data-view="settings-legal" data-settings-tab="legal" data-i18n="navSettingsLegal">약관</button>
                     <button type="button" class="secondary segBtn" data-view="settings-keys" data-settings-tab="keys" data-i18n="navSettingsKeys">Provider</button>
                     <button type="button" class="secondary segBtn active" data-view="translations" data-i18n="navTranslations">번역 설정</button>
                     <button type="button" class="secondary segBtn" data-view="settings-sources" data-settings-tab="sources" data-i18n="navSettingsSources">뉴스 출처</button>
@@ -510,6 +512,7 @@
                 <div class="pageHeaderActions">
                   <div class="segmented" role="tablist" aria-label="Settings sections">
                     <button type="button" class="secondary segBtn" data-view="settings-users" data-settings-tab="users" data-i18n="navSettingsUsers">어드민 사용자</button>
+                    <button type="button" class="secondary segBtn" data-view="settings-legal" data-settings-tab="legal" data-i18n="navSettingsLegal">약관</button>
                     <button type="button" class="secondary segBtn" data-view="settings-keys" data-settings-tab="keys" data-i18n="navSettingsKeys">Provider</button>
                     <button type="button" class="secondary segBtn" data-view="translations" data-i18n="navTranslations">번역 설정</button>
                     <button type="button" class="secondary segBtn" data-view="settings-sources" data-settings-tab="sources" data-i18n="navSettingsSources">뉴스 출처</button>
@@ -564,6 +567,17 @@
                   </div>
                 </div>
                 <div id="adminUsers"></div>
+              </div>
+
+              <div id="settingsTab-legal" class="settingsTab hidden">
+                <div class="settingsHero">
+                  <span class="settingsHeroIcon">T</span>
+                  <div>
+                    <div class="cardKicker" data-i18n="settingsLegalHeroKicker">약관 관리</div>
+                    <p class="summary" data-i18n="settingsLegalHeroSummary">앱 가입과 내정보 화면에서 사용하는 약관을 언어/버전별로 관리합니다.</p>
+                  </div>
+                </div>
+                <div id="legalTerms"></div>
               </div>
 
               <div id="settingsTab-lists" class="settingsTab hidden">

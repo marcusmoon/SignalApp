@@ -258,6 +258,61 @@ export async function loadAdminUsersView({ api, $, state, esc, textFor, textForV
   `;
 }
 
+export async function loadLegalTermsView({ api, $, state, esc, textFor, formatDateTime }) {
+  const body = await api('/admin/api/legal-terms');
+  const rows = Array.isArray(body.data) ? body.data : [];
+  state.legalTerms = rows;
+  if (!$('legalTerms')) return rows;
+  $('legalTerms').innerHTML = `
+    <div class="settingsSectionGrid">
+      ${['ko', 'en', 'ja']
+        .map((locale) => {
+          const localeRows = rows.filter((term) => term.locale === locale);
+          return `
+            <div class="card settingsControlCard">
+              <div class="cardHead">
+                <div class="cardHeadMain">
+                  <div class="cardKicker">${esc(textFor(`legalTermsLocale${locale.toUpperCase()}`))}</div>
+                  <div class="cardHint">${esc(textFor('legalTermsLocaleHint'))}</div>
+                </div>
+              </div>
+              ${localeRows
+                .map(
+                  (term) => `
+                    <div class="settingsControlCard" style="padding:0;border:0;margin-top:12px">
+                      <div class="settingsFormRow">
+                        <span class="pill">${esc(term.type)}</span>
+                        <input data-legal-version="${esc(term.type)}:${esc(locale)}" value="${esc(term.version || '')}" placeholder="${esc(textFor('legalTermsVersionPh'))}" />
+                        <label class="switchRow">
+                          <input class="switchInput" type="checkbox" data-legal-active="${esc(term.type)}:${esc(locale)}" ${term.active ? 'checked' : ''}/>
+                          <span class="switchUi" aria-hidden="true"></span>
+                          <span>${esc(textFor('colEnabled'))}</span>
+                        </label>
+                        <label class="switchRow">
+                          <input class="switchInput" type="checkbox" data-legal-required="${esc(term.type)}:${esc(locale)}" ${term.required ? 'checked' : ''}/>
+                          <span class="switchUi" aria-hidden="true"></span>
+                          <span>${esc(textFor('legalTermsRequired'))}</span>
+                        </label>
+                      </div>
+                      <input style="margin-top:8px" data-legal-title="${esc(term.type)}:${esc(locale)}" value="${esc(term.title || '')}" placeholder="${esc(textFor('legalTermsTitlePh'))}" />
+                      <textarea style="margin-top:8px;min-height:180px" data-legal-body="${esc(term.type)}:${esc(locale)}">${esc(term.body || '')}</textarea>
+                      <div class="row" style="justify-content:space-between;margin-top:8px">
+                        <span class="muted">${esc(formatDateTime(term.updatedAt))}</span>
+                        <button class="success" data-legal-save="${esc(term.type)}:${esc(locale)}">${esc(textFor('btnSave'))}</button>
+                      </div>
+                    </div>
+                  `,
+                )
+                .join('')}
+            </div>
+          `;
+        })
+        .join('')}
+    </div>
+  `;
+  return rows;
+}
+
 function presetsTextareaValue({ state, key }) {
   const list = state.uiModelPresets && Array.isArray(state.uiModelPresets[key]) ? state.uiModelPresets[key] : [];
   return list.join('\n');

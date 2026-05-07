@@ -1,4 +1,8 @@
 import crypto from 'node:crypto';
+import {
+  insertAppUserTermAcceptancesInDb,
+  validateRequiredTermsAcceptedInDb,
+} from './legalTerms.mjs';
 import { nowIso } from './time.mjs';
 
 const SESSION_DAYS = 90;
@@ -68,7 +72,7 @@ function createSessionInDb(db, userId) {
   return { token, expiresAt };
 }
 
-export function createAppUserInDb(db, { email, password, nickname, profileImageUrl = '' }) {
+export function createAppUserInDb(db, { email, password, nickname, profileImageUrl = '', locale = 'ko', acceptedTerms = [] }) {
   const normalizedEmail = normalizeEmail(email);
   const userPassword = String(password || '');
   const cleanNickname = cleanText(nickname);
@@ -77,6 +81,7 @@ export function createAppUserInDb(db, { email, password, nickname, profileImageU
   if (cleanNickname.length < 2) throw new Error('APP_USER_NICKNAME_REQUIRED');
   const exists = db.prepare('SELECT id FROM app_users WHERE email = ?').get(normalizedEmail);
   if (exists) throw new Error('APP_USER_EMAIL_EXISTS');
+  const requiredTerms = validateRequiredTermsAcceptedInDb(db, acceptedTerms, locale);
   const { hash, salt } = hashPassword(userPassword);
   const id = crypto.randomUUID();
   const now = nowIso();
@@ -89,6 +94,7 @@ export function createAppUserInDb(db, { email, password, nickname, profileImageU
       VALUES (?, ?, ?, ?, ?, ?, 'password', 1, ?, ?)
     `,
   ).run(id, normalizedEmail, cleanNickname, cleanText(profileImageUrl), hash, salt, now, now);
+  insertAppUserTermAcceptancesInDb(db, id, requiredTerms);
   const row = db.prepare('SELECT * FROM app_users WHERE id = ?').get(id);
   return { user: publicUser(row), session: createSessionInDb(db, id) };
 }
@@ -146,6 +152,17 @@ export function updateAppUserProfileInDb(db, userId, patch = {}) {
   params.push(now, existing.id);
   db.prepare(`UPDATE app_users SET ${updates.join(', ')} WHERE id = ?`).run(...params);
   return publicUser(db.prepare('SELECT * FROM app_users WHERE id = ?').get(existing.id));
+}
+
+export function withdrawAppUserInDb(db, userId) {
+  const id = cleanText(userId);
+  const existing = db.prepare('SELECT * FROM app_users WHERE id = ? AND active = 1').get(id);
+  if (!existing) throw new Error('APP_USER_NOT_FOUND');
+  const now = nowIso();
+  db.prepare('UPDATE app_users SET active = 0, updated_at = ? WHERE id = ?').run(now, id);
+  db.prepare('UPDATE app_user_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL').run(now, id);
+  db.prepare('UPDATE app_user_devices SET active = 0, updated_at = ? WHERE user_id = ?').run(now, id);
+  return { withdrawnAt: now };
 }
 
 export function listAppUsersInDb(db, { q = '', active = '', limit = 50, offset = 0 } = {}) {

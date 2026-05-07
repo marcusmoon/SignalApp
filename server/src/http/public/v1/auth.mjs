@@ -5,6 +5,7 @@ import {
   updateAppUserProfile,
   upsertAppUserDevice,
   verifyAppUserToken,
+  withdrawAppUser,
 } from '../../../db.mjs';
 import { json, readBody } from '../../shared.mjs';
 
@@ -97,6 +98,18 @@ export async function handlePublicAuthRoutes({ req, res, pathname }) {
     if (!session) return true;
     await revokeAppUserToken(session.token);
     json(res, 200, { data: { ok: true } });
+    return true;
+  }
+
+  if (req.method === 'DELETE' && pathname === '/v1/auth/me') {
+    const session = await requireAppUser(req, res);
+    if (!session) return true;
+    try {
+      const result = await withdrawAppUser(session.user.id);
+      json(res, 200, { data: { ok: true, withdrawnAt: result.withdrawnAt } });
+    } catch (error) {
+      authError(res, error);
+    }
     return true;
   }
 

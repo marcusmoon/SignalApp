@@ -21,6 +21,8 @@ export async function registerSignalUser(params: {
   password: string;
   nickname: string;
   profileImageUrl?: string;
+  locale?: string;
+  acceptedTerms?: Array<{ type: string; locale: string; version: string }>;
 }): Promise<SignalAuthSession> {
   const json = await signalApiRequest<{ data: SignalAuthSession }>('/v1/auth/register', {
     method: 'POST',
@@ -56,4 +58,8 @@ export async function updateSignalMe(
 
 export async function logoutSignalUser(token: string): Promise<void> {
   await signalApiRequest('/v1/auth/logout', { method: 'POST', token });
+}
+
+export async function deleteSignalMe(token: string): Promise<void> {
+  await signalApiRequest('/v1/auth/me', { method: 'DELETE', token });
 }

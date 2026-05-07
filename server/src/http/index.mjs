@@ -6,6 +6,7 @@ import { handleAdminConcallsRoutes } from './admin/api/concalls.mjs';
 import { handleAdminDataResetRoutes } from './admin/api/dataReset.mjs';
 import { handleAdminInsightsRoutes } from './admin/api/insights.mjs';
 import { handleAdminJobsRoutes } from './admin/api/jobs.mjs';
+import { handleAdminLegalTermsRoutes } from './admin/api/legalTerms.mjs';
 import { handleAdminNewsRoutes } from './admin/api/news.mjs';
 import { handleAdminNotificationsRoutes } from './admin/api/notifications.mjs';
 import { handleAdminSettingsRoutes } from './admin/api/settings.mjs';
@@ -16,6 +17,7 @@ import { handlePublicAuthRoutes } from './public/v1/auth.mjs';
 import { handlePublicCalendarRoutes } from './public/v1/calendar.mjs';
 import { handlePublicConcallsRoutes } from './public/v1/concalls.mjs';
 import { handlePublicInsightRoutes } from './public/v1/insights.mjs';
+import { handlePublicLegalRoutes } from './public/v1/legal.mjs';
 import { handlePublicMarketRoutes } from './public/v1/market.mjs';
 import { handlePublicNewsRoutes } from './public/v1/news.mjs';
 import { handlePublicNotificationRoutes } from './public/v1/notifications.mjs';
@@ -26,6 +28,7 @@ import { json } from './shared.mjs';
 const PUBLIC_ROUTE_HANDLERS = [
   handlePublicMiscRoutes,
   handlePublicAuthRoutes,
+  handlePublicLegalRoutes,
   handlePublicNotificationRoutes,
   handlePublicNewsRoutes,
   handlePublicCalendarRoutes,
@@ -37,6 +40,7 @@ const PUBLIC_ROUTE_HANDLERS = [
 
 const ADMIN_API_HANDLERS = [
   handleAdminAppUsersRoutes,
+  handleAdminLegalTermsRoutes,
   handleAdminJobsRoutes,
   handleAdminNotificationsRoutes,
   handleAdminInsightsRoutes,

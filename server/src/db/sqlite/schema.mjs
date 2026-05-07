@@ -122,6 +122,29 @@ export function ensureStructuredSchema(db) {
       UNIQUE(user_id, push_token)
     );
 
+    CREATE TABLE IF NOT EXISTS legal_terms (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      locale TEXT NOT NULL,
+      version TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      required INTEGER NOT NULL DEFAULT 1,
+      active INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT NOT NULL,
+      UNIQUE(type, locale)
+    );
+
+    CREATE TABLE IF NOT EXISTS app_user_terms_acceptances (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      term_type TEXT NOT NULL,
+      locale TEXT NOT NULL,
+      version TEXT NOT NULL,
+      accepted_at TEXT NOT NULL,
+      UNIQUE(user_id, term_type, locale, version)
+    );
+
     CREATE TABLE IF NOT EXISTS news_source_settings (
       id TEXT PRIMARY KEY,
       payload TEXT NOT NULL,
@@ -294,6 +317,8 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_polling_job_locks_expires ON polling_job_locks(expires_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_sessions_user ON app_user_sessions(user_id, expires_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_devices_user ON app_user_devices(user_id, active);
+    CREATE INDEX IF NOT EXISTS idx_legal_terms_locale ON legal_terms(locale, active);
+    CREATE INDEX IF NOT EXISTS idx_app_user_terms_user ON app_user_terms_acceptances(user_id, accepted_at);
     CREATE INDEX IF NOT EXISTS idx_news_items_published ON news_items(category, published_at);
     CREATE INDEX IF NOT EXISTS idx_news_translations_item ON news_translations(news_item_id, locale);
     CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(event_date, event_type);

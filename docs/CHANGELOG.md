@@ -16,7 +16,8 @@
 - **유튜브 탭**: 최신순/인기순 선택은 `/v1/youtube?sort=latest|popular`로 전달된다. `youtube_economy_latest` / `youtube_economy_popular` Job이 각각 최신/인기 수집 버킷을 저장하고, 같은 영상이 양쪽에 걸리면 `sortBuckets`로 함께 보관한다. 인기순은 인기 버킷이 있으면 우선 사용한 뒤 YouTube 조회수(`viewCount`) 기준으로 정렬한다.
 - **시세 탭**: 관심·인기·시총·코인 리스트는 상단 세그먼트를 고정하고, 카드의 심볼/Yahoo/가격/등락 텍스트는 실제 iPhone 글자 렌더링에서도 줄 겹침이 나지 않도록 한 줄·줄임·최대 스케일 기준을 둔다.
 - **Signal 서버 선택**: `.env`의 `EXPO_PUBLIC_SIGNAL_API_BASE_URL`은 번들 기본값이며, 앱 설정에서 `bundle / dev / real / custom` endpoint를 저장해 런타임에 바꿀 수 있다.
-- **앱 계정**: 더보기 > 계정에서 이메일/비밀번호 기반 가입·로그인과 닉네임/프로필 이미지 URL 저장을 지원한다. 가입 시 기본 약관 동의를 받으며, 카카오·네이버·구글 간편 로그인 버튼은 같은 서버 사용자/identity 구조에 붙일 준비 상태로 노출한다. 세션 토큰은 기기에 저장한다.
+- **앱 내정보**: 하단 탭은 뉴스·유튜브·시세·더보기 4개를 유지하고, 내정보는 더보기의 개인 허브로 둔다. 로그인 전에는 소셜 계정 로그인을 기본 동선으로 보여주고 이메일 로그인은 보조 동선으로 둔다. 가입은 로그인 카드 하단의 별도 CTA로 진입하며, 서버 `/v1/legal/terms`에서 받은 언어별 서비스 이용약관/개인정보처리방침의 활성 버전에 개별 동의(전체 동의 포함)를 먼저 받은 뒤 이메일/비밀번호/닉네임/프로필 이미지 URL 기본 정보를 입력해 완료한다. 로그인 후에는 별도 상단 히어로 없이 프로필 편집, 알림함, 오늘의 시그널, 관심 브리핑, 알림 설정으로 이어지는 내 활동 링크와 하단 로그아웃/탈퇴/약관/푸터를 보여준다. 탈퇴는 앱 사용자 계정을 비활성화하고 세션·디바이스 푸시 대상을 해제한다. 카카오·네이버·구글·Apple 간편 로그인 버튼은 같은 서버 사용자/identity 구조에 붙일 준비 상태로 노출한다. 세션 토큰은 기기에 저장한다.
+- **앱 알림 설정**: 사용자 설정 화면은 `푸시 알림`, `오늘의 시그널`, `관심종목만 받기`, `투자 일정 리마인더` 중심으로 단순화한다. 과거 `실적 알림만` 세부 옵션은 숨김 처리하고 기본적으로 해제해 오늘의 시그널 후보가 예기치 않게 필터링되지 않게 한다. 내부 저장 구조는 기존 `NotificationPrefs` 필드를 유지한다.
 - **컨콜**: `services/concalls` 흐름과 앱 언어 기준 메시지; 서버 `/v1/concalls` 조회. 캐시 키에 로케일 포함.
 - **앱 내 provider 클라이언트**: Finnhub·YouTube Data·OpenAI·Claude·CoinGecko 등 **직접 HTTP 클라이언트 폴더는 사용하지 않는다**. 타입·호환은 필요 시 `types/`·`utils/` 등으로만 둔다.
 
@@ -29,6 +30,7 @@
 - **초기 DB seed**: SQLite가 비어 있으면 첫 DB 연결 시 `defaultDb()`를 저장해 기본 설정과 Job 리스트를 생성한다. 기존 `server/data/*.json` 분할 스토어와 과거 단일 `local-db.json`은 읽지 않는다.
 - **어드민 사용자**: 로그인 계정은 SQLite `admin_users` 테이블에 저장한다. `ADMIN_USERS`는 테이블이 비어 있을 때만 초기 seed로 사용하며, 비밀번호는 salt + scrypt hash로 저장한다. **Admin > 설정 > 사용자 관리**에서 계정 추가·비밀번호 변경·활성화·삭제를 관리한다.
 - **앱 사용자**: 앱 사용자는 SQLite `app_users`와 `app_user_sessions`에 저장한다. 기본은 이메일/비밀번호/닉네임/프로필 이미지 URL이며, `app_user_identities`는 카카오·네이버·구글 같은 소셜 identity 연결을 위한 확장 테이블로 둔다. 푸시 토큰은 `app_user_devices`에 사용자 기준으로 저장할 수 있다. Admin은 **앱 사용자** 섹션을 시스템과 분리해 사용자 관리, 디바이스 관리, 알림 조회, 푸시/알림 발송 메뉴로 운영한다.
+- **약관 관리**: 서비스 이용약관과 개인정보처리방침은 SQLite `legal_terms`에 `type` / `locale` / `version` / `title` / `body` / `required` / `active`로 저장한다. 서버는 기본 `ko/en/ja` 약관을 seed하고, 앱은 `/v1/legal/terms?locale=...` 결과를 가입/약관 화면에 사용한다. 가입 시 서버는 해당 언어의 활성 필수 약관 버전 동의를 검증하고 `app_user_terms_acceptances`에 사용자별 동의 버전을 남긴다. 어드민은 **설정 > 약관**에서 언어별 제목·본문·버전·필수/활성 상태를 관리한다.
 - **DB 테이블 구조**: 운영 데이터는 `signal_stores` 같은 통 payload가 아니라 기능별 SQLite 테이블(`polling_jobs`, `polling_job_runs`, `news_items`, `news_translations`, `calendar_events`, `concall_transcripts`, `youtube_videos`, `market_quotes`, `coin_markets`, `market_lists`, `provider_settings`, `translation_settings`, `news_sources`, `insight_items` 등)에 저장한다. 각 테이블은 대표 검색 컬럼과 payload를 같이 둬 추후 MySQL 전환 시 테이블 경계를 유지한다.
 - **DB 접근 직렬화**: 동일 Node 프로세스 안에서 `readDb` / `writeDb` / `updateDb`는 큐로 **한 번에 하나씩** 실행된다. `updateDb`는 SQLite `BEGIN IMMEDIATE` 트랜잭션 안에서 읽기와 쓰기를 묶어 보정 수집·번역 갱신 같은 read/modify/write 경쟁을 줄인다.
 - **공개 API 조회 성능**: 앱이 자주 호출하는 뉴스·뉴스 출처·유튜브·캘린더·컨콜·시세·코인·마켓 리스트·알림 조회는 전체 DB 스냅샷을 만드는 `readDb()` 대신 각 SQLite 테이블을 직접 조회한다. 대량 뉴스/유튜브/시세 payload가 쌓여도 서로 다른 API가 DB exclusive 큐에서 오래 대기하지 않게 한다.

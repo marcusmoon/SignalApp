@@ -291,6 +291,47 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     prefLabel: { fontSize: sf(14), fontWeight: '600', color: theme.text, flex: 1 },
     prefBlock: { marginTop: 4, marginBottom: 4 },
     prefHint: { fontSize: sf(11), fontWeight: '500', color: theme.textDim, lineHeight: sf(15), marginTop: 2, marginBottom: 4 },
+    notificationStack: { gap: 10, marginBottom: 20 },
+    notificationCard: {
+      padding: 12,
+      borderRadius: 12,
+      backgroundColor: '#12121A',
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    notificationHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    notificationText: { flex: 1, minWidth: 0 },
+    notificationTitle: { fontSize: sf(14), fontWeight: '900', color: theme.text },
+    notificationHint: {
+      fontSize: sf(11),
+      fontWeight: '600',
+      color: theme.textDim,
+      lineHeight: sf(16),
+      marginTop: 3,
+    },
+    notificationSubRow: {
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    notificationSubLabel: { flex: 1, fontSize: sf(13), fontWeight: '800', color: theme.textMuted },
+    notificationSubHint: {
+      fontSize: sf(11),
+      fontWeight: '600',
+      color: theme.textDim,
+      lineHeight: sf(15),
+      marginTop: 3,
+    },
     section: {
       fontSize: sf(14),
       fontWeight: '800',
@@ -818,7 +859,6 @@ export default function SettingsScreen() {
   const [ready, setReady] = useState(false);
 
   const [pushEnabled, setPushEnabled] = useState(true);
-  const [earningsOnly, setEarningsOnly] = useState(false);
   const [signalAlertsEnabled, setSignalAlertsEnabled] = useState(true);
   const [signalWatchlistOnly, setSignalWatchlistOnly] = useState(true);
   const [localMacroCalendar, setLocalMacroCalendar] = useState(false);
@@ -939,11 +979,13 @@ export default function SettingsScreen() {
   const reloadPrefs = useCallback(async () => {
     const p = await loadNotificationPrefs();
     setPushEnabled(p.pushEnabled);
-    setEarningsOnly(p.earningsOnly);
     setSignalAlertsEnabled(p.signalAlertsEnabled);
     setSignalWatchlistOnly(p.signalWatchlistOnly);
     setLocalMacroCalendar(p.localMacroCalendar);
     setLocalWatchlistEarnings(p.localWatchlistEarnings);
+    if (p.earningsOnly) {
+      await saveNotificationPrefs({ earningsOnly: false });
+    }
     setPrefsReady(true);
   }, []);
 
@@ -1658,110 +1700,90 @@ export default function SettingsScreen() {
         {tab === 'notifications' ? (
           <>
             <Text style={styles.lead}>{t('settingsNotificationsLead')}</Text>
-            <View style={styles.card}>
+            <View style={styles.notificationStack}>
               {!prefsReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
                 <>
-                  <View style={styles.prefRow}>
-                    <Text style={styles.prefLabel}>{t('settingsPushEnabled')}</Text>
-                    <Switch
-                      value={pushEnabled}
-                      onValueChange={async (v) => {
-                        setPushEnabled(v);
-                        await saveNotificationPrefs({ pushEnabled: v });
-                      }}
-                      trackColor={{ false: '#333', true: theme.green + '88' }}
-                      thumbColor={pushEnabled ? theme.green : '#888'}
-                    />
+                  <View style={styles.notificationCard}>
+                    <View style={styles.notificationHeader}>
+                      <View style={styles.notificationText}>
+                        <Text style={styles.notificationTitle}>{t('settingsPushEnabled')}</Text>
+                        <Text style={styles.notificationHint}>{t('settingsPushEnabledHint')}</Text>
+                      </View>
+                      <Switch
+                        value={pushEnabled}
+                        onValueChange={async (v) => {
+                          setPushEnabled(v);
+                          await saveNotificationPrefs({ pushEnabled: v, earningsOnly: false });
+                        }}
+                        trackColor={{ false: '#333', true: theme.green + '88' }}
+                        thumbColor={pushEnabled ? theme.green : '#888'}
+                      />
+                    </View>
                   </View>
-                  <View style={styles.prefRow}>
-                    <Text style={styles.prefLabel}>{t('settingsEarningsOnly')}</Text>
-                    <Switch
-                      value={earningsOnly}
-                      onValueChange={async (v) => {
-                        setEarningsOnly(v);
-                        await saveNotificationPrefs({ earningsOnly: v });
-                      }}
-                      trackColor={{ false: '#333', true: theme.green + '88' }}
-                      thumbColor={earningsOnly ? theme.green : '#888'}
-                    />
-                  </View>
-                  <View style={styles.prefBlock}>
-                    <View style={styles.prefRow}>
-                      <Text style={styles.prefLabel}>{t('settingsSignalAlertsEnabled')}</Text>
+
+                  <View style={styles.notificationCard}>
+                    <View style={styles.notificationHeader}>
+                      <View style={styles.notificationText}>
+                        <Text style={styles.notificationTitle}>{t('settingsSignalAlertsEnabled')}</Text>
+                        <Text style={styles.notificationHint}>{t('settingsSignalAlertsHint')}</Text>
+                      </View>
                       <Switch
                         value={signalAlertsEnabled}
                         onValueChange={async (v) => {
                           setSignalAlertsEnabled(v);
-                          await saveNotificationPrefs({ signalAlertsEnabled: v });
+                          await saveNotificationPrefs({ signalAlertsEnabled: v, earningsOnly: false });
                         }}
                         trackColor={{ false: '#333', true: theme.green + '88' }}
                         thumbColor={signalAlertsEnabled ? theme.green : '#888'}
                       />
                     </View>
-                    <Text style={styles.prefHint}>{t('settingsSignalAlertsHint')}</Text>
+                    {signalAlertsEnabled ? (
+                      <View style={styles.notificationSubRow}>
+                        <Text style={styles.notificationSubLabel}>{t('settingsSignalWatchlistOnly')}</Text>
+                        <Switch
+                          value={signalWatchlistOnly}
+                          onValueChange={async (v) => {
+                            setSignalWatchlistOnly(v);
+                            await saveNotificationPrefs({ signalWatchlistOnly: v });
+                          }}
+                          trackColor={{ false: '#333', true: theme.green + '88' }}
+                          thumbColor={signalWatchlistOnly ? theme.green : '#888'}
+                        />
+                      </View>
+                    ) : null}
+                    {signalAlertsEnabled ? (
+                      <Text style={styles.notificationSubHint}>{t('settingsSignalWatchlistOnlyHint')}</Text>
+                    ) : null}
                   </View>
-                  <View style={styles.prefBlock}>
-                    <View style={styles.prefRow}>
-                      <Text style={styles.prefLabel}>{t('settingsSignalWatchlistOnly')}</Text>
+
+                  <View style={styles.notificationCard}>
+                    <View style={styles.notificationHeader}>
+                      <View style={styles.notificationText}>
+                        <Text style={styles.notificationTitle}>{t('settingsCalendarReminders')}</Text>
+                        <Text style={styles.notificationHint}>{t('settingsCalendarRemindersHint')}</Text>
+                      </View>
                       <Switch
-                        value={signalWatchlistOnly}
-                        onValueChange={async (v) => {
-                          setSignalWatchlistOnly(v);
-                          await saveNotificationPrefs({ signalWatchlistOnly: v });
-                        }}
-                        trackColor={{ false: '#333', true: theme.green + '88' }}
-                        thumbColor={signalWatchlistOnly ? theme.green : '#888'}
-                      />
-                    </View>
-                    <Text style={styles.prefHint}>{t('settingsSignalWatchlistOnlyHint')}</Text>
-                  </View>
-                  <View style={styles.prefBlock}>
-                    <View style={styles.prefRow}>
-                      <Text style={styles.prefLabel}>{t('settingsLocalMacroCalendar')}</Text>
-                      <Switch
-                        value={localMacroCalendar}
+                        value={localMacroCalendar || localWatchlistEarnings}
                         onValueChange={async (v) => {
                           setLocalMacroCalendar(v);
-                          await saveNotificationPrefs({ localMacroCalendar: v });
-                          await syncLocalCalendarNotifications({
+                          setLocalWatchlistEarnings(v);
+                          const next = {
                             pushEnabled,
-                            earningsOnly,
+                            earningsOnly: false,
                             signalAlertsEnabled,
                             signalWatchlistOnly,
                             localMacroCalendar: v,
-                            localWatchlistEarnings,
-                          });
-                        }}
-                        trackColor={{ false: '#333', true: theme.green + '88' }}
-                        thumbColor={localMacroCalendar ? theme.green : '#888'}
-                      />
-                    </View>
-                    <Text style={styles.prefHint}>{t('settingsLocalMacroCalendarHint')}</Text>
-                  </View>
-                  <View style={styles.prefBlock}>
-                    <View style={styles.prefRow}>
-                      <Text style={styles.prefLabel}>{t('settingsLocalWatchlistEarnings')}</Text>
-                      <Switch
-                        value={localWatchlistEarnings}
-                        onValueChange={async (v) => {
-                          setLocalWatchlistEarnings(v);
-                          await saveNotificationPrefs({ localWatchlistEarnings: v });
-                          await syncLocalCalendarNotifications({
-                            pushEnabled,
-                            earningsOnly,
-                            signalAlertsEnabled,
-                            signalWatchlistOnly,
-                            localMacroCalendar,
                             localWatchlistEarnings: v,
-                          });
+                          };
+                          await saveNotificationPrefs(next);
+                          await syncLocalCalendarNotifications(next);
                         }}
                         trackColor={{ false: '#333', true: theme.green + '88' }}
-                        thumbColor={localWatchlistEarnings ? theme.green : '#888'}
+                        thumbColor={localMacroCalendar || localWatchlistEarnings ? theme.green : '#888'}
                       />
                     </View>
-                    <Text style={styles.prefHint}>{t('settingsLocalWatchlistEarningsHint')}</Text>
                   </View>
                 </>
               )}

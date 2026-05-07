@@ -24,6 +24,7 @@ import {
 import {
   defaultModelForProvider as defaultModelForProviderView,
   loadMarketListsView,
+  loadLegalTermsView,
   modelPresetsForProvider as modelPresetsForProviderView,
   loadAdminUsersView,
   loadProviderSettingsView,
@@ -426,8 +427,10 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             ? 'keys'
             : requestedView === 'settings-theme'
               ? 'theme'
-              : requestedView === 'settings-users'
+            : requestedView === 'settings-users'
                 ? 'users'
+              : requestedView === 'settings-legal'
+                ? 'legal'
               : requestedView === 'settings-lists'
                 ? 'lists'
                 : requestedView === 'settings-sources'
@@ -490,7 +493,9 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
               activeSettingsTab === 'theme'
                 ? textFor('settingsThemeTitle')
                 : activeSettingsTab === 'users'
-                  ? textFor('settingsUsersTitle')
+                ? textFor('settingsUsersTitle')
+                : activeSettingsTab === 'legal'
+                  ? textFor('settingsLegalTitle')
                 : activeSettingsTab === 'lists'
                   ? textFor('settingsListsTitle')
                   : activeSettingsTab === 'sources'
@@ -505,7 +510,9 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
               activeSettingsTab === 'theme'
                 ? textFor('settingsThemeDesc')
                 : activeSettingsTab === 'users'
-                  ? textFor('settingsUsersDesc')
+                ? textFor('settingsUsersDesc')
+                : activeSettingsTab === 'legal'
+                  ? textFor('settingsLegalDesc')
                 : activeSettingsTab === 'lists'
                   ? textFor('settingsListsDesc')
                   : activeSettingsTab === 'sources'
@@ -514,6 +521,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                       ? textFor('settingsDangerDesc')
                       : textFor('settingsProviderDesc');
           }
+          if (activeSettingsTab === 'legal') void loadLegalTerms();
         }
         if (resolvedView === 'jobs') {
           setJobTab(state.jobTab || 'info');
@@ -822,6 +830,12 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         return result;
       }
 
+      async function loadLegalTerms() {
+        const result = await loadLegalTermsView({ api, $, state, esc, textFor, formatDateTime });
+        enhanceMobileAdminSurfaces();
+        return result;
+      }
+
       async function loadAppUsers() {
         const result = await loadAppUsersView({ api, $, state, esc, textFor, textForVars, formatDateTime });
         enhanceMobileAdminSurfaces();
@@ -1093,6 +1107,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             const tab = state.settingsTab || 'users';
             if (tab === 'keys') await loadProviderSettings();
             else if (tab === 'users') await loadAdminUsers();
+            else if (tab === 'legal') await loadLegalTerms();
             else if (tab === 'lists') await loadMarketLists();
             else if (tab === 'sources') await Promise.all([loadNewsSourceSettings(), loadNewsSources()]);
             // theme/danger are mostly local UI; still refresh dashboard counts for safety
@@ -1328,8 +1343,25 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             setSettingsTab(settingsTabTarget.dataset.settingsTab);
             if (settingsTabTarget.dataset.settingsTab === 'keys') await loadProviderSettings();
             if (settingsTabTarget.dataset.settingsTab === 'users') await loadAdminUsers();
+            if (settingsTabTarget.dataset.settingsTab === 'legal') await loadLegalTerms();
             if (settingsTabTarget.dataset.settingsTab === 'lists') await loadMarketLists();
             if (settingsTabTarget.dataset.settingsTab === 'sources') await Promise.all([loadNewsSourceSettings(), loadNewsSources()]);
+          }
+          if (target?.dataset?.legalSave) {
+            const [type, locale] = target.dataset.legalSave.split(':');
+            await api(`/admin/api/legal-terms/${encodeURIComponent(type)}/${encodeURIComponent(locale)}`, {
+              method: 'PATCH',
+              body: JSON.stringify({
+                version: document.querySelector(`[data-legal-version="${CSS.escape(target.dataset.legalSave)}"]`)?.value || '',
+                title: document.querySelector(`[data-legal-title="${CSS.escape(target.dataset.legalSave)}"]`)?.value || '',
+                body: document.querySelector(`[data-legal-body="${CSS.escape(target.dataset.legalSave)}"]`)?.value || '',
+                active: document.querySelector(`[data-legal-active="${CSS.escape(target.dataset.legalSave)}"]`)?.checked === true,
+                required: document.querySelector(`[data-legal-required="${CSS.escape(target.dataset.legalSave)}"]`)?.checked === true,
+              }),
+            });
+            await loadLegalTerms();
+            showToast(textFor('btnSave'), textFor('toastSaved'), { kind: 'success' });
+            return;
           }
           if (target.dataset.opFilter) {
             state.operationFilter = target.dataset.opFilter;

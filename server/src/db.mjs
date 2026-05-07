@@ -14,6 +14,7 @@ import {
   updateAppUserProfileInDb,
   upsertAppUserDeviceInDb,
   verifyAppUserTokenInDb,
+  withdrawAppUserInDb,
 } from './db/appUsers.mjs';
 import {
   createAdminUserInDb,
@@ -26,6 +27,7 @@ import {
 } from './db/adminUsers.mjs';
 import { defaultDb } from './db/defaults.mjs';
 import { queryInsightItemsInDb } from './db/insights.mjs';
+import { listLegalTermsInDb, updateLegalTermInDb } from './db/legalTerms.mjs';
 import {
   acquirePollingJobLockInDb,
   getPollingJobInDb,
@@ -269,6 +271,20 @@ export async function createAppUser(payload) {
   });
 }
 
+export async function listLegalTerms(options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return listLegalTermsInDb(db, options);
+  });
+}
+
+export async function updateLegalTerm(type, locale, patch = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return updateLegalTermInDb(db, type, locale, patch);
+  });
+}
+
 export async function listAppUsers(options = {}) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
@@ -327,6 +343,21 @@ export async function updateAppUserProfile(userId, patch) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
     return updateAppUserProfileInDb(db, userId, patch);
+  });
+}
+
+export async function withdrawAppUser(userId) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const result = withdrawAppUserInDb(db, userId);
+      db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
   });
 }
 

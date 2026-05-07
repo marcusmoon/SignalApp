@@ -1,5 +1,6 @@
 export * from '@/integrations/signal-api/calendar';
 export * from '@/integrations/signal-api/auth';
+export * from '@/integrations/signal-api/legalTerms';
 export * from '@/integrations/signal-api/cache';
 export * from '@/integrations/signal-api/client';
 export * from '@/integrations/signal-api/concalls';

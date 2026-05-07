@@ -4,11 +4,14 @@ import { DatabaseSync } from 'node:sqlite';
 import { config } from './config.mjs';
 import {
   createAppUserInDb,
+  disconnectAppUserIdentityInDb,
   getAppUserInDb,
+  listAppUserIdentitiesInDb,
   listAppUserDevicesInDb,
   listAppUsersInDb,
   loginAppUserInDb,
   revokeAppUserTokenInDb,
+  setAppUserPasswordInDb,
   updateAppUserAdminInDb,
   updateAppUserDeviceAdminInDb,
   updateAppUserProfileInDb,
@@ -27,7 +30,7 @@ import {
 } from './db/adminUsers.mjs';
 import { defaultDb } from './db/defaults.mjs';
 import { queryInsightItemsInDb } from './db/insights.mjs';
-import { listLegalTermsInDb, updateLegalTermInDb } from './db/legalTerms.mjs';
+import { listAppUserTermAcceptancesInDb, listLegalTermsInDb, updateLegalTermInDb } from './db/legalTerms.mjs';
 import {
   acquirePollingJobLockInDb,
   getPollingJobInDb,
@@ -278,6 +281,13 @@ export async function listLegalTerms(options = {}) {
   });
 }
 
+export async function listAppUserTermAcceptances(userId) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return listAppUserTermAcceptancesInDb(db, userId);
+  });
+}
+
 export async function updateLegalTerm(type, locale, patch = {}) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
@@ -324,6 +334,27 @@ export async function loginAppUser(payload) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
     return loginAppUserInDb(db, payload);
+  });
+}
+
+export async function listAppUserIdentities(userId) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return listAppUserIdentitiesInDb(db, userId);
+  });
+}
+
+export async function setAppUserPassword(userId, payload) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return setAppUserPasswordInDb(db, userId, payload);
+  });
+}
+
+export async function disconnectAppUserIdentity(userId, identityId) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return disconnectAppUserIdentityInDb(db, userId, identityId);
   });
 }
 

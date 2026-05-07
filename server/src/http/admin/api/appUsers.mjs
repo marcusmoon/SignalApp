@@ -1,6 +1,8 @@
 import {
   getAppUser,
+  listAppUserIdentities,
   listAppUserDevices,
+  listAppUserTermAcceptances,
   listAppUsers,
   queryNotifications,
   updateAppUserAdmin,
@@ -138,6 +140,18 @@ export async function handleAdminAppUsersRoutes({ req, res, url, pathname }) {
       total: page.total,
       totalPages: page.totalPages,
     });
+    return true;
+  }
+
+  const termsUserId = userIdFromPath(pathname, '/terms');
+  if (req.method === 'GET' && termsUserId) {
+    json(res, 200, { data: await listAppUserTermAcceptances(termsUserId) });
+    return true;
+  }
+
+  const identitiesUserId = userIdFromPath(pathname, '/identities');
+  if (req.method === 'GET' && identitiesUserId) {
+    json(res, 200, { data: await listAppUserIdentities(identitiesUserId) });
     return true;
   }
 

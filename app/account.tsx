@@ -10,14 +10,18 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
   fetchSignalMe,
   deleteSignalMe,
+  disconnectSignalMyIdentity,
+  fetchSignalMyIdentities,
   fetchSignalLegalTerms,
   formatSignalApiError,
   loginSignalUser,
   logoutSignalUser,
   registerSignalUser,
+  setSignalMyPassword,
   updateSignalMe,
   type SignalLegalTerm,
   type SignalAppUser,
+  type SignalUserIdentity,
 } from '@/integrations/signal-api';
 import { hasSignalApi } from '@/services/env';
 import {
@@ -40,11 +44,13 @@ export default function AccountScreen() {
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [nickname, setNickname] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [serviceTermsAccepted, setServiceTermsAccepted] = useState(false);
   const [privacyTermsAccepted, setPrivacyTermsAccepted] = useState(false);
   const [legalTerms, setLegalTerms] = useState<SignalLegalTerm[]>([]);
+  const [linkedIdentities, setLinkedIdentities] = useState<SignalUserIdentity[]>([]);
   const [registerStep, setRegisterStep] = useState<'terms' | 'info'>('terms');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -163,6 +169,26 @@ export default function AccountScreen() {
     setProfileImageUrl(user.profileImageUrl || '');
   }, [user]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!session?.token || !hasSignalApi()) {
+      setLinkedIdentities([]);
+      return () => {
+        cancelled = true;
+      };
+    }
+    fetchSignalMyIdentities(session.token)
+      .then((rows) => {
+        if (!cancelled) setLinkedIdentities(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setLinkedIdentities([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token]);
+
   const submitAuth = useCallback(async () => {
     if (!hasSignalApi()) {
       setError(t('errorSignalApiShort'));
@@ -258,6 +284,40 @@ export default function AccountScreen() {
     ]);
   }, [session?.token, t]);
 
+  const disconnectIdentity = useCallback(
+    async (identity: SignalUserIdentity) => {
+      if (!session?.token) return;
+      setSaving(true);
+      setError(null);
+      try {
+        await disconnectSignalMyIdentity(session.token, identity.id);
+        setLinkedIdentities((items) => items.filter((item) => item.id !== identity.id));
+      } catch (e) {
+        setError(formatSignalApiError(e, t, 'accountIdentityDisconnectError'));
+      } finally {
+        setSaving(false);
+      }
+    },
+    [session?.token, t],
+  );
+
+  const savePassword = useCallback(async () => {
+    if (!session?.token) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const nextUser = await setSignalMyPassword(session.token, newPassword);
+      const next = { ...session, user: nextUser };
+      await saveAppAuthSession(next);
+      setSession(next);
+      setNewPassword('');
+    } catch (e) {
+      setError(formatSignalApiError(e, t, 'accountPasswordSaveError'));
+    } finally {
+      setSaving(false);
+    }
+  }, [newPassword, session, t]);
+
   const activityLinks = useMemo(
     () => [
       {
@@ -287,6 +347,13 @@ export default function AccountScreen() {
         title: t('accountActivityNotificationSettings'),
         body: t('accountActivityNotificationSettingsDesc'),
         onPress: () => router.push('/settings?tab=notifications'),
+      },
+      {
+        key: 'termsHistory',
+        icon: 'file-signature',
+        title: t('accountActivityTermsHistory'),
+        body: t('accountActivityTermsHistoryDesc'),
+        onPress: () => router.push('/terms-history' as never),
       },
     ],
     [router, t],
@@ -376,6 +443,55 @@ export default function AccountScreen() {
                   </Pressable>
                 ))}
               </View>
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>{t('accountSocialLinkedTitle')}</Text>
+              <Text style={styles.sectionLead}>{t('accountSocialLinkedDesc')}</Text>
+              {linkedIdentities.length === 0 ? (
+                <Text style={styles.mutedText}>{t('accountSocialLinkedEmpty')}</Text>
+              ) : (
+                <View style={styles.identityStack}>
+                  {linkedIdentities.map((identity) => (
+                    <View key={identity.id} style={styles.identityRow}>
+                      <View style={styles.activityIcon}>
+                        <FontAwesome5
+                          name={identity.provider === 'apple' ? 'apple' : identity.provider === 'google' ? 'google' : 'link'}
+                          size={15}
+                          color={theme.green}
+                        />
+                      </View>
+                      <View style={styles.activityText}>
+                        <Text style={styles.activityTitle}>{identity.provider}</Text>
+                        <Text style={styles.activityDesc} numberOfLines={1}>
+                          {identity.email || identity.displayName || identity.providerUserId}
+                        </Text>
+                      </View>
+                      <Pressable disabled={saving} onPress={() => void disconnectIdentity(identity)} style={styles.smallOutlineBtn}>
+                        <Text style={styles.smallOutlineText}>{t('accountSocialDisconnect')}</Text>
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>{t('accountPasswordSectionTitle')}</Text>
+              <Text style={styles.sectionLead}>
+                {user.hasPassword ? t('accountPasswordSectionDesc') : t('accountPasswordRequiredForUnlink')}
+              </Text>
+              <TextInput
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder={t('accountNewPasswordPlaceholder')}
+                placeholderTextColor={theme.textDim}
+                secureTextEntry
+                style={styles.input}
+              />
+              <Pressable disabled={saving || newPassword.length < 8} onPress={() => void savePassword()} style={styles.primaryBtn}>
+                <Text style={styles.primaryText}>{saving ? t('commonLoading') : t('accountPasswordSaveButton')}</Text>
+              </Pressable>
             </View>
 
             <View style={styles.accountFooter}>
@@ -763,6 +879,30 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     activityText: { flex: 1, minWidth: 0 },
     activityTitle: { color: theme.text, fontSize: sf(13), fontWeight: '900' },
     activityDesc: { color: theme.textMuted, fontSize: sf(11), lineHeight: sf(16), marginTop: 2 },
+    mutedText: { color: theme.textMuted, fontSize: sf(12), lineHeight: sf(18), fontWeight: '700' },
+    identityStack: { gap: 8 },
+    identityRow: {
+      minHeight: 54,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    smallOutlineBtn: {
+      minHeight: 28,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingHorizontal: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    smallOutlineText: { color: theme.textMuted, fontSize: sf(10), fontWeight: '900' },
     accountFooter: { gap: 10, paddingTop: 4, paddingHorizontal: 4, alignItems: 'center' },
     footerActionRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, flexWrap: 'wrap' },
     footerActionBtn: {

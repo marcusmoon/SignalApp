@@ -1347,16 +1347,27 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             if (settingsTabTarget.dataset.settingsTab === 'lists') await loadMarketLists();
             if (settingsTabTarget.dataset.settingsTab === 'sources') await Promise.all([loadNewsSourceSettings(), loadNewsSources()]);
           }
+          if (target?.dataset?.legalTypeTab) {
+            state.legalTermType = target.dataset.legalTypeTab;
+            await loadLegalTerms();
+            return;
+          }
+          if (target?.dataset?.legalLocaleTab) {
+            state.legalTermLocale = target.dataset.legalLocaleTab;
+            await loadLegalTerms();
+            return;
+          }
           if (target?.dataset?.legalSave) {
             const [type, locale] = target.dataset.legalSave.split(':');
+            const selectorKey = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(target.dataset.legalSave) : target.dataset.legalSave;
             await api(`/admin/api/legal-terms/${encodeURIComponent(type)}/${encodeURIComponent(locale)}`, {
               method: 'PATCH',
               body: JSON.stringify({
-                version: document.querySelector(`[data-legal-version="${CSS.escape(target.dataset.legalSave)}"]`)?.value || '',
-                title: document.querySelector(`[data-legal-title="${CSS.escape(target.dataset.legalSave)}"]`)?.value || '',
-                body: document.querySelector(`[data-legal-body="${CSS.escape(target.dataset.legalSave)}"]`)?.value || '',
-                active: document.querySelector(`[data-legal-active="${CSS.escape(target.dataset.legalSave)}"]`)?.checked === true,
-                required: document.querySelector(`[data-legal-required="${CSS.escape(target.dataset.legalSave)}"]`)?.checked === true,
+                version: document.querySelector(`[data-legal-version="${selectorKey}"]`)?.value || '',
+                title: document.querySelector(`[data-legal-title="${selectorKey}"]`)?.value || '',
+                body: document.querySelector(`[data-legal-body="${selectorKey}"]`)?.value || '',
+                active: document.querySelector(`[data-legal-active="${selectorKey}"]`)?.checked === true,
+                required: document.querySelector(`[data-legal-required="${selectorKey}"]`)?.checked === true,
               }),
             });
             await loadLegalTerms();

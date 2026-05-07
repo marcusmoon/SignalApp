@@ -37,6 +37,63 @@ function ensureColumn(db, table, column, ddl) {
   db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl};`);
 }
 
+function uniqueIndexHasColumns(db, table, columns) {
+  if (!tableExists(db, table)) return false;
+  const indexes = db.prepare(`PRAGMA index_list(${table})`).all();
+  return indexes.some((index) => {
+    if (Number(index.unique) !== 1) return false;
+    const info = db.prepare(`PRAGMA index_info(${index.name})`).all();
+    const names = info.map((row) => row.name);
+    return names.length === columns.length && columns.every((column, indexInList) => names[indexInList] === column);
+  });
+}
+
+function migrateLegalTermsVersionSchema(db) {
+  if (!tableExists(db, 'legal_terms')) return;
+  const needsRebuild =
+    !columnExists(db, 'legal_terms', 'created_at') || uniqueIndexHasColumns(db, 'legal_terms', ['type', 'locale']);
+  if (!needsRebuild) return;
+  const now = new Date().toISOString();
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS legal_terms_next (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      locale TEXT NOT NULL,
+      version TEXT NOT NULL,
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      required INTEGER NOT NULL DEFAULT 1,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(type, locale, version)
+    );
+  `);
+  db.prepare(
+    `
+      INSERT OR IGNORE INTO legal_terms_next (
+        id, type, locale, version, title, body, required, active, created_at, updated_at
+      )
+      SELECT
+        COALESCE(NULLIF(id, ''), type || ':' || locale || ':' || version),
+        type,
+        locale,
+        version,
+        title,
+        body,
+        required,
+        active,
+        COALESCE(NULLIF(updated_at, ''), ?),
+        COALESCE(NULLIF(updated_at, ''), ?)
+      FROM legal_terms
+    `,
+  ).run(now, now);
+  db.exec(`
+    DROP TABLE legal_terms;
+    ALTER TABLE legal_terms_next RENAME TO legal_terms;
+  `);
+}
+
 export function ensureStructuredSchema(db) {
   db.exec(`
     PRAGMA journal_mode = WAL;
@@ -104,6 +161,11 @@ export function ensureStructuredSchema(db) {
       user_id TEXT NOT NULL,
       provider TEXT NOT NULL,
       provider_user_id TEXT NOT NULL,
+      email TEXT,
+      display_name TEXT,
+      profile_image_url TEXT,
+      linked_at TEXT,
+      disconnected_at TEXT,
       payload TEXT NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
@@ -131,8 +193,9 @@ export function ensureStructuredSchema(db) {
       body TEXT NOT NULL,
       required INTEGER NOT NULL DEFAULT 1,
       active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      UNIQUE(type, locale)
+      UNIQUE(type, locale, version)
     );
 
     CREATE TABLE IF NOT EXISTS app_user_terms_acceptances (
@@ -318,6 +381,8 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_app_user_sessions_user ON app_user_sessions(user_id, expires_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_devices_user ON app_user_devices(user_id, active);
     CREATE INDEX IF NOT EXISTS idx_legal_terms_locale ON legal_terms(locale, active);
+    CREATE INDEX IF NOT EXISTS idx_legal_terms_type_locale ON legal_terms(type, locale, active, updated_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_identities_user ON app_user_identities(user_id, disconnected_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_terms_user ON app_user_terms_acceptances(user_id, accepted_at);
     CREATE INDEX IF NOT EXISTS idx_news_items_published ON news_items(category, published_at);
     CREATE INDEX IF NOT EXISTS idx_news_translations_item ON news_translations(news_item_id, locale);
@@ -334,6 +399,12 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_notification_items_target ON notification_items(target_type, target_key, scheduled_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_source ON notification_items(source_type, source_id);
   `);
+  migrateLegalTermsVersionSchema(db);
+  ensureColumn(db, 'app_user_identities', 'email', 'TEXT');
+  ensureColumn(db, 'app_user_identities', 'display_name', 'TEXT');
+  ensureColumn(db, 'app_user_identities', 'profile_image_url', 'TEXT');
+  ensureColumn(db, 'app_user_identities', 'linked_at', 'TEXT');
+  ensureColumn(db, 'app_user_identities', 'disconnected_at', 'TEXT');
   ensureColumn(db, 'insight_items', 'display_key', 'TEXT');
   ensureColumn(db, 'insight_items', 'generated_date', 'TEXT');
   ensureColumn(db, 'notification_items', 'title', 'TEXT');
@@ -342,6 +413,9 @@ export function ensureStructuredSchema(db) {
   ensureColumn(db, 'notification_items', 'target_key', 'TEXT');
   ensureColumn(db, 'notification_items', 'expires_at', 'TEXT');
   db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_legal_terms_locale ON legal_terms(locale, active);
+    CREATE INDEX IF NOT EXISTS idx_legal_terms_type_locale ON legal_terms(type, locale, active, updated_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_identities_user ON app_user_identities(user_id, disconnected_at);
     CREATE INDEX IF NOT EXISTS idx_insight_items_display ON insight_items(generated_date, display_key, generated_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_type ON notification_items(type, status, scheduled_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_user ON notification_items(app_user_id, status, scheduled_at);

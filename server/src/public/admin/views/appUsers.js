@@ -37,6 +37,55 @@ function notificationRows(rows, { esc, textFor, formatDateTime }) {
   `;
 }
 
+function consentRows(rows, { esc, textFor, formatDateTime }) {
+  if (!rows.length) return `<p class="muted">${esc(textFor('appUsersTermsEmpty'))}</p>`;
+  return `
+    <div class="notificationMiniList">
+      ${rows
+        .map(
+          (item) => `
+            <article class="notificationMiniCard">
+              <div class="notificationMiniHead">
+                <strong>${esc(item.title || item.type || '-')}</strong>
+                <span class="pill">v${esc(item.version || '-')}</span>
+              </div>
+              <div class="row muted">
+                <span>${esc(item.type || '-')}</span>
+                <span>${esc(String(item.locale || '').toUpperCase())}</span>
+                <span>${esc(textFor('appUsersTermsAcceptedAt'))} ${esc(formatDateTime(item.acceptedAt))}</span>
+              </div>
+            </article>
+          `,
+        )
+        .join('')}
+    </div>
+  `;
+}
+
+function identityRows(rows, { esc, textFor, formatDateTime }) {
+  if (!rows.length) return `<p class="muted">${esc(textFor('appUsersIdentitiesEmpty'))}</p>`;
+  return `
+    <div class="notificationMiniList">
+      ${rows
+        .map(
+          (item) => `
+            <article class="notificationMiniCard">
+              <div class="notificationMiniHead">
+                <strong>${esc(item.provider || '-')}</strong>
+                <span class="pill">${esc(textFor('statusActive'))}</span>
+              </div>
+              <div class="row muted">
+                <span>${esc(item.email || item.displayName || item.providerUserId || '-')}</span>
+                <span>${esc(textFor('appUsersIdentityLinkedAt'))} ${esc(formatDateTime(item.linkedAt || item.createdAt))}</span>
+              </div>
+            </article>
+          `,
+        )
+        .join('')}
+    </div>
+  `;
+}
+
 function userCard(user, { esc, textFor, formatDateTime }) {
   return `
     <article class="appUserCard" data-app-user-card="${esc(user.id)}">
@@ -73,7 +122,21 @@ function pager({ page, totalPages, prefix, esc }) {
   `;
 }
 
-function renderUserManagement({ body, rows, selected, notificationRowsData, q, active, pageSize, esc, textFor, textForVars, formatDateTime }) {
+function renderUserManagement({
+  body,
+  rows,
+  selected,
+  notificationRowsData,
+  termRowsData,
+  identityRowsData,
+  q,
+  active,
+  pageSize,
+  esc,
+  textFor,
+  textForVars,
+  formatDateTime,
+}) {
   return `
     <div class="appUsersLayout appUsersLayout--users">
       <section class="card settingsControlCard">
@@ -124,6 +187,14 @@ function renderUserManagement({ body, rows, selected, notificationRowsData, q, a
               <div class="appUsersNotifications">
                 <div class="cardKicker" style="margin-bottom:8px">${esc(textFor('appUsersNotificationsTitle'))}</div>
                 ${notificationRows(notificationRowsData, { esc, textFor, formatDateTime })}
+              </div>
+              <div class="appUsersNotifications" style="margin-top:14px">
+                <div class="cardKicker" style="margin-bottom:8px">${esc(textFor('appUsersTermsTitle'))}</div>
+                ${consentRows(termRowsData, { esc, textFor, formatDateTime })}
+              </div>
+              <div class="appUsersNotifications" style="margin-top:14px">
+                <div class="cardKicker" style="margin-bottom:8px">${esc(textFor('appUsersIdentitiesTitle'))}</div>
+                ${identityRows(identityRowsData, { esc, textFor, formatDateTime })}
               </div>
             `
             : `<p class="muted">${esc(textFor('appUsersEmpty'))}</p>`
@@ -308,8 +379,15 @@ export async function loadAppUsersView(ctx) {
   state.appUsersSelectedId = selected?.id || '';
 
   let selectedNotifications = { data: [] };
+  let selectedTerms = { data: [] };
+  let selectedIdentities = { data: [] };
   if (selected?.id) {
-    selectedNotifications = await api(`/admin/api/app-users/${encodeURIComponent(selected.id)}/notifications?pageSize=10`);
+    const userId = encodeURIComponent(selected.id);
+    [selectedNotifications, selectedTerms, selectedIdentities] = await Promise.all([
+      api(`/admin/api/app-users/${userId}/notifications?pageSize=10`),
+      api(`/admin/api/app-users/${userId}/terms`),
+      api(`/admin/api/app-users/${userId}/identities`),
+    ]);
   }
 
   if (tab === 'devices') {
@@ -377,6 +455,8 @@ export async function loadAppUsersView(ctx) {
     rows,
     selected,
     notificationRowsData: Array.isArray(selectedNotifications.data) ? selectedNotifications.data : [],
+    termRowsData: Array.isArray(selectedTerms.data) ? selectedTerms.data : [],
+    identityRowsData: Array.isArray(selectedIdentities.data) ? selectedIdentities.data : [],
     q,
     active,
     pageSize,

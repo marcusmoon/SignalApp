@@ -40,9 +40,27 @@ function publicUser(row) {
     nickname: row.nickname,
     profileImageUrl: row.profile_image_url || '',
     authProvider: row.auth_provider || 'password',
+    hasPassword: Boolean(row.password_hash && row.password_salt),
     active: Number(row.active) === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function publicIdentity(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    userId: row.user_id,
+    provider: row.provider,
+    providerUserId: row.provider_user_id,
+    email: row.email || '',
+    displayName: row.display_name || '',
+    profileImageUrl: row.profile_image_url || '',
+    linkedAt: row.linked_at || row.created_at || null,
+    disconnectedAt: row.disconnected_at || null,
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
   };
 }
 
@@ -104,6 +122,58 @@ export function loginAppUserInDb(db, { email, password }) {
   const row = db.prepare('SELECT * FROM app_users WHERE email = ?').get(normalizedEmail);
   if (!row || Number(row.active) !== 1 || !verifyPassword(password, row)) throw new Error('APP_USER_LOGIN_FAILED');
   return { user: publicUser(row), session: createSessionInDb(db, row.id) };
+}
+
+export function listAppUserIdentitiesInDb(db, userId) {
+  return db
+    .prepare(
+      `
+        SELECT *
+        FROM app_user_identities
+        WHERE user_id = ? AND disconnected_at IS NULL
+        ORDER BY linked_at DESC, created_at DESC
+      `,
+    )
+    .all(cleanText(userId))
+    .map(publicIdentity);
+}
+
+export function setAppUserPasswordInDb(db, userId, { password }) {
+  const userPassword = String(password || '');
+  if (userPassword.length < 8) throw new Error('APP_USER_PASSWORD_TOO_SHORT');
+  const existing = db.prepare('SELECT * FROM app_users WHERE id = ? AND active = 1').get(cleanText(userId));
+  if (!existing) throw new Error('APP_USER_NOT_FOUND');
+  const { hash, salt } = hashPassword(userPassword);
+  const now = nowIso();
+  db.prepare('UPDATE app_users SET password_hash = ?, password_salt = ?, updated_at = ? WHERE id = ?').run(
+    hash,
+    salt,
+    now,
+    existing.id,
+  );
+  return publicUser(db.prepare('SELECT * FROM app_users WHERE id = ?').get(existing.id));
+}
+
+export function disconnectAppUserIdentityInDb(db, userId, identityId) {
+  const user = db.prepare('SELECT * FROM app_users WHERE id = ? AND active = 1').get(cleanText(userId));
+  if (!user) throw new Error('APP_USER_NOT_FOUND');
+  const identity = db
+    .prepare('SELECT * FROM app_user_identities WHERE id = ? AND user_id = ? AND disconnected_at IS NULL')
+    .get(cleanText(identityId), user.id);
+  if (!identity) throw new Error('APP_USER_IDENTITY_NOT_FOUND');
+  const remainingIdentityCount =
+    Number(
+      db
+        .prepare(
+          'SELECT COUNT(*) AS count FROM app_user_identities WHERE user_id = ? AND disconnected_at IS NULL AND id <> ?',
+        )
+        .get(user.id, identity.id)?.count,
+    ) || 0;
+  const hasPassword = Boolean(user.password_hash && user.password_salt);
+  if (!hasPassword && remainingIdentityCount === 0) throw new Error('APP_USER_PASSWORD_REQUIRED_BEFORE_UNLINK');
+  const now = nowIso();
+  db.prepare('UPDATE app_user_identities SET disconnected_at = ?, updated_at = ? WHERE id = ?').run(now, now, identity.id);
+  return publicIdentity(db.prepare('SELECT * FROM app_user_identities WHERE id = ?').get(identity.id));
 }
 
 export function verifyAppUserTokenInDb(db, token) {

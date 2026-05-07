@@ -263,51 +263,111 @@ export async function loadLegalTermsView({ api, $, state, esc, textFor, formatDa
   const rows = Array.isArray(body.data) ? body.data : [];
   state.legalTerms = rows;
   if (!$('legalTerms')) return rows;
+  const types = ['service', 'privacy'];
+  const locales = ['ko', 'en', 'ja'];
+  const activeType = types.includes(state.legalTermType) ? state.legalTermType : 'service';
+  const activeLocale = locales.includes(state.legalTermLocale) ? state.legalTermLocale : 'ko';
+  state.legalTermType = activeType;
+  state.legalTermLocale = activeLocale;
+  const activeRows = rows
+    .filter((term) => term.type === activeType && term.locale === activeLocale)
+    .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+  const current = activeRows[0] || {
+    type: activeType,
+    locale: activeLocale,
+    version: '',
+    title: '',
+    body: '',
+    required: true,
+    active: true,
+  };
+  const key = `${activeType}:${activeLocale}`;
   $('legalTerms').innerHTML = `
-    <div class="settingsSectionGrid">
-      ${['ko', 'en', 'ja']
-        .map((locale) => {
-          const localeRows = rows.filter((term) => term.locale === locale);
-          return `
-            <div class="card settingsControlCard">
-              <div class="cardHead">
-                <div class="cardHeadMain">
-                  <div class="cardKicker">${esc(textFor(`legalTermsLocale${locale.toUpperCase()}`))}</div>
-                  <div class="cardHint">${esc(textFor('legalTermsLocaleHint'))}</div>
-                </div>
-              </div>
-              ${localeRows
-                .map(
-                  (term) => `
-                    <div class="settingsControlCard" style="padding:0;border:0;margin-top:12px">
-                      <div class="settingsFormRow">
-                        <span class="pill">${esc(term.type)}</span>
-                        <input data-legal-version="${esc(term.type)}:${esc(locale)}" value="${esc(term.version || '')}" placeholder="${esc(textFor('legalTermsVersionPh'))}" />
-                        <label class="switchRow">
-                          <input class="switchInput" type="checkbox" data-legal-active="${esc(term.type)}:${esc(locale)}" ${term.active ? 'checked' : ''}/>
-                          <span class="switchUi" aria-hidden="true"></span>
-                          <span>${esc(textFor('colEnabled'))}</span>
-                        </label>
-                        <label class="switchRow">
-                          <input class="switchInput" type="checkbox" data-legal-required="${esc(term.type)}:${esc(locale)}" ${term.required ? 'checked' : ''}/>
-                          <span class="switchUi" aria-hidden="true"></span>
-                          <span>${esc(textFor('legalTermsRequired'))}</span>
-                        </label>
-                      </div>
-                      <input style="margin-top:8px" data-legal-title="${esc(term.type)}:${esc(locale)}" value="${esc(term.title || '')}" placeholder="${esc(textFor('legalTermsTitlePh'))}" />
-                      <textarea style="margin-top:8px;min-height:180px" data-legal-body="${esc(term.type)}:${esc(locale)}">${esc(term.body || '')}</textarea>
-                      <div class="row" style="justify-content:space-between;margin-top:8px">
-                        <span class="muted">${esc(formatDateTime(term.updatedAt))}</span>
-                        <button class="success" data-legal-save="${esc(term.type)}:${esc(locale)}">${esc(textFor('btnSave'))}</button>
-                      </div>
-                    </div>
-                  `,
-                )
-                .join('')}
-            </div>
-          `;
-        })
-        .join('')}
+    <div class="card settingsControlCard">
+      <div class="cardHead">
+        <div class="cardHeadMain">
+          <div class="cardKicker">${esc(textFor('settingsLegalHeroKicker'))}</div>
+          <div class="cardHint">${esc(textFor('settingsLegalHeroSummary'))}</div>
+        </div>
+      </div>
+      <div class="segmented settingsSegmented" style="margin-bottom:10px">
+        ${types
+          .map(
+            (type) =>
+              `<button type="button" class="secondary segBtn ${type === activeType ? 'active' : ''}" data-legal-type-tab="${esc(type)}">${esc(
+                type === 'service' ? textFor('termsServiceTitle') : textFor('termsPrivacyTitle'),
+              )}</button>`,
+          )
+          .join('')}
+      </div>
+      <div class="segmented settingsSegmented" style="margin-bottom:14px">
+        ${locales
+          .map(
+            (locale) =>
+              `<button type="button" class="secondary segBtn ${locale === activeLocale ? 'active' : ''}" data-legal-locale-tab="${esc(locale)}">${esc(
+                textFor(`legalTermsLocale${locale.toUpperCase()}`),
+              )}</button>`,
+          )
+          .join('')}
+      </div>
+      <div class="cardHint" style="margin-bottom:12px">${esc(textFor('legalTermsLocaleHint'))}</div>
+      <div class="settingsControlCard" style="padding:0;border:0">
+        <div class="settingsFormRow">
+          <span class="pill">${esc(activeType)}</span>
+          <input data-legal-version="${esc(key)}" value="${esc(current.version || '')}" placeholder="${esc(textFor('legalTermsVersionPh'))}" />
+          <label class="switchRow">
+            <input class="switchInput" type="checkbox" data-legal-active="${esc(key)}" ${current.active ? 'checked' : ''}/>
+            <span class="switchUi" aria-hidden="true"></span>
+            <span>${esc(textFor('colEnabled'))}</span>
+          </label>
+          <label class="switchRow">
+            <input class="switchInput" type="checkbox" data-legal-required="${esc(key)}" ${current.required ? 'checked' : ''}/>
+            <span class="switchUi" aria-hidden="true"></span>
+            <span>${esc(textFor('legalTermsRequired'))}</span>
+          </label>
+        </div>
+        <input style="margin-top:8px" data-legal-title="${esc(key)}" value="${esc(current.title || '')}" placeholder="${esc(textFor('legalTermsTitlePh'))}" />
+        <textarea style="margin-top:8px;min-height:220px" data-legal-body="${esc(key)}">${esc(current.body || '')}</textarea>
+        <div class="row" style="justify-content:space-between;margin-top:8px">
+          <span class="muted">${esc(formatDateTime(current.updatedAt))}</span>
+          <button class="success" data-legal-save="${esc(key)}">${esc(textFor('btnSave'))}</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card settingsControlCard">
+      <div class="cardHead">
+        <div class="cardHeadMain">
+          <div class="cardKicker">${esc(textFor('legalTermsHistoryTitle'))}</div>
+          <div class="cardHint">${esc(textFor('legalTermsHistoryHint'))}</div>
+        </div>
+      </div>
+      <div class="tableScroll">
+        <table>
+          <thead>
+            <tr><th>${esc(textFor('colStatus'))}</th><th>${esc(textFor('colLocale'))}</th><th>${esc(textFor('colTitle'))}</th><th>Version</th><th>${esc(textFor('colDate'))}</th></tr>
+          </thead>
+          <tbody>
+            ${
+              activeRows.length
+                ? activeRows
+                    .map(
+                      (term) => `
+                        <tr>
+                          <td><span class="pill ${term.active ? 'opDone' : ''}">${term.active ? esc(textFor('statusActive')) : esc(textFor('statusInactive'))}</span></td>
+                          <td>${esc(term.locale)}</td>
+                          <td>${esc(term.title || '-')}</td>
+                          <td><code>${esc(term.version || '-')}</code></td>
+                          <td>${esc(formatDateTime(term.updatedAt || term.createdAt))}</td>
+                        </tr>
+                      `,
+                    )
+                    .join('')
+                : `<tr><td colspan="5" class="muted">${esc(textFor('legalTermsHistoryEmpty'))}</td></tr>`
+            }
+          </tbody>
+        </table>
+      </div>
     </div>
   `;
   return rows;

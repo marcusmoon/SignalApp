@@ -18,8 +18,12 @@ function normalizeType(value) {
   return LEGAL_TERM_TYPES.includes(type) ? type : 'service';
 }
 
-function termId(type, locale) {
-  return `${normalizeType(type)}:${normalizeLocale(locale)}`;
+function cleanVersion(value) {
+  return cleanText(value) || nowIso().slice(0, 10).replaceAll('-', '.');
+}
+
+function termId(type, locale, version) {
+  return `${normalizeType(type)}:${normalizeLocale(locale)}:${cleanVersion(version)}`;
 }
 
 export function defaultLegalTerms() {
@@ -105,6 +109,7 @@ function publicTerm(row) {
     body: row.body,
     required: Number(row.required) === 1,
     active: Number(row.active) === 1,
+    createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
@@ -113,12 +118,13 @@ export function seedLegalTermsInDb(db) {
   const count = Number(db.prepare('SELECT COUNT(*) AS count FROM legal_terms').get()?.count) || 0;
   if (count > 0) return;
   const insert = db.prepare(`
-    INSERT INTO legal_terms (id, type, locale, version, title, body, required, active, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO legal_terms (id, type, locale, version, title, body, required, active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(type, locale, version) DO NOTHING
   `);
   for (const term of defaultLegalTerms()) {
     insert.run(
-      termId(term.type, term.locale),
+      termId(term.type, term.locale, term.version),
       term.type,
       term.locale,
       term.version,
@@ -127,11 +133,12 @@ export function seedLegalTermsInDb(db) {
       term.required ? 1 : 0,
       term.active ? 1 : 0,
       term.updatedAt,
+      term.updatedAt,
     );
   }
 }
 
-export function listLegalTermsInDb(db, { locale = '', activeOnly = false } = {}) {
+export function listLegalTermsInDb(db, { locale = '', activeOnly = false, latestOnly = false, type = '' } = {}) {
   seedLegalTermsInDb(db);
   const params = {};
   const where = [];
@@ -140,18 +147,49 @@ export function listLegalTermsInDb(db, { locale = '', activeOnly = false } = {})
     params.locale = normalizeLocale(loc);
     where.push('locale = @locale');
   }
+  const normalizedType = cleanText(type).toLowerCase();
+  if (normalizedType) {
+    params.type = normalizeType(normalizedType);
+    where.push('type = @type');
+  }
   if (activeOnly) where.push('active = 1');
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const rows = db
-    .prepare(
-      `
-        SELECT *
-        FROM legal_terms
-        ${whereSql}
-        ORDER BY locale ASC, CASE type WHEN 'service' THEN 1 WHEN 'privacy' THEN 2 ELSE 9 END ASC
-      `,
-    )
-    .all(params);
+  const baseSql = `
+    SELECT *
+    FROM legal_terms
+    ${whereSql}
+  `;
+  const rows = latestOnly
+    ? db
+        .prepare(
+          `
+            SELECT *
+            FROM (
+              SELECT
+                t.*,
+                ROW_NUMBER() OVER (
+                  PARTITION BY t.type, t.locale
+                  ORDER BY t.updated_at DESC, t.created_at DESC, t.version DESC
+                ) AS rn
+              FROM (${baseSql}) t
+            )
+            WHERE rn = 1
+            ORDER BY locale ASC, CASE type WHEN 'service' THEN 1 WHEN 'privacy' THEN 2 ELSE 9 END ASC
+          `,
+        )
+        .all(params)
+    : db
+        .prepare(
+          `
+            ${baseSql}
+            ORDER BY
+              locale ASC,
+              CASE type WHEN 'service' THEN 1 WHEN 'privacy' THEN 2 ELSE 9 END ASC,
+              updated_at DESC,
+              created_at DESC
+          `,
+        )
+        .all(params);
   return rows.map(publicTerm);
 }
 
@@ -159,24 +197,41 @@ export function updateLegalTermInDb(db, type, locale, patch = {}) {
   seedLegalTermsInDb(db);
   const nextType = normalizeType(type);
   const nextLocale = normalizeLocale(locale);
-  const existing = db.prepare('SELECT * FROM legal_terms WHERE type = ? AND locale = ?').get(nextType, nextLocale);
   const now = nowIso();
-  const prev = publicTerm(existing) || {};
+  const nextVersion = cleanVersion(patch.version);
+  const existing = db
+    .prepare('SELECT * FROM legal_terms WHERE type = ? AND locale = ? AND version = ?')
+    .get(nextType, nextLocale, nextVersion);
+  const current = listLegalTermsInDb(db, {
+    type: nextType,
+    locale: nextLocale,
+    activeOnly: true,
+    latestOnly: true,
+  })[0];
+  const prev = publicTerm(existing) || current || {};
   const next = {
     type: nextType,
     locale: nextLocale,
-    version: cleanText(patch.version) || prev.version || now.slice(0, 10).replaceAll('-', '.'),
+    version: nextVersion,
     title: cleanText(patch.title) || prev.title || nextType,
     body: cleanText(patch.body) || prev.body || '',
     required: typeof patch.required === 'boolean' ? patch.required : prev.required !== false,
     active: typeof patch.active === 'boolean' ? patch.active : prev.active !== false,
   };
   if (!next.body) throw new Error('LEGAL_TERM_BODY_REQUIRED');
+  if (next.active) {
+    db.prepare('UPDATE legal_terms SET active = 0, updated_at = ? WHERE type = ? AND locale = ? AND version <> ?').run(
+      now,
+      nextType,
+      nextLocale,
+      next.version,
+    );
+  }
   db.prepare(
     `
-      INSERT INTO legal_terms (id, type, locale, version, title, body, required, active, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(type, locale) DO UPDATE SET
+      INSERT INTO legal_terms (id, type, locale, version, title, body, required, active, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(type, locale, version) DO UPDATE SET
         version = excluded.version,
         title = excluded.title,
         body = excluded.body,
@@ -185,7 +240,7 @@ export function updateLegalTermInDb(db, type, locale, patch = {}) {
         updated_at = excluded.updated_at
     `,
   ).run(
-    termId(nextType, nextLocale),
+    termId(nextType, nextLocale, next.version),
     nextType,
     nextLocale,
     next.version,
@@ -193,15 +248,18 @@ export function updateLegalTermInDb(db, type, locale, patch = {}) {
     next.body,
     next.required ? 1 : 0,
     next.active ? 1 : 0,
+    existing ? prev.createdAt || now : now,
     now,
   );
-  return publicTerm(db.prepare('SELECT * FROM legal_terms WHERE type = ? AND locale = ?').get(nextType, nextLocale));
+  return publicTerm(
+    db.prepare('SELECT * FROM legal_terms WHERE type = ? AND locale = ? AND version = ?').get(nextType, nextLocale, next.version),
+  );
 }
 
 export function validateRequiredTermsAcceptedInDb(db, acceptedTerms = [], locale = 'ko') {
   seedLegalTermsInDb(db);
   const loc = normalizeLocale(locale);
-  const required = listLegalTermsInDb(db, { locale: loc, activeOnly: true }).filter((term) => term.required);
+  const required = listLegalTermsInDb(db, { locale: loc, activeOnly: true, latestOnly: true }).filter((term) => term.required);
   const accepted = Array.isArray(acceptedTerms) ? acceptedTerms : [];
   for (const term of required) {
     const hit = accepted.find(
@@ -233,4 +291,44 @@ export function insertAppUserTermAcceptancesInDb(db, userId, terms = []) {
       now,
     );
   }
+}
+
+export function listAppUserTermAcceptancesInDb(db, userId) {
+  seedLegalTermsInDb(db);
+  const rows = db
+    .prepare(
+      `
+        SELECT
+          a.id,
+          a.user_id,
+          a.term_type,
+          a.locale,
+          a.version,
+          a.accepted_at,
+          t.title,
+          t.required,
+          t.active,
+          t.updated_at
+        FROM app_user_terms_acceptances a
+        LEFT JOIN legal_terms t
+          ON t.type = a.term_type
+          AND t.locale = a.locale
+          AND t.version = a.version
+        WHERE a.user_id = ?
+        ORDER BY a.accepted_at DESC
+      `,
+    )
+    .all(cleanText(userId));
+  return rows.map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    type: row.term_type,
+    locale: row.locale,
+    version: row.version,
+    title: row.title || row.term_type,
+    required: Number(row.required) === 1,
+    active: Number(row.active) === 1,
+    acceptedAt: row.accepted_at,
+    termUpdatedAt: row.updated_at || null,
+  }));
 }

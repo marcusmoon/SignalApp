@@ -1,7 +1,11 @@
 import {
   createAppUser,
+  disconnectAppUserIdentity,
   loginAppUser,
+  listAppUserIdentities,
+  listAppUserTermAcceptances,
   revokeAppUserToken,
+  setAppUserPassword,
   updateAppUserProfile,
   upsertAppUserDevice,
   verifyAppUserToken,
@@ -77,6 +81,48 @@ export async function handlePublicAuthRoutes({ req, res, pathname }) {
     const session = await requireAppUser(req, res);
     if (!session) return true;
     json(res, 200, { data: { user: session.user } });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/v1/auth/me/terms') {
+    const session = await requireAppUser(req, res);
+    if (!session) return true;
+    const rows = await listAppUserTermAcceptances(session.user.id);
+    json(res, 200, { data: rows });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/v1/auth/me/identities') {
+    const session = await requireAppUser(req, res);
+    if (!session) return true;
+    const rows = await listAppUserIdentities(session.user.id);
+    json(res, 200, { data: rows });
+    return true;
+  }
+
+  if (req.method === 'PATCH' && pathname === '/v1/auth/me/password') {
+    const session = await requireAppUser(req, res);
+    if (!session) return true;
+    try {
+      const body = await readBody(req);
+      const user = await setAppUserPassword(session.user.id, body);
+      json(res, 200, { data: { user } });
+    } catch (error) {
+      authError(res, error);
+    }
+    return true;
+  }
+
+  const identityMatch = pathname.match(/^\/v1\/auth\/me\/identities\/([^/]+)$/);
+  if (req.method === 'DELETE' && identityMatch) {
+    const session = await requireAppUser(req, res);
+    if (!session) return true;
+    try {
+      const identity = await disconnectAppUserIdentity(session.user.id, decodeURIComponent(identityMatch[1]));
+      json(res, 200, { data: identity });
+    } catch (error) {
+      authError(res, error);
+    }
     return true;
   }
 

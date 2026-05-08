@@ -89,12 +89,19 @@ function formatSocialAuthFailure(
   apiFallbackId: MessageId,
 ): string | null {
   if (e instanceof SocialAuthCancelledError) return null;
-  if (e instanceof SocialAuthFlowError) return mapSocialFlowErrorMessage(e.message, translate);
+  if (e instanceof SocialAuthFlowError) {
+    const base = mapSocialFlowErrorMessage(e.message, translate);
+    return __DEV__ ? `${base}\n\n[debug] flow=${e.message}` : base;
+  }
   if (e instanceof SignalApiError) {
     const mid = socialApiCodeMessage(e.message);
-    return mid ? translate(mid) : formatSignalApiError(e, translate, apiFallbackId);
+    const base = mid ? translate(mid) : formatSignalApiError(e, translate, apiFallbackId);
+    return __DEV__ ? `${base}\n\n[debug] api=${e.message}` : base;
   }
-  return formatSignalApiError(e, translate, apiFallbackId);
+  const base = formatSignalApiError(e, translate, apiFallbackId);
+  if (!__DEV__) return base;
+  const raw = e instanceof Error ? `${e.name}: ${e.message}` : String(e ?? '');
+  return `${base}\n\n[debug] ${raw}`;
 }
 
 export default function AccountScreen() {

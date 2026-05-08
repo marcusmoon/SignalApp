@@ -121,7 +121,8 @@ export async function obtainSocialCredential(
         const msg = e instanceof Error ? e.message : String(e || '');
         if (/cancel|취소|canceled|dismissed/ui.test(msg)) throw new SocialAuthCancelledError();
         if (__DEV__) console.warn('[Kakao native login]', msg, e);
-        throw new SocialAuthFlowError('kakao_failed');
+        const detail = msg.trim().slice(0, 240);
+        throw new SocialAuthFlowError(detail ? `kakao_failed:${detail}` : 'kakao_failed');
       }
     }
 

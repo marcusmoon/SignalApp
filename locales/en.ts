@@ -138,6 +138,22 @@ export const en = {
   accountSocialGoogle: 'Google',
   accountSocialApple: 'Apple',
   accountSocialComingSoon: 'Social sign-in wiring is being prepared.',
+  accountSocialDisabled: 'This social sign-in is disabled or not configured on the server.',
+  accountSocialFlowNotConfigured: 'Social client IDs are missing. Configure them in the Signal Admin app settings.',
+  accountSocialKakaoExpoGo:
+    'Kakao sign-in is not available in Expo Go. Install a dev build with `expo run:ios` or `expo run:android` (with the Kakao native module).',
+  accountSocialAppleIosOnly: 'Apple Sign In is only available in the iOS app.',
+  accountSocialAppleUnavailable: 'Apple Sign In is not available on this device.',
+  accountSocialIdentityTaken: 'This social account is already linked to another SIGNAL account.',
+  accountSocialEmailConflict:
+    'An account with this email already exists. Sign in with email and password, then link social from My info.',
+  accountSocialInvalid: 'Social sign-in failed. Try again in a moment.',
+  accountSocialKakaoUpstream:
+    'Kakao rejected the token or user lookup. Confirm the server REST API key matches the same Kakao app as your prebuild native key (`KAKAO_NATIVE_APP_KEY`), and review Redirect URI settings in the Kakao developer console.',
+  accountSocialLinkTitle: 'Link a social account',
+  accountSocialLinkHint: 'While signed in with email, you can link social providers to the same SIGNAL account.',
+  accountSocialLinkMore: 'Link',
+  accountSocialLinkNone: 'No social providers are available to link. Enable them in server admin settings.',
   accountEmailDivider: 'or sign in with email',
   accountSignupPrompt: 'New to SIGNAL?',
   accountSignupButton: 'Sign up',

@@ -1,3 +1,5 @@
+import { getOrCreateAppDeviceId } from '@/services/appDeviceId';
+
 import { signalApiRequest } from '@/integrations/signal-api/client';
 
 export type SignalAppUser = {
@@ -13,8 +15,11 @@ export type SignalAppUser = {
 
 export type SignalAuthSession = {
   user: SignalAppUser;
-  token: string;
-  expiresAt: string;
+  accessToken: string;
+  refreshToken: string;
+  accessExpiresAt: string;
+  refreshExpiresAt: string;
+  deviceId: string;
 };
 
 export type SignalUserTermAcceptance = {
@@ -44,6 +49,31 @@ export type SignalUserIdentity = {
   updatedAt?: string | null;
 };
 
+type AuthPayloadWire = {
+  user: SignalAppUser;
+  accessToken?: string;
+  refreshToken?: string;
+  accessExpiresAt?: string;
+  refreshExpiresAt?: string;
+  deviceId?: string;
+  token?: string;
+  expiresAt?: string;
+};
+
+export function normalizeAuthSession(data: AuthPayloadWire, fallbackDeviceId: string): SignalAuthSession {
+  const accessToken = data.accessToken || data.token || '';
+  const accessExpiresAt = data.accessExpiresAt || data.expiresAt || '';
+  const refreshExpiresAt = data.refreshExpiresAt || accessExpiresAt;
+  return {
+    user: data.user,
+    accessToken,
+    refreshToken: data.refreshToken || '',
+    accessExpiresAt,
+    refreshExpiresAt,
+    deviceId: data.deviceId || fallbackDeviceId,
+  };
+}
+
 export async function registerSignalUser(params: {
   email: string;
   password: string;
@@ -51,20 +81,35 @@ export async function registerSignalUser(params: {
   profileImageUrl?: string;
   locale?: string;
   acceptedTerms?: Array<{ type: string; locale: string; version: string }>;
+  deviceId?: string;
 }): Promise<SignalAuthSession> {
-  const json = await signalApiRequest<{ data: SignalAuthSession }>('/v1/auth/register', {
+  const deviceId = params.deviceId ?? (await getOrCreateAppDeviceId());
+  const json = await signalApiRequest<{ data: AuthPayloadWire }>('/v1/auth/register', {
     method: 'POST',
-    body: params,
+    body: {
+      email: params.email,
+      password: params.password,
+      nickname: params.nickname,
+      profileImageUrl: params.profileImageUrl,
+      locale: params.locale,
+      acceptedTerms: params.acceptedTerms,
+      deviceId,
+    },
   });
-  return json.data;
+  return normalizeAuthSession(json.data, deviceId);
 }
 
-export async function loginSignalUser(params: { email: string; password: string }): Promise<SignalAuthSession> {
-  const json = await signalApiRequest<{ data: SignalAuthSession }>('/v1/auth/login', {
+export async function loginSignalUser(params: {
+  email: string;
+  password: string;
+  deviceId?: string;
+}): Promise<SignalAuthSession> {
+  const deviceId = params.deviceId ?? (await getOrCreateAppDeviceId());
+  const json = await signalApiRequest<{ data: AuthPayloadWire }>('/v1/auth/login', {
     method: 'POST',
-    body: params,
+    body: { email: params.email, password: params.password, deviceId },
   });
-  return json.data;
+  return normalizeAuthSession(json.data, deviceId);
 }
 
 export async function fetchSignalMe(token: string): Promise<SignalAppUser> {
@@ -92,10 +137,13 @@ export async function setSignalMyPassword(token: string, password: string): Prom
 }
 
 export async function disconnectSignalMyIdentity(token: string, identityId: string): Promise<SignalUserIdentity> {
-  const json = await signalApiRequest<{ data: SignalUserIdentity }>(`/v1/auth/me/identities/${encodeURIComponent(identityId)}`, {
-    method: 'DELETE',
-    token,
-  });
+  const json = await signalApiRequest<{ data: SignalUserIdentity }>(
+    `/v1/auth/me/identities/${encodeURIComponent(identityId)}`,
+    {
+      method: 'DELETE',
+      token,
+    },
+  );
   return json.data;
 }
 

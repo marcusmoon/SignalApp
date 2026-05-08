@@ -17,6 +17,49 @@ import { getMarketList, json, readBody } from '../../shared.mjs';
 
 const SUPPORTED_PROVIDERS = ['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko'];
 
+/** Admin API only: never return raw third-party client secrets to the browser. */
+function redactAppSettingsForAdminGet(settings) {
+  if (!settings || typeof settings !== 'object') return settings;
+  let out;
+  try {
+    out = JSON.parse(JSON.stringify(settings));
+  } catch {
+    return settings;
+  }
+  const social = out.socialAuth;
+  if (social && typeof social === 'object') {
+    for (const prov of ['kakao', 'naver']) {
+      const row = social[prov];
+      if (!row || typeof row !== 'object') continue;
+      const secret = row.clientSecret;
+      const nextRow = { ...row };
+      delete nextRow.clientSecret;
+      delete nextRow.clientSecretConfigured;
+      if (typeof secret === 'string' && secret.length > 0) {
+        nextRow.clientSecretConfigured = true;
+      }
+      social[prov] = nextRow;
+    }
+  }
+  return out;
+}
+
+function stripSocialAuthClientMeta(socialAuth) {
+  if (!socialAuth || typeof socialAuth !== 'object') return socialAuth;
+  const strip = (row) => {
+    if (!row || typeof row !== 'object') return row;
+    const { clientSecretConfigured, ...rest } = row;
+    return rest;
+  };
+  return {
+    ...socialAuth,
+    google: strip(socialAuth.google),
+    apple: strip(socialAuth.apple),
+    kakao: strip(socialAuth.kakao),
+    naver: strip(socialAuth.naver),
+  };
+}
+
 function adminUserErrorStatus(error) {
   const code = error instanceof Error ? error.message : String(error || '');
   if (code === 'ADMIN_USER_NOT_FOUND') return 404;
@@ -39,7 +82,7 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
 
   if (req.method === 'GET' && pathname === '/admin/api/app-settings') {
     const db = await readDb();
-    json(res, 200, { data: db.appSettings || null });
+    json(res, 200, { data: redactAppSettingsForAdminGet(db.appSettings || null) });
     return true;
   }
 
@@ -52,11 +95,37 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
         const n = Number(patch.marketQuotesMaxAgeSec);
         if (Number.isFinite(n)) next.marketQuotesMaxAgeSec = Math.max(0, Math.min(300, Math.floor(n)));
       }
+      if (patch.socialAuth && typeof patch.socialAuth === 'object') {
+        const prev = cur.socialAuth && typeof cur.socialAuth === 'object' ? cur.socialAuth : {};
+        const p = stripSocialAuthClientMeta(patch.socialAuth);
+        const mergeProv = (key) =>
+          p[key] && typeof p[key] === 'object' ? { ...(prev[key] || {}), ...p[key] } : prev[key];
+        const pathPatch =
+          typeof p.socialLoginRedirectPath === 'string'
+            ? p.socialLoginRedirectPath
+            : typeof p.oauthRedirectPath === 'string'
+              ? p.oauthRedirectPath
+              : undefined;
+        const prevSeg = String(prev.socialLoginRedirectPath || prev.oauthRedirectPath || 'oauth')
+          .trim()
+          .replace(/^\/+/, '') || 'oauth';
+        const normalizedRedirect =
+          pathPatch !== undefined ? pathPatch.trim().replace(/^\/+/, '') || 'oauth' : prevSeg;
+        next.socialAuth = {
+          ...prev,
+          socialLoginRedirectPath: normalizedRedirect,
+          oauthRedirectPath: normalizedRedirect,
+          google: mergeProv('google'),
+          apple: mergeProv('apple'),
+          kakao: mergeProv('kakao'),
+          naver: mergeProv('naver'),
+        };
+      }
       next.updatedAt = nowIso();
       db.appSettings = next;
       return next;
     });
-    json(res, 200, { data: updated });
+    json(res, 200, { data: redactAppSettingsForAdminGet(updated) });
     return true;
   }
 

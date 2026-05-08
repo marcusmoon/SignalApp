@@ -13,7 +13,7 @@ import { loadNotificationHistory, type StoredNotification } from '@/services/not
 import { loadNotificationPrefs } from '@/services/notificationPreferences';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { hasSignalApi } from '@/services/env';
-import { loadAppAuthSession, type StoredAppAuthSession } from '@/services/appAuthSession';
+import { loadAppAuthSession, getSessionAccessToken, type StoredAppAuthSession } from '@/services/appAuthSession';
 import { fetchSignalInsights } from '@/integrations/signal-api/insights';
 import { fetchSignalNotifications } from '@/integrations/signal-api/notifications';
 import type { SignalApiInsight } from '@/integrations/signal-api/types';
@@ -37,14 +37,15 @@ export default function AlertsScreen() {
     const savedSession = await loadAppAuthSession();
     setAuthSession(savedSession);
     setAuthChecked(true);
-    if (!savedSession?.token) {
+    const access = getSessionAccessToken(savedSession);
+    if (!access) {
       setItems([]);
       setCandidates([]);
       return;
     }
     const [list, serverNotifications, prefs, watchlist] = await Promise.all([
       loadNotificationHistory(),
-      hasSignalApi() ? fetchSignalNotifications(savedSession.token, 50).catch(() => []) : Promise.resolve([]),
+      hasSignalApi() ? fetchSignalNotifications(access, 50).catch(() => []) : Promise.resolve([]),
       loadNotificationPrefs(),
       loadWatchlistSymbols().catch(() => [] as string[]),
     ]);
@@ -199,7 +200,7 @@ export default function AlertsScreen() {
     );
   }
 
-  if (authChecked && !authSession?.token) {
+  if (authChecked && !getSessionAccessToken(authSession)) {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         {isFocused ? <OtaUpdateBanner /> : null}

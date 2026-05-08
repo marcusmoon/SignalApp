@@ -12,7 +12,7 @@ import {
   type SignalUserTermAcceptance,
 } from '@/integrations/signal-api';
 import { hasSignalApi } from '@/services/env';
-import { loadAppAuthSession } from '@/services/appAuthSession';
+import { loadAppAuthSession, getSessionAccessToken } from '@/services/appAuthSession';
 
 export default function TermsHistoryScreen() {
   const router = useRouter();
@@ -29,11 +29,12 @@ export default function TermsHistoryScreen() {
     setError(null);
     try {
       const session = await loadAppAuthSession();
-      if (!session?.token || !hasSignalApi()) {
+      const access = getSessionAccessToken(session);
+      if (!access || !hasSignalApi()) {
         setRows([]);
         return;
       }
-      setRows(await fetchSignalMyTerms(session.token));
+      setRows(await fetchSignalMyTerms(access));
     } catch (e) {
       setError(formatSignalApiError(e, t, 'termsHistoryError'));
     } finally {

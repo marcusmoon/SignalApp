@@ -83,6 +83,11 @@ export const config = {
   slowRequestMs: Number(process.env.SIGNAL_SLOW_REQUEST_MS || 1200),
   verySlowRequestMs: Number(process.env.SIGNAL_VERY_SLOW_REQUEST_MS || 5000),
   jobLockTtlMs: Number(process.env.SIGNAL_JOB_LOCK_TTL_MS || 2 * 60 * 60 * 1000),
+  /** RS256 app user access tokens (issuer/audience must match verification). */
+  jwtIssuer: String(process.env.SIGNAL_JWT_ISSUER || 'signal-api').trim() || 'signal-api',
+  jwtAudience: String(process.env.SIGNAL_JWT_AUDIENCE || 'signal-app').trim() || 'signal-app',
+  jwtAccessTtlSeconds: Math.min(Math.max(Number(process.env.SIGNAL_JWT_ACCESS_TTL_SEC || 3600) || 3600, 60), 24 * 60 * 60),
+  jwtRefreshTtlDays: Math.min(Math.max(Number(process.env.SIGNAL_JWT_REFRESH_TTL_DAYS || 90) || 90, 1), 365),
   adminUsers: parseAdminUsersFromEnv(),
   sessionSecret: process.env.SESSION_SECRET || 'change-me-local-session-secret',
   finnhubToken: process.env.FINNHUB_TOKEN || '',

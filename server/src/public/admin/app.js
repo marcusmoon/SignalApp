@@ -127,20 +127,33 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         const btn = $('scrollTopBtn');
         if (!btn) return;
         let ticking = false;
+        const contentEl = () => document.querySelector('#adminPanel .content');
+        const scrollY = () => {
+          if (window.matchMedia('(min-width: 1024px)').matches) {
+            const c = contentEl();
+            if (c) return c.scrollTop;
+          }
+          return window.scrollY;
+        };
         const update = () => {
           ticking = false;
-          document.body.classList.toggle('showScrollTop', window.scrollY > 420);
+          document.body.classList.toggle('showScrollTop', scrollY() > 420);
         };
-        window.addEventListener(
-          'scroll',
-          () => {
-            if (ticking) return;
-            ticking = true;
-            window.requestAnimationFrame(update);
-          },
-          { passive: true },
-        );
-        btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+        const onScroll = () => {
+          if (ticking) return;
+          ticking = true;
+          window.requestAnimationFrame(update);
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        const c0 = contentEl();
+        if (c0) c0.addEventListener('scroll', onScroll, { passive: true });
+        btn.addEventListener('click', () => {
+          const c = contentEl();
+          if (window.matchMedia('(min-width: 1024px)').matches && c) {
+            c.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
         update();
       }
 
@@ -1590,6 +1603,57 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             state.appSettings = result.data || null;
             if ($('appSettingsStatus')) $('appSettingsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.appSettings?.updatedAt) });
             showToast(textFor('toastSaved'), textFor('appSettingsQuotesTitle'));
+            if (state.view === 'settings-keys') {
+              await loadProviderSettings();
+            }
+            return;
+          }
+          if (target.id === 'saveSocialAuthSettingsBtn') {
+            const kakaoBody = {
+              enabled: $('socialAuthKakaoEnabled')?.checked === true,
+              restApiKey: String($('socialAuthKakaoRest')?.value || '').trim(),
+            };
+            const kakaoSec = String($('socialAuthKakaoSecret')?.value || '').trim();
+            if (kakaoSec) kakaoBody.clientSecret = kakaoSec;
+            const naverBody = {
+              enabled: $('socialAuthNaverEnabled')?.checked === true,
+              clientId: String($('socialAuthNaverClient')?.value || '').trim(),
+            };
+            const naverSec = String($('socialAuthNaverSecret')?.value || '').trim();
+            if (naverSec) naverBody.clientSecret = naverSec;
+            const socialAuth = {
+              socialLoginRedirectPath: String($('socialLoginRedirectPath')?.value || '').trim().replace(/^\/+/, '') || 'oauth',
+              google: {
+                enabled: $('socialAuthGoogleEnabled')?.checked === true,
+                webClientId: String($('socialAuthGoogleWeb')?.value || '').trim(),
+                iosClientId: String($('socialAuthGoogleIos')?.value || '').trim(),
+                androidClientId: String($('socialAuthGoogleAndroid')?.value || '').trim(),
+              },
+              apple: {
+                enabled: $('socialAuthAppleEnabled')?.checked === true,
+                bundleId: String($('socialAuthAppleBundle')?.value || '').trim(),
+              },
+              kakao: kakaoBody,
+              naver: naverBody,
+            };
+            const result = await api('/admin/api/app-settings', {
+              method: 'PATCH',
+              body: JSON.stringify({ socialAuth }),
+            });
+            state.appSettings = result.data || null;
+            if ($('socialAuthKakaoSecret')) $('socialAuthKakaoSecret').value = '';
+            if ($('socialAuthNaverSecret')) $('socialAuthNaverSecret').value = '';
+            if ($('socialAuthSettingsStatus') && state.appSettings?.updatedAt) {
+              $('socialAuthSettingsStatus').textContent = textForVars('recentSavedAt', {
+                time: formatDateTime(state.appSettings.updatedAt),
+              });
+            }
+            if ($('appSettingsStatus') && state.appSettings?.updatedAt) {
+              $('appSettingsStatus').textContent = textForVars('recentSavedAt', {
+                time: formatDateTime(state.appSettings.updatedAt),
+              });
+            }
+            showToast(textFor('toastSaved'), textFor('socialAuthCardTitle'));
             if (state.view === 'settings-keys') {
               await loadProviderSettings();
             }

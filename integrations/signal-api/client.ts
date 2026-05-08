@@ -4,6 +4,129 @@ import type { MessageId } from '@/locales/messages';
 
 const DEFAULT_TIMEOUT_MS = 12_000;
 const MAX_ATTEMPTS = 2;
+/** 액세스 만료 이전에 미리 갱신(밀리초). 짧은 액세스 TTL 서버에서도 401 플래시 완화 */
+const PROACTIVE_REFRESH_LEEWAY_MS = 120_000;
+
+/** 공개·본문 인증 라우트: 401 시 access refresh 는 루프이거나 무의미. Bearer `social/link` 는 제외하여 만료된 액세스 토큰을 갱신할 수 있게 함 */
+function authPathSkipsRefresh(pathWithOptionalQuery: string): boolean {
+  const pathOnly = pathWithOptionalQuery.split('?')[0] || '';
+  return (
+    pathOnly === '/v1/auth/login' ||
+    pathOnly === '/v1/auth/register' ||
+    pathOnly === '/v1/auth/refresh' ||
+    pathOnly === '/v1/auth/social/login' ||
+    pathOnly === '/v1/auth/social/providers'
+  );
+}
+
+/** RS256 JWT `exp` 추출(검증 없음). 레거시 비‑JWT 세션은 null */
+function accessTokenExpiryMsFromJwt(accessToken: string): number | null {
+  const parts = accessToken.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+    const parsed = JSON.parse(atob(b64 + pad)) as { exp?: number };
+    if (typeof parsed.exp !== 'number') return null;
+    return parsed.exp * 1000;
+  } catch {
+    return null;
+  }
+}
+
+function shouldRefreshAccessSoon(accessToken: string, nowMs: number = Date.now()): boolean {
+  const expMs = accessTokenExpiryMsFromJwt(accessToken);
+  if (expMs == null) return false;
+  return expMs - PROACTIVE_REFRESH_LEEWAY_MS <= nowMs;
+}
+
+/** 비‑JWT: 저장된 ISO 만료 시각 기준 선제 갱신 */
+function shouldRefreshAccessSoonFromIso(iso: string, nowMs: number = Date.now()): boolean {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return false;
+  return t - PROACTIVE_REFRESH_LEEWAY_MS <= nowMs;
+}
+
+let refreshSingleFlight: Promise<string | null> | null = null;
+
+async function refreshAccessTokenImpl(): Promise<string | null> {
+  try {
+    const { loadAppAuthSession, saveAppAuthSession } = await import('@/services/appAuthSession');
+    const { getOrCreateAppDeviceId } = await import('@/services/appDeviceId');
+    const stored = await loadAppAuthSession();
+    if (!stored?.user?.id) return null;
+    const refreshToken = stored.refreshToken;
+    if (!refreshToken) return null;
+    const deviceId = stored.deviceId || (await getOrCreateAppDeviceId());
+    const base = getEffectiveSignalApiBaseUrl().replace(/\/+$/, '');
+    const res = await fetchWithTimeout(`${base}/v1/auth/refresh`, DEFAULT_TIMEOUT_MS, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ refreshToken, deviceId }),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      data?: {
+        user?: import('@/integrations/signal-api/auth').SignalAppUser;
+        accessToken?: string;
+        refreshToken?: string;
+        accessExpiresAt?: string;
+        refreshExpiresAt?: string;
+        deviceId?: string;
+        token?: string;
+        expiresAt?: string;
+      };
+    };
+    const data = json?.data;
+    const accessToken = data?.accessToken || data?.token;
+    if (!accessToken) return null;
+    await saveAppAuthSession({
+      user: data.user || stored.user,
+      accessToken,
+      refreshToken: data.refreshToken ?? stored.refreshToken,
+      accessExpiresAt: data.accessExpiresAt || data.expiresAt || '',
+      refreshExpiresAt: data.refreshExpiresAt || data.accessExpiresAt || data.expiresAt || '',
+      deviceId: data.deviceId || deviceId,
+    });
+    return accessToken;
+  } catch {
+    return null;
+  }
+}
+
+/** 저장된 세션 단일 진행 리프레시(동시 401 폭격 시 레이스 방지) */
+async function tryRefreshAccessToken(): Promise<string | null> {
+  if (!refreshSingleFlight) {
+    refreshSingleFlight = refreshAccessTokenImpl().finally(() => {
+      refreshSingleFlight = null;
+    });
+  }
+  return refreshSingleFlight;
+}
+
+/** JWT 만료가 임박했거나 지났을 때 저장소 기준으로 한 번 리프레시(요청당 부담·선제 완화) */
+async function maybeProactiveRefreshBearer(bearer: string | null): Promise<string | null> {
+  if (!bearer || !shouldRefreshAccessSoon(bearer)) return null;
+  return tryRefreshAccessToken();
+}
+
+/** 앱 기동·포그라운드: 저장된 JWT/만료 필드 보고 필요 시 리프레시(첫 화면 401 줄임) */
+export async function ensureStoredSessionFresh(): Promise<void> {
+  if (!hasSignalApi()) return;
+  try {
+    const { loadAppAuthSession, getSessionAccessToken } = await import('@/services/appAuthSession');
+    const stored = await loadAppAuthSession();
+    const access = getSessionAccessToken(stored);
+    if (!access || !stored?.refreshToken) return;
+    const jwtExpSoon = accessTokenExpiryMsFromJwt(access) !== null ? shouldRefreshAccessSoon(access) : false;
+    const isoSoon =
+      accessTokenExpiryMsFromJwt(access) === null &&
+      shouldRefreshAccessSoonFromIso(String(stored.accessExpiresAt || ''));
+    if (jwtExpSoon || isoSoon) await tryRefreshAccessToken();
+  } catch {
+    /* ignore */
+  }
+}
 
 export type SignalApiErrorKind = 'config' | 'timeout' | 'network' | 'server' | 'http' | 'parse';
 
@@ -85,31 +208,47 @@ export async function signalApiRequest<T>(
   const method = options.method || 'GET';
   const headers: Record<string, string> = {};
   if (options.body != null) headers['content-type'] = 'application/json';
-  if (options.token) headers.authorization = `Bearer ${options.token}`;
-  if (__DEV__) {
-    console.log(`[Signal API] ${method} ${suffix}`);
+  let bearer = options.token || null;
+  if (bearer) {
+    const replaced = await maybeProactiveRefreshBearer(bearer);
+    if (replaced) bearer = replaced;
   }
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-    const startedAt = Date.now();
     try {
+      const reqHeaders: Record<string, string> = { ...headers, accept: 'application/json' };
+      if (bearer) reqHeaders.authorization = `Bearer ${bearer}`;
       const res = await fetchWithTimeout(`${base}${suffix}`, DEFAULT_TIMEOUT_MS, {
         method,
-        headers,
+        headers: reqHeaders,
         body: options.body == null ? undefined : JSON.stringify(options.body),
       });
-      if (__DEV__) {
-        const elapsed = Date.now() - startedAt;
-        console.log(`[Signal API] ${res.status} ${suffix} ${elapsed}ms`);
-        if (elapsed > 1200) console.warn(`[Signal API] slow ${method} ${suffix} ${elapsed}ms`);
-      }
       if (!res.ok) {
-        if (__DEV__) {
-          const body = await res.text().catch(() => '');
-          console.log(`[Signal API] body ${body.slice(0, 200)}`);
+        if (
+          res.status === 401 &&
+          bearer &&
+          attempt === 1 &&
+          !authPathSkipsRefresh(suffix)
+        ) {
+          const next = await tryRefreshAccessToken();
+          if (next) {
+            bearer = next;
+            continue;
+          }
+        }
+        const bodyText = await res.text().catch(() => '');
+        if (__DEV__ && bodyText) {
+          console.warn(`[Signal API] ${res.status} ${method} ${suffix}`, bodyText.slice(0, 240));
+        }
+        let serverCode: string | undefined;
+        try {
+          const parsed = JSON.parse(bodyText) as { error?: string };
+          serverCode = typeof parsed?.error === 'string' ? parsed.error : undefined;
+        } catch {
+          /* ignore */
         }
         const kind: SignalApiErrorKind = res.status >= 500 ? 'server' : 'http';
-        throw new SignalApiError(kind, `SIGNAL_API_${res.status}`, res.status);
+        throw new SignalApiError(kind, serverCode || `SIGNAL_API_${res.status}`, res.status);
       }
       try {
         return (await res.json()) as T;

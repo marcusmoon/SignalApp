@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
+import type { MessageId } from '@/locales/messages';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
   fetchSignalMe,
@@ -19,20 +20,82 @@ import {
   registerSignalUser,
   setSignalMyPassword,
   updateSignalMe,
+  fetchSignalSocialProviders,
+  loginSignalSocial,
+  linkSignalSocial,
   type SignalLegalTerm,
   type SignalAppUser,
   type SignalUserIdentity,
+  type SignalSocialCatalog,
+  type SocialProviderKey,
 } from '@/integrations/signal-api';
+import { SignalApiError } from '@/integrations/signal-api/client';
+import {
+  obtainSocialCredential,
+  SocialAuthCancelledError,
+  SocialAuthFlowError,
+} from '@/integrations/signal-api/socialAuthFlow';
 import { hasSignalApi } from '@/services/env';
 import {
   clearAppAuthSession,
+  getSessionAccessToken,
   loadAppAuthSession,
   saveAppAuthSession,
   type StoredAppAuthSession,
 } from '@/services/appAuthSession';
 
 type Mode = 'login' | 'register';
-type SocialProvider = 'kakao' | 'naver' | 'google' | 'apple';
+
+function socialApiCodeMessage(code: string | undefined): MessageId | null {
+  switch (code) {
+    case 'APP_USER_SOCIAL_EMAIL_CONFLICT':
+      return 'accountSocialEmailConflict';
+    case 'APP_USER_SOCIAL_IDENTITY_TAKEN':
+      return 'accountSocialIdentityTaken';
+    case 'APP_USER_SOCIAL_NOT_CONFIGURED':
+    case 'APP_USER_JWT_NOT_CONFIGURED':
+      return 'accountSocialDisabled';
+    case 'APP_USER_SOCIAL_KAKAO_UPSTREAM':
+      return 'accountSocialKakaoUpstream';
+    case 'APP_USER_SOCIAL_INVALID_TOKEN':
+    case 'APP_USER_SOCIAL_INVALID_PROFILE':
+    case 'APP_USER_SOCIAL_UNSUPPORTED':
+      return 'accountSocialInvalid';
+    default:
+      return null;
+  }
+}
+
+function mapSocialFlowErrorMessage(flowCode: string, translate: (id: MessageId) => string): string {
+  switch (flowCode) {
+    case 'disabled':
+      return translate('accountSocialDisabled');
+    case 'not_configured':
+      return translate('accountSocialFlowNotConfigured');
+    case 'kakao_expo_go_unsupported':
+      return translate('accountSocialKakaoExpoGo');
+    case 'apple_ios_only':
+      return translate('accountSocialAppleIosOnly');
+    case 'apple_unavailable':
+      return translate('accountSocialAppleUnavailable');
+    default:
+      return translate('accountSocialInvalid');
+  }
+}
+
+function formatSocialAuthFailure(
+  e: unknown,
+  translate: (id: MessageId) => string,
+  apiFallbackId: MessageId,
+): string | null {
+  if (e instanceof SocialAuthCancelledError) return null;
+  if (e instanceof SocialAuthFlowError) return mapSocialFlowErrorMessage(e.message, translate);
+  if (e instanceof SignalApiError) {
+    const mid = socialApiCodeMessage(e.message);
+    return mid ? translate(mid) : formatSignalApiError(e, translate, apiFallbackId);
+  }
+  return formatSignalApiError(e, translate, apiFallbackId);
+}
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -51,6 +114,7 @@ export default function AccountScreen() {
   const [privacyTermsAccepted, setPrivacyTermsAccepted] = useState(false);
   const [legalTerms, setLegalTerms] = useState<SignalLegalTerm[]>([]);
   const [linkedIdentities, setLinkedIdentities] = useState<SignalUserIdentity[]>([]);
+  const [socialCatalog, setSocialCatalog] = useState<SignalSocialCatalog | null>(null);
   const [registerStep, setRegisterStep] = useState<'terms' | 'info'>('terms');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,11 +152,118 @@ export default function AccountScreen() {
     [locale, t],
   );
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!hasSignalApi()) {
+      setSocialCatalog(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+    fetchSignalSocialProviders()
+      .then((c) => {
+        if (!cancelled) setSocialCatalog(c);
+      })
+      .catch(() => {
+        if (!cancelled) setSocialCatalog(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const startSocialLogin = useCallback(
-    (_provider: SocialProvider) => {
-      setError(t('accountSocialComingSoon'));
+    async (provider: SocialProviderKey) => {
+      if (!hasSignalApi()) {
+        setError(t('errorSignalApiShort'));
+        return;
+      }
+      if (mode === 'register' && !allTermsAccepted) {
+        setError(t('accountTermsRequired'));
+        return;
+      }
+      if (mode === 'register' && registerStep !== 'info') {
+        setRegisterStep('info');
+        return;
+      }
+      let catalog = socialCatalog;
+      if (!catalog) {
+        try {
+          catalog = await fetchSignalSocialProviders();
+          setSocialCatalog(catalog);
+        } catch {
+          setError(t('accountSocialDisabled'));
+          return;
+        }
+      }
+      if (!catalog.providers[provider]?.enabled) {
+        setError(t('accountSocialDisabled'));
+        return;
+      }
+      setSaving(true);
+      setError(null);
+      try {
+        const cred = await obtainSocialCredential(provider, catalog);
+        const acceptedTerms =
+          mode === 'register'
+            ? [serviceTerm, privacyTerm]
+                .filter((term): term is SignalLegalTerm => !!term)
+                .map((term) => ({ type: term.type, locale: term.locale, version: term.version }))
+            : [];
+        const next = await loginSignalSocial({
+          provider,
+          ...cred,
+          locale,
+          acceptedTerms: mode === 'register' ? acceptedTerms : undefined,
+        });
+        await saveAppAuthSession(next);
+        setSession(next);
+      } catch (e) {
+        const msg = formatSocialAuthFailure(e, t, 'accountAuthError');
+        if (msg) setError(msg);
+      } finally {
+        setSaving(false);
+      }
     },
-    [t],
+    [allTermsAccepted, locale, mode, privacyTerm, registerStep, serviceTerm, socialCatalog, t],
+  );
+
+  const linkSocialAccount = useCallback(
+    async (provider: SocialProviderKey) => {
+      const access = getSessionAccessToken(session);
+      if (!access || !hasSignalApi()) return;
+      let catalog = socialCatalog;
+      if (!catalog) {
+        try {
+          catalog = await fetchSignalSocialProviders();
+          setSocialCatalog(catalog);
+        } catch {
+          setError(t('accountSocialDisabled'));
+          return;
+        }
+      }
+      if (!catalog.providers[provider]?.enabled) {
+        setError(t('accountSocialDisabled'));
+        return;
+      }
+      setSaving(true);
+      setError(null);
+      try {
+        const cred = await obtainSocialCredential(provider, catalog);
+        const { user: nextUser } = await linkSignalSocial(access, { provider, ...cred });
+        const rows = await fetchSignalMyIdentities(access);
+        setLinkedIdentities(rows);
+        const next = { ...session!, user: nextUser } as StoredAppAuthSession;
+        await saveAppAuthSession(next);
+        setSession(next);
+      } catch (e) {
+        const msg = formatSocialAuthFailure(e, t, 'accountAuthError');
+        if (msg) setError(msg);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [session, socialCatalog, t],
   );
 
   const switchMode = useCallback((next: Mode) => {
@@ -127,10 +298,11 @@ export default function AccountScreen() {
   const reload = useCallback(async () => {
     const saved = await loadAppAuthSession();
     setSession(saved);
-    if (!saved?.token || !hasSignalApi()) return;
+    const access = getSessionAccessToken(saved);
+    if (!access || !hasSignalApi()) return;
     try {
-      const fresh = await fetchSignalMe(saved.token);
-      const next = { ...saved, user: fresh };
+      const fresh = await fetchSignalMe(access);
+      const next = { ...saved!, user: fresh } as StoredAppAuthSession;
       await saveAppAuthSession(next);
       setSession(next);
     } catch {
@@ -171,14 +343,15 @@ export default function AccountScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    if (!session?.token || !hasSignalApi()) {
+    const access = getSessionAccessToken(session);
+    if (!access || !hasSignalApi()) {
       setLinkedIdentities([]);
       return () => {
         cancelled = true;
       };
     }
-    fetchSignalMyIdentities(session.token)
-      .then((rows) => {
+    fetchSignalMyIdentities(access)
+      .then((rows: SignalUserIdentity[]) => {
         if (!cancelled) setLinkedIdentities(rows);
       })
       .catch(() => {
@@ -187,7 +360,7 @@ export default function AccountScreen() {
     return () => {
       cancelled = true;
     };
-  }, [session?.token]);
+  }, [session]);
 
   const submitAuth = useCallback(async () => {
     if (!hasSignalApi()) {
@@ -229,12 +402,13 @@ export default function AccountScreen() {
   }, [allTermsAccepted, email, locale, mode, nickname, password, privacyTerm, profileImageUrl, registerStep, serviceTerm, t]);
 
   const saveProfile = useCallback(async () => {
-    if (!session?.token) return;
+    const access = getSessionAccessToken(session);
+    if (!access) return;
     setSaving(true);
     setError(null);
     try {
-      const nextUser = await updateSignalMe(session.token, { nickname, profileImageUrl });
-      const next = { ...session, user: nextUser };
+      const nextUser = await updateSignalMe(access, { nickname, profileImageUrl });
+      const next = { ...session!, user: nextUser } as StoredAppAuthSession;
       await saveAppAuthSession(next);
       setSession(next);
     } catch (e) {
@@ -245,20 +419,21 @@ export default function AccountScreen() {
   }, [nickname, profileImageUrl, session, t]);
 
   const logout = useCallback(async () => {
-    const token = session?.token;
+    const access = getSessionAccessToken(session);
     setSaving(true);
     try {
-      if (token) await logoutSignalUser(token).catch(() => {});
+      if (access) await logoutSignalUser(access).catch(() => {});
       await clearAppAuthSession();
       setSession(null);
       setPassword('');
     } finally {
       setSaving(false);
     }
-  }, [session?.token]);
+  }, [session]);
 
   const withdraw = useCallback(() => {
-    if (!session?.token) return;
+    const access = getSessionAccessToken(session);
+    if (!access) return;
     Alert.alert(t('accountWithdrawConfirmTitle'), t('accountWithdrawConfirmBody'), [
       { text: t('commonCancel'), style: 'cancel' },
       {
@@ -269,7 +444,7 @@ export default function AccountScreen() {
             setSaving(true);
             setError(null);
             try {
-              await deleteSignalMe(session.token);
+              await deleteSignalMe(access);
               await clearAppAuthSession();
               setSession(null);
               setPassword('');
@@ -282,15 +457,16 @@ export default function AccountScreen() {
         },
       },
     ]);
-  }, [session?.token, t]);
+  }, [session, t]);
 
   const disconnectIdentity = useCallback(
     async (identity: SignalUserIdentity) => {
-      if (!session?.token) return;
+      const access = getSessionAccessToken(session);
+      if (!access) return;
       setSaving(true);
       setError(null);
       try {
-        await disconnectSignalMyIdentity(session.token, identity.id);
+        await disconnectSignalMyIdentity(access, identity.id);
         setLinkedIdentities((items) => items.filter((item) => item.id !== identity.id));
       } catch (e) {
         setError(formatSignalApiError(e, t, 'accountIdentityDisconnectError'));
@@ -298,16 +474,17 @@ export default function AccountScreen() {
         setSaving(false);
       }
     },
-    [session?.token, t],
+    [session, t],
   );
 
   const savePassword = useCallback(async () => {
-    if (!session?.token) return;
+    const access = getSessionAccessToken(session);
+    if (!access) return;
     setSaving(true);
     setError(null);
     try {
-      const nextUser = await setSignalMyPassword(session.token, newPassword);
-      const next = { ...session, user: nextUser };
+      const nextUser = await setSignalMyPassword(access, newPassword);
+      const next = { ...session!, user: nextUser } as StoredAppAuthSession;
       await saveAppAuthSession(next);
       setSession(next);
       setNewPassword('');
@@ -456,7 +633,15 @@ export default function AccountScreen() {
                     <View key={identity.id} style={styles.identityRow}>
                       <View style={styles.activityIcon}>
                         <FontAwesome5
-                          name={identity.provider === 'apple' ? 'apple' : identity.provider === 'google' ? 'google' : 'link'}
+                          name={
+                            identity.provider === 'apple'
+                              ? 'apple'
+                              : identity.provider === 'google'
+                                ? 'google'
+                                : identity.provider === 'kakao'
+                                  ? 'comment'
+                                  : 'link'
+                          }
                           size={15}
                           color={theme.green}
                         />
@@ -474,6 +659,50 @@ export default function AccountScreen() {
                   ))}
                 </View>
               )}
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>{t('accountSocialLinkTitle')}</Text>
+              <Text style={styles.sectionLead}>{t('accountSocialLinkHint')}</Text>
+              <View style={styles.socialLinkStack}>
+                {(['kakao', 'naver', 'google', 'apple'] as const).some(
+                  (prov) =>
+                    socialCatalog?.providers[prov]?.enabled &&
+                    !linkedIdentities.some((i) => i.provider === prov) &&
+                    !(prov === 'apple' && Platform.OS !== 'ios'),
+                ) ? (
+                  (['kakao', 'naver', 'google', 'apple'] as const).map((prov) => {
+                    const cfg = socialCatalog?.providers[prov];
+                    const linked = linkedIdentities.some((i) => i.provider === prov);
+                    if (linked || !cfg?.enabled) return null;
+                    if (prov === 'apple' && Platform.OS !== 'ios') return null;
+                    const label =
+                      prov === 'kakao'
+                        ? t('accountSocialKakao')
+                        : prov === 'naver'
+                          ? t('accountSocialNaver')
+                          : prov === 'google'
+                            ? t('accountSocialGoogle')
+                            : t('accountSocialApple');
+                    return (
+                      <Pressable
+                        key={prov}
+                        disabled={saving}
+                        onPress={() => void linkSocialAccount(prov)}
+                        style={({ pressed }) => [styles.socialLinkRow, pressed && styles.activityRowPressed]}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${label} ${t('accountSocialLinkMore')}`}>
+                        <Text style={styles.socialLinkText}>
+                          {label} · {t('accountSocialLinkMore')}
+                        </Text>
+                        <FontAwesome5 name="chevron-right" size={12} color={theme.textDim} />
+                      </Pressable>
+                    );
+                  })
+                ) : socialCatalog ? (
+                  <Text style={styles.mutedText}>{t('accountSocialLinkNone')}</Text>
+                ) : null}
+              </View>
             </View>
 
             <View style={styles.card}>
@@ -523,7 +752,8 @@ export default function AccountScreen() {
               <Text style={styles.authCardTitle}>{t(isRegister ? 'accountModeRegister' : 'accountSocialTitle')}</Text>
               <View style={styles.socialStack}>
                 <Pressable
-                  onPress={() => startSocialLogin('kakao')}
+                  disabled={saving || (!!socialCatalog && socialCatalog.providers.kakao?.enabled !== true)}
+                  onPress={() => void startSocialLogin('kakao')}
                   accessibilityRole="button"
                   accessibilityLabel={t('accountSocialKakao')}
                   style={({ pressed }) => [styles.socialButton, styles.socialButtonKakao, pressed && styles.socialButtonPressed]}>
@@ -533,7 +763,8 @@ export default function AccountScreen() {
                   <Text style={[styles.socialLabel, styles.socialLabelDark]}>{t('accountSocialKakao')}</Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => startSocialLogin('naver')}
+                  disabled={saving || (!!socialCatalog && socialCatalog.providers.naver?.enabled !== true)}
+                  onPress={() => void startSocialLogin('naver')}
                   accessibilityRole="button"
                   accessibilityLabel={t('accountSocialNaver')}
                   style={({ pressed }) => [styles.socialButton, styles.socialButtonNaver, pressed && styles.socialButtonPressed]}>
@@ -543,7 +774,8 @@ export default function AccountScreen() {
                   <Text style={[styles.socialLabel, styles.socialLabelLight]}>{t('accountSocialNaver')}</Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => startSocialLogin('google')}
+                  disabled={saving || (!!socialCatalog && socialCatalog.providers.google?.enabled !== true)}
+                  onPress={() => void startSocialLogin('google')}
                   accessibilityRole="button"
                   accessibilityLabel={t('accountSocialGoogle')}
                   style={({ pressed }) => [styles.socialButton, styles.socialButtonGoogle, pressed && styles.socialButtonPressed]}>
@@ -553,7 +785,12 @@ export default function AccountScreen() {
                   <Text style={styles.socialLabel}>{t('accountSocialGoogle')}</Text>
                 </Pressable>
                 <Pressable
-                  onPress={() => startSocialLogin('apple')}
+                  disabled={
+                    saving ||
+                    Platform.OS !== 'ios' ||
+                    (!!socialCatalog && socialCatalog.providers.apple?.enabled !== true)
+                  }
+                  onPress={() => void startSocialLogin('apple')}
                   accessibilityRole="button"
                   accessibilityLabel={t('accountSocialApple')}
                   style={({ pressed }) => [styles.socialButton, styles.socialButtonApple, pressed && styles.socialButtonPressed]}>
@@ -881,6 +1118,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     activityDesc: { color: theme.textMuted, fontSize: sf(11), lineHeight: sf(16), marginTop: 2 },
     mutedText: { color: theme.textMuted, fontSize: sf(12), lineHeight: sf(18), fontWeight: '700' },
     identityStack: { gap: 8 },
+    socialLinkStack: { gap: 8, marginTop: 4 },
+    socialLinkRow: {
+      minHeight: 48,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      gap: 8,
+    },
+    socialLinkText: { flex: 1, color: theme.text, fontSize: sf(13), fontWeight: '800' },
     identityRow: {
       minHeight: 54,
       borderRadius: 12,

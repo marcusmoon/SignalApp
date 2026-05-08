@@ -10,5 +10,8 @@
     "dev": "node --disable-warning=ExperimentalWarning src/server.mjs",
     "start": "node --disable-warning=ExperimentalWarning src/server.mjs",
     "worker": "node --disable-warning=ExperimentalWarning src/worker.mjs"
+  },
+  "dependencies": {
+    "jose": "^5.10.0"
   }
 }

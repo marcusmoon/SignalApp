@@ -1211,22 +1211,106 @@ body.loginMode .scrollTopBtn {
   pointer-events: none;
 }
 
-/* Desktop grid + sticky sidebar only — unscoped rules were overriding mobile drawer + 1-col layout. */
+/* Desktop: single scrollport in .content — avoids sticky+100vh sidebar clipping the profile. */
 @media (min-width: 1024px) {
+  html {
+    height: 100%;
+  }
+
+  body:not(.loginMode) {
+    height: 100%;
+    max-height: 100vh;
+    max-height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body:not(.loginMode) main {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body:not(.loginMode) > header {
+    flex-shrink: 0;
+  }
+
+  body:not(.loginMode) #adminPanel.layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    grid-template-columns: 240px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  body:not(.loginMode) .layout > .side {
+    min-height: 0;
+    align-self: stretch;
+    position: relative;
+    top: auto;
+    height: 100%;
+    max-height: none;
+  }
+
+  body:not(.loginMode) .layout > .content {
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .layout {
     grid-template-columns: 240px minmax(0, 1fr);
-    min-height: calc(100vh - 60px);
+    min-height: 0;
   }
 
   .side {
-    position: sticky;
-    top: 60px;
-    height: calc(100vh - 60px);
     background: var(--color-bg-sidebar);
     border-right: 0;
     padding: 16px 12px;
     color: var(--color-gray-600);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow: hidden;
+    min-width: 0;
   }
+
+  .side .navGroup {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    padding-bottom: 8px;
+    scroll-padding-bottom: 8px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .side .floatingProfile {
+    flex-shrink: 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    margin-top: 0;
+    box-sizing: border-box;
+  }
+}
+
+/* Sidebar menu: scroll without showing a vertical scrollbar (wheel / drag / touch unchanged). */
+.side .navGroup {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.side .navGroup::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .sideTopTools {
@@ -1343,8 +1427,10 @@ body.sideCollapsed .navBtn.active::after {
 
 .floatingProfile {
   margin-top: auto;
+  flex-shrink: 0;
   border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.05);
+  /* Opaque: transparent fill was letting scrolling nav pixels show through the card. */
+  background: var(--color-bg-sidebar);
   color: #ffffff;
   border-radius: var(--radius-lg);
 }
@@ -2700,9 +2786,7 @@ tbody tr:hover td {
     z-index: 70;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
     background: var(--color-bg-sidebar);
     border-right: 1px solid var(--color-gray-200);
     box-shadow: var(--shadow-md);

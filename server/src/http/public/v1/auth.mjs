@@ -1,9 +1,13 @@
 import {
   createAppUser,
   disconnectAppUserIdentity,
-  loginAppUser,
+  linkAppUserSocialIdentity,
   listAppUserIdentities,
   listAppUserTermAcceptances,
+  loginAppUser,
+  loginOrRegisterSocialUser,
+  readAppSettings,
+  refreshAppUserSession,
   revokeAppUserToken,
   setAppUserPassword,
   updateAppUserProfile,
@@ -11,6 +15,8 @@ import {
   verifyAppUserToken,
   withdrawAppUser,
 } from '../../../db.mjs';
+import { buildSocialAuthRuntime, publicSocialAuthCatalog } from '../../../auth/socialAuthConfig.mjs';
+import { resolveSocialProfile } from '../../../auth/socialProfile.mjs';
 import { json, readBody } from '../../shared.mjs';
 
 function bearerToken(req) {
@@ -34,27 +40,102 @@ async function requireAppUser(req, res) {
 }
 
 function authPayload(result) {
+  const s = result.session;
   return {
     user: result.user,
-    token: result.session.token,
-    expiresAt: result.session.expiresAt,
+    accessToken: s.accessToken,
+    refreshToken: s.refreshToken,
+    accessExpiresAt: s.accessExpiresAt,
+    refreshExpiresAt: s.refreshExpiresAt,
+    deviceId: s.deviceId,
+    token: s.accessToken,
+    expiresAt: s.accessExpiresAt,
   };
 }
 
 function authError(res, error) {
   const message = error instanceof Error ? error.message : String(error);
   const status =
-    message === 'APP_USER_LOGIN_FAILED'
+    message === 'APP_USER_LOGIN_FAILED' || message === 'APP_USER_REFRESH_INVALID'
       ? 401
       : message === 'APP_USER_EMAIL_EXISTS'
         ? 409
-        : message.startsWith('APP_USER_')
-          ? 400
-          : 500;
+        : message === 'APP_USER_JWT_NOT_CONFIGURED'
+          ? 503
+          : message.startsWith('APP_USER_')
+            ? 400
+            : 500;
+  json(res, status, { error: message });
+}
+
+function socialAuthError(res, error) {
+  const message = error instanceof Error ? error.message : String(error);
+  const status =
+    message === 'APP_USER_SOCIAL_INVALID_TOKEN' ||
+    message === 'APP_USER_SOCIAL_KAKAO_UPSTREAM' ||
+    message === 'APP_USER_SOCIAL_EMAIL_CONFLICT' ||
+    message === 'APP_USER_SOCIAL_UNSUPPORTED' ||
+    message === 'APP_USER_SOCIAL_INVALID_PROFILE'
+      ? 400
+      : message === 'APP_USER_SOCIAL_IDENTITY_TAKEN' || message === 'APP_USER_EMAIL_EXISTS'
+        ? 409
+        : message === 'APP_USER_SOCIAL_NOT_CONFIGURED' || message === 'APP_USER_JWT_NOT_CONFIGURED'
+          ? 503
+          : message.startsWith('APP_USER_')
+            ? 400
+            : 500;
   json(res, status, { error: message });
 }
 
 export async function handlePublicAuthRoutes({ req, res, pathname }) {
+  if (req.method === 'GET' && pathname === '/v1/auth/social/providers') {
+    try {
+      const appSettings = await readAppSettings();
+      json(res, 200, { data: publicSocialAuthCatalog(appSettings) });
+    } catch (error) {
+      json(res, 500, { error: 'INTERNAL_SERVER_ERROR' });
+    }
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/v1/auth/social/login') {
+    try {
+      const body = await readBody(req);
+      const appSettings = await readAppSettings();
+      const runtime = buildSocialAuthRuntime(appSettings);
+      const provider = String(body.provider || '').toLowerCase();
+      const profile = await resolveSocialProfile(provider, body, runtime);
+      const result = await loginOrRegisterSocialUser({
+        provider,
+        profile,
+        deviceId: body.deviceId,
+        locale: body.locale,
+        acceptedTerms: Array.isArray(body.acceptedTerms) ? body.acceptedTerms : [],
+      });
+      json(res, 200, { data: authPayload(result) });
+    } catch (error) {
+      socialAuthError(res, error);
+    }
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/v1/auth/social/link') {
+    const session = await requireAppUser(req, res);
+    if (!session) return true;
+    try {
+      const body = await readBody(req);
+      const appSettings = await readAppSettings();
+      const runtime = buildSocialAuthRuntime(appSettings);
+      const provider = String(body.provider || '').toLowerCase();
+      const profile = await resolveSocialProfile(provider, body, runtime);
+      const result = await linkAppUserSocialIdentity(session.user.id, provider, profile);
+      json(res, 200, { data: result });
+    } catch (error) {
+      socialAuthError(res, error);
+    }
+    return true;
+  }
+
   if (req.method === 'POST' && pathname === '/v1/auth/register') {
     try {
       const body = await readBody(req);
@@ -70,6 +151,17 @@ export async function handlePublicAuthRoutes({ req, res, pathname }) {
     try {
       const body = await readBody(req);
       const result = await loginAppUser(body);
+      json(res, 200, { data: authPayload(result) });
+    } catch (error) {
+      authError(res, error);
+    }
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/v1/auth/refresh') {
+    try {
+      const body = await readBody(req);
+      const result = await refreshAppUserSession(body);
       json(res, 200, { data: authPayload(result) });
     } catch (error) {
       authError(res, error);

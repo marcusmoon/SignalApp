@@ -1,5 +1,12 @@
 import crypto from 'node:crypto';
 import {
+  isAppUserJwtConfigured,
+  isLikelyJwt,
+  signAppUserAccessToken,
+  verifyAppUserAccessToken,
+} from '../auth/jwtAccess.mjs';
+import { config } from '../config.mjs';
+import {
   insertAppUserTermAcceptancesInDb,
   validateRequiredTermsAcceptedInDb,
 } from './legalTerms.mjs';
@@ -13,6 +20,16 @@ function normalizeEmail(value) {
 
 function cleanText(value) {
   return String(value || '').trim();
+}
+
+const SOCIAL_PROVIDERS = new Set(['google', 'apple', 'kakao', 'naver']);
+
+function deriveSocialEmail(provider, email, sub) {
+  const normalized = normalizeEmail(email);
+  if (normalized && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return normalized;
+  const safeSub = cleanText(sub).replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 96);
+  const p = String(provider || '').toLowerCase();
+  return `${p}-${safeSub}@users.signal.local`;
 }
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
@@ -90,7 +107,68 @@ function createSessionInDb(db, userId) {
   return { token, expiresAt };
 }
 
-export function createAppUserInDb(db, { email, password, nickname, profileImageUrl = '', locale = 'ko', acceptedTerms = [] }) {
+function validateDeviceId(deviceId) {
+  const d = cleanText(deviceId);
+  if (d.length < 8 || d.length > 200) return null;
+  return d;
+}
+
+/**
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {string} userId
+ * @param {string} deviceId
+ */
+async function createJwtRefreshSessionInDb(db, userId, deviceId) {
+  const device = validateDeviceId(deviceId);
+  if (!device) throw new Error('APP_USER_DEVICE_ID_REQUIRED');
+  const now = nowIso();
+  db.prepare(
+    `UPDATE app_user_refresh_sessions SET revoked_at = ? WHERE user_id = ? AND device_id = ? AND revoked_at IS NULL`,
+  ).run(now, userId, device);
+  const sid = crypto.randomUUID();
+  const refreshRaw = crypto.randomBytes(32).toString('base64url');
+  const refreshHash = tokenHash(refreshRaw);
+  const refreshExpiresAt = new Date(Date.now() + config.jwtRefreshTtlDays * 86400000).toISOString();
+  db.prepare(
+    `
+      INSERT INTO app_user_refresh_sessions (id, user_id, device_id, refresh_hash, created_at, expires_at, revoked_at)
+      VALUES (?, ?, ?, ?, ?, ?, NULL)
+    `,
+  ).run(sid, userId, device, refreshHash, now, refreshExpiresAt);
+  const accessToken = await signAppUserAccessToken(userId, sid);
+  const accessExpiresAt = new Date(Date.now() + config.jwtAccessTtlSeconds * 1000).toISOString();
+  return {
+    accessToken,
+    refreshToken: refreshRaw,
+    accessExpiresAt,
+    refreshExpiresAt,
+    deviceId: device,
+  };
+}
+
+/**
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {string} userId
+ * @param {string} deviceId
+ */
+async function resolveSessionForUser(db, userId, deviceId) {
+  if (isAppUserJwtConfigured()) {
+    return createJwtRefreshSessionInDb(db, userId, deviceId);
+  }
+  const legacy = createSessionInDb(db, userId);
+  return {
+    accessToken: legacy.token,
+    refreshToken: '',
+    accessExpiresAt: legacy.expiresAt,
+    refreshExpiresAt: legacy.expiresAt,
+    deviceId: validateDeviceId(deviceId) || '',
+  };
+}
+
+export async function createAppUserInDb(
+  db,
+  { email, password, nickname, profileImageUrl = '', locale = 'ko', acceptedTerms = [], deviceId = '' },
+) {
   const normalizedEmail = normalizeEmail(email);
   const userPassword = String(password || '');
   const cleanNickname = cleanText(nickname);
@@ -114,14 +192,16 @@ export function createAppUserInDb(db, { email, password, nickname, profileImageU
   ).run(id, normalizedEmail, cleanNickname, cleanText(profileImageUrl), hash, salt, now, now);
   insertAppUserTermAcceptancesInDb(db, id, requiredTerms);
   const row = db.prepare('SELECT * FROM app_users WHERE id = ?').get(id);
-  return { user: publicUser(row), session: createSessionInDb(db, id) };
+  const session = await resolveSessionForUser(db, id, deviceId);
+  return { user: publicUser(row), session };
 }
 
-export function loginAppUserInDb(db, { email, password }) {
+export async function loginAppUserInDb(db, { email, password, deviceId = '' }) {
   const normalizedEmail = normalizeEmail(email);
   const row = db.prepare('SELECT * FROM app_users WHERE email = ?').get(normalizedEmail);
   if (!row || Number(row.active) !== 1 || !verifyPassword(password, row)) throw new Error('APP_USER_LOGIN_FAILED');
-  return { user: publicUser(row), session: createSessionInDb(db, row.id) };
+  const session = await resolveSessionForUser(db, row.id, deviceId);
+  return { user: publicUser(row), session };
 }
 
 export function listAppUserIdentitiesInDb(db, userId) {
@@ -176,8 +256,202 @@ export function disconnectAppUserIdentityInDb(db, userId, identityId) {
   return publicIdentity(db.prepare('SELECT * FROM app_user_identities WHERE id = ?').get(identity.id));
 }
 
-export function verifyAppUserTokenInDb(db, token) {
-  const hash = tokenHash(token);
+function nicknameFromSocialProfile(profile, derivedEmail) {
+  let n = cleanText(profile.displayName);
+  if (n.length >= 2) return n.slice(0, 60);
+  const at = derivedEmail.indexOf('@');
+  const local = at > 0 ? derivedEmail.slice(0, at) : 'user';
+  const base = local.replace(/[^a-zA-Z0-9._-가-힣]/g, '_').slice(0, 24) || 'user';
+  return `User_${base}`.slice(0, 60);
+}
+
+export async function loginOrRegisterSocialUserInDb(
+  db,
+  { provider, profile, deviceId = '', locale = 'ko', acceptedTerms = [] },
+) {
+  const p = String(provider || '').toLowerCase();
+  if (!SOCIAL_PROVIDERS.has(p)) throw new Error('APP_USER_SOCIAL_UNSUPPORTED');
+  const sub = cleanText(profile.providerUserId);
+  if (!sub) throw new Error('APP_USER_SOCIAL_INVALID_PROFILE');
+
+  const existingIdentity = db
+    .prepare('SELECT * FROM app_user_identities WHERE provider = ? AND provider_user_id = ?')
+    .get(p, sub);
+
+  const now = nowIso();
+  const payloadJson = JSON.stringify(
+    profile.payload && typeof profile.payload === 'object' ? profile.payload : {},
+  );
+
+  if (existingIdentity) {
+    const userRow = db.prepare('SELECT * FROM app_users WHERE id = ? AND active = 1').get(existingIdentity.user_id);
+    if (!userRow) throw new Error('APP_USER_NOT_FOUND');
+    if (existingIdentity.disconnected_at) {
+      db.prepare(
+        `
+        UPDATE app_user_identities
+        SET disconnected_at = NULL, linked_at = ?, updated_at = ?, email = ?, display_name = ?, profile_image_url = ?, payload = ?
+        WHERE id = ?
+      `,
+      ).run(
+        now,
+        now,
+        profile.email || null,
+        profile.displayName || null,
+        profile.profileImageUrl || null,
+        payloadJson,
+        existingIdentity.id,
+      );
+    } else {
+      db.prepare(
+        `
+        UPDATE app_user_identities
+        SET updated_at = ?, email = ?, display_name = ?, profile_image_url = ?, payload = ?
+        WHERE id = ?
+      `,
+      ).run(
+        now,
+        profile.email || null,
+        profile.displayName || null,
+        profile.profileImageUrl || null,
+        payloadJson,
+        existingIdentity.id,
+      );
+    }
+    const session = await resolveSessionForUser(db, userRow.id, deviceId);
+    return { user: publicUser(userRow), session };
+  }
+
+  if (!isAppUserJwtConfigured()) throw new Error('APP_USER_JWT_NOT_CONFIGURED');
+
+  const derivedEmail = deriveSocialEmail(p, profile.email, sub);
+  const emailRow = db.prepare('SELECT id FROM app_users WHERE email = ?').get(derivedEmail);
+  if (emailRow) throw new Error('APP_USER_SOCIAL_EMAIL_CONFLICT');
+
+  const requiredTerms = validateRequiredTermsAcceptedInDb(db, acceptedTerms, locale);
+  const nickname = nicknameFromSocialProfile(profile, derivedEmail);
+  const id = crypto.randomUUID();
+  db.prepare(
+    `
+      INSERT INTO app_users (
+        id, email, nickname, profile_image_url, password_hash, password_salt,
+        auth_provider, active, created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, NULL, NULL, ?, 1, ?, ?)
+    `,
+  ).run(id, derivedEmail, nickname, cleanText(profile.profileImageUrl), p, now, now);
+  insertAppUserTermAcceptancesInDb(db, id, requiredTerms);
+
+  const identityId = crypto.randomUUID();
+  db.prepare(
+    `
+      INSERT INTO app_user_identities (
+        id, user_id, provider, provider_user_id, email, display_name, profile_image_url,
+        linked_at, disconnected_at, payload, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)
+    `,
+  ).run(
+    identityId,
+    id,
+    p,
+    sub,
+    profile.email || null,
+    profile.displayName || null,
+    profile.profileImageUrl || null,
+    now,
+    payloadJson,
+    now,
+    now,
+  );
+
+  const row = db.prepare('SELECT * FROM app_users WHERE id = ?').get(id);
+  const session = await resolveSessionForUser(db, id, deviceId);
+  return { user: publicUser(row), session };
+}
+
+export function linkAppUserSocialIdentityInDb(db, userId, provider, profile) {
+  const user = db.prepare('SELECT * FROM app_users WHERE id = ? AND active = 1').get(cleanText(userId));
+  if (!user) throw new Error('APP_USER_NOT_FOUND');
+  const p = String(provider || '').toLowerCase();
+  if (!SOCIAL_PROVIDERS.has(p)) throw new Error('APP_USER_SOCIAL_UNSUPPORTED');
+  const sub = cleanText(profile.providerUserId);
+  if (!sub) throw new Error('APP_USER_SOCIAL_INVALID_PROFILE');
+
+  const row = db.prepare('SELECT * FROM app_user_identities WHERE provider = ? AND provider_user_id = ?').get(p, sub);
+  const now = nowIso();
+  const payloadJson = JSON.stringify(
+    profile.payload && typeof profile.payload === 'object' ? profile.payload : {},
+  );
+
+  if (row) {
+    if (row.user_id !== user.id) throw new Error('APP_USER_SOCIAL_IDENTITY_TAKEN');
+    db.prepare(
+      `
+      UPDATE app_user_identities
+      SET disconnected_at = NULL, linked_at = ?, updated_at = ?, email = ?, display_name = ?, profile_image_url = ?, payload = ?
+      WHERE id = ?
+    `,
+    ).run(
+      now,
+      now,
+      profile.email || null,
+      profile.displayName || null,
+      profile.profileImageUrl || null,
+      payloadJson,
+      row.id,
+    );
+    const identity = publicIdentity(db.prepare('SELECT * FROM app_user_identities WHERE id = ?').get(row.id));
+    const userRow = db.prepare('SELECT * FROM app_users WHERE id = ?').get(user.id);
+    return { identity, user: publicUser(userRow) };
+  }
+
+  const id = crypto.randomUUID();
+  db.prepare(
+    `
+      INSERT INTO app_user_identities (
+        id, user_id, provider, provider_user_id, email, display_name, profile_image_url,
+        linked_at, disconnected_at, payload, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)
+    `,
+  ).run(
+    id,
+    user.id,
+    p,
+    sub,
+    profile.email || null,
+    profile.displayName || null,
+    profile.profileImageUrl || null,
+    now,
+    payloadJson,
+    now,
+    now,
+  );
+  const identity = publicIdentity(db.prepare('SELECT * FROM app_user_identities WHERE id = ?').get(id));
+  const userRow = db.prepare('SELECT * FROM app_users WHERE id = ?').get(user.id);
+  return { identity, user: publicUser(userRow) };
+}
+
+export async function verifyAppUserTokenInDb(db, token) {
+  const raw = String(token || '').trim();
+  if (!raw) return null;
+  if (isLikelyJwt(raw)) {
+    const claims = await verifyAppUserAccessToken(raw);
+    if (!claims) return null;
+    const now = nowIso();
+    const sess = db
+      .prepare(
+        `
+          SELECT user_id
+          FROM app_user_refresh_sessions
+          WHERE id = ? AND user_id = ? AND revoked_at IS NULL AND expires_at > ?
+        `,
+      )
+      .get(claims.sid, claims.sub, now);
+    if (!sess) return null;
+    const row = db.prepare('SELECT * FROM app_users WHERE id = ? AND active = 1').get(claims.sub);
+    return publicUser(row);
+  }
+  const hash = tokenHash(raw);
   const session = db
     .prepare(
       `
@@ -194,11 +468,60 @@ export function verifyAppUserTokenInDb(db, token) {
   return publicUser(row);
 }
 
-export function revokeAppUserTokenInDb(db, token) {
-  const hash = tokenHash(token);
+export async function revokeAppUserTokenInDb(db, token) {
+  const raw = String(token || '').trim();
   const now = nowIso();
-  db.prepare('UPDATE app_user_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL').run(now, hash);
+  if (isLikelyJwt(raw)) {
+    const claims = await verifyAppUserAccessToken(raw);
+    if (claims) {
+      db.prepare(
+        `UPDATE app_user_refresh_sessions SET revoked_at = ? WHERE id = ? AND user_id = ? AND revoked_at IS NULL`,
+      ).run(now, claims.sid, claims.sub);
+    }
+    return { revokedAt: now };
+  }
+  db.prepare('UPDATE app_user_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at IS NULL').run(now, tokenHash(raw));
   return { revokedAt: now };
+}
+
+export async function refreshAppUserSessionInDb(db, { refreshToken, deviceId }) {
+  if (!isAppUserJwtConfigured()) throw new Error('APP_USER_JWT_NOT_CONFIGURED');
+  const device = validateDeviceId(deviceId);
+  if (!device) throw new Error('APP_USER_DEVICE_ID_REQUIRED');
+  const raw = String(refreshToken || '').trim();
+  if (!raw) throw new Error('APP_USER_REFRESH_REQUIRED');
+  const hash = tokenHash(raw);
+  const now = nowIso();
+  const row = db
+    .prepare(
+      `
+        SELECT *
+        FROM app_user_refresh_sessions
+        WHERE refresh_hash = ? AND device_id = ? AND revoked_at IS NULL AND expires_at > ?
+      `,
+    )
+    .get(hash, device, now);
+  if (!row) throw new Error('APP_USER_REFRESH_INVALID');
+  const userRow = db.prepare('SELECT * FROM app_users WHERE id = ? AND active = 1').get(row.user_id);
+  if (!userRow) throw new Error('APP_USER_REFRESH_INVALID');
+  const newRefresh = crypto.randomBytes(32).toString('base64url');
+  const newHash = tokenHash(newRefresh);
+  const refreshExpiresAt = new Date(Date.now() + config.jwtRefreshTtlDays * 86400000).toISOString();
+  db.prepare(
+    `UPDATE app_user_refresh_sessions SET refresh_hash = ?, expires_at = ? WHERE id = ? AND revoked_at IS NULL`,
+  ).run(newHash, refreshExpiresAt, row.id);
+  const accessToken = await signAppUserAccessToken(row.user_id, row.id);
+  const accessExpiresAt = new Date(Date.now() + config.jwtAccessTtlSeconds * 1000).toISOString();
+  return {
+    user: publicUser(userRow),
+    session: {
+      accessToken,
+      refreshToken: newRefresh,
+      accessExpiresAt,
+      refreshExpiresAt,
+      deviceId: device,
+    },
+  };
 }
 
 export function updateAppUserProfileInDb(db, userId, patch = {}) {
@@ -231,6 +554,7 @@ export function withdrawAppUserInDb(db, userId) {
   const now = nowIso();
   db.prepare('UPDATE app_users SET active = 0, updated_at = ? WHERE id = ?').run(now, id);
   db.prepare('UPDATE app_user_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL').run(now, id);
+  db.prepare('UPDATE app_user_refresh_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL').run(now, id);
   db.prepare('UPDATE app_user_devices SET active = 0, updated_at = ? WHERE user_id = ?').run(now, id);
   return { withdrawnAt: now };
 }
@@ -258,11 +582,20 @@ export function listAppUsersInDb(db, { q = '', active = '', limit = 50, offset =
         SELECT
           u.*,
           (
-            SELECT COUNT(*)
-            FROM app_user_sessions s
-            WHERE s.user_id = u.id
-              AND s.revoked_at IS NULL
-              AND s.expires_at > @now
+            (
+              SELECT COUNT(*)
+              FROM app_user_sessions s
+              WHERE s.user_id = u.id
+                AND s.revoked_at IS NULL
+                AND s.expires_at > @now
+            )
+            + (
+              SELECT COUNT(*)
+              FROM app_user_refresh_sessions r
+              WHERE r.user_id = u.id
+                AND r.revoked_at IS NULL
+                AND r.expires_at > @now
+            )
           ) AS active_session_count,
           (
             SELECT COUNT(*)
@@ -270,9 +603,12 @@ export function listAppUsersInDb(db, { q = '', active = '', limit = 50, offset =
             WHERE d.user_id = u.id AND d.active = 1
           ) AS device_count,
           (
-            SELECT MAX(s.created_at)
-            FROM app_user_sessions s
-            WHERE s.user_id = u.id
+            SELECT MAX(created_ts)
+            FROM (
+              SELECT s.created_at AS created_ts FROM app_user_sessions s WHERE s.user_id = u.id
+              UNION ALL
+              SELECT r.created_at AS created_ts FROM app_user_refresh_sessions r WHERE r.user_id = u.id
+            )
           ) AS latest_session_at,
           (
             SELECT MAX(d.updated_at)
@@ -405,11 +741,20 @@ export function getAppUserInDb(db, userId) {
         SELECT
           u.*,
           (
-            SELECT COUNT(*)
-            FROM app_user_sessions s
-            WHERE s.user_id = u.id
-              AND s.revoked_at IS NULL
-              AND s.expires_at > @now
+            (
+              SELECT COUNT(*)
+              FROM app_user_sessions s
+              WHERE s.user_id = u.id
+                AND s.revoked_at IS NULL
+                AND s.expires_at > @now
+            )
+            + (
+              SELECT COUNT(*)
+              FROM app_user_refresh_sessions r
+              WHERE r.user_id = u.id
+                AND r.revoked_at IS NULL
+                AND r.expires_at > @now
+            )
           ) AS active_session_count,
           (
             SELECT COUNT(*)
@@ -417,9 +762,12 @@ export function getAppUserInDb(db, userId) {
             WHERE d.user_id = u.id AND d.active = 1
           ) AS device_count,
           (
-            SELECT MAX(s.created_at)
-            FROM app_user_sessions s
-            WHERE s.user_id = u.id
+            SELECT MAX(created_ts)
+            FROM (
+              SELECT s.created_at AS created_ts FROM app_user_sessions s WHERE s.user_id = u.id
+              UNION ALL
+              SELECT r.created_at AS created_ts FROM app_user_refresh_sessions r WHERE r.user_id = u.id
+            )
           ) AS latest_session_at,
           (
             SELECT MAX(d.updated_at)

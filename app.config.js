@@ -34,9 +34,29 @@ module.exports = () => {
   const previewOtaBanner =
     fromFile !== undefined ? fromFile : process.env.EXPO_PUBLIC_PREVIEW_OTA_BANNER;
 
+  // 네이티브 앱 번들에 카카오 SDK 를 심으려면 prebuild 시점에만 키가 필요합니다(NOT EXPO_PUBLIC — JS 번들에 안 들어감).
+  // Kakao 개발자 콘솔의 네이티브 앱 키와 동일 값을 EAS Secret `KAKAO_NATIVE_APP_KEY` 또는 로컬 `export` 로만 주입합니다.
+  const kakaoNativeKey =
+    typeof process.env.KAKAO_NATIVE_APP_KEY === 'string' ? process.env.KAKAO_NATIVE_APP_KEY.trim() : '';
+
+  const basePlugins = Array.isArray(appJson.expo.plugins) ? [...appJson.expo.plugins] : [];
+  const plugins = [...basePlugins];
+  if (kakaoNativeKey) {
+    plugins.push([
+      'expo-build-properties',
+      {
+        android: {
+          extraMavenRepos: ['https://devrepo.kakao.com/nexus/content/groups/public/'],
+        },
+      },
+    ]);
+    plugins.push(['@react-native-seoul/kakao-login', { kakaoAppKey: kakaoNativeKey }]);
+  }
+
   return {
     expo: {
       ...appJson.expo,
+      plugins,
       extra: {
         ...(appJson.expo.extra ?? {}),
         previewOtaBanner,

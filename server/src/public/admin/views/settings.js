@@ -425,6 +425,11 @@ export async function loadProviderSettingsView(ctx) {
   const data = rows.filter((r) => !(r.provider === 'openai' || r.provider === 'claude'));
   const quotesMaxAge = Number(state.appSettings?.marketQuotesMaxAgeSec);
   const quotesMaxAgeValue = Number.isFinite(quotesMaxAge) ? String(quotesMaxAge) : '10';
+  const sa = state.appSettings?.socialAuth && typeof state.appSettings.socialAuth === 'object' ? state.appSettings.socialAuth : {};
+  const g = sa.google || {};
+  const a = sa.apple || {};
+  const k = sa.kakao || {};
+  const n = sa.naver || {};
   const renderRow = (s, { showModel }) => {
     const models = showModel
       ? modelPresetsForProvider({ provider: s.provider, defaultModel: s.defaultModel, uiModelPresets: state.uiModelPresets })
@@ -495,6 +500,53 @@ export async function loadProviderSettingsView(ctx) {
           </label>
         </div>
       </div>
+
+      <div class="card settingsControlCard">
+        <div class="cardHead">
+          <div class="cardHeadMain">
+            <div class="cardKicker">${esc(textFor('socialAuthCardTitle'))}</div>
+            <div class="cardHint">${esc(textFor('socialAuthCardHint'))}</div>
+          </div>
+          <span class="muted" id="socialAuthSettingsStatus"></span>
+        </div>
+        <div class="settingsSectionBody">
+          <p class="muted" style="margin-bottom:10px">${esc(textFor('socialAuthSecretsNote'))}</p>
+          <label class="fieldLabel">${esc(textFor('socialAuthRedirectPath'))}
+            <input id="socialLoginRedirectPath" type="text" value="${esc(String(sa.socialLoginRedirectPath || sa.oauthRedirectPath || 'oauth'))}" />
+          </label>
+          <div style="display:grid;gap:12px;margin-top:12px">
+            <div style="border:1px solid var(--border);border-radius:12px;padding:10px">
+              <strong>${esc(textFor('socialAuthGoogle'))}</strong>
+              <label class="switchRow" style="margin-top:8px"><input type="checkbox" id="socialAuthGoogleEnabled" ${g.enabled === true ? 'checked' : ''} /><span>${esc(textFor('socialAuthEnabled'))}</span></label>
+              <label class="fieldLabel" style="margin-top:8px">webClientId<input id="socialAuthGoogleWeb" type="text" value="${esc(String(g.webClientId || ''))}" /></label>
+              <label class="fieldLabel">iosClientId<input id="socialAuthGoogleIos" type="text" value="${esc(String(g.iosClientId || ''))}" /></label>
+              <label class="fieldLabel">androidClientId<input id="socialAuthGoogleAndroid" type="text" value="${esc(String(g.androidClientId || ''))}" /></label>
+            </div>
+            <div style="border:1px solid var(--border);border-radius:12px;padding:10px">
+              <strong>${esc(textFor('socialAuthApple'))}</strong>
+              <label class="switchRow" style="margin-top:8px"><input type="checkbox" id="socialAuthAppleEnabled" ${a.enabled === true ? 'checked' : ''} /><span>${esc(textFor('socialAuthEnabled'))}</span></label>
+              <label class="fieldLabel" style="margin-top:8px">${esc(textFor('socialAuthAppleBundleId'))}<input id="socialAuthAppleBundle" type="text" value="${esc(String(a.bundleId || a.clientId || ''))}" /></label>
+            </div>
+            <div style="border:1px solid var(--border);border-radius:12px;padding:10px">
+              <strong>${esc(textFor('socialAuthKakao'))}</strong>
+              <label class="switchRow" style="margin-top:8px"><input type="checkbox" id="socialAuthKakaoEnabled" ${k.enabled === true ? 'checked' : ''} /><span>${esc(textFor('socialAuthEnabled'))}</span></label>
+              <label class="fieldLabel" style="margin-top:8px">${esc(textFor('socialAuthKakaoRestKey'))}<input id="socialAuthKakaoRest" type="text" value="${esc(String(k.restApiKey || k.clientId || ''))}" /></label>
+              <label class="fieldLabel">${esc(textFor('socialAuthKakaoClientSecret'))}<input id="socialAuthKakaoSecret" type="password" autocomplete="new-password" placeholder="${esc(textFor('socialAuthSecretPlaceholder'))}" /></label>
+              ${k.clientSecretConfigured ? `<p class="muted" style="margin:6px 0 0">${esc(textFor('socialAuthSecretStored'))}</p>` : ''}
+            </div>
+            <div style="border:1px solid var(--border);border-radius:12px;padding:10px">
+              <strong>${esc(textFor('socialAuthNaver'))}</strong>
+              <label class="switchRow" style="margin-top:8px"><input type="checkbox" id="socialAuthNaverEnabled" ${n.enabled === true ? 'checked' : ''} /><span>${esc(textFor('socialAuthEnabled'))}</span></label>
+              <label class="fieldLabel" style="margin-top:8px">${esc(textFor('socialAuthNaverClientId'))}<input id="socialAuthNaverClient" type="text" value="${esc(String(n.clientId || ''))}" /></label>
+              <label class="fieldLabel">${esc(textFor('socialAuthNaverClientSecret'))}<input id="socialAuthNaverSecret" type="password" autocomplete="new-password" placeholder="${esc(textFor('socialAuthSecretPlaceholder'))}" /></label>
+              ${n.clientSecretConfigured ? `<p class="muted" style="margin:6px 0 0">${esc(textFor('socialAuthSecretStored'))}</p>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="cardFoot">
+          <button class="success" id="saveSocialAuthSettingsBtn">${esc(textFor('socialAuthSave'))}</button>
+        </div>
+      </div>
     </div>
   `;
   renderUiModelPresetsEditor();
@@ -503,6 +555,9 @@ export async function loadProviderSettingsView(ctx) {
   }
   if ($('appSettingsStatus') && state.appSettings?.updatedAt) {
     $('appSettingsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.appSettings.updatedAt) });
+  }
+  if ($('socialAuthSettingsStatus') && state.appSettings?.updatedAt) {
+    $('socialAuthSettingsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.appSettings.updatedAt) });
   }
 }
 

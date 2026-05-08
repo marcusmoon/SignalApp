@@ -5,7 +5,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { enableFreeze } from 'react-native-screens';
 import 'react-native-reanimated';
@@ -15,6 +15,7 @@ import { NotificationListener } from '@/components/NotificationListener';
 import { OtaBannerProvider } from '@/contexts/OtaBannerContext';
 import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
 import { SignalThemeProvider, useSignalTheme } from '@/contexts/SignalThemeContext';
+import { ensureStoredSessionFresh } from '@/integrations/signal-api/client';
 import { getPreviewOtaBannerRaw } from '@/services/env';
 import {
   hydrateSignalServerEndpoint,
@@ -91,6 +92,14 @@ function RootLayoutNav() {
     return subscribeSignalServerEndpointChanged(() => {
       setSignalUrlTick((n) => n + 1);
     });
+  }, []);
+
+  useEffect(() => {
+    void ensureStoredSessionFresh();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void ensureStoredSessionFresh();
+    });
+    return () => sub.remove();
   }, []);
 
   const { theme } = useSignalTheme();

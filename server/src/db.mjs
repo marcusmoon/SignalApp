@@ -6,10 +6,13 @@ import {
   createAppUserInDb,
   disconnectAppUserIdentityInDb,
   getAppUserInDb,
+  linkAppUserSocialIdentityInDb,
   listAppUserIdentitiesInDb,
   listAppUserDevicesInDb,
   listAppUsersInDb,
   loginAppUserInDb,
+  loginOrRegisterSocialUserInDb,
+  refreshAppUserSessionInDb,
   revokeAppUserTokenInDb,
   setAppUserPasswordInDb,
   updateAppUserAdminInDb,
@@ -264,7 +267,7 @@ export async function createAppUser(payload) {
     const db = await ensureSqliteStore();
     db.exec('BEGIN IMMEDIATE');
     try {
-      const result = createAppUserInDb(db, payload);
+      const result = await createAppUserInDb(db, payload);
       db.exec('COMMIT');
       return result;
     } catch (error) {
@@ -333,7 +336,37 @@ export async function updateAppUserDeviceAdmin(deviceId, patch) {
 export async function loginAppUser(payload) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
-    return loginAppUserInDb(db, payload);
+    return await loginAppUserInDb(db, payload);
+  });
+}
+
+export async function loginOrRegisterSocialUser(payload) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const result = await loginOrRegisterSocialUserInDb(db, payload);
+      db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  });
+}
+
+export async function linkAppUserSocialIdentity(userId, provider, profile) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const result = linkAppUserSocialIdentityInDb(db, userId, provider, profile);
+      db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
   });
 }
 
@@ -360,13 +393,28 @@ export async function disconnectAppUserIdentity(userId, identityId) {
 
 export async function verifyAppUserToken(token) {
   const db = await ensureSqliteStore();
-  return verifyAppUserTokenInDb(db, token);
+  return await verifyAppUserTokenInDb(db, token);
 }
 
 export async function revokeAppUserToken(token) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
-    return revokeAppUserTokenInDb(db, token);
+    return await revokeAppUserTokenInDb(db, token);
+  });
+}
+
+export async function refreshAppUserSession(payload) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const result = await refreshAppUserSessionInDb(db, payload);
+      db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
   });
 }
 

@@ -156,6 +156,16 @@ export function ensureStructuredSchema(db) {
       revoked_at TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS app_user_refresh_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      device_id TEXT NOT NULL,
+      refresh_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      revoked_at TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS app_user_identities (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
@@ -379,6 +389,9 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_polling_job_runs_job ON polling_job_runs(job_key, started_at);
     CREATE INDEX IF NOT EXISTS idx_polling_job_locks_expires ON polling_job_locks(expires_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_sessions_user ON app_user_sessions(user_id, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_refresh_user ON app_user_refresh_sessions(user_id, expires_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_app_user_refresh_device_active
+      ON app_user_refresh_sessions(user_id, device_id) WHERE revoked_at IS NULL;
     CREATE INDEX IF NOT EXISTS idx_app_user_devices_user ON app_user_devices(user_id, active);
     CREATE INDEX IF NOT EXISTS idx_legal_terms_locale ON legal_terms(locale, active);
     CREATE INDEX IF NOT EXISTS idx_legal_terms_type_locale ON legal_terms(type, locale, active, updated_at);

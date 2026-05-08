@@ -138,6 +138,22 @@ export const ja = {
   accountSocialGoogle: 'Google',
   accountSocialApple: 'Apple',
   accountSocialComingSoon: 'ソーシャルログイン連携を準備中です。',
+  accountSocialDisabled: 'このソーシャルログインはサーバーで無効か、設定されていません。',
+  accountSocialFlowNotConfigured: 'クライアント ID がありません。Signal Admin のアプリ設定で設定してください。',
+  accountSocialKakaoExpoGo:
+    'Expo Go では Kakao にログインできません。`expo run:ios` / `expo run:android` で開発ビルドを入れてください。',
+  accountSocialAppleIosOnly: 'Apple サインインは iOS アプリでのみ利用できます。',
+  accountSocialAppleUnavailable: 'この端末では Apple サインインを利用できません。',
+  accountSocialIdentityTaken: 'このソーシャルアカウントは別の SIGNAL アカウントに連携済みです。',
+  accountSocialEmailConflict:
+    '同じメールの登録済みアカウントがあります。メール/パスワードでログイン後、マイ情報からソーシャルを連携してください。',
+  accountSocialInvalid: 'ソーシャル認証に失敗しました。しばらくしてから再試行してください。',
+  accountSocialKakaoUpstream:
+    'カカオ側がトークンまたはユーザー照会を拒否しました。サーバーの REST API キーが prebuild の `KAKAO_NATIVE_APP_KEY` と同一のカカオアプリケーションか、開発者コンソールの Redirect URI を確認してください。',
+  accountSocialLinkTitle: 'ソーシャル連携',
+  accountSocialLinkHint: 'メールでログイン中に、同じ SIGNAL アカウントへソーシャルを追加できます。',
+  accountSocialLinkMore: '連携',
+  accountSocialLinkNone: '連携できるソーシャルがありません。サーバー管理でプロバイダーを有効にしてください。',
   accountEmailDivider: 'またはメールでログイン',
   accountSignupPrompt: '初めてですか？',
   accountSignupButton: '登録する',

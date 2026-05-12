@@ -1,6 +1,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as AuthSession from 'expo-auth-session';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import * as Crypto from 'expo-crypto';
 import * as WebBrowser from 'expo-web-browser';
 import { NativeModules, Platform } from 'react-native';
 
@@ -17,7 +18,12 @@ export class SocialAuthFlowError extends Error {
 }
 
 function redirectUriFor(path: string) {
-  const p = path.replace(/^\/+/, '') || 'oauth';
+  const schemeMatch = path.trim().match(/^[A-Za-z][A-Za-z0-9+.-]*:\/\/([^/?#]+)([^?#]*)?/);
+  const p =
+    (schemeMatch ? `${schemeMatch[1]}${schemeMatch[2] || ''}` : path)
+      .replace(/^\/+/, '')
+      .replace(/[?#].*$/, '')
+      .trim() || 'oauth';
   const scheme = 'signalapp';
   const nativeRedirect = `${scheme}://${p}`;
   if (
@@ -37,8 +43,23 @@ function redirectUriFor(path: string) {
 /** `@react-native-seoul/kakao-login` 네이티브 브리지. Expo Go에는 없으며 dev build + prebuild 후에만 존재 */
 function kakaoNativeBridgeAvailable(): boolean {
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') return false;
-  const mod = NativeModules.RNKakaoLogins as { loginWithKakaoAccount?: unknown } | null | undefined;
-  return !!(mod && typeof mod.loginWithKakaoAccount === 'function');
+  const mod = NativeModules.RNKakaoLogins as { login?: unknown } | null | undefined;
+  return !!(mod && typeof mod.login === 'function');
+}
+
+function isKakaoCancelMessage(message: string) {
+  return /cancel|취소|canceled|cancelled|dismissed/ui.test(message);
+}
+
+function kakaoAccessTokenFrom(token: { accessToken?: string | null } | null | undefined) {
+  const accessToken = token?.accessToken ? String(token.accessToken) : '';
+  if (!accessToken) throw new SocialAuthFlowError('kakao_failed');
+  return accessToken;
+}
+
+function fullNameFromAppleCredential(cred: AppleAuthentication.AppleAuthenticationCredential) {
+  const parts = [cred.fullName?.familyName, cred.fullName?.givenName].filter(Boolean);
+  return parts.join(' ').trim();
 }
 
 export async function obtainSocialCredential(
@@ -64,6 +85,8 @@ export async function obtainSocialCredential(
       scopes: ['openid', 'profile', 'email'],
       redirectUri,
       responseType: AuthSession.ResponseType.IdToken,
+      usePKCE: false,
+      extraParams: { prompt: 'select_account' },
     });
     const discovery = await AuthSession.fetchDiscoveryAsync('https://accounts.google.com/.well-known/openid-configuration');
     const result = await request.promptAsync(discovery);
@@ -88,7 +111,7 @@ export async function obtainSocialCredential(
     });
     const idToken = cred.identityToken ? String(cred.identityToken) : '';
     if (!idToken) throw new SocialAuthFlowError('no_id_token');
-    return { idToken };
+    return { idToken, displayName: fullNameFromAppleCredential(cred) };
   }
 
   if (provider === 'kakao') {
@@ -105,21 +128,18 @@ export async function obtainSocialCredential(
       throw new SocialAuthFlowError('kakao_expo_go_unsupported');
     }
 
-    const tryNativeBridge = Platform.OS !== 'web' && kakaoNativeBridgeAvailable();
-
-    if (tryNativeBridge) {
+    if (Platform.OS !== 'web') {
+      if (!kakaoNativeBridgeAvailable()) {
+        throw new SocialAuthFlowError('kakao_native_missing');
+      }
       try {
-        // `login()` 은 카카오톱 경로에서 currentActivity 가 없으면(Kotlin 의 ?.let)
-        // Promise 가 영원히 resolve 되지 않는 경우가 있어, 계정(웹) 로그인 API를 우선 사용합니다.
-        const { loginWithKakaoAccount } = await import('@react-native-seoul/kakao-login');
-        const token = await loginWithKakaoAccount();
-        const accessToken = token?.accessToken ? String(token.accessToken) : '';
-        if (!accessToken) throw new SocialAuthFlowError('kakao_failed');
+        const { login } = await import('@react-native-seoul/kakao-login');
+        const accessToken = kakaoAccessTokenFrom(await login());
         return { accessToken };
       } catch (e) {
         if (e instanceof SocialAuthCancelledError || e instanceof SocialAuthFlowError) throw e;
         const msg = e instanceof Error ? e.message : String(e || '');
-        if (/cancel|취소|canceled|dismissed/ui.test(msg)) throw new SocialAuthCancelledError();
+        if (isKakaoCancelMessage(msg)) throw new SocialAuthCancelledError();
         if (__DEV__) console.warn('[Kakao native login]', msg, e);
         const detail = msg.trim().slice(0, 240);
         throw new SocialAuthFlowError(detail ? `kakao_failed:${detail}` : 'kakao_failed');
@@ -130,6 +150,8 @@ export async function obtainSocialCredential(
       clientId,
       redirectUri,
       responseType: AuthSession.ResponseType.Code,
+      usePKCE: false,
+      state: Crypto.randomUUID(),
     });
     const kakaoDiscovery = {
       authorizationEndpoint: 'https://kauth.kakao.com/oauth/authorize',
@@ -152,6 +174,8 @@ export async function obtainSocialCredential(
       clientId,
       redirectUri,
       responseType: AuthSession.ResponseType.Code,
+      usePKCE: false,
+      state: Crypto.randomUUID(),
     });
     const naverDiscovery = {
       authorizationEndpoint: 'https://nid.naver.com/oauth2.0/authorize',
@@ -163,7 +187,7 @@ export async function obtainSocialCredential(
     const code = result.params.code ? String(result.params.code) : '';
     const state = result.params.state ? String(result.params.state) : '';
     if (!code || !state) throw new SocialAuthFlowError('no_code');
-    return { code, state };
+    return { code, state, redirectUri };
   }
 
   throw new SocialAuthFlowError('unsupported');

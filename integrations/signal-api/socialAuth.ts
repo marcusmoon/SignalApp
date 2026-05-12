@@ -34,6 +34,7 @@ export async function loginSignalSocial(params: {
   redirectUri?: string;
   /** 카카오 네이티브 SDK 로그인 시 */
   accessToken?: string;
+  displayName?: string;
   state?: string;
   locale?: string;
   acceptedTerms?: Array<{ type: string; locale: string; version: string }>;
@@ -51,6 +52,7 @@ export async function loginSignalSocial(params: {
         code: params.code,
         redirectUri: params.redirectUri,
         accessToken: params.accessToken,
+        displayName: params.displayName,
         state: params.state,
         locale: params.locale,
         acceptedTerms: params.acceptedTerms,
@@ -70,6 +72,7 @@ export async function linkSignalSocial(
     code?: string;
     redirectUri?: string;
     accessToken?: string;
+    displayName?: string;
     state?: string;
   },
 ): Promise<{ user: SignalAppUser; identity: SignalUserIdentity }> {

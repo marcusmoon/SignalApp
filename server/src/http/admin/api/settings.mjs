@@ -10,6 +10,7 @@ import {
   deleteAdminUser,
   updateDb,
 } from '../../../db.mjs';
+import { normalizeSocialLoginRedirectPath } from '../../../auth/socialAuthConfig.mjs';
 import { MARKET_LIST_KEYS, normalizeMarketSymbols, publicMarketList } from '../../../marketLists.mjs';
 import { listProviderSettingsPublic, updateProviderSetting } from '../../../providerSettings.mjs';
 import { translateNews } from '../../../providers/translation/index.mjs';
@@ -106,11 +107,9 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
             : typeof p.oauthRedirectPath === 'string'
               ? p.oauthRedirectPath
               : undefined;
-        const prevSeg = String(prev.socialLoginRedirectPath || prev.oauthRedirectPath || 'oauth')
-          .trim()
-          .replace(/^\/+/, '') || 'oauth';
+        const prevSeg = normalizeSocialLoginRedirectPath(prev.socialLoginRedirectPath || prev.oauthRedirectPath || 'oauth');
         const normalizedRedirect =
-          pathPatch !== undefined ? pathPatch.trim().replace(/^\/+/, '') || 'oauth' : prevSeg;
+          pathPatch !== undefined ? normalizeSocialLoginRedirectPath(pathPatch) : prevSeg;
         next.socialAuth = {
           ...prev,
           socialLoginRedirectPath: normalizedRedirect,

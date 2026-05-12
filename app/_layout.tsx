@@ -143,6 +143,7 @@ function RootLayoutNav() {
           market: t('screenMarket'),
           terms: t('termsScreenTitle'),
           'terms-history': t('termsHistoryScreenTitle'),
+          oauth: t('screenAccount'),
           'mega-cap-list': t('screenMegaCapList'),
           'symbol/[ticker]': t('screenSymbolDetail'),
         };

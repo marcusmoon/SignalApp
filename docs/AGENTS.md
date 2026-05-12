@@ -68,7 +68,7 @@ assets/
 | 컨콜 | `@/domain/concalls`(연도·분기·범위·실적 행), 저장 `services/concallFiscalFilter.ts`, 서버 API `integrations/signal-api/concalls.ts`, 흐름 `services/concalls.ts` |
 | 유튜브 검색 보조 | `@/domain/youtube`, 카드에서 열기 `utils/openYoutube.ts` |
 | 설정 | `app/settings.tsx` — 뉴스·유튜브·시세·캘린더·표시·알림, Signal 서버 endpoint 오버라이드 `services/signalServerEndpoint.ts` |
-| 계정·알림 | `app/account.tsx`, `app/alerts.tsx`, 서버 `/v1/auth/*`·`/v1/notifications`, 기기 세션 `services/appAuthSession.ts`, 어드민 앱 사용자 `/admin/api/app-users*`·`/admin/api/app-user-devices*`·`/admin/api/notifications` |
+| 계정·알림 | `app/account.tsx`, `app/alerts.tsx`, 서버 `/v1/auth/*`·`/v1/notifications`, 기기 세션 `services/appAuthSession.ts`, 소셜 로그인 설정 `docs/SOCIAL-AUTH.md`, 어드민 앱 사용자 `/admin/api/app-users*`·`/admin/api/app-user-devices*`·`/admin/api/notifications` |
 | 테마·문자열 | `SignalThemeContext`, `locales/*` (`@/locales/messages`) |
 | OTA 배너 | `contexts/OtaBannerContext.tsx`, `integrations/expo-updates/`, 미리보기 플래그 `services/env` (`EXPO_PUBLIC_PREVIEW_OTA_BANNER`) |
 

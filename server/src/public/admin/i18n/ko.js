@@ -312,7 +312,7 @@ export const baseKo = {
     'Google·Apple·카카오·네이버는 외부 계정으로 로그인합니다. 이메일/비밀번호 SIGNAL 계정과는 별도 경로이며, 로그인 성공 후에는 모두 SIGNAL 서버가 발급한 같은 형태의 세션을 씁니다.',
   socialAuthSecretsNote: '시크릿은 이 화면에서만 설정합니다. 공개 API 응답에는 포함되지 않습니다.',
   socialAuthRedirectPath:
-    '소셜 로그인 후 앱으로 돌아올 경로(path만 입력, scheme은 signalapp 고정 · 예: oauth → signalapp://oauth)',
+    '고급: 앱 복귀 경로(path만 입력, scheme은 signalapp 고정 · 예: oauth → signalapp://oauth). 앱 라우트와 Kakao/Naver/Google 콘솔 Redirect URI가 함께 맞아야 합니다.',
   socialAuthEnabled: '사용',
   socialAuthSave: '소셜 설정 저장',
   socialAuthGoogle: 'Google',

@@ -52,6 +52,8 @@ function socialApiCodeMessage(code: string | undefined): MessageId | null {
       return 'accountSocialEmailConflict';
     case 'APP_USER_SOCIAL_IDENTITY_TAKEN':
       return 'accountSocialIdentityTaken';
+    case 'APP_USER_TERMS_REQUIRED':
+      return 'accountSocialSignupRequired';
     case 'APP_USER_SOCIAL_NOT_CONFIGURED':
     case 'APP_USER_JWT_NOT_CONFIGURED':
       return 'accountSocialDisabled';
@@ -74,6 +76,8 @@ function mapSocialFlowErrorMessage(flowCode: string, translate: (id: MessageId) 
       return translate('accountSocialFlowNotConfigured');
     case 'kakao_expo_go_unsupported':
       return translate('accountSocialKakaoExpoGo');
+    case 'kakao_native_missing':
+      return translate('accountSocialKakaoNativeMissing');
     case 'apple_ios_only':
       return translate('accountSocialAppleIosOnly');
     case 'apple_unavailable':
@@ -189,10 +193,6 @@ export default function AccountScreen() {
         setError(t('accountTermsRequired'));
         return;
       }
-      if (mode === 'register' && registerStep !== 'info') {
-        setRegisterStep('info');
-        return;
-      }
       let catalog = socialCatalog;
       if (!catalog) {
         try {
@@ -226,13 +226,19 @@ export default function AccountScreen() {
         await saveAppAuthSession(next);
         setSession(next);
       } catch (e) {
+        if (e instanceof SignalApiError && e.message === 'APP_USER_TERMS_REQUIRED') {
+          setMode('register');
+          setRegisterStep('terms');
+          setError(t('accountSocialSignupRequired'));
+          return;
+        }
         const msg = formatSocialAuthFailure(e, t, 'accountAuthError');
         if (msg) setError(msg);
       } finally {
         setSaving(false);
       }
     },
-    [allTermsAccepted, locale, mode, privacyTerm, registerStep, serviceTerm, socialCatalog, t],
+    [allTermsAccepted, locale, mode, privacyTerm, serviceTerm, socialCatalog, t],
   );
 
   const linkSocialAccount = useCallback(

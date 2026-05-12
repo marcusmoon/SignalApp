@@ -140,6 +140,8 @@ export const ko = {
   accountSocialFlowNotConfigured: '소셜 로그인 클라이언트 ID가 없습니다. Signal 서버 Admin에서 설정하세요.',
   accountSocialKakaoExpoGo:
     'Expo Go 에서는 카카오 로그인을 할 수 없습니다. `expo run:ios` 또는 `expo run:android`로 개발 빌드를 설치하거나 카카오용 네이티브 빌드를 사용해 주세요.',
+  accountSocialKakaoNativeMissing:
+    '카카오 네이티브 로그인 모듈이 이 앱 빌드에 포함되지 않았습니다. .env에 KAKAO_NATIVE_APP_KEY를 넣고 prebuild/개발 빌드를 다시 생성해 주세요.',
   accountSocialAppleIosOnly: 'Apple 로그인은 iOS 앱에서만 사용할 수 있습니다.',
   accountSocialAppleUnavailable: '이 기기에서 Apple 로그인을 사용할 수 없습니다.',
   accountSocialIdentityTaken: '이 소셜 계정은 다른 SIGNAL 계정에 이미 연결되어 있습니다.',
@@ -147,7 +149,8 @@ export const ko = {
     '같은 이메일로 이미 가입한 계정이 있습니다. 이메일·비밀번호로 로그인한 뒤 내정보에서 소셜을 연동해 주세요.',
   accountSocialInvalid: '소셜 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.',
   accountSocialKakaoUpstream:
-    '카카오 서버가 토큰·회원 조회를 거부했습니다. 서버의 REST API 키와 prebuild에 쓴 `KAKAO_NATIVE_APP_KEY`가 같은 카카오 애플리케이션인지, Redirect URI 등 콘솔 설정을 확인해 주세요.',
+    '카카오 서버가 토큰·회원 조회를 거부했습니다. 서버의 REST API 키와 prebuild에 쓴 `KAKAO_NATIVE_APP_KEY`가 같은 카카오 애플리케이션인지, Redirect URI와 Client Secret 설정이 서버 설정과 맞는지 확인해 주세요.',
+  accountSocialSignupRequired: '처음 사용하는 소셜 계정입니다. 필수 약관에 동의한 뒤 다시 소셜 가입을 완료해 주세요.',
   accountSocialLinkTitle: '소셜 계정 연동',
   accountSocialLinkHint: '이메일로 로그인한 계정에 소셜 로그인을 추가로 연결할 수 있습니다.',
   accountSocialLinkMore: '연동',
@@ -178,6 +181,7 @@ export const ko = {
   accountTermsRequired: '가입하려면 서비스 이용약관과 개인정보처리방침 확인 및 동의가 필요합니다.',
   accountAuthError: '계정 요청을 처리하지 못했습니다. 입력값을 확인해 주세요.',
   accountProfileError: '프로필을 저장하지 못했습니다.',
+  oauthReturnTitle: '로그인 처리 중',
   termsScreenTitle: '이용약관',
   termsKicker: 'SIGNAL 이용약관',
   termsUpdated: '시행일: 2026년 5월 7일',

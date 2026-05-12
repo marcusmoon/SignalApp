@@ -4,13 +4,32 @@ function clean(v) {
   return String(v || '').trim();
 }
 
+export function normalizeSocialLoginRedirectPath(v) {
+  const value = clean(v);
+  const schemeMatch = value.match(/^[A-Za-z][A-Za-z0-9+.-]*:\/\/([^/?#]+)([^?#]*)?/);
+  const raw = (schemeMatch ? `${schemeMatch[1]}${schemeMatch[2] || ''}` : value)
+    .replace(/^\/+/, '')
+    .replace(/[?#].*$/, '');
+  if (!raw) return 'oauth';
+  // This is a native deep-link route segment, not an arbitrary URL. Keep it stable and app-route-shaped.
+  const safe = raw
+    .split('/')
+    .map((part) => part.trim())
+    .filter((part) => part && part !== '.' && part !== '..')
+    .map((part) => part.replace(/[^A-Za-z0-9._~-]/g, ''))
+    .filter((part) => part && part !== '.' && part !== '..')
+    .filter(Boolean)
+    .join('/');
+  return safe || 'oauth';
+}
+
 function providerEnabled(adminBlock) {
   return !!(adminBlock && adminBlock.enabled === true);
 }
 
 function socialLoginRedirectSegment(appSettings) {
   const s = appSettings?.socialAuth && typeof appSettings.socialAuth === 'object' ? appSettings.socialAuth : {};
-  return clean(s.socialLoginRedirectPath || s.oauthRedirectPath || '') || 'oauth';
+  return normalizeSocialLoginRedirectPath(s.socialLoginRedirectPath || s.oauthRedirectPath || '');
 }
 
 /**
@@ -76,10 +95,10 @@ export function publicSocialAuthCatalog(appSettings, runtime = buildSocialAuthRu
         clientId: r.clientId || null,
       };
     } else if (key === 'kakao') {
-      const hasSecret = !!clean(r.clientSecret);
       out.kakao = {
         enabled: !!r.enabled && !!r.clientId,
-        flow: hasSecret ? 'authorizationCode' : 'accessToken',
+        // Native app sign-in uses Kakao SDK access tokens. REST authorization-code fallback is web-only.
+        flow: 'accessToken',
         clientId: r.clientId || null,
       };
     } else if (key === 'naver') {

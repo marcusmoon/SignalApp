@@ -142,6 +142,8 @@ export const ja = {
   accountSocialFlowNotConfigured: 'クライアント ID がありません。Signal Admin のアプリ設定で設定してください。',
   accountSocialKakaoExpoGo:
     'Expo Go では Kakao にログインできません。`expo run:ios` / `expo run:android` で開発ビルドを入れてください。',
+  accountSocialKakaoNativeMissing:
+    'Kakao ネイティブログインモジュールがこのビルドに含まれていません。.env に KAKAO_NATIVE_APP_KEY を入れて native app を prebuild / rebuild してください。',
   accountSocialAppleIosOnly: 'Apple サインインは iOS アプリでのみ利用できます。',
   accountSocialAppleUnavailable: 'この端末では Apple サインインを利用できません。',
   accountSocialIdentityTaken: 'このソーシャルアカウントは別の SIGNAL アカウントに連携済みです。',
@@ -149,7 +151,8 @@ export const ja = {
     '同じメールの登録済みアカウントがあります。メール/パスワードでログイン後、マイ情報からソーシャルを連携してください。',
   accountSocialInvalid: 'ソーシャル認証に失敗しました。しばらくしてから再試行してください。',
   accountSocialKakaoUpstream:
-    'カカオ側がトークンまたはユーザー照会を拒否しました。サーバーの REST API キーが prebuild の `KAKAO_NATIVE_APP_KEY` と同一のカカオアプリケーションか、開発者コンソールの Redirect URI を確認してください。',
+    'カカオ側がトークンまたはユーザー照会を拒否しました。サーバーの REST API キーが prebuild の `KAKAO_NATIVE_APP_KEY` と同一のカカオアプリケーションか、Redirect URI と Client Secret 設定が合っているか確認してください。',
+  accountSocialSignupRequired: '初めて使うソーシャルアカウントです。必須規約に同意してからソーシャル登録を続けてください。',
   accountSocialLinkTitle: 'ソーシャル連携',
   accountSocialLinkHint: 'メールでログイン中に、同じ SIGNAL アカウントへソーシャルを追加できます。',
   accountSocialLinkMore: '連携',
@@ -180,6 +183,7 @@ export const ja = {
   accountTermsRequired: '登録にはサービス利用規約とプライバシーポリシーの確認・同意が必要です。',
   accountAuthError: 'アカウントリクエストを処理できませんでした。入力内容を確認してください。',
   accountProfileError: 'プロフィールを保存できませんでした。',
+  oauthReturnTitle: 'ログイン処理中',
   termsScreenTitle: '利用規約',
   termsKicker: 'SIGNAL 利用規約',
   termsUpdated: '施行日: 2026年5月7日',

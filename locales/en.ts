@@ -142,6 +142,8 @@ export const en = {
   accountSocialFlowNotConfigured: 'Social client IDs are missing. Configure them in the Signal Admin app settings.',
   accountSocialKakaoExpoGo:
     'Kakao sign-in is not available in Expo Go. Install a dev build with `expo run:ios` or `expo run:android` (with the Kakao native module).',
+  accountSocialKakaoNativeMissing:
+    'The Kakao native sign-in module is not included in this app build. Add KAKAO_NATIVE_APP_KEY to .env and rebuild/prebuild the native app.',
   accountSocialAppleIosOnly: 'Apple Sign In is only available in the iOS app.',
   accountSocialAppleUnavailable: 'Apple Sign In is not available on this device.',
   accountSocialIdentityTaken: 'This social account is already linked to another SIGNAL account.',
@@ -149,7 +151,8 @@ export const en = {
     'An account with this email already exists. Sign in with email and password, then link social from My info.',
   accountSocialInvalid: 'Social sign-in failed. Try again in a moment.',
   accountSocialKakaoUpstream:
-    'Kakao rejected the token or user lookup. Confirm the server REST API key matches the same Kakao app as your prebuild native key (`KAKAO_NATIVE_APP_KEY`), and review Redirect URI settings in the Kakao developer console.',
+    'Kakao rejected the token or user lookup. Confirm the server REST API key matches the same Kakao app as your prebuild native key (`KAKAO_NATIVE_APP_KEY`), and review Redirect URI and Client Secret settings in the Kakao developer console.',
+  accountSocialSignupRequired: 'This social account is new to SIGNAL. Agree to the required terms, then continue social sign-up.',
   accountSocialLinkTitle: 'Link a social account',
   accountSocialLinkHint: 'While signed in with email, you can link social providers to the same SIGNAL account.',
   accountSocialLinkMore: 'Link',
@@ -180,6 +183,7 @@ export const en = {
   accountTermsRequired: 'Review and agree to the Terms of Service and Privacy Policy to create an account.',
   accountAuthError: 'Could not process the account request. Check your input and try again.',
   accountProfileError: 'Could not save your profile.',
+  oauthReturnTitle: 'Finishing sign-in',
   termsScreenTitle: 'Terms',
   termsKicker: 'SIGNAL terms',
   termsUpdated: 'Effective: May 7, 2026',

@@ -5,7 +5,9 @@
   "scripts": {
     "postinstall": "patch-package",
     "start": "expo start",
+    "preandroid": "node scripts/syncKakaoNativeConfig.mjs",
     "android": "expo run:android",
+    "preios": "node scripts/syncKakaoNativeConfig.mjs",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "server:dev": "npm --prefix server run dev",

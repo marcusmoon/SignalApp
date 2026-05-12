@@ -39,7 +39,7 @@ export async function verifyGoogleIdToken(idToken, runtime) {
 /**
  * @returns {Promise<{ providerUserId: string, email: string, displayName: string, profileImageUrl: string, payload: object }>}
  */
-export async function verifyAppleIdToken(idToken, nonce, runtime) {
+export async function verifyAppleIdToken(idToken, nonce, runtime, profileHint = {}) {
   if (!isSocialProviderConfigured(runtime, 'apple')) throw new Error('APP_USER_SOCIAL_NOT_CONFIGURED');
   const clientId = runtime.apple.clientId;
   if (!clientId) throw new Error('APP_USER_SOCIAL_NOT_CONFIGURED');
@@ -58,7 +58,7 @@ export async function verifyAppleIdToken(idToken, nonce, runtime) {
   return {
     providerUserId: sub,
     email: clean(payload.email),
-    displayName: '',
+    displayName: clean(profileHint.displayName),
     profileImageUrl: '',
     payload: { emailVerified: !!payload.email_verified },
   };
@@ -115,16 +115,20 @@ export async function verifyKakaoAccessToken(accessToken, runtime) {
 
 export async function exchangeKakaoCode(code, redirectUri, runtime) {
   if (!isSocialProviderConfigured(runtime, 'kakao')) throw new Error('APP_USER_SOCIAL_NOT_CONFIGURED');
-  const clientId = runtime.kakao.clientId;
-  const clientSecret = runtime.kakao.clientSecret;
-  if (!clientId || !clean(clientSecret)) throw new Error('APP_USER_SOCIAL_NOT_CONFIGURED');
+  const clientId = clean(runtime.kakao.clientId);
+  const clientSecret = clean(runtime.kakao.clientSecret);
+  const authCode = clean(code);
+  const redirect = clean(redirectUri);
+  if (!clientId) throw new Error('APP_USER_SOCIAL_NOT_CONFIGURED');
+  if (!authCode || !redirect) throw new Error('APP_USER_SOCIAL_INVALID_TOKEN');
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
     client_id: clientId,
-    client_secret: clientSecret,
-    redirect_uri: redirectUri,
-    code: clean(code),
+    redirect_uri: redirect,
+    code: authCode,
   });
+  // Kakao requires client_secret only when the app's REST API client-secret setting is ON.
+  if (clientSecret) body.set('client_secret', clientSecret);
   const res = await fetch('https://kauth.kakao.com/oauth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
@@ -165,17 +169,22 @@ async function naverProfileFromAccessToken(accessToken) {
 /**
  * @returns {Promise<{ providerUserId: string, email: string, displayName: string, profileImageUrl: string, payload: object }>}
  */
-export async function exchangeNaverCode(code, state, runtime) {
+export async function exchangeNaverCode(code, state, redirectUri, runtime) {
   if (!isSocialProviderConfigured(runtime, 'naver')) throw new Error('APP_USER_SOCIAL_NOT_CONFIGURED');
-  const clientId = runtime.naver.clientId;
-  const clientSecret = runtime.naver.clientSecret;
+  const clientId = clean(runtime.naver.clientId);
+  const clientSecret = clean(runtime.naver.clientSecret);
+  const authCode = clean(code);
+  const requestState = clean(state);
+  const redirect = clean(redirectUri);
   if (!clientId || !clientSecret) throw new Error('APP_USER_SOCIAL_NOT_CONFIGURED');
+  if (!authCode || !requestState || !redirect) throw new Error('APP_USER_SOCIAL_INVALID_TOKEN');
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
     client_id: clientId,
     client_secret: clientSecret,
-    code: clean(code),
-    state: clean(state),
+    redirect_uri: redirect,
+    code: authCode,
+    state: requestState,
   });
   const res = await fetch('https://nid.naver.com/oauth2.0/token', {
     method: 'POST',
@@ -193,11 +202,11 @@ export async function exchangeNaverCode(code, state, runtime) {
 export async function resolveSocialProfile(provider, body, runtime) {
   const p = String(provider || '').toLowerCase();
   if (p === 'google') return verifyGoogleIdToken(clean(body.idToken), runtime);
-  if (p === 'apple') return verifyAppleIdToken(clean(body.idToken), body.nonce, runtime);
+  if (p === 'apple') return verifyAppleIdToken(clean(body.idToken), body.nonce, runtime, body);
   if (p === 'kakao') {
     if (clean(body.accessToken)) return verifyKakaoAccessToken(body.accessToken, runtime);
     return exchangeKakaoCode(body.code, clean(body.redirectUri), runtime);
   }
-  if (p === 'naver') return exchangeNaverCode(body.code, clean(body.state), runtime);
+  if (p === 'naver') return exchangeNaverCode(body.code, clean(body.state), clean(body.redirectUri), runtime);
   throw new Error('APP_USER_SOCIAL_UNSUPPORTED');
 }

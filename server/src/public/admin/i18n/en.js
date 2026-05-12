@@ -312,7 +312,7 @@ export const baseEn = {
     'Google, Apple, Kakao, and Naver sign-in use external identity providers. This is separate from email/password SIGNAL accounts; after either path, the app uses the same SIGNAL-issued session tokens.',
   socialAuthSecretsNote: 'Secrets are configured only here; they are never returned on public APIs.',
   socialAuthRedirectPath:
-    'Path only for returning to the app after social sign-in (scheme is signalapp; e.g. oauth → signalapp://oauth)',
+    'Advanced: app return path only (scheme is fixed to signalapp; e.g. oauth → signalapp://oauth). Must match the app route and provider console Redirect URI.',
   socialAuthEnabled: 'Enabled',
   socialAuthSave: 'Save social settings',
   socialAuthGoogle: 'Google',

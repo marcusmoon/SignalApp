@@ -1621,8 +1621,20 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             };
             const naverSec = String($('socialAuthNaverSecret')?.value || '').trim();
             if (naverSec) naverBody.clientSecret = naverSec;
+            const socialRedirectPath =
+              (() => {
+                const value = String($('socialLoginRedirectPath')?.value || '').trim();
+                const m = value.match(/^[A-Za-z][A-Za-z0-9+.-]*:\/\/([^/?#]+)([^?#]*)?/);
+                return m ? `${m[1]}${m[2] || ''}` : value;
+              })()
+                .replace(/^\/+/, '')
+                .replace(/[?#].*$/, '')
+                .split('/')
+                .map((part) => part.trim().replace(/[^A-Za-z0-9._~-]/g, ''))
+                .filter((part) => part && part !== '.' && part !== '..')
+                .join('/') || 'oauth';
             const socialAuth = {
-              socialLoginRedirectPath: String($('socialLoginRedirectPath')?.value || '').trim().replace(/^\/+/, '') || 'oauth',
+              socialLoginRedirectPath: socialRedirectPath,
               google: {
                 enabled: $('socialAuthGoogleEnabled')?.checked === true,
                 webClientId: String($('socialAuthGoogleWeb')?.value || '').trim(),

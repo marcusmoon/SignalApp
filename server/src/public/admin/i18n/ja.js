@@ -312,7 +312,7 @@ export const baseJa = {
     'Google / Apple / Kakao / Naver は外部 IdP 経由のサインインです。メール/パスワードの SIGNAL アカウントとは別経路で、成功後は同じ SIGNAL 発行のセッションを使います。',
   socialAuthSecretsNote: 'シークレットはこの画面でのみ設定します。公開 API には含まれません。',
   socialAuthRedirectPath:
-    'ソーシャルサインイン後にアプリへ戻る path のみ（scheme は signalapp 固定 · 例: oauth → signalapp://oauth）',
+    '高度: アプリ復帰 path のみ（scheme は signalapp 固定 · 例: oauth → signalapp://oauth）。アプリのルートと各 provider コンソールの Redirect URI を合わせる必要があります。',
   socialAuthEnabled: '有効',
   socialAuthSave: 'ソーシャル設定を保存',
   socialAuthGoogle: 'Google',

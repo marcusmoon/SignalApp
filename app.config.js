@@ -11,11 +11,12 @@ const path = require('path');
 const appJson = require('./app.json');
 
 /** @returns {string | undefined} .env.local 이 .env 를 덮음; 한 파일 안에서는 마지막 줄이 우선 */
-function readPreviewOtaBannerFromEnvFiles() {
+function readEnvValueFromFiles(key) {
   const root = __dirname;
   const files = ['.env', '.env.local'];
   let value;
-  const lineRe = /^\s*EXPO_PUBLIC_PREVIEW_OTA_BANNER\s*=\s*([^\r\n#]*)/gm;
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const lineRe = new RegExp(`^\\s*${escaped}\\s*=\\s*([^\\r\\n#]*)`, 'gm');
   for (const name of files) {
     const p = path.join(root, name);
     if (!fs.existsSync(p)) continue;
@@ -30,14 +31,19 @@ function readPreviewOtaBannerFromEnvFiles() {
 }
 
 module.exports = () => {
-  const fromFile = readPreviewOtaBannerFromEnvFiles();
+  const fromFile = readEnvValueFromFiles('EXPO_PUBLIC_PREVIEW_OTA_BANNER');
   const previewOtaBanner =
     fromFile !== undefined ? fromFile : process.env.EXPO_PUBLIC_PREVIEW_OTA_BANNER;
 
   // 네이티브 앱 번들에 카카오 SDK 를 심으려면 prebuild 시점에만 키가 필요합니다(NOT EXPO_PUBLIC — JS 번들에 안 들어감).
-  // Kakao 개발자 콘솔의 네이티브 앱 키와 동일 값을 EAS Secret `KAKAO_NATIVE_APP_KEY` 또는 로컬 `export` 로만 주입합니다.
+  // Kakao 개발자 콘솔의 네이티브 앱 키와 동일 값을 EAS Secret 또는 로컬 .env 의 `KAKAO_NATIVE_APP_KEY` 로 주입합니다.
+  const kakaoNativeKeyFromFile = readEnvValueFromFiles('KAKAO_NATIVE_APP_KEY');
   const kakaoNativeKey =
-    typeof process.env.KAKAO_NATIVE_APP_KEY === 'string' ? process.env.KAKAO_NATIVE_APP_KEY.trim() : '';
+    kakaoNativeKeyFromFile !== undefined
+      ? kakaoNativeKeyFromFile
+      : typeof process.env.KAKAO_NATIVE_APP_KEY === 'string'
+        ? process.env.KAKAO_NATIVE_APP_KEY.trim()
+        : '';
 
   const basePlugins = Array.isArray(appJson.expo.plugins) ? [...appJson.expo.plugins] : [];
   const plugins = [...basePlugins];

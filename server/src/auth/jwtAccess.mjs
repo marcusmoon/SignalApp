@@ -2,18 +2,38 @@ import { createPublicKey } from 'node:crypto';
 import * as jose from 'jose';
 import { config } from '../config.mjs';
 
+function stripWrappingQuotes(value) {
+  const v = String(value || '').trim();
+  if (v.length >= 2 && ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'")))) {
+    return v.slice(1, -1).trim();
+  }
+  return v;
+}
+
+function looksLikePrivateKeyPem(pem) {
+  return /-----BEGIN (?:RSA )?PRIVATE KEY-----/.test(pem) && /-----END (?:RSA )?PRIVATE KEY-----/.test(pem);
+}
+
 function normalizePrivateKeyPem() {
-  const b64 = String(process.env.SIGNAL_JWT_PRIVATE_KEY_B64 || '').trim();
+  const b64 = stripWrappingQuotes(process.env.SIGNAL_JWT_PRIVATE_KEY_B64).replace(/\s+/g, '');
   if (b64) {
     try {
-      return Buffer.from(b64, 'base64').toString('utf8');
+      const pem = Buffer.from(b64, 'base64').toString('utf8').trim();
+      return looksLikePrivateKeyPem(pem) ? pem : '';
     } catch {
       return '';
     }
   }
-  const raw = String(process.env.SIGNAL_JWT_PRIVATE_KEY || '').trim();
+  const raw = stripWrappingQuotes(process.env.SIGNAL_JWT_PRIVATE_KEY);
   if (!raw) return '';
-  return raw.replace(/\\n/g, '\n');
+  const pem = raw.replace(/\\n/g, '\n').trim();
+  return looksLikePrivateKeyPem(pem) ? pem : '';
+}
+
+function privateKeySource() {
+  if (stripWrappingQuotes(process.env.SIGNAL_JWT_PRIVATE_KEY_B64)) return 'SIGNAL_JWT_PRIVATE_KEY_B64';
+  if (stripWrappingQuotes(process.env.SIGNAL_JWT_PRIVATE_KEY)) return 'SIGNAL_JWT_PRIVATE_KEY';
+  return '';
 }
 
 /** @type {Promise<import('jose').KeyLike> | null} */
@@ -23,6 +43,22 @@ let verificationKeyPromise = null;
 
 export function isAppUserJwtConfigured() {
   return normalizePrivateKeyPem().length > 0;
+}
+
+export async function getAppUserJwtConfigStatus() {
+  const source = privateKeySource();
+  const configured = isAppUserJwtConfigured();
+  if (!configured) {
+    return { configured: false, source: source || null, valid: false };
+  }
+  try {
+    await requireSigningKeyPromise();
+    return { configured: true, source, valid: true };
+  } catch {
+    signingKeyPromise = null;
+    verificationKeyPromise = null;
+    return { configured: true, source, valid: false };
+  }
 }
 
 function requireSigningKeyPromise() {

@@ -17,7 +17,7 @@ import {
 } from '../../../db.mjs';
 import { buildSocialAuthRuntime, publicSocialAuthCatalog } from '../../../auth/socialAuthConfig.mjs';
 import { resolveSocialProfile } from '../../../auth/socialProfile.mjs';
-import { isAppUserJwtConfigured } from '../../../auth/jwtAccess.mjs';
+import { getAppUserJwtConfigStatus } from '../../../auth/jwtAccess.mjs';
 import { json, readBody } from '../../shared.mjs';
 
 function bearerToken(req) {
@@ -91,9 +91,7 @@ function socialAuthError(res, error) {
 export async function handlePublicAuthRoutes({ req, res, pathname }) {
   if (req.method === 'GET' && pathname === '/v1/auth/jwt/config') {
     json(res, 200, {
-      data: {
-        configured: isAppUserJwtConfigured(),
-      },
+      data: await getAppUserJwtConfigStatus(),
     });
     return true;
   }

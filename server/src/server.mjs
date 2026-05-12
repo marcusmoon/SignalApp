@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { getAppUserJwtConfigStatus, getAppUserJwtEnvDebugInfo } from './auth/jwtAccess.mjs';
 import { config } from './config.mjs';
 import { hasAdminUsers } from './db.mjs';
 import { handleRequest } from './http.mjs';
@@ -24,6 +25,11 @@ server.listen(config.port, config.host, () => {
   console.log(`Signal server listening on http://${config.host}:${config.port}`);
   console.log(`Admin: http://${config.host}:${config.port}/admin`);
   console.log(`SQLite DB: ${config.sqlitePath}`);
+  if (String(process.env.SIGNAL_JWT_DEBUG || '').trim() === '1') {
+    getAppUserJwtConfigStatus()
+      .then((status) => console.log('[jwt:debug]', { ...getAppUserJwtEnvDebugInfo(), status }))
+      .catch((error) => console.warn('[jwt:debug] failed to inspect JWT config:', error?.message || error));
+  }
   hasAdminUsers()
     .then((exists) => {
       if (!exists) console.warn('[server] No active admin users in SQLite — /admin login will reject all credentials.');

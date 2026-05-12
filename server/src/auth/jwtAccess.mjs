@@ -36,6 +36,13 @@ function privateKeySource() {
   return '';
 }
 
+function maskValue(value) {
+  const v = String(value || '');
+  if (!v) return '';
+  if (v.length <= 12) return `${v.slice(0, 2)}...${v.slice(-2)}`;
+  return `${v.slice(0, 6)}...${v.slice(-6)}`;
+}
+
 /** @type {Promise<import('jose').KeyLike> | null} */
 let signingKeyPromise = null;
 /** @type {Promise<import('jose').KeyLike> | null} */
@@ -59,6 +66,46 @@ export async function getAppUserJwtConfigStatus() {
     verificationKeyPromise = null;
     return { configured: true, source, valid: false };
   }
+}
+
+export function getAppUserJwtEnvDebugInfo() {
+  const source = privateKeySource();
+  const rawValue =
+    source === 'SIGNAL_JWT_PRIVATE_KEY_B64'
+      ? String(process.env.SIGNAL_JWT_PRIVATE_KEY_B64 || '').trim()
+      : source === 'SIGNAL_JWT_PRIVATE_KEY'
+        ? String(process.env.SIGNAL_JWT_PRIVATE_KEY || '').trim()
+        : '';
+  const strippedValue = stripWrappingQuotes(rawValue);
+  const compactValue = source === 'SIGNAL_JWT_PRIVATE_KEY_B64' ? strippedValue.replace(/\s+/g, '') : strippedValue;
+  let decodedLength = 0;
+  let decodedLooksLikePem = false;
+  if (source === 'SIGNAL_JWT_PRIVATE_KEY_B64' && compactValue) {
+    try {
+      const decoded = Buffer.from(compactValue, 'base64').toString('utf8').trim();
+      decodedLength = decoded.length;
+      decodedLooksLikePem = looksLikePrivateKeyPem(decoded);
+    } catch {
+      decodedLength = 0;
+      decodedLooksLikePem = false;
+    }
+  } else if (source === 'SIGNAL_JWT_PRIVATE_KEY' && compactValue) {
+    const pem = compactValue.replace(/\\n/g, '\n').trim();
+    decodedLength = pem.length;
+    decodedLooksLikePem = looksLikePrivateKeyPem(pem);
+  }
+  return {
+    source: source || null,
+    rawPresent: rawValue.length > 0,
+    rawLength: rawValue.length,
+    strippedLength: strippedValue.length,
+    compactLength: compactValue.length,
+    masked: maskValue(compactValue),
+    hadWrappingQuotes: rawValue !== strippedValue,
+    hadWhitespace: /\s/.test(strippedValue),
+    decodedLength,
+    decodedLooksLikePem,
+  };
 }
 
 function requireSigningKeyPromise() {

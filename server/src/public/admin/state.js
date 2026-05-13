@@ -16,6 +16,7 @@ export const state = {
   appUsersTotalPages: 1,
   appUsersTotal: 0,
   appUsersSelectedId: '',
+  appUsersDetailTab: 'notifications',
   appUsersNotificationRows: [],
   appDevicesPage: 1,
   appDevicesTotalPages: 1,

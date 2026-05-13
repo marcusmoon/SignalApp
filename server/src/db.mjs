@@ -8,6 +8,8 @@ import {
   getAppUserInDb,
   linkAppUserSocialIdentityInDb,
   listAppUserAccountEventsInDb,
+  listAppUserAuthSessionsInDb,
+  listAppUserDevicesForUserInDb,
   listAppUserIdentitiesInDb,
   listAppUserDevicesInDb,
   listAppUsersInDb,
@@ -382,6 +384,20 @@ export async function listAppUserAccountEvents(userId, options = {}) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
     return listAppUserAccountEventsInDb(db, userId, options);
+  });
+}
+
+export async function listAppUserDevicesForUser(userId, options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return listAppUserDevicesForUserInDb(db, userId, options);
+  });
+}
+
+export async function listAppUserAuthSessions(userId, options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return listAppUserAuthSessionsInDb(db, userId, options);
   });
 }
 

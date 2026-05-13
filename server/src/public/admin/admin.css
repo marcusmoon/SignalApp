@@ -261,6 +261,9 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
         gap: 12px;
         align-items: start;
       }
+      .appUsersLayout--users {
+        grid-template-columns: 1fr;
+      }
       .appUserList,
       .notificationMiniList { display: grid; gap: 8px; }
       .appUserCard {
@@ -291,7 +294,18 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
       .appUserActions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
       .compactSwitch { margin: 0; }
       .appUserDetailCard { grid-column: 2; grid-row: span 2; }
+      .appUsersLayout--users .appUserDetailCard { grid-column: 1; grid-row: auto; }
       .appUserSelected .appUserCard { background: color-mix(in srgb, var(--accent) 12%, var(--card)); }
+      .appUserDetailTabs {
+        justify-content: flex-start;
+        margin: 12px 0;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .appUserDetailPanel {
+        display: grid;
+        gap: 8px;
+      }
       .settingsFormGrid { display: grid; gap: 8px; }
       .appUsersNoticeForm { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .appUsersWideField { grid-column: 1 / -1; }

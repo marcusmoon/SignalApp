@@ -1772,6 +1772,11 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await loadAppUsers();
             return;
           }
+          if (target.dataset.appUserDetailTab) {
+            state.appUsersDetailTab = target.dataset.appUserDetailTab;
+            await loadAppUsers();
+            return;
+          }
           if (target.id === 'sendBroadcastNotificationBtn') {
             const title = String($('broadcastTitle')?.value || '').trim();
             const body = String($('broadcastBody')?.value || '').trim();

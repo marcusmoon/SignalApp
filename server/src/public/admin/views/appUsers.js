@@ -86,6 +86,136 @@ function identityRows(rows, { esc, textFor, formatDateTime }) {
   `;
 }
 
+function deviceRows(rows, { esc, textFor, formatDateTime }) {
+  if (!rows.length) return `<p class="muted">${esc(textFor('appUsersDevicesEmpty'))}</p>`;
+  return `
+    <div class="notificationMiniList">
+      ${rows
+        .map(
+          (item) => `
+            <article class="notificationMiniCard statusSide statusSide--${item.active ? 'sent' : 'cancelled'}">
+              <div class="notificationMiniHead">
+                <strong>${esc(item.deviceName || item.platform || '-')}</strong>
+                <span class="pill">${item.active ? esc(textFor('statusActive')) : esc(textFor('statusInactive'))}</span>
+              </div>
+              <div class="row muted">
+                <span>${esc(item.platform || '-')}</span>
+                <span><code>${esc(maskToken(item.pushToken))}</code></span>
+                <span>${esc(textFor('appUsersUpdatedAt'))} ${esc(formatDateTime(item.updatedAt || item.createdAt))}</span>
+              </div>
+            </article>
+          `,
+        )
+        .join('')}
+    </div>
+  `;
+}
+
+function sessionRows(rows, { esc, textFor, formatDateTime }) {
+  if (!rows.length) return `<p class="muted">${esc(textFor('appUsersSessionsEmpty'))}</p>`;
+  return `
+    <div class="notificationMiniList">
+      ${rows
+        .map((item) => {
+          const statusText = item.active
+            ? textFor('appUsersSessionActive')
+            : item.revokedAt
+              ? textFor('appUsersSessionRevoked')
+              : textFor('appUsersSessionExpired');
+          return `
+            <article class="notificationMiniCard statusSide statusSide--${item.active ? 'sent' : 'cancelled'}">
+              <div class="notificationMiniHead">
+                <strong>${esc(item.type === 'signal_refresh' ? textFor('appUsersSessionRefresh') : textFor('appUsersSessionAccess'))}</strong>
+                <span class="pill">${esc(statusText)}</span>
+              </div>
+              <div class="row muted">
+                <span>${esc(item.key || '-')}</span>
+                ${item.deviceId ? `<span>${esc(textFor('appUsersSessionDevice'))} ${esc(item.deviceId)}</span>` : ''}
+                <span>${esc(textFor('appUsersSessionCreatedAt'))} ${esc(formatDateTime(item.createdAt))}</span>
+                <span>${esc(textFor('appUsersSessionExpiresAt'))} ${esc(formatDateTime(item.expiresAt))}</span>
+              </div>
+            </article>
+          `;
+        })
+        .join('')}
+    </div>
+  `;
+}
+
+function eventRows(rows, { esc, textFor, formatDateTime }) {
+  if (!rows.length) return `<p class="muted">${esc(textFor('appUsersEventsEmpty'))}</p>`;
+  const eventTitle = (eventType) => {
+    const key = `appUsersEvent_${String(eventType || '').replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const value = textFor(key);
+    return value === key ? eventType || '-' : value;
+  };
+  return `
+    <div class="notificationMiniList">
+      ${rows
+        .map(
+          (item) => `
+            <article class="notificationMiniCard">
+              <div class="notificationMiniHead">
+                <strong>${esc(eventTitle(item.eventType))}</strong>
+                <span class="pill">${esc(item.actorType || 'user')}</span>
+              </div>
+              <div class="row muted">
+                ${item.provider ? `<span>${esc(item.provider)}</span>` : ''}
+                ${item.identityId ? `<span>${esc(item.identityId)}</span>` : ''}
+                <span>${esc(formatDateTime(item.createdAt))}</span>
+              </div>
+            </article>
+          `,
+        )
+        .join('')}
+    </div>
+  `;
+}
+
+function detailTabButtons(activeTab, { esc, textFor }) {
+  const tabs = [
+    ['notifications', textFor('appUsersNotificationsTitle')],
+    ['terms', textFor('appUsersTermsTitle')],
+    ['devices', textFor('appUsersDevicesTitle')],
+    ['sessions', textFor('appUsersSessionsTitle')],
+    ['identities', textFor('appUsersIdentitiesTitle')],
+    ['events', textFor('appUsersEventsTitle')],
+  ];
+  return tabs
+    .map(
+      ([tab, label]) => `
+        <button class="segBtn ${activeTab === tab ? 'active' : ''}" data-app-user-detail-tab="${esc(tab)}">${esc(label)}</button>
+      `,
+    )
+    .join('');
+}
+
+function detailTabPanel(activeTab, data, helpers) {
+  const { esc, textFor } = helpers;
+  const titleByTab = {
+    notifications: textFor('appUsersNotificationsTitle'),
+    terms: textFor('appUsersTermsTitle'),
+    devices: textFor('appUsersDevicesTitle'),
+    sessions: textFor('appUsersSessionsTitle'),
+    identities: textFor('appUsersIdentitiesTitle'),
+    events: textFor('appUsersEventsTitle'),
+  };
+  const contentByTab = {
+    notifications: notificationRows(data.notifications, helpers),
+    terms: consentRows(data.terms, helpers),
+    devices: deviceRows(data.devices, helpers),
+    sessions: sessionRows(data.sessions, helpers),
+    identities: identityRows(data.identities, helpers),
+    events: eventRows(data.events, helpers),
+  };
+  return `
+    <div class="appUserDetailPanel">
+      <div class="cardKicker">${esc(titleByTab[activeTab] || titleByTab.notifications)}</div>
+      ${contentByTab[activeTab] || contentByTab.notifications}
+    </div>
+  `;
+}
+
 function userCard(user, { esc, textFor, formatDateTime }) {
   return `
     <article class="appUserCard" data-app-user-card="${esc(user.id)}">
@@ -106,7 +236,7 @@ function userCard(user, { esc, textFor, formatDateTime }) {
           <input class="switchInput" type="checkbox" data-app-user-active="${esc(user.id)}" ${user.active ? 'checked' : ''}/>
           <span class="switchUi" aria-hidden="true"></span>
         </label>
-        <button class="secondary compactBtn" data-app-user-select="${esc(user.id)}">${esc(textFor('appUsersOpenNotifications'))}</button>
+        <button class="secondary compactBtn" data-app-user-select="${esc(user.id)}">${esc(textFor('appUsersSelectUser'))}</button>
       </div>
     </article>
   `;
@@ -129,6 +259,10 @@ function renderUserManagement({
   notificationRowsData,
   termRowsData,
   identityRowsData,
+  deviceRowsData,
+  sessionRowsData,
+  eventRowsData,
+  detailTab,
   q,
   active,
   pageSize,
@@ -137,6 +271,9 @@ function renderUserManagement({
   textForVars,
   formatDateTime,
 }) {
+  const safeDetailTab = ['notifications', 'terms', 'devices', 'sessions', 'identities', 'events'].includes(detailTab)
+    ? detailTab
+    : 'notifications';
   return `
     <div class="appUsersLayout appUsersLayout--users">
       <section class="card settingsControlCard">
@@ -175,7 +312,7 @@ function renderUserManagement({
         <div class="cardHead">
           <div class="cardHeadMain">
             <div class="cardKicker">${esc(textFor('appUsersSelectedTitle'))}</div>
-            <div class="cardHint">${selected ? esc(selected.email) : esc(textFor('appUsersSelectUserHint'))}</div>
+            <div class="cardHint">${selected ? esc(textForVars('appUsersSelectedHint', { email: selected.email || selected.id })) : esc(textFor('appUsersSelectUserHint'))}</div>
           </div>
         </div>
         ${
@@ -184,18 +321,21 @@ function renderUserManagement({
               <div class="appUserSelected">
                 ${userCard(selected, { esc, textFor, formatDateTime })}
               </div>
-              <div class="appUsersNotifications">
-                <div class="cardKicker" style="margin-bottom:8px">${esc(textFor('appUsersNotificationsTitle'))}</div>
-                ${notificationRows(notificationRowsData, { esc, textFor, formatDateTime })}
+              <div class="segmented appUserDetailTabs">
+                ${detailTabButtons(safeDetailTab, { esc, textFor })}
               </div>
-              <div class="appUsersNotifications" style="margin-top:14px">
-                <div class="cardKicker" style="margin-bottom:8px">${esc(textFor('appUsersTermsTitle'))}</div>
-                ${consentRows(termRowsData, { esc, textFor, formatDateTime })}
-              </div>
-              <div class="appUsersNotifications" style="margin-top:14px">
-                <div class="cardKicker" style="margin-bottom:8px">${esc(textFor('appUsersIdentitiesTitle'))}</div>
-                ${identityRows(identityRowsData, { esc, textFor, formatDateTime })}
-              </div>
+              ${detailTabPanel(
+                safeDetailTab,
+                {
+                  notifications: notificationRowsData,
+                  terms: termRowsData,
+                  identities: identityRowsData,
+                  devices: deviceRowsData,
+                  sessions: sessionRowsData,
+                  events: eventRowsData,
+                },
+                { esc, textFor, formatDateTime },
+              )}
             `
             : `<p class="muted">${esc(textFor('appUsersEmpty'))}</p>`
         }
@@ -381,12 +521,18 @@ export async function loadAppUsersView(ctx) {
   let selectedNotifications = { data: [] };
   let selectedTerms = { data: [] };
   let selectedIdentities = { data: [] };
+  let selectedDevices = { data: [] };
+  let selectedSessions = { data: [] };
+  let selectedEvents = { data: [] };
   if (selected?.id) {
     const userId = encodeURIComponent(selected.id);
-    [selectedNotifications, selectedTerms, selectedIdentities] = await Promise.all([
+    [selectedNotifications, selectedTerms, selectedIdentities, selectedDevices, selectedSessions, selectedEvents] = await Promise.all([
       api(`/admin/api/app-users/${userId}/notifications?pageSize=10`),
       api(`/admin/api/app-users/${userId}/terms`),
       api(`/admin/api/app-users/${userId}/identities`),
+      api(`/admin/api/app-users/${userId}/devices`),
+      api(`/admin/api/app-users/${userId}/sessions`),
+      api(`/admin/api/app-users/${userId}/events`),
     ]);
   }
 
@@ -457,6 +603,10 @@ export async function loadAppUsersView(ctx) {
     notificationRowsData: Array.isArray(selectedNotifications.data) ? selectedNotifications.data : [],
     termRowsData: Array.isArray(selectedTerms.data) ? selectedTerms.data : [],
     identityRowsData: Array.isArray(selectedIdentities.data) ? selectedIdentities.data : [],
+    deviceRowsData: Array.isArray(selectedDevices.data) ? selectedDevices.data : [],
+    sessionRowsData: Array.isArray(selectedSessions.data) ? selectedSessions.data : [],
+    eventRowsData: Array.isArray(selectedEvents.data) ? selectedEvents.data : [],
+    detailTab: state.appUsersDetailTab || 'notifications',
     q,
     active,
     pageSize,

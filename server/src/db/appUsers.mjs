@@ -402,6 +402,87 @@ export function listAppUserAccountEventsInDb(db, userId, { limit = 50, offset = 
     .map(publicAccountEvent);
 }
 
+export function listAppUserDevicesForUserInDb(db, userId, { limit = 50 } = {}) {
+  const safeLimit = Math.min(100, Math.max(1, Math.floor(Number(limit)) || 50));
+  return db
+    .prepare(
+      `
+        SELECT
+          id,
+          user_id,
+          platform,
+          push_token,
+          device_name,
+          active,
+          created_at,
+          updated_at
+        FROM app_user_devices
+        WHERE user_id = ?
+        ORDER BY updated_at DESC, created_at DESC
+        LIMIT ?
+      `,
+    )
+    .all(cleanText(userId), safeLimit)
+    .map((row) => ({
+      id: row.id,
+      userId: row.user_id,
+      platform: row.platform || '',
+      pushToken: row.push_token || '',
+      deviceName: row.device_name || '',
+      active: Number(row.active) === 1,
+      createdAt: row.created_at || null,
+      updatedAt: row.updated_at || null,
+    }));
+}
+
+export function listAppUserAuthSessionsInDb(db, userId, { limit = 50 } = {}) {
+  const safeLimit = Math.min(100, Math.max(1, Math.floor(Number(limit)) || 50));
+  const now = nowIso();
+  return db
+    .prepare(
+      `
+        SELECT
+          'signal_access' AS session_type,
+          substr(token_hash, 1, 14) AS session_key,
+          user_id,
+          NULL AS device_id,
+          created_at,
+          expires_at,
+          revoked_at
+        FROM app_user_sessions
+        WHERE user_id = @userId
+        UNION ALL
+        SELECT
+          'signal_refresh' AS session_type,
+          id AS session_key,
+          user_id,
+          device_id,
+          created_at,
+          expires_at,
+          revoked_at
+        FROM app_user_refresh_sessions
+        WHERE user_id = @userId
+        ORDER BY created_at DESC
+        LIMIT @limit
+      `,
+    )
+    .all({ userId: cleanText(userId), limit: safeLimit })
+    .map((row) => {
+      const expired = String(row.expires_at || '') <= now;
+      return {
+        type: row.session_type,
+        key: row.session_key || '',
+        userId: row.user_id,
+        deviceId: row.device_id || '',
+        active: !row.revoked_at && !expired,
+        expired,
+        createdAt: row.created_at || null,
+        expiresAt: row.expires_at || null,
+        revokedAt: row.revoked_at || null,
+      };
+    });
+}
+
 export function setAppUserPasswordInDb(db, userId, { password }) {
   const userPassword = String(password || '');
   if (userPassword.length < 8) throw new Error('APP_USER_PASSWORD_TOO_SHORT');

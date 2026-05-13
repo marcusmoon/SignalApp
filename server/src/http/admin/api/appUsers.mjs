@@ -1,5 +1,8 @@
 import {
   getAppUser,
+  listAppUserAccountEvents,
+  listAppUserAuthSessions,
+  listAppUserDevicesForUser,
   listAppUserIdentities,
   listAppUserDevices,
   listAppUserTermAcceptances,
@@ -152,6 +155,30 @@ export async function handleAdminAppUsersRoutes({ req, res, url, pathname }) {
   const identitiesUserId = userIdFromPath(pathname, '/identities');
   if (req.method === 'GET' && identitiesUserId) {
     json(res, 200, { data: await listAppUserIdentities(identitiesUserId) });
+    return true;
+  }
+
+  const devicesUserId = userIdFromPath(pathname, '/devices');
+  if (req.method === 'GET' && devicesUserId) {
+    json(res, 200, {
+      data: await listAppUserDevicesForUser(devicesUserId, { limit: url.searchParams.get('limit') || 50 }),
+    });
+    return true;
+  }
+
+  const sessionsUserId = userIdFromPath(pathname, '/sessions');
+  if (req.method === 'GET' && sessionsUserId) {
+    json(res, 200, {
+      data: await listAppUserAuthSessions(sessionsUserId, { limit: url.searchParams.get('limit') || 50 }),
+    });
+    return true;
+  }
+
+  const eventsUserId = userIdFromPath(pathname, '/events');
+  if (req.method === 'GET' && eventsUserId) {
+    json(res, 200, {
+      data: await listAppUserAccountEvents(eventsUserId, { limit: url.searchParams.get('limit') || 50 }),
+    });
     return true;
   }
 

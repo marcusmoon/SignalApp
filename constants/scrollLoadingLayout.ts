@@ -9,7 +9,7 @@ export const SCROLL_CONTENT_LOADING_STYLE: ViewStyle = { flexGrow: 1 };
  */
 export const SCROLL_LOADING_BODY_STYLE: ViewStyle = {
   flexGrow: 1,
-  minHeight: 200,
+  minHeight: 420,
   justifyContent: 'center',
   alignItems: 'center',
   alignSelf: 'stretch',

@@ -3,7 +3,7 @@ export * from '@/integrations/signal-api/auth';
 export * from '@/integrations/signal-api/socialAuth';
 export * from '@/integrations/signal-api/legalTerms';
 export * from '@/integrations/signal-api/cache';
-export * from '@/integrations/signal-api/client';
+export * from '@/integrations/signal-api/httpClient';
 export * from '@/integrations/signal-api/concalls';
 export * from '@/integrations/signal-api/calendarRange';
 export * from '@/integrations/signal-api/market';

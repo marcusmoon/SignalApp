@@ -50,7 +50,7 @@ import {
   type SignalApiCoinMarket,
   type SignalApiMarketQuote,
 } from '@/integrations/signal-api';
-import { formatSignalApiError } from '@/integrations/signal-api/client';
+import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import { POPULAR_SYMBOLS_ORDERED } from '@/domain/quotes/usSymbols';
 import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';

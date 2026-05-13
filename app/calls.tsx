@@ -13,7 +13,7 @@ import type { MessageId } from '@/locales/messages';
 import { fetchConcallSummaryForEarningsRow } from '@/services/concalls';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import { hasSignalApi } from '@/services/env';
-import { formatSignalApiError } from '@/integrations/signal-api/client';
+import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiCalendarEvent } from '@/integrations/signal-api/types';
 import type { ConcallSummary } from '@/types/signal';
 

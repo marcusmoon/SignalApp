@@ -2,6 +2,7 @@ import {
   createAppUser,
   disconnectAppUserIdentity,
   linkAppUserSocialIdentity,
+  listAppUserAccountEvents,
   listAppUserIdentities,
   listAppUserTermAcceptances,
   loginAppUser,
@@ -15,10 +16,14 @@ import {
   verifyAppUserToken,
   withdrawAppUser,
 } from '../../../db.mjs';
+import crypto from 'node:crypto';
 import { buildSocialAuthRuntime, publicSocialAuthCatalog } from '../../../auth/socialAuthConfig.mjs';
 import { resolveSocialProfile } from '../../../auth/socialProfile.mjs';
+import { config } from '../../../config.mjs';
 import { getAppUserJwtConfigStatus } from '../../../auth/jwtAccess.mjs';
 import { json, readBody } from '../../shared.mjs';
+
+const SOCIAL_SIGNUP_TICKET_TTL_MS = 10 * 60 * 1000;
 
 function bearerToken(req) {
   const header = String(req.headers.authorization || '');
@@ -51,6 +56,48 @@ function authPayload(result) {
     deviceId: s.deviceId,
     token: s.accessToken,
     expiresAt: s.accessExpiresAt,
+  };
+}
+
+function base64UrlJson(value) {
+  return Buffer.from(JSON.stringify(value)).toString('base64url');
+}
+
+function signSocialSignupTicket(payload) {
+  const body = base64UrlJson(payload);
+  const sig = crypto.createHmac('sha256', config.sessionSecret).update(body).digest('base64url');
+  return `${body}.${sig}`;
+}
+
+function verifySocialSignupTicket(ticket) {
+  const raw = String(ticket || '').trim();
+  const [body, sig] = raw.split('.');
+  if (!body || !sig) throw new Error('APP_USER_SOCIAL_INVALID_TOKEN');
+  const expected = crypto.createHmac('sha256', config.sessionSecret).update(body).digest('base64url');
+  const expectedBuf = Buffer.from(expected);
+  const sigBuf = Buffer.from(sig);
+  if (expectedBuf.length !== sigBuf.length || !crypto.timingSafeEqual(expectedBuf, sigBuf)) {
+    throw new Error('APP_USER_SOCIAL_INVALID_TOKEN');
+  }
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+  } catch {
+    throw new Error('APP_USER_SOCIAL_INVALID_TOKEN');
+  }
+  if (!payload || typeof payload !== 'object') throw new Error('APP_USER_SOCIAL_INVALID_TOKEN');
+  if (Number(payload.exp || 0) <= Date.now()) throw new Error('APP_USER_SOCIAL_INVALID_TOKEN');
+  const provider = String(payload.provider || '').toLowerCase();
+  const profile = payload.profile && typeof payload.profile === 'object' ? payload.profile : null;
+  if (!provider || !profile?.providerUserId) throw new Error('APP_USER_SOCIAL_INVALID_TOKEN');
+  return { provider, profile };
+}
+
+function publicSocialProfile(profile) {
+  return {
+    email: String(profile?.email || ''),
+    displayName: String(profile?.displayName || ''),
+    profileImageUrl: String(profile?.profileImageUrl || ''),
   };
 }
 
@@ -109,18 +156,45 @@ export async function handlePublicAuthRoutes({ req, res, pathname }) {
   if (req.method === 'POST' && pathname === '/v1/auth/social/login') {
     try {
       const body = await readBody(req);
-      const appSettings = await readAppSettings();
-      const runtime = buildSocialAuthRuntime(appSettings);
-      const provider = String(body.provider || '').toLowerCase();
-      const profile = await resolveSocialProfile(provider, body, runtime);
+      const ticket = String(body.signupToken || '').trim();
+      const resolved = ticket
+        ? verifySocialSignupTicket(ticket)
+        : null;
+      const provider = resolved?.provider || String(body.provider || '').toLowerCase();
+      let profile = resolved?.profile;
+      if (!profile) {
+        const appSettings = await readAppSettings();
+        const runtime = buildSocialAuthRuntime(appSettings);
+        profile = await resolveSocialProfile(provider, body, runtime);
+      }
       const result = await loginOrRegisterSocialUser({
         provider,
         profile,
         deviceId: body.deviceId,
         locale: body.locale,
         acceptedTerms: Array.isArray(body.acceptedTerms) ? body.acceptedTerms : [],
+        signupProfile: body.signupProfile && typeof body.signupProfile === 'object' ? body.signupProfile : null,
       });
       json(res, 200, { data: authPayload(result) });
+    } catch (error) {
+      socialAuthError(res, error);
+    }
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/v1/auth/social/preview') {
+    try {
+      const body = await readBody(req);
+      const appSettings = await readAppSettings();
+      const runtime = buildSocialAuthRuntime(appSettings);
+      const provider = String(body.provider || '').toLowerCase();
+      const profile = await resolveSocialProfile(provider, body, runtime);
+      const signupToken = signSocialSignupTicket({
+        provider,
+        profile,
+        exp: Date.now() + SOCIAL_SIGNUP_TICKET_TTL_MS,
+      });
+      json(res, 200, { data: { provider, profile: publicSocialProfile(profile), signupToken } });
     } catch (error) {
       socialAuthError(res, error);
     }
@@ -196,6 +270,18 @@ export async function handlePublicAuthRoutes({ req, res, pathname }) {
     const session = await requireAppUser(req, res);
     if (!session) return true;
     const rows = await listAppUserIdentities(session.user.id);
+    json(res, 200, { data: rows });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/v1/auth/me/events') {
+    const session = await requireAppUser(req, res);
+    if (!session) return true;
+    const url = new URL(req.url, 'http://signal.local');
+    const rows = await listAppUserAccountEvents(session.user.id, {
+      limit: url.searchParams.get('limit'),
+      offset: url.searchParams.get('offset'),
+    });
     json(res, 200, { data: rows });
     return true;
   }

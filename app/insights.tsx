@@ -1,16 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import {
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  Platform,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
@@ -18,11 +8,12 @@ import * as WebBrowser from 'expo-web-browser';
 import { InsightCard } from '@/components/signal/InsightCard';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchSignalInsights } from '@/integrations/signal-api';
-import { formatSignalApiError } from '@/integrations/signal-api/client';
+import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiInsight } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
@@ -300,8 +291,7 @@ export default function InsightsScreen() {
       </View>
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator color={theme.green} />
-          <Text style={styles.muted}>{t('commonLoading')}</Text>
+          <SignalLoadingIndicator message={t('commonLoading')} />
         </View>
       ) : error ? (
         <View style={styles.center}>

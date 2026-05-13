@@ -1,4 +1,4 @@
-import { getExpoUpdatesModule } from './client';
+import { getExpoUpdatesModule } from './nativeModule';
 
 /**
  * EAS Update 등으로 번들이 새로 올라왔는지 확인.

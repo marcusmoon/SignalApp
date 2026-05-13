@@ -1,4 +1,4 @@
-import { signalApiRequest } from './client';
+import { signalApiRequest } from './httpClient';
 
 export type SignalNotificationItem = {
   id: string;

@@ -20,7 +20,7 @@ import {
 } from '@/domain/concalls/signalCalendarEarnings';
 import { fetchSignalEarningsCalendarRangeMerged } from '@/integrations/signal-api/calendarRange';
 import { fetchSignalInsights } from '@/integrations/signal-api/insights';
-import { formatSignalApiError } from '@/integrations/signal-api/client';
+import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { signalNewsToNewsItem } from '@/integrations/signal-api/news';
 import { fetchSignalStockCandles, fetchSignalStockProfile } from '@/integrations/signal-api/stock';

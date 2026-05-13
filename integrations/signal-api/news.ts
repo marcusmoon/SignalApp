@@ -1,4 +1,4 @@
-import { signalApi } from '@/integrations/signal-api/client';
+import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiNewsItem, SignalNewsListMeta } from '@/integrations/signal-api/types';
 import type { AppLocale } from '@/locales/messages';
 import { isFlashNews } from '@/domain/news';

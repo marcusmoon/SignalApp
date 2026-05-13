@@ -182,6 +182,19 @@ export function ensureStructuredSchema(db) {
       UNIQUE(provider, provider_user_id)
     );
 
+    CREATE TABLE IF NOT EXISTS app_user_account_events (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      event_type TEXT NOT NULL,
+      actor_type TEXT NOT NULL DEFAULT 'user',
+      actor_id TEXT,
+      identity_id TEXT,
+      provider TEXT,
+      provider_user_id_hash TEXT,
+      payload TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS app_user_devices (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
@@ -396,6 +409,9 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_legal_terms_locale ON legal_terms(locale, active);
     CREATE INDEX IF NOT EXISTS idx_legal_terms_type_locale ON legal_terms(type, locale, active, updated_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_identities_user ON app_user_identities(user_id, disconnected_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_account_events_user ON app_user_account_events(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_account_events_type ON app_user_account_events(event_type, created_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_account_events_identity ON app_user_account_events(identity_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_terms_user ON app_user_terms_acceptances(user_id, accepted_at);
     CREATE INDEX IF NOT EXISTS idx_news_items_published ON news_items(category, published_at);
     CREATE INDEX IF NOT EXISTS idx_news_translations_item ON news_translations(news_item_id, locale);
@@ -429,6 +445,9 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_legal_terms_locale ON legal_terms(locale, active);
     CREATE INDEX IF NOT EXISTS idx_legal_terms_type_locale ON legal_terms(type, locale, active, updated_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_identities_user ON app_user_identities(user_id, disconnected_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_account_events_user ON app_user_account_events(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_account_events_type ON app_user_account_events(event_type, created_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_account_events_identity ON app_user_account_events(identity_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_insight_items_display ON insight_items(generated_date, display_key, generated_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_type ON notification_items(type, status, scheduled_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_user ON notification_items(app_user_id, status, scheduled_at);

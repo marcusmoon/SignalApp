@@ -25,7 +25,7 @@ import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
-import { formatSignalApiError } from '@/integrations/signal-api/client';
+import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import {
   CALENDAR_EVENT_TYPE_ORDER,

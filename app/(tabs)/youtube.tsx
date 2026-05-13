@@ -45,7 +45,7 @@ import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeCh
 import { loadCurationHandles } from '@/services/youtubeCurationList';
 import type { ChannelHandleMeta } from '@/domain/youtube/types';
 import { fetchSignalYoutube, signalYoutubeToYoutubeItem } from '@/integrations/signal-api';
-import { formatSignalApiError } from '@/integrations/signal-api/client';
+import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { YoutubeItem } from '@/types/signal';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
 import {

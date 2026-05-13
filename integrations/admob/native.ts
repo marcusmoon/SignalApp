@@ -1,4 +1,4 @@
-import { configuredBannerAdUnitId, configuredNativeAdUnitId } from '@/integrations/admob/client';
+import { configuredBannerAdUnitId, configuredNativeAdUnitId } from '@/integrations/admob/unitIds';
 import { NativeModules, Platform, TurboModuleRegistry } from 'react-native';
 
 type AdsModule = typeof import('react-native-google-mobile-ads');

@@ -1,4 +1,4 @@
-import { signalApi } from '@/integrations/signal-api/client';
+import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiStockCandles, SignalApiStockProfile } from '@/integrations/signal-api/types';
 
 export async function fetchSignalStockProfile(symbol: string): Promise<SignalApiStockProfile | null> {

@@ -1,4 +1,4 @@
-import { signalApi } from '@/integrations/signal-api/client';
+import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiCalendarEvent } from '@/integrations/signal-api/types';
 import { buildSignalCalendarCacheKey, peekSignalCalendarCache, storeSignalCalendarCache } from '@/integrations/signal-api/cache/calendarCache';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';

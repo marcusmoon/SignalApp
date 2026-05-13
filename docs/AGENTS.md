@@ -76,7 +76,7 @@ assets/
 
 ## 6. `services/` vs `integrations/`
 
-Signal API HTTP와 그 응답 메모리 캐시는 **`integrations/signal-api/`**, AdMob·OTA 어댑터는 각 integration에 둡니다. Finnhub·YouTube·OpenAI·Claude·CoinGecko·Ninjas 등 외부 provider HTTP는 서버가 담당하고, 앱은 `@/integrations/signal-api/...`만 호출합니다. **`services/`** 는 `env`, Signal 서버 endpoint 선택, 관심종목·알림·**캐시 on/off**(`cacheFeaturePreferences`) 등 **기기·설정·오케스트레이션**을 담당합니다.
+Signal API HTTP transport는 **`integrations/signal-api/httpClient.ts`**, 응답 메모리 캐시는 **`integrations/signal-api/cache/*`**, 피처별 API 모듈은 **`integrations/signal-api/*.ts`** 에 둡니다. AdMob·OTA 어댑터는 각 integration에 둡니다. Finnhub·YouTube·OpenAI·Claude·CoinGecko·Ninjas 등 외부 provider HTTP는 서버가 담당하고, 앱은 `@/integrations/signal-api/...`만 호출합니다. **`services/`** 는 `env`, Signal 서버 endpoint 선택, 관심종목·알림·**캐시 on/off**(`cacheFeaturePreferences`) 등 **기기·설정·오케스트레이션**을 담당합니다.
 
 ## 7. 코딩 메모
 

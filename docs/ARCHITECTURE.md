@@ -100,9 +100,9 @@ domain/
 
 ```text
 integrations/
-  signal-api/             # Signal Server API client + cache/ (news, calendar, concalls, youtube 등)
-  admob/                  # 광고
-  expo-updates/           # OTA 관련
+  signal-api/             # Signal Server API modules + httpClient.ts + cache/
+  admob/                  # 광고 어댑터 + unitIds.ts
+  expo-updates/           # OTA 어댑터 + nativeModule.ts
 ```
 
 ---
@@ -150,6 +150,7 @@ server/data/                # signal.sqlite (+ WAL/SHM)
 ## 3. Integrations (`integrations/`)
 
 - **Signal API:** 앱 피처 데이터 HTTP는 `integrations/signal-api/`에서만 수행한다.
+- **`signal-api/httpClient.ts`:** Signal Server HTTP transport, timeout/retry, auth refresh를 담당한다. 피처별 파일(`news.ts`, `stock.ts` 등)은 이 모듈만 사용한다.
 - **Provider client:** Finnhub·YouTube·OpenAI·Claude·CoinGecko·Ninjas 등 외부 provider HTTP는 서버가 담당한다. 앱에는 provider 클라이언트 폴더를 두지 않는다.
 - **도메인 상수:** 큐레이션·심볼 시드 등은 `domain/youtube/constants.ts`, `domain/quotes/constants.ts` 등 **제품 규칙과 함께 갈 값**에 둔다.
 - **`signal-api/index.ts`:** 외부에 노출하는 API·타입 re-export. `signal-api/cache/*`는 응답 캐시; 순환 참조 주의.

@@ -1,4 +1,4 @@
-import { signalApi } from '@/integrations/signal-api/client';
+import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiMarketList } from '@/integrations/signal-api/types';
 
 export async function fetchSignalMarketList(key: string): Promise<SignalApiMarketList> {

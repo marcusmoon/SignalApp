@@ -32,6 +32,25 @@ function deriveSocialEmail(provider, email, sub) {
   return `${p}-${safeSub}@users.signal.local`;
 }
 
+function overrideSocialProfile(profile, signupProfile = null) {
+  if (!signupProfile || typeof signupProfile !== 'object') return profile;
+  const next = { ...profile };
+  if (typeof signupProfile.email === 'string' && cleanText(signupProfile.email)) {
+    const email = normalizeEmail(signupProfile.email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('APP_USER_EMAIL_INVALID');
+    next.email = email;
+  }
+  if (typeof signupProfile.nickname === 'string') {
+    const nickname = cleanText(signupProfile.nickname);
+    if (nickname.length < 2) throw new Error('APP_USER_NICKNAME_REQUIRED');
+    next.displayName = nickname.slice(0, 60);
+  }
+  if (typeof signupProfile.profileImageUrl === 'string') {
+    next.profileImageUrl = cleanText(signupProfile.profileImageUrl);
+  }
+  return next;
+}
+
 function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
   const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
   return { hash, salt };
@@ -47,6 +66,12 @@ function verifyPassword(password, row) {
 
 function tokenHash(token) {
   return crypto.createHash('sha256').update(String(token || '')).digest('hex');
+}
+
+function hashProviderUserId(provider, providerUserId) {
+  const raw = `${cleanText(provider).toLowerCase()}:${cleanText(providerUserId)}`;
+  if (!raw.endsWith(':')) return crypto.createHash('sha256').update(raw).digest('hex');
+  return '';
 }
 
 function publicUser(row) {
@@ -79,6 +104,147 @@ function publicIdentity(row) {
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
   };
+}
+
+function publicAccountEvent(row) {
+  if (!row) return null;
+  let payload = {};
+  try {
+    payload = JSON.parse(row.payload || '{}');
+  } catch {
+    payload = {};
+  }
+  return {
+    id: row.id,
+    userId: row.user_id,
+    eventType: row.event_type,
+    actorType: row.actor_type || 'user',
+    actorId: row.actor_id || '',
+    identityId: row.identity_id || '',
+    provider: row.provider || '',
+    providerUserIdHash: row.provider_user_id_hash || '',
+    payload,
+    createdAt: row.created_at,
+  };
+}
+
+function insertAppUserAccountEventInDb(
+  db,
+  {
+    userId,
+    eventType,
+    actorType = 'user',
+    actorId = '',
+    identityId = '',
+    provider = '',
+    providerUserId = '',
+    payload = {},
+    createdAt = nowIso(),
+  },
+) {
+  const cleanUserId = cleanText(userId);
+  const cleanEventType = cleanText(eventType);
+  if (!cleanUserId || !cleanEventType) return null;
+  const providerUserIdHash = hashProviderUserId(provider, providerUserId);
+  const payloadJson = JSON.stringify(payload && typeof payload === 'object' ? payload : {});
+  const id = crypto.randomUUID();
+  db.prepare(
+    `
+      INSERT INTO app_user_account_events (
+        id, user_id, event_type, actor_type, actor_id, identity_id, provider,
+        provider_user_id_hash, payload, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+  ).run(
+    id,
+    cleanUserId,
+    cleanEventType,
+    cleanText(actorType) || 'user',
+    cleanText(actorId) || null,
+    cleanText(identityId) || null,
+    cleanText(provider).toLowerCase() || null,
+    providerUserIdHash || null,
+    payloadJson,
+    createdAt,
+  );
+  return publicAccountEvent(db.prepare('SELECT * FROM app_user_account_events WHERE id = ?').get(id));
+}
+
+function withdrawnEmailForUserId(userId) {
+  return `withdrawn+${cleanText(userId)}@users.signal.local`;
+}
+
+function withdrawnProviderUserIdForIdentity(identityId) {
+  return `withdrawn:${cleanText(identityId)}`;
+}
+
+function disconnectedProviderUserIdForIdentity(identityId) {
+  return `disconnected:${cleanText(identityId)}`;
+}
+
+function releaseDisconnectedIdentityInDb(db, identity, now = nowIso()) {
+  if (!identity?.id || !identity.disconnected_at) return false;
+  db.prepare(
+    `
+      UPDATE app_user_identities
+      SET
+        provider_user_id = ?,
+        email = NULL,
+        display_name = NULL,
+        profile_image_url = NULL,
+        payload = '{}',
+        updated_at = ?
+      WHERE id = ?
+    `,
+  ).run(disconnectedProviderUserIdForIdentity(identity.id), now, identity.id);
+  return true;
+}
+
+function tombstoneAppUserLoginIdentifiersInDb(db, userId, now = nowIso()) {
+  const id = cleanText(userId);
+  const existing = db.prepare('SELECT * FROM app_users WHERE id = ?').get(id);
+  if (!existing) return;
+  db.prepare(
+    `
+      UPDATE app_users
+      SET
+        email = ?,
+        nickname = ?,
+        profile_image_url = '',
+        password_hash = NULL,
+        password_salt = NULL,
+        auth_provider = 'withdrawn',
+        active = 0,
+        updated_at = ?
+      WHERE id = ?
+    `,
+  ).run(withdrawnEmailForUserId(id), 'Withdrawn user', now, id);
+
+  const identities = db.prepare('SELECT id FROM app_user_identities WHERE user_id = ?').all(id);
+  const updateIdentity = db.prepare(
+    `
+      UPDATE app_user_identities
+      SET
+        provider_user_id = ?,
+        email = NULL,
+        display_name = NULL,
+        profile_image_url = NULL,
+        disconnected_at = COALESCE(disconnected_at, ?),
+        payload = '{}',
+        updated_at = ?
+      WHERE id = ?
+    `,
+  );
+  for (const identity of identities) {
+    updateIdentity.run(withdrawnProviderUserIdForIdentity(identity.id), now, now, identity.id);
+  }
+}
+
+function releaseInactiveUserLoginIdentifiersInDb(db, userId, now = nowIso()) {
+  const row = db.prepare('SELECT id, active FROM app_users WHERE id = ?').get(cleanText(userId));
+  if (!row || Number(row.active) === 1) return false;
+  tombstoneAppUserLoginIdentifiersInDb(db, row.id, now);
+  return true;
 }
 
 function adminUserRow(row) {
@@ -175,9 +341,10 @@ export async function createAppUserInDb(
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) throw new Error('APP_USER_EMAIL_INVALID');
   if (userPassword.length < 8) throw new Error('APP_USER_PASSWORD_TOO_SHORT');
   if (cleanNickname.length < 2) throw new Error('APP_USER_NICKNAME_REQUIRED');
-  const exists = db.prepare('SELECT id FROM app_users WHERE email = ?').get(normalizedEmail);
-  if (exists) throw new Error('APP_USER_EMAIL_EXISTS');
+  const exists = db.prepare('SELECT id, active FROM app_users WHERE email = ?').get(normalizedEmail);
+  if (exists && Number(exists.active) === 1) throw new Error('APP_USER_EMAIL_EXISTS');
   const requiredTerms = validateRequiredTermsAcceptedInDb(db, acceptedTerms, locale);
+  if (exists) releaseInactiveUserLoginIdentifiersInDb(db, exists.id);
   const { hash, salt } = hashPassword(userPassword);
   const id = crypto.randomUUID();
   const now = nowIso();
@@ -218,6 +385,23 @@ export function listAppUserIdentitiesInDb(db, userId) {
     .map(publicIdentity);
 }
 
+export function listAppUserAccountEventsInDb(db, userId, { limit = 50, offset = 0 } = {}) {
+  const safeLimit = Math.min(100, Math.max(1, Math.floor(Number(limit)) || 50));
+  const safeOffset = Math.max(0, Math.floor(Number(offset)) || 0);
+  return db
+    .prepare(
+      `
+        SELECT *
+        FROM app_user_account_events
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+      `,
+    )
+    .all(cleanText(userId), safeLimit, safeOffset)
+    .map(publicAccountEvent);
+}
+
 export function setAppUserPasswordInDb(db, userId, { password }) {
   const userPassword = String(password || '');
   if (userPassword.length < 8) throw new Error('APP_USER_PASSWORD_TOO_SHORT');
@@ -252,7 +436,32 @@ export function disconnectAppUserIdentityInDb(db, userId, identityId) {
   const hasPassword = Boolean(user.password_hash && user.password_salt);
   if (!hasPassword && remainingIdentityCount === 0) throw new Error('APP_USER_PASSWORD_REQUIRED_BEFORE_UNLINK');
   const now = nowIso();
-  db.prepare('UPDATE app_user_identities SET disconnected_at = ?, updated_at = ? WHERE id = ?').run(now, now, identity.id);
+  db.prepare(
+    `
+      UPDATE app_user_identities
+      SET
+        provider_user_id = ?,
+        email = NULL,
+        display_name = NULL,
+        profile_image_url = NULL,
+        disconnected_at = ?,
+        payload = '{}',
+        updated_at = ?
+      WHERE id = ?
+    `,
+  ).run(disconnectedProviderUserIdForIdentity(identity.id), now, now, identity.id);
+  insertAppUserAccountEventInDb(db, {
+    userId: user.id,
+    eventType: 'social_unlinked',
+    identityId: identity.id,
+    provider: identity.provider,
+    providerUserId: identity.provider_user_id,
+    payload: {
+      remainingIdentityCount,
+      hasPassword,
+    },
+    createdAt: now,
+  });
   return publicIdentity(db.prepare('SELECT * FROM app_user_identities WHERE id = ?').get(identity.id));
 }
 
@@ -267,7 +476,7 @@ function nicknameFromSocialProfile(profile, derivedEmail) {
 
 export async function loginOrRegisterSocialUserInDb(
   db,
-  { provider, profile, deviceId = '', locale = 'ko', acceptedTerms = [] },
+  { provider, profile, deviceId = '', locale = 'ko', acceptedTerms = [], signupProfile = null },
 ) {
   const p = String(provider || '').toLowerCase();
   if (!SOCIAL_PROVIDERS.has(p)) throw new Error('APP_USER_SOCIAL_UNSUPPORTED');
@@ -284,52 +493,43 @@ export async function loginOrRegisterSocialUserInDb(
   );
 
   if (existingIdentity) {
-    const userRow = db.prepare('SELECT * FROM app_users WHERE id = ? AND active = 1').get(existingIdentity.user_id);
+    const userRow = db.prepare('SELECT * FROM app_users WHERE id = ?').get(existingIdentity.user_id);
     if (!userRow) throw new Error('APP_USER_NOT_FOUND');
-    if (existingIdentity.disconnected_at) {
-      db.prepare(
-        `
-        UPDATE app_user_identities
-        SET disconnected_at = NULL, linked_at = ?, updated_at = ?, email = ?, display_name = ?, profile_image_url = ?, payload = ?
-        WHERE id = ?
-      `,
-      ).run(
-        now,
-        now,
-        profile.email || null,
-        profile.displayName || null,
-        profile.profileImageUrl || null,
-        payloadJson,
-        existingIdentity.id,
-      );
+    if (Number(userRow.active) === 1) {
+      if (existingIdentity.disconnected_at) {
+        releaseDisconnectedIdentityInDb(db, existingIdentity, now);
+      } else {
+        db.prepare(
+          `
+          UPDATE app_user_identities
+          SET updated_at = ?, email = ?, display_name = ?, profile_image_url = ?, payload = ?
+          WHERE id = ?
+        `,
+        ).run(
+          now,
+          profile.email || null,
+          profile.displayName || null,
+          profile.profileImageUrl || null,
+          payloadJson,
+          existingIdentity.id,
+        );
+        const session = await resolveSessionForUser(db, userRow.id, deviceId);
+        return { user: publicUser(userRow), session };
+      }
     } else {
-      db.prepare(
-        `
-        UPDATE app_user_identities
-        SET updated_at = ?, email = ?, display_name = ?, profile_image_url = ?, payload = ?
-        WHERE id = ?
-      `,
-      ).run(
-        now,
-        profile.email || null,
-        profile.displayName || null,
-        profile.profileImageUrl || null,
-        payloadJson,
-        existingIdentity.id,
-      );
+      releaseInactiveUserLoginIdentifiersInDb(db, userRow.id, now);
     }
-    const session = await resolveSessionForUser(db, userRow.id, deviceId);
-    return { user: publicUser(userRow), session };
   }
 
   if (!isAppUserJwtConfigured()) throw new Error('APP_USER_JWT_NOT_CONFIGURED');
 
-  const derivedEmail = deriveSocialEmail(p, profile.email, sub);
-  const emailRow = db.prepare('SELECT id FROM app_users WHERE email = ?').get(derivedEmail);
-  if (emailRow) throw new Error('APP_USER_SOCIAL_EMAIL_CONFLICT');
-
+  const signup = overrideSocialProfile(profile, signupProfile);
+  const derivedEmail = deriveSocialEmail(p, signup.email, sub);
   const requiredTerms = validateRequiredTermsAcceptedInDb(db, acceptedTerms, locale);
-  const nickname = nicknameFromSocialProfile(profile, derivedEmail);
+  const emailRow = db.prepare('SELECT id, active FROM app_users WHERE email = ?').get(derivedEmail);
+  if (emailRow && Number(emailRow.active) === 1) throw new Error('APP_USER_SOCIAL_EMAIL_CONFLICT');
+  if (emailRow) releaseInactiveUserLoginIdentifiersInDb(db, emailRow.id, now);
+  const nickname = nicknameFromSocialProfile(signup, derivedEmail);
   const id = crypto.randomUUID();
   db.prepare(
     `
@@ -339,7 +539,7 @@ export async function loginOrRegisterSocialUserInDb(
       )
       VALUES (?, ?, ?, ?, NULL, NULL, ?, 1, ?, ?)
     `,
-  ).run(id, derivedEmail, nickname, cleanText(profile.profileImageUrl), p, now, now);
+  ).run(id, derivedEmail, nickname, cleanText(signup.profileImageUrl), p, now, now);
   insertAppUserTermAcceptancesInDb(db, id, requiredTerms);
 
   const identityId = crypto.randomUUID();
@@ -355,14 +555,26 @@ export async function loginOrRegisterSocialUserInDb(
     id,
     p,
     sub,
-    profile.email || null,
-    profile.displayName || null,
-    profile.profileImageUrl || null,
+    signup.email || null,
+    signup.displayName || null,
+    signup.profileImageUrl || null,
     now,
     payloadJson,
     now,
     now,
   );
+  insertAppUserAccountEventInDb(db, {
+    userId: id,
+    eventType: 'social_linked',
+    identityId,
+    provider: p,
+    providerUserId: sub,
+    payload: {
+      reason: 'social_signup',
+      profileEmailPresent: Boolean(profile.email),
+    },
+    createdAt: now,
+  });
 
   const row = db.prepare('SELECT * FROM app_users WHERE id = ?').get(id);
   const session = await resolveSessionForUser(db, id, deviceId);
@@ -384,25 +596,46 @@ export function linkAppUserSocialIdentityInDb(db, userId, provider, profile) {
   );
 
   if (row) {
-    if (row.user_id !== user.id) throw new Error('APP_USER_SOCIAL_IDENTITY_TAKEN');
-    db.prepare(
-      `
-      UPDATE app_user_identities
-      SET disconnected_at = NULL, linked_at = ?, updated_at = ?, email = ?, display_name = ?, profile_image_url = ?, payload = ?
-      WHERE id = ?
-    `,
-    ).run(
-      now,
-      now,
-      profile.email || null,
-      profile.displayName || null,
-      profile.profileImageUrl || null,
-      payloadJson,
-      row.id,
-    );
-    const identity = publicIdentity(db.prepare('SELECT * FROM app_user_identities WHERE id = ?').get(row.id));
-    const userRow = db.prepare('SELECT * FROM app_users WHERE id = ?').get(user.id);
-    return { identity, user: publicUser(userRow) };
+    if (row.user_id !== user.id) {
+      if (row.disconnected_at) {
+        releaseDisconnectedIdentityInDb(db, row, now);
+      } else {
+        const owner = db.prepare('SELECT id, active FROM app_users WHERE id = ?').get(row.user_id);
+        if (!owner || Number(owner.active) === 1) throw new Error('APP_USER_SOCIAL_IDENTITY_TAKEN');
+        releaseInactiveUserLoginIdentifiersInDb(db, owner.id, now);
+      }
+    } else {
+      db.prepare(
+        `
+        UPDATE app_user_identities
+        SET disconnected_at = NULL, linked_at = ?, updated_at = ?, email = ?, display_name = ?, profile_image_url = ?, payload = ?
+        WHERE id = ?
+      `,
+      ).run(
+        now,
+        now,
+        profile.email || null,
+        profile.displayName || null,
+        profile.profileImageUrl || null,
+        payloadJson,
+        row.id,
+      );
+      const identity = publicIdentity(db.prepare('SELECT * FROM app_user_identities WHERE id = ?').get(row.id));
+      const userRow = db.prepare('SELECT * FROM app_users WHERE id = ?').get(user.id);
+      insertAppUserAccountEventInDb(db, {
+        userId: user.id,
+        eventType: 'social_linked',
+        identityId: row.id,
+        provider: p,
+        providerUserId: sub,
+        payload: {
+          reason: row.disconnected_at ? 'social_relinked' : 'social_refreshed',
+          profileEmailPresent: Boolean(profile.email),
+        },
+        createdAt: now,
+      });
+      return { identity, user: publicUser(userRow) };
+    }
   }
 
   const id = crypto.randomUUID();
@@ -426,6 +659,18 @@ export function linkAppUserSocialIdentityInDb(db, userId, provider, profile) {
     now,
     now,
   );
+  insertAppUserAccountEventInDb(db, {
+    userId: user.id,
+    eventType: 'social_linked',
+    identityId: id,
+    provider: p,
+    providerUserId: sub,
+    payload: {
+      reason: 'manual_link',
+      profileEmailPresent: Boolean(profile.email),
+    },
+    createdAt: now,
+  });
   const identity = publicIdentity(db.prepare('SELECT * FROM app_user_identities WHERE id = ?').get(id));
   const userRow = db.prepare('SELECT * FROM app_users WHERE id = ?').get(user.id);
   return { identity, user: publicUser(userRow) };
@@ -552,10 +797,50 @@ export function withdrawAppUserInDb(db, userId) {
   const existing = db.prepare('SELECT * FROM app_users WHERE id = ? AND active = 1').get(id);
   if (!existing) throw new Error('APP_USER_NOT_FOUND');
   const now = nowIso();
-  db.prepare('UPDATE app_users SET active = 0, updated_at = ? WHERE id = ?').run(now, id);
+  const identityCount =
+    Number(db.prepare('SELECT COUNT(*) AS count FROM app_user_identities WHERE user_id = ?').get(id)?.count) || 0;
+  const activeSessionCount =
+    Number(
+      db
+        .prepare(
+          `
+            SELECT COUNT(*) AS count
+            FROM app_user_sessions
+            WHERE user_id = ? AND revoked_at IS NULL AND expires_at > ?
+          `,
+        )
+        .get(id, now)?.count,
+    ) || 0;
+  const activeRefreshSessionCount =
+    Number(
+      db
+        .prepare(
+          `
+            SELECT COUNT(*) AS count
+            FROM app_user_refresh_sessions
+            WHERE user_id = ? AND revoked_at IS NULL AND expires_at > ?
+          `,
+        )
+        .get(id, now)?.count,
+    ) || 0;
+  const activeDeviceCount =
+    Number(db.prepare('SELECT COUNT(*) AS count FROM app_user_devices WHERE user_id = ? AND active = 1').get(id)?.count) ||
+    0;
+  tombstoneAppUserLoginIdentifiersInDb(db, id, now);
   db.prepare('UPDATE app_user_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL').run(now, id);
   db.prepare('UPDATE app_user_refresh_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL').run(now, id);
   db.prepare('UPDATE app_user_devices SET active = 0, updated_at = ? WHERE user_id = ?').run(now, id);
+  insertAppUserAccountEventInDb(db, {
+    userId: id,
+    eventType: 'account_withdrawn',
+    payload: {
+      identityCount,
+      revokedSessionCount: activeSessionCount,
+      revokedRefreshSessionCount: activeRefreshSessionCount,
+      deactivatedDeviceCount: activeDeviceCount,
+    },
+    createdAt: now,
+  });
   return { withdrawnAt: now };
 }
 

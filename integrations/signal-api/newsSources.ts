@@ -1,4 +1,4 @@
-import { signalApi } from '@/integrations/signal-api/client';
+import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiNewsSource } from '@/integrations/signal-api/types';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import {

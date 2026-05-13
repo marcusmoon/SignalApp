@@ -1,4 +1,4 @@
-import { signalApi } from '@/integrations/signal-api/client';
+import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiConcall } from '@/integrations/signal-api/types';
 import { buildSignalConcallsCacheKey, peekSignalConcallsCache, storeSignalConcallsCache } from '@/integrations/signal-api/cache/concallsCache';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';

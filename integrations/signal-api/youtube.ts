@@ -1,4 +1,4 @@
-import { signalApi } from '@/integrations/signal-api/client';
+import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiYoutubeVideo } from '@/integrations/signal-api/types';
 import type { AppLocale } from '@/locales/messages';
 import { messages } from '@/locales/messages';

@@ -1,6 +1,6 @@
 import { getOrCreateAppDeviceId } from '@/services/appDeviceId';
 
-import { signalApiRequest } from '@/integrations/signal-api/client';
+import { signalApiRequest } from '@/integrations/signal-api/httpClient';
 
 export type SignalAppUser = {
   id: string;

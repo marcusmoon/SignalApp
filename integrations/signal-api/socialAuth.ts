@@ -1,5 +1,5 @@
 import { normalizeAuthSession, type SignalAppUser, type SignalAuthSession, type SignalUserIdentity } from '@/integrations/signal-api/auth';
-import { signalApiRequest } from '@/integrations/signal-api/client';
+import { signalApiRequest } from '@/integrations/signal-api/httpClient';
 import { getOrCreateAppDeviceId } from '@/services/appDeviceId';
 
 export type SocialProviderKey = 'google' | 'apple' | 'kakao' | 'naver';
@@ -21,6 +21,16 @@ export type SignalSocialCatalog = {
   oauthRedirectPath?: string;
 };
 
+export type SignalSocialSignupPreview = {
+  provider: SocialProviderKey;
+  signupToken: string;
+  profile: {
+    email: string;
+    displayName: string;
+    profileImageUrl: string;
+  };
+};
+
 export async function fetchSignalSocialProviders(): Promise<SignalSocialCatalog> {
   const json = await signalApiRequest<{ data: SignalSocialCatalog }>('/v1/auth/social/providers');
   return json.data;
@@ -28,6 +38,7 @@ export async function fetchSignalSocialProviders(): Promise<SignalSocialCatalog>
 
 export async function loginSignalSocial(params: {
   provider: SocialProviderKey;
+  signupToken?: string;
   idToken?: string;
   nonce?: string;
   code?: string;
@@ -38,6 +49,11 @@ export async function loginSignalSocial(params: {
   state?: string;
   locale?: string;
   acceptedTerms?: Array<{ type: string; locale: string; version: string }>;
+  signupProfile?: {
+    email?: string;
+    nickname?: string;
+    profileImageUrl?: string;
+  };
   deviceId?: string;
 }): Promise<SignalAuthSession> {
   const deviceId = params.deviceId ?? (await getOrCreateAppDeviceId());
@@ -47,6 +63,7 @@ export async function loginSignalSocial(params: {
       method: 'POST',
       body: {
         provider: params.provider,
+        signupToken: params.signupToken,
         idToken: params.idToken,
         nonce: params.nonce,
         code: params.code,
@@ -56,11 +73,29 @@ export async function loginSignalSocial(params: {
         state: params.state,
         locale: params.locale,
         acceptedTerms: params.acceptedTerms,
+        signupProfile: params.signupProfile,
         deviceId,
       },
     },
   );
   return normalizeAuthSession(json.data, deviceId);
+}
+
+export async function previewSignalSocialSignup(params: {
+  provider: SocialProviderKey;
+  idToken?: string;
+  nonce?: string;
+  code?: string;
+  redirectUri?: string;
+  accessToken?: string;
+  displayName?: string;
+  state?: string;
+}): Promise<SignalSocialSignupPreview> {
+  const json = await signalApiRequest<{ data: SignalSocialSignupPreview }>('/v1/auth/social/preview', {
+    method: 'POST',
+    body: params,
+  });
+  return json.data;
 }
 
 export async function linkSignalSocial(

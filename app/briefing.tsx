@@ -35,7 +35,7 @@ import type {
   SignalApiMarketQuote,
   SignalApiNewsItem,
 } from '@/integrations/signal-api/types';
-import { formatSignalApiError } from '@/integrations/signal-api/client';
+import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
 import { buildSignalScore } from '@/domain/signals';
 import {

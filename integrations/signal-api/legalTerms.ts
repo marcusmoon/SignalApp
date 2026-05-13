@@ -1,4 +1,4 @@
-import { signalApiRequest } from '@/integrations/signal-api/client';
+import { signalApiRequest } from '@/integrations/signal-api/httpClient';
 
 export type SignalLegalTerm = {
   id: string;

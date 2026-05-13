@@ -1,4 +1,4 @@
-import { signalApi } from '@/integrations/signal-api/client';
+import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiCoinMarket, SignalApiMarketQuote } from '@/integrations/signal-api/types';
 
 export async function fetchSignalMarketQuotes(params: {

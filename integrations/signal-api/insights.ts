@@ -1,4 +1,4 @@
-import { signalApi } from '@/integrations/signal-api/client';
+import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiInsight } from '@/integrations/signal-api/types';
 
 export type FetchSignalInsightsMeta = {

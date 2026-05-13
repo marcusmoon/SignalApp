@@ -7,6 +7,7 @@ import {
   disconnectAppUserIdentityInDb,
   getAppUserInDb,
   linkAppUserSocialIdentityInDb,
+  listAppUserAccountEventsInDb,
   listAppUserIdentitiesInDb,
   listAppUserDevicesInDb,
   listAppUsersInDb,
@@ -374,6 +375,13 @@ export async function listAppUserIdentities(userId) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
     return listAppUserIdentitiesInDb(db, userId);
+  });
+}
+
+export async function listAppUserAccountEvents(userId, options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return listAppUserAccountEventsInDb(db, userId, options);
   });
 }
 

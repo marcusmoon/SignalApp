@@ -66,7 +66,7 @@ import {
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { fetchSignalInsights, fetchSignalNews, fetchSignalNewsSources, signalNewsToNewsItem } from '@/integrations/signal-api';
-import { formatSignalApiError } from '@/integrations/signal-api/client';
+import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiInsight, SignalApiNewsItem } from '@/integrations/signal-api/types';
 import type { NewsItem } from '@/types/signal';
 import type { MessageId } from '@/locales/messages';

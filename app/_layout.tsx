@@ -15,7 +15,7 @@ import { NotificationListener } from '@/components/NotificationListener';
 import { OtaBannerProvider } from '@/contexts/OtaBannerContext';
 import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
 import { SignalThemeProvider, useSignalTheme } from '@/contexts/SignalThemeContext';
-import { ensureStoredSessionFresh } from '@/integrations/signal-api/client';
+import { ensureStoredSessionFresh } from '@/integrations/signal-api/httpClient';
 import { getPreviewOtaBannerRaw } from '@/services/env';
 import {
   hydrateSignalServerEndpoint,

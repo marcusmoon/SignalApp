@@ -166,3 +166,15 @@ export async function logoutSignalUser(token: string): Promise<void> {
 export async function deleteSignalMe(token: string): Promise<void> {
   await signalApiRequest('/v1/auth/me', { method: 'DELETE', token });
 }
+
+export async function registerSignalAppDevice(
+  token: string,
+  params: { platform: string; pushToken: string; deviceName?: string },
+): Promise<{ pushToken: string; updatedAt: string }> {
+  const json = await signalApiRequest<{ data: { pushToken: string; updatedAt: string } }>('/v1/auth/devices', {
+    method: 'POST',
+    token,
+    body: params,
+  });
+  return json.data;
+}

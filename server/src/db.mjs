@@ -49,8 +49,11 @@ import {
   normalizeNewsSourceNameWithAliases,
 } from './db/newsSources.mjs';
 import {
+  claimPushNotificationsForDeliveryInDb,
   queryNotificationsInDb,
   queryPublicNotificationsForUserInDb,
+  resolvePushDevicesForNotificationInDb,
+  updateNotificationSendStateInDb,
   upsertNotificationItemInDb,
 } from './db/notifications.mjs';
 import {
@@ -578,6 +581,43 @@ export async function upsertNotification(next) {
       const saved = upsertNotificationItemInDb(db, next);
       db.exec('COMMIT');
       return saved;
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  });
+}
+
+export async function claimPushNotificationsForDelivery(options = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const rows = claimPushNotificationsForDeliveryInDb(db, options);
+      db.exec('COMMIT');
+      return rows;
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  });
+}
+
+export async function resolvePushDevicesForNotification(notification) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return resolvePushDevicesForNotificationInDb(db, notification);
+  });
+}
+
+export async function updateNotificationSendState(notificationId, patch = {}) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const row = updateNotificationSendStateInDb(db, notificationId, patch);
+      db.exec('COMMIT');
+      return row;
     } catch (error) {
       db.exec('ROLLBACK');
       throw error;

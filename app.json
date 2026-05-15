@@ -21,7 +21,8 @@
       "backgroundColor": "#0A0A0F"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
+      "buildNumber": "1",
       "bundleIdentifier": "com.marcus.signal",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
@@ -44,6 +45,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
+      "versionCode": 1,
       "package": "com.marcus.signal"
     },
     "web": {

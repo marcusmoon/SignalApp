@@ -30,23 +30,59 @@ function readEnvValueFromFiles(key) {
   return value;
 }
 
+function readEnvValue(key) {
+  const fromFile = readEnvValueFromFiles(key);
+  if (fromFile !== undefined) return fromFile;
+  return typeof process.env[key] === 'string' ? process.env[key].trim() : undefined;
+}
+
+function envFlag(value) {
+  return /^(1|true|yes|on)$/i.test(String(value ?? '').trim());
+}
+
+function pluginName(plugin) {
+  return Array.isArray(plugin) ? plugin[0] : plugin;
+}
+
+function withoutPlugin(plugins, names) {
+  const drop = new Set(names);
+  return plugins.filter((plugin) => !drop.has(pluginName(plugin)));
+}
+
+function hasPlugin(plugins, name) {
+  return plugins.some((plugin) => pluginName(plugin) === name);
+}
+
 module.exports = () => {
-  const fromFile = readEnvValueFromFiles('EXPO_PUBLIC_PREVIEW_OTA_BANNER');
-  const previewOtaBanner =
-    fromFile !== undefined ? fromFile : process.env.EXPO_PUBLIC_PREVIEW_OTA_BANNER;
+  const previewOtaBanner = readEnvValue('EXPO_PUBLIC_PREVIEW_OTA_BANNER');
+  const easProjectId = readEnvValue('EAS_PROJECT_ID') || readEnvValue('EXPO_PROJECT_ID');
+  const iosRemotePushEnabled = envFlag(readEnvValue('SIGNAL_IOS_REMOTE_PUSH_ENABLED'));
 
   // 네이티브 앱 번들에 카카오 SDK 를 심으려면 prebuild 시점에만 키가 필요합니다(NOT EXPO_PUBLIC — JS 번들에 안 들어감).
   // Kakao 개발자 콘솔의 네이티브 앱 키와 동일 값을 EAS Secret 또는 로컬 .env 의 `KAKAO_NATIVE_APP_KEY` 로 주입합니다.
-  const kakaoNativeKeyFromFile = readEnvValueFromFiles('KAKAO_NATIVE_APP_KEY');
-  const kakaoNativeKey =
-    kakaoNativeKeyFromFile !== undefined
-      ? kakaoNativeKeyFromFile
-      : typeof process.env.KAKAO_NATIVE_APP_KEY === 'string'
-        ? process.env.KAKAO_NATIVE_APP_KEY.trim()
-        : '';
+  const kakaoNativeKey = readEnvValue('KAKAO_NATIVE_APP_KEY') || '';
 
   const basePlugins = Array.isArray(appJson.expo.plugins) ? [...appJson.expo.plugins] : [];
-  const plugins = [...basePlugins];
+  let plugins = [...basePlugins];
+
+  // 개인 Apple Team 빌드는 iOS remote push entitlement 없이도 설치되도록 유지하고,
+  // TestFlight/운영 빌드에서만 공식 expo-notifications 플러그인과 aps entitlement를 켭니다.
+  if (iosRemotePushEnabled) {
+    plugins = withoutPlugin(plugins, [
+      './plugins/expoNotificationsAndroidOnly.js',
+      './plugins/removeIosPushEntitlement.js',
+    ]);
+    if (!hasPlugin(plugins, 'expo-notifications')) {
+      plugins.push([
+        'expo-notifications',
+        {
+          icon: './assets/images/icon.png',
+          color: '#00C087',
+        },
+      ]);
+    }
+  }
+
   if (kakaoNativeKey) {
     plugins.push([
       'expo-build-properties',
@@ -65,6 +101,14 @@ module.exports = () => {
       plugins,
       extra: {
         ...(appJson.expo.extra ?? {}),
+        ...(easProjectId
+          ? {
+              eas: {
+                ...(appJson.expo.extra?.eas ?? {}),
+                projectId: easProjectId,
+              },
+            }
+          : {}),
         previewOtaBanner,
       },
     },

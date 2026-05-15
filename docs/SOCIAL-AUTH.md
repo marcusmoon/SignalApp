@@ -9,6 +9,9 @@ SIGNAL 앱 세션은 모든 로그인 방식에서 **SIGNAL 서버가 발급한 
 - 앱 복귀 URI: `signalapp://oauth`
 - Admin 설정 위치: **Admin > 설정 > 앱 · 소셜(외부 계정) 로그인**
 - 서버 JWT: `server/.env`에 `SIGNAL_JWT_PRIVATE_KEY` 또는 `SIGNAL_JWT_PRIVATE_KEY_B64`가 필요하다.
+- 앱 세션 저장: `services/appAuthSession.ts`
+- provider credential 획득: `integrations/signal-api/socialAuthFlow.ts`
+- 서버 세션/가입/연결 API: `integrations/signal-api/auth.ts`
 
 `signalapp://oauth`는 Expo AuthSession 계열 provider가 앱으로 돌아오기 위한 경로다. Kakao 네이티브 SDK 로그인은 이 REST redirect 경로에 의존하지 않는다.
 
@@ -92,6 +95,15 @@ SIGNAL 앱 세션은 모든 로그인 방식에서 **SIGNAL 서버가 발급한 
   - Bundle ID / audience: `com.marcus.signal`
 
 Apple은 이메일과 이름을 최초 동의 시에만 내려줄 수 있다. 앱은 최초 응답의 이름을 서버 identity display name에 함께 보낸다.
+
+## 앱 사용자 플로우
+
+- 로그인 화면은 소셜 로그인을 기본 동선으로 보여주고, 이메일 로그인은 보조 동선으로 접어 둔다.
+- 가입은 필수 약관 동의 후 소셜 가입 또는 이메일 가입을 선택한다.
+- 소셜 가입은 provider credential을 먼저 검증하고, 서버가 내려준 signup token으로 이메일/닉네임/프로필 이미지를 확인한 뒤 완료한다.
+- 내정보에서는 연결된 소셜 계정을 보여주고 연결 해제를 지원한다.
+- 마지막 로그인 수단을 해제하려면 이메일/비밀번호를 먼저 설정해야 한다.
+- 탈퇴는 사용자 상태를 비활성화하고 세션·디바이스를 해제한다. 이메일과 provider id는 tombstone 처리해 같은 이메일/소셜 계정으로 재가입할 수 있게 한다.
 
 ## 패키지 기준
 

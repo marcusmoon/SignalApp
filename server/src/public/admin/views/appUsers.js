@@ -29,6 +29,15 @@ function notificationRows(rows, { esc, textFor, formatDateTime }) {
                 <span>${esc(item.targetType || 'all')}${item.targetKey ? `:${esc(item.targetKey)}` : ''}</span>
                 <span>${esc(formatDateTime(item.scheduledAt || item.createdAt))}</span>
               </div>
+              ${
+                item.provider || item.attempts || item.errorMessage
+                  ? `<div class="row muted">
+                      ${item.provider ? `<span>${esc(textFor('appNotificationsProvider'))} ${esc(item.provider)}</span>` : ''}
+                      ${item.attempts ? `<span>${esc(textFor('appNotificationsAttempts'))} ${esc(item.attempts)}</span>` : ''}
+                      ${item.errorMessage ? `<span class="dangerText">${esc(item.errorMessage)}</span>` : ''}
+                    </div>`
+                  : ''
+              }
             </article>
           `,
         )

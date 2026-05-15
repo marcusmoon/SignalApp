@@ -67,7 +67,7 @@ function filterInsights(items, params) {
     const expiresAt = item?.expiresAt ? new Date(item.expiresAt).getTime() : null;
     return !Number.isFinite(expiresAt) || expiresAt >= now;
   });
-  if (params.dateMode !== 'all') {
+  if (params.dateMode !== 'all' && !params.from && !params.to) {
     const today = todayInTimeZone(params.timeZone);
     rows = rows.filter((item) => item.generatedAt && dateKeyInTimeZone(item.generatedAt, params.timeZone) === today);
   }

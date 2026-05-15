@@ -1,4 +1,5 @@
 import { nowIso, readDb, updateDb } from '../../../db.mjs';
+import { httpMetricsSnapshot } from '../../../httpMetrics.mjs';
 import { runPollingJob } from '../../../jobs/runner.mjs';
 import { cleanNewsTitleForDisplay, dateKeyInTimeZone, json, paginate, readBody } from '../../shared.mjs';
 
@@ -315,6 +316,7 @@ function dashboardSummary(db) {
       stuckRuns: runningRuns.filter((run) => run.stuck).length,
     },
     recentRuns: latestRunByJob,
+    httpMetrics: httpMetricsSnapshot(),
     dataAreas: dataAreaSummary(db, recentRuns, latestRunByJob),
     latestNews,
     latestYoutube,

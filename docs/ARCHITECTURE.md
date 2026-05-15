@@ -28,7 +28,7 @@
 ## 1.1 서버 HTTP 라우트 모듈 (`server/src/http/`)
 
 - 서버의 HTTP 라우팅은 `server/src/http/index.mjs`가 엔트리이며, 아래처럼 **public/admin + 도메인별 파일**로 분리한다.
-- `server/src/http.mjs`는 과거 경로 호환을 위한 **re-export shim**으로만 유지한다.
+- `server/src/http.mjs`는 경로 호환을 위한 **re-export shim**으로만 유지한다.
 
 ```text
 server/src/http/
@@ -42,6 +42,9 @@ server/src/http/
       youtube.mjs         # /v1/youtube
       concalls.mjs        # /v1/concalls
       insights.mjs        # /v1/insights
+      legal.mjs           # /v1/legal/terms
+      auth.mjs            # /v1/auth/*
+      notifications.mjs   # /v1/notifications
   admin/
     static.mjs            # /admin + /admin/*.{js,css} + public assets
     auth.mjs              # /admin/api/{session,login,logout} + requireAdmin
@@ -52,6 +55,9 @@ server/src/http/
       calendar.mjs
       youtube.mjs
       concalls.mjs
+      legalTerms.mjs      # admin legal terms
+      appUsers.mjs        # app users/devices/identities/history
+      notifications.mjs   # notification outbox
       settings.mjs        # provider/translation/app/ui-presets/market-lists/news-sources
       dataReset.mjs
 ```
@@ -68,6 +74,12 @@ app/
   (tabs)/                 # 탭 루트(뉴스/시세/유튜브 등)
   symbol/[ticker].tsx     # 종목 상세
   briefing.tsx            # 브리핑
+  insights.tsx            # 오늘의 시그널 날짜별 리스트
+  account.tsx             # 앱 계정/소셜/보안/내 활동
+  alerts.tsx              # 알림함
+  terms.tsx               # 약관 보기
+  terms-history.tsx       # 내 약관 동의 이력
+  oauth.tsx               # AuthSession 앱 복귀 경로
   settings.tsx            # 앱 설정
   _layout.tsx             # 라우팅 레이아웃/공통 Provider
 ```
@@ -96,7 +108,7 @@ domain/
 ## 1.4 인프라 레이어 (`integrations/`)
 
 - 앱에서 HTTP를 하는 곳은 `integrations/signal-api/`만 허용한다.
-- 과거용 `integrations/finnhub`·`integrations/youtube` **클라이언트 폴더는 제거**했다. 시세·뉴스 DTO는 API 타입(`integrations/signal-api/types` 등)과 맞춘다.
+- Finnhub·YouTube Data·OpenAI·Claude·CoinGecko·Ninjas 같은 외부 provider client는 앱에 두지 않는다. 시세·뉴스 DTO는 API 타입(`integrations/signal-api/types` 등)과 맞춘다.
 
 ```text
 integrations/
@@ -116,8 +128,11 @@ integrations/
 services/
   env.ts                              # EXPO_PUBLIC_* 런타임 env
   signalServerEndpoint.ts             # 번들/dev/real/custom Signal 서버 endpoint 선택
+  appAuthSession.ts                   # 앱 사용자 JWT/refresh 세션 저장
+  pushDeviceRegistration.ts           # 로그인/알림 설정 기반 Expo push token 등록
+  notificationPreferences.ts          # 알림 표시/푸시 선호
   cacheFeaturePreferences.ts          # 캐시 on/off
-  cache/                              # 탭·피처 TTL, 설정 화면 캐시 클리어와 연동(예: quotes, news 레거시 엔트리)
+  cache/                              # 탭·피처 TTL, 설정 화면 캐시 클리어와 연동
   quoteWatchlist.ts                   # 관심종목
   marketSnapshotQuotes.ts             # 시세 탭 데이터 로딩 오케스트레이션(서버 API 기반)
 ```
@@ -131,8 +146,9 @@ services/
 ```text
 server/src/providers/       # 외부 provider 호출 + 정규화(예: market/finnhub, market/index, concalls/ninjas)
 server/src/jobs/            # scheduler/runner (수집 작업)
-server/src/insights/        # 저장 데이터 기반 인사이트 생성 규칙(LLM 연결 전 MVP 포함)
-server/src/db/              # DB shape/defaults/sqlite store/인사이트 조회 helper
+server/src/insights/        # 저장 데이터 기반 인사이트 생성 규칙(LLM 연결 준비 포함)
+server/src/notifications/    # 알림 outbox sender
+server/src/db/              # DB shape/defaults/repository/sqlite store/인사이트 조회 helper
 server/src/db/sqlite/       # SQLite schema/table 유틸
 server/data/                # signal.sqlite (+ WAL/SHM)
 ```
@@ -149,8 +165,9 @@ server/data/                # signal.sqlite (+ WAL/SHM)
 
 ## 3. Integrations (`integrations/`)
 
-- **Signal API:** 앱 피처 데이터 HTTP는 `integrations/signal-api/`에서만 수행한다.
-- **`signal-api/httpClient.ts`:** Signal Server HTTP transport, timeout/retry, auth refresh를 담당한다. 피처별 파일(`news.ts`, `stock.ts` 등)은 이 모듈만 사용한다.
+- **Signal API:** 앱 피처 데이터 HTTP와 앱 계정/알림 HTTP는 `integrations/signal-api/`에서만 수행한다.
+- **`signal-api/httpClient.ts`:** Signal Server HTTP transport, timeout/retry, auth refresh를 담당한다. 피처별 파일(`news.ts`, `stock.ts`, `auth.ts` 등)은 이 모듈만 사용한다.
+- **소셜 로그인:** provider별 native/AuthSession credential 획득은 `integrations/signal-api/socialAuthFlow.ts`, 서버 교환/가입/연결은 `auth.ts`가 담당한다. 앱 세션은 provider token이 아니라 SIGNAL 서버 token이다.
 - **Provider client:** Finnhub·YouTube·OpenAI·Claude·CoinGecko·Ninjas 등 외부 provider HTTP는 서버가 담당한다. 앱에는 provider 클라이언트 폴더를 두지 않는다.
 - **도메인 상수:** 큐레이션·심볼 시드 등은 `domain/youtube/constants.ts`, `domain/quotes/constants.ts` 등 **제품 규칙과 함께 갈 값**에 둔다.
 - **`signal-api/index.ts`:** 외부에 노출하는 API·타입 re-export. `signal-api/cache/*`는 응답 캐시; 순환 참조 주의.
@@ -181,7 +198,7 @@ server/data/                # signal.sqlite (+ WAL/SHM)
 ## 6. `services/` vs `integrations/`
 
 - **integrations:** Signal API HTTP, Signal API 응답 캐시, AdMob, OTA 어댑터.
-- **services:** `env`, Signal 서버 endpoint 선택, 관심종목·알림·캐시 on/off 등 **기기·설정·오케스트레이션**. 새 피처 데이터 조회는 `@/integrations/signal-api/...`를 import한다.
+- **services:** `env`, Signal 서버 endpoint 선택, 앱 세션 저장, push token 등록, 관심종목·알림·캐시 on/off 등 **기기·설정·오케스트레이션**. 새 피처 데이터 조회는 `@/integrations/signal-api/...`를 import한다.
 
 ---
 

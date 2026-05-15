@@ -73,6 +73,12 @@ function boolEnv(name, defaultValue) {
   return defaultValue;
 }
 
+function numberEnv(name, defaultValue, { min = 0, max = Number.MAX_SAFE_INTEGER } = {}) {
+  const n = Number(process.env[name]);
+  if (!Number.isFinite(n)) return defaultValue;
+  return Math.min(max, Math.max(min, n));
+}
+
 export const config = {
   rootDir,
   dataDir,
@@ -80,8 +86,13 @@ export const config = {
   host: process.env.HOST || '127.0.0.1',
   port: Number(process.env.PORT || 4000),
   schedulerEnabled: boolEnv('SIGNAL_SCHEDULER_ENABLED', true),
+  notificationSenderEnabled: boolEnv('SIGNAL_NOTIFICATION_SENDER_ENABLED', false),
+  notificationSenderIntervalMs: numberEnv('SIGNAL_NOTIFICATION_SENDER_INTERVAL_MS', 15_000, { min: 1000 }),
+  notificationSenderBatchSize: numberEnv('SIGNAL_NOTIFICATION_SENDER_BATCH_SIZE', 20, { min: 1, max: 100 }),
+  notificationPushProvider: String(process.env.SIGNAL_NOTIFICATION_PUSH_PROVIDER || 'mock').trim().toLowerCase() || 'mock',
   slowRequestMs: Number(process.env.SIGNAL_SLOW_REQUEST_MS || 1200),
   verySlowRequestMs: Number(process.env.SIGNAL_VERY_SLOW_REQUEST_MS || 5000),
+  httpLogAll: boolEnv('SIGNAL_HTTP_LOG_ALL', false),
   jobLockTtlMs: Number(process.env.SIGNAL_JOB_LOCK_TTL_MS || 2 * 60 * 60 * 1000),
   /** RS256 app user access tokens (issuer/audience must match verification). */
   jwtIssuer: String(process.env.SIGNAL_JWT_ISSUER || 'signal-api').trim() || 'signal-api',

@@ -12,6 +12,7 @@ import 'react-native-reanimated';
 
 import { AppSplashScreen } from '@/components/AppSplashScreen';
 import { NotificationListener } from '@/components/NotificationListener';
+import { PushDeviceRegistrar } from '@/components/PushDeviceRegistrar';
 import { OtaBannerProvider } from '@/contexts/OtaBannerContext';
 import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
 import { SignalThemeProvider, useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -161,6 +162,7 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={navTheme}>
       <NotificationListener />
+      <PushDeviceRegistrar />
       <StatusBar style="light" />
       <Stack screenOptions={rootScreenOptions} />
     </ThemeProvider>

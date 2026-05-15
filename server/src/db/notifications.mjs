@@ -201,3 +201,117 @@ export function queryPublicNotificationsForUserInDb(db, userId, { limit = 50 } =
     .map(notificationFromRow)
     .filter(Boolean);
 }
+
+export function claimPushNotificationsForDeliveryInDb(db, { limit = 20, now = nowIso(), provider = 'mock' } = {}) {
+  const safeLimit = Math.min(100, Math.max(1, Math.floor(Number(limit)) || 20));
+  const rows = db
+    .prepare(
+      `
+        SELECT *
+        FROM notification_items
+        WHERE
+          COALESCE(channel, 'push') = 'push'
+          AND COALESCE(status, 'queued') = 'queued'
+          AND (scheduled_at IS NULL OR scheduled_at = '' OR scheduled_at <= @now)
+          AND (expires_at IS NULL OR expires_at = '' OR expires_at > @now)
+          AND (
+            app_user_id IS NOT NULL
+            OR target_type = 'all'
+            OR (target_type = 'user' AND target_key IS NOT NULL)
+          )
+        ORDER BY COALESCE(scheduled_at, updated_at) ASC, updated_at ASC
+        LIMIT @limit
+      `,
+    )
+    .all({ now, limit: safeLimit })
+    .map(notificationFromRow)
+    .filter(Boolean);
+
+  const claimed = [];
+  for (const item of rows) {
+    const previousAttempts = Math.max(0, Number(item.attempts) || 0);
+    const next = {
+      ...item,
+      status: 'sending',
+      provider,
+      attempts: previousAttempts + 1,
+      updatedAt: now,
+    };
+    updateNotificationSendStateInDb(db, next.id, next);
+    claimed.push(next);
+  }
+  return claimed;
+}
+
+export function resolvePushDevicesForNotificationInDb(db, notification) {
+  if (!notification?.id) return [];
+  const appUserId = String(notification.appUserId || '').trim();
+  const targetType = String(notification.targetType || '').trim();
+  const targetKey = String(notification.targetKey || '').trim();
+  const params = {};
+  let whereSql = "WHERE d.active = 1 AND d.push_token IS NOT NULL AND d.push_token <> ''";
+  if (appUserId || targetType === 'user') {
+    params.userId = appUserId || targetKey;
+    if (!params.userId) return [];
+    whereSql += ' AND d.user_id = @userId';
+  } else if (targetType !== 'all') {
+    return [];
+  }
+  return db
+    .prepare(
+      `
+        SELECT d.id, d.user_id, d.platform, d.push_token, d.device_name
+        FROM app_user_devices d
+        JOIN app_users u ON u.id = d.user_id AND u.active = 1
+        ${whereSql}
+        ORDER BY d.updated_at DESC
+      `,
+    )
+    .all(params)
+    .map((row) => ({
+      id: row.id,
+      userId: row.user_id,
+      platform: row.platform || '',
+      pushToken: row.push_token || '',
+      deviceName: row.device_name || '',
+    }));
+}
+
+export function updateNotificationSendStateInDb(
+  db,
+  notificationId,
+  { status, provider = null, providerMessageId = null, sentAt = null, errorMessage = null, attempts = null, updatedAt = nowIso() },
+) {
+  const row = db.prepare('SELECT * FROM notification_items WHERE id = ?').get(String(notificationId || ''));
+  const previous = notificationFromRow(row);
+  if (!previous) return null;
+  const next = {
+    ...previous,
+    status: String(status || previous.status || 'queued'),
+    provider: provider ?? previous.provider ?? null,
+    providerMessageId: providerMessageId ?? previous.providerMessageId ?? null,
+    sentAt: sentAt ?? previous.sentAt ?? null,
+    errorMessage: errorMessage ?? null,
+    attempts: attempts == null ? Math.max(0, Number(previous.attempts) || 0) : Math.max(0, Number(attempts) || 0),
+    updatedAt,
+  };
+  const columns = notificationColumns(next);
+  db.prepare(
+    `
+      UPDATE notification_items
+      SET
+        status = @status,
+        sent_at = @sent_at,
+        payload = @payload,
+        updated_at = @updated_at
+      WHERE id = @id
+    `,
+  ).run({
+    id: previous.id,
+    status: columns.status,
+    sent_at: columns.sent_at,
+    payload: payloadOf(next),
+    updated_at: next.updatedAt,
+  });
+  return next;
+}

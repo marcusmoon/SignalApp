@@ -24,15 +24,18 @@ npm run server:dev      # 로컬 Signal API + 어드민 + 스케줄러
 
 `postinstall`에 **patch-package** — `patches/` 변경 후 재설치.
 
-## 3. 환경 변수 (`EXPO_PUBLIC_*`)
+## 3. 환경 변수
 
-`.env` / `.env.local`, Metro 재시작 후 반영. 런타임은 **`services/env.ts`** 의 `env`.
+앱 루트 `.env` / `.env.local`은 Metro 또는 native rebuild 후 반영됩니다. JS 런타임 공개값은 **`services/env.ts`** 의 `env`에서 읽습니다. 네이티브 빌드 전용 값은 `app.config.js`가 읽고, `EXPO_PUBLIC_*`로 노출하지 않습니다.
 
 | 변수 | 용도 |
 |------|------|
 | `EXPO_PUBLIC_SIGNAL_API_BASE_URL` | Signal API 서버 도메인 (예: 로컬 `http://127.0.0.1:4000`) |
 | `EXPO_PUBLIC_ADMOB_*_UNIT_ID` | AdMob (비우면 테스트 ID) |
 | `EXPO_PUBLIC_PREVIEW_OTA_BANNER` | 개발용 OTA 배너 |
+| `KAKAO_NATIVE_APP_KEY` | prebuild/rebuild 시 Kakao Native SDK 설정. JS 번들에 노출하지 않음 |
+| `EAS_PROJECT_ID` | Expo push token 발급용 project id. `app.config.js`가 `extra.eas.projectId`로 주입 |
+| `SIGNAL_IOS_REMOTE_PUSH_ENABLED` | TestFlight/App Store iOS remote push 빌드에서만 `1` |
 
 앱은 피처 데이터를 **Signal Server만** 통해 조회합니다. Finnhub/OpenAI/Claude/YouTube/CoinGecko 등 외부 provider 키는 서버/Admin에서 관리합니다.
 
@@ -68,7 +71,8 @@ assets/
 | 컨콜 | `@/domain/concalls`(연도·분기·범위·실적 행), 저장 `services/concallFiscalFilter.ts`, 서버 API `integrations/signal-api/concalls.ts`, 흐름 `services/concalls.ts` |
 | 유튜브 검색 보조 | `@/domain/youtube`, 카드에서 열기 `utils/openYoutube.ts` |
 | 설정 | `app/settings.tsx` — 뉴스·유튜브·시세·캘린더·표시·알림, Signal 서버 endpoint 오버라이드 `services/signalServerEndpoint.ts` |
-| 계정·알림 | `app/account.tsx`, `app/alerts.tsx`, 서버 `/v1/auth/*`·`/v1/notifications`, 기기 세션 `services/appAuthSession.ts`, 소셜 로그인 설정 `docs/SOCIAL-AUTH.md`, 어드민 앱 사용자 `/admin/api/app-users*`·`/admin/api/app-user-devices*`·`/admin/api/notifications` |
+| 오늘의 시그널 | `app/insights.tsx`, `integrations/signal-api/insights.ts`, 서버 `server/src/insights/*`, 어드민 `server/src/public/admin/views/insights.js` |
+| 계정·알림 | `app/account.tsx`, `app/alerts.tsx`, `app/terms.tsx`, `app/terms-history.tsx`, 서버 `/v1/auth/*`·`/v1/notifications`·`/v1/legal/terms`, 기기 세션 `services/appAuthSession.ts`, push 등록 `services/pushDeviceRegistration.ts`, 소셜 로그인 설정 `docs/SOCIAL-AUTH.md`, 어드민 앱 사용자 `/admin/api/app-users*`·`/admin/api/notifications` |
 | 테마·문자열 | `SignalThemeContext`, `locales/*` (`@/locales/messages`) |
 | OTA 배너 | `contexts/OtaBannerContext.tsx`, `integrations/expo-updates/`, 미리보기 플래그 `services/env` (`EXPO_PUBLIC_PREVIEW_OTA_BANNER`) |
 
@@ -92,6 +96,7 @@ Signal API HTTP transport는 **`integrations/signal-api/httpClient.ts`**, 응답
 | `EXPO_PUBLIC_*` | §3, `services/env.ts` 주석 |
 | 제품 범위 | `docs/SIGNAL-PRD.md` |
 | 눈에 띄는 동작 변경 | `docs/CHANGELOG.md` (현재 스냅샷 갱신) |
+| 출시/운영 변수 | `docs/RELEASE-CHECKLIST.md`, `docs/SERVER.md`, `.env.example`, `server/.env.example` |
 
 ## 9. iOS 크래시 시
 

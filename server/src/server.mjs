@@ -3,6 +3,7 @@ import { getAppUserJwtConfigStatus, getAppUserJwtEnvDebugInfo } from './auth/jwt
 import { config } from './config.mjs';
 import { hasAdminUsers } from './db.mjs';
 import { handleRequest } from './http.mjs';
+import { recordHttpRequest } from './httpMetrics.mjs';
 import { startScheduler } from './jobs/scheduler.mjs';
 
 const server = http.createServer((req, res) => {
@@ -12,7 +13,10 @@ const server = http.createServer((req, res) => {
     const verySlowMs = Math.max(config.slowRequestMs, config.verySlowRequestMs);
     const level = elapsed >= verySlowMs ? 'very-slow' : elapsed >= config.slowRequestMs ? 'slow' : 'ok';
     const prefix = level === 'ok' ? '[http]' : `[http:${level}]`;
-    console.log(`${prefix} ${req.method} ${req.url} ${res.statusCode} ${elapsed}ms`);
+    recordHttpRequest({ method: req.method, url: req.url, statusCode: res.statusCode, elapsedMs: elapsed, level });
+    if (config.httpLogAll || level !== 'ok' || res.statusCode >= 400) {
+      console.log(`${prefix} ${req.method} ${req.url} ${res.statusCode} ${elapsed}ms`);
+    }
   });
   handleRequest(req, res).catch((error) => {
     console.error('[server] unhandled request error', error);

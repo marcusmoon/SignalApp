@@ -21,6 +21,7 @@ export async function loadDashboardView(ctx) {
   const latestNews = Array.isArray(summary.latestNews) ? summary.latestNews : [];
   const latestYoutube = Array.isArray(summary.latestYoutube) ? summary.latestYoutube : [];
   const latestInsights = Array.isArray(summary.latestInsights) ? summary.latestInsights : [];
+  const httpMetrics = summary.httpMetrics || {};
   const limit = Math.max(3, Math.min(10, Number(state.dashboardLimit) || 5));
   const op = state.dashboardOperationFilter === 'reconcile' ? 'reconcile' : 'latest';
   const opFiltered = allRuns.filter((r) => (r.operation || 'latest') === op);
@@ -215,6 +216,51 @@ export async function loadDashboardView(ctx) {
             `).join('') || `<p class="muted">${esc(textFor('dashboardEmpty'))}</p>`}
           </div>
         </section>
+      </div>
+    </section>
+    <section class="card card--elevated dashboardPanel dashboardOpsPanel">
+      <div class="cardHead">
+        <div class="cardHeadMain">
+          <div class="cardKicker">${esc(textFor('dashboardOpsTitle'))}</div>
+          <div class="cardHint">${esc(textForVars('dashboardOpsHint', { minutes: String(httpMetrics.windowMinutes || 15) }))}</div>
+        </div>
+      </div>
+      <div class="dashboardOpsGrid">
+        <article class="dashboardOpsStat">
+          <span>${esc(textFor('dashboardOpsTotal'))}</span>
+          <strong>${Number(httpMetrics.total || 0).toLocaleString()}</strong>
+        </article>
+        <article class="dashboardOpsStat">
+          <span>${esc(textFor('dashboardOpsAvg'))}</span>
+          <strong>${Number(httpMetrics.avgMs || 0).toLocaleString()}ms</strong>
+        </article>
+        <article class="dashboardOpsStat">
+          <span>${esc(textFor('dashboardOpsP95'))}</span>
+          <strong>${Number(httpMetrics.p95Ms || 0).toLocaleString()}ms</strong>
+        </article>
+        <article class="dashboardOpsStat dashboardOpsStat--warn">
+          <span>${esc(textFor('dashboardOpsSlow'))}</span>
+          <strong>${Number(httpMetrics.slow || 0).toLocaleString()}</strong>
+        </article>
+        <article class="dashboardOpsStat dashboardOpsStat--danger">
+          <span>${esc(textFor('dashboardOpsErrors'))}</span>
+          <strong>${Number(httpMetrics.errors || 0).toLocaleString()}</strong>
+        </article>
+      </div>
+      <div class="dashboardList dashboardOpsSlowList">
+        ${(Array.isArray(httpMetrics.topSlow) ? httpMetrics.topSlow : []).map((item) => `
+          <article class="dashboardListItem">
+            <div class="dashboardItemMain">
+              <div class="dashboardItemTitle">${esc(item.method || 'GET')} ${esc(item.path || '-')}</div>
+              <div class="dashboardItemMeta">
+                <span>${esc(String(item.statusCode || '-'))}</span>
+                <span>${Number(item.elapsedMs || 0).toLocaleString()}ms</span>
+                <span>${esc(formatDateTime(item.at))}</span>
+              </div>
+            </div>
+            <span class="pill pillStatus ${item.level === 'very-slow' ? 'pillStatus--fail' : 'pillStatus--warn'}">${esc(item.level || 'slow')}</span>
+          </article>
+        `).join('') || `<p class="muted">${esc(textFor('dashboardOpsNoSlow'))}</p>`}
       </div>
     </section>
     <div class="card card--elevated dashboardPanel dashboardJobsPanel">

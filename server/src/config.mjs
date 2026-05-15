@@ -90,6 +90,8 @@ export const config = {
   notificationSenderIntervalMs: numberEnv('SIGNAL_NOTIFICATION_SENDER_INTERVAL_MS', 15_000, { min: 1000 }),
   notificationSenderBatchSize: numberEnv('SIGNAL_NOTIFICATION_SENDER_BATCH_SIZE', 20, { min: 1, max: 100 }),
   notificationPushProvider: String(process.env.SIGNAL_NOTIFICATION_PUSH_PROVIDER || 'mock').trim().toLowerCase() || 'mock',
+  emailDeliveryProvider: String(process.env.SIGNAL_EMAIL_DELIVERY_PROVIDER || 'mock').trim().toLowerCase() || 'mock',
+  emailOtpDebug: boolEnv('SIGNAL_EMAIL_OTP_DEBUG', false),
   slowRequestMs: Number(process.env.SIGNAL_SLOW_REQUEST_MS || 1200),
   verySlowRequestMs: Number(process.env.SIGNAL_VERY_SLOW_REQUEST_MS || 5000),
   httpLogAll: boolEnv('SIGNAL_HTTP_LOG_ALL', false),

@@ -22,6 +22,7 @@ export async function loadDashboardView(ctx) {
   const latestYoutube = Array.isArray(summary.latestYoutube) ? summary.latestYoutube : [];
   const latestInsights = Array.isArray(summary.latestInsights) ? summary.latestInsights : [];
   const httpMetrics = summary.httpMetrics || {};
+  const counts = summary.counts || {};
   const limit = Math.max(3, Math.min(10, Number(state.dashboardLimit) || 5));
   const op = state.dashboardOperationFilter === 'reconcile' ? 'reconcile' : 'latest';
   const opFiltered = allRuns.filter((r) => (r.operation || 'latest') === op);
@@ -118,6 +119,36 @@ export async function loadDashboardView(ctx) {
   }
 
   $('dashboard').innerHTML = `
+    <section class="opsHero">
+      <div class="opsHeroMain">
+        <div class="opsEyebrow">${esc(textFor('brandAdminConsole'))}</div>
+        <h2>${esc(textFor('pageDashboardTitle'))}</h2>
+        <p>${esc(textFor('pageDashboardDesc'))}</p>
+        <div class="opsHeroActions">
+          <button class="success" data-view="jobs">${esc(textFor('navJobs'))}</button>
+          <button class="secondary" data-view="monitoring">${esc(textFor('navMonitoring'))}</button>
+          <button class="secondary" data-view="app-users">${esc(textFor('navAppUserManagement'))}</button>
+        </div>
+      </div>
+      <div class="opsHeroMetrics">
+        <article class="opsMetric opsMetric--primary">
+          <span>${esc(textFor('statActiveJobs'))}</span>
+          <strong>${Number(counts.enabledJobs || 0).toLocaleString()} / ${Number(counts.jobs || 0).toLocaleString()}</strong>
+        </article>
+        <article class="opsMetric ${Number(counts.runningRuns || 0) > 0 ? 'opsMetric--info' : ''}">
+          <span>${esc(textFor('statRunningRuns'))}</span>
+          <strong>${Number(counts.runningRuns || 0).toLocaleString()}</strong>
+        </article>
+        <article class="opsMetric ${Number(counts.recentFailedRuns || 0) > 0 ? 'opsMetric--danger' : ''}">
+          <span>${esc(textFor('statRecentFailures'))}</span>
+          <strong>${Number(counts.recentFailedRuns || 0).toLocaleString()}</strong>
+        </article>
+        <article class="opsMetric ${Number(counts.queuedNotifications || 0) > 0 ? 'opsMetric--warn' : ''}">
+          <span>${esc(textFor('appUsersQueuedShort'))}</span>
+          <strong>${Number(counts.queuedNotifications || 0).toLocaleString()}</strong>
+        </article>
+      </div>
+    </section>
     <section class="card card--elevated dashboardPanel dashboardHealthPanel">
       <div class="cardHead">
         <div class="cardHeadMain">

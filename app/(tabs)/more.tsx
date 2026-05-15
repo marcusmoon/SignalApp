@@ -36,6 +36,7 @@ const HUB_META: Record<
 > = {
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
   briefing: { href: '/briefing', icon: 'briefcase', titleId: 'screenBriefing' },
+  settings: { href: '/settings' as Href, icon: 'cog', titleId: 'screenSettings' },
 };
 
 const ROW_GAP = 10;

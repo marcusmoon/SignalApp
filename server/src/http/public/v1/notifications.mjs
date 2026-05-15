@@ -1,4 +1,4 @@
-import { queryPublicNotificationsForUser, verifyAppUserToken } from '../../../db.mjs';
+import { queryPublicNotificationsForUser, upsertNotificationItem, verifyAppUserToken } from '../../../db.mjs';
 import { json } from '../../shared.mjs';
 
 function bearerToken(req) {
@@ -37,6 +37,35 @@ function publicNotification(item) {
 }
 
 export async function handlePublicNotificationRoutes({ req, res, url, pathname }) {
+  if (req.method === 'POST' && pathname === '/v1/notifications/test') {
+    const user = await requireAppUser(req, res);
+    if (!user) return true;
+    const now = new Date().toISOString();
+    const item = await upsertNotificationItem({
+      id: `push-test:${user.id}:${Date.now()}`,
+      type: 'service_notice',
+      channel: 'push',
+      status: 'queued',
+      priority: 'normal',
+      title: 'SIGNAL push test',
+      body: '푸시 알림 테스트입니다. 이 알림이 보이면 기기 등록과 outbox 흐름이 정상입니다.',
+      appUserId: user.id,
+      targetType: 'user',
+      targetKey: user.id,
+      sourceType: 'app_user',
+      sourceId: user.id,
+      scheduledAt: now,
+      payload: {
+        title: 'SIGNAL push test',
+        body: '푸시 알림 테스트입니다. 이 알림이 보이면 기기 등록과 outbox 흐름이 정상입니다.',
+        deepLink: '/alerts',
+      },
+      updatedAt: now,
+    });
+    json(res, 201, { data: publicNotification(item) });
+    return true;
+  }
+
   if (req.method !== 'GET' || pathname !== '/v1/notifications') return false;
   const user = await requireAppUser(req, res);
   if (!user) return true;

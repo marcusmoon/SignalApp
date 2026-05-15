@@ -136,6 +136,36 @@ export async function setSignalMyPassword(token: string, password: string): Prom
   return json.data.user;
 }
 
+export type SignalEmailChangeRequest = {
+  requestId: string;
+  email: string;
+  maskedEmail: string;
+  expiresAt: string;
+  delivery?: { provider: string; delivered: boolean };
+  debug?: { code?: string };
+};
+
+export async function requestSignalMyEmailChange(token: string, email: string): Promise<SignalEmailChangeRequest> {
+  const json = await signalApiRequest<{ data: SignalEmailChangeRequest }>('/v1/auth/me/email-change/request', {
+    method: 'POST',
+    token,
+    body: { email },
+  });
+  return json.data;
+}
+
+export async function confirmSignalMyEmailChange(
+  token: string,
+  params: { requestId: string; code: string },
+): Promise<SignalAppUser> {
+  const json = await signalApiRequest<{ data: { user: SignalAppUser } }>('/v1/auth/me/email-change/confirm', {
+    method: 'POST',
+    token,
+    body: params,
+  });
+  return json.data.user;
+}
+
 export async function disconnectSignalMyIdentity(token: string, identityId: string): Promise<SignalUserIdentity> {
   const json = await signalApiRequest<{ data: SignalUserIdentity }>(
     `/v1/auth/me/identities/${encodeURIComponent(identityId)}`,

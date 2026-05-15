@@ -637,6 +637,20 @@ export default function FeedScreen() {
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>
           {insightSectionEl}
+          <Pressable
+            onPress={() => router.push('/briefing')}
+            style={({ pressed }) => [styles.briefingCta, pressed && styles.briefingCtaPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('feedBriefingCtaTitle')}>
+            <View style={styles.briefingCtaIcon}>
+              <FontAwesome name="briefcase" size={13} color={theme.green} />
+            </View>
+            <View style={styles.briefingCtaTextBox}>
+              <Text style={styles.briefingCtaTitle} numberOfLines={1}>{t('feedBriefingCtaTitle')}</Text>
+              <Text style={styles.briefingCtaDesc} numberOfLines={1}>{t('feedBriefingCtaDesc')}</Text>
+            </View>
+            <FontAwesome name="chevron-right" size={12} color={theme.textMuted} />
+          </Pressable>
           {refreshNotice ? (
             <View style={styles.refreshNotice}>
               <FontAwesome name="check-circle" size={13} color={theme.green} />
@@ -887,6 +901,47 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(10),
       lineHeight: sf(12),
       fontWeight: '900',
+    },
+    briefingCta: {
+      minHeight: 48,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 12,
+      marginBottom: 8,
+    },
+    briefingCtaPressed: {
+      opacity: 0.78,
+    },
+    briefingCtaIcon: {
+      width: 28,
+      height: 28,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+    },
+    briefingCtaTextBox: {
+      flex: 1,
+      minWidth: 0,
+    },
+    briefingCtaTitle: {
+      color: theme.text,
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '900',
+    },
+    briefingCtaDesc: {
+      color: theme.textMuted,
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '700',
     },
     tagFilterRow: {
       flexDirection: 'row',

@@ -701,4 +701,6 @@ export const baseKo = {
   mobileFilterOpen: '조건',
   mobileFilterClose: '접기',
   btnRefreshThisView: '새로고침',
+  workspaceEyebrow: '워크스페이스',
+  workspaceSub: '실시간 콘텐츠·사용자 운영',
 };

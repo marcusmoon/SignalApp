@@ -4,9 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Signal Admin</title>
-    <link rel="stylesheet" href="/admin/admin.css?v=2026-05-05-admin-polish" />
+    <link rel="stylesheet" href="/admin/admin.css?v=2026-05-16-admin-shell-v2" />
   </head>
-  <body class="sessionPending">
+  <body class="sessionPending adminShellV2">
     <header>
       <div class="headerLeft">
         <button id="hamburgerBtn" class="secondary hamburgerBtn" data-i18n-aria-label="ariaHamburger">☰</button>
@@ -78,6 +78,11 @@
               aria-label="Collapse sidebar"
               title="Collapse sidebar"
             >◂</button>
+          </div>
+          <div class="sideWorkspace">
+            <span data-i18n="workspaceEyebrow">Workspace</span>
+            <strong>SIGNAL Operations</strong>
+            <small data-i18n="workspaceSub">Live content and user operations</small>
           </div>
           <div class="navGroup">
             <button class="navBtn active" data-view="dashboard" data-icon="⌂">대시보드</button>
@@ -921,6 +926,6 @@
       aria-label="맨 위로"
       title="맨 위로"
     >↑</button>
-    <script type="module" src="/admin/app.js?v=2026-05-05-admin-polish"></script>
+    <script type="module" src="/admin/app.js?v=2026-05-16-admin-shell-v2"></script>
   </body>
 </html>

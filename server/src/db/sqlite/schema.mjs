@@ -207,6 +207,18 @@ export function ensureStructuredSchema(db) {
       UNIQUE(user_id, push_token)
     );
 
+    CREATE TABLE IF NOT EXISTS app_user_email_change_requests (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      email TEXT NOT NULL,
+      code_hash TEXT NOT NULL,
+      code_salt TEXT NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS legal_terms (
       id TEXT PRIMARY KEY,
       type TEXT NOT NULL,
@@ -412,6 +424,8 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_app_user_account_events_user ON app_user_account_events(user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_account_events_type ON app_user_account_events(event_type, created_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_account_events_identity ON app_user_account_events(identity_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_email_change_user ON app_user_email_change_requests(user_id, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_email_change_email ON app_user_email_change_requests(email, expires_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_terms_user ON app_user_terms_acceptances(user_id, accepted_at);
     CREATE INDEX IF NOT EXISTS idx_news_items_published ON news_items(category, published_at);
     CREATE INDEX IF NOT EXISTS idx_news_translations_item ON news_translations(news_item_id, locale);
@@ -448,6 +462,8 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_app_user_account_events_user ON app_user_account_events(user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_account_events_type ON app_user_account_events(event_type, created_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_account_events_identity ON app_user_account_events(identity_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_email_change_user ON app_user_email_change_requests(user_id, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_email_change_email ON app_user_email_change_requests(email, expires_at);
     CREATE INDEX IF NOT EXISTS idx_insight_items_display ON insight_items(generated_date, display_key, generated_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_type ON notification_items(type, status, scheduled_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_user ON notification_items(app_user_id, status, scheduled_at);

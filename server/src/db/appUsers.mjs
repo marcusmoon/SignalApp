@@ -68,6 +68,16 @@ function tokenHash(token) {
   return crypto.createHash('sha256').update(String(token || '')).digest('hex');
 }
 
+function otpHash(code, salt) {
+  return crypto.createHash('sha256').update(`${cleanText(code)}:${cleanText(salt)}`).digest('hex');
+}
+
+function maskEmail(email) {
+  const [local, domain] = normalizeEmail(email).split('@');
+  if (!local || !domain) return '';
+  return `${local.slice(0, 2)}${'*'.repeat(Math.max(2, local.length - 2))}@${domain}`;
+}
+
 function hashProviderUserId(provider, providerUserId) {
   const raw = `${cleanText(provider).toLowerCase()}:${cleanText(providerUserId)}`;
   if (!raw.endsWith(':')) return crypto.createHash('sha256').update(raw).digest('hex');
@@ -497,6 +507,82 @@ export function setAppUserPasswordInDb(db, userId, { password }) {
     existing.id,
   );
   return publicUser(db.prepare('SELECT * FROM app_users WHERE id = ?').get(existing.id));
+}
+
+export function requestAppUserEmailChangeInDb(db, userId, { email }) {
+  const existing = db.prepare('SELECT * FROM app_users WHERE id = ? AND active = 1').get(cleanText(userId));
+  if (!existing) throw new Error('APP_USER_NOT_FOUND');
+  const nextEmail = normalizeEmail(email);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) throw new Error('APP_USER_EMAIL_INVALID');
+  if (nextEmail === normalizeEmail(existing.email)) throw new Error('APP_USER_EMAIL_SAME');
+  const emailRow = db.prepare('SELECT id, active FROM app_users WHERE email = ?').get(nextEmail);
+  if (emailRow && Number(emailRow.active) === 1) throw new Error('APP_USER_EMAIL_EXISTS');
+  if (emailRow) releaseInactiveUserLoginIdentifiersInDb(db, emailRow.id);
+
+  const now = nowIso();
+  db.prepare(
+    `UPDATE app_user_email_change_requests SET consumed_at = ? WHERE user_id = ? AND consumed_at IS NULL`,
+  ).run(now, existing.id);
+
+  const id = crypto.randomUUID();
+  const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
+  const salt = crypto.randomBytes(12).toString('hex');
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  db.prepare(
+    `
+      INSERT INTO app_user_email_change_requests (
+        id, user_id, email, code_hash, code_salt, attempts, created_at, expires_at, consumed_at
+      ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, NULL)
+    `,
+  ).run(id, existing.id, nextEmail, otpHash(code, salt), salt, now, expiresAt);
+  insertAppUserAccountEventInDb(db, {
+    userId: existing.id,
+    eventType: 'email_change_requested',
+    payload: { targetEmail: maskEmail(nextEmail), expiresAt },
+    createdAt: now,
+  });
+  return {
+    request: {
+      id,
+      email: nextEmail,
+      maskedEmail: maskEmail(nextEmail),
+      expiresAt,
+    },
+    code,
+  };
+}
+
+export function confirmAppUserEmailChangeInDb(db, userId, { requestId, code }) {
+  const user = db.prepare('SELECT * FROM app_users WHERE id = ? AND active = 1').get(cleanText(userId));
+  if (!user) throw new Error('APP_USER_NOT_FOUND');
+  const request = db
+    .prepare('SELECT * FROM app_user_email_change_requests WHERE id = ? AND user_id = ?')
+    .get(cleanText(requestId), user.id);
+  if (!request || request.consumed_at) throw new Error('APP_USER_EMAIL_CHANGE_INVALID');
+  if (String(request.expires_at || '') <= nowIso()) throw new Error('APP_USER_EMAIL_CHANGE_EXPIRED');
+  if (Number(request.attempts) >= 5) throw new Error('APP_USER_EMAIL_CHANGE_TOO_MANY_ATTEMPTS');
+  const emailRow = db.prepare('SELECT id, active FROM app_users WHERE email = ? AND id <> ?').get(request.email, user.id);
+  if (emailRow && Number(emailRow.active) === 1) throw new Error('APP_USER_EMAIL_EXISTS');
+  if (emailRow) releaseInactiveUserLoginIdentifiersInDb(db, emailRow.id);
+
+  const candidateHash = otpHash(code, request.code_salt);
+  const saved = Buffer.from(String(request.code_hash || ''), 'hex');
+  const candidate = Buffer.from(candidateHash, 'hex');
+  if (saved.length !== candidate.length || !crypto.timingSafeEqual(saved, candidate)) {
+    db.prepare('UPDATE app_user_email_change_requests SET attempts = attempts + 1 WHERE id = ?').run(request.id);
+    throw new Error('APP_USER_EMAIL_CHANGE_CODE_INVALID');
+  }
+
+  const now = nowIso();
+  db.prepare('UPDATE app_users SET email = ?, updated_at = ? WHERE id = ?').run(request.email, now, user.id);
+  db.prepare('UPDATE app_user_email_change_requests SET consumed_at = ? WHERE id = ?').run(now, request.id);
+  insertAppUserAccountEventInDb(db, {
+    userId: user.id,
+    eventType: 'email_changed',
+    payload: { email: maskEmail(request.email) },
+    createdAt: now,
+  });
+  return publicUser(db.prepare('SELECT * FROM app_users WHERE id = ?').get(user.id));
 }
 
 export function disconnectAppUserIdentityInDb(db, userId, identityId) {

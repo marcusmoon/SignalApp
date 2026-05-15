@@ -46,11 +46,11 @@ export function SignalHeader() {
             <FontAwesome name="calendar" size={21} color={theme.textDim} />
           </Pressable>
           <Pressable
-            onPress={() => router.push('/settings')}
+            onPress={() => router.push('/account')}
             style={styles.iconBtn}
             accessibilityRole="button"
-            accessibilityLabel={t('a11ySettings')}>
-            <FontAwesome name="cog" size={21} color={theme.textDim} />
+            accessibilityLabel={t('screenAccount')}>
+            <FontAwesome name="user-circle" size={21} color={theme.textDim} />
           </Pressable>
         </View>
       </View>

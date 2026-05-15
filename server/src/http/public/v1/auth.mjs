@@ -1,4 +1,5 @@
 import {
+  confirmAppUserEmailChange,
   createAppUser,
   disconnectAppUserIdentity,
   linkAppUserSocialIdentity,
@@ -9,6 +10,7 @@ import {
   loginOrRegisterSocialUser,
   readAppSettings,
   refreshAppUserSession,
+  requestAppUserEmailChange,
   revokeAppUserToken,
   setAppUserPassword,
   updateAppUserProfile,
@@ -20,6 +22,7 @@ import crypto from 'node:crypto';
 import { buildSocialAuthRuntime, publicSocialAuthCatalog } from '../../../auth/socialAuthConfig.mjs';
 import { resolveSocialProfile } from '../../../auth/socialProfile.mjs';
 import { config } from '../../../config.mjs';
+import { deliverEmailOtp } from '../../../email/otp.mjs';
 import { getAppUserJwtConfigStatus } from '../../../auth/jwtAccess.mjs';
 import { json, readBody } from '../../shared.mjs';
 
@@ -108,6 +111,11 @@ function authError(res, error) {
       ? 401
       : message === 'APP_USER_EMAIL_EXISTS'
         ? 409
+        : message === 'APP_USER_EMAIL_CHANGE_EXPIRED' ||
+            message === 'APP_USER_EMAIL_CHANGE_INVALID' ||
+            message === 'APP_USER_EMAIL_CHANGE_CODE_INVALID' ||
+            message === 'APP_USER_EMAIL_CHANGE_TOO_MANY_ATTEMPTS'
+          ? 400
         : message === 'APP_USER_JWT_NOT_CONFIGURED'
           ? 503
           : message.startsWith('APP_USER_')
@@ -292,6 +300,50 @@ export async function handlePublicAuthRoutes({ req, res, pathname }) {
     try {
       const body = await readBody(req);
       const user = await setAppUserPassword(session.user.id, body);
+      json(res, 200, { data: { user } });
+    } catch (error) {
+      authError(res, error);
+    }
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/v1/auth/me/email-change/request') {
+    const session = await requireAppUser(req, res);
+    if (!session) return true;
+    try {
+      const body = await readBody(req);
+      const result = await requestAppUserEmailChange(session.user.id, body);
+      const delivery = await deliverEmailOtp({
+        to: result.request.email,
+        code: result.code,
+        purpose: 'app_user_email_change',
+        expiresAt: result.request.expiresAt,
+      });
+      json(res, 200, {
+        data: {
+          requestId: result.request.id,
+          email: result.request.email,
+          maskedEmail: result.request.maskedEmail,
+          expiresAt: result.request.expiresAt,
+          delivery: {
+            provider: delivery.provider,
+            delivered: delivery.delivered,
+          },
+          ...(delivery.debug ? { debug: delivery.debug } : {}),
+        },
+      });
+    } catch (error) {
+      authError(res, error);
+    }
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/v1/auth/me/email-change/confirm') {
+    const session = await requireAppUser(req, res);
+    if (!session) return true;
+    try {
+      const body = await readBody(req);
+      const user = await confirmAppUserEmailChange(session.user.id, body);
       json(res, 200, { data: { user } });
     } catch (error) {
       authError(res, error);

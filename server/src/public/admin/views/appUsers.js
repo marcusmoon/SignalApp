@@ -225,9 +225,22 @@ function detailTabPanel(activeTab, data, helpers) {
   `;
 }
 
-function userCard(user, { esc, textFor, formatDateTime }) {
+function userCard(user, { esc, textFor, formatDateTime }, options = {}) {
+  const mode = options.mode || 'row';
+  const isRow = mode === 'row';
+  const isSelected = Boolean(options.selected);
+  const cardClass = [
+    'appUserCard',
+    isSelected ? 'appUserCard--selected' : '',
+    mode === 'summary' ? 'appUserCard--summary' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const rowAttrs = isRow
+    ? `data-app-user-row="${esc(user.id)}" role="button" tabindex="0" aria-selected="${isSelected ? 'true' : 'false'}"`
+    : `data-app-user-card="${esc(user.id)}"`;
   return `
-    <article class="appUserCard" data-app-user-card="${esc(user.id)}">
+    <article class="${cardClass}" ${rowAttrs}>
       <div class="appUserAvatar">${esc((user.nickname || user.email || '?').slice(0, 1).toUpperCase())}</div>
       <div class="appUserMain">
         <strong>${esc(user.nickname || '-')}</strong>
@@ -240,13 +253,19 @@ function userCard(user, { esc, textFor, formatDateTime }) {
         </div>
         <span class="muted">${esc(textFor('colDate'))}: ${esc(formatDateTime(user.createdAt))}</span>
       </div>
-      <div class="appUserActions">
-        <label class="switchRow compactSwitch">
-          <input class="switchInput" type="checkbox" data-app-user-active="${esc(user.id)}" ${user.active ? 'checked' : ''}/>
-          <span class="switchUi" aria-hidden="true"></span>
-        </label>
-        <button class="secondary compactBtn" data-app-user-select="${esc(user.id)}">${esc(textFor('appUsersSelectUser'))}</button>
-      </div>
+      ${
+        isRow
+          ? `
+            <div class="appUserActions">
+              <label class="switchRow compactSwitch" title="${esc(textFor('statusActive'))}">
+                <input class="switchInput" type="checkbox" data-app-user-active="${esc(user.id)}" ${user.active ? 'checked' : ''}/>
+                <span class="switchUi" aria-hidden="true"></span>
+              </label>
+              <span class="appUserChevron" aria-hidden="true">›</span>
+            </div>
+          `
+          : ''
+      }
     </article>
   `;
 }
@@ -312,7 +331,15 @@ function renderUserManagement({
           </div>
         </div>
         <div class="appUserList">
-          ${rows.length === 0 ? `<p class="muted">${esc(textFor('appUsersEmpty'))}</p>` : rows.map((user) => userCard(user, { esc, textFor, formatDateTime })).join('')}
+          ${
+            rows.length === 0
+              ? `<p class="muted">${esc(textFor('appUsersEmpty'))}</p>`
+              : rows
+                  .map((user) =>
+                    userCard(user, { esc, textFor, formatDateTime }, { selected: user.id === selected?.id }),
+                  )
+                  .join('')
+          }
         </div>
         ${pager({ page: body.page, totalPages: body.totalPages, prefix: 'app-users', esc })}
       </section>
@@ -328,7 +355,7 @@ function renderUserManagement({
           selected
             ? `
               <div class="appUserSelected">
-                ${userCard(selected, { esc, textFor, formatDateTime })}
+                ${userCard(selected, { esc, textFor, formatDateTime }, { mode: 'summary', selected: true })}
               </div>
               <div class="segmented appUserDetailTabs">
                 ${detailTabButtons(safeDetailTab, { esc, textFor })}
@@ -484,7 +511,18 @@ function renderComposer({ rows, selected, esc, textFor }) {
           </div>
         </div>
         <div class="appUserList" style="margin-bottom:12px">
-          ${rows.slice(0, 8).map((user) => userCard(user, { esc, textFor, formatDateTime: (v) => v || '-' })).join('') || `<p class="muted">${esc(textFor('appUsersEmpty'))}</p>`}
+          ${
+            rows
+              .slice(0, 8)
+              .map((user) =>
+                userCard(
+                  user,
+                  { esc, textFor, formatDateTime: (v) => v || '-' },
+                  { selected: user.id === selected?.id },
+                ),
+              )
+              .join('') || `<p class="muted">${esc(textFor('appUsersEmpty'))}</p>`
+          }
         </div>
         ${
           selected

@@ -21,9 +21,12 @@ import {
   setSignalMyPassword,
   updateSignalMe,
   fetchSignalSocialProviders,
+  confirmSignalMyEmailChange,
   loginSignalSocial,
   linkSignalSocial,
   previewSignalSocialSignup,
+  requestSignalMyEmailChange,
+  requestSignalPushTest,
   type SignalLegalTerm,
   type SignalAppUser,
   type SignalUserIdentity,
@@ -44,9 +47,10 @@ import {
   saveAppAuthSession,
   type StoredAppAuthSession,
 } from '@/services/appAuthSession';
+import { loadNotificationPrefs, type NotificationPrefs } from '@/services/notificationPreferences';
 
 type Mode = 'login' | 'register';
-type AccountTab = 'home' | 'security' | 'info';
+type AccountTab = 'home' | 'profile' | 'security';
 type RegisterStep = 'terms' | 'method' | 'info';
 
 type SocialSignupDraft = {
@@ -130,6 +134,11 @@ export default function AccountScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [emailChangeCode, setEmailChangeCode] = useState('');
+  const [emailChangeRequestId, setEmailChangeRequestId] = useState('');
+  const [emailChangeMasked, setEmailChangeMasked] = useState('');
+  const [emailChangeNotice, setEmailChangeNotice] = useState<string | null>(null);
   const [nickname, setNickname] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [serviceTermsAccepted, setServiceTermsAccepted] = useState(false);
@@ -137,6 +146,7 @@ export default function AccountScreen() {
   const [legalTerms, setLegalTerms] = useState<SignalLegalTerm[]>([]);
   const [linkedIdentities, setLinkedIdentities] = useState<SignalUserIdentity[]>([]);
   const [socialCatalog, setSocialCatalog] = useState<SignalSocialCatalog | null>(null);
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPrefs | null>(null);
   const [registerStep, setRegisterStep] = useState<RegisterStep>('terms');
   const [pendingSocialProvider, setPendingSocialProvider] = useState<SocialProviderKey | null>(null);
   const [socialSignupDraft, setSocialSignupDraft] = useState<SocialSignupDraft | null>(null);
@@ -151,6 +161,22 @@ export default function AccountScreen() {
   const serviceTerm = legalTerms.find((term) => term.type === 'service');
   const privacyTerm = legalTerms.find((term) => term.type === 'privacy');
   const copyrightYear = new Date().getFullYear();
+  const localeTag = locale === 'ko' ? 'ko-KR' : locale === 'ja' ? 'ja-JP' : 'en-US';
+  const joinedAtLabel = useMemo(() => {
+    if (!user?.createdAt) return t('accountStatusJoinedUnknown');
+    const date = new Date(user.createdAt);
+    if (Number.isNaN(date.getTime())) return t('accountStatusJoinedUnknown');
+    return new Intl.DateTimeFormat(localeTag, { year: 'numeric', month: 'short', day: 'numeric' }).format(date);
+  }, [localeTag, t, user?.createdAt]);
+  const signInMethodLabel = useMemo(() => {
+    const socialCount = linkedIdentities.length;
+    if (user?.hasPassword && socialCount > 0) {
+      return t('accountStatusSignInPasswordAndSocial').replace('{{count}}', String(socialCount));
+    }
+    if (user?.hasPassword) return t('accountStatusSignInPasswordOnly');
+    if (socialCount > 0) return t('accountStatusSignInSocialOnly').replace('{{count}}', String(socialCount));
+    return t('accountStatusSignInNone');
+  }, [linkedIdentities.length, t, user?.hasPassword]);
 
   const fallbackLegalTerms = useMemo<SignalLegalTerm[]>(
     () => [
@@ -409,6 +435,20 @@ export default function AccountScreen() {
 
   useEffect(() => {
     let cancelled = false;
+    loadNotificationPrefs()
+      .then((prefs) => {
+        if (!cancelled) setNotificationPrefs(prefs);
+      })
+      .catch(() => {
+        if (!cancelled) setNotificationPrefs(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
     if (!hasSignalApi()) {
       setLegalTerms(fallbackLegalTerms);
       return () => {
@@ -431,6 +471,7 @@ export default function AccountScreen() {
     if (!user) return;
     setNickname(user.nickname || '');
     setProfileImageUrl(user.profileImageUrl || '');
+    setNewEmail(user.email || '');
   }, [user]);
 
   useEffect(() => {
@@ -551,6 +592,74 @@ export default function AccountScreen() {
     }
   }, [nickname, profileImageUrl, session, t]);
 
+  const requestEmailChange = useCallback(async () => {
+    const access = getSessionAccessToken(session);
+    if (!access) return;
+    setSaving(true);
+    setError(null);
+    setEmailChangeNotice(null);
+    try {
+      const result = await requestSignalMyEmailChange(access, newEmail);
+      setEmailChangeRequestId(result.requestId);
+      setEmailChangeMasked(result.maskedEmail || result.email);
+      setEmailChangeCode('');
+      setEmailChangeNotice(
+        t('accountEmailChangeCodeSent').replace('{{email}}', result.maskedEmail || result.email),
+      );
+      if (__DEV__ && result.debug?.code) {
+        setEmailChangeNotice(
+          `${t('accountEmailChangeCodeSent').replace('{{email}}', result.maskedEmail || result.email)}\n${t(
+            'accountEmailChangeDebugCode',
+          ).replace('{{code}}', result.debug.code)}`,
+        );
+      }
+    } catch (e) {
+      setError(formatSignalApiError(e, t, 'accountEmailChangeError'));
+    } finally {
+      setSaving(false);
+    }
+  }, [newEmail, session, t]);
+
+  const confirmEmailChange = useCallback(async () => {
+    const access = getSessionAccessToken(session);
+    if (!access || !emailChangeRequestId) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const nextUser = await confirmSignalMyEmailChange(access, {
+        requestId: emailChangeRequestId,
+        code: emailChangeCode,
+      });
+      const next = { ...session!, user: nextUser } as StoredAppAuthSession;
+      await saveAppAuthSession(next);
+      setSession(next);
+      setNewEmail(nextUser.email);
+      setEmailChangeRequestId('');
+      setEmailChangeCode('');
+      setEmailChangeMasked('');
+      setEmailChangeNotice(t('accountEmailChangeComplete'));
+    } catch (e) {
+      setError(formatSignalApiError(e, t, 'accountEmailChangeError'));
+    } finally {
+      setSaving(false);
+    }
+  }, [emailChangeCode, emailChangeRequestId, session, t]);
+
+  const sendPushTest = useCallback(async () => {
+    const access = getSessionAccessToken(session);
+    if (!access) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await requestSignalPushTest(access);
+      setEmailChangeNotice(t('accountPushTestQueued'));
+    } catch (e) {
+      setError(formatSignalApiError(e, t, 'accountPushTestError'));
+    } finally {
+      setSaving(false);
+    }
+  }, [session, t]);
+
   const logout = useCallback(async () => {
     const access = getSessionAccessToken(session);
     setSaving(true);
@@ -662,25 +771,12 @@ export default function AccountScreen() {
     [router, t],
   );
 
-  const serviceLinks = useMemo(
-    () => [
-      {
-        key: 'termsHistory',
-        icon: 'file-signature',
-        title: t('accountActivityTermsHistory'),
-        body: t('accountActivityTermsHistoryDesc'),
-        onPress: () => router.push('/terms-history' as never),
-      },
-    ],
-    [router, t],
-  );
-
   const accountTabs = useMemo(
     () =>
       [
         { key: 'home', label: t('accountTabHome') },
+        { key: 'profile', label: t('accountProfileSectionTitle') },
         { key: 'security', label: t('accountTabSecurity') },
-        { key: 'info', label: t('accountTabInfo') },
       ] as const,
     [t],
   );
@@ -807,9 +903,7 @@ export default function AccountScreen() {
 
             {accountTab === 'home' ? (
               <>
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>{t('accountProfileTitle')}</Text>
-              <Text style={styles.sectionLead}>{t('accountProfileLead')}</Text>
+            <View style={[styles.card, styles.profileHeroCard]}>
               <View style={styles.profileRow}>
                 {profileImageUrl ? (
                   <Image source={{ uri: profileImageUrl }} style={styles.avatar} />
@@ -840,6 +934,43 @@ export default function AccountScreen() {
             </View>
 
             <View style={styles.card}>
+              <Text style={styles.sectionTitle}>{t('accountStatusTitle')}</Text>
+              <Text style={styles.sectionLead}>{t('accountStatusLead')}</Text>
+              <View style={styles.statusStack}>
+                <View style={styles.statusRow}>
+                  <View style={styles.statusIcon}>
+                    <FontAwesome5 name="calendar-check" size={13} color={theme.green} />
+                  </View>
+                  <Text style={styles.statusLabel}>{t('accountStatusJoined')}</Text>
+                  <Text style={styles.statusValue} numberOfLines={1}>{joinedAtLabel}</Text>
+                </View>
+                <View style={styles.statusRow}>
+                  <View style={styles.statusIcon}>
+                    <FontAwesome5 name="key" size={13} color={theme.green} />
+                  </View>
+                  <Text style={styles.statusLabel}>{t('accountStatusSignIn')}</Text>
+                  <Text style={styles.statusValue} numberOfLines={1}>{signInMethodLabel}</Text>
+                </View>
+                <Pressable
+                  onPress={() => router.push('/settings?tab=notifications')}
+                  style={({ pressed }) => [styles.statusRow, pressed && styles.activityRowPressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('accountStatusPush')}>
+                  <View style={styles.statusIcon}>
+                    <FontAwesome5 name="bell" size={13} color={theme.green} />
+                  </View>
+                  <Text style={styles.statusLabel}>{t('accountStatusPush')}</Text>
+                  <Text style={styles.statusValue} numberOfLines={1}>
+                    {notificationPrefs?.pushEnabled ? t('accountStatusPushOn') : t('accountStatusPushOff')}
+                  </Text>
+                </Pressable>
+              </View>
+              <Pressable disabled={saving} onPress={() => void sendPushTest()} style={styles.secondaryBtn}>
+                <Text style={styles.secondaryText}>{saving ? t('commonLoading') : t('accountPushTestButton')}</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t('accountActivityTitle')}</Text>
               <Text style={styles.sectionLead}>{t('accountActivityLead')}</Text>
               <View style={styles.quickGrid}>
@@ -859,11 +990,80 @@ export default function AccountScreen() {
                 ))}
               </View>
             </View>
+
+            <View style={styles.accountFooter}>
+              <View style={styles.legalLinkRow}>
+                <Pressable onPress={() => openTerms('service')} hitSlop={8}>
+                  <Text style={styles.legalLinkText}>{t('termsServiceTitle')}</Text>
+                </Pressable>
+                <Text style={styles.legalLinkSep}>·</Text>
+                <Pressable onPress={() => openTerms('privacy')} hitSlop={8}>
+                  <Text style={styles.legalLinkText}>{t('termsPrivacyTitle')}</Text>
+                </Pressable>
+                <Text style={styles.legalLinkSep}>·</Text>
+                <Pressable onPress={() => router.push('/terms-history' as never)} hitSlop={8}>
+                  <Text style={styles.legalLinkText}>{t('accountActivityTermsHistory')}</Text>
+                </Pressable>
+              </View>
+              <View style={styles.footerActionRow}>
+                <Pressable disabled={saving} onPress={() => void logout()} style={styles.footerActionBtn}>
+                  <Text style={styles.footerActionText}>{t('accountLogout')}</Text>
+                </Pressable>
+                <Pressable disabled={saving} onPress={withdraw} style={[styles.footerActionBtn, styles.withdrawBtn]}>
+                  <Text style={[styles.footerActionText, styles.withdrawText]}>{t('accountWithdraw')}</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.copyrightText}>
+                {t('accountFooterCopyright').replace('{{year}}', String(copyrightYear))}
+              </Text>
+            </View>
               </>
             ) : null}
 
-            {accountTab === 'info' ? (
+            {accountTab === 'profile' ? (
               <>
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>{t('accountEmailChangeTitle')}</Text>
+              <Text style={styles.sectionLead}>{t('accountEmailChangeLead')}</Text>
+              {emailChangeNotice ? <Text style={styles.noticeText}>{emailChangeNotice}</Text> : null}
+              <TextInput
+                value={newEmail}
+                onChangeText={setNewEmail}
+                placeholder={t('accountEmailPlaceholder')}
+                placeholderTextColor={theme.textDim}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                style={styles.input}
+              />
+              <Pressable disabled={saving || !newEmail} onPress={() => void requestEmailChange()} style={styles.secondaryBtn}>
+                <Text style={styles.secondaryText}>{saving ? t('commonLoading') : t('accountEmailChangeRequestButton')}</Text>
+              </Pressable>
+              {emailChangeRequestId ? (
+                <>
+                  <Text style={styles.subSectionLead}>
+                    {t('accountEmailChangeCodeLead').replace('{{email}}', emailChangeMasked || newEmail)}
+                  </Text>
+                  <TextInput
+                    value={emailChangeCode}
+                    onChangeText={setEmailChangeCode}
+                    placeholder={t('accountEmailChangeCodePlaceholder')}
+                    placeholderTextColor={theme.textDim}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    style={styles.input}
+                  />
+                  <Pressable
+                    disabled={saving || emailChangeCode.length < 6}
+                    onPress={() => void confirmEmailChange()}
+                    style={styles.primaryBtn}>
+                    <Text style={styles.primaryText}>
+                      {saving ? t('commonLoading') : t('accountEmailChangeConfirmButton')}
+                    </Text>
+                  </Pressable>
+                </>
+              ) : null}
+            </View>
+
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t('accountProfileSectionTitle')}</Text>
               <Text style={styles.sectionLead}>{t('accountProfileEditLead')}</Text>
@@ -1002,51 +1202,6 @@ export default function AccountScreen() {
             </View>
             ) : null}
 
-            {accountTab === 'info' ? (
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>{t('accountServiceInfoTitle')}</Text>
-              <Text style={styles.sectionLead}>{t('accountServiceInfoLead')}</Text>
-              <View style={styles.activityStack}>
-                {serviceLinks.map((item) => (
-                  <Pressable
-                    key={item.key}
-                    onPress={item.onPress}
-                    style={({ pressed }) => [styles.activityRow, pressed && styles.activityRowPressed]}
-                    accessibilityRole="button"
-                    accessibilityLabel={item.title}>
-                    <View style={styles.activityIcon}>
-                      <FontAwesome5 name={item.icon} size={15} color={theme.green} />
-                    </View>
-                    <View style={styles.activityText}>
-                      <Text style={styles.activityTitle}>{item.title}</Text>
-                      <Text style={styles.activityDesc} numberOfLines={1}>{item.body}</Text>
-                    </View>
-                    <FontAwesome5 name="chevron-right" size={12} color={theme.textDim} />
-                  </Pressable>
-                ))}
-              </View>
-              <View style={styles.legalLinkRow}>
-                <Pressable onPress={() => openTerms('service')} hitSlop={8}>
-                  <Text style={styles.legalLinkText}>{t('termsServiceTitle')}</Text>
-                </Pressable>
-                <Text style={styles.legalLinkSep}>·</Text>
-                <Pressable onPress={() => openTerms('privacy')} hitSlop={8}>
-                  <Text style={styles.legalLinkText}>{t('termsPrivacyTitle')}</Text>
-                </Pressable>
-              </View>
-              <View style={styles.footerActionRow}>
-                <Pressable disabled={saving} onPress={() => void logout()} style={styles.footerActionBtn}>
-                  <Text style={styles.footerActionText}>{t('accountLogout')}</Text>
-                </Pressable>
-                <Pressable disabled={saving} onPress={withdraw} style={[styles.footerActionBtn, styles.withdrawBtn]}>
-                  <Text style={[styles.footerActionText, styles.withdrawText]}>{t('accountWithdraw')}</Text>
-                </Pressable>
-              </View>
-              <Text style={styles.copyrightText}>
-                {t('accountFooterCopyright').replace('{{year}}', String(copyrightYear))}
-              </Text>
-            </View>
-            ) : null}
           </>
         ) : (
           <>
@@ -1331,6 +1486,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       overflow: 'hidden',
     },
     card: { borderRadius: 14, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.card, padding: 16, gap: 12 },
+    profileHeroCard: {
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.bgElevated,
+    },
     heroLogoRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     signalBars: { width: 36, height: 28, flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
     signalBar: { width: 6, borderRadius: 4, backgroundColor: theme.green },
@@ -1343,6 +1502,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     lead: { fontSize: sf(13), lineHeight: sf(19), color: theme.textMuted },
     errBox: { borderRadius: 12, borderWidth: 1, borderColor: '#553333', backgroundColor: '#2A1515', padding: 12 },
     errText: { color: '#E0A0A0', fontSize: sf(12), lineHeight: sf(18) },
+    noticeText: { color: theme.green, fontSize: sf(12), lineHeight: sf(18), fontWeight: '800' },
     accountTabs: {
       minHeight: 44,
       borderRadius: 14,
@@ -1518,6 +1678,35 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 10,
     },
     accountMetaText: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
+    statusStack: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      overflow: 'hidden',
+    },
+    statusRow: {
+      minHeight: 44,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    statusIcon: {
+      width: 26,
+      height: 26,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+    },
+    statusLabel: { flex: 1, minWidth: 0, color: theme.textMuted, fontSize: sf(12), fontWeight: '800' },
+    statusValue: { maxWidth: '48%', color: theme.text, fontSize: sf(12), fontWeight: '900', textAlign: 'right' },
     quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     quickTile: {
       flexBasis: '48%',

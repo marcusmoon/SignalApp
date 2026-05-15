@@ -3,6 +3,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { config } from './config.mjs';
 import {
+  confirmAppUserEmailChangeInDb,
   createAppUserInDb,
   disconnectAppUserIdentityInDb,
   getAppUserInDb,
@@ -16,6 +17,7 @@ import {
   loginAppUserInDb,
   loginOrRegisterSocialUserInDb,
   refreshAppUserSessionInDb,
+  requestAppUserEmailChangeInDb,
   revokeAppUserTokenInDb,
   setAppUserPasswordInDb,
   updateAppUserAdminInDb,
@@ -411,6 +413,36 @@ export async function setAppUserPassword(userId, payload) {
   });
 }
 
+export async function requestAppUserEmailChange(userId, payload) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const result = requestAppUserEmailChangeInDb(db, userId, payload);
+      db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  });
+}
+
+export async function confirmAppUserEmailChange(userId, payload) {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const result = confirmAppUserEmailChangeInDb(db, userId, payload);
+      db.exec('COMMIT');
+      return result;
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+  });
+}
+
 export async function disconnectAppUserIdentity(userId, identityId) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
@@ -587,6 +619,8 @@ export async function upsertNotification(next) {
     }
   });
 }
+
+export const upsertNotificationItem = upsertNotification;
 
 export async function claimPushNotificationsForDelivery(options = {}) {
   return withDbExclusive(async () => {

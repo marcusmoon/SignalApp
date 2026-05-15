@@ -700,4 +700,6 @@ export const baseJa = {
   mobileFilterOpen: '条件',
   mobileFilterClose: '閉じる',
   btnRefreshThisView: '更新',
+  workspaceEyebrow: 'ワークスペース',
+  workspaceSub: 'リアルタイムのコンテンツ・ユーザー運用',
 };

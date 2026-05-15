@@ -700,4 +700,6 @@ export const baseEn = {
   mobileFilterOpen: 'Filters',
   mobileFilterClose: 'Close',
   btnRefreshThisView: 'Refresh',
+  workspaceEyebrow: 'Workspace',
+  workspaceSub: 'Live content and user operations',
 };

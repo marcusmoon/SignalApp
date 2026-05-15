@@ -1767,9 +1767,20 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await loadAppUsers();
             return;
           }
+          const appUserRowTarget = target instanceof Element ? target.closest('[data-app-user-row]') : null;
+          if (appUserRowTarget?.dataset?.appUserRow) {
+            const interactiveTarget = target.closest('button, input, select, textarea, label, a');
+            if (!interactiveTarget) {
+              state.appUsersSelectedId = appUserRowTarget.dataset.appUserRow;
+              await loadAppUsers();
+              document.querySelector('.appUserDetailCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              return;
+            }
+          }
           if (target.dataset.appUserSelect) {
             state.appUsersSelectedId = target.dataset.appUserSelect;
             await loadAppUsers();
+            document.querySelector('.appUserDetailCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             return;
           }
           if (target.dataset.appUserDetailTab) {
@@ -2441,6 +2452,15 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       });
 
       document.addEventListener('keydown', async (event) => {
+        const appUserRowTarget =
+          event.target instanceof Element ? event.target.closest('[data-app-user-row]') : null;
+        if (appUserRowTarget?.dataset?.appUserRow && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          state.appUsersSelectedId = appUserRowTarget.dataset.appUserRow;
+          await loadAppUsers();
+          document.querySelector('.appUserDetailCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
         if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
           event.preventDefault();
           buildSearchIndex();

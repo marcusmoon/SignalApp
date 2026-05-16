@@ -1,4 +1,8 @@
 /** Metro가 .native / .web 등을 해석할 때 TS가 동일 경로로 타입을 잡도록 합니다. */
+declare module '@/integrations/admob/initializeAds' {
+  export function initializeAds(): Promise<void>;
+}
+
 declare module '@/integrations/admob/native' {
   export function getGoogleMobileAdsModule():
     | import('react-native-google-mobile-ads')

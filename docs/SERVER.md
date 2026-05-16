@@ -62,6 +62,7 @@ cp server/.env.example server/.env
 | 변수 | 용도 |
 |------|------|
 | `PORT` / `HOST` | 로컬 서버 바인딩 (`127.0.0.1:4000`) |
+| `SIGNAL_CORS_ORIGINS` | 선택. **브라우저·Expo Web**에서 다른 origin으로 Signal API(`/v1/*`, `/health`)를 호출할 때 필요한 CORS. 쉼표로 구분한 **정확한 Origin** 목록(예: `https://app.example.com,https://staging.example.com`). 비우면 `localhost` / `127.0.0.1` / `[::1]`의 http(s) Origin만 허용한다. LAN IP로 웹을 띄우면 여기에 해당 Origin을 넣는다. |
 | `DATA_DIR` | 서버 데이터 디렉터리. Railway 볼륨 마운트 경로를 지정하면 SQLite 파일도 여기에 저장 |
 | `SQLITE_DB_PATH` | 선택. SQLite 파일 경로. 비우면 `${DATA_DIR}/signal.sqlite` |
 | `SIGNAL_SCHEDULER_ENABLED` | 선택. 기본 `true`. API 전용 Railway 서비스에서는 `false`, worker 서비스에서는 `true` |

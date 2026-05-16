@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 
+import { applyCorsHeadersIfNeeded, tryHandleCorsPreflight } from './cors.mjs';
 import { handleAdminAppUsersRoutes } from './admin/api/appUsers.mjs';
 import { handleAdminCalendarRoutes } from './admin/api/calendar.mjs';
 import { handleAdminConcallsRoutes } from './admin/api/concalls.mjs';
@@ -55,6 +56,9 @@ const ADMIN_API_HANDLERS = [
 export async function handleRequest(req, res) {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
   const pathname = url.pathname;
+
+  if (tryHandleCorsPreflight(req, res, pathname)) return;
+  applyCorsHeadersIfNeeded(req, res, pathname);
 
   try {
     // 1) Public routes (health, openapi, docs, /v1/*)

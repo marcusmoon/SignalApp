@@ -18,6 +18,7 @@ import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
 import { SignalThemeProvider, useSignalTheme } from '@/contexts/SignalThemeContext';
 import { ensureStoredSessionFresh } from '@/integrations/signal-api/httpClient';
 import { getPreviewOtaBannerRaw } from '@/services/env';
+import { initializeAds } from '@/integrations/admob/initializeAds';
 import {
   hydrateSignalServerEndpoint,
   subscribeSignalServerEndpointChanged,
@@ -64,10 +65,7 @@ export default function RootLayout() {
   }, [loaded, signalEndpointReady]);
 
   useEffect(() => {
-    if (Platform.OS === 'web') return;
-    void import('@/integrations/admob/native')
-      .then((m) => m.initializeAds())
-      .catch(() => {});
+    void initializeAds().catch(() => {});
   }, []);
 
   return (

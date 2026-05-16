@@ -1,0 +1,1 @@
+export { initializeAds } from './native';

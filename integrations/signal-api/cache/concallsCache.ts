@@ -13,9 +13,16 @@ export function buildSignalConcallsCacheKey(params?: {
   from?: string;
   to?: string;
   includeTranscript?: boolean;
+  limit?: number;
+  offset?: number;
   page?: number;
   pageSize?: number;
 }): string {
+  const limit = Number(params?.limit ?? params?.pageSize) || 30;
+  const offset =
+    params?.offset != null && String(params.offset).trim() !== ''
+      ? Number(params.offset) || 0
+      : Math.max(0, (Math.max(1, Number(params?.page) || 1) - 1) * limit);
   const p = {
     symbol: String(params?.symbol || '').trim().toUpperCase(),
     fiscalYear: Number(params?.fiscalYear) || 0,
@@ -23,10 +30,10 @@ export function buildSignalConcallsCacheKey(params?: {
     from: String(params?.from || '').trim(),
     to: String(params?.to || '').trim(),
     includeTranscript: params?.includeTranscript === true ? 1 : 0,
-    page: Number(params?.page) || 0,
-    pageSize: Number(params?.pageSize) || 0,
+    limit,
+    offset,
   };
-  return `concalls|${p.symbol}|${p.fiscalYear}|${p.fiscalQuarter}|${p.from}|${p.to}|${p.includeTranscript}|${p.page}|${p.pageSize}`;
+  return `concalls|${p.symbol}|${p.fiscalYear}|${p.fiscalQuarter}|${p.from}|${p.to}|${p.includeTranscript}|${p.limit}|${p.offset}`;
 }
 
 export function peekSignalConcallsCache(key: string): SignalApiConcall[] | null {

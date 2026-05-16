@@ -40,7 +40,7 @@ export async function loadMarketSnapshotQuotes(): Promise<{
   }
 
   const uniq = [...new Set([...tapeSyms, ...macroSyms])];
-  const rows = await fetchSignalMarketQuotes({ symbols: uniq, pageSize: uniq.length }).catch(() => []);
+  const rows = await fetchSignalMarketQuotes({ symbols: uniq, limit: uniq.length }).catch(() => []);
   const map = new Map(rows.map((r) => [String(r.symbol || '').trim().toUpperCase(), r] as const));
   for (const sym of uniq) {
     const row = map.get(sym);

@@ -82,15 +82,8 @@ export type SignalApiYoutubeVideo = {
   fetchedAt: string;
 };
 
-/** `/v1/youtube` — 서버 `page` / `pageSize` / `total` / `totalPages` 기준 */
-export type SignalYoutubeListMeta = {
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-  hasMore: boolean;
-  nextPage: number | null;
-};
+/** `/v1/youtube` — 뉴스(`/v1/news`)와 동일한 `meta` 형태 (`limit` / `offset` / `nextOffset`) */
+export type SignalYoutubeListMeta = SignalNewsListMeta;
 
 export type SignalYoutubePage = {
   items: SignalApiYoutubeVideo[];

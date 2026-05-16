@@ -543,7 +543,7 @@ export default function SymbolDetailScreen() {
       const [watchlist, nextProfile, mqRows, nextCandles, companyNews, earningsRows, insightRows] = await Promise.all([
         loadWatchlistSymbols(),
         fetchSignalStockProfile(ticker),
-        fetchSignalMarketQuotes({ symbols: [ticker], pageSize: 1 }).catch(() => []),
+        fetchSignalMarketQuotes({ symbols: [ticker], limit: 1 }).catch(() => []),
         fetchSignalStockCandles(ticker, 'D', addDays(new Date(), -30), new Date()).catch(() => null),
         fetchCompanyNewsForDisplay(ticker, locale).catch(() => [] as SignalApiNewsItem[]),
         fetchSignalEarningsCalendarRangeMerged(earnFrom, earnTo).catch(() => [] as SignalApiCalendarEvent[]),

@@ -8,17 +8,25 @@ export function buildSignalYoutubeCacheKey(params?: {
   q?: string;
   channel?: string;
   sort?: 'latest' | 'popular';
+  limit?: number;
+  offset?: number;
+  /** @deprecated */
   page?: number;
   pageSize?: number;
 }): string {
+  const limit = Number(params?.limit ?? params?.pageSize) || 30;
+  const offset =
+    params?.offset != null && String(params.offset).trim() !== ''
+      ? Number(params.offset) || 0
+      : Math.max(0, (Math.max(1, Number(params?.page) || 1) - 1) * limit);
   const p = {
     q: String(params?.q || '').trim().toLowerCase(),
     channel: String(params?.channel || '').trim().toLowerCase(),
     sort: String(params?.sort || '').trim().toLowerCase(),
-    page: Number(params?.page) || 1,
-    pageSize: Number(params?.pageSize) || 30,
+    limit,
+    offset,
   };
-  return `youtube|${p.q}|${p.channel}|${p.sort}|${p.page}|${p.pageSize}`;
+  return `youtube|${p.q}|${p.channel}|${p.sort}|${p.limit}|${p.offset}`;
 }
 
 export function peekSignalYoutubeCache(key: string): SignalYoutubePage | null {

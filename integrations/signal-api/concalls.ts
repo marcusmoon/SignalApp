@@ -5,20 +5,28 @@ import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 
 export async function fetchSignalConcalls(
   params?: {
-  symbol?: string;
-  fiscalYear?: number;
-  fiscalQuarter?: number;
-  from?: string;
-  to?: string;
-  includeTranscript?: boolean;
-  page?: number;
-  pageSize?: number;
-},
+    symbol?: string;
+    fiscalYear?: number;
+    fiscalQuarter?: number;
+    from?: string;
+    to?: string;
+    includeTranscript?: boolean;
+    limit?: number;
+    offset?: number;
+    /** @deprecated */
+    page?: number;
+    pageSize?: number;
+  },
   options?: { cacheMode?: 'use' | 'bypass' },
 ): Promise<SignalApiConcall[]> {
   const cacheMode = options?.cacheMode || 'use';
   const { concallEnabled } = await loadCacheFeaturePrefs();
-  const cacheKey = buildSignalConcallsCacheKey(params);
+  const limit = params?.limit ?? params?.pageSize ?? 30;
+  const offset =
+    params?.offset ??
+    (params?.page != null ? (Math.max(1, Number(params.page) || 1) - 1) * Number(limit) : 0);
+  const cacheParams = { ...params, limit, offset };
+  const cacheKey = buildSignalConcallsCacheKey(cacheParams);
   if (cacheMode !== 'bypass' && concallEnabled) {
     const hit = peekSignalConcallsCache(cacheKey);
     if (hit) return hit;
@@ -30,8 +38,8 @@ export async function fetchSignalConcalls(
     from: params?.from,
     to: params?.to,
     includeTranscript: params?.includeTranscript ? 1 : undefined,
-    page: params?.page,
-    pageSize: params?.pageSize ?? 30,
+    limit,
+    offset,
   });
   const rows = Array.isArray(json.data) ? json.data : [];
   if (cacheMode !== 'bypass' && concallEnabled) storeSignalConcallsCache(cacheKey, rows);

@@ -11,15 +11,19 @@ export async function handlePublicConcallsRoutes({ req, res, url, pathname }) {
       to: url.searchParams.get('to') || '',
       q: url.searchParams.get('q') || '',
       includeTranscript: url.searchParams.get('includeTranscript') === '1',
-      page: url.searchParams.get('page') || '1',
-      pageSize: url.searchParams.get('pageSize') || '30',
+      limit: url.searchParams.get('limit') || url.searchParams.get('pageSize') || '30',
+      offset: url.searchParams.get('offset') || '',
+      page: url.searchParams.get('page') || '',
     });
     json(res, 200, {
       data: page.rows,
-      page: page.page,
-      pageSize: page.pageSize,
-      total: page.total,
-      totalPages: page.totalPages,
+      meta: {
+        limit: page.limit,
+        offset: page.offset,
+        total: page.total,
+        hasMore: page.hasMore,
+        nextOffset: page.nextOffset,
+      },
     });
     return true;
   }

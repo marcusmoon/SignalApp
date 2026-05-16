@@ -25,6 +25,17 @@ function pageOptions({ limit = 30, offset = 0, maxLimit = 100 } = {}) {
   return { limit: safeLimit, offset: safeOffset };
 }
 
+/** limit/offset (+ page/pageSize 하위호환) — 인메모리 스캔 리스트 공통 */
+function listOffsetLimit(options, defaultLimit = 30) {
+  const { limit } = pageOptions({ limit: options.limit ?? options.pageSize ?? defaultLimit, offset: 0, maxLimit: 100 });
+  const pageNum = Math.max(1, Math.floor(Number(options.page)) || 1);
+  const hasExplicitOffset = options.offset != null && String(options.offset).trim() !== '';
+  const rawOffset = hasExplicitOffset
+    ? pageOptions({ limit, offset: options.offset ?? 0, maxLimit: 100 }).offset
+    : (pageNum - 1) * limit;
+  return pageOptions({ limit, offset: rawOffset, maxLimit: 100 });
+}
+
 function pagination(rows, { limit, offset }) {
   const total = rows.length;
   const slice = rows.slice(offset, offset + limit);
@@ -142,8 +153,7 @@ export function queryPublicNewsInDb(db, options = {}) {
 }
 
 export function queryPublicYoutubeInDb(db, options = {}) {
-  const page = Math.max(1, Math.floor(Number(options.page)) || 1);
-  const { limit: pageSize } = pageOptions({ limit: options.pageSize || 30, maxLimit: 100 });
+  const { limit: safeLimit, offset: safeOffset } = listOffsetLimit(options, 30);
   const where = [];
   const params = {};
   const channel = String(options.channel || '').trim().toLowerCase();
@@ -163,7 +173,8 @@ export function queryPublicYoutubeInDb(db, options = {}) {
   params.bucket = `%"sortBucket":"${bucket}"%`;
   params.bucketList = `%"${bucket}"%`;
   const whereSql = bucketWhere.length ? `WHERE ${bucketWhere.join(' AND ')}` : '';
-  const scanLimit = Math.min(2000, Math.max(page * pageSize + 120, 300));
+  /** 뉴스 피드와 동일: offset 이 커질수록 스캔 상한을 키워 필터 후 페이지가 비지 않게 함 */
+  const scanLimit = Math.min(2000, Math.max(safeLimit + safeOffset + 120, 300));
   let rows = db
     .prepare(
       `
@@ -204,15 +215,15 @@ export function queryPublicYoutubeInDb(db, options = {}) {
       },
     },
   });
-  const total = filtered.length;
-  const safePage = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
-  const offset = (safePage - 1) * pageSize;
+  const paged = pagination(filtered, { limit: safeLimit, offset: safeOffset });
+  const hasMore = paged.hasMore || rows.length >= scanLimit;
   return {
-    rows: filtered.slice(offset, offset + pageSize),
-    page: safePage,
-    pageSize,
-    total,
-    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    rows: paged.rows,
+    total: paged.total,
+    limit: safeLimit,
+    offset: safeOffset,
+    hasMore,
+    nextOffset: hasMore ? safeOffset + paged.rows.length : null,
   };
 }
 
@@ -294,10 +305,9 @@ function marketQuotePrefilterSql(options) {
 }
 
 export function queryPublicMarketQuotesInDb(db, options = {}) {
-  const page = Math.max(1, Math.floor(Number(options.page)) || 1);
-  const { limit: pageSize } = pageOptions({ limit: options.pageSize || 30, maxLimit: 100 });
+  const { limit: safeLimit, offset: safeOffset } = listOffsetLimit(options, 30);
   const { whereSql, params } = marketQuotePrefilterSql(options);
-  const scanLimit = Math.min(2000, Math.max(page * pageSize + 120, 300));
+  const scanLimit = Math.min(2000, Math.max(safeLimit + safeOffset + 120, 300));
   const rows = db
     .prepare(
       `
@@ -320,28 +330,26 @@ export function queryPublicMarketQuotesInDb(db, options = {}) {
       return null;
     }),
   );
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const offset = (safePage - 1) * pageSize;
+  const paged = pagination(filtered, { limit: safeLimit, offset: safeOffset });
+  const hasMore = paged.hasMore || rows.length >= scanLimit;
   return {
-    rows: filtered.slice(offset, offset + pageSize),
-    page: safePage,
-    pageSize,
-    total,
-    totalPages,
+    rows: paged.rows,
+    total: paged.total,
+    limit: safeLimit,
+    offset: safeOffset,
+    hasMore,
+    nextOffset: hasMore ? safeOffset + paged.rows.length : null,
   };
 }
 
 export function queryPublicCoinMarketsInDb(db, options = {}) {
-  const page = Math.max(1, Math.floor(Number(options.page)) || 1);
-  const { limit: pageSize } = pageOptions({ limit: options.pageSize || 30, maxLimit: 100 });
+  const { limit: safeLimit, offset: safeOffset } = listOffsetLimit(options, 30);
   const q = String(options.q || '').trim().toLowerCase();
   const whereSql = q
     ? 'WHERE LOWER(COALESCE(symbol, "")) LIKE @q OR LOWER(payload) LIKE @q'
     : '';
   const params = q ? { q: `%${q}%` } : {};
-  const scanLimit = Math.min(2000, Math.max(page * pageSize + 120, 300));
+  const scanLimit = Math.min(2000, Math.max(safeLimit + safeOffset + 120, 300));
   const rows = db
     .prepare(
       `
@@ -356,16 +364,15 @@ export function queryPublicCoinMarketsInDb(db, options = {}) {
     .map((row) => parsePayload('coin_markets.payload', row.payload, null))
     .filter(Boolean);
   const filtered = filterCoinMarkets(rows, urlLike((key) => (key === 'q' ? options.q || null : null)));
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const offset = (safePage - 1) * pageSize;
+  const paged = pagination(filtered, { limit: safeLimit, offset: safeOffset });
+  const hasMore = paged.hasMore || rows.length >= scanLimit;
   return {
-    rows: filtered.slice(offset, offset + pageSize),
-    page: safePage,
-    pageSize,
-    total,
-    totalPages,
+    rows: paged.rows,
+    total: paged.total,
+    limit: safeLimit,
+    offset: safeOffset,
+    hasMore,
+    nextOffset: hasMore ? safeOffset + paged.rows.length : null,
   };
 }
 
@@ -476,8 +483,7 @@ export function queryPublicCalendarInDb(db, options = {}) {
 }
 
 export function queryPublicConcallsInDb(db, options = {}) {
-  const page = Math.max(1, Math.floor(Number(options.page)) || 1);
-  const { limit: pageSize } = pageOptions({ limit: options.pageSize || 30, maxLimit: 100 });
+  const { limit: safeLimit, offset: safeOffset } = listOffsetLimit(options, 30);
   const where = [];
   const params = {};
   const symbol = String(options.symbol || '').trim().toUpperCase();
@@ -507,7 +513,7 @@ export function queryPublicConcallsInDb(db, options = {}) {
     params.q = `%${q}%`;
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const scanLimit = Math.min(2000, Math.max(page * pageSize + 120, 300));
+  const scanLimit = Math.min(2000, Math.max(safeLimit + safeOffset + 120, 300));
   const rows = db
     .prepare(
       `
@@ -534,15 +540,14 @@ export function queryPublicConcallsInDb(db, options = {}) {
       return null;
     }),
   );
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const offset = (safePage - 1) * pageSize;
+  const paged = pagination(filtered, { limit: safeLimit, offset: safeOffset });
+  const hasMore = paged.hasMore || rows.length >= scanLimit;
   return {
-    rows: filtered.slice(offset, offset + pageSize),
-    page: safePage,
-    pageSize,
-    total,
-    totalPages,
+    rows: paged.rows,
+    total: paged.total,
+    limit: safeLimit,
+    offset: safeOffset,
+    hasMore,
+    nextOffset: hasMore ? safeOffset + paged.rows.length : null,
   };
 }

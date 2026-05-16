@@ -201,7 +201,7 @@ export default function BriefingScreen() {
 
     const [mqRows, earnRows, newsMap, econRows] = await Promise.all([
       quoteSymbols.length > 0
-        ? fetchSignalMarketQuotes({ symbols: quoteSymbols, pageSize: Math.max(quoteSymbols.length, 1) }).catch(() => [])
+        ? fetchSignalMarketQuotes({ symbols: quoteSymbols, limit: Math.max(quoteSymbols.length, 1) }).catch(() => [])
         : Promise.resolve([]),
       fetchSignalEarningsCalendarRangeMerged(today, earnUntil).catch(() => [] as SignalApiCalendarEvent[]),
       fetchCompanyNewsForSymbolsDisplay(syms, locale).catch(() => ({} as Record<string, SignalApiNewsItem[]>)),

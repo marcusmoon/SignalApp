@@ -267,7 +267,7 @@ export default function QuotesScreen() {
         }
       }
       try {
-        const list = (await fetchSignalCoins({ pageSize: limits.coinMax })).slice(0, limits.coinMax).map(mapSignalCoinToRow);
+        const list = (await fetchSignalCoins({ limit: limits.coinMax })).slice(0, limits.coinMax).map(mapSignalCoinToRow);
         setRows(list);
         if (quotesEnabled) {
           const nextAt = Date.now() + QUOTES_CACHE_TTL_MS;
@@ -305,10 +305,10 @@ export default function QuotesScreen() {
 
     const serverRows =
       segment === 'watch'
-        ? await fetchSignalMarketQuotes({ symbols, pageSize: Math.max(symbols.length, 1) })
+        ? await fetchSignalMarketQuotes({ symbols, limit: Math.max(symbols.length, 1) })
         : await fetchSignalMarketQuotes({
             segment: segment === 'popular' ? 'popular' : 'mcap',
-            pageSize: segment === 'popular' ? limits.popularMax : limits.mcapMax,
+            limit: segment === 'popular' ? limits.popularMax : limits.mcapMax,
           });
     const mapped = serverRows.map(mapSignalQuoteToRow);
     setRows(segment === 'watch' ? applyQuoteOrder(mapped, symbols) : mapped);
@@ -392,7 +392,7 @@ export default function QuotesScreen() {
       return;
     }
     try {
-      const rows = await fetchSignalMarketQuotes({ symbols: [sym], pageSize: 1 });
+      const rows = await fetchSignalMarketQuotes({ symbols: [sym], limit: 1 });
       if (rows.length === 0 || rows.every((row) => row.currentPrice == null)) {
         Alert.alert(t('alertTitleUnknownTicker'), t('quotesTickerNotFoundBody'));
         return;

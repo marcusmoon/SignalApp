@@ -47,7 +47,7 @@ export async function fetchEconomyYoutubeCached(
   const locale = options?.locale ?? 'ko';
 
   if (!cacheEnabled) {
-    const { items: rows } = await fetchSignalYoutube({ page: 1, pageSize: 100 }, { cacheMode: 'bypass' });
+    const { items: rows } = await fetchSignalYoutube({ offset: 0, limit: 100 }, { cacheMode: 'bypass' });
     return rows.map((row) => signalYoutubeToYoutubeItem(row, locale));
   }
 
@@ -59,7 +59,7 @@ export async function fetchEconomyYoutubeCached(
     cache.delete(k);
   }
 
-  const { items: rows } = await fetchSignalYoutube({ page: 1, pageSize: 100 }, { cacheMode: 'bypass' });
+  const { items: rows } = await fetchSignalYoutube({ offset: 0, limit: 100 }, { cacheMode: 'bypass' });
   const items = rows.map((row) => signalYoutubeToYoutubeItem(row, locale));
   cache.set(k, { items, expiresAt: Date.now() + YOUTUBE_CACHE_TTL_MS });
   return items;

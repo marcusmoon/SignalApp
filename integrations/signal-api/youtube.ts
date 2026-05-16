@@ -1,6 +1,7 @@
 import { signalApi } from '@/integrations/signal-api/httpClient';
 import type {
   SignalApiYoutubeVideo,
+  SignalNewsListMeta,
   SignalYoutubeListMeta,
   SignalYoutubePage,
 } from '@/integrations/signal-api/types';
@@ -17,27 +18,17 @@ import {
 } from '@/integrations/signal-api/cache/youtubeCache';
 
 function normalizeYoutubeMeta(
-  json: {
-    data?: SignalApiYoutubeVideo[];
-    page?: unknown;
-    pageSize?: unknown;
-    total?: unknown;
-    totalPages?: unknown;
-  },
-  params?: { page?: number; pageSize?: number },
+  json: { data?: SignalApiYoutubeVideo[]; meta?: Partial<SignalNewsListMeta> },
+  params: { limit?: number; offset?: number },
 ): SignalYoutubeListMeta {
   const rows = Array.isArray(json.data) ? json.data : [];
-  const page = Math.max(1, Number(json.page) || Number(params?.page) || 1);
-  const pageSizeRaw = Number(json.pageSize) || Number(params?.pageSize);
-  const pageSize = Math.max(1, Number.isFinite(pageSizeRaw) && pageSizeRaw > 0 ? pageSizeRaw : rows.length || 30);
-  const total = Number.isFinite(Number(json.total)) ? Number(json.total) : rows.length;
-  const totalPages = Math.max(
-    1,
-    Number.isFinite(Number(json.totalPages)) ? Number(json.totalPages) : Math.ceil(total / pageSize) || 1,
-  );
-  const hasMore = page < totalPages;
-  const nextPage = hasMore ? page + 1 : null;
-  return { page, pageSize, total, totalPages, hasMore, nextPage };
+  const m = json.meta;
+  const limit = Number(m?.limit) || Number(params.limit) || rows.length || 30;
+  const offset = Number(m?.offset) || Number(params.offset) || 0;
+  const total = Number.isFinite(Number(m?.total)) ? Number(m?.total) : rows.length;
+  const hasMore = typeof m?.hasMore === 'boolean' ? m.hasMore : offset + rows.length < total;
+  const nextOffset = m?.nextOffset != null ? m.nextOffset : hasMore ? offset + rows.length : null;
+  return { limit, offset, total, hasMore, nextOffset };
 }
 
 export async function fetchSignalYoutube(
@@ -45,6 +36,9 @@ export async function fetchSignalYoutube(
     q?: string;
     channel?: string;
     sort?: 'latest' | 'popular';
+    limit?: number;
+    offset?: number;
+    /** @deprecated 서버·캐시는 `offset`/`limit`만 쓰는 것을 권장 */
     page?: number;
     pageSize?: number;
   },
@@ -52,24 +46,27 @@ export async function fetchSignalYoutube(
 ): Promise<SignalYoutubePage> {
   const cacheMode = options?.cacheMode || 'use';
   const { youtubeEnabled } = await loadCacheFeaturePrefs();
-  const cacheKey = buildSignalYoutubeCacheKey(params);
+  const limit = params?.limit ?? params?.pageSize ?? 30;
+  const offset =
+    params?.offset ??
+    (params?.page != null ? (Math.max(1, Number(params.page) || 1) - 1) * Number(limit) : 0);
+  const cacheKey = buildSignalYoutubeCacheKey({ ...params, limit, offset });
   if (cacheMode !== 'bypass' && youtubeEnabled) {
     const hit = peekSignalYoutubeCache(cacheKey);
     if (hit) return hit;
   }
   const json = await signalApi<{
     data: SignalApiYoutubeVideo[];
-    page?: number;
-    pageSize?: number;
-    total?: number;
-    totalPages?: number;
+    meta?: Partial<SignalNewsListMeta>;
   }>('/v1/youtube', {
-    ...params,
-    page: params?.page ?? 1,
-    pageSize: params?.pageSize ?? 30,
+    q: params?.q,
+    channel: params?.channel,
+    sort: params?.sort,
+    limit,
+    offset,
   });
   const rows = Array.isArray(json.data) ? json.data : [];
-  const meta = normalizeYoutubeMeta({ ...json, data: rows }, params);
+  const meta = normalizeYoutubeMeta({ ...json, data: rows }, { limit, offset });
   const value: SignalYoutubePage = { items: rows, meta };
   if (youtubeEnabled) storeSignalYoutubeCache(cacheKey, value);
   return value;

@@ -72,7 +72,8 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
           segment: url.searchParams.get('segment') || '',
           symbols: symbolsParam,
           q: url.searchParams.get('q') || '',
-          pageSize: String(Math.max(100, requested.length)),
+          limit: String(Math.max(100, requested.length)),
+          offset: '0',
         });
         const existing = existingPage.rows || [];
         const have = new Set(existing.map((r) => String(r.symbol || '').trim().toUpperCase()).filter(Boolean));
@@ -114,15 +115,19 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
       segment: url.searchParams.get('segment') || '',
       symbols: url.searchParams.get('symbols') || '',
       q: url.searchParams.get('q') || '',
-      page: url.searchParams.get('page') || '1',
-      pageSize: url.searchParams.get('pageSize') || '30',
+      limit: url.searchParams.get('limit') || url.searchParams.get('pageSize') || '30',
+      offset: url.searchParams.get('offset') || '',
+      page: url.searchParams.get('page') || '',
     });
     json(res, 200, {
       data: page.rows,
-      page: page.page,
-      pageSize: page.pageSize,
-      total: page.total,
-      totalPages: page.totalPages,
+      meta: {
+        limit: page.limit,
+        offset: page.offset,
+        total: page.total,
+        hasMore: page.hasMore,
+        nextOffset: page.nextOffset,
+      },
     });
     return true;
   }
@@ -130,15 +135,19 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/v1/coins') {
     const page = await queryPublicCoinMarkets({
       q: url.searchParams.get('q') || '',
-      page: url.searchParams.get('page') || '1',
-      pageSize: url.searchParams.get('pageSize') || '30',
+      limit: url.searchParams.get('limit') || url.searchParams.get('pageSize') || '30',
+      offset: url.searchParams.get('offset') || '',
+      page: url.searchParams.get('page') || '',
     });
     json(res, 200, {
       data: page.rows,
-      page: page.page,
-      pageSize: page.pageSize,
-      total: page.total,
-      totalPages: page.totalPages,
+      meta: {
+        limit: page.limit,
+        offset: page.offset,
+        total: page.total,
+        hasMore: page.hasMore,
+        nextOffset: page.nextOffset,
+      },
     });
     return true;
   }

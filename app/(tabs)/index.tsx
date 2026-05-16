@@ -6,6 +6,8 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   RefreshControl,
@@ -65,6 +67,7 @@ import {
 } from '@/services/insightFeedExpandedPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
+import { createScrollLoadMoreGate } from '@/utils/listScrollLoadMoreGate';
 import { fetchSignalInsights, fetchSignalNews, fetchSignalNewsSources, signalNewsToNewsItem } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiInsight, SignalApiNewsItem } from '@/integrations/signal-api/types';
@@ -170,6 +173,7 @@ export default function FeedScreen() {
 
   /** 웹: 리스트 콘텐츠 높이 < 뷰포트면 onEndReached가 안 나와 다음 페이지를 못 불러오는 경우가 있음 */
   const feedListViewportH = useRef(0);
+  const feedScrollLoadGateRef = useRef(createScrollLoadMoreGate());
 
   useEffect(() => {
     if (!refreshNotice) return;
@@ -350,6 +354,10 @@ export default function FeedScreen() {
         },
         { cacheMode: 'use' },
       );
+      if (nextRows.length === 0) {
+        setHasMore(false);
+        return;
+      }
       const merged = [...serverRows, ...nextRows];
       setServerRows(merged);
       setHasMore(meta.hasMore);
@@ -374,6 +382,21 @@ export default function FeedScreen() {
     serverRows,
     t,
   ]);
+
+  const onFeedScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      feedScrollLoadGateRef.current.onScrollNearEnd(e, {
+        enabled:
+          hasMore &&
+          !loadingMore &&
+          !loading &&
+          hasSignalApi() &&
+          (segment === 'crypto' || segment === 'global' || segment === 'korea'),
+        trigger: () => void loadMore(),
+      });
+    },
+    [hasMore, loadingMore, loading, segment, loadMore],
+  );
 
   useEffect(() => {
     return subscribeKoreaNewsExtraKeywordsChanged(() => {
@@ -714,7 +737,9 @@ export default function FeedScreen() {
             ) : null
           }
           onEndReached={() => void loadMore()}
-          onEndReachedThreshold={0.35}
+          onEndReachedThreshold={0.55}
+          onScroll={onFeedScroll}
+          scrollEventThrottle={350}
           onLayout={
             Platform.OS === 'web'
               ? (e) => {

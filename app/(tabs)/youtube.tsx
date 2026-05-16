@@ -4,6 +4,8 @@ import {
   FlatList,
   Linking,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   RefreshControl,
@@ -50,6 +52,7 @@ import type { SignalYoutubeListMeta } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { YoutubeItem } from '@/types/signal';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
+import { createScrollLoadMoreGate } from '@/utils/listScrollLoadMoreGate';
 import {
   msUntilNextPacificMidnight,
   quotaResetHoursMinutes,
@@ -90,6 +93,7 @@ export default function YoutubeScreen() {
   const itemsRef = useRef<YoutubeItem[]>([]);
   itemsRef.current = items;
   const ytListViewportH = useRef(0);
+  const ytScrollLoadGateRef = useRef(createScrollLoadMoreGate());
   /** `hadItems`인데도 `setLoading(true)`를 생략하는 경로(채널 토글 등)에서 loadMore와 겹치지 않게 함 */
   const youtubeReplacingRef = useRef(false);
 
@@ -167,7 +171,7 @@ export default function YoutubeScreen() {
       setYoutubeMeta(null);
       try {
         const page = await fetchSignalYoutube(
-          { page: 1, pageSize: YOUTUBE_PAGE_SIZE, sort },
+          { offset: 0, limit: YOUTUBE_PAGE_SIZE, sort },
           { cacheMode: opts?.forceRefresh ? 'bypass' : 'use' },
         );
         setYoutubeMeta(page.meta);
@@ -187,35 +191,53 @@ export default function YoutubeScreen() {
   const loadMore = useCallback(async () => {
     if (youtubeReplacingRef.current) return;
     if (!youtubeMeta?.hasMore || loadingMore || loading || !hasSignalApi()) return;
-    const nextPage = youtubeMeta.nextPage;
-    if (nextPage == null) return;
+    const nextOff = youtubeMeta.nextOffset;
+    if (nextOff == null) return;
 
     setLoadingMore(true);
     setError(null);
     try {
       const page = await fetchSignalYoutube(
-        { page: nextPage, pageSize: YOUTUBE_PAGE_SIZE, sort },
+        { offset: nextOff, limit: YOUTUBE_PAGE_SIZE, sort },
         { cacheMode: 'use' },
       );
-      setYoutubeMeta(page.meta);
-      setItems((prev) => {
-        const seen = new Set(prev.map((i) => i.id));
-        const out = [...prev];
-        for (const row of page.items) {
-          const it = signalYoutubeToYoutubeItem(row, locale);
-          if (!seen.has(it.id)) {
-            seen.add(it.id);
-            out.push(it);
-          }
+      if (page.items.length === 0) {
+        setYoutubeMeta((m) => (m ? { ...m, hasMore: false, nextOffset: null } : null));
+        return;
+      }
+      const prev = itemsRef.current;
+      const seen = new Set(prev.map((i) => i.id));
+      const out = [...prev];
+      for (const row of page.items) {
+        const it = signalYoutubeToYoutubeItem(row, locale);
+        if (!seen.has(it.id)) {
+          seen.add(it.id);
+          out.push(it);
         }
-        return out;
-      });
+      }
+      if (out.length === prev.length && page.items.length > 0) {
+        setYoutubeMeta((m) => (m ? { ...m, hasMore: false, nextOffset: null } : null));
+      } else {
+        setYoutubeMeta(page.meta);
+        setItems(out);
+      }
     } catch (e) {
       applyLoadError(e, 'youtubeErrorLoad');
     } finally {
       setLoadingMore(false);
     }
   }, [youtubeMeta, loadingMore, loading, sort, locale, applyLoadError]);
+
+  const onYoutubeScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      ytScrollLoadGateRef.current.onScrollNearEnd(e, {
+        enabled:
+          Boolean(youtubeMeta?.hasMore) && !loadingMore && !loading && !youtubeReplacingRef.current && hasSignalApi(),
+        trigger: () => void loadMore(),
+      });
+    },
+    [youtubeMeta?.hasMore, loadingMore, loading, loadMore],
+  );
 
   useEffect(() => {
     if (selectedHandles === null) return;
@@ -408,7 +430,9 @@ export default function YoutubeScreen() {
             ) : null
           }
           onEndReached={() => void loadMore()}
-          onEndReachedThreshold={0.35}
+          onEndReachedThreshold={0.55}
+          onScroll={onYoutubeScroll}
+          scrollEventThrottle={350}
           onLayout={
             Platform.OS === 'web'
               ? (e) => {

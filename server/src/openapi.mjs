@@ -139,8 +139,22 @@ export function getOpenApiSpec() {
             { name: 'q', in: 'query', schema: { type: 'string' } },
             { name: 'channel', in: 'query', schema: { type: 'string' } },
             { name: 'sort', in: 'query', schema: { type: 'string', enum: ['latest', 'popular'], default: 'latest' } },
-            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
-            { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 30 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 30 } },
+            { name: 'offset', in: 'query', schema: { type: 'integer', minimum: 0, default: 0 } },
+            {
+              name: 'page',
+              in: 'query',
+              schema: {
+                type: 'integer',
+                minimum: 1,
+                description: 'Deprecated: prefer offset = (page-1)*limit when offset is omitted',
+              },
+            },
+            {
+              name: 'pageSize',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 100, description: 'Deprecated alias for limit' },
+            },
           ],
           responses: {
             200: {
@@ -151,10 +165,16 @@ export function getOpenApiSpec() {
                     type: 'object',
                     properties: {
                       data: { type: 'array', items: { type: 'object' } },
-                      page: { type: 'integer' },
-                      pageSize: { type: 'integer' },
-                      total: { type: 'integer' },
-                      totalPages: { type: 'integer' },
+                      meta: {
+                        type: 'object',
+                        properties: {
+                          limit: { type: 'integer' },
+                          offset: { type: 'integer' },
+                          total: { type: 'integer' },
+                          hasMore: { type: 'boolean' },
+                          nextOffset: { type: 'integer', nullable: true },
+                        },
+                      },
                     },
                   },
                 },
@@ -174,8 +194,22 @@ export function getOpenApiSpec() {
             { name: 'from', in: 'query', schema: { type: 'string', example: '2026-04-01' } },
             { name: 'to', in: 'query', schema: { type: 'string', example: '2026-05-01' } },
             { name: 'includeTranscript', in: 'query', schema: { type: 'string', enum: ['0', '1'], default: '0' } },
-            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
-            { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 30 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 30 } },
+            { name: 'offset', in: 'query', schema: { type: 'integer', minimum: 0, default: 0 } },
+            {
+              name: 'page',
+              in: 'query',
+              schema: {
+                type: 'integer',
+                minimum: 1,
+                description: 'Deprecated: prefer offset = (page-1)*limit when offset is omitted',
+              },
+            },
+            {
+              name: 'pageSize',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 100, description: 'Deprecated alias for limit' },
+            },
           ],
           responses: {
             200: {
@@ -186,10 +220,16 @@ export function getOpenApiSpec() {
                     type: 'object',
                     properties: {
                       data: { type: 'array', items: { type: 'object' } },
-                      page: { type: 'integer' },
-                      pageSize: { type: 'integer' },
-                      total: { type: 'integer' },
-                      totalPages: { type: 'integer' },
+                      meta: {
+                        type: 'object',
+                        properties: {
+                          limit: { type: 'integer' },
+                          offset: { type: 'integer' },
+                          total: { type: 'integer' },
+                          hasMore: { type: 'boolean' },
+                          nextOffset: { type: 'integer', nullable: true },
+                        },
+                      },
                     },
                   },
                 },
@@ -206,8 +246,22 @@ export function getOpenApiSpec() {
             { name: 'segment', in: 'query', schema: { type: 'string', example: 'popular' } },
             { name: 'symbols', in: 'query', schema: { type: 'string', example: 'AAPL,MSFT' } },
             { name: 'q', in: 'query', schema: { type: 'string' } },
-            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
-            { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 30 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 30 } },
+            { name: 'offset', in: 'query', schema: { type: 'integer', minimum: 0, default: 0 } },
+            {
+              name: 'page',
+              in: 'query',
+              schema: {
+                type: 'integer',
+                minimum: 1,
+                description: 'Deprecated: prefer offset = (page-1)*limit when offset is omitted',
+              },
+            },
+            {
+              name: 'pageSize',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 100, description: 'Deprecated alias for limit' },
+            },
           ],
           responses: {
             200: {
@@ -218,10 +272,16 @@ export function getOpenApiSpec() {
                     type: 'object',
                     properties: {
                       data: { type: 'array', items: { type: 'object' } },
-                      page: { type: 'integer' },
-                      pageSize: { type: 'integer' },
-                      total: { type: 'integer' },
-                      totalPages: { type: 'integer' },
+                      meta: {
+                        type: 'object',
+                        properties: {
+                          limit: { type: 'integer' },
+                          offset: { type: 'integer' },
+                          total: { type: 'integer' },
+                          hasMore: { type: 'boolean' },
+                          nextOffset: { type: 'integer', nullable: true },
+                        },
+                      },
                     },
                   },
                 },
@@ -277,8 +337,22 @@ export function getOpenApiSpec() {
           summary: 'List coin markets',
           parameters: [
             { name: 'q', in: 'query', schema: { type: 'string' } },
-            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
-            { name: 'pageSize', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 30 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 30 } },
+            { name: 'offset', in: 'query', schema: { type: 'integer', minimum: 0, default: 0 } },
+            {
+              name: 'page',
+              in: 'query',
+              schema: {
+                type: 'integer',
+                minimum: 1,
+                description: 'Deprecated: prefer offset = (page-1)*limit when offset is omitted',
+              },
+            },
+            {
+              name: 'pageSize',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 100, description: 'Deprecated alias for limit' },
+            },
           ],
           responses: {
             200: {
@@ -289,10 +363,16 @@ export function getOpenApiSpec() {
                     type: 'object',
                     properties: {
                       data: { type: 'array', items: { type: 'object' } },
-                      page: { type: 'integer' },
-                      pageSize: { type: 'integer' },
-                      total: { type: 'integer' },
-                      totalPages: { type: 'integer' },
+                      meta: {
+                        type: 'object',
+                        properties: {
+                          limit: { type: 'integer' },
+                          offset: { type: 'integer' },
+                          total: { type: 'integer' },
+                          hasMore: { type: 'boolean' },
+                          nextOffset: { type: 'integer', nullable: true },
+                        },
+                      },
                     },
                   },
                 },

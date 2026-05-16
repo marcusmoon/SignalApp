@@ -86,11 +86,12 @@ async function fetchSignalConcallForRow(
     symbol: ticker,
     fiscalYear: fy,
     fiscalQuarter: fq,
-    pageSize: 1,
+    limit: 1,
+    offset: 0,
   }).catch(() => []);
   let hit = list[0];
   if (!hit) {
-    const latest = await fetchSignalConcalls({ symbol: ticker, pageSize: 1 }).catch(() => []);
+    const latest = await fetchSignalConcalls({ symbol: ticker, limit: 1, offset: 0 }).catch(() => []);
     hit = latest[0];
   }
   if (!hit) return null;

@@ -8,6 +8,7 @@ import {
   newsUnreadBackgroundIntervalSec,
 } from '@/services/newsUnreadCheckIntervalPreference';
 import { refreshNewsUnreadFromServer } from '@/services/newsUnreadPreference';
+import { isNewsUnreadBackgroundFetchNativeAvailable } from '@/utils/expoNativeModules';
 
 export const NEWS_UNREAD_BACKGROUND_TASK = 'signal-news-unread-check';
 
@@ -35,6 +36,16 @@ async function registerTask(minimumIntervalSec: number): Promise<void> {
 }
 
 export async function registerNewsUnreadBackgroundFetch(): Promise<void> {
+  if (!isNewsUnreadBackgroundFetchNativeAvailable()) {
+    if (__DEV__) {
+      console.warn(
+        '[newsUnread] expo-task-manager / expo-background-fetch native modules missing. ' +
+          'Run `npx expo prebuild --platform ios` (or android), then `pod install` and rebuild in Xcode.',
+      );
+    }
+    return;
+  }
+
   const status = await BackgroundFetch.getStatusAsync();
   if (status === BackgroundFetch.BackgroundFetchStatus.Restricted) {
     return;

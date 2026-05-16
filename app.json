@@ -54,6 +54,7 @@
     },
     "plugins": [
       "expo-updates",
+      "expo-task-manager",
       "expo-background-fetch",
       "expo-router",
       "expo-apple-authentication",

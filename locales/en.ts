@@ -479,7 +479,7 @@ export const en = {
   settingsCalendarRemindersHint: 'Notify major macro events and watchlist earnings in device time.',
   settingsNewsUnreadCheckKicker: 'News update check',
   settingsNewsUnreadCheckHint:
-    'How often to check for new headlines while the app is open or in the background. iOS may run background checks less often.',
+    'How often to check for new headlines while the app is open or in the background. Background tasks use at least a 15-minute OS minimum and may run later on iOS. Not available in Expo Go.',
   settingsNewsUnreadCheckOption: '{{minutes}} min',
   settingsLocalMacroCalendar: 'Local alerts · economic calendar',
   settingsLocalMacroCalendarHint: 'CPI, FOMC, etc. — one summary at 8:00 on event day (device time)',

@@ -111,7 +111,8 @@ function RootLayoutNav() {
 
   const { theme, effectiveColorScheme } = useSignalTheme();
   const { t } = useLocale();
-  const statusBarStyle = effectiveColorScheme === 'dark' ? 'light' : 'dark';
+  /** iOS: react-native-screens — plist `UIViewControllerBasedStatusBarAppearance` must be YES */
+  const statusBarStyle = effectiveColorScheme === 'dark' ? ('light' as const) : ('dark' as const);
   const navTheme = useMemo(
     () => ({
       ...DarkTheme,

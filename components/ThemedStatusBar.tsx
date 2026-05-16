@@ -6,8 +6,9 @@ import { Platform, StatusBar as RNStatusBar } from 'react-native';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 /**
- * 라이트 테마에서 iOS 상태 표시줄(시계·배터리)이 안 보이는 문제 방지.
- * `app.json`의 `userInterfaceStyle`과 expo-status-bar·RN StatusBar를 함께 맞춘다.
+ * Android·웹: expo-status-bar.
+ * iOS: RN/expo StatusBar는 plist `UIViewControllerBasedStatusBarAppearance=NO` 가 필요하고,
+ * react-native-screens 는 YES 가 필요해 양립할 수 없음 → iOS 는 `app/_layout` Stack `statusBarStyle` 사용.
  */
 export function ThemedStatusBar() {
   const { theme, effectiveColorScheme } = useSignalTheme();
@@ -21,12 +22,14 @@ export function ThemedStatusBar() {
   }, [theme.bg]);
 
   useEffect(() => {
-    if (Platform.OS === 'web') return;
+    if (Platform.OS !== 'android') return;
     RNStatusBar.setBarStyle(rnBarStyle, true);
-    if (Platform.OS === 'android') {
-      RNStatusBar.setBackgroundColor(theme.bg);
-    }
+    RNStatusBar.setBackgroundColor(theme.bg);
   }, [rnBarStyle, theme.bg]);
+
+  if (Platform.OS === 'ios') {
+    return null;
+  }
 
   return <ExpoStatusBar style={expoStyle} backgroundColor={theme.bg} />;
 }

@@ -57,6 +57,7 @@ module.exports = () => {
   const previewOtaBanner = readEnvValue('EXPO_PUBLIC_PREVIEW_OTA_BANNER');
   const easProjectId = readEnvValue('EAS_PROJECT_ID') || readEnvValue('EXPO_PROJECT_ID');
   const iosRemotePushEnabled = envFlag(readEnvValue('SIGNAL_IOS_REMOTE_PUSH_ENABLED'));
+  const iosAppleSignInEnabled = envFlag(readEnvValue('SIGNAL_IOS_APPLE_SIGN_IN_ENABLED'));
 
   // 네이티브 앱 번들에 카카오 SDK 를 심으려면 prebuild 시점에만 키가 필요합니다(NOT EXPO_PUBLIC — JS 번들에 안 들어감).
   // Kakao 개발자 콘솔의 네이티브 앱 키와 동일 값을 EAS Secret 또는 로컬 .env 의 `KAKAO_NATIVE_APP_KEY` 로 주입합니다.
@@ -67,6 +68,13 @@ module.exports = () => {
 
   // 개인 Apple Team 빌드는 iOS remote push entitlement 없이도 설치되도록 유지하고,
   // TestFlight/운영 빌드에서만 공식 expo-notifications 플러그인과 aps entitlement를 켭니다.
+  // 개인 Apple Team 빌드는 Sign In with Apple entitlement 없이도 설치되도록 유지합니다.
+  if (iosAppleSignInEnabled) {
+    plugins = withoutPlugin(plugins, ['./plugins/removeIosAppleSignInEntitlement.js']);
+  } else {
+    plugins = withoutPlugin(plugins, ['expo-apple-authentication']);
+  }
+
   if (iosRemotePushEnabled) {
     plugins = withoutPlugin(plugins, [
       './plugins/expoNotificationsAndroidOnly.js',
@@ -110,6 +118,7 @@ module.exports = () => {
             }
           : {}),
         previewOtaBanner,
+        iosAppleSignInEnabled,
       },
     },
   };

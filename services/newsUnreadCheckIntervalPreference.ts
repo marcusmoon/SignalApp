@@ -62,7 +62,9 @@ export function newsUnreadCheckIntervalMs(minutes: number): number {
   return clampMinutes(minutes) * 60 * 1000;
 }
 
-/** `expo-background-fetch` `minimumInterval` (초) */
-export function newsUnreadBackgroundIntervalSec(minutes: number): number {
-  return clampMinutes(minutes) * 60;
+/** `expo-background-task` `minimumInterval` (분). OS 최소 15분 */
+export const NEWS_UNREAD_BACKGROUND_TASK_MIN_MINUTES = 15;
+
+export function newsUnreadBackgroundTaskIntervalMinutes(userMinutes: number): number {
+  return Math.max(NEWS_UNREAD_BACKGROUND_TASK_MIN_MINUTES, clampMinutes(userMinutes));
 }

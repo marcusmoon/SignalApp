@@ -5,7 +5,6 @@ import { ActivityIndicator, Image, Platform, StyleSheet, Text, useColorScheme, V
 import type { AppTheme } from '@/constants/theme';
 import { bootstrapThemeForColorScheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
-import { StatusBar } from 'expo-status-bar';
 
 /**
  * 폰트·아이콘 로딩 전 전체 화면 스플래시. 네이티브 스플래시(app.json)와 톤을 맞춤.
@@ -24,7 +23,6 @@ export function AppSplashScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <View style={styles.content}>
         <View style={styles.logoRing}>
           <Image

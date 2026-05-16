@@ -39,7 +39,7 @@ import {
   SocialAuthCancelledError,
   SocialAuthFlowError,
 } from '@/integrations/signal-api/socialAuthFlow';
-import { hasSignalApi } from '@/services/env';
+import { hasSignalApi, isIosAppleSignInNativeEnabled } from '@/services/env';
 import {
   clearAppAuthSession,
   getSessionAccessToken,
@@ -781,10 +781,13 @@ export default function AccountScreen() {
     [t],
   );
 
-  const socialProviders = useMemo(
-    () => (Platform.OS === 'ios' ? (['kakao', 'naver', 'google', 'apple'] as const) : (['kakao', 'naver', 'google'] as const)),
-    [],
-  );
+  const socialProviders = useMemo(() => {
+    const base = ['kakao', 'naver', 'google'] as const;
+    if (Platform.OS === 'ios' && isIosAppleSignInNativeEnabled()) {
+      return [...base, 'apple'] as const;
+    }
+    return base;
+  }, []);
 
   const socialProviderLabel = useCallback(
     (provider: SocialProviderKey) =>
@@ -1136,18 +1139,16 @@ export default function AccountScreen() {
                   </View>
                 )}
                 <View style={styles.socialLinkStack}>
-                  {(['kakao', 'naver', 'google', 'apple'] as const).some(
+                  {socialProviders.some(
                     (prov) =>
                       socialCatalog?.providers[prov]?.enabled &&
-                      !linkedIdentities.some((i) => i.provider === prov) &&
-                      !(prov === 'apple' && Platform.OS !== 'ios'),
+                      !linkedIdentities.some((i) => i.provider === prov),
                   ) ? (
                     <View style={styles.linkChipRow}>
-                      {(['kakao', 'naver', 'google', 'apple'] as const).map((prov) => {
+                      {socialProviders.map((prov) => {
                         const cfg = socialCatalog?.providers[prov];
                         const linked = linkedIdentities.some((i) => i.provider === prov);
                         if (linked || !cfg?.enabled) return null;
-                        if (prov === 'apple' && Platform.OS !== 'ios') return null;
                         const label =
                           prov === 'kakao'
                             ? t('accountSocialKakao')

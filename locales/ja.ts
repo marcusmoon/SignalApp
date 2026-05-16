@@ -478,7 +478,7 @@ export const ja = {
   settingsCalendarRemindersHint: '主要な経済予定とウォッチ銘柄の決算日を端末時刻で通知します。',
   settingsNewsUnreadCheckKicker: 'ニュース新着チェック',
   settingsNewsUnreadCheckHint:
-    'アプリ起動中・バックグラウンドで新着ヘッドラインを確認する間隔です。iOSでは実際のバックグラウンド実行はさらに遅れる場合があります。',
+    'アプリ起動中・バックグラウンドで新着ヘッドラインを確認する間隔です。バックグラウンドはOS最小15分で、iOSではさらに遅れる場合があります。Expo Goでは動作しません。',
   settingsNewsUnreadCheckOption: '{{minutes}}分',
   settingsLocalMacroCalendar: 'ローカル通知 · 経済カレンダー',
   settingsLocalMacroCalendarHint: 'CPI・FOMC など — 当日 8:00（端末時刻）に1件まとめて通知',

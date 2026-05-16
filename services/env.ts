@@ -35,6 +35,11 @@ export function getPreviewOtaBannerRaw(): string {
 }
 
 /** __DEV__ 전용. '1' / 'true' / 'yes' 만 켜짐. 0·false·off·비우기·그 외는 끔 */
+/** prebuild 시 `SIGNAL_IOS_APPLE_SIGN_IN_ENABLED=1` 인 iOS 빌드에서만 Apple 로그인 네이티브 capability 포함 */
+export function isIosAppleSignInNativeEnabled(): boolean {
+  return Constants.expoConfig?.extra?.iosAppleSignInEnabled === true;
+}
+
 export function isPreviewOtaBannerEnabled(): boolean {
   if (!__DEV__) return false;
   const v = getPreviewOtaBannerRaw().toLowerCase();

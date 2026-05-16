@@ -25,6 +25,7 @@
       "buildNumber": "1",
       "bundleIdentifier": "com.marcus.signal",
       "infoPlist": {
+        "UIViewControllerBasedStatusBarAppearance": true,
         "LSApplicationQueriesSchemes": [
           "youtube",
           "vnd.youtube",
@@ -55,7 +56,7 @@
     "plugins": [
       "expo-updates",
       "expo-task-manager",
-      "expo-background-fetch",
+      "expo-background-task",
       "expo-router",
       "expo-apple-authentication",
       [
@@ -84,8 +85,10 @@
           "iosAppId": "ca-app-pub-3940256099942544~1458002511"
         }
       ],
+      "./plugins/withIosStatusBarAppearance.js",
       "./plugins/withIosEmbedJsOnDevice.js",
       "./plugins/removeIosPushEntitlement.js",
+      "./plugins/removeIosAppleSignInEntitlement.js",
       "./plugins/withAndroidExternalAppQueries.js"
     ],
     "experiments": {

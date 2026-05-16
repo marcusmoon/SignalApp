@@ -6,6 +6,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { NativeModules, Platform } from 'react-native';
 
 import type { SignalSocialCatalog, SocialProviderKey } from '@/integrations/signal-api/socialAuth';
+import { isIosAppleSignInNativeEnabled } from '@/services/env';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -99,6 +100,7 @@ export async function obtainSocialCredential(
 
   if (provider === 'apple') {
     if (Platform.OS !== 'ios') throw new SocialAuthFlowError('apple_ios_only');
+    if (!isIosAppleSignInNativeEnabled()) throw new SocialAuthFlowError('apple_unavailable');
     const g = providers.apple;
     if (!g?.enabled) throw new SocialAuthFlowError('disabled');
     const available = await AppleAuthentication.isAvailableAsync();

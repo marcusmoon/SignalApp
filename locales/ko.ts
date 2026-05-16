@@ -474,7 +474,7 @@ export const ko = {
   settingsCalendarRemindersHint: '주요 경제 일정과 관심종목 실적일을 기기 시간 기준으로 알려줍니다.',
   settingsNewsUnreadCheckKicker: '뉴스 새 글 확인',
   settingsNewsUnreadCheckHint:
-    '앱이 켜져 있을 때와 백그라운드에서 새 뉴스를 확인하는 간격입니다. iOS는 실제 백그라운드 실행이 더 늦을 수 있습니다.',
+    '앱이 켜져 있을 때와 백그라운드에서 새 뉴스를 확인하는 간격입니다. 백그라운드 작업은 OS 최소 15분이며, iOS는 그보다 더 늦을 수 있습니다. Expo Go에서는 백그라운드 작업이 동작하지 않습니다.',
   settingsNewsUnreadCheckOption: '{{minutes}}분',
   settingsLocalMacroCalendar: '로컬 알림 · 경제 캘린더',
   settingsLocalMacroCalendarHint: 'CPI·FOMC 등 — 해당일 아침 8:00(기기) 한 번 요약',

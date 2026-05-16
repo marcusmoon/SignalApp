@@ -50,7 +50,7 @@ export async function registerPushDeviceIfPossible(): Promise<boolean> {
     await AsyncStorage.setItem(LAST_REGISTERED_KEY, cacheKey);
     return true;
   } catch (error) {
-    if (__DEV__) console.warn('[push] device registration failed', error);
+    if (__DEV__) console.debug('[push] device registration failed', error);
     return false;
   }
 }

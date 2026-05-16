@@ -72,12 +72,6 @@ export async function registerNewsUnreadBackgroundFetch(): Promise<void> {
 
   const modules = ensureNewsUnreadTaskDefined();
   if (!modules) {
-    if (__DEV__) {
-      console.warn(
-        '[newsUnread] expo-task-manager / expo-background-task native modules missing. ' +
-          'Run `npx expo prebuild --platform ios` (or android), then `pod install` and rebuild in Xcode.',
-      );
-    }
     return;
   }
 

@@ -142,7 +142,7 @@ export async function obtainSocialCredential(
         if (e instanceof SocialAuthCancelledError || e instanceof SocialAuthFlowError) throw e;
         const msg = e instanceof Error ? e.message : String(e || '');
         if (isKakaoCancelMessage(msg)) throw new SocialAuthCancelledError();
-        if (__DEV__) console.warn('[Kakao native login]', msg, e);
+        if (__DEV__) console.debug('[Kakao native login]', msg, e);
         const detail = msg.trim().slice(0, 240);
         throw new SocialAuthFlowError(detail ? `kakao_failed:${detail}` : 'kakao_failed');
       }

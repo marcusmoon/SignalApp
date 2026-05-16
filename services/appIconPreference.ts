@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NativeModules, Platform } from 'react-native';
 
 export type AppIconVariant = 'blue' | 'green' | 'dark' | 'mono';
 
@@ -7,14 +8,30 @@ export const APP_ICON_VARIANTS: readonly {
   accent: string;
   background: string;
 }[] = [
-  { id: 'blue', accent: '#3182F6', background: '#FFFFFF' },
-  { id: 'green', accent: '#03B26C', background: '#FFFFFF' },
+  { id: 'green', accent: '#03B26C', background: '#0A0A0F' },
+  { id: 'blue', accent: '#3182F6', background: '#0A0A0F' },
   { id: 'dark', accent: '#4D9FFF', background: '#0A0A0F' },
-  { id: 'mono', accent: '#191F28', background: '#F2F4F6' },
+  { id: 'mono', accent: '#F2F4F6', background: '#0A0A0F' },
 ];
 
 const STORAGE_KEY = '@signal/app_icon_variant_v1';
 const VALID = new Set<AppIconVariant>(APP_ICON_VARIANTS.map((item) => item.id));
+const DEFAULT_APP_ICON_VARIANT: AppIconVariant = 'green';
+
+const IOS_ICON_NAME: Record<AppIconVariant, string | null> = {
+  blue: 'SignalIconBlue',
+  green: null,
+  dark: 'SignalIconDark',
+  mono: 'SignalIconMono',
+};
+
+type SignalAppIconNativeModule = {
+  isSupported?: () => Promise<boolean>;
+  getAlternateIconName?: () => Promise<string | null>;
+  setAlternateIconName?: (iconName: string | null) => Promise<boolean>;
+};
+
+const SignalAppIcon = NativeModules.SignalAppIcon as SignalAppIconNativeModule | undefined;
 type Listener = () => void;
 const listeners = new Set<Listener>();
 
@@ -35,10 +52,35 @@ export function subscribeAppIconVariantChanged(listener: Listener): () => void {
 
 export async function loadAppIconVariant(): Promise<AppIconVariant> {
   const v = await AsyncStorage.getItem(STORAGE_KEY);
-  return v && VALID.has(v as AppIconVariant) ? (v as AppIconVariant) : 'blue';
+  return v && VALID.has(v as AppIconVariant) ? (v as AppIconVariant) : DEFAULT_APP_ICON_VARIANT;
 }
 
 export async function saveAppIconVariant(variant: AppIconVariant): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEY, VALID.has(variant) ? variant : 'blue');
+  const next = VALID.has(variant) ? variant : DEFAULT_APP_ICON_VARIANT;
+  await applyNativeAppIconVariant(next);
+  await AsyncStorage.setItem(STORAGE_KEY, next);
   notify();
+}
+
+export async function applyNativeAppIconVariant(variant: AppIconVariant): Promise<boolean> {
+  if (Platform.OS !== 'ios') return false;
+  if (!SignalAppIcon?.setAlternateIconName) return false;
+  try {
+    const supported = SignalAppIcon.isSupported ? await SignalAppIcon.isSupported() : true;
+    if (!supported) return false;
+    const iconName = IOS_ICON_NAME[variant];
+    const current = SignalAppIcon.getAlternateIconName
+      ? await SignalAppIcon.getAlternateIconName()
+      : null;
+    if (current === iconName) return true;
+    return Boolean(await SignalAppIcon.setAlternateIconName(iconName));
+  } catch {
+    return false;
+  }
+}
+
+export async function syncStoredAppIconVariant(): Promise<boolean> {
+  const stored = await AsyncStorage.getItem(STORAGE_KEY);
+  if (!stored || !VALID.has(stored as AppIconVariant)) return false;
+  return applyNativeAppIconVariant(stored as AppIconVariant);
 }

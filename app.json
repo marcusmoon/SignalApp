@@ -18,7 +18,7 @@
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F7F8FA"
+      "backgroundColor": "#0A0A0F"
     },
     "ios": {
       "supportsTablet": false,
@@ -62,7 +62,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#F7F8FA",
+          "backgroundColor": "#0A0A0F",
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
           "dark": {
@@ -88,6 +88,7 @@
       "./plugins/withIosStatusBarAppearance.js",
       "./plugins/withIosEmbedJsOnDevice.js",
       "./plugins/withIosLaunchBackground.js",
+      "./plugins/withIosAlternateAppIcons.js",
       "./plugins/removeIosPushEntitlement.js",
       "./plugins/removeIosAppleSignInEntitlement.js",
       "./plugins/withAndroidExternalAppQueries.js"

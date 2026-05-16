@@ -5,12 +5,7 @@ const { withDangerousMod } = require('expo/config-plugins');
 
 const BACKGROUND_HELPER = `private enum SignalLaunchBackground {
   static var color: UIColor {
-    UIColor { traitCollection in
-      if traitCollection.userInterfaceStyle == .dark {
-        return UIColor(red: 10.0 / 255.0, green: 10.0 / 255.0, blue: 15.0 / 255.0, alpha: 1.0)
-      }
-      return UIColor(red: 247.0 / 255.0, green: 248.0 / 255.0, blue: 250.0 / 255.0, alpha: 1.0)
-    }
+    UIColor(red: 10.0 / 255.0, green: 10.0 / 255.0, blue: 15.0 / 255.0, alpha: 1.0)
   }
 }
 `;

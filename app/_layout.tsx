@@ -1,10 +1,11 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
+import { isRunningInExpoGo } from 'expo';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useMemo, useState } from 'react';
-import { AppState, Platform, useColorScheme, View } from 'react-native';
+import { AppState, LogBox, Platform, useColorScheme, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { enableFreeze } from 'react-native-screens';
 import 'react-native-reanimated';
@@ -22,6 +23,7 @@ import { bootstrapThemeForColorScheme } from '@/constants/theme';
 import { ensureStoredSessionFresh } from '@/integrations/signal-api/httpClient';
 import { getPreviewOtaBannerRaw } from '@/services/env';
 import { initializeAds } from '@/integrations/admob/initializeAds';
+import { syncStoredAppIconVariant } from '@/services/appIconPreference';
 import { startNewsUnreadBackgroundSync } from '@/services/newsUnreadBackground';
 import {
   hydrateSignalServerEndpoint,
@@ -41,6 +43,10 @@ export const unstable_settings = {
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
+if (__DEV__) {
+  LogBox.ignoreAllLogs(true);
+}
+
 /** 탭·스택에서 react-freeze 기본 활성화 시 복귀 화면이 비는 이슈 완화 */
 if (Platform.OS !== 'web') {
   enableFreeze(false);
@@ -53,7 +59,6 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
   });
-  const [signalEndpointReady, setSignalEndpointReady] = useState(false);
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
@@ -61,23 +66,27 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    void hydrateSignalServerEndpoint().then(() => setSignalEndpointReady(true));
+    void hydrateSignalServerEndpoint();
   }, []);
 
   useEffect(() => {
-    if (loaded && signalEndpointReady) {
+    if (loaded) {
       SplashScreen.hideAsync();
     }
-  }, [loaded, signalEndpointReady]);
+  }, [loaded]);
 
   useEffect(() => {
     void initializeAds().catch(() => {});
   }, []);
 
+  useEffect(() => {
+    void syncStoredAppIconVariant();
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: bootstrapBg }}>
       <LocaleProvider>
-        {!loaded || !signalEndpointReady ? (
+        {!loaded ? (
           <AppSplashScreen />
         ) : (
           <SignalThemeProvider>
@@ -111,8 +120,16 @@ function RootLayoutNav() {
 
   const { theme, effectiveColorScheme } = useSignalTheme();
   const { t } = useLocale();
-  /** iOS: react-native-screens — plist `UIViewControllerBasedStatusBarAppearance` must be YES */
+  /**
+   * iOS release standalone: react-native-screens `statusBarStyle` 사용, plist YES 필요.
+   * iOS dev/Expo Go: native Info.plist가 이전 상태일 수 있어 RNSScreen statusBarStyle 전달 금지.
+   */
   const statusBarStyle = effectiveColorScheme === 'dark' ? ('light' as const) : ('dark' as const);
+  const canUseScreenStatusBar = Platform.OS !== 'ios' || (!__DEV__ && !isRunningInExpoGo());
+  const screenStatusBarOptions = useMemo(
+    () => (canUseScreenStatusBar ? { statusBarStyle } : {}),
+    [canUseScreenStatusBar, statusBarStyle],
+  );
   const navTheme = useMemo(
     () => ({
       ...DarkTheme,
@@ -133,13 +150,13 @@ function RootLayoutNav() {
     () =>
       ({ route }: { route: { name: string } }) => {
         if (route.name === '(tabs)') {
-          return { headerShown: false, statusBarStyle };
+          return { headerShown: false, ...screenStatusBarOptions };
         }
         if (route.name === 'modal') {
           return {
             presentation: 'modal' as const,
             title: t('screenInfo'),
-            statusBarStyle,
+            ...screenStatusBarOptions,
           };
         }
         const titleByName: Record<string, string> = {
@@ -163,10 +180,10 @@ function RootLayoutNav() {
           headerStyle: { backgroundColor: theme.bg },
           headerTintColor: theme.green,
           headerTitleStyle: { fontWeight: '800' as const, color: theme.text },
-          statusBarStyle,
+          ...screenStatusBarOptions,
         };
       },
-    [statusBarStyle, t, theme],
+    [screenStatusBarOptions, t, theme],
   );
 
   return (

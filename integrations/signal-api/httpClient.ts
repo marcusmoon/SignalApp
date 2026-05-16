@@ -238,7 +238,7 @@ export async function signalApiRequest<T>(
         }
         const bodyText = await res.text().catch(() => '');
         if (__DEV__ && bodyText) {
-          console.warn(`[Signal API] ${res.status} ${method} ${suffix}`, bodyText.slice(0, 240));
+          console.debug(`[Signal API] ${res.status} ${method} ${suffix}`, bodyText.slice(0, 240));
         }
         let serverCode: string | undefined;
         try {

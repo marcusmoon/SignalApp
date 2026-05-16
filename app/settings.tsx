@@ -248,6 +248,13 @@ const APP_ICON_LABEL: Record<AppIconVariant, MessageId> = {
   mono: 'settingsAppIconMono',
 };
 
+const APP_ICON_PREVIEW_IMAGE: Record<AppIconVariant, number> = {
+  blue: require('@/assets/images/app-icon-blue.png'),
+  green: require('@/assets/images/app-icon-green.png'),
+  dark: require('@/assets/images/app-icon-dark.png'),
+  mono: require('@/assets/images/app-icon-mono.png'),
+};
+
 const TAB_BAR_OPACITY_ORDER: TabBarOpacityLevel[] = [0, 1, 2, 3, 4];
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
@@ -886,24 +893,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
         theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}12` : theme.greenDim,
     },
     appIconPreview: {
-      width: 42,
-      height: 42,
-      borderRadius: 12,
+      width: 46,
+      height: 46,
+      borderRadius: 13,
       alignItems: 'center',
       justifyContent: 'center',
       overflow: 'hidden',
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
     },
-    appIconBars: {
-      flexDirection: 'row',
-      alignItems: 'flex-end',
-      gap: 3,
-      height: 26,
-    },
-    appIconBar: {
-      width: 6,
-      borderRadius: 3,
+    appIconPreviewImage: {
+      width: '100%',
+      height: '100%',
     },
     appIconLabel: {
       fontSize: sf(13),
@@ -989,7 +990,7 @@ export default function SettingsScreen() {
   const [moreRefLinksReady, setMoreRefLinksReady] = useState(false);
   const [mainEntry, setMainEntry] = useState<MainEntryKey>('home');
   const [mainEntryReady, setMainEntryReady] = useState(false);
-  const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
+  const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('green');
   const [appIconReady, setAppIconReady] = useState(false);
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
   const [tabBarOpacityReady, setTabBarOpacityReady] = useState(false);
@@ -2218,21 +2219,10 @@ export default function SettingsScreen() {
                             styles.appIconPreview,
                             { backgroundColor: variant.background },
                           ]}>
-                          <View style={styles.appIconBars}>
-                            {[16, 22, 28].map((height, index) => (
-                              <View
-                                key={height}
-                                style={[
-                                  styles.appIconBar,
-                                  {
-                                    height,
-                                    backgroundColor: variant.accent,
-                                    opacity: 0.72 + index * 0.14,
-                                  },
-                                ]}
-                              />
-                            ))}
-                          </View>
+                          <Image
+                            source={APP_ICON_PREVIEW_IMAGE[variant.id]}
+                            style={styles.appIconPreviewImage}
+                          />
                         </View>
                         <Text style={styles.appIconLabel}>{t(APP_ICON_LABEL[variant.id])}</Text>
                       </Pressable>

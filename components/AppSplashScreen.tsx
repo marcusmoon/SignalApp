@@ -1,19 +1,18 @@
 import * as SystemUI from 'expo-system-ui';
 import { useEffect, useMemo } from 'react';
-import { ActivityIndicator, Image, Platform, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
-import { bootstrapThemeForColorScheme } from '@/constants/theme';
+import { SIGNAL_DARK } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 
 /**
- * 폰트·아이콘 로딩 전 전체 화면 스플래시. 네이티브 스플래시(app.json)와 톤을 맞춤.
- * SignalThemeProvider 밖이므로 저장된 테마 대신 시스템 컬러 스킴을 따른다.
+ * 폰트·아이콘 로딩 전 전체 화면 스플래시.
+ * 네이티브 스플래시와 같은 고정 브랜드 톤을 써서 JS 로딩 전후 전환을 줄인다.
  */
 export function AppSplashScreen() {
   const { t } = useLocale();
-  const scheme = useColorScheme();
-  const theme = bootstrapThemeForColorScheme(scheme);
+  const theme = SIGNAL_DARK;
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   useEffect(() => {
@@ -62,23 +61,24 @@ function makeStyles(theme: AppTheme) {
       paddingHorizontal: 32,
     },
     logoRing: {
-      width: 112,
-      height: 112,
-      borderRadius: 28,
+      width: 132,
+      height: 132,
+      borderRadius: 34,
       borderWidth: 1,
       borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
+      backgroundColor: theme.card,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 22,
+      marginBottom: 24,
     },
     logo: {
-      width: 72,
-      height: 72,
+      width: 108,
+      height: 108,
+      borderRadius: 26,
     },
     wordmark: {
-      fontSize: 28,
-      fontWeight: '800',
+      fontSize: 30,
+      fontWeight: '900',
       letterSpacing: 4,
       color: theme.green,
       marginBottom: 10,

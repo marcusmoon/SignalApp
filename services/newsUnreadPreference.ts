@@ -5,6 +5,10 @@ import type { SignalApiNewsItem } from '@/integrations/signal-api/types';
 
 const LAST_SEEN_KEY = '@signal/news_last_seen_id_v1';
 const UNREAD_CACHE_KEY = '@signal/news_has_unread_v1';
+const REFRESH_DEDUPE_MS = 30 * 1000;
+
+let refreshInFlight: Promise<boolean> | null = null;
+let lastRefreshAt = 0;
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -78,14 +82,18 @@ export async function fetchLatestNewsHeadlineId(
   locale: string,
   options?: { cacheMode?: 'use' | 'bypass' },
 ): Promise<string | null> {
-  const pages = await Promise.all(
+  const results = await Promise.allSettled(
     NEWS_BADGE_CATEGORIES.map((category) =>
       fetchSignalNews(
         { locale, category, limit: 1, offset: 0 },
         { cacheMode: options?.cacheMode ?? 'use' },
-      ).catch(() => ({ items: [] })),
+      ),
     ),
   );
+  const pages = results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
+  if (pages.length === 0) {
+    throw new Error('NEWS_UNREAD_LATEST_UNAVAILABLE');
+  }
   return newestNewsMarker(pages.flatMap((page) => page.items))?.id || null;
 }
 
@@ -100,10 +108,29 @@ export async function checkNewsHasUnread(locale: string): Promise<boolean> {
 }
 
 /** 서버와 비교 후 캐시·리스너 갱신 (백그라운드·포그라운드 공통) */
-export async function refreshNewsUnreadFromServer(locale: string): Promise<boolean> {
-  const hasUnread = await checkNewsHasUnread(locale);
-  await setNewsUnreadCached(hasUnread);
-  return hasUnread;
+export async function refreshNewsUnreadFromServer(
+  locale: string,
+  options?: { force?: boolean },
+): Promise<boolean> {
+  const now = Date.now();
+  if (!options?.force && refreshInFlight) return refreshInFlight;
+
+  if (!options?.force && now - lastRefreshAt < REFRESH_DEDUPE_MS) {
+    const cached = await loadNewsUnreadCached();
+    if (cached !== null) return cached;
+  }
+
+  refreshInFlight = (async () => {
+    try {
+      const hasUnread = await checkNewsHasUnread(locale);
+      await setNewsUnreadCached(hasUnread);
+      return hasUnread;
+    } finally {
+      lastRefreshAt = Date.now();
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
 }
 
 /** 뉴스 탭 진입 시 호출 — 뉴스 탭 최신 항목을 읽음으로 표시 */

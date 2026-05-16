@@ -52,7 +52,6 @@ const ANDROID_SCHEME_TO_PACKAGE: Record<string, string> = {
   supertoss: 'viva.republica.toss',
   bnc: 'com.binance.dev',
   binance: 'com.binance.dev',
-  coinbase: 'com.coinbase.android',
   youtube: 'com.google.android.youtube',
   'vnd.youtube': 'com.google.android.youtube',
 };

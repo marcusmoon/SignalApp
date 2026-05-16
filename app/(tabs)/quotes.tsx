@@ -9,7 +9,6 @@ import {
   InteractionManager,
   Platform,
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -22,8 +21,10 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
-import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
+import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
+import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import {
@@ -522,7 +523,12 @@ export default function QuotesScreen() {
   );
 
   const renderQuoteItem = useCallback(
-    ({ item: r }: { item: Row }) => {
+    ({ item: r, index }: { item: Row; index: number }) => {
+      const edges = {
+        isFirst: index === 0,
+        isLast: index === rows.length - 1,
+      };
+      const shellStyle = groupedFeedRowShell(theme, edges);
       const symTrim = r.symbol?.trim() ?? '';
       const yahooEnabled = symTrim.length > 0 && symTrim !== '—';
       const watchSwipe = segment === 'watch' && Platform.OS !== 'web';
@@ -613,29 +619,31 @@ export default function QuotesScreen() {
 
       if (watchSwipe) {
         return (
-          <ReanimatedSwipeable
-            enabled={!loading}
-            overshootRight={false}
-            containerStyle={styles.swipeRow}
-            renderRightActions={() => (
-              <View style={styles.swipeRight}>
-                <RectButton
-                  style={styles.swipeDeleteBtn}
-                  onPress={() => void onRemoveWatch(r.symbol)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${r.symbol} ${t('quotesWatchSwipeRemove')}`}>
-                  <Text style={styles.swipeDeleteText}>{t('quotesWatchSwipeRemove')}</Text>
-                </RectButton>
-              </View>
-            )}>
-            <View style={styles.card}>{cardInner}</View>
-          </ReanimatedSwipeable>
+          <View style={shellStyle}>
+            <ReanimatedSwipeable
+              enabled={!loading}
+              overshootRight={false}
+              containerStyle={styles.swipeRowGrouped}
+              renderRightActions={() => (
+                <View style={styles.swipeRight}>
+                  <RectButton
+                    style={styles.swipeDeleteBtn}
+                    onPress={() => void onRemoveWatch(r.symbol)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${r.symbol} ${t('quotesWatchSwipeRemove')}`}>
+                    <Text style={styles.swipeDeleteText}>{t('quotesWatchSwipeRemove')}</Text>
+                  </RectButton>
+                </View>
+              )}>
+              <View style={styles.cardGrouped}>{cardInner}</View>
+            </ReanimatedSwipeable>
+          </View>
         );
       }
 
       return (
-        <View style={[styles.card, styles.cardGap]}>
-          {cardInner}
+        <View style={shellStyle}>
+          <View style={styles.cardGrouped}>{cardInner}</View>
         </View>
       );
     },
@@ -644,9 +652,11 @@ export default function QuotesScreen() {
       onRemoveWatch,
       openSymbolDetail,
       openYahooFinance,
+      rows.length,
       segment,
       styles,
       t,
+      theme,
       theme.green,
       theme.textDim,
     ],
@@ -654,7 +664,7 @@ export default function QuotesScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SignalHeader />
+      <SignalHeader onBrandPress={() => void onRefresh()} />
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>
@@ -701,7 +711,7 @@ export default function QuotesScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={
             loading ? undefined : (
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />
+              <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             )
           }
           removeClippedSubviews={Platform.OS === 'android'}
@@ -817,17 +827,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     errText: { fontSize: sf(12), color: theme.danger, lineHeight: sf(18) },
     empty: { fontSize: sf(13), color: theme.textMuted, marginTop: 8 },
-    card: {
-      backgroundColor: theme.card,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-      padding: 14,
+    cardGrouped: {
+      backgroundColor: 'transparent',
+      borderWidth: 0,
+      borderRadius: 0,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
     },
-    cardGap: { marginBottom: 10 },
-    swipeRow: {
-      marginBottom: 10,
-      borderRadius: 12,
+    swipeRowGrouped: {
+      marginBottom: 0,
+      borderRadius: 0,
       overflow: 'hidden',
     },
     swipeRight: {

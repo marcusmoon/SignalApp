@@ -64,3 +64,8 @@ export function buildAppTheme(accentHex: string, scheme: ThemeColorScheme = 'lig
 }
 
 export type AppTheme = ReturnType<typeof buildAppTheme>;
+
+/** SignalThemeProvider 이전(폰트·엔드포인트 로딩) — 시스템 라이트/다크만 반영 */
+export function bootstrapThemeForColorScheme(scheme: 'light' | 'dark' | null | undefined): AppTheme {
+  return scheme === 'dark' ? { ...SIGNAL_DARK } : { ...SIGNAL_LIGHT };
+}

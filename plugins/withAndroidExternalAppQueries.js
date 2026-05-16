@@ -13,7 +13,6 @@ const QUERIED_PACKAGES = [
   'com.dunamu.exchange.global',
   'viva.republica.toss',
   'com.binance.dev',
-  'com.coinbase.android',
   'com.yahoo.mobile.client.android.finance',
   'com.google.android.youtube',
 ];
@@ -26,7 +25,6 @@ const VIEW_SCHEMES = [
   'supertoss',
   'binance',
   'bnc',
-  'coinbase',
   'youtube',
   'vnd.youtube',
 ];

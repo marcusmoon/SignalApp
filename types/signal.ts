@@ -50,4 +50,5 @@ export type YoutubeItem = {
   durationLabel: string;
   thumbnailUrl?: string | null;
   videoId?: string;
+  url?: string;
 };

@@ -1,17 +1,30 @@
-import { useMemo } from 'react';
-import { ActivityIndicator, Image, Platform, StyleSheet, Text, View } from 'react-native';
+import * as SystemUI from 'expo-system-ui';
+import { useEffect, useMemo } from 'react';
+import { ActivityIndicator, Image, Platform, StyleSheet, Text, useColorScheme, View } from 'react-native';
 
-import { SIGNAL } from '@/constants/theme';
+import type { AppTheme } from '@/constants/theme';
+import { bootstrapThemeForColorScheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
+import { StatusBar } from 'expo-status-bar';
 
 /**
  * 폰트·아이콘 로딩 전 전체 화면 스플래시. 네이티브 스플래시(app.json)와 톤을 맞춤.
+ * SignalThemeProvider 밖이므로 저장된 테마 대신 시스템 컬러 스킴을 따른다.
  */
 export function AppSplashScreen() {
   const { t } = useLocale();
-  const styles = useMemo(() => makeStyles(), []);
+  const scheme = useColorScheme();
+  const theme = bootstrapThemeForColorScheme(scheme);
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    void SystemUI.setBackgroundColorAsync(theme.bg);
+  }, [theme.bg]);
+
   return (
     <View style={styles.root}>
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <View style={styles.content}>
         <View style={styles.logoRing}>
           <Image
@@ -26,7 +39,7 @@ export function AppSplashScreen() {
         </Text>
         <Text style={styles.tagline}>{t('headerTagline')}</Text>
         <ActivityIndicator
-          color={SIGNAL.green}
+          color={theme.green}
           size="small"
           style={styles.spinner}
           accessibilityLabel={t('commonLoadingA11y')}
@@ -36,12 +49,12 @@ export function AppSplashScreen() {
   );
 }
 
-function makeStyles() {
+function makeStyles(theme: AppTheme) {
   const padTop = Platform.select({ ios: 64, android: 56, default: 48 });
   return StyleSheet.create({
     root: {
       flex: 1,
-      backgroundColor: SIGNAL.bg,
+      backgroundColor: theme.bg,
       paddingTop: padTop,
     },
     content: {
@@ -55,8 +68,8 @@ function makeStyles() {
       height: 112,
       borderRadius: 28,
       borderWidth: 1,
-      borderColor: SIGNAL.greenBorder,
-      backgroundColor: SIGNAL.greenDim,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: 22,
@@ -69,13 +82,13 @@ function makeStyles() {
       fontSize: 28,
       fontWeight: '800',
       letterSpacing: 4,
-      color: SIGNAL.green,
+      color: theme.green,
       marginBottom: 10,
     },
     tagline: {
       fontSize: 14,
       fontWeight: '600',
-      color: SIGNAL.textMuted,
+      color: theme.textMuted,
       textAlign: 'center',
       lineHeight: 20,
       letterSpacing: -0.2,

@@ -5,9 +5,7 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import type { Href } from 'expo-router';
 import { useRouter } from 'expo-router';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatlist';
-import { Pressable as GHPressable } from 'react-native-gesture-handler';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ReferenceLinksSection } from '@/components/more/ReferenceLinksSection';
@@ -19,10 +17,9 @@ import type { MoreHubRouteKey } from '@/constants/moreHubOrder';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { formatMessage, type MessageId } from '@/locales/messages';
+import type { MessageId } from '@/locales/messages';
 import {
   loadMoreHubOrder,
-  saveMoreHubOrder,
   subscribeMoreHubOrderChanged,
 } from '@/services/moreHubOrderPreference';
 import {
@@ -35,15 +32,13 @@ const HUB_META: Record<
   { href: Href; icon: ComponentProps<typeof FontAwesome>['name']; titleId: MessageId }
 > = {
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
-  briefing: { href: '/briefing', icon: 'briefcase', titleId: 'screenBriefing' },
-  youtube: { href: '/youtube', icon: 'youtube-play', titleId: 'tabYoutube' },
-  calendar: { href: '/calendar', icon: 'calendar', titleId: 'a11yCalendar' },
   settings: { href: '/settings' as Href, icon: 'cog', titleId: 'screenSettings' },
 };
 
-const ROW_GAP = 10;
+const ROW_GAP = 12;
 const ROW_HEIGHT = 62;
-const MORE_HUB_LIST_HEIGHT = ROW_HEIGHT + 16;
+/** 허브 행 ↔ 하단 링크·광고 등 섹션 사이 */
+const SECTION_GAP = 20;
 
 export default function MoreHubScreen() {
   const { theme, scaleFont } = useSignalTheme();
@@ -55,7 +50,6 @@ export default function MoreHubScreen() {
   const [order, setOrder] = useState<MoreHubRouteKey[]>([]);
   const [orderReady, setOrderReady] = useState(false);
   const [refLinksVisible, setRefLinksVisible] = useState(true);
-  const canReorder = order.length > 1;
 
   const reloadOrder = useCallback(async () => {
     const o = await loadMoreHubOrder();
@@ -87,79 +81,60 @@ export default function MoreHubScreen() {
     }, [reloadOrder, reloadRefLinksPref]),
   );
 
+  const onHeaderRefresh = useCallback(() => {
+    void reloadOrder();
+    void reloadRefLinksPref();
+  }, [reloadOrder, reloadRefLinksPref]);
+
   const listFooter = useMemo(
     () => (
-      <View>
+      <View style={styles.footer}>
         {refLinksVisible ? <ReferenceLinksSection /> : null}
-        <SignalBannerAd />
+        <SignalBannerAd variant="large" style={styles.footerAd} />
       </View>
     ),
-    [refLinksVisible],
+    [refLinksVisible, styles.footer, styles.footerAd],
   );
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SignalHeader />
+      <SignalHeader onBrandPress={onHeaderRefresh} />
       {isFocused ? <OtaUpdateBanner /> : null}
       {!orderReady ? (
         <View style={styles.loadingPad}>
           <Text style={styles.muted}>{t('commonLoading')}</Text>
         </View>
       ) : (
-        <DraggableFlatList
+        <FlatList
           data={order}
           keyExtractor={(item) => item}
           scrollEnabled
-          removeClippedSubviews={false}
           style={styles.list}
           contentContainerStyle={{
-            paddingTop: 10,
+            paddingTop: 14,
             paddingBottom: 24 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM,
           }}
           ListFooterComponent={listFooter}
-          containerStyle={{ flex: 1 }}
-          onDragEnd={({ data }) => {
-            if (!canReorder) return;
-            setOrder(data);
-            void saveMoreHubOrder(data);
-          }}
-          renderItem={({ item, drag, isActive, getIndex }) => {
+          renderItem={({ item, index }) => {
             const meta = HUB_META[item];
-            const idx = getIndex() ?? 0;
-            const isLast = idx === order.length - 1;
+            const isLast = index === order.length - 1;
             const name = t(meta.titleId);
             return (
-              <ScaleDecorator>
-                <View
-                  style={[
-                    styles.rowWrap,
-                    !isLast && styles.rowWrapGap,
-                    isActive && styles.rowWrapActive,
-                  ]}>
-                  <Pressable
-                    onPress={() => router.push(meta.href)}
-                    style={styles.rowMain}
-                    accessibilityRole="button"
-                    accessibilityLabel={name}>
-                    <View style={styles.iconCircle}>
-                      <FontAwesome name={meta.icon} size={18} color={theme.green} />
-                    </View>
-                    <Text style={styles.rowTitle}>{name}</Text>
-                    <FontAwesome name="chevron-right" size={14} color={theme.textDim} />
-                  </Pressable>
-                  {canReorder ? (
-                    <GHPressable
-                      style={styles.dragHandle}
-                      {...(Platform.OS === 'web'
-                        ? { onPressIn: drag }
-                        : { onLongPress: drag, delayLongPress: 200 })}
-                      accessibilityRole="button"
-                      accessibilityLabel={formatMessage(t('moreHubSegmentDragHandleA11y'), { name })}>
-                      <FontAwesome name="bars" size={16} color={theme.textMuted} />
-                    </GHPressable>
-                  ) : null}
+              <Pressable
+                onPress={() => router.push(meta.href)}
+                style={({ pressed }) => [
+                  styles.row,
+                  !isLast && styles.rowGap,
+                  pressed && styles.rowPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={name}>
+                <View style={styles.iconCircle}>
+                  <FontAwesome name={meta.icon} size={18} color={theme.green} />
                 </View>
-              </ScaleDecorator>
+                <Text style={styles.rowTitle}>{name}</Text>
+                <FontAwesome name="chevron-right" size={14} color={theme.textDim} />
+              </Pressable>
             );
           }}
         />
@@ -174,36 +149,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     list: { flex: 1, paddingHorizontal: 16 },
     loadingPad: { padding: 24 },
     muted: { fontSize: sf(14), color: theme.textDim },
-    rowWrap: {
+    row: {
       flexDirection: 'row',
       alignItems: 'center',
+      gap: 11,
       borderRadius: 13,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       minHeight: ROW_HEIGHT,
-      paddingRight: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
     },
-    rowWrapGap: { marginBottom: ROW_GAP },
-    rowWrapActive: {
+    rowGap: { marginBottom: ROW_GAP },
+    rowPressed: {
       backgroundColor: theme.bgElevated,
       borderColor: theme.greenBorder,
-    },
-    rowMain: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 11,
-      paddingVertical: 10,
-      paddingLeft: 12,
-      paddingRight: 8,
-      minHeight: ROW_HEIGHT - 2,
-    },
-    dragHandle: {
-      width: 40,
-      height: 46,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     iconCircle: {
       width: 36,
@@ -220,6 +181,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(15),
       fontWeight: '800',
       color: theme.text,
+    },
+    footer: {
+      marginTop: SECTION_GAP,
+      gap: SECTION_GAP,
+    },
+    footerAd: {
+      marginTop: 0,
     },
   });
 }

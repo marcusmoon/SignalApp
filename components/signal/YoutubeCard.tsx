@@ -9,15 +9,20 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { openYoutubeItem } from '@/utils/openYoutube';
 import type { YoutubeItem } from '@/types/signal';
 
-type Props = { item: YoutubeItem };
+type Props = {
+  item: YoutubeItem;
+  layout?: 'card' | 'grouped';
+};
 
-export function YoutubeCard({ item }: Props) {
+export function YoutubeCard({ item, layout = 'card' }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
+  const grouped = layout === 'grouped';
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, grouped && styles.cardGrouped]}>
       <Pressable
         style={({ pressed }) => [styles.topRow, pressed && styles.pressed]}
         onPress={() => void openYoutubeItem(item)}
@@ -73,6 +78,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.border,
       padding: 10,
       marginBottom: 10,
+    },
+    cardGrouped: {
+      backgroundColor: 'transparent',
+      borderWidth: 0,
+      borderRadius: 0,
+      marginBottom: 0,
+      paddingHorizontal: 14,
+      paddingVertical: 11,
     },
     topRow: {
       flexDirection: 'row',

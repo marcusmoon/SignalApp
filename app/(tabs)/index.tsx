@@ -2,11 +2,10 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,6 +15,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
+import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -23,6 +24,8 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { hasSignalApi } from '@/services/env';
 import { loadMainEntry, mainEntryHref } from '@/services/mainEntryPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
+import { openYahooFinanceQuote } from '@/utils/yahooFinance';
+import { formatRelativeFromIso } from '@/utils/date';
 import {
   fetchSignalInsights,
   fetchSignalMarketQuotes,
@@ -46,6 +49,7 @@ let initialEntryApplied = false;
 type HomeState = {
   insights: SignalApiInsight[];
   watchQuotes: SignalApiMarketQuote[];
+  rawNews: SignalApiNewsItem[];
   news: NewsItem[];
   videos: YoutubeItem[];
   watchSymbols: string[];
@@ -54,9 +58,21 @@ type HomeState = {
 const EMPTY_STATE: HomeState = {
   insights: [],
   watchQuotes: [],
+  rawNews: [],
   news: [],
   videos: [],
   watchSymbols: [],
+};
+
+type HomeEvidenceRow = {
+  key: string;
+  icon: React.ComponentProps<typeof FontAwesome>['name'];
+  kind: string;
+  title: string;
+  source: string;
+  timeLabel?: string;
+  url?: string;
+  fallbackRoute: '/news' | '/youtube';
 };
 
 function formatUsdBody(abs: number): string {
@@ -76,6 +92,13 @@ function formatPct(n: number | null | undefined): string {
   if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
   const sign = n > 0 ? '+' : '';
   return `${sign}${n.toFixed(2)}%`;
+}
+
+function formatUsdChange(n: number | null | undefined): string {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
+  if (n === 0) return '$0.00';
+  const sign = n > 0 ? '+' : '-';
+  return `${sign}$${formatUsdBody(Math.abs(n))}`;
 }
 
 function driverText(insight: SignalApiInsight): string {
@@ -118,6 +141,23 @@ function homeHeadline(params: {
     return `${quote.symbol} ${formatPct(quote.changePercent)} · ${quote.name || params.fallback}`;
   }
   return params.fallback;
+}
+
+function normalizeSymbolSet(symbols: string[]): Set<string> {
+  return new Set(symbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean));
+}
+
+function addUniqueEvidence(
+  rows: HomeEvidenceRow[],
+  seen: Set<string>,
+  row: HomeEvidenceRow,
+  max: number,
+): void {
+  if (rows.length >= max) return;
+  const key = row.url?.trim() || row.key;
+  if (seen.has(key)) return;
+  seen.add(key);
+  rows.push(row);
 }
 
 export default function HomeScreen() {
@@ -196,12 +236,13 @@ export default function HomeScreen() {
     }));
 
     void Promise.all([
-      fetchSignalNews({ locale, category: 'global', limit: 5, offset: 0 }, { cacheMode }),
-      fetchSignalYoutube({ sort: 'popular', limit: 2, offset: 0 }, { cacheMode }),
+      fetchSignalNews({ locale, category: 'global', limit: 12, offset: 0 }, { cacheMode }),
+      fetchSignalYoutube({ sort: 'popular', limit: 4, offset: 0 }, { cacheMode }),
     ]).then(([newsPage, youtubePage]) => {
       if (requestSeq.current !== seq) return;
       setState((prev) => ({
         ...prev,
+        rawNews: newsPage.items,
         news: newsPage.items.map((item: SignalApiNewsItem) => signalNewsToNewsItem(item, locale)),
         videos: youtubePage.items.map((item: SignalApiYoutubeVideo) => signalYoutubeToYoutubeItem(item, locale)),
       }));
@@ -243,52 +284,146 @@ export default function HomeScreen() {
 
   const topInsights = state.insights.slice(0, 3);
   const topQuotes = state.watchQuotes.slice(0, 3);
-  const evidenceRows = [
-    ...state.news.slice(0, 2).map((item) => ({
-      key: `news-${item.id}`,
-      icon: 'newspaper-o' as const,
-      title: item.titleKo,
-      meta: item.source || t('tabNews'),
-      onPress: () => router.push('/news'),
-    })),
-    ...state.videos.slice(0, 1).map((item) => ({
-      key: `youtube-${item.id}`,
-      icon: 'youtube-play' as const,
-      title: item.title,
-      meta: item.channel || t('tabYoutube'),
-      onPress: () => router.push('/youtube'),
-    })),
-  ];
+  const visibleWatchCount = topQuotes.length;
+  const evidenceRows = useMemo(() => {
+    const max = 5;
+    const rows: HomeEvidenceRow[] = [];
+    const seen = new Set<string>();
+    const newsById = new Map(state.news.map((item) => [item.id, item]));
+    const videoById = new Map(state.videos.map((item) => [item.id, item]));
+    const rawNewsByUrl = new Map(state.news.map((item) => [item.url, item]));
+    const videoByUrl = new Map(state.videos.filter((item) => item.url).map((item) => [item.url as string, item]));
+
+    topInsights.flatMap((insight) => insight.sourceRefs || []).forEach((ref) => {
+      const type = String(ref.type || '').toLowerCase();
+      if (type === 'youtube') {
+        const video = videoById.get(ref.id) || (ref.url ? videoByUrl.get(ref.url) : undefined);
+        addUniqueEvidence(
+          rows,
+          seen,
+          {
+            key: `source-youtube-${ref.id}`,
+            icon: 'youtube-play',
+            kind: t('tabYoutube'),
+            title: ref.title || video?.title || t('tabYoutube'),
+            source: ref.sourceName || video?.channel || t('tabYoutube'),
+            timeLabel: video?.publishedLabel || (ref.publishedAt ? formatRelativeFromIso(ref.publishedAt, locale) : undefined),
+            url: ref.url || video?.url,
+            fallbackRoute: '/youtube',
+          },
+          max,
+        );
+        return;
+      }
+      const news = newsById.get(ref.id) || (ref.url ? rawNewsByUrl.get(ref.url) : undefined);
+      addUniqueEvidence(
+        rows,
+        seen,
+        {
+          key: `source-news-${ref.id}`,
+          icon: 'newspaper-o',
+          kind: t('tabNews'),
+          title: ref.title || news?.titleKo || t('tabNews'),
+          source: ref.sourceName || news?.source || t('tabNews'),
+          timeLabel: news?.timeLabel || (ref.publishedAt ? formatRelativeFromIso(ref.publishedAt, locale) : undefined),
+          url: ref.url || news?.url,
+          fallbackRoute: '/news',
+        },
+        max,
+      );
+    });
+
+    const watchSet = normalizeSymbolSet(state.watchSymbols);
+    state.rawNews.forEach((raw) => {
+      if (rows.length >= max) return;
+      const symbols = Array.isArray(raw.symbols) ? raw.symbols : [];
+      if (!symbols.some((symbol) => watchSet.has(symbol.trim().toUpperCase()))) return;
+      const item = signalNewsToNewsItem(raw, locale);
+      addUniqueEvidence(
+        rows,
+        seen,
+        {
+          key: `watch-news-${item.id}`,
+          icon: 'newspaper-o',
+          kind: t('tabNews'),
+          title: item.titleKo,
+          source: item.source || t('tabNews'),
+          timeLabel: item.timeLabel,
+          url: item.url,
+          fallbackRoute: '/news',
+        },
+        max,
+      );
+    });
+
+    state.news.forEach((item) => {
+      addUniqueEvidence(
+        rows,
+        seen,
+        {
+          key: `fallback-news-${item.id}`,
+          icon: 'newspaper-o',
+          kind: t('tabNews'),
+          title: item.titleKo,
+          source: item.source || t('tabNews'),
+          timeLabel: item.timeLabel,
+          url: item.url,
+          fallbackRoute: '/news',
+        },
+        max,
+      );
+    });
+
+    state.videos.forEach((item) => {
+      addUniqueEvidence(
+        rows,
+        seen,
+        {
+          key: `fallback-youtube-${item.id}`,
+          icon: 'youtube-play',
+          kind: t('tabYoutube'),
+          title: item.title,
+          source: item.channel || t('tabYoutube'),
+          timeLabel: item.publishedLabel,
+          url: item.url,
+          fallbackRoute: '/youtube',
+        },
+        max,
+      );
+    });
+
+    return rows;
+  }, [locale, state.news, state.rawNews, state.videos, state.watchSymbols, t, topInsights]);
   const bottomPad = 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SignalHeader />
+      <SignalHeader onBrandPress={() => void onRefresh()} />
       {isFocused ? <OtaUpdateBanner /> : null}
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
+        refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         <View style={styles.hero}>
           <Text style={styles.eyebrow}>{t('homeEyebrow')}</Text>
           <Text style={styles.heroTitle}>{headline}</Text>
           <View style={styles.pillRow}>
             <StatusPill
               icon="bolt"
-              label={t('homePillSignals', { count: String(state.insights.length) })}
+              label={t('homePillSignals', { count: String(topInsights.length) })}
               theme={theme}
               scaleFont={scaleFont}
             />
             <StatusPill
               icon="star"
-              label={t('homePillWatchlist', { count: String(state.watchSymbols.length) })}
+              label={t('homePillWatchlist', { count: String(visibleWatchCount) })}
               theme={theme}
               scaleFont={scaleFont}
             />
             <StatusPill
               icon="newspaper-o"
-              label={t('homePillEvidence', { count: String(state.news.length + state.videos.length) })}
+              label={t('homePillEvidence', { count: String(evidenceRows.length) })}
               theme={theme}
               scaleFont={scaleFont}
             />
@@ -303,8 +438,7 @@ export default function HomeScreen() {
 
         {loading ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator color={theme.green} />
-            <Text style={styles.loadingText}>{t('commonLoading')}</Text>
+            <SignalLoadingIndicator message={t('commonLoading')} />
           </View>
         ) : (
           <>
@@ -321,35 +455,43 @@ export default function HomeScreen() {
 
             <SectionHeader
               title={t('homeTodaySection')}
-              action={t('homeOpenSignals')}
+              icon="bolt"
+              action={t('commonViewAll')}
               onPress={() => router.push('/insights')}
               theme={theme}
               scaleFont={scaleFont}
             />
-            <View style={styles.stack}>
+            <View style={styles.signalList}>
               {topInsights.length > 0 ? (
                 topInsights.map((insight) => (
                   <Pressable
                     key={insight.id}
                     onPress={() => router.push('/insights')}
-                    style={({ pressed }) => [styles.decisionCard, pressed && styles.pressed]}
+                    style={({ pressed }) => [styles.signalRow, pressed && styles.pressed]}
                     accessibilityRole="button">
                     <View style={styles.decisionHead}>
-                      <Text style={styles.decisionTitle} numberOfLines={2}>
-                        {insight.title}
-                      </Text>
+                      <View style={styles.decisionTextCol}>
+                        <View style={styles.decisionMetaRow}>
+                          {insight.symbols?.length ? (
+                            <Text style={styles.symbolLine} numberOfLines={1}>
+                              {insight.symbols.slice(0, 3).join(' · ')}
+                            </Text>
+                          ) : null}
+                          <Text style={styles.decisionLevel} numberOfLines={1}>
+                            {String(insight.level || '').toUpperCase()}
+                          </Text>
+                        </View>
+                        <Text style={styles.decisionTitle} numberOfLines={1}>
+                          {insight.title}
+                        </Text>
+                        <Text style={styles.decisionBody} numberOfLines={2}>
+                          {driverText(insight)}
+                        </Text>
+                      </View>
                       <View style={styles.scoreBadge}>
                         <Text style={styles.scoreText}>{Math.round(Number(insight.score) || 0)}</Text>
                       </View>
                     </View>
-                    <Text style={styles.decisionBody} numberOfLines={3}>
-                      {driverText(insight)}
-                    </Text>
-                    {insight.symbols?.length ? (
-                      <Text style={styles.symbolLine} numberOfLines={1}>
-                        {insight.symbols.slice(0, 4).join(' · ')}
-                      </Text>
-                    ) : null}
                   </Pressable>
                 ))
               ) : (
@@ -359,7 +501,8 @@ export default function HomeScreen() {
 
             <SectionHeader
               title={t('homeWatchSection')}
-              action={t('homeOpenQuotesFull')}
+              icon="star"
+              action={t('commonViewAll')}
               onPress={() => router.push('/quotes')}
               theme={theme}
               scaleFont={scaleFont}
@@ -367,16 +510,36 @@ export default function HomeScreen() {
             <View style={styles.quoteList}>
               {topQuotes.length > 0 ? (
                 topQuotes.map((quote) => (
-                  <Pressable
+                  <View
                     key={quote.symbol}
-                    onPress={() => router.push(`/symbol/${quote.symbol}`)}
-                    style={({ pressed }) => [styles.quoteRow, pressed && styles.pressed]}
-                    accessibilityRole="button">
+                    style={styles.quoteRow}>
                     <View style={styles.quoteLeft}>
-                      <Text style={styles.quoteSymbol}>{quote.symbol}</Text>
+                      <View style={styles.quoteSymbolRow}>
+                        <Pressable
+                          onPress={() => router.push(`/symbol/${quote.symbol}`)}
+                          hitSlop={6}
+                          accessibilityRole="button"
+                          accessibilityLabel={quote.symbol}>
+                          <Text style={styles.quoteSymbol}>{quote.symbol}</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => void openYahooFinanceQuote(quote.symbol, 'stock')}
+                          style={({ pressed }) => [styles.quoteYahoo, pressed && styles.quoteYahooPressed]}
+                          hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                          accessibilityRole="link"
+                          accessibilityLabel={t('quotesYahooFinanceA11y', { symbol: quote.symbol })}>
+                          <FontAwesome name="external-link" size={10} color={theme.green} />
+                          <Text style={styles.quoteYahooText}>{t('quotesYahooShort')}</Text>
+                        </Pressable>
+                      </View>
                       <Text style={styles.quoteName} numberOfLines={1}>
-                        {quote.name || t('homeWatchReason')}
+                        {t('quotesPrevCloseStock')} {formatUsd(quote.previousClose)}
                       </Text>
+                      {quote.name ? (
+                        <Text style={styles.quoteCompany} numberOfLines={1}>
+                          {quote.name}
+                        </Text>
+                      ) : null}
                     </View>
                     <View style={styles.quoteRight}>
                       <Text style={styles.quotePrice}>{formatUsd(quote.currentPrice)}</Text>
@@ -385,10 +548,10 @@ export default function HomeScreen() {
                           styles.quoteChange,
                           Number(quote.changePercent) >= 0 ? styles.up : styles.down,
                         ]}>
-                        {formatPct(quote.changePercent)}
+                        {formatUsdChange(quote.change)} ({formatPct(quote.changePercent)})
                       </Text>
                     </View>
-                  </Pressable>
+                  </View>
                 ))
               ) : (
                 <EmptyCard text={t('homeEmptyWatchlist')} theme={theme} scaleFont={scaleFont} />
@@ -397,7 +560,8 @@ export default function HomeScreen() {
 
             <SectionHeader
               title={t('homeRelatedSection')}
-              action={t('homeOpenNewsFull')}
+              icon="newspaper-o"
+              action={t('commonViewAll')}
               onPress={() => router.push('/news')}
               theme={theme}
               scaleFont={scaleFont}
@@ -408,9 +572,17 @@ export default function HomeScreen() {
                   <EvidenceCard
                     key={item.key}
                     icon={item.icon}
+                    kind={item.kind}
                     title={item.title}
-                    meta={item.meta}
-                    onPress={item.onPress}
+                    source={item.source}
+                    timeLabel={item.timeLabel}
+                    onPress={() => {
+                      if (item.url) {
+                        void WebBrowser.openBrowserAsync(item.url);
+                      } else {
+                        router.push(item.fallbackRoute);
+                      }
+                    }}
                     theme={theme}
                     scaleFont={scaleFont}
                   />
@@ -448,12 +620,14 @@ function StatusPill({
 
 function SectionHeader({
   title,
+  icon,
   action,
   onPress,
   theme,
   scaleFont,
 }: {
   title: string;
+  icon: React.ComponentProps<typeof FontAwesome>['name'];
   action: string;
   onPress: () => void;
   theme: AppTheme;
@@ -462,9 +636,17 @@ function SectionHeader({
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   return (
     <View style={styles.sectionHead}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionTitleWrap}>
+        <View style={styles.sectionIcon}>
+          <FontAwesome name={icon} size={12} color={theme.green} />
+        </View>
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
       <Pressable onPress={onPress} hitSlop={8} accessibilityRole="button">
-        <Text style={styles.sectionAction}>{action}</Text>
+        <View style={styles.sectionActionWrap}>
+          <Text style={styles.sectionAction}>{action}</Text>
+          <FontAwesome name="chevron-right" size={11} color={theme.green} />
+        </View>
       </Pressable>
     </View>
   );
@@ -481,15 +663,19 @@ function EmptyCard({ text, theme, scaleFont }: { text: string; theme: AppTheme; 
 
 function EvidenceCard({
   icon,
+  kind,
   title,
-  meta,
+  source,
+  timeLabel,
   onPress,
   theme,
   scaleFont,
 }: {
   icon: React.ComponentProps<typeof FontAwesome>['name'];
+  kind: string;
   title: string;
-  meta: string;
+  source: string;
+  timeLabel?: string;
   onPress: () => void;
   theme: AppTheme;
   scaleFont: (n: number) => number;
@@ -503,12 +689,25 @@ function EvidenceCard({
       <View style={styles.evidenceIcon}>
         <FontAwesome name={icon} size={16} color={theme.green} />
       </View>
-      <Text style={styles.evidenceTitle} numberOfLines={3}>
-        {title}
-      </Text>
-      <Text style={styles.evidenceMeta} numberOfLines={1}>
-        {meta}
-      </Text>
+      <View style={styles.evidenceText}>
+        <View style={styles.evidenceMetaRow}>
+          <Text style={styles.evidenceKind} numberOfLines={1}>
+            {kind}
+          </Text>
+          <Text style={styles.evidenceSource} numberOfLines={1}>
+            {source}
+          </Text>
+          {timeLabel ? (
+            <Text style={styles.evidenceTime} numberOfLines={1}>
+              {timeLabel}
+            </Text>
+          ) : null}
+        </View>
+        <Text style={styles.evidenceTitle} numberOfLines={2}>
+          {title}
+        </Text>
+      </View>
+      <FontAwesome name="chevron-right" size={12} color={theme.textDim} />
     </Pressable>
   );
 }
@@ -578,17 +777,29 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'center',
       gap: 10,
     },
-    loadingText: {
-      fontSize: sf(13),
-      color: theme.textMuted,
-      fontWeight: '700',
-    },
     sectionHead: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: 12,
       marginTop: 2,
+    },
+    sectionTitleWrap: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    sectionIcon: {
+      width: 24,
+      height: 24,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
     },
     sectionTitle: {
       flex: 1,
@@ -598,56 +809,90 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.text,
     },
     sectionAction: {
-      fontSize: sf(13),
-      lineHeight: sf(19.5),
+      fontSize: sf(12),
+      lineHeight: sf(17),
       fontWeight: '900',
       color: theme.green,
     },
-    stack: { gap: 10 },
-    decisionCard: {
+    sectionActionWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      minHeight: 30,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      backgroundColor: theme.bgElevated,
+    },
+    signalList: {
       borderRadius: 22,
-      backgroundColor: theme.card,
+      overflow: 'hidden',
       borderWidth: 1,
       borderColor: theme.border,
-      padding: 18,
-      gap: 12,
+      backgroundColor: theme.card,
+    },
+    signalRow: {
+      minHeight: 92,
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
     },
     decisionHead: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       gap: 12,
     },
-    decisionTitle: {
+    decisionTextCol: {
       flex: 1,
       minWidth: 0,
-      fontSize: sf(18),
-      lineHeight: sf(27),
+      gap: 4,
+    },
+    decisionMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      minWidth: 0,
+    },
+    decisionLevel: {
+      flexShrink: 0,
+      fontSize: sf(10),
+      lineHeight: sf(14),
+      fontWeight: '900',
+      color: theme.textDim,
+    },
+    decisionTitle: {
+      fontSize: sf(15),
+      lineHeight: sf(21),
       fontWeight: '900',
       color: theme.text,
     },
     scoreBadge: {
-      minWidth: 42,
-      height: 34,
-      borderRadius: 17,
-      backgroundColor: theme.green,
+      minWidth: 38,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 10,
+      paddingHorizontal: 8,
     },
     scoreText: {
-      fontSize: sf(13),
+      fontSize: sf(12),
       fontWeight: '900',
-      color: '#FFFFFF',
+      color: theme.green,
     },
     decisionBody: {
-      fontSize: sf(14),
-      lineHeight: sf(21),
+      fontSize: sf(12),
+      lineHeight: sf(17),
       color: theme.textMuted,
       fontWeight: '700',
     },
     symbolLine: {
-      fontSize: sf(12),
-      lineHeight: sf(18),
+      flexShrink: 1,
+      minWidth: 0,
+      fontSize: sf(11),
+      lineHeight: sf(15),
       fontWeight: '900',
       color: theme.green,
     },
@@ -671,6 +916,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     quoteLeft: { flex: 1, minWidth: 0 },
     quoteRight: { alignItems: 'flex-end', flexShrink: 0 },
+    quoteSymbolRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      minWidth: 0,
+    },
     quoteSymbol: {
       fontSize: sf(16),
       lineHeight: sf(24),
@@ -682,6 +933,30 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       lineHeight: sf(18),
       fontWeight: '700',
       color: theme.textMuted,
+    },
+    quoteCompany: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '700',
+      color: theme.textDim,
+      marginTop: 2,
+    },
+    quoteYahoo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      flexShrink: 1,
+      minWidth: 0,
+      paddingVertical: 2,
+    },
+    quoteYahooPressed: { opacity: 0.75 },
+    quoteYahooText: {
+      flexShrink: 1,
+      minWidth: 0,
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '800',
+      color: theme.green,
     },
     quotePrice: {
       fontSize: sf(16),
@@ -704,7 +979,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.card,
     },
     evidenceCard: {
-      minHeight: 76,
+      minHeight: 82,
       paddingHorizontal: 16,
       paddingVertical: 13,
       flexDirection: 'row',
@@ -720,22 +995,46 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.greenDim,
       alignItems: 'center',
       justifyContent: 'center',
+      flexShrink: 0,
     },
-    evidenceTitle: {
+    evidenceText: {
       flex: 1,
       minWidth: 0,
-      fontSize: sf(13),
-      lineHeight: sf(19.5),
-      fontWeight: '900',
-      color: theme.text,
+      gap: 5,
     },
-    evidenceMeta: {
-      maxWidth: 82,
+    evidenceMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      minWidth: 0,
+    },
+    evidenceKind: {
+      flexShrink: 0,
       fontSize: sf(11),
-      lineHeight: sf(16.5),
+      lineHeight: sf(16),
+      fontWeight: '900',
+      color: theme.green,
+    },
+    evidenceSource: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: sf(11),
+      lineHeight: sf(16),
       fontWeight: '800',
       color: theme.textDim,
-      textAlign: 'right',
+    },
+    evidenceTime: {
+      flexShrink: 0,
+      fontSize: sf(11),
+      lineHeight: sf(16),
+      fontWeight: '800',
+      color: theme.textDim,
+    },
+    evidenceTitle: {
+      fontSize: sf(14),
+      lineHeight: sf(20),
+      fontWeight: '900',
+      color: theme.text,
     },
     primaryAction: {
       minHeight: 52,

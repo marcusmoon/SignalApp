@@ -3,22 +3,26 @@ import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
-import { AppState, Platform } from 'react-native';
+import { AppState, Platform, useColorScheme, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { enableFreeze } from 'react-native-screens';
 import 'react-native-reanimated';
 
+import '@/tasks/newsUnreadBackgroundTask';
+
 import { AppSplashScreen } from '@/components/AppSplashScreen';
+import { ThemedStatusBar } from '@/components/ThemedStatusBar';
 import { NotificationListener } from '@/components/NotificationListener';
 import { PushDeviceRegistrar } from '@/components/PushDeviceRegistrar';
 import { OtaBannerProvider } from '@/contexts/OtaBannerContext';
 import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
 import { SignalThemeProvider, useSignalTheme } from '@/contexts/SignalThemeContext';
+import { bootstrapThemeForColorScheme } from '@/constants/theme';
 import { ensureStoredSessionFresh } from '@/integrations/signal-api/httpClient';
 import { getPreviewOtaBannerRaw } from '@/services/env';
 import { initializeAds } from '@/integrations/admob/initializeAds';
+import { startNewsUnreadBackgroundSync } from '@/services/newsUnreadBackground';
 import {
   hydrateSignalServerEndpoint,
   subscribeSignalServerEndpointChanged,
@@ -43,6 +47,8 @@ if (Platform.OS !== 'web') {
 }
 
 export default function RootLayout() {
+  const systemScheme = useColorScheme();
+  const bootstrapBg = bootstrapThemeForColorScheme(systemScheme).bg;
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
     ...FontAwesome.font,
@@ -69,7 +75,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: bootstrapBg }}>
       <LocaleProvider>
         {!loaded || !signalEndpointReady ? (
           <AppSplashScreen />
@@ -101,8 +107,11 @@ function RootLayoutNav() {
     return () => sub.remove();
   }, []);
 
-  const { theme } = useSignalTheme();
+  useEffect(() => startNewsUnreadBackgroundSync(), []);
+
+  const { theme, effectiveColorScheme } = useSignalTheme();
   const { t } = useLocale();
+  const statusBarStyle = effectiveColorScheme === 'dark' ? 'light' : 'dark';
   const navTheme = useMemo(
     () => ({
       ...DarkTheme,
@@ -123,12 +132,13 @@ function RootLayoutNav() {
     () =>
       ({ route }: { route: { name: string } }) => {
         if (route.name === '(tabs)') {
-          return { headerShown: false };
+          return { headerShown: false, statusBarStyle };
         }
         if (route.name === 'modal') {
           return {
             presentation: 'modal' as const,
             title: t('screenInfo'),
+            statusBarStyle,
           };
         }
         const titleByName: Record<string, string> = {
@@ -152,17 +162,20 @@ function RootLayoutNav() {
           headerStyle: { backgroundColor: theme.bg },
           headerTintColor: theme.green,
           headerTitleStyle: { fontWeight: '800' as const, color: theme.text },
+          statusBarStyle,
         };
       },
-    [t, theme],
+    [statusBarStyle, t, theme],
   );
 
   return (
     <ThemeProvider value={navTheme}>
       <NotificationListener />
       <PushDeviceRegistrar />
-      <StatusBar style="light" />
-      <Stack screenOptions={rootScreenOptions} />
+      <View style={{ flex: 1, backgroundColor: theme.bg }}>
+        <ThemedStatusBar />
+        <Stack screenOptions={rootScreenOptions} />
+      </View>
     </ThemeProvider>
   );
 }

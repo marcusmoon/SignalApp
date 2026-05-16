@@ -8,7 +8,6 @@ import {
   NativeSyntheticEvent,
   Platform,
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,6 +22,8 @@ import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { FloatingGlassFab, FLOATING_GLASS_FAB_GAP, FLOATING_GLASS_FAB_SIZE } from '@/components/signal/FloatingGlassFab';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
@@ -374,7 +375,7 @@ export default function YoutubeScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SignalHeader />
+      <SignalHeader onBrandPress={() => void onRefresh()} />
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>
@@ -413,7 +414,15 @@ export default function YoutubeScreen() {
         <FlatList
           data={showScrollLoading ? [] : items}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <YoutubeCard item={item} />}
+          renderItem={({ item, index }) => (
+            <View
+              style={groupedFeedRowShell(theme, {
+                isFirst: index === 0,
+                isLast: index === items.length - 1,
+              })}>
+              <YoutubeCard layout="grouped" item={item} />
+            </View>
+          )}
           ListHeaderComponent={youtubeListHeader}
           ListEmptyComponent={
             !error && !showScrollLoading && items.length === 0 ? (
@@ -459,7 +468,7 @@ export default function YoutubeScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={
             showScrollLoading ? undefined : (
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />
+              <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             )
           }
           removeClippedSubviews={Platform.OS === 'android'}

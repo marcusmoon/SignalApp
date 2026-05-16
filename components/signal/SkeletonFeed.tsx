@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 
-import { SIGNAL } from '@/constants/theme';
+import type { AppTheme } from '@/constants/theme';
+import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
-function SkeletonLine({ width }: { width: string | number }) {
+function SkeletonLine({ width, styles }: { width: string | number; styles: ReturnType<typeof makeStyles> }) {
   const opacity = useRef(new Animated.Value(0.35)).current;
 
   useEffect(() => {
@@ -34,31 +35,35 @@ function SkeletonLine({ width }: { width: string | number }) {
 }
 
 export function SkeletonFeed() {
+  const { theme } = useSignalTheme();
+  const styles = makeStyles(theme);
   return (
     <View style={styles.card}>
-      <SkeletonLine width="40%" />
+      <SkeletonLine width="40%" styles={styles} />
       <View style={{ height: 10 }} />
-      <SkeletonLine width="92%" />
+      <SkeletonLine width="92%" styles={styles} />
       <View style={{ height: 8 }} />
-      <SkeletonLine width="88%" />
+      <SkeletonLine width="88%" styles={styles} />
       <View style={{ height: 8 }} />
-      <SkeletonLine width="76%" />
+      <SkeletonLine width="76%" styles={styles} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: SIGNAL.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: SIGNAL.border,
-    padding: 14,
-    marginBottom: 10,
-  },
-  line: {
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#E5E8EB',
-  },
-});
+function makeStyles(theme: AppTheme) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: theme.card,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      padding: 14,
+      marginBottom: 10,
+    },
+    line: {
+      height: 12,
+      borderRadius: 6,
+      backgroundColor: theme.bgElevated,
+    },
+  });
+}

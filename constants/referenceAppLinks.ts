@@ -87,13 +87,6 @@ export const REFERENCE_LINK_GROUPS: ReferenceLinkGroup[] = [
         webUrl: 'https://www.binance.com',
         appLaunchUrls: ['bnc://app.binance.com/', 'bnc://app.binance.com', 'binance://'],
       },
-      {
-        id: 'coinbase',
-        labelKey: 'moreRefTitleCoinbase',
-        icon: 'usd',
-        webUrl: 'https://www.coinbase.com',
-        appLaunchUrls: ['coinbase://'],
-      },
     ],
   },
 ];

@@ -1,6 +1,6 @@
 import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
@@ -13,9 +13,11 @@ type Props = {
   /** 0이면 태그 행 숨김 */
   maxHashtagsToShow?: number;
   onTagPress?: (label: string) => void;
+  /** `grouped`: 홈 관련 근거처럼 한 카드 안 행 구분(개별 테두리 없음) */
+  layout?: 'card' | 'grouped';
 };
 
-export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress }: Props) {
+export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress, layout = 'card' }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
@@ -24,7 +26,10 @@ export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress }: Props) {
   const sourceName = item.source?.trim() || '—';
   const isFlash = Boolean(item.isFlash);
   const symbol = item.ticker?.trim().toUpperCase() ?? '';
-  const canOpenSymbol = symbol.length > 0 && symbol !== 'GLOBAL' && symbol !== '—';
+  const showSourceInHeader =
+    symbol.length === 0 || symbol === 'GLOBAL' || symbol === '—';
+  const canOpenSymbol = !showSourceInHeader;
+  const headerLabel = showSourceInHeader ? sourceName : item.ticker;
 
   const tags =
     maxHashtagsToShow > 0
@@ -34,8 +39,58 @@ export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress }: Props) {
           .slice(0, maxHashtagsToShow)
       : [];
 
+  const grouped = layout === 'grouped';
+  const articleUrl = item.url?.trim() ?? '';
+  const canOpenArticle = articleUrl.length > 0;
+
+  const openArticle = useCallback(() => {
+    if (!canOpenArticle) return;
+    void WebBrowser.openBrowserAsync(articleUrl);
+  }, [articleUrl, canOpenArticle]);
+
+  const sourceA11y = canOpenArticle
+    ? `${t('newsSourceLabel')} ${sourceName}, ${t('newsReadMore')}`
+    : undefined;
+
+  const sourceContent = (
+    <>
+      <Text style={styles.sourceLabel}>{t('newsSourceLabel')}</Text>
+      <View style={[styles.sourcePill, canOpenArticle && styles.sourcePillPressable]}>
+        <Text style={styles.sourceName} numberOfLines={1}>
+          {sourceName}
+        </Text>
+        {canOpenArticle ? (
+          <Text style={styles.sourceOpenHint} accessibilityElementsHidden importantForAccessibility="no">
+            ↗
+          </Text>
+        ) : null}
+      </View>
+    </>
+  );
+
+  const renderSourceBlock = (compact: boolean) => {
+    const rowStyle = [
+      styles.sourceRow,
+      compact && styles.sourceRowCompact,
+      canOpenArticle && styles.sourceRowPressable,
+      compact && canOpenArticle && styles.sourceRowPressableCompact,
+    ];
+    if (canOpenArticle) {
+      return (
+        <Pressable
+          onPress={openArticle}
+          style={({ pressed }) => [...rowStyle, pressed && styles.sourceRowPressed]}
+          accessibilityRole="link"
+          accessibilityLabel={sourceA11y}>
+          {sourceContent}
+        </Pressable>
+      );
+    }
+    return <View style={rowStyle}>{sourceContent}</View>;
+  };
+
   return (
-    <View style={[styles.card, isFlash && styles.cardFlash]}>
+    <View style={[styles.card, grouped && styles.cardGrouped, isFlash && styles.cardFlash]}>
       {isFlash ? (
         <View style={styles.flashBadgeWrap} accessibilityLabel={t('newsFlashBadge')}>
           <View style={styles.flashBadge}>
@@ -43,70 +98,48 @@ export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress }: Props) {
           </View>
         </View>
       ) : null}
-      <View style={styles.row}>
+      <View style={[styles.row, showSourceInHeader && styles.rowWithSource]}>
         {canOpenSymbol ? (
-          <Pressable onPress={() => router.push(`/symbol/${symbol}`)} hitSlop={6}>
+          <Pressable onPress={() => router.push(`/symbol/${symbol}`)} hitSlop={6} style={styles.metaLead}>
             <Text style={styles.ticker} numberOfLines={1}>
-              {item.ticker}
+              {headerLabel}
             </Text>
           </Pressable>
         ) : (
-          <Text style={styles.ticker} numberOfLines={1}>
-            {item.ticker}
-          </Text>
+          renderSourceBlock(true)
         )}
         <Text style={styles.time}>{item.timeLabel}</Text>
       </View>
-      <View style={styles.sourceRow}>
-        <Text style={styles.sourceLabel}>{t('newsSourceLabel')}</Text>
-        <View style={styles.sourcePill}>
-          <Text style={styles.sourceName} numberOfLines={1}>
-            {sourceName}
-          </Text>
-        </View>
-      </View>
+      {canOpenSymbol ? renderSourceBlock(false) : null}
       {canOpenSymbol ? (
         <Pressable onPress={() => router.push(`/symbol/${symbol}`)} hitSlop={4}>
-          <Text style={styles.title}>{item.titleKo}</Text>
+          <Text style={[styles.title, tags.length === 0 && styles.titleLast]}>{item.titleKo}</Text>
         </Pressable>
       ) : (
-        <Text style={styles.title}>{item.titleKo}</Text>
+        <Text style={[styles.title, tags.length === 0 && styles.titleLast]}>{item.titleKo}</Text>
       )}
-      <View style={styles.footer}>
-        <View style={[styles.footerRow, tags.length === 0 && styles.footerRowLinkOnly]}>
-          {tags.length > 0 ? (
-            <View style={styles.footerTagsCol}>
-              {tags.map((tag) => (
-                <Pressable
-                  key={`${item.id}-${tag.label}`}
-                  onPress={() => onTagPress?.(tag.label)}
-                  disabled={!onTagPress}
-                  style={({ pressed }) => [styles.tagChip, pressed && onTagPress && styles.tagChipPressed]}
-                  accessibilityRole={onTagPress ? 'button' : 'text'}
-                  accessibilityLabel={tag.label}>
-                  <Text style={styles.tagChipText}>#{tag.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-          <Pressable
-            onPress={() => {
-              void WebBrowser.openBrowserAsync(item.url);
-            }}
-            style={styles.footerReadMore}
-            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-            accessibilityRole="link"
-            accessibilityLabel={t('newsReadMore')}>
-            <Text style={styles.link}>{t('newsReadMore')}</Text>
-          </Pressable>
+      {tags.length > 0 ? (
+        <View style={[styles.footer, grouped && styles.footerGrouped]}>
+          <View style={styles.footerTagsCol}>
+            {tags.map((tag) => (
+              <Pressable
+                key={`${item.id}-${tag.label}`}
+                onPress={() => onTagPress?.(tag.label)}
+                disabled={!onTagPress}
+                style={({ pressed }) => [styles.tagChip, pressed && onTagPress && styles.tagChipPressed]}
+                accessibilityRole={onTagPress ? 'button' : 'text'}
+                accessibilityLabel={tag.label}>
+                <Text style={styles.tagChipText}>#{tag.label}</Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
-      </View>
+      ) : null}
     </View>
   );
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
-  const linkAndroid = Platform.OS === 'android' ? ({ includeFontPadding: false } as const) : {};
   return StyleSheet.create({
     card: {
       backgroundColor: theme.card,
@@ -118,6 +151,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       /** 푸터 아래 빈 띠가 과해 보이지 않도록 하단만 약간 축소 */
       paddingBottom: 6,
       marginBottom: 10,
+    },
+    cardGrouped: {
+      backgroundColor: 'transparent',
+      borderWidth: 0,
+      borderRadius: 0,
+      marginBottom: 0,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 4,
     },
     cardFlash: {
       borderColor: 'rgba(255, 90, 90, 0.45)',
@@ -150,9 +192,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 8,
       marginBottom: 6,
     },
-    ticker: {
+    rowWithSource: {
+      marginBottom: 10,
+    },
+    metaLead: {
       flex: 1,
       minWidth: 0,
+    },
+    ticker: {
+      flexShrink: 1,
       color: theme.green,
       fontSize: sf(13),
       fontWeight: '800',
@@ -170,6 +218,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 6,
       marginBottom: 10,
     },
+    sourceRowCompact: {
+      flex: 1,
+      minWidth: 0,
+      marginBottom: 0,
+    },
+    sourceRowPressable: {
+      alignSelf: 'flex-start',
+      maxWidth: '100%',
+    },
+    sourceRowPressableCompact: {
+      alignSelf: 'stretch',
+      maxWidth: undefined,
+    },
+    sourceRowPressed: {
+      opacity: 0.88,
+    },
     sourceLabel: {
       fontSize: sf(10),
       fontWeight: '800',
@@ -179,6 +243,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     sourcePill: {
       flex: 1,
       minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
       alignSelf: 'flex-start',
       paddingHorizontal: 10,
       paddingVertical: 4,
@@ -187,10 +254,21 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.greenBorder,
     },
+    sourcePillPressable: {
+      paddingRight: 8,
+    },
     sourceName: {
+      flexShrink: 1,
       fontSize: sf(12),
       fontWeight: '700',
       color: theme.text,
+    },
+    sourceOpenHint: {
+      flexShrink: 0,
+      fontSize: sf(11),
+      fontWeight: '800',
+      color: theme.green,
+      marginTop: 1,
     },
     title: {
       color: theme.text,
@@ -198,6 +276,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '700',
       marginBottom: 6,
       lineHeight: sf(21),
+    },
+    titleLast: {
+      marginBottom: 0,
     },
     footerTagsCol: {
       flex: 1,
@@ -241,27 +322,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderTopWidth: 1,
       borderTopColor: theme.border,
     },
-    /** 태그·원문 보기 — 푸터 패딩 안에서 세로 중앙 */
-    footerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 8,
-    },
-    footerRowLinkOnly: {
-      justifyContent: 'flex-end',
-    },
-    footerReadMore: {
-      flexShrink: 0,
-      justifyContent: 'center',
-    },
-    link: {
-      fontSize: sf(12),
-      lineHeight: sf(14),
-      fontWeight: '700',
-      color: theme.green,
-      ...linkAndroid,
-      textAlignVertical: Platform.OS === 'android' ? 'center' : undefined,
+    footerGrouped: {
+      marginTop: 2,
+      paddingTop: 4,
+      borderTopWidth: 0,
     },
   });
 }

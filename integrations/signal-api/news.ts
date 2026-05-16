@@ -4,6 +4,7 @@ import type { AppLocale } from '@/locales/messages';
 import { isFlashNews } from '@/domain/news';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import type { NewsItem } from '@/types/signal';
+import { formatRelativeFromIso } from '@/utils/date';
 import {
   buildSignalNewsCacheKey,
   peekSignalNewsCache,
@@ -68,21 +69,6 @@ export async function fetchSignalNews(
   return value;
 }
 
-/** Published time for feed cards: elapsed-only buckets (방금 / N분·시간 전). Local calendar day is not used. */
-function formatRelativeFromIso(iso: string | null, locale: AppLocale): string {
-  if (!iso) return '—';
-  const ms = new Date(iso).getTime();
-  if (!Number.isFinite(ms)) return '—';
-  const diffSec = Math.max(0, Math.floor((Date.now() - ms) / 1000));
-  if (diffSec < 60) return locale === 'en' ? 'now' : locale === 'ja' ? 'たった今' : '방금';
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return locale === 'en' ? `${diffMin}m ago` : locale === 'ja' ? `${diffMin}分前` : `${diffMin}분 전`;
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return locale === 'en' ? `${diffHour}h ago` : locale === 'ja' ? `${diffHour}時間前` : `${diffHour}시간 전`;
-  const diffDay = Math.floor(diffHour / 24);
-  return locale === 'en' ? `${diffDay}d ago` : locale === 'ja' ? `${diffDay}日前` : `${diffDay}일 전`;
-}
-
 function sortedHashtags(item: SignalApiNewsItem) {
   const tags = Array.isArray(item.hashtags) ? item.hashtags : [];
   return [...tags]
@@ -98,10 +84,10 @@ function sortedHashtags(item: SignalApiNewsItem) {
 export function signalNewsToNewsItem(item: SignalApiNewsItem, locale: AppLocale): NewsItem {
   return {
     id: item.id,
-    ticker: item.symbols?.[0] || 'GLOBAL',
+    ticker: item.symbols?.[0]?.trim() || '',
     titleKo: item.title || item.originalTitle,
     source: item.sourceName,
-    timeLabel: formatRelativeFromIso(item.publishedAt, locale),
+    timeLabel: item.publishedAt ? formatRelativeFromIso(item.publishedAt, locale) : '—',
     url: item.sourceUrl,
     isFlash: isFlashNews(item),
     hashtags: sortedHashtags(item),

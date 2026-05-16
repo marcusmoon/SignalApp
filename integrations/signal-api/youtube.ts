@@ -83,5 +83,6 @@ export function signalYoutubeToYoutubeItem(item: SignalApiYoutubeVideo, locale: 
     durationLabel: item.duration ? formatIso8601Duration(item.duration) : '—',
     thumbnailUrl: item.thumbnailUrl,
     videoId: item.videoId,
+    url: item.videoId ? `https://www.youtube.com/watch?v=${item.videoId}` : undefined,
   };
 }

@@ -19,5 +19,9 @@ declare module '@/components/signal/AdPlaceholder' {
 
 declare module '@/components/signal/SignalBannerAd' {
   import type { ReactElement } from 'react';
-  export function SignalBannerAd(): ReactElement | null;
+  import type { StyleProp, ViewStyle } from 'react-native';
+  export function SignalBannerAd(props?: {
+    style?: StyleProp<ViewStyle>;
+    variant?: 'standard' | 'large';
+  }): ReactElement | null;
 }

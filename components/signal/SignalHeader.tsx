@@ -1,60 +1,55 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import {
-  APP_ICON_VARIANTS,
-  loadAppIconVariant,
-  subscribeAppIconVariantChanged,
-  type AppIconVariant,
-} from '@/services/appIconPreference';
 
-export function SignalHeader() {
+type Props = {
+  /** SIGNAL 로고 탭 시 (보통 현재 탭 pull-to-refresh와 동일) */
+  onBrandPress?: () => void;
+};
+
+export function SignalHeader({ onBrandPress }: Props) {
   const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
-  const [iconVariant, setIconVariant] = useState<AppIconVariant>('blue');
-  const iconAccent = useMemo(
-    () => APP_ICON_VARIANTS.find((item) => item.id === iconVariant)?.accent || theme.green,
-    [iconVariant, theme.green],
-  );
+  const brandAccent = theme.green;
 
-  useEffect(() => {
-    let cancelled = false;
-    const reload = async () => {
-      const value = await loadAppIconVariant();
-      if (!cancelled) setIconVariant(value);
-    };
-    void reload();
-    const unsubscribe = subscribeAppIconVariantChanged(() => void reload());
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, []);
+  const logo = (
+    <>
+      <View style={styles.bars}>
+        <View style={[styles.bar, { height: 12, opacity: 0.38, backgroundColor: brandAccent }]} />
+        <View style={[styles.bar, { height: 19, opacity: 0.58, backgroundColor: brandAccent }]} />
+        <View style={[styles.bar, { height: 26, opacity: 0.78, backgroundColor: brandAccent }]} />
+        <View style={[styles.bar, { height: 33, opacity: 1, backgroundColor: brandAccent }]} />
+      </View>
+      <View style={styles.brandCol}>
+        <Text style={styles.brand}>SIGNAL</Text>
+        <Text style={styles.tag} numberOfLines={2}>
+          {t('headerTagline')}
+        </Text>
+      </View>
+    </>
+  );
 
   return (
     <View style={styles.wrap}>
       <View style={styles.topRow}>
-        <View style={styles.logoRow}>
-          <View style={styles.bars}>
-            <View style={[styles.bar, { height: 12, opacity: 0.38, backgroundColor: iconAccent }]} />
-            <View style={[styles.bar, { height: 19, opacity: 0.58, backgroundColor: iconAccent }]} />
-            <View style={[styles.bar, { height: 26, opacity: 0.78, backgroundColor: iconAccent }]} />
-            <View style={[styles.bar, { height: 33, opacity: 1, backgroundColor: iconAccent }]} />
-          </View>
-          <View style={styles.brandCol}>
-            <Text style={styles.brand}>SIGNAL</Text>
-            <Text style={styles.tag} numberOfLines={2}>
-              {t('headerTagline')}
-            </Text>
-          </View>
-        </View>
+        {onBrandPress ? (
+          <Pressable
+            onPress={onBrandPress}
+            style={({ pressed }) => [styles.logoRow, pressed && styles.logoRowPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('fabRefreshA11y')}>
+            {logo}
+          </Pressable>
+        ) : (
+          <View style={styles.logoRow}>{logo}</View>
+        )}
         <View style={styles.headerActions}>
           <Pressable
             onPress={() => router.push('/alerts')}
@@ -121,6 +116,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 8,
       minWidth: 0,
     },
+    logoRowPressed: {
+      opacity: 0.88,
+    },
     brandCol: {
       flex: 1,
       minWidth: 0,
@@ -139,7 +137,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     brand: {
       fontSize: sf(18),
       fontWeight: '900',
-      color: theme.text,
+      color: theme.green,
       letterSpacing: 0,
     },
     tag: {

@@ -100,6 +100,11 @@ import {
   type NotificationPrefs,
 } from '@/services/notificationPreferences';
 import {
+  loadNewsUnreadCheckIntervalMinutes,
+  NEWS_UNREAD_CHECK_INTERVAL_OPTIONS,
+  saveNewsUnreadCheckIntervalMinutes,
+} from '@/services/newsUnreadCheckIntervalPreference';
+import {
   loadMoreReferenceLinksVisible,
   saveMoreReferenceLinksVisible,
 } from '@/services/moreReferenceLinksPreference';
@@ -111,9 +116,16 @@ import {
 } from '@/services/appIconPreference';
 import {
   loadMainEntry,
+  MAIN_ENTRY_DISPLAY_ORDER,
   saveMainEntry,
   type MainEntryKey,
 } from '@/services/mainEntryPreference';
+import {
+  loadTabBarOpacityLevel,
+  saveTabBarOpacityLevel,
+  tabBarOpacityPercent,
+  type TabBarOpacityLevel,
+} from '@/services/tabBarOpacityPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import {
   getEffectiveSignalApiBaseUrl,
@@ -220,11 +232,11 @@ const APPEARANCE_MODE_LABEL: Record<ThemeAppearanceMode, MessageId> = {
   dark: 'settingsAppearanceDark',
 };
 
-const MAIN_ENTRY_ORDER: MainEntryKey[] = ['home', 'news', 'quotes', 'more'];
 const MAIN_ENTRY_LABEL: Record<MainEntryKey, MessageId> = {
   home: 'settingsEntryHome',
   news: 'settingsEntryNews',
   quotes: 'settingsEntryQuotes',
+  youtube: 'settingsEntryYoutube',
   more: 'settingsEntryMore',
 };
 
@@ -234,6 +246,8 @@ const APP_ICON_LABEL: Record<AppIconVariant, MessageId> = {
   dark: 'settingsAppIconDark',
   mono: 'settingsAppIconMono',
 };
+
+const TAB_BAR_OPACITY_ORDER: TabBarOpacityLevel[] = [0, 1, 2, 3, 4];
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
@@ -932,6 +946,8 @@ export default function SettingsScreen() {
   const [localMacroCalendar, setLocalMacroCalendar] = useState(false);
   const [localWatchlistEarnings, setLocalWatchlistEarnings] = useState(false);
   const [prefsReady, setPrefsReady] = useState(false);
+  const [newsUnreadCheckMinutes, setNewsUnreadCheckMinutes] = useState(5);
+  const [newsUnreadIntervalReady, setNewsUnreadIntervalReady] = useState(false);
 
   const [calendarScope, setCalendarScope] = useState<CalendarConcallScope>('mega');
   const [calendarScopeReady, setCalendarScopeReady] = useState(false);
@@ -974,6 +990,8 @@ export default function SettingsScreen() {
   const [mainEntryReady, setMainEntryReady] = useState(false);
   const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
   const [appIconReady, setAppIconReady] = useState(false);
+  const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
+  const [tabBarOpacityReady, setTabBarOpacityReady] = useState(false);
 
   const claudeAvailable = false;
   const openaiAvailable = false;
@@ -1053,12 +1071,17 @@ export default function SettingsScreen() {
   }, []);
 
   const reloadPrefs = useCallback(async () => {
-    const p = await loadNotificationPrefs();
+    const [p, newsIntervalMin] = await Promise.all([
+      loadNotificationPrefs(),
+      loadNewsUnreadCheckIntervalMinutes(),
+    ]);
     setPushEnabled(p.pushEnabled);
     setSignalAlertsEnabled(p.signalAlertsEnabled);
     setSignalWatchlistOnly(p.signalWatchlistOnly);
     setLocalMacroCalendar(p.localMacroCalendar);
     setLocalWatchlistEarnings(p.localWatchlistEarnings);
+    setNewsUnreadCheckMinutes(newsIntervalMin);
+    setNewsUnreadIntervalReady(true);
     if (p.earningsOnly) {
       await saveNotificationPrefs({ earningsOnly: false });
     }
@@ -1184,6 +1207,12 @@ export default function SettingsScreen() {
     setAppIconReady(true);
   }, []);
 
+  const reloadTabBarOpacityPref = useCallback(async () => {
+    const v = await loadTabBarOpacityLevel();
+    setTabBarOpacityLevel(v);
+    setTabBarOpacityReady(true);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       void reload();
@@ -1199,6 +1228,7 @@ export default function SettingsScreen() {
       void reloadMoreReferenceLinksPref();
       void reloadMainEntryPref();
       void reloadAppIconPref();
+      void reloadTabBarOpacityPref();
     }, [
       reload,
       reloadPrefs,
@@ -1213,6 +1243,7 @@ export default function SettingsScreen() {
       reloadMoreReferenceLinksPref,
       reloadMainEntryPref,
       reloadAppIconPref,
+      reloadTabBarOpacityPref,
     ]),
   );
 
@@ -1882,6 +1913,42 @@ export default function SettingsScreen() {
                 </>
               )}
             </View>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsNewsUnreadCheckKicker')}</Text>
+              <Text style={styles.quotesCardHint}>{t('settingsNewsUnreadCheckHint')}</Text>
+              {!newsUnreadIntervalReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
+                  {NEWS_UNREAD_CHECK_INTERVAL_OPTIONS.map((minutes) => (
+                    <Pressable
+                      key={minutes}
+                      onPress={() => {
+                        setNewsUnreadCheckMinutes(minutes);
+                        void saveNewsUnreadCheckIntervalMinutes(minutes);
+                      }}
+                      style={[
+                        styles.langSegment,
+                        newsUnreadCheckMinutes === minutes && styles.langSegmentActive,
+                      ]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: newsUnreadCheckMinutes === minutes }}
+                      accessibilityLabel={t('settingsNewsUnreadCheckOption', {
+                        minutes: String(minutes),
+                      })}>
+                      <Text
+                        style={[
+                          styles.langSegmentText,
+                          newsUnreadCheckMinutes === minutes && styles.langSegmentTextActive,
+                        ]}>
+                        {t('settingsNewsUnreadCheckOption', { minutes: String(minutes) })}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
           </>
         ) : null}
 
@@ -1962,22 +2029,19 @@ export default function SettingsScreen() {
             <Text style={styles.lead}>{t('settingsThemeLead')}</Text>
 
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsAppearanceSection')}</Text>
+              <Text style={styles.displayCardKicker}>{t('settingsThemeLanguageSection')}</Text>
               <View style={styles.langSegmentedTrack}>
-                {APPEARANCE_MODE_ORDER.map((mode) => (
+                {LOCALE_ORDER.map((loc) => (
                   <Pressable
-                    key={mode}
-                    onPress={() => void setAppearanceMode(mode)}
-                    style={[styles.langSegment, appearanceMode === mode && styles.langSegmentActive]}
+                    key={loc}
+                    onPress={() => void setLocale(loc)}
+                    style={[styles.langSegment, locale === loc && styles.langSegmentActive]}
                     accessibilityRole="radio"
-                    accessibilityState={{ selected: appearanceMode === mode }}
-                    accessibilityLabel={t(APPEARANCE_MODE_LABEL[mode])}>
+                    accessibilityState={{ selected: locale === loc }}
+                    accessibilityLabel={t(LOCALE_LABEL[loc])}>
                     <Text
-                      style={[
-                        styles.langSegmentText,
-                        appearanceMode === mode && styles.langSegmentTextActive,
-                      ]}>
-                      {t(APPEARANCE_MODE_LABEL[mode])}
+                      style={[styles.langSegmentText, locale === loc && styles.langSegmentTextActive]}>
+                      {t(LOCALE_LABEL[loc])}
                     </Text>
                   </Pressable>
                 ))}
@@ -1991,7 +2055,7 @@ export default function SettingsScreen() {
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
                 <View style={styles.langSegmentedTrack}>
-                  {MAIN_ENTRY_ORDER.map((entry) => (
+                  {MAIN_ENTRY_DISPLAY_ORDER.map((entry) => (
                     <Pressable
                       key={entry}
                       onPress={() => {
@@ -2016,43 +2080,22 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsThemeLanguageSection')}</Text>
+              <Text style={styles.displayCardKicker}>{t('settingsAppearanceSection')}</Text>
               <View style={styles.langSegmentedTrack}>
-                {LOCALE_ORDER.map((loc) => (
+                {APPEARANCE_MODE_ORDER.map((mode) => (
                   <Pressable
-                    key={loc}
-                    onPress={() => void setLocale(loc)}
-                    style={[styles.langSegment, locale === loc && styles.langSegmentActive]}
+                    key={mode}
+                    onPress={() => void setAppearanceMode(mode)}
+                    style={[styles.langSegment, appearanceMode === mode && styles.langSegmentActive]}
                     accessibilityRole="radio"
-                    accessibilityState={{ selected: locale === loc }}
-                    accessibilityLabel={t(LOCALE_LABEL[loc])}>
-                    <Text
-                      style={[styles.langSegmentText, locale === loc && styles.langSegmentTextActive]}>
-                      {t(LOCALE_LABEL[loc])}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsFontSizeSection')}</Text>
-              <Text style={styles.prefHint}>{t('settingsFontSizeHint')}</Text>
-              <View style={styles.langSegmentedTrack}>
-                {FONT_SIZE_PRESET_ORDER.map((id) => (
-                  <Pressable
-                    key={id}
-                    onPress={() => void setFontSizePreset(id)}
-                    style={[styles.langSegment, fontSizePreset === id && styles.langSegmentActive]}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: fontSizePreset === id }}
-                    accessibilityLabel={t(FONT_SIZE_PRESET_LABEL[id])}>
+                    accessibilityState={{ selected: appearanceMode === mode }}
+                    accessibilityLabel={t(APPEARANCE_MODE_LABEL[mode])}>
                     <Text
                       style={[
                         styles.langSegmentText,
-                        fontSizePreset === id && styles.langSegmentTextActive,
+                        appearanceMode === mode && styles.langSegmentTextActive,
                       ]}>
-                      {t(FONT_SIZE_PRESET_LABEL[id])}
+                      {t(APPEARANCE_MODE_LABEL[mode])}
                     </Text>
                   </Pressable>
                 ))}
@@ -2200,6 +2243,66 @@ export default function SettingsScreen() {
                   </Text>
                 </>
               )}
+            </View>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsTabBarOpacitySection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsTabBarOpacityHint')}</Text>
+              {!tabBarOpacityReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <View style={styles.langSegmentedTrack}>
+                  {TAB_BAR_OPACITY_ORDER.map((level) => (
+                    <Pressable
+                      key={level}
+                      onPress={() => {
+                        setTabBarOpacityLevel(level);
+                        void saveTabBarOpacityLevel(level);
+                      }}
+                      style={[
+                        styles.langSegment,
+                        tabBarOpacityLevel === level && styles.langSegmentActive,
+                      ]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: tabBarOpacityLevel === level }}
+                      accessibilityLabel={t('settingsTabBarOpacityOption', {
+                        percent: tabBarOpacityPercent(level),
+                      })}>
+                      <Text
+                        style={[
+                          styles.langSegmentText,
+                          tabBarOpacityLevel === level && styles.langSegmentTextActive,
+                        ]}>
+                        {tabBarOpacityPercent(level)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsFontSizeSection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsFontSizeHint')}</Text>
+              <View style={styles.langSegmentedTrack}>
+                {FONT_SIZE_PRESET_ORDER.map((id) => (
+                  <Pressable
+                    key={id}
+                    onPress={() => void setFontSizePreset(id)}
+                    style={[styles.langSegment, fontSizePreset === id && styles.langSegmentActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: fontSizePreset === id }}
+                    accessibilityLabel={t(FONT_SIZE_PRESET_LABEL[id])}>
+                    <Text
+                      style={[
+                        styles.langSegmentText,
+                        fontSizePreset === id && styles.langSegmentTextActive,
+                      ]}>
+                      {t(FONT_SIZE_PRESET_LABEL[id])}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
 
             <View style={styles.displayCard}>

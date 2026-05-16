@@ -2,7 +2,6 @@ import { Stack, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +13,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MarketSnapshotSection } from '@/components/summary/MarketSnapshotSection';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -482,7 +482,7 @@ export default function BriefingScreen() {
           style={styles.scroll}
           contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />
+            <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }>
           <OtaUpdateBanner />
 

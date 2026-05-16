@@ -1,6 +1,5 @@
-import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -19,7 +18,6 @@ export default function ModalScreen() {
         <Text style={styles.sub}>{t('modalInfoNext')}</Text>
         <Text style={styles.p}>{t('modalInfoNextBody')}</Text>
       </ScrollView>
-      <StatusBar style={Platform.OS === 'ios' ? 'light' : 'light'} />
     </View>
   );
 }

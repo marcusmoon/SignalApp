@@ -13,12 +13,12 @@
       "checkAutomatically": "NEVER",
       "fallbackToCacheTimeout": 0
     },
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0A0A0F"
+      "backgroundColor": "#F7F8FA"
     },
     "ios": {
       "supportsTablet": false,
@@ -33,8 +33,7 @@
           "upbit",
           "supertoss",
           "binance",
-          "bnc",
-          "coinbase"
+          "bnc"
         ]
       }
     },
@@ -55,12 +54,13 @@
     },
     "plugins": [
       "expo-updates",
+      "expo-background-fetch",
       "expo-router",
       "expo-apple-authentication",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#0A0A0F",
+          "backgroundColor": "#F7F8FA",
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
           "dark": {

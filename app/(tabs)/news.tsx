@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { useRouter } from 'expo-router';
 
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
@@ -57,6 +58,7 @@ import {
 } from '@/services/newsSegmentOrderPreference';
 import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreference';
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
+import { saveLastSeenNewsId } from '@/services/newsUnreadPreference';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { createScrollLoadMoreGate } from '@/utils/listScrollLoadMoreGate';
 import { fetchSignalNews, fetchSignalNewsSources, signalNewsToNewsItem } from '@/integrations/signal-api';
@@ -118,6 +120,7 @@ async function filterSignalNewsForKorea(items: SignalApiNewsItem[]): Promise<Sig
 export default function FeedScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
+  const router = useRouter();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
@@ -216,6 +219,7 @@ export default function FeedScreen() {
         setHasMore(meta.hasMore);
         const mapped = rows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
+        if (rows[0]?.id) void saveLastSeenNewsId(rows[0].id);
         return { newsIds: mapped.map((item) => item.id), insightIds: [] };
       }
 
@@ -254,6 +258,7 @@ export default function FeedScreen() {
       );
       setServerRows(firstPage);
       setHasMore(meta.hasMore);
+      if (firstPage[0]?.id) void saveLastSeenNewsId(firstPage[0].id);
 
       const mergedForSources = [...probe, ...firstPage];
       setSignalNewsPool(mergedForSources);
@@ -516,19 +521,29 @@ export default function FeedScreen() {
               </Text>
             </View>
           ) : null}
-          <View style={styles.segment}>
-            {segmentOrder.map((key) => (
-              <Pressable
-                key={key}
-                onPress={() => onPickSegment(key)}
-                style={[styles.segBtn, segment === key && styles.segBtnActive]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: segment === key }}>
-                <Text style={[styles.segText, segment === key && styles.segTextActive]}>
-                  {t(NEWS_SEGMENT_LABEL[key])}
-                </Text>
-              </Pressable>
-            ))}
+          <View style={styles.segmentRow}>
+            <View style={styles.segment}>
+              {segmentOrder.map((key) => (
+                <Pressable
+                  key={key}
+                  onPress={() => onPickSegment(key)}
+                  style={[styles.segBtn, segment === key && styles.segBtnActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: segment === key }}>
+                  <Text style={[styles.segText, segment === key && styles.segTextActive]}>
+                    {t(NEWS_SEGMENT_LABEL[key])}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <Pressable
+              onPress={() => router.push('/youtube')}
+              style={({ pressed }) => [styles.videoShortcut, pressed && { opacity: 0.72 }]}
+              accessibilityRole="button"
+              accessibilityLabel={t('newsOpenVideos')}>
+              <FontAwesome name="youtube-play" size={15} color={theme.green} />
+              <Text style={styles.videoShortcutText}>{t('newsOpenVideos')}</Text>
+            </Pressable>
           </View>
         </View>
 
@@ -728,12 +743,36 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.textMuted,
     },
     segment: {
+      flex: 1,
       flexDirection: 'row',
       backgroundColor: theme.bgElevated,
       borderRadius: SEGMENT_TAB_OUTER_RADIUS,
       padding: SEGMENT_TAB_PADDING,
       marginBottom: 0,
       gap: SEGMENT_TAB_GAP,
+    },
+    segmentRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    videoShortcut: {
+      minHeight: 36,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 5,
+      paddingHorizontal: 10,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+    },
+    videoShortcutText: {
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '900',
+      color: theme.green,
     },
     segBtn: {
       flex: 1,

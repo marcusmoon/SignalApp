@@ -103,6 +103,17 @@ import {
   loadMoreReferenceLinksVisible,
   saveMoreReferenceLinksVisible,
 } from '@/services/moreReferenceLinksPreference';
+import {
+  APP_ICON_VARIANTS,
+  loadAppIconVariant,
+  saveAppIconVariant,
+  type AppIconVariant,
+} from '@/services/appIconPreference';
+import {
+  loadMainEntry,
+  saveMainEntry,
+  type MainEntryKey,
+} from '@/services/mainEntryPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import {
   getEffectiveSignalApiBaseUrl,
@@ -207,6 +218,21 @@ const APPEARANCE_MODE_LABEL: Record<ThemeAppearanceMode, MessageId> = {
   system: 'settingsAppearanceSystem',
   light: 'settingsAppearanceLight',
   dark: 'settingsAppearanceDark',
+};
+
+const MAIN_ENTRY_ORDER: MainEntryKey[] = ['home', 'news', 'quotes', 'more'];
+const MAIN_ENTRY_LABEL: Record<MainEntryKey, MessageId> = {
+  home: 'settingsEntryHome',
+  news: 'settingsEntryNews',
+  quotes: 'settingsEntryQuotes',
+  more: 'settingsEntryMore',
+};
+
+const APP_ICON_LABEL: Record<AppIconVariant, MessageId> = {
+  blue: 'settingsAppIconBlue',
+  green: 'settingsAppIconGreen',
+  dark: 'settingsAppIconDark',
+  mono: 'settingsAppIconMono',
 };
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
@@ -822,6 +848,54 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 12,
       marginRight: -4,
     },
+    appIconGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      marginTop: 2,
+    },
+    appIconOption: {
+      width: '48%',
+      minWidth: 128,
+      flexGrow: 1,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      padding: 12,
+      gap: 10,
+    },
+    appIconOptionActive: {
+      borderColor: theme.green,
+      backgroundColor:
+        theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}12` : theme.greenDim,
+    },
+    appIconPreview: {
+      width: 42,
+      height: 42,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    appIconBars: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: 3,
+      height: 26,
+    },
+    appIconBar: {
+      width: 6,
+      borderRadius: 3,
+    },
+    appIconLabel: {
+      fontSize: sf(13),
+      lineHeight: sf(18),
+      fontWeight: '900',
+      color: theme.text,
+    },
   });
 }
 
@@ -896,6 +970,10 @@ export default function SettingsScreen() {
 
   const [moreRefLinksVisible, setMoreRefLinksVisible] = useState(true);
   const [moreRefLinksReady, setMoreRefLinksReady] = useState(false);
+  const [mainEntry, setMainEntry] = useState<MainEntryKey>('home');
+  const [mainEntryReady, setMainEntryReady] = useState(false);
+  const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
+  const [appIconReady, setAppIconReady] = useState(false);
 
   const claudeAvailable = false;
   const openaiAvailable = false;
@@ -1094,6 +1172,18 @@ export default function SettingsScreen() {
     setMoreRefLinksReady(true);
   }, []);
 
+  const reloadMainEntryPref = useCallback(async () => {
+    const v = await loadMainEntry();
+    setMainEntry(v);
+    setMainEntryReady(true);
+  }, []);
+
+  const reloadAppIconPref = useCallback(async () => {
+    const v = await loadAppIconVariant();
+    setAppIconVariant(v);
+    setAppIconReady(true);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       void reload();
@@ -1107,6 +1197,8 @@ export default function SettingsScreen() {
       void reloadNewsHashtagDisplayMax();
       void reloadSignalServerPrefs();
       void reloadMoreReferenceLinksPref();
+      void reloadMainEntryPref();
+      void reloadAppIconPref();
     }, [
       reload,
       reloadPrefs,
@@ -1119,6 +1211,8 @@ export default function SettingsScreen() {
       reloadNewsHashtagDisplayMax,
       reloadSignalServerPrefs,
       reloadMoreReferenceLinksPref,
+      reloadMainEntryPref,
+      reloadAppIconPref,
     ]),
   );
 
@@ -1891,6 +1985,37 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsMainEntrySection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsMainEntryHint')}</Text>
+              {!mainEntryReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <View style={styles.langSegmentedTrack}>
+                  {MAIN_ENTRY_ORDER.map((entry) => (
+                    <Pressable
+                      key={entry}
+                      onPress={() => {
+                        setMainEntry(entry);
+                        void saveMainEntry(entry);
+                      }}
+                      style={[styles.langSegment, mainEntry === entry && styles.langSegmentActive]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: mainEntry === entry }}
+                      accessibilityLabel={t(MAIN_ENTRY_LABEL[entry])}>
+                      <Text
+                        style={[
+                          styles.langSegmentText,
+                          mainEntry === entry && styles.langSegmentTextActive,
+                        ]}>
+                        {t(MAIN_ENTRY_LABEL[entry])}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsThemeLanguageSection')}</Text>
               <View style={styles.langSegmentedTrack}>
                 {LOCALE_ORDER.map((loc) => (
@@ -2021,6 +2146,60 @@ export default function SettingsScreen() {
                     presetId === 'custom' ? t('accentCustom') : t(ACCENT_LABEL[presetId]),
                 })}
               </Text>
+            </View>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsAppIconSection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsAppIconHint')}</Text>
+              {!appIconReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <>
+                  <View style={styles.appIconGrid}>
+                    {APP_ICON_VARIANTS.map((variant) => (
+                      <Pressable
+                        key={variant.id}
+                        onPress={() => {
+                          setAppIconVariant(variant.id);
+                          void saveAppIconVariant(variant.id);
+                        }}
+                        style={[
+                          styles.appIconOption,
+                          appIconVariant === variant.id && styles.appIconOptionActive,
+                        ]}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: appIconVariant === variant.id }}
+                        accessibilityLabel={t(APP_ICON_LABEL[variant.id])}>
+                        <View
+                          style={[
+                            styles.appIconPreview,
+                            { backgroundColor: variant.background },
+                          ]}>
+                          <View style={styles.appIconBars}>
+                            {[16, 22, 28].map((height, index) => (
+                              <View
+                                key={height}
+                                style={[
+                                  styles.appIconBar,
+                                  {
+                                    height,
+                                    backgroundColor: variant.accent,
+                                    opacity: 0.72 + index * 0.14,
+                                  },
+                                ]}
+                              />
+                            ))}
+                          </View>
+                        </View>
+                        <Text style={styles.appIconLabel}>{t(APP_ICON_LABEL[variant.id])}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Text style={[styles.prefHint, { marginTop: 10 }]}>
+                    {t('settingsAppIconNativeNote')}
+                  </Text>
+                </>
+              )}
             </View>
 
             <View style={styles.displayCard}>

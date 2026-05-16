@@ -1,27 +1,52 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import {
+  APP_ICON_VARIANTS,
+  loadAppIconVariant,
+  subscribeAppIconVariantChanged,
+  type AppIconVariant,
+} from '@/services/appIconPreference';
 
 export function SignalHeader() {
   const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const [iconVariant, setIconVariant] = useState<AppIconVariant>('blue');
+  const iconAccent = useMemo(
+    () => APP_ICON_VARIANTS.find((item) => item.id === iconVariant)?.accent || theme.green,
+    [iconVariant, theme.green],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const reload = async () => {
+      const value = await loadAppIconVariant();
+      if (!cancelled) setIconVariant(value);
+    };
+    void reload();
+    const unsubscribe = subscribeAppIconVariantChanged(() => void reload());
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
 
   return (
     <View style={styles.wrap}>
       <View style={styles.topRow}>
         <View style={styles.logoRow}>
           <View style={styles.bars}>
-            <View style={[styles.bar, { height: 12, opacity: 0.38 }]} />
-            <View style={[styles.bar, { height: 19, opacity: 0.58 }]} />
-            <View style={[styles.bar, { height: 26, opacity: 0.78 }]} />
-            <View style={[styles.bar, { height: 33, opacity: 1 }]} />
+            <View style={[styles.bar, { height: 12, opacity: 0.38, backgroundColor: iconAccent }]} />
+            <View style={[styles.bar, { height: 19, opacity: 0.58, backgroundColor: iconAccent }]} />
+            <View style={[styles.bar, { height: 26, opacity: 0.78, backgroundColor: iconAccent }]} />
+            <View style={[styles.bar, { height: 33, opacity: 1, backgroundColor: iconAccent }]} />
           </View>
           <View style={styles.brandCol}>
             <Text style={styles.brand}>SIGNAL</Text>
@@ -109,7 +134,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     bar: {
       width: 8,
-      backgroundColor: theme.green,
       borderRadius: 4,
     },
     brand: {

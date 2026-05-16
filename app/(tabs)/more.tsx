@@ -42,7 +42,7 @@ const HUB_META: Record<
 };
 
 const ROW_GAP = 10;
-const ROW_HEIGHT = 76;
+const ROW_HEIGHT = 62;
 const MORE_HUB_LIST_HEIGHT = ROW_HEIGHT + 16;
 
 export default function MoreHubScreen() {
@@ -142,7 +142,7 @@ export default function MoreHubScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={name}>
                     <View style={styles.iconCircle}>
-                      <FontAwesome name={meta.icon} size={20} color={theme.green} />
+                      <FontAwesome name={meta.icon} size={18} color={theme.green} />
                     </View>
                     <Text style={styles.rowTitle}>{name}</Text>
                     <FontAwesome name="chevron-right" size={14} color={theme.textDim} />
@@ -177,7 +177,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     rowWrap: {
       flexDirection: 'row',
       alignItems: 'center',
-      borderRadius: 14,
+      borderRadius: 13,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -193,22 +193,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 14,
-      paddingVertical: 14,
-      paddingLeft: 14,
+      gap: 11,
+      paddingVertical: 10,
+      paddingLeft: 12,
       paddingRight: 8,
       minHeight: ROW_HEIGHT - 2,
     },
     dragHandle: {
-      width: 44,
-      height: 52,
+      width: 40,
+      height: 46,
       alignItems: 'center',
       justifyContent: 'center',
     },
     iconCircle: {
-      width: 44,
-      height: 44,
-      borderRadius: 12,
+      width: 36,
+      height: 36,
+      borderRadius: 10,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.greenDim,
@@ -217,7 +217,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     rowTitle: {
       flex: 1,
-      fontSize: sf(16),
+      fontSize: sf(15),
       fontWeight: '800',
       color: theme.text,
     },

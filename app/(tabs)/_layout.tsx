@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import type { BottomTabBarButtonProps, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
@@ -14,20 +14,29 @@ import {
 import { SlackTabBarButton } from '@/components/SlackTabBarButton';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { fetchSignalNews } from '@/integrations/signal-api';
+import { hasSignalApi } from '@/services/env';
+import {
+  loadLastSeenNewsId,
+  subscribeNewsSeenChanged,
+} from '@/services/newsUnreadPreference';
 
 const TAB_ICON_SIZE = 22;
 
 function TabBarIcon({
   name,
   color,
+  showDot,
 }: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
   color: string;
   focused?: boolean;
+  showDot?: boolean;
 }) {
   return (
     <View style={tabIconWrap}>
       <FontAwesome name={name} size={TAB_ICON_SIZE} color={color} />
+      {showDot ? <View style={tabIconDot} /> : null}
     </View>
   );
 }
@@ -38,10 +47,44 @@ const tabIconWrap = {
   height: TAB_ICON_SIZE + 2,
 };
 
+const tabIconDot = {
+  position: 'absolute' as const,
+  top: 0,
+  right: -2,
+  width: 7,
+  height: 7,
+  borderRadius: 3.5,
+  backgroundColor: '#F04452',
+};
+
 export default function TabLayout() {
   const { theme } = useSignalTheme();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
+  const [newsHasUnread, setNewsHasUnread] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function checkUnread() {
+      if (!hasSignalApi()) return;
+      try {
+        const [lastSeen, latest] = await Promise.all([
+          loadLastSeenNewsId(),
+          fetchSignalNews({ locale, category: 'global', limit: 1, offset: 0 }),
+        ]);
+        const latestId = latest.items[0]?.id || null;
+        if (!cancelled && latestId) setNewsHasUnread(lastSeen !== latestId);
+      } catch {
+        /* Best-effort tab badge only. */
+      }
+    }
+    void checkUnread();
+    const unsubscribe = subscribeNewsSeenChanged(() => void checkUnread());
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [locale]);
 
   /**
    * 웹: @react-navigation/bottom-tabs 의 BottomTabItem(uikit)이 `padding: 5` + 아이콘(~24) + 라벨(lineHeight) +
@@ -163,7 +206,9 @@ export default function TabLayout() {
         name="news"
         options={{
           title: t('tabNews'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="newspaper-o" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="newspaper-o" color={color} focused={focused} showDot={newsHasUnread} />
+          ),
         }}
       />
       <Tabs.Screen

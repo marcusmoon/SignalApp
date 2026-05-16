@@ -2,7 +2,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -21,6 +21,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { hasSignalApi } from '@/services/env';
+import { loadMainEntry, mainEntryHref } from '@/services/mainEntryPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import {
   fetchSignalInsights,
@@ -39,6 +40,8 @@ import type {
 } from '@/integrations/signal-api/types';
 import type { NewsItem, YoutubeItem } from '@/types/signal';
 import type { MessageId } from '@/locales/messages';
+
+let initialEntryApplied = false;
 
 type HomeState = {
   insights: SignalApiInsight[];
@@ -101,6 +104,22 @@ function moodMessageId(mood: ReturnType<typeof marketMood>): MessageId {
   return 'homeMoodQuiet';
 }
 
+function homeHeadline(params: {
+  insights: SignalApiInsight[];
+  quotes: SignalApiMarketQuote[];
+  fallback: string;
+}): string {
+  const insight = params.insights[0];
+  if (insight?.title) return insight.title;
+  const quote = [...params.quotes]
+    .filter((row) => typeof row.changePercent === 'number' && Number.isFinite(row.changePercent))
+    .sort((a, b) => Math.abs(Number(b.changePercent)) - Math.abs(Number(a.changePercent)))[0];
+  if (quote) {
+    return `${quote.symbol} ${formatPct(quote.changePercent)} · ${quote.name || params.fallback}`;
+  }
+  return params.fallback;
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const isFocused = useIsFocused();
@@ -113,13 +132,35 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestSeq = useRef(0);
+
+  useEffect(() => {
+    if (initialEntryApplied) return;
+    initialEntryApplied = true;
+    void loadMainEntry().then((entry) => {
+      const href = mainEntryHref(entry);
+      if (href) router.replace(href);
+    });
+  }, [router]);
 
   const mood = useMemo(
     () => marketMood(state.insights, state.watchQuotes),
     [state.insights, state.watchQuotes],
   );
 
+  const headline = useMemo(
+    () =>
+      homeHeadline({
+        insights: state.insights,
+        quotes: state.watchQuotes,
+        fallback: t(moodMessageId(mood)),
+      }),
+    [mood, state.insights, state.watchQuotes, t],
+  );
+
   const load = useCallback(async (forceRefresh = false) => {
+    const seq = requestSeq.current + 1;
+    requestSeq.current = seq;
     setError(null);
     if (!hasSignalApi()) {
       setState(EMPTY_STATE);
@@ -129,7 +170,7 @@ export default function HomeScreen() {
 
     const cacheMode = forceRefresh ? 'bypass' : 'use';
     const watchSymbols = (await loadWatchlistSymbols()).slice(0, 6);
-    const [insightPage, quoteRows, newsPage, youtubePage] = await Promise.all([
+    const [insightPage, quoteRows] = await Promise.all([
       fetchSignalInsights({
         date: 'today',
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -139,8 +180,6 @@ export default function HomeScreen() {
       watchSymbols.length > 0
         ? fetchSignalMarketQuotes({ symbols: watchSymbols, limit: Math.max(watchSymbols.length, 1) })
         : Promise.resolve([] as SignalApiMarketQuote[]),
-      fetchSignalNews({ locale, category: 'global', limit: 4, offset: 0 }, { cacheMode }),
-      fetchSignalYoutube({ sort: 'popular', limit: 2, offset: 0 }, { cacheMode }),
     ]);
 
     const bySymbol = new Map(quoteRows.map((row) => [String(row.symbol || '').toUpperCase(), row]));
@@ -148,12 +187,26 @@ export default function HomeScreen() {
       .map((symbol) => bySymbol.get(symbol.toUpperCase()))
       .filter((row): row is SignalApiMarketQuote => Boolean(row));
 
-    setState({
+    if (requestSeq.current !== seq) return;
+    setState((prev) => ({
+      ...prev,
       insights: insightPage.items,
       watchQuotes: orderedQuotes,
-      news: newsPage.items.map((item: SignalApiNewsItem) => signalNewsToNewsItem(item, locale)),
-      videos: youtubePage.items.map((item: SignalApiYoutubeVideo) => signalYoutubeToYoutubeItem(item, locale)),
       watchSymbols,
+    }));
+
+    void Promise.all([
+      fetchSignalNews({ locale, category: 'global', limit: 5, offset: 0 }, { cacheMode }),
+      fetchSignalYoutube({ sort: 'popular', limit: 2, offset: 0 }, { cacheMode }),
+    ]).then(([newsPage, youtubePage]) => {
+      if (requestSeq.current !== seq) return;
+      setState((prev) => ({
+        ...prev,
+        news: newsPage.items.map((item: SignalApiNewsItem) => signalNewsToNewsItem(item, locale)),
+        videos: youtubePage.items.map((item: SignalApiYoutubeVideo) => signalYoutubeToYoutubeItem(item, locale)),
+      }));
+    }).catch(() => {
+      /* Evidence is secondary; keep the primary home usable. */
     });
   }, [locale, t]);
 
@@ -190,6 +243,22 @@ export default function HomeScreen() {
 
   const topInsights = state.insights.slice(0, 3);
   const topQuotes = state.watchQuotes.slice(0, 3);
+  const evidenceRows = [
+    ...state.news.slice(0, 2).map((item) => ({
+      key: `news-${item.id}`,
+      icon: 'newspaper-o' as const,
+      title: item.titleKo,
+      meta: item.source || t('tabNews'),
+      onPress: () => router.push('/news'),
+    })),
+    ...state.videos.slice(0, 1).map((item) => ({
+      key: `youtube-${item.id}`,
+      icon: 'youtube-play' as const,
+      title: item.title,
+      meta: item.channel || t('tabYoutube'),
+      onPress: () => router.push('/youtube'),
+    })),
+  ];
   const bottomPad = 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
 
   return (
@@ -203,7 +272,7 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.green} />}>
         <View style={styles.hero}>
           <Text style={styles.eyebrow}>{t('homeEyebrow')}</Text>
-          <Text style={styles.heroTitle}>{t(moodMessageId(mood))}</Text>
+          <Text style={styles.heroTitle}>{headline}</Text>
           <View style={styles.pillRow}>
             <StatusPill
               icon="bolt"
@@ -239,9 +308,20 @@ export default function HomeScreen() {
           </View>
         ) : (
           <>
+            <Pressable
+              onPress={() => router.push('/briefing')}
+              style={({ pressed }) => [styles.primaryAction, pressed && styles.pressed]}
+              accessibilityRole="button">
+              <View style={styles.primaryActionIcon}>
+                <FontAwesome name="briefcase" size={15} color="#FFFFFF" />
+              </View>
+              <Text style={styles.primaryActionText}>{t('homeBriefingAction')}</Text>
+              <FontAwesome name="chevron-right" size={13} color="#FFFFFF" />
+            </Pressable>
+
             <SectionHeader
               title={t('homeTodaySection')}
-              action={t('homeSeeAll')}
+              action={t('homeOpenSignals')}
               onPress={() => router.push('/insights')}
               theme={theme}
               scaleFont={scaleFont}
@@ -279,7 +359,7 @@ export default function HomeScreen() {
 
             <SectionHeader
               title={t('homeWatchSection')}
-              action={t('homeOpenQuotes')}
+              action={t('homeOpenQuotesFull')}
               onPress={() => router.push('/quotes')}
               theme={theme}
               scaleFont={scaleFont}
@@ -316,38 +396,29 @@ export default function HomeScreen() {
             </View>
 
             <SectionHeader
-              title={t('homeEvidenceSection')}
-              action={t('homeOpenNews')}
+              title={t('homeRelatedSection')}
+              action={t('homeOpenNewsFull')}
               onPress={() => router.push('/news')}
               theme={theme}
               scaleFont={scaleFont}
             />
-            <View style={styles.evidenceGrid}>
-              <EvidenceCard
-                icon="newspaper-o"
-                title={state.news[0]?.titleKo || t('homeEvidenceNewsFallback')}
-                meta={state.news[0]?.source || t('tabNews')}
-                onPress={() => router.push('/news')}
-                theme={theme}
-                scaleFont={scaleFont}
-              />
-              <EvidenceCard
-                icon="youtube-play"
-                title={state.videos[0]?.title || t('homeEvidenceYoutubeFallback')}
-                meta={state.videos[0]?.channel || t('tabYoutube')}
-                onPress={() => router.push('/youtube')}
-                theme={theme}
-                scaleFont={scaleFont}
-              />
+            <View style={styles.evidenceList}>
+              {evidenceRows.length > 0 ? (
+                evidenceRows.map((item) => (
+                  <EvidenceCard
+                    key={item.key}
+                    icon={item.icon}
+                    title={item.title}
+                    meta={item.meta}
+                    onPress={item.onPress}
+                    theme={theme}
+                    scaleFont={scaleFont}
+                  />
+                ))
+              ) : (
+                <EmptyCard text={t('homeEvidenceFallback')} theme={theme} scaleFont={scaleFont} />
+              )}
             </View>
-
-            <Pressable
-              onPress={() => router.push('/briefing')}
-              style={({ pressed }) => [styles.primaryAction, pressed && styles.pressed]}
-              accessibilityRole="button">
-              <Text style={styles.primaryActionText}>{t('homeBriefingAction')}</Text>
-              <FontAwesome name="chevron-right" size={13} color="#FFFFFF" />
-            </Pressable>
           </>
         )}
       </ScrollView>
@@ -625,19 +696,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     up: { color: theme.green },
     down: { color: theme.danger },
-    evidenceGrid: {
-      flexDirection: 'row',
-      gap: 10,
-    },
-    evidenceCard: {
-      flex: 1,
-      minHeight: 150,
+    evidenceList: {
       borderRadius: 22,
+      overflow: 'hidden',
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      padding: 16,
-      gap: 10,
+    },
+    evidenceCard: {
+      minHeight: 76,
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
     },
     evidenceIcon: {
       width: 34,
@@ -649,16 +723,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     evidenceTitle: {
       flex: 1,
+      minWidth: 0,
       fontSize: sf(13),
       lineHeight: sf(19.5),
       fontWeight: '900',
       color: theme.text,
     },
     evidenceMeta: {
+      maxWidth: 82,
       fontSize: sf(11),
       lineHeight: sf(16.5),
       fontWeight: '800',
       color: theme.textDim,
+      textAlign: 'right',
     },
     primaryAction: {
       minHeight: 52,
@@ -669,6 +746,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       gap: 8,
       marginTop: 2,
+    },
+    primaryActionIcon: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(255,255,255,0.18)',
     },
     primaryActionText: {
       fontSize: sf(15),

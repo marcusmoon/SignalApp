@@ -67,7 +67,8 @@ assets/
 | 화면/기능 | 참고 |
 |-----------|------|
 | 시세 탭 | `app/(tabs)/quotes.tsx`, 순서 `quotesSegmentOrderPreference`, Signal API 시세·코인, 보조 캐시 `services/cache/quotesCache.ts` |
-| 뉴스 탭 | `app/(tabs)/index.tsx`, 순서 `newsSegmentOrderPreference`, `@/domain/news`, `components/signal/NewsCard`, 해시태그 표시 설정 `services/newsHashtagDisplayPreference.ts`, `fetchSignalNews` / `integrations/signal-api/cache/newsCache`, 저장 `services/newsKoreaKeywordsPreference.ts` |
+| 홈 탭 | `app/(tabs)/index.tsx` — 오늘의 시그널, 관심종목, 뉴스·영상 근거를 묶은 첫 화면 |
+| 뉴스 탭 | `app/(tabs)/news.tsx`, 순서 `newsSegmentOrderPreference`, `@/domain/news`, `components/signal/NewsCard`, 해시태그 표시 설정 `services/newsHashtagDisplayPreference.ts`, `fetchSignalNews` / `integrations/signal-api/cache/newsCache`, 저장 `services/newsKoreaKeywordsPreference.ts` |
 | 컨콜 | `@/domain/concalls`(연도·분기·범위·실적 행), 저장 `services/concallFiscalFilter.ts`, 서버 API `integrations/signal-api/concalls.ts`, 흐름 `services/concalls.ts` |
 | 유튜브 검색 보조 | `@/domain/youtube`, 카드에서 열기 `utils/openYoutube.ts` |
 | 설정 | `app/settings.tsx` — 뉴스·유튜브·시세·캘린더·표시·알림, Signal 서버 endpoint 오버라이드 `services/signalServerEndpoint.ts` |

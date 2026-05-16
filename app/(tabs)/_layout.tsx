@@ -155,15 +155,15 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: t('tabNews'),
+          title: t('tabHome'),
           tabBarIcon: ({ color, focused }) => <TabBarIcon name="home" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
-        name="youtube"
+        name="news"
         options={{
-          title: t('tabYoutube'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="youtube-play" color={color} focused={focused} />,
+          title: t('tabNews'),
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="newspaper-o" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -178,6 +178,12 @@ export default function TabLayout() {
         options={{
           title: t('tabMore'),
           tabBarIcon: ({ color, focused }) => <TabBarIcon name="th-large" color={color} focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="youtube"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

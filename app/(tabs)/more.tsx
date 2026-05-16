@@ -36,6 +36,8 @@ const HUB_META: Record<
 > = {
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
   briefing: { href: '/briefing', icon: 'briefcase', titleId: 'screenBriefing' },
+  youtube: { href: '/youtube', icon: 'youtube-play', titleId: 'tabYoutube' },
+  calendar: { href: '/calendar', icon: 'calendar', titleId: 'a11yCalendar' },
   settings: { href: '/settings' as Href, icon: 'cog', titleId: 'screenSettings' },
 };
 

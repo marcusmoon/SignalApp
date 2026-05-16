@@ -361,6 +361,12 @@ Toss식 문구는 설명보다 결론을 먼저 말한다.
 
 다음 적용 후보:
 
-1. `app/(tabs)/index.tsx`를 실제 HomeFeed / NewsFeed 컴포넌트로 분리한다.
-2. YouTube를 하단 주 탭에서 더보기 또는 홈 근거 영역으로 옮길지 사용자 지표 기준으로 결정한다.
+1. 홈/뉴스 분리는 적용했다. `app/(tabs)/index.tsx`는 홈, `app/(tabs)/news.tsx`는 원문 뉴스 피드가 담당한다.
+2. YouTube는 하단 주 탭에서 제외하고 더보기와 홈 근거 영역으로 이동했다.
 3. 관심 브리핑과 종목 상세의 “오늘 볼 이유” 모델을 하나로 합친다.
+
+외부 문서 기준 보정:
+
+- Toss/TDS color role 문서의 grey/blue semantic scale 기준에 맞춰 배경·카드·보조 표면·primary action을 분리한다.
+- TDS typography 문서처럼 고정 장식보다 위계와 접근성 스케일을 우선한다.
+- TDS button 문서처럼 핵심 행동은 filled primary, 보조 이동은 텍스트/weak action으로 구분한다.

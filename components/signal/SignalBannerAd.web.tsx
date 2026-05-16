@@ -7,7 +7,7 @@ export function SignalBannerAd() {
   const { theme } = useSignalTheme();
   const { t } = useLocale();
   return (
-    <View style={[styles.wrap, { borderColor: theme.border, backgroundColor: '#12121A' }]}>
+    <View style={[styles.wrap, { borderColor: theme.border, backgroundColor: theme.card }]}>
       <Text style={[styles.badge, { color: theme.textDim }]}>{t('commonAd')}</Text>
       <Text style={[styles.hint, { color: theme.textMuted }]}>{t('adBannerWebHint')}</Text>
     </View>

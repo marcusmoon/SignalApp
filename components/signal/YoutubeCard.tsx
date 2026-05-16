@@ -28,7 +28,7 @@ export function YoutubeCard({ item }: Props) {
             <Image source={{ uri: item.thumbnailUrl }} style={styles.thumbImg} contentFit="cover" />
           ) : null}
           <View style={styles.playCircle}>
-            <FontAwesome name="play" size={18} color="#0A0A0F" style={{ marginLeft: 3 }} />
+            <FontAwesome name="play" size={18} color="#FFFFFF" style={{ marginLeft: 3 }} />
           </View>
           <Text style={styles.duration}>{item.durationLabel}</Text>
         </View>

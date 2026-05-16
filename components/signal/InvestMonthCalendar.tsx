@@ -209,7 +209,7 @@ function makeStyles(theme: AppTheme, compact: boolean) {
     cellPressed: { opacity: 0.85 },
     cellDisabled: { opacity: 0.32 },
     dayNum: { fontSize: compact ? 12 : 13, fontWeight: '700', color: theme.text },
-    dayNumSelected: { color: '#0A0A0F' },
+    dayNumSelected: { color: '#FFFFFF' },
     dayNumToday: { color: theme.green },
     dayNumDisabled: { color: theme.textDim },
     dot: {
@@ -219,7 +219,7 @@ function makeStyles(theme: AppTheme, compact: boolean) {
       backgroundColor: theme.accentBlue,
       marginTop: 2,
     },
-    dotOnSelected: { backgroundColor: '#0A0A0F' },
+    dotOnSelected: { backgroundColor: '#FFFFFF' },
     dotPlaceholder: { height: 6, marginTop: 2 },
   });
 }

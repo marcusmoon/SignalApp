@@ -59,6 +59,6 @@ const styles = StyleSheet.create({
   line: {
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#1E1E28',
+    backgroundColor: '#E5E8EB',
   },
 });

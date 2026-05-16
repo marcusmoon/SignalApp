@@ -18,10 +18,10 @@ export function SignalHeader() {
       <View style={styles.topRow}>
         <View style={styles.logoRow}>
           <View style={styles.bars}>
-            <View style={[styles.bar, { height: 16, opacity: 0.35 }]} />
-            <View style={[styles.bar, { height: 26, opacity: 0.6 }]} />
-            <View style={[styles.bar, { height: 36, opacity: 0.82 }]} />
-            <View style={[styles.bar, { height: 46, opacity: 1 }]} />
+            <View style={[styles.bar, { height: 12, opacity: 0.38 }]} />
+            <View style={[styles.bar, { height: 19, opacity: 0.58 }]} />
+            <View style={[styles.bar, { height: 26, opacity: 0.78 }]} />
+            <View style={[styles.bar, { height: 33, opacity: 1 }]} />
           </View>
           <View style={styles.brandCol}>
             <Text style={styles.brand}>SIGNAL</Text>
@@ -36,21 +36,21 @@ export function SignalHeader() {
             style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel={t('a11yAlerts')}>
-            <FontAwesome name="bell" size={21} color={theme.textDim} />
+            <FontAwesome name="bell" size={18} color={theme.textMuted} />
           </Pressable>
           <Pressable
             onPress={() => router.push('/calendar')}
             style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel={t('a11yCalendar')}>
-            <FontAwesome name="calendar" size={21} color={theme.textDim} />
+            <FontAwesome name="calendar" size={18} color={theme.textMuted} />
           </Pressable>
           <Pressable
             onPress={() => router.push('/account')}
             style={styles.iconBtn}
             accessibilityRole="button"
             accessibilityLabel={t('screenAccount')}>
-            <FontAwesome name="user-circle" size={21} color={theme.textDim} />
+            <FontAwesome name="user-circle" size={18} color={theme.textMuted} />
           </Pressable>
         </View>
       </View>
@@ -62,11 +62,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     wrap: {
       paddingHorizontal: 16,
-      paddingTop: 10,
-      paddingBottom: 12,
+      paddingTop: 8,
+      paddingBottom: 10,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
-      backgroundColor: theme.bg,
+      backgroundColor: theme.card,
     },
     topRow: {
       flexDirection: 'row',
@@ -79,14 +79,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignItems: 'center',
       flexShrink: 0,
       marginRight: -2,
+      gap: 6,
     },
     iconBtn: {
-      paddingVertical: 10,
-      paddingHorizontal: 10,
-      minWidth: 44,
-      minHeight: 44,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: theme.bgElevated,
     },
     logoRow: {
       flex: 1,
@@ -102,20 +103,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     bars: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      gap: 4,
-      height: 46,
+      gap: 3,
+      height: 34,
       flexShrink: 0,
     },
     bar: {
-      width: 9,
+      width: 8,
       backgroundColor: theme.green,
-      borderRadius: 3,
+      borderRadius: 4,
     },
     brand: {
       fontSize: sf(18),
       fontWeight: '900',
-      color: theme.green,
-      letterSpacing: -0.4,
+      color: theme.text,
+      letterSpacing: 0,
     },
     tag: {
       marginTop: 1,

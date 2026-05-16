@@ -22,7 +22,7 @@ export const ja = {
   adSdkLoadFailed: '広告SDKを読み込めませんでした。',
   adNativeLoadFailed: '広告を読み込めませんでした。',
 
-  tabNews: 'ニュース',
+  tabNews: 'ホーム',
   tabYoutube: 'YouTube',
   tabQuotes: '相場',
   tabCalls: '決算',
@@ -370,11 +370,6 @@ export const ja = {
   settingsFontSizeCompact: '小',
   settingsFontSizeStandard: '標準',
   settingsFontSizeComfortable: '大',
-  settingsTabBarGlassKicker: 'アプリのガラス',
-  settingsTabBarGlassHint:
-    '横のトラック上の縦のつまみをドラッグして調整します。右ほど濃く、左ほど透明です。下のプレビューが適用イメージです。変更はすぐに反映されます。',
-  settingsTabBarGlassA11y: 'アプリのガラス強度 {{percent}}パーセント',
-  settingsTabBarGlassPreviewKicker: 'プレビュー',
   settingsDisplayPreviewLabel: 'プレビュー',
   settingsDisplaySelectedTheme: '選択: {{name}}',
 

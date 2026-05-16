@@ -118,6 +118,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     badgeText: { color: theme.green, fontSize: sf(10), fontWeight: '900' },
     meta: { color: theme.textDim, fontSize: sf(11), fontWeight: '700' },
     empty: { color: theme.textMuted, textAlign: 'center', marginTop: 20, fontSize: sf(13), fontWeight: '700' },
-    error: { color: '#E0A0A0', fontSize: sf(12), lineHeight: sf(18), fontWeight: '800' },
+    error: { color: theme.danger, fontSize: sf(12), lineHeight: sf(18), fontWeight: '800' },
   });
 }

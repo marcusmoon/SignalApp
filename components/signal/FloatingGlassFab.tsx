@@ -35,16 +35,16 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
       accessibilityState={{ disabled: Boolean(disabled) }}
       accessibilityLabel={accessibilityLabel}>
       {Platform.OS === 'web' ? (
-        <View style={styles.blurFallback} />
+        <View style={[styles.blurFallback, { backgroundColor: theme.card }]} />
       ) : (
         <BlurView
-          intensity={Platform.OS === 'ios' ? 100 : 85}
-          tint="dark"
+          intensity={Platform.OS === 'ios' ? 82 : 70}
+          tint="light"
           experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
           style={StyleSheet.absoluteFill}
         />
       )}
-      <View pointerEvents="none" style={styles.ring} />
+      <View pointerEvents="none" style={[styles.ring, { borderColor: theme.border }]} />
       <FontAwesome name={iconName} size={19} color={theme.green} />
     </Pressable>
   );
@@ -60,22 +60,20 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: '#191F28',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
     elevation: 10,
   },
   blurFallback: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10,10,15,0.88)',
     borderRadius: FLOATING_GLASS_FAB_SIZE / 2,
   },
   ring: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: FLOATING_GLASS_FAB_SIZE / 2,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.14)',
   },
   fabPressed: {
     opacity: 0.9,

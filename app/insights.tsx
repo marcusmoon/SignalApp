@@ -508,7 +508,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     err: {
       fontSize: sf(13),
-      color: '#E0A0A0',
+      color: theme.danger,
       textAlign: 'center',
       lineHeight: sf(19),
     },

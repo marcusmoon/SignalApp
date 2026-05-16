@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     minHeight: 120,
     borderRadius: 8,
     marginTop: 10,
-    backgroundColor: '#0A0A0F',
+    backgroundColor: '#E5E8EB',
   },
   cta: {
     marginTop: 10,
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 13,
     fontWeight: '800',
-    color: '#0A0A0F',
+    color: '#FFFFFF',
     overflow: 'hidden',
   },
 });

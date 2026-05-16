@@ -25,12 +25,6 @@ import developerAvatar from '@/assets/images/developer-avatar.png';
 import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
 import {
-  DEFAULT_TAB_BAR_GLASS_LEVEL,
-  DEFAULT_TAB_BAR_GLASS_PERCENT,
-  TAB_BAR_GLASS_PARAMS,
-  type TabBarGlassLevel,
-} from '@/constants/tabBarGlass';
-import {
   TAB_BAR_FLOAT_MARGIN_BOTTOM,
   TAB_BAR_FLOAT_MARGIN_H,
   TAB_BAR_FLOAT_RADIUS,
@@ -39,9 +33,6 @@ import type { AppTheme } from '@/constants/theme';
 import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/domain/youtube/constants';
 import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
-import { TabBarGlassSurface } from '@/components/TabBarGlassSurface';
-import { TabBarGlassPreview } from '@/components/TabBarGlassPreview';
-import { TabBarGlassSlider } from '@/components/TabBarGlassSlider';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { formatMessage, type AppLocale, type MessageId } from '@/locales/messages';
 import {
@@ -112,7 +103,6 @@ import {
   saveMoreReferenceLinksVisible,
 } from '@/services/moreReferenceLinksPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
-import { loadTabBarGlassLevel, saveTabBarGlassLevel } from '@/services/tabBarGlassPreference';
 import {
   getEffectiveSignalApiBaseUrl,
   loadSignalServerPrefs,
@@ -172,10 +162,6 @@ const SIGNAL_SERVER_LABEL: Record<SignalServerMode, MessageId> = {
 /** 3 rows + gaps — 뉴스 글로벌/코인/한국 순서 */
 const NEWS_SEGMENT_ORDER_ROW_GAP = 8;
 const NEWS_SEGMENT_ORDER_LIST_HEIGHT = 54 * 3 + NEWS_SEGMENT_ORDER_ROW_GAP * 2 + 20;
-
-function tabBarGlassLevelToPercent(lv: TabBarGlassLevel): number {
-  return Math.round((lv / 4) * 100);
-}
 
 /** 4 rows + gaps; extra padding so last row is not clipped (FlatList viewport / card overflow). */
 const QUOTES_SEGMENT_ORDER_ROW_GAP = 8;
@@ -263,8 +249,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     card: {
       padding: 12,
-      borderRadius: 10,
-      backgroundColor: '#12121A',
+      borderRadius: 14,
+      backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
       marginBottom: 20,
@@ -295,7 +281,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     notificationCard: {
       padding: 12,
       borderRadius: 12,
-      backgroundColor: '#12121A',
+      backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
     },
@@ -345,8 +331,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingVertical: 10,
       paddingHorizontal: 12,
       marginBottom: 6,
-      borderRadius: 8,
-      backgroundColor: '#14141C',
+      borderRadius: 12,
+      backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
     },
@@ -363,7 +349,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingVertical: 10,
       fontSize: sf(15),
       color: theme.text,
-      backgroundColor: '#12121A',
+      backgroundColor: theme.card,
     },
     addBtn: {
       paddingHorizontal: 16,
@@ -371,22 +357,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderRadius: 8,
       backgroundColor: theme.green,
     },
-    addBtnText: { fontSize: sf(14), fontWeight: '800', color: '#0A0A0F' },
+    addBtnText: { fontSize: sf(14), fontWeight: '800', color: '#FFFFFF' },
     resetBtn: {
       paddingVertical: 12,
       alignItems: 'center',
       borderRadius: 8,
       borderWidth: 1,
-      borderColor: '#553333',
-      backgroundColor: '#1A1212',
+      borderColor: '#FFD6DA',
+      backgroundColor: theme.dangerDim,
     },
-    resetBtnText: { fontSize: sf(13), fontWeight: '700', color: '#E0A0A0' },
+    resetBtnText: { fontSize: sf(13), fontWeight: '700', color: theme.danger },
     displayCard: {
       marginBottom: 16,
       borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: '#0E0E14',
+      backgroundColor: theme.card,
       padding: 16,
       overflow: 'hidden',
     },
@@ -401,8 +387,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     themePreviewShell: {
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.08)',
-      backgroundColor: '#12121A',
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
       padding: 12,
       marginBottom: 6,
     },
@@ -427,7 +413,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       width: 6,
       height: 6,
       borderRadius: 3,
-      backgroundColor: 'rgba(255,255,255,0.2)',
+      backgroundColor: theme.border,
     },
     themePreviewMockTabs: {
       flexDirection: 'row',
@@ -438,7 +424,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     themePreviewMockTab: {
       flex: 1,
-      backgroundColor: 'rgba(255,255,255,0.06)',
+      backgroundColor: theme.border,
     },
     themePreviewMockTabActive: {
       backgroundColor: theme.green,
@@ -465,7 +451,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: 'transparent',
     },
     themeSwatchOuterActive: {
-      borderColor: 'rgba(255,255,255,0.45)',
+      borderColor: theme.greenBorder,
     },
     themeSwatchFill: {
       flex: 1,
@@ -474,9 +460,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     themeSwatchCustomPlaceholder: {
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#14141C',
+      backgroundColor: theme.bgElevated,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.12)',
+      borderColor: theme.border,
     },
     /** 커스텀 선택 시 색 위에 붓 표시(밝은/어두운 배경 모두 대비) */
     themeSwatchCustomBadgeOverlay: {
@@ -492,11 +478,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       width: 22,
       height: 22,
       borderRadius: 11,
-      backgroundColor: 'rgba(0,0,0,0.52)',
+      backgroundColor: theme.text,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: 'rgba(255,255,255,0.45)',
+      borderColor: theme.border,
     },
     accentModalBackdrop: {
       flex: 1,
@@ -513,7 +499,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.bg,
+      backgroundColor: theme.card,
       overflow: 'hidden',
     },
     accentModalTitle: {
@@ -563,11 +549,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'center',
     },
     accentSwatchSelectedBadge: {
-      backgroundColor: 'rgba(0,0,0,0.5)',
+      backgroundColor: theme.text,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: 'rgba(255,255,255,0.5)',
+      borderColor: theme.border,
     },
     accentSwatchFill: {
       ...StyleSheet.absoluteFillObject,
@@ -589,7 +575,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderRadius: 9,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: '#14141C',
+      backgroundColor: theme.card,
     },
     accentModalCancelBtnText: {
       fontSize: sf(13),
@@ -605,7 +591,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     accentModalApplyBtnText: {
       fontSize: sf(13),
       fontWeight: '800',
-      color: '#0B0B10',
+      color: '#FFFFFF',
     },
     displayAccentName: {
       textAlign: 'center',
@@ -616,7 +602,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     langSegmentedTrack: {
       flexDirection: 'row',
-      backgroundColor: '#14141C',
+      backgroundColor: theme.bgElevated,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.border,
@@ -643,22 +629,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       textAlign: 'center',
     },
     langSegmentTextActive: {
-      color: '#0A0A0F',
-    },
-    tabBarGlassPercent: {
-      fontSize: sf(26),
-      fontWeight: '800',
-      color: theme.text,
-      textAlign: 'center',
-      marginBottom: 10,
-      letterSpacing: -0.5,
-    },
-    tabBarGlassPreviewKicker: {
-      fontSize: sf(12),
-      fontWeight: '700',
-      color: theme.textDim,
-      marginTop: 6,
-      letterSpacing: 0.2,
+      color: '#FFFFFF',
     },
     megaCapListLink: {
       flexDirection: 'row',
@@ -667,7 +638,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginTop: 14,
       paddingTop: 14,
       borderTopWidth: 1,
-      borderTopColor: 'rgba(255,255,255,0.06)',
+      borderTopColor: theme.border,
     },
     megaCapListLinkText: {
       flex: 1,
@@ -914,11 +885,6 @@ export default function SettingsScreen() {
   const [signalServerPrefsReady, setSignalServerPrefsReady] = useState(false);
   const [signalServerVerifying, setSignalServerVerifying] = useState(false);
 
-  const [tabBarGlassLevel, setTabBarGlassLevel] = useState<TabBarGlassLevel>(DEFAULT_TAB_BAR_GLASS_LEVEL);
-  const [tabBarGlassReady, setTabBarGlassReady] = useState(false);
-  const [tabBarGlassPercent, setTabBarGlassPercent] = useState(() => DEFAULT_TAB_BAR_GLASS_PERCENT);
-
-
   const [moreRefLinksVisible, setMoreRefLinksVisible] = useState(true);
   const [moreRefLinksReady, setMoreRefLinksReady] = useState(false);
 
@@ -958,8 +924,6 @@ export default function SettingsScreen() {
     if (!quotesLimitPicker) return [];
     return quotesListCountChoicesForField(quotesLimitPicker);
   }, [quotesLimitPicker]);
-
-  const glassParams = TAB_BAR_GLASS_PARAMS[tabBarGlassLevel];
 
   const scrollContentBottomPad = useMemo(
     () =>
@@ -1115,14 +1079,6 @@ export default function SettingsScreen() {
     [reloadSignalServerPrefs, signalCustomDraft, signalServerVerifying, t],
   );
 
-  const reloadTabBarGlassLevel = useCallback(async () => {
-    const v = await loadTabBarGlassLevel();
-    setTabBarGlassLevel(v);
-    setTabBarGlassPercent(tabBarGlassLevelToPercent(v));
-    setTabBarGlassReady(true);
-  }, []);
-
-
   const reloadMoreReferenceLinksPref = useCallback(async () => {
     const v = await loadMoreReferenceLinksVisible();
     setMoreRefLinksVisible(v);
@@ -1141,7 +1097,6 @@ export default function SettingsScreen() {
       void reloadNewsSegmentOrder();
       void reloadNewsHashtagDisplayMax();
       void reloadSignalServerPrefs();
-      void reloadTabBarGlassLevel();
       void reloadMoreReferenceLinksPref();
     }, [
       reload,
@@ -1154,7 +1109,6 @@ export default function SettingsScreen() {
       reloadNewsSegmentOrder,
       reloadNewsHashtagDisplayMax,
       reloadSignalServerPrefs,
-      reloadTabBarGlassLevel,
       reloadMoreReferenceLinksPref,
     ]),
   );
@@ -2059,36 +2013,6 @@ export default function SettingsScreen() {
             </View>
 
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsTabBarGlassKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsTabBarGlassHint')}</Text>
-              {!tabBarGlassReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
-              ) : (
-                <>
-                  <Text style={styles.tabBarGlassPercent} accessibilityLiveRegion="polite">
-                    {tabBarGlassPercent}%
-                  </Text>
-                  <TabBarGlassSlider
-                    level={tabBarGlassLevel}
-                    accentColor={theme.green}
-                    accessibilityLabel={formatMessage(t('settingsTabBarGlassA11y'), {
-                      percent: tabBarGlassPercent,
-                    })}
-                    onPreviewChange={setTabBarGlassPercent}
-                    onCommit={(lv) => {
-                      setTabBarGlassLevel(lv);
-                      void saveTabBarGlassLevel(lv);
-                    }}
-                  />
-                  <Text style={styles.tabBarGlassPreviewKicker}>
-                    {t('settingsTabBarGlassPreviewKicker')}
-                  </Text>
-                  <TabBarGlassPreview percent={tabBarGlassPercent} />
-                </>
-              )}
-            </View>
-
-            <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsCacheSectionTitle')}</Text>
               <Text style={styles.cacheOneLiner}>
                 {formatMessage(t('settingsCacheOneLiner'), {
@@ -2226,18 +2150,25 @@ export default function SettingsScreen() {
             bottom: insets.bottom + TAB_BAR_FLOAT_MARGIN_BOTTOM,
             borderRadius: TAB_BAR_FLOAT_RADIUS,
             overflow: 'hidden',
+            backgroundColor: theme.card,
+            borderWidth: 1,
+            borderColor: theme.border,
           },
           Platform.OS === 'ios'
-            ? { shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 } }
+            ? {
+                shadowColor: '#191F28',
+                shadowOpacity: 0.08,
+                shadowRadius: 18,
+                shadowOffset: { width: 0, height: 8 },
+              }
             : {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: glassParams.android.shadowOpacity,
-                shadowRadius: glassParams.android.shadowRadius,
-                elevation: glassParams.android.elevation,
+                shadowColor: '#191F28',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 14,
+                elevation: 8,
               },
         ]}>
-        <TabBarGlassSurface level={tabBarGlassLevel} style={StyleSheet.absoluteFill} />
         <Pressable
           onPress={() => void Linking.openURL(DEVELOPER_LINKEDIN_URL)}
           style={({ pressed }) => [styles.settingsFooterPress, pressed && { opacity: 0.88 }]}

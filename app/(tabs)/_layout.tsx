@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import type { BottomTabBarButtonProps, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
@@ -11,16 +11,6 @@ import {
   TAB_BAR_FLOAT_MARGIN_H,
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
-import {
-  DEFAULT_TAB_BAR_GLASS_LEVEL,
-  TAB_BAR_GLASS_PARAMS,
-  type TabBarGlassLevel,
-} from '@/constants/tabBarGlass';
-import { TabBarGlassSurface } from '@/components/TabBarGlassSurface';
-import {
-  loadTabBarGlassLevel,
-  subscribeTabBarGlassLevelChanged,
-} from '@/services/tabBarGlassPreference';
 import { SlackTabBarButton } from '@/components/SlackTabBarButton';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -52,17 +42,6 @@ export default function TabLayout() {
   const { theme } = useSignalTheme();
   const { t } = useLocale();
   const insets = useSafeAreaInsets();
-  const [tabBarGlassLevel, setTabBarGlassLevel] = useState<TabBarGlassLevel>(DEFAULT_TAB_BAR_GLASS_LEVEL);
-
-  useEffect(() => {
-    void loadTabBarGlassLevel().then(setTabBarGlassLevel);
-  }, []);
-
-  useEffect(() => {
-    return subscribeTabBarGlassLevelChanged(() => {
-      void loadTabBarGlassLevel().then(setTabBarGlassLevel);
-    });
-  }, []);
 
   /**
    * 웹: @react-navigation/bottom-tabs 의 BottomTabItem(uikit)이 `padding: 5` + 아이콘(~24) + 라벨(lineHeight) +
@@ -77,8 +56,6 @@ export default function TabLayout() {
   const tabBarTotalHeight = tabBarContentHeight + tabBarInnerPadTop + tabBarInnerPadBottom;
   const tabBarBottom = insets.bottom + TAB_BAR_FLOAT_MARGIN_BOTTOM + (isWeb ? 2 : 0);
 
-  const glassParams = TAB_BAR_GLASS_PARAMS[tabBarGlassLevel];
-
   const screenOptions = useMemo(
     (): BottomTabNavigationOptions => ({
         /**
@@ -87,7 +64,7 @@ export default function TabLayout() {
          */
         animation: 'none',
         tabBarActiveTintColor: theme.green,
-        tabBarInactiveTintColor: 'rgba(142,142,147,0.88)',
+        tabBarInactiveTintColor: theme.textDim,
         tabBarStyle: {
           position: 'absolute',
           left: TAB_BAR_FLOAT_MARGIN_H,
@@ -96,31 +73,35 @@ export default function TabLayout() {
           height: tabBarTotalHeight,
           paddingBottom: tabBarInnerPadBottom,
           paddingTop: tabBarInnerPadTop,
-          backgroundColor: 'transparent',
-          borderTopWidth: 0,
-          borderTopColor: 'transparent',
+          backgroundColor: theme.card,
+          borderTopWidth: 1,
+          borderTopColor: theme.border,
           borderRadius: TAB_BAR_FLOAT_RADIUS,
           overflow: isWeb ? 'visible' : 'hidden',
-          paddingHorizontal: 2,
-          /** iOS: shadow는 블러와 합성 시 ‘불투명 카드’처럼 보이는 경우가 많음 */
+          paddingHorizontal: 4,
           ...(Platform.OS === 'ios'
-            ? { shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 } }
+            ? {
+                shadowColor: '#191F28',
+                shadowOpacity: 0.08,
+                shadowRadius: 18,
+                shadowOffset: { width: 0, height: 8 },
+              }
             : {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: glassParams.android.shadowOpacity,
-                shadowRadius: glassParams.android.shadowRadius,
-                elevation: glassParams.android.elevation,
+                shadowColor: '#191F28',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 14,
+                elevation: 8,
               }),
         },
-        tabBarBackground: () => <TabBarGlassSurface level={tabBarGlassLevel} style={StyleSheet.absoluteFill} />,
+        tabBarBackground: () => <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.card }]} />,
         tabBarLabelPosition: 'below-icon',
         tabBarAllowFontScaling: false,
         tabBarLabelStyle: {
           fontSize: 10,
           lineHeight: 12,
-          fontWeight: '600',
-          letterSpacing: -0.08,
+          fontWeight: '700',
+          letterSpacing: 0,
           marginTop: 2,
           marginBottom: 0,
           ...(isWeb
@@ -155,17 +136,15 @@ export default function TabLayout() {
         lazy: false,
       }),
     [
-      glassParams.android.elevation,
-      glassParams.android.shadowOpacity,
-      glassParams.android.shadowRadius,
-      tabBarGlassLevel,
       tabBarBottom,
       tabBarTotalHeight,
       tabBarInnerPadBottom,
       tabBarInnerPadTop,
       isWeb,
+      theme.border,
+      theme.card,
       theme.green,
-      t,
+      theme.textDim,
     ],
   );
 
@@ -177,7 +156,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: t('tabNews'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="newspaper-o" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="home" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen

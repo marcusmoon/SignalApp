@@ -20,7 +20,7 @@ export const ko = {
   adSdkLoadFailed: '광고 SDK를 불러오지 못했습니다.',
   adNativeLoadFailed: '광고를 불러오지 못했습니다.',
 
-  tabNews: '뉴스',
+  tabNews: '홈',
   tabYoutube: '유튜브',
   tabQuotes: '시세',
   tabCalls: '어닝',
@@ -368,11 +368,6 @@ export const ko = {
   settingsFontSizeCompact: '작게',
   settingsFontSizeStandard: '기본',
   settingsFontSizeComfortable: '크게',
-  settingsTabBarGlassKicker: '앱 글래스',
-  settingsTabBarGlassHint:
-    '가로 막대의 세로 손잡이를 드래그해 조절합니다. 오른쪽일수록 진하고 왼쪽일수록 투명합니다. 아래 미리보기는 적용 예시입니다. 변경 시 즉시 반영됩니다.',
-  settingsTabBarGlassA11y: '앱 글래스 강도 {{percent}}퍼센트',
-  settingsTabBarGlassPreviewKicker: '적용 예시',
   settingsDisplayPreviewLabel: '미리보기',
   settingsDisplaySelectedTheme: '선택: {{name}}',
 

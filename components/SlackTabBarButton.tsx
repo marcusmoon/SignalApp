@@ -21,9 +21,9 @@ export function SlackTabBarButton(props: BottomTabBarButtonProps) {
       hoverEffect={
         Platform.OS === 'web'
           ? {
-              color: 'rgba(255,255,255,0.14)',
-              hoverOpacity: 0.14,
-              activeOpacity: 0.22,
+              color: theme.greenDim,
+              hoverOpacity: 0.7,
+              activeOpacity: 1,
             }
           : undefined
       }

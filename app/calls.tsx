@@ -264,13 +264,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     linkBtnText: { fontSize: sf(14), fontWeight: '800', color: theme.green },
     errBox: {
       padding: 12,
-      borderRadius: 10,
-      backgroundColor: '#2A1515',
+      borderRadius: 14,
+      backgroundColor: theme.dangerDim,
       borderWidth: 1,
-      borderColor: '#553333',
+      borderColor: '#FFD6DA',
       marginBottom: 16,
     },
-    errText: { fontSize: sf(12), color: '#E0A0A0', lineHeight: sf(18) },
+    errText: { fontSize: sf(12), color: theme.danger, lineHeight: sf(18) },
     metaBlock: {
       paddingBottom: 16,
       marginBottom: 8,

@@ -109,7 +109,7 @@ export function ConcallFiscalFilterModal({
             style={({ pressed }) => [styles.queryBtn, pressed && styles.queryBtnPressed]}
             accessibilityRole="button"
             accessibilityLabel={t('callsFilterQuery')}>
-            <FontAwesome name="search" size={14} color="#0A0A0F" style={styles.queryIcon} />
+            <FontAwesome name="search" size={14} color="#FFFFFF" style={styles.queryIcon} />
             <Text style={styles.queryBtnText}>{t('callsFilterQuery')}</Text>
           </Pressable>
         </View>
@@ -284,7 +284,7 @@ function makeModalStyles(theme: AppTheme) {
     },
     queryBtnPressed: { opacity: 0.9 },
     queryIcon: { marginTop: 1 },
-    queryBtnText: { fontSize: 15, fontWeight: '800', color: '#0A0A0F' },
+    queryBtnText: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
     pickerOverlay: {
       ...StyleSheet.absoluteFillObject,
       zIndex: 50,

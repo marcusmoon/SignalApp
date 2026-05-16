@@ -397,13 +397,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginTop: 12,
     },
     errorBox: {
-      borderRadius: 12,
+      borderRadius: 14,
       borderWidth: 1,
-      borderColor: '#553333',
-      backgroundColor: '#2A1515',
+      borderColor: '#FFD6DA',
+      backgroundColor: theme.dangerDim,
       padding: 14,
     },
-    errorText: { fontSize: sf(13), color: '#E0A0A0', lineHeight: sf(20) },
+    errorText: { fontSize: sf(13), color: theme.danger, lineHeight: sf(20) },
     loadingWrap: {
       paddingVertical: 24,
       alignItems: 'center',
@@ -477,7 +477,7 @@ const stylesStatic = StyleSheet.create({
     right: 0,
     top: '50%',
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(25,31,40,0.08)',
   },
   sparkSeg: {
     position: 'absolute',

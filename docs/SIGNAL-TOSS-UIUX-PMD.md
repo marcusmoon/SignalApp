@@ -347,3 +347,19 @@ Toss식 문구는 설명보다 결론을 먼저 말한다.
 5. 관심 브리핑의 중복 섹션 merge
 
 바로 코드 적용을 시작한다면 Phase 1과 Phase 2를 먼저 진행하는 것이 맞다. 이 두 단계가 끝나야 앱 전체의 첫인상과 매일 방문 이유가 바뀐다.
+
+## 10. 적용 현황
+
+2026-05-16 `toss-client-uiux` 브랜치에서 1차 적용:
+
+- 앱 기본 토큰을 light-first로 전환하고 기본 accent를 Toss 계열 blue로 변경했다.
+- 하단 탭바는 glass 설정을 제거하고 white surface, blue selected, gray inactive 기준으로 통일했다.
+- 첫 탭은 뉴스가 아닌 홈 역할로 보이도록 라벨과 아이콘을 변경했다.
+- `SignalHeader`, 세그먼트 탭, FAB, 에러 박스, 스켈레톤, 광고 placeholder 등 공통 체감 요소를 light shell로 정리했다.
+- 더 이상 사용하지 않는 tab bar glass 설정/컴포넌트/저장 서비스를 제거했다.
+
+다음 적용 후보:
+
+1. `app/(tabs)/index.tsx`를 실제 HomeFeed / NewsFeed 컴포넌트로 분리한다.
+2. YouTube를 하단 주 탭에서 더보기 또는 홈 근거 영역으로 옮길지 사용자 지표 기준으로 결정한다.
+3. 관심 브리핑과 종목 상세의 “오늘 볼 이유” 모델을 하나로 합친다.

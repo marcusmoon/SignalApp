@@ -179,7 +179,7 @@ server/data/                # signal.sqlite (+ WAL/SHM)
 
 | 둘 중 어디? | 기준 |
 |-------------|------|
-| **`constants/` (루트)** | 탭바·세그먼트 UI 공통, 브랜드 토큰, 뉴스 상단 세그먼트 키/순서처럼 **여러 레이어가 같이 참조**하는 앱 전역 값. 예: `theme.ts` (`SIGNAL`, `buildAppTheme`), `tabBarGlass.ts`, `newsSegment.ts`, `megaCapUniverse.ts`, `referenceAppLinks.ts`. |
+| **`constants/` (루트)** | 탭바·세그먼트 UI 공통, 브랜드 토큰, 뉴스 상단 세그먼트 키/순서처럼 **여러 레이어가 같이 참조**하는 앱 전역 값. 예: `theme.ts` (`SIGNAL`, `buildAppTheme`), `newsSegment.ts`, `megaCapUniverse.ts`, `referenceAppLinks.ts`. |
 | **`domain/<영역>/constants.ts`** | **그 도메인 규칙과 수명이 같을** 시드·순서·한도 숫자. |
 | **`integrations/<vendor>/constants.ts`** (또는 벤더 `constants.ts` 일부) | **그 API·큐레이션과 같이 갈** 기본 심볼·채널 목록. |
 

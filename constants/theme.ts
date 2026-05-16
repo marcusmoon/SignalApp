@@ -1,17 +1,21 @@
-/** SIGNAL brand tokens (PRD) */
+/** SIGNAL brand tokens — light-first Toss-inspired system. */
 export const SIGNAL = {
-  green: '#00C087',
-  greenDim: '#00C08718',
-  greenBorder: '#00C08730',
-  bg: '#0A0A0F',
-  bgElevated: '#0D0D16',
-  card: '#111118',
-  border: '#1E1E2A',
-  text: '#E0E0F0',
-  textMuted: '#888888',
-  textDim: '#555555',
-  accentBlue: '#4D9FFF',
-  accentOrange: '#FF8C00',
+  green: '#3182F6',
+  greenDim: '#EAF3FF',
+  greenBorder: '#D6E9FF',
+  bg: '#F7F8FA',
+  bgElevated: '#F2F4F6',
+  card: '#FFFFFF',
+  border: '#E5E8EB',
+  text: '#191F28',
+  textMuted: '#6B7684',
+  textDim: '#8B95A1',
+  accentBlue: '#3182F6',
+  accentOrange: '#F59F00',
+  danger: '#F04452',
+  dangerDim: '#FFF0F1',
+  warning: '#F59F00',
+  warningDim: '#FFF7E6',
 } as const;
 
 /** Runtime theme: same shape as SIGNAL; `green*` follow user accent preset. */
@@ -19,8 +23,8 @@ export function buildAppTheme(accentHex: string) {
   return {
     ...SIGNAL,
     green: accentHex,
-    greenDim: `${accentHex}18`,
-    greenBorder: `${accentHex}30`,
+    greenDim: `${accentHex}12`,
+    greenBorder: `${accentHex}26`,
   };
 }
 

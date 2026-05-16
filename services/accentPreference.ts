@@ -27,7 +27,7 @@ export type AccentPresetId =
 export const ACCENT_PRESETS: readonly { id: AccentPresetId; accent: string }[] = [
   { id: 'green', accent: '#00C087' },
   { id: 'red', accent: '#FF4D6D' },
-  { id: 'blue', accent: '#3B82F6' },
+  { id: 'blue', accent: '#3182F6' },
   { id: 'yellow', accent: '#EAB308' },
   { id: 'orange', accent: '#F97316' },
   { id: 'purple', accent: '#A855F7' },
@@ -55,7 +55,7 @@ export async function saveCustomAccentHex(hex: string): Promise<void> {
 export async function loadAccentPreset(): Promise<AccentPresetId> {
   const v = await AsyncStorage.getItem(ACCENT_STORAGE_KEY);
   if (v && VALID_PRESET_IDS.has(v)) return v as AccentPresetId;
-  return 'green';
+  return 'blue';
 }
 
 export async function saveAccentPreset(id: AccentPresetId): Promise<void> {

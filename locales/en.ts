@@ -22,7 +22,7 @@ export const en = {
   adSdkLoadFailed: 'Could not load the ad SDK.',
   adNativeLoadFailed: 'Could not load the ad.',
 
-  tabNews: 'News',
+  tabNews: 'Home',
   tabYoutube: 'YouTube',
   tabQuotes: 'Quotes',
   tabCalls: 'Calls',
@@ -370,11 +370,6 @@ export const en = {
   settingsFontSizeCompact: 'Compact',
   settingsFontSizeStandard: 'Default',
   settingsFontSizeComfortable: 'Comfortable',
-  settingsTabBarGlassKicker: 'App glass',
-  settingsTabBarGlassHint:
-    'Drag the vertical handle on the horizontal track. Right is stronger glass; left is more transparent. The preview below shows how it will look. Changes apply immediately.',
-  settingsTabBarGlassA11y: 'App glass strength {{percent}} percent',
-  settingsTabBarGlassPreviewKicker: 'Preview',
   settingsDisplayPreviewLabel: 'Preview',
   settingsDisplaySelectedTheme: 'Selected: {{name}}',
 

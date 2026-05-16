@@ -34,7 +34,7 @@ export function OtaUpdateBanner() {
           accessibilityRole="button"
           accessibilityLabel={t('otaUpdateApply')}>
           {loading ? (
-            <ActivityIndicator color="#0A0A0F" size="small" />
+            <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
             <Text style={styles.applyText}>{t('otaUpdateApply')}</Text>
           )}
@@ -95,7 +95,7 @@ function makeBannerStyles(theme: AppTheme) {
     applyText: {
       fontSize: 13,
       fontWeight: '800',
-      color: '#0A0A0F',
+      color: '#FFFFFF',
     },
     dismissBtn: {
       padding: 4,

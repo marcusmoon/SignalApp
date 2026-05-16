@@ -64,12 +64,18 @@ export default function TabLayout() {
     });
   }, []);
 
-  const tabBarInnerPadBottom = 6;
-  const tabBarInnerPadTop = 6;
-  const tabBarContentHeight = TAB_BAR_FLOAT_HEIGHT;
+  /**
+   * 웹: @react-navigation/bottom-tabs 의 BottomTabItem(uikit)이 `padding: 5` + 아이콘(~24) + 라벨(lineHeight) +
+   * 우리의 tabBarItemStyle 패딩을 합하면 **한 줄 높이(tabBarContentHeight)를 넘기 쉬워** 글자 하단이 잘린다.
+   * `overflow: 'visible'` + 충분한 content 높이로 맞춘다.
+   */
+  const isWeb = Platform.OS === 'web';
+  const tabBarInnerPadBottom = isWeb ? 9 : 6;
+  const tabBarInnerPadTop = isWeb ? 6 : 6;
+  const tabBarContentHeight = isWeb ? TAB_BAR_FLOAT_HEIGHT + 14 : TAB_BAR_FLOAT_HEIGHT;
   /** 플로팅 바: 홈 인디케이터 위에 뜨므로 높이에 insets.bottom 미포함 */
   const tabBarTotalHeight = tabBarContentHeight + tabBarInnerPadTop + tabBarInnerPadBottom;
-  const tabBarBottom = insets.bottom + TAB_BAR_FLOAT_MARGIN_BOTTOM;
+  const tabBarBottom = insets.bottom + TAB_BAR_FLOAT_MARGIN_BOTTOM + (isWeb ? 2 : 0);
 
   const glassParams = TAB_BAR_GLASS_PARAMS[tabBarGlassLevel];
 
@@ -94,7 +100,7 @@ export default function TabLayout() {
           borderTopWidth: 0,
           borderTopColor: 'transparent',
           borderRadius: TAB_BAR_FLOAT_RADIUS,
-          overflow: 'hidden',
+          overflow: isWeb ? 'visible' : 'hidden',
           paddingHorizontal: 2,
           /** iOS: shadow는 블러와 합성 시 ‘불투명 카드’처럼 보이는 경우가 많음 */
           ...(Platform.OS === 'ios'
@@ -117,10 +123,21 @@ export default function TabLayout() {
           letterSpacing: -0.08,
           marginTop: 2,
           marginBottom: 0,
+          ...(isWeb
+            ? {
+                fontSize: 11,
+                lineHeight: 17,
+                marginTop: 0,
+                marginBottom: 0,
+                paddingBottom: 2,
+              }
+            : {}),
         },
         tabBarItemStyle: {
-          paddingVertical: 2,
+          paddingTop: 2,
+          paddingBottom: isWeb ? 3 : 2,
           paddingHorizontal: 0,
+          ...(isWeb ? { overflow: 'visible' as const } : {}),
           justifyContent: 'center',
           alignItems: 'center',
           minWidth: 0,
@@ -146,6 +163,7 @@ export default function TabLayout() {
       tabBarTotalHeight,
       tabBarInnerPadBottom,
       tabBarInnerPadTop,
+      isWeb,
       theme.green,
       t,
     ],

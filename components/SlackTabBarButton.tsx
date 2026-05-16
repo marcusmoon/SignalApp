@@ -31,6 +31,7 @@ export function SlackTabBarButton(props: BottomTabBarButtonProps) {
         style,
         Platform.OS === 'web' && {
           borderRadius: 12,
+          overflow: 'visible' as const,
         },
       ]}
       onPress={(e) => {

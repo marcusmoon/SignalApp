@@ -82,6 +82,21 @@ export type SignalApiYoutubeVideo = {
   fetchedAt: string;
 };
 
+/** `/v1/youtube` — 서버 `page` / `pageSize` / `total` / `totalPages` 기준 */
+export type SignalYoutubeListMeta = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+  nextPage: number | null;
+};
+
+export type SignalYoutubePage = {
+  items: SignalApiYoutubeVideo[];
+  meta: SignalYoutubeListMeta;
+};
+
 export type SignalApiMarketList = {
   key: string;
   displayName: string;

@@ -714,6 +714,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: '#14141C',
     },
     cacheClearBtnText: { fontSize: sf(13), fontWeight: '800', color: theme.green },
+    cacheClearSuccess: {
+      marginTop: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      fontSize: sf(12),
+      fontWeight: '700',
+      color: theme.green,
+      lineHeight: sf(17),
+      textAlign: 'center',
+    },
     limitRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -875,6 +889,8 @@ export default function SettingsScreen() {
     quotesEnabled: true,
     newsEnabled: true,
   });
+  const [memoryCacheClearNotice, setMemoryCacheClearNotice] = useState(false);
+  const memoryCacheClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [quotesListLimits, setQuotesListLimits] = useState<QuotesListLimits>(() =>
     normalizeQuotesListLimits(QUOTES_LIST_LIMITS_DEFAULTS),
@@ -975,6 +991,15 @@ export default function SettingsScreen() {
       setTab(tabParam);
     }
   }, [params.tab]);
+
+  useEffect(() => {
+    return () => {
+      if (memoryCacheClearTimerRef.current) {
+        clearTimeout(memoryCacheClearTimerRef.current);
+        memoryCacheClearTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const reloadPrefs = useCallback(async () => {
     const p = await loadNotificationPrefs();
@@ -1258,7 +1283,19 @@ export default function SettingsScreen() {
     clearCalendarCache();
     clearQuotesCache();
     clearNewsCache();
-    Alert.alert(t('settingsCacheClearedTitle'), t('settingsCacheClearedBody'));
+    if (Platform.OS === 'web') {
+      if (memoryCacheClearTimerRef.current) {
+        clearTimeout(memoryCacheClearTimerRef.current);
+        memoryCacheClearTimerRef.current = null;
+      }
+      setMemoryCacheClearNotice(true);
+      memoryCacheClearTimerRef.current = setTimeout(() => {
+        memoryCacheClearTimerRef.current = null;
+        setMemoryCacheClearNotice(false);
+      }, 4500);
+    } else {
+      Alert.alert(t('settingsCacheClearedTitle'), t('settingsCacheClearedBody'));
+    }
   };
 
   const onYoutubeCacheEnabledChange = async (v: boolean) => {
@@ -2114,6 +2151,14 @@ export default function SettingsScreen() {
                 accessibilityLabel={t('settingsCacheClearButton')}>
                 <Text style={styles.cacheClearBtnText}>{t('settingsCacheClearButton')}</Text>
               </Pressable>
+              {memoryCacheClearNotice ? (
+                <Text
+                  style={styles.cacheClearSuccess}
+                  accessibilityRole="alert"
+                  accessibilityLiveRegion="polite">
+                  {t('settingsCacheClearedBody')}
+                </Text>
+              ) : null}
             </View>
           </>
         ) : null}

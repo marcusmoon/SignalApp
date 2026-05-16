@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useIsFocused } from '@react-navigation/native';
 import {
@@ -167,6 +167,9 @@ export default function FeedScreen() {
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   /** 출처 필터 UI용(카탈로그 비었을 때 샘플 + 첫 페이지 병합) */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
+
+  /** 웹: 리스트 콘텐츠 높이 < 뷰포트면 onEndReached가 안 나와 다음 페이지를 못 불러오는 경우가 있음 */
+  const feedListViewportH = useRef(0);
 
   useEffect(() => {
     if (!refreshNotice) return;
@@ -712,6 +715,24 @@ export default function FeedScreen() {
           }
           onEndReached={() => void loadMore()}
           onEndReachedThreshold={0.35}
+          onLayout={
+            Platform.OS === 'web'
+              ? (e) => {
+                  feedListViewportH.current = e.nativeEvent.layout.height;
+                }
+              : undefined
+          }
+          onContentSizeChange={
+            Platform.OS === 'web'
+              ? (_, h) => {
+                  if (!hasMore || loadingMore || loading) return;
+                  const vh = feedListViewportH.current;
+                  if (vh <= 0 || h <= 0) return;
+                  if (h >= vh + 32) return;
+                  void loadMore();
+                }
+              : undefined
+          }
           style={styles.list}
           contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
           showsVerticalScrollIndicator={false}
@@ -721,9 +742,9 @@ export default function FeedScreen() {
             )
           }
           removeClippedSubviews={Platform.OS === 'android'}
-          initialNumToRender={8}
-          windowSize={7}
-          maxToRenderPerBatch={12}
+          initialNumToRender={Platform.OS === 'web' ? 28 : 8}
+          windowSize={Platform.OS === 'web' ? 12 : 7}
+          maxToRenderPerBatch={Platform.OS === 'web' ? 24 : 12}
         />
       </View>
 

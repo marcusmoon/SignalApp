@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Linking,
   Modal,
@@ -45,6 +46,7 @@ import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeCh
 import { loadCurationHandles } from '@/services/youtubeCurationList';
 import type { ChannelHandleMeta } from '@/domain/youtube/types';
 import { fetchSignalYoutube, signalYoutubeToYoutubeItem } from '@/integrations/signal-api';
+import type { SignalYoutubeListMeta } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { YoutubeItem } from '@/types/signal';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
@@ -55,6 +57,8 @@ import {
 } from '@/utils/youtubeQuota';
 
 type SortKey = 'popular' | 'latest';
+
+const YOUTUBE_PAGE_SIZE = 30;
 
 /** 채널 배열이 동일하면 상태 갱신·load 재실행을 막기 위한 키 (탭 복귀 시 매번 새 배열 참조 방지) */
 function normalizeHandlesKey(handles: string[]): string {
@@ -76,6 +80,8 @@ export default function YoutubeScreen() {
   const [isQuotaError, setIsQuotaError] = useState(false);
   const [quotaResetMs, setQuotaResetMs] = useState(() => msUntilNextPacificMidnight());
   const [items, setItems] = useState<YoutubeItem[]>([]);
+  const [youtubeMeta, setYoutubeMeta] = useState<SignalYoutubeListMeta | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [channelMeta, setChannelMeta] = useState<ChannelHandleMeta[]>([]);
   const [curationHandles, setCurationHandles] = useState<string[] | null>(null);
   const [selectedHandles, setSelectedHandles] = useState<string[] | null>(null);
@@ -83,6 +89,9 @@ export default function YoutubeScreen() {
   /** load() 안에서 이미 화면에 목록이 있는지 — 캐시 재적중 시 전체 로딩 스킵 */
   const itemsRef = useRef<YoutubeItem[]>([]);
   itemsRef.current = items;
+  const ytListViewportH = useRef(0);
+  /** `hadItems`인데도 `setLoading(true)`를 생략하는 경로(채널 토글 등)에서 loadMore와 겹치지 않게 함 */
+  const youtubeReplacingRef = useRef(false);
 
   useTabScreenLoadingRecovery(items, setLoading);
 
@@ -136,7 +145,6 @@ export default function YoutubeScreen() {
       errorFallback?: 'youtubeErrorLoad' | 'youtubeErrorRefresh';
     }) => {
       void opts?.channelHandles;
-      void opts?.forceRefresh;
       setError(null);
       setIsQuotaError(false);
       if (selectedHandles === null) return;
@@ -145,6 +153,7 @@ export default function YoutubeScreen() {
 
       if (!hasSignalApi()) {
         setItems([]);
+        setYoutubeMeta(null);
         setError(t('errorSignalApiShort'));
         setLoading(false);
         return;
@@ -154,21 +163,59 @@ export default function YoutubeScreen() {
       if (!hadItems) {
         setLoading(true);
       }
+      youtubeReplacingRef.current = true;
+      setYoutubeMeta(null);
       try {
-        const list = await fetchSignalYoutube(
-          { pageSize: 100, sort },
+        const page = await fetchSignalYoutube(
+          { page: 1, pageSize: YOUTUBE_PAGE_SIZE, sort },
           { cacheMode: opts?.forceRefresh ? 'bypass' : 'use' },
         );
-        setItems(list.map((item) => signalYoutubeToYoutubeItem(item, locale)));
+        setYoutubeMeta(page.meta);
+        setItems(page.items.map((item) => signalYoutubeToYoutubeItem(item, locale)));
       } catch (e) {
         applyLoadError(e, errKey);
         setItems([]);
+        setYoutubeMeta(null);
       } finally {
         setLoading(false);
+        youtubeReplacingRef.current = false;
       }
     },
     [selectedHandles, locale, sort, t, applyLoadError],
   );
+
+  const loadMore = useCallback(async () => {
+    if (youtubeReplacingRef.current) return;
+    if (!youtubeMeta?.hasMore || loadingMore || loading || !hasSignalApi()) return;
+    const nextPage = youtubeMeta.nextPage;
+    if (nextPage == null) return;
+
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const page = await fetchSignalYoutube(
+        { page: nextPage, pageSize: YOUTUBE_PAGE_SIZE, sort },
+        { cacheMode: 'use' },
+      );
+      setYoutubeMeta(page.meta);
+      setItems((prev) => {
+        const seen = new Set(prev.map((i) => i.id));
+        const out = [...prev];
+        for (const row of page.items) {
+          const it = signalYoutubeToYoutubeItem(row, locale);
+          if (!seen.has(it.id)) {
+            seen.add(it.id);
+            out.push(it);
+          }
+        }
+        return out;
+      });
+    } catch (e) {
+      applyLoadError(e, 'youtubeErrorLoad');
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [youtubeMeta, loadingMore, loading, sort, locale, applyLoadError]);
 
   useEffect(() => {
     if (selectedHandles === null) return;
@@ -316,6 +363,7 @@ export default function YoutubeScreen() {
                 if (sort === 'latest') return;
                 setLoading(true);
                 setItems([]);
+                setYoutubeMeta(null);
                 setSort('latest');
               }}
               style={[styles.segBtn, sort === 'latest' && styles.segBtnActive]}
@@ -329,6 +377,7 @@ export default function YoutubeScreen() {
                 if (sort === 'popular') return;
                 setLoading(true);
                 setItems([]);
+                setYoutubeMeta(null);
                 setSort('popular');
               }}
               style={[styles.segBtn, sort === 'popular' && styles.segBtnActive]}
@@ -350,6 +399,34 @@ export default function YoutubeScreen() {
               <Text style={styles.empty}>{t('youtubeEmptySearch')}</Text>
             ) : null
           }
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.footerLoading}>
+                <ActivityIndicator color={theme.green} />
+                <Text style={styles.footerLoadingText}>{t('feedLoadingMore')}</Text>
+              </View>
+            ) : null
+          }
+          onEndReached={() => void loadMore()}
+          onEndReachedThreshold={0.35}
+          onLayout={
+            Platform.OS === 'web'
+              ? (e) => {
+                  ytListViewportH.current = e.nativeEvent.layout.height;
+                }
+              : undefined
+          }
+          onContentSizeChange={
+            Platform.OS === 'web'
+              ? (_, h) => {
+                  if (!youtubeMeta?.hasMore || loadingMore || loading || youtubeReplacingRef.current) return;
+                  const vh = ytListViewportH.current;
+                  if (vh <= 0 || h <= 0) return;
+                  if (h >= vh + 32) return;
+                  void loadMore();
+                }
+              : undefined
+          }
           style={styles.list}
           contentContainerStyle={[
             styles.listContent,
@@ -363,9 +440,9 @@ export default function YoutubeScreen() {
             )
           }
           removeClippedSubviews={Platform.OS === 'android'}
-          initialNumToRender={6}
-          windowSize={7}
-          maxToRenderPerBatch={10}
+          initialNumToRender={Platform.OS === 'web' ? 36 : 6}
+          windowSize={Platform.OS === 'web' ? 12 : 7}
+          maxToRenderPerBatch={Platform.OS === 'web' ? 30 : 10}
         />
       </View>
 
@@ -434,6 +511,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     list: { flex: 1, minHeight: 0 },
     listContent: { paddingHorizontal: 16, paddingTop: 0 },
+    footerLoading: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      paddingVertical: 16,
+    },
+    footerLoadingText: {
+      fontSize: sf(12),
+      color: theme.textMuted,
+    },
     modalBackdrop: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.55)',

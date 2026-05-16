@@ -327,7 +327,8 @@ export default function QuotesScreen() {
     useCallback(() => {
       let cancelled = false;
       let interval: ReturnType<typeof setInterval> | undefined;
-      const task = InteractionManager.runAfterInteractions(() => {
+
+      const kick = () => {
         if (cancelled) return;
         void (async () => {
           if (rowsRef.current.length === 0) setLoading(true);
@@ -346,15 +347,25 @@ export default function QuotesScreen() {
         interval = setInterval(() => {
           void load();
         }, POLL_MS);
-      });
+      };
+
+      /** RN Web에서 InteractionManager 큐가 진행되지 않아 콜백이 영원히 대기하는 사례가 있어 웹은 바로 스케줄한다. */
+      let cancelKick: () => void;
+      if (Platform.OS === 'web') {
+        const id = setTimeout(kick, 0);
+        cancelKick = () => clearTimeout(id);
+      } else {
+        const task = InteractionManager.runAfterInteractions(kick);
+        cancelKick = () => task.cancel();
+      }
 
       return () => {
         cancelled = true;
-        task.cancel();
+        cancelKick();
         if (interval) clearInterval(interval);
         clearTtlTimer();
       };
-    }, [load, clearTtlTimer]),
+    }, [load, clearTtlTimer, t]),
   );
 
   const onRefresh = useCallback(async () => {

@@ -24,7 +24,6 @@ import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@
 import type { AppTheme } from '@/constants/theme';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
-  SEGMENT_TAB_BACKGROUND,
   SEGMENT_TAB_BTN_PADDING_V,
   SEGMENT_TAB_BTN_RADIUS,
   SEGMENT_TAB_FONT_SIZE,
@@ -1021,7 +1020,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     segment: {
       flexDirection: 'row',
-      backgroundColor: SEGMENT_TAB_BACKGROUND,
+      backgroundColor: theme.bgElevated,
       borderRadius: SEGMENT_TAB_OUTER_RADIUS,
       padding: SEGMENT_TAB_PADDING,
       marginBottom: 0,

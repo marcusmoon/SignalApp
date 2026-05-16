@@ -7,8 +7,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useColorScheme } from 'react-native';
 
-import type { AppTheme } from '@/constants/theme';
+import type { AppTheme, ThemeColorScheme } from '@/constants/theme';
 import {
   type AccentPresetId,
   DEFAULT_CUSTOM_ACCENT_HEX,
@@ -25,8 +26,16 @@ import {
   loadFontSizePreset,
   saveFontSizePreset,
 } from '@/services/fontSizePreference';
+import {
+  loadThemeAppearanceMode,
+  saveThemeAppearanceMode,
+  type ThemeAppearanceMode,
+} from '@/services/themeAppearancePreference';
 
 type SignalThemeContextValue = {
+  appearanceMode: ThemeAppearanceMode;
+  effectiveColorScheme: ThemeColorScheme;
+  setAppearanceMode: (mode: ThemeAppearanceMode) => Promise<void>;
   presetId: AccentPresetId;
   /** 커스텀 모드일 때 적용 중인 HEX (항상 최신 저장값 기준) */
   customHex: string;
@@ -44,24 +53,37 @@ type SignalThemeContextValue = {
 const SignalThemeContext = createContext<SignalThemeContextValue | null>(null);
 
 export function SignalThemeProvider({ children }: { children: ReactNode }) {
-  const [presetId, setPresetIdState] = useState<AccentPresetId>('green');
+  const systemColorScheme = useColorScheme();
+  const [appearanceMode, setAppearanceModeState] = useState<ThemeAppearanceMode>('system');
+  const [presetId, setPresetIdState] = useState<AccentPresetId>('blue');
   const [customHex, setCustomHex] = useState<string>(DEFAULT_CUSTOM_ACCENT_HEX);
   const [fontSizePreset, setFontSizePresetState] = useState<FontSizePresetId>('standard');
 
   useEffect(() => {
     void (async () => {
-      const [id, hex, fontId] = await Promise.all([
+      const [mode, id, hex, fontId] = await Promise.all([
+        loadThemeAppearanceMode(),
         loadAccentPreset(),
         loadCustomAccentHex(),
         loadFontSizePreset(),
       ]);
+      setAppearanceModeState(mode);
       setPresetIdState(id);
       setCustomHex(hex);
       setFontSizePresetState(fontId);
     })();
   }, []);
 
-  const theme = useMemo(() => getThemeForPreset(presetId, customHex), [presetId, customHex]);
+  const effectiveColorScheme = useMemo<ThemeColorScheme>(() => {
+    if (appearanceMode === 'dark') return 'dark';
+    if (appearanceMode === 'light') return 'light';
+    return systemColorScheme === 'dark' ? 'dark' : 'light';
+  }, [appearanceMode, systemColorScheme]);
+
+  const theme = useMemo(
+    () => getThemeForPreset(presetId, customHex, effectiveColorScheme),
+    [presetId, customHex, effectiveColorScheme],
+  );
 
   const fontMultiplier = useMemo(() => fontSizeMultiplierForPreset(fontSizePreset), [fontSizePreset]);
 
@@ -76,6 +98,11 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
   const setPresetId = useCallback(async (id: AccentPresetId) => {
     await saveAccentPreset(id);
     setPresetIdState(id);
+  }, []);
+
+  const setAppearanceMode = useCallback(async (mode: ThemeAppearanceMode) => {
+    await saveThemeAppearanceMode(mode);
+    setAppearanceModeState(mode);
   }, []);
 
   const setCustomAccent = useCallback(async (hex: string) => {
@@ -94,6 +121,9 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SignalThemeContextValue>(
     () => ({
       presetId,
+      appearanceMode,
+      effectiveColorScheme,
+      setAppearanceMode,
       customHex,
       theme,
       setPresetId,
@@ -102,7 +132,19 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
       setFontSizePreset,
       scaleFont,
     }),
-    [presetId, customHex, theme, setPresetId, setCustomAccent, fontSizePreset, setFontSizePreset, scaleFont],
+    [
+      presetId,
+      appearanceMode,
+      effectiveColorScheme,
+      setAppearanceMode,
+      customHex,
+      theme,
+      setPresetId,
+      setCustomAccent,
+      fontSizePreset,
+      setFontSizePreset,
+      scaleFont,
+    ],
   );
 
   return <SignalThemeContext.Provider value={value}>{children}</SignalThemeContext.Provider>;

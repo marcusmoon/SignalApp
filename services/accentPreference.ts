@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { SIGNAL, buildAppTheme, type AppTheme } from '@/constants/theme';
+import { SIGNAL, buildAppTheme, type AppTheme, type ThemeColorScheme } from '@/constants/theme';
 import { CANONICAL_CUSTOM_ACCENT_FALLBACK, normalizeHex } from '@/domain/theme';
 
 export const ACCENT_STORAGE_KEY = '@signal/accent_preset_v1';
@@ -62,11 +62,15 @@ export async function saveAccentPreset(id: AccentPresetId): Promise<void> {
   await AsyncStorage.setItem(ACCENT_STORAGE_KEY, id);
 }
 
-export function getThemeForPreset(id: AccentPresetId, customAccentHex?: string): AppTheme {
+export function getThemeForPreset(
+  id: AccentPresetId,
+  customAccentHex?: string,
+  scheme: ThemeColorScheme = 'light',
+): AppTheme {
   if (id === 'custom') {
     const hex = normalizeHex(customAccentHex) ?? DEFAULT_CUSTOM_ACCENT_HEX;
-    return buildAppTheme(hex);
+    return buildAppTheme(hex, scheme);
   }
   const accent = ACCENT_PRESETS.find((p) => p.id === id)?.accent ?? SIGNAL.green;
-  return buildAppTheme(accent);
+  return buildAppTheme(accent, scheme);
 }

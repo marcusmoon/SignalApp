@@ -361,7 +361,11 @@ export const en = {
   settingsQuotesSegmentDragHandleA11y: 'Reorder {{name}} (drag)',
 
   settingsThemeLead:
-    'In Display, change language, font size, and the app theme (accent). Language and font size save immediately; theme color applies to tabs, buttons, and refresh controls.',
+    'In Display, change appearance, language, font size, and accent color. Changes apply immediately.',
+  settingsAppearanceSection: 'Appearance',
+  settingsAppearanceSystem: 'System',
+  settingsAppearanceLight: 'Light',
+  settingsAppearanceDark: 'Dark',
   settingsThemeAccentSection: 'Theme',
   settingsThemeLanguageSection: 'Language',
   settingsFontSizeSection: 'Font size',

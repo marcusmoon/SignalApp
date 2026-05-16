@@ -352,7 +352,8 @@ Toss식 문구는 설명보다 결론을 먼저 말한다.
 
 2026-05-16 `toss-client-uiux` 브랜치에서 1차 적용:
 
-- 앱 기본 토큰을 light-first로 전환하고 기본 accent를 Toss 계열 blue로 변경했다.
+- 앱 기본 토큰을 light-first로 전환하되, 시스템/라이트/다크 화면 모드를 지원하도록 확장했다.
+- 기본 accent를 Toss 계열 blue로 변경했다.
 - 하단 탭바는 glass 설정을 제거하고 white surface, blue selected, gray inactive 기준으로 통일했다.
 - 첫 탭은 뉴스가 아닌 홈 역할로 보이도록 라벨과 아이콘을 변경했다.
 - `SignalHeader`, 세그먼트 탭, FAB, 에러 박스, 스켈레톤, 광고 placeholder 등 공통 체감 요소를 light shell로 정리했다.

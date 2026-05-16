@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
-  SEGMENT_TAB_BACKGROUND,
   SEGMENT_TAB_BTN_PADDING_V,
   SEGMENT_TAB_BTN_RADIUS,
   SEGMENT_TAB_FONT_SIZE,
@@ -252,7 +251,7 @@ function makeMarketSnapshotStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     marketSegment: {
       flexDirection: 'row',
-      backgroundColor: SEGMENT_TAB_BACKGROUND,
+      backgroundColor: theme.bgElevated,
       borderRadius: SEGMENT_TAB_OUTER_RADIUS,
       borderWidth: 1,
       borderColor: theme.border,

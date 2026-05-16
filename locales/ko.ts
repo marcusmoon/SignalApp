@@ -359,7 +359,11 @@ export const ko = {
   settingsQuotesSegmentDragHandleA11y: '{{name}} 순서 바꾸기(드래그)',
 
   settingsThemeLead:
-    '표시 설정에서 언어·글꼴 크기·앱 테마(강조색)를 바꿀 수 있습니다. 언어와 글꼴은 즉시 저장되며, 테마 색은 탭·버튼·새로고침 등에 적용됩니다.',
+    '표시 설정에서 화면 모드, 언어, 글꼴 크기, 강조색을 바꿀 수 있습니다. 변경 사항은 즉시 적용됩니다.',
+  settingsAppearanceSection: '화면 모드',
+  settingsAppearanceSystem: '시스템',
+  settingsAppearanceLight: '라이트',
+  settingsAppearanceDark: '다크',
   settingsThemeAccentSection: '테마',
   settingsThemeLanguageSection: '언어',
   settingsFontSizeSection: '글꼴 크기',

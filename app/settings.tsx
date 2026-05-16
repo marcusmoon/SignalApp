@@ -44,6 +44,7 @@ import {
 import type { AccentPresetId } from '@/services/accentPreference';
 import { ACCENT_PRESETS, normalizeHex } from '@/services/accentPreference';
 import type { FontSizePresetId } from '@/services/fontSizePreference';
+import type { ThemeAppearanceMode } from '@/services/themeAppearancePreference';
 import { clearCalendarCache, CALENDAR_CACHE_TTL_MS } from '@/services/cache/calendarCache';
 import { clearNewsCache, NEWS_CACHE_TTL_MS } from '@/services/cache/newsCache';
 import { clearQuotesCache, QUOTES_CACHE_TTL_MS } from '@/services/cache/quotesCache';
@@ -119,7 +120,6 @@ import {
 } from '@/utils/accentSwatchPalette';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
-  SEGMENT_TAB_BACKGROUND,
   SEGMENT_TAB_BTN_PADDING_V,
   SEGMENT_TAB_BTN_RADIUS,
   SEGMENT_TAB_FONT_SIZE,
@@ -202,6 +202,13 @@ const FONT_SIZE_PRESET_LABEL: Record<FontSizePresetId, MessageId> = {
   comfortable: 'settingsFontSizeComfortable',
 };
 
+const APPEARANCE_MODE_ORDER: ThemeAppearanceMode[] = ['system', 'light', 'dark'];
+const APPEARANCE_MODE_LABEL: Record<ThemeAppearanceMode, MessageId> = {
+  system: 'settingsAppearanceSystem',
+  light: 'settingsAppearanceLight',
+  dark: 'settingsAppearanceDark',
+};
+
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
@@ -213,7 +220,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginHorizontal: 16,
       marginTop: 10,
       marginBottom: 6,
-      backgroundColor: SEGMENT_TAB_BACKGROUND,
+      backgroundColor: theme.bgElevated,
       borderRadius: SEGMENT_TAB_OUTER_RADIUS,
       borderWidth: 1,
       borderColor: theme.border,
@@ -824,6 +831,8 @@ const SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT = 52;
 export default function SettingsScreen() {
   const {
     theme,
+    appearanceMode,
+    setAppearanceMode,
     presetId,
     setPresetId,
     customHex,
@@ -1857,6 +1866,29 @@ export default function SettingsScreen() {
         {tab === 'display' ? (
           <>
             <Text style={styles.lead}>{t('settingsThemeLead')}</Text>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsAppearanceSection')}</Text>
+              <View style={styles.langSegmentedTrack}>
+                {APPEARANCE_MODE_ORDER.map((mode) => (
+                  <Pressable
+                    key={mode}
+                    onPress={() => void setAppearanceMode(mode)}
+                    style={[styles.langSegment, appearanceMode === mode && styles.langSegmentActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: appearanceMode === mode }}
+                    accessibilityLabel={t(APPEARANCE_MODE_LABEL[mode])}>
+                    <Text
+                      style={[
+                        styles.langSegmentText,
+                        appearanceMode === mode && styles.langSegmentTextActive,
+                      ]}>
+                      {t(APPEARANCE_MODE_LABEL[mode])}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsThemeLanguageSection')}</Text>

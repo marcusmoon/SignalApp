@@ -361,7 +361,11 @@ export const ja = {
   settingsQuotesSegmentDragHandleA11y: '{{name}}の順番を変更（ドラッグ）',
 
   settingsThemeLead:
-    '表示では言語・文字サイズ・アプリのテーマ（アクセント）を変更できます。言語と文字サイズはすぐに保存され、テーマ色はタブ・ボタン・更新などに反映されます。',
+    '表示では画面モード・言語・文字サイズ・アクセント色を変更できます。変更はすぐに反映されます。',
+  settingsAppearanceSection: '画面モード',
+  settingsAppearanceSystem: 'システム',
+  settingsAppearanceLight: 'ライト',
+  settingsAppearanceDark: 'ダーク',
   settingsThemeAccentSection: 'テーマ',
   settingsThemeLanguageSection: '言語',
   settingsFontSizeSection: '文字サイズ',

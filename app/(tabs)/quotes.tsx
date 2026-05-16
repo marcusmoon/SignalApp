@@ -28,7 +28,6 @@ import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/const
 import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
-  SEGMENT_TAB_BACKGROUND,
   SEGMENT_TAB_BTN_PADDING_V,
   SEGMENT_TAB_BTN_RADIUS,
   SEGMENT_TAB_FONT_SIZE,
@@ -742,7 +741,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     listContent: { paddingHorizontal: 16, paddingTop: 0 },
     segment: {
       flexDirection: 'row',
-      backgroundColor: SEGMENT_TAB_BACKGROUND,
+      backgroundColor: theme.bgElevated,
       borderRadius: SEGMENT_TAB_OUTER_RADIUS,
       borderWidth: 1,
       borderColor: theme.border,

@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type MainEntryKey = 'home' | 'news' | 'quotes' | 'youtube' | 'more';
 
-/** 설정「첫 화면」세그먼트 순서 — 하단 탭(시세·뉴스·홈·유튜브·더보기)과 동일 */
-export const MAIN_ENTRY_DISPLAY_ORDER: MainEntryKey[] = ['quotes', 'news', 'home', 'youtube', 'more'];
+/** 설정「첫 화면」세그먼트 순서 — 하단 탭(뉴스·시세·홈·유튜브·더보기)과 동일 */
+export const MAIN_ENTRY_DISPLAY_ORDER: MainEntryKey[] = ['news', 'quotes', 'home', 'youtube', 'more'];
 
 const STORAGE_KEY = '@signal/main_entry_v1';
 const VALID = new Set<MainEntryKey>(['home', 'news', 'quotes', 'youtube', 'more']);

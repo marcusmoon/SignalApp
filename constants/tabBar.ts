@@ -4,11 +4,11 @@
  */
 export const TAB_BAR_FLOAT_MARGIN_H = 14;
 /** 홈 인디케이터 위 추가 간격(탭바 하단과 화면 하단 사이가 아님 — `_layout`에서 insets.bottom과 합산) */
-export const TAB_BAR_FLOAT_MARGIN_BOTTOM = 10;
+export const TAB_BAR_FLOAT_MARGIN_BOTTOM = 6;
 /** 플로팅 캡슐 모서리 */
 export const TAB_BAR_FLOAT_RADIUS = 24;
 /** 아이콘+라벨 영역 높이(safe area는 레이아웃에서 더함) */
 export const TAB_BAR_FLOAT_HEIGHT = 52;
 
 /** 하단 탭 표시 순서 — `app/(tabs)/_layout.tsx`의 `Tabs.Screen` 순서와 동일 */
-export const TAB_BAR_SCREEN_ORDER = ['quotes', 'news', 'index', 'youtube', 'more'] as const;
+export const TAB_BAR_SCREEN_ORDER = ['news', 'quotes', 'index', 'youtube', 'more'] as const;

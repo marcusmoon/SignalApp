@@ -87,6 +87,7 @@
       ],
       "./plugins/withIosStatusBarAppearance.js",
       "./plugins/withIosEmbedJsOnDevice.js",
+      "./plugins/withIosLaunchBackground.js",
       "./plugins/removeIosPushEntitlement.js",
       "./plugins/removeIosAppleSignInEntitlement.js",
       "./plugins/withAndroidExternalAppQueries.js"

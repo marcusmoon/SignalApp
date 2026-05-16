@@ -203,8 +203,8 @@ export default function TabLayout() {
    * `overflow: 'visible'` + 충분한 content 높이로 맞춘다.
    */
   const isWeb = Platform.OS === 'web';
-  const tabBarInnerPadBottom = isWeb ? 9 : 6;
-  const tabBarInnerPadTop = isWeb ? 6 : 6;
+  const tabBarInnerPadBottom = isWeb ? 9 : 8;
+  const tabBarInnerPadTop = isWeb ? 6 : 5;
   const tabBarContentHeight = isWeb ? TAB_BAR_FLOAT_HEIGHT + 14 : TAB_BAR_FLOAT_HEIGHT;
   /** 플로팅 바: 홈 인디케이터 위에 뜨므로 높이에 insets.bottom 미포함 */
   const tabBarTotalHeight = tabBarContentHeight + tabBarInnerPadTop + tabBarInnerPadBottom;
@@ -263,7 +263,7 @@ export default function TabLayout() {
           lineHeight: 12,
           fontWeight: '700',
           letterSpacing: 0,
-          marginTop: 2,
+          marginTop: 1,
           marginBottom: 0,
           ...(isWeb
             ? {
@@ -276,8 +276,8 @@ export default function TabLayout() {
             : {}),
         },
         tabBarItemStyle: {
-          paddingTop: 2,
-          paddingBottom: isWeb ? 3 : 2,
+          paddingTop: isWeb ? 2 : 0,
+          paddingBottom: isWeb ? 3 : 0,
           paddingHorizontal: 0,
           ...(isWeb ? { overflow: 'visible' as const } : {}),
           justifyContent: 'center',
@@ -287,7 +287,7 @@ export default function TabLayout() {
         },
         tabBarIconStyle: {
           marginTop: 0,
-          marginBottom: 1,
+          marginBottom: 0,
         },
         tabBarButton: (props: BottomTabBarButtonProps) => <SlackTabBarButton {...props} />,
         headerShown: false,
@@ -315,14 +315,7 @@ export default function TabLayout() {
       initialRouteName="index"
       screenOptions={screenOptions}
       detachInactiveScreens={false}>
-      {/* 순서: TAB_BAR_SCREEN_ORDER — 시세 · 뉴스 · 홈 · 유튜브 · 더보기 */}
-      <Tabs.Screen
-        name="quotes"
-        options={{
-          title: t('tabQuotes'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="line-chart" color={color} focused={focused} />,
-        }}
-      />
+      {/* 순서: TAB_BAR_SCREEN_ORDER — 뉴스 · 시세 · 홈 · 유튜브 · 더보기 */}
       <Tabs.Screen
         name="news"
         options={{
@@ -330,6 +323,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="newspaper-o" color={color} focused={focused} showDot={newsHasUnread} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="quotes"
+        options={{
+          title: t('tabQuotes'),
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="line-chart" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen

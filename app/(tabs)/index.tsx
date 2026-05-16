@@ -30,18 +30,15 @@ import {
   fetchSignalInsights,
   fetchSignalMarketQuotes,
   fetchSignalNews,
-  fetchSignalYoutube,
   signalNewsToNewsItem,
-  signalYoutubeToYoutubeItem,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type {
   SignalApiInsight,
   SignalApiMarketQuote,
   SignalApiNewsItem,
-  SignalApiYoutubeVideo,
 } from '@/integrations/signal-api/types';
-import type { NewsItem, YoutubeItem } from '@/types/signal';
+import type { NewsItem } from '@/types/signal';
 import type { MessageId } from '@/locales/messages';
 
 let initialEntryApplied = false;
@@ -51,7 +48,6 @@ type HomeState = {
   watchQuotes: SignalApiMarketQuote[];
   rawNews: SignalApiNewsItem[];
   news: NewsItem[];
-  videos: YoutubeItem[];
   watchSymbols: string[];
 };
 
@@ -60,7 +56,6 @@ const EMPTY_STATE: HomeState = {
   watchQuotes: [],
   rawNews: [],
   news: [],
-  videos: [],
   watchSymbols: [],
 };
 
@@ -74,6 +69,27 @@ type HomeEvidenceRow = {
   url?: string;
   fallbackRoute: '/news' | '/youtube';
 };
+
+const HOME_RELATED_NEWS_LIMIT = 5;
+const HOME_RELATED_NEWS_MAX_AGE_MS = 72 * 60 * 60 * 1000;
+const HOME_RELATED_VIDEO_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+
+function homeRelatedNewsFromIso(): string {
+  return new Date(Date.now() - HOME_RELATED_NEWS_MAX_AGE_MS).toISOString();
+}
+
+function isoMs(iso?: string | null): number | null {
+  if (!iso) return null;
+  const ms = new Date(iso).getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function isRecentIso(iso: string | null | undefined, maxAgeMs: number): boolean {
+  const ms = isoMs(iso);
+  if (ms == null) return false;
+  const age = Date.now() - ms;
+  return age >= 0 && age <= maxAgeMs;
+}
 
 function formatUsdBody(abs: number): string {
   if (!Number.isFinite(abs) || abs < 0) return '—';
@@ -235,19 +251,24 @@ export default function HomeScreen() {
       watchSymbols,
     }));
 
-    void Promise.all([
-      fetchSignalNews({ locale, category: 'global', limit: 12, offset: 0 }, { cacheMode }),
-      fetchSignalYoutube({ sort: 'popular', limit: 4, offset: 0 }, { cacheMode }),
-    ]).then(([newsPage, youtubePage]) => {
+    void fetchSignalNews(
+      {
+        locale,
+        category: 'global',
+        limit: 16,
+        offset: 0,
+        from: homeRelatedNewsFromIso(),
+      },
+      { cacheMode },
+    ).then((newsPage) => {
       if (requestSeq.current !== seq) return;
       setState((prev) => ({
         ...prev,
         rawNews: newsPage.items,
         news: newsPage.items.map((item: SignalApiNewsItem) => signalNewsToNewsItem(item, locale)),
-        videos: youtubePage.items.map((item: SignalApiYoutubeVideo) => signalYoutubeToYoutubeItem(item, locale)),
       }));
     }).catch(() => {
-      /* Evidence is secondary; keep the primary home usable. */
+      /* Related news is secondary; keep the primary home usable. */
     });
   }, [locale, t]);
 
@@ -286,18 +307,21 @@ export default function HomeScreen() {
   const topQuotes = state.watchQuotes.slice(0, 3);
   const visibleWatchCount = topQuotes.length;
   const evidenceRows = useMemo(() => {
-    const max = 5;
+    const max = HOME_RELATED_NEWS_LIMIT;
     const rows: HomeEvidenceRow[] = [];
     const seen = new Set<string>();
     const newsById = new Map(state.news.map((item) => [item.id, item]));
-    const videoById = new Map(state.videos.map((item) => [item.id, item]));
-    const rawNewsByUrl = new Map(state.news.map((item) => [item.url, item]));
-    const videoByUrl = new Map(state.videos.filter((item) => item.url).map((item) => [item.url as string, item]));
+    const rawNewsById = new Map(state.rawNews.map((item) => [item.id, item]));
+    const rawNewsByUrl = new Map(
+      state.rawNews
+        .filter((item) => item.sourceUrl)
+        .map((item) => [item.sourceUrl as string, item]),
+    );
 
     topInsights.flatMap((insight) => insight.sourceRefs || []).forEach((ref) => {
       const type = String(ref.type || '').toLowerCase();
       if (type === 'youtube') {
-        const video = videoById.get(ref.id) || (ref.url ? videoByUrl.get(ref.url) : undefined);
+        if (!isRecentIso(ref.publishedAt, HOME_RELATED_VIDEO_MAX_AGE_MS)) return;
         addUniqueEvidence(
           rows,
           seen,
@@ -305,17 +329,20 @@ export default function HomeScreen() {
             key: `source-youtube-${ref.id}`,
             icon: 'youtube-play',
             kind: t('tabYoutube'),
-            title: ref.title || video?.title || t('tabYoutube'),
-            source: ref.sourceName || video?.channel || t('tabYoutube'),
-            timeLabel: video?.publishedLabel || (ref.publishedAt ? formatRelativeFromIso(ref.publishedAt, locale) : undefined),
-            url: ref.url || video?.url,
+            title: ref.title || t('tabYoutube'),
+            source: ref.sourceName || t('tabYoutube'),
+            timeLabel: ref.publishedAt ? formatRelativeFromIso(ref.publishedAt, locale) : undefined,
+            url: ref.url,
             fallbackRoute: '/youtube',
           },
           max,
         );
         return;
       }
-      const news = newsById.get(ref.id) || (ref.url ? rawNewsByUrl.get(ref.url) : undefined);
+      const raw = rawNewsById.get(ref.id) || (ref.url ? rawNewsByUrl.get(ref.url) : undefined);
+      const news = newsById.get(ref.id) || (raw ? signalNewsToNewsItem(raw, locale) : undefined);
+      const publishedAt = ref.publishedAt || raw?.publishedAt;
+      if (!isRecentIso(publishedAt, HOME_RELATED_NEWS_MAX_AGE_MS)) return;
       addUniqueEvidence(
         rows,
         seen,
@@ -325,7 +352,7 @@ export default function HomeScreen() {
           kind: t('tabNews'),
           title: ref.title || news?.titleKo || t('tabNews'),
           source: ref.sourceName || news?.source || t('tabNews'),
-          timeLabel: news?.timeLabel || (ref.publishedAt ? formatRelativeFromIso(ref.publishedAt, locale) : undefined),
+          timeLabel: news?.timeLabel || (publishedAt ? formatRelativeFromIso(publishedAt, locale) : undefined),
           url: ref.url || news?.url,
           fallbackRoute: '/news',
         },
@@ -336,6 +363,7 @@ export default function HomeScreen() {
     const watchSet = normalizeSymbolSet(state.watchSymbols);
     state.rawNews.forEach((raw) => {
       if (rows.length >= max) return;
+      if (!isRecentIso(raw.publishedAt, HOME_RELATED_NEWS_MAX_AGE_MS)) return;
       const symbols = Array.isArray(raw.symbols) ? raw.symbols : [];
       if (!symbols.some((symbol) => watchSet.has(symbol.trim().toUpperCase()))) return;
       const item = signalNewsToNewsItem(raw, locale);
@@ -374,26 +402,8 @@ export default function HomeScreen() {
       );
     });
 
-    state.videos.forEach((item) => {
-      addUniqueEvidence(
-        rows,
-        seen,
-        {
-          key: `fallback-youtube-${item.id}`,
-          icon: 'youtube-play',
-          kind: t('tabYoutube'),
-          title: item.title,
-          source: item.channel || t('tabYoutube'),
-          timeLabel: item.publishedLabel,
-          url: item.url,
-          fallbackRoute: '/youtube',
-        },
-        max,
-      );
-    });
-
     return rows;
-  }, [locale, state.news, state.rawNews, state.videos, state.watchSymbols, t, topInsights]);
+  }, [locale, state.news, state.rawNews, state.watchSymbols, t, topInsights]);
   const bottomPad = 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
 
   return (

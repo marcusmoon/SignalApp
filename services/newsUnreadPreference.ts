@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { fetchSignalNews } from '@/integrations/signal-api/news';
+import type { SignalApiNewsItem } from '@/integrations/signal-api/types';
 
 const LAST_SEEN_KEY = '@signal/news_last_seen_id_v1';
 const UNREAD_CACHE_KEY = '@signal/news_has_unread_v1';
@@ -46,23 +47,52 @@ export async function saveLastSeenNewsId(id: string): Promise<void> {
   await setNewsUnreadCached(false);
 }
 
-/** 글로벌 피드 최신 1건 id — 탭 배지·읽음 처리 기준 */
-export async function fetchLatestGlobalNewsHeadlineId(
+type NewsHeadlineMarker = {
+  id: string;
+  publishedAt: string | null;
+};
+
+const NEWS_BADGE_CATEGORIES = ['global', 'crypto'] as const;
+
+function newestNewsMarker(rows: SignalApiNewsItem[]): NewsHeadlineMarker | null {
+  const candidates = rows
+    .map((item) => {
+      const id = item.id?.trim();
+      if (!id) return null;
+      const ms = item.publishedAt ? new Date(item.publishedAt).getTime() : 0;
+      return {
+        id,
+        publishedAt: item.publishedAt || null,
+        ms: Number.isFinite(ms) ? ms : 0,
+      };
+    })
+    .filter((item): item is NewsHeadlineMarker & { ms: number } => Boolean(item));
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => b.ms - a.ms || b.id.localeCompare(a.id));
+  const latest = candidates[0];
+  return { id: latest.id, publishedAt: latest.publishedAt };
+}
+
+/** 뉴스 탭 최신 항목 id — 글로벌/코인 피드 배지·읽음 처리 기준 */
+export async function fetchLatestNewsHeadlineId(
   locale: string,
   options?: { cacheMode?: 'use' | 'bypass' },
 ): Promise<string | null> {
-  const { items } = await fetchSignalNews(
-    { locale, category: 'global', limit: 1, offset: 0 },
-    { cacheMode: options?.cacheMode ?? 'use' },
+  const pages = await Promise.all(
+    NEWS_BADGE_CATEGORIES.map((category) =>
+      fetchSignalNews(
+        { locale, category, limit: 1, offset: 0 },
+        { cacheMode: options?.cacheMode ?? 'use' },
+      ).catch(() => ({ items: [] })),
+    ),
   );
-  const id = items[0]?.id?.trim();
-  return id || null;
+  return newestNewsMarker(pages.flatMap((page) => page.items))?.id || null;
 }
 
 export async function checkNewsHasUnread(locale: string): Promise<boolean> {
   const [lastSeen, latestId] = await Promise.all([
     loadLastSeenNewsId(),
-    fetchLatestGlobalNewsHeadlineId(locale, { cacheMode: 'bypass' }),
+    fetchLatestNewsHeadlineId(locale, { cacheMode: 'bypass' }),
   ]);
   if (!latestId) return false;
   if (!lastSeen) return true;
@@ -76,8 +106,8 @@ export async function refreshNewsUnreadFromServer(locale: string): Promise<boole
   return hasUnread;
 }
 
-/** 뉴스 탭 진입 시 호출 — 최신 글로벌 헤드라인을 읽음으로 표시 */
+/** 뉴스 탭 진입 시 호출 — 뉴스 탭 최신 항목을 읽음으로 표시 */
 export async function markNewsFeedSeen(locale: string, headlineId?: string | null): Promise<void> {
-  const id = headlineId?.trim() || (await fetchLatestGlobalNewsHeadlineId(locale));
+  const id = headlineId?.trim() || (await fetchLatestNewsHeadlineId(locale));
   if (id) await saveLastSeenNewsId(id);
 }

@@ -161,6 +161,7 @@ export const en = {
   accountActivityBriefing: 'Watchlist briefing',
   accountActivityBriefingDesc: 'Review checkpoints for your watchlist.',
   feedBriefingCtaTitle: 'Watchlist briefing',
+  feedBriefingShort: 'Briefing',
   feedBriefingCtaDesc: 'Check watchlist signals before the feed.',
   accountActivityNotificationSettings: 'Notification settings',
   accountActivityNotificationSettingsDesc: 'Tune push and alert conditions.',

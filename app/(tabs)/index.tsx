@@ -544,17 +544,24 @@ export default function FeedScreen() {
                   />
                 </View>
               </Pressable>
-              <Pressable
-                onPress={() => router.push('/insights')}
-                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                accessibilityRole="link"
-                accessibilityLabel={t('insightSeeAll')}
-                style={({ pressed }) => [
-                  styles.insightSeeAllWrap,
-                  pressed && styles.insightSeeAllWrapPressed,
-                ]}>
-                <Text style={styles.insightSeeAllLink}>{t('insightSeeAll')}</Text>
-              </Pressable>
+              <View style={styles.insightActions}>
+                <Pressable
+                  onPress={() => router.push('/briefing')}
+                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                  accessibilityRole="link"
+                  accessibilityLabel={t('feedBriefingCtaTitle')}
+                  style={({ pressed }) => [styles.insightActionBtn, pressed && styles.insightSeeAllWrapPressed]}>
+                  <Text style={styles.insightActionText}>{t('feedBriefingShort')}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => router.push('/insights')}
+                  hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                  accessibilityRole="link"
+                  accessibilityLabel={t('insightSeeAll')}
+                  style={({ pressed }) => [styles.insightActionBtn, pressed && styles.insightSeeAllWrapPressed]}>
+                  <Text style={styles.insightActionText}>{t('insightSeeAll')}</Text>
+                </Pressable>
+              </View>
             </View>
             {insightFeedExpanded
               ? insights.slice(0, INSIGHT_HOME_PREVIEW).map((insight) => (
@@ -637,20 +644,17 @@ export default function FeedScreen() {
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>
           {insightSectionEl}
-          <Pressable
-            onPress={() => router.push('/briefing')}
-            style={({ pressed }) => [styles.briefingCta, pressed && styles.briefingCtaPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={t('feedBriefingCtaTitle')}>
-            <View style={styles.briefingCtaIcon}>
-              <FontAwesome name="briefcase" size={13} color={theme.green} />
-            </View>
-            <View style={styles.briefingCtaTextBox}>
-              <Text style={styles.briefingCtaTitle} numberOfLines={1}>{t('feedBriefingCtaTitle')}</Text>
-              <Text style={styles.briefingCtaDesc} numberOfLines={1}>{t('feedBriefingCtaDesc')}</Text>
-            </View>
-            <FontAwesome name="chevron-right" size={12} color={theme.textMuted} />
-          </Pressable>
+          {insights.length === 0 ? (
+            <Pressable
+              onPress={() => router.push('/briefing')}
+              style={({ pressed }) => [styles.briefingMiniCta, pressed && styles.briefingCtaPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={t('feedBriefingCtaTitle')}>
+              <FontAwesome name="briefcase" size={12} color={theme.green} />
+              <Text style={styles.briefingMiniCtaText} numberOfLines={1}>{t('feedBriefingCtaTitle')}</Text>
+              <FontAwesome name="chevron-right" size={11} color={theme.textMuted} />
+            </Pressable>
+          ) : null}
           {refreshNotice ? (
             <View style={styles.refreshNotice}>
               <FontAwesome name="check-circle" size={13} color={theme.green} />
@@ -855,14 +859,25 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginRight: 7,
       flexShrink: 0,
     },
-    insightSeeAllWrap: {
+    insightActions: {
       flexShrink: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    insightActionBtn: {
+      minHeight: 28,
       justifyContent: 'center',
+      paddingHorizontal: 9,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
     },
     insightSeeAllWrapPressed: {
       opacity: 0.85,
     },
-    insightSeeAllLink: {
+    insightActionText: {
       fontSize: sf(12),
       lineHeight: sf(14),
       fontWeight: '700',
@@ -902,46 +917,28 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       lineHeight: sf(12),
       fontWeight: '900',
     },
-    briefingCta: {
-      minHeight: 48,
+    briefingMiniCta: {
+      minHeight: 38,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      justifyContent: 'center',
+      gap: 8,
       paddingHorizontal: 12,
       marginBottom: 8,
     },
     briefingCtaPressed: {
       opacity: 0.78,
     },
-    briefingCtaIcon: {
-      width: 28,
-      height: 28,
-      borderRadius: 9,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    briefingCtaTextBox: {
-      flex: 1,
+    briefingMiniCtaText: {
       minWidth: 0,
-    },
-    briefingCtaTitle: {
-      color: theme.text,
-      fontSize: sf(12),
-      lineHeight: sf(16),
-      fontWeight: '900',
-    },
-    briefingCtaDesc: {
-      color: theme.textMuted,
+      color: theme.green,
       fontSize: sf(11),
-      lineHeight: sf(15),
-      fontWeight: '700',
+      lineHeight: sf(14),
+      fontWeight: '900',
     },
     tagFilterRow: {
       flexDirection: 'row',

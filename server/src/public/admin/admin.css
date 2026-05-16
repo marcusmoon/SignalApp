@@ -4398,100 +4398,38 @@ body.sideCollapsed .sideWorkspace {
   bottom: 18px;
 }
 
-@media (min-width: 1181px) {
-  .adminShellV2 #view-news .panel,
-  .adminShellV2 #view-youtube .panel,
-  .adminShellV2 #view-calendar .panel {
-    grid-template-columns: minmax(284px, 340px) minmax(0, 1fr);
-    align-items: start;
-  }
+/* Keep non-dashboard views conventional until each screen is redesigned in its own template. */
+.adminShellV2 .view:not(#view-dashboard) .panel {
+  grid-template-columns: minmax(0, 1fr);
+}
 
-  .adminShellV2 #view-news .pageHeader,
-  .adminShellV2 #view-youtube .pageHeader,
-  .adminShellV2 #view-calendar .pageHeader {
-    grid-column: 1 / -1;
-  }
+.adminShellV2 #view-news .panel > *,
+.adminShellV2 #view-youtube .panel > *,
+.adminShellV2 #view-calendar .panel > *,
+.adminShellV2 #jobRunsPanel > *,
+.adminShellV2 #view-settings .settingsTab > * {
+  grid-column: auto;
+}
 
-  .adminShellV2 #newsFilterBox,
-  .adminShellV2 #youtubeFilterBox,
-  .adminShellV2 .calendarFilters,
-  .adminShellV2 #newsBulkBox,
-  .adminShellV2 #youtubeBulkBox {
-    grid-column: 1;
-    align-self: start;
-  }
+.adminShellV2 #newsFilterBox,
+.adminShellV2 #youtubeFilterBox,
+.adminShellV2 .calendarFilters,
+.adminShellV2 #jobRunsPanel .filterBar,
+.adminShellV2 #view-settings .settingsHero,
+.adminShellV2 #view-settings .dangerIntro {
+  position: static;
+}
 
-  .adminShellV2 #newsFilterBox,
-  .adminShellV2 #youtubeFilterBox,
-  .adminShellV2 .calendarFilters {
-    position: sticky;
-    top: calc(var(--admin-header-h, 74px) + 18px);
-  }
+.adminShellV2 #jobRunsPanel:not(.hidden),
+.adminShellV2 #view-settings .settingsTab:not(.hidden) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
 
-  .adminShellV2 #newsBulkBox,
-  .adminShellV2 #youtubeBulkBox {
-    margin-top: -8px;
-  }
-
-  .adminShellV2 #newsPagerTop,
-  .adminShellV2 #news,
-  .adminShellV2 #newsPagerBottom,
-  .adminShellV2 #youtubePagerTop,
-  .adminShellV2 #youtube,
-  .adminShellV2 #youtubePagerBottom,
-  .adminShellV2 #adminCalendarGrid,
-  .adminShellV2 .calendarGridHint,
-  .adminShellV2 .calendarEventsCard {
-    grid-column: 2;
-    min-width: 0;
-  }
-
-  .adminShellV2 #jobRunsPanel:not(.hidden) {
-    display: grid;
-    grid-template-columns: minmax(284px, 340px) minmax(0, 1fr);
-    gap: 16px;
-    align-items: start;
-  }
-
-  .adminShellV2 #jobRunsPanel .filterBar {
-    grid-column: 1;
-    position: sticky;
-    top: calc(var(--admin-header-h, 74px) + 18px);
-    align-self: start;
-  }
-
-  .adminShellV2 #jobRunsPagerTop,
-  .adminShellV2 #jobRuns,
-  .adminShellV2 #jobRunsPagerBottom {
-    grid-column: 2;
-    min-width: 0;
-  }
-
-  .adminShellV2 #view-settings .settingsTab:not(.hidden) {
-    display: grid;
-    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
-    gap: 16px;
-    align-items: start;
-  }
-
-  .adminShellV2 #view-settings .settingsHero,
-  .adminShellV2 #view-settings .dangerIntro {
-    grid-column: 1;
-    position: sticky;
-    top: calc(var(--admin-header-h, 74px) + 18px);
-    align-self: start;
-  }
-
-  .adminShellV2 #view-settings #providerSettings,
-  .adminShellV2 #view-settings #adminUsers,
-  .adminShellV2 #view-settings #legalTerms,
-  .adminShellV2 #view-settings #marketLists,
-  .adminShellV2 #view-settings #newsSources,
-  .adminShellV2 #view-settings .settingsControlCard,
-  .adminShellV2 #view-settings .resetLayout {
-    grid-column: 2;
-    min-width: 0;
-  }
+.adminShellV2 #newsBulkBox,
+.adminShellV2 #youtubeBulkBox {
+  margin-top: 0;
 }
 
 @media (max-width: 1180px) {
@@ -4531,5 +4469,853 @@ body.sideCollapsed .sideWorkspace {
   .adminShellV2 .opsHeroActions {
     display: grid;
     grid-template-columns: 1fr;
+  }
+}
+
+/* Toss-inspired admin refresh — light surfaces, simple hierarchy, blue primary actions. */
+body.adminShellV2 {
+  color-scheme: light;
+  --accent: #3182f6;
+  --accent-dim: rgba(49, 130, 246, 0.10);
+  --accent-border: rgba(49, 130, 246, 0.24);
+  --bg: #f7f8fa;
+  --bg-elevated: #ffffff;
+  --panel: #ffffff;
+  --border: #e5e8eb;
+  --text: #191f28;
+  --muted: #6b7684;
+  --dim: #b0b8c1;
+  --text-muted: #6b7684;
+  --danger: #f04452;
+  --warning: #f59f00;
+  --info: #3182f6;
+  --admin-bg: #f7f8fa;
+  --admin-shell: #ffffff;
+  --admin-surface: #ffffff;
+  --admin-surface-2: #f2f4f6;
+  --admin-border: #e5e8eb;
+  --admin-border-soft: #eef1f4;
+  --admin-text: #191f28;
+  --admin-text-soft: #333d4b;
+  --admin-muted: #6b7684;
+  --admin-faint: #8b95a1;
+  --admin-hover: rgba(2, 32, 71, 0.04);
+  --admin-active: rgba(49, 130, 246, 0.10);
+  --admin-shadow-card: 0 1px 2px rgba(0, 27, 55, 0.04), 0 8px 24px rgba(0, 27, 55, 0.06);
+  --admin-shadow-float: 0 12px 36px rgba(0, 27, 55, 0.14);
+  background: var(--bg);
+  color: var(--text);
+}
+
+body.adminShellV2:not(.loginMode) {
+  background:
+    radial-gradient(circle at 92% -8%, rgba(49, 130, 246, 0.12), transparent 30%),
+    linear-gradient(180deg, #ffffff 0%, #f7f8fa 240px, #f7f8fa 100%);
+}
+
+body.adminShellV2.loginMode {
+  background:
+    radial-gradient(circle at 16% 10%, rgba(49, 130, 246, 0.14), transparent 28%),
+    linear-gradient(180deg, #ffffff 0%, #f7f8fa 100%);
+}
+
+.adminShellV2 header {
+  min-height: 64px;
+  padding: 0 28px;
+  background: rgba(255, 255, 255, 0.86);
+  border-bottom: 1px solid rgba(229, 232, 235, 0.84);
+  box-shadow: none;
+  backdrop-filter: blur(18px);
+}
+
+.adminShellV2 .signalLogo {
+  width: 224px;
+  gap: 11px;
+}
+
+.adminShellV2 .signalBars span {
+  background: linear-gradient(180deg, #4593fc, #1c64f2);
+}
+
+.adminShellV2 .signalBrand {
+  color: #191f28;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+}
+
+.adminShellV2 .signalTag {
+  color: #8b95a1;
+  font-size: 11px;
+}
+
+.adminShellV2 .hamburgerBtn,
+.adminShellV2 #headerNotifBtn,
+.adminShellV2 #headerHelpBtn,
+.adminShellV2 #headerProfileBtn,
+.adminShellV2 #headerSearchBtn,
+.adminShellV2 #logoutBtn,
+.adminShellV2 #adminLanguage,
+.adminShellV2 #adminTimeBasis {
+  min-height: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border-color: transparent;
+  background: #f2f4f6;
+  color: #4e5968;
+}
+
+.adminShellV2 #headerNotifBtn:hover:not(:disabled),
+.adminShellV2 #headerHelpBtn:hover:not(:disabled),
+.adminShellV2 #headerProfileBtn:hover:not(:disabled),
+.adminShellV2 #headerSearchBtn:hover:not(:disabled),
+.adminShellV2 #logoutBtn:hover:not(:disabled),
+.adminShellV2 .hamburgerBtn:hover:not(:disabled) {
+  background: #e9edf1;
+  border-color: transparent;
+}
+
+.adminShellV2 .headerSearch::before {
+  color: #8b95a1;
+}
+
+.adminShellV2 .headerSearch input {
+  min-height: 42px;
+  border: 0;
+  border-radius: 14px;
+  background: #f2f4f6;
+  color: #191f28;
+  box-shadow: none;
+}
+
+.adminShellV2 .headerSearch input:focus {
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.16);
+}
+
+@media (min-width: 1024px) {
+  body.adminShellV2:not(.loginMode) #adminPanel.layout {
+    grid-template-columns: 258px minmax(0, 1fr);
+  }
+
+  .adminShellV2 .side {
+    top: 64px;
+    height: calc(100vh - 64px);
+    padding: 18px 14px;
+    background: rgba(255, 255, 255, 0.96);
+    border-right: 1px solid #eef1f4;
+  }
+}
+
+.adminShellV2 .sideWorkspace {
+  margin: 0 2px 18px;
+  padding: 14px;
+  border: 0;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #eef6ff 0%, #f8fbff 100%);
+  box-shadow: inset 0 0 0 1px rgba(49, 130, 246, 0.08);
+}
+
+.adminShellV2 .sideWorkspace span {
+  color: #6b7684;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.adminShellV2 .sideWorkspace strong {
+  color: #191f28;
+  font-size: 15px;
+}
+
+.adminShellV2 .sideWorkspace small {
+  color: #6b7684;
+}
+
+.adminShellV2 .navSectionTitle {
+  margin: 20px 10px 8px;
+  color: #8b95a1;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.adminShellV2 .navBtn {
+  min-height: 42px;
+  height: 42px;
+  margin-bottom: 3px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: #4e5968;
+  font-weight: 750;
+}
+
+.adminShellV2 .navBtn::before {
+  width: 26px;
+  height: 26px;
+  border-radius: 10px;
+  background: #f2f4f6;
+  color: #8b95a1;
+  font-size: 11px;
+}
+
+.adminShellV2 .navBtn:hover:not(:disabled) {
+  background: #f7f8fa;
+  color: #191f28;
+}
+
+.adminShellV2 .navBtn.active {
+  background: #eef6ff;
+  color: #1b64da;
+}
+
+.adminShellV2 .navBtn.active::before {
+  background: #3182f6;
+  color: #ffffff;
+}
+
+.adminShellV2 .floatingProfile {
+  border: 0;
+  border-radius: 18px;
+  background: #f7f8fa;
+  box-shadow: inset 0 0 0 1px #eef1f4;
+}
+
+.adminShellV2 .content {
+  max-width: 1440px;
+  padding: 34px 36px 48px;
+}
+
+.adminShellV2 .panel {
+  gap: 20px;
+}
+
+.adminShellV2 .pageHeader {
+  margin-bottom: 4px;
+  padding-bottom: 0;
+  border: 0;
+  align-items: start;
+}
+
+.adminShellV2 .pageHeader::after {
+  display: none;
+}
+
+.adminShellV2 .pageTitle {
+  color: #191f28;
+  font-size: 28px;
+  line-height: 1.18;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+}
+
+.adminShellV2 .pageDesc {
+  margin-top: 7px;
+  color: #6b7684;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.adminShellV2 .card,
+.adminShellV2 .stat,
+.adminShellV2 .filterBar,
+.adminShellV2 .filterBox,
+.adminShellV2 .actionBox,
+.adminShellV2 .dashboardHealthPanel,
+.adminShellV2 .dashboardContentPanel,
+.adminShellV2 .dashboardOpsPanel,
+.adminShellV2 .dashboardJobsPanel,
+.adminShellV2 .dashboardSubPanel,
+.adminShellV2 .calendarMonthPanel,
+.adminShellV2 .calendarEventsCard,
+.adminShellV2 .dialogPanel,
+.adminShellV2 .newsEdit,
+.adminShellV2 .loginCard {
+  border: 0;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 27, 55, 0.04), 0 10px 28px rgba(0, 27, 55, 0.06);
+}
+
+.adminShellV2 .card,
+.adminShellV2 .filterBar,
+.adminShellV2 .filterBox,
+.adminShellV2 .actionBox {
+  padding: 20px;
+}
+
+.adminShellV2 .filterBar::before,
+.adminShellV2 .actionBox::before {
+  display: none;
+}
+
+.adminShellV2 .filterBarTitle,
+.adminShellV2 .filterBoxTitle,
+.adminShellV2 .cardKicker {
+  color: #191f28;
+  font-size: 15px;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+}
+
+.adminShellV2 .cardHint,
+.adminShellV2 .muted {
+  color: #6b7684;
+}
+
+.adminShellV2 .filterGroup {
+  border: 0;
+  border-radius: 18px;
+  background: #f7f8fa;
+  padding: 10px;
+}
+
+.adminShellV2 .filterGroupTitle {
+  border: 0;
+  background: transparent;
+  color: #8b95a1;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.adminShellV2 input,
+.adminShellV2 select,
+.adminShellV2 textarea {
+  min-height: 42px;
+  border: 0;
+  border-radius: 14px;
+  background: #f2f4f6;
+  color: #191f28;
+}
+
+.adminShellV2 textarea {
+  min-height: 96px;
+}
+
+.adminShellV2 input::placeholder,
+.adminShellV2 textarea::placeholder {
+  color: #b0b8c1;
+}
+
+.adminShellV2 input:focus,
+.adminShellV2 select:focus,
+.adminShellV2 textarea:focus {
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(49, 130, 246, 0.16);
+}
+
+.adminShellV2 button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 14px;
+  background: #3182f6;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.adminShellV2 button:hover:not(:disabled) {
+  background: #1b64da;
+  border-color: transparent;
+}
+
+.adminShellV2 button.secondary,
+.adminShellV2 button.ghost {
+  background: #f2f4f6;
+  color: #4e5968;
+}
+
+.adminShellV2 button.secondary:hover:not(:disabled),
+.adminShellV2 button.ghost:hover:not(:disabled) {
+  background: #e9edf1;
+}
+
+.adminShellV2 button.active,
+.adminShellV2 .segmented .segBtn.active,
+.adminShellV2 .tabBtn.active {
+  background: #3182f6;
+  color: #ffffff;
+}
+
+.adminShellV2 button.danger {
+  background: #fff2f3;
+  color: #e42939;
+}
+
+.adminShellV2 button.danger:hover:not(:disabled) {
+  background: #ffe6e8;
+}
+
+.adminShellV2 button.warning {
+  background: #fff7e6;
+  color: #c77c00;
+}
+
+.adminShellV2 button.success {
+  background: #3182f6;
+  color: #ffffff;
+}
+
+.adminShellV2 .compactBtn {
+  min-height: 32px;
+  border-radius: 999px;
+  padding: 6px 11px;
+}
+
+.adminShellV2 .segmented,
+.adminShellV2 .tabs {
+  border: 0;
+  border-radius: 16px;
+  background: #f2f4f6;
+  padding: 4px;
+}
+
+.adminShellV2 .segmented .segBtn,
+.adminShellV2 .tabBtn {
+  min-height: 34px;
+  border-radius: 12px;
+  background: transparent;
+  color: #6b7684;
+}
+
+.adminShellV2 .settingsTable,
+.adminShellV2 .dashboardRunsTable,
+.adminShellV2 table {
+  border: 0;
+  border-radius: 18px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.adminShellV2 th,
+.adminShellV2 td {
+  padding: 13px 14px;
+  border-bottom: 1px solid #eef1f4;
+}
+
+.adminShellV2 th {
+  background: #f7f8fa;
+  color: #8b95a1;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.adminShellV2 tbody tr:hover td {
+  background: #fafbfc;
+}
+
+.adminShellV2 .pill {
+  border: 0;
+  border-radius: 999px;
+  background: #f2f4f6;
+  color: #6b7684;
+  font-weight: 750;
+}
+
+.adminShellV2 .pillStatus--ok,
+.adminShellV2 .pillStatus--sent {
+  background: #e8f7ef;
+  color: #008f5f;
+}
+
+.adminShellV2 .pillStatus--warn {
+  background: #fff7e6;
+  color: #c77c00;
+}
+
+.adminShellV2 .pillStatus--fail {
+  background: #fff2f3;
+  color: #e42939;
+}
+
+.adminShellV2 .opsHero {
+  gap: 18px;
+}
+
+.adminShellV2 .opsHeroMain,
+.adminShellV2 .opsHeroMetrics {
+  border: 0;
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 27, 55, 0.04), 0 16px 40px rgba(0, 27, 55, 0.08);
+}
+
+.adminShellV2 .opsHeroMain {
+  min-height: 210px;
+  padding: 30px;
+  background:
+    radial-gradient(circle at 90% 8%, rgba(49, 130, 246, 0.14), transparent 32%),
+    #ffffff;
+}
+
+.adminShellV2 .opsEyebrow {
+  color: #3182f6;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.adminShellV2 .opsHeroMain h2 {
+  color: #191f28;
+  font-size: clamp(30px, 4.2vw, 44px);
+  letter-spacing: -0.035em;
+}
+
+.adminShellV2 .opsHeroMain p {
+  color: #6b7684;
+}
+
+.adminShellV2 .opsHeroMetrics {
+  gap: 0;
+  background: #ffffff;
+}
+
+.adminShellV2 .opsMetric {
+  min-height: 104px;
+  background: #ffffff;
+  border-left: 0;
+  border-top: 1px solid #eef1f4;
+}
+
+.adminShellV2 .opsMetric:nth-child(1),
+.adminShellV2 .opsMetric:nth-child(2) {
+  border-top: 0;
+}
+
+.adminShellV2 .opsMetric:nth-child(odd) {
+  border-right: 1px solid #eef1f4;
+}
+
+.adminShellV2 .opsMetric span {
+  color: #6b7684;
+}
+
+.adminShellV2 .opsMetric strong {
+  color: #191f28;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+}
+
+.adminShellV2 .dashboardDataCard,
+.adminShellV2 .dashboardListItem,
+.adminShellV2 .dashboardOpsStat,
+.adminShellV2 .notificationMiniCard,
+.adminShellV2 .appUserCard {
+  border: 0;
+  border-radius: 18px;
+  background: #f7f8fa;
+  box-shadow: none;
+}
+
+.adminShellV2 .dashboardDataCard {
+  border-left-width: 0;
+}
+
+.adminShellV2 .dashboardListItem:hover,
+.adminShellV2 .notificationMiniCard:hover,
+.adminShellV2 .appUserCard[data-app-user-row]:hover,
+.adminShellV2 .appUserCard[data-app-user-row]:focus-visible {
+  background: #f2f4f6;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.adminShellV2 .appUserCard--selected,
+.adminShellV2 .appUserCard--summary {
+  background: #eef6ff;
+  box-shadow: inset 4px 0 0 #3182f6;
+}
+
+.adminShellV2 .toastHost {
+  right: 22px;
+  bottom: 22px;
+}
+
+.adminShellV2 .dialogPanel,
+.adminShellV2 .newsEdit {
+  box-shadow: 0 20px 60px rgba(0, 27, 55, 0.16);
+}
+
+.adminShellV2 .switchUi {
+  border: 0;
+  background: #dfe5ec;
+  box-shadow: inset 0 0 0 1px rgba(0, 27, 55, 0.03);
+}
+
+.adminShellV2 .switchUi::after {
+  background: #ffffff;
+  box-shadow: 0 3px 8px rgba(0, 27, 55, 0.16);
+}
+
+.adminShellV2 .switchRow:has(.switchInput:checked) .switchUi {
+  border-color: transparent;
+  background: #3182f6;
+}
+
+.adminShellV2 .switchRow:has(.switchInput:checked) .switchUi::after {
+  background: #ffffff;
+}
+
+.adminShellV2 .jsonEditor,
+.adminShellV2 .newsEdit .jsonEditor,
+.adminShellV2 .newsEditModal .jsonEditor,
+.adminShellV2 .newsHashtagEditor .jsonEditor {
+  background: #f7f8fa;
+  border-color: transparent;
+  color: #191f28;
+}
+
+.adminShellV2 .opReconcile {
+  background: #fff7e6;
+  color: #c77c00;
+}
+
+.adminShellV2 .modelPresetPanel,
+.adminShellV2 .newsEditSection,
+.adminShellV2 .newsEditSource,
+.adminShellV2 .calendarMonthPanel,
+.adminShellV2 .calendarEventsCard {
+  border: 0;
+  background: #f7f8fa;
+  box-shadow: none;
+}
+
+.adminShellV2 .modelPresetPanel {
+  padding: 18px;
+  border-radius: 22px;
+}
+
+.adminShellV2 .settingsHero,
+.adminShellV2 .dangerIntro {
+  gap: 14px;
+  padding: 20px;
+  margin-bottom: 0;
+  border: 0;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(49, 130, 246, 0.12), transparent 38%),
+    #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 27, 55, 0.04), 0 10px 28px rgba(0, 27, 55, 0.06);
+}
+
+.adminShellV2 .settingsHeroIcon {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 16px;
+  background: #eef6ff;
+  color: #1b64da;
+}
+
+.adminShellV2 .settingsHero .summary,
+.adminShellV2 .dangerIntro .summary {
+  color: #6b7684;
+  font-size: 13px;
+}
+
+.adminShellV2 #view-settings .pageHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+}
+
+.adminShellV2 #view-settings .pageHeaderActions {
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.adminShellV2 #view-settings .segmented {
+  width: 100%;
+  justify-content: flex-start;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.adminShellV2 #view-settings .segmented::-webkit-scrollbar {
+  display: none;
+}
+
+.adminShellV2 #view-settings .segmented .segBtn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding-inline: 14px;
+}
+
+.adminShellV2 #view-settings .refreshBtn {
+  margin-left: auto;
+}
+
+@media (min-width: 1120px) {
+  .adminShellV2 #view-settings .settingsTab:not(.hidden) {
+    display: grid;
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    gap: 22px;
+    align-items: start;
+  }
+
+  .adminShellV2 #view-settings .settingsHero,
+  .adminShellV2 #view-settings .dangerIntro {
+    position: sticky;
+    top: calc(var(--admin-header-h, 64px) + 24px);
+  }
+
+  .adminShellV2 #view-settings .settingsTab > :not(.settingsHero):not(.dangerIntro) {
+    min-width: 0;
+  }
+}
+
+.adminShellV2 #providerSettings .settingsSectionGrid {
+  gap: 18px;
+}
+
+@media (min-width: 1280px) {
+  .adminShellV2 #providerSettings .settingsSectionGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .adminShellV2 #providerSettings .settingsSectionGrid > .settingsControlCard:nth-child(n + 3) {
+    grid-column: 1 / -1;
+  }
+}
+
+.adminShellV2 .providerTileGrid {
+  gap: 10px;
+}
+
+.adminShellV2 .providerTile {
+  padding: 14px;
+  border: 0;
+  border-radius: 18px;
+  background: #f7f8fa;
+  box-shadow: none;
+}
+
+.adminShellV2 .providerTileHead {
+  gap: 12px;
+}
+
+.adminShellV2 .providerGlyph {
+  border: 0;
+  background: #eef6ff;
+  color: #1b64da;
+}
+
+.adminShellV2 .providerTitle strong {
+  color: #191f28;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.adminShellV2 .providerTitle .muted {
+  color: #8b95a1;
+}
+
+.adminShellV2 .providerSwitch--head {
+  margin-left: auto;
+}
+
+.adminShellV2 .providerEditDialogPanel {
+  width: min(760px, 100%);
+}
+
+.adminShellV2 .providerKeyInputRow {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.adminShellV2 .socialAuthProviderGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.adminShellV2 .socialAuthProviderCard {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+  border: 0;
+  border-radius: 18px;
+  background: #f7f8fa;
+}
+
+.adminShellV2 .socialAuthProviderCard strong {
+  color: #191f28;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.adminShellV2 .previewBar {
+  border: 0;
+  border-radius: 18px;
+  background: #f7f8fa;
+}
+
+.adminShellV2 .calCell {
+  border: 0;
+  background: #ffffff;
+  color: #333d4b;
+  box-shadow: inset 0 0 0 1px #eef1f4;
+}
+
+.adminShellV2 .calCell--has {
+  color: #1b64da;
+  box-shadow: inset 0 0 0 1px rgba(49, 130, 246, 0.26);
+}
+
+.adminShellV2 .calCell--selected {
+  background: #3182f6;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.adminShellV2 .newsTableTable thead th {
+  background: #f7f8fa;
+}
+
+.adminShellV2 .newsRowExpand td {
+  background: #fafbfc;
+}
+
+.adminShellV2 .newsEdit {
+  border: 0;
+  background: #ffffff;
+}
+
+@media (max-width: 1023px) {
+  .adminShellV2 header {
+    min-height: 58px;
+    padding: 10px 14px;
+  }
+
+  .adminShellV2 .content {
+    padding: 20px 14px 34px;
+  }
+
+  .adminShellV2 .side {
+    background: #ffffff;
+  }
+}
+
+@media (max-width: 640px) {
+  .adminShellV2 .content {
+    padding: 16px 10px 28px;
+  }
+
+  .adminShellV2 .pageTitle {
+    font-size: 24px;
+  }
+
+  .adminShellV2 .card,
+  .adminShellV2 .filterBar,
+  .adminShellV2 .filterBox,
+  .adminShellV2 .actionBox,
+  .adminShellV2 .dashboardHealthPanel,
+  .adminShellV2 .dashboardContentPanel,
+  .adminShellV2 .dashboardOpsPanel,
+  .adminShellV2 .dashboardJobsPanel,
+  .adminShellV2 .dashboardSubPanel {
+    border-radius: 20px;
   }
 }

@@ -161,6 +161,7 @@ export const ja = {
   accountActivityBriefing: 'ウォッチリストブリーフィング',
   accountActivityBriefingDesc: 'ウォッチリストのチェックポイントをまとめて確認します。',
   feedBriefingCtaTitle: 'ウォッチリストブリーフィング',
+  feedBriefingShort: 'ブリーフ',
   feedBriefingCtaDesc: 'フィードの前にウォッチリストのシグナルを確認します。',
   accountActivityNotificationSettings: '通知設定',
   accountActivityNotificationSettingsDesc: 'プッシュと通知条件を調整します。',

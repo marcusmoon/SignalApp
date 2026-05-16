@@ -563,7 +563,6 @@ export default function BriefingScreen() {
                     <View style={styles.sectionTitleAccent} />
                     <Text style={styles.blockTitleFlat}>{t('briefingSectionInsights')}</Text>
                   </View>
-                  <Text style={styles.sectionHint}>{t('briefingSectionInsightsHint')}</Text>
                   {notableSymbols.map((sym) => {
                     const signal = signalRows.find((row) => row.symbol === sym);
                     const q = quoteBySymbol[sym] ?? null;
@@ -991,14 +990,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     scheduleKindBadgeTextMacro: {
       color: theme.accentBlue,
-    },
-    sectionHint: {
-      fontSize: sf(11),
-      color: theme.textDim,
-      fontWeight: '600',
-      lineHeight: sf(16),
-      marginTop: -4,
-      marginBottom: 10,
     },
     macroEmpty: {
       fontSize: sf(11),

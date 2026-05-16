@@ -159,6 +159,7 @@ export const ko = {
   accountActivityBriefing: '관심 브리핑',
   accountActivityBriefingDesc: '내 관심종목 체크포인트를 모아봅니다.',
   feedBriefingCtaTitle: '관심 브리핑',
+  feedBriefingShort: '브리핑',
   feedBriefingCtaDesc: '관심종목 체크포인트를 먼저 확인하세요.',
   accountActivityNotificationSettings: '알림 설정',
   accountActivityNotificationSettingsDesc: '푸시와 알림 조건을 조정합니다.',

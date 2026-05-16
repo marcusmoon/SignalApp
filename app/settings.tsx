@@ -25,8 +25,9 @@ import developerAvatar from '@/assets/images/developer-avatar.png';
 import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
 import {
-  TAB_BAR_FLOAT_MARGIN_BOTTOM,
-  TAB_BAR_FLOAT_MARGIN_H,
+  tabBarBottomInset,
+  tabBarHorizontalMargin,
+  tabBarPositionBottom,
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
@@ -1033,8 +1034,7 @@ export default function SettingsScreen() {
   const scrollContentBottomPad = useMemo(
     () =>
       32 +
-      insets.bottom +
-      TAB_BAR_FLOAT_MARGIN_BOTTOM +
+      tabBarBottomInset(insets.bottom) +
       SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT +
       12,
     [insets.bottom],
@@ -2459,9 +2459,9 @@ export default function SettingsScreen() {
         style={[
           {
             position: 'absolute',
-            left: TAB_BAR_FLOAT_MARGIN_H,
-            right: TAB_BAR_FLOAT_MARGIN_H,
-            bottom: insets.bottom + TAB_BAR_FLOAT_MARGIN_BOTTOM,
+            left: tabBarHorizontalMargin(),
+            right: tabBarHorizontalMargin(),
+            bottom: tabBarPositionBottom(insets.bottom),
             borderRadius: TAB_BAR_FLOAT_RADIUS,
             overflow: 'hidden',
             backgroundColor: theme.card,

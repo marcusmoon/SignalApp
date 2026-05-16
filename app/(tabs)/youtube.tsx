@@ -38,7 +38,7 @@ import {
   SEGMENT_TAB_OUTER_RADIUS,
   SEGMENT_TAB_PADDING,
 } from '@/constants/segmentTabBar';
-import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
+import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -305,8 +305,8 @@ export default function YoutubeScreen() {
         })
       : loading;
 
-  const bottomPad = 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
-  const fabStackBottom = tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom + 8;
+  const bottomPad = 28 + tabBarHeight + tabBarBottomInset(insets.bottom);
+  const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
 
   const youtubeListHeader = useMemo(
     () => (

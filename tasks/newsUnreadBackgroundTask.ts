@@ -1,6 +1,4 @@
 import { isRunningInExpoGo } from 'expo';
-import * as BackgroundTask from 'expo-background-task';
-import * as TaskManager from 'expo-task-manager';
 
 import { hasSignalApi } from '@/services/env';
 import { loadLocale } from '@/services/localePreference';
@@ -13,21 +11,56 @@ import { isNewsUnreadBackgroundTaskNativeAvailable } from '@/utils/expoNativeMod
 
 export const NEWS_UNREAD_BACKGROUND_TASK = 'signal-news-unread-check';
 
-TaskManager.defineTask(NEWS_UNREAD_BACKGROUND_TASK, async () => {
+type BackgroundTaskModule = typeof import('expo-background-task');
+type TaskManagerModule = typeof import('expo-task-manager');
+
+type BackgroundTaskModules = {
+  BackgroundTask: BackgroundTaskModule;
+  TaskManager: TaskManagerModule;
+};
+
+let taskDefined = false;
+
+function loadBackgroundTaskModules(): BackgroundTaskModules | null {
+  if (!isNewsUnreadBackgroundTaskNativeAvailable()) return null;
   try {
-    if (!hasSignalApi()) {
-      return BackgroundTask.BackgroundTaskResult.Success;
-    }
-    const locale = await loadLocale();
-    await refreshNewsUnreadFromServer(locale);
-    return BackgroundTask.BackgroundTaskResult.Success;
+    return {
+      // Native module이 없는 빌드에서는 require 시점에 예외가 발생하므로 static import 금지.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      BackgroundTask: require('expo-background-task') as BackgroundTaskModule,
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      TaskManager: require('expo-task-manager') as TaskManagerModule,
+    };
   } catch {
-    return BackgroundTask.BackgroundTaskResult.Failed;
+    return null;
   }
-});
+}
+
+function ensureNewsUnreadTaskDefined(): BackgroundTaskModules | null {
+  const modules = loadBackgroundTaskModules();
+  if (!modules || taskDefined) return modules;
+
+  modules.TaskManager.defineTask(NEWS_UNREAD_BACKGROUND_TASK, async () => {
+    try {
+      if (!hasSignalApi()) {
+        return modules.BackgroundTask.BackgroundTaskResult.Success;
+      }
+      const locale = await loadLocale();
+      await refreshNewsUnreadFromServer(locale);
+      return modules.BackgroundTask.BackgroundTaskResult.Success;
+    } catch {
+      return modules.BackgroundTask.BackgroundTaskResult.Failed;
+    }
+  });
+  taskDefined = true;
+  return modules;
+}
 
 async function registerTask(minimumIntervalMinutes: number): Promise<void> {
-  await BackgroundTask.registerTaskAsync(NEWS_UNREAD_BACKGROUND_TASK, {
+  const modules = ensureNewsUnreadTaskDefined();
+  if (!modules) return;
+
+  await modules.BackgroundTask.registerTaskAsync(NEWS_UNREAD_BACKGROUND_TASK, {
     minimumInterval: minimumIntervalMinutes,
   });
 }
@@ -37,7 +70,8 @@ export async function registerNewsUnreadBackgroundFetch(): Promise<void> {
     return;
   }
 
-  if (!isNewsUnreadBackgroundTaskNativeAvailable()) {
+  const modules = ensureNewsUnreadTaskDefined();
+  if (!modules) {
     if (__DEV__) {
       console.warn(
         '[newsUnread] expo-task-manager / expo-background-task native modules missing. ' +
@@ -47,16 +81,16 @@ export async function registerNewsUnreadBackgroundFetch(): Promise<void> {
     return;
   }
 
-  const status = await BackgroundTask.getStatusAsync();
-  if (status === BackgroundTask.BackgroundTaskStatus.Restricted) {
+  const status = await modules.BackgroundTask.getStatusAsync();
+  if (status === modules.BackgroundTask.BackgroundTaskStatus.Restricted) {
     return;
   }
 
   const minutes = await loadNewsUnreadCheckIntervalMinutes();
   const minimumIntervalMinutes = newsUnreadBackgroundTaskIntervalMinutes(minutes);
-  const registered = await TaskManager.isTaskRegisteredAsync(NEWS_UNREAD_BACKGROUND_TASK);
+  const registered = await modules.TaskManager.isTaskRegisteredAsync(NEWS_UNREAD_BACKGROUND_TASK);
   if (registered) {
-    await BackgroundTask.unregisterTaskAsync(NEWS_UNREAD_BACKGROUND_TASK);
+    await modules.BackgroundTask.unregisterTaskAsync(NEWS_UNREAD_BACKGROUND_TASK);
   }
   await registerTask(minimumIntervalMinutes);
 }

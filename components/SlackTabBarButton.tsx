@@ -1,7 +1,7 @@
 import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import { PlatformPressable } from '@react-navigation/elements';
 import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
@@ -12,6 +12,8 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 export function SlackTabBarButton(props: BottomTabBarButtonProps) {
   const { theme } = useSignalTheme();
   const { style, onPress, ...rest } = props;
+  const flat = StyleSheet.flatten(style);
+  const { flex: _flex, ...tabButtonStyle } = flat ?? {};
 
   return (
     <PlatformPressable
@@ -28,7 +30,13 @@ export function SlackTabBarButton(props: BottomTabBarButtonProps) {
           : undefined
       }
       style={[
-        style,
+        tabButtonStyle,
+        Platform.OS !== 'web' && {
+          flexGrow: 0,
+          flexShrink: 0,
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
         Platform.OS === 'web' && {
           borderRadius: 12,
           overflow: 'visible' as const,

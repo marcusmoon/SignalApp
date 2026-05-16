@@ -16,7 +16,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
+import { tabBarBottomInset } from '@/constants/tabBar';
 import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
 import type { AppTheme } from '@/constants/theme';
 import {
@@ -466,8 +466,8 @@ export default function FeedScreen() {
         : t('feedEmpty')
       : null;
 
-  const bottomPad = 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
-  const fabStackBottom = tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom + 8;
+  const bottomPad = 28 + tabBarHeight + tabBarBottomInset(insets.bottom);
+  const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
 
   const listHeaderEl = useMemo(
     () => (

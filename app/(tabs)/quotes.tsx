@@ -26,7 +26,7 @@ import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
-import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
+import { tabBarBottomInset } from '@/constants/tabBar';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
   SEGMENT_TAB_BTN_PADDING_V,
@@ -459,8 +459,8 @@ export default function QuotesScreen() {
     );
   }, [load, t]);
 
-  const bottomPad = 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
-  const fabStackBottom = tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom + 8;
+  const bottomPad = 28 + tabBarHeight + tabBarBottomInset(insets.bottom);
+  const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
 
   const quotesListHeader = useMemo(
     () => (

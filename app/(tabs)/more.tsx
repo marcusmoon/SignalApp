@@ -6,13 +6,13 @@ import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import type { Href } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ReferenceLinksSection } from '@/components/more/ReferenceLinksSection';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalHeader } from '@/components/signal/SignalHeader';
-import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
+import { tabBarBottomInset } from '@/constants/tabBar';
 import type { MoreHubRouteKey } from '@/constants/moreHubOrder';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -44,6 +44,7 @@ export default function MoreHubScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -112,7 +113,7 @@ export default function MoreHubScreen() {
           style={styles.list}
           contentContainerStyle={{
             paddingTop: 14,
-            paddingBottom: 24 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM,
+            paddingBottom: 24 + tabBarHeight + tabBarBottomInset(insets.bottom),
           }}
           ListFooterComponent={listFooter}
           renderItem={({ item, index }) => {

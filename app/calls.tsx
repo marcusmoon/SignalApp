@@ -6,7 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
+import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -91,7 +91,7 @@ export default function CallsSummaryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<ConcallSummary | null>(null);
 
-  const bottomChrome = insets.bottom + TAB_BAR_FLOAT_MARGIN_BOTTOM;
+  const bottomChrome = tabBarBottomInset(insets.bottom);
 
   const providerLabel = useCallback(
     (source: ConcallSummary['source']): string => {

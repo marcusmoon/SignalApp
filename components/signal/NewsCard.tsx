@@ -48,24 +48,19 @@ export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress, layout = 'ca
     void WebBrowser.openBrowserAsync(articleUrl);
   }, [articleUrl, canOpenArticle]);
 
-  const sourceA11y = canOpenArticle
-    ? `${t('newsSourceLabel')} ${sourceName}, ${t('newsReadMore')}`
-    : undefined;
+  const sourceA11y = canOpenArticle ? `${sourceName}, ${t('newsReadMore')}` : sourceName;
 
   const sourceContent = (
-    <>
-      <Text style={styles.sourceLabel}>{t('newsSourceLabel')}</Text>
-      <View style={[styles.sourcePill, canOpenArticle && styles.sourcePillPressable]}>
-        <Text style={styles.sourceName} numberOfLines={1}>
-          {sourceName}
+    <View style={[styles.sourcePill, canOpenArticle && styles.sourcePillPressable]}>
+      <Text style={styles.sourceName} numberOfLines={1}>
+        {sourceName}
+      </Text>
+      {canOpenArticle ? (
+        <Text style={styles.sourceOpenHint} accessibilityElementsHidden importantForAccessibility="no">
+          ↗
         </Text>
-        {canOpenArticle ? (
-          <Text style={styles.sourceOpenHint} accessibilityElementsHidden importantForAccessibility="no">
-            ↗
-          </Text>
-        ) : null}
-      </View>
-    </>
+      ) : null}
+    </View>
   );
 
   const renderSourceBlock = (compact: boolean) => {
@@ -108,7 +103,9 @@ export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress, layout = 'ca
         ) : (
           renderSourceBlock(true)
         )}
-        <Text style={styles.time}>{item.timeLabel}</Text>
+        <View style={styles.timePill}>
+          <Text style={styles.time}>{item.timeLabel}</Text>
+        </View>
       </View>
       {canOpenSymbol ? renderSourceBlock(false) : null}
       {canOpenSymbol ? (
@@ -206,10 +203,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '800',
       letterSpacing: 0.5,
     },
-    time: {
+    timePill: {
       flexShrink: 0,
-      color: theme.textDim,
-      fontSize: sf(11),
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 999,
+      backgroundColor: theme.bgElevated,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    time: {
+      color: theme.textMuted,
+      fontSize: sf(10),
+      fontWeight: '600',
     },
     sourceRow: {
       flexDirection: 'row',
@@ -219,37 +225,31 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginBottom: 10,
     },
     sourceRowCompact: {
-      flex: 1,
+      flexShrink: 1,
       minWidth: 0,
       marginBottom: 0,
+      alignSelf: 'center',
     },
     sourceRowPressable: {
       alignSelf: 'flex-start',
       maxWidth: '100%',
     },
     sourceRowPressableCompact: {
-      alignSelf: 'stretch',
-      maxWidth: undefined,
+      alignSelf: 'flex-start',
+      maxWidth: '100%',
     },
     sourceRowPressed: {
       opacity: 0.88,
     },
-    sourceLabel: {
-      fontSize: sf(10),
-      fontWeight: '800',
-      color: theme.textMuted,
-      letterSpacing: 0.4,
-    },
     sourcePill: {
-      flex: 1,
-      minWidth: 0,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
       alignSelf: 'flex-start',
+      maxWidth: '100%',
       paddingHorizontal: 10,
       paddingVertical: 4,
-      borderRadius: 8,
+      borderRadius: 999,
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,
@@ -262,6 +262,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(12),
       fontWeight: '700',
       color: theme.text,
+      maxWidth: '100%',
     },
     sourceOpenHint: {
       flexShrink: 0,

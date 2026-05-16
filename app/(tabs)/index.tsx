@@ -17,7 +17,7 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { TAB_BAR_FLOAT_MARGIN_BOTTOM } from '@/constants/tabBar';
+import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -404,7 +404,7 @@ export default function HomeScreen() {
 
     return rows;
   }, [locale, state.news, state.rawNews, state.watchSymbols, t, topInsights]);
-  const bottomPad = 28 + tabBarHeight + TAB_BAR_FLOAT_MARGIN_BOTTOM + insets.bottom;
+  const bottomPad = 28 + tabBarHeight + tabBarBottomInset(insets.bottom);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>

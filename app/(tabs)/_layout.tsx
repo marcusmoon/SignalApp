@@ -1,17 +1,18 @@
 import { useNavigationState } from '@react-navigation/native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppState, Platform, StyleSheet, View } from 'react-native';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import type { BottomTabBarButtonProps, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   TAB_BAR_FLOAT_HEIGHT,
-  TAB_BAR_FLOAT_MARGIN_BOTTOM,
-  TAB_BAR_FLOAT_MARGIN_H,
+  tabBarHorizontalMargin,
+  tabBarPositionBottom,
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
+import { SignalFloatingTabBar } from '@/components/signal/SignalFloatingTabBar';
 import { SlackTabBarButton } from '@/components/SlackTabBarButton';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -33,21 +34,24 @@ import {
   type TabBarOpacityLevel,
 } from '@/services/tabBarOpacityPreference';
 
-const TAB_ICON_SIZE = 22;
+const TAB_ICON_SIZE = 25;
+
+type TabBarIconName = 'newspaper' | 'chart-line' | 'home' | 'youtube' | 'th-large';
 
 function TabBarIcon({
   name,
   color,
+  focused = false,
   showDot,
 }: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
+  name: TabBarIconName;
   color: string;
   focused?: boolean;
   showDot?: boolean;
 }) {
   return (
     <View style={tabIconWrap}>
-      <FontAwesome name={name} size={TAB_ICON_SIZE} color={color} />
+      <FontAwesome5 name={name} size={TAB_ICON_SIZE} color={color} solid />
       {showDot ? <View style={tabIconDot} /> : null}
     </View>
   );
@@ -85,8 +89,8 @@ function colorWithAlpha(color: string, alpha: number): string {
 function tabBarEdgeColors(scheme: 'light' | 'dark', border: string) {
   const isDark = scheme === 'dark';
   return {
-    ring: isDark ? colorWithAlpha('#FFFFFF', 0.16) : colorWithAlpha(border, 0.9),
-    topHighlight: isDark ? colorWithAlpha('#FFFFFF', 0.08) : colorWithAlpha('#FFFFFF', 0.72),
+    ring: isDark ? colorWithAlpha('#FFFFFF', 0.24) : colorWithAlpha(border, 0.95),
+    topHighlight: isDark ? colorWithAlpha('#FFFFFF', 0.1) : colorWithAlpha('#FFFFFF', 0.78),
   };
 }
 
@@ -108,7 +112,7 @@ function TabBarGlassBackground({
           StyleSheet.absoluteFill,
           {
             borderRadius,
-            borderWidth: StyleSheet.hairlineWidth,
+            borderWidth: Platform.OS === 'web' ? StyleSheet.hairlineWidth : 1,
             borderColor: edge.ring,
           },
         ]}
@@ -203,12 +207,13 @@ export default function TabLayout() {
    * `overflow: 'visible'` + 충분한 content 높이로 맞춘다.
    */
   const isWeb = Platform.OS === 'web';
-  const tabBarInnerPadBottom = isWeb ? 9 : 8;
-  const tabBarInnerPadTop = isWeb ? 6 : 5;
+  const tabBarInnerPadBottom = isWeb ? 9 : 7;
+  const tabBarInnerPadTop = isWeb ? 6 : 6;
   const tabBarContentHeight = isWeb ? TAB_BAR_FLOAT_HEIGHT + 14 : TAB_BAR_FLOAT_HEIGHT;
-  /** 플로팅 바: 홈 인디케이터 위에 뜨므로 높이에 insets.bottom 미포함 */
+  /** 콘텐츠 높이만 — safe area·좌우 inset 은 SignalFloatingTabBar 가 처리 */
   const tabBarTotalHeight = tabBarContentHeight + tabBarInnerPadTop + tabBarInnerPadBottom;
-  const tabBarBottom = insets.bottom + TAB_BAR_FLOAT_MARGIN_BOTTOM + (isWeb ? 2 : 0);
+  const tabBarMarginH = tabBarHorizontalMargin();
+  const tabBarBottom = tabBarPositionBottom(insets.bottom);
   const tabBarBg = colorWithAlpha(theme.card, tabBarOpacityForLevel(tabBarOpacityLevel));
   const tabBarEdge = tabBarEdgeColors(effectiveColorScheme, theme.border);
 
@@ -220,12 +225,8 @@ export default function TabLayout() {
          */
         animation: 'none',
         tabBarActiveTintColor: theme.green,
-        tabBarInactiveTintColor: theme.textDim,
+        tabBarInactiveTintColor: theme.textMuted,
         tabBarStyle: {
-          position: 'absolute',
-          left: TAB_BAR_FLOAT_MARGIN_H,
-          right: TAB_BAR_FLOAT_MARGIN_H,
-          bottom: tabBarBottom,
           height: tabBarTotalHeight,
           paddingBottom: tabBarInnerPadBottom,
           paddingTop: tabBarInnerPadTop,
@@ -233,20 +234,33 @@ export default function TabLayout() {
           borderWidth: 0,
           borderRadius: TAB_BAR_FLOAT_RADIUS,
           overflow: isWeb ? 'visible' : 'hidden',
-          paddingHorizontal: 4,
+          paddingHorizontal: 10,
+          ...(isWeb
+            ? {
+                position: 'absolute' as const,
+                left: tabBarMarginH,
+                right: tabBarMarginH,
+                bottom: tabBarBottom,
+              }
+            : {
+                marginBottom: 0,
+                start: 0,
+                end: 0,
+                bottom: 0,
+              }),
           ...(Platform.OS === 'ios'
             ? {
-                shadowColor: '#191F28',
-                shadowOpacity: 0.08,
-                shadowRadius: 18,
-                shadowOffset: { width: 0, height: 8 },
+                shadowColor: '#000000',
+                shadowOpacity: effectiveColorScheme === 'dark' ? 0.35 : 0.12,
+                shadowRadius: 20,
+                shadowOffset: { width: 0, height: 10 },
               }
             : {
                 shadowColor: '#191F28',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 14,
-                elevation: 8,
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.14,
+                shadowRadius: 16,
+                elevation: 10,
               }),
         },
         tabBarBackground: () => (
@@ -259,11 +273,11 @@ export default function TabLayout() {
         tabBarLabelPosition: 'below-icon',
         tabBarAllowFontScaling: false,
         tabBarLabelStyle: {
-          fontSize: 10,
-          lineHeight: 12,
-          fontWeight: '700',
-          letterSpacing: 0,
-          marginTop: 1,
+          fontSize: 11,
+          lineHeight: 13,
+          fontWeight: Platform.OS === 'ios' ? '800' : '700',
+          letterSpacing: Platform.OS === 'ios' ? -0.15 : 0,
+          marginTop: 2,
           marginBottom: 0,
           ...(isWeb
             ? {
@@ -297,22 +311,26 @@ export default function TabLayout() {
         lazy: false,
       }),
     [
-      tabBarBottom,
       tabBarTotalHeight,
+      tabBarBottom,
+      tabBarMarginH,
       tabBarInnerPadBottom,
       tabBarInnerPadTop,
       tabBarOpacityLevel,
       tabBarBg,
       tabBarEdge,
+      insets.bottom,
       isWeb,
       theme.green,
-      theme.textDim,
+      theme.textMuted,
+      effectiveColorScheme,
     ],
   );
 
   return (
     <Tabs
       initialRouteName="index"
+      tabBar={isWeb ? undefined : (props) => <SignalFloatingTabBar {...props} />}
       screenOptions={screenOptions}
       detachInactiveScreens={false}>
       {/* 순서: TAB_BAR_SCREEN_ORDER — 뉴스 · 시세 · 홈 · 유튜브 · 더보기 */}
@@ -321,7 +339,7 @@ export default function TabLayout() {
         options={{
           title: t('tabNews'),
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="newspaper-o" color={color} focused={focused} showDot={newsHasUnread} />
+            <TabBarIcon name="newspaper" color={color} focused={focused} showDot={newsHasUnread} />
           ),
         }}
       />
@@ -329,7 +347,7 @@ export default function TabLayout() {
         name="quotes"
         options={{
           title: t('tabQuotes'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="line-chart" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="chart-line" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -343,7 +361,7 @@ export default function TabLayout() {
         name="youtube"
         options={{
           title: t('tabYoutube'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="youtube-play" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="youtube" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen

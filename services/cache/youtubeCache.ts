@@ -27,10 +27,8 @@ function resolvedHandles(handles?: string[]): string[] {
 export function peekYoutubeCache(
   order: YoutubeSortOrder,
   handles: string[],
-  cacheEnabled = true,
   locale: AppLocale = 'ko',
 ): YoutubeItem[] | null {
-  if (!cacheEnabled) return null;
   const h = resolvedHandles(handles);
   const k = cacheKey(order, h, locale);
   const e = cache.get(k);
@@ -40,16 +38,10 @@ export function peekYoutubeCache(
 
 export async function fetchEconomyYoutubeCached(
   order: YoutubeSortOrder,
-  options?: { forceRefresh?: boolean; channelHandles?: string[]; cacheEnabled?: boolean; locale?: AppLocale },
+  options?: { forceRefresh?: boolean; channelHandles?: string[]; locale?: AppLocale },
 ): Promise<YoutubeItem[]> {
   const handles = resolvedHandles(options?.channelHandles);
-  const cacheEnabled = options?.cacheEnabled !== false;
   const locale = options?.locale ?? 'ko';
-
-  if (!cacheEnabled) {
-    const { items: rows } = await fetchSignalYoutube({ offset: 0, limit: 100 }, { cacheMode: 'bypass' });
-    return rows.map((row) => signalYoutubeToYoutubeItem(row, locale));
-  }
 
   const k = cacheKey(order, handles, locale);
   if (!options?.forceRefresh) {

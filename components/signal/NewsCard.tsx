@@ -4,6 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { NewsItem } from '@/types/signal';
@@ -20,10 +21,10 @@ type Props = {
 };
 
 export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress, layout = 'card', onPress }: Props) {
-  const { theme, scaleFont } = useSignalTheme();
+  const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
 
   const sourceName = item.source?.trim() || '—';
   const isFlash = Boolean(item.isFlash);
@@ -126,16 +127,16 @@ export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress, layout = 'ca
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
   return StyleSheet.create({
     card: {
       backgroundColor: theme.card,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.border,
-      paddingHorizontal: 14,
-      paddingTop: 14,
-      paddingBottom: 6,
+      paddingHorizontal: ft.pad(14),
+      paddingTop: ft.pad(14),
+      paddingBottom: ft.pad(6),
       marginBottom: 10,
     },
     cardGrouped: {
@@ -143,9 +144,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 0,
       borderRadius: 0,
       marginBottom: 0,
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 4,
+      paddingHorizontal: ft.pad(16),
+      paddingTop: ft.pad(12),
+      paddingBottom: ft.pad(4),
     },
     cardFlash: {
       borderColor: 'rgba(255, 90, 90, 0.45)',
@@ -172,8 +173,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: 'rgba(255, 120, 120, 0.55)',
     },
     flashBadgeText: {
-      fontSize: sf(11),
-      fontWeight: '900',
+      fontSize: ft.ff(11),
+      fontWeight: ft.emphasisWeight,
       color: '#FF9A9A',
       letterSpacing: 0.8,
     },
@@ -181,11 +182,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      gap: 8,
-      marginBottom: 6,
+      gap: ft.pad(8),
+      marginBottom: ft.pad(6),
     },
     metaRowWithSource: {
-      marginBottom: 10,
+      marginBottom: ft.pad(10),
     },
     metaLead: {
       flex: 1,
@@ -194,14 +195,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     ticker: {
       flexShrink: 1,
       color: theme.green,
-      fontSize: sf(13),
-      fontWeight: '800',
+      fontSize: ft.ff(13),
+      fontWeight: ft.emphasisWeight,
       letterSpacing: 0.5,
     },
     timePill: {
       flexShrink: 0,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
+      paddingHorizontal: ft.pad(8),
+      paddingVertical: ft.pad(3),
       borderRadius: 999,
       backgroundColor: theme.bgElevated,
       borderWidth: StyleSheet.hairlineWidth,
@@ -209,15 +210,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     time: {
       color: theme.textMuted,
-      fontSize: sf(10),
-      fontWeight: '600',
+      fontSize: ft.ff(10),
+      fontWeight: ft.metaWeight,
     },
     sourceRow: {
       flexDirection: 'row',
       alignItems: 'center',
       flexWrap: 'wrap',
-      gap: 6,
-      marginBottom: 10,
+      gap: ft.pad(6),
+      marginBottom: ft.pad(10),
     },
     sourceRowCompact: {
       flexShrink: 1,
@@ -230,8 +231,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignItems: 'center',
       alignSelf: 'flex-start',
       maxWidth: '100%',
-      paddingHorizontal: 10,
-      paddingVertical: 4,
+      paddingHorizontal: ft.pad(10),
+      paddingVertical: ft.pad(4),
       borderRadius: 999,
       backgroundColor: theme.greenDim,
       borderWidth: 1,
@@ -239,17 +240,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     sourceName: {
       flexShrink: 1,
-      fontSize: sf(12),
-      fontWeight: '700',
+      fontSize: ft.ff(12),
+      fontWeight: ft.bodyWeight,
       color: theme.text,
       maxWidth: '100%',
     },
     title: {
       color: theme.text,
-      fontSize: sf(15),
-      fontWeight: '700',
-      marginBottom: 6,
-      lineHeight: sf(21),
+      fontSize: ft.ff(15),
+      fontWeight: ft.titleWeight,
+      marginBottom: ft.pad(6),
+      lineHeight: ft.ff(21),
     },
     titleLast: {
       marginBottom: 0,
@@ -281,17 +282,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: 'rgba(77, 159, 255, 0.45)',
     },
     tagChipText: {
-      fontSize: sf(10),
-      lineHeight: sf(14),
-      fontWeight: '600',
+      fontSize: ft.ff(10),
+      lineHeight: ft.ff(14),
+      fontWeight: ft.metaWeight,
       letterSpacing: 0.1,
       color: '#9EC9FF',
       textAlignVertical: Platform.OS === 'android' ? 'center' : undefined,
     },
     footer: {
-      marginTop: 6,
-      paddingTop: 8,
-      paddingBottom: 2,
+      marginTop: ft.pad(6),
+      paddingTop: ft.pad(8),
+      paddingBottom: ft.pad(2),
       borderTopWidth: 1,
       borderTopColor: theme.border,
     },

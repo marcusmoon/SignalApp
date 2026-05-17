@@ -114,8 +114,6 @@ export type FetchConcallSummariesOptions = {
   rollingEarningsFutureDays?: number;
   /** true면 캐시를 쓰지 않고 새로 조회 (당겨서 새로고침 등) */
   forceRefresh?: boolean;
-  /** false면 메모리 캐시를 읽지도 쓰지도 않음 (설정에서 끈 경우) */
-  cacheEnabled?: boolean;
   /** UI 로케(에러·힌트 문구). 기본 ko */
   locale?: AppLocale;
 };
@@ -142,19 +140,15 @@ export async function fetchConcallSummaries(
     fiscalYearForKey == null ? `roll:${rollPast ?? 14}:${rollFuture ?? 21}:cap${symbolCap}` : '';
   const cacheKey = `summary|${scopeKey}|${rollKey}|fy:${fiscalYearForKey ?? 'roll'}|fq:${fiscalQuarterForKey}|${locale}`;
 
-  const cacheEnabled = options?.cacheEnabled !== false;
-
-  if (cacheEnabled) {
-    if (options?.forceRefresh) {
-      deleteConcallSummary(cacheKey);
-    } else {
-      const hit = peekConcallSummary(cacheKey);
-      if (hit) return hit;
-    }
+  if (options?.forceRefresh) {
+    deleteConcallSummary(cacheKey);
+  } else {
+    const hit = peekConcallSummary(cacheKey);
+    if (hit) return hit;
   }
 
   if (scope === 'watch' && watchSet.size === 0) {
-    if (cacheEnabled) storeConcallSummary(cacheKey, []);
+    storeConcallSummary(cacheKey, []);
     return [];
   }
 
@@ -188,7 +182,7 @@ export async function fetchConcallSummaries(
 
   if (symbols.length === 0) {
     if (scope === 'watch') {
-      if (cacheEnabled) storeConcallSummary(cacheKey, []);
+      storeConcallSummary(cacheKey, []);
       return [];
     }
     const fiscalSummary =
@@ -214,7 +208,7 @@ export async function fetchConcallSummaries(
         source: 'fallback',
       },
     ];
-    if (cacheEnabled) storeConcallSummary(cacheKey, emptyCal);
+    storeConcallSummary(cacheKey, emptyCal);
     return emptyCal;
   }
 
@@ -251,7 +245,7 @@ export async function fetchConcallSummaries(
     });
   }
 
-  if (cacheEnabled) storeConcallSummary(cacheKey, out);
+  storeConcallSummary(cacheKey, out);
   return out;
 }
 
@@ -262,7 +256,7 @@ export async function fetchConcallSummaries(
 export async function fetchConcallSummaryForEarningsRow(
   ticker: string,
   row: SignalApiCalendarEvent,
-  options?: { forceRefresh?: boolean; cacheEnabled?: boolean; locale?: AppLocale },
+  options?: { forceRefresh?: boolean; locale?: AppLocale },
 ): Promise<ConcallSummary> {
   if (!hasSignalApi()) {
     throw new Error('SIGNAL_API_BASE_URL_MISSING');
@@ -270,9 +264,7 @@ export async function fetchConcallSummaryForEarningsRow(
   const sym = ticker.trim().toUpperCase();
   const locale: AppLocale = options?.locale ?? 'ko';
   const cacheKey = `v1|single|${normalizeEarningsSymbolForMatch(sym)}|${earningsRowYear(row)}|${earningsRowQuarter(row)}|${earningsRowDate(row)}|${locale}`;
-  const cacheEnabled = options?.cacheEnabled !== false;
-
-  if (cacheEnabled && options?.forceRefresh) {
+  if (options?.forceRefresh) {
     deleteConcallSummary(cacheKey);
   }
 
@@ -282,7 +274,7 @@ export async function fetchConcallSummaryForEarningsRow(
   });
   const stored = await fetchSignalConcallForRow(sym, row, locale);
   if (stored) {
-    if (cacheEnabled) storeConcallSummary(cacheKey, [stored]);
+    storeConcallSummary(cacheKey, [stored]);
     return stored;
   }
 
@@ -298,6 +290,6 @@ export async function fetchConcallSummaryForEarningsRow(
     risk: undefined,
     source: 'fallback',
   };
-  if (cacheEnabled) storeConcallSummary(cacheKey, [summary]);
+  storeConcallSummary(cacheKey, [summary]);
   return summary;
 }

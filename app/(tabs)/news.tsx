@@ -126,7 +126,7 @@ export default function FeedScreen() {
   const isFocused = useIsFocused();
   const [segment, setSegment] = useState<NewsSegmentKey>(DEFAULT_NEWS_SEGMENT);
   const [segmentOrder, setSegmentOrder] = useState<NewsSegmentKey[]>([...NEWS_SEGMENT_ORDER]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
@@ -146,6 +146,8 @@ export default function FeedScreen() {
   /** 웹: 리스트 콘텐츠 높이 < 뷰포트면 onEndReached가 안 나와 다음 페이지를 못 불러오는 경우가 있음 */
   const feedListViewportH = useRef(0);
   const feedScrollLoadGateRef = useRef(createScrollLoadMoreGate());
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
 
   useEffect(() => {
     if (!refreshNotice) return;
@@ -353,27 +355,31 @@ export default function FeedScreen() {
     });
   }, [segment, load]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        await load(false);
-      } catch (e) {
-        if (!cancelled) {
-          setError(formatSignalApiError(e, t, 'feedErrorLoad'));
-          setItems([]);
-          setServerRows([]);
-          setAvailableSources([]);
+  /** 앱 시작 시 마운트만으로 fetch 하지 않음 — 뉴스 탭 포커스·세그먼트 변경 시에만 */
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      void (async () => {
+        const showLoading = itemsRef.current.length === 0;
+        if (showLoading) setLoading(true);
+        try {
+          await load(false);
+        } catch (e) {
+          if (!cancelled) {
+            setError(formatSignalApiError(e, t, 'feedErrorLoad'));
+            setItems([]);
+            setServerRows([]);
+            setAvailableSources([]);
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
         }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [load, t]);
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [load, t]),
+  );
 
   const onRefresh = useCallback(async () => {
     const prevNewsIds = new Set(items.map((item) => item.id));

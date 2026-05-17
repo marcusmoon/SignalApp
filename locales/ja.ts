@@ -303,16 +303,11 @@ export const ja = {
     'SIGNAL はアカウント作成とサービス提供のため、メールアドレス、パスワードハッシュ、ニックネーム、プロフィール画像 URL、ログインセッション、端末・プッシュトークン、ウォッチリスト、通知設定、通知履歴など必要な情報を処理する場合があります。\n\nこれらの情報はアカウント識別、ログイン維持、ウォッチリスト基準のブリーフィング、通知・プッシュ配信、サービス品質改善、障害対応、セキュリティ管理のために使用されます。パスワードは平文で保存せず、ハッシュ形式で保存します。\n\nユーザーはいつでもマイ情報画面からログアウトまたは退会をリクエストできます。退会時、アカウントは無効化され、セッションと端末プッシュ対象は解除されます。法令遵守、紛争対応、サービスセキュリティのため、必要最小限の記録を一定期間保管する場合があります。\n\nSIGNAL はサービス運営に必要な範囲で外部インフラや provider を利用することがあり、関連処理はセキュリティとアクセス制御基準に従って管理します。本ポリシーはサービス構造や法令変更に応じて更新される場合があります。',
 
   settingsCacheSectionTitle: 'キャッシュ',
-  settingsCacheOneLiner:
-    'ニュース {{news}}分 · YouTube {{yt}}分 · 株価 約{{qt}}秒 · コール {{cc}}分 · カレンダー {{cal}}分 · オフで毎回取得',
-  settingsCacheClearButton: '全消去',
+  settingsCacheHint:
+    'ニュース・株価・YouTube・カレンダーなどに保存した一時データをすべて削除します。次に開くときサーバーから再取得します。',
+  settingsCacheClearButton: 'キャッシュを消去',
   settingsCacheClearedTitle: 'キャッシュ',
-  settingsCacheClearedBody: 'ニュース・YouTube・株価・カンファレンス・コール・カレンダーのメモリキャッシュを消去しました。',
-  settingsCacheYoutubeToggle: 'YouTube',
-  settingsCacheConcallToggle: 'カンファレンス・コール',
-  settingsCacheCalendarToggle: 'カレンダー',
-  settingsCacheQuotesToggle: '株価',
-  settingsCacheNewsToggle: 'ニュース',
+  settingsCacheClearedBody: '保存されていたキャッシュをすべて消去しました。',
   settingsLlmProviderKicker: 'AI',
   settingsLlmProviderHint:
     'ニュース見出し翻訳とカンファレンス・コール要約に使います。',
@@ -322,6 +317,7 @@ export const ja = {
 
 
   headerTagline: 'ノイズを捨て、本当のシグナルだけを。',
+  splashDescription: 'ニュース・相場・インサイトをまとめて読み込んでいます。',
   a11yAlerts: '通知',
   a11yCalendar: '投資カレンダー',
   a11yBriefing: 'ウォッチブリーフィングを開く',
@@ -428,6 +424,11 @@ export const ja = {
   settingsFontSizeCompact: '小',
   settingsFontSizeStandard: '標準',
   settingsFontSizeComfortable: '大',
+  settingsFeedContentWeightSection: 'フィード項目の太さ',
+  settingsFeedContentWeightHint:
+    'ホーム（シグナル・ウォッチ・関連ニュース）、ニュース・株価一覧、YouTubeカードの文字の太さと行の余白に適用されます。',
+  settingsFeedContentWeightRegular: '標準',
+  settingsFeedContentWeightBold: '太字',
   settingsDisplayPreviewLabel: 'プレビュー',
   settingsDisplaySelectedTheme: '選択: {{name}}',
 

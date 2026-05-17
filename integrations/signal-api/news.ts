@@ -2,7 +2,6 @@ import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiNewsItem, SignalNewsListMeta } from '@/integrations/signal-api/types';
 import type { AppLocale } from '@/locales/messages';
 import { isFlashNews } from '@/domain/news';
-import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import type { NewsItem } from '@/types/signal';
 import { formatRelativeFromIso } from '@/utils/date';
 import {
@@ -52,9 +51,8 @@ export async function fetchSignalNews(
   options?: { cacheMode?: 'use' | 'bypass' },
 ): Promise<SignalNewsPage> {
   const cacheMode = options?.cacheMode || 'use';
-  const { newsEnabled } = await loadCacheFeaturePrefs();
   const cacheKey = buildSignalNewsCacheKey(params);
-  if (cacheMode !== 'bypass' && newsEnabled) {
+  if (cacheMode !== 'bypass') {
     const hit = peekSignalNewsCache(cacheKey);
     if (hit) return hit;
   }
@@ -65,7 +63,7 @@ export async function fetchSignalNews(
   const rows = Array.isArray(json.data) ? json.data : [];
   const meta = normalizeMeta({ ...json, data: rows }, params);
   const value = { items: rows, meta };
-  if (newsEnabled) storeSignalNewsCache(cacheKey, value);
+  if (cacheMode !== 'bypass') storeSignalNewsCache(cacheKey, value);
   return value;
 }
 

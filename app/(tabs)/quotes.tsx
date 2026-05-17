@@ -39,10 +39,10 @@ import {
   SEGMENT_TAB_PADDING,
 } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useQuoteChangeColors, useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import {
   fetchSignalCoins,
   fetchSignalMarketList,
@@ -175,13 +175,13 @@ function applyQuoteOrder(rows: Row[], symbols: readonly string[]): Row[] {
 }
 
 export default function QuotesScreen() {
-  const { theme, scaleFont } = useSignalTheme();
+  const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
   const quoteChange = useQuoteChangeColors();
   const styles = useMemo(
-    () => makeStyles(theme, scaleFont, quoteChange.colors),
-    [theme, scaleFont, quoteChange.colors],
+    () => makeStyles(theme, scaleFont, feedTypo, quoteChange.colors),
+    [theme, scaleFont, feedTypo, quoteChange.colors],
   );
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
@@ -241,7 +241,6 @@ export default function QuotesScreen() {
   const load = useCallback(async (forceRefresh?: boolean) => {
     clearTtlTimer();
     setError(null);
-    const { quotesEnabled } = await loadCacheFeaturePrefs();
     const limits = await loadQuotesListLimits();
 
     if (!hasSignalApi()) {
@@ -253,7 +252,7 @@ export default function QuotesScreen() {
 
     if (segment === 'coin') {
       const cacheKey = buildQuotesCacheKey('coin', [], limits.coinMax);
-      if (quotesEnabled && !forceRefresh) {
+      if (!forceRefresh) {
         const hit = peekQuotes(cacheKey);
         if (hit) {
           setRows(hit.rows);
@@ -265,14 +264,10 @@ export default function QuotesScreen() {
       try {
         const list = (await fetchSignalCoins({ limit: limits.coinMax })).slice(0, limits.coinMax).map(mapSignalCoinToRow);
         setRows(list);
-        if (quotesEnabled) {
-          const nextAt = Date.now() + QUOTES_CACHE_TTL_MS;
-          storeQuotes(cacheKey, list);
-          setNextRefreshAtMs(nextAt);
-          scheduleRefreshAtCacheExpiry(nextAt);
-        } else {
-          setNextRefreshAtMs(Date.now() + POLL_MS);
-        }
+        const nextAt = Date.now() + QUOTES_CACHE_TTL_MS;
+        storeQuotes(cacheKey, list);
+        setNextRefreshAtMs(nextAt);
+        scheduleRefreshAtCacheExpiry(nextAt);
       } catch (e) {
         setRows([]);
         setNextRefreshAtMs(null);
@@ -731,6 +726,7 @@ export default function QuotesScreen() {
 function makeStyles(
   theme: AppTheme,
   sf: (n: number) => number,
+  ft: FeedContentTypography,
   changeColors: { up: string; down: string },
 ) {
   return StyleSheet.create({
@@ -831,8 +827,8 @@ function makeStyles(
       backgroundColor: 'transparent',
       borderWidth: 0,
       borderRadius: 0,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingHorizontal: ft.pad(16),
+      paddingVertical: ft.pad(12),
     },
     swipeRowGrouped: {
       marginBottom: 0,
@@ -883,40 +879,40 @@ function makeStyles(
     },
     symPressable: { flexShrink: 0, minWidth: 0 },
     sym: {
-      fontSize: sf(16),
-      lineHeight: sf(20),
-      fontWeight: '900',
+      fontSize: ft.ff(16),
+      lineHeight: ft.ff(20),
+      fontWeight: ft.titleWeight,
       color: theme.text,
       letterSpacing: 0.5,
     },
     symPrev: {
-      fontSize: sf(12),
-      fontWeight: '500',
+      fontSize: ft.ff(12),
+      fontWeight: ft.metaWeight,
       color: theme.textMuted,
       marginTop: 4,
-      lineHeight: sf(17),
+      lineHeight: ft.ff(17),
     },
     symSub: {
-      fontSize: sf(12),
-      lineHeight: sf(16),
-      fontWeight: '700',
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.bodyWeight,
       color: theme.textMuted,
       marginTop: 4,
     },
     price: {
       maxWidth: '100%',
-      fontSize: sf(18),
-      lineHeight: sf(22),
-      fontWeight: '800',
+      fontSize: ft.ff(18),
+      lineHeight: ft.ff(22),
+      fontWeight: ft.titleWeight,
       color: theme.text,
     },
     na: { fontSize: sf(16), color: theme.textDim },
     removeBtn: { padding: 2 },
     chg: {
       maxWidth: '100%',
-      fontSize: sf(13),
-      lineHeight: sf(17),
-      fontWeight: '700',
+      fontSize: ft.ff(13),
+      lineHeight: ft.ff(17),
+      fontWeight: ft.emphasisWeight,
       marginTop: 4,
       textAlign: 'right',
     },
@@ -936,9 +932,9 @@ function makeStyles(
     yahooInlineText: {
       flexShrink: 1,
       minWidth: 0,
-      fontSize: sf(12),
-      lineHeight: sf(16),
-      fontWeight: '700',
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.emphasisWeight,
       color: theme.green,
     },
   });

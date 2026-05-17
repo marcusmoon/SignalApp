@@ -10,6 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { enableFreeze } from 'react-native-screens';
 import 'react-native-reanimated';
 
+import { AppSplashScreen } from '@/components/AppSplashScreen';
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
 import { NotificationListener } from '@/components/NotificationListener';
 import { PushDeviceRegistrar } from '@/components/PushDeviceRegistrar';
@@ -49,10 +50,13 @@ if (Platform.OS !== 'web') {
   enableFreeze(false);
 }
 
+const SPLASH_MIN_MS = 380;
+
 export default function RootLayout() {
   const systemScheme = useColorScheme();
   const bootstrapBg = bootstrapThemeForColorScheme(systemScheme).bg;
-  const [, fontError] = useFonts(FontAwesome.font);
+  const [fontsLoaded, fontError] = useFonts(FontAwesome.font);
+  const [appReady, setAppReady] = useState(false);
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
@@ -60,13 +64,34 @@ export default function RootLayout() {
   }, [fontError]);
 
   useEffect(() => {
+    if (!fontsLoaded) return;
+    let cancelled = false;
     void SplashScreen.hideAsync();
-  }, []);
+    const timer = setTimeout(() => {
+      if (!cancelled) setAppReady(true);
+    }, SPLASH_MIN_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [fontsLoaded]);
 
   useEffect(() => {
     void hydrateSignalServerEndpoint();
     void import('@/services/mainEntryPreference').then(({ loadMainEntry }) => loadMainEntry());
   }, []);
+
+  if (!appReady) {
+    return (
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: bootstrapBg }}>
+        <LocaleProvider>
+          <SignalThemeProvider>
+            <AppSplashScreen />
+          </SignalThemeProvider>
+        </LocaleProvider>
+      </GestureHandlerRootView>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: bootstrapBg }}>

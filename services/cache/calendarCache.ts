@@ -57,17 +57,11 @@ export async function fetchCalendarEventsMergedCached(
     rangeFrom?: Date;
     rangeTo?: Date;
   },
-  opts?: { forceRefresh?: boolean; cacheEnabled?: boolean },
+  opts?: { forceRefresh?: boolean },
 ): Promise<CalendarEvent[]> {
-  const cacheEnabled = opts?.cacheEnabled !== false;
   const scope = options.scope ?? 'mega';
   const from = options.rangeFrom ?? new Date();
   const to = options.rangeTo ?? new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000);
-
-  if (!cacheEnabled) {
-    const rows = await fetchSignalCalendar({ from: toYmd(from), to: toYmd(to) }, { cacheMode: 'bypass' });
-    return rows.map(signalCalendarToCalendarEvent);
-  }
 
   const key = buildCalendarCacheKey(
     daysAhead,

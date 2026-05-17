@@ -301,16 +301,11 @@ export const ko = {
     'SIGNAL은 계정 생성과 서비스 제공을 위해 이메일, 비밀번호 해시, 닉네임, 프로필 이미지 URL, 로그인 세션, 기기/푸시 토큰, 관심종목, 알림 설정, 알림 수신 이력 등 필요한 정보를 처리할 수 있습니다.\n\n수집한 정보는 계정 식별, 로그인 유지, 관심종목 기반 브리핑 제공, 알림 및 푸시 발송, 서비스 품질 개선, 장애 대응과 보안 관리를 위해 사용됩니다. 비밀번호는 원문으로 저장하지 않고 해시 형태로 저장합니다.\n\n사용자는 언제든지 내정보 화면에서 로그아웃하거나 계정 탈퇴를 요청할 수 있습니다. 탈퇴 시 계정은 비활성화되고 세션과 기기 푸시 대상은 해제됩니다. 법령 준수, 분쟁 대응, 서비스 보안을 위해 필요한 최소 기록은 일정 기간 보관될 수 있습니다.\n\nSIGNAL은 서비스 운영에 필요한 범위에서 외부 인프라와 provider를 사용할 수 있으며, 관련 처리는 보안과 접근 권한 통제 기준에 따라 관리합니다. 본 방침은 서비스 구조와 법령 변경에 따라 업데이트될 수 있습니다.',
 
   settingsCacheSectionTitle: '캐시',
-  settingsCacheOneLiner:
-    '뉴스 {{news}}분 · 유튜브 {{yt}}분 · 시세 약 {{qt}}초 · 어닝 {{cc}}분 · 캘린더 {{cal}}분 · 끄면 매번 새로 불러옴',
-  settingsCacheClearButton: '모두 비우기',
+  settingsCacheHint:
+    '뉴스·시세·유튜브·캘린더 등에 저장된 임시 데이터를 모두 지웁니다. 다음에 열면 서버에서 다시 불러옵니다.',
+  settingsCacheClearButton: '캐시 비우기',
   settingsCacheClearedTitle: '캐시',
-  settingsCacheClearedBody: '뉴스·유튜브·시세·어닝·캘린더 메모리 캐시를 비웠습니다.',
-  settingsCacheYoutubeToggle: '유튜브',
-  settingsCacheConcallToggle: '어닝',
-  settingsCacheCalendarToggle: '캘린더',
-  settingsCacheQuotesToggle: '시세',
-  settingsCacheNewsToggle: '뉴스',
+  settingsCacheClearedBody: '저장된 캐시를 모두 비웠습니다.',
   settingsLlmProviderKicker: 'AI',
   settingsLlmProviderHint:
     '뉴스 제목 번역과 어닝 요약에 사용합니다.',
@@ -320,6 +315,7 @@ export const ko = {
 
 
   headerTagline: '노이즈는 걸러내고, 진짜 시그널만',
+  splashDescription: '뉴스·시세·인사이트를 모아 불러오는 중입니다.',
   a11yAlerts: '알림',
   a11yCalendar: '투자 캘린더',
   a11yBriefing: '관심 브리핑 열기',
@@ -426,6 +422,11 @@ export const ko = {
   settingsFontSizeCompact: '작게',
   settingsFontSizeStandard: '기본',
   settingsFontSizeComfortable: '크게',
+  settingsFeedContentWeightSection: '피드 항목 굵기',
+  settingsFeedContentWeightHint:
+    '홈(시그널·관심종목·관련 뉴스), 뉴스·시세 목록, 유튜브 카드의 글자 굵기와 행 여백에 적용됩니다.',
+  settingsFeedContentWeightRegular: '보통',
+  settingsFeedContentWeightBold: '볼드',
   settingsDisplayPreviewLabel: '미리보기',
   settingsDisplaySelectedTheme: '선택: {{name}}',
 

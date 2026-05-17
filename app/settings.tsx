@@ -53,13 +53,13 @@ import {
 } from '@/services/quotesChangeColorPreference';
 import type { AccentPresetId } from '@/services/accentPreference';
 import { ACCENT_PRESETS, normalizeHex } from '@/services/accentPreference';
+import type { FeedContentWeightId } from '@/services/feedContentWeightPreference';
 import type { FontSizePresetId } from '@/services/fontSizePreference';
 import type { ThemeAppearanceMode } from '@/services/themeAppearancePreference';
-import { clearCalendarCache, CALENDAR_CACHE_TTL_MS } from '@/services/cache/calendarCache';
-import { clearNewsCache, NEWS_CACHE_TTL_MS } from '@/services/cache/newsCache';
-import { clearQuotesCache, QUOTES_CACHE_TTL_MS } from '@/services/cache/quotesCache';
-import { clearYoutubeCache, YOUTUBE_CACHE_TTL_MS } from '@/services/cache/youtubeCache';
-import { CONCALL_CACHE_TTL_MS } from '@/integrations/signal-api/cache/concallsCache';
+import { clearCalendarCache } from '@/services/cache/calendarCache';
+import { clearNewsCache } from '@/services/cache/newsCache';
+import { clearQuotesCache } from '@/services/cache/quotesCache';
+import { clearYoutubeCache } from '@/services/cache/youtubeCache';
 import { clearSignalApiCache } from '@/integrations/signal-api/cache';
 import { clearConcallClientMemoryCaches } from '@/services/concalls';
 import {
@@ -75,11 +75,6 @@ import {
   saveCalendarConcallScope,
   type CalendarConcallScope,
 } from '@/services/calendarConcallScopePreference';
-import {
-  loadCacheFeaturePrefs,
-  saveCacheFeaturePrefs,
-  type CacheFeaturePrefs,
-} from '@/services/cacheFeaturePreferences';
 import {
   loadQuotesListLimits,
   normalizeQuotesListLimits,
@@ -243,6 +238,12 @@ const FONT_SIZE_PRESET_LABEL: Record<FontSizePresetId, MessageId> = {
   compact: 'settingsFontSizeCompact',
   standard: 'settingsFontSizeStandard',
   comfortable: 'settingsFontSizeComfortable',
+};
+
+const FEED_CONTENT_WEIGHT_ORDER = ['regular', 'bold'] as const satisfies readonly FeedContentWeightId[];
+const FEED_CONTENT_WEIGHT_LABEL: Record<FeedContentWeightId, MessageId> = {
+  regular: 'settingsFeedContentWeightRegular',
+  bold: 'settingsFeedContentWeightBold',
 };
 
 const APPEARANCE_MODE_ORDER: ThemeAppearanceMode[] = ['system', 'light', 'dark'];
@@ -993,6 +994,8 @@ export default function SettingsScreen() {
     setCustomAccent,
     fontSizePreset,
     setFontSizePreset,
+    feedContentWeight,
+    setFeedContentWeight,
     scaleFont,
   } = useSignalTheme();
   const { t, locale, setLocale } = useLocale();
@@ -1018,13 +1021,6 @@ export default function SettingsScreen() {
   const [calendarScope, setCalendarScope] = useState<CalendarConcallScope>('mega');
   const [calendarScopeReady, setCalendarScopeReady] = useState(false);
 
-  const [cachePrefs, setCachePrefs] = useState<CacheFeaturePrefs>({
-    youtubeEnabled: true,
-    concallEnabled: true,
-    calendarEnabled: true,
-    quotesEnabled: true,
-    newsEnabled: true,
-  });
   const [memoryCacheClearNotice, setMemoryCacheClearNotice] = useState(false);
   const memoryCacheClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1112,11 +1108,6 @@ export default function SettingsScreen() {
       12,
     [insets.bottom],
   );
-
-  const reloadCachePrefs = useCallback(async () => {
-    const p = await loadCacheFeaturePrefs();
-    setCachePrefs(p);
-  }, []);
 
   useEffect(() => {
     const raw = params.tab;
@@ -1297,7 +1288,6 @@ export default function SettingsScreen() {
       void reload();
       void reloadPrefs();
       void reloadCalendarScope();
-      void reloadCachePrefs();
       void reloadQuotesListLimits();
       void reloadQuotesSegmentOrder();
       void reloadQuotesChangeColorConvention();
@@ -1313,7 +1303,6 @@ export default function SettingsScreen() {
       reload,
       reloadPrefs,
       reloadCalendarScope,
-      reloadCachePrefs,
       reloadQuotesListLimits,
       reloadQuotesSegmentOrder,
       reloadQuotesChangeColorConvention,
@@ -1440,18 +1429,13 @@ export default function SettingsScreen() {
     );
   };
 
-  const cacheYoutubeMinutes = Math.round(YOUTUBE_CACHE_TTL_MS / 60000);
-  const cacheConcallMinutes = Math.round(CONCALL_CACHE_TTL_MS / 60000);
-  const cacheCalendarMinutes = Math.round(CALENDAR_CACHE_TTL_MS / 60000);
-  const cacheQuotesSeconds = Math.round(QUOTES_CACHE_TTL_MS / 1000);
-  const cacheNewsMinutes = Math.round(NEWS_CACHE_TTL_MS / 60000);
-
-  const onClearMemoryCaches = () => {
+  const onClearAllCaches = () => {
     clearYoutubeCache();
     clearConcallClientMemoryCaches();
     clearCalendarCache();
     clearQuotesCache();
     clearNewsCache();
+    clearSignalApiCache();
     if (Platform.OS === 'web') {
       if (memoryCacheClearTimerRef.current) {
         clearTimeout(memoryCacheClearTimerRef.current);
@@ -1465,36 +1449,6 @@ export default function SettingsScreen() {
     } else {
       Alert.alert(t('settingsCacheClearedTitle'), t('settingsCacheClearedBody'));
     }
-  };
-
-  const onYoutubeCacheEnabledChange = async (v: boolean) => {
-    setCachePrefs((prev) => ({ ...prev, youtubeEnabled: v }));
-    await saveCacheFeaturePrefs({ youtubeEnabled: v });
-    if (!v) clearYoutubeCache();
-  };
-
-  const onConcallCacheEnabledChange = async (v: boolean) => {
-    setCachePrefs((prev) => ({ ...prev, concallEnabled: v }));
-    await saveCacheFeaturePrefs({ concallEnabled: v });
-    if (!v) clearConcallClientMemoryCaches();
-  };
-
-  const onCalendarCacheEnabledChange = async (v: boolean) => {
-    setCachePrefs((prev) => ({ ...prev, calendarEnabled: v }));
-    await saveCacheFeaturePrefs({ calendarEnabled: v });
-    if (!v) clearCalendarCache();
-  };
-
-  const onQuotesCacheEnabledChange = async (v: boolean) => {
-    setCachePrefs((prev) => ({ ...prev, quotesEnabled: v }));
-    await saveCacheFeaturePrefs({ quotesEnabled: v });
-    if (!v) clearQuotesCache();
-  };
-
-  const onNewsCacheEnabledChange = async (v: boolean) => {
-    setCachePrefs((prev) => ({ ...prev, newsEnabled: v }));
-    await saveCacheFeaturePrefs({ newsEnabled: v });
-    if (!v) clearNewsCache();
   };
 
   return (
@@ -2431,6 +2385,29 @@ export default function SettingsScreen() {
                   </Pressable>
                 ))}
               </View>
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                {t('settingsFeedContentWeightSection')}
+              </Text>
+              <Text style={styles.prefHint}>{t('settingsFeedContentWeightHint')}</Text>
+              <View style={styles.langSegmentedTrack}>
+                {FEED_CONTENT_WEIGHT_ORDER.map((id) => (
+                  <Pressable
+                    key={id}
+                    onPress={() => void setFeedContentWeight(id)}
+                    style={[styles.langSegment, feedContentWeight === id && styles.langSegmentActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: feedContentWeight === id }}
+                    accessibilityLabel={t(FEED_CONTENT_WEIGHT_LABEL[id])}>
+                    <Text
+                      style={[
+                        styles.langSegmentText,
+                        feedContentWeight === id && styles.langSegmentTextActive,
+                      ]}>
+                      {t(FEED_CONTENT_WEIGHT_LABEL[id])}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
 
             <View style={styles.displayCard}>
@@ -2456,62 +2433,9 @@ export default function SettingsScreen() {
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsCacheSectionTitle')}</Text>
-              <Text style={styles.cacheOneLiner}>
-                {formatMessage(t('settingsCacheOneLiner'), {
-                  yt: cacheYoutubeMinutes,
-                  cc: cacheConcallMinutes,
-                  cal: cacheCalendarMinutes,
-                  qt: cacheQuotesSeconds,
-                  news: cacheNewsMinutes,
-                })}
-              </Text>
-              <View style={styles.prefRow}>
-                <Text style={styles.prefLabel}>{t('settingsCacheNewsToggle')}</Text>
-                <Switch
-                  value={cachePrefs.newsEnabled}
-                  onValueChange={(v) => void onNewsCacheEnabledChange(v)}
-                  trackColor={{ false: '#333', true: theme.green + '88' }}
-                  thumbColor={cachePrefs.newsEnabled ? theme.green : '#888'}
-                />
-              </View>
-              <View style={styles.prefRow}>
-                <Text style={styles.prefLabel}>{t('settingsCacheYoutubeToggle')}</Text>
-                <Switch
-                  value={cachePrefs.youtubeEnabled}
-                  onValueChange={(v) => void onYoutubeCacheEnabledChange(v)}
-                  trackColor={{ false: '#333', true: theme.green + '88' }}
-                  thumbColor={cachePrefs.youtubeEnabled ? theme.green : '#888'}
-                />
-              </View>
-              <View style={styles.prefRow}>
-                <Text style={styles.prefLabel}>{t('settingsCacheQuotesToggle')}</Text>
-                <Switch
-                  value={cachePrefs.quotesEnabled}
-                  onValueChange={(v) => void onQuotesCacheEnabledChange(v)}
-                  trackColor={{ false: '#333', true: theme.green + '88' }}
-                  thumbColor={cachePrefs.quotesEnabled ? theme.green : '#888'}
-                />
-              </View>
-              <View style={styles.prefRow}>
-                <Text style={styles.prefLabel}>{t('settingsCacheConcallToggle')}</Text>
-                <Switch
-                  value={cachePrefs.concallEnabled}
-                  onValueChange={(v) => void onConcallCacheEnabledChange(v)}
-                  trackColor={{ false: '#333', true: theme.green + '88' }}
-                  thumbColor={cachePrefs.concallEnabled ? theme.green : '#888'}
-                />
-              </View>
-              <View style={styles.prefRow}>
-                <Text style={styles.prefLabel}>{t('settingsCacheCalendarToggle')}</Text>
-                <Switch
-                  value={cachePrefs.calendarEnabled}
-                  onValueChange={(v) => void onCalendarCacheEnabledChange(v)}
-                  trackColor={{ false: '#333', true: theme.green + '88' }}
-                  thumbColor={cachePrefs.calendarEnabled ? theme.green : '#888'}
-                />
-              </View>
+              <Text style={styles.prefHint}>{t('settingsCacheHint')}</Text>
               <Pressable
-                onPress={onClearMemoryCaches}
+                onPress={onClearAllCaches}
                 style={({ pressed }) => [styles.cacheClearBtn, pressed && { opacity: 0.88 }]}
                 accessibilityRole="button"
                 accessibilityLabel={t('settingsCacheClearButton')}>

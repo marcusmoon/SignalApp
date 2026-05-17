@@ -7,7 +7,6 @@ import type {
 } from '@/integrations/signal-api/types';
 import type { AppLocale } from '@/locales/messages';
 import { messages } from '@/locales/messages';
-import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import type { YoutubeItem } from '@/types/signal';
 import { formatRelativeFromIso } from '@/utils/date';
 import { formatIso8601Duration, formatViewCount } from '@/utils/format';
@@ -45,13 +44,12 @@ export async function fetchSignalYoutube(
   options?: { cacheMode?: 'use' | 'bypass' },
 ): Promise<SignalYoutubePage> {
   const cacheMode = options?.cacheMode || 'use';
-  const { youtubeEnabled } = await loadCacheFeaturePrefs();
   const limit = params?.limit ?? params?.pageSize ?? 30;
   const offset =
     params?.offset ??
     (params?.page != null ? (Math.max(1, Number(params.page) || 1) - 1) * Number(limit) : 0);
   const cacheKey = buildSignalYoutubeCacheKey({ ...params, limit, offset });
-  if (cacheMode !== 'bypass' && youtubeEnabled) {
+  if (cacheMode !== 'bypass') {
     const hit = peekSignalYoutubeCache(cacheKey);
     if (hit) return hit;
   }
@@ -68,7 +66,7 @@ export async function fetchSignalYoutube(
   const rows = Array.isArray(json.data) ? json.data : [];
   const meta = normalizeYoutubeMeta({ ...json, data: rows }, { limit, offset });
   const value: SignalYoutubePage = { items: rows, meta };
-  if (youtubeEnabled) storeSignalYoutubeCache(cacheKey, value);
+  if (cacheMode !== 'bypass') storeSignalYoutubeCache(cacheKey, value);
   return value;
 }
 

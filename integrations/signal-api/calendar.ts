@@ -1,7 +1,6 @@
 import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiCalendarEvent } from '@/integrations/signal-api/types';
 import { buildSignalCalendarCacheKey, peekSignalCalendarCache, storeSignalCalendarCache } from '@/integrations/signal-api/cache/calendarCache';
-import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import type { CalendarEvent } from '@/types/signal';
 
 export async function fetchSignalCalendar(
@@ -13,15 +12,14 @@ export async function fetchSignalCalendar(
   options?: { cacheMode?: 'use' | 'bypass' },
 ): Promise<SignalApiCalendarEvent[]> {
   const cacheMode = options?.cacheMode || 'use';
-  const { calendarEnabled } = await loadCacheFeaturePrefs();
   const cacheKey = buildSignalCalendarCacheKey(params);
-  if (cacheMode !== 'bypass' && calendarEnabled) {
+  if (cacheMode !== 'bypass') {
     const hit = peekSignalCalendarCache(cacheKey);
     if (hit) return hit;
   }
   const json = await signalApi<{ data: SignalApiCalendarEvent[] }>('/v1/calendar', params);
   const rows = Array.isArray(json.data) ? json.data : [];
-  if (cacheMode !== 'bypass' && calendarEnabled) storeSignalCalendarCache(cacheKey, rows);
+  if (cacheMode !== 'bypass') storeSignalCalendarCache(cacheKey, rows);
   return rows;
 }
 

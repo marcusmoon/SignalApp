@@ -303,16 +303,11 @@ export const en = {
     'SIGNAL may process information needed to create accounts and provide the service, including email, password hashes, nickname, profile image URL, login sessions, device and push tokens, watchlists, notification settings, and notification history.\n\nThis information is used for account identification, session maintenance, watchlist-based briefings, notifications and push delivery, service quality improvement, troubleshooting, and security. Passwords are not stored in plain text and are kept as hashes.\n\nUsers may log out or request account deletion from My info at any time. When an account is deleted, it is deactivated and its sessions and device push targets are disabled. Minimal records may be retained when required for legal compliance, dispute handling, or service security.\n\nSIGNAL may use external infrastructure and providers as needed to operate the service, and manages related processing with security and access-control practices. This policy may be updated as the service structure or applicable laws change.',
 
   settingsCacheSectionTitle: 'Cache',
-  settingsCacheOneLiner:
-    'News {{news}} min · YouTube {{yt}} min · Quotes ~{{qt}}s · Conference calls {{cc}} min · Calendar {{cal}} min · off = fetch every time',
-  settingsCacheClearButton: 'Clear all',
+  settingsCacheHint:
+    'Clears all stored temporary data for news, quotes, YouTube, calendar, and more. The next open will fetch fresh data from the server.',
+  settingsCacheClearButton: 'Clear cache',
   settingsCacheClearedTitle: 'Cache',
-  settingsCacheClearedBody: 'News, YouTube, Quotes, conference calls, and Calendar memory caches were cleared.',
-  settingsCacheYoutubeToggle: 'YouTube',
-  settingsCacheConcallToggle: 'Conference calls',
-  settingsCacheCalendarToggle: 'Calendar',
-  settingsCacheQuotesToggle: 'Quotes',
-  settingsCacheNewsToggle: 'News',
+  settingsCacheClearedBody: 'All cached data has been cleared.',
 
   settingsLlmProviderKicker: 'AI',
   settingsLlmProviderHint:
@@ -322,6 +317,7 @@ export const en = {
   settingsLlmProviderOpenai: 'ChatGPT',
 
   headerTagline: 'Cut the noise. Keep the signal.',
+  splashDescription: 'Loading news, quotes, and insights in one place.',
   a11yAlerts: 'Alerts',
   a11yCalendar: 'Invest calendar',
   a11yBriefing: 'Open watchlist briefing',
@@ -428,6 +424,11 @@ export const en = {
   settingsFontSizeCompact: 'Compact',
   settingsFontSizeStandard: 'Default',
   settingsFontSizeComfortable: 'Comfortable',
+  settingsFeedContentWeightSection: 'Feed item weight',
+  settingsFeedContentWeightHint:
+    'Applies to home signals, watchlist, related news, news and quotes rows, and YouTube cards.',
+  settingsFeedContentWeightRegular: 'Regular',
+  settingsFeedContentWeightBold: 'Bold',
   settingsDisplayPreviewLabel: 'Preview',
   settingsDisplaySelectedTheme: 'Selected: {{name}}',
 

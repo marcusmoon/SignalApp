@@ -20,6 +20,7 @@ import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicat
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -183,10 +184,10 @@ export default function HomeScreen() {
   const isFocused = useIsFocused();
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
-  const { theme, scaleFont } = useSignalTheme();
+  const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const quoteChange = useQuoteChangeColors();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const [state, setState] = useState<HomeState>(EMPTY_STATE);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -598,6 +599,7 @@ export default function HomeScreen() {
                         router.push(item.fallbackRoute);
                       }
                     }}
+                    feedTypo={feedTypo}
                     theme={theme}
                     scaleFont={scaleFont}
                   />
@@ -628,7 +630,8 @@ function StatusPill({
   theme: AppTheme;
   scaleFont: (n: number) => number;
 }) {
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const { feedTypo } = useSignalTheme();
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   return (
     <View style={styles.statusPill}>
       <FontAwesome name={icon} size={12} color={theme.green} />
@@ -652,7 +655,8 @@ function SectionHeader({
   theme: AppTheme;
   scaleFont: (n: number) => number;
 }) {
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const { feedTypo } = useSignalTheme();
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   return (
     <View style={styles.sectionHead}>
       <View style={styles.sectionTitleWrap}>
@@ -683,7 +687,8 @@ function SectionPlaceholder({
   scaleFont: (n: number) => number;
 }) {
   const { t } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const { feedTypo } = useSignalTheme();
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   if (loading) {
     return (
       <View style={styles.placeholderCard}>
@@ -705,6 +710,7 @@ function EvidenceCard({
   source,
   timeLabel,
   onPress,
+  feedTypo,
   theme,
   scaleFont,
 }: {
@@ -714,17 +720,19 @@ function EvidenceCard({
   source: string;
   timeLabel?: string;
   onPress: () => void;
+  feedTypo: FeedContentTypography;
   theme: AppTheme;
   scaleFont: (n: number) => number;
 }) {
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
+  const iconSize = feedTypo.weight === 'bold' ? 17 : 16;
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.evidenceCard, pressed && styles.pressed]}
       accessibilityRole="button">
       <View style={styles.evidenceIcon}>
-        <FontAwesome name={icon} size={16} color={theme.green} />
+        <FontAwesome name={icon} size={iconSize} color={theme.green} />
       </View>
       <View style={styles.evidenceText}>
         <View style={styles.evidenceMetaRow}>
@@ -749,7 +757,7 @@ function EvidenceCard({
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     scroll: { flex: 1 },
@@ -862,16 +870,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.card,
     },
     signalRow: {
-      minHeight: 92,
-      paddingHorizontal: 16,
-      paddingVertical: 13,
+      minHeight: ft.signalRow(92),
+      paddingHorizontal: ft.pad(16),
+      paddingVertical: ft.pad(13),
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
     decisionHead: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: ft.pad(12),
     },
     decisionTextCol: {
       flex: 1,
@@ -886,45 +894,45 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     decisionLevel: {
       flexShrink: 0,
-      fontSize: sf(10),
-      lineHeight: sf(14),
-      fontWeight: '900',
+      fontSize: ft.signalBodyFont(10),
+      lineHeight: ft.signalBodyFont(14),
+      fontWeight: ft.signalMetaWeight,
       color: theme.textDim,
     },
     decisionTitle: {
-      fontSize: sf(15),
-      lineHeight: sf(21),
-      fontWeight: '900',
+      fontSize: ft.signalTitleFont(15),
+      lineHeight: ft.signalTitleFont(22),
+      fontWeight: ft.signalTitleWeight,
       color: theme.text,
     },
     scoreBadge: {
-      minWidth: 38,
-      height: 30,
-      borderRadius: 15,
+      minWidth: ft.weight === 'bold' ? 42 : 38,
+      height: ft.weight === 'bold' ? 34 : 30,
+      borderRadius: ft.weight === 'bold' ? 17 : 15,
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 8,
+      paddingHorizontal: ft.pad(8),
     },
     scoreText: {
-      fontSize: sf(12),
-      fontWeight: '900',
+      fontSize: ft.signalTitleFont(12),
+      fontWeight: ft.signalTitleWeight,
       color: theme.green,
     },
     decisionBody: {
-      fontSize: sf(12),
-      lineHeight: sf(17),
+      fontSize: ft.signalBodyFont(12),
+      lineHeight: ft.signalBodyFont(18),
       color: theme.textMuted,
-      fontWeight: '700',
+      fontWeight: ft.signalBodyWeight,
     },
     symbolLine: {
       flexShrink: 1,
       minWidth: 0,
-      fontSize: sf(11),
-      lineHeight: sf(15),
-      fontWeight: '900',
+      fontSize: ft.signalBodyFont(11),
+      lineHeight: ft.signalBodyFont(15),
+      fontWeight: ft.signalMetaWeight,
       color: theme.green,
     },
     quoteList: {
@@ -935,9 +943,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.border,
     },
     quoteRow: {
-      minHeight: 72,
-      paddingHorizontal: 16,
-      paddingVertical: 13,
+      minHeight: ft.row(72),
+      paddingHorizontal: ft.pad(16),
+      paddingVertical: ft.pad(13),
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -954,21 +962,21 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       minWidth: 0,
     },
     quoteSymbol: {
-      fontSize: sf(16),
-      lineHeight: sf(24),
-      fontWeight: '900',
+      fontSize: ft.ff(16),
+      lineHeight: ft.ff(24),
+      fontWeight: ft.titleWeight,
       color: theme.text,
     },
     quoteName: {
-      fontSize: sf(12),
-      lineHeight: sf(18),
-      fontWeight: '700',
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(18),
+      fontWeight: ft.bodyWeight,
       color: theme.textMuted,
     },
     quoteCompany: {
-      fontSize: sf(12),
-      lineHeight: sf(17),
-      fontWeight: '700',
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(17),
+      fontWeight: ft.bodyWeight,
       color: theme.textDim,
       marginTop: 2,
     },
@@ -984,21 +992,21 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     quoteYahooText: {
       flexShrink: 1,
       minWidth: 0,
-      fontSize: sf(11),
-      lineHeight: sf(15),
-      fontWeight: '800',
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(15),
+      fontWeight: ft.emphasisWeight,
       color: theme.green,
     },
     quotePrice: {
-      fontSize: sf(16),
-      lineHeight: sf(24),
-      fontWeight: '900',
+      fontSize: ft.ff(16),
+      lineHeight: ft.ff(24),
+      fontWeight: ft.titleWeight,
       color: theme.text,
     },
     quoteChange: {
-      fontSize: sf(12),
-      lineHeight: sf(18),
-      fontWeight: '900',
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(18),
+      fontWeight: ft.emphasisWeight,
     },
     evidenceList: {
       borderRadius: 22,
@@ -1008,9 +1016,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.card,
     },
     evidenceCard: {
-      minHeight: 82,
-      paddingHorizontal: 16,
-      paddingVertical: 13,
+      minHeight: ft.row(82),
+      paddingHorizontal: ft.pad(16),
+      paddingVertical: ft.pad(13),
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
@@ -1018,9 +1026,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomColor: theme.border,
     },
     evidenceIcon: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
+      width: ft.weight === 'bold' ? 36 : 34,
+      height: ft.weight === 'bold' ? 36 : 34,
+      borderRadius: ft.weight === 'bold' ? 18 : 17,
       backgroundColor: theme.greenDim,
       alignItems: 'center',
       justifyContent: 'center',
@@ -1039,30 +1047,30 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     evidenceKind: {
       flexShrink: 0,
-      fontSize: sf(11),
-      lineHeight: sf(16),
-      fontWeight: '900',
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.emphasisWeight,
       color: theme.green,
     },
     evidenceSource: {
       flex: 1,
       minWidth: 0,
-      fontSize: sf(11),
-      lineHeight: sf(16),
-      fontWeight: '800',
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.metaWeight,
       color: theme.textDim,
     },
     evidenceTime: {
       flexShrink: 0,
-      fontSize: sf(11),
-      lineHeight: sf(16),
-      fontWeight: '800',
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.metaWeight,
       color: theme.textDim,
     },
     evidenceTitle: {
-      fontSize: sf(14),
-      lineHeight: sf(20),
-      fontWeight: '900',
+      fontSize: ft.ff(14),
+      lineHeight: ft.ff(20),
+      fontWeight: ft.titleWeight,
       color: theme.text,
     },
     primaryAction: {

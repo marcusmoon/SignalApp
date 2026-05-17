@@ -1,7 +1,6 @@
 import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiConcall } from '@/integrations/signal-api/types';
 import { buildSignalConcallsCacheKey, peekSignalConcallsCache, storeSignalConcallsCache } from '@/integrations/signal-api/cache/concallsCache';
-import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 
 export async function fetchSignalConcalls(
   params?: {
@@ -20,14 +19,13 @@ export async function fetchSignalConcalls(
   options?: { cacheMode?: 'use' | 'bypass' },
 ): Promise<SignalApiConcall[]> {
   const cacheMode = options?.cacheMode || 'use';
-  const { concallEnabled } = await loadCacheFeaturePrefs();
   const limit = params?.limit ?? params?.pageSize ?? 30;
   const offset =
     params?.offset ??
     (params?.page != null ? (Math.max(1, Number(params.page) || 1) - 1) * Number(limit) : 0);
   const cacheParams = { ...params, limit, offset };
   const cacheKey = buildSignalConcallsCacheKey(cacheParams);
-  if (cacheMode !== 'bypass' && concallEnabled) {
+  if (cacheMode !== 'bypass') {
     const hit = peekSignalConcallsCache(cacheKey);
     if (hit) return hit;
   }
@@ -42,6 +40,6 @@ export async function fetchSignalConcalls(
     offset,
   });
   const rows = Array.isArray(json.data) ? json.data : [];
-  if (cacheMode !== 'bypass' && concallEnabled) storeSignalConcallsCache(cacheKey, rows);
+  if (cacheMode !== 'bypass') storeSignalConcallsCache(cacheKey, rows);
   return rows;
 }

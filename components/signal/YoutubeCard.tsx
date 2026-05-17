@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { openYoutubeItem } from '@/utils/openYoutube';
@@ -15,9 +16,9 @@ type Props = {
 };
 
 export function YoutubeCard({ item, layout = 'card' }: Props) {
-  const { theme, scaleFont } = useSignalTheme();
+  const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
 
   const grouped = layout === 'grouped';
 
@@ -66,14 +67,17 @@ export function YoutubeCard({ item, layout = 'card' }: Props) {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
+  const thumbW = ft.weight === 'bold' ? 136 : 128;
+  const thumbH = ft.weight === 'bold' ? 76 : 72;
+
   return StyleSheet.create({
     card: {
       backgroundColor: theme.card,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.border,
-      padding: 10,
+      padding: ft.pad(10),
       marginBottom: 10,
     },
     cardGrouped: {
@@ -81,19 +85,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 0,
       borderRadius: 0,
       marginBottom: 0,
-      paddingHorizontal: 14,
-      paddingVertical: 11,
+      paddingHorizontal: ft.pad(14),
+      paddingVertical: ft.pad(11),
     },
     topRow: {
       flexDirection: 'row',
-      gap: 12,
+      gap: ft.pad(12),
     },
     pressed: {
       opacity: 0.92,
     },
     thumb: {
-      width: 128,
-      height: 72,
+      width: thumbW,
+      height: thumbH,
       borderRadius: 8,
       backgroundColor: '#1A1A24',
       borderWidth: 1,
@@ -110,8 +114,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       position: 'absolute',
       bottom: 4,
       right: 4,
-      fontSize: sf(10),
-      fontWeight: '800',
+      fontSize: ft.ff(10),
+      fontWeight: ft.emphasisWeight,
       color: '#fff',
       backgroundColor: 'rgba(0,0,0,0.75)',
       paddingHorizontal: 5,
@@ -138,31 +142,33 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     topic: {
       alignSelf: 'flex-start',
-      fontSize: sf(10),
-      fontWeight: '800',
+      fontSize: ft.ff(10),
+      fontWeight: ft.emphasisWeight,
       color: theme.green,
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
+      paddingHorizontal: ft.pad(8),
+      paddingVertical: ft.pad(3),
       borderRadius: 6,
       overflow: 'hidden',
     },
     title: {
-      fontSize: sf(14),
-      fontWeight: '700',
+      fontSize: ft.ff(14),
+      fontWeight: ft.titleWeight,
       color: theme.text,
-      lineHeight: sf(19),
+      lineHeight: ft.ff(19),
       marginBottom: 4,
     },
     channel: {
-      fontSize: sf(12),
+      fontSize: ft.ff(12),
+      fontWeight: ft.bodyWeight,
       color: theme.textMuted,
       marginBottom: 2,
     },
     meta: {
-      fontSize: sf(11),
+      fontSize: ft.ff(11),
+      fontWeight: ft.metaWeight,
       color: theme.textDim,
     },
     linkChip: {
@@ -177,8 +183,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       opacity: 0.85,
     },
     linkText: {
-      fontSize: sf(10),
-      fontWeight: '700',
+      fontSize: ft.ff(10),
+      fontWeight: ft.emphasisWeight,
       color: theme.green,
     },
   });

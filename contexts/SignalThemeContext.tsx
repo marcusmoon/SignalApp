@@ -21,6 +21,13 @@ import {
   normalizeHex,
 } from '@/services/accentPreference';
 import {
+  type FeedContentTypography,
+  type FeedContentWeightId,
+  feedContentTypography,
+  loadFeedContentWeight,
+  saveFeedContentWeight,
+} from '@/services/feedContentWeightPreference';
+import {
   type FontSizePresetId,
   fontSizeMultiplierForPreset,
   loadFontSizePreset,
@@ -46,6 +53,10 @@ type SignalThemeContextValue = {
   /** 표시 탭: 본문·브리핑 등 기준 글꼴 크기 */
   fontSizePreset: FontSizePresetId;
   setFontSizePreset: (id: FontSizePresetId) => Promise<void>;
+  /** 홈·시세·유튜브 피드 항목 굵기·행 여백 */
+  feedContentWeight: FeedContentWeightId;
+  setFeedContentWeight: (id: FeedContentWeightId) => Promise<void>;
+  feedTypo: FeedContentTypography;
   /** StyleSheet `fontSize` 등에 곱해 일관된 스케일 적용 */
   scaleFont: (px: number) => number;
 };
@@ -58,19 +69,22 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
   const [presetId, setPresetIdState] = useState<AccentPresetId>('blue');
   const [customHex, setCustomHex] = useState<string>(DEFAULT_CUSTOM_ACCENT_HEX);
   const [fontSizePreset, setFontSizePresetState] = useState<FontSizePresetId>('standard');
+  const [feedContentWeight, setFeedContentWeightState] = useState<FeedContentWeightId>('bold');
 
   useEffect(() => {
     void (async () => {
-      const [mode, id, hex, fontId] = await Promise.all([
+      const [mode, id, hex, fontId, feedWeight] = await Promise.all([
         loadThemeAppearanceMode(),
         loadAccentPreset(),
         loadCustomAccentHex(),
         loadFontSizePreset(),
+        loadFeedContentWeight(),
       ]);
       setAppearanceModeState(mode);
       setPresetIdState(id);
       setCustomHex(hex);
       setFontSizePresetState(fontId);
+      setFeedContentWeightState(feedWeight);
     })();
   }, []);
 
@@ -93,6 +107,11 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
       return Math.max(8, Math.round(n * 10) / 10);
     },
     [fontMultiplier],
+  );
+
+  const feedTypo = useMemo(
+    () => feedContentTypography(feedContentWeight, scaleFont),
+    [feedContentWeight, scaleFont],
   );
 
   const setPresetId = useCallback(async (id: AccentPresetId) => {
@@ -118,6 +137,11 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
     setFontSizePresetState(id);
   }, []);
 
+  const setFeedContentWeight = useCallback(async (id: FeedContentWeightId) => {
+    await saveFeedContentWeight(id);
+    setFeedContentWeightState(id);
+  }, []);
+
   const value = useMemo<SignalThemeContextValue>(
     () => ({
       presetId,
@@ -130,6 +154,9 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
       setCustomAccent,
       fontSizePreset,
       setFontSizePreset,
+      feedContentWeight,
+      setFeedContentWeight,
+      feedTypo,
       scaleFont,
     }),
     [
@@ -143,6 +170,9 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
       setCustomAccent,
       fontSizePreset,
       setFontSizePreset,
+      feedContentWeight,
+      setFeedContentWeight,
+      feedTypo,
       scaleFont,
     ],
   );

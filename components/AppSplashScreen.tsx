@@ -35,6 +35,7 @@ export function AppSplashScreen() {
           SIGNAL
         </Text>
         <Text style={styles.tagline}>{t('headerTagline')}</Text>
+        <Text style={styles.description}>{t('splashDescription')}</Text>
         <ActivityIndicator
           color={theme.green}
           size="small"
@@ -92,8 +93,19 @@ function makeStyles(theme: AppTheme) {
       letterSpacing: -0.2,
       maxWidth: 280,
     },
+    description: {
+      marginTop: 12,
+      fontSize: 13,
+      fontWeight: '500',
+      color: theme.textMuted,
+      textAlign: 'center',
+      lineHeight: 19,
+      letterSpacing: -0.15,
+      maxWidth: 300,
+      opacity: 0.88,
+    },
     spinner: {
-      marginTop: 36,
+      marginTop: 28,
     },
   });
 }

@@ -1,6 +1,5 @@
 import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiNewsSource } from '@/integrations/signal-api/types';
-import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import {
   buildSignalNewsSourcesCacheKey,
   peekSignalNewsSourcesCache,
@@ -12,14 +11,13 @@ export async function fetchSignalNewsSources(
   options?: { cacheMode?: 'use' | 'bypass' },
 ): Promise<SignalApiNewsSource[]> {
   const cacheMode = options?.cacheMode || 'use';
-  const { newsEnabled } = await loadCacheFeaturePrefs();
   const cacheKey = buildSignalNewsSourcesCacheKey(params);
-  if (cacheMode !== 'bypass' && newsEnabled) {
+  if (cacheMode !== 'bypass') {
     const hit = peekSignalNewsSourcesCache(cacheKey);
     if (hit) return hit;
   }
   const json = await signalApi<{ data: SignalApiNewsSource[] }>('/v1/news-sources', params);
   const rows = Array.isArray(json.data) ? json.data : [];
-  if (newsEnabled) storeSignalNewsSourcesCache(cacheKey, rows);
+  if (cacheMode !== 'bypass') storeSignalNewsSourcesCache(cacheKey, rows);
   return rows;
 }

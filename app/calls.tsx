@@ -12,7 +12,6 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { MessageId } from '@/locales/messages';
 import { fetchConcallSummaryForEarningsRow } from '@/services/concalls';
-import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
 import { hasSignalApi } from '@/services/env';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiCalendarEvent } from '@/integrations/signal-api/types';
@@ -121,11 +120,9 @@ export default function CallsSummaryScreen() {
         return;
       }
       setError(null);
-      const { concallEnabled } = await loadCacheFeaturePrefs();
       try {
         const s = await fetchConcallSummaryForEarningsRow(ticker, rowStub, {
           forceRefresh: !!forceRefresh,
-          cacheEnabled: concallEnabled,
           locale,
         });
         setSummary(s);

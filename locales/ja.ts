@@ -317,7 +317,6 @@ export const ja = {
 
 
   headerTagline: 'ノイズを捨て、本当のシグナルだけを。',
-  splashDescription: 'ニュース・相場・インサイトをまとめて読み込んでいます。',
   a11yAlerts: '通知',
   a11yCalendar: '投資カレンダー',
   a11yBriefing: 'ウォッチブリーフィングを開く',

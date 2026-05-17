@@ -317,7 +317,6 @@ export const en = {
   settingsLlmProviderOpenai: 'ChatGPT',
 
   headerTagline: 'Cut the noise. Keep the signal.',
-  splashDescription: 'Loading news, quotes, and insights in one place.',
   a11yAlerts: 'Alerts',
   a11yCalendar: 'Invest calendar',
   a11yBriefing: 'Open watchlist briefing',

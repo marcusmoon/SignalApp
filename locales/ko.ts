@@ -315,7 +315,6 @@ export const ko = {
 
 
   headerTagline: '노이즈는 걸러내고, 진짜 시그널만',
-  splashDescription: '뉴스·시세·인사이트를 모아 불러오는 중입니다.',
   a11yAlerts: '알림',
   a11yCalendar: '투자 캘린더',
   a11yBriefing: '관심 브리핑 열기',

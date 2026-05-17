@@ -111,6 +111,7 @@
             <button class="navBtn secondary" data-view="settings-keys" data-icon="P">Provider</button>
             <button class="navBtn secondary" data-view="translations" data-icon="G">번역 설정</button>
             <button class="navBtn secondary" data-view="settings-sources" data-icon="S">뉴스 출처</button>
+            <button class="navBtn secondary" data-view="settings-youtube" data-icon="Y">유튜브 채널</button>
             <button class="navBtn secondary" data-view="settings-lists" data-icon="L">마켓 리스트</button>
             <button class="navBtn secondary" data-view="settings-theme" data-icon="T">테마</button>
             <button class="navBtn secondary" data-view="settings-danger" data-icon="R">데이터 초기화</button>
@@ -364,6 +365,7 @@
                     <button type="button" class="secondary segBtn" data-view="settings-keys" data-settings-tab="keys" data-i18n="navSettingsKeys">Provider</button>
                     <button type="button" class="secondary segBtn active" data-view="translations" data-i18n="navTranslations">번역 설정</button>
                     <button type="button" class="secondary segBtn" data-view="settings-sources" data-settings-tab="sources" data-i18n="navSettingsSources">뉴스 출처</button>
+                    <button type="button" class="secondary segBtn" data-view="settings-youtube" data-settings-tab="youtube" data-i18n="navSettingsYoutube">유튜브 채널</button>
                     <button type="button" class="secondary segBtn" data-view="settings-lists" data-settings-tab="lists" data-i18n="navSettingsLists">마켓 리스트</button>
                     <button type="button" class="secondary segBtn" data-view="settings-theme" data-settings-tab="theme" data-i18n="navSettingsTheme">테마</button>
                     <button type="button" class="secondary segBtn" data-view="settings-danger" data-settings-tab="danger" data-i18n="navSettingsDanger">데이터 초기화</button>
@@ -521,6 +523,7 @@
                     <button type="button" class="secondary segBtn" data-view="settings-keys" data-settings-tab="keys" data-i18n="navSettingsKeys">Provider</button>
                     <button type="button" class="secondary segBtn" data-view="translations" data-i18n="navTranslations">번역 설정</button>
                     <button type="button" class="secondary segBtn" data-view="settings-sources" data-settings-tab="sources" data-i18n="navSettingsSources">뉴스 출처</button>
+                    <button type="button" class="secondary segBtn" data-view="settings-youtube" data-settings-tab="youtube" data-i18n="navSettingsYoutube">유튜브 채널</button>
                     <button type="button" class="secondary segBtn" data-view="settings-lists" data-settings-tab="lists" data-i18n="navSettingsLists">마켓 리스트</button>
                     <button type="button" class="secondary segBtn" data-view="settings-theme" data-settings-tab="theme" data-i18n="navSettingsTheme">테마</button>
                     <button type="button" class="secondary segBtn" data-view="settings-danger" data-settings-tab="danger" data-i18n="navSettingsDanger">데이터 초기화</button>
@@ -605,6 +608,17 @@
                   </div>
                 </div>
                 <div id="newsSources"></div>
+              </div>
+
+              <div id="settingsTab-youtube" class="settingsTab hidden">
+                <div class="settingsHero">
+                  <span class="settingsHeroIcon">Y</span>
+                  <div>
+                    <div class="cardKicker" data-i18n="settingsYoutubeHeroKicker">유튜브 채널 관리</div>
+                    <p class="summary" data-i18n="settingsYoutubeHeroSummary">앱 유튜브 필터와 수집 Job이 사용하는 채널 목록·순서·노출 여부를 관리합니다.</p>
+                  </div>
+                </div>
+                <div id="youtubeChannels"></div>
               </div>
 
               <div id="settingsTab-danger" class="settingsTab hidden">

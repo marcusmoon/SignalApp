@@ -57,7 +57,7 @@ constants/     # 앱 전역 정적 값(테마·탭 UI·newsSegment 등). 영역 
 contexts/
 locales/       # ko 키 기준 → en, ja (satisfies)
 integrations/  # Signal API(+cache), AdMob, expo-updates
-domain/        # 규칙만: 영역별 `constants.ts`(시드)·모듈 + `index.ts` 배럴(`@/domain/news` 등)
+domain/        # 규칙만: 영역별 `constants.ts`(시드)·모듈 + `index.ts` 배럴(`@/domain/news` 등). 서버 수집 큐레이션은 Admin/API 설정 기준
 services/      # AsyncStorage·설정·오케스트레이션, `services/cache/`(탭·TTL·캐시 클리어 보조)
 utils/         # 날짜, 링크, openYoutube, …
 docs/          # 본 문서·PRD·(운영 스냅샷)·ARCHITECTURE
@@ -72,7 +72,7 @@ assets/
 | 홈 탭 | `app/(tabs)/index.tsx` — 오늘의 시그널, 관심종목, 뉴스·영상 근거를 묶은 첫 화면 |
 | 뉴스 탭 | `app/(tabs)/news.tsx`, 순서 `newsSegmentOrderPreference`, `@/domain/news`, `components/signal/NewsCard`, 해시태그 표시 설정 `services/newsHashtagDisplayPreference.ts`, `fetchSignalNews` / `integrations/signal-api/cache/newsCache`, 저장 `services/newsKoreaKeywordsPreference.ts` |
 | 컨콜 | `@/domain/concalls`(연도·분기·범위·실적 행), 저장 `services/concallFiscalFilter.ts`, 서버 API `integrations/signal-api/concalls.ts`, 흐름 `services/concalls.ts` |
-| 유튜브 검색 보조 | `@/domain/youtube`, 카드에서 열기 `utils/openYoutube.ts` |
+| 유튜브 검색 보조 | `@/domain/youtube`, 필터 채널 `/v1/youtube-channels`, 카드에서 열기 `utils/openYoutube.ts` |
 | 설정 | `app/settings.tsx` — 뉴스·유튜브·시세·캘린더·표시·알림, Signal 서버 endpoint 오버라이드 `services/signalServerEndpoint.ts` |
 | 오늘의 시그널 | `app/insights.tsx`, `integrations/signal-api/insights.ts`, 서버 `server/src/insights/*`, 어드민 `server/src/public/admin/views/insights.js` |
 | 계정·알림 | `app/account.tsx`, `app/alerts.tsx`, `app/terms.tsx`, `app/terms-history.tsx`, 서버 `/v1/auth/*`·`/v1/notifications`·`/v1/legal/terms`, 기기 세션 `services/appAuthSession.ts`, push 등록 `services/pushDeviceRegistration.ts`, 소셜 로그인 설정 `docs/SOCIAL-AUTH.md`, 어드민 앱 사용자 `/admin/api/app-users*`·`/admin/api/notifications` |

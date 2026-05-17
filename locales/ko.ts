@@ -345,7 +345,10 @@ export const ko = {
   settingsDeveloperLinkedInA11y: 'Marcus LinkedIn 프로필 열기',
 
   settingsYoutubeLead:
-    '경제 유튜브 탭에서 표시·필터할 큐레이션 채널 목록입니다. 새 채널 영상이 들어오려면 Signal 서버의 YouTube 수집 Job에도 같은 핸들이 포함되어 있어야 합니다.',
+    '경제 유튜브 탭에서 보고 싶은 채널을 고르는 개인 필터입니다. 실제 수집 채널은 Signal Admin의 YouTube 큐레이션 설정에서 관리합니다.',
+  settingsYoutubeFilterKicker: '채널 필터',
+  settingsYoutubeFilterHint:
+    '뉴스 출처 필터와 동일하게 YouTube 탭의 필터 버튼에서 선택합니다. 새 채널은 서버 수집 설정과 Job 실행 결과를 기준으로 자동 반영됩니다.',
   settingsYoutubeSectionAdd: '채널 추가',
   settingsYoutubeHintHandle: 'YouTube @핸들 (예: 채널 URL의 @뒤 이름)',
   settingsYoutubePlaceholderHandle: '핸들 입력',
@@ -358,7 +361,7 @@ export const ko = {
     'Signal 서버의 YouTube provider 설정이 필요합니다. Admin에서 YouTube 키와 수집 Job을 확인하세요.',
   youtubeErrorSelectChannel: '채널을 1개 이상 선택해 주세요.',
   youtubeErrorQuota:
-    'YouTube Data API 일일 쿼터가 소진되었습니다(태평양 자정 기준으로 갱신). Google Cloud 콘솔에서 사용량을 확인하거나, 새 프로젝트·키로 나누거나, 내일 다시 시도해 주세요.',
+    'Signal 서버의 YouTube 수집 한도가 소진되었습니다(태평양 자정 기준으로 갱신). 잠시 후 다시 시도하거나 Admin에서 수집 설정을 확인해 주세요.',
   youtubeErrorQuotaResetHint:
     '다음 일일 한도 갱신까지 약 {{hours}}시간 {{minutes}}분 (태평양 자정 기준).',
   youtubeErrorQuotaResetImminent: '곧 일일 한도가 갱신될 수 있습니다(태평양 자정).',
@@ -376,7 +379,8 @@ export const ko = {
   youtubeFooterIncluded: '포함 채널',
   youtubeFooterSelectAll: '전체 선택',
   youtubeFooterClearAll: '전체 해제',
-  youtubeFooterSub: '탭해서 채널을 포함하거나 제외합니다.',
+  youtubeFooterSub: '선택 후 적용·닫기를 누르면 목록이 갱신됩니다.',
+  youtubeModalApply: '적용',
   youtubeModalTitle: '큐레이션 채널',
   youtubeModalClose: '닫기',
   a11yYoutubeFilter: '큐레이션 채널 필터 열기',
@@ -572,8 +576,9 @@ export const ko = {
   feedNewsFilterIncluded: '포함 출처',
   feedNewsFilterSelectAll: '전체 선택',
   feedNewsFilterClearAll: '전체 해제',
-  feedNewsFilterSub: '선택한 출처만 현재 탭에 표시됩니다.',
+  feedNewsFilterSub: '선택 후 적용·닫기를 누르면 목록이 갱신됩니다.',
   feedNewsFilterClose: '닫기',
+  feedNewsFilterApply: '적용',
   feedErrorToken:
     'Signal 서버의 뉴스 provider 설정이 필요합니다. Admin에서 Finnhub/뉴스 수집 설정을 확인하세요.',
   feedErrorLoad: '뉴스를 불러오지 못했습니다.',

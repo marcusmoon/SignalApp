@@ -1,7 +1,6 @@
 import { fetchSignalYoutube, signalYoutubeToYoutubeItem } from '@/integrations/signal-api/youtube';
 import type { AppLocale } from '@/locales/messages';
 import type { YoutubeItem } from '@/types/signal';
-import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/domain/youtube/constants';
 
 /** YouTube feed — memory cache TTL */
 export const YOUTUBE_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -21,7 +20,7 @@ function cacheKey(order: YoutubeSortOrder, handles: string[], locale: AppLocale)
 
 function resolvedHandles(handles?: string[]): string[] {
   if (handles && handles.length > 0) return [...handles];
-  return [...DEFAULT_YOUTUBE_CHANNEL_HANDLES];
+  return [];
 }
 
 export function peekYoutubeCache(
@@ -60,4 +59,3 @@ export async function fetchEconomyYoutubeCached(
 export function clearYoutubeCache(): void {
   cache.clear();
 }
-

@@ -52,6 +52,12 @@ import {
   saveNewsSourcesView,
 } from './views/newsSources.js';
 import {
+  loadYoutubeChannelsView,
+  renderYoutubeChannelsView,
+  saveYoutubeChannelsView,
+  syncYoutubeChannelDraftRowsView,
+} from './views/youtubeChannels.js';
+import {
   closeMarketListDialogView,
   openMarketListDialogView,
   renderMarketListDialogView,
@@ -448,7 +454,9 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                 ? 'lists'
                 : requestedView === 'settings-sources'
                   ? 'sources'
-                  : requestedView === 'settings-danger'
+                  : requestedView === 'settings-youtube'
+                    ? 'youtube'
+                    : requestedView === 'settings-danger'
                     ? 'danger'
                     : null;
         const actualView = appUsersTabFromView ? 'app-users' : settingsTabFromView ? 'settings' : requestedView;
@@ -513,7 +521,9 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                   ? textFor('settingsListsTitle')
                   : activeSettingsTab === 'sources'
                     ? textFor('settingsSourcesTitle')
-                    : activeSettingsTab === 'danger'
+                    : activeSettingsTab === 'youtube'
+                      ? textFor('settingsYoutubeTitle')
+                      : activeSettingsTab === 'danger'
                       ? textFor('settingsDangerTitle')
                       : textFor('navSettingsKeys');
           }
@@ -530,11 +540,14 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                   ? textFor('settingsListsDesc')
                   : activeSettingsTab === 'sources'
                     ? textFor('settingsSourcesDesc')
-                    : activeSettingsTab === 'danger'
+                    : activeSettingsTab === 'youtube'
+                      ? textFor('settingsYoutubeDesc')
+                      : activeSettingsTab === 'danger'
                       ? textFor('settingsDangerDesc')
                       : textFor('settingsProviderDesc');
           }
           if (activeSettingsTab === 'legal') void loadLegalTerms();
+          if (activeSettingsTab === 'youtube') void loadYoutubeChannels();
         }
         if (resolvedView === 'jobs') {
           setJobTab(state.jobTab || 'info');
@@ -871,6 +884,16 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         return result;
       }
 
+      function renderYoutubeChannels() {
+        return renderYoutubeChannelsView({ $, state, esc, textFor, textForVars });
+      }
+
+      async function loadYoutubeChannels() {
+        const result = await loadYoutubeChannelsView({ api, $, state, esc, textFor, textForVars, showToast });
+        enhanceMobileAdminSurfaces();
+        return result;
+      }
+
       async function loadNewsSourceSettings() {
         return loadNewsSourceSettingsView({ api, $, state, esc, textFor, textForVars });
       }
@@ -1123,6 +1146,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             else if (tab === 'legal') await loadLegalTerms();
             else if (tab === 'lists') await loadMarketLists();
             else if (tab === 'sources') await Promise.all([loadNewsSourceSettings(), loadNewsSources()]);
+            else if (tab === 'youtube') await loadYoutubeChannels();
             // theme/danger are mostly local UI; still refresh dashboard counts for safety
             await loadDashboard();
             showToast(textFor('btnRefresh'), textFor('btnRefreshThisView'), { kind: 'info' });
@@ -1359,6 +1383,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             if (settingsTabTarget.dataset.settingsTab === 'legal') await loadLegalTerms();
             if (settingsTabTarget.dataset.settingsTab === 'lists') await loadMarketLists();
             if (settingsTabTarget.dataset.settingsTab === 'sources') await Promise.all([loadNewsSourceSettings(), loadNewsSources()]);
+            if (settingsTabTarget.dataset.settingsTab === 'youtube') await loadYoutubeChannels();
           }
           if (target?.dataset?.legalTypeTab) {
             state.legalTermType = target.dataset.legalTypeTab;
@@ -1844,6 +1869,55 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await loadNewsSources();
             return;
           }
+          if (target.id === 'refreshYoutubeChannelsBtn') {
+            await loadYoutubeChannels();
+            return;
+          }
+          if (target.id === 'saveYoutubeChannelsBtn') {
+            await saveYoutubeChannelsView({ api, $, state, esc, textFor, textForVars, showToast });
+            return;
+          }
+          if (target.id === 'addYoutubeChannelDraftRow') {
+            syncYoutubeChannelDraftRowsView({ state });
+            state.youtubeChannelDraftRows = [...(state.youtubeChannelDraftRows || []), ''];
+            renderYoutubeChannels();
+            return;
+          }
+          if (target.dataset.youtubeChannelDraftRemove != null) {
+            syncYoutubeChannelDraftRowsView({ state });
+            const idx = Number(target.dataset.youtubeChannelDraftRemove);
+            state.youtubeChannelDraftRows = (state.youtubeChannelDraftRows || []).filter((_, i) => i !== idx);
+            if (!state.youtubeChannelDraftRows.length) state.youtubeChannelDraftRows = [''];
+            renderYoutubeChannels();
+            return;
+          }
+          if (target.dataset.youtubeChannelMove && target.dataset.youtubeChannelId) {
+            const dir = target.dataset.youtubeChannelMove;
+            const id = target.dataset.youtubeChannelId;
+            const list = [...(state.youtubeChannels || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+            const idx = list.findIndex((s) => s.id === id);
+            if (idx < 0) return;
+            const swapWith = dir === 'up' ? idx - 1 : idx + 1;
+            if (swapWith < 0 || swapWith >= list.length) return;
+            const tmp = list[idx];
+            list[idx] = list[swapWith];
+            list[swapWith] = tmp;
+            list.forEach((s, i) => {
+              s.order = i + 1;
+            });
+            state.youtubeChannels = list;
+            renderYoutubeChannels();
+            return;
+          }
+          if (target.dataset.youtubeChannelToggleHidden) {
+            const id = target.dataset.youtubeChannelToggleHidden;
+            const hit = (state.youtubeChannels || []).find((s) => s.id === id);
+            if (!hit) return;
+            hit.hidden = !hit.hidden;
+            if (hit.hidden) hit.enabled = false;
+            renderYoutubeChannels();
+            return;
+          }
           if (target.dataset.newsSourcesTab) {
             state.newsSourcesCategory = target.dataset.newsSourcesTab || 'global';
             state.newsSourceDraftRows = [''];
@@ -2299,6 +2373,18 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         if (event.target.id === 'newsSourcesShowHidden') {
           state.newsSourcesShowHidden = !!event.target.checked;
           await loadNewsSources();
+        }
+        if (event.target.dataset && event.target.dataset.youtubeChannelEnabled) {
+          const id = event.target.dataset.youtubeChannelEnabled;
+          const hit = (state.youtubeChannels || []).find((s) => s.id === id);
+          if (hit) {
+            hit.enabled = !!event.target.checked;
+            renderYoutubeChannels();
+          }
+        }
+        if (event.target.id === 'youtubeChannelsShowHidden') {
+          state.youtubeChannelsShowHidden = !!event.target.checked;
+          await loadYoutubeChannels();
         }
         // category is managed via tabs in the News Sources section
         if (event.target.id === 'globalSearchQuery') {

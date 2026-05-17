@@ -169,7 +169,7 @@ server/data/                # signal.sqlite (+ WAL/SHM)
 - **`signal-api/httpClient.ts`:** Signal Server HTTP transport, timeout/retry, auth refresh를 담당한다. 피처별 파일(`news.ts`, `stock.ts`, `auth.ts` 등)은 이 모듈만 사용한다.
 - **소셜 로그인:** provider별 native/AuthSession credential 획득은 `integrations/signal-api/socialAuthFlow.ts`, 서버 교환/가입/연결은 `auth.ts`가 담당한다. 앱 세션은 provider token이 아니라 SIGNAL 서버 token이다.
 - **Provider client:** Finnhub·YouTube·OpenAI·Claude·CoinGecko·Ninjas 등 외부 provider HTTP는 서버가 담당한다. 앱에는 provider 클라이언트 폴더를 두지 않는다.
-- **도메인 상수:** 큐레이션·심볼 시드 등은 `domain/youtube/constants.ts`, `domain/quotes/constants.ts` 등 **제품 규칙과 함께 갈 값**에 둔다.
+- **도메인 상수:** 심볼 시드·탭 순서 같은 제품 규칙은 `domain/quotes/constants.ts` 등 **제품 규칙과 함께 갈 값**에 둔다. 서버가 관리하는 수집 큐레이션(예: YouTube 채널)은 앱 도메인 상수로 늘리지 않고 Signal API/Admin 설정을 기준으로 둔다.
 - **`signal-api/index.ts`:** 외부에 노출하는 API·타입 re-export. `signal-api/cache/*`는 응답 캐시; 순환 참조 주의.
 - **서버 측 시장 데이터:** 수집·정규화는 `server/src/providers/` (예: `market/finnhub`) — 앱은 `/v1/*`만 호출한다.
 

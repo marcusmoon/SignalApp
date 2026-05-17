@@ -1,8 +1,9 @@
-import type { SignalYoutubePage } from '@/integrations/signal-api/types';
+import type { SignalApiYoutubeChannel, SignalYoutubePage } from '@/integrations/signal-api/types';
 import { YOUTUBE_CACHE_TTL_MS } from '@/services/cache/youtubeCache';
 import { peekCache, storeCache } from '@/integrations/signal-api/cache/common';
 
 const youtubeCache = new Map<string, { value: SignalYoutubePage; expiresAt: number }>();
+const youtubeChannelsCache = new Map<string, { value: SignalApiYoutubeChannel[]; expiresAt: number }>();
 
 export function buildSignalYoutubeCacheKey(params?: {
   q?: string;
@@ -43,6 +44,15 @@ export function storeSignalYoutubeCache(key: string, value: SignalYoutubePage): 
   storeCache(youtubeCache, key, value, YOUTUBE_CACHE_TTL_MS);
 }
 
+export function peekSignalYoutubeChannelsCache(): SignalApiYoutubeChannel[] | null {
+  return peekCache(youtubeChannelsCache, 'youtube-channels');
+}
+
+export function storeSignalYoutubeChannelsCache(value: SignalApiYoutubeChannel[]): void {
+  storeCache(youtubeChannelsCache, 'youtube-channels', value, 10 * 60 * 1000);
+}
+
 export function clearSignalYoutubeCache(): void {
   youtubeCache.clear();
+  youtubeChannelsCache.clear();
 }

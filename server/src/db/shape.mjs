@@ -1,4 +1,6 @@
 import { ensureMarketListsShape } from '../marketLists.mjs';
+import { normalizeYoutubeCurationHandles } from '../youtubeCuration.mjs';
+import { ensureYoutubeChannelsCatalog } from './youtubeChannels.mjs';
 import {
   defaultDb,
   defaultPollingJobs,
@@ -13,8 +15,15 @@ export function ensureDbShape(db) {
   if (!db.appSettings || typeof db.appSettings !== 'object') {
     db.appSettings = defaultDb().appSettings;
   }
+  const youtubeHandlesFromJobs = Array.isArray(db.pollingJobs)
+    ? db.pollingJobs.find((j) => j?.handler === 'youtube_economy' && Array.isArray(j?.params?.handles))?.params?.handles
+    : null;
   if (!Number.isFinite(Number(db.appSettings.marketQuotesMaxAgeSec))) db.appSettings.marketQuotesMaxAgeSec = 10;
   db.appSettings.marketQuotesMaxAgeSec = Math.max(0, Math.min(300, Number(db.appSettings.marketQuotesMaxAgeSec) || 10));
+  db.appSettings.youtubeCurationHandles = normalizeYoutubeCurationHandles(
+    Array.isArray(db.appSettings.youtubeCurationHandles) ? db.appSettings.youtubeCurationHandles : youtubeHandlesFromJobs,
+  );
+  ensureYoutubeChannelsCatalog(db.appSettings);
   if (!db.appSettings.updatedAt) db.appSettings.updatedAt = nowIso();
 
   if (!Array.isArray(db.providerSettings)) {
@@ -53,6 +62,10 @@ export function ensureDbShape(db) {
     }
     if (existing.jobKey === 'concall_transcripts_recent' && existing.params.fallbackLatest == null) {
       existing.params = { ...existing.params, fallbackLatest: true };
+    }
+    if (existing.handler === 'youtube_economy' && existing.params && typeof existing.params === 'object' && Array.isArray(existing.params.handles)) {
+      const { handles, ...rest } = existing.params;
+      existing.params = rest;
     }
   }
   if (!Array.isArray(db.pollingJobRuns)) db.pollingJobRuns = [];

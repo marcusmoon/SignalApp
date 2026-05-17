@@ -31,7 +31,6 @@ import {
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
-import { DEFAULT_YOUTUBE_CHANNEL_HANDLES } from '@/domain/youtube/constants';
 import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -62,14 +61,6 @@ import { clearQuotesCache } from '@/services/cache/quotesCache';
 import { clearYoutubeCache } from '@/services/cache/youtubeCache';
 import { clearSignalApiCache } from '@/integrations/signal-api/cache';
 import { clearConcallClientMemoryCaches } from '@/services/concalls';
-import {
-  isValidYoutubeHandle,
-  loadCurationHandles,
-  normalizeYoutubeHandle,
-  resetCurationToDefaults,
-  saveCurationHandles,
-} from '@/services/youtubeCurationList';
-import { reconcileSelectedChannels } from '@/services/youtubeChannelSelection';
 import {
   loadCalendarConcallScope,
   saveCalendarConcallScope,
@@ -1005,9 +996,6 @@ export default function SettingsScreen() {
   const router = useRouter();
   const isFocused = useIsFocused();
   const [tab, setTab] = useState<SettingsTab>('news');
-  const [handles, setHandles] = useState<string[]>([]);
-  const [draft, setDraft] = useState('');
-  const [ready, setReady] = useState(false);
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [signalAlertsEnabled, setSignalAlertsEnabled] = useState(true);
@@ -1164,12 +1152,6 @@ export default function SettingsScreen() {
     setCalendarScopeReady(true);
   }, []);
 
-  const reload = useCallback(async () => {
-    const list = await loadCurationHandles();
-    setHandles(list);
-    setReady(true);
-  }, []);
-
   const reloadQuotesListLimits = useCallback(async () => {
     const p = await loadQuotesListLimits();
     setQuotesListLimits(p);
@@ -1285,7 +1267,6 @@ export default function SettingsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void reload();
       void reloadPrefs();
       void reloadCalendarScope();
       void reloadQuotesListLimits();
@@ -1300,7 +1281,6 @@ export default function SettingsScreen() {
       void reloadAppIconPref();
       void reloadTabBarOpacityPref();
     }, [
-      reload,
       reloadPrefs,
       reloadCalendarScope,
       reloadQuotesListLimits,
@@ -1316,59 +1296,6 @@ export default function SettingsScreen() {
       reloadTabBarOpacityPref,
     ]),
   );
-
-  const persist = async (next: string[]) => {
-    await saveCurationHandles(next);
-    await reconcileSelectedChannels(next);
-    clearYoutubeCache();
-    setHandles(next);
-  };
-
-  const onAdd = async () => {
-    const h = normalizeYoutubeHandle(draft);
-    if (!h) {
-      Alert.alert(t('alertTitleInputError'), t('alertEmptyHandle'));
-      return;
-    }
-    if (!isValidYoutubeHandle(h)) {
-      Alert.alert(t('alertTitleFormatError'), t('alertYoutubeHandleRule'));
-      return;
-    }
-    if (handles.includes(h)) {
-      Alert.alert(t('alertTitleDup'), t('alertDupHandle'));
-      return;
-    }
-    setDraft('');
-    await persist([...handles, h]);
-  };
-
-  const onRemove = async (handle: string) => {
-    if (handles.length <= 1) {
-      Alert.alert(t('alertTitleMinOne'), t('alertMinChannel'));
-      return;
-    }
-    await persist(handles.filter((x) => x !== handle));
-  };
-
-  const onResetDefaults = () => {
-    Alert.alert(
-      t('alertResetCurationTitle'),
-      t('alertResetCurationBody'),
-      [
-        { text: t('commonCancel'), style: 'cancel' },
-        {
-          text: t('alertReset'),
-          style: 'destructive',
-          onPress: async () => {
-            const next = await resetCurationToDefaults();
-            await reconcileSelectedChannels(next);
-            clearYoutubeCache();
-            setHandles(next);
-          },
-        },
-      ],
-    );
-  };
 
   const onAddKoreaKeyword = async () => {
     const normalized = normalizeKoreaNewsExtraKeywords([koreaKeywordDraft]);
@@ -1542,54 +1469,10 @@ export default function SettingsScreen() {
         {tab === 'youtube' ? (
           <>
             <Text style={styles.lead}>{t('settingsYoutubeLead')}</Text>
-
-            <Text style={styles.section}>{t('settingsYoutubeSectionAdd')}</Text>
-            <Text style={styles.hint}>{t('settingsYoutubeHintHandle')}</Text>
-            <View style={styles.addRow}>
-              <TextInput
-                value={draft}
-                onChangeText={setDraft}
-                placeholder={t('settingsYoutubePlaceholderHandle')}
-                placeholderTextColor={theme.textDim}
-                autoCapitalize="none"
-                autoCorrect={false}
-                style={styles.input}
-                onSubmitEditing={() => void onAdd()}
-                returnKeyType="done"
-              />
-              <Pressable onPress={() => void onAdd()} style={styles.addBtn} accessibilityRole="button">
-                <Text style={styles.addBtnText}>{t('commonAdd')}</Text>
-              </Pressable>
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsYoutubeFilterKicker')}</Text>
+              <Text style={styles.quotesCardHint}>{t('settingsYoutubeFilterHint')}</Text>
             </View>
-
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>{t('settingsYoutubeDefaultCuration')}</Text>
-              <Text style={styles.cardHint}>{DEFAULT_YOUTUBE_CHANNEL_HANDLES.join(', ')}</Text>
-            </View>
-
-            <Text style={styles.section}>{t('settingsYoutubeCurrentList', { count: handles.length })}</Text>
-            {!ready ? (
-              <Text style={styles.muted}>{t('commonLoading')}</Text>
-            ) : (
-              handles.map((h) => (
-                <View key={h} style={styles.row}>
-                  <Text style={styles.handleText} numberOfLines={1}>
-                    @{h}
-                  </Text>
-                  <Pressable
-                    onPress={() => void onRemove(h)}
-                    style={styles.removeBtn}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('settingsYoutubeRemoveHandleA11y', { handle: `@${h}` })}>
-                    <FontAwesome name="trash" size={16} color="#C08080" />
-                  </Pressable>
-                </View>
-              ))
-            )}
-
-            <Pressable onPress={onResetDefaults} style={styles.resetBtn} accessibilityRole="button">
-              <Text style={styles.resetBtnText}>{t('settingsYoutubeReset')}</Text>
-            </Pressable>
           </>
         ) : null}
 

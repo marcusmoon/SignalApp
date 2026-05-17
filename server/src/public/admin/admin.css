@@ -5166,17 +5166,7 @@ body.adminShellV2.loginMode {
 
 .adminShellV2 #providerSettings .settingsSectionGrid {
   gap: 18px;
-}
-
-@media (min-width: 1280px) {
-  .adminShellV2 #providerSettings .settingsSectionGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-  }
-
-  .adminShellV2 #providerSettings .settingsSectionGrid > .settingsControlCard:nth-child(n + 3) {
-    grid-column: 1 / -1;
-  }
+  grid-template-columns: 1fr;
 }
 
 .adminShellV2 .providerTileGrid {

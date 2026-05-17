@@ -347,7 +347,10 @@ export const en = {
   settingsDeveloperLinkedInA11y: 'Open Marcus LinkedIn profile',
 
   settingsYoutubeLead:
-    'Curated channels shown and filtered in the Economy YouTube tab. New channel videos appear after the Signal Server YouTube collection jobs include the same handle.',
+    'A personal filter for choosing channels in the Economy YouTube tab. Collection channels are managed in Signal Admin under YouTube curation settings.',
+  settingsYoutubeFilterKicker: 'Channel filter',
+  settingsYoutubeFilterHint:
+    'Use the filter button in the YouTube tab, matching the news source filter. New channels appear from the server collection settings and job results.',
   settingsYoutubeSectionAdd: 'Add channel',
   settingsYoutubeHintHandle: 'YouTube @handle (from the channel URL)',
   settingsYoutubePlaceholderHandle: 'Handle',
@@ -360,7 +363,7 @@ export const en = {
     'Signal Server YouTube provider settings are required. Check the YouTube key and collection job in Admin.',
   youtubeErrorSelectChannel: 'Select at least one channel.',
   youtubeErrorQuota:
-    'YouTube Data API daily quota is exhausted (resets at midnight Pacific). Check usage in Google Cloud, use another project/key, or try again tomorrow.',
+    'Signal server YouTube collection quota is exhausted (resets at midnight Pacific). Try again later or check collection settings in Admin.',
   youtubeErrorQuotaResetHint:
     'Approx. {{hours}} h {{minutes}} m until the next daily reset (Pacific midnight).',
   youtubeErrorQuotaResetImminent: 'Daily quota may reset very soon (Pacific midnight).',
@@ -378,7 +381,8 @@ export const en = {
   youtubeFooterIncluded: 'Included channels',
   youtubeFooterSelectAll: 'Select all',
   youtubeFooterClearAll: 'Clear all',
-  youtubeFooterSub: 'Tap a channel to include or exclude it.',
+  youtubeFooterSub: 'Tap Apply or Close to refresh the feed.',
+  youtubeModalApply: 'Apply',
   youtubeModalTitle: 'Curated channels',
   youtubeModalClose: 'Close',
   a11yYoutubeFilter: 'Open curated channel filter',
@@ -579,6 +583,7 @@ export const en = {
   feedNewsFilterClearAll: 'Clear all',
   feedNewsFilterSub: 'Only selected sources are shown in the current tab.',
   feedNewsFilterClose: 'Close',
+  feedNewsFilterApply: 'Apply',
   feedErrorToken:
     'Signal Server news provider settings are required. Check Finnhub/news collection settings in Admin.',
   feedErrorLoad: 'Could not load news.',

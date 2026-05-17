@@ -40,6 +40,7 @@ export function applyAdminLanguage() {
     'settings-theme': 'navSettingsTheme',
     'settings-lists': 'navSettingsLists',
     'settings-sources': 'navSettingsSources',
+    'settings-youtube': 'navSettingsYoutube',
     'settings-danger': 'navSettingsDanger',
   };
   document.querySelectorAll('[data-view]').forEach((btn) => {

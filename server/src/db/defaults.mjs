@@ -1,5 +1,6 @@
 import { config } from '../config.mjs';
 import { ensureMarketListsShape } from '../marketLists.mjs';
+import { DEFAULT_YOUTUBE_CURATION_HANDLES } from '../youtubeCuration.mjs';
 import { nowIso } from './time.mjs';
 
 export function defaultUiModelPresets() {
@@ -158,7 +159,7 @@ export function defaultPollingJobs() {
       handler: 'youtube_economy',
       enabled: false,
       intervalSeconds: 1800,
-      params: { order: 'date', handles: ['futuresnow', 'LikeUSStock', 't3chfeed', 'unrealtech', 'lucky_tv'] },
+      params: { order: 'date' },
       lastRunAt: null,
       nextRunAt: null,
       updatedAt: nowIso(),
@@ -173,7 +174,7 @@ export function defaultPollingJobs() {
       handler: 'youtube_economy',
       enabled: false,
       intervalSeconds: 21600,
-      params: { order: 'viewCount', handles: ['futuresnow', 'LikeUSStock', 't3chfeed', 'unrealtech', 'lucky_tv'] },
+      params: { order: 'viewCount' },
       lastRunAt: null,
       nextRunAt: null,
       updatedAt: nowIso(),
@@ -376,6 +377,7 @@ export function defaultDb() {
     meta: { createdAt: nowIso(), updatedAt: nowIso(), schemaVersion: 1 },
     appSettings: {
       marketQuotesMaxAgeSec: 10,
+      youtubeCurationHandles: [...DEFAULT_YOUTUBE_CURATION_HANDLES],
       updatedAt: nowIso(),
     },
     pollingJobs: defaultPollingJobs(),

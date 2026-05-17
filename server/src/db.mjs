@@ -66,6 +66,7 @@ import {
   queryPublicNewsInDb,
   queryPublicNewsSourcesInDb,
   queryPublicYoutubeInDb,
+  queryPublicYoutubeChannelsInDb,
   readAppSettingsInDb,
   readPublicMarketListInDb,
   readPublicMarketListsInDb,
@@ -538,6 +539,13 @@ export async function queryPublicYoutube(options = {}) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
     return queryPublicYoutubeInDb(db, options);
+  });
+}
+
+export async function queryPublicYoutubeChannels() {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    return queryPublicYoutubeChannelsInDb(db);
   });
 }
 

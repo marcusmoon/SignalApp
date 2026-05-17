@@ -1,5 +1,6 @@
 import { signalApi } from '@/integrations/signal-api/httpClient';
 import type {
+  SignalApiYoutubeChannel,
   SignalApiYoutubeVideo,
   SignalNewsListMeta,
   SignalYoutubeListMeta,
@@ -13,7 +14,9 @@ import { formatIso8601Duration, formatViewCount } from '@/utils/format';
 import {
   buildSignalYoutubeCacheKey,
   peekSignalYoutubeCache,
+  peekSignalYoutubeChannelsCache,
   storeSignalYoutubeCache,
+  storeSignalYoutubeChannelsCache,
 } from '@/integrations/signal-api/cache/youtubeCache';
 
 function normalizeYoutubeMeta(
@@ -73,6 +76,19 @@ export async function fetchSignalYoutube(
   const value: SignalYoutubePage = { items: rows, meta };
   if (cacheMode !== 'bypass') storeSignalYoutubeCache(cacheKey, value);
   return value;
+}
+
+export async function fetchSignalYoutubeChannels(
+  options?: { cacheMode?: 'use' | 'bypass' },
+): Promise<SignalApiYoutubeChannel[]> {
+  if (options?.cacheMode !== 'bypass') {
+    const hit = peekSignalYoutubeChannelsCache();
+    if (hit) return hit;
+  }
+  const json = await signalApi<{ data: SignalApiYoutubeChannel[] }>('/v1/youtube-channels');
+  const rows = Array.isArray(json.data) ? json.data : [];
+  if (options?.cacheMode !== 'bypass') storeSignalYoutubeChannelsCache(rows);
+  return rows;
 }
 
 export function signalYoutubeToYoutubeItem(item: SignalApiYoutubeVideo, locale: AppLocale): YoutubeItem {

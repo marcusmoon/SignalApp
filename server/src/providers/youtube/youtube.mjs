@@ -1,6 +1,6 @@
 import { getProviderSetting } from '../../providerSettings.mjs';
+import { normalizeYoutubeCurationHandles } from '../../youtubeCuration.mjs';
 
-const DEFAULT_HANDLES = ['futuresnow', 'LikeUSStock', 't3chfeed', 'unrealtech', 'lucky_tv'];
 const SEARCH_QUERY_FALLBACKS = [
   'US economy Federal Reserve inflation news',
   'economy news today',
@@ -104,7 +104,7 @@ function normalizeYoutubeVideo(raw, order, channelHandle = null) {
 
 export async function fetchYoutubeEconomy({ order = 'date', handles } = {}) {
   const normalizedOrder = order === 'viewCount' || order === 'popular' ? 'viewCount' : 'date';
-  const channelHandles = Array.isArray(handles) && handles.length > 0 ? handles : DEFAULT_HANDLES;
+  const channelHandles = normalizeYoutubeCurationHandles(handles);
   const idToHandle = await collectVideoIds(normalizedOrder, channelHandles);
   const ids = [...idToHandle.keys()];
   if (ids.length === 0) return [];

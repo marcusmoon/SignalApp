@@ -83,6 +83,15 @@ export type SignalApiYoutubeVideo = {
   fetchedAt: string;
 };
 
+export type SignalApiYoutubeChannel = {
+  handle: string;
+  title: string;
+  count: number;
+  latestAt: string | null;
+  order: number;
+  configured: boolean;
+};
+
 /** `/v1/youtube` — 뉴스(`/v1/news`)와 동일한 `meta` 형태 (`limit` / `offset` / `nextOffset`) */
 export type SignalYoutubeListMeta = SignalNewsListMeta;
 

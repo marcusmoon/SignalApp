@@ -82,4 +82,7 @@ export const state = {
     autoEnableNewSources: { global: true, crypto: true },
     aliases: { global: {}, crypto: {} },
   },
+  youtubeChannels: [],
+  youtubeChannelDraftRows: [''],
+  youtubeChannelsShowHidden: false,
 };

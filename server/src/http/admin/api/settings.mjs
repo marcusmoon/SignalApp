@@ -14,6 +14,12 @@ import { normalizeSocialLoginRedirectPath } from '../../../auth/socialAuthConfig
 import { MARKET_LIST_KEYS, normalizeMarketSymbols, publicMarketList } from '../../../marketLists.mjs';
 import { listProviderSettingsPublic, updateProviderSetting } from '../../../providerSettings.mjs';
 import { translateNews } from '../../../providers/translation/index.mjs';
+import { normalizeYoutubeCurationHandles, normalizeYoutubeHandle } from '../../../youtubeCuration.mjs';
+import {
+  ensureYoutubeChannelsCatalog,
+  syncYoutubeCurationHandlesFromCatalog,
+  youtubeChannelIdFromHandle,
+} from '../../../db/youtubeChannels.mjs';
 import { getMarketList, json, readBody } from '../../shared.mjs';
 
 const SUPPORTED_PROVIDERS = ['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko'];
@@ -95,6 +101,9 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
       if (patch.marketQuotesMaxAgeSec != null) {
         const n = Number(patch.marketQuotesMaxAgeSec);
         if (Number.isFinite(n)) next.marketQuotesMaxAgeSec = Math.max(0, Math.min(300, Math.floor(n)));
+      }
+      if (patch.youtubeCurationHandles != null) {
+        next.youtubeCurationHandles = normalizeYoutubeCurationHandles(patch.youtubeCurationHandles);
       }
       if (patch.socialAuth && typeof patch.socialAuth === 'object') {
         const prev = cur.socialAuth && typeof cur.socialAuth === 'object' ? cur.socialAuth : {};
@@ -304,6 +313,79 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
       }));
     });
     json(res, 200, { data: updated });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/admin/api/youtube-channels') {
+    const db = await readDb();
+    const includeHidden = url.searchParams.get('includeHidden') === '1';
+    ensureYoutubeChannelsCatalog(db.appSettings);
+    const channels = [...(db.appSettings.youtubeChannels || [])]
+      .map((c) => ({
+        id: String(c.id || '').trim(),
+        handle: normalizeYoutubeHandle(c.handle),
+        title: String(c.title || '').trim() || `@${normalizeYoutubeHandle(c.handle)}`,
+        enabled: c.enabled !== false,
+        hidden: c.hidden === true,
+        order: Number(c.order) || 0,
+      }))
+      .filter((c) => c.id && c.handle)
+      .filter((c) => (includeHidden ? true : !c.hidden))
+      .sort((a, b) => a.order - b.order || a.handle.localeCompare(b.handle));
+    json(res, 200, { data: channels });
+    return true;
+  }
+
+  if (req.method === 'PUT' && pathname === '/admin/api/youtube-channels') {
+    const patch = await readBody(req);
+    const items = Array.isArray(patch?.items) ? patch.items : [];
+    const updated = await updateDb((db) => {
+      const cur = ensureYoutubeChannelsCatalog(db.appSettings);
+      const byId = new Map(cur.map((c) => [String(c.id || '').trim(), c]));
+      const next = [];
+      const seen = new Set();
+      let order = 0;
+      for (const raw of items) {
+        const handle = normalizeYoutubeHandle(raw?.handle || raw?.id);
+        if (!handle) continue;
+        const id = String(raw?.id || '').trim() || youtubeChannelIdFromHandle(handle);
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        order += 1;
+        const prev = byId.get(id);
+        next.push({
+          id,
+          handle,
+          title: String(raw?.title || prev?.title || `@${handle}`).trim() || `@${handle}`,
+          enabled: raw?.enabled !== false,
+          hidden: raw?.hidden === true,
+          order,
+          updatedAt: nowIso(),
+        });
+      }
+      for (const c of cur) {
+        const id = String(c.id || '').trim();
+        if (!id || seen.has(id)) continue;
+        next.push({ ...c, order: (order += 1) });
+        seen.add(id);
+      }
+      db.appSettings.youtubeChannels = next;
+      syncYoutubeCurationHandlesFromCatalog(db.appSettings);
+      db.appSettings.updatedAt = nowIso();
+      return db.appSettings.youtubeChannels;
+    });
+    const channels = [...(updated || [])]
+      .map((c) => ({
+        id: String(c.id || '').trim(),
+        handle: normalizeYoutubeHandle(c.handle),
+        title: String(c.title || '').trim() || `@${normalizeYoutubeHandle(c.handle)}`,
+        enabled: c.enabled !== false,
+        hidden: c.hidden === true,
+        order: Number(c.order) || 0,
+      }))
+      .filter((c) => c.id && c.handle)
+      .sort((a, b) => a.order - b.order || a.handle.localeCompare(b.handle));
+    json(res, 200, { data: channels });
     return true;
   }
 

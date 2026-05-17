@@ -9,6 +9,7 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 type Props = {
   visible: boolean;
   onClose: () => void;
+  onApply: () => void;
   sources: string[];
   selected: string[];
   onToggle: (source: string) => void;
@@ -20,6 +21,7 @@ type Props = {
 export function NewsSourceFilterModal({
   visible,
   onClose,
+  onApply,
   sources,
   selected,
   onToggle,
@@ -39,9 +41,14 @@ export function NewsSourceFilterModal({
           <View style={styles.modalGrab} />
           <View style={styles.modalHead}>
             <Text style={styles.modalTitle}>{t('feedNewsFilterTitle')}</Text>
-            <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel={t('feedNewsFilterClose')}>
-              <Text style={styles.modalClose}>{t('feedNewsFilterClose')}</Text>
-            </Pressable>
+            <View style={styles.modalHeadActions}>
+              <Pressable onPress={onApply} hitSlop={12} accessibilityRole="button" accessibilityLabel={t('feedNewsFilterApply')}>
+                <Text style={styles.modalApply}>{t('feedNewsFilterApply')}</Text>
+              </Pressable>
+              <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel={t('feedNewsFilterClose')}>
+                <Text style={styles.modalClose}>{t('feedNewsFilterClose')}</Text>
+              </Pressable>
+            </View>
           </View>
           <View style={styles.footerHead}>
             <Text style={styles.footerTitle}>{t('feedNewsFilterIncluded')}</Text>
@@ -116,6 +123,16 @@ function makeModalStyles(theme: AppTheme) {
       justifyContent: 'space-between',
       marginBottom: 10,
       paddingTop: 4,
+    },
+    modalHeadActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    modalApply: {
+      fontSize: 15,
+      fontWeight: '800',
+      color: theme.green,
     },
     modalTitle: {
       fontSize: 17,

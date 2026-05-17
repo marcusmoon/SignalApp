@@ -7,6 +7,7 @@ import {
   filterNews,
   filterYoutube,
 } from '../http/shared.mjs';
+import { listActiveYoutubeChannelHandles } from './youtubeChannels.mjs';
 
 function parsePayload(label, payload, fallback = null) {
   if (payload == null || payload === '') return fallback;
@@ -239,6 +240,64 @@ export function queryPublicYoutubeInDb(db, options = {}) {
     hasMore,
     nextOffset: hasMore ? safeOffset + paged.rows.length : null,
   };
+}
+
+export function queryPublicYoutubeChannelsInDb(db) {
+  const settingsRow = db.prepare("SELECT payload FROM app_settings WHERE id = 'app'").get();
+  const settings = settingsRow ? parsePayload('app_settings.app', settingsRow.payload, {}) : {};
+  const configuredHandles = listActiveYoutubeChannelHandles(settings);
+  const byHandle = new Map();
+
+  for (const handle of configuredHandles) {
+    byHandle.set(handle.toLowerCase(), {
+      handle,
+      title: `@${handle}`,
+      count: 0,
+      latestAt: null,
+      order: byHandle.size,
+      configured: true,
+    });
+  }
+
+  const rows = db
+    .prepare(
+      `
+        SELECT payload
+        FROM youtube_videos
+        ORDER BY published_at DESC, fetched_at DESC
+        LIMIT 1000
+      `,
+    )
+    .all()
+    .map((row) => parsePayload('youtube_videos.payload', row.payload, null))
+    .filter(Boolean);
+
+  for (const item of rows) {
+    const handle = String(item.channelHandle || '').trim();
+    if (!handle) continue;
+    const key = handle.toLowerCase();
+    const prev = byHandle.get(key);
+    const latestAt = item.publishedAt || item.fetchedAt || item.updatedAt || null;
+    if (prev) {
+      prev.count += 1;
+      if (latestAt && (!prev.latestAt || String(latestAt) > String(prev.latestAt))) prev.latestAt = latestAt;
+      if (item.channel && prev.title === `@${prev.handle}`) prev.title = String(item.channel);
+      continue;
+    }
+    byHandle.set(key, {
+      handle,
+      title: item.channel ? String(item.channel) : `@${handle}`,
+      count: 1,
+      latestAt,
+      order: byHandle.size,
+      configured: false,
+    });
+  }
+
+  return [...byHandle.values()].sort((a, b) => {
+    if (a.configured !== b.configured) return a.configured ? -1 : 1;
+    return a.order - b.order || String(a.title).localeCompare(String(b.title));
+  });
 }
 
 export function queryPublicNewsSourcesInDb(db, { category = '' } = {}) {

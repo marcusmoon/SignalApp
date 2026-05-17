@@ -138,6 +138,7 @@ export default function FeedScreen() {
   const [availableSources, setAvailableSources] = useState<string[]>([]);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [filterDraftSources, setFilterDraftSources] = useState<string[]>([]);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   /** 출처 필터 UI용(카탈로그 비었을 때 샘플 + 첫 페이지 병합) */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
@@ -417,27 +418,36 @@ export default function FeedScreen() {
     [locale, segment, serverRows, t],
   );
 
-  const toggleSource = useCallback(
-    async (source: string) => {
-      if (!selectedSources.includes(source)) {
-        const next = [...selectedSources, source];
-        await applySelection(next);
-        return;
-      }
-      const next = selectedSources.filter((s) => s !== source);
-      await applySelection(next);
-    },
-    [applySelection, selectedSources],
-  );
+  const openNewsFilter = useCallback(() => {
+    setFilterDraftSources(selectedSources);
+    setFilterModalVisible(true);
+  }, [selectedSources]);
 
-  const selectAllSources = useCallback(async () => {
-    const next = [...availableSources];
-    await applySelection(next);
-  }, [applySelection, availableSources]);
+  const sourcesEqual = useCallback((a: string[], b: string[]) => {
+    if (a.length !== b.length) return false;
+    const setB = new Set(b);
+    return a.every((s) => setB.has(s));
+  }, []);
 
-  const clearAllSources = useCallback(async () => {
-    await applySelection([]);
-  }, [applySelection]);
+  const commitNewsFilter = useCallback(async () => {
+    setFilterModalVisible(false);
+    if (sourcesEqual(filterDraftSources, selectedSources)) return;
+    await applySelection(filterDraftSources);
+  }, [applySelection, filterDraftSources, selectedSources, sourcesEqual]);
+
+  const toggleSource = useCallback((source: string) => {
+    setFilterDraftSources((prev) =>
+      prev.includes(source) ? prev.filter((s) => s !== source) : [...prev, source],
+    );
+  }, []);
+
+  const selectAllSources = useCallback(() => {
+    setFilterDraftSources([...availableSources]);
+  }, [availableSources]);
+
+  const clearAllSources = useCallback(() => {
+    setFilterDraftSources([]);
+  }, []);
 
   const onPickSegment = useCallback((key: NewsSegmentKey) => {
     if (segment === key) return;
@@ -638,7 +648,7 @@ export default function FeedScreen() {
       {filterReady ? (
         <FloatingGlassFab
           bottom={fabStackBottom}
-          onPress={() => setFilterModalVisible(true)}
+          onPress={openNewsFilter}
           iconName="filter"
           accessibilityLabel={t('a11yNewsFilter')}
         />
@@ -646,12 +656,13 @@ export default function FeedScreen() {
 
       <NewsSourceFilterModal
         visible={filterModalVisible}
-        onClose={() => setFilterModalVisible(false)}
+        onClose={() => void commitNewsFilter()}
+        onApply={() => void commitNewsFilter()}
         sources={availableSources}
-        selected={selectedSources}
-        onToggle={(source) => void toggleSource(source)}
-        onSelectAll={() => void selectAllSources()}
-        onClearAll={() => void clearAllSources()}
+        selected={filterDraftSources}
+        onToggle={toggleSource}
+        onSelectAll={selectAllSources}
+        onClearAll={clearAllSources}
         bottomInset={insets.bottom}
       />
     </SafeAreaView>

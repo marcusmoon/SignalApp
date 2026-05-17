@@ -19,6 +19,7 @@ import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.
 import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
 import { fetchYoutubeEconomy, fetchYoutubeVideosByIds } from '../providers/youtube/youtube.mjs';
+import { normalizeYoutubeCurationHandles } from '../youtubeCuration.mjs';
 
 function addSecondsIso(seconds) {
   return new Date(Date.now() + Number(seconds || 300) * 1000).toISOString();
@@ -219,7 +220,8 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
     return { kind: 'concallTranscripts', rows: await fetchConcallTranscriptsFromCalendar(dbBefore, job.params || {}, { onProgress }) };
   }
   if (job.provider === 'youtube' && job.handler === 'youtube_economy') {
-    return { kind: 'youtube', rows: await fetchYoutubeEconomy(job.params || {}) };
+    const handles = normalizeYoutubeCurationHandles(dbBefore.appSettings?.youtubeCurationHandles);
+    return { kind: 'youtube', rows: await fetchYoutubeEconomy({ ...(job.params || {}), handles }) };
   }
   if (job.provider === 'youtube' && job.handler === 'youtube_economy_reconcile') {
     const limit = Math.max(1, Math.min(200, Number(job.params?.limit || 80)));

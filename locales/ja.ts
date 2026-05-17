@@ -347,7 +347,10 @@ export const ja = {
   settingsDeveloperLinkedInA11y: 'Marcus の LinkedIn を開く',
 
   settingsYoutubeLead:
-    '経済YouTubeタブに表示・フィルタするキュレーションチャンネルです。新しいチャンネルの動画は、Signal Server の YouTube 収集 Job に同じハンドルが含まれた後に表示されます。',
+    '経済 YouTube タブで見たいチャンネルを選ぶ個人フィルターです。実際の収集チャンネルは Signal Admin の YouTube キュレーション設定で管理します。',
+  settingsYoutubeFilterKicker: 'チャンネルフィルター',
+  settingsYoutubeFilterHint:
+    'ニュース出処フィルターと同じように、YouTube タブのフィルターボタンで選択します。新しいチャンネルはサーバーの収集設定と Job 実行結果に基づいて反映されます。',
   settingsYoutubeSectionAdd: 'チャンネルを追加',
   settingsYoutubeHintHandle: 'YouTube @ハンドル（チャンネルURLの@以降）',
   settingsYoutubePlaceholderHandle: 'ハンドル',
@@ -360,7 +363,7 @@ export const ja = {
     'Signal サーバーの YouTube provider 設定が必要です。Admin で YouTube キーと収集 Job を確認してください。',
   youtubeErrorSelectChannel: 'チャンネルを1つ以上選んでください。',
   youtubeErrorQuota:
-    'YouTube Data API の1日クォータを使い切りました（太平洋時間0時にリセット）。Google Cloud の使用量を確認するか、別プロジェクト・キーに分けるか、明日再度お試しください。',
+    'Signal サーバーの YouTube 収集クォータを使い切りました（太平洋時間0時にリセット）。しばらくしてから再度お試しいただくか、Admin で収集設定を確認してください。',
   youtubeErrorQuotaResetHint:
     '次の日次リセットまで約 {{hours}} 時間 {{minutes}} 分（太平洋時間の深夜0時基準）。',
   youtubeErrorQuotaResetImminent: 'まもなく日次クォータが更新される可能性があります（太平洋時間の深夜0時）。',
@@ -378,7 +381,8 @@ export const ja = {
   youtubeFooterIncluded: '含めるチャンネル',
   youtubeFooterSelectAll: 'すべて選択',
   youtubeFooterClearAll: 'すべて解除',
-  youtubeFooterSub: 'チャンネルをタップして含める/除外を切り替えます。',
+  youtubeFooterSub: '選択後に適用または閉じるで一覧を更新します。',
+  youtubeModalApply: '適用',
   youtubeModalTitle: 'キュレーションチャンネル',
   youtubeModalClose: '閉じる',
   a11yYoutubeFilter: 'キュレーションチャンネルフィルタを開く',
@@ -578,6 +582,7 @@ export const ja = {
   feedNewsFilterClearAll: 'すべて解除',
   feedNewsFilterSub: '選択した提供元だけを現在のタブに表示します。',
   feedNewsFilterClose: '閉じる',
+  feedNewsFilterApply: '適用',
   feedErrorToken:
     'Signal サーバーのニュース provider 設定が必要です。Admin で Finnhub/ニュース収集設定を確認してください。',
   feedErrorLoad: 'ニュースを読み込めませんでした。',

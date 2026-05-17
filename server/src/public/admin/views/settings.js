@@ -556,6 +556,9 @@ export async function loadProviderSettingsView(ctx) {
   if ($('appSettingsStatus') && state.appSettings?.updatedAt) {
     $('appSettingsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.appSettings.updatedAt) });
   }
+  if ($('youtubeCurationSettingsStatus') && state.appSettings?.updatedAt) {
+    $('youtubeCurationSettingsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.appSettings.updatedAt) });
+  }
   if ($('socialAuthSettingsStatus') && state.appSettings?.updatedAt) {
     $('socialAuthSettingsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.appSettings.updatedAt) });
   }

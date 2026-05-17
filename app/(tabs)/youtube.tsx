@@ -45,10 +45,9 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { hasSignalApi } from '@/services/env';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
-import { loadCurationHandles } from '@/services/youtubeCurationList';
 import type { ChannelHandleMeta } from '@/domain/youtube/types';
-import { fetchSignalYoutube, signalYoutubeToYoutubeItem } from '@/integrations/signal-api';
-import type { SignalYoutubeListMeta } from '@/integrations/signal-api/types';
+import { fetchSignalYoutube, fetchSignalYoutubeChannels, signalYoutubeToYoutubeItem } from '@/integrations/signal-api';
+import type { SignalApiYoutubeChannel, SignalYoutubeListMeta } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { YoutubeItem } from '@/types/signal';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
@@ -89,6 +88,7 @@ export default function YoutubeScreen() {
   const [curationHandles, setCurationHandles] = useState<string[] | null>(null);
   const [selectedHandles, setSelectedHandles] = useState<string[] | null>(null);
   const [channelModalVisible, setChannelModalVisible] = useState(false);
+  const [filterDraftHandles, setFilterDraftHandles] = useState<string[] | null>(null);
   /** load() 안에서 이미 화면에 목록이 있는지 — 캐시 재적중 시 전체 로딩 스킵 */
   const itemsRef = useRef<YoutubeItem[]>([]);
   itemsRef.current = items;
@@ -99,31 +99,36 @@ export default function YoutubeScreen() {
 
   useTabScreenLoadingRecovery(items, setLoading);
 
+  const loadChannelCatalog = useCallback(async (cacheMode: 'use' | 'bypass' = 'use') => {
+    let rows: SignalApiYoutubeChannel[] = [];
+    try {
+      rows = hasSignalApi() ? await fetchSignalYoutubeChannels({ cacheMode }) : [];
+    } catch (e) {
+      setError(formatSignalApiError(e, t, 'youtubeErrorLoad'));
+      rows = [];
+    }
+    const handles = rows.map((row) => row.handle).filter(Boolean);
+    const saved = await loadSelectedChannels(handles);
+    const meta: ChannelHandleMeta[] = rows.map((row) => ({
+      handle: row.handle,
+      title: row.title || `@${row.handle}`,
+    }));
+    setCurationHandles((prev) => {
+      if (prev !== null && normalizeHandlesKey(prev) === normalizeHandlesKey(handles)) return prev;
+      return handles;
+    });
+    setChannelMeta(meta);
+    setSelectedHandles((prev) => {
+      if (prev !== null && normalizeHandlesKey(prev) === normalizeHandlesKey(saved)) return prev;
+      return saved;
+    });
+    return { handles, selected: saved };
+  }, [t]);
+
   useFocusEffect(
     useCallback(() => {
-      /**
-       * 탭 이탈 시 cancelled 로 setState 를 건너뛰면 selectedHandles 가 영구 null 이 되거나
-       * 채널 로드가 끝나도 반영되지 않아 본문이 비는 경우가 있음 → 완료 시 항상 반영.
-       */
-      void (async () => {
-        const curation = await loadCurationHandles();
-        const saved = await loadSelectedChannels();
-        const meta: ChannelHandleMeta[] = curation.map((handle) => ({ handle, title: `@${handle}` }));
-        setCurationHandles((prev) => {
-          if (prev !== null && normalizeHandlesKey(prev) === normalizeHandlesKey(curation)) {
-            return prev;
-          }
-          return curation;
-        });
-        setChannelMeta(meta);
-        setSelectedHandles((prev) => {
-          if (prev !== null && normalizeHandlesKey(prev) === normalizeHandlesKey(saved)) {
-            return prev;
-          }
-          return saved;
-        });
-      })();
-    }, []),
+      void loadChannelCatalog('use');
+    }, [loadChannelCatalog]),
   );
 
   const applyLoadError = useCallback(
@@ -146,6 +151,7 @@ export default function YoutubeScreen() {
     async (opts?: {
       forceRefresh?: boolean;
       channelHandles?: string[];
+      availableHandles?: string[];
       errorFallback?: 'youtubeErrorLoad' | 'youtubeErrorRefresh';
     }) => {
       setError(null);
@@ -176,12 +182,13 @@ export default function YoutubeScreen() {
       youtubeReplacingRef.current = true;
       setYoutubeMeta(null);
       try {
+        const availableHandles = opts?.availableHandles ?? curationHandles;
         const page = await fetchSignalYoutube(
           {
             offset: 0,
             limit: YOUTUBE_PAGE_SIZE,
             sort,
-            channelHandles: curationHandles && handles.length === curationHandles.length ? undefined : handles,
+            channelHandles: availableHandles && handles.length === availableHandles.length ? undefined : handles,
           },
           { cacheMode: opts?.forceRefresh ? 'bypass' : 'use' },
         );
@@ -267,45 +274,53 @@ export default function YoutubeScreen() {
     if (selectedHandles === null) return;
     setRefreshing(true);
     try {
+      const catalog = await loadChannelCatalog('bypass');
       await load({
         forceRefresh: true,
+        channelHandles: catalog.selected,
+        availableHandles: catalog.handles,
         errorFallback: 'youtubeErrorRefresh',
       });
     } finally {
       setRefreshing(false);
     }
-  }, [load, selectedHandles]);
+  }, [load, loadChannelCatalog, selectedHandles]);
 
-  const toggleChannel = useCallback(
-    async (handle: string) => {
-      if (!selectedHandles) return;
-      let next: string[];
-      if (selectedHandles.includes(handle)) {
-        next = selectedHandles.filter((h) => h !== handle);
-      } else {
-        next = [...selectedHandles, handle];
-      }
-      setSelectedHandles(next);
-      await saveSelectedChannels(next);
-      await load({ forceRefresh: true, channelHandles: next });
-    },
-    [selectedHandles, load],
-  );
+  const handlesEqual = useCallback((a: string[] | null, b: string[] | null) => {
+    if (a === null || b === null) return a === b;
+    if (a.length !== b.length) return false;
+    const setB = new Set(b);
+    return a.every((h) => setB.has(h));
+  }, []);
 
-  const selectAllChannels = useCallback(async () => {
+  const openChannelFilter = useCallback(() => {
+    setFilterDraftHandles(selectedHandles ? [...selectedHandles] : []);
+    setChannelModalVisible(true);
+  }, [selectedHandles]);
+
+  const commitChannelFilter = useCallback(async () => {
+    setChannelModalVisible(false);
+    if (!filterDraftHandles || handlesEqual(filterDraftHandles, selectedHandles)) return;
+    setSelectedHandles(filterDraftHandles);
+    await saveSelectedChannels(filterDraftHandles);
+    await load({ forceRefresh: true, channelHandles: filterDraftHandles });
+  }, [filterDraftHandles, handlesEqual, load, selectedHandles]);
+
+  const toggleChannel = useCallback((handle: string) => {
+    setFilterDraftHandles((prev) => {
+      if (!prev) return prev;
+      return prev.includes(handle) ? prev.filter((h) => h !== handle) : [...prev, handle];
+    });
+  }, []);
+
+  const selectAllChannels = useCallback(() => {
     if (!curationHandles?.length) return;
-    const next = [...curationHandles];
-    setSelectedHandles(next);
-    await saveSelectedChannels(next);
-    await load({ forceRefresh: true, channelHandles: next });
-  }, [load, curationHandles]);
+    setFilterDraftHandles([...curationHandles]);
+  }, [curationHandles]);
 
-  const clearAllChannels = useCallback(async () => {
-    const next: string[] = [];
-    setSelectedHandles(next);
-    await saveSelectedChannels(next);
-    await load({ forceRefresh: true, channelHandles: next });
-  }, [load]);
+  const clearAllChannels = useCallback(() => {
+    setFilterDraftHandles([]);
+  }, []);
 
   const titleForHandle = (handle: string) =>
     channelMeta.find((c) => c.handle === handle)?.title ?? `@${handle}`;
@@ -377,14 +392,14 @@ export default function YoutubeScreen() {
         </View>
       </View>
       <Text style={styles.footerSub}>{t('youtubeFooterSub')}</Text>
-      {selectedHandles &&
+      {filterDraftHandles &&
         curationHandles &&
         curationHandles.map((handle) => {
-          const on = selectedHandles.includes(handle);
+          const on = filterDraftHandles.includes(handle);
           return (
             <Pressable
               key={handle}
-              onPress={() => void toggleChannel(handle)}
+              onPress={() => toggleChannel(handle)}
               style={[styles.channelRow, on && styles.channelRowOn]}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}>
@@ -523,7 +538,7 @@ export default function YoutubeScreen() {
       {filterReady ? (
         <FloatingGlassFab
           bottom={fabStackBottom}
-          onPress={() => setChannelModalVisible(true)}
+          onPress={openChannelFilter}
           iconName="filter"
           accessibilityLabel={t('a11yYoutubeFilter')}
         />
@@ -533,20 +548,29 @@ export default function YoutubeScreen() {
         animationType="slide"
         transparent
         visible={channelModalVisible}
-        onRequestClose={() => setChannelModalVisible(false)}>
+        onRequestClose={() => void commitChannelFilter()}>
         <View style={styles.modalBackdrop}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setChannelModalVisible(false)} />
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => void commitChannelFilter()} />
           <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
             <View style={styles.modalGrab} />
             <View style={styles.modalHead}>
               <Text style={styles.modalTitle}>{t('youtubeModalTitle')}</Text>
-              <Pressable
-                onPress={() => setChannelModalVisible(false)}
-                hitSlop={12}
-                accessibilityRole="button"
-                accessibilityLabel={t('youtubeModalClose')}>
-                <Text style={styles.modalClose}>{t('youtubeModalClose')}</Text>
-              </Pressable>
+              <View style={styles.modalHeadActions}>
+                <Pressable
+                  onPress={() => void commitChannelFilter()}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('youtubeModalApply')}>
+                  <Text style={styles.modalApply}>{t('youtubeModalApply')}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => void commitChannelFilter()}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('youtubeModalClose')}>
+                  <Text style={styles.modalClose}>{t('youtubeModalClose')}</Text>
+                </Pressable>
+              </View>
             </View>
             <ScrollView
               style={styles.modalScroll}
@@ -619,6 +643,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(17),
       fontWeight: '800',
       color: theme.text,
+    },
+    modalHeadActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    modalApply: {
+      fontSize: sf(15),
+      fontWeight: '800',
+      color: theme.green,
     },
     modalClose: {
       fontSize: sf(15),

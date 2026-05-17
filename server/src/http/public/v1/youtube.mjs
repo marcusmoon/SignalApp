@@ -1,7 +1,13 @@
-import { queryPublicYoutube } from '../../../db.mjs';
+import { queryPublicYoutube, queryPublicYoutubeChannels } from '../../../db.mjs';
 import { json } from '../../shared.mjs';
 
 export async function handlePublicYoutubeRoutes({ req, res, url, pathname }) {
+  if (req.method === 'GET' && pathname === '/v1/youtube-channels') {
+    const channels = await queryPublicYoutubeChannels();
+    json(res, 200, { data: channels });
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/v1/youtube') {
     const page = await queryPublicYoutube({
       q: url.searchParams.get('q') || '',

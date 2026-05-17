@@ -1,22 +1,25 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { loadCurationHandles } from '@/services/youtubeCurationList';
-
 const STORAGE_KEY = '@signal/youtube_selected_channels_v1';
 
-export async function loadSelectedChannels(): Promise<string[]> {
-  const curation = await loadCurationHandles();
-  const valid = new Set(curation);
+export async function loadSelectedChannels(availableHandles: string[]): Promise<string[]> {
+  if (availableHandles.length === 0) return [];
+  const valid = new Set(availableHandles);
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return [...curation];
+    if (!raw) return [...availableHandles];
     const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [...curation];
+    if (!Array.isArray(parsed)) return [...availableHandles];
     if (parsed.length === 0) return [];
     const filtered = parsed.filter((h): h is string => typeof h === 'string' && valid.has(h));
-    return filtered.length > 0 ? filtered : [...curation];
+    const selected = filtered.length > 0 ? filtered : [];
+    const out = [...selected];
+    for (const handle of availableHandles) {
+      if (!out.includes(handle)) out.push(handle);
+    }
+    return out.length > 0 ? out : [...availableHandles];
   } catch {
-    return [...curation];
+    return [...availableHandles];
   }
 }
 

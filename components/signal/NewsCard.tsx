@@ -15,9 +15,11 @@ type Props = {
   onTagPress?: (label: string) => void;
   /** `grouped`: 홈 관련 근거처럼 한 카드 안 행 구분(개별 테두리 없음) */
   layout?: 'card' | 'grouped';
+  /** 미지정 시 URL이 있으면 원문 브라우저 오픈 (추후 상세 화면으로 교체 예정) */
+  onPress?: () => void;
 };
 
-export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress, layout = 'card' }: Props) {
+export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress, layout = 'card', onPress }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
@@ -42,79 +44,67 @@ export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress, layout = 'ca
   const grouped = layout === 'grouped';
   const articleUrl = item.url?.trim() ?? '';
   const canOpenArticle = articleUrl.length > 0;
+  const rowPressEnabled = Boolean(onPress) || canOpenArticle;
 
   const openArticle = useCallback(() => {
+    if (onPress) {
+      onPress();
+      return;
+    }
     if (!canOpenArticle) return;
     void WebBrowser.openBrowserAsync(articleUrl);
-  }, [articleUrl, canOpenArticle]);
+  }, [articleUrl, canOpenArticle, onPress]);
 
-  const sourceA11y = canOpenArticle ? `${sourceName}, ${t('newsReadMore')}` : sourceName;
+  const rowA11yLabel = [item.titleKo, sourceName, item.timeLabel].filter(Boolean).join(', ');
 
   const sourceContent = (
-    <View style={[styles.sourcePill, canOpenArticle && styles.sourcePillPressable]}>
+    <View style={styles.sourcePill}>
       <Text style={styles.sourceName} numberOfLines={1}>
         {sourceName}
       </Text>
-      {canOpenArticle ? (
-        <Text style={styles.sourceOpenHint} accessibilityElementsHidden importantForAccessibility="no">
-          ↗
-        </Text>
-      ) : null}
     </View>
   );
 
-  const renderSourceBlock = (compact: boolean) => {
-    const rowStyle = [
-      styles.sourceRow,
-      compact && styles.sourceRowCompact,
-      canOpenArticle && styles.sourceRowPressable,
-      compact && canOpenArticle && styles.sourceRowPressableCompact,
-    ];
-    if (canOpenArticle) {
-      return (
-        <Pressable
-          onPress={openArticle}
-          style={({ pressed }) => [...rowStyle, pressed && styles.sourceRowPressed]}
-          accessibilityRole="link"
-          accessibilityLabel={sourceA11y}>
-          {sourceContent}
-        </Pressable>
-      );
-    }
-    return <View style={rowStyle}>{sourceContent}</View>;
-  };
+  const renderSourceInMeta = () => <View style={styles.sourceRowCompact}>{sourceContent}</View>;
+
+  const renderSourceBelowMeta = () => <View style={styles.sourceRow}>{sourceContent}</View>;
 
   return (
     <View style={[styles.card, grouped && styles.cardGrouped, isFlash && styles.cardFlash]}>
-      {isFlash ? (
-        <View style={styles.flashBadgeWrap} accessibilityLabel={t('newsFlashBadge')}>
-          <View style={styles.flashBadge}>
-            <Text style={styles.flashBadgeText}>{t('newsFlashBadge')}</Text>
+      <Pressable
+        onPress={openArticle}
+        disabled={!rowPressEnabled}
+        style={({ pressed }) => [styles.rowPress, rowPressEnabled && pressed && styles.rowPressPressed]}
+        accessibilityRole={rowPressEnabled ? 'button' : undefined}
+        accessibilityLabel={rowPressEnabled ? rowA11yLabel : undefined}
+        accessibilityHint={rowPressEnabled ? t('newsReadMore') : undefined}>
+        {isFlash ? (
+          <View style={styles.flashBadgeWrap} accessibilityLabel={t('newsFlashBadge')}>
+            <View style={styles.flashBadge}>
+              <Text style={styles.flashBadgeText}>{t('newsFlashBadge')}</Text>
+            </View>
+          </View>
+        ) : null}
+        <View style={[styles.metaRow, showSourceInHeader && styles.metaRowWithSource]}>
+          {canOpenSymbol ? (
+            <Pressable
+              onPress={() => router.push(`/symbol/${symbol}`)}
+              hitSlop={8}
+              style={styles.metaLead}>
+              <Text style={styles.ticker} numberOfLines={1}>
+                {headerLabel}
+              </Text>
+            </Pressable>
+          ) : (
+            renderSourceInMeta()
+          )}
+          <View style={styles.timePill}>
+            <Text style={styles.time}>{item.timeLabel}</Text>
           </View>
         </View>
-      ) : null}
-      <View style={[styles.row, showSourceInHeader && styles.rowWithSource]}>
-        {canOpenSymbol ? (
-          <Pressable onPress={() => router.push(`/symbol/${symbol}`)} hitSlop={6} style={styles.metaLead}>
-            <Text style={styles.ticker} numberOfLines={1}>
-              {headerLabel}
-            </Text>
-          </Pressable>
-        ) : (
-          renderSourceBlock(true)
-        )}
-        <View style={styles.timePill}>
-          <Text style={styles.time}>{item.timeLabel}</Text>
-        </View>
-      </View>
-      {canOpenSymbol ? renderSourceBlock(false) : null}
-      {canOpenSymbol ? (
-        <Pressable onPress={() => router.push(`/symbol/${symbol}`)} hitSlop={4}>
-          <Text style={[styles.title, tags.length === 0 && styles.titleLast]}>{item.titleKo}</Text>
-        </Pressable>
-      ) : (
+        {canOpenSymbol ? renderSourceBelowMeta() : null}
         <Text style={[styles.title, tags.length === 0 && styles.titleLast]}>{item.titleKo}</Text>
-      )}
+      </Pressable>
       {tags.length > 0 ? (
         <View style={[styles.footer, grouped && styles.footerGrouped]}>
           <View style={styles.footerTagsCol}>
@@ -145,7 +135,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.border,
       paddingHorizontal: 14,
       paddingTop: 14,
-      /** 푸터 아래 빈 띠가 과해 보이지 않도록 하단만 약간 축소 */
       paddingBottom: 6,
       marginBottom: 10,
     },
@@ -163,6 +152,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderLeftWidth: 3,
       borderLeftColor: '#FF5A5A',
       backgroundColor: 'rgba(255, 90, 90, 0.06)',
+    },
+    rowPress: {
+      alignSelf: 'stretch',
+    },
+    rowPressPressed: {
+      opacity: 0.92,
     },
     flashBadgeWrap: {
       marginBottom: 10,
@@ -182,14 +177,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: '#FF9A9A',
       letterSpacing: 0.8,
     },
-    row: {
+    metaRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       gap: 8,
       marginBottom: 6,
     },
-    rowWithSource: {
+    metaRowWithSource: {
       marginBottom: 10,
     },
     metaLead: {
@@ -230,21 +225,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginBottom: 0,
       alignSelf: 'center',
     },
-    sourceRowPressable: {
-      alignSelf: 'flex-start',
-      maxWidth: '100%',
-    },
-    sourceRowPressableCompact: {
-      alignSelf: 'flex-start',
-      maxWidth: '100%',
-    },
-    sourceRowPressed: {
-      opacity: 0.88,
-    },
     sourcePill: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
       alignSelf: 'flex-start',
       maxWidth: '100%',
       paddingHorizontal: 10,
@@ -254,22 +237,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.greenBorder,
     },
-    sourcePillPressable: {
-      paddingRight: 8,
-    },
     sourceName: {
       flexShrink: 1,
       fontSize: sf(12),
       fontWeight: '700',
       color: theme.text,
       maxWidth: '100%',
-    },
-    sourceOpenHint: {
-      flexShrink: 0,
-      fontSize: sf(11),
-      fontWeight: '800',
-      color: theme.green,
-      marginTop: 1,
     },
     title: {
       color: theme.text,
@@ -292,7 +265,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'flex-start',
       paddingRight: 4,
     },
-    /** 인스타그램 등 링크형 해시태그와 비슷한 블루 톤 — 본문(제목)과 색·채도로 구분 */
     tagChip: {
       paddingHorizontal: 7,
       paddingVertical: 2,

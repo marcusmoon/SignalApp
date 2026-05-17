@@ -16,11 +16,12 @@ export const APP_ICON_VARIANTS: readonly {
 
 const STORAGE_KEY = '@signal/app_icon_variant_v1';
 const VALID = new Set<AppIconVariant>(APP_ICON_VARIANTS.map((item) => item.id));
-const DEFAULT_APP_ICON_VARIANT: AppIconVariant = 'green';
+const DEFAULT_APP_ICON_VARIANT: AppIconVariant = 'blue';
 
+/** 기본(블루) = 번들 `icon.png`, 나머지는 alternate asset */
 const IOS_ICON_NAME: Record<AppIconVariant, string | null> = {
-  blue: 'SignalIconBlue',
-  green: null,
+  blue: null,
+  green: 'SignalIconGreen',
   dark: 'SignalIconDark',
   mono: 'SignalIconMono',
 };

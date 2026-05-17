@@ -402,6 +402,15 @@ export const ko = {
   settingsQuotesSegmentOrderHint:
     '실시간 시세 화면 상단의 관심·인기순·시총순·코인 순서입니다. 오른쪽 ≡을 드래그해 바꿉니다.',
   settingsQuotesSegmentDragHandleA11y: '{{name}} 순서 바꾸기(드래그)',
+  settingsQuotesChangeColorKicker: '등락 색상',
+  settingsQuotesChangeColorHint:
+    '시세·홈 관심종목·종목 상세에서 가격·변동률(%) 색상 규칙을 선택합니다.',
+  settingsQuotesChangeColorKorea: '한국식',
+  settingsQuotesChangeColorKoreaDesc: '상승 빨강 · 하락 파랑',
+  settingsQuotesChangeColorUs: '미국식',
+  settingsQuotesChangeColorUsDesc: '상승 녹색 · 하락 빨강',
+  settingsQuotesChangeColorPreviewUp: '+1.25%',
+  settingsQuotesChangeColorPreviewDown: '-0.84%',
 
   settingsThemeLead:
     '표시 설정에서 화면 모드, 언어, 글꼴 크기, 강조색을 바꿀 수 있습니다. 변경 사항은 즉시 적용됩니다.',

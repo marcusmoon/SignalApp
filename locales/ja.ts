@@ -404,6 +404,15 @@ export const ja = {
   settingsQuotesSegmentOrderHint:
     '相場画面上部のウォッチ・人気・時価・仮想通貨の順です。右の≡をドラッグして並べ替えます。',
   settingsQuotesSegmentDragHandleA11y: '{{name}}の順番を変更（ドラッグ）',
+  settingsQuotesChangeColorKicker: '騰落の色',
+  settingsQuotesChangeColorHint:
+    '相場・ホームのウォッチリスト・銘柄詳細の価格・変動率(%)の色ルールを選びます。',
+  settingsQuotesChangeColorKorea: '韓国式',
+  settingsQuotesChangeColorKoreaDesc: '上昇 赤 · 下落 青',
+  settingsQuotesChangeColorUs: '米国式',
+  settingsQuotesChangeColorUsDesc: '上昇 緑 · 下落 赤',
+  settingsQuotesChangeColorPreviewUp: '+1.25%',
+  settingsQuotesChangeColorPreviewDown: '-0.84%',
 
   settingsThemeLead:
     '表示では画面モード・言語・文字サイズ・アクセント色を変更できます。変更はすぐに反映されます。',

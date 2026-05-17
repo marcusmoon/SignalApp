@@ -42,6 +42,15 @@ import {
   saveQuotesSegmentOrder,
   type QuoteSegmentKey,
 } from '@/services/quotesSegmentOrderPreference';
+import {
+  getQuoteChangeColors,
+  QUOTES_CHANGE_COLOR_CONVENTION_ORDER,
+  type QuotesChangeColorConvention,
+} from '@/domain/quotes/changeColorConvention';
+import {
+  loadQuotesChangeColorConvention,
+  saveQuotesChangeColorConvention,
+} from '@/services/quotesChangeColorPreference';
 import type { AccentPresetId } from '@/services/accentPreference';
 import { ACCENT_PRESETS, normalizeHex } from '@/services/accentPreference';
 import type { FontSizePresetId } from '@/services/fontSizePreference';
@@ -168,6 +177,16 @@ const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   popular: 'quotesSegmentPopular',
   mcap: 'quotesSegmentMcap',
   coin: 'quotesSegmentCoin',
+};
+
+const QUOTES_CHANGE_COLOR_LABEL: Record<QuotesChangeColorConvention, MessageId> = {
+  korea: 'settingsQuotesChangeColorKorea',
+  us: 'settingsQuotesChangeColorUs',
+};
+
+const QUOTES_CHANGE_COLOR_DESC: Record<QuotesChangeColorConvention, MessageId> = {
+  korea: 'settingsQuotesChangeColorKoreaDesc',
+  us: 'settingsQuotesChangeColorUsDesc',
 };
 
 const NEWS_FEED_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
@@ -776,6 +795,50 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     quotesSegmentOrderListContent: {
       paddingBottom: 8,
     },
+    quotesChangeColorSegment: {
+      flexDirection: 'column',
+      gap: 8,
+      marginBottom: 12,
+    },
+    quotesChangeColorOption: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+    },
+    quotesChangeColorOptionActive: {
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    quotesChangeColorOptionTitle: {
+      fontSize: sf(14),
+      fontWeight: '800',
+      color: theme.text,
+    },
+    quotesChangeColorOptionTitleActive: {
+      color: theme.green,
+    },
+    quotesChangeColorOptionDesc: {
+      marginTop: 4,
+      fontSize: sf(12),
+      fontWeight: '600',
+      color: theme.textMuted,
+      lineHeight: sf(16),
+    },
+    quotesChangeColorPreviewRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+      marginTop: 4,
+    },
+    quotesChangeColorPreviewChip: {
+      fontSize: sf(15),
+      fontWeight: '900',
+      letterSpacing: -0.2,
+    },
     limitPickerTrigger: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -921,6 +984,7 @@ const SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT = 52;
 export default function SettingsScreen() {
   const {
     theme,
+    effectiveColorScheme,
     appearanceMode,
     setAppearanceMode,
     presetId,
@@ -971,6 +1035,9 @@ export default function SettingsScreen() {
   const [quotesSegmentOrder, setQuotesSegmentOrder] =
     useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
   const [quotesSegmentOrderReady, setQuotesSegmentOrderReady] = useState(false);
+  const [quotesChangeColorConvention, setQuotesChangeColorConvention] =
+    useState<QuotesChangeColorConvention>('korea');
+  const [quotesChangeColorReady, setQuotesChangeColorReady] = useState(false);
   const [quotesLimitPicker, setQuotesLimitPicker] = useState<'popular' | 'mcap' | 'coin' | null>(null);
 
   const [koreaExtraKeywords, setKoreaExtraKeywords] = useState<string[]>([]);
@@ -990,7 +1057,7 @@ export default function SettingsScreen() {
   const [moreRefLinksReady, setMoreRefLinksReady] = useState(false);
   const [mainEntry, setMainEntry] = useState<MainEntryKey>('home');
   const [mainEntryReady, setMainEntryReady] = useState(false);
-  const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('green');
+  const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
   const [appIconReady, setAppIconReady] = useState(false);
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
   const [tabBarOpacityReady, setTabBarOpacityReady] = useState(false);
@@ -1031,6 +1098,11 @@ export default function SettingsScreen() {
     if (!quotesLimitPicker) return [];
     return quotesListCountChoicesForField(quotesLimitPicker);
   }, [quotesLimitPicker]);
+
+  const quotesChangeColorPreview = useMemo(
+    () => getQuoteChangeColors(quotesChangeColorConvention, effectiveColorScheme),
+    [quotesChangeColorConvention, effectiveColorScheme],
+  );
 
   const scrollContentBottomPad = useMemo(
     () =>
@@ -1117,6 +1189,12 @@ export default function SettingsScreen() {
     const o = await loadQuotesSegmentOrder();
     setQuotesSegmentOrder(o);
     setQuotesSegmentOrderReady(true);
+  }, []);
+
+  const reloadQuotesChangeColorConvention = useCallback(async () => {
+    const c = await loadQuotesChangeColorConvention();
+    setQuotesChangeColorConvention(c);
+    setQuotesChangeColorReady(true);
   }, []);
 
   const reloadKoreaKeywords = useCallback(async () => {
@@ -1222,6 +1300,7 @@ export default function SettingsScreen() {
       void reloadCachePrefs();
       void reloadQuotesListLimits();
       void reloadQuotesSegmentOrder();
+      void reloadQuotesChangeColorConvention();
       void reloadKoreaKeywords();
       void reloadNewsSegmentOrder();
       void reloadNewsHashtagDisplayMax();
@@ -1237,6 +1316,7 @@ export default function SettingsScreen() {
       reloadCachePrefs,
       reloadQuotesListLimits,
       reloadQuotesSegmentOrder,
+      reloadQuotesChangeColorConvention,
       reloadKoreaKeywords,
       reloadNewsSegmentOrder,
       reloadNewsHashtagDisplayMax,
@@ -1561,6 +1641,64 @@ export default function SettingsScreen() {
 
         {tab === 'quotes' ? (
           <>
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsQuotesChangeColorKicker')}</Text>
+              <Text style={styles.quotesCardHint}>{t('settingsQuotesChangeColorHint')}</Text>
+              {!quotesChangeColorReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <>
+                  <View style={styles.quotesChangeColorSegment}>
+                    {QUOTES_CHANGE_COLOR_CONVENTION_ORDER.map((convention) => {
+                      const selected = quotesChangeColorConvention === convention;
+                      return (
+                        <Pressable
+                          key={convention}
+                          onPress={() => {
+                            setQuotesChangeColorConvention(convention);
+                            void saveQuotesChangeColorConvention(convention);
+                          }}
+                          style={[
+                            styles.quotesChangeColorOption,
+                            selected && styles.quotesChangeColorOptionActive,
+                          ]}
+                          accessibilityRole="radio"
+                          accessibilityState={{ selected }}
+                          accessibilityLabel={t(QUOTES_CHANGE_COLOR_LABEL[convention])}>
+                          <Text
+                            style={[
+                              styles.quotesChangeColorOptionTitle,
+                              selected && styles.quotesChangeColorOptionTitleActive,
+                            ]}>
+                            {t(QUOTES_CHANGE_COLOR_LABEL[convention])}
+                          </Text>
+                          <Text style={styles.quotesChangeColorOptionDesc}>
+                            {t(QUOTES_CHANGE_COLOR_DESC[convention])}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  <View style={styles.quotesChangeColorPreviewRow}>
+                    <Text
+                      style={[
+                        styles.quotesChangeColorPreviewChip,
+                        { color: quotesChangeColorPreview.up },
+                      ]}>
+                      {t('settingsQuotesChangeColorPreviewUp')}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.quotesChangeColorPreviewChip,
+                        { color: quotesChangeColorPreview.down },
+                      ]}>
+                      {t('settingsQuotesChangeColorPreviewDown')}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
+
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsQuotesSegmentOrderKicker')}</Text>
               <Text style={styles.quotesCardHint}>{t('settingsQuotesSegmentOrderHint')}</Text>

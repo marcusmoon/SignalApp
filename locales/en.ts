@@ -404,6 +404,15 @@ export const en = {
   settingsQuotesSegmentOrderHint:
     'Order of Watch / Popular / Market cap / Crypto on the Quotes screen. Drag the ≡ handle to reorder.',
   settingsQuotesSegmentDragHandleA11y: 'Reorder {{name}} (drag)',
+  settingsQuotesChangeColorKicker: 'Price change colors',
+  settingsQuotesChangeColorHint:
+    'Choose how up/down colors appear for quotes on Quotes, Home watchlist, and symbol detail.',
+  settingsQuotesChangeColorKorea: 'Korea',
+  settingsQuotesChangeColorKoreaDesc: 'Up red · Down blue',
+  settingsQuotesChangeColorUs: 'United States',
+  settingsQuotesChangeColorUsDesc: 'Up green · Down red',
+  settingsQuotesChangeColorPreviewUp: '+1.25%',
+  settingsQuotesChangeColorPreviewDown: '-0.84%',
 
   settingsThemeLead:
     'In Display, change appearance, language, font size, and accent color. Changes apply immediately.',

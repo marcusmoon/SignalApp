@@ -75,7 +75,7 @@
         "./plugins/expoNotificationsAndroidOnly.js",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#00C087"
+          "color": "#3182F6"
         }
       ],
       [

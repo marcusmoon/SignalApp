@@ -4,3 +4,4 @@ export { useColorScheme } from './useColorScheme';
 export { useResetRefreshingOnTabBlur } from './useResetRefreshingOnTabBlur';
 export { useTabScreenLoadingRecovery } from './useTabScreenLoadingRecovery';
 export { useThemeColor } from './useThemeColor';
+export { useQuoteChangeColors } from './useQuoteChangeColors';

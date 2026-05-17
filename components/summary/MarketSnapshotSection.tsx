@@ -14,6 +14,7 @@ import {
 } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { MessageId } from '@/locales/messages';
 import {
@@ -113,7 +114,11 @@ const MARKET_TAB_DEF: readonly { key: MarketCompactTab; label: MessageId }[] = [
 export function MarketSnapshotSection({ tape, macro, compact = false }: Props) {
   const { t } = useLocale();
   const { theme, scaleFont } = useSignalTheme();
-  const styles = useMemo(() => makeMarketSnapshotStyles(theme, scaleFont), [theme, scaleFont]);
+  const quoteChange = useQuoteChangeColors();
+  const styles = useMemo(
+    () => makeMarketSnapshotStyles(theme, scaleFont, quoteChange.colors),
+    [theme, scaleFont, quoteChange.colors],
+  );
   const [marketTab, setMarketTab] = useState<MarketCompactTab>('tape');
 
   const tapeItems: QuoteTileItem[] = useMemo(
@@ -209,7 +214,11 @@ export function MarketSnapshotSection({ tape, macro, compact = false }: Props) {
   );
 }
 
-function makeMarketSnapshotStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeMarketSnapshotStyles(
+  theme: AppTheme,
+  sf: (n: number) => number,
+  changeColors: { up: string; down: string },
+) {
   const greenTint =
     theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}12` : theme.bgElevated;
 
@@ -362,7 +371,7 @@ function makeMarketSnapshotStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     quotePct: { fontSize: sf(12), fontWeight: '700', minWidth: 58, textAlign: 'right' },
     quotePctProminent: { fontSize: sf(14), fontWeight: '800', minWidth: 64 },
-    up: { color: theme.green },
-    dn: { color: '#ff6b6b' },
+    up: { color: changeColors.up },
+    dn: { color: changeColors.down },
   });
 }

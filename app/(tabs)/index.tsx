@@ -19,6 +19,7 @@ import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicat
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
+import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { hasSignalApi } from '@/services/env';
@@ -183,6 +184,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
+  const quoteChange = useQuoteChangeColors();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const [state, setState] = useState<HomeState>(EMPTY_STATE);
   const [loading, setLoading] = useState(true);
@@ -553,11 +555,7 @@ export default function HomeScreen() {
                     </View>
                     <View style={styles.quoteRight}>
                       <Text style={styles.quotePrice}>{formatUsd(quote.currentPrice)}</Text>
-                      <Text
-                        style={[
-                          styles.quoteChange,
-                          Number(quote.changePercent) >= 0 ? styles.up : styles.down,
-                        ]}>
+                      <Text style={[styles.quoteChange, quoteChange.styleForQuote(quote)]}>
                         {formatUsdChange(quote.change)} ({formatPct(quote.changePercent)})
                       </Text>
                     </View>
@@ -979,8 +977,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       lineHeight: sf(18),
       fontWeight: '900',
     },
-    up: { color: theme.green },
-    down: { color: theme.danger },
     evidenceList: {
       borderRadius: 22,
       overflow: 'hidden',

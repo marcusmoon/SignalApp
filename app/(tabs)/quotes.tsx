@@ -39,7 +39,7 @@ import {
   SEGMENT_TAB_PADDING,
 } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
-import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
+import { useQuoteChangeColors, useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { loadCacheFeaturePrefs } from '@/services/cacheFeaturePreferences';
@@ -119,14 +119,6 @@ function formatQuoteDpPct(dp: unknown): string {
   return `${p >= 0 ? '+' : ''}${p.toFixed(2)}%`;
 }
 
-function quoteRowChangeUp(q: { change?: unknown; changePercent?: unknown }): boolean {
-  const d = Number(q.change);
-  if (Number.isFinite(d)) return d >= 0;
-  const dp = Number(q.changePercent);
-  if (Number.isFinite(dp)) return dp >= 0;
-  return true;
-}
-
 function mapCoinToSignalMarketQuote(item: SignalApiCoinMarket): SignalApiMarketQuote {
   const price = item.currentPrice;
   const c = typeof price === 'number' && Number.isFinite(price) ? price : Number.NaN;
@@ -186,7 +178,11 @@ export default function QuotesScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const quoteChange = useQuoteChangeColors();
+  const styles = useMemo(
+    () => makeStyles(theme, scaleFont, quoteChange.colors),
+    [theme, scaleFont, quoteChange.colors],
+  );
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
@@ -597,7 +593,7 @@ export default function QuotesScreen() {
               </View>
               {r.quote ? (
                 <Text
-                  style={[styles.chg, quoteRowChangeUp(r.quote) ? styles.chgUp : styles.chgDn]}
+                  style={[styles.chg, quoteChange.isPositive(r.quote) ? styles.chgUp : styles.chgDn]}
                   numberOfLines={1}
                   maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                   {formatUsdChange(Number(r.quote.change ?? 0))} ({formatQuoteDpPct(r.quote.changePercent)})
@@ -732,7 +728,11 @@ export default function QuotesScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(
+  theme: AppTheme,
+  sf: (n: number) => number,
+  changeColors: { up: string; down: string },
+) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     mainColumn: { flex: 1, minHeight: 0 },
@@ -920,8 +920,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginTop: 4,
       textAlign: 'right',
     },
-    chgUp: { color: theme.green },
-    chgDn: { color: theme.danger },
+    chgUp: { color: changeColors.up },
+    chgDn: { color: changeColors.down },
     fail: { fontSize: sf(12), color: theme.danger },
     yahooInline: {
       flexDirection: 'row',

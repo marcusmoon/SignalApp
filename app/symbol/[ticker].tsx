@@ -9,6 +9,7 @@ import { InsightCard } from '@/components/signal/InsightCard';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import type { AppTheme } from '@/constants/theme';
+import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchCompanyNewsForDisplay } from '@/services/companyNewsForSymbol';
@@ -234,8 +235,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderRadius: 6,
       backgroundColor: theme.bgElevated,
     },
-    changeUp: { color: theme.green, fontSize: sf(13), fontWeight: '800' },
-    changeDn: { color: '#E06D6D', fontSize: sf(13), fontWeight: '800' },
+    changeMetric: { fontSize: sf(13), fontWeight: '800' },
     heroMcap: {
       fontSize: sf(12),
       fontWeight: '700',
@@ -500,6 +500,7 @@ export default function SymbolDetailScreen() {
   const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
+  const quoteChange = useQuoteChangeColors();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const insets = useSafeAreaInsets();
 
@@ -704,10 +705,10 @@ export default function SymbolDetailScreen() {
             <View style={styles.priceMeta}>
               {quote ? (
                 <>
-                  <Text style={(quote.change ?? 0) >= 0 ? styles.changeUp : styles.changeDn}>
+                  <Text style={[styles.changeMetric, quoteChange.styleForQuote(quote)]}>
                     {formatUsdChange(Number(quote.change ?? 0))}
                   </Text>
-                  <Text style={(quote.changePercent ?? 0) >= 0 ? styles.changeUp : styles.changeDn}>
+                  <Text style={[styles.changeMetric, quoteChange.styleForQuote(quote)]}>
                     {formatPct(Number(quote.changePercent ?? 0))}
                   </Text>
                 </>
@@ -798,7 +799,7 @@ export default function SymbolDetailScreen() {
             </View>
             <View style={styles.signalStat}>
               <Text style={styles.signalStatLabel}>{t('symbolDetailSignalMove')}</Text>
-              <Text style={styles.signalStatValue}>
+              <Text style={[styles.signalStatValue, quote ? quoteChange.styleForQuote(quote) : null]}>
                 {quote ? formatPct(Number(quote.changePercent ?? 0)) : '—'}
               </Text>
             </View>

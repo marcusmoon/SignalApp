@@ -120,9 +120,21 @@ function configureProject(project) {
     project.pbxGroupByName?.('SIGNAL')?.uuid;
 
   for (const source of ['SignalAppIcon.swift', 'SignalAppIconBridge.m']) {
-    const already = String(project.writeSync()).includes(source);
+    const projectPath = `SIGNAL/${source}`;
+    const fileRefs = project.pbxFileReferenceSection?.() || {};
+    for (const key of Object.keys(fileRefs)) {
+      const item = fileRefs[key];
+      if (typeof item !== 'object') continue;
+      if (item.name === source || item.path === source) {
+        item.name = source;
+        item.path = projectPath;
+        item.sourceTree = '<group>';
+      }
+    }
+
+    const already = String(project.writeSync()).includes(projectPath);
     if (!already && mainGroup) {
-      project.addSourceFile(source, { target }, mainGroup);
+      project.addSourceFile(projectPath, { target }, mainGroup);
     }
   }
 

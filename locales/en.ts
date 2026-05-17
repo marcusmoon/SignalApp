@@ -110,6 +110,7 @@ export const en = {
   calendarFilterClose: 'Close',
   calendarFilterIncluded: 'Types to show',
   calendarFilterSelectAll: 'Select all',
+  calendarFilterClearAll: 'Clear all',
   calendarFilterSub: 'Checked types appear as dots on the calendar and in the list below.',
   calendarFilterEmptyFiltered: 'No events match the selected types this month.',
   calendarErrorLoad: 'Could not load the calendar.',
@@ -346,7 +347,7 @@ export const en = {
   settingsDeveloperLinkedInA11y: 'Open Marcus LinkedIn profile',
 
   settingsYoutubeLead:
-    'Curated channels for the Economy YouTube tab. Default handles are included below—add or remove as you like.',
+    'Curated channels shown and filtered in the Economy YouTube tab. New channel videos appear after the Signal Server YouTube collection jobs include the same handle.',
   settingsYoutubeSectionAdd: 'Add channel',
   settingsYoutubeHintHandle: 'YouTube @handle (from the channel URL)',
   settingsYoutubePlaceholderHandle: 'Handle',
@@ -376,7 +377,8 @@ export const en = {
     'No results. Check that YouTube Data API v3 is enabled for your project, quota remains, then refresh.',
   youtubeFooterIncluded: 'Included channels',
   youtubeFooterSelectAll: 'Select all',
-  youtubeFooterSub: 'Tap to toggle · keep at least one',
+  youtubeFooterClearAll: 'Clear all',
+  youtubeFooterSub: 'Tap a channel to include or exclude it.',
   youtubeModalTitle: 'Curated channels',
   youtubeModalClose: 'Close',
   a11yYoutubeFilter: 'Open curated channel filter',
@@ -574,7 +576,8 @@ export const en = {
   feedNewsFilterTitle: 'News sources',
   feedNewsFilterIncluded: 'Included',
   feedNewsFilterSelectAll: 'Select all',
-  feedNewsFilterSub: 'Based on sources in the latest Finnhub response · tap to toggle · keep at least one',
+  feedNewsFilterClearAll: 'Clear all',
+  feedNewsFilterSub: 'Only selected sources are shown in the current tab.',
   feedNewsFilterClose: 'Close',
   feedErrorToken:
     'Signal Server news provider settings are required. Check Finnhub/news collection settings in Admin.',

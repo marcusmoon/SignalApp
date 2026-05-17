@@ -58,21 +58,23 @@ async function searchVideoIdsByKeyword(order) {
 }
 
 async function collectVideoIds(order, handles) {
-  const ids = new Set();
+  const idToHandle = new Map();
   for (const handle of handles) {
     const channelId = await fetchChannelIdByHandle(handle).catch(() => null);
     if (!channelId) continue;
     const channelIds = await searchVideoIdsOnChannel(channelId, order);
-    for (const id of channelIds) ids.add(id);
+    for (const id of channelIds) {
+      if (!idToHandle.has(id)) idToHandle.set(id, handle);
+    }
   }
-  if (ids.size === 0) {
+  if (idToHandle.size === 0) {
     const fallback = await searchVideoIdsByKeyword(order);
-    for (const id of fallback) ids.add(id);
+    for (const id of fallback) idToHandle.set(id, null);
   }
-  return [...ids];
+  return idToHandle;
 }
 
-function normalizeYoutubeVideo(raw, order) {
+function normalizeYoutubeVideo(raw, order, channelHandle = null) {
   const viewCount = Number.parseInt(raw.statistics?.viewCount || '0', 10) || 0;
   const sortBucket = order === 'viewCount' ? 'popular' : 'latest';
   const item = {
@@ -84,6 +86,7 @@ function normalizeYoutubeVideo(raw, order) {
     title: raw.snippet?.title || '',
     channel: raw.snippet?.channelTitle || '',
     channelId: raw.snippet?.channelId || '',
+    channelHandle,
     description: raw.snippet?.description || '',
     publishedAt: raw.snippet?.publishedAt || null,
     duration: raw.contentDetails?.duration || '',
@@ -102,7 +105,8 @@ function normalizeYoutubeVideo(raw, order) {
 export async function fetchYoutubeEconomy({ order = 'date', handles } = {}) {
   const normalizedOrder = order === 'viewCount' || order === 'popular' ? 'viewCount' : 'date';
   const channelHandles = Array.isArray(handles) && handles.length > 0 ? handles : DEFAULT_HANDLES;
-  const ids = await collectVideoIds(normalizedOrder, channelHandles);
+  const idToHandle = await collectVideoIds(normalizedOrder, channelHandles);
+  const ids = [...idToHandle.keys()];
   if (ids.length === 0) return [];
   const raw = await youtubeFetch('videos', {
     part: 'snippet,contentDetails,statistics',
@@ -115,7 +119,7 @@ export async function fetchYoutubeEconomy({ order = 'date', handles } = {}) {
     }
     return new Date(b.snippet?.publishedAt || 0).getTime() - new Date(a.snippet?.publishedAt || 0).getTime();
   });
-  return rows.map((row) => normalizeYoutubeVideo(row, normalizedOrder));
+  return rows.map((row) => normalizeYoutubeVideo(row, normalizedOrder, idToHandle.get(row.id) || null));
 }
 
 export async function fetchYoutubeVideosByIds(videoIds, { order = 'date' } = {}) {

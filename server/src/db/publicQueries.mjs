@@ -161,6 +161,20 @@ export function queryPublicYoutubeInDb(db, options = {}) {
     where.push('LOWER(COALESCE(channel, "")) LIKE @channel');
     params.channel = `%${channel}%`;
   }
+  const channelHandles = String(options.channelHandles || '')
+    .split(',')
+    .map((handle) => handle.trim().toLowerCase())
+    .filter(Boolean);
+  if (channelHandles.length > 0) {
+    where.push(
+      `(${channelHandles
+        .map((_, index) => `LOWER(payload) LIKE @channelHandle${index}`)
+        .join(' OR ')})`,
+    );
+    channelHandles.forEach((handle, index) => {
+      params[`channelHandle${index}`] = `%"channelHandle":"${handle}"%`;
+    });
+  }
   const q = String(options.q || '').trim().toLowerCase();
   if (q) {
     where.push('(LOWER(COALESCE(channel, "")) LIKE @q OR LOWER(payload) LIKE @q)');

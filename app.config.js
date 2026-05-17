@@ -107,6 +107,10 @@ module.exports = () => {
     expo: {
       ...appJson.expo,
       plugins,
+      updates: {
+        ...(appJson.expo.updates ?? {}),
+        ...(easProjectId ? { url: `https://u.expo.dev/${easProjectId}` } : {}),
+      },
       extra: {
         ...(appJson.expo.extra ?? {}),
         ...(easProjectId

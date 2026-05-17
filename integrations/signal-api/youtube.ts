@@ -34,6 +34,7 @@ export async function fetchSignalYoutube(
   params?: {
     q?: string;
     channel?: string;
+    channelHandles?: string[];
     sort?: 'latest' | 'popular';
     limit?: number;
     offset?: number;
@@ -59,6 +60,10 @@ export async function fetchSignalYoutube(
   }>('/v1/youtube', {
     q: params?.q,
     channel: params?.channel,
+    channelHandles:
+      params?.channelHandles && params.channelHandles.length > 0
+        ? params.channelHandles.join(',')
+        : undefined,
     sort: params?.sort,
     limit,
     offset,

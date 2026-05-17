@@ -17,6 +17,7 @@ type Props = {
   enabled: Set<CalendarEventTypeKey>;
   onToggle: (type: CalendarEventTypeKey) => void;
   onSelectAll: () => void;
+  onClearAll: () => void;
   bottomInset: number;
 };
 
@@ -33,6 +34,7 @@ export function CalendarEventTypeFilterModal({
   enabled,
   onToggle,
   onSelectAll,
+  onClearAll,
   bottomInset,
 }: Props) {
   const { theme } = useSignalTheme();
@@ -53,25 +55,26 @@ export function CalendarEventTypeFilterModal({
           </View>
           <View style={styles.footerHead}>
             <Text style={styles.footerTitle}>{t('calendarFilterIncluded')}</Text>
-            <Pressable onPress={onSelectAll} style={styles.allBtn} accessibilityRole="button">
-              <Text style={styles.allBtnText}>{t('calendarFilterSelectAll')}</Text>
-            </Pressable>
+            <View style={styles.filterActions}>
+              <Pressable onPress={onClearAll} style={styles.allBtn} accessibilityRole="button">
+                <Text style={styles.allBtnText}>{t('calendarFilterClearAll')}</Text>
+              </Pressable>
+              <Pressable onPress={onSelectAll} style={styles.allBtn} accessibilityRole="button">
+                <Text style={styles.allBtnText}>{t('calendarFilterSelectAll')}</Text>
+              </Pressable>
+            </View>
           </View>
           <Text style={styles.footerSub}>{t('calendarFilterSub')}</Text>
           <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             {CALENDAR_EVENT_TYPE_ORDER.map((type) => {
               const on = enabled.has(type);
-              const onlyOne = enabled.size === 1 && on;
               return (
                 <Pressable
                   key={type}
-                  onPress={() => {
-                    if (onlyOne) return;
-                    onToggle(type);
-                  }}
-                  style={[styles.row, on && styles.rowOn, onlyOne && styles.rowOnly]}
+                  onPress={() => onToggle(type)}
+                  style={[styles.row, on && styles.rowOn]}
                   accessibilityRole="checkbox"
-                  accessibilityState={{ checked: on, disabled: onlyOne }}>
+                  accessibilityState={{ checked: on }}>
                   <FontAwesome
                     name={on ? 'check-square' : 'square-o'}
                     size={15}
@@ -159,6 +162,11 @@ function makeModalStyles(theme: AppTheme) {
       fontWeight: '800',
       color: theme.green,
     },
+    filterActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
     footerSub: {
       fontSize: 9,
       color: theme.textDim,
@@ -182,9 +190,6 @@ function makeModalStyles(theme: AppTheme) {
     rowOn: {
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
-    },
-    rowOnly: {
-      opacity: 0.85,
     },
     checkIcon: {
       marginRight: 8,

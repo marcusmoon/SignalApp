@@ -13,6 +13,7 @@ type Props = {
   selected: string[];
   onToggle: (source: string) => void;
   onSelectAll: () => void;
+  onClearAll: () => void;
   bottomInset: number;
 };
 
@@ -23,6 +24,7 @@ export function NewsSourceFilterModal({
   selected,
   onToggle,
   onSelectAll,
+  onClearAll,
   bottomInset,
 }: Props) {
   const { theme } = useSignalTheme();
@@ -43,9 +45,14 @@ export function NewsSourceFilterModal({
           </View>
           <View style={styles.footerHead}>
             <Text style={styles.footerTitle}>{t('feedNewsFilterIncluded')}</Text>
-            <Pressable onPress={onSelectAll} style={styles.allBtn} accessibilityRole="button">
-              <Text style={styles.allBtnText}>{t('feedNewsFilterSelectAll')}</Text>
-            </Pressable>
+            <View style={styles.filterActions}>
+              <Pressable onPress={onClearAll} style={styles.allBtn} accessibilityRole="button">
+                <Text style={styles.allBtnText}>{t('feedNewsFilterClearAll')}</Text>
+              </Pressable>
+              <Pressable onPress={onSelectAll} style={styles.allBtn} accessibilityRole="button">
+                <Text style={styles.allBtnText}>{t('feedNewsFilterSelectAll')}</Text>
+              </Pressable>
+            </View>
           </View>
           <Text style={styles.footerSub}>{t('feedNewsFilterSub')}</Text>
           <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -144,6 +151,11 @@ function makeModalStyles(theme: AppTheme) {
       fontSize: 10,
       fontWeight: '800',
       color: theme.green,
+    },
+    filterActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
     },
     footerSub: {
       fontSize: 9,

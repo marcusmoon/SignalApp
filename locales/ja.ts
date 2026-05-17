@@ -110,6 +110,7 @@ export const ja = {
   calendarFilterClose: '閉じる',
   calendarFilterIncluded: '表示する種類',
   calendarFilterSelectAll: 'すべて選択',
+  calendarFilterClearAll: 'すべて解除',
   calendarFilterSub: 'チェックした種類だけがカレンダーの印と下の一覧に出ます。',
   calendarFilterEmptyFiltered: '選択した種類に該当する予定は今月ありません。',
   calendarErrorLoad: 'カレンダーを読み込めませんでした。',
@@ -346,7 +347,7 @@ export const ja = {
   settingsDeveloperLinkedInA11y: 'Marcus の LinkedIn を開く',
 
   settingsYoutubeLead:
-    '経済YouTubeタブのキュレーションチャンネル一覧です。デフォルトのハンドルに加え、追加・削除できます。',
+    '経済YouTubeタブに表示・フィルタするキュレーションチャンネルです。新しいチャンネルの動画は、Signal Server の YouTube 収集 Job に同じハンドルが含まれた後に表示されます。',
   settingsYoutubeSectionAdd: 'チャンネルを追加',
   settingsYoutubeHintHandle: 'YouTube @ハンドル（チャンネルURLの@以降）',
   settingsYoutubePlaceholderHandle: 'ハンドル',
@@ -376,7 +377,8 @@ export const ja = {
     '結果がありません。YouTube Data API v3 が有効か、日次クォータが残っているか確認して更新してください。',
   youtubeFooterIncluded: '含めるチャンネル',
   youtubeFooterSelectAll: 'すべて選択',
-  youtubeFooterSub: 'タップで on/off · 最低1件',
+  youtubeFooterClearAll: 'すべて解除',
+  youtubeFooterSub: 'チャンネルをタップして含める/除外を切り替えます。',
   youtubeModalTitle: 'キュレーションチャンネル',
   youtubeModalClose: '閉じる',
   a11yYoutubeFilter: 'キュレーションチャンネルフィルタを開く',
@@ -573,7 +575,8 @@ export const ja = {
   feedNewsFilterTitle: 'ニュース提供元',
   feedNewsFilterIncluded: '含める',
   feedNewsFilterSelectAll: 'すべて選択',
-  feedNewsFilterSub: '最新のFinnhub応答に含まれる提供元 · タップでon/off · 最低1件',
+  feedNewsFilterClearAll: 'すべて解除',
+  feedNewsFilterSub: '選択した提供元だけを現在のタブに表示します。',
   feedNewsFilterClose: '閉じる',
   feedErrorToken:
     'Signal サーバーのニュース provider 設定が必要です。Admin で Finnhub/ニュース収集設定を確認してください。',

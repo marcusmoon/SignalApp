@@ -72,6 +72,7 @@ export type SignalApiYoutubeVideo = {
   title: string;
   channel: string;
   channelId: string;
+  channelHandle?: string | null;
   description: string;
   publishedAt: string | null;
   duration: string;

@@ -33,9 +33,11 @@ npm run server:dev      # 로컬 Signal API + 어드민 + 스케줄러
 | `EXPO_PUBLIC_SIGNAL_API_BASE_URL` | Signal API 서버 도메인 (예: 로컬 `http://127.0.0.1:4000`) |
 | `EXPO_PUBLIC_ADMOB_*_UNIT_ID` | AdMob (비우면 테스트 ID) |
 | `EXPO_PUBLIC_PREVIEW_OTA_BANNER` | 개발용 OTA 배너 |
+| `EAS_PROJECT_ID` | EAS Update URL과 Expo push token 발급용 project id. `app.config.js`가 `extra.eas.projectId`와 `updates.url`로 주입 |
 | `KAKAO_NATIVE_APP_KEY` | prebuild/rebuild 시 Kakao Native SDK 설정. JS 번들에 노출하지 않음 |
-| `EAS_PROJECT_ID` | Expo push token 발급용 project id. `app.config.js`가 `extra.eas.projectId`로 주입 |
 | `SIGNAL_IOS_REMOTE_PUSH_ENABLED` | TestFlight/App Store iOS remote push 빌드에서만 `1` |
+
+Expo/EAS 빌드·OTA·Submit 운영 절차는 **[EXPO-EAS-OPERATIONS.md](./EXPO-EAS-OPERATIONS.md)** 를 따른다.
 
 앱은 피처 데이터를 **Signal Server만** 통해 조회합니다. Finnhub/OpenAI/Claude/YouTube/CoinGecko 등 외부 provider 키는 서버/Admin에서 관리합니다.
 

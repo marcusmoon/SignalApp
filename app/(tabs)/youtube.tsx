@@ -148,10 +148,10 @@ export default function YoutubeScreen() {
       channelHandles?: string[];
       errorFallback?: 'youtubeErrorLoad' | 'youtubeErrorRefresh';
     }) => {
-      void opts?.channelHandles;
       setError(null);
       setIsQuotaError(false);
       if (selectedHandles === null) return;
+      const handles = opts?.channelHandles ?? selectedHandles;
 
       const errKey = opts?.errorFallback ?? 'youtubeErrorLoad';
 
@@ -159,6 +159,12 @@ export default function YoutubeScreen() {
         setItems([]);
         setYoutubeMeta(null);
         setError(t('errorSignalApiShort'));
+        setLoading(false);
+        return;
+      }
+      if (handles.length === 0) {
+        setItems([]);
+        setYoutubeMeta(null);
         setLoading(false);
         return;
       }
@@ -171,7 +177,12 @@ export default function YoutubeScreen() {
       setYoutubeMeta(null);
       try {
         const page = await fetchSignalYoutube(
-          { offset: 0, limit: YOUTUBE_PAGE_SIZE, sort },
+          {
+            offset: 0,
+            limit: YOUTUBE_PAGE_SIZE,
+            sort,
+            channelHandles: curationHandles && handles.length === curationHandles.length ? undefined : handles,
+          },
           { cacheMode: opts?.forceRefresh ? 'bypass' : 'use' },
         );
         setYoutubeMeta(page.meta);
@@ -185,7 +196,7 @@ export default function YoutubeScreen() {
         youtubeReplacingRef.current = false;
       }
     },
-    [selectedHandles, locale, sort, t, applyLoadError],
+    [selectedHandles, curationHandles, locale, sort, t, applyLoadError],
   );
 
   const loadMore = useCallback(async () => {
@@ -198,7 +209,15 @@ export default function YoutubeScreen() {
     setError(null);
     try {
       const page = await fetchSignalYoutube(
-        { offset: nextOff, limit: YOUTUBE_PAGE_SIZE, sort },
+        {
+          offset: nextOff,
+          limit: YOUTUBE_PAGE_SIZE,
+          sort,
+          channelHandles:
+            selectedHandles && curationHandles && selectedHandles.length !== curationHandles.length
+              ? selectedHandles
+              : undefined,
+        },
         { cacheMode: 'use' },
       );
       if (page.items.length === 0) {
@@ -226,7 +245,7 @@ export default function YoutubeScreen() {
     } finally {
       setLoadingMore(false);
     }
-  }, [youtubeMeta, loadingMore, loading, sort, locale, applyLoadError]);
+  }, [youtubeMeta, loadingMore, loading, sort, selectedHandles, curationHandles, locale, applyLoadError]);
 
   const onYoutubeScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -262,7 +281,6 @@ export default function YoutubeScreen() {
       if (!selectedHandles) return;
       let next: string[];
       if (selectedHandles.includes(handle)) {
-        if (selectedHandles.length <= 1) return;
         next = selectedHandles.filter((h) => h !== handle);
       } else {
         next = [...selectedHandles, handle];
@@ -281,6 +299,13 @@ export default function YoutubeScreen() {
     await saveSelectedChannels(next);
     await load({ forceRefresh: true, channelHandles: next });
   }, [load, curationHandles]);
+
+  const clearAllChannels = useCallback(async () => {
+    const next: string[] = [];
+    setSelectedHandles(next);
+    await saveSelectedChannels(next);
+    await load({ forceRefresh: true, channelHandles: next });
+  }, [load]);
 
   const titleForHandle = (handle: string) =>
     channelMeta.find((c) => c.handle === handle)?.title ?? `@${handle}`;
@@ -342,9 +367,14 @@ export default function YoutubeScreen() {
     <>
       <View style={styles.footerHead}>
         <Text style={styles.footerTitle}>{t('youtubeFooterIncluded')}</Text>
-        <Pressable onPress={selectAllChannels} style={styles.allBtn} accessibilityRole="button">
-          <Text style={styles.allBtnText}>{t('youtubeFooterSelectAll')}</Text>
-        </Pressable>
+        <View style={styles.filterActions}>
+          <Pressable onPress={clearAllChannels} style={styles.allBtn} accessibilityRole="button">
+            <Text style={styles.allBtnText}>{t('youtubeFooterClearAll')}</Text>
+          </Pressable>
+          <Pressable onPress={selectAllChannels} style={styles.allBtn} accessibilityRole="button">
+            <Text style={styles.allBtnText}>{t('youtubeFooterSelectAll')}</Text>
+          </Pressable>
+        </View>
       </View>
       <Text style={styles.footerSub}>{t('youtubeFooterSub')}</Text>
       {selectedHandles &&
@@ -617,6 +647,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,
+    },
+    filterActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
     },
     allBtnText: {
       fontSize: sf(10),

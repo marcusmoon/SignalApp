@@ -108,6 +108,7 @@ export const ko = {
   calendarFilterClose: '닫기',
   calendarFilterIncluded: '표시할 유형',
   calendarFilterSelectAll: '전체 선택',
+  calendarFilterClearAll: '전체 해제',
   calendarFilterSub: '체크한 유형만 달력 점과 아래 목록에 나옵니다.',
   calendarFilterEmptyFiltered: '선택한 유형에 해당하는 일정이 이 달에는 없습니다.',
   calendarErrorLoad: '캘린더를 불러오지 못했습니다.',
@@ -344,7 +345,7 @@ export const ko = {
   settingsDeveloperLinkedInA11y: 'Marcus LinkedIn 프로필 열기',
 
   settingsYoutubeLead:
-    '경제 유튜브 탭의 큐레이션 채널 목록입니다. 기본으로 아래 핸들이 포함되어 있으며, 원하는 채널을 추가하거나 삭제할 수 있습니다.',
+    '경제 유튜브 탭에서 표시·필터할 큐레이션 채널 목록입니다. 새 채널 영상이 들어오려면 Signal 서버의 YouTube 수집 Job에도 같은 핸들이 포함되어 있어야 합니다.',
   settingsYoutubeSectionAdd: '채널 추가',
   settingsYoutubeHintHandle: 'YouTube @핸들 (예: 채널 URL의 @뒤 이름)',
   settingsYoutubePlaceholderHandle: '핸들 입력',
@@ -374,7 +375,8 @@ export const ko = {
     '검색 결과가 없습니다. YouTube Data API v3가 프로젝트에서 사용 설정돼 있는지, 일일 쿼터가 남아 있는지 확인한 뒤 앱을 새로고침해 보세요.',
   youtubeFooterIncluded: '포함 채널',
   youtubeFooterSelectAll: '전체 선택',
-  youtubeFooterSub: '탭: 포함 on/off · 최소 1개',
+  youtubeFooterClearAll: '전체 해제',
+  youtubeFooterSub: '탭해서 채널을 포함하거나 제외합니다.',
   youtubeModalTitle: '큐레이션 채널',
   youtubeModalClose: '닫기',
   a11yYoutubeFilter: '큐레이션 채널 필터 열기',
@@ -569,7 +571,8 @@ export const ko = {
   feedNewsFilterTitle: '뉴스 제공사',
   feedNewsFilterIncluded: '포함 출처',
   feedNewsFilterSelectAll: '전체 선택',
-  feedNewsFilterSub: 'Finnhub 최신 응답에 나온 출처 기준 · 탭: 포함 on/off · 최소 1개',
+  feedNewsFilterClearAll: '전체 해제',
+  feedNewsFilterSub: '선택한 출처만 현재 탭에 표시됩니다.',
   feedNewsFilterClose: '닫기',
   feedErrorToken:
     'Signal 서버의 뉴스 provider 설정이 필요합니다. Admin에서 Finnhub/뉴스 수집 설정을 확인하세요.',

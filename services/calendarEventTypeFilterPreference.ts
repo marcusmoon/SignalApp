@@ -25,14 +25,6 @@ export async function loadCalendarEventTypeFilter(): Promise<Set<CalendarEventTy
 
 export async function saveCalendarEventTypeFilter(enabled: Set<CalendarEventTypeKey>): Promise<void> {
   const arr = CALENDAR_EVENT_TYPE_ORDER.filter((k) => enabled.has(k));
-  if (arr.length === 0) {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([...CALENDAR_EVENT_TYPE_ORDER]));
-    } catch {
-      /* ignore */
-    }
-    return;
-  }
   try {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
   } catch {

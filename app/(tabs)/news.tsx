@@ -3,7 +3,6 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -425,20 +424,20 @@ export default function FeedScreen() {
         await applySelection(next);
         return;
       }
-      if (selectedSources.length <= 1) {
-        Alert.alert(t('alertTitleMinOne'), t('alertMinNewsSource'));
-        return;
-      }
       const next = selectedSources.filter((s) => s !== source);
       await applySelection(next);
     },
-    [applySelection, selectedSources, t],
+    [applySelection, selectedSources],
   );
 
   const selectAllSources = useCallback(async () => {
     const next = [...availableSources];
     await applySelection(next);
   }, [applySelection, availableSources]);
+
+  const clearAllSources = useCallback(async () => {
+    await applySelection([]);
+  }, [applySelection]);
 
   const onPickSegment = useCallback((key: NewsSegmentKey) => {
     if (segment === key) return;
@@ -652,6 +651,7 @@ export default function FeedScreen() {
         selected={selectedSources}
         onToggle={(source) => void toggleSource(source)}
         onSelectAll={() => void selectAllSources()}
+        onClearAll={() => void clearAllSources()}
         bottomInset={insets.bottom}
       />
     </SafeAreaView>

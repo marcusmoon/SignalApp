@@ -7,6 +7,7 @@ const youtubeCache = new Map<string, { value: SignalYoutubePage; expiresAt: numb
 export function buildSignalYoutubeCacheKey(params?: {
   q?: string;
   channel?: string;
+  channelHandles?: string[];
   sort?: 'latest' | 'popular';
   limit?: number;
   offset?: number;
@@ -22,11 +23,16 @@ export function buildSignalYoutubeCacheKey(params?: {
   const p = {
     q: String(params?.q || '').trim().toLowerCase(),
     channel: String(params?.channel || '').trim().toLowerCase(),
+    channelHandles: [...(params?.channelHandles || [])]
+      .map((handle) => String(handle || '').trim().toLowerCase())
+      .filter(Boolean)
+      .sort()
+      .join(','),
     sort: String(params?.sort || '').trim().toLowerCase(),
     limit,
     offset,
   };
-  return `youtube|${p.q}|${p.channel}|${p.sort}|${p.limit}|${p.offset}`;
+  return `youtube|${p.q}|${p.channel}|${p.channelHandles}|${p.sort}|${p.limit}|${p.offset}`;
 }
 
 export function peekSignalYoutubeCache(key: string): SignalYoutubePage | null {

@@ -178,7 +178,6 @@ export default function CalendarScreen() {
     setEnabledTypes((prev) => {
       const next = new Set(prev);
       if (next.has(type)) {
-        if (next.size <= 1) return prev;
         next.delete(type);
       } else {
         next.add(type);
@@ -190,6 +189,12 @@ export default function CalendarScreen() {
 
   const onSelectAllEventTypes = useCallback(() => {
     const next = new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
+    setEnabledTypes(next);
+    void saveCalendarEventTypeFilter(next);
+  }, []);
+
+  const onClearAllEventTypes = useCallback(() => {
+    const next = new Set<CalendarEventTypeKey>();
     setEnabledTypes(next);
     void saveCalendarEventTypeFilter(next);
   }, []);
@@ -419,6 +424,7 @@ export default function CalendarScreen() {
         enabled={enabledTypes}
         onToggle={onToggleEventType}
         onSelectAll={onSelectAllEventTypes}
+        onClearAll={onClearAllEventTypes}
         bottomInset={insets.bottom}
       />
     </SafeAreaView>

@@ -12,6 +12,7 @@ export async function loadSelectedChannels(): Promise<string[]> {
     if (!raw) return [...curation];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [...curation];
+    if (parsed.length === 0) return [];
     const filtered = parsed.filter((h): h is string => typeof h === 'string' && valid.has(h));
     return filtered.length > 0 ? filtered : [...curation];
   } catch {
@@ -37,8 +38,16 @@ export async function reconcileSelectedChannels(validHandles: string[]): Promise
       await saveSelectedChannels([...validHandles]);
       return;
     }
+    if (parsed.length === 0) {
+      await saveSelectedChannels([]);
+      return;
+    }
     const filtered = parsed.filter((h): h is string => typeof h === 'string' && valid.has(h));
-    await saveSelectedChannels(filtered.length > 0 ? filtered : [...validHandles]);
+    const next = [...filtered];
+    for (const handle of validHandles) {
+      if (!next.includes(handle)) next.push(handle);
+    }
+    await saveSelectedChannels(next.length > 0 ? next : [...validHandles]);
   } catch {
     await saveSelectedChannels([...validHandles]);
   }

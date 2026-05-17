@@ -6,6 +6,7 @@ export async function handlePublicYoutubeRoutes({ req, res, url, pathname }) {
     const page = await queryPublicYoutube({
       q: url.searchParams.get('q') || '',
       channel: url.searchParams.get('channel') || '',
+      channelHandles: url.searchParams.get('channelHandles') || url.searchParams.get('handles') || '',
       sort: url.searchParams.get('sort') || 'latest',
       limit: url.searchParams.get('limit') || url.searchParams.get('pageSize') || '30',
       offset: url.searchParams.get('offset') || '',

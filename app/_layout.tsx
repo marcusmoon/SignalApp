@@ -5,14 +5,11 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useMemo, useState } from 'react';
-import { AppState, LogBox, Platform, useColorScheme, View } from 'react-native';
+import { AppState, InteractionManager, LogBox, Platform, useColorScheme, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { enableFreeze } from 'react-native-screens';
 import 'react-native-reanimated';
 
-import '@/tasks/newsUnreadBackgroundTask';
-
-import { AppSplashScreen } from '@/components/AppSplashScreen';
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
 import { NotificationListener } from '@/components/NotificationListener';
 import { PushDeviceRegistrar } from '@/components/PushDeviceRegistrar';
@@ -55,46 +52,30 @@ if (Platform.OS !== 'web') {
 export default function RootLayout() {
   const systemScheme = useColorScheme();
   const bootstrapBg = bootstrapThemeForColorScheme(systemScheme).bg;
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    ...FontAwesome.font,
-  });
+  const [, fontError] = useFonts(FontAwesome.font);
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
-    if (error) throw error;
-  }, [error]);
+    if (fontError) throw fontError;
+  }, [fontError]);
+
+  useEffect(() => {
+    void SplashScreen.hideAsync();
+  }, []);
 
   useEffect(() => {
     void hydrateSignalServerEndpoint();
-  }, []);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  useEffect(() => {
-    void initializeAds().catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    void syncStoredAppIconVariant();
+    void import('@/services/mainEntryPreference').then(({ loadMainEntry }) => loadMainEntry());
   }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: bootstrapBg }}>
       <LocaleProvider>
-        {!loaded ? (
-          <AppSplashScreen />
-        ) : (
-          <SignalThemeProvider>
-            <OtaBannerProvider key={`ota-prev-${getPreviewOtaBannerRaw()}`}>
-              <RootLayoutNav />
-            </OtaBannerProvider>
-          </SignalThemeProvider>
-        )}
+        <SignalThemeProvider>
+          <OtaBannerProvider key={`ota-prev-${getPreviewOtaBannerRaw()}`}>
+            <RootLayoutNav />
+          </OtaBannerProvider>
+        </SignalThemeProvider>
       </LocaleProvider>
     </GestureHandlerRootView>
   );
@@ -109,14 +90,30 @@ function RootLayoutNav() {
   }, []);
 
   useEffect(() => {
-    void ensureStoredSessionFresh();
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') void ensureStoredSessionFresh();
     });
-    return () => sub.remove();
+    const deferred = InteractionManager.runAfterInteractions(() => {
+      void ensureStoredSessionFresh();
+      void initializeAds().catch(() => {});
+      void syncStoredAppIconVariant();
+    });
+    return () => {
+      deferred.cancel();
+      sub.remove();
+    };
   }, []);
 
-  useEffect(() => startNewsUnreadBackgroundSync(), []);
+  useEffect(() => {
+    let stopSync: (() => void) | undefined;
+    const deferred = InteractionManager.runAfterInteractions(() => {
+      stopSync = startNewsUnreadBackgroundSync();
+    });
+    return () => {
+      deferred.cancel();
+      stopSync?.();
+    };
+  }, []);
 
   const { theme, effectiveColorScheme } = useSignalTheme();
   const { t } = useLocale();

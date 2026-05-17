@@ -12,6 +12,11 @@ import {
   tabBarPositionBottom,
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
+import {
+  GlassSurfaceBackground,
+  colorWithAlpha,
+  glassEdgeColors,
+} from '@/components/signal/GlassSurface';
 import { SignalFloatingTabBar } from '@/components/signal/SignalFloatingTabBar';
 import { SlackTabBarButton } from '@/components/SlackTabBarButton';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -72,66 +77,6 @@ const tabIconDot = {
   borderRadius: 3.5,
   backgroundColor: '#F04452',
 };
-
-function colorWithAlpha(color: string, alpha: number): string {
-  const normalized = color.trim();
-  const clamped = Math.max(0, Math.min(1, alpha));
-  if (/^#[0-9a-fA-F]{6}$/.test(normalized)) {
-    const r = Number.parseInt(normalized.slice(1, 3), 16);
-    const g = Number.parseInt(normalized.slice(3, 5), 16);
-    const b = Number.parseInt(normalized.slice(5, 7), 16);
-    return `rgba(${r},${g},${b},${clamped})`;
-  }
-  return normalized;
-}
-
-/** 플로팅 탭바·FAB와 동일 — 글라스/반투명 표면의 가장자리 구분 */
-function tabBarEdgeColors(scheme: 'light' | 'dark', border: string) {
-  const isDark = scheme === 'dark';
-  return {
-    ring: isDark ? colorWithAlpha('#FFFFFF', 0.24) : colorWithAlpha(border, 0.95),
-    topHighlight: isDark ? colorWithAlpha('#FFFFFF', 0.1) : colorWithAlpha('#FFFFFF', 0.78),
-  };
-}
-
-function TabBarGlassBackground({
-  backgroundColor,
-  borderRadius,
-  edge,
-}: {
-  backgroundColor: string;
-  borderRadius: number;
-  edge: ReturnType<typeof tabBarEdgeColors>;
-}) {
-  return (
-    <View style={[StyleSheet.absoluteFill, { borderRadius, overflow: 'hidden' }]}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor, borderRadius }]} />
-      <View
-        pointerEvents="none"
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            borderRadius,
-            borderWidth: Platform.OS === 'web' ? StyleSheet.hairlineWidth : 1,
-            borderColor: edge.ring,
-          },
-        ]}
-      />
-      <View
-        pointerEvents="none"
-        style={{
-          position: 'absolute',
-          top: StyleSheet.hairlineWidth,
-          left: 14,
-          right: 14,
-          height: StyleSheet.hairlineWidth,
-          backgroundColor: edge.topHighlight,
-          opacity: 0.9,
-        }}
-      />
-    </View>
-  );
-}
 
 export default function TabLayout() {
   const { theme, effectiveColorScheme } = useSignalTheme();
@@ -215,7 +160,7 @@ export default function TabLayout() {
   const tabBarMarginH = tabBarHorizontalMargin();
   const tabBarBottom = tabBarPositionBottom(insets.bottom);
   const tabBarBg = colorWithAlpha(theme.card, tabBarOpacityForLevel(tabBarOpacityLevel));
-  const tabBarEdge = tabBarEdgeColors(effectiveColorScheme, theme.border);
+  const tabBarEdge = glassEdgeColors(effectiveColorScheme, theme.border);
 
   const screenOptions = useMemo(
     (): BottomTabNavigationOptions => ({
@@ -264,10 +209,11 @@ export default function TabLayout() {
               }),
         },
         tabBarBackground: () => (
-          <TabBarGlassBackground
+          <GlassSurfaceBackground
             backgroundColor={tabBarBg}
             borderRadius={TAB_BAR_FLOAT_RADIUS}
             edge={tabBarEdge}
+            showTopHighlight
           />
         ),
         tabBarLabelPosition: 'below-icon',

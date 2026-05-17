@@ -9,11 +9,11 @@ import {
   View,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { BlurView } from 'expo-blur';
 import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CalendarEventTypeFilterModal } from '@/components/signal/CalendarEventTypeFilterModal';
+import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
@@ -405,28 +405,12 @@ export default function CalendarScreen() {
       />
 
       {filterReady ? (
-        <Pressable
+        <FloatingGlassFab
+          bottom={insets.bottom + 16}
           onPress={() => setFilterModalVisible(true)}
-          style={({ pressed }) => [
-            styles.filterFab,
-            { bottom: insets.bottom + 16 },
-            pressed && styles.filterFabPressed,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={t('a11yCalendarFilter')}>
-          {Platform.OS === 'web' ? (
-            <View style={styles.filterFabBlurFallback} />
-          ) : (
-            <BlurView
-              intensity={Platform.OS === 'ios' ? 100 : 85}
-              tint="dark"
-              experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
-              style={StyleSheet.absoluteFill}
-            />
-          )}
-          <View pointerEvents="none" style={styles.filterFabRing} />
-          <FontAwesome name="filter" size={19} color={theme.green} />
-        </Pressable>
+          iconName="filter"
+          accessibilityLabel={t('a11yCalendarFilter')}
+        />
       ) : null}
 
       <CalendarEventTypeFilterModal
@@ -541,35 +525,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(10),
       fontWeight: '800',
       color: theme.textDim,
-    },
-    filterFab: {
-      position: 'absolute',
-      right: 16,
-      width: 52,
-      height: 52,
-      borderRadius: 26,
-      overflow: 'hidden',
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: '#191F28',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.12,
-      shadowRadius: 14,
-      elevation: 10,
-    },
-    filterFabBlurFallback: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.card,
-      borderRadius: 26,
-    },
-    filterFabRing: {
-      ...StyleSheet.absoluteFillObject,
-      borderRadius: 26,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border,
-    },
-    filterFabPressed: {
-      opacity: 0.9,
     },
   });
 }

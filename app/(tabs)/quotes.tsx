@@ -720,7 +720,7 @@ export default function QuotesScreen() {
       <FloatingGlassFab
         bottom={fabStackBottom}
         onPress={() => void onRefresh()}
-        iconName="refresh"
+        iconName="sync"
         accessibilityLabel={t('fabRefreshA11y')}
         disabled={refreshing || loading}
       />

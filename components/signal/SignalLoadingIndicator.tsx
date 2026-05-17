@@ -6,19 +6,45 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 /** `SignalHeader` 로고 막대와 동일 비율 */
-const BAR_HEIGHTS = [16, 26, 36, 46];
-const BAR_WIDTH = 9;
-const BAR_GAP = 4;
+const BAR_PRESETS = {
+  default: {
+    heights: [16, 26, 36, 46],
+    width: 9,
+    gap: 4,
+    rowHeight: 46,
+    captionSize: 13,
+    captionMarginTop: 14,
+    padV: 24,
+    padH: 12,
+    pulseMax: 1.06,
+  },
+  /** 홈 섹션 등 인라인 영역 — 전체 화면 로딩과 구분 */
+  compact: {
+    heights: [10, 16, 22, 28],
+    width: 6,
+    gap: 3,
+    rowHeight: 28,
+    captionSize: 11,
+    captionMarginTop: 8,
+    padV: 10,
+    padH: 8,
+    pulseMax: 1.04,
+  },
+} as const;
+
+export type SignalLoadingIndicatorSize = keyof typeof BAR_PRESETS;
 
 type Props = {
   message?: string;
+  size?: SignalLoadingIndicatorSize;
 };
 
-export function SignalLoadingIndicator({ message }: Props) {
+export function SignalLoadingIndicator({ message, size = 'default' }: Props) {
   const { theme } = useSignalTheme();
   const { t } = useLocale();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
-  const opacities = useRef(BAR_HEIGHTS.map(() => new Animated.Value(0.32))).current;
+  const preset = BAR_PRESETS[size];
+  const styles = useMemo(() => makeStyles(theme, preset), [theme, preset]);
+  const opacities = useRef(preset.heights.map(() => new Animated.Value(0.32))).current;
   const groupScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -38,7 +64,7 @@ export function SignalLoadingIndicator({ message }: Props) {
     );
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(groupScale, { toValue: 1.06, duration: 780, useNativeDriver: true }),
+        Animated.timing(groupScale, { toValue: preset.pulseMax, duration: 780, useNativeDriver: true }),
         Animated.timing(groupScale, { toValue: 1, duration: 780, useNativeDriver: true }),
       ]),
     );
@@ -48,7 +74,7 @@ export function SignalLoadingIndicator({ message }: Props) {
       wave.stop();
       pulse.stop();
     };
-  }, [groupScale, opacities]);
+  }, [groupScale, opacities, preset.pulseMax]);
 
   const label = message ?? t('commonLoading');
 
@@ -56,7 +82,7 @@ export function SignalLoadingIndicator({ message }: Props) {
     <View style={styles.wrap} accessibilityRole="progressbar" accessibilityLabel={label}>
       <Animated.View style={{ transform: [{ scale: groupScale }] }}>
         <View style={styles.barsRow}>
-          {BAR_HEIGHTS.map((h, i) => (
+          {preset.heights.map((h, i) => (
             <Animated.View
               key={i}
               style={[styles.bar, { height: h, opacity: opacities[i] }]}
@@ -69,28 +95,28 @@ export function SignalLoadingIndicator({ message }: Props) {
   );
 }
 
-function makeStyles(theme: AppTheme) {
+function makeStyles(theme: AppTheme, preset: (typeof BAR_PRESETS)[SignalLoadingIndicatorSize]) {
   return StyleSheet.create({
     wrap: {
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 24,
-      paddingHorizontal: 12,
+      paddingVertical: preset.padV,
+      paddingHorizontal: preset.padH,
     },
     barsRow: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      gap: BAR_GAP,
-      height: 46,
+      gap: preset.gap,
+      height: preset.rowHeight,
     },
     bar: {
-      width: BAR_WIDTH,
+      width: preset.width,
       backgroundColor: theme.green,
-      borderRadius: 3,
+      borderRadius: preset.width <= 6 ? 2 : 3,
     },
     caption: {
-      marginTop: 14,
-      fontSize: 13,
+      marginTop: preset.captionMarginTop,
+      fontSize: preset.captionSize,
       fontWeight: '600',
       color: theme.textMuted,
       letterSpacing: -0.2,

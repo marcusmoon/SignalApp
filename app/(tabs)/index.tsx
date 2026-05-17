@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  InteractionManager,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -195,10 +196,13 @@ export default function HomeScreen() {
   useEffect(() => {
     if (initialEntryApplied) return;
     initialEntryApplied = true;
-    void loadMainEntry().then((entry) => {
-      const href = mainEntryHref(entry);
-      if (href) router.replace(href);
+    const deferred = InteractionManager.runAfterInteractions(() => {
+      void loadMainEntry().then((entry) => {
+        const href = mainEntryHref(entry);
+        if (href) router.replace(href);
+      });
     });
+    return () => deferred.cancel();
   }, [router]);
 
   const mood = useMemo(
@@ -245,38 +249,36 @@ export default function HomeScreen() {
       .map((symbol) => bySymbol.get(symbol.toUpperCase()))
       .filter((row): row is SignalApiMarketQuote => Boolean(row));
 
+    let newsItems: SignalApiNewsItem[] = [];
+    try {
+      const newsPage = await fetchSignalNews(
+        {
+          locale,
+          category: 'global',
+          limit: 16,
+          offset: 0,
+          from: homeRelatedNewsFromIso(),
+        },
+        { cacheMode },
+      );
+      newsItems = newsPage.items;
+    } catch {
+      /* Related news is secondary; keep the primary home usable. */
+    }
+
     if (requestSeq.current !== seq) return;
-    setState((prev) => ({
-      ...prev,
+    setState({
       insights: insightPage.items,
       watchQuotes: orderedQuotes,
       watchSymbols,
-    }));
-
-    void fetchSignalNews(
-      {
-        locale,
-        category: 'global',
-        limit: 16,
-        offset: 0,
-        from: homeRelatedNewsFromIso(),
-      },
-      { cacheMode },
-    ).then((newsPage) => {
-      if (requestSeq.current !== seq) return;
-      setState((prev) => ({
-        ...prev,
-        rawNews: newsPage.items,
-        news: newsPage.items.map((item: SignalApiNewsItem) => signalNewsToNewsItem(item, locale)),
-      }));
-    }).catch(() => {
-      /* Related news is secondary; keep the primary home usable. */
+      rawNews: newsItems,
+      news: newsItems.map((item) => signalNewsToNewsItem(item, locale)),
     });
   }, [locale, t]);
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       setLoading(true);
       try {
         await load(false);
@@ -448,12 +450,7 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {loading ? (
-          <View style={styles.loadingBox}>
-            <SignalLoadingIndicator message={t('commonLoading')} />
-          </View>
-        ) : (
-          <>
+        <>
             <Pressable
               onPress={() => router.push('/briefing')}
               style={({ pressed }) => [styles.primaryAction, pressed && styles.pressed]}
@@ -507,7 +504,12 @@ export default function HomeScreen() {
                   </Pressable>
                 ))
               ) : (
-                <EmptyCard text={t('homeEmptySignals')} theme={theme} scaleFont={scaleFont} />
+                <SectionPlaceholder
+                  loading={loading}
+                  emptyText={t('homeEmptySignals')}
+                  theme={theme}
+                  scaleFont={scaleFont}
+                />
               )}
             </View>
 
@@ -562,7 +564,12 @@ export default function HomeScreen() {
                   </View>
                 ))
               ) : (
-                <EmptyCard text={t('homeEmptyWatchlist')} theme={theme} scaleFont={scaleFont} />
+                <SectionPlaceholder
+                  loading={loading}
+                  emptyText={t('homeEmptyWatchlist')}
+                  theme={theme}
+                  scaleFont={scaleFont}
+                />
               )}
             </View>
 
@@ -596,11 +603,15 @@ export default function HomeScreen() {
                   />
                 ))
               ) : (
-                <EmptyCard text={t('homeEvidenceFallback')} theme={theme} scaleFont={scaleFont} />
+                <SectionPlaceholder
+                  loading={loading}
+                  emptyText={t('homeEvidenceFallback')}
+                  theme={theme}
+                  scaleFont={scaleFont}
+                />
               )}
             </View>
-          </>
-        )}
+        </>
       </ScrollView>
     </SafeAreaView>
   );
@@ -660,11 +671,29 @@ function SectionHeader({
   );
 }
 
-function EmptyCard({ text, theme, scaleFont }: { text: string; theme: AppTheme; scaleFont: (n: number) => number }) {
+function SectionPlaceholder({
+  loading,
+  emptyText,
+  theme,
+  scaleFont,
+}: {
+  loading: boolean;
+  emptyText: string;
+  theme: AppTheme;
+  scaleFont: (n: number) => number;
+}) {
+  const { t } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  if (loading) {
+    return (
+      <View style={styles.placeholderCard}>
+        <SignalLoadingIndicator message={t('commonLoading')} size="compact" />
+      </View>
+    );
+  }
   return (
     <View style={styles.emptyCard}>
-      <Text style={styles.emptyText}>{text}</Text>
+      <Text style={styles.emptyText}>{emptyText}</Text>
     </View>
   );
 }
@@ -778,12 +807,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       lineHeight: sf(19.5),
       color: theme.danger,
       fontWeight: '800',
-    },
-    loadingBox: {
-      minHeight: 240,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 10,
     },
     sectionHead: {
       flexDirection: 'row',
@@ -1071,6 +1094,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.bgElevated,
       padding: 18,
       minHeight: 72,
+      justifyContent: 'center',
+    },
+    placeholderCard: {
+      borderRadius: 20,
+      backgroundColor: theme.bgElevated,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      minHeight: 64,
+      alignItems: 'center',
       justifyContent: 'center',
     },
     emptyText: {

@@ -484,7 +484,7 @@ export default function YoutubeScreen() {
             fabStackBottom + (filterReady ? FLOATING_GLASS_FAB_SIZE + FLOATING_GLASS_FAB_GAP : 0)
           }
           onPress={() => void onRefresh()}
-          iconName="refresh"
+          iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}
           disabled={refreshing}
         />

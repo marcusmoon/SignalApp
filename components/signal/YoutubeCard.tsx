@@ -32,9 +32,6 @@ export function YoutubeCard({ item, layout = 'card' }: Props) {
           {item.thumbnailUrl ? (
             <Image source={{ uri: item.thumbnailUrl }} style={styles.thumbImg} contentFit="cover" />
           ) : null}
-          <View style={styles.playCircle}>
-            <FontAwesome name="play" size={18} color="#FFFFFF" style={{ marginLeft: 3 }} />
-          </View>
           <Text style={styles.duration}>{item.durationLabel}</Text>
         </View>
         <View style={styles.body}>
@@ -108,16 +105,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     thumbImg: {
       ...StyleSheet.absoluteFillObject,
       borderRadius: 8,
-    },
-    playCircle: {
-      position: 'absolute',
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: theme.green,
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 2,
     },
     duration: {
       position: 'absolute',

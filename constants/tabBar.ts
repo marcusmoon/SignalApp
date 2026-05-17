@@ -41,11 +41,13 @@ export function tabBarHorizontalMargin(): number {
   return TAB_BAR_FLOAT_MARGIN_H;
 }
 
-/** 웹·기본 좌우 inset */
+/**
+ * 피드·카드 리스트와 동일한 화면 가로 inset (`paddingHorizontal: 16`).
+ * 탭바 너비 = 콘텐츠(뉴스·시세 등) 너비와 맞춤.
+ */
 export const TAB_BAR_FLOAT_MARGIN_H = 16;
-/** iOS: 화면 양끝과 캡슐 사이 여백 (증권 앱 플로팅 탭 참고) */
-export const TAB_BAR_FLOAT_MARGIN_H_IOS = 24;
-export const TAB_BAR_FLOAT_MARGIN_H_ANDROID = 20;
+export const TAB_BAR_FLOAT_MARGIN_H_IOS = 16;
+export const TAB_BAR_FLOAT_MARGIN_H_ANDROID = 16;
 /** 웹: safe area 아래 추가 lift */
 export const TAB_BAR_FLOAT_MARGIN_BOTTOM = 6;
 /** Android: 홈 제스처 위 간격 */

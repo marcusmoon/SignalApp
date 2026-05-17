@@ -1,5 +1,6 @@
 import { hashtagLabelsForFilter, sortedHashtagsForPublic } from '../newsHashtags.mjs';
 import { stripFinancialJuiceTitlePrefix } from '../providers/news/financialJuiceRss.mjs';
+import { itemMatchesYoutubeChannelHandles } from '../youtubeCuration.mjs';
 
 export function json(res, status, data) {
   const body = JSON.stringify(data, null, 2);
@@ -193,8 +194,15 @@ export function filterCalendar(items, url) {
 export function filterYoutube(items, url) {
   const q = url.searchParams.get('q')?.trim().toLowerCase();
   const channel = url.searchParams.get('channel')?.trim().toLowerCase();
+  const channelHandles = String(url.searchParams.get('channelHandles') || '')
+    .split(',')
+    .map((handle) => handle.trim().toLowerCase())
+    .filter(Boolean);
   const sort = url.searchParams.get('sort') === 'popular' ? 'popular' : 'latest';
   let rows = [...items];
+  if (channelHandles.length > 0) {
+    rows = rows.filter((item) => itemMatchesYoutubeChannelHandles(item, channelHandles));
+  }
   if (channel) rows = rows.filter((item) => String(item.channel || '').toLowerCase().includes(channel));
   if (q) {
     rows = rows.filter((item) =>

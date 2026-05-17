@@ -96,6 +96,8 @@ export default function YoutubeScreen() {
   const ytScrollLoadGateRef = useRef(createScrollLoadMoreGate());
   /** `hadItems`인데도 `setLoading(true)`를 생략하는 경로(채널 토글 등)에서 loadMore와 겹치지 않게 함 */
   const youtubeReplacingRef = useRef(false);
+  /** 필터 적용 시 `setSelectedHandles` 직후 useEffect load() 중복 방지 */
+  const skipLoadOnSelectedHandlesRef = useRef(false);
 
   useTabScreenLoadingRecovery(items, setLoading);
 
@@ -171,6 +173,7 @@ export default function YoutubeScreen() {
       if (handles.length === 0) {
         setItems([]);
         setYoutubeMeta(null);
+        setError(t('youtubeErrorSelectChannel'));
         setLoading(false);
         return;
       }
@@ -267,6 +270,10 @@ export default function YoutubeScreen() {
 
   useEffect(() => {
     if (selectedHandles === null) return;
+    if (skipLoadOnSelectedHandlesRef.current) {
+      skipLoadOnSelectedHandlesRef.current = false;
+      return;
+    }
     void load();
   }, [load, selectedHandles]);
 
@@ -301,10 +308,15 @@ export default function YoutubeScreen() {
   const commitChannelFilter = useCallback(async () => {
     setChannelModalVisible(false);
     if (!filterDraftHandles || handlesEqual(filterDraftHandles, selectedHandles)) return;
+    skipLoadOnSelectedHandlesRef.current = true;
     setSelectedHandles(filterDraftHandles);
     await saveSelectedChannels(filterDraftHandles);
-    await load({ forceRefresh: true, channelHandles: filterDraftHandles });
-  }, [filterDraftHandles, handlesEqual, load, selectedHandles]);
+    await load({
+      forceRefresh: true,
+      channelHandles: filterDraftHandles,
+      availableHandles: curationHandles ?? undefined,
+    });
+  }, [filterDraftHandles, handlesEqual, load, selectedHandles, curationHandles]);
 
   const toggleChannel = useCallback((handle: string) => {
     setFilterDraftHandles((prev) => {
@@ -332,6 +344,17 @@ export default function YoutubeScreen() {
   }, [quotaResetMs, t]);
 
   const filterReady = Boolean(selectedHandles && curationHandles);
+  const channelFilterActive = Boolean(
+    selectedHandles &&
+      curationHandles &&
+      selectedHandles.length > 0 &&
+      selectedHandles.length < curationHandles.length,
+  );
+  const emptyFeedMessage = useMemo(() => {
+    if (selectedHandles?.length === 0) return t('youtubeErrorSelectChannel');
+    if (channelFilterActive) return t('youtubeEmptyChannelFilter');
+    return t('youtubeEmptyFeed');
+  }, [channelFilterActive, selectedHandles, t]);
   /**
    * 채널 부트스트랩 전: 목록이 있으면 가리지 않음(탭 복귀·경합).
    * 채널 준비 후: 캐시 없이 최신↔인기 전환·강제 새로고침 등으로 `loading`이면 스크롤 영역에 로딩(이미 카드가 있어도 표시).
@@ -471,7 +494,7 @@ export default function YoutubeScreen() {
           ListHeaderComponent={youtubeListHeader}
           ListEmptyComponent={
             !error && !showScrollLoading && items.length === 0 ? (
-              <Text style={styles.empty}>{t('youtubeEmptySearch')}</Text>
+              <Text style={styles.empty}>{emptyFeedMessage}</Text>
             ) : null
           }
           ListFooterComponent={

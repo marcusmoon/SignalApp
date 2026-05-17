@@ -376,8 +376,9 @@ export const ja = {
   youtubeSortPopular: '人気',
   youtubeOpenLinkA11y: 'YouTubeで開く',
   youtubeMetaViewsLine: '再生 {{views}} · {{published}}',
-  youtubeEmptySearch:
-    '結果がありません。YouTube Data API v3 が有効か、日次クォータが残っているか確認して更新してください。',
+  youtubeEmptyFeed: '表示する動画がありません。しばらくしてから更新してください。',
+  youtubeEmptyChannelFilter:
+    '選択したチャンネルに該当する動画がありません。別のチャンネルを選ぶか、Adminで収集・キュレーション設定を確認してください。',
   youtubeFooterIncluded: '含めるチャンネル',
   youtubeFooterSelectAll: 'すべて選択',
   youtubeFooterClearAll: 'すべて解除',

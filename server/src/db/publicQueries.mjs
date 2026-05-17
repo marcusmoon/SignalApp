@@ -8,6 +8,7 @@ import {
   filterYoutube,
 } from '../http/shared.mjs';
 import { listActiveYoutubeChannelHandles } from './youtubeChannels.mjs';
+import { itemMatchesYoutubeChannelHandles } from '../youtubeCuration.mjs';
 
 function parsePayload(label, payload, fallback = null) {
   if (payload == null || payload === '') return fallback;
@@ -166,16 +167,7 @@ export function queryPublicYoutubeInDb(db, options = {}) {
     .split(',')
     .map((handle) => handle.trim().toLowerCase())
     .filter(Boolean);
-  if (channelHandles.length > 0) {
-    where.push(
-      `(${channelHandles
-        .map((_, index) => `LOWER(payload) LIKE @channelHandle${index}`)
-        .join(' OR ')})`,
-    );
-    channelHandles.forEach((handle, index) => {
-      params[`channelHandle${index}`] = `%"channelHandle":"${handle}"%`;
-    });
-  }
+  const channelFilterActive = channelHandles.length > 0;
   const q = String(options.q || '').trim().toLowerCase();
   if (q) {
     where.push('(LOWER(COALESCE(channel, "")) LIKE @q OR LOWER(payload) LIKE @q)');
@@ -189,7 +181,10 @@ export function queryPublicYoutubeInDb(db, options = {}) {
   params.bucketList = `%"${bucket}"%`;
   const whereSql = bucketWhere.length ? `WHERE ${bucketWhere.join(' AND ')}` : '';
   /** 뉴스 피드와 동일: offset 이 커질수록 스캔 상한을 키워 필터 후 페이지가 비지 않게 함 */
-  const scanLimit = Math.min(2000, Math.max(safeLimit + safeOffset + 120, 300));
+  const scanLimit = Math.min(
+    channelFilterActive ? 5000 : 2000,
+    Math.max(safeLimit + safeOffset + (channelFilterActive ? 400 : 120), channelFilterActive ? 800 : 300),
+  );
   let rows = db
     .prepare(
       `
@@ -203,6 +198,9 @@ export function queryPublicYoutubeInDb(db, options = {}) {
     .all({ ...params, scanLimit })
     .map((row) => parsePayload('youtube_videos.payload', row.payload, null))
     .filter(Boolean);
+  if (channelFilterActive) {
+    rows = rows.filter((item) => itemMatchesYoutubeChannelHandles(item, channelHandles));
+  }
   if (rows.length === 0) {
     const fallbackWhereSql = baseWhere.length ? `WHERE ${baseWhere.join(' AND ')}` : '';
     const { bucket: _bucket, bucketList: _bucketList, ...fallbackParams } = params;
@@ -219,6 +217,9 @@ export function queryPublicYoutubeInDb(db, options = {}) {
       .all({ ...fallbackParams, scanLimit })
       .map((row) => parsePayload('youtube_videos.payload', row.payload, null))
       .filter(Boolean);
+    if (channelFilterActive) {
+      rows = rows.filter((item) => itemMatchesYoutubeChannelHandles(item, channelHandles));
+    }
   }
   const filtered = filterYoutube(rows, {
     searchParams: {
@@ -226,6 +227,7 @@ export function queryPublicYoutubeInDb(db, options = {}) {
         if (key === 'q') return options.q || null;
         if (key === 'channel') return options.channel || null;
         if (key === 'sort') return sort;
+        if (key === 'channelHandles') return channelHandles.length ? channelHandles.join(',') : null;
         return null;
       },
     },

@@ -374,8 +374,9 @@ export const ko = {
   youtubeSortPopular: '인기순',
   youtubeOpenLinkA11y: 'YouTube에서 열기',
   youtubeMetaViewsLine: '조회 {{views}} · {{published}}',
-  youtubeEmptySearch:
-    '검색 결과가 없습니다. YouTube Data API v3가 프로젝트에서 사용 설정돼 있는지, 일일 쿼터가 남아 있는지 확인한 뒤 앱을 새로고침해 보세요.',
+  youtubeEmptyFeed: '표시할 영상이 없습니다. 잠시 후 새로고침해 보세요.',
+  youtubeEmptyChannelFilter:
+    '선택한 채널에 해당하는 영상이 없습니다. 다른 채널을 선택하거나 Admin에서 수집·큐레이션 설정을 확인해 주세요.',
   youtubeFooterIncluded: '포함 채널',
   youtubeFooterSelectAll: '전체 선택',
   youtubeFooterClearAll: '전체 해제',

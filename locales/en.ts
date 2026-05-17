@@ -376,8 +376,9 @@ export const en = {
   youtubeSortPopular: 'Popular',
   youtubeOpenLinkA11y: 'Open in YouTube',
   youtubeMetaViewsLine: '{{views}} views · {{published}}',
-  youtubeEmptySearch:
-    'No results. Check that YouTube Data API v3 is enabled for your project, quota remains, then refresh.',
+  youtubeEmptyFeed: 'No videos to show. Try refreshing in a moment.',
+  youtubeEmptyChannelFilter:
+    'No videos match the selected channels. Try other channels or check collection settings in Admin.',
   youtubeFooterIncluded: 'Included channels',
   youtubeFooterSelectAll: 'Select all',
   youtubeFooterClearAll: 'Clear all',

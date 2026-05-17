@@ -10,6 +10,28 @@ export function normalizeYoutubeHandle(value) {
   return raw.replace(/[^A-Za-z0-9._-]/g, '').trim();
 }
 
+/** DB·API 필터용 — payload의 channelHandle·customUrl에서 핸들 키 추출 */
+export function youtubeItemChannelHandleKey(item) {
+  const direct = normalizeYoutubeHandle(item?.channelHandle);
+  if (direct) return direct.toLowerCase();
+  const customUrl = item?.rawPayload?.snippet?.customUrl;
+  if (customUrl) {
+    const fromUrl = normalizeYoutubeHandle(customUrl);
+    if (fromUrl) return fromUrl.toLowerCase();
+  }
+  return '';
+}
+
+export function itemMatchesYoutubeChannelHandles(item, channelHandles) {
+  if (!Array.isArray(channelHandles) || channelHandles.length === 0) return true;
+  const key = youtubeItemChannelHandleKey(item);
+  if (!key) return false;
+  const wanted = new Set(
+    channelHandles.map((h) => normalizeYoutubeHandle(h).toLowerCase()).filter(Boolean),
+  );
+  return wanted.has(key);
+}
+
 export function normalizeYoutubeCurationHandles(value, { fallbackDefault = true } = {}) {
   const input = Array.isArray(value)
     ? value

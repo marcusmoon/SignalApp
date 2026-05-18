@@ -786,7 +786,6 @@ export const ja = {
   quotesPrevRefCoin: '24h基準',
   quotesPrevCloseStock: '前日終値',
   quotesWatchSwipeRemove: '削除',
-  quotesNextRefresh: '次の更新まであと{{seconds}}秒',
   quotesYahooShort: 'Yahoo',
   quotesYahooFinanceA11y: '{{symbol}} を Yahoo Finance で開く',
   alertTitleUnknownTicker: 'ティッカー不明',

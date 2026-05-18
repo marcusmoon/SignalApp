@@ -16,7 +16,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
-import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
@@ -24,6 +23,7 @@ import type { FeedContentTypography } from '@/services/feedContentWeightPreferen
 import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { buildQuotesCacheKey, peekQuotes, storeQuotes } from '@/services/cache/quotesCache';
 import { hasSignalApi } from '@/services/env';
 import { loadMainEntry, mainEntryHref } from '@/services/mainEntryPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
@@ -78,7 +78,29 @@ const HOME_RELATED_NEWS_MAX_AGE_MS = 72 * 60 * 60 * 1000;
 const HOME_RELATED_VIDEO_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 
 function homeRelatedNewsFromIso(): string {
-  return new Date(Date.now() - HOME_RELATED_NEWS_MAX_AGE_MS).toISOString();
+  const fromMs = Date.now() - HOME_RELATED_NEWS_MAX_AGE_MS;
+  const hourMs = 60 * 60 * 1000;
+  return new Date(Math.floor(fromMs / hourMs) * hourMs).toISOString();
+}
+
+async function loadHomeWatchQuotes(
+  symbols: string[],
+  forceRefresh: boolean,
+): Promise<SignalApiMarketQuote[]> {
+  if (symbols.length === 0) return [];
+  const cacheKey = buildQuotesCacheKey('watch', [...symbols].sort());
+  if (!forceRefresh) {
+    const hit = peekQuotes(cacheKey);
+    if (hit) {
+      return hit.rows.map((row) => row.quote).filter((row): row is SignalApiMarketQuote => Boolean(row));
+    }
+  }
+  const rows = await fetchSignalMarketQuotes({ symbols, limit: Math.max(symbols.length, 1) });
+  storeQuotes(
+    cacheKey,
+    rows.map((row) => ({ symbol: String(row.symbol || ''), quote: row })),
+  );
+  return rows;
 }
 
 function isoMs(iso?: string | null): number | null {
@@ -233,26 +255,15 @@ export default function HomeScreen() {
 
     const cacheMode = forceRefresh ? 'bypass' : 'use';
     const watchSymbols = (await loadWatchlistSymbols()).slice(0, 6);
-    const [insightPage, quoteRows] = await Promise.all([
+    const [insightPage, quoteRows, newsPage] = await Promise.all([
       fetchSignalInsights({
         date: 'today',
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         limit: 3,
         offset: 0,
       }),
-      watchSymbols.length > 0
-        ? fetchSignalMarketQuotes({ symbols: watchSymbols, limit: Math.max(watchSymbols.length, 1) })
-        : Promise.resolve([] as SignalApiMarketQuote[]),
-    ]);
-
-    const bySymbol = new Map(quoteRows.map((row) => [String(row.symbol || '').toUpperCase(), row]));
-    const orderedQuotes = watchSymbols
-      .map((symbol) => bySymbol.get(symbol.toUpperCase()))
-      .filter((row): row is SignalApiMarketQuote => Boolean(row));
-
-    let newsItems: SignalApiNewsItem[] = [];
-    try {
-      const newsPage = await fetchSignalNews(
+      loadHomeWatchQuotes(watchSymbols, forceRefresh),
+      fetchSignalNews(
         {
           locale,
           category: 'global',
@@ -261,11 +272,15 @@ export default function HomeScreen() {
           from: homeRelatedNewsFromIso(),
         },
         { cacheMode },
-      );
-      newsItems = newsPage.items;
-    } catch {
-      /* Related news is secondary; keep the primary home usable. */
-    }
+      ).catch(() => ({ items: [] as SignalApiNewsItem[] })),
+    ]);
+
+    const bySymbol = new Map(quoteRows.map((row) => [String(row.symbol || '').toUpperCase(), row]));
+    const orderedQuotes = watchSymbols
+      .map((symbol) => bySymbol.get(symbol.toUpperCase()))
+      .filter((row): row is SignalApiMarketQuote => Boolean(row));
+
+    const newsItems = newsPage.items;
 
     if (requestSeq.current !== seq) return;
     setState({
@@ -691,8 +706,9 @@ function SectionPlaceholder({
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   if (loading) {
     return (
-      <View style={styles.placeholderCard}>
-        <SignalLoadingIndicator message={t('commonLoading')} size="compact" />
+      <View style={styles.inlineLoading}>
+        <View style={styles.inlineLoadingDot} />
+        <Text style={styles.inlineLoadingText}>{t('commonLoading')}</Text>
       </View>
     );
   }
@@ -1104,14 +1120,24 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minHeight: 72,
       justifyContent: 'center',
     },
-    placeholderCard: {
-      borderRadius: 20,
-      backgroundColor: theme.bgElevated,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-      minHeight: 64,
+    inlineLoading: {
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 4,
+    },
+    inlineLoadingDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: theme.green,
+    },
+    inlineLoadingText: {
+      fontSize: sf(12),
+      lineHeight: sf(18),
+      fontWeight: '700',
+      color: theme.textMuted,
     },
     emptyText: {
       fontSize: sf(13),

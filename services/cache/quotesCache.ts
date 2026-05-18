@@ -1,9 +1,7 @@
 import type { SignalApiMarketQuote } from '@/integrations/signal-api/types';
 
-/** Quotes tab cache TTL and automatic refresh cadence. */
-export const QUOTES_POLL_INTERVAL_MS = 30 * 1000;
-
-export const QUOTES_CACHE_TTL_MS = QUOTES_POLL_INTERVAL_MS;
+/** Quotes tab passive cache TTL. Real-time refresh should move to websocket/SSE later. */
+export const QUOTES_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export const MCAP_SYMBOLS_ORDER_TTL_MS = 10 * 60 * 1000;
 

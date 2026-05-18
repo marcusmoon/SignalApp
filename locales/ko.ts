@@ -783,7 +783,6 @@ export const ko = {
   quotesPrevRefCoin: '24h 기준가',
   quotesPrevCloseStock: '전일 종',
   quotesWatchSwipeRemove: '삭제',
-  quotesNextRefresh: '다음 갱신까지 {{seconds}}초',
   quotesYahooShort: 'Yahoo',
   quotesYahooFinanceA11y: '{{symbol}} Yahoo Finance에서 보기',
   alertTitleUnknownTicker: '티커 없음',

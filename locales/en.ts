@@ -788,7 +788,6 @@ export const en = {
   quotesPrevRefCoin: '24h ref.',
   quotesPrevCloseStock: 'Prev. close',
   quotesWatchSwipeRemove: 'Remove',
-  quotesNextRefresh: 'Next refresh in {{seconds}}s',
   quotesYahooShort: 'Yahoo',
   quotesYahooFinanceA11y: 'Open {{symbol}} on Yahoo Finance',
   alertTitleUnknownTicker: 'Unknown ticker',

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useIsFocused } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -63,7 +63,6 @@ import {
 import {
   buildQuotesCacheKey,
   peekQuotes,
-  QUOTES_CACHE_TTL_MS,
   storeQuotes,
   type QuoteCacheRow,
 } from '@/services/cache/quotesCache';
@@ -194,56 +193,14 @@ export default function QuotesScreen() {
   const rowsRef = useRef<Row[]>([]);
   rowsRef.current = rows;
   useTabScreenLoadingRecovery(rows, setLoading);
-  /** 다음 자동 갱신(캐시 만료 또는 폴링) 예상 시각(ms) */
-  const [nextRefreshAtMs, setNextRefreshAtMs] = useState<number | null>(null);
-  /** 남은 초 표시가 줄어들게 함 */
-  const [countdownTick, setCountdownTick] = useState(0);
   const [draftTicker, setDraftTicker] = useState('');
 
-  useEffect(() => {
-    if (nextRefreshAtMs == null) return;
-    const id = setInterval(() => setCountdownTick((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, [nextRefreshAtMs]);
-
-  const nextRefreshLine = useMemo(() => {
-    if (nextRefreshAtMs == null) return '';
-    const seconds = Math.max(0, Math.ceil((nextRefreshAtMs - Date.now()) / 1000));
-    try {
-      return t('quotesNextRefresh', { seconds: String(seconds) });
-    } catch {
-      return '';
-    }
-  }, [nextRefreshAtMs, countdownTick, t]);
-
-  const ttlTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const loadRef = useRef<(forceRefresh?: boolean) => Promise<void>>(async () => {});
-
-  const clearTtlTimer = useCallback(() => {
-    if (ttlTimerRef.current) {
-      clearTimeout(ttlTimerRef.current);
-      ttlTimerRef.current = null;
-    }
-  }, []);
-
-  /** 캐시 TTL 만료 시점에 저장된 서버 시세를 다시 받기 */
-  const scheduleRefreshAtCacheExpiry = useCallback((expiresAtMs: number) => {
-    clearTtlTimer();
-    const delay = Math.max(0, expiresAtMs - Date.now());
-    ttlTimerRef.current = setTimeout(() => {
-      ttlTimerRef.current = null;
-      void loadRef.current(false);
-    }, delay);
-  }, [clearTtlTimer]);
-
   const load = useCallback(async (forceRefresh?: boolean) => {
-    clearTtlTimer();
     setError(null);
     const limits = await loadQuotesListLimits();
 
     if (!hasSignalApi()) {
       setRows([]);
-      setNextRefreshAtMs(null);
       setError(t('errorSignalApiShort'));
       return;
     }
@@ -254,21 +211,15 @@ export default function QuotesScreen() {
         const hit = peekQuotes(cacheKey);
         if (hit) {
           setRows(hit.rows);
-          setNextRefreshAtMs(hit.expiresAtMs);
-          scheduleRefreshAtCacheExpiry(hit.expiresAtMs);
           return;
         }
       }
       try {
         const list = (await fetchSignalCoins({ limit: limits.coinMax })).slice(0, limits.coinMax).map(mapSignalCoinToRow);
         setRows(list);
-        const nextAt = Date.now() + QUOTES_CACHE_TTL_MS;
         storeQuotes(cacheKey, list);
-        setNextRefreshAtMs(nextAt);
-        scheduleRefreshAtCacheExpiry(nextAt);
       } catch (e) {
         setRows([]);
-        setNextRefreshAtMs(null);
         setError(formatSignalApiError(e, t, 'quotesErrorLoadCoin'));
       }
       return;
@@ -288,7 +239,6 @@ export default function QuotesScreen() {
 
     if ((segment === 'watch' || segment === 'popular') && symbols.length === 0) {
       setRows([]);
-      setNextRefreshAtMs(null);
       return;
     }
 
@@ -303,8 +253,6 @@ export default function QuotesScreen() {
       const hit = peekQuotes(cacheKey);
       if (hit) {
         setRows(hit.rows);
-        setNextRefreshAtMs(hit.expiresAtMs);
-        scheduleRefreshAtCacheExpiry(hit.expiresAtMs);
         return;
       }
     }
@@ -319,13 +267,8 @@ export default function QuotesScreen() {
     const mapped = serverRows.map(mapSignalQuoteToRow);
     const nextRows = segment === 'watch' ? applyQuoteOrder(mapped, symbols) : mapped;
     setRows(nextRows);
-    const nextAt = Date.now() + QUOTES_CACHE_TTL_MS;
     storeQuotes(cacheKey, nextRows);
-    setNextRefreshAtMs(nextAt);
-    scheduleRefreshAtCacheExpiry(nextAt);
-  }, [segment, scheduleRefreshAtCacheExpiry, t]);
-
-  loadRef.current = load;
+  }, [segment, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -367,9 +310,8 @@ export default function QuotesScreen() {
       return () => {
         cancelled = true;
         cancelKick();
-        clearTtlTimer();
       };
-    }, [load, clearTtlTimer, t]),
+    }, [load, t]),
   );
 
   const onRefresh = useCallback(async () => {
@@ -475,7 +417,6 @@ export default function QuotesScreen() {
           </View>
         ) : (
           <>
-            {nextRefreshLine ? <Text style={styles.updated}>{nextRefreshLine}</Text> : null}
             {error ? (
               <View style={styles.errBox}>
                 <Text style={styles.errText}>{error}</Text>
@@ -516,7 +457,6 @@ export default function QuotesScreen() {
       draftTicker,
       error,
       loading,
-      nextRefreshLine,
       onAddWatch,
       onResetWatchDefaults,
       segment,
@@ -680,7 +620,6 @@ export default function QuotesScreen() {
                   if (segment === key) return;
                   setLoading(true);
                   setRows([]);
-                  setNextRefreshAtMs(null);
                   setError(null);
                   setSegment(key);
                 }}

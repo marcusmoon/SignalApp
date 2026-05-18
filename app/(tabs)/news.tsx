@@ -526,7 +526,7 @@ export default function FeedScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SignalHeader onBrandPress={() => void onRefresh()} />
+      <SignalHeader compact onBrandPress={() => void onRefresh()} />
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>

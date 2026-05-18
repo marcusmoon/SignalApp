@@ -10,28 +10,32 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 type Props = {
   /** SIGNAL 로고 탭 시 (보통 현재 탭 pull-to-refresh와 동일) */
   onBrandPress?: () => void;
+  /** 목록형 탭에서 상단 밀도를 낮춘다. */
+  compact?: boolean;
 };
 
-export function SignalHeader({ onBrandPress }: Props) {
+export function SignalHeader({ onBrandPress, compact = false }: Props) {
   const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, compact), [compact, theme, scaleFont]);
   const brandAccent = theme.green;
 
   const logo = (
     <>
       <View style={styles.bars}>
-        <View style={[styles.bar, { height: 12, opacity: 0.38, backgroundColor: brandAccent }]} />
-        <View style={[styles.bar, { height: 19, opacity: 0.58, backgroundColor: brandAccent }]} />
-        <View style={[styles.bar, { height: 26, opacity: 0.78, backgroundColor: brandAccent }]} />
-        <View style={[styles.bar, { height: 33, opacity: 1, backgroundColor: brandAccent }]} />
+        <View style={[styles.bar, { height: compact ? 10 : 12, opacity: 0.38, backgroundColor: brandAccent }]} />
+        <View style={[styles.bar, { height: compact ? 15 : 19, opacity: 0.58, backgroundColor: brandAccent }]} />
+        <View style={[styles.bar, { height: compact ? 21 : 26, opacity: 0.78, backgroundColor: brandAccent }]} />
+        <View style={[styles.bar, { height: compact ? 27 : 33, opacity: 1, backgroundColor: brandAccent }]} />
       </View>
       <View style={styles.brandCol}>
         <Text style={styles.brand}>SIGNAL</Text>
-        <Text style={styles.tag} numberOfLines={2}>
-          {t('headerTagline')}
-        </Text>
+        {!compact ? (
+          <Text style={styles.tag} numberOfLines={2}>
+            {t('headerTagline')}
+          </Text>
+        ) : null}
       </View>
     </>
   );
@@ -78,12 +82,12 @@ export function SignalHeader({ onBrandPress }: Props) {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, compact: boolean) {
   return StyleSheet.create({
     wrap: {
       paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 10,
+      paddingTop: compact ? 6 : 8,
+      paddingBottom: compact ? 7 : 10,
       borderBottomWidth: 1,
       borderBottomColor: theme.border,
       backgroundColor: theme.card,
@@ -127,7 +131,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'flex-end',
       gap: 3,
-      height: 34,
+      height: compact ? 28 : 34,
       flexShrink: 0,
     },
     bar: {
@@ -135,7 +139,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderRadius: 4,
     },
     brand: {
-      fontSize: sf(18),
+      fontSize: compact ? sf(17) : sf(18),
       fontWeight: '900',
       color: theme.green,
       letterSpacing: 0,

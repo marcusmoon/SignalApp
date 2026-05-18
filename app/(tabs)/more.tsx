@@ -31,6 +31,11 @@ const HUB_META: Record<
   MoreHubRouteKey,
   { href: Href; icon: ComponentProps<typeof FontAwesome>['name']; titleId: MessageId }
 > = {
+  insights: { href: '/insights' as Href, icon: 'bolt', titleId: 'screenInsights' },
+  briefing: { href: '/briefing' as Href, icon: 'briefcase', titleId: 'screenBriefing' },
+  calendar: { href: '/calendar' as Href, icon: 'calendar', titleId: 'screenCalendar' },
+  calls: { href: '/calls' as Href, icon: 'phone', titleId: 'tabCalls' },
+  youtube: { href: '/youtube' as Href, icon: 'youtube-play', titleId: 'tabYoutube' },
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
   settings: { href: '/settings' as Href, icon: 'cog', titleId: 'screenSettings' },
 };
@@ -99,7 +104,7 @@ export default function MoreHubScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <SignalHeader onBrandPress={onHeaderRefresh} />
+      <SignalHeader compact onBrandPress={onHeaderRefresh} />
       {isFocused ? <OtaUpdateBanner /> : null}
       {!orderReady ? (
         <View style={styles.loadingPad}>

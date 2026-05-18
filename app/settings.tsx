@@ -258,7 +258,6 @@ const MAIN_ENTRY_LABEL: Record<MainEntryKey, MessageId> = {
   home: 'settingsEntryHome',
   news: 'settingsEntryNews',
   quotes: 'settingsEntryQuotes',
-  youtube: 'settingsEntryYoutube',
   more: 'settingsEntryMore',
 };
 

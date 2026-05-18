@@ -279,7 +279,14 @@ export default function TabLayout() {
       tabBar={isWeb ? undefined : (props) => <SignalFloatingTabBar {...props} />}
       screenOptions={screenOptions}
       detachInactiveScreens={false}>
-      {/* 순서: TAB_BAR_SCREEN_ORDER — 뉴스 · 시세 · 홈 · 유튜브 · 더보기 */}
+      {/* 순서: TAB_BAR_SCREEN_ORDER — 홈 · 뉴스 · 시세 · 더보기. 유튜브는 더보기 허브에서 진입한다. */}
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: t('tabHome'),
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="home" color={color} focused={focused} />,
+        }}
+      />
       <Tabs.Screen
         name="news"
         options={{
@@ -297,24 +304,18 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="more"
         options={{
-          title: t('tabHome'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="home" color={color} focused={focused} />,
+          title: t('tabMore'),
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="th-large" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="youtube"
         options={{
           title: t('tabYoutube'),
+          href: null,
           tabBarIcon: ({ color, focused }) => <TabBarIcon name="youtube" color={color} focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="more"
-        options={{
-          title: t('tabMore'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="th-large" color={color} focused={focused} />,
         }}
       />
     </Tabs>

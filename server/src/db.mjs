@@ -549,6 +549,17 @@ export async function queryPublicYoutubeChannels() {
   });
 }
 
+export async function readDbHealthSummary() {
+  return withDbExclusive(async () => {
+    const db = await ensureSqliteStore();
+    const jobs = db.prepare('SELECT COUNT(*) AS count FROM polling_jobs').get();
+    return {
+      ok: true,
+      jobs: Number(jobs?.count) || 0,
+    };
+  });
+}
+
 export async function queryPublicMarketQuotes(options = {}) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();

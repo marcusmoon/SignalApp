@@ -50,6 +50,17 @@ function pagination(rows, { limit, offset }) {
   };
 }
 
+function publicRow(item) {
+  if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(item, 'rawPayload')) return item;
+  const { rawPayload, ...rest } = item;
+  return rest;
+}
+
+function compactScanLimit({ limit, offset, wide = false, minWide = 300, extraWide = 120 } = {}) {
+  if (!wide) return Math.min(2000, Math.max(Number(limit) + Number(offset) + 1, 1));
+  return Math.min(2000, Math.max(Number(limit) + Number(offset) + extraWide, minWide));
+}
+
 function symbolsFromOptions(options) {
   const symbol = String(options.symbol || '').trim().toUpperCase();
   const symbols = String(options.symbols || '')
@@ -98,7 +109,8 @@ export function queryPublicNewsInDb(db, options = {}) {
   const locale = String(options.locale || 'ko');
   const { limit, offset } = pageOptions({ limit: options.limit || 20, offset: options.offset || 0 });
   const { whereSql, params } = newsPrefilterSql(options);
-  const scanLimit = Math.min(2000, Math.max(limit + offset + 120, 300));
+  const wideScan = Boolean(options.q || options.tag || options.symbol || options.symbols || options.from || options.to);
+  const scanLimit = compactScanLimit({ limit, offset, wide: wideScan });
   const newsItems = db
     .prepare(
       `
@@ -181,10 +193,13 @@ export function queryPublicYoutubeInDb(db, options = {}) {
   params.bucketList = `%"${bucket}"%`;
   const whereSql = bucketWhere.length ? `WHERE ${bucketWhere.join(' AND ')}` : '';
   /** 뉴스 피드와 동일: offset 이 커질수록 스캔 상한을 키워 필터 후 페이지가 비지 않게 함 */
-  const scanLimit = Math.min(
-    channelFilterActive ? 5000 : 2000,
-    Math.max(safeLimit + safeOffset + (channelFilterActive ? 400 : 120), channelFilterActive ? 800 : 300),
-  );
+  const scanLimit = compactScanLimit({
+    limit: safeLimit,
+    offset: safeOffset,
+    wide: channelFilterActive || Boolean(channel) || Boolean(q) || sort === 'popular',
+    minWide: channelFilterActive ? 800 : 300,
+    extraWide: channelFilterActive ? 400 : 120,
+  });
   let rows = db
     .prepare(
       `
@@ -235,7 +250,7 @@ export function queryPublicYoutubeInDb(db, options = {}) {
   const paged = pagination(filtered, { limit: safeLimit, offset: safeOffset });
   const hasMore = paged.hasMore || rows.length >= scanLimit;
   return {
-    rows: paged.rows,
+    rows: paged.rows.map(publicRow),
     total: paged.total,
     limit: safeLimit,
     offset: safeOffset,
@@ -382,7 +397,8 @@ function marketQuotePrefilterSql(options) {
 export function queryPublicMarketQuotesInDb(db, options = {}) {
   const { limit: safeLimit, offset: safeOffset } = listOffsetLimit(options, 30);
   const { whereSql, params } = marketQuotePrefilterSql(options);
-  const scanLimit = Math.min(2000, Math.max(safeLimit + safeOffset + 120, 300));
+  const wideScan = Boolean(options.q || options.symbols);
+  const scanLimit = compactScanLimit({ limit: safeLimit, offset: safeOffset, wide: wideScan });
   const rows = db
     .prepare(
       `
@@ -408,7 +424,7 @@ export function queryPublicMarketQuotesInDb(db, options = {}) {
   const paged = pagination(filtered, { limit: safeLimit, offset: safeOffset });
   const hasMore = paged.hasMore || rows.length >= scanLimit;
   return {
-    rows: paged.rows,
+    rows: paged.rows.map(publicRow),
     total: paged.total,
     limit: safeLimit,
     offset: safeOffset,
@@ -424,7 +440,7 @@ export function queryPublicCoinMarketsInDb(db, options = {}) {
     ? 'WHERE LOWER(COALESCE(symbol, "")) LIKE @q OR LOWER(payload) LIKE @q'
     : '';
   const params = q ? { q: `%${q}%` } : {};
-  const scanLimit = Math.min(2000, Math.max(safeLimit + safeOffset + 120, 300));
+  const scanLimit = compactScanLimit({ limit: safeLimit, offset: safeOffset, wide: Boolean(q) });
   const rows = db
     .prepare(
       `
@@ -442,7 +458,7 @@ export function queryPublicCoinMarketsInDb(db, options = {}) {
   const paged = pagination(filtered, { limit: safeLimit, offset: safeOffset });
   const hasMore = paged.hasMore || rows.length >= scanLimit;
   return {
-    rows: paged.rows,
+    rows: paged.rows.map(publicRow),
     total: paged.total,
     limit: safeLimit,
     offset: safeOffset,
@@ -554,7 +570,7 @@ export function queryPublicCalendarInDb(db, options = {}) {
       if (key === 'q') return options.q || null;
       return null;
     }),
-  );
+  ).map(publicRow);
 }
 
 export function queryPublicConcallsInDb(db, options = {}) {
@@ -618,7 +634,7 @@ export function queryPublicConcallsInDb(db, options = {}) {
   const paged = pagination(filtered, { limit: safeLimit, offset: safeOffset });
   const hasMore = paged.hasMore || rows.length >= scanLimit;
   return {
-    rows: paged.rows,
+    rows: paged.rows.map(publicRow),
     total: paged.total,
     limit: safeLimit,
     offset: safeOffset,

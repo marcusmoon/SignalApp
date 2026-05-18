@@ -3,10 +3,11 @@ import { stripFinancialJuiceTitlePrefix } from '../providers/news/financialJuice
 import { itemMatchesYoutubeChannelHandles } from '../youtubeCuration.mjs';
 
 export function json(res, status, data) {
-  const body = JSON.stringify(data, null, 2);
+  const body = JSON.stringify(data);
   res.writeHead(status, {
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'no-store',
+    'content-length': Buffer.byteLength(body),
   });
   res.end(body);
 }

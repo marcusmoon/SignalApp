@@ -1,6 +1,6 @@
 import type { SignalApiMarketQuote } from '@/integrations/signal-api/types';
 
-/** Same interval as quotes tab refresh — keeps poll vs cache aligned */
+/** Quotes tab cache TTL and automatic refresh cadence. */
 export const QUOTES_POLL_INTERVAL_MS = 30 * 1000;
 
 export const QUOTES_CACHE_TTL_MS = QUOTES_POLL_INTERVAL_MS;
@@ -68,4 +68,3 @@ export function clearQuotesCache(): void {
   cache.clear();
   mcapSymbolsOrderByLimit.clear();
 }
-

@@ -64,7 +64,6 @@ import {
   buildQuotesCacheKey,
   peekQuotes,
   QUOTES_CACHE_TTL_MS,
-  QUOTES_POLL_INTERVAL_MS,
   storeQuotes,
   type QuoteCacheRow,
 } from '@/services/cache/quotesCache';
@@ -77,7 +76,6 @@ import {
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
 import type { MessageId } from '@/locales/messages';
 
-const POLL_MS = QUOTES_POLL_INTERVAL_MS;
 const QUOTE_CARD_TEXT_MAX_SCALE = 1.12;
 
 const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
@@ -228,13 +226,13 @@ export default function QuotesScreen() {
     }
   }, []);
 
-  /** 캐시 TTL 만료 시점에 시세만 네트워크로 다시 받기 */
+  /** 캐시 TTL 만료 시점에 저장된 서버 시세를 다시 받기 */
   const scheduleRefreshAtCacheExpiry = useCallback((expiresAtMs: number) => {
     clearTtlTimer();
     const delay = Math.max(0, expiresAtMs - Date.now());
     ttlTimerRef.current = setTimeout(() => {
       ttlTimerRef.current = null;
-      void loadRef.current(true);
+      void loadRef.current(false);
     }, delay);
   }, [clearTtlTimer]);
 
@@ -294,16 +292,37 @@ export default function QuotesScreen() {
       return;
     }
 
+    const cacheKey =
+      segment === 'watch'
+        ? buildQuotesCacheKey('watch', [...symbols].sort())
+        : buildQuotesCacheKey(
+            segment === 'popular' ? 'popular' : 'mcap',
+            [`n${segment === 'popular' ? limits.popularMax : limits.mcapMax}`],
+          );
+    if (!forceRefresh) {
+      const hit = peekQuotes(cacheKey);
+      if (hit) {
+        setRows(hit.rows);
+        setNextRefreshAtMs(hit.expiresAtMs);
+        scheduleRefreshAtCacheExpiry(hit.expiresAtMs);
+        return;
+      }
+    }
+
     const serverRows =
       segment === 'watch'
-        ? await fetchSignalMarketQuotes({ symbols, limit: Math.max(symbols.length, 1) })
+        ? await fetchSignalMarketQuotes({ symbols, limit: Math.max(symbols.length, 1), refresh: forceRefresh === true })
         : await fetchSignalMarketQuotes({
             segment: segment === 'popular' ? 'popular' : 'mcap',
             limit: segment === 'popular' ? limits.popularMax : limits.mcapMax,
           });
     const mapped = serverRows.map(mapSignalQuoteToRow);
-    setRows(segment === 'watch' ? applyQuoteOrder(mapped, symbols) : mapped);
-    setNextRefreshAtMs(Date.now() + POLL_MS);
+    const nextRows = segment === 'watch' ? applyQuoteOrder(mapped, symbols) : mapped;
+    setRows(nextRows);
+    const nextAt = Date.now() + QUOTES_CACHE_TTL_MS;
+    storeQuotes(cacheKey, nextRows);
+    setNextRefreshAtMs(nextAt);
+    scheduleRefreshAtCacheExpiry(nextAt);
   }, [segment, scheduleRefreshAtCacheExpiry, t]);
 
   loadRef.current = load;
@@ -317,7 +336,6 @@ export default function QuotesScreen() {
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
-      let interval: ReturnType<typeof setInterval> | undefined;
 
       const kick = () => {
         if (cancelled) return;
@@ -334,10 +352,6 @@ export default function QuotesScreen() {
             if (!cancelled) setLoading(false);
           }
         })();
-
-        interval = setInterval(() => {
-          void load();
-        }, POLL_MS);
       };
 
       /** RN Web에서 InteractionManager 큐가 진행되지 않아 콜백이 영원히 대기하는 사례가 있어 웹은 바로 스케줄한다. */
@@ -353,7 +367,6 @@ export default function QuotesScreen() {
       return () => {
         cancelled = true;
         cancelKick();
-        if (interval) clearInterval(interval);
         clearTtlTimer();
       };
     }, [load, clearTtlTimer, t]),
@@ -383,7 +396,7 @@ export default function QuotesScreen() {
       return;
     }
     try {
-      const rows = await fetchSignalMarketQuotes({ symbols: [sym], limit: 1 });
+      const rows = await fetchSignalMarketQuotes({ symbols: [sym], limit: 1, refresh: true });
       if (rows.length === 0 || rows.every((row) => row.currentPrice == null)) {
         Alert.alert(t('alertTitleUnknownTicker'), t('quotesTickerNotFoundBody'));
         return;

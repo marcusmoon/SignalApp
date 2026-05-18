@@ -10,6 +10,17 @@ import { publicMarketList } from '../../../marketLists.mjs';
 import { fetchMarketQuotes, fetchStockCandles, fetchStockProfile } from '../../../providers/market/index.mjs';
 import { json } from '../../shared.mjs';
 
+function publicStockProfile(data, fallbackSymbol) {
+  const symbol = String(data?.ticker || data?.symbol || fallbackSymbol || '').trim().toUpperCase();
+  return {
+    symbol,
+    name: data?.name || undefined,
+    marketCapitalization: Number.isFinite(Number(data?.marketCapitalization))
+      ? Number(data.marketCapitalization)
+      : undefined,
+  };
+}
+
 export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/v1/stock-profile') {
     const symbol = url.searchParams.get('symbol')?.trim().toUpperCase();
@@ -28,7 +39,7 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
         json(res, 404, { error: 'PROFILE_NOT_FOUND' });
         return true;
       }
-      json(res, 200, { data });
+      json(res, 200, { data: publicStockProfile(data, symbol) });
     } catch {
       json(res, 502, { error: 'PROFILE_UNAVAILABLE' });
     }
@@ -62,10 +73,12 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
   }
 
   if (req.method === 'GET' && pathname === '/v1/market-quotes') {
-    // If requested by explicit symbols, and some quotes are missing/stale in DB,
-    // fetch them on-demand from the active market provider and persist them.
+    // Explicit refresh is intentionally opt-in. The watchlist calls this endpoint
+    // often, so automatic provider refresh would make the tab latency scale with
+    // the number of watch symbols.
     const symbolsParam = url.searchParams.get('symbols');
-    if (symbolsParam) {
+    const shouldRefreshProvider = url.searchParams.get('refresh') === '1' || url.searchParams.get('refresh') === 'true';
+    if (symbolsParam && shouldRefreshProvider) {
       const requested = [...new Set(symbolsParam.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean))];
       if (requested.length > 0) {
         const existingPage = await queryPublicMarketQuotes({

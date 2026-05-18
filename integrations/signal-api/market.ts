@@ -6,12 +6,14 @@ export async function fetchSignalMarketQuotes(params: {
   symbols?: readonly string[];
   limit?: number;
   offset?: number;
+  refresh?: boolean;
 } = {}): Promise<SignalApiMarketQuote[]> {
   const json = await signalApi<{ data: SignalApiMarketQuote[] }>('/v1/market-quotes', {
     segment: params.segment,
     symbols: params.symbols?.join(','),
     limit: params.limit ?? 100,
     offset: params.offset ?? 0,
+    refresh: params.refresh ? '1' : undefined,
   });
   return json.data;
 }

@@ -193,15 +193,6 @@ export default function FeedScreen() {
 
       const cacheMode = forceRefresh ? 'bypass' : 'use';
 
-      let catalogRows: { name: string; enabled: boolean; order: number }[] = [];
-      try {
-        const catKey = segment === 'crypto' ? 'crypto' : 'global';
-        const cat = await fetchSignalNewsSources({ category: catKey }, { cacheMode });
-        catalogRows = cat.map((c) => ({ name: c.name, enabled: c.enabled, order: c.order }));
-      } catch {
-        catalogRows = [];
-      }
-
       if (segment === 'crypto') {
         setSignalNewsPool([]);
         setAvailableSources([]);
@@ -222,6 +213,23 @@ export default function FeedScreen() {
         setItems(mapped);
         return { newsIds: mapped.map((item) => item.id), insightIds: [] };
       }
+
+      const pageLimit = segment === 'korea' ? FEED_PAGE_KOREA : FEED_PAGE_GLOBAL;
+      const [catalogRows, firstPageResult] = await Promise.all([
+        fetchSignalNewsSources({ category: 'global' }, { cacheMode })
+          .then((cat) => cat.map((c) => ({ name: c.name, enabled: c.enabled, order: c.order })))
+          .catch(() => [] as { name: string; enabled: boolean; order: number }[]),
+        fetchSignalNews(
+          {
+            locale,
+            category: 'global',
+            limit: pageLimit,
+            offset: 0,
+            tag: activeTag || undefined,
+          },
+          { cacheMode },
+        ),
+      ]);
 
       const enabledCatalog = (catalogRows || [])
         .filter((c) => c && c.enabled)
@@ -245,17 +253,7 @@ export default function FeedScreen() {
         probe = p.items;
       }
 
-      const pageLimit = segment === 'korea' ? FEED_PAGE_KOREA : FEED_PAGE_GLOBAL;
-      const { items: firstPage, meta } = await fetchSignalNews(
-        {
-          locale,
-          category: 'global',
-          limit: pageLimit,
-          offset: 0,
-          tag: activeTag || undefined,
-        },
-        { cacheMode },
-      );
+      const { items: firstPage, meta } = firstPageResult;
       setServerRows(firstPage);
       setHasMore(meta.hasMore);
 

@@ -50,15 +50,129 @@ function pagination(rows, { limit, offset }) {
   };
 }
 
-function publicRow(item) {
-  if (!item || typeof item !== 'object' || !Object.prototype.hasOwnProperty.call(item, 'rawPayload')) return item;
-  const { rawPayload, ...rest } = item;
-  return rest;
-}
-
 function compactScanLimit({ limit, offset, wide = false, minWide = 300, extraWide = 120 } = {}) {
   if (!wide) return Math.min(2000, Math.max(Number(limit) + Number(offset) + 1, 1));
   return Math.min(2000, Math.max(Number(limit) + Number(offset) + extraWide, minWide));
+}
+
+function publicNews(item) {
+  return {
+    id: item.id,
+    category: item.category,
+    title: item.title,
+    summary: item.summary,
+    originalTitle: item.originalTitle,
+    originalSummary: item.originalSummary,
+    sourceName: item.sourceName,
+    sourceUrl: item.sourceUrl,
+    imageUrl: item.imageUrl || null,
+    symbols: Array.isArray(item.symbols) ? item.symbols : [],
+    hashtags: Array.isArray(item.hashtags) ? item.hashtags : [],
+    provider: item.provider,
+    publishedAt: item.publishedAt || null,
+    fetchedAt: item.fetchedAt,
+  };
+}
+
+function publicYoutube(item) {
+  return {
+    id: item.id,
+    videoId: item.videoId,
+    title: item.title,
+    channel: item.channel,
+    channelId: item.channelId,
+    channelHandle: item.channelHandle || null,
+    description: item.description || '',
+    publishedAt: item.publishedAt || null,
+    duration: item.duration || '',
+    viewCount: Number(item.viewCount) || 0,
+    thumbnailUrl: item.thumbnailUrl || null,
+    sortBucket: item.sortBucket || undefined,
+    sortBuckets: Array.isArray(item.sortBuckets) ? item.sortBuckets : undefined,
+    fetchedAt: item.fetchedAt,
+  };
+}
+
+function publicMarketQuote(item) {
+  return {
+    id: item.id,
+    provider: item.provider,
+    providerItemId: item.providerItemId,
+    segment: item.segment,
+    symbol: item.symbol,
+    name: item.name || null,
+    currentPrice: item.currentPrice ?? null,
+    change: item.change ?? null,
+    changePercent: item.changePercent ?? null,
+    high: item.high ?? null,
+    low: item.low ?? null,
+    open: item.open ?? null,
+    previousClose: item.previousClose ?? null,
+    marketCapitalization: item.marketCapitalization ?? null,
+    quoteTime: item.quoteTime || null,
+    fetchedAt: item.fetchedAt,
+  };
+}
+
+function publicCoinMarket(item) {
+  return {
+    id: item.id,
+    provider: item.provider,
+    providerItemId: item.providerItemId,
+    symbol: item.symbol,
+    name: item.name,
+    currentPrice: item.currentPrice ?? null,
+    marketCap: item.marketCap ?? null,
+    change24h: item.change24h ?? null,
+    changePercent24h: item.changePercent24h ?? null,
+    fetchedAt: item.fetchedAt,
+  };
+}
+
+function publicCalendarEvent(item) {
+  return {
+    id: item.id,
+    provider: item.provider,
+    providerItemId: item.providerItemId,
+    type: item.type,
+    title: item.title,
+    country: item.country || null,
+    symbol: item.symbol || null,
+    eventAt: item.eventAt || null,
+    date: item.date || null,
+    timeLabel: item.timeLabel || '',
+    impact: item.impact || null,
+    actual: item.actual ?? null,
+    estimate: item.estimate ?? null,
+    previous: item.previous ?? null,
+    unit: item.unit || null,
+    fiscalYear: item.fiscalYear ?? null,
+    fiscalQuarter: item.fiscalQuarter ?? null,
+    earningsHour: item.earningsHour || null,
+    fetchedAt: item.fetchedAt,
+  };
+}
+
+function publicConcall(item) {
+  return {
+    id: item.id,
+    provider: item.provider,
+    providerItemId: item.providerItemId,
+    symbol: item.symbol,
+    title: item.title,
+    fiscalYear: item.fiscalYear ?? null,
+    fiscalQuarter: item.fiscalQuarter ?? null,
+    earningsDate: item.earningsDate || null,
+    earningsHour: item.earningsHour || null,
+    transcriptSnippet: item.transcriptSnippet || '',
+    transcript: item.transcript,
+    summaryStatus: item.summaryStatus,
+    summaryProvider: item.summaryProvider || null,
+    summaryBullets: Array.isArray(item.summaryBullets) ? item.summaryBullets : [],
+    guidance: item.guidance || '',
+    risk: item.risk || '',
+    fetchedAt: item.fetchedAt,
+  };
 }
 
 function symbolsFromOptions(options) {
@@ -157,7 +271,7 @@ export function queryPublicNewsInDb(db, options = {}) {
         .filter(Boolean)
     : [];
   return {
-    rows: paged.rows.map((item) => displayNews(item, translations, locale)),
+    rows: paged.rows.map((item) => publicNews(displayNews(item, translations, locale))),
     total: paged.total,
     limit,
     offset,
@@ -250,7 +364,7 @@ export function queryPublicYoutubeInDb(db, options = {}) {
   const paged = pagination(filtered, { limit: safeLimit, offset: safeOffset });
   const hasMore = paged.hasMore || rows.length >= scanLimit;
   return {
-    rows: paged.rows.map(publicRow),
+    rows: paged.rows.map(publicYoutube),
     total: paged.total,
     limit: safeLimit,
     offset: safeOffset,
@@ -424,7 +538,7 @@ export function queryPublicMarketQuotesInDb(db, options = {}) {
   const paged = pagination(filtered, { limit: safeLimit, offset: safeOffset });
   const hasMore = paged.hasMore || rows.length >= scanLimit;
   return {
-    rows: paged.rows.map(publicRow),
+    rows: paged.rows.map(publicMarketQuote),
     total: paged.total,
     limit: safeLimit,
     offset: safeOffset,
@@ -458,7 +572,7 @@ export function queryPublicCoinMarketsInDb(db, options = {}) {
   const paged = pagination(filtered, { limit: safeLimit, offset: safeOffset });
   const hasMore = paged.hasMore || rows.length >= scanLimit;
   return {
-    rows: paged.rows.map(publicRow),
+    rows: paged.rows.map(publicCoinMarket),
     total: paged.total,
     limit: safeLimit,
     offset: safeOffset,
@@ -570,7 +684,7 @@ export function queryPublicCalendarInDb(db, options = {}) {
       if (key === 'q') return options.q || null;
       return null;
     }),
-  ).map(publicRow);
+  ).map(publicCalendarEvent);
 }
 
 export function queryPublicConcallsInDb(db, options = {}) {
@@ -634,7 +748,7 @@ export function queryPublicConcallsInDb(db, options = {}) {
   const paged = pagination(filtered, { limit: safeLimit, offset: safeOffset });
   const hasMore = paged.hasMore || rows.length >= scanLimit;
   return {
-    rows: paged.rows.map(publicRow),
+    rows: paged.rows.map(publicConcall),
     total: paged.total,
     limit: safeLimit,
     offset: safeOffset,

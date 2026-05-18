@@ -12,12 +12,7 @@ export async function loadSelectedChannels(availableHandles: string[]): Promise<
     if (!Array.isArray(parsed)) return [...availableHandles];
     if (parsed.length === 0) return [];
     const filtered = parsed.filter((h): h is string => typeof h === 'string' && valid.has(h));
-    const selected = filtered.length > 0 ? filtered : [];
-    const out = [...selected];
-    for (const handle of availableHandles) {
-      if (!out.includes(handle)) out.push(handle);
-    }
-    return out.length > 0 ? out : [...availableHandles];
+    return filtered;
   } catch {
     return [...availableHandles];
   }
@@ -46,11 +41,7 @@ export async function reconcileSelectedChannels(validHandles: string[]): Promise
       return;
     }
     const filtered = parsed.filter((h): h is string => typeof h === 'string' && valid.has(h));
-    const next = [...filtered];
-    for (const handle of validHandles) {
-      if (!next.includes(handle)) next.push(handle);
-    }
-    await saveSelectedChannels(next.length > 0 ? next : [...validHandles]);
+    await saveSelectedChannels(filtered);
   } catch {
     await saveSelectedChannels([...validHandles]);
   }

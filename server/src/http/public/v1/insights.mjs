@@ -115,13 +115,10 @@ function publicInsight(item) {
     sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : [],
     pushCandidate: item.pushCandidate === true,
     pushPriority: item.pushPriority || (item.level === 'alert' ? 'high' : item.pushCandidate ? 'normal' : 'none'),
-    pushReason: item.pushReason || '',
     pushTitle: item.pushTitle || '',
     pushBody: item.pushBody || '',
     generatedAt: item.generatedAt || null,
     expiresAt: item.expiresAt || null,
-    provider: item.provider || 'rules',
-    llm: item.llm || null,
   };
 }
 

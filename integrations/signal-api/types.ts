@@ -9,8 +9,6 @@ export type SignalApiNewsItem = {
   category: string;
   title: string;
   summary: string;
-  displayLocale: string;
-  translationStatus: 'completed' | 'manual' | 'missing' | 'failed' | string;
   originalTitle: string;
   originalSummary: string;
   sourceName: string;
@@ -60,7 +58,6 @@ export type SignalApiCalendarEvent = {
   fiscalQuarter: number | null;
   earningsHour: string | null;
   fetchedAt: string;
-  rawPayload?: unknown;
 };
 
 export type SignalApiYoutubeVideo = {
@@ -175,17 +172,10 @@ export type SignalApiInsight = {
   sourceRefs: SignalApiInsightSourceRef[];
   pushCandidate: boolean;
   pushPriority?: 'high' | 'normal' | 'none' | string;
-  pushReason?: string;
   pushTitle?: string;
   pushBody?: string;
   generatedAt: string | null;
   expiresAt: string | null;
-  provider: string;
-  llm?: {
-    status?: string;
-    provider?: string | null;
-    model?: string | null;
-  } | null;
 };
 
 export type SignalApiConcall = {
@@ -200,11 +190,8 @@ export type SignalApiConcall = {
   earningsHour: string | null;
   transcriptSnippet: string;
   transcript?: string;
-  transcriptHash: string;
-  transcriptCharCount: number;
   summaryStatus: 'completed' | 'missing' | 'failed' | string;
   summaryProvider: 'openai' | 'claude' | string | null;
-  summaryModel: string | null;
   summaryBullets: string[];
   guidance: string;
   risk: string;

@@ -245,6 +245,15 @@ export function getOpenApiSpec() {
           parameters: [
             { name: 'segment', in: 'query', schema: { type: 'string', example: 'popular' } },
             { name: 'symbols', in: 'query', schema: { type: 'string', example: 'AAPL,MSFT' } },
+            {
+              name: 'refresh',
+              in: 'query',
+              schema: {
+                type: 'string',
+                enum: ['0', '1', 'true'],
+                description: 'When symbols is supplied, opt in to provider refresh before returning DB rows',
+              },
+            },
             { name: 'q', in: 'query', schema: { type: 'string' } },
             { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 30 } },
             { name: 'offset', in: 'query', schema: { type: 'integer', minimum: 0, default: 0 } },

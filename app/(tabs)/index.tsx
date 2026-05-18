@@ -73,6 +73,12 @@ type HomeEvidenceRow = {
   fallbackRoute: '/news' | '/youtube';
 };
 
+type HomeQuotePulseRow = {
+  quote: SignalApiMarketQuote;
+  newsCount: number;
+  signalCount: number;
+};
+
 const HOME_RELATED_NEWS_LIMIT = 5;
 const HOME_RELATED_NEWS_MAX_AGE_MS = 72 * 60 * 60 * 1000;
 const HOME_RELATED_VIDEO_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
@@ -172,15 +178,14 @@ function homeHeadline(params: {
   insights: SignalApiInsight[];
   quotes: SignalApiMarketQuote[];
   fallback: string;
+  pulseHeadline: string;
+  pulseQuiet: string;
 }): string {
+  const quotes = params.quotes.filter((row) => typeof row.changePercent === 'number' && Number.isFinite(row.changePercent));
+  const moverCount = quotes.filter((row) => Math.abs(Number(row.changePercent)) >= 1).length;
+  if (quotes.length > 0) return moverCount > 0 ? params.pulseHeadline : params.pulseQuiet;
   const insight = params.insights[0];
   if (insight?.title) return insight.title;
-  const quote = [...params.quotes]
-    .filter((row) => typeof row.changePercent === 'number' && Number.isFinite(row.changePercent))
-    .sort((a, b) => Math.abs(Number(b.changePercent)) - Math.abs(Number(a.changePercent)))[0];
-  if (quote) {
-    return `${quote.symbol} ${formatPct(quote.changePercent)} · ${quote.name || params.fallback}`;
-  }
   return params.fallback;
 }
 
@@ -199,6 +204,31 @@ function addUniqueEvidence(
   if (seen.has(key)) return;
   seen.add(key);
   rows.push(row);
+}
+
+function symbolNewsCount(rawNews: SignalApiNewsItem[], symbol: string): number {
+  const target = symbol.trim().toUpperCase();
+  if (!target) return 0;
+  return rawNews.filter((item) => {
+    const symbols = Array.isArray(item.symbols) ? item.symbols : [];
+    return symbols.some((s) => s.trim().toUpperCase() === target);
+  }).length;
+}
+
+function symbolSignalCount(insights: SignalApiInsight[], symbol: string): number {
+  const target = symbol.trim().toUpperCase();
+  if (!target) return 0;
+  return insights.filter((item) => {
+    const symbols = Array.isArray(item.symbols) ? item.symbols : [];
+    return symbols.some((s) => s.trim().toUpperCase() === target);
+  }).length;
+}
+
+function quoteMoveLabelId(quote: SignalApiMarketQuote): MessageId {
+  const pct = Number(quote.changePercent);
+  if (!Number.isFinite(pct) || Math.abs(pct) < 0.2) return 'homeWatchMoveFlat';
+  if (Math.abs(pct) >= 3) return 'homeWatchMoveLarge';
+  return pct > 0 ? 'homeWatchMoveUp' : 'homeWatchMoveDown';
 }
 
 export default function HomeScreen() {
@@ -239,6 +269,13 @@ export default function HomeScreen() {
         insights: state.insights,
         quotes: state.watchQuotes,
         fallback: t(moodMessageId(mood)),
+        pulseHeadline: t('homePulseHeadline', {
+          count: String(state.watchQuotes.length),
+          movers: String(
+            state.watchQuotes.filter((row) => Math.abs(Number(row.changePercent)) >= 1).length,
+          ),
+        }),
+        pulseQuiet: t('homePulseQuiet'),
       }),
     [mood, state.insights, state.watchQuotes, t],
   );
@@ -326,10 +363,21 @@ export default function HomeScreen() {
   const topInsights = state.insights.slice(0, 3);
   const primaryInsight = topInsights[0] ?? null;
   const secondaryInsights = topInsights.slice(1, 3);
-  const topQuotes = [...state.watchQuotes]
-    .sort((a, b) => Math.abs(Number(b.changePercent) || 0) - Math.abs(Number(a.changePercent) || 0))
+  const topQuoteRows: HomeQuotePulseRow[] = [...state.watchQuotes]
+    .map((quote) => ({
+      quote,
+      newsCount: symbolNewsCount(state.rawNews, quote.symbol),
+      signalCount: symbolSignalCount(state.insights, quote.symbol),
+    }))
+    .sort((a, b) => {
+      const move = Math.abs(Number(b.quote.changePercent) || 0) - Math.abs(Number(a.quote.changePercent) || 0);
+      if (move !== 0) return move;
+      const signal = b.signalCount - a.signalCount;
+      if (signal !== 0) return signal;
+      return b.newsCount - a.newsCount;
+    })
     .slice(0, 3);
-  const visibleWatchCount = topQuotes.length;
+  const visibleWatchCount = topQuoteRows.length;
   const evidenceRows = useMemo(() => {
     const max = HOME_RELATED_NEWS_LIMIT;
     const rows: HomeEvidenceRow[] = [];
@@ -470,197 +518,213 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        <>
-            <Pressable
-              onPress={() => router.push('/briefing')}
-              style={({ pressed }) => [styles.primaryAction, pressed && styles.pressed]}
-              accessibilityRole="button">
-              <View style={styles.primaryActionIcon}>
-                <FontAwesome name="briefcase" size={15} color="#FFFFFF" />
-              </View>
-              <Text style={styles.primaryActionText}>{t('homeBriefingAction')}</Text>
-              <FontAwesome name="chevron-right" size={13} color="#FFFFFF" />
-            </Pressable>
-
-            <SectionHeader
-              title={t('homeTodaySection')}
-              icon="bolt"
-              action={t('commonViewAll')}
-              onPress={() => router.push('/insights')}
-              theme={theme}
-              scaleFont={scaleFont}
-            />
-            <View style={styles.signalList}>
-              {primaryInsight ? (
-                <>
-                  <Pressable
-                    key={primaryInsight.id}
-                    onPress={() => router.push('/insights')}
-                    style={({ pressed }) => [styles.primarySignalCard, pressed && styles.pressed]}
-                    accessibilityRole="button">
-                    <View style={styles.decisionHead}>
-                      <View style={styles.decisionTextCol}>
-                        <View style={styles.decisionMetaRow}>
-                          {primaryInsight.symbols?.length ? (
-                            <Text style={styles.symbolLine} numberOfLines={1}>
-                              {primaryInsight.symbols.slice(0, 3).join(' · ')}
-                            </Text>
-                          ) : null}
-                          <Text style={styles.decisionLevel} numberOfLines={1}>
-                            {String(primaryInsight.level || '').toUpperCase()}
-                          </Text>
-                        </View>
-                        <Text style={styles.decisionTitle} numberOfLines={1}>
-                          {primaryInsight.title}
-                        </Text>
-                        <Text style={styles.decisionBody} numberOfLines={3}>
-                          {driverText(primaryInsight)}
-                        </Text>
-                      </View>
-                      <View style={styles.scoreBadge}>
-                        <Text style={styles.scoreText}>{Math.round(Number(primaryInsight.score) || 0)}</Text>
-                      </View>
+        <SectionHeader
+          title={t('homeWatchSection')}
+          icon="star"
+          action={t('commonViewAll')}
+          onPress={() => router.push('/quotes')}
+          theme={theme}
+          scaleFont={scaleFont}
+        />
+        <View style={styles.quoteList}>
+          {topQuoteRows.length > 0 ? (
+            topQuoteRows.map(({ quote, newsCount, signalCount }) => {
+              const moveLabel = t(quoteMoveLabelId(quote));
+              const largeMove = Math.abs(Number(quote.changePercent) || 0) >= 3;
+              return (
+                <View key={quote.symbol} style={styles.quoteRow}>
+                  <View style={styles.quoteLeft}>
+                    <View style={styles.quoteSymbolRow}>
+                      <Pressable
+                        onPress={() => router.push(`/symbol/${quote.symbol}`)}
+                        hitSlop={6}
+                        accessibilityRole="button"
+                        accessibilityLabel={quote.symbol}>
+                        <Text style={styles.quoteSymbol}>{quote.symbol}</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void openYahooFinanceQuote(quote.symbol, 'stock')}
+                        style={({ pressed }) => [styles.quoteYahoo, pressed && styles.quoteYahooPressed]}
+                        hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                        accessibilityRole="link"
+                        accessibilityLabel={t('quotesYahooFinanceA11y', { symbol: quote.symbol })}>
+                        <FontAwesome name="external-link" size={10} color={theme.green} />
+                        <Text style={styles.quoteYahooText}>{t('quotesYahooShort')}</Text>
+                      </Pressable>
                     </View>
-                  </Pressable>
-                  {secondaryInsights.map((insight) => (
-                    <Pressable
-                      key={insight.id}
-                      onPress={() => router.push('/insights')}
-                      style={({ pressed }) => [styles.signalRow, pressed && styles.pressed]}
-                      accessibilityRole="button">
-                      <View style={styles.decisionHead}>
-                        <View style={styles.decisionTextCol}>
-                          <View style={styles.decisionMetaRow}>
-                            {insight.symbols?.length ? (
-                              <Text style={styles.symbolLine} numberOfLines={1}>
-                                {insight.symbols.slice(0, 3).join(' · ')}
-                              </Text>
-                            ) : null}
-                            <Text style={styles.decisionLevel} numberOfLines={1}>
-                              {String(insight.level || '').toUpperCase()}
-                            </Text>
-                          </View>
-                          <Text style={styles.secondaryDecisionTitle} numberOfLines={1}>
-                            {insight.title}
+                    <View style={styles.quoteReasonRow}>
+                      <View style={[styles.quoteReasonChip, largeMove && styles.quoteReasonChipHot]}>
+                        <Text style={[styles.quoteReasonText, largeMove && styles.quoteReasonTextHot]}>
+                          {moveLabel}
+                        </Text>
+                      </View>
+                      <View style={styles.quoteReasonChip}>
+                        <Text style={styles.quoteReasonText}>
+                          {newsCount > 0
+                            ? t('homeWatchNewsCount', { count: String(newsCount) })
+                            : t('homeWatchNoNews')}
+                        </Text>
+                      </View>
+                      {signalCount > 0 ? (
+                        <View style={styles.quoteReasonChip}>
+                          <Text style={styles.quoteReasonText}>
+                            {t('homePillSignals', { count: String(signalCount) })}
                           </Text>
                         </View>
-                        <View style={styles.secondaryScoreBadge}>
-                          <Text style={styles.secondaryScoreText}>{Math.round(Number(insight.score) || 0)}</Text>
-                        </View>
-                      </View>
-                    </Pressable>
-                  ))}
-                </>
-              ) : (
-                <SectionPlaceholder
-                  loading={loading}
-                  emptyText={t('homeEmptySignals')}
-                  theme={theme}
-                  scaleFont={scaleFont}
-                />
-              )}
-            </View>
-
-            <SectionHeader
-              title={t('homeWatchSection')}
-              icon="star"
-              action={t('commonViewAll')}
-              onPress={() => router.push('/quotes')}
-              theme={theme}
-              scaleFont={scaleFont}
-            />
-            <View style={styles.quoteList}>
-              {topQuotes.length > 0 ? (
-                topQuotes.map((quote) => (
-                  <View
-                    key={quote.symbol}
-                    style={styles.quoteRow}>
-                    <View style={styles.quoteLeft}>
-                      <View style={styles.quoteSymbolRow}>
-                        <Pressable
-                          onPress={() => router.push(`/symbol/${quote.symbol}`)}
-                          hitSlop={6}
-                          accessibilityRole="button"
-                          accessibilityLabel={quote.symbol}>
-                          <Text style={styles.quoteSymbol}>{quote.symbol}</Text>
-                        </Pressable>
-                        <Pressable
-                          onPress={() => void openYahooFinanceQuote(quote.symbol, 'stock')}
-                          style={({ pressed }) => [styles.quoteYahoo, pressed && styles.quoteYahooPressed]}
-                          hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-                          accessibilityRole="link"
-                          accessibilityLabel={t('quotesYahooFinanceA11y', { symbol: quote.symbol })}>
-                          <FontAwesome name="external-link" size={10} color={theme.green} />
-                          <Text style={styles.quoteYahooText}>{t('quotesYahooShort')}</Text>
-                        </Pressable>
-                      </View>
-                      <Text style={styles.quoteName} numberOfLines={1}>
-                        {t('quotesPrevCloseStock')} {formatUsd(quote.previousClose)}
-                      </Text>
-                      {quote.name ? (
-                        <Text style={styles.quoteCompany} numberOfLines={1}>
-                          {quote.name}
-                        </Text>
                       ) : null}
                     </View>
-                    <View style={styles.quoteRight}>
-                      <Text style={styles.quotePrice}>{formatUsd(quote.currentPrice)}</Text>
-                      <Text style={[styles.quoteChange, quoteChange.styleForQuote(quote)]}>
-                        {formatUsdChange(quote.change)} ({formatPct(quote.changePercent)})
-                      </Text>
-                    </View>
+                    <Text style={styles.quoteName} numberOfLines={1}>
+                      {quote.name || `${t('quotesPrevCloseStock')} ${formatUsd(quote.previousClose)}`}
+                    </Text>
                   </View>
-                ))
-              ) : (
-                <SectionPlaceholder
-                  loading={loading}
-                  emptyText={t('homeEmptyWatchlist')}
-                  theme={theme}
-                  scaleFont={scaleFont}
-                />
-              )}
-            </View>
-
-            <SectionHeader
-              title={t('homeRelatedSection')}
-              icon="newspaper-o"
-              action={t('commonViewAll')}
-              onPress={() => router.push('/news')}
+                  <View style={styles.quoteRight}>
+                    <Text style={styles.quotePrice}>{formatUsd(quote.currentPrice)}</Text>
+                    <Text style={[styles.quoteChange, quoteChange.styleForQuote(quote)]}>
+                      {formatUsdChange(quote.change)} ({formatPct(quote.changePercent)})
+                    </Text>
+                  </View>
+                </View>
+              );
+            })
+          ) : (
+            <SectionPlaceholder
+              loading={loading}
+              emptyText={t('homeEmptyWatchlist')}
               theme={theme}
               scaleFont={scaleFont}
             />
-            <View style={styles.evidenceList}>
-              {evidenceRows.length > 0 ? (
-                evidenceRows.map((item) => (
-                  <EvidenceCard
-                    key={item.key}
-                    icon={item.icon}
-                    kind={item.kind}
-                    title={item.title}
-                    source={item.source}
-                    timeLabel={item.timeLabel}
-                    onPress={() => {
-                      if (item.url) {
-                        void WebBrowser.openBrowserAsync(item.url);
-                      } else {
-                        router.push(item.fallbackRoute);
-                      }
-                    }}
-                    feedTypo={feedTypo}
-                    theme={theme}
-                    scaleFont={scaleFont}
-                  />
-                ))
-              ) : (
-                <SectionPlaceholder
-                  loading={loading}
-                  emptyText={t('homeEvidenceFallback')}
-                  theme={theme}
-                  scaleFont={scaleFont}
-                />
-              )}
-            </View>
-        </>
+          )}
+        </View>
+
+        <Pressable
+          onPress={() => router.push('/briefing')}
+          style={({ pressed }) => [styles.primaryAction, pressed && styles.pressed]}
+          accessibilityRole="button">
+          <View style={styles.primaryActionIcon}>
+            <FontAwesome name="briefcase" size={15} color="#FFFFFF" />
+          </View>
+          <Text style={styles.primaryActionText}>{t('homeBriefingAction')}</Text>
+          <FontAwesome name="chevron-right" size={13} color="#FFFFFF" />
+        </Pressable>
+
+        <SectionHeader
+          title={t('homeTodaySection')}
+          icon="bolt"
+          action={t('commonViewAll')}
+          onPress={() => router.push('/insights')}
+          theme={theme}
+          scaleFont={scaleFont}
+        />
+        <View style={styles.signalList}>
+          {primaryInsight ? (
+            <>
+              <Pressable
+                key={primaryInsight.id}
+                onPress={() => router.push('/insights')}
+                style={({ pressed }) => [styles.primarySignalCard, pressed && styles.pressed]}
+                accessibilityRole="button">
+                <View style={styles.decisionHead}>
+                  <View style={styles.decisionTextCol}>
+                    <View style={styles.decisionMetaRow}>
+                      {primaryInsight.symbols?.length ? (
+                        <Text style={styles.symbolLine} numberOfLines={1}>
+                          {primaryInsight.symbols.slice(0, 3).join(' · ')}
+                        </Text>
+                      ) : null}
+                      <Text style={styles.decisionLevel} numberOfLines={1}>
+                        {String(primaryInsight.level || '').toUpperCase()}
+                      </Text>
+                    </View>
+                    <Text style={styles.decisionTitle} numberOfLines={1}>
+                      {primaryInsight.title}
+                    </Text>
+                    <Text style={styles.decisionBody} numberOfLines={3}>
+                      {driverText(primaryInsight)}
+                    </Text>
+                  </View>
+                  <View style={styles.scoreBadge}>
+                    <Text style={styles.scoreText}>{Math.round(Number(primaryInsight.score) || 0)}</Text>
+                  </View>
+                </View>
+              </Pressable>
+              {secondaryInsights.map((insight) => (
+                <Pressable
+                  key={insight.id}
+                  onPress={() => router.push('/insights')}
+                  style={({ pressed }) => [styles.signalRow, pressed && styles.pressed]}
+                  accessibilityRole="button">
+                  <View style={styles.decisionHead}>
+                    <View style={styles.decisionTextCol}>
+                      <View style={styles.decisionMetaRow}>
+                        {insight.symbols?.length ? (
+                          <Text style={styles.symbolLine} numberOfLines={1}>
+                            {insight.symbols.slice(0, 3).join(' · ')}
+                          </Text>
+                        ) : null}
+                        <Text style={styles.decisionLevel} numberOfLines={1}>
+                          {String(insight.level || '').toUpperCase()}
+                        </Text>
+                      </View>
+                      <Text style={styles.secondaryDecisionTitle} numberOfLines={1}>
+                        {insight.title}
+                      </Text>
+                    </View>
+                    <View style={styles.secondaryScoreBadge}>
+                      <Text style={styles.secondaryScoreText}>{Math.round(Number(insight.score) || 0)}</Text>
+                    </View>
+                  </View>
+                </Pressable>
+              ))}
+            </>
+          ) : (
+            <SectionPlaceholder
+              loading={loading}
+              emptyText={t('homeEmptySignals')}
+              theme={theme}
+              scaleFont={scaleFont}
+            />
+          )}
+        </View>
+
+        <SectionHeader
+          title={t('homeRelatedSection')}
+          icon="newspaper-o"
+          action={t('commonViewAll')}
+          onPress={() => router.push('/news')}
+          theme={theme}
+          scaleFont={scaleFont}
+        />
+        <View style={styles.evidenceList}>
+          {evidenceRows.length > 0 ? (
+            evidenceRows.map((item) => (
+              <EvidenceCard
+                key={item.key}
+                icon={item.icon}
+                kind={item.kind}
+                title={item.title}
+                source={item.source}
+                timeLabel={item.timeLabel}
+                onPress={() => {
+                  if (item.url) {
+                    void WebBrowser.openBrowserAsync(item.url);
+                  } else {
+                    router.push(item.fallbackRoute);
+                  }
+                }}
+                feedTypo={feedTypo}
+                theme={theme}
+                scaleFont={scaleFont}
+              />
+            ))
+          ) : (
+            <SectionPlaceholder
+              loading={loading}
+              emptyText={t('homeEvidenceFallback')}
+              theme={theme}
+              scaleFont={scaleFont}
+            />
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -1050,6 +1114,37 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: ft.ff(18),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
+    },
+    quoteReasonRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 6,
+      marginTop: 7,
+      marginBottom: 3,
+    },
+    quoteReasonChip: {
+      minHeight: 22,
+      paddingHorizontal: 8,
+      borderRadius: 999,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    quoteReasonChipHot: {
+      backgroundColor: theme.greenDim,
+      borderColor: theme.greenBorder,
+    },
+    quoteReasonText: {
+      fontSize: ft.ff(10),
+      lineHeight: ft.ff(14),
+      fontWeight: ft.emphasisWeight,
+      color: theme.textMuted,
+    },
+    quoteReasonTextHot: {
+      color: theme.green,
     },
     quoteCompany: {
       fontSize: ft.ff(12),

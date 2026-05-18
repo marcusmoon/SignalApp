@@ -3,12 +3,10 @@ import {
   ActivityIndicator,
   FlatList,
   Linking,
-  Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -24,6 +22,10 @@ import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
+import {
+  SelectionFilterSheet,
+  selectionFilterRowStyles,
+} from '@/components/signal/SelectionFilterSheet';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { FloatingGlassFab, FLOATING_GLASS_FAB_GAP, FLOATING_GLASS_FAB_SIZE } from '@/components/signal/FloatingGlassFab';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
@@ -401,45 +403,7 @@ export default function YoutubeScreen() {
     [error, isQuotaError, quotaResetHintLine, showScrollLoading, styles, t],
   );
 
-  const renderChannelFilterBody = () => (
-    <>
-      <View style={styles.footerHead}>
-        <Text style={styles.footerTitle}>{t('youtubeFooterIncluded')}</Text>
-        <View style={styles.filterActions}>
-          <Pressable onPress={clearAllChannels} style={styles.allBtn} accessibilityRole="button">
-            <Text style={styles.allBtnText}>{t('youtubeFooterClearAll')}</Text>
-          </Pressable>
-          <Pressable onPress={selectAllChannels} style={styles.allBtn} accessibilityRole="button">
-            <Text style={styles.allBtnText}>{t('youtubeFooterSelectAll')}</Text>
-          </Pressable>
-        </View>
-      </View>
-      <Text style={styles.footerSub}>{t('youtubeFooterSub')}</Text>
-      {filterDraftHandles &&
-        curationHandles &&
-        curationHandles.map((handle) => {
-          const on = filterDraftHandles.includes(handle);
-          return (
-            <Pressable
-              key={handle}
-              onPress={() => toggleChannel(handle)}
-              style={[styles.channelRow, on && styles.channelRowOn]}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: on }}>
-              <FontAwesome
-                name={on ? 'check-square' : 'square-o'}
-                size={15}
-                color={on ? theme.green : theme.textDim}
-                style={styles.checkIcon}
-              />
-              <Text style={[styles.channelName, !on && styles.channelNameOff]} numberOfLines={1}>
-                {titleForHandle(handle)}
-              </Text>
-            </Pressable>
-          );
-        })}
-    </>
-  );
+  const channelRowStyles = useMemo(() => selectionFilterRowStyles(theme, scaleFont), [theme, scaleFont]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -567,43 +531,47 @@ export default function YoutubeScreen() {
         />
       ) : null}
 
-      <Modal
-        animationType="slide"
-        transparent
+      <SelectionFilterSheet
         visible={channelModalVisible}
-        onRequestClose={() => void commitChannelFilter()}>
-        <View style={styles.modalBackdrop}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => void commitChannelFilter()} />
-          <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
-            <View style={styles.modalGrab} />
-            <View style={styles.modalHead}>
-              <Text style={styles.modalTitle}>{t('youtubeModalTitle')}</Text>
-              <View style={styles.modalHeadActions}>
-                <Pressable
-                  onPress={() => void commitChannelFilter()}
-                  hitSlop={12}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('youtubeModalApply')}>
-                  <Text style={styles.modalApply}>{t('youtubeModalApply')}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => void commitChannelFilter()}
-                  hitSlop={12}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('youtubeModalClose')}>
-                  <Text style={styles.modalClose}>{t('youtubeModalClose')}</Text>
-                </Pressable>
-              </View>
-            </View>
-            <ScrollView
-              style={styles.modalScroll}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}>
-              {renderChannelFilterBody()}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+        title={t('youtubeModalTitle')}
+        hint={t('youtubeFooterSub')}
+        onDone={() => void commitChannelFilter()}
+        bottomInset={insets.bottom}
+        toolbar={{
+          sectionLabel: t('youtubeFooterIncluded'),
+          countLabel: t('filterSheetSelectedCount', {
+            selected: filterDraftHandles?.length ?? 0,
+            total: curationHandles?.length ?? 0,
+          }),
+          selectAllLabel: t('youtubeFooterSelectAll'),
+          clearAllLabel: t('youtubeFooterClearAll'),
+          onSelectAll: selectAllChannels,
+          onClearAll: clearAllChannels,
+        }}>
+        {filterDraftHandles &&
+          curationHandles &&
+          curationHandles.map((handle) => {
+            const on = filterDraftHandles.includes(handle);
+            return (
+              <Pressable
+                key={handle}
+                onPress={() => toggleChannel(handle)}
+                style={[channelRowStyles.row, on && channelRowStyles.rowOn]}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: on }}>
+                <FontAwesome
+                  name={on ? 'check-square' : 'square-o'}
+                  size={18}
+                  color={on ? theme.green : theme.textDim}
+                  style={channelRowStyles.checkIcon}
+                />
+                <Text style={[channelRowStyles.name, !on && channelRowStyles.nameOff]} numberOfLines={2}>
+                  {titleForHandle(handle)}
+                </Text>
+              </Pressable>
+            );
+          })}
+      </SelectionFilterSheet>
     </SafeAreaView>
   );
 }
@@ -630,125 +598,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     footerLoadingText: {
       fontSize: sf(12),
       color: theme.textMuted,
-    },
-    modalBackdrop: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.55)',
-      justifyContent: 'flex-end',
-    },
-    modalSheet: {
-      backgroundColor: theme.bg,
-      borderTopLeftRadius: 16,
-      borderTopRightRadius: 16,
-      borderWidth: 1,
-      borderBottomWidth: 0,
-      borderColor: theme.border,
-      paddingHorizontal: 16,
-      maxHeight: '78%',
-    },
-    modalGrab: {
-      alignSelf: 'center',
-      width: 36,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: theme.border,
-      marginTop: 10,
-      marginBottom: 6,
-    },
-    modalHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 10,
-      paddingTop: 4,
-    },
-    modalTitle: {
-      fontSize: sf(17),
-      fontWeight: '800',
-      color: theme.text,
-    },
-    modalHeadActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    modalApply: {
-      fontSize: sf(15),
-      fontWeight: '800',
-      color: theme.green,
-    },
-    modalClose: {
-      fontSize: sf(15),
-      fontWeight: '700',
-      color: theme.green,
-    },
-    modalScroll: {
-      flexGrow: 0,
-    },
-    footerHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 3,
-    },
-    footerTitle: {
-      fontSize: sf(11),
-      fontWeight: '800',
-      color: theme.textMuted,
-      letterSpacing: 0.15,
-    },
-    allBtn: {
-      paddingHorizontal: 7,
-      paddingVertical: 2,
-      borderRadius: 6,
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    filterActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    allBtnText: {
-      fontSize: sf(10),
-      fontWeight: '800',
-      color: theme.green,
-    },
-    footerSub: {
-      fontSize: sf(9),
-      color: theme.textDim,
-      marginBottom: 6,
-      lineHeight: sf(12),
-    },
-    channelRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 5,
-      paddingHorizontal: 8,
-      marginBottom: 3,
-      borderRadius: 7,
-      backgroundColor: '#14141C',
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    channelRowOn: {
-      borderColor: theme.green + '66',
-      backgroundColor: theme.greenDim,
-    },
-    checkIcon: {
-      marginRight: 7,
-    },
-    channelName: {
-      flex: 1,
-      fontSize: sf(11),
-      fontWeight: '600',
-      color: theme.text,
-      lineHeight: sf(14),
-    },
-    channelNameOff: {
-      color: theme.textDim,
-      fontWeight: '500',
     },
     segment: {
       flexDirection: 'row',

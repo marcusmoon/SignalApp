@@ -324,7 +324,11 @@ export default function HomeScreen() {
   }, [load, t]);
 
   const topInsights = state.insights.slice(0, 3);
-  const topQuotes = state.watchQuotes.slice(0, 3);
+  const primaryInsight = topInsights[0] ?? null;
+  const secondaryInsights = topInsights.slice(1, 3);
+  const topQuotes = [...state.watchQuotes]
+    .sort((a, b) => Math.abs(Number(b.changePercent) || 0) - Math.abs(Number(a.changePercent) || 0))
+    .slice(0, 3);
   const visibleWatchCount = topQuotes.length;
   const evidenceRows = useMemo(() => {
     const max = HOME_RELATED_NEWS_LIMIT;
@@ -487,38 +491,66 @@ export default function HomeScreen() {
               scaleFont={scaleFont}
             />
             <View style={styles.signalList}>
-              {topInsights.length > 0 ? (
-                topInsights.map((insight) => (
+              {primaryInsight ? (
+                <>
                   <Pressable
-                    key={insight.id}
+                    key={primaryInsight.id}
                     onPress={() => router.push('/insights')}
-                    style={({ pressed }) => [styles.signalRow, pressed && styles.pressed]}
+                    style={({ pressed }) => [styles.primarySignalCard, pressed && styles.pressed]}
                     accessibilityRole="button">
                     <View style={styles.decisionHead}>
                       <View style={styles.decisionTextCol}>
                         <View style={styles.decisionMetaRow}>
-                          {insight.symbols?.length ? (
+                          {primaryInsight.symbols?.length ? (
                             <Text style={styles.symbolLine} numberOfLines={1}>
-                              {insight.symbols.slice(0, 3).join(' · ')}
+                              {primaryInsight.symbols.slice(0, 3).join(' · ')}
                             </Text>
                           ) : null}
                           <Text style={styles.decisionLevel} numberOfLines={1}>
-                            {String(insight.level || '').toUpperCase()}
+                            {String(primaryInsight.level || '').toUpperCase()}
                           </Text>
                         </View>
                         <Text style={styles.decisionTitle} numberOfLines={1}>
-                          {insight.title}
+                          {primaryInsight.title}
                         </Text>
-                        <Text style={styles.decisionBody} numberOfLines={2}>
-                          {driverText(insight)}
+                        <Text style={styles.decisionBody} numberOfLines={3}>
+                          {driverText(primaryInsight)}
                         </Text>
                       </View>
                       <View style={styles.scoreBadge}>
-                        <Text style={styles.scoreText}>{Math.round(Number(insight.score) || 0)}</Text>
+                        <Text style={styles.scoreText}>{Math.round(Number(primaryInsight.score) || 0)}</Text>
                       </View>
                     </View>
                   </Pressable>
-                ))
+                  {secondaryInsights.map((insight) => (
+                    <Pressable
+                      key={insight.id}
+                      onPress={() => router.push('/insights')}
+                      style={({ pressed }) => [styles.signalRow, pressed && styles.pressed]}
+                      accessibilityRole="button">
+                      <View style={styles.decisionHead}>
+                        <View style={styles.decisionTextCol}>
+                          <View style={styles.decisionMetaRow}>
+                            {insight.symbols?.length ? (
+                              <Text style={styles.symbolLine} numberOfLines={1}>
+                                {insight.symbols.slice(0, 3).join(' · ')}
+                              </Text>
+                            ) : null}
+                            <Text style={styles.decisionLevel} numberOfLines={1}>
+                              {String(insight.level || '').toUpperCase()}
+                            </Text>
+                          </View>
+                          <Text style={styles.secondaryDecisionTitle} numberOfLines={1}>
+                            {insight.title}
+                          </Text>
+                        </View>
+                        <View style={styles.secondaryScoreBadge}>
+                          <Text style={styles.secondaryScoreText}>{Math.round(Number(insight.score) || 0)}</Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  ))}
+                </>
               ) : (
                 <SectionPlaceholder
                   loading={loading}
@@ -885,10 +917,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderColor: theme.border,
       backgroundColor: theme.card,
     },
-    signalRow: {
-      minHeight: ft.signalRow(92),
+    primarySignalCard: {
+      minHeight: ft.signalRow(118),
       paddingHorizontal: ft.pad(16),
-      paddingVertical: ft.pad(13),
+      paddingVertical: ft.pad(16),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+      backgroundColor: theme.greenDim,
+    },
+    signalRow: {
+      minHeight: ft.signalRow(68),
+      paddingHorizontal: ft.pad(16),
+      paddingVertical: ft.pad(12),
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
@@ -921,6 +961,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.signalTitleWeight,
       color: theme.text,
     },
+    secondaryDecisionTitle: {
+      fontSize: ft.signalTitleFont(14),
+      lineHeight: ft.signalTitleFont(20),
+      fontWeight: ft.signalTitleWeight,
+      color: theme.text,
+    },
     scoreBadge: {
       minWidth: ft.weight === 'bold' ? 42 : 38,
       height: ft.weight === 'bold' ? 34 : 30,
@@ -936,6 +982,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontSize: ft.signalTitleFont(12),
       fontWeight: ft.signalTitleWeight,
       color: theme.green,
+    },
+    secondaryScoreBadge: {
+      minWidth: 34,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
+      borderColor: theme.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: ft.pad(7),
+    },
+    secondaryScoreText: {
+      fontSize: ft.signalBodyFont(11),
+      fontWeight: ft.signalTitleWeight,
+      color: theme.textMuted,
     },
     decisionBody: {
       fontSize: ft.signalBodyFont(12),

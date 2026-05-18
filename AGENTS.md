@@ -11,6 +11,8 @@
 | Expo/EAS 운영 | [docs/EXPO-EAS-OPERATIONS.md](./docs/EXPO-EAS-OPERATIONS.md) |
 | 후속 작업 TODO | [docs/TODO.md](./docs/TODO.md) |
 | Toss UI/UX PMD | [docs/SIGNAL-TOSS-UIUX-PMD.md](./docs/SIGNAL-TOSS-UIUX-PMD.md) |
+| 앱 UI/UX 평가·제안 | [docs/SIGNAL-UIUX-EVALUATION.md](./docs/SIGNAL-UIUX-EVALUATION.md) |
+| 앱 UI/UX 리뷰 | [docs/SIGNAL-UIUX-REVIEW.md](./docs/SIGNAL-UIUX-REVIEW.md) |
 | 릴리즈 체크리스트 | [docs/RELEASE-CHECKLIST.md](./docs/RELEASE-CHECKLIST.md) |
 
 에이전트·도구는 **`docs/AGENTS.md`** 부터 읽습니다.

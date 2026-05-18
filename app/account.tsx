@@ -50,7 +50,7 @@ import {
 import { loadNotificationPrefs, type NotificationPrefs } from '@/services/notificationPreferences';
 
 type Mode = 'login' | 'register';
-type AccountTab = 'home' | 'profile' | 'security';
+type AccountTab = 'home' | 'profile' | 'security' | 'info';
 type RegisterStep = 'terms' | 'method' | 'info';
 
 type SocialSignupDraft = {
@@ -777,6 +777,7 @@ export default function AccountScreen() {
         { key: 'home', label: t('accountTabHome') },
         { key: 'profile', label: t('accountProfileSectionTitle') },
         { key: 'security', label: t('accountTabSecurity') },
+        { key: 'info', label: t('accountTabInfo') },
       ] as const,
     [t],
   );
@@ -994,32 +995,6 @@ export default function AccountScreen() {
               </View>
             </View>
 
-            <View style={styles.accountFooter}>
-              <View style={styles.legalLinkRow}>
-                <Pressable onPress={() => openTerms('service')} hitSlop={8}>
-                  <Text style={styles.legalLinkText}>{t('termsServiceTitle')}</Text>
-                </Pressable>
-                <Text style={styles.legalLinkSep}>·</Text>
-                <Pressable onPress={() => openTerms('privacy')} hitSlop={8}>
-                  <Text style={styles.legalLinkText}>{t('termsPrivacyTitle')}</Text>
-                </Pressable>
-                <Text style={styles.legalLinkSep}>·</Text>
-                <Pressable onPress={() => router.push('/terms-history' as never)} hitSlop={8}>
-                  <Text style={styles.legalLinkText}>{t('accountActivityTermsHistory')}</Text>
-                </Pressable>
-              </View>
-              <View style={styles.footerActionRow}>
-                <Pressable disabled={saving} onPress={() => void logout()} style={styles.footerActionBtn}>
-                  <Text style={styles.footerActionText}>{t('accountLogout')}</Text>
-                </Pressable>
-                <Pressable disabled={saving} onPress={withdraw} style={[styles.footerActionBtn, styles.withdrawBtn]}>
-                  <Text style={[styles.footerActionText, styles.withdrawText]}>{t('accountWithdraw')}</Text>
-                </Pressable>
-              </View>
-              <Text style={styles.copyrightText}>
-                {t('accountFooterCopyright').replace('{{year}}', String(copyrightYear))}
-              </Text>
-            </View>
               </>
             ) : null}
 
@@ -1201,6 +1176,49 @@ export default function AccountScreen() {
                 </Pressable>
               </View>
             </View>
+            ) : null}
+
+            {accountTab === 'info' ? (
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>{t('accountServiceInfoTitle')}</Text>
+                <Text style={styles.sectionLead}>{t('accountServiceInfoLead')}</Text>
+                <View style={styles.legalActionStack}>
+                  <Pressable
+                    onPress={() => openTerms('service')}
+                    style={({ pressed }) => [styles.legalActionRow, pressed && styles.activityRowPressed]}
+                    accessibilityRole="button">
+                    <Text style={styles.legalActionTitle}>{t('termsServiceTitle')}</Text>
+                    <FontAwesome5 name="chevron-right" size={12} color={theme.textDim} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => openTerms('privacy')}
+                    style={({ pressed }) => [styles.legalActionRow, pressed && styles.activityRowPressed]}
+                    accessibilityRole="button">
+                    <Text style={styles.legalActionTitle}>{t('termsPrivacyTitle')}</Text>
+                    <FontAwesome5 name="chevron-right" size={12} color={theme.textDim} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => router.push('/terms-history' as never)}
+                    style={({ pressed }) => [styles.legalActionRow, pressed && styles.activityRowPressed]}
+                    accessibilityRole="button">
+                    <Text style={styles.legalActionTitle}>{t('accountActivityTermsHistory')}</Text>
+                    <FontAwesome5 name="chevron-right" size={12} color={theme.textDim} />
+                  </Pressable>
+                </View>
+                <View style={styles.accountFooter}>
+                  <View style={styles.footerActionRow}>
+                    <Pressable disabled={saving} onPress={() => void logout()} style={styles.footerActionBtn}>
+                      <Text style={styles.footerActionText}>{t('accountLogout')}</Text>
+                    </Pressable>
+                    <Pressable disabled={saving} onPress={withdraw} style={[styles.footerActionBtn, styles.withdrawBtn]}>
+                      <Text style={[styles.footerActionText, styles.withdrawText]}>{t('accountWithdraw')}</Text>
+                    </Pressable>
+                  </View>
+                  <Text style={styles.copyrightText}>
+                    {t('accountFooterCopyright').replace('{{year}}', String(copyrightYear))}
+                  </Text>
+                </View>
+              </View>
             ) : null}
 
           </>
@@ -1831,6 +1849,23 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.greenDim,
     },
     secondaryText: { color: theme.green, fontSize: sf(13), fontWeight: '900' },
+    legalActionStack: {
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.border,
+      overflow: 'hidden',
+      backgroundColor: theme.bgElevated,
+    },
+    legalActionRow: {
+      minHeight: 48,
+      paddingHorizontal: 13,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    legalActionTitle: { flex: 1, color: theme.text, fontSize: sf(13), fontWeight: '900' },
     accountFooter: { gap: 10, paddingTop: 4, paddingHorizontal: 4, alignItems: 'center' },
     footerActionRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, flexWrap: 'wrap' },
     footerActionBtn: {
@@ -1847,9 +1882,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     footerActionText: { color: theme.textMuted, fontSize: sf(11), fontWeight: '900' },
     withdrawBtn: { borderColor: '#FFD6DA', backgroundColor: theme.dangerDim },
     withdrawText: { color: theme.danger },
-    legalLinkRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, flexWrap: 'wrap' },
-    legalLinkText: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
-    legalLinkSep: { color: theme.textDim, fontSize: sf(11), fontWeight: '800' },
     copyrightText: { color: theme.textDim, fontSize: sf(10), fontWeight: '700' },
   });
 }

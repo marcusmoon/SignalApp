@@ -1,15 +1,17 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useMemo } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text } from 'react-native';
 
-import type { AppTheme } from '@/constants/theme';
+import {
+  SelectionFilterSheet,
+  selectionFilterRowStyles,
+} from '@/components/signal/SelectionFilterSheet';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 type Props = {
   visible: boolean;
-  onClose: () => void;
-  onApply: () => void;
+  onDone: () => void;
   sources: string[];
   selected: string[];
   onToggle: (source: string) => void;
@@ -20,8 +22,7 @@ type Props = {
 
 export function NewsSourceFilterModal({
   visible,
-  onClose,
-  onApply,
+  onDone,
   sources,
   selected,
   onToggle,
@@ -29,187 +30,46 @@ export function NewsSourceFilterModal({
   onClearAll,
   bottomInset,
 }: Props) {
-  const { theme } = useSignalTheme();
+  const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
-  const styles = useMemo(() => makeModalStyles(theme), [theme]);
+  const rowStyles = useMemo(() => selectionFilterRowStyles(theme, scaleFont), [theme, scaleFont]);
 
   return (
-    <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
-      <View style={styles.modalBackdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={[styles.modalSheet, { paddingBottom: Math.max(bottomInset, 16) + 8 }]}>
-          <View style={styles.modalGrab} />
-          <View style={styles.modalHead}>
-            <Text style={styles.modalTitle}>{t('feedNewsFilterTitle')}</Text>
-            <View style={styles.modalHeadActions}>
-              <Pressable onPress={onApply} hitSlop={12} accessibilityRole="button" accessibilityLabel={t('feedNewsFilterApply')}>
-                <Text style={styles.modalApply}>{t('feedNewsFilterApply')}</Text>
-              </Pressable>
-              <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel={t('feedNewsFilterClose')}>
-                <Text style={styles.modalClose}>{t('feedNewsFilterClose')}</Text>
-              </Pressable>
-            </View>
-          </View>
-          <View style={styles.footerHead}>
-            <Text style={styles.footerTitle}>{t('feedNewsFilterIncluded')}</Text>
-            <View style={styles.filterActions}>
-              <Pressable onPress={onClearAll} style={styles.allBtn} accessibilityRole="button">
-                <Text style={styles.allBtnText}>{t('feedNewsFilterClearAll')}</Text>
-              </Pressable>
-              <Pressable onPress={onSelectAll} style={styles.allBtn} accessibilityRole="button">
-                <Text style={styles.allBtnText}>{t('feedNewsFilterSelectAll')}</Text>
-              </Pressable>
-            </View>
-          </View>
-          <Text style={styles.footerSub}>{t('feedNewsFilterSub')}</Text>
-          <ScrollView style={styles.modalScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            {sources.map((source) => {
-              const on = selected.includes(source);
-              return (
-                <Pressable
-                  key={source}
-                  onPress={() => onToggle(source)}
-                  style={[styles.row, on && styles.rowOn]}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: on }}>
-                  <FontAwesome
-                    name={on ? 'check-square' : 'square-o'}
-                    size={15}
-                    color={on ? theme.green : theme.textDim}
-                    style={styles.checkIcon}
-                  />
-                  <Text style={[styles.name, !on && styles.nameOff]} numberOfLines={2}>
-                    {source}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
+    <SelectionFilterSheet
+      visible={visible}
+      title={t('feedNewsFilterTitle')}
+      hint={t('feedNewsFilterSub')}
+      onDone={onDone}
+      bottomInset={bottomInset}
+      toolbar={{
+        sectionLabel: t('feedNewsFilterIncluded'),
+        countLabel: t('filterSheetSelectedCount', { selected: selected.length, total: sources.length }),
+        selectAllLabel: t('feedNewsFilterSelectAll'),
+        clearAllLabel: t('feedNewsFilterClearAll'),
+        onSelectAll,
+        onClearAll,
+      }}>
+      {sources.map((source) => {
+        const on = selected.includes(source);
+        return (
+          <Pressable
+            key={source}
+            onPress={() => onToggle(source)}
+            style={[rowStyles.row, on && rowStyles.rowOn]}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: on }}>
+            <FontAwesome
+              name={on ? 'check-square' : 'square-o'}
+              size={18}
+              color={on ? theme.green : theme.textDim}
+              style={rowStyles.checkIcon}
+            />
+            <Text style={[rowStyles.name, !on && rowStyles.nameOff]} numberOfLines={2}>
+              {source}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </SelectionFilterSheet>
   );
-}
-
-function makeModalStyles(theme: AppTheme) {
-  return StyleSheet.create({
-    modalBackdrop: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.55)',
-      justifyContent: 'flex-end',
-    },
-    modalSheet: {
-      backgroundColor: theme.bg,
-      borderTopLeftRadius: 16,
-      borderTopRightRadius: 16,
-      borderWidth: 1,
-      borderBottomWidth: 0,
-      borderColor: theme.border,
-      paddingHorizontal: 16,
-      maxHeight: '78%',
-    },
-    modalGrab: {
-      alignSelf: 'center',
-      width: 36,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: theme.border,
-      marginTop: 10,
-      marginBottom: 6,
-    },
-    modalHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 10,
-      paddingTop: 4,
-    },
-    modalHeadActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    modalApply: {
-      fontSize: 15,
-      fontWeight: '800',
-      color: theme.green,
-    },
-    modalTitle: {
-      fontSize: 17,
-      fontWeight: '800',
-      color: theme.text,
-    },
-    modalClose: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: theme.green,
-    },
-    footerHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 3,
-    },
-    footerTitle: {
-      fontSize: 11,
-      fontWeight: '800',
-      color: theme.textMuted,
-      letterSpacing: 0.15,
-    },
-    allBtn: {
-      paddingHorizontal: 7,
-      paddingVertical: 2,
-      borderRadius: 6,
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    allBtnText: {
-      fontSize: 10,
-      fontWeight: '800',
-      color: theme.green,
-    },
-    filterActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    footerSub: {
-      fontSize: 9,
-      color: theme.textDim,
-      marginBottom: 6,
-      lineHeight: 12,
-    },
-    modalScroll: {
-      flexGrow: 0,
-    },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 5,
-      paddingHorizontal: 8,
-      marginBottom: 3,
-      borderRadius: 7,
-      backgroundColor: '#14141C',
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    rowOn: {
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    checkIcon: {
-      marginRight: 8,
-    },
-    name: {
-      flex: 1,
-      fontSize: 13,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    nameOff: {
-      color: theme.textDim,
-      fontWeight: '600',
-    },
-  });
 }

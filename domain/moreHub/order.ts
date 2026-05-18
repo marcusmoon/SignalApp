@@ -7,6 +7,7 @@ const ALL_KEYS: MoreHubRouteKey[] = [...MORE_HUB_ROUTE_ORDER_DEFAULT];
 
 export function normalizeMoreHubOrder(raw: unknown): MoreHubRouteKey[] {
   if (!Array.isArray(raw)) return [...MORE_HUB_ROUTE_ORDER_DEFAULT];
+  if (!raw.includes('account')) return [...MORE_HUB_ROUTE_ORDER_DEFAULT];
   const out: MoreHubRouteKey[] = [];
   const seen = new Set<MoreHubRouteKey>();
   for (const x of raw) {

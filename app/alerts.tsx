@@ -20,6 +20,17 @@ import { fetchSignalNotifications } from '@/integrations/signal-api/notification
 import type { SignalApiInsight } from '@/integrations/signal-api/types';
 import { formatRelativeTime } from '@/utils/date';
 
+type AlertsFilter = 'all' | 'high' | 'signal' | 'notice' | 'account';
+
+function alertMatchesFilter(item: StoredNotification, filter: AlertsFilter): boolean {
+  if (filter === 'all') return true;
+  const haystack = `${item.id} ${item.title} ${item.body}`.toLowerCase();
+  if (filter === 'high') return item.high;
+  if (filter === 'signal') return haystack.includes('signal') || haystack.includes('시그널') || haystack.includes('insight');
+  if (filter === 'notice') return haystack.includes('notice') || haystack.includes('공지') || haystack.includes('update');
+  return haystack.includes('account') || haystack.includes('계정') || haystack.includes('login') || haystack.includes('로그인');
+}
+
 export default function AlertsScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
@@ -32,6 +43,7 @@ export default function AlertsScreen() {
   const [authSession, setAuthSession] = useState<StoredAppAuthSession | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<AlertsFilter>('all');
   useResetRefreshingOnTabBlur(setRefreshing);
 
   const reload = useCallback(async () => {
@@ -101,12 +113,44 @@ export default function AlertsScreen() {
     }
   }, [reload]);
 
+  const alertFilters = useMemo(
+    () =>
+      [
+        { key: 'all', label: t('alertsFilterAll') },
+        { key: 'high', label: t('alertsFilterHigh') },
+        { key: 'signal', label: t('alertsFilterSignal') },
+        { key: 'notice', label: t('alertsFilterNotice') },
+        { key: 'account', label: t('alertsFilterAccount') },
+      ] as const,
+    [t],
+  );
+
+  const filteredItems = useMemo(
+    () => items.filter((item) => alertMatchesFilter(item, filter)),
+    [filter, items],
+  );
+
   const listHeader = useMemo(
     () => (
       <>
         <Text style={styles.hint} accessibilityRole="text">
           {t('alertsListHint')}
         </Text>
+        <View style={styles.filterTabs} accessibilityRole="tablist">
+          {alertFilters.map((item) => {
+            const selected = filter === item.key;
+            return (
+              <Pressable
+                key={item.key}
+                onPress={() => setFilter(item.key)}
+                style={[styles.filterTab, selected && styles.filterTabActive]}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}>
+                <Text style={[styles.filterTabText, selected && styles.filterTabTextActive]}>{item.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
         {candidates.length > 0 ? (
           <View style={styles.candidateSection}>
             <View style={styles.candidateHead}>
@@ -152,12 +196,12 @@ export default function AlertsScreen() {
         ) : null}
       </>
     ),
-    [candidates, locale, router, styles, t],
+    [alertFilters, candidates, filter, locale, router, styles, t],
   );
 
   const listFooter = useMemo(
     () =>
-      items.length > 0 ? (
+      filteredItems.length > 0 ? (
         <Pressable
           onPress={() => router.push('/settings?tab=notifications')}
           style={styles.footerLink}
@@ -166,7 +210,7 @@ export default function AlertsScreen() {
           <Text style={styles.footerLinkText}>{t('alertsOpenSettings')}</Text>
         </Pressable>
       ) : null,
-    [items.length, router, styles.footerLink, styles.footerLinkText, t],
+    [filteredItems.length, router, styles.footerLink, styles.footerLinkText, t],
   );
 
   const renderAlert = useCallback(
@@ -227,14 +271,14 @@ export default function AlertsScreen() {
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
       <FlatList
-        data={items}
+        data={filteredItems}
         keyExtractor={(a) => a.id}
         renderItem={renderAlert}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
-          candidates.length > 0 ? null : (
+          candidates.length > 0 || filteredItems.length > 0 ? null : (
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>{t('alertsEmpty')}</Text>
+              <Text style={styles.emptyText}>{items.length > 0 ? t('alertsFilterEmpty') : t('alertsEmpty')}</Text>
               <Pressable
                 onPress={() => router.push('/settings?tab=notifications')}
                 style={styles.settingsLink}
@@ -249,7 +293,7 @@ export default function AlertsScreen() {
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: bottomPad },
-          items.length === 0 && candidates.length === 0 ? styles.listContentEmpty : null,
+          filteredItems.length === 0 && candidates.length === 0 ? styles.listContentEmpty : null,
         ]}
         style={styles.list}
         showsVerticalScrollIndicator={false}
@@ -269,6 +313,28 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     listContent: { paddingHorizontal: 16, paddingTop: 8 },
     listContentEmpty: { flexGrow: 1 },
     hint: { fontSize: sf(11), color: theme.textDim, marginBottom: 12 },
+    filterTabs: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 14,
+    },
+    filterTab: {
+      minHeight: 36,
+      paddingHorizontal: 12,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    filterTabActive: {
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    filterTabText: { fontSize: sf(12), fontWeight: '800', color: theme.textMuted },
+    filterTabTextActive: { color: theme.green },
     candidateSection: {
       marginBottom: 14,
       padding: 14,

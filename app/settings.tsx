@@ -150,13 +150,23 @@ import {
 } from '@/constants/segmentTabBar';
 
 type SettingsTab =
+  | 'display'
+  | 'notifications'
   | 'youtube'
   | 'news'
   | 'quotes'
-  | 'notifications'
-  | 'display'
   | 'calendar'
   | 'server';
+
+const SETTINGS_TABS: { key: SettingsTab; labelId: MessageId }[] = [
+  { key: 'display', labelId: 'settingsTabDisplay' },
+  { key: 'notifications', labelId: 'settingsTabNotifications' },
+  { key: 'news', labelId: 'settingsTabNews' },
+  { key: 'youtube', labelId: 'settingsTabYoutube' },
+  { key: 'quotes', labelId: 'settingsTabQuotes' },
+  { key: 'calendar', labelId: 'settingsTabCalendar' },
+  { key: 'server', labelId: 'settingsTabServer' },
+];
 
 const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
@@ -995,7 +1005,7 @@ export default function SettingsScreen() {
   const params = useLocalSearchParams<{ tab?: string }>();
   const router = useRouter();
   const isFocused = useIsFocused();
-  const [tab, setTab] = useState<SettingsTab>('news');
+  const [tab, setTab] = useState<SettingsTab>('display');
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [signalAlertsEnabled, setSignalAlertsEnabled] = useState(true);
@@ -1383,83 +1393,23 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.safe} edges={[]}>
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.tabBar}>
-        <Pressable
-          onPress={() => setTab('news')}
-          style={[styles.tabBtn, tab === 'news' && styles.tabBtnActive]}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: tab === 'news' }}>
-          <Text
-            style={[styles.tabText, tab === 'news' && styles.tabTextActive]}
-            numberOfLines={1}>
-            {t('settingsTabNews')}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setTab('youtube')}
-          style={[styles.tabBtn, tab === 'youtube' && styles.tabBtnActive]}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: tab === 'youtube' }}>
-          <Text
-            style={[styles.tabText, tab === 'youtube' && styles.tabTextActive]}
-            numberOfLines={1}>
-            {t('settingsTabYoutube')}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setTab('quotes')}
-          style={[styles.tabBtn, tab === 'quotes' && styles.tabBtnActive]}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: tab === 'quotes' }}>
-          <Text
-            style={[styles.tabText, tab === 'quotes' && styles.tabTextActive]}
-            numberOfLines={1}>
-            {t('settingsTabQuotes')}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setTab('calendar')}
-          style={[styles.tabBtn, tab === 'calendar' && styles.tabBtnActive]}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: tab === 'calendar' }}>
-          <Text
-            style={[styles.tabText, tab === 'calendar' && styles.tabTextActive]}
-            numberOfLines={1}>
-            {t('settingsTabCalendar')}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setTab('display')}
-          style={[styles.tabBtn, tab === 'display' && styles.tabBtnActive]}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: tab === 'display' }}>
-          <Text
-            style={[styles.tabText, tab === 'display' && styles.tabTextActive]}
-            numberOfLines={1}>
-            {t('settingsTabDisplay')}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setTab('notifications')}
-          style={[styles.tabBtn, tab === 'notifications' && styles.tabBtnActive]}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: tab === 'notifications' }}>
-          <Text
-            style={[styles.tabText, tab === 'notifications' && styles.tabTextActive]}
-            numberOfLines={1}>
-            {t('settingsTabNotifications')}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setTab('server')}
-          style={[styles.tabBtn, tab === 'server' && styles.tabBtnActive]}
-          accessibilityRole="tab"
-          accessibilityState={{ selected: tab === 'server' }}>
-          <Text
-            style={[styles.tabText, tab === 'server' && styles.tabTextActive]}
-            numberOfLines={1}>
-            {t('settingsTabServer')}
-          </Text>
-        </Pressable>
+        {SETTINGS_TABS.map((item) => {
+          const selected = tab === item.key;
+          return (
+            <Pressable
+              key={item.key}
+              onPress={() => setTab(item.key)}
+              style={[styles.tabBtn, selected && styles.tabBtnActive]}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}>
+              <Text
+                style={[styles.tabText, selected && styles.tabTextActive]}
+                numberOfLines={1}>
+                {t(item.labelId)}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
       <ScrollView
         style={styles.scrollFlex}

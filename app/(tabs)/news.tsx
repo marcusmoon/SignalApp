@@ -654,8 +654,7 @@ export default function FeedScreen() {
 
       <NewsSourceFilterModal
         visible={filterModalVisible}
-        onClose={() => void commitNewsFilter()}
-        onApply={() => void commitNewsFilter()}
+        onDone={() => void commitNewsFilter()}
         sources={availableSources}
         selected={filterDraftSources}
         onToggle={toggleSource}

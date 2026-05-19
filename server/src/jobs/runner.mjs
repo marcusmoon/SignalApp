@@ -18,6 +18,8 @@ import { generateMarketInsights } from '../insights/rules.mjs';
 import { notificationsFromInsights, upsertNotificationItem } from '../notifications/outbox.mjs';
 import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
+import { fetchNewswireRssNews } from '../providers/news/rssNews.mjs';
+import { fetchSecEdgarFilings } from '../providers/news/secEdgar.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
 import { fetchYoutubeEconomy, fetchYoutubeVideosByIds } from '../providers/youtube/youtube.mjs';
 import { normalizeYoutubeCurationHandles } from '../youtubeCuration.mjs';
@@ -216,6 +218,14 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
   }
   if (job.provider === 'rss' && job.handler === 'financial_juice') {
     return { kind: 'news', rows: await fetchFinancialJuiceRssNews(job.params || {}) };
+  }
+  if (job.provider === 'rss' && job.handler === 'newswire_rss') {
+    return { kind: 'news', rows: await fetchNewswireRssNews(job.params || {}) };
+  }
+  if (job.provider === 'sec' && job.handler === 'company_filings') {
+    const listKey = job.params?.listKey || 'default_watchlist';
+    const symbols = Array.isArray(job.params?.symbols) && job.params.symbols.length > 0 ? job.params.symbols : marketListSymbols(dbBefore, listKey);
+    return { kind: 'news', rows: await fetchSecEdgarFilings({ ...(job.params || {}), symbols }) };
   }
   if (job.provider === 'finnhub' && job.handler === 'economic_calendar') {
     return { kind: 'calendar', rows: await fetchFinnhubEconomicCalendar(job.params || {}) };

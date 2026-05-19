@@ -113,6 +113,33 @@ function calendarEventCards({ rows, esc, textFor }) {
   `;
 }
 
+function renderCalendarSummary({ state, $, esc, textFor }) {
+  const host = $('calendarSummary');
+  if (!host) return;
+  const rows = Array.isArray(state.calendarMonthRows) ? state.calendarMonthRows : [];
+  const uniqueDates = new Set(rows.map((row) => String(row.date || '').slice(0, 10)).filter(Boolean));
+  const earnings = rows.filter((row) => row.type === 'earnings').length;
+  const macro = rows.filter((row) => row.type && row.type !== 'earnings').length;
+  host.innerHTML = `
+    <div class="calendarSummaryItem">
+      <span>${esc(textFor('calendarSummaryTotal'))}</span>
+      <strong>${rows.length}</strong>
+    </div>
+    <div class="calendarSummaryItem">
+      <span>${esc(textFor('calendarSummaryDates'))}</span>
+      <strong>${uniqueDates.size}</strong>
+    </div>
+    <div class="calendarSummaryItem">
+      <span>${esc(textFor('calendarSummaryEarnings'))}</span>
+      <strong>${earnings}</strong>
+    </div>
+    <div class="calendarSummaryItem">
+      <span>${esc(textFor('calendarSummaryMacro'))}</span>
+      <strong>${macro}</strong>
+    </div>
+  `;
+}
+
 export function renderAdminCalendarGrid({ state, $, esc, textFor, ymd }) {
   const host = $('calendarGrid');
   if (!host) return;
@@ -251,6 +278,7 @@ export async function loadCalendarView(ctx) {
       state.calendarRangeFocusYmd = allDates[0] || '__all__';
     }
   }
+  renderCalendarSummary({ state, $, esc, textFor });
   renderAdminCalendarGrid({ state, $, esc, textFor, ymd });
   renderCalendarDayTable({ state, $, esc, textFor, textForVars: ctx.textForVars });
 }

@@ -30,10 +30,26 @@ function classifyMacro(event) {
   return 'macro';
 }
 
+function stableHash(value) {
+  const s = String(value || '').trim();
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h.toString(16);
+}
+
+function stableEconomicId(raw) {
+  const country = String(raw.country || 'na').trim().toLowerCase() || 'na';
+  const time = String(raw.time || '').trim();
+  const event = String(raw.event || '').trim().toLowerCase();
+  const unit = String(raw.unit || '').trim().toLowerCase();
+  return `finnhub-economic-${country}-${time || 'no-time'}-${stableHash(`${event}|${unit}`)}`;
+}
+
 export function normalizeFinnhubEconomic(raw, index = 0) {
   const impact = String(raw.impact || '').trim().toLowerCase();
+  const id = stableEconomicId(raw);
   return {
-    id: `finnhub-economic-${raw.country || 'na'}-${raw.time || index}-${index}`,
+    id,
     provider: 'finnhub',
     providerItemId: `${raw.country || ''}|${raw.time || ''}|${raw.event || ''}`,
     type: classifyMacro(raw.event),

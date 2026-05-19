@@ -5309,3 +5309,253 @@ body.adminShellV2.loginMode {
     border-radius: 20px;
   }
 }
+
+/* Admin polish pass — Toss-like task flow: fewer borders, clearer actions, denser operations screens. */
+.adminShellV2 .view:not(#view-dashboard) .panel {
+  gap: 18px;
+}
+
+.adminShellV2 .pageHeaderActions {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.adminShellV2 .filterBar,
+.adminShellV2 .actionBox {
+  align-items: stretch;
+  gap: 16px;
+}
+
+.adminShellV2 .filterBarTitle,
+.adminShellV2 .filterBoxTitle {
+  flex: 0 0 160px;
+  display: flex;
+  align-items: center;
+  line-height: 1.35;
+}
+
+.adminShellV2 .filterBarControls {
+  flex: 1 1 520px;
+  justify-content: flex-start;
+  align-items: stretch;
+}
+
+.adminShellV2 .filterGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: min(100%, 240px);
+}
+
+.adminShellV2 .filterGroup--date {
+  min-width: min(100%, 340px);
+}
+
+.adminShellV2 .filterGroup--search {
+  flex: 1 1 360px;
+}
+
+.adminShellV2 .filterGroup--search input.wide,
+.adminShellV2 .filterGroup--search .wide {
+  flex: 1 1 240px;
+  min-width: 180px;
+}
+
+.adminShellV2 .dateRangeSep {
+  color: #8b95a1;
+  align-self: center;
+}
+
+.adminShellV2 .calendarSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.adminShellV2 .calendarSummaryItem {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: var(--admin-shadow-card);
+}
+
+.adminShellV2 .calendarSummaryItem span {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.adminShellV2 .calendarSummaryItem strong {
+  color: #191f28;
+  font-size: 24px;
+  line-height: 1.1;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+}
+
+.adminShellV2 .adminCalendarHost {
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: var(--admin-shadow-card);
+  padding: 18px;
+}
+
+.adminShellV2 .calendarMonthWrap {
+  min-width: 0;
+}
+
+.adminShellV2 .calWeekdays {
+  color: #8b95a1;
+  font-weight: 800;
+}
+
+.adminShellV2 .calendarGrid {
+  gap: 8px;
+}
+
+.adminShellV2 .calCell {
+  min-height: 42px;
+  border-radius: 14px;
+  font-weight: 800;
+}
+
+.adminShellV2 .calendarEventsCard {
+  padding: 18px;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: var(--admin-shadow-card);
+}
+
+.adminShellV2 .calendarDayHeading {
+  margin-bottom: 12px;
+  color: #191f28;
+  font-size: 18px;
+  font-weight: 850;
+}
+
+.adminShellV2 .dialogBackdrop {
+  place-items: start center;
+  padding-top: max(28px, env(safe-area-inset-top));
+  background: rgba(25, 31, 40, 0.36);
+}
+
+.adminShellV2 .dialogPanel {
+  border-radius: 28px;
+  overflow: hidden;
+}
+
+.adminShellV2 .dialogHead,
+.adminShellV2 .dialogFoot {
+  padding: 18px 20px;
+  border-color: #eef1f4;
+}
+
+.adminShellV2 .dialogHead h3 {
+  margin: 0;
+  color: #191f28;
+  font-size: 19px;
+  font-weight: 850;
+}
+
+.adminShellV2 .dialogBody {
+  padding: 20px;
+}
+
+.adminShellV2 .dialogFoot {
+  background: #ffffff;
+}
+
+.adminShellV2 .dialogFoot .row {
+  gap: 8px;
+}
+
+.adminShellV2 .dialogFoot button,
+.adminShellV2 .dialogHead button {
+  min-height: 40px;
+}
+
+.adminShellV2 .providerTile,
+.adminShellV2 .socialAuthProviderCard,
+.adminShellV2 .marketListCard,
+.adminShellV2 .resetOption,
+.adminShellV2 .symbolRow {
+  background: #f7f8fa;
+  border: 0;
+  border-radius: 18px;
+}
+
+.adminShellV2 .providerTile:hover,
+.adminShellV2 .marketListCard:hover,
+.adminShellV2 .resetOption:hover {
+  background: #f2f4f6;
+}
+
+.adminShellV2 .settingsControlCard,
+.adminShellV2 .resetPanel,
+.adminShellV2 .resetConfirmPanel {
+  border-radius: 24px;
+}
+
+.adminShellV2 .newsTableTable,
+.adminShellV2 .calendarEventsTable,
+.adminShellV2 .dashboardRunsTable,
+.adminShellV2 .settingsTable {
+  box-shadow: var(--admin-shadow-card);
+}
+
+.adminShellV2 .calendarEventsTable {
+  table-layout: fixed;
+}
+
+.adminShellV2 .calendarEventsTable th:nth-child(1),
+.adminShellV2 .calendarEventsTable td:nth-child(1) {
+  width: 112px;
+}
+
+.adminShellV2 .calendarEventsTable th:nth-child(2),
+.adminShellV2 .calendarEventsTable td:nth-child(2) {
+  width: 110px;
+}
+
+.adminShellV2 .calendarEventsTable th:nth-child(4),
+.adminShellV2 .calendarEventsTable td:nth-child(4) {
+  width: 128px;
+}
+
+.adminShellV2 .calendarEventsTable strong {
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+@media (max-width: 900px) {
+  .adminShellV2 .filterBarTitle,
+  .adminShellV2 .filterBoxTitle {
+    flex-basis: 100%;
+  }
+
+  .adminShellV2 .filterBarControls,
+  .adminShellV2 .filterGroup,
+  .adminShellV2 .filterGroup--date,
+  .adminShellV2 .filterGroup--search {
+    flex-basis: 100%;
+  }
+
+  .adminShellV2 .calendarSummaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .adminShellV2 .calendarSummaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminShellV2 .calendarSummaryItem {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+}

@@ -11,6 +11,37 @@ import {
 import { ensureNewsSourcesFromItems } from './newsSources.mjs';
 import { nowIso } from './time.mjs';
 
+function stableCalendarKey(item) {
+  if (!item || typeof item !== 'object') return '';
+  const provider = String(item.provider || '').trim().toLowerCase();
+  const providerItemId = String(item.providerItemId || '').trim();
+  if (provider && providerItemId) return `${provider}:${providerItemId}`;
+  const type = String(item.type || '').trim().toLowerCase();
+  const date = String(item.date || item.eventAt || '').slice(0, 10);
+  const symbol = String(item.symbol || '').trim().toUpperCase();
+  const title = String(item.title || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const country = String(item.country || '').trim().toLowerCase();
+  return [provider, type, date, symbol, title, country].join('|');
+}
+
+function latestCalendarItem(a, b) {
+  const aTime = Date.parse(a?.fetchedAt || a?.updatedAt || a?.createdAt || a?.eventAt || a?.date || 0);
+  const bTime = Date.parse(b?.fetchedAt || b?.updatedAt || b?.createdAt || b?.eventAt || b?.date || 0);
+  return (Number.isFinite(bTime) ? bTime : 0) >= (Number.isFinite(aTime) ? aTime : 0) ? b : a;
+}
+
+function dedupeCalendarEvents(rows) {
+  const byKey = new Map();
+  for (const row of rows || []) {
+    if (!row || typeof row !== 'object') continue;
+    const key = stableCalendarKey(row) || String(row.id || '');
+    if (!key) continue;
+    const prev = byKey.get(key);
+    byKey.set(key, prev ? latestCalendarItem(prev, row) : row);
+  }
+  return [...byKey.values()];
+}
+
 export function ensureDbShape(db) {
   if (!db.appSettings || typeof db.appSettings !== 'object') {
     db.appSettings = defaultDb().appSettings;
@@ -30,14 +61,10 @@ export function ensureDbShape(db) {
     db.providerSettings = defaultProviderSettings();
   }
   db.providerSettings = db.providerSettings.filter((setting) => setting && typeof setting === 'object');
-  if (!db.providerSettings.some((s) => s.provider === 'youtube')) {
-    db.providerSettings.push(defaultProviderSettings().find((s) => s.provider === 'youtube'));
-  }
-  if (!db.providerSettings.some((s) => s.provider === 'ninjas')) {
-    db.providerSettings.push(defaultProviderSettings().find((s) => s.provider === 'ninjas'));
-  }
-  if (!db.providerSettings.some((s) => s.provider === 'coingecko')) {
-    db.providerSettings.push(defaultProviderSettings().find((s) => s.provider === 'coingecko'));
+  for (const defaultSetting of defaultProviderSettings()) {
+    if (!db.providerSettings.some((s) => s.provider === defaultSetting.provider)) {
+      db.providerSettings.push(defaultSetting);
+    }
   }
   if (!Array.isArray(db.pollingJobs)) db.pollingJobs = defaultPollingJobs();
   const defaults = defaultPollingJobs();
@@ -63,6 +90,12 @@ export function ensureDbShape(db) {
     if (existing.jobKey === 'concall_transcripts_recent' && existing.params.fallbackLatest == null) {
       existing.params = { ...existing.params, fallbackLatest: true };
     }
+    if (existing.jobKey === 'calendar_economic' && existing.params.daysBack == null) {
+      existing.params = { ...existing.params, daysBack: defaultJob.params.daysBack };
+    }
+    if (existing.jobKey === 'calendar_earnings' && existing.params.daysBack == null) {
+      existing.params = { ...existing.params, daysBack: defaultJob.params.daysBack };
+    }
     if (existing.handler === 'youtube_economy' && existing.params && typeof existing.params === 'object' && Array.isArray(existing.params.handles)) {
       const { handles, ...rest } = existing.params;
       existing.params = rest;
@@ -86,6 +119,7 @@ export function ensureDbShape(db) {
   }
   if (!Array.isArray(db.newsTranslations)) db.newsTranslations = [];
   if (!Array.isArray(db.calendarEvents)) db.calendarEvents = [];
+  db.calendarEvents = dedupeCalendarEvents(db.calendarEvents);
   if (!Array.isArray(db.concallTranscripts)) db.concallTranscripts = [];
   if (!Array.isArray(db.youtubeVideos)) db.youtubeVideos = [];
   if (!Array.isArray(db.marketQuotes)) db.marketQuotes = [];

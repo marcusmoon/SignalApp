@@ -108,6 +108,7 @@ export const config = {
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
   youtubeApiKey: process.env.YOUTUBE_API_KEY || '',
   ninjasKey: process.env.NINJAS_KEY || '',
+  secUserAgent: process.env.SEC_USER_AGENT || process.env.SIGNAL_SEC_USER_AGENT || '',
   translationProvider: process.env.TRANSLATION_PROVIDER || 'mock',
   translationModel: process.env.TRANSLATION_MODEL || 'mock-ko-news-v1',
 };

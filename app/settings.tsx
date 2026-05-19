@@ -285,6 +285,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     tabBar: {
       flexShrink: 0,
       flexDirection: 'row',
+      flexWrap: 'wrap',
       marginHorizontal: 16,
       marginTop: 10,
       marginBottom: 6,
@@ -296,9 +297,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: SEGMENT_TAB_GAP,
     },
     tabBtn: {
-      flex: 1,
+      flexGrow: 1,
+      flexBasis: '30%',
       minWidth: 0,
       paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
+      paddingHorizontal: 8,
       borderRadius: SEGMENT_TAB_BTN_RADIUS,
       alignItems: 'center',
       justifyContent: 'center',
@@ -443,7 +446,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     resetBtnText: { fontSize: sf(13), fontWeight: '700', color: theme.danger },
     displayCard: {
-      marginBottom: 16,
+      marginBottom: 12,
       borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.border,
@@ -457,7 +460,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.textMuted,
       letterSpacing: 1.1,
       textTransform: 'uppercase',
-      marginBottom: 12,
+      marginBottom: 10,
     },
     themePreviewShell: {
       borderRadius: 12,
@@ -756,8 +759,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignItems: 'center',
       borderRadius: 8,
       borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: '#14141C',
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
     },
     cacheClearBtnText: { fontSize: sf(13), fontWeight: '800', color: theme.green },
     cacheClearSuccess: {

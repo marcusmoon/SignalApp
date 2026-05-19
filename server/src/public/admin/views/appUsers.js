@@ -270,6 +270,50 @@ function userCard(user, { esc, textFor, formatDateTime }, options = {}) {
   `;
 }
 
+function userTable(rows, selected, { esc, textFor, formatDateTime }) {
+  if (!rows.length) return `<p class="muted">${esc(textFor('appUsersEmpty'))}</p>`;
+  return `
+    <div class="tableScroll appUserTableWrap">
+      <table class="settingsTable appUserTable">
+        <thead>
+          <tr>
+            <th>${esc(textFor('appUsersUserColumn'))}</th>
+            <th>${esc(textFor('colStatus'))}</th>
+            <th>${esc(textFor('appUsersSessionsShort'))}</th>
+            <th>${esc(textFor('appUsersDevicesShort'))}</th>
+            <th>${esc(textFor('appUsersQueuedShort'))}</th>
+            <th>${esc(textFor('colDate'))}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows
+            .map(
+              (user) => `
+                <tr class="appUserTableRow ${user.id === selected?.id ? 'appUserTableRow--selected' : ''}" data-app-user-row="${esc(user.id)}" role="button" tabindex="0" aria-selected="${user.id === selected?.id ? 'true' : 'false'}">
+                  <td>
+                    <div class="appUserRowIdentity">
+                      <span class="appUserAvatar">${esc((user.nickname || user.email || '?').slice(0, 1).toUpperCase())}</span>
+                      <div>
+                        <strong>${esc(user.nickname || '-')}</strong>
+                        <span class="muted">${esc(user.email || user.id)}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span class="pill ${user.active ? 'pillStatus--ok' : 'pillStatus--warn'}">${user.active ? esc(textFor('statusActive')) : esc(textFor('statusInactive'))}</span></td>
+                  <td>${esc(user.activeSessionCount || 0)}</td>
+                  <td>${esc(user.deviceCount || 0)}</td>
+                  <td>${esc(user.queuedNotificationCount || 0)}</td>
+                  <td class="muted">${esc(formatDateTime(user.createdAt))}</td>
+                </tr>
+              `,
+            )
+            .join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function pager({ page, totalPages, prefix, esc }) {
   return `
     <div class="pager">
@@ -330,17 +374,7 @@ function renderUserManagement({
             <button class="secondary" id="searchAppUsersBtn">${esc(textFor('btnSearch'))}</button>
           </div>
         </div>
-        <div class="appUserList">
-          ${
-            rows.length === 0
-              ? `<p class="muted">${esc(textFor('appUsersEmpty'))}</p>`
-              : rows
-                  .map((user) =>
-                    userCard(user, { esc, textFor, formatDateTime }, { selected: user.id === selected?.id }),
-                  )
-                  .join('')
-          }
-        </div>
+        ${userTable(rows, selected, { esc, textFor, formatDateTime })}
         ${pager({ page: body.page, totalPages: body.totalPages, prefix: 'app-users', esc })}
       </section>
 
@@ -354,9 +388,6 @@ function renderUserManagement({
         ${
           selected
             ? `
-              <div class="appUserSelected">
-                ${userCard(selected, { esc, textFor, formatDateTime }, { mode: 'summary', selected: true })}
-              </div>
               <div class="segmented appUserDetailTabs">
                 ${detailTabButtons(safeDetailTab, { esc, textFor })}
               </div>

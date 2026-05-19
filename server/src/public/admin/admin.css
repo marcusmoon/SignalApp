@@ -5531,6 +5531,353 @@ body.adminShellV2.loginMode {
   line-height: 1.35;
 }
 
+/* Job operations redesign — card-first flow for configure, run, inspect. */
+.adminShellV2 .pageHeaderActions--jobs {
+  align-items: center;
+}
+
+.adminShellV2 .jobOpsSummary {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: var(--admin-shadow-card);
+}
+
+.adminShellV2 .jobOpsSummaryHead,
+.adminShellV2 .jobDomainHead,
+.adminShellV2 .jobCardHead,
+.adminShellV2 .jobEditPanelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.adminShellV2 .jobOpsSummaryHead strong,
+.adminShellV2 .jobDomainHead strong {
+  color: #191f28;
+  font-size: 16px;
+  font-weight: 850;
+}
+
+.adminShellV2 .jobOpsSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.adminShellV2 .jobOpsMetric {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 18px;
+  background: #f7f8fa;
+}
+
+.adminShellV2 .jobOpsMetric span {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.adminShellV2 .jobOpsMetric strong {
+  color: #191f28;
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.adminShellV2 .jobBoard {
+  display: grid;
+  gap: 18px;
+}
+
+.adminShellV2 .jobDomainSection {
+  display: grid;
+  gap: 10px;
+}
+
+.adminShellV2 .jobDomainHead {
+  padding: 0 2px;
+}
+
+.adminShellV2 .jobCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.adminShellV2 .jobCard {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 24px;
+  border: 1px solid transparent;
+  background: #ffffff;
+  box-shadow: var(--admin-shadow-card);
+}
+
+.adminShellV2 .jobCard--healthy {
+  border-left: 4px solid #20c997;
+}
+
+.adminShellV2 .jobCard--disabled {
+  border-left: 4px solid #adb5bd;
+}
+
+.adminShellV2 .jobCard--failed,
+.adminShellV2 .jobCard--staleLock {
+  border-left: 4px solid #ff4d4f;
+}
+
+.adminShellV2 .jobCard--locked {
+  border-left: 4px solid #3182f6;
+}
+
+.adminShellV2 .jobCardTitle {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.adminShellV2 .jobCardTitle strong {
+  overflow: hidden;
+  color: #191f28;
+  font-size: 16px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminShellV2 .jobCardTitle span {
+  overflow: hidden;
+  color: #8b95a1;
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminShellV2 .jobCardDesc {
+  min-height: 36px;
+  color: #6b7684;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.adminShellV2 .jobCardBadges,
+.adminShellV2 .jobCardActions,
+.adminShellV2 .jobCardAlert {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+.adminShellV2 .jobCardFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.adminShellV2 .jobCardFacts > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: #f7f8fa;
+}
+
+.adminShellV2 .jobCardFacts > div.jobCardAlert {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  background: #fff7f7;
+}
+
+.adminShellV2 .jobCardFacts span {
+  color: #8b95a1;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.adminShellV2 .jobCardFacts strong {
+  overflow: hidden;
+  color: #191f28;
+  font-size: 13px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminShellV2 .jobCardActions {
+  padding-top: 2px;
+}
+
+.adminShellV2 .jobCardActions button {
+  min-height: 36px;
+}
+
+.adminShellV2 .jobCardEdit {
+  padding-top: 12px;
+  border-top: 1px solid #eef1f4;
+}
+
+.adminShellV2 .jobEditPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.adminShellV2 .jobSettingsBody {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0;
+  align-items: end;
+}
+
+.adminShellV2 .jobToggleField span {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: #f7f8fa;
+  color: #191f28;
+}
+
+.adminShellV2 .jobReadonlyGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.adminShellV2 .jobReadonlyItem {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: #f7f8fa;
+}
+
+.adminShellV2 .jobReadonlyItem span {
+  color: #8b95a1;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.adminShellV2 .jobReadonlyItem strong {
+  overflow: hidden;
+  color: #191f28;
+  font-size: 12px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminShellV2 .jobEditActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.adminShellV2 .jobEditActions button {
+  min-width: 120px;
+}
+
+/* Settings IA polish — group related controls so the admin can scan intent before choosing a tab. */
+.adminShellV2 #view-settings .pageHeaderActions,
+.adminShellV2 #view-translations .pageHeaderActions {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.adminShellV2 .settingsTabsShell {
+  flex: 1 1 820px;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, auto));
+  gap: 10px;
+  align-items: start;
+}
+
+.adminShellV2 .settingsTabsGroup {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.adminShellV2 .settingsNavLabel {
+  padding-left: 6px;
+  color: #8b95a1;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.adminShellV2 .settingsTabsGroup .segmented {
+  width: auto;
+  max-width: 100%;
+  justify-content: flex-start;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.adminShellV2 .settingsTabsGroup .segmented::-webkit-scrollbar {
+  display: none;
+}
+
+.adminShellV2 .settingsTabsGroup .segmented .segBtn {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding-inline: 12px;
+  white-space: nowrap;
+}
+
+.adminShellV2 #view-settings .refreshBtn,
+.adminShellV2 #view-translations .refreshBtn {
+  flex: 0 0 auto;
+  margin-left: 0;
+}
+
+@media (min-width: 1180px) {
+  .adminShellV2 #providerSettings .settingsSectionGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .adminShellV2 #providerSettings .settingsControlCard:nth-child(4) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 1180px) {
+  .adminShellV2 .jobCardsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminShellV2 .jobOpsSummaryGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .adminShellV2 .jobSettingsBody,
+  .adminShellV2 .jobReadonlyGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .adminShellV2 .settingsTabsShell {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
   .adminShellV2 .filterBarTitle,
   .adminShellV2 .filterBoxTitle {
@@ -5547,9 +5894,33 @@ body.adminShellV2.loginMode {
   .adminShellV2 .calendarSummaryGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .adminShellV2 .settingsTabsShell {
+    flex-basis: 100%;
+  }
+
+  .adminShellV2 .jobOpsSummaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 560px) {
+  .adminShellV2 .jobOpsSummaryHead,
+  .adminShellV2 .jobDomainHead,
+  .adminShellV2 .jobCardHead {
+    align-items: flex-start;
+  }
+
+  .adminShellV2 .jobCardFacts,
+  .adminShellV2 .jobSettingsBody,
+  .adminShellV2 .jobReadonlyGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminShellV2 .jobOpsSummaryGrid {
+    grid-template-columns: 1fr;
+  }
+
   .adminShellV2 .calendarSummaryGrid {
     grid-template-columns: 1fr;
   }
@@ -5558,4 +5929,985 @@ body.adminShellV2.loginMode {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
   }
+
+  .adminShellV2 .settingsTabsShell {
+    grid-template-columns: 1fr;
+  }
+}
+
+body.adminShellV2[data-admin-theme='dark'] header,
+body.adminShellV2[data-admin-theme='dark'] .side,
+body.adminShellV2[data-admin-theme='dark'] .sideWorkspace,
+body.adminShellV2[data-admin-theme='dark'] .panel,
+body.adminShellV2[data-admin-theme='dark'] .card,
+body.adminShellV2[data-admin-theme='dark'] .settingsControlCard,
+body.adminShellV2[data-admin-theme='dark'] .settingsHero,
+body.adminShellV2[data-admin-theme='dark'] .dangerIntro,
+body.adminShellV2[data-admin-theme='dark'] .filterBar,
+body.adminShellV2[data-admin-theme='dark'] .filterBox,
+body.adminShellV2[data-admin-theme='dark'] .actionBox,
+body.adminShellV2[data-admin-theme='dark'] .calendarSummaryItem,
+body.adminShellV2[data-admin-theme='dark'] .adminCalendarHost,
+body.adminShellV2[data-admin-theme='dark'] .calendarEventsCard,
+body.adminShellV2[data-admin-theme='dark'] .calendarMonthPanel,
+body.adminShellV2[data-admin-theme='dark'] .dialogPanel,
+body.adminShellV2[data-admin-theme='dark'] .dialogFoot,
+body.adminShellV2[data-admin-theme='dark'] .newsEdit,
+body.adminShellV2[data-admin-theme='dark'] .jobOpsSummary,
+body.adminShellV2[data-admin-theme='dark'] .jobCard,
+body.adminShellV2[data-admin-theme='dark'] .providerTileGrid,
+body.adminShellV2[data-admin-theme='dark'] .providerLine,
+body.adminShellV2[data-admin-theme='dark'] .socialAuthProviderCard,
+body.adminShellV2[data-admin-theme='dark'] .marketListCard,
+body.adminShellV2[data-admin-theme='dark'] .resetOption,
+body.adminShellV2[data-admin-theme='dark'] .symbolRow,
+body.adminShellV2[data-admin-theme='dark'] .notificationMiniCard,
+body.adminShellV2[data-admin-theme='dark'] .appUserCard {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border-color: var(--admin-border-soft);
+}
+
+body.adminShellV2[data-admin-theme='dark'] .opsHeroMain,
+body.adminShellV2[data-admin-theme='dark'] .opsHeroMetrics {
+  background:
+    linear-gradient(135deg, rgba(96, 165, 250, 0.12), transparent 45%),
+    var(--admin-surface);
+}
+
+body.adminShellV2[data-admin-theme='dark'] .navBtn.active,
+body.adminShellV2[data-admin-theme='dark'] .appUserTableRow--selected td {
+  background: var(--admin-active);
+  color: var(--admin-text);
+}
+
+body.adminShellV2[data-admin-theme='dark'] .navBtn::before,
+body.adminShellV2[data-admin-theme='dark'] .settingsHeroIcon,
+body.adminShellV2[data-admin-theme='dark'] .providerGlyph,
+body.adminShellV2[data-admin-theme='dark'] .jobCardFacts > div,
+body.adminShellV2[data-admin-theme='dark'] .jobReadonlyItem,
+body.adminShellV2[data-admin-theme='dark'] .jobToggleField span,
+body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric,
+body.adminShellV2[data-admin-theme='dark'] .previewBar,
+body.adminShellV2[data-admin-theme='dark'] .calCell {
+  background: var(--admin-surface-2);
+  color: var(--admin-text-soft);
+  border-color: var(--admin-border);
+  box-shadow: none;
+}
+
+body.adminShellV2[data-admin-theme='dark'] .jobCardFacts > div.jobCardAlert {
+  background: var(--admin-alert-bg);
+}
+
+body.adminShellV2[data-admin-theme='dark'] .dialogHead,
+body.adminShellV2[data-admin-theme='dark'] .dialogFoot,
+body.adminShellV2[data-admin-theme='dark'] .jobCardEdit {
+  border-color: var(--admin-border-soft);
+}
+
+body.adminShellV2[data-admin-theme='dark'] .calendarSummaryItem strong,
+body.adminShellV2[data-admin-theme='dark'] .calendarDayHeading,
+body.adminShellV2[data-admin-theme='dark'] .dialogHead h3,
+body.adminShellV2[data-admin-theme='dark'] .providerTitle strong,
+body.adminShellV2[data-admin-theme='dark'] .socialAuthProviderCard strong,
+body.adminShellV2[data-admin-theme='dark'] .jobCardTitle strong,
+body.adminShellV2[data-admin-theme='dark'] .jobCardFacts strong,
+body.adminShellV2[data-admin-theme='dark'] .jobReadonlyItem strong,
+body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric strong {
+  color: var(--admin-text);
+}
+
+@media (min-width: 1360px) {
+  .adminShellV2 #providerSettings .settingsSectionGrid {
+    grid-template-columns: minmax(420px, 0.9fr) minmax(520px, 1.1fr);
+  }
+}
+
+@media (min-width: 1180px) and (max-width: 1359px) {
+  .adminShellV2 #providerSettings .settingsSectionGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1180px) {
+  .adminShellV2 .providerLine {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+  }
+
+  .adminShellV2 .providerLine .pill,
+  .adminShellV2 .providerLine .providerSwitch {
+    grid-column: 2 / -1;
+  }
+}
+
+/* Final admin theme and management-screen normalization. Keep this last. */
+body.adminShellV2[data-admin-theme='light'] {
+  color-scheme: light;
+  --accent: #3182f6;
+  --accent-dim: rgba(49, 130, 246, 0.10);
+  --accent-border: rgba(49, 130, 246, 0.24);
+  --bg: #f7f8fa;
+  --bg-elevated: #ffffff;
+  --panel: #ffffff;
+  --border: #e5e8eb;
+  --text: #191f28;
+  --muted: #6b7684;
+  --dim: #b0b8c1;
+  --text-muted: #6b7684;
+  --danger: #f04452;
+  --warning: #f59f00;
+  --info: #3182f6;
+  --admin-bg: #f7f8fa;
+  --admin-shell: #ffffff;
+  --admin-surface: #ffffff;
+  --admin-surface-2: #f2f4f6;
+  --admin-border: #e5e8eb;
+  --admin-border-soft: #eef1f4;
+  --admin-text: #191f28;
+  --admin-text-soft: #333d4b;
+  --admin-muted: #6b7684;
+  --admin-faint: #8b95a1;
+  --admin-hover: rgba(2, 32, 71, 0.04);
+  --admin-active: rgba(49, 130, 246, 0.10);
+  --admin-row: #f7f8fa;
+  --admin-alert-bg: #fff7f7;
+  --admin-shadow-card: 0 1px 2px rgba(0, 27, 55, 0.04), 0 8px 24px rgba(0, 27, 55, 0.06);
+}
+
+body.adminShellV2[data-admin-theme='dark'] {
+  color-scheme: dark;
+  --accent: #60a5fa;
+  --accent-dim: rgba(96, 165, 250, 0.14);
+  --accent-border: rgba(96, 165, 250, 0.30);
+  --bg: #0b1020;
+  --bg-elevated: #111827;
+  --panel: #111827;
+  --border: #243149;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --dim: #64748b;
+  --text-muted: #94a3b8;
+  --danger: #ff5c78;
+  --warning: #f59e0b;
+  --info: #60a5fa;
+  --admin-bg: #0b1020;
+  --admin-shell: #070b14;
+  --admin-surface: #111827;
+  --admin-surface-2: #0f172a;
+  --admin-border: #243149;
+  --admin-border-soft: rgba(148, 163, 184, 0.16);
+  --admin-text: #f8fafc;
+  --admin-text-soft: #cbd5e1;
+  --admin-muted: #94a3b8;
+  --admin-faint: #64748b;
+  --admin-hover: rgba(148, 163, 184, 0.08);
+  --admin-active: rgba(96, 165, 250, 0.14);
+  --admin-row: rgba(15, 23, 42, 0.72);
+  --admin-alert-bg: rgba(255, 92, 120, 0.10);
+  --admin-shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03), 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+body.adminShellV2:not(.loginMode) {
+  background: var(--admin-bg);
+}
+
+.adminShellV2 header,
+.adminShellV2 .side,
+.adminShellV2 .card,
+.adminShellV2 .filterBar,
+.adminShellV2 .filterBox,
+.adminShellV2 .actionBox,
+.adminShellV2 .settingsControlCard,
+.adminShellV2 .dialogPanel,
+.adminShellV2 .calendarEventsCard,
+.adminShellV2 .calendarMonthPanel,
+.adminShellV2 .jobCard,
+.adminShellV2 .jobOpsSummary {
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  border-color: var(--admin-border-soft);
+}
+
+.adminShellV2 .pageTitle,
+.adminShellV2 .cardKicker,
+.adminShellV2 .jobCardTitle strong,
+.adminShellV2 .jobCardFacts strong,
+.adminShellV2 .jobReadonlyItem strong,
+.adminShellV2 .jobOpsMetric strong,
+.adminShellV2 .jobDomainHead strong,
+.adminShellV2 .providerTitle strong,
+.adminShellV2 .socialAuthProviderCard strong,
+.adminShellV2 .legalNavBtn,
+.adminShellV2 .appUserRowIdentity strong {
+  color: var(--admin-text);
+}
+
+.adminShellV2 .pageDesc,
+.adminShellV2 .cardHint,
+.adminShellV2 .muted,
+.adminShellV2 .settingsNavLabel,
+.adminShellV2 .jobCardDesc,
+.adminShellV2 .jobCardTitle span,
+.adminShellV2 .jobCardFacts span,
+.adminShellV2 .jobReadonlyItem span,
+.adminShellV2 .jobOpsMetric span,
+.adminShellV2 .providerTitle .muted,
+.adminShellV2 .appUserRowIdentity .muted {
+  color: var(--admin-muted);
+}
+
+.adminShellV2 input,
+.adminShellV2 select,
+.adminShellV2 textarea,
+.adminShellV2 button.secondary,
+.adminShellV2 button.ghost,
+.adminShellV2 .segmented,
+.adminShellV2 .tabs,
+.adminShellV2 .filterGroup,
+.adminShellV2 .filterGroupTitle,
+.adminShellV2 .providerLine,
+.adminShellV2 .providerTile,
+.adminShellV2 .socialAuthProviderCard,
+.adminShellV2 .marketListCard,
+.adminShellV2 .resetOption,
+.adminShellV2 .symbolRow,
+.adminShellV2 .jobCardFacts > div,
+.adminShellV2 .jobReadonlyItem,
+.adminShellV2 .jobToggleField span,
+.adminShellV2 .jobOpsMetric,
+.adminShellV2 .settingsTable,
+.adminShellV2 table {
+  background: var(--admin-surface-2);
+  color: var(--admin-text-soft);
+  border-color: var(--admin-border);
+}
+
+.adminShellV2 button.active,
+.adminShellV2 button.success,
+.adminShellV2 .segmented .segBtn.active,
+.adminShellV2 .tabBtn.active,
+.adminShellV2 .legalNavBtn.active,
+.adminShellV2 .legalLocaleBtn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.adminShellV2 th {
+  background: var(--admin-row);
+  color: var(--admin-muted);
+}
+
+.adminShellV2 td {
+  color: var(--admin-text-soft);
+  border-bottom-color: var(--admin-border-soft);
+}
+
+.adminShellV2 tbody tr:hover td,
+.adminShellV2 .providerLine:hover,
+.adminShellV2 .appUserTableRow:hover td,
+.adminShellV2 .appUserTableRow:focus-visible td {
+  background: var(--admin-hover);
+}
+
+.adminShellV2 .themeGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 420px;
+}
+
+.adminShellV2 .swatchBtn {
+  justify-content: flex-start;
+  min-height: 44px;
+  text-transform: capitalize;
+}
+
+.adminShellV2 .legalManager {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.adminShellV2 .legalNavPanel,
+.adminShellV2 .legalEditorPanel {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.adminShellV2 .legalNavGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.adminShellV2 .legalNavBtn {
+  width: 100%;
+  justify-content: flex-start;
+  min-height: 42px;
+  text-align: left;
+}
+
+.adminShellV2 .legalLocaleGrid,
+.adminShellV2 .legalEditorGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.adminShellV2 .legalLocaleBtn,
+.adminShellV2 .legalSwitch {
+  min-height: 42px;
+}
+
+.adminShellV2 .legalBodyField textarea {
+  min-height: 300px;
+}
+
+.adminShellV2 .legalEditorFoot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.adminShellV2 .providerTileGrid {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--admin-border-soft);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--admin-surface);
+}
+
+.adminShellV2 .providerLine {
+  display: grid;
+  grid-template-columns: 44px minmax(160px, 1fr) auto auto auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 12px;
+  border: 0;
+  border-bottom: 1px solid var(--admin-border-soft);
+  border-radius: 0;
+}
+
+.adminShellV2 .providerLine:last-child {
+  border-bottom: 0;
+}
+
+.adminShellV2 .providerGlyph {
+  background: var(--admin-active);
+  color: var(--accent);
+}
+
+.adminShellV2 .appUserTableWrap {
+  margin-top: 10px;
+}
+
+.adminShellV2 .appUserTable {
+  min-width: 760px;
+}
+
+.adminShellV2 .appUserTableRow {
+  cursor: pointer;
+}
+
+.adminShellV2 .appUserTableRow--selected td {
+  background: var(--admin-active);
+}
+
+.adminShellV2 .appUserRowIdentity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.adminShellV2 .appUserRowIdentity > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.adminShellV2 .appUserRowIdentity strong,
+.adminShellV2 .appUserRowIdentity span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adminShellV2 .appUserDetailCard .cardHead {
+  margin-bottom: 0;
+}
+
+.adminShellV2 .appUserDetailTabs {
+  margin-top: 0;
+}
+
+.adminShellV2 .jobCardFacts > div.jobCardAlert {
+  background: var(--admin-alert-bg);
+}
+
+.adminShellV2 .jobCard--healthy {
+  border-left-color: var(--color-success);
+}
+
+.adminShellV2 .jobCard--disabled {
+  border-left-color: var(--admin-faint);
+}
+
+.adminShellV2 .jobCard--failed,
+.adminShellV2 .jobCard--staleLock {
+  border-left-color: var(--danger);
+}
+
+.adminShellV2 .jobCard--locked {
+  border-left-color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .adminShellV2 .legalManager {
+    grid-template-columns: 1fr;
+  }
+
+  .adminShellV2 .providerLine {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+  }
+
+  .adminShellV2 .providerLine .pill,
+  .adminShellV2 .providerLine .providerSwitch {
+    grid-column: 2 / -1;
+  }
+}
+
+@media (max-width: 560px) {
+  .adminShellV2 .legalLocaleGrid,
+  .adminShellV2 .legalEditorGrid,
+  .adminShellV2 .themeGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminShellV2 .legalEditorFoot {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+/*
+ * Admin theme contract.
+ *
+ * Element roles:
+ * - page/shell/header/sidebar: app chrome
+ * - surface: primary cards, dialogs, tables
+ * - surface-muted: nested rows, filters, inactive controls
+ * - input: form controls
+ * - active/hover: selected and transient states
+ * - text/secondary/tertiary: primary copy, helper copy, faint metadata
+ *
+ * Keep this as the last color section. Older admin screens still contain
+ * hard-coded colors, so the role selectors below intentionally normalize the
+ * common components back to the light/dark contract.
+ */
+body.adminShellV2[data-admin-theme='light'] {
+  color-scheme: light;
+  --adm-page: #f7f8fa;
+  --adm-shell: #ffffff;
+  --adm-header: rgba(255, 255, 255, 0.92);
+  --adm-sidebar: #ffffff;
+  --adm-surface: #ffffff;
+  --adm-surface-muted: #f2f4f6;
+  --adm-surface-raised: #ffffff;
+  --adm-input: #f2f4f6;
+  --adm-hover: rgba(2, 32, 71, 0.04);
+  --adm-active: rgba(49, 130, 246, 0.10);
+  --adm-border: #e5e8eb;
+  --adm-border-soft: #eef1f4;
+  --adm-border-strong: #d7dde4;
+  --adm-text: #191f28;
+  --adm-text-secondary: #4e5968;
+  --adm-text-tertiary: #8b95a1;
+  --adm-disabled: #b0b8c1;
+  --adm-primary: #3182f6;
+  --adm-primary-strong: #1b64da;
+  --adm-primary-soft: #eef6ff;
+  --adm-success: #008f5f;
+  --adm-success-soft: #e8f7ef;
+  --adm-warning: #c77c00;
+  --adm-warning-soft: #fff7e6;
+  --adm-danger: #e42939;
+  --adm-danger-soft: #fff2f3;
+  --adm-info: #1b64da;
+  --adm-info-soft: #eef6ff;
+  --adm-overlay: rgba(15, 23, 42, 0.48);
+  --adm-shadow: 0 1px 2px rgba(0, 27, 55, 0.04), 0 10px 28px rgba(0, 27, 55, 0.06);
+  --adm-shadow-strong: 0 20px 60px rgba(0, 27, 55, 0.16);
+
+  --accent: var(--adm-primary);
+  --accent-dim: var(--adm-primary-soft);
+  --accent-border: rgba(49, 130, 246, 0.24);
+  --bg: var(--adm-page);
+  --bg-elevated: var(--adm-surface);
+  --panel: var(--adm-surface);
+  --border: var(--adm-border);
+  --text: var(--adm-text);
+  --muted: var(--adm-text-tertiary);
+  --dim: var(--adm-disabled);
+  --text-muted: var(--adm-text-secondary);
+  --danger: var(--adm-danger);
+  --warning: var(--adm-warning);
+  --info: var(--adm-info);
+  --color-bg-page: var(--adm-page);
+  --color-bg-card: var(--adm-surface);
+  --color-bg-sidebar: var(--adm-sidebar);
+  --color-gray-50: var(--adm-page);
+  --color-gray-100: var(--adm-surface-muted);
+  --color-gray-200: var(--adm-border-soft);
+  --color-gray-300: var(--adm-border);
+  --color-gray-400: var(--adm-text-tertiary);
+  --color-gray-600: var(--adm-text-secondary);
+  --color-gray-700: var(--adm-text-secondary);
+  --color-gray-800: var(--adm-text);
+  --color-gray-900: var(--adm-text);
+  --color-primary-500: var(--adm-primary);
+  --color-primary-600: var(--adm-primary-strong);
+  --color-primary-700: var(--adm-primary-strong);
+  --color-success: var(--adm-success);
+  --color-warning: var(--adm-warning);
+  --color-error: var(--adm-danger);
+  --color-info: var(--adm-info);
+  --admin-bg: var(--adm-page);
+  --admin-shell: var(--adm-shell);
+  --admin-surface: var(--adm-surface);
+  --admin-surface-2: var(--adm-surface-muted);
+  --admin-border: var(--adm-border);
+  --admin-border-soft: var(--adm-border-soft);
+  --admin-text: var(--adm-text);
+  --admin-text-soft: var(--adm-text-secondary);
+  --admin-muted: var(--adm-text-tertiary);
+  --admin-faint: var(--adm-disabled);
+  --admin-hover: var(--adm-hover);
+  --admin-active: var(--adm-active);
+  --admin-row: var(--adm-surface-muted);
+  --admin-alert-bg: var(--adm-danger-soft);
+  --admin-shadow-card: var(--adm-shadow);
+}
+
+body.adminShellV2[data-admin-theme='dark'] {
+  color-scheme: dark;
+  --adm-page: #090f1c;
+  --adm-shell: #0b1020;
+  --adm-header: rgba(11, 16, 32, 0.92);
+  --adm-sidebar: #0b1020;
+  --adm-surface: #111827;
+  --adm-surface-muted: #172033;
+  --adm-surface-raised: #1b2437;
+  --adm-input: #172033;
+  --adm-hover: rgba(148, 163, 184, 0.08);
+  --adm-active: rgba(96, 165, 250, 0.16);
+  --adm-border: #2a3854;
+  --adm-border-soft: rgba(148, 163, 184, 0.16);
+  --adm-border-strong: #3b4b69;
+  --adm-text: #f8fafc;
+  --adm-text-secondary: #cbd5e1;
+  --adm-text-tertiary: #94a3b8;
+  --adm-disabled: #64748b;
+  --adm-primary: #60a5fa;
+  --adm-primary-strong: #93c5fd;
+  --adm-primary-soft: rgba(96, 165, 250, 0.16);
+  --adm-success: #34d399;
+  --adm-success-soft: rgba(52, 211, 153, 0.14);
+  --adm-warning: #fbbf24;
+  --adm-warning-soft: rgba(251, 191, 36, 0.14);
+  --adm-danger: #fb7185;
+  --adm-danger-soft: rgba(251, 113, 133, 0.14);
+  --adm-info: #60a5fa;
+  --adm-info-soft: rgba(96, 165, 250, 0.16);
+  --adm-overlay: rgba(0, 0, 0, 0.70);
+  --adm-shadow: 0 1px 0 rgba(255, 255, 255, 0.03), 0 12px 34px rgba(0, 0, 0, 0.26);
+  --adm-shadow-strong: 0 24px 80px rgba(0, 0, 0, 0.44);
+
+  --accent: var(--adm-primary);
+  --accent-dim: var(--adm-primary-soft);
+  --accent-border: rgba(96, 165, 250, 0.30);
+  --bg: var(--adm-page);
+  --bg-elevated: var(--adm-surface);
+  --panel: var(--adm-surface);
+  --border: var(--adm-border);
+  --text: var(--adm-text);
+  --muted: var(--adm-text-tertiary);
+  --dim: var(--adm-disabled);
+  --text-muted: var(--adm-text-secondary);
+  --danger: var(--adm-danger);
+  --warning: var(--adm-warning);
+  --info: var(--adm-info);
+  --color-bg-page: var(--adm-page);
+  --color-bg-card: var(--adm-surface);
+  --color-bg-sidebar: var(--adm-sidebar);
+  --color-gray-50: var(--adm-page);
+  --color-gray-100: var(--adm-surface-muted);
+  --color-gray-200: var(--adm-border-soft);
+  --color-gray-300: var(--adm-border);
+  --color-gray-400: var(--adm-disabled);
+  --color-gray-600: var(--adm-text-tertiary);
+  --color-gray-700: var(--adm-text-secondary);
+  --color-gray-800: var(--adm-text);
+  --color-gray-900: var(--adm-text);
+  --color-primary-500: var(--adm-primary);
+  --color-primary-600: var(--adm-primary-strong);
+  --color-primary-700: var(--adm-primary-strong);
+  --color-success: var(--adm-success);
+  --color-warning: var(--adm-warning);
+  --color-error: var(--adm-danger);
+  --color-info: var(--adm-info);
+  --admin-bg: var(--adm-page);
+  --admin-shell: var(--adm-shell);
+  --admin-surface: var(--adm-surface);
+  --admin-surface-2: var(--adm-surface-muted);
+  --admin-border: var(--adm-border);
+  --admin-border-soft: var(--adm-border-soft);
+  --admin-text: var(--adm-text);
+  --admin-text-soft: var(--adm-text-secondary);
+  --admin-muted: var(--adm-text-tertiary);
+  --admin-faint: var(--adm-disabled);
+  --admin-hover: var(--adm-hover);
+  --admin-active: var(--adm-active);
+  --admin-row: var(--adm-surface-muted);
+  --admin-alert-bg: var(--adm-danger-soft);
+  --admin-shadow-card: var(--adm-shadow);
+}
+
+body.adminShellV2:not(.loginMode),
+body.adminShellV2:not(.loginMode) .content {
+  background: var(--adm-page);
+  color: var(--adm-text);
+}
+
+body.adminShellV2 header {
+  background: var(--adm-header);
+  border-bottom-color: var(--adm-border-soft);
+  color: var(--adm-text);
+}
+
+body.adminShellV2 .side,
+body.adminShellV2 .sideWorkspace {
+  background: var(--adm-sidebar);
+  border-color: var(--adm-border-soft);
+}
+
+body.adminShellV2 .card,
+body.adminShellV2 .card--elevated,
+body.adminShellV2 .panel,
+body.adminShellV2 .stat,
+body.adminShellV2 .filterBar,
+body.adminShellV2 .filterBox,
+body.adminShellV2 .actionBox,
+body.adminShellV2 .dashboardHealthPanel,
+body.adminShellV2 .dashboardContentPanel,
+body.adminShellV2 .dashboardOpsPanel,
+body.adminShellV2 .dashboardJobsPanel,
+body.adminShellV2 .dashboardSubPanel,
+body.adminShellV2 .dashboardSubSection,
+body.adminShellV2 .settingsControlCard,
+body.adminShellV2 .settingsHero,
+body.adminShellV2 .dangerIntro,
+body.adminShellV2 .calendarMonthPanel,
+body.adminShellV2 .calendarEventsCard,
+body.adminShellV2 .dialogPanel,
+body.adminShellV2 .newsEdit,
+body.adminShellV2 .modelPresetPanel,
+body.adminShellV2 .newsEditSection,
+body.adminShellV2 .newsEditSource,
+body.adminShellV2 .providerTileGrid,
+body.adminShellV2 .providerLine,
+body.adminShellV2 .providerTile,
+body.adminShellV2 .socialAuthProviderCard,
+body.adminShellV2 .marketListCard,
+body.adminShellV2 .resetOption,
+body.adminShellV2 .symbolRow,
+body.adminShellV2 .notificationMiniCard,
+body.adminShellV2 .appUserCard,
+body.adminShellV2 .jobOpsSummary,
+body.adminShellV2 .jobCard,
+body.adminShellV2 .toast {
+  background: var(--adm-surface);
+  border-color: var(--adm-border-soft);
+  color: var(--adm-text);
+  box-shadow: var(--adm-shadow);
+}
+
+body.adminShellV2 .dashboardDataCard,
+body.adminShellV2 .dashboardListItem,
+body.adminShellV2 .dashboardOpsStat,
+body.adminShellV2 .filterGroup,
+body.adminShellV2 .segmented,
+body.adminShellV2 .tabs,
+body.adminShellV2 .themePreviewShell,
+body.adminShellV2 .previewBar,
+body.adminShellV2 .jobOpsMetric,
+body.adminShellV2 .jobCardFacts > div,
+body.adminShellV2 .jobReadonlyItem,
+body.adminShellV2 .jobToggleField span,
+body.adminShellV2 .calCell,
+body.adminShellV2 .settingsTable,
+body.adminShellV2 table {
+  background: var(--adm-surface-muted);
+  border-color: var(--adm-border-soft);
+  color: var(--adm-text-secondary);
+  box-shadow: none;
+}
+
+body.adminShellV2 input,
+body.adminShellV2 select,
+body.adminShellV2 textarea,
+body.adminShellV2 .jsonEditor {
+  background-color: var(--adm-input);
+  border-color: var(--adm-border-soft);
+  color: var(--adm-text);
+}
+
+body.adminShellV2 input::placeholder,
+body.adminShellV2 textarea::placeholder {
+  color: var(--adm-disabled);
+}
+
+body.adminShellV2 input:focus,
+body.adminShellV2 select:focus,
+body.adminShellV2 textarea:focus {
+  background-color: var(--adm-surface-raised);
+  border-color: var(--adm-primary);
+  box-shadow: 0 0 0 3px var(--adm-primary-soft);
+}
+
+body.adminShellV2 .pageTitle,
+body.adminShellV2 h1,
+body.adminShellV2 h2,
+body.adminShellV2 h3,
+body.adminShellV2 .cardKicker,
+body.adminShellV2 .filterBarTitle,
+body.adminShellV2 .filterBoxTitle,
+body.adminShellV2 .providerTitle strong,
+body.adminShellV2 .socialAuthProviderCard strong,
+body.adminShellV2 .jobCardTitle strong,
+body.adminShellV2 .jobDomainHead strong,
+body.adminShellV2 .jobCardFacts strong,
+body.adminShellV2 .jobReadonlyItem strong,
+body.adminShellV2 .jobOpsMetric strong,
+body.adminShellV2 .appUserRowIdentity strong,
+body.adminShellV2 .toastBody strong,
+body.adminShellV2 .dialogHead h3,
+body.adminShellV2 .opsHeroMain h2,
+body.adminShellV2 .opsMetric strong,
+body.adminShellV2 .calendarSummaryItem strong {
+  color: var(--adm-text);
+}
+
+body.adminShellV2 .pageDesc,
+body.adminShellV2 .cardHint,
+body.adminShellV2 .muted,
+body.adminShellV2 .filterGroupTitle,
+body.adminShellV2 .settingsNavLabel,
+body.adminShellV2 .providerTitle .muted,
+body.adminShellV2 .jobCardDesc,
+body.adminShellV2 .jobCardTitle span,
+body.adminShellV2 .jobCardFacts span,
+body.adminShellV2 .jobReadonlyItem span,
+body.adminShellV2 .jobOpsMetric span,
+body.adminShellV2 .appUserRowIdentity .muted,
+body.adminShellV2 .opsHeroMain p,
+body.adminShellV2 .opsMetric span,
+body.adminShellV2 .settingsHero .summary,
+body.adminShellV2 .dangerIntro .summary {
+  color: var(--adm-text-tertiary);
+}
+
+body.adminShellV2 button {
+  background: var(--adm-primary);
+  border-color: var(--adm-primary);
+  color: #ffffff;
+}
+
+body.adminShellV2 button:hover:not(:disabled) {
+  background: var(--adm-primary-strong);
+  border-color: var(--adm-primary-strong);
+}
+
+body.adminShellV2 button.secondary,
+body.adminShellV2 button.ghost,
+body.adminShellV2 .segmented .segBtn,
+body.adminShellV2 .tabs .tabBtn,
+body.adminShellV2 .tabBtn,
+body.adminShellV2 .legalNavBtn,
+body.adminShellV2 .legalLocaleBtn,
+body.adminShellV2 .swatchBtn {
+  background: var(--adm-surface-muted);
+  border-color: var(--adm-border-soft);
+  color: var(--adm-text-secondary);
+}
+
+body.adminShellV2 button.secondary:hover:not(:disabled),
+body.adminShellV2 button.ghost:hover:not(:disabled),
+body.adminShellV2 .segmented .segBtn:hover:not(:disabled),
+body.adminShellV2 .tabs .tabBtn:hover:not(:disabled),
+body.adminShellV2 .tabBtn:hover:not(:disabled),
+body.adminShellV2 .legalNavBtn:hover:not(:disabled),
+body.adminShellV2 .legalLocaleBtn:hover:not(:disabled),
+body.adminShellV2 .swatchBtn:hover:not(:disabled) {
+  background: var(--adm-hover);
+  border-color: var(--adm-border-strong);
+}
+
+body.adminShellV2 button.active,
+body.adminShellV2 button.success,
+body.adminShellV2 .segmented .segBtn.active,
+body.adminShellV2 .tabs .tabBtn.active,
+body.adminShellV2 .tabBtn.active,
+body.adminShellV2 .legalNavBtn.active,
+body.adminShellV2 .legalLocaleBtn.active {
+  background: var(--adm-primary);
+  border-color: var(--adm-primary);
+  color: #ffffff;
+}
+
+body.adminShellV2 button.danger {
+  background: var(--adm-danger-soft);
+  border-color: var(--adm-danger-soft);
+  color: var(--adm-danger);
+}
+
+body.adminShellV2 button.warning,
+body.adminShellV2 .opReconcile {
+  background: var(--adm-warning-soft);
+  border-color: var(--adm-warning-soft);
+  color: var(--adm-warning);
+}
+
+body.adminShellV2 th {
+  background: var(--adm-surface-muted);
+  color: var(--adm-text-tertiary);
+  border-bottom-color: var(--adm-border-soft);
+}
+
+body.adminShellV2 td {
+  color: var(--adm-text-secondary);
+  border-bottom-color: var(--adm-border-soft);
+}
+
+body.adminShellV2 tbody tr:hover td,
+body.adminShellV2 .dashboardListItem:hover,
+body.adminShellV2 .notificationMiniCard:hover,
+body.adminShellV2 .appUserCard[data-app-user-row]:hover,
+body.adminShellV2 .appUserCard[data-app-user-row]:focus-visible,
+body.adminShellV2 .providerLine:hover,
+body.adminShellV2 .appUserTableRow:hover td,
+body.adminShellV2 .appUserTableRow:focus-visible td {
+  background: var(--adm-hover);
+}
+
+body.adminShellV2 .appUserCard--selected,
+body.adminShellV2 .appUserCard--summary,
+body.adminShellV2 .appUserTableRow--selected td,
+body.adminShellV2 .navBtn.active {
+  background: var(--adm-active);
+  color: var(--adm-text);
+  box-shadow: inset 4px 0 0 var(--adm-primary);
+}
+
+body.adminShellV2 .pill {
+  background: var(--adm-surface-muted);
+  border-color: var(--adm-border-soft);
+  color: var(--adm-text-tertiary);
+}
+
+body.adminShellV2 .pillStatus--ok,
+body.adminShellV2 .pillStatus--sent {
+  background: var(--adm-success-soft);
+  color: var(--adm-success);
+}
+
+body.adminShellV2 .pillStatus--run,
+body.adminShellV2 .pillStatus--info {
+  background: var(--adm-info-soft);
+  color: var(--adm-info);
+}
+
+body.adminShellV2 .pillStatus--warn {
+  background: var(--adm-warning-soft);
+  color: var(--adm-warning);
+}
+
+body.adminShellV2 .pillStatus--fail,
+body.adminShellV2 .pillStatus--error {
+  background: var(--adm-danger-soft);
+  color: var(--adm-danger);
+}
+
+body.adminShellV2 .settingsHero,
+body.adminShellV2 .dangerIntro,
+body.adminShellV2 .opsHeroMain,
+body.adminShellV2 .opsHeroMetrics {
+  background:
+    radial-gradient(circle at 92% 8%, var(--adm-primary-soft), transparent 38%),
+    var(--adm-surface);
+}
+
+body.adminShellV2 .settingsHeroIcon,
+body.adminShellV2 .providerGlyph,
+body.adminShellV2 .navBtn::before {
+  background: var(--adm-primary-soft);
+  color: var(--adm-primary);
+  border-color: var(--adm-border-soft);
+}
+
+body.adminShellV2 .switchUi {
+  background: var(--adm-border-strong);
+  border-color: var(--adm-border-strong);
+}
+
+body.adminShellV2 .switchUi::after {
+  background: var(--adm-surface-raised);
+}
+
+body.adminShellV2 .switchRow:has(.switchInput:checked) .switchUi {
+  background: var(--adm-primary);
+  border-color: var(--adm-primary);
+}
+
+body.adminShellV2 .dialogBackdrop {
+  background: var(--adm-overlay);
+}
+
+body.adminShellV2 .dialogPanel,
+body.adminShellV2 .newsEdit {
+  box-shadow: var(--adm-shadow-strong);
+}
+
+body.adminShellV2 .dialogHead,
+body.adminShellV2 .dialogFoot,
+body.adminShellV2 .jobCardEdit {
+  border-color: var(--adm-border-soft);
+}
+
+body.adminShellV2 .calCell {
+  box-shadow: inset 0 0 0 1px var(--adm-border-soft);
+}
+
+body.adminShellV2 .calCell--has {
+  color: var(--adm-primary);
+  box-shadow: inset 0 0 0 1px var(--adm-primary);
+}
+
+body.adminShellV2 .calCell--selected {
+  background: var(--adm-primary);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+body.adminShellV2 .newsRowExpand td,
+body.adminShellV2 .newsTableTable thead th {
+  background: var(--adm-surface-muted);
+}
+
+body.adminShellV2 .jobCardFacts > div.jobCardAlert {
+  background: var(--adm-danger-soft);
+  color: var(--adm-danger);
 }

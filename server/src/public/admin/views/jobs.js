@@ -62,22 +62,32 @@ function renderJobRunsPager({ targetId, state, $, esc, textForVars, textFor }) {
 }
 
 function renderJobEditPanel({ job, esc, textFor, jobDisplayName }) {
+  const readonlyValue = (label, value) => `
+    <div class="jobReadonlyItem">
+      <span>${esc(label)}</span>
+      <strong>${esc(value || '-')}</strong>
+    </div>
+  `;
   return `
     <div class="jobEditPanel" data-job-edit-scope="${esc(job.jobKey)}">
       <div class="row jobEditPanelHead">
         <strong>${esc(textFor('jobEditPanelTitle'))}</strong>
         <button class="secondary compactBtn" data-job-edit-close="${esc(job.jobKey)}">${esc(textFor('btnClose'))}</button>
       </div>
-      <div class="jobSettingsBody" style="margin-top:10px">
+      <div class="jobSettingsBody">
         <label>${esc(textFor('jobLabelName'))} <input data-job-name="${esc(job.jobKey)}" value="${esc(jobDisplayName(job))}" placeholder="${esc(textFor('jobLabelNamePh'))}" /></label>
         <label>${esc(textFor('jobLabelDesc'))} <input data-job-desc="${esc(job.jobKey)}" value="${esc(job.description || '')}" placeholder="${esc(textFor('jobLabelDescPh'))}" /></label>
-        <label>${esc(textFor('jobLabelIntervalSec'))} <input data-job-interval="${esc(job.jobKey)}" value="${esc(job.intervalSeconds)}" /></label>
-        <label>${esc(textFor('jobLabelLockTtlSec'))} <input data-job-lock-ttl="${esc(job.jobKey)}" value="${esc(job.lockTtlSeconds || '')}" placeholder="${esc(textFor('jobLabelLockTtlPh'))}" /></label>
-        <label>${esc(textFor('jobLabelStaleLockSec'))} <input data-job-stale-lock="${esc(job.jobKey)}" value="${esc(job.staleLockSeconds || '')}" placeholder="${esc(textFor('jobLabelStaleLockPh'))}" /></label>
-        <label>${esc(textFor('jobLabelEnabled'))} <span><input type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/> ${esc(textFor('jobEnabledFlag'))}</span></label>
-        <label>Provider <input class="readonlyInput" value="${esc(job.provider)}" disabled /></label>
-        <label>Handler <input class="readonlyInput" value="${esc(job.handler)}" disabled /></label>
-        <label>Operation <input class="readonlyInput" value="${esc(job.operation || 'latest')}" disabled /></label>
+        <label>${esc(textFor('jobLabelIntervalSec'))} <input data-job-interval="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.intervalSeconds)}" /></label>
+        <label>${esc(textFor('jobLabelLockTtlSec'))} <input data-job-lock-ttl="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.lockTtlSeconds || '')}" placeholder="${esc(textFor('jobLabelLockTtlPh'))}" /></label>
+        <label>${esc(textFor('jobLabelStaleLockSec'))} <input data-job-stale-lock="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.staleLockSeconds || '')}" placeholder="${esc(textFor('jobLabelStaleLockPh'))}" /></label>
+        <label class="jobToggleField">${esc(textFor('jobLabelEnabled'))} <span><input type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/> ${esc(textFor('jobEnabledFlag'))}</span></label>
+      </div>
+      <div class="jobReadonlyGrid">
+        ${readonlyValue('Provider', job.provider)}
+        ${readonlyValue('Handler', job.handler)}
+        ${readonlyValue('Operation', job.operation || 'latest')}
+      </div>
+      <div class="jobEditActions">
         <button data-job-save="${esc(job.jobKey)}" class="success">${esc(textFor('btnSave'))}</button>
       </div>
     </div>
@@ -108,6 +118,95 @@ function jobForceUnlockButton(job, esc, textFor) {
   return `<button class="warning compactBtn" data-job-force-unlock="${esc(job.jobKey)}">${esc(textFor('jobForceUnlock'))}</button>`;
 }
 
+function jobHealthClass(job) {
+  if (job?.lock?.canForceUnlock) return 'jobCard--staleLock';
+  if (job?.lock?.locked) return 'jobCard--locked';
+  if (String(job?.latestRunStatus || '') === 'failed') return 'jobCard--failed';
+  if (!job?.enabled) return 'jobCard--disabled';
+  return 'jobCard--healthy';
+}
+
+function renderJobSummary({ jobsAll, jobsFiltered, esc, textFor, textForVars }) {
+  const enabled = jobsAll.filter((j) => j.enabled).length;
+  const locked = jobsAll.filter((j) => j?.lock?.locked).length;
+  const staleLocks = jobsAll.filter((j) => j?.lock?.canForceUnlock).length;
+  const failed = jobsAll.filter((j) => String(j.latestRunStatus || '') === 'failed').length;
+  const cards = [
+    [textFor('jobOpsTotal'), jobsAll.length],
+    [textFor('jobOpsEnabled'), enabled],
+    [textFor('jobOpsLocked'), locked],
+    [textFor('jobOpsStaleLocks'), staleLocks],
+    [textFor('jobOpsFailed'), failed],
+  ];
+  return `
+    <div class="jobOpsSummary">
+      <div class="jobOpsSummaryHead">
+        <strong>${esc(textFor('jobOpsOverview'))}</strong>
+        <span class="muted">${esc(textForVars('jobSummaryFiltered', { filtered: jobsFiltered.length, total: jobsAll.length }))}</span>
+      </div>
+      <div class="jobOpsSummaryGrid">
+        ${cards
+          .map(
+            ([label, value]) => `
+              <div class="jobOpsMetric">
+                <span>${esc(label)}</span>
+                <strong>${esc(value)}</strong>
+              </div>
+            `,
+          )
+          .join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderJobCard({ job, esc, textFor, jobDisplayName, operationBadge, domainBadge, providerBadge, jobIntervalLabel, formatDateTime }) {
+  const lastRunStatus = jobLastRunStatusText(job, textFor);
+  const lock = jobLockText(job, textFor);
+  const lastRun = jobLastRunAt(job);
+  return `
+    <article class="jobCard ${jobHealthClass(job)}">
+      <div class="jobCardHead">
+        <div class="jobCardTitle">
+          <strong>${esc(jobDisplayName(job))}</strong>
+          <span>${esc(job.jobKey)}</span>
+        </div>
+        <span class="pill ${job.enabled ? 'pillStatus--ok' : 'pillStatus--warn'}">${job.enabled ? esc(textFor('jobStatusEnabled')) : esc(textFor('jobStatusDisabled'))}</span>
+      </div>
+      <div class="jobCardDesc">${esc(job.description || textFor('jobNoDescription'))}</div>
+      <div class="jobCardBadges">
+        ${operationBadge(job.operation)}
+        ${domainBadge(job.domain)}
+        ${providerBadge(job.provider)}
+      </div>
+      <div class="jobCardFacts">
+        <div>
+          <span>${esc(textFor('jobCardSchedule'))}</span>
+          <strong>${esc(jobIntervalLabel(job.intervalSeconds))}</strong>
+        </div>
+        <div>
+          <span>${esc(textFor('jobCardLastRun'))}</span>
+          <strong>${esc(lastRun ? formatDateTime(lastRun) : textFor('jobCardNeverRun'))}</strong>
+        </div>
+        ${
+          lastRunStatus || lock
+            ? `<div class="jobCardAlert">${lastRunStatus ? `<span class="pill pill--subtle">${esc(lastRunStatus)}</span>` : ''}${lock ? `<span class="pill pill--subtle">${esc(lock)}</span>` : ''}</div>`
+            : ''
+        }
+      </div>
+      <div class="jobCardActions">
+        <button data-job-run="${esc(job.jobKey)}" class="success">${esc(textFor('btnRun'))}</button>
+        <button class="secondary" data-open-job-log="${esc(job.jobKey)}">${esc(textFor('jobCardHistory'))}</button>
+        ${jobForceUnlockButton(job, esc, textFor)}
+        <button class="secondary" data-job-edit-open="${esc(job.jobKey)}">${esc(textFor('jobOpenSettings'))}</button>
+      </div>
+      <div class="jobCardEdit hidden" data-job-edit-row="${esc(job.jobKey)}">
+        ${renderJobEditPanel({ job, esc, textFor, jobDisplayName })}
+      </div>
+    </article>
+  `;
+}
+
 export async function loadJobsView(ctx) {
   const {
     api,
@@ -115,6 +214,7 @@ export async function loadJobsView(ctx) {
     state,
     esc,
     textFor,
+    textForVars,
     jobDisplayName,
     jobGroupTitle,
     operationBadge,
@@ -177,6 +277,7 @@ export async function loadJobsView(ctx) {
   const providers = [...new Set(jobsAll.map((j) => j.provider).filter(Boolean))];
   $('jobs').innerHTML = `
     ${renderIngestWorkflowNav({ activeView: 'jobs', esc, textFor })}
+    ${renderJobSummary({ jobsAll, jobsFiltered, esc, textFor, textForVars })}
     <div class="filterBar filterBox">
       <div class="filterBarTitle filterBoxTitle">${esc(textFor('filterSearchConditions'))}</div>
       <div class="filterBarControls toolbar jobsFilterGroups">
@@ -217,101 +318,42 @@ export async function loadJobsView(ctx) {
         </div>
       </div>
     </div>
-    <div class="card jobDesktopTableCard">
-      <table class="settingsTable">
-        <thead>
-          <tr>
-            <th>${esc(textFor('colJob'))}</th>
-            <th>${esc(textFor('colStatus'))}</th>
-            <th>${esc(textFor('colOperation'))}</th>
-            <th>${esc(textFor('colDomain'))}</th>
-            <th>${esc(textFor('colProvider'))}</th>
-            <th class="right">${esc(textFor('colInterval'))}</th>
-            <th>${esc(textFor('colLastRun'))}</th>
-            <th class="center">${esc(textFor('colAction'))}</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${jobsFiltered
-            .map(
-              (job) => `
-            <tr>
-              <td>
-                <strong>${esc(jobDisplayName(job))}</strong><br/>
-                <span class="muted">${esc(job.jobKey)}</span>
-                ${job.description ? `<div class="muted" style="margin-top:4px">${esc(job.description)}</div>` : ''}
-              </td>
-              <td><span class="pill">${job.enabled ? esc(textFor('jobStatusEnabled')) : esc(textFor('jobStatusDisabled'))}</span></td>
-              <td>${operationBadge(job.operation)}</td>
-              <td>${domainBadge(job.domain)}</td>
-              <td>${providerBadge(job.provider)}</td>
-              <td class="right">${esc(jobIntervalLabel(job.intervalSeconds))}</td>
-              <td class="muted">
-                ${formatDateTime(jobLastRunAt(job))}
-                ${jobLastRunStatusText(job, textFor) ? `<br/><span class="pill pill--subtle">${esc(jobLastRunStatusText(job, textFor))}</span>` : ''}
-                ${jobLockText(job, textFor) ? `<br/><span class="pill pill--subtle">${esc(jobLockText(job, textFor))}</span>` : ''}
-              </td>
-              <td class="center">
-                <div class="dataTableActions">
-                  <button data-job-run="${esc(job.jobKey)}" class="success">${esc(textFor('btnRun'))}</button>
-                  ${jobForceUnlockButton(job, esc, textFor)}
-                  <button class="secondary" data-job-edit-open="${esc(job.jobKey)}">${esc(textFor('jobOpenSettings'))}</button>
-                </div>
-              </td>
-            </tr>
-            <tr class="hidden" data-job-edit-row="${esc(job.jobKey)}">
-              <td colspan="8">
-                <div class="card" style="margin:6px 0 0">
-                  ${renderJobEditPanel({ job, esc, textFor, jobDisplayName })}
-                </div>
-              </td>
-            </tr>
-          `,
-            )
-            .join('')}
-        </tbody>
-      </table>
-      ${jobsFiltered.length === 0 ? `<p class="muted">${esc(textFor('jobsEmptyFiltered'))}</p>` : ''}
-    </div>
-    <div class="mobileJobList">
+    <div class="jobBoard">
       ${
-        jobsFiltered
-          .map(
-            (job) => `
-              <article class="mobileJobCard">
-                <div class="mobileJobCardHead">
-                  <div class="mobileJobTitle">
-                    <strong>${esc(jobDisplayName(job))}</strong>
-                    <span class="muted">${esc(job.jobKey)}</span>
-                  </div>
-                  <span class="pill ${job.enabled ? 'pillStatus--ok' : 'pillStatus--warn'}">${job.enabled ? esc(textFor('jobStatusEnabled')) : esc(textFor('jobStatusDisabled'))}</span>
-                </div>
-                ${job.description ? `<div class="mobileJobDesc muted">${esc(job.description)}</div>` : ''}
-                <div class="mobileJobMeta">
-                  ${operationBadge(job.operation)}
-                  ${domainBadge(job.domain)}
-                  ${providerBadge(job.provider)}
-                  <span class="pill pill--subtle">${esc(jobIntervalLabel(job.intervalSeconds))}</span>
-                </div>
-                <div class="mobileJobFoot">
-                  <span class="muted">
-                    ${formatDateTime(jobLastRunAt(job))}
-                    ${jobLastRunStatusText(job, textFor) ? ` · ${esc(jobLastRunStatusText(job, textFor))}` : ''}
-                    ${jobLockText(job, textFor) ? ` · ${esc(jobLockText(job, textFor))}` : ''}
-                  </span>
-                  <div class="dataTableActions">
-                    <button data-job-run="${esc(job.jobKey)}" class="success compactBtn">${esc(textFor('btnRun'))}</button>
-                    ${jobForceUnlockButton(job, esc, textFor)}
-                    <button class="secondary compactBtn" data-job-edit-open="${esc(job.jobKey)}">${esc(textFor('jobOpenSettings'))}</button>
-                  </div>
-                </div>
-                <div class="mobileJobEdit hidden" data-job-edit-row="${esc(job.jobKey)}">
-                  ${renderJobEditPanel({ job, esc, textFor, jobDisplayName })}
-                </div>
-              </article>
-            `,
-          )
-          .join('') || `<p class="muted">${esc(textFor('jobsEmptyFiltered'))}</p>`
+        jobsFiltered.length === 0
+          ? `<p class="muted">${esc(textFor('jobsEmptyFiltered'))}</p>`
+          : [...groups.entries()]
+              .map(
+                ([domain, jobs]) => `
+                  <section class="jobDomainSection">
+                    <div class="jobDomainHead">
+                      <div class="jobGroupTitle">
+                        <span class="jobGroupIcon">${esc(String(jobGroupTitle(domain)).slice(0, 1))}</span>
+                        <strong>${esc(jobGroupTitle(domain))}</strong>
+                      </div>
+                      <span class="muted">${esc(jobs.length)} ${esc(textFor('jobOpsTotal'))}</span>
+                    </div>
+                    <div class="jobCardsGrid">
+                      ${jobs
+                        .map((job) =>
+                          renderJobCard({
+                            job,
+                            esc,
+                            textFor,
+                            jobDisplayName,
+                            operationBadge,
+                            domainBadge,
+                            providerBadge,
+                            jobIntervalLabel,
+                            formatDateTime,
+                          }),
+                        )
+                        .join('')}
+                    </div>
+                  </section>
+                `,
+              )
+              .join('')
       }
     </div>
   `;

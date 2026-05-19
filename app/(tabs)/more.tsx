@@ -40,8 +40,8 @@ const HUB_META: Record<
   settings: { href: '/settings' as Href, icon: 'cog', titleId: 'screenSettings' },
 };
 
-const ROW_GAP = 12;
-const ROW_HEIGHT = 62;
+const GRID_GAP = 12;
+const TILE_HEIGHT = 92;
 /** 허브 행 ↔ 하단 링크·광고 등 섹션 사이 */
 const SECTION_GAP = 20;
 
@@ -112,7 +112,9 @@ export default function MoreHubScreen() {
         </View>
       ) : (
         <FlatList
+          key="more-grid"
           data={order}
+          numColumns={2}
           keyExtractor={(item) => item}
           scrollEnabled
           style={styles.list}
@@ -120,17 +122,16 @@ export default function MoreHubScreen() {
             paddingTop: 14,
             paddingBottom: 24 + tabBarHeight + tabBarBottomInset(insets.bottom),
           }}
+          columnWrapperStyle={styles.gridRow}
           ListFooterComponent={listFooter}
-          renderItem={({ item, index }) => {
+          renderItem={({ item }) => {
             const meta = HUB_META[item];
-            const isLast = index === order.length - 1;
             const name = t(meta.titleId);
             return (
               <Pressable
                 onPress={() => router.push(meta.href)}
                 style={({ pressed }) => [
-                  styles.row,
-                  !isLast && styles.rowGap,
+                  styles.tile,
                   pressed && styles.rowPressed,
                 ]}
                 accessibilityRole="button"
@@ -138,8 +139,7 @@ export default function MoreHubScreen() {
                 <View style={styles.iconCircle}>
                   <FontAwesome name={meta.icon} size={18} color={theme.green} />
                 </View>
-                <Text style={styles.rowTitle}>{name}</Text>
-                <FontAwesome name="chevron-right" size={14} color={theme.textDim} />
+                <Text style={styles.rowTitle} numberOfLines={2}>{name}</Text>
               </Pressable>
             );
           }}
@@ -155,19 +155,23 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     list: { flex: 1, paddingHorizontal: 16 },
     loadingPad: { padding: 24 },
     muted: { fontSize: sf(14), color: theme.textDim },
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 11,
+    gridRow: {
+      gap: GRID_GAP,
+      marginBottom: GRID_GAP,
+    },
+    tile: {
+      flex: 1,
+      minHeight: TILE_HEIGHT,
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 10,
       borderRadius: 13,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      minHeight: ROW_HEIGHT,
-      paddingVertical: 10,
+      paddingVertical: 12,
       paddingHorizontal: 12,
     },
-    rowGap: { marginBottom: ROW_GAP },
     rowPressed: {
       backgroundColor: theme.bgElevated,
       borderColor: theme.greenBorder,
@@ -183,8 +187,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.greenBorder,
     },
     rowTitle: {
-      flex: 1,
-      fontSize: sf(15),
+      fontSize: sf(14),
+      lineHeight: sf(18),
       fontWeight: '800',
       color: theme.text,
     },

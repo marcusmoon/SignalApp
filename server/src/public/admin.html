@@ -108,11 +108,11 @@
             <div class="navSectionTitle muted" style="margin-top:10px" data-i18n="navSectionSystem">시스템</div>
             <button class="navBtn secondary" data-view="settings-users" data-icon="U">어드민 사용자</button>
             <button class="navBtn secondary" data-view="settings-legal" data-icon="T">약관</button>
-            <button class="navBtn secondary" data-view="settings-keys" data-icon="P">Provider</button>
-            <button class="navBtn secondary" data-view="translations" data-icon="G">번역 설정</button>
             <button class="navBtn secondary" data-view="settings-sources" data-icon="S">뉴스 출처</button>
             <button class="navBtn secondary" data-view="settings-youtube" data-icon="Y">유튜브 채널</button>
             <button class="navBtn secondary" data-view="settings-lists" data-icon="L">마켓 리스트</button>
+            <button class="navBtn secondary" data-view="settings-keys" data-icon="P">Provider</button>
+            <button class="navBtn secondary" data-view="translations" data-icon="G">번역 설정</button>
             <button class="navBtn secondary" data-view="settings-theme" data-icon="T">테마</button>
             <button class="navBtn secondary" data-view="settings-danger" data-icon="R">데이터 초기화</button>
           </div>
@@ -359,16 +359,36 @@
                   <div class="pageDesc" data-i18n="pageTranslationsDesc"></div>
                 </div>
                 <div class="pageHeaderActions">
-                  <div class="segmented" role="tablist" aria-label="Settings sections">
-                    <button type="button" class="secondary segBtn" data-view="settings-users" data-settings-tab="users" data-i18n="navSettingsUsers">어드민 사용자</button>
-                    <button type="button" class="secondary segBtn" data-view="settings-legal" data-settings-tab="legal" data-i18n="navSettingsLegal">약관</button>
-                    <button type="button" class="secondary segBtn" data-view="settings-keys" data-settings-tab="keys" data-i18n="navSettingsKeys">Provider</button>
-                    <button type="button" class="secondary segBtn active" data-view="translations" data-i18n="navTranslations">번역 설정</button>
-                    <button type="button" class="secondary segBtn" data-view="settings-sources" data-settings-tab="sources" data-i18n="navSettingsSources">뉴스 출처</button>
-                    <button type="button" class="secondary segBtn" data-view="settings-youtube" data-settings-tab="youtube" data-i18n="navSettingsYoutube">유튜브 채널</button>
-                    <button type="button" class="secondary segBtn" data-view="settings-lists" data-settings-tab="lists" data-i18n="navSettingsLists">마켓 리스트</button>
-                    <button type="button" class="secondary segBtn" data-view="settings-theme" data-settings-tab="theme" data-i18n="navSettingsTheme">테마</button>
-                    <button type="button" class="secondary segBtn" data-view="settings-danger" data-settings-tab="danger" data-i18n="navSettingsDanger">데이터 초기화</button>
+                  <div class="settingsTabsShell" role="tablist" aria-label="Settings sections">
+                    <div class="settingsTabsGroup">
+                      <span class="settingsNavLabel" data-i18n="settingsGroupAccount">계정·정책</span>
+                      <div class="segmented">
+                        <button type="button" class="secondary segBtn" data-view="settings-users" data-settings-tab="users" data-i18n="navSettingsUsers">어드민 사용자</button>
+                        <button type="button" class="secondary segBtn" data-view="settings-legal" data-settings-tab="legal" data-i18n="navSettingsLegal">약관</button>
+                      </div>
+                    </div>
+                    <div class="settingsTabsGroup">
+                      <span class="settingsNavLabel" data-i18n="settingsGroupContent">수집 기준</span>
+                      <div class="segmented">
+                        <button type="button" class="secondary segBtn" data-view="settings-sources" data-settings-tab="sources" data-i18n="navSettingsSources">뉴스 출처</button>
+                        <button type="button" class="secondary segBtn" data-view="settings-youtube" data-settings-tab="youtube" data-i18n="navSettingsYoutube">유튜브 채널</button>
+                        <button type="button" class="secondary segBtn" data-view="settings-lists" data-settings-tab="lists" data-i18n="navSettingsLists">마켓 리스트</button>
+                      </div>
+                    </div>
+                    <div class="settingsTabsGroup">
+                      <span class="settingsNavLabel" data-i18n="settingsGroupIntegrations">외부 연동</span>
+                      <div class="segmented">
+                        <button type="button" class="secondary segBtn" data-view="settings-keys" data-settings-tab="keys" data-i18n="navSettingsKeys">Provider</button>
+                        <button type="button" class="secondary segBtn active" data-view="translations" data-i18n="navTranslations">번역 설정</button>
+                      </div>
+                    </div>
+                    <div class="settingsTabsGroup">
+                      <span class="settingsNavLabel" data-i18n="settingsGroupDisplay">화면·관리</span>
+                      <div class="segmented">
+                        <button type="button" class="secondary segBtn" data-view="settings-theme" data-settings-tab="theme" data-i18n="navSettingsTheme">테마</button>
+                        <button type="button" class="secondary segBtn" data-view="settings-danger" data-settings-tab="danger" data-i18n="navSettingsDanger">데이터 초기화</button>
+                      </div>
+                    </div>
                   </div>
                   <button type="button" class="secondary refreshBtn" id="refreshTranslationsBtn" data-i18n="btnRefreshThisView">새로고침</button>
                 </div>
@@ -518,16 +538,36 @@
                   <div class="pageDesc" id="settingsDesc" data-i18n="settingsProviderDesc">외부 Provider API Key와 LLM 모델 프리셋을 관리합니다.</div>
                 </div>
                 <div class="pageHeaderActions">
-                  <div class="segmented" role="tablist" aria-label="Settings sections">
-                    <button type="button" class="secondary segBtn" data-view="settings-users" data-settings-tab="users" data-i18n="navSettingsUsers">어드민 사용자</button>
-                    <button type="button" class="secondary segBtn" data-view="settings-legal" data-settings-tab="legal" data-i18n="navSettingsLegal">약관</button>
-                    <button type="button" class="secondary segBtn" data-view="settings-keys" data-settings-tab="keys" data-i18n="navSettingsKeys">Provider</button>
-                    <button type="button" class="secondary segBtn" data-view="translations" data-i18n="navTranslations">번역 설정</button>
-                    <button type="button" class="secondary segBtn" data-view="settings-sources" data-settings-tab="sources" data-i18n="navSettingsSources">뉴스 출처</button>
-                    <button type="button" class="secondary segBtn" data-view="settings-youtube" data-settings-tab="youtube" data-i18n="navSettingsYoutube">유튜브 채널</button>
-                    <button type="button" class="secondary segBtn" data-view="settings-lists" data-settings-tab="lists" data-i18n="navSettingsLists">마켓 리스트</button>
-                    <button type="button" class="secondary segBtn" data-view="settings-theme" data-settings-tab="theme" data-i18n="navSettingsTheme">테마</button>
-                    <button type="button" class="secondary segBtn" data-view="settings-danger" data-settings-tab="danger" data-i18n="navSettingsDanger">데이터 초기화</button>
+                  <div class="settingsTabsShell" role="tablist" aria-label="Settings sections">
+                    <div class="settingsTabsGroup">
+                      <span class="settingsNavLabel" data-i18n="settingsGroupAccount">계정·정책</span>
+                      <div class="segmented">
+                        <button type="button" class="secondary segBtn" data-view="settings-users" data-settings-tab="users" data-i18n="navSettingsUsers">어드민 사용자</button>
+                        <button type="button" class="secondary segBtn" data-view="settings-legal" data-settings-tab="legal" data-i18n="navSettingsLegal">약관</button>
+                      </div>
+                    </div>
+                    <div class="settingsTabsGroup">
+                      <span class="settingsNavLabel" data-i18n="settingsGroupContent">수집 기준</span>
+                      <div class="segmented">
+                        <button type="button" class="secondary segBtn" data-view="settings-sources" data-settings-tab="sources" data-i18n="navSettingsSources">뉴스 출처</button>
+                        <button type="button" class="secondary segBtn" data-view="settings-youtube" data-settings-tab="youtube" data-i18n="navSettingsYoutube">유튜브 채널</button>
+                        <button type="button" class="secondary segBtn" data-view="settings-lists" data-settings-tab="lists" data-i18n="navSettingsLists">마켓 리스트</button>
+                      </div>
+                    </div>
+                    <div class="settingsTabsGroup">
+                      <span class="settingsNavLabel" data-i18n="settingsGroupIntegrations">외부 연동</span>
+                      <div class="segmented">
+                        <button type="button" class="secondary segBtn" data-view="settings-keys" data-settings-tab="keys" data-i18n="navSettingsKeys">Provider</button>
+                        <button type="button" class="secondary segBtn" data-view="translations" data-i18n="navTranslations">번역 설정</button>
+                      </div>
+                    </div>
+                    <div class="settingsTabsGroup">
+                      <span class="settingsNavLabel" data-i18n="settingsGroupDisplay">화면·관리</span>
+                      <div class="segmented">
+                        <button type="button" class="secondary segBtn" data-view="settings-theme" data-settings-tab="theme" data-i18n="navSettingsTheme">테마</button>
+                        <button type="button" class="secondary segBtn" data-view="settings-danger" data-settings-tab="danger" data-i18n="navSettingsDanger">데이터 초기화</button>
+                      </div>
+                    </div>
                   </div>
                   <button type="button" class="secondary refreshBtn" id="refreshSettingsBtn" data-i18n="btnRefreshThisView">새로고침</button>
                 </div>
@@ -549,14 +589,14 @@
                   <span class="settingsHeroIcon">T</span>
                   <div>
                     <div class="cardKicker" data-i18n="settingsThemeHeroKicker">관리자 화면 테마</div>
-                    <p class="summary" data-i18n="settingsThemeHeroSummary">앱의 accent preset과 같은 색상 계열을 사용합니다. 선택값은 이 브라우저에 저장됩니다.</p>
+                    <p class="summary" data-i18n="settingsThemeHeroSummary">관리자 화면은 라이트/다크 테마만 제공합니다. 선택값은 이 브라우저에 저장됩니다.</p>
                   </div>
                 </div>
                 <div class="card settingsControlCard">
                   <div class="cardHead">
                     <div class="cardHeadMain">
-                      <div class="cardKicker" data-i18n="settingsThemeAccentKicker">Accent color</div>
-                      <div class="cardHint" data-i18n="settingsThemeAccentHint">버튼, 활성 메뉴, 상태 강조색에 반영됩니다.</div>
+                      <div class="cardKicker" data-i18n="settingsThemeAccentKicker">화면 테마</div>
+                      <div class="cardHint" data-i18n="settingsThemeAccentHint">라이트/다크 중 하나를 선택합니다.</div>
                     </div>
                   </div>
                   <div id="themeOptions" class="themeGrid"></div>

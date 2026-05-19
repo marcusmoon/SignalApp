@@ -282,57 +282,75 @@ export async function loadLegalTermsView({ api, $, state, esc, textFor, formatDa
     active: true,
   };
   const key = `${activeType}:${activeLocale}`;
+  const termTitle = activeType === 'service' ? textFor('termsServiceTitle') : textFor('termsPrivacyTitle');
+  const localeTitle = textFor(`legalTermsLocale${activeLocale.toUpperCase()}`);
   $('legalTerms').innerHTML = `
-    <div class="card settingsControlCard">
-      <div class="cardHead">
-        <div class="cardHeadMain">
-          <div class="cardKicker">${esc(textFor('settingsLegalHeroKicker'))}</div>
-          <div class="cardHint">${esc(textFor('settingsLegalHeroSummary'))}</div>
+    <div class="legalManager">
+      <aside class="card settingsControlCard legalNavPanel">
+        <div class="cardKicker">${esc(textFor('settingsLegalHeroKicker'))}</div>
+        <div class="cardHint">${esc(textFor('settingsLegalHeroSummary'))}</div>
+        <div class="legalNavGroup">
+          <span class="settingsNavLabel">${esc(textFor('legalTermsTypeTitle'))}</span>
+          ${types
+            .map(
+              (type) => `
+                <button type="button" class="secondary legalNavBtn ${type === activeType ? 'active' : ''}" data-legal-type-tab="${esc(type)}">
+                  ${esc(type === 'service' ? textFor('termsServiceTitle') : textFor('termsPrivacyTitle'))}
+                </button>
+              `,
+            )
+            .join('')}
         </div>
-      </div>
-      <div class="segmented settingsSegmented" style="margin-bottom:10px">
-        ${types
-          .map(
-            (type) =>
-              `<button type="button" class="secondary segBtn ${type === activeType ? 'active' : ''}" data-legal-type-tab="${esc(type)}">${esc(
-                type === 'service' ? textFor('termsServiceTitle') : textFor('termsPrivacyTitle'),
-              )}</button>`,
-          )
-          .join('')}
-      </div>
-      <div class="segmented settingsSegmented" style="margin-bottom:14px">
-        ${locales
-          .map(
-            (locale) =>
-              `<button type="button" class="secondary segBtn ${locale === activeLocale ? 'active' : ''}" data-legal-locale-tab="${esc(locale)}">${esc(
-                textFor(`legalTermsLocale${locale.toUpperCase()}`),
-              )}</button>`,
-          )
-          .join('')}
-      </div>
-      <div class="cardHint" style="margin-bottom:12px">${esc(textFor('legalTermsLocaleHint'))}</div>
-      <div class="settingsControlCard" style="padding:0;border:0">
-        <div class="settingsFormRow">
-          <span class="pill">${esc(activeType)}</span>
-          <input data-legal-version="${esc(key)}" value="${esc(current.version || '')}" placeholder="${esc(textFor('legalTermsVersionPh'))}" />
-          <label class="switchRow">
+        <div class="legalNavGroup">
+          <span class="settingsNavLabel">${esc(textFor('legalTermsLocaleTitle'))}</span>
+          <div class="legalLocaleGrid">
+            ${locales
+              .map(
+                (locale) => `
+                  <button type="button" class="secondary legalLocaleBtn ${locale === activeLocale ? 'active' : ''}" data-legal-locale-tab="${esc(locale)}">
+                    ${esc(textFor(`legalTermsLocale${locale.toUpperCase()}`))}
+                  </button>
+                `,
+              )
+              .join('')}
+          </div>
+        </div>
+      </aside>
+
+      <section class="card settingsControlCard legalEditorPanel">
+        <div class="cardHead">
+          <div class="cardHeadMain">
+            <div class="cardKicker">${esc(termTitle)} · ${esc(localeTitle)}</div>
+            <div class="cardHint">${esc(textFor('legalTermsLocaleHint'))}</div>
+          </div>
+          <span class="pill">${esc(current.active ? textFor('statusActive') : textFor('statusInactive'))}</span>
+        </div>
+        <div class="legalEditorGrid">
+          <label class="fieldLabel">${esc(textFor('legalTermsVersionLabel'))}
+            <input data-legal-version="${esc(key)}" value="${esc(current.version || '')}" placeholder="${esc(textFor('legalTermsVersionPh'))}" />
+          </label>
+          <label class="switchRow legalSwitch">
             <input class="switchInput" type="checkbox" data-legal-active="${esc(key)}" ${current.active ? 'checked' : ''}/>
             <span class="switchUi" aria-hidden="true"></span>
             <span>${esc(textFor('colEnabled'))}</span>
           </label>
-          <label class="switchRow">
+          <label class="switchRow legalSwitch">
             <input class="switchInput" type="checkbox" data-legal-required="${esc(key)}" ${current.required ? 'checked' : ''}/>
             <span class="switchUi" aria-hidden="true"></span>
             <span>${esc(textFor('legalTermsRequired'))}</span>
           </label>
         </div>
-        <input style="margin-top:8px" data-legal-title="${esc(key)}" value="${esc(current.title || '')}" placeholder="${esc(textFor('legalTermsTitlePh'))}" />
-        <textarea style="margin-top:8px;min-height:220px" data-legal-body="${esc(key)}">${esc(current.body || '')}</textarea>
-        <div class="row" style="justify-content:space-between;margin-top:8px">
+        <label class="fieldLabel">${esc(textFor('legalTermsTitlePh'))}
+          <input data-legal-title="${esc(key)}" value="${esc(current.title || '')}" placeholder="${esc(textFor('legalTermsTitlePh'))}" />
+        </label>
+        <label class="fieldLabel legalBodyField">${esc(textFor('legalTermsEditorTitle'))}
+          <textarea data-legal-body="${esc(key)}">${esc(current.body || '')}</textarea>
+        </label>
+        <div class="legalEditorFoot">
           <span class="muted">${esc(formatDateTime(current.updatedAt))}</span>
           <button class="success" data-legal-save="${esc(key)}">${esc(textFor('btnSave'))}</button>
         </div>
-      </div>
+      </section>
     </div>
 
     <div class="card settingsControlCard">
@@ -435,22 +453,20 @@ export async function loadProviderSettingsView(ctx) {
       ? modelPresetsForProvider({ provider: s.provider, defaultModel: s.defaultModel, uiModelPresets: state.uiModelPresets })
       : [];
     return `
-      <div class="providerTile ${showModel ? 'providerTile--llm' : 'providerTile--data'}" data-provider="${esc(s.provider)}">
-        <div class="providerTileHead">
-          <span class="providerGlyph">${showModel ? 'AI' : 'API'}</span>
-          <div class="providerTitle">
-            <strong>${esc(s.provider)}</strong>
-            <span class="muted">${esc(showModel ? textFor('providerLlmSubtitle') : textFor('providerDataSubtitle'))}</span>
-          </div>
-          <span class="pill ${s.hasApiKey ? 'pillStatus--ok' : 'pillStatus--warn'}">${esc(
-            s.hasApiKey ? textForVars('providerConfigured', { key: s.maskedApiKey }) : textFor('providerKeyMissing'),
-          )}</span>
-          <label class="switchRow providerSwitch providerSwitch--head">
-            <input class="switchInput" type="checkbox" data-provider-enabled="${esc(s.provider)}" ${s.enabled ? 'checked' : ''}/>
-            <span class="switchUi" aria-hidden="true"></span>
-          </label>
-          <button class="secondary compactBtn" type="button" data-provider-edit-open="${esc(s.provider)}">${esc(textFor('btnEdit'))}</button>
+      <div class="providerLine ${showModel ? 'providerLine--llm' : 'providerLine--data'}" data-provider="${esc(s.provider)}">
+        <span class="providerGlyph">${showModel ? 'AI' : 'API'}</span>
+        <div class="providerTitle">
+          <strong>${esc(s.provider)}</strong>
+          <span class="muted">${esc(showModel ? textFor('providerLlmSubtitle') : textFor('providerDataSubtitle'))}</span>
         </div>
+        <span class="pill ${s.hasApiKey ? 'pillStatus--ok' : 'pillStatus--warn'}">${esc(
+          s.hasApiKey ? textForVars('providerConfigured', { key: s.maskedApiKey }) : textFor('providerKeyMissing'),
+        )}</span>
+        <label class="switchRow providerSwitch providerSwitch--head">
+          <input class="switchInput" type="checkbox" data-provider-enabled="${esc(s.provider)}" ${s.enabled ? 'checked' : ''}/>
+          <span class="switchUi" aria-hidden="true"></span>
+        </label>
+        <button class="secondary compactBtn" type="button" data-provider-edit-open="${esc(s.provider)}">${esc(textFor('btnEdit'))}</button>
       </div>
     `;
   };

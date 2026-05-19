@@ -776,6 +776,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           state,
           esc,
           textFor,
+          textForVars,
           jobDisplayName,
           jobGroupTitle,
           operationBadge,
@@ -2637,7 +2638,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         }
       });
 
-      applyTheme(localStorage.getItem('signalAdminAccent') || 'green');
+      applyTheme(localStorage.getItem('signalAdminTheme') || localStorage.getItem('signalAdminAccent') || 'light');
       state.dashboardLimit = Number(localStorage.getItem('signalAdminDashboardLimit') || '5') || 5;
       const urlLang = normalizeAdminLang(getUrlParam('lang'));
       if (urlLang) localStorage.setItem('signalAdminLanguage', urlLang);

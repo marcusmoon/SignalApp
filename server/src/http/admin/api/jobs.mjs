@@ -122,17 +122,23 @@ function compactRun(run, job = null) {
   };
 }
 
+function jobLockStaleThresholdMs(job) {
+  const ttlMs = Math.max(60_000, Number(config.jobLockTtlMs || 0));
+  if (job?.provider === 'signal' && job?.handler === 'market_insights') return Math.min(ttlMs, 10 * 60 * 1000);
+  return ttlMs;
+}
+
 function jobLockState({ job, lock, latestRun }) {
   if (!lock) {
-    return { locked: false, canForceUnlock: false, reason: null, lockedAt: null, expiresAt: null };
+    return { locked: false, canForceUnlock: false, reason: null, lockedAt: null, expiresAt: null, staleAfterMs: null };
   }
   const timing = runTiming(latestRun, job);
-  const ttlMs = Math.max(60_000, Number(config.jobLockTtlMs || 0));
+  const staleAfterMs = jobLockStaleThresholdMs(job);
   const expiresMs = validTime(lock.expiresAt);
   const expired = expiresMs != null && expiresMs <= Date.now();
   const running = latestRun?.status === 'running';
-  const elapsedStale = running && Number.isFinite(Number(timing.elapsedMs)) && Number(timing.elapsedMs) >= ttlMs;
-  const quietStale = running && Number.isFinite(Number(timing.quietMs)) && Number(timing.quietMs) >= ttlMs;
+  const elapsedStale = running && Number.isFinite(Number(timing.elapsedMs)) && Number(timing.elapsedMs) >= staleAfterMs;
+  const quietStale = running && Number.isFinite(Number(timing.quietMs)) && Number(timing.quietMs) >= staleAfterMs;
   const canForceUnlock = expired || elapsedStale || quietStale;
   let reason = 'active';
   if (expired) reason = 'expired';
@@ -144,6 +150,7 @@ function jobLockState({ job, lock, latestRun }) {
     reason,
     lockedAt: lock.lockedAt || null,
     expiresAt: lock.expiresAt || null,
+    staleAfterMs,
   };
 }
 

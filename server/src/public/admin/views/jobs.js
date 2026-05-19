@@ -82,6 +82,19 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName }) {
   `;
 }
 
+function jobLastRunAt(job) {
+  return job.latestRunAt || job.lastRunAt || null;
+}
+
+function jobLastRunStatusText(job, textFor) {
+  const status = String(job.latestRunStatus || '').trim();
+  if (!status || status === 'completed') return '';
+  if (status === 'skipped') return textFor('statusSkipped');
+  if (status === 'running') return textFor('statusRunning');
+  if (status === 'failed') return textFor('statusFailed');
+  return status;
+}
+
 export async function loadJobsView(ctx) {
   const {
     api,
@@ -131,8 +144,8 @@ export async function loadJobsView(ctx) {
   }
   jobsFiltered = [...jobsFiltered].sort((a, b) => {
     if (state.jobListSort === 'lastRunDesc') {
-      const at = new Date(a.lastRunAt || 0).getTime();
-      const bt = new Date(b.lastRunAt || 0).getTime();
+      const at = new Date(jobLastRunAt(a) || 0).getTime();
+      const bt = new Date(jobLastRunAt(b) || 0).getTime();
       return bt - at;
     }
     if (state.jobListSort === 'intervalAsc') return Number(a.intervalSeconds || 0) - Number(b.intervalSeconds || 0);
@@ -220,7 +233,10 @@ export async function loadJobsView(ctx) {
               <td>${domainBadge(job.domain)}</td>
               <td>${providerBadge(job.provider)}</td>
               <td class="right">${esc(jobIntervalLabel(job.intervalSeconds))}</td>
-              <td class="muted">${formatDateTime(job.lastRunAt)}</td>
+              <td class="muted">
+                ${formatDateTime(jobLastRunAt(job))}
+                ${jobLastRunStatusText(job, textFor) ? `<br/><span class="pill pill--subtle">${esc(jobLastRunStatusText(job, textFor))}</span>` : ''}
+              </td>
               <td class="center">
                 <div class="dataTableActions">
                   <button data-job-run="${esc(job.jobKey)}" class="success">${esc(textFor('btnRun'))}</button>
@@ -263,7 +279,10 @@ export async function loadJobsView(ctx) {
                   <span class="pill pill--subtle">${esc(jobIntervalLabel(job.intervalSeconds))}</span>
                 </div>
                 <div class="mobileJobFoot">
-                  <span class="muted">${formatDateTime(job.lastRunAt)}</span>
+                  <span class="muted">
+                    ${formatDateTime(jobLastRunAt(job))}
+                    ${jobLastRunStatusText(job, textFor) ? ` · ${esc(jobLastRunStatusText(job, textFor))}` : ''}
+                  </span>
                   <div class="dataTableActions">
                     <button data-job-run="${esc(job.jobKey)}" class="success compactBtn">${esc(textFor('btnRun'))}</button>
                     <button class="secondary compactBtn" data-job-edit-open="${esc(job.jobKey)}">${esc(textFor('jobOpenSettings'))}</button>

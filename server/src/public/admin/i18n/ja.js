@@ -459,6 +459,7 @@ export const baseJa = {
   statusCompleted: '完了',
   statusRunning: '実行中',
   statusFailed: '失敗',
+  statusSkipped: 'スキップ',
   statusUnknown: '不明',
   statusNotRun: '未実行',
   runStale: '周期超過',

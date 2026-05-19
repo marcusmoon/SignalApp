@@ -459,6 +459,7 @@ export const baseEn = {
   statusCompleted: 'Completed',
   statusRunning: 'Running',
   statusFailed: 'Failed',
+  statusSkipped: 'Skipped',
   statusUnknown: 'Unknown',
   statusNotRun: 'Not run',
   runStale: 'Stale',

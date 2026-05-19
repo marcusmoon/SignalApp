@@ -329,7 +329,18 @@ function dashboardSummary(db) {
 export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/admin/api/jobs') {
     const db = await readDb();
-    json(res, 200, { data: db.pollingJobs, runs: db.pollingJobRuns.slice(0, 50) });
+    const recentRuns = db.pollingJobRuns.slice(0, 200).map((run) => enrichJobRun(run, db.pollingJobs));
+    const data = db.pollingJobs.map((job) => {
+      const latestRun = recentRuns.find((run) => run.jobKey === job.jobKey) || null;
+      return {
+        ...job,
+        latestRunAt: latestRun?.finishedAt || latestRun?.startedAt || job.lastRunAt || null,
+        latestRunStatus: latestRun?.status || null,
+        latestRunTrigger: latestRun?.trigger || null,
+        latestRunErrorMessage: latestRun?.errorMessage || null,
+      };
+    });
+    json(res, 200, { data, runs: db.pollingJobRuns.slice(0, 50) });
     return true;
   }
 

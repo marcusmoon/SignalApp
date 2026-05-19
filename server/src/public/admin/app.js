@@ -385,6 +385,9 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         } else if (s === 'failed' || s === 'error') {
           cls = 'pillStatus--fail';
           key = 'statusFailed';
+        } else if (s === 'skipped') {
+          cls = 'pillStatus--warn';
+          key = 'statusSkipped';
         } else if (!s || s === 'not run' || s === '-') {
           key = 'statusNotRun';
         }

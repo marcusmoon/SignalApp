@@ -459,6 +459,7 @@ export const baseKo = {
   statusCompleted: '완료',
   statusRunning: '진행 중',
   statusFailed: '실패',
+  statusSkipped: '건너뜀',
   statusUnknown: '알 수 없음',
   statusNotRun: '미실행',
   runStale: '주기 초과',

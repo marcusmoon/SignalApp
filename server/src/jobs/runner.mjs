@@ -264,16 +264,44 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
   const lock = await acquirePollingJobLock(jobKey, { ttlMs: config.jobLockTtlMs });
   if (!lock) {
     console.warn(`[job:${jobKey}] skipped because another worker holds the lock`);
-    return {
+    const skippedAt = nowIso();
+    const skippedRun = {
+      id: `${jobKey}:${Date.now()}:skipped`,
       jobKey,
+      displayName: jobKey,
+      domain: null,
+      operation: null,
+      provider: null,
+      handler: null,
       trigger,
       status: 'skipped',
-      errorMessage: 'JOB_ALREADY_RUNNING',
-      startedAt: nowIso(),
-      finishedAt: nowIso(),
+      startedAt: skippedAt,
+      finishedAt: skippedAt,
       durationMs: 0,
       resultKind: null,
       itemCount: 0,
+      errorMessage: 'JOB_ALREADY_RUNNING',
+      progressPhase: null,
+      progressDone: 0,
+      progressTotal: 0,
+      progressPercent: 0,
+      progressUpdatedAt: skippedAt,
+    };
+    await updateDb((db) => {
+      const job = db.pollingJobs.find((j) => j.jobKey === jobKey);
+      if (job) {
+        skippedRun.displayName = job.displayName || job.jobKey;
+        skippedRun.domain = job.domain || null;
+        skippedRun.operation = job.operation || null;
+        skippedRun.provider = job.provider || null;
+        skippedRun.handler = job.handler || null;
+        skippedRun.resultKind = job.domain || null;
+        job.updatedAt = skippedAt;
+      }
+      db.pollingJobRuns.unshift(skippedRun);
+    });
+    return {
+      ...skippedRun,
     };
   }
 

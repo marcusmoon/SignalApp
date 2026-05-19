@@ -1455,6 +1455,10 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           if (target.dataset.jobSave) {
             const key = target.dataset.jobSave;
             const scope = target.closest(`[data-job-edit-scope="${key}"]`) || document;
+            const optionalNumber = (selector) => {
+              const raw = String(scope.querySelector(selector)?.value || '').trim();
+              return raw ? Number(raw) : null;
+            };
             await api(`/admin/api/jobs/${encodeURIComponent(key)}`, {
               method: 'PATCH',
               body: JSON.stringify({
@@ -1462,6 +1466,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                 displayName: scope.querySelector(`[data-job-name="${key}"]`).value,
                 description: scope.querySelector(`[data-job-desc="${key}"]`).value,
                 intervalSeconds: Number(scope.querySelector(`[data-job-interval="${key}"]`).value),
+                lockTtlSeconds: optionalNumber(`[data-job-lock-ttl="${key}"]`),
+                staleLockSeconds: optionalNumber(`[data-job-stale-lock="${key}"]`),
               }),
             });
             await Promise.all([loadJobs(), loadDashboard()]);

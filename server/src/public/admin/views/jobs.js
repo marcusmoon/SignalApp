@@ -72,6 +72,8 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName }) {
         <label>${esc(textFor('jobLabelName'))} <input data-job-name="${esc(job.jobKey)}" value="${esc(jobDisplayName(job))}" placeholder="${esc(textFor('jobLabelNamePh'))}" /></label>
         <label>${esc(textFor('jobLabelDesc'))} <input data-job-desc="${esc(job.jobKey)}" value="${esc(job.description || '')}" placeholder="${esc(textFor('jobLabelDescPh'))}" /></label>
         <label>${esc(textFor('jobLabelIntervalSec'))} <input data-job-interval="${esc(job.jobKey)}" value="${esc(job.intervalSeconds)}" /></label>
+        <label>${esc(textFor('jobLabelLockTtlSec'))} <input data-job-lock-ttl="${esc(job.jobKey)}" value="${esc(job.lockTtlSeconds || '')}" placeholder="${esc(textFor('jobLabelLockTtlPh'))}" /></label>
+        <label>${esc(textFor('jobLabelStaleLockSec'))} <input data-job-stale-lock="${esc(job.jobKey)}" value="${esc(job.staleLockSeconds || '')}" placeholder="${esc(textFor('jobLabelStaleLockPh'))}" /></label>
         <label>${esc(textFor('jobLabelEnabled'))} <span><input type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/> ${esc(textFor('jobEnabledFlag'))}</span></label>
         <label>Provider <input class="readonlyInput" value="${esc(job.provider)}" disabled /></label>
         <label>Handler <input class="readonlyInput" value="${esc(job.handler)}" disabled /></label>

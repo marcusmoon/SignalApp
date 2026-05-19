@@ -138,7 +138,7 @@ function applyOperationalFixups(db) {
   const row = db
     .prepare('SELECT job_key, enabled, last_run_at, payload FROM polling_jobs WHERE job_key = ?')
     .get(jobKey);
-  if (!row || Number(row.enabled) !== 0 || row.last_run_at) return;
+  if (!row) return;
 
   let payload = null;
   try {
@@ -146,23 +146,44 @@ function applyOperationalFixups(db) {
   } catch {
     return;
   }
-  if (!payload || typeof payload !== 'object' || payload.enabled === true || payload.lastRunAt) return;
+  if (!payload || typeof payload !== 'object') return;
 
   const updatedAt = nowIso();
-  payload.enabled = true;
-  payload.nextRunAt = null;
+  let changed = false;
+  const shouldEnableNeverRun = Number(row.enabled) === 0 && !row.last_run_at && payload.enabled !== true && !payload.lastRunAt;
+  if (shouldEnableNeverRun) {
+    payload.enabled = true;
+    payload.nextRunAt = null;
+    changed = true;
+  }
+  if (!Number.isFinite(Number(payload.lockTtlSeconds)) || Number(payload.lockTtlSeconds) <= 0) {
+    payload.lockTtlSeconds = 600;
+    changed = true;
+  }
+  if (!Number.isFinite(Number(payload.staleLockSeconds)) || Number(payload.staleLockSeconds) <= 0) {
+    payload.staleLockSeconds = 600;
+    changed = true;
+  }
+  if (!changed) return;
   payload.updatedAt = updatedAt;
   db.prepare(
     `
       UPDATE polling_jobs
-      SET enabled = 1,
-          next_run_at = NULL,
+      SET enabled = ?,
+          next_run_at = ?,
           updated_at = ?,
           payload = ?
       WHERE job_key = ?
     `,
-  ).run(updatedAt, JSON.stringify(payload), jobKey);
-  console.log('[db] enabled never-run insights_market_brief job');
+  ).run(
+    shouldEnableNeverRun ? 1 : Number(row.enabled) === 1 ? 1 : 0,
+    payload.nextRunAt || null,
+    updatedAt,
+    JSON.stringify(payload),
+    jobKey,
+  );
+  if (shouldEnableNeverRun) console.log('[db] enabled never-run insights_market_brief job');
+  console.log('[db] applied insights_market_brief job defaults');
 }
 
 async function ensureSqliteStore() {

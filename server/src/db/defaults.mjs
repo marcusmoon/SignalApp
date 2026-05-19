@@ -294,6 +294,8 @@ export function defaultPollingJobs() {
       handler: 'market_insights',
       enabled: true,
       intervalSeconds: 1800,
+      lockTtlSeconds: 600,
+      staleLockSeconds: 600,
       params: {
         windowHours: 24,
         dateMode: 'today',

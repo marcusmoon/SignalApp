@@ -124,7 +124,10 @@ function compactRun(run, job = null) {
 
 function jobLockStaleThresholdMs(job) {
   const ttlMs = Math.max(60_000, Number(config.jobLockTtlMs || 0));
-  if (job?.provider === 'signal' && job?.handler === 'market_insights') return Math.min(ttlMs, 10 * 60 * 1000);
+  const staleSeconds = Number(job?.staleLockSeconds);
+  if (Number.isFinite(staleSeconds) && staleSeconds > 0) return Math.max(60_000, staleSeconds * 1000);
+  const lockSeconds = Number(job?.lockTtlSeconds);
+  if (Number.isFinite(lockSeconds) && lockSeconds > 0) return Math.max(60_000, lockSeconds * 1000);
   return ttlMs;
 }
 
@@ -449,6 +452,12 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
       if (typeof patch.displayName === 'string') job.displayName = patch.displayName.trim() || job.jobKey;
       if (typeof patch.description === 'string') job.description = patch.description.trim();
       if (Number.isFinite(Number(patch.intervalSeconds))) job.intervalSeconds = Number(patch.intervalSeconds);
+      if (Number.isFinite(Number(patch.lockTtlSeconds)) && Number(patch.lockTtlSeconds) > 0) {
+        job.lockTtlSeconds = Number(patch.lockTtlSeconds);
+      }
+      if (Number.isFinite(Number(patch.staleLockSeconds)) && Number(patch.staleLockSeconds) > 0) {
+        job.staleLockSeconds = Number(patch.staleLockSeconds);
+      }
       if (patch.params && typeof patch.params === 'object') job.params = patch.params;
       job.updatedAt = nowIso();
       return job;

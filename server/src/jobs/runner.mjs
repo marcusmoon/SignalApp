@@ -1,6 +1,7 @@
 import {
   acquirePollingJobLock,
   ensureNewsSourcesFromItems,
+  getPollingJob,
   nowIso,
   readDb,
   releasePollingJobLock,
@@ -23,6 +24,12 @@ import { normalizeYoutubeCurationHandles } from '../youtubeCuration.mjs';
 
 function addSecondsIso(seconds) {
   return new Date(Date.now() + Number(seconds || 300) * 1000).toISOString();
+}
+
+function jobLockTtlMs(job) {
+  const seconds = Number(job?.lockTtlSeconds);
+  if (Number.isFinite(seconds) && seconds > 0) return Math.max(60_000, seconds * 1000);
+  return config.jobLockTtlMs;
 }
 
 function translationId(newsItemId, locale) {
@@ -261,7 +268,11 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
 }
 
 export async function runPollingJob(jobKey, { force = false, trigger = 'schedule' } = {}) {
-  const lock = await acquirePollingJobLock(jobKey, { ttlMs: config.jobLockTtlMs });
+  const jobForLock = await getPollingJob(jobKey);
+  if (!jobForLock) throw new Error(`JOB_NOT_FOUND:${jobKey}`);
+  if (!force && !jobForLock.enabled) throw new Error(`JOB_DISABLED:${jobKey}`);
+
+  const lock = await acquirePollingJobLock(jobKey, { ttlMs: jobLockTtlMs(jobForLock) });
   if (!lock) {
     console.warn(`[job:${jobKey}] skipped because another worker holds the lock`);
     const skippedAt = nowIso();

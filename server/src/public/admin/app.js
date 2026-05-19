@@ -1466,6 +1466,22 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             });
             await Promise.all([loadJobs(), loadDashboard()]);
           }
+          if (target.dataset.jobForceUnlock) {
+            const jobKey = target.dataset.jobForceUnlock;
+            openConfirm({
+              title: textFor('confirmJobForceUnlockTitle'),
+              desc: textFor('confirmJobForceUnlockDesc'),
+              body: textForVars('confirmJobForceUnlockBody', { jobKey }),
+              okText: textFor('jobForceUnlock'),
+              danger: true,
+              onConfirm: async () => {
+                await api(`/admin/api/jobs/${encodeURIComponent(jobKey)}/lock`, { method: 'DELETE' });
+                showToast(textFor('toastJobForceUnlockTitle'), textFor('toastJobForceUnlockBody'), { kind: 'success' });
+                await Promise.all([loadJobs(), loadJobRuns(), loadDashboard(), loadMonitoring()]);
+              },
+            });
+            return;
+          }
           if (target.dataset.jobRun) {
             const jobKey = target.dataset.jobRun;
             await api(`/admin/api/jobs/${encodeURIComponent(jobKey)}/run`, { method: 'POST' });

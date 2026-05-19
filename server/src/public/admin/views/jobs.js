@@ -95,6 +95,17 @@ function jobLastRunStatusText(job, textFor) {
   return status;
 }
 
+function jobLockText(job, textFor) {
+  if (!job?.lock?.locked) return '';
+  if (job.lock.canForceUnlock) return textFor('jobLockStale');
+  return textFor('jobLockActive');
+}
+
+function jobForceUnlockButton(job, esc, textFor) {
+  if (!job?.lock?.canForceUnlock) return '';
+  return `<button class="warning compactBtn" data-job-force-unlock="${esc(job.jobKey)}">${esc(textFor('jobForceUnlock'))}</button>`;
+}
+
 export async function loadJobsView(ctx) {
   const {
     api,
@@ -236,10 +247,12 @@ export async function loadJobsView(ctx) {
               <td class="muted">
                 ${formatDateTime(jobLastRunAt(job))}
                 ${jobLastRunStatusText(job, textFor) ? `<br/><span class="pill pill--subtle">${esc(jobLastRunStatusText(job, textFor))}</span>` : ''}
+                ${jobLockText(job, textFor) ? `<br/><span class="pill pill--subtle">${esc(jobLockText(job, textFor))}</span>` : ''}
               </td>
               <td class="center">
                 <div class="dataTableActions">
                   <button data-job-run="${esc(job.jobKey)}" class="success">${esc(textFor('btnRun'))}</button>
+                  ${jobForceUnlockButton(job, esc, textFor)}
                   <button class="secondary" data-job-edit-open="${esc(job.jobKey)}">${esc(textFor('jobOpenSettings'))}</button>
                 </div>
               </td>
@@ -282,9 +295,11 @@ export async function loadJobsView(ctx) {
                   <span class="muted">
                     ${formatDateTime(jobLastRunAt(job))}
                     ${jobLastRunStatusText(job, textFor) ? ` · ${esc(jobLastRunStatusText(job, textFor))}` : ''}
+                    ${jobLockText(job, textFor) ? ` · ${esc(jobLockText(job, textFor))}` : ''}
                   </span>
                   <div class="dataTableActions">
                     <button data-job-run="${esc(job.jobKey)}" class="success compactBtn">${esc(textFor('btnRun'))}</button>
+                    ${jobForceUnlockButton(job, esc, textFor)}
                     <button class="secondary compactBtn" data-job-edit-open="${esc(job.jobKey)}">${esc(textFor('jobOpenSettings'))}</button>
                   </div>
                 </div>

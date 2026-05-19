@@ -40,6 +40,45 @@ export function getPollingJobInDb(db, jobKey) {
   return jobFromRow(row);
 }
 
+export function getPollingJobLockInDb(db, jobKey) {
+  const key = String(jobKey || '').trim();
+  if (!key) return null;
+  const row = db
+    .prepare(
+      `
+        SELECT job_key, lock_token, locked_at, expires_at
+        FROM polling_job_locks
+        WHERE job_key = ?
+      `,
+    )
+    .get(key);
+  if (!row) return null;
+  return {
+    jobKey: row.job_key,
+    lockToken: row.lock_token,
+    lockedAt: row.locked_at,
+    expiresAt: row.expires_at,
+  };
+}
+
+export function listPollingJobLocksInDb(db) {
+  return db
+    .prepare(
+      `
+        SELECT job_key, lock_token, locked_at, expires_at
+        FROM polling_job_locks
+        ORDER BY locked_at DESC
+      `,
+    )
+    .all()
+    .map((row) => ({
+      jobKey: row.job_key,
+      lockToken: row.lock_token,
+      lockedAt: row.locked_at,
+      expiresAt: row.expires_at,
+    }));
+}
+
 export function acquirePollingJobLockInDb(db, jobKey, { ttlMs = 2 * 60 * 60 * 1000 } = {}) {
   const key = String(jobKey || '').trim();
   if (!key) return null;

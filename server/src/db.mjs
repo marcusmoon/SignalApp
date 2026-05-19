@@ -41,8 +41,10 @@ import { queryInsightItemsInDb } from './db/insights.mjs';
 import { listAppUserTermAcceptancesInDb, listLegalTermsInDb, updateLegalTermInDb } from './db/legalTerms.mjs';
 import {
   acquirePollingJobLockInDb,
+  getPollingJobLockInDb,
   getPollingJobInDb,
   listDuePollingJobsInDb,
+  listPollingJobLocksInDb,
   releasePollingJobLockInDb,
 } from './db/jobs.mjs';
 import {
@@ -245,6 +247,20 @@ export async function getPollingJob(jobKey) {
   return withDbExclusive(async () => {
     const conn = await ensureSqliteStore();
     return getPollingJobInDb(conn, jobKey);
+  });
+}
+
+export async function listPollingJobLocks() {
+  return withDbExclusive(async () => {
+    const conn = await ensureSqliteStore();
+    return listPollingJobLocksInDb(conn);
+  });
+}
+
+export async function getPollingJobLock(jobKey) {
+  return withDbExclusive(async () => {
+    const conn = await ensureSqliteStore();
+    return getPollingJobLockInDb(conn, jobKey);
   });
 }
 

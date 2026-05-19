@@ -1,4 +1,5 @@
-import { nowIso, readDb, updateDb } from '../../../db.mjs';
+import { config } from '../../../config.mjs';
+import { getPollingJobLock, listPollingJobLocks, nowIso, readDb, releasePollingJobLock, updateDb } from '../../../db.mjs';
 import { httpMetricsSnapshot } from '../../../httpMetrics.mjs';
 import { runPollingJob } from '../../../jobs/runner.mjs';
 import { cleanNewsTitleForDisplay, dateKeyInTimeZone, json, paginate, readBody } from '../../shared.mjs';
@@ -118,6 +119,31 @@ function compactRun(run, job = null) {
     lastSignalAt: timing.lastSignalAt,
     stuck: timing.stuck,
     trigger: run.trigger || null,
+  };
+}
+
+function jobLockState({ job, lock, latestRun }) {
+  if (!lock) {
+    return { locked: false, canForceUnlock: false, reason: null, lockedAt: null, expiresAt: null };
+  }
+  const timing = runTiming(latestRun, job);
+  const ttlMs = Math.max(60_000, Number(config.jobLockTtlMs || 0));
+  const expiresMs = validTime(lock.expiresAt);
+  const expired = expiresMs != null && expiresMs <= Date.now();
+  const running = latestRun?.status === 'running';
+  const elapsedStale = running && Number.isFinite(Number(timing.elapsedMs)) && Number(timing.elapsedMs) >= ttlMs;
+  const quietStale = running && Number.isFinite(Number(timing.quietMs)) && Number(timing.quietMs) >= ttlMs;
+  const canForceUnlock = expired || elapsedStale || quietStale;
+  let reason = 'active';
+  if (expired) reason = 'expired';
+  else if (quietStale) reason = 'quiet_ttl';
+  else if (elapsedStale) reason = 'running_ttl';
+  return {
+    locked: true,
+    canForceUnlock,
+    reason,
+    lockedAt: lock.lockedAt || null,
+    expiresAt: lock.expiresAt || null,
   };
 }
 
@@ -330,6 +356,7 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/admin/api/jobs') {
     const db = await readDb();
     const recentRuns = db.pollingJobRuns.slice(0, 200).map((run) => enrichJobRun(run, db.pollingJobs));
+    const lockByJob = new Map((await listPollingJobLocks()).map((lock) => [lock.jobKey, lock]));
     const data = db.pollingJobs.map((job) => {
       const latestRun = recentRuns.find((run) => run.jobKey === job.jobKey) || null;
       return {
@@ -338,6 +365,7 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
         latestRunStatus: latestRun?.status || null,
         latestRunTrigger: latestRun?.trigger || null,
         latestRunErrorMessage: latestRun?.errorMessage || null,
+        lock: jobLockState({ job, lock: lockByJob.get(job.jobKey) || null, latestRun }),
       };
     });
     json(res, 200, { data, runs: db.pollingJobRuns.slice(0, 50) });
@@ -375,6 +403,31 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
       console.error(`[job:${jobKey}] manual run failed`, error);
     });
     json(res, 202, { data: { accepted: true, jobKey } });
+    return true;
+  }
+
+  const jobLockMatch = pathname.match(/^\/admin\/api\/jobs\/([^/]+)\/lock$/);
+  if (req.method === 'DELETE' && jobLockMatch) {
+    const jobKey = decodeURIComponent(jobLockMatch[1]);
+    const db = await readDb();
+    const job = db.pollingJobs.find((item) => item.jobKey === jobKey);
+    if (!job) {
+      json(res, 404, { error: `JOB_NOT_FOUND:${jobKey}` });
+      return true;
+    }
+    const lock = await getPollingJobLock(jobKey);
+    if (!lock) {
+      json(res, 404, { error: 'JOB_LOCK_NOT_FOUND' });
+      return true;
+    }
+    const latestRun = db.pollingJobRuns.find((run) => run.jobKey === jobKey) || null;
+    const state = jobLockState({ job, lock, latestRun });
+    if (!state.canForceUnlock) {
+      json(res, 409, { error: 'JOB_LOCK_NOT_STALE', data: state });
+      return true;
+    }
+    const released = await releasePollingJobLock(jobKey, lock.lockToken);
+    json(res, 200, { data: { released, jobKey, lock: state } });
     return true;
   }
 

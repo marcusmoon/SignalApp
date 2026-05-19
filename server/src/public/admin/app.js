@@ -1464,10 +1464,18 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await Promise.all([loadJobs(), loadDashboard()]);
           }
           if (target.dataset.jobRun) {
-            await api(`/admin/api/jobs/${encodeURIComponent(target.dataset.jobRun)}/run`, { method: 'POST' });
+            const jobKey = target.dataset.jobRun;
+            await api(`/admin/api/jobs/${encodeURIComponent(jobKey)}/run`, { method: 'POST' });
             showToast(textFor('toastRunAcceptedTitle'), textFor('toastRunAcceptedBody'), { kind: 'success' });
-            await new Promise((resolve) => setTimeout(resolve, 350));
-            await Promise.all([loadJobs(), loadJobRuns(), loadDashboard(), loadMonitoring(), loadNews(), loadYoutube()]);
+            await switchView('jobs');
+            await loadJobs();
+            if ($('jobRunJob')) $('jobRunJob').value = jobKey;
+            if ($('jobRunStatus')) $('jobRunStatus').value = '';
+            if ($('jobRunTrigger')) $('jobRunTrigger').value = '';
+            state.jobRunsPage = 1;
+            setJobTab('runs');
+            await new Promise((resolve) => setTimeout(resolve, 700));
+            await Promise.all([loadJobs(), loadJobRuns(), loadDashboard(), loadMonitoring(), loadNews(), loadYoutube(), loadInsights()]);
           }
           if (target.dataset.tsSave) {
             const locale = target.dataset.tsSave;

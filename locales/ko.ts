@@ -39,7 +39,7 @@ export const ko = {
   homePillSignals: '시그널 {{count}}개',
   homePillWatchlist: '관심 {{count}}개',
   homePillEvidence: '관련 {{count}}개',
-  homeTodaySection: '시그널 상태',
+  homeTodaySection: '오늘의 시그널',
   homeWatchSection: '관심종목 변화',
   homeEvidenceSection: '관련 자료',
   homeRelatedSection: '관련뉴스',

@@ -90,6 +90,7 @@ let dbExclusiveChain = Promise.resolve();
 let sqliteDb = null;
 let structuredMigrationChecked = false;
 let defaultDbSeedChecked = false;
+let operationalFixupsChecked = false;
 
 /**
  * @template T
@@ -127,6 +128,41 @@ function getSqliteDb() {
   return sqliteDb;
 }
 
+function applyOperationalFixups(db) {
+  if (operationalFixupsChecked) return;
+  operationalFixupsChecked = true;
+
+  const jobKey = 'insights_market_brief';
+  const row = db
+    .prepare('SELECT job_key, enabled, last_run_at, payload FROM polling_jobs WHERE job_key = ?')
+    .get(jobKey);
+  if (!row || Number(row.enabled) !== 0 || row.last_run_at) return;
+
+  let payload = null;
+  try {
+    payload = JSON.parse(row.payload || 'null');
+  } catch {
+    return;
+  }
+  if (!payload || typeof payload !== 'object' || payload.enabled === true || payload.lastRunAt) return;
+
+  const updatedAt = nowIso();
+  payload.enabled = true;
+  payload.nextRunAt = null;
+  payload.updatedAt = updatedAt;
+  db.prepare(
+    `
+      UPDATE polling_jobs
+      SET enabled = 1,
+          next_run_at = NULL,
+          updated_at = ?,
+          payload = ?
+      WHERE job_key = ?
+    `,
+  ).run(updatedAt, JSON.stringify(payload), jobKey);
+  console.log('[db] enabled never-run insights_market_brief job');
+}
+
 async function ensureSqliteStore() {
   await fs.mkdir(path.dirname(config.sqlitePath), { recursive: true });
   const db = getSqliteDb();
@@ -138,6 +174,7 @@ async function ensureSqliteStore() {
     if (!hasStructuredData(db)) await writeSqliteDbBody(defaultDb(), { db });
     defaultDbSeedChecked = true;
   }
+  applyOperationalFixups(db);
   seedAdminUsersFromEnvIfEmpty(db);
   return db;
 }

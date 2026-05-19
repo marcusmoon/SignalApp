@@ -41,7 +41,7 @@ export const en = {
   homePillSignals: '{{count}} signals',
   homePillWatchlist: '{{count}} watch',
   homePillEvidence: '{{count}} related',
-  homeTodaySection: 'Signal status',
+  homeTodaySection: 'Today’s signals',
   homeWatchSection: 'Watchlist moves',
   homeEvidenceSection: 'Related material',
   homeRelatedSection: 'Related news',

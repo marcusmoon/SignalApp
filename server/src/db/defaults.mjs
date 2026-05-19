@@ -292,7 +292,7 @@ export function defaultPollingJobs() {
       operation: 'latest',
       provider: 'signal',
       handler: 'market_insights',
-      enabled: false,
+      enabled: true,
       intervalSeconds: 1800,
       params: {
         windowHours: 24,

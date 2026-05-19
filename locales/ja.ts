@@ -41,7 +41,7 @@ export const ja = {
   homePillSignals: 'シグナル {{count}}件',
   homePillWatchlist: 'ウォッチ {{count}}件',
   homePillEvidence: '関連 {{count}}件',
-  homeTodaySection: 'シグナル状態',
+  homeTodaySection: '今日のシグナル',
   homeWatchSection: 'ウォッチリストの動き',
   homeEvidenceSection: '関連資料',
   homeRelatedSection: '関連ニュース',

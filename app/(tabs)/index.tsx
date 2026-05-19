@@ -596,17 +596,6 @@ export default function HomeScreen() {
           )}
         </View>
 
-        <Pressable
-          onPress={() => router.push('/briefing')}
-          style={({ pressed }) => [styles.primaryAction, pressed && styles.pressed]}
-          accessibilityRole="button">
-          <View style={styles.primaryActionIcon}>
-            <FontAwesome name="briefcase" size={15} color="#FFFFFF" />
-          </View>
-          <Text style={styles.primaryActionText}>{t('homeBriefingAction')}</Text>
-          <FontAwesome name="chevron-right" size={13} color="#FFFFFF" />
-        </Pressable>
-
         <SectionHeader
           title={t('homeTodaySection')}
           icon="bolt"
@@ -685,6 +674,17 @@ export default function HomeScreen() {
             />
           )}
         </View>
+
+        <Pressable
+          onPress={() => router.push('/briefing')}
+          style={({ pressed }) => [styles.primaryAction, pressed && styles.pressed]}
+          accessibilityRole="button">
+          <View style={styles.primaryActionIcon}>
+            <FontAwesome name="briefcase" size={15} color="#FFFFFF" />
+          </View>
+          <Text style={styles.primaryActionText}>{t('homeBriefingAction')}</Text>
+          <FontAwesome name="chevron-right" size={13} color="#FFFFFF" />
+        </Pressable>
 
         <SectionHeader
           title={t('homeRelatedSection')}

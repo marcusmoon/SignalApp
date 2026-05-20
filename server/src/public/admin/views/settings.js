@@ -511,54 +511,89 @@ export async function loadProviderSettingsView(ctx) {
           </div>
           <button class="secondary compactBtn" type="button" id="rssSourceAddRow">${esc(textFor('rssSourceAdd'))}</button>
         </div>
-        <div class="settingsSectionBody">
-          <table class="settingsTable rssSourceTable">
-            <thead>
-              <tr>
-                <th>${esc(textFor('colName'))}</th>
-                <th>${esc(textFor('rssSourceFeedUrl'))}</th>
-                <th>${esc(textFor('colCategory'))}</th>
-                <th>${esc(textFor('rssSourceLimit'))}</th>
-                <th>${esc(textFor('colEnabled'))}</th>
-                <th>${esc(textFor('colAction'))}</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${state.rssSources
-                .map(
-                  (source) => `
-                    <tr data-rss-source-row="${esc(source.id)}">
-                      <td>
+        <div class="settingsSectionBody rssSourceSettingsBody">
+          <div class="rssSourceHelpGrid">
+            <div><strong>${esc(textFor('rssSourceHelpIdentity'))}</strong><span>${esc(textFor('rssSourceHelpIdentityDesc'))}</span></div>
+            <div><strong>${esc(textFor('rssSourceHelpFetch'))}</strong><span>${esc(textFor('rssSourceHelpFetchDesc'))}</span></div>
+            <div><strong>${esc(textFor('rssSourceHelpFilter'))}</strong><span>${esc(textFor('rssSourceHelpFilterDesc'))}</span></div>
+          </div>
+          <div class="rssSourceList">
+            ${state.rssSources
+              .map(
+                (source) => `
+                  <section class="rssSourceCard" data-rss-source-row="${esc(source.id)}">
+                    <div class="rssSourceCardHead">
+                      <div>
+                        <strong>${esc(source.name || source.id || textFor('rssSourceNamePh'))}</strong>
+                        <span>${esc(source.id || '-')}</span>
+                      </div>
+                      <div class="rssSourceCardActions">
+                        <label class="switchRow"><span>${esc(textFor('colEnabled'))}</span><input class="switchInput" type="checkbox" data-rss-source-enabled="${esc(source.id)}" ${source.enabled !== false ? 'checked' : ''}/><span class="switchUi" aria-hidden="true"></span></label>
+                        <label class="switchRow"><input class="switchInput" type="checkbox" data-rss-source-hidden="${esc(source.id)}" ${source.hidden === true ? 'checked' : ''}/><span>${esc(textFor('newsSourcesHide'))}</span></label>
+                        <button class="danger compactBtn" type="button" data-rss-source-remove="${esc(source.id)}">${esc(textFor('btnDeleteRow'))}</button>
+                      </div>
+                    </div>
+                    <div class="rssSourceFields">
+                      <label>
+                        <span>${esc(textFor('rssSourceFieldName'))}</span>
                         <input data-rss-source-name="${esc(source.id)}" value="${esc(source.name || '')}" placeholder="${esc(textFor('rssSourceNamePh'))}" />
-                        <input data-rss-source-id="${esc(source.id)}" value="${esc(source.id || '')}" placeholder="id" />
-                        <input data-rss-source-provider="${esc(source.id)}" value="${esc(source.providerId || '')}" placeholder="providerId" />
-                        <input data-rss-source-source="${esc(source.id)}" value="${esc(source.sourceName || '')}" placeholder="sourceName" />
-                      </td>
-                      <td><input data-rss-source-url="${esc(source.id)}" value="${esc(source.feedUrl || '')}" placeholder="https://..." /></td>
-                      <td>
+                        <small>${esc(textFor('rssSourceFieldNameHelp'))}</small>
+                      </label>
+                      <label>
+                        <span>${esc(textFor('rssSourceFieldId'))}</span>
+                        <input data-rss-source-id="${esc(source.id)}" value="${esc(source.id || '')}" placeholder="financial_juice" />
+                        <small>${esc(textFor('rssSourceFieldIdHelp'))}</small>
+                      </label>
+                      <label>
+                        <span>${esc(textFor('rssSourceFieldProvider'))}</span>
+                        <input data-rss-source-provider="${esc(source.id)}" value="${esc(source.providerId || '')}" placeholder="financial_juice" />
+                        <small>${esc(textFor('rssSourceFieldProviderHelp'))}</small>
+                      </label>
+                      <label>
+                        <span>${esc(textFor('rssSourceFieldSource'))}</span>
+                        <input data-rss-source-source="${esc(source.id)}" value="${esc(source.sourceName || '')}" placeholder="Financial Juice" />
+                        <small>${esc(textFor('rssSourceFieldSourceHelp'))}</small>
+                      </label>
+                      <label class="rssSourceFieldWide">
+                        <span>${esc(textFor('rssSourceFeedUrl'))}</span>
+                        <input data-rss-source-url="${esc(source.id)}" value="${esc(source.feedUrl || '')}" placeholder="https://..." />
+                        <small>${esc(textFor('rssSourceFeedUrlHelp'))}</small>
+                      </label>
+                      <label>
+                        <span>${esc(textFor('colCategory'))}</span>
                         <select data-rss-source-category="${esc(source.id)}">
                           ${['global', 'korea', 'crypto', 'earnings', 'filings']
                             .map((category) => `<option value="${esc(category)}" ${source.category === category ? 'selected' : ''}>${esc(category)}</option>`)
                             .join('')}
                         </select>
-                        <input data-rss-source-include="${esc(source.id)}" value="${esc(keywordText(source.includeKeywords))}" placeholder="${esc(textFor('rssSourceIncludePh'))}" />
-                        <input data-rss-source-exclude="${esc(source.id)}" value="${esc(keywordText(source.excludeKeywords))}" placeholder="${esc(textFor('rssSourceExcludePh'))}" />
-                      </td>
-                      <td>
+                        <small>${esc(textFor('rssSourceCategoryHelp'))}</small>
+                      </label>
+                      <label>
+                        <span>${esc(textFor('rssSourceDefaultLimit'))}</span>
                         <input data-rss-source-limit="${esc(source.id)}" type="number" min="1" max="100" value="${esc(source.defaultLimit || 40)}" />
+                        <small>${esc(textFor('rssSourceDefaultLimitHelp'))}</small>
+                      </label>
+                      <label>
+                        <span>${esc(textFor('rssSourceDaysBack'))}</span>
                         <input data-rss-source-days="${esc(source.id)}" type="number" min="0" max="365" value="${esc(source.daysBack || 0)}" />
-                      </td>
-                      <td>
-                        <label class="switchRow"><input class="switchInput" type="checkbox" data-rss-source-enabled="${esc(source.id)}" ${source.enabled !== false ? 'checked' : ''}/><span class="switchUi" aria-hidden="true"></span></label>
-                        <label class="switchRow"><input class="switchInput" type="checkbox" data-rss-source-hidden="${esc(source.id)}" ${source.hidden === true ? 'checked' : ''}/><span>${esc(textFor('newsSourcesHide'))}</span></label>
-                      </td>
-                      <td><button class="danger compactBtn" type="button" data-rss-source-remove="${esc(source.id)}">${esc(textFor('btnDeleteRow'))}</button></td>
-                    </tr>
-                  `,
-                )
-                .join('')}
-            </tbody>
-          </table>
+                        <small>${esc(textFor('rssSourceDaysBackHelp'))}</small>
+                      </label>
+                      <label>
+                        <span>${esc(textFor('rssSourceIncludePh'))}</span>
+                        <input data-rss-source-include="${esc(source.id)}" value="${esc(keywordText(source.includeKeywords))}" placeholder="${esc(textFor('rssSourceKeywordExample'))}" />
+                        <small>${esc(textFor('rssSourceIncludeHelp'))}</small>
+                      </label>
+                      <label>
+                        <span>${esc(textFor('rssSourceExcludePh'))}</span>
+                        <input data-rss-source-exclude="${esc(source.id)}" value="${esc(keywordText(source.excludeKeywords))}" placeholder="${esc(textFor('rssSourceKeywordExample'))}" />
+                        <small>${esc(textFor('rssSourceExcludeHelp'))}</small>
+                      </label>
+                    </div>
+                  </section>
+                `,
+              )
+              .join('') || `<p class="muted">${esc(textFor('rssSourcesEmpty'))}</p>`}
+          </div>
           <div class="row">
             <button class="success" id="rssSourcesSave">${esc(textFor('btnSave'))}</button>
           </div>

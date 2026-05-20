@@ -6907,6 +6907,113 @@ body.adminShellV2 .jobCardFacts > div.jobCardAlert {
   color: var(--adm-danger);
 }
 
+body.adminShellV2 .rssSourceSettingsBody,
+body.adminShellV2 .rssSourceList {
+  display: grid;
+  gap: 14px;
+}
+
+body.adminShellV2 .rssSourceHelpGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+body.adminShellV2 .rssSourceHelpGrid > div,
+body.adminShellV2 .rssSourceCard {
+  background: var(--adm-surface-muted);
+  border: 1px solid var(--adm-border-soft);
+  border-radius: 18px;
+}
+
+body.adminShellV2 .rssSourceHelpGrid > div {
+  display: grid;
+  gap: 5px;
+  padding: 12px 14px;
+}
+
+body.adminShellV2 .rssSourceHelpGrid strong,
+body.adminShellV2 .rssSourceCardHead strong,
+body.adminShellV2 .rssSourceFields label > span {
+  color: var(--adm-text);
+  font-weight: 850;
+}
+
+body.adminShellV2 .rssSourceHelpGrid span,
+body.adminShellV2 .rssSourceCardHead span,
+body.adminShellV2 .rssSourceFields small {
+  color: var(--adm-text-tertiary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+body.adminShellV2 .rssSourceCard {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+body.adminShellV2 .rssSourceCardHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+body.adminShellV2 .rssSourceCardHead > div:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+body.adminShellV2 .rssSourceCardActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+body.adminShellV2 .rssSourceFields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+body.adminShellV2 .rssSourceFields label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+body.adminShellV2 .rssSourceFieldWide {
+  grid-column: span 2;
+}
+
+@media (max-width: 1180px) {
+  body.adminShellV2 .rssSourceHelpGrid,
+  body.adminShellV2 .rssSourceFields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  body.adminShellV2 .rssSourceHelpGrid,
+  body.adminShellV2 .rssSourceFields,
+  body.adminShellV2 .rssSourceFieldWide {
+    grid-template-columns: 1fr;
+    grid-column: auto;
+  }
+
+  body.adminShellV2 .rssSourceCardHead {
+    display: grid;
+  }
+
+  body.adminShellV2 .rssSourceCardActions {
+    justify-content: flex-start;
+  }
+}
+
 /* Job list: one job per row for easier scanning. */
 body.adminShellV2 .jobCardsGrid {
   grid-template-columns: 1fr;

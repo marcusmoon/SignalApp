@@ -197,39 +197,43 @@ function renderJobCard({ job, esc, textFor, jobDisplayName, operationBadge, doma
   const lastRun = jobLastRunAt(job);
   return `
     <article class="jobCard ${jobHealthClass(job)}">
-      <div class="jobCardHead">
-        <div class="jobCardTitle">
-          <strong>${esc(jobDisplayName(job))}</strong>
-          <span>${esc(job.jobKey)}</span>
+      <div class="jobCardLine">
+        <div class="jobCardMain">
+          <div class="jobCardHead">
+            <div class="jobCardTitle">
+              <strong>${esc(jobDisplayName(job))}</strong>
+              <span>${esc(job.jobKey)}</span>
+            </div>
+            <span class="pill ${job.enabled ? 'pillStatus--ok' : 'pillStatus--warn'}">${job.enabled ? esc(textFor('jobStatusEnabled')) : esc(textFor('jobStatusDisabled'))}</span>
+          </div>
+          <div class="jobCardDesc">${esc(job.description || textFor('jobNoDescription'))}</div>
+          <div class="jobCardBadges">
+            ${operationBadge(job.operation)}
+            ${domainBadge(job.domain)}
+            ${providerBadge(job.provider)}
+          </div>
         </div>
-        <span class="pill ${job.enabled ? 'pillStatus--ok' : 'pillStatus--warn'}">${job.enabled ? esc(textFor('jobStatusEnabled')) : esc(textFor('jobStatusDisabled'))}</span>
-      </div>
-      <div class="jobCardDesc">${esc(job.description || textFor('jobNoDescription'))}</div>
-      <div class="jobCardBadges">
-        ${operationBadge(job.operation)}
-        ${domainBadge(job.domain)}
-        ${providerBadge(job.provider)}
-      </div>
-      <div class="jobCardFacts">
-        <div>
-          <span>${esc(textFor('jobCardSchedule'))}</span>
-          <strong>${esc(jobIntervalLabel(job.intervalSeconds))}</strong>
+        <div class="jobCardFacts">
+          <div>
+            <span>${esc(textFor('jobCardSchedule'))}</span>
+            <strong>${esc(jobIntervalLabel(job.intervalSeconds))}</strong>
+          </div>
+          <div>
+            <span>${esc(textFor('jobCardLastRun'))}</span>
+            <strong>${esc(lastRun ? formatDateTime(lastRun) : textFor('jobCardNeverRun'))}</strong>
+          </div>
+          ${
+            lastRunStatus || lock
+              ? `<div class="jobCardAlert">${lastRunStatus ? `<span class="pill pill--subtle">${esc(lastRunStatus)}</span>` : ''}${lock ? `<span class="pill pill--subtle">${esc(lock)}</span>` : ''}</div>`
+              : ''
+          }
         </div>
-        <div>
-          <span>${esc(textFor('jobCardLastRun'))}</span>
-          <strong>${esc(lastRun ? formatDateTime(lastRun) : textFor('jobCardNeverRun'))}</strong>
+        <div class="jobCardActions">
+          <button data-job-run="${esc(job.jobKey)}" class="success">${esc(textFor('btnRun'))}</button>
+          <button class="secondary" data-open-job-log="${esc(job.jobKey)}">${esc(textFor('jobCardHistory'))}</button>
+          ${jobForceUnlockButton(job, esc, textFor)}
+          <button class="secondary" data-job-edit-open="${esc(job.jobKey)}">${esc(textFor('jobOpenSettings'))}</button>
         </div>
-        ${
-          lastRunStatus || lock
-            ? `<div class="jobCardAlert">${lastRunStatus ? `<span class="pill pill--subtle">${esc(lastRunStatus)}</span>` : ''}${lock ? `<span class="pill pill--subtle">${esc(lock)}</span>` : ''}</div>`
-            : ''
-        }
-      </div>
-      <div class="jobCardActions">
-        <button data-job-run="${esc(job.jobKey)}" class="success">${esc(textFor('btnRun'))}</button>
-        <button class="secondary" data-open-job-log="${esc(job.jobKey)}">${esc(textFor('jobCardHistory'))}</button>
-        ${jobForceUnlockButton(job, esc, textFor)}
-        <button class="secondary" data-job-edit-open="${esc(job.jobKey)}">${esc(textFor('jobOpenSettings'))}</button>
       </div>
       <div class="jobCardEdit hidden" data-job-edit-row="${esc(job.jobKey)}">
         ${renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources })}

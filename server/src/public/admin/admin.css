@@ -6906,3 +6906,78 @@ body.adminShellV2 .jobCardFacts > div.jobCardAlert {
   background: var(--adm-danger-soft);
   color: var(--adm-danger);
 }
+
+/* Job list: one job per row for easier scanning. */
+body.adminShellV2 .jobCardsGrid {
+  grid-template-columns: 1fr;
+}
+
+body.adminShellV2 .jobCard {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body.adminShellV2 .jobCardLine {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.8fr) minmax(260px, 1fr) minmax(220px, auto);
+  gap: 16px;
+  align-items: center;
+  min-width: 0;
+  padding: 16px 18px;
+}
+
+body.adminShellV2 .jobCardMain {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+body.adminShellV2 .jobCardDesc {
+  min-height: 0;
+}
+
+body.adminShellV2 .jobCardFacts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+body.adminShellV2 .jobCardActions {
+  justify-content: flex-end;
+  padding-top: 0;
+}
+
+body.adminShellV2 .jobCardActions button {
+  min-height: 34px;
+  padding-inline: 12px;
+}
+
+body.adminShellV2 .jobCardEdit {
+  margin: 0 18px 18px;
+  padding-top: 14px;
+}
+
+@media (max-width: 1180px) {
+  body.adminShellV2 .jobCardLine {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  body.adminShellV2 .jobCardActions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  body.adminShellV2 .jobCardLine {
+    padding: 14px;
+  }
+
+  body.adminShellV2 .jobCardEdit {
+    margin: 0 14px 14px;
+  }
+
+  body.adminShellV2 .jobCardFacts {
+    grid-template-columns: 1fr;
+  }
+}

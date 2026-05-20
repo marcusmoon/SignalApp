@@ -2,6 +2,7 @@ export const collectionTables = [
   'provider_settings',
   'translation_settings',
   'news_sources',
+  'rss_sources',
   'polling_jobs',
   'polling_job_runs',
   'news_items',
@@ -255,6 +256,18 @@ export function ensureStructuredSchema(db) {
       source_id TEXT,
       category TEXT,
       name TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      hidden INTEGER NOT NULL DEFAULT 0,
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS rss_sources (
+      source_id TEXT PRIMARY KEY,
+      position INTEGER NOT NULL DEFAULT 0,
+      provider_id TEXT,
+      source_name TEXT,
+      category TEXT,
       enabled INTEGER NOT NULL DEFAULT 1,
       hidden INTEGER NOT NULL DEFAULT 0,
       payload TEXT NOT NULL,

@@ -63,6 +63,7 @@ export function readStructuredDb(db) {
     translationSettings: readCollection(db, 'translation_settings'),
     uiModelPresets: readSingleton(db, 'ui_model_presets', 'default', null),
     newsSources: readCollection(db, 'news_sources'),
+    rssSources: readCollection(db, 'rss_sources'),
     newsSourceSettings: readSingleton(db, 'news_source_settings', 'default', null),
     pollingJobs: readCollection(db, 'polling_jobs'),
     pollingJobRuns: readCollection(db, 'polling_job_runs'),
@@ -85,6 +86,7 @@ export function readStructuredDb(db) {
       translationSettings: shaped.translationSettings,
       uiModelPresets: shaped.uiModelPresets,
       newsSources: shaped.newsSources,
+      rssSources: shaped.rssSources,
       newsSourceSettings: shaped.newsSourceSettings,
     },
     jobs: {
@@ -201,6 +203,19 @@ const collectionSpecs = [
       source_id: textOrNull(row.id),
       category: textOrNull(row.category || 'global'),
       name: textOrNull(row.name),
+      enabled: enabledInt(row.enabled),
+      hidden: boolInt(row.hidden === true),
+    }),
+  },
+  {
+    table: 'rss_sources',
+    keyColumn: 'source_id',
+    keyOf: (row) => row.id,
+    extraColumns: ['provider_id', 'source_name', 'category', 'enabled', 'hidden'],
+    extra: (row) => ({
+      provider_id: textOrNull(row.providerId),
+      source_name: textOrNull(row.sourceName || row.name),
+      category: textOrNull(row.category || 'global'),
       enabled: enabledInt(row.enabled),
       hidden: boolInt(row.hidden === true),
     }),
@@ -395,18 +410,19 @@ function writeStructuredDbInner(db, dbObject) {
   syncCollection(db, collectionSpecs[0], shaped.providerSettings, updatedAt);
   syncCollection(db, collectionSpecs[1], shaped.translationSettings, updatedAt);
   syncCollection(db, collectionSpecs[2], shaped.newsSources, updatedAt);
-  syncCollection(db, collectionSpecs[3], shaped.pollingJobs, updatedAt);
-  syncCollection(db, collectionSpecs[4], shaped.pollingJobRuns, updatedAt);
-  syncCollection(db, collectionSpecs[5], shaped.newsItems, updatedAt);
-  syncCollection(db, collectionSpecs[6], shaped.newsTranslations, updatedAt);
-  syncCollection(db, collectionSpecs[7], shaped.calendarEvents, updatedAt);
-  syncCollection(db, collectionSpecs[8], shaped.concallTranscripts, updatedAt);
-  syncCollection(db, collectionSpecs[9], shaped.youtubeVideos, updatedAt);
-  syncCollection(db, collectionSpecs[10], shaped.marketQuotes, updatedAt);
-  syncCollection(db, collectionSpecs[11], shaped.coinMarkets, updatedAt);
-  syncCollection(db, collectionSpecs[12], shaped.marketLists, updatedAt);
-  syncCollection(db, collectionSpecs[13], shaped.insightItems, updatedAt);
-  syncCollection(db, collectionSpecs[14], shaped.notificationItems, updatedAt);
+  syncCollection(db, collectionSpecs[3], shaped.rssSources, updatedAt);
+  syncCollection(db, collectionSpecs[4], shaped.pollingJobs, updatedAt);
+  syncCollection(db, collectionSpecs[5], shaped.pollingJobRuns, updatedAt);
+  syncCollection(db, collectionSpecs[6], shaped.newsItems, updatedAt);
+  syncCollection(db, collectionSpecs[7], shaped.newsTranslations, updatedAt);
+  syncCollection(db, collectionSpecs[8], shaped.calendarEvents, updatedAt);
+  syncCollection(db, collectionSpecs[9], shaped.concallTranscripts, updatedAt);
+  syncCollection(db, collectionSpecs[10], shaped.youtubeVideos, updatedAt);
+  syncCollection(db, collectionSpecs[11], shaped.marketQuotes, updatedAt);
+  syncCollection(db, collectionSpecs[12], shaped.coinMarkets, updatedAt);
+  syncCollection(db, collectionSpecs[13], shaped.marketLists, updatedAt);
+  syncCollection(db, collectionSpecs[14], shaped.insightItems, updatedAt);
+  syncCollection(db, collectionSpecs[15], shaped.notificationItems, updatedAt);
 }
 
 export function writeStructuredDb(db, dbObject, { transaction = true } = {}) {

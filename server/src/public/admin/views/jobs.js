@@ -61,13 +61,43 @@ function renderJobRunsPager({ targetId, state, $, esc, textForVars, textFor }) {
   `;
 }
 
-function renderJobEditPanel({ job, esc, textFor, jobDisplayName }) {
+function renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources = [] }) {
   const readonlyValue = (label, value) => `
     <div class="jobReadonlyItem">
       <span>${esc(label)}</span>
       <strong>${esc(value || '-')}</strong>
     </div>
   `;
+  const selectedRssIds = new Set(
+    Array.isArray(job.params?.rssSourceIds)
+      ? job.params.rssSourceIds.map(String)
+      : job.params?.rssSourceId
+        ? [String(job.params.rssSourceId)]
+        : [],
+  );
+  const rssSelector =
+    job.provider === 'rss'
+      ? `
+        <div class="jobRssSourcePicker">
+          <span class="muted">${esc(textFor('jobRssSourcesLabel'))}</span>
+          <div class="jobRssSourceGrid">
+            ${(rssSources || [])
+              .filter((source) => source && source.hidden !== true)
+              .map(
+                (source) => `
+                  <label class="switchRow jobRssSourceOption">
+                    <input type="checkbox" data-job-rss-source="${esc(job.jobKey)}" value="${esc(source.id)}" ${
+                      selectedRssIds.has(String(source.id)) ? 'checked' : ''
+                    } />
+                    <span>${esc(source.name || source.id)}</span>
+                  </label>
+                `,
+              )
+              .join('') || `<span class="muted">${esc(textFor('rssSourcesEmpty'))}</span>`}
+          </div>
+        </div>
+      `
+      : '';
   return `
     <div class="jobEditPanel" data-job-edit-scope="${esc(job.jobKey)}">
       <div class="row jobEditPanelHead">
@@ -87,6 +117,7 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName }) {
         ${readonlyValue('Handler', job.handler)}
         ${readonlyValue('Operation', job.operation || 'latest')}
       </div>
+      ${rssSelector}
       <div class="jobEditActions">
         <button data-job-save="${esc(job.jobKey)}" class="success">${esc(textFor('btnSave'))}</button>
       </div>
@@ -160,7 +191,7 @@ function renderJobSummary({ jobsAll, jobsFiltered, esc, textFor, textForVars }) 
   `;
 }
 
-function renderJobCard({ job, esc, textFor, jobDisplayName, operationBadge, domainBadge, providerBadge, jobIntervalLabel, formatDateTime }) {
+function renderJobCard({ job, esc, textFor, jobDisplayName, operationBadge, domainBadge, providerBadge, jobIntervalLabel, formatDateTime, rssSources }) {
   const lastRunStatus = jobLastRunStatusText(job, textFor);
   const lock = jobLockText(job, textFor);
   const lastRun = jobLastRunAt(job);
@@ -201,7 +232,7 @@ function renderJobCard({ job, esc, textFor, jobDisplayName, operationBadge, doma
         <button class="secondary" data-job-edit-open="${esc(job.jobKey)}">${esc(textFor('jobOpenSettings'))}</button>
       </div>
       <div class="jobCardEdit hidden" data-job-edit-row="${esc(job.jobKey)}">
-        ${renderJobEditPanel({ job, esc, textFor, jobDisplayName })}
+        ${renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources })}
       </div>
     </article>
   `;
@@ -224,8 +255,12 @@ export async function loadJobsView(ctx) {
     formatDateTime,
   } = ctx;
 
-  const body = await api('/admin/api/jobs');
+  const [body, rssSourcesBody] = await Promise.all([
+    api('/admin/api/jobs'),
+    api('/admin/api/rss-sources?includeHidden=1'),
+  ]);
   state.jobs = body.data;
+  state.rssSources = Array.isArray(rssSourcesBody.data) ? rssSourcesBody.data : [];
   if ($('jobRunJob')) {
     const current = $('jobRunJob').value;
     $('jobRunJob').innerHTML =
@@ -346,6 +381,7 @@ export async function loadJobsView(ctx) {
                             providerBadge,
                             jobIntervalLabel,
                             formatDateTime,
+                            rssSources: state.rssSources,
                           }),
                         )
                         .join('')}

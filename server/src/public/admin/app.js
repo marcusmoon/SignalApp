@@ -1282,6 +1282,69 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await loadJobs();
             return;
           }
+          if (target?.id === 'rssSourceAddRow') {
+            const id = `rss_${Date.now()}`;
+            state.rssSourcesDrafts = [
+              ...(Array.isArray(state.rssSourcesDrafts) ? state.rssSourcesDrafts : []),
+              {
+                id,
+                name: '',
+                providerId: id,
+                sourceName: '',
+                feedUrl: '',
+                category: 'global',
+                enabled: true,
+                hidden: false,
+                defaultLimit: 40,
+                daysBack: 0,
+                includeKeywords: [],
+                excludeKeywords: [],
+              },
+            ];
+            await loadProviderSettings();
+            return;
+          }
+          if (target?.dataset?.rssSourceRemove) {
+            const id = target.dataset.rssSourceRemove;
+            state.rssSources = (state.rssSources || []).filter((source) => String(source.id) !== id);
+            state.rssSourcesDrafts = (state.rssSourcesDrafts || []).filter((source) => String(source.id) !== id);
+            target.closest('[data-rss-source-row]')?.remove();
+            return;
+          }
+          if (target?.id === 'rssSourcesSave') {
+            const rows = [...document.querySelectorAll('[data-rss-source-row]')];
+            const csv = (value) =>
+              String(value || '')
+                .split(/[\n,]/g)
+                .map((item) => item.trim())
+                .filter(Boolean);
+            const items = rows.map((row) => {
+              const key = row.dataset.rssSourceRow;
+              const value = (name) => row.querySelector(`[data-rss-source-${name}="${key}"]`)?.value || '';
+              return {
+                id: value('id'),
+                name: value('name'),
+                providerId: value('provider'),
+                sourceName: value('source'),
+                feedUrl: value('url'),
+                category: value('category') || 'global',
+                defaultLimit: Number(value('limit') || 40),
+                daysBack: Number(value('days') || 0),
+                includeKeywords: csv(value('include')),
+                excludeKeywords: csv(value('exclude')),
+                enabled: row.querySelector(`[data-rss-source-enabled="${key}"]`)?.checked !== false,
+                hidden: row.querySelector(`[data-rss-source-hidden="${key}"]`)?.checked === true,
+              };
+            });
+            await api('/admin/api/rss-sources', {
+              method: 'PUT',
+              body: JSON.stringify({ items }),
+            });
+            state.rssSourcesDrafts = [];
+            await loadProviderSettings();
+            showToast(textFor('toastSaved'), `${items.length}`, { kind: 'success' });
+            return;
+          }
           if (target?.dataset?.newsMode) {
             setNewsMode(target.dataset.newsMode);
             return;
@@ -1460,6 +1523,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
               const raw = String(scope.querySelector(selector)?.value || '').trim();
               return raw ? Number(raw) : null;
             };
+            const rssSourceIds = [...scope.querySelectorAll(`[data-job-rss-source="${key}"]:checked`)].map((input) => input.value).filter(Boolean);
+            const paramsPatch = rssSourceIds.length > 0 ? { rssSourceId: rssSourceIds[0], rssSourceIds } : null;
             await api(`/admin/api/jobs/${encodeURIComponent(key)}`, {
               method: 'PATCH',
               body: JSON.stringify({
@@ -1469,6 +1534,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                 intervalSeconds: Number(scope.querySelector(`[data-job-interval="${key}"]`).value),
                 lockTtlSeconds: optionalNumber(`[data-job-lock-ttl="${key}"]`),
                 staleLockSeconds: optionalNumber(`[data-job-stale-lock="${key}"]`),
+                ...(paramsPatch ? { params: { ...((state.jobs || []).find((job) => job.jobKey === key)?.params || {}), ...paramsPatch } } : {}),
               }),
             });
             await Promise.all([loadJobs(), loadDashboard()]);

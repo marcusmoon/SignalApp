@@ -84,7 +84,7 @@ export function defaultPollingJobs() {
       handler: 'financial_juice',
       enabled: false,
       intervalSeconds: 300,
-      params: { feedUrl: 'https://www.financialjuice.com/feed.ashx?xy=rss', limit: 40 },
+      params: { rssSourceId: 'financial_juice', limit: 40 },
       lastRunAt: null,
       nextRunAt: null,
       updatedAt: nowIso(),
@@ -99,7 +99,7 @@ export function defaultPollingJobs() {
       handler: 'financial_juice',
       enabled: false,
       intervalSeconds: 3600,
-      params: { feedUrl: 'https://www.financialjuice.com/feed.ashx?xy=rss', limit: 60 },
+      params: { rssSourceId: 'financial_juice', limit: 60 },
       lastRunAt: null,
       nextRunAt: null,
       updatedAt: nowIso(),
@@ -127,8 +127,8 @@ export function defaultPollingJobs() {
     },
     {
       jobKey: 'market_news_globenewswire_earnings',
-      displayName: 'GlobeNewswire 실적 RSS',
-      description: 'GlobeNewswire 실적/운영결과 RSS를 수집해 공식 보도자료 기반 뉴스로 저장합니다.',
+      displayName: '뉴스와이어 실적 RSS',
+      description: '등록된 실적/운영결과 RSS를 수집해 공식 보도자료 기반 뉴스로 저장합니다.',
       domain: 'news',
       operation: 'latest',
       provider: 'rss',
@@ -136,11 +136,8 @@ export function defaultPollingJobs() {
       enabled: false,
       intervalSeconds: 1800,
       params: {
-        providerId: 'globenewswire',
-        sourceName: 'GlobeNewswire',
-        category: 'global',
-        feedUrl:
-          'https://www.globenewswire.com/RssFeed/subjectcode/13-Earnings%20Releases%20and%20Operating%20Results/feedTitle/GlobeNewswire%20-%20Earnings%20Releases%20and%20Operating%20Results',
+        rssSourceId: 'globenewswire_earnings',
+        rssSourceIds: ['globenewswire_earnings', 'prnewswire_earnings'],
         limit: 40,
         daysBack: 7,
         includeKeywords: ['earnings', 'results', 'revenue', 'guidance', 'quarter'],
@@ -357,6 +354,60 @@ export function defaultPollingJobs() {
   ];
 }
 
+export function defaultRssSources() {
+  return [
+    {
+      id: 'financial_juice',
+      name: 'Financial Juice',
+      providerId: 'financial_juice',
+      sourceName: 'Financial Juice',
+      feedUrl: 'https://www.financialjuice.com/feed.ashx?xy=rss',
+      category: 'global',
+      enabled: true,
+      hidden: false,
+      order: 1,
+      defaultLimit: 40,
+      daysBack: 0,
+      includeKeywords: [],
+      excludeKeywords: [],
+      updatedAt: nowIso(),
+    },
+    {
+      id: 'globenewswire_earnings',
+      name: 'GlobeNewswire 실적',
+      providerId: 'globenewswire',
+      sourceName: 'GlobeNewswire',
+      feedUrl:
+        'https://www.globenewswire.com/RssFeed/subjectcode/13-Earnings%20Releases%20and%20Operating%20Results/feedTitle/GlobeNewswire%20-%20Earnings%20Releases%20and%20Operating%20Results',
+      category: 'earnings',
+      enabled: true,
+      hidden: false,
+      order: 2,
+      defaultLimit: 40,
+      daysBack: 7,
+      includeKeywords: ['earnings', 'results', 'revenue', 'guidance', 'quarter'],
+      excludeKeywords: [],
+      updatedAt: nowIso(),
+    },
+    {
+      id: 'prnewswire_earnings',
+      name: 'PR Newswire 실적',
+      providerId: 'prnewswire',
+      sourceName: 'PR Newswire',
+      feedUrl: 'https://www.prnewswire.com/rss/news-releases-list.rss',
+      category: 'earnings',
+      enabled: true,
+      hidden: false,
+      order: 3,
+      defaultLimit: 40,
+      daysBack: 7,
+      includeKeywords: ['earnings', 'results', 'revenue', 'guidance', 'quarter'],
+      excludeKeywords: [],
+      updatedAt: nowIso(),
+    },
+  ];
+}
+
 export function defaultProviderSettings() {
   return [
     {
@@ -433,7 +484,7 @@ export function defaultTranslationSettings() {
 
 export function defaultDb() {
   return {
-    meta: { createdAt: nowIso(), updatedAt: nowIso(), schemaVersion: 1 },
+    meta: { createdAt: nowIso(), updatedAt: nowIso(), schemaVersion: 1, rssSourcesCatalogVersion: 1 },
     appSettings: {
       marketQuotesMaxAgeSec: 10,
       youtubeCurationHandles: [...DEFAULT_YOUTUBE_CURATION_HANDLES],
@@ -455,6 +506,7 @@ export function defaultDb() {
     translationSettings: defaultTranslationSettings(),
     uiModelPresets: defaultUiModelPresets(),
     newsSources: [],
+    rssSources: defaultRssSources(),
     newsSourceSettings: {
       autoEnableNewSources: { global: true, crypto: true },
       aliases: { global: {}, crypto: {} },

@@ -430,15 +430,20 @@ export function renderUiModelPresetsEditorView({ $, state, esc, textFor, textFor
 
 export async function loadProviderSettingsView(ctx) {
   const { api, $, state, esc, textFor, textForVars, formatDateTime, renderUiModelPresetsEditor } = ctx;
-  const [body, presetsBody, appSettingsBody] = await Promise.all([
+  const [body, presetsBody, appSettingsBody, rssSourcesBody] = await Promise.all([
     api('/admin/api/provider-settings'),
     api('/admin/api/ui-model-presets'),
     api('/admin/api/app-settings'),
+    api('/admin/api/rss-sources?includeHidden=1'),
   ]);
   const rows = Array.isArray(body.data) ? body.data : [];
   state.providerSettings = rows;
   state.uiModelPresets = presetsBody.data || null;
   state.appSettings = appSettingsBody.data || null;
+  state.rssSources = [
+    ...(Array.isArray(rssSourcesBody.data) ? rssSourcesBody.data : []),
+    ...(Array.isArray(state.rssSourcesDrafts) ? state.rssSourcesDrafts : []),
+  ];
   const llm = rows.filter((r) => r.provider === 'openai' || r.provider === 'claude');
   const data = rows.filter((r) => !(r.provider === 'openai' || r.provider === 'claude'));
   const quotesMaxAge = Number(state.appSettings?.marketQuotesMaxAgeSec);
@@ -448,6 +453,7 @@ export async function loadProviderSettingsView(ctx) {
   const a = sa.apple || {};
   const k = sa.kakao || {};
   const n = sa.naver || {};
+  const keywordText = (value) => (Array.isArray(value) ? value.join(', ') : String(value || ''));
   const renderRow = (s, { showModel }) => {
     const models = showModel
       ? modelPresetsForProvider({ provider: s.provider, defaultModel: s.defaultModel, uiModelPresets: state.uiModelPresets })
@@ -494,6 +500,68 @@ export async function loadProviderSettingsView(ctx) {
         </div>
         <div class="providerTileGrid">
           ${data.map((s) => renderRow(s, { showModel: false })).join('') || `<p class="muted">${esc(textFor('providerDataEmpty'))}</p>`}
+        </div>
+      </div>
+
+      <div class="card settingsControlCard">
+        <div class="cardHead">
+          <div class="cardHeadMain">
+            <div class="cardKicker">${esc(textFor('rssSourcesTitle'))}</div>
+            <div class="cardHint">${esc(textFor('rssSourcesHint'))}</div>
+          </div>
+          <button class="secondary compactBtn" type="button" id="rssSourceAddRow">${esc(textFor('rssSourceAdd'))}</button>
+        </div>
+        <div class="settingsSectionBody">
+          <table class="settingsTable rssSourceTable">
+            <thead>
+              <tr>
+                <th>${esc(textFor('colName'))}</th>
+                <th>${esc(textFor('rssSourceFeedUrl'))}</th>
+                <th>${esc(textFor('colCategory'))}</th>
+                <th>${esc(textFor('rssSourceLimit'))}</th>
+                <th>${esc(textFor('colEnabled'))}</th>
+                <th>${esc(textFor('colAction'))}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${state.rssSources
+                .map(
+                  (source) => `
+                    <tr data-rss-source-row="${esc(source.id)}">
+                      <td>
+                        <input data-rss-source-name="${esc(source.id)}" value="${esc(source.name || '')}" placeholder="${esc(textFor('rssSourceNamePh'))}" />
+                        <input data-rss-source-id="${esc(source.id)}" value="${esc(source.id || '')}" placeholder="id" />
+                        <input data-rss-source-provider="${esc(source.id)}" value="${esc(source.providerId || '')}" placeholder="providerId" />
+                        <input data-rss-source-source="${esc(source.id)}" value="${esc(source.sourceName || '')}" placeholder="sourceName" />
+                      </td>
+                      <td><input data-rss-source-url="${esc(source.id)}" value="${esc(source.feedUrl || '')}" placeholder="https://..." /></td>
+                      <td>
+                        <select data-rss-source-category="${esc(source.id)}">
+                          ${['global', 'korea', 'crypto', 'earnings', 'filings']
+                            .map((category) => `<option value="${esc(category)}" ${source.category === category ? 'selected' : ''}>${esc(category)}</option>`)
+                            .join('')}
+                        </select>
+                        <input data-rss-source-include="${esc(source.id)}" value="${esc(keywordText(source.includeKeywords))}" placeholder="${esc(textFor('rssSourceIncludePh'))}" />
+                        <input data-rss-source-exclude="${esc(source.id)}" value="${esc(keywordText(source.excludeKeywords))}" placeholder="${esc(textFor('rssSourceExcludePh'))}" />
+                      </td>
+                      <td>
+                        <input data-rss-source-limit="${esc(source.id)}" type="number" min="1" max="100" value="${esc(source.defaultLimit || 40)}" />
+                        <input data-rss-source-days="${esc(source.id)}" type="number" min="0" max="365" value="${esc(source.daysBack || 0)}" />
+                      </td>
+                      <td>
+                        <label class="switchRow"><input class="switchInput" type="checkbox" data-rss-source-enabled="${esc(source.id)}" ${source.enabled !== false ? 'checked' : ''}/><span class="switchUi" aria-hidden="true"></span></label>
+                        <label class="switchRow"><input class="switchInput" type="checkbox" data-rss-source-hidden="${esc(source.id)}" ${source.hidden === true ? 'checked' : ''}/><span>${esc(textFor('newsSourcesHide'))}</span></label>
+                      </td>
+                      <td><button class="danger compactBtn" type="button" data-rss-source-remove="${esc(source.id)}">${esc(textFor('btnDeleteRow'))}</button></td>
+                    </tr>
+                  `,
+                )
+                .join('')}
+            </tbody>
+          </table>
+          <div class="row">
+            <button class="success" id="rssSourcesSave">${esc(textFor('btnSave'))}</button>
+          </div>
         </div>
       </div>
 

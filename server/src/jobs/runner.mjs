@@ -23,6 +23,7 @@ import { fetchSecEdgarFilings } from '../providers/news/secEdgar.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
 import { fetchYoutubeEconomy, fetchYoutubeVideosByIds } from '../providers/youtube/youtube.mjs';
 import { normalizeYoutubeCurationHandles } from '../youtubeCuration.mjs';
+import { ensureRssSourcesCatalog, getRssSource, rssSourceParams } from '../db/rssSources.mjs';
 
 function addSecondsIso(seconds) {
   return new Date(Date.now() + Number(seconds || 300) * 1000).toISOString();
@@ -217,10 +218,26 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
     return { kind: 'news', rows: await fetchFinnhubMarketNews(job.params || {}) };
   }
   if (job.provider === 'rss' && job.handler === 'financial_juice') {
-    return { kind: 'news', rows: await fetchFinancialJuiceRssNews(job.params || {}) };
+    const sourceId = job.params?.rssSourceId || (Array.isArray(job.params?.rssSourceIds) ? job.params.rssSourceIds[0] : null);
+    const source = getRssSource(dbBefore, sourceId);
+    if (!source || source.enabled === false) throw new Error('RSS_SOURCE_NOT_CONFIGURED');
+    return { kind: 'news', rows: await fetchFinancialJuiceRssNews(rssSourceParams(source, job.params || {})) };
   }
   if (job.provider === 'rss' && job.handler === 'newswire_rss') {
-    return { kind: 'news', rows: await fetchNewswireRssNews(job.params || {}) };
+    const params = job.params || {};
+    const ids = Array.isArray(params.rssSourceIds)
+      ? params.rssSourceIds
+      : params.rssSourceId
+        ? [params.rssSourceId]
+        : [];
+    const sources = ids.map((id) => getRssSource(dbBefore, id)).filter((source) => source && source.enabled !== false);
+    if (sources.length === 0) throw new Error('RSS_SOURCE_NOT_CONFIGURED');
+    const rows = [];
+    ensureRssSourcesCatalog(dbBefore);
+    for (const source of sources) {
+      rows.push(...(await fetchNewswireRssNews(rssSourceParams(source, params))));
+    }
+    return { kind: 'news', rows };
   }
   if (job.provider === 'sec' && job.handler === 'company_filings') {
     const listKey = job.params?.listKey || 'default_watchlist';

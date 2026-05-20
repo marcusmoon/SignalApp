@@ -154,6 +154,7 @@ npx expo start -c
 | `market_news_crypto_reconcile` | 코인 뉴스 보정 수집 |
 | `market_news_financial_juice` | Financial Juice RSS 최신 수집 |
 | `market_news_financial_juice_reconcile` | Financial Juice RSS 보정 수집 |
+| `market_news_globenewswire_earnings` | `rss_sources`의 뉴스와이어 실적 RSS 수집 |
 | `calendar_economic` | 경제 캘린더 최신 수집 |
 | `calendar_earnings` | 실적 캘린더 최신 수집 |
 | `youtube_economy_latest` | 경제 유튜브 최신 영상 수집 |
@@ -166,6 +167,8 @@ npx expo start -c
 | `market_quotes_mcap` | 시총 상위 시세 수집 |
 | `market_coins_top` | 코인 시총 상위 수집 |
 | `insights_market_brief` | 수집 데이터 기반 시장 인사이트 생성 |
+
+RSS 뉴스 Job은 `params.rssSourceId` 또는 `params.rssSourceIds`로 어드민 **설정 > Provider > 뉴스 RSS 피드**에 등록된 피드를 참조한다. 기본 RSS 피드는 `Financial Juice`, `GlobeNewswire 실적`, `PR Newswire 실적` 3개이며, Job params에 `feedUrl`을 직접 넣는 방식은 사용하지 않는다.
 
 스케줄러는 10초마다 due job을 확인합니다. `enabled: true`이고 `nextRunAt`이 비었거나 현재 시각 이전이면 실행합니다. 이 확인은 전체 DB 스냅샷을 만들지 않고 SQLite `polling_jobs` 테이블만 직접 조회하며, 같은 Node 프로세스 안에서 이미 실행 중인 동일 job은 다시 시작하지 않습니다. 여러 프로세스가 같은 DB를 보더라도 `polling_job_locks` 테이블의 TTL lock으로 동일 job 중복 실행을 막습니다.
 

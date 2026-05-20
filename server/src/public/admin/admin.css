@@ -5169,6 +5169,11 @@ body.adminShellV2.loginMode {
   grid-template-columns: 1fr;
 }
 
+/* LLM·Data Provider 카드는 항상 세로 1열 — 넓은 화면에서도 나란히 두지 않음 */
+.adminShellV2 #providerSettings .settingsSectionGrid > .settingsControlCard {
+  grid-column: 1 / -1;
+}
+
 .adminShellV2 .providerTileGrid {
   gap: 10px;
 }
@@ -5850,12 +5855,8 @@ body.adminShellV2.loginMode {
 
 @media (min-width: 1180px) {
   .adminShellV2 #providerSettings .settingsSectionGrid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .adminShellV2 #providerSettings .settingsControlCard:nth-child(4) {
-    grid-column: 1 / -1;
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 }
 
@@ -6019,12 +6020,6 @@ body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric strong {
 }
 
 @media (min-width: 1360px) {
-  .adminShellV2 #providerSettings .settingsSectionGrid {
-    grid-template-columns: minmax(420px, 0.9fr) minmax(520px, 1.1fr);
-  }
-}
-
-@media (min-width: 1180px) and (max-width: 1359px) {
   .adminShellV2 #providerSettings .settingsSectionGrid {
     grid-template-columns: 1fr;
   }

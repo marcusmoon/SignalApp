@@ -33,7 +33,6 @@ const HUB_META: Record<
 > = {
   insights: { href: '/insights' as Href, icon: 'bolt', titleId: 'screenInsights' },
   briefing: { href: '/briefing' as Href, icon: 'briefcase', titleId: 'screenBriefing' },
-  calendar: { href: '/calendar' as Href, icon: 'calendar', titleId: 'screenCalendar' },
   calls: { href: '/calls' as Href, icon: 'phone', titleId: 'tabCalls' },
   youtube: { href: '/youtube' as Href, icon: 'youtube-play', titleId: 'tabYoutube' },
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
@@ -41,7 +40,7 @@ const HUB_META: Record<
 };
 
 const GRID_GAP = 12;
-const TILE_HEIGHT = 92;
+const TILE_HEIGHT = 62;
 /** 허브 행 ↔ 하단 링크·광고 등 섹션 사이 */
 const SECTION_GAP = 20;
 
@@ -139,7 +138,9 @@ export default function MoreHubScreen() {
                 <View style={styles.iconCircle}>
                   <FontAwesome name={meta.icon} size={18} color={theme.green} />
                 </View>
-                <Text style={styles.rowTitle} numberOfLines={2}>{name}</Text>
+                <Text style={styles.rowTitle} numberOfLines={2}>
+                  {name}
+                </Text>
               </Pressable>
             );
           }}
@@ -161,15 +162,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     tile: {
       flex: 1,
-      minHeight: TILE_HEIGHT,
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: 10,
       borderRadius: 13,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingVertical: 12,
+      minHeight: TILE_HEIGHT,
+      paddingVertical: 10,
       paddingHorizontal: 12,
     },
     rowPressed: {
@@ -187,10 +188,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.greenBorder,
     },
     rowTitle: {
+      flex: 1,
+      minWidth: 0,
       fontSize: sf(14),
-      lineHeight: sf(18),
       fontWeight: '800',
       color: theme.text,
+      lineHeight: sf(18),
     },
     footer: {
       marginTop: SECTION_GAP,

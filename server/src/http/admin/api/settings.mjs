@@ -20,9 +20,10 @@ import {
   syncYoutubeCurationHandlesFromCatalog,
   youtubeChannelIdFromHandle,
 } from '../../../db/youtubeChannels.mjs';
+import { ensureRssSourcesCatalog, normalizeRssSource, publicRssSource } from '../../../db/rssSources.mjs';
 import { getMarketList, json, readBody } from '../../shared.mjs';
 
-const SUPPORTED_PROVIDERS = ['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko'];
+const SUPPORTED_PROVIDERS = ['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko', 'sec', 'rss'];
 
 /** Admin API only: never return raw third-party client secrets to the browser. */
 function redactAppSettingsForAdminGet(settings) {
@@ -386,6 +387,47 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
       .filter((c) => c.id && c.handle)
       .sort((a, b) => a.order - b.order || a.handle.localeCompare(b.handle));
     json(res, 200, { data: channels });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/admin/api/rss-sources') {
+    const db = await readDb();
+    const includeHidden = url.searchParams.get('includeHidden') === '1';
+    const rows = ensureRssSourcesCatalog(db)
+      .map(publicRssSource)
+      .filter((source) => (includeHidden ? true : !source.hidden))
+      .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || a.name.localeCompare(b.name));
+    json(res, 200, { data: rows });
+    return true;
+  }
+
+  if (req.method === 'PUT' && pathname === '/admin/api/rss-sources') {
+    const patch = await readBody(req);
+    const items = Array.isArray(patch?.items) ? patch.items : [];
+    const updated = await updateDb((db) => {
+      const cur = ensureRssSourcesCatalog(db);
+      const byId = new Map(cur.map((source) => [String(source.id || ''), source]));
+      const next = [];
+      const seen = new Set();
+      let order = 0;
+      for (const raw of items) {
+        const normalized = normalizeRssSource(raw, order);
+        if (!normalized.id || !normalized.feedUrl || seen.has(normalized.id)) continue;
+        const prev = byId.get(normalized.id) || {};
+        order += 1;
+        next.push({
+          ...prev,
+          ...normalized,
+          order,
+          createdAt: prev.createdAt || normalized.createdAt || nowIso(),
+          updatedAt: nowIso(),
+        });
+        seen.add(normalized.id);
+      }
+      db.rssSources = next;
+      return db.rssSources.map(publicRssSource);
+    });
+    json(res, 200, { data: updated });
     return true;
   }
 

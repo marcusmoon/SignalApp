@@ -1,6 +1,7 @@
 import { ensureMarketListsShape } from '../marketLists.mjs';
 import { normalizeYoutubeCurationHandles } from '../youtubeCuration.mjs';
 import { ensureYoutubeChannelsCatalog } from './youtubeChannels.mjs';
+import { ensureRssSourcesCatalog } from './rssSources.mjs';
 import {
   defaultDb,
   defaultPollingJobs,
@@ -67,6 +68,7 @@ export function ensureDbShape(db) {
     }
   }
   if (!Array.isArray(db.pollingJobs)) db.pollingJobs = defaultPollingJobs();
+  ensureRssSourcesCatalog(db);
   const defaults = defaultPollingJobs();
   for (const defaultJob of defaults) {
     const existing = db.pollingJobs.find((j) => j.jobKey === defaultJob.jobKey);
@@ -78,6 +80,30 @@ export function ensureDbShape(db) {
       if (existing[key] == null || existing[key] === '') existing[key] = defaultJob[key];
     }
     if (existing.params == null) existing.params = defaultJob.params;
+    if (
+      existing.jobKey === 'market_news_financial_juice' ||
+      existing.jobKey === 'market_news_financial_juice_reconcile'
+    ) {
+      existing.params = { ...(defaultJob.params || {}), ...(existing.params || {}), rssSourceId: 'financial_juice' };
+      delete existing.params.feedUrl;
+      delete existing.params.providerId;
+      delete existing.params.sourceName;
+      delete existing.params.category;
+    }
+    if (existing.jobKey === 'market_news_globenewswire_earnings') {
+      const existingIds = Array.isArray(existing.params?.rssSourceIds) ? existing.params.rssSourceIds : [];
+      const defaultIds = Array.isArray(defaultJob.params?.rssSourceIds) ? defaultJob.params.rssSourceIds : [];
+      existing.params = {
+        ...(defaultJob.params || {}),
+        ...(existing.params || {}),
+        rssSourceId: existing.params?.rssSourceId || 'globenewswire_earnings',
+        rssSourceIds: [...new Set([...existingIds, ...defaultIds])],
+      };
+      delete existing.params.feedUrl;
+      delete existing.params.providerId;
+      delete existing.params.sourceName;
+      delete existing.params.category;
+    }
     if (existing.jobKey === 'market_quotes_popular' && !existing.params.listKey) {
       existing.params = { ...existing.params, listKey: 'popular_symbols' };
     }
@@ -161,6 +187,7 @@ export function splitStoresFromDb(db) {
       translationSettings: shaped.translationSettings,
       uiModelPresets: shaped.uiModelPresets,
       newsSources: shaped.newsSources,
+      rssSources: shaped.rssSources,
       newsSourceSettings: shaped.newsSourceSettings,
     },
     jobs: {
@@ -200,6 +227,7 @@ export function shapeDbFromStores(stores) {
     translationSettings: stores.settings?.translationSettings ?? [],
     uiModelPresets: stores.settings?.uiModelPresets ?? null,
     newsSources: stores.settings?.newsSources ?? [],
+    rssSources: stores.settings?.rssSources ?? [],
     newsSourceSettings: stores.settings?.newsSourceSettings ?? null,
     pollingJobs: stores.jobs?.pollingJobs ?? [],
     pollingJobRuns: stores.jobs?.pollingJobRuns ?? [],

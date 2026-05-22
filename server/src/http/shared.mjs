@@ -182,7 +182,15 @@ const FLASH_KEYWORD_RE =
 const FLASH_MAX_AGE_MS = 18 * 60 * 1000;
 
 export function isFlashNewsItem(item, nowMs = Date.now()) {
-  const blob = `${item?.originalTitle ?? ''} ${item?.title ?? ''} ${item?.category ?? ''} ${item?.originalSummary ?? ''} ${item?.summary ?? ''}`;
+  const blob = [
+    item?.titleOriginal,
+    item?.summaryOriginal,
+    item?.originalTitle,
+    item?.originalSummary,
+    item?.title,
+    item?.summary,
+    item?.category,
+  ].join(' ');
   if (FLASH_KEYWORD_RE.test(blob)) return true;
   const cat = String(item?.category || '').toLowerCase();
   if (cat.includes('breaking') || cat.includes('flash') || cat.includes('hot')) return true;

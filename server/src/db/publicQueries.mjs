@@ -235,7 +235,13 @@ export function queryPublicNewsInDb(db, options = {}) {
   const { whereSql, params } = newsPrefilterSql(options);
   const flash = ['1', 'true', 'yes'].includes(String(options.flash || '').trim().toLowerCase());
   const wideScan = Boolean(options.q || options.tag || options.symbol || options.symbols || options.from || options.to || flash);
-  const scanLimit = compactScanLimit({ limit, offset, wide: wideScan });
+  const scanLimit = compactScanLimit({
+    limit,
+    offset,
+    wide: wideScan,
+    minWide: flash ? 1200 : 300,
+    extraWide: flash ? 600 : 120,
+  });
   const newsItems = db
     .prepare(
       `

@@ -12,11 +12,11 @@ import type { CalendarEvent } from '@/types/signal';
 
 export async function fetchSignalCalendar(
   params?: {
-  from?: string;
-  to?: string;
-  type?: string;
-  limit?: number;
-},
+    from?: string;
+    to?: string;
+    type?: string;
+    limit?: number;
+  },
   options?: { cacheMode?: 'use' | 'bypass' },
 ): Promise<SignalApiCalendarEvent[]> {
   const cacheMode = options?.cacheMode || 'use';
@@ -49,6 +49,28 @@ export async function fetchSignalCalendarDateSummaries(
   const rows = Array.isArray(json.data) ? json.data : [];
   if (cacheMode !== 'bypass') storeSignalCalendarDatesCache(cacheKey, rows);
   return rows;
+}
+
+export function signalCalendarDateSummariesFromEvents(
+  items: SignalApiCalendarEvent[],
+): SignalApiCalendarDateSummary[] {
+  const byDate = new Map<string, SignalApiCalendarDateSummary>();
+
+  for (const item of items) {
+    const date = String(item.date || item.eventAt || '').slice(0, 10);
+    if (!date) continue;
+
+    const current = byDate.get(date) || {
+      date,
+      total: 0,
+      counts: {},
+    };
+    current.total += 1;
+    current.counts[item.type] = (current.counts[item.type] || 0) + 1;
+    byDate.set(date, current);
+  }
+
+  return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export function signalCalendarToCalendarEvent(item: SignalApiCalendarEvent): CalendarEvent {

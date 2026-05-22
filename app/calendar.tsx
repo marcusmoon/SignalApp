@@ -25,6 +25,7 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
   fetchSignalCalendar,
   fetchSignalCalendarDateSummaries,
+  signalCalendarDateSummariesFromEvents,
   signalCalendarToCalendarEvent,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -162,10 +163,15 @@ export default function CalendarScreen() {
       const selectedDayParams = ymdInMonth(selectedYmd, visibleMonth.year, visibleMonth.month)
         ? { from: selectedYmd, to: selectedYmd }
         : null;
+      const cacheMode = forceRefresh ? 'bypass' : 'use';
+      const summaryPromise = fetchSignalCalendarDateSummaries(monthParams, { cacheMode }).catch(async () => {
+        const monthRows = await fetchSignalCalendar({ ...monthParams, limit: 10000 }, { cacheMode });
+        return signalCalendarDateSummariesFromEvents(monthRows);
+      });
       const [summaryList, selectedDayList] = await Promise.all([
-        fetchSignalCalendarDateSummaries(monthParams, { cacheMode: forceRefresh ? 'bypass' : 'use' }),
+        summaryPromise,
         selectedDayParams
-          ? fetchSignalCalendar(selectedDayParams, { cacheMode: forceRefresh ? 'bypass' : 'use' })
+          ? fetchSignalCalendar(selectedDayParams, { cacheMode })
           : Promise.resolve([]),
       ]);
       setDateSummaries(summaryList);

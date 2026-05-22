@@ -573,7 +573,13 @@ export function queryPublicCoinMarketsInDb(db, options = {}) {
     ? 'WHERE LOWER(COALESCE(symbol, "")) LIKE @q OR LOWER(payload) LIKE @q'
     : '';
   const params = q ? { q: `%${q}%` } : {};
-  const scanLimit = compactScanLimit({ limit: safeLimit, offset: safeOffset, wide: Boolean(q) });
+  const scanLimit = compactScanLimit({
+    limit: safeLimit,
+    offset: safeOffset,
+    wide: true,
+    minWide: q ? 300 : 1000,
+    extraWide: q ? 120 : 300,
+  });
   const rows = db
     .prepare(
       `
@@ -679,7 +685,9 @@ export function queryPublicCalendarInDb(db, options = {}) {
     where.push('(LOWER(COALESCE(symbol, "")) LIKE @q OR LOWER(COALESCE(event_type, "")) LIKE @q OR LOWER(payload) LIKE @q)');
     params.q = `%${q}%`;
   }
-  const limit = Math.min(10000, Math.max(2000, Math.floor(Number(options.limit)) || 10000));
+  const hasDateRange = Boolean(options.from || options.to);
+  const defaultLimit = hasDateRange ? 2000 : 500;
+  const limit = Math.min(5000, Math.max(1, Math.floor(Number(options.limit)) || defaultLimit));
   params.limit = limit;
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const rows = db

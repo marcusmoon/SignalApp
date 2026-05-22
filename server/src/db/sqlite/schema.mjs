@@ -444,10 +444,18 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_news_items_source_published ON news_items(category, source_name, published_at);
     CREATE INDEX IF NOT EXISTS idx_news_translations_item ON news_translations(news_item_id, locale);
     CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(event_date, event_type);
+    CREATE INDEX IF NOT EXISTS idx_calendar_events_type_date ON calendar_events(event_type, event_date, event_at);
+    CREATE INDEX IF NOT EXISTS idx_calendar_events_symbol_date ON calendar_events(symbol, event_date);
     CREATE INDEX IF NOT EXISTS idx_concall_transcripts_symbol ON concall_transcripts(symbol, earnings_date);
+    CREATE INDEX IF NOT EXISTS idx_concall_transcripts_date ON concall_transcripts(earnings_date);
+    CREATE INDEX IF NOT EXISTS idx_concall_transcripts_period ON concall_transcripts(fiscal_year, fiscal_quarter, earnings_date);
     CREATE INDEX IF NOT EXISTS idx_youtube_videos_published ON youtube_videos(channel, published_at);
+    CREATE INDEX IF NOT EXISTS idx_youtube_videos_published_only ON youtube_videos(published_at);
     CREATE INDEX IF NOT EXISTS idx_market_quotes_symbol ON market_quotes(symbol, segment);
+    CREATE INDEX IF NOT EXISTS idx_market_quotes_segment_symbol_fetch ON market_quotes(segment, symbol, fetched_at);
+    CREATE INDEX IF NOT EXISTS idx_market_quotes_segment_fetch ON market_quotes(segment, fetched_at);
     CREATE INDEX IF NOT EXISTS idx_coin_markets_symbol ON coin_markets(symbol);
+    CREATE INDEX IF NOT EXISTS idx_coin_markets_fetched ON coin_markets(fetched_at);
     CREATE INDEX IF NOT EXISTS idx_insight_items_generated ON insight_items(generated_at, score);
     CREATE INDEX IF NOT EXISTS idx_insight_items_lookup ON insight_items(kind, level, push_candidate, generated_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_status ON notification_items(status, scheduled_at);

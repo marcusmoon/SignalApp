@@ -93,6 +93,8 @@ let sqliteDb = null;
 let structuredMigrationChecked = false;
 let defaultDbSeedChecked = false;
 let operationalFixupsChecked = false;
+const PUBLIC_READ_CACHE_TTL_MS = 5000;
+const publicReadCache = new Map();
 
 /**
  * @template T
@@ -111,6 +113,34 @@ async function withDbExclusive(fn) {
   } finally {
     release();
   }
+}
+
+function stableStringify(value) {
+  if (value == null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+  return `{${Object.keys(value)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
+    .join(',')}}`;
+}
+
+function clearPublicReadCache() {
+  publicReadCache.clear();
+}
+
+async function withDbRead(fn) {
+  const db = await ensureSqliteStore();
+  return fn(db);
+}
+
+async function cachedPublicRead(namespace, options, fn, ttlMs = PUBLIC_READ_CACHE_TTL_MS) {
+  const key = `${namespace}:${stableStringify(options || {})}`;
+  const now = Date.now();
+  const cached = publicReadCache.get(key);
+  if (cached && cached.expiresAt > now) return cached.value;
+  const value = await withDbRead(fn);
+  if (ttlMs > 0) publicReadCache.set(key, { value, expiresAt: now + ttlMs });
+  return value;
 }
 
 function getSqliteDb() {
@@ -230,7 +260,11 @@ export async function readDb() {
 }
 
 export async function writeDb(db) {
-  return withDbExclusive(() => writeDbBody(db));
+  return withDbExclusive(async () => {
+    const result = await writeDbBody(db);
+    clearPublicReadCache();
+    return result;
+  });
 }
 
 export async function updateDb(mutator) {
@@ -242,6 +276,7 @@ export async function updateDb(mutator) {
       const result = await mutator(db);
       await writeSqliteDbBody(db, { db: conn, transaction: false });
       conn.exec('COMMIT');
+      clearPublicReadCache();
       return result;
     } catch (error) {
       conn.exec('ROLLBACK');
@@ -251,10 +286,7 @@ export async function updateDb(mutator) {
 }
 
 export async function queryInsightItems(options = {}) {
-  return withDbExclusive(async () => {
-    const conn = await ensureSqliteStore();
-    return queryInsightItemsInDb(conn, options);
-  });
+  return cachedPublicRead('insights', options, (conn) => queryInsightItemsInDb(conn, options));
 }
 
 export async function listDuePollingJobs(now = Date.now()) {
@@ -361,23 +393,19 @@ export async function createAppUser(payload) {
 }
 
 export async function listLegalTerms(options = {}) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return listLegalTermsInDb(db, options);
-  });
+  return withDbRead((db) => listLegalTermsInDb(db, options));
 }
 
 export async function listAppUserTermAcceptances(userId) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return listAppUserTermAcceptancesInDb(db, userId);
-  });
+  return withDbRead((db) => listAppUserTermAcceptancesInDb(db, userId));
 }
 
 export async function updateLegalTerm(type, locale, patch = {}) {
   return withDbExclusive(async () => {
     const db = await ensureSqliteStore();
-    return updateLegalTermInDb(db, type, locale, patch);
+    const result = updateLegalTermInDb(db, type, locale, patch);
+    clearPublicReadCache();
+    return result;
   });
 }
 
@@ -396,10 +424,7 @@ export async function listAppUserDevices(options = {}) {
 }
 
 export async function getAppUser(userId) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return getAppUserInDb(db, userId);
-  });
+  return withDbRead((db) => getAppUserInDb(db, userId));
 }
 
 export async function updateAppUserAdmin(userId, patch) {
@@ -454,31 +479,19 @@ export async function linkAppUserSocialIdentity(userId, provider, profile) {
 }
 
 export async function listAppUserIdentities(userId) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return listAppUserIdentitiesInDb(db, userId);
-  });
+  return withDbRead((db) => listAppUserIdentitiesInDb(db, userId));
 }
 
 export async function listAppUserAccountEvents(userId, options = {}) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return listAppUserAccountEventsInDb(db, userId, options);
-  });
+  return withDbRead((db) => listAppUserAccountEventsInDb(db, userId, options));
 }
 
 export async function listAppUserDevicesForUser(userId, options = {}) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return listAppUserDevicesForUserInDb(db, userId, options);
-  });
+  return withDbRead((db) => listAppUserDevicesForUserInDb(db, userId, options));
 }
 
 export async function listAppUserAuthSessions(userId, options = {}) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return listAppUserAuthSessionsInDb(db, userId, options);
-  });
+  return withDbRead((db) => listAppUserAuthSessionsInDb(db, userId, options));
 }
 
 export async function setAppUserPassword(userId, payload) {
@@ -589,43 +602,27 @@ export async function queryNotifications(options = {}) {
 }
 
 export async function queryPublicNotificationsForUser(userId, options = {}) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return queryPublicNotificationsForUserInDb(db, userId, options);
-  });
+  return withDbRead((db) => queryPublicNotificationsForUserInDb(db, userId, options));
 }
 
 export async function queryPublicNews(options = {}) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return queryPublicNewsInDb(db, options);
-  });
+  return cachedPublicRead('publicNews', options, (db) => queryPublicNewsInDb(db, options));
 }
 
 export async function queryPublicNewsSources(options = {}) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return queryPublicNewsSourcesInDb(db, options);
-  });
+  return cachedPublicRead('publicNewsSources', options, (db) => queryPublicNewsSourcesInDb(db, options), 30000);
 }
 
 export async function queryPublicYoutube(options = {}) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return queryPublicYoutubeInDb(db, options);
-  });
+  return cachedPublicRead('publicYoutube', options, (db) => queryPublicYoutubeInDb(db, options));
 }
 
 export async function queryPublicYoutubeChannels() {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return queryPublicYoutubeChannelsInDb(db);
-  });
+  return cachedPublicRead('publicYoutubeChannels', {}, (db) => queryPublicYoutubeChannelsInDb(db), 30000);
 }
 
 export async function readDbHealthSummary() {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
+  return withDbRead((db) => {
     const jobs = db.prepare('SELECT COUNT(*) AS count FROM polling_jobs').get();
     return {
       ok: true,
@@ -635,52 +632,31 @@ export async function readDbHealthSummary() {
 }
 
 export async function queryPublicMarketQuotes(options = {}) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return queryPublicMarketQuotesInDb(db, options);
-  });
+  return cachedPublicRead('publicMarketQuotes', options, (db) => queryPublicMarketQuotesInDb(db, options), 3000);
 }
 
 export async function queryPublicCalendar(options = {}) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return queryPublicCalendarInDb(db, options);
-  });
+  return cachedPublicRead('publicCalendar', options, (db) => queryPublicCalendarInDb(db, options), 30000);
 }
 
 export async function queryPublicConcalls(options = {}) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return queryPublicConcallsInDb(db, options);
-  });
+  return cachedPublicRead('publicConcalls', options, (db) => queryPublicConcallsInDb(db, options), 10000);
 }
 
 export async function queryPublicCoinMarkets(options = {}) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return queryPublicCoinMarketsInDb(db, options);
-  });
+  return cachedPublicRead('publicCoinMarkets', options, (db) => queryPublicCoinMarketsInDb(db, options), 10000);
 }
 
 export async function readPublicMarketLists() {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return readPublicMarketListsInDb(db);
-  });
+  return cachedPublicRead('publicMarketLists', {}, (db) => readPublicMarketListsInDb(db), 30000);
 }
 
 export async function readPublicMarketList(key) {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return readPublicMarketListInDb(db, key);
-  });
+  return cachedPublicRead('publicMarketList', { key }, (db) => readPublicMarketListInDb(db, key), 30000);
 }
 
 export async function readAppSettings() {
-  return withDbExclusive(async () => {
-    const db = await ensureSqliteStore();
-    return readAppSettingsInDb(db);
-  });
+  return cachedPublicRead('appSettings', {}, (db) => readAppSettingsInDb(db), 5000);
 }
 
 export async function upsertMarketQuotes(rows = []) {
@@ -690,6 +666,7 @@ export async function upsertMarketQuotes(rows = []) {
     try {
       upsertMarketQuoteRowsInDb(db, rows);
       db.exec('COMMIT');
+      clearPublicReadCache();
       return rows;
     } catch (error) {
       db.exec('ROLLBACK');

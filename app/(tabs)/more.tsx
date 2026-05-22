@@ -40,9 +40,9 @@ const HUB_META: Record<
 };
 
 const GRID_GAP = 12;
-const TILE_HEIGHT = 62;
+const TILE_HEIGHT = 54;
 /** 허브 행 ↔ 하단 링크·광고 등 섹션 사이 */
-const SECTION_GAP = 20;
+const SECTION_GAP = 14;
 
 export default function MoreHubScreen() {
   const { theme, scaleFont } = useSignalTheme();
@@ -118,7 +118,7 @@ export default function MoreHubScreen() {
           scrollEnabled
           style={styles.list}
           contentContainerStyle={{
-            paddingTop: 14,
+            paddingTop: 10,
             paddingBottom: 24 + tabBarHeight + tabBarBottomInset(insets.bottom),
           }}
           columnWrapperStyle={styles.gridRow}
@@ -170,17 +170,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.border,
       backgroundColor: theme.card,
       minHeight: TILE_HEIGHT,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
     },
     rowPressed: {
       backgroundColor: theme.bgElevated,
       borderColor: theme.greenBorder,
     },
     iconCircle: {
-      width: 36,
-      height: 36,
-      borderRadius: 10,
+      width: 32,
+      height: 32,
+      borderRadius: 9,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.greenDim,
@@ -190,10 +190,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     rowTitle: {
       flex: 1,
       minWidth: 0,
-      fontSize: sf(14),
+      fontSize: sf(13),
       fontWeight: '800',
       color: theme.text,
-      lineHeight: sf(18),
+      lineHeight: sf(17),
     },
     footer: {
       marginTop: SECTION_GAP,

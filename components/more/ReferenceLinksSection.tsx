@@ -1,9 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
-  FlatList,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Pressable,
   StyleSheet,
   Text,
@@ -20,17 +17,9 @@ import { openExternalLink } from '@/utils/openExternalLink';
 
 const LIST_HORIZONTAL_PAD = 16;
 const COLS = 4;
-const GAP = 8;
-const ITEMS_PER_PAGE = 8;
-const BOX_PAD = 12;
-
-function chunkPages(items: ReferenceLinkItem[]): ReferenceLinkItem[][] {
-  const pages: ReferenceLinkItem[][] = [];
-  for (let i = 0; i < items.length; i += ITEMS_PER_PAGE) {
-    pages.push(items.slice(i, i + ITEMS_PER_PAGE));
-  }
-  return pages;
-}
+const GAP = 6;
+const BOX_PAD = 10;
+const CELL_WIDTH_SAFETY = 2;
 
 type LinkCellProps = {
   item: ReferenceLinkItem;
@@ -43,7 +32,7 @@ type LinkCellProps = {
 function LinkCell({ item, width, styles, theme, label }: LinkCellProps) {
   return (
     <Pressable
-      style={[styles.cell, { width }]}
+      style={({ pressed }) => [styles.cell, { width }, pressed && styles.cellPressed]}
       onPress={() =>
         void openExternalLink(item.webUrl, item.appLaunchUrls, {
           preferInAppBrowser: item.openInAppBrowser,
@@ -57,7 +46,7 @@ function LinkCell({ item, width, styles, theme, label }: LinkCellProps) {
             {item.iconMark}
           </Text>
         ) : (
-          <FontAwesome name={item.icon!} size={22} color={theme.green} />
+          <FontAwesome name={item.icon!} size={26} color={theme.textDim} />
         )}
       </View>
       <Text style={styles.cellLabel} numberOfLines={2}>
@@ -69,16 +58,15 @@ function LinkCell({ item, width, styles, theme, label }: LinkCellProps) {
 
 type LinkGridProps = {
   items: ReferenceLinkItem[];
-  pageWidth: number;
   cellW: number;
   styles: ReturnType<typeof makeStyles>;
   theme: AppTheme;
   t: (id: MessageId) => string;
 };
 
-function LinkGrid({ items, pageWidth, cellW, styles, theme, t }: LinkGridProps) {
+function LinkGrid({ items, cellW, styles, theme, t }: LinkGridProps) {
   return (
-    <View style={[styles.grid, { width: pageWidth }]}>
+    <View style={styles.grid}>
       {items.map((item) => (
         <LinkCell
           key={item.id}
@@ -98,73 +86,20 @@ export function ReferenceLinksSection() {
   const { t } = useLocale();
   const { width: winW } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
-  const [pageIndex, setPageIndex] = useState(0);
 
-  const pages = useMemo(() => chunkPages(REFERENCE_LINK_ITEMS), []);
-  const paged = REFERENCE_LINK_ITEMS.length > ITEMS_PER_PAGE;
   const pageWidth = winW - LIST_HORIZONTAL_PAD * 2;
   const gridInnerW = pageWidth - BOX_PAD * 2;
-  const cellW = (gridInnerW - GAP * (COLS - 1)) / COLS;
-
-  const onPageScrollEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const idx = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
-      setPageIndex(Math.max(0, Math.min(idx, pages.length - 1)));
-    },
-    [pageWidth, pages.length],
-  );
+  const cellW = Math.floor((gridInnerW - GAP * (COLS - 1)) / COLS) - CELL_WIDTH_SAFETY;
 
   return (
     <View style={styles.box}>
-        {paged ? (
-          <>
-            <FlatList
-              data={pages}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(_, index) => String(index)}
-              onMomentumScrollEnd={onPageScrollEnd}
-              getItemLayout={(_, index) => ({ length: pageWidth, offset: pageWidth * index, index })}
-              renderItem={({ item }) => (
-                <LinkGrid
-                  items={item}
-                  pageWidth={pageWidth}
-                  cellW={cellW}
-                  styles={styles}
-                  theme={theme}
-                  t={t}
-                />
-              )}
-            />
-            <View style={styles.pageHintRow} accessibilityRole="adjustable" accessibilityLabel={t('moreRefLinksSwipeA11y')}>
-              <FontAwesome
-                name="chevron-left"
-                size={11}
-                color={pageIndex > 0 ? theme.textMuted : theme.border}
-              />
-              <View style={styles.pageDots}>
-                {pages.map((_, i) => (
-                  <View key={i} style={[styles.pageDot, i === pageIndex && styles.pageDotActive]} />
-                ))}
-              </View>
-              <FontAwesome
-                name="chevron-right"
-                size={11}
-                color={pageIndex < pages.length - 1 ? theme.textMuted : theme.border}
-              />
-            </View>
-          </>
-        ) : (
-          <LinkGrid
-            items={pages[0] ?? []}
-            pageWidth={pageWidth}
-            cellW={cellW}
-            styles={styles}
-            theme={theme}
-            t={t}
-          />
-        )}
+      <LinkGrid
+        items={REFERENCE_LINK_ITEMS}
+        cellW={cellW}
+        styles={styles}
+        theme={theme}
+        t={t}
+      />
     </View>
   );
 }
@@ -176,69 +111,49 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingVertical: BOX_PAD,
-      overflow: 'hidden',
+      padding: BOX_PAD,
     },
     grid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: GAP,
-      paddingHorizontal: BOX_PAD,
+      rowGap: 16,
+      columnGap: GAP,
     },
     cell: {
-      alignItems: 'center',
-    },
-    iconCircle: {
-      width: 52,
-      height: 52,
-      borderRadius: 14,
+      minHeight: 74,
       alignItems: 'center',
       justifyContent: 'center',
+      borderRadius: 10,
+      paddingHorizontal: 5,
+      paddingVertical: 6,
+    },
+    cellPressed: {
       backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
+    },
+    iconCircle: {
+      width: 46,
+      height: 36,
+      borderRadius: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: 6,
-      paddingHorizontal: 4,
+      paddingHorizontal: 0,
     },
     iconMarkText: {
       fontSize: sf(11),
-      fontWeight: '800',
-      color: theme.green,
+      fontWeight: '900',
+      color: theme.textDim,
       letterSpacing: -0.2,
     },
     cellLabel: {
-      fontSize: sf(10),
-      fontWeight: '700',
-      color: theme.text,
+      flex: 1,
+      textAlignVertical: 'center',
+      fontSize: sf(11),
+      fontWeight: '800',
+      color: theme.textDim,
       textAlign: 'center',
-      lineHeight: sf(13),
-      minHeight: Math.round(sf(26)),
-    },
-    pageHintRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 10,
-      marginTop: 10,
-      paddingTop: 8,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.border,
-      marginHorizontal: BOX_PAD,
-    },
-    pageDots: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    pageDot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: theme.border,
-    },
-    pageDotActive: {
-      width: 14,
-      backgroundColor: theme.green,
+      lineHeight: sf(14),
+      minHeight: Math.round(sf(24)),
     },
   });
 }

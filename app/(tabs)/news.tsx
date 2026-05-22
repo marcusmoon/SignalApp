@@ -101,6 +101,8 @@ const NEWS_QUICK_FILTERS: { key: NewsQuickFilterKind; labelId: MessageId }[] = [
   { key: 'sources', labelId: 'feedWatchFilterSources' },
 ];
 
+const EMPTY_FILTER_SENTINEL = '__signal_no_match__';
+
 const WATCH_FILTERS: { key: WatchFilterKind; labelId: MessageId }[] = [
   { key: 'all', labelId: 'feedWatchFilterAll' },
   { key: 'flash', labelId: 'feedWatchFilterFlash' },
@@ -154,6 +156,12 @@ function filterNewsRows(
   const selectedSources = new Set(normalizeNullableSelection(params.sourceOptions, params.selectedSources));
   if (selectedSources.size === 0) return [];
   return rows.filter((row) => selectedSources.has(signalSourceLabel(row)));
+}
+
+function sourceFilterParam(options: string[], selected: string[] | null): string | undefined {
+  const normalized = normalizeNullableSelection(options, selected);
+  if (normalized.length === options.length) return undefined;
+  return normalized.length > 0 ? normalized.join(',') : EMPTY_FILTER_SENTINEL;
 }
 
 function filterWatchRows(
@@ -331,7 +339,11 @@ export default function FeedScreen() {
         setCryptoSelectedSources(null);
         const symbols = (await loadWatchlistSymbols()).slice(0, 40);
         setWatchSymbolOptions(symbols);
-        if (symbols.length === 0) {
+        const requestSymbols =
+          watchFilterRef.current === 'symbols'
+            ? normalizeNullableSelection(symbols, watchSelectedSymbolsRef.current)
+            : symbols;
+        if (symbols.length === 0 || requestSymbols.length === 0) {
           setServerRows([]);
           setItems([]);
           setWatchSourceOptions([]);
@@ -342,7 +354,12 @@ export default function FeedScreen() {
           {
             locale,
             category: 'global',
-            symbols: symbols.join(','),
+            symbols: requestSymbols.join(','),
+            flash: watchFilterRef.current === 'flash',
+            sources:
+              watchFilterRef.current === 'sources'
+                ? sourceFilterParam(watchSourceOptions, watchSelectedSourcesRef.current)
+                : undefined,
             limit: FEED_PAGE_WATCH,
             offset: 0,
             tag: activeTag || undefined,
@@ -353,14 +370,7 @@ export default function FeedScreen() {
         setHasMore(meta.hasMore);
         const sourceOptions = uniqueSignalSources(rows);
         setWatchSourceOptions(sourceOptions);
-        const scoped = filterWatchRows(rows, {
-          kind: watchFilterRef.current,
-          symbolOptions: symbols,
-          selectedSymbols: watchSelectedSymbolsRef.current,
-          sourceOptions,
-          selectedSources: watchSelectedSourcesRef.current,
-        });
-        const mapped = scoped.map((item) => signalNewsToNewsItem(item, locale));
+        const mapped = rows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
         return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
       }
@@ -373,6 +383,11 @@ export default function FeedScreen() {
           {
             locale,
             category: 'crypto',
+            flash: cryptoFilterRef.current === 'flash',
+            sources:
+              cryptoFilterRef.current === 'sources'
+                ? sourceFilterParam(cryptoSourceOptions, cryptoSelectedSourcesRef.current)
+                : undefined,
             limit: FEED_PAGE_CRYPTO,
             offset: 0,
             tag: activeTag || undefined,
@@ -385,12 +400,7 @@ export default function FeedScreen() {
         setCryptoSourceOptions(sourceOptions);
         const selected = normalizeNullableSelection(sourceOptions, cryptoSelectedSourcesRef.current);
         if (cryptoSelectedSourcesRef.current !== null) setCryptoSelectedSources(selected);
-        const scoped = filterNewsRows(rows, {
-          kind: cryptoFilterRef.current,
-          sourceOptions,
-          selectedSources: selected,
-        });
-        const mapped = scoped.map((item) => signalNewsToNewsItem(item, locale));
+        const mapped = rows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
         return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
       }
@@ -404,6 +414,11 @@ export default function FeedScreen() {
           {
             locale,
             category: 'global',
+            flash: globalFilterRef.current === 'flash',
+            sources:
+              globalFilterRef.current === 'sources'
+                ? sourceFilterParam(availableSources, selectedSources)
+                : undefined,
             limit: pageLimit,
             offset: 0,
             tag: activeTag || undefined,
@@ -446,12 +461,24 @@ export default function FeedScreen() {
       setAvailableSources(sources);
       const selected = await loadSelectedSources(sources);
       setSelectedSources(selected);
-      const scoped = filterNewsRows(firstPage, {
-        kind: globalFilterRef.current,
-        sourceOptions: sources,
-        selectedSources: selected,
-      });
-      const mapped = scoped.map((item) => signalNewsToNewsItem(item, locale));
+      let displayPage = firstPage;
+      if (globalFilterRef.current === 'sources') {
+        const sourcePage = await fetchSignalNews(
+          {
+            locale,
+            category: 'global',
+            sources: sourceFilterParam(sources, selected),
+            limit: pageLimit,
+            offset: 0,
+            tag: activeTag || undefined,
+          },
+          { cacheMode },
+        );
+        displayPage = sourcePage.items;
+        setServerRows(displayPage);
+        setHasMore(sourcePage.meta.hasMore);
+      }
+      const mapped = displayPage.map((item) => signalNewsToNewsItem(item, locale));
       setItems(mapped);
       return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
     },
@@ -488,7 +515,11 @@ export default function FeedScreen() {
       const pageLimit = segment === 'watch' ? FEED_PAGE_WATCH : segment === 'crypto' ? FEED_PAGE_CRYPTO : FEED_PAGE_GLOBAL;
       const category = segment === 'crypto' ? 'crypto' : 'global';
       const symbols = segment === 'watch' ? (await loadWatchlistSymbols()).slice(0, 40) : [];
-      if (segment === 'watch' && symbols.length === 0) {
+      const requestSymbols =
+        segment === 'watch' && watchFilterRef.current === 'symbols'
+          ? normalizeNullableSelection(symbols, watchSelectedSymbolsRef.current)
+          : symbols;
+      if (segment === 'watch' && (symbols.length === 0 || requestSymbols.length === 0)) {
         setHasMore(false);
         return;
       }
@@ -496,7 +527,19 @@ export default function FeedScreen() {
         {
           locale,
           category,
-          symbols: symbols.length > 0 ? symbols.join(',') : undefined,
+          symbols: requestSymbols.length > 0 ? requestSymbols.join(',') : undefined,
+          flash:
+            (segment === 'global' && globalFilterRef.current === 'flash') ||
+            (segment === 'crypto' && cryptoFilterRef.current === 'flash') ||
+            (segment === 'watch' && watchFilterRef.current === 'flash'),
+          sources:
+            segment === 'global' && globalFilterRef.current === 'sources'
+              ? sourceFilterParam(availableSources, selectedSources)
+              : segment === 'crypto' && cryptoFilterRef.current === 'sources'
+                ? sourceFilterParam(cryptoSourceOptions, cryptoSelectedSourcesRef.current)
+                : segment === 'watch' && watchFilterRef.current === 'sources'
+                  ? sourceFilterParam(watchSourceOptions, watchSelectedSourcesRef.current)
+                  : undefined,
           limit: pageLimit,
           offset: serverRows.length,
           tag: activeTag || undefined,
@@ -639,18 +682,29 @@ export default function FeedScreen() {
         setSelectedSources(next);
         setGlobalFilter('sources');
         if (serverRows.length > 0 && segment === 'global') {
-          const scoped = filterNewsRows(serverRows, {
-            kind: 'sources',
-            sourceOptions: availableSources,
-            selectedSources: next,
-          });
-          setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
+          setLoading(true);
+          const page = await fetchSignalNews(
+            {
+              locale,
+              category: 'global',
+              sources: sourceFilterParam(availableSources, next),
+              limit: FEED_PAGE_GLOBAL,
+              offset: 0,
+              tag: activeTag || undefined,
+            },
+            { cacheMode: 'bypass' },
+          );
+          setServerRows(page.items);
+          setHasMore(page.meta.hasMore);
+          setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
         }
       } catch (e) {
         setError(formatSignalApiError(e, t, 'feedErrorLoad'));
+      } finally {
+        setLoading(false);
       }
     },
-    [availableSources, locale, segment, serverRows, t],
+    [activeTag, availableSources, locale, segment, serverRows, t],
   );
 
   const sourcesEqual = useCallback((a: string[], b: string[]) => {
@@ -697,13 +751,30 @@ export default function FeedScreen() {
         if (kind === 'sources') {
           setFilterDraftSources(selectedSources);
           setFilterModalVisible(true);
+          return;
         }
-        const scoped = filterNewsRows(serverRows, {
-          kind,
-          sourceOptions: availableSources,
-          selectedSources,
-        });
-        setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
+        setLoading(true);
+        setItems([]);
+        setServerRows([]);
+        setHasMore(false);
+        void fetchSignalNews(
+          {
+            locale,
+            category: 'global',
+            flash: kind === 'flash',
+            limit: FEED_PAGE_GLOBAL,
+            offset: 0,
+            tag: activeTag || undefined,
+          },
+          { cacheMode: 'bypass' },
+        )
+          .then((page) => {
+            setServerRows(page.items);
+            setHasMore(page.meta.hasMore);
+            setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
+          })
+          .catch((e) => setError(formatSignalApiError(e, t, 'feedErrorLoad')))
+          .finally(() => setLoading(false));
         return;
       }
 
@@ -713,16 +784,36 @@ export default function FeedScreen() {
         if (kind === 'sources') {
           setCryptoDraftSources(selected);
           setCryptoSourceModalVisible(true);
+          return;
         }
-        const scoped = filterNewsRows(serverRows, {
-          kind,
-          sourceOptions: cryptoSourceOptions,
-          selectedSources: selected,
-        });
-        setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
+        setLoading(true);
+        setItems([]);
+        setServerRows([]);
+        setHasMore(false);
+        void fetchSignalNews(
+          {
+            locale,
+            category: 'crypto',
+            flash: kind === 'flash',
+            limit: FEED_PAGE_CRYPTO,
+            offset: 0,
+            tag: activeTag || undefined,
+          },
+          { cacheMode: 'bypass' },
+        )
+          .then((page) => {
+            const sourceOptions = uniqueSignalSources(page.items);
+            setCryptoSourceOptions(sourceOptions);
+            setServerRows(page.items);
+            setHasMore(page.meta.hasMore);
+            setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
+          })
+          .catch((e) => setError(formatSignalApiError(e, t, 'feedErrorLoad')))
+          .finally(() => setLoading(false));
       }
     },
     [
+      activeTag,
       availableSources,
       cryptoSelectedSources,
       cryptoSourceOptions,
@@ -730,6 +821,7 @@ export default function FeedScreen() {
       segment,
       selectedSources,
       serverRows,
+      t,
     ],
   );
 
@@ -737,13 +829,29 @@ export default function FeedScreen() {
     setCryptoSourceModalVisible(false);
     setCryptoSelectedSources(cryptoDraftSources);
     setCryptoFilter('sources');
-    const scoped = filterNewsRows(serverRows, {
-      kind: 'sources',
-      sourceOptions: cryptoSourceOptions,
-      selectedSources: cryptoDraftSources,
-    });
-    setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
-  }, [cryptoDraftSources, cryptoSourceOptions, locale, serverRows]);
+    setLoading(true);
+    setItems([]);
+    setServerRows([]);
+    setHasMore(false);
+    void fetchSignalNews(
+      {
+        locale,
+        category: 'crypto',
+        sources: sourceFilterParam(cryptoSourceOptions, cryptoDraftSources),
+        limit: FEED_PAGE_CRYPTO,
+        offset: 0,
+        tag: activeTag || undefined,
+      },
+      { cacheMode: 'bypass' },
+    )
+      .then((page) => {
+        setServerRows(page.items);
+        setHasMore(page.meta.hasMore);
+        setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
+      })
+      .catch((e) => setError(formatSignalApiError(e, t, 'feedErrorLoad')))
+      .finally(() => setLoading(false));
+  }, [activeTag, cryptoDraftSources, cryptoSourceOptions, locale, t]);
 
   const toggleCryptoSource = useCallback((source: string) => {
     setCryptoDraftSources((prev) =>
@@ -757,27 +865,56 @@ export default function FeedScreen() {
   );
   const clearAllCryptoSources = useCallback(() => setCryptoDraftSources([]), []);
 
-  const applyWatchFilter = useCallback(
-    (params?: {
+  const reloadWatchFilterFromServer = useCallback(
+    async (params?: {
       kind?: WatchFilterKind;
       selectedSymbols?: string[] | null;
       selectedSources?: string[] | null;
     }) => {
-      const nextKind = params?.kind ?? watchFilterRef.current;
-      const nextSymbols =
+      const symbols = watchSymbolOptions.length > 0 ? watchSymbolOptions : (await loadWatchlistSymbols()).slice(0, 40);
+      const kind = params?.kind ?? watchFilterRef.current;
+      const selectedSymbols =
         params && 'selectedSymbols' in params ? params.selectedSymbols ?? null : watchSelectedSymbolsRef.current;
-      const nextSources =
+      const selectedSources =
         params && 'selectedSources' in params ? params.selectedSources ?? null : watchSelectedSourcesRef.current;
-      const scoped = filterWatchRows(serverRows, {
-        kind: nextKind,
-        symbolOptions: watchSymbolOptions,
-        selectedSymbols: nextSymbols,
-        sourceOptions: watchSourceOptions,
-        selectedSources: nextSources,
-      });
-      setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
+      const requestSymbols = kind === 'symbols' ? normalizeNullableSelection(symbols, selectedSymbols) : symbols;
+      if (requestSymbols.length === 0) {
+        setServerRows([]);
+        setItems([]);
+        setHasMore(false);
+        return;
+      }
+      setLoading(true);
+      setItems([]);
+      setServerRows([]);
+      setHasMore(false);
+      try {
+        const page = await fetchSignalNews(
+          {
+            locale,
+            category: 'global',
+            symbols: requestSymbols.join(','),
+            flash: kind === 'flash',
+            sources:
+              kind === 'sources' ? sourceFilterParam(watchSourceOptions, selectedSources) : undefined,
+            limit: FEED_PAGE_WATCH,
+            offset: 0,
+            tag: activeTag || undefined,
+          },
+          { cacheMode: 'bypass' },
+        );
+        setServerRows(page.items);
+        setHasMore(page.meta.hasMore);
+        const sourceOptions = uniqueSignalSources(page.items);
+        setWatchSourceOptions(sourceOptions);
+        setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
+      } catch (e) {
+        setError(formatSignalApiError(e, t, 'feedErrorLoad'));
+      } finally {
+        setLoading(false);
+      }
     },
-    [locale, serverRows, watchSourceOptions, watchSymbolOptions],
+    [activeTag, locale, t, watchSourceOptions, watchSymbolOptions],
   );
 
   const onPickWatchFilter = useCallback(
@@ -786,28 +923,36 @@ export default function FeedScreen() {
       if (kind === 'symbols') {
         setWatchDraftSymbols(normalizeNullableSelection(watchSymbolOptions, watchSelectedSymbols));
         setWatchSymbolModalVisible(true);
+        return;
       } else if (kind === 'sources') {
         setWatchDraftSources(normalizeNullableSelection(watchSourceOptions, watchSelectedSources));
         setWatchSourceModalVisible(true);
+        return;
       }
-      applyWatchFilter({ kind });
+      void reloadWatchFilterFromServer({ kind });
     },
-    [applyWatchFilter, watchSelectedSources, watchSelectedSymbols, watchSourceOptions, watchSymbolOptions],
+    [
+      reloadWatchFilterFromServer,
+      watchSelectedSources,
+      watchSelectedSymbols,
+      watchSourceOptions,
+      watchSymbolOptions,
+    ],
   );
 
   const commitWatchSymbolFilter = useCallback(() => {
     setWatchSymbolModalVisible(false);
     setWatchSelectedSymbols(watchDraftSymbols);
     setWatchFilter('symbols');
-    applyWatchFilter({ kind: 'symbols', selectedSymbols: watchDraftSymbols });
-  }, [applyWatchFilter, watchDraftSymbols]);
+    void reloadWatchFilterFromServer({ kind: 'symbols', selectedSymbols: watchDraftSymbols });
+  }, [reloadWatchFilterFromServer, watchDraftSymbols]);
 
   const commitWatchSourceFilter = useCallback(() => {
     setWatchSourceModalVisible(false);
     setWatchSelectedSources(watchDraftSources);
     setWatchFilter('sources');
-    applyWatchFilter({ kind: 'sources', selectedSources: watchDraftSources });
-  }, [applyWatchFilter, watchDraftSources]);
+    void reloadWatchFilterFromServer({ kind: 'sources', selectedSources: watchDraftSources });
+  }, [reloadWatchFilterFromServer, watchDraftSources]);
 
   const toggleWatchSymbol = useCallback((symbol: string) => {
     setWatchDraftSymbols((prev) =>

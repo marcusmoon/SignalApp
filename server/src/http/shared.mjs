@@ -123,6 +123,8 @@ export function filterNews(items, url) {
   const category = url.searchParams.get('category');
   const symbol = url.searchParams.get('symbol')?.trim().toUpperCase();
   const symbols = url.searchParams.get('symbols');
+  const sources = url.searchParams.get('sources') || url.searchParams.get('source');
+  const flash = ['1', 'true', 'yes'].includes(String(url.searchParams.get('flash') || '').trim().toLowerCase());
   const q = url.searchParams.get('q')?.trim().toLowerCase();
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
@@ -148,6 +150,16 @@ export function filterNews(items, url) {
       : []),
   ]);
   if (symbolSet.size > 0) rows = rows.filter((item) => item.symbols?.some((s) => symbolSet.has(String(s).toUpperCase())));
+  if (sources) {
+    const sourceSet = new Set(
+      sources
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    );
+    if (sourceSet.size > 0) rows = rows.filter((item) => sourceSet.has(String(item.sourceName || '').trim()));
+  }
+  if (flash) rows = rows.filter((item) => isFlashNewsItem(item));
   if (from) rows = rows.filter((item) => !item.publishedAt || dateKeyInTimeZone(item.publishedAt, timeZone) >= from);
   if (to) rows = rows.filter((item) => !item.publishedAt || dateKeyInTimeZone(item.publishedAt, timeZone) <= to);
   if (tag) {
@@ -163,6 +175,20 @@ export function filterNews(items, url) {
     );
   }
   return rows.sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
+}
+
+const FLASH_KEYWORD_RE =
+  /breaking|flash|속보|긴급|urgent|live\s*:|market\s*alert|just\s*in|developing|exclusive:/i;
+const FLASH_MAX_AGE_MS = 18 * 60 * 1000;
+
+export function isFlashNewsItem(item, nowMs = Date.now()) {
+  const blob = `${item?.originalTitle ?? ''} ${item?.title ?? ''} ${item?.category ?? ''} ${item?.originalSummary ?? ''} ${item?.summary ?? ''}`;
+  if (FLASH_KEYWORD_RE.test(blob)) return true;
+  const cat = String(item?.category || '').toLowerCase();
+  if (cat.includes('breaking') || cat.includes('flash') || cat.includes('hot')) return true;
+  const publishedMs = item?.publishedAt ? new Date(item.publishedAt).getTime() : 0;
+  const ageMs = nowMs - publishedMs;
+  return ageMs >= 0 && ageMs <= FLASH_MAX_AGE_MS;
 }
 
 export function filterCalendar(items, url) {

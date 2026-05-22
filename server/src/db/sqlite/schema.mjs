@@ -441,6 +441,7 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_app_user_email_change_email ON app_user_email_change_requests(email, expires_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_terms_user ON app_user_terms_acceptances(user_id, accepted_at);
     CREATE INDEX IF NOT EXISTS idx_news_items_published ON news_items(category, published_at);
+    CREATE INDEX IF NOT EXISTS idx_news_items_source_published ON news_items(category, source_name, published_at);
     CREATE INDEX IF NOT EXISTS idx_news_translations_item ON news_translations(news_item_id, locale);
     CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(event_date, event_type);
     CREATE INDEX IF NOT EXISTS idx_concall_transcripts_symbol ON concall_transcripts(symbol, earnings_date);

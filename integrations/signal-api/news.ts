@@ -42,6 +42,9 @@ export async function fetchSignalNews(
     category?: string;
     symbol?: string;
     symbols?: string;
+    source?: string;
+    sources?: string;
+    flash?: boolean;
     tag?: string;
     limit?: number;
     offset?: number;
@@ -58,6 +61,7 @@ export async function fetchSignalNews(
   }
   const json = await signalApi<{ data: SignalApiNewsItem[]; meta?: Partial<SignalNewsListMeta> }>('/v1/news', {
     ...params,
+    flash: params.flash ? '1' : undefined,
     tag: params.tag?.trim() ? params.tag.trim() : undefined,
   });
   const rows = Array.isArray(json.data) ? json.data : [];

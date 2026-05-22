@@ -216,6 +216,16 @@ function newsPrefilterSql(options) {
       params[`symbol${index}`] = `%${symbol.toLowerCase()}%`;
     });
   }
+  const sources = String(options.sources || options.source || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (sources.length > 0) {
+    where.push(`source_name IN (${sources.map((_, index) => `@source${index}`).join(', ')})`);
+    sources.forEach((source, index) => {
+      params[`source${index}`] = source;
+    });
+  }
   return { whereSql: where.length ? `WHERE ${where.join(' AND ')}` : '', params };
 }
 
@@ -223,7 +233,8 @@ export function queryPublicNewsInDb(db, options = {}) {
   const locale = String(options.locale || 'ko');
   const { limit, offset } = pageOptions({ limit: options.limit || 20, offset: options.offset || 0 });
   const { whereSql, params } = newsPrefilterSql(options);
-  const wideScan = Boolean(options.q || options.tag || options.symbol || options.symbols || options.from || options.to);
+  const flash = ['1', 'true', 'yes'].includes(String(options.flash || '').trim().toLowerCase());
+  const wideScan = Boolean(options.q || options.tag || options.symbol || options.symbols || options.from || options.to || flash);
   const scanLimit = compactScanLimit({ limit, offset, wide: wideScan });
   const newsItems = db
     .prepare(
@@ -244,6 +255,8 @@ export function queryPublicNewsInDb(db, options = {}) {
         if (key === 'category') return options.category || null;
         if (key === 'symbol') return options.symbol || null;
         if (key === 'symbols') return options.symbols || null;
+        if (key === 'sources' || key === 'source') return options.sources || options.source || null;
+        if (key === 'flash') return flash ? '1' : null;
         if (key === 'q') return options.q || null;
         if (key === 'from') return options.from || null;
         if (key === 'to') return options.to || null;

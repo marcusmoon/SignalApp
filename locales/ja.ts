@@ -564,7 +564,7 @@ export const ja = {
   feedVideoOpenAll: 'YouTube 全体を見る',
   feedWatchFilterAll: 'すべて',
   feedWatchFilterFlash: '速報',
-  feedWatchFilterSymbols: '銘柄',
+  feedWatchFilterSymbols: 'ウォッチ',
   feedWatchFilterSources: '出処',
   feedWatchSymbolFilterTitle: 'ウォッチ銘柄を選択',
   feedWatchSymbolFilterHint: '選択した銘柄に関連するニュースだけを表示します。',

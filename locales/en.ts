@@ -564,7 +564,7 @@ export const en = {
   feedVideoOpenAll: 'Open full YouTube',
   feedWatchFilterAll: 'All',
   feedWatchFilterFlash: 'Breaking',
-  feedWatchFilterSymbols: 'Symbols',
+  feedWatchFilterSymbols: 'Watchlist',
   feedWatchFilterSources: 'Sources',
   feedWatchSymbolFilterTitle: 'Select watchlist symbols',
   feedWatchSymbolFilterHint: 'Show only news linked to selected symbols.',

@@ -60,6 +60,12 @@ export type SignalApiCalendarEvent = {
   fetchedAt: string;
 };
 
+export type SignalApiCalendarDateSummary = {
+  date: string;
+  total: number;
+  counts: Partial<Record<SignalApiCalendarEvent['type'], number>>;
+};
+
 export type SignalApiYoutubeVideo = {
   id: string;
   provider: string;

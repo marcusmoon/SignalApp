@@ -135,6 +135,42 @@ export function getOpenApiSpec() {
           },
         },
       },
+      '/v1/calendar-dates': {
+        get: {
+          tags: ['public'],
+          summary: 'List calendar event counts by date',
+          parameters: [
+            { name: 'from', in: 'query', schema: { type: 'string', example: '2026-04-01' } },
+            { name: 'to', in: 'query', schema: { type: 'string', example: '2026-05-01' } },
+            { name: 'type', in: 'query', schema: { type: 'string', example: 'earnings' } },
+          ],
+          responses: {
+            200: {
+              description: 'OK',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            date: { type: 'string' },
+                            total: { type: 'integer' },
+                            counts: { type: 'object' },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       '/v1/youtube': {
         get: {
           tags: ['public'],

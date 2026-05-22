@@ -22,8 +22,13 @@ import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
+import {
+  fetchSignalCalendar,
+  fetchSignalCalendarDateSummaries,
+  signalCalendarToCalendarEvent,
+} from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
+import type { SignalApiCalendarDateSummary } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import {
   CALENDAR_EVENT_TYPE_ORDER,
@@ -86,6 +91,14 @@ function mergeCalendarEvents(chunks: CalendarEvent[][]): CalendarEvent[] {
   );
 }
 
+function normalizeCalendarTypeSelection(input: Set<CalendarEventTypeKey>): Set<CalendarEventTypeKey> {
+  if (input.size === CALENDAR_EVENT_TYPE_ORDER.length) {
+    return new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
+  }
+  const first = CALENDAR_EVENT_TYPE_ORDER.find((type) => input.has(type));
+  return first ? new Set<CalendarEventTypeKey>([first]) : new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
+}
+
 export default function CalendarScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
@@ -99,12 +112,17 @@ export default function CalendarScreen() {
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [dateSummaries, setDateSummaries] = useState<SignalApiCalendarDateSummary[]>([]);
   const [enabledTypes, setEnabledTypes] = useState(
     () => new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER),
   );
 
   useEffect(() => {
-    void loadCalendarEventTypeFilter().then(setEnabledTypes);
+    void loadCalendarEventTypeFilter().then((saved) => {
+      const next = normalizeCalendarTypeSelection(saved);
+      setEnabledTypes(next);
+      if (next.size !== saved.size) void saveCalendarEventTypeFilter(next);
+    });
   }, []);
 
   const [visibleMonth, setVisibleMonth] = useState(() => {
@@ -131,6 +149,7 @@ export default function CalendarScreen() {
       setError(null);
       if (!hasSignalApi()) {
         setEvents([]);
+        setDateSummaries([]);
         setError(t('errorSignalApiShort'));
         return;
       }
@@ -143,15 +162,15 @@ export default function CalendarScreen() {
       const selectedDayParams = ymdInMonth(selectedYmd, visibleMonth.year, visibleMonth.month)
         ? { from: selectedYmd, to: selectedYmd }
         : null;
-      const [monthList, selectedDayList] = await Promise.all([
-        fetchSignalCalendar(monthParams, { cacheMode: forceRefresh ? 'bypass' : 'use' }),
+      const [summaryList, selectedDayList] = await Promise.all([
+        fetchSignalCalendarDateSummaries(monthParams, { cacheMode: forceRefresh ? 'bypass' : 'use' }),
         selectedDayParams
           ? fetchSignalCalendar(selectedDayParams, { cacheMode: forceRefresh ? 'bypass' : 'use' })
           : Promise.resolve([]),
       ]);
+      setDateSummaries(summaryList);
       setEvents(
         mergeCalendarEvents([
-          monthList.map(signalCalendarToCalendarEvent),
           selectedDayList.map(signalCalendarToCalendarEvent),
         ]),
       );
@@ -169,6 +188,7 @@ export default function CalendarScreen() {
         if (!cancelled) {
           setError(formatSignalApiError(e, t, 'calendarErrorLoad'));
           setEvents([]);
+          setDateSummaries([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -216,7 +236,17 @@ export default function CalendarScreen() {
   );
 
   const allEventTypesSelected = enabledTypes.size === CALENDAR_EVENT_TYPE_ORDER.length;
-  const eventDates = useMemo(() => new Set(filteredEvents.map((e) => e.date)), [filteredEvents]);
+  const eventDates = useMemo(() => {
+    const allSelected = enabledTypes.size === CALENDAR_EVENT_TYPE_ORDER.length;
+    return new Set(
+      dateSummaries
+        .filter((item) => {
+          if (allSelected) return Number(item.total) > 0;
+          return CALENDAR_EVENT_TYPE_ORDER.some((type) => enabledTypes.has(type) && Number(item.counts?.[type] || 0) > 0);
+        })
+        .map((item) => item.date),
+    );
+  }, [dateSummaries, enabledTypes]);
   const selectedDayEvents = useMemo(
     () =>
       filteredEvents
@@ -226,17 +256,8 @@ export default function CalendarScreen() {
   );
 
   const onToggleEventType = useCallback((type: CalendarEventTypeKey) => {
-    setEnabledTypes((prev) => {
-      const isAllMode = prev.size === CALENDAR_EVENT_TYPE_ORDER.length;
-      let next = isAllMode ? new Set<CalendarEventTypeKey>([type]) : new Set(prev);
-      if (!isAllMode && next.has(type)) {
-        next.delete(type);
-      } else if (!isAllMode) {
-        next.add(type);
-      }
-      if (next.size === 0 || next.size === CALENDAR_EVENT_TYPE_ORDER.length) {
-        next = new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
-      }
+    setEnabledTypes(() => {
+      const next = new Set<CalendarEventTypeKey>([type]);
       void saveCalendarEventTypeFilter(next);
       return next;
     });

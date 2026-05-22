@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useMemo, useRef, useState } from 'react';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useIsFocused } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -614,21 +614,23 @@ export default function QuotesScreen() {
         <View style={styles.topFixed}>
           <View style={styles.segment}>
             {segmentOrder.map((key) => (
-              <Pressable
-                key={key}
-                onPress={() => {
-                  if (segment === key) return;
-                  setLoading(true);
-                  setRows([]);
-                  setError(null);
-                  setSegment(key);
-                }}
-                style={[styles.segBtn, segment === key && styles.segBtnActive]}
-                accessibilityState={{ selected: segment === key }}>
-                <Text style={[styles.segText, segment === key && styles.segTextActive]}>
-                  {t(QUOTE_SEGMENT_LABEL[key])}
-                </Text>
-              </Pressable>
+              <Fragment key={key}>
+                {key === 'coin' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
+                <Pressable
+                  onPress={() => {
+                    if (segment === key) return;
+                    setLoading(true);
+                    setRows([]);
+                    setError(null);
+                    setSegment(key);
+                  }}
+                  style={[styles.segBtn, key === 'coin' && styles.segBtnCoin, segment === key && styles.segBtnActive]}
+                  accessibilityState={{ selected: segment === key }}>
+                  <Text style={[styles.segText, segment === key && styles.segTextActive]}>
+                    {t(QUOTE_SEGMENT_LABEL[key])}
+                  </Text>
+                </Pressable>
+              </Fragment>
             ))}
           </View>
         </View>
@@ -713,6 +715,17 @@ function makeStyles(
       borderRadius: SEGMENT_TAB_BTN_RADIUS,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    segBtnCoin: {
+      flex: 0.86,
+    },
+    segmentDivider: {
+      width: 1,
+      height: 18,
+      alignSelf: 'center',
+      marginHorizontal: 2,
+      borderRadius: 999,
+      backgroundColor: theme.border,
     },
     segBtnActive: {
       backgroundColor: theme.green,

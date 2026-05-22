@@ -62,6 +62,7 @@ import {
 } from './db/notifications.mjs';
 import {
   queryPublicCalendarInDb,
+  queryPublicCalendarDateSummariesInDb,
   queryPublicCoinMarketsInDb,
   queryPublicConcallsInDb,
   queryPublicMarketQuotesInDb,
@@ -637,6 +638,15 @@ export async function queryPublicMarketQuotes(options = {}) {
 
 export async function queryPublicCalendar(options = {}) {
   return cachedPublicRead('publicCalendar', options, (db) => queryPublicCalendarInDb(db, options), 30000);
+}
+
+export async function queryPublicCalendarDateSummaries(options = {}) {
+  return cachedPublicRead(
+    'publicCalendarDateSummaries',
+    options,
+    (db) => queryPublicCalendarDateSummariesInDb(db, options),
+    30000,
+  );
 }
 
 export async function queryPublicConcalls(options = {}) {

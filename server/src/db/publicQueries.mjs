@@ -686,8 +686,8 @@ export function queryPublicCalendarInDb(db, options = {}) {
     params.q = `%${q}%`;
   }
   const hasDateRange = Boolean(options.from || options.to);
-  const defaultLimit = hasDateRange ? 2000 : 500;
-  const limit = Math.min(5000, Math.max(1, Math.floor(Number(options.limit)) || defaultLimit));
+  const defaultLimit = hasDateRange ? 10000 : 500;
+  const limit = Math.min(10000, Math.max(1, Math.floor(Number(options.limit)) || defaultLimit));
   params.limit = limit;
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const rows = db
@@ -714,6 +714,62 @@ export function queryPublicCalendarInDb(db, options = {}) {
       return null;
     }),
   ).map(publicCalendarEvent);
+}
+
+export function queryPublicCalendarDateSummariesInDb(db, options = {}) {
+  const where = ['event_date IS NOT NULL', 'event_date != ""'];
+  const params = {};
+  if (options.from) {
+    where.push('event_date >= @from');
+    params.from = String(options.from);
+  }
+  if (options.to) {
+    where.push('event_date <= @to');
+    params.to = String(options.to);
+  }
+  if (options.type) {
+    where.push('event_type = @type');
+    params.type = String(options.type);
+  }
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const rows = db
+    .prepare(
+      `
+        SELECT event_date AS date,
+               event_type AS type,
+               COUNT(*) AS count
+        FROM calendar_events
+        ${whereSql}
+        GROUP BY event_date, event_type
+        ORDER BY event_date ASC
+      `,
+    )
+    .all(params);
+  const byDate = new Map();
+  for (const row of rows) {
+    const date = String(row.date || '').slice(0, 10);
+    if (!date) continue;
+    const type = String(row.type || '').trim();
+    const count = Number(row.count) || 0;
+    if (!byDate.has(date)) {
+      byDate.set(date, {
+        date,
+        total: 0,
+        counts: {
+          earnings: 0,
+          macro: 0,
+          fed: 0,
+          fomc: 0,
+        },
+      });
+    }
+    const item = byDate.get(date);
+    item.total += count;
+    if (Object.prototype.hasOwnProperty.call(item.counts, type)) {
+      item.counts[type] += count;
+    }
+  }
+  return Array.from(byDate.values());
 }
 
 export function queryPublicConcallsInDb(db, options = {}) {

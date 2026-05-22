@@ -93,7 +93,7 @@ type FeedRow =
   | { kind: 'ad'; key: string };
 type FeedLoadResult = { itemIds: string[]; kind: 'news' | 'video'; insightIds: string[] };
 type NewsQuickFilterKind = 'all' | 'flash' | 'sources';
-type WatchFilterKind = 'all' | 'flash' | 'symbols' | 'sources';
+type WatchFilterKind = 'all' | 'symbols';
 
 const NEWS_QUICK_FILTERS: { key: NewsQuickFilterKind; labelId: MessageId }[] = [
   { key: 'all', labelId: 'feedWatchFilterAll' },
@@ -105,9 +105,7 @@ const EMPTY_FILTER_SENTINEL = '__signal_no_match__';
 
 const WATCH_FILTERS: { key: WatchFilterKind; labelId: MessageId }[] = [
   { key: 'all', labelId: 'feedWatchFilterAll' },
-  { key: 'flash', labelId: 'feedWatchFilterFlash' },
   { key: 'symbols', labelId: 'feedWatchFilterSymbols' },
-  { key: 'sources', labelId: 'feedWatchFilterSources' },
 ];
 
 function signalSourceLabel(item: SignalApiNewsItem): string {
@@ -170,25 +168,17 @@ function filterWatchRows(
     kind: WatchFilterKind;
     symbolOptions: string[];
     selectedSymbols: string[] | null;
-    sourceOptions: string[];
-    selectedSources: string[] | null;
   },
 ): SignalApiNewsItem[] {
   if (params.kind === 'all') return rows;
-  if (params.kind === 'flash') return rows.filter((row) => isFlashNews(row));
-  if (params.kind === 'symbols') {
-    const selected = new Set(
-      normalizeNullableSelection(params.symbolOptions, params.selectedSymbols).map((symbol) => symbol.toUpperCase()),
-    );
-    if (selected.size === 0) return [];
-    return rows.filter((row) => {
-      const symbols = Array.isArray(row.symbols) ? row.symbols : [];
-      return symbols.some((symbol) => selected.has(String(symbol).trim().toUpperCase()));
-    });
-  }
-  const selectedSources = new Set(normalizeNullableSelection(params.sourceOptions, params.selectedSources));
-  if (selectedSources.size === 0) return [];
-  return rows.filter((row) => selectedSources.has(signalSourceLabel(row)));
+  const selected = new Set(
+    normalizeNullableSelection(params.symbolOptions, params.selectedSymbols).map((symbol) => symbol.toUpperCase()),
+  );
+  if (selected.size === 0) return [];
+  return rows.filter((row) => {
+    const symbols = Array.isArray(row.symbols) ? row.symbols : [];
+    return symbols.some((symbol) => selected.has(String(symbol).trim().toUpperCase()));
+  });
 }
 
 export default function FeedScreen() {
@@ -229,10 +219,6 @@ export default function FeedScreen() {
   const [watchSelectedSymbols, setWatchSelectedSymbols] = useState<string[] | null>(null);
   const [watchDraftSymbols, setWatchDraftSymbols] = useState<string[]>([]);
   const [watchSymbolModalVisible, setWatchSymbolModalVisible] = useState(false);
-  const [watchSourceOptions, setWatchSourceOptions] = useState<string[]>([]);
-  const [watchSelectedSources, setWatchSelectedSources] = useState<string[] | null>(null);
-  const [watchDraftSources, setWatchDraftSources] = useState<string[]>([]);
-  const [watchSourceModalVisible, setWatchSourceModalVisible] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   /** 출처 필터 UI용(카탈로그 비었을 때 샘플 + 첫 페이지 병합) */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
@@ -247,7 +233,6 @@ export default function FeedScreen() {
   const cryptoSelectedSourcesRef = useRef(cryptoSelectedSources);
   const watchFilterRef = useRef(watchFilter);
   const watchSelectedSymbolsRef = useRef(watchSelectedSymbols);
-  const watchSelectedSourcesRef = useRef(watchSelectedSources);
   itemsRef.current = items;
   videoItemsRef.current = videoItems;
   globalFilterRef.current = globalFilter;
@@ -255,7 +240,6 @@ export default function FeedScreen() {
   cryptoSelectedSourcesRef.current = cryptoSelectedSources;
   watchFilterRef.current = watchFilter;
   watchSelectedSymbolsRef.current = watchSelectedSymbols;
-  watchSelectedSourcesRef.current = watchSelectedSources;
 
   useEffect(() => {
     if (!refreshNotice) return;
@@ -346,7 +330,6 @@ export default function FeedScreen() {
         if (symbols.length === 0 || requestSymbols.length === 0) {
           setServerRows([]);
           setItems([]);
-          setWatchSourceOptions([]);
           setHasMore(false);
           return { itemIds: [], kind: 'news', insightIds: [] };
         }
@@ -355,11 +338,6 @@ export default function FeedScreen() {
             locale,
             category: 'global',
             symbols: requestSymbols.join(','),
-            flash: watchFilterRef.current === 'flash',
-            sources:
-              watchFilterRef.current === 'sources'
-                ? sourceFilterParam(watchSourceOptions, watchSelectedSourcesRef.current)
-                : undefined,
             limit: FEED_PAGE_WATCH,
             offset: 0,
             tag: activeTag || undefined,
@@ -368,8 +346,6 @@ export default function FeedScreen() {
         );
         setServerRows(rows);
         setHasMore(meta.hasMore);
-        const sourceOptions = uniqueSignalSources(rows);
-        setWatchSourceOptions(sourceOptions);
         const mapped = rows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
         return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
@@ -530,16 +506,13 @@ export default function FeedScreen() {
           symbols: requestSymbols.length > 0 ? requestSymbols.join(',') : undefined,
           flash:
             (segment === 'global' && globalFilterRef.current === 'flash') ||
-            (segment === 'crypto' && cryptoFilterRef.current === 'flash') ||
-            (segment === 'watch' && watchFilterRef.current === 'flash'),
+            (segment === 'crypto' && cryptoFilterRef.current === 'flash'),
           sources:
             segment === 'global' && globalFilterRef.current === 'sources'
               ? sourceFilterParam(availableSources, selectedSources)
               : segment === 'crypto' && cryptoFilterRef.current === 'sources'
                 ? sourceFilterParam(cryptoSourceOptions, cryptoSelectedSourcesRef.current)
-                : segment === 'watch' && watchFilterRef.current === 'sources'
-                  ? sourceFilterParam(watchSourceOptions, watchSelectedSourcesRef.current)
-                  : undefined,
+                : undefined,
           limit: pageLimit,
           offset: serverRows.length,
           tag: activeTag || undefined,
@@ -574,14 +547,10 @@ export default function FeedScreen() {
       }
       if (segment === 'watch') {
         const symbolOptions = watchSymbolOptions;
-        const sourceOptions = uniqueSignalSources(merged);
-        setWatchSourceOptions(sourceOptions);
         scoped = filterWatchRows(merged, {
           kind: watchFilterRef.current,
           symbolOptions,
           selectedSymbols: watchSelectedSymbolsRef.current,
-          sourceOptions,
-          selectedSources: watchSelectedSourcesRef.current,
         });
       }
       setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
@@ -869,14 +838,11 @@ export default function FeedScreen() {
     async (params?: {
       kind?: WatchFilterKind;
       selectedSymbols?: string[] | null;
-      selectedSources?: string[] | null;
     }) => {
       const symbols = watchSymbolOptions.length > 0 ? watchSymbolOptions : (await loadWatchlistSymbols()).slice(0, 40);
       const kind = params?.kind ?? watchFilterRef.current;
       const selectedSymbols =
         params && 'selectedSymbols' in params ? params.selectedSymbols ?? null : watchSelectedSymbolsRef.current;
-      const selectedSources =
-        params && 'selectedSources' in params ? params.selectedSources ?? null : watchSelectedSourcesRef.current;
       const requestSymbols = kind === 'symbols' ? normalizeNullableSelection(symbols, selectedSymbols) : symbols;
       if (requestSymbols.length === 0) {
         setServerRows([]);
@@ -894,9 +860,6 @@ export default function FeedScreen() {
             locale,
             category: 'global',
             symbols: requestSymbols.join(','),
-            flash: kind === 'flash',
-            sources:
-              kind === 'sources' ? sourceFilterParam(watchSourceOptions, selectedSources) : undefined,
             limit: FEED_PAGE_WATCH,
             offset: 0,
             tag: activeTag || undefined,
@@ -905,8 +868,6 @@ export default function FeedScreen() {
         );
         setServerRows(page.items);
         setHasMore(page.meta.hasMore);
-        const sourceOptions = uniqueSignalSources(page.items);
-        setWatchSourceOptions(sourceOptions);
         setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
       } catch (e) {
         setError(formatSignalApiError(e, t, 'feedErrorLoad'));
@@ -914,7 +875,7 @@ export default function FeedScreen() {
         setLoading(false);
       }
     },
-    [activeTag, locale, t, watchSourceOptions, watchSymbolOptions],
+    [activeTag, locale, t, watchSymbolOptions],
   );
 
   const onPickWatchFilter = useCallback(
@@ -924,20 +885,10 @@ export default function FeedScreen() {
         setWatchDraftSymbols(normalizeNullableSelection(watchSymbolOptions, watchSelectedSymbols));
         setWatchSymbolModalVisible(true);
         return;
-      } else if (kind === 'sources') {
-        setWatchDraftSources(normalizeNullableSelection(watchSourceOptions, watchSelectedSources));
-        setWatchSourceModalVisible(true);
-        return;
       }
       void reloadWatchFilterFromServer({ kind });
     },
-    [
-      reloadWatchFilterFromServer,
-      watchSelectedSources,
-      watchSelectedSymbols,
-      watchSourceOptions,
-      watchSymbolOptions,
-    ],
+    [reloadWatchFilterFromServer, watchSelectedSymbols, watchSymbolOptions],
   );
 
   const commitWatchSymbolFilter = useCallback(() => {
@@ -947,29 +898,14 @@ export default function FeedScreen() {
     void reloadWatchFilterFromServer({ kind: 'symbols', selectedSymbols: watchDraftSymbols });
   }, [reloadWatchFilterFromServer, watchDraftSymbols]);
 
-  const commitWatchSourceFilter = useCallback(() => {
-    setWatchSourceModalVisible(false);
-    setWatchSelectedSources(watchDraftSources);
-    setWatchFilter('sources');
-    void reloadWatchFilterFromServer({ kind: 'sources', selectedSources: watchDraftSources });
-  }, [reloadWatchFilterFromServer, watchDraftSources]);
-
   const toggleWatchSymbol = useCallback((symbol: string) => {
     setWatchDraftSymbols((prev) =>
       prev.includes(symbol) ? prev.filter((item) => item !== symbol) : [...prev, symbol],
     );
   }, []);
 
-  const toggleWatchSource = useCallback((source: string) => {
-    setWatchDraftSources((prev) =>
-      prev.includes(source) ? prev.filter((item) => item !== source) : [...prev, source],
-    );
-  }, []);
-
   const selectAllWatchSymbols = useCallback(() => setWatchDraftSymbols([...watchSymbolOptions]), [watchSymbolOptions]);
   const clearAllWatchSymbols = useCallback(() => setWatchDraftSymbols([]), []);
-  const selectAllWatchSources = useCallback(() => setWatchDraftSources([...watchSourceOptions]), [watchSourceOptions]);
-  const clearAllWatchSources = useCallback(() => setWatchDraftSources([]), []);
 
   const onPickSegment = useCallback((key: NewsSegmentKey) => {
     if (segment === key) return;
@@ -1332,45 +1268,6 @@ export default function FeedScreen() {
               />
               <Text style={[filterRowStyles.name, !on && filterRowStyles.nameOff]} numberOfLines={2}>
                 {symbol}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </SelectionFilterSheet>
-      <SelectionFilterSheet
-        visible={watchSourceModalVisible}
-        title={t('feedWatchSourceFilterTitle')}
-        hint={t('feedWatchSourceFilterHint')}
-        onDone={commitWatchSourceFilter}
-        bottomInset={insets.bottom}
-        toolbar={{
-          sectionLabel: t('feedNewsFilterIncluded'),
-          countLabel: t('filterSheetSelectedCount', {
-            selected: watchDraftSources.length,
-            total: watchSourceOptions.length,
-          }),
-          selectAllLabel: t('feedNewsFilterSelectAll'),
-          clearAllLabel: t('feedNewsFilterClearAll'),
-          onSelectAll: selectAllWatchSources,
-          onClearAll: clearAllWatchSources,
-        }}>
-        {watchSourceOptions.map((source) => {
-          const on = watchDraftSources.includes(source);
-          return (
-            <Pressable
-              key={source}
-              onPress={() => toggleWatchSource(source)}
-              style={[filterRowStyles.row, on && filterRowStyles.rowOn]}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: on }}>
-              <FontAwesome
-                name={on ? 'check-square' : 'square-o'}
-                size={18}
-                color={on ? theme.green : theme.textDim}
-                style={filterRowStyles.checkIcon}
-              />
-              <Text style={[filterRowStyles.name, !on && filterRowStyles.nameOff]} numberOfLines={2}>
-                {source}
               </Text>
             </Pressable>
           );

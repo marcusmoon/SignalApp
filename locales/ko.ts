@@ -561,7 +561,7 @@ export const ko = {
   feedVideoOpenAll: '유튜브 전체보기',
   feedWatchFilterAll: '전체',
   feedWatchFilterFlash: '속보',
-  feedWatchFilterSymbols: '종목',
+  feedWatchFilterSymbols: '관심종목',
   feedWatchFilterSources: '출처',
   feedWatchSymbolFilterTitle: '관심종목 선택',
   feedWatchSymbolFilterHint: '선택한 종목과 연결된 뉴스만 보여줍니다.',

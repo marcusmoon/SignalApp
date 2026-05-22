@@ -12,8 +12,6 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CalendarEventTypeFilterModal } from '@/components/signal/CalendarEventTypeFilterModal';
-import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
@@ -36,6 +34,13 @@ import {
 import { toYmd } from '@/utils/date';
 import type { MessageId } from '@/locales/messages';
 import type { CalendarEvent } from '@/types/signal';
+
+const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
+  earnings: 'calendarTagEarnings',
+  macro: 'calendarTagMacro',
+  fed: 'calendarTagFed',
+  fomc: 'calendarTagFomc',
+};
 
 function calendarEventTimeLabel(ev: CalendarEvent, t: (id: MessageId) => string): string {
   const code = ev.earningsHourCode;
@@ -66,6 +71,21 @@ function ymdInMonth(ymd: string, year: number, month0: number): boolean {
   return ymd.startsWith(prefix);
 }
 
+function mergeCalendarEvents(chunks: CalendarEvent[][]): CalendarEvent[] {
+  const byId = new Map<string, CalendarEvent>();
+  for (const chunk of chunks) {
+    for (const event of chunk) {
+      byId.set(event.id, event);
+    }
+  }
+  return Array.from(byId.values()).sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) ||
+      String(a.time || '').localeCompare(String(b.time || '')) ||
+      a.title.localeCompare(b.title),
+  );
+}
+
 export default function CalendarScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
@@ -82,7 +102,6 @@ export default function CalendarScreen() {
   const [enabledTypes, setEnabledTypes] = useState(
     () => new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER),
   );
-  const [filterModalVisible, setFilterModalVisible] = useState(false);
 
   useEffect(() => {
     void loadCalendarEventTypeFilter().then(setEnabledTypes);
@@ -117,16 +136,27 @@ export default function CalendarScreen() {
       }
       const rangeFrom = new Date(visibleMonth.year, visibleMonth.month, 1);
       const rangeTo = new Date(visibleMonth.year, visibleMonth.month + 1, 0);
-      const list = await fetchSignalCalendar(
-        {
-          from: toYmd(rangeFrom),
-          to: toYmd(rangeTo),
-        },
-        { cacheMode: forceRefresh ? 'bypass' : 'use' },
+      const monthParams = {
+        from: toYmd(rangeFrom),
+        to: toYmd(rangeTo),
+      };
+      const selectedDayParams = ymdInMonth(selectedYmd, visibleMonth.year, visibleMonth.month)
+        ? { from: selectedYmd, to: selectedYmd }
+        : null;
+      const [monthList, selectedDayList] = await Promise.all([
+        fetchSignalCalendar(monthParams, { cacheMode: forceRefresh ? 'bypass' : 'use' }),
+        selectedDayParams
+          ? fetchSignalCalendar(selectedDayParams, { cacheMode: forceRefresh ? 'bypass' : 'use' })
+          : Promise.resolve([]),
+      ]);
+      setEvents(
+        mergeCalendarEvents([
+          monthList.map(signalCalendarToCalendarEvent),
+          selectedDayList.map(signalCalendarToCalendarEvent),
+        ]),
       );
-      setEvents(list.map(signalCalendarToCalendarEvent));
     },
-    [visibleMonth, t],
+    [selectedYmd, visibleMonth, t],
   );
 
   useEffect(() => {
@@ -160,11 +190,32 @@ export default function CalendarScreen() {
     }
   }, [load, t]);
 
+  useEffect(() => {
+    if (loading || !hasSignalApi() || !ymdInMonth(selectedYmd, visibleMonth.year, visibleMonth.month)) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await fetchSignalCalendar({ from: selectedYmd, to: selectedYmd });
+        if (cancelled || rows.length === 0) return;
+        const next = rows.map(signalCalendarToCalendarEvent);
+        setEvents((prev) => mergeCalendarEvents([prev, next]));
+      } catch {
+        // 월 조회는 이미 완료된 상태라, 날짜 보강 실패는 화면 전체 오류로 올리지 않는다.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, selectedYmd, visibleMonth]);
+
   const filteredEvents = useMemo(
     () => events.filter((e) => enabledTypes.has(e.type)),
     [events, enabledTypes],
   );
 
+  const allEventTypesSelected = enabledTypes.size === CALENDAR_EVENT_TYPE_ORDER.length;
   const eventDates = useMemo(() => new Set(filteredEvents.map((e) => e.date)), [filteredEvents]);
   const selectedDayEvents = useMemo(
     () =>
@@ -176,11 +227,15 @@ export default function CalendarScreen() {
 
   const onToggleEventType = useCallback((type: CalendarEventTypeKey) => {
     setEnabledTypes((prev) => {
-      const next = new Set(prev);
-      if (next.has(type)) {
+      const isAllMode = prev.size === CALENDAR_EVENT_TYPE_ORDER.length;
+      let next = isAllMode ? new Set<CalendarEventTypeKey>([type]) : new Set(prev);
+      if (!isAllMode && next.has(type)) {
         next.delete(type);
-      } else {
+      } else if (!isAllMode) {
         next.add(type);
+      }
+      if (next.size === 0 || next.size === CALENDAR_EVENT_TYPE_ORDER.length) {
+        next = new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
       }
       void saveCalendarEventTypeFilter(next);
       return next;
@@ -192,14 +247,6 @@ export default function CalendarScreen() {
     setEnabledTypes(next);
     void saveCalendarEventTypeFilter(next);
   }, []);
-
-  const onClearAllEventTypes = useCallback(() => {
-    const next = new Set<CalendarEventTypeKey>();
-    setEnabledTypes(next);
-    void saveCalendarEventTypeFilter(next);
-  }, []);
-
-  const filterReady = !loading;
 
   const formatDayHeader = useCallback(
     (ymd: string) => {
@@ -385,6 +432,39 @@ export default function CalendarScreen() {
           locale={locale}
           compact
         />
+        <View style={styles.filterChips} accessibilityRole="tablist">
+          <Pressable
+            onPress={onSelectAllEventTypes}
+            style={[
+              styles.filterChip,
+              allEventTypesSelected && styles.filterChipActive,
+            ]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: allEventTypesSelected }}>
+            <Text
+              style={[
+                styles.filterChipText,
+                allEventTypesSelected && styles.filterChipTextActive,
+              ]}>
+              {t('calendarFilterAll')}
+            </Text>
+          </Pressable>
+          {CALENDAR_EVENT_TYPE_ORDER.map((type) => {
+            const active = !allEventTypesSelected && enabledTypes.has(type);
+            return (
+              <Pressable
+                key={type}
+                onPress={() => onToggleEventType(type)}
+                style={[styles.filterChip, active && styles.filterChipActive]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}>
+                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                  {t(CALENDAR_FILTER_LABEL[type])}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
       <FlatList
         style={styles.listScroll}
@@ -409,24 +489,6 @@ export default function CalendarScreen() {
         removeClippedSubviews={Platform.OS !== 'web'}
       />
 
-      {filterReady ? (
-        <FloatingGlassFab
-          bottom={insets.bottom + 16}
-          onPress={() => setFilterModalVisible(true)}
-          iconName="filter"
-          accessibilityLabel={t('a11yCalendarFilter')}
-        />
-      ) : null}
-
-      <CalendarEventTypeFilterModal
-        visible={filterModalVisible}
-        onClose={() => setFilterModalVisible(false)}
-        enabled={enabledTypes}
-        onToggle={onToggleEventType}
-        onSelectAll={onSelectAllEventTypes}
-        onClearAll={onClearAllEventTypes}
-        bottomInset={insets.bottom}
-      />
     </SafeAreaView>
   );
 }
@@ -438,7 +500,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     fixedTop: {
       paddingHorizontal: 16,
       paddingTop: 8,
-      paddingBottom: 10,
+      paddingBottom: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
       backgroundColor: theme.bg,
@@ -451,6 +513,35 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '800',
       color: theme.text,
       marginBottom: 6,
+    },
+    filterChips: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 7,
+      marginTop: 10,
+    },
+    filterChip: {
+      minHeight: 30,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    filterChipActive: {
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    filterChipText: {
+      fontSize: sf(11),
+      lineHeight: sf(16),
+      fontWeight: '800',
+      color: theme.textDim,
+    },
+    filterChipTextActive: {
+      color: theme.green,
     },
     errBox: {
       padding: 10,

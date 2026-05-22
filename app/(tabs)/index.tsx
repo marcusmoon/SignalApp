@@ -304,6 +304,7 @@ export default function HomeScreen() {
         {
           locale,
           category: 'global',
+          symbols: watchSymbols.length > 0 ? watchSymbols.join(',') : undefined,
           limit: 16,
           offset: 0,
           from: homeRelatedNewsFromIso(),
@@ -532,18 +533,20 @@ export default function HomeScreen() {
               const moveLabel = t(quoteMoveLabelId(quote));
               const largeMove = Math.abs(Number(quote.changePercent) || 0) >= 3;
               return (
-                <View key={quote.symbol} style={styles.quoteRow}>
+                <Pressable
+                  key={quote.symbol}
+                  onPress={() => router.push(`/symbol/${quote.symbol}`)}
+                  style={({ pressed }) => [styles.quoteRow, pressed && styles.pressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${quote.symbol} ${t('screenSymbolDetail')}`}>
                   <View style={styles.quoteLeft}>
                     <View style={styles.quoteSymbolRow}>
+                      <Text style={styles.quoteSymbol}>{quote.symbol}</Text>
                       <Pressable
-                        onPress={() => router.push(`/symbol/${quote.symbol}`)}
-                        hitSlop={6}
-                        accessibilityRole="button"
-                        accessibilityLabel={quote.symbol}>
-                        <Text style={styles.quoteSymbol}>{quote.symbol}</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => void openYahooFinanceQuote(quote.symbol, 'stock')}
+                        onPress={(event) => {
+                          event.stopPropagation();
+                          void openYahooFinanceQuote(quote.symbol, 'stock');
+                        }}
                         style={({ pressed }) => [styles.quoteYahoo, pressed && styles.quoteYahooPressed]}
                         hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
                         accessibilityRole="link"
@@ -558,13 +561,13 @@ export default function HomeScreen() {
                           {moveLabel}
                         </Text>
                       </View>
-                      <View style={styles.quoteReasonChip}>
-                        <Text style={styles.quoteReasonText}>
-                          {newsCount > 0
-                            ? t('homeWatchNewsCount', { count: String(newsCount) })
-                            : t('homeWatchNoNews')}
-                        </Text>
-                      </View>
+                      {newsCount > 0 ? (
+                        <View style={styles.quoteReasonChip}>
+                          <Text style={styles.quoteReasonText}>
+                            {t('homeWatchNewsCount', { count: String(newsCount) })}
+                          </Text>
+                        </View>
+                      ) : null}
                       {signalCount > 0 ? (
                         <View style={styles.quoteReasonChip}>
                           <Text style={styles.quoteReasonText}>
@@ -583,7 +586,7 @@ export default function HomeScreen() {
                       {formatUsdChange(quote.change)} ({formatPct(quote.changePercent)})
                     </Text>
                   </View>
-                </View>
+                </Pressable>
               );
             })
           ) : (

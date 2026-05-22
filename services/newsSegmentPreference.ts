@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { NewsSegmentKey } from '@/constants/newsSegment';
-import { DEFAULT_NEWS_SEGMENT } from '@/constants/newsSegment';
+import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER } from '@/constants/newsSegment';
 
 const STORAGE_KEY = '@signal/news_segment_v1';
 
-const ALLOWED = new Set<NewsSegmentKey>(['global', 'korea', 'crypto']);
+const ALLOWED = new Set<NewsSegmentKey>(NEWS_SEGMENT_ORDER);
 
 export async function loadNewsSegment(): Promise<NewsSegmentKey> {
   try {

@@ -1,7 +1,11 @@
 import type { NewsSegmentKey } from '@/constants/newsSegment';
 import { NEWS_SEGMENT_ORDER } from '@/constants/newsSegment';
 
-const ALL_KEYS: NewsSegmentKey[] = ['global', 'korea', 'crypto'];
+const ALL_KEYS: NewsSegmentKey[] = [...NEWS_SEGMENT_ORDER];
+
+function isSameOrder(a: NewsSegmentKey[], b: NewsSegmentKey[]): boolean {
+  return a.length === b.length && a.every((value, index) => value === b[index]);
+}
 
 export function normalizeNewsSegmentOrder(raw: unknown): NewsSegmentKey[] {
   if (!Array.isArray(raw)) return [...NEWS_SEGMENT_ORDER];
@@ -13,6 +17,12 @@ export function normalizeNewsSegmentOrder(raw: unknown): NewsSegmentKey[] {
       seen.add(x as NewsSegmentKey);
     }
   }
+  const previousDefaults: NewsSegmentKey[][] = [
+    ['watch', 'global', 'crypto'],
+    ['global', 'crypto', 'watch'],
+    ['global', 'crypto', 'video', 'watch'],
+  ];
+  if (previousDefaults.some((order) => isSameOrder(out, order))) return [...NEWS_SEGMENT_ORDER];
   for (const k of NEWS_SEGMENT_ORDER) {
     if (!seen.has(k)) out.push(k);
   }

@@ -63,11 +63,32 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#0A0A0F",
-          "image": "./assets/images/splash.png",
-          "resizeMode": "cover",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 240,
+          "resizeMode": "contain",
           "dark": {
             "backgroundColor": "#0A0A0F",
-            "image": "./assets/images/splash.png"
+            "image": "./assets/images/splash-icon.png"
+          },
+          "ios": {
+            "backgroundColor": "#0A0A0F",
+            "image": "./assets/images/splash.png",
+            "resizeMode": "cover",
+            "enableFullScreenImage_legacy": true,
+            "dark": {
+              "backgroundColor": "#0A0A0F",
+              "image": "./assets/images/splash.png"
+            }
+          },
+          "android": {
+            "backgroundColor": "#0A0A0F",
+            "image": "./assets/images/splash-icon.png",
+            "imageWidth": 240,
+            "resizeMode": "contain",
+            "dark": {
+              "backgroundColor": "#0A0A0F",
+              "image": "./assets/images/splash-icon.png"
+            }
           }
         }
       ],

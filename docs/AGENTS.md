@@ -70,10 +70,10 @@ assets/
 |-----------|------|
 | 시세 탭 | `app/(tabs)/quotes.tsx`, 순서 `quotesSegmentOrderPreference`, Signal API 시세·코인, 보조 캐시 `services/cache/quotesCache.ts` |
 | 홈 탭 | `app/(tabs)/index.tsx` — 오늘의 시그널, 관심종목, 뉴스·영상 근거를 묶은 첫 화면 |
-| 뉴스 탭 | `app/(tabs)/news.tsx`, 순서 `newsSegmentOrderPreference`, `@/domain/news`, `components/signal/NewsCard`, 해시태그 표시 설정 `services/newsHashtagDisplayPreference.ts`, `fetchSignalNews` / `integrations/signal-api/cache/newsCache`, 저장 `services/newsKoreaKeywordsPreference.ts` |
+| 뉴스 탭 | `app/(tabs)/news.tsx`, 순서 `newsSegmentOrderPreference`, `@/domain/news`, `components/signal/NewsCard`, 해시태그 표시 설정 `services/newsHashtagDisplayPreference.ts`, 관심종목 심볼 `services/quoteWatchlist.ts`, `fetchSignalNews` / `integrations/signal-api/cache/newsCache` |
 | 컨콜 | `@/domain/concalls`(연도·분기·범위·실적 행), 저장 `services/concallFiscalFilter.ts`, 서버 API `integrations/signal-api/concalls.ts`, 흐름 `services/concalls.ts` |
 | 유튜브 검색 보조 | `@/domain/youtube`, 필터 채널 `/v1/youtube-channels`, 카드에서 열기 `utils/openYoutube.ts` |
-| 설정 | `app/settings.tsx` — 뉴스·유튜브·시세·캘린더·표시·알림, Signal 서버 endpoint 오버라이드 `services/signalServerEndpoint.ts` |
+| 설정 | `app/settings.tsx` — 뉴스·시세·캘린더·표시·알림, Signal 서버 endpoint 오버라이드 `services/signalServerEndpoint.ts` |
 | 오늘의 시그널 | `app/insights.tsx`, `integrations/signal-api/insights.ts`, 서버 `server/src/insights/*`, 어드민 `server/src/public/admin/views/insights.js` |
 | 계정·알림 | `app/account.tsx`, `app/alerts.tsx`, `app/terms.tsx`, `app/terms-history.tsx`, 서버 `/v1/auth/*`·`/v1/notifications`·`/v1/legal/terms`, 기기 세션 `services/appAuthSession.ts`, push 등록 `services/pushDeviceRegistration.ts`, 소셜 로그인 설정 `docs/SOCIAL-AUTH.md`, 어드민 앱 사용자 `/admin/api/app-users*`·`/admin/api/notifications` |
 | 테마·문자열 | `SignalThemeContext`, `locales/*` (`@/locales/messages`) |

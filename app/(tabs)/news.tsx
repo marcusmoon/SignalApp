@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
@@ -31,21 +32,22 @@ import {
 } from '@/constants/segmentTabBar';
 import { AdPlaceholder } from '@/components/signal/AdPlaceholder';
 import { NewsSourceFilterModal } from '@/components/signal/NewsSourceFilterModal';
-import { FloatingGlassFab, FLOATING_GLASS_FAB_GAP, FLOATING_GLASS_FAB_SIZE } from '@/components/signal/FloatingGlassFab';
+import {
+  SelectionFilterSheet,
+  selectionFilterRowStyles,
+} from '@/components/signal/SelectionFilterSheet';
+import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { groupedFeedRowEdges, groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { NewsCard } from '@/components/signal/NewsCard';
+import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { filterKoreaRelatedNews } from '@/domain/news';
+import { isFlashNews } from '@/domain/news';
 import { hasSignalApi } from '@/services/env';
-import {
-  loadKoreaNewsExtraKeywords,
-  subscribeKoreaNewsExtraKeywordsChanged,
-} from '@/services/newsKoreaKeywordsPreference';
 import {
   DEFAULT_NEWS_HASHTAG_DISPLAY_MAX,
   loadNewsHashtagDisplayMax,
@@ -58,26 +60,53 @@ import {
 import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreference';
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
 import { markNewsFeedSeen } from '@/services/newsUnreadPreference';
+import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { createScrollLoadMoreGate } from '@/utils/listScrollLoadMoreGate';
-import { fetchSignalNews, fetchSignalNewsSources, signalNewsToNewsItem } from '@/integrations/signal-api';
+import {
+  fetchSignalNews,
+  fetchSignalNewsSources,
+  fetchSignalYoutube,
+  signalNewsToNewsItem,
+  signalYoutubeToYoutubeItem,
+} from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
-import type { SignalApiNewsItem } from '@/integrations/signal-api/types';
-import type { NewsItem } from '@/types/signal';
+import type { SignalApiNewsItem, SignalApiYoutubeVideo } from '@/integrations/signal-api/types';
+import type { NewsItem, YoutubeItem } from '@/types/signal';
 import type { MessageId } from '@/locales/messages';
 
 const FEED_PAGE_GLOBAL = 20;
-const FEED_PAGE_KOREA = 40;
+const FEED_PAGE_WATCH = 40;
 const FEED_PAGE_CRYPTO = 25;
+const FEED_PAGE_VIDEO = 20;
 const SOURCE_PROBE_LIMIT = 100;
 const NEWS_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
+  watch: 'feedSegmentWatch',
   global: 'feedSegmentGlobal',
-  korea: 'feedSegmentKorea',
   crypto: 'feedSegmentCrypto',
+  video: 'feedSegmentVideo',
 };
 
-type FeedRow = { kind: 'news'; news: NewsItem } | { kind: 'ad'; key: string };
-type FeedLoadResult = { newsIds: string[]; insightIds: string[] };
+type FeedRow =
+  | { kind: 'news'; news: NewsItem }
+  | { kind: 'video'; video: YoutubeItem }
+  | { kind: 'ad'; key: string };
+type FeedLoadResult = { itemIds: string[]; kind: 'news' | 'video'; insightIds: string[] };
+type NewsQuickFilterKind = 'all' | 'flash' | 'sources';
+type WatchFilterKind = 'all' | 'flash' | 'symbols' | 'sources';
+
+const NEWS_QUICK_FILTERS: { key: NewsQuickFilterKind; labelId: MessageId }[] = [
+  { key: 'all', labelId: 'feedWatchFilterAll' },
+  { key: 'flash', labelId: 'feedWatchFilterFlash' },
+  { key: 'sources', labelId: 'feedWatchFilterSources' },
+];
+
+const WATCH_FILTERS: { key: WatchFilterKind; labelId: MessageId }[] = [
+  { key: 'all', labelId: 'feedWatchFilterAll' },
+  { key: 'flash', labelId: 'feedWatchFilterFlash' },
+  { key: 'symbols', labelId: 'feedWatchFilterSymbols' },
+  { key: 'sources', labelId: 'feedWatchFilterSources' },
+];
 
 function signalSourceLabel(item: SignalApiNewsItem): string {
   const s = String(item.sourceName || '').trim();
@@ -106,20 +135,60 @@ function buildSourcesFromCatalog(params: {
   return out.length > 0 ? out : rawSources;
 }
 
-function filterSignalBySelectedSources(items: SignalApiNewsItem[], selected: string[]): SignalApiNewsItem[] {
-  const set = new Set(selected);
-  return items.filter((i) => set.has(signalSourceLabel(i)));
+function normalizeNullableSelection(options: string[], selected: string[] | null): string[] {
+  if (selected == null) return options;
+  const allowed = new Set(options);
+  return selected.filter((item) => allowed.has(item));
 }
 
-async function filterSignalNewsForKorea(items: SignalApiNewsItem[]): Promise<SignalApiNewsItem[]> {
-  const extraKw = await loadKoreaNewsExtraKeywords();
-  return filterKoreaRelatedNews(items, extraKw);
+function filterNewsRows(
+  rows: SignalApiNewsItem[],
+  params: {
+    kind: NewsQuickFilterKind;
+    sourceOptions: string[];
+    selectedSources: string[] | null;
+  },
+): SignalApiNewsItem[] {
+  if (params.kind === 'all') return rows;
+  if (params.kind === 'flash') return rows.filter((row) => isFlashNews(row));
+  const selectedSources = new Set(normalizeNullableSelection(params.sourceOptions, params.selectedSources));
+  if (selectedSources.size === 0) return [];
+  return rows.filter((row) => selectedSources.has(signalSourceLabel(row)));
+}
+
+function filterWatchRows(
+  rows: SignalApiNewsItem[],
+  params: {
+    kind: WatchFilterKind;
+    symbolOptions: string[];
+    selectedSymbols: string[] | null;
+    sourceOptions: string[];
+    selectedSources: string[] | null;
+  },
+): SignalApiNewsItem[] {
+  if (params.kind === 'all') return rows;
+  if (params.kind === 'flash') return rows.filter((row) => isFlashNews(row));
+  if (params.kind === 'symbols') {
+    const selected = new Set(
+      normalizeNullableSelection(params.symbolOptions, params.selectedSymbols).map((symbol) => symbol.toUpperCase()),
+    );
+    if (selected.size === 0) return [];
+    return rows.filter((row) => {
+      const symbols = Array.isArray(row.symbols) ? row.symbols : [];
+      return symbols.some((symbol) => selected.has(String(symbol).trim().toUpperCase()));
+    });
+  }
+  const selectedSources = new Set(normalizeNullableSelection(params.sourceOptions, params.selectedSources));
+  if (selectedSources.size === 0) return [];
+  return rows.filter((row) => selectedSources.has(signalSourceLabel(row)));
 }
 
 export default function FeedScreen() {
+  const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const filterRowStyles = useMemo(() => selectionFilterRowStyles(theme, scaleFont), [theme, scaleFont]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
@@ -130,7 +199,9 @@ export default function FeedScreen() {
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<NewsItem[]>([]);
+  const [videoItems, setVideoItems] = useState<YoutubeItem[]>([]);
   const [serverRows, setServerRows] = useState<SignalApiNewsItem[]>([]);
+  const [youtubeRows, setYoutubeRows] = useState<SignalApiYoutubeVideo[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -139,6 +210,21 @@ export default function FeedScreen() {
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [filterDraftSources, setFilterDraftSources] = useState<string[]>([]);
+  const [globalFilter, setGlobalFilter] = useState<NewsQuickFilterKind>('all');
+  const [cryptoFilter, setCryptoFilter] = useState<NewsQuickFilterKind>('all');
+  const [cryptoSourceOptions, setCryptoSourceOptions] = useState<string[]>([]);
+  const [cryptoSelectedSources, setCryptoSelectedSources] = useState<string[] | null>(null);
+  const [cryptoDraftSources, setCryptoDraftSources] = useState<string[]>([]);
+  const [cryptoSourceModalVisible, setCryptoSourceModalVisible] = useState(false);
+  const [watchFilter, setWatchFilter] = useState<WatchFilterKind>('all');
+  const [watchSymbolOptions, setWatchSymbolOptions] = useState<string[]>([]);
+  const [watchSelectedSymbols, setWatchSelectedSymbols] = useState<string[] | null>(null);
+  const [watchDraftSymbols, setWatchDraftSymbols] = useState<string[]>([]);
+  const [watchSymbolModalVisible, setWatchSymbolModalVisible] = useState(false);
+  const [watchSourceOptions, setWatchSourceOptions] = useState<string[]>([]);
+  const [watchSelectedSources, setWatchSelectedSources] = useState<string[] | null>(null);
+  const [watchDraftSources, setWatchDraftSources] = useState<string[]>([]);
+  const [watchSourceModalVisible, setWatchSourceModalVisible] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   /** 출처 필터 UI용(카탈로그 비었을 때 샘플 + 첫 페이지 병합) */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
@@ -147,7 +233,21 @@ export default function FeedScreen() {
   const feedListViewportH = useRef(0);
   const feedScrollLoadGateRef = useRef(createScrollLoadMoreGate());
   const itemsRef = useRef(items);
+  const videoItemsRef = useRef(videoItems);
+  const globalFilterRef = useRef(globalFilter);
+  const cryptoFilterRef = useRef(cryptoFilter);
+  const cryptoSelectedSourcesRef = useRef(cryptoSelectedSources);
+  const watchFilterRef = useRef(watchFilter);
+  const watchSelectedSymbolsRef = useRef(watchSelectedSymbols);
+  const watchSelectedSourcesRef = useRef(watchSelectedSources);
   itemsRef.current = items;
+  videoItemsRef.current = videoItems;
+  globalFilterRef.current = globalFilter;
+  cryptoFilterRef.current = cryptoFilter;
+  cryptoSelectedSourcesRef.current = cryptoSelectedSources;
+  watchFilterRef.current = watchFilter;
+  watchSelectedSymbolsRef.current = watchSelectedSymbols;
+  watchSelectedSourcesRef.current = watchSelectedSources;
 
   useEffect(() => {
     if (!refreshNotice) return;
@@ -183,15 +283,87 @@ export default function FeedScreen() {
       setLoadingMore(false);
       if (!hasSignalApi()) {
         setItems([]);
+        setVideoItems([]);
         setServerRows([]);
+        setYoutubeRows([]);
         setSignalNewsPool([]);
         setAvailableSources([]);
         setSelectedSources([]);
+        setCryptoSourceOptions([]);
+        setCryptoSelectedSources(null);
         setError(t('errorSignalApiShort'));
-        return { newsIds: [], insightIds: [] };
+        return { itemIds: [], kind: 'news', insightIds: [] };
       }
 
       const cacheMode = forceRefresh ? 'bypass' : 'use';
+
+      if (segment === 'video') {
+        setSignalNewsPool([]);
+        setAvailableSources([]);
+        setSelectedSources([]);
+        setCryptoSourceOptions([]);
+        setCryptoSelectedSources(null);
+        setItems([]);
+        setServerRows([]);
+        const { items: rows, meta } = await fetchSignalYoutube(
+          {
+            sort: 'latest',
+            limit: FEED_PAGE_VIDEO,
+            offset: 0,
+          },
+          { cacheMode },
+        );
+        setYoutubeRows(rows);
+        setHasMore(meta.hasMore);
+        const mapped = rows.map((item) => signalYoutubeToYoutubeItem(item, locale));
+        setVideoItems(mapped);
+        return { itemIds: mapped.map((item) => item.id), kind: 'video', insightIds: [] };
+      }
+
+      setVideoItems([]);
+      setYoutubeRows([]);
+
+      if (segment === 'watch') {
+        setSignalNewsPool([]);
+        setAvailableSources([]);
+        setSelectedSources([]);
+        setCryptoSourceOptions([]);
+        setCryptoSelectedSources(null);
+        const symbols = (await loadWatchlistSymbols()).slice(0, 40);
+        setWatchSymbolOptions(symbols);
+        if (symbols.length === 0) {
+          setServerRows([]);
+          setItems([]);
+          setWatchSourceOptions([]);
+          setHasMore(false);
+          return { itemIds: [], kind: 'news', insightIds: [] };
+        }
+        const { items: rows, meta } = await fetchSignalNews(
+          {
+            locale,
+            category: 'global',
+            symbols: symbols.join(','),
+            limit: FEED_PAGE_WATCH,
+            offset: 0,
+            tag: activeTag || undefined,
+          },
+          { cacheMode },
+        );
+        setServerRows(rows);
+        setHasMore(meta.hasMore);
+        const sourceOptions = uniqueSignalSources(rows);
+        setWatchSourceOptions(sourceOptions);
+        const scoped = filterWatchRows(rows, {
+          kind: watchFilterRef.current,
+          symbolOptions: symbols,
+          selectedSymbols: watchSelectedSymbolsRef.current,
+          sourceOptions,
+          selectedSources: watchSelectedSourcesRef.current,
+        });
+        const mapped = scoped.map((item) => signalNewsToNewsItem(item, locale));
+        setItems(mapped);
+        return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
+      }
 
       if (segment === 'crypto') {
         setSignalNewsPool([]);
@@ -209,12 +381,21 @@ export default function FeedScreen() {
         );
         setServerRows(rows);
         setHasMore(meta.hasMore);
-        const mapped = rows.map((item) => signalNewsToNewsItem(item, locale));
+        const sourceOptions = uniqueSignalSources(rows);
+        setCryptoSourceOptions(sourceOptions);
+        const selected = normalizeNullableSelection(sourceOptions, cryptoSelectedSourcesRef.current);
+        if (cryptoSelectedSourcesRef.current !== null) setCryptoSelectedSources(selected);
+        const scoped = filterNewsRows(rows, {
+          kind: cryptoFilterRef.current,
+          sourceOptions,
+          selectedSources: selected,
+        });
+        const mapped = scoped.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
-        return { newsIds: mapped.map((item) => item.id), insightIds: [] };
+        return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
       }
 
-      const pageLimit = segment === 'korea' ? FEED_PAGE_KOREA : FEED_PAGE_GLOBAL;
+      const pageLimit = FEED_PAGE_GLOBAL;
       const [catalogRows, firstPageResult] = await Promise.all([
         fetchSignalNewsSources({ category: 'global' }, { cacheMode })
           .then((cat) => cat.map((c) => ({ name: c.name, enabled: c.enabled, order: c.order })))
@@ -265,31 +446,57 @@ export default function FeedScreen() {
       setAvailableSources(sources);
       const selected = await loadSelectedSources(sources);
       setSelectedSources(selected);
-      let scoped = filterSignalBySelectedSources(firstPage, selected);
-      if (segment === 'korea') {
-        scoped = await filterSignalNewsForKorea(scoped);
-      }
+      const scoped = filterNewsRows(firstPage, {
+        kind: globalFilterRef.current,
+        sourceOptions: sources,
+        selectedSources: selected,
+      });
       const mapped = scoped.map((item) => signalNewsToNewsItem(item, locale));
       setItems(mapped);
-      return { newsIds: mapped.map((item) => item.id), insightIds: [] };
+      return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
     },
     [activeTag, locale, segment, t],
   );
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || loading || !hasSignalApi()) return;
-    if (segment !== 'crypto' && segment !== 'global' && segment !== 'korea') return;
+    if (segment !== 'watch' && segment !== 'crypto' && segment !== 'global' && segment !== 'video') return;
 
     setLoadingMore(true);
     setError(null);
     try {
-      const pageLimit =
-        segment === 'korea' ? FEED_PAGE_KOREA : segment === 'crypto' ? FEED_PAGE_CRYPTO : FEED_PAGE_GLOBAL;
+      if (segment === 'video') {
+        const page = await fetchSignalYoutube(
+          {
+            sort: 'latest',
+            limit: FEED_PAGE_VIDEO,
+            offset: youtubeRows.length,
+          },
+          { cacheMode: 'use' },
+        );
+        if (page.items.length === 0) {
+          setHasMore(false);
+          return;
+        }
+        const merged = [...youtubeRows, ...page.items];
+        setYoutubeRows(merged);
+        setVideoItems(merged.map((item) => signalYoutubeToYoutubeItem(item, locale)));
+        setHasMore(page.meta.hasMore);
+        return;
+      }
+
+      const pageLimit = segment === 'watch' ? FEED_PAGE_WATCH : segment === 'crypto' ? FEED_PAGE_CRYPTO : FEED_PAGE_GLOBAL;
       const category = segment === 'crypto' ? 'crypto' : 'global';
+      const symbols = segment === 'watch' ? (await loadWatchlistSymbols()).slice(0, 40) : [];
+      if (segment === 'watch' && symbols.length === 0) {
+        setHasMore(false);
+        return;
+      }
       const { items: nextRows, meta } = await fetchSignalNews(
         {
           locale,
           category,
+          symbols: symbols.length > 0 ? symbols.join(',') : undefined,
           limit: pageLimit,
           offset: serverRows.length,
           tag: activeTag || undefined,
@@ -303,9 +510,36 @@ export default function FeedScreen() {
       const merged = [...serverRows, ...nextRows];
       setServerRows(merged);
       setHasMore(meta.hasMore);
-      let scoped = filterSignalBySelectedSources(merged, selectedSources);
-      if (segment === 'korea') {
-        scoped = await filterSignalNewsForKorea(scoped);
+      let scoped = merged;
+      if (segment === 'global') {
+        scoped = filterNewsRows(merged, {
+          kind: globalFilterRef.current,
+          sourceOptions: availableSources,
+          selectedSources,
+        });
+      }
+      if (segment === 'crypto') {
+        const sourceOptions = uniqueSignalSources(merged);
+        setCryptoSourceOptions(sourceOptions);
+        const selected = normalizeNullableSelection(sourceOptions, cryptoSelectedSourcesRef.current);
+        if (cryptoSelectedSourcesRef.current !== null) setCryptoSelectedSources(selected);
+        scoped = filterNewsRows(merged, {
+          kind: cryptoFilterRef.current,
+          sourceOptions,
+          selectedSources: selected,
+        });
+      }
+      if (segment === 'watch') {
+        const symbolOptions = watchSymbolOptions;
+        const sourceOptions = uniqueSignalSources(merged);
+        setWatchSourceOptions(sourceOptions);
+        scoped = filterWatchRows(merged, {
+          kind: watchFilterRef.current,
+          symbolOptions,
+          selectedSymbols: watchSelectedSymbolsRef.current,
+          sourceOptions,
+          selectedSources: watchSelectedSourcesRef.current,
+        });
       }
       setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
     } catch (e) {
@@ -320,9 +554,12 @@ export default function FeedScreen() {
     loadingMore,
     locale,
     segment,
+    availableSources,
     selectedSources,
     serverRows,
     t,
+    watchSymbolOptions,
+    youtubeRows,
   ]);
 
   const onFeedScroll = useCallback(
@@ -333,7 +570,7 @@ export default function FeedScreen() {
           !loadingMore &&
           !loading &&
           hasSignalApi() &&
-          (segment === 'crypto' || segment === 'global' || segment === 'korea'),
+          (segment === 'watch' || segment === 'crypto' || segment === 'global' || segment === 'video'),
         trigger: () => void loadMore(),
       });
     },
@@ -347,18 +584,12 @@ export default function FeedScreen() {
     }, [locale]),
   );
 
-  useEffect(() => {
-    return subscribeKoreaNewsExtraKeywordsChanged(() => {
-      if (segment === 'korea') void load(false);
-    });
-  }, [segment, load]);
-
   /** 앱 시작 시 마운트만으로 fetch 하지 않음 — 뉴스 탭 포커스·세그먼트 변경 시에만 */
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       void (async () => {
-        const showLoading = itemsRef.current.length === 0;
+        const showLoading = itemsRef.current.length === 0 && videoItemsRef.current.length === 0;
         if (showLoading) setLoading(true);
         try {
           await load(false);
@@ -381,13 +612,17 @@ export default function FeedScreen() {
 
   const onRefresh = useCallback(async () => {
     const prevNewsIds = new Set(items.map((item) => item.id));
+    const prevVideoIds = new Set(videoItems.map((item) => item.id));
     setRefreshing(true);
     setRefreshNotice(null);
     try {
       const result = await load(true);
       setError(null);
-      const newNewsCount = result.newsIds.filter((id) => !prevNewsIds.has(id)).length;
-      if (newNewsCount > 0) {
+      const previousIds = result.kind === 'video' ? prevVideoIds : prevNewsIds;
+      const newNewsCount = result.itemIds.filter((id) => !previousIds.has(id)).length;
+      if (newNewsCount > 0 && result.kind === 'video') {
+        setRefreshNotice(t('feedRefreshNoticeVideo', { count: String(newNewsCount) }));
+      } else if (newNewsCount > 0) {
         setRefreshNotice(t('feedRefreshNoticeNews', { count: String(newNewsCount) }));
       }
     } catch (e) {
@@ -395,31 +630,28 @@ export default function FeedScreen() {
     } finally {
       setRefreshing(false);
     }
-  }, [items, load, t]);
+  }, [items, load, t, videoItems]);
 
   const applySelection = useCallback(
     async (next: string[]) => {
       try {
         await saveSelectedSources(next);
         setSelectedSources(next);
-        if (serverRows.length > 0 && (segment === 'global' || segment === 'korea')) {
-          let scoped = filterSignalBySelectedSources(serverRows, next);
-          if (segment === 'korea') {
-            scoped = await filterSignalNewsForKorea(scoped);
-          }
+        setGlobalFilter('sources');
+        if (serverRows.length > 0 && segment === 'global') {
+          const scoped = filterNewsRows(serverRows, {
+            kind: 'sources',
+            sourceOptions: availableSources,
+            selectedSources: next,
+          });
           setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
         }
       } catch (e) {
         setError(formatSignalApiError(e, t, 'feedErrorLoad'));
       }
     },
-    [locale, segment, serverRows, t],
+    [availableSources, locale, segment, serverRows, t],
   );
-
-  const openNewsFilter = useCallback(() => {
-    setFilterDraftSources(selectedSources);
-    setFilterModalVisible(true);
-  }, [selectedSources]);
 
   const sourcesEqual = useCallback((a: string[], b: string[]) => {
     if (a.length !== b.length) return false;
@@ -429,9 +661,20 @@ export default function FeedScreen() {
 
   const commitNewsFilter = useCallback(async () => {
     setFilterModalVisible(false);
-    if (sourcesEqual(filterDraftSources, selectedSources)) return;
+    setGlobalFilter('sources');
+    if (sourcesEqual(filterDraftSources, selectedSources)) {
+      if (segment === 'global') {
+        const scoped = filterNewsRows(serverRows, {
+          kind: 'sources',
+          sourceOptions: availableSources,
+          selectedSources,
+        });
+        setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
+      }
+      return;
+    }
     await applySelection(filterDraftSources);
-  }, [applySelection, filterDraftSources, selectedSources, sourcesEqual]);
+  }, [applySelection, availableSources, filterDraftSources, locale, segment, selectedSources, serverRows, sourcesEqual]);
 
   const toggleSource = useCallback((source: string) => {
     setFilterDraftSources((prev) =>
@@ -447,22 +690,165 @@ export default function FeedScreen() {
     setFilterDraftSources([]);
   }, []);
 
+  const applyNewsQuickFilter = useCallback(
+    (kind: NewsQuickFilterKind) => {
+      if (segment === 'global') {
+        setGlobalFilter(kind);
+        if (kind === 'sources') {
+          setFilterDraftSources(selectedSources);
+          setFilterModalVisible(true);
+        }
+        const scoped = filterNewsRows(serverRows, {
+          kind,
+          sourceOptions: availableSources,
+          selectedSources,
+        });
+        setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
+        return;
+      }
+
+      if (segment === 'crypto') {
+        setCryptoFilter(kind);
+        const selected = normalizeNullableSelection(cryptoSourceOptions, cryptoSelectedSources);
+        if (kind === 'sources') {
+          setCryptoDraftSources(selected);
+          setCryptoSourceModalVisible(true);
+        }
+        const scoped = filterNewsRows(serverRows, {
+          kind,
+          sourceOptions: cryptoSourceOptions,
+          selectedSources: selected,
+        });
+        setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
+      }
+    },
+    [
+      availableSources,
+      cryptoSelectedSources,
+      cryptoSourceOptions,
+      locale,
+      segment,
+      selectedSources,
+      serverRows,
+    ],
+  );
+
+  const commitCryptoSourceFilter = useCallback(() => {
+    setCryptoSourceModalVisible(false);
+    setCryptoSelectedSources(cryptoDraftSources);
+    setCryptoFilter('sources');
+    const scoped = filterNewsRows(serverRows, {
+      kind: 'sources',
+      sourceOptions: cryptoSourceOptions,
+      selectedSources: cryptoDraftSources,
+    });
+    setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
+  }, [cryptoDraftSources, cryptoSourceOptions, locale, serverRows]);
+
+  const toggleCryptoSource = useCallback((source: string) => {
+    setCryptoDraftSources((prev) =>
+      prev.includes(source) ? prev.filter((item) => item !== source) : [...prev, source],
+    );
+  }, []);
+
+  const selectAllCryptoSources = useCallback(
+    () => setCryptoDraftSources([...cryptoSourceOptions]),
+    [cryptoSourceOptions],
+  );
+  const clearAllCryptoSources = useCallback(() => setCryptoDraftSources([]), []);
+
+  const applyWatchFilter = useCallback(
+    (params?: {
+      kind?: WatchFilterKind;
+      selectedSymbols?: string[] | null;
+      selectedSources?: string[] | null;
+    }) => {
+      const nextKind = params?.kind ?? watchFilterRef.current;
+      const nextSymbols =
+        params && 'selectedSymbols' in params ? params.selectedSymbols ?? null : watchSelectedSymbolsRef.current;
+      const nextSources =
+        params && 'selectedSources' in params ? params.selectedSources ?? null : watchSelectedSourcesRef.current;
+      const scoped = filterWatchRows(serverRows, {
+        kind: nextKind,
+        symbolOptions: watchSymbolOptions,
+        selectedSymbols: nextSymbols,
+        sourceOptions: watchSourceOptions,
+        selectedSources: nextSources,
+      });
+      setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
+    },
+    [locale, serverRows, watchSourceOptions, watchSymbolOptions],
+  );
+
+  const onPickWatchFilter = useCallback(
+    (kind: WatchFilterKind) => {
+      setWatchFilter(kind);
+      if (kind === 'symbols') {
+        setWatchDraftSymbols(normalizeNullableSelection(watchSymbolOptions, watchSelectedSymbols));
+        setWatchSymbolModalVisible(true);
+      } else if (kind === 'sources') {
+        setWatchDraftSources(normalizeNullableSelection(watchSourceOptions, watchSelectedSources));
+        setWatchSourceModalVisible(true);
+      }
+      applyWatchFilter({ kind });
+    },
+    [applyWatchFilter, watchSelectedSources, watchSelectedSymbols, watchSourceOptions, watchSymbolOptions],
+  );
+
+  const commitWatchSymbolFilter = useCallback(() => {
+    setWatchSymbolModalVisible(false);
+    setWatchSelectedSymbols(watchDraftSymbols);
+    setWatchFilter('symbols');
+    applyWatchFilter({ kind: 'symbols', selectedSymbols: watchDraftSymbols });
+  }, [applyWatchFilter, watchDraftSymbols]);
+
+  const commitWatchSourceFilter = useCallback(() => {
+    setWatchSourceModalVisible(false);
+    setWatchSelectedSources(watchDraftSources);
+    setWatchFilter('sources');
+    applyWatchFilter({ kind: 'sources', selectedSources: watchDraftSources });
+  }, [applyWatchFilter, watchDraftSources]);
+
+  const toggleWatchSymbol = useCallback((symbol: string) => {
+    setWatchDraftSymbols((prev) =>
+      prev.includes(symbol) ? prev.filter((item) => item !== symbol) : [...prev, symbol],
+    );
+  }, []);
+
+  const toggleWatchSource = useCallback((source: string) => {
+    setWatchDraftSources((prev) =>
+      prev.includes(source) ? prev.filter((item) => item !== source) : [...prev, source],
+    );
+  }, []);
+
+  const selectAllWatchSymbols = useCallback(() => setWatchDraftSymbols([...watchSymbolOptions]), [watchSymbolOptions]);
+  const clearAllWatchSymbols = useCallback(() => setWatchDraftSymbols([]), []);
+  const selectAllWatchSources = useCallback(() => setWatchDraftSources([...watchSourceOptions]), [watchSourceOptions]);
+  const clearAllWatchSources = useCallback(() => setWatchDraftSources([]), []);
+
   const onPickSegment = useCallback((key: NewsSegmentKey) => {
     if (segment === key) return;
     setLoading(true);
     setItems([]);
+    setVideoItems([]);
     setServerRows([]);
+    setYoutubeRows([]);
     setHasMore(false);
     setError(null);
     setRefreshNotice(null);
+    if (key === 'video') setActiveTag(null);
     setSegment(key);
     void saveNewsSegment(key);
   }, [segment]);
 
-  const filterReady = availableSources.length > 0 && !error;
+  const newsQuickFilter = segment === 'crypto' ? cryptoFilter : globalFilter;
 
   const listData: FeedRow[] = useMemo(() => {
     const out: FeedRow[] = [];
+    if (segment === 'video') {
+      videoItems.forEach((video) => out.push({ kind: 'video', video }));
+      return out;
+    }
     items.forEach((news, i) => {
       out.push({ kind: 'news', news });
       if ((i + 1) % 5 === 0) {
@@ -470,12 +856,14 @@ export default function FeedScreen() {
       }
     });
     return out;
-  }, [items]);
+  }, [items, segment, videoItems]);
 
   const emptyMessage =
-    !loading && items.length === 0 && !error
-      ? segment === 'korea'
-        ? t('feedEmptyKorea')
+    !loading && listData.length === 0 && !error
+      ? segment === 'video'
+        ? t('feedEmptyVideo')
+        : segment === 'watch'
+        ? t('feedEmptyWatch')
         : t('feedEmpty')
       : null;
 
@@ -506,6 +894,60 @@ export default function FeedScreen() {
           </View>
         ) : null}
 
+        {segment === 'video' ? (
+          <Pressable
+            onPress={() => router.push('/youtube')}
+            style={({ pressed }) => [styles.videoOpenAll, pressed && styles.videoOpenAllPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('feedVideoOpenAll')}>
+            <View style={styles.videoOpenAllIcon}>
+              <FontAwesome name="youtube-play" size={15} color={theme.green} />
+            </View>
+            <Text style={styles.videoOpenAllTitle}>{t('feedVideoOpenAll')}</Text>
+            <FontAwesome name="chevron-right" size={12} color={theme.textDim} />
+          </Pressable>
+        ) : null}
+
+        {segment === 'watch' ? (
+          <View style={styles.watchFilterRow}>
+            {WATCH_FILTERS.map((filter) => {
+              const active = watchFilter === filter.key;
+              return (
+                <Pressable
+                  key={filter.key}
+                  onPress={() => onPickWatchFilter(filter.key)}
+                  style={[styles.watchFilterChip, active && styles.watchFilterChipActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}>
+                  <Text style={[styles.watchFilterText, active && styles.watchFilterTextActive]}>
+                    {t(filter.labelId)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+
+        {segment === 'global' || segment === 'crypto' ? (
+          <View style={styles.watchFilterRow}>
+            {NEWS_QUICK_FILTERS.map((filter) => {
+              const active = newsQuickFilter === filter.key;
+              return (
+                <Pressable
+                  key={filter.key}
+                  onPress={() => applyNewsQuickFilter(filter.key)}
+                  style={[styles.watchFilterChip, active && styles.watchFilterChipActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}>
+                  <Text style={[styles.watchFilterText, active && styles.watchFilterTextActive]}>
+                    {t(filter.labelId)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+
         {loading ? (
           <View style={styles.skeletonBlock}>
             <SkeletonFeed />
@@ -519,8 +961,16 @@ export default function FeedScreen() {
       activeTag,
       error,
       loading,
+      applyNewsQuickFilter,
+      newsQuickFilter,
+      onPickWatchFilter,
+      segment,
       styles,
       t,
+      watchFilter,
+      theme.textDim,
+      theme.green,
+      theme.greenBorder,
     ],
   );
 
@@ -540,28 +990,40 @@ export default function FeedScreen() {
           ) : null}
           <View style={styles.segment}>
             {segmentOrder.map((key) => (
-              <Pressable
-                key={key}
-                onPress={() => onPickSegment(key)}
-                style={[styles.segBtn, segment === key && styles.segBtnActive]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: segment === key }}>
-                <Text style={[styles.segText, segment === key && styles.segTextActive]}>
-                  {t(NEWS_SEGMENT_LABEL[key])}
-                </Text>
-              </Pressable>
+              <Fragment key={key}>
+                {key === 'video' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
+                <Pressable
+                  onPress={() => onPickSegment(key)}
+                  style={[styles.segBtn, key === 'video' && styles.segBtnVideo, segment === key && styles.segBtnActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: segment === key }}>
+                  <Text style={[styles.segText, segment === key && styles.segTextActive]}>
+                    {t(NEWS_SEGMENT_LABEL[key])}
+                  </Text>
+                </Pressable>
+              </Fragment>
             ))}
           </View>
         </View>
 
         <FlatList
           data={loading ? [] : listData}
-          keyExtractor={(row) => (row.kind === 'ad' ? row.key : row.news.id)}
+          keyExtractor={(row) =>
+            row.kind === 'ad' ? row.key : row.kind === 'video' ? row.video.id : row.news.id
+          }
           renderItem={({ item, index }) => {
             if (item.kind === 'ad') {
               return (
                 <View style={styles.adBetweenGroups}>
                   <AdPlaceholder />
+                </View>
+              );
+            }
+            if (item.kind === 'video') {
+              const edges = groupedFeedRowEdges(listData, index, 'video');
+              return (
+                <View style={edges ? groupedFeedRowShell(theme, edges) : undefined}>
+                  <YoutubeCard layout="grouped" item={item.video} />
                 </View>
               );
             }
@@ -571,7 +1033,8 @@ export default function FeedScreen() {
                 <NewsCard
                   layout="grouped"
                   item={item.news}
-                  maxHashtagsToShow={maxHashtagDisplay}
+                  compactMeta={segment === 'watch'}
+                  maxHashtagsToShow={segment === 'watch' ? 0 : maxHashtagDisplay}
                   onTagPress={(label) => {
                     const next = label.trim();
                     if (next) setActiveTag(next);
@@ -633,22 +1096,11 @@ export default function FeedScreen() {
 
       {hasSignalApi() ? (
         <FloatingGlassFab
-          bottom={
-            fabStackBottom + (filterReady ? FLOATING_GLASS_FAB_SIZE + FLOATING_GLASS_FAB_GAP : 0)
-          }
+          bottom={fabStackBottom}
           onPress={() => void onRefresh()}
           iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}
           disabled={refreshing || loading}
-        />
-      ) : null}
-
-      {filterReady ? (
-        <FloatingGlassFab
-          bottom={fabStackBottom}
-          onPress={openNewsFilter}
-          iconName="filter"
-          accessibilityLabel={t('a11yNewsFilter')}
         />
       ) : null}
 
@@ -662,6 +1114,123 @@ export default function FeedScreen() {
         onClearAll={clearAllSources}
         bottomInset={insets.bottom}
       />
+      <SelectionFilterSheet
+        visible={cryptoSourceModalVisible}
+        title={t('feedNewsFilterTitle')}
+        hint={t('feedNewsFilterSub')}
+        onDone={commitCryptoSourceFilter}
+        bottomInset={insets.bottom}
+        toolbar={{
+          sectionLabel: t('feedNewsFilterIncluded'),
+          countLabel: t('filterSheetSelectedCount', {
+            selected: cryptoDraftSources.length,
+            total: cryptoSourceOptions.length,
+          }),
+          selectAllLabel: t('feedNewsFilterSelectAll'),
+          clearAllLabel: t('feedNewsFilterClearAll'),
+          onSelectAll: selectAllCryptoSources,
+          onClearAll: clearAllCryptoSources,
+        }}>
+        {cryptoSourceOptions.map((source) => {
+          const on = cryptoDraftSources.includes(source);
+          return (
+            <Pressable
+              key={source}
+              onPress={() => toggleCryptoSource(source)}
+              style={[filterRowStyles.row, on && filterRowStyles.rowOn]}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: on }}>
+              <FontAwesome
+                name={on ? 'check-square' : 'square-o'}
+                size={18}
+                color={on ? theme.green : theme.textDim}
+                style={filterRowStyles.checkIcon}
+              />
+              <Text style={[filterRowStyles.name, !on && filterRowStyles.nameOff]} numberOfLines={2}>
+                {source}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </SelectionFilterSheet>
+      <SelectionFilterSheet
+        visible={watchSymbolModalVisible}
+        title={t('feedWatchSymbolFilterTitle')}
+        hint={t('feedWatchSymbolFilterHint')}
+        onDone={commitWatchSymbolFilter}
+        bottomInset={insets.bottom}
+        toolbar={{
+          sectionLabel: t('feedWatchSymbolFilterSection'),
+          countLabel: t('filterSheetSelectedCount', {
+            selected: watchDraftSymbols.length,
+            total: watchSymbolOptions.length,
+          }),
+          selectAllLabel: t('feedNewsFilterSelectAll'),
+          clearAllLabel: t('feedNewsFilterClearAll'),
+          onSelectAll: selectAllWatchSymbols,
+          onClearAll: clearAllWatchSymbols,
+        }}>
+        {watchSymbolOptions.map((symbol) => {
+          const on = watchDraftSymbols.includes(symbol);
+          return (
+            <Pressable
+              key={symbol}
+              onPress={() => toggleWatchSymbol(symbol)}
+              style={[filterRowStyles.row, on && filterRowStyles.rowOn]}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: on }}>
+              <FontAwesome
+                name={on ? 'check-square' : 'square-o'}
+                size={18}
+                color={on ? theme.green : theme.textDim}
+                style={filterRowStyles.checkIcon}
+              />
+              <Text style={[filterRowStyles.name, !on && filterRowStyles.nameOff]} numberOfLines={2}>
+                {symbol}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </SelectionFilterSheet>
+      <SelectionFilterSheet
+        visible={watchSourceModalVisible}
+        title={t('feedWatchSourceFilterTitle')}
+        hint={t('feedWatchSourceFilterHint')}
+        onDone={commitWatchSourceFilter}
+        bottomInset={insets.bottom}
+        toolbar={{
+          sectionLabel: t('feedNewsFilterIncluded'),
+          countLabel: t('filterSheetSelectedCount', {
+            selected: watchDraftSources.length,
+            total: watchSourceOptions.length,
+          }),
+          selectAllLabel: t('feedNewsFilterSelectAll'),
+          clearAllLabel: t('feedNewsFilterClearAll'),
+          onSelectAll: selectAllWatchSources,
+          onClearAll: clearAllWatchSources,
+        }}>
+        {watchSourceOptions.map((source) => {
+          const on = watchDraftSources.includes(source);
+          return (
+            <Pressable
+              key={source}
+              onPress={() => toggleWatchSource(source)}
+              style={[filterRowStyles.row, on && filterRowStyles.rowOn]}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: on }}>
+              <FontAwesome
+                name={on ? 'check-square' : 'square-o'}
+                size={18}
+                color={on ? theme.green : theme.textDim}
+                style={filterRowStyles.checkIcon}
+              />
+              <Text style={[filterRowStyles.name, !on && filterRowStyles.nameOff]} numberOfLines={2}>
+                {source}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </SelectionFilterSheet>
     </SafeAreaView>
   );
 }
@@ -751,6 +1320,68 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '800',
       color: theme.green,
     },
+    videoOpenAll: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 11,
+      borderRadius: 13,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    videoOpenAllPressed: {
+      opacity: 0.9,
+    },
+    videoOpenAllIcon: {
+      width: 28,
+      height: 28,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+    },
+    videoOpenAllTitle: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: sf(13),
+      lineHeight: sf(18),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    watchFilterRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 10,
+    },
+    watchFilterChip: {
+      minHeight: 32,
+      paddingHorizontal: 11,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    watchFilterChipActive: {
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    watchFilterText: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '800',
+      color: theme.textDim,
+    },
+    watchFilterTextActive: {
+      color: theme.green,
+    },
     footerLoading: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -776,6 +1407,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderRadius: SEGMENT_TAB_BTN_RADIUS,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    segBtnVideo: {
+      flex: 0.86,
+    },
+    segmentDivider: {
+      width: 1,
+      height: 18,
+      alignSelf: 'center',
+      marginHorizontal: 2,
+      borderRadius: 999,
+      backgroundColor: theme.border,
     },
     segBtnActive: {
       backgroundColor: theme.green,

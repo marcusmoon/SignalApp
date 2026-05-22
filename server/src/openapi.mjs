@@ -118,6 +118,7 @@ export function getOpenApiSpec() {
             { name: 'from', in: 'query', schema: { type: 'string', example: '2026-04-01' } },
             { name: 'to', in: 'query', schema: { type: 'string', example: '2026-05-01' } },
             { name: 'type', in: 'query', schema: { type: 'string', example: 'earnings' } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', example: 5000 } },
           ],
           responses: {
             200: {

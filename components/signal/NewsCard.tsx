@@ -16,11 +16,20 @@ type Props = {
   onTagPress?: (label: string) => void;
   /** `grouped`: 홈 관련 근거처럼 한 카드 안 행 구분(개별 테두리 없음) */
   layout?: 'card' | 'grouped';
+  /** 관심뉴스처럼 컨텍스트가 이미 명확한 목록에서는 메타를 한 줄로 압축 */
+  compactMeta?: boolean;
   /** 미지정 시 URL이 있으면 원문 브라우저 오픈 (추후 상세 화면으로 교체 예정) */
   onPress?: () => void;
 };
 
-export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress, layout = 'card', onPress }: Props) {
+export function NewsCard({
+  item,
+  maxHashtagsToShow = 4,
+  onTagPress,
+  layout = 'card',
+  compactMeta = false,
+  onPress,
+}: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
@@ -71,7 +80,13 @@ export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress, layout = 'ca
   const renderSourceBelowMeta = () => <View style={styles.sourceRow}>{sourceContent}</View>;
 
   return (
-    <View style={[styles.card, grouped && styles.cardGrouped, isFlash && styles.cardFlash]}>
+    <View
+      style={[
+        styles.card,
+        grouped && styles.cardGrouped,
+        isFlash && (grouped ? styles.cardFlashGrouped : styles.cardFlash),
+      ]}>
+      {isFlash && grouped ? <View pointerEvents="none" style={styles.flashSideLine} /> : null}
       <Pressable
         onPress={openArticle}
         disabled={!rowPressEnabled}
@@ -86,24 +101,44 @@ export function NewsCard({ item, maxHashtagsToShow = 4, onTagPress, layout = 'ca
             </View>
           </View>
         ) : null}
-        <View style={[styles.metaRow, showSourceInHeader && styles.metaRowWithSource]}>
-          {canOpenSymbol ? (
-            <Pressable
-              onPress={() => router.push(`/symbol/${symbol}`)}
-              hitSlop={8}
-              style={styles.metaLead}>
-              <Text style={styles.ticker} numberOfLines={1}>
-                {headerLabel}
-              </Text>
-            </Pressable>
-          ) : (
-            renderSourceInMeta()
-          )}
-          <View style={styles.timePill}>
-            <Text style={styles.time}>{item.timeLabel}</Text>
+        {compactMeta ? (
+          <View style={styles.compactMetaRow}>
+            {canOpenSymbol ? (
+              <Pressable
+                onPress={() => router.push(`/symbol/${symbol}`)}
+                hitSlop={8}
+                style={styles.compactTickerWrap}>
+                <Text style={styles.compactTicker} numberOfLines={1}>
+                  {headerLabel}
+                </Text>
+              </Pressable>
+            ) : null}
+            <Text style={styles.compactMetaText} numberOfLines={1}>
+              {[canOpenSymbol ? sourceName : headerLabel, item.timeLabel].filter(Boolean).join(' · ')}
+            </Text>
           </View>
-        </View>
-        {canOpenSymbol ? renderSourceBelowMeta() : null}
+        ) : (
+          <>
+            <View style={[styles.metaRow, showSourceInHeader && styles.metaRowWithSource]}>
+              {canOpenSymbol ? (
+                <Pressable
+                  onPress={() => router.push(`/symbol/${symbol}`)}
+                  hitSlop={8}
+                  style={styles.metaLead}>
+                  <Text style={styles.ticker} numberOfLines={1}>
+                    {headerLabel}
+                  </Text>
+                </Pressable>
+              ) : (
+                renderSourceInMeta()
+              )}
+              <View style={styles.timePill}>
+                <Text style={styles.time}>{item.timeLabel}</Text>
+              </View>
+            </View>
+            {canOpenSymbol ? renderSourceBelowMeta() : null}
+          </>
+        )}
         <Text style={[styles.title, tags.length === 0 && styles.titleLast]}>{item.titleKo}</Text>
       </Pressable>
       {tags.length > 0 ? (
@@ -147,12 +182,25 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingHorizontal: ft.pad(16),
       paddingTop: ft.pad(12),
       paddingBottom: ft.pad(4),
+      position: 'relative',
     },
     cardFlash: {
       borderColor: 'rgba(255, 90, 90, 0.45)',
       borderLeftWidth: 3,
       borderLeftColor: '#FF5A5A',
       backgroundColor: 'rgba(255, 90, 90, 0.06)',
+    },
+    cardFlashGrouped: {
+      backgroundColor: 'rgba(255, 90, 90, 0.045)',
+    },
+    flashSideLine: {
+      position: 'absolute',
+      left: 0,
+      top: ft.pad(10),
+      bottom: ft.pad(10),
+      width: 3,
+      borderRadius: 999,
+      backgroundColor: '#FF5A5A',
     },
     rowPress: {
       alignSelf: 'stretch',
@@ -211,6 +259,32 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     time: {
       color: theme.textMuted,
       fontSize: ft.ff(10),
+      fontWeight: ft.metaWeight,
+    },
+    compactMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: ft.pad(6),
+      marginBottom: ft.pad(7),
+      minWidth: 0,
+    },
+    compactTickerWrap: {
+      flexShrink: 0,
+      maxWidth: '28%',
+    },
+    compactTicker: {
+      color: theme.green,
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.emphasisWeight,
+      letterSpacing: 0.2,
+    },
+    compactMetaText: {
+      flex: 1,
+      minWidth: 0,
+      color: theme.textMuted,
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(16),
       fontWeight: ft.metaWeight,
     },
     sourceRow: {

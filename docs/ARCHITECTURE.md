@@ -93,7 +93,7 @@ app/
 
 ```text
 domain/
-  news/                   # 뉴스 규칙/정규화/키워드(예: 한국 뉴스)
+  news/                   # 뉴스 규칙/정규화/세그먼트
   quotes/                 # 시세 세그먼트·US 심볼 시드 등
   youtube/                # 큐레이션 핸들·타입(HTTP 없음)
   calendar/               # 캘린더 규칙/표시 헬퍼
@@ -157,9 +157,9 @@ server/data/                # signal.sqlite (+ WAL/SHM)
 
 ## 2. Domain (`domain/`)
 
-- **배럴 import:** 화면·서비스에서는 **`@/domain/news`**, **`@/domain/quotes`** 처럼 영역 루트만 쓴다. `@/domain/news/koreaFilter` 같은 깊은 경로는 쓰지 않는다.
-- **영역별 `constants.ts`:** 그 도메인의 기본 시드·탭 순서·숫자 기본값 등 **긴 리터럴·순서 상수**는 `domain/<영역>/constants.ts`에 둔다. 옆 모듈(`koreaKeywords.ts`, `segmentOrder.ts` 등)은 정규화·조합 로직을 담고, 필요하면 상수를 re-export 해 배럴에서 한 번에 노출한다.
-- **예:** `domain/news/constants.ts` (한국 뉴스 추가 키워드 시드), `domain/quotes/constants.ts` (시세 세그먼트 키·목록 한도), `domain/calendar/constants.ts`, `domain/theme/constants.ts` (액센트 폴백 HEX).
+- **배럴 import:** 화면·서비스에서는 **`@/domain/news`**, **`@/domain/quotes`** 처럼 영역 루트만 쓴다. `@/domain/news/segmentOrder` 같은 깊은 경로는 쓰지 않는다.
+- **영역별 `constants.ts`:** 그 도메인의 기본 시드·탭 순서·숫자 기본값 등 **긴 리터럴·순서 상수**는 `domain/<영역>/constants.ts`에 둔다. 옆 모듈(`segmentOrder.ts` 등)은 정규화·조합 로직을 담고, 필요하면 상수를 re-export 해 배럴에서 한 번에 노출한다.
+- **예:** `domain/quotes/constants.ts` (시세 세그먼트 키·목록 한도), `domain/calendar/constants.ts`, `domain/theme/constants.ts` (액센트 폴백 HEX).
 
 ---
 

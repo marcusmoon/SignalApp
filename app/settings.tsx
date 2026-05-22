@@ -75,12 +75,6 @@ import {
   QUOTES_LIST_LIMITS_DEFAULTS,
   type QuotesListLimits,
 } from '@/services/quotesListLimitsPreference';
-import { normalizeKoreaNewsExtraKeywords } from '@/domain/news';
-import {
-  loadKoreaNewsExtraKeywords,
-  restoreKoreaNewsExtraKeywordsDefaults,
-  saveKoreaNewsExtraKeywords,
-} from '@/services/newsKoreaKeywordsPreference';
 import {
   DEFAULT_NEWS_HASHTAG_DISPLAY_MAX,
   loadNewsHashtagDisplayMax,
@@ -152,7 +146,6 @@ import {
 type SettingsTab =
   | 'display'
   | 'notifications'
-  | 'youtube'
   | 'news'
   | 'quotes'
   | 'calendar'
@@ -162,7 +155,6 @@ const SETTINGS_TABS: { key: SettingsTab; labelId: MessageId }[] = [
   { key: 'display', labelId: 'settingsTabDisplay' },
   { key: 'notifications', labelId: 'settingsTabNotifications' },
   { key: 'news', labelId: 'settingsTabNews' },
-  { key: 'youtube', labelId: 'settingsTabYoutube' },
   { key: 'quotes', labelId: 'settingsTabQuotes' },
   { key: 'calendar', labelId: 'settingsTabCalendar' },
   { key: 'server', labelId: 'settingsTabServer' },
@@ -186,9 +178,10 @@ const QUOTES_CHANGE_COLOR_DESC: Record<QuotesChangeColorConvention, MessageId> =
 };
 
 const NEWS_FEED_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
+  watch: 'feedSegmentWatch',
   global: 'feedSegmentGlobal',
-  korea: 'feedSegmentKorea',
   crypto: 'feedSegmentCrypto',
+  video: 'feedSegmentVideo',
 };
 
 const SIGNAL_SERVER_LABEL: Record<SignalServerMode, MessageId> = {
@@ -198,9 +191,10 @@ const SIGNAL_SERVER_LABEL: Record<SignalServerMode, MessageId> = {
   custom: 'settingsSignalServerModeCustom',
 };
 
-/** 3 rows + gaps — 뉴스 글로벌/코인/한국 순서 */
+/** 뉴스 세그먼트 순서 목록 높이 */
 const NEWS_SEGMENT_ORDER_ROW_GAP = 8;
-const NEWS_SEGMENT_ORDER_LIST_HEIGHT = 54 * 3 + NEWS_SEGMENT_ORDER_ROW_GAP * 2 + 20;
+const NEWS_SEGMENT_ORDER_LIST_HEIGHT =
+  54 * NEWS_SEGMENT_ORDER.length + NEWS_SEGMENT_ORDER_ROW_GAP * Math.max(0, NEWS_SEGMENT_ORDER.length - 1) + 20;
 
 /** 4 rows + gaps; extra padding so last row is not clipped (FlatList viewport / card overflow). */
 const QUOTES_SEGMENT_ORDER_ROW_GAP = 8;
@@ -1036,10 +1030,6 @@ export default function SettingsScreen() {
   const [quotesChangeColorReady, setQuotesChangeColorReady] = useState(false);
   const [quotesLimitPicker, setQuotesLimitPicker] = useState<'popular' | 'mcap' | 'coin' | null>(null);
 
-  const [koreaExtraKeywords, setKoreaExtraKeywords] = useState<string[]>([]);
-  const [koreaKeywordDraft, setKoreaKeywordDraft] = useState('');
-  const [koreaKeywordsReady, setKoreaKeywordsReady] = useState(false);
-
   const [newsSegmentOrder, setNewsSegmentOrder] = useState<NewsSegmentKey[]>([...NEWS_SEGMENT_ORDER]);
   const [newsSegmentOrderReady, setNewsSegmentOrderReady] = useState(false);
   const [newsHashtagDisplayMax, setNewsHashtagDisplayMax] = useState(DEFAULT_NEWS_HASHTAG_DISPLAY_MAX);
@@ -1113,7 +1103,6 @@ export default function SettingsScreen() {
     const raw = params.tab;
     const tabParam = Array.isArray(raw) ? raw[0] : raw;
     if (
-      tabParam === 'youtube' ||
       tabParam === 'news' ||
       tabParam === 'quotes' ||
       tabParam === 'display' ||
@@ -1180,12 +1169,6 @@ export default function SettingsScreen() {
     const c = await loadQuotesChangeColorConvention();
     setQuotesChangeColorConvention(c);
     setQuotesChangeColorReady(true);
-  }, []);
-
-  const reloadKoreaKeywords = useCallback(async () => {
-    const k = await loadKoreaNewsExtraKeywords();
-    setKoreaExtraKeywords(k);
-    setKoreaKeywordsReady(true);
   }, []);
 
   const reloadNewsSegmentOrder = useCallback(async () => {
@@ -1284,7 +1267,6 @@ export default function SettingsScreen() {
       void reloadQuotesListLimits();
       void reloadQuotesSegmentOrder();
       void reloadQuotesChangeColorConvention();
-      void reloadKoreaKeywords();
       void reloadNewsSegmentOrder();
       void reloadNewsHashtagDisplayMax();
       void reloadSignalServerPrefs();
@@ -1298,7 +1280,6 @@ export default function SettingsScreen() {
       reloadQuotesListLimits,
       reloadQuotesSegmentOrder,
       reloadQuotesChangeColorConvention,
-      reloadKoreaKeywords,
       reloadNewsSegmentOrder,
       reloadNewsHashtagDisplayMax,
       reloadSignalServerPrefs,
@@ -1308,65 +1289,6 @@ export default function SettingsScreen() {
       reloadTabBarOpacityPref,
     ]),
   );
-
-  const onAddKoreaKeyword = async () => {
-    const normalized = normalizeKoreaNewsExtraKeywords([koreaKeywordDraft]);
-    if (normalized.length === 0) {
-      Alert.alert(t('alertTitleInputError'), t('alertEmptyKoreaKeyword'));
-      return;
-    }
-    const word = normalized[0];
-    if (koreaExtraKeywords.some((x) => x.toLowerCase() === word.toLowerCase())) {
-      Alert.alert(t('alertTitleDup'), t('alertDupKoreaKeyword'));
-      return;
-    }
-    setKoreaKeywordDraft('');
-    const next = [...koreaExtraKeywords, word];
-    await saveKoreaNewsExtraKeywords(next);
-    setKoreaExtraKeywords(next);
-  };
-
-  const onRemoveKoreaKeyword = async (word: string) => {
-    const next = koreaExtraKeywords.filter((x) => x !== word);
-    await saveKoreaNewsExtraKeywords(next);
-    setKoreaExtraKeywords(next);
-  };
-
-  const onKoreaKeywordsClearAll = () => {
-    Alert.alert(
-      t('settingsNewsKoreaKeywordsReset'),
-      t('settingsNewsKoreaKeywordsResetConfirmBody'),
-      [
-        { text: t('commonCancel'), style: 'cancel' },
-        {
-          text: t('alertReset'),
-          style: 'destructive',
-          onPress: async () => {
-            await saveKoreaNewsExtraKeywords([]);
-            setKoreaExtraKeywords([]);
-          },
-        },
-      ],
-    );
-  };
-
-  const onRestoreKoreaDefaults = () => {
-    Alert.alert(
-      t('settingsNewsKoreaKeywordsRestoreDefaults'),
-      t('settingsNewsKoreaKeywordsRestoreConfirmBody'),
-      [
-        { text: t('commonCancel'), style: 'cancel' },
-        {
-          text: t('settingsNewsKoreaKeywordsRestoreDefaults'),
-          onPress: async () => {
-            await restoreKoreaNewsExtraKeywordsDefaults();
-            const k = await loadKoreaNewsExtraKeywords();
-            setKoreaExtraKeywords(k);
-          },
-        },
-      ],
-    );
-  };
 
   const onClearAllCaches = () => {
     clearYoutubeCache();
@@ -1418,16 +1340,6 @@ export default function SettingsScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: scrollContentBottomPad }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
-        {tab === 'youtube' ? (
-          <>
-            <Text style={styles.lead}>{t('settingsYoutubeLead')}</Text>
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsYoutubeFilterKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsYoutubeFilterHint')}</Text>
-            </View>
-          </>
-        ) : null}
-
         {tab === 'quotes' ? (
           <>
             <View style={styles.displayCard}>
@@ -1682,71 +1594,6 @@ export default function SettingsScreen() {
               )}
             </View>
 
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsNewsKoreaKeywordsKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsNewsKoreaKeywordsLead')}</Text>
-              <Text style={styles.hint}>{t('settingsNewsKoreaKeywordsHint')}</Text>
-              <View style={styles.addRow}>
-                <TextInput
-                  value={koreaKeywordDraft}
-                  onChangeText={setKoreaKeywordDraft}
-                  placeholder={t('settingsNewsKoreaKeywordsPlaceholder')}
-                  placeholderTextColor={theme.textDim}
-                  autoCapitalize="none"
-                  autoCorrect
-                  style={styles.input}
-                  onSubmitEditing={() => void onAddKoreaKeyword()}
-                  returnKeyType="done"
-                />
-                <Pressable
-                  onPress={() => void onAddKoreaKeyword()}
-                  style={styles.addBtn}
-                  accessibilityRole="button">
-                  <Text style={styles.addBtnText}>{t('commonAdd')}</Text>
-                </Pressable>
-              </View>
-              {!koreaKeywordsReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
-              ) : (
-                koreaExtraKeywords.map((kw) => (
-                  <View key={kw} style={styles.row}>
-                    <Text style={styles.handleText} numberOfLines={2}>
-                      {kw}
-                    </Text>
-                    <Pressable
-                      onPress={() => void onRemoveKoreaKeyword(kw)}
-                      style={styles.removeBtn}
-                      accessibilityRole="button"
-                      accessibilityLabel={kw}>
-                      <FontAwesome name="trash" size={16} color="#C08080" />
-                    </Pressable>
-                  </View>
-                ))
-              )}
-              {koreaKeywordsReady ? (
-                <>
-                  <Pressable
-                    onPress={onRestoreKoreaDefaults}
-                    style={({ pressed }) => [
-                      styles.cacheClearBtn,
-                      { marginTop: 8 },
-                      pressed && { opacity: 0.88 },
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('settingsNewsKoreaKeywordsRestoreDefaults')}>
-                    <Text style={styles.cacheClearBtnText}>{t('settingsNewsKoreaKeywordsRestoreDefaults')}</Text>
-                  </Pressable>
-                  {koreaExtraKeywords.length > 0 ? (
-                    <Pressable
-                      onPress={onKoreaKeywordsClearAll}
-                      style={[styles.resetBtn, { marginTop: 8 }]}
-                      accessibilityRole="button">
-                      <Text style={styles.resetBtnText}>{t('settingsNewsKoreaKeywordsReset')}</Text>
-                    </Pressable>
-                  ) : null}
-                </>
-              ) : null}
-            </View>
           </>
         ) : null}
 

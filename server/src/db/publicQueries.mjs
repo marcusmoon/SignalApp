@@ -638,11 +638,11 @@ export function queryPublicCalendarInDb(db, options = {}) {
   const where = [];
   const params = {};
   if (options.from) {
-    where.push("(event_date IS NULL OR event_date = '' OR event_date >= @from)");
+    where.push('event_date >= @from');
     params.from = String(options.from);
   }
   if (options.to) {
-    where.push("(event_date IS NULL OR event_date = '' OR event_date <= @to)");
+    where.push('event_date <= @to');
     params.to = String(options.to);
   }
   if (options.type) {
@@ -660,6 +660,8 @@ export function queryPublicCalendarInDb(db, options = {}) {
     where.push('(LOWER(COALESCE(symbol, "")) LIKE @q OR LOWER(COALESCE(event_type, "")) LIKE @q OR LOWER(payload) LIKE @q)');
     params.q = `%${q}%`;
   }
+  const limit = Math.min(10000, Math.max(2000, Math.floor(Number(options.limit)) || 10000));
+  params.limit = limit;
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const rows = db
     .prepare(
@@ -668,7 +670,7 @@ export function queryPublicCalendarInDb(db, options = {}) {
         FROM calendar_events
         ${whereSql}
         ORDER BY event_date ASC, event_at ASC
-        LIMIT 2000
+        LIMIT @limit
       `,
     )
     .all(params)

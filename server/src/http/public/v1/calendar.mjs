@@ -9,6 +9,7 @@ export async function handlePublicCalendarRoutes({ req, res, url, pathname }) {
       type: url.searchParams.get('type') || '',
       symbol: url.searchParams.get('symbol') || '',
       q: url.searchParams.get('q') || '',
+      limit: url.searchParams.get('limit') || '',
     });
     json(res, 200, { data: rows });
     return true;

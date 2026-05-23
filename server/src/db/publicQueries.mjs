@@ -717,7 +717,7 @@ export function queryPublicCalendarInDb(db, options = {}) {
 }
 
 export function queryPublicCalendarDateSummariesInDb(db, options = {}) {
-  const where = ['event_date IS NOT NULL', 'event_date != ""'];
+  const where = ['event_date IS NOT NULL', 'event_date != ""', 'event_type IS NOT NULL', 'event_type != ""'];
   const params = {};
   if (options.from) {
     where.push('event_date >= @from');
@@ -727,35 +727,30 @@ export function queryPublicCalendarDateSummariesInDb(db, options = {}) {
     where.push('event_date <= @to');
     params.to = String(options.to);
   }
+  if (options.type) {
+    where.push('event_type = @type');
+    params.type = String(options.type);
+  }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const scanLimit = 10000;
   const rows = db
     .prepare(
       `
-        SELECT payload
+        SELECT event_date AS date,
+               event_type AS type,
+               COUNT(*) AS count
         FROM calendar_events
         ${whereSql}
-        ORDER BY event_date ASC, event_at ASC
-        LIMIT @scanLimit
+        GROUP BY event_date, event_type
+        ORDER BY event_date ASC
       `,
     )
-    .all({ ...params, scanLimit })
-    .map((row) => parsePayload('calendar_events.payload', row.payload, null))
-    .filter(Boolean);
-  const filtered = filterCalendar(
-    rows,
-    urlLike((key) => {
-      if (key === 'from') return options.from || null;
-      if (key === 'to') return options.to || null;
-      if (key === 'type') return options.type || null;
-      return null;
-    }),
-  ).map(publicCalendarEvent);
+    .all(params);
   const byDate = new Map();
-  for (const row of filtered) {
-    const date = String(row.date || row.eventAt || '').slice(0, 10);
+  for (const row of rows) {
+    const date = String(row.date || '').slice(0, 10);
     if (!date) continue;
     const type = String(row.type || '').trim();
+    const count = Number(row.count) || 0;
     if (!byDate.has(date)) {
       byDate.set(date, {
         date,
@@ -769,9 +764,9 @@ export function queryPublicCalendarDateSummariesInDb(db, options = {}) {
       });
     }
     const item = byDate.get(date);
-    item.total += 1;
+    item.total += count;
     if (Object.prototype.hasOwnProperty.call(item.counts, type)) {
-      item.counts[type] += 1;
+      item.counts[type] += count;
     }
   }
   return Array.from(byDate.values());

@@ -38,6 +38,62 @@ function ensureColumn(db, table, column, ddl) {
   db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl};`);
 }
 
+function parseJson(payload) {
+  if (payload == null || payload === '') return null;
+  try {
+    return JSON.parse(payload);
+  } catch {
+    return null;
+  }
+}
+
+function textOrNull(value) {
+  if (value == null) return null;
+  const text = String(value);
+  return text.length > 0 ? text : null;
+}
+
+function backfillCalendarEventIndexColumns(db) {
+  if (!tableExists(db, 'calendar_events')) return;
+  const rows = db
+    .prepare(
+      `
+        SELECT id, payload
+        FROM calendar_events
+        WHERE event_date IS NULL OR event_date = ''
+           OR event_type IS NULL OR event_type = ''
+           OR event_at IS NULL OR event_at = ''
+      `,
+    )
+    .all();
+  if (rows.length === 0) return;
+
+  const stmt = db.prepare(
+    `
+      UPDATE calendar_events
+      SET event_date = COALESCE(@eventDate, event_date),
+          event_at = COALESCE(@eventAt, event_at),
+          event_type = COALESCE(@eventType, event_type),
+          symbol = COALESCE(@symbol, symbol)
+      WHERE id = @id
+    `,
+  );
+  const run = db.transaction((items) => {
+    for (const row of items) {
+      const item = parseJson(row.payload);
+      if (!item || typeof item !== 'object') continue;
+      stmt.run({
+        id: row.id,
+        eventDate: textOrNull(item.date),
+        eventAt: textOrNull(item.eventAt),
+        eventType: textOrNull(item.type),
+        symbol: textOrNull(item.symbol),
+      });
+    }
+  });
+  run(rows);
+}
+
 function uniqueIndexHasColumns(db, table, columns) {
   if (!tableExists(db, table)) return false;
   const indexes = db.prepare(`PRAGMA index_list(${table})`).all();
@@ -477,6 +533,11 @@ export function ensureStructuredSchema(db) {
   ensureColumn(db, 'notification_items', 'target_type', 'TEXT');
   ensureColumn(db, 'notification_items', 'target_key', 'TEXT');
   ensureColumn(db, 'notification_items', 'expires_at', 'TEXT');
+  ensureColumn(db, 'calendar_events', 'event_date', 'TEXT');
+  ensureColumn(db, 'calendar_events', 'event_at', 'TEXT');
+  ensureColumn(db, 'calendar_events', 'event_type', 'TEXT');
+  ensureColumn(db, 'calendar_events', 'symbol', 'TEXT');
+  backfillCalendarEventIndexColumns(db);
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_legal_terms_locale ON legal_terms(locale, active);
     CREATE INDEX IF NOT EXISTS idx_legal_terms_type_locale ON legal_terms(type, locale, active, updated_at);

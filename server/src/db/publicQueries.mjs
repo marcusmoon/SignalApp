@@ -727,30 +727,35 @@ export function queryPublicCalendarDateSummariesInDb(db, options = {}) {
     where.push('event_date <= @to');
     params.to = String(options.to);
   }
-  if (options.type) {
-    where.push('event_type = @type');
-    params.type = String(options.type);
-  }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const scanLimit = 10000;
   const rows = db
     .prepare(
       `
-        SELECT event_date AS date,
-               event_type AS type,
-               COUNT(*) AS count
+        SELECT payload
         FROM calendar_events
         ${whereSql}
-        GROUP BY event_date, event_type
-        ORDER BY event_date ASC
+        ORDER BY event_date ASC, event_at ASC
+        LIMIT @scanLimit
       `,
     )
-    .all(params);
+    .all({ ...params, scanLimit })
+    .map((row) => parsePayload('calendar_events.payload', row.payload, null))
+    .filter(Boolean);
+  const filtered = filterCalendar(
+    rows,
+    urlLike((key) => {
+      if (key === 'from') return options.from || null;
+      if (key === 'to') return options.to || null;
+      if (key === 'type') return options.type || null;
+      return null;
+    }),
+  ).map(publicCalendarEvent);
   const byDate = new Map();
-  for (const row of rows) {
-    const date = String(row.date || '').slice(0, 10);
+  for (const row of filtered) {
+    const date = String(row.date || row.eventAt || '').slice(0, 10);
     if (!date) continue;
     const type = String(row.type || '').trim();
-    const count = Number(row.count) || 0;
     if (!byDate.has(date)) {
       byDate.set(date, {
         date,
@@ -764,9 +769,9 @@ export function queryPublicCalendarDateSummariesInDb(db, options = {}) {
       });
     }
     const item = byDate.get(date);
-    item.total += count;
+    item.total += 1;
     if (Object.prototype.hasOwnProperty.call(item.counts, type)) {
-      item.counts[type] += count;
+      item.counts[type] += 1;
     }
   }
   return Array.from(byDate.values());

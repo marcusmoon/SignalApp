@@ -62,7 +62,6 @@ function backfillCalendarEventIndexColumns(db) {
         FROM calendar_events
         WHERE event_date IS NULL OR event_date = ''
            OR event_type IS NULL OR event_type = ''
-           OR event_at IS NULL OR event_at = ''
       `,
     )
     .all();
@@ -78,8 +77,9 @@ function backfillCalendarEventIndexColumns(db) {
       WHERE id = @id
     `,
   );
-  const run = db.transaction((items) => {
-    for (const row of items) {
+  db.exec('BEGIN');
+  try {
+    for (const row of rows) {
       const item = parseJson(row.payload);
       if (!item || typeof item !== 'object') continue;
       stmt.run({
@@ -90,8 +90,11 @@ function backfillCalendarEventIndexColumns(db) {
         symbol: textOrNull(item.symbol),
       });
     }
-  });
-  run(rows);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
 }
 
 function uniqueIndexHasColumns(db, table, columns) {

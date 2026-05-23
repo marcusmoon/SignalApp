@@ -149,7 +149,7 @@ export function queryNotificationsInDb(db, options = {}) {
   const q = String(options.q || '').trim().toLowerCase();
   if (q) {
     where.push(
-      '(LOWER(id) LIKE @q OR LOWER(COALESCE(title, "")) LIKE @q OR LOWER(COALESCE(source_type, "")) LIKE @q OR LOWER(COALESCE(source_id, "")) LIKE @q OR LOWER(COALESCE(app_user_id, "")) LIKE @q OR LOWER(payload) LIKE @q)',
+      "(LOWER(id) LIKE @q OR LOWER(COALESCE(title, '')) LIKE @q OR LOWER(COALESCE(source_type, '')) LIKE @q OR LOWER(COALESCE(source_id, '')) LIKE @q OR LOWER(COALESCE(app_user_id, '')) LIKE @q OR LOWER(payload) LIKE @q)",
     );
     params.q = `%${q}%`;
   }

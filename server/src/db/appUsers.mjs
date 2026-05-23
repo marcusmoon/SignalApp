@@ -1095,7 +1095,7 @@ export function listAppUserDevicesInDb(db, { q = '', active = '', platform = '',
   if (query) {
     params.q = `%${query}%`;
     where.push(
-      '(LOWER(COALESCE(u.email, "")) LIKE @q OR LOWER(COALESCE(u.nickname, "")) LIKE @q OR LOWER(COALESCE(d.device_name, "")) LIKE @q OR LOWER(COALESCE(d.push_token, "")) LIKE @q)',
+      "(LOWER(COALESCE(u.email, '')) LIKE @q OR LOWER(COALESCE(u.nickname, '')) LIKE @q OR LOWER(COALESCE(d.device_name, '')) LIKE @q OR LOWER(COALESCE(d.push_token, '')) LIKE @q)",
     );
   }
   if (active === '1' || active === 'true') where.push('d.active = 1');
@@ -1103,7 +1103,7 @@ export function listAppUserDevicesInDb(db, { q = '', active = '', platform = '',
   const cleanPlatform = cleanText(platform).toLowerCase();
   if (cleanPlatform) {
     params.platform = cleanPlatform;
-    where.push('LOWER(COALESCE(d.platform, "")) = @platform');
+    where.push("LOWER(COALESCE(d.platform, '')) = @platform");
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const safeLimit = Math.min(100, Math.max(1, Math.floor(Number(limit)) || 50));

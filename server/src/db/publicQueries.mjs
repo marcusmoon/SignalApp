@@ -205,7 +205,7 @@ function newsPrefilterSql(options) {
   const q = String(options.q || '').trim().toLowerCase();
   if (q) {
     where.push(
-      '(LOWER(COALESCE(source_name, "")) LIKE @q OR LOWER(COALESCE(provider, "")) LIKE @q OR LOWER(payload) LIKE @q)',
+      "(LOWER(COALESCE(source_name, '')) LIKE @q OR LOWER(COALESCE(provider, '')) LIKE @q OR LOWER(payload) LIKE @q)",
     );
     params.q = `%${q}%`;
   }
@@ -305,7 +305,7 @@ export function queryPublicYoutubeInDb(db, options = {}) {
   const params = {};
   const channel = String(options.channel || '').trim().toLowerCase();
   if (channel) {
-    where.push('LOWER(COALESCE(channel, "")) LIKE @channel');
+    where.push("LOWER(COALESCE(channel, '')) LIKE @channel");
     params.channel = `%${channel}%`;
   }
   const channelHandles = String(options.channelHandles || '')
@@ -315,7 +315,7 @@ export function queryPublicYoutubeInDb(db, options = {}) {
   const channelFilterActive = channelHandles.length > 0;
   const q = String(options.q || '').trim().toLowerCase();
   if (q) {
-    where.push('(LOWER(COALESCE(channel, "")) LIKE @q OR LOWER(payload) LIKE @q)');
+    where.push("(LOWER(COALESCE(channel, '')) LIKE @q OR LOWER(payload) LIKE @q)");
     params.q = `%${q}%`;
   }
   const sort = options.sort === 'popular' ? 'popular' : 'latest';
@@ -521,7 +521,7 @@ function marketQuotePrefilterSql(options) {
   }
   const q = String(options.q || '').trim().toLowerCase();
   if (q) {
-    where.push('(LOWER(COALESCE(symbol, "")) LIKE @q OR LOWER(COALESCE(segment, "")) LIKE @q OR LOWER(payload) LIKE @q)');
+    where.push("(LOWER(COALESCE(symbol, '')) LIKE @q OR LOWER(COALESCE(segment, '')) LIKE @q OR LOWER(payload) LIKE @q)");
     params.q = `%${q}%`;
   }
   return { whereSql: where.length ? `WHERE ${where.join(' AND ')}` : '', params };
@@ -570,7 +570,7 @@ export function queryPublicCoinMarketsInDb(db, options = {}) {
   const { limit: safeLimit, offset: safeOffset } = listOffsetLimit(options, 30);
   const q = String(options.q || '').trim().toLowerCase();
   const whereSql = q
-    ? 'WHERE LOWER(COALESCE(symbol, "")) LIKE @q OR LOWER(payload) LIKE @q'
+    ? "WHERE LOWER(COALESCE(symbol, '')) LIKE @q OR LOWER(payload) LIKE @q"
     : '';
   const params = q ? { q: `%${q}%` } : {};
   const scanLimit = compactScanLimit({
@@ -676,13 +676,13 @@ export function queryPublicCalendarInDb(db, options = {}) {
   }
   const symbol = String(options.symbol || '').trim().toUpperCase();
   if (symbol) {
-    where.push('(UPPER(COALESCE(symbol, "")) = @symbol OR UPPER(payload) LIKE @symbolLike)');
+    where.push("(UPPER(COALESCE(symbol, '')) = @symbol OR UPPER(payload) LIKE @symbolLike)");
     params.symbol = symbol;
     params.symbolLike = `%${symbol}%`;
   }
   const q = String(options.q || '').trim().toLowerCase();
   if (q) {
-    where.push('(LOWER(COALESCE(symbol, "")) LIKE @q OR LOWER(COALESCE(event_type, "")) LIKE @q OR LOWER(payload) LIKE @q)');
+    where.push("(LOWER(COALESCE(symbol, '')) LIKE @q OR LOWER(COALESCE(event_type, '')) LIKE @q OR LOWER(payload) LIKE @q)");
     params.q = `%${q}%`;
   }
   const hasDateRange = Boolean(options.from || options.to);
@@ -717,7 +717,7 @@ export function queryPublicCalendarInDb(db, options = {}) {
 }
 
 export function queryPublicCalendarDateSummariesInDb(db, options = {}) {
-  const where = ['event_date IS NOT NULL', 'event_date != ""', 'event_type IS NOT NULL', 'event_type != ""'];
+  const where = ["event_date IS NOT NULL", "event_date != ''", 'event_type IS NOT NULL', "event_type != ''"];
   const params = {};
   if (options.from) {
     where.push('event_date >= @from');
@@ -799,7 +799,7 @@ export function queryPublicConcallsInDb(db, options = {}) {
   }
   const q = String(options.q || '').trim().toLowerCase();
   if (q) {
-    where.push('(LOWER(COALESCE(symbol, "")) LIKE @q OR LOWER(payload) LIKE @q)');
+    where.push("(LOWER(COALESCE(symbol, '')) LIKE @q OR LOWER(payload) LIKE @q)");
     params.q = `%${q}%`;
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';

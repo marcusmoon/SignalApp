@@ -153,6 +153,46 @@ function publicCalendarEvent(item) {
   };
 }
 
+function normalizeCalendarDisplayTitle(title) {
+  return String(title || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\barafah\b/g, 'arafa')
+    .replace(/\s+/g, ' ');
+}
+
+function calendarDisplayDedupeKey(item) {
+  const type = String(item?.type || '').trim().toLowerCase();
+  const date = String(item?.date || item?.eventAt || '').slice(0, 10);
+  const title = normalizeCalendarDisplayTitle(item?.title);
+  const symbol = String(item?.symbol || '').trim().toUpperCase();
+  const time = String(item?.timeLabel || '').trim();
+  const actual = item?.actual == null ? '' : String(item.actual);
+  const estimate = item?.estimate == null ? '' : String(item.estimate);
+  const previous = item?.previous == null ? '' : String(item.previous);
+  const unit = String(item?.unit || '').trim();
+  if (!type || !date || !title) return String(item?.id || '');
+  return [type, date, symbol, time, title, actual, estimate, previous, unit].join('|');
+}
+
+function latestCalendarDisplayItem(a, b) {
+  const aTime = Date.parse(a?.fetchedAt || a?.eventAt || a?.date || 0);
+  const bTime = Date.parse(b?.fetchedAt || b?.eventAt || b?.date || 0);
+  return (Number.isFinite(bTime) ? bTime : 0) >= (Number.isFinite(aTime) ? aTime : 0) ? b : a;
+}
+
+function dedupePublicCalendarEvents(rows) {
+  const byKey = new Map();
+  for (const row of rows || []) {
+    if (!row || typeof row !== 'object') continue;
+    const key = calendarDisplayDedupeKey(row);
+    if (!key) continue;
+    const prev = byKey.get(key);
+    byKey.set(key, prev ? latestCalendarDisplayItem(prev, row) : row);
+  }
+  return Array.from(byKey.values());
+}
+
 function publicConcall(item) {
   return {
     id: item.id,
@@ -703,7 +743,7 @@ export function queryPublicCalendarInDb(db, options = {}) {
     .all(params)
     .map((row) => parsePayload('calendar_events.payload', row.payload, null))
     .filter(Boolean);
-  return filterCalendar(
+  const filtered = filterCalendar(
     rows,
     urlLike((key) => {
       if (key === 'from') return options.from || null;
@@ -714,6 +754,7 @@ export function queryPublicCalendarInDb(db, options = {}) {
       return null;
     }),
   ).map(publicCalendarEvent);
+  return dedupePublicCalendarEvents(filtered);
 }
 
 export function queryPublicCalendarDateSummariesInDb(db, options = {}) {

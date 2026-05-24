@@ -716,6 +716,35 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         return `<button class="${kind}" data-job-run="${esc(jobKey)}">${esc(lab)}</button>`;
       }
 
+      function jobRunRefreshTasks() {
+        const view = state.view || 'dashboard';
+        if (view === 'jobs') {
+          return [state.jobTab === 'runs' ? loadJobRuns() : loadJobs()];
+        }
+        if (view === 'monitoring') return [loadMonitoring()];
+        if (view === 'errors') return [loadErrors()];
+        if (view === 'dashboard') return [loadDashboard()];
+        return [];
+      }
+
+      async function refreshAfterJobRun() {
+        const refresh = () => Promise.all(jobRunRefreshTasks());
+        await refresh();
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        await refresh();
+      }
+
+      async function runJobsBulk(jobKeys, { clearJobListSelection = false } = {}) {
+        for (const key of jobKeys) {
+          await api(`/admin/api/jobs/${encodeURIComponent(key)}/run`, { method: 'POST' });
+        }
+        showToast(textFor('toastJobListRunRequestedTitle'), textForVars('toastJobListRunRequestedBody', { count: jobKeys.length }), {
+          kind: 'success',
+        });
+        if (clearJobListSelection) state.jobListSelected = [];
+        await refreshAfterJobRun();
+      }
+
       async function loadMonitoring() {
         return loadMonitoringView({
           api,
@@ -1555,19 +1584,37 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             });
             return;
           }
+          if (target?.id === 'jobListClearSelection') {
+            state.jobListSelected = [];
+            await loadJobs();
+            return;
+          }
+          if (target?.id === 'jobListSelectAll') {
+            state.jobListSelected = [...new Set(state.jobsFilteredLast || [])];
+            await loadJobs();
+            return;
+          }
+          if (target?.id === 'jobListBulkRun') {
+            const jobKeys = [...new Set(state.jobListSelected || [])].filter(Boolean);
+            if (!jobKeys.length) return;
+            openConfirm({
+              title: textFor('confirmJobListRunTitle'),
+              desc: textFor('confirmJobListRunDesc'),
+              body: textForVars('confirmJobListRunBody', {
+                count: jobKeys.length,
+                keys: jobKeys.join(', '),
+              }),
+              okText: textFor('btnRunSelected'),
+              danger: false,
+              onConfirm: async () => runJobsBulk(jobKeys, { clearJobListSelection: true }),
+            });
+            return;
+          }
           if (target.dataset.jobRun) {
             const jobKey = target.dataset.jobRun;
             await api(`/admin/api/jobs/${encodeURIComponent(jobKey)}/run`, { method: 'POST' });
             showToast(textFor('toastRunAcceptedTitle'), textFor('toastRunAcceptedBody'), { kind: 'success' });
-            await switchView('jobs');
-            await loadJobs();
-            if ($('jobRunJob')) $('jobRunJob').value = jobKey;
-            if ($('jobRunStatus')) $('jobRunStatus').value = '';
-            if ($('jobRunTrigger')) $('jobRunTrigger').value = '';
-            state.jobRunsPage = 1;
-            setJobTab('runs');
-            await new Promise((resolve) => setTimeout(resolve, 700));
-            await Promise.all([loadJobs(), loadJobRuns(), loadDashboard(), loadMonitoring(), loadNews(), loadYoutube(), loadInsights()]);
+            await refreshAfterJobRun();
           }
           if (target.dataset.tsSave) {
             const locale = target.dataset.tsSave;
@@ -2523,6 +2570,14 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         }
         if (event.target.id === 'jobListSort') {
           state.jobListSort = event.target.value || 'name';
+          await loadJobs();
+        }
+        if (event.target.dataset.jobListSelect) {
+          const key = event.target.dataset.jobListSelect;
+          const selected = new Set(state.jobListSelected || []);
+          if (event.target.checked) selected.add(key);
+          else selected.delete(key);
+          state.jobListSelected = [...selected];
           await loadJobs();
         }
         if (event.target.id === 'jobRunsSelectAll') {

@@ -65,6 +65,8 @@ export const state = {
     pageSize: '30',
   },
   jobs: [],
+  jobListSelected: [], // jobKey values from filtered job list
+  jobsFilteredLast: [],
   jobTab: 'info',
   jobListEnabled: 'all', // all|enabled|disabled
   jobListDomain: 'all',

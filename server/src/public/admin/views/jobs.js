@@ -191,13 +191,18 @@ function renderJobSummary({ jobsAll, jobsFiltered, esc, textFor, textForVars }) 
   `;
 }
 
-function renderJobCard({ job, esc, textFor, jobDisplayName, operationBadge, domainBadge, providerBadge, jobIntervalLabel, formatDateTime, rssSources }) {
+function renderJobCard({ job, selected, esc, textFor, jobDisplayName, operationBadge, domainBadge, providerBadge, jobIntervalLabel, formatDateTime, rssSources }) {
   const lastRunStatus = jobLastRunStatusText(job, textFor);
   const lock = jobLockText(job, textFor);
   const lastRun = jobLastRunAt(job);
+  const checked = selected.has(job.jobKey);
   return `
-    <article class="jobCard ${jobHealthClass(job)}">
+    <article class="jobCard ${jobHealthClass(job)} ${checked ? 'jobCard--selected' : ''}">
       <div class="jobCardLine">
+        <label class="jobCardSelect">
+          <input type="checkbox" data-job-list-select="${esc(job.jobKey)}" ${checked ? 'checked' : ''} />
+          <span class="srOnly">${esc(jobDisplayName(job))}</span>
+        </label>
         <div class="jobCardMain">
           <div class="jobCardHead">
             <div class="jobCardTitle">
@@ -312,6 +317,11 @@ export async function loadJobsView(ctx) {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(job);
   }
+  state.jobsFilteredLast = jobsFiltered.map((job) => job.jobKey).filter(Boolean);
+  const validKeys = new Set(state.jobsFilteredLast);
+  state.jobListSelected = (state.jobListSelected || []).filter((key) => validKeys.has(String(key)));
+  const selected = new Set(state.jobListSelected || []);
+
   const domains = [...new Set(jobsAll.map((j) => j.domain || 'other'))];
   const providers = [...new Set(jobsAll.map((j) => j.provider).filter(Boolean))];
   $('jobs').innerHTML = `
@@ -357,6 +367,20 @@ export async function loadJobsView(ctx) {
         </div>
       </div>
     </div>
+    ${
+      jobsFiltered.length
+        ? `
+          <div class="actionBox jobListBulkBar">
+            <span class="muted">${esc(textForVars('jobListSelectedLabel', { count: selected.size }))}</span>
+            <div class="row">
+              <button type="button" class="secondary" id="jobListSelectAll">${esc(textFor('jobListSelectAll'))}</button>
+              <button type="button" class="secondary" id="jobListClearSelection">${esc(textFor('jobListClearSelection'))}</button>
+              <button type="button" class="success" id="jobListBulkRun" ${selected.size ? '' : 'disabled'}>${esc(textFor('btnRunSelected'))}</button>
+            </div>
+          </div>
+        `
+        : ''
+    }
     <div class="jobBoard">
       ${
         jobsFiltered.length === 0
@@ -377,6 +401,7 @@ export async function loadJobsView(ctx) {
                         .map((job) =>
                           renderJobCard({
                             job,
+                            selected,
                             esc,
                             textFor,
                             jobDisplayName,

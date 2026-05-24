@@ -77,7 +77,6 @@ import {
 } from './db/publicQueries.mjs';
 import {
   hasStructuredData,
-  migrateLegacySignalStoresIfNeeded,
   readStructuredDb,
   writeStructuredDb,
 } from './db/sqliteStore.mjs';
@@ -91,10 +90,9 @@ import { nowIso } from './db/time.mjs';
  */
 let dbExclusiveChain = Promise.resolve();
 let sqliteDb = null;
-let structuredMigrationChecked = false;
 let defaultDbSeedChecked = false;
-let operationalFixupsChecked = false;
 const PUBLIC_READ_CACHE_TTL_MS = 5000;
+const PUBLIC_READ_CACHE_MAX_ENTRIES = 300;
 const publicReadCache = new Map();
 
 /**
@@ -139,8 +137,19 @@ async function cachedPublicRead(namespace, options, fn, ttlMs = PUBLIC_READ_CACH
   const now = Date.now();
   const cached = publicReadCache.get(key);
   if (cached && cached.expiresAt > now) return cached.value;
+  if (cached) publicReadCache.delete(key);
   const value = await withDbRead(fn);
-  if (ttlMs > 0) publicReadCache.set(key, { value, expiresAt: now + ttlMs });
+  if (ttlMs > 0) {
+    if (publicReadCache.size >= PUBLIC_READ_CACHE_MAX_ENTRIES) {
+      for (const [cacheKey, entry] of publicReadCache) {
+        if (entry.expiresAt <= now || publicReadCache.size >= PUBLIC_READ_CACHE_MAX_ENTRIES) {
+          publicReadCache.delete(cacheKey);
+        }
+        if (publicReadCache.size < PUBLIC_READ_CACHE_MAX_ENTRIES) break;
+      }
+    }
+    publicReadCache.set(key, { value, expiresAt: now + ttlMs });
+  }
   return value;
 }
 
@@ -161,74 +170,13 @@ function getSqliteDb() {
   return sqliteDb;
 }
 
-function applyOperationalFixups(db) {
-  if (operationalFixupsChecked) return;
-  operationalFixupsChecked = true;
-
-  const jobKey = 'insights_market_brief';
-  const row = db
-    .prepare('SELECT job_key, enabled, last_run_at, payload FROM polling_jobs WHERE job_key = ?')
-    .get(jobKey);
-  if (!row) return;
-
-  let payload = null;
-  try {
-    payload = JSON.parse(row.payload || 'null');
-  } catch {
-    return;
-  }
-  if (!payload || typeof payload !== 'object') return;
-
-  const updatedAt = nowIso();
-  let changed = false;
-  const shouldEnableNeverRun = Number(row.enabled) === 0 && !row.last_run_at && payload.enabled !== true && !payload.lastRunAt;
-  if (shouldEnableNeverRun) {
-    payload.enabled = true;
-    payload.nextRunAt = null;
-    changed = true;
-  }
-  if (!Number.isFinite(Number(payload.lockTtlSeconds)) || Number(payload.lockTtlSeconds) <= 0) {
-    payload.lockTtlSeconds = 600;
-    changed = true;
-  }
-  if (!Number.isFinite(Number(payload.staleLockSeconds)) || Number(payload.staleLockSeconds) <= 0) {
-    payload.staleLockSeconds = 600;
-    changed = true;
-  }
-  if (!changed) return;
-  payload.updatedAt = updatedAt;
-  db.prepare(
-    `
-      UPDATE polling_jobs
-      SET enabled = ?,
-          next_run_at = ?,
-          updated_at = ?,
-          payload = ?
-      WHERE job_key = ?
-    `,
-  ).run(
-    shouldEnableNeverRun ? 1 : Number(row.enabled) === 1 ? 1 : 0,
-    payload.nextRunAt || null,
-    updatedAt,
-    JSON.stringify(payload),
-    jobKey,
-  );
-  if (shouldEnableNeverRun) console.log('[db] enabled never-run insights_market_brief job');
-  console.log('[db] applied insights_market_brief job defaults');
-}
-
 async function ensureSqliteStore() {
   await fs.mkdir(path.dirname(config.sqlitePath), { recursive: true });
   const db = getSqliteDb();
-  if (!structuredMigrationChecked) {
-    migrateLegacySignalStoresIfNeeded(db);
-    structuredMigrationChecked = true;
-  }
   if (!defaultDbSeedChecked) {
     if (!hasStructuredData(db)) await writeSqliteDbBody(defaultDb(), { db });
     defaultDbSeedChecked = true;
   }
-  applyOperationalFixups(db);
   seedAdminUsersFromEnvIfEmpty(db);
   return db;
 }

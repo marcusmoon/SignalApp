@@ -1,6 +1,6 @@
 import { ensureDbShape, shapeDbFromStores } from './shape.mjs';
 import { insightGeneratedDate, normalizeInsightDisplayKey } from './insights.mjs';
-import { collectionTables, ensureStructuredSchema, tableCount, tableExists } from './sqlite/schema.mjs';
+import { collectionTables, ensureStructuredSchema, tableCount } from './sqlite/schema.mjs';
 import { nowIso } from './time.mjs';
 
 function parsePayload(label, payload, fallback = null) {
@@ -438,23 +438,4 @@ export function writeStructuredDb(db, dbObject, { transaction = true } = {}) {
     db.exec('ROLLBACK');
     throw error;
   }
-}
-
-function readLegacyStores(db) {
-  if (!tableExists(db, 'signal_stores')) return null;
-  const rows = db.prepare('SELECT name, payload FROM signal_stores').all();
-  if (rows.length === 0) return null;
-  const stores = {};
-  for (const row of rows) stores[row.name] = parsePayload(`signal_stores.${row.name}`, row.payload, null);
-  return Object.keys(stores).length > 0 ? shapeDbFromStores(stores) : null;
-}
-
-export function migrateLegacySignalStoresIfNeeded(db) {
-  if (hasStructuredData(db)) return false;
-  const legacy = readLegacyStores(db);
-  if (!legacy) return false;
-  writeStructuredDb(db, legacy);
-  db.exec('DROP TABLE IF EXISTS signal_stores');
-  console.log('[db] migrated legacy signal_stores payloads into structured SQLite tables');
-  return true;
 }

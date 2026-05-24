@@ -38,65 +38,6 @@ function ensureColumn(db, table, column, ddl) {
   db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl};`);
 }
 
-function parseJson(payload) {
-  if (payload == null || payload === '') return null;
-  try {
-    return JSON.parse(payload);
-  } catch {
-    return null;
-  }
-}
-
-function textOrNull(value) {
-  if (value == null) return null;
-  const text = String(value);
-  return text.length > 0 ? text : null;
-}
-
-function backfillCalendarEventIndexColumns(db) {
-  if (!tableExists(db, 'calendar_events')) return;
-  const rows = db
-    .prepare(
-      `
-        SELECT id, payload
-        FROM calendar_events
-        WHERE event_date IS NULL OR event_date = ''
-           OR event_type IS NULL OR event_type = ''
-      `,
-    )
-    .all();
-  if (rows.length === 0) return;
-
-  const stmt = db.prepare(
-    `
-      UPDATE calendar_events
-      SET event_date = COALESCE(@eventDate, event_date),
-          event_at = COALESCE(@eventAt, event_at),
-          event_type = COALESCE(@eventType, event_type),
-          symbol = COALESCE(@symbol, symbol)
-      WHERE id = @id
-    `,
-  );
-  db.exec('BEGIN');
-  try {
-    for (const row of rows) {
-      const item = parseJson(row.payload);
-      if (!item || typeof item !== 'object') continue;
-      stmt.run({
-        id: row.id,
-        eventDate: textOrNull(item.date),
-        eventAt: textOrNull(item.eventAt),
-        eventType: textOrNull(item.type),
-        symbol: textOrNull(item.symbol),
-      });
-    }
-    db.exec('COMMIT');
-  } catch (error) {
-    db.exec('ROLLBACK');
-    throw error;
-  }
-}
-
 function uniqueIndexHasColumns(db, table, columns) {
   if (!tableExists(db, table)) return false;
   const indexes = db.prepare(`PRAGMA index_list(${table})`).all();
@@ -482,46 +423,6 @@ export function ensureStructuredSchema(db) {
       payload TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
-
-    CREATE INDEX IF NOT EXISTS idx_polling_job_runs_job ON polling_job_runs(job_key, started_at);
-    CREATE INDEX IF NOT EXISTS idx_polling_job_locks_expires ON polling_job_locks(expires_at);
-    CREATE INDEX IF NOT EXISTS idx_app_user_sessions_user ON app_user_sessions(user_id, expires_at);
-    CREATE INDEX IF NOT EXISTS idx_app_user_refresh_user ON app_user_refresh_sessions(user_id, expires_at);
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_app_user_refresh_device_active
-      ON app_user_refresh_sessions(user_id, device_id) WHERE revoked_at IS NULL;
-    CREATE INDEX IF NOT EXISTS idx_app_user_devices_user ON app_user_devices(user_id, active);
-    CREATE INDEX IF NOT EXISTS idx_legal_terms_locale ON legal_terms(locale, active);
-    CREATE INDEX IF NOT EXISTS idx_legal_terms_type_locale ON legal_terms(type, locale, active, updated_at);
-    CREATE INDEX IF NOT EXISTS idx_app_user_identities_user ON app_user_identities(user_id, disconnected_at);
-    CREATE INDEX IF NOT EXISTS idx_app_user_account_events_user ON app_user_account_events(user_id, created_at);
-    CREATE INDEX IF NOT EXISTS idx_app_user_account_events_type ON app_user_account_events(event_type, created_at);
-    CREATE INDEX IF NOT EXISTS idx_app_user_account_events_identity ON app_user_account_events(identity_id, created_at);
-    CREATE INDEX IF NOT EXISTS idx_app_user_email_change_user ON app_user_email_change_requests(user_id, expires_at);
-    CREATE INDEX IF NOT EXISTS idx_app_user_email_change_email ON app_user_email_change_requests(email, expires_at);
-    CREATE INDEX IF NOT EXISTS idx_app_user_terms_user ON app_user_terms_acceptances(user_id, accepted_at);
-    CREATE INDEX IF NOT EXISTS idx_news_items_published ON news_items(category, published_at);
-    CREATE INDEX IF NOT EXISTS idx_news_items_source_published ON news_items(category, source_name, published_at);
-    CREATE INDEX IF NOT EXISTS idx_news_translations_item ON news_translations(news_item_id, locale);
-    CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(event_date, event_type);
-    CREATE INDEX IF NOT EXISTS idx_calendar_events_type_date ON calendar_events(event_type, event_date, event_at);
-    CREATE INDEX IF NOT EXISTS idx_calendar_events_symbol_date ON calendar_events(symbol, event_date);
-    CREATE INDEX IF NOT EXISTS idx_concall_transcripts_symbol ON concall_transcripts(symbol, earnings_date);
-    CREATE INDEX IF NOT EXISTS idx_concall_transcripts_date ON concall_transcripts(earnings_date);
-    CREATE INDEX IF NOT EXISTS idx_concall_transcripts_period ON concall_transcripts(fiscal_year, fiscal_quarter, earnings_date);
-    CREATE INDEX IF NOT EXISTS idx_youtube_videos_published ON youtube_videos(channel, published_at);
-    CREATE INDEX IF NOT EXISTS idx_youtube_videos_published_only ON youtube_videos(published_at);
-    CREATE INDEX IF NOT EXISTS idx_market_quotes_symbol ON market_quotes(symbol, segment);
-    CREATE INDEX IF NOT EXISTS idx_market_quotes_segment_symbol_fetch ON market_quotes(segment, symbol, fetched_at);
-    CREATE INDEX IF NOT EXISTS idx_market_quotes_segment_fetch ON market_quotes(segment, fetched_at);
-    CREATE INDEX IF NOT EXISTS idx_coin_markets_symbol ON coin_markets(symbol);
-    CREATE INDEX IF NOT EXISTS idx_coin_markets_fetched ON coin_markets(fetched_at);
-    CREATE INDEX IF NOT EXISTS idx_insight_items_generated ON insight_items(generated_at, score);
-    CREATE INDEX IF NOT EXISTS idx_insight_items_lookup ON insight_items(kind, level, push_candidate, generated_at);
-    CREATE INDEX IF NOT EXISTS idx_notification_items_status ON notification_items(status, scheduled_at);
-    CREATE INDEX IF NOT EXISTS idx_notification_items_type ON notification_items(type, status, scheduled_at);
-    CREATE INDEX IF NOT EXISTS idx_notification_items_user ON notification_items(app_user_id, status, scheduled_at);
-    CREATE INDEX IF NOT EXISTS idx_notification_items_target ON notification_items(target_type, target_key, scheduled_at);
-    CREATE INDEX IF NOT EXISTS idx_notification_items_source ON notification_items(source_type, source_id);
   `);
   migrateLegalTermsVersionSchema(db);
   ensureColumn(db, 'app_user_identities', 'email', 'TEXT');
@@ -540,8 +441,17 @@ export function ensureStructuredSchema(db) {
   ensureColumn(db, 'calendar_events', 'event_at', 'TEXT');
   ensureColumn(db, 'calendar_events', 'event_type', 'TEXT');
   ensureColumn(db, 'calendar_events', 'symbol', 'TEXT');
-  backfillCalendarEventIndexColumns(db);
   db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_polling_jobs_due ON polling_jobs(enabled, next_run_at);
+    CREATE INDEX IF NOT EXISTS idx_polling_jobs_domain ON polling_jobs(domain, provider, handler);
+    CREATE INDEX IF NOT EXISTS idx_polling_job_runs_job ON polling_job_runs(job_key, started_at);
+    CREATE INDEX IF NOT EXISTS idx_polling_job_runs_status ON polling_job_runs(status, started_at);
+    CREATE INDEX IF NOT EXISTS idx_polling_job_locks_expires ON polling_job_locks(expires_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_sessions_user ON app_user_sessions(user_id, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_refresh_user ON app_user_refresh_sessions(user_id, expires_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_app_user_refresh_device_active
+      ON app_user_refresh_sessions(user_id, device_id) WHERE revoked_at IS NULL;
+    CREATE INDEX IF NOT EXISTS idx_app_user_devices_user ON app_user_devices(user_id, active);
     CREATE INDEX IF NOT EXISTS idx_legal_terms_locale ON legal_terms(locale, active);
     CREATE INDEX IF NOT EXISTS idx_legal_terms_type_locale ON legal_terms(type, locale, active, updated_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_identities_user ON app_user_identities(user_id, disconnected_at);
@@ -550,9 +460,33 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_app_user_account_events_identity ON app_user_account_events(identity_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_email_change_user ON app_user_email_change_requests(user_id, expires_at);
     CREATE INDEX IF NOT EXISTS idx_app_user_email_change_email ON app_user_email_change_requests(email, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_app_user_terms_user ON app_user_terms_acceptances(user_id, accepted_at);
+    CREATE INDEX IF NOT EXISTS idx_news_items_published ON news_items(category, published_at);
+    CREATE INDEX IF NOT EXISTS idx_news_items_source_published ON news_items(category, source_name, published_at);
+    CREATE INDEX IF NOT EXISTS idx_news_items_provider_published ON news_items(provider, published_at);
+    CREATE INDEX IF NOT EXISTS idx_news_items_fetched ON news_items(fetched_at);
+    CREATE INDEX IF NOT EXISTS idx_news_translations_item ON news_translations(news_item_id, locale);
+    CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(event_date, event_type);
+    CREATE INDEX IF NOT EXISTS idx_calendar_events_type_date ON calendar_events(event_type, event_date, event_at);
+    CREATE INDEX IF NOT EXISTS idx_calendar_events_symbol_date ON calendar_events(symbol, event_date);
+    CREATE INDEX IF NOT EXISTS idx_concall_transcripts_symbol ON concall_transcripts(symbol, earnings_date);
+    CREATE INDEX IF NOT EXISTS idx_concall_transcripts_date ON concall_transcripts(earnings_date);
+    CREATE INDEX IF NOT EXISTS idx_concall_transcripts_period ON concall_transcripts(fiscal_year, fiscal_quarter, earnings_date);
+    CREATE INDEX IF NOT EXISTS idx_youtube_videos_published ON youtube_videos(channel, published_at);
+    CREATE INDEX IF NOT EXISTS idx_youtube_videos_published_only ON youtube_videos(published_at);
+    CREATE INDEX IF NOT EXISTS idx_youtube_videos_fetched ON youtube_videos(fetched_at);
+    CREATE INDEX IF NOT EXISTS idx_market_quotes_symbol ON market_quotes(symbol, segment);
+    CREATE INDEX IF NOT EXISTS idx_market_quotes_segment_symbol_fetch ON market_quotes(segment, symbol, fetched_at);
+    CREATE INDEX IF NOT EXISTS idx_market_quotes_segment_fetch ON market_quotes(segment, fetched_at);
+    CREATE INDEX IF NOT EXISTS idx_coin_markets_symbol ON coin_markets(symbol);
+    CREATE INDEX IF NOT EXISTS idx_coin_markets_fetched ON coin_markets(fetched_at);
+    CREATE INDEX IF NOT EXISTS idx_insight_items_generated ON insight_items(generated_at, score);
+    CREATE INDEX IF NOT EXISTS idx_insight_items_lookup ON insight_items(kind, level, push_candidate, generated_at);
     CREATE INDEX IF NOT EXISTS idx_insight_items_display ON insight_items(generated_date, display_key, generated_at);
+    CREATE INDEX IF NOT EXISTS idx_notification_items_status ON notification_items(status, scheduled_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_type ON notification_items(type, status, scheduled_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_user ON notification_items(app_user_id, status, scheduled_at);
     CREATE INDEX IF NOT EXISTS idx_notification_items_target ON notification_items(target_type, target_key, scheduled_at);
+    CREATE INDEX IF NOT EXISTS idx_notification_items_source ON notification_items(source_type, source_id);
   `);
 }

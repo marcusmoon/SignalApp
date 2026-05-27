@@ -1114,7 +1114,7 @@ export default function FeedScreen() {
                 <NewsCard
                   layout="grouped"
                   item={item.news}
-                  compactMeta={segment === 'watch'}
+                  compactMeta
                   maxHashtagsToShow={segment === 'watch' ? 0 : maxHashtagDisplay}
                   onTagPress={(label) => {
                     const next = label.trim();

@@ -538,9 +538,29 @@ export default function HomeScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>{t('homeEyebrow')}</Text>
-          <Text style={styles.heroTitle}>{headline}</Text>
+        <View style={styles.focusCard}>
+          <View style={styles.focusTopRow}>
+            <View style={styles.focusKickerWrap}>
+              <FontAwesome name="bolt" size={12} color={theme.green} />
+              <Text style={styles.focusKicker}>{t('homeFocusKicker')}</Text>
+            </View>
+            {primaryInsight ? (
+              <View style={styles.focusScoreBadge}>
+                <Text style={styles.focusScoreText}>{Math.round(Number(primaryInsight.score) || 0)}</Text>
+              </View>
+            ) : null}
+          </View>
+          {primaryInsight?.symbols?.length ? (
+            <Text style={styles.focusSymbols} numberOfLines={1}>
+              {primaryInsight.symbols.slice(0, 3).join(' · ')}
+            </Text>
+          ) : null}
+          <Text style={styles.focusTitle} numberOfLines={2}>
+            {primaryInsight?.title || headline || t('homeFocusFallbackTitle')}
+          </Text>
+          <Text style={styles.focusBody} numberOfLines={3}>
+            {primaryInsight ? driverText(primaryInsight) : t('homeFocusFallbackBody')}
+          </Text>
           <View style={styles.pillRow}>
             <StatusPill
               icon="bolt"
@@ -560,6 +580,35 @@ export default function HomeScreen() {
               theme={theme}
               scaleFont={scaleFont}
             />
+          </View>
+          {secondaryInsights.length > 0 ? (
+            <View style={styles.focusMiniList}>
+              {secondaryInsights.map((insight) => (
+                <Pressable
+                  key={insight.id}
+                  onPress={() => router.push('/insights')}
+                  style={({ pressed }) => [styles.focusMiniRow, pressed && styles.pressed]}
+                  accessibilityRole="button">
+                  <Text style={styles.focusMiniTitle} numberOfLines={1}>{insight.title}</Text>
+                  <Text style={styles.focusMiniScore}>{Math.round(Number(insight.score) || 0)}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          <View style={styles.focusActionRow}>
+            <Pressable
+              onPress={() => router.push('/insights')}
+              style={({ pressed }) => [styles.focusActionPrimary, pressed && styles.pressed]}
+              accessibilityRole="button">
+              <Text style={styles.focusActionPrimaryText}>{t('homeFocusOpenSignals')}</Text>
+              <FontAwesome name="chevron-right" size={12} color="#FFFFFF" />
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/briefing')}
+              style={({ pressed }) => [styles.focusActionSecondary, pressed && styles.pressed]}
+              accessibilityRole="button">
+              <Text style={styles.focusActionSecondaryText}>{t('homeFocusOpenBriefing')}</Text>
+            </Pressable>
           </View>
         </View>
 
@@ -650,96 +699,6 @@ export default function HomeScreen() {
             />
           )}
         </View>
-
-        <SectionHeader
-          title={t('homeTodaySection')}
-          icon="bolt"
-          action={t('commonViewAll')}
-          onPress={() => router.push('/insights')}
-          theme={theme}
-          scaleFont={scaleFont}
-        />
-        <View style={styles.signalList}>
-          {primaryInsight ? (
-            <>
-              <Pressable
-                key={primaryInsight.id}
-                onPress={() => router.push('/insights')}
-                style={({ pressed }) => [styles.primarySignalCard, pressed && styles.pressed]}
-                accessibilityRole="button">
-                <View style={styles.decisionHead}>
-                  <View style={styles.decisionTextCol}>
-                    <View style={styles.decisionMetaRow}>
-                      {primaryInsight.symbols?.length ? (
-                        <Text style={styles.symbolLine} numberOfLines={1}>
-                          {primaryInsight.symbols.slice(0, 3).join(' · ')}
-                        </Text>
-                      ) : null}
-                      <Text style={styles.decisionLevel} numberOfLines={1}>
-                        {String(primaryInsight.level || '').toUpperCase()}
-                      </Text>
-                    </View>
-                    <Text style={styles.decisionTitle} numberOfLines={1}>
-                      {primaryInsight.title}
-                    </Text>
-                    <Text style={styles.decisionBody} numberOfLines={3}>
-                      {driverText(primaryInsight)}
-                    </Text>
-                  </View>
-                  <View style={styles.scoreBadge}>
-                    <Text style={styles.scoreText}>{Math.round(Number(primaryInsight.score) || 0)}</Text>
-                  </View>
-                </View>
-              </Pressable>
-              {secondaryInsights.map((insight) => (
-                <Pressable
-                  key={insight.id}
-                  onPress={() => router.push('/insights')}
-                  style={({ pressed }) => [styles.signalRow, pressed && styles.pressed]}
-                  accessibilityRole="button">
-                  <View style={styles.decisionHead}>
-                    <View style={styles.decisionTextCol}>
-                      <View style={styles.decisionMetaRow}>
-                        {insight.symbols?.length ? (
-                          <Text style={styles.symbolLine} numberOfLines={1}>
-                            {insight.symbols.slice(0, 3).join(' · ')}
-                          </Text>
-                        ) : null}
-                        <Text style={styles.decisionLevel} numberOfLines={1}>
-                          {String(insight.level || '').toUpperCase()}
-                        </Text>
-                      </View>
-                      <Text style={styles.secondaryDecisionTitle} numberOfLines={1}>
-                        {insight.title}
-                      </Text>
-                    </View>
-                    <View style={styles.secondaryScoreBadge}>
-                      <Text style={styles.secondaryScoreText}>{Math.round(Number(insight.score) || 0)}</Text>
-                    </View>
-                  </View>
-                </Pressable>
-              ))}
-            </>
-          ) : (
-            <SectionPlaceholder
-              loading={loading}
-              emptyText={t('homeEmptySignals')}
-              theme={theme}
-              scaleFont={scaleFont}
-            />
-          )}
-        </View>
-
-        <Pressable
-          onPress={() => router.push('/briefing')}
-          style={({ pressed }) => [styles.primaryAction, pressed && styles.pressed]}
-          accessibilityRole="button">
-          <View style={styles.primaryActionIcon}>
-            <FontAwesome name="briefcase" size={15} color="#FFFFFF" />
-          </View>
-          <Text style={styles.primaryActionText}>{t('homeBriefingAction')}</Text>
-          <FontAwesome name="chevron-right" size={13} color="#FFFFFF" />
-        </Pressable>
 
         <SectionHeader
           title={t('homeRelatedSection')}
@@ -933,22 +892,147 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingTop: 18,
       gap: 18,
     },
-    hero: {
-      gap: 14,
-      paddingVertical: 8,
+    focusCard: {
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.card,
+      padding: 18,
+      gap: 12,
+      shadowColor: '#000000',
+      shadowOpacity: 0.08,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 2,
     },
-    eyebrow: {
-      fontSize: sf(13),
-      lineHeight: sf(19.5),
-      fontWeight: '800',
+    focusTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    focusKickerWrap: {
+      minHeight: 28,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    focusKicker: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '900',
       color: theme.green,
     },
-    heroTitle: {
-      fontSize: sf(26),
-      lineHeight: sf(35),
+    focusScoreBadge: {
+      minWidth: 40,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingHorizontal: 8,
+    },
+    focusScoreText: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    focusSymbols: {
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(18),
+      fontWeight: ft.emphasisWeight,
+      color: theme.green,
+    },
+    focusTitle: {
+      fontSize: sf(24),
+      lineHeight: sf(32),
       fontWeight: '900',
       color: theme.text,
       letterSpacing: 0,
+    },
+    focusBody: {
+      fontSize: ft.ff(14),
+      lineHeight: ft.ff(21),
+      fontWeight: ft.bodyWeight,
+      color: theme.textMuted,
+    },
+    focusMiniList: {
+      borderRadius: 16,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+    },
+    focusMiniRow: {
+      minHeight: 42,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    focusMiniTitle: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: ft.ff(13),
+      lineHeight: ft.ff(19),
+      fontWeight: ft.emphasisWeight,
+      color: theme.text,
+    },
+    focusMiniScore: {
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(17),
+      fontWeight: ft.titleWeight,
+      color: theme.green,
+    },
+    focusActionRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    focusActionPrimary: {
+      flex: 1,
+      minHeight: 46,
+      borderRadius: 14,
+      backgroundColor: theme.green,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 6,
+      paddingHorizontal: 12,
+    },
+    focusActionSecondary: {
+      flex: 1,
+      minHeight: 46,
+      borderRadius: 14,
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
+      borderColor: theme.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 12,
+    },
+    focusActionPrimaryText: {
+      fontSize: sf(14),
+      lineHeight: sf(20),
+      fontWeight: '900',
+      color: '#FFFFFF',
+    },
+    focusActionSecondaryText: {
+      fontSize: sf(14),
+      lineHeight: sf(20),
+      fontWeight: '900',
+      color: theme.text,
     },
     pillRow: {
       flexDirection: 'row',

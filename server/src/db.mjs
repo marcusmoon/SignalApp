@@ -70,6 +70,7 @@ import {
   queryPublicNewsSourcesInDb,
   queryPublicYoutubeInDb,
   queryPublicYoutubeChannelsInDb,
+  queryPublicWatchSignalsInDb,
   readAppSettingsInDb,
   readPublicMarketListInDb,
   readPublicMarketListsInDb,
@@ -586,6 +587,10 @@ export async function queryPublicMarketQuotes(options = {}) {
 
 export async function queryPublicCalendar(options = {}) {
   return cachedPublicRead('publicCalendar', options, (db) => queryPublicCalendarInDb(db, options), 30000);
+}
+
+export async function queryPublicWatchSignals(options = {}) {
+  return cachedPublicRead('publicWatchSignals', options, (db) => queryPublicWatchSignalsInDb(db, options), 5000);
 }
 
 export async function queryPublicCalendarDateSummaries(options = {}) {

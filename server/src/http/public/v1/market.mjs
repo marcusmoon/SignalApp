@@ -1,6 +1,7 @@
 import {
   queryPublicCoinMarkets,
   queryPublicMarketQuotes,
+  queryPublicWatchSignals,
   readAppSettings,
   readPublicMarketList,
   readPublicMarketLists,
@@ -69,6 +70,22 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
     } catch {
       json(res, 502, { error: 'CANDLES_UNAVAILABLE' });
     }
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/v1/watch-signals') {
+    const symbols = url.searchParams.get('symbols') || '';
+    if (!symbols.trim()) {
+      json(res, 400, { error: 'SYMBOLS_REQUIRED' });
+      return true;
+    }
+    const rows = await queryPublicWatchSignals({
+      symbols,
+      limit: url.searchParams.get('limit') || '12',
+      date: url.searchParams.get('date') || '',
+      from: url.searchParams.get('from') || '',
+    });
+    json(res, 200, { data: rows });
     return true;
   }
 

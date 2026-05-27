@@ -153,6 +153,151 @@ function publicCalendarEvent(item) {
   };
 }
 
+function symbolArray(item) {
+  return (Array.isArray(item?.symbols) ? item.symbols : [])
+    .map((symbol) => String(symbol || '').trim().toUpperCase())
+    .filter(Boolean);
+}
+
+function textMentionsSymbol(text, symbol) {
+  const token = String(symbol || '').trim().toUpperCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (!token) return false;
+  return new RegExp(`(^|[^A-Z0-9])${token}([^A-Z0-9]|$)`).test(String(text || '').toUpperCase());
+}
+
+function parseIsoMs(value) {
+  const ms = Date.parse(String(value || ''));
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function shiftIsoDate(ymd, days) {
+  const [year, month, day] = String(ymd || '').slice(0, 10).split('-').map((part) => Number.parseInt(part, 10));
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+  }
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+function quoteMovePct(quote) {
+  const direct = Number(quote?.changePercent);
+  if (Number.isFinite(direct)) return direct;
+  const current = Number(quote?.currentPrice);
+  const previous = Number(quote?.previousClose);
+  if (Number.isFinite(current) && Number.isFinite(previous) && previous !== 0) {
+    return ((current - previous) / previous) * 100;
+  }
+  return 0;
+}
+
+function watchSignalLevel(score) {
+  if (score >= 60) return 'hot';
+  if (score >= 28) return 'watch';
+  return 'quiet';
+}
+
+function addReason(reasons, code) {
+  if (!code || reasons.includes(code)) return;
+  reasons.push(code);
+}
+
+function latestById(items, idOf) {
+  const byId = new Map();
+  for (const item of items) {
+    const id = idOf(item);
+    if (!id) continue;
+    const prev = byId.get(id);
+    const nextMs = parseIsoMs(item?.publishedAt || item?.generatedAt || item?.fetchedAt);
+    const prevMs = parseIsoMs(prev?.publishedAt || prev?.generatedAt || prev?.fetchedAt);
+    if (!prev || nextMs > prevMs) byId.set(id, item);
+  }
+  return byId;
+}
+
+function watchSignalSourceRefFromNews(item) {
+  return {
+    type: 'news',
+    id: item.id,
+    title: item.title || item.originalTitle || '',
+    url: item.sourceUrl || undefined,
+    sourceName: item.sourceName || undefined,
+    publishedAt: item.publishedAt || null,
+  };
+}
+
+function publicWatchSignal({ symbol, quote, news, videos, insights, nextEvent }) {
+  const movePct = quoteMovePct(quote);
+  const absMove = Math.abs(movePct);
+  const reasons = [];
+  let score = 0;
+
+  if (absMove >= 5) {
+    score += 32;
+    addReason(reasons, movePct > 0 ? 'price_surge' : 'price_drop');
+  } else if (absMove >= 3) {
+    score += 24;
+    addReason(reasons, 'price_move');
+  } else if (absMove >= 1) {
+    score += 10;
+  }
+
+  if (news.length >= 5) {
+    score += 26;
+    addReason(reasons, 'news_dense');
+  } else if (news.length >= 2) {
+    score += 16;
+    addReason(reasons, 'news_active');
+  } else if (news.length > 0) {
+    score += 7;
+  }
+
+  const topInsightScore = Math.max(0, ...insights.map((item) => Number(item.score) || 0));
+  if (topInsightScore >= 70) {
+    score += 24;
+    addReason(reasons, 'insight_alert');
+  } else if (topInsightScore >= 40) {
+    score += 14;
+    addReason(reasons, 'insight_watch');
+  }
+
+  if (videos.length >= 2) {
+    score += 8;
+    addReason(reasons, 'video_active');
+  }
+
+  if (nextEvent) {
+    score += nextEvent.type === 'earnings' ? 16 : 8;
+    addReason(reasons, nextEvent.type === 'earnings' ? 'earnings_soon' : 'event_soon');
+  }
+
+  if (reasons.length === 0) addReason(reasons, 'quiet');
+  const capped = Math.min(100, Math.max(0, Math.round(score)));
+  const recentNews = [...news]
+    .sort((a, b) => parseIsoMs(b.publishedAt || b.fetchedAt) - parseIsoMs(a.publishedAt || a.fetchedAt))
+    .slice(0, 3);
+  const title = `${symbol} ${capped >= 60 ? '강한 움직임' : capped >= 28 ? '확인 필요' : '관찰 중'}`;
+  const summary =
+    recentNews[0]?.title ||
+    insights[0]?.summary ||
+    (nextEvent ? `${nextEvent.title} 일정이 가까워졌습니다.` : `${symbol}의 가격, 뉴스, 일정을 함께 확인합니다.`);
+
+  return {
+    symbol,
+    score: capped,
+    level: watchSignalLevel(capped),
+    title,
+    summary,
+    reasonCodes: reasons,
+    quote: quote ? publicMarketQuote(quote) : null,
+    counts: {
+      news: news.length,
+      youtube: videos.length,
+      insights: insights.length,
+    },
+    nextEvent: nextEvent ? publicCalendarEvent(nextEvent) : null,
+    sourceRefs: recentNews.map(watchSignalSourceRefFromNews),
+  };
+}
+
 function normalizeCalendarDisplayTitle(title) {
   return String(title || '')
     .trim()
@@ -811,6 +956,148 @@ export function queryPublicCalendarDateSummariesInDb(db, options = {}) {
     }
   }
   return Array.from(byDate.values());
+}
+
+export function queryPublicWatchSignalsInDb(db, options = {}) {
+  const symbols = String(options.symbols || '')
+    .split(',')
+    .map((item) => item.trim().toUpperCase())
+    .filter(Boolean);
+  const uniqueSymbols = [...new Set(symbols)].slice(0, 24);
+  if (uniqueSymbols.length === 0) return [];
+
+  const limit = Math.min(24, Math.max(1, Math.floor(Number(options.limit)) || uniqueSymbols.length));
+  const now = new Date();
+  const today = String(options.date || now.toISOString().slice(0, 10)).slice(0, 10);
+  const newsFrom = options.from || new Date(now.getTime() - 72 * 60 * 60 * 1000).toISOString();
+  const eventTo = shiftIsoDate(today, 14);
+  const params = Object.fromEntries(uniqueSymbols.map((symbol, index) => [`symbol${index}`, symbol]));
+  const symbolSql = uniqueSymbols.map((_, index) => `@symbol${index}`).join(', ');
+
+  const quoteRows = db
+    .prepare(
+      `
+        SELECT payload
+        FROM market_quotes
+        WHERE UPPER(symbol) IN (${symbolSql})
+        ORDER BY fetched_at DESC
+      `,
+    )
+    .all(params)
+    .map((row) => parsePayload('market_quotes.payload', row.payload, null))
+    .filter(Boolean);
+  const quotesBySymbol = latestById(quoteRows, (item) => String(item?.symbol || '').trim().toUpperCase());
+
+  const symbolLikeParams = Object.fromEntries(uniqueSymbols.map((symbol, index) => [`symbolLike${index}`, `%${symbol}%`]));
+  const symbolLikeSql = uniqueSymbols.map((_, index) => `UPPER(payload) LIKE @symbolLike${index}`).join(' OR ');
+
+  const newsRows = db
+    .prepare(
+      `
+        SELECT payload
+        FROM news_items
+        WHERE (published_at IS NULL OR published_at = '' OR published_at >= @newsFrom)
+          AND (${symbolLikeSql})
+        ORDER BY published_at DESC, fetched_at DESC
+        LIMIT 500
+      `,
+    )
+    .all({ newsFrom, ...symbolLikeParams })
+    .map((row) => parsePayload('news_items.payload', row.payload, null))
+    .filter(Boolean);
+
+  const videoRows = db
+    .prepare(
+      `
+        SELECT payload
+        FROM youtube_videos
+        WHERE published_at >= @videoFrom
+          AND (${symbolLikeSql})
+        ORDER BY published_at DESC, fetched_at DESC
+        LIMIT 300
+      `,
+    )
+    .all({ videoFrom: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString(), ...symbolLikeParams })
+    .map((row) => parsePayload('youtube_videos.payload', row.payload, null))
+    .filter(Boolean);
+
+  const insightRows = db
+    .prepare(
+      `
+        SELECT payload
+        FROM insight_items
+        WHERE (expires_at IS NULL OR expires_at = '' OR expires_at >= @now)
+          AND generated_at >= @insightFrom
+          AND (${symbolLikeSql})
+        ORDER BY score DESC, generated_at DESC
+        LIMIT 200
+      `,
+    )
+    .all({
+      now: now.toISOString(),
+      insightFrom: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      ...symbolLikeParams,
+    })
+    .map((row) => parsePayload('insight_items.payload', row.payload, null))
+    .filter(Boolean);
+
+  const calendarRows = db
+    .prepare(
+      `
+        SELECT payload
+        FROM calendar_events
+        WHERE event_date >= @today
+          AND event_date <= @eventTo
+          AND UPPER(COALESCE(symbol, '')) IN (${symbolSql})
+        ORDER BY event_date ASC, event_at ASC
+      `,
+    )
+    .all({ ...params, today, eventTo })
+    .map((row) => parsePayload('calendar_events.payload', row.payload, null))
+    .filter(Boolean);
+
+  const newsBySymbol = new Map(uniqueSymbols.map((symbol) => [symbol, []]));
+  for (const item of newsRows) {
+    for (const symbol of symbolArray(item)) {
+      if (newsBySymbol.has(symbol)) newsBySymbol.get(symbol).push(item);
+    }
+  }
+
+  const videosBySymbol = new Map(uniqueSymbols.map((symbol) => [symbol, []]));
+  for (const item of videoRows) {
+    const text = `${item.title || ''} ${item.description || ''}`.toUpperCase();
+    for (const symbol of uniqueSymbols) {
+      if (textMentionsSymbol(text, symbol)) videosBySymbol.get(symbol).push(item);
+    }
+  }
+
+  const insightsBySymbol = new Map(uniqueSymbols.map((symbol) => [symbol, []]));
+  for (const item of insightRows) {
+    for (const symbol of symbolArray(item)) {
+      if (insightsBySymbol.has(symbol)) insightsBySymbol.get(symbol).push(item);
+    }
+  }
+
+  const nextEventBySymbol = new Map();
+  for (const item of calendarRows) {
+    const symbol = String(item.symbol || '').trim().toUpperCase();
+    if (!symbol || nextEventBySymbol.has(symbol)) continue;
+    nextEventBySymbol.set(symbol, item);
+  }
+
+  return uniqueSymbols
+    .map((symbol) =>
+      publicWatchSignal({
+        symbol,
+        quote: quotesBySymbol.get(symbol) || null,
+        news: newsBySymbol.get(symbol) || [],
+        videos: videosBySymbol.get(symbol) || [],
+        insights: insightsBySymbol.get(symbol) || [],
+        nextEvent: nextEventBySymbol.get(symbol) || null,
+      }),
+    )
+    .sort((a, b) => b.score - a.score || uniqueSymbols.indexOf(a.symbol) - uniqueSymbols.indexOf(b.symbol))
+    .slice(0, limit);
 }
 
 export function queryPublicConcallsInDb(db, options = {}) {

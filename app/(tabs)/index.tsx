@@ -28,11 +28,12 @@ import { hasSignalApi } from '@/services/env';
 import { loadMainEntry, mainEntryHref } from '@/services/mainEntryPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
-import { formatRelativeFromIso } from '@/utils/date';
+import { formatRelativeFromIso, toYmd } from '@/utils/date';
 import {
   fetchSignalInsights,
   fetchSignalMarketQuotes,
   fetchSignalNews,
+  fetchSignalWatchSignals,
   signalNewsToNewsItem,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -40,6 +41,7 @@ import type {
   SignalApiInsight,
   SignalApiMarketQuote,
   SignalApiNewsItem,
+  SignalApiWatchSignal,
 } from '@/integrations/signal-api/types';
 import type { NewsItem } from '@/types/signal';
 import type { MessageId } from '@/locales/messages';
@@ -52,6 +54,7 @@ type HomeState = {
   rawNews: SignalApiNewsItem[];
   news: NewsItem[];
   watchSymbols: string[];
+  watchSignals: SignalApiWatchSignal[];
 };
 
 const EMPTY_STATE: HomeState = {
@@ -60,6 +63,7 @@ const EMPTY_STATE: HomeState = {
   rawNews: [],
   news: [],
   watchSymbols: [],
+  watchSignals: [],
 };
 
 type HomeEvidenceRow = {
@@ -77,6 +81,7 @@ type HomeQuotePulseRow = {
   quote: SignalApiMarketQuote;
   newsCount: number;
   signalCount: number;
+  watchSignal?: SignalApiWatchSignal;
 };
 
 const HOME_RELATED_NEWS_LIMIT = 5;
@@ -224,11 +229,38 @@ function symbolSignalCount(insights: SignalApiInsight[], symbol: string): number
   }).length;
 }
 
-function quoteMoveLabelId(quote: SignalApiMarketQuote): MessageId {
+function quoteReasonCode(quote: SignalApiMarketQuote): string {
   const pct = Number(quote.changePercent);
-  if (!Number.isFinite(pct) || Math.abs(pct) < 0.2) return 'homeWatchMoveFlat';
-  if (Math.abs(pct) >= 3) return 'homeWatchMoveLarge';
-  return pct > 0 ? 'homeWatchMoveUp' : 'homeWatchMoveDown';
+  if (!Number.isFinite(pct) || Math.abs(pct) < 0.2) return 'quiet';
+  if (Math.abs(pct) >= 3) return pct > 0 ? 'price_surge' : 'price_drop';
+  return 'price_move';
+}
+
+function watchReasonLabelId(code: string): MessageId {
+  switch (code) {
+    case 'price_surge':
+      return 'homeWatchReasonPriceSurge';
+    case 'price_drop':
+      return 'homeWatchReasonPriceDrop';
+    case 'price_move':
+      return 'homeWatchReasonPriceMove';
+    case 'news_dense':
+      return 'homeWatchReasonNewsDense';
+    case 'news_active':
+      return 'homeWatchReasonNewsActive';
+    case 'insight_alert':
+      return 'homeWatchReasonInsightAlert';
+    case 'insight_watch':
+      return 'homeWatchReasonInsightWatch';
+    case 'video_active':
+      return 'homeWatchReasonVideoActive';
+    case 'earnings_soon':
+      return 'homeWatchReasonEarningsSoon';
+    case 'event_soon':
+      return 'homeWatchReasonEventSoon';
+    default:
+      return 'homeWatchReasonQuiet';
+  }
 }
 
 export default function HomeScreen() {
@@ -292,14 +324,19 @@ export default function HomeScreen() {
 
     const cacheMode = forceRefresh ? 'bypass' : 'use';
     const watchSymbols = (await loadWatchlistSymbols()).slice(0, 6);
-    const [insightPage, quoteRows, newsPage] = await Promise.all([
+    const [insightPage, watchSignalRows, newsPage] = await Promise.all([
       fetchSignalInsights({
         date: 'today',
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         limit: 3,
         offset: 0,
       }),
-      loadHomeWatchQuotes(watchSymbols, forceRefresh),
+      fetchSignalWatchSignals({
+        symbols: watchSymbols,
+        limit: Math.max(watchSymbols.length, 1),
+        date: toYmd(new Date()),
+        from: homeRelatedNewsFromIso(),
+      }).catch(() => [] as SignalApiWatchSignal[]),
       fetchSignalNews(
         {
           locale,
@@ -313,7 +350,13 @@ export default function HomeScreen() {
       ).catch(() => ({ items: [] as SignalApiNewsItem[] })),
     ]);
 
-    const bySymbol = new Map(quoteRows.map((row) => [String(row.symbol || '').toUpperCase(), row]));
+    const quoteRowsFromSignals = watchSignalRows
+      .map((row) => row.quote)
+      .filter((row): row is SignalApiMarketQuote => Boolean(row));
+    const fallbackQuoteRows = quoteRowsFromSignals.length >= watchSymbols.length
+      ? []
+      : await loadHomeWatchQuotes(watchSymbols, forceRefresh);
+    const bySymbol = new Map([...fallbackQuoteRows, ...quoteRowsFromSignals].map((row) => [String(row.symbol || '').toUpperCase(), row]));
     const orderedQuotes = watchSymbols
       .map((symbol) => bySymbol.get(symbol.toUpperCase()))
       .filter((row): row is SignalApiMarketQuote => Boolean(row));
@@ -327,6 +370,7 @@ export default function HomeScreen() {
       watchSymbols,
       rawNews: newsItems,
       news: newsItems.map((item) => signalNewsToNewsItem(item, locale)),
+      watchSignals: watchSignalRows,
     });
   }, [locale, t]);
 
@@ -365,12 +409,18 @@ export default function HomeScreen() {
   const primaryInsight = topInsights[0] ?? null;
   const secondaryInsights = topInsights.slice(1, 3);
   const topQuoteRows: HomeQuotePulseRow[] = [...state.watchQuotes]
-    .map((quote) => ({
-      quote,
-      newsCount: symbolNewsCount(state.rawNews, quote.symbol),
-      signalCount: symbolSignalCount(state.insights, quote.symbol),
-    }))
+    .map((quote) => {
+      const watchSignal = state.watchSignals.find((row) => row.symbol.toUpperCase() === quote.symbol.toUpperCase());
+      return {
+        quote,
+        newsCount: watchSignal?.counts.news ?? symbolNewsCount(state.rawNews, quote.symbol),
+        signalCount: watchSignal?.counts.insights ?? symbolSignalCount(state.insights, quote.symbol),
+        watchSignal,
+      };
+    })
     .sort((a, b) => {
+      const score = Number(b.watchSignal?.score || 0) - Number(a.watchSignal?.score || 0);
+      if (score !== 0) return score;
       const move = Math.abs(Number(b.quote.changePercent) || 0) - Math.abs(Number(a.quote.changePercent) || 0);
       if (move !== 0) return move;
       const signal = b.signalCount - a.signalCount;
@@ -529,9 +579,9 @@ export default function HomeScreen() {
         />
         <View style={styles.quoteList}>
           {topQuoteRows.length > 0 ? (
-            topQuoteRows.map(({ quote, newsCount, signalCount }) => {
-              const moveLabel = t(quoteMoveLabelId(quote));
-              const largeMove = Math.abs(Number(quote.changePercent) || 0) >= 3;
+            topQuoteRows.map(({ quote, newsCount, signalCount, watchSignal }) => {
+              const reasonCodes = watchSignal?.reasonCodes?.length ? watchSignal.reasonCodes : [quoteReasonCode(quote)];
+              const largeMove = Math.abs(Number(quote.changePercent) || 0) >= 3 || Number(watchSignal?.score || 0) >= 60;
               return (
                 <Pressable
                   key={quote.symbol}
@@ -556,11 +606,13 @@ export default function HomeScreen() {
                       </Pressable>
                     </View>
                     <View style={styles.quoteReasonRow}>
-                      <View style={[styles.quoteReasonChip, largeMove && styles.quoteReasonChipHot]}>
-                        <Text style={[styles.quoteReasonText, largeMove && styles.quoteReasonTextHot]}>
-                          {moveLabel}
-                        </Text>
-                      </View>
+                      {reasonCodes.slice(0, 2).map((code, index) => (
+                        <View key={`${quote.symbol}-${code}`} style={[styles.quoteReasonChip, (largeMove && index === 0) && styles.quoteReasonChipHot]}>
+                          <Text style={[styles.quoteReasonText, (largeMove && index === 0) && styles.quoteReasonTextHot]}>
+                            {t(watchReasonLabelId(code))}
+                          </Text>
+                        </View>
+                      ))}
                       {newsCount > 0 ? (
                         <View style={styles.quoteReasonChip}>
                           <Text style={styles.quoteReasonText}>
@@ -577,7 +629,7 @@ export default function HomeScreen() {
                       ) : null}
                     </View>
                     <Text style={styles.quoteName} numberOfLines={1}>
-                      {quote.name || `${t('quotesPrevCloseStock')} ${formatUsd(quote.previousClose)}`}
+                      {watchSignal?.summary || quote.name || `${t('quotesPrevCloseStock')} ${formatUsd(quote.previousClose)}`}
                     </Text>
                   </View>
                   <View style={styles.quoteRight}>

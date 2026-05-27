@@ -278,6 +278,33 @@ export function getOpenApiSpec() {
           },
         },
       },
+      '/v1/watch-signals': {
+        get: {
+          tags: ['public'],
+          summary: 'Rank watchlist symbols by current signal strength',
+          parameters: [
+            { name: 'symbols', in: 'query', required: true, schema: { type: 'string', example: 'AAPL,MSFT,NVDA' } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 24, default: 12 } },
+            { name: 'date', in: 'query', schema: { type: 'string', example: '2026-05-27' } },
+            { name: 'from', in: 'query', schema: { type: 'string', example: '2026-05-24T00:00:00.000Z' } },
+          ],
+          responses: {
+            200: {
+              description: 'OK',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      data: { type: 'array', items: { type: 'object' } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       '/v1/market-quotes': {
         get: {
           tags: ['public'],

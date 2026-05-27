@@ -131,6 +131,23 @@ export type SignalApiMarketQuote = {
   fetchedAt: string;
 };
 
+export type SignalApiWatchSignal = {
+  symbol: string;
+  score: number;
+  level: 'quiet' | 'watch' | 'hot' | string;
+  title: string;
+  summary: string;
+  reasonCodes: string[];
+  quote: SignalApiMarketQuote | null;
+  counts: {
+    news: number;
+    youtube: number;
+    insights: number;
+  };
+  nextEvent: SignalApiCalendarEvent | null;
+  sourceRefs: SignalApiInsightSourceRef[];
+};
+
 export type SignalApiCoinMarket = {
   id: string;
   provider: string;

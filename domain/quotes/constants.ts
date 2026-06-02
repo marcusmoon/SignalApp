@@ -1,5 +1,5 @@
 /** 시세 탭 상단 세그먼트 키·기본 순서 */
-export const QUOTES_SEGMENT_KEYS = ['watch', 'popular', 'mcap', 'coin'] as const;
+export const QUOTES_SEGMENT_KEYS = ['watch', 'popular', 'mcap', 'afterHours', 'coin'] as const;
 export type QuoteSegmentKey = (typeof QUOTES_SEGMENT_KEYS)[number];
 
 export const DEFAULT_QUOTES_SEGMENT_ORDER: QuoteSegmentKey[] = [...QUOTES_SEGMENT_KEYS];

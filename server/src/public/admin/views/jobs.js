@@ -68,6 +68,50 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources = []
       <strong>${esc(value || '-')}</strong>
     </div>
   `;
+  const paramsJson = JSON.stringify(job.params || {}, null, 2);
+  const afterHoursInstruments = Array.isArray(job.params?.instruments) ? job.params.instruments : [];
+  const afterHoursRows = [
+    ...afterHoursInstruments,
+    ...Array.from({ length: Math.max(1, 3 - afterHoursInstruments.length) }, () => ({})),
+  ];
+  const afterHoursEditor =
+    job.provider === 'hyperliquid' && job.handler === 'korea_after_hours'
+      ? `
+        <div class="jobSpecialEditor jobAfterHoursEditor">
+          <div class="jobSpecialEditorHead">
+            <div>
+              <strong>${esc(textFor('jobAfterHoursTitle'))}</strong>
+              <p class="muted">${esc(textFor('jobAfterHoursHint'))}</p>
+            </div>
+          </div>
+          <div class="jobAfterHoursMetaGrid">
+            <label>${esc(textFor('jobAfterHoursDex'))}<input data-job-after-dex="${esc(job.jobKey)}" value="${esc(job.params?.dex || '')}" placeholder="${esc(textFor('jobAfterHoursDexPh'))}" /></label>
+            <label>${esc(textFor('jobAfterHoursUsdKrw'))}<input data-job-after-usdkrw="${esc(job.jobKey)}" type="number" min="0" step="0.01" value="${esc(job.params?.fallbackUsdKrw || '')}" placeholder="1400" /></label>
+            <label class="jobAfterHoursNotice">${esc(textFor('jobAfterHoursNotice'))}<input data-job-after-notice="${esc(job.jobKey)}" value="${esc(job.params?.notice || '')}" /></label>
+          </div>
+          <div class="jobAfterHoursTable">
+            <div class="jobAfterHoursTableHead">
+              <span>${esc(textFor('jobAfterHoursSymbol'))}</span>
+              <span>${esc(textFor('jobAfterHoursName'))}</span>
+              <span>${esc(textFor('jobAfterHoursCandidates'))}</span>
+              <span>${esc(textFor('jobAfterHoursClose'))}</span>
+            </div>
+            ${afterHoursRows
+              .map(
+                (row) => `
+                  <div class="jobAfterHoursRow" data-job-after-row="${esc(job.jobKey)}">
+                    <input data-job-after-symbol="${esc(job.jobKey)}" value="${esc(row.symbol || '')}" placeholder="005930" />
+                    <input data-job-after-name="${esc(job.jobKey)}" value="${esc(row.name || '')}" placeholder="${esc(textFor('jobAfterHoursNamePh'))}" />
+                    <input data-job-after-candidates="${esc(job.jobKey)}" value="${esc(Array.isArray(row.candidates) ? row.candidates.join(', ') : row.hyperliquidSymbol || '')}" placeholder="SAMSUNG, 005930" />
+                    <input data-job-after-close="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(row.regularCloseKrw ?? '')}" placeholder="${esc(textFor('jobAfterHoursClosePh'))}" />
+                  </div>
+                `,
+              )
+              .join('')}
+          </div>
+        </div>
+      `
+      : '';
   const selectedRssIds = new Set(
     Array.isArray(job.params?.rssSourceIds)
       ? job.params.rssSourceIds.map(String)
@@ -104,20 +148,40 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources = []
         <strong>${esc(textFor('jobEditPanelTitle'))}</strong>
         <button class="secondary compactBtn" data-job-edit-close="${esc(job.jobKey)}">${esc(textFor('btnClose'))}</button>
       </div>
-      <div class="jobSettingsBody">
-        <label>${esc(textFor('jobLabelName'))} <input data-job-name="${esc(job.jobKey)}" value="${esc(jobDisplayName(job))}" placeholder="${esc(textFor('jobLabelNamePh'))}" /></label>
-        <label>${esc(textFor('jobLabelDesc'))} <input data-job-desc="${esc(job.jobKey)}" value="${esc(job.description || '')}" placeholder="${esc(textFor('jobLabelDescPh'))}" /></label>
-        <label>${esc(textFor('jobLabelIntervalSec'))} <input data-job-interval="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.intervalSeconds)}" /></label>
-        <label>${esc(textFor('jobLabelLockTtlSec'))} <input data-job-lock-ttl="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.lockTtlSeconds || '')}" placeholder="${esc(textFor('jobLabelLockTtlPh'))}" /></label>
-        <label>${esc(textFor('jobLabelStaleLockSec'))} <input data-job-stale-lock="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.staleLockSeconds || '')}" placeholder="${esc(textFor('jobLabelStaleLockPh'))}" /></label>
-        <label class="jobToggleField">${esc(textFor('jobLabelEnabled'))} <span><input type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/> ${esc(textFor('jobEnabledFlag'))}</span></label>
+      <div class="jobEditSection">
+        <div class="jobEditSectionHead">
+          <strong>${esc(textFor('jobEditBasicTitle'))}</strong>
+          <span>${esc(textFor('jobEditBasicHint'))}</span>
+        </div>
+        <div class="jobSettingsBody">
+          <label>${esc(textFor('jobLabelName'))} <input data-job-name="${esc(job.jobKey)}" value="${esc(jobDisplayName(job))}" placeholder="${esc(textFor('jobLabelNamePh'))}" /></label>
+          <label>${esc(textFor('jobLabelDesc'))} <input data-job-desc="${esc(job.jobKey)}" value="${esc(job.description || '')}" placeholder="${esc(textFor('jobLabelDescPh'))}" /></label>
+          <label>${esc(textFor('jobLabelIntervalSec'))} <input data-job-interval="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.intervalSeconds)}" /></label>
+          <label>${esc(textFor('jobLabelLockTtlSec'))} <input data-job-lock-ttl="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.lockTtlSeconds || '')}" placeholder="${esc(textFor('jobLabelLockTtlPh'))}" /></label>
+          <label>${esc(textFor('jobLabelStaleLockSec'))} <input data-job-stale-lock="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.staleLockSeconds || '')}" placeholder="${esc(textFor('jobLabelStaleLockPh'))}" /></label>
+          <label class="jobToggleField">${esc(textFor('jobLabelEnabled'))} <span><input type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/> ${esc(textFor('jobEnabledFlag'))}</span></label>
+        </div>
       </div>
-      <div class="jobReadonlyGrid">
-        ${readonlyValue('Provider', job.provider)}
-        ${readonlyValue('Handler', job.handler)}
-        ${readonlyValue('Operation', job.operation || 'latest')}
+      <div class="jobEditSection">
+        <div class="jobEditSectionHead">
+          <strong>${esc(textFor('jobEditSourceTitle'))}</strong>
+          <span>${esc(textFor('jobEditSourceHint'))}</span>
+        </div>
+        <div class="jobReadonlyGrid">
+          ${readonlyValue('Provider', job.provider)}
+          ${readonlyValue('Handler', job.handler)}
+          ${readonlyValue('Operation', job.operation || 'latest')}
+        </div>
+        ${rssSelector}
+        ${afterHoursEditor}
       </div>
-      ${rssSelector}
+      <details class="jobAdvancedParams">
+        <summary>${esc(textFor('jobParamsJson'))}</summary>
+        <label class="jobParamsField">
+          <textarea data-job-params-json="${esc(job.jobKey)}" rows="8" spellcheck="false">${esc(paramsJson)}</textarea>
+          <small class="muted">${esc(textFor('jobParamsJsonHint'))}</small>
+        </label>
+      </details>
       <div class="jobEditActions">
         <button data-job-save="${esc(job.jobKey)}" class="success">${esc(textFor('btnSave'))}</button>
       </div>
@@ -147,6 +211,29 @@ function jobLockText(job, textFor) {
 function jobForceUnlockButton(job, esc, textFor) {
   if (!job?.lock?.canForceUnlock) return '';
   return `<button class="warning compactBtn" data-job-force-unlock="${esc(job.jobKey)}">${esc(textFor('jobForceUnlock'))}</button>`;
+}
+
+function jobConfigSummary(job, rssSources, textFor) {
+  const params = job?.params && typeof job.params === 'object' ? job.params : {};
+  if (job.provider === 'rss') {
+    const ids = Array.isArray(params.rssSourceIds) ? params.rssSourceIds : params.rssSourceId ? [params.rssSourceId] : [];
+    const names = ids
+      .map((id) => (rssSources || []).find((source) => String(source.id) === String(id))?.name || id)
+      .filter(Boolean);
+    if (names.length > 0) {
+      const preview = names.slice(0, 2).join(', ');
+      return names.length > 2 ? textFor('jobConfigRssSummary').replace('{{count}}', names.length).replace('{{preview}}', preview) : preview;
+    }
+    return textFor('jobConfigNoRss');
+  }
+  if (job.provider === 'hyperliquid' && job.handler === 'korea_after_hours') {
+    const count = Array.isArray(params.instruments) ? params.instruments.filter(Boolean).length : 0;
+    return textFor('jobConfigAfterHoursSummary')
+      .replace('{{count}}', count)
+      .replace('{{usdkrw}}', params.fallbackUsdKrw ? String(params.fallbackUsdKrw) : '-');
+  }
+  const keys = Object.keys(params).filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '');
+  return keys.length > 0 ? textFor('jobConfigParamsSummary').replace('{{count}}', keys.length) : textFor('jobConfigNoParams');
 }
 
 function jobHealthClass(job) {
@@ -196,6 +283,7 @@ function renderJobCard({ job, selected, esc, textFor, jobDisplayName, operationB
   const lock = jobLockText(job, textFor);
   const lastRun = jobLastRunAt(job);
   const checked = selected.has(job.jobKey);
+  const configSummary = jobConfigSummary(job, rssSources, textFor);
   return `
     <article class="jobCard ${jobHealthClass(job)} ${checked ? 'jobCard--selected' : ''}">
       <div class="jobCardLine">
@@ -211,7 +299,7 @@ function renderJobCard({ job, selected, esc, textFor, jobDisplayName, operationB
             </div>
             <span class="pill ${job.enabled ? 'pillStatus--ok' : 'pillStatus--warn'}">${job.enabled ? esc(textFor('jobStatusEnabled')) : esc(textFor('jobStatusDisabled'))}</span>
           </div>
-          <div class="jobCardDesc">${esc(job.description || textFor('jobNoDescription'))}</div>
+          <button type="button" class="jobCardDesc jobCardEditTrigger" data-job-edit-open="${esc(job.jobKey)}">${esc(job.description || textFor('jobNoDescription'))}</button>
           <div class="jobCardBadges">
             ${operationBadge(job.operation)}
             ${domainBadge(job.domain)}
@@ -226,6 +314,10 @@ function renderJobCard({ job, selected, esc, textFor, jobDisplayName, operationB
           <div>
             <span>${esc(textFor('jobCardLastRun'))}</span>
             <strong>${esc(lastRun ? formatDateTime(lastRun) : textFor('jobCardNeverRun'))}</strong>
+          </div>
+          <div>
+            <span>${esc(textFor('jobConfigSummary'))}</span>
+            <strong>${esc(configSummary)}</strong>
           </div>
           ${
             lastRunStatus || lock

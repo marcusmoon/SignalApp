@@ -129,6 +129,9 @@ export type SignalApiMarketQuote = {
   marketCapitalization: number | null;
   quoteTime: string | null;
   fetchedAt: string;
+  sourceLabel?: string | null;
+  official?: boolean | null;
+  notice?: string | null;
 };
 
 export type SignalApiWatchSignal = {

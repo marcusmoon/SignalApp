@@ -498,6 +498,65 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
       .jobSettingsBody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 150px auto; gap: 8px; padding: 0 12px 12px; align-items: end; }
       .jobSettingsBody label { display: grid; gap: 5px; color: var(--muted); font-size: 11px; font-weight: 800; }
       .jobSettingsBody input { width: 100%; }
+      .jobParamsField { display: grid; gap: 7px; margin: 0 12px 12px; color: var(--muted); font-size: 11px; font-weight: 900; }
+      .jobParamsField textarea {
+        width: 100%;
+        min-height: 150px;
+        resize: vertical;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        font-weight: 700;
+        background: color-mix(in srgb, var(--bg-elevated) 72%, black);
+        border-color: color-mix(in srgb, var(--border) 84%, white 6%);
+      }
+      .jobSpecialEditor {
+        display: grid;
+        gap: 12px;
+        margin: 0 12px 12px;
+        padding: 12px;
+        border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border));
+        border-radius: var(--radius-md);
+        background: color-mix(in srgb, var(--accent) 5%, var(--bg-elevated));
+      }
+      .jobSpecialEditorHead { display: grid; gap: 4px; }
+      .jobSpecialEditorHead strong { color: var(--text); font-size: 13px; font-weight: 950; }
+      .jobSpecialEditorHead span { color: var(--muted); font-size: 11px; line-height: 1.45; font-weight: 750; }
+      .jobAfterHoursMetaGrid { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 8px; }
+      .jobAfterHoursMetaGrid label,
+      .jobAfterHoursNotice,
+      .jobAfterHoursRow label {
+        display: grid;
+        gap: 5px;
+        min-width: 0;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 850;
+      }
+      .jobAfterHoursNotice { grid-column: 1 / -1; }
+      .jobAfterHoursNotice textarea { min-height: 58px; resize: vertical; }
+      .jobAfterHoursTable { display: grid; gap: 6px; }
+      .jobAfterHoursTableHead,
+      .jobAfterHoursRow {
+        display: grid;
+        grid-template-columns: 94px minmax(110px, 0.8fr) minmax(170px, 1.3fr) 116px;
+        gap: 8px;
+        align-items: end;
+      }
+      .jobAfterHoursTableHead {
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 950;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        padding: 0 2px;
+      }
+      .jobAfterHoursRow {
+        padding: 8px;
+        border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+        border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+      }
       .title { font-weight: 800; margin: 8px 0 4px; line-height: 1.35; }
       .summary { color: var(--muted); line-height: 1.45; font-size: var(--text-12); }
       .pill { display: inline-block; padding: 2px 6px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 11px; }
@@ -7027,11 +7086,11 @@ body.adminShellV2 .jobCard {
 
 body.adminShellV2 .jobCardLine {
   display: grid;
-  grid-template-columns: auto minmax(280px, 1.8fr) minmax(260px, 1fr) minmax(220px, auto);
-  gap: 16px;
+  grid-template-columns: auto minmax(300px, 1.45fr) minmax(360px, 1.15fr) minmax(250px, auto);
+  gap: 14px;
   align-items: center;
   min-width: 0;
-  padding: 16px 18px;
+  padding: 14px 16px;
 }
 
 body.adminShellV2 .jobCardSelect {
@@ -7058,24 +7117,134 @@ body.adminShellV2 .jobCardDesc {
   min-height: 0;
 }
 
+body.adminShellV2 .jobCardEditTrigger {
+  appearance: none;
+  width: 100%;
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+body.adminShellV2 .jobCardEditTrigger:hover {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 body.adminShellV2 .jobCardFacts {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
+  gap: 8px;
 }
 
 body.adminShellV2 .jobCardActions {
   justify-content: flex-end;
   padding-top: 0;
+  gap: 6px;
+  flex-wrap: nowrap;
 }
 
 body.adminShellV2 .jobCardActions button {
   min-height: 34px;
-  padding-inline: 12px;
+  padding-inline: 10px;
+  white-space: nowrap;
 }
 
 body.adminShellV2 .jobCardEdit {
   margin: 0 18px 18px;
-  padding-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg-elevated) 78%, var(--bg));
+}
+
+body.adminShellV2 .jobEditPanel {
+  display: grid;
+  gap: 12px;
+}
+
+body.adminShellV2 .jobEditSection {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg) 48%, transparent);
+}
+
+body.adminShellV2 .jobEditSection .jobSettingsBody,
+body.adminShellV2 .jobEditSection .jobReadonlyGrid,
+body.adminShellV2 .jobEditSection .jobRssSourcePicker,
+body.adminShellV2 .jobEditSection .jobSpecialEditor {
+  margin: 0;
+}
+
+body.adminShellV2 .jobEditSection .jobSettingsBody {
+  padding: 0;
+}
+
+body.adminShellV2 .jobEditSectionHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+body.adminShellV2 .jobEditSectionHead strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+body.adminShellV2 .jobEditSectionHead span {
+  max-width: 520px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: right;
+}
+
+body.adminShellV2 .jobAdvancedParams {
+  margin: 0 12px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg) 42%, transparent);
+}
+
+body.adminShellV2 .jobAdvancedParams summary {
+  cursor: pointer;
+  padding: 11px 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 950;
+  list-style: none;
+}
+
+body.adminShellV2 .jobAdvancedParams summary::-webkit-details-marker {
+  display: none;
+}
+
+body.adminShellV2 .jobAdvancedParams summary::after {
+  content: '열기';
+  float: right;
+  color: var(--accent);
+}
+
+body.adminShellV2 .jobAdvancedParams[open] summary::after {
+  content: '닫기';
+}
+
+body.adminShellV2 .jobAdvancedParams .jobParamsField {
+  margin: 0 12px 12px;
 }
 
 @media (max-width: 1180px) {
@@ -7086,6 +7255,7 @@ body.adminShellV2 .jobCardEdit {
 
   body.adminShellV2 .jobCardActions {
     justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }
 
@@ -7100,5 +7270,28 @@ body.adminShellV2 .jobCardEdit {
 
   body.adminShellV2 .jobCardFacts {
     grid-template-columns: 1fr;
+  }
+
+  body.adminShellV2 .jobEditSectionHead {
+    display: grid;
+  }
+
+  body.adminShellV2 .jobEditSectionHead span {
+    max-width: none;
+    text-align: left;
+  }
+
+  body.adminShellV2 .jobAfterHoursMetaGrid,
+  body.adminShellV2 .jobAfterHoursTableHead,
+  body.adminShellV2 .jobAfterHoursRow {
+    grid-template-columns: 1fr;
+  }
+
+  body.adminShellV2 .jobAfterHoursTableHead {
+    display: none;
+  }
+
+  body.adminShellV2 .jobParamsField textarea {
+    min-height: 120px;
   }
 }

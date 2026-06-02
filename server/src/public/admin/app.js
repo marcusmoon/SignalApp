@@ -1268,13 +1268,15 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             );
             return;
           }
-          if (target?.dataset?.jobEditOpen) {
-            const key = target.dataset.jobEditOpen;
+          const jobEditOpenTarget = target?.closest?.('[data-job-edit-open]');
+          if (jobEditOpenTarget) {
+            const key = jobEditOpenTarget.dataset.jobEditOpen;
             document.querySelectorAll(`[data-job-edit-row="${esc(key)}"]`).forEach((row) => row.classList.toggle('hidden'));
             return;
           }
-          if (target?.dataset?.jobEditClose) {
-            const key = target.dataset.jobEditClose;
+          const jobEditCloseTarget = target?.closest?.('[data-job-edit-close]');
+          if (jobEditCloseTarget) {
+            const key = jobEditCloseTarget.dataset.jobEditClose;
             document.querySelectorAll(`[data-job-edit-row="${esc(key)}"]`).forEach((row) => row.classList.add('hidden'));
             return;
           }
@@ -1552,8 +1554,66 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
               const raw = String(scope.querySelector(selector)?.value || '').trim();
               return raw ? Number(raw) : null;
             };
+            const numberOrNull = (value) => {
+              const raw = String(value ?? '').trim();
+              if (!raw) return null;
+              const n = Number(raw);
+              return Number.isFinite(n) ? n : null;
+            };
+            let paramsPatch = null;
+            let hasParamsPatch = false;
+            const paramsText = String(scope.querySelector(`[data-job-params-json="${key}"]`)?.value || '').trim();
+            if (paramsText) {
+              try {
+                const parsed = JSON.parse(paramsText);
+                if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('BAD_PARAMS');
+                paramsPatch = parsed;
+                hasParamsPatch = true;
+              } catch {
+                showToast(textFor('jobParamsInvalidTitle'), textFor('jobParamsInvalidBody'), { kind: 'error' });
+                return;
+              }
+            }
             const rssSourceIds = [...scope.querySelectorAll(`[data-job-rss-source="${key}"]:checked`)].map((input) => input.value).filter(Boolean);
-            const paramsPatch = rssSourceIds.length > 0 ? { rssSourceId: rssSourceIds[0], rssSourceIds } : null;
+            if (rssSourceIds.length > 0) {
+              paramsPatch = {
+                ...((state.jobs || []).find((job) => job.jobKey === key)?.params || {}),
+                ...(paramsPatch || {}),
+                rssSourceId: rssSourceIds[0],
+                rssSourceIds,
+              };
+              hasParamsPatch = true;
+            }
+            const afterRows = [...scope.querySelectorAll(`[data-job-after-row="${key}"]`)];
+            if (afterRows.length > 0) {
+              const instruments = afterRows
+                .map((row) => {
+                  const symbol = String(row.querySelector(`[data-job-after-symbol="${key}"]`)?.value || '').trim().toUpperCase();
+                  const name = String(row.querySelector(`[data-job-after-name="${key}"]`)?.value || '').trim();
+                  const candidates = String(row.querySelector(`[data-job-after-candidates="${key}"]`)?.value || '')
+                    .split(',')
+                    .map((item) => item.trim())
+                    .filter(Boolean);
+                  const regularCloseKrw = numberOrNull(row.querySelector(`[data-job-after-close="${key}"]`)?.value);
+                  if (!symbol && !name && candidates.length === 0 && regularCloseKrw == null) return null;
+                  return {
+                    symbol,
+                    name,
+                    candidates,
+                    regularCloseKrw,
+                  };
+                })
+                .filter(Boolean);
+              paramsPatch = {
+                ...((state.jobs || []).find((job) => job.jobKey === key)?.params || {}),
+                ...(paramsPatch || {}),
+                dex: String(scope.querySelector(`[data-job-after-dex="${key}"]`)?.value || '').trim(),
+                fallbackUsdKrw: numberOrNull(scope.querySelector(`[data-job-after-usdkrw="${key}"]`)?.value),
+                notice: String(scope.querySelector(`[data-job-after-notice="${key}"]`)?.value || '').trim(),
+                instruments,
+              };
+              hasParamsPatch = true;
+            }
             await api(`/admin/api/jobs/${encodeURIComponent(key)}`, {
               method: 'PATCH',
               body: JSON.stringify({
@@ -1563,7 +1623,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                 intervalSeconds: Number(scope.querySelector(`[data-job-interval="${key}"]`).value),
                 lockTtlSeconds: optionalNumber(`[data-job-lock-ttl="${key}"]`),
                 staleLockSeconds: optionalNumber(`[data-job-stale-lock="${key}"]`),
-                ...(paramsPatch ? { params: { ...((state.jobs || []).find((job) => job.jobKey === key)?.params || {}), ...paramsPatch } } : {}),
+                ...(hasParamsPatch ? { params: paramsPatch || {} } : {}),
               }),
             });
             await Promise.all([loadJobs(), loadDashboard()]);

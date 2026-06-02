@@ -310,7 +310,15 @@ export function getOpenApiSpec() {
           tags: ['public'],
           summary: 'List market quotes',
           parameters: [
-            { name: 'segment', in: 'query', schema: { type: 'string', example: 'popular' } },
+            {
+              name: 'segment',
+              in: 'query',
+              schema: {
+                type: 'string',
+                enum: ['watch', 'popular', 'mcap', 'kr_after_hours'],
+                example: 'popular',
+              },
+            },
             { name: 'symbols', in: 'query', schema: { type: 'string', example: 'AAPL,MSFT' } },
             {
               name: 'refresh',

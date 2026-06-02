@@ -111,6 +111,9 @@ function publicMarketQuote(item) {
     marketCapitalization: item.marketCapitalization ?? null,
     quoteTime: item.quoteTime || null,
     fetchedAt: item.fetchedAt,
+    sourceLabel: item.sourceLabel || null,
+    official: item.official === false ? false : item.official === true ? true : null,
+    notice: item.notice || null,
   };
 }
 

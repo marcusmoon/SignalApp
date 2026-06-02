@@ -38,11 +38,12 @@ export function clearMcapSymbolsOrderCache(): void {
 }
 
 export function buildQuotesCacheKey(
-  segment: 'watch' | 'popular' | 'mcap' | 'coin',
+  segment: 'watch' | 'popular' | 'mcap' | 'afterHours' | 'coin' | 'kr_after_hours',
   symbolsSorted: readonly string[],
   coinLimit?: number,
 ): string {
   if (segment === 'coin') return `coin|n${coinLimit ?? 20}`;
+  if (segment === 'afterHours' || segment === 'kr_after_hours') return `afterHours|${[...symbolsSorted].join(',')}`;
   if (segment === 'watch') return `watch|v2|${[...symbolsSorted].join(',')}`;
   return `${segment}|${[...symbolsSorted].join(',')}`;
 }

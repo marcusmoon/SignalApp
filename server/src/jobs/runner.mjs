@@ -13,6 +13,7 @@ import { mergeAutoHashtagsIntoNewsItem } from '../newsHashtags.mjs';
 import { fetchNinjasConcallTranscript } from '../providers/concalls/ninjas.mjs';
 import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
+import { fetchHyperliquidKoreaAfterHours } from '../providers/market/hyperliquidKorea.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes } from '../providers/market/index.mjs';
 import { generateMarketInsights } from '../insights/rules.mjs';
 import { notificationsFromInsights, upsertNotificationItem } from '../notifications/outbox.mjs';
@@ -287,6 +288,9 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
   }
   if (job.provider === 'coingecko' && job.handler === 'coin_markets') {
     return { kind: 'coinMarkets', rows: await fetchCoinGeckoMarkets(job.params || {}) };
+  }
+  if (job.provider === 'hyperliquid' && job.handler === 'korea_after_hours') {
+    return { kind: 'marketQuotes', rows: await fetchHyperliquidKoreaAfterHours(job.params || {}) };
   }
   if (job.provider === 'signal' && job.handler === 'market_insights') {
     return { kind: 'insights', rows: generateMarketInsights(dbBefore, job.params || {}) };

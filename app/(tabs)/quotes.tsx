@@ -81,6 +81,7 @@ const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
   popular: 'quotesSegmentPopular',
   mcap: 'quotesSegmentMcap',
+  afterHours: 'quotesSegmentAfterHours',
   coin: 'quotesSegmentCoin',
 };
 
@@ -107,6 +108,17 @@ function formatUsdChange(n: number): string {
   if (n === 0) return '$0.00';
   const sign = n > 0 ? '+' : '-';
   return `${sign}$${formatUsdBody(Math.abs(n))}`;
+}
+
+function formatKrw(n: number): string {
+  if (!Number.isFinite(n)) return '—';
+  return `₩${Math.round(Math.abs(n)).toLocaleString('ko-KR')}`;
+}
+
+function formatKrwChange(n: number): string {
+  if (!Number.isFinite(n)) return '—';
+  if (n === 0) return '₩0';
+  return `${n > 0 ? '+' : '-'}₩${Math.round(Math.abs(n)).toLocaleString('ko-KR')}`;
 }
 
 /** 일부 quote 응답에서 `dp` 누락 가능 — `toFixed` 직접 호출 금지 */
@@ -222,6 +234,22 @@ export default function QuotesScreen() {
         setRows([]);
         setError(formatSignalApiError(e, t, 'quotesErrorLoadCoin'));
       }
+      return;
+    }
+
+    if (segment === 'afterHours') {
+      const limit = 30;
+      const cacheKey = buildQuotesCacheKey('kr_after_hours', [`n${limit}`]);
+      if (!forceRefresh) {
+        const hit = peekQuotes(cacheKey);
+        if (hit) {
+          setRows(hit.rows);
+          return;
+        }
+      }
+      const list = (await fetchSignalMarketQuotes({ segment: 'kr_after_hours', limit })).map(mapSignalQuoteToRow);
+      setRows(list);
+      storeQuotes(cacheKey, list);
       return;
     }
 
@@ -373,6 +401,7 @@ export default function QuotesScreen() {
     (r: Row) => {
       const sym = r.symbol?.trim();
       if (!sym || sym === '—') return;
+      if (segment === 'afterHours') return;
       void openYahooFinanceQuote(sym, segment === 'coin' ? 'coin' : 'stock');
     },
     [segment],
@@ -381,7 +410,7 @@ export default function QuotesScreen() {
   const openSymbolDetail = useCallback(
     (symbol: string) => {
       const trimmed = symbol.trim().toUpperCase();
-      if (!trimmed || trimmed === '—' || segment === 'coin') return;
+      if (!trimmed || trimmed === '—' || segment === 'coin' || segment === 'afterHours') return;
       router.push(`/symbol/${trimmed}`);
     },
     [router, segment],
@@ -477,6 +506,7 @@ export default function QuotesScreen() {
       const yahooEnabled = symTrim.length > 0 && symTrim !== '—';
       const watchSwipe = segment === 'watch' && Platform.OS !== 'web';
       const watchRemoveIcon = segment === 'watch' && Platform.OS === 'web';
+      const isKoreaAfterHours = segment === 'afterHours';
 
       const cardInner = (
         <>
@@ -489,7 +519,7 @@ export default function QuotesScreen() {
                       {r.symbol}
                     </Text>
                   </Pressable>
-                  {yahooEnabled ? (
+                  {yahooEnabled && !isKoreaAfterHours ? (
                     <Pressable
                       onPress={() => openYahooFinance(r)}
                       style={({ pressed }) => [styles.yahooInline, pressed && styles.yahooInlinePressed]}
@@ -508,13 +538,13 @@ export default function QuotesScreen() {
                 </View>
                 {r.quote ? (
                   <Text style={styles.symPrev} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                    {segment === 'coin' ? t('quotesPrevRefCoin') : t('quotesPrevCloseStock')}{' '}
-                    {formatUsd(Number(r.quote.previousClose))}
+                    {isKoreaAfterHours ? t('quotesPrevCloseKrw') : segment === 'coin' ? t('quotesPrevRefCoin') : t('quotesPrevCloseStock')}{' '}
+                    {isKoreaAfterHours ? formatKrw(Number(r.quote.previousClose)) : formatUsd(Number(r.quote.previousClose))}
                   </Text>
                 ) : null}
-                {segment === 'coin' && r.name ? (
+                {(segment === 'coin' || isKoreaAfterHours) && r.name ? (
                   <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                    {r.name}
+                    {isKoreaAfterHours ? (r.quote?.sourceLabel || t('quotesAfterHoursSource')) : r.name}
                   </Text>
                 ) : null}
               </View>
@@ -523,7 +553,7 @@ export default function QuotesScreen() {
               <View style={styles.priceRow}>
                 {r.quote ? (
                   <Text style={styles.price} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                    {formatUsd(Number(r.quote.currentPrice))}
+                    {isKoreaAfterHours ? formatKrw(Number(r.quote.currentPrice)) : formatUsd(Number(r.quote.currentPrice))}
                   </Text>
                 ) : (
                   <Text style={styles.na}>—</Text>
@@ -544,7 +574,7 @@ export default function QuotesScreen() {
                   style={[styles.chg, quoteChange.isPositive(r.quote) ? styles.chgUp : styles.chgDn]}
                   numberOfLines={1}
                   maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                  {formatUsdChange(Number(r.quote.change ?? 0))} ({formatQuoteDpPct(r.quote.changePercent)})
+                  {isKoreaAfterHours ? formatKrwChange(Number(r.quote.change ?? 0)) : formatUsdChange(Number(r.quote.change ?? 0))} ({formatQuoteDpPct(r.quote.changePercent)})
                 </Text>
               ) : null}
             </View>
@@ -615,7 +645,7 @@ export default function QuotesScreen() {
           <View style={styles.segment}>
             {segmentOrder.map((key) => (
               <Fragment key={key}>
-                {key === 'coin' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
+                {(key === 'afterHours' || key === 'coin') ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
                 <Pressable
                   onPress={() => {
                     if (segment === key) return;
@@ -624,7 +654,7 @@ export default function QuotesScreen() {
                     setError(null);
                     setSegment(key);
                   }}
-                  style={[styles.segBtn, key === 'coin' && styles.segBtnCoin, segment === key && styles.segBtnActive]}
+                  style={[styles.segBtn, (key === 'afterHours' || key === 'coin') && styles.segBtnCompact, segment === key && styles.segBtnActive]}
                   accessibilityState={{ selected: segment === key }}>
                   <Text style={[styles.segText, segment === key && styles.segTextActive]}>
                     {t(QUOTE_SEGMENT_LABEL[key])}
@@ -716,7 +746,7 @@ function makeStyles(
       alignItems: 'center',
       justifyContent: 'center',
     },
-    segBtnCoin: {
+    segBtnCompact: {
       flex: 0.86,
     },
     segmentDivider: {

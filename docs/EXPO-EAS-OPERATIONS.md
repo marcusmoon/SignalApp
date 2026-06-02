@@ -124,9 +124,7 @@ npm run web:export
 배포 build command 예시:
 
 ```bash
-npm install
-npm run web:export
-npm --prefix server install
+npm run railway:build
 ```
 
 start command는 기존과 동일하다.
@@ -136,6 +134,8 @@ npm --prefix server run start
 ```
 
 웹 bundle에 들어가는 API 기본 주소는 `EXPO_PUBLIC_SIGNAL_API_BASE_URL`을 사용한다. 같은 서버의 `/v1/*`를 호출하려면 이 값을 배포 origin에 맞춰 설정한다.
+
+현재 저장소의 `railway.json`은 위 build/start command를 명시한다. Railway 서비스 화면에서 build/start command를 수동 override하고 있다면 `railway.json`보다 override가 우선될 수 있으므로 기존 override를 제거하거나 동일한 값으로 맞춘다.
 
 스토어/운영:
 

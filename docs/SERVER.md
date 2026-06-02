@@ -58,6 +58,8 @@ npm run web:export
 
 생성 위치는 `server/src/public/web`이며 서버는 `/web`, `/web/*`, Expo asset 경로 `/_expo/*`를 이 bundle에서 서빙한다. Railway에서 root 저장소 기준으로 빌드한다면 build command에 `npm install && npm run web:export && npm --prefix server install` 흐름을 포함하고, start command는 기존처럼 `npm --prefix server run start`를 사용한다. 앱의 웹 번들 기본 API 주소는 빌드 시점의 `EXPO_PUBLIC_SIGNAL_API_BASE_URL`을 따른다.
 
+이 저장소에는 `railway.json`이 포함되어 있어 Railway가 Nixpacks build에서 `npm run railway:build`를 실행한다. `/web`에서 `WEB_BUNDLE_NOT_BUILT`가 보이면 배포가 최신 commit인지, Railway가 repo root의 `railway.json`을 사용 중인지, 서비스별 override build command가 기존 값으로 남아 있지 않은지 확인한다.
+
 ## 2. 서버 환경 변수
 
 초기 설정:

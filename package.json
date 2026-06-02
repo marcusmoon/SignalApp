@@ -12,6 +12,7 @@
     "web": "expo start --web",
     "web:export": "expo export --platform web --output-dir server/src/public/web",
     "server:build-with-web": "npm run web:export && npm --prefix server install",
+    "railway:build": "npm run web:export && npm --prefix server install",
     "generate:splash": "node scripts/generateNativeSplash.mjs",
     "server:dev": "npm --prefix server run dev",
     "server:worker": "npm --prefix server run worker"

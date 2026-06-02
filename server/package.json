@@ -9,7 +9,9 @@
   "scripts": {
     "dev": "node --disable-warning=ExperimentalWarning src/server.mjs",
     "start": "node --disable-warning=ExperimentalWarning src/server.mjs",
-    "worker": "node --disable-warning=ExperimentalWarning src/worker.mjs"
+    "worker": "node --disable-warning=ExperimentalWarning src/worker.mjs",
+    "railway:build": "npm install",
+    "railway:start": "npm run start"
   },
   "dependencies": {
     "jose": "^5.10.0"

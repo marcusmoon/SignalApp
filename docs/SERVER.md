@@ -1,275 +1,62 @@
-# SIGNAL — 서버·스케줄러·운영
+# Signal Server 운영
 
-Signal API 서버는 외부 API 데이터를 수집·정규화·번역·인사이트화한 뒤 앱과 어드민에 제공한다. 로컬에서는 API/어드민/스케줄러를 한 프로세스로 실행할 수 있고, 운영에서는 API와 worker를 분리한다.
-
-## 1. 실행 구성
-
-로컬 개발에서는 아래 명령 하나로 **API + 어드민 + 스케줄러**가 같이 뜬다.
+## 실행
 
 ```bash
 npm run server:dev
+npm --prefix server run start
+npm --prefix server run worker
 ```
 
-서버는 Node 내장 SQLite를 사용하므로 Node 24 런타임을 전제로 한다.
+## 주요 환경 변수
 
-열리는 주소:
+| 변수 | 설명 |
+|---|---|
+| `DATA_DIR` | SQLite와 서버 런타임 데이터 위치 |
+| `HOST` | 서버 bind host |
+| `PORT` | 서버 port |
+| `ADMIN_USERS` | 초기 Admin 사용자 JSON |
+| `SIGNAL_JWT_PRIVATE_KEY` | 앱 사용자 JWT private key PEM |
+| `SIGNAL_JWT_PRIVATE_KEY_B64` | 앱 사용자 JWT private key base64 |
+| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | LLM provider 키 |
+| `YOUTUBE_API_KEY` | YouTube 수집 키 |
+| `NINJAS_API_KEY` | 컨콜 등 Ninjas provider 키 |
 
-| 항목 | 주소 |
-|------|------|
-| Health | `http://127.0.0.1:4000/health` |
-| Admin | `http://127.0.0.1:4000/admin` |
-| Web Client | `http://127.0.0.1:4000/web` |
-| News API | `http://127.0.0.1:4000/v1/news?locale=ko&category=global` |
-| Calendar API | `http://127.0.0.1:4000/v1/calendar` |
-| YouTube API | `http://127.0.0.1:4000/v1/youtube` |
-| Market Quotes API | `http://127.0.0.1:4000/v1/market-quotes?segment=popular` |
-| Coins API | `http://127.0.0.1:4000/v1/coins` |
-| Market Lists API | `http://127.0.0.1:4000/v1/market-lists/mega_cap` |
-| Stock Profile API | `http://127.0.0.1:4000/v1/stock-profile?symbol=AAPL` |
-| Stock Candles API | `http://127.0.0.1:4000/v1/stock-candles?symbol=AAPL&resolution=D` |
-| Concalls API | `http://127.0.0.1:4000/v1/concalls?symbol=AAPL` |
-| Insights API | `http://127.0.0.1:4000/v1/insights` |
-| App Auth API | `http://127.0.0.1:4000/v1/auth/register`, `/v1/auth/login`, `/v1/auth/me` |
-| App Notifications API | `http://127.0.0.1:4000/v1/notifications` |
-| Admin App Users API | `/admin/api/app-users`, `/admin/api/app-users/:id/notifications` |
+## API 그룹
 
-어드민 로그인 계정은 SQLite `admin_users` 테이블에 저장됩니다. `ADMIN_USERS` 환경 변수는 `admin_users`가 비어 있을 때만 초기 seed로 사용합니다. 한 줄 JSON 배열로 계정을 넣습니다.
+| 그룹 | 경로 |
+|---|---|
+| 공개 | `/v1/news`, `/v1/youtube`, `/v1/market-quotes`, `/v1/calendar`, `/v1/insights` |
+| 인증 | `/v1/auth/*`, `/v1/notifications`, `/v1/legal/terms` |
+| Admin | `/admin/api/*` |
 
-```env
-ADMIN_USERS=[{"id":"you","password":"secret"}]
-```
+## Job 운영
 
-Railway 등에서는 Variable 값에 그대로 넣거나, UI에서 따옴표 이스케이프 규칙에 맞게 입력합니다.
+Admin에서 Job을 등록하고 실행한다. Job 설정에는 provider, schedule, params, lock TTL이 포함된다. 실행 이력은 Admin에서 상태, 시작/종료 시각, 실패 사유, lock 상태를 확인한다.
 
-운영 권장 구성:
+주요 Job:
 
-| 서비스 | 실행 | 주요 변수 |
-|--------|------|-----------|
-| API | `npm --prefix server run start` | `SIGNAL_SCHEDULER_ENABLED=false` |
-| Worker | `npm run server:worker` | `SIGNAL_SCHEDULER_ENABLED=true`, 필요 시 `SIGNAL_NOTIFICATION_SENDER_ENABLED=true` |
+- 뉴스 RSS 수집
+- YouTube 최신/인기 수집
+- 투자 캘린더 수집
+- 컨콜 수집
+- 오늘의 시그널 생성
+- 번역/보정
 
-두 서비스는 같은 `DATA_DIR` 또는 `SQLITE_DB_PATH`를 바라봐야 한다. Railway에서는 같은 volume mount 경로를 지정한다.
+## SQLite 운영
 
-웹 클라이언트를 API 서버와 함께 배포하려면 배포 build 단계에서 Expo web export를 생성한다.
+- 운영 파일은 `DATA_DIR/signal.sqlite` 기준이다.
+- WAL 모드를 사용한다.
+- public API가 자주 조회하는 날짜, 타입, 심볼, 생성시각 컬럼에는 인덱스를 둔다.
+- 중복 가능성이 큰 캘린더/뉴스는 저장 시 정규화 키를 유지하고 공개 API에서 최종 중복 제거를 적용한다.
+
+## 배포
+
+Railway 빌드:
 
 ```bash
-npm run web:export
+npm run railway:build
+npm run railway:start
 ```
 
-생성 위치는 `server/src/public/web`이며 서버는 `/web`, `/web/*`, Expo asset 경로 `/_expo/*`를 이 bundle에서 서빙한다. Railway에서 root 저장소 기준으로 빌드한다면 build command에 `npm install && npm run web:export && npm --prefix server install` 흐름을 포함하고, start command는 기존처럼 `npm --prefix server run start`를 사용한다. 앱의 웹 번들 기본 API 주소는 빌드 시점의 `EXPO_PUBLIC_SIGNAL_API_BASE_URL`을 따른다.
-
-이 저장소에는 `railway.json`이 포함되어 있어 Railway가 Nixpacks build에서 `npm run railway:build`를 실행한다. `/web`에서 `WEB_BUNDLE_NOT_BUILT`가 보이면 배포가 최신 commit인지, Railway가 repo root의 `railway.json`을 사용 중인지, 서비스별 override build command가 기존 값으로 남아 있지 않은지 확인한다.
-
-## 2. 서버 환경 변수
-
-초기 설정:
-
-```bash
-cp server/.env.example server/.env
-```
-
-중요 변수:
-
-| 변수 | 용도 |
-|------|------|
-| `PORT` / `HOST` | 로컬 서버 바인딩 (`127.0.0.1:4000`) |
-| `SIGNAL_CORS_ORIGINS` | 선택. **브라우저·Expo Web**에서 다른 origin으로 Signal API(`/v1/*`, `/health`)를 호출할 때 필요한 CORS. 쉼표로 구분한 **정확한 Origin** 목록(예: `https://app.example.com,https://staging.example.com`). 비우면 `localhost` / `127.0.0.1` / `[::1]`의 http(s) Origin만 허용한다. LAN IP로 웹을 띄우면 여기에 해당 Origin을 넣는다. |
-| `DATA_DIR` | 서버 데이터 디렉터리. Railway 볼륨 마운트 경로를 지정하면 SQLite 파일도 여기에 저장 |
-| `SQLITE_DB_PATH` | 선택. SQLite 파일 경로. 비우면 `${DATA_DIR}/signal.sqlite` |
-| `SIGNAL_SCHEDULER_ENABLED` | 선택. 기본 `true`. API 전용 Railway 서비스에서는 `false`, worker 서비스에서는 `true` |
-| `SIGNAL_NOTIFICATION_SENDER_ENABLED` | 선택. 기본 `false`. worker에서 알림 outbox push 발송을 처리할 때 `true` |
-| `SIGNAL_NOTIFICATION_PUSH_PROVIDER` | 선택. 기본 `mock`. `expo`로 설정하면 Expo Push API 발송 |
-| `SIGNAL_NOTIFICATION_SENDER_INTERVAL_MS` | 선택. 기본 `15000`. outbox sender 실행 주기 |
-| `SIGNAL_NOTIFICATION_SENDER_BATCH_SIZE` | 선택. 기본 `20`. 한 번에 claim할 push 알림 수 |
-| `SIGNAL_SLOW_REQUEST_MS` | 선택. 기본 `1200`. 이 시간 이상 걸린 요청은 `[http:slow]`로 로그 |
-| `SIGNAL_VERY_SLOW_REQUEST_MS` | 선택. 기본 `5000`. 이 시간 이상 걸린 요청은 `[http:very-slow]`로 로그 |
-| `SIGNAL_HTTP_LOG_ALL` | 선택. 기본 `false`. `true`면 정상 요청도 모두 로그. 운영 기본은 느린 요청/오류만 로그 |
-| `SIGNAL_JOB_LOCK_TTL_MS` | 선택. 기본 `7200000`(2시간). worker/API 중복 실행 방지용 SQLite Job lock TTL |
-| `ADMIN_USERS` | 선택 초기 seed. SQLite `admin_users`가 비어 있을 때만 넣는 어드민 계정 JSON 배열 `[{"id","password"},…]` |
-| `FINNHUB_TOKEN` | 선택 seed/fallback. 가능하면 어드민 설정에서 입력 |
-| `YOUTUBE_API_KEY` | 선택 seed/fallback. 가능하면 어드민 설정에서 입력 |
-| `NINJAS_KEY` | 선택 seed/fallback. 컨콜 트랜스크립트 수집용 |
-| `TRANSLATION_PROVIDER` | 선택 seed/fallback (`mock` / `openai` / `claude`) |
-| `TRANSLATION_MODEL` | 선택 seed/fallback 번역 모델 이름 |
-| `SIGNAL_JWT_PRIVATE_KEY_B64` | 앱 사용자 JWT access token 발급용 RSA private key. 운영 필수 |
-| `SIGNAL_JWT_ISSUER` / `SIGNAL_JWT_AUDIENCE` | 선택. 앱 JWT 검증 issuer/audience |
-| `SIGNAL_JWT_ACCESS_TTL_SEC` / `SIGNAL_JWT_REFRESH_TTL_DAYS` | 선택. access/refresh 세션 수명 |
-
-로컬 운영에서는 `.env`에 외부 API 키를 넣지 않아도 됩니다. **Admin > 설정 > 외부 API 키**에서 Finnhub/OpenAI/Claude/YouTube/Ninjas 키를 저장하면 다음 호출부터 바로 사용합니다. 화면에는 전체 키를 노출하지 않고 마스킹해서 표시합니다. 앱 사용자 로그인은 JWT key가 없으면 일부 경로가 비활성화되므로 운영에서는 `SIGNAL_JWT_PRIVATE_KEY_B64`를 반드시 설정합니다.
-
-`.env` 값은 새 로컬 DB를 만들 때 초기값으로 seed하거나, 아직 어드민 설정이 없을 때 fallback으로 쓰기 위한 용도입니다.
-
-번역 provider seed 예시:
-
-```env
-# 비용 없이 UI 흐름만 확인
-TRANSLATION_PROVIDER=mock
-TRANSLATION_MODEL=mock-ko-news-v1
-
-# OpenAI 사용
-OPENAI_API_KEY=...
-TRANSLATION_PROVIDER=openai
-TRANSLATION_MODEL=gpt-4o-mini
-
-# Claude 사용
-ANTHROPIC_API_KEY=...
-TRANSLATION_PROVIDER=claude
-TRANSLATION_MODEL=claude-3-5-haiku-latest
-```
-
-어드민의 **번역 설정** 메뉴에서도 locale별 provider/model/자동 번역 여부를 바꿀 수 있습니다. 번역 실패는 `news_translations`에 `failed` 상태로 남아 뉴스 관리에서 필터링할 수 있습니다.
-
-앱 루트 `.env`에는 Signal 서버 주소의 **번들 기본값**만 둡니다. Finnhub/OpenAI/Claude/YouTube/CoinGecko/Ninjas 등 외부 provider 키는 서버/Admin에서 관리합니다.
-
-## 3. 앱에서 로컬 서버 보기
-
-앱 루트 `.env`:
-
-```env
-EXPO_PUBLIC_SIGNAL_API_BASE_URL=http://127.0.0.1:4000
-```
-
-이 값은 앱 설정의 **Signal 서버** 선택에서 `빌드(.env)` 모드일 때 쓰는 기본값입니다. 앱에서는 `bundle / dev / real / custom` 모드를 저장할 수 있고, 저장 위치는 `services/signalServerEndpoint.ts`의 AsyncStorage 키입니다.
-
-Metro 재시작:
-
-```bash
-npx expo start -c
-```
-
-기기별 주의:
-
-| 실행 환경 | API Base URL |
-|-----------|--------------|
-| iOS Simulator | `http://127.0.0.1:4000` |
-| Android Emulator | `http://10.0.2.2:4000` |
-| 실제 기기 | Mac의 LAN IP 예: `http://192.168.x.x:4000` |
-
-## 4. 데이터 수집 흐름
-
-어드민 `수집 Job`에서:
-
-- `Run`: 해당 job을 즉시 1회 실행
-- `Enabled` 체크 + `Save`: 서버가 켜져 있는 동안 주기 실행
-- `Interval` 수정 + `Save`: 자동 실행 주기 변경
-- `실행 이력`: 수동/스케줄 실행 이력을 날짜·상태·타입·실행방식·키워드로 필터링
-- `실행 모니터링`: 실행 중/멈춤 의심/주기 초과/최근 실패를 함께 보고, 실행 중 job의 진행률·경과 시간·마지막 진행 신호를 확인
-
-현재 기본 job:
-
-| job | 내용 |
-|-----|------|
-| `market_news_global` | 글로벌 뉴스 최신 수집 |
-| `market_news_crypto` | 코인 뉴스 최신 수집 |
-| `market_news_global_reconcile` | 글로벌 뉴스 보정 수집 |
-| `market_news_crypto_reconcile` | 코인 뉴스 보정 수집 |
-| `market_news_financial_juice` | Financial Juice RSS 최신 수집 |
-| `market_news_financial_juice_reconcile` | Financial Juice RSS 보정 수집 |
-| `market_news_globenewswire_earnings` | `rss_sources`의 뉴스와이어 실적 RSS 수집 |
-| `calendar_economic` | 경제 캘린더 최신 수집 |
-| `calendar_earnings` | 실적 캘린더 최신 수집 |
-| `youtube_economy_latest` | 경제 유튜브 최신 영상 수집 |
-| `calendar_economic_reconcile` | 최근 과거~미래 경제지표 보정 수집 |
-| `calendar_earnings_reconcile` | 실적 발표 전후 보정 수집 |
-| `concall_transcripts_recent` | 최근 실적 캘린더 기반 컨콜 트랜스크립트 수집 |
-| `youtube_economy_reconcile` | 저장된 유튜브 영상 상세/조회수 보정 수집 |
-| `market_quotes_popular` | 인기 시세 최신 수집 |
-| `market_quotes_watchlist` | 기본 관심종목 시세 수집 |
-| `market_quotes_mcap` | 시총 상위 시세 수집 |
-| `market_coins_top` | 코인 시총 상위 수집 |
-| `insights_market_brief` | 수집 데이터 기반 시장 인사이트 생성 |
-
-RSS 뉴스 Job은 `params.rssSourceId` 또는 `params.rssSourceIds`로 어드민 **설정 > Provider > 뉴스 RSS 피드**에 등록된 피드를 참조한다. 기본 RSS 피드는 `Financial Juice`, `GlobeNewswire 실적`, `PR Newswire 실적` 3개이며, Job params에 `feedUrl`을 직접 넣는 방식은 사용하지 않는다.
-
-스케줄러는 10초마다 due job을 확인합니다. `enabled: true`이고 `nextRunAt`이 비었거나 현재 시각 이전이면 실행합니다. 이 확인은 전체 DB 스냅샷을 만들지 않고 SQLite `polling_jobs` 테이블만 직접 조회하며, 같은 Node 프로세스 안에서 이미 실행 중인 동일 job은 다시 시작하지 않습니다. 여러 프로세스가 같은 DB를 보더라도 `polling_job_locks` 테이블의 TTL lock으로 동일 job 중복 실행을 막습니다.
-
-각 실행은 SQLite의 `polling_job_runs` 테이블에 남습니다. 로그 payload에는 `jobKey`, `domain`, `provider`, `handler`, `trigger`, `status`, `startedAt`, `finishedAt`, `durationMs`, `resultKind`, `itemCount`, `errorMessage`, `progressPercent`, `progressPhase`, `progressUpdatedAt`가 포함됩니다. 긴 수집 job의 진행률 저장은 응답 API가 DB 큐에서 밀리지 않도록 5초 단위 또는 큰 진행률 변화 위주로 반영합니다. 수동 실행은 `trigger: manual`, 스케줄 실행은 `trigger: schedule`로 구분합니다.
-
-어드민에서 수동 실행을 누르면 HTTP 응답은 즉시 `accepted`로 돌아오고, 실제 실행은 백그라운드에서 진행됩니다. 실행 중인 run은 경과 시간과 마지막 진행 신호가 표시되며, 기본 5분 또는 job 주기 대비 과도하게 오래 신호가 없으면 `멈춤 의심`으로 표시합니다.
-
-어드민 대시보드의 `/admin/api/summary`는 영역별 저장 수와 함께 `dataAreas`를 내려줍니다. `dataAreas`에는 마지막 저장 데이터 시각, 마지막 실행/성공/실패, 활성 Job 수, 0건 완료 실행 수, 컨콜 트랜스크립트·뉴스 번역·채널/심볼 수 같은 품질 보조 지표가 포함됩니다.
-
-Job에는 운영자가 보기 쉬운 `displayName`과 `description`이 있으며, 어드민 **수집 Job** 메뉴에서 수정할 수 있습니다. 내부 `jobKey`는 로그 추적용으로 유지됩니다.
-
-메가캡·시총 후보·인기 시세·기본 관심종목 리스트는 **Admin > 설정 > 마켓 리스트 관리**에서 수정합니다. 앱은 `/v1/market-lists/:key`를 통해 같은 리스트를 조회할 수 있고, 시총 상위 시세 Job은 `mcap_universe`, 인기 시세 Job은 `popular_symbols`를 사용합니다.
-
-앱은 시세 탭도 서버 DB 값을 사용합니다. 관심·인기·시총·국내주식 정규장 외 참고가는 `/v1/market-quotes`, 코인은 `/v1/coins`를 조회합니다. 상세 화면의 프로필·캔들은 `/v1/stock-profile`, `/v1/stock-candles`를 조회합니다. 따라서 앱에 보이려면 해당 수집 Job이 먼저 실행되어 SQLite의 `market_quotes` / `coin_markets` 테이블에 값이 저장되어 있어야 합니다. 앱 시세 탭은 30초 자동 새로고침을 하지 않고, 5분 passive cache와 수동 새로고침을 사용합니다. 관심종목처럼 `symbols=`로 명시 조회하는 `/v1/market-quotes`도 기본은 DB-only이며, 외부 provider 즉시 갱신은 `refresh=1`이 있을 때만 수행합니다. `market_quotes_kr_after_hours` Job은 Hyperliquid 해외 파생상품 가격을 USD/KRW로 환산해 `segment=kr_after_hours`로 저장합니다. 이 값은 공식 거래소 시세가 아니라 “해외 파생 참고가”이며, Job params의 `instruments[].candidates`와 `regularCloseKrw` 매핑을 운영자가 검증한 뒤 활성화해야 합니다. 유튜브는 `youtube_economy_latest`와 `youtube_economy_popular` Job이 각각 최신/인기 버킷을 저장하고, 같은 영상이 양쪽에 걸리면 `sortBuckets`로 함께 보관합니다. 수집 대상 채널은 Job params가 아니라 **Admin > 설정 > Provider/API > YouTube 큐레이션 채널**의 `youtubeCurationHandles` 공통 설정을 사용합니다. 앱은 `/v1/youtube-channels`로 필터 채널 목록을 받고, `/v1/youtube?sort=latest|popular`는 해당 버킷이 있으면 우선 사용합니다.
-
-앱 공개 조회 API는 대량 데이터가 쌓여도 응답 시간을 유지하기 위해 가능한 한 전체 `readDb()` 스냅샷을 만들지 않습니다. `/v1/news`, `/v1/news-sources`, `/v1/youtube`, `/v1/calendar`, `/v1/concalls`, `/v1/market-quotes`, `/v1/coins`, `/v1/market-lists`, `/v1/notifications`, `/v1/legal/terms`는 필요한 SQLite 테이블만 직접 조회합니다. `readDb()`는 여전히 관리 화면의 복합 요약이나 Job 실행처럼 전체 스냅샷이 필요한 흐름에서 사용합니다.
-
-뉴스 번역은 `title/summary/content`와 함께 `hashtags`를 반환할 수 있습니다. 서버는 자동 태그를 `newsItems[].hashtags`에 저장하고, 어드민 뉴스 편집 모달에서 수동 태그로 고정하거나 자동 모드로 되돌릴 수 있습니다. `/v1/news`는 `tag` 쿼리로 해시태그 필터를 지원합니다.
-
-시장 인사이트 Job(`insights_market_brief`)은 이미 저장된 뉴스·유튜브·시세·캘린더 데이터를 기반으로 `market_brief` / `asset_signal` 형식의 시그널을 생성해 SQLite `insight_items` 테이블에 저장합니다. 기본 파라미터는 `dateMode: today`, `timeZone: Asia/Seoul`이라 너무 오래된 원천 데이터가 오늘의 시그널을 만들지 않게 합니다. 현재는 규칙 기반으로 동작하며, 각 결과에는 왜 지금 봐야 하는지(`whyNow`), 소스 구성(`sourceStats`), 신호 드라이버(`signalDrivers`), 다음 확인 포인트(`nextSteps`)가 포함됩니다. Provider 설정에 Claude/OpenAI 키와 기본 모델이 설정되어 있으면 각 인사이트에 LLM provider/model 상태와 추후 호출용 `llmPromptInput`을 함께 저장합니다. 앱은 `/v1/insights`를 통해 공개 필드만 조회하고, 이 API는 SQLite `insight_items`에서 날짜·종류·레벨·푸시 후보 조건으로 후보를 먼저 좁힌 뒤 요청 시간대의 생성일과 브리핑/심볼별 최신 1건 규칙을 적용합니다. `pushCandidate` 인사이트는 같은 Job 완료 트랜잭션에서 `notification_items`에 `channel=push`, `status=queued`, `type=insight_signal` outbox 레코드로 함께 저장합니다. Expo Push sender는 이 대기 레코드를 처리하고 발송 결과를 같은 레코드에 기록합니다. 어드민 **오늘의 시그널** 화면에서는 저장된 결과, 연결 원문, 근거, 소스 구성, LLM 준비 상태를 확인할 수 있습니다.
-
-앱 사용자 계정은 `/v1/auth/register`, `/v1/auth/login`, `/v1/auth/me`, `/v1/auth/logout`으로 시작합니다. 현재는 이메일/비밀번호/닉네임/프로필 이미지 URL 기반이며, 세션은 bearer token으로 내려줍니다. 서버에는 `app_users`, `app_user_sessions`, `app_user_devices`, `app_user_identities`, `app_user_terms_acceptances` 테이블이 있습니다. `app_user_identities`는 카카오·네이버·구글·Apple 같은 소셜 identity를 사용자와 연결하는 테이블이며, 소셜 provider 검증 후에도 앱 세션은 provider 토큰이 아니라 SIGNAL 서버가 발급하는 토큰을 사용합니다. `/v1/auth/me/identities`는 연결된 소셜 계정 목록을 반환하고, `DELETE /v1/auth/me/identities/:id`는 연결을 해제합니다. 단, 비밀번호와 다른 소셜 identity가 모두 없는 마지막 로그인 수단은 해제하지 못하며, 사용자는 `/v1/auth/me/password`로 이메일 비밀번호를 먼저 설정해야 합니다. 가입 전 앱은 `/v1/legal/terms?locale=ko|en|ja`로 활성 최신 약관을 조회하고, `/v1/auth/register`는 해당 언어의 필수 약관 버전 동의를 검증한 뒤 사용자별 동의 버전을 저장합니다. Admin의 **앱 사용자** 섹션은 사용자 관리, 디바이스 관리, 알림 조회, 푸시/알림 발송으로 나뉘며, 가입 사용자 검색, 활성/비활성 전환, 디바이스 비활성화, 사용자별·공지성 알림 등록, 약관 동의 이력과 연결된 소셜 identity 확인을 지원합니다.
-
-서비스 이용약관/개인정보처리방침은 SQLite `legal_terms`에 타입(`service/privacy`), 언어(`ko/en/ja`), 버전 기준으로 저장합니다. 최초 실행 시 기본 약관을 seed하고, Admin **설정 > 약관**에서 타입 탭과 언어 탭으로 제목, 본문, 버전, 필수 여부, 활성 여부를 수정합니다. 같은 타입·언어의 이전 버전은 히스토리로 남고, 앱 공개 조회는 활성 최신 버전만 반환합니다.
-
-알림 outbox는 인사이트 외에도 앱 업데이트(`app_update`), 서비스 공지(`service_notice`), 실적 리마인더(`earnings_reminder`), 시장 경고(`market_alert`) 같은 타입을 같은 테이블에 저장할 수 있게 구성합니다. 각 레코드는 `type`, `channel`, `status`, `priority`, `appUserId`, `targetType`, `targetKey`, `sourceType`, `sourceId`, `scheduledAt`, `expiresAt`를 가집니다. 앱은 bearer token으로 `/v1/notifications`를 호출해 본인 대상(`appUserId`/`targetType=user`)과 전체 공지(`targetType=all`)를 조회합니다. Admin API `/admin/api/notifications`는 조회와 수동 생성을 지원하고, `/admin/api/app-users/:id/notifications`는 특정 사용자 알림 이력 조회/개별 등록을 지원합니다. 이 알림 경로들은 전체 `readDb()` 스냅샷을 만들지 않고 `notification_items` 테이블을 직접 조회/업서트해 대량 뉴스·유튜브·시세 데이터가 쌓여도 알림 응답이 커지지 않게 합니다. 앱은 로그인 세션과 알림 설정이 활성일 때 Expo push token을 `/v1/auth/devices`로 등록하며, Admin 사용자 상세의 디바이스 이력에서 등록 상태를 확인합니다. 공지성 알림은 `targetType=all|segment`로 먼저 DB에 적재하고, worker의 outbox sender가 `SIGNAL_NOTIFICATION_SENDER_ENABLED=true`일 때 `queued` push 레코드를 `sending` 후 `sent`/`failed`/`skipped`로 전이합니다. `mock` provider는 상태 전이 검증용이고, `expo` provider는 등록된 Expo push token으로 실제 발송합니다.
-
-## 5. 소스 분리
-
-API 서버와 worker를 클라우드에서 분리하기 위해 소스는 이미 나뉘어 있습니다. Railway에서는 API 서비스에 `SIGNAL_SCHEDULER_ENABLED=false`를 두고 `npm --prefix server run start` 또는 기존 start command를 사용하고, 별도 worker 서비스는 같은 볼륨/DB 경로와 `SIGNAL_SCHEDULER_ENABLED=true`로 `npm run server:worker`를 실행하는 구성이 권장됩니다. 실제 push를 켤 때는 worker 서비스에만 `SIGNAL_NOTIFICATION_SENDER_ENABLED=true`와 `SIGNAL_NOTIFICATION_PUSH_PROVIDER=expo`를 둡니다.
-
-```text
-server/src/jobs/runner.mjs      # job 1개 실행
-server/src/jobs/scheduler.mjs   # due job 탐색 + runner 호출
-server/src/server.mjs           # API + admin + local scheduler
-server/src/http/               # HTTP 라우트(공용/관리자/공개 API) 도메인별 모듈
-server/src/db.mjs               # DB 공개 facade(readDb/updateDb/admin users/news source helpers)
-server/src/db/                  # SQLite store shape/default seed/admin user/news source 내부 모듈
-server/src/db/insights.mjs      # 인사이트 표시 키/생성일/후보 조회 헬퍼
-server/src/db/sqlite/           # SQLite schema/table 유틸
-server/src/insights/            # 수집 데이터 기반 인사이트 생성 규칙
-server/src/worker.mjs           # scheduler-only entrypoint
-```
-
-`npm run server:worker`는 scheduler와 notification sender 전용 entrypoint입니다. API와 worker가 동시에 떠도 SQLite Job lock이 중복 실행을 막지만, API 응답 안정성을 위해 운영에서는 API 프로세스의 스케줄러를 끄는 구성을 권장합니다.
-
-## 6. 확인 명령
-
-서버 확인:
-
-```bash
-curl http://127.0.0.1:4000/health
-```
-
-`/health`는 서버 프로세스와 SQLite read 가능 여부를 함께 확인한다. 정상은 `200`과 `db.ok=true`, SQLite 확인 실패는 `503`과 `db.ok=false`를 반환한다.
-
-뉴스 확인:
-
-```bash
-curl 'http://127.0.0.1:4000/v1/news?locale=ko&category=global'
-```
-
-캘린더 확인:
-
-```bash
-curl 'http://127.0.0.1:4000/v1/calendar'
-```
-
-유튜브 확인:
-
-```bash
-curl 'http://127.0.0.1:4000/v1/youtube'
-```
-
-마켓 리스트 확인:
-
-```bash
-curl 'http://127.0.0.1:4000/v1/market-lists/mega_cap'
-```
-
-로컬 저장소는 SQLite embedded DB입니다. 기본 파일은 `server/data/signal.sqlite`이고, Railway에서는 `DATA_DIR`를 볼륨 마운트 경로로 두면 `${DATA_DIR}/signal.sqlite`에 저장됩니다. 필요하면 `SQLITE_DB_PATH`로 파일명을 직접 지정할 수 있습니다.
-
-```text
-server/data/signal.sqlite      # SQLite DB
-server/data/signal.sqlite-wal  # SQLite WAL 파일(생성될 수 있음)
-server/data/signal.sqlite-shm  # SQLite shared-memory 파일(생성될 수 있음)
-```
-
-- SQLite가 비어 있으면 첫 실행 시 `defaultDb()`를 저장해 기본 설정과 Job 리스트를 생성한다.
-- 어드민 계정은 SQLite `admin_users` 테이블에 저장한다. `ADMIN_USERS` env는 `admin_users`가 비어 있을 때만 초기 seed로 쓰고, 비밀번호는 salt + scrypt hash로 저장한다. 이후 계정 추가·비밀번호 변경·활성화·삭제는 **Admin > 설정 > 사용자 관리**에서 한다.
-- `readDb` / `writeDb` / `updateDb`는 동일 Node 프로세스 안에서 큐로 직렬화된다. `updateDb`는 SQLite `BEGIN IMMEDIATE` 트랜잭션 안에서 읽기와 쓰기를 묶어 보정 수집·번역 갱신 같은 read/modify/write 경쟁을 줄인다. 앱 공개 조회 API와 스케줄 due 확인처럼 단일 테이블로 충분한 경로는 전체 스냅샷을 복원하지 않고 SQLite 테이블을 직접 조회한다.
-- `polling_job_locks`는 API/worker 복수 프로세스 구성에서 동일 Job이 동시에 실행되는 것을 막는 TTL lock 테이블이다.
-- 운영 데이터는 기능별 테이블에 저장한다. 주요 테이블은 `provider_settings`, `translation_settings`, `polling_jobs`, `polling_job_runs`, `news_items`, `news_translations`, `calendar_events`, `concall_transcripts`, `youtube_videos`, `market_quotes`, `coin_markets`, `market_lists`, `news_sources`, `insight_items`, `notification_items`, `legal_terms`, `app_users`, `app_user_sessions`, `app_user_devices`, `app_user_identities`, `app_user_terms_acceptances`, `admin_users`다. 각 테이블은 검색·정렬용 대표 컬럼과 원본 payload를 함께 둬 SQLite에서 운영하고, 추후 MySQL에서는 같은 테이블 경계로 repository를 옮긴다.
+운영에서는 `DATA_DIR=/mnt/data`처럼 persistent volume을 지정한다.

@@ -128,7 +128,7 @@ function configureProject(project) {
       if (item.name === source || item.path === source) {
         item.name = source;
         item.path = projectPath;
-        item.sourceTree = '<group>';
+        item.sourceTree = '"<group>"';
       }
     }
 

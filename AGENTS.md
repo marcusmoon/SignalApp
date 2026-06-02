@@ -1,18 +1,15 @@
-# SIGNAL — 문서
+# SIGNAL 문서 인덱스
 
-| 문서 | 경로 |
-|------|------|
-| 에이전트·온보딩 | [docs/AGENTS.md](./docs/AGENTS.md) |
-| PRD | [docs/SIGNAL-PRD.md](./docs/SIGNAL-PRD.md) |
-| 현재 운영 스냅샷 | [docs/CHANGELOG.md](./docs/CHANGELOG.md) |
-| 레이어 기준 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) |
-| 서버·스케줄러 | [docs/SERVER.md](./docs/SERVER.md) |
-| 소셜 로그인 설정 | [docs/SOCIAL-AUTH.md](./docs/SOCIAL-AUTH.md) |
-| Expo/EAS 운영 | [docs/EXPO-EAS-OPERATIONS.md](./docs/EXPO-EAS-OPERATIONS.md) |
-| 후속 작업 TODO | [docs/TODO.md](./docs/TODO.md) |
-| Toss UI/UX PMD | [docs/SIGNAL-TOSS-UIUX-PMD.md](./docs/SIGNAL-TOSS-UIUX-PMD.md) |
-| 앱 UI/UX 평가·제안 | [docs/SIGNAL-UIUX-EVALUATION.md](./docs/SIGNAL-UIUX-EVALUATION.md) |
-| 앱 UI/UX 리뷰 | [docs/SIGNAL-UIUX-REVIEW.md](./docs/SIGNAL-UIUX-REVIEW.md) |
-| 릴리즈 체크리스트 | [docs/RELEASE-CHECKLIST.md](./docs/RELEASE-CHECKLIST.md) |
+에이전트와 개발자는 먼저 [docs/AGENTS.md](./docs/AGENTS.md)를 읽습니다.
 
-에이전트·도구는 **`docs/AGENTS.md`** 부터 읽습니다.
+| 문서 | 용도 |
+|---|---|
+| [docs/AGENTS.md](./docs/AGENTS.md) | 작업 규칙과 온보딩 |
+| [docs/SIGNAL-PRD.md](./docs/SIGNAL-PRD.md) | 제품 방향 |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 앱/서버 구조 |
+| [docs/SERVER.md](./docs/SERVER.md) | 서버, DB, Job 운영 |
+| [docs/EXPO-EAS-OPERATIONS.md](./docs/EXPO-EAS-OPERATIONS.md) | Expo/EAS 빌드와 OTA |
+| [docs/SOCIAL-AUTH.md](./docs/SOCIAL-AUTH.md) | 앱 사용자 인증과 소셜 로그인 |
+| [docs/SIGNAL-ADMIN-UIUX.md](./docs/SIGNAL-ADMIN-UIUX.md) | Admin UI 기준 |
+| [docs/RELEASE-CHECKLIST.md](./docs/RELEASE-CHECKLIST.md) | 출시 전 점검 |
+| [docs/TODO.md](./docs/TODO.md) | 후속 과제 |

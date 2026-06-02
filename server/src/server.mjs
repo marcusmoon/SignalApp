@@ -28,6 +28,7 @@ const server = http.createServer((req, res) => {
 server.listen(config.port, config.host, () => {
   console.log(`Signal server listening on http://${config.host}:${config.port}`);
   console.log(`Admin: http://${config.host}:${config.port}/admin`);
+  console.log(`Web client: http://${config.host}:${config.port}/web`);
   console.log(`SQLite DB: ${config.sqlitePath}`);
   if (String(process.env.SIGNAL_JWT_DEBUG || '').trim() === '1') {
     getAppUserJwtConfigStatus()

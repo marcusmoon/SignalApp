@@ -18,6 +18,7 @@ npm run server:dev
 |------|------|
 | Health | `http://127.0.0.1:4000/health` |
 | Admin | `http://127.0.0.1:4000/admin` |
+| Web Client | `http://127.0.0.1:4000/web` |
 | News API | `http://127.0.0.1:4000/v1/news?locale=ko&category=global` |
 | Calendar API | `http://127.0.0.1:4000/v1/calendar` |
 | YouTube API | `http://127.0.0.1:4000/v1/youtube` |
@@ -48,6 +49,14 @@ Railway 등에서는 Variable 값에 그대로 넣거나, UI에서 따옴표 이
 | Worker | `npm run server:worker` | `SIGNAL_SCHEDULER_ENABLED=true`, 필요 시 `SIGNAL_NOTIFICATION_SENDER_ENABLED=true` |
 
 두 서비스는 같은 `DATA_DIR` 또는 `SQLITE_DB_PATH`를 바라봐야 한다. Railway에서는 같은 volume mount 경로를 지정한다.
+
+웹 클라이언트를 API 서버와 함께 배포하려면 배포 build 단계에서 Expo web export를 생성한다.
+
+```bash
+npm run web:export
+```
+
+생성 위치는 `server/src/public/web`이며 서버는 `/web`, `/web/*`, Expo asset 경로 `/_expo/*`를 이 bundle에서 서빙한다. Railway에서 root 저장소 기준으로 빌드한다면 build command에 `npm install && npm run web:export && npm --prefix server install` 흐름을 포함하고, start command는 기존처럼 `npm --prefix server run start`를 사용한다. 앱의 웹 번들 기본 API 주소는 빌드 시점의 `EXPO_PUBLIC_SIGNAL_API_BASE_URL`을 따른다.
 
 ## 2. 서버 환경 변수
 

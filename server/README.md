@@ -15,6 +15,7 @@ npm run server:dev
 
 - Health: `http://127.0.0.1:4000/health`
 - Admin: `http://127.0.0.1:4000/admin`
+- Web Client: `http://127.0.0.1:4000/web` (`npm run web:export`로 생성한 Expo web bundle이 있을 때)
 - OpenAPI: `http://127.0.0.1:4000/openapi.json`
 - Docs: `http://127.0.0.1:4000/docs`
 
@@ -26,6 +27,14 @@ npm run server:worker
 ```
 
 API 서비스는 `SIGNAL_SCHEDULER_ENABLED=false`, worker 서비스는 `SIGNAL_SCHEDULER_ENABLED=true`로 둔다.
+
+API 서버에 web client를 같이 올릴 때는 저장소 루트에서 build 단계에 아래를 실행한다.
+
+```bash
+npm run web:export
+```
+
+서버는 `server/src/public/web` bundle을 `/web`으로 서빙하고, Expo가 생성한 `/_expo/*` asset도 같은 bundle에서 제공한다.
 
 ## Environment
 

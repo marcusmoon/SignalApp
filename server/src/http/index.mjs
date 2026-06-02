@@ -14,6 +14,7 @@ import { handleAdminSettingsRoutes } from './admin/api/settings.mjs';
 import { handleAdminYoutubeRoutes } from './admin/api/youtube.mjs';
 import { handleAdminSessionRoutes, requireAdmin } from './admin/auth.mjs';
 import { handleAdminStaticRoutes } from './admin/static.mjs';
+import { handleWebStaticRoutes } from './webStatic.mjs';
 import { handlePublicAuthRoutes } from './public/v1/auth.mjs';
 import { handlePublicCalendarRoutes } from './public/v1/calendar.mjs';
 import { handlePublicConcallsRoutes } from './public/v1/concalls.mjs';
@@ -66,8 +67,9 @@ export async function handleRequest(req, res) {
       if (await handler({ req, res, url, pathname })) return;
     }
 
-    // 2) Admin static (admin.html, admin/*.js|css, public assets)
+    // 2) Static clients: Admin and Expo web export.
     if (await handleAdminStaticRoutes({ req, res, pathname })) return;
+    if (await handleWebStaticRoutes({ req, res, pathname })) return;
 
     // 3) Admin session/auth (no admin guard required for these)
     if (await handleAdminSessionRoutes({ req, res, pathname })) return;

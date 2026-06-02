@@ -108,6 +108,35 @@ eas build --profile preview --platform ios
 eas build --profile preview --platform android
 ```
 
+## 서버 동시 배포용 Web Export
+
+API 서버와 같은 Railway 서비스에서 웹 클라이언트도 `/web`으로 제공할 수 있다.
+
+```bash
+npm run web:export
+```
+
+- 출력 경로: `server/src/public/web`
+- 서버 노출 경로: `/web`
+- Expo asset 경로: `/_expo/*`
+- build artifact이므로 `server/src/public/web/`은 git에 커밋하지 않는다.
+
+배포 build command 예시:
+
+```bash
+npm install
+npm run web:export
+npm --prefix server install
+```
+
+start command는 기존과 동일하다.
+
+```bash
+npm --prefix server run start
+```
+
+웹 bundle에 들어가는 API 기본 주소는 `EXPO_PUBLIC_SIGNAL_API_BASE_URL`을 사용한다. 같은 서버의 `/v1/*`를 호출하려면 이 값을 배포 origin에 맞춰 설정한다.
+
 스토어/운영:
 
 ```bash

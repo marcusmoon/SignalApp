@@ -799,6 +799,8 @@ export const en = {
   quotesWatchSwipeRemove: 'Remove',
   quotesYahooShort: 'Yahoo',
   quotesYahooFinanceA11y: 'Open {{symbol}} on Yahoo Finance',
+  quotesNaverShort: 'Naver',
+  quotesNaverFinanceA11y: 'Open {{symbol}} on Naver Finance',
   alertTitleUnknownTicker: 'Unknown ticker',
   quotesTickerNotFoundBody:
     'Finnhub has no quote for this symbol. Check that it is a valid listed ticker.',

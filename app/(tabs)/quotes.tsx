@@ -73,6 +73,7 @@ import {
   saveWatchlistSymbols,
 } from '@/services/quoteWatchlist';
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
+import { openNaverFinanceStock } from '@/utils/naverFinance';
 import type { MessageId } from '@/locales/messages';
 
 const QUOTE_CARD_TEXT_MAX_SCALE = 1.12;
@@ -134,6 +135,10 @@ function formatQuoteDpPct(dp: unknown): string {
   if (!Number.isFinite(dp)) return '—';
   const p = dp as number;
   return `${p >= 0 ? '+' : ''}${p.toFixed(2)}%`;
+}
+
+function isKoreaStockQuote(row: Row): boolean {
+  return Boolean(row.quote?.krxSymbol) || /^\d{6}$/.test(String(row.symbol || '').trim());
 }
 
 function mapCoinToSignalMarketQuote(item: SignalApiCoinMarket): SignalApiMarketQuote {
@@ -405,11 +410,14 @@ export default function QuotesScreen() {
     [load],
   );
 
-  const openYahooFinance = useCallback(
+  const openFinanceQuote = useCallback(
     (r: Row) => {
       const sym = r.symbol?.trim();
       if (!sym || sym === '—') return;
-      if (segment === 'afterHours') return;
+      if (segment === 'afterHours' || isKoreaStockQuote(r)) {
+        void openNaverFinanceStock(r.quote?.krxSymbol || sym);
+        return;
+      }
       void openYahooFinanceQuote(sym, segment === 'coin' ? 'coin' : 'stock');
     },
     [segment],
@@ -515,6 +523,7 @@ export default function QuotesScreen() {
       const watchSwipe = segment === 'watch' && Platform.OS !== 'web';
       const watchRemoveIcon = segment === 'watch' && Platform.OS === 'web';
       const isKoreaAfterHours = segment === 'afterHours';
+      const useNaverLink = isKoreaAfterHours || isKoreaStockQuote(r);
       const regularSession = isKoreaAfterHours ? r.quote?.regularSession : null;
       const afterHoursSourceText = isKoreaAfterHours
         ? r.quote?.afterHoursAvailable === false
@@ -533,19 +542,23 @@ export default function QuotesScreen() {
                       {r.symbol}
                     </Text>
                   </Pressable>
-                  {yahooEnabled && !isKoreaAfterHours ? (
+                  {yahooEnabled ? (
                     <Pressable
-                      onPress={() => openYahooFinance(r)}
+                      onPress={() => openFinanceQuote(r)}
                       style={({ pressed }) => [styles.yahooInline, pressed && styles.yahooInlinePressed]}
                       hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
                       accessibilityRole="link"
-                      accessibilityLabel={t('quotesYahooFinanceA11y', { symbol: r.symbol })}>
+                      accessibilityLabel={
+                        useNaverLink
+                          ? t('quotesNaverFinanceA11y', { symbol: r.symbol })
+                          : t('quotesYahooFinanceA11y', { symbol: r.symbol })
+                      }>
                       <FontAwesome name="external-link" size={11} color={theme.green} />
                       <Text
                         style={styles.yahooInlineText}
                         numberOfLines={1}
                         maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                        {t('quotesYahooShort')}
+                        {useNaverLink ? t('quotesNaverShort') : t('quotesYahooShort')}
                       </Text>
                     </Pressable>
                   ) : null}
@@ -662,7 +675,7 @@ export default function QuotesScreen() {
       loading,
       onRemoveWatch,
       openSymbolDetail,
-      openYahooFinance,
+      openFinanceQuote,
       rows.length,
       segment,
       styles,

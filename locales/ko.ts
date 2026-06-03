@@ -796,6 +796,8 @@ export const ko = {
   quotesWatchSwipeRemove: '삭제',
   quotesYahooShort: 'Yahoo',
   quotesYahooFinanceA11y: '{{symbol}} Yahoo Finance에서 보기',
+  quotesNaverShort: 'Naver',
+  quotesNaverFinanceA11y: '{{symbol}} 네이버 금융에서 보기',
   alertTitleUnknownTicker: '티커 없음',
   quotesTickerNotFoundBody:
     'Finnhub에서 해당 티커 시세를 찾을 수 없습니다. 상장 심볼인지 확인해 주세요.',

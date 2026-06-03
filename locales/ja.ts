@@ -798,6 +798,8 @@ export const ja = {
   quotesWatchSwipeRemove: '削除',
   quotesYahooShort: 'Yahoo',
   quotesYahooFinanceA11y: '{{symbol}} を Yahoo Finance で開く',
+  quotesNaverShort: 'Naver',
+  quotesNaverFinanceA11y: '{{symbol}} をNaver Financeで開く',
   alertTitleUnknownTicker: 'ティッカー不明',
   quotesTickerNotFoundBody:
     'Finnhubでこのティッカーの相場が見つかりません。上場シンボルか確認してください。',

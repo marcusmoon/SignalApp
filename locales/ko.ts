@@ -789,6 +789,8 @@ export const ko = {
   quotesSegmentCoin: '코인',
   quotesPrevCloseKrw: '국내 종가',
   quotesAfterHoursSource: '해외 파생 참고가',
+  quotesAfterHoursPending: '야간 참고가 대기',
+  quotesRegularSession: '정규장',
   quotesPrevRefCoin: '24h 기준가',
   quotesPrevCloseStock: '전일 종',
   quotesWatchSwipeRemove: '삭제',

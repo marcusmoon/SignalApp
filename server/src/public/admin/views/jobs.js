@@ -93,6 +93,7 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources = []
             <div class="jobAfterHoursTableHead">
               <span>${esc(textFor('jobAfterHoursSymbol'))}</span>
               <span>${esc(textFor('jobAfterHoursName'))}</span>
+              <span>${esc(textFor('jobAfterHoursYahoo'))}</span>
               <span>${esc(textFor('jobAfterHoursCandidates'))}</span>
               <span>${esc(textFor('jobAfterHoursClose'))}</span>
             </div>
@@ -102,6 +103,7 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources = []
                   <div class="jobAfterHoursRow" data-job-after-row="${esc(job.jobKey)}">
                     <input data-job-after-symbol="${esc(job.jobKey)}" value="${esc(row.symbol || '')}" placeholder="005930" />
                     <input data-job-after-name="${esc(job.jobKey)}" value="${esc(row.name || '')}" placeholder="${esc(textFor('jobAfterHoursNamePh'))}" />
+                    <input data-job-after-yahoo="${esc(job.jobKey)}" value="${esc(row.yahooSymbol || '')}" placeholder="005930.KS" />
                     <input data-job-after-candidates="${esc(job.jobKey)}" value="${esc(Array.isArray(row.candidates) ? row.candidates.join(', ') : row.hyperliquidSymbol || '')}" placeholder="SAMSUNG, 005930" />
                     <input data-job-after-close="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(row.regularCloseKrw ?? '')}" placeholder="${esc(textFor('jobAfterHoursClosePh'))}" />
                   </div>

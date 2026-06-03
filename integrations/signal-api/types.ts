@@ -132,6 +132,18 @@ export type SignalApiMarketQuote = {
   sourceLabel?: string | null;
   official?: boolean | null;
   notice?: string | null;
+  afterHoursAvailable?: boolean | null;
+  regularSession?: {
+    yahooSymbol?: string | null;
+    currentPrice: number | null;
+    change: number | null;
+    changePercent: number | null;
+    high: number | null;
+    low: number | null;
+    open: number | null;
+    previousClose: number | null;
+    quoteTime: string | null;
+  } | null;
 };
 
 export type SignalApiWatchSignal = {

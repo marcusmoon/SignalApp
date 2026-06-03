@@ -792,6 +792,8 @@ export const en = {
   quotesSegmentCoin: 'Crypto',
   quotesPrevCloseKrw: 'KR close',
   quotesAfterHoursSource: 'Overseas derivative reference',
+  quotesAfterHoursPending: 'Night reference pending',
+  quotesRegularSession: 'Regular session',
   quotesPrevRefCoin: '24h ref.',
   quotesPrevCloseStock: 'Prev. close',
   quotesWatchSwipeRemove: 'Remove',

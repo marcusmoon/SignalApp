@@ -110,12 +110,20 @@ function formatUsdChange(n: number): string {
   return `${sign}$${formatUsdBody(Math.abs(n))}`;
 }
 
-function formatKrw(n: number): string {
+function toFiniteDisplayNumber(value: unknown): number {
+  if (value == null || value === '') return NaN;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function formatKrw(value: unknown): string {
+  const n = toFiniteDisplayNumber(value);
   if (!Number.isFinite(n)) return '—';
   return `₩${Math.round(Math.abs(n)).toLocaleString('ko-KR')}`;
 }
 
-function formatKrwChange(n: number): string {
+function formatKrwChange(value: unknown): string {
+  const n = toFiniteDisplayNumber(value);
   if (!Number.isFinite(n)) return '—';
   if (n === 0) return '₩0';
   return `${n > 0 ? '+' : '-'}₩${Math.round(Math.abs(n)).toLocaleString('ko-KR')}`;
@@ -507,6 +515,12 @@ export default function QuotesScreen() {
       const watchSwipe = segment === 'watch' && Platform.OS !== 'web';
       const watchRemoveIcon = segment === 'watch' && Platform.OS === 'web';
       const isKoreaAfterHours = segment === 'afterHours';
+      const regularSession = isKoreaAfterHours ? r.quote?.regularSession : null;
+      const afterHoursSourceText = isKoreaAfterHours
+        ? r.quote?.afterHoursAvailable === false
+          ? t('quotesAfterHoursPending')
+          : t('quotesAfterHoursSource')
+        : '';
 
       const cardInner = (
         <>
@@ -539,12 +553,12 @@ export default function QuotesScreen() {
                 {r.quote ? (
                   <Text style={styles.symPrev} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                     {isKoreaAfterHours ? t('quotesPrevCloseKrw') : segment === 'coin' ? t('quotesPrevRefCoin') : t('quotesPrevCloseStock')}{' '}
-                    {isKoreaAfterHours ? formatKrw(Number(r.quote.previousClose)) : formatUsd(Number(r.quote.previousClose))}
+                    {isKoreaAfterHours ? formatKrw(r.quote.previousClose) : formatUsd(Number(r.quote.previousClose))}
                   </Text>
                 ) : null}
                 {(segment === 'coin' || isKoreaAfterHours) && r.name ? (
                   <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                    {isKoreaAfterHours ? (r.quote?.sourceLabel || t('quotesAfterHoursSource')) : r.name}
+                    {isKoreaAfterHours ? afterHoursSourceText : r.name}
                   </Text>
                 ) : null}
               </View>
@@ -553,7 +567,7 @@ export default function QuotesScreen() {
               <View style={styles.priceRow}>
                 {r.quote ? (
                   <Text style={styles.price} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                    {isKoreaAfterHours ? formatKrw(Number(r.quote.currentPrice)) : formatUsd(Number(r.quote.currentPrice))}
+                    {isKoreaAfterHours ? formatKrw(r.quote.currentPrice) : formatUsd(Number(r.quote.currentPrice))}
                   </Text>
                 ) : (
                   <Text style={styles.na}>—</Text>
@@ -574,11 +588,34 @@ export default function QuotesScreen() {
                   style={[styles.chg, quoteChange.isPositive(r.quote) ? styles.chgUp : styles.chgDn]}
                   numberOfLines={1}
                   maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                  {isKoreaAfterHours ? formatKrwChange(Number(r.quote.change ?? 0)) : formatUsdChange(Number(r.quote.change ?? 0))} ({formatQuoteDpPct(r.quote.changePercent)})
+                  {isKoreaAfterHours ? formatKrwChange(r.quote.change) : formatUsdChange(Number(r.quote.change ?? 0))} ({formatQuoteDpPct(r.quote.changePercent)})
                 </Text>
               ) : null}
             </View>
           </View>
+          {regularSession ? (
+            <View style={styles.regularSessionRow}>
+              <Text style={styles.regularSessionLabel} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                {t('quotesRegularSession')}
+              </Text>
+              <Text style={styles.regularSessionValue} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                {formatKrw(regularSession.currentPrice)}
+              </Text>
+              <Text
+                style={[
+                  styles.regularSessionMove,
+                  regularSession.change == null
+                    ? styles.regularSessionMoveMuted
+                    : Number(regularSession.change) >= 0
+                      ? styles.chgUp
+                      : styles.chgDn,
+                ]}
+                numberOfLines={1}
+                maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                {formatKrwChange(regularSession.change)} ({formatQuoteDpPct(regularSession.changePercent)})
+              </Text>
+            </View>
+          ) : null}
           {!r.quote ? (
             <Text style={styles.fail}>
               {r.error === 'UNKNOWN_SYMBOL'
@@ -893,6 +930,38 @@ function makeStyles(
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
       marginTop: 4,
+    },
+    regularSessionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingTop: 8,
+      marginTop: 2,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.border,
+    },
+    regularSessionLabel: {
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(15),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
+    },
+    regularSessionValue: {
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.emphasisWeight,
+      color: theme.text,
+    },
+    regularSessionMove: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.emphasisWeight,
+      textAlign: 'right',
+    },
+    regularSessionMoveMuted: {
+      color: theme.textMuted,
     },
     price: {
       maxWidth: '100%',

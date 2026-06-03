@@ -346,18 +346,21 @@ export function defaultPollingJobs() {
           {
             symbol: '005930',
             name: '삼성전자',
+            yahooSymbol: '005930.KS',
             candidates: ['SAMSUNG', '005930', 'SAMS', 'SEC'],
             regularCloseKrw: null,
           },
           {
             symbol: '000660',
             name: 'SK하이닉스',
+            yahooSymbol: '000660.KS',
             candidates: ['HYNIX', 'SKHYNIX', '000660'],
             regularCloseKrw: null,
           },
           {
             symbol: '005380',
             name: '현대차',
+            yahooSymbol: '005380.KS',
             candidates: ['HYUNDAI', 'HYUNDAIMOTOR', '005380'],
             regularCloseKrw: null,
           },

@@ -114,6 +114,8 @@ function publicMarketQuote(item) {
     sourceLabel: item.sourceLabel || null,
     official: item.official === false ? false : item.official === true ? true : null,
     notice: item.notice || null,
+    afterHoursAvailable: item.afterHoursAvailable === true ? true : item.afterHoursAvailable === false ? false : null,
+    regularSession: item.regularSession || null,
   };
 }
 

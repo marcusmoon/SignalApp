@@ -539,7 +539,7 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
       .jobAfterHoursTableHead,
       .jobAfterHoursRow {
         display: grid;
-        grid-template-columns: 94px minmax(110px, 0.8fr) minmax(170px, 1.3fr) 116px;
+        grid-template-columns: 94px minmax(110px, 0.8fr) 118px minmax(170px, 1.3fr) 116px;
         gap: 8px;
         align-items: end;
       }

@@ -113,6 +113,20 @@ export function ensureDbShape(db) {
     if (existing.jobKey === 'market_quotes_mcap' && !existing.params.listKey) {
       existing.params = { ...existing.params, listKey: 'mcap_universe' };
     }
+    if (existing.jobKey === 'market_quotes_kr_after_hours') {
+      const defaultInstruments = new Map(
+        (Array.isArray(defaultJob.params?.instruments) ? defaultJob.params.instruments : []).map((item) => [String(item.symbol || ''), item]),
+      );
+      const instruments = Array.isArray(existing.params?.instruments) ? existing.params.instruments : [];
+      existing.params = {
+        ...(defaultJob.params || {}),
+        ...(existing.params || {}),
+        instruments: instruments.map((item) => {
+          const fallback = defaultInstruments.get(String(item?.symbol || '')) || {};
+          return { ...fallback, ...item, yahooSymbol: item?.yahooSymbol || fallback.yahooSymbol };
+        }),
+      };
+    }
     if (existing.jobKey === 'concall_transcripts_recent' && existing.params.fallbackLatest == null) {
       existing.params = { ...existing.params, fallbackLatest: true };
     }

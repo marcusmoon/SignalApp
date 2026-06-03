@@ -791,6 +791,8 @@ export const ja = {
   quotesSegmentCoin: '仮想通貨',
   quotesPrevCloseKrw: '韓国終値',
   quotesAfterHoursSource: '海外デリバティブ参考値',
+  quotesAfterHoursPending: '夜間参考値待ち',
+  quotesRegularSession: '通常取引',
   quotesPrevRefCoin: '24h基準',
   quotesPrevCloseStock: '前日終値',
   quotesWatchSwipeRemove: '削除',

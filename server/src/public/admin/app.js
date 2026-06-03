@@ -1590,15 +1590,17 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                 .map((row) => {
                   const symbol = String(row.querySelector(`[data-job-after-symbol="${key}"]`)?.value || '').trim().toUpperCase();
                   const name = String(row.querySelector(`[data-job-after-name="${key}"]`)?.value || '').trim();
+                  const yahooSymbol = String(row.querySelector(`[data-job-after-yahoo="${key}"]`)?.value || '').trim().toUpperCase();
                   const candidates = String(row.querySelector(`[data-job-after-candidates="${key}"]`)?.value || '')
                     .split(',')
                     .map((item) => item.trim())
                     .filter(Boolean);
                   const regularCloseKrw = numberOrNull(row.querySelector(`[data-job-after-close="${key}"]`)?.value);
-                  if (!symbol && !name && candidates.length === 0 && regularCloseKrw == null) return null;
+                  if (!symbol && !name && !yahooSymbol && candidates.length === 0 && regularCloseKrw == null) return null;
                   return {
                     symbol,
                     name,
+                    yahooSymbol,
                     candidates,
                     regularCloseKrw,
                   };

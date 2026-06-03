@@ -743,6 +743,8 @@ export const baseJa = {
   jobAfterHoursSymbol: 'アプリシンボル',
   jobAfterHoursName: '表示名',
   jobAfterHoursNamePh: '例: Samsung Electronics',
+  jobAfterHoursDisplaySymbol: '英語表示名',
+  jobAfterHoursDisplaySymbolPh: '例: Samsung Elec',
   jobAfterHoursYahoo: 'Yahooシンボル',
   jobAfterHoursCandidates: 'デリバティブ候補(カンマ区切り)',
   jobAfterHoursClose: '韓国終値',

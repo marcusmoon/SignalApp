@@ -743,6 +743,8 @@ export const baseEn = {
   jobAfterHoursSymbol: 'App symbol',
   jobAfterHoursName: 'Display name',
   jobAfterHoursNamePh: 'e.g. Samsung Electronics',
+  jobAfterHoursDisplaySymbol: 'English label',
+  jobAfterHoursDisplaySymbolPh: 'e.g. Samsung Elec',
   jobAfterHoursYahoo: 'Yahoo symbol',
   jobAfterHoursCandidates: 'Derivative candidates (comma)',
   jobAfterHoursClose: 'KR close',

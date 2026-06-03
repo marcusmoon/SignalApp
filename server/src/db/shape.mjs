@@ -123,7 +123,12 @@ export function ensureDbShape(db) {
         ...(existing.params || {}),
         instruments: instruments.map((item) => {
           const fallback = defaultInstruments.get(String(item?.symbol || '')) || {};
-          return { ...fallback, ...item, yahooSymbol: item?.yahooSymbol || fallback.yahooSymbol };
+          return {
+            ...fallback,
+            ...item,
+            displaySymbol: item?.displaySymbol || fallback.displaySymbol,
+            yahooSymbol: item?.yahooSymbol || fallback.yahooSymbol,
+          };
         }),
       };
       const migrationFlags = existing.migrationFlags && typeof existing.migrationFlags === 'object' ? existing.migrationFlags : {};

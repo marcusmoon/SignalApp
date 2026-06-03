@@ -118,6 +118,8 @@ export type SignalApiMarketQuote = {
   providerItemId: string;
   segment: string;
   symbol: string;
+  displaySymbol?: string | null;
+  krxSymbol?: string | null;
   name: string | null;
   currentPrice: number | null;
   change: number | null;

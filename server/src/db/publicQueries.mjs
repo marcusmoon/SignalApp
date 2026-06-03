@@ -100,6 +100,8 @@ function publicMarketQuote(item) {
     providerItemId: item.providerItemId,
     segment: item.segment,
     symbol: item.symbol,
+    displaySymbol: item.displaySymbol || item.symbol || null,
+    krxSymbol: item.krxSymbol || item.rawPayload?.krxSymbol || null,
     name: item.name || null,
     currentPrice: item.currentPrice ?? null,
     change: item.change ?? null,

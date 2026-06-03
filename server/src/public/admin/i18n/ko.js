@@ -744,6 +744,8 @@ export const baseKo = {
   jobAfterHoursSymbol: '앱 심볼',
   jobAfterHoursName: '표시명',
   jobAfterHoursNamePh: '예: 삼성전자',
+  jobAfterHoursDisplaySymbol: '영문 표시명',
+  jobAfterHoursDisplaySymbolPh: '예: Samsung Elec',
   jobAfterHoursYahoo: 'Yahoo 심볼',
   jobAfterHoursCandidates: '파생 심볼 후보(쉼표)',
   jobAfterHoursClose: '국내 종가',

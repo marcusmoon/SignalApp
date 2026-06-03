@@ -23,6 +23,7 @@ function defaultYahooSymbol(symbol) {
 function normalizeInstrument(input = {}) {
   const symbol = normalizeSymbol(input.symbol || input.krxSymbol || input.code);
   const name = String(input.name || input.displayName || symbol || '').trim();
+  const displaySymbol = String(input.displaySymbol || input.englishName || input.englishSymbol || '').trim();
   const candidates = [
     input.hyperliquidSymbol,
     input.hyperliquidCoin,
@@ -33,6 +34,7 @@ function normalizeInstrument(input = {}) {
     .filter(Boolean);
   return {
     symbol,
+    displaySymbol: displaySymbol || symbol,
     name: name || symbol,
     yahooSymbol: String(input.yahooSymbol || input.yahooTicker || defaultYahooSymbol(symbol)).trim().toUpperCase(),
     candidates: [...new Set(candidates)],
@@ -169,7 +171,9 @@ function normalizeAfterHoursQuote({ instrument, mid, usdKrw, regular, fetchedAt,
     provider: 'hyperliquid',
     providerItemId: mid?.coin || instrument.yahooSymbol || instrument.symbol,
     segment: 'kr_after_hours',
-    symbol: instrument.symbol,
+    symbol: instrument.displaySymbol || instrument.symbol,
+    displaySymbol: instrument.displaySymbol || instrument.symbol,
+    krxSymbol: instrument.symbol,
     name: instrument.name,
     currentPrice,
     change,
@@ -203,6 +207,8 @@ function normalizeAfterHoursQuote({ instrument, mid, usdKrw, regular, fetchedAt,
       hyperliquidCoin: mid?.coin || null,
       priceUsd: mid?.priceUsd ?? null,
       usdKrw,
+      krxSymbol: instrument.symbol,
+      displaySymbol: instrument.displaySymbol,
       yahooSymbol: instrument.yahooSymbol,
       regularCloseKrw: previousClose,
       regularSession: regular,

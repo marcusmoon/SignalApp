@@ -164,7 +164,7 @@ function mapCoinToSignalMarketQuote(item: SignalApiCoinMarket): SignalApiMarketQ
 
 function mapSignalQuoteToRow(item: SignalApiMarketQuote): Row {
   return {
-    symbol: item.symbol,
+    symbol: item.displaySymbol || item.symbol,
     name: item.name || undefined,
     quote: signalMarketQuoteHasValidPrice(item) ? item : null,
   };

@@ -118,16 +118,23 @@ export function ensureDbShape(db) {
         (Array.isArray(defaultJob.params?.instruments) ? defaultJob.params.instruments : []).map((item) => [String(item.symbol || ''), item]),
       );
       const instruments = Array.isArray(existing.params?.instruments) ? existing.params.instruments : [];
+      const defaultDex = defaultJob.params?.dex || 'xyz';
       existing.params = {
         ...(defaultJob.params || {}),
         ...(existing.params || {}),
+        dex: existing.params?.dex || defaultDex,
         instruments: instruments.map((item) => {
           const fallback = defaultInstruments.get(String(item?.symbol || '')) || {};
+          const candidates = [
+            ...(Array.isArray(fallback.candidates) ? fallback.candidates : []),
+            ...(Array.isArray(item?.candidates) ? item.candidates : []),
+          ].filter(Boolean);
           return {
             ...fallback,
             ...item,
             displaySymbol: item?.displaySymbol || fallback.displaySymbol,
             yahooSymbol: item?.yahooSymbol || fallback.yahooSymbol,
+            candidates: [...new Set(candidates)],
           };
         }),
       };

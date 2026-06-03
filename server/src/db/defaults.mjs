@@ -339,7 +339,7 @@ export function defaultPollingJobs() {
       lockTtlSeconds: 180,
       staleLockSeconds: 180,
       params: {
-        dex: '',
+        dex: 'xyz',
         fallbackUsdKrw: 1400,
         notice: '공식 거래소 시세가 아닌 해외 파생상품 기반 참고가입니다.',
         instruments: [
@@ -356,7 +356,7 @@ export function defaultPollingJobs() {
             name: 'SK하이닉스',
             displaySymbol: 'SK Hynix',
             yahooSymbol: '000660.KS',
-            candidates: ['HYNIX', 'SKHYNIX', '000660'],
+            candidates: ['SKHX', 'SKHYNIX', 'HYNIX', '000660'],
             regularCloseKrw: null,
           },
           {

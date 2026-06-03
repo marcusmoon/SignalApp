@@ -225,7 +225,7 @@ export async function fetchHyperliquidKoreaAfterHours(params = {}) {
   if (instruments.length === 0) return [];
 
   const [mids, usdKrw, regularQuotes] = await Promise.all([
-    fetchAllMids({ dex: String(params.dex || '') }).catch(() => ({})),
+    fetchAllMids({ dex: String(params.dex || 'xyz') }).catch(() => ({})),
     resolveUsdKrw(params).catch(() => null),
     Promise.all(
       instruments.map((instrument) =>

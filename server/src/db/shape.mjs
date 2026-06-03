@@ -126,6 +126,9 @@ export function ensureDbShape(db) {
           return { ...fallback, ...item, yahooSymbol: item?.yahooSymbol || fallback.yahooSymbol };
         }),
       };
+      if (existing.enabled === false && !existing.lastRunAt) {
+        existing.enabled = true;
+      }
     }
     if (existing.jobKey === 'concall_transcripts_recent' && existing.params.fallbackLatest == null) {
       existing.params = { ...existing.params, fallbackLatest: true };

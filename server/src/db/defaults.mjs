@@ -334,7 +334,7 @@ export function defaultPollingJobs() {
       operation: 'latest',
       provider: 'hyperliquid',
       handler: 'korea_after_hours',
-      enabled: false,
+      enabled: true,
       intervalSeconds: 60,
       lockTtlSeconds: 180,
       staleLockSeconds: 180,

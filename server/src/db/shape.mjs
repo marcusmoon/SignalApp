@@ -126,9 +126,11 @@ export function ensureDbShape(db) {
           return { ...fallback, ...item, yahooSymbol: item?.yahooSymbol || fallback.yahooSymbol };
         }),
       };
-      if (existing.enabled === false && !existing.lastRunAt) {
+      const migrationFlags = existing.migrationFlags && typeof existing.migrationFlags === 'object' ? existing.migrationFlags : {};
+      if (existing.enabled === false && migrationFlags.afterHoursDefaultEnabled !== true) {
         existing.enabled = true;
       }
+      existing.migrationFlags = { ...migrationFlags, afterHoursDefaultEnabled: true };
     }
     if (existing.jobKey === 'concall_transcripts_recent' && existing.params.fallbackLatest == null) {
       existing.params = { ...existing.params, fallbackLatest: true };

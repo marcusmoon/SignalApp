@@ -134,13 +134,18 @@ async function resolveUsdKrw(params = {}) {
 }
 
 function findMid(mids, candidates) {
+  const entries = Object.entries(mids || {});
   for (const candidate of candidates) {
     if (mids[candidate] != null) {
       const n = finiteNumber(mids[candidate]);
       if (n) return { coin: candidate, priceUsd: n };
     }
     const upper = candidate.toUpperCase();
-    const matchKey = Object.keys(mids).find((key) => String(key).toUpperCase() === upper);
+    const matchKey = entries.find(([key]) => {
+      const normalizedKey = String(key).toUpperCase();
+      const dexSymbol = normalizedKey.includes(':') ? normalizedKey.split(':').at(-1) : normalizedKey;
+      return normalizedKey === upper || dexSymbol === upper;
+    })?.[0];
     if (matchKey) {
       const n = finiteNumber(mids[matchKey]);
       if (n) return { coin: matchKey, priceUsd: n };
@@ -224,7 +229,7 @@ export async function fetchHyperliquidKoreaAfterHours(params = {}) {
     .filter((item) => item.symbol && (item.candidates.length > 0 || item.yahooSymbol));
   if (instruments.length === 0) return [];
 
-  const [mids, usdKrw, regularQuotes] = await Promise.all([
+  const [mids, fallbackUsdKrw, regularQuotes] = await Promise.all([
     fetchAllMids({ dex: String(params.dex || 'xyz') }).catch(() => ({})),
     resolveUsdKrw(params).catch(() => null),
     Promise.all(
@@ -235,6 +240,7 @@ export async function fetchHyperliquidKoreaAfterHours(params = {}) {
       ),
     ).then((entries) => new Map(entries)),
   ]);
+  const usdKrw = findMid(mids, ['KRW'])?.priceUsd ?? fallbackUsdKrw;
   const fetchedAt = new Date().toISOString();
   const rows = [];
   for (const instrument of instruments) {

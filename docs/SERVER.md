@@ -40,7 +40,7 @@ Admin에서 Job을 등록하고 실행한다. Job 설정에는 provider, schedul
 - YouTube 최신/인기 수집
 - 투자 캘린더 수집
 - 컨콜 수집
-- 국내주식 야간 참고가 수집: `market_quotes_kr_after_hours`는 Hyperliquid trade[XYZ] HIP-3 시장(`dex=xyz`)의 파생상품 심볼을 매핑해 `kr_after_hours` 시세를 저장한다. 기본 후보는 `SAMSUNG`, `SKHX`/`SKHYNIX`, `HYUNDAI`이며, 매핑이 실패해도 `yahooSymbol`(`005930.KS` 등)로 Yahoo 정규장 시세를 저장해 앱 야간 탭에서 종목이 누락되지 않게 한다. API 응답에는 `afterHoursAvailable`, `regularSession`, `official`, `notice`가 포함된다.
+- 국내주식 야간 참고가 수집: `market_quotes_kr_after_hours`는 Hyperliquid trade[XYZ] HIP-3 시장(`dex=xyz`)의 파생상품 심볼을 매핑해 `kr_after_hours` 시세를 저장한다. 기본 후보는 `SMSN`, `SKHX`, `HYUNDAI`이며, `allMids` 응답의 `xyz:` 접두사를 제거해 매핑한다. 매핑이 실패해도 `yahooSymbol`(`005930.KS` 등)로 Yahoo 정규장 시세를 저장해 앱 야간 탭에서 종목이 누락되지 않게 한다. API 응답에는 `afterHoursAvailable`, `regularSession`, `official`, `notice`가 포함된다.
 - 오늘의 시그널 생성
 - 번역/보정
 

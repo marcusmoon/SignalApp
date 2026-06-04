@@ -28,6 +28,14 @@ function kakaoNativeKey() {
   return String(value || '').trim();
 }
 
+function assertValidKakaoNativeKey(key) {
+  if (!/^[0-9a-fA-F]{32}$/.test(key)) {
+    throw new Error(
+      `KAKAO_NATIVE_APP_KEY must be a 32-character hexadecimal Kakao Native App Key (current length: ${key.length}).`,
+    );
+  }
+}
+
 function replacePlistStringAfterKey(contents, key, value) {
   const re = new RegExp(`(<key>${key}</key>\\s*<string>)([^<]*)(</string>)`);
   if (re.test(contents)) return contents.replace(re, `$1${value}$3`);
@@ -39,7 +47,7 @@ function syncIosInfoPlist(key) {
   if (!fs.existsSync(infoPlistPath)) return false;
 
   let contents = fs.readFileSync(infoPlistPath, 'utf8');
-  contents = contents.replace(/<string>kakao(?:\$\([^)]+\)|[0-9a-fA-F]{32})<\/string>/g, `<string>kakao${key}</string>`);
+  contents = contents.replace(/<string>kakao(?:\$\([^)]+\)|[0-9a-fA-F]+)<\/string>/g, `<string>kakao${key}</string>`);
   contents = replacePlistStringAfterKey(contents, 'KAKAO_APP_KEY', key);
   contents = replacePlistStringAfterKey(contents, 'KAKAO_APP_SCHEME', `kakao${key}`);
   const kakaoQuerySchemes = ['kakaokompassauth', 'storykompassauth', 'kakaolink'];
@@ -133,6 +141,8 @@ if (!key) {
   console.log('[kakao] KAKAO_NATIVE_APP_KEY is empty. Native Kakao config sync skipped.');
   process.exit(0);
 }
+
+assertValidKakaoNativeKey(key);
 
 const synced = [
   syncIosInfoPlist(key) && 'ios Info.plist',

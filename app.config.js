@@ -62,6 +62,11 @@ module.exports = () => {
   // 네이티브 앱 번들에 카카오 SDK 를 심으려면 prebuild 시점에만 키가 필요합니다(NOT EXPO_PUBLIC — JS 번들에 안 들어감).
   // Kakao 개발자 콘솔의 네이티브 앱 키와 동일 값을 EAS Secret 또는 로컬 .env 의 `KAKAO_NATIVE_APP_KEY` 로 주입합니다.
   const kakaoNativeKey = readEnvValue('KAKAO_NATIVE_APP_KEY') || '';
+  if (kakaoNativeKey && !/^[0-9a-fA-F]{32}$/.test(kakaoNativeKey)) {
+    throw new Error(
+      `KAKAO_NATIVE_APP_KEY must be a 32-character hexadecimal Kakao Native App Key (current length: ${kakaoNativeKey.length}).`,
+    );
+  }
 
   const basePlugins = Array.isArray(appJson.expo.plugins) ? [...appJson.expo.plugins] : [];
   let plugins = [...basePlugins];

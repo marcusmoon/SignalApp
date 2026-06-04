@@ -348,7 +348,7 @@ export function defaultPollingJobs() {
             name: '삼성전자',
             displaySymbol: 'Samsung Elec',
             yahooSymbol: '005930.KS',
-            candidates: ['SAMSUNG', '005930', 'SAMS', 'SEC'],
+            candidates: ['SMSN', 'SAMSUNG', '005930', 'SAMS', 'SEC'],
             regularCloseKrw: null,
           },
           {

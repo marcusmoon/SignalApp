@@ -67,7 +67,7 @@ import {
   type QuoteCacheRow,
 } from '@/services/cache/quotesCache';
 import {
-  isValidUsTicker,
+  isValidQuoteSymbol,
   loadWatchlistSymbols,
   resetWatchlistToDefaults,
   saveWatchlistSymbols,
@@ -262,7 +262,7 @@ export default function QuotesScreen() {
       }
       const list = (await fetchSignalMarketQuotes({ segment: 'kr_after_hours', limit })).map(mapSignalQuoteToRow);
       setRows(list);
-      storeQuotes(cacheKey, list);
+      if (list.length > 0) storeQuotes(cacheKey, list);
       return;
     }
 
@@ -369,7 +369,7 @@ export default function QuotesScreen() {
   const onAddWatch = useCallback(async () => {
     const raw = draftTicker.trim();
     if (!raw) return;
-    if (!isValidUsTicker(raw)) {
+    if (!isValidQuoteSymbol(raw)) {
       Alert.alert(t('alertTitleFormatError'), t('quotesAlertTickerFormatBody'));
       return;
     }
@@ -563,20 +563,36 @@ export default function QuotesScreen() {
                     </Pressable>
                   ) : null}
                 </View>
-                {r.quote ? (
+                {r.quote && !isKoreaAfterHours ? (
                   <Text style={styles.symPrev} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                    {isKoreaAfterHours ? t('quotesPrevCloseKrw') : segment === 'coin' ? t('quotesPrevRefCoin') : t('quotesPrevCloseStock')}{' '}
-                    {isKoreaAfterHours ? formatKrw(r.quote.previousClose) : formatUsd(Number(r.quote.previousClose))}
+                    {segment === 'coin' ? t('quotesPrevRefCoin') : t('quotesPrevCloseStock')}{' '}
+                    {formatUsd(Number(r.quote.previousClose))}
                   </Text>
                 ) : null}
-                {(segment === 'coin' || isKoreaAfterHours) && r.name ? (
+                {isKoreaAfterHours ? (
+                  <View style={styles.afterHoursMetaRow}>
+                    {r.name ? (
+                      <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                        {r.name}
+                      </Text>
+                    ) : null}
+                    <Text style={styles.afterHoursBadge} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                      {afterHoursSourceText}
+                    </Text>
+                  </View>
+                ) : segment === 'coin' && r.name ? (
                   <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                    {isKoreaAfterHours ? afterHoursSourceText : r.name}
+                    {r.name}
                   </Text>
                 ) : null}
               </View>
             </View>
             <View style={styles.priceCol}>
+              {r.quote && isKoreaAfterHours ? (
+                <Text style={styles.priceLabel} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                  {t('quotesAfterHoursPriceLabel')}
+                </Text>
+              ) : null}
               <View style={styles.priceRow}>
                 {r.quote ? (
                   <Text style={styles.price} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
@@ -606,27 +622,42 @@ export default function QuotesScreen() {
               ) : null}
             </View>
           </View>
-          {regularSession ? (
-            <View style={styles.regularSessionRow}>
-              <Text style={styles.regularSessionLabel} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                {t('quotesRegularSession')}
-              </Text>
-              <Text style={styles.regularSessionValue} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                {formatKrw(regularSession.currentPrice)}
-              </Text>
-              <Text
-                style={[
-                  styles.regularSessionMove,
-                  regularSession.change == null
-                    ? styles.regularSessionMoveMuted
-                    : Number(regularSession.change) >= 0
-                      ? styles.chgUp
-                      : styles.chgDn,
-                ]}
-                numberOfLines={1}
-                maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                {formatKrwChange(regularSession.change)} ({formatQuoteDpPct(regularSession.changePercent)})
-              </Text>
+          {isKoreaAfterHours && r.quote ? (
+            <View style={styles.afterHoursDetail}>
+              <View style={styles.afterHoursDetailRow}>
+                <Text style={styles.afterHoursDetailLabel} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                  {t('quotesAfterHoursBaseClose')}
+                </Text>
+                <Text style={styles.afterHoursDetailValue} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                  {formatKrw(r.quote.previousClose)}
+                </Text>
+                <Text style={styles.afterHoursDetailMeta} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                  {t('quotesAfterHoursBaseCloseHint')}
+                </Text>
+              </View>
+              {regularSession ? (
+                <View style={styles.afterHoursDetailRow}>
+                  <Text style={styles.afterHoursDetailLabel} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                    {t('quotesRegularSession')}
+                  </Text>
+                  <Text style={styles.afterHoursDetailValue} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                    {formatKrw(regularSession.currentPrice)}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.afterHoursDetailMeta,
+                      regularSession.change == null
+                        ? styles.afterHoursDetailMetaMuted
+                        : Number(regularSession.change) >= 0
+                          ? styles.chgUp
+                          : styles.chgDn,
+                    ]}
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                    {formatKrwChange(regularSession.change)} ({formatQuoteDpPct(regularSession.changePercent)})
+                  </Text>
+                </View>
+              ) : null}
             </View>
           ) : null}
           {!r.quote ? (
@@ -944,37 +975,71 @@ function makeStyles(
       color: theme.textMuted,
       marginTop: 4,
     },
-    regularSessionRow: {
+    afterHoursMetaRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      paddingTop: 8,
-      marginTop: 2,
+      gap: 6,
+      flexWrap: 'wrap',
+      marginTop: 4,
+    },
+    afterHoursBadge: {
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(15),
+      fontWeight: ft.emphasisWeight,
+      color: theme.green,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: theme.greenDim,
+      overflow: 'hidden',
+    },
+    afterHoursDetail: {
+      gap: 7,
+      paddingTop: 9,
+      marginTop: 4,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
     },
-    regularSessionLabel: {
+    afterHoursDetailRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      minWidth: 0,
+    },
+    afterHoursDetailLabel: {
+      width: 68,
       fontSize: ft.ff(11),
       lineHeight: ft.ff(15),
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
     },
-    regularSessionValue: {
+    afterHoursDetailValue: {
+      minWidth: 86,
       fontSize: ft.ff(12),
       lineHeight: ft.ff(16),
       fontWeight: ft.emphasisWeight,
       color: theme.text,
     },
-    regularSessionMove: {
+    afterHoursDetailMeta: {
       flex: 1,
       minWidth: 0,
       fontSize: ft.ff(12),
       lineHeight: ft.ff(16),
       fontWeight: ft.emphasisWeight,
       textAlign: 'right',
-    },
-    regularSessionMoveMuted: {
       color: theme.textMuted,
+    },
+    afterHoursDetailMetaMuted: {
+      color: theme.textMuted,
+    },
+    priceLabel: {
+      maxWidth: '100%',
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(14),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
+      marginBottom: 3,
+      textAlign: 'right',
     },
     price: {
       maxWidth: '100%',

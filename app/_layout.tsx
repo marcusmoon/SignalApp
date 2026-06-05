@@ -164,6 +164,7 @@ function RootLayoutNav() {
           calls: t('callsSectionTitle'),
           briefing: t('screenBriefing'),
           insights: t('screenInsights'),
+          quant: t('screenQuant'),
           market: t('screenMarket'),
           terms: t('termsScreenTitle'),
           'terms-history': t('termsHistoryScreenTitle'),

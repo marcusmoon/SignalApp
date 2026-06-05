@@ -41,9 +41,14 @@ eas build --platform android --profile production
 JS/asset 변경만 있을 때 사용한다. native module, Info.plist, entitlement, app icon, splash native 설정 변경은 OTA로 반영되지 않는다.
 
 ```bash
-eas update --branch preview --message "update message"
-eas update --branch production --message "update message"
+eas update --channel preview --message "update message"
+eas update --channel production --message "update message"
 ```
+
+- GitHub/Railway 배포는 앱 JS 번들을 갱신하지 않는다. 앱 반영에는 새 native 빌드 또는 EAS Update가 필요하다.
+- Xcode Run 기본 설정인 `Debug` 빌드는 앱 코드에서 OTA 확인을 건너뛴다. OTA 검증은 Xcode `Release` 또는 EAS preview/production 빌드로 한다.
+- Xcode로 직접 만든 Release 빌드도 `Expo.plist`의 `EXUpdatesRequestHeaders.expo-channel-name`이 `production`이어야 production OTA를 받는다.
+- 현재 앱은 시작 지연을 줄이기 위해 `checkAutomatically=NEVER`를 사용하고, 앱 활성화 시 자체 업데이트 확인 UI로 다운로드/재시작한다.
 
 ## iOS Xcode 빌드
 

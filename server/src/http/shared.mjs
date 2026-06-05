@@ -275,7 +275,17 @@ export function filterMarketQuotes(items, url) {
         .map((s) => s.trim().toUpperCase())
         .filter(Boolean),
     );
-    rows = rows.filter((item) => set.has(String(item.symbol || '').toUpperCase()));
+    rows = rows.filter((item) =>
+      [
+        item.symbol,
+        item.displaySymbol,
+        item.krxSymbol,
+        item.providerItemId,
+        item.rawPayload?.krxSymbol,
+        item.rawPayload?.displaySymbol,
+        item.regularSession?.yahooSymbol,
+      ].some((value) => set.has(String(value || '').trim().toUpperCase())),
+    );
   }
   if (q) {
     rows = rows.filter((item) =>
@@ -289,7 +299,7 @@ export function filterMarketQuotes(items, url) {
   if (symbols && !segment) {
     const bestBySymbol = new Map();
     for (const row of rows) {
-      const key = String(row.symbol || '').trim().toUpperCase();
+      const key = String(row.krxSymbol || row.rawPayload?.krxSymbol || row.symbol || '').trim().toUpperCase();
       if (!key) continue;
       const prev = bestBySymbol.get(key);
       const prevAt = prev?.fetchedAt ? new Date(prev.fetchedAt).getTime() : 0;

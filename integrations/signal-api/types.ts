@@ -165,6 +165,24 @@ export type SignalApiWatchSignal = {
   sourceRefs: SignalApiInsightSourceRef[];
 };
 
+export type SignalApiQuantSignal = {
+  symbol: string;
+  displaySymbol?: string | null;
+  krxSymbol?: string | null;
+  name: string | null;
+  score: number;
+  level: 'strong' | 'watch' | 'neutral' | 'weak' | string;
+  risk: 'low' | 'medium' | 'high' | string;
+  factors: {
+    momentum: number;
+    regularSession: number;
+    freshness: number;
+  };
+  reasonCodes: string[];
+  quote: SignalApiMarketQuote;
+  updatedAt: string | null;
+};
+
 export type SignalApiCoinMarket = {
   id: string;
   provider: string;

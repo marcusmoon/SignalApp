@@ -706,9 +706,18 @@ function marketQuotePrefilterSql(options) {
     .map((s) => s.trim().toUpperCase())
     .filter(Boolean);
   if (symbols.length > 0) {
-    where.push(`UPPER(symbol) IN (${symbols.map((_, index) => `@symbol${index}`).join(', ')})`);
+    where.push(
+      `(${symbols
+        .map(
+          (_, index) =>
+            `UPPER(symbol) = @symbol${index} OR UPPER(payload) LIKE @payloadSymbol${index} OR UPPER(payload) LIKE @payloadYahoo${index}`,
+        )
+        .join(' OR ')})`,
+    );
     symbols.forEach((symbol, index) => {
       params[`symbol${index}`] = symbol;
+      params[`payloadSymbol${index}`] = `%"KRXSYMBOL":"${symbol}"%`;
+      params[`payloadYahoo${index}`] = `%"YAHOOSYMBOL":"${symbol}.%`;
     });
   }
   const q = String(options.q || '').trim().toLowerCase();

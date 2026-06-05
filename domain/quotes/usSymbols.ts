@@ -12,6 +12,12 @@ export const DEFAULT_US_WATCHLIST = [
   'QQQ',
 ] as const;
 
+export const DEFAULT_QUOTE_WATCHLIST = [
+  ...DEFAULT_US_WATCHLIST,
+  '005930',
+  '000660',
+] as const;
+
 /** Market-cap screen universe (used for sorting by market cap) */
 export const MCAP_SCREEN_UNIVERSE = [
   'AAPL',
@@ -143,4 +149,3 @@ export const POPULAR_SYMBOLS_ORDERED = [
 ] as const;
 
 export const DEFAULT_MCAP_TOP_N = 20;
-

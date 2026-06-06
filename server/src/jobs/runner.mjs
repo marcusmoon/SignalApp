@@ -17,6 +17,7 @@ import { fetchHyperliquidKoreaAfterHours } from '../providers/market/hyperliquid
 import { fetchYahooKoreaDailyBars } from '../providers/market/yahooDailyBars.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes } from '../providers/market/index.mjs';
 import { generateMarketInsights } from '../insights/rules.mjs';
+import { generateQuantSignalItems } from '../quant/generate.mjs';
 import { notificationsFromInsights, upsertNotificationItem } from '../notifications/outbox.mjs';
 import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
@@ -299,6 +300,9 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
   if (job.provider === 'signal' && job.handler === 'market_insights') {
     return { kind: 'insights', rows: generateMarketInsights(dbBefore, job.params || {}) };
   }
+  if (job.provider === 'signal' && job.handler === 'quant_signals') {
+    return { kind: 'quantSignals', rows: generateQuantSignalItems(dbBefore, job.params || {}) };
+  }
   throw new Error(`UNKNOWN_JOB_HANDLER:${job.provider}:${job.handler}`);
 }
 
@@ -459,6 +463,8 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
         }
       } else if (result.kind === 'coinMarkets') {
         for (const row of rows) upsertById(db.coinMarkets, row);
+      } else if (result.kind === 'quantSignals') {
+        for (const row of rows) upsertById(db.quantSignalItems, row);
       } else if (result.kind === 'insights') {
         for (const row of rows) upsertById(db.insightItems, row);
         const notificationRows = notificationsFromInsights(rows);

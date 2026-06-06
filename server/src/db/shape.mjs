@@ -182,6 +182,7 @@ export function ensureDbShape(db) {
   if (!Array.isArray(db.marketQuotes)) db.marketQuotes = [];
   if (!Array.isArray(db.coinMarkets)) db.coinMarkets = [];
   if (!Array.isArray(db.priceSeries)) db.priceSeries = [];
+  if (!Array.isArray(db.quantSignalItems)) db.quantSignalItems = [];
   if (!Array.isArray(db.insightItems)) db.insightItems = [];
   if (!Array.isArray(db.notificationItems)) db.notificationItems = [];
   db.marketLists = ensureMarketListsShape(db.marketLists, nowIso);
@@ -248,6 +249,7 @@ export function splitStoresFromDb(db) {
     insights: {
       insightItems: shaped.insightItems,
       notificationItems: shaped.notificationItems,
+      quantSignalItems: shaped.quantSignalItems,
     },
   };
 }
@@ -273,6 +275,7 @@ export function shapeDbFromStores(stores) {
     coinMarkets: stores.market?.coinMarkets ?? [],
     marketLists: stores.market?.marketLists ?? [],
     priceSeries: stores.market?.priceSeries ?? [],
+    quantSignalItems: stores.insights?.quantSignalItems ?? [],
     insightItems: stores.insights?.insightItems ?? [],
     notificationItems: stores.insights?.notificationItems ?? [],
   });

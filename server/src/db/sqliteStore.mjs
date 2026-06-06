@@ -76,6 +76,7 @@ export function readStructuredDb(db) {
     coinMarkets: readCollection(db, 'coin_markets'),
     marketLists: readCollection(db, 'market_lists'),
     priceSeries: readCollection(db, 'price_series'),
+    quantSignalItems: readCollection(db, 'quant_signal_items'),
     insightItems: readCollection(db, 'insight_items'),
     notificationItems: readCollection(db, 'notification_items'),
   });
@@ -107,7 +108,11 @@ export function readStructuredDb(db) {
       marketLists: shaped.marketLists,
       priceSeries: shaped.priceSeries,
     },
-    insights: { insightItems: shaped.insightItems, notificationItems: shaped.notificationItems },
+    insights: {
+      insightItems: shaped.insightItems,
+      notificationItems: shaped.notificationItems,
+      quantSignalItems: shaped.quantSignalItems,
+    },
   });
 }
 
@@ -352,6 +357,20 @@ const collectionSpecs = [
     }),
   },
   {
+    table: 'quant_signal_items',
+    keyColumn: 'id',
+    keyOf: (row) => row.id,
+    extraColumns: ['symbol', 'action', 'level', 'score', 'generated_date', 'generated_at'],
+    extra: (row) => ({
+      symbol: textOrNull(row.symbol),
+      action: textOrNull(row.action),
+      level: textOrNull(row.level),
+      score: Number.isFinite(Number(row.score)) ? Math.round(Number(row.score)) : null,
+      generated_date: textOrNull(row.generatedDate),
+      generated_at: textOrNull(row.generatedAt),
+    }),
+  },
+  {
     table: 'insight_items',
     keyColumn: 'id',
     keyOf: (row) => row.id,
@@ -436,8 +455,9 @@ function writeStructuredDbInner(db, dbObject) {
   syncCollection(db, collectionSpecs[12], shaped.coinMarkets, updatedAt);
   syncCollection(db, collectionSpecs[13], shaped.marketLists, updatedAt);
   syncCollection(db, collectionSpecs[14], shaped.priceSeries, updatedAt);
-  syncCollection(db, collectionSpecs[15], shaped.insightItems, updatedAt);
-  syncCollection(db, collectionSpecs[16], shaped.notificationItems, updatedAt);
+  syncCollection(db, collectionSpecs[15], shaped.quantSignalItems, updatedAt);
+  syncCollection(db, collectionSpecs[16], shaped.insightItems, updatedAt);
+  syncCollection(db, collectionSpecs[17], shaped.notificationItems, updatedAt);
 }
 
 export function writeStructuredDb(db, dbObject, { transaction = true } = {}) {

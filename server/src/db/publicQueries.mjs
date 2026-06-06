@@ -10,6 +10,7 @@ import {
 import { listActiveYoutubeChannelHandles } from './youtubeChannels.mjs';
 import { itemMatchesYoutubeChannelHandles } from '../youtubeCuration.mjs';
 import { buildQuantSignal } from '../quant/signals.mjs';
+import { aggregateBacktests, backtestInstrument } from '../quant/backtest.mjs';
 
 function parsePayload(label, payload, fallback = null) {
   if (payload == null || payload === '') return fallback;
@@ -853,6 +854,123 @@ export function queryPublicQuantSignalsInDb(db, options = {}) {
     signals.sort((a, b) => b.score - a.score);
   }
   return signals.slice(0, limit);
+}
+
+function readPriceSeriesForSymbols(db, uniqueSymbols, scanLimit = 500) {
+  const params = {};
+  let whereSql = '';
+  if (uniqueSymbols.length > 0) {
+    whereSql = `WHERE UPPER(symbol) IN (${uniqueSymbols.map((_, index) => `@symbol${index}`).join(', ')})`;
+    uniqueSymbols.forEach((symbol, index) => {
+      params[`symbol${index}`] = symbol;
+    });
+  }
+  return db
+    .prepare(
+      `
+        SELECT payload
+        FROM price_series
+        ${whereSql}
+        ORDER BY symbol ASC
+        LIMIT ${Math.max(1, Math.floor(scanLimit))}
+      `,
+    )
+    .all(params)
+    .map((row) => parsePayload('price_series.payload', row.payload, null))
+    .filter((row) => row && Array.isArray(row.bars));
+}
+
+export function queryPublicQuantBacktestInDb(db, options = {}) {
+  const requested = String(options.symbols || '')
+    .split(',')
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
+  const uniqueSymbols = [...new Set(requested)];
+  const horizon = Math.max(1, Math.min(120, Math.floor(Number(options.horizon)) || 20));
+  const warmup = Math.max(20, Math.min(250, Math.floor(Number(options.warmup)) || 80));
+  const step = Math.max(1, Math.min(20, Math.floor(Number(options.step)) || 1));
+
+  const seriesRows = readPriceSeriesForSymbols(db, uniqueSymbols, 500);
+  if (seriesRows.length === 0) {
+    return { meta: { horizon, warmup, step, symbols: 0, samples: 0 }, summary: null, results: [] };
+  }
+
+  const results = seriesRows
+    .map((series) =>
+      backtestInstrument({
+        instrument: {
+          symbol: series.symbol,
+          displaySymbol: series.displaySymbol || series.symbol,
+          name: series.name || null,
+        },
+        bars: series.bars,
+        horizon,
+        warmup,
+        step,
+      }),
+    )
+    .filter(Boolean);
+
+  if (uniqueSymbols.length > 0) {
+    const order = new Map(uniqueSymbols.map((symbol, index) => [symbol, index]));
+    results.sort(
+      (a, b) =>
+        (order.get(String(a.symbol).toUpperCase()) ?? 999) - (order.get(String(b.symbol).toUpperCase()) ?? 999),
+    );
+  } else {
+    results.sort((a, b) => (b.directional?.hitRate ?? 0) - (a.directional?.hitRate ?? 0));
+  }
+
+  const summary = aggregateBacktests(results);
+  return {
+    meta: { horizon, warmup, step, symbols: results.length, samples: summary.samples },
+    summary,
+    results,
+  };
+}
+
+export function queryPublicQuantSignalHistoryInDb(db, options = {}) {
+  const symbol = String(options.symbol || '').trim().toUpperCase();
+  const { limit: safeLimit, offset: safeOffset } = listOffsetLimit(options, 60);
+  const where = [];
+  const params = {};
+  if (symbol) {
+    where.push('UPPER(symbol) = @symbol');
+    params.symbol = symbol;
+  }
+  if (options.from) {
+    where.push('generated_date >= @from');
+    params.from = String(options.from).slice(0, 10);
+  }
+  if (options.to) {
+    where.push('generated_date <= @to');
+    params.to = String(options.to).slice(0, 10);
+  }
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const scanLimit = Math.min(2000, Math.max(safeLimit + safeOffset + 60, 200));
+  const rows = db
+    .prepare(
+      `
+        SELECT payload
+        FROM quant_signal_items
+        ${whereSql}
+        ORDER BY generated_date DESC, symbol ASC
+        LIMIT @scanLimit
+      `,
+    )
+    .all({ ...params, scanLimit })
+    .map((row) => parsePayload('quant_signal_items.payload', row.payload, null))
+    .filter(Boolean);
+  const paged = pagination(rows, { limit: safeLimit, offset: safeOffset });
+  const hasMore = paged.hasMore || rows.length >= scanLimit;
+  return {
+    rows: paged.rows,
+    total: paged.total,
+    limit: safeLimit,
+    offset: safeOffset,
+    hasMore,
+    nextOffset: hasMore ? safeOffset + paged.rows.length : null,
+  };
 }
 
 export function queryPublicCoinMarketsInDb(db, options = {}) {

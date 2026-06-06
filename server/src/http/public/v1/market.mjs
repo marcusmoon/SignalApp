@@ -1,7 +1,9 @@
 import {
   queryPublicCoinMarkets,
   queryPublicMarketQuotes,
+  queryPublicQuantBacktest,
   queryPublicQuantSignals,
+  queryPublicQuantSignalHistory,
   queryPublicWatchSignals,
   readAppSettings,
   readPublicMarketList,
@@ -97,6 +99,39 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
       limit: url.searchParams.get('limit') || '',
     });
     json(res, 200, { data: rows });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/v1/quant-backtest') {
+    const result = await queryPublicQuantBacktest({
+      symbols: url.searchParams.get('symbols') || '',
+      horizon: url.searchParams.get('horizon') || '',
+      warmup: url.searchParams.get('warmup') || '',
+      step: url.searchParams.get('step') || '',
+    });
+    json(res, 200, { data: result });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/v1/quant-signal-history') {
+    const page = await queryPublicQuantSignalHistory({
+      symbol: url.searchParams.get('symbol') || '',
+      from: url.searchParams.get('from') || '',
+      to: url.searchParams.get('to') || '',
+      limit: url.searchParams.get('limit') || url.searchParams.get('pageSize') || '60',
+      offset: url.searchParams.get('offset') || '',
+      page: url.searchParams.get('page') || '',
+    });
+    json(res, 200, {
+      data: page.rows,
+      meta: {
+        limit: page.limit,
+        offset: page.offset,
+        total: page.total,
+        hasMore: page.hasMore,
+        nextOffset: page.nextOffset,
+      },
+    });
     return true;
   }
 

@@ -732,6 +732,7 @@ export const ko = {
   symbolDetailWatchRemove: '관심 종목 제거',
   symbolDetailErrorLoad: '종목 상세를 불러오지 못했습니다.',
   symbolDetailSignalOverview: '종목 체크 점수',
+  symbolDetailQuantSection: '코스피 퀀트 신호',
   symbolDetailSignalLevelHot: '지금 확인할 만한 움직임이 큽니다.',
   symbolDetailSignalLevelWatch: '뉴스·가격·일정 중 볼 만한 변화가 있습니다.',
   symbolDetailSignalLevelQuiet: '큰 변화는 적지만 기본 모니터링 중입니다.',

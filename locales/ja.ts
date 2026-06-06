@@ -735,6 +735,7 @@ export const ja = {
   symbolDetailWatchRemove: 'ウォッチ解除',
   symbolDetailErrorLoad: '銘柄詳細を読み込めませんでした。',
   symbolDetailSignalOverview: '銘柄チェックスコア',
+  symbolDetailQuantSection: 'KOSPIクオンツシグナル',
   symbolDetailSignalLevelHot: '今すぐ確認したい動きがあります。',
   symbolDetailSignalLevelWatch: 'ニュース・価格・予定に注目点があります。',
   symbolDetailSignalLevelQuiet: '大きな変化は少なく、通常監視です。',

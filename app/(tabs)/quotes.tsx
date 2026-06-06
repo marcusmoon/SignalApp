@@ -47,6 +47,7 @@ import {
   fetchSignalCoins,
   fetchSignalMarketList,
   fetchSignalMarketQuotes,
+  fetchSignalQuantSignals,
   type SignalApiCoinMarket,
   type SignalApiMarketQuote,
 } from '@/integrations/signal-api';
@@ -82,9 +83,33 @@ const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
   popular: 'quotesSegmentPopular',
   mcap: 'quotesSegmentMcap',
-  afterHours: 'quotesSegmentAfterHours',
   coin: 'quotesSegmentCoin',
 };
+
+const QUANT_ACTION_LABEL: Record<string, MessageId> = {
+  buy: 'quantActionBuy',
+  accumulate: 'quantActionAccumulate',
+  hold: 'quantActionHold',
+  reduce: 'quantActionReduce',
+  avoid: 'quantActionAvoid',
+};
+
+function isKoreaSymbol(symbol: string): boolean {
+  return /^\d{6}$/.test(String(symbol || '').trim());
+}
+
+function quantActionTone(theme: AppTheme, action: string): string {
+  if (action === 'buy') return theme.danger;
+  if (action === 'accumulate') return theme.green;
+  if (action === 'reduce') return theme.accentBlue;
+  if (action === 'avoid') return theme.textDim;
+  return theme.textMuted;
+}
+
+function formatPctSigned(value: number | null | undefined): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+}
 
 type Row = QuoteCacheRow;
 
@@ -121,13 +146,6 @@ function formatKrw(value: unknown): string {
   const n = toFiniteDisplayNumber(value);
   if (!Number.isFinite(n)) return '—';
   return `₩${Math.round(Math.abs(n)).toLocaleString('ko-KR')}`;
-}
-
-function formatKrwChange(value: unknown): string {
-  const n = toFiniteDisplayNumber(value);
-  if (!Number.isFinite(n)) return '—';
-  if (n === 0) return '₩0';
-  return `${n > 0 ? '+' : '-'}₩${Math.round(Math.abs(n)).toLocaleString('ko-KR')}`;
 }
 
 /** 일부 quote 응답에서 `dp` 누락 가능 — `toFixed` 직접 호출 금지 */
@@ -187,15 +205,6 @@ function mapSignalCoinToRow(item: SignalApiCoinMarket): Row {
   };
 }
 
-function applyQuoteOrder(rows: Row[], symbols: readonly string[]): Row[] {
-  const bySymbol = new Map(rows.map((row) => [row.symbol.trim().toUpperCase(), row]));
-  return symbols.map((symbol) => bySymbol.get(symbol.trim().toUpperCase()) || {
-    symbol,
-    quote: null,
-    error: 'NO_SERVER_QUOTE',
-  });
-}
-
 export default function QuotesScreen() {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t } = useLocale();
@@ -250,9 +259,13 @@ export default function QuotesScreen() {
       return;
     }
 
-    if (segment === 'afterHours') {
-      const limit = 30;
-      const cacheKey = buildQuotesCacheKey('kr_after_hours', [`n${limit}`]);
+    if (segment === 'watch') {
+      const symbols = await loadWatchlistSymbols();
+      if (symbols.length === 0) {
+        setRows([]);
+        return;
+      }
+      const cacheKey = buildQuotesCacheKey('watch', [...symbols].sort());
       if (!forceRefresh) {
         const hit = peekQuotes(cacheKey);
         if (hit) {
@@ -260,16 +273,34 @@ export default function QuotesScreen() {
           return;
         }
       }
-      const list = (await fetchSignalMarketQuotes({ segment: 'kr_after_hours', limit })).map(mapSignalQuoteToRow);
-      setRows(list);
-      if (list.length > 0) storeQuotes(cacheKey, list);
+      // 국내(6자리) 종목은 정규장 시세가 없으므로 코스피 퀀트 신호로, 그 외(미국주식)는 실시간 시세로 채운다.
+      const krSymbols = symbols.filter(isKoreaSymbol);
+      const usSymbols = symbols.filter((s) => !isKoreaSymbol(s));
+      const [usRows, quantRows] = await Promise.all([
+        usSymbols.length > 0
+          ? fetchSignalMarketQuotes({ symbols: usSymbols, limit: Math.max(usSymbols.length, 1), refresh: forceRefresh === true })
+          : Promise.resolve([] as SignalApiMarketQuote[]),
+        krSymbols.length > 0
+          ? fetchSignalQuantSignals({ symbols: krSymbols, limit: krSymbols.length }).catch(() => [])
+          : Promise.resolve([]),
+      ]);
+      const usBySymbol = new Map(usRows.map(mapSignalQuoteToRow).map((r) => [r.symbol.trim().toUpperCase(), r]));
+      const quantBySymbol = new Map(quantRows.map((q) => [String(q.symbol).trim().toUpperCase(), q]));
+      const nextRows: Row[] = symbols.map((sym) => {
+        const up = sym.trim().toUpperCase();
+        const quant = quantBySymbol.get(up);
+        if (quant) {
+          return { symbol: quant.symbol || sym, name: quant.name ?? undefined, quote: null, quant };
+        }
+        return usBySymbol.get(up) || { symbol: sym, quote: null, error: 'NO_SERVER_QUOTE' };
+      });
+      setRows(nextRows);
+      storeQuotes(cacheKey, nextRows);
       return;
     }
 
     let symbols: string[] = [];
-    if (segment === 'watch') {
-      symbols = await loadWatchlistSymbols();
-    } else if (segment === 'popular') {
+    if (segment === 'popular') {
       try {
         const list = await fetchSignalMarketList('popular_symbols');
         symbols = list.symbols.slice(0, limits.popularMax);
@@ -278,18 +309,15 @@ export default function QuotesScreen() {
       }
     }
 
-    if ((segment === 'watch' || segment === 'popular') && symbols.length === 0) {
+    if (segment === 'popular' && symbols.length === 0) {
       setRows([]);
       return;
     }
 
-    const cacheKey =
-      segment === 'watch'
-        ? buildQuotesCacheKey('watch', [...symbols].sort())
-        : buildQuotesCacheKey(
-            segment === 'popular' ? 'popular' : 'mcap',
-            [`n${segment === 'popular' ? limits.popularMax : limits.mcapMax}`],
-          );
+    const cacheKey = buildQuotesCacheKey(
+      segment === 'popular' ? 'popular' : 'mcap',
+      [`n${segment === 'popular' ? limits.popularMax : limits.mcapMax}`],
+    );
     if (!forceRefresh) {
       const hit = peekQuotes(cacheKey);
       if (hit) {
@@ -298,15 +326,11 @@ export default function QuotesScreen() {
       }
     }
 
-    const serverRows =
-      segment === 'watch'
-        ? await fetchSignalMarketQuotes({ symbols, limit: Math.max(symbols.length, 1), refresh: forceRefresh === true })
-        : await fetchSignalMarketQuotes({
-            segment: segment === 'popular' ? 'popular' : 'mcap',
-            limit: segment === 'popular' ? limits.popularMax : limits.mcapMax,
-          });
-    const mapped = serverRows.map(mapSignalQuoteToRow);
-    const nextRows = segment === 'watch' ? applyQuoteOrder(mapped, symbols) : mapped;
+    const serverRows = await fetchSignalMarketQuotes({
+      segment: segment === 'popular' ? 'popular' : 'mcap',
+      limit: segment === 'popular' ? limits.popularMax : limits.mcapMax,
+    });
+    const nextRows = serverRows.map(mapSignalQuoteToRow);
     setRows(nextRows);
     storeQuotes(cacheKey, nextRows);
   }, [segment, t]);
@@ -414,7 +438,7 @@ export default function QuotesScreen() {
     (r: Row) => {
       const sym = r.symbol?.trim();
       if (!sym || sym === '—') return;
-      if (segment === 'afterHours' || isKoreaStockQuote(r)) {
+      if (isKoreaStockQuote(r)) {
         void openNaverFinanceStock(r.quote?.krxSymbol || sym);
         return;
       }
@@ -426,7 +450,7 @@ export default function QuotesScreen() {
   const openSymbolDetail = useCallback(
     (symbol: string) => {
       const trimmed = symbol.trim().toUpperCase();
-      if (!trimmed || trimmed === '—' || segment === 'coin' || segment === 'afterHours') return;
+      if (!trimmed || trimmed === '—' || segment === 'coin') return;
       router.push(`/symbol/${trimmed}`);
     },
     [router, segment],
@@ -522,14 +546,12 @@ export default function QuotesScreen() {
       const yahooEnabled = symTrim.length > 0 && symTrim !== '—';
       const watchSwipe = segment === 'watch' && Platform.OS !== 'web';
       const watchRemoveIcon = segment === 'watch' && Platform.OS === 'web';
-      const isKoreaAfterHours = segment === 'afterHours';
-      const useNaverLink = isKoreaAfterHours || isKoreaStockQuote(r);
-      const regularSession = isKoreaAfterHours ? r.quote?.regularSession : null;
-      const afterHoursSourceText = isKoreaAfterHours
-        ? r.quote?.afterHoursAvailable === false
-          ? t('quotesAfterHoursPending')
-          : t('quotesAfterHoursSource')
-        : '';
+      const quant = r.quant ?? null;
+      const useNaverLink = isKoreaStockQuote(r);
+      const titleText = quant ? r.name || r.symbol : r.symbol;
+      const quantReturn20d = quant?.indicators?.return20d ?? null;
+      const quantActionLabel = quant ? t(QUANT_ACTION_LABEL[quant.action] ?? 'quantActionHold') : '';
+      const quantActionColor = quant ? quantActionTone(theme, quant.action) : theme.textMuted;
 
       const cardInner = (
         <>
@@ -539,7 +561,7 @@ export default function QuotesScreen() {
                 <View style={styles.symRow}>
                   <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={6} style={styles.symPressable}>
                     <Text style={styles.sym} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                      {r.symbol}
+                      {titleText}
                     </Text>
                   </Pressable>
                   {yahooEnabled ? (
@@ -563,24 +585,20 @@ export default function QuotesScreen() {
                     </Pressable>
                   ) : null}
                 </View>
-                {r.quote && !isKoreaAfterHours ? (
+                {quant ? (
+                  <View style={styles.quantMetaRow}>
+                    <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                      {r.symbol}
+                      {typeof quant.rank === 'number' && quant.rank > 0 ? ` · ${t('quantRankBadge', { rank: quant.rank })}` : ''}
+                    </Text>
+                  </View>
+                ) : r.quote ? (
                   <Text style={styles.symPrev} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                     {segment === 'coin' ? t('quotesPrevRefCoin') : t('quotesPrevCloseStock')}{' '}
                     {formatUsd(Number(r.quote.previousClose))}
                   </Text>
                 ) : null}
-                {isKoreaAfterHours ? (
-                  <View style={styles.afterHoursMetaRow}>
-                    {r.name ? (
-                      <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                        {r.name}
-                      </Text>
-                    ) : null}
-                    <Text style={styles.afterHoursBadge} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                      {afterHoursSourceText}
-                    </Text>
-                  </View>
-                ) : segment === 'coin' && r.name ? (
+                {!quant && segment === 'coin' && r.name ? (
                   <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                     {r.name}
                   </Text>
@@ -588,15 +606,14 @@ export default function QuotesScreen() {
               </View>
             </View>
             <View style={styles.priceCol}>
-              {r.quote && isKoreaAfterHours ? (
-                <Text style={styles.priceLabel} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                  {t('quotesAfterHoursPriceLabel')}
-                </Text>
-              ) : null}
               <View style={styles.priceRow}>
-                {r.quote ? (
+                {quant ? (
                   <Text style={styles.price} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                    {isKoreaAfterHours ? formatKrw(r.quote.currentPrice) : formatUsd(Number(r.quote.currentPrice))}
+                    {formatKrw(quant.indicators?.lastClose)}
+                  </Text>
+                ) : r.quote ? (
+                  <Text style={styles.price} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                    {formatUsd(Number(r.quote.currentPrice))}
                   </Text>
                 ) : (
                   <Text style={styles.na}>—</Text>
@@ -612,55 +629,43 @@ export default function QuotesScreen() {
                   </Pressable>
                 ) : null}
               </View>
-              {r.quote ? (
+              {quant ? (
+                <Text
+                  style={[styles.chg, Number(quantReturn20d ?? 0) >= 0 ? styles.chgUp : styles.chgDn]}
+                  numberOfLines={1}
+                  maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
+                  {t('quant20dReturn')} {formatPctSigned(quantReturn20d)}
+                </Text>
+              ) : r.quote ? (
                 <Text
                   style={[styles.chg, quoteChange.isPositive(r.quote) ? styles.chgUp : styles.chgDn]}
                   numberOfLines={1}
                   maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                  {isKoreaAfterHours ? formatKrwChange(r.quote.change) : formatUsdChange(Number(r.quote.change ?? 0))} ({formatQuoteDpPct(r.quote.changePercent)})
+                  {formatUsdChange(Number(r.quote.change ?? 0))} ({formatQuoteDpPct(r.quote.changePercent)})
                 </Text>
               ) : null}
             </View>
           </View>
-          {isKoreaAfterHours && r.quote ? (
-            <View style={styles.afterHoursDetail}>
-              <View style={styles.afterHoursDetailRow}>
-                <Text style={styles.afterHoursDetailLabel} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                  {t('quotesAfterHoursBaseClose')}
+          {quant ? (
+            <View style={styles.quantDetail}>
+              <View style={styles.quantBadgeRow}>
+                <Text
+                  style={[styles.quantActionBadge, { color: quantActionColor, borderColor: quantActionColor }]}
+                  numberOfLines={1}>
+                  {quantActionLabel}
                 </Text>
-                <Text style={styles.afterHoursDetailValue} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                  {formatKrw(r.quote.previousClose)}
-                </Text>
-                <Text style={styles.afterHoursDetailMeta} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                  {t('quotesAfterHoursBaseCloseHint')}
+                <Text style={styles.quantScoreText} numberOfLines={1}>
+                  {t('quantScore')} {quant.score} · {t('quantConfidence')} {quant.confidence}
                 </Text>
               </View>
-              {regularSession ? (
-                <View style={styles.afterHoursDetailRow}>
-                  <Text style={styles.afterHoursDetailLabel} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                    {t('quotesRegularSession')}
-                  </Text>
-                  <Text style={styles.afterHoursDetailValue} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                    {formatKrw(regularSession.currentPrice)}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.afterHoursDetailMeta,
-                      regularSession.change == null
-                        ? styles.afterHoursDetailMetaMuted
-                        : Number(regularSession.change) >= 0
-                          ? styles.chgUp
-                          : styles.chgDn,
-                    ]}
-                    numberOfLines={1}
-                    maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                    {formatKrwChange(regularSession.change)} ({formatQuoteDpPct(regularSession.changePercent)})
-                  </Text>
-                </View>
+              {quant.headline ? (
+                <Text style={styles.quantHeadline} numberOfLines={2}>
+                  {quant.headline}
+                </Text>
               ) : null}
             </View>
           ) : null}
-          {!r.quote ? (
+          {!r.quote && !quant ? (
             <Text style={styles.fail}>
               {r.error === 'UNKNOWN_SYMBOL'
                 ? t('quotesErrorNoPrice')
@@ -726,7 +731,7 @@ export default function QuotesScreen() {
           <View style={styles.segment}>
             {segmentOrder.map((key) => (
               <Fragment key={key}>
-                {(key === 'afterHours' || key === 'coin') ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
+                {key === 'coin' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
                 <Pressable
                   onPress={() => {
                     if (segment === key) return;
@@ -735,7 +740,7 @@ export default function QuotesScreen() {
                     setError(null);
                     setSegment(key);
                   }}
-                  style={[styles.segBtn, (key === 'afterHours' || key === 'coin') && styles.segBtnCompact, segment === key && styles.segBtnActive]}
+                  style={[styles.segBtn, key === 'coin' && styles.segBtnCompact, segment === key && styles.segBtnActive]}
                   accessibilityState={{ selected: segment === key }}>
                   <Text style={[styles.segText, segment === key && styles.segTextActive]}>
                     {t(QUOTE_SEGMENT_LABEL[key])}
@@ -975,71 +980,50 @@ function makeStyles(
       color: theme.textMuted,
       marginTop: 4,
     },
-    afterHoursMetaRow: {
+    quantMetaRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
       flexWrap: 'wrap',
       marginTop: 4,
     },
-    afterHoursBadge: {
-      fontSize: ft.ff(11),
-      lineHeight: ft.ff(15),
-      fontWeight: ft.emphasisWeight,
-      color: theme.green,
-      paddingHorizontal: 7,
-      paddingVertical: 2,
-      borderRadius: 999,
-      backgroundColor: theme.greenDim,
-      overflow: 'hidden',
-    },
-    afterHoursDetail: {
-      gap: 7,
+    quantDetail: {
+      flexDirection: 'column',
+      gap: 6,
       paddingTop: 9,
       marginTop: 4,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
     },
-    afterHoursDetailRow: {
+    quantBadgeRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      minWidth: 0,
+      flexWrap: 'wrap',
     },
-    afterHoursDetailLabel: {
-      width: 68,
+    quantActionBadge: {
+      overflow: 'hidden',
+      borderRadius: 7,
+      borderWidth: 1.5,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.titleWeight,
+    },
+    quantScoreText: {
+      flexShrink: 1,
+      minWidth: 0,
       fontSize: ft.ff(11),
       lineHeight: ft.ff(15),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-    },
-    afterHoursDetailValue: {
-      minWidth: 86,
-      fontSize: ft.ff(12),
-      lineHeight: ft.ff(16),
       fontWeight: ft.emphasisWeight,
-      color: theme.text,
+      color: theme.textMuted,
     },
-    afterHoursDetailMeta: {
-      flex: 1,
-      minWidth: 0,
+    quantHeadline: {
       fontSize: ft.ff(12),
-      lineHeight: ft.ff(16),
+      lineHeight: ft.ff(17),
       fontWeight: ft.emphasisWeight,
-      textAlign: 'right',
-      color: theme.textMuted,
-    },
-    afterHoursDetailMetaMuted: {
-      color: theme.textMuted,
-    },
-    priceLabel: {
-      maxWidth: '100%',
-      fontSize: ft.ff(11),
-      lineHeight: ft.ff(14),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-      marginBottom: 3,
-      textAlign: 'right',
+      color: theme.textDim,
     },
     price: {
       maxWidth: '100%',

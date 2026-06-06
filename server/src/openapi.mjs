@@ -315,7 +315,7 @@ export function getOpenApiSpec() {
               in: 'query',
               schema: {
                 type: 'string',
-                enum: ['watch', 'popular', 'mcap', 'kr_after_hours'],
+                enum: ['watch', 'popular', 'mcap'],
                 example: 'popular',
               },
             },

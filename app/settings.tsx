@@ -164,7 +164,6 @@ const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
   popular: 'quotesSegmentPopular',
   mcap: 'quotesSegmentMcap',
-  afterHours: 'quotesSegmentAfterHours',
   coin: 'quotesSegmentCoin',
 };
 

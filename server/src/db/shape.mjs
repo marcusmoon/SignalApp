@@ -68,6 +68,9 @@ export function ensureDbShape(db) {
     }
   }
   if (!Array.isArray(db.pollingJobs)) db.pollingJobs = defaultPollingJobs();
+  // Retired jobs: drop the Hyperliquid-based KR after-hours quote job from
+  // existing deployments now that the night-quote feature is removed.
+  db.pollingJobs = db.pollingJobs.filter((j) => j && j.jobKey !== 'market_quotes_kr_after_hours');
   ensureRssSourcesCatalog(db);
   const defaults = defaultPollingJobs();
   for (const defaultJob of defaults) {
@@ -112,37 +115,6 @@ export function ensureDbShape(db) {
     }
     if (existing.jobKey === 'market_quotes_mcap' && !existing.params.listKey) {
       existing.params = { ...existing.params, listKey: 'mcap_universe' };
-    }
-    if (existing.jobKey === 'market_quotes_kr_after_hours') {
-      const defaultInstruments = new Map(
-        (Array.isArray(defaultJob.params?.instruments) ? defaultJob.params.instruments : []).map((item) => [String(item.symbol || ''), item]),
-      );
-      const instruments = Array.isArray(existing.params?.instruments) ? existing.params.instruments : [];
-      const defaultDex = defaultJob.params?.dex || 'xyz';
-      existing.params = {
-        ...(defaultJob.params || {}),
-        ...(existing.params || {}),
-        dex: existing.params?.dex || defaultDex,
-        instruments: instruments.map((item) => {
-          const fallback = defaultInstruments.get(String(item?.symbol || '')) || {};
-          const candidates = [
-            ...(Array.isArray(fallback.candidates) ? fallback.candidates : []),
-            ...(Array.isArray(item?.candidates) ? item.candidates : []),
-          ].filter(Boolean);
-          return {
-            ...fallback,
-            ...item,
-            displaySymbol: item?.displaySymbol || fallback.displaySymbol,
-            yahooSymbol: item?.yahooSymbol || fallback.yahooSymbol,
-            candidates: [...new Set(candidates)],
-          };
-        }),
-      };
-      const migrationFlags = existing.migrationFlags && typeof existing.migrationFlags === 'object' ? existing.migrationFlags : {};
-      if (existing.enabled === false && migrationFlags.afterHoursDefaultEnabled !== true) {
-        existing.enabled = true;
-      }
-      existing.migrationFlags = { ...migrationFlags, afterHoursDefaultEnabled: true };
     }
     if (existing.jobKey === 'quant_price_series_kr') {
       // The KR universe is a managed market-cap list, so always realign the

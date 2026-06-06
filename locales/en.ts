@@ -736,6 +736,7 @@ export const en = {
   symbolDetailWatchRemove: 'Remove from watch',
   symbolDetailErrorLoad: 'Failed to load symbol detail.',
   symbolDetailSignalOverview: 'Ticker check score',
+  symbolDetailQuantSection: 'KOSPI quant signal',
   symbolDetailSignalLevelHot: 'There is enough movement to check now.',
   symbolDetailSignalLevelWatch: 'News, price, or calendar activity is worth watching.',
   symbolDetailSignalLevelQuiet: 'No major change, but it stays on monitor.',

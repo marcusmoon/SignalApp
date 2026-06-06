@@ -190,9 +190,12 @@ export type SignalApiQuantSignal = {
   symbol: string;
   displaySymbol?: string | null;
   name: string | null;
+  rank?: number | null;
   score: number;
   level: 'strong' | 'watch' | 'neutral' | 'weak' | string;
   action: 'buy' | 'accumulate' | 'hold' | 'reduce' | 'avoid' | string;
+  headline?: string | null;
+  interpretation?: string | null;
   risk: 'low' | 'medium' | 'high' | 'unknown' | string;
   confidence: number;
   factors: SignalApiQuantSignalFactors;

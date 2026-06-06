@@ -21,11 +21,13 @@ function normalizeInstrument(input = {}) {
   const symbol = normalizeSymbol(input.symbol || input.krxSymbol || input.code);
   const name = String(input.name || input.displayName || symbol || '').trim();
   const displaySymbol = String(input.displaySymbol || input.englishName || '').trim();
+  const rank = Number(input.rank);
   return {
     symbol,
     displaySymbol: displaySymbol || symbol,
     name: name || symbol,
     yahooSymbol: String(input.yahooSymbol || input.yahooTicker || defaultYahooSymbol(symbol)).trim().toUpperCase(),
+    rank: Number.isFinite(rank) && rank > 0 ? Math.round(rank) : null,
   };
 }
 
@@ -92,6 +94,7 @@ function buildSeriesRow({ instrument, bars, range, fetchedAt }) {
     displaySymbol: instrument.displaySymbol,
     name: instrument.name,
     yahooSymbol: instrument.yahooSymbol,
+    rank: instrument.rank,
     currency: 'KRW',
     range,
     interval: '1d',

@@ -835,6 +835,7 @@ export function queryPublicQuantSignalsInDb(db, options = {}) {
           symbol: series.symbol,
           displaySymbol: series.displaySymbol || series.symbol,
           name: series.name || null,
+          rank: series.rank ?? null,
         },
         bars: series.bars,
         liveQuote: liveQuote ? publicMarketQuote(liveQuote) : null,
@@ -851,7 +852,9 @@ export function queryPublicQuantSignalsInDb(db, options = {}) {
         b.score - a.score,
     );
   } else {
-    signals.sort((a, b) => b.score - a.score);
+    // Default view: present the market-cap universe in rank order, falling back
+    // to score when a symbol has no configured rank.
+    signals.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999) || b.score - a.score);
   }
   return signals.slice(0, limit);
 }

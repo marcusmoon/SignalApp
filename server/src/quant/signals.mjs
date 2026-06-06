@@ -104,6 +104,75 @@ function levelForScore(score) {
   return 'weak';
 }
 
+const ACTION_HEADLINE = {
+  buy: '강세 추세 · 매수 우위',
+  accumulate: '완만한 강세 · 분할매수 구간',
+  hold: '방향성 중립 · 관망',
+  reduce: '약세 신호 · 비중 축소 검토',
+  avoid: '하락 우위 · 진입 자제',
+};
+
+function fmtPct(value, digits = 1) {
+  if (value == null || !Number.isFinite(Number(value))) return null;
+  const n = Number(value);
+  return `${n >= 0 ? '+' : ''}${n.toFixed(digits)}%`;
+}
+
+// Builds a plain-Korean explanation of the signal from the underlying
+// indicators so the card can answer "왜 이 신호인가?" without jargon.
+function buildInterpretation({ action, factors, rank }) {
+  const sentences = [];
+
+  if (Number.isFinite(rank) && rank > 0) {
+    sentences.push(`코스피 시총 ${rank}위 종목입니다.`);
+  }
+
+  const vs20 = factors.vsSma20Pct;
+  const vs60 = factors.vsSma60Pct;
+  if (vs20 != null && vs60 != null) {
+    if (vs20 > 0 && vs60 > 0) {
+      sentences.push(`20일선(${fmtPct(vs20)})과 60일선(${fmtPct(vs60)}) 위에서 거래되며 상승 추세가 유지되고 있습니다.`);
+    } else if (vs20 < 0 && vs60 < 0) {
+      sentences.push(`20일선(${fmtPct(vs20)})과 60일선(${fmtPct(vs60)}) 아래에서 거래되며 하락 추세가 이어지고 있습니다.`);
+    } else {
+      sentences.push(`단기·중기 이동평균이 엇갈려(20일 ${fmtPct(vs20)}, 60일 ${fmtPct(vs60)}) 추세 전환 구간입니다.`);
+    }
+  }
+
+  const ret20 = factors.return20d;
+  if (ret20 != null) {
+    const strength = Math.abs(ret20) >= 8 ? '강한' : Math.abs(ret20) >= 3 ? '완만한' : '제한적인';
+    const dir = ret20 >= 0 ? '상승' : '하락';
+    sentences.push(`최근 20일 ${fmtPct(ret20)}로 ${strength} ${dir} 모멘텀을 보입니다.`);
+  }
+
+  const rsi = factors.rsi14;
+  if (rsi != null) {
+    if (rsi >= 70) sentences.push(`RSI ${rsi.toFixed(0)}로 과매수 영역이라 단기 조정 가능성에 유의하세요.`);
+    else if (rsi <= 30) sentences.push(`RSI ${rsi.toFixed(0)}로 과매도 영역이라 기술적 반등 가능성이 있습니다.`);
+    else sentences.push(`RSI ${rsi.toFixed(0)}로 중립 수준입니다.`);
+  }
+
+  const vol = factors.volatility;
+  if (vol != null && vol >= 45) {
+    sentences.push(`연환산 변동성이 ${vol.toFixed(0)}%로 높아 분할 접근이 안전합니다.`);
+  }
+
+  const guidance = {
+    buy: '추세와 모멘텀이 모두 우호적이라 신규 매수에 우호적인 구간입니다.',
+    accumulate: '추세는 살아 있으나 강도가 약해 분할로 비중을 늘리는 전략이 적합합니다.',
+    hold: '뚜렷한 방향성이 없어 기존 포지션 유지와 추가 신호 확인이 바람직합니다.',
+    reduce: '추세가 약화되고 있어 비중을 줄이며 손익을 관리할 구간입니다.',
+    avoid: '하락 추세가 우세해 신규 진입보다 관망이 안전합니다.',
+  }[action];
+  if (guidance) sentences.push(guidance);
+
+  return {
+    headline: ACTION_HEADLINE[action] || ACTION_HEADLINE.hold,
+    interpretation: sentences.join(' '),
+  };
+}
+
 function confidenceFromCoverage(factors) {
   // More history + lower volatility = more trustworthy signal.
   const bars = Number(factors.barCount) || 0;
@@ -146,13 +215,18 @@ export function buildQuantSignal({ instrument, bars = [], liveQuote = null, asOf
   if (reasons.length === 0) addReason(reasons, 'range_bound');
 
   const symbol = instrument?.symbol || liveQuote?.krxSymbol || liveQuote?.symbol || null;
+  const rank = Number.isFinite(Number(instrument?.rank)) && Number(instrument.rank) > 0 ? Math.round(Number(instrument.rank)) : null;
+  const { headline, interpretation } = buildInterpretation({ action, factors, rank });
   return {
     symbol,
     displaySymbol: instrument?.displaySymbol || instrument?.symbol || symbol,
     name: instrument?.name || null,
+    rank,
     score,
     level: levelForScore(score),
     action,
+    headline,
+    interpretation,
     risk: riskFromVolatility(factors.volatility),
     confidence: confidenceFromCoverage(factors),
     factors: {

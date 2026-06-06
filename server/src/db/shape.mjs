@@ -144,6 +144,17 @@ export function ensureDbShape(db) {
       }
       existing.migrationFlags = { ...migrationFlags, afterHoursDefaultEnabled: true };
     }
+    if (existing.jobKey === 'quant_price_series_kr') {
+      // The KR universe is a managed market-cap list, so always realign the
+      // instruments/labels with the current defaults while preserving the
+      // operator's enabled/interval choices.
+      existing.displayName = defaultJob.displayName;
+      existing.description = defaultJob.description;
+      existing.params = {
+        ...(existing.params || {}),
+        ...(defaultJob.params || {}),
+      };
+    }
     if (existing.jobKey === 'concall_transcripts_recent' && existing.params.fallbackLatest == null) {
       existing.params = { ...existing.params, fallbackLatest: true };
     }

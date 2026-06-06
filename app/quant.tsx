@@ -14,7 +14,6 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiQuantSignal } from '@/integrations/signal-api/types';
 import type { MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
-import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 
 const PAGE_LIMIT = 24;
 
@@ -113,8 +112,9 @@ export default function QuantScreen() {
       else setLoading(true);
       setError(null);
       try {
-        const symbols = await loadWatchlistSymbols();
-        const rows = await fetchSignalQuantSignals({ symbols, limit: PAGE_LIMIT });
+        // Show the managed KOSPI market-cap universe in rank order rather than
+        // filtering to the personal watchlist.
+        const rows = await fetchSignalQuantSignals({ limit: PAGE_LIMIT });
         setItems(rows);
       } catch (e) {
         setItems([]);
@@ -198,11 +198,14 @@ function QuantCard({
   const riskLabel = t(RISK_LABELS[item.risk] ?? 'quantRiskUnknown');
   const actionLabel = t(ACTION_LABELS[item.action] ?? 'quantActionHold');
   const actionColor = actionTone(theme, item.action);
+  const rank = typeof item.rank === 'number' && item.rank > 0 ? item.rank : null;
+  const interpretation = item.interpretation?.trim() || null;
 
   return (
     <View style={styles.card}>
       <View style={styles.cardTop}>
         <View style={styles.symbolBlock}>
+          {rank ? <Text style={styles.rankBadge}>{t('quantRankBadge', { rank })}</Text> : null}
           <Text style={styles.symbolText} numberOfLines={1}>
             {displayName}
           </Text>
@@ -222,6 +225,13 @@ function QuantCard({
           {t('quantConfidence')} {item.confidence}
         </Text>
       </View>
+
+      {interpretation ? (
+        <View style={styles.interpretBox}>
+          {item.headline ? <Text style={styles.interpretHeadline}>{item.headline}</Text> : null}
+          <Text style={styles.interpretText}>{interpretation}</Text>
+        </View>
+      ) : null}
 
       <View style={styles.priceRow}>
         <Text style={styles.priceText}>{formatPrice(indicators.lastClose, krw)}</Text>
@@ -348,7 +358,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'space-between',
       gap: 12,
     },
-    symbolBlock: { flex: 1, minWidth: 0 },
+    symbolBlock: { flex: 1, minWidth: 0, gap: 3 },
+    rankBadge: {
+      alignSelf: 'flex-start',
+      overflow: 'hidden',
+      borderRadius: 6,
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      fontSize: sf(10),
+      fontWeight: '900',
+      color: theme.accentBlue,
+    },
     symbolText: {
       fontSize: sf(17),
       fontWeight: '900',
@@ -396,6 +419,24 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(11),
       fontWeight: '800',
       color: theme.textMuted,
+    },
+    interpretBox: {
+      borderRadius: 12,
+      backgroundColor: theme.bgElevated,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      gap: 4,
+    },
+    interpretHeadline: {
+      fontSize: sf(12),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    interpretText: {
+      fontSize: sf(12),
+      lineHeight: sf(18),
+      fontWeight: '600',
+      color: theme.textDim,
     },
     priceRow: {
       flexDirection: 'row',

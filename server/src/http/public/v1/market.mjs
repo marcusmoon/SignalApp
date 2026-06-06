@@ -1,6 +1,7 @@
 import {
   queryPublicCoinMarkets,
   queryPublicMarketQuotes,
+  queryPublicQuantSignals,
   queryPublicWatchSignals,
   readAppSettings,
   readPublicMarketList,
@@ -19,93 +20,6 @@ function publicStockProfile(data, fallbackSymbol) {
     marketCapitalization: Number.isFinite(Number(data?.marketCapitalization))
       ? Number(data.marketCapitalization)
       : undefined,
-  };
-}
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function finiteNumber(value, fallback = null) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function quoteMovePercent(quote) {
-  const direct = finiteNumber(quote?.changePercent);
-  if (direct != null) return direct;
-  const current = finiteNumber(quote?.currentPrice);
-  const previous = finiteNumber(quote?.previousClose);
-  if (current != null && previous != null && previous !== 0) {
-    return ((current - previous) / previous) * 100;
-  }
-  return 0;
-}
-
-function quoteFreshnessScore(quote) {
-  const t = Date.parse(String(quote?.quoteTime || quote?.fetchedAt || ''));
-  if (!Number.isFinite(t)) return 45;
-  const ageMin = Math.max(0, (Date.now() - t) / 60_000);
-  if (ageMin <= 30) return 100;
-  if (ageMin <= 6 * 60) return 72;
-  if (ageMin <= 24 * 60) return 58;
-  return 42;
-}
-
-function quantLevel(score) {
-  if (score >= 75) return 'strong';
-  if (score >= 62) return 'watch';
-  if (score >= 45) return 'neutral';
-  return 'weak';
-}
-
-function quantRisk(movePct, regularMovePct) {
-  const maxMove = Math.max(Math.abs(movePct), Math.abs(regularMovePct));
-  if (maxMove >= 8) return 'high';
-  if (maxMove >= 4) return 'medium';
-  return 'low';
-}
-
-function addCode(out, code) {
-  if (!code || out.includes(code)) return;
-  out.push(code);
-}
-
-function publicQuantSignal(quote) {
-  const movePct = quoteMovePercent(quote);
-  const regularMovePct = quote?.regularSession ? quoteMovePercent(quote.regularSession) : 0;
-  const momentum = Math.round(clamp(50 + movePct * 5, 0, 100));
-  const regularSession = quote?.regularSession
-    ? Math.round(clamp(50 + regularMovePct * 3, 0, 100))
-    : 50;
-  const freshness = Math.round(quoteFreshnessScore(quote));
-  const score = Math.round(momentum * 0.55 + regularSession * 0.25 + freshness * 0.2);
-  const reasonCodes = [];
-  if (movePct >= 3) addCode(reasonCodes, 'after_hours_up');
-  if (movePct <= -3) addCode(reasonCodes, 'after_hours_down');
-  if (regularMovePct >= 2) addCode(reasonCodes, 'regular_up');
-  if (regularMovePct <= -2) addCode(reasonCodes, 'regular_down');
-  if (quote?.afterHoursAvailable) addCode(reasonCodes, 'after_hours_source');
-  if (freshness >= 90) addCode(reasonCodes, 'fresh_quote');
-  if (freshness <= 50) addCode(reasonCodes, 'stale_quote');
-  if (reasonCodes.length === 0) addCode(reasonCodes, 'price_stable');
-
-  return {
-    symbol: quote.symbol,
-    displaySymbol: quote.displaySymbol || quote.symbol || null,
-    krxSymbol: quote.krxSymbol || null,
-    name: quote.name || null,
-    score,
-    level: quantLevel(score),
-    risk: quantRisk(movePct, regularMovePct),
-    factors: {
-      momentum,
-      regularSession,
-      freshness,
-    },
-    reasonCodes,
-    quote,
-    updatedAt: quote.quoteTime || quote.fetchedAt || null,
   };
 }
 
@@ -178,20 +92,10 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
 
   if (req.method === 'GET' && pathname === '/v1/quant-signals') {
     const symbols = url.searchParams.get('symbols') || '';
-    const requestedCount = symbols.split(',').map((s) => s.trim()).filter(Boolean).length;
-    const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || requestedCount || 30));
-    const page = await queryPublicMarketQuotes({
-      segment: url.searchParams.get('segment') || '',
+    const rows = await queryPublicQuantSignals({
       symbols,
-      q: url.searchParams.get('q') || '',
-      limit: String(Math.max(limit, requestedCount, 30)),
-      offset: '0',
+      limit: url.searchParams.get('limit') || '',
     });
-    const rows = (page.rows || [])
-      .filter((quote) => finiteNumber(quote?.currentPrice) != null)
-      .map(publicQuantSignal)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
     json(res, 200, { data: rows });
     return true;
   }

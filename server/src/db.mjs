@@ -68,6 +68,7 @@ import {
   queryPublicMarketQuotesInDb,
   queryPublicNewsInDb,
   queryPublicNewsSourcesInDb,
+  queryPublicQuantSignalsInDb,
   queryPublicYoutubeInDb,
   queryPublicYoutubeChannelsInDb,
   queryPublicWatchSignalsInDb,
@@ -591,6 +592,10 @@ export async function queryPublicCalendar(options = {}) {
 
 export async function queryPublicWatchSignals(options = {}) {
   return cachedPublicRead('publicWatchSignals', options, (db) => queryPublicWatchSignalsInDb(db, options), 5000);
+}
+
+export async function queryPublicQuantSignals(options = {}) {
+  return cachedPublicRead('publicQuantSignals', options, (db) => queryPublicQuantSignalsInDb(db, options), 15000);
 }
 
 export async function queryPublicCalendarDateSummaries(options = {}) {

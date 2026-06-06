@@ -19,24 +19,49 @@ import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 const PAGE_LIMIT = 24;
 
 const REASON_LABELS: Record<string, MessageId> = {
-  after_hours_up: 'quantReasonAfterHoursUp',
-  after_hours_down: 'quantReasonAfterHoursDown',
-  regular_up: 'quantReasonRegularUp',
-  regular_down: 'quantReasonRegularDown',
-  after_hours_source: 'quantReasonAfterHoursSource',
-  fresh_quote: 'quantReasonFreshQuote',
-  stale_quote: 'quantReasonStaleQuote',
-  price_stable: 'quantReasonPriceStable',
+  trend_up: 'quantReasonTrendUp',
+  trend_down: 'quantReasonTrendDown',
+  golden_cross_zone: 'quantReasonGoldenCross',
+  dead_cross_zone: 'quantReasonDeadCross',
+  momentum_strong: 'quantReasonMomentumStrong',
+  momentum_weak: 'quantReasonMomentumWeak',
+  near_52w_high: 'quantReasonNear52wHigh',
+  near_52w_low: 'quantReasonNear52wLow',
+  overbought: 'quantReasonOverbought',
+  overbought_mild: 'quantReasonOverboughtMild',
+  oversold: 'quantReasonOversold',
+  oversold_mild: 'quantReasonOversoldMild',
+  volume_spike: 'quantReasonVolumeSpike',
+  volume_active: 'quantReasonVolumeActive',
+  volume_dry: 'quantReasonVolumeDry',
+  range_bound: 'quantReasonRangeBound',
 };
 
 const RISK_LABELS: Record<string, MessageId> = {
   low: 'quantRiskLow',
   medium: 'quantRiskMedium',
   high: 'quantRiskHigh',
+  unknown: 'quantRiskUnknown',
+};
+
+const ACTION_LABELS: Record<string, MessageId> = {
+  buy: 'quantActionBuy',
+  accumulate: 'quantActionAccumulate',
+  hold: 'quantActionHold',
+  reduce: 'quantActionReduce',
+  avoid: 'quantActionAvoid',
 };
 
 function isKrwQuote(item: SignalApiQuantSignal): boolean {
-  return Boolean(item.krxSymbol || item.quote?.krxSymbol || item.quote?.segment === 'kr_after_hours');
+  return /^\d{6}$/.test(String(item.symbol || '')) || item.liveQuote?.segment === 'kr_after_hours';
+}
+
+function actionTone(theme: AppTheme, action: string): string {
+  if (action === 'buy') return theme.danger;
+  if (action === 'accumulate') return theme.green;
+  if (action === 'reduce') return theme.accentBlue;
+  if (action === 'avoid') return theme.textDim;
+  return theme.textMuted;
 }
 
 function formatPrice(value: number | null | undefined, krw: boolean): string {
@@ -53,6 +78,11 @@ function formatPrice(value: number | null | undefined, krw: boolean): string {
 function formatPct(value: number | null | undefined): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
   return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+}
+
+function formatNumber(value: number | null | undefined, digits = 0, suffix = ''): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+  return `${value.toFixed(digits)}${suffix}`;
 }
 
 function scoreColor(theme: AppTheme, score: number): string {
@@ -124,7 +154,7 @@ export default function QuantScreen() {
       <OtaUpdateBanner />
       <FlatList
         data={items}
-        keyExtractor={(item) => item.krxSymbol || item.symbol}
+        keyExtractor={(item) => item.symbol}
         renderItem={renderItem}
         refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => load({ refresh: true })} />}
         contentContainerStyle={styles.listContent}
@@ -158,13 +188,16 @@ function QuantCard({
   t: (id: MessageId, vars?: Record<string, string | number>) => string;
 }) {
   const krw = isKrwQuote(item);
-  const quote = item.quote;
-  const moveColor = Number(quote.changePercent ?? 0) >= 0 ? theme.danger : theme.accentBlue;
+  const indicators = item.indicators;
+  const return20d = indicators.return20d;
+  const moveColor = Number(return20d ?? 0) >= 0 ? theme.danger : theme.accentBlue;
   const scoreTone = scoreColor(theme, item.score);
   const displayName = item.name || item.displaySymbol || item.symbol;
-  const symbol = item.krxSymbol || item.displaySymbol || item.symbol;
-  const reasonCodes = item.reasonCodes.length > 0 ? item.reasonCodes.slice(0, 4) : ['price_stable'];
-  const riskLabel = t(RISK_LABELS[item.risk] ?? 'quantRiskLow');
+  const symbol = item.displaySymbol || item.symbol;
+  const reasonCodes = item.reasonCodes.length > 0 ? item.reasonCodes.slice(0, 4) : ['range_bound'];
+  const riskLabel = t(RISK_LABELS[item.risk] ?? 'quantRiskUnknown');
+  const actionLabel = t(ACTION_LABELS[item.action] ?? 'quantActionHold');
+  const actionColor = actionTone(theme, item.action);
 
   return (
     <View style={styles.card}>
@@ -183,25 +216,58 @@ function QuantCard({
         </View>
       </View>
 
+      <View style={styles.actionRow}>
+        <Text style={[styles.actionBadge, { color: actionColor, borderColor: actionColor }]}>{actionLabel}</Text>
+        <Text style={styles.confidenceText}>
+          {t('quantConfidence')} {item.confidence}
+        </Text>
+      </View>
+
       <View style={styles.priceRow}>
-        <Text style={styles.priceText}>{formatPrice(quote.currentPrice, krw)}</Text>
-        <Text style={[styles.changeText, { color: moveColor }]}>{formatPct(quote.changePercent)}</Text>
+        <Text style={styles.priceText}>{formatPrice(indicators.lastClose, krw)}</Text>
+        <Text style={[styles.changeText, { color: moveColor }]}>
+          {t('quant20dReturn')} {formatPct(return20d)}
+        </Text>
       </View>
 
       <View style={styles.factorGrid}>
+        <Factor label={t('quantFactorTrend')} value={item.factors.trend} styles={styles} theme={theme} />
         <Factor label={t('quantFactorMomentum')} value={item.factors.momentum} styles={styles} theme={theme} />
-        <Factor label={t('quantFactorRegular')} value={item.factors.regularSession} styles={styles} theme={theme} />
-        <Factor label={t('quantFactorFreshness')} value={item.factors.freshness} styles={styles} theme={theme} />
+        <Factor label={t('quantFactorMeanReversion')} value={item.factors.meanReversion} styles={styles} theme={theme} />
+        <Factor label={t('quantFactorVolume')} value={item.factors.volume} styles={styles} theme={theme} />
+      </View>
+
+      <View style={styles.indicatorRow}>
+        <Indicator label={t('quantIndicatorRsi')} text={formatNumber(indicators.rsi14, 0)} styles={styles} />
+        <Indicator label={t('quantIndicatorSma20')} text={formatPct(indicators.vsSma20Pct)} styles={styles} />
+        <Indicator label={t('quantIndicatorVol')} text={formatNumber(indicators.volatility, 0, '%')} styles={styles} />
       </View>
 
       <View style={styles.reasonRow}>
         <Text style={styles.riskChip}>{riskLabel}</Text>
         {reasonCodes.map((code) => (
           <Text key={code} style={styles.reasonChip}>
-            {t(REASON_LABELS[code] ?? 'quantReasonPriceStable')}
+            {t(REASON_LABELS[code] ?? 'quantReasonRangeBound')}
           </Text>
         ))}
       </View>
+    </View>
+  );
+}
+
+function Indicator({
+  label,
+  text,
+  styles,
+}: {
+  label: string;
+  text: string;
+  styles: ReturnType<typeof makeStyles>;
+}) {
+  return (
+    <View style={styles.indicator}>
+      <Text style={styles.indicatorLabel}>{label}</Text>
+      <Text style={styles.indicatorValue}>{text}</Text>
     </View>
   );
 }
@@ -310,6 +376,27 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '900',
       letterSpacing: 0,
     },
+    actionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    actionBadge: {
+      overflow: 'hidden',
+      borderRadius: 8,
+      borderWidth: 1.5,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      fontSize: sf(14),
+      fontWeight: '900',
+      letterSpacing: 0,
+    },
+    confidenceText: {
+      fontSize: sf(11),
+      fontWeight: '800',
+      color: theme.textMuted,
+    },
     priceRow: {
       flexDirection: 'row',
       alignItems: 'baseline',
@@ -353,6 +440,28 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     factorFill: {
       height: '100%',
       borderRadius: 999,
+    },
+    indicatorRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    indicator: {
+      flex: 1,
+      borderRadius: 10,
+      backgroundColor: theme.bgElevated,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+      gap: 2,
+    },
+    indicatorLabel: {
+      fontSize: sf(10),
+      fontWeight: '800',
+      color: theme.textMuted,
+    },
+    indicatorValue: {
+      fontSize: sf(13),
+      fontWeight: '900',
+      color: theme.text,
     },
     reasonRow: {
       flexDirection: 'row',

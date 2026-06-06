@@ -14,6 +14,7 @@ import { fetchNinjasConcallTranscript } from '../providers/concalls/ninjas.mjs';
 import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchHyperliquidKoreaAfterHours } from '../providers/market/hyperliquidKorea.mjs';
+import { fetchYahooKoreaDailyBars } from '../providers/market/yahooDailyBars.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes } from '../providers/market/index.mjs';
 import { generateMarketInsights } from '../insights/rules.mjs';
 import { notificationsFromInsights, upsertNotificationItem } from '../notifications/outbox.mjs';
@@ -292,6 +293,9 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
   if (job.provider === 'hyperliquid' && job.handler === 'korea_after_hours') {
     return { kind: 'marketQuotes', rows: await fetchHyperliquidKoreaAfterHours(job.params || {}) };
   }
+  if (job.provider === 'yahoo' && job.handler === 'kr_daily_bars') {
+    return { kind: 'priceSeries', rows: await fetchYahooKoreaDailyBars(job.params || {}) };
+  }
   if (job.provider === 'signal' && job.handler === 'market_insights') {
     return { kind: 'insights', rows: generateMarketInsights(dbBefore, job.params || {}) };
   }
@@ -446,6 +450,13 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
         for (const row of rows) upsertYoutubeVideo(db.youtubeVideos, row);
       } else if (result.kind === 'marketQuotes') {
         for (const row of rows) upsertById(db.marketQuotes, row);
+      } else if (result.kind === 'priceSeries') {
+        for (const row of rows) {
+          if (!row?.symbol) continue;
+          const index = db.priceSeries.findIndex((item) => item.symbol === row.symbol);
+          if (index >= 0) db.priceSeries[index] = { ...db.priceSeries[index], ...row, updatedAt: nowIso() };
+          else db.priceSeries.push({ ...row, createdAt: nowIso(), updatedAt: nowIso() });
+        }
       } else if (result.kind === 'coinMarkets') {
         for (const row of rows) upsertById(db.coinMarkets, row);
       } else if (result.kind === 'insights') {

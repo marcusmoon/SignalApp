@@ -75,6 +75,7 @@ export function readStructuredDb(db) {
     marketQuotes: readCollection(db, 'market_quotes'),
     coinMarkets: readCollection(db, 'coin_markets'),
     marketLists: readCollection(db, 'market_lists'),
+    priceSeries: readCollection(db, 'price_series'),
     insightItems: readCollection(db, 'insight_items'),
     notificationItems: readCollection(db, 'notification_items'),
   });
@@ -104,6 +105,7 @@ export function readStructuredDb(db) {
       marketQuotes: shaped.marketQuotes,
       coinMarkets: shaped.coinMarkets,
       marketLists: shaped.marketLists,
+      priceSeries: shaped.priceSeries,
     },
     insights: { insightItems: shaped.insightItems, notificationItems: shaped.notificationItems },
   });
@@ -338,6 +340,18 @@ const collectionSpecs = [
     extra: () => ({}),
   },
   {
+    table: 'price_series',
+    keyColumn: 'symbol',
+    keyOf: (row) => row.symbol,
+    extraColumns: ['display_symbol', 'yahoo_symbol', 'last_bar_date', 'fetched_at'],
+    extra: (row) => ({
+      display_symbol: textOrNull(row.displaySymbol),
+      yahoo_symbol: textOrNull(row.yahooSymbol),
+      last_bar_date: textOrNull(row.lastBarDate),
+      fetched_at: textOrNull(row.fetchedAt),
+    }),
+  },
+  {
     table: 'insight_items',
     keyColumn: 'id',
     keyOf: (row) => row.id,
@@ -421,8 +435,9 @@ function writeStructuredDbInner(db, dbObject) {
   syncCollection(db, collectionSpecs[11], shaped.marketQuotes, updatedAt);
   syncCollection(db, collectionSpecs[12], shaped.coinMarkets, updatedAt);
   syncCollection(db, collectionSpecs[13], shaped.marketLists, updatedAt);
-  syncCollection(db, collectionSpecs[14], shaped.insightItems, updatedAt);
-  syncCollection(db, collectionSpecs[15], shaped.notificationItems, updatedAt);
+  syncCollection(db, collectionSpecs[14], shaped.priceSeries, updatedAt);
+  syncCollection(db, collectionSpecs[15], shaped.insightItems, updatedAt);
+  syncCollection(db, collectionSpecs[16], shaped.notificationItems, updatedAt);
 }
 
 export function writeStructuredDb(db, dbObject, { transaction = true } = {}) {

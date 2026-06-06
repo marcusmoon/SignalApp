@@ -181,6 +181,7 @@ export function ensureDbShape(db) {
   if (!Array.isArray(db.youtubeVideos)) db.youtubeVideos = [];
   if (!Array.isArray(db.marketQuotes)) db.marketQuotes = [];
   if (!Array.isArray(db.coinMarkets)) db.coinMarkets = [];
+  if (!Array.isArray(db.priceSeries)) db.priceSeries = [];
   if (!Array.isArray(db.insightItems)) db.insightItems = [];
   if (!Array.isArray(db.notificationItems)) db.notificationItems = [];
   db.marketLists = ensureMarketListsShape(db.marketLists, nowIso);
@@ -242,6 +243,7 @@ export function splitStoresFromDb(db) {
       marketQuotes: shaped.marketQuotes,
       coinMarkets: shaped.coinMarkets,
       marketLists: shaped.marketLists,
+      priceSeries: shaped.priceSeries,
     },
     insights: {
       insightItems: shaped.insightItems,
@@ -270,6 +272,7 @@ export function shapeDbFromStores(stores) {
     marketQuotes: stores.market?.marketQuotes ?? [],
     coinMarkets: stores.market?.coinMarkets ?? [],
     marketLists: stores.market?.marketLists ?? [],
+    priceSeries: stores.market?.priceSeries ?? [],
     insightItems: stores.insights?.insightItems ?? [],
     notificationItems: stores.insights?.notificationItems ?? [],
   });

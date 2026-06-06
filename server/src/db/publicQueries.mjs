@@ -9,6 +9,7 @@ import {
 } from '../http/shared.mjs';
 import { listActiveYoutubeChannelHandles } from './youtubeChannels.mjs';
 import { itemMatchesYoutubeChannelHandles } from '../youtubeCuration.mjs';
+import { buildQuantSignal } from '../quant/signals.mjs';
 
 function parsePayload(label, payload, fallback = null) {
   if (payload == null || payload === '') return fallback;
@@ -765,6 +766,93 @@ export function queryPublicMarketQuotesInDb(db, options = {}) {
     hasMore,
     nextOffset: hasMore ? safeOffset + paged.rows.length : null,
   };
+}
+
+export function queryPublicQuantSignalsInDb(db, options = {}) {
+  const requested = String(options.symbols || '')
+    .split(',')
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
+  const uniqueSymbols = [...new Set(requested)];
+  const limit = Math.min(100, Math.max(1, Math.floor(Number(options.limit)) || uniqueSymbols.length || 30));
+
+  const params = {};
+  let whereSql = '';
+  if (uniqueSymbols.length > 0) {
+    whereSql = `WHERE UPPER(symbol) IN (${uniqueSymbols.map((_, index) => `@symbol${index}`).join(', ')})`;
+    uniqueSymbols.forEach((symbol, index) => {
+      params[`symbol${index}`] = symbol;
+    });
+  }
+  const seriesRows = db
+    .prepare(
+      `
+        SELECT payload
+        FROM price_series
+        ${whereSql}
+        ORDER BY symbol ASC
+        LIMIT 500
+      `,
+    )
+    .all(params)
+    .map((row) => parsePayload('price_series.payload', row.payload, null))
+    .filter((row) => row && Array.isArray(row.bars));
+  if (seriesRows.length === 0) return [];
+
+  // Overlay the freshest market quote (after-hours / regular) when available so
+  // the signal can surface an up-to-the-minute reference price next to the bars.
+  const quoteRows = db
+    .prepare(
+      `
+        SELECT payload
+        FROM market_quotes
+        ORDER BY fetched_at DESC
+        LIMIT 1000
+      `,
+    )
+    .all()
+    .map((row) => parsePayload('market_quotes.payload', row.payload, null))
+    .filter(Boolean);
+  const quotesByKey = new Map();
+  for (const quote of quoteRows) {
+    const keys = [quote.krxSymbol, quote.rawPayload?.krxSymbol, quote.symbol]
+      .map((value) => String(value || '').trim().toUpperCase())
+      .filter(Boolean);
+    const nextMs = parseIsoMs(quote.fetchedAt || quote.quoteTime);
+    for (const key of keys) {
+      const prev = quotesByKey.get(key);
+      if (!prev || nextMs >= parseIsoMs(prev.fetchedAt || prev.quoteTime)) quotesByKey.set(key, quote);
+    }
+  }
+
+  const signals = seriesRows
+    .map((series) => {
+      const symbol = String(series.symbol || '').trim().toUpperCase();
+      const liveQuote = quotesByKey.get(symbol) || null;
+      return buildQuantSignal({
+        instrument: {
+          symbol: series.symbol,
+          displaySymbol: series.displaySymbol || series.symbol,
+          name: series.name || null,
+        },
+        bars: series.bars,
+        liveQuote: liveQuote ? publicMarketQuote(liveQuote) : null,
+        asOf: series.fetchedAt || series.updatedAt || null,
+      });
+    })
+    .filter(Boolean);
+
+  if (uniqueSymbols.length > 0) {
+    const order = new Map(uniqueSymbols.map((symbol, index) => [symbol, index]));
+    signals.sort(
+      (a, b) =>
+        (order.get(String(a.symbol).toUpperCase()) ?? 999) - (order.get(String(b.symbol).toUpperCase()) ?? 999) ||
+        b.score - a.score,
+    );
+  } else {
+    signals.sort((a, b) => b.score - a.score);
+  }
+  return signals.slice(0, limit);
 }
 
 export function queryPublicCoinMarketsInDb(db, options = {}) {

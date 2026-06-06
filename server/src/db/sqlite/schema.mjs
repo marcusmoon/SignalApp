@@ -13,6 +13,7 @@ export const collectionTables = [
   'market_quotes',
   'coin_markets',
   'market_lists',
+  'price_series',
   'insight_items',
   'notification_items',
 ];
@@ -389,6 +390,17 @@ export function ensureStructuredSchema(db) {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS price_series (
+      symbol TEXT PRIMARY KEY,
+      position INTEGER NOT NULL DEFAULT 0,
+      display_symbol TEXT,
+      yahoo_symbol TEXT,
+      last_bar_date TEXT,
+      fetched_at TEXT,
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS insight_items (
       id TEXT PRIMARY KEY,
       position INTEGER NOT NULL DEFAULT 0,
@@ -480,6 +492,8 @@ export function ensureStructuredSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_market_quotes_segment_fetch ON market_quotes(segment, fetched_at);
     CREATE INDEX IF NOT EXISTS idx_coin_markets_symbol ON coin_markets(symbol);
     CREATE INDEX IF NOT EXISTS idx_coin_markets_fetched ON coin_markets(fetched_at);
+    CREATE INDEX IF NOT EXISTS idx_price_series_symbol ON price_series(symbol, last_bar_date);
+    CREATE INDEX IF NOT EXISTS idx_price_series_fetched ON price_series(fetched_at);
     CREATE INDEX IF NOT EXISTS idx_insight_items_generated ON insight_items(generated_at, score);
     CREATE INDEX IF NOT EXISTS idx_insight_items_lookup ON insight_items(kind, level, push_candidate, generated_at);
     CREATE INDEX IF NOT EXISTS idx_insight_items_display ON insight_items(generated_date, display_key, generated_at);

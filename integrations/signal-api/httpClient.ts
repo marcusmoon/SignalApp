@@ -4,6 +4,7 @@ import type { MessageId } from '@/locales/messages';
 
 const DEFAULT_TIMEOUT_MS = 12_000;
 const MAX_ATTEMPTS = 2;
+const DEV_SLOW_API_LOG_MS = 1500;
 /** 액세스 만료 이전에 미리 갱신(밀리초). 짧은 액세스 TTL 서버에서도 401 플래시 완화 */
 const PROACTIVE_REFRESH_LEEWAY_MS = 120_000;
 
@@ -219,6 +220,7 @@ export async function signalApiRequest<T>(
   const maxAttempts = Math.max(1, Math.floor(Number(options.attempts)) || MAX_ATTEMPTS);
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const startedAt = Date.now();
     try {
       const reqHeaders: Record<string, string> = { ...headers, accept: 'application/json' };
       if (bearer) reqHeaders.authorization = `Bearer ${bearer}`;
@@ -241,8 +243,9 @@ export async function signalApiRequest<T>(
           }
         }
         const bodyText = await res.text().catch(() => '');
-        if (__DEV__ && bodyText) {
-          console.debug(`[Signal API] ${res.status} ${method} ${suffix}`, bodyText.slice(0, 240));
+        if (__DEV__) {
+          const elapsed = Date.now() - startedAt;
+          console.debug(`[Signal API] ${res.status} ${method} ${suffix} ${elapsed}ms`, bodyText.slice(0, 240));
         }
         let serverCode: string | undefined;
         try {
@@ -255,12 +258,24 @@ export async function signalApiRequest<T>(
         throw new SignalApiError(kind, serverCode || `SIGNAL_API_${res.status}`, res.status);
       }
       try {
-        return (await res.json()) as T;
+        const parsed = (await res.json()) as T;
+        if (__DEV__) {
+          const elapsed = Date.now() - startedAt;
+          if (elapsed >= DEV_SLOW_API_LOG_MS) {
+            console.debug(`[Signal API] slow ${method} ${suffix} ${elapsed}ms`);
+          }
+        }
+        return parsed;
       } catch {
         throw new SignalApiError('parse', 'SIGNAL_API_PARSE');
       }
     } catch (error) {
       lastError = error;
+      if (__DEV__) {
+        const elapsed = Date.now() - startedAt;
+        const code = error instanceof Error ? error.message : String(error);
+        console.debug(`[Signal API] failed ${method} ${suffix} attempt=${attempt}/${maxAttempts} ${elapsed}ms ${code}`);
+      }
       if (attempt >= maxAttempts || !isRetriable(error)) break;
       await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
     }

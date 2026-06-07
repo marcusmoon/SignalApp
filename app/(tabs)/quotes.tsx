@@ -550,7 +550,7 @@ export default function QuotesScreen() {
         });
       }
     } catch (e) {
-      setError(formatSignalApiError(e, t, 'quotesErrorRefresh'));
+      if (rowsRef.current.length === 0) setError(formatSignalApiError(e, t, 'quotesErrorRefresh'));
     } finally {
       setRefreshing(false);
     }

@@ -702,6 +702,36 @@ function urlFromOptions(options = {}) {
   return url;
 }
 
+function paginatedSqlRows(rows, { limit, offset }) {
+  const total = Number(rows[0]?.total_count) || 0;
+  const slice = rows.map((row) => row.item).filter(Boolean);
+  return {
+    rows: slice,
+    total,
+    limit,
+    offset,
+    hasMore: offset + slice.length < total,
+    nextOffset: offset + slice.length,
+  };
+}
+
+function numberSqlExpression(jsonExpression) {
+  return `COALESCE(NULLIF(${jsonExpression}, '')::numeric, 0)`;
+}
+
+function sqlDateOrTimestamp(value) {
+  const text = cleanText(value);
+  if (!text) return null;
+  return text.includes('T') ? text : `${text}T00:00:00.000Z`;
+}
+
+function sqlStringList(value) {
+  return cleanText(value)
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function publicNews(item) {
   return {
     id: item.id,
@@ -825,45 +855,199 @@ function publicConcall(item) {
 
 export async function queryPublicNews(options = {}) {
   return cachedPublicRead('publicNews', options, async () => {
-    const db = await readDb();
-    const url = urlFromOptions(options);
+    const { limit, offset } = pageOptions(options, 20);
     const locale = cleanText(options.locale) || 'ko';
-    const rows = filterNews(db.newsItems || [], url).map((item) => publicNews(displayNews(item, db.newsTranslations || [], locale)));
-    return pagination(rows, pageOptions(options, 20));
+    const params = [locale];
+    const where = [];
+    const category = cleanText(options.category);
+    if (category) {
+      if (category === 'global') {
+        where.push(`(n.category = 'global' OR n.provider = 'financialjuice')`);
+      } else {
+        params.push(category);
+        where.push(`n.category = $${params.length}`);
+      }
+    }
+    const symbols = new Set([
+      ...sqlStringList(options.symbols).map((s) => s.toUpperCase()),
+      ...(cleanText(options.symbol) ? [cleanText(options.symbol).toUpperCase()] : []),
+    ]);
+    if (symbols.size > 0) {
+      params.push([...symbols]);
+      where.push(`COALESCE(n.payload->'symbols', '[]'::jsonb) ?| $${params.length}::text[]`);
+    }
+    const sources = sqlStringList(options.sources || options.source);
+    if (sources.length > 0) {
+      params.push(sources);
+      where.push(`n.source_name = ANY($${params.length}::text[])`);
+    }
+    const from = sqlDateOrTimestamp(options.from);
+    if (from) {
+      params.push(from);
+      where.push(`(n.published_at IS NULL OR n.published_at >= $${params.length}::timestamptz)`);
+    }
+    const rawTo = cleanText(options.to);
+    const to = sqlDateOrTimestamp(rawTo);
+    if (to) {
+      params.push(rawTo.includes('T') ? to : `${rawTo.slice(0, 10)}T23:59:59.999Z`);
+      where.push(`(n.published_at IS NULL OR n.published_at <= $${params.length}::timestamptz)`);
+    }
+    const q = cleanText(options.q).toLowerCase();
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(`(
+        lower(COALESCE(n.payload->>'titleOriginal', '')) LIKE $${params.length}
+        OR lower(COALESCE(n.payload->>'summaryOriginal', '')) LIKE $${params.length}
+        OR lower(COALESCE(n.source_name, '')) LIKE $${params.length}
+      )`);
+    }
+    const tag = cleanText(options.tag).toLowerCase();
+    if (tag) {
+      params.push(tag);
+      where.push(`EXISTS (
+        SELECT 1 FROM jsonb_array_elements(COALESCE(n.payload->'hashtags', '[]'::jsonb)) AS h(value)
+        WHERE lower(COALESCE(h.value->>'label', '')) = $${params.length}
+      )`);
+    }
+    const flash = ['1', 'true', 'yes'].includes(cleanText(options.flash).toLowerCase());
+    if (flash) {
+      where.push(`(
+        n.published_at >= now() - interval '18 minutes'
+        OR n.category IN ('breaking', 'flash', 'hot')
+        OR COALESCE(n.payload->>'titleOriginal', n.payload->>'title', '') ~* 'breaking|flash|속보|긴급|urgent|live\\s*:|market\\s*alert|just\\s*in|developing|exclusive:'
+      )`);
+    }
+    params.push(limit, offset);
+    const sql = `
+      SELECT n.payload, t.payload AS translation_payload, COUNT(*) OVER() AS total_count
+      FROM news_items n
+      LEFT JOIN news_translations t ON t.news_item_id = n.id AND t.locale = $1
+      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+      ORDER BY n.published_at DESC NULLS LAST, n.position ASC
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `;
+    const result = await queryPostgres(sql, params);
+    const rows = result.rows.map((row) => {
+      const item = payloadFromRow(row);
+      const translation = payloadFromRow({ payload: row.translation_payload });
+      if (!item) return null;
+      return publicNews(displayNews(item, translation ? [translation] : [], locale));
+    }).filter(Boolean);
+    return {
+      rows,
+      total: Number(result.rows[0]?.total_count) || 0,
+      limit,
+      offset,
+      hasMore: offset + rows.length < (Number(result.rows[0]?.total_count) || 0),
+      nextOffset: offset + rows.length,
+    };
   });
 }
 
 export async function queryPublicNewsSources(options = {}) {
   return cachedPublicRead('publicNewsSources', options, async () => {
-    const db = await readDb();
     const category = cleanText(options.category);
-    return (db.newsSources || [])
-      .filter((source) => source && source.enabled !== false && source.hidden !== true)
-      .filter((source) => !category || source.category === category)
+    const params = [];
+    const where = ['enabled = true', 'hidden = false'];
+    if (category) {
+      params.push(category);
+      where.push(`category = $${params.length}`);
+    }
+    const result = await queryPostgres(
+      `
+        SELECT payload
+        FROM news_sources
+        WHERE ${where.join(' AND ')}
+        ORDER BY COALESCE(name, source_key), position ASC
+      `,
+      params,
+    );
+    return result.rows
+      .map(payloadFromRow)
+      .filter(Boolean)
       .map((source) => ({
         id: source.id,
         name: source.name || source.id,
         category: source.category || 'global',
         enabled: source.enabled !== false,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      }));
   }, 30000);
 }
 
 export async function queryPublicYoutube(options = {}) {
   return cachedPublicRead('publicYoutube', options, async () => {
-    const db = await readDb();
-    const rows = filterYoutube(db.youtubeVideos || [], urlFromOptions(options)).map(publicYoutube);
-    return pagination(rows, pageOptions(options, 30));
+    const { limit, offset } = pageOptions(options, 30);
+    const params = [];
+    const where = [];
+    const channel = cleanText(options.channel).toLowerCase();
+    if (channel) {
+      params.push(`%${channel}%`);
+      where.push(`lower(COALESCE(channel, payload->>'channel', '')) LIKE $${params.length}`);
+    }
+    const handles = sqlStringList(options.channelHandles).map((handle) => handle.toLowerCase());
+    if (handles.length > 0) {
+      params.push(handles);
+      where.push(`lower(COALESCE(payload->>'channelHandle', '')) = ANY($${params.length}::text[])`);
+    }
+    const q = cleanText(options.q).toLowerCase();
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(`(
+        lower(COALESCE(payload->>'title', '')) LIKE $${params.length}
+        OR lower(COALESCE(payload->>'description', '')) LIKE $${params.length}
+        OR lower(COALESCE(channel, payload->>'channel', '')) LIKE $${params.length}
+      )`);
+    }
+    const sort = cleanText(options.sort) === 'popular' ? 'popular' : 'latest';
+    params.push(sort);
+    where.push(`(
+      payload->>'sortBucket' = $${params.length}
+      OR COALESCE(payload->'sortBuckets', '[]'::jsonb) ? $${params.length}
+      OR NOT EXISTS (
+        SELECT 1 FROM youtube_videos y2
+        WHERE y2.payload->>'sortBucket' = $${params.length}
+           OR COALESCE(y2.payload->'sortBuckets', '[]'::jsonb) ? $${params.length}
+      )
+    )`);
+    params.push(limit, offset);
+    const order = sort === 'popular'
+      ? `ORDER BY ${numberSqlExpression(`payload->>'viewCount'`)} DESC, published_at DESC NULLS LAST`
+      : `ORDER BY published_at DESC NULLS LAST, ${numberSqlExpression(`payload->>'viewCount'`)} DESC`;
+    const result = await queryPostgres(
+      `
+        SELECT payload, COUNT(*) OVER() AS total_count
+        FROM youtube_videos
+        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        ${order}
+        LIMIT $${params.length - 1} OFFSET $${params.length}
+      `,
+      params,
+    );
+    return paginatedSqlRows(
+      result.rows.map((row) => {
+        const payload = payloadFromRow(row);
+        return { ...row, item: payload ? publicYoutube(payload) : null };
+      }),
+      { limit, offset },
+    );
   });
 }
 
 export async function queryPublicYoutubeChannels() {
   return cachedPublicRead('publicYoutubeChannels', {}, async () => {
-    const db = await readDb();
-    const handles = new Set(listActiveYoutubeChannelHandles(db.appSettings || {}).map((handle) => handle.toLowerCase()));
+    const settingsResult = await queryPostgres(`SELECT payload FROM app_settings WHERE id = 'app'`);
+    const appSettings = payloadFromRow(settingsResult.rows[0]) || {};
+    const handles = new Set(listActiveYoutubeChannelHandles(appSettings).map((handle) => handle.toLowerCase()));
     const channels = new Map();
-    for (const item of db.youtubeVideos || []) {
+    const result = await queryPostgres(
+      `
+        SELECT payload
+        FROM youtube_videos
+        ORDER BY published_at DESC NULLS LAST
+        LIMIT 500
+      `,
+    );
+    for (const item of result.rows.map(payloadFromRow).filter(Boolean)) {
       const handle = cleanText(item.channelHandle).toLowerCase();
       if (handles.size > 0 && handle && !handles.has(handle)) continue;
       const key = handle || cleanText(item.channelId) || cleanText(item.channel);
@@ -881,27 +1065,152 @@ export async function queryPublicYoutubeChannels() {
 
 export async function queryPublicMarketQuotes(options = {}) {
   return cachedPublicRead('publicMarketQuotes', options, async () => {
-    const db = await readDb();
-    const rows = filterMarketQuotes(db.marketQuotes || [], urlFromOptions(options)).map(publicMarketQuote);
-    return pagination(rows, pageOptions(options, 30));
+    const { limit, offset } = pageOptions(options, 30);
+    const params = [];
+    const where = [];
+    const segment = cleanText(options.segment);
+    if (segment) {
+      params.push(segment);
+      where.push(`segment = $${params.length}`);
+    }
+    const symbols = sqlStringList(options.symbols).map((s) => s.toUpperCase());
+    if (symbols.length > 0) {
+      params.push(symbols);
+      where.push(`(
+        upper(COALESCE(symbol, '')) = ANY($${params.length}::text[])
+        OR upper(COALESCE(payload->>'displaySymbol', '')) = ANY($${params.length}::text[])
+        OR upper(COALESCE(payload->>'krxSymbol', '')) = ANY($${params.length}::text[])
+        OR upper(COALESCE(payload->>'providerItemId', '')) = ANY($${params.length}::text[])
+        OR upper(COALESCE(payload->'regularSession'->>'yahooSymbol', '')) = ANY($${params.length}::text[])
+      )`);
+    }
+    const q = cleanText(options.q).toLowerCase();
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(`(
+        lower(COALESCE(symbol, '')) LIKE $${params.length}
+        OR lower(COALESCE(payload->>'name', '')) LIKE $${params.length}
+        OR lower(COALESCE(segment, '')) LIKE $${params.length}
+      )`);
+    }
+    params.push(limit, offset);
+    const result = await queryPostgres(
+      `
+        SELECT payload, COUNT(*) OVER() AS total_count
+        FROM market_quotes
+        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        ORDER BY COALESCE(segment, ''), COALESCE(symbol, '')
+        LIMIT $${params.length - 1} OFFSET $${params.length}
+      `,
+      params,
+    );
+    let rows = result.rows.map((row) => publicMarketQuote(payloadFromRow(row))).filter(Boolean);
+    if (symbols.length > 0 && !segment) {
+      const bestBySymbol = new Map();
+      for (const row of rows) {
+        const key = cleanText(row.krxSymbol || row.symbol).toUpperCase();
+        if (!key) continue;
+        const prev = bestBySymbol.get(key);
+        const prevAt = prev?.fetchedAt ? Date.parse(prev.fetchedAt) : 0;
+        const nextAt = row?.fetchedAt ? Date.parse(row.fetchedAt) : 0;
+        if (!prev || nextAt >= prevAt) bestBySymbol.set(key, row);
+      }
+      rows = [...bestBySymbol.values()];
+    }
+    const total = Number(result.rows[0]?.total_count) || rows.length;
+    return {
+      rows,
+      total,
+      limit,
+      offset,
+      hasMore: offset + rows.length < total,
+      nextOffset: offset + rows.length,
+    };
   }, 3000);
 }
 
 export async function queryPublicCoinMarkets(options = {}) {
   return cachedPublicRead('publicCoinMarkets', options, async () => {
-    const db = await readDb();
-    const rows = filterCoinMarkets(db.coinMarkets || [], urlFromOptions(options)).map(publicCoinMarket);
-    return pagination(rows, pageOptions(options, 30));
+    const { limit, offset } = pageOptions(options, 30);
+    const params = [];
+    const where = [];
+    const q = cleanText(options.q).toLowerCase();
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(`(
+        lower(COALESCE(symbol, '')) LIKE $${params.length}
+        OR lower(COALESCE(payload->>'name', '')) LIKE $${params.length}
+        OR lower(COALESCE(payload->>'providerItemId', '')) LIKE $${params.length}
+      )`);
+    }
+    params.push(limit, offset);
+    const result = await queryPostgres(
+      `
+        SELECT payload, COUNT(*) OVER() AS total_count
+        FROM coin_markets
+        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        ORDER BY ${numberSqlExpression(`payload->>'marketCap'`)} DESC
+        LIMIT $${params.length - 1} OFFSET $${params.length}
+      `,
+      params,
+    );
+    return paginatedSqlRows(
+      result.rows.map((row) => {
+        const payload = payloadFromRow(row);
+        return { ...row, item: payload ? publicCoinMarket(payload) : null };
+      }),
+      { limit, offset },
+    );
   }, 10000);
 }
 
 export async function queryPublicCalendar(options = {}) {
   return cachedPublicRead('publicCalendar', options, async () => {
-    const db = await readDb();
-    let rows = filterCalendar(db.calendarEvents || [], urlFromOptions(options)).map(publicCalendarEvent);
-    const limit = cleanText(options.limit);
-    if (limit) rows = rows.slice(0, safeLimit(limit, 200, 1000));
-    return rows;
+    const limit = cleanText(options.limit) ? safeLimit(options.limit, 200, 1000) : 200;
+    const params = [];
+    const where = [];
+    const from = cleanText(options.from);
+    if (from) {
+      params.push(from);
+      where.push(`(event_date IS NULL OR event_date >= $${params.length}::date)`);
+    }
+    const to = cleanText(options.to);
+    if (to) {
+      params.push(to);
+      where.push(`(event_date IS NULL OR event_date <= $${params.length}::date)`);
+    }
+    const type = cleanText(options.type);
+    if (type) {
+      params.push(type);
+      where.push(`event_type = $${params.length}`);
+    }
+    const symbol = cleanText(options.symbol).toUpperCase();
+    if (symbol) {
+      params.push(symbol);
+      where.push(`(upper(COALESCE(symbol, '')) = $${params.length} OR upper(COALESCE(payload->>'title', '')) LIKE '%' || $${params.length} || '%')`);
+    }
+    const q = cleanText(options.q).toLowerCase();
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(`(
+        lower(COALESCE(payload->>'title', '')) LIKE $${params.length}
+        OR lower(COALESCE(payload->>'country', '')) LIKE $${params.length}
+        OR lower(COALESCE(symbol, '')) LIKE $${params.length}
+        OR lower(COALESCE(event_type, '')) LIKE $${params.length}
+      )`);
+    }
+    params.push(limit);
+    const result = await queryPostgres(
+      `
+        SELECT payload
+        FROM calendar_events
+        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        ORDER BY event_date ASC NULLS LAST, COALESCE(payload->>'title', '')
+        LIMIT $${params.length}
+      `,
+      params,
+    );
+    return result.rows.map(payloadFromRow).filter(Boolean).map(publicCalendarEvent);
   }, 30000);
 }
 
@@ -932,22 +1241,22 @@ export async function queryPublicConcalls(options = {}) {
 
 export async function readPublicMarketLists() {
   return cachedPublicRead('publicMarketLists', {}, async () => {
-    const db = await readDb();
-    return db.marketLists || [];
+    const result = await queryPostgres('SELECT payload FROM market_lists ORDER BY position ASC');
+    return result.rows.map(payloadFromRow).filter(Boolean);
   }, 30000);
 }
 
 export async function readPublicMarketList(key) {
   return cachedPublicRead('publicMarketList', { key }, async () => {
-    const db = await readDb();
-    return (db.marketLists || []).find((list) => list.key === key) || null;
+    const result = await queryPostgres('SELECT payload FROM market_lists WHERE list_key = $1', [cleanText(key)]);
+    return payloadFromRow(result.rows[0]);
   }, 30000);
 }
 
 export async function readAppSettings() {
   return cachedPublicRead('appSettings', {}, async () => {
-    const db = await readDb();
-    return db.appSettings || {};
+    const result = await queryPostgres(`SELECT payload FROM app_settings WHERE id = 'app'`);
+    return payloadFromRow(result.rows[0]) || {};
   }, 5000);
 }
 
@@ -966,8 +1275,8 @@ export async function queryPublicPriceSeriesCandles(options = {}) {
   return cachedPublicRead('publicPriceSeriesCandles', options, async () => {
     const symbol = cleanText(options.symbol).toUpperCase();
     if (!symbol) return null;
-    const db = await readDb();
-    const series = (db.priceSeries || []).find((row) => cleanText(row.symbol).toUpperCase() === symbol);
+    const result = await queryPostgres('SELECT payload FROM price_series WHERE upper(symbol) = $1', [symbol]);
+    const series = payloadFromRow(result.rows[0]);
     if (!series) return null;
     const from = Number(options.from) * 1000;
     const to = Number(options.to) * 1000;
@@ -996,10 +1305,17 @@ export async function queryPublicPriceSeriesSparklines(options = {}) {
       .map((s) => s.trim().toUpperCase())
       .filter(Boolean);
     const days = safeLimit(options.days, 30, 365);
-    const db = await readDb();
+    if (symbols.length === 0) return [];
+    const result = await queryPostgres('SELECT payload FROM price_series WHERE upper(symbol) = ANY($1::text[])', [symbols]);
+    const bySymbol = new Map(
+      result.rows
+        .map(payloadFromRow)
+        .filter(Boolean)
+        .map((series) => [cleanText(series.symbol).toUpperCase(), series]),
+    );
     return symbols
       .map((symbol) => {
-        const series = (db.priceSeries || []).find((row) => cleanText(row.symbol).toUpperCase() === symbol);
+        const series = bySymbol.get(symbol);
         const bars = barsForSeries(series).slice(-days);
         return {
           symbol,
@@ -1014,16 +1330,45 @@ export async function queryPublicPriceSeriesSparklines(options = {}) {
 
 export async function queryPublicQuantSignals(options = {}) {
   return cachedPublicRead('publicQuantSignals', options, async () => {
-    const db = await readDb();
     const requested = new Set(
       cleanText(options.symbols)
         .split(',')
         .map((s) => s.trim().toUpperCase())
         .filter(Boolean),
     );
-    const quotesBySymbol = new Map((db.marketQuotes || []).map((q) => [cleanText(q.krxSymbol || q.symbol).toUpperCase(), q]));
+    const params = [];
+    const where = [];
+    if (requested.size > 0) {
+      params.push([...requested]);
+      where.push(`upper(symbol) = ANY($${params.length}::text[])`);
+    }
+    params.push(safeLimit(options.limit, 50, 100));
+    const seriesResult = await queryPostgres(
+      `
+        SELECT payload
+        FROM price_series
+        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        ORDER BY position ASC
+        LIMIT $${params.length}
+      `,
+      params,
+    );
+    const seriesRows = seriesResult.rows.map(payloadFromRow).filter(Boolean);
+    const quoteSymbols = seriesRows.map((series) => cleanText(series.symbol).toUpperCase()).filter(Boolean);
+    const quoteResult = quoteSymbols.length > 0
+      ? await queryPostgres(
+          `SELECT payload FROM market_quotes WHERE upper(COALESCE(payload->>'krxSymbol', symbol, '')) = ANY($1::text[])`,
+          [quoteSymbols],
+        )
+      : { rows: [] };
+    const quotesBySymbol = new Map(
+      quoteResult.rows
+        .map(payloadFromRow)
+        .filter(Boolean)
+        .map((q) => [cleanText(q.krxSymbol || q.symbol).toUpperCase(), q]),
+    );
     const rows = [];
-    for (const series of db.priceSeries || []) {
+    for (const series of seriesRows) {
       const symbol = cleanText(series.symbol).toUpperCase();
       if (requested.size > 0 && !requested.has(symbol)) continue;
       const signal = buildQuantSignal({
@@ -1041,15 +1386,31 @@ export async function queryPublicQuantSignals(options = {}) {
 
 export async function queryPublicQuantBacktest(options = {}) {
   return cachedPublicRead('publicQuantBacktest', options, async () => {
-    const db = await readDb();
     const symbols = new Set(
       cleanText(options.symbols)
         .split(',')
         .map((s) => s.trim().toUpperCase())
         .filter(Boolean),
     );
-    const rows = (db.priceSeries || [])
-      .filter((series) => symbols.size === 0 || symbols.has(cleanText(series.symbol).toUpperCase()))
+    const params = [];
+    const where = [];
+    if (symbols.size > 0) {
+      params.push([...symbols]);
+      where.push(`upper(symbol) = ANY($${params.length}::text[])`);
+    }
+    const result = await queryPostgres(
+      `
+        SELECT payload
+        FROM price_series
+        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        ORDER BY position ASC
+        LIMIT 50
+      `,
+      params,
+    );
+    const rows = result.rows
+      .map(payloadFromRow)
+      .filter(Boolean)
       .slice(0, 50)
       .map((series) =>
         backtestInstrument({
@@ -1067,14 +1428,37 @@ export async function queryPublicQuantBacktest(options = {}) {
 
 export async function queryPublicQuantSignalHistory(options = {}) {
   return cachedPublicRead('publicQuantSignalHistory', options, async () => {
-    const db = await readDb();
+    const { limit, offset } = pageOptions(options, 60);
+    const params = [];
+    const where = [];
     const symbol = cleanText(options.symbol).toUpperCase();
-    let rows = [...(db.quantSignalItems || [])];
-    if (symbol) rows = rows.filter((row) => cleanText(row.symbol).toUpperCase() === symbol);
-    if (options.from) rows = rows.filter((row) => cleanText(row.generatedDate || row.generatedAt).slice(0, 10) >= options.from);
-    if (options.to) rows = rows.filter((row) => cleanText(row.generatedDate || row.generatedAt).slice(0, 10) <= options.to);
-    rows.sort((a, b) => cleanText(b.generatedAt || b.generatedDate).localeCompare(cleanText(a.generatedAt || a.generatedDate)));
-    return pagination(rows, pageOptions(options, 60));
+    if (symbol) {
+      params.push(symbol);
+      where.push(`upper(symbol) = $${params.length}`);
+    }
+    if (options.from) {
+      params.push(cleanText(options.from));
+      where.push(`generated_date >= $${params.length}::date`);
+    }
+    if (options.to) {
+      params.push(cleanText(options.to));
+      where.push(`generated_date <= $${params.length}::date`);
+    }
+    params.push(limit, offset);
+    const result = await queryPostgres(
+      `
+        SELECT payload, COUNT(*) OVER() AS total_count
+        FROM quant_signal_items
+        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        ORDER BY generated_at DESC NULLS LAST, generated_date DESC NULLS LAST
+        LIMIT $${params.length - 1} OFFSET $${params.length}
+      `,
+      params,
+    );
+    return paginatedSqlRows(
+      result.rows.map((row) => ({ ...row, item: payloadFromRow(row) })),
+      { limit, offset },
+    );
   }, 15000);
 }
 
@@ -1086,7 +1470,12 @@ export async function queryPublicWatchSignals(options = {}) {
       .filter(Boolean);
     const [quotePage, newsPage, quantRows] = await Promise.all([
       queryPublicMarketQuotes({ symbols: symbols.join(','), limit: '100' }),
-      queryPublicNews({ symbols: symbols.join(','), limit: '100' }),
+      queryPublicNews({
+        symbols: symbols.join(','),
+        limit: '100',
+        date: cleanText(options.date),
+        from: cleanText(options.from),
+      }),
       queryPublicQuantSignals({ symbols: symbols.join(','), limit: '100' }),
     ]);
     return symbols.map((symbol) => {
@@ -1096,11 +1485,32 @@ export async function queryPublicWatchSignals(options = {}) {
       const news = newsPage.rows.filter((row) => (row.symbols || []).map((s) => cleanText(s).toUpperCase()).includes(symbol));
       const quant = quantRows.find((row) => cleanText(row.symbol).toUpperCase() === symbol);
       const score = Math.max(Math.abs(Number(quote?.changePercent) || 0) * 8, Number(quant?.score) || 0, news.length * 8);
+      const reasonCodes = [];
+      if (Math.abs(Number(quote?.changePercent) || 0) >= 3) reasonCodes.push('price_move');
+      if (news.length > 0) reasonCodes.push('news_active');
+      if (quant) reasonCodes.push('quant_signal');
       return {
         symbol,
         quote: quote || null,
         quant: quant || null,
         news: news.slice(0, 3),
+        title: quote?.displaySymbol || quote?.symbol || symbol,
+        summary: news[0]?.title || quant?.summary || '',
+        reasonCodes,
+        counts: {
+          news: news.length,
+          youtube: 0,
+          insights: quant ? 1 : 0,
+        },
+        nextEvent: null,
+        sourceRefs: news.slice(0, 3).map((item) => ({
+          type: 'news',
+          id: item.id,
+          title: item.title,
+          sourceName: item.sourceName,
+          url: item.sourceUrl,
+          publishedAt: item.publishedAt,
+        })),
         score: Math.round(score),
         level: score >= 70 ? 'hot' : score >= 35 ? 'watch' : 'quiet',
       };
@@ -1110,31 +1520,56 @@ export async function queryPublicWatchSignals(options = {}) {
 
 export async function queryInsightItems(options = {}) {
   return cachedPublicRead('insights', options, async () => {
-    const db = await readDb();
-    let rows = [...(db.insightItems || [])];
+    const limit = safeLimit(options.limit, 20, 100);
+    const params = [];
+    const where = [];
     const kind = cleanText(options.kind);
     const displayKey = cleanText(options.displayKey);
     const level = cleanText(options.level);
     const from = cleanText(options.from);
     const to = cleanText(options.to);
     const date = cleanText(options.date);
-    if (kind) rows = rows.filter((row) => row.kind === kind);
-    if (level) rows = rows.filter((row) => row.level === level);
-    if (displayKey) rows = rows.filter((row) => cleanText(row.displayKey || row.symbol) === displayKey);
-    if (date) rows = rows.filter((row) => cleanText(row.generatedDate || row.generatedAt).slice(0, 10) === date);
-    if (from) rows = rows.filter((row) => cleanText(row.generatedDate || row.generatedAt).slice(0, 10) >= from);
-    if (to) rows = rows.filter((row) => cleanText(row.generatedDate || row.generatedAt).slice(0, 10) <= to);
-    if (options.pushOnly) rows = rows.filter((row) => row.pushCandidate === true);
-    if (!options.includeExpired) {
-      const now = Date.now();
-      rows = rows.filter((row) => {
-        const expiresMs = row.expiresAt ? Date.parse(row.expiresAt) : NaN;
-        return !Number.isFinite(expiresMs) || expiresMs >= now;
-      });
+    if (kind) {
+      params.push(kind);
+      where.push(`kind = $${params.length}`);
     }
-    rows.sort((a, b) => cleanText(b.generatedAt || b.createdAt).localeCompare(cleanText(a.generatedAt || a.createdAt)));
-    return rows.slice(0, safeLimit(options.limit, 20, 100));
-  });
+    if (level) {
+      params.push(level);
+      where.push(`level = $${params.length}`);
+    }
+    if (displayKey) {
+      params.push(displayKey);
+      where.push(`display_key = $${params.length}`);
+    }
+    if (date) {
+      params.push(date);
+      where.push(`generated_date = $${params.length}::date`);
+    }
+    if (from) {
+      params.push(from);
+      where.push(`generated_date >= $${params.length}::date`);
+    }
+    if (to) {
+      params.push(to);
+      where.push(`generated_date <= $${params.length}::date`);
+    }
+    if (options.pushOnly) where.push(`push_candidate = true`);
+    if (!options.includeExpired) {
+      where.push(`(expires_at IS NULL OR expires_at >= now())`);
+    }
+    params.push(limit);
+    const result = await queryPostgres(
+      `
+        SELECT payload
+        FROM insight_items
+        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        ORDER BY generated_at DESC NULLS LAST, position ASC
+        LIMIT $${params.length}
+      `,
+      params,
+    );
+    return result.rows.map(payloadFromRow).filter(Boolean);
+  }, 10000);
 }
 
 export async function listDuePollingJobs(now = Date.now()) {

@@ -417,11 +417,12 @@ export default function HomeScreen() {
   const secondaryInsights = topInsights.slice(1, 3);
   const topQuoteRows: HomeQuotePulseRow[] = [...state.watchQuotes]
     .map((quote) => {
-      const watchSignal = state.watchSignals.find((row) => row.symbol.toUpperCase() === quote.symbol.toUpperCase());
+      const quoteSymbol = String(quote.symbol || '').toUpperCase();
+      const watchSignal = state.watchSignals.find((row) => String(row.symbol || '').toUpperCase() === quoteSymbol);
       return {
         quote,
-        newsCount: watchSignal?.counts.news ?? symbolNewsCount(state.rawNews, quote.symbol),
-        signalCount: watchSignal?.counts.insights ?? symbolSignalCount(state.insights, quote.symbol),
+        newsCount: watchSignal?.counts?.news ?? symbolNewsCount(state.rawNews, quote.symbol),
+        signalCount: watchSignal?.counts?.insights ?? symbolSignalCount(state.insights, quote.symbol),
         watchSignal,
       };
     })

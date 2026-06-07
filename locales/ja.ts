@@ -50,6 +50,7 @@ export const ja = {
   homeWatchSection: 'ウォッチリスト',
   homeEvidenceSection: '関連資料',
   homeRelatedSection: '関連ニュース',
+  homeQuantSection: 'クオンツシグナル',
   homeSeeAll: 'すべて',
   homeOpenSignals: 'シグナルを見る',
   homeOpenQuotes: '相場',

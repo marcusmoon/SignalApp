@@ -1,4 +1,4 @@
-export const MARKET_LIST_KEYS = ['mega_cap', 'mcap_universe', 'popular_symbols', 'default_watchlist'];
+export const MARKET_LIST_KEYS = ['mega_cap', 'mcap_universe', 'mcap_top_symbols', 'popular_symbols', 'default_watchlist'];
 
 export function normalizeMarketSymbol(value) {
   return String(value || '')
@@ -50,6 +50,16 @@ export function defaultMarketLists(nowIso) {
         'ECL', 'SHW', 'ITW', 'EMR', 'FCX', 'OXY', 'MET', 'PYPL', 'CRWD', 'NOW',
         'UBER', 'ABNB', 'LRCX', 'MU', 'ADI', 'SNPS', 'CDNS', 'PANW', 'FTNT', 'MMM',
         'RTX', 'BA', 'LMT',
+      ],
+      updatedAt: now,
+    },
+    {
+      key: 'mcap_top_symbols',
+      displayName: '시총 상위 확정 종목',
+      description: '시총 산정 후보를 profile로 정렬한 뒤 quote 수집에 사용하는 확정 종목입니다.',
+      symbols: [
+        'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'AVGO', 'TSLA', 'BRK-B', 'JPM',
+        'WMT', 'UNH', 'XOM', 'JNJ', 'V', 'PG', 'MA', 'ORCL', 'COST', 'HD',
       ],
       updatedAt: now,
     },

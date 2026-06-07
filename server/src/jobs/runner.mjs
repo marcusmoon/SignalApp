@@ -14,7 +14,7 @@ import { fetchNinjasConcallTranscript } from '../providers/concalls/ninjas.mjs';
 import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchYahooKoreaDailyBars } from '../providers/market/yahooDailyBars.mjs';
-import { fetchMarketQuotes, fetchMcapQuotes } from '../providers/market/index.mjs';
+import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
 import { generateMarketInsights } from '../insights/rules.mjs';
 import { generateQuantSignalItems } from '../quant/generate.mjs';
 import { notificationsFromInsights, upsertNotificationItem } from '../notifications/outbox.mjs';
@@ -278,13 +278,27 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
     return { kind: 'marketQuotes', rows: await fetchMarketQuotes({ ...(job.params || {}), symbols }) };
   }
   if (job.provider === 'finnhub' && job.handler === 'market_quotes_mcap') {
+    const configuredSymbols = marketListSymbols(dbBefore, job.params?.listKey || 'mcap_top_symbols');
     return {
       kind: 'marketQuotes',
       rows: await fetchMcapQuotes({
         ...(job.params || {}),
-        symbols: marketListSymbols(dbBefore, job.params?.listKey || 'mcap_universe'),
+        symbols: configuredSymbols.length > 0 ? configuredSymbols : marketListSymbols(dbBefore, 'mcap_universe'),
         onProgress,
       }),
+    };
+  }
+  if (job.provider === 'finnhub' && job.handler === 'market_quotes_mcap_universe') {
+    return {
+      kind: 'marketList',
+      rows: [
+        await fetchMcapUniverse({
+          ...(job.params || {}),
+          symbols: marketListSymbols(dbBefore, job.params?.sourceListKey || 'mcap_universe'),
+          targetListKey: job.params?.targetListKey || 'mcap_top_symbols',
+          onProgress,
+        }),
+      ],
     };
   }
   if (job.provider === 'coingecko' && job.handler === 'coin_markets') {
@@ -450,6 +464,13 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
         for (const row of rows) upsertYoutubeVideo(db.youtubeVideos, row);
       } else if (result.kind === 'marketQuotes') {
         for (const row of rows) upsertById(db.marketQuotes, row);
+      } else if (result.kind === 'marketList') {
+        for (const row of rows) {
+          if (!row?.key) continue;
+          const index = db.marketLists.findIndex((item) => item.key === row.key);
+          if (index >= 0) db.marketLists[index] = { ...db.marketLists[index], ...row, updatedAt: nowIso() };
+          else db.marketLists.push({ ...row, updatedAt: nowIso() });
+        }
       } else if (result.kind === 'priceSeries') {
         for (const row of rows) {
           if (!row?.symbol) continue;

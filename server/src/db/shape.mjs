@@ -110,11 +110,23 @@ export function ensureDbShape(db) {
     if (existing.jobKey === 'market_quotes_popular' && !existing.params.listKey) {
       existing.params = { ...existing.params, listKey: 'popular_symbols' };
     }
+    if (existing.jobKey === 'market_quotes_popular' && Number(existing.intervalSeconds) === 1800) {
+      existing.intervalSeconds = defaultJob.intervalSeconds;
+    }
     if (existing.jobKey === 'market_quotes_watchlist' && !existing.params.listKey) {
       existing.params = { ...existing.params, listKey: 'default_watchlist' };
     }
+    if (existing.jobKey === 'market_quotes_watchlist' && Number(existing.intervalSeconds) === 1800) {
+      existing.intervalSeconds = defaultJob.intervalSeconds;
+    }
     if (existing.jobKey === 'market_quotes_mcap' && !existing.params.listKey) {
-      existing.params = { ...existing.params, listKey: 'mcap_universe' };
+      existing.params = { ...existing.params, listKey: 'mcap_top_symbols' };
+    }
+    if (existing.jobKey === 'market_quotes_mcap') {
+      if (existing.params?.listKey === 'mcap_universe') {
+        existing.params = { ...existing.params, listKey: 'mcap_top_symbols' };
+      }
+      if (Number(existing.intervalSeconds) === 1800) existing.intervalSeconds = defaultJob.intervalSeconds;
     }
     if (existing.jobKey === 'quant_price_series_kr') {
       // The KR universe is a managed market-cap list, so always realign the

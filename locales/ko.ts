@@ -48,6 +48,7 @@ export const ko = {
   homeWatchSection: '관심종목',
   homeEvidenceSection: '관련 자료',
   homeRelatedSection: '관련뉴스',
+  homeQuantSection: '퀀트 시그널',
   homeSeeAll: '전체',
   homeOpenSignals: '시그널 보기',
   homeOpenQuotes: '시세',

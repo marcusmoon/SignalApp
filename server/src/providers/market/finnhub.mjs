@@ -111,3 +111,30 @@ export async function fetchFinnhubMcapQuotes({ topN = 20, symbols = [], onProgre
   }
   return rows;
 }
+
+export async function fetchFinnhubMcapUniverse({ topN = 20, symbols = [], targetListKey = 'mcap_top_symbols', onProgress = null } = {}) {
+  const cap = Math.max(1, Math.min(50, Number(topN) || 20));
+  const universe = [...new Set(symbols.map((s) => String(s || '').trim().toUpperCase()).filter(Boolean))];
+  const profiles = [];
+  for (let i = 0; i < universe.length; i += 1) {
+    const symbol = universe[i];
+    try {
+      const profile = await finnhub('/stock/profile2', { symbol });
+      const marketCapitalization = Number(profile?.marketCapitalization || 0);
+      if (marketCapitalization > 0) profiles.push({ symbol, marketCapitalization });
+    } catch {
+      /* keep the batch resilient */
+    }
+    if (typeof onProgress === 'function') {
+      await onProgress({ phase: 'profiles', done: i + 1, total: universe.length, symbol });
+    }
+  }
+  profiles.sort((a, b) => b.marketCapitalization - a.marketCapitalization);
+  return {
+    key: String(targetListKey || 'mcap_top_symbols'),
+    displayName: '시총 상위 확정 종목',
+    description: '시총 산정 후보를 Finnhub profile 기준으로 정렬한 quote 수집 대상입니다.',
+    symbols: profiles.slice(0, cap).map((item) => item.symbol),
+    updatedAt: new Date().toISOString(),
+  };
+}

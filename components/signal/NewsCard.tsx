@@ -18,6 +18,8 @@ type Props = {
   layout?: 'card' | 'grouped';
   /** 관심뉴스처럼 컨텍스트가 이미 명확한 목록에서는 메타를 한 줄로 압축 */
   compactMeta?: boolean;
+  /** 목록 첫 뉴스 등 사용자가 먼저 봐야 하는 항목을 더 크게 강조 */
+  featured?: boolean;
   /** 미지정 시 URL이 있으면 원문 브라우저 오픈 (추후 상세 화면으로 교체 예정) */
   onPress?: () => void;
 };
@@ -28,6 +30,7 @@ export function NewsCard({
   onTagPress,
   layout = 'card',
   compactMeta = false,
+  featured = false,
   onPress,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
@@ -84,9 +87,11 @@ export function NewsCard({
       style={[
         styles.card,
         grouped && styles.cardGrouped,
+        featured && styles.cardFeatured,
+        featured && grouped && styles.cardFeaturedGrouped,
         isFlash && (grouped ? styles.cardFlashGrouped : styles.cardFlash),
       ]}>
-      {isFlash && grouped ? <View pointerEvents="none" style={styles.flashSideLine} /> : null}
+      {(isFlash || featured) && grouped ? <View pointerEvents="none" style={[styles.flashSideLine, featured && !isFlash && styles.featuredSideLine]} /> : null}
       <Pressable
         onPress={openArticle}
         disabled={!rowPressEnabled}
@@ -139,7 +144,7 @@ export function NewsCard({
             {canOpenSymbol ? renderSourceBelowMeta() : null}
           </>
         )}
-        <Text style={[styles.title, tags.length === 0 && styles.titleLast]}>{item.titleKo}</Text>
+        <Text style={[styles.title, featured && styles.titleFeatured, tags.length === 0 && styles.titleLast]}>{item.titleKo}</Text>
       </Pressable>
       {tags.length > 0 ? (
         <View style={[styles.footer, grouped && styles.footerGrouped]}>
@@ -184,14 +189,25 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingBottom: ft.pad(4),
       position: 'relative',
     },
+    cardFeatured: {
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      paddingTop: ft.pad(16),
+      paddingBottom: ft.pad(9),
+    },
+    cardFeaturedGrouped: {
+      backgroundColor: theme.greenDim,
+      paddingTop: ft.pad(16),
+      paddingBottom: ft.pad(8),
+    },
     cardFlash: {
-      borderColor: 'rgba(255, 90, 90, 0.45)',
+      borderColor: theme.danger,
       borderLeftWidth: 3,
-      borderLeftColor: '#FF5A5A',
-      backgroundColor: 'rgba(255, 90, 90, 0.06)',
+      borderLeftColor: theme.danger,
+      backgroundColor: theme.dangerDim,
     },
     cardFlashGrouped: {
-      backgroundColor: 'rgba(255, 90, 90, 0.045)',
+      backgroundColor: theme.dangerDim,
     },
     flashSideLine: {
       position: 'absolute',
@@ -200,7 +216,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       bottom: ft.pad(10),
       width: 3,
       borderRadius: 999,
-      backgroundColor: '#FF5A5A',
+      backgroundColor: theme.danger,
+    },
+    featuredSideLine: {
+      backgroundColor: theme.green,
     },
     rowPress: {
       alignSelf: 'stretch',
@@ -216,14 +235,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingHorizontal: 10,
       paddingVertical: 4,
       borderRadius: 6,
-      backgroundColor: 'rgba(255, 80, 80, 0.22)',
+      backgroundColor: theme.dangerDim,
       borderWidth: 1,
-      borderColor: 'rgba(255, 120, 120, 0.55)',
+      borderColor: theme.danger,
     },
     flashBadgeText: {
       fontSize: ft.ff(11),
       fontWeight: ft.emphasisWeight,
-      color: '#FF9A9A',
+      color: theme.danger,
       letterSpacing: 0.8,
     },
     metaRow: {
@@ -325,6 +344,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.titleWeight,
       marginBottom: ft.pad(6),
       lineHeight: ft.ff(21),
+    },
+    titleFeatured: {
+      fontSize: ft.ff(17),
+      lineHeight: ft.ff(24),
     },
     titleLast: {
       marginBottom: 0,

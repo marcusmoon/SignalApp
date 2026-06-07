@@ -33,6 +33,7 @@ import {
   fetchSignalInsights,
   fetchSignalMarketQuotes,
   fetchSignalNews,
+  fetchSignalQuantSignals,
   fetchSignalWatchSignals,
   signalNewsToNewsItem,
 } from '@/integrations/signal-api';
@@ -41,6 +42,7 @@ import type {
   SignalApiInsight,
   SignalApiMarketQuote,
   SignalApiNewsItem,
+  SignalApiQuantSignal,
   SignalApiWatchSignal,
 } from '@/integrations/signal-api/types';
 import type { NewsItem } from '@/types/signal';
@@ -55,6 +57,7 @@ type HomeState = {
   news: NewsItem[];
   watchSymbols: string[];
   watchSignals: SignalApiWatchSignal[];
+  quantSignals: SignalApiQuantSignal[];
 };
 
 const EMPTY_STATE: HomeState = {
@@ -64,6 +67,7 @@ const EMPTY_STATE: HomeState = {
   news: [],
   watchSymbols: [],
   watchSignals: [],
+  quantSignals: [],
 };
 
 type HomeEvidenceRow = {
@@ -324,7 +328,7 @@ export default function HomeScreen() {
 
     const cacheMode = forceRefresh ? 'bypass' : 'use';
     const watchSymbols = (await loadWatchlistSymbols()).slice(0, 6);
-    const [insightPage, watchSignalRows, newsPage] = await Promise.all([
+    const [insightPage, watchSignalRows, quantRows, newsPage] = await Promise.all([
       fetchSignalInsights({
         date: 'today',
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -337,6 +341,7 @@ export default function HomeScreen() {
         date: toYmd(new Date()),
         from: homeRelatedNewsFromIso(),
       }).catch(() => [] as SignalApiWatchSignal[]),
+      fetchSignalQuantSignals({ limit: 3 }).catch(() => [] as SignalApiQuantSignal[]),
       fetchSignalNews(
         {
           locale,
@@ -371,6 +376,7 @@ export default function HomeScreen() {
       rawNews: newsItems,
       news: newsItems.map((item) => signalNewsToNewsItem(item, locale)),
       watchSignals: watchSignalRows,
+      quantSignals: quantRows,
     });
   }, [locale, t]);
 
@@ -406,6 +412,7 @@ export default function HomeScreen() {
   }, [load, t]);
 
   const topInsights = state.insights.slice(0, 3);
+  const topQuantSignals = state.quantSignals.slice(0, 3);
   const primaryInsight = topInsights[0] ?? null;
   const secondaryInsights = topInsights.slice(1, 3);
   const topQuoteRows: HomeQuotePulseRow[] = [...state.watchQuotes]
@@ -617,6 +624,51 @@ export default function HomeScreen() {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
+
+        <SectionHeader
+          title={t('homeQuantSection')}
+          icon="calculator"
+          action={t('commonViewAll')}
+          onPress={() => router.push('/quant')}
+          theme={theme}
+          scaleFont={scaleFont}
+        />
+        <View style={styles.quantList}>
+          {topQuantSignals.length > 0 ? (
+            topQuantSignals.map((item) => (
+              <Pressable
+                key={item.symbol}
+                onPress={() => router.push('/quant')}
+                style={({ pressed }) => [styles.quantRow, pressed && styles.pressed]}
+                accessibilityRole="button">
+                <View style={styles.quantLeft}>
+                  <View style={styles.quantTitleRow}>
+                    <Text style={styles.quantSymbol} numberOfLines={1}>
+                      {item.displaySymbol || item.symbol}
+                    </Text>
+                    <Text style={styles.quantAction} numberOfLines={1}>
+                      {item.headline || t('screenQuant')}
+                    </Text>
+                  </View>
+                  <Text style={styles.quantSummary} numberOfLines={2}>
+                    {item.interpretation || item.name || item.symbol}
+                  </Text>
+                </View>
+                <View style={styles.quantScoreBox}>
+                  <Text style={styles.quantScoreLabel}>{t('quantScore')}</Text>
+                  <Text style={styles.quantScoreValue}>{Math.round(Number(item.score) || 0)}</Text>
+                </View>
+              </Pressable>
+            ))
+          ) : (
+            <SectionPlaceholder
+              loading={loading}
+              emptyText={t('quantEmpty')}
+              theme={theme}
+              scaleFont={scaleFont}
+            />
+          )}
+        </View>
 
         <SectionHeader
           title={t('homeWatchSection')}
@@ -1222,6 +1274,70 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
+    },
+    quantList: {
+      borderRadius: 22,
+      overflow: 'hidden',
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    quantRow: {
+      minHeight: ft.row(78),
+      paddingHorizontal: ft.pad(16),
+      paddingVertical: ft.pad(13),
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    quantLeft: { flex: 1, minWidth: 0, gap: 5 },
+    quantTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      minWidth: 0,
+    },
+    quantSymbol: {
+      flexShrink: 0,
+      maxWidth: '45%',
+      fontSize: ft.ff(15),
+      lineHeight: ft.ff(21),
+      fontWeight: ft.titleWeight,
+      color: theme.text,
+    },
+    quantAction: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.emphasisWeight,
+      color: theme.green,
+    },
+    quantSummary: {
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(18),
+      fontWeight: ft.bodyWeight,
+      color: theme.textMuted,
+    },
+    quantScoreBox: {
+      minWidth: 44,
+      alignItems: 'flex-end',
+      gap: 1,
+    },
+    quantScoreLabel: {
+      fontSize: ft.ff(10),
+      lineHeight: ft.ff(14),
+      fontWeight: ft.metaWeight,
+      color: theme.textDim,
+    },
+    quantScoreValue: {
+      fontSize: ft.ff(20),
+      lineHeight: ft.ff(25),
+      fontWeight: ft.titleWeight,
+      color: theme.green,
     },
     quoteRow: {
       minHeight: ft.row(72),

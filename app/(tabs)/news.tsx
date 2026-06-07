@@ -1115,6 +1115,7 @@ export default function FeedScreen() {
                   layout="grouped"
                   item={item.news}
                   compactMeta
+                  featured={index === 0}
                   maxHashtagsToShow={segment === 'watch' ? 0 : maxHashtagDisplay}
                   onTagPress={(label) => {
                     const next = label.trim();

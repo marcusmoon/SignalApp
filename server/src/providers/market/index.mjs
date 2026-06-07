@@ -1,6 +1,7 @@
 import {
   fetchFinnhubMarketQuotes,
   fetchFinnhubMcapQuotes,
+  fetchFinnhubMcapUniverse,
   fetchFinnhubProfile2,
   fetchFinnhubStockCandles,
 } from './finnhub.mjs';
@@ -26,6 +27,12 @@ export async function fetchMcapQuotes({ topN = 20, symbols = [], onProgress = nu
   throw new Error(`MARKET_PROVIDER_NOT_IMPLEMENTED:${provider}`);
 }
 
+export async function fetchMcapUniverse({ topN = 20, symbols = [], targetListKey = 'mcap_top_symbols', onProgress = null } = {}) {
+  const provider = await activeEquityMarketProvider();
+  if (provider === 'finnhub') return fetchFinnhubMcapUniverse({ topN, symbols, targetListKey, onProgress });
+  throw new Error(`MARKET_PROVIDER_NOT_IMPLEMENTED:${provider}`);
+}
+
 export async function fetchStockProfile(symbol) {
   const provider = await activeEquityMarketProvider();
   if (provider === 'finnhub') return fetchFinnhubProfile2(symbol);
@@ -37,4 +44,3 @@ export async function fetchStockCandles(symbol, params = {}) {
   if (provider === 'finnhub') return fetchFinnhubStockCandles(symbol, params);
   throw new Error(`MARKET_PROVIDER_NOT_IMPLEMENTED:${provider}`);
 }
-

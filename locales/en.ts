@@ -50,6 +50,7 @@ export const en = {
   homeWatchSection: 'Watchlist',
   homeEvidenceSection: 'Related material',
   homeRelatedSection: 'Related news',
+  homeQuantSection: 'Quant signals',
   homeSeeAll: 'All',
   homeOpenSignals: 'View signals',
   homeOpenQuotes: 'Quotes',

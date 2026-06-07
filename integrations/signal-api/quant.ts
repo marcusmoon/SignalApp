@@ -6,10 +6,14 @@ export async function fetchSignalQuantSignals(params: {
   limit?: number;
   segment?: string;
 } = {}): Promise<SignalApiQuantSignal[]> {
-  const json = await signalApi<{ data: SignalApiQuantSignal[] }>('/v1/quant-signals', {
-    symbols: params.symbols?.join(','),
-    limit: params.limit ?? 10,
-    segment: params.segment,
-  });
+  const json = await signalApi<{ data: SignalApiQuantSignal[] }>(
+    '/v1/quant-signals',
+    {
+      symbols: params.symbols?.join(','),
+      limit: params.limit ?? 10,
+      segment: params.segment,
+    },
+    { timeoutMs: 5000, attempts: 1 },
+  );
   return json.data;
 }

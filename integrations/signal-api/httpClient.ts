@@ -195,6 +195,8 @@ export async function signalApiRequest<T>(
     method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
     body?: unknown;
     token?: string | null;
+    timeoutMs?: number;
+    attempts?: number;
   } = {},
 ): Promise<T> {
   if (!hasSignalApi()) throw new SignalApiError('config', 'SIGNAL_API_BASE_URL_MISSING');
@@ -213,12 +215,14 @@ export async function signalApiRequest<T>(
     const replaced = await maybeProactiveRefreshBearer(bearer);
     if (replaced) bearer = replaced;
   }
+  const timeoutMs = Math.max(1000, Math.floor(Number(options.timeoutMs)) || DEFAULT_TIMEOUT_MS);
+  const maxAttempts = Math.max(1, Math.floor(Number(options.attempts)) || MAX_ATTEMPTS);
   let lastError: unknown = null;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       const reqHeaders: Record<string, string> = { ...headers, accept: 'application/json' };
       if (bearer) reqHeaders.authorization = `Bearer ${bearer}`;
-      const res = await fetchWithTimeout(`${base}${suffix}`, DEFAULT_TIMEOUT_MS, {
+      const res = await fetchWithTimeout(`${base}${suffix}`, timeoutMs, {
         method,
         headers: reqHeaders,
         body: options.body == null ? undefined : JSON.stringify(options.body),
@@ -257,13 +261,17 @@ export async function signalApiRequest<T>(
       }
     } catch (error) {
       lastError = error;
-      if (attempt >= MAX_ATTEMPTS || !isRetriable(error)) break;
+      if (attempt >= maxAttempts || !isRetriable(error)) break;
       await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
     }
   }
   throw lastError instanceof Error ? lastError : new SignalApiError('network', 'SIGNAL_API_NETWORK');
 }
 
-export async function signalApi<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
-  return signalApiRequest<T>(path, { params });
+export async function signalApi<T>(
+  path: string,
+  params?: Record<string, string | number | undefined>,
+  options?: { timeoutMs?: number; attempts?: number },
+): Promise<T> {
+  return signalApiRequest<T>(path, { params, ...options });
 }

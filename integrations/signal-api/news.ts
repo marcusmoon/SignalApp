@@ -59,11 +59,15 @@ export async function fetchSignalNews(
     const hit = peekSignalNewsCache(cacheKey);
     if (hit) return hit;
   }
-  const json = await signalApi<{ data: SignalApiNewsItem[]; meta?: Partial<SignalNewsListMeta> }>('/v1/news', {
-    ...params,
-    flash: params.flash ? '1' : undefined,
-    tag: params.tag?.trim() ? params.tag.trim() : undefined,
-  });
+  const json = await signalApi<{ data: SignalApiNewsItem[]; meta?: Partial<SignalNewsListMeta> }>(
+    '/v1/news',
+    {
+      ...params,
+      flash: params.flash ? '1' : undefined,
+      tag: params.tag?.trim() ? params.tag.trim() : undefined,
+    },
+    { timeoutMs: 6000, attempts: 1 },
+  );
   const rows = Array.isArray(json.data) ? json.data : [];
   const meta = normalizeMeta({ ...json, data: rows }, params);
   const value = { items: rows, meta };

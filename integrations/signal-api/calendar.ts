@@ -25,7 +25,10 @@ export async function fetchSignalCalendar(
     const hit = peekSignalCalendarCache(cacheKey);
     if (hit) return hit;
   }
-  const json = await signalApi<{ data: SignalApiCalendarEvent[] }>('/v1/calendar', params);
+  const json = await signalApi<{ data: SignalApiCalendarEvent[] }>('/v1/calendar', params, {
+    timeoutMs: 6000,
+    attempts: 1,
+  });
   const rows = Array.isArray(json.data) ? json.data : [];
   if (cacheMode !== 'bypass') storeSignalCalendarCache(cacheKey, rows);
   return rows;
@@ -45,7 +48,10 @@ export async function fetchSignalCalendarDateSummaries(
     const hit = peekSignalCalendarDatesCache(cacheKey);
     if (hit) return hit;
   }
-  const json = await signalApi<{ data: SignalApiCalendarDateSummary[] }>('/v1/calendar-dates', params);
+  const json = await signalApi<{ data: SignalApiCalendarDateSummary[] }>('/v1/calendar-dates', params, {
+    timeoutMs: 6000,
+    attempts: 1,
+  });
   const rows = Array.isArray(json.data) ? json.data : [];
   if (cacheMode !== 'bypass') storeSignalCalendarDatesCache(cacheKey, rows);
   return rows;

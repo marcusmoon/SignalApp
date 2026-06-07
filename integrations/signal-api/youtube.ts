@@ -60,17 +60,21 @@ export async function fetchSignalYoutube(
   const json = await signalApi<{
     data: SignalApiYoutubeVideo[];
     meta?: Partial<SignalNewsListMeta>;
-  }>('/v1/youtube', {
-    q: params?.q,
-    channel: params?.channel,
-    channelHandles:
-      params?.channelHandles && params.channelHandles.length > 0
-        ? params.channelHandles.join(',')
-        : undefined,
-    sort: params?.sort,
-    limit,
-    offset,
-  });
+  }>(
+    '/v1/youtube',
+    {
+      q: params?.q,
+      channel: params?.channel,
+      channelHandles:
+        params?.channelHandles && params.channelHandles.length > 0
+          ? params.channelHandles.join(',')
+          : undefined,
+      sort: params?.sort,
+      limit,
+      offset,
+    },
+    { timeoutMs: 6000, attempts: 1 },
+  );
   const rows = Array.isArray(json.data) ? json.data : [];
   const meta = normalizeYoutubeMeta({ ...json, data: rows }, { limit, offset });
   const value: SignalYoutubePage = { items: rows, meta };
@@ -85,7 +89,10 @@ export async function fetchSignalYoutubeChannels(
     const hit = peekSignalYoutubeChannelsCache();
     if (hit) return hit;
   }
-  const json = await signalApi<{ data: SignalApiYoutubeChannel[] }>('/v1/youtube-channels');
+  const json = await signalApi<{ data: SignalApiYoutubeChannel[] }>('/v1/youtube-channels', undefined, {
+    timeoutMs: 5000,
+    attempts: 1,
+  });
   const rows = Array.isArray(json.data) ? json.data : [];
   if (options?.cacheMode !== 'bypass') storeSignalYoutubeChannelsCache(rows);
   return rows;

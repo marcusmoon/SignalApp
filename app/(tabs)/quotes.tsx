@@ -81,6 +81,7 @@ import { openNaverFinanceStock } from '@/utils/naverFinance';
 import type { MessageId } from '@/locales/messages';
 
 const QUOTE_CARD_TEXT_MAX_SCALE = 1.12;
+const WATCH_MARKET_SOFT_TIMEOUT_MS = 5000;
 const WATCH_QUANT_SOFT_TIMEOUT_MS = 2500;
 
 const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
@@ -309,6 +310,19 @@ function mapSignalQuoteToRow(item: SignalApiMarketQuote): Row {
   };
 }
 
+function quoteLookupKeys(item: SignalApiMarketQuote, row: Row): string[] {
+  return [
+    row.symbol,
+    item.symbol,
+    item.displaySymbol,
+    item.krxSymbol,
+    item.providerItemId,
+    item.regularSession?.yahooSymbol,
+  ]
+    .map((value) => String(value || '').trim().toUpperCase())
+    .filter(Boolean);
+}
+
 function mapSignalCoinToRow(item: SignalApiCoinMarket): Row {
   const price = item.currentPrice;
   if (typeof price !== 'number' || !Number.isFinite(price)) {
@@ -404,11 +418,12 @@ export default function QuotesScreen() {
       }
       // 국내(6자리) 종목은 정규장 시세가 없으면 코스피 퀀트 분석으로, 그 외(미국주식)는 실시간 시세로 채운다.
       const krSymbols = symbols.filter(isKoreaSymbol);
-      const usSymbols = symbols.filter((s) => !isKoreaSymbol(s));
-      const [usRows, quantRows] = await Promise.all([
-        usSymbols.length > 0
-          ? fetchSignalMarketQuotes({ symbols: usSymbols, limit: Math.max(usSymbols.length, 1) })
-          : Promise.resolve([] as SignalApiMarketQuote[]),
+      const [quoteRows, quantRows] = await Promise.all([
+        withSoftTimeout<SignalApiMarketQuote[]>(
+          fetchSignalMarketQuotes({ symbols, limit: Math.max(symbols.length, 1) }).catch(() => []),
+          WATCH_MARKET_SOFT_TIMEOUT_MS,
+          [],
+        ),
         krSymbols.length > 0
           ? withSoftTimeout<SignalApiQuantSignal[]>(
               fetchSignalQuantSignals({ symbols: krSymbols, limit: krSymbols.length }).catch(() => []),
@@ -417,15 +432,21 @@ export default function QuotesScreen() {
             )
           : Promise.resolve([]),
       ]);
-      const usBySymbol = new Map(usRows.map(mapSignalQuoteToRow).map((r) => [r.symbol.trim().toUpperCase(), r]));
+      const quoteBySymbol = new Map<string, Row>();
+      for (const item of quoteRows) {
+        const row = mapSignalQuoteToRow(item);
+        for (const key of quoteLookupKeys(item, row)) quoteBySymbol.set(key, row);
+      }
       const quantBySymbol = new Map(quantRows.map((q) => [String(q.symbol).trim().toUpperCase(), q]));
       const baseRows: Row[] = symbols.map((sym) => {
         const up = sym.trim().toUpperCase();
+        const quote = quoteBySymbol.get(up);
+        if (quote) return quote;
         const quant = quantBySymbol.get(up);
         if (quant) {
           return { symbol: quant.symbol || sym, name: quant.name ?? undefined, quote: null, quant };
         }
-        return usBySymbol.get(up) || { symbol: sym, quote: null, error: 'NO_SERVER_QUOTE' };
+        return { symbol: sym, quote: null, error: 'NO_SERVER_QUOTE' };
       });
       setRows(baseRows);
       storeQuotes(cacheKey, baseRows);

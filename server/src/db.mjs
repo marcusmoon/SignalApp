@@ -23,7 +23,6 @@ import {
   hasUsableTranslation,
 } from './http/shared.mjs';
 import { listActiveYoutubeChannelHandles } from './db/youtubeChannels.mjs';
-import { buildQuantSignal } from './quant/signals.mjs';
 import { aggregateBacktests, backtestInstrument } from './quant/backtest.mjs';
 import {
   isAppUserJwtConfigured,
@@ -369,6 +368,10 @@ const collectionSpecs = [
       position: index,
       symbol: textOrNull(row.symbol),
       segment: textOrNull(row.segment),
+      display_symbol: textOrNull(row.displaySymbol),
+      krx_symbol: textOrNull(row.krxSymbol),
+      provider_item_id: textOrNull(row.providerItemId),
+      regular_yahoo_symbol: textOrNull(row.regularSession?.yahooSymbol || row.yahooSymbol),
       quote_time: isoOrNull(row.quoteTime),
       fetched_at: isoOrNull(row.fetchedAt),
       updated_at: isoOrNull(row.updatedAt) || nowIso(),
@@ -1261,10 +1264,10 @@ export async function queryPublicMarketQuotes(options = {}) {
       params.push(symbols);
       where.push(`(
         upper(COALESCE(symbol, '')) = ANY($${params.length}::text[])
-        OR upper(COALESCE(payload->>'displaySymbol', '')) = ANY($${params.length}::text[])
-        OR upper(COALESCE(payload->>'krxSymbol', '')) = ANY($${params.length}::text[])
-        OR upper(COALESCE(payload->>'providerItemId', '')) = ANY($${params.length}::text[])
-        OR upper(COALESCE(payload->'regularSession'->>'yahooSymbol', '')) = ANY($${params.length}::text[])
+        OR upper(COALESCE(display_symbol, '')) = ANY($${params.length}::text[])
+        OR upper(COALESCE(krx_symbol, '')) = ANY($${params.length}::text[])
+        OR upper(COALESCE(provider_item_id, '')) = ANY($${params.length}::text[])
+        OR upper(COALESCE(regular_yahoo_symbol, '')) = ANY($${params.length}::text[])
       )`);
     }
     const q = cleanText(options.q).toLowerCase();
@@ -1289,19 +1292,19 @@ export async function queryPublicMarketQuotes(options = {}) {
             WHERE ($2::text = '' OR p.segment = $2)
             UNION ALL
             SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.fetched_at, 2 AS priority
-            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.payload->>'displaySymbol', '')) = r.symbol
+            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.display_symbol, '')) = r.symbol
             WHERE ($2::text = '' OR p.segment = $2)
             UNION ALL
             SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.fetched_at, 3 AS priority
-            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.payload->>'krxSymbol', '')) = r.symbol
+            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.krx_symbol, '')) = r.symbol
             WHERE ($2::text = '' OR p.segment = $2)
             UNION ALL
             SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.fetched_at, 4 AS priority
-            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.payload->>'providerItemId', '')) = r.symbol
+            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.provider_item_id, '')) = r.symbol
             WHERE ($2::text = '' OR p.segment = $2)
             UNION ALL
             SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.fetched_at, 5 AS priority
-            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.payload->'regularSession'->>'yahooSymbol', '')) = r.symbol
+            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.regular_yahoo_symbol, '')) = r.symbol
             WHERE ($2::text = '' OR p.segment = $2)
           ),
           best AS (
@@ -1710,57 +1713,41 @@ export async function queryPublicPriceSeriesSparklines(options = {}) {
 
 export async function queryPublicQuantSignals(options = {}) {
   return cachedPublicRead('publicQuantSignals', options, async () => {
-    const requested = new Set(
-      cleanText(options.symbols)
-        .split(',')
-        .map((s) => s.trim().toUpperCase())
-        .filter(Boolean),
-    );
-    const params = [];
-    const where = [];
-    if (requested.size > 0) {
-      params.push([...requested]);
-      where.push(`upper(symbol) = ANY($${params.length}::text[])`);
-    }
-    params.push(safeLimit(options.limit, 50, 100));
-    const seriesResult = await queryPostgres(
-      `
-        SELECT payload
-        FROM price_series
-        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-        ORDER BY position ASC
-        LIMIT $${params.length}
-      `,
-      params,
-    );
-    const seriesRows = seriesResult.rows.map(payloadFromRow).filter(Boolean);
-    const quoteSymbols = seriesRows.map((series) => cleanText(series.symbol).toUpperCase()).filter(Boolean);
-    const quoteResult = quoteSymbols.length > 0
+    const symbols = cleanText(options.symbols)
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+    const requested = new Set(symbols);
+    const limit = cleanText(options.limit) ? safeLimit(options.limit, 10, 100) : 10;
+    const result = requested.size > 0
       ? await queryPostgres(
-          `SELECT payload FROM market_quotes WHERE upper(COALESCE(payload->>'krxSymbol', symbol, '')) = ANY($1::text[])`,
-          [quoteSymbols],
+          `
+            WITH requested(symbol, ord) AS (
+              SELECT * FROM unnest($1::text[]) WITH ORDINALITY
+            ),
+            best AS (
+              SELECT DISTINCT ON (r.symbol) r.symbol AS requested_symbol, r.ord, q.payload
+              FROM requested r
+              JOIN quant_signal_items q ON upper(COALESCE(q.symbol, '')) = r.symbol
+              ORDER BY r.symbol, q.generated_date DESC NULLS LAST, q.generated_at DESC NULLS LAST, q.score DESC NULLS LAST
+            )
+            SELECT payload
+            FROM best
+            ORDER BY ord ASC
+            LIMIT $2
+          `,
+          [symbols, limit],
         )
-      : { rows: [] };
-    const quotesBySymbol = new Map(
-      quoteResult.rows
-        .map(payloadFromRow)
-        .filter(Boolean)
-        .map((q) => [cleanText(q.krxSymbol || q.symbol).toUpperCase(), q]),
-    );
-    const rows = [];
-    for (const series of seriesRows) {
-      const symbol = cleanText(series.symbol).toUpperCase();
-      if (requested.size > 0 && !requested.has(symbol)) continue;
-      const signal = buildQuantSignal({
-        instrument: series,
-        bars: barsForSeries(series),
-        liveQuote: quotesBySymbol.get(symbol) || null,
-      });
-      if (signal) rows.push(signal);
-    }
-    rows.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
-    const limit = cleanText(options.limit) ? safeLimit(options.limit, 10, 100) : rows.length;
-    return rows.slice(0, limit);
+      : await queryPostgres(
+          `
+            SELECT payload
+            FROM quant_signal_items
+            ORDER BY generated_date DESC NULLS LAST, score DESC NULLS LAST, position ASC
+            LIMIT $1
+          `,
+          [limit],
+        );
+    return result.rows.map(payloadFromRow).filter(Boolean);
   }, 15000);
 }
 

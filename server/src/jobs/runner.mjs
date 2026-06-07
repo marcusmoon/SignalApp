@@ -3,10 +3,15 @@ import {
   ensureNewsSourcesFromItems,
   getPollingJob,
   nowIso,
+  patchPollingJob,
+  patchPollingJobRun,
   readDb,
   releasePollingJobLock,
   updateDb,
+  upsertCollectionRows,
   upsertById,
+  upsertNotificationItem as saveNotificationItem,
+  upsertPollingJobRun,
 } from '../db.mjs';
 import { config } from '../config.mjs';
 import { mergeAutoHashtagsIntoNewsItem } from '../newsHashtags.mjs';
@@ -17,7 +22,7 @@ import { fetchYahooDailyPriceSeries, fetchYahooKoreaDailyBars } from '../provide
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
 import { generateMarketInsights } from '../insights/rules.mjs';
 import { generateQuantSignalItems } from '../quant/generate.mjs';
-import { notificationsFromInsights, upsertNotificationItem } from '../notifications/outbox.mjs';
+import { notificationsFromInsights } from '../notifications/outbox.mjs';
 import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
 import { fetchNewswireRssNews } from '../providers/news/rssNews.mjs';
@@ -382,19 +387,14 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       progressPercent: 0,
       progressUpdatedAt: skippedAt,
     };
-    await updateDb((db) => {
-      const job = db.pollingJobs.find((j) => j.jobKey === jobKey);
-      if (job) {
-        skippedRun.displayName = job.displayName || job.jobKey;
-        skippedRun.domain = job.domain || null;
-        skippedRun.operation = job.operation || null;
-        skippedRun.provider = job.provider || null;
-        skippedRun.handler = job.handler || null;
-        skippedRun.resultKind = job.domain || null;
-        job.updatedAt = skippedAt;
-      }
-      db.pollingJobRuns.unshift(skippedRun);
-    });
+    skippedRun.displayName = jobForLock.displayName || jobForLock.jobKey;
+    skippedRun.domain = jobForLock.domain || null;
+    skippedRun.operation = jobForLock.operation || null;
+    skippedRun.provider = jobForLock.provider || null;
+    skippedRun.handler = jobForLock.handler || null;
+    skippedRun.resultKind = jobForLock.domain || null;
+    await upsertPollingJobRun(skippedRun);
+    await patchPollingJob(jobKey, { ...jobForLock, updatedAt: skippedAt });
     return {
       ...skippedRun,
     };
@@ -432,14 +432,12 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       progressUpdatedAt: new Date(startedTime).toISOString(),
     };
 
-    await updateDb((db) => {
-      db.pollingJobRuns.unshift(run);
-      const savedJob = db.pollingJobs.find((j) => j.jobKey === jobKey);
-      if (savedJob) {
-        savedJob.lastRunAt = run.startedAt;
-        savedJob.nextRunAt = addSecondsIso(savedJob.intervalSeconds);
-        savedJob.updatedAt = run.startedAt;
-      }
+    await upsertPollingJobRun(run);
+    await patchPollingJob(jobKey, {
+      ...job,
+      lastRunAt: run.startedAt,
+      nextRunAt: addSecondsIso(job.intervalSeconds),
+      updatedAt: run.startedAt,
     });
 
     let lastProgressAt = 0;
@@ -471,75 +469,70 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
               console.log(
                 `[job:${jobKey}] progress ${percent}% (${phase || 'unknown'} ${safeDone}/${safeTotal})${symbol ? ` ${symbol}` : ''}`,
               );
-              await updateDb((db) => {
-                const savedRun = db.pollingJobRuns.find((r) => r.id === run.id);
-                if (!savedRun) return;
-                savedRun.progressPhase = phase || null;
-                savedRun.progressDone = safeDone;
-                savedRun.progressTotal = safeTotal;
-                savedRun.progressPercent = percent;
-                savedRun.progressUpdatedAt = nowIso();
+              await patchPollingJobRun(run.id, {
+                progressPhase: phase || null,
+                progressDone: safeDone,
+                progressTotal: safeTotal,
+                progressPercent: percent,
+                progressUpdatedAt: nowIso(),
               });
             }
           }
         : null;
 
     const result = await executeHandler(job, dbBefore, { onProgress });
-    await updateDb(async (db) => {
-      const rows = result.rows || [];
-      if (result.kind === 'news') {
-        for (const row of rows) upsertById(db.newsItems, row);
-        ensureNewsSourcesFromItems(db);
-        await autoTranslateNews(db, rows);
-      } else if (result.kind === 'calendar') {
-        for (const row of rows) upsertById(db.calendarEvents, row);
-      } else if (result.kind === 'concallTranscripts') {
-        for (const row of rows) upsertById(db.concallTranscripts, row);
-      } else if (result.kind === 'youtube') {
-        for (const row of rows) upsertYoutubeVideo(db.youtubeVideos, row);
-      } else if (result.kind === 'marketQuotes') {
-        for (const row of rows) upsertById(db.marketQuotes, row);
-      } else if (result.kind === 'marketList') {
-        for (const row of rows) {
-          if (!row?.key) continue;
-          const index = db.marketLists.findIndex((item) => item.key === row.key);
-          if (index >= 0) db.marketLists[index] = { ...db.marketLists[index], ...row, updatedAt: nowIso() };
-          else db.marketLists.push({ ...row, updatedAt: nowIso() });
+    const rows = result.rows || [];
+    const directCollectionByKind = {
+      calendar: 'calendarEvents',
+      concallTranscripts: 'concallTranscripts',
+      marketQuotes: 'marketQuotes',
+      marketList: 'marketLists',
+      priceSeries: 'priceSeries',
+      coinMarkets: 'coinMarkets',
+      quantSignals: 'quantSignalItems',
+    };
+    const directCollection = directCollectionByKind[result.kind];
+    if (directCollection) {
+      const savedAt = nowIso();
+      await upsertCollectionRows(
+        directCollection,
+        rows.map((row) => ({ ...row, updatedAt: row.updatedAt || savedAt, createdAt: row.createdAt || savedAt })),
+      );
+    } else if (result.kind === 'insights') {
+      const savedAt = nowIso();
+      await upsertCollectionRows(
+        'insightItems',
+        rows.map((row) => ({ ...row, updatedAt: row.updatedAt || savedAt, createdAt: row.createdAt || savedAt })),
+      );
+      const notificationRows = notificationsFromInsights(rows);
+      for (const row of notificationRows) await saveNotificationItem(row);
+    } else {
+      await updateDb(async (db) => {
+        if (result.kind === 'news') {
+          for (const row of rows) upsertById(db.newsItems, row);
+          ensureNewsSourcesFromItems(db);
+          await autoTranslateNews(db, rows);
+        } else if (result.kind === 'youtube') {
+          for (const row of rows) upsertYoutubeVideo(db.youtubeVideos, row);
         }
-      } else if (result.kind === 'priceSeries') {
-        for (const row of rows) {
-          if (!row?.symbol) continue;
-          const index = db.priceSeries.findIndex((item) => item.symbol === row.symbol);
-          if (index >= 0) db.priceSeries[index] = { ...db.priceSeries[index], ...row, updatedAt: nowIso() };
-          else db.priceSeries.push({ ...row, createdAt: nowIso(), updatedAt: nowIso() });
-        }
-      } else if (result.kind === 'coinMarkets') {
-        for (const row of rows) upsertById(db.coinMarkets, row);
-      } else if (result.kind === 'quantSignals') {
-        for (const row of rows) upsertById(db.quantSignalItems, row);
-      } else if (result.kind === 'insights') {
-        for (const row of rows) upsertById(db.insightItems, row);
-        const notificationRows = notificationsFromInsights(rows);
-        for (const row of notificationRows) upsertNotificationItem(db.notificationItems, row);
-      }
+      });
+    }
 
-      const savedJob = db.pollingJobs.find((j) => j.jobKey === jobKey);
-      if (savedJob) {
-        savedJob.lastRunAt = nowIso();
-        savedJob.nextRunAt = addSecondsIso(savedJob.intervalSeconds);
-        savedJob.updatedAt = nowIso();
-      }
-      const savedRun = db.pollingJobRuns.find((r) => r.id === run.id);
-      if (savedRun) {
-        const finishedAt = nowIso();
-        savedRun.status = 'completed';
-        savedRun.finishedAt = finishedAt;
-        savedRun.durationMs = Date.now() - startedTime;
-        savedRun.resultKind = result.kind;
-        savedRun.itemCount = rows.length;
-        if (savedRun.progressPercent != null) savedRun.progressPercent = 100;
-        savedRun.progressUpdatedAt = finishedAt;
-      }
+    const finishedAt = nowIso();
+    await patchPollingJob(jobKey, {
+      ...job,
+      lastRunAt: finishedAt,
+      nextRunAt: addSecondsIso(job.intervalSeconds),
+      updatedAt: finishedAt,
+    });
+    await patchPollingJobRun(run.id, {
+      status: 'completed',
+      finishedAt,
+      durationMs: Date.now() - startedTime,
+      resultKind: result.kind,
+      itemCount: rows.length,
+      progressPercent: 100,
+      progressUpdatedAt: finishedAt,
     });
     return {
       ...run,
@@ -551,23 +544,22 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await updateDb((db) => {
-      const savedJob = db.pollingJobs.find((j) => j.jobKey === jobKey);
-      if (savedJob) {
-        savedJob.lastRunAt = nowIso();
-        savedJob.nextRunAt = addSecondsIso(savedJob.intervalSeconds);
-        savedJob.updatedAt = nowIso();
-      }
-      const savedRun = run ? db.pollingJobRuns.find((r) => r.id === run.id) : null;
-      if (savedRun) {
-        const finishedAt = nowIso();
-        savedRun.status = 'failed';
-        savedRun.finishedAt = finishedAt;
-        savedRun.durationMs = Date.now() - startedTime;
-        savedRun.errorMessage = message;
-        savedRun.progressUpdatedAt = finishedAt;
-      }
+    const failedAt = nowIso();
+    await patchPollingJob(jobKey, {
+      ...jobForLock,
+      lastRunAt: failedAt,
+      nextRunAt: addSecondsIso(jobForLock.intervalSeconds),
+      updatedAt: failedAt,
     });
+    if (run) {
+      await patchPollingJobRun(run.id, {
+        status: 'failed',
+        finishedAt: failedAt,
+        durationMs: Date.now() - startedTime,
+        errorMessage: message,
+        progressUpdatedAt: failedAt,
+      });
+    }
     throw error;
   } finally {
     await releasePollingJobLock(jobKey, lock.token).catch((error) => {

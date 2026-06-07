@@ -482,6 +482,8 @@ const singletonSpecs = [
   { key: 'newsSourceSettings', store: 'settings', table: 'news_source_settings', pk: 'id', id: 'default' },
 ];
 
+const collectionSpecsByKey = new Map(collectionSpecs.map((spec) => [spec.key, spec]));
+
 async function readCollection(client, spec) {
   const result = await client.query(`SELECT payload FROM ${spec.table} ORDER BY position ASC`);
   return result.rows.map(payloadFromRow).filter(Boolean);
@@ -688,6 +690,71 @@ export async function updateDb(mutator) {
       }
     });
   });
+}
+
+export async function upsertCollectionRows(collectionKey, rows = []) {
+  const spec = collectionSpecsByKey.get(collectionKey);
+  if (!spec) throw new Error(`UNKNOWN_COLLECTION:${collectionKey}`);
+  const safeRows = Array.isArray(rows) ? rows : [];
+  if (safeRows.length === 0) return { count: 0 };
+  return withDbExclusive(async () => {
+    await ensureSeeded();
+    await withPostgresClient(async (client) => {
+      await client.query('BEGIN');
+      try {
+        for (let index = 0; index < safeRows.length; index += 1) {
+          await insertCollectionRow(client, spec, safeRows[index], index);
+        }
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      }
+    });
+    clearPublicReadCache();
+    return { count: safeRows.length };
+  });
+}
+
+export async function patchCollectionPayload(collectionKey, key, patch = {}) {
+  const spec = collectionSpecsByKey.get(collectionKey);
+  if (!spec) throw new Error(`UNKNOWN_COLLECTION:${collectionKey}`);
+  const id = cleanText(key);
+  if (!id) throw new Error('COLLECTION_KEY_REQUIRED');
+  return withDbExclusive(async () => {
+    await ensureSeeded();
+    return withPostgresClient(async (client) => {
+      await client.query('BEGIN');
+      try {
+        const current = await client.query(`SELECT payload, position FROM ${spec.table} WHERE ${spec.pk} = $1 FOR UPDATE`, [id]);
+        const next = { ...(payloadFromRow(current.rows[0]) || {}), ...patch };
+        if (!cleanText(spec.keyOf(next))) {
+          if (collectionKey === 'pollingJobs') next.jobKey = id;
+          else if (collectionKey === 'pollingJobRuns') next.id = id;
+          else next[spec.pk] = id;
+        }
+        await insertCollectionRow(client, spec, next, Number(current.rows[0]?.position) || 0);
+        await client.query('COMMIT');
+        clearPublicReadCache();
+        return next;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      }
+    });
+  });
+}
+
+export async function upsertPollingJobRun(run) {
+  return upsertCollectionRows('pollingJobRuns', [run]);
+}
+
+export async function patchPollingJobRun(runId, patch = {}) {
+  return patchCollectionPayload('pollingJobRuns', runId, patch);
+}
+
+export async function patchPollingJob(jobKey, patch = {}) {
+  return patchCollectionPayload('pollingJobs', jobKey, patch);
 }
 
 function paginatedSqlRows(rows, { limit, offset }) {

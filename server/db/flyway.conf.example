@@ -1,0 +1,10 @@
+locations=filesystem:server/db/migrations/postgres
+schemas=public
+baselineOnMigrate=true
+validateMigrationNaming=true
+
+# Flyway uses JDBC URLs. Convert Railway-style postgres:// URLs before running.
+# Example:
+# url=jdbc:postgresql://HOST:PORT/DB?sslmode=require
+# user=signal
+# password=change-me

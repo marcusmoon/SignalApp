@@ -136,6 +136,16 @@ function sparkPoints(values: number[], width: number, height: number): MiniSpark
   }));
 }
 
+function sampleSparklineValues(values: number[], maxPoints = 14): number[] {
+  const finiteValues = values.filter((value) => Number.isFinite(value));
+  if (finiteValues.length <= maxPoints) return finiteValues;
+  const lastIndex = finiteValues.length - 1;
+  return Array.from({ length: maxPoints }, (_, index) => {
+    const sourceIndex = Math.round((index / (maxPoints - 1)) * lastIndex);
+    return finiteValues[sourceIndex];
+  });
+}
+
 function MiniSparkline({
   values,
   color,
@@ -147,9 +157,10 @@ function MiniSparkline({
 }) {
   const [width, setWidth] = useState(0);
   const height = 28;
+  const sampledValues = useMemo(() => sampleSparklineValues(values), [values]);
   const points = useMemo(
-    () => sparkPoints(values.filter((value) => Number.isFinite(value)), width, height - 4),
-    [values, width],
+    () => sparkPoints(sampledValues, width, height - 4),
+    [sampledValues, width],
   );
   const onLayout = useCallback((event: LayoutChangeEvent) => {
     const nextWidth = Math.max(0, event.nativeEvent.layout.width - 2);
@@ -315,10 +326,20 @@ export default function QuotesScreen() {
   const [rows, setRows] = useState<Row[]>([]);
   const rowsRef = useRef<Row[]>([]);
   rowsRef.current = rows;
+  const loadSeqRef = useRef(0);
   useTabScreenLoadingRecovery(rows, setLoading);
   const [draftTicker, setDraftTicker] = useState('');
 
+  const hydrateSparklines = useCallback(async (cacheKey: string, baseRows: Row[], loadSeq: number) => {
+    const nextRows = await withStockSparklines(baseRows);
+    if (loadSeqRef.current !== loadSeq) return;
+    if (nextRows === baseRows) return;
+    setRows(nextRows);
+    storeQuotes(cacheKey, nextRows);
+  }, []);
+
   const load = useCallback(async (forceRefresh?: boolean) => {
+    const loadSeq = ++loadSeqRef.current;
     setError(null);
     const limits = await loadQuotesListLimits();
 
@@ -359,6 +380,9 @@ export default function QuotesScreen() {
         const hit = peekQuotes(cacheKey);
         if (hit) {
           setRows(hit.rows);
+          if (!hit.rows.every((row) => Array.isArray(row.sparkline) && row.sparkline.length > 1)) {
+            void hydrateSparklines(cacheKey, hit.rows, loadSeq);
+          }
           return;
         }
       }
@@ -383,9 +407,9 @@ export default function QuotesScreen() {
         }
         return usBySymbol.get(up) || { symbol: sym, quote: null, error: 'NO_SERVER_QUOTE' };
       });
-      const nextRows = await withStockSparklines(baseRows);
-      setRows(nextRows);
-      storeQuotes(cacheKey, nextRows);
+      setRows(baseRows);
+      storeQuotes(cacheKey, baseRows);
+      void hydrateSparklines(cacheKey, baseRows, loadSeq);
       return;
     }
 
@@ -412,6 +436,9 @@ export default function QuotesScreen() {
       const hit = peekQuotes(cacheKey);
       if (hit) {
         setRows(hit.rows);
+        if (!hit.rows.every((row) => Array.isArray(row.sparkline) && row.sparkline.length > 1)) {
+          void hydrateSparklines(cacheKey, hit.rows, loadSeq);
+        }
         return;
       }
     }
@@ -420,10 +447,11 @@ export default function QuotesScreen() {
       segment: segment === 'popular' ? 'popular' : 'mcap',
       limit: segment === 'popular' ? limits.popularMax : limits.mcapMax,
     });
-    const nextRows = await withStockSparklines(serverRows.map(mapSignalQuoteToRow));
-    setRows(nextRows);
-    storeQuotes(cacheKey, nextRows);
-  }, [segment, t]);
+    const baseRows = serverRows.map(mapSignalQuoteToRow);
+    setRows(baseRows);
+    storeQuotes(cacheKey, baseRows);
+    void hydrateSparklines(cacheKey, baseRows, loadSeq);
+  }, [hydrateSparklines, segment, t]);
 
   useFocusEffect(
     useCallback(() => {

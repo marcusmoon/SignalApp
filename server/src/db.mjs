@@ -86,6 +86,7 @@ import {
   readStructuredDb,
   writeStructuredDb,
 } from './db/sqliteStore.mjs';
+import { checkPostgresConnectivity } from './db/postgres/client.mjs';
 import { ensureStructuredSchema } from './db/sqlite/schema.mjs';
 import { nowIso } from './db/time.mjs';
 
@@ -577,13 +578,27 @@ export async function queryPublicYoutubeChannels() {
 }
 
 export async function readDbHealthSummary() {
-  return withDbRead((db) => {
+  const sqlite = await withDbRead((db) => {
     const jobs = db.prepare('SELECT COUNT(*) AS count FROM polling_jobs').get();
     return {
       ok: true,
       jobs: Number(jobs?.count) || 0,
     };
   });
+  const postgres =
+    config.dbDriver === 'postgres'
+      ? await checkPostgresConnectivity()
+      : { configured: Boolean(config.databaseUrl), active: false, ok: null };
+  return {
+    ok: sqlite.ok,
+    requestedDriver: config.dbDriver,
+    activeStore: 'sqlite',
+    sqlite: {
+      path: config.sqlitePath,
+      jobs: sqlite.jobs,
+    },
+    postgres,
+  };
 }
 
 export async function queryPublicMarketQuotes(options = {}) {

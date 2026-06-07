@@ -79,9 +79,17 @@ function numberEnv(name, defaultValue, { min = 0, max = Number.MAX_SAFE_INTEGER 
   return Math.min(max, Math.max(min, n));
 }
 
+function dbDriverEnv() {
+  const value = String(process.env.SIGNAL_DB_DRIVER || 'sqlite').trim().toLowerCase();
+  if (value === 'postgres' || value === 'postgresql') return 'postgres';
+  return 'sqlite';
+}
+
 export const config = {
   rootDir,
   dataDir,
+  dbDriver: dbDriverEnv(),
+  databaseUrl: String(process.env.DATABASE_URL || '').trim(),
   sqlitePath: resolveSqlitePath(),
   host: process.env.HOST || '127.0.0.1',
   port: Number(process.env.PORT || 4000),

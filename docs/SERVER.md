@@ -13,6 +13,7 @@ npm --prefix server run worker
 | 변수 | 설명 |
 |---|---|
 | `DATA_DIR` | SQLite와 서버 런타임 데이터 위치 |
+| `SIGNAL_DB_DRIVER` | 현재 런타임 DB driver. adapter 전환 전에는 `sqlite` |
 | `HOST` | 서버 bind host |
 | `PORT` | 서버 port |
 | `ADMIN_USERS` | 초기 Admin 사용자 JSON |
@@ -20,7 +21,8 @@ npm --prefix server run worker
 | `SIGNAL_JWT_PRIVATE_KEY_B64` | 앱 사용자 JWT private key base64 |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | LLM provider 키 |
 | `YOUTUBE_API_KEY` | YouTube 수집 키 |
-| `NINJAS_API_KEY` | 컨콜 등 Ninjas provider 키 |
+| `NINJAS_KEY` | 컨콜 등 Ninjas provider 키 |
+| `DATABASE_URL` | Postgres 전환 준비용 연결 문자열 |
 
 ## API 그룹
 
@@ -50,6 +52,49 @@ Admin에서 Job을 등록하고 실행한다. Job 설정에는 provider, schedul
 - WAL 모드를 사용한다.
 - public API가 자주 조회하는 날짜, 타입, 심볼, 생성시각 컬럼에는 인덱스를 둔다.
 - 중복 가능성이 큰 캘린더/뉴스는 저장 시 정규화 키를 유지하고 공개 API에서 최종 중복 제거를 적용한다.
+
+## Postgres 전환 준비
+
+운영 DB는 Postgres를 기본 목표로 둔다. 현재 서버 런타임은 SQLite adapter를 사용하므로 `DATABASE_URL`만 설정해도 런타임 저장소가 자동 전환되지는 않는다. 먼저 Flyway로 운영 스키마를 관리하고, 이후 저장소 adapter를 Postgres로 분리한다.
+
+현재 준비된 범위:
+
+- `pg` client dependency
+- Postgres 연결 상태 점검용 client
+- `npm --prefix server run db:postgres:check` 연결 확인 스크립트
+- `/health`의 `db.postgres` 연결 점검 정보
+- Flyway baseline schema
+
+Flyway 기준 파일:
+
+- 설정 예시: `server/db/flyway.conf.example`
+- 마이그레이션: `server/db/migrations/postgres/V1__initial_signal_schema.sql`
+
+Railway `DATABASE_URL`은 보통 `postgres://...` 형식이고 Flyway CLI는 JDBC URL이 필요하다.
+
+```bash
+flyway \
+  -locations=filesystem:server/db/migrations/postgres \
+  -url="jdbc:postgresql://HOST:PORT/DB?sslmode=require" \
+  -user="USER" \
+  -password="PASSWORD" \
+  migrate
+```
+
+스키마 원칙:
+
+- 앱/운영에서 자주 검색하는 값은 typed column으로 둔다.
+- provider별 원본 응답과 유연한 필드는 `payload jsonb`에 보관한다.
+- `news_items`, `youtube_videos`, `calendar_events`, `market_quotes`, `price_series`, `insight_items` 등 공개 API 조회 테이블은 날짜/카테고리/심볼 인덱스를 가진다.
+- SQLite의 `signal.sqlite` 파일은 Postgres adapter 전환 전까지 운영 source of truth로 유지한다.
+
+전환 순서:
+
+1. Flyway로 운영 Postgres schema를 먼저 생성한다.
+2. SQLite 데이터를 Postgres schema로 백필한다.
+3. 서버 DB 접근을 `sqlite` / `postgres` repository adapter로 분기한다.
+4. API와 worker를 같은 `SIGNAL_DB_DRIVER=postgres`와 같은 `DATABASE_URL`로 배포한다.
+5. `/health`에서 `activeStore=postgres`와 Postgres 연결 상태를 확인한 뒤 SQLite volume 의존도를 제거한다.
 
 ## 배포
 

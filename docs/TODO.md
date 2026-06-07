@@ -15,7 +15,7 @@
 
 ## Server
 
-- SQLite → MySQL 이전 계획: schema, repository interface, migration 전략 정리.
+- SQLite → Postgres 전환: Flyway baseline을 기준으로 repository interface와 Postgres adapter를 추가하고 운영 source of truth를 전환한다.
 - Job lock 운영: 오래된 running 상태 자동 감지와 관리자 강제 해제 기준 개선.
 - API 성능: public API payload 최소화, 인덱스 점검, 캐시 TTL 기준 유지.
 - Provider 관리: RSS, YouTube, LLM, calendar provider 설정을 Admin에서 일관되게 관리.

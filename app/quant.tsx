@@ -15,7 +15,7 @@ import type { SignalApiQuantSignal } from '@/integrations/signal-api/types';
 import type { MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
 
-const PAGE_LIMIT = 24;
+const PAGE_LIMIT = 10;
 
 const REASON_LABELS: Record<string, MessageId> = {
   trend_up: 'quantReasonTrendUp',

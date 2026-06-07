@@ -852,9 +852,9 @@ export function queryPublicQuantSignalsInDb(db, options = {}) {
         b.score - a.score,
     );
   } else {
-    // Default view: present the market-cap universe in rank order, falling back
-    // to score when a symbol has no configured rank.
-    signals.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999) || b.score - a.score);
+    // Default view: score the managed market-cap universe and surface the
+    // strongest current signals, using market-cap rank only as a tie breaker.
+    signals.sort((a, b) => b.score - a.score || (a.rank ?? 999) - (b.rank ?? 999));
   }
   return signals.slice(0, limit);
 }

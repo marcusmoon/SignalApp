@@ -8,7 +8,7 @@ export async function fetchSignalQuantSignals(params: {
 } = {}): Promise<SignalApiQuantSignal[]> {
   const json = await signalApi<{ data: SignalApiQuantSignal[] }>('/v1/quant-signals', {
     symbols: params.symbols?.join(','),
-    limit: params.limit ?? 20,
+    limit: params.limit ?? 10,
     segment: params.segment,
   });
   return json.data;

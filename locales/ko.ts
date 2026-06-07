@@ -116,7 +116,7 @@ export const ko = {
   screenQuant: '퀀트 투자',
   screenMarket: '시장 요약',
   screenSymbolDetail: '종목 상세',
-  quantSubtitle: '코스피 시총 10위 종목을 일봉 추세·모멘텀·과열도 팩터로 분석한 매매 신호입니다.',
+  quantSubtitle: '코스피 시총 상위 20개 후보를 일봉 추세·모멘텀·과열도 팩터로 분석해 점수 상위 10개를 보여줍니다.',
   quantEmpty: '신호를 산출할 일봉 데이터가 아직 없습니다.',
   quantError: '퀀트 신호를 불러오지 못했습니다.',
   quantRankBadge: '코스피 {{rank}}위',

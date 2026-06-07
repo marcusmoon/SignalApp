@@ -118,7 +118,7 @@ export const ja = {
   screenQuant: 'クオンツ投資',
   screenMarket: '市場サマリー',
   screenSymbolDetail: '銘柄詳細',
-  quantSubtitle: 'KOSPI時価総額トップ10銘柄を日足のトレンド・モメンタム・過熱度ファクターで分析した売買シグナルです。',
+  quantSubtitle: 'KOSPI時価総額上位20候補を日足のトレンド・モメンタム・過熱度でスコア化し、上位10シグナルを表示します。',
   quantEmpty: 'シグナルを算出する日足データがまだありません。',
   quantError: 'クオンツシグナルを読み込めませんでした。',
   quantRankBadge: 'KOSPI {{rank}}位',

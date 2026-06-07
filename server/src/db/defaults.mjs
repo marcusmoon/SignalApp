@@ -328,8 +328,8 @@ export function defaultPollingJobs() {
     },
     {
       jobKey: 'quant_price_series_kr',
-      displayName: '코스피 시총 10위 일봉 적재',
-      description: 'KOSPI 시가총액 상위 10종목의 Yahoo 일봉 OHLCV를 적재해 퀀트 팩터 엔진의 기반 데이터로 저장합니다.',
+      displayName: '코스피 시총 20위 일봉 적재',
+      description: 'KOSPI 시가총액 상위 20종목의 Yahoo 일봉 OHLCV를 적재해 퀀트 팩터 엔진의 기반 데이터로 저장합니다.',
       domain: 'market',
       operation: 'latest',
       provider: 'yahoo',
@@ -341,8 +341,8 @@ export function defaultPollingJobs() {
       params: {
         range: '1y',
         requestDelayMs: 150,
-        // KOSPI 시가총액 상위 10종목 (보통주 기준). 순위는 변동되므로 주기적으로 갱신한다.
-        universeLabel: 'KOSPI 시총 10위',
+        // KOSPI 시가총액 상위 20종목 후보(2026-06-05 기준). 순위는 변동되므로 주기적으로 갱신한다.
+        universeLabel: 'KOSPI 시총 20위',
         instruments: [
           { symbol: '005930', name: '삼성전자', displaySymbol: 'Samsung Elec', yahooSymbol: '005930.KS', rank: 1 },
           { symbol: '000660', name: 'SK하이닉스', displaySymbol: 'SK Hynix', yahooSymbol: '000660.KS', rank: 2 },
@@ -353,7 +353,17 @@ export function defaultPollingJobs() {
           { symbol: '032830', name: '삼성생명', displaySymbol: 'Samsung Life', yahooSymbol: '032830.KS', rank: 7 },
           { symbol: '028260', name: '삼성물산', displaySymbol: 'Samsung C&T', yahooSymbol: '028260.KS', rank: 8 },
           { symbol: '329180', name: 'HD현대중공업', displaySymbol: 'HD HHI', yahooSymbol: '329180.KS', rank: 9 },
-          { symbol: '012330', name: '현대모비스', displaySymbol: 'Hyundai Mobis', yahooSymbol: '012330.KS', rank: 10 },
+          { symbol: '105560', name: 'KB금융', displaySymbol: 'KB Financial', yahooSymbol: '105560.KS', rank: 10 },
+          { symbol: '012330', name: '현대모비스', displaySymbol: 'Hyundai Mobis', yahooSymbol: '012330.KS', rank: 11 },
+          { symbol: '000270', name: '기아', displaySymbol: 'Kia', yahooSymbol: '000270.KS', rank: 12 },
+          { symbol: '207940', name: '삼성바이오로직스', displaySymbol: 'Samsung Biologics', yahooSymbol: '207940.KS', rank: 13 },
+          { symbol: '034020', name: '두산에너빌리티', displaySymbol: 'Doosan Enerbility', yahooSymbol: '034020.KS', rank: 14 },
+          { symbol: '012450', name: '한화에어로스페이스', displaySymbol: 'Hanwha Aerospace', yahooSymbol: '012450.KS', rank: 15 },
+          { symbol: '055550', name: '신한지주', displaySymbol: 'Shinhan Financial', yahooSymbol: '055550.KS', rank: 16 },
+          { symbol: '066570', name: 'LG전자', displaySymbol: 'LG Electronics', yahooSymbol: '066570.KS', rank: 17 },
+          { symbol: '006400', name: '삼성SDI', displaySymbol: 'Samsung SDI', yahooSymbol: '006400.KS', rank: 18 },
+          { symbol: '034730', name: 'SK', displaySymbol: 'SK Inc.', yahooSymbol: '034730.KS', rank: 19 },
+          { symbol: '035420', name: 'NAVER', displaySymbol: 'Naver', yahooSymbol: '035420.KS', rank: 20 },
         ],
       },
       lastRunAt: null,

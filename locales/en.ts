@@ -118,7 +118,7 @@ export const en = {
   screenQuant: 'Quant investing',
   screenMarket: 'Market snapshot',
   screenSymbolDetail: 'Symbol detail',
-  quantSubtitle: 'Trade signals for the KOSPI top-10 by market cap, from trend, momentum and mean-reversion factors on daily bars.',
+  quantSubtitle: 'Scores the top 20 KOSPI market-cap candidates with trend, momentum and mean-reversion factors, then shows the top 10 signals.',
   quantEmpty: 'No daily-bar data is ready to score yet.',
   quantError: 'Could not load quant signals.',
   quantRankBadge: 'KOSPI #{{rank}}',

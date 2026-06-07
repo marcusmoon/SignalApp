@@ -1,22 +1,28 @@
-import { readDb, updateDb, upsertById } from '../../../db.mjs';
+import { queryPublicYoutube, queryPublicYoutubeChannels, updateDb, upsertById } from '../../../db.mjs';
 import { runPollingJob } from '../../../jobs/runner.mjs';
 import { fetchYoutubeVideosByIds } from '../../../providers/youtube/youtube.mjs';
-import { filterYoutube, json, paginate, readBody } from '../../shared.mjs';
+import { json, readBody } from '../../shared.mjs';
 
 export async function handleAdminYoutubeRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/admin/api/youtube') {
-    const db = await readDb();
-    const page = paginate(filterYoutube(db.youtubeVideos, url), url, 30, 100);
-    const channels = [...new Set(db.youtubeVideos.map((item) => item.channel).filter(Boolean))].sort((a, b) =>
-      a.localeCompare(b),
-    );
+    const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
+    const pageSize = Math.max(1, Math.min(100, Number.parseInt(url.searchParams.get('pageSize') || '30', 10) || 30));
+    const result = await queryPublicYoutube({
+      q: url.searchParams.get('q') || '',
+      channel: url.searchParams.get('channel') || '',
+      channelHandles: url.searchParams.get('channelHandles') || '',
+      sort: url.searchParams.get('sort') || '',
+      limit: String(pageSize),
+      offset: String((page - 1) * pageSize),
+    });
+    const channels = (await queryPublicYoutubeChannels()).map((item) => item.title).filter(Boolean);
     json(res, 200, {
-      data: page.rows,
+      data: result.rows,
       channels,
-      page: page.page,
-      pageSize: page.pageSize,
-      total: page.total,
-      totalPages: page.totalPages,
+      page,
+      pageSize,
+      total: result.total,
+      totalPages: result.hasMore ? page + 1 : page,
     });
     return true;
   }

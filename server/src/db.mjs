@@ -16,7 +16,12 @@ import {
   queryPostgres,
   withPostgresClient,
 } from './db/postgres/client.mjs';
-import { displayNews } from './http/shared.mjs';
+import {
+  cleanNewsTitleForDisplay,
+  cleanTranslationText,
+  displayNews,
+  hasUsableTranslation,
+} from './http/shared.mjs';
 import { listActiveYoutubeChannelHandles } from './db/youtubeChannels.mjs';
 import { buildQuantSignal } from './quant/signals.mjs';
 import { aggregateBacktests, backtestInstrument } from './quant/backtest.mjs';
@@ -963,6 +968,122 @@ export async function queryPublicNewsSources(options = {}) {
   }, 30000);
 }
 
+export async function queryAdminNews(options = {}) {
+  const { limit, offset } = pageOptions(options, 30);
+  const locale = cleanText(options.locale) || 'ko';
+  const params = [locale];
+  const where = [];
+  const category = cleanText(options.category);
+  if (category) {
+    if (category === 'global') {
+      where.push(`(n.category = 'global' OR n.provider = 'financialjuice')`);
+    } else {
+      params.push(category);
+      where.push(`n.category = $${params.length}`);
+    }
+  }
+  const symbols = new Set([
+    ...sqlStringList(options.symbols).map((s) => s.toUpperCase()),
+    ...(cleanText(options.symbol) ? [cleanText(options.symbol).toUpperCase()] : []),
+  ]);
+  if (symbols.size > 0) {
+    params.push([...symbols]);
+    where.push(`COALESCE(n.payload->'symbols', '[]'::jsonb) ?| $${params.length}::text[]`);
+  }
+  const sources = sqlStringList(options.sources || options.source);
+  if (sources.length > 0) {
+    params.push(sources);
+    where.push(`n.source_name = ANY($${params.length}::text[])`);
+  }
+  const from = sqlDateOrTimestamp(options.from);
+  if (from) {
+    params.push(from);
+    where.push(`(n.published_at IS NULL OR n.published_at >= $${params.length}::timestamptz)`);
+  }
+  const rawTo = cleanText(options.to);
+  const to = sqlDateOrTimestamp(rawTo);
+  if (to) {
+    params.push(rawTo.includes('T') ? to : `${rawTo.slice(0, 10)}T23:59:59.999Z`);
+    where.push(`(n.published_at IS NULL OR n.published_at <= $${params.length}::timestamptz)`);
+  }
+  const q = cleanText(options.q).toLowerCase();
+  if (q) {
+    params.push(`%${q}%`);
+    where.push(`(
+      lower(COALESCE(n.payload->>'titleOriginal', '')) LIKE $${params.length}
+      OR lower(COALESCE(n.payload->>'summaryOriginal', '')) LIKE $${params.length}
+      OR lower(COALESCE(n.source_name, '')) LIKE $${params.length}
+    )`);
+  }
+  const tag = cleanText(options.tag).toLowerCase();
+  if (tag) {
+    params.push(tag);
+    where.push(`EXISTS (
+      SELECT 1 FROM jsonb_array_elements(COALESCE(n.payload->'hashtags', '[]'::jsonb)) AS h(value)
+      WHERE lower(COALESCE(h.value->>'label', '')) = $${params.length}
+    )`);
+  }
+  const flash = ['1', 'true', 'yes'].includes(cleanText(options.flash).toLowerCase());
+  if (flash) {
+    where.push(`(
+      n.published_at >= now() - interval '18 minutes'
+      OR n.category IN ('breaking', 'flash', 'hot')
+      OR COALESCE(n.payload->>'titleOriginal', n.payload->>'title', '') ~* 'breaking|flash|속보|긴급|urgent|live\\s*:|market\\s*alert|just\\s*in|developing|exclusive:'
+    )`);
+  }
+  const translationStatus = cleanText(options.translationStatus);
+  if (translationStatus === 'missing') {
+    where.push(`(t_locale.id IS NULL OR t_locale.status NOT IN ('completed', 'manual') OR t_locale.payload->>'provider' = 'mock')`);
+  } else if (translationStatus) {
+    params.push(translationStatus);
+    where.push(`t_locale.status = $${params.length}`);
+  }
+  params.push(limit + 1, offset);
+  const result = await queryPostgres(
+    `
+      SELECT
+        n.payload,
+        COALESCE(jsonb_agg(t_all.payload ORDER BY t_all.locale) FILTER (WHERE t_all.id IS NOT NULL), '[]'::jsonb) AS translations_payload
+      FROM news_items n
+      LEFT JOIN news_translations t_locale ON t_locale.news_item_id = n.id AND t_locale.locale = $1
+      LEFT JOIN news_translations t_all ON t_all.news_item_id = n.id
+      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+      GROUP BY n.id, n.payload, n.published_at, n.position
+      ORDER BY n.published_at DESC NULLS LAST, n.position ASC
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `,
+    params,
+  );
+  const rows = result.rows
+    .slice(0, limit)
+    .map((row) => {
+      const item = payloadFromRow(row);
+      if (!item) return null;
+      const translations = Array.isArray(row.translations_payload) ? row.translations_payload : [];
+      return {
+        ...displayNews(item, translations, locale),
+        hashtagSource: String(item.hashtagSource || 'auto') === 'manual' ? 'manual' : 'auto',
+        hashtagUpdatedAt: item.hashtagsUpdatedAt || null,
+        translations: translations.map((t) => ({
+          ...t,
+          title: cleanNewsTitleForDisplay(item, t.title),
+          summary: cleanTranslationText(t.summary),
+          content: cleanTranslationText(t.content),
+          status: hasUsableTranslation(t, item) ? t.status : 'missing',
+        })),
+      };
+    })
+    .filter(Boolean);
+  const hasMore = result.rows.length > limit;
+  return {
+    rows,
+    total: offset + rows.length + (hasMore ? 1 : 0),
+    limit,
+    offset,
+    hasMore,
+  };
+}
+
 export async function queryPublicYoutube(options = {}) {
   return cachedPublicRead('publicYoutube', options, async () => {
     const { limit, offset } = pageOptions(options, 30);
@@ -988,17 +1109,23 @@ export async function queryPublicYoutube(options = {}) {
       )`);
     }
     const sort = cleanText(options.sort) === 'popular' ? 'popular' : 'latest';
-    params.push(sort);
-    where.push(`(
-      payload->>'sortBucket' = $${params.length}
-      OR COALESCE(payload->'sortBuckets', '[]'::jsonb) ? $${params.length}
-      OR NOT EXISTS (
-        SELECT 1 FROM youtube_videos y2
-        WHERE y2.payload->>'sortBucket' = $${params.length}
-           OR COALESCE(y2.payload->'sortBuckets', '[]'::jsonb) ? $${params.length}
-      )
-    )`);
-    params.push(limit + 1, offset);
+    const bucketParams = [...params, sort];
+    const bucketWhere = [
+      ...where,
+      `(payload->>'sortBucket' = $${bucketParams.length} OR COALESCE(payload->'sortBuckets', '[]'::jsonb) ? $${bucketParams.length})`,
+    ];
+    const bucketExists = await queryPostgres(
+      `
+        SELECT 1
+        FROM youtube_videos
+        ${bucketWhere.length ? `WHERE ${bucketWhere.join(' AND ')}` : ''}
+        LIMIT 1
+      `,
+      bucketParams,
+    );
+    const finalWhere = bucketExists.rows.length > 0 ? bucketWhere : where;
+    const finalParams = bucketExists.rows.length > 0 ? bucketParams : [...params];
+    finalParams.push(limit + 1, offset);
     const order = sort === 'popular'
       ? `ORDER BY ${numberSqlExpression(`payload->>'viewCount'`)} DESC, published_at DESC NULLS LAST`
       : `ORDER BY published_at DESC NULLS LAST, ${numberSqlExpression(`payload->>'viewCount'`)} DESC`;
@@ -1006,11 +1133,11 @@ export async function queryPublicYoutube(options = {}) {
       `
         SELECT payload
         FROM youtube_videos
-        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        ${finalWhere.length ? `WHERE ${finalWhere.join(' AND ')}` : ''}
         ${order}
-        LIMIT $${params.length - 1} OFFSET $${params.length}
+        LIMIT $${finalParams.length - 1} OFFSET $${finalParams.length}
       `,
-      params,
+      finalParams,
     );
     return paginatedSqlRows(
       result.rows.map((row) => {
@@ -1159,6 +1286,7 @@ export async function queryPublicCoinMarkets(options = {}) {
 export async function queryPublicCalendar(options = {}) {
   return cachedPublicRead('publicCalendar', options, async () => {
     const limit = cleanText(options.limit) ? safeLimit(options.limit, 200, 1000) : 200;
+    const offset = safeOffset(options.offset);
     const params = [];
     const where = [];
     const from = cleanText(options.from);
@@ -1191,14 +1319,14 @@ export async function queryPublicCalendar(options = {}) {
         OR lower(COALESCE(event_type, '')) LIKE $${params.length}
       )`);
     }
-    params.push(limit);
+    params.push(limit, offset);
     const result = await queryPostgres(
       `
         SELECT payload
         FROM calendar_events
         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
         ORDER BY event_date ASC NULLS LAST, COALESCE(payload->>'title', '')
-        LIMIT $${params.length}
+        LIMIT $${params.length - 1} OFFSET $${params.length}
       `,
       params,
     );

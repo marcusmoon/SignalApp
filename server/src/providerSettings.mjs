@@ -1,5 +1,6 @@
 import { config } from './config.mjs';
-import { readDb, updateDb, nowIso } from './db.mjs';
+import { nowIso } from './db.mjs';
+import { queryPostgres } from './db/postgres/client.mjs';
 
 const FALLBACKS = {
   finnhub: { apiKey: config.finnhubToken },
@@ -34,15 +35,17 @@ function normalizeProviderSetting(setting, provider) {
 }
 
 export async function getProviderSetting(provider) {
-  const db = await readDb();
-  return normalizeProviderSetting(db.providerSettings?.find((s) => s.provider === provider), provider);
+  const id = String(provider || '').trim();
+  const result = await queryPostgres('SELECT payload FROM provider_settings WHERE provider = $1', [id]);
+  return normalizeProviderSetting(result.rows[0]?.payload, id);
 }
 
 export async function listProviderSettingsPublic() {
-  const db = await readDb();
   const providers = ['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko'];
+  const result = await queryPostgres('SELECT provider, payload FROM provider_settings WHERE provider = ANY($1::text[])', [providers]);
+  const byProvider = new Map(result.rows.map((row) => [row.provider, row.payload]));
   return providers.map((provider) => {
-    const setting = normalizeProviderSetting(db.providerSettings?.find((s) => s.provider === provider), provider);
+    const setting = normalizeProviderSetting(byProvider.get(provider), provider);
     return {
       provider,
       enabled: setting.enabled,
@@ -55,26 +58,32 @@ export async function listProviderSettingsPublic() {
 }
 
 export async function updateProviderSetting(provider, patch) {
-  return updateDb((db) => {
-    if (!Array.isArray(db.providerSettings)) db.providerSettings = [];
-    let setting = db.providerSettings.find((s) => s.provider === provider);
-    if (!setting) {
-      setting = normalizeProviderSetting(null, provider);
-      db.providerSettings.push(setting);
-    }
-    if (typeof patch.enabled === 'boolean') setting.enabled = patch.enabled;
-    if (LLM_PROVIDERS.has(provider) && typeof patch.defaultModel === 'string') setting.defaultModel = patch.defaultModel;
-    if (!LLM_PROVIDERS.has(provider) && 'defaultModel' in setting) delete setting.defaultModel;
-    if (typeof patch.apiKey === 'string' && patch.apiKey.trim().length > 0) setting.apiKey = patch.apiKey.trim();
-    if (patch.clearApiKey === true) setting.apiKey = '';
-    setting.updatedAt = nowIso();
-    return {
-      provider,
-      enabled: setting.enabled,
-      hasApiKey: setting.apiKey.length > 0,
-      maskedApiKey: maskSecret(setting.apiKey),
-      ...(LLM_PROVIDERS.has(provider) ? { defaultModel: setting.defaultModel } : {}),
-      updatedAt: setting.updatedAt,
-    };
-  });
+  const id = String(provider || '').trim();
+  const current = await getProviderSetting(id);
+  const setting = normalizeProviderSetting(current, id);
+  if (typeof patch.enabled === 'boolean') setting.enabled = patch.enabled;
+  if (LLM_PROVIDERS.has(id) && typeof patch.defaultModel === 'string') setting.defaultModel = patch.defaultModel;
+  if (!LLM_PROVIDERS.has(id) && 'defaultModel' in setting) delete setting.defaultModel;
+  if (typeof patch.apiKey === 'string' && patch.apiKey.trim().length > 0) setting.apiKey = patch.apiKey.trim();
+  if (patch.clearApiKey === true) setting.apiKey = '';
+  setting.updatedAt = nowIso();
+  await queryPostgres(
+    `
+      INSERT INTO provider_settings (provider, position, enabled, payload, updated_at)
+      VALUES ($1, 0, $2, $3::jsonb, $4)
+      ON CONFLICT(provider) DO UPDATE SET
+        enabled = excluded.enabled,
+        payload = excluded.payload,
+        updated_at = excluded.updated_at
+    `,
+    [id, setting.enabled, JSON.stringify(setting), setting.updatedAt],
+  );
+  return {
+    provider: id,
+    enabled: setting.enabled,
+    hasApiKey: setting.apiKey.length > 0,
+    maskedApiKey: maskSecret(setting.apiKey),
+    ...(LLM_PROVIDERS.has(id) ? { defaultModel: setting.defaultModel } : {}),
+    updatedAt: setting.updatedAt,
+  };
 }

@@ -1,46 +1,37 @@
 import { hashtagRecordsFromLabels } from '../../../newsHashtags.mjs';
-import { nowIso, readDb, updateDb, upsertById } from '../../../db.mjs';
+import { nowIso, queryAdminNews, readDb, updateDb, upsertById } from '../../../db.mjs';
 import { retranslateNewsItems } from '../../../jobs/runner.mjs';
 import {
-  cleanNewsTitleForDisplay,
-  cleanTranslationText,
-  displayNews,
-  filterNews,
-  hasUsableTranslation,
   json,
-  paginate,
   readBody,
 } from '../../shared.mjs';
 
 export async function handleAdminNewsRoutes({ req, res, url, pathname, adminId }) {
   if (req.method === 'GET' && pathname === '/admin/api/news') {
-    const db = await readDb();
+    const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10) || 1);
+    const pageSize = Math.max(1, Math.min(100, Number.parseInt(url.searchParams.get('pageSize') || '30', 10) || 30));
     const locale = url.searchParams.get('locale') || 'ko';
-    const translationStatus = url.searchParams.get('translationStatus');
-    let filtered = filterNews(db.newsItems, url).map((item) => ({
-      ...displayNews(item, db.newsTranslations, locale),
-      hashtagSource: String(item.hashtagSource || 'auto') === 'manual' ? 'manual' : 'auto',
-      hashtagUpdatedAt: item.hashtagsUpdatedAt || null,
-      translations: db.newsTranslations
-        .filter((t) => t.newsItemId === item.id)
-        .map((t) => ({
-          ...t,
-          title: cleanNewsTitleForDisplay(item, t.title),
-          summary: cleanTranslationText(t.summary),
-          content: cleanTranslationText(t.content),
-          status: hasUsableTranslation(t, item) ? t.status : 'missing',
-        })),
-    }));
-    if (translationStatus) {
-      filtered = filtered.filter((item) => item.translationStatus === translationStatus);
-    }
-    const page = paginate(filtered, url, 30, 100);
+    const result = await queryAdminNews({
+      locale,
+      translationStatus: url.searchParams.get('translationStatus') || '',
+      category: url.searchParams.get('category') || '',
+      symbol: url.searchParams.get('symbol') || '',
+      symbols: url.searchParams.get('symbols') || '',
+      sources: url.searchParams.get('sources') || url.searchParams.get('source') || '',
+      flash: url.searchParams.get('flash') || '',
+      q: url.searchParams.get('q') || '',
+      from: url.searchParams.get('from') || '',
+      to: url.searchParams.get('to') || '',
+      tag: url.searchParams.get('tag') || '',
+      limit: String(pageSize),
+      offset: String((page - 1) * pageSize),
+    });
     json(res, 200, {
-      data: page.rows,
-      page: page.page,
-      pageSize: page.pageSize,
-      total: page.total,
-      totalPages: page.totalPages,
+      data: result.rows,
+      page,
+      pageSize,
+      total: result.total,
+      totalPages: result.hasMore ? page + 1 : page,
     });
     return true;
   }

@@ -1,5 +1,3 @@
-export const DEFAULT_YOUTUBE_CURATION_HANDLES = ['futuresnow', 'LikeUSStock', 't3chfeed', 'unrealtech', 'lucky_tv'];
-
 export function normalizeYoutubeHandle(value) {
   let raw = String(value || '').trim();
   if (!raw) return '';
@@ -32,7 +30,7 @@ export function itemMatchesYoutubeChannelHandles(item, channelHandles) {
   return wanted.has(key);
 }
 
-export function normalizeYoutubeCurationHandles(value, { fallbackDefault = true } = {}) {
+export function normalizeYoutubeCurationHandles(value) {
   const input = Array.isArray(value)
     ? value
     : String(value || '')
@@ -48,6 +46,5 @@ export function normalizeYoutubeCurationHandles(value, { fallbackDefault = true 
     seen.add(key);
     out.push(handle);
   }
-  if (out.length === 0 && fallbackDefault) return [...DEFAULT_YOUTUBE_CURATION_HANDLES];
   return out;
 }

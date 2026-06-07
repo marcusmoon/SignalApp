@@ -22,7 +22,7 @@ function loadDotEnv() {
 
 loadDotEnv();
 
-/** Initial SQLite admin seed: [{"id":"...","password":"..."}]. Used only when admin_users is empty. */
+/** Initial Postgres admin seed: [{"id":"...","password":"..."}]. Used only when admin_users is empty. */
 function parseAdminUsersFromEnv() {
   const raw = String(process.env.ADMIN_USERS || '').trim();
   if (!raw) return [];
@@ -48,22 +48,6 @@ function parseAdminUsersFromEnv() {
   }
 }
 
-function resolveDataDir() {
-  const raw = String(process.env.DATA_DIR || '').trim();
-  if (!raw) return path.join(rootDir, 'data');
-  // Allow absolute paths (Railway volume mount) or relative paths.
-  return path.isAbsolute(raw) ? raw : path.join(rootDir, raw);
-}
-
-const dataDir = resolveDataDir();
-
-function resolveSqlitePath() {
-  const raw = String(process.env.SQLITE_DB_PATH || '').trim();
-  if (!raw) return path.join(dataDir, 'signal.sqlite');
-  // Allow absolute paths (Railway volume mount) or relative paths.
-  return path.isAbsolute(raw) ? raw : path.join(rootDir, raw);
-}
-
 function boolEnv(name, defaultValue) {
   const raw = process.env[name];
   if (raw == null || raw === '') return defaultValue;
@@ -79,18 +63,10 @@ function numberEnv(name, defaultValue, { min = 0, max = Number.MAX_SAFE_INTEGER 
   return Math.min(max, Math.max(min, n));
 }
 
-function dbDriverEnv() {
-  const value = String(process.env.SIGNAL_DB_DRIVER || 'sqlite').trim().toLowerCase();
-  if (value === 'postgres' || value === 'postgresql') return 'postgres';
-  return 'sqlite';
-}
-
 export const config = {
   rootDir,
-  dataDir,
-  dbDriver: dbDriverEnv(),
+  dbDriver: 'postgres',
   databaseUrl: String(process.env.DATABASE_URL || '').trim(),
-  sqlitePath: resolveSqlitePath(),
   host: process.env.HOST || '127.0.0.1',
   port: Number(process.env.PORT || 4000),
   schedulerEnabled: boolEnv('SIGNAL_SCHEDULER_ENABLED', true),

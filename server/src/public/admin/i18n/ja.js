@@ -579,7 +579,7 @@ export const baseJa = {
   settingsKeysHeroSummary:
     '外部データ Provider の API Key と LLM Provider のモデル・プリセットを一画面で管理します。保存後はマスク表示されます。',
   settingsUsersHeroKicker: '管理者ユーザー',
-  settingsUsersHeroSummary: 'SQLiteに保存された管理者ログインアカウントと有効状態を管理します。',
+  settingsUsersHeroSummary: 'Postgresに保存された管理者ログインアカウントと有効状態を管理します。',
   settingsThemeHeroKicker: '管理画面テーマ',
   settingsThemeHeroSummary: '管理画面はライト/ダークテーマのみ提供します。選択値はこのブラウザに保存されます。',
   settingsThemeAccentKicker: '画面テーマ',

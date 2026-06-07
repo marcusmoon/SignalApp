@@ -33,7 +33,7 @@ function socialLoginRedirectSegment(appSettings) {
 }
 
 /**
- * App social login flags and OAuth client ids/secrets live in Admin → SQLite `app_settings.socialAuth`.
+ * App social login flags and OAuth client ids/secrets live in Admin → Postgres `app_settings.socialAuth`.
  * Kakao native app key is injected at native prebuild (`KAKAO_NATIVE_APP_KEY`), not here.
  * Social flows use external IdP; SIGNAL still issues JWTs like email/password login.
  */

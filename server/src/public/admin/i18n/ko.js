@@ -579,7 +579,7 @@ export const baseKo = {
   settingsKeysHeroSummary:
     '외부 데이터 Provider의 API Key와 LLM Provider의 모델·프리셋을 한 화면에서 관리합니다. 키는 저장 후 마스킹되어 표시됩니다.',
   settingsUsersHeroKicker: '어드민 사용자',
-  settingsUsersHeroSummary: 'SQLite에 저장된 어드민 로그인 계정과 활성 상태를 관리합니다.',
+  settingsUsersHeroSummary: 'Postgres에 저장된 어드민 로그인 계정과 활성 상태를 관리합니다.',
   settingsThemeHeroKicker: '관리자 화면 테마',
   settingsThemeHeroSummary: '관리자 화면은 라이트/다크 테마만 제공합니다. 선택값은 이 브라우저에 저장됩니다.',
   settingsThemeAccentKicker: '화면 테마',

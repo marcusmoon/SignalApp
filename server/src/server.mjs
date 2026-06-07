@@ -29,8 +29,7 @@ server.listen(config.port, config.host, () => {
   console.log(`Signal server listening on http://${config.host}:${config.port}`);
   console.log(`Admin: http://${config.host}:${config.port}/admin`);
   console.log(`Web client: http://${config.host}:${config.port}/web`);
-  console.log(`DB runtime: active=sqlite requested=${config.dbDriver} path=${config.sqlitePath}`);
-  if (config.databaseUrl) console.log('Postgres target: configured (Flyway/schema target; runtime adapter pending)');
+  console.log(`DB runtime: active=postgres configured=${Boolean(config.databaseUrl)}`);
   if (String(process.env.SIGNAL_JWT_DEBUG || '').trim() === '1') {
     getAppUserJwtConfigStatus()
       .then((status) => console.log('[jwt:debug]', { ...getAppUserJwtEnvDebugInfo(), status }))
@@ -38,7 +37,7 @@ server.listen(config.port, config.host, () => {
   }
   hasAdminUsers()
     .then((exists) => {
-      if (!exists) console.warn('[server] No active admin users in SQLite — /admin login will reject all credentials.');
+      if (!exists) console.warn('[server] No active admin users in Postgres — /admin login will reject all credentials.');
     })
     .catch((error) => console.warn('[server] Failed to inspect admin users:', error?.message || error));
 });

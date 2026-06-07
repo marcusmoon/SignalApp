@@ -42,7 +42,7 @@ export function getOpenApiSpec() {
               },
             },
             503: {
-              description: 'SQLite readiness check failed',
+              description: 'Postgres readiness check failed',
             },
           },
         },

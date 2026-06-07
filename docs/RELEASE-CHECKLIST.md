@@ -11,12 +11,13 @@
 
 ## 서버
 
+- [ ] 운영 DB에 Flyway migration 선적용
 - [ ] `npm --prefix server run start` 기동 확인
 - [ ] `/health` 확인
 - [ ] 주요 public API 응답 확인
 - [ ] Admin 로그인 확인
 - [ ] Job 수동 실행과 이력 저장 확인
-- [ ] SQLite 파일 위치와 volume 확인
+- [ ] Postgres 연결과 기본 Job/Provider/RSS seed 확인
 
 ## 배포
 

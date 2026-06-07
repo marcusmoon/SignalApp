@@ -1,4 +1,3 @@
-import { defaultRssSources } from './defaults.mjs';
 import { nowIso } from './time.mjs';
 
 export function normalizeRssSourceId(raw) {
@@ -76,28 +75,18 @@ export function rssSourceParams(source, overrides = {}) {
 
 export function ensureRssSourcesCatalog(db) {
   if (!db || typeof db !== 'object') return [];
-  const defaults = defaultRssSources();
-  const catalogVersion = Number(db.meta?.rssSourcesCatalogVersion || 0) || 0;
-  const shouldSeedDefaults = !Array.isArray(db.rssSources) || catalogVersion < 1;
   const existing = Array.isArray(db.rssSources) ? db.rssSources : [];
   const byId = new Map();
   existing.forEach((row, index) => {
     const normalized = normalizeRssSource(row, index);
     if (normalized.id && normalized.feedUrl) byId.set(normalized.id, normalized);
   });
-  if (shouldSeedDefaults) {
-    defaults.forEach((row, index) => {
-      const normalized = normalizeRssSource(row, byId.size + index);
-      if (normalized.id && normalized.feedUrl && !byId.has(normalized.id)) byId.set(normalized.id, normalized);
-    });
-  }
   db.rssSources = [...byId.values()].sort(
     (a, b) =>
       (Number(a.order) || 0) - (Number(b.order) || 0) ||
       String(a.name || '').localeCompare(String(b.name || '')),
   );
   db.meta = db.meta && typeof db.meta === 'object' ? db.meta : {};
-  db.meta.rssSourcesCatalogVersion = 1;
   return db.rssSources;
 }
 

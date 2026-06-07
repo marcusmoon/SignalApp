@@ -12,9 +12,7 @@ export function syncYoutubeCurationHandlesFromCatalog(appSettings) {
     .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
     .map((c) => normalizeYoutubeHandle(c.handle))
     .filter(Boolean);
-  appSettings.youtubeCurationHandles = normalizeYoutubeCurationHandles(handles, {
-    fallbackDefault: handles.length === 0,
-  });
+  appSettings.youtubeCurationHandles = normalizeYoutubeCurationHandles(handles);
 }
 
 export function ensureYoutubeChannelsCatalog(appSettings) {

@@ -579,7 +579,7 @@ export const baseEn = {
   settingsKeysHeroSummary:
     'Manage data Provider API keys and LLM Provider models/presets in one place. Keys are masked after save.',
   settingsUsersHeroKicker: 'Admin users',
-  settingsUsersHeroSummary: 'Manage admin sign-in accounts and active status stored in SQLite.',
+  settingsUsersHeroSummary: 'Manage admin sign-in accounts and active status stored in Postgres.',
   settingsThemeHeroKicker: 'Admin UI theme',
   settingsThemeHeroSummary: 'The admin console supports only light and dark themes. Saved in this browser.',
   settingsThemeAccentKicker: 'Screen theme',

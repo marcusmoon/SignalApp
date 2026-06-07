@@ -1,14 +1,7 @@
-import { ensureMarketListsShape } from '../marketLists.mjs';
+import { normalizeMarketListsShape } from '../marketLists.mjs';
 import { normalizeYoutubeCurationHandles } from '../youtubeCuration.mjs';
 import { ensureYoutubeChannelsCatalog } from './youtubeChannels.mjs';
 import { ensureRssSourcesCatalog } from './rssSources.mjs';
-import {
-  defaultDb,
-  defaultPollingJobs,
-  defaultProviderSettings,
-  defaultTranslationSettings,
-  defaultUiModelPresets,
-} from './defaults.mjs';
 import { ensureNewsSourcesFromItems } from './newsSources.mjs';
 import { nowIso } from './time.mjs';
 
@@ -45,7 +38,7 @@ function dedupeCalendarEvents(rows) {
 
 export function ensureDbShape(db) {
   if (!db.appSettings || typeof db.appSettings !== 'object') {
-    db.appSettings = defaultDb().appSettings;
+    db.appSettings = {};
   }
   const youtubeHandlesFromJobs = Array.isArray(db.pollingJobs)
     ? db.pollingJobs.find((j) => j?.handler === 'youtube_economy' && Array.isArray(j?.params?.handles))?.params?.handles
@@ -58,96 +51,14 @@ export function ensureDbShape(db) {
   ensureYoutubeChannelsCatalog(db.appSettings);
   if (!db.appSettings.updatedAt) db.appSettings.updatedAt = nowIso();
 
-  if (!Array.isArray(db.providerSettings)) {
-    db.providerSettings = defaultProviderSettings();
-  }
+  if (!Array.isArray(db.providerSettings)) db.providerSettings = [];
   db.providerSettings = db.providerSettings.filter((setting) => setting && typeof setting === 'object');
-  for (const defaultSetting of defaultProviderSettings()) {
-    if (!db.providerSettings.some((s) => s.provider === defaultSetting.provider)) {
-      db.providerSettings.push(defaultSetting);
-    }
-  }
-  if (!Array.isArray(db.pollingJobs)) db.pollingJobs = defaultPollingJobs();
+  if (!Array.isArray(db.pollingJobs)) db.pollingJobs = [];
   // Retired jobs: drop the Hyperliquid-based KR after-hours quote job from
   // existing deployments now that the night-quote feature is removed.
   db.pollingJobs = db.pollingJobs.filter((j) => j && j.jobKey !== 'market_quotes_kr_after_hours');
   ensureRssSourcesCatalog(db);
-  const defaults = defaultPollingJobs();
-  for (const defaultJob of defaults) {
-    const existing = db.pollingJobs.find((j) => j.jobKey === defaultJob.jobKey);
-    if (!existing) {
-      db.pollingJobs.push(defaultJob);
-      continue;
-    }
-    for (const key of ['displayName', 'description', 'domain', 'operation', 'provider', 'handler']) {
-      if (existing[key] == null || existing[key] === '') existing[key] = defaultJob[key];
-    }
-    if (existing.params == null) existing.params = defaultJob.params;
-    if (
-      existing.jobKey === 'market_news_financial_juice' ||
-      existing.jobKey === 'market_news_financial_juice_reconcile'
-    ) {
-      existing.params = { ...(defaultJob.params || {}), ...(existing.params || {}), rssSourceId: 'financial_juice' };
-      delete existing.params.feedUrl;
-      delete existing.params.providerId;
-      delete existing.params.sourceName;
-      delete existing.params.category;
-    }
-    if (existing.jobKey === 'market_news_globenewswire_earnings') {
-      const existingIds = Array.isArray(existing.params?.rssSourceIds) ? existing.params.rssSourceIds : [];
-      const defaultIds = Array.isArray(defaultJob.params?.rssSourceIds) ? defaultJob.params.rssSourceIds : [];
-      existing.params = {
-        ...(defaultJob.params || {}),
-        ...(existing.params || {}),
-        rssSourceId: existing.params?.rssSourceId || 'globenewswire_earnings',
-        rssSourceIds: [...new Set([...existingIds, ...defaultIds])],
-      };
-      delete existing.params.feedUrl;
-      delete existing.params.providerId;
-      delete existing.params.sourceName;
-      delete existing.params.category;
-    }
-    if (existing.jobKey === 'market_quotes_popular' && !existing.params.listKey) {
-      existing.params = { ...existing.params, listKey: 'popular_symbols' };
-    }
-    if (existing.jobKey === 'market_quotes_popular' && Number(existing.intervalSeconds) === 1800) {
-      existing.intervalSeconds = defaultJob.intervalSeconds;
-    }
-    if (existing.jobKey === 'market_quotes_watchlist' && !existing.params.listKey) {
-      existing.params = { ...existing.params, listKey: 'default_watchlist' };
-    }
-    if (existing.jobKey === 'market_quotes_watchlist' && Number(existing.intervalSeconds) === 1800) {
-      existing.intervalSeconds = defaultJob.intervalSeconds;
-    }
-    if (existing.jobKey === 'market_quotes_mcap' && !existing.params.listKey) {
-      existing.params = { ...existing.params, listKey: 'mcap_top_symbols' };
-    }
-    if (existing.jobKey === 'market_quotes_mcap') {
-      if (existing.params?.listKey === 'mcap_universe') {
-        existing.params = { ...existing.params, listKey: 'mcap_top_symbols' };
-      }
-      if (Number(existing.intervalSeconds) === 1800) existing.intervalSeconds = defaultJob.intervalSeconds;
-    }
-    if (existing.jobKey === 'quant_price_series_kr') {
-      // The KR universe is a managed market-cap list, so always realign the
-      // instruments/labels with the current defaults while preserving the
-      // operator's enabled/interval choices.
-      existing.displayName = defaultJob.displayName;
-      existing.description = defaultJob.description;
-      existing.params = {
-        ...(existing.params || {}),
-        ...(defaultJob.params || {}),
-      };
-    }
-    if (existing.jobKey === 'concall_transcripts_recent' && existing.params.fallbackLatest == null) {
-      existing.params = { ...existing.params, fallbackLatest: true };
-    }
-    if (existing.jobKey === 'calendar_economic' && existing.params.daysBack == null) {
-      existing.params = { ...existing.params, daysBack: defaultJob.params.daysBack };
-    }
-    if (existing.jobKey === 'calendar_earnings' && existing.params.daysBack == null) {
-      existing.params = { ...existing.params, daysBack: defaultJob.params.daysBack };
-    }
+  for (const existing of db.pollingJobs) {
     if (existing.handler === 'youtube_economy' && existing.params && typeof existing.params === 'object' && Array.isArray(existing.params.handles)) {
       const { handles, ...rest } = existing.params;
       existing.params = rest;
@@ -180,24 +91,24 @@ export function ensureDbShape(db) {
   if (!Array.isArray(db.quantSignalItems)) db.quantSignalItems = [];
   if (!Array.isArray(db.insightItems)) db.insightItems = [];
   if (!Array.isArray(db.notificationItems)) db.notificationItems = [];
-  db.marketLists = ensureMarketListsShape(db.marketLists, nowIso);
-  if (!Array.isArray(db.translationSettings)) db.translationSettings = defaultTranslationSettings();
-  if (!db.uiModelPresets || typeof db.uiModelPresets !== 'object') db.uiModelPresets = defaultUiModelPresets();
-  if (!Array.isArray(db.uiModelPresets.openai)) db.uiModelPresets.openai = defaultUiModelPresets().openai;
-  if (!Array.isArray(db.uiModelPresets.claude)) db.uiModelPresets.claude = defaultUiModelPresets().claude;
-  if (!Array.isArray(db.uiModelPresets.mock)) db.uiModelPresets.mock = defaultUiModelPresets().mock;
+  db.marketLists = normalizeMarketListsShape(db.marketLists, nowIso);
+  if (!Array.isArray(db.translationSettings)) db.translationSettings = [];
+  if (!db.uiModelPresets || typeof db.uiModelPresets !== 'object') db.uiModelPresets = {};
+  if (!Array.isArray(db.uiModelPresets.openai)) db.uiModelPresets.openai = [];
+  if (!Array.isArray(db.uiModelPresets.claude)) db.uiModelPresets.claude = [];
+  if (!Array.isArray(db.uiModelPresets.mock)) db.uiModelPresets.mock = [];
   if (!db.uiModelPresets.updatedAt) db.uiModelPresets.updatedAt = nowIso();
   if (!Array.isArray(db.newsSources)) db.newsSources = [];
   if (!db.newsSourceSettings || typeof db.newsSourceSettings !== 'object') {
-    db.newsSourceSettings = defaultDb().newsSourceSettings;
+    db.newsSourceSettings = {};
   }
   if (!db.newsSourceSettings.autoEnableNewSources || typeof db.newsSourceSettings.autoEnableNewSources !== 'object') {
-    db.newsSourceSettings.autoEnableNewSources = defaultDb().newsSourceSettings.autoEnableNewSources;
+    db.newsSourceSettings.autoEnableNewSources = {};
   }
   if (typeof db.newsSourceSettings.autoEnableNewSources.global !== 'boolean') db.newsSourceSettings.autoEnableNewSources.global = true;
   if (typeof db.newsSourceSettings.autoEnableNewSources.crypto !== 'boolean') db.newsSourceSettings.autoEnableNewSources.crypto = true;
   if (!db.newsSourceSettings.aliases || typeof db.newsSourceSettings.aliases !== 'object') {
-    db.newsSourceSettings.aliases = defaultDb().newsSourceSettings.aliases;
+    db.newsSourceSettings.aliases = {};
   }
   if (!db.newsSourceSettings.aliases.global || typeof db.newsSourceSettings.aliases.global !== 'object') db.newsSourceSettings.aliases.global = {};
   if (!db.newsSourceSettings.aliases.crypto || typeof db.newsSourceSettings.aliases.crypto !== 'object') db.newsSourceSettings.aliases.crypto = {};

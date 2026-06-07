@@ -22,18 +22,18 @@
 |---|---|
 | `server/src/http/public/v1/` | 앱 공개 API |
 | `server/src/http/admin/api/` | Admin API |
-| `server/src/db/` | SQLite schema/store/repository |
+| `server/src/db/` | Postgres client, shape/repository helpers |
 | `server/src/jobs/` | 수집·인사이트 Job |
 | `server/src/providers/` | RSS, YouTube, calendar, LLM 등 provider |
 | `server/src/public/admin/` | Admin 정적 UI |
 
 ## DB 원칙
 
-- SQLite 파일은 `DATA_DIR` 기준으로 둔다.
-- 기능별 테이블과 store 모듈을 사용한다.
+- Postgres가 유일한 런타임 DB다.
+- 스키마와 기본 운영 데이터는 Flyway migration으로 관리한다.
 - 앱 공개 API에서 중복 제거와 최소 응답을 적용한다.
 - Job lock TTL은 Job 설정 기준으로 관리한다.
-- MySQL 이전을 고려해 payload-only 의존을 줄이고 조회 컬럼과 인덱스를 유지한다.
+- 향후 DB 접근 계층은 repository + typed SQL/query builder로 정리한다.
 
 ## 네이티브 구조
 

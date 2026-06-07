@@ -391,7 +391,7 @@ export default function QuotesScreen() {
       const usSymbols = symbols.filter((s) => !isKoreaSymbol(s));
       const [usRows, quantRows] = await Promise.all([
         usSymbols.length > 0
-          ? fetchSignalMarketQuotes({ symbols: usSymbols, limit: Math.max(usSymbols.length, 1), refresh: forceRefresh === true })
+          ? fetchSignalMarketQuotes({ symbols: usSymbols, limit: Math.max(usSymbols.length, 1) })
           : Promise.resolve([] as SignalApiMarketQuote[]),
         krSymbols.length > 0
           ? fetchSignalQuantSignals({ symbols: krSymbols, limit: krSymbols.length }).catch(() => [])

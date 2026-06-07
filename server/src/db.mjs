@@ -1547,15 +1547,22 @@ export async function queryPublicPriceSeriesCandles(options = {}) {
     if (!symbol) return null;
     const result = await queryPostgres(
       `
+        WITH candidates AS (
+          SELECT payload, last_bar_date, fetched_at, 1 AS priority FROM price_series WHERE upper(COALESCE(symbol, '')) = $1
+          UNION ALL
+          SELECT payload, last_bar_date, fetched_at, 2 AS priority FROM price_series WHERE upper(COALESCE(display_symbol, '')) = $1
+          UNION ALL
+          SELECT payload, last_bar_date, fetched_at, 3 AS priority FROM price_series WHERE upper(COALESCE(yahoo_symbol, '')) = $1
+          UNION ALL
+          SELECT payload, last_bar_date, fetched_at, 4 AS priority FROM price_series WHERE upper(COALESCE(payload->>'krxSymbol', '')) = $1
+          UNION ALL
+          SELECT payload, last_bar_date, fetched_at, 5 AS priority FROM price_series WHERE upper(COALESCE(payload->>'displaySymbol', '')) = $1
+          UNION ALL
+          SELECT payload, last_bar_date, fetched_at, 6 AS priority FROM price_series WHERE upper(COALESCE(payload->>'yahooSymbol', '')) = $1
+        )
         SELECT payload
-        FROM price_series
-        WHERE upper(COALESCE(symbol, '')) = $1
-           OR upper(COALESCE(display_symbol, '')) = $1
-           OR upper(COALESCE(yahoo_symbol, '')) = $1
-           OR upper(COALESCE(payload->>'krxSymbol', '')) = $1
-           OR upper(COALESCE(payload->>'displaySymbol', '')) = $1
-           OR upper(COALESCE(payload->>'yahooSymbol', '')) = $1
-        ORDER BY last_bar_date DESC NULLS LAST, fetched_at DESC NULLS LAST
+        FROM candidates
+        ORDER BY priority ASC, last_bar_date DESC NULLS LAST, fetched_at DESC NULLS LAST
         LIMIT 1
       `,
       [symbol],
@@ -1592,46 +1599,62 @@ export async function queryPublicPriceSeriesSparklines(options = {}) {
     if (symbols.length === 0) return [];
     const result = await queryPostgres(
       `
-        SELECT payload
-        FROM price_series
-        WHERE upper(COALESCE(symbol, '')) = ANY($1::text[])
-           OR upper(COALESCE(display_symbol, '')) = ANY($1::text[])
-           OR upper(COALESCE(yahoo_symbol, '')) = ANY($1::text[])
-           OR upper(COALESCE(payload->>'krxSymbol', '')) = ANY($1::text[])
-           OR upper(COALESCE(payload->>'displaySymbol', '')) = ANY($1::text[])
-           OR upper(COALESCE(payload->>'yahooSymbol', '')) = ANY($1::text[])
-        ORDER BY last_bar_date DESC NULLS LAST, fetched_at DESC NULLS LAST
+        WITH requested(symbol, ord) AS (
+          SELECT * FROM unnest($1::text[]) WITH ORDINALITY
+        ),
+        candidates AS (
+          SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.last_bar_date, p.fetched_at, 1 AS priority
+          FROM requested r JOIN price_series p ON upper(COALESCE(p.symbol, '')) = r.symbol
+          UNION ALL
+          SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.last_bar_date, p.fetched_at, 2 AS priority
+          FROM requested r JOIN price_series p ON upper(COALESCE(p.display_symbol, '')) = r.symbol
+          UNION ALL
+          SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.last_bar_date, p.fetched_at, 3 AS priority
+          FROM requested r JOIN price_series p ON upper(COALESCE(p.yahoo_symbol, '')) = r.symbol
+          UNION ALL
+          SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.last_bar_date, p.fetched_at, 4 AS priority
+          FROM requested r JOIN price_series p ON upper(COALESCE(p.payload->>'krxSymbol', '')) = r.symbol
+          UNION ALL
+          SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.last_bar_date, p.fetched_at, 5 AS priority
+          FROM requested r JOIN price_series p ON upper(COALESCE(p.payload->>'displaySymbol', '')) = r.symbol
+          UNION ALL
+          SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.last_bar_date, p.fetched_at, 6 AS priority
+          FROM requested r JOIN price_series p ON upper(COALESCE(p.payload->>'yahooSymbol', '')) = r.symbol
+        )
+        SELECT DISTINCT ON (requested_symbol) requested_symbol, payload
+        FROM candidates
+        ORDER BY requested_symbol, priority ASC, last_bar_date DESC NULLS LAST, fetched_at DESC NULLS LAST
       `,
       [symbols],
     );
     const bySymbol = new Map();
-    for (const series of result.rows.map(payloadFromRow).filter(Boolean)) {
-      const aliases = [
-        series.symbol,
-        series.displaySymbol,
-        series.yahooSymbol,
-        series.krxSymbol,
-        series.rawPayload?.krxSymbol,
-        series.rawPayload?.displaySymbol,
-        series.rawPayload?.yahooSymbol,
-      ];
-      for (const alias of aliases) {
-        const key = cleanText(alias).toUpperCase();
-        if (key && !bySymbol.has(key)) bySymbol.set(key, series);
-      }
+    for (const row of result.rows) {
+      const series = payloadFromRow(row);
+      const key = cleanText(row.requested_symbol).toUpperCase();
+      if (key && series) bySymbol.set(key, series);
     }
     return symbols
       .map((symbol) => {
         const series = bySymbol.get(symbol);
         const bars = barsForSeries(series).slice(-days);
+        const closes = bars.map((bar) => Number(bar.close)).filter((value) => Number.isFinite(value));
+        const first = closes[0];
+        const last = closes[closes.length - 1];
+        const changePercent = Number.isFinite(first) && first !== 0 && Number.isFinite(last)
+          ? ((last - first) / first) * 100
+          : null;
         return {
           symbol,
           displaySymbol: series?.displaySymbol || symbol,
-          points: bars.map((bar) => ({ date: bar.date, close: Number(bar.close) })),
+          currency: series?.currency || null,
+          lastClose: Number.isFinite(last) ? last : null,
+          lastBarDate: bars[bars.length - 1]?.date || series?.lastBarDate || null,
+          changePercent,
+          closes,
           fetchedAt: series?.fetchedAt || null,
         };
       })
-      .filter((row) => row.points.length > 0);
+      .filter((row) => row.closes.length > 1);
   }, 30000);
 }
 

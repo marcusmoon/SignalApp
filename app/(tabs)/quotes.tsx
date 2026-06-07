@@ -83,6 +83,7 @@ import type { MessageId } from '@/locales/messages';
 const QUOTE_CARD_TEXT_MAX_SCALE = 1.12;
 const WATCH_MARKET_SOFT_TIMEOUT_MS = 5000;
 const WATCH_QUANT_SOFT_TIMEOUT_MS = 2500;
+const REFRESH_SPINNER_SOFT_TIMEOUT_MS = 1200;
 
 const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
@@ -540,14 +541,20 @@ export default function QuotesScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    const refreshPromise = load(true);
     try {
-      await load(true);
+      const finished = await withSoftTimeout(refreshPromise.then(() => true), REFRESH_SPINNER_SOFT_TIMEOUT_MS, false);
+      if (!finished) {
+        void refreshPromise.catch((e) => {
+          if (rowsRef.current.length === 0) setError(formatSignalApiError(e, t, 'quotesErrorRefresh'));
+        });
+      }
     } catch (e) {
       setError(formatSignalApiError(e, t, 'quotesErrorRefresh'));
     } finally {
       setRefreshing(false);
     }
-  }, [load]);
+  }, [load, t]);
 
   const onAddWatch = useCallback(async () => {
     const raw = draftTicker.trim();

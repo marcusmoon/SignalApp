@@ -1276,6 +1276,56 @@ export async function queryPublicMarketQuotes(options = {}) {
         OR lower(COALESCE(segment, '')) LIKE $${params.length}
       )`);
     }
+    if (symbols.length > 0 && !q) {
+      const lookupParams = [symbols, segment, limit, offset];
+      const result = await queryPostgres(
+        `
+          WITH requested(symbol, ord) AS (
+            SELECT * FROM unnest($1::text[]) WITH ORDINALITY
+          ),
+          candidates AS (
+            SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.fetched_at, 1 AS priority
+            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.symbol, '')) = r.symbol
+            WHERE ($2::text = '' OR p.segment = $2)
+            UNION ALL
+            SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.fetched_at, 2 AS priority
+            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.payload->>'displaySymbol', '')) = r.symbol
+            WHERE ($2::text = '' OR p.segment = $2)
+            UNION ALL
+            SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.fetched_at, 3 AS priority
+            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.payload->>'krxSymbol', '')) = r.symbol
+            WHERE ($2::text = '' OR p.segment = $2)
+            UNION ALL
+            SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.fetched_at, 4 AS priority
+            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.payload->>'providerItemId', '')) = r.symbol
+            WHERE ($2::text = '' OR p.segment = $2)
+            UNION ALL
+            SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.fetched_at, 5 AS priority
+            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.payload->'regularSession'->>'yahooSymbol', '')) = r.symbol
+            WHERE ($2::text = '' OR p.segment = $2)
+          ),
+          best AS (
+            SELECT DISTINCT ON (requested_symbol) requested_symbol, ord, payload
+            FROM candidates
+            ORDER BY requested_symbol, priority ASC, fetched_at DESC NULLS LAST
+          )
+          SELECT payload
+          FROM best
+          ORDER BY ord ASC
+          LIMIT $3 OFFSET $4
+        `,
+        lookupParams,
+      );
+      const rows = result.rows.map((row) => publicMarketQuote(payloadFromRow(row))).filter(Boolean);
+      return {
+        rows,
+        total: rows.length,
+        limit,
+        offset,
+        hasMore: false,
+        nextOffset: null,
+      };
+    }
     const sqlLimit = symbols.length > 0 && !segment ? Math.max(limit + 1, symbols.length * 3) : limit + 1;
     params.push(sqlLimit, offset);
     const result = await queryPostgres(

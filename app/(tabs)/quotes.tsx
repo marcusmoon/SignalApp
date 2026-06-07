@@ -52,6 +52,7 @@ import {
   fetchSignalQuantSignals,
   type SignalApiCoinMarket,
   type SignalApiMarketQuote,
+  type SignalApiQuantSignal,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
@@ -80,6 +81,7 @@ import { openNaverFinanceStock } from '@/utils/naverFinance';
 import type { MessageId } from '@/locales/messages';
 
 const QUOTE_CARD_TEXT_MAX_SCALE = 1.12;
+const WATCH_QUANT_SOFT_TIMEOUT_MS = 2500;
 
 const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
@@ -98,6 +100,20 @@ const QUANT_ACTION_LABEL: Record<string, MessageId> = {
 
 function isKoreaSymbol(symbol: string): boolean {
   return /^\d{6}$/.test(String(symbol || '').trim());
+}
+
+async function withSoftTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => resolve(fallback), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function quantActionTone(theme: AppTheme, action: string): string {
@@ -394,7 +410,11 @@ export default function QuotesScreen() {
           ? fetchSignalMarketQuotes({ symbols: usSymbols, limit: Math.max(usSymbols.length, 1) })
           : Promise.resolve([] as SignalApiMarketQuote[]),
         krSymbols.length > 0
-          ? fetchSignalQuantSignals({ symbols: krSymbols, limit: krSymbols.length }).catch(() => [])
+          ? withSoftTimeout<SignalApiQuantSignal[]>(
+              fetchSignalQuantSignals({ symbols: krSymbols, limit: krSymbols.length }).catch(() => []),
+              WATCH_QUANT_SOFT_TIMEOUT_MS,
+              [],
+            )
           : Promise.resolve([]),
       ]);
       const usBySymbol = new Map(usRows.map(mapSignalQuoteToRow).map((r) => [r.symbol.trim().toUpperCase(), r]));

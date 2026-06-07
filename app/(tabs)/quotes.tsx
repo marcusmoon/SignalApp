@@ -273,7 +273,7 @@ export default function QuotesScreen() {
           return;
         }
       }
-      // 국내(6자리) 종목은 정규장 시세가 없으므로 코스피 퀀트 신호로, 그 외(미국주식)는 실시간 시세로 채운다.
+      // 국내(6자리) 종목은 정규장 시세가 없으면 코스피 퀀트 분석으로, 그 외(미국주식)는 실시간 시세로 채운다.
       const krSymbols = symbols.filter(isKoreaSymbol);
       const usSymbols = symbols.filter((s) => !isKoreaSymbol(s));
       const [usRows, quantRows] = await Promise.all([

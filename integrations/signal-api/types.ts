@@ -297,3 +297,13 @@ export type SignalApiStockCandles = {
   t: number[];
   v: number[];
 };
+
+export type SignalApiStockSparkline = {
+  symbol: string;
+  displaySymbol?: string | null;
+  currency?: string | null;
+  lastClose?: number | null;
+  lastBarDate?: string | null;
+  changePercent?: number | null;
+  closes: number[];
+};

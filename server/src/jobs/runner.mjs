@@ -13,7 +13,7 @@ import { mergeAutoHashtagsIntoNewsItem } from '../newsHashtags.mjs';
 import { fetchNinjasConcallTranscript } from '../providers/concalls/ninjas.mjs';
 import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
-import { fetchYahooKoreaDailyBars } from '../providers/market/yahooDailyBars.mjs';
+import { fetchYahooDailyPriceSeries, fetchYahooKoreaDailyBars } from '../providers/market/yahooDailyBars.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
 import { generateMarketInsights } from '../insights/rules.mjs';
 import { generateQuantSignalItems } from '../quant/generate.mjs';
@@ -43,6 +43,32 @@ function translationId(newsItemId, locale) {
 
 function marketListSymbols(db, key) {
   return (db.marketLists || []).find((list) => list.key === key)?.symbols || [];
+}
+
+function dailyBarInstruments(db, params = {}) {
+  const listKeys = Array.isArray(params.listKeys) ? params.listKeys : [];
+  const symbols = [
+    ...(Array.isArray(params.symbols) ? params.symbols : []),
+    ...listKeys.flatMap((key) => marketListSymbols(db, key)),
+  ];
+  const bySymbol = new Map();
+  for (const symbol of symbols) {
+    const normalized = String(symbol || '').trim().toUpperCase().replace(/\s+/g, '');
+    if (!normalized || bySymbol.has(normalized)) continue;
+    bySymbol.set(normalized, {
+      symbol: normalized,
+      displaySymbol: normalized,
+      name: normalized,
+      currency: /^\d{6}$/.test(normalized) ? 'KRW' : 'USD',
+    });
+  }
+  const explicit = Array.isArray(params.instruments) ? params.instruments : [];
+  for (const item of explicit) {
+    const symbol = String(item?.symbol || item?.krxSymbol || item?.code || '').trim().toUpperCase().replace(/\s+/g, '');
+    if (!symbol) continue;
+    bySymbol.set(symbol, item);
+  }
+  return [...bySymbol.values()];
 }
 
 function ymd(date) {
@@ -306,6 +332,15 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
   }
   if (job.provider === 'yahoo' && job.handler === 'kr_daily_bars') {
     return { kind: 'priceSeries', rows: await fetchYahooKoreaDailyBars(job.params || {}) };
+  }
+  if (job.provider === 'yahoo' && job.handler === 'daily_bars') {
+    return {
+      kind: 'priceSeries',
+      rows: await fetchYahooDailyPriceSeries({
+        ...(job.params || {}),
+        instruments: dailyBarInstruments(dbBefore, job.params || {}),
+      }),
+    };
   }
   if (job.provider === 'signal' && job.handler === 'market_insights') {
     return { kind: 'insights', rows: generateMarketInsights(dbBefore, job.params || {}) };

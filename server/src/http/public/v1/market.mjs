@@ -2,6 +2,7 @@ import {
   queryPublicCoinMarkets,
   queryPublicMarketQuotes,
   queryPublicPriceSeriesCandles,
+  queryPublicPriceSeriesSparklines,
   queryPublicQuantBacktest,
   queryPublicQuantSignals,
   queryPublicQuantSignalHistory,
@@ -90,13 +91,13 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
       return true;
     }
     try {
-      if (isKrxSymbol(symbol) && resolution === 'D') {
+      if (resolution === 'D') {
         const localCandles = await queryPublicPriceSeriesCandles({
           symbol,
           from: Math.floor(from),
           to: Math.floor(to),
         });
-        if (localCandles) {
+        if (localCandles?.s === 'ok') {
           json(res, 200, { data: localCandles });
           return true;
         }
@@ -114,6 +115,20 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
     } catch {
       json(res, 502, { error: 'CANDLES_UNAVAILABLE' });
     }
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/v1/stock-sparklines') {
+    const symbols = url.searchParams.get('symbols') || '';
+    if (!symbols.trim()) {
+      json(res, 400, { error: 'SYMBOLS_REQUIRED' });
+      return true;
+    }
+    const rows = await queryPublicPriceSeriesSparklines({
+      symbols,
+      days: url.searchParams.get('days') || '30',
+    });
+    json(res, 200, { data: rows });
     return true;
   }
 

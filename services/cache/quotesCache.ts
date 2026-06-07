@@ -11,6 +11,8 @@ export type QuoteCacheRow = {
   quote: SignalApiMarketQuote | null;
   /** 국내(코스피) 종목은 정규장 시세 대신 퀀트 일봉 신호로 채운다. */
   quant?: SignalApiQuantSignal | null;
+  sparkline?: number[];
+  sparklineChangePercent?: number | null;
   error?: string;
 };
 

@@ -23,17 +23,17 @@ export const SIGNAL_LIGHT = {
 
 /** SIGNAL brand tokens — dark counterpart for the same semantic roles. */
 export const SIGNAL_DARK = {
-  green: '#4D9FFF',
-  greenDim: '#163A5F',
-  greenBorder: '#285B8F',
-  bg: '#0A0A0F',
-  bgElevated: '#12121A',
-  card: '#181821',
-  border: '#2A2A35',
+  green: '#3182F6',
+  greenDim: '#112A4D',
+  greenBorder: '#1F4E86',
+  bg: '#090A0F',
+  bgElevated: '#11131A',
+  card: '#151821',
+  border: '#2A2E3A',
   text: '#F2F4F6',
-  textMuted: '#A7B0BE',
-  textDim: '#707A89',
-  accentBlue: '#4D9FFF',
+  textMuted: '#8B95A1',
+  textDim: '#6B7684',
+  accentBlue: '#3182F6',
   accentOrange: '#FFB020',
   danger: '#FF6B7A',
   dangerDim: '#34181D',
@@ -44,22 +44,11 @@ export const SIGNAL_DARK = {
 
 export const SIGNAL = SIGNAL_LIGHT;
 
-function accentDimForScheme(accentHex: string, scheme: ThemeColorScheme) {
-  return scheme === 'dark' ? `${accentHex}24` : `${accentHex}12`;
-}
-
-function accentBorderForScheme(accentHex: string, scheme: ThemeColorScheme) {
-  return scheme === 'dark' ? `${accentHex}42` : `${accentHex}26`;
-}
-
-/** Runtime theme: same shape as SIGNAL; `green*` follow user accent preset. */
-export function buildAppTheme(accentHex: string, scheme: ThemeColorScheme = 'light') {
+/** Runtime theme: fixed semantic tokens. Accent arguments are kept for preference API compatibility. */
+export function buildAppTheme(_accentHex: string, scheme: ThemeColorScheme = 'light') {
   const base = scheme === 'dark' ? SIGNAL_DARK : SIGNAL_LIGHT;
   return {
     ...base,
-    green: accentHex,
-    greenDim: accentDimForScheme(accentHex, scheme),
-    greenBorder: accentBorderForScheme(accentHex, scheme),
   };
 }
 

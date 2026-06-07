@@ -22,11 +22,13 @@ function normalizeInstrument(input = {}) {
   const name = String(input.name || input.displayName || symbol || '').trim();
   const displaySymbol = String(input.displaySymbol || input.englishName || '').trim();
   const rank = Number(input.rank);
+  const currency = String(input.currency || (/^\d{6}$/.test(symbol) ? 'KRW' : 'USD')).trim().toUpperCase();
   return {
     symbol,
     displaySymbol: displaySymbol || symbol,
     name: name || symbol,
     yahooSymbol: String(input.yahooSymbol || input.yahooTicker || defaultYahooSymbol(symbol)).trim().toUpperCase(),
+    currency,
     rank: Number.isFinite(rank) && rank > 0 ? Math.round(rank) : null,
   };
 }
@@ -95,7 +97,7 @@ function buildSeriesRow({ instrument, bars, range, fetchedAt }) {
     name: instrument.name,
     yahooSymbol: instrument.yahooSymbol,
     rank: instrument.rank,
-    currency: 'KRW',
+    currency: instrument.currency || 'USD',
     range,
     interval: '1d',
     barCount: trimmed.length,
@@ -108,11 +110,12 @@ function buildSeriesRow({ instrument, bars, range, fetchedAt }) {
 }
 
 /**
- * Fetches daily OHLCV history for the given instruments (KRX symbols use the
- * `{code}.KS` Yahoo ticker). The result is one persisted row per symbol holding
- * the full bar series, which the quant factor engine reads on demand.
+ * Fetches daily OHLCV history for the given instruments. KRX symbols default to
+ * `{code}.KS`; US symbols use the ticker as-is. The result is one persisted row
+ * per symbol holding the full bar series for detail charts, sparklines, and
+ * quant analysis.
  */
-export async function fetchYahooKoreaDailyBars(params = {}) {
+export async function fetchYahooDailyPriceSeries(params = {}) {
   const range = String(params.range || '1y').trim() || '1y';
   const requestDelayMs = Math.max(0, Number(params.requestDelayMs) || 120);
   const instruments = (Array.isArray(params.instruments) ? params.instruments : [])
@@ -137,4 +140,8 @@ export async function fetchYahooKoreaDailyBars(params = {}) {
     }
   }
   return rows;
+}
+
+export async function fetchYahooKoreaDailyBars(params = {}) {
+  return fetchYahooDailyPriceSeries(params);
 }

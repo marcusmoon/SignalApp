@@ -1,5 +1,9 @@
 import { signalApi } from '@/integrations/signal-api/httpClient';
-import type { SignalApiStockCandles, SignalApiStockProfile } from '@/integrations/signal-api/types';
+import type {
+  SignalApiStockCandles,
+  SignalApiStockProfile,
+  SignalApiStockSparkline,
+} from '@/integrations/signal-api/types';
 
 export async function fetchSignalStockProfile(symbol: string): Promise<SignalApiStockProfile | null> {
   const sym = symbol.trim().toUpperCase();
@@ -35,5 +39,22 @@ export async function fetchSignalStockCandles(
     return data;
   } catch {
     return null;
+  }
+}
+
+export async function fetchSignalStockSparklines(params: {
+  symbols: readonly string[];
+  days?: number;
+}): Promise<SignalApiStockSparkline[]> {
+  const symbols = [...new Set(params.symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))];
+  if (symbols.length === 0) return [];
+  try {
+    const json = await signalApi<{ data: SignalApiStockSparkline[] }>('/v1/stock-sparklines', {
+      symbols: symbols.join(','),
+      days: params.days ?? 30,
+    });
+    return Array.isArray(json.data) ? json.data : [];
+  } catch {
+    return [];
   }
 }

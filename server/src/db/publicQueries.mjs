@@ -920,6 +920,62 @@ export function queryPublicPriceSeriesCandlesInDb(db, options = {}) {
   };
 }
 
+export function queryPublicPriceSeriesSparklinesInDb(db, options = {}) {
+  const symbols = String(options.symbols || '')
+    .split(',')
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
+  const uniqueSymbols = [...new Set(symbols)];
+  const days = Math.max(5, Math.min(90, Math.floor(Number(options.days)) || 30));
+  if (uniqueSymbols.length === 0) return [];
+
+  const params = {};
+  const whereSql = `WHERE UPPER(symbol) IN (${uniqueSymbols.map((_, index) => `@symbol${index}`).join(', ')})`;
+  uniqueSymbols.forEach((symbol, index) => {
+    params[`symbol${index}`] = symbol;
+  });
+  const rows = db
+    .prepare(
+      `
+        SELECT payload
+        FROM price_series
+        ${whereSql}
+        LIMIT 200
+      `,
+    )
+    .all(params)
+    .map((row) => parsePayload('price_series.payload', row.payload, null))
+    .filter((row) => row && Array.isArray(row.bars));
+
+  const bySymbol = new Map();
+  for (const series of rows) {
+    const symbol = String(series.symbol || '').trim().toUpperCase();
+    if (!symbol) continue;
+    const bars = series.bars
+      .map((bar) => ({
+        date: String(bar?.date || '').slice(0, 10),
+        close: finiteNumber(bar?.close),
+      }))
+      .filter((bar) => /^\d{4}-\d{2}-\d{2}$/.test(bar.date) && bar.close != null)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-days);
+    if (bars.length === 0) continue;
+    const first = bars[0].close;
+    const last = bars[bars.length - 1].close;
+    bySymbol.set(symbol, {
+      symbol,
+      displaySymbol: series.displaySymbol || series.symbol || symbol,
+      currency: series.currency || (/^\d{6}$/.test(symbol) ? 'KRW' : 'USD'),
+      lastClose: last,
+      lastBarDate: bars[bars.length - 1].date,
+      changePercent: Number.isFinite(first) && first !== 0 && Number.isFinite(last) ? ((last - first) / first) * 100 : null,
+      closes: bars.map((bar) => bar.close),
+    });
+  }
+
+  return uniqueSymbols.map((symbol) => bySymbol.get(symbol)).filter(Boolean);
+}
+
 function readPriceSeriesForSymbols(db, uniqueSymbols, scanLimit = 500) {
   const params = {};
   let whereSql = '';

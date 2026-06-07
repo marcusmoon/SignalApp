@@ -69,6 +69,7 @@ import {
   queryPublicNewsInDb,
   queryPublicNewsSourcesInDb,
   queryPublicPriceSeriesCandlesInDb,
+  queryPublicPriceSeriesSparklinesInDb,
   queryPublicQuantBacktestInDb,
   queryPublicQuantSignalsInDb,
   queryPublicQuantSignalHistoryInDb,
@@ -606,6 +607,15 @@ export async function queryPublicPriceSeriesCandles(options = {}) {
     'publicPriceSeriesCandles',
     options,
     (db) => queryPublicPriceSeriesCandlesInDb(db, options),
+    30000,
+  );
+}
+
+export async function queryPublicPriceSeriesSparklines(options = {}) {
+  return cachedPublicRead(
+    'publicPriceSeriesSparklines',
+    options,
+    (db) => queryPublicPriceSeriesSparklinesInDb(db, options),
     30000,
   );
 }

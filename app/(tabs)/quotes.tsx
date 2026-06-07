@@ -7,6 +7,7 @@ import {
   Alert,
   FlatList,
   InteractionManager,
+  LayoutChangeEvent,
   Platform,
   Pressable,
   StyleSheet,
@@ -47,6 +48,7 @@ import {
   fetchSignalCoins,
   fetchSignalMarketList,
   fetchSignalMarketQuotes,
+  fetchSignalStockSparklines,
   fetchSignalQuantSignals,
   type SignalApiCoinMarket,
   type SignalApiMarketQuote,
@@ -112,6 +114,93 @@ function formatPctSigned(value: number | null | undefined): string {
 }
 
 type Row = QuoteCacheRow;
+
+type MiniSparkPoint = {
+  x: number;
+  y: number;
+};
+
+function sparklineSymbolForRow(row: Row): string {
+  return String(row.quote?.krxSymbol || row.quant?.symbol || row.symbol || '').trim().toUpperCase();
+}
+
+function sparkPoints(values: number[], width: number, height: number): MiniSparkPoint[] {
+  if (values.length < 2 || width <= 0 || height <= 0) return [];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const spread = Math.max(max - min, 1e-6);
+  const stepX = width / (values.length - 1);
+  return values.map((value, index) => ({
+    x: stepX * index,
+    y: height - ((value - min) / spread) * height,
+  }));
+}
+
+function MiniSparkline({
+  values,
+  color,
+  mutedColor,
+}: {
+  values: number[];
+  color: string;
+  mutedColor: string;
+}) {
+  const [width, setWidth] = useState(0);
+  const height = 28;
+  const points = useMemo(
+    () => sparkPoints(values.filter((value) => Number.isFinite(value)), width, height - 4),
+    [values, width],
+  );
+  const onLayout = useCallback((event: LayoutChangeEvent) => {
+    const nextWidth = Math.max(0, event.nativeEvent.layout.width - 2);
+    setWidth((prev) => (Math.abs(prev - nextWidth) < 1 ? prev : nextWidth));
+  }, []);
+
+  return (
+    <View onLayout={onLayout} style={miniSparkStyles.wrap}>
+      <View style={[miniSparkStyles.baseline, { backgroundColor: mutedColor }]} />
+      {points.slice(0, -1).map((point, index) => {
+        const next = points[index + 1];
+        const dx = next.x - point.x;
+        const dy = next.y - point.y;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+        return (
+          <View
+            key={`seg-${index}`}
+            style={[
+              miniSparkStyles.seg,
+              {
+                left: point.x,
+                top: point.y + 2,
+                width: Math.max(length, 1),
+                backgroundColor: color,
+                transform: [{ rotate: `${angle}deg` }],
+              },
+            ]}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+async function withStockSparklines(rows: Row[]): Promise<Row[]> {
+  const symbols = [...new Set(rows.map(sparklineSymbolForRow).filter((symbol) => symbol && symbol !== '—'))];
+  if (symbols.length === 0) return rows;
+  const items = await fetchSignalStockSparklines({ symbols, days: 30 });
+  if (items.length === 0) return rows;
+  const bySymbol = new Map(items.map((item) => [String(item.symbol || '').trim().toUpperCase(), item]));
+  return rows.map((row) => {
+    const item = bySymbol.get(sparklineSymbolForRow(row));
+    if (!item || !Array.isArray(item.closes) || item.closes.length < 2) return row;
+    return {
+      ...row,
+      sparkline: item.closes,
+      sparklineChangePercent: item.changePercent ?? null,
+    };
+  });
+}
 
 /** USD 금액 본문 (부호 없음, 0 이상) */
 function formatUsdBody(abs: number): string {
@@ -286,7 +375,7 @@ export default function QuotesScreen() {
       ]);
       const usBySymbol = new Map(usRows.map(mapSignalQuoteToRow).map((r) => [r.symbol.trim().toUpperCase(), r]));
       const quantBySymbol = new Map(quantRows.map((q) => [String(q.symbol).trim().toUpperCase(), q]));
-      const nextRows: Row[] = symbols.map((sym) => {
+      const baseRows: Row[] = symbols.map((sym) => {
         const up = sym.trim().toUpperCase();
         const quant = quantBySymbol.get(up);
         if (quant) {
@@ -294,6 +383,7 @@ export default function QuotesScreen() {
         }
         return usBySymbol.get(up) || { symbol: sym, quote: null, error: 'NO_SERVER_QUOTE' };
       });
+      const nextRows = await withStockSparklines(baseRows);
       setRows(nextRows);
       storeQuotes(cacheKey, nextRows);
       return;
@@ -330,7 +420,7 @@ export default function QuotesScreen() {
       segment: segment === 'popular' ? 'popular' : 'mcap',
       limit: segment === 'popular' ? limits.popularMax : limits.mcapMax,
     });
-    const nextRows = serverRows.map(mapSignalQuoteToRow);
+    const nextRows = await withStockSparklines(serverRows.map(mapSignalQuoteToRow));
     setRows(nextRows);
     storeQuotes(cacheKey, nextRows);
   }, [segment, t]);
@@ -552,6 +642,12 @@ export default function QuotesScreen() {
       const quantReturn20d = quant?.indicators?.return20d ?? null;
       const quantActionLabel = quant ? t(QUANT_ACTION_LABEL[quant.action] ?? 'quantActionHold') : '';
       const quantActionColor = quant ? quantActionTone(theme, quant.action) : theme.textMuted;
+      const sparkValues = Array.isArray(r.sparkline) ? r.sparkline.filter((value) => Number.isFinite(value)) : [];
+      const sparkChange =
+        typeof r.sparklineChangePercent === 'number' && Number.isFinite(r.sparklineChangePercent)
+          ? r.sparklineChangePercent
+          : quantReturn20d ?? r.quote?.changePercent ?? 0;
+      const sparkColor = Number(sparkChange) >= 0 ? quoteChange.colors.up : quoteChange.colors.down;
 
       const cardInner = (
         <>
@@ -644,6 +740,9 @@ export default function QuotesScreen() {
                   {formatUsdChange(Number(r.quote.change ?? 0))} ({formatQuoteDpPct(r.quote.changePercent)})
                 </Text>
               ) : null}
+              {sparkValues.length > 1 ? (
+                <MiniSparkline values={sparkValues} color={sparkColor} mutedColor={theme.border} />
+              ) : null}
             </View>
           </View>
           {quant ? (
@@ -712,6 +811,8 @@ export default function QuotesScreen() {
       onRemoveWatch,
       openSymbolDetail,
       openFinanceQuote,
+      quoteChange.colors.down,
+      quoteChange.colors.up,
       rows.length,
       segment,
       styles,
@@ -792,6 +893,30 @@ export default function QuotesScreen() {
     </SafeAreaView>
   );
 }
+
+const miniSparkStyles = StyleSheet.create({
+  wrap: {
+    width: 96,
+    height: 28,
+    marginTop: 7,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  baseline: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: '50%',
+    height: StyleSheet.hairlineWidth,
+    opacity: 0.8,
+  },
+  seg: {
+    position: 'absolute',
+    height: 2,
+    borderRadius: 999,
+    transformOrigin: 'left center',
+  },
+});
 
 function makeStyles(
   theme: AppTheme,

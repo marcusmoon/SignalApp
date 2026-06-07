@@ -16,15 +16,7 @@ import {
   queryPostgres,
   withPostgresClient,
 } from './db/postgres/client.mjs';
-import {
-  displayNews,
-  filterCalendar,
-  filterCoinMarkets,
-  filterConcalls,
-  filterMarketQuotes,
-  filterNews,
-  filterYoutube,
-} from './http/shared.mjs';
+import { displayNews } from './http/shared.mjs';
 import { listActiveYoutubeChannelHandles } from './db/youtubeChannels.mjs';
 import { buildQuantSignal } from './quant/signals.mjs';
 import { aggregateBacktests, backtestInstrument } from './quant/backtest.mjs';
@@ -693,30 +685,25 @@ export async function updateDb(mutator) {
   });
 }
 
-function urlFromOptions(options = {}) {
-  const url = new URL('http://signal.local/');
-  for (const [key, value] of Object.entries(options || {})) {
-    if (value == null || value === '') continue;
-    url.searchParams.set(key, String(value));
-  }
-  return url;
-}
-
 function paginatedSqlRows(rows, { limit, offset }) {
-  const total = Number(rows[0]?.total_count) || 0;
-  const slice = rows.map((row) => row.item).filter(Boolean);
+  const hasLookahead = rows.length > limit;
+  const slice = rows.slice(0, limit).map((row) => row.item).filter(Boolean);
+  const exactTotal = Number(rows[0]?.total_count);
+  const total = Number.isFinite(exactTotal) && exactTotal > 0
+    ? exactTotal
+    : offset + slice.length + (hasLookahead ? 1 : 0);
   return {
     rows: slice,
     total,
     limit,
     offset,
-    hasMore: offset + slice.length < total,
-    nextOffset: offset + slice.length,
+    hasMore: hasLookahead || offset + slice.length < total,
+    nextOffset: hasLookahead || offset + slice.length < total ? offset + slice.length : null,
   };
 }
 
 function numberSqlExpression(jsonExpression) {
-  return `COALESCE(NULLIF(${jsonExpression}, '')::numeric, 0)`;
+  return `CASE WHEN NULLIF(${jsonExpression}, '') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${jsonExpression})::numeric ELSE 0 END`;
 }
 
 function sqlDateOrTimestamp(value) {
@@ -917,9 +904,9 @@ export async function queryPublicNews(options = {}) {
         OR COALESCE(n.payload->>'titleOriginal', n.payload->>'title', '') ~* 'breaking|flash|속보|긴급|urgent|live\\s*:|market\\s*alert|just\\s*in|developing|exclusive:'
       )`);
     }
-    params.push(limit, offset);
+    params.push(limit + 1, offset);
     const sql = `
-      SELECT n.payload, t.payload AS translation_payload, COUNT(*) OVER() AS total_count
+      SELECT n.payload, t.payload AS translation_payload
       FROM news_items n
       LEFT JOIN news_translations t ON t.news_item_id = n.id AND t.locale = $1
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
@@ -933,13 +920,15 @@ export async function queryPublicNews(options = {}) {
       if (!item) return null;
       return publicNews(displayNews(item, translation ? [translation] : [], locale));
     }).filter(Boolean);
+    const pageRows = rows.slice(0, limit);
+    const hasMore = rows.length > limit;
     return {
-      rows,
-      total: Number(result.rows[0]?.total_count) || 0,
+      rows: pageRows,
+      total: offset + pageRows.length + (hasMore ? 1 : 0),
       limit,
       offset,
-      hasMore: offset + rows.length < (Number(result.rows[0]?.total_count) || 0),
-      nextOffset: offset + rows.length,
+      hasMore,
+      nextOffset: hasMore ? offset + pageRows.length : null,
     };
   });
 }
@@ -1009,13 +998,13 @@ export async function queryPublicYoutube(options = {}) {
            OR COALESCE(y2.payload->'sortBuckets', '[]'::jsonb) ? $${params.length}
       )
     )`);
-    params.push(limit, offset);
+    params.push(limit + 1, offset);
     const order = sort === 'popular'
       ? `ORDER BY ${numberSqlExpression(`payload->>'viewCount'`)} DESC, published_at DESC NULLS LAST`
       : `ORDER BY published_at DESC NULLS LAST, ${numberSqlExpression(`payload->>'viewCount'`)} DESC`;
     const result = await queryPostgres(
       `
-        SELECT payload, COUNT(*) OVER() AS total_count
+        SELECT payload
         FROM youtube_videos
         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
         ${order}
@@ -1093,13 +1082,14 @@ export async function queryPublicMarketQuotes(options = {}) {
         OR lower(COALESCE(segment, '')) LIKE $${params.length}
       )`);
     }
-    params.push(limit, offset);
+    const sqlLimit = symbols.length > 0 && !segment ? Math.max(limit + 1, symbols.length * 3) : limit + 1;
+    params.push(sqlLimit, offset);
     const result = await queryPostgres(
       `
-        SELECT payload, COUNT(*) OVER() AS total_count
+        SELECT payload
         FROM market_quotes
         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-        ORDER BY COALESCE(segment, ''), COALESCE(symbol, '')
+        ORDER BY fetched_at DESC NULLS LAST, COALESCE(segment, ''), COALESCE(symbol, '')
         LIMIT $${params.length - 1} OFFSET $${params.length}
       `,
       params,
@@ -1117,14 +1107,16 @@ export async function queryPublicMarketQuotes(options = {}) {
       }
       rows = [...bestBySymbol.values()];
     }
-    const total = Number(result.rows[0]?.total_count) || rows.length;
+    const pageRows = rows.slice(0, limit);
+    const hasMore = symbols.length > 0 && !segment ? false : rows.length > limit;
+    const total = offset + pageRows.length + (hasMore ? 1 : 0);
     return {
-      rows,
+      rows: pageRows,
       total,
       limit,
       offset,
-      hasMore: offset + rows.length < total,
-      nextOffset: offset + rows.length,
+      hasMore,
+      nextOffset: hasMore ? offset + pageRows.length : null,
     };
   }, 3000);
 }
@@ -1143,10 +1135,10 @@ export async function queryPublicCoinMarkets(options = {}) {
         OR lower(COALESCE(payload->>'providerItemId', '')) LIKE $${params.length}
       )`);
     }
-    params.push(limit, offset);
+    params.push(limit + 1, offset);
     const result = await queryPostgres(
       `
-        SELECT payload, COUNT(*) OVER() AS total_count
+        SELECT payload
         FROM coin_markets
         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
         ORDER BY ${numberSqlExpression(`payload->>'marketCap'`)} DESC
@@ -1216,26 +1208,109 @@ export async function queryPublicCalendar(options = {}) {
 
 export async function queryPublicCalendarDateSummaries(options = {}) {
   return cachedPublicRead('publicCalendarDateSummaries', options, async () => {
-    const rows = await queryPublicCalendar({ ...options, limit: '1000' });
+    const params = [];
+    const where = ['event_date IS NOT NULL'];
+    const from = cleanText(options.from);
+    if (from) {
+      params.push(from);
+      where.push(`event_date >= $${params.length}::date`);
+    }
+    const to = cleanText(options.to);
+    if (to) {
+      params.push(to);
+      where.push(`event_date <= $${params.length}::date`);
+    }
+    const type = cleanText(options.type);
+    if (type) {
+      params.push(type);
+      where.push(`event_type = $${params.length}`);
+    }
+    const result = await queryPostgres(
+      `
+        SELECT event_date::text AS date, COALESCE(event_type, 'unknown') AS type, COUNT(*)::int AS count
+        FROM calendar_events
+        WHERE ${where.join(' AND ')}
+        GROUP BY event_date, COALESCE(event_type, 'unknown')
+        ORDER BY event_date ASC
+      `,
+      params,
+    );
     const byDate = new Map();
-    for (const item of rows) {
-      const date = cleanText(item.date || item.eventAt).slice(0, 10);
+    for (const row of result.rows) {
+      const date = cleanText(row.date).slice(0, 10);
       if (!date) continue;
-      const prev = byDate.get(date) || { date, count: 0, byType: {} };
-      prev.count += 1;
-      const type = item.type || 'unknown';
-      prev.byType[type] = (prev.byType[type] || 0) + 1;
+      const prev = byDate.get(date) || { date, total: 0, counts: {} };
+      const count = Number(row.count) || 0;
+      prev.total += count;
+      prev.counts[row.type || 'unknown'] = count;
       byDate.set(date, prev);
     }
-    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+    return [...byDate.values()];
   }, 30000);
 }
 
 export async function queryPublicConcalls(options = {}) {
   return cachedPublicRead('publicConcalls', options, async () => {
-    const db = await readDb();
-    const rows = filterConcalls(db.concallTranscripts || [], urlFromOptions(options)).map(publicConcall);
-    return pagination(rows, pageOptions(options, 30));
+    const { limit, offset } = pageOptions(options, 30);
+    const params = [];
+    const where = [];
+    const symbol = cleanText(options.symbol).toUpperCase();
+    if (symbol) {
+      params.push(symbol);
+      where.push(`upper(symbol) = $${params.length}`);
+    }
+    const year = cleanText(options.year || options.fiscalYear);
+    if (year) {
+      params.push(Number(year));
+      where.push(`fiscal_year = $${params.length}`);
+    }
+    const quarter = cleanText(options.quarter || options.fiscalQuarter);
+    if (quarter) {
+      params.push(Number(quarter));
+      where.push(`fiscal_quarter = $${params.length}`);
+    }
+    const from = cleanText(options.from);
+    if (from) {
+      params.push(from);
+      where.push(`(earnings_date IS NULL OR earnings_date >= $${params.length}::date)`);
+    }
+    const to = cleanText(options.to);
+    if (to) {
+      params.push(to);
+      where.push(`(earnings_date IS NULL OR earnings_date <= $${params.length}::date)`);
+    }
+    const q = cleanText(options.q).toLowerCase();
+    if (q) {
+      params.push(`%${q}%`);
+      where.push(`(
+        lower(COALESCE(symbol, '')) LIKE $${params.length}
+        OR lower(COALESCE(payload->>'title', '')) LIKE $${params.length}
+        OR lower(COALESCE(payload->>'summaryProvider', '')) LIKE $${params.length}
+        OR lower(COALESCE(payload->>'provider', '')) LIKE $${params.length}
+      )`);
+    }
+    params.push(limit + 1, offset);
+    const result = await queryPostgres(
+      `
+        SELECT payload
+        FROM concall_transcripts
+        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+        ORDER BY earnings_date DESC NULLS LAST, symbol ASC
+        LIMIT $${params.length - 1} OFFSET $${params.length}
+      `,
+      params,
+    );
+    const includeTranscript = cleanText(options.includeTranscript) === '1';
+    return paginatedSqlRows(
+      result.rows.map((row) => {
+        const item = payloadFromRow(row);
+        if (!item) return { item: null };
+        if (includeTranscript) return { item: publicConcall(item) };
+        const { transcript, rawPayload, ...rest } = item;
+        return { item: publicConcall(rest) };
+      }),
+      { limit, offset },
+    );
   }, 10000);
 }
 
@@ -1275,7 +1350,21 @@ export async function queryPublicPriceSeriesCandles(options = {}) {
   return cachedPublicRead('publicPriceSeriesCandles', options, async () => {
     const symbol = cleanText(options.symbol).toUpperCase();
     if (!symbol) return null;
-    const result = await queryPostgres('SELECT payload FROM price_series WHERE upper(symbol) = $1', [symbol]);
+    const result = await queryPostgres(
+      `
+        SELECT payload
+        FROM price_series
+        WHERE upper(COALESCE(symbol, '')) = $1
+           OR upper(COALESCE(display_symbol, '')) = $1
+           OR upper(COALESCE(yahoo_symbol, '')) = $1
+           OR upper(COALESCE(payload->>'krxSymbol', '')) = $1
+           OR upper(COALESCE(payload->>'displaySymbol', '')) = $1
+           OR upper(COALESCE(payload->>'yahooSymbol', '')) = $1
+        ORDER BY last_bar_date DESC NULLS LAST, fetched_at DESC NULLS LAST
+        LIMIT 1
+      `,
+      [symbol],
+    );
     const series = payloadFromRow(result.rows[0]);
     if (!series) return null;
     const from = Number(options.from) * 1000;
@@ -1306,13 +1395,36 @@ export async function queryPublicPriceSeriesSparklines(options = {}) {
       .filter(Boolean);
     const days = safeLimit(options.days, 30, 365);
     if (symbols.length === 0) return [];
-    const result = await queryPostgres('SELECT payload FROM price_series WHERE upper(symbol) = ANY($1::text[])', [symbols]);
-    const bySymbol = new Map(
-      result.rows
-        .map(payloadFromRow)
-        .filter(Boolean)
-        .map((series) => [cleanText(series.symbol).toUpperCase(), series]),
+    const result = await queryPostgres(
+      `
+        SELECT payload
+        FROM price_series
+        WHERE upper(COALESCE(symbol, '')) = ANY($1::text[])
+           OR upper(COALESCE(display_symbol, '')) = ANY($1::text[])
+           OR upper(COALESCE(yahoo_symbol, '')) = ANY($1::text[])
+           OR upper(COALESCE(payload->>'krxSymbol', '')) = ANY($1::text[])
+           OR upper(COALESCE(payload->>'displaySymbol', '')) = ANY($1::text[])
+           OR upper(COALESCE(payload->>'yahooSymbol', '')) = ANY($1::text[])
+        ORDER BY last_bar_date DESC NULLS LAST, fetched_at DESC NULLS LAST
+      `,
+      [symbols],
     );
+    const bySymbol = new Map();
+    for (const series of result.rows.map(payloadFromRow).filter(Boolean)) {
+      const aliases = [
+        series.symbol,
+        series.displaySymbol,
+        series.yahooSymbol,
+        series.krxSymbol,
+        series.rawPayload?.krxSymbol,
+        series.rawPayload?.displaySymbol,
+        series.rawPayload?.yahooSymbol,
+      ];
+      for (const alias of aliases) {
+        const key = cleanText(alias).toUpperCase();
+        if (key && !bySymbol.has(key)) bySymbol.set(key, series);
+      }
+    }
     return symbols
       .map((symbol) => {
         const series = bySymbol.get(symbol);
@@ -1444,10 +1556,10 @@ export async function queryPublicQuantSignalHistory(options = {}) {
       params.push(cleanText(options.to));
       where.push(`generated_date <= $${params.length}::date`);
     }
-    params.push(limit, offset);
+    params.push(limit + 1, offset);
     const result = await queryPostgres(
       `
-        SELECT payload, COUNT(*) OVER() AS total_count
+        SELECT payload
         FROM quant_signal_items
         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
         ORDER BY generated_at DESC NULLS LAST, generated_date DESC NULLS LAST
@@ -2566,7 +2678,7 @@ export async function listAppUsers(options = {}) {
   const { limit, offset } = pageOptions(options, 50);
   const q = `%${cleanText(options.q).toLowerCase()}%`;
   const active = cleanText(options.active);
-  const params = [limit, offset];
+  const params = [limit + 1, offset];
   const where = [];
   if (cleanText(options.q)) {
     params.push(q);
@@ -2586,8 +2698,7 @@ export async function listAppUsers(options = {}) {
         (SELECT MAX(s.created_at) FROM app_user_refresh_sessions s WHERE s.user_id = u.id) AS latest_session_at,
         (SELECT MAX(d.updated_at) FROM app_user_devices d WHERE d.user_id = u.id) AS latest_device_at,
         (SELECT COUNT(*) FROM notification_items n WHERE n.app_user_id = u.id) AS notification_count,
-        (SELECT COUNT(*) FROM notification_items n WHERE n.app_user_id = u.id AND n.status = 'queued') AS queued_notification_count,
-        COUNT(*) OVER()::int AS total
+        (SELECT COUNT(*) FROM notification_items n WHERE n.app_user_id = u.id AND n.status = 'queued') AS queued_notification_count
       FROM app_users u
       ${whereSql}
       ORDER BY u.created_at DESC
@@ -2595,7 +2706,8 @@ export async function listAppUsers(options = {}) {
     `,
     params,
   );
-  return { rows: result.rows.map(adminUserRow), total: Number(result.rows[0]?.total) || 0, limit, offset };
+  const rows = result.rows.slice(0, limit).map(adminUserRow);
+  return { rows, total: offset + rows.length + (result.rows.length > limit ? 1 : 0), limit, offset };
 }
 
 export async function listAppUserDevices(options = {}) {
@@ -2603,7 +2715,7 @@ export async function listAppUserDevices(options = {}) {
   const q = `%${cleanText(options.q).toLowerCase()}%`;
   const active = cleanText(options.active);
   const platform = cleanText(options.platform).toLowerCase();
-  const params = [limit, offset];
+  const params = [limit + 1, offset];
   const where = [];
   if (cleanText(options.q)) {
     params.push(q);
@@ -2620,7 +2732,7 @@ export async function listAppUserDevices(options = {}) {
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const result = await queryPostgres(
     `
-      SELECT d.*, u.email, u.nickname, COUNT(*) OVER()::int AS total
+      SELECT d.*, u.email, u.nickname
       FROM app_user_devices d
       JOIN app_users u ON u.id = d.user_id
       ${whereSql}
@@ -2629,7 +2741,8 @@ export async function listAppUserDevices(options = {}) {
     `,
     params,
   );
-  return { rows: result.rows.map(publicDevice), total: Number(result.rows[0]?.total) || 0, limit, offset };
+  const rows = result.rows.slice(0, limit).map(publicDevice);
+  return { rows, total: offset + rows.length + (result.rows.length > limit ? 1 : 0), limit, offset };
 }
 
 export async function updateAppUserAdmin(userId, patch = {}) {
@@ -2866,17 +2979,39 @@ export async function upsertNotification(next) {
 export const upsertNotificationItem = upsertNotification;
 
 export async function queryNotifications(options = {}) {
-  const db = await readDb();
-  let rows = [...(db.notificationItems || [])];
-  if (options.appUserId) rows = rows.filter((row) => row.appUserId === options.appUserId);
-  if (options.status) rows = rows.filter((row) => row.status === options.status);
-  rows.sort((a, b) => cleanText(b.scheduledAt || b.createdAt).localeCompare(cleanText(a.scheduledAt || a.createdAt)));
   const page = Math.max(1, Number.parseInt(options.page || '1', 10) || 1);
   const pageSize = safeLimit(options.pageSize, 30, 100);
-  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const start = (safePage - 1) * pageSize;
-  return { rows: rows.slice(start, start + pageSize), page: safePage, pageSize, total: rows.length, totalPages };
+  const offset = (page - 1) * pageSize;
+  const params = [];
+  const where = [];
+  if (options.appUserId) {
+    params.push(cleanText(options.appUserId));
+    where.push(`app_user_id = $${params.length}`);
+  }
+  if (options.status) {
+    params.push(cleanText(options.status));
+    where.push(`status = $${params.length}`);
+  }
+  params.push(pageSize + 1, offset);
+  const result = await queryPostgres(
+    `
+      SELECT payload
+      FROM notification_items
+      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+      ORDER BY COALESCE(scheduled_at, NULLIF(payload->>'createdAt', '')::timestamptz, updated_at) DESC NULLS LAST
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `,
+    params,
+  );
+  const rows = result.rows.map(payloadFromRow).filter(Boolean).slice(0, pageSize);
+  const hasMore = result.rows.length > pageSize;
+  return {
+    rows,
+    page,
+    pageSize,
+    total: offset + rows.length + (hasMore ? 1 : 0),
+    totalPages: hasMore ? page + 1 : page,
+  };
 }
 
 export async function queryPublicNotificationsForUser(userId, options = {}) {

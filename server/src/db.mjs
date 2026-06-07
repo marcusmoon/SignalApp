@@ -68,6 +68,7 @@ import {
   queryPublicMarketQuotesInDb,
   queryPublicNewsInDb,
   queryPublicNewsSourcesInDb,
+  queryPublicPriceSeriesCandlesInDb,
   queryPublicQuantBacktestInDb,
   queryPublicQuantSignalsInDb,
   queryPublicQuantSignalHistoryInDb,
@@ -598,6 +599,15 @@ export async function queryPublicWatchSignals(options = {}) {
 
 export async function queryPublicQuantSignals(options = {}) {
   return cachedPublicRead('publicQuantSignals', options, (db) => queryPublicQuantSignalsInDb(db, options), 15000);
+}
+
+export async function queryPublicPriceSeriesCandles(options = {}) {
+  return cachedPublicRead(
+    'publicPriceSeriesCandles',
+    options,
+    (db) => queryPublicPriceSeriesCandlesInDb(db, options),
+    30000,
+  );
 }
 
 export async function queryPublicQuantBacktest(options = {}) {

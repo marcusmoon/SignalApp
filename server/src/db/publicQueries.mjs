@@ -859,6 +859,67 @@ export function queryPublicQuantSignalsInDb(db, options = {}) {
   return signals.slice(0, limit);
 }
 
+function epochSecondsFromYmd(value) {
+  const ymd = String(value || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null;
+  const ms = Date.parse(`${ymd}T00:00:00Z`);
+  return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
+}
+
+function finiteNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function queryPublicPriceSeriesCandlesInDb(db, options = {}) {
+  const symbol = String(options.symbol || '').trim().toUpperCase();
+  const from = Math.floor(Number(options.from));
+  const to = Math.floor(Number(options.to));
+  if (!symbol || !Number.isFinite(from) || !Number.isFinite(to)) return null;
+
+  const row = db
+    .prepare(
+      `
+        SELECT payload
+        FROM price_series
+        WHERE UPPER(symbol) = @symbol
+        LIMIT 1
+      `,
+    )
+    .get({ symbol });
+  const series = row ? parsePayload('price_series.payload', row.payload, null) : null;
+  const bars = Array.isArray(series?.bars) ? series.bars : [];
+  if (bars.length === 0) return { c: [], h: [], l: [], o: [], s: 'no_data', t: [], v: [] };
+
+  const rows = bars
+    .map((bar) => {
+      const t = epochSecondsFromYmd(bar?.date);
+      const close = finiteNumber(bar?.close);
+      if (!t || close == null) return null;
+      return {
+        t,
+        c: close,
+        h: finiteNumber(bar?.high) ?? close,
+        l: finiteNumber(bar?.low) ?? close,
+        o: finiteNumber(bar?.open) ?? close,
+        v: finiteNumber(bar?.volume) ?? 0,
+      };
+    })
+    .filter((bar) => bar && bar.t >= from && bar.t <= to)
+    .sort((a, b) => a.t - b.t);
+
+  if (rows.length === 0) return { c: [], h: [], l: [], o: [], s: 'no_data', t: [], v: [] };
+  return {
+    c: rows.map((bar) => bar.c),
+    h: rows.map((bar) => bar.h),
+    l: rows.map((bar) => bar.l),
+    o: rows.map((bar) => bar.o),
+    s: 'ok',
+    t: rows.map((bar) => bar.t),
+    v: rows.map((bar) => bar.v),
+  };
+}
+
 function readPriceSeriesForSymbols(db, uniqueSymbols, scanLimit = 500) {
   const params = {};
   let whereSql = '';

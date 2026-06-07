@@ -1,6 +1,7 @@
 import {
   queryPublicCoinMarkets,
   queryPublicMarketQuotes,
+  queryPublicPriceSeriesCandles,
   queryPublicQuantBacktest,
   queryPublicQuantSignals,
   queryPublicQuantSignalHistory,
@@ -25,6 +26,28 @@ function publicStockProfile(data, fallbackSymbol) {
   };
 }
 
+function isKrxSymbol(symbol) {
+  return /^\d{6}$/.test(String(symbol || '').trim());
+}
+
+async function localKrxStockProfile(symbol) {
+  const [quantRows, quotePage] = await Promise.all([
+    queryPublicQuantSignals({ symbols: symbol, limit: '1' }),
+    queryPublicMarketQuotes({ symbols: symbol, limit: '1', offset: '0' }),
+  ]);
+  const quant = Array.isArray(quantRows) ? quantRows[0] : null;
+  const quote = Array.isArray(quotePage?.rows) ? quotePage.rows[0] : null;
+  if (!quant && !quote) return null;
+  return publicStockProfile(
+    {
+      symbol,
+      name: quant?.name || quote?.name || quant?.displaySymbol || quote?.displaySymbol || symbol,
+      marketCapitalization: quote?.marketCapitalization,
+    },
+    symbol,
+  );
+}
+
 export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/v1/stock-profile') {
     const symbol = url.searchParams.get('symbol')?.trim().toUpperCase();
@@ -33,6 +56,13 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
       return true;
     }
     try {
+      if (isKrxSymbol(symbol)) {
+        const localProfile = await localKrxStockProfile(symbol);
+        if (localProfile?.name) {
+          json(res, 200, { data: localProfile });
+          return true;
+        }
+      }
       const data = await fetchStockProfile(symbol);
       if (!data || typeof data !== 'object') {
         json(res, 404, { error: 'PROFILE_NOT_FOUND' });
@@ -60,6 +90,17 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
       return true;
     }
     try {
+      if (isKrxSymbol(symbol) && resolution === 'D') {
+        const localCandles = await queryPublicPriceSeriesCandles({
+          symbol,
+          from: Math.floor(from),
+          to: Math.floor(to),
+        });
+        if (localCandles) {
+          json(res, 200, { data: localCandles });
+          return true;
+        }
+      }
       const data = await fetchStockCandles(symbol, {
         resolution,
         from: Math.floor(from),

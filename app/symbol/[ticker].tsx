@@ -43,6 +43,7 @@ import type { NewsItem } from '@/types/signal';
 import { hasSignalApi } from '@/services/env';
 import { addDays, toYmd } from '@/utils/date';
 import { signalReasonLabel } from '@/utils/signalDisplay';
+import { openNaverFinanceStock } from '@/utils/naverFinance';
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
 import type { MessageId } from '@/locales/messages';
 
@@ -95,6 +96,21 @@ function isKoreaSymbol(symbol: string): boolean {
 function formatKrw(value: number | null | undefined): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
   return `₩${Math.round(value).toLocaleString('ko-KR')}`;
+}
+
+function formatKrwChange(value: number): string {
+  if (!Number.isFinite(value)) return '—';
+  if (value === 0) return '₩0';
+  const sign = value > 0 ? '+' : '-';
+  return `${sign}₩${Math.round(Math.abs(value)).toLocaleString('ko-KR')}`;
+}
+
+function formatMarketPrice(value: number, isKorea: boolean): string {
+  return isKorea ? formatKrw(value) : formatUsd(value);
+}
+
+function formatMarketChange(value: number, isKorea: boolean): string {
+  return isKorea ? formatKrwChange(value) : formatUsdChange(value);
 }
 
 function formatNum(value: number | null | undefined, digits = 0, suffix = ''): string {
@@ -224,6 +240,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginBottom: 14,
     },
     company: { fontSize: sf(26), fontWeight: '900', color: theme.text, marginBottom: 6 },
+    companyMeta: { fontSize: sf(12), fontWeight: '800', color: theme.textMuted, marginBottom: 10 },
     companySkeleton: {
       width: '72%',
       height: 28,
@@ -563,6 +580,20 @@ export default function SymbolDetailScreen() {
   const [watching, setWatching] = useState(false);
   const [quantSignal, setQuantSignal] = useState<SignalApiQuantSignal | null>(null);
   const isKorea = useMemo(() => isKoreaSymbol(ticker), [ticker]);
+  const quantLastClose = quantSignal?.indicators?.lastClose ?? null;
+  const displayPrice =
+    typeof quote?.currentPrice === 'number' && Number.isFinite(quote.currentPrice)
+      ? quote.currentPrice
+      : isKorea && typeof quantLastClose === 'number' && Number.isFinite(quantLastClose)
+        ? quantLastClose
+        : null;
+  const displayChange = typeof quote?.change === 'number' && Number.isFinite(quote.change) ? quote.change : null;
+  const displayChangePercent =
+    typeof quote?.changePercent === 'number' && Number.isFinite(quote.changePercent) ? quote.changePercent : null;
+  const displayQuoteForColor = {
+    change: displayChange ?? 0,
+    changePercent: displayChangePercent ?? 0,
+  };
 
   const load = useCallback(async () => {
     if (!ticker) {
@@ -672,7 +703,7 @@ export default function SymbolDetailScreen() {
     return closes.slice(-24);
   }, [candles]);
 
-  const chartColor = quote?.change != null ? (quote.change >= 0 ? theme.green : '#E06D6D') : theme.green;
+  const chartColor = displayChange != null ? (displayChange >= 0 ? theme.green : '#E06D6D') : theme.green;
 
   const latestEarning = useMemo(() => {
     const today = toYmd(new Date());
@@ -680,13 +711,13 @@ export default function SymbolDetailScreen() {
   }, [earnings]);
 
   const symbolVsSma20Pct = useMemo(() => {
-    if (!quote || chartCloses.length < 20) return null;
+    if (displayPrice == null || chartCloses.length < 20) return null;
     const last20 = chartCloses.slice(-20);
     const sma20 = last20.reduce((sum, close) => sum + close, 0) / last20.length;
-    const last = Number(quote.currentPrice);
+    const last = Number(displayPrice);
     if (!Number.isFinite(sma20) || sma20 === 0 || !Number.isFinite(last)) return null;
     return ((last - sma20) / sma20) * 100;
-  }, [chartCloses, quote]);
+  }, [chartCloses, displayPrice]);
 
   const symbolSignal = useMemo(
     () =>
@@ -703,13 +734,17 @@ export default function SymbolDetailScreen() {
 
   const chartRangeLabel = useMemo(() => {
     if (chartCloses.length < 2) return t('symbolDetailChartRange1M');
-    return `${formatUsd(chartCloses[0]!)} → ${formatUsd(chartCloses[chartCloses.length - 1]!)}`;
-  }, [chartCloses, t]);
+    return `${formatMarketPrice(chartCloses[0]!, isKorea)} → ${formatMarketPrice(chartCloses[chartCloses.length - 1]!, isKorea)}`;
+  }, [chartCloses, isKorea, t]);
 
-  const displayCompanyName = useMemo(
-    () => normalizeCompanyName(profile?.name, ticker) ?? t('symbolDetailCompanyUnknown'),
-    [profile?.name, t, ticker],
+  const companyName = useMemo(
+    () =>
+      normalizeCompanyName(profile?.name, ticker) ??
+      normalizeCompanyName(quote?.name ?? undefined, ticker) ??
+      normalizeCompanyName(quantSignal?.name ?? undefined, ticker),
+    [profile?.name, quantSignal?.name, quote?.name, ticker],
   );
+  const displayCompanyName = companyName ?? (isKorea ? ticker : t('symbolDetailCompanyUnknown'));
 
   const earningsSplit = useMemo(() => {
     const y = toYmd(new Date());
@@ -737,7 +772,7 @@ export default function SymbolDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <Stack.Screen options={{ title: ticker || t('screenSymbolDetail') }} />
+      <Stack.Screen options={{ title: companyName || ticker || t('screenSymbolDetail') }} />
       {loading ? (
         <View style={styles.centeredLoadingWrap}>
           <SignalLoadingIndicator message={t('commonLoading')} />
@@ -749,26 +784,25 @@ export default function SymbolDetailScreen() {
         showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <Text style={styles.company}>{displayCompanyName}</Text>
+          {isKorea && ticker ? <Text style={styles.companyMeta}>{ticker}</Text> : null}
           <View style={styles.priceRow}>
             <Text style={styles.price}>
-              {quote && typeof quote.currentPrice === 'number'
-                ? formatUsd(quote.currentPrice)
-                : t('symbolDetailPriceUnavailable')}
+              {displayPrice != null ? formatMarketPrice(displayPrice, isKorea) : t('symbolDetailPriceUnavailable')}
             </Text>
             <View style={styles.priceMeta}>
-              {quote ? (
+              {displayChange != null || displayChangePercent != null ? (
                 <>
-                  <Text style={[styles.changeMetric, quoteChange.styleForQuote(quote)]}>
-                    {formatUsdChange(Number(quote.change ?? 0))}
+                  <Text style={[styles.changeMetric, quoteChange.styleForQuote(displayQuoteForColor)]}>
+                    {formatMarketChange(Number(displayChange ?? 0), isKorea)}
                   </Text>
-                  <Text style={[styles.changeMetric, quoteChange.styleForQuote(quote)]}>
-                    {formatPct(Number(quote.changePercent ?? 0))}
+                  <Text style={[styles.changeMetric, quoteChange.styleForQuote(displayQuoteForColor)]}>
+                    {formatPct(Number(displayChangePercent ?? 0))}
                   </Text>
                 </>
               ) : null}
             </View>
           </View>
-          {formatMarketCapUsd(profile?.marketCapitalization) !== '—' ? (
+          {!isKorea && formatMarketCapUsd(profile?.marketCapitalization) !== '—' ? (
             <Text style={styles.heroMcap}>
               {t('symbolDetailMarketCap')}: {formatMarketCapUsd(profile?.marketCapitalization)}
             </Text>
@@ -790,10 +824,12 @@ export default function SymbolDetailScreen() {
             </View>
           )}
           <View style={styles.actionRow}>
-            <Pressable onPress={() => void openYahooFinanceQuote(ticker, 'stock')} style={styles.actionBtn}>
+            <Pressable
+              onPress={() => void (isKorea ? openNaverFinanceStock(ticker) : openYahooFinanceQuote(ticker, 'stock'))}
+              style={styles.actionBtn}>
               <View style={styles.actionBtnRow}>
                 <FontAwesome name="line-chart" size={12} color={theme.green} />
-                <Text style={styles.actionBtnText}>{t('symbolDetailYahooOpen')}</Text>
+                <Text style={styles.actionBtnText}>{isKorea ? t('quotesNaverShort') : t('symbolDetailYahooOpen')}</Text>
               </View>
             </Pressable>
             <Pressable onPress={() => void toggleWatch()} style={styles.actionBtnAlt}>

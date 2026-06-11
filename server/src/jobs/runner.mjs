@@ -2,12 +2,13 @@ import {
   acquirePollingJobLock,
   ensureNewsSourcesFromItems,
   getPollingJob,
+  listCollectionPayloads,
   nowIso,
+  patchCollectionPayload,
   patchPollingJob,
   patchPollingJobRun,
-  readDb,
+  readSingletonPayload,
   releasePollingJobLock,
-  updateDb,
   upsertCollectionRows,
   upsertById,
   upsertNotificationItem as saveNotificationItem,
@@ -200,12 +201,93 @@ async function fetchConcallTranscriptsFromCalendar(db, params = {}, { onProgress
   return rows;
 }
 
-async function autoTranslateNews(db, newsItems) {
-  const settings = (db.translationSettings || []).filter((s) => s.enabled && s.autoTranslateNews);
+async function readJobContext(job) {
+  const provider = String(job?.provider || '');
+  const handler = String(job?.handler || '');
+  const context = {};
+
+  if (provider === 'rss') {
+    context.rssSources = await listCollectionPayloads('rssSources');
+  }
+  if (
+    provider === 'sec' ||
+    (provider === 'finnhub' &&
+      (handler === 'market_quotes' || handler === 'market_quotes_mcap' || handler === 'market_quotes_mcap_universe')) ||
+    (provider === 'yahoo' && handler === 'daily_bars')
+  ) {
+    context.marketLists = await listCollectionPayloads('marketLists');
+  }
+  if (provider === 'ninjas') {
+    const [calendarEvents, concallTranscripts, marketLists] = await Promise.all([
+      listCollectionPayloads('calendarEvents'),
+      listCollectionPayloads('concallTranscripts'),
+      listCollectionPayloads('marketLists'),
+    ]);
+    context.calendarEvents = calendarEvents;
+    context.concallTranscripts = concallTranscripts;
+    context.marketLists = marketLists;
+  }
+  if (provider === 'youtube') {
+    const [appSettings, youtubeVideos] = await Promise.all([
+      readSingletonPayload('appSettings'),
+      listCollectionPayloads('youtubeVideos'),
+    ]);
+    context.appSettings = appSettings || {};
+    context.youtubeVideos = youtubeVideos;
+  }
+  if (provider === 'signal' && handler === 'market_insights') {
+    const [
+      newsItems,
+      youtubeVideos,
+      marketQuotes,
+      calendarEvents,
+      providerSettings,
+    ] = await Promise.all([
+      listCollectionPayloads('newsItems'),
+      listCollectionPayloads('youtubeVideos'),
+      listCollectionPayloads('marketQuotes'),
+      listCollectionPayloads('calendarEvents'),
+      listCollectionPayloads('providerSettings'),
+    ]);
+    context.newsItems = newsItems;
+    context.youtubeVideos = youtubeVideos;
+    context.marketQuotes = marketQuotes;
+    context.calendarEvents = calendarEvents;
+    context.providerSettings = providerSettings;
+  }
+  if (provider === 'signal' && handler === 'quant_signals') {
+    context.priceSeries = await listCollectionPayloads('priceSeries');
+  }
+
+  return context;
+}
+
+async function ensureNewsSourcesForRows(newsItems) {
+  if (!Array.isArray(newsItems) || newsItems.length === 0) return;
+  const [newsSources, newsSourceSettings] = await Promise.all([
+    listCollectionPayloads('newsSources'),
+    readSingletonPayload('newsSourceSettings'),
+  ]);
+  const db = {
+    newsItems,
+    newsSources,
+    newsSourceSettings: newsSourceSettings || {},
+  };
+  const changed = ensureNewsSourcesFromItems(db);
+  if (changed) await upsertCollectionRows('newsSources', db.newsSources);
+}
+
+async function autoTranslateNewsDirect(newsItems) {
+  const settings = (await listCollectionPayloads('translationSettings')).filter((s) => s.enabled && s.autoTranslateNews);
+  if (settings.length === 0 || !Array.isArray(newsItems) || newsItems.length === 0) return;
+  const existingTranslations = await listCollectionPayloads('newsTranslations');
+  const byId = new Map(existingTranslations.map((row) => [row.id, row]));
+  const translationRows = [];
+
   for (const item of newsItems) {
     for (const setting of settings) {
       const id = translationId(item.id, setting.locale);
-      const existing = db.newsTranslations.find((t) => t.id === id);
+      const existing = byId.get(id);
       if (existing?.status === 'completed' || existing?.status === 'manual') continue;
       try {
         const translated = await translateNews({
@@ -214,7 +296,7 @@ async function autoTranslateNews(db, newsItems) {
           provider: setting.provider,
         });
         const { hashtagLabels = [], ...trRest } = translated;
-        upsertById(db.newsTranslations, {
+        translationRows.push({
           id,
           newsItemId: item.id,
           ...trRest,
@@ -222,11 +304,17 @@ async function autoTranslateNews(db, newsItems) {
           editedAt: null,
         });
         if (trRest.status === 'completed') {
-          const row = db.newsItems.find((n) => n.id === item.id);
-          mergeAutoHashtagsIntoNewsItem(row, hashtagLabels);
+          const nextItem = { ...item };
+          mergeAutoHashtagsIntoNewsItem(nextItem, hashtagLabels);
+          await patchCollectionPayload('newsItems', item.id, {
+            hashtags: nextItem.hashtags,
+            autoHashtags: nextItem.autoHashtags,
+            hashtagLabels: nextItem.hashtagLabels,
+            updatedAt: nowIso(),
+          });
         }
       } catch (error) {
-        upsertById(db.newsTranslations, {
+        translationRows.push({
           id,
           newsItemId: item.id,
           locale: setting.locale,
@@ -244,6 +332,27 @@ async function autoTranslateNews(db, newsItems) {
       }
     }
   }
+
+  if (translationRows.length > 0) await upsertCollectionRows('newsTranslations', translationRows);
+}
+
+async function saveNewsRows(rows) {
+  const savedAt = nowIso();
+  const safeRows = rows.map((row) => ({
+    ...row,
+    updatedAt: row.updatedAt || savedAt,
+    createdAt: row.createdAt || savedAt,
+  }));
+  await upsertCollectionRows('newsItems', safeRows);
+  await ensureNewsSourcesForRows(safeRows);
+  await autoTranslateNewsDirect(safeRows);
+}
+
+async function saveYoutubeRows(rows) {
+  const current = await listCollectionPayloads('youtubeVideos');
+  const changed = [];
+  for (const row of rows) changed.push(upsertYoutubeVideo(current, row));
+  if (changed.length > 0) await upsertCollectionRows('youtubeVideos', changed);
 }
 
 async function executeHandler(job, dbBefore, { onProgress } = {}) {
@@ -403,8 +512,7 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
   let startedTime = Date.now();
   let run = null;
   try {
-    const dbBefore = await readDb();
-    const job = dbBefore.pollingJobs.find((j) => j.jobKey === jobKey);
+    const job = await getPollingJob(jobKey);
     if (!job) throw new Error(`JOB_NOT_FOUND:${jobKey}`);
     if (!force && !job.enabled) throw new Error(`JOB_DISABLED:${jobKey}`);
 
@@ -480,6 +588,7 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
           }
         : null;
 
+    const dbBefore = await readJobContext(job);
     const result = await executeHandler(job, dbBefore, { onProgress });
     const rows = result.rows || [];
     const directCollectionByKind = {
@@ -507,15 +616,11 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       const notificationRows = notificationsFromInsights(rows);
       for (const row of notificationRows) await saveNotificationItem(row);
     } else {
-      await updateDb(async (db) => {
-        if (result.kind === 'news') {
-          for (const row of rows) upsertById(db.newsItems, row);
-          ensureNewsSourcesFromItems(db);
-          await autoTranslateNews(db, rows);
-        } else if (result.kind === 'youtube') {
-          for (const row of rows) upsertYoutubeVideo(db.youtubeVideos, row);
-        }
-      });
+      if (result.kind === 'news') {
+        await saveNewsRows(rows);
+      } else if (result.kind === 'youtube') {
+        await saveYoutubeRows(rows);
+      }
     }
 
     const finishedAt = nowIso();
@@ -569,22 +674,26 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
 }
 
 export async function retranslateNewsItems({ ids, locale, provider, model, adminId }) {
-  return updateDb(async (db) => {
-    const items = db.newsItems.filter((item) => ids.includes(item.id));
-    for (const item of items) {
-      const translated = await translateNews({ newsItem: item, locale, provider, model });
-      const { hashtagLabels = [], ...trRest } = translated;
-      upsertById(db.newsTranslations, {
-        id: translationId(item.id, locale),
-        newsItemId: item.id,
-        ...trRest,
-        editedByAdminId: adminId || null,
-        editedAt: nowIso(),
-      });
-      if (trRest.status === 'completed') {
-        mergeAutoHashtagsIntoNewsItem(item, hashtagLabels);
-      }
+  const idSet = new Set(Array.isArray(ids) ? ids : []);
+  const items = (await listCollectionPayloads('newsItems')).filter((item) => idSet.has(item.id));
+  const translations = [];
+  for (const item of items) {
+    const translated = await translateNews({ newsItem: item, locale, provider, model });
+    const { hashtagLabels = [], ...trRest } = translated;
+    translations.push({
+      id: translationId(item.id, locale),
+      newsItemId: item.id,
+      ...trRest,
+      editedByAdminId: adminId || null,
+      editedAt: nowIso(),
+      updatedAt: nowIso(),
+    });
+    if (trRest.status === 'completed') {
+      const nextItem = { ...item };
+      mergeAutoHashtagsIntoNewsItem(nextItem, hashtagLabels);
+      await patchCollectionPayload('newsItems', item.id, nextItem);
     }
-    return { count: items.length };
-  });
+  }
+  await upsertCollectionRows('newsTranslations', translations);
+  return { count: items.length };
 }

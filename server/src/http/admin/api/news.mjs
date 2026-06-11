@@ -1,7 +1,16 @@
 import { hashtagRecordsFromLabels } from '../../../newsHashtags.mjs';
-import { nowIso, queryAdminNews, readDb, updateDb, upsertById } from '../../../db.mjs';
+import {
+  deleteCollectionPayloads,
+  getCollectionPayload,
+  listCollectionPayloads,
+  nowIso,
+  patchCollectionPayload,
+  queryAdminNews,
+  upsertCollectionRows,
+} from '../../../db.mjs';
 import { retranslateNewsItems } from '../../../jobs/runner.mjs';
 import {
+  displayNews,
   json,
   readBody,
 } from '../../shared.mjs';
@@ -54,17 +63,10 @@ export async function handleAdminNewsRoutes({ req, res, url, pathname, adminId }
   if (req.method === 'POST' && pathname === '/admin/api/news/delete') {
     const body = await readBody(req);
     const ids = Array.isArray(body.ids) ? body.ids : [];
-    const result = await updateDb((db) => {
-      const idSet = new Set(ids);
-      const beforeNews = db.newsItems.length;
-      const beforeTranslations = db.newsTranslations.length;
-      db.newsItems = db.newsItems.filter((item) => !idSet.has(item.id));
-      db.newsTranslations = db.newsTranslations.filter((item) => !idSet.has(item.newsItemId));
-      return {
-        newsDeleted: beforeNews - db.newsItems.length,
-        translationsDeleted: beforeTranslations - db.newsTranslations.length,
-      };
-    });
+    const idSet = new Set(ids);
+    const translationsDeleted = (await listCollectionPayloads('newsTranslations')).filter((item) => idSet.has(item.newsItemId)).length;
+    const deleted = await deleteCollectionPayloads('newsItems', ids);
+    const result = { newsDeleted: deleted.deleted, translationsDeleted };
     json(res, 200, { data: result });
     return true;
   }
@@ -74,39 +76,36 @@ export async function handleAdminNewsRoutes({ req, res, url, pathname, adminId }
     const newsItemId = decodeURIComponent(hashtagMatch[1]);
     const body = await readBody(req);
     const locale = url.searchParams.get('locale') || 'ko';
-    const dbBefore = await readDb();
-    const exists = dbBefore.newsItems.some((n) => n.id === newsItemId);
-    if (!exists) {
+    const current = await getCollectionPayload('newsItems', newsItemId);
+    if (!current) {
       json(res, 404, { error: 'NEWS_ITEM_NOT_FOUND' });
       return true;
     }
-    const updated = await updateDb((db) => {
-      const item = db.newsItems.find((n) => n.id === newsItemId);
-      const explicitHashtags =
-        Object.prototype.hasOwnProperty.call(body, 'hashtags') || Object.prototype.hasOwnProperty.call(body, 'labels');
-      const unlockAuto = String(body.hashtagSource || '').toLowerCase() === 'auto' && !explicitHashtags;
-      if (unlockAuto) {
-        item.hashtagSource = 'auto';
-        item.hashtagsUpdatedAt = nowIso();
-        return displayNews(item, db.newsTranslations, locale);
-      }
-      let records;
-      if (Array.isArray(body.hashtags) && body.hashtags.length && typeof body.hashtags[0] === 'object') {
-        records = body.hashtags
-          .map((t, i) => ({
-            label: String(t.label || '').trim(),
-            order: Number.isFinite(Number(t.order)) ? Number(t.order) : i,
-            source: String(t.source || '').toLowerCase() === 'auto' ? 'auto' : 'manual',
-          }))
-          .filter((t) => t.label);
-      } else {
-        records = hashtagRecordsFromLabels(body.hashtags || body.labels || [], 'manual');
-      }
+    const item = { ...current };
+    const explicitHashtags =
+      Object.prototype.hasOwnProperty.call(body, 'hashtags') || Object.prototype.hasOwnProperty.call(body, 'labels');
+    const unlockAuto = String(body.hashtagSource || '').toLowerCase() === 'auto' && !explicitHashtags;
+    if (unlockAuto) {
+      item.hashtagSource = 'auto';
+      item.hashtagsUpdatedAt = nowIso();
+    } else {
+      const records =
+        Array.isArray(body.hashtags) && body.hashtags.length && typeof body.hashtags[0] === 'object'
+          ? body.hashtags
+              .map((t, i) => ({
+                label: String(t.label || '').trim(),
+                order: Number.isFinite(Number(t.order)) ? Number(t.order) : i,
+                source: String(t.source || '').toLowerCase() === 'auto' ? 'auto' : 'manual',
+              }))
+              .filter((t) => t.label)
+          : hashtagRecordsFromLabels(body.hashtags || body.labels || [], 'manual');
       item.hashtags = records;
       item.hashtagSource = 'manual';
       item.hashtagsUpdatedAt = nowIso();
-      return displayNews(item, db.newsTranslations, locale);
-    });
+    }
+    const saved = await patchCollectionPayload('newsItems', newsItemId, item);
+    const translations = (await listCollectionPayloads('newsTranslations')).filter((row) => row.newsItemId === newsItemId);
+    const updated = displayNews(saved, translations, locale);
     json(res, 200, { data: updated });
     return true;
   }
@@ -116,23 +115,23 @@ export async function handleAdminNewsRoutes({ req, res, url, pathname, adminId }
     const newsItemId = decodeURIComponent(translationMatch[1]);
     const locale = decodeURIComponent(translationMatch[2]);
     const body = await readBody(req);
-    const updated = await updateDb((db) =>
-      upsertById(db.newsTranslations, {
-        id: `${newsItemId}:${locale}`,
-        newsItemId,
-        locale,
-        title: String(body.title || ''),
-        summary: String(body.summary || ''),
-        content: String(body.content || ''),
-        provider: 'manual',
-        model: 'admin-edit',
-        status: 'manual',
-        errorMessage: null,
-        translatedAt: nowIso(),
-        editedByAdminId: adminId,
-        editedAt: nowIso(),
-      }),
-    );
+    const updated = {
+      id: `${newsItemId}:${locale}`,
+      newsItemId,
+      locale,
+      title: String(body.title || ''),
+      summary: String(body.summary || ''),
+      content: String(body.content || ''),
+      provider: 'manual',
+      model: 'admin-edit',
+      status: 'manual',
+      errorMessage: null,
+      translatedAt: nowIso(),
+      editedByAdminId: adminId,
+      editedAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+    await upsertCollectionRows('newsTranslations', [updated]);
     json(res, 200, { data: updated });
     return true;
   }

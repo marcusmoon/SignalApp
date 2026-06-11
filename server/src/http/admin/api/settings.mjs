@@ -1,14 +1,16 @@
 import {
-  ensureNewsSourcesFromItems,
   normalizeNewsSourceName,
   normalizeNewsSourceNameWithAliases,
   nowIso,
-  readDb,
+  listCollectionPayloads,
   listAdminUsers,
   createAdminUser,
   updateAdminUser,
   deleteAdminUser,
-  updateDb,
+  patchCollectionPayload,
+  patchSingletonPayload,
+  readSingletonPayload,
+  replaceCollectionPayloads,
 } from '../../../db.mjs';
 import { normalizeSocialLoginRedirectPath } from '../../../auth/socialAuthConfig.mjs';
 import { MARKET_LIST_KEYS, normalizeMarketSymbols, publicMarketList } from '../../../marketLists.mjs';
@@ -21,7 +23,7 @@ import {
   youtubeChannelIdFromHandle,
 } from '../../../db/youtubeChannels.mjs';
 import { ensureRssSourcesCatalog, normalizeRssSource, publicRssSource } from '../../../db/rssSources.mjs';
-import { getMarketList, json, readBody } from '../../shared.mjs';
+import { json, readBody } from '../../shared.mjs';
 
 const SUPPORTED_PROVIDERS = ['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko', 'sec', 'rss'];
 
@@ -78,8 +80,7 @@ function adminUserErrorStatus(error) {
 
 export async function handleAdminSettingsRoutes({ req, res, url, pathname, adminId }) {
   if (req.method === 'GET' && pathname === '/admin/api/translation-settings') {
-    const db = await readDb();
-    json(res, 200, { data: db.translationSettings });
+    json(res, 200, { data: await listCollectionPayloads('translationSettings') });
     return true;
   }
 
@@ -89,51 +90,47 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
   }
 
   if (req.method === 'GET' && pathname === '/admin/api/app-settings') {
-    const db = await readDb();
-    json(res, 200, { data: redactAppSettingsForAdminGet(db.appSettings || null) });
+    json(res, 200, { data: redactAppSettingsForAdminGet((await readSingletonPayload('appSettings')) || null) });
     return true;
   }
 
   if (req.method === 'PATCH' && pathname === '/admin/api/app-settings') {
     const patch = await readBody(req);
-    const updated = await updateDb((db) => {
-      const cur = db.appSettings && typeof db.appSettings === 'object' ? db.appSettings : {};
-      const next = { ...cur };
-      if (patch.marketQuotesMaxAgeSec != null) {
-        const n = Number(patch.marketQuotesMaxAgeSec);
-        if (Number.isFinite(n)) next.marketQuotesMaxAgeSec = Math.max(0, Math.min(300, Math.floor(n)));
-      }
-      if (patch.youtubeCurationHandles != null) {
-        next.youtubeCurationHandles = normalizeYoutubeCurationHandles(patch.youtubeCurationHandles);
-      }
-      if (patch.socialAuth && typeof patch.socialAuth === 'object') {
-        const prev = cur.socialAuth && typeof cur.socialAuth === 'object' ? cur.socialAuth : {};
-        const p = stripSocialAuthClientMeta(patch.socialAuth);
-        const mergeProv = (key) =>
-          p[key] && typeof p[key] === 'object' ? { ...(prev[key] || {}), ...p[key] } : prev[key];
-        const pathPatch =
-          typeof p.socialLoginRedirectPath === 'string'
-            ? p.socialLoginRedirectPath
-            : typeof p.oauthRedirectPath === 'string'
-              ? p.oauthRedirectPath
-              : undefined;
-        const prevSeg = normalizeSocialLoginRedirectPath(prev.socialLoginRedirectPath || prev.oauthRedirectPath || 'oauth');
-        const normalizedRedirect =
-          pathPatch !== undefined ? normalizeSocialLoginRedirectPath(pathPatch) : prevSeg;
-        next.socialAuth = {
-          ...prev,
-          socialLoginRedirectPath: normalizedRedirect,
-          oauthRedirectPath: normalizedRedirect,
-          google: mergeProv('google'),
-          apple: mergeProv('apple'),
-          kakao: mergeProv('kakao'),
-          naver: mergeProv('naver'),
-        };
-      }
-      next.updatedAt = nowIso();
-      db.appSettings = next;
-      return next;
-    });
+    const cur = (await readSingletonPayload('appSettings')) || {};
+    const next = { ...cur };
+    if (patch.marketQuotesMaxAgeSec != null) {
+      const n = Number(patch.marketQuotesMaxAgeSec);
+      if (Number.isFinite(n)) next.marketQuotesMaxAgeSec = Math.max(0, Math.min(300, Math.floor(n)));
+    }
+    if (patch.youtubeCurationHandles != null) {
+      next.youtubeCurationHandles = normalizeYoutubeCurationHandles(patch.youtubeCurationHandles);
+    }
+    if (patch.socialAuth && typeof patch.socialAuth === 'object') {
+      const prev = cur.socialAuth && typeof cur.socialAuth === 'object' ? cur.socialAuth : {};
+      const p = stripSocialAuthClientMeta(patch.socialAuth);
+      const mergeProv = (key) =>
+        p[key] && typeof p[key] === 'object' ? { ...(prev[key] || {}), ...p[key] } : prev[key];
+      const pathPatch =
+        typeof p.socialLoginRedirectPath === 'string'
+          ? p.socialLoginRedirectPath
+          : typeof p.oauthRedirectPath === 'string'
+            ? p.oauthRedirectPath
+            : undefined;
+      const prevSeg = normalizeSocialLoginRedirectPath(prev.socialLoginRedirectPath || prev.oauthRedirectPath || 'oauth');
+      const normalizedRedirect =
+        pathPatch !== undefined ? normalizeSocialLoginRedirectPath(pathPatch) : prevSeg;
+      next.socialAuth = {
+        ...prev,
+        socialLoginRedirectPath: normalizedRedirect,
+        oauthRedirectPath: normalizedRedirect,
+        google: mergeProv('google'),
+        apple: mergeProv('apple'),
+        kakao: mergeProv('kakao'),
+        naver: mergeProv('naver'),
+      };
+    }
+    next.updatedAt = nowIso();
+    const updated = await patchSingletonPayload('appSettings', next);
     json(res, 200, { data: redactAppSettingsForAdminGet(updated) });
     return true;
   }
@@ -193,12 +190,10 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
   }
 
   if (req.method === 'GET' && pathname === '/admin/api/news-sources') {
-    const db = await readDb();
-    ensureNewsSourcesFromItems(db);
     const category = url.searchParams.get('category');
     const cat = category ? String(category).trim().toLowerCase() : '';
     const includeHidden = url.searchParams.get('includeHidden') === '1';
-    const sources = [...(db.newsSources || [])]
+    const sources = [...(await listCollectionPayloads('newsSources'))]
       .map((s) => ({
         id: String(s.id || '').trim(),
         name: normalizeNewsSourceName(s.name),
@@ -216,32 +211,26 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
   }
 
   if (req.method === 'GET' && pathname === '/admin/api/news-source-settings') {
-    const db = await readDb();
-    json(res, 200, { data: db.newsSourceSettings || null });
+    json(res, 200, { data: (await readSingletonPayload('newsSourceSettings')) || null });
     return true;
   }
 
   if (req.method === 'PATCH' && pathname === '/admin/api/news-source-settings') {
     const patch = await readBody(req);
-    const updated = await updateDb((db) => {
-      const cur = db.newsSourceSettings && typeof db.newsSourceSettings === 'object' ? db.newsSourceSettings : {};
-      const next = {
-        ...cur,
-        autoEnableNewSources: {
-          ...(cur.autoEnableNewSources || {}),
-          ...(patch.autoEnableNewSources && typeof patch.autoEnableNewSources === 'object' ? patch.autoEnableNewSources : {}),
-        },
-        aliases: {
-          ...(cur.aliases || {}),
-          ...(patch.aliases && typeof patch.aliases === 'object' ? patch.aliases : {}),
-        },
-        updatedAt: nowIso(),
-      };
-      db.newsSourceSettings = next;
-      // Re-normalize catalog names when aliases change.
-      ensureNewsSourcesFromItems(db);
-      return next;
-    });
+    const cur = (await readSingletonPayload('newsSourceSettings')) || {};
+    const next = {
+      ...cur,
+      autoEnableNewSources: {
+        ...(cur.autoEnableNewSources || {}),
+        ...(patch.autoEnableNewSources && typeof patch.autoEnableNewSources === 'object' ? patch.autoEnableNewSources : {}),
+      },
+      aliases: {
+        ...(cur.aliases || {}),
+        ...(patch.aliases && typeof patch.aliases === 'object' ? patch.aliases : {}),
+      },
+      updatedAt: nowIso(),
+    };
+    const updated = await patchSingletonPayload('newsSourceSettings', next);
     json(res, 200, { data: updated });
     return true;
   }
@@ -250,78 +239,76 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
     const patch = await readBody(req);
     const items = Array.isArray(patch?.items) ? patch.items : [];
     const category = String(patch?.category || '').trim().toLowerCase();
-    const updated = await updateDb((db) => {
-      ensureNewsSourcesFromItems(db);
-      const cur = Array.isArray(db.newsSources) ? db.newsSources : [];
-      const byKey = new Map(cur.map((s) => [`${String(s.id || '').trim()}|${String(s.category || 'global')}`, s]));
-      const seen = new Set();
-      const next = [];
-      let order = 0;
+    const newsSourceSettings = (await readSingletonPayload('newsSourceSettings')) || {};
+    const cur = await listCollectionPayloads('newsSources');
+    const byKey = new Map(cur.map((s) => [`${String(s.id || '').trim()}|${String(s.category || 'global')}`, s]));
+    const seen = new Set();
+    const next = [];
+    let order = 0;
 
-      for (const raw of items) {
-        const id = String(raw?.id || '').trim();
-        const cat = String(raw?.category || category || 'global').trim().toLowerCase() || 'global';
-        const key = `${id}|${cat}`;
-        if (!id || seen.has(key)) continue;
-        const prevHit = byKey.get(key) || {};
-        const name = normalizeNewsSourceName(raw?.name || prevHit?.name);
-        if (!name) continue;
-        seen.add(key);
-        order += 1;
-        next.push({
-          ...prevHit,
-          id,
-          name: normalizeNewsSourceNameWithAliases(name, cat, db.newsSourceSettings),
-          category: cat,
-          enabled: raw?.enabled !== false,
-          hidden: raw?.hidden === true,
-          order: Number(raw?.order) || order,
-          updatedAt: nowIso(),
-        });
-      }
+    for (const raw of items) {
+      const id = String(raw?.id || '').trim();
+      const cat = String(raw?.category || category || 'global').trim().toLowerCase() || 'global';
+      const key = `${id}|${cat}`;
+      if (!id || seen.has(key)) continue;
+      const prevHit = byKey.get(key) || {};
+      const name = normalizeNewsSourceName(raw?.name || prevHit?.name);
+      if (!name) continue;
+      seen.add(key);
+      order += 1;
+      next.push({
+        ...prevHit,
+        id,
+        name: normalizeNewsSourceNameWithAliases(name, cat, newsSourceSettings),
+        category: cat,
+        enabled: raw?.enabled !== false,
+        hidden: raw?.hidden === true,
+        order: Number(raw?.order) || order,
+        updatedAt: nowIso(),
+      });
+    }
 
-      // Keep anything not explicitly mentioned (safety).
-      for (const s of cur) {
-        const id = String(s.id || '').trim();
-        const cat = String(s.category || 'global');
-        const key = `${id}|${cat}`;
-        if (!id || seen.has(key)) continue;
-        next.push({ ...s, enabled: s.enabled !== false });
-      }
+    // Keep anything not explicitly mentioned (safety).
+    for (const s of cur) {
+      const id = String(s.id || '').trim();
+      const cat = String(s.category || 'global');
+      const key = `${id}|${cat}`;
+      if (!id || seen.has(key)) continue;
+      next.push({ ...s, enabled: s.enabled !== false });
+    }
 
-      next.sort(
-        (a, b) =>
-          String(a.category || 'global').localeCompare(String(b.category || 'global')) ||
-          (Number(a.order) || 0) - (Number(b.order) || 0) ||
-          String(a.name || '').localeCompare(String(b.name || '')),
-      );
-      // Normalize order within each category
-      const counters = new Map();
-      for (const s of next) {
-        const c = String(s.category || 'global');
-        const n = (counters.get(c) || 0) + 1;
-        counters.set(c, n);
-        s.order = n;
-      }
-      db.newsSources = next;
-      return next.map((s) => ({
-        id: String(s.id || '').trim(),
-        name: normalizeNewsSourceName(s.name),
-        category: String(s.category || 'global'),
-        hidden: s.hidden === true,
-        enabled: s.enabled !== false,
-        order: Number(s.order) || 0,
-      }));
-    });
+    next.sort(
+      (a, b) =>
+        String(a.category || 'global').localeCompare(String(b.category || 'global')) ||
+        (Number(a.order) || 0) - (Number(b.order) || 0) ||
+        String(a.name || '').localeCompare(String(b.name || '')),
+    );
+    // Normalize order within each category.
+    const counters = new Map();
+    for (const s of next) {
+      const c = String(s.category || 'global');
+      const n = (counters.get(c) || 0) + 1;
+      counters.set(c, n);
+      s.order = n;
+    }
+    await replaceCollectionPayloads('newsSources', next);
+    const updated = next.map((s) => ({
+      id: String(s.id || '').trim(),
+      name: normalizeNewsSourceName(s.name),
+      category: String(s.category || 'global'),
+      hidden: s.hidden === true,
+      enabled: s.enabled !== false,
+      order: Number(s.order) || 0,
+    }));
     json(res, 200, { data: updated });
     return true;
   }
 
   if (req.method === 'GET' && pathname === '/admin/api/youtube-channels') {
-    const db = await readDb();
     const includeHidden = url.searchParams.get('includeHidden') === '1';
-    ensureYoutubeChannelsCatalog(db.appSettings);
-    const channels = [...(db.appSettings.youtubeChannels || [])]
+    const appSettings = (await readSingletonPayload('appSettings')) || {};
+    ensureYoutubeChannelsCatalog(appSettings);
+    const channels = [...(appSettings.youtubeChannels || [])]
       .map((c) => ({
         id: String(c.id || '').trim(),
         handle: normalizeYoutubeHandle(c.handle),
@@ -340,41 +327,41 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
   if (req.method === 'PUT' && pathname === '/admin/api/youtube-channels') {
     const patch = await readBody(req);
     const items = Array.isArray(patch?.items) ? patch.items : [];
-    const updated = await updateDb((db) => {
-      const cur = ensureYoutubeChannelsCatalog(db.appSettings);
-      const byId = new Map(cur.map((c) => [String(c.id || '').trim(), c]));
-      const next = [];
-      const seen = new Set();
-      let order = 0;
-      for (const raw of items) {
-        const handle = normalizeYoutubeHandle(raw?.handle || raw?.id);
-        if (!handle) continue;
-        const id = String(raw?.id || '').trim() || youtubeChannelIdFromHandle(handle);
-        if (!id || seen.has(id)) continue;
-        seen.add(id);
-        order += 1;
-        const prev = byId.get(id);
-        next.push({
-          id,
-          handle,
-          title: String(raw?.title || prev?.title || `@${handle}`).trim() || `@${handle}`,
-          enabled: raw?.enabled !== false,
-          hidden: raw?.hidden === true,
-          order,
-          updatedAt: nowIso(),
-        });
-      }
-      for (const c of cur) {
-        const id = String(c.id || '').trim();
-        if (!id || seen.has(id)) continue;
-        next.push({ ...c, order: (order += 1) });
-        seen.add(id);
-      }
-      db.appSettings.youtubeChannels = next;
-      syncYoutubeCurationHandlesFromCatalog(db.appSettings);
-      db.appSettings.updatedAt = nowIso();
-      return db.appSettings.youtubeChannels;
-    });
+    const appSettings = (await readSingletonPayload('appSettings')) || {};
+    const cur = ensureYoutubeChannelsCatalog(appSettings);
+    const byId = new Map(cur.map((c) => [String(c.id || '').trim(), c]));
+    const next = [];
+    const seen = new Set();
+    let order = 0;
+    for (const raw of items) {
+      const handle = normalizeYoutubeHandle(raw?.handle || raw?.id);
+      if (!handle) continue;
+      const id = String(raw?.id || '').trim() || youtubeChannelIdFromHandle(handle);
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      order += 1;
+      const prev = byId.get(id);
+      next.push({
+        id,
+        handle,
+        title: String(raw?.title || prev?.title || `@${handle}`).trim() || `@${handle}`,
+        enabled: raw?.enabled !== false,
+        hidden: raw?.hidden === true,
+        order,
+        updatedAt: nowIso(),
+      });
+    }
+    for (const c of cur) {
+      const id = String(c.id || '').trim();
+      if (!id || seen.has(id)) continue;
+      next.push({ ...c, order: (order += 1) });
+      seen.add(id);
+    }
+    appSettings.youtubeChannels = next;
+    syncYoutubeCurationHandlesFromCatalog(appSettings);
+    appSettings.updatedAt = nowIso();
+    const updatedSettings = await patchSingletonPayload('appSettings', appSettings);
+    const updated = updatedSettings.youtubeChannels || [];
     const channels = [...(updated || [])]
       .map((c) => ({
         id: String(c.id || '').trim(),
@@ -391,8 +378,8 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
   }
 
   if (req.method === 'GET' && pathname === '/admin/api/rss-sources') {
-    const db = await readDb();
     const includeHidden = url.searchParams.get('includeHidden') === '1';
+    const db = { rssSources: await listCollectionPayloads('rssSources') };
     const rows = ensureRssSourcesCatalog(db)
       .map(publicRssSource)
       .filter((source) => (includeHidden ? true : !source.hidden))
@@ -404,60 +391,54 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
   if (req.method === 'PUT' && pathname === '/admin/api/rss-sources') {
     const patch = await readBody(req);
     const items = Array.isArray(patch?.items) ? patch.items : [];
-    const updated = await updateDb((db) => {
-      const cur = ensureRssSourcesCatalog(db);
-      const byId = new Map(cur.map((source) => [String(source.id || ''), source]));
-      const next = [];
-      const seen = new Set();
-      let order = 0;
-      for (const raw of items) {
-        const normalized = normalizeRssSource(raw, order);
-        if (!normalized.id || !normalized.feedUrl || seen.has(normalized.id)) continue;
-        const prev = byId.get(normalized.id) || {};
-        order += 1;
-        next.push({
-          ...prev,
-          ...normalized,
-          order,
-          createdAt: prev.createdAt || normalized.createdAt || nowIso(),
-          updatedAt: nowIso(),
-        });
-        seen.add(normalized.id);
-      }
-      db.rssSources = next;
-      return db.rssSources.map(publicRssSource);
-    });
+    const db = { rssSources: await listCollectionPayloads('rssSources') };
+    const cur = ensureRssSourcesCatalog(db);
+    const byId = new Map(cur.map((source) => [String(source.id || ''), source]));
+    const next = [];
+    const seen = new Set();
+    let order = 0;
+    for (const raw of items) {
+      const normalized = normalizeRssSource(raw, order);
+      if (!normalized.id || !normalized.feedUrl || seen.has(normalized.id)) continue;
+      const prev = byId.get(normalized.id) || {};
+      order += 1;
+      next.push({
+        ...prev,
+        ...normalized,
+        order,
+        createdAt: prev.createdAt || normalized.createdAt || nowIso(),
+        updatedAt: nowIso(),
+      });
+      seen.add(normalized.id);
+    }
+    await replaceCollectionPayloads('rssSources', next);
+    const updated = next.map(publicRssSource);
     json(res, 200, { data: updated });
     return true;
   }
 
   if (req.method === 'GET' && pathname === '/admin/api/ui-model-presets') {
-    const db = await readDb();
-    json(res, 200, { data: db.uiModelPresets || null });
+    json(res, 200, { data: (await readSingletonPayload('uiModelPresets')) || null });
     return true;
   }
 
   if (req.method === 'PATCH' && pathname === '/admin/api/ui-model-presets') {
     const patch = await readBody(req);
-    const updated = await updateDb((db) => {
-      const cur = db.uiModelPresets && typeof db.uiModelPresets === 'object' ? db.uiModelPresets : {};
-      const next = {
-        ...cur,
-        openai: Array.isArray(patch.openai) ? patch.openai : cur.openai,
-        claude: Array.isArray(patch.claude) ? patch.claude : cur.claude,
-        mock: Array.isArray(patch.mock) ? patch.mock : cur.mock,
-        updatedAt: nowIso(),
-      };
-      db.uiModelPresets = next;
-      return next;
-    });
+    const cur = (await readSingletonPayload('uiModelPresets')) || {};
+    const next = {
+      ...cur,
+      openai: Array.isArray(patch.openai) ? patch.openai : cur.openai,
+      claude: Array.isArray(patch.claude) ? patch.claude : cur.claude,
+      mock: Array.isArray(patch.mock) ? patch.mock : cur.mock,
+      updatedAt: nowIso(),
+    };
+    const updated = await patchSingletonPayload('uiModelPresets', next);
     json(res, 200, { data: updated });
     return true;
   }
 
   if (req.method === 'GET' && pathname === '/admin/api/market-lists') {
-    const db = await readDb();
-    json(res, 200, { data: (db.marketLists || []).map(publicMarketList) });
+    json(res, 200, { data: (await listCollectionPayloads('marketLists')).map(publicMarketList) });
     return true;
   }
 
@@ -469,15 +450,15 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
       return true;
     }
     const patch = await readBody(req);
-    const updated = await updateDb((db) => {
-      const list = getMarketList(db, key);
-      if (!list) throw new Error(`MARKET_LIST_NOT_FOUND:${key}`);
-      if (typeof patch.displayName === 'string') list.displayName = patch.displayName.trim() || key;
-      if (typeof patch.description === 'string') list.description = patch.description.trim();
-      if (patch.symbols != null) list.symbols = normalizeMarketSymbols(patch.symbols);
-      list.updatedAt = nowIso();
-      return publicMarketList(list);
-    });
+    const lists = await listCollectionPayloads('marketLists');
+    const list = lists.find((item) => item.key === key);
+    if (!list) throw new Error(`MARKET_LIST_NOT_FOUND:${key}`);
+    const next = { ...list };
+    if (typeof patch.displayName === 'string') next.displayName = patch.displayName.trim() || key;
+    if (typeof patch.description === 'string') next.description = patch.description.trim();
+    if (patch.symbols != null) next.symbols = normalizeMarketSymbols(patch.symbols);
+    next.updatedAt = nowIso();
+    const updated = publicMarketList(await patchCollectionPayload('marketLists', key, next));
     json(res, 200, { data: updated });
     return true;
   }
@@ -518,22 +499,18 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
   if (req.method === 'PATCH' && settingMatch) {
     const locale = decodeURIComponent(settingMatch[1]);
     const patch = await readBody(req);
-    const updated = await updateDb((db) => {
-      let setting = db.translationSettings.find((s) => s.locale === locale);
-      if (!setting) {
-        setting = { locale, provider: 'mock', enabled: false, autoTranslateNews: false };
-        db.translationSettings.push(setting);
-      }
-      for (const key of ['provider']) {
-        if (typeof patch[key] === 'string') setting[key] = patch[key];
-      }
-      if ('model' in setting) delete setting.model;
-      for (const key of ['enabled', 'autoTranslateNews']) {
-        if (typeof patch[key] === 'boolean') setting[key] = patch[key];
-      }
-      setting.updatedAt = nowIso();
-      return setting;
-    });
+    const settings = await listCollectionPayloads('translationSettings');
+    const current = settings.find((s) => s.locale === locale) || { locale, provider: 'mock', enabled: false, autoTranslateNews: false };
+    const next = { ...current };
+    for (const key of ['provider']) {
+      if (typeof patch[key] === 'string') next[key] = patch[key];
+    }
+    next.model = null;
+    for (const key of ['enabled', 'autoTranslateNews']) {
+      if (typeof patch[key] === 'boolean') next[key] = patch[key];
+    }
+    next.updatedAt = nowIso();
+    const updated = await patchCollectionPayload('translationSettings', locale, next);
     json(res, 200, { data: updated });
     return true;
   }

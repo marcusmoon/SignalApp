@@ -1,4 +1,4 @@
-import { readDb } from '../../../db.mjs';
+import { listCollectionPayloads } from '../../../db.mjs';
 import { dateKeyInTimeZone, json, paginate } from '../../shared.mjs';
 
 function filterAdminInsights(items, url) {
@@ -77,8 +77,7 @@ function adminInsight(item) {
 
 export async function handleAdminInsightsRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/admin/api/insights') {
-    const db = await readDb();
-    const filtered = filterAdminInsights(db.insightItems, url).map(adminInsight);
+    const filtered = filterAdminInsights(await listCollectionPayloads('insightItems'), url).map(adminInsight);
     const now = Date.now();
     const pushReady = filtered.filter((item) => item.pushCandidate && item.pushTitle && item.pushBody).length;
     const sourceLinked = filtered.filter((item) => item.sourceRefs.length > 0).length;

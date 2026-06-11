@@ -1,4 +1,4 @@
-import { updateDb } from '../../../db.mjs';
+import { clearCollections } from '../../../db.mjs';
 import { json, readBody } from '../../shared.mjs';
 
 const RESET_TARGETS = {
@@ -29,14 +29,7 @@ export async function handleAdminDataResetRoutes({ req, res, pathname }) {
       json(res, 400, { error: 'NO_RESET_TARGETS' });
       return true;
     }
-    const result = await updateDb((db) => {
-      const counts = {};
-      for (const target of normalizedTargets) {
-        counts[target] = Array.isArray(db[target]) ? db[target].length : 0;
-        db[target] = [];
-      }
-      return { targets: normalizedTargets, counts };
-    });
+    const result = await clearCollections(normalizedTargets);
     json(res, 200, { data: result });
     return true;
   }

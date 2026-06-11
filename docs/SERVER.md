@@ -65,7 +65,9 @@ flyway \
 - provider 원본 응답과 유연한 필드는 `payload jsonb`에 보관한다.
 - `news_items`, `youtube_videos`, `calendar_events`, `market_quotes`, `price_series`, `insight_items` 등 공개 API 조회 테이블은 날짜/카테고리/심볼 인덱스를 가진다.
 - Job lock은 `polling_job_locks`에서 관리한다. 전체 DB 쓰기는 lock row를 지우지 않도록 upsert 중심으로 동작한다.
-- DB abstraction은 JPA식 entity ORM보다 repository + typed SQL/query builder 방향이 맞다. Postgres 운영이 안정화된 뒤 `Kysely` 또는 `Drizzle` 도입을 검토한다.
+- DB abstraction은 JPA식 entity ORM보다 repository + typed SQL/query builder 방향으로 관리한다.
+- Flyway가 스키마 변경의 기준이며, Kysely는 런타임 query builder로만 사용한다. Kysely schema 생성/migration은 사용하지 않는다.
+- 신규 DB 접근은 `server/src/db/repositories/`에 기능별 repository로 추가한다. 기존 raw SQL은 성능 민감도와 변경 리스크가 낮은 영역부터 점진적으로 Kysely로 옮긴다.
 
 ## API 그룹
 

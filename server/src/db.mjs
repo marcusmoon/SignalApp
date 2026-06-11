@@ -1,21 +1,23 @@
 import crypto from 'node:crypto';
 import { config } from './config.mjs';
 import {
-  ensureDbShape,
-  shapeDbFromStores,
-  splitStoresFromDb,
-} from './db/shape.mjs';
-import {
   ensureNewsSourcesFromItems,
   normalizeNewsSourceName,
   normalizeNewsSourceNameWithAliases,
 } from './db/newsSources.mjs';
 import { nowIso } from './db/time.mjs';
+import { checkKyselyConnectivity, queryKysely, withKyselyTransaction } from './db/kysely/client.mjs';
 import {
-  checkPostgresConnectivity,
-  queryPostgres,
-  withPostgresClient,
-} from './db/postgres/client.mjs';
+  findPollingJob,
+  findPollingJobRuns,
+  findPollingJobs,
+} from './db/repositories/pollingJobsRepository.mjs';
+import {
+  acquirePollingJobLockRow,
+  deletePollingJobLock,
+  findPollingJobLock,
+  findPollingJobLocks,
+} from './db/repositories/pollingJobLocksRepository.mjs';
 import {
   cleanNewsTitleForDisplay,
   cleanTranslationText,
@@ -486,16 +488,7 @@ const singletonSpecs = [
 ];
 
 const collectionSpecsByKey = new Map(collectionSpecs.map((spec) => [spec.key, spec]));
-
-async function readCollection(client, spec) {
-  const result = await client.query(`SELECT payload FROM ${spec.table} ORDER BY position ASC`);
-  return result.rows.map(payloadFromRow).filter(Boolean);
-}
-
-async function readSingleton(client, spec) {
-  const result = await client.query(`SELECT payload FROM ${spec.table} WHERE ${spec.pk} = $1`, [spec.id]);
-  return payloadFromRow(result.rows[0]);
-}
+const singletonSpecsByKey = new Map(singletonSpecs.map((spec) => [spec.key, spec]));
 
 async function hasStructuredData(client) {
   const result = await client.query(`
@@ -505,28 +498,6 @@ async function hasStructuredData(client) {
       (SELECT COUNT(*) FROM polling_jobs) AS count
   `);
   return Number(result.rows[0]?.count) > 0;
-}
-
-async function readStructuredDb(client) {
-  if (!(await hasStructuredData(client))) return null;
-  const settings = {};
-  const stores = {
-    settings,
-    jobs: {},
-    news: {},
-    calendar: {},
-    concalls: {},
-    youtube: {},
-    market: {},
-    insights: {},
-  };
-  for (const spec of singletonSpecs) {
-    stores[spec.store][spec.key] = await readSingleton(client, spec);
-  }
-  for (const spec of collectionSpecs) {
-    stores[spec.store][spec.key] = await readCollection(client, spec);
-  }
-  return shapeDbFromStores(stores);
 }
 
 async function insertSingleton(client, spec, payload) {
@@ -565,36 +536,6 @@ async function insertCollectionRow(client, spec, row, index) {
   );
 }
 
-async function writeStructuredDb(client, dbObject) {
-  const stores = splitStoresFromDb(dbObject);
-  for (const spec of singletonSpecs) {
-    await insertSingleton(client, spec, stores[spec.store][spec.key]);
-  }
-  const seenByTable = new Map();
-  for (const spec of collectionSpecs) {
-    const rows = stores[spec.store][spec.key] || [];
-    const seen = new Set();
-    for (let index = 0; index < rows.length; index += 1) {
-      const key = cleanText(spec.keyOf(rows[index]));
-      if (!key) continue;
-      seen.add(key);
-      await insertCollectionRow(client, spec, rows[index], index);
-    }
-    seenByTable.set(spec.table, { spec, seen });
-  }
-  for (const spec of [...collectionSpecs].reverse()) {
-    const state = seenByTable.get(spec.table);
-    if (!state) continue;
-    const existing = await client.query(`SELECT ${spec.pk} AS id FROM ${spec.table}`);
-    for (const row of existing.rows) {
-      const key = cleanText(row.id);
-      if (key && !state.seen.has(key)) {
-        await client.query(`DELETE FROM ${spec.table} WHERE ${spec.pk} = $1`, [key]);
-      }
-    }
-  }
-}
-
 async function seedAdminUsersIfEmpty(client) {
   const count = await client.query('SELECT COUNT(*)::int AS count FROM admin_users');
   if (Number(count.rows[0]?.count) > 0) return;
@@ -622,76 +563,16 @@ async function seedAdminUsersIfEmpty(client) {
 
 async function ensureSeeded() {
   if (seedChecked) return;
-  await withPostgresClient(async (client) => {
-    await client.query('BEGIN');
+  await withKyselyTransaction(async (client) => {
     try {
       if (!(await hasStructuredData(client))) {
         console.warn('[db] default runtime data is missing. Run Flyway migrations before deploying.');
       }
       await seedAdminUsersIfEmpty(client);
-      await client.query('COMMIT');
       seedChecked = true;
     } catch (error) {
-      await client.query('ROLLBACK');
       throw error;
     }
-  });
-}
-
-function emptyStructuredDb() {
-  return shapeDbFromStores({});
-}
-
-async function readDbBody(client = null) {
-  if (client) {
-    const db = await readStructuredDb(client);
-    return db || emptyStructuredDb();
-  }
-  await ensureSeeded();
-  return withPostgresClient(async (conn) => {
-    const db = await readStructuredDb(conn);
-    return db || emptyStructuredDb();
-  });
-}
-
-export async function readDb() {
-  return withDbExclusive(() => readDbBody());
-}
-
-export async function writeDb(db) {
-  return withDbExclusive(async () => {
-    await ensureSeeded();
-    await withPostgresClient(async (client) => {
-      await client.query('BEGIN');
-      try {
-        await writeStructuredDb(client, ensureDbShape(db));
-        await client.query('COMMIT');
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      }
-    });
-    clearPublicReadCache();
-  });
-}
-
-export async function updateDb(mutator) {
-  return withDbExclusive(async () => {
-    await ensureSeeded();
-    return withPostgresClient(async (client) => {
-      await client.query('BEGIN');
-      try {
-        const db = await readDbBody(client);
-        const result = await mutator(db);
-        await writeStructuredDb(client, ensureDbShape(db));
-        await client.query('COMMIT');
-        clearPublicReadCache();
-        return result;
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      }
-    });
   });
 }
 
@@ -702,15 +583,12 @@ export async function upsertCollectionRows(collectionKey, rows = []) {
   if (safeRows.length === 0) return { count: 0 };
   return withDbExclusive(async () => {
     await ensureSeeded();
-    await withPostgresClient(async (client) => {
-      await client.query('BEGIN');
+    await withKyselyTransaction(async (client) => {
       try {
         for (let index = 0; index < safeRows.length; index += 1) {
           await insertCollectionRow(client, spec, safeRows[index], index);
         }
-        await client.query('COMMIT');
       } catch (error) {
-        await client.query('ROLLBACK');
         throw error;
       }
     });
@@ -726,8 +604,7 @@ export async function patchCollectionPayload(collectionKey, key, patch = {}) {
   if (!id) throw new Error('COLLECTION_KEY_REQUIRED');
   return withDbExclusive(async () => {
     await ensureSeeded();
-    return withPostgresClient(async (client) => {
-      await client.query('BEGIN');
+    return withKyselyTransaction(async (client) => {
       try {
         const current = await client.query(`SELECT payload, position FROM ${spec.table} WHERE ${spec.pk} = $1 FOR UPDATE`, [id]);
         const next = { ...(payloadFromRow(current.rows[0]) || {}), ...patch };
@@ -737,11 +614,119 @@ export async function patchCollectionPayload(collectionKey, key, patch = {}) {
           else next[spec.pk] = id;
         }
         await insertCollectionRow(client, spec, next, Number(current.rows[0]?.position) || 0);
-        await client.query('COMMIT');
         clearPublicReadCache();
         return next;
       } catch (error) {
-        await client.query('ROLLBACK');
+        throw error;
+      }
+    });
+  });
+}
+
+export async function listCollectionPayloads(collectionKey) {
+  const spec = collectionSpecsByKey.get(collectionKey);
+  if (!spec) throw new Error(`UNKNOWN_COLLECTION:${collectionKey}`);
+  await ensureSeeded();
+  const result = await queryKysely(`SELECT payload FROM ${spec.table} ORDER BY position ASC`);
+  return result.rows.map(payloadFromRow).filter(Boolean);
+}
+
+export async function getCollectionPayload(collectionKey, key) {
+  const spec = collectionSpecsByKey.get(collectionKey);
+  if (!spec) throw new Error(`UNKNOWN_COLLECTION:${collectionKey}`);
+  const id = cleanText(key);
+  if (!id) return null;
+  await ensureSeeded();
+  const result = await queryKysely(`SELECT payload FROM ${spec.table} WHERE ${spec.pk} = $1`, [id]);
+  return payloadFromRow(result.rows[0]);
+}
+
+export async function deleteCollectionPayloads(collectionKey, keys = []) {
+  const spec = collectionSpecsByKey.get(collectionKey);
+  if (!spec) throw new Error(`UNKNOWN_COLLECTION:${collectionKey}`);
+  const ids = [...new Set((Array.isArray(keys) ? keys : []).map(cleanText).filter(Boolean))];
+  if (ids.length === 0) return { deleted: 0 };
+  return withDbExclusive(async () => {
+    await ensureSeeded();
+    const result = await queryKysely(`DELETE FROM ${spec.table} WHERE ${spec.pk} = ANY($1::text[])`, [ids]);
+    clearPublicReadCache();
+    return { deleted: Number(result.rowCount) || 0 };
+  });
+}
+
+export async function clearCollections(collectionKeys = []) {
+  const keys = [...new Set((Array.isArray(collectionKeys) ? collectionKeys : []).map(cleanText).filter(Boolean))];
+  return withDbExclusive(async () => {
+    await ensureSeeded();
+    return withKyselyTransaction(async (client) => {
+      try {
+        const counts = {};
+        for (const key of keys) {
+          const spec = collectionSpecsByKey.get(key);
+          if (!spec) continue;
+          const count = await client.query(`SELECT COUNT(*)::int AS count FROM ${spec.table}`);
+          await client.query(`DELETE FROM ${spec.table}`);
+          counts[key] = Number(count.rows[0]?.count) || 0;
+        }
+        clearPublicReadCache();
+        return { targets: keys.filter((key) => collectionSpecsByKey.has(key)), counts };
+      } catch (error) {
+        throw error;
+      }
+    });
+  });
+}
+
+export async function replaceCollectionPayloads(collectionKey, rows = []) {
+  const spec = collectionSpecsByKey.get(collectionKey);
+  if (!spec) throw new Error(`UNKNOWN_COLLECTION:${collectionKey}`);
+  const safeRows = Array.isArray(rows) ? rows : [];
+  return withDbExclusive(async () => {
+    await ensureSeeded();
+    return withKyselyTransaction(async (client) => {
+      try {
+        const seen = new Set();
+        for (let index = 0; index < safeRows.length; index += 1) {
+          const key = cleanText(spec.keyOf(safeRows[index]));
+          if (!key) continue;
+          seen.add(key);
+          await insertCollectionRow(client, spec, safeRows[index], index);
+        }
+        const existing = await client.query(`SELECT ${spec.pk} AS id FROM ${spec.table}`);
+        for (const row of existing.rows) {
+          const key = cleanText(row.id);
+          if (key && !seen.has(key)) await client.query(`DELETE FROM ${spec.table} WHERE ${spec.pk} = $1`, [key]);
+        }
+        clearPublicReadCache();
+        return safeRows;
+      } catch (error) {
+        throw error;
+      }
+    });
+  });
+}
+
+export async function readSingletonPayload(settingKey) {
+  const spec = singletonSpecsByKey.get(settingKey);
+  if (!spec) throw new Error(`UNKNOWN_SINGLETON:${settingKey}`);
+  await ensureSeeded();
+  const result = await queryKysely(`SELECT payload FROM ${spec.table} WHERE ${spec.pk} = $1`, [spec.id]);
+  return payloadFromRow(result.rows[0]);
+}
+
+export async function patchSingletonPayload(settingKey, patch = {}) {
+  const spec = singletonSpecsByKey.get(settingKey);
+  if (!spec) throw new Error(`UNKNOWN_SINGLETON:${settingKey}`);
+  return withDbExclusive(async () => {
+    await ensureSeeded();
+    return withKyselyTransaction(async (client) => {
+      try {
+        const current = await client.query(`SELECT payload FROM ${spec.table} WHERE ${spec.pk} = $1 FOR UPDATE`, [spec.id]);
+        const next = { ...(payloadFromRow(current.rows[0]) || {}), ...(patch && typeof patch === 'object' ? patch : {}) };
+        await insertSingleton(client, spec, next);
+        clearPublicReadCache();
+        return next;
+      } catch (error) {
         throw error;
       }
     });
@@ -988,7 +973,7 @@ export async function queryPublicNews(options = {}) {
       ORDER BY n.published_at DESC NULLS LAST, n.position ASC
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `;
-    const result = await queryPostgres(sql, params);
+    const result = await queryKysely(sql, params);
     const rows = result.rows.map((row) => {
       const item = payloadFromRow(row);
       const translation = payloadFromRow({ payload: row.translation_payload });
@@ -1017,7 +1002,7 @@ export async function queryPublicNewsSources(options = {}) {
       params.push(category);
       where.push(`category = $${params.length}`);
     }
-    const result = await queryPostgres(
+    const result = await queryKysely(
       `
         SELECT payload
         FROM news_sources
@@ -1109,7 +1094,7 @@ export async function queryAdminNews(options = {}) {
     where.push(`t_locale.status = $${params.length}`);
   }
   params.push(limit + 1, offset);
-  const result = await queryPostgres(
+  const result = await queryKysely(
     `
       SELECT
         n.payload,
@@ -1184,7 +1169,7 @@ export async function queryPublicYoutube(options = {}) {
       ...where,
       `(payload->>'sortBucket' = $${bucketParams.length} OR COALESCE(payload->'sortBuckets', '[]'::jsonb) ? $${bucketParams.length})`,
     ];
-    const bucketExists = await queryPostgres(
+    const bucketExists = await queryKysely(
       `
         SELECT 1
         FROM youtube_videos
@@ -1199,7 +1184,7 @@ export async function queryPublicYoutube(options = {}) {
     const order = sort === 'popular'
       ? `ORDER BY ${numberSqlExpression(`payload->>'viewCount'`)} DESC, published_at DESC NULLS LAST`
       : `ORDER BY published_at DESC NULLS LAST, ${numberSqlExpression(`payload->>'viewCount'`)} DESC`;
-    const result = await queryPostgres(
+    const result = await queryKysely(
       `
         SELECT payload
         FROM youtube_videos
@@ -1221,11 +1206,11 @@ export async function queryPublicYoutube(options = {}) {
 
 export async function queryPublicYoutubeChannels() {
   return cachedPublicRead('publicYoutubeChannels', {}, async () => {
-    const settingsResult = await queryPostgres(`SELECT payload FROM app_settings WHERE id = 'app'`);
+    const settingsResult = await queryKysely(`SELECT payload FROM app_settings WHERE id = 'app'`);
     const appSettings = payloadFromRow(settingsResult.rows[0]) || {};
     const handles = new Set(listActiveYoutubeChannelHandles(appSettings).map((handle) => handle.toLowerCase()));
     const channels = new Map();
-    const result = await queryPostgres(
+    const result = await queryKysely(
       `
         SELECT payload
         FROM youtube_videos
@@ -1281,7 +1266,7 @@ export async function queryPublicMarketQuotes(options = {}) {
     }
     if (symbols.length > 0 && !q) {
       const lookupParams = [symbols, segment, limit, offset];
-      const result = await queryPostgres(
+      const result = await queryKysely(
         `
           WITH requested(symbol, ord) AS (
             SELECT * FROM unnest($1::text[]) WITH ORDINALITY
@@ -1331,7 +1316,7 @@ export async function queryPublicMarketQuotes(options = {}) {
     }
     const sqlLimit = symbols.length > 0 && !segment ? Math.max(limit + 1, symbols.length * 3) : limit + 1;
     params.push(sqlLimit, offset);
-    const result = await queryPostgres(
+    const result = await queryKysely(
       `
         SELECT payload
         FROM market_quotes
@@ -1383,7 +1368,7 @@ export async function queryPublicCoinMarkets(options = {}) {
       )`);
     }
     params.push(limit + 1, offset);
-    const result = await queryPostgres(
+    const result = await queryKysely(
       `
         SELECT payload
         FROM coin_markets
@@ -1440,7 +1425,7 @@ export async function queryPublicCalendar(options = {}) {
       )`);
     }
     params.push(limit, offset);
-    const result = await queryPostgres(
+    const result = await queryKysely(
       `
         SELECT payload
         FROM calendar_events
@@ -1473,7 +1458,7 @@ export async function queryPublicCalendarDateSummaries(options = {}) {
       params.push(type);
       where.push(`event_type = $${params.length}`);
     }
-    const result = await queryPostgres(
+    const result = await queryKysely(
       `
         SELECT event_date::text AS date, COALESCE(event_type, 'unknown') AS type, COUNT(*)::int AS count
         FROM calendar_events
@@ -1538,7 +1523,7 @@ export async function queryPublicConcalls(options = {}) {
       )`);
     }
     params.push(limit + 1, offset);
-    const result = await queryPostgres(
+    const result = await queryKysely(
       `
         SELECT payload
         FROM concall_transcripts
@@ -1564,30 +1549,28 @@ export async function queryPublicConcalls(options = {}) {
 
 export async function readPublicMarketLists() {
   return cachedPublicRead('publicMarketLists', {}, async () => {
-    const result = await queryPostgres('SELECT payload FROM market_lists ORDER BY position ASC');
+    const result = await queryKysely('SELECT payload FROM market_lists ORDER BY position ASC');
     return result.rows.map(payloadFromRow).filter(Boolean);
   }, 30000);
 }
 
 export async function readPublicMarketList(key) {
   return cachedPublicRead('publicMarketList', { key }, async () => {
-    const result = await queryPostgres('SELECT payload FROM market_lists WHERE list_key = $1', [cleanText(key)]);
+    const result = await queryKysely('SELECT payload FROM market_lists WHERE list_key = $1', [cleanText(key)]);
     return payloadFromRow(result.rows[0]);
   }, 30000);
 }
 
 export async function readAppSettings() {
   return cachedPublicRead('appSettings', {}, async () => {
-    const result = await queryPostgres(`SELECT payload FROM app_settings WHERE id = 'app'`);
+    const result = await queryKysely(`SELECT payload FROM app_settings WHERE id = 'app'`);
     return payloadFromRow(result.rows[0]) || {};
   }, 5000);
 }
 
 export async function upsertMarketQuotes(rows = []) {
-  return updateDb((db) => {
-    for (const row of rows || []) upsertById(db.marketQuotes, row);
-    return rows;
-  });
+  await upsertCollectionRows('marketQuotes', rows);
+  return rows;
 }
 
 function barsForSeries(series) {
@@ -1598,7 +1581,7 @@ export async function queryPublicPriceSeriesCandles(options = {}) {
   return cachedPublicRead('publicPriceSeriesCandles', options, async () => {
     const symbol = cleanText(options.symbol).toUpperCase();
     if (!symbol) return null;
-    const result = await queryPostgres(
+    const result = await queryKysely(
       `
         WITH candidates AS (
           SELECT payload, last_bar_date, fetched_at, 1 AS priority FROM price_series WHERE upper(COALESCE(symbol, '')) = $1
@@ -1650,7 +1633,7 @@ export async function queryPublicPriceSeriesSparklines(options = {}) {
       .filter(Boolean);
     const days = safeLimit(options.days, 30, 365);
     if (symbols.length === 0) return [];
-    const result = await queryPostgres(
+    const result = await queryKysely(
       `
         WITH requested(symbol, ord) AS (
           SELECT * FROM unnest($1::text[]) WITH ORDINALITY
@@ -1720,7 +1703,7 @@ export async function queryPublicQuantSignals(options = {}) {
     const requested = new Set(symbols);
     const limit = cleanText(options.limit) ? safeLimit(options.limit, 10, 100) : 10;
     const result = requested.size > 0
-      ? await queryPostgres(
+      ? await queryKysely(
           `
             WITH requested(symbol, ord) AS (
               SELECT * FROM unnest($1::text[]) WITH ORDINALITY
@@ -1738,7 +1721,7 @@ export async function queryPublicQuantSignals(options = {}) {
           `,
           [symbols, limit],
         )
-      : await queryPostgres(
+      : await queryKysely(
           `
             SELECT payload
             FROM quant_signal_items
@@ -1765,7 +1748,7 @@ export async function queryPublicQuantBacktest(options = {}) {
       params.push([...symbols]);
       where.push(`upper(symbol) = ANY($${params.length}::text[])`);
     }
-    const result = await queryPostgres(
+    const result = await queryKysely(
       `
         SELECT payload
         FROM price_series
@@ -1812,7 +1795,7 @@ export async function queryPublicQuantSignalHistory(options = {}) {
       where.push(`generated_date <= $${params.length}::date`);
     }
     params.push(limit + 1, offset);
-    const result = await queryPostgres(
+    const result = await queryKysely(
       `
         SELECT payload
         FROM quant_signal_items
@@ -1925,7 +1908,7 @@ export async function queryInsightItems(options = {}) {
       where.push(`(expires_at IS NULL OR expires_at >= now())`);
     }
     params.push(limit);
-    const result = await queryPostgres(
+    const result = await queryKysely(
       `
         SELECT payload
         FROM insight_items
@@ -1941,7 +1924,7 @@ export async function queryInsightItems(options = {}) {
 
 export async function listDuePollingJobs(now = Date.now()) {
   await ensureSeeded();
-  const result = await queryPostgres(
+  const result = await queryKysely(
     `
       SELECT payload
       FROM polling_jobs
@@ -1955,76 +1938,43 @@ export async function listDuePollingJobs(now = Date.now()) {
 
 export async function getPollingJob(jobKey) {
   await ensureSeeded();
-  const result = await queryPostgres('SELECT payload FROM polling_jobs WHERE job_key = $1', [cleanText(jobKey)]);
-  return payloadFromRow(result.rows[0]);
+  return findPollingJob(jobKey);
 }
 
-function publicJobLock(row) {
-  if (!row) return null;
-  return {
-    jobKey: row.job_key,
-    token: row.lock_token,
-    lockedAt: row.locked_at ? new Date(row.locked_at).toISOString() : null,
-    expiresAt: row.expires_at ? new Date(row.expires_at).toISOString() : null,
-  };
+export async function listPollingJobs() {
+  await ensureSeeded();
+  return findPollingJobs();
+}
+
+export async function listPollingJobRuns({ limit = 200, jobKey = '' } = {}) {
+  await ensureSeeded();
+  return findPollingJobRuns({ limit, jobKey });
 }
 
 export async function listPollingJobLocks() {
   await ensureSeeded();
-  const result = await queryPostgres('SELECT * FROM polling_job_locks ORDER BY locked_at DESC');
-  return result.rows.map(publicJobLock);
+  return findPollingJobLocks();
 }
 
 export async function getPollingJobLock(jobKey) {
   await ensureSeeded();
-  const result = await queryPostgres('SELECT * FROM polling_job_locks WHERE job_key = $1', [cleanText(jobKey)]);
-  return publicJobLock(result.rows[0]);
+  return findPollingJobLock(jobKey);
 }
 
 export async function acquirePollingJobLock(jobKey, { ttlMs = 2 * 60 * 60 * 1000 } = {}) {
   await ensureSeeded();
-  return withDbExclusive(async () =>
-    withPostgresClient(async (client) => {
-      await client.query('BEGIN');
-      try {
-        const key = cleanText(jobKey);
-        const now = nowIso();
-        const token = crypto.randomUUID();
-        const expiresAt = new Date(Date.now() + Math.max(60_000, Number(ttlMs) || ttlMs)).toISOString();
-        const existing = await client.query('SELECT * FROM polling_job_locks WHERE job_key = $1 FOR UPDATE', [key]);
-        const row = existing.rows[0];
-        if (row && new Date(row.expires_at).getTime() > Date.now()) {
-          await client.query('COMMIT');
-          return { acquired: false, lock: publicJobLock(row) };
-        }
-        await client.query(
-          `
-            INSERT INTO polling_job_locks (job_key, lock_token, locked_at, expires_at)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT(job_key) DO UPDATE SET
-              lock_token = excluded.lock_token,
-              locked_at = excluded.locked_at,
-              expires_at = excluded.expires_at
-          `,
-          [key, token, now, expiresAt],
-        );
-        await client.query('COMMIT');
-        return { acquired: true, lock: { jobKey: key, token, lockedAt: now, expiresAt } };
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      }
-    }),
-  );
+  return withDbExclusive(async () => {
+    const key = cleanText(jobKey);
+    const now = nowIso();
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + Math.max(60_000, Number(ttlMs) || ttlMs)).toISOString();
+    return acquirePollingJobLockRow(key, { token, lockedAt: now, expiresAt });
+  });
 }
 
 export async function releasePollingJobLock(jobKey, token) {
   await ensureSeeded();
-  const result = await queryPostgres('DELETE FROM polling_job_locks WHERE job_key = $1 AND lock_token = $2', [
-    cleanText(jobKey),
-    cleanText(token),
-  ]);
-  return Number(result.rowCount) > 0;
+  return deletePollingJobLock(jobKey, token);
 }
 
 function publicAdminUser(row) {
@@ -2041,7 +1991,7 @@ export async function verifyAdminLogin(loginId, password) {
   await ensureSeeded();
   const id = cleanText(loginId);
   if (!id || !password) return null;
-  const result = await queryPostgres('SELECT * FROM admin_users WHERE id = $1', [id]);
+  const result = await queryKysely('SELECT * FROM admin_users WHERE id = $1', [id]);
   const row = result.rows[0];
   if (!row || row.active !== true) return null;
   return verifyPassword(password, row) ? { id: row.id } : null;
@@ -2049,13 +1999,13 @@ export async function verifyAdminLogin(loginId, password) {
 
 export async function hasAdminUsers() {
   await ensureSeeded();
-  const result = await queryPostgres('SELECT COUNT(*)::int AS count FROM admin_users WHERE active = true');
+  const result = await queryKysely('SELECT COUNT(*)::int AS count FROM admin_users WHERE active = true');
   return Number(result.rows[0]?.count) > 0;
 }
 
 export async function listAdminUsers() {
   await ensureSeeded();
-  const result = await queryPostgres('SELECT * FROM admin_users ORDER BY lower(id)');
+  const result = await queryKysely('SELECT * FROM admin_users ORDER BY lower(id)');
   return result.rows.map(publicAdminUser);
 }
 
@@ -2066,7 +2016,7 @@ export async function createAdminUser({ id, password, active = true }) {
   const { hash, salt } = hashPassword(password);
   const now = nowIso();
   try {
-    await queryPostgres(
+    await queryKysely(
       `
         INSERT INTO admin_users (id, password_hash, password_salt, active, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $5)
@@ -2081,7 +2031,7 @@ export async function createAdminUser({ id, password, active = true }) {
 }
 
 async function activeAdminCount(client = null) {
-  const runner = client || { query: queryPostgres };
+  const runner = client || { query: queryKysely };
   const result = await runner.query('SELECT COUNT(*)::int AS count FROM admin_users WHERE active = true');
   return Number(result.rows[0]?.count) || 0;
 }
@@ -2089,8 +2039,7 @@ async function activeAdminCount(client = null) {
 export async function updateAdminUser(id, patch = {}) {
   const userId = cleanText(id);
   if (!userId) throw new Error('ADMIN_USER_ID_REQUIRED');
-  return withPostgresClient(async (client) => {
-    await client.query('BEGIN');
+  return withKyselyTransaction(async (client) => {
     try {
       const existing = await client.query('SELECT * FROM admin_users WHERE id = $1 FOR UPDATE', [userId]);
       if (!existing.rows[0]) throw new Error('ADMIN_USER_NOT_FOUND');
@@ -2117,10 +2066,8 @@ export async function updateAdminUser(id, patch = {}) {
         await client.query(`UPDATE admin_users SET ${sets.join(', ')} WHERE id = $${params.length}`, params);
       }
       const next = await client.query('SELECT * FROM admin_users WHERE id = $1', [userId]);
-      await client.query('COMMIT');
       return publicAdminUser(next.rows[0]);
     } catch (error) {
-      await client.query('ROLLBACK');
       throw error;
     }
   });
@@ -2129,17 +2076,14 @@ export async function updateAdminUser(id, patch = {}) {
 export async function deleteAdminUser(id) {
   const userId = cleanText(id);
   if (!userId) throw new Error('ADMIN_USER_ID_REQUIRED');
-  return withPostgresClient(async (client) => {
-    await client.query('BEGIN');
+  return withKyselyTransaction(async (client) => {
     try {
       const existing = await client.query('SELECT * FROM admin_users WHERE id = $1 FOR UPDATE', [userId]);
       if (!existing.rows[0]) throw new Error('ADMIN_USER_NOT_FOUND');
       if (existing.rows[0].active === true && (await activeAdminCount(client)) <= 1) throw new Error('ADMIN_USER_LAST_ACTIVE');
       await client.query('DELETE FROM admin_users WHERE id = $1', [userId]);
-      await client.query('COMMIT');
       return { id: userId };
     } catch (error) {
-      await client.query('ROLLBACK');
       throw error;
     }
   });
@@ -2316,9 +2260,8 @@ async function createSession(client, userId, deviceId) {
 
 export async function createAppUser(payload) {
   return withDbExclusive(() =>
-    withPostgresClient(async (client) => {
+    withKyselyTransaction(async (client) => {
       await seedLegalTermsIfEmpty(client);
-      await client.query('BEGIN');
       try {
         const email = normalizeEmail(payload.email);
         const password = String(payload.password || '');
@@ -2343,11 +2286,9 @@ export async function createAppUser(payload) {
         await acceptTerms(client, id, payload.acceptedTerms || [], payload.locale || 'ko');
         const row = await client.query('SELECT * FROM app_users WHERE id = $1', [id]);
         const session = await createSession(client, id, payload.deviceId);
-        await client.query('COMMIT');
         clearPublicReadCache();
         return { user: publicUser(row.rows[0]), session };
       } catch (error) {
-        await client.query('ROLLBACK');
         throw error;
       }
     }),
@@ -2356,17 +2297,14 @@ export async function createAppUser(payload) {
 
 export async function loginAppUser({ email, password, deviceId = '' }) {
   return withDbExclusive(() =>
-    withPostgresClient(async (client) => {
-      await client.query('BEGIN');
+    withKyselyTransaction(async (client) => {
       try {
         const result = await client.query('SELECT * FROM app_users WHERE email = $1', [normalizeEmail(email)]);
         const row = result.rows[0];
         if (!row || row.active !== true || !verifyPassword(password, row)) throw new Error('APP_USER_LOGIN_FAILED');
         const session = await createSession(client, row.id, deviceId);
-        await client.query('COMMIT');
         return { user: publicUser(row), session };
       } catch (error) {
-        await client.query('ROLLBACK');
         throw error;
       }
     }),
@@ -2404,9 +2342,8 @@ export async function loginOrRegisterSocialUser({ provider, profile, deviceId = 
   if (!providerUserId) throw new Error('APP_USER_SOCIAL_INVALID_PROFILE');
   const resolvedProfile = overrideSocialProfile(profile, signupProfile);
   return withDbExclusive(() =>
-    withPostgresClient(async (client) => {
+    withKyselyTransaction(async (client) => {
       await seedLegalTermsIfEmpty(client);
-      await client.query('BEGIN');
       try {
         let identity = await client.query(
           'SELECT * FROM app_user_identities WHERE provider = $1 AND provider_user_id = $2 AND disconnected_at IS NULL',
@@ -2470,10 +2407,8 @@ export async function loginOrRegisterSocialUser({ provider, profile, deviceId = 
         const user = await client.query('SELECT * FROM app_users WHERE id = $1 AND active = true', [userId]);
         if (!user.rows[0]) throw new Error('APP_USER_LOGIN_FAILED');
         const session = await createSession(client, userId, deviceId);
-        await client.query('COMMIT');
         return { user: publicUser(user.rows[0]), session };
       } catch (error) {
-        await client.query('ROLLBACK');
         throw error;
       }
     }),
@@ -2485,8 +2420,7 @@ export async function linkAppUserSocialIdentity(userId, provider, profile) {
   const providerUserId = cleanText(profile?.providerUserId || profile?.sub || profile?.id);
   if (!p || !providerUserId) throw new Error('APP_USER_SOCIAL_INVALID_PROFILE');
   return withDbExclusive(() =>
-    withPostgresClient(async (client) => {
-      await client.query('BEGIN');
+    withKyselyTransaction(async (client) => {
       try {
         const user = await client.query('SELECT * FROM app_users WHERE id = $1 AND active = true', [cleanText(userId)]);
         if (!user.rows[0]) throw new Error('APP_USER_NOT_FOUND');
@@ -2496,7 +2430,6 @@ export async function linkAppUserSocialIdentity(userId, provider, profile) {
         );
         if (taken.rows[0] && taken.rows[0].user_id !== user.rows[0].id) throw new Error('APP_USER_SOCIAL_IDENTITY_TAKEN');
         if (taken.rows[0]) {
-          await client.query('COMMIT');
           return { identity: publicIdentity(taken.rows[0]), user: publicUser(user.rows[0]) };
         }
         const now = nowIso();
@@ -2530,10 +2463,8 @@ export async function linkAppUserSocialIdentity(userId, provider, profile) {
           createdAt: now,
         });
         const identity = await client.query('SELECT * FROM app_user_identities WHERE id = $1', [id]);
-        await client.query('COMMIT');
         return { identity: publicIdentity(identity.rows[0]), user: publicUser(user.rows[0]) };
       } catch (error) {
-        await client.query('ROLLBACK');
         throw error;
       }
     }),
@@ -2547,7 +2478,7 @@ export async function verifyAppUserToken(token) {
     const claims = await verifyAppUserAccessToken(raw);
     if (!claims) return null;
     const now = nowIso();
-    const result = await queryPostgres(
+    const result = await queryKysely(
       `
         SELECT u.*
         FROM app_user_refresh_sessions s
@@ -2559,7 +2490,7 @@ export async function verifyAppUserToken(token) {
     return publicUser(result.rows[0]);
   }
   const hash = tokenHash(raw);
-  const result = await queryPostgres(
+  const result = await queryKysely(
     `
       SELECT u.*
       FROM app_user_sessions s
@@ -2577,7 +2508,7 @@ export async function revokeAppUserToken(token) {
   if (isLikelyJwt(raw)) {
     const claims = await verifyAppUserAccessToken(raw);
     if (claims) {
-      await queryPostgres('UPDATE app_user_refresh_sessions SET revoked_at = $1 WHERE id = $2 AND user_id = $3 AND revoked_at IS NULL', [
+      await queryKysely('UPDATE app_user_refresh_sessions SET revoked_at = $1 WHERE id = $2 AND user_id = $3 AND revoked_at IS NULL', [
         now,
         claims.sid,
         claims.sub,
@@ -2585,7 +2516,7 @@ export async function revokeAppUserToken(token) {
     }
     return { revokedAt: now };
   }
-  await queryPostgres('UPDATE app_user_sessions SET revoked_at = $1 WHERE token_hash = $2 AND revoked_at IS NULL', [now, tokenHash(raw)]);
+  await queryKysely('UPDATE app_user_sessions SET revoked_at = $1 WHERE token_hash = $2 AND revoked_at IS NULL', [now, tokenHash(raw)]);
   return { revokedAt: now };
 }
 
@@ -2594,8 +2525,7 @@ export async function refreshAppUserSession({ refreshToken, deviceId }) {
   const device = validateDeviceId(deviceId);
   if (!device) throw new Error('APP_USER_DEVICE_ID_REQUIRED');
   return withDbExclusive(() =>
-    withPostgresClient(async (client) => {
-      await client.query('BEGIN');
+    withKyselyTransaction(async (client) => {
       try {
         const now = nowIso();
         const result = await client.query(
@@ -2617,7 +2547,6 @@ export async function refreshAppUserSession({ refreshToken, deviceId }) {
           refreshExpiresAt,
           row.session_id,
         ]);
-        await client.query('COMMIT');
         return {
           user: publicUser(row),
           session: {
@@ -2629,7 +2558,6 @@ export async function refreshAppUserSession({ refreshToken, deviceId }) {
           },
         };
       } catch (error) {
-        await client.query('ROLLBACK');
         throw error;
       }
     }),
@@ -2653,7 +2581,7 @@ export async function updateAppUserProfile(userId, patch = {}) {
   params.push(nowIso());
   sets.push(`updated_at = $${params.length}`);
   params.push(cleanText(userId));
-  const result = await queryPostgres(
+  const result = await queryKysely(
     `UPDATE app_users SET ${sets.join(', ')} WHERE id = $${params.length} AND active = true RETURNING *`,
     params,
   );
@@ -2664,7 +2592,7 @@ export async function updateAppUserProfile(userId, patch = {}) {
 export async function setAppUserPassword(userId, { password }) {
   if (String(password || '').length < 8) throw new Error('APP_USER_PASSWORD_TOO_SHORT');
   const { hash, salt } = hashPassword(password);
-  const result = await queryPostgres(
+  const result = await queryKysely(
     'UPDATE app_users SET password_hash = $1, password_salt = $2, updated_at = $3 WHERE id = $4 AND active = true RETURNING *',
     [hash, salt, nowIso(), cleanText(userId)],
   );
@@ -2674,8 +2602,7 @@ export async function setAppUserPassword(userId, { password }) {
 
 export async function withdrawAppUser(userId) {
   return withDbExclusive(() =>
-    withPostgresClient(async (client) => {
-      await client.query('BEGIN');
+    withKyselyTransaction(async (client) => {
       try {
         const id = cleanText(userId);
         const now = nowIso();
@@ -2703,10 +2630,8 @@ export async function withdrawAppUser(userId) {
           [now, id],
         );
         await insertAccountEvent(client, { userId: id, eventType: 'user_withdrawn', createdAt: now });
-        await client.query('COMMIT');
         return { withdrawnAt: now };
       } catch (error) {
-        await client.query('ROLLBACK');
         throw error;
       }
     }),
@@ -2717,8 +2642,7 @@ export async function requestAppUserEmailChange(userId, { email }) {
   const nextEmail = normalizeEmail(email);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) throw new Error('APP_USER_EMAIL_INVALID');
   return withDbExclusive(() =>
-    withPostgresClient(async (client) => {
-      await client.query('BEGIN');
+    withKyselyTransaction(async (client) => {
       try {
         const user = await client.query('SELECT * FROM app_users WHERE id = $1 AND active = true', [cleanText(userId)]);
         if (!user.rows[0]) throw new Error('APP_USER_NOT_FOUND');
@@ -2738,10 +2662,8 @@ export async function requestAppUserEmailChange(userId, { email }) {
           `,
           [id, user.rows[0].id, nextEmail, otpHash(code, salt), salt, now, expiresAt],
         );
-        await client.query('COMMIT');
         return { request: { id, email: nextEmail, maskedEmail: maskEmail(nextEmail), expiresAt }, code };
       } catch (error) {
-        await client.query('ROLLBACK');
         throw error;
       }
     }),
@@ -2750,8 +2672,7 @@ export async function requestAppUserEmailChange(userId, { email }) {
 
 export async function confirmAppUserEmailChange(userId, { requestId, code }) {
   return withDbExclusive(() =>
-    withPostgresClient(async (client) => {
-      await client.query('BEGIN');
+    withKyselyTransaction(async (client) => {
       try {
         const request = await client.query(
           'SELECT * FROM app_user_email_change_requests WHERE id = $1 AND user_id = $2 FOR UPDATE',
@@ -2775,10 +2696,8 @@ export async function confirmAppUserEmailChange(userId, { requestId, code }) {
         ]);
         if (!user.rows[0]) throw new Error('APP_USER_NOT_FOUND');
         await client.query('UPDATE app_user_email_change_requests SET consumed_at = $1 WHERE id = $2', [now, row.id]);
-        await client.query('COMMIT');
         return publicUser(user.rows[0]);
       } catch (error) {
-        await client.query('ROLLBACK');
         throw error;
       }
     }),
@@ -2787,8 +2706,7 @@ export async function confirmAppUserEmailChange(userId, { requestId, code }) {
 
 export async function disconnectAppUserIdentity(userId, identityId) {
   return withDbExclusive(() =>
-    withPostgresClient(async (client) => {
-      await client.query('BEGIN');
+    withKyselyTransaction(async (client) => {
       try {
         const user = await client.query('SELECT * FROM app_users WHERE id = $1 AND active = true', [cleanText(userId)]);
         if (!user.rows[0]) throw new Error('APP_USER_NOT_FOUND');
@@ -2820,10 +2738,8 @@ export async function disconnectAppUserIdentity(userId, identityId) {
           identityId: identity.rows[0].id,
           createdAt: now,
         });
-        await client.query('COMMIT');
         return publicIdentity(result.rows[0]);
       } catch (error) {
-        await client.query('ROLLBACK');
         throw error;
       }
     }),
@@ -2836,7 +2752,7 @@ export async function upsertAppUserDevice(userId, { platform, pushToken, deviceN
   if (!uid || !token) throw new Error('APP_USER_DEVICE_REQUIRED');
   const now = nowIso();
   const id = crypto.randomUUID();
-  const result = await queryPostgres(
+  const result = await queryKysely(
     `
       INSERT INTO app_user_devices (id, user_id, platform, push_token, device_name, active, created_at, updated_at)
       VALUES ($1, $2, $3, $4, $5, true, $6, $6)
@@ -2853,12 +2769,12 @@ export async function upsertAppUserDevice(userId, { platform, pushToken, deviceN
 }
 
 export async function getAppUser(userId) {
-  const result = await queryPostgres('SELECT * FROM app_users WHERE id = $1', [cleanText(userId)]);
+  const result = await queryKysely('SELECT * FROM app_users WHERE id = $1', [cleanText(userId)]);
   return publicUser(result.rows[0]);
 }
 
 export async function listAppUserIdentities(userId) {
-  const result = await queryPostgres(
+  const result = await queryKysely(
     'SELECT * FROM app_user_identities WHERE user_id = $1 AND disconnected_at IS NULL ORDER BY linked_at DESC, created_at DESC',
     [cleanText(userId)],
   );
@@ -2867,7 +2783,7 @@ export async function listAppUserIdentities(userId) {
 
 export async function listAppUserAccountEvents(userId, options = {}) {
   const { limit, offset } = pageOptions(options, 50);
-  const result = await queryPostgres(
+  const result = await queryKysely(
     'SELECT * FROM app_user_account_events WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
     [cleanText(userId), limit, offset],
   );
@@ -2876,7 +2792,7 @@ export async function listAppUserAccountEvents(userId, options = {}) {
 
 export async function listAppUserDevicesForUser(userId, options = {}) {
   const { limit } = pageOptions(options, 50);
-  const result = await queryPostgres(
+  const result = await queryKysely(
     'SELECT * FROM app_user_devices WHERE user_id = $1 ORDER BY updated_at DESC, created_at DESC LIMIT $2',
     [cleanText(userId), limit],
   );
@@ -2885,7 +2801,7 @@ export async function listAppUserDevicesForUser(userId, options = {}) {
 
 export async function listAppUserAuthSessions(userId, options = {}) {
   const { limit } = pageOptions(options, 50);
-  const result = await queryPostgres(
+  const result = await queryKysely(
     `
       SELECT 'signal_refresh' AS session_type, id AS session_key, user_id, device_id, created_at, expires_at, revoked_at
       FROM app_user_refresh_sessions
@@ -2944,7 +2860,7 @@ export async function listAppUsers(options = {}) {
     where.push(`u.active = $${params.length}`);
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const result = await queryPostgres(
+  const result = await queryKysely(
     `
       SELECT
         u.*,
@@ -2985,7 +2901,7 @@ export async function listAppUserDevices(options = {}) {
     where.push(`lower(d.platform) = $${params.length}`);
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const result = await queryPostgres(
+  const result = await queryKysely(
     `
       SELECT d.*, u.email, u.nickname
       FROM app_user_devices d
@@ -3019,13 +2935,13 @@ export async function updateAppUserAdmin(userId, patch = {}) {
   params.push(nowIso());
   sets.push(`updated_at = $${params.length}`);
   params.push(cleanText(userId));
-  const result = await queryPostgres(`UPDATE app_users SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *`, params);
+  const result = await queryKysely(`UPDATE app_users SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *`, params);
   if (!result.rows[0]) throw new Error('APP_USER_NOT_FOUND');
   return publicUser(result.rows[0]);
 }
 
 export async function updateAppUserDeviceAdmin(deviceId, patch = {}) {
-  const result = await queryPostgres(
+  const result = await queryKysely(
     'UPDATE app_user_devices SET active = COALESCE($1, active), updated_at = $2 WHERE id = $3 RETURNING *',
     [typeof patch.active === 'boolean' ? patch.active : null, nowIso(), cleanText(deviceId)],
   );
@@ -3060,7 +2976,7 @@ export async function listLegalTerms(options = {}) {
         WHERE rn = 1
       `
     : `SELECT * FROM legal_terms ${whereSql}`;
-  const result = await queryPostgres(
+  const result = await queryKysely(
     `
       ${latest}
       ORDER BY locale ASC, CASE type WHEN 'service' THEN 1 WHEN 'privacy' THEN 2 ELSE 9 END ASC, updated_at DESC
@@ -3089,8 +3005,7 @@ export async function updateLegalTerm(type, locale, patch = {}) {
   const title = cleanText(patch.title) || nextType;
   const body = cleanText(patch.body);
   if (!body) throw new Error('LEGAL_TERM_BODY_REQUIRED');
-  return withPostgresClient(async (client) => {
-    await client.query('BEGIN');
+  return withKyselyTransaction(async (client) => {
     try {
       if (patch.active !== false) {
         await client.query('UPDATE legal_terms SET active = false, updated_at = $1 WHERE type = $2 AND locale = $3 AND version <> $4', [
@@ -3123,17 +3038,15 @@ export async function updateLegalTerm(type, locale, patch = {}) {
           now,
         ],
       );
-      await client.query('COMMIT');
       return (await listLegalTerms({ type: nextType, locale: nextLocale, latestOnly: false })).find((term) => term.version === version) || null;
     } catch (error) {
-      await client.query('ROLLBACK');
       throw error;
     }
   });
 }
 
 export async function listAppUserTermAcceptances(userId) {
-  const result = await queryPostgres(
+  const result = await queryKysely(
     `
       SELECT *
       FROM app_user_terms_acceptances
@@ -3182,7 +3095,7 @@ export async function upsertNotification(next) {
     ...next,
     updatedAt: now,
   };
-  const result = await queryPostgres(
+  const result = await queryKysely(
     `
       INSERT INTO notification_items (
         id, position, type, channel, status, priority, title, app_user_id, target_type,
@@ -3248,7 +3161,7 @@ export async function queryNotifications(options = {}) {
     where.push(`status = $${params.length}`);
   }
   params.push(pageSize + 1, offset);
-  const result = await queryPostgres(
+  const result = await queryKysely(
     `
       SELECT payload
       FROM notification_items
@@ -3277,8 +3190,7 @@ export async function queryPublicNotificationsForUser(userId, options = {}) {
 
 export async function claimPushNotificationsForDelivery({ limit = 20, now = nowIso(), provider = 'mock' } = {}) {
   return withDbExclusive(() =>
-    withPostgresClient(async (client) => {
-      await client.query('BEGIN');
+    withKyselyTransaction(async (client) => {
       try {
         const result = await client.query(
           `
@@ -3303,10 +3215,8 @@ export async function claimPushNotificationsForDelivery({ limit = 20, now = nowI
           );
           claimed.push(publicNotification(update.rows[0]));
         }
-        await client.query('COMMIT');
         return claimed;
       } catch (error) {
-        await client.query('ROLLBACK');
         throw error;
       }
     }),
@@ -3321,12 +3231,12 @@ export async function resolvePushDevicesForNotification(notification) {
     params.push(notification.appUserId);
     where += ` AND d.user_id = $${params.length}`;
   }
-  const result = await queryPostgres(`SELECT d.* FROM app_user_devices d JOIN app_users u ON u.id = d.user_id WHERE ${where} AND u.active = true`, params);
+  const result = await queryKysely(`SELECT d.* FROM app_user_devices d JOIN app_users u ON u.id = d.user_id WHERE ${where} AND u.active = true`, params);
   return result.rows.map(publicDevice);
 }
 
 export async function updateNotificationSendState(notificationId, patch = {}) {
-  const existing = await queryPostgres('SELECT * FROM notification_items WHERE id = $1', [cleanText(notificationId)]);
+  const existing = await queryKysely('SELECT * FROM notification_items WHERE id = $1', [cleanText(notificationId)]);
   const row = publicNotification(existing.rows[0]);
   if (!row) return null;
   const now = nowIso();
@@ -3336,7 +3246,7 @@ export async function updateNotificationSendState(notificationId, patch = {}) {
     attempts: patch.attempts ?? row.attempts,
     updatedAt: now,
   };
-  const result = await queryPostgres(
+  const result = await queryKysely(
     `
       UPDATE notification_items
       SET status = $1, sent_at = $2, payload = $3::jsonb, updated_at = $4
@@ -3349,11 +3259,11 @@ export async function updateNotificationSendState(notificationId, patch = {}) {
 }
 
 export async function readDbHealthSummary() {
-  const pg = await checkPostgresConnectivity();
+  const pg = await checkKyselyConnectivity();
   let jobs = 0;
   if (pg.ok) {
     try {
-      const count = await queryPostgres('SELECT COUNT(*)::int AS count FROM polling_jobs');
+      const count = await queryKysely('SELECT COUNT(*)::int AS count FROM polling_jobs');
       jobs = Number(count.rows[0]?.count) || 0;
     } catch {
       jobs = 0;

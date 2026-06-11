@@ -1,5 +1,15 @@
 import { config } from '../../../config.mjs';
-import { getPollingJobLock, listPollingJobLocks, nowIso, readDb, releasePollingJobLock, updateDb } from '../../../db.mjs';
+import {
+  getPollingJob,
+  getPollingJobLock,
+  listCollectionPayloads,
+  listPollingJobLocks,
+  listPollingJobRuns,
+  listPollingJobs,
+  nowIso,
+  patchPollingJob,
+  releasePollingJobLock,
+} from '../../../db.mjs';
 import { httpMetricsSnapshot } from '../../../httpMetrics.mjs';
 import { runPollingJob } from '../../../jobs/runner.mjs';
 import { cleanNewsTitleForDisplay, dateKeyInTimeZone, json, paginate, readBody } from '../../shared.mjs';
@@ -362,12 +372,54 @@ function dashboardSummary(db) {
   };
 }
 
+async function readDashboardSummaryContext() {
+  const [
+    pollingJobs,
+    pollingJobRuns,
+    newsItems,
+    newsTranslations,
+    calendarEvents,
+    youtubeVideos,
+    concallTranscripts,
+    marketQuotes,
+    coinMarkets,
+    insightItems,
+    notificationItems,
+  ] = await Promise.all([
+    listPollingJobs(),
+    listPollingJobRuns({ limit: 200 }),
+    listCollectionPayloads('newsItems'),
+    listCollectionPayloads('newsTranslations'),
+    listCollectionPayloads('calendarEvents'),
+    listCollectionPayloads('youtubeVideos'),
+    listCollectionPayloads('concallTranscripts'),
+    listCollectionPayloads('marketQuotes'),
+    listCollectionPayloads('coinMarkets'),
+    listCollectionPayloads('insightItems'),
+    listCollectionPayloads('notificationItems'),
+  ]);
+  return {
+    pollingJobs,
+    pollingJobRuns,
+    newsItems,
+    newsTranslations,
+    calendarEvents,
+    youtubeVideos,
+    concallTranscripts,
+    marketQuotes,
+    coinMarkets,
+    insightItems,
+    notificationItems,
+  };
+}
+
 export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/admin/api/jobs') {
-    const db = await readDb();
-    const recentRuns = db.pollingJobRuns.slice(0, 200).map((run) => enrichJobRun(run, db.pollingJobs));
+    const jobs = await listPollingJobs();
+    const runs = await listPollingJobRuns({ limit: 200 });
+    const recentRuns = runs.map((run) => enrichJobRun(run, jobs));
     const lockByJob = new Map((await listPollingJobLocks()).map((lock) => [lock.jobKey, lock]));
-    const data = db.pollingJobs.map((job) => {
+    const data = jobs.map((job) => {
       const latestRun = recentRuns.find((run) => run.jobKey === job.jobKey) || null;
       return {
         ...job,
@@ -378,19 +430,20 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
         lock: jobLockState({ job, lock: lockByJob.get(job.jobKey) || null, latestRun }),
       };
     });
-    json(res, 200, { data, runs: db.pollingJobRuns.slice(0, 50) });
+    json(res, 200, { data, runs: runs.slice(0, 50) });
     return true;
   }
 
   if (req.method === 'GET' && pathname === '/admin/api/summary') {
-    const db = await readDb();
+    const db = await readDashboardSummaryContext();
     json(res, 200, { data: dashboardSummary(db) });
     return true;
   }
 
   if (req.method === 'GET' && pathname === '/admin/api/job-runs') {
-    const db = await readDb();
-    const page = paginate(filterJobRuns(db.pollingJobRuns, url, db.pollingJobs), url, 30, 100);
+    const jobs = await listPollingJobs();
+    const runs = await listPollingJobRuns({ limit: 500 });
+    const page = paginate(filterJobRuns(runs, url, jobs), url, 30, 100);
     json(res, 200, {
       data: page.rows,
       page: page.page,
@@ -404,8 +457,8 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
   const jobRunMatch = pathname.match(/^\/admin\/api\/jobs\/([^/]+)\/run$/);
   if (req.method === 'POST' && jobRunMatch) {
     const jobKey = decodeURIComponent(jobRunMatch[1]);
-    const db = await readDb();
-    if (!db.pollingJobs.some((job) => job.jobKey === jobKey)) {
+    const job = await getPollingJob(jobKey);
+    if (!job) {
       json(res, 404, { error: `JOB_NOT_FOUND:${jobKey}` });
       return true;
     }
@@ -419,8 +472,7 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
   const jobLockMatch = pathname.match(/^\/admin\/api\/jobs\/([^/]+)\/lock$/);
   if (req.method === 'DELETE' && jobLockMatch) {
     const jobKey = decodeURIComponent(jobLockMatch[1]);
-    const db = await readDb();
-    const job = db.pollingJobs.find((item) => item.jobKey === jobKey);
+    const job = await getPollingJob(jobKey);
     if (!job) {
       json(res, 404, { error: `JOB_NOT_FOUND:${jobKey}` });
       return true;
@@ -430,7 +482,7 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
       json(res, 404, { error: 'JOB_LOCK_NOT_FOUND' });
       return true;
     }
-    const latestRun = db.pollingJobRuns.find((run) => run.jobKey === jobKey) || null;
+    const latestRun = (await listPollingJobRuns({ jobKey, limit: 1 }))[0] || null;
     const state = jobLockState({ job, lock, latestRun });
     if (!state.canForceUnlock) {
       json(res, 409, { error: 'JOB_LOCK_NOT_STALE', data: state });
@@ -445,23 +497,22 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
   if (req.method === 'PATCH' && jobMatch) {
     const patch = await readBody(req);
     const jobKey = decodeURIComponent(jobMatch[1]);
-    const updated = await updateDb((db) => {
-      const job = db.pollingJobs.find((j) => j.jobKey === jobKey);
-      if (!job) throw new Error(`JOB_NOT_FOUND:${jobKey}`);
-      if (typeof patch.enabled === 'boolean') job.enabled = patch.enabled;
-      if (typeof patch.displayName === 'string') job.displayName = patch.displayName.trim() || job.jobKey;
-      if (typeof patch.description === 'string') job.description = patch.description.trim();
-      if (Number.isFinite(Number(patch.intervalSeconds))) job.intervalSeconds = Number(patch.intervalSeconds);
-      if (Number.isFinite(Number(patch.lockTtlSeconds)) && Number(patch.lockTtlSeconds) > 0) {
-        job.lockTtlSeconds = Number(patch.lockTtlSeconds);
-      }
-      if (Number.isFinite(Number(patch.staleLockSeconds)) && Number(patch.staleLockSeconds) > 0) {
-        job.staleLockSeconds = Number(patch.staleLockSeconds);
-      }
-      if (patch.params && typeof patch.params === 'object') job.params = patch.params;
-      job.updatedAt = nowIso();
-      return job;
-    });
+    const job = await getPollingJob(jobKey);
+    if (!job) throw new Error(`JOB_NOT_FOUND:${jobKey}`);
+    const next = { ...job };
+    if (typeof patch.enabled === 'boolean') next.enabled = patch.enabled;
+    if (typeof patch.displayName === 'string') next.displayName = patch.displayName.trim() || next.jobKey;
+    if (typeof patch.description === 'string') next.description = patch.description.trim();
+    if (Number.isFinite(Number(patch.intervalSeconds))) next.intervalSeconds = Number(patch.intervalSeconds);
+    if (Number.isFinite(Number(patch.lockTtlSeconds)) && Number(patch.lockTtlSeconds) > 0) {
+      next.lockTtlSeconds = Number(patch.lockTtlSeconds);
+    }
+    if (Number.isFinite(Number(patch.staleLockSeconds)) && Number(patch.staleLockSeconds) > 0) {
+      next.staleLockSeconds = Number(patch.staleLockSeconds);
+    }
+    if (patch.params && typeof patch.params === 'object') next.params = patch.params;
+    next.updatedAt = nowIso();
+    const updated = await patchPollingJob(jobKey, next);
     json(res, 200, { data: updated });
     return true;
   }

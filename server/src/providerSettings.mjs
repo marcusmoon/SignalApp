@@ -1,6 +1,10 @@
 import { config } from './config.mjs';
 import { nowIso } from './db.mjs';
-import { queryPostgres } from './db/postgres/client.mjs';
+import {
+  findProviderSetting,
+  findProviderSettings,
+  upsertProviderSetting,
+} from './db/repositories/providerSettingsRepository.mjs';
 
 const FALLBACKS = {
   finnhub: { apiKey: config.finnhubToken },
@@ -36,14 +40,13 @@ function normalizeProviderSetting(setting, provider) {
 
 export async function getProviderSetting(provider) {
   const id = String(provider || '').trim();
-  const result = await queryPostgres('SELECT payload FROM provider_settings WHERE provider = $1', [id]);
-  return normalizeProviderSetting(result.rows[0]?.payload, id);
+  return normalizeProviderSetting(await findProviderSetting(id), id);
 }
 
 export async function listProviderSettingsPublic() {
   const providers = ['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko'];
-  const result = await queryPostgres('SELECT provider, payload FROM provider_settings WHERE provider = ANY($1::text[])', [providers]);
-  const byProvider = new Map(result.rows.map((row) => [row.provider, row.payload]));
+  const rows = await findProviderSettings(providers);
+  const byProvider = new Map(rows.map((row) => [row.provider, row.payload]));
   return providers.map((provider) => {
     const setting = normalizeProviderSetting(byProvider.get(provider), provider);
     return {
@@ -67,17 +70,7 @@ export async function updateProviderSetting(provider, patch) {
   if (typeof patch.apiKey === 'string' && patch.apiKey.trim().length > 0) setting.apiKey = patch.apiKey.trim();
   if (patch.clearApiKey === true) setting.apiKey = '';
   setting.updatedAt = nowIso();
-  await queryPostgres(
-    `
-      INSERT INTO provider_settings (provider, position, enabled, payload, updated_at)
-      VALUES ($1, 0, $2, $3::jsonb, $4)
-      ON CONFLICT(provider) DO UPDATE SET
-        enabled = excluded.enabled,
-        payload = excluded.payload,
-        updated_at = excluded.updated_at
-    `,
-    [id, setting.enabled, JSON.stringify(setting), setting.updatedAt],
-  );
+  await upsertProviderSetting(setting);
   return {
     provider: id,
     enabled: setting.enabled,

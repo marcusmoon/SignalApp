@@ -29,44 +29,6 @@ export function getPostgresPool() {
   return pool;
 }
 
-export async function queryPostgres(text, params = []) {
-  return getPostgresPool().query(text, params);
-}
-
-export async function withPostgresClient(fn) {
-  const client = await getPostgresPool().connect();
-  try {
-    return await fn(client);
-  } finally {
-    client.release();
-  }
-}
-
-export async function checkPostgresConnectivity() {
-  if (!postgresConfigured()) {
-    return { configured: false, ok: false };
-  }
-  const startedAt = Date.now();
-  try {
-    const result = await queryPostgres('SELECT current_database() AS database, current_schema() AS schema');
-    const row = result.rows[0] || {};
-    return {
-      configured: true,
-      ok: true,
-      database: row.database || null,
-      schema: row.schema || null,
-      elapsedMs: Date.now() - startedAt,
-    };
-  } catch (error) {
-    return {
-      configured: true,
-      ok: false,
-      error: error?.message || String(error),
-      elapsedMs: Date.now() - startedAt,
-    };
-  }
-}
-
 export async function closePostgresPool() {
   if (!pool) return;
   const current = pool;

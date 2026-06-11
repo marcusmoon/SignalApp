@@ -1,4 +1,4 @@
-import { queryPublicYoutube, queryPublicYoutubeChannels, updateDb, upsertById } from '../../../db.mjs';
+import { listCollectionPayloads, queryPublicYoutube, queryPublicYoutubeChannels, upsertCollectionRows } from '../../../db.mjs';
 import { runPollingJob } from '../../../jobs/runner.mjs';
 import { fetchYoutubeVideosByIds } from '../../../providers/youtube/youtube.mjs';
 import { json, readBody } from '../../shared.mjs';
@@ -35,16 +35,14 @@ export async function handleAdminYoutubeRoutes({ req, res, url, pathname }) {
       json(res, 200, { data: { requested: 0, run: result } });
       return true;
     }
-    const result = await updateDb(async (db) => {
-      const idSet = new Set(ids);
-      const videoIds = db.youtubeVideos
-        .filter((item) => idSet.has(item.id))
-        .map((item) => item.videoId || item.providerItemId)
-        .filter(Boolean);
-      const rows = await fetchYoutubeVideosByIds(videoIds, { order: 'date' });
-      for (const row of rows) upsertById(db.youtubeVideos, row);
-      return { requested: ids.length, updated: rows.length };
-    });
+    const idSet = new Set(ids);
+    const videoIds = (await listCollectionPayloads('youtubeVideos'))
+      .filter((item) => idSet.has(item.id))
+      .map((item) => item.videoId || item.providerItemId)
+      .filter(Boolean);
+    const rows = await fetchYoutubeVideosByIds(videoIds, { order: 'date' });
+    await upsertCollectionRows('youtubeVideos', rows);
+    const result = { requested: ids.length, updated: rows.length };
     json(res, 200, { data: result });
     return true;
   }

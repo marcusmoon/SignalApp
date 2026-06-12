@@ -24,7 +24,8 @@ import {
   displayNews,
   hasUsableTranslation,
 } from './http/shared.mjs';
-import { listActiveYoutubeChannelHandles } from './db/youtubeChannels.mjs';
+import { ensureYoutubeChannelsCatalog, listActiveYoutubeChannelHandles } from './db/youtubeChannels.mjs';
+import { normalizeYoutubeHandle } from './youtubeCuration.mjs';
 import { aggregateBacktests, backtestInstrument } from './quant/backtest.mjs';
 import {
   isAppUserJwtConfigured,
@@ -801,6 +802,7 @@ function publicNews(item) {
 function publicYoutube(item) {
   return {
     id: item.id,
+    provider: item.provider || 'youtube',
     videoId: item.videoId,
     title: item.title,
     channel: item.channel,
@@ -1167,7 +1169,10 @@ export async function queryPublicYoutube(options = {}) {
     const bucketParams = [...params, sort];
     const bucketWhere = [
       ...where,
-      `(payload->>'sortBucket' = $${bucketParams.length} OR COALESCE(payload->'sortBuckets', '[]'::jsonb) ? $${bucketParams.length})`,
+      `(
+        payload->>'sortBucket' = $${bucketParams.length}
+        OR jsonb_exists(COALESCE(payload->'sortBuckets', '[]'::jsonb), $${bucketParams.length})
+      )`,
     ];
     const bucketExists = await queryKysely(
       `
@@ -1206,31 +1211,84 @@ export async function queryPublicYoutube(options = {}) {
 
 export async function queryPublicYoutubeChannels() {
   return cachedPublicRead('publicYoutubeChannels', {}, async () => {
-    const settingsResult = await queryKysely(`SELECT payload FROM app_settings WHERE id = 'app'`);
-    const appSettings = payloadFromRow(settingsResult.rows[0]) || {};
-    const handles = new Set(listActiveYoutubeChannelHandles(appSettings).map((handle) => handle.toLowerCase()));
-    const channels = new Map();
+    const appSettings = (await readSingletonPayload('appSettings')) || {};
+    const catalog = ensureYoutubeChannelsCatalog(appSettings)
+      .filter((c) => c && c.hidden !== true && c.enabled !== false)
+      .map((c, idx) => {
+        const handle = normalizeYoutubeHandle(c.handle || c.id);
+        return {
+          handle,
+          key: handle.toLowerCase(),
+          title: cleanText(c.title) || (handle ? `@${handle}` : ''),
+          order: Number(c.order) || idx + 1,
+        };
+      })
+      .filter((c) => c.handle);
+
+    const configuredKeys = new Set(catalog.map((c) => c.key).filter(Boolean));
+    const where = [`COALESCE(payload->>'channelHandle', '') <> ''`];
+    const params = [];
+    if (configuredKeys.size > 0) {
+      params.push([...configuredKeys]);
+      where.push(`lower(COALESCE(payload->>'channelHandle', '')) = ANY($${params.length}::text[])`);
+    }
+
     const result = await queryKysely(
       `
-        SELECT payload
+        SELECT
+          lower(COALESCE(payload->>'channelHandle', '')) AS handle_key,
+          (array_agg(COALESCE(payload->>'channelHandle', '') ORDER BY published_at DESC NULLS LAST))[1] AS handle,
+          (array_agg(COALESCE(channel, payload->>'channel', '') ORDER BY published_at DESC NULLS LAST))[1] AS title,
+          COUNT(*)::int AS count,
+          MAX(published_at) AS latest_at
         FROM youtube_videos
-        ORDER BY published_at DESC NULLS LAST
-        LIMIT 500
+        WHERE ${where.join(' AND ')}
+        GROUP BY lower(COALESCE(payload->>'channelHandle', ''))
+        ORDER BY MAX(published_at) DESC NULLS LAST
       `,
+      params,
     );
-    for (const item of result.rows.map(payloadFromRow).filter(Boolean)) {
-      const handle = cleanText(item.channelHandle).toLowerCase();
-      if (handles.size > 0 && handle && !handles.has(handle)) continue;
-      const key = handle || cleanText(item.channelId) || cleanText(item.channel);
-      if (!key || channels.has(key)) continue;
-      channels.set(key, {
-        id: key,
-        handle: item.channelHandle || '',
-        channelId: item.channelId || '',
-        title: item.channel || item.channelHandle || key,
-      });
+
+    const statsByHandle = new Map(
+      result.rows
+        .map((row) => {
+          const key = cleanText(row.handle_key).toLowerCase();
+          if (!key) return null;
+          return [key, row];
+        })
+        .filter(Boolean),
+    );
+
+    if (catalog.length > 0) {
+      return catalog
+        .map((c) => {
+          const stats = statsByHandle.get(c.key) || {};
+          return {
+            handle: c.handle,
+            title: cleanText(stats.title) || c.title || `@${c.handle}`,
+            count: Number(stats.count) || 0,
+            latestAt: stats.latest_at || null,
+            order: c.order,
+            configured: true,
+          };
+        })
+        .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
     }
-    return [...channels.values()].sort((a, b) => a.title.localeCompare(b.title));
+
+    return result.rows
+      .map((row, idx) => {
+        const handle = normalizeYoutubeHandle(row.handle);
+        if (!handle) return null;
+        return {
+          handle,
+          title: cleanText(row.title) || `@${handle}`,
+          count: Number(row.count) || 0,
+          latestAt: row.latest_at || null,
+          order: idx + 1,
+          configured: false,
+        };
+      })
+      .filter(Boolean);
   }, 30000);
 }
 

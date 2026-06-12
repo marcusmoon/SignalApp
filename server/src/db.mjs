@@ -1166,29 +1166,33 @@ export async function queryPublicYoutube(options = {}) {
       )`);
     }
     const sort = cleanText(options.sort) === 'popular' ? 'popular' : 'latest';
-    const bucketParams = [...params, sort];
-    const bucketWhere = [
-      ...where,
-      `(
-        payload->>'sortBucket' = $${bucketParams.length}
-        OR jsonb_exists(COALESCE(payload->'sortBuckets', '[]'::jsonb), $${bucketParams.length})
-      )`,
-    ];
-    const bucketExists = await queryKysely(
-      `
-        SELECT 1
-        FROM youtube_videos
-        ${bucketWhere.length ? `WHERE ${bucketWhere.join(' AND ')}` : ''}
-        LIMIT 1
-      `,
-      bucketParams,
-    );
-    const finalWhere = bucketExists.rows.length > 0 ? bucketWhere : where;
-    const finalParams = bucketExists.rows.length > 0 ? bucketParams : [...params];
+    let finalWhere = where;
+    let finalParams = [...params];
+    if (sort === 'popular') {
+      const bucketParams = [...params, sort];
+      const bucketWhere = [
+        ...where,
+        `(
+          payload->>'sortBucket' = $${bucketParams.length}
+          OR jsonb_exists(COALESCE(payload->'sortBuckets', '[]'::jsonb), $${bucketParams.length})
+        )`,
+      ];
+      const bucketExists = await queryKysely(
+        `
+          SELECT 1
+          FROM youtube_videos
+          ${bucketWhere.length ? `WHERE ${bucketWhere.join(' AND ')}` : ''}
+          LIMIT 1
+        `,
+        bucketParams,
+      );
+      finalWhere = bucketExists.rows.length > 0 ? bucketWhere : where;
+      finalParams = bucketExists.rows.length > 0 ? bucketParams : [...params];
+    }
     finalParams.push(limit + 1, offset);
     const order = sort === 'popular'
       ? `ORDER BY ${numberSqlExpression(`payload->>'viewCount'`)} DESC, published_at DESC NULLS LAST`
-      : `ORDER BY published_at DESC NULLS LAST, ${numberSqlExpression(`payload->>'viewCount'`)} DESC`;
+      : `ORDER BY published_at DESC NULLS LAST, fetched_at DESC NULLS LAST, id DESC`;
     const result = await queryKysely(
       `
         SELECT payload

@@ -243,6 +243,37 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         return state.appSettings;
       }
 
+      function updateAdsEnabledLabel(enabled) {
+        if ($('adsEnabledLabel')) {
+          $('adsEnabledLabel').textContent = textFor(enabled ? 'appSettingsAdsOn' : 'appSettingsAdsOff');
+        }
+      }
+
+      function setAdsToggleSaving(saving) {
+        const input = $('adsEnabledInput');
+        if (input) input.disabled = saving;
+      }
+
+      async function saveAdsRuntimeSetting(enabled) {
+        const result = await api('/admin/api/app-settings', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            ads: {
+              enabled,
+              scope: 'global',
+            },
+          }),
+        });
+        state.appSettings = result.data || null;
+        updateAdsEnabledLabel(state.appSettings?.ads?.enabled !== false);
+        if ($('appSettingsStatus')) {
+          $('appSettingsStatus').textContent = textForVars('recentSavedAt', {
+            time: formatDateTime(state.appSettings?.updatedAt),
+          });
+        }
+        return state.appSettings;
+      }
+
       function setDatePresetFor(prefix) {
         const rangeEl = $(`${prefix}Range`);
         if (!rangeEl) return;
@@ -2566,15 +2597,20 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
 
       document.addEventListener('change', async (event) => {
         if (event.target.id === 'adsEnabledInput') {
+          const enabled = event.target instanceof HTMLInputElement ? event.target.checked : false;
+          event.preventDefault();
+          event.stopPropagation();
+          updateAdsEnabledLabel(enabled);
+          setAdsToggleSaving(true);
           try {
-            const saved = await saveAppRuntimeSettingsFromInputs();
+            const saved = await saveAdsRuntimeSetting(enabled);
             if (saved) showToast(textFor('toastSaved'), textFor('appSettingsAdsTitle'));
           } catch (error) {
             if (event.target instanceof HTMLInputElement) event.target.checked = !event.target.checked;
-            if ($('adsEnabledLabel')) {
-              $('adsEnabledLabel').textContent = textFor(event.target.checked ? 'appSettingsAdsOn' : 'appSettingsAdsOff');
-            }
+            updateAdsEnabledLabel(event.target instanceof HTMLInputElement ? event.target.checked : true);
             showToast(textFor('toastErrorTitle'), error?.message || textFor('appSettingsAdsTitle'), { kind: 'error' });
+          } finally {
+            setAdsToggleSaving(false);
           }
           return;
         }

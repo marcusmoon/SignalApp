@@ -430,9 +430,11 @@ export default function HomeScreen() {
           <Text style={styles.focusTitle} numberOfLines={2}>
             {primaryInsight?.title || headline || t('homeFocusFallbackTitle')}
           </Text>
-          <Text style={styles.focusBody} numberOfLines={3}>
-            {primaryInsight ? driverText(primaryInsight) : t('homeFocusFallbackBody')}
-          </Text>
+          {primaryInsight ? (
+            <Text style={styles.focusBody} numberOfLines={3}>
+              {driverText(primaryInsight)}
+            </Text>
+          ) : null}
           <View style={styles.pillRow}>
             <StatusPill
               icon="bolt"
@@ -627,7 +629,7 @@ export default function HomeScreen() {
         />
         <View style={styles.evidenceList}>
           {evidenceRows.length > 0 ? (
-            evidenceRows.map((item) => (
+            evidenceRows.map((item, index) => (
               <EvidenceCard
                 key={item.key}
                 icon={item.icon}
@@ -635,6 +637,8 @@ export default function HomeScreen() {
                 title={item.title}
                 source={item.source}
                 timeLabel={item.timeLabel}
+                grouped
+                isLast={index === evidenceRows.length - 1}
                 onPress={() => {
                   if (item.url) {
                     void WebBrowser.openBrowserAsync(item.url);

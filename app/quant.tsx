@@ -1,6 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View, type DimensionValue } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View, type DimensionValue } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
@@ -16,6 +16,27 @@ import type { MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
 
 const PAGE_LIMIT = 10;
+
+type QuantLensKey = 'health' | 'timing' | 'risk' | 'scenario';
+
+type LensView = {
+  label: string;
+  scoreLabel: string;
+  score: number;
+  status: string;
+  tone: 'positive' | 'neutral' | 'caution';
+  bullets: string[];
+  metrics: { label: string; value: string }[];
+};
+
+const LENS_KEYS: QuantLensKey[] = ['health', 'timing', 'risk', 'scenario'];
+
+const LENS_LABELS: Record<QuantLensKey, MessageId> = {
+  health: 'quantLensHealth',
+  timing: 'quantLensTiming',
+  risk: 'quantLensRisk',
+  scenario: 'quantLensScenario',
+};
 
 const REASON_LABELS: Record<string, MessageId> = {
   trend_up: 'quantReasonTrendUp',
@@ -91,11 +112,159 @@ function scoreColor(theme: AppTheme, score: number): string {
   return theme.textDim;
 }
 
+function normalizeScore(value: number | null | undefined, fallback = 50): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function actionPriority(action: string): number {
+  if (action === 'buy') return 5;
+  if (action === 'accumulate') return 4;
+  if (action === 'hold') return 3;
+  if (action === 'reduce') return 2;
+  if (action === 'avoid') return 1;
+  return 0;
+}
+
+function riskPressure(item: SignalApiQuantSignal): number {
+  const volatility = normalizeScore(item.indicators.volatility, 35);
+  const rsi = item.indicators.rsi14;
+  const overheat = typeof rsi === 'number' && Number.isFinite(rsi) ? Math.max(0, rsi - 60) * 1.8 : 0;
+  const trendPenalty = Math.max(0, -(Number(item.indicators.vsSma20Pct) || 0)) * 2;
+  const riskBase = item.risk === 'high' ? 24 : item.risk === 'medium' ? 12 : 0;
+  return normalizeScore(volatility + overheat + trendPenalty + riskBase, 40);
+}
+
+function lensTone(score: number, inverse = false): LensView['tone'] {
+  const effective = inverse ? 100 - score : score;
+  if (effective >= 62) return 'positive';
+  if (effective >= 42) return 'neutral';
+  return 'caution';
+}
+
+function statusForScore(t: (id: MessageId, vars?: Record<string, string | number>) => string, score: number): string {
+  if (score >= 70) return t('quantLensStatusStrong');
+  if (score >= 55) return t('quantLensStatusWatch');
+  if (score >= 40) return t('quantLensStatusNeutral');
+  return t('quantLensStatusWeak');
+}
+
+function statusForRisk(t: (id: MessageId, vars?: Record<string, string | number>) => string, pressure: number): string {
+  if (pressure >= 70) return t('quantLensStatusRiskHigh');
+  if (pressure >= 50) return t('quantLensStatusRiskWatch');
+  return t('quantLensStatusRiskLow');
+}
+
+function buildLensView(
+  item: SignalApiQuantSignal,
+  lens: QuantLensKey,
+  t: (id: MessageId, vars?: Record<string, string | number>) => string,
+): LensView {
+  const indicators = item.indicators;
+  const trend = normalizeScore(item.factors.trend);
+  const momentum = normalizeScore(item.factors.momentum);
+  const volume = normalizeScore(item.factors.volume);
+  const confidence = normalizeScore(item.confidence);
+  const ret20 = indicators.return20d;
+  const vs20 = indicators.vsSma20Pct;
+  const rsi = indicators.rsi14;
+  const volatility = indicators.volatility;
+  const positives = item.perspective?.positives?.filter(Boolean) ?? [];
+  const cautions = item.perspective?.cautions?.filter(Boolean) ?? [];
+
+  if (lens === 'health') {
+    const score = normalizeScore(trend * 0.35 + momentum * 0.25 + volume * 0.2 + confidence * 0.2);
+    return {
+      label: t('quantLensHealth'),
+      scoreLabel: t('quantLensHealthScore'),
+      score,
+      status: statusForScore(t, score),
+      tone: lensTone(score),
+      bullets: [
+        positives[0] || t('quantLensHealthBulletTrend', { value: trend }),
+        t('quantLensHealthBulletMomentum', { value: momentum }),
+        t('quantLensHealthBulletConfidence', { value: confidence }),
+      ],
+      metrics: [
+        { label: t('quantFactorTrend'), value: String(trend) },
+        { label: t('quantFactorVolume'), value: String(volume) },
+        { label: t('quantConfidence'), value: String(confidence) },
+      ],
+    };
+  }
+
+  if (lens === 'timing') {
+    const score = normalizeScore(item.score);
+    const pullbackLabel =
+      typeof vs20 === 'number' && Number.isFinite(vs20) && vs20 < 0
+        ? t('quantLensTimingPullback', { value: formatPct(vs20) })
+        : t('quantLensTimingTrend', { value: formatPct(vs20) });
+    return {
+      label: t('quantLensTiming'),
+      scoreLabel: t('quantChecklistScore'),
+      score,
+      status: t(ACTION_LABELS[item.action] ?? 'quantActionHold'),
+      tone: lensTone(score),
+      bullets: [
+        item.headline || pullbackLabel,
+        pullbackLabel,
+        positives[0] || t('quantLensTimingBulletMomentum', { value: formatPct(ret20) }),
+      ],
+      metrics: [
+        { label: t('quant20dReturn'), value: formatPct(ret20) },
+        { label: t('quantIndicatorSma20'), value: formatPct(vs20) },
+        { label: t('quantIndicatorRsi'), value: formatNumber(rsi, 0) },
+      ],
+    };
+  }
+
+  if (lens === 'risk') {
+    const pressure = riskPressure(item);
+    return {
+      label: t('quantLensRisk'),
+      scoreLabel: t('quantLensRiskScore'),
+      score: pressure,
+      status: statusForRisk(t, pressure),
+      tone: lensTone(pressure, true),
+      bullets: [
+        cautions[0] || t('quantLensRiskBulletVolatility', { value: formatNumber(volatility, 0, '%') }),
+        cautions[1] || t('quantLensRiskBulletRsi', { value: formatNumber(rsi, 0) }),
+        t(RISK_LABELS[item.risk] ?? 'quantRiskUnknown'),
+      ],
+      metrics: [
+        { label: t('quantIndicatorVol'), value: formatNumber(volatility, 0, '%') },
+        { label: t('quantIndicatorRsi'), value: formatNumber(rsi, 0) },
+        { label: t('quantIndicatorSma20'), value: formatPct(vs20) },
+      ],
+    };
+  }
+
+  const scenarioScore = normalizeScore(confidence * 0.4 + trend * 0.35 + Math.max(0, 100 - riskPressure(item)) * 0.25);
+  return {
+    label: t('quantLensScenario'),
+    scoreLabel: t('quantLensScenarioScore'),
+    score: scenarioScore,
+    status: statusForScore(t, scenarioScore),
+    tone: lensTone(scenarioScore),
+    bullets: [
+      item.perspective?.principle || t('quantLensScenarioBulletThesis'),
+      positives[0] || t('quantLensScenarioBulletTrend', { value: trend }),
+      cautions[0] || t('quantLensScenarioBulletCheckpoint'),
+    ],
+    metrics: [
+      { label: t('quantConfidence'), value: String(confidence) },
+      { label: t('quantFactorTrend'), value: String(trend) },
+      { label: t('quantLensDataBars'), value: String(item.barCount || 0) },
+    ],
+  };
+}
+
 export default function QuantScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const [items, setItems] = useState<SignalApiQuantSignal[]>([]);
+  const [lens, setLens] = useState<QuantLensKey>('timing');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,11 +300,25 @@ export default function QuantScreen() {
     void load();
   }, [load]);
 
+  const displayItems = useMemo(() => {
+    const rows = [...items];
+    if (lens === 'health') {
+      return rows.sort((a, b) => buildLensView(b, lens, t).score - buildLensView(a, lens, t).score);
+    }
+    if (lens === 'risk') {
+      return rows.sort((a, b) => riskPressure(b) - riskPressure(a));
+    }
+    if (lens === 'scenario') {
+      return rows.sort((a, b) => buildLensView(b, lens, t).score - buildLensView(a, lens, t).score);
+    }
+    return rows.sort((a, b) => actionPriority(b.action) - actionPriority(a.action) || b.score - a.score);
+  }, [items, lens, t]);
+
   const renderItem = useCallback(
     ({ item }: { item: SignalApiQuantSignal }) => (
-      <QuantCard item={item} styles={styles} theme={theme} t={t} />
+      <QuantCard item={item} lens={lens} styles={styles} theme={theme} t={t} />
     ),
-    [styles, t, theme],
+    [lens, styles, t, theme],
   );
 
   if (loading) {
@@ -153,7 +336,7 @@ export default function QuantScreen() {
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <OtaUpdateBanner />
       <FlatList
-        data={items}
+        data={displayItems}
         keyExtractor={(item) => item.symbol}
         renderItem={renderItem}
         refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => load({ refresh: true })} />}
@@ -161,8 +344,24 @@ export default function QuantScreen() {
         ListHeaderComponent={
           <View style={styles.header}>
             <Text style={styles.title}>{t('screenQuant')}</Text>
-            <Text style={styles.subtitle}>{t('quantSubtitle')}</Text>
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            <View style={styles.lensTabs}>
+              {LENS_KEYS.map((key) => {
+                const active = lens === key;
+                return (
+                  <Pressable
+                    key={key}
+                    onPress={() => setLens(key)}
+                    style={[styles.lensTab, active && styles.lensTabActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}>
+                    <Text style={[styles.lensTabText, active && styles.lensTabTextActive]}>
+                      {t(LENS_LABELS[key])}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
         }
         ListEmptyComponent={
@@ -178,11 +377,13 @@ export default function QuantScreen() {
 
 function QuantCard({
   item,
+  lens,
   styles,
   theme,
   t,
 }: {
   item: SignalApiQuantSignal;
+  lens: QuantLensKey;
   styles: ReturnType<typeof makeStyles>;
   theme: AppTheme;
   t: (id: MessageId, vars?: Record<string, string | number>) => string;
@@ -203,6 +404,8 @@ function QuantCard({
   const perspective = item.perspective ?? null;
   const positives = Array.isArray(perspective?.positives) ? perspective.positives.filter(Boolean).slice(0, 3) : [];
   const cautions = Array.isArray(perspective?.cautions) ? perspective.cautions.filter(Boolean).slice(0, 2) : [];
+  const lensView = buildLensView(item, lens, t);
+  const lensScoreTone = lensView.tone === 'positive' ? theme.green : lensView.tone === 'caution' ? theme.danger : theme.textMuted;
 
   return (
     <View style={styles.card}>
@@ -217,8 +420,10 @@ function QuantCard({
           </Text>
         </View>
         <View style={styles.scoreBox}>
-          <Text style={styles.scoreLabel}>{t('quantChecklistScore')}</Text>
-          <Text style={[styles.scoreValue, { color: scoreTone }]}>{item.score}</Text>
+          <Text style={styles.scoreLabel}>{lensView.scoreLabel}</Text>
+          <Text style={[styles.scoreValue, { color: lens === 'risk' ? lensScoreTone : scoreTone }]}>
+            {lensView.score}
+          </Text>
         </View>
       </View>
 
@@ -229,7 +434,36 @@ function QuantCard({
         </Text>
       </View>
 
-      {perspective ? (
+      <View style={[styles.lensBox, { borderColor: lensScoreTone }]}>
+        <View style={styles.lensBoxHead}>
+          <Text style={[styles.lensBadge, { color: lensScoreTone, borderColor: lensScoreTone }]}>
+            {lensView.status}
+          </Text>
+          <Text style={styles.lensTitle}>{lensView.label}</Text>
+        </View>
+        <View style={styles.lensMetricRow}>
+          {lensView.metrics.map((metric) => (
+            <View key={`${lens}-${metric.label}`} style={styles.lensMetric}>
+              <Text style={styles.lensMetricLabel}>{metric.label}</Text>
+              <Text style={styles.lensMetricValue}>{metric.value}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={styles.checkBlock}>
+          {lensView.bullets.filter(Boolean).slice(0, 3).map((text, index) => (
+            <View key={`${lens}-bullet-${index}`} style={styles.checkRow}>
+              <FontAwesome
+                name={lens === 'risk' ? 'exclamation-circle' : index === 0 ? 'check-circle' : 'circle'}
+                size={12}
+                color={lensScoreTone}
+              />
+              <Text style={styles.checkText}>{text}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {perspective && lens === 'timing' ? (
         <View style={styles.perspectiveBox}>
           <View style={styles.perspectiveHead}>
             <Text style={styles.perspectiveKicker}>{t('quantPerspectiveLabel')}</Text>
@@ -356,7 +590,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     header: {
       marginBottom: 4,
-      gap: 6,
+      gap: 10,
     },
     title: {
       fontSize: sf(22),
@@ -368,6 +602,36 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(13),
       lineHeight: sf(18),
       color: theme.textMuted,
+    },
+    lensTabs: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 7,
+      paddingTop: 2,
+    },
+    lensTab: {
+      minHeight: 34,
+      paddingHorizontal: 11,
+      paddingVertical: 7,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    lensTabActive: {
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    lensTabText: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '900',
+      color: theme.textMuted,
+    },
+    lensTabTextActive: {
+      color: theme.green,
     },
     errorText: {
       marginTop: 8,
@@ -518,6 +782,66 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(12),
       lineHeight: sf(17),
       fontWeight: '700',
+      color: theme.text,
+    },
+    lensBox: {
+      borderRadius: 14,
+      borderWidth: 1,
+      backgroundColor: theme.bgElevated,
+      paddingHorizontal: 12,
+      paddingVertical: 11,
+      gap: 9,
+    },
+    lensBoxHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      minWidth: 0,
+    },
+    lensBadge: {
+      overflow: 'hidden',
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '900',
+      backgroundColor: theme.card,
+    },
+    lensTitle: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: sf(14),
+      lineHeight: sf(19),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    lensMetricRow: {
+      flexDirection: 'row',
+      gap: 7,
+    },
+    lensMetric: {
+      flex: 1,
+      minWidth: 0,
+      borderRadius: 10,
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      paddingHorizontal: 8,
+      paddingVertical: 7,
+      gap: 2,
+    },
+    lensMetricLabel: {
+      fontSize: sf(10),
+      lineHeight: sf(14),
+      fontWeight: '800',
+      color: theme.textMuted,
+    },
+    lensMetricValue: {
+      fontSize: sf(13),
+      lineHeight: sf(18),
+      fontWeight: '900',
       color: theme.text,
     },
     interpretBox: {

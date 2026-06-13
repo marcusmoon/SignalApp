@@ -99,6 +99,8 @@ export function EvidenceCard({
   source,
   timeLabel,
   onPress,
+  grouped = false,
+  isLast = false,
   feedTypo,
   theme,
   scaleFont,
@@ -109,6 +111,8 @@ export function EvidenceCard({
   source: string;
   timeLabel?: string;
   onPress: () => void;
+  grouped?: boolean;
+  isLast?: boolean;
   feedTypo: FeedContentTypography;
   theme: AppTheme;
   scaleFont: (n: number) => number;
@@ -118,7 +122,12 @@ export function EvidenceCard({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.evidenceCard, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.evidenceCard,
+        grouped && styles.evidenceCardGrouped,
+        grouped && isLast && styles.evidenceCardGroupedLast,
+        pressed && styles.pressed,
+      ]}
       accessibilityRole="button">
       <View style={styles.evidenceIcon}>
         <FontAwesome name={icon} size={iconSize} color={theme.green} />
@@ -255,6 +264,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
+    },
+    evidenceCardGrouped: {
+      borderRadius: 0,
+      borderWidth: 0,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+      backgroundColor: 'transparent',
+    },
+    evidenceCardGroupedLast: {
+      borderBottomWidth: 0,
     },
     evidenceIcon: {
       width: 32,

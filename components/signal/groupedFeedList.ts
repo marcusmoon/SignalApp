@@ -41,6 +41,7 @@ export function groupedFeedRowShell(
     borderLeftWidth: 1,
     borderRightWidth: 1,
     borderColor: theme.border,
+    overflow: 'hidden',
     ...(isFirst
       ? {
           borderTopWidth: 1,

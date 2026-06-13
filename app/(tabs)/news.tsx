@@ -975,33 +975,48 @@ export default function FeedScreen() {
         ) : null}
 
         {primaryDigest ? (
-          <View style={styles.digestCard}>
+          <Pressable
+            onPress={() => setDigestExpanded((value) => !value)}
+            style={({ pressed }) => [styles.digestCard, pressed && styles.digestCardPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={digestExpanded ? t('feedDigestCollapse') : t('feedDigestExpand')}>
             <View style={styles.digestTopRow}>
               <View style={styles.digestKicker}>
                 <FontAwesome name="bolt" size={11} color={theme.green} />
                 <Text style={styles.digestKickerText}>{t('feedDigestKicker')}</Text>
               </View>
-              <Text style={styles.digestCount}>{t('feedDigestCount', { count: String(primaryDigest.count) })}</Text>
+              <View style={styles.digestHeaderMeta}>
+                <Text style={styles.digestCount}>{t('feedDigestCount', { count: String(primaryDigest.count) })}</Text>
+                <FontAwesome
+                  name={digestExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={11}
+                  color={theme.textDim}
+                />
+              </View>
             </View>
-            <Text style={styles.digestTitle} numberOfLines={2}>
+            <Text style={styles.digestTitle} numberOfLines={digestExpanded ? 2 : 1}>
               {primaryDigest.title}
             </Text>
-            <Text style={styles.digestSummary} numberOfLines={2}>
-              {digestSummaryText(primaryDigest)}
-            </Text>
-            {primaryDigest.symbols.length > 0 || primaryDigest.sources.length > 0 ? (
-              <View style={styles.digestChipRow}>
-                {primaryDigest.symbols.slice(0, 3).map((symbol) => (
-                  <Text key={`digest-symbol-${symbol}`} style={styles.digestSymbolChip}>
-                    {symbol}
-                  </Text>
-                ))}
-                {primaryDigest.sources.slice(0, 2).map((source) => (
-                  <Text key={`digest-source-${source}`} style={styles.digestSourceChip} numberOfLines={1}>
-                    {source}
-                  </Text>
-                ))}
-              </View>
+            {digestExpanded ? (
+              <>
+                <Text style={styles.digestSummary} numberOfLines={2}>
+                  {digestSummaryText(primaryDigest)}
+                </Text>
+                {primaryDigest.symbols.length > 0 || primaryDigest.sources.length > 0 ? (
+                  <View style={styles.digestChipRow}>
+                    {primaryDigest.symbols.slice(0, 3).map((symbol) => (
+                      <Text key={`digest-symbol-${symbol}`} style={styles.digestSymbolChip}>
+                        {symbol}
+                      </Text>
+                    ))}
+                    {primaryDigest.sources.slice(0, 2).map((source) => (
+                      <Text key={`digest-source-${source}`} style={styles.digestSourceChip} numberOfLines={1}>
+                        {source}
+                      </Text>
+                    ))}
+                  </View>
+                ) : null}
+              </>
             ) : null}
             {digestExpanded && secondaryDigests.length > 0 ? (
               <View style={styles.digestMoreList}>
@@ -1017,23 +1032,7 @@ export default function FeedScreen() {
                 ))}
               </View>
             ) : null}
-            {secondaryDigests.length > 0 ? (
-              <Pressable
-                onPress={() => setDigestExpanded((value) => !value)}
-                style={({ pressed }) => [styles.digestToggle, pressed && styles.digestTogglePressed]}
-                accessibilityRole="button"
-                accessibilityLabel={digestExpanded ? t('feedDigestCollapse') : t('feedDigestExpand')}>
-                <Text style={styles.digestToggleText}>
-                  {digestExpanded ? t('feedDigestCollapse') : t('feedDigestExpand')}
-                </Text>
-                <FontAwesome
-                  name={digestExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={11}
-                  color={theme.green}
-                />
-              </Pressable>
-            ) : null}
-          </View>
+          </Pressable>
         ) : null}
 
         {segment === 'watch' ? (

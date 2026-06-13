@@ -32,6 +32,9 @@ import {
   queryPublicNewsSourceRows,
 } from './db/repositories/newsRepository.mjs';
 import {
+  queryPublicNewsDigestRows,
+} from './db/repositories/newsDigestRepository.mjs';
+import {
   queryPublicCoinMarketRows,
   queryPublicMarketQuoteRows,
 } from './db/repositories/marketRepository.mjs';
@@ -484,6 +487,21 @@ const collectionSpecs = [
     }),
   },
   {
+    key: 'newsDigestItems',
+    store: 'insights',
+    table: 'news_digest_items',
+    pk: 'id',
+    keyOf: (row) => row.id,
+    columns: (row, index) => ({
+      position: index,
+      category: textOrNull(row.category),
+      digest_date: dateOrNull(row.generatedDate || row.digestDate || row.generatedAt),
+      generated_at: isoOrNull(row.generatedAt),
+      score: numberOrNull(row.score),
+      updated_at: isoOrNull(row.updatedAt) || nowIso(),
+    }),
+  },
+  {
     key: 'notificationItems',
     store: 'insights',
     table: 'notification_items',
@@ -786,6 +804,10 @@ export async function queryPublicNews(options = {}) {
 
 export async function queryPublicNewsSources(options = {}) {
   return cachedPublicRead('publicNewsSources', options, () => queryPublicNewsSourceRows(options), 30000);
+}
+
+export async function queryPublicNewsDigests(options = {}) {
+  return cachedPublicRead('publicNewsDigests', options, () => queryPublicNewsDigestRows(options), 15000);
 }
 
 export async function queryAdminNews(options = {}) {

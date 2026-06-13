@@ -30,6 +30,31 @@ export type SignalNewsListMeta = {
   nextOffset: number | null;
 };
 
+export type SignalApiNewsDigestSourceRef = {
+  type: 'news' | string;
+  id: string;
+  title: string;
+  url: string | null;
+  sourceName: string;
+  publishedAt: string | null;
+};
+
+export type SignalApiNewsDigestItem = {
+  id: string;
+  category: string;
+  title: string;
+  summary: string;
+  symbols: string[];
+  sources: string[];
+  topics: string[];
+  count: number;
+  score: number;
+  generatedDate: string | null;
+  generatedAt: string | null;
+  primaryNewsId: string | null;
+  sourceRefs: SignalApiNewsDigestSourceRef[];
+};
+
 export type SignalApiNewsSource = {
   id: string;
   name: string;

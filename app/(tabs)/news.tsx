@@ -72,13 +72,14 @@ import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { createScrollLoadMoreGate } from '@/utils/listScrollLoadMoreGate';
 import {
   fetchSignalNews,
+  fetchSignalNewsDigests,
   fetchSignalNewsSources,
   fetchSignalYoutube,
   signalNewsToNewsItem,
   signalYoutubeToYoutubeItem,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
-import type { SignalApiNewsItem, SignalApiYoutubeVideo } from '@/integrations/signal-api/types';
+import type { SignalApiNewsDigestItem, SignalApiNewsItem, SignalApiYoutubeVideo } from '@/integrations/signal-api/types';
 import type { NewsItem, YoutubeItem } from '@/types/signal';
 
 type FeedRow =
@@ -86,6 +87,45 @@ type FeedRow =
   | { kind: 'video'; video: YoutubeItem }
   | { kind: 'ad'; key: string };
 type FeedLoadResult = { itemIds: string[]; kind: 'news' | 'video'; insightIds: string[] };
+
+function digestSourceUrl(item: SignalApiNewsDigestItem): string {
+  return item.sourceRefs.find((ref) => ref.url)?.url || '';
+}
+
+function digestPrimaryNews(item: SignalApiNewsDigestItem, rows: SignalApiNewsItem[]): SignalApiNewsItem {
+  const matched = rows.find((row) => row.id === item.primaryNewsId);
+  if (matched) return matched;
+  const sourceRef = item.sourceRefs[0];
+  const now = item.generatedAt || new Date().toISOString();
+  return {
+    id: item.primaryNewsId || item.id,
+    category: item.category || 'global',
+    title: item.title,
+    summary: item.summary,
+    originalTitle: item.title,
+    originalSummary: item.summary,
+    sourceName: sourceRef?.sourceName || item.sources[0] || '',
+    sourceUrl: sourceRef?.url || digestSourceUrl(item),
+    imageUrl: null,
+    symbols: item.symbols,
+    hashtags: item.topics.map((label, order) => ({ label, order, source: 'auto' })),
+    provider: 'signal',
+    publishedAt: sourceRef?.publishedAt || item.generatedAt,
+    fetchedAt: now,
+  };
+}
+
+function digestFromServer(item: SignalApiNewsDigestItem, rows: SignalApiNewsItem[]): NewsDigestItem {
+  return {
+    id: item.id,
+    title: item.title,
+    symbols: item.symbols,
+    sources: item.sources,
+    count: item.count,
+    score: item.score,
+    primary: digestPrimaryNews(item, rows),
+  };
+}
 
 export default function FeedScreen() {
   const router = useRouter();
@@ -105,6 +145,7 @@ export default function FeedScreen() {
   const [items, setItems] = useState<NewsItem[]>([]);
   const [videoItems, setVideoItems] = useState<YoutubeItem[]>([]);
   const [serverRows, setServerRows] = useState<SignalApiNewsItem[]>([]);
+  const [serverDigestRows, setServerDigestRows] = useState<SignalApiNewsDigestItem[]>([]);
   const [youtubeRows, setYoutubeRows] = useState<SignalApiYoutubeVideo[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -184,6 +225,7 @@ export default function FeedScreen() {
         setItems([]);
         setVideoItems([]);
         setServerRows([]);
+        setServerDigestRows([]);
         setYoutubeRows([]);
         setSignalNewsPool([]);
         setAvailableSources([]);
@@ -204,6 +246,7 @@ export default function FeedScreen() {
         setCryptoSelectedSources(null);
         setItems([]);
         setServerRows([]);
+        setServerDigestRows([]);
         const { items: rows, meta } = await fetchSignalYoutube(
           {
             sort: 'latest',
@@ -236,6 +279,7 @@ export default function FeedScreen() {
             : symbols;
         if (symbols.length === 0 || requestSymbols.length === 0) {
           setServerRows([]);
+          setServerDigestRows([]);
           setItems([]);
           setHasMore(false);
           return { itemIds: [], kind: 'news', insightIds: [] };
@@ -252,6 +296,7 @@ export default function FeedScreen() {
           { cacheMode },
         );
         setServerRows(rows);
+        setServerDigestRows([]);
         setHasMore(meta.hasMore);
         const mapped = rows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
@@ -262,22 +307,27 @@ export default function FeedScreen() {
         setSignalNewsPool([]);
         setAvailableSources([]);
         setSelectedSources([]);
-        const { items: rows, meta } = await fetchSignalNews(
-          {
-            locale,
-            category: 'crypto',
-            flash: cryptoFilterRef.current === 'flash',
-            sources:
-              cryptoFilterRef.current === 'sources'
-                ? sourceFilterParam(cryptoSourceOptions, cryptoSelectedSourcesRef.current)
-                : undefined,
-            limit: FEED_PAGE_CRYPTO,
-            offset: 0,
-            tag: activeTag || undefined,
-          },
-          { cacheMode },
-        );
+        const [newsPage, digestPage] = await Promise.all([
+          fetchSignalNews(
+            {
+              locale,
+              category: 'crypto',
+              flash: cryptoFilterRef.current === 'flash',
+              sources:
+                cryptoFilterRef.current === 'sources'
+                  ? sourceFilterParam(cryptoSourceOptions, cryptoSelectedSourcesRef.current)
+                  : undefined,
+              limit: FEED_PAGE_CRYPTO,
+              offset: 0,
+              tag: activeTag || undefined,
+            },
+            { cacheMode },
+          ),
+          fetchSignalNewsDigests({ category: 'crypto', limit: 4 }).catch(() => null),
+        ]);
+        const { items: rows, meta } = newsPage;
         setServerRows(rows);
+        setServerDigestRows(digestPage?.items || []);
         setHasMore(meta.hasMore);
         const sourceOptions = uniqueSignalSources(rows);
         setCryptoSourceOptions(sourceOptions);
@@ -289,7 +339,7 @@ export default function FeedScreen() {
       }
 
       const pageLimit = FEED_PAGE_GLOBAL;
-      const [catalogRows, firstPageResult] = await Promise.all([
+      const [catalogRows, firstPageResult, digestPage] = await Promise.all([
         fetchSignalNewsSources({ category: 'global' }, { cacheMode })
           .then((cat) => cat.map((c) => ({ name: c.name, enabled: c.enabled, order: c.order })))
           .catch(() => [] as { name: string; enabled: boolean; order: number }[]),
@@ -308,6 +358,7 @@ export default function FeedScreen() {
           },
           { cacheMode },
         ),
+        fetchSignalNewsDigests({ category: 'global', limit: 4 }).catch(() => null),
       ]);
 
       const enabledCatalog = (catalogRows || [])
@@ -334,6 +385,7 @@ export default function FeedScreen() {
 
       const { items: firstPage, meta } = firstPageResult;
       setServerRows(firstPage);
+      setServerDigestRows(digestPage?.items || []);
       setHasMore(meta.hasMore);
 
       const mergedForSources = [...probe, ...firstPage];
@@ -708,6 +760,7 @@ export default function FeedScreen() {
     setLoading(true);
     setItems([]);
     setServerRows([]);
+    setServerDigestRows([]);
     setHasMore(false);
     void fetchSignalNews(
       {
@@ -753,6 +806,7 @@ export default function FeedScreen() {
       const requestSymbols = kind === 'symbols' ? normalizeNullableSelection(symbols, selectedSymbols) : symbols;
       if (requestSymbols.length === 0) {
         setServerRows([]);
+        setServerDigestRows([]);
         setItems([]);
         setHasMore(false);
         return;
@@ -760,6 +814,7 @@ export default function FeedScreen() {
       setLoading(true);
       setItems([]);
       setServerRows([]);
+      setServerDigestRows([]);
       setHasMore(false);
       try {
         const page = await fetchSignalNews(
@@ -820,6 +875,7 @@ export default function FeedScreen() {
     setItems([]);
     setVideoItems([]);
     setServerRows([]);
+    setServerDigestRows([]);
     setYoutubeRows([]);
     setHasMore(false);
     setError(null);
@@ -832,8 +888,13 @@ export default function FeedScreen() {
 
   const newsQuickFilter = segment === 'crypto' ? cryptoFilter : globalFilter;
   const digestItems = useMemo(
-    () => (segment === 'video' ? [] : buildNewsDigestItems(serverRows, 4)),
-    [segment, serverRows],
+    () =>
+      segment === 'video'
+        ? []
+        : serverDigestRows.length > 0
+          ? serverDigestRows.map((item) => digestFromServer(item, serverRows))
+          : buildNewsDigestItems(serverRows, 4),
+    [segment, serverDigestRows, serverRows],
   );
   const primaryDigest = digestItems[0] ?? null;
   const secondaryDigests = digestItems.slice(1);

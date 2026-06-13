@@ -1,10 +1,32 @@
 import {
   queryPublicNews,
+  queryPublicNewsDigests,
   queryPublicNewsSources,
 } from '../../../db.mjs';
 import { json } from '../../shared.mjs';
 
 export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
+  if (req.method === 'GET' && pathname === '/v1/news-digests') {
+    const page = await queryPublicNewsDigests({
+      category: url.searchParams.get('category') || '',
+      from: url.searchParams.get('from') || '',
+      to: url.searchParams.get('to') || '',
+      limit: url.searchParams.get('limit') || '4',
+      offset: url.searchParams.get('offset') || '0',
+    });
+    json(res, 200, {
+      data: page.rows,
+      meta: {
+        limit: page.limit,
+        offset: page.offset,
+        total: page.total,
+        hasMore: page.hasMore,
+        nextOffset: page.nextOffset,
+      },
+    });
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/v1/news') {
     const page = await queryPublicNews({
       locale: url.searchParams.get('locale') || 'ko',

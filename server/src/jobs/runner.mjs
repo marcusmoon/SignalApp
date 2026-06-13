@@ -23,6 +23,7 @@ import { fetchYahooDailyPriceSeries, fetchYahooKoreaDailyBars } from '../provide
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
 import { generateMarketInsights } from '../insights/rules.mjs';
 import { generateQuantSignalItems } from '../quant/generate.mjs';
+import { generateNewsDigestItems } from '../digests/newsDigest.mjs';
 import { notificationsFromInsights } from '../notifications/outbox.mjs';
 import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
@@ -255,6 +256,9 @@ async function readJobContext(job) {
     context.calendarEvents = calendarEvents;
     context.providerSettings = providerSettings;
   }
+  if (provider === 'signal' && handler === 'news_digest') {
+    context.newsItems = await listCollectionPayloads('newsItems');
+  }
   if (provider === 'signal' && handler === 'quant_signals') {
     context.priceSeries = await listCollectionPayloads('priceSeries');
   }
@@ -459,6 +463,9 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
   if (job.provider === 'signal' && job.handler === 'market_insights') {
     return { kind: 'insights', rows: generateMarketInsights(dbBefore, job.params || {}) };
   }
+  if (job.provider === 'signal' && job.handler === 'news_digest') {
+    return { kind: 'newsDigests', rows: generateNewsDigestItems(dbBefore, job.params || {}) };
+  }
   if (job.provider === 'signal' && job.handler === 'quant_signals') {
     return { kind: 'quantSignals', rows: generateQuantSignalItems(dbBefore, job.params || {}) };
   }
@@ -599,6 +606,7 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       priceSeries: 'priceSeries',
       coinMarkets: 'coinMarkets',
       quantSignals: 'quantSignalItems',
+      newsDigests: 'newsDigestItems',
     };
     const directCollection = directCollectionByKind[result.kind];
     if (directCollection) {

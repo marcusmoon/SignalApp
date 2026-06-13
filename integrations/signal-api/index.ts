@@ -11,6 +11,7 @@ export * from '@/integrations/signal-api/market';
 export * from '@/integrations/signal-api/marketLists';
 export * from '@/integrations/signal-api/insights';
 export * from '@/integrations/signal-api/news';
+export * from '@/integrations/signal-api/newsDigests';
 export * from '@/integrations/signal-api/notifications';
 export * from '@/integrations/signal-api/quant';
 export * from '@/integrations/signal-api/cache/newsCache';

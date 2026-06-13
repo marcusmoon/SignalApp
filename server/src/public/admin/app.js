@@ -213,6 +213,36 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         return refreshTranslationTestModelsView({ providerSettings, uiModelPresets: state.uiModelPresets, $, esc });
       }
 
+      async function saveAppRuntimeSettingsFromInputs() {
+        const raw = $('marketQuotesMaxAgeSecInput')?.value;
+        const n = Math.floor(Number(raw));
+        if (!Number.isFinite(n) || n < 0 || n > 300) {
+          showToast(textFor('toastError'), textFor('appSettingsQuotesTitle'), { kind: 'danger' });
+          return null;
+        }
+        const adsEnabled = $('adsEnabledInput')?.checked === true;
+        const result = await api('/admin/api/app-settings', {
+          method: 'PATCH',
+          body: JSON.stringify({
+            marketQuotesMaxAgeSec: n,
+            ads: {
+              enabled: adsEnabled,
+              scope: 'global',
+            },
+          }),
+        });
+        state.appSettings = result.data || null;
+        if ($('appSettingsStatus')) {
+          $('appSettingsStatus').textContent = textForVars('recentSavedAt', {
+            time: formatDateTime(state.appSettings?.updatedAt),
+          });
+        }
+        if ($('adsEnabledLabel')) {
+          $('adsEnabledLabel').textContent = textFor(adsEnabled ? 'appSettingsAdsOn' : 'appSettingsAdsOff');
+        }
+        return state.appSettings;
+      }
+
       function setDatePresetFor(prefix) {
         const rangeEl = $(`${prefix}Range`);
         if (!rangeEl) return;
@@ -1826,28 +1856,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             }
           }
           if (target.id === 'saveAppSettingsBtn') {
-            const raw = $('marketQuotesMaxAgeSecInput')?.value;
-            const n = Math.floor(Number(raw));
-            if (!Number.isFinite(n) || n < 0 || n > 300) {
-              showToast(textFor('toastError'), textFor('appSettingsQuotesTitle'), { kind: 'danger' });
-              return;
-            }
-            const result = await api('/admin/api/app-settings', {
-              method: 'PATCH',
-              body: JSON.stringify({
-                marketQuotesMaxAgeSec: n,
-                ads: {
-                  enabled: $('adsEnabledInput')?.checked === true,
-                  scope: 'global',
-                },
-              }),
-            });
-            state.appSettings = result.data || null;
-            if ($('appSettingsStatus')) $('appSettingsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.appSettings?.updatedAt) });
-            showToast(textFor('toastSaved'), textFor('appSettingsQuotesTitle'));
-            if (state.view === 'settings-keys') {
-              await loadProviderSettings();
-            }
+            const saved = await saveAppRuntimeSettingsFromInputs();
+            if (saved) showToast(textFor('toastSaved'), textFor('appSettingsQuotesTitle'));
             return;
           }
           if (target.id === 'saveSocialAuthSettingsBtn') {
@@ -2555,6 +2565,19 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       });
 
       document.addEventListener('change', async (event) => {
+        if (event.target.id === 'adsEnabledInput') {
+          try {
+            const saved = await saveAppRuntimeSettingsFromInputs();
+            if (saved) showToast(textFor('toastSaved'), textFor('appSettingsAdsTitle'));
+          } catch (error) {
+            if (event.target instanceof HTMLInputElement) event.target.checked = !event.target.checked;
+            if ($('adsEnabledLabel')) {
+              $('adsEnabledLabel').textContent = textFor(event.target.checked ? 'appSettingsAdsOn' : 'appSettingsAdsOff');
+            }
+            showToast(textFor('toastErrorTitle'), error?.message || textFor('appSettingsAdsTitle'), { kind: 'error' });
+          }
+          return;
+        }
         // Provider changed in translation settings table → show the provider default model.
         if (event.target instanceof HTMLSelectElement && event.target.dataset.tsProvider) {
           const locale = event.target.dataset.tsProvider;

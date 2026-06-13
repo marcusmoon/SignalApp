@@ -627,7 +627,7 @@ export async function loadProviderSettingsView(ctx) {
             <label class="switchRow">
               <input class="switchInput" id="adsEnabledInput" type="checkbox" ${adsEnabled ? 'checked' : ''} />
               <span class="switchUi" aria-hidden="true"></span>
-              <span>${esc(adsEnabled ? textFor('appSettingsAdsOn') : textFor('appSettingsAdsOff'))}</span>
+              <span id="adsEnabledLabel">${esc(adsEnabled ? textFor('appSettingsAdsOn') : textFor('appSettingsAdsOff'))}</span>
             </label>
           </div>
         </div>

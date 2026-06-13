@@ -16,9 +16,10 @@ export function AdPlaceholder() {
   const adsEnabled = useAdsEnabled();
   const ads = useMemo(() => getGoogleMobileAdsModule(), []) as AdsModule | null;
   const [nativeAd, setNativeAd] = useState<unknown>(null);
+  const canLoadNativeAd = Boolean(ads?.NativeAd?.createForAdRequest);
 
   useEffect(() => {
-    if (!adsEnabled || !ads) return;
+    if (!adsEnabled || !canLoadNativeAd || !ads?.NativeAd?.createForAdRequest) return;
     let cancelled = false;
     ads.NativeAd.createForAdRequest(getNativeAdUnitId())
       .then((ad) => {
@@ -31,7 +32,7 @@ export function AdPlaceholder() {
     return () => {
       cancelled = true;
     };
-  }, [ads, adsEnabled]);
+  }, [ads, adsEnabled, canLoadNativeAd]);
 
   useEffect(() => {
     if (!nativeAd || typeof nativeAd !== 'object') return;
@@ -45,7 +46,7 @@ export function AdPlaceholder() {
     return null;
   }
 
-  if (!ads) {
+  if (!ads || !canLoadNativeAd) {
     return <FallbackAdPlaceholder theme={theme} />;
   }
 

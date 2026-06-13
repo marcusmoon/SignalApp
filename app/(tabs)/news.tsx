@@ -35,6 +35,7 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
+  buildNewsDigestItems,
   buildSourcesFromCatalog,
   FEED_PAGE_CRYPTO,
   FEED_PAGE_GLOBAL,
@@ -49,6 +50,7 @@ import {
   sourceFilterParam,
   uniqueSignalSources,
   WATCH_FILTERS,
+  type NewsDigestItem,
   type NewsQuickFilterKind,
   type WatchFilterKind,
 } from '@/domain/news';
@@ -124,6 +126,7 @@ export default function FeedScreen() {
   const [watchDraftSymbols, setWatchDraftSymbols] = useState<string[]>([]);
   const [watchSymbolModalVisible, setWatchSymbolModalVisible] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
+  const [digestExpanded, setDigestExpanded] = useState(false);
   /** 출처 필터 UI용(카탈로그 비었을 때 샘플 + 첫 페이지 병합) */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
 
@@ -821,12 +824,29 @@ export default function FeedScreen() {
     setHasMore(false);
     setError(null);
     setRefreshNotice(null);
+    setDigestExpanded(false);
     if (key === 'video') setActiveTag(null);
     setSegment(key);
     void saveNewsSegment(key);
   }, [segment]);
 
   const newsQuickFilter = segment === 'crypto' ? cryptoFilter : globalFilter;
+  const digestItems = useMemo(
+    () => (segment === 'video' ? [] : buildNewsDigestItems(serverRows, 4)),
+    [segment, serverRows],
+  );
+  const primaryDigest = digestItems[0] ?? null;
+  const secondaryDigests = digestItems.slice(1);
+  const digestSummaryText = useCallback(
+    (item: NewsDigestItem) => {
+      const base = t('feedDigestSummary', {
+        count: String(item.count),
+        sources: String(item.sources.length),
+      });
+      return item.symbols.length > 0 ? `${base} · ${item.symbols.slice(0, 3).join(' · ')}` : base;
+    },
+    [t],
+  );
 
   const listData: FeedRow[] = useMemo(() => {
     const out: FeedRow[] = [];
@@ -893,6 +913,68 @@ export default function FeedScreen() {
           </Pressable>
         ) : null}
 
+        {primaryDigest ? (
+          <View style={styles.digestCard}>
+            <View style={styles.digestTopRow}>
+              <View style={styles.digestKicker}>
+                <FontAwesome name="bolt" size={11} color={theme.green} />
+                <Text style={styles.digestKickerText}>{t('feedDigestKicker')}</Text>
+              </View>
+              <Text style={styles.digestCount}>{t('feedDigestCount', { count: String(primaryDigest.count) })}</Text>
+            </View>
+            <Text style={styles.digestTitle} numberOfLines={2}>
+              {primaryDigest.title}
+            </Text>
+            <Text style={styles.digestSummary} numberOfLines={2}>
+              {digestSummaryText(primaryDigest)}
+            </Text>
+            {primaryDigest.symbols.length > 0 || primaryDigest.sources.length > 0 ? (
+              <View style={styles.digestChipRow}>
+                {primaryDigest.symbols.slice(0, 3).map((symbol) => (
+                  <Text key={`digest-symbol-${symbol}`} style={styles.digestSymbolChip}>
+                    {symbol}
+                  </Text>
+                ))}
+                {primaryDigest.sources.slice(0, 2).map((source) => (
+                  <Text key={`digest-source-${source}`} style={styles.digestSourceChip} numberOfLines={1}>
+                    {source}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+            {digestExpanded && secondaryDigests.length > 0 ? (
+              <View style={styles.digestMoreList}>
+                {secondaryDigests.map((item) => (
+                  <View key={item.id} style={styles.digestMoreRow}>
+                    <Text style={styles.digestMoreTitle} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Text style={styles.digestMoreMeta} numberOfLines={1}>
+                      {digestSummaryText(item)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            {secondaryDigests.length > 0 ? (
+              <Pressable
+                onPress={() => setDigestExpanded((value) => !value)}
+                style={({ pressed }) => [styles.digestToggle, pressed && styles.digestTogglePressed]}
+                accessibilityRole="button"
+                accessibilityLabel={digestExpanded ? t('feedDigestCollapse') : t('feedDigestExpand')}>
+                <Text style={styles.digestToggleText}>
+                  {digestExpanded ? t('feedDigestCollapse') : t('feedDigestExpand')}
+                </Text>
+                <FontAwesome
+                  name={digestExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={11}
+                  color={theme.green}
+                />
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
         {segment === 'watch' ? (
           <View style={styles.watchFilterRow}>
             {WATCH_FILTERS.map((filter) => {
@@ -956,6 +1038,10 @@ export default function FeedScreen() {
       theme.textDim,
       theme.green,
       theme.greenBorder,
+      digestExpanded,
+      digestSummaryText,
+      primaryDigest,
+      secondaryDigests,
     ],
   );
 

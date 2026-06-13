@@ -27,6 +27,7 @@ export function SignalBannerAd({ style, variant = 'standard' }: Props = {}) {
   const adsEnabled = useAdsEnabled();
   const ads = useMemo(() => getGoogleMobileAdsModule(), []) as AdsModule | null;
   const [hidden, setHidden] = useState(false);
+  const canRenderBanner = Boolean(ads?.BannerAd && ads?.BannerAdSize);
 
   if (!adsEnabled || hidden) {
     return null;
@@ -36,7 +37,7 @@ export function SignalBannerAd({ style, variant = 'standard' }: Props = {}) {
 
   const isLarge = variant === 'large';
 
-  if (!ads) {
+  if (!ads || !canRenderBanner) {
     return <BannerFallback theme={theme} style={style} large={isLarge} />;
   }
 

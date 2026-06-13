@@ -5,12 +5,12 @@ import { hasSignalApi } from '@/services/env';
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
-let cachedEnabled = true;
+let cachedEnabled = false;
 let cachedAt = 0;
 let inFlight: Promise<boolean> | null = null;
 
 export async function loadAdsEnabled(): Promise<boolean> {
-  if (!hasSignalApi()) return true;
+  if (!hasSignalApi()) return false;
   const now = Date.now();
   if (now - cachedAt < CACHE_TTL_MS) return cachedEnabled;
   if (!inFlight) {
@@ -23,7 +23,8 @@ export async function loadAdsEnabled(): Promise<boolean> {
       })
       .catch(() => {
         cachedAt = Date.now();
-        return cachedEnabled;
+        cachedEnabled = false;
+        return false;
       })
       .finally(() => {
         inFlight = null;

@@ -5,6 +5,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { getBannerAdUnitId, getGoogleMobileAdsModule } from '@/integrations/admob/native';
+import { useAdsEnabled } from '@/services/adsRuntimeConfig';
 
 type AdsModule = typeof import('react-native-google-mobile-ads');
 
@@ -23,10 +24,11 @@ export function SignalBannerAd({ style, variant = 'standard' }: Props = {}) {
   const { theme } = useSignalTheme();
   const { t } = useLocale();
   const { width } = useWindowDimensions();
+  const adsEnabled = useAdsEnabled();
   const ads = useMemo(() => getGoogleMobileAdsModule(), []) as AdsModule | null;
   const [hidden, setHidden] = useState(false);
 
-  if (hidden) {
+  if (!adsEnabled || hidden) {
     return null;
   }
 

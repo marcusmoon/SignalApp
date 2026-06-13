@@ -105,6 +105,15 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
     if (patch.youtubeCurationHandles != null) {
       next.youtubeCurationHandles = normalizeYoutubeCurationHandles(patch.youtubeCurationHandles);
     }
+    if (patch.ads && typeof patch.ads === 'object') {
+      const prevAds = cur.ads && typeof cur.ads === 'object' ? cur.ads : {};
+      next.ads = {
+        ...prevAds,
+        enabled: patch.ads.enabled !== false,
+        scope: typeof patch.ads.scope === 'string' && patch.ads.scope.trim() ? patch.ads.scope.trim() : prevAds.scope || 'global',
+        updatedAt: nowIso(),
+      };
+    }
     if (patch.socialAuth && typeof patch.socialAuth === 'object') {
       const prev = cur.socialAuth && typeof cur.socialAuth === 'object' ? cur.socialAuth : {};
       const p = stripSocialAuthClientMeta(patch.socialAuth);

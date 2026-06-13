@@ -1,4 +1,4 @@
-import { nowIso, readDbHealthSummary } from '../../db.mjs';
+import { nowIso, readDbHealthSummary, readSingletonPayload } from '../../db.mjs';
 import { getOpenApiSpec } from '../../openapi.mjs';
 import { json, text } from '../shared.mjs';
 
@@ -64,7 +64,19 @@ export async function handlePublicMiscRoutes({ req, res, pathname }) {
   }
 
   if (req.method === 'GET' && pathname === '/v1/config') {
-    json(res, 200, { service: 'signal-server', version: '0.1.0' });
+    const appSettings = (await readSingletonPayload('appSettings')) || {};
+    const ads = appSettings.ads && typeof appSettings.ads === 'object' ? appSettings.ads : {};
+    json(res, 200, {
+      service: 'signal-server',
+      version: '0.1.0',
+      features: {
+        ads: {
+          enabled: ads.enabled !== false,
+          scope: typeof ads.scope === 'string' && ads.scope ? ads.scope : 'global',
+          updatedAt: ads.updatedAt || appSettings.updatedAt || null,
+        },
+      },
+    });
     return true;
   }
 

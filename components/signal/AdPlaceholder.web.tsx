@@ -2,10 +2,15 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { SIGNAL } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useAdsEnabled } from '@/services/adsRuntimeConfig';
 
 /** 웹: AdMob 네이티브 SDK 없음 — 자리 표시만 */
 export function AdPlaceholder() {
   const { t } = useLocale();
+  const adsEnabled = useAdsEnabled();
+
+  if (!adsEnabled) return null;
+
   return (
     <View style={styles.wrap} accessibilityLabel={t('commonAd')}>
       <Text style={styles.badge}>{t('commonAd')}</Text>

@@ -5,6 +5,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { getGoogleMobileAdsModule, getNativeAdUnitId } from '@/integrations/admob/native';
+import { useAdsEnabled } from '@/services/adsRuntimeConfig';
 
 type AdsModule = typeof import('react-native-google-mobile-ads');
 
@@ -12,11 +13,12 @@ type AdsModule = typeof import('react-native-google-mobile-ads');
 export function AdPlaceholder() {
   const { theme } = useSignalTheme();
   const { t } = useLocale();
+  const adsEnabled = useAdsEnabled();
   const ads = useMemo(() => getGoogleMobileAdsModule(), []) as AdsModule | null;
   const [nativeAd, setNativeAd] = useState<unknown>(null);
 
   useEffect(() => {
-    if (!ads) return;
+    if (!adsEnabled || !ads) return;
     let cancelled = false;
     ads.NativeAd.createForAdRequest(getNativeAdUnitId())
       .then((ad) => {
@@ -29,7 +31,7 @@ export function AdPlaceholder() {
     return () => {
       cancelled = true;
     };
-  }, [ads]);
+  }, [ads, adsEnabled]);
 
   useEffect(() => {
     if (!nativeAd || typeof nativeAd !== 'object') return;
@@ -38,6 +40,10 @@ export function AdPlaceholder() {
       ad.destroy();
     };
   }, [nativeAd]);
+
+  if (!adsEnabled) {
+    return null;
+  }
 
   if (!ads) {
     return <FallbackAdPlaceholder theme={theme} />;

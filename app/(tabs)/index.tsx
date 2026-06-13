@@ -19,7 +19,6 @@ import {
   EvidenceCard,
   SectionHeader,
   SectionPlaceholder,
-  StatusPill,
 } from '@/components/home/HomeSectionPrimitives';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -435,55 +434,70 @@ export default function HomeScreen() {
               {driverText(primaryInsight)}
             </Text>
           ) : null}
-          <View style={styles.pillRow}>
-            <StatusPill
-              icon="bolt"
-              label={t('homePillSignals', { count: String(topInsights.length) })}
-              theme={theme}
-              scaleFont={scaleFont}
-            />
-            <StatusPill
-              icon="star"
-              label={t('homePillWatchlist', { count: String(visibleWatchCount) })}
-              theme={theme}
-              scaleFont={scaleFont}
-            />
-            <StatusPill
-              icon="newspaper-o"
-              label={t('homePillEvidence', { count: String(evidenceRows.length) })}
-              theme={theme}
-              scaleFont={scaleFont}
-            />
-          </View>
-          {secondaryInsights.length > 0 ? (
-            <View style={styles.focusMiniList}>
-              {secondaryInsights.map((insight) => (
-                <Pressable
-                  key={insight.id}
-                  onPress={() => router.push('/insights')}
-                  style={({ pressed }) => [styles.focusMiniRow, pressed && styles.pressed]}
-                  accessibilityRole="button">
-                  <Text style={styles.focusMiniTitle} numberOfLines={1}>{insight.title}</Text>
-                  <Text style={styles.focusMiniScore}>{Math.round(Number(insight.score) || 0)}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
           <View style={styles.focusActionRow}>
             <Pressable
-              onPress={() => router.push('/insights')}
+              onPress={() => router.push('/briefing')}
               style={({ pressed }) => [styles.focusActionPrimary, pressed && styles.pressed]}
               accessibilityRole="button">
-              <Text style={styles.focusActionPrimaryText}>{t('homeFocusOpenSignals')}</Text>
+              <Text style={styles.focusActionPrimaryText}>{t('homeFocusOpenBriefing')}</Text>
               <FontAwesome name="chevron-right" size={12} color="#FFFFFF" />
             </Pressable>
             <Pressable
-              onPress={() => router.push('/briefing')}
+              onPress={() => router.push('/insights')}
               style={({ pressed }) => [styles.focusActionSecondary, pressed && styles.pressed]}
               accessibilityRole="button">
-              <Text style={styles.focusActionSecondaryText}>{t('homeFocusOpenBriefing')}</Text>
+              <Text style={styles.focusActionSecondaryText}>{t('homeFocusOpenSignals')}</Text>
             </Pressable>
           </View>
+          <View style={styles.overviewGrid}>
+            <Pressable
+              onPress={() => router.push('/insights')}
+              style={({ pressed }) => [styles.overviewTile, pressed && styles.overviewTilePressed]}
+              accessibilityRole="button">
+              <View style={styles.overviewTileIcon}>
+                <FontAwesome name="bolt" size={13} color={theme.green} />
+              </View>
+              <Text style={styles.overviewTileValue}>{topInsights.length}</Text>
+              <Text style={styles.overviewTileLabel} numberOfLines={1}>{t('homeOverviewSignals')}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/quotes')}
+              style={({ pressed }) => [styles.overviewTile, pressed && styles.overviewTilePressed]}
+              accessibilityRole="button">
+              <View style={styles.overviewTileIcon}>
+                <FontAwesome name="star" size={13} color={theme.green} />
+              </View>
+              <Text style={styles.overviewTileValue}>{visibleWatchCount}</Text>
+              <Text style={styles.overviewTileLabel} numberOfLines={1}>{t('homeOverviewWatch')}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/news')}
+              style={({ pressed }) => [styles.overviewTile, pressed && styles.overviewTilePressed]}
+              accessibilityRole="button">
+              <View style={styles.overviewTileIcon}>
+                <FontAwesome name="newspaper-o" size={13} color={theme.green} />
+              </View>
+              <Text style={styles.overviewTileValue}>{evidenceRows.length}</Text>
+              <Text style={styles.overviewTileLabel} numberOfLines={1}>{t('homeOverviewRelated')}</Text>
+            </Pressable>
+          </View>
+          {secondaryInsights.length > 0 ? (
+            <>
+              <Text style={styles.focusSubhead}>{t('homeNextSignals')}</Text>
+              <View style={styles.focusMiniList}>
+                {secondaryInsights.map((insight) => (
+                  <Pressable
+                    key={insight.id}
+                    onPress={() => router.push('/insights')}
+                    style={({ pressed }) => [styles.focusMiniRow, pressed && styles.pressed]}
+                    accessibilityRole="button">
+                    <Text style={styles.focusMiniTitle} numberOfLines={1}>{insight.title}</Text>
+                    <Text style={styles.focusMiniScore}>{Math.round(Number(insight.score) || 0)}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          ) : null}
         </View>
 
         {error ? (

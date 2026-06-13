@@ -2,6 +2,7 @@ import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-na
 
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useAdsEnabled } from '@/services/adsRuntimeConfig';
 
 import type { SignalBannerAdVariant } from '@/components/signal/signalBannerAd.types';
 
@@ -13,7 +14,11 @@ type Props = {
 export function SignalBannerAd({ style, variant = 'standard' }: Props = {}) {
   const { theme } = useSignalTheme();
   const { t } = useLocale();
+  const adsEnabled = useAdsEnabled();
   const isLarge = variant === 'large';
+
+  if (!adsEnabled) return null;
+
   return (
     <View
       style={[

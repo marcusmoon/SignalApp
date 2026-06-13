@@ -448,6 +448,8 @@ export async function loadProviderSettingsView(ctx) {
   const data = rows.filter((r) => !(r.provider === 'openai' || r.provider === 'claude'));
   const quotesMaxAge = Number(state.appSettings?.marketQuotesMaxAgeSec);
   const quotesMaxAgeValue = Number.isFinite(quotesMaxAge) ? String(quotesMaxAge) : '10';
+  const ads = state.appSettings?.ads && typeof state.appSettings.ads === 'object' ? state.appSettings.ads : {};
+  const adsEnabled = ads.enabled !== false;
   const sa = state.appSettings?.socialAuth && typeof state.appSettings.socialAuth === 'object' ? state.appSettings.socialAuth : {};
   const g = sa.google || {};
   const a = sa.apple || {};
@@ -617,6 +619,17 @@ export async function loadProviderSettingsView(ctx) {
               <button class="success" id="saveAppSettingsBtn">${esc(textFor('btnSave'))}</button>
             </div>
           </label>
+          <div class="settingsFormRow settingsFormRow--compact" style="margin-top:14px">
+            <div>
+              <strong>${esc(textFor('appSettingsAdsTitle'))}</strong>
+              <div class="cardHint">${esc(textFor('appSettingsAdsHint'))}</div>
+            </div>
+            <label class="switchRow">
+              <input class="switchInput" id="adsEnabledInput" type="checkbox" ${adsEnabled ? 'checked' : ''} />
+              <span class="switchUi" aria-hidden="true"></span>
+              <span>${esc(adsEnabled ? textFor('appSettingsAdsOn') : textFor('appSettingsAdsOff'))}</span>
+            </label>
+          </div>
         </div>
       </div>
 

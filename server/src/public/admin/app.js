@@ -1834,7 +1834,13 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             }
             const result = await api('/admin/api/app-settings', {
               method: 'PATCH',
-              body: JSON.stringify({ marketQuotesMaxAgeSec: n }),
+              body: JSON.stringify({
+                marketQuotesMaxAgeSec: n,
+                ads: {
+                  enabled: $('adsEnabledInput')?.checked === true,
+                  scope: 'global',
+                },
+              }),
             });
             state.appSettings = result.data || null;
             if ($('appSettingsStatus')) $('appSettingsStatus').textContent = textForVars('recentSavedAt', { time: formatDateTime(state.appSettings?.updatedAt) });

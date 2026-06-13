@@ -9,7 +9,6 @@ import {
   NativeSyntheticEvent,
   Platform,
   Pressable,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -18,18 +17,6 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { tabBarBottomInset } from '@/constants/tabBar';
 import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
-import type { AppTheme } from '@/constants/theme';
-import {
-  SEGMENT_TAB_ACTIVE_TEXT,
-  SEGMENT_TAB_BTN_PADDING_V,
-  SEGMENT_TAB_BTN_RADIUS,
-  SEGMENT_TAB_FONT_SIZE,
-  SEGMENT_TAB_FONT_WEIGHT,
-  SEGMENT_TAB_GAP,
-  SEGMENT_TAB_LINE_HEIGHT,
-  SEGMENT_TAB_OUTER_RADIUS,
-  SEGMENT_TAB_PADDING,
-} from '@/constants/segmentTabBar';
 import { AdPlaceholder } from '@/components/signal/AdPlaceholder';
 import { NewsSourceFilterModal } from '@/components/signal/NewsSourceFilterModal';
 import {
@@ -41,12 +28,30 @@ import { groupedFeedRowEdges, groupedFeedRowShell } from '@/components/signal/gr
 import { NewsCard } from '@/components/signal/NewsCard';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { makeNewsStyles } from '@/components/news/newsStyles';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { isFlashNews } from '@/domain/news';
+import {
+  buildSourcesFromCatalog,
+  FEED_PAGE_CRYPTO,
+  FEED_PAGE_GLOBAL,
+  FEED_PAGE_VIDEO,
+  FEED_PAGE_WATCH,
+  filterNewsRows,
+  filterWatchRows,
+  NEWS_QUICK_FILTERS,
+  NEWS_SEGMENT_LABEL,
+  normalizeNullableSelection,
+  SOURCE_PROBE_LIMIT,
+  sourceFilterParam,
+  uniqueSignalSources,
+  WATCH_FILTERS,
+  type NewsQuickFilterKind,
+  type WatchFilterKind,
+} from '@/domain/news';
 import { hasSignalApi } from '@/services/env';
 import {
   DEFAULT_NEWS_HASHTAG_DISPLAY_MAX,
@@ -73,119 +78,18 @@ import {
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiNewsItem, SignalApiYoutubeVideo } from '@/integrations/signal-api/types';
 import type { NewsItem, YoutubeItem } from '@/types/signal';
-import type { MessageId } from '@/locales/messages';
-
-const FEED_PAGE_GLOBAL = 20;
-const FEED_PAGE_WATCH = 40;
-const FEED_PAGE_CRYPTO = 25;
-const FEED_PAGE_VIDEO = 20;
-const SOURCE_PROBE_LIMIT = 100;
-const NEWS_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
-  watch: 'feedSegmentWatch',
-  global: 'feedSegmentGlobal',
-  crypto: 'feedSegmentCrypto',
-  video: 'feedSegmentVideo',
-};
 
 type FeedRow =
   | { kind: 'news'; news: NewsItem }
   | { kind: 'video'; video: YoutubeItem }
   | { kind: 'ad'; key: string };
 type FeedLoadResult = { itemIds: string[]; kind: 'news' | 'video'; insightIds: string[] };
-type NewsQuickFilterKind = 'all' | 'flash' | 'sources';
-type WatchFilterKind = 'all' | 'symbols';
-
-const NEWS_QUICK_FILTERS: { key: NewsQuickFilterKind; labelId: MessageId }[] = [
-  { key: 'all', labelId: 'feedWatchFilterAll' },
-  { key: 'flash', labelId: 'feedWatchFilterFlash' },
-  { key: 'sources', labelId: 'feedWatchFilterSources' },
-];
-
-const EMPTY_FILTER_SENTINEL = '__signal_no_match__';
-
-const WATCH_FILTERS: { key: WatchFilterKind; labelId: MessageId }[] = [
-  { key: 'all', labelId: 'feedWatchFilterAll' },
-  { key: 'symbols', labelId: 'feedWatchFilterSymbols' },
-];
-
-function signalSourceLabel(item: SignalApiNewsItem): string {
-  const s = String(item.sourceName || '').trim();
-  return s.length > 0 ? s : 'Unknown';
-}
-
-function uniqueSignalSources(items: SignalApiNewsItem[]): string[] {
-  return [...new Set(items.map(signalSourceLabel))].sort((a, b) => a.localeCompare(b));
-}
-
-function buildSourcesFromCatalog(params: {
-  rawSources: string[];
-  catalog: { name: string; enabled: boolean; order: number }[];
-}): string[] {
-  const { rawSources, catalog } = params;
-  const enabledCatalog = (catalog || [])
-    .filter((c) => c && c.enabled)
-    .slice()
-    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.name).localeCompare(String(b.name)))
-    .map((c) => String(c.name || '').trim())
-    .filter((s) => s.length > 0);
-
-  const set = new Set(enabledCatalog);
-  const extras = rawSources.filter((s) => !set.has(s));
-  const out = [...enabledCatalog, ...extras];
-  return out.length > 0 ? out : rawSources;
-}
-
-function normalizeNullableSelection(options: string[], selected: string[] | null): string[] {
-  if (selected == null) return options;
-  const allowed = new Set(options);
-  return selected.filter((item) => allowed.has(item));
-}
-
-function filterNewsRows(
-  rows: SignalApiNewsItem[],
-  params: {
-    kind: NewsQuickFilterKind;
-    sourceOptions: string[];
-    selectedSources: string[] | null;
-  },
-): SignalApiNewsItem[] {
-  if (params.kind === 'all') return rows;
-  if (params.kind === 'flash') return rows.filter((row) => isFlashNews(row));
-  const selectedSources = new Set(normalizeNullableSelection(params.sourceOptions, params.selectedSources));
-  if (selectedSources.size === 0) return [];
-  return rows.filter((row) => selectedSources.has(signalSourceLabel(row)));
-}
-
-function sourceFilterParam(options: string[], selected: string[] | null): string | undefined {
-  const normalized = normalizeNullableSelection(options, selected);
-  if (normalized.length === options.length) return undefined;
-  return normalized.length > 0 ? normalized.join(',') : EMPTY_FILTER_SENTINEL;
-}
-
-function filterWatchRows(
-  rows: SignalApiNewsItem[],
-  params: {
-    kind: WatchFilterKind;
-    symbolOptions: string[];
-    selectedSymbols: string[] | null;
-  },
-): SignalApiNewsItem[] {
-  if (params.kind === 'all') return rows;
-  const selected = new Set(
-    normalizeNullableSelection(params.symbolOptions, params.selectedSymbols).map((symbol) => symbol.toUpperCase()),
-  );
-  if (selected.size === 0) return [];
-  return rows.filter((row) => {
-    const symbols = Array.isArray(row.symbols) ? row.symbols : [];
-    return symbols.some((symbol) => selected.has(String(symbol).trim().toUpperCase()));
-  });
-}
 
 export default function FeedScreen() {
   const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeNewsStyles(theme, scaleFont), [theme, scaleFont]);
   const filterRowStyles = useMemo(() => selectionFilterRowStyles(theme, scaleFont), [theme, scaleFont]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
@@ -1276,221 +1180,4 @@ export default function FeedScreen() {
       </SelectionFilterSheet>
     </SafeAreaView>
   );
-}
-
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
-  return StyleSheet.create({
-    safe: {
-      flex: 1,
-      backgroundColor: theme.bg,
-    },
-    mainColumn: {
-      flex: 1,
-      minHeight: 0,
-    },
-    topFixed: {
-      flexShrink: 0,
-      zIndex: 2,
-      elevation: Platform.OS === 'android' ? 2 : 0,
-      paddingHorizontal: 16,
-      paddingTop: 10,
-      paddingBottom: 12,
-      backgroundColor: theme.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    list: {
-      flex: 1,
-      minHeight: 0,
-    },
-    listContent: {
-      paddingHorizontal: 16,
-      paddingTop: 8,
-    },
-    adBetweenGroups: {
-      marginVertical: 10,
-    },
-    listHeader: {
-      paddingBottom: 4,
-    },
-    refreshNotice: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginTop: 8,
-      marginBottom: 8,
-      paddingVertical: 9,
-      paddingHorizontal: 11,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor:
-        theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}12` : theme.greenDim,
-    },
-    refreshNoticeText: {
-      flex: 1,
-      minWidth: 0,
-      color: theme.green,
-      fontSize: sf(12),
-      lineHeight: sf(16),
-      fontWeight: '800',
-    },
-    skeletonBlock: {
-      marginTop: 4,
-    },
-    tagFilterRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-      marginBottom: 10,
-      paddingVertical: 8,
-      paddingHorizontal: 10,
-      borderRadius: 10,
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    tagFilterText: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: sf(12),
-      fontWeight: '800',
-      color: theme.text,
-    },
-    tagFilterClear: {
-      fontSize: sf(12),
-      fontWeight: '800',
-      color: theme.green,
-    },
-    videoOpenAll: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginBottom: 10,
-      paddingVertical: 8,
-      paddingHorizontal: 11,
-      borderRadius: 13,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    videoOpenAllPressed: {
-      opacity: 0.9,
-    },
-    videoOpenAllIcon: {
-      width: 28,
-      height: 28,
-      borderRadius: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.card,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    videoOpenAllTitle: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: sf(13),
-      lineHeight: sf(18),
-      fontWeight: '900',
-      color: theme.text,
-    },
-    watchFilterRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-      marginBottom: 10,
-    },
-    watchFilterChip: {
-      minHeight: 32,
-      paddingHorizontal: 11,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    watchFilterChipActive: {
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    watchFilterText: {
-      fontSize: sf(12),
-      lineHeight: sf(17),
-      fontWeight: '800',
-      color: theme.textDim,
-    },
-    watchFilterTextActive: {
-      color: theme.green,
-    },
-    footerLoading: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 10,
-      paddingVertical: 16,
-    },
-    footerLoadingText: {
-      fontSize: sf(12),
-      color: theme.textMuted,
-    },
-    segment: {
-      flexDirection: 'row',
-      backgroundColor: theme.bgElevated,
-      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
-      padding: SEGMENT_TAB_PADDING,
-      marginBottom: 0,
-      gap: SEGMENT_TAB_GAP,
-    },
-    segBtn: {
-      flex: 1,
-      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
-      borderRadius: SEGMENT_TAB_BTN_RADIUS,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    segBtnVideo: {
-      flex: 0.86,
-    },
-    segmentDivider: {
-      width: 1,
-      height: 18,
-      alignSelf: 'center',
-      marginHorizontal: 2,
-      borderRadius: 999,
-      backgroundColor: theme.border,
-    },
-    segBtnActive: {
-      backgroundColor: theme.green,
-    },
-    segText: {
-      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
-      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
-      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
-      color: theme.textDim,
-    },
-    segTextActive: {
-      color: SEGMENT_TAB_ACTIVE_TEXT,
-    },
-    errBox: {
-      padding: 12,
-      borderRadius: 14,
-      backgroundColor: theme.dangerDim,
-      borderWidth: 1,
-      borderColor: '#FFD6DA',
-      marginBottom: 12,
-    },
-    errText: {
-      fontSize: sf(12),
-      color: theme.danger,
-      lineHeight: sf(18),
-    },
-    empty: {
-      fontSize: sf(13),
-      color: theme.textMuted,
-      marginTop: 8,
-    },
-  });
 }

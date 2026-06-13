@@ -41,17 +41,12 @@ export async function fetchSignalYoutube(
     sort?: 'latest' | 'popular';
     limit?: number;
     offset?: number;
-    /** @deprecated 서버·캐시는 `offset`/`limit`만 쓰는 것을 권장 */
-    page?: number;
-    pageSize?: number;
   },
   options?: { cacheMode?: 'use' | 'bypass' },
 ): Promise<SignalYoutubePage> {
   const cacheMode = options?.cacheMode || 'use';
-  const limit = params?.limit ?? params?.pageSize ?? 30;
-  const offset =
-    params?.offset ??
-    (params?.page != null ? (Math.max(1, Number(params.page) || 1) - 1) * Number(limit) : 0);
+  const limit = params?.limit ?? 30;
+  const offset = params?.offset ?? 0;
   const cacheKey = buildSignalYoutubeCacheKey({ ...params, limit, offset });
   if (cacheMode !== 'bypass') {
     const hit = peekSignalYoutubeCache(cacheKey);

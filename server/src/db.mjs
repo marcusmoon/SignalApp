@@ -19,14 +19,61 @@ import {
   findPollingJobLocks,
 } from './db/repositories/pollingJobLocksRepository.mjs';
 import {
-  cleanNewsTitleForDisplay,
-  cleanTranslationText,
-  displayNews,
-  hasUsableTranslation,
-} from './http/shared.mjs';
-import { ensureYoutubeChannelsCatalog, listActiveYoutubeChannelHandles } from './db/youtubeChannels.mjs';
-import { normalizeYoutubeHandle } from './youtubeCuration.mjs';
-import { aggregateBacktests, backtestInstrument } from './quant/backtest.mjs';
+  queryPublicYoutubeChannelRows,
+  queryPublicYoutubeRows,
+} from './db/repositories/youtubeRepository.mjs';
+import {
+  queryPublicCalendarDateSummaryRows,
+  queryPublicCalendarRows,
+} from './db/repositories/calendarRepository.mjs';
+import {
+  queryAdminNewsRows,
+  queryPublicNewsRows,
+  queryPublicNewsSourceRows,
+} from './db/repositories/newsRepository.mjs';
+import {
+  queryPublicCoinMarketRows,
+  queryPublicMarketQuoteRows,
+} from './db/repositories/marketRepository.mjs';
+import {
+  queryPublicConcallRows,
+} from './db/repositories/concallsRepository.mjs';
+import {
+  queryPublicPriceSeriesCandlesRow,
+  queryPublicPriceSeriesSparklineRows,
+} from './db/repositories/priceSeriesRepository.mjs';
+import {
+  queryPublicQuantBacktestResult,
+  queryPublicQuantSignalHistoryRows,
+  queryPublicQuantSignalRows,
+} from './db/repositories/quantRepository.mjs';
+import {
+  createAdminUserRow,
+  deleteAdminUserRow,
+  hasActiveAdminUsers,
+  listAdminUserRows,
+  updateAdminUserRow,
+  verifyAdminLoginRow,
+} from './db/repositories/adminUsersRepository.mjs';
+import {
+  claimPushNotificationRows,
+  queryNotificationRows,
+  queryPublicNotificationsForUserRows,
+  resolvePushDeviceRows,
+  updateNotificationSendStateRow,
+  upsertNotificationRow,
+} from './db/repositories/notificationsRepository.mjs';
+import {
+  listAppUserTermAcceptanceRows,
+  listLegalTermRows,
+  updateLegalTermRow,
+} from './db/repositories/legalTermsRepository.mjs';
+import {
+  listAppUserDeviceRows,
+  listAppUserRows,
+  updateAppUserAdminRow,
+  updateAppUserDeviceAdminRow,
+} from './db/repositories/appUsersAdminRepository.mjs';
 import {
   isAppUserJwtConfigured,
   isLikelyJwt,
@@ -82,12 +129,6 @@ function hashProviderUserId(provider, providerUserId) {
   return '';
 }
 
-function parseBool(value, fallback = false) {
-  if (value === true || value === 1 || value === '1' || value === 'true') return true;
-  if (value === false || value === 0 || value === '0' || value === 'false') return false;
-  return fallback;
-}
-
 function textOrNull(value) {
   const text = cleanText(value);
   return text ? text : null;
@@ -121,19 +162,6 @@ function pageOptions(options = {}, defaultLimit = 30) {
   const page = Math.max(1, Math.floor(Number(options.page)) || 1);
   const offset = options.offset != null && cleanText(options.offset) !== '' ? safeOffset(options.offset) : (page - 1) * limit;
   return { limit, offset };
-}
-
-function pagination(rows, { limit, offset }) {
-  const total = rows.length;
-  const slice = rows.slice(offset, offset + limit);
-  return {
-    rows: slice,
-    total,
-    limit,
-    offset,
-    hasMore: offset + slice.length < total,
-    nextOffset: offset + slice.length,
-  };
 }
 
 function stableStringify(value) {
@@ -562,6 +590,12 @@ async function seedAdminUsersIfEmpty(client) {
   if (inserted > 0) console.log(`[db] seeded ${inserted} admin user(s) into Postgres`);
 }
 
+async function seedLegalTermsIfEmpty(client) {
+  const count = await client.query('SELECT COUNT(*)::int AS count FROM legal_terms');
+  if (Number(count.rows[0]?.count) > 0) return;
+  console.warn('[db] legal_terms is empty. Run Flyway seed migrations before enabling app signup.');
+}
+
 async function ensureSeeded() {
   if (seedChecked) return;
   await withKyselyTransaction(async (client) => {
@@ -746,867 +780,44 @@ export async function patchPollingJob(jobKey, patch = {}) {
   return patchCollectionPayload('pollingJobs', jobKey, patch);
 }
 
-function paginatedSqlRows(rows, { limit, offset }) {
-  const hasLookahead = rows.length > limit;
-  const slice = rows.slice(0, limit).map((row) => row.item).filter(Boolean);
-  const exactTotal = Number(rows[0]?.total_count);
-  const total = Number.isFinite(exactTotal) && exactTotal > 0
-    ? exactTotal
-    : offset + slice.length + (hasLookahead ? 1 : 0);
-  return {
-    rows: slice,
-    total,
-    limit,
-    offset,
-    hasMore: hasLookahead || offset + slice.length < total,
-    nextOffset: hasLookahead || offset + slice.length < total ? offset + slice.length : null,
-  };
-}
-
-function numberSqlExpression(jsonExpression) {
-  return `CASE WHEN NULLIF(${jsonExpression}, '') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${jsonExpression})::numeric ELSE 0 END`;
-}
-
-function sqlDateOrTimestamp(value) {
-  const text = cleanText(value);
-  if (!text) return null;
-  return text.includes('T') ? text : `${text}T00:00:00.000Z`;
-}
-
-function sqlStringList(value) {
-  return cleanText(value)
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function publicNews(item) {
-  return {
-    id: item.id,
-    category: item.category,
-    title: item.title,
-    summary: item.summary,
-    originalTitle: item.originalTitle,
-    originalSummary: item.originalSummary,
-    sourceName: item.sourceName,
-    sourceUrl: item.sourceUrl,
-    imageUrl: item.imageUrl || null,
-    symbols: Array.isArray(item.symbols) ? item.symbols : [],
-    hashtags: Array.isArray(item.hashtags) ? item.hashtags : [],
-    provider: item.provider,
-    publishedAt: item.publishedAt || null,
-    fetchedAt: item.fetchedAt,
-  };
-}
-
-function publicYoutube(item) {
-  return {
-    id: item.id,
-    provider: item.provider || 'youtube',
-    videoId: item.videoId,
-    title: item.title,
-    channel: item.channel,
-    channelId: item.channelId,
-    channelHandle: item.channelHandle || null,
-    description: item.description || '',
-    publishedAt: item.publishedAt || null,
-    duration: item.duration || '',
-    viewCount: Number(item.viewCount) || 0,
-    thumbnailUrl: item.thumbnailUrl || null,
-    sortBucket: item.sortBucket || undefined,
-    sortBuckets: Array.isArray(item.sortBuckets) ? item.sortBuckets : undefined,
-    fetchedAt: item.fetchedAt,
-  };
-}
-
-function publicMarketQuote(item) {
-  return {
-    id: item.id,
-    provider: item.provider,
-    providerItemId: item.providerItemId,
-    segment: item.segment,
-    symbol: item.symbol,
-    displaySymbol: item.displaySymbol || item.symbol || null,
-    krxSymbol: item.krxSymbol || item.rawPayload?.krxSymbol || null,
-    name: item.name || null,
-    currentPrice: item.currentPrice ?? null,
-    change: item.change ?? null,
-    changePercent: item.changePercent ?? null,
-    high: item.high ?? null,
-    low: item.low ?? null,
-    open: item.open ?? null,
-    previousClose: item.previousClose ?? null,
-    marketCapitalization: item.marketCapitalization ?? null,
-    quoteTime: item.quoteTime || null,
-    fetchedAt: item.fetchedAt,
-    sourceLabel: item.sourceLabel || null,
-    official: item.official === false ? false : item.official === true ? true : null,
-    notice: item.notice || null,
-    afterHoursAvailable: item.afterHoursAvailable === true ? true : item.afterHoursAvailable === false ? false : null,
-    regularSession: item.regularSession || null,
-  };
-}
-
-function publicCoinMarket(item) {
-  return {
-    id: item.id,
-    provider: item.provider,
-    providerItemId: item.providerItemId,
-    symbol: item.symbol,
-    name: item.name,
-    currentPrice: item.currentPrice ?? null,
-    marketCap: item.marketCap ?? null,
-    change24h: item.change24h ?? null,
-    changePercent24h: item.changePercent24h ?? null,
-    fetchedAt: item.fetchedAt,
-  };
-}
-
-function publicCalendarEvent(item) {
-  return {
-    id: item.id,
-    provider: item.provider,
-    providerItemId: item.providerItemId,
-    type: item.type,
-    title: item.title,
-    country: item.country || null,
-    symbol: item.symbol || null,
-    eventAt: item.eventAt || null,
-    date: item.date || null,
-    timeLabel: item.timeLabel || '',
-    impact: item.impact || null,
-    actual: item.actual ?? null,
-    estimate: item.estimate ?? null,
-    previous: item.previous ?? null,
-    unit: item.unit || null,
-    fiscalYear: item.fiscalYear ?? null,
-    fiscalQuarter: item.fiscalQuarter ?? null,
-    earningsHour: item.earningsHour || null,
-    fetchedAt: item.fetchedAt,
-  };
-}
-
-function publicConcall(item) {
-  return {
-    id: item.id,
-    provider: item.provider,
-    symbol: item.symbol,
-    title: item.title,
-    fiscalYear: item.fiscalYear ?? null,
-    fiscalQuarter: item.fiscalQuarter ?? null,
-    earningsDate: item.earningsDate || null,
-    earningsHour: item.earningsHour || null,
-    transcript: item.transcript || '',
-    summaryProvider: item.summaryProvider || '',
-    fetchedAt: item.fetchedAt,
-  };
-}
-
 export async function queryPublicNews(options = {}) {
-  return cachedPublicRead('publicNews', options, async () => {
-    const { limit, offset } = pageOptions(options, 20);
-    const locale = cleanText(options.locale) || 'ko';
-    const params = [locale];
-    const where = [];
-    const category = cleanText(options.category);
-    if (category) {
-      if (category === 'global') {
-        where.push(`(n.category = 'global' OR n.provider = 'financialjuice')`);
-      } else {
-        params.push(category);
-        where.push(`n.category = $${params.length}`);
-      }
-    }
-    const symbols = new Set([
-      ...sqlStringList(options.symbols).map((s) => s.toUpperCase()),
-      ...(cleanText(options.symbol) ? [cleanText(options.symbol).toUpperCase()] : []),
-    ]);
-    if (symbols.size > 0) {
-      params.push([...symbols]);
-      where.push(`COALESCE(n.payload->'symbols', '[]'::jsonb) ?| $${params.length}::text[]`);
-    }
-    const sources = sqlStringList(options.sources || options.source);
-    if (sources.length > 0) {
-      params.push(sources);
-      where.push(`n.source_name = ANY($${params.length}::text[])`);
-    }
-    const from = sqlDateOrTimestamp(options.from);
-    if (from) {
-      params.push(from);
-      where.push(`(n.published_at IS NULL OR n.published_at >= $${params.length}::timestamptz)`);
-    }
-    const rawTo = cleanText(options.to);
-    const to = sqlDateOrTimestamp(rawTo);
-    if (to) {
-      params.push(rawTo.includes('T') ? to : `${rawTo.slice(0, 10)}T23:59:59.999Z`);
-      where.push(`(n.published_at IS NULL OR n.published_at <= $${params.length}::timestamptz)`);
-    }
-    const q = cleanText(options.q).toLowerCase();
-    if (q) {
-      params.push(`%${q}%`);
-      where.push(`(
-        lower(COALESCE(n.payload->>'titleOriginal', '')) LIKE $${params.length}
-        OR lower(COALESCE(n.payload->>'summaryOriginal', '')) LIKE $${params.length}
-        OR lower(COALESCE(n.source_name, '')) LIKE $${params.length}
-      )`);
-    }
-    const tag = cleanText(options.tag).toLowerCase();
-    if (tag) {
-      params.push(tag);
-      where.push(`EXISTS (
-        SELECT 1 FROM jsonb_array_elements(COALESCE(n.payload->'hashtags', '[]'::jsonb)) AS h(value)
-        WHERE lower(COALESCE(h.value->>'label', '')) = $${params.length}
-      )`);
-    }
-    const flash = ['1', 'true', 'yes'].includes(cleanText(options.flash).toLowerCase());
-    if (flash) {
-      where.push(`(
-        n.published_at >= now() - interval '18 minutes'
-        OR n.category IN ('breaking', 'flash', 'hot')
-        OR COALESCE(n.payload->>'titleOriginal', n.payload->>'title', '') ~* 'breaking|flash|속보|긴급|urgent|live\\s*:|market\\s*alert|just\\s*in|developing|exclusive:'
-      )`);
-    }
-    params.push(limit + 1, offset);
-    const sql = `
-      SELECT n.payload, t.payload AS translation_payload
-      FROM news_items n
-      LEFT JOIN news_translations t ON t.news_item_id = n.id AND t.locale = $1
-      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-      ORDER BY n.published_at DESC NULLS LAST, n.position ASC
-      LIMIT $${params.length - 1} OFFSET $${params.length}
-    `;
-    const result = await queryKysely(sql, params);
-    const rows = result.rows.map((row) => {
-      const item = payloadFromRow(row);
-      const translation = payloadFromRow({ payload: row.translation_payload });
-      if (!item) return null;
-      return publicNews(displayNews(item, translation ? [translation] : [], locale));
-    }).filter(Boolean);
-    const pageRows = rows.slice(0, limit);
-    const hasMore = rows.length > limit;
-    return {
-      rows: pageRows,
-      total: offset + pageRows.length + (hasMore ? 1 : 0),
-      limit,
-      offset,
-      hasMore,
-      nextOffset: hasMore ? offset + pageRows.length : null,
-    };
-  });
+  return cachedPublicRead('publicNews', options, () => queryPublicNewsRows(options));
 }
 
 export async function queryPublicNewsSources(options = {}) {
-  return cachedPublicRead('publicNewsSources', options, async () => {
-    const category = cleanText(options.category);
-    const params = [];
-    const where = ['enabled = true', 'hidden = false'];
-    if (category) {
-      params.push(category);
-      where.push(`category = $${params.length}`);
-    }
-    const result = await queryKysely(
-      `
-        SELECT payload
-        FROM news_sources
-        WHERE ${where.join(' AND ')}
-        ORDER BY COALESCE(name, source_key), position ASC
-      `,
-      params,
-    );
-    return result.rows
-      .map(payloadFromRow)
-      .filter(Boolean)
-      .map((source) => ({
-        id: source.id,
-        name: source.name || source.id,
-        category: source.category || 'global',
-        enabled: source.enabled !== false,
-      }));
-  }, 30000);
+  return cachedPublicRead('publicNewsSources', options, () => queryPublicNewsSourceRows(options), 30000);
 }
 
 export async function queryAdminNews(options = {}) {
-  const { limit, offset } = pageOptions(options, 30);
-  const locale = cleanText(options.locale) || 'ko';
-  const params = [locale];
-  const where = [];
-  const category = cleanText(options.category);
-  if (category) {
-    if (category === 'global') {
-      where.push(`(n.category = 'global' OR n.provider = 'financialjuice')`);
-    } else {
-      params.push(category);
-      where.push(`n.category = $${params.length}`);
-    }
-  }
-  const symbols = new Set([
-    ...sqlStringList(options.symbols).map((s) => s.toUpperCase()),
-    ...(cleanText(options.symbol) ? [cleanText(options.symbol).toUpperCase()] : []),
-  ]);
-  if (symbols.size > 0) {
-    params.push([...symbols]);
-    where.push(`COALESCE(n.payload->'symbols', '[]'::jsonb) ?| $${params.length}::text[]`);
-  }
-  const sources = sqlStringList(options.sources || options.source);
-  if (sources.length > 0) {
-    params.push(sources);
-    where.push(`n.source_name = ANY($${params.length}::text[])`);
-  }
-  const from = sqlDateOrTimestamp(options.from);
-  if (from) {
-    params.push(from);
-    where.push(`(n.published_at IS NULL OR n.published_at >= $${params.length}::timestamptz)`);
-  }
-  const rawTo = cleanText(options.to);
-  const to = sqlDateOrTimestamp(rawTo);
-  if (to) {
-    params.push(rawTo.includes('T') ? to : `${rawTo.slice(0, 10)}T23:59:59.999Z`);
-    where.push(`(n.published_at IS NULL OR n.published_at <= $${params.length}::timestamptz)`);
-  }
-  const q = cleanText(options.q).toLowerCase();
-  if (q) {
-    params.push(`%${q}%`);
-    where.push(`(
-      lower(COALESCE(n.payload->>'titleOriginal', '')) LIKE $${params.length}
-      OR lower(COALESCE(n.payload->>'summaryOriginal', '')) LIKE $${params.length}
-      OR lower(COALESCE(n.source_name, '')) LIKE $${params.length}
-    )`);
-  }
-  const tag = cleanText(options.tag).toLowerCase();
-  if (tag) {
-    params.push(tag);
-    where.push(`EXISTS (
-      SELECT 1 FROM jsonb_array_elements(COALESCE(n.payload->'hashtags', '[]'::jsonb)) AS h(value)
-      WHERE lower(COALESCE(h.value->>'label', '')) = $${params.length}
-    )`);
-  }
-  const flash = ['1', 'true', 'yes'].includes(cleanText(options.flash).toLowerCase());
-  if (flash) {
-    where.push(`(
-      n.published_at >= now() - interval '18 minutes'
-      OR n.category IN ('breaking', 'flash', 'hot')
-      OR COALESCE(n.payload->>'titleOriginal', n.payload->>'title', '') ~* 'breaking|flash|속보|긴급|urgent|live\\s*:|market\\s*alert|just\\s*in|developing|exclusive:'
-    )`);
-  }
-  const translationStatus = cleanText(options.translationStatus);
-  if (translationStatus === 'missing') {
-    where.push(`(t_locale.id IS NULL OR t_locale.status NOT IN ('completed', 'manual') OR t_locale.payload->>'provider' = 'mock')`);
-  } else if (translationStatus) {
-    params.push(translationStatus);
-    where.push(`t_locale.status = $${params.length}`);
-  }
-  params.push(limit + 1, offset);
-  const result = await queryKysely(
-    `
-      SELECT
-        n.payload,
-        COALESCE(jsonb_agg(t_all.payload ORDER BY t_all.locale) FILTER (WHERE t_all.id IS NOT NULL), '[]'::jsonb) AS translations_payload
-      FROM news_items n
-      LEFT JOIN news_translations t_locale ON t_locale.news_item_id = n.id AND t_locale.locale = $1
-      LEFT JOIN news_translations t_all ON t_all.news_item_id = n.id
-      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-      GROUP BY n.id, n.payload, n.published_at, n.position
-      ORDER BY n.published_at DESC NULLS LAST, n.position ASC
-      LIMIT $${params.length - 1} OFFSET $${params.length}
-    `,
-    params,
-  );
-  const rows = result.rows
-    .slice(0, limit)
-    .map((row) => {
-      const item = payloadFromRow(row);
-      if (!item) return null;
-      const translations = Array.isArray(row.translations_payload) ? row.translations_payload : [];
-      return {
-        ...displayNews(item, translations, locale),
-        hashtagSource: String(item.hashtagSource || 'auto') === 'manual' ? 'manual' : 'auto',
-        hashtagUpdatedAt: item.hashtagsUpdatedAt || null,
-        translations: translations.map((t) => ({
-          ...t,
-          title: cleanNewsTitleForDisplay(item, t.title),
-          summary: cleanTranslationText(t.summary),
-          content: cleanTranslationText(t.content),
-          status: hasUsableTranslation(t, item) ? t.status : 'missing',
-        })),
-      };
-    })
-    .filter(Boolean);
-  const hasMore = result.rows.length > limit;
-  return {
-    rows,
-    total: offset + rows.length + (hasMore ? 1 : 0),
-    limit,
-    offset,
-    hasMore,
-  };
+  return queryAdminNewsRows(options);
 }
 
 export async function queryPublicYoutube(options = {}) {
-  return cachedPublicRead('publicYoutube', options, async () => {
-    const { limit, offset } = pageOptions(options, 30);
-    const params = [];
-    const where = [];
-    const channel = cleanText(options.channel).toLowerCase();
-    if (channel) {
-      params.push(`%${channel}%`);
-      where.push(`lower(COALESCE(channel, payload->>'channel', '')) LIKE $${params.length}`);
-    }
-    const handles = sqlStringList(options.channelHandles).map((handle) => handle.toLowerCase());
-    if (handles.length > 0) {
-      params.push(handles);
-      where.push(`lower(COALESCE(payload->>'channelHandle', '')) = ANY($${params.length}::text[])`);
-    }
-    const q = cleanText(options.q).toLowerCase();
-    if (q) {
-      params.push(`%${q}%`);
-      where.push(`(
-        lower(COALESCE(payload->>'title', '')) LIKE $${params.length}
-        OR lower(COALESCE(payload->>'description', '')) LIKE $${params.length}
-        OR lower(COALESCE(channel, payload->>'channel', '')) LIKE $${params.length}
-      )`);
-    }
-    const sort = cleanText(options.sort) === 'popular' ? 'popular' : 'latest';
-    let finalWhere = where;
-    let finalParams = [...params];
-    if (sort === 'popular') {
-      const bucketParams = [...params, sort];
-      const bucketWhere = [
-        ...where,
-        `(
-          payload->>'sortBucket' = $${bucketParams.length}
-          OR jsonb_exists(COALESCE(payload->'sortBuckets', '[]'::jsonb), $${bucketParams.length})
-        )`,
-      ];
-      const bucketExists = await queryKysely(
-        `
-          SELECT 1
-          FROM youtube_videos
-          ${bucketWhere.length ? `WHERE ${bucketWhere.join(' AND ')}` : ''}
-          LIMIT 1
-        `,
-        bucketParams,
-      );
-      finalWhere = bucketExists.rows.length > 0 ? bucketWhere : where;
-      finalParams = bucketExists.rows.length > 0 ? bucketParams : [...params];
-    }
-    finalParams.push(limit + 1, offset);
-    const order = sort === 'popular'
-      ? `ORDER BY ${numberSqlExpression(`payload->>'viewCount'`)} DESC, published_at DESC NULLS LAST`
-      : `ORDER BY published_at DESC NULLS LAST, fetched_at DESC NULLS LAST, id DESC`;
-    const result = await queryKysely(
-      `
-        SELECT payload
-        FROM youtube_videos
-        ${finalWhere.length ? `WHERE ${finalWhere.join(' AND ')}` : ''}
-        ${order}
-        LIMIT $${finalParams.length - 1} OFFSET $${finalParams.length}
-      `,
-      finalParams,
-    );
-    return paginatedSqlRows(
-      result.rows.map((row) => {
-        const payload = payloadFromRow(row);
-        return { ...row, item: payload ? publicYoutube(payload) : null };
-      }),
-      { limit, offset },
-    );
-  });
+  return cachedPublicRead('publicYoutube', options, () => queryPublicYoutubeRows(options));
 }
 
 export async function queryPublicYoutubeChannels() {
-  return cachedPublicRead('publicYoutubeChannels', {}, async () => {
-    const appSettings = (await readSingletonPayload('appSettings')) || {};
-    const catalog = ensureYoutubeChannelsCatalog(appSettings)
-      .filter((c) => c && c.hidden !== true && c.enabled !== false)
-      .map((c, idx) => {
-        const handle = normalizeYoutubeHandle(c.handle || c.id);
-        return {
-          handle,
-          key: handle.toLowerCase(),
-          title: cleanText(c.title) || (handle ? `@${handle}` : ''),
-          order: Number(c.order) || idx + 1,
-        };
-      })
-      .filter((c) => c.handle);
-
-    const configuredKeys = new Set(catalog.map((c) => c.key).filter(Boolean));
-    const where = [`COALESCE(payload->>'channelHandle', '') <> ''`];
-    const params = [];
-    if (configuredKeys.size > 0) {
-      params.push([...configuredKeys]);
-      where.push(`lower(COALESCE(payload->>'channelHandle', '')) = ANY($${params.length}::text[])`);
-    }
-
-    const result = await queryKysely(
-      `
-        SELECT
-          lower(COALESCE(payload->>'channelHandle', '')) AS handle_key,
-          (array_agg(COALESCE(payload->>'channelHandle', '') ORDER BY published_at DESC NULLS LAST))[1] AS handle,
-          (array_agg(COALESCE(channel, payload->>'channel', '') ORDER BY published_at DESC NULLS LAST))[1] AS title,
-          COUNT(*)::int AS count,
-          MAX(published_at) AS latest_at
-        FROM youtube_videos
-        WHERE ${where.join(' AND ')}
-        GROUP BY lower(COALESCE(payload->>'channelHandle', ''))
-        ORDER BY MAX(published_at) DESC NULLS LAST
-      `,
-      params,
-    );
-
-    const statsByHandle = new Map(
-      result.rows
-        .map((row) => {
-          const key = cleanText(row.handle_key).toLowerCase();
-          if (!key) return null;
-          return [key, row];
-        })
-        .filter(Boolean),
-    );
-
-    if (catalog.length > 0) {
-      return catalog
-        .map((c) => {
-          const stats = statsByHandle.get(c.key) || {};
-          return {
-            handle: c.handle,
-            title: cleanText(stats.title) || c.title || `@${c.handle}`,
-            count: Number(stats.count) || 0,
-            latestAt: stats.latest_at || null,
-            order: c.order,
-            configured: true,
-          };
-        })
-        .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
-    }
-
-    return result.rows
-      .map((row, idx) => {
-        const handle = normalizeYoutubeHandle(row.handle);
-        if (!handle) return null;
-        return {
-          handle,
-          title: cleanText(row.title) || `@${handle}`,
-          count: Number(row.count) || 0,
-          latestAt: row.latest_at || null,
-          order: idx + 1,
-          configured: false,
-        };
-      })
-      .filter(Boolean);
-  }, 30000);
+  return cachedPublicRead('publicYoutubeChannels', {}, queryPublicYoutubeChannelRows, 30000);
 }
 
 export async function queryPublicMarketQuotes(options = {}) {
-  return cachedPublicRead('publicMarketQuotes', options, async () => {
-    const { limit, offset } = pageOptions(options, 30);
-    const params = [];
-    const where = [];
-    const segment = cleanText(options.segment);
-    if (segment) {
-      params.push(segment);
-      where.push(`segment = $${params.length}`);
-    }
-    const symbols = sqlStringList(options.symbols).map((s) => s.toUpperCase());
-    if (symbols.length > 0) {
-      params.push(symbols);
-      where.push(`(
-        upper(COALESCE(symbol, '')) = ANY($${params.length}::text[])
-        OR upper(COALESCE(display_symbol, '')) = ANY($${params.length}::text[])
-        OR upper(COALESCE(krx_symbol, '')) = ANY($${params.length}::text[])
-        OR upper(COALESCE(provider_item_id, '')) = ANY($${params.length}::text[])
-        OR upper(COALESCE(regular_yahoo_symbol, '')) = ANY($${params.length}::text[])
-      )`);
-    }
-    const q = cleanText(options.q).toLowerCase();
-    if (q) {
-      params.push(`%${q}%`);
-      where.push(`(
-        lower(COALESCE(symbol, '')) LIKE $${params.length}
-        OR lower(COALESCE(payload->>'name', '')) LIKE $${params.length}
-        OR lower(COALESCE(segment, '')) LIKE $${params.length}
-      )`);
-    }
-    if (symbols.length > 0 && !q) {
-      const lookupParams = [symbols, segment, limit, offset];
-      const result = await queryKysely(
-        `
-          WITH requested(symbol, ord) AS (
-            SELECT * FROM unnest($1::text[]) WITH ORDINALITY
-          ),
-          candidates AS (
-            SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.fetched_at, 1 AS priority
-            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.symbol, '')) = r.symbol
-            WHERE ($2::text = '' OR p.segment = $2)
-            UNION ALL
-            SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.fetched_at, 2 AS priority
-            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.display_symbol, '')) = r.symbol
-            WHERE ($2::text = '' OR p.segment = $2)
-            UNION ALL
-            SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.fetched_at, 3 AS priority
-            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.krx_symbol, '')) = r.symbol
-            WHERE ($2::text = '' OR p.segment = $2)
-            UNION ALL
-            SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.fetched_at, 4 AS priority
-            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.provider_item_id, '')) = r.symbol
-            WHERE ($2::text = '' OR p.segment = $2)
-            UNION ALL
-            SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.fetched_at, 5 AS priority
-            FROM requested r JOIN market_quotes p ON upper(COALESCE(p.regular_yahoo_symbol, '')) = r.symbol
-            WHERE ($2::text = '' OR p.segment = $2)
-          ),
-          best AS (
-            SELECT DISTINCT ON (requested_symbol) requested_symbol, ord, payload
-            FROM candidates
-            ORDER BY requested_symbol, priority ASC, fetched_at DESC NULLS LAST
-          )
-          SELECT payload
-          FROM best
-          ORDER BY ord ASC
-          LIMIT $3 OFFSET $4
-        `,
-        lookupParams,
-      );
-      const rows = result.rows.map((row) => publicMarketQuote(payloadFromRow(row))).filter(Boolean);
-      return {
-        rows,
-        total: rows.length,
-        limit,
-        offset,
-        hasMore: false,
-        nextOffset: null,
-      };
-    }
-    const sqlLimit = symbols.length > 0 && !segment ? Math.max(limit + 1, symbols.length * 3) : limit + 1;
-    params.push(sqlLimit, offset);
-    const result = await queryKysely(
-      `
-        SELECT payload
-        FROM market_quotes
-        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-        ORDER BY fetched_at DESC NULLS LAST, COALESCE(segment, ''), COALESCE(symbol, '')
-        LIMIT $${params.length - 1} OFFSET $${params.length}
-      `,
-      params,
-    );
-    let rows = result.rows.map((row) => publicMarketQuote(payloadFromRow(row))).filter(Boolean);
-    if (symbols.length > 0 && !segment) {
-      const bestBySymbol = new Map();
-      for (const row of rows) {
-        const key = cleanText(row.krxSymbol || row.symbol).toUpperCase();
-        if (!key) continue;
-        const prev = bestBySymbol.get(key);
-        const prevAt = prev?.fetchedAt ? Date.parse(prev.fetchedAt) : 0;
-        const nextAt = row?.fetchedAt ? Date.parse(row.fetchedAt) : 0;
-        if (!prev || nextAt >= prevAt) bestBySymbol.set(key, row);
-      }
-      rows = [...bestBySymbol.values()];
-    }
-    const pageRows = rows.slice(0, limit);
-    const hasMore = symbols.length > 0 && !segment ? false : rows.length > limit;
-    const total = offset + pageRows.length + (hasMore ? 1 : 0);
-    return {
-      rows: pageRows,
-      total,
-      limit,
-      offset,
-      hasMore,
-      nextOffset: hasMore ? offset + pageRows.length : null,
-    };
-  }, 3000);
+  return cachedPublicRead('publicMarketQuotes', options, () => queryPublicMarketQuoteRows(options), 3000);
 }
 
 export async function queryPublicCoinMarkets(options = {}) {
-  return cachedPublicRead('publicCoinMarkets', options, async () => {
-    const { limit, offset } = pageOptions(options, 30);
-    const params = [];
-    const where = [];
-    const q = cleanText(options.q).toLowerCase();
-    if (q) {
-      params.push(`%${q}%`);
-      where.push(`(
-        lower(COALESCE(symbol, '')) LIKE $${params.length}
-        OR lower(COALESCE(payload->>'name', '')) LIKE $${params.length}
-        OR lower(COALESCE(payload->>'providerItemId', '')) LIKE $${params.length}
-      )`);
-    }
-    params.push(limit + 1, offset);
-    const result = await queryKysely(
-      `
-        SELECT payload
-        FROM coin_markets
-        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-        ORDER BY ${numberSqlExpression(`payload->>'marketCap'`)} DESC
-        LIMIT $${params.length - 1} OFFSET $${params.length}
-      `,
-      params,
-    );
-    return paginatedSqlRows(
-      result.rows.map((row) => {
-        const payload = payloadFromRow(row);
-        return { ...row, item: payload ? publicCoinMarket(payload) : null };
-      }),
-      { limit, offset },
-    );
-  }, 10000);
+  return cachedPublicRead('publicCoinMarkets', options, () => queryPublicCoinMarketRows(options), 10000);
 }
 
 export async function queryPublicCalendar(options = {}) {
-  return cachedPublicRead('publicCalendar', options, async () => {
-    const limit = cleanText(options.limit) ? safeLimit(options.limit, 200, 1000) : 200;
-    const offset = safeOffset(options.offset);
-    const params = [];
-    const where = [];
-    const from = cleanText(options.from);
-    if (from) {
-      params.push(from);
-      where.push(`(event_date IS NULL OR event_date >= $${params.length}::date)`);
-    }
-    const to = cleanText(options.to);
-    if (to) {
-      params.push(to);
-      where.push(`(event_date IS NULL OR event_date <= $${params.length}::date)`);
-    }
-    const type = cleanText(options.type);
-    if (type) {
-      params.push(type);
-      where.push(`event_type = $${params.length}`);
-    }
-    const symbol = cleanText(options.symbol).toUpperCase();
-    if (symbol) {
-      params.push(symbol);
-      where.push(`(upper(COALESCE(symbol, '')) = $${params.length} OR upper(COALESCE(payload->>'title', '')) LIKE '%' || $${params.length} || '%')`);
-    }
-    const q = cleanText(options.q).toLowerCase();
-    if (q) {
-      params.push(`%${q}%`);
-      where.push(`(
-        lower(COALESCE(payload->>'title', '')) LIKE $${params.length}
-        OR lower(COALESCE(payload->>'country', '')) LIKE $${params.length}
-        OR lower(COALESCE(symbol, '')) LIKE $${params.length}
-        OR lower(COALESCE(event_type, '')) LIKE $${params.length}
-      )`);
-    }
-    params.push(limit, offset);
-    const result = await queryKysely(
-      `
-        SELECT payload
-        FROM calendar_events
-        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-        ORDER BY event_date ASC NULLS LAST, COALESCE(payload->>'title', '')
-        LIMIT $${params.length - 1} OFFSET $${params.length}
-      `,
-      params,
-    );
-    return result.rows.map(payloadFromRow).filter(Boolean).map(publicCalendarEvent);
-  }, 30000);
+  return cachedPublicRead('publicCalendar', options, () => queryPublicCalendarRows(options), 30000);
 }
 
 export async function queryPublicCalendarDateSummaries(options = {}) {
-  return cachedPublicRead('publicCalendarDateSummaries', options, async () => {
-    const params = [];
-    const where = ['event_date IS NOT NULL'];
-    const from = cleanText(options.from);
-    if (from) {
-      params.push(from);
-      where.push(`event_date >= $${params.length}::date`);
-    }
-    const to = cleanText(options.to);
-    if (to) {
-      params.push(to);
-      where.push(`event_date <= $${params.length}::date`);
-    }
-    const type = cleanText(options.type);
-    if (type) {
-      params.push(type);
-      where.push(`event_type = $${params.length}`);
-    }
-    const result = await queryKysely(
-      `
-        SELECT event_date::text AS date, COALESCE(event_type, 'unknown') AS type, COUNT(*)::int AS count
-        FROM calendar_events
-        WHERE ${where.join(' AND ')}
-        GROUP BY event_date, COALESCE(event_type, 'unknown')
-        ORDER BY event_date ASC
-      `,
-      params,
-    );
-    const byDate = new Map();
-    for (const row of result.rows) {
-      const date = cleanText(row.date).slice(0, 10);
-      if (!date) continue;
-      const prev = byDate.get(date) || { date, total: 0, counts: {} };
-      const count = Number(row.count) || 0;
-      prev.total += count;
-      prev.counts[row.type || 'unknown'] = count;
-      byDate.set(date, prev);
-    }
-    return [...byDate.values()];
-  }, 30000);
+  return cachedPublicRead('publicCalendarDateSummaries', options, () => queryPublicCalendarDateSummaryRows(options), 30000);
 }
 
 export async function queryPublicConcalls(options = {}) {
-  return cachedPublicRead('publicConcalls', options, async () => {
-    const { limit, offset } = pageOptions(options, 30);
-    const params = [];
-    const where = [];
-    const symbol = cleanText(options.symbol).toUpperCase();
-    if (symbol) {
-      params.push(symbol);
-      where.push(`upper(symbol) = $${params.length}`);
-    }
-    const year = cleanText(options.year || options.fiscalYear);
-    if (year) {
-      params.push(Number(year));
-      where.push(`fiscal_year = $${params.length}`);
-    }
-    const quarter = cleanText(options.quarter || options.fiscalQuarter);
-    if (quarter) {
-      params.push(Number(quarter));
-      where.push(`fiscal_quarter = $${params.length}`);
-    }
-    const from = cleanText(options.from);
-    if (from) {
-      params.push(from);
-      where.push(`(earnings_date IS NULL OR earnings_date >= $${params.length}::date)`);
-    }
-    const to = cleanText(options.to);
-    if (to) {
-      params.push(to);
-      where.push(`(earnings_date IS NULL OR earnings_date <= $${params.length}::date)`);
-    }
-    const q = cleanText(options.q).toLowerCase();
-    if (q) {
-      params.push(`%${q}%`);
-      where.push(`(
-        lower(COALESCE(symbol, '')) LIKE $${params.length}
-        OR lower(COALESCE(payload->>'title', '')) LIKE $${params.length}
-        OR lower(COALESCE(payload->>'summaryProvider', '')) LIKE $${params.length}
-        OR lower(COALESCE(payload->>'provider', '')) LIKE $${params.length}
-      )`);
-    }
-    params.push(limit + 1, offset);
-    const result = await queryKysely(
-      `
-        SELECT payload
-        FROM concall_transcripts
-        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-        ORDER BY earnings_date DESC NULLS LAST, symbol ASC
-        LIMIT $${params.length - 1} OFFSET $${params.length}
-      `,
-      params,
-    );
-    const includeTranscript = cleanText(options.includeTranscript) === '1';
-    return paginatedSqlRows(
-      result.rows.map((row) => {
-        const item = payloadFromRow(row);
-        if (!item) return { item: null };
-        if (includeTranscript) return { item: publicConcall(item) };
-        const { transcript, rawPayload, ...rest } = item;
-        return { item: publicConcall(rest) };
-      }),
-      { limit, offset },
-    );
-  }, 10000);
+  return cachedPublicRead('publicConcalls', options, () => queryPublicConcallRows(options), 10000);
 }
 
 export async function readPublicMarketLists() {
@@ -1635,243 +846,24 @@ export async function upsertMarketQuotes(rows = []) {
   return rows;
 }
 
-function barsForSeries(series) {
-  return Array.isArray(series?.bars) ? series.bars : [];
-}
-
 export async function queryPublicPriceSeriesCandles(options = {}) {
-  return cachedPublicRead('publicPriceSeriesCandles', options, async () => {
-    const symbol = cleanText(options.symbol).toUpperCase();
-    if (!symbol) return null;
-    const result = await queryKysely(
-      `
-        WITH candidates AS (
-          SELECT payload, last_bar_date, fetched_at, 1 AS priority FROM price_series WHERE upper(COALESCE(symbol, '')) = $1
-          UNION ALL
-          SELECT payload, last_bar_date, fetched_at, 2 AS priority FROM price_series WHERE upper(COALESCE(display_symbol, '')) = $1
-          UNION ALL
-          SELECT payload, last_bar_date, fetched_at, 3 AS priority FROM price_series WHERE upper(COALESCE(yahoo_symbol, '')) = $1
-          UNION ALL
-          SELECT payload, last_bar_date, fetched_at, 4 AS priority FROM price_series WHERE upper(COALESCE(payload->>'krxSymbol', '')) = $1
-          UNION ALL
-          SELECT payload, last_bar_date, fetched_at, 5 AS priority FROM price_series WHERE upper(COALESCE(payload->>'displaySymbol', '')) = $1
-          UNION ALL
-          SELECT payload, last_bar_date, fetched_at, 6 AS priority FROM price_series WHERE upper(COALESCE(payload->>'yahooSymbol', '')) = $1
-        )
-        SELECT payload
-        FROM candidates
-        ORDER BY priority ASC, last_bar_date DESC NULLS LAST, fetched_at DESC NULLS LAST
-        LIMIT 1
-      `,
-      [symbol],
-    );
-    const series = payloadFromRow(result.rows[0]);
-    if (!series) return null;
-    const from = Number(options.from) * 1000;
-    const to = Number(options.to) * 1000;
-    const bars = barsForSeries(series).filter((bar) => {
-      const t = Date.parse(`${bar.date}T00:00:00.000Z`);
-      if (!Number.isFinite(t)) return false;
-      return (!Number.isFinite(from) || t >= from) && (!Number.isFinite(to) || t <= to);
-    });
-    if (bars.length === 0) return null;
-    return {
-      s: 'ok',
-      t: bars.map((bar) => Math.floor(Date.parse(`${bar.date}T00:00:00.000Z`) / 1000)),
-      o: bars.map((bar) => Number(bar.open ?? bar.close)),
-      h: bars.map((bar) => Number(bar.high ?? bar.close)),
-      l: bars.map((bar) => Number(bar.low ?? bar.close)),
-      c: bars.map((bar) => Number(bar.close)),
-      v: bars.map((bar) => Number(bar.volume) || 0),
-    };
-  }, 30000);
+  return cachedPublicRead('publicPriceSeriesCandles', options, () => queryPublicPriceSeriesCandlesRow(options), 30000);
 }
 
 export async function queryPublicPriceSeriesSparklines(options = {}) {
-  return cachedPublicRead('publicPriceSeriesSparklines', options, async () => {
-    const symbols = cleanText(options.symbols)
-      .split(',')
-      .map((s) => s.trim().toUpperCase())
-      .filter(Boolean);
-    const days = safeLimit(options.days, 30, 365);
-    if (symbols.length === 0) return [];
-    const result = await queryKysely(
-      `
-        WITH requested(symbol, ord) AS (
-          SELECT * FROM unnest($1::text[]) WITH ORDINALITY
-        ),
-        candidates AS (
-          SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.last_bar_date, p.fetched_at, 1 AS priority
-          FROM requested r JOIN price_series p ON upper(COALESCE(p.symbol, '')) = r.symbol
-          UNION ALL
-          SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.last_bar_date, p.fetched_at, 2 AS priority
-          FROM requested r JOIN price_series p ON upper(COALESCE(p.display_symbol, '')) = r.symbol
-          UNION ALL
-          SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.last_bar_date, p.fetched_at, 3 AS priority
-          FROM requested r JOIN price_series p ON upper(COALESCE(p.yahoo_symbol, '')) = r.symbol
-          UNION ALL
-          SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.last_bar_date, p.fetched_at, 4 AS priority
-          FROM requested r JOIN price_series p ON upper(COALESCE(p.payload->>'krxSymbol', '')) = r.symbol
-          UNION ALL
-          SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.last_bar_date, p.fetched_at, 5 AS priority
-          FROM requested r JOIN price_series p ON upper(COALESCE(p.payload->>'displaySymbol', '')) = r.symbol
-          UNION ALL
-          SELECT r.symbol AS requested_symbol, r.ord, p.payload, p.last_bar_date, p.fetched_at, 6 AS priority
-          FROM requested r JOIN price_series p ON upper(COALESCE(p.payload->>'yahooSymbol', '')) = r.symbol
-        )
-        SELECT DISTINCT ON (requested_symbol) requested_symbol, payload
-        FROM candidates
-        ORDER BY requested_symbol, priority ASC, last_bar_date DESC NULLS LAST, fetched_at DESC NULLS LAST
-      `,
-      [symbols],
-    );
-    const bySymbol = new Map();
-    for (const row of result.rows) {
-      const series = payloadFromRow(row);
-      const key = cleanText(row.requested_symbol).toUpperCase();
-      if (key && series) bySymbol.set(key, series);
-    }
-    return symbols
-      .map((symbol) => {
-        const series = bySymbol.get(symbol);
-        const bars = barsForSeries(series).slice(-days);
-        const closes = bars.map((bar) => Number(bar.close)).filter((value) => Number.isFinite(value));
-        const first = closes[0];
-        const last = closes[closes.length - 1];
-        const changePercent = Number.isFinite(first) && first !== 0 && Number.isFinite(last)
-          ? ((last - first) / first) * 100
-          : null;
-        return {
-          symbol,
-          displaySymbol: series?.displaySymbol || symbol,
-          currency: series?.currency || null,
-          lastClose: Number.isFinite(last) ? last : null,
-          lastBarDate: bars[bars.length - 1]?.date || series?.lastBarDate || null,
-          changePercent,
-          closes,
-          fetchedAt: series?.fetchedAt || null,
-        };
-      })
-      .filter((row) => row.closes.length > 1);
-  }, 30000);
+  return cachedPublicRead('publicPriceSeriesSparklines', options, () => queryPublicPriceSeriesSparklineRows(options), 30000);
 }
 
 export async function queryPublicQuantSignals(options = {}) {
-  return cachedPublicRead('publicQuantSignals', options, async () => {
-    const symbols = cleanText(options.symbols)
-      .split(',')
-      .map((s) => s.trim().toUpperCase())
-      .filter(Boolean);
-    const requested = new Set(symbols);
-    const limit = cleanText(options.limit) ? safeLimit(options.limit, 10, 100) : 10;
-    const result = requested.size > 0
-      ? await queryKysely(
-          `
-            WITH requested(symbol, ord) AS (
-              SELECT * FROM unnest($1::text[]) WITH ORDINALITY
-            ),
-            best AS (
-              SELECT DISTINCT ON (r.symbol) r.symbol AS requested_symbol, r.ord, q.payload
-              FROM requested r
-              JOIN quant_signal_items q ON upper(COALESCE(q.symbol, '')) = r.symbol
-              ORDER BY r.symbol, q.generated_date DESC NULLS LAST, q.generated_at DESC NULLS LAST, q.score DESC NULLS LAST
-            )
-            SELECT payload
-            FROM best
-            ORDER BY ord ASC
-            LIMIT $2
-          `,
-          [symbols, limit],
-        )
-      : await queryKysely(
-          `
-            SELECT payload
-            FROM quant_signal_items
-            ORDER BY generated_date DESC NULLS LAST, score DESC NULLS LAST, position ASC
-            LIMIT $1
-          `,
-          [limit],
-        );
-    return result.rows.map(payloadFromRow).filter(Boolean);
-  }, 15000);
+  return cachedPublicRead('publicQuantSignals', options, () => queryPublicQuantSignalRows(options), 15000);
 }
 
 export async function queryPublicQuantBacktest(options = {}) {
-  return cachedPublicRead('publicQuantBacktest', options, async () => {
-    const symbols = new Set(
-      cleanText(options.symbols)
-        .split(',')
-        .map((s) => s.trim().toUpperCase())
-        .filter(Boolean),
-    );
-    const params = [];
-    const where = [];
-    if (symbols.size > 0) {
-      params.push([...symbols]);
-      where.push(`upper(symbol) = ANY($${params.length}::text[])`);
-    }
-    const result = await queryKysely(
-      `
-        SELECT payload
-        FROM price_series
-        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-        ORDER BY position ASC
-        LIMIT 50
-      `,
-      params,
-    );
-    const rows = result.rows
-      .map(payloadFromRow)
-      .filter(Boolean)
-      .slice(0, 50)
-      .map((series) =>
-        backtestInstrument({
-          instrument: series,
-          bars: barsForSeries(series),
-          horizon: Number(options.horizon) || 20,
-          warmup: Number(options.warmup) || 80,
-          step: Number(options.step) || 1,
-        }),
-      )
-      .filter(Boolean);
-    return { rows, summary: aggregateBacktests(rows) };
-  }, 60000);
+  return cachedPublicRead('publicQuantBacktest', options, () => queryPublicQuantBacktestResult(options), 60000);
 }
 
 export async function queryPublicQuantSignalHistory(options = {}) {
-  return cachedPublicRead('publicQuantSignalHistory', options, async () => {
-    const { limit, offset } = pageOptions(options, 60);
-    const params = [];
-    const where = [];
-    const symbol = cleanText(options.symbol).toUpperCase();
-    if (symbol) {
-      params.push(symbol);
-      where.push(`upper(symbol) = $${params.length}`);
-    }
-    if (options.from) {
-      params.push(cleanText(options.from));
-      where.push(`generated_date >= $${params.length}::date`);
-    }
-    if (options.to) {
-      params.push(cleanText(options.to));
-      where.push(`generated_date <= $${params.length}::date`);
-    }
-    params.push(limit + 1, offset);
-    const result = await queryKysely(
-      `
-        SELECT payload
-        FROM quant_signal_items
-        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-        ORDER BY generated_at DESC NULLS LAST, generated_date DESC NULLS LAST
-        LIMIT $${params.length - 1} OFFSET $${params.length}
-      `,
-      params,
-    );
-    return paginatedSqlRows(
-      result.rows.map((row) => ({ ...row, item: payloadFromRow(row) })),
-      { limit, offset },
-    );
-  }, 15000);
+  return cachedPublicRead('publicQuantSignalHistory', options, () => queryPublicQuantSignalHistoryRows(options), 15000);
 }
 
 export async function queryPublicWatchSignals(options = {}) {
@@ -2039,116 +1031,34 @@ export async function releasePollingJobLock(jobKey, token) {
   return deletePollingJobLock(jobKey, token);
 }
 
-function publicAdminUser(row) {
-  if (!row) return null;
-  return {
-    id: row.id,
-    active: parseBool(row.active),
-    createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
-    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
-  };
-}
-
 export async function verifyAdminLogin(loginId, password) {
   await ensureSeeded();
-  const id = cleanText(loginId);
-  if (!id || !password) return null;
-  const result = await queryKysely('SELECT * FROM admin_users WHERE id = $1', [id]);
-  const row = result.rows[0];
-  if (!row || row.active !== true) return null;
-  return verifyPassword(password, row) ? { id: row.id } : null;
+  return verifyAdminLoginRow(loginId, password);
 }
 
 export async function hasAdminUsers() {
   await ensureSeeded();
-  const result = await queryKysely('SELECT COUNT(*)::int AS count FROM admin_users WHERE active = true');
-  return Number(result.rows[0]?.count) > 0;
+  return hasActiveAdminUsers();
 }
 
 export async function listAdminUsers() {
   await ensureSeeded();
-  const result = await queryKysely('SELECT * FROM admin_users ORDER BY lower(id)');
-  return result.rows.map(publicAdminUser);
+  return listAdminUserRows();
 }
 
 export async function createAdminUser({ id, password, active = true }) {
-  const userId = cleanText(id);
-  if (!userId) throw new Error('ADMIN_USER_ID_REQUIRED');
-  if (!password) throw new Error('ADMIN_USER_PASSWORD_REQUIRED');
-  const { hash, salt } = hashPassword(password);
-  const now = nowIso();
-  try {
-    await queryKysely(
-      `
-        INSERT INTO admin_users (id, password_hash, password_salt, active, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $5)
-      `,
-      [userId, hash, salt, active !== false, now],
-    );
-  } catch (error) {
-    if (String(error?.code) === '23505') throw new Error('ADMIN_USER_EXISTS');
-    throw error;
-  }
-  return { id: userId, active: active !== false, createdAt: now, updatedAt: now };
-}
-
-async function activeAdminCount(client = null) {
-  const runner = client || { query: queryKysely };
-  const result = await runner.query('SELECT COUNT(*)::int AS count FROM admin_users WHERE active = true');
-  return Number(result.rows[0]?.count) || 0;
+  await ensureSeeded();
+  return createAdminUserRow({ id, password, active });
 }
 
 export async function updateAdminUser(id, patch = {}) {
-  const userId = cleanText(id);
-  if (!userId) throw new Error('ADMIN_USER_ID_REQUIRED');
-  return withKyselyTransaction(async (client) => {
-    try {
-      const existing = await client.query('SELECT * FROM admin_users WHERE id = $1 FOR UPDATE', [userId]);
-      if (!existing.rows[0]) throw new Error('ADMIN_USER_NOT_FOUND');
-      if (typeof patch.active === 'boolean' && existing.rows[0].active === true && patch.active === false && (await activeAdminCount(client)) <= 1) {
-        throw new Error('ADMIN_USER_LAST_ACTIVE');
-      }
-      const sets = [];
-      const params = [];
-      if (typeof patch.active === 'boolean') {
-        params.push(patch.active);
-        sets.push(`active = $${params.length}`);
-      }
-      if (typeof patch.password === 'string' && patch.password) {
-        const { hash, salt } = hashPassword(patch.password);
-        params.push(hash);
-        sets.push(`password_hash = $${params.length}`);
-        params.push(salt);
-        sets.push(`password_salt = $${params.length}`);
-      }
-      if (sets.length > 0) {
-        params.push(nowIso());
-        sets.push(`updated_at = $${params.length}`);
-        params.push(userId);
-        await client.query(`UPDATE admin_users SET ${sets.join(', ')} WHERE id = $${params.length}`, params);
-      }
-      const next = await client.query('SELECT * FROM admin_users WHERE id = $1', [userId]);
-      return publicAdminUser(next.rows[0]);
-    } catch (error) {
-      throw error;
-    }
-  });
+  await ensureSeeded();
+  return updateAdminUserRow(id, patch);
 }
 
 export async function deleteAdminUser(id) {
-  const userId = cleanText(id);
-  if (!userId) throw new Error('ADMIN_USER_ID_REQUIRED');
-  return withKyselyTransaction(async (client) => {
-    try {
-      const existing = await client.query('SELECT * FROM admin_users WHERE id = $1 FOR UPDATE', [userId]);
-      if (!existing.rows[0]) throw new Error('ADMIN_USER_NOT_FOUND');
-      if (existing.rows[0].active === true && (await activeAdminCount(client)) <= 1) throw new Error('ADMIN_USER_LAST_ACTIVE');
-      await client.query('DELETE FROM admin_users WHERE id = $1', [userId]);
-      return { id: userId };
-    } catch (error) {
-      throw error;
-    }
-  });
+  await ensureSeeded();
+  return deleteAdminUserRow(id);
 }
 
 function publicUser(row) {
@@ -2894,430 +1804,62 @@ export async function listAppUserAuthSessions(userId, options = {}) {
   });
 }
 
-function adminUserRow(row) {
-  if (!row) return null;
-  return {
-    ...publicUser(row),
-    activeSessionCount: Number(row.active_session_count) || 0,
-    deviceCount: Number(row.device_count) || 0,
-    latestSessionAt: row.latest_session_at ? new Date(row.latest_session_at).toISOString() : null,
-    latestDeviceAt: row.latest_device_at ? new Date(row.latest_device_at).toISOString() : null,
-    notificationCount: Number(row.notification_count) || 0,
-    queuedNotificationCount: Number(row.queued_notification_count) || 0,
-  };
-}
-
 export async function listAppUsers(options = {}) {
-  const { limit, offset } = pageOptions(options, 50);
-  const q = `%${cleanText(options.q).toLowerCase()}%`;
-  const active = cleanText(options.active);
-  const params = [limit + 1, offset];
-  const where = [];
-  if (cleanText(options.q)) {
-    params.push(q);
-    where.push(`(lower(u.email) LIKE $${params.length} OR lower(u.nickname) LIKE $${params.length})`);
-  }
-  if (active === 'true' || active === 'false') {
-    params.push(active === 'true');
-    where.push(`u.active = $${params.length}`);
-  }
-  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const result = await queryKysely(
-    `
-      SELECT
-        u.*,
-        (SELECT COUNT(*) FROM app_user_refresh_sessions s WHERE s.user_id = u.id AND s.revoked_at IS NULL AND s.expires_at > NOW()) AS active_session_count,
-        (SELECT COUNT(*) FROM app_user_devices d WHERE d.user_id = u.id) AS device_count,
-        (SELECT MAX(s.created_at) FROM app_user_refresh_sessions s WHERE s.user_id = u.id) AS latest_session_at,
-        (SELECT MAX(d.updated_at) FROM app_user_devices d WHERE d.user_id = u.id) AS latest_device_at,
-        (SELECT COUNT(*) FROM notification_items n WHERE n.app_user_id = u.id) AS notification_count,
-        (SELECT COUNT(*) FROM notification_items n WHERE n.app_user_id = u.id AND n.status = 'queued') AS queued_notification_count
-      FROM app_users u
-      ${whereSql}
-      ORDER BY u.created_at DESC
-      LIMIT $1 OFFSET $2
-    `,
-    params,
-  );
-  const rows = result.rows.slice(0, limit).map(adminUserRow);
-  return { rows, total: offset + rows.length + (result.rows.length > limit ? 1 : 0), limit, offset };
+  return listAppUserRows(options);
 }
 
 export async function listAppUserDevices(options = {}) {
-  const { limit, offset } = pageOptions(options, 50);
-  const q = `%${cleanText(options.q).toLowerCase()}%`;
-  const active = cleanText(options.active);
-  const platform = cleanText(options.platform).toLowerCase();
-  const params = [limit + 1, offset];
-  const where = [];
-  if (cleanText(options.q)) {
-    params.push(q);
-    where.push(`(lower(d.device_name) LIKE $${params.length} OR lower(d.push_token) LIKE $${params.length} OR lower(u.email) LIKE $${params.length})`);
-  }
-  if (active === 'true' || active === 'false') {
-    params.push(active === 'true');
-    where.push(`d.active = $${params.length}`);
-  }
-  if (platform) {
-    params.push(platform);
-    where.push(`lower(d.platform) = $${params.length}`);
-  }
-  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const result = await queryKysely(
-    `
-      SELECT d.*, u.email, u.nickname
-      FROM app_user_devices d
-      JOIN app_users u ON u.id = d.user_id
-      ${whereSql}
-      ORDER BY d.updated_at DESC
-      LIMIT $1 OFFSET $2
-    `,
-    params,
-  );
-  const rows = result.rows.slice(0, limit).map(publicDevice);
-  return { rows, total: offset + rows.length + (result.rows.length > limit ? 1 : 0), limit, offset };
+  return listAppUserDeviceRows(options);
 }
 
 export async function updateAppUserAdmin(userId, patch = {}) {
-  const sets = [];
-  const params = [];
-  if (typeof patch.active === 'boolean') {
-    params.push(patch.active);
-    sets.push(`active = $${params.length}`);
-  }
-  if (typeof patch.nickname === 'string') {
-    params.push(cleanText(patch.nickname));
-    sets.push(`nickname = $${params.length}`);
-  }
-  if (typeof patch.profileImageUrl === 'string') {
-    params.push(cleanText(patch.profileImageUrl));
-    sets.push(`profile_image_url = $${params.length}`);
-  }
-  if (sets.length === 0) return getAppUser(userId);
-  params.push(nowIso());
-  sets.push(`updated_at = $${params.length}`);
-  params.push(cleanText(userId));
-  const result = await queryKysely(`UPDATE app_users SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *`, params);
-  if (!result.rows[0]) throw new Error('APP_USER_NOT_FOUND');
-  return publicUser(result.rows[0]);
+  return (await updateAppUserAdminRow(userId, patch)) || getAppUser(userId);
 }
 
 export async function updateAppUserDeviceAdmin(deviceId, patch = {}) {
-  const result = await queryKysely(
-    'UPDATE app_user_devices SET active = COALESCE($1, active), updated_at = $2 WHERE id = $3 RETURNING *',
-    [typeof patch.active === 'boolean' ? patch.active : null, nowIso(), cleanText(deviceId)],
-  );
-  if (!result.rows[0]) throw new Error('APP_USER_DEVICE_NOT_FOUND');
-  return publicDevice(result.rows[0]);
+  return updateAppUserDeviceAdminRow(deviceId, patch);
 }
 
 export async function listLegalTerms(options = {}) {
   await ensureSeeded();
-  const locale = cleanText(options.locale);
-  const type = cleanText(options.type);
-  const params = [];
-  const where = [];
-  if (locale) {
-    params.push(locale);
-    where.push(`locale = $${params.length}`);
-  }
-  if (type) {
-    params.push(type);
-    where.push(`type = $${params.length}`);
-  }
-  if (options.activeOnly) where.push('active = true');
-  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const latest = options.latestOnly
-    ? `
-        SELECT *
-        FROM (
-          SELECT t.*, ROW_NUMBER() OVER (PARTITION BY type, locale ORDER BY updated_at DESC, version DESC) AS rn
-          FROM legal_terms t
-          ${whereSql}
-        ) x
-        WHERE rn = 1
-      `
-    : `SELECT * FROM legal_terms ${whereSql}`;
-  const result = await queryKysely(
-    `
-      ${latest}
-      ORDER BY locale ASC, CASE type WHEN 'service' THEN 1 WHEN 'privacy' THEN 2 ELSE 9 END ASC, updated_at DESC
-    `,
-    params,
-  );
-  return result.rows.map((row) => ({
-    id: row.id,
-    type: row.type,
-    locale: row.locale,
-    version: row.version,
-    title: row.title,
-    body: row.body,
-    required: row.required === true,
-    active: row.active === true,
-    createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
-    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
-  }));
+  return listLegalTermRows(options);
 }
 
 export async function updateLegalTerm(type, locale, patch = {}) {
-  const nextType = cleanText(type).toLowerCase() || 'service';
-  const nextLocale = cleanText(locale).toLowerCase() || 'ko';
-  const version = cleanText(patch.version) || nowIso().slice(0, 10).replaceAll('-', '.');
-  const now = nowIso();
-  const title = cleanText(patch.title) || nextType;
-  const body = cleanText(patch.body);
-  if (!body) throw new Error('LEGAL_TERM_BODY_REQUIRED');
-  return withKyselyTransaction(async (client) => {
-    try {
-      if (patch.active !== false) {
-        await client.query('UPDATE legal_terms SET active = false, updated_at = $1 WHERE type = $2 AND locale = $3 AND version <> $4', [
-          now,
-          nextType,
-          nextLocale,
-          version,
-        ]);
-      }
-      await client.query(
-        `
-          INSERT INTO legal_terms (id, type, locale, version, title, body, required, active, created_at, updated_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)
-          ON CONFLICT(type, locale, version) DO UPDATE SET
-            title = excluded.title,
-            body = excluded.body,
-            required = excluded.required,
-            active = excluded.active,
-            updated_at = excluded.updated_at
-        `,
-        [
-          `${nextType}:${nextLocale}:${version}`,
-          nextType,
-          nextLocale,
-          version,
-          title,
-          body,
-          patch.required !== false,
-          patch.active !== false,
-          now,
-        ],
-      );
-      return (await listLegalTerms({ type: nextType, locale: nextLocale, latestOnly: false })).find((term) => term.version === version) || null;
-    } catch (error) {
-      throw error;
-    }
-  });
+  await ensureSeeded();
+  return updateLegalTermRow(type, locale, patch);
 }
 
 export async function listAppUserTermAcceptances(userId) {
-  const result = await queryKysely(
-    `
-      SELECT *
-      FROM app_user_terms_acceptances
-      WHERE user_id = $1
-      ORDER BY accepted_at DESC
-    `,
-    [cleanText(userId)],
-  );
-  return result.rows.map((row) => ({
-    id: row.id,
-    userId: row.user_id,
-    type: row.term_type,
-    locale: row.locale,
-    version: row.version,
-    acceptedAt: row.accepted_at ? new Date(row.accepted_at).toISOString() : null,
-  }));
-}
-
-function publicNotification(row) {
-  if (!row) return null;
-  const payload = row.payload && typeof row.payload === 'object' ? row.payload : {};
-  return {
-    ...payload,
-    id: row.id,
-    type: row.type || payload.type || '',
-    channel: row.channel || payload.channel || 'push',
-    status: row.status || payload.status || 'queued',
-    priority: row.priority || payload.priority || 'normal',
-    title: row.title || payload.title || '',
-    appUserId: row.app_user_id || payload.appUserId || null,
-    targetType: row.target_type || payload.targetType || 'all',
-    targetKey: row.target_key || payload.targetKey || null,
-    scheduledAt: row.scheduled_at ? new Date(row.scheduled_at).toISOString() : payload.scheduledAt || null,
-    expiresAt: row.expires_at ? new Date(row.expires_at).toISOString() : payload.expiresAt || null,
-    sentAt: row.sent_at ? new Date(row.sent_at).toISOString() : payload.sentAt || null,
-    sourceType: row.source_type || payload.sourceType || '',
-    sourceId: row.source_id || payload.sourceId || '',
-    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : payload.updatedAt || null,
-  };
+  return listAppUserTermAcceptanceRows(userId);
 }
 
 export async function upsertNotification(next) {
-  if (!next?.id) throw new Error('INVALID_NOTIFICATION');
-  const now = nowIso();
-  const row = {
-    ...next,
-    updatedAt: now,
-  };
-  const result = await queryKysely(
-    `
-      INSERT INTO notification_items (
-        id, position, type, channel, status, priority, title, app_user_id, target_type,
-        target_key, scheduled_at, expires_at, sent_at, source_type, source_id, payload, updated_at
-      ) VALUES (
-        $1, 0, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16
-      )
-      ON CONFLICT(id) DO UPDATE SET
-        type = excluded.type,
-        channel = excluded.channel,
-        status = excluded.status,
-        priority = excluded.priority,
-        title = excluded.title,
-        app_user_id = excluded.app_user_id,
-        target_type = excluded.target_type,
-        target_key = excluded.target_key,
-        scheduled_at = excluded.scheduled_at,
-        expires_at = excluded.expires_at,
-        sent_at = excluded.sent_at,
-        source_type = excluded.source_type,
-        source_id = excluded.source_id,
-        payload = excluded.payload,
-        updated_at = excluded.updated_at
-      RETURNING *
-    `,
-    [
-      row.id,
-      textOrNull(row.type),
-      textOrNull(row.channel || 'push'),
-      textOrNull(row.status || 'queued'),
-      textOrNull(row.priority || 'normal'),
-      textOrNull(row.title),
-      textOrNull(row.appUserId),
-      textOrNull(row.targetType || 'all'),
-      textOrNull(row.targetKey),
-      isoOrNull(row.scheduledAt),
-      isoOrNull(row.expiresAt),
-      isoOrNull(row.sentAt),
-      textOrNull(row.sourceType),
-      textOrNull(row.sourceId),
-      jsonPayload(row),
-      now,
-    ],
-  );
+  const row = await upsertNotificationRow(next);
   clearPublicReadCache();
-  return publicNotification(result.rows[0]);
+  return row;
 }
 
 export const upsertNotificationItem = upsertNotification;
 
 export async function queryNotifications(options = {}) {
-  const page = Math.max(1, Number.parseInt(options.page || '1', 10) || 1);
-  const pageSize = safeLimit(options.pageSize, 30, 100);
-  const offset = (page - 1) * pageSize;
-  const params = [];
-  const where = [];
-  if (options.appUserId) {
-    params.push(cleanText(options.appUserId));
-    where.push(`app_user_id = $${params.length}`);
-  }
-  if (options.status) {
-    params.push(cleanText(options.status));
-    where.push(`status = $${params.length}`);
-  }
-  params.push(pageSize + 1, offset);
-  const result = await queryKysely(
-    `
-      SELECT payload
-      FROM notification_items
-      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-      ORDER BY COALESCE(scheduled_at, NULLIF(payload->>'createdAt', '')::timestamptz, updated_at) DESC NULLS LAST
-      LIMIT $${params.length - 1} OFFSET $${params.length}
-    `,
-    params,
-  );
-  const rows = result.rows.map(payloadFromRow).filter(Boolean).slice(0, pageSize);
-  const hasMore = result.rows.length > pageSize;
-  return {
-    rows,
-    page,
-    pageSize,
-    total: offset + rows.length + (hasMore ? 1 : 0),
-    totalPages: hasMore ? page + 1 : page,
-  };
+  return queryNotificationRows(options);
 }
 
 export async function queryPublicNotificationsForUser(userId, options = {}) {
-  const { limit } = pageOptions(options, 50);
-  const rows = await queryNotifications({ appUserId: userId, pageSize: limit });
-  return rows.rows;
+  return queryPublicNotificationsForUserRows(userId, options);
 }
 
 export async function claimPushNotificationsForDelivery({ limit = 20, now = nowIso(), provider = 'mock' } = {}) {
-  return withDbExclusive(() =>
-    withKyselyTransaction(async (client) => {
-      try {
-        const result = await client.query(
-          `
-            SELECT *
-            FROM notification_items
-            WHERE status = 'queued' AND channel = 'push'
-              AND (scheduled_at IS NULL OR scheduled_at <= $1)
-              AND (expires_at IS NULL OR expires_at > $1)
-            ORDER BY COALESCE(scheduled_at, updated_at) ASC
-            LIMIT $2
-            FOR UPDATE SKIP LOCKED
-          `,
-          [now, safeLimit(limit, 20, 100)],
-        );
-        const claimed = [];
-        for (const row of result.rows) {
-          const payload = row.payload && typeof row.payload === 'object' ? row.payload : {};
-          const next = { ...payload, status: 'sending', provider, attempts: Number(payload.attempts) || 0, updatedAt: now };
-          const update = await client.query(
-            'UPDATE notification_items SET status = $1, payload = $2::jsonb, updated_at = $3 WHERE id = $4 RETURNING *',
-            ['sending', jsonPayload(next), now, row.id],
-          );
-          claimed.push(publicNotification(update.rows[0]));
-        }
-        return claimed;
-      } catch (error) {
-        throw error;
-      }
-    }),
-  );
+  return withDbExclusive(() => claimPushNotificationRows({ limit, now, provider }));
 }
 
 export async function resolvePushDevicesForNotification(notification) {
-  const targetType = cleanText(notification?.targetType || 'all');
-  const params = [];
-  let where = 'd.active = true AND d.push_token IS NOT NULL AND d.push_token <> \'\'';
-  if (targetType === 'user' && notification?.appUserId) {
-    params.push(notification.appUserId);
-    where += ` AND d.user_id = $${params.length}`;
-  }
-  const result = await queryKysely(`SELECT d.* FROM app_user_devices d JOIN app_users u ON u.id = d.user_id WHERE ${where} AND u.active = true`, params);
-  return result.rows.map(publicDevice);
+  return resolvePushDeviceRows(notification);
 }
 
 export async function updateNotificationSendState(notificationId, patch = {}) {
-  const existing = await queryKysely('SELECT * FROM notification_items WHERE id = $1', [cleanText(notificationId)]);
-  const row = publicNotification(existing.rows[0]);
-  if (!row) return null;
-  const now = nowIso();
-  const next = {
-    ...row,
-    ...patch,
-    attempts: patch.attempts ?? row.attempts,
-    updatedAt: now,
-  };
-  const result = await queryKysely(
-    `
-      UPDATE notification_items
-      SET status = $1, sent_at = $2, payload = $3::jsonb, updated_at = $4
-      WHERE id = $5
-      RETURNING *
-    `,
-    [textOrNull(next.status), isoOrNull(next.sentAt), jsonPayload(next), now, row.id],
-  );
-  return publicNotification(result.rows[0]);
+  return updateNotificationSendStateRow(notificationId, patch);
 }
 
 export async function readDbHealthSummary() {

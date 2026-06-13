@@ -7,10 +7,8 @@ import {
   Alert,
   FlatList,
   InteractionManager,
-  LayoutChangeEvent,
   Platform,
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -21,26 +19,15 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { makeQuotesStyles } from '@/components/quotes/quotesStyles';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
+import { MiniSparkline } from '@/components/signal/MiniSparkline';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
-import {
-  SEGMENT_TAB_ACTIVE_TEXT,
-  SEGMENT_TAB_BTN_PADDING_V,
-  SEGMENT_TAB_BTN_RADIUS,
-  SEGMENT_TAB_FONT_SIZE,
-  SEGMENT_TAB_FONT_WEIGHT,
-  SEGMENT_TAB_GAP,
-  SEGMENT_TAB_LINE_HEIGHT,
-  SEGMENT_TAB_OUTER_RADIUS,
-  SEGMENT_TAB_PADDING,
-} from '@/constants/segmentTabBar';
-import type { AppTheme } from '@/constants/theme';
-import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useQuoteChangeColors, useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -50,14 +37,28 @@ import {
   fetchSignalMarketQuotes,
   fetchSignalStockSparklines,
   fetchSignalQuantSignals,
-  type SignalApiCoinMarket,
   type SignalApiMarketQuote,
   type SignalApiQuantSignal,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
+import {
+  formatKrw,
+  formatPctSigned,
+  formatQuoteDpPct,
+  formatUsd,
+  formatUsdChange,
+  isKoreaStockQuote,
+  isKoreaSymbol,
+  mapSignalCoinToRow,
+  mapSignalQuoteToRow,
+  quantActionTone,
+  quoteLookupKeys,
+  sparklineSymbolForRow,
+  withSoftTimeout,
+  type QuoteRow,
+} from '@/domain/quotes/rows';
 import { POPULAR_SYMBOLS_ORDERED } from '@/domain/quotes/usSymbols';
-import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
 import { loadQuotesListLimits } from '@/services/quotesListLimitsPreference';
 import {
   DEFAULT_QUOTES_SEGMENT_ORDER,
@@ -68,7 +69,6 @@ import {
   buildQuotesCacheKey,
   peekQuotes,
   storeQuotes,
-  type QuoteCacheRow,
 } from '@/services/cache/quotesCache';
 import {
   isValidQuoteSymbol,
@@ -100,119 +100,7 @@ const QUANT_ACTION_LABEL: Record<string, MessageId> = {
   avoid: 'quantActionAvoid',
 };
 
-function isKoreaSymbol(symbol: string): boolean {
-  return /^\d{6}$/.test(String(symbol || '').trim());
-}
-
-async function withSoftTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((resolve) => {
-        timer = setTimeout(() => resolve(fallback), ms);
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
-
-function quantActionTone(theme: AppTheme, action: string): string {
-  if (action === 'buy') return theme.danger;
-  if (action === 'accumulate') return theme.green;
-  if (action === 'reduce') return theme.accentBlue;
-  if (action === 'avoid') return theme.textDim;
-  return theme.textMuted;
-}
-
-function formatPctSigned(value: number | null | undefined): string {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
-}
-
-type Row = QuoteCacheRow;
-
-type MiniSparkPoint = {
-  x: number;
-  y: number;
-};
-
-function sparklineSymbolForRow(row: Row): string {
-  return String(row.quote?.krxSymbol || row.quant?.symbol || row.symbol || '').trim().toUpperCase();
-}
-
-function sparkPoints(values: number[], width: number, height: number): MiniSparkPoint[] {
-  if (values.length < 2 || width <= 0 || height <= 0) return [];
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const spread = Math.max(max - min, 1e-6);
-  const stepX = width / (values.length - 1);
-  return values.map((value, index) => ({
-    x: stepX * index,
-    y: height - ((value - min) / spread) * height,
-  }));
-}
-
-function sampleSparklineValues(values: number[], maxPoints = 14): number[] {
-  const finiteValues = values.filter((value) => Number.isFinite(value));
-  if (finiteValues.length <= maxPoints) return finiteValues;
-  const lastIndex = finiteValues.length - 1;
-  return Array.from({ length: maxPoints }, (_, index) => {
-    const sourceIndex = Math.round((index / (maxPoints - 1)) * lastIndex);
-    return finiteValues[sourceIndex];
-  });
-}
-
-function MiniSparkline({
-  values,
-  color,
-  mutedColor,
-}: {
-  values: number[];
-  color: string;
-  mutedColor: string;
-}) {
-  const [width, setWidth] = useState(0);
-  const height = 28;
-  const sampledValues = useMemo(() => sampleSparklineValues(values), [values]);
-  const points = useMemo(
-    () => sparkPoints(sampledValues, width, height - 4),
-    [sampledValues, width],
-  );
-  const onLayout = useCallback((event: LayoutChangeEvent) => {
-    const nextWidth = Math.max(0, event.nativeEvent.layout.width - 2);
-    setWidth((prev) => (Math.abs(prev - nextWidth) < 1 ? prev : nextWidth));
-  }, []);
-
-  return (
-    <View onLayout={onLayout} style={miniSparkStyles.wrap}>
-      <View style={[miniSparkStyles.baseline, { backgroundColor: mutedColor }]} />
-      {points.slice(0, -1).map((point, index) => {
-        const next = points[index + 1];
-        const dx = next.x - point.x;
-        const dy = next.y - point.y;
-        const length = Math.sqrt(dx * dx + dy * dy);
-        const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-        return (
-          <View
-            key={`seg-${index}`}
-            style={[
-              miniSparkStyles.seg,
-              {
-                left: point.x,
-                top: point.y + 2,
-                width: Math.max(length, 1),
-                backgroundColor: color,
-                transform: [{ rotate: `${angle}deg` }],
-              },
-            ]}
-          />
-        );
-      })}
-    </View>
-  );
-}
+type Row = QuoteRow;
 
 async function withStockSparklines(rows: Row[]): Promise<Row[]> {
   const symbols = [...new Set(rows.map(sparklineSymbolForRow).filter((symbol) => symbol && symbol !== '—'))];
@@ -231,118 +119,13 @@ async function withStockSparklines(rows: Row[]): Promise<Row[]> {
   });
 }
 
-/** USD 금액 본문 (부호 없음, 0 이상) */
-function formatUsdBody(abs: number): string {
-  if (!Number.isFinite(abs) || abs < 0) return '—';
-  if (abs >= 1000) return abs.toLocaleString('en-US', { maximumFractionDigits: 2 });
-  if (abs >= 1) return abs.toFixed(2);
-  if (abs >= 0.0001) return abs.toFixed(6);
-  return abs.toFixed(8);
-}
-
-/** 절대 가격·참고가 (예: $123.45) */
-function formatUsd(n: number): string {
-  if (!Number.isFinite(n)) return '—';
-  return `$${formatUsdBody(Math.abs(n))}`;
-}
-
-/** 전일 대비 등 부호 있는 달러 변동 (예: +$1.23, -$0.45) */
-function formatUsdChange(n: number): string {
-  if (!Number.isFinite(n)) return '—';
-  if (n === 0) return '$0.00';
-  const sign = n > 0 ? '+' : '-';
-  return `${sign}$${formatUsdBody(Math.abs(n))}`;
-}
-
-function toFiniteDisplayNumber(value: unknown): number {
-  if (value == null || value === '') return NaN;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : NaN;
-}
-
-function formatKrw(value: unknown): string {
-  const n = toFiniteDisplayNumber(value);
-  if (!Number.isFinite(n)) return '—';
-  return `₩${Math.round(Math.abs(n)).toLocaleString('ko-KR')}`;
-}
-
-/** 일부 quote 응답에서 `dp` 누락 가능 — `toFixed` 직접 호출 금지 */
-function formatQuoteDpPct(dp: unknown): string {
-  if (!Number.isFinite(dp)) return '—';
-  const p = dp as number;
-  return `${p >= 0 ? '+' : ''}${p.toFixed(2)}%`;
-}
-
-function isKoreaStockQuote(row: Row): boolean {
-  return Boolean(row.quote?.krxSymbol) || /^\d{6}$/.test(String(row.symbol || '').trim());
-}
-
-function mapCoinToSignalMarketQuote(item: SignalApiCoinMarket): SignalApiMarketQuote {
-  const price = item.currentPrice;
-  const c = typeof price === 'number' && Number.isFinite(price) ? price : Number.NaN;
-  const d = item.change24h ?? 0;
-  const dp = item.changePercent24h ?? 0;
-  const pc = Number.isFinite(c) ? c - d : Number.NaN;
-  return {
-    id: item.id,
-    provider: item.provider,
-    providerItemId: item.providerItemId,
-    segment: 'coin',
-    symbol: item.symbol,
-    name: item.name,
-    currentPrice: Number.isFinite(c) ? c : null,
-    change: d,
-    changePercent: dp,
-    high: null,
-    low: null,
-    open: null,
-    previousClose: Number.isFinite(pc) ? pc : null,
-    marketCapitalization: item.marketCap,
-    quoteTime: null,
-    fetchedAt: item.fetchedAt,
-  };
-}
-
-function mapSignalQuoteToRow(item: SignalApiMarketQuote): Row {
-  return {
-    symbol: item.displaySymbol || item.symbol,
-    name: item.name || undefined,
-    quote: signalMarketQuoteHasValidPrice(item) ? item : null,
-  };
-}
-
-function quoteLookupKeys(item: SignalApiMarketQuote, row: Row): string[] {
-  return [
-    row.symbol,
-    item.symbol,
-    item.displaySymbol,
-    item.krxSymbol,
-    item.providerItemId,
-    item.regularSession?.yahooSymbol,
-  ]
-    .map((value) => String(value || '').trim().toUpperCase())
-    .filter(Boolean);
-}
-
-function mapSignalCoinToRow(item: SignalApiCoinMarket): Row {
-  const price = item.currentPrice;
-  if (typeof price !== 'number' || !Number.isFinite(price)) {
-    return { symbol: item.symbol || '—', name: item.name, quote: null };
-  }
-  return {
-    symbol: item.symbol,
-    name: item.name,
-    quote: mapCoinToSignalMarketQuote(item),
-  };
-}
-
 export default function QuotesScreen() {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
   const quoteChange = useQuoteChangeColors();
   const styles = useMemo(
-    () => makeStyles(theme, scaleFont, feedTypo, quoteChange.colors),
+    () => makeQuotesStyles(theme, scaleFont, feedTypo, quoteChange.colors),
     [theme, scaleFont, feedTypo, quoteChange.colors],
   );
   const tabBarHeight = useBottomTabBarHeight();
@@ -968,301 +751,4 @@ export default function QuotesScreen() {
       />
     </SafeAreaView>
   );
-}
-
-const miniSparkStyles = StyleSheet.create({
-  wrap: {
-    width: 96,
-    height: 28,
-    marginTop: 7,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  baseline: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: '50%',
-    height: StyleSheet.hairlineWidth,
-    opacity: 0.8,
-  },
-  seg: {
-    position: 'absolute',
-    height: 2,
-    borderRadius: 999,
-    transformOrigin: 'left center',
-  },
-});
-
-function makeStyles(
-  theme: AppTheme,
-  sf: (n: number) => number,
-  ft: FeedContentTypography,
-  changeColors: { up: string; down: string },
-) {
-  return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.bg },
-    mainColumn: { flex: 1, minHeight: 0 },
-    topFixed: {
-      flexShrink: 0,
-      zIndex: 2,
-      elevation: Platform.OS === 'android' ? 2 : 0,
-      paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 10,
-      backgroundColor: theme.bg,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    list: { flex: 1, minHeight: 0 },
-    listContent: { paddingHorizontal: 16, paddingTop: 0 },
-    segment: {
-      flexDirection: 'row',
-      backgroundColor: theme.bgElevated,
-      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
-      borderWidth: 1,
-      borderColor: theme.border,
-      padding: SEGMENT_TAB_PADDING,
-      marginBottom: 8,
-      gap: SEGMENT_TAB_GAP,
-    },
-    segBtn: {
-      flex: 1,
-      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
-      borderRadius: SEGMENT_TAB_BTN_RADIUS,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    segBtnCompact: {
-      flex: 0.86,
-    },
-    segmentDivider: {
-      width: 1,
-      height: 18,
-      alignSelf: 'center',
-      marginHorizontal: 2,
-      borderRadius: 999,
-      backgroundColor: theme.border,
-    },
-    segBtnActive: {
-      backgroundColor: theme.green,
-    },
-    segText: {
-      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
-      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
-      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
-      color: theme.textDim,
-    },
-    segTextActive: {
-      color: SEGMENT_TAB_ACTIVE_TEXT,
-    },
-    updated: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted, marginBottom: 10 },
-    addRow: {
-      flexDirection: 'row',
-      gap: 8,
-      marginBottom: 12,
-      alignItems: 'center',
-    },
-    addInput: {
-      flex: 1,
-      borderWidth: 1,
-      borderColor: theme.border,
-      borderRadius: 8,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      fontSize: sf(14),
-      color: theme.text,
-      backgroundColor: theme.card,
-    },
-    addBtn: {
-      flexShrink: 0,
-      paddingHorizontal: 14,
-      paddingVertical: 9,
-      borderRadius: 8,
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    addBtnText: { fontSize: sf(13), fontWeight: '800', color: theme.green },
-    watchResetBtn: {
-      flexShrink: 0,
-      paddingHorizontal: 10,
-      paddingVertical: 9,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      justifyContent: 'center',
-    },
-    watchResetBtnText: { fontSize: sf(13), fontWeight: '700', color: theme.danger },
-    errBox: {
-      padding: 12,
-      borderRadius: 14,
-      backgroundColor: theme.dangerDim,
-      borderWidth: 1,
-      borderColor: '#FFD6DA',
-      marginBottom: 12,
-    },
-    errText: { fontSize: sf(12), color: theme.danger, lineHeight: sf(18) },
-    empty: { fontSize: sf(13), color: theme.textMuted, marginTop: 8 },
-    cardGrouped: {
-      backgroundColor: 'transparent',
-      borderWidth: 0,
-      borderRadius: 0,
-      paddingHorizontal: ft.pad(16),
-      paddingVertical: ft.pad(12),
-    },
-    swipeRowGrouped: {
-      marginBottom: 0,
-      borderRadius: 0,
-      overflow: 'hidden',
-    },
-    swipeRight: {
-      width: 80,
-      height: '100%',
-    },
-    swipeDeleteBtn: {
-      flex: 1,
-      backgroundColor: '#7A2E2E',
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: 8,
-    },
-    swipeDeleteText: {
-      color: '#FFFFFF',
-      fontSize: sf(15),
-      fontWeight: '800',
-    },
-    cardTop: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      gap: 10,
-      marginBottom: 6,
-    },
-    priceCol: {
-      flexShrink: 1,
-      alignItems: 'flex-end',
-      minWidth: 104,
-      maxWidth: '48%',
-    },
-    priceRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      gap: 8,
-    },
-    symCol: { flex: 1, minWidth: 0, flexShrink: 1 },
-    symBlock: { alignSelf: 'flex-start', maxWidth: '100%' },
-    symRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flexWrap: 'nowrap',
-    },
-    symPressable: { flexShrink: 0, minWidth: 0 },
-    sym: {
-      fontSize: ft.ff(16),
-      lineHeight: ft.ff(20),
-      fontWeight: ft.titleWeight,
-      color: theme.text,
-      letterSpacing: 0.5,
-    },
-    symPrev: {
-      fontSize: ft.ff(12),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-      marginTop: 4,
-      lineHeight: ft.ff(17),
-    },
-    symSub: {
-      fontSize: ft.ff(12),
-      lineHeight: ft.ff(16),
-      fontWeight: ft.bodyWeight,
-      color: theme.textMuted,
-      marginTop: 4,
-    },
-    quantMetaRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      flexWrap: 'wrap',
-      marginTop: 4,
-    },
-    quantDetail: {
-      flexDirection: 'column',
-      gap: 6,
-      paddingTop: 9,
-      marginTop: 4,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.border,
-    },
-    quantBadgeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      flexWrap: 'wrap',
-    },
-    quantActionBadge: {
-      overflow: 'hidden',
-      borderRadius: 7,
-      borderWidth: 1.5,
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      fontSize: ft.ff(12),
-      lineHeight: ft.ff(16),
-      fontWeight: ft.titleWeight,
-    },
-    quantScoreText: {
-      flexShrink: 1,
-      minWidth: 0,
-      fontSize: ft.ff(11),
-      lineHeight: ft.ff(15),
-      fontWeight: ft.emphasisWeight,
-      color: theme.textMuted,
-    },
-    quantHeadline: {
-      fontSize: ft.ff(12),
-      lineHeight: ft.ff(17),
-      fontWeight: ft.emphasisWeight,
-      color: theme.textDim,
-    },
-    price: {
-      maxWidth: '100%',
-      fontSize: ft.ff(18),
-      lineHeight: ft.ff(22),
-      fontWeight: ft.titleWeight,
-      color: theme.text,
-    },
-    na: { fontSize: sf(16), color: theme.textDim },
-    removeBtn: { padding: 2 },
-    chg: {
-      maxWidth: '100%',
-      fontSize: ft.ff(13),
-      lineHeight: ft.ff(17),
-      fontWeight: ft.emphasisWeight,
-      marginTop: 4,
-      textAlign: 'right',
-    },
-    chgUp: { color: changeColors.up },
-    chgDn: { color: changeColors.down },
-    fail: { fontSize: sf(12), color: theme.danger },
-    yahooInline: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      flexShrink: 1,
-      minWidth: 0,
-      marginLeft: 8,
-      paddingVertical: 2,
-    },
-    yahooInlinePressed: { opacity: 0.75 },
-    yahooInlineText: {
-      flexShrink: 1,
-      minWidth: 0,
-      fontSize: ft.ff(12),
-      lineHeight: ft.ff(16),
-      fontWeight: ft.emphasisWeight,
-      color: theme.green,
-    },
-  });
 }

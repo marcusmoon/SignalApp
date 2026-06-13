@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { AppTheme } from '@/constants/theme';
+import { SocialAuthButtons } from '@/components/account/SocialAuthButtons';
+import { makeAccountStyles } from '@/components/account/accountStyles';
 import { useLocale } from '@/contexts/LocaleContext';
 import type { MessageId } from '@/locales/messages';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -33,11 +34,17 @@ import {
   type SignalSocialCatalog,
   type SocialProviderKey,
 } from '@/integrations/signal-api';
+import {
+  createFallbackLegalTerms,
+  formatJoinedAtLabel,
+  signInMethodLabel as formatSignInMethodLabel,
+  socialSignupDraftFromPreview,
+  type SocialSignupDraft,
+} from '@/domain/account/display';
+import { formatSocialAuthFailure } from '@/domain/account/authErrors';
 import { SignalApiError } from '@/integrations/signal-api/httpClient';
 import {
   obtainSocialCredential,
-  SocialAuthCancelledError,
-  SocialAuthFlowError,
 } from '@/integrations/signal-api/socialAuthFlow';
 import { hasSignalApi, isIosAppleSignInNativeEnabled } from '@/services/env';
 import {
@@ -53,82 +60,12 @@ type Mode = 'login' | 'register';
 type AccountTab = 'home' | 'profile' | 'security' | 'info';
 type RegisterStep = 'terms' | 'method' | 'info';
 
-type SocialSignupDraft = {
-  provider: SocialProviderKey;
-  signupToken: string;
-  email: string;
-  nickname: string;
-  profileImageUrl: string;
-};
-
-function socialApiCodeMessage(code: string | undefined): MessageId | null {
-  switch (code) {
-    case 'APP_USER_SOCIAL_EMAIL_CONFLICT':
-      return 'accountSocialEmailConflict';
-    case 'APP_USER_SOCIAL_IDENTITY_TAKEN':
-      return 'accountSocialIdentityTaken';
-    case 'APP_USER_TERMS_REQUIRED':
-      return 'accountSocialSignupRequired';
-    case 'APP_USER_SOCIAL_NOT_CONFIGURED':
-    case 'APP_USER_JWT_NOT_CONFIGURED':
-      return 'accountSocialDisabled';
-    case 'APP_USER_SOCIAL_KAKAO_UPSTREAM':
-      return 'accountSocialKakaoUpstream';
-    case 'APP_USER_SOCIAL_INVALID_TOKEN':
-    case 'APP_USER_SOCIAL_INVALID_PROFILE':
-    case 'APP_USER_SOCIAL_UNSUPPORTED':
-      return 'accountSocialInvalid';
-    default:
-      return null;
-  }
-}
-
-function mapSocialFlowErrorMessage(flowCode: string, translate: (id: MessageId) => string): string {
-  switch (flowCode) {
-    case 'disabled':
-      return translate('accountSocialDisabled');
-    case 'not_configured':
-      return translate('accountSocialFlowNotConfigured');
-    case 'kakao_expo_go_unsupported':
-      return translate('accountSocialKakaoExpoGo');
-    case 'kakao_native_missing':
-      return translate('accountSocialKakaoNativeMissing');
-    case 'apple_ios_only':
-      return translate('accountSocialAppleIosOnly');
-    case 'apple_unavailable':
-      return translate('accountSocialAppleUnavailable');
-    default:
-      return translate('accountSocialInvalid');
-  }
-}
-
-function formatSocialAuthFailure(
-  e: unknown,
-  translate: (id: MessageId) => string,
-  apiFallbackId: MessageId,
-): string | null {
-  if (e instanceof SocialAuthCancelledError) return null;
-  if (e instanceof SocialAuthFlowError) {
-    const base = mapSocialFlowErrorMessage(e.message, translate);
-    return __DEV__ ? `${base}\n\n[debug] flow=${e.message}` : base;
-  }
-  if (e instanceof SignalApiError) {
-    const mid = socialApiCodeMessage(e.message);
-    const base = mid ? translate(mid) : formatSignalApiError(e, translate, apiFallbackId);
-    return __DEV__ ? `${base}\n\n[debug] api=${e.message}` : base;
-  }
-  const base = formatSignalApiError(e, translate, apiFallbackId);
-  if (!__DEV__) return base;
-  const raw = e instanceof Error ? `${e.name}: ${e.message}` : String(e ?? '');
-  return `${base}\n\n[debug] ${raw}`;
-}
-
 export default function AccountScreen() {
   const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeAccountStyles(theme, scaleFont), [theme, scaleFont]);
   const [session, setSession] = useState<StoredAppAuthSession | null>(null);
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -161,46 +98,15 @@ export default function AccountScreen() {
   const serviceTerm = legalTerms.find((term) => term.type === 'service');
   const privacyTerm = legalTerms.find((term) => term.type === 'privacy');
   const copyrightYear = new Date().getFullYear();
-  const localeTag = locale === 'ko' ? 'ko-KR' : locale === 'ja' ? 'ja-JP' : 'en-US';
   const joinedAtLabel = useMemo(() => {
-    if (!user?.createdAt) return t('accountStatusJoinedUnknown');
-    const date = new Date(user.createdAt);
-    if (Number.isNaN(date.getTime())) return t('accountStatusJoinedUnknown');
-    return new Intl.DateTimeFormat(localeTag, { year: 'numeric', month: 'short', day: 'numeric' }).format(date);
-  }, [localeTag, t, user?.createdAt]);
+    return formatJoinedAtLabel(user, locale, t);
+  }, [locale, t, user]);
   const signInMethodLabel = useMemo(() => {
-    const socialCount = linkedIdentities.length;
-    if (user?.hasPassword && socialCount > 0) {
-      return t('accountStatusSignInPasswordAndSocial').replace('{{count}}', String(socialCount));
-    }
-    if (user?.hasPassword) return t('accountStatusSignInPasswordOnly');
-    if (socialCount > 0) return t('accountStatusSignInSocialOnly').replace('{{count}}', String(socialCount));
-    return t('accountStatusSignInNone');
-  }, [linkedIdentities.length, t, user?.hasPassword]);
+    return formatSignInMethodLabel(user, linkedIdentities, t);
+  }, [linkedIdentities, t, user]);
 
   const fallbackLegalTerms = useMemo<SignalLegalTerm[]>(
-    () => [
-      {
-        id: `service:${locale}`,
-        type: 'service',
-        locale,
-        version: '2026.05.07',
-        title: t('termsServiceTitle'),
-        body: t('termsServiceBody'),
-        required: true,
-        active: true,
-      },
-      {
-        id: `privacy:${locale}`,
-        type: 'privacy',
-        locale,
-        version: '2026.05.07',
-        title: t('termsPrivacyTitle'),
-        body: t('termsPrivacyBody'),
-        required: true,
-        active: true,
-      },
-    ],
+    () => createFallbackLegalTerms(locale, t),
     [locale, t],
   );
 
@@ -312,19 +218,17 @@ export default function AccountScreen() {
       try {
         const cred = await obtainSocialCredential(provider, catalog);
         const preview = await previewSignalSocialSignup({ provider, ...cred });
-        const draftEmail = preview.profile.email || '';
-        const fallbackNickname = draftEmail.includes('@') ? draftEmail.split('@')[0] : provider;
-        const draftNickname = preview.profile.displayName || fallbackNickname;
-        setSocialSignupDraft({
+        const draft = socialSignupDraftFromPreview({
           provider,
           signupToken: preview.signupToken,
-          email: draftEmail,
-          nickname: draftNickname,
-          profileImageUrl: preview.profile.profileImageUrl || '',
+          email: preview.profile.email,
+          displayName: preview.profile.displayName,
+          profileImageUrl: preview.profile.profileImageUrl,
         });
-        setEmail(draftEmail);
-        setNickname(draftNickname);
-        setProfileImageUrl(preview.profile.profileImageUrl || '');
+        setSocialSignupDraft(draft);
+        setEmail(draft.email);
+        setNickname(draft.nickname);
+        setProfileImageUrl(draft.profileImageUrl);
         setRegisterStep('info');
       } catch (e) {
         const msg = formatSocialAuthFailure(e, t, 'accountAuthError');
@@ -802,64 +706,11 @@ export default function AccountScreen() {
     [t],
   );
 
-  const renderSocialButton = useCallback(
-    (provider: SocialProviderKey, action: 'login' | 'signup' = 'login') => {
-      const enabled = socialCatalog ? socialCatalog.providers[provider]?.enabled === true : true;
-      const label = socialProviderLabel(provider);
-      const brandStyle =
-        provider === 'kakao'
-          ? styles.socialBrandKakao
-          : provider === 'naver'
-            ? styles.socialBrandNaver
-            : provider === 'google'
-              ? styles.socialBrandGoogle
-              : styles.socialBrandApple;
-      const buttonStyle =
-        provider === 'kakao'
-          ? styles.socialButtonKakao
-          : provider === 'naver'
-            ? styles.socialButtonNaver
-            : provider === 'google'
-              ? styles.socialButtonGoogle
-              : styles.socialButtonApple;
-      const labelStyle =
-        provider === 'kakao' ? styles.socialLabelDark : provider === 'naver' ? styles.socialLabelLight : null;
-      return (
-        <Pressable
-          key={provider}
-          disabled={saving || !enabled}
-          onPress={() => void (action === 'signup' ? startSocialSignup(provider) : startSocialLogin(provider))}
-          accessibilityRole="button"
-          accessibilityLabel={label}
-          style={({ pressed }) => [
-            styles.socialButton,
-            buttonStyle,
-            !enabled && styles.socialButtonDisabled,
-            pressed && styles.socialButtonPressed,
-          ]}>
-          <View style={[styles.socialBrand, brandStyle]}>
-            {provider === 'naver' ? (
-              <Text style={styles.socialBrandLetter}>N</Text>
-            ) : (
-              <FontAwesome5
-                name={provider === 'apple' ? 'apple' : provider === 'google' ? 'google' : 'comment'}
-                size={provider === 'apple' ? 16 : 14}
-                color={provider === 'kakao' ? '#191600' : provider === 'google' ? '#4285F4' : theme.bg}
-              />
-            )}
-          </View>
-          <Text style={[styles.socialLabel, labelStyle]}>{label}</Text>
-        </Pressable>
-      );
+  const onSocialAuthPress = useCallback(
+    (provider: SocialProviderKey, action: 'login' | 'signup') => {
+      void (action === 'signup' ? startSocialSignup(provider) : startSocialLogin(provider));
     },
-    [saving, socialCatalog, socialProviderLabel, startSocialLogin, startSocialSignup, styles, theme.bg],
-  );
-
-  const renderSocialButtons = useCallback(
-    (action: 'login' | 'signup' = 'login') => (
-      <View style={styles.socialStack}>{socialProviders.map((provider) => renderSocialButton(provider, action))}</View>
-    ),
-    [renderSocialButton, socialProviders, styles.socialStack],
+    [startSocialLogin, startSocialSignup],
   );
 
   return (
@@ -1337,7 +1188,16 @@ export default function AccountScreen() {
                       <Text style={styles.termsEditText}>{t('accountTermsEdit')}</Text>
                     </Pressable>
                   </View>
-                  {renderSocialButtons('signup')}
+                  <SocialAuthButtons
+                    providers={socialProviders}
+                    catalog={socialCatalog}
+                    saving={saving}
+                    action="signup"
+                    onPress={onSocialAuthPress}
+                    labelForProvider={socialProviderLabel}
+                    theme={theme}
+                    scaleFont={scaleFont}
+                  />
                 </View>
 
                 <Pressable
@@ -1388,7 +1248,18 @@ export default function AccountScreen() {
                       </View>
                     </>
                   ) : null}
-                  {!isRegister ? renderSocialButtons('login') : null}
+                  {!isRegister ? (
+                    <SocialAuthButtons
+                      providers={socialProviders}
+                      catalog={socialCatalog}
+                      saving={saving}
+                      action="login"
+                      onPress={onSocialAuthPress}
+                      labelForProvider={socialProviderLabel}
+                      theme={theme}
+                      scaleFont={scaleFont}
+                    />
+                  ) : null}
                 </View>
 
                 {!isRegister ? (
@@ -1489,399 +1360,4 @@ export default function AccountScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-}
-
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
-  return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.bg },
-    content: { padding: 16, gap: 12 },
-    hero: {
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.card,
-      padding: 18,
-      gap: 12,
-      overflow: 'hidden',
-    },
-    card: { borderRadius: 14, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.card, padding: 16, gap: 12 },
-    profileHeroCard: {
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.bgElevated,
-    },
-    heroLogoRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    signalBars: { width: 36, height: 28, flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
-    signalBar: { width: 6, borderRadius: 4, backgroundColor: theme.green },
-    signalBar1: { height: 10, opacity: 0.45 },
-    signalBar2: { height: 16, opacity: 0.65 },
-    signalBar3: { height: 22, opacity: 0.82 },
-    signalBar4: { height: 28 },
-    kicker: { fontSize: sf(11), fontWeight: '900', color: theme.green },
-    title: { fontSize: sf(22), lineHeight: sf(28), fontWeight: '900', color: theme.text },
-    lead: { fontSize: sf(13), lineHeight: sf(19), color: theme.textMuted },
-    errBox: { borderRadius: 14, borderWidth: 1, borderColor: '#FFD6DA', backgroundColor: theme.dangerDim, padding: 12 },
-    errText: { color: theme.danger, fontSize: sf(12), lineHeight: sf(18) },
-    noticeText: { color: theme.green, fontSize: sf(12), lineHeight: sf(18), fontWeight: '800' },
-    accountTabs: {
-      minHeight: 44,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      flexDirection: 'row',
-      padding: 4,
-      gap: 4,
-    },
-    accountTab: {
-      flex: 1,
-      minHeight: 34,
-      borderRadius: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    accountTabActive: { backgroundColor: theme.greenDim, borderWidth: 1, borderColor: theme.greenBorder },
-    accountTabText: { color: theme.textMuted, fontSize: sf(12), fontWeight: '900' },
-    accountTabTextActive: { color: theme.green },
-    sectionTitle: { color: theme.text, fontSize: sf(16), fontWeight: '900' },
-    sectionLead: { color: theme.textMuted, fontSize: sf(12), lineHeight: sf(18), marginTop: -4 },
-    authCardTitle: { color: theme.text, fontSize: sf(17), fontWeight: '900', textAlign: 'center' },
-    authCardLead: { color: theme.textMuted, fontSize: sf(12), lineHeight: sf(18), textAlign: 'center' },
-    input: {
-      minHeight: 46,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      color: theme.text,
-      paddingHorizontal: 12,
-      fontSize: sf(14),
-    },
-    primaryBtn: { minHeight: 46, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.green },
-    primaryBtnDisabled: { backgroundColor: theme.bgElevated, borderWidth: 1, borderColor: theme.border },
-    primaryText: { color: '#06100B', fontSize: sf(14), fontWeight: '900' },
-    primaryTextDisabled: { color: theme.textDim },
-    socialBox: { gap: 12 },
-    socialStack: { gap: 8 },
-    socialButton: {
-      minHeight: 48,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      alignItems: 'center',
-      justifyContent: 'flex-start',
-      flexDirection: 'row',
-      gap: 10,
-      paddingHorizontal: 12,
-    },
-    socialButtonPressed: { opacity: 0.78 },
-    socialButtonDisabled: { opacity: 0.45 },
-    socialButtonKakao: { backgroundColor: '#FEE500', borderColor: '#FEE500' },
-    socialButtonNaver: { backgroundColor: '#03C75A', borderColor: '#03C75A' },
-    socialButtonGoogle: { backgroundColor: theme.bgElevated, borderColor: theme.border },
-    socialButtonApple: { backgroundColor: theme.bgElevated, borderColor: theme.border },
-    socialBrand: {
-      width: 28,
-      height: 28,
-      borderRadius: 9,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-    },
-    socialBrandKakao: { backgroundColor: '#FEE500', borderColor: 'rgba(0,0,0,0.12)' },
-    socialBrandNaver: { backgroundColor: '#03C75A', borderColor: 'rgba(255,255,255,0.2)' },
-    socialBrandGoogle: { backgroundColor: '#FFFFFF', borderColor: '#E2E6EA' },
-    socialBrandApple: { backgroundColor: theme.text, borderColor: theme.text },
-    socialBrandLetter: { color: '#FFFFFF', fontSize: sf(15), fontWeight: '900' },
-    socialLabel: { color: theme.text, fontSize: sf(14), fontWeight: '900' },
-    socialLabelDark: { color: '#191600' },
-    socialLabelLight: { color: '#FFFFFF' },
-    dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 2 },
-    dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: theme.border },
-    dividerText: { color: theme.textDim, fontSize: sf(11), fontWeight: '800' },
-    emailToggle: {
-      minHeight: 42,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      paddingHorizontal: 12,
-    },
-    emailToggleText: { color: theme.green, fontSize: sf(13), fontWeight: '900' },
-    authSwitchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 2 },
-    authSwitchText: { color: theme.textMuted, fontSize: sf(12), fontWeight: '700' },
-    authSwitchBtn: { color: theme.green, fontSize: sf(13), fontWeight: '900' },
-    termsBox: {
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      padding: 12,
-      gap: 10,
-    },
-    termsAllRow: { alignItems: 'center' },
-    termsAllText: { flex: 1, color: theme.text, fontSize: sf(13), lineHeight: sf(18), fontWeight: '900' },
-    termsDivider: { height: StyleSheet.hairlineWidth, backgroundColor: theme.border },
-    termsItem: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 },
-    termsRow: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 2 },
-    checkBox: {
-      width: 20,
-      height: 20,
-      borderRadius: 6,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginTop: 1,
-    },
-    checkBoxActive: { borderColor: theme.greenBorder, backgroundColor: theme.greenDim },
-    checkText: { color: theme.green, fontSize: sf(12), fontWeight: '900' },
-    termsText: { flex: 1, minWidth: 0, color: theme.textMuted, fontSize: sf(11), lineHeight: sf(17) },
-    termsConfirmedRow: {
-      minHeight: 34,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 7,
-      paddingHorizontal: 10,
-      alignSelf: 'stretch',
-    },
-    termsConfirmedText: { flex: 1, color: theme.green, fontSize: sf(11), fontWeight: '900' },
-    termsEditText: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
-    requiredBadge: {
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-    },
-    requiredBadgeText: { color: theme.green, fontSize: sf(9), lineHeight: sf(12), fontWeight: '900' },
-    termsOpenBtn: {
-      width: 28,
-      height: 28,
-      borderRadius: 999,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-      flexShrink: 0,
-    },
-    profileRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    avatar: { width: 56, height: 56, borderRadius: 18, backgroundColor: theme.bgElevated },
-    avatarFallback: { width: 56, height: 56, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.greenDim, borderWidth: 1, borderColor: theme.greenBorder },
-    avatarText: { color: theme.green, fontSize: sf(22), fontWeight: '900' },
-    profileText: { flex: 1, minWidth: 0 },
-    profileName: { color: theme.text, fontSize: sf(17), fontWeight: '900' },
-    profileEmail: { color: theme.textMuted, fontSize: sf(12), marginTop: 3 },
-    accountMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    accountMetaPill: {
-      minHeight: 30,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 10,
-    },
-    accountMetaText: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
-    statusStack: {
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      overflow: 'hidden',
-    },
-    statusRow: {
-      minHeight: 44,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    statusIcon: {
-      width: 26,
-      height: 26,
-      borderRadius: 9,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    statusLabel: { flex: 1, minWidth: 0, color: theme.textMuted, fontSize: sf(12), fontWeight: '800' },
-    statusValue: { maxWidth: '48%', color: theme.text, fontSize: sf(12), fontWeight: '900', textAlign: 'right' },
-    quickGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    quickTile: {
-      flexBasis: '48%',
-      flexGrow: 1,
-      minHeight: 104,
-      borderRadius: 13,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      padding: 12,
-      gap: 7,
-    },
-    quickIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    quickTitle: { color: theme.text, fontSize: sf(13), fontWeight: '900' },
-    quickDesc: { color: theme.textMuted, fontSize: sf(10), lineHeight: sf(15), fontWeight: '700' },
-    activityStack: { gap: 8 },
-    activityRow: {
-      minHeight: 58,
-      borderRadius: 13,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      paddingHorizontal: 12,
-      paddingVertical: 9,
-    },
-    activityRowPressed: { opacity: 0.78 },
-    activityIcon: {
-      width: 34,
-      height: 34,
-      borderRadius: 11,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    activityText: { flex: 1, minWidth: 0 },
-    activityTitle: { color: theme.text, fontSize: sf(13), fontWeight: '900' },
-    activityDesc: { color: theme.textMuted, fontSize: sf(11), lineHeight: sf(16), marginTop: 2 },
-    mutedText: { color: theme.textMuted, fontSize: sf(12), lineHeight: sf(18), fontWeight: '700' },
-    identityStack: { gap: 8 },
-    subSection: {
-      borderRadius: 13,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      padding: 12,
-      gap: 10,
-    },
-    subSectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-    subSectionTitle: { flex: 1, color: theme.text, fontSize: sf(13), fontWeight: '900' },
-    subSectionMeta: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
-    subSectionLead: { color: theme.textMuted, fontSize: sf(11), lineHeight: sf(16), fontWeight: '700', marginTop: -2 },
-    socialLinkStack: { gap: 8, marginTop: 0 },
-    linkChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    linkChip: {
-      minHeight: 32,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 11,
-    },
-    linkChipText: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
-    socialLinkRow: {
-      minHeight: 48,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      gap: 8,
-    },
-    socialLinkText: { flex: 1, color: theme.text, fontSize: sf(13), fontWeight: '800' },
-    identityRow: {
-      minHeight: 54,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-    },
-    smallOutlineBtn: {
-      minHeight: 28,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.border,
-      paddingHorizontal: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    smallOutlineText: { color: theme.textMuted, fontSize: sf(10), fontWeight: '900' },
-    secondaryBtn: {
-      minHeight: 40,
-      borderRadius: 11,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    secondaryText: { color: theme.green, fontSize: sf(13), fontWeight: '900' },
-    legalActionStack: {
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: theme.border,
-      overflow: 'hidden',
-      backgroundColor: theme.bgElevated,
-    },
-    legalActionRow: {
-      minHeight: 48,
-      paddingHorizontal: 13,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    legalActionTitle: { flex: 1, color: theme.text, fontSize: sf(13), fontWeight: '900' },
-    accountFooter: { gap: 10, paddingTop: 4, paddingHorizontal: 4, alignItems: 'center' },
-    footerActionRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, flexWrap: 'wrap' },
-    footerActionBtn: {
-      minHeight: 28,
-      minWidth: 70,
-      borderRadius: 999,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      paddingHorizontal: 11,
-    },
-    footerActionText: { color: theme.textMuted, fontSize: sf(11), fontWeight: '900' },
-    withdrawBtn: { borderColor: '#FFD6DA', backgroundColor: theme.dangerDim },
-    withdrawText: { color: theme.danger },
-    copyrightText: { color: theme.textDim, fontSize: sf(10), fontWeight: '700' },
-  });
 }

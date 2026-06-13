@@ -1,0 +1,122 @@
+/*
+ * Admin contract overrides.
+ *
+ * Keep this file small and loaded after admin.css. The legacy stylesheet is
+ * intentionally large; this layer defines the final role-based behavior for
+ * surfaces that frequently regressed during UI iterations.
+ */
+
+body.adminShellV2:not(.loginMode) {
+  background: var(--adm-page);
+  color: var(--adm-text);
+}
+
+body.adminShellV2 .settingsSectionGrid {
+  grid-template-columns: 1fr;
+}
+
+body.adminShellV2 .settingsControlCard {
+  background: var(--adm-surface);
+  border-color: var(--adm-border-soft);
+  color: var(--adm-text);
+}
+
+body.adminShellV2 .providerTileGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--adm-border-soft);
+  border-radius: 18px;
+  background: var(--adm-surface);
+}
+
+body.adminShellV2 .providerLine {
+  display: grid;
+  grid-template-columns: 44px minmax(220px, 1fr) minmax(180px, auto) auto auto;
+  gap: 14px;
+  align-items: center;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--adm-border-soft);
+  border-radius: 0;
+  background: var(--adm-surface);
+  box-shadow: none;
+}
+
+body.adminShellV2 .providerLine:last-child {
+  border-bottom: 0;
+}
+
+body.adminShellV2 .providerLine:hover {
+  background: var(--adm-hover);
+}
+
+body.adminShellV2 .providerTitle {
+  min-width: 0;
+}
+
+body.adminShellV2 .providerTitle strong,
+body.adminShellV2 .providerTitle .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.adminShellV2 .providerLine .pill {
+  justify-self: end;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body.adminShellV2 .jobCardEdit,
+body.adminShellV2 .jobEditSection,
+body.adminShellV2 .jobAdvancedParams {
+  background: var(--adm-surface-muted);
+  border-color: var(--adm-border-soft);
+  color: var(--adm-text);
+}
+
+body.adminShellV2 .rssSourceCard,
+body.adminShellV2 .rssSourceHelpGrid > div {
+  background: var(--adm-surface-muted);
+  border-color: var(--adm-border-soft);
+  color: var(--adm-text);
+}
+
+body.adminShellV2 .dialogPanel,
+body.adminShellV2 .newsEdit,
+body.adminShellV2 .toast {
+  background: var(--adm-surface);
+  border-color: var(--adm-border-soft);
+  color: var(--adm-text);
+}
+
+body.adminShellV2 .failedRow td,
+body.adminShellV2 .stuckRow td {
+  background: var(--adm-danger-soft);
+}
+
+body.adminShellV2 .runningRow td {
+  background: var(--adm-info-soft);
+}
+
+body.adminShellV2 .staleRow td {
+  background: var(--adm-warning-soft);
+}
+
+@media (max-width: 960px) {
+  body.adminShellV2 .providerLine {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+  }
+
+  body.adminShellV2 .providerLine .pill,
+  body.adminShellV2 .providerLine .providerSwitch,
+  body.adminShellV2 .providerLine button {
+    grid-column: 2 / -1;
+    justify-self: start;
+  }
+}

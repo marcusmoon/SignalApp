@@ -12,15 +12,9 @@ export function buildSignalYoutubeCacheKey(params?: {
   sort?: 'latest' | 'popular';
   limit?: number;
   offset?: number;
-  /** @deprecated */
-  page?: number;
-  pageSize?: number;
 }): string {
-  const limit = Number(params?.limit ?? params?.pageSize) || 30;
-  const offset =
-    params?.offset != null && String(params.offset).trim() !== ''
-      ? Number(params.offset) || 0
-      : Math.max(0, (Math.max(1, Number(params?.page) || 1) - 1) * limit);
+  const limit = Number(params?.limit) || 30;
+  const offset = params?.offset != null && String(params.offset).trim() !== '' ? Number(params.offset) || 0 : 0;
   const p = {
     q: String(params?.q || '').trim().toLowerCase(),
     channel: String(params?.channel || '').trim().toLowerCase(),

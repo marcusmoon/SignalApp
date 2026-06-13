@@ -1,7 +1,6 @@
 -- SIGNAL PostgreSQL baseline schema.
--- Runtime code is still SQLite-backed until a PostgreSQL store adapter is added.
--- Keep payload columns as jsonb so existing collection payloads can move without losing fields,
--- while frequently queried attributes stay as typed columns for indexes.
+-- Postgres is the only runtime database.
+-- Keep provider/raw fields in jsonb while frequently queried attributes stay as typed columns for indexes.
 
 CREATE TABLE IF NOT EXISTS signal_meta (
   name text PRIMARY KEY,

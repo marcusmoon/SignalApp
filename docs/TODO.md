@@ -16,7 +16,7 @@
 ## Server
 
 - Postgres 운영 고도화: public API direct SQL 범위를 확대하고 heavy read 경로의 인덱스/쿼리 플랜을 정기 점검한다.
-- DB 접근 계층 정리: JPA식 ORM보다 `Kysely` 또는 `Drizzle` 기반 repository/query-builder 도입을 검토한다.
+- DB 접근 계층 정리: 이미 도입한 `Kysely`를 기능별 repository로 확대하고 `server/src/db.mjs`의 raw SQL 집중도를 낮춘다.
 - Job lock 운영: 오래된 running 상태 자동 감지와 관리자 강제 해제 기준 개선.
 - API 성능: public API payload 최소화, 인덱스 점검, 캐시 TTL 기준 유지.
 - Provider 관리: RSS, YouTube, LLM, calendar provider 설정을 Admin에서 일관되게 관리.

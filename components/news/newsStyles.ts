@@ -1,0 +1,231 @@
+import { Platform, StyleSheet } from 'react-native';
+
+import type { AppTheme } from '@/constants/theme';
+import {
+  SEGMENT_TAB_ACTIVE_TEXT,
+  SEGMENT_TAB_BTN_PADDING_V,
+  SEGMENT_TAB_BTN_RADIUS,
+  SEGMENT_TAB_FONT_SIZE,
+  SEGMENT_TAB_FONT_WEIGHT,
+  SEGMENT_TAB_GAP,
+  SEGMENT_TAB_LINE_HEIGHT,
+  SEGMENT_TAB_OUTER_RADIUS,
+  SEGMENT_TAB_PADDING,
+} from '@/constants/segmentTabBar';
+
+export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
+  return StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: theme.bg,
+    },
+    mainColumn: {
+      flex: 1,
+      minHeight: 0,
+    },
+    topFixed: {
+      flexShrink: 0,
+      zIndex: 2,
+      elevation: Platform.OS === 'android' ? 2 : 0,
+      paddingHorizontal: 16,
+      paddingTop: 10,
+      paddingBottom: 12,
+      backgroundColor: theme.card,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    list: {
+      flex: 1,
+      minHeight: 0,
+    },
+    listContent: {
+      paddingHorizontal: 16,
+      paddingTop: 8,
+    },
+    adBetweenGroups: {
+      marginVertical: 10,
+    },
+    listHeader: {
+      paddingBottom: 4,
+    },
+    refreshNotice: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 8,
+      marginBottom: 8,
+      paddingVertical: 9,
+      paddingHorizontal: 11,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor:
+        theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}12` : theme.greenDim,
+    },
+    refreshNoticeText: {
+      flex: 1,
+      minWidth: 0,
+      color: theme.green,
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '800',
+    },
+    skeletonBlock: {
+      marginTop: 4,
+    },
+    tagFilterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginBottom: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      borderRadius: 10,
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+    },
+    tagFilterText: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: sf(12),
+      fontWeight: '800',
+      color: theme.text,
+    },
+    tagFilterClear: {
+      fontSize: sf(12),
+      fontWeight: '800',
+      color: theme.green,
+    },
+    videoOpenAll: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 11,
+      borderRadius: 13,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    videoOpenAllPressed: {
+      opacity: 0.9,
+    },
+    videoOpenAllIcon: {
+      width: 28,
+      height: 28,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+    },
+    videoOpenAllTitle: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: sf(13),
+      lineHeight: sf(18),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    watchFilterRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 10,
+    },
+    watchFilterChip: {
+      minHeight: 32,
+      paddingHorizontal: 11,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    watchFilterChipActive: {
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    watchFilterText: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '800',
+      color: theme.textDim,
+    },
+    watchFilterTextActive: {
+      color: theme.green,
+    },
+    footerLoading: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      paddingVertical: 16,
+    },
+    footerLoadingText: {
+      fontSize: sf(12),
+      color: theme.textMuted,
+    },
+    segment: {
+      flexDirection: 'row',
+      backgroundColor: theme.bgElevated,
+      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
+      padding: SEGMENT_TAB_PADDING,
+      marginBottom: 0,
+      gap: SEGMENT_TAB_GAP,
+    },
+    segBtn: {
+      flex: 1,
+      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
+      borderRadius: SEGMENT_TAB_BTN_RADIUS,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    segBtnVideo: {
+      flex: 0.86,
+    },
+    segmentDivider: {
+      width: 1,
+      height: 18,
+      alignSelf: 'center',
+      marginHorizontal: 2,
+      borderRadius: 999,
+      backgroundColor: theme.border,
+    },
+    segBtnActive: {
+      backgroundColor: theme.green,
+    },
+    segText: {
+      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
+      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
+      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
+      color: theme.textDim,
+    },
+    segTextActive: {
+      color: SEGMENT_TAB_ACTIVE_TEXT,
+    },
+    errBox: {
+      padding: 12,
+      borderRadius: 14,
+      backgroundColor: theme.dangerDim,
+      borderWidth: 1,
+      borderColor: '#FFD6DA',
+      marginBottom: 12,
+    },
+    errText: {
+      fontSize: sf(12),
+      color: theme.danger,
+      lineHeight: sf(18),
+    },
+    empty: {
+      fontSize: sf(13),
+      color: theme.textMuted,
+      marginTop: 8,
+    },
+  });
+}

@@ -613,12 +613,12 @@ export default function QuotesScreen() {
                   {quantActionLabel}
                 </Text>
                 <Text style={styles.quantScoreText} numberOfLines={1}>
-                  {t('quantScore')} {quant.score} · {t('quantConfidence')} {quant.confidence}
+                  {t('quantChecklistScore')} {quant.score} · {t('quantConfidence')} {quant.confidence}
                 </Text>
               </View>
               {quant.headline ? (
                 <Text style={styles.quantHeadline} numberOfLines={2}>
-                  {quant.headline}
+                  {quant.perspective?.label ? `${quant.perspective.label} · ${quant.headline}` : quant.headline}
                 </Text>
               ) : null}
             </View>

@@ -105,11 +105,11 @@ function levelForScore(score) {
 }
 
 const ACTION_HEADLINE = {
-  buy: '강세 추세 · 매수 우위',
-  accumulate: '완만한 강세 · 분할매수 구간',
-  hold: '방향성 중립 · 관망',
-  reduce: '약세 신호 · 비중 축소 검토',
-  avoid: '하락 우위 · 진입 자제',
+  buy: '추세 투자 관점에서 관심',
+  accumulate: '분할 관찰이 필요한 구간',
+  hold: '확인 신호를 기다릴 구간',
+  reduce: '리스크 관리가 우선인 구간',
+  avoid: '보수적으로 지켜볼 구간',
 };
 
 function fmtPct(value, digits = 1) {
@@ -118,13 +118,93 @@ function fmtPct(value, digits = 1) {
   return `${n >= 0 ? '+' : ''}${n.toFixed(digits)}%`;
 }
 
+function buildPerspective({ action, factors, risk }) {
+  const positives = [];
+  const cautions = [];
+  const ret20 = factors.return20d;
+  const vs20 = factors.vsSma20Pct;
+  const vs60 = factors.vsSma60Pct;
+  const rsi = factors.rsi14;
+  const volume = factors.volumeRatio;
+  const nearHigh = factors.vsHigh52wPct;
+  const nearLow = factors.vsLow52wPct;
+
+  if (vs20 != null && vs60 != null && vs20 > 0 && vs60 > 0) {
+    positives.push('중기 추세 위에서 움직이고 있습니다.');
+  }
+  if (ret20 != null && ret20 >= 5) {
+    positives.push(`최근 20일 수익률이 ${fmtPct(ret20)}로 가격 힘이 붙었습니다.`);
+  }
+  if (volume != null && volume >= 1.3) {
+    positives.push('거래량이 평소보다 늘어 관심이 붙는 구간입니다.');
+  }
+  if (nearHigh != null && nearHigh >= -5) {
+    positives.push('52주 고점권에 가까워 주도주 관점에서 볼 수 있습니다.');
+  }
+  if (nearLow != null && nearLow <= 8 && rsi != null && rsi <= 35) {
+    positives.push('낙폭 이후 반등 가능성을 보는 역발상 관점에 들어옵니다.');
+  }
+
+  if (rsi != null && rsi >= 70) {
+    cautions.push('단기 과열 신호가 있어 추격 매수는 신중해야 합니다.');
+  }
+  if (vs20 != null && vs60 != null && vs20 < 0 && vs60 < 0) {
+    cautions.push('단기·중기 추세가 모두 약해 확인 전 진입은 부담이 큽니다.');
+  }
+  if (risk === 'high') {
+    cautions.push('변동성이 높아 비중과 손절 기준을 먼저 정해야 합니다.');
+  }
+  if (volume != null && volume <= 0.6) {
+    cautions.push('거래량이 줄어 신호 신뢰도가 낮을 수 있습니다.');
+  }
+
+  if (action === 'buy' || action === 'accumulate') {
+    return {
+      key: 'trend',
+      label: '추세 투자 관점',
+      principle: '오닐·미너비니식으로 가격 추세와 거래량 확인을 우선합니다.',
+      positives: positives.slice(0, 3),
+      cautions: cautions.slice(0, 2),
+    };
+  }
+  if ((rsi != null && rsi <= 35) || (nearLow != null && nearLow <= 8)) {
+    return {
+      key: 'contrarian',
+      label: '역발상 관점',
+      principle: '하워드 막스식으로 시장이 과하게 밀어낸 구간인지 확인합니다.',
+      positives: positives.slice(0, 3),
+      cautions: cautions.slice(0, 2),
+    };
+  }
+  if (action === 'reduce' || action === 'avoid' || risk === 'high') {
+    return {
+      key: 'risk',
+      label: '리스크 관리 관점',
+      principle: '손실 회피와 변동성 관리를 우선해 보는 구간입니다.',
+      positives: positives.slice(0, 2),
+      cautions: cautions.slice(0, 3),
+    };
+  }
+  return {
+    key: 'checklist',
+    label: '체크리스트 관점',
+    principle: '가격·거래량·과열도를 함께 보며 다음 신호를 기다립니다.',
+    positives: positives.slice(0, 2),
+    cautions: cautions.slice(0, 2),
+  };
+}
+
 // Builds a plain-Korean explanation of the signal from the underlying
-// indicators so the card can answer "왜 이 신호인가?" without jargon.
-function buildInterpretation({ action, factors, rank }) {
+// indicators so the card can answer "왜 이 관점인가?" without jargon.
+function buildInterpretation({ action, factors, rank, perspective }) {
   const sentences = [];
 
   if (Number.isFinite(rank) && rank > 0) {
     sentences.push(`코스피 시총 ${rank}위 종목입니다.`);
+  }
+
+  if (perspective?.label) {
+    sentences.push(`${perspective.label}으로 점검합니다.`);
   }
 
   const vs20 = factors.vsSma20Pct;
@@ -159,11 +239,11 @@ function buildInterpretation({ action, factors, rank }) {
   }
 
   const guidance = {
-    buy: '추세와 모멘텀이 모두 우호적이라 신규 매수에 우호적인 구간입니다.',
-    accumulate: '추세는 살아 있으나 강도가 약해 분할로 비중을 늘리는 전략이 적합합니다.',
-    hold: '뚜렷한 방향성이 없어 기존 포지션 유지와 추가 신호 확인이 바람직합니다.',
-    reduce: '추세가 약화되고 있어 비중을 줄이며 손익을 관리할 구간입니다.',
-    avoid: '하락 추세가 우세해 신규 진입보다 관망이 안전합니다.',
+    buy: '추세와 모멘텀이 우호적이지만, 실제 매수 전 실적·밸류에이션·뉴스 근거를 함께 확인해야 합니다.',
+    accumulate: '가격 힘은 살아 있으나 강도가 완벽하지 않아 분할 관찰이 적합합니다.',
+    hold: '뚜렷한 우위가 약해 기존 관심 유지와 추가 신호 확인이 바람직합니다.',
+    reduce: '추세가 약화되고 있어 비중과 손익 기준을 먼저 점검할 구간입니다.',
+    avoid: '하락 추세가 우세해 신규 관심보다 관망이 안전합니다.',
   }[action];
   if (guidance) sentences.push(guidance);
 
@@ -216,7 +296,9 @@ export function buildQuantSignal({ instrument, bars = [], liveQuote = null, asOf
 
   const symbol = instrument?.symbol || liveQuote?.krxSymbol || liveQuote?.symbol || null;
   const rank = Number.isFinite(Number(instrument?.rank)) && Number(instrument.rank) > 0 ? Math.round(Number(instrument.rank)) : null;
-  const { headline, interpretation } = buildInterpretation({ action, factors, rank });
+  const risk = riskFromVolatility(factors.volatility);
+  const perspective = buildPerspective({ action, factors, risk });
+  const { headline, interpretation } = buildInterpretation({ action, factors, rank, perspective });
   return {
     symbol,
     displaySymbol: instrument?.displaySymbol || instrument?.symbol || symbol,
@@ -227,7 +309,8 @@ export function buildQuantSignal({ instrument, bars = [], liveQuote = null, asOf
     action,
     headline,
     interpretation,
-    risk: riskFromVolatility(factors.volatility),
+    perspective,
+    risk,
     confidence: confidenceFromCoverage(factors),
     factors: {
       trend: subScores.trend,

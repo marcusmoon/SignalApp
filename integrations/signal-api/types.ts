@@ -196,6 +196,13 @@ export type SignalApiQuantSignal = {
   action: 'buy' | 'accumulate' | 'hold' | 'reduce' | 'avoid' | string;
   headline?: string | null;
   interpretation?: string | null;
+  perspective?: {
+    key: string;
+    label: string;
+    principle: string;
+    positives: string[];
+    cautions: string[];
+  } | null;
   risk: 'low' | 'medium' | 'high' | 'unknown' | string;
   confidence: number;
   factors: SignalApiQuantSignalFactors;

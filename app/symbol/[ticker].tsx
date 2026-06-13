@@ -900,7 +900,14 @@ export default function SymbolDetailScreen() {
                 <Text style={styles.signalStatValue}>{formatNum(quantSignal.indicators?.volatility, 0, '%')}</Text>
               </View>
             </View>
-            {quantSignal.headline ? <Text style={styles.quantHeadline}>{quantSignal.headline}</Text> : null}
+            {quantSignal.perspective?.label ? (
+              <Text style={styles.quantHeadline}>{quantSignal.perspective.label}</Text>
+            ) : quantSignal.headline ? (
+              <Text style={styles.quantHeadline}>{quantSignal.headline}</Text>
+            ) : null}
+            {quantSignal.perspective?.positives?.[0] ? (
+              <Text style={styles.quantInterpretation}>{quantSignal.perspective.positives[0]}</Text>
+            ) : null}
             {quantSignal.interpretation ? (
               <Text style={styles.quantInterpretation}>{quantSignal.interpretation}</Text>
             ) : null}

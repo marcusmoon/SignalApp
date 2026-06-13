@@ -200,6 +200,9 @@ function QuantCard({
   const actionColor = actionTone(theme, item.action);
   const rank = typeof item.rank === 'number' && item.rank > 0 ? item.rank : null;
   const interpretation = item.interpretation?.trim() || null;
+  const perspective = item.perspective ?? null;
+  const positives = Array.isArray(perspective?.positives) ? perspective.positives.filter(Boolean).slice(0, 3) : [];
+  const cautions = Array.isArray(perspective?.cautions) ? perspective.cautions.filter(Boolean).slice(0, 2) : [];
 
   return (
     <View style={styles.card}>
@@ -214,7 +217,7 @@ function QuantCard({
           </Text>
         </View>
         <View style={styles.scoreBox}>
-          <Text style={styles.scoreLabel}>{t('quantScore')}</Text>
+          <Text style={styles.scoreLabel}>{t('quantChecklistScore')}</Text>
           <Text style={[styles.scoreValue, { color: scoreTone }]}>{item.score}</Text>
         </View>
       </View>
@@ -225,6 +228,42 @@ function QuantCard({
           {t('quantConfidence')} {item.confidence}
         </Text>
       </View>
+
+      {perspective ? (
+        <View style={styles.perspectiveBox}>
+          <View style={styles.perspectiveHead}>
+            <Text style={styles.perspectiveKicker}>{t('quantPerspectiveLabel')}</Text>
+            <Text style={styles.perspectiveTitle}>{perspective.label}</Text>
+          </View>
+          {perspective.principle ? (
+            <Text style={styles.perspectivePrinciple}>
+              {t('quantPerspectivePrinciple')} · {perspective.principle}
+            </Text>
+          ) : null}
+          {positives.length > 0 ? (
+            <View style={styles.checkBlock}>
+              <Text style={styles.checkBlockTitle}>{t('quantPerspectivePositive')}</Text>
+              {positives.map((text, index) => (
+                <View key={`positive-${index}`} style={styles.checkRow}>
+                  <FontAwesome name="check-circle" size={12} color={theme.green} />
+                  <Text style={styles.checkText}>{text}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+          {cautions.length > 0 ? (
+            <View style={styles.checkBlock}>
+              <Text style={styles.checkBlockTitle}>{t('quantPerspectiveCaution')}</Text>
+              {cautions.map((text, index) => (
+                <View key={`caution-${index}`} style={styles.checkRow}>
+                  <FontAwesome name="exclamation-circle" size={12} color={theme.textMuted} />
+                  <Text style={styles.checkText}>{text}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       {interpretation ? (
         <View style={styles.interpretBox}>
@@ -243,8 +282,6 @@ function QuantCard({
       <View style={styles.factorGrid}>
         <Factor label={t('quantFactorTrend')} value={item.factors.trend} styles={styles} theme={theme} />
         <Factor label={t('quantFactorMomentum')} value={item.factors.momentum} styles={styles} theme={theme} />
-        <Factor label={t('quantFactorMeanReversion')} value={item.factors.meanReversion} styles={styles} theme={theme} />
-        <Factor label={t('quantFactorVolume')} value={item.factors.volume} styles={styles} theme={theme} />
       </View>
 
       <View style={styles.indicatorRow}>
@@ -419,6 +456,69 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(11),
       fontWeight: '800',
       color: theme.textMuted,
+    },
+    perspectiveBox: {
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      paddingHorizontal: 12,
+      paddingVertical: 11,
+      gap: 9,
+    },
+    perspectiveHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      minWidth: 0,
+    },
+    perspectiveKicker: {
+      overflow: 'hidden',
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.card,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      fontSize: sf(10),
+      fontWeight: '900',
+      color: theme.green,
+    },
+    perspectiveTitle: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: sf(14),
+      lineHeight: sf(19),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    perspectivePrinciple: {
+      fontSize: sf(11),
+      lineHeight: sf(16),
+      fontWeight: '700',
+      color: theme.textMuted,
+    },
+    checkBlock: {
+      gap: 5,
+    },
+    checkBlockTitle: {
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    checkRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 7,
+    },
+    checkText: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '700',
+      color: theme.text,
     },
     interpretBox: {
       borderRadius: 12,

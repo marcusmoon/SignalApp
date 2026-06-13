@@ -512,11 +512,11 @@ export default function HomeScreen() {
                       {item.displaySymbol || item.symbol}
                     </Text>
                     <Text style={styles.quantAction} numberOfLines={1}>
-                      {item.headline || t('screenQuant')}
+                      {item.perspective?.label || item.headline || t('screenQuant')}
                     </Text>
                   </View>
                   <Text style={styles.quantSummary} numberOfLines={2}>
-                    {item.interpretation || item.name || item.symbol}
+                    {item.perspective?.positives?.[0] || item.interpretation || item.name || item.symbol}
                   </Text>
                 </View>
                 <View style={styles.quantScoreBox}>

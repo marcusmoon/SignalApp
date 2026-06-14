@@ -16,7 +16,6 @@ function publicDigest(item) {
     sources: Array.isArray(item.sources) ? item.sources : [],
     topics: Array.isArray(item.topics) ? item.topics : [],
     count: Number(item.count) || 0,
-    score: Number(item.score) || 0,
     generatedDate: item.generatedDate || null,
     generatedAt: item.generatedAt || null,
     primaryNewsId: item.primaryNewsId || null,

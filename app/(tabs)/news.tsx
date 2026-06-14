@@ -122,7 +122,7 @@ function digestFromServer(item: SignalApiNewsDigestItem, rows: SignalApiNewsItem
     symbols: item.symbols,
     sources: item.sources,
     count: item.count,
-    score: item.score,
+    score: 0,
     primary: digestPrimaryNews(item, rows),
   };
 }

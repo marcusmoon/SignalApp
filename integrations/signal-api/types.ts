@@ -48,7 +48,6 @@ export type SignalApiNewsDigestItem = {
   sources: string[];
   topics: string[];
   count: number;
-  score: number;
   generatedDate: string | null;
   generatedAt: string | null;
   primaryNewsId: string | null;

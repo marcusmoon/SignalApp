@@ -994,7 +994,7 @@ export default function FeedScreen() {
                 />
               </View>
             </View>
-            <Text style={styles.digestTitle} numberOfLines={digestExpanded ? 2 : 1}>
+            <Text style={styles.digestTitle} numberOfLines={digestExpanded ? 4 : 3}>
               {primaryDigest.title}
             </Text>
             {digestExpanded ? (
@@ -1022,10 +1022,10 @@ export default function FeedScreen() {
               <View style={styles.digestMoreList}>
                 {secondaryDigests.map((item) => (
                   <View key={item.id} style={styles.digestMoreRow}>
-                    <Text style={styles.digestMoreTitle} numberOfLines={1}>
+                    <Text style={styles.digestMoreTitle}>
                       {item.title}
                     </Text>
-                    <Text style={styles.digestMoreMeta} numberOfLines={1}>
+                    <Text style={styles.digestMoreMeta}>
                       {digestSummaryText(item)}
                     </Text>
                   </View>

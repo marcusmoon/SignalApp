@@ -502,6 +502,22 @@ const collectionSpecs = [
     }),
   },
   {
+    key: 'marketBriefings',
+    store: 'insights',
+    table: 'market_briefings',
+    pk: 'id',
+    keyOf: (row) => row.id,
+    columns: (row, index) => ({
+      position: index,
+      market: textOrNull(row.market),
+      session: textOrNull(row.session),
+      briefing_date: dateOrNull(row.briefingDate || row.generatedDate || row.publishedAt),
+      published_at: isoOrNull(row.publishedAt || row.generatedAt),
+      push_candidate: row.pushCandidate === true,
+      updated_at: isoOrNull(row.updatedAt) || nowIso(),
+    }),
+  },
+  {
     key: 'notificationItems',
     store: 'insights',
     table: 'notification_items',

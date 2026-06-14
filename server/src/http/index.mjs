@@ -20,6 +20,7 @@ import { handlePublicCalendarRoutes } from './public/v1/calendar.mjs';
 import { handlePublicConcallsRoutes } from './public/v1/concalls.mjs';
 import { handlePublicInsightRoutes } from './public/v1/insights.mjs';
 import { handlePublicLegalRoutes } from './public/v1/legal.mjs';
+import { handlePublicMarketBriefingRoutes } from './public/v1/marketBriefings.mjs';
 import { handlePublicMarketRoutes } from './public/v1/market.mjs';
 import { handlePublicNewsRoutes } from './public/v1/news.mjs';
 import { handlePublicNotificationRoutes } from './public/v1/notifications.mjs';
@@ -31,6 +32,7 @@ const PUBLIC_ROUTE_HANDLERS = [
   handlePublicMiscRoutes,
   handlePublicAuthRoutes,
   handlePublicLegalRoutes,
+  handlePublicMarketBriefingRoutes,
   handlePublicNotificationRoutes,
   handlePublicNewsRoutes,
   handlePublicCalendarRoutes,

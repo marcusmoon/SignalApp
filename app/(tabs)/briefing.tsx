@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,7 +19,6 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchCompanyNewsForSymbolsDisplay } from '@/services/companyNewsForSymbol';
 import {
   earningsRowDate,
-  earningsRowHour,
   earningsRowQuarter,
   earningsRowSymbol,
   earningsRowYear,
@@ -30,14 +28,15 @@ import {
   fetchSignalMacroCalendarRangeMerged,
 } from '@/integrations/signal-api/calendarRange';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
+import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
 import type {
   SignalApiCalendarEvent,
+  SignalApiMarketBriefing,
   SignalApiMarketQuote,
   SignalApiNewsItem,
 } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
-import { buildSignalScore } from '@/domain/signals';
 import {
   MARKET_SNAPSHOT_MACRO_ROWS,
   MARKET_SNAPSHOT_TAPE_SYMBOLS,
@@ -45,7 +44,7 @@ import {
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { hasSignalApi } from '@/services/env';
 import { addDays, toYmd } from '@/utils/date';
-import { signalQuoteMovePct, signalReasonLabel } from '@/utils/signalDisplay';
+import { signalQuoteMovePct } from '@/utils/signalDisplay';
 import type { MessageId } from '@/locales/messages';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
@@ -62,7 +61,6 @@ import {
 const WATCH_LIMIT = 10;
 const EARN_DAYS = 21;
 const MACRO_DAYS = 7;
-const NEWS_DENSE_MIN = 4;
 
 function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -71,11 +69,6 @@ function startOfLocalDay(d: Date): Date {
 function formatPct(n: number): string {
   if (!Number.isFinite(n)) return '—';
   return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
-}
-
-function formatUsd(n: number): string {
-  if (!Number.isFinite(n)) return '—';
-  return `$${n.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
 }
 
 function nextEarningForSymbol(rows: SignalApiCalendarEvent[], sym: string): SignalApiCalendarEvent | null {
@@ -93,6 +86,13 @@ function shortMd(isoDate: string): string {
   return `${Number(m[2])}/${Number(m[3])}`;
 }
 
+function shortDateTime(value: string | null | undefined): string {
+  const text = String(value || '').trim();
+  if (text.length >= 16) return `${shortMd(text.slice(0, 10))} ${text.slice(11, 16)}`;
+  if (text.length >= 10) return shortMd(text.slice(0, 10));
+  return text || '—';
+}
+
 function earningsInInclusiveRange(
   rows: SignalApiCalendarEvent[],
   fromYmd: string,
@@ -108,16 +108,6 @@ function earningsInInclusiveRange(
         earningsRowDate(a).localeCompare(earningsRowDate(b)) ||
         earningsRowSymbol(a).localeCompare(earningsRowSymbol(b)),
     );
-}
-
-/** 경제 이벤트 `time` (예: `2025-04-02 08:30:00`) → 표시용 */
-function macroWhenLabel(time: string): string {
-  if (time.length >= 16) {
-    const ymd = time.slice(0, 10);
-    return `${shortMd(ymd)} ${time.slice(11, 16)}`;
-  }
-  if (time.length >= 10) return shortMd(time.slice(0, 10));
-  return time;
 }
 
 function macroEventTimeLabel(ev: SignalApiCalendarEvent): string {
@@ -146,6 +136,7 @@ function macroSortKey(ev: SignalApiCalendarEvent): string {
 }
 
 type ScheduleTabKey = 'all' | 'earnings' | 'macro';
+type BriefingMarketKey = 'kr' | 'us';
 
 const SCHEDULE_TAB_DEF: readonly { key: ScheduleTabKey; label: MessageId }[] = [
   { key: 'all', label: 'briefingScheduleTabAll' },
@@ -153,14 +144,18 @@ const SCHEDULE_TAB_DEF: readonly { key: ScheduleTabKey; label: MessageId }[] = [
   { key: 'macro', label: 'briefingScheduleTabMacro' },
 ];
 
+const MARKET_ORDER: readonly BriefingMarketKey[] = ['kr', 'us'];
+const SESSION_ORDER: Record<BriefingMarketKey, readonly string[]> = {
+  kr: ['morning', 'lunch', 'evening', 'close'],
+  us: ['overnight', 'morning', 'close'],
+};
+
 export default function BriefingScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { width: windowWidth } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
-  const focusCardWidth = Math.round(Math.min(300, Math.max(248, windowWidth * 0.74)));
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -173,6 +168,8 @@ export default function BriefingScreen() {
   const [earnings, setEarnings] = useState<SignalApiCalendarEvent[]>([]);
   const [economicWeek, setEconomicWeek] = useState<SignalApiCalendarEvent[]>([]);
   const [scheduleTab, setScheduleTab] = useState<ScheduleTabKey>('all');
+  const [briefingMarket, setBriefingMarket] = useState<BriefingMarketKey>('kr');
+  const [marketBriefings, setMarketBriefings] = useState<SignalApiMarketBriefing[]>([]);
 
   const load = useCallback(async () => {
     if (!hasSignalApi()) {
@@ -184,6 +181,7 @@ export default function BriefingScreen() {
       setNewsBySymbol({});
       setEarnings([]);
       setEconomicWeek([]);
+      setMarketBriefings([]);
       return;
     }
     setError(null);
@@ -198,13 +196,14 @@ export default function BriefingScreen() {
     const snapshotMacroSyms = MARKET_SNAPSHOT_MACRO_ROWS.map((row) => row.symbol);
     const quoteSymbols = [...new Set([...syms, ...snapshotTapeSyms, ...snapshotMacroSyms])];
 
-    const [mqRows, earnRows, newsMap, econRows] = await Promise.all([
+    const [mqRows, earnRows, newsMap, econRows, briefingRows] = await Promise.all([
       quoteSymbols.length > 0
         ? fetchSignalMarketQuotes({ symbols: quoteSymbols, limit: Math.max(quoteSymbols.length, 1) }).catch(() => [])
         : Promise.resolve([]),
       fetchSignalEarningsCalendarRangeMerged(today, earnUntil).catch(() => [] as SignalApiCalendarEvent[]),
       fetchCompanyNewsForSymbolsDisplay(syms, locale).catch(() => ({} as Record<string, SignalApiNewsItem[]>)),
       fetchSignalMacroCalendarRangeMerged(today, macroUntil).catch(() => [] as SignalApiCalendarEvent[]),
+      fetchSignalMarketBriefings({ limit: 8 }).catch(() => [] as SignalApiMarketBriefing[]),
     ]);
 
     const quoteMap = new Map(
@@ -232,6 +231,9 @@ export default function BriefingScreen() {
     );
 
     setNewsBySymbol(Object.fromEntries(syms.map((sym) => [sym, newsMap[sym] ?? []])));
+    setMarketBriefings(
+      [...briefingRows].sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || ''))),
+    );
 
     const econSorted = [...econRows].sort((a, b) => {
       const ka = String(a.eventAt || a.date || '');
@@ -279,181 +281,80 @@ export default function BriefingScreen() {
     return economicWeek.slice(0, 10);
   }, [economicWeek]);
 
-  const signalRows = useMemo(() => {
-    const todayYmd = toYmd(startOfLocalDay(new Date()));
-    return symbols
-      .map((sym) =>
-        buildSignalScore({
-          symbol: sym,
-          quote: quoteBySymbol[sym],
-          news: newsBySymbol[sym] ?? [],
-          nextEarning: nextEarningForSymbol(earnings, sym),
-          vsSmaPct: null,
-          todayYmd,
-        }),
-      )
-      .sort((a, b) => b.score - a.score || b.newsCount - a.newsCount || a.symbol.localeCompare(b.symbol))
-      .slice(0, 20);
-  }, [earnings, newsBySymbol, quoteBySymbol, symbols]);
-
   const notableSymbols = useMemo(() => {
     const today0 = startOfLocalDay(new Date());
     const toY = toYmd(addDays(today0, 6));
-    const ranked = signalRows.map((row) => row.symbol);
-    const picked = ranked.filter((sym) => {
-      const row = signalRows.find((r) => r.symbol === sym);
+    const ranked = symbols
+      .map((sym) => {
+        const dp = signalQuoteMovePct(quoteBySymbol[sym]);
+        const nextE = nextEarningForSymbol(earnings, sym);
+        const nextEarningSoon = nextE ? earningsRowDate(nextE) <= toY : false;
+        return {
+          sym,
+          moveAbs: Math.abs(Number.isFinite(dp) ? dp : 0),
+          newsCount: newsBySymbol[sym]?.length ?? 0,
+          nextEarningSoon,
+        };
+      })
+      .sort((a, b) => {
+        if (b.newsCount !== a.newsCount) return b.newsCount - a.newsCount;
+        if (b.moveAbs !== a.moveAbs) return b.moveAbs - a.moveAbs;
+        if (b.nextEarningSoon !== a.nextEarningSoon) return b.nextEarningSoon ? 1 : -1;
+        return a.sym.localeCompare(b.sym);
+      });
+    const picked = ranked.filter(({ sym, moveAbs, newsCount, nextEarningSoon }) => {
       const dp = signalQuoteMovePct(quoteBySymbol[sym]);
-      const nextE = nextEarningForSymbol(earnings, sym);
-      const nextEarningSoon = nextE ? earningsRowDate(nextE) <= toY : false;
       return (
-        row?.level !== 'quiet' ||
-        (newsBySymbol[sym]?.length ?? 0) > 0 ||
+        newsCount > 0 ||
+        moveAbs >= 2 ||
         Math.abs(Number.isFinite(dp) ? dp : 0) >= 2 ||
         nextEarningSoon
       );
     });
-    return (picked.length > 0 ? picked : ranked.slice(0, 3)).slice(0, 6);
-  }, [earnings, newsBySymbol, quoteBySymbol, signalRows]);
+    return (picked.length > 0 ? picked : ranked.slice(0, 3)).map((row) => row.sym).slice(0, 6);
+  }, [earnings, newsBySymbol, quoteBySymbol, symbols]);
 
-  const { weekEarnings, pulseLines } = useMemo(() => {
-    if (symbols.length === 0) {
-      return { weekEarnings: [] as SignalApiCalendarEvent[], pulseLines: [] as string[] };
-    }
+  const weekEarnings = useMemo(() => {
+    if (symbols.length === 0) return [] as SignalApiCalendarEvent[];
     const today0 = startOfLocalDay(new Date());
     const fromY = toYmd(today0);
     const toY = toYmd(addDays(today0, 6));
-    const week = earningsInInclusiveRange(earnings, fromY, toY);
+    return earningsInInclusiveRange(earnings, fromY, toY);
+  }, [earnings, symbols.length]);
 
-    let up = 0;
-    let down = 0;
-    let flat = 0;
-    for (const sym of symbols) {
-      const q = quoteBySymbol[sym];
-      const dp = signalQuoteMovePct(q);
-      if (!Number.isFinite(dp)) continue;
-      if (dp > 0.01) up += 1;
-      else if (dp < -0.01) down += 1;
-      else flat += 1;
-    }
-    const lines: string[] = [t('briefingPulseUpDown', { up, down, flat })];
+  const briefingMarketRows = useMemo(() => {
+    const selected = marketBriefings.filter((row) => row.market === briefingMarket);
+    return selected.sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
+  }, [briefingMarket, marketBriefings]);
 
-    const sortedNews = [...symbols].sort(
-      (a, b) => (newsBySymbol[b]?.length ?? 0) - (newsBySymbol[a]?.length ?? 0),
-    );
-    const dense = sortedNews.filter((s) => (newsBySymbol[s]?.length ?? 0) >= NEWS_DENSE_MIN).slice(0, 4);
-    if (dense.length > 0) {
-      lines.push(t('briefingPulseNewsDense', { tickers: dense.join(', ') }));
-    }
+  const latestBriefing = briefingMarketRows[0] ?? null;
+  const timelineBriefings = useMemo(() => {
+    const order = SESSION_ORDER[briefingMarket] ?? [];
+    return [...briefingMarketRows].sort((a, b) => {
+      const ai = order.indexOf(a.session);
+      const bi = order.indexOf(b.session);
+      if (ai !== bi) return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+      return String(b.publishedAt || '').localeCompare(String(a.publishedAt || ''));
+    });
+  }, [briefingMarket, briefingMarketRows]);
+  const archivedBriefings = timelineBriefings.filter((row) => row.id !== latestBriefing?.id).slice(0, 6);
+  const hasAnyBriefing = marketBriefings.length > 0;
 
-    const movers = symbols
-      .map((sym) => {
-        const q = quoteBySymbol[sym];
-        const dp = signalQuoteMovePct(q);
-        return { sym, abs: Number.isFinite(dp) ? Math.abs(dp) : 0, dp };
-      })
-      .filter((x) => x.abs >= 2)
-      .sort((a, b) => b.abs - a.abs)
-      .slice(0, 3)
-      .map((x) => `${x.sym} ${formatPct(x.dp)}`);
-    if (movers.length > 0) {
-      lines.push(t('briefingPulseVolatility', { list: movers.join(' · ') }));
-    }
+  const briefingMarketLabel = useCallback(
+    (market: string) => (market === 'us' ? t('briefingMarketUs') : t('briefingMarketKr')),
+    [t],
+  );
 
-    const m0 = macroDisplay[0];
-    if (m0) {
-      lines.push(
-        t('briefingPulseMacroNext', {
-          country: m0.country || '—',
-          when: macroEventTimeLabel(m0),
-          event: String(m0.title || '').trim() || '—',
-        }),
-      );
-    }
-
-    return { weekEarnings: week, pulseLines: lines };
-  }, [symbols, quoteBySymbol, earnings, newsBySymbol, macroDisplay, t]);
-
-  const digestHeadline = useMemo(() => {
-    if (symbols.length === 0) return t('briefingDigestEmptyWatch');
-    return pulseLines[0] ?? '';
-  }, [symbols.length, pulseLines, t]);
-
-  const digestTailLines = useMemo(() => {
-    if (symbols.length === 0) return [];
-    return pulseLines.slice(1);
-  }, [symbols.length, pulseLines]);
-
-  const focusCards = useMemo(() => {
-    const cards: { key: string; title: string; headline: string; meta: string; symbol?: string }[] = [];
-
-    const topSignal = signalRows[0];
-    if (topSignal) {
-      const reasons = topSignal.reasons.slice(0, 2).map((reason) => signalReasonLabel(reason, t));
-      cards.push({
-        key: 'signal',
-        title: t('briefingFocusSignal'),
-        headline: t('briefingFocusSignalHeadline', {
-          symbol: topSignal.symbol,
-          score: String(topSignal.score),
-        }),
-        meta: reasons.length > 0 ? reasons.join(' · ') : t('signalReasonWatch'),
-        symbol: topSignal.symbol,
-      });
-    }
-
-    const topMover = symbols
-      .map((sym) => {
-        const move = signalQuoteMovePct(quoteBySymbol[sym]);
-        return { sym, move, abs: Number.isFinite(move) ? Math.abs(move) : 0 };
-      })
-      .filter((row) => row.abs > 0)
-      .sort((a, b) => b.abs - a.abs)[0];
-    if (topMover) {
-      cards.push({
-        key: 'mover',
-        title: t('briefingFocusMover'),
-        headline: t('briefingFocusMoverHeadline', {
-          symbol: topMover.sym,
-          move: formatPct(topMover.move),
-        }),
-        meta: t('briefingFocusMoverMeta'),
-        symbol: topMover.sym,
-      });
-    }
-
-    const nextEarning = weekEarnings[0] ?? earnings[0];
-    if (nextEarning) {
-      const symbol = earningsRowSymbol(nextEarning);
-      cards.push({
-        key: 'earnings',
-        title: t('briefingFocusEarnings'),
-        headline: t('briefingFocusEarningsHeadline', {
-          symbol,
-          date: shortMd(earningsRowDate(nextEarning)),
-        }),
-        meta: t('fiscalYearQuarterShort', {
-          y: earningsRowYear(nextEarning),
-          q: earningsRowQuarter(nextEarning),
-        }),
-        symbol,
-      });
-    }
-
-    if (cards.length < 3 && macroDisplay[0]) {
-      const ev = macroDisplay[0];
-      cards.push({
-        key: 'macro',
-        title: t('briefingFocusMacro'),
-        headline: t('briefingFocusMacroHeadline', {
-          country: ev.country || '—',
-          event: String(ev.title || '').trim() || '—',
-        }),
-        meta: macroEventTimeLabel(ev),
-      });
-    }
-
-    return cards.slice(0, 3);
-  }, [earnings, macroDisplay, quoteBySymbol, signalRows, symbols, t, weekEarnings]);
+  const briefingSessionLabel = useCallback(
+    (session: string) => {
+      if (session === 'morning') return t('briefingSessionMorning');
+      if (session === 'lunch') return t('briefingSessionLunch');
+      if (session === 'evening') return t('briefingSessionEvening');
+      if (session === 'close') return t('briefingSessionClose');
+      return t('briefingSessionOvernight');
+    },
+    [t],
+  );
 
   const scheduleMerged = useMemo(() => {
     type Entry =
@@ -469,6 +370,19 @@ export default function BriefingScreen() {
     out.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
     return out.slice(0, 14);
   }, [weekEarnings, macroDisplay]);
+
+  const watchPreviewRows = useMemo(() => {
+    return notableSymbols.slice(0, 3).map((sym) => {
+      const q = quoteBySymbol[sym] ?? null;
+      const topNews = newsBySymbol[sym]?.[0];
+      const headline = (topNews?.originalTitle || topNews?.title || '').trim();
+      return {
+        symbol: sym,
+        move: q ? formatPct(signalQuoteMovePct(q)) : '—',
+        headline: headline || t('briefingSymbolNoNews'),
+      };
+    });
+  }, [newsBySymbol, notableSymbols, quoteBySymbol, t]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -493,177 +407,141 @@ export default function BriefingScreen() {
           ) : null}
 
           {!error ? (
-            <View style={styles.digestWrap}>
-              <View style={styles.digestTopRow}>
-                <Text style={styles.digestKicker}>{t('briefingDigestKicker')}</Text>
-                <Pressable
-                  onPress={() => router.push('/insights')}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('briefingOpenTodaySignal')}
-                  style={({ pressed }) => [styles.digestSignalLink, pressed && styles.digestSignalLinkPressed]}>
-                  <Text style={styles.digestSignalLinkText}>{t('briefingOpenTodaySignal')}</Text>
-                </Pressable>
-              </View>
-              <Text style={styles.digestHeadline}>{digestHeadline}</Text>
-              {digestTailLines.length > 0 ? (
-                <View style={styles.digestMore}>
-                  {digestTailLines.map((line, i) => (
-                    <Text key={i} style={[styles.digestMoreLine, i > 0 && styles.digestMoreLineGap]}>
-                      {line}
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-          ) : null}
-
-          {!error && focusCards.length > 0 ? (
             <>
-              <View style={styles.sectionTitleRow}>
-                <View style={styles.sectionTitleAccent} />
-                <Text style={styles.blockTitleFlat}>{t('briefingFocusTitle')}</Text>
+              <View style={styles.heroShell}>
+                <View style={styles.heroTopRow}>
+                  <Text style={styles.heroEyebrow}>{t('briefingHubEyebrow')}</Text>
+                  <Text style={styles.heroUpdated}>
+                    {latestBriefing ? shortDateTime(latestBriefing.publishedAt) : t('briefingHubWaitingBadge')}
+                  </Text>
+                </View>
+                <Text style={styles.heroTitle}>{t('briefingHubTitle')}</Text>
+                <Text style={styles.heroSubtitle}>{t('briefingHubSubtitle')}</Text>
               </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.focusCarousel}
-                contentContainerStyle={styles.focusCarouselContent}>
-                {focusCards.map((card) => (
+
+              <View style={styles.marketBriefingTabs}>
+                {MARKET_ORDER.map((market) => (
                   <Pressable
-                    key={card.key}
-                    disabled={!card.symbol}
-                    onPress={() => {
-                      if (card.symbol) router.push(`/symbol/${card.symbol}`);
-                    }}
-                    accessibilityRole={card.symbol ? 'button' : 'text'}
-                    style={({ pressed }) => [
-                      styles.focusCard,
-                      { width: focusCardWidth },
-                      pressed && Boolean(card.symbol) && styles.focusCardPressed,
-                    ]}>
-                    <Text style={styles.focusTitle}>{card.title}</Text>
-                    <Text style={styles.focusHeadline} numberOfLines={2}>
-                      {card.headline}
-                    </Text>
-                    <Text style={styles.focusMeta} numberOfLines={2}>
-                      {card.meta}
+                    key={market}
+                    onPress={() => setBriefingMarket(market)}
+                    style={[styles.marketBriefingTab, briefingMarket === market && styles.marketBriefingTabActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: briefingMarket === market }}>
+                    <Text
+                      style={[
+                        styles.marketBriefingTabText,
+                        briefingMarket === market && styles.marketBriefingTabTextActive,
+                      ]}>
+                      {briefingMarketLabel(market)}
                     </Text>
                   </Pressable>
                 ))}
-              </ScrollView>
-            </>
-          ) : null}
+              </View>
 
-          {!error ? (
-            <>
-              {symbols.length > 0 ? (
-                <>
-                  <View style={styles.sectionTitleRow}>
-                    <View style={styles.sectionTitleAccent} />
-                    <Text style={styles.blockTitleFlat}>{t('briefingSectionInsights')}</Text>
+              {latestBriefing ? (
+                <Pressable
+                  onPress={() => router.push(`/briefings/${latestBriefing.id}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel={latestBriefing.title}
+                  style={({ pressed }) => [styles.marketBriefingHero, pressed && styles.marketBriefingHeroPressed]}>
+                  <View style={styles.marketBriefingHeroRow}>
+                    <Text style={styles.marketBriefingKicker}>
+                      {briefingMarketLabel(latestBriefing.market)} · {briefingSessionLabel(latestBriefing.session)}
+                    </Text>
+                    <Text style={styles.marketBriefingWhen}>{shortDateTime(latestBriefing.publishedAt)}</Text>
                   </View>
-                  {notableSymbols.map((sym) => {
-                    const signal = signalRows.find((row) => row.symbol === sym);
-                    const q = quoteBySymbol[sym] ?? null;
-                    const list = newsBySymbol[sym] ?? [];
-                    const topNews = list[0];
-                    const nextE = nextEarningForSymbol(earnings, sym);
-                    const dp = signalQuoteMovePct(q);
-                    const up = (Number.isFinite(dp) ? dp : 0) >= 0;
-                    const newsLine = t('briefingRowNewsCount', { count: String(list.length) });
-                    const noEarn = t('briefingNoUpcomingEarning');
-                    let earnLine = noEarn;
-                    if (nextE) {
-                      const h = earningsRowHour(nextE).trim().toLowerCase();
-                      const hourLabel =
-                        h === 'bmo' ? t('briefingEarnHourBmo') : h === 'amc' ? t('briefingEarnHourAmc') : earningsRowHour(nextE) || '—';
-                      earnLine = t('briefingRowEarnLine', {
-                        date: shortMd(earningsRowDate(nextE)),
-                        y: String(earningsRowYear(nextE)),
-                        q: String(earningsRowQuarter(nextE)),
-                        hour: hourLabel,
-                      });
-                    }
-                    const headline = (topNews?.originalTitle || topNews?.title || '').trim();
-                    const primaryStory = headline || (earnLine !== noEarn ? earnLine : newsLine);
-                    const subMeta: string[] = [];
-                    const reasons =
-                      signal?.reasons && signal.reasons.length > 0
-                        ? signal.reasons.slice(0, 2).map((r) => signalReasonLabel(r, t))
-                        : [t('signalReasonWatch')];
-                    if (headline) {
-                      subMeta.push(newsLine);
-                      if (earnLine !== noEarn) subMeta.push(earnLine);
-                    } else if (earnLine !== noEarn) {
-                      subMeta.push(newsLine);
-                    }
-
-                    return (
-                      <Pressable
-                        key={sym}
-                        style={[
-                          styles.briefCard,
-                          signal?.level === 'hot' && styles.briefCardHot,
-                          signal?.level === 'watch' && styles.briefCardWatch,
-                          signal?.level === 'quiet' && styles.briefCardQuiet,
-                        ]}
-                        onPress={() => router.push(`/symbol/${sym}`)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${sym} ${primaryStory}`}>
-                        <View style={styles.briefCardHead}>
-                          <Text style={styles.briefCardSym} numberOfLines={1}>
-                            {sym}
-                          </Text>
-                          {signal ? (
-                            <View
-                              style={[
-                                styles.briefScorePill,
-                                signal.level === 'hot' && styles.briefScorePillHot,
-                                signal.level === 'quiet' && styles.briefScorePillQuiet,
-                              ]}>
-                              <Text
-                                style={[
-                                  styles.briefScoreText,
-                                  signal.level === 'hot' && styles.briefScoreTextHot,
-                                  signal.level === 'quiet' && styles.briefScoreTextQuiet,
-                                ]}>
-                                {signal.score}
-                              </Text>
-                            </View>
-                          ) : null}
-                          <View style={styles.briefCardValues}>
-                            <Text style={styles.briefCardPrice}>
-                              {q && typeof q.currentPrice === 'number' ? formatUsd(q.currentPrice) : '—'}
-                            </Text>
-                            <Text style={[styles.briefCardPct, up ? styles.up : styles.dn]}>
-                              {q ? formatPct(dp) : '—'}
-                            </Text>
-                          </View>
-                        </View>
-                        <Text style={styles.briefCardStory} numberOfLines={3}>
-                          {primaryStory}
-                        </Text>
-                        <Text style={styles.briefCardReason} numberOfLines={1}>
-                          {reasons.join(' · ')}
-                        </Text>
-                        {subMeta.map((line, i) => (
-                          <Text key={`${sym}-m-${i}`} style={styles.briefCardMeta}>
-                            {line}
-                          </Text>
-                        ))}
-                        {!headline ? (
-                          <Text style={styles.briefCardNewsCue}>{t('briefingSymbolNoNews')}</Text>
-                        ) : null}
-                      </Pressable>
-                    );
-                  })}
-                </>
+                  <Text style={styles.marketBriefingTitle}>{latestBriefing.title}</Text>
+                  <Text style={styles.marketBriefingHeadline}>{latestBriefing.headline}</Text>
+                  {latestBriefing.overview.slice(0, 3).map((line, index) => (
+                    <Text key={`${latestBriefing.id}-overview-${index}`} style={styles.marketBriefingLine}>
+                      {line}
+                    </Text>
+                  ))}
+                  <Text style={styles.marketBriefingCta}>{t('briefingHubOpenDetail')}</Text>
+                </Pressable>
               ) : (
-                <Text style={styles.muted}>{t('briefingEmptyWatchlist')}</Text>
+                <View style={styles.emptyBriefingCard}>
+                  <Text style={styles.emptyBriefingTitle}>
+                    {hasAnyBriefing ? t('briefingHubMarketEmptyTitle') : t('briefingHubEmptyTitle')}
+                  </Text>
+                  <Text style={styles.emptyBriefingBody}>
+                    {hasAnyBriefing ? t('briefingHubMarketEmptyBody') : t('briefingHubEmptyBody')}
+                  </Text>
+                </View>
               )}
+
+              <View style={styles.sectionTitleRow}>
+                <View style={styles.sectionTitleAccent} />
+                <Text style={styles.blockTitleFlat}>{t('briefingHubTimelineTitle')}</Text>
+              </View>
+              <View style={styles.marketBriefingArchive}>
+                {archivedBriefings.length > 0 ? (
+                  archivedBriefings.map((item) => (
+                    <Pressable
+                      key={item.id}
+                      onPress={() => router.push(`/briefings/${item.id}`)}
+                      accessibilityRole="button"
+                      accessibilityLabel={item.title}
+                      style={({ pressed }) => [
+                        styles.marketBriefingArchiveRow,
+                        pressed && styles.marketBriefingArchiveRowPressed,
+                      ]}>
+                      <View style={styles.marketBriefingArchiveMain}>
+                        <Text style={styles.marketBriefingArchiveLabel}>
+                          {briefingSessionLabel(item.session)} · {shortDateTime(item.publishedAt)}
+                        </Text>
+                        <Text style={styles.marketBriefingArchiveTitle} numberOfLines={2}>
+                          {item.headline}
+                        </Text>
+                      </View>
+                      <Text style={styles.marketBriefingArchiveWhen}>{t('briefingHubOpenBrief')}</Text>
+                    </Pressable>
+                  ))
+                ) : (
+                  <Text style={styles.weekStripEmpty}>
+                    {latestBriefing ? t('briefingHubTimelineEmpty') : t('briefingHubTimelineWaiting')}
+                  </Text>
+                )}
+              </View>
 
               <View style={styles.marketSnapshotSpacing}>
                 <MarketSnapshotSection tape={tape} macro={macro} compact />
+              </View>
+
+              <View style={styles.watchPanel}>
+                <View style={styles.watchPanelHead}>
+                  <View>
+                    <Text style={styles.watchPanelKicker}>{t('briefingHubWatchKicker')}</Text>
+                    <Text style={styles.watchPanelTitle}>{t('briefingHubWatchTitle')}</Text>
+                  </View>
+                  <Pressable
+                    onPress={() => router.push('/insights')}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('briefingOpenTodaySignal')}
+                    style={({ pressed }) => [styles.digestSignalLink, pressed && styles.digestSignalLinkPressed]}>
+                    <Text style={styles.digestSignalLinkText}>{t('briefingOpenTodaySignal')}</Text>
+                  </Pressable>
+                </View>
+                {watchPreviewRows.length > 0 ? (
+                  <View style={styles.watchPreviewList}>
+                    {watchPreviewRows.map((row) => (
+                      <Pressable
+                        key={row.symbol}
+                        onPress={() => router.push(`/symbol/${row.symbol}`)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${row.symbol} ${row.headline}`}
+                        style={({ pressed }) => [styles.watchPreviewRow, pressed && styles.marketBriefingArchiveRowPressed]}>
+                        <View style={styles.watchPreviewSymbolBox}>
+                          <Text style={styles.watchPreviewSymbol}>{row.symbol}</Text>
+                          <Text style={styles.watchPreviewMove}>{row.move}</Text>
+                        </View>
+                        <Text style={styles.watchPreviewHeadline} numberOfLines={2}>{row.headline}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.muted}>{t('briefingEmptyWatchlist')}</Text>
+                )}
               </View>
 
               <View style={[styles.sectionTitleRow, styles.scheduleBlockTitle]}>
@@ -678,8 +556,7 @@ export default function BriefingScreen() {
                     style={[styles.scheduleSegBtn, scheduleTab === key && styles.scheduleSegBtnActive]}
                     accessibilityRole="button"
                     accessibilityState={{ selected: scheduleTab === key }}>
-                    <Text
-                      style={[styles.scheduleSegText, scheduleTab === key && styles.scheduleSegTextActive]}>
+                    <Text style={[styles.scheduleSegText, scheduleTab === key && styles.scheduleSegTextActive]}>
                       {t(label)}
                     </Text>
                   </Pressable>
@@ -690,7 +567,7 @@ export default function BriefingScreen() {
                   scheduleMerged.length === 0 ? (
                     <Text style={styles.weekStripEmpty}>{t('briefingScheduleMergedEmpty')}</Text>
                   ) : (
-                    scheduleMerged.map((entry, idx) =>
+                    scheduleMerged.slice(0, 6).map((entry, idx) =>
                       entry.kind === 'earning' ? (
                         <Pressable
                           key={`sched-e-${earningsRowSymbol(entry.row)}-${idx}`}
@@ -748,7 +625,7 @@ export default function BriefingScreen() {
                   weekEarnings.length === 0 ? (
                     <Text style={styles.weekStripEmpty}>{t('briefingWeekEarningsEmpty')}</Text>
                   ) : (
-                    weekEarnings.slice(0, 8).map((r) => (
+                    weekEarnings.slice(0, 6).map((r) => (
                       <Pressable
                         key={`${earningsRowSymbol(r)}-${earningsRowDate(r)}-${earningsRowQuarter(r)}-${earningsRowYear(r)}`}
                         style={styles.compactEventRow}
@@ -770,7 +647,7 @@ export default function BriefingScreen() {
                 ) : macroDisplay.length === 0 ? (
                   <Text style={styles.macroEmpty}>{t('briefingMacroEmpty')}</Text>
                 ) : (
-                  macroDisplay.slice(0, 8).map((r) => (
+                  macroDisplay.slice(0, 6).map((r) => (
                     <View
                       key={`${r.id}-${r.eventAt || r.date || r.title}`}
                       style={[
@@ -810,6 +687,208 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     scroll: { flex: 1 },
     content: { paddingHorizontal: 16, paddingTop: 8 },
+    heroShell: {
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.card,
+      paddingVertical: 18,
+      paddingHorizontal: 18,
+      marginBottom: 12,
+    },
+    heroTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginBottom: 12,
+    },
+    heroEyebrow: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: sf(11),
+      fontWeight: '900',
+      letterSpacing: 0.7,
+      color: theme.green,
+      textTransform: 'uppercase',
+    },
+    heroUpdated: {
+      flexShrink: 0,
+      fontSize: sf(10),
+      fontWeight: '800',
+      color: theme.textMuted,
+    },
+    heroTitle: {
+      fontSize: sf(25),
+      lineHeight: sf(31),
+      fontWeight: '900',
+      letterSpacing: -0.8,
+      color: theme.text,
+      marginBottom: 8,
+    },
+    heroSubtitle: {
+      fontSize: sf(13),
+      lineHeight: sf(20),
+      fontWeight: '700',
+      color: theme.textDim,
+    },
+    marketBriefingWrap: {
+      marginBottom: 16,
+    },
+    marketBriefingTabs: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 10,
+    },
+    marketBriefingTab: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      alignItems: 'center',
+    },
+    marketBriefingTabActive: {
+      backgroundColor: theme.green,
+      borderColor: theme.green,
+    },
+    marketBriefingTabText: {
+      fontSize: sf(12),
+      fontWeight: '800',
+      color: theme.textDim,
+    },
+    marketBriefingTabTextActive: {
+      color: SEGMENT_TAB_ACTIVE_TEXT,
+    },
+    marketBriefingHero: {
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: digestBg,
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+    },
+    marketBriefingHeroPressed: {
+      opacity: 0.84,
+    },
+    marketBriefingHeroRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      marginBottom: 10,
+    },
+    marketBriefingKicker: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: sf(10),
+      fontWeight: '900',
+      letterSpacing: 0.5,
+      color: theme.green,
+      textTransform: 'uppercase',
+    },
+    marketBriefingWhen: {
+      fontSize: sf(10),
+      fontWeight: '700',
+      color: theme.textMuted,
+    },
+    marketBriefingTitle: {
+      fontSize: sf(18),
+      fontWeight: '900',
+      color: theme.text,
+      lineHeight: sf(24),
+      marginBottom: 6,
+    },
+    marketBriefingHeadline: {
+      fontSize: sf(13),
+      fontWeight: '800',
+      color: theme.textDim,
+      lineHeight: sf(18),
+      marginBottom: 10,
+    },
+    marketBriefingLine: {
+      fontSize: sf(12),
+      fontWeight: '700',
+      color: theme.text,
+      lineHeight: sf(17),
+      marginTop: 4,
+    },
+    marketBriefingCta: {
+      alignSelf: 'flex-start',
+      marginTop: 14,
+      paddingVertical: 7,
+      paddingHorizontal: 11,
+      borderRadius: 999,
+      overflow: 'hidden',
+      backgroundColor: theme.green,
+      color: SEGMENT_TAB_ACTIVE_TEXT,
+      fontSize: sf(11),
+      fontWeight: '900',
+    },
+    emptyBriefingCard: {
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      paddingVertical: 18,
+      paddingHorizontal: 16,
+      marginBottom: 14,
+    },
+    emptyBriefingTitle: {
+      fontSize: sf(17),
+      lineHeight: sf(23),
+      fontWeight: '900',
+      color: theme.text,
+      marginBottom: 8,
+    },
+    emptyBriefingBody: {
+      fontSize: sf(12),
+      lineHeight: sf(18),
+      fontWeight: '700',
+      color: theme.textDim,
+    },
+    marketBriefingArchive: {
+      gap: 8,
+      marginTop: 10,
+    },
+    marketBriefingArchiveRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      paddingVertical: 11,
+      paddingHorizontal: 12,
+    },
+    marketBriefingArchiveRowPressed: {
+      opacity: 0.82,
+    },
+    marketBriefingArchiveMain: {
+      flex: 1,
+      minWidth: 0,
+    },
+    marketBriefingArchiveLabel: {
+      fontSize: sf(10),
+      fontWeight: '900',
+      color: theme.green,
+      marginBottom: 3,
+    },
+    marketBriefingArchiveTitle: {
+      fontSize: sf(12),
+      fontWeight: '800',
+      color: theme.text,
+      lineHeight: sf(17),
+    },
+    marketBriefingArchiveWhen: {
+      flexShrink: 0,
+      fontSize: sf(10),
+      fontWeight: '700',
+      color: theme.textMuted,
+      textAlign: 'right',
+    },
     digestWrap: {
       marginBottom: 16,
       paddingVertical: 16,
@@ -867,6 +946,73 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       lineHeight: sf(14),
       fontWeight: '900',
       color: theme.green,
+    },
+    watchPanel: {
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+      marginTop: 8,
+      marginBottom: 14,
+    },
+    watchPanelHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      marginBottom: 12,
+    },
+    watchPanelKicker: {
+      fontSize: sf(10),
+      fontWeight: '900',
+      letterSpacing: 0.6,
+      color: theme.green,
+      textTransform: 'uppercase',
+      marginBottom: 4,
+    },
+    watchPanelTitle: {
+      fontSize: sf(15),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    watchPreviewList: {
+      gap: 8,
+    },
+    watchPreviewRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      paddingVertical: 10,
+      paddingHorizontal: 10,
+    },
+    watchPreviewSymbolBox: {
+      width: 62,
+      flexShrink: 0,
+    },
+    watchPreviewSymbol: {
+      fontSize: sf(13),
+      fontWeight: '900',
+      color: theme.green,
+    },
+    watchPreviewMove: {
+      marginTop: 3,
+      fontSize: sf(10),
+      fontWeight: '800',
+      color: theme.textMuted,
+    },
+    watchPreviewHeadline: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '700',
+      color: theme.text,
     },
     muted: { fontSize: sf(12), color: theme.textDim, marginTop: 4, marginBottom: 12 },
     blockTitleFlat: {
@@ -1086,36 +1232,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '900',
       color: theme.green,
       letterSpacing: -0.3,
-    },
-    briefScorePill: {
-      flexShrink: 0,
-      minWidth: 34,
-      alignItems: 'center',
-      borderRadius: 999,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    briefScorePillHot: {
-      backgroundColor: theme.accentOrange + '22',
-      borderColor: theme.accentOrange + '88',
-    },
-    briefScorePillQuiet: {
-      backgroundColor: theme.bgElevated,
-      borderColor: theme.border,
-    },
-    briefScoreText: {
-      fontSize: sf(11),
-      fontWeight: '900',
-      color: theme.text,
-    },
-    briefScoreTextHot: {
-      color: theme.accentOrange,
-    },
-    briefScoreTextQuiet: {
-      color: theme.textMuted,
     },
     briefCardValues: { flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0, gap: 2 },
     briefCardPrice: { fontSize: sf(15), fontWeight: '800', color: theme.text, textAlign: 'right' },

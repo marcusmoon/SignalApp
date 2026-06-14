@@ -22,6 +22,7 @@ npm --prefix server run worker
 | `YOUTUBE_API_KEY` | YouTube 수집 키 |
 | `NINJAS_KEY` | 컨콜 등 Ninjas provider 키 |
 | `SEC_USER_AGENT` | SEC EDGAR API 식별 User-Agent |
+| `SIGNAL_AUTOMATION_INGEST_TOKEN` | 외부 자동화가 `/v1/market-briefings/ingest` webhook으로 브리핑을 적재할 때 쓰는 토큰 |
 
 ## DB 운영 원칙
 

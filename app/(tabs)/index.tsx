@@ -41,8 +41,10 @@ import {
   signalNewsToNewsItem,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
+import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
 import type {
   SignalApiInsight,
+  SignalApiMarketBriefing,
   SignalApiMarketQuote,
   SignalApiNewsItem,
   SignalApiQuantSignal,
@@ -74,6 +76,7 @@ let initialEntryApplied = false;
 
 type HomeState = {
   insights: SignalApiInsight[];
+  marketBriefings: SignalApiMarketBriefing[];
   watchQuotes: SignalApiMarketQuote[];
   rawNews: SignalApiNewsItem[];
   news: NewsItem[];
@@ -84,6 +87,7 @@ type HomeState = {
 
 const EMPTY_STATE: HomeState = {
   insights: [],
+  marketBriefings: [],
   watchQuotes: [],
   rawNews: [],
   news: [],
@@ -191,13 +195,14 @@ export default function HomeScreen() {
 
     const cacheMode = forceRefresh ? 'bypass' : 'use';
     const watchSymbols = (await loadWatchlistSymbols()).slice(0, 6);
-    const [insightPage, watchSignalRows, quantRows, newsPage] = await Promise.all([
+    const [insightPage, briefingRows, watchSignalRows, quantRows, newsPage] = await Promise.all([
       fetchSignalInsights({
         date: 'today',
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         limit: 3,
         offset: 0,
       }),
+      fetchSignalMarketBriefings({ limit: 4 }).catch(() => [] as SignalApiMarketBriefing[]),
       fetchSignalWatchSignals({
         symbols: watchSymbols,
         limit: Math.max(watchSymbols.length, 1),
@@ -234,6 +239,7 @@ export default function HomeScreen() {
     if (requestSeq.current !== seq) return;
     setState({
       insights: insightPage.items,
+      marketBriefings: [...briefingRows].sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || ''))),
       watchQuotes: orderedQuotes,
       watchSymbols,
       rawNews: newsItems,
@@ -276,8 +282,8 @@ export default function HomeScreen() {
 
   const topInsights = state.insights.slice(0, 3);
   const topQuantSignals = state.quantSignals.slice(0, 3);
+  const latestBriefing = state.marketBriefings[0] ?? null;
   const primaryInsight = topInsights[0] ?? null;
-  const secondaryInsights = topInsights.slice(1, 3);
   const topQuoteRows: HomeQuotePulseRow[] = [...state.watchQuotes]
     .map((quote) => {
       const quoteSymbol = String(quote.symbol || '').toUpperCase();
@@ -290,12 +296,8 @@ export default function HomeScreen() {
       };
     })
     .sort((a, b) => {
-      const score = Number(b.watchSignal?.score || 0) - Number(a.watchSignal?.score || 0);
-      if (score !== 0) return score;
       const move = Math.abs(Number(b.quote.changePercent) || 0) - Math.abs(Number(a.quote.changePercent) || 0);
       if (move !== 0) return move;
-      const signal = b.signalCount - a.signalCount;
-      if (signal !== 0) return signal;
       return b.newsCount - a.newsCount;
     })
     .slice(0, 3);
@@ -412,26 +414,25 @@ export default function HomeScreen() {
         <View style={styles.focusCard}>
           <View style={styles.focusTopRow}>
             <View style={styles.focusKickerWrap}>
-              <FontAwesome name="bolt" size={12} color={theme.green} />
-              <Text style={styles.focusKicker}>{t('homeFocusKicker')}</Text>
+              <FontAwesome name="briefcase" size={12} color={theme.green} />
+              <Text style={styles.focusKicker}>{latestBriefing ? t('homeBriefingKicker') : t('homeFocusKicker')}</Text>
             </View>
-            {primaryInsight ? (
-              <View style={styles.focusScoreBadge}>
-                <Text style={styles.focusScoreText}>{Math.round(Number(primaryInsight.score) || 0)}</Text>
-              </View>
-            ) : null}
           </View>
-          {primaryInsight?.symbols?.length ? (
+          {latestBriefing ? (
+            <Text style={styles.focusSymbols} numberOfLines={1}>
+              {latestBriefing.market === 'us' ? t('briefingMarketUs') : t('briefingMarketKr')} · {latestBriefing.title}
+            </Text>
+          ) : primaryInsight?.symbols?.length ? (
             <Text style={styles.focusSymbols} numberOfLines={1}>
               {primaryInsight.symbols.slice(0, 3).join(' · ')}
             </Text>
           ) : null}
           <Text style={styles.focusTitle} numberOfLines={2}>
-            {primaryInsight?.title || headline || t('homeFocusFallbackTitle')}
+            {latestBriefing?.headline || primaryInsight?.title || headline || t('homeFocusFallbackTitle')}
           </Text>
-          {primaryInsight ? (
+          {latestBriefing?.summary || primaryInsight ? (
             <Text style={styles.focusBody} numberOfLines={3}>
-              {driverText(primaryInsight)}
+              {latestBriefing?.summary || (primaryInsight ? driverText(primaryInsight) : '')}
             </Text>
           ) : null}
           <View style={styles.focusActionRow}>
@@ -443,22 +444,22 @@ export default function HomeScreen() {
               <FontAwesome name="chevron-right" size={12} color="#FFFFFF" />
             </Pressable>
             <Pressable
-              onPress={() => router.push('/insights')}
+              onPress={() => router.push('/news')}
               style={({ pressed }) => [styles.focusActionSecondary, pressed && styles.pressed]}
               accessibilityRole="button">
-              <Text style={styles.focusActionSecondaryText}>{t('homeFocusOpenSignals')}</Text>
+              <Text style={styles.focusActionSecondaryText}>{t('homeOpenNewsFull')}</Text>
             </Pressable>
           </View>
           <View style={styles.overviewGrid}>
             <Pressable
-              onPress={() => router.push('/insights')}
+              onPress={() => router.push('/briefing')}
               style={({ pressed }) => [styles.overviewTile, pressed && styles.overviewTilePressed]}
               accessibilityRole="button">
               <View style={styles.overviewTileIcon}>
-                <FontAwesome name="bolt" size={13} color={theme.green} />
+                <FontAwesome name="briefcase" size={13} color={theme.green} />
               </View>
-              <Text style={styles.overviewTileValue}>{topInsights.length}</Text>
-              <Text style={styles.overviewTileLabel} numberOfLines={1}>{t('homeOverviewSignals')}</Text>
+              <Text style={styles.overviewTileValue}>{state.marketBriefings.length}</Text>
+              <Text style={styles.overviewTileLabel} numberOfLines={1}>{t('homeOverviewBriefings')}</Text>
             </Pressable>
             <Pressable
               onPress={() => router.push('/quotes')}
@@ -481,23 +482,6 @@ export default function HomeScreen() {
               <Text style={styles.overviewTileLabel} numberOfLines={1}>{t('homeOverviewRelated')}</Text>
             </Pressable>
           </View>
-          {secondaryInsights.length > 0 ? (
-            <>
-              <Text style={styles.focusSubhead}>{t('homeNextSignals')}</Text>
-              <View style={styles.focusMiniList}>
-                {secondaryInsights.map((insight) => (
-                  <Pressable
-                    key={insight.id}
-                    onPress={() => router.push('/insights')}
-                    style={({ pressed }) => [styles.focusMiniRow, pressed && styles.pressed]}
-                    accessibilityRole="button">
-                    <Text style={styles.focusMiniTitle} numberOfLines={1}>{insight.title}</Text>
-                    <Text style={styles.focusMiniScore}>{Math.round(Number(insight.score) || 0)}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </>
-          ) : null}
         </View>
 
         {error ? (
@@ -535,10 +519,6 @@ export default function HomeScreen() {
                     {item.perspective?.positives?.[0] || item.interpretation || item.name || item.symbol}
                   </Text>
                 </View>
-                <View style={styles.quantScoreBox}>
-                  <Text style={styles.quantScoreLabel}>{t('quantScore')}</Text>
-                  <Text style={styles.quantScoreValue}>{Math.round(Number(item.score) || 0)}</Text>
-                </View>
               </Pressable>
             ))
           ) : (
@@ -563,7 +543,7 @@ export default function HomeScreen() {
           {topQuoteRows.length > 0 ? (
             topQuoteRows.map(({ quote, newsCount, signalCount, watchSignal }) => {
               const reasonCodes = watchSignal?.reasonCodes?.length ? watchSignal.reasonCodes : [quoteReasonCode(quote)];
-              const largeMove = Math.abs(Number(quote.changePercent) || 0) >= 3 || Number(watchSignal?.score || 0) >= 60;
+              const largeMove = Math.abs(Number(quote.changePercent) || 0) >= 3;
               return (
                 <Pressable
                   key={quote.symbol}

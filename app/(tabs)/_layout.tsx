@@ -41,7 +41,7 @@ import {
 
 const TAB_ICON_SIZE = 25;
 
-type TabBarIconName = 'newspaper' | 'chart-line' | 'home' | 'youtube' | 'th-large';
+type TabBarIconName = 'newspaper' | 'chart-line' | 'home' | 'youtube' | 'th-large' | 'briefcase';
 
 function TabBarIcon({
   name,
@@ -279,7 +279,7 @@ export default function TabLayout() {
       tabBar={isWeb ? undefined : (props) => <SignalFloatingTabBar {...props} />}
       screenOptions={screenOptions}
       detachInactiveScreens={false}>
-      {/* 순서: TAB_BAR_SCREEN_ORDER — 홈 · 뉴스 · 시세 · 더보기. 유튜브는 더보기 허브에서 진입한다. */}
+      {/* 순서: 홈 · 뉴스 · 브리핑 · 시세 · 더보기. 유튜브는 더보기 허브에서 진입한다. */}
       <Tabs.Screen
         name="index"
         options={{
@@ -294,6 +294,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="newspaper" color={color} focused={focused} showDot={newsHasUnread} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="briefing"
+        options={{
+          title: t('tabBriefing'),
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="briefcase" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen

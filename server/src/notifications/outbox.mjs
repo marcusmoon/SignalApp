@@ -6,6 +6,7 @@ export const NOTIFICATION_TYPES = {
   serviceNotice: 'service_notice',
   earningsReminder: 'earnings_reminder',
   marketAlert: 'market_alert',
+  marketBriefing: 'market_briefing',
 };
 
 const SEND_STATE_STATUSES = new Set(['sending', 'sent', 'failed', 'cancelled', 'skipped']);

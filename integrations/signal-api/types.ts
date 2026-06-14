@@ -55,6 +55,55 @@ export type SignalApiNewsDigestItem = {
   sourceRefs: SignalApiNewsDigestSourceRef[];
 };
 
+export type SignalApiMarketBriefingSourceRef = {
+  kind?: string;
+  title: string;
+  url: string | null;
+  sourceName?: string | null;
+  publishedAt?: string | null;
+  checkedAt?: string | null;
+  recency?: 'latest' | 'older' | string;
+};
+
+export type SignalApiMarketBriefingCompany = {
+  symbol: string;
+  name?: string | null;
+  price?: number | null;
+  changePercent?: number | null;
+  summary: string;
+  news?: SignalApiMarketBriefingSourceRef[];
+};
+
+export type SignalApiMarketBriefingMacroItem = {
+  title: string;
+  summary: string;
+  sourceUrl?: string | null;
+  sourceName?: string | null;
+  publishedAt?: string | null;
+  checkedAt?: string | null;
+  recency?: 'latest' | 'older' | string;
+};
+
+export type SignalApiMarketBriefing = {
+  id: string;
+  market: 'kr' | 'us' | string;
+  session: 'morning' | 'lunch' | 'evening' | 'overnight' | 'close' | string;
+  title: string;
+  headline: string;
+  summary: string;
+  overview: string[];
+  companies: SignalApiMarketBriefingCompany[];
+  macro: SignalApiMarketBriefingMacroItem[];
+  sourceRefs: SignalApiMarketBriefingSourceRef[];
+  publishedAt: string | null;
+  briefingDate: string | null;
+  pushCandidate: boolean;
+  pushTitle: string;
+  pushBody: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 export type SignalApiNewsSource = {
   id: string;
   name: string;

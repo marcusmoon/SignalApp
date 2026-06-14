@@ -251,6 +251,7 @@ const APPEARANCE_MODE_LABEL: Record<ThemeAppearanceMode, MessageId> = {
 const MAIN_ENTRY_LABEL: Record<MainEntryKey, MessageId> = {
   home: 'settingsEntryHome',
   news: 'settingsEntryNews',
+  briefing: 'settingsEntryBriefing',
   quotes: 'settingsEntryQuotes',
   more: 'settingsEntryMore',
 };

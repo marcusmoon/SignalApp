@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
@@ -8,6 +8,7 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
   getQuoteChangeColors,
   isQuoteChangePositive,
+  QUOTES_CHANGE_COLOR_CONVENTION_DEFAULT,
   type QuotesChangeColorConvention,
 } from '@/domain/quotes/changeColorConvention';
 import type {
@@ -15,6 +16,10 @@ import type {
   SignalApiMarketBriefingCompany,
   SignalApiMarketBriefingMacroItem,
 } from '@/integrations/signal-api/types';
+import {
+  loadQuotesChangeColorConvention,
+  subscribeQuotesChangeColorConventionChanged,
+} from '@/services/quotesChangeColorPreference';
 
 function shortMd(isoDate: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(isoDate);
@@ -27,10 +32,6 @@ function shortDateTime(value: string | null | undefined): string {
   if (text.length >= 16) return `${shortMd(text.slice(0, 10))} ${text.slice(11, 16)}`;
   if (text.length >= 10) return shortMd(text.slice(0, 10));
   return text || '—';
-}
-
-function marketColorConvention(market: string): QuotesChangeColorConvention {
-  return market === 'us' ? 'us' : 'korea';
 }
 
 function formatBriefingPrice(price: number | null | undefined, market: string): string {
@@ -166,11 +167,27 @@ function MacroHighlightCard({
 export function MarketBriefingBlock({ briefing, theme, scaleFont }: Props) {
   const { t } = useLocale();
   const { effectiveColorScheme } = useSignalTheme();
-  const styles = makeStyles(theme, scaleFont);
-  const changeColors = getQuoteChangeColors(
-    marketColorConvention(briefing.market),
-    effectiveColorScheme,
+  const [changeColorConvention, setChangeColorConvention] = useState<QuotesChangeColorConvention>(
+    QUOTES_CHANGE_COLOR_CONVENTION_DEFAULT,
   );
+  const styles = makeStyles(theme, scaleFont);
+  const changeColors = getQuoteChangeColors(changeColorConvention, effectiveColorScheme);
+
+  useEffect(() => {
+    let cancelled = false;
+    const reload = async () => {
+      const next = await loadQuotesChangeColorConvention();
+      if (!cancelled) setChangeColorConvention(next);
+    };
+    void reload();
+    const unsubscribe = subscribeQuotesChangeColorConventionChanged(() => {
+      void reload();
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
 
   const hasLead = Boolean(briefing.summary) || briefing.overview.length > 0;
 

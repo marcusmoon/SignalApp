@@ -274,66 +274,50 @@ export default function SignalScreen() {
       <SignalHeader compact onBrandPress={() => void onRefresh()} />
 
       <View style={styles.datePicker}>
-        <View style={styles.datePickerTop}>
-          <Pressable
-            onPress={() => moveDate(-1)}
-            accessibilityRole="button"
-            accessibilityLabel={t('insightDatePrevious')}
-            hitSlop={8}
-            style={({ pressed }) => [styles.dateArrow, pressed && styles.dateArrowPressed]}>
-            <FontAwesome name="chevron-left" size={14} color={theme.green} />
-          </Pressable>
-          <View style={styles.datePickerCenter}>
-            <Text style={styles.datePickerKicker}>{t('insightDatePickerTitle')}</Text>
-            <Text style={styles.datePickerValue}>{selectedDateLabel}</Text>
-          </View>
-          <Pressable
-            onPress={() => moveDate(1)}
-            disabled={selectedIsToday}
-            accessibilityRole="button"
-            accessibilityLabel={t('insightDateNext')}
-            hitSlop={8}
-            style={({ pressed }) => [
-              styles.dateArrow,
-              selectedIsToday && styles.dateArrowDisabled,
-              pressed && !selectedIsToday && styles.dateArrowPressed,
-            ]}>
-            <FontAwesome
-              name="chevron-right"
-              size={14}
-              color={selectedIsToday ? theme.textDim : theme.green}
-            />
-          </Pressable>
-        </View>
-        <View style={styles.dateActionRow}>
-          <Pressable
-            onPress={openCalendar}
-            accessibilityRole="button"
-            accessibilityLabel={t('insightOpenCalendar')}
-            style={({ pressed }) => [styles.dateActionBtn, pressed && styles.dateActionBtnPressed]}>
-            <FontAwesome name="calendar" size={13} color={theme.green} />
-            <Text style={styles.dateActionText}>{t('insightOpenCalendar')}</Text>
-          </Pressable>
+        <Pressable
+          onPress={() => moveDate(-1)}
+          accessibilityRole="button"
+          accessibilityLabel={t('insightDatePrevious')}
+          hitSlop={8}
+          style={({ pressed }) => [styles.dateArrow, pressed && styles.dateArrowPressed]}>
+          <FontAwesome name="chevron-left" size={13} color={theme.green} />
+        </Pressable>
+        <Pressable
+          onPress={openCalendar}
+          accessibilityRole="button"
+          accessibilityLabel={t('insightOpenCalendar')}
+          style={({ pressed }) => [styles.datePickerCenter, pressed && styles.dateActionBtnPressed]}>
+          <FontAwesome name="calendar" size={12} color={theme.green} />
+          <Text style={styles.datePickerValue} numberOfLines={1}>
+            {selectedDateLabel}
+          </Text>
+        </Pressable>
+        {!selectedIsToday ? (
           <Pressable
             onPress={goToday}
-            disabled={selectedIsToday}
             accessibilityRole="button"
             accessibilityLabel={t('insightCalendarToday')}
-            style={({ pressed }) => [
-              styles.dateActionBtn,
-              selectedIsToday && styles.dateActionBtnDisabled,
-              pressed && !selectedIsToday && styles.dateActionBtnPressed,
-            ]}>
-            <FontAwesome
-              name="dot-circle-o"
-              size={13}
-              color={selectedIsToday ? theme.textDim : theme.green}
-            />
-            <Text style={[styles.dateActionText, selectedIsToday && styles.dateActionTextDisabled]}>
-              {t('insightCalendarToday')}
-            </Text>
+            style={({ pressed }) => [styles.dateTodayBtn, pressed && styles.dateActionBtnPressed]}>
+            <Text style={styles.dateTodayText}>{t('insightCalendarToday')}</Text>
           </Pressable>
-        </View>
+        ) : null}
+        <Pressable
+          onPress={() => moveDate(1)}
+          disabled={selectedIsToday}
+          accessibilityRole="button"
+          accessibilityLabel={t('insightDateNext')}
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.dateArrow,
+            selectedIsToday && styles.dateArrowDisabled,
+            pressed && !selectedIsToday && styles.dateArrowPressed,
+          ]}>
+          <FontAwesome
+            name="chevron-right"
+            size={13}
+            color={selectedIsToday ? theme.textDim : theme.green}
+          />
+        </Pressable>
       </View>
 
       <View style={styles.marketTabs}>
@@ -495,23 +479,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     content: { paddingHorizontal: 16, paddingTop: 4 },
     datePicker: {
       marginHorizontal: 16,
-      marginBottom: 12,
-      padding: 14,
-      gap: 10,
+      marginBottom: 10,
+      padding: 8,
+      gap: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
-      borderRadius: 14,
+      borderRadius: 13,
       backgroundColor: digestBg,
-    },
-    datePickerTop: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
     },
     dateArrow: {
-      width: 38,
-      height: 38,
-      borderRadius: 11,
+      width: 34,
+      height: 34,
+      borderRadius: 10,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
@@ -527,25 +508,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     datePickerCenter: {
       flex: 1,
       minWidth: 0,
-      alignItems: 'center',
-      gap: 4,
-    },
-    datePickerKicker: {
-      color: theme.textDim,
-      fontSize: sf(12),
-      fontWeight: '800',
-    },
-    datePickerValue: {
-      color: theme.text,
-      fontSize: sf(17),
-      lineHeight: sf(23),
-      fontWeight: '900',
-      textAlign: 'center',
-    },
-    dateActionRow: { flexDirection: 'row', gap: 8 },
-    dateActionBtn: {
-      flex: 1,
-      minHeight: 36,
+      height: 34,
       borderRadius: 10,
       borderWidth: 1,
       borderColor: theme.greenBorder,
@@ -556,10 +519,26 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 7,
       paddingHorizontal: 10,
     },
-    dateActionBtnDisabled: { opacity: 0.48, borderColor: theme.border },
+    datePickerValue: {
+      color: theme.text,
+      fontSize: sf(14),
+      lineHeight: sf(18),
+      fontWeight: '900',
+      textAlign: 'center',
+      flexShrink: 1,
+    },
+    dateTodayBtn: {
+      height: 34,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 10,
+    },
+    dateTodayText: { color: theme.green, fontSize: sf(12), fontWeight: '900' },
     dateActionBtnPressed: { opacity: 0.86 },
-    dateActionText: { color: theme.green, fontSize: sf(13), fontWeight: '900' },
-    dateActionTextDisabled: { color: theme.textDim },
     marketTabs: {
       flexDirection: 'row',
       gap: 10,

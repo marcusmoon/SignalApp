@@ -21,13 +21,41 @@ const STOP_WORDS = new Set([
   'after',
   'over',
   'into',
+  'under',
   'market',
   'markets',
   'stock',
   'stocks',
   'shares',
   'news',
+  'report',
+  'reports',
+  'reported',
+  'according',
+  'source',
+  'sources',
+  'official',
+  'officials',
+  'spokesperson',
+  'ministry',
+  'government',
+  'administration',
+  'senior',
+  'says',
+  'said',
+  'will',
+  'would',
+  'could',
+  'should',
+  'likely',
+  'unlikely',
+  'fars',
+  'reuters',
+  'bloomberg',
+  'information',
 ]);
+
+const SHORT_KEYWORDS = new Set(['ai', 'us', 'uk', 'eu']);
 
 function clean(value: unknown): string {
   return String(value || '').trim();
@@ -49,21 +77,43 @@ function normalizedTags(item: SignalApiNewsItem): string[] {
     : [];
 }
 
-function keywordKey(item: SignalApiNewsItem): string {
-  const text = `${item.title || ''} ${item.originalTitle || ''}`
+function titleFocusText(item: SignalApiNewsItem): string {
+  const raw = clean(item.title || item.originalTitle)
+    .replace(/\s+-\s+[^-]+$/, '')
+    .replace(/\s*:\s*(the information|fars news|reuters|bloomberg|cnbc|wsj|financial times|ft)$/i, '');
+  const afterColon = raw.includes(':') ? raw.split(':').slice(1).join(':').trim() : raw;
+  return afterColon.length >= 12 ? afterColon : raw;
+}
+
+function keywordTokens(item: SignalApiNewsItem): string[] {
+  const text = titleFocusText(item)
     .toLowerCase()
     .replace(/https?:\/\/\S+/g, ' ')
     .replace(/[^a-z0-9가-힣\s]/g, ' ');
-  const token = text
+  const seen = new Set<string>();
+  return text
     .split(/\s+/)
     .map((part) => part.trim())
-    .filter((part) => part.length >= 3 && !STOP_WORDS.has(part))
-    .sort((a, b) => b.length - a.length)[0];
-  return token || 'market';
+    .filter((part) => {
+      if (!part || STOP_WORDS.has(part)) return false;
+      if (part.length >= 3 || SHORT_KEYWORDS.has(part)) return true;
+      return /[가-힣]/.test(part);
+    })
+    .filter((part) => {
+      if (seen.has(part)) return false;
+      seen.add(part);
+      return true;
+    });
+}
+
+function keywordKey(item: SignalApiNewsItem): string {
+  const tokens = keywordTokens(item);
+  if (tokens.length === 0) return 'market';
+  return tokens.slice(0, 4).join(':');
 }
 
 function normalizedTitle(item: SignalApiNewsItem): string {
-  return clean(item.title || item.originalTitle)
+  return titleFocusText(item)
     .toLowerCase()
     .replace(/[^a-z0-9가-힣\s]/g, ' ')
     .replace(/\s+/g, ' ')

@@ -114,8 +114,9 @@ function CompanyHighlightCard({
     changePositive === null
       ? theme.bgElevated
       : changePositive
-        ? `${changeColors.up}18`
-        : `${changeColors.down}18`;
+        ? `${changeColors.up}22`
+        : `${changeColors.down}22`;
+  const changeBorderColor = changePositive === null ? theme.border : `${changeColor}55`;
 
   return (
     <View style={styles.companyCard}>
@@ -129,8 +130,16 @@ function CompanyHighlightCard({
           ) : null}
         </View>
         {(hasPrice || hasChange) && (
-          <View style={[styles.companyQuoteBox, { backgroundColor: changeBg }]}>
-            {hasPrice ? <Text style={styles.companyPrice}>{formatBriefingPrice(item.price, market)}</Text> : null}
+          <View
+            style={[
+              styles.companyQuoteBox,
+              { backgroundColor: changeBg, borderColor: changeBorderColor },
+            ]}>
+            {hasPrice ? (
+              <Text style={[styles.companyPrice, hasChange && { color: changeColor }]}>
+                {formatBriefingPrice(item.price, market)}
+              </Text>
+            ) : null}
             {hasChange ? (
               <Text style={[styles.companyChange, { color: changeColor }]}>
                 {formatChangePct(item.changePercent)}
@@ -423,6 +432,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     companyQuoteBox: {
       flexShrink: 0,
       alignItems: 'flex-end',
+      borderWidth: 1,
       paddingVertical: 8,
       paddingHorizontal: 10,
       borderRadius: 10,

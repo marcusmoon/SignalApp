@@ -62,6 +62,44 @@ function keywordKey(item: SignalApiNewsItem): string {
   return token || 'market';
 }
 
+function normalizedTitle(item: SignalApiNewsItem): string {
+  return clean(item.title || item.originalTitle)
+    .toLowerCase()
+    .replace(/[^a-z0-9가-힣\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function canonicalUrl(item: SignalApiNewsItem): string {
+  const raw = clean(item.sourceUrl);
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    for (const key of [...url.searchParams.keys()]) {
+      if (/^(utm_|xy$|oc$)/i.test(key)) url.searchParams.delete(key);
+    }
+    url.hash = '';
+    const query = url.searchParams.toString();
+    return `${url.origin}${url.pathname}${query ? `?${query}` : ''}`;
+  } catch {
+    return raw.replace(/[?#].*$/, '');
+  }
+}
+
+function uniqueNewsItems(items: SignalApiNewsItem[]): SignalApiNewsItem[] {
+  const seen = new Set<string>();
+  const rows: SignalApiNewsItem[] = [];
+  for (const item of items) {
+    const title = normalizedTitle(item);
+    const url = canonicalUrl(item);
+    const key = url || `${sourceName(item).toLowerCase()}:${title}`;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    rows.push(item);
+  }
+  return rows;
+}
+
 function digestKey(item: SignalApiNewsItem): string {
   const symbols = normalizedSymbols(item);
   if (symbols.length > 0) return `symbol:${symbols[0]}`;
@@ -91,15 +129,17 @@ export function buildNewsDigestItems(rows: SignalApiNewsItem[], limit = 4): News
 
   return [...groups.entries()]
     .map(([key, group]) => {
-      const sorted = [...group].sort((a, b) => publishedMs(b) - publishedMs(a));
+      const sorted = uniqueNewsItems([...group].sort((a, b) => publishedMs(b) - publishedMs(a)));
       const primary = sorted[0];
       const sources = [...new Set(sorted.map(sourceName))].slice(0, 4);
       const symbols = [...new Set(sorted.flatMap(normalizedSymbols))].slice(0, 6);
       const flashBonus = sorted.some((item) => normalizedTags(item).includes('속보')) ? 18 : 0;
+      const volumeBonus = Math.min(48, sorted.length * 10);
       const sourceBonus = Math.min(20, sources.length * 5);
       const symbolBonus = Math.min(12, symbols.length * 3);
-      const recencyBonus = Math.max(0, 12 - Math.floor((Date.now() - publishedMs(primary)) / 3_600_000));
-      const score = sorted.length * 16 + flashBonus + sourceBonus + symbolBonus + recencyBonus;
+      const ageHours = Math.max(0, (Date.now() - publishedMs(primary)) / 3_600_000);
+      const recencyBonus = Math.max(0, 50 - Math.floor(ageHours * 4));
+      const score = volumeBonus + flashBonus + sourceBonus + symbolBonus + recencyBonus;
       return {
         id: `digest:${key}`,
         title: titleForGroup(primary, sorted),

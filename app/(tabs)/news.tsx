@@ -287,7 +287,6 @@ export default function FeedScreen() {
         const { items: rows, meta } = await fetchSignalNews(
           {
             locale,
-            category: 'global',
             symbols: requestSymbols.join(','),
             limit: FEED_PAGE_WATCH,
             offset: 0,
@@ -820,7 +819,6 @@ export default function FeedScreen() {
         const page = await fetchSignalNews(
           {
             locale,
-            category: 'global',
             symbols: requestSymbols.join(','),
             limit: FEED_PAGE_WATCH,
             offset: 0,

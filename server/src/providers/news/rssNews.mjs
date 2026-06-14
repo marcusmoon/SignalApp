@@ -66,17 +66,47 @@ function matchesKeywords(text, includeKeywords, excludeKeywords) {
   return true;
 }
 
+const KOREA_SYMBOL_ALIASES = [
+  ['005930', ['005930', '삼성전자', 'samsung electronics', 'samsung elec']],
+  ['000660', ['000660', 'sk하이닉스', 'sk hynix']],
+  ['402340', ['402340', 'sk스퀘어', 'sk square']],
+  ['005380', ['005380', '현대차', '현대자동차', 'hyundai motor']],
+  ['009150', ['009150', '삼성전기', 'samsung electro']],
+  ['373220', ['373220', 'lg에너지솔루션', 'lg energy solution', 'lg energy']],
+  ['032830', ['032830', '삼성생명', 'samsung life']],
+  ['028260', ['028260', '삼성물산', 'samsung c&t']],
+  ['329180', ['329180', 'hd현대중공업', 'hd hhi']],
+  ['105560', ['105560', 'kb금융', 'kb financial']],
+  ['012330', ['012330', '현대모비스', 'hyundai mobis']],
+  ['000270', ['000270', '기아', 'kia']],
+  ['207940', ['207940', '삼성바이오로직스', 'samsung biologics']],
+  ['034020', ['034020', '두산에너빌리티', 'doosan enerbility']],
+  ['012450', ['012450', '한화에어로스페이스', 'hanwha aerospace']],
+  ['055550', ['055550', '신한지주', 'shinhan financial']],
+  ['066570', ['066570', 'lg전자', 'lg electronics']],
+  ['006400', ['006400', '삼성sdi', 'samsung sdi']],
+  ['034730', ['034730', 'sk inc']],
+  ['035420', ['035420', '네이버', 'naver']],
+];
+
 function extractSymbols(text) {
   const source = String(text || '');
+  const lowerSource = source.toLowerCase();
   const symbols = new Set();
   const patterns = [
     /\b(?:NASDAQ|NYSE|NYSEAMERICAN|AMEX|TSX|TSXV|CSE|OTC|OTCQX|OTCQB)\s*[:：]\s*([A-Z][A-Z0-9.-]{0,7})\b/g,
     /\(([A-Z][A-Z0-9.-]{0,7})\s*[:：]\s*(?:NASDAQ|NYSE|NYSEAMERICAN|AMEX|TSX|TSXV|CSE|OTC|OTCQX|OTCQB)\)/g,
+    /\b([0-9]{6})\b/g,
   ];
   for (const pattern of patterns) {
     let m;
     while ((m = pattern.exec(source)) !== null) {
       symbols.add(String(m[1] || '').replace(/[.-].*$/, '').toUpperCase());
+    }
+  }
+  for (const [symbol, aliases] of KOREA_SYMBOL_ALIASES) {
+    if (aliases.some((alias) => lowerSource.includes(String(alias).toLowerCase()))) {
+      symbols.add(symbol);
     }
   }
   return [...symbols].slice(0, 8);

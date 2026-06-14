@@ -108,9 +108,8 @@ export default function MoreHubScreen() {
         </View>
       ) : (
         <FlatList
-          key="more-grid"
+          key="more-list"
           data={order}
-          numColumns={2}
           keyExtractor={(item) => item}
           scrollEnabled
           style={styles.list}
@@ -118,7 +117,6 @@ export default function MoreHubScreen() {
             paddingTop: 10,
             paddingBottom: 24 + tabBarHeight + tabBarBottomInset(insets.bottom),
           }}
-          columnWrapperStyle={styles.gridRow}
           ListFooterComponent={listFooter}
           renderItem={({ item }) => {
             const meta = HUB_META[item];
@@ -153,12 +151,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     list: { flex: 1, paddingHorizontal: 16 },
     loadingPad: { padding: 24 },
     muted: { fontSize: sf(14), color: theme.textDim },
-    gridRow: {
-      gap: GRID_GAP,
-      marginBottom: GRID_GAP,
-    },
     tile: {
-      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
@@ -169,6 +162,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       minHeight: TILE_HEIGHT,
       paddingVertical: 8,
       paddingHorizontal: 10,
+      marginBottom: GRID_GAP,
     },
     rowPressed: {
       backgroundColor: theme.bgElevated,

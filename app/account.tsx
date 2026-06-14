@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Image, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, type Href } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -655,14 +655,7 @@ export default function AccountScreen() {
         icon: 'bolt',
         title: t('accountActivitySignals'),
         body: t('accountActivitySignalsDesc'),
-        onPress: () => router.push('/insights'),
-      },
-      {
-        key: 'briefing',
-        icon: 'briefcase',
-        title: t('accountActivityBriefing'),
-        body: t('accountActivityBriefingDesc'),
-        onPress: () => router.push('/briefing'),
+        onPress: () => router.push('/signal' as Href),
       },
       {
         key: 'notificationSettings',

@@ -74,7 +74,7 @@ flyway \
 
 | 그룹 | 경로 |
 |---|---|
-| 공개 | `/v1/news`, `/v1/youtube`, `/v1/market-quotes`, `/v1/calendar`, `/v1/insights` |
+| 공개 | `/v1/news`, `/v1/youtube`, `/v1/market-quotes`, `/v1/market-briefings`, `/v1/calendar`, `/v1/insights` |
 | 인증 | `/v1/auth/*`, `/v1/notifications`, `/v1/legal/terms` |
 | Admin | `/admin/api/*` |
 

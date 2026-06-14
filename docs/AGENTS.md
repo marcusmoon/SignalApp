@@ -34,9 +34,10 @@ npx tsc --noEmit
 
 | 기능 | 파일 |
 |---|---|
-| 홈 | `app/(tabs)/index.tsx` |
+| 시그널 | `app/(tabs)/signal.tsx`, `components/signal/MarketBriefingBlock.tsx` |
 | 뉴스 | `app/(tabs)/news.tsx`, `components/signal/NewsCard.tsx` |
 | 시세 | `app/(tabs)/quotes.tsx` |
+| 더보기 | `app/(tabs)/more.tsx` |
 | 유튜브 | `app/(tabs)/youtube.tsx` |
 | 캘린더 | `app/calendar.tsx`, `components/signal/InvestMonthCalendar.tsx` |
 | 계정 | `app/account.tsx`, `services/appAuthSession.ts` |

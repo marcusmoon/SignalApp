@@ -19,4 +19,3 @@ export * from '@/integrations/signal-api/newsSources';
 export * from '@/integrations/signal-api/stock';
 export * from '@/integrations/signal-api/types';
 export * from '@/integrations/signal-api/youtube';
-export * from '@/integrations/signal-api/watchSignals';

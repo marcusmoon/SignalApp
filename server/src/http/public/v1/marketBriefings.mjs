@@ -1,7 +1,7 @@
 import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
 import { createNotificationItem, NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
 import { config } from '../../../config.mjs';
-import { getPublicMarketBriefing, queryPublicMarketBriefings } from '../../../db/repositories/marketBriefingsRepository.mjs';
+import { queryPublicMarketBriefings } from '../../../db/repositories/marketBriefingsRepository.mjs';
 import { json, readBody } from '../../shared.mjs';
 
 const ALLOWED_MARKETS = new Set(['kr', 'us']);
@@ -75,7 +75,7 @@ async function maybeQueueBriefingPush(briefing) {
     targetType: 'all',
     sourceType: 'market_briefing',
     sourceId: briefing.id,
-    deepLink: `/briefings/${briefing.id}`,
+    deepLink: '/signal',
     symbols: cleanArray(briefing.companies).map((company) => company?.symbol).filter(Boolean),
     sourceRefs: briefing.sourceRefs,
     reason: `${briefing.market}/${briefing.session} market briefing updated`,
@@ -132,18 +132,6 @@ export async function handlePublicMarketBriefingRoutes({ req, res, url, pathname
         nextOffset: page.nextOffset,
       },
     });
-    return true;
-  }
-
-  if (req.method === 'GET' && pathname.startsWith('/v1/market-briefings/')) {
-    const id = decodeURIComponent(pathname.slice('/v1/market-briefings/'.length));
-    if (!id || id === 'ingest') return false;
-    const row = await getPublicMarketBriefing(id);
-    if (!row) {
-      json(res, 404, { error: 'MARKET_BRIEFING_NOT_FOUND' });
-      return true;
-    }
-    json(res, 200, { data: publicBriefing(row) });
     return true;
   }
 

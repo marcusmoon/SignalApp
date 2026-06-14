@@ -1,6 +1,8 @@
 # SIGNAL
 
-SIGNAL은 뉴스, 유튜브, 시세, 투자 캘린더를 Signal Server에서 수집·정제해 앱에서 빠르게 확인하는 투자 정보 앱입니다. 앱은 외부 provider를 직접 호출하지 않고 Signal Server API만 사용합니다.
+SIGNAL은 Codex 시장 브리핑, 뉴스, 시세, 투자 캘린더를 Signal Server에서 수집·정제해 앱에서 빠르게 확인하는 투자 정보 앱입니다. 앱은 외부 provider를 직접 호출하지 않고 Signal Server API만 사용합니다.
+
+탭 구성: **뉴스 · 시그널 · 시세 · 더보기**
 
 ## 빠른 실행
 
@@ -22,7 +24,7 @@ npm run server:dev
 | `domain/` | 제품 규칙, 정렬, 분류, 시드 데이터 |
 | `integrations/signal-api/` | 앱의 Signal Server API 클라이언트 |
 | `services/` | 앱 설정, AsyncStorage, 세션, 캐시 오케스트레이션 |
-| `server/` | Signal Server, Admin, 수집 Job, SQLite 저장소 |
+| `server/` | Signal Server, Admin, 수집 Job, Postgres 저장소 |
 | `plugins/` | Expo config plugin |
 | `docs/` | 최종 운영 문서 |
 

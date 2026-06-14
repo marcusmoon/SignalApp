@@ -83,3 +83,10 @@ export function pickSymbolsFromEarningsRows(rows: SignalApiCalendarEvent[], maxI
     ),
   ).slice(0, maxItems);
 }
+
+/** Finnhub 실적 발표일이 FY에 걸쳐 있어 전후로 넉넉히 잡음 */
+export function calendarRangeForFiscalYear(fiscalYear: number): { from: Date; to: Date } {
+  const from = new Date(fiscalYear - 1, 0, 1);
+  const to = new Date(fiscalYear + 1, 11, 31);
+  return { from, to };
+}

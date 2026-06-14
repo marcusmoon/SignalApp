@@ -41,7 +41,7 @@ import {
 
 const TAB_ICON_SIZE = 25;
 
-type TabBarIconName = 'newspaper' | 'chart-line' | 'home' | 'youtube' | 'th-large' | 'briefcase';
+type TabBarIconName = 'newspaper' | 'chart-line' | 'bolt' | 'youtube' | 'th-large';
 
 function TabBarIcon({
   name,
@@ -275,18 +275,12 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      initialRouteName="index"
+      initialRouteName="news"
       tabBar={isWeb ? undefined : (props) => <SignalFloatingTabBar {...props} />}
       screenOptions={screenOptions}
       detachInactiveScreens={false}>
-      {/* 순서: 홈 · 뉴스 · 브리핑 · 시세 · 더보기. 유튜브는 더보기 허브에서 진입한다. */}
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: t('tabHome'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="home" color={color} focused={focused} />,
-        }}
-      />
+      {/* 순서: 뉴스 · 시그널 · 시세 · 더보기. 유튜브는 더보기 허브에서 진입한다. */}
+      <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen
         name="news"
         options={{
@@ -297,10 +291,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="briefing"
+        name="signal"
         options={{
-          title: t('tabBriefing'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="briefcase" color={color} focused={focused} />,
+          title: t('tabSignal'),
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="bolt" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen

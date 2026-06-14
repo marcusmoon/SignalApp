@@ -16,6 +16,17 @@
 
 앱 화면은 외부 서비스를 직접 호출하지 않는다. 모든 피처 데이터는 `integrations/signal-api/`를 통해 Signal Server에서 가져온다.
 
+## 탭 구조
+
+| 탭 | 화면 | 역할 |
+|---|---|---|
+| 뉴스 | `app/(tabs)/news.tsx` | 글로벌/코인/관심/영상 피드 |
+| 시그널 | `app/(tabs)/signal.tsx` | Codex 시장 브리핑(국내·미국, 날짜·회차) |
+| 시세 | `app/(tabs)/quotes.tsx` | 관심·인기·시총·코인 시세 |
+| 더보기 | `app/(tabs)/more.tsx` | 투자 관점, 컨콜, 유튜브, 계정·설정 |
+
+유튜브(`app/(tabs)/youtube.tsx`)는 탭에서 숨기고 더보기에서 진입한다.
+
 ## 서버 구조
 
 | 경로 | 역할 |

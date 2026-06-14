@@ -12,8 +12,8 @@ export default function NotFoundScreen() {
       <View style={styles.container}>
         <Text style={styles.title}>{t('notFoundMessage')}</Text>
 
-        <Link href="/" style={styles.link}>
-          <Text style={styles.linkText}>{t('notFoundGoHome')}</Text>
+        <Link href="/news" style={styles.link}>
+          <Text style={styles.linkText}>{t('notFoundGoNews')}</Text>
         </Link>
       </View>
     </>

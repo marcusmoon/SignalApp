@@ -31,7 +31,6 @@ const HUB_META: Record<
   MoreHubRouteKey,
   { href: Href; icon: ComponentProps<typeof FontAwesome>['name']; titleId: MessageId }
 > = {
-  insights: { href: '/insights' as Href, icon: 'bolt', titleId: 'screenInsights' },
   quant: { href: '/quant' as Href, icon: 'calculator', titleId: 'screenQuant' },
   calls: { href: '/calls' as Href, icon: 'phone', titleId: 'tabCalls' },
   youtube: { href: '/youtube' as Href, icon: 'youtube-play', titleId: 'tabYoutube' },

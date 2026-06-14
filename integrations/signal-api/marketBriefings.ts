@@ -32,12 +32,3 @@ export async function fetchSignalMarketBriefings(params: {
   );
   return Array.isArray(json.data) ? json.data : [];
 }
-
-export async function fetchSignalMarketBriefing(id: string): Promise<SignalApiMarketBriefing> {
-  const json = await signalApi<{ data: SignalApiMarketBriefing }>(
-    `/v1/market-briefings/${encodeURIComponent(id)}`,
-    undefined,
-    { timeoutMs: 5000, attempts: 1 },
-  );
-  return json.data;
-}

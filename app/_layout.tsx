@@ -33,7 +33,6 @@ export {
 } from 'expo-router';
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
   initialRouteName: '(tabs)',
 };
 
@@ -149,23 +148,13 @@ function RootLayoutNav() {
         if (route.name === '(tabs)') {
           return { headerShown: false, ...screenStatusBarOptions };
         }
-        if (route.name === 'modal') {
-          return {
-            presentation: 'modal' as const,
-            title: t('screenInfo'),
-            ...screenStatusBarOptions,
-          };
-        }
         const titleByName: Record<string, string> = {
           settings: t('screenSettings'),
           account: t('screenAccount'),
           alerts: t('screenAlerts'),
           calendar: t('screenCalendar'),
           calls: t('callsSectionTitle'),
-          briefing: t('screenBriefing'),
-          insights: t('screenInsights'),
           quant: t('screenQuant'),
-          market: t('screenMarket'),
           terms: t('termsScreenTitle'),
           'terms-history': t('termsHistoryScreenTitle'),
           oauth: t('screenAccount'),

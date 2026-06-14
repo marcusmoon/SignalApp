@@ -75,8 +75,3 @@ export async function queryPublicMarketBriefings(options = {}) {
     nextOffset: hasMore ? offset + pageRows.length : null,
   };
 }
-
-export async function getPublicMarketBriefing(id) {
-  const rows = await queryPublicMarketBriefings({ id, limit: 1, offset: 0 });
-  return rows.rows[0] || null;
-}

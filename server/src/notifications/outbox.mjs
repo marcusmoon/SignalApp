@@ -131,7 +131,7 @@ export function notificationFromInsight(insight, generatedAt = nowIso()) {
     symbols: safeSymbols(insight.symbols),
     topics: safeTopics(insight.topics),
     reason: cleanText(insight.pushReason),
-    deepLink: '/insights',
+    deepLink: '/signal',
     sourceRefs: sourceRefs(insight.sourceRefs),
     scheduledAt: insight.generatedAt || generatedAt,
     expiresAt: insight.expiresAt || null,

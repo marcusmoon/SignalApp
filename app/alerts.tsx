@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -156,7 +156,7 @@ export default function AlertsScreen() {
             <View style={styles.candidateHead}>
               <Text style={styles.candidateTitle}>{t('alertsCandidateTitle')}</Text>
               <Pressable
-                onPress={() => router.push('/insights')}
+                onPress={() => router.push('/signal' as Href)}
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel={t('alertsCandidateOpenAll')}>
@@ -167,7 +167,7 @@ export default function AlertsScreen() {
             {candidates.slice(0, 3).map((item) => (
               <Pressable
                 key={item.id}
-                onPress={() => router.push('/insights')}
+                onPress={() => router.push('/signal' as Href)}
                 accessibilityRole="button"
                 accessibilityLabel={item.pushTitle || item.title}
                 style={({ pressed }) => [styles.candidateCard, pressed && styles.candidateCardPressed]}>

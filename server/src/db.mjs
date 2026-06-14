@@ -904,62 +904,6 @@ export async function queryPublicQuantSignalHistory(options = {}) {
   return cachedPublicRead('publicQuantSignalHistory', options, () => queryPublicQuantSignalHistoryRows(options), 15000);
 }
 
-export async function queryPublicWatchSignals(options = {}) {
-  return cachedPublicRead('publicWatchSignals', options, async () => {
-    const symbols = cleanText(options.symbols)
-      .split(',')
-      .map((s) => s.trim().toUpperCase())
-      .filter(Boolean);
-    const [quotePage, newsPage, quantRows] = await Promise.all([
-      queryPublicMarketQuotes({ symbols: symbols.join(','), limit: '100' }),
-      queryPublicNews({
-        symbols: symbols.join(','),
-        limit: '100',
-        date: cleanText(options.date),
-        from: cleanText(options.from),
-      }),
-      queryPublicQuantSignals({ symbols: symbols.join(','), limit: '100' }),
-    ]);
-    return symbols.map((symbol) => {
-      const quote = quotePage.rows.find((row) =>
-        [row.symbol, row.displaySymbol, row.krxSymbol].some((value) => cleanText(value).toUpperCase() === symbol),
-      );
-      const news = newsPage.rows.filter((row) => (row.symbols || []).map((s) => cleanText(s).toUpperCase()).includes(symbol));
-      const quant = quantRows.find((row) => cleanText(row.symbol).toUpperCase() === symbol);
-      const score = Math.max(Math.abs(Number(quote?.changePercent) || 0) * 8, Number(quant?.score) || 0, news.length * 8);
-      const reasonCodes = [];
-      if (Math.abs(Number(quote?.changePercent) || 0) >= 3) reasonCodes.push('price_move');
-      if (news.length > 0) reasonCodes.push('news_active');
-      if (quant) reasonCodes.push('quant_signal');
-      return {
-        symbol,
-        quote: quote || null,
-        quant: quant || null,
-        news: news.slice(0, 3),
-        title: quote?.displaySymbol || quote?.symbol || symbol,
-        summary: news[0]?.title || quant?.summary || '',
-        reasonCodes,
-        counts: {
-          news: news.length,
-          youtube: 0,
-          insights: quant ? 1 : 0,
-        },
-        nextEvent: null,
-        sourceRefs: news.slice(0, 3).map((item) => ({
-          type: 'news',
-          id: item.id,
-          title: item.title,
-          sourceName: item.sourceName,
-          url: item.sourceUrl,
-          publishedAt: item.publishedAt,
-        })),
-        score: Math.round(score),
-        level: score >= 70 ? 'hot' : score >= 35 ? 'watch' : 'quiet',
-      };
-    });
-  }, 5000);
-}
-
 export async function queryInsightItems(options = {}) {
   return cachedPublicRead('insights', options, async () => {
     const limit = safeLimit(options.limit, 20, 100);

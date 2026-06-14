@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
 import { appendNotificationFromPayload } from '@/services/notificationHistory';
+import { setSignalUnreadCached } from '@/services/signalUnreadPreference';
 
 if (Platform.OS !== 'web') {
   try {
@@ -29,10 +30,16 @@ export function NotificationListener() {
 
     const record = (n: Notifications.Notification) => {
       const c = n.request.content;
+      const data = c.data as Record<string, unknown> | undefined;
+      const type = String(data?.type || '');
+      const sourceType = String(data?.sourceType || '');
+      if (type === 'market_briefing' || sourceType === 'market_briefing') {
+        void setSignalUnreadCached(true);
+      }
       void appendNotificationFromPayload({
         title: String(c.title ?? ''),
         body: String(c.body ?? ''),
-        data: c.data as Record<string, unknown> | undefined,
+        data,
       });
     };
 

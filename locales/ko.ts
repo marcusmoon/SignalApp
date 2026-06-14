@@ -643,8 +643,8 @@ export const ko = {
   quotesEmptyWatch: '관심 종목이 없습니다. 티커를 추가해 주세요.',
   quotesEmptyGeneric: '표시할 시세가 없습니다.',
 
-  briefingHubEmptyTitle: '아직 생성된 시장 브리핑이 없습니다.',
-  briefingHubEmptyBody: 'Codex 자동화가 Signal Server로 첫 브리핑을 적재하면 여기에 표시됩니다.',
+  briefingHubEmptyTitle: '시장 브리핑을 준비중입니다.',
+  briefingHubEmptyBody: '준비가 완료되면 알림을 통해 알려드립니다.',
   briefingHubMarketEmptyTitle: '선택한 시장의 브리핑이 아직 없습니다.',
   briefingHubMarketEmptyBody: '다른 시장에는 브리핑이 있습니다. 이 시장 자동화가 실행되면 회차별로 채워집니다.',
   briefingMarketKr: '국내',

@@ -8,6 +8,7 @@ import {
 import { hasSignalApi } from '@/services/env';
 import { loadLocale } from '@/services/localePreference';
 import { refreshNewsUnreadFromServer } from '@/services/newsUnreadPreference';
+import { refreshSignalUnreadFromServer } from '@/services/signalUnreadPreference';
 
 let appStateSub: { remove: () => void } | null = null;
 let intervalSub: (() => void) | null = null;
@@ -15,7 +16,10 @@ let intervalSub: (() => void) | null = null;
 async function runBackgroundNewsCheck(): Promise<void> {
   if (!hasSignalApi()) return;
   const locale = await loadLocale();
-  await refreshNewsUnreadFromServer(locale);
+  await Promise.allSettled([
+    refreshNewsUnreadFromServer(locale),
+    refreshSignalUnreadFromServer(),
+  ]);
 }
 
 function onAppStateChange(next: AppStateStatus): void {

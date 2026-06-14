@@ -33,6 +33,11 @@ import {
   subscribeNewsSeenChanged,
 } from '@/services/newsUnreadPreference';
 import {
+  loadSignalUnreadCached,
+  refreshSignalUnreadFromServer,
+  subscribeSignalSeenChanged,
+} from '@/services/signalUnreadPreference';
+import {
   loadTabBarOpacityLevel,
   subscribeTabBarOpacityChanged,
   tabBarOpacityForLevel,
@@ -83,10 +88,15 @@ export default function TabLayout() {
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
   const [newsHasUnread, setNewsHasUnread] = useState(false);
+  const [signalHasUnread, setSignalHasUnread] = useState(false);
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
   const newsTabFocused = useNavigationState((state) => {
     const route = state.routes[state.index];
     return route?.name === 'news';
+  });
+  const signalTabFocused = useNavigationState((state) => {
+    const route = state.routes[state.index];
+    return route?.name === 'signal';
   });
 
   const refreshNewsUnreadBadge = useCallback(async () => {
@@ -106,6 +116,23 @@ export default function TabLayout() {
     }
   }, [locale, newsTabFocused]);
 
+  const refreshSignalUnreadBadge = useCallback(async () => {
+    if (!hasSignalApi()) {
+      setSignalHasUnread(false);
+      return;
+    }
+    if (signalTabFocused) {
+      setSignalHasUnread(false);
+      return;
+    }
+    try {
+      setSignalHasUnread(await refreshSignalUnreadFromServer());
+    } catch {
+      const cached = await loadSignalUnreadCached();
+      if (cached !== null) setSignalHasUnread(cached);
+    }
+  }, [signalTabFocused]);
+
   useEffect(() => {
     let cancelled = false;
     let pollTimer: ReturnType<typeof setInterval> | undefined;
@@ -114,30 +141,46 @@ export default function TabLayout() {
       const minutes = await loadNewsUnreadCheckIntervalMinutes();
       if (cancelled) return;
       if (pollTimer) clearInterval(pollTimer);
-      pollTimer = setInterval(() => void refreshNewsUnreadBadge(), newsUnreadCheckIntervalMs(minutes));
+      pollTimer = setInterval(() => {
+        void refreshNewsUnreadBadge();
+        void refreshSignalUnreadBadge();
+      }, newsUnreadCheckIntervalMs(minutes));
     };
 
     void loadNewsUnreadCached().then((cached) => {
       if (cached === true && !newsTabFocused) setNewsHasUnread(true);
     });
     void refreshNewsUnreadBadge();
+    void refreshSignalUnreadBadge();
     void startPolling();
 
     const unsubscribeSeen = subscribeNewsSeenChanged(() => void refreshNewsUnreadBadge());
+    const unsubscribeSignalSeen = subscribeSignalSeenChanged(() => void refreshSignalUnreadBadge());
     const unsubscribeInterval = subscribeNewsUnreadCheckIntervalChanged(() => {
       void startPolling();
     });
     const appStateSub = AppState.addEventListener('change', (next) => {
-      if (next === 'active') void refreshNewsUnreadBadge();
+      if (next === 'active') {
+        void refreshNewsUnreadBadge();
+        void refreshSignalUnreadBadge();
+      }
     });
     return () => {
       cancelled = true;
       unsubscribeSeen();
+      unsubscribeSignalSeen();
       unsubscribeInterval();
       if (pollTimer) clearInterval(pollTimer);
       appStateSub.remove();
     };
-  }, [newsTabFocused, refreshNewsUnreadBadge]);
+  }, [newsTabFocused, refreshNewsUnreadBadge, refreshSignalUnreadBadge]);
+
+  useEffect(() => {
+    void loadSignalUnreadCached().then((cached) => {
+      if (cached === true && !signalTabFocused) setSignalHasUnread(true);
+    });
+    void refreshSignalUnreadBadge();
+  }, [refreshSignalUnreadBadge, signalTabFocused]);
 
   useEffect(() => {
     void loadTabBarOpacityLevel().then(setTabBarOpacityLevel);
@@ -294,7 +337,9 @@ export default function TabLayout() {
         name="signal"
         options={{
           title: t('tabSignal'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="highlighter" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="highlighter" color={color} focused={focused} showDot={signalHasUnread} />
+          ),
         }}
       />
       <Tabs.Screen

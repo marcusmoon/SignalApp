@@ -1,8 +1,9 @@
 import { useFocusEffect } from '@react-navigation/native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AppState,
   Modal,
   Pressable,
   ScrollView,
@@ -34,6 +35,7 @@ import {
   loadQuotesChangeColorConvention,
   subscribeQuotesChangeColorConventionChanged,
 } from '@/services/quotesChangeColorPreference';
+import { markSignalFeedSeen } from '@/services/signalUnreadPreference';
 import { addDays, toYmd } from '@/utils/date';
 
 type BriefingMarketKey = 'kr' | 'us';
@@ -85,7 +87,8 @@ export default function SignalScreen() {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
-  const todayYmd = useMemo(() => toYmd(new Date()), []);
+  const [todayYmd, setTodayYmd] = useState(() => toYmd(new Date()));
+  const todayYmdRef = useRef(todayYmd);
   const [selectedYmd, setSelectedYmd] = useState(todayYmd);
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => monthFromYmd(todayYmd));
@@ -210,11 +213,38 @@ export default function SignalScreen() {
     setChangeColorConvention(await loadQuotesChangeColorConvention());
   }, []);
 
+  useEffect(() => {
+    todayYmdRef.current = todayYmd;
+  }, [todayYmd]);
+
+  const refreshTodayYmd = useCallback(() => {
+    const latest = toYmd(new Date());
+    const previousToday = todayYmdRef.current;
+    if (latest === previousToday) return;
+    todayYmdRef.current = latest;
+    setTodayYmd(latest);
+    setSelectedYmd((current) => {
+      const shouldMoveToLatest = current >= previousToday || current > latest;
+      if (!shouldMoveToLatest) return current;
+      setCalendarMonth(monthFromYmd(latest));
+      return latest;
+    });
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
+      refreshTodayYmd();
+      void markSignalFeedSeen();
       void reloadChangeColorConvention();
-    }, [reloadChangeColorConvention]),
+    }, [refreshTodayYmd, reloadChangeColorConvention]),
   );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshTodayYmd();
+    });
+    return () => subscription.remove();
+  }, [refreshTodayYmd]);
 
   useEffect(() => {
     return subscribeQuotesChangeColorConventionChanged(() => {

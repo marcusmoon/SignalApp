@@ -44,12 +44,34 @@ export async function queryPublicNewsDigestRows(options = {}) {
     where.push(`generated_at <= $${params.length}::timestamptz`);
   }
   params.push(limit + 1, offset);
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const result = await queryKysely(
     `
-      SELECT payload
-      FROM news_digest_items
-      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-      ORDER BY digest_date DESC NULLS LAST, score DESC NULLS LAST, generated_at DESC NULLS LAST, position ASC
+      WITH filtered AS (
+        SELECT *
+        FROM news_digest_items
+        ${whereSql}
+      ),
+      latest_date AS (
+        SELECT category, max(digest_date) AS digest_date
+        FROM filtered
+        GROUP BY category
+      ),
+      latest_run AS (
+        SELECT f.category, f.digest_date, max(f.generated_at) AS generated_at
+        FROM filtered f
+        JOIN latest_date d
+          ON f.category IS NOT DISTINCT FROM d.category
+          AND f.digest_date IS NOT DISTINCT FROM d.digest_date
+        GROUP BY f.category, f.digest_date
+      )
+      SELECT f.payload
+      FROM filtered f
+      JOIN latest_run r
+        ON f.category IS NOT DISTINCT FROM r.category
+        AND f.digest_date IS NOT DISTINCT FROM r.digest_date
+        AND f.generated_at IS NOT DISTINCT FROM r.generated_at
+      ORDER BY f.digest_date DESC NULLS LAST, f.generated_at DESC NULLS LAST, f.score DESC NULLS LAST, f.position ASC
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `,
     params,

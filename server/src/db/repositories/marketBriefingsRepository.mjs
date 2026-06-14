@@ -84,13 +84,16 @@ async function enrichBriefingCompanies(rows) {
     companies: (briefing.companies || []).map((company) => {
       const quote = companyKeys(company).map((key) => quoteByKey.get(key)).find(Boolean);
       if (!quote) return company;
+      const shouldFallbackChangePercent = briefing.market !== 'us';
       return {
         ...company,
         name: company.name || quote.name || null,
         price: hasFiniteNumber(company.price) ? company.price : quote.currentPrice,
         changePercent: hasFiniteNumber(company.changePercent)
           ? company.changePercent
-          : quote.changePercent,
+          : shouldFallbackChangePercent
+            ? quote.changePercent
+            : null,
       };
     }),
   }));

@@ -39,9 +39,9 @@ function formatBriefingPrice(price: number | null | undefined, market: string): 
     return `${Math.round(price).toLocaleString('ko-KR')}원`;
   }
   if (price >= 1000) {
-    return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
-  return price.toFixed(2);
+  return `$${price.toFixed(2)}`;
 }
 
 function formatChangePct(pct: number | null | undefined): string {

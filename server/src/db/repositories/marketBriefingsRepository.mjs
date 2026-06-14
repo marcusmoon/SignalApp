@@ -1,4 +1,5 @@
 import { queryKysely } from '../kysely/client.mjs';
+import { queryPublicMarketQuoteRows } from './marketRepository.mjs';
 import {
   cleanText,
   pageOptions,
@@ -26,6 +27,73 @@ function publicBriefing(item) {
     createdAt: item.createdAt || null,
     updatedAt: item.updatedAt || null,
   };
+}
+
+function quoteKeys(quote) {
+  return [
+    quote?.symbol,
+    quote?.displaySymbol,
+    quote?.krxSymbol,
+    quote?.providerItemId,
+    quote?.regularSession?.yahooSymbol,
+  ]
+    .map((value) => cleanText(value).toUpperCase())
+    .filter(Boolean);
+}
+
+function companyKeys(company) {
+  return [
+    company?.symbol,
+    company?.ticker,
+    company?.krxSymbol,
+    company?.yahooSymbol,
+  ]
+    .map((value) => cleanText(value).toUpperCase())
+    .filter(Boolean);
+}
+
+function hasFiniteNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+async function enrichBriefingCompanies(rows) {
+  const symbols = [
+    ...new Set(
+      rows
+        .flatMap((briefing) => (Array.isArray(briefing?.companies) ? briefing.companies : []))
+        .flatMap(companyKeys),
+    ),
+  ];
+  if (symbols.length === 0) return rows;
+
+  const quotesPage = await queryPublicMarketQuoteRows({
+    symbols,
+    limit: Math.max(100, symbols.length),
+    offset: 0,
+  });
+  const quoteByKey = new Map();
+  for (const quote of quotesPage.rows || []) {
+    for (const key of quoteKeys(quote)) {
+      if (!quoteByKey.has(key)) quoteByKey.set(key, quote);
+    }
+  }
+  if (quoteByKey.size === 0) return rows;
+
+  return rows.map((briefing) => ({
+    ...briefing,
+    companies: (briefing.companies || []).map((company) => {
+      const quote = companyKeys(company).map((key) => quoteByKey.get(key)).find(Boolean);
+      if (!quote) return company;
+      return {
+        ...company,
+        name: company.name || quote.name || null,
+        price: hasFiniteNumber(company.price) ? company.price : quote.currentPrice,
+        changePercent: hasFiniteNumber(company.changePercent)
+          ? company.changePercent
+          : quote.changePercent,
+      };
+    }),
+  }));
 }
 
 export async function queryPublicMarketBriefings(options = {}) {
@@ -63,7 +131,9 @@ export async function queryPublicMarketBriefings(options = {}) {
     `,
     params,
   );
-  const rows = result.rows.map(payloadFromRow).filter(Boolean).map(publicBriefing);
+  const rows = await enrichBriefingCompanies(
+    result.rows.map(payloadFromRow).filter(Boolean).map(publicBriefing),
+  );
   const pageRows = rows.slice(0, limit);
   const hasMore = rows.length > limit;
   return {

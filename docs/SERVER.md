@@ -20,7 +20,7 @@ npm --prefix server run worker
 | `SIGNAL_JWT_PRIVATE_KEY_B64` | 앱 사용자 JWT private key base64 |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | LLM provider 키 |
 | `YOUTUBE_API_KEY` | YouTube 수집 키 |
-| `NINJAS_KEY` | 컨콜 등 Ninjas provider 키 |
+| `NINJAS_KEY` | Ninjas provider 키(레거시; 현재 미사용) |
 | `SEC_USER_AGENT` | SEC EDGAR API 식별 User-Agent |
 | `SIGNAL_AUTOMATION_INGEST_TOKEN` | 외부 자동화가 `/v1/market-briefings/ingest` webhook으로 브리핑을 적재할 때 쓰는 토큰 |
 
@@ -86,8 +86,7 @@ Admin에서 Job을 등록하고 실행한다. Job 설정에는 provider, schedul
 
 - 뉴스 RSS 수집
 - YouTube 최신/인기 수집
-- 투자 캘린더 수집
-- 컨콜 수집
+- 투자 캘린더 수집(경제·매크로 일정)
 - 국내주식 야간 참고가 수집
 - 오늘의 시그널 생성
 - 번역/보정

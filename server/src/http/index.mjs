@@ -3,7 +3,6 @@ import crypto from 'node:crypto';
 import { applyCorsHeadersIfNeeded, tryHandleCorsPreflight } from './cors.mjs';
 import { handleAdminAppUsersRoutes } from './admin/api/appUsers.mjs';
 import { handleAdminCalendarRoutes } from './admin/api/calendar.mjs';
-import { handleAdminConcallsRoutes } from './admin/api/concalls.mjs';
 import { handleAdminDataResetRoutes } from './admin/api/dataReset.mjs';
 import { handleAdminInsightsRoutes } from './admin/api/insights.mjs';
 import { handleAdminJobsRoutes } from './admin/api/jobs.mjs';
@@ -17,7 +16,6 @@ import { handleAdminStaticRoutes } from './admin/static.mjs';
 import { handleWebStaticRoutes } from './webStatic.mjs';
 import { handlePublicAuthRoutes } from './public/v1/auth.mjs';
 import { handlePublicCalendarRoutes } from './public/v1/calendar.mjs';
-import { handlePublicConcallsRoutes } from './public/v1/concalls.mjs';
 import { handlePublicInsightRoutes } from './public/v1/insights.mjs';
 import { handlePublicLegalRoutes } from './public/v1/legal.mjs';
 import { handlePublicMarketBriefingRoutes } from './public/v1/marketBriefings.mjs';
@@ -38,7 +36,6 @@ const PUBLIC_ROUTE_HANDLERS = [
   handlePublicCalendarRoutes,
   handlePublicInsightRoutes,
   handlePublicYoutubeRoutes,
-  handlePublicConcallsRoutes,
   handlePublicMarketRoutes,
 ];
 
@@ -50,7 +47,6 @@ const ADMIN_API_HANDLERS = [
   handleAdminInsightsRoutes,
   handleAdminNewsRoutes,
   handleAdminCalendarRoutes,
-  handleAdminConcallsRoutes,
   handleAdminYoutubeRoutes,
   handleAdminSettingsRoutes,
   handleAdminDataResetRoutes,

@@ -1,13 +1,10 @@
-import type { SignalApiCalendarEvent, SignalApiMarketQuote, SignalApiNewsItem } from '@/integrations/signal-api/types';
-import { earningsRowDate } from '@/domain/concalls/signalCalendarEarnings';
+import type { SignalApiMarketQuote, SignalApiNewsItem } from '@/integrations/signal-api/types';
 
 export type SignalScoreInput = {
   symbol: string;
   quote?: SignalApiMarketQuote | null;
   news?: SignalApiNewsItem[];
-  nextEarning?: SignalApiCalendarEvent | null;
   vsSmaPct?: number | null;
-  todayYmd: string;
 };
 
 export type SignalScore = {
@@ -18,15 +15,6 @@ export type SignalScore = {
   newsCount: number;
   absMovePct: number;
 };
-
-function daysBetweenYmd(a: string, b: string): number | null {
-  const ma = /^(\d{4})-(\d{2})-(\d{2})$/.exec(a);
-  const mb = /^(\d{4})-(\d{2})-(\d{2})$/.exec(b);
-  if (!ma || !mb) return null;
-  const da = Date.UTC(Number(ma[1]), Number(ma[2]) - 1, Number(ma[3]));
-  const db = Date.UTC(Number(mb[1]), Number(mb[2]) - 1, Number(mb[3]));
-  return Math.round((db - da) / 86_400_000);
-}
 
 function effectiveMovePct(q?: SignalApiMarketQuote | null): number {
   if (!q) return 0;
@@ -73,17 +61,6 @@ export function buildSignalScore(input: SignalScoreInput): SignalScore {
     reasons.push('sma_stretched');
   } else if (absSma >= 4) {
     score += 10;
-  }
-
-  const earnDate = input.nextEarning ? earningsRowDate(input.nextEarning) : '';
-  if (earnDate.length >= 10) {
-    const days = daysBetweenYmd(input.todayYmd, earnDate);
-    if (days != null && days >= 0 && days <= 7) {
-      score += 18;
-      reasons.push('earnings_soon');
-    } else if (days != null && days >= 0 && days <= 21) {
-      score += 8;
-    }
   }
 
   const capped = Math.min(100, Math.round(score));

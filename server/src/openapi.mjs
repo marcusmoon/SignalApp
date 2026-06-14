@@ -120,7 +120,7 @@ export function getOpenApiSpec() {
           parameters: [
             { name: 'from', in: 'query', schema: { type: 'string', example: '2026-04-01' } },
             { name: 'to', in: 'query', schema: { type: 'string', example: '2026-05-01' } },
-            { name: 'type', in: 'query', schema: { type: 'string', example: 'earnings' } },
+            { name: 'type', in: 'query', schema: { type: 'string', example: 'macro' } },
             { name: 'limit', in: 'query', schema: { type: 'integer', example: 5000 } },
           ],
           responses: {
@@ -142,7 +142,7 @@ export function getOpenApiSpec() {
           parameters: [
             { name: 'from', in: 'query', schema: { type: 'string', example: '2026-04-01' } },
             { name: 'to', in: 'query', schema: { type: 'string', example: '2026-05-01' } },
-            { name: 'type', in: 'query', schema: { type: 'string', example: 'earnings' } },
+            { name: 'type', in: 'query', schema: { type: 'string', example: 'macro' } },
           ],
           responses: {
             200: {
@@ -179,61 +179,6 @@ export function getOpenApiSpec() {
             { name: 'q', in: 'query', schema: { type: 'string' } },
             { name: 'channel', in: 'query', schema: { type: 'string' } },
             { name: 'sort', in: 'query', schema: { type: 'string', enum: ['latest', 'popular'], default: 'latest' } },
-            { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 30 } },
-            { name: 'offset', in: 'query', schema: { type: 'integer', minimum: 0, default: 0 } },
-            {
-              name: 'page',
-              in: 'query',
-              schema: {
-                type: 'integer',
-                minimum: 1,
-                description: 'Deprecated: prefer offset = (page-1)*limit when offset is omitted',
-              },
-            },
-            {
-              name: 'pageSize',
-              in: 'query',
-              schema: { type: 'integer', minimum: 1, maximum: 100, description: 'Deprecated alias for limit' },
-            },
-          ],
-          responses: {
-            200: {
-              description: 'OK',
-              content: {
-                'application/json': {
-                  schema: {
-                    type: 'object',
-                    properties: {
-                      data: { type: 'array', items: { type: 'object' } },
-                      meta: {
-                        type: 'object',
-                        properties: {
-                          limit: { type: 'integer' },
-                          offset: { type: 'integer' },
-                          total: { type: 'integer' },
-                          hasMore: { type: 'boolean' },
-                          nextOffset: { type: 'integer', nullable: true },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-      '/v1/concalls': {
-        get: {
-          tags: ['public'],
-          summary: 'List earnings call transcripts/summaries',
-          parameters: [
-            { name: 'symbol', in: 'query', schema: { type: 'string', example: 'AAPL' } },
-            { name: 'fiscalYear', in: 'query', schema: { type: 'integer', example: 2026 } },
-            { name: 'fiscalQuarter', in: 'query', schema: { type: 'integer', example: 1 } },
-            { name: 'from', in: 'query', schema: { type: 'string', example: '2026-04-01' } },
-            { name: 'to', in: 'query', schema: { type: 'string', example: '2026-05-01' } },
-            { name: 'includeTranscript', in: 'query', schema: { type: 'string', enum: ['0', '1'], default: '0' } },
             { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 30 } },
             { name: 'offset', in: 'query', schema: { type: 'integer', minimum: 0, default: 0 } },
             {

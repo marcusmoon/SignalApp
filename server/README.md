@@ -78,7 +78,7 @@ Provider key는 env seed로 넣을 수 있지만, 일반 운영은 Admin 설정�
 
 - 설정: `provider_settings`, `translation_settings`, `news_sources`, `market_lists`, `legal_terms`
 - 수집/실행: `polling_jobs`, `polling_job_runs`, `polling_job_locks`
-- 콘텐츠: `news_items`, `news_translations`, `calendar_events`, `concall_transcripts`, `youtube_videos`
+- 콘텐츠: `news_items`, `news_translations`, `calendar_events`, `youtube_videos`
 - 시장 데이터: `market_quotes`, `coin_markets`
 - 인사이트/알림: `insight_items`, `notification_items`
 - 사용자: `admin_users`, `app_users`, `app_user_sessions`, `app_user_devices`, `app_user_identities`, `app_user_terms_acceptances`, `app_user_account_events`

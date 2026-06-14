@@ -23,7 +23,7 @@
 | 뉴스 | `app/(tabs)/news.tsx` | 글로벌/코인/관심/영상 피드 |
 | 시그널 | `app/(tabs)/signal.tsx` | Codex 시장 브리핑(국내·미국, 날짜·회차) |
 | 시세 | `app/(tabs)/quotes.tsx` | 관심·인기·시총·코인 시세 |
-| 더보기 | `app/(tabs)/more.tsx` | 컨콜, 유튜브, 계정·설정 |
+| 더보기 | `app/(tabs)/more.tsx` | 유튜브, 계정·설정 |
 
 유튜브(`app/(tabs)/youtube.tsx`)는 탭에서 숨기고 더보기에서 진입한다.
 

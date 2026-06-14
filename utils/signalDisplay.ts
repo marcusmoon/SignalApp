@@ -22,7 +22,6 @@ export function signalReasonMessageId(reason: string): MessageId {
   if (reason === 'price_drop') return 'signalReasonPriceDrop';
   if (reason === 'price_move') return 'signalReasonPriceMove';
   if (reason === 'sma_stretched') return 'signalReasonSmaStretched';
-  if (reason === 'earnings_soon') return 'signalReasonEarningsSoon';
   return 'signalReasonWatch';
 }
 

@@ -153,11 +153,9 @@ function RootLayoutNav() {
           account: t('screenAccount'),
           alerts: t('screenAlerts'),
           calendar: t('screenCalendar'),
-          calls: t('callsSectionTitle'),
           terms: t('termsScreenTitle'),
           'terms-history': t('termsHistoryScreenTitle'),
           oauth: t('screenAccount'),
-          'mega-cap-list': t('screenMegaCapList'),
           'symbol/[ticker]': t('screenSymbolDetail'),
         };
         return {

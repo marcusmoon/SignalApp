@@ -6,7 +6,6 @@ const RESET_TARGETS = {
   newsTranslations: 'newsTranslations',
   calendarEvents: 'calendarEvents',
   youtubeVideos: 'youtubeVideos',
-  concallTranscripts: 'concallTranscripts',
   marketQuotes: 'marketQuotes',
   coinMarkets: 'coinMarkets',
   insightItems: 'insightItems',

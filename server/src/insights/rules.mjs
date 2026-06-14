@@ -29,15 +29,6 @@ function dateKeyInTimeZone(value, timeZone) {
   return date.toISOString().slice(0, 10);
 }
 
-function daysBetweenYmd(a, b) {
-  const ma = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(a || ''));
-  const mb = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(b || ''));
-  if (!ma || !mb) return null;
-  const da = Date.UTC(Number(ma[1]), Number(ma[2]) - 1, Number(ma[3]));
-  const db = Date.UTC(Number(mb[1]), Number(mb[2]) - 1, Number(mb[3]));
-  return Math.round((db - da) / 86_400_000);
-}
-
 function normalizeSymbol(value) {
   return String(value || '').trim().toUpperCase();
 }
@@ -84,19 +75,6 @@ function recentRows(rows, fields, sinceMs, limit = 200, { dateMode = 'today', ti
     .slice(0, limit);
 }
 
-function nextEarningsBySymbol(events, today) {
-  const map = new Map();
-  for (const event of events || []) {
-    if (event?.type !== 'earnings') continue;
-    const symbol = normalizeSymbol(event.symbol);
-    const date = String(event.date || event.eventAt || '').slice(0, 10);
-    if (!symbol || !date || date < today) continue;
-    const prev = map.get(symbol);
-    if (!prev || date < String(prev.date || prev.eventAt || '').slice(0, 10)) map.set(symbol, event);
-  }
-  return map;
-}
-
 function levelForScore(score) {
   if (score >= 70) return 'alert';
   if (score >= 40) return 'watch';
@@ -141,12 +119,11 @@ function sourceRefFromYoutube(item) {
   };
 }
 
-function sourceStats({ news = [], videos = [], quote = null, earning = null }) {
+function sourceStats({ news = [], videos = [], quote = null }) {
   return {
     news: news.length,
     youtube: videos.length,
     quote: quote ? 1 : 0,
-    earnings: earning ? 1 : 0,
   };
 }
 
@@ -155,55 +132,36 @@ function sourceStatsSummary(stats) {
   if (stats.news > 0) parts.push(`뉴스 ${stats.news}건`);
   if (stats.youtube > 0) parts.push(`유튜브 ${stats.youtube}건`);
   if (stats.quote > 0) parts.push('시세');
-  if (stats.earnings > 0) parts.push('실적 일정');
   return parts.join(' · ') || '수집 데이터';
 }
 
-function driverForSymbol({ news, movePct, earningsSoon, videos }) {
+function driverForSymbol({ news, movePct, videos }) {
   const drivers = [];
   if (news.length >= 3) drivers.push('news_cluster');
   if (Math.abs(movePct) >= 2) drivers.push(movePct > 0 ? 'price_breakout' : 'price_pressure');
-  if (earningsSoon) drivers.push('earnings_near');
   if (videos.length > 0) drivers.push('youtube_context');
   return drivers;
 }
 
-function titleForSymbol(symbol, score, newsCount, movePct, earningsSoon) {
-  const moveText = Math.abs(movePct) >= 1 ? `${movePct > 0 ? '+' : ''}${movePct.toFixed(1)}%` : '시세 변동 낮음';
-  if (earningsSoon) return `${symbol} 실적 전후 신호 점검`;
+function titleForSymbol(symbol, score, newsCount, movePct) {
   if (score >= 70) return `${symbol} 강한 시장 신호 감지`;
   if (newsCount >= 3 && Math.abs(movePct) >= 2) return `${symbol} 뉴스와 시세가 함께 움직임`;
   return `${symbol} 관심 신호 업데이트`;
 }
 
-function pushProfileForSignal({
-  score,
-  pushMinScore,
-  news,
-  videos,
-  movePct,
-  earningsSoon,
-  sourceRefs,
-}) {
+function pushProfileForSignal({ score, pushMinScore, news, videos, movePct, sourceRefs }) {
   const absMove = Math.abs(movePct);
   const hasContent = news.length > 0 || videos.length > 0;
-  const hasCatalyst = hasContent || earningsSoon;
   const sourceTypes = new Set(sourceRefs.map((ref) => ref.type).filter(Boolean));
   const sourceMix = sourceTypes.size;
   const urgentMove = absMove >= 5 && hasContent;
   const denseNews = news.length >= 3;
   const scorePass = score >= pushMinScore;
-  const candidate = hasCatalyst && (scorePass || urgentMove || (earningsSoon && score >= Math.max(40, pushMinScore - 10)));
-  const priority =
-    candidate && (score >= 70 || urgentMove || (earningsSoon && denseNews))
-      ? 'high'
-      : candidate
-        ? 'normal'
-        : 'none';
+  const candidate = hasContent && (scorePass || urgentMove);
+  const priority = candidate && (score >= 70 || urgentMove) ? 'high' : candidate ? 'normal' : 'none';
   const reasonParts = [];
   if (scorePass) reasonParts.push(`score>=${pushMinScore}`);
   if (urgentMove) reasonParts.push('large_move_with_content');
-  if (earningsSoon) reasonParts.push('earnings_near');
   if (sourceMix >= 2) reasonParts.push('multi_source');
   if (denseNews) reasonParts.push('news_cluster');
   return {
@@ -214,12 +172,9 @@ function pushProfileForSignal({
   };
 }
 
-function buildSymbolInsight({ symbol, news, quote, earning, videos, today, generatedAt, expiresAt, llm, pushMinScore }) {
+function buildSymbolInsight({ symbol, news, quote, videos, generatedAt, expiresAt, llm, pushMinScore }) {
   const movePct = quoteMovePct(quote);
   const absMove = Math.abs(movePct);
-  const earningDate = String(earning?.date || earning?.eventAt || '').slice(0, 10);
-  const earningDays = earningDate ? daysBetweenYmd(today, earningDate) : null;
-  const earningsSoon = earningDays != null && earningDays >= 0 && earningDays <= 7;
   const reasons = [];
   const nextSteps = [];
   let score = 0;
@@ -249,12 +204,6 @@ function buildSymbolInsight({ symbol, news, quote, earning, videos, today, gener
     score += 8;
   }
 
-  if (earningsSoon) {
-    score += 20;
-    reasons.push(`실적 발표가 ${earningDays === 0 ? '오늘' : `${earningDays}일 뒤`} 예정되어 있습니다.`);
-    nextSteps.push('실적 전후 가이던스와 컨콜 일정을 함께 보세요.');
-  }
-
   if (videos.length > 0) {
     score += Math.min(10, videos.length * 4);
     reasons.push(`관련 유튜브 ${videos.length}건이 최근 업데이트됐습니다.`);
@@ -270,10 +219,9 @@ function buildSymbolInsight({ symbol, news, quote, earning, videos, today, gener
   const summaryParts = [];
   if (news.length > 0) summaryParts.push(`뉴스 ${news.length}건`);
   if (Math.abs(movePct) >= 1) summaryParts.push(`시세 ${movePct > 0 ? '+' : ''}${movePct.toFixed(1)}%`);
-  if (earningsSoon) summaryParts.push(`실적 D-${earningDays}`);
   if (videos.length > 0) summaryParts.push(`유튜브 ${videos.length}건`);
-  const stats = sourceStats({ news, videos, quote, earning: earningsSoon ? earning : null });
-  const drivers = driverForSymbol({ news, movePct, earningsSoon, videos });
+  const stats = sourceStats({ news, videos, quote });
+  const drivers = driverForSymbol({ news, movePct, videos });
   const whyNow = `${sourceStatsSummary(stats)} 등 신호가 같은 시간대에 겹치며 관심도가 올라왔습니다.`;
   const summary = `${summaryParts.join(' · ') || '수집 데이터'} 기준으로 관심도가 상승했습니다. ${nextSteps[0] || '관련 원문을 확인해 맥락을 이어서 볼 수 있습니다.'}`;
   const pushProfile = pushProfileForSignal({
@@ -282,7 +230,6 @@ function buildSymbolInsight({ symbol, news, quote, earning, videos, today, gener
     news,
     videos,
     movePct,
-    earningsSoon,
     sourceRefs,
   });
 
@@ -291,7 +238,7 @@ function buildSymbolInsight({ symbol, news, quote, earning, videos, today, gener
     kind: 'asset_signal',
     level,
     score: capped,
-    title: titleForSymbol(symbol, capped, news.length, movePct, earningsSoon),
+    title: titleForSymbol(symbol, capped, news.length, movePct),
     summary,
     whyNow,
     actionLabel: '관련 원문 확인',
@@ -299,9 +246,9 @@ function buildSymbolInsight({ symbol, news, quote, earning, videos, today, gener
     sourceStats: stats,
     nextSteps: [...new Set(nextSteps)].slice(0, 3),
     priceMovePercent: Number.isFinite(movePct) ? Number(movePct.toFixed(2)) : null,
-    earningsDate: earningsSoon ? earningDate : null,
+    earningsDate: null,
     symbols: [symbol],
-    topics: ['asset', ...(earningsSoon ? ['earnings'] : []), ...(news.length ? ['news'] : []), ...(absMove >= 2 ? ['price_move'] : [])],
+    topics: ['asset', ...(news.length ? ['news'] : []), ...(absMove >= 2 ? ['price_move'] : [])],
     reasoning: reasons,
     sourceRefs,
     relatedNewsIds: news.map((item) => item.id),
@@ -320,7 +267,6 @@ function buildSymbolInsight({ symbol, news, quote, earning, videos, today, gener
       symbol,
       news: news.slice(0, 6).map((item) => ({ title: item.titleOriginal || item.title, summary: item.summaryOriginal || '' })),
       quote,
-      earning,
       videos: videos.slice(0, 3).map((item) => ({ title: item.title, channel: item.channel })),
     },
     generatedAt,
@@ -406,7 +352,6 @@ export function generateMarketInsights(db, params = {}) {
   const recentVideos = recentRows(db.youtubeVideos, ['publishedAt', 'fetchedAt', 'updatedAt'], sinceMs, 120, recency);
   const recentQuotes = recentRows(db.marketQuotes, ['quoteTime', 'fetchedAt', 'updatedAt'], sinceMs, 500, recency);
   const quoteMap = bestQuoteBySymbol(recentQuotes);
-  const earningsMap = nextEarningsBySymbol(db.calendarEvents, today);
   const videosBySymbol = new Map();
   for (const video of recentVideos) {
     for (const symbol of video.symbols || []) {
@@ -427,12 +372,7 @@ export function generateMarketInsights(db, params = {}) {
     }
   }
 
-  const symbols = new Set([
-    ...quoteMap.keys(),
-    ...earningsMap.keys(),
-    ...newsBySymbol.keys(),
-    ...videosBySymbol.keys(),
-  ]);
+  const symbols = new Set([...quoteMap.keys(), ...newsBySymbol.keys(), ...videosBySymbol.keys()]);
 
   const assetInsights = [...symbols]
     .map((symbol) =>
@@ -440,9 +380,7 @@ export function generateMarketInsights(db, params = {}) {
         symbol,
         news: newsBySymbol.get(symbol) || [],
         quote: quoteMap.get(symbol) || null,
-        earning: earningsMap.get(symbol) || null,
         videos: videosBySymbol.get(symbol) || [],
-        today,
         generatedAt,
         expiresAt,
         llm,

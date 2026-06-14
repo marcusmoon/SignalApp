@@ -13,21 +13,12 @@ import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchCompanyNewsForDisplay } from '@/services/companyNewsForSymbol';
-import {
-  earningsRowDate,
-  earningsRowHour,
-  earningsRowQuarter,
-  earningsRowSymbol,
-  earningsRowYear,
-} from '@/domain/concalls/signalCalendarEarnings';
-import { fetchSignalEarningsCalendarRangeMerged } from '@/integrations/signal-api/calendarRange';
 import { fetchSignalInsights } from '@/integrations/signal-api/insights';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { signalNewsToNewsItem } from '@/integrations/signal-api/news';
 import { fetchSignalStockCandles, fetchSignalStockProfile } from '@/integrations/signal-api/stock';
 import type {
-  SignalApiCalendarEvent,
   SignalApiInsight,
   SignalApiMarketQuote,
   SignalApiNewsItem,
@@ -43,11 +34,6 @@ import { addDays, toYmd } from '@/utils/date';
 import { signalReasonLabel } from '@/utils/signalDisplay';
 import { openNaverFinanceStock } from '@/utils/naverFinance';
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
-
-/** 실적 캘린더 과거 구간(일) — 지난 분기 행이 보이도록 넉넉히 */
-const EARN_LOOKBACK_DAYS = 800;
-const EARN_FORWARD_DAYS = 540;
-const EARN_ROWS_MAX = 24;
 
 type SparkPoint = {
   x: number;
@@ -116,15 +102,6 @@ function formatMarketCapUsd(millions: number | undefined): string {
   if (usd >= 1_000_000_000_000) return `$${(usd / 1_000_000_000_000).toFixed(2)}T`;
   if (usd >= 1_000_000_000) return `$${(usd / 1_000_000_000).toFixed(1)}B`;
   return `$${(usd / 1_000_000).toFixed(0)}M`;
-}
-
-function fmtFinMetric(n: number | null | undefined): string {
-  if (n == null || !Number.isFinite(n)) return '—';
-  return Math.abs(n) >= 1000 ? n.toLocaleString('en-US', { maximumFractionDigits: 0 }) : String(n);
-}
-
-function hasCalendarMetrics(row: SignalApiCalendarEvent): boolean {
-  return [row.estimate, row.actual, row.previous].some((v) => typeof v === 'number' && Number.isFinite(v));
 }
 
 function normalizeCompanyName(name: string | undefined, ticker: string): string | null {
@@ -371,50 +348,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     newsSource: { fontSize: sf(11), fontWeight: '800', color: theme.textDim },
     newsTime: { fontSize: sf(11), color: theme.textMuted },
     newsTitle: { fontSize: sf(14), lineHeight: sf(20), color: theme.text, fontWeight: '700', marginBottom: 4 },
-    earningsSubheading: {
-      fontSize: sf(11),
-      fontWeight: '800',
-      letterSpacing: 0.4,
-      color: theme.textMuted,
-      marginBottom: 10,
-      marginTop: 4,
-    },
-    earningsRow: {
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      paddingVertical: 14,
-      paddingHorizontal: 14,
-      marginBottom: 10,
-    },
-    earningsRowUpcoming: {
-      borderLeftWidth: 4,
-      borderLeftColor: theme.green,
-      backgroundColor: theme.greenDim,
-      borderColor: theme.greenBorder,
-    },
-    earningsRowPast: {
-      borderLeftWidth: 4,
-      borderLeftColor: 'rgba(142,142,147,0.35)',
-    },
-    earningsRowInner: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    earningsLeft: { flex: 1, minWidth: 0 },
-    earningsFyDate: { fontSize: sf(16), fontWeight: '900', color: theme.text, letterSpacing: -0.25, marginBottom: 8 },
-    earningsHourBadge: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 6,
-      backgroundColor: theme.card,
-      borderWidth: 1,
-      borderColor: theme.border,
-      marginBottom: 8,
-    },
-    earningsHourBadgeText: { fontSize: sf(11), fontWeight: '800', color: theme.textMuted },
-    earningsMeta: { fontSize: sf(13), lineHeight: sf(20), color: theme.text, fontWeight: '600', opacity: 0.92 },
-    earningsFoot: { fontSize: sf(11), color: theme.textDim, marginTop: 12, lineHeight: sf(16) },
-    earningsRowPressed: { opacity: 0.88 },
     empty: { fontSize: sf(13), color: theme.textMuted },
     sourceFootnote: {
       fontSize: sf(11),
@@ -439,58 +372,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   });
 }
 
-type SymbolDetailStyles = ReturnType<typeof makeStyles>;
-
-function SymbolEarningsRowPressable({
-  row,
-  variant,
-  styles,
-  theme,
-  fiscalTitle,
-  hourLabel,
-  metricsText,
-  onPress,
-  a11yLabel,
-}: {
-  row: SignalApiCalendarEvent;
-  variant: 'upcoming' | 'past';
-  styles: SymbolDetailStyles;
-  theme: AppTheme;
-  fiscalTitle: string;
-  hourLabel: string;
-  metricsText: string | null;
-  onPress: () => void;
-  a11yLabel: string;
-}) {
-  const isUp = variant === 'upcoming';
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.earningsRow,
-        isUp ? styles.earningsRowUpcoming : styles.earningsRowPast,
-        pressed && styles.earningsRowPressed,
-      ]}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={a11yLabel}>
-      <View style={styles.earningsRowInner}>
-        <View style={styles.earningsLeft}>
-          <Text style={styles.earningsFyDate}>{fiscalTitle}</Text>
-          <View style={styles.earningsHourBadge}>
-            <Text style={styles.earningsHourBadgeText}>{hourLabel}</Text>
-          </View>
-          {metricsText ? <Text style={styles.earningsMeta}>{metricsText}</Text> : null}
-        </View>
-        <FontAwesome
-          name="chevron-right"
-          size={14}
-          color={isUp ? theme.green : theme.textMuted}
-          style={{ marginTop: 2 }}
-        />
-      </View>
-    </Pressable>
-  );
-}
 
 const stylesStatic = StyleSheet.create({
   sparkWrap: {
@@ -539,7 +420,6 @@ export default function SymbolDetailScreen() {
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
   const [signalNews, setSignalNews] = useState<SignalApiNewsItem[]>([]);
   const [serverInsights, setServerInsights] = useState<SignalApiInsight[]>([]);
-  const [earnings, setEarnings] = useState<SignalApiCalendarEvent[]>([]);
   const [watching, setWatching] = useState(false);
   const isKorea = useMemo(() => isKoreaSymbol(ticker), [ticker]);
   const displayPrice =
@@ -570,23 +450,18 @@ export default function SymbolDetailScreen() {
       setNewsItems([]);
       setSignalNews([]);
       setServerInsights([]);
-      setEarnings([]);
       setLoading(false);
       return;
     }
 
     setError(null);
-    const earnFrom = addDays(new Date(), -EARN_LOOKBACK_DAYS);
-    const earnTo = addDays(new Date(), EARN_FORWARD_DAYS);
-
-    try {
-      const [watchlist, nextProfile, mqRows, nextCandles, companyNews, earningsRows, insightRows] = await Promise.all([
+        try {
+      const [watchlist, nextProfile, mqRows, nextCandles, companyNews, insightRows] = await Promise.all([
         loadWatchlistSymbols(),
         fetchSignalStockProfile(ticker),
         fetchSignalMarketQuotes({ symbols: [ticker], limit: 1 }).catch(() => []),
         fetchSignalStockCandles(ticker, 'D', addDays(new Date(), -30), new Date()).catch(() => null),
         fetchCompanyNewsForDisplay(ticker, locale).catch(() => [] as SignalApiNewsItem[]),
-        fetchSignalEarningsCalendarRangeMerged(earnFrom, earnTo).catch(() => [] as SignalApiCalendarEvent[]),
         fetchSignalInsights({
           symbol: ticker,
           date: 'today',
@@ -605,23 +480,6 @@ export default function SymbolDetailScreen() {
       setSignalNews(relatedRaw);
       const translatedNews = relatedRaw.map((a) => signalNewsToNewsItem(a, locale));
 
-      const todayYmd = toYmd(new Date());
-      const matchedAll = earningsRows
-        .filter((row) => earningsRowSymbol(row) === ticker)
-        .sort((a, b) => earningsRowDate(a).localeCompare(earningsRowDate(b)));
-      const upcoming = matchedAll.filter((r) => earningsRowDate(r) >= todayYmd);
-      const past = matchedAll
-        .filter((r) => earningsRowDate(r) < todayYmd)
-        .sort((a, b) => earningsRowDate(b).localeCompare(earningsRowDate(a)));
-      const matchedEarnings = [...upcoming, ...past].slice(0, EARN_ROWS_MAX);
-
-      setWatching(watchlist.includes(ticker));
-      setProfile(nextProfile);
-      setQuote(nextQuote);
-      setCandles(nextCandles);
-      setNewsItems(translatedNews);
-      setServerInsights(insightRows);
-      setEarnings(matchedEarnings);
     } catch (e) {
       setServerInsights([]);
       setError(formatSignalApiError(e, t, 'symbolDetailErrorLoad'));
@@ -659,10 +517,6 @@ export default function SymbolDetailScreen() {
 
   const chartColor = displayChange != null ? (displayChange >= 0 ? theme.green : '#E06D6D') : theme.green;
 
-  const latestEarning = useMemo(() => {
-    const today = toYmd(new Date());
-    return earnings.find((r) => earningsRowDate(r) >= today) ?? null;
-  }, [earnings]);
 
   const symbolVsSma20Pct = useMemo(() => {
     if (displayPrice == null || chartCloses.length < 20) return null;
@@ -679,11 +533,9 @@ export default function SymbolDetailScreen() {
         symbol: ticker,
         quote,
         news: signalNews,
-        nextEarning: latestEarning,
         vsSmaPct: symbolVsSma20Pct,
-        todayYmd: toYmd(new Date()),
       }),
-    [latestEarning, signalNews, quote, symbolVsSma20Pct, ticker],
+    [signalNews, quote, symbolVsSma20Pct, ticker],
   );
 
   const chartRangeLabel = useMemo(() => {
@@ -699,29 +551,6 @@ export default function SymbolDetailScreen() {
   );
   const displayCompanyName = companyName ?? (isKorea ? ticker : t('symbolDetailCompanyUnknown'));
 
-  const earningsSplit = useMemo(() => {
-    const y = toYmd(new Date());
-    const idx = earnings.findIndex((r) => earningsRowDate(r) < y);
-    const upcomingEarnings = idx === -1 ? earnings : earnings.slice(0, idx);
-    const pastEarnings = idx === -1 ? [] : earnings.slice(idx);
-    return { upcomingEarnings, pastEarnings };
-  }, [earnings]);
-
-  const openEarningsSummary = useCallback(
-    (row: SignalApiCalendarEvent) => {
-      router.push({
-        pathname: '/calls',
-        params: {
-          ticker,
-          year: String(earningsRowYear(row)),
-          quarter: String(earningsRowQuarter(row)),
-          date: earningsRowDate(row),
-          hour: earningsRowHour(row),
-        },
-      });
-    },
-    [router, ticker],
-  );
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
@@ -845,12 +674,6 @@ export default function SymbolDetailScreen() {
                 {quote ? formatPct(Number(quote.changePercent ?? 0)) : '—'}
               </Text>
             </View>
-            <View style={styles.signalStat}>
-              <Text style={styles.signalStatLabel}>{t('symbolDetailSignalNextEarning')}</Text>
-              <Text style={styles.signalStatValue} numberOfLines={1}>
-                {latestEarning ? earningsRowDate(latestEarning) : '—'}
-              </Text>
-            </View>
           </View>
           <Text style={styles.signalReasonLine}>
             {(symbolSignal.reasons.length > 0
@@ -898,106 +721,6 @@ export default function SymbolDetailScreen() {
           <Text style={styles.sourceFootnote}>{t('symbolDetailNewsSourceShort')}</Text>
         </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.section}>{t('symbolDetailSectionEarningsConcall')}</Text>
-          {earnings.length > 0 ? (
-            <>
-              {earningsSplit.upcomingEarnings.length > 0 ? (
-                <>
-                  <Text style={styles.earningsSubheading}>{t('symbolDetailEarningsSubUpcoming')}</Text>
-                  {earningsSplit.upcomingEarnings.map((row) => {
-                    const hourRaw = earningsRowHour(row);
-                    const h = hourRaw.trim().toLowerCase();
-                    const hourLabel =
-                      h === 'bmo' ? t('briefingEarnHourBmo') : h === 'amc' ? t('briefingEarnHourAmc') : hourRaw || '—';
-                    return (
-                      <SymbolEarningsRowPressable
-                        key={`up-${earningsRowSymbol(row)}-${earningsRowDate(row)}-${earningsRowQuarter(row)}-${earningsRowYear(row)}`}
-                        row={row}
-                        variant="upcoming"
-                        styles={styles}
-                        theme={theme}
-                        fiscalTitle={t('symbolDetailEarningsFyQuarterDate', {
-                          fy: String(earningsRowYear(row)),
-                          q: String(earningsRowQuarter(row)),
-                          date: earningsRowDate(row),
-                        })}
-                        hourLabel={hourLabel}
-                        metricsText={
-                          hasCalendarMetrics(row)
-                            ? t('symbolDetailEarningsMetrics', {
-                                epsEst: fmtFinMetric(row.estimate),
-                                epsAct: fmtFinMetric(row.actual),
-                                revEst: fmtFinMetric(null),
-                                revAct: fmtFinMetric(null),
-                              })
-                            : null
-                        }
-                        onPress={() => openEarningsSummary(row)}
-                        a11yLabel={t('symbolDetailEarningsOpenSummaryA11y', {
-                          date: earningsRowDate(row),
-                          fy: String(earningsRowYear(row)),
-                          q: String(earningsRowQuarter(row)),
-                        })}
-                      />
-                    );
-                  })}
-                </>
-              ) : null}
-              {earningsSplit.pastEarnings.length > 0 ? (
-                <>
-                  <Text
-                    style={[
-                      styles.earningsSubheading,
-                      earningsSplit.upcomingEarnings.length > 0 && { marginTop: 18 },
-                    ]}>
-                    {t('symbolDetailEarningsSubPast')}
-                  </Text>
-                  {earningsSplit.pastEarnings.map((row) => {
-                    const hourRaw = earningsRowHour(row);
-                    const h = hourRaw.trim().toLowerCase();
-                    const hourLabel =
-                      h === 'bmo' ? t('briefingEarnHourBmo') : h === 'amc' ? t('briefingEarnHourAmc') : hourRaw || '—';
-                    return (
-                      <SymbolEarningsRowPressable
-                        key={`past-${earningsRowSymbol(row)}-${earningsRowDate(row)}-${earningsRowQuarter(row)}-${earningsRowYear(row)}`}
-                        row={row}
-                        variant="past"
-                        styles={styles}
-                        theme={theme}
-                        fiscalTitle={t('symbolDetailEarningsFyQuarterDate', {
-                          fy: String(earningsRowYear(row)),
-                          q: String(earningsRowQuarter(row)),
-                          date: earningsRowDate(row),
-                        })}
-                        hourLabel={hourLabel}
-                        metricsText={
-                          hasCalendarMetrics(row)
-                            ? t('symbolDetailEarningsMetrics', {
-                                epsEst: fmtFinMetric(row.estimate),
-                                epsAct: fmtFinMetric(row.actual),
-                                revEst: fmtFinMetric(null),
-                                revAct: fmtFinMetric(null),
-                              })
-                            : null
-                        }
-                        onPress={() => openEarningsSummary(row)}
-                        a11yLabel={t('symbolDetailEarningsOpenSummaryA11y', {
-                          date: earningsRowDate(row),
-                          fy: String(earningsRowYear(row)),
-                          q: String(earningsRowQuarter(row)),
-                        })}
-                      />
-                    );
-                  })}
-                </>
-              ) : null}
-              <Text style={styles.earningsFoot}>{t('symbolDetailEarningsFootnote')}</Text>
-            </>
-          ) : (
-            <Text style={styles.empty}>{t('symbolDetailNoEarnings')}</Text>
-          )}
-        </View>
       </ScrollView>
       )}
     </SafeAreaView>

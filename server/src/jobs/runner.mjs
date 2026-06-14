@@ -16,8 +16,7 @@ import {
 } from '../db.mjs';
 import { config } from '../config.mjs';
 import { mergeAutoHashtagsIntoNewsItem } from '../newsHashtags.mjs';
-import { fetchNinjasConcallTranscript } from '../providers/concalls/ninjas.mjs';
-import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../providers/calendar/finnhub.mjs';
+import { fetchFinnhubEconomicCalendar } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
@@ -108,99 +107,6 @@ function upsertYoutubeVideo(list, row) {
   return upsertById(list, next);
 }
 
-function selectConcallTargets(db, params = {}) {
-  const from = ymd(addDays(new Date(), -Math.max(0, Number(params.daysBack) || 45)));
-  const to = ymd(addDays(new Date(), Number(params.daysAhead) || 2));
-  const today = ymd(new Date());
-  const limit = Math.max(1, Math.min(200, Number(params.limit) || 25));
-  const refreshExisting = params.refreshExisting === true;
-  const fallbackLatest = params.fallbackLatest !== false;
-  const listKey = params.listKey ? String(params.listKey) : '';
-  const sourceSymbols = [
-    ...(Array.isArray(params.symbols) ? params.symbols : []),
-    ...(listKey ? marketListSymbols(db, listKey) : []),
-  ]
-    .map(normalizeSymbol)
-    .filter(Boolean);
-  const allowed = new Set(sourceSymbols);
-  const existing = new Set(
-    (db.concallTranscripts || [])
-      .filter((row) => row?.transcript)
-      .map((row) => `${normalizeSymbol(row.symbol)}|${row.fiscalYear ?? ''}|${row.fiscalQuarter ?? ''}`),
-  );
-
-  const targets = [];
-  for (const ev of db.calendarEvents || []) {
-    if (ev?.type !== 'earnings') continue;
-    const symbol = normalizeSymbol(ev.symbol);
-    if (!symbol) continue;
-    if (allowed.size > 0 && !allowed.has(symbol)) continue;
-    const date = String(ev.date || '').slice(0, 10);
-    if (date && (date < from || date > to)) continue;
-    if (date && date > today) continue;
-    const fiscalYear = Number(ev.fiscalYear);
-    const fiscalQuarter = Number(ev.fiscalQuarter);
-    if (!Number.isFinite(fiscalYear) || !Number.isFinite(fiscalQuarter)) continue;
-    const key = `${symbol}|${fiscalYear}|${fiscalQuarter}`;
-    if (!refreshExisting && existing.has(key)) continue;
-    targets.push({
-      symbol,
-      fiscalYear,
-      fiscalQuarter,
-      earningsDate: date || null,
-      earningsHour: ev.earningsHour || ev.timeLabel || null,
-    });
-  }
-
-  targets.sort((a, b) => String(b.earningsDate || '').localeCompare(String(a.earningsDate || '')) || a.symbol.localeCompare(b.symbol));
-  if (targets.length === 0 && fallbackLatest && allowed.size > 0) {
-    const existingLatest = new Set(
-      (db.concallTranscripts || [])
-        .filter((row) => row?.transcript && row.fiscalYear == null && row.fiscalQuarter == null)
-        .map((row) => normalizeSymbol(row.symbol)),
-    );
-    return [...allowed]
-      .filter((symbol) => refreshExisting || !existingLatest.has(symbol))
-      .slice(0, limit)
-      .map((symbol) => ({
-        symbol,
-        fiscalYear: null,
-        fiscalQuarter: null,
-        earningsDate: null,
-        earningsHour: null,
-      }));
-  }
-  return targets.slice(0, limit);
-}
-
-async function fetchConcallTranscriptsFromCalendar(db, params = {}, { onProgress } = {}) {
-  const targets = selectConcallTargets(db, params);
-  const rows = [];
-  for (let i = 0; i < targets.length; i += 1) {
-    const target = targets[i];
-    try {
-      const row = await fetchNinjasConcallTranscript(target);
-      if (row) rows.push(row);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (
-        message === 'NINJAS_KEY_MISSING' ||
-        message === 'NINJAS_PROVIDER_DISABLED' ||
-        message.startsWith('NINJAS_TRANSCRIPT_400') ||
-        message.startsWith('NINJAS_TRANSCRIPT_401') ||
-        message.startsWith('NINJAS_TRANSCRIPT_403')
-      ) {
-        throw error;
-      }
-      /* keep the batch resilient */
-    }
-    if (typeof onProgress === 'function') {
-      await onProgress({ phase: 'transcripts', done: i + 1, total: targets.length, symbol: target.symbol });
-    }
-  }
-  return rows;
-}
-
 async function readJobContext(job) {
   const provider = String(job?.provider || '');
   const handler = String(job?.handler || '');
@@ -216,16 +122,6 @@ async function readJobContext(job) {
     (provider === 'yahoo' && handler === 'daily_bars')
   ) {
     context.marketLists = await listCollectionPayloads('marketLists');
-  }
-  if (provider === 'ninjas') {
-    const [calendarEvents, concallTranscripts, marketLists] = await Promise.all([
-      listCollectionPayloads('calendarEvents'),
-      listCollectionPayloads('concallTranscripts'),
-      listCollectionPayloads('marketLists'),
-    ]);
-    context.calendarEvents = calendarEvents;
-    context.concallTranscripts = concallTranscripts;
-    context.marketLists = marketLists;
   }
   if (provider === 'youtube') {
     const [appSettings, youtubeVideos] = await Promise.all([
@@ -389,12 +285,6 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
   if (job.provider === 'finnhub' && job.handler === 'economic_calendar') {
     return { kind: 'calendar', rows: await fetchFinnhubEconomicCalendar(job.params || {}) };
   }
-  if (job.provider === 'finnhub' && job.handler === 'earnings_calendar') {
-    return { kind: 'calendar', rows: await fetchFinnhubEarningsCalendar(job.params || {}) };
-  }
-  if (job.provider === 'ninjas' && job.handler === 'earning_transcripts') {
-    return { kind: 'concallTranscripts', rows: await fetchConcallTranscriptsFromCalendar(dbBefore, job.params || {}, { onProgress }) };
-  }
   if (job.provider === 'youtube' && job.handler === 'youtube_economy') {
     const handles = normalizeYoutubeCurationHandles(dbBefore.appSettings?.youtubeCurationHandles);
     return { kind: 'youtube', rows: await fetchYoutubeEconomy({ ...(job.params || {}), handles }) };
@@ -548,7 +438,7 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
     let lastProgressAt = 0;
     let lastProgressPercent = -1;
     const onProgress =
-      jobKey === 'market_quotes_mcap' || jobKey === 'concall_transcripts_recent'
+      jobKey === 'market_quotes_mcap'
         ? async ({ phase, done, total, symbol } = {}) => {
             const safeDone = Math.max(0, Number(done) || 0);
             const safeTotal = Math.max(0, Number(total) || 0);
@@ -590,7 +480,6 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
     const rows = result.rows || [];
     const directCollectionByKind = {
       calendar: 'calendarEvents',
-      concallTranscripts: 'concallTranscripts',
       marketQuotes: 'marketQuotes',
       marketList: 'marketLists',
       priceSeries: 'priceSeries',

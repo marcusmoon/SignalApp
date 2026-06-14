@@ -42,18 +42,12 @@ import type { MessageId } from '@/locales/messages';
 import type { CalendarEvent } from '@/types/signal';
 
 const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
-  earnings: 'calendarTagEarnings',
   macro: 'calendarTagMacro',
   fed: 'calendarTagFed',
   fomc: 'calendarTagFomc',
 };
 
 function calendarEventTimeLabel(ev: CalendarEvent, t: (id: MessageId) => string): string {
-  const code = ev.earningsHourCode;
-  if (!code) return ev.time || '—';
-  if (code === 'bmo') return t('briefingEarnHourBmo');
-  if (code === 'amc') return t('briefingEarnHourAmc');
-  if (code === 'dmh' || code === 'dmt') return t('calendarEarningsHourIntraday');
   return ev.time || '—';
 }
 
@@ -177,7 +171,9 @@ export default function CalendarScreen() {
       setDateSummaries(summaryList);
       setEvents(
         mergeCalendarEvents([
-          selectedDayList.map(signalCalendarToCalendarEvent),
+          selectedDayList
+            .map(signalCalendarToCalendarEvent)
+            .filter((event): event is CalendarEvent => event != null),
         ]),
       );
     },
@@ -225,7 +221,9 @@ export default function CalendarScreen() {
       try {
         const rows = await fetchSignalCalendar({ from: selectedYmd, to: selectedYmd });
         if (cancelled || rows.length === 0) return;
-        const next = rows.map(signalCalendarToCalendarEvent);
+        const next = rows
+          .map(signalCalendarToCalendarEvent)
+          .filter((event): event is CalendarEvent => event != null);
         setEvents((prev) => mergeCalendarEvents([prev, next]));
       } catch {
         // 월 조회는 이미 완료된 상태라, 날짜 보강 실패는 화면 전체 오류로 올리지 않는다.
@@ -336,10 +334,6 @@ export default function CalendarScreen() {
                 <View
                   style={[
                     styles.typeTag,
-                    ev.type === 'earnings' && {
-                      borderColor: theme.green + '88',
-                      backgroundColor: theme.green + '22',
-                    },
                     ev.type === 'macro' && {
                       borderColor: theme.accentBlue + '88',
                       backgroundColor: theme.accentBlue + '22',
@@ -356,18 +350,15 @@ export default function CalendarScreen() {
                   <Text
                     style={[
                       styles.typeTagText,
-                      ev.type === 'earnings' && { color: theme.green },
                       ev.type === 'macro' && { color: theme.accentBlue },
                       ev.type === 'fed' && { color: theme.accentOrange },
                       ev.type === 'fomc' && { color: theme.accentOrange },
                     ]}>
-                    {ev.type === 'earnings'
-                      ? t('calendarTagEarnings')
-                      : ev.type === 'fomc'
-                        ? t('calendarTagFomc')
-                        : ev.type === 'fed'
-                          ? t('calendarTagFed')
-                          : t('calendarTagMacro')}
+                    {ev.type === 'fomc'
+                      ? t('calendarTagFomc')
+                      : ev.type === 'fed'
+                        ? t('calendarTagFed')
+                        : t('calendarTagMacro')}
                   </Text>
                 </View>
                 {ev.impact ? (
@@ -395,8 +386,7 @@ export default function CalendarScreen() {
                   {ev.title}
                 </Text>
               </View>
-              {ev.type !== 'earnings' &&
-              (ev.actual != null || ev.estimate != null || ev.prev != null) ? (
+              {(ev.actual != null || ev.estimate != null || ev.prev != null) ? (
                 <View style={styles.metricRow}>
                   <Text style={styles.metricText}>
                     {t('calendarMetricActual')}: {formatCalendarMetric(ev.actual, ev.unit)}

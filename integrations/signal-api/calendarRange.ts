@@ -23,19 +23,3 @@ export async function fetchSignalMacroCalendarRangeMerged(
     .filter((r) => calendarEventSortKey(r).length >= 10)
     .sort((a, b) => calendarEventSortKey(a).localeCompare(calendarEventSortKey(b)));
 }
-
-export async function fetchSignalEarningsCalendarRangeMerged(
-  from: Date,
-  to: Date,
-): Promise<SignalApiCalendarEvent[]> {
-  const rows = await fetchSignalCalendar({
-    from: toYmd(from),
-    to: toYmd(to),
-    type: 'earnings',
-  });
-  return [...rows].sort((a, b) => {
-    const da = String(a.date || '').localeCompare(String(b.date || ''));
-    if (da !== 0) return da;
-    return String(a.symbol || '').localeCompare(String(b.symbol || ''));
-  });
-}

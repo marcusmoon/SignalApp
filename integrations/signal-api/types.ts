@@ -275,26 +275,6 @@ export type SignalApiInsight = {
   expiresAt: string | null;
 };
 
-export type SignalApiConcall = {
-  id: string;
-  provider: string;
-  providerItemId: string;
-  symbol: string;
-  title: string;
-  fiscalYear: number | null;
-  fiscalQuarter: number | null;
-  earningsDate: string | null;
-  earningsHour: string | null;
-  transcriptSnippet: string;
-  transcript?: string;
-  summaryStatus: 'completed' | 'missing' | 'failed' | string;
-  summaryProvider: 'openai' | 'claude' | string | null;
-  summaryBullets: string[];
-  guidance: string;
-  risk: string;
-  fetchedAt: string;
-};
-
 /** `/v1/stock-profile` — shape matches server `data` payload */
 export type SignalApiStockProfile = {
   symbol?: string;

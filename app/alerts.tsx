@@ -92,10 +92,7 @@ export default function AlertsScreen() {
       timeZone,
       limit: 10,
     }).catch(() => ({ items: [] as SignalApiInsight[], meta: { total: 0, limit: 10, offset: 0, hasMore: false } }));
-    const filtered = prefs.earningsOnly
-      ? rows.filter((row) => row.topics?.includes('earnings') || row.signalDrivers?.includes('earnings_near'))
-      : rows;
-    setCandidates(filtered);
+    setCandidates(rows);
   }, []);
 
   useFocusEffect(

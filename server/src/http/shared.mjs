@@ -328,40 +328,6 @@ export function filterCoinMarkets(items, url) {
   return rows.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
 }
 
-export function filterConcalls(items, url) {
-  const symbol = url.searchParams.get('symbol')?.trim().toUpperCase();
-  const year = url.searchParams.get('year') || url.searchParams.get('fiscalYear');
-  const quarter = url.searchParams.get('quarter') || url.searchParams.get('fiscalQuarter');
-  const from = url.searchParams.get('from');
-  const to = url.searchParams.get('to');
-  const q = url.searchParams.get('q')?.trim().toLowerCase();
-  const includeTranscript = url.searchParams.get('includeTranscript') === '1';
-  let rows = [...items];
-  if (symbol) rows = rows.filter((item) => String(item.symbol || '').toUpperCase() === symbol);
-  if (year) rows = rows.filter((item) => String(item.fiscalYear ?? '') === String(year));
-  if (quarter) rows = rows.filter((item) => String(item.fiscalQuarter ?? '') === String(quarter));
-  if (from) rows = rows.filter((item) => !item.earningsDate || item.earningsDate >= from);
-  if (to) rows = rows.filter((item) => !item.earningsDate || item.earningsDate <= to);
-  if (q) {
-    rows = rows.filter((item) =>
-      [item.symbol, item.title, item.summaryProvider, item.provider].some((value) =>
-        String(value || '').toLowerCase().includes(q),
-      ),
-    );
-  }
-  return rows
-    .sort(
-      (a, b) =>
-        String(b.earningsDate || '').localeCompare(String(a.earningsDate || '')) ||
-        String(a.symbol || '').localeCompare(String(b.symbol || '')),
-    )
-    .map((item) => {
-      if (includeTranscript) return item;
-      const { transcript, rawPayload, ...rest } = item;
-      return rest;
-    });
-}
-
 export function getMarketList(db, key) {
   return (db.marketLists || []).find((item) => item.key === key);
 }

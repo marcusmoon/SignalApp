@@ -79,12 +79,13 @@ export function signalCalendarDateSummariesFromEvents(
   return Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
-export function signalCalendarToCalendarEvent(item: SignalApiCalendarEvent): CalendarEvent {
+export function signalCalendarToCalendarEvent(item: SignalApiCalendarEvent): CalendarEvent | null {
+  if (item.type === 'earnings') return null;
+  if (item.type !== 'macro' && item.type !== 'fed' && item.type !== 'fomc') return null;
   return {
     id: item.id,
     date: item.date || '—',
     time: item.timeLabel || '—',
-    earningsHourCode: item.type === 'earnings' ? item.earningsHour || undefined : undefined,
     title: item.title,
     type: item.type,
     impact: item.impact || undefined,

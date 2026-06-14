@@ -42,7 +42,6 @@ export async function loadDashboardView(ctx) {
     const map = {
       news: { label: textFor('statNews'), icon: 'N', runType: 'news' },
       calendar: { label: textFor('statCalendar'), icon: 'C', runType: 'calendar' },
-      concalls: { label: textFor('statConcalls'), icon: 'T', runType: 'concalls' },
       youtube: { label: textFor('statYoutube'), icon: 'Y', runType: 'youtube' },
       marketQuotes: { label: textFor('statQuotes'), icon: 'Q', runType: 'market_quotes' },
       coinMarkets: { label: textFor('statCoins'), icon: 'B', runType: 'coin_markets' },
@@ -65,12 +64,6 @@ export async function loadDashboardView(ctx) {
     const q = area.quality || {};
     if (area.id === 'news') return textForVars('dashboardQualityNews', { translations: q.translations || 0, sources: q.sources || 0 });
     if (area.id === 'calendar') return textForVars('dashboardQualityCalendar', { future: q.futureEvents || 0 });
-    if (area.id === 'concalls')
-      return textForVars('dashboardQualityConcalls', {
-        transcripts: q.withTranscript || 0,
-        summarized: q.summarized || 0,
-        symbols: q.symbols || 0,
-      });
     if (area.id === 'youtube') return textForVars('dashboardQualityYoutube', { channels: q.channels || 0 });
     if (area.id === 'marketQuotes') return textForVars('dashboardQualityQuotes', { symbols: q.symbols || 0, segments: q.segments || 0 });
     if (area.id === 'coinMarkets') return textForVars('dashboardQualityCoins', { symbols: q.symbols || 0 });

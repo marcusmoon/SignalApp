@@ -60,12 +60,6 @@ import { clearNewsCache } from '@/services/cache/newsCache';
 import { clearQuotesCache } from '@/services/cache/quotesCache';
 import { clearYoutubeCache } from '@/services/cache/youtubeCache';
 import { clearSignalApiCache } from '@/integrations/signal-api/cache';
-import { clearConcallClientMemoryCaches } from '@/services/concalls';
-import {
-  loadCalendarConcallScope,
-  saveCalendarConcallScope,
-  type CalendarConcallScope,
-} from '@/services/calendarConcallScopePreference';
 import {
   loadQuotesListLimits,
   normalizeQuotesListLimits,
@@ -148,7 +142,6 @@ type SettingsTab =
   | 'notifications'
   | 'news'
   | 'quotes'
-  | 'calendar'
   | 'server';
 
 const SETTINGS_TABS: { key: SettingsTab; labelId: MessageId }[] = [
@@ -156,7 +149,6 @@ const SETTINGS_TABS: { key: SettingsTab; labelId: MessageId }[] = [
   { key: 'notifications', labelId: 'settingsTabNotifications' },
   { key: 'news', labelId: 'settingsTabNews' },
   { key: 'quotes', labelId: 'settingsTabQuotes' },
-  { key: 'calendar', labelId: 'settingsTabCalendar' },
   { key: 'server', labelId: 'settingsTabServer' },
 ];
 
@@ -703,22 +695,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     langSegmentTextActive: {
       color: '#FFFFFF',
     },
-    megaCapListLink: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginTop: 14,
-      paddingTop: 14,
-      borderTopWidth: 1,
-      borderTopColor: theme.border,
-    },
-    megaCapListLinkText: {
-      flex: 1,
-      fontSize: sf(13),
-      fontWeight: '700',
-      color: theme.green,
-      paddingRight: 8,
-    },
     /** 개발자 푸터 내부(플로팅 글래스 캡슐 위) */
     settingsFooterPress: {
       flexDirection: 'row',
@@ -1007,13 +983,9 @@ export default function SettingsScreen() {
   const [signalAlertsEnabled, setSignalAlertsEnabled] = useState(true);
   const [signalWatchlistOnly, setSignalWatchlistOnly] = useState(true);
   const [localMacroCalendar, setLocalMacroCalendar] = useState(false);
-  const [localWatchlistEarnings, setLocalWatchlistEarnings] = useState(false);
   const [prefsReady, setPrefsReady] = useState(false);
   const [newsUnreadCheckMinutes, setNewsUnreadCheckMinutes] = useState(5);
   const [newsUnreadIntervalReady, setNewsUnreadIntervalReady] = useState(false);
-
-  const [calendarScope, setCalendarScope] = useState<CalendarConcallScope>('mega');
-  const [calendarScopeReady, setCalendarScopeReady] = useState(false);
 
   const [memoryCacheClearNotice, setMemoryCacheClearNotice] = useState(false);
   const memoryCacheClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1107,7 +1079,6 @@ export default function SettingsScreen() {
       tabParam === 'quotes' ||
       tabParam === 'display' ||
       tabParam === 'notifications' ||
-      tabParam === 'calendar' ||
       tabParam === 'server'
     ) {
       setTab(tabParam);
@@ -1132,25 +1103,13 @@ export default function SettingsScreen() {
     setSignalAlertsEnabled(p.signalAlertsEnabled);
     setSignalWatchlistOnly(p.signalWatchlistOnly);
     setLocalMacroCalendar(p.localMacroCalendar);
-    setLocalWatchlistEarnings(p.localWatchlistEarnings);
     setNewsUnreadCheckMinutes(newsIntervalMin);
-    setNewsUnreadIntervalReady(true);
-    if (p.earningsOnly) {
-      await saveNotificationPrefs({ earningsOnly: false });
-    }
-    setPrefsReady(true);
+    setNewsUnreadIntervalReady(true);    setPrefsReady(true);
   }, []);
 
   const syncLocalCalendarNotifications = useCallback(async (prefs?: NotificationPrefs) => {
     const p = prefs ?? (await loadNotificationPrefs());
-    const watch = await loadWatchlistSymbols();
-    await syncCalendarLocalReminders(p, watch);
-  }, []);
-
-  const reloadCalendarScope = useCallback(async () => {
-    const v = await loadCalendarConcallScope();
-    setCalendarScope(v);
-    setCalendarScopeReady(true);
+    await syncCalendarLocalReminders(p);
   }, []);
 
   const reloadQuotesListLimits = useCallback(async () => {
@@ -1263,7 +1222,6 @@ export default function SettingsScreen() {
   useFocusEffect(
     useCallback(() => {
       void reloadPrefs();
-      void reloadCalendarScope();
       void reloadQuotesListLimits();
       void reloadQuotesSegmentOrder();
       void reloadQuotesChangeColorConvention();
@@ -1276,7 +1234,6 @@ export default function SettingsScreen() {
       void reloadTabBarOpacityPref();
     }, [
       reloadPrefs,
-      reloadCalendarScope,
       reloadQuotesListLimits,
       reloadQuotesSegmentOrder,
       reloadQuotesChangeColorConvention,
@@ -1292,8 +1249,7 @@ export default function SettingsScreen() {
 
   const onClearAllCaches = () => {
     clearYoutubeCache();
-    clearConcallClientMemoryCaches();
-    clearCalendarCache();
+clearCalendarCache();
     clearQuotesCache();
     clearNewsCache();
     clearSignalApiCache();
@@ -1615,7 +1571,7 @@ export default function SettingsScreen() {
                         value={pushEnabled}
                         onValueChange={async (v) => {
                           setPushEnabled(v);
-                          await saveNotificationPrefs({ pushEnabled: v, earningsOnly: false });
+                          await saveNotificationPrefs({ pushEnabled: v });
                         }}
                         trackColor={{ false: '#333', true: theme.green + '88' }}
                         thumbColor={pushEnabled ? theme.green : '#888'}
@@ -1633,7 +1589,7 @@ export default function SettingsScreen() {
                         value={signalAlertsEnabled}
                         onValueChange={async (v) => {
                           setSignalAlertsEnabled(v);
-                          await saveNotificationPrefs({ signalAlertsEnabled: v, earningsOnly: false });
+                          await saveNotificationPrefs({ signalAlertsEnabled: v });
                         }}
                         trackColor={{ false: '#333', true: theme.green + '88' }}
                         thumbColor={signalAlertsEnabled ? theme.green : '#888'}
@@ -1665,23 +1621,20 @@ export default function SettingsScreen() {
                         <Text style={styles.notificationHint}>{t('settingsCalendarRemindersHint')}</Text>
                       </View>
                       <Switch
-                        value={localMacroCalendar || localWatchlistEarnings}
+                        value={localMacroCalendar}
                         onValueChange={async (v) => {
                           setLocalMacroCalendar(v);
-                          setLocalWatchlistEarnings(v);
                           const next = {
                             pushEnabled,
-                            earningsOnly: false,
                             signalAlertsEnabled,
                             signalWatchlistOnly,
                             localMacroCalendar: v,
-                            localWatchlistEarnings: v,
                           };
                           await saveNotificationPrefs(next);
                           await syncLocalCalendarNotifications(next);
                         }}
                         trackColor={{ false: '#333', true: theme.green + '88' }}
-                        thumbColor={localMacroCalendar || localWatchlistEarnings ? theme.green : '#888'}
+                        thumbColor={localMacroCalendar ? theme.green : '#888'}
                       />
                     </View>
                   </View>
@@ -2046,57 +1999,6 @@ export default function SettingsScreen() {
           </>
         ) : null}
 
-        {tab === 'calendar' ? (
-          <>
-            <Text style={styles.lead}>{t('settingsCalendarTabLead')}</Text>
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsCalendarScopeTitle')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsCalendarScopeLead')}</Text>
-              {!calendarScopeReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
-              ) : (
-                <View style={styles.langSegmentedTrack}>
-                  <Pressable
-                    onPress={() => {
-                      setCalendarScope('mega');
-                      void saveCalendarConcallScope('mega');
-                    }}
-                    style={[styles.langSegment, calendarScope === 'mega' && styles.langSegmentActive]}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: calendarScope === 'mega' }}
-                    accessibilityLabel={t('settingsScopeMega')}>
-                    <Text
-                      style={[styles.langSegmentText, calendarScope === 'mega' && styles.langSegmentTextActive]}>
-                      {t('settingsScopeMega')}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      setCalendarScope('watch');
-                      void saveCalendarConcallScope('watch');
-                    }}
-                    style={[styles.langSegment, calendarScope === 'watch' && styles.langSegmentActive]}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: calendarScope === 'watch' }}
-                    accessibilityLabel={t('settingsScopeWatch')}>
-                    <Text
-                      style={[styles.langSegmentText, calendarScope === 'watch' && styles.langSegmentTextActive]}>
-                      {t('settingsScopeWatch')}
-                    </Text>
-                  </Pressable>
-                </View>
-              )}
-              <Pressable
-                onPress={() => router.push('/mega-cap-list')}
-                style={({ pressed }) => [styles.megaCapListLink, pressed && { opacity: 0.85 }]}
-                accessibilityRole="button"
-                accessibilityLabel={t('settingsMegaCapListLink')}>
-                <Text style={styles.megaCapListLinkText}>{t('settingsMegaCapListLink')}</Text>
-                <FontAwesome name="chevron-right" size={14} color={theme.green} />
-              </Pressable>
-            </View>
-          </>
-        ) : null}
       </ScrollView>
 
       <View

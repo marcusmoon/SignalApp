@@ -5,7 +5,6 @@ export * from '@/integrations/signal-api/legalTerms';
 export * from '@/integrations/signal-api/cache';
 export * from '@/integrations/signal-api/config';
 export * from '@/integrations/signal-api/httpClient';
-export * from '@/integrations/signal-api/concalls';
 export * from '@/integrations/signal-api/calendarRange';
 export * from '@/integrations/signal-api/market';
 export * from '@/integrations/signal-api/marketLists';

@@ -39,9 +39,6 @@ import {
   queryPublicMarketQuoteRows,
 } from './db/repositories/marketRepository.mjs';
 import {
-  queryPublicConcallRows,
-} from './db/repositories/concallsRepository.mjs';
-import {
   queryPublicPriceSeriesCandlesRow,
 } from './db/repositories/priceSeriesRepository.mjs';
 import {
@@ -353,22 +350,6 @@ const collectionSpecs = [
       event_at: isoOrNull(row.eventAt),
       event_type: textOrNull(row.type),
       symbol: textOrNull(row.symbol),
-      updated_at: isoOrNull(row.updatedAt) || nowIso(),
-    }),
-  },
-  {
-    key: 'concallTranscripts',
-    store: 'concalls',
-    table: 'concall_transcripts',
-    pk: 'id',
-    keyOf: (row) => row.id,
-    columns: (row, index) => ({
-      position: index,
-      symbol: textOrNull(row.symbol),
-      earnings_date: dateOrNull(row.earningsDate),
-      fiscal_year: numberOrNull(row.fiscalYear),
-      fiscal_quarter: numberOrNull(row.fiscalQuarter),
-      fetched_at: isoOrNull(row.fetchedAt),
       updated_at: isoOrNull(row.updatedAt) || nowIso(),
     }),
   },
@@ -831,9 +812,6 @@ export async function queryPublicCalendarDateSummaries(options = {}) {
   return cachedPublicRead('publicCalendarDateSummaries', options, () => queryPublicCalendarDateSummaryRows(options), 30000);
 }
 
-export async function queryPublicConcalls(options = {}) {
-  return cachedPublicRead('publicConcalls', options, () => queryPublicConcallRows(options), 10000);
-}
 
 export async function readPublicMarketLists() {
   return cachedPublicRead('publicMarketLists', {}, async () => {

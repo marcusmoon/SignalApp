@@ -32,7 +32,6 @@ export function InsightCard({ insight, theme, scaleFont, onOpenUrl, onOpenSymbol
     sourceStats?.news ? `N ${sourceStats.news}` : null,
     sourceStats?.youtube ? `Y ${sourceStats.youtube}` : null,
     sourceStats?.quote ? 'Quote' : null,
-    sourceStats?.earnings ? 'Earnings' : null,
   ].filter(Boolean) as string[];
   const actionLabel = String(insight.actionLabel || '').trim();
 

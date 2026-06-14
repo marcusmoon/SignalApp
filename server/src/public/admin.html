@@ -92,7 +92,6 @@
             <button class="navBtn secondary" data-view="insights" data-icon="I">오늘의 시그널</button>
             <button class="navBtn secondary" data-view="news" data-icon="N">뉴스 목록</button>
             <button class="navBtn secondary" data-view="youtube" data-icon="Y">유튜브 관리</button>
-            <button class="navBtn secondary" data-view="concalls" data-icon="C" data-coming-soon="true" aria-disabled="true">컨콜 요약</button>
             <button class="navBtn secondary" data-view="calendar" data-icon="D">투자 캘린더</button>
 
             <div class="navSectionTitle muted" style="margin-top:10px" data-i18n="navSectionIngest">콘텐츠 수집 관리</div>
@@ -231,7 +230,6 @@
                         <option value="news">news</option>
                         <option value="calendar">calendar</option>
                         <option value="youtube">youtube</option>
-                        <option value="concalls">concalls</option>
                         <option value="ninjas">ninjas</option>
                         <option value="market">market</option>
                         <option value="insights">insights</option>
@@ -430,7 +428,6 @@
                       <option value="macro">macro</option>
                       <option value="fed">fed</option>
                       <option value="fomc">fomc</option>
-                      <option value="earnings">earnings</option>
                     </select>
                     <input id="calendarSymbol" class="narrowTicker" data-i18n-placeholder="calendarSymbolPh" placeholder="" />
                   </div>
@@ -451,18 +448,6 @@
                 </h3>
                 <div id="calendarDayList" class="calendarDayTableHost"></div>
               </section>
-            </div>
-          </div>
-
-          <div id="view-concalls" class="view hidden">
-            <div class="panel">
-              <div class="pageHeader">
-                <div class="pageHeaderMain">
-                  <div class="pageTitle" data-i18n="pageConcallsTitle"></div>
-                  <div class="pageDesc" data-i18n="pageConcallsDesc"></div>
-                </div>
-              </div>
-              <div class="muted" data-i18n="concallsComingSoon"></div>
             </div>
           </div>
 
@@ -699,11 +684,6 @@
                         <input type="checkbox" data-reset-target="calendarEvents" />
                         <span class="resetGlyph">C</span>
                         <span class="resetText"><strong data-i18n="settingsResetCalendar">캘린더 이벤트</strong><small data-i18n="settingsResetCalendarSub">실적·경제지표 일정</small></span>
-                      </label>
-                      <label class="resetOption">
-                        <input type="checkbox" data-reset-target="concallTranscripts" />
-                        <span class="resetGlyph">C</span>
-                        <span class="resetText"><strong data-i18n="settingsResetConcalls">컨콜 트랜스크립트</strong><small data-i18n="settingsResetConcallsSub">수집된 실적콜 전문과 요약 메타</small></span>
                       </label>
                       <label class="resetOption">
                         <input type="checkbox" data-reset-target="youtubeVideos" />

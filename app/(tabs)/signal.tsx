@@ -1,3 +1,4 @@
+import { useFocusEffect } from '@react-navigation/native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,10 +22,18 @@ import type { AppTheme } from '@/constants/theme';
 import { SEGMENT_TAB_ACTIVE_TEXT } from '@/constants/segmentTabBar';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import {
+  QUOTES_CHANGE_COLOR_CONVENTION_DEFAULT,
+  type QuotesChangeColorConvention,
+} from '@/domain/quotes/changeColorConvention';
 import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiMarketBriefing } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
+import {
+  loadQuotesChangeColorConvention,
+  subscribeQuotesChangeColorConventionChanged,
+} from '@/services/quotesChangeColorPreference';
 import { addDays, toYmd } from '@/utils/date';
 
 type BriefingMarketKey = 'kr' | 'us';
@@ -83,6 +92,9 @@ export default function SignalScreen() {
   const [briefingMarket, setBriefingMarket] = useState<BriefingMarketKey>('kr');
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [marketBriefings, setMarketBriefings] = useState<SignalApiMarketBriefing[]>([]);
+  const [changeColorConvention, setChangeColorConvention] = useState<QuotesChangeColorConvention>(
+    QUOTES_CHANGE_COLOR_CONVENTION_DEFAULT,
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -193,6 +205,22 @@ export default function SignalScreen() {
     setSelectedYmd(todayYmd);
     setCalendarMonth(monthFromYmd(todayYmd));
   }, [todayYmd]);
+
+  const reloadChangeColorConvention = useCallback(async () => {
+    setChangeColorConvention(await loadQuotesChangeColorConvention());
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void reloadChangeColorConvention();
+    }, [reloadChangeColorConvention]),
+  );
+
+  useEffect(() => {
+    return subscribeQuotesChangeColorConventionChanged(() => {
+      void reloadChangeColorConvention();
+    });
+  }, [reloadChangeColorConvention]);
 
   const briefingMarketRows = useMemo(() => {
     const order = SESSION_ORDER[briefingMarket] ?? [];
@@ -378,7 +406,12 @@ export default function SignalScreen() {
 
           {!error ? (
             activeBriefing ? (
-              <MarketBriefingBlock briefing={activeBriefing} theme={theme} scaleFont={scaleFont} />
+              <MarketBriefingBlock
+                briefing={activeBriefing}
+                theme={theme}
+                scaleFont={scaleFont}
+                changeColorConvention={changeColorConvention}
+              />
             ) : briefingMarketRows.length > 0 && activeSession ? (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyTitle}>{t('briefingSessionEmptyTitle')}</Text>

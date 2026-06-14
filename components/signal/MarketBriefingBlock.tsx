@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
@@ -8,7 +8,6 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
   getQuoteChangeColors,
   isQuoteChangePositive,
-  QUOTES_CHANGE_COLOR_CONVENTION_DEFAULT,
   type QuotesChangeColorConvention,
 } from '@/domain/quotes/changeColorConvention';
 import type {
@@ -16,10 +15,6 @@ import type {
   SignalApiMarketBriefingCompany,
   SignalApiMarketBriefingMacroItem,
 } from '@/integrations/signal-api/types';
-import {
-  loadQuotesChangeColorConvention,
-  subscribeQuotesChangeColorConventionChanged,
-} from '@/services/quotesChangeColorPreference';
 
 function shortMd(isoDate: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(isoDate);
@@ -55,6 +50,7 @@ type Props = {
   briefing: SignalApiMarketBriefing;
   theme: AppTheme;
   scaleFont: (n: number) => number;
+  changeColorConvention: QuotesChangeColorConvention;
 };
 
 function BriefingSection({
@@ -173,30 +169,16 @@ function MacroHighlightCard({
   );
 }
 
-export function MarketBriefingBlock({ briefing, theme, scaleFont }: Props) {
+export function MarketBriefingBlock({
+  briefing,
+  theme,
+  scaleFont,
+  changeColorConvention,
+}: Props) {
   const { t } = useLocale();
   const { effectiveColorScheme } = useSignalTheme();
-  const [changeColorConvention, setChangeColorConvention] = useState<QuotesChangeColorConvention>(
-    QUOTES_CHANGE_COLOR_CONVENTION_DEFAULT,
-  );
   const styles = makeStyles(theme, scaleFont);
   const changeColors = getQuoteChangeColors(changeColorConvention, effectiveColorScheme);
-
-  useEffect(() => {
-    let cancelled = false;
-    const reload = async () => {
-      const next = await loadQuotesChangeColorConvention();
-      if (!cancelled) setChangeColorConvention(next);
-    };
-    void reload();
-    const unsubscribe = subscribeQuotesChangeColorConventionChanged(() => {
-      void reload();
-    });
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, []);
 
   const hasLead = Boolean(briefing.summary) || briefing.overview.length > 0;
 

@@ -30,6 +30,7 @@ import { addDays, toYmd } from '@/utils/date';
 type BriefingMarketKey = 'kr' | 'us';
 
 const MARKET_ORDER: readonly BriefingMarketKey[] = ['kr', 'us'];
+const KR_SESSION_TABS = ['morning', 'lunch', 'evening'] as const;
 const SESSION_ORDER: Record<BriefingMarketKey, readonly string[]> = {
   kr: ['morning', 'lunch', 'evening', 'close'],
   us: ['overnight', 'morning', 'close'],
@@ -80,6 +81,7 @@ export default function SignalScreen() {
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => monthFromYmd(todayYmd));
   const [briefingMarket, setBriefingMarket] = useState<BriefingMarketKey>('kr');
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [marketBriefings, setMarketBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -100,6 +102,16 @@ export default function SignalScreen() {
       if (session === 'evening') return t('briefingSessionEvening');
       if (session === 'close') return t('briefingSessionClose');
       return t('briefingSessionOvernight');
+    },
+    [t],
+  );
+
+  const briefingSessionHint = useCallback(
+    (session: string) => {
+      if (session === 'morning') return t('briefingSessionHintMorning');
+      if (session === 'lunch') return t('briefingSessionHintLunch');
+      if (session === 'evening') return t('briefingSessionHintEvening');
+      return null;
     },
     [t],
   );
@@ -194,8 +206,39 @@ export default function SignalScreen() {
       });
   }, [briefingMarket, marketBriefings]);
 
+  const briefingBySession = useMemo(() => {
+    const map = new Map<string, SignalApiMarketBriefing>();
+    for (const row of briefingMarketRows) {
+      map.set(row.session, row);
+    }
+    return map;
+  }, [briefingMarketRows]);
+
+  const sessionTabOptions = useMemo(() => {
+    if (briefingMarket === 'kr') {
+      return [...KR_SESSION_TABS];
+    }
+    return SESSION_ORDER[briefingMarket].filter((session) => briefingBySession.has(session));
+  }, [briefingBySession, briefingMarket]);
+
+  const showSessionTabs = briefingMarket === 'kr' || sessionTabOptions.length > 1;
+
+  useEffect(() => {
+    setSelectedSession(null);
+  }, [briefingMarket, selectedYmd]);
+
+  const activeSession = useMemo(() => {
+    if (selectedSession && briefingBySession.has(selectedSession)) {
+      return selectedSession;
+    }
+    const available = sessionTabOptions.filter((session) => briefingBySession.has(session));
+    if (available.length === 0) return null;
+    return available[available.length - 1] ?? null;
+  }, [briefingBySession, selectedSession, sessionTabOptions]);
+
+  const activeBriefing = activeSession ? briefingBySession.get(activeSession) : undefined;
+
   const hasAnyBriefing = marketBriefings.length > 0;
-  const marketLabel = briefingMarketLabel(briefingMarket);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -280,6 +323,42 @@ export default function SignalScreen() {
         ))}
       </View>
 
+      {!loading && showSessionTabs ? (
+        <View style={styles.sessionTabsWrap}>
+          <View style={styles.sessionTabs}>
+            {sessionTabOptions.map((session) => {
+              const hasBriefing = briefingBySession.has(session);
+              const isActive = activeSession === session;
+              return (
+                <Pressable
+                  key={session}
+                  onPress={() => setSelectedSession(session)}
+                  disabled={!hasBriefing}
+                  style={[
+                    styles.sessionTab,
+                    isActive && styles.sessionTabActive,
+                    !hasBriefing && styles.sessionTabDisabled,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive, disabled: !hasBriefing }}>
+                  <Text
+                    style={[
+                      styles.sessionTabText,
+                      isActive && styles.sessionTabTextActive,
+                      !hasBriefing && styles.sessionTabTextDisabled,
+                    ]}>
+                    {briefingSessionLabel(session)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {briefingMarket === 'kr' && activeSession ? (
+            <Text style={styles.sessionHint}>{briefingSessionHint(activeSession)}</Text>
+          ) : null}
+        </View>
+      ) : null}
+
       {loading ? (
         <View style={styles.center}>
           <SignalLoadingIndicator message={t('commonLoading')} />
@@ -298,18 +377,13 @@ export default function SignalScreen() {
           ) : null}
 
           {!error ? (
-            briefingMarketRows.length > 0 ? (
-              briefingMarketRows.map((briefing, index) => (
-                <MarketBriefingBlock
-                  key={briefing.id}
-                  briefing={briefing}
-                  theme={theme}
-                  scaleFont={scaleFont}
-                  sessionLabel={briefingSessionLabel(briefing.session)}
-                  marketLabel={marketLabel}
-                  featured={index === 0}
-                />
-              ))
+            activeBriefing ? (
+              <MarketBriefingBlock briefing={activeBriefing} theme={theme} scaleFont={scaleFont} />
+            ) : briefingMarketRows.length > 0 && activeSession ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyTitle}>{t('briefingSessionEmptyTitle')}</Text>
+                <Text style={styles.emptyBody}>{t('briefingSessionEmptyBody')}</Text>
+              </View>
             ) : (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyTitle}>
@@ -479,6 +553,45 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     marketTabTextActive: {
       color: SEGMENT_TAB_ACTIVE_TEXT,
+    },
+    sessionTabsWrap: {
+      marginHorizontal: 16,
+      marginBottom: 12,
+      gap: 6,
+    },
+    sessionTabs: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    sessionTab: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 10,
+      backgroundColor: theme.bgElevated,
+      alignItems: 'center',
+    },
+    sessionTabActive: {
+      backgroundColor: theme.greenDim,
+    },
+    sessionTabDisabled: {
+      opacity: 0.38,
+    },
+    sessionTabText: {
+      fontSize: sf(13),
+      fontWeight: '900',
+      color: theme.textDim,
+    },
+    sessionTabTextActive: {
+      color: theme.green,
+    },
+    sessionTabTextDisabled: {
+      color: theme.textDim,
+    },
+    sessionHint: {
+      fontSize: sf(12),
+      fontWeight: '700',
+      color: theme.textMuted,
+      paddingHorizontal: 2,
     },
     emptyCard: {
       borderRadius: 18,

@@ -154,7 +154,6 @@ function RootLayoutNav() {
           alerts: t('screenAlerts'),
           calendar: t('screenCalendar'),
           calls: t('callsSectionTitle'),
-          quant: t('screenQuant'),
           terms: t('termsScreenTitle'),
           'terms-history': t('termsHistoryScreenTitle'),
           oauth: t('screenAccount'),

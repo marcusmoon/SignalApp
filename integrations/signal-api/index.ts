@@ -13,7 +13,6 @@ export * from '@/integrations/signal-api/insights';
 export * from '@/integrations/signal-api/news';
 export * from '@/integrations/signal-api/newsDigests';
 export * from '@/integrations/signal-api/notifications';
-export * from '@/integrations/signal-api/quant';
 export * from '@/integrations/signal-api/cache/newsCache';
 export * from '@/integrations/signal-api/newsSources';
 export * from '@/integrations/signal-api/stock';

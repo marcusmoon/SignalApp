@@ -24,7 +24,6 @@ import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
-import { MiniSparkline } from '@/components/signal/MiniSparkline';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
@@ -35,26 +34,18 @@ import {
   fetchSignalCoins,
   fetchSignalMarketList,
   fetchSignalMarketQuotes,
-  fetchSignalStockSparklines,
-  fetchSignalQuantSignals,
   type SignalApiMarketQuote,
-  type SignalApiQuantSignal,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import {
-  formatKrw,
-  formatPctSigned,
   formatQuoteDpPct,
   formatUsd,
   formatUsdChange,
   isKoreaStockQuote,
-  isKoreaSymbol,
   mapSignalCoinToRow,
   mapSignalQuoteToRow,
-  quantActionTone,
   quoteLookupKeys,
-  sparklineSymbolForRow,
   withSoftTimeout,
   type QuoteRow,
 } from '@/domain/quotes/rows';
@@ -82,7 +73,6 @@ import type { MessageId } from '@/locales/messages';
 
 const QUOTE_CARD_TEXT_MAX_SCALE = 1.12;
 const WATCH_MARKET_SOFT_TIMEOUT_MS = 5000;
-const WATCH_QUANT_SOFT_TIMEOUT_MS = 2500;
 const REFRESH_SPINNER_SOFT_TIMEOUT_MS = 1200;
 
 const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
@@ -92,32 +82,7 @@ const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   coin: 'quotesSegmentCoin',
 };
 
-const QUANT_ACTION_LABEL: Record<string, MessageId> = {
-  buy: 'quantActionBuy',
-  accumulate: 'quantActionAccumulate',
-  hold: 'quantActionHold',
-  reduce: 'quantActionReduce',
-  avoid: 'quantActionAvoid',
-};
-
 type Row = QuoteRow;
-
-async function withStockSparklines(rows: Row[]): Promise<Row[]> {
-  const symbols = [...new Set(rows.map(sparklineSymbolForRow).filter((symbol) => symbol && symbol !== '—'))];
-  if (symbols.length === 0) return rows;
-  const items = await fetchSignalStockSparklines({ symbols, days: 30 });
-  if (items.length === 0) return rows;
-  const bySymbol = new Map(items.map((item) => [String(item.symbol || '').trim().toUpperCase(), item]));
-  return rows.map((row) => {
-    const item = bySymbol.get(sparklineSymbolForRow(row));
-    if (!item || !Array.isArray(item.closes) || item.closes.length < 2) return row;
-    return {
-      ...row,
-      sparkline: item.closes,
-      sparklineChangePercent: item.changePercent ?? null,
-    };
-  });
-}
 
 export default function QuotesScreen() {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
@@ -140,20 +105,10 @@ export default function QuotesScreen() {
   const [rows, setRows] = useState<Row[]>([]);
   const rowsRef = useRef<Row[]>([]);
   rowsRef.current = rows;
-  const loadSeqRef = useRef(0);
   useTabScreenLoadingRecovery(rows, setLoading);
   const [draftTicker, setDraftTicker] = useState('');
 
-  const hydrateSparklines = useCallback(async (cacheKey: string, baseRows: Row[], loadSeq: number) => {
-    const nextRows = await withStockSparklines(baseRows);
-    if (loadSeqRef.current !== loadSeq) return;
-    if (nextRows === baseRows) return;
-    setRows(nextRows);
-    storeQuotes(cacheKey, nextRows);
-  }, []);
-
   const load = useCallback(async (forceRefresh?: boolean) => {
-    const loadSeq = ++loadSeqRef.current;
     setError(null);
     const limits = await loadQuotesListLimits();
 
@@ -194,47 +149,28 @@ export default function QuotesScreen() {
         const hit = peekQuotes(cacheKey);
         if (hit) {
           setRows(hit.rows);
-          if (!hit.rows.every((row) => Array.isArray(row.sparkline) && row.sparkline.length > 1)) {
-            void hydrateSparklines(cacheKey, hit.rows, loadSeq);
-          }
           return;
         }
       }
-      // 국내(6자리) 종목은 정규장 시세가 없으면 코스피 퀀트 분석으로, 그 외(미국주식)는 실시간 시세로 채운다.
-      const krSymbols = symbols.filter(isKoreaSymbol);
-      const [quoteRows, quantRows] = await Promise.all([
-        withSoftTimeout<SignalApiMarketQuote[]>(
-          fetchSignalMarketQuotes({ symbols, limit: Math.max(symbols.length, 1) }).catch(() => []),
-          WATCH_MARKET_SOFT_TIMEOUT_MS,
-          [],
-        ),
-        krSymbols.length > 0
-          ? withSoftTimeout<SignalApiQuantSignal[]>(
-              fetchSignalQuantSignals({ symbols: krSymbols, limit: krSymbols.length }).catch(() => []),
-              WATCH_QUANT_SOFT_TIMEOUT_MS,
-              [],
-            )
-          : Promise.resolve([]),
-      ]);
+      // 국내·미국 종목 모두 시장 시세 API로 채운다.
+      const quoteRows = await withSoftTimeout<SignalApiMarketQuote[]>(
+        fetchSignalMarketQuotes({ symbols, limit: Math.max(symbols.length, 1) }).catch(() => []),
+        WATCH_MARKET_SOFT_TIMEOUT_MS,
+        [],
+      );
       const quoteBySymbol = new Map<string, Row>();
       for (const item of quoteRows) {
         const row = mapSignalQuoteToRow(item);
         for (const key of quoteLookupKeys(item, row)) quoteBySymbol.set(key, row);
       }
-      const quantBySymbol = new Map(quantRows.map((q) => [String(q.symbol).trim().toUpperCase(), q]));
       const baseRows: Row[] = symbols.map((sym) => {
         const up = sym.trim().toUpperCase();
         const quote = quoteBySymbol.get(up);
         if (quote) return quote;
-        const quant = quantBySymbol.get(up);
-        if (quant) {
-          return { symbol: quant.symbol || sym, name: quant.name ?? undefined, quote: null, quant };
-        }
         return { symbol: sym, quote: null, error: 'NO_SERVER_QUOTE' };
       });
       setRows(baseRows);
       storeQuotes(cacheKey, baseRows);
-      void hydrateSparklines(cacheKey, baseRows, loadSeq);
       return;
     }
 
@@ -261,9 +197,6 @@ export default function QuotesScreen() {
       const hit = peekQuotes(cacheKey);
       if (hit) {
         setRows(hit.rows);
-        if (!hit.rows.every((row) => Array.isArray(row.sparkline) && row.sparkline.length > 1)) {
-          void hydrateSparklines(cacheKey, hit.rows, loadSeq);
-        }
         return;
       }
     }
@@ -275,8 +208,7 @@ export default function QuotesScreen() {
     const baseRows = serverRows.map(mapSignalQuoteToRow);
     setRows(baseRows);
     storeQuotes(cacheKey, baseRows);
-    void hydrateSparklines(cacheKey, baseRows, loadSeq);
-  }, [hydrateSparklines, segment, t]);
+  }, [segment, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -495,18 +427,8 @@ export default function QuotesScreen() {
       const yahooEnabled = symTrim.length > 0 && symTrim !== '—';
       const watchSwipe = segment === 'watch' && Platform.OS !== 'web';
       const watchRemoveIcon = segment === 'watch' && Platform.OS === 'web';
-      const quant = r.quant ?? null;
       const useNaverLink = isKoreaStockQuote(r);
-      const titleText = quant ? r.name || r.symbol : r.symbol;
-      const quantReturn20d = quant?.indicators?.return20d ?? null;
-      const quantActionLabel = quant ? t(QUANT_ACTION_LABEL[quant.action] ?? 'quantActionHold') : '';
-      const quantActionColor = quant ? quantActionTone(theme, quant.action) : theme.textMuted;
-      const sparkValues = Array.isArray(r.sparkline) ? r.sparkline.filter((value) => Number.isFinite(value)) : [];
-      const sparkChange =
-        typeof r.sparklineChangePercent === 'number' && Number.isFinite(r.sparklineChangePercent)
-          ? r.sparklineChangePercent
-          : quantReturn20d ?? r.quote?.changePercent ?? 0;
-      const sparkColor = Number(sparkChange) >= 0 ? quoteChange.colors.up : quoteChange.colors.down;
+      const titleText = r.symbol;
 
       const cardInner = (
         <>
@@ -540,20 +462,13 @@ export default function QuotesScreen() {
                     </Pressable>
                   ) : null}
                 </View>
-                {quant ? (
-                  <View style={styles.quantMetaRow}>
-                    <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                      {r.symbol}
-                      {typeof quant.rank === 'number' && quant.rank > 0 ? ` · ${t('quantRankBadge', { rank: quant.rank })}` : ''}
-                    </Text>
-                  </View>
-                ) : r.quote ? (
+                {r.quote ? (
                   <Text style={styles.symPrev} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                     {segment === 'coin' ? t('quotesPrevRefCoin') : t('quotesPrevCloseStock')}{' '}
                     {formatUsd(Number(r.quote.previousClose))}
                   </Text>
                 ) : null}
-                {!quant && segment === 'coin' && r.name ? (
+                {segment === 'coin' && r.name ? (
                   <Text style={styles.symSub} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                     {r.name}
                   </Text>
@@ -562,11 +477,7 @@ export default function QuotesScreen() {
             </View>
             <View style={styles.priceCol}>
               <View style={styles.priceRow}>
-                {quant ? (
-                  <Text style={styles.price} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                    {formatKrw(quant.indicators?.lastClose)}
-                  </Text>
-                ) : r.quote ? (
+                {r.quote ? (
                   <Text style={styles.price} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                     {formatUsd(Number(r.quote.currentPrice))}
                   </Text>
@@ -584,14 +495,7 @@ export default function QuotesScreen() {
                   </Pressable>
                 ) : null}
               </View>
-              {quant ? (
-                <Text
-                  style={[styles.chg, Number(quantReturn20d ?? 0) >= 0 ? styles.chgUp : styles.chgDn]}
-                  numberOfLines={1}
-                  maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
-                  {t('quant20dReturn')} {formatPctSigned(quantReturn20d)}
-                </Text>
-              ) : r.quote ? (
+              {r.quote ? (
                 <Text
                   style={[styles.chg, quoteChange.isPositive(r.quote) ? styles.chgUp : styles.chgDn]}
                   numberOfLines={1}
@@ -599,31 +503,9 @@ export default function QuotesScreen() {
                   {formatUsdChange(Number(r.quote.change ?? 0))} ({formatQuoteDpPct(r.quote.changePercent)})
                 </Text>
               ) : null}
-              {sparkValues.length > 1 ? (
-                <MiniSparkline values={sparkValues} color={sparkColor} mutedColor={theme.border} />
-              ) : null}
             </View>
           </View>
-          {quant ? (
-            <View style={styles.quantDetail}>
-              <View style={styles.quantBadgeRow}>
-                <Text
-                  style={[styles.quantActionBadge, { color: quantActionColor, borderColor: quantActionColor }]}
-                  numberOfLines={1}>
-                  {quantActionLabel}
-                </Text>
-                <Text style={styles.quantScoreText} numberOfLines={1}>
-                  {t('quantChecklistScore')} {quant.score} · {t('quantConfidence')} {quant.confidence}
-                </Text>
-              </View>
-              {quant.headline ? (
-                <Text style={styles.quantHeadline} numberOfLines={2}>
-                  {quant.perspective?.label ? `${quant.perspective.label} · ${quant.headline}` : quant.headline}
-                </Text>
-              ) : null}
-            </View>
-          ) : null}
-          {!r.quote && !quant ? (
+          {!r.quote ? (
             <Text style={styles.fail}>
               {r.error === 'UNKNOWN_SYMBOL'
                 ? t('quotesErrorNoPrice')
@@ -670,8 +552,7 @@ export default function QuotesScreen() {
       onRemoveWatch,
       openSymbolDetail,
       openFinanceQuote,
-      quoteChange.colors.down,
-      quoteChange.colors.up,
+      quoteChange.isPositive,
       rows.length,
       segment,
       styles,

@@ -41,7 +41,7 @@ import {
 
 const TAB_ICON_SIZE = 25;
 
-type TabBarIconName = 'newspaper' | 'chart-line' | 'bolt' | 'youtube' | 'th-large';
+type TabBarIconName = 'newspaper' | 'chart-line' | 'highlighter' | 'youtube' | 'th-large';
 
 function TabBarIcon({
   name,
@@ -294,7 +294,7 @@ export default function TabLayout() {
         name="signal"
         options={{
           title: t('tabSignal'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="bolt" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="highlighter" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen

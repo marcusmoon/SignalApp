@@ -24,7 +24,6 @@ import { fetchSignalEarningsCalendarRangeMerged } from '@/integrations/signal-ap
 import { fetchSignalInsights } from '@/integrations/signal-api/insights';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
-import { fetchSignalQuantSignals } from '@/integrations/signal-api/quant';
 import { signalNewsToNewsItem } from '@/integrations/signal-api/news';
 import { fetchSignalStockCandles, fetchSignalStockProfile } from '@/integrations/signal-api/stock';
 import type {
@@ -32,7 +31,6 @@ import type {
   SignalApiInsight,
   SignalApiMarketQuote,
   SignalApiNewsItem,
-  SignalApiQuantSignal,
   SignalApiStockCandles,
   SignalApiStockProfile,
 } from '@/integrations/signal-api/types';
@@ -45,7 +43,6 @@ import { addDays, toYmd } from '@/utils/date';
 import { signalReasonLabel } from '@/utils/signalDisplay';
 import { openNaverFinanceStock } from '@/utils/naverFinance';
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
-import type { MessageId } from '@/locales/messages';
 
 /** 실적 캘린더 과거 구간(일) — 지난 분기 행이 보이도록 넉넉히 */
 const EARN_LOOKBACK_DAYS = 800;
@@ -111,27 +108,6 @@ function formatMarketPrice(value: number, isKorea: boolean): string {
 
 function formatMarketChange(value: number, isKorea: boolean): string {
   return isKorea ? formatKrwChange(value) : formatUsdChange(value);
-}
-
-function formatNum(value: number | null | undefined, digits = 0, suffix = ''): string {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
-  return `${value.toFixed(digits)}${suffix}`;
-}
-
-const QUANT_ACTION_MSG: Record<string, MessageId> = {
-  buy: 'quantActionBuy',
-  accumulate: 'quantActionAccumulate',
-  hold: 'quantActionHold',
-  reduce: 'quantActionReduce',
-  avoid: 'quantActionAvoid',
-};
-
-function quantActionTone(theme: AppTheme, action: string): string {
-  if (action === 'buy') return theme.danger;
-  if (action === 'accumulate') return theme.green;
-  if (action === 'reduce') return theme.accentBlue;
-  if (action === 'avoid') return theme.textDim;
-  return theme.textMuted;
 }
 
 function formatMarketCapUsd(millions: number | undefined): string {
@@ -347,19 +323,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     signalStatLabel: { fontSize: sf(10), fontWeight: '800', color: theme.textMuted, marginBottom: 5 },
     signalStatValue: { fontSize: sf(12), fontWeight: '900', color: theme.text },
     signalReasonLine: { fontSize: sf(12), fontWeight: '700', color: theme.textDim, lineHeight: sf(18) },
-    quantBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' },
-    quantActionBadge: {
-      overflow: 'hidden',
-      borderRadius: 8,
-      borderWidth: 1.5,
-      paddingHorizontal: 10,
-      paddingVertical: 3,
-      fontSize: sf(13),
-      fontWeight: '900',
-    },
-    quantRankText: { fontSize: sf(12), fontWeight: '800', color: theme.textMuted },
-    quantHeadline: { fontSize: sf(13), fontWeight: '900', color: theme.text, marginTop: 4, marginBottom: 4 },
-    quantInterpretation: { fontSize: sf(13), lineHeight: sf(20), fontWeight: '600', color: theme.textDim },
     actionRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
     actionBtn: {
       flex: 1,
@@ -578,15 +541,11 @@ export default function SymbolDetailScreen() {
   const [serverInsights, setServerInsights] = useState<SignalApiInsight[]>([]);
   const [earnings, setEarnings] = useState<SignalApiCalendarEvent[]>([]);
   const [watching, setWatching] = useState(false);
-  const [quantSignal, setQuantSignal] = useState<SignalApiQuantSignal | null>(null);
   const isKorea = useMemo(() => isKoreaSymbol(ticker), [ticker]);
-  const quantLastClose = quantSignal?.indicators?.lastClose ?? null;
   const displayPrice =
     typeof quote?.currentPrice === 'number' && Number.isFinite(quote.currentPrice)
       ? quote.currentPrice
-      : isKorea && typeof quantLastClose === 'number' && Number.isFinite(quantLastClose)
-        ? quantLastClose
-        : null;
+      : null;
   const displayChange = typeof quote?.change === 'number' && Number.isFinite(quote.change) ? quote.change : null;
   const displayChangePercent =
     typeof quote?.changePercent === 'number' && Number.isFinite(quote.changePercent) ? quote.changePercent : null;
@@ -612,7 +571,6 @@ export default function SymbolDetailScreen() {
       setSignalNews([]);
       setServerInsights([]);
       setEarnings([]);
-      setQuantSignal(null);
       setLoading(false);
       return;
     }
@@ -622,7 +580,7 @@ export default function SymbolDetailScreen() {
     const earnTo = addDays(new Date(), EARN_FORWARD_DAYS);
 
     try {
-      const [watchlist, nextProfile, mqRows, nextCandles, companyNews, earningsRows, insightRows, quantRows] = await Promise.all([
+      const [watchlist, nextProfile, mqRows, nextCandles, companyNews, earningsRows, insightRows] = await Promise.all([
         loadWatchlistSymbols(),
         fetchSignalStockProfile(ticker),
         fetchSignalMarketQuotes({ symbols: [ticker], limit: 1 }).catch(() => []),
@@ -638,9 +596,6 @@ export default function SymbolDetailScreen() {
         })
           .then((result) => result.items)
           .catch(() => [] as SignalApiInsight[]),
-        isKoreaSymbol(ticker)
-          ? fetchSignalQuantSignals({ symbols: [ticker], limit: 1 }).catch(() => [] as SignalApiQuantSignal[])
-          : Promise.resolve([] as SignalApiQuantSignal[]),
       ]);
 
       const row0 = mqRows[0];
@@ -667,7 +622,6 @@ export default function SymbolDetailScreen() {
       setNewsItems(translatedNews);
       setServerInsights(insightRows);
       setEarnings(matchedEarnings);
-      setQuantSignal(quantRows[0] ?? null);
     } catch (e) {
       setServerInsights([]);
       setError(formatSignalApiError(e, t, 'symbolDetailErrorLoad'));
@@ -740,9 +694,8 @@ export default function SymbolDetailScreen() {
   const companyName = useMemo(
     () =>
       normalizeCompanyName(profile?.name, ticker) ??
-      normalizeCompanyName(quote?.name ?? undefined, ticker) ??
-      normalizeCompanyName(quantSignal?.name ?? undefined, ticker),
-    [profile?.name, quantSignal?.name, quote?.name, ticker],
+      normalizeCompanyName(quote?.name ?? undefined, ticker),
+    [profile?.name, quote?.name, ticker],
   );
   const displayCompanyName = companyName ?? (isKorea ? ticker : t('symbolDetailCompanyUnknown'));
 
@@ -843,74 +796,6 @@ export default function SymbolDetailScreen() {
         {error ? (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
-
-        {isKorea && quantSignal ? (
-          <View style={styles.sectionCard}>
-            <View style={styles.signalOverviewHead}>
-              <View style={styles.signalOverviewCopy}>
-                <Text style={styles.section}>{t('symbolDetailQuantSection')}</Text>
-                <View style={styles.quantBadgeRow}>
-                  <Text
-                    style={[
-                      styles.quantActionBadge,
-                      {
-                        color: quantActionTone(theme, quantSignal.action),
-                        borderColor: quantActionTone(theme, quantSignal.action),
-                      },
-                    ]}>
-                    {t(QUANT_ACTION_MSG[quantSignal.action] ?? 'quantActionHold')}
-                  </Text>
-                  {typeof quantSignal.rank === 'number' && quantSignal.rank > 0 ? (
-                    <Text style={styles.quantRankText}>{t('quantRankBadge', { rank: quantSignal.rank })}</Text>
-                  ) : null}
-                </View>
-              </View>
-              <View style={styles.signalScoreBadge}>
-                <Text style={styles.signalScoreNum}>{quantSignal.score}</Text>
-                <Text style={styles.signalScoreLabel}>{t('quantScore')}</Text>
-              </View>
-            </View>
-            <View style={styles.signalStatGrid}>
-              <View style={styles.signalStat}>
-                <Text style={styles.signalStatLabel}>{t('quotesPrevCloseStock')}</Text>
-                <Text style={styles.signalStatValue}>{formatKrw(quantSignal.indicators?.lastClose)}</Text>
-              </View>
-              <View style={styles.signalStat}>
-                <Text style={styles.signalStatLabel}>{t('quant20dReturn')}</Text>
-                <Text style={styles.signalStatValue}>{formatPct(Number(quantSignal.indicators?.return20d ?? NaN))}</Text>
-              </View>
-              <View style={styles.signalStat}>
-                <Text style={styles.signalStatLabel}>{t('quantConfidence')}</Text>
-                <Text style={styles.signalStatValue}>{quantSignal.confidence}</Text>
-              </View>
-            </View>
-            <View style={styles.signalStatGrid}>
-              <View style={styles.signalStat}>
-                <Text style={styles.signalStatLabel}>{t('quantIndicatorRsi')}</Text>
-                <Text style={styles.signalStatValue}>{formatNum(quantSignal.indicators?.rsi14, 0)}</Text>
-              </View>
-              <View style={styles.signalStat}>
-                <Text style={styles.signalStatLabel}>{t('quantIndicatorSma20')}</Text>
-                <Text style={styles.signalStatValue}>{formatPct(Number(quantSignal.indicators?.vsSma20Pct ?? NaN))}</Text>
-              </View>
-              <View style={styles.signalStat}>
-                <Text style={styles.signalStatLabel}>{t('quantIndicatorVol')}</Text>
-                <Text style={styles.signalStatValue}>{formatNum(quantSignal.indicators?.volatility, 0, '%')}</Text>
-              </View>
-            </View>
-            {quantSignal.perspective?.label ? (
-              <Text style={styles.quantHeadline}>{quantSignal.perspective.label}</Text>
-            ) : quantSignal.headline ? (
-              <Text style={styles.quantHeadline}>{quantSignal.headline}</Text>
-            ) : null}
-            {quantSignal.perspective?.positives?.[0] ? (
-              <Text style={styles.quantInterpretation}>{quantSignal.perspective.positives[0]}</Text>
-            ) : null}
-            {quantSignal.interpretation ? (
-              <Text style={styles.quantInterpretation}>{quantSignal.interpretation}</Text>
-            ) : null}
           </View>
         ) : null}
 

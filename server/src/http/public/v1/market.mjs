@@ -2,10 +2,6 @@ import {
   queryPublicCoinMarkets,
   queryPublicMarketQuotes,
   queryPublicPriceSeriesCandles,
-  queryPublicPriceSeriesSparklines,
-  queryPublicQuantBacktest,
-  queryPublicQuantSignals,
-  queryPublicQuantSignalHistory,
   readAppSettings,
   readPublicMarketList,
   readPublicMarketLists,
@@ -31,17 +27,13 @@ function isKrxSymbol(symbol) {
 }
 
 async function localKrxStockProfile(symbol) {
-  const [quantRows, quotePage] = await Promise.all([
-    queryPublicQuantSignals({ symbols: symbol, limit: '1' }),
-    queryPublicMarketQuotes({ symbols: symbol, limit: '1', offset: '0' }),
-  ]);
-  const quant = Array.isArray(quantRows) ? quantRows[0] : null;
+  const quotePage = await queryPublicMarketQuotes({ symbols: symbol, limit: '1', offset: '0' });
   const quote = Array.isArray(quotePage?.rows) ? quotePage.rows[0] : null;
-  if (!quant && !quote) return null;
+  if (!quote) return null;
   return publicStockProfile(
     {
       symbol,
-      name: quant?.name || quote?.name || quant?.displaySymbol || quote?.displaySymbol || symbol,
+      name: quote?.name || quote?.displaySymbol || symbol,
       marketCapitalization: quote?.marketCapitalization,
     },
     symbol,
@@ -114,63 +106,6 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
     } catch {
       json(res, 502, { error: 'CANDLES_UNAVAILABLE' });
     }
-    return true;
-  }
-
-  if (req.method === 'GET' && pathname === '/v1/stock-sparklines') {
-    const symbols = url.searchParams.get('symbols') || '';
-    if (!symbols.trim()) {
-      json(res, 400, { error: 'SYMBOLS_REQUIRED' });
-      return true;
-    }
-    const rows = await queryPublicPriceSeriesSparklines({
-      symbols,
-      days: url.searchParams.get('days') || '30',
-    });
-    json(res, 200, { data: rows });
-    return true;
-  }
-
-  if (req.method === 'GET' && pathname === '/v1/quant-signals') {
-    const symbols = url.searchParams.get('symbols') || '';
-    const rows = await queryPublicQuantSignals({
-      symbols,
-      limit: url.searchParams.get('limit') || '',
-    });
-    json(res, 200, { data: rows });
-    return true;
-  }
-
-  if (req.method === 'GET' && pathname === '/v1/quant-backtest') {
-    const result = await queryPublicQuantBacktest({
-      symbols: url.searchParams.get('symbols') || '',
-      horizon: url.searchParams.get('horizon') || '',
-      warmup: url.searchParams.get('warmup') || '',
-      step: url.searchParams.get('step') || '',
-    });
-    json(res, 200, { data: result });
-    return true;
-  }
-
-  if (req.method === 'GET' && pathname === '/v1/quant-signal-history') {
-    const page = await queryPublicQuantSignalHistory({
-      symbol: url.searchParams.get('symbol') || '',
-      from: url.searchParams.get('from') || '',
-      to: url.searchParams.get('to') || '',
-      limit: url.searchParams.get('limit') || url.searchParams.get('pageSize') || '60',
-      offset: url.searchParams.get('offset') || '',
-      page: url.searchParams.get('page') || '',
-    });
-    json(res, 200, {
-      data: page.rows,
-      meta: {
-        limit: page.limit,
-        offset: page.offset,
-        total: page.total,
-        hasMore: page.hasMore,
-        nextOffset: page.nextOffset,
-      },
-    });
     return true;
   }
 

@@ -19,10 +19,9 @@ import { mergeAutoHashtagsIntoNewsItem } from '../newsHashtags.mjs';
 import { fetchNinjasConcallTranscript } from '../providers/concalls/ninjas.mjs';
 import { fetchFinnhubEconomicCalendar, fetchFinnhubEarningsCalendar } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
-import { fetchYahooDailyPriceSeries, fetchYahooKoreaDailyBars } from '../providers/market/yahooDailyBars.mjs';
+import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
 import { generateMarketInsights } from '../insights/rules.mjs';
-import { generateQuantSignalItems } from '../quant/generate.mjs';
 import { generateNewsDigestItems } from '../digests/newsDigest.mjs';
 import { notificationsFromInsights } from '../notifications/outbox.mjs';
 import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
@@ -259,9 +258,6 @@ async function readJobContext(job) {
   if (provider === 'signal' && handler === 'news_digest') {
     context.newsItems = await listCollectionPayloads('newsItems');
   }
-  if (provider === 'signal' && handler === 'quant_signals') {
-    context.priceSeries = await listCollectionPayloads('priceSeries');
-  }
 
   return context;
 }
@@ -448,9 +444,6 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
   if (job.provider === 'coingecko' && job.handler === 'coin_markets') {
     return { kind: 'coinMarkets', rows: await fetchCoinGeckoMarkets(job.params || {}) };
   }
-  if (job.provider === 'yahoo' && job.handler === 'kr_daily_bars') {
-    return { kind: 'priceSeries', rows: await fetchYahooKoreaDailyBars(job.params || {}) };
-  }
   if (job.provider === 'yahoo' && job.handler === 'daily_bars') {
     return {
       kind: 'priceSeries',
@@ -465,9 +458,6 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
   }
   if (job.provider === 'signal' && job.handler === 'news_digest') {
     return { kind: 'newsDigests', rows: generateNewsDigestItems(dbBefore, job.params || {}) };
-  }
-  if (job.provider === 'signal' && job.handler === 'quant_signals') {
-    return { kind: 'quantSignals', rows: generateQuantSignalItems(dbBefore, job.params || {}) };
   }
   throw new Error(`UNKNOWN_JOB_HANDLER:${job.provider}:${job.handler}`);
 }
@@ -605,7 +595,6 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       marketList: 'marketLists',
       priceSeries: 'priceSeries',
       coinMarkets: 'coinMarkets',
-      quantSignals: 'quantSignalItems',
       newsDigests: 'newsDigestItems',
     };
     const directCollection = directCollectionByKind[result.kind];

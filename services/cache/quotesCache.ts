@@ -1,4 +1,4 @@
-import type { SignalApiMarketQuote, SignalApiQuantSignal } from '@/integrations/signal-api/types';
+import type { SignalApiMarketQuote } from '@/integrations/signal-api/types';
 
 /** Quotes tab passive cache TTL. Real-time refresh should move to websocket/SSE later. */
 export const QUOTES_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -9,10 +9,6 @@ export type QuoteCacheRow = {
   symbol: string;
   name?: string;
   quote: SignalApiMarketQuote | null;
-  /** 국내(코스피) 종목은 정규장 시세 대신 퀀트 일봉 신호로 채운다. */
-  quant?: SignalApiQuantSignal | null;
-  sparkline?: number[];
-  sparklineChangePercent?: number | null;
   error?: string;
 };
 

@@ -81,7 +81,7 @@ async function fetchYahooDailyBars(yahooSymbol, { range = '1y', interval = '1d' 
   const symbol = String(yahooSymbol || '').trim();
   if (!symbol) return [];
   const url = `${YAHOO_CHART_URL}/${encodeURIComponent(symbol)}?range=${encodeURIComponent(range)}&interval=${encodeURIComponent(interval)}`;
-  const res = await fetch(url, { headers: { 'user-agent': 'SignalApp/quant-bars' } });
+  const res = await fetch(url, { headers: { 'user-agent': 'SignalApp/daily-bars' } });
   const body = await res.text();
   if (!res.ok) throw new Error(`YAHOO_BARS_${res.status}:${body.slice(0, 160)}`);
   const json = JSON.parse(body);
@@ -112,8 +112,7 @@ function buildSeriesRow({ instrument, bars, range, fetchedAt }) {
 /**
  * Fetches daily OHLCV history for the given instruments. KRX symbols default to
  * `{code}.KS`; US symbols use the ticker as-is. The result is one persisted row
- * per symbol holding the full bar series for detail charts, sparklines, and
- * quant analysis.
+ * per symbol holding the full bar series for symbol detail charts.
  */
 export async function fetchYahooDailyPriceSeries(params = {}) {
   const range = String(params.range || '1y').trim() || '1y';
@@ -140,8 +139,4 @@ export async function fetchYahooDailyPriceSeries(params = {}) {
     }
   }
   return rows;
-}
-
-export async function fetchYahooKoreaDailyBars(params = {}) {
-  return fetchYahooDailyPriceSeries(params);
 }

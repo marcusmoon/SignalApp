@@ -1,4 +1,3 @@
-import type { AppTheme } from '@/constants/theme';
 import type {
   SignalApiCoinMarket,
   SignalApiMarketQuote,
@@ -26,23 +25,6 @@ export async function withSoftTimeout<T>(promise: Promise<T>, ms: number, fallba
   }
 }
 
-export function quantActionTone(theme: AppTheme, action: string): string {
-  if (action === 'buy') return theme.danger;
-  if (action === 'accumulate') return theme.green;
-  if (action === 'reduce') return theme.accentBlue;
-  if (action === 'avoid') return theme.textDim;
-  return theme.textMuted;
-}
-
-export function formatPctSigned(value: number | null | undefined): string {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
-}
-
-export function sparklineSymbolForRow(row: QuoteRow): string {
-  return String(row.quote?.krxSymbol || row.quant?.symbol || row.symbol || '').trim().toUpperCase();
-}
-
 function formatUsdBody(abs: number): string {
   if (!Number.isFinite(abs) || abs < 0) return '—';
   if (abs >= 1000) return abs.toLocaleString('en-US', { maximumFractionDigits: 2 });
@@ -58,9 +40,13 @@ export function formatUsd(n: number): string {
 
 export function formatUsdChange(n: number): string {
   if (!Number.isFinite(n)) return '—';
-  if (n === 0) return '$0.00';
+  if (n === 0) return '$0';
   const sign = n > 0 ? '+' : '-';
-  return `${sign}$${formatUsdBody(Math.abs(n))}`;
+  const body = Math.abs(n).toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  });
+  return `${sign}$${body}`;
 }
 
 function toFiniteDisplayNumber(value: unknown): number {
@@ -78,7 +64,12 @@ export function formatKrw(value: unknown): string {
 export function formatQuoteDpPct(dp: unknown): string {
   if (!Number.isFinite(dp)) return '—';
   const p = dp as number;
-  return `${p >= 0 ? '+' : ''}${p.toFixed(2)}%`;
+  const sign = p >= 0 ? '+' : '-';
+  const body = Math.abs(p).toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+  });
+  return `${sign}${body}%`;
 }
 
 export function isKoreaStockQuote(row: QuoteRow): boolean {

@@ -54,9 +54,6 @@ type Props = {
   briefing: SignalApiMarketBriefing;
   theme: AppTheme;
   scaleFont: (n: number) => number;
-  sessionLabel: string;
-  marketLabel: string;
-  featured?: boolean;
 };
 
 function BriefingSection({
@@ -89,7 +86,7 @@ function BriefingSection({
           </View>
         ) : null}
       </View>
-      <View style={styles.sectionPanel}>{children}</View>
+      {children}
     </View>
   );
 }
@@ -166,48 +163,44 @@ function MacroHighlightCard({
   );
 }
 
-export function MarketBriefingBlock({
-  briefing,
-  theme,
-  scaleFont,
-  sessionLabel,
-  marketLabel,
-  featured = false,
-}: Props) {
+export function MarketBriefingBlock({ briefing, theme, scaleFont }: Props) {
   const { t } = useLocale();
   const { effectiveColorScheme } = useSignalTheme();
-  const styles = makeStyles(theme, scaleFont, featured);
+  const styles = makeStyles(theme, scaleFont);
   const changeColors = getQuoteChangeColors(
     marketColorConvention(briefing.market),
     effectiveColorScheme,
   );
 
+  const hasLead = Boolean(briefing.summary) || briefing.overview.length > 0;
+
   return (
     <View style={styles.block}>
-      <View style={styles.sessionBar}>
-        <Text style={styles.sessionLabel}>
-          {marketLabel} · {sessionLabel}
-        </Text>
-        <Text style={styles.sessionWhen}>{shortDateTime(briefing.publishedAt)}</Text>
-      </View>
+      {hasLead ? (
+        <View style={styles.leadPanel}>
+          {briefing.summary ? <Text style={styles.summary}>{briefing.summary}</Text> : null}
 
-      <View style={styles.heroPanel}>
-        <Text style={styles.title}>{briefing.title}</Text>
-        <Text style={styles.headline}>{briefing.headline}</Text>
-        {briefing.summary ? <Text style={styles.summary}>{briefing.summary}</Text> : null}
-      </View>
-
-      {briefing.overview.length > 0 ? (
-        <BriefingSection title={t('briefingDetailOverview')} count={briefing.overview.length} styles={styles}>
-          <View style={styles.overviewList}>
-            {briefing.overview.map((line, index) => (
-              <View key={`overview-${index}`} style={styles.overviewRow}>
-                <View style={styles.overviewDot} />
-                <Text style={styles.overviewText}>{line}</Text>
+          {briefing.overview.length > 0 ? (
+            <View style={styles.overviewBlock}>
+              {briefing.summary ? <View style={styles.leadDivider} /> : null}
+              <View style={styles.sectionHead}>
+                <View style={styles.sectionAccent} />
+                <Text style={styles.sectionTitle}>{t('briefingDetailOverview')}</Text>
+                <View style={styles.sectionCountBadge}>
+                  <Text style={styles.sectionCountText}>{briefing.overview.length}</Text>
+                </View>
               </View>
-            ))}
-          </View>
-        </BriefingSection>
+              <View style={styles.overviewList}>
+                {briefing.overview.map((line, index) => (
+                  <View key={`overview-${index}`} style={styles.overviewRow}>
+                    <View style={styles.overviewDot} />
+                    <Text style={styles.overviewText}>{line}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+        </View>
       ) : null}
 
       {briefing.companies.length > 0 ? (
@@ -277,95 +270,51 @@ export function MarketBriefingBlock({
           </View>
         </BriefingSection>
       ) : null}
-
-      <View style={styles.blockFoot} />
     </View>
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number, featured: boolean) {
-  const heroTint =
-    theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}0C` : theme.bgElevated;
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+  const leadTint =
+    theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}0A` : theme.bgElevated;
 
   return StyleSheet.create({
     block: {
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: featured ? theme.greenBorder : theme.border,
-      backgroundColor: theme.card,
-      overflow: 'hidden',
-      marginBottom: 18,
+      gap: 20,
     },
-    sessionBar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 10,
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      backgroundColor: featured ? theme.greenDim : theme.bgElevated,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    sessionLabel: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: sf(12),
-      fontWeight: '900',
-      letterSpacing: 0.4,
-      color: theme.green,
-      textTransform: 'uppercase',
-    },
-    sessionWhen: {
-      fontSize: sf(12),
-      fontWeight: '700',
-      color: theme.textMuted,
-    },
-    heroPanel: {
-      marginHorizontal: 12,
-      marginTop: 12,
-      paddingVertical: 16,
-      paddingHorizontal: 14,
-      borderRadius: 14,
-      backgroundColor: heroTint,
+    leadPanel: {
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.greenBorder,
-      gap: 8,
+      backgroundColor: leadTint,
+      padding: 16,
+      gap: 14,
     },
-    title: {
-      fontSize: sf(featured ? 22 : 20),
-      lineHeight: sf(featured ? 29 : 27),
-      fontWeight: '900',
-      letterSpacing: -0.45,
-      color: theme.text,
+    leadDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.border,
+      marginBottom: 2,
     },
-    headline: {
-      fontSize: sf(16),
-      lineHeight: sf(24),
-      fontWeight: '800',
-      color: theme.textDim,
+    overviewBlock: {
+      gap: 10,
     },
     summary: {
-      fontSize: sf(15),
-      lineHeight: sf(23),
-      fontWeight: '600',
+      fontSize: sf(17),
+      lineHeight: sf(26),
+      fontWeight: '700',
       color: theme.text,
-      marginTop: 2,
     },
     sectionWrap: {
-      marginTop: 14,
-      paddingHorizontal: 12,
+      gap: 10,
     },
     sectionHead: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      marginBottom: 8,
-      paddingHorizontal: 2,
     },
     sectionAccent: {
       width: 4,
-      height: 18,
+      height: 20,
       borderRadius: 2,
       backgroundColor: theme.green,
     },
@@ -378,55 +327,46 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, featured: boolea
     sectionTitle: {
       flex: 1,
       minWidth: 0,
-      fontSize: sf(14),
+      fontSize: sf(16),
       fontWeight: '900',
       letterSpacing: -0.15,
       color: theme.text,
     },
     sectionCountBadge: {
-      minWidth: 22,
-      height: 22,
-      paddingHorizontal: 7,
-      borderRadius: 11,
+      minWidth: 24,
+      height: 24,
+      paddingHorizontal: 8,
+      borderRadius: 12,
       backgroundColor: theme.bgElevated,
-      borderWidth: 1,
-      borderColor: theme.border,
       alignItems: 'center',
       justifyContent: 'center',
     },
     sectionCountText: {
-      fontSize: sf(11),
+      fontSize: sf(12),
       fontWeight: '900',
       color: theme.textMuted,
     },
-    sectionPanel: {
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      padding: 12,
-    },
     overviewList: {
-      gap: 10,
+      gap: 12,
     },
     overviewRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 10,
+      gap: 12,
     },
     overviewDot: {
-      width: 7,
-      height: 7,
+      width: 8,
+      height: 8,
       borderRadius: 4,
       backgroundColor: theme.green,
-      marginTop: sf(8),
+      marginTop: sf(9),
       flexShrink: 0,
     },
     overviewText: {
       flex: 1,
       minWidth: 0,
-      fontSize: sf(15),
-      lineHeight: sf(23),
+      fontSize: sf(16),
+      lineHeight: sf(25),
       fontWeight: '600',
       color: theme.text,
     },
@@ -434,11 +374,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, featured: boolea
       gap: 10,
     },
     companyCard: {
-      borderRadius: 12,
+      borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.card,
-      padding: 12,
+      backgroundColor: theme.bgElevated,
+      padding: 14,
       gap: 10,
     },
     companyHead: {
@@ -453,13 +393,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, featured: boolea
       gap: 3,
     },
     companySymbol: {
-      fontSize: sf(16),
+      fontSize: sf(17),
       fontWeight: '900',
       letterSpacing: -0.2,
       color: theme.green,
     },
     companyName: {
-      fontSize: sf(12),
+      fontSize: sf(13),
       fontWeight: '700',
       color: theme.textMuted,
     },
@@ -470,53 +410,53 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, featured: boolea
       paddingHorizontal: 10,
       borderRadius: 10,
       gap: 2,
-      minWidth: 88,
+      minWidth: 92,
     },
     companyPrice: {
-      fontSize: sf(14),
+      fontSize: sf(15),
       fontWeight: '900',
       color: theme.text,
       fontVariant: ['tabular-nums'],
     },
     companyChange: {
-      fontSize: sf(13),
+      fontSize: sf(14),
       fontWeight: '900',
       fontVariant: ['tabular-nums'],
     },
     companySummary: {
-      fontSize: sf(14),
-      lineHeight: sf(22),
+      fontSize: sf(15),
+      lineHeight: sf(23),
       fontWeight: '600',
       color: theme.textDim,
-      paddingTop: 2,
+      paddingTop: 4,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
     },
     macroCard: {
-      borderRadius: 12,
+      borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.card,
+      backgroundColor: theme.bgElevated,
       borderLeftWidth: 3,
       borderLeftColor: theme.accentOrange,
-      paddingVertical: 11,
-      paddingHorizontal: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
       gap: 6,
     },
     macroTitle: {
-      fontSize: sf(14),
+      fontSize: sf(15),
       fontWeight: '900',
       color: theme.text,
-      lineHeight: sf(20),
+      lineHeight: sf(22),
     },
     macroBody: {
-      fontSize: sf(14),
-      lineHeight: sf(21),
+      fontSize: sf(15),
+      lineHeight: sf(23),
       fontWeight: '600',
       color: theme.textDim,
     },
     link: {
-      fontSize: sf(12),
+      fontSize: sf(13),
       fontWeight: '800',
       color: theme.green,
       marginTop: 2,
@@ -525,12 +465,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, featured: boolea
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
-      borderRadius: 12,
+      borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.card,
-      paddingVertical: 11,
-      paddingHorizontal: 12,
+      backgroundColor: theme.bgElevated,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
     },
     sourceRowPressed: {
       opacity: 0.82,
@@ -541,18 +481,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, featured: boolea
       gap: 3,
     },
     sourceTitle: {
-      fontSize: sf(13),
+      fontSize: sf(14),
       fontWeight: '800',
       color: theme.text,
-      lineHeight: sf(19),
+      lineHeight: sf(20),
     },
     sourceMeta: {
-      fontSize: sf(11),
+      fontSize: sf(12),
       fontWeight: '700',
       color: theme.textMuted,
-    },
-    blockFoot: {
-      height: 12,
     },
   });
 }

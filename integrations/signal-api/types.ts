@@ -222,55 +222,6 @@ export type SignalApiMarketQuote = {
   } | null;
 };
 
-export type SignalApiQuantSignalFactors = {
-  trend: number;
-  momentum: number;
-  meanReversion: number;
-  volume: number;
-};
-
-export type SignalApiQuantIndicators = {
-  lastClose: number | null;
-  sma20: number | null;
-  sma60: number | null;
-  vsSma20Pct: number | null;
-  vsSma60Pct: number | null;
-  return20d: number | null;
-  return60d: number | null;
-  rsi14: number | null;
-  volatility: number | null;
-  vsHigh52wPct: number | null;
-  volumeRatio: number | null;
-};
-
-export type SignalApiQuantSignal = {
-  symbol: string;
-  displaySymbol?: string | null;
-  name: string | null;
-  rank?: number | null;
-  score: number;
-  level: 'strong' | 'watch' | 'neutral' | 'weak' | string;
-  action: 'buy' | 'accumulate' | 'hold' | 'reduce' | 'avoid' | string;
-  headline?: string | null;
-  interpretation?: string | null;
-  perspective?: {
-    key: string;
-    label: string;
-    principle: string;
-    positives: string[];
-    cautions: string[];
-  } | null;
-  risk: 'low' | 'medium' | 'high' | 'unknown' | string;
-  confidence: number;
-  factors: SignalApiQuantSignalFactors;
-  indicators: SignalApiQuantIndicators;
-  reasonCodes: string[];
-  barCount: number;
-  lastBarDate: string | null;
-  liveQuote: SignalApiMarketQuote | null;
-  updatedAt: string | null;
-};
-
 export type SignalApiCoinMarket = {
   id: string;
   provider: string;
@@ -360,14 +311,4 @@ export type SignalApiStockCandles = {
   s: 'ok' | 'no_data';
   t: number[];
   v: number[];
-};
-
-export type SignalApiStockSparkline = {
-  symbol: string;
-  displaySymbol?: string | null;
-  currency?: string | null;
-  lastClose?: number | null;
-  lastBarDate?: string | null;
-  changePercent?: number | null;
-  closes: number[];
 };

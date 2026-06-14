@@ -43,13 +43,7 @@ import {
 } from './db/repositories/concallsRepository.mjs';
 import {
   queryPublicPriceSeriesCandlesRow,
-  queryPublicPriceSeriesSparklineRows,
 } from './db/repositories/priceSeriesRepository.mjs';
-import {
-  queryPublicQuantBacktestResult,
-  queryPublicQuantSignalHistoryRows,
-  queryPublicQuantSignalRows,
-} from './db/repositories/quantRepository.mjs';
 import {
   createAdminUserRow,
   deleteAdminUserRow,
@@ -447,23 +441,6 @@ const collectionSpecs = [
       yahoo_symbol: textOrNull(row.yahooSymbol),
       last_bar_date: dateOrNull(row.lastBarDate || row.bars?.[row.bars.length - 1]?.date),
       fetched_at: isoOrNull(row.fetchedAt),
-      updated_at: isoOrNull(row.updatedAt) || nowIso(),
-    }),
-  },
-  {
-    key: 'quantSignalItems',
-    store: 'insights',
-    table: 'quant_signal_items',
-    pk: 'id',
-    keyOf: (row) => row.id,
-    columns: (row, index) => ({
-      position: index,
-      symbol: textOrNull(row.symbol),
-      action: textOrNull(row.action),
-      level: textOrNull(row.level),
-      score: numberOrNull(row.score),
-      generated_date: dateOrNull(row.generatedDate || row.generatedAt),
-      generated_at: isoOrNull(row.generatedAt),
       updated_at: isoOrNull(row.updatedAt) || nowIso(),
     }),
   },
@@ -886,22 +863,6 @@ export async function upsertMarketQuotes(rows = []) {
 
 export async function queryPublicPriceSeriesCandles(options = {}) {
   return cachedPublicRead('publicPriceSeriesCandles', options, () => queryPublicPriceSeriesCandlesRow(options), 30000);
-}
-
-export async function queryPublicPriceSeriesSparklines(options = {}) {
-  return cachedPublicRead('publicPriceSeriesSparklines', options, () => queryPublicPriceSeriesSparklineRows(options), 30000);
-}
-
-export async function queryPublicQuantSignals(options = {}) {
-  return cachedPublicRead('publicQuantSignals', options, () => queryPublicQuantSignalRows(options), 15000);
-}
-
-export async function queryPublicQuantBacktest(options = {}) {
-  return cachedPublicRead('publicQuantBacktest', options, () => queryPublicQuantBacktestResult(options), 60000);
-}
-
-export async function queryPublicQuantSignalHistory(options = {}) {
-  return cachedPublicRead('publicQuantSignalHistory', options, () => queryPublicQuantSignalHistoryRows(options), 15000);
 }
 
 export async function queryInsightItems(options = {}) {

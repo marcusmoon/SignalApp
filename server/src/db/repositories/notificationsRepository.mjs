@@ -73,7 +73,10 @@ export async function upsertNotificationRow(next) {
       ON CONFLICT(id) DO UPDATE SET
         type = excluded.type,
         channel = excluded.channel,
-        status = excluded.status,
+        status = CASE
+          WHEN notification_items.status IN ('sending', 'sent', 'failed', 'cancelled', 'skipped') THEN notification_items.status
+          ELSE excluded.status
+        END,
         priority = excluded.priority,
         title = excluded.title,
         app_user_id = excluded.app_user_id,
@@ -81,10 +84,29 @@ export async function upsertNotificationRow(next) {
         target_key = excluded.target_key,
         scheduled_at = excluded.scheduled_at,
         expires_at = excluded.expires_at,
-        sent_at = excluded.sent_at,
+        sent_at = CASE
+          WHEN notification_items.status IN ('sending', 'sent', 'failed', 'cancelled', 'skipped') THEN notification_items.sent_at
+          ELSE excluded.sent_at
+        END,
         source_type = excluded.source_type,
         source_id = excluded.source_id,
-        payload = excluded.payload,
+        payload = CASE
+          WHEN notification_items.status IN ('sending', 'sent', 'failed', 'cancelled', 'skipped')
+            THEN excluded.payload
+              || jsonb_build_object(
+                'status', notification_items.status,
+                'sentAt', notification_items.sent_at,
+                'provider', notification_items.payload->>'provider',
+                'providerMessageId', notification_items.payload->>'providerMessageId',
+                'attempts', CASE
+                  WHEN COALESCE(notification_items.payload->>'attempts', '') ~ '^[0-9]+$'
+                    THEN (notification_items.payload->>'attempts')::int
+                  ELSE 0
+                END,
+                'errorMessage', notification_items.payload->>'errorMessage'
+              )
+          ELSE excluded.payload
+        END,
         updated_at = excluded.updated_at
       RETURNING *
     `,

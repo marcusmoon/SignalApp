@@ -122,7 +122,7 @@ export const en = {
   screenAccount: 'My info',
   screenAlerts: 'Alerts',
   screenCalendar: 'Invest calendar',
-  screenBriefing: 'Market briefing',
+  screenBriefing: 'Brief',
   screenInsights: 'Signals',
   screenQuant: 'Investment views',
   screenMarket: 'Market snapshot',

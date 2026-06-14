@@ -122,7 +122,7 @@ export const ja = {
   screenAccount: 'マイ情報',
   screenAlerts: '通知',
   screenCalendar: '投資カレンダー',
-  screenBriefing: '市場ブリーフィング',
+  screenBriefing: 'ブリーフ',
   screenInsights: 'シグナル',
   screenQuant: '投資観点',
   screenMarket: '市場サマリー',

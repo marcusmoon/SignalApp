@@ -120,7 +120,7 @@ export const ko = {
   screenAccount: '내정보',
   screenAlerts: '알림',
   screenCalendar: '투자 캘린더',
-  screenBriefing: '시장 브리핑',
+  screenBriefing: '브리핑',
   screenInsights: '시그널',
   screenQuant: '투자 관점',
   screenMarket: '시장 요약',

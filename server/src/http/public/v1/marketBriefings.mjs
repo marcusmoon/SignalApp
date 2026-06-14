@@ -32,7 +32,7 @@ function normalizeBriefingPayload(input) {
   const summary = cleanText(input?.summary);
   const publishedAt = cleanText(input?.publishedAt) || new Date().toISOString();
   if (!id || !title || !headline || !ALLOWED_MARKETS.has(market) || !ALLOWED_SESSIONS.has(session)) return null;
-  const pushCandidate = input?.pushCandidate === true;
+  const pushCandidate = input?.pushCandidate !== false;
   return {
     id,
     market,
@@ -63,7 +63,7 @@ function hasIngestAccess(req) {
 }
 
 async function maybeQueueBriefingPush(briefing) {
-  if (!briefing?.pushCandidate) return;
+  if (!briefing?.pushCandidate) return null;
   const notification = createNotificationItem({
     id: `notification:push:market_briefing:${briefing.id}`,
     type: NOTIFICATION_TYPES.marketBriefing,
@@ -75,7 +75,10 @@ async function maybeQueueBriefingPush(briefing) {
     targetType: 'all',
     sourceType: 'market_briefing',
     sourceId: briefing.id,
-    deepLink: '/briefing',
+    deepLink: `/briefings/${briefing.id}`,
+    symbols: cleanArray(briefing.companies).map((company) => company?.symbol).filter(Boolean),
+    sourceRefs: briefing.sourceRefs,
+    reason: `${briefing.market}/${briefing.session} market briefing updated`,
     scheduledAt: briefing.publishedAt,
     payload: {
       briefingId: briefing.id,
@@ -84,7 +87,8 @@ async function maybeQueueBriefingPush(briefing) {
       briefingDate: briefing.briefingDate,
     },
   });
-  if (notification) await upsertNotificationItem(notification);
+  if (!notification) return null;
+  return upsertNotificationItem(notification);
 }
 
 function publicBriefing(item) {
@@ -105,8 +109,8 @@ export async function handlePublicMarketBriefingRoutes({ req, res, url, pathname
       return true;
     }
     await upsertCollectionRows('marketBriefings', [briefing]);
-    if (body?.sendPush !== false) await maybeQueueBriefingPush(briefing);
-    json(res, 201, { data: publicBriefing(briefing) });
+    const notification = body?.sendPush === false ? null : await maybeQueueBriefingPush(briefing);
+    json(res, 201, { data: publicBriefing(briefing), meta: { notificationQueued: !!notification } });
     return true;
   }
 

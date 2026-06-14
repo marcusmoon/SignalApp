@@ -11,6 +11,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { MarketSnapshotSection } from '@/components/summary/MarketSnapshotSection';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import type { AppTheme } from '@/constants/theme';
@@ -385,8 +386,9 @@ export default function BriefingScreen() {
   }, [newsBySymbol, notableSymbols, quoteBySymbol, t]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <Stack.Screen options={{ title: t('screenBriefing') }} />
+      <SignalHeader compact onBrandPress={() => void onRefresh()} />
       {loading ? (
         <View style={styles.center}>
           <SignalLoadingIndicator message={t('commonLoading')} />

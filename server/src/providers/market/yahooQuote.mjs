@@ -34,17 +34,17 @@ async function fetchYahooQuote(yahooSymbol) {
   // Current price: regularMarketPrice is available intraday
   const price = finiteNumber(meta.regularMarketPrice);
 
-  // Previous close: try meta fields first, then fall back to second-to-last bar
-  let previousClose = finiteNumber(meta.previousClose ?? meta.chartPreviousClose);
-  if (previousClose == null) {
-    const closes = (result.indicators?.quote?.[0]?.close ?? []).filter((v) => v != null);
-    if (closes.length >= 2) previousClose = finiteNumber(closes[closes.length - 2]);
-    else if (closes.length === 1 && price != null) previousClose = finiteNumber(closes[0]);
-  }
+  // Previous close: use closes[-2] from bar data (= actual previous trading day).
+  // meta.previousClose with range=5d reflects the price from the START of the 5-day
+  // range, not the previous trading day — so we skip it and use the bars instead.
+  const closes = (result.indicators?.quote?.[0]?.close ?? []).filter((v) => v != null);
+  let previousClose = closes.length >= 2
+    ? finiteNumber(closes[closes.length - 2])
+    : null;
 
-  // Change percent: always calculate from price vs previousClose (daily basis).
-  // Do NOT use meta.regularMarketChangePercent — when range=5d it reflects the
-  // 5-day cumulative change rather than the single-day change.
+  // Change percent: always calculate from (price - previousClose) / previousClose.
+  // Do NOT use meta.regularMarketChangePercent or meta.previousClose — both reflect
+  // the 5-day range start when range=5d is used.
   let changePercent = null;
   if (price != null && previousClose != null && previousClose !== 0) {
     changePercent = (price - previousClose) / previousClose * 100;

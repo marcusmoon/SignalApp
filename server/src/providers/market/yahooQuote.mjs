@@ -42,9 +42,11 @@ async function fetchYahooQuote(yahooSymbol) {
     else if (closes.length === 1 && price != null) previousClose = finiteNumber(closes[0]);
   }
 
-  // Change percent: prefer meta value, calculate if absent
-  let changePercent = finiteNumber(meta.regularMarketChangePercent);
-  if (changePercent == null && price != null && previousClose != null && previousClose !== 0) {
+  // Change percent: always calculate from price vs previousClose (daily basis).
+  // Do NOT use meta.regularMarketChangePercent — when range=5d it reflects the
+  // 5-day cumulative change rather than the single-day change.
+  let changePercent = null;
+  if (price != null && previousClose != null && previousClose !== 0) {
     changePercent = (price - previousClose) / previousClose * 100;
   }
 

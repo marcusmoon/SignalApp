@@ -340,6 +340,11 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
       .appUsersNoticeForm { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .appUsersWideField { grid-column: 1 / -1; }
       .appUsersNotifications { margin-top: 14px; }
+      .appUserListMb { margin-bottom: 12px; }
+      .userDetailTable { overflow-x: auto; margin-top: 6px; }
+      .userDetailTable .settingsTable { min-width: 480px; }
+      .detailPlatformPill { margin-left: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+      .notifBodyPreview { margin: 2px 0 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
       .notificationMiniCard {
         padding: 10px 10px 10px 12px;
         border: 1px solid var(--accent-border);
@@ -6459,6 +6464,20 @@ body.adminShellV2:not(.loginMode) {
 
 .adminShellV2 .appUserTable {
   min-width: 760px;
+}
+
+.adminShellV2 .userDetailTable .settingsTable {
+  background: var(--admin-surface-2);
+}
+
+.adminShellV2 .detailPlatformPill {
+  background: var(--admin-active);
+  color: var(--accent);
+  border: 1px solid var(--admin-border-soft);
+}
+
+.adminShellV2 .notifBodyPreview {
+  color: var(--admin-muted);
 }
 
 .adminShellV2 .appUserTableRow {

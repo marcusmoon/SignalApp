@@ -1,12 +1,17 @@
-import type { SignalApiNewsItem } from '@/integrations/signal-api/types';
+import type { SignalApiNewsDigestSourceRef, SignalApiNewsItem } from '@/integrations/signal-api/types';
 
 export type NewsDigestItem = {
   id: string;
   title: string;
+  summary: string;
+  topics: string[];
   symbols: string[];
   sources: string[];
   count: number;
   score: number;
+  aiGenerated: boolean;
+  generatedAt: string | null;
+  sourceRefs: SignalApiNewsDigestSourceRef[];
   primary: SignalApiNewsItem;
 };
 
@@ -193,10 +198,15 @@ export function buildNewsDigestItems(rows: SignalApiNewsItem[], limit = 4): News
       return {
         id: `digest:${key}`,
         title: titleForGroup(primary, sorted),
+        summary: '',
+        topics: [],
         symbols,
         sources,
         count: sorted.length,
         score,
+        aiGenerated: false,
+        generatedAt: primary.publishedAt,
+        sourceRefs: [],
         primary,
       };
     })

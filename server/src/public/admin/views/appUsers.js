@@ -98,24 +98,34 @@ function identityRows(rows, { esc, textFor, formatDateTime }) {
 function deviceRows(rows, { esc, textFor, formatDateTime }) {
   if (!rows.length) return `<p class="muted">${esc(textFor('appUsersDevicesEmpty'))}</p>`;
   return `
-    <div class="notificationMiniList">
-      ${rows
-        .map(
-          (item) => `
-            <article class="notificationMiniCard statusSide statusSide--${item.active ? 'sent' : 'cancelled'}">
-              <div class="notificationMiniHead">
-                <strong>${esc(item.deviceName || item.platform || '-')}</strong>
-                <span class="pill">${item.active ? esc(textFor('statusActive')) : esc(textFor('statusInactive'))}</span>
-              </div>
-              <div class="row muted">
-                <span>${esc(item.platform || '-')}</span>
-                <span><code>${esc(maskToken(item.pushToken))}</code></span>
-                <span>${esc(textFor('appUsersUpdatedAt'))} ${esc(formatDateTime(item.updatedAt || item.createdAt))}</span>
-              </div>
-            </article>
-          `,
-        )
-        .join('')}
+    <div class="userDetailTable">
+      <table class="settingsTable">
+        <thead>
+          <tr>
+            <th>${esc(textFor('appDevicesDevice'))}</th>
+            <th>${esc(textFor('appDevicesToken'))}</th>
+            <th>${esc(textFor('colStatus'))}</th>
+            <th>${esc(textFor('colDate'))}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows
+            .map(
+              (item) => `
+                <tr>
+                  <td>
+                    <strong>${esc(item.deviceName || '-')}</strong>
+                    ${item.platform ? `<span class="pill detailPlatformPill">${esc(item.platform)}</span>` : ''}
+                  </td>
+                  <td><code class="muted">${esc(maskToken(item.pushToken))}</code></td>
+                  <td><span class="pill pillStatus ${item.active ? 'pillStatus--ok' : 'pillStatus--muted'}">${item.active ? esc(textFor('statusActive')) : esc(textFor('statusInactive'))}</span></td>
+                  <td class="muted">${esc(formatDateTime(item.updatedAt || item.createdAt))}</td>
+                </tr>
+              `,
+            )
+            .join('')}
+        </tbody>
+      </table>
     </div>
   `;
 }
@@ -123,30 +133,40 @@ function deviceRows(rows, { esc, textFor, formatDateTime }) {
 function sessionRows(rows, { esc, textFor, formatDateTime }) {
   if (!rows.length) return `<p class="muted">${esc(textFor('appUsersSessionsEmpty'))}</p>`;
   return `
-    <div class="notificationMiniList">
-      ${rows
-        .map((item) => {
-          const statusText = item.active
-            ? textFor('appUsersSessionActive')
-            : item.revokedAt
-              ? textFor('appUsersSessionRevoked')
-              : textFor('appUsersSessionExpired');
-          return `
-            <article class="notificationMiniCard statusSide statusSide--${item.active ? 'sent' : 'cancelled'}">
-              <div class="notificationMiniHead">
-                <strong>${esc(item.type === 'signal_refresh' ? textFor('appUsersSessionRefresh') : textFor('appUsersSessionAccess'))}</strong>
-                <span class="pill">${esc(statusText)}</span>
-              </div>
-              <div class="row muted">
-                <span>${esc(item.key || '-')}</span>
-                ${item.deviceId ? `<span>${esc(textFor('appUsersSessionDevice'))} ${esc(item.deviceId)}</span>` : ''}
-                <span>${esc(textFor('appUsersSessionCreatedAt'))} ${esc(formatDateTime(item.createdAt))}</span>
-                <span>${esc(textFor('appUsersSessionExpiresAt'))} ${esc(formatDateTime(item.expiresAt))}</span>
-              </div>
-            </article>
-          `;
-        })
-        .join('')}
+    <div class="userDetailTable">
+      <table class="settingsTable">
+        <thead>
+          <tr>
+            <th>${esc(textFor('colType'))}</th>
+            <th>${esc(textFor('colStatus'))}</th>
+            <th>${esc(textFor('appUsersSessionCreatedAt'))}</th>
+            <th>${esc(textFor('appUsersSessionExpiresAt'))}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows
+            .map((item) => {
+              const statusText = item.active
+                ? textFor('appUsersSessionActive')
+                : item.revokedAt
+                  ? textFor('appUsersSessionRevoked')
+                  : textFor('appUsersSessionExpired');
+              const statusClass = item.active ? 'pillStatus--ok' : item.revokedAt ? 'pillStatus--fail' : 'pillStatus--muted';
+              return `
+                <tr>
+                  <td>
+                    <strong>${esc(item.type === 'signal_refresh' ? textFor('appUsersSessionRefresh') : textFor('appUsersSessionAccess'))}</strong>
+                    ${item.deviceId ? `<br/><span class="muted">${esc(textFor('appUsersSessionDevice'))} ${esc(item.deviceId)}</span>` : ''}
+                  </td>
+                  <td><span class="pill pillStatus ${statusClass}">${esc(statusText)}</span></td>
+                  <td class="muted">${esc(formatDateTime(item.createdAt))}</td>
+                  <td class="muted">${esc(formatDateTime(item.expiresAt))}</td>
+                </tr>
+              `;
+            })
+            .join('')}
+        </tbody>
+      </table>
     </div>
   `;
 }
@@ -411,13 +431,13 @@ function renderUserManagement({
   `;
 }
 
-function renderDeviceManagement({ body, rows, q, active, platform, pageSize, esc, textFor, formatDateTime }) {
+function renderDeviceManagement({ body, rows, q, active, platform, pageSize, esc, textFor, textForVars, formatDateTime }) {
   return `
     <section class="card settingsControlCard">
       <div class="cardHead">
         <div class="cardHeadMain">
           <div class="cardKicker">${esc(textFor('appDevicesTitle'))}</div>
-          <div class="cardHint">${esc(textFor('appDevicesHint'))}</div>
+          <div class="cardHint">${esc(textForVars('appDevicesCountHint', { count: body.total || rows.length }))}</div>
         </div>
         <div class="cardHeadActions">
           <button class="secondary" id="refreshAppUsersBtn">${esc(textFor('btnRefresh'))}</button>
@@ -431,7 +451,11 @@ function renderDeviceManagement({ body, rows, q, active, platform, pageSize, esc
             <option value="1" ${active === '1' ? 'selected' : ''}>${esc(textFor('statusActive'))}</option>
             <option value="0" ${active === '0' ? 'selected' : ''}>${esc(textFor('statusInactive'))}</option>
           </select>
-          <input id="appDevicesPlatform" value="${esc(platform)}" placeholder="${esc(textFor('appDevicesPlatformPlaceholder'))}" />
+          <select id="appDevicesPlatform">
+            <option value="" ${platform === '' ? 'selected' : ''}>${esc(textFor('appDevicesPlatformAll'))}</option>
+            <option value="ios" ${platform === 'ios' ? 'selected' : ''}>iOS</option>
+            <option value="android" ${platform === 'android' ? 'selected' : ''}>Android</option>
+          </select>
           <select id="appDevicesPageSize">
             <option value="20" ${pageSize === '20' ? 'selected' : ''}>20</option>
             <option value="30" ${pageSize === '30' ? 'selected' : ''}>30</option>
@@ -441,27 +465,51 @@ function renderDeviceManagement({ body, rows, q, active, platform, pageSize, esc
         </div>
       </div>
       <div class="tableScroll">
-        <table>
-          <thead><tr><th>${esc(textFor('appDevicesUser'))}</th><th>${esc(textFor('appDevicesDevice'))}</th><th>${esc(textFor('appDevicesToken'))}</th><th>${esc(textFor('colStatus'))}</th><th>${esc(textFor('colDate'))}</th><th>${esc(textFor('colAction'))}</th></tr></thead>
+        <table class="settingsTable">
+          <thead>
+            <tr>
+              <th>${esc(textFor('appDevicesUser'))}</th>
+              <th>${esc(textFor('appDevicesDevice'))}</th>
+              <th>${esc(textFor('appDevicesToken'))}</th>
+              <th>${esc(textFor('colStatus'))}</th>
+              <th>${esc(textFor('colDate'))}</th>
+              <th>${esc(textFor('colAction'))}</th>
+            </tr>
+          </thead>
           <tbody>
             ${
               rows.length === 0
                 ? `<tr><td colspan="6" class="muted">${esc(textFor('appDevicesEmpty'))}</td></tr>`
-                : rows.map((row) => `
-                  <tr>
-                    <td><strong>${esc(row.nickname || '-')}</strong><br/><span class="muted">${esc(row.email || row.userId || '-')}</span></td>
-                    <td>${esc(row.deviceName || '-')}<br/><span class="pill">${esc(row.platform || '-')}</span></td>
-                    <td><code>${esc(maskToken(row.pushToken))}</code></td>
-                    <td>${row.active ? esc(textFor('statusActive')) : esc(textFor('statusInactive'))}</td>
-                    <td>${esc(formatDateTime(row.updatedAt || row.createdAt))}</td>
-                    <td>
-                      <label class="switchRow compactSwitch">
-                        <input class="switchInput" type="checkbox" data-app-device-active="${esc(row.id)}" ${row.active ? 'checked' : ''}/>
-                        <span class="switchUi" aria-hidden="true"></span>
-                      </label>
-                    </td>
-                  </tr>
-                `).join('')
+                : rows
+                    .map(
+                      (row) => `
+                        <tr>
+                          <td>
+                            <div class="appUserRowIdentity">
+                              <span class="appUserAvatar">${esc((row.nickname || row.email || '?').slice(0, 1).toUpperCase())}</span>
+                              <div>
+                                <strong>${esc(row.nickname || '-')}</strong>
+                                <span class="muted">${esc(row.email || row.userId || '-')}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <strong>${esc(row.deviceName || '-')}</strong>
+                            ${row.platform ? `<span class="pill detailPlatformPill">${esc(row.platform)}</span>` : ''}
+                          </td>
+                          <td><code class="muted">${esc(maskToken(row.pushToken))}</code></td>
+                          <td><span class="pill pillStatus ${row.active ? 'pillStatus--ok' : 'pillStatus--muted'}">${row.active ? esc(textFor('statusActive')) : esc(textFor('statusInactive'))}</span></td>
+                          <td class="muted">${esc(formatDateTime(row.updatedAt || row.createdAt))}</td>
+                          <td>
+                            <label class="switchRow switchRow--compact" title="${esc(row.active ? textFor('statusActive') : textFor('statusInactive'))}">
+                              <input class="switchInput" type="checkbox" data-app-device-active="${esc(row.id)}" ${row.active ? 'checked' : ''}/>
+                              <span class="switchUi" aria-hidden="true"></span>
+                            </label>
+                          </td>
+                        </tr>
+                      `,
+                    )
+                    .join('')
             }
           </tbody>
         </table>
@@ -471,13 +519,20 @@ function renderDeviceManagement({ body, rows, q, active, platform, pageSize, esc
   `;
 }
 
-function renderNotificationSearch({ body, rows, q, status, type, targetType, pageSize, esc, textFor, formatDateTime }) {
+function notificationStatusClass(status) {
+  if (status === 'sent') return 'pillStatus--ok';
+  if (status === 'failed') return 'pillStatus--fail';
+  if (status === 'queued') return 'pillStatus--run';
+  return 'pillStatus--muted';
+}
+
+function renderNotificationSearch({ body, rows, q, status, type, targetType, pageSize, esc, textFor, textForVars, formatDateTime }) {
   return `
     <section class="card settingsControlCard">
       <div class="cardHead">
         <div class="cardHeadMain">
           <div class="cardKicker">${esc(textFor('appNotificationsTitle'))}</div>
-          <div class="cardHint">${esc(textFor('appNotificationsHint'))}</div>
+          <div class="cardHint">${esc(textForVars('appNotificationsCountHint', { count: body.total || rows.length }))}</div>
         </div>
         <div class="cardHeadActions">
           <button class="secondary" id="refreshAppUsersBtn">${esc(textFor('btnRefresh'))}</button>
@@ -488,17 +543,17 @@ function renderNotificationSearch({ body, rows, q, status, type, targetType, pag
           <input id="appNotificationsQuery" value="${esc(q)}" class="wide" placeholder="${esc(textFor('appNotificationsSearchPlaceholder'))}" />
           <select id="appNotificationsStatus">
             <option value="" ${status === '' ? 'selected' : ''}>${esc(textFor('statusAll'))}</option>
-            <option value="queued" ${status === 'queued' ? 'selected' : ''}>queued</option>
-            <option value="sent" ${status === 'sent' ? 'selected' : ''}>sent</option>
-            <option value="failed" ${status === 'failed' ? 'selected' : ''}>failed</option>
-            <option value="cancelled" ${status === 'cancelled' ? 'selected' : ''}>cancelled</option>
+            <option value="queued" ${status === 'queued' ? 'selected' : ''}>${esc(textFor('notifStatusQueued'))}</option>
+            <option value="sent" ${status === 'sent' ? 'selected' : ''}>${esc(textFor('notifStatusSent'))}</option>
+            <option value="failed" ${status === 'failed' ? 'selected' : ''}>${esc(textFor('notifStatusFailed'))}</option>
+            <option value="cancelled" ${status === 'cancelled' ? 'selected' : ''}>${esc(textFor('notifStatusCancelled'))}</option>
           </select>
           <select id="appNotificationsType"><option value="">${esc(textFor('appNotificationsTypeAll'))}</option>${typeOptions(esc, type)}</select>
           <select id="appNotificationsTargetType">
             <option value="" ${targetType === '' ? 'selected' : ''}>${esc(textFor('appNotificationsTargetAll'))}</option>
-            <option value="all" ${targetType === 'all' ? 'selected' : ''}>all</option>
-            <option value="segment" ${targetType === 'segment' ? 'selected' : ''}>segment</option>
-            <option value="user" ${targetType === 'user' ? 'selected' : ''}>user</option>
+            <option value="all" ${targetType === 'all' ? 'selected' : ''}>${esc(textFor('targetAll'))}</option>
+            <option value="segment" ${targetType === 'segment' ? 'selected' : ''}>${esc(textFor('targetSegment'))}</option>
+            <option value="user" ${targetType === 'user' ? 'selected' : ''}>${esc(textFor('appNotificationsTargetUser'))}</option>
           </select>
           <select id="appNotificationsPageSize">
             <option value="20" ${pageSize === '20' ? 'selected' : ''}>20</option>
@@ -508,7 +563,45 @@ function renderNotificationSearch({ body, rows, q, status, type, targetType, pag
           <button class="secondary" id="searchAppNotificationsBtn">${esc(textFor('btnSearch'))}</button>
         </div>
       </div>
-      ${notificationRows(rows, { esc, textFor, formatDateTime })}
+      <div class="tableScroll">
+        <table class="settingsTable">
+          <thead>
+            <tr>
+              <th>${esc(textFor('colTitle'))}</th>
+              <th>${esc(textFor('colType'))}</th>
+              <th>${esc(textFor('colTarget'))}</th>
+              <th>${esc(textFor('colStatus'))}</th>
+              <th>${esc(textFor('colDate'))}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              rows.length === 0
+                ? `<tr><td colspan="5" class="muted">${esc(textFor('appNotificationsEmpty'))}</td></tr>`
+                : rows
+                    .map(
+                      (item) => `
+                        <tr>
+                          <td>
+                            <strong>${esc(item.title || '-')}</strong>
+                            ${item.body ? `<p class="muted notifBodyPreview">${esc(item.body)}</p>` : ''}
+                            ${item.errorMessage ? `<p class="dangerText">${esc(item.errorMessage)}</p>` : ''}
+                          </td>
+                          <td><span class="pill">${esc(item.type || '-')}</span></td>
+                          <td class="muted">
+                            <span>${esc(item.targetType || 'all')}</span>
+                            ${item.targetKey ? `<br/><span>${esc(item.targetKey)}</span>` : ''}
+                          </td>
+                          <td><span class="pill pillStatus ${notificationStatusClass(item.status)}">${esc(item.status || 'queued')}</span></td>
+                          <td class="muted">${esc(formatDateTime(item.scheduledAt || item.createdAt))}</td>
+                        </tr>
+                      `,
+                    )
+                    .join('')
+            }
+          </tbody>
+        </table>
+      </div>
       ${pager({ page: body.page, totalPages: body.totalPages, prefix: 'app-notifications', esc })}
     </section>
   `;
@@ -541,7 +634,7 @@ function renderComposer({ rows, selected, esc, textFor }) {
             <div class="cardHint">${selected ? esc(selected.email) : esc(textFor('appUsersSelectUserHint'))}</div>
           </div>
         </div>
-        <div class="appUserList" style="margin-bottom:12px">
+        <div class="appUserList appUserListMb">
           ${
             rows
               .slice(0, 8)
@@ -634,6 +727,7 @@ export async function loadAppUsersView(ctx) {
       pageSize: devicePageSize,
       esc,
       textFor,
+      textForVars,
       formatDateTime,
     });
     state.appDevicesTotalPages = deviceBody.totalPages || 1;
@@ -663,6 +757,7 @@ export async function loadAppUsersView(ctx) {
       pageSize: nPageSize,
       esc,
       textFor,
+      textForVars,
       formatDateTime,
     });
     state.appNotificationsTotalPages = notificationBody.totalPages || 1;

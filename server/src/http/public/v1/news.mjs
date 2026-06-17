@@ -2,10 +2,46 @@ import {
   queryPublicNews,
   queryPublicNewsDigests,
   queryPublicNewsSources,
+  upsertCollectionRows,
 } from '../../../db.mjs';
-import { json } from '../../shared.mjs';
+import { config } from '../../../config.mjs';
+import { json, readBody } from '../../shared.mjs';
+
+function cleanText(value) {
+  return String(value || '').trim();
+}
+
+function hasIngestAccess(req) {
+  const configured = cleanText(config.automationIngestToken);
+  if (!configured) return false;
+  const header = cleanText(req.headers['x-signal-automation-token']);
+  const bearer = cleanText(String(req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
+  return header === configured || bearer === configured;
+}
 
 export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
+  if (req.method === 'POST' && pathname === '/v1/news-digests/ingest') {
+    if (!hasIngestAccess(req)) {
+      json(res, 401, { error: 'AUTOMATION_INGEST_AUTH_REQUIRED' });
+      return true;
+    }
+    const body = await readBody(req);
+    const rawItems = Array.isArray(body?.items) ? body.items : [];
+    if (rawItems.length === 0) {
+      json(res, 400, { error: 'ITEMS_REQUIRED' });
+      return true;
+    }
+    const now = new Date().toISOString();
+    const items = rawItems.map((item, index) => ({
+      ...item,
+      score: 100 - index * 10,
+      updatedAt: now,
+    }));
+    await upsertCollectionRows('newsDigestItems', items);
+    json(res, 200, { ok: true, count: items.length });
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/v1/news-digests') {
     const page = await queryPublicNewsDigests({
       category: url.searchParams.get('category') || '',
@@ -13,6 +49,7 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
       to: url.searchParams.get('to') || '',
       limit: url.searchParams.get('limit') || '4',
       offset: url.searchParams.get('offset') || '0',
+      batches: url.searchParams.get('batches') || '1',
     });
     json(res, 200, {
       data: page.rows,

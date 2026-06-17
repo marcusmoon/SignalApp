@@ -20,11 +20,13 @@ function publicDigest(item) {
     generatedAt: item.generatedAt || null,
     primaryNewsId: item.primaryNewsId || null,
     sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : [],
+    aiGenerated: item.aiGenerated === true,
   };
 }
 
 export async function queryPublicNewsDigestRows(options = {}) {
   const { limit, offset } = pageOptions(options, 4);
+  const maxBatches = Math.max(1, Math.min(20, Number(options.batches) || 1));
   const params = [];
   const where = [];
   const category = cleanText(options.category);
@@ -42,7 +44,7 @@ export async function queryPublicNewsDigestRows(options = {}) {
     params.push(to);
     where.push(`generated_at <= $${params.length}::timestamptz`);
   }
-  params.push(limit + 1, offset);
+  params.push(maxBatches, limit + 1, offset);
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const result = await queryKysely(
     `
@@ -51,25 +53,26 @@ export async function queryPublicNewsDigestRows(options = {}) {
         FROM news_digest_items
         ${whereSql}
       ),
-      latest_date AS (
-        SELECT category, max(digest_date) AS digest_date
+      runs AS (
+        SELECT category, digest_date, generated_at
         FROM filtered
-        GROUP BY category
+        GROUP BY category, digest_date, generated_at
       ),
-      latest_run AS (
-        SELECT f.category, f.digest_date, max(f.generated_at) AS generated_at
-        FROM filtered f
-        JOIN latest_date d
-          ON f.category IS NOT DISTINCT FROM d.category
-          AND f.digest_date IS NOT DISTINCT FROM d.digest_date
-        GROUP BY f.category, f.digest_date
+      ranked_runs AS (
+        SELECT category, digest_date, generated_at,
+          DENSE_RANK() OVER (
+            PARTITION BY category
+            ORDER BY digest_date DESC NULLS LAST, generated_at DESC NULLS LAST
+          ) AS run_rank
+        FROM runs
       )
       SELECT f.payload
       FROM filtered f
-      JOIN latest_run r
+      JOIN ranked_runs r
         ON f.category IS NOT DISTINCT FROM r.category
         AND f.digest_date IS NOT DISTINCT FROM r.digest_date
         AND f.generated_at IS NOT DISTINCT FROM r.generated_at
+      WHERE r.run_rank <= $${params.length - 2}
       ORDER BY f.digest_date DESC NULLS LAST, f.generated_at DESC NULLS LAST, f.score DESC NULLS LAST, f.position ASC
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `,

@@ -52,6 +52,7 @@ export type SignalApiNewsDigestItem = {
   generatedAt: string | null;
   primaryNewsId: string | null;
   sourceRefs: SignalApiNewsDigestSourceRef[];
+  aiGenerated?: boolean | null;
 };
 
 export type SignalApiMarketBriefingSourceRef = {

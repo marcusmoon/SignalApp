@@ -28,6 +28,7 @@ import { groupedFeedRowEdges, groupedFeedRowShell } from '@/components/signal/gr
 import { NewsCard } from '@/components/signal/NewsCard';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { DigestPager } from '@/components/news/DigestPager';
 import { makeNewsStyles } from '@/components/news/newsStyles';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
@@ -119,10 +120,15 @@ function digestFromServer(item: SignalApiNewsDigestItem, rows: SignalApiNewsItem
   return {
     id: item.id,
     title: item.title,
+    summary: item.summary,
+    topics: item.topics,
     symbols: item.symbols,
     sources: item.sources,
     count: item.count,
     score: 0,
+    aiGenerated: item.aiGenerated === true,
+    generatedAt: item.generatedAt,
+    sourceRefs: item.sourceRefs,
     primary: digestPrimaryNews(item, rows),
   };
 }
@@ -168,7 +174,6 @@ export default function FeedScreen() {
   const [watchSymbolModalVisible, setWatchSymbolModalVisible] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const [newContentAvailable, setNewContentAvailable] = useState(false);
-  const [digestExpanded, setDigestExpanded] = useState(false);
   /** 출처 필터 UI용(카탈로그 비었을 때 샘플 + 첫 페이지 병합) */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
   /** 백그라운드 폴링: 가장 최근에 본 뉴스 ID */
@@ -350,7 +355,7 @@ export default function FeedScreen() {
             },
             { cacheMode },
           ),
-          fetchSignalNewsDigests({ category: 'crypto', limit: 4 }).catch(() => null),
+          fetchSignalNewsDigests({ category: 'crypto', limit: 30, batches: 10 }).catch(() => null),
         ]);
         const { items: rows, meta } = newsPage;
         setServerRows(rows);
@@ -385,7 +390,7 @@ export default function FeedScreen() {
           },
           { cacheMode },
         ),
-        fetchSignalNewsDigests({ category: 'global', limit: 4 }).catch(() => null),
+        fetchSignalNewsDigests({ category: 'global', limit: 30, batches: 10 }).catch(() => null),
       ]);
 
       const enabledCatalog = (catalogRows || [])
@@ -909,34 +914,30 @@ export default function FeedScreen() {
     setHasMore(false);
     setError(null);
     setRefreshNotice(null);
-    setDigestExpanded(false);
     if (key === 'video') setActiveTag(null);
     setSegment(key);
     void saveNewsSegment(key);
   }, [segment]);
 
   const newsQuickFilter = segment === 'crypto' ? cryptoFilter : globalFilter;
-  const digestItems = useMemo(
-    () =>
-      segment === 'video'
-        ? []
-        : serverDigestRows.length > 0
-          ? serverDigestRows.map((item) => digestFromServer(item, serverRows))
-          : buildNewsDigestItems(serverRows, 4),
-    [segment, serverDigestRows, serverRows],
-  );
-  const primaryDigest = digestItems[0] ?? null;
-  const secondaryDigests = digestItems.slice(1);
-  const digestSummaryText = useCallback(
-    (item: NewsDigestItem) => {
-      const base = t('feedDigestSummary', {
-        count: String(item.count),
-        sources: String(item.sources.length),
-      });
-      return item.symbols.length > 0 ? `${base} · ${item.symbols.slice(0, 3).join(' · ')}` : base;
-    },
-    [t],
-  );
+  const digestBatches = useMemo(() => {
+    if (segment === 'video' || segment === 'watch') return [];
+    if (serverDigestRows.length > 0) {
+      const byTimestamp = new Map<string, SignalApiNewsDigestItem[]>();
+      for (const item of serverDigestRows) {
+        const key = item.generatedAt || 'unknown';
+        const list = byTimestamp.get(key) || [];
+        list.push(item);
+        byTimestamp.set(key, list);
+      }
+      const sortedKeys = [...byTimestamp.keys()].sort().reverse();
+      return sortedKeys
+        .map((key) => byTimestamp.get(key)!.map((item) => digestFromServer(item, serverRows)))
+        .slice(0, 10);
+    }
+    const clientItems = buildNewsDigestItems(serverRows, 4);
+    return clientItems.length > 0 ? [clientItems] : [];
+  }, [segment, serverDigestRows, serverRows]);
 
   const listData: FeedRow[] = useMemo(() => {
     const out: FeedRow[] = [];
@@ -1003,66 +1004,7 @@ export default function FeedScreen() {
           </Pressable>
         ) : null}
 
-        {primaryDigest ? (
-          <Pressable
-            onPress={() => setDigestExpanded((value) => !value)}
-            style={({ pressed }) => [styles.digestCard, pressed && styles.digestCardPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={digestExpanded ? t('feedDigestCollapse') : t('feedDigestExpand')}>
-            <View style={styles.digestTopRow}>
-              <View style={styles.digestKicker}>
-                <FontAwesome name="bolt" size={11} color={theme.green} />
-                <Text style={styles.digestKickerText}>{t('feedDigestKicker')}</Text>
-              </View>
-              <View style={styles.digestHeaderMeta}>
-                <Text style={styles.digestCount}>{t('feedDigestCount', { count: String(primaryDigest.count) })}</Text>
-                <FontAwesome
-                  name={digestExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={11}
-                  color={theme.textDim}
-                />
-              </View>
-            </View>
-            <Text style={styles.digestTitle} numberOfLines={digestExpanded ? 4 : 3}>
-              {primaryDigest.title}
-            </Text>
-            {digestExpanded ? (
-              <>
-                <Text style={styles.digestSummary} numberOfLines={2}>
-                  {digestSummaryText(primaryDigest)}
-                </Text>
-                {primaryDigest.symbols.length > 0 || primaryDigest.sources.length > 0 ? (
-                  <View style={styles.digestChipRow}>
-                    {primaryDigest.symbols.slice(0, 3).map((symbol) => (
-                      <Text key={`digest-symbol-${symbol}`} style={styles.digestSymbolChip}>
-                        {symbol}
-                      </Text>
-                    ))}
-                    {primaryDigest.sources.slice(0, 2).map((source) => (
-                      <Text key={`digest-source-${source}`} style={styles.digestSourceChip} numberOfLines={1}>
-                        {source}
-                      </Text>
-                    ))}
-                  </View>
-                ) : null}
-              </>
-            ) : null}
-            {digestExpanded && secondaryDigests.length > 0 ? (
-              <View style={styles.digestMoreList}>
-                {secondaryDigests.map((item) => (
-                  <View key={item.id} style={styles.digestMoreRow}>
-                    <Text style={styles.digestMoreTitle}>
-                      {item.title}
-                    </Text>
-                    <Text style={styles.digestMoreMeta}>
-                      {digestSummaryText(item)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-          </Pressable>
-        ) : null}
+        <DigestPager batches={digestBatches} />
 
         {segment === 'watch' ? (
           <View style={styles.watchFilterRow}>
@@ -1127,10 +1069,7 @@ export default function FeedScreen() {
       theme.textDim,
       theme.green,
       theme.greenBorder,
-      digestExpanded,
-      digestSummaryText,
-      primaryDigest,
-      secondaryDigests,
+      digestBatches,
     ],
   );
 

@@ -34,6 +34,7 @@ export async function fetchSignalNewsDigests(
     offset?: number;
     from?: string;
     to?: string;
+    batches?: number;
   } = {},
 ): Promise<SignalNewsDigestPage> {
   const json = await signalApi<{ data: SignalApiNewsDigestItem[]; meta?: Partial<SignalNewsListMeta> }>(

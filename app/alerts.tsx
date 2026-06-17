@@ -2,7 +2,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
-import { useRouter, type Href } from 'expo-router';
+import { Stack, useRouter, type Href } from 'expo-router';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -122,6 +123,27 @@ export default function AlertsScreen() {
     [t],
   );
 
+  const openNotificationSettings = useCallback(() => {
+    router.push('/settings?tab=notifications');
+  }, [router]);
+
+  const screenOptions = useMemo(
+    () => ({
+      title: t('screenAlerts'),
+      headerRight: () => (
+        <Pressable
+          onPress={openNotificationSettings}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={t('alertsOpenSettings')}
+          style={styles.headerSettingsBtn}>
+          <FontAwesome name="bell" size={18} color={theme.green} />
+        </Pressable>
+      ),
+    }),
+    [openNotificationSettings, styles.headerSettingsBtn, t, theme.green],
+  );
+
   const filteredItems = useMemo(
     () => items.filter((item) => alertMatchesFilter(item, filter)),
     [filter, items],
@@ -196,20 +218,6 @@ export default function AlertsScreen() {
     [alertFilters, candidates, filter, locale, router, styles, t],
   );
 
-  const listFooter = useMemo(
-    () =>
-      filteredItems.length > 0 ? (
-        <Pressable
-          onPress={() => router.push('/settings?tab=notifications')}
-          style={styles.footerLink}
-          accessibilityRole="button"
-          accessibilityLabel={t('alertsOpenSettings')}>
-          <Text style={styles.footerLinkText}>{t('alertsOpenSettings')}</Text>
-        </Pressable>
-      ) : null,
-    [filteredItems.length, router, styles.footerLink, styles.footerLinkText, t],
-  );
-
   const renderAlert = useCallback(
     ({ item: a }: { item: StoredNotification }) => (
       <View style={styles.alertCard}>
@@ -235,6 +243,7 @@ export default function AlertsScreen() {
   if (!authChecked) {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
+        <Stack.Screen options={screenOptions} />
         <View style={styles.loadingCenter} accessibilityRole="progressbar" accessibilityLabel={t('commonLoadingA11y')}>
           <ActivityIndicator color={theme.green} />
         </View>
@@ -245,6 +254,7 @@ export default function AlertsScreen() {
   if (authChecked && !getSessionAccessToken(authSession)) {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
+        <Stack.Screen options={screenOptions} />
         {isFocused ? <OtaUpdateBanner /> : null}
         <View style={[styles.authGate, { paddingBottom: bottomPad }]}>
           <View style={styles.authGateCard}>
@@ -266,6 +276,7 @@ export default function AlertsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Stack.Screen options={screenOptions} />
       {isFocused ? <OtaUpdateBanner /> : null}
       <FlatList
         data={filteredItems}
@@ -276,17 +287,9 @@ export default function AlertsScreen() {
           candidates.length > 0 || filteredItems.length > 0 ? null : (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyText}>{items.length > 0 ? t('alertsFilterEmpty') : t('alertsEmpty')}</Text>
-              <Pressable
-                onPress={() => router.push('/settings?tab=notifications')}
-                style={styles.settingsLink}
-                accessibilityRole="button"
-                accessibilityLabel={t('alertsOpenSettings')}>
-                <Text style={styles.settingsLinkText}>{t('alertsOpenSettings')}</Text>
-              </Pressable>
             </View>
           )
         }
-        ListFooterComponent={listFooter}
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: bottomPad },
@@ -309,6 +312,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     list: { flex: 1, minHeight: 0 },
     listContent: { paddingHorizontal: 16, paddingTop: 8 },
     listContentEmpty: { flexGrow: 1 },
+    headerSettingsBtn: {
+      marginRight: 4,
+      minWidth: 44,
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     hint: { fontSize: sf(11), color: theme.textDim, marginBottom: 12 },
     filterTabs: {
       flexDirection: 'row',
@@ -376,23 +386,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.card,
       marginBottom: 12,
     },
-    emptyText: { fontSize: sf(13), color: theme.textMuted, lineHeight: sf(20), marginBottom: 14 },
-    settingsLink: {
-      alignSelf: 'flex-start',
-      paddingVertical: 10,
-      paddingHorizontal: 14,
-      borderRadius: 8,
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    settingsLinkText: { fontSize: sf(13), fontWeight: '800', color: theme.green },
-    footerLink: {
-      marginTop: 8,
-      paddingVertical: 12,
-      alignItems: 'center',
-    },
-    footerLinkText: { fontSize: sf(13), fontWeight: '700', color: theme.green },
+    emptyText: { fontSize: sf(13), color: theme.textMuted, lineHeight: sf(20) },
     alertCard: {
       backgroundColor: theme.card,
       borderRadius: 12,

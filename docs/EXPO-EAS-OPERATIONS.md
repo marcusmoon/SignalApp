@@ -1,5 +1,7 @@
 # Expo / EAS 운영
 
+현재 앱은 **Expo SDK 56** (React Native 0.85, iOS deployment target 16.4) 기준이다.
+
 ## 로컬 개발
 
 ```bash
@@ -20,6 +22,8 @@ open SIGNAL.xcworkspace
 ```
 
 Kakao native key, URL scheme, status bar, push entitlement, splash, alternate icon처럼 native 설정이 바뀌면 prebuild 또는 EAS build가 필요하다.
+
+iOS **Xcode 27 / iOS 27 SDK** 빌드는 UIScene lifecycle이 필요하다. SDK 56 prebuild 템플릿에 아직 SceneDelegate가 npm에 포함되지 않아 `plugins/withIosSceneLifecycle.js` config plugin으로 보완한다. Expo upstream 템플릿이 Scene을 기본 제공하면 해당 플러그인을 제거한다.
 
 ## EAS Build
 

@@ -1,5 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, ThemeProvider } from "expo-router/react-navigation";
 import { isRunningInExpoGo } from 'expo';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -50,7 +50,9 @@ if (Platform.OS !== 'web') {
 
 export default function RootLayout() {
   const systemScheme = useColorScheme();
-  const bootstrapBg = bootstrapThemeForColorScheme(systemScheme).bg;
+  const bootstrapBg = bootstrapThemeForColorScheme(
+    systemScheme === 'light' || systemScheme === 'dark' ? systemScheme : null,
+  ).bg;
   const [fontsLoaded, fontError] = useFonts(FontAwesome.font);
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.

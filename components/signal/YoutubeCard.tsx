@@ -107,7 +107,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       overflow: 'hidden',
     },
     thumbImg: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       borderRadius: 8,
     },
     duration: {

@@ -1,4 +1,4 @@
-import { requireOptionalNativeModule } from 'expo-modules-core';
+import { requireOptionalNativeModule } from 'expo';
 
 /** Xcode 빌드에 expo-task-manager 네이티브 모듈이 포함됐는지 */
 export function isExpoTaskManagerAvailable(): boolean {

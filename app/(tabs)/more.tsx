@@ -1,10 +1,9 @@
 import type { ComponentProps } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { useFocusEffect, useIsFocused } from '@react-navigation/native';
-import type { Href } from 'expo-router';
-import { useRouter } from 'expo-router';
+import { useBottomTabBarHeight } from "expo-router/js-tabs";
+import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
+import { type Href, useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 

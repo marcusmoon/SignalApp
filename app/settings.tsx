@@ -19,7 +19,7 @@ import DraggableFlatList, { ScaleDecorator } from 'react-native-draggable-flatli
 import { Pressable as GHPressable } from 'react-native-gesture-handler';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import developerAvatar from '@/assets/images/developer-avatar.png';
 import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
@@ -627,7 +627,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       overflow: 'hidden',
     },
     accentSwatchSelectedOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -639,7 +639,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.border,
     },
     accentSwatchFill: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       borderRadius: 6,
     },
     accentModalFooterActions: {
@@ -2071,7 +2071,6 @@ clearCalendarCache();
         ) : null}
 
       </ScrollView>
-
       <View
         pointerEvents="box-none"
         style={[
@@ -2117,7 +2116,6 @@ clearCalendarCache();
           </Text>
         </Pressable>
       </View>
-
       <Modal
         visible={quotesLimitPicker != null}
         transparent
@@ -2172,7 +2170,6 @@ clearCalendarCache();
           </View>
         </View>
       </Modal>
-
       <Modal
         visible={accentPickerOpen}
         transparent

@@ -1,7 +1,6 @@
 import { Fragment, useCallback, useMemo, useRef, useState } from 'react';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { useIsFocused } from '@react-navigation/native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useBottomTabBarHeight } from "expo-router/js-tabs";
+import { useIsFocused, useFocusEffect } from "expo-router/react-navigation";
 import { useRouter } from 'expo-router';
 import {
   Alert,

@@ -96,15 +96,32 @@ module.exports = () => {
     }
   }
 
+  const buildProperties = {
+    ios: {
+      deploymentTarget: '16.4',
+    },
+    android: {
+      newArchEnabled: true,
+    },
+    ...(kakaoNativeKey
+      ? {
+          android: {
+            extraMavenRepos: ['https://devrepo.kakao.com/nexus/content/groups/public/'],
+          },
+        }
+      : {}),
+  };
+  if (!hasPlugin(plugins, 'expo-build-properties')) {
+    plugins.push(['expo-build-properties', buildProperties]);
+  }
+  if (!hasPlugin(plugins, './plugins/withIosPodsDeploymentTarget.js')) {
+    plugins.push('./plugins/withIosPodsDeploymentTarget.js');
+  }
+  if (!hasPlugin(plugins, './plugins/withIosSceneLifecycle.js')) {
+    plugins.push('./plugins/withIosSceneLifecycle.js');
+  }
+
   if (kakaoNativeKey) {
-    plugins.push([
-      'expo-build-properties',
-      {
-        android: {
-          extraMavenRepos: ['https://devrepo.kakao.com/nexus/content/groups/public/'],
-        },
-      },
-    ]);
     plugins.push(['@react-native-seoul/kakao-login', { kakaoAppKey: kakaoNativeKey }]);
   }
 

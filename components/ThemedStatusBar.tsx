@@ -31,5 +31,5 @@ export function ThemedStatusBar() {
     return null;
   }
 
-  return <ExpoStatusBar style={expoStyle} backgroundColor={theme.bg} />;
+  return <ExpoStatusBar style={expoStyle} />;
 }

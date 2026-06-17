@@ -7,6 +7,9 @@
 
 ## Platform
 
+- **Expo SDK 56 후속**: EAS iOS preview/production 네이티브 재빌드, Xcode 27 실기기 QA(런치·딥링크·카카오 로그인·푸시).
+- **UIScene**: Expo prebuild 템플릿에 `SceneDelegate`가 npm에 포함되면 `plugins/withIosSceneLifecycle.js` 제거.
+- **앱 아이콘**: `icon.png`·`adaptive-icon.png`를 정사각형으로 교체(expo-doctor 스키마 경고).
 - Android alternate app icon: activity-alias 또는 config plugin 방식 검토.
 - Web/PWA 아이콘과 manifest 전략 정리.
 - Android 출시 QA: push, deep link, social login, status bar, splash 확인.

@@ -1,8 +1,8 @@
-import { useNavigationState } from '@react-navigation/native';
+import { useNavigationState } from "expo-router/react-navigation";
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AppState, Platform, StyleSheet, View } from 'react-native';
+import { AppState, Platform, StyleSheet, View, type ColorValue } from 'react-native';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import type { BottomTabBarButtonProps, BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
+import type { BottomTabBarButtonProps, BottomTabNavigationOptions } from "expo-router/js-tabs";
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -55,7 +55,7 @@ function TabBarIcon({
   showDot,
 }: {
   name: TabBarIconName;
-  color: string;
+  color: ColorValue;
   focused?: boolean;
   showDot?: boolean;
 }) {

@@ -17,12 +17,6 @@
       }
     },
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#0A0A0F"
-    },
     "ios": {
       "supportsTablet": false,
       "buildNumber": "1",
@@ -46,7 +40,6 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0A0A0F"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "versionCode": 1,
       "package": "com.marcus.signal"

@@ -7,7 +7,7 @@
     "start": "expo start",
     "preandroid": "node scripts/syncKakaoNativeConfig.mjs",
     "android": "expo run:android",
-    "preios": "node scripts/syncKakaoNativeConfig.mjs",
+    "preios": "node scripts/ensureIosXcode27.mjs && node scripts/syncKakaoNativeConfig.mjs",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "web:export": "expo export --platform web --output-dir server/src/public/web",

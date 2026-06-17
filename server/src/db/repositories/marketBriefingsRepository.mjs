@@ -16,6 +16,7 @@ function publicBriefing(item) {
     headline: item.headline || '',
     summary: item.summary || '',
     overview: Array.isArray(item.overview) ? item.overview : [],
+    sectors: Array.isArray(item.sectors) ? item.sectors : [],
     companies: Array.isArray(item.companies) ? item.companies : [],
     macro: Array.isArray(item.macro) ? item.macro : [],
     sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : [],

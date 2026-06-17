@@ -36,7 +36,6 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
-  buildNewsDigestItems,
   buildSourcesFromCatalog,
   FEED_PAGE_CRYPTO,
   FEED_PAGE_GLOBAL,
@@ -939,8 +938,7 @@ export default function FeedScreen() {
         })
         .slice(0, 10);
     }
-    const clientItems = buildNewsDigestItems(serverRows, 4);
-    return clientItems.length > 0 ? clientItems : [];
+    return [];
   }, [segment, serverDigestRows, serverRows]);
 
   const listData: FeedRow[] = useMemo(() => {

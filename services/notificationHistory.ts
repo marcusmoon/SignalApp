@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY = '@signal/notification_history_v1';
+const DISMISSED_KEY = '@signal/dismissed_notification_ids_v1';
 const MAX_ITEMS = 100;
+const MAX_DISMISSED = 200;
 
 export type StoredNotification = {
   id: string;
@@ -60,6 +62,33 @@ export async function appendNotificationFromPayload(input: {
   const prev = await loadNotificationHistory();
   if (shouldSkipDuplicate(prev, item)) return;
   await save([item, ...prev]);
+}
+
+export async function loadDismissedNotificationIds(): Promise<Set<string>> {
+  const raw = await AsyncStorage.getItem(DISMISSED_KEY);
+  if (!raw) return new Set();
+  try {
+    const parsed = JSON.parse(raw) as string[];
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set();
+  }
+}
+
+async function saveDismissedNotificationIds(ids: string[]): Promise<void> {
+  await AsyncStorage.setItem(DISMISSED_KEY, JSON.stringify(ids.slice(0, MAX_DISMISSED)));
+}
+
+export async function removeNotificationById(id: string): Promise<void> {
+  if (id.startsWith('server:')) {
+    const dismissed = await loadDismissedNotificationIds();
+    if (dismissed.has(id)) return;
+    await saveDismissedNotificationIds([id, ...dismissed]);
+    return;
+  }
+  const list = await loadNotificationHistory();
+  const next = list.filter((item) => item.id !== id);
+  if (next.length !== list.length) await save(next);
 }
 
 export async function clearNotificationHistory(): Promise<void> {

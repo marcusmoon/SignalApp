@@ -449,6 +449,8 @@ export const ko = {
   alertsFilterNotice: '공지',
   alertsFilterAccount: '계정',
   alertsOpenSettings: '알림 설정',
+  alertsSwipeDelete: '삭제',
+  alertsSwipeDeleteA11y: '{{title}} 삭제',
   alertsCandidateTitle: '오늘 알림 후보',
   alertsCandidateHint: '실제 푸시 전 단계로, 서버가 오늘 생성한 관심 시그널 후보입니다.',
   alertsCandidateOpenAll: '전체 보기',

@@ -1,8 +1,10 @@
 import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { RectButton } from 'react-native-gesture-handler';
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
-import { Stack, useRouter, type Href } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import type { AppTheme } from '@/constants/theme';
@@ -11,7 +13,7 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
-import { loadNotificationHistory, type StoredNotification } from '@/services/notificationHistory';
+import { loadNotificationHistory, loadDismissedNotificationIds, removeNotificationById, type StoredNotification } from '@/services/notificationHistory';
 import { loadNotificationPrefs } from '@/services/notificationPreferences';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { hasSignalApi } from '@/services/env';
@@ -57,11 +59,12 @@ export default function AlertsScreen() {
       setCandidates([]);
       return;
     }
-    const [list, serverNotifications, prefs, watchlist] = await Promise.all([
+    const [list, serverNotifications, prefs, watchlist, dismissed] = await Promise.all([
       loadNotificationHistory(),
       hasSignalApi() ? fetchSignalNotifications(access, 50).catch(() => []) : Promise.resolve([]),
       loadNotificationPrefs(),
       loadWatchlistSymbols().catch(() => [] as string[]),
+      loadDismissedNotificationIds(),
     ]);
     const serverItems: StoredNotification[] = serverNotifications.map((item) => ({
       id: `server:${item.id}`,
@@ -74,6 +77,7 @@ export default function AlertsScreen() {
     setItems(
       [...serverItems, ...list]
         .filter((item) => {
+          if (dismissed.has(item.id)) return false;
           if (seen.has(item.id)) return false;
           seen.add(item.id);
           return true;
@@ -127,22 +131,24 @@ export default function AlertsScreen() {
     router.push('/settings?tab=notifications');
   }, [router]);
 
-  const screenOptions = useMemo(
-    () => ({
-      title: t('screenAlerts'),
-      headerRight: () => (
-        <Pressable
-          onPress={openNotificationSettings}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={t('alertsOpenSettings')}
-          style={styles.headerSettingsBtn}>
-          <FontAwesome name="bell" size={18} color={theme.green} />
-        </Pressable>
-      ),
-    }),
-    [openNotificationSettings, styles.headerSettingsBtn, t, theme.green],
+  const settingsButton = useMemo(
+    () => (
+      <Pressable
+        onPress={openNotificationSettings}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={t('alertsOpenSettings')}
+        style={({ pressed }) => [styles.filterSettingsBtn, pressed && styles.filterSettingsBtnPressed]}>
+        <FontAwesome name="cog" size={18} color={theme.textMuted} />
+      </Pressable>
+    ),
+    [openNotificationSettings, styles.filterSettingsBtn, styles.filterSettingsBtnPressed, t, theme.textMuted],
   );
+
+  const onDeleteAlert = useCallback(async (id: string) => {
+    setItems((prev) => prev.filter((item) => item.id !== id));
+    await removeNotificationById(id);
+  }, []);
 
   const filteredItems = useMemo(
     () => items.filter((item) => alertMatchesFilter(item, filter)),
@@ -152,23 +158,23 @@ export default function AlertsScreen() {
   const listHeader = useMemo(
     () => (
       <>
-        <Text style={styles.hint} accessibilityRole="text">
-          {t('alertsListHint')}
-        </Text>
-        <View style={styles.filterTabs} accessibilityRole="tablist">
-          {alertFilters.map((item) => {
-            const selected = filter === item.key;
-            return (
-              <Pressable
-                key={item.key}
-                onPress={() => setFilter(item.key)}
-                style={[styles.filterTab, selected && styles.filterTabActive]}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}>
-                <Text style={[styles.filterTabText, selected && styles.filterTabTextActive]}>{item.label}</Text>
-              </Pressable>
-            );
-          })}
+        <View style={styles.filterRow}>
+          <View style={styles.filterTabs} accessibilityRole="tablist">
+            {alertFilters.map((item) => {
+              const selected = filter === item.key;
+              return (
+                <Pressable
+                  key={item.key}
+                  onPress={() => setFilter(item.key)}
+                  style={[styles.filterTab, selected && styles.filterTabActive]}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected }}>
+                  <Text style={[styles.filterTabText, selected && styles.filterTabTextActive]}>{item.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {settingsButton}
         </View>
         {candidates.length > 0 ? (
           <View style={styles.candidateSection}>
@@ -215,27 +221,48 @@ export default function AlertsScreen() {
         ) : null}
       </>
     ),
-    [alertFilters, candidates, filter, locale, router, styles, t],
+    [alertFilters, candidates, filter, locale, router, settingsButton, styles, t],
   );
 
   const renderAlert = useCallback(
-    ({ item: a }: { item: StoredNotification }) => (
-      <View style={styles.alertCard}>
-        <View style={styles.alertTop}>
-          <Text style={styles.alertTitle}>{a.title}</Text>
-          {a.high ? (
-            <View style={styles.high}>
-              <Text style={styles.highText}>{t('alertsHighBadge')}</Text>
-            </View>
-          ) : (
-            <Text style={styles.time}>{formatRelativeTime(a.receivedAt, locale)}</Text>
-          )}
+    ({ item: a }: { item: StoredNotification }) => {
+      const card = (
+        <View style={styles.alertCard}>
+          <View style={styles.alertTop}>
+            <Text style={styles.alertTitle}>{a.title}</Text>
+            {a.high ? (
+              <View style={styles.high}>
+                <Text style={styles.highText}>{t('alertsHighBadge')}</Text>
+              </View>
+            ) : (
+              <Text style={styles.time}>{formatRelativeTime(a.receivedAt, locale)}</Text>
+            )}
+          </View>
+          <Text style={styles.alertBody}>{a.body}</Text>
+          {a.high ? <Text style={styles.timeRight}>{formatRelativeTime(a.receivedAt, locale)}</Text> : null}
         </View>
-        <Text style={styles.alertBody}>{a.body}</Text>
-        {a.high ? <Text style={styles.timeRight}>{formatRelativeTime(a.receivedAt, locale)}</Text> : null}
-      </View>
-    ),
-    [locale, styles, t],
+      );
+
+      return (
+        <ReanimatedSwipeable
+          overshootRight={false}
+          containerStyle={styles.swipeRow}
+          renderRightActions={() => (
+            <View style={styles.swipeRight}>
+              <RectButton
+                style={styles.swipeDeleteBtn}
+                onPress={() => void onDeleteAlert(a.id)}
+                accessibilityRole="button"
+                accessibilityLabel={t('alertsSwipeDeleteA11y', { title: a.title })}>
+                <Text style={styles.swipeDeleteText}>{t('alertsSwipeDelete')}</Text>
+              </RectButton>
+            </View>
+          )}>
+          {card}
+        </ReanimatedSwipeable>
+      );
+    },
+    [locale, onDeleteAlert, styles, t],
   );
 
   const bottomPad = 28 + insets.bottom;
@@ -243,7 +270,6 @@ export default function AlertsScreen() {
   if (!authChecked) {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
-        <Stack.Screen options={screenOptions} />
         <View style={styles.loadingCenter} accessibilityRole="progressbar" accessibilityLabel={t('commonLoadingA11y')}>
           <ActivityIndicator color={theme.green} />
         </View>
@@ -254,9 +280,9 @@ export default function AlertsScreen() {
   if (authChecked && !getSessionAccessToken(authSession)) {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
-        <Stack.Screen options={screenOptions} />
         {isFocused ? <OtaUpdateBanner /> : null}
         <View style={[styles.authGate, { paddingBottom: bottomPad }]}>
+          <View style={styles.authGateTopBar}>{settingsButton}</View>
           <View style={styles.authGateCard}>
             <Text style={styles.authGateKicker}>{t('screenAlerts')}</Text>
             <Text style={styles.authGateTitle}>{t('alertsLoginRequiredTitle')}</Text>
@@ -276,7 +302,6 @@ export default function AlertsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <Stack.Screen options={screenOptions} />
       {isFocused ? <OtaUpdateBanner /> : null}
       <FlatList
         data={filteredItems}
@@ -312,20 +337,26 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     list: { flex: 1, minHeight: 0 },
     listContent: { paddingHorizontal: 16, paddingTop: 8 },
     listContentEmpty: { flexGrow: 1 },
-    headerSettingsBtn: {
-      marginRight: 4,
-      minWidth: 44,
-      minHeight: 44,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    hint: { fontSize: sf(11), color: theme.textDim, marginBottom: 12 },
-    filterTabs: {
+    filterRow: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
+      alignItems: 'flex-start',
       gap: 8,
       marginBottom: 14,
     },
+    filterTabs: {
+      flex: 1,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    filterSettingsBtn: {
+      minWidth: 36,
+      minHeight: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 0,
+    },
+    filterSettingsBtnPressed: { opacity: 0.65 },
     filterTab: {
       minHeight: 36,
       paddingHorizontal: 12,
@@ -393,7 +424,27 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.border,
       padding: 14,
+    },
+    swipeRow: {
       marginBottom: 10,
+      borderRadius: 12,
+      overflow: 'hidden',
+    },
+    swipeRight: {
+      width: 80,
+      height: '100%',
+    },
+    swipeDeleteBtn: {
+      flex: 1,
+      backgroundColor: '#7A2E2E',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 8,
+    },
+    swipeDeleteText: {
+      color: '#FFFFFF',
+      fontSize: sf(15),
+      fontWeight: '800',
     },
     alertTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
     alertTitle: { fontSize: sf(13), fontWeight: '700', color: theme.text, flex: 1, paddingRight: 8 },
@@ -411,6 +462,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     highText: { fontSize: sf(10), fontWeight: '900', color: '#FF6B6B' },
     loadingCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     authGate: { flex: 1, justifyContent: 'center', paddingHorizontal: 16 },
+    authGateTopBar: { alignItems: 'flex-end', marginBottom: 12 },
     authGateCard: {
       borderRadius: 16,
       borderWidth: 1,

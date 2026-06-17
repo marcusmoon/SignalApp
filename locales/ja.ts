@@ -454,6 +454,8 @@ export const ja = {
   alertsFilterNotice: 'お知らせ',
   alertsFilterAccount: 'アカウント',
   alertsOpenSettings: '通知設定',
+  alertsSwipeDelete: '削除',
+  alertsSwipeDeleteA11y: '{{title}}を削除',
   alertsCandidateTitle: '今日の通知候補',
   alertsCandidateHint: '実際のプッシュ前に、サーバーが今日生成したシグナル候補を表示します。',
   alertsCandidateOpenAll: 'すべて見る',

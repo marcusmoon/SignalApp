@@ -923,20 +923,24 @@ export default function FeedScreen() {
   const digestBatches = useMemo(() => {
     if (segment === 'video' || segment === 'watch') return [];
     if (serverDigestRows.length > 0) {
-      const byTimestamp = new Map<string, SignalApiNewsDigestItem[]>();
+      const byTs = new Map<string, SignalApiNewsDigestItem[]>();
       for (const item of serverDigestRows) {
         const key = item.generatedAt || 'unknown';
-        const list = byTimestamp.get(key) || [];
+        const list = byTs.get(key) || [];
         list.push(item);
-        byTimestamp.set(key, list);
+        byTs.set(key, list);
       }
-      const sortedKeys = [...byTimestamp.keys()].sort().reverse();
+      const sortedKeys = [...byTs.keys()].sort().reverse();
       return sortedKeys
-        .map((key) => byTimestamp.get(key)!.map((item) => digestFromServer(item, serverRows)))
+        .map((key) => {
+          const items = byTs.get(key)!;
+          const top = items.reduce((a, b) => (b.count > a.count ? b : a));
+          return digestFromServer(top, serverRows);
+        })
         .slice(0, 10);
     }
     const clientItems = buildNewsDigestItems(serverRows, 4);
-    return clientItems.length > 0 ? [clientItems] : [];
+    return clientItems.length > 0 ? clientItems : [];
   }, [segment, serverDigestRows, serverRows]);
 
   const listData: FeedRow[] = useMemo(() => {

@@ -50,7 +50,7 @@ function relativeTime(dateStr: string | null, locale: string): string {
 }
 
 type Props = {
-  batches: NewsDigestItem[][];
+  batches: NewsDigestItem[];
 };
 
 export function DigestPager({ batches }: Props) {
@@ -59,7 +59,7 @@ export function DigestPager({ batches }: Props) {
   const { width: screenWidth } = useWindowDimensions();
   const pageWidth = screenWidth - LIST_H_PAD * 2;
   const [pageIndex, setPageIndex] = useState(0);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const styles = makeStyles(theme, scaleFont);
 
   const handleScroll = useCallback(
@@ -71,15 +71,7 @@ export function DigestPager({ batches }: Props) {
   );
 
   const toggleExpand = useCallback((id: string) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+    setExpandedId((prev) => (prev === id ? null : id));
   }, []);
 
   if (batches.length === 0) return null;
@@ -103,107 +95,102 @@ export function DigestPager({ batches }: Props) {
         snapToAlignment="start"
         disableIntervalMomentum
       >
-        {batches.map((batch, batchIndex) => (
-          <View
-            key={batchIndex}
-            style={[styles.page, { width: pageWidth }]}
-          >
-            {batch.map((digest) => {
-              const isExpanded = expandedIds.has(digest.id);
-              return (
-                <Pressable
-                  key={digest.id}
-                  onPress={() => toggleExpand(digest.id)}
-                  style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-                  accessibilityRole="button"
-                  accessibilityLabel={digest.title}
-                  accessibilityState={{ expanded: isExpanded }}
-                >
-                  {(digest.aiGenerated || digest.topics.length > 0) ? (
-                    <View style={styles.badgeRow}>
-                      {digest.aiGenerated ? (
-                        <View style={styles.aiBadge}>
-                          <Text style={styles.aiBadgeText}>✦ AI</Text>
-                        </View>
-                      ) : null}
-                      {digest.topics.slice(0, 3).map((topic) => (
-                        <Text key={topic} style={styles.topicChip} numberOfLines={1}>
-                          {topic}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
-
-                  <Text style={styles.title} numberOfLines={2}>
-                    {digest.title}
-                  </Text>
-
-                  {isExpanded && digest.summary ? (
-                    <Text style={styles.summary} numberOfLines={3}>
-                      {digest.summary}
-                    </Text>
-                  ) : null}
-
-                  {isExpanded && (digest.sourceRefs.length > 0 || digest.sources.length > 0) ? (
-                    <View style={styles.sourceList}>
-                      {digest.sourceRefs.length > 0
-                        ? digest.sourceRefs.slice(0, 5).map((ref, i) => (
-                            <Pressable
-                              key={i}
-                              onPress={
-                                ref.url
-                                  ? (e) => {
-                                      e.stopPropagation?.();
-                                      void Linking.openURL(ref.url!).catch(() => null);
-                                    }
-                                  : undefined
-                              }
-                              style={({ pressed }) => [
-                                styles.sourceRow,
-                                pressed && ref.url && styles.sourceRowPressed,
-                              ]}
-                              accessibilityRole={ref.url ? 'link' : 'text'}
-                            >
-                              <Text
-                                style={[styles.sourceName, ref.url && styles.sourceNameLink]}
-                                numberOfLines={1}
-                              >
-                                {ref.sourceName || ref.url || ''}
-                              </Text>
-                              {ref.url ? (
-                                <FontAwesome name="external-link" size={10} color={theme.accentBlue} />
-                              ) : null}
-                            </Pressable>
-                          ))
-                        : digest.sources.slice(0, 5).map((src, i) => (
-                            <View key={i} style={styles.sourceRow}>
-                              <Text style={styles.sourceName} numberOfLines={1}>
-                                {src}
-                              </Text>
-                            </View>
-                          ))}
-                    </View>
-                  ) : null}
-
-                  <View style={styles.footerRow}>
-                    <Text style={styles.footer}>
-                      {t('feedDigestSummary', {
-                        count: String(digest.count),
-                        sources: String(digest.sources.length),
-                      })}
-                      {digest.generatedAt ? ` · ${relativeTime(digest.generatedAt, locale)}` : ''}
-                    </Text>
-                    <FontAwesome
-                      name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                      size={11}
-                      color={theme.textDim}
-                    />
+        {batches.map((digest) => {
+          const isExpanded = expandedId === digest.id;
+          return (
+            <View key={digest.id} style={[styles.page, { width: pageWidth }]}>
+              <Pressable
+                onPress={() => toggleExpand(digest.id)}
+                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+                accessibilityRole="button"
+                accessibilityLabel={digest.title}
+                accessibilityState={{ expanded: isExpanded }}
+              >
+                {(digest.aiGenerated || digest.topics.length > 0) ? (
+                  <View style={styles.badgeRow}>
+                    {digest.aiGenerated ? (
+                      <View style={styles.aiBadge}>
+                        <Text style={styles.aiBadgeText}>✦ AI</Text>
+                      </View>
+                    ) : null}
+                    {digest.topics.slice(0, 4).map((topic) => (
+                      <Text key={topic} style={styles.topicChip} numberOfLines={1}>
+                        {topic}
+                      </Text>
+                    ))}
                   </View>
-                </Pressable>
-              );
-            })}
-          </View>
-        ))}
+                ) : null}
+
+                <Text style={styles.title} numberOfLines={2}>
+                  {digest.title}
+                </Text>
+
+                {isExpanded && (digest.sourceRefs.length > 0 || digest.sources.length > 0) ? (
+                  <View style={styles.sourceList}>
+                    {digest.sourceRefs.length > 0
+                      ? digest.sourceRefs.slice(0, 5).map((ref, i) => (
+                          <Pressable
+                            key={i}
+                            onPress={
+                              ref.url
+                                ? (e) => {
+                                    e.stopPropagation?.();
+                                    void Linking.openURL(ref.url!).catch(() => null);
+                                  }
+                                : undefined
+                            }
+                            style={({ pressed }) => [
+                              styles.sourceRow,
+                              pressed && ref.url && styles.sourceRowPressed,
+                            ]}
+                            accessibilityRole={ref.url ? 'link' : 'text'}
+                          >
+                            <View style={styles.sourceTextCol}>
+                              <Text
+                                style={[styles.sourceTitle, ref.url && styles.sourceTitleLink]}
+                                numberOfLines={2}
+                              >
+                                {ref.title || ref.sourceName || ref.url || ''}
+                              </Text>
+                              {ref.sourceName ? (
+                                <Text style={styles.sourceName} numberOfLines={1}>
+                                  {ref.sourceName}
+                                </Text>
+                              ) : null}
+                            </View>
+                            {ref.url ? (
+                              <FontAwesome name="external-link" size={10} color={theme.accentBlue} />
+                            ) : null}
+                          </Pressable>
+                        ))
+                      : digest.sources.slice(0, 5).map((src, i) => (
+                          <View key={i} style={styles.sourceRow}>
+                            <Text style={styles.sourceName} numberOfLines={1}>
+                              {src}
+                            </Text>
+                          </View>
+                        ))}
+                  </View>
+                ) : null}
+
+                <View style={styles.footerRow}>
+                  <Text style={styles.footer}>
+                    {t('feedDigestSummary', {
+                      count: String(digest.count),
+                      sources: String(digest.sources.length),
+                    })}
+                    {digest.generatedAt ? ` · ${relativeTime(digest.generatedAt, locale)}` : ''}
+                  </Text>
+                  <FontAwesome
+                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={11}
+                    color={theme.textDim}
+                  />
+                </View>
+              </Pressable>
+            </View>
+          );
+        })}
       </ScrollView>
 
       {batches.length > 1 ? (
@@ -303,12 +290,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '900',
       color: theme.text,
     },
-    summary: {
-      fontSize: sf(12),
-      lineHeight: sf(18),
-      fontWeight: '600',
-      color: theme.textMuted,
-    },
     footerRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -323,25 +304,34 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
     },
     sourceList: {
-      gap: 3,
+      gap: 6,
     },
     sourceRow: {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
+      alignItems: 'flex-start',
+      gap: 6,
     },
     sourceRowPressed: {
       opacity: 0.7,
     },
+    sourceTextCol: {
+      flex: 1,
+      gap: 1,
+    },
+    sourceTitle: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '700',
+      color: theme.text,
+    },
+    sourceTitleLink: {
+      color: theme.accentBlue,
+    },
     sourceName: {
-      fontSize: sf(11),
-      lineHeight: sf(16),
+      fontSize: sf(10),
+      lineHeight: sf(14),
       fontWeight: '600',
       color: theme.textMuted,
-      flex: 1,
-    },
-    sourceNameLink: {
-      color: theme.accentBlue,
     },
     dotsRow: {
       flexDirection: 'row',

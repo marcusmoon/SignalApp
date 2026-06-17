@@ -16,7 +16,7 @@ import {
 } from '../db.mjs';
 import { config } from '../config.mjs';
 import { mergeAutoHashtagsIntoNewsItem } from '../newsHashtags.mjs';
-import { fetchFinnhubEconomicCalendar } from '../providers/calendar/finnhub.mjs';
+import { fetchFinnhubEarningsCalendar, fetchFinnhubEconomicCalendar } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
@@ -284,6 +284,9 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
   }
   if (job.provider === 'finnhub' && job.handler === 'economic_calendar') {
     return { kind: 'calendar', rows: await fetchFinnhubEconomicCalendar(job.params || {}) };
+  }
+  if (job.provider === 'finnhub' && job.handler === 'earnings_calendar') {
+    return { kind: 'calendar', rows: await fetchFinnhubEarningsCalendar(job.params || {}) };
   }
   if (job.provider === 'youtube' && job.handler === 'youtube_economy') {
     const handles = normalizeYoutubeCurationHandles(dbBefore.appSettings?.youtubeCurationHandles);

@@ -69,7 +69,7 @@ export function renderYoutubeChannelsView(ctx) {
                   <tr class="${s.hidden ? 'mutedRow' : ''}">
                     <td class="muted">${idx + 1}</td>
                     <td><strong>${esc(s.handle)}</strong>${s.hidden ? ` <span class="pill">${esc(textFor('youtubeChannelsHide'))}</span>` : ''}</td>
-                    <td><input type="checkbox" data-youtube-channel-enabled="${esc(s.id)}" ${s.enabled ? 'checked' : ''} ${s.hidden ? 'disabled' : ''}/></td>
+                    <td><label class="switchRow switchRow--compact"><input class="switchInput" type="checkbox" data-youtube-channel-enabled="${esc(s.id)}" ${s.enabled ? 'checked' : ''} ${s.hidden ? 'disabled' : ''}/><span class="switchUi" aria-hidden="true"></span></label></td>
                     <td class="muted">${Number(s.order) || idx + 1}</td>
                     <td class="tableActions">
                       <button class="iconBtn" title="Move up" data-youtube-channel-move="up" data-youtube-channel-id="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>↑</button>

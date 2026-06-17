@@ -148,28 +148,53 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources = []
       : '';
   return `
     <div class="jobEditPanel" data-job-edit-scope="${esc(job.jobKey)}">
-      <div class="row jobEditPanelHead">
-        <strong>${esc(textFor('jobEditPanelTitle'))}</strong>
+      <div class="jobEditPanelHead">
+        <div class="jobEditPanelTitle">
+          <strong>${esc(jobDisplayName(job))}</strong>
+          <span class="muted">${esc(job.jobKey)}</span>
+        </div>
         <button class="secondary compactBtn" data-job-edit-close="${esc(job.jobKey)}">${esc(textFor('btnClose'))}</button>
       </div>
+
       <div class="jobEditSection">
         <div class="jobEditSectionHead">
           <strong>${esc(textFor('jobEditBasicTitle'))}</strong>
-          <span>${esc(textFor('jobEditBasicHint'))}</span>
         </div>
-        <div class="jobSettingsBody">
-          <label>${esc(textFor('jobLabelName'))} <input data-job-name="${esc(job.jobKey)}" value="${esc(jobDisplayName(job))}" placeholder="${esc(textFor('jobLabelNamePh'))}" /></label>
-          <label>${esc(textFor('jobLabelDesc'))} <input data-job-desc="${esc(job.jobKey)}" value="${esc(job.description || '')}" placeholder="${esc(textFor('jobLabelDescPh'))}" /></label>
-          <label>${esc(textFor('jobLabelIntervalSec'))} <input data-job-interval="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.intervalSeconds)}" /></label>
-          <label>${esc(textFor('jobLabelLockTtlSec'))} <input data-job-lock-ttl="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.lockTtlSeconds || '')}" placeholder="${esc(textFor('jobLabelLockTtlPh'))}" /></label>
-          <label>${esc(textFor('jobLabelStaleLockSec'))} <input data-job-stale-lock="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.staleLockSeconds || '')}" placeholder="${esc(textFor('jobLabelStaleLockPh'))}" /></label>
-          <label class="jobToggleField">${esc(textFor('jobLabelEnabled'))} <span><input type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/> ${esc(textFor('jobEnabledFlag'))}</span></label>
+        <div class="jobSettingsIdentity">
+          <label class="fieldLabel">${esc(textFor('jobLabelName'))}
+            <input data-job-name="${esc(job.jobKey)}" value="${esc(jobDisplayName(job))}" placeholder="${esc(textFor('jobLabelNamePh'))}" />
+          </label>
+          <label class="fieldLabel">${esc(textFor('jobLabelDesc'))}
+            <input data-job-desc="${esc(job.jobKey)}" value="${esc(job.description || '')}" placeholder="${esc(textFor('jobLabelDescPh'))}" />
+          </label>
+        </div>
+        <label class="switchRow jobEnabledToggle">
+          <input class="switchInput" type="checkbox" data-job-enabled="${esc(job.jobKey)}" ${job.enabled ? 'checked' : ''}/>
+          <span class="switchUi" aria-hidden="true"></span>
+          <span>${esc(textFor('jobLabelEnabled'))}</span>
+        </label>
+      </div>
+
+      <div class="jobEditSection">
+        <div class="jobEditSectionHead">
+          <strong>${esc(textFor('jobEditScheduleTitle'))}</strong>
+        </div>
+        <div class="jobSettingsSchedule">
+          <label class="fieldLabel">${esc(textFor('jobLabelIntervalSec'))}
+            <input data-job-interval="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.intervalSeconds)}" />
+          </label>
+          <label class="fieldLabel">${esc(textFor('jobLabelLockTtlSec'))}
+            <input data-job-lock-ttl="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.lockTtlSeconds || '')}" placeholder="${esc(textFor('jobLabelLockTtlPh'))}" />
+          </label>
+          <label class="fieldLabel">${esc(textFor('jobLabelStaleLockSec'))}
+            <input data-job-stale-lock="${esc(job.jobKey)}" type="number" min="0" step="1" value="${esc(job.staleLockSeconds || '')}" placeholder="${esc(textFor('jobLabelStaleLockPh'))}" />
+          </label>
         </div>
       </div>
+
       <div class="jobEditSection">
         <div class="jobEditSectionHead">
           <strong>${esc(textFor('jobEditSourceTitle'))}</strong>
-          <span>${esc(textFor('jobEditSourceHint'))}</span>
         </div>
         <div class="jobReadonlyGrid">
           ${readonlyValue('Provider', job.provider)}
@@ -179,6 +204,7 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources = []
         ${rssSelector}
         ${afterHoursEditor}
       </div>
+
       <details class="jobAdvancedParams">
         <summary>${esc(textFor('jobParamsJson'))}</summary>
         <label class="jobParamsField">
@@ -186,6 +212,7 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources = []
           <small class="muted">${esc(textFor('jobParamsJsonHint'))}</small>
         </label>
       </details>
+
       <div class="jobEditActions">
         <button data-job-save="${esc(job.jobKey)}" class="success">${esc(textFor('btnSave'))}</button>
       </div>

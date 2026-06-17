@@ -14,6 +14,7 @@ import type {
   SignalApiMarketBriefing,
   SignalApiMarketBriefingCompany,
   SignalApiMarketBriefingMacroItem,
+  SignalApiMarketBriefingSector,
 } from '@/integrations/signal-api/types';
 
 function shortMd(isoDate: string): string {
@@ -169,6 +170,31 @@ function MacroHighlightCard({
   );
 }
 
+function trendColor(trend: string, theme: AppTheme): string {
+  if (trend === '▲' || trend === 'up' || trend === '강세') return theme.green;
+  if (trend === '▽' || trend === 'down' || trend === '약세') return theme.accentOrange;
+  return theme.textMuted;
+}
+
+function SectorRow({
+  item,
+  theme,
+  styles,
+}: {
+  item: SignalApiMarketBriefingSector;
+  theme: AppTheme;
+  styles: ReturnType<typeof makeStyles>;
+}) {
+  const color = trendColor(item.trend, theme);
+  return (
+    <View style={styles.sectorRow}>
+      <Text style={[styles.sectorTrend, { color }]}>{item.trend}</Text>
+      <Text style={styles.sectorName}>{item.name}</Text>
+      <Text style={styles.sectorSummary} numberOfLines={2}>{item.summary}</Text>
+    </View>
+  );
+}
+
 export function MarketBriefingBlock({
   briefing,
   theme,
@@ -209,6 +235,25 @@ export function MarketBriefingBlock({
             </View>
           ) : null}
         </View>
+      ) : null}
+
+      {briefing.sectors && briefing.sectors.length > 0 ? (
+        <BriefingSection
+          title={t('briefingDetailSectors')}
+          count={briefing.sectors.length}
+          styles={styles}
+          accent="green">
+          <View style={styles.cardStack}>
+            {briefing.sectors.map((item, index) => (
+              <SectorRow
+                key={`${item.name}-${index}`}
+                item={item}
+                theme={theme}
+                styles={styles}
+              />
+            ))}
+          </View>
+        </BriefingSection>
       ) : null}
 
       {briefing.companies.length > 0 ? (
@@ -380,6 +425,34 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     cardStack: {
       gap: 10,
+    },
+    sectorRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      paddingVertical: 7,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    sectorTrend: {
+      fontSize: sf(15),
+      fontWeight: '900',
+      width: 20,
+      textAlign: 'center',
+    },
+    sectorName: {
+      fontSize: sf(13),
+      fontWeight: '900',
+      color: theme.text,
+      width: 64,
+    },
+    sectorSummary: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: sf(13),
+      fontWeight: '500',
+      color: theme.textDim,
+      lineHeight: sf(18),
     },
     companyCard: {
       borderRadius: 14,

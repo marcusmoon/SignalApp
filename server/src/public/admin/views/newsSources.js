@@ -75,7 +75,7 @@ export function renderNewsSourcesView(ctx) {
                   <tr class="${s.hidden ? 'mutedRow' : ''}">
                     <td class="muted">${idx + 1}</td>
                     <td><strong>${esc(s.name)}</strong>${s.hidden ? ` <span class="pill">${esc(textFor('newsSourcesHide'))}</span>` : ''}</td>
-                    <td><input type="checkbox" data-news-source-enabled="${esc(s.id)}" ${s.enabled ? 'checked' : ''} ${s.hidden ? 'disabled' : ''}/></td>
+                    <td><label class="switchRow switchRow--compact"><input class="switchInput" type="checkbox" data-news-source-enabled="${esc(s.id)}" ${s.enabled ? 'checked' : ''} ${s.hidden ? 'disabled' : ''}/><span class="switchUi" aria-hidden="true"></span></label></td>
                     <td class="muted">${Number(s.order) || idx + 1}</td>
                     <td class="tableActions">
                       <button class="iconBtn" title="Move up" data-news-source-move="up" data-news-source-id="${esc(s.id)}" ${s.hidden ? 'disabled' : ''}>↑</button>

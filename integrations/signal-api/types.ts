@@ -83,6 +83,15 @@ export type SignalApiMarketBriefingMacroItem = {
   recency?: 'latest' | 'older' | string;
 };
 
+export type SignalApiMarketBriefingSector = {
+  /** 섹터명. 예: "반도체", "방산", "Tech", "Energy" */
+  name: string;
+  /** 흐름 방향. 예: "▲", "▽", "→" */
+  trend: string;
+  /** 한 줄 요약. 예: "SK하이닉스 +4.3%, HBM 수요 기대감" */
+  summary: string;
+};
+
 export type SignalApiMarketBriefing = {
   id: string;
   market: 'kr' | 'us' | string;
@@ -91,6 +100,7 @@ export type SignalApiMarketBriefing = {
   headline: string;
   summary: string;
   overview: string[];
+  sectors?: SignalApiMarketBriefingSector[];
   companies: SignalApiMarketBriefingCompany[];
   macro: SignalApiMarketBriefingMacroItem[];
   sourceRefs: SignalApiMarketBriefingSourceRef[];

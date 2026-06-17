@@ -75,13 +75,13 @@ export async function loadTranslationSettingsView(ctx) {
       </div>
     </div>
     <div class="card settingsControlCard">
-      <div class="row" style="justify-content:space-between;gap:10px">
+      <div class="settingsFormRow settingsFormRow--spread">
         <div>
           <strong>${esc(textFor('translationFlowTitle'))}</strong>
-          <div class="muted" style="margin-top:4px">${esc(textFor('translationFlowHint'))}</div>
+          <div class="muted cardHint">${esc(textFor('translationFlowHint'))}</div>
           ${
             missingKeys.length
-              ? `<div class="muted" style="margin-top:6px"><span class="pill opReconcile">${esc(textFor('providerMissingKeys'))}</span> ${esc(textForVars('providerMissingKeysHint', { providers: missingKeys.join(', ') }))}</div>`
+              ? `<div class="muted cardHint"><span class="pill opReconcile">${esc(textFor('providerMissingKeys'))}</span> ${esc(textForVars('providerMissingKeysHint', { providers: missingKeys.join(', ') }))}</div>`
               : ''
           }
         </div>
@@ -114,8 +114,8 @@ export async function loadTranslationSettingsView(ctx) {
               (s) => `
             <tr>
               <td><span class="pill">${esc(s.locale)}</span></td>
-              <td><input type="checkbox" data-ts-enabled="${esc(s.locale)}" ${s.enabled ? 'checked' : ''}/></td>
-              <td><input type="checkbox" data-ts-auto="${esc(s.locale)}" ${s.autoTranslateNews ? 'checked' : ''}/></td>
+              <td><label class="switchRow switchRow--compact"><input class="switchInput" type="checkbox" data-ts-enabled="${esc(s.locale)}" ${s.enabled ? 'checked' : ''}/><span class="switchUi" aria-hidden="true"></span></label></td>
+              <td><label class="switchRow switchRow--compact"><input class="switchInput" type="checkbox" data-ts-auto="${esc(s.locale)}" ${s.autoTranslateNews ? 'checked' : ''}/><span class="switchUi" aria-hidden="true"></span></label></td>
               <td>
                 <select data-ts-provider="${esc(s.locale)}">
                   <option value="mock" ${s.provider === 'mock' ? 'selected' : ''}>mock</option>
@@ -153,7 +153,7 @@ export async function loadTranslationSettingsView(ctx) {
         <button id="resetTranslationTestText" class="secondary">${esc(textFor('translationDefaultButton'))}</button>
         <button id="runTranslationTest">${esc(textFor('translationRunButton'))}</button>
       </div>
-      <textarea id="translationTestText" style="margin-top:10px">${esc(textFor('translationDefaultText'))}</textarea>
+      <textarea id="translationTestText" class="settingsTextarea">${esc(textFor('translationDefaultText'))}</textarea>
       <div id="translationTestResult" class="summary"></div>
     </div>
   `;
@@ -619,7 +619,7 @@ export async function loadProviderSettingsView(ctx) {
               <button class="success" id="saveAppSettingsBtn">${esc(textFor('btnSave'))}</button>
             </div>
           </label>
-          <div class="settingsFormRow settingsFormRow--compact" style="margin-top:14px">
+          <div class="settingsFormRow settingsFormRow--compact settingsFormRow--spaced">
             <div>
               <strong>${esc(textFor('appSettingsAdsTitle'))}</strong>
               <div class="cardHint">${esc(textFor('appSettingsAdsHint'))}</div>
@@ -642,36 +642,36 @@ export async function loadProviderSettingsView(ctx) {
           <span class="muted" id="socialAuthSettingsStatus"></span>
         </div>
         <div class="settingsSectionBody">
-          <p class="muted" style="margin-bottom:10px">${esc(textFor('socialAuthSecretsNote'))}</p>
+          <p class="muted cardHint">${esc(textFor('socialAuthSecretsNote'))}</p>
           <label class="fieldLabel">${esc(textFor('socialAuthRedirectPath'))}
             <input id="socialLoginRedirectPath" type="text" value="${esc(String(sa.socialLoginRedirectPath || sa.oauthRedirectPath || 'oauth'))}" />
           </label>
           <div class="socialAuthProviderGrid">
             <div class="socialAuthProviderCard">
               <strong>${esc(textFor('socialAuthGoogle'))}</strong>
-              <label class="switchRow" style="margin-top:8px"><input type="checkbox" id="socialAuthGoogleEnabled" ${g.enabled === true ? 'checked' : ''} /><span>${esc(textFor('socialAuthEnabled'))}</span></label>
-              <label class="fieldLabel" style="margin-top:8px">webClientId<input id="socialAuthGoogleWeb" type="text" value="${esc(String(g.webClientId || ''))}" /></label>
+              <label class="switchRow socialAuthToggle"><input class="switchInput" type="checkbox" id="socialAuthGoogleEnabled" ${g.enabled === true ? 'checked' : ''} /><span class="switchUi" aria-hidden="true"></span><span>${esc(textFor('socialAuthEnabled'))}</span></label>
+              <label class="fieldLabel">webClientId<input id="socialAuthGoogleWeb" type="text" value="${esc(String(g.webClientId || ''))}" /></label>
               <label class="fieldLabel">iosClientId<input id="socialAuthGoogleIos" type="text" value="${esc(String(g.iosClientId || ''))}" /></label>
               <label class="fieldLabel">androidClientId<input id="socialAuthGoogleAndroid" type="text" value="${esc(String(g.androidClientId || ''))}" /></label>
             </div>
             <div class="socialAuthProviderCard">
               <strong>${esc(textFor('socialAuthApple'))}</strong>
-              <label class="switchRow" style="margin-top:8px"><input type="checkbox" id="socialAuthAppleEnabled" ${a.enabled === true ? 'checked' : ''} /><span>${esc(textFor('socialAuthEnabled'))}</span></label>
-              <label class="fieldLabel" style="margin-top:8px">${esc(textFor('socialAuthAppleBundleId'))}<input id="socialAuthAppleBundle" type="text" value="${esc(String(a.bundleId || a.clientId || ''))}" /></label>
+              <label class="switchRow socialAuthToggle"><input class="switchInput" type="checkbox" id="socialAuthAppleEnabled" ${a.enabled === true ? 'checked' : ''} /><span class="switchUi" aria-hidden="true"></span><span>${esc(textFor('socialAuthEnabled'))}</span></label>
+              <label class="fieldLabel">${esc(textFor('socialAuthAppleBundleId'))}<input id="socialAuthAppleBundle" type="text" value="${esc(String(a.bundleId || a.clientId || ''))}" /></label>
             </div>
             <div class="socialAuthProviderCard">
               <strong>${esc(textFor('socialAuthKakao'))}</strong>
-              <label class="switchRow" style="margin-top:8px"><input type="checkbox" id="socialAuthKakaoEnabled" ${k.enabled === true ? 'checked' : ''} /><span>${esc(textFor('socialAuthEnabled'))}</span></label>
-              <label class="fieldLabel" style="margin-top:8px">${esc(textFor('socialAuthKakaoRestKey'))}<input id="socialAuthKakaoRest" type="text" value="${esc(String(k.restApiKey || k.clientId || ''))}" /></label>
+              <label class="switchRow socialAuthToggle"><input class="switchInput" type="checkbox" id="socialAuthKakaoEnabled" ${k.enabled === true ? 'checked' : ''} /><span class="switchUi" aria-hidden="true"></span><span>${esc(textFor('socialAuthEnabled'))}</span></label>
+              <label class="fieldLabel">${esc(textFor('socialAuthKakaoRestKey'))}<input id="socialAuthKakaoRest" type="text" value="${esc(String(k.restApiKey || k.clientId || ''))}" /></label>
               <label class="fieldLabel">${esc(textFor('socialAuthKakaoClientSecret'))}<input id="socialAuthKakaoSecret" type="password" autocomplete="new-password" placeholder="${esc(textFor('socialAuthSecretPlaceholder'))}" /></label>
-              ${k.clientSecretConfigured ? `<p class="muted" style="margin:6px 0 0">${esc(textFor('socialAuthSecretStored'))}</p>` : ''}
+              ${k.clientSecretConfigured ? `<p class="muted socialAuthStoredNote">${esc(textFor('socialAuthSecretStored'))}</p>` : ''}
             </div>
             <div class="socialAuthProviderCard">
               <strong>${esc(textFor('socialAuthNaver'))}</strong>
-              <label class="switchRow" style="margin-top:8px"><input type="checkbox" id="socialAuthNaverEnabled" ${n.enabled === true ? 'checked' : ''} /><span>${esc(textFor('socialAuthEnabled'))}</span></label>
-              <label class="fieldLabel" style="margin-top:8px">${esc(textFor('socialAuthNaverClientId'))}<input id="socialAuthNaverClient" type="text" value="${esc(String(n.clientId || ''))}" /></label>
+              <label class="switchRow socialAuthToggle"><input class="switchInput" type="checkbox" id="socialAuthNaverEnabled" ${n.enabled === true ? 'checked' : ''} /><span class="switchUi" aria-hidden="true"></span><span>${esc(textFor('socialAuthEnabled'))}</span></label>
+              <label class="fieldLabel">${esc(textFor('socialAuthNaverClientId'))}<input id="socialAuthNaverClient" type="text" value="${esc(String(n.clientId || ''))}" /></label>
               <label class="fieldLabel">${esc(textFor('socialAuthNaverClientSecret'))}<input id="socialAuthNaverSecret" type="password" autocomplete="new-password" placeholder="${esc(textFor('socialAuthSecretPlaceholder'))}" /></label>
-              ${n.clientSecretConfigured ? `<p class="muted" style="margin:6px 0 0">${esc(textFor('socialAuthSecretStored'))}</p>` : ''}
+              ${n.clientSecretConfigured ? `<p class="muted socialAuthStoredNote">${esc(textFor('socialAuthSecretStored'))}</p>` : ''}
             </div>
           </div>
         </div>

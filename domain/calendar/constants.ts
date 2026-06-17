@@ -7,4 +7,5 @@ export const CALENDAR_EVENT_TYPE_ORDER: CalendarEventTypeKey[] = [
   'macro',
   'fed',
   'fomc',
+  'earnings',
 ];

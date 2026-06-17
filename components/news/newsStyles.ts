@@ -48,6 +48,28 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
     listHeader: {
       paddingBottom: 4,
     },
+    newContentBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      marginTop: 6,
+      marginBottom: 4,
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: theme.accentBlue + '55',
+      backgroundColor:
+        theme.accentBlue.startsWith('#') && theme.accentBlue.length === 7
+          ? `${theme.accentBlue}12`
+          : theme.accentBlue + '12',
+    },
+    newContentBannerText: {
+      color: theme.accentBlue,
+      fontSize: sf(12),
+      fontWeight: '700',
+    },
     refreshNotice: {
       flexDirection: 'row',
       alignItems: 'center',

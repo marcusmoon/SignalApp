@@ -17,13 +17,18 @@ export type CalendarEvent = {
   date: string;
   time: string;
   title: string;
-  type: 'macro' | 'fed' | 'fomc';
+  type: 'macro' | 'fed' | 'fomc' | 'earnings';
   impact?: 'low' | 'medium' | 'high';
   actual?: number | null;
   estimate?: number | null;
   prev?: number | null;
   unit?: string;
   country?: string;
+  /** 실적 이벤트 전용 */
+  symbol?: string | null;
+  fiscalYear?: number | null;
+  fiscalQuarter?: number | null;
+  earningsHour?: string | null;
 };
 
 export type YoutubeItem = {

@@ -2190,6 +2190,45 @@ h3 { font-size: var(--font-card-title); font-weight: 600; }
   min-height: 34px;
 }
 
+.settingsFormRow--spread {
+  justify-content: space-between;
+}
+
+.settingsFormRow--spaced {
+  margin-top: 14px;
+}
+
+.settingsTextarea {
+  margin-top: 10px;
+}
+
+/* Compact toggle for use inside table cells */
+.switchRow--compact {
+  gap: 0;
+  cursor: pointer;
+}
+.switchRow--compact .switchUi {
+  width: 36px;
+  height: 22px;
+}
+.switchRow--compact .switchUi::after {
+  width: 16px;
+  height: 16px;
+}
+.switchRow--compact:has(.switchInput:checked) .switchUi::after {
+  transform: translateX(14px);
+}
+
+/* Social auth card toggle / note helpers */
+.socialAuthToggle {
+  margin-top: 6px;
+}
+.socialAuthStoredNote {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .providerTileGrid {
   display: grid;
   gap: 10px;
@@ -5655,6 +5694,66 @@ body.adminShellV2.loginMode {
   font-weight: 900;
 }
 
+/* Monitoring metric row — semantic sub-classes for label/num/variants */
+.adminShellV2 .jobOpsMetricRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.adminShellV2 .jobOpsMetricLabel {
+  display: block;
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.adminShellV2 .jobOpsMetricNum {
+  display: block;
+  color: #191f28;
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.adminShellV2 .jobOpsMetric.jobOpsMetricActive {
+  background: #eaf2ff;
+}
+
+.adminShellV2 .jobOpsMetric.jobOpsMetricActive .jobOpsMetricNum {
+  color: #1a6ef7;
+}
+
+.adminShellV2 .jobOpsMetric.jobOpsMetricWarn {
+  background: #fff4e5;
+}
+
+.adminShellV2 .jobOpsMetric.jobOpsMetricWarn .jobOpsMetricNum {
+  color: #e07000;
+}
+
+body.adminShellV2[data-admin-theme='dark'] .jobOpsMetricNum {
+  color: #e8eaf0;
+}
+
+body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric.jobOpsMetricActive {
+  background: rgba(26, 110, 247, 0.14);
+}
+
+body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric.jobOpsMetricActive .jobOpsMetricNum {
+  color: #6fa8ff;
+}
+
+body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric.jobOpsMetricWarn {
+  background: rgba(224, 112, 0, 0.14);
+}
+
+body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric.jobOpsMetricWarn .jobOpsMetricNum {
+  color: #ffb060;
+}
+
 .adminShellV2 .jobBoard {
   display: grid;
   gap: 18px;
@@ -7294,4 +7393,205 @@ body.adminShellV2 .jobAdvancedParams .jobParamsField {
   body.adminShellV2 .jobParamsField textarea {
     min-height: 120px;
   }
+}
+
+/* ============================================================
+   Job Edit Drawer — right-side slide-in panel (Toss style)
+   ============================================================ */
+
+/* Overlay backdrop */
+.jobEditOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 28;
+  background: rgba(25, 31, 40, 0.38);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  cursor: pointer;
+}
+.jobEditOverlay.hidden {
+  display: none !important;
+}
+
+/* Slide-in drawer */
+body.adminShellV2 .jobCardEdit:not(.hidden) {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 540px;
+  max-width: min(540px, 100vw);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 30;
+  border-radius: 24px 0 0 24px;
+  border: none;
+  background: var(--bg-elevated, #ffffff);
+  box-shadow: -4px 0 48px rgba(25, 31, 40, 0.14), -1px 0 0 rgba(25,31,40,0.06);
+  animation: jobEditSlideIn 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes jobEditSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+body.adminShellV2 .jobEditPanel {
+  display: grid;
+  gap: 0;
+  padding: 0 0 32px;
+  min-height: 100%;
+}
+
+/* Panel header */
+body.adminShellV2 .jobEditPanelHead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px 16px;
+  background: var(--bg-elevated, #ffffff);
+  border-bottom: 1px solid var(--border, #eef1f4);
+}
+
+body.adminShellV2 .jobEditPanelTitle {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+body.adminShellV2 .jobEditPanelTitle strong {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--text, #191f28);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.adminShellV2 .jobEditPanelTitle span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted, #8b95a1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Sections inside drawer */
+body.adminShellV2 .jobEditPanel .jobEditSection {
+  margin: 16px 24px 0;
+  padding: 16px;
+  border: 1px solid var(--border, #eef1f4);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--bg, #f7f8fa) 55%, transparent);
+}
+
+body.adminShellV2 .jobEditPanel .jobEditSectionHead {
+  margin-bottom: 12px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+body.adminShellV2 .jobEditPanel .jobEditSectionHead strong {
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.3px;
+  color: var(--muted, #8b95a1);
+  text-transform: uppercase;
+}
+
+/* Identity fields (name + desc) */
+body.adminShellV2 .jobSettingsIdentity {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* Schedule fields (interval + lockTtl + staleLock) */
+body.adminShellV2 .jobSettingsSchedule {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* Enabled toggle row */
+body.adminShellV2 .jobEnabledToggle {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg, #f7f8fa) 60%, transparent);
+}
+
+/* fieldLabel inside drawer */
+body.adminShellV2 .jobEditPanel .fieldLabel {
+  display: grid;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 850;
+  color: var(--muted, #6b7684);
+}
+
+body.adminShellV2 .jobEditPanel .fieldLabel input {
+  width: 100%;
+}
+
+/* Advanced params section */
+body.adminShellV2 .jobEditPanel .jobAdvancedParams {
+  margin: 16px 24px 0;
+}
+
+/* Save button */
+body.adminShellV2 .jobEditPanel .jobEditActions {
+  margin: 16px 24px 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+body.adminShellV2 .jobEditPanel .jobEditActions button {
+  min-width: 120px;
+  min-height: 48px;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+/* Readonly grid inside drawer */
+body.adminShellV2 .jobEditPanel .jobReadonlyGrid {
+  margin-bottom: 12px;
+}
+
+@media (max-width: 600px) {
+  body.adminShellV2 .jobCardEdit:not(.hidden) {
+    width: 100vw;
+    border-radius: 20px 20px 0 0;
+    top: auto;
+    height: 85vh;
+  }
+
+  body.adminShellV2 .jobSettingsIdentity,
+  body.adminShellV2 .jobSettingsSchedule {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Dark theme support */
+body.adminShellV2[data-admin-theme='dark'] .jobEditOverlay {
+  background: rgba(10, 14, 20, 0.55);
+}
+
+body.adminShellV2[data-admin-theme='dark'] .jobCardEdit:not(.hidden) {
+  background: var(--bg-elevated, #1a2232);
+  box-shadow: -4px 0 48px rgba(0, 0, 0, 0.38), -1px 0 0 rgba(255,255,255,0.05);
+}
+
+body.adminShellV2[data-admin-theme='dark'] .jobEditPanelHead {
+  background: var(--bg-elevated, #1a2232);
+  border-bottom-color: var(--border, rgba(255,255,255,0.08));
 }

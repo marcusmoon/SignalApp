@@ -36,13 +36,31 @@ export async function loadMonitoringView(ctx) {
   const stuck = runs.filter((r) => r.stuck);
   $('monitoring').innerHTML = `
     ${renderIngestWorkflowNav({ activeView: 'monitoring', esc, textFor })}
-    <div class="statGrid wideStats">
-      <div class="stat"><div class="statLabel muted"><span class="statIcon">R</span>${esc(textFor('statRecentRuns'))}</div><div class="statNum">${runs.length}</div></div>
-      <div class="stat"><div class="statLabel muted"><span class="statIcon">P</span>${esc(textFor('statRunningRuns'))}</div><div class="statNum">${running.length}</div></div>
-      <div class="stat"><div class="statLabel muted"><span class="statIcon">!</span>${esc(textFor('statStuckRuns'))}</div><div class="statNum">${stuck.length}</div></div>
-      <div class="stat"><div class="statLabel muted"><span class="statIcon">S</span>${esc(textFor('statStale'))}</div><div class="statNum">${stale.length}</div></div>
-      <div class="stat"><div class="statLabel muted"><span class="statIcon">J</span>${esc(textFor('statActiveJobs'))}</div><div class="statNum">${summary.counts.enabledJobs}</div></div>
-      <div class="stat"><div class="statLabel muted"><span class="statIcon">!</span>${esc(textFor('statRecentFailures'))}</div><div class="statNum">${summary.counts.recentFailedRuns}</div></div>
+    <div class="jobOpsMetricRow">
+      <div class="jobOpsMetric">
+        <span class="jobOpsMetricLabel">${esc(textFor('statRecentRuns'))}</span>
+        <span class="jobOpsMetricNum">${runs.length}</span>
+      </div>
+      <div class="jobOpsMetric${running.length > 0 ? ' jobOpsMetricActive' : ''}">
+        <span class="jobOpsMetricLabel">${esc(textFor('statRunningRuns'))}</span>
+        <span class="jobOpsMetricNum">${running.length}</span>
+      </div>
+      <div class="jobOpsMetric${stuck.length > 0 ? ' jobOpsMetricWarn' : ''}">
+        <span class="jobOpsMetricLabel">${esc(textFor('statStuckRuns'))}</span>
+        <span class="jobOpsMetricNum">${stuck.length}</span>
+      </div>
+      <div class="jobOpsMetric${stale.length > 0 ? ' jobOpsMetricWarn' : ''}">
+        <span class="jobOpsMetricLabel">${esc(textFor('statStale'))}</span>
+        <span class="jobOpsMetricNum">${stale.length}</span>
+      </div>
+      <div class="jobOpsMetric">
+        <span class="jobOpsMetricLabel">${esc(textFor('statActiveJobs'))}</span>
+        <span class="jobOpsMetricNum">${summary.counts.enabledJobs}</span>
+      </div>
+      <div class="jobOpsMetric${summary.counts.recentFailedRuns > 0 ? ' jobOpsMetricWarn' : ''}">
+        <span class="jobOpsMetricLabel">${esc(textFor('statRecentFailures'))}</span>
+        <span class="jobOpsMetricNum">${summary.counts.recentFailedRuns}</span>
+      </div>
     </div>
     <div class="card card--elevated" style="margin-top:12px">
       <div class="cardHead">

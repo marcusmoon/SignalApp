@@ -1173,6 +1173,11 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             $('sideOverlay')?.classList.add('hidden');
             return;
           }
+          if (target?.id === 'jobEditOverlay') {
+            document.querySelectorAll('.jobCardEdit:not(.hidden)').forEach((el) => el.classList.add('hidden'));
+            $('jobEditOverlay')?.classList.add('hidden');
+            return;
+          }
           if (target?.id === 'headerNotifBtn') {
             await refreshNotifications();
             openPanel('notifPanel');
@@ -1332,13 +1337,21 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           const jobEditOpenTarget = target?.closest?.('[data-job-edit-open]');
           if (jobEditOpenTarget) {
             const key = jobEditOpenTarget.dataset.jobEditOpen;
-            document.querySelectorAll(`[data-job-edit-row="${esc(key)}"]`).forEach((row) => row.classList.toggle('hidden'));
+            // Close any other open panels before opening this one
+            document.querySelectorAll('.jobCardEdit:not(.hidden)').forEach((el) => {
+              if (!el.dataset.jobEditRow || el.dataset.jobEditRow !== key) el.classList.add('hidden');
+            });
+            document.querySelectorAll(`[data-job-edit-row="${esc(key)}"]`).forEach((row) => row.classList.remove('hidden'));
+            const hasOpen = document.querySelectorAll('.jobCardEdit:not(.hidden)').length > 0;
+            $('jobEditOverlay')?.classList.toggle('hidden', !hasOpen);
             return;
           }
           const jobEditCloseTarget = target?.closest?.('[data-job-edit-close]');
           if (jobEditCloseTarget) {
             const key = jobEditCloseTarget.dataset.jobEditClose;
             document.querySelectorAll(`[data-job-edit-row="${esc(key)}"]`).forEach((row) => row.classList.add('hidden'));
+            const hasOpen = document.querySelectorAll('.jobCardEdit:not(.hidden)').length > 0;
+            $('jobEditOverlay')?.classList.toggle('hidden', !hasOpen);
             return;
           }
           if (target?.id === 'confirmClose' || target?.id === 'confirmCancel') {

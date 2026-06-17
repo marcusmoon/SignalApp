@@ -45,6 +45,7 @@ const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
   macro: 'calendarTagMacro',
   fed: 'calendarTagFed',
   fomc: 'calendarTagFomc',
+  earnings: 'calendarTagEarnings',
 };
 
 function calendarEventTimeLabel(ev: CalendarEvent, t: (id: MessageId) => string): string {
@@ -325,43 +326,46 @@ export default function CalendarScreen() {
   const renderEventCard = useCallback(
     (ev: CalendarEvent) => {
       const surprise = calendarSurpriseLabel(ev, t);
+      const isEarnings = ev.type === 'earnings';
+
+      const typeTagStyle = isEarnings
+        ? { borderColor: theme.green + '88', backgroundColor: theme.green + '18' }
+        : ev.type === 'macro'
+          ? { borderColor: theme.accentBlue + '88', backgroundColor: theme.accentBlue + '22' }
+          : ev.type === 'fed'
+            ? { borderColor: theme.accentOrange + '77', backgroundColor: theme.accentOrange + '18' }
+            : { borderColor: theme.accentOrange + 'CC', backgroundColor: theme.accentOrange + '30' };
+
+      const typeTagTextStyle = isEarnings
+        ? { color: theme.green }
+        : ev.type === 'macro'
+          ? { color: theme.accentBlue }
+          : { color: theme.accentOrange };
+
+      const typeTagLabel = isEarnings
+        ? t('calendarTagEarnings')
+        : ev.type === 'fomc'
+          ? t('calendarTagFomc')
+          : ev.type === 'fed'
+            ? t('calendarTagFed')
+            : t('calendarTagMacro');
 
       return (
         <View style={styles.card}>
           <View style={styles.cardRow}>
             <View style={styles.titleBlock}>
               <View style={styles.titleLine}>
-                <View
-                  style={[
-                    styles.typeTag,
-                    ev.type === 'macro' && {
-                      borderColor: theme.accentBlue + '88',
-                      backgroundColor: theme.accentBlue + '22',
-                    },
-                    ev.type === 'fed' && {
-                      borderColor: theme.accentOrange + '77',
-                      backgroundColor: theme.accentOrange + '18',
-                    },
-                    ev.type === 'fomc' && {
-                      borderColor: theme.accentOrange + 'CC',
-                      backgroundColor: theme.accentOrange + '30',
-                    },
-                  ]}>
-                  <Text
-                    style={[
-                      styles.typeTagText,
-                      ev.type === 'macro' && { color: theme.accentBlue },
-                      ev.type === 'fed' && { color: theme.accentOrange },
-                      ev.type === 'fomc' && { color: theme.accentOrange },
-                    ]}>
-                    {ev.type === 'fomc'
-                      ? t('calendarTagFomc')
-                      : ev.type === 'fed'
-                        ? t('calendarTagFed')
-                        : t('calendarTagMacro')}
-                  </Text>
+                <View style={[styles.typeTag, typeTagStyle]}>
+                  <Text style={[styles.typeTagText, typeTagTextStyle]}>{typeTagLabel}</Text>
                 </View>
-                {ev.impact ? (
+                {/* 실적: 종목 심볼 뱃지 */}
+                {isEarnings && ev.symbol ? (
+                  <View style={styles.symbolTag}>
+                    <Text style={styles.symbolTagText}>{ev.symbol}</Text>
+                  </View>
+                ) : null}
+                {/* 매크로: 영향도 뱃지 */}
+                {!isEarnings && ev.impact ? (
                   <View
                     style={[
                       styles.impactTag,
@@ -386,17 +390,33 @@ export default function CalendarScreen() {
                   {ev.title}
                 </Text>
               </View>
+              {/* 실적: 회계연도 + 발표 시간대 */}
+              {isEarnings && (ev.fiscalYear != null || ev.earningsHour) ? (
+                <View style={styles.metricRow}>
+                  {ev.fiscalYear != null && ev.fiscalQuarter != null ? (
+                    <Text style={styles.metricText}>
+                      FY{ev.fiscalYear} Q{ev.fiscalQuarter}
+                    </Text>
+                  ) : null}
+                  {ev.earningsHour ? (
+                    <Text style={styles.metricText}>{ev.earningsHour}</Text>
+                  ) : null}
+                </View>
+              ) : null}
+              {/* EPS / 지표 수치 */}
               {(ev.actual != null || ev.estimate != null || ev.prev != null) ? (
                 <View style={styles.metricRow}>
                   <Text style={styles.metricText}>
-                    {t('calendarMetricActual')}: {formatCalendarMetric(ev.actual, ev.unit)}
+                    {isEarnings ? 'EPS ' : ''}{t('calendarMetricActual')}: {formatCalendarMetric(ev.actual, ev.unit)}
                   </Text>
                   <Text style={styles.metricText}>
                     {t('calendarMetricEstimate')}: {formatCalendarMetric(ev.estimate, ev.unit)}
                   </Text>
-                  <Text style={styles.metricText}>
-                    {t('calendarMetricPrevious')}: {formatCalendarMetric(ev.prev, ev.unit)}
-                  </Text>
+                  {!isEarnings ? (
+                    <Text style={styles.metricText}>
+                      {t('calendarMetricPrevious')}: {formatCalendarMetric(ev.prev, ev.unit)}
+                    </Text>
+                  ) : null}
                 </View>
               ) : null}
               {surprise ? <Text style={styles.surpriseText}>{surprise}</Text> : null}
@@ -617,6 +637,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.accentBlue + '18',
     },
     impactTagText: { fontSize: sf(9), fontWeight: '800', color: theme.textMuted },
+    symbolTag: {
+      borderWidth: 1,
+      borderRadius: 5,
+      paddingHorizontal: 5,
+      paddingVertical: 2,
+      marginTop: 1,
+      borderColor: theme.green + '88',
+      backgroundColor: theme.green + '18',
+    },
+    symbolTagText: { fontSize: sf(9), fontWeight: '900', color: theme.green },
     time: { fontSize: sf(10), color: theme.textMuted, marginTop: 1, flexShrink: 0 },
     title: {
       flexGrow: 1,

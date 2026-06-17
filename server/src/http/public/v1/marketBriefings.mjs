@@ -41,6 +41,11 @@ function normalizeBriefingPayload(input) {
     headline,
     summary,
     overview: cleanArray(input?.overview).map(cleanText).filter(Boolean).slice(0, 8),
+    sectors: cleanArray(input?.sectors).slice(0, 12).map((s) => ({
+      name: cleanText(s?.name),
+      trend: cleanText(s?.trend),
+      summary: cleanText(s?.summary),
+    })).filter((s) => s.name),
     companies: cleanArray(input?.companies).slice(0, 12),
     macro: cleanArray(input?.macro).slice(0, 8),
     sourceRefs: cleanArray(input?.sourceRefs).slice(0, 20),

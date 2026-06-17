@@ -167,9 +167,12 @@ export default function FeedScreen() {
   const [watchDraftSymbols, setWatchDraftSymbols] = useState<string[]>([]);
   const [watchSymbolModalVisible, setWatchSymbolModalVisible] = useState(false);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
+  const [newContentAvailable, setNewContentAvailable] = useState(false);
   const [digestExpanded, setDigestExpanded] = useState(false);
   /** 출처 필터 UI용(카탈로그 비었을 때 샘플 + 첫 페이지 병합) */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
+  /** 백그라운드 폴링: 가장 최근에 본 뉴스 ID */
+  const latestSeenIdRef = useRef<string | null>(null);
 
   /** 웹: 리스트 콘텐츠 높이 < 뷰포트면 onEndReached가 안 나와 다음 페이지를 못 불러오는 경우가 있음 */
   const feedListViewportH = useRef(0);
@@ -194,6 +197,31 @@ export default function FeedScreen() {
     const timeout = setTimeout(() => setRefreshNotice(null), 4500);
     return () => clearTimeout(timeout);
   }, [refreshNotice]);
+
+  /** 백그라운드 폴링: 3분마다 최신 뉴스 ID 확인 → 새 항목 있으면 배너 표시 */
+  useEffect(() => {
+    if (!hasSignalApi()) return;
+    const POLL_MS = 3 * 60 * 1000;
+    const poll = async () => {
+      try {
+        const page = await fetchSignalNews({ locale, category: 'global', limit: 1, offset: 0 }, { cacheMode: 'bypass' });
+        const latestId = page.items[0]?.id ?? null;
+        if (!latestId) return;
+        if (latestSeenIdRef.current === null) {
+          // 초기화: 현재 화면에 있는 가장 최근 뉴스 ID를 기준으로 설정
+          latestSeenIdRef.current = latestId;
+          return;
+        }
+        if (latestId !== latestSeenIdRef.current) {
+          setNewContentAvailable(true);
+        }
+      } catch {
+        // 폴링 에러는 무시
+      }
+    };
+    const id = setInterval(() => void poll(), POLL_MS);
+    return () => clearInterval(id);
+  }, [locale]);
 
   useEffect(() => {
     void loadNewsSegment().then((s) => setSegment(s));
@@ -414,6 +442,8 @@ export default function FeedScreen() {
       }
       const mapped = displayPage.map((item) => signalNewsToNewsItem(item, locale));
       setItems(mapped);
+      // 백그라운드 폴링 기준 ID 갱신
+      if (displayPage[0]?.id) latestSeenIdRef.current = displayPage[0].id;
       return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
     },
     [activeTag, locale, segment, t],
@@ -585,6 +615,7 @@ export default function FeedScreen() {
     const prevVideoIds = new Set(videoItems.map((item) => item.id));
     setRefreshing(true);
     setRefreshNotice(null);
+    setNewContentAvailable(false);
     try {
       const result = await load(true);
       setError(null);
@@ -1109,6 +1140,15 @@ export default function FeedScreen() {
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>
+          {newContentAvailable && !refreshing ? (
+            <Pressable
+              onPress={() => void onRefresh()}
+              style={styles.newContentBanner}
+              accessibilityRole="button">
+              <FontAwesome name="arrow-up" size={11} color={theme.accentBlue} />
+              <Text style={styles.newContentBannerText}>{t('feedNewContentAvailable')}</Text>
+            </Pressable>
+          ) : null}
           {refreshNotice ? (
             <View style={styles.refreshNotice}>
               <FontAwesome name="check-circle" size={13} color={theme.green} />

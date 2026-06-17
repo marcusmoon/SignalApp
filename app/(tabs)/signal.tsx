@@ -20,7 +20,6 @@ import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import type { AppTheme } from '@/constants/theme';
-import { SEGMENT_TAB_ACTIVE_TEXT } from '@/constants/segmentTabBar';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
@@ -38,14 +37,14 @@ import {
 import { markSignalFeedSeen } from '@/services/signalUnreadPreference';
 import { addDays, toYmd } from '@/utils/date';
 
-type BriefingMarketKey = 'kr' | 'us';
+type FlatTabKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-evening';
 
-const MARKET_ORDER: readonly BriefingMarketKey[] = ['us', 'kr'];
-const KR_SESSION_TABS = ['morning', 'lunch', 'evening'] as const;
-const SESSION_ORDER: Record<BriefingMarketKey, readonly string[]> = {
-  kr: ['morning', 'lunch', 'evening', 'close'],
-  us: ['overnight', 'morning', 'close'],
-};
+const FLAT_TABS: ReadonlyArray<{ key: FlatTabKey; market: 'us' | 'kr'; session: string }> = [
+  { key: 'us-overnight', market: 'us', session: 'overnight' },
+  { key: 'kr-morning',   market: 'kr', session: 'morning' },
+  { key: 'kr-lunch',     market: 'kr', session: 'lunch' },
+  { key: 'kr-evening',   market: 'kr', session: 'evening' },
+];
 
 function parseYmd(value: string): Date {
   const [y, m, d] = value.split('-').map((part) => Number(part));
@@ -92,8 +91,7 @@ export default function SignalScreen() {
   const [selectedYmd, setSelectedYmd] = useState(todayYmd);
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => monthFromYmd(todayYmd));
-  const [briefingMarket, setBriefingMarket] = useState<BriefingMarketKey>('us');
-  const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const [selectedTabKey, setSelectedTabKey] = useState<FlatTabKey | null>(null);
   const [marketBriefings, setMarketBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [changeColorConvention, setChangeColorConvention] = useState<QuotesChangeColorConvention>(
     QUOTES_CHANGE_COLOR_CONVENTION_DEFAULT,
@@ -105,27 +103,22 @@ export default function SignalScreen() {
   const selectedDateLabel = useMemo(() => formatSelectedDate(selectedYmd, locale), [locale, selectedYmd]);
   const selectedIsToday = selectedYmd >= todayYmd;
 
-  const briefingMarketLabel = useCallback(
-    (market: string) => (market === 'us' ? t('briefingMarketUs') : t('briefingMarketKr')),
-    [t],
-  );
-
-  const briefingSessionLabel = useCallback(
-    (session: string) => {
-      if (session === 'morning') return t('briefingSessionMorning');
-      if (session === 'lunch') return t('briefingSessionLunch');
-      if (session === 'evening') return t('briefingSessionEvening');
-      if (session === 'close') return t('briefingSessionClose');
-      return t('briefingSessionOvernight');
+  const flatTabLabel = useCallback(
+    (key: FlatTabKey) => {
+      if (key === 'us-overnight') return t('briefingSessionOvernight');
+      if (key === 'kr-morning')   return t('briefingSessionMorning');
+      if (key === 'kr-lunch')     return t('briefingSessionLunch');
+      return t('briefingSessionEvening');
     },
     [t],
   );
 
-  const briefingSessionHint = useCallback(
-    (session: string) => {
-      if (session === 'morning') return t('briefingSessionHintMorning');
-      if (session === 'lunch') return t('briefingSessionHintLunch');
-      if (session === 'evening') return t('briefingSessionHintEvening');
+  const flatTabHint = useCallback(
+    (key: FlatTabKey) => {
+      if (key === 'us-overnight') return t('briefingSessionHintOvernight');
+      if (key === 'kr-morning')   return t('briefingSessionHintMorning');
+      if (key === 'kr-lunch')     return t('briefingSessionHintLunch');
+      if (key === 'kr-evening')   return t('briefingSessionHintEvening');
       return null;
     },
     [t],
@@ -252,50 +245,31 @@ export default function SignalScreen() {
     });
   }, [reloadChangeColorConvention]);
 
-  const briefingMarketRows = useMemo(() => {
-    const order = SESSION_ORDER[briefingMarket] ?? [];
-    return marketBriefings
-      .filter((row) => row.market === briefingMarket)
-      .sort((a, b) => {
-        const ai = order.indexOf(a.session);
-        const bi = order.indexOf(b.session);
-        if (ai !== bi) return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
-        return String(b.publishedAt || '').localeCompare(String(a.publishedAt || ''));
-      });
-  }, [briefingMarket, marketBriefings]);
-
-  const briefingBySession = useMemo(() => {
-    const map = new Map<string, SignalApiMarketBriefing>();
-    for (const row of briefingMarketRows) {
-      map.set(row.session, row);
+  const briefingByTabKey = useMemo(() => {
+    const map = new Map<FlatTabKey, SignalApiMarketBriefing>();
+    for (const tab of FLAT_TABS) {
+      const match = marketBriefings.find(
+        (row) => row.market === tab.market && row.session === tab.session,
+      );
+      if (match) map.set(tab.key, match);
     }
     return map;
-  }, [briefingMarketRows]);
-
-  const sessionTabOptions = useMemo(() => {
-    if (briefingMarket === 'kr') {
-      return [...KR_SESSION_TABS];
-    }
-    return SESSION_ORDER[briefingMarket].filter((session) => briefingBySession.has(session));
-  }, [briefingBySession, briefingMarket]);
-
-  const showSessionTabs = briefingMarket === 'kr' || sessionTabOptions.length > 1;
+  }, [marketBriefings]);
 
   useEffect(() => {
-    setSelectedSession(null);
-  }, [briefingMarket, selectedYmd]);
+    setSelectedTabKey(null);
+  }, [selectedYmd]);
 
-  const activeSession = useMemo(() => {
-    if (selectedSession && briefingBySession.has(selectedSession)) {
-      return selectedSession;
+  const activeTabKey = useMemo((): FlatTabKey | null => {
+    if (selectedTabKey && briefingByTabKey.has(selectedTabKey)) return selectedTabKey;
+    // Auto-select: last tab (most recent session) that has data
+    for (let i = FLAT_TABS.length - 1; i >= 0; i--) {
+      if (briefingByTabKey.has(FLAT_TABS[i].key)) return FLAT_TABS[i].key;
     }
-    const available = sessionTabOptions.filter((session) => briefingBySession.has(session));
-    if (available.length === 0) return null;
-    return available[available.length - 1] ?? null;
-  }, [briefingBySession, selectedSession, sessionTabOptions]);
+    return null;
+  }, [briefingByTabKey, selectedTabKey]);
 
-  const activeBriefing = activeSession ? briefingBySession.get(activeSession) : undefined;
-
+  const activeBriefing = activeTabKey ? briefingByTabKey.get(activeTabKey) : undefined;
   const hasAnyBriefing = marketBriefings.length > 0;
 
   return (
@@ -350,31 +324,16 @@ export default function SignalScreen() {
         </Pressable>
       </View>
 
-      <View style={styles.marketTabs}>
-        {MARKET_ORDER.map((market) => (
-          <Pressable
-            key={market}
-            onPress={() => setBriefingMarket(market)}
-            style={[styles.marketTab, briefingMarket === market && styles.marketTabActive]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: briefingMarket === market }}>
-            <Text style={[styles.marketTabText, briefingMarket === market && styles.marketTabTextActive]}>
-              {briefingMarketLabel(market)}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {!loading && showSessionTabs ? (
+      {!loading ? (
         <View style={styles.sessionTabsWrap}>
           <View style={styles.sessionTabs}>
-            {sessionTabOptions.map((session) => {
-              const hasBriefing = briefingBySession.has(session);
-              const isActive = activeSession === session;
+            {FLAT_TABS.map((tab) => {
+              const hasBriefing = briefingByTabKey.has(tab.key);
+              const isActive = activeTabKey === tab.key;
               return (
                 <Pressable
-                  key={session}
-                  onPress={() => setSelectedSession(session)}
+                  key={tab.key}
+                  onPress={() => setSelectedTabKey(tab.key)}
                   disabled={!hasBriefing}
                   style={[
                     styles.sessionTab,
@@ -389,14 +348,14 @@ export default function SignalScreen() {
                       isActive && styles.sessionTabTextActive,
                       !hasBriefing && styles.sessionTabTextDisabled,
                     ]}>
-                    {briefingSessionLabel(session)}
+                    {flatTabLabel(tab.key)}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
-          {briefingMarket === 'kr' && activeSession ? (
-            <Text style={styles.sessionHint}>{briefingSessionHint(activeSession)}</Text>
+          {activeTabKey ? (
+            <Text style={styles.sessionHint}>{flatTabHint(activeTabKey)}</Text>
           ) : null}
         </View>
       ) : null}
@@ -426,18 +385,13 @@ export default function SignalScreen() {
                 scaleFont={scaleFont}
                 changeColorConvention={changeColorConvention}
               />
-            ) : briefingMarketRows.length > 0 && activeSession ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyTitle}>{t('briefingSessionEmptyTitle')}</Text>
-                <Text style={styles.emptyBody}>{t('briefingSessionEmptyBody')}</Text>
-              </View>
             ) : (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyTitle}>
-                  {hasAnyBriefing ? t('briefingHubMarketEmptyTitle') : t('briefingHubEmptyTitle')}
+                  {hasAnyBriefing ? t('briefingSessionEmptyTitle') : t('briefingHubEmptyTitle')}
                 </Text>
                 <Text style={styles.emptyBody}>
-                  {hasAnyBriefing ? t('briefingHubMarketEmptyBody') : t('briefingHubEmptyBody')}
+                  {hasAnyBriefing ? t('briefingSessionEmptyBody') : t('briefingHubEmptyBody')}
                 </Text>
               </View>
             )
@@ -569,33 +523,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     dateTodayText: { color: theme.green, fontSize: sf(12), fontWeight: '900' },
     dateActionBtnPressed: { opacity: 0.86 },
-    marketTabs: {
-      flexDirection: 'row',
-      gap: 10,
-      marginHorizontal: 16,
-      marginBottom: 12,
-    },
-    marketTab: {
-      flex: 1,
-      paddingVertical: 12,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      alignItems: 'center',
-    },
-    marketTabActive: {
-      backgroundColor: theme.green,
-      borderColor: theme.green,
-    },
-    marketTabText: {
-      fontSize: sf(14),
-      fontWeight: '900',
-      color: theme.textDim,
-    },
-    marketTabTextActive: {
-      color: SEGMENT_TAB_ACTIVE_TEXT,
-    },
     sessionTabsWrap: {
       marginHorizontal: 16,
       marginBottom: 12,

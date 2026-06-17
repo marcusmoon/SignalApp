@@ -80,7 +80,23 @@ export function signalCalendarDateSummariesFromEvents(
 }
 
 export function signalCalendarToCalendarEvent(item: SignalApiCalendarEvent): CalendarEvent | null {
-  if (item.type === 'earnings') return null;
+  if (item.type === 'earnings') {
+    return {
+      id: item.id,
+      date: item.date || '—',
+      time: item.timeLabel || item.earningsHour || '—',
+      title: item.title,
+      type: 'earnings',
+      actual: item.actual,
+      estimate: item.estimate,
+      prev: item.previous,
+      unit: item.unit || 'EPS',
+      symbol: item.symbol || null,
+      fiscalYear: item.fiscalYear ?? null,
+      fiscalQuarter: item.fiscalQuarter ?? null,
+      earningsHour: item.earningsHour || null,
+    };
+  }
   if (item.type !== 'macro' && item.type !== 'fed' && item.type !== 'fomc') return null;
   return {
     id: item.id,

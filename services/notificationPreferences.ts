@@ -3,8 +3,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const KEY = '@signal/notification_prefs_v1';
 
 export type NotificationPrefs = {
+  /** OS 권한 + 서버 디바이스 등록 마스터 */
   pushEnabled: boolean;
-  /** 서버 Insight Job이 만든 오늘의 시그널 pushCandidate를 알림 후보로 보여줌 */
+  /** market_briefing 푸시 수신 */
+  briefingPushEnabled: boolean;
+  /** insight_signal 푸시 수신 */
+  insightPushEnabled: boolean;
+  /** 알림 탭 인사이트 후보 표시 (푸시와 별도) */
   signalAlertsEnabled: boolean;
   /** 알림 후보를 기기 관심종목과 매칭되는 시그널로 좁힘 */
   signalWatchlistOnly: boolean;
@@ -14,10 +19,29 @@ export type NotificationPrefs = {
 
 const DEFAULTS: NotificationPrefs = {
   pushEnabled: true,
+  briefingPushEnabled: true,
+  insightPushEnabled: true,
   signalAlertsEnabled: true,
   signalWatchlistOnly: true,
   localMacroCalendar: false,
 };
+
+export function shouldRecordIncomingPush(
+  type: string,
+  sourceType: string,
+  prefs: NotificationPrefs,
+): boolean {
+  if (!prefs.pushEnabled) return false;
+  const normalizedType = String(type || '').toLowerCase();
+  const normalizedSource = String(sourceType || '').toLowerCase();
+  if (normalizedType === 'market_briefing' || normalizedSource === 'market_briefing') {
+    return prefs.briefingPushEnabled;
+  }
+  if (normalizedType === 'insight_signal' || normalizedSource === 'insight') {
+    return prefs.insightPushEnabled;
+  }
+  return true;
+}
 
 export async function loadNotificationPrefs(): Promise<NotificationPrefs> {
   const raw = await AsyncStorage.getItem(KEY);
@@ -29,6 +53,10 @@ export async function loadNotificationPrefs(): Promise<NotificationPrefs> {
     };
     return {
       pushEnabled: typeof p.pushEnabled === 'boolean' ? p.pushEnabled : DEFAULTS.pushEnabled,
+      briefingPushEnabled:
+        typeof p.briefingPushEnabled === 'boolean' ? p.briefingPushEnabled : DEFAULTS.briefingPushEnabled,
+      insightPushEnabled:
+        typeof p.insightPushEnabled === 'boolean' ? p.insightPushEnabled : DEFAULTS.insightPushEnabled,
       signalAlertsEnabled:
         typeof p.signalAlertsEnabled === 'boolean' ? p.signalAlertsEnabled : DEFAULTS.signalAlertsEnabled,
       signalWatchlistOnly:

@@ -79,7 +79,7 @@ export default function AlertsScreen() {
         })
         .sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime()),
     );
-    if (!hasSignalApi() || !prefs.pushEnabled || !prefs.signalAlertsEnabled) {
+    if (!hasSignalApi() || !prefs.signalAlertsEnabled) {
       setCandidates([]);
       return;
     }

@@ -83,6 +83,7 @@ import {
   saveNotificationPrefs,
   type NotificationPrefs,
 } from '@/services/notificationPreferences';
+import { registerPushDeviceIfPossible } from '@/services/pushDeviceRegistration';
 import {
   loadNewsUnreadCheckIntervalMinutes,
   NEWS_UNREAD_CHECK_INTERVAL_OPTIONS,
@@ -374,6 +375,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'space-between',
       gap: 12,
     },
+    notificationSubRowDisabled: { opacity: 0.45 },
     notificationSubLabel: { flex: 1, fontSize: sf(13), fontWeight: '800', color: theme.textMuted },
     notificationSubHint: {
       fontSize: sf(11),
@@ -980,6 +982,8 @@ export default function SettingsScreen() {
   const [tab, setTab] = useState<SettingsTab>('display');
 
   const [pushEnabled, setPushEnabled] = useState(true);
+  const [briefingPushEnabled, setBriefingPushEnabled] = useState(true);
+  const [insightPushEnabled, setInsightPushEnabled] = useState(true);
   const [signalAlertsEnabled, setSignalAlertsEnabled] = useState(true);
   const [signalWatchlistOnly, setSignalWatchlistOnly] = useState(true);
   const [localMacroCalendar, setLocalMacroCalendar] = useState(false);
@@ -1100,6 +1104,8 @@ export default function SettingsScreen() {
       loadNewsUnreadCheckIntervalMinutes(),
     ]);
     setPushEnabled(p.pushEnabled);
+    setBriefingPushEnabled(p.briefingPushEnabled);
+    setInsightPushEnabled(p.insightPushEnabled);
     setSignalAlertsEnabled(p.signalAlertsEnabled);
     setSignalWatchlistOnly(p.signalWatchlistOnly);
     setLocalMacroCalendar(p.localMacroCalendar);
@@ -1572,9 +1578,42 @@ clearCalendarCache();
                         onValueChange={async (v) => {
                           setPushEnabled(v);
                           await saveNotificationPrefs({ pushEnabled: v });
+                          if (v) void registerPushDeviceIfPossible();
                         }}
                         trackColor={{ false: '#333', true: theme.green + '88' }}
                         thumbColor={pushEnabled ? theme.green : '#888'}
+                      />
+                    </View>
+                    <View style={[styles.notificationSubRow, !pushEnabled ? styles.notificationSubRowDisabled : null]}>
+                      <View style={styles.notificationText}>
+                        <Text style={styles.notificationSubLabel}>{t('settingsBriefingPushEnabled')}</Text>
+                        <Text style={styles.notificationSubHint}>{t('settingsBriefingPushEnabledHint')}</Text>
+                      </View>
+                      <Switch
+                        value={briefingPushEnabled}
+                        disabled={!pushEnabled}
+                        onValueChange={async (v) => {
+                          setBriefingPushEnabled(v);
+                          await saveNotificationPrefs({ briefingPushEnabled: v });
+                        }}
+                        trackColor={{ false: '#333', true: theme.green + '88' }}
+                        thumbColor={briefingPushEnabled && pushEnabled ? theme.green : '#888'}
+                      />
+                    </View>
+                    <View style={[styles.notificationSubRow, !pushEnabled ? styles.notificationSubRowDisabled : null]}>
+                      <View style={styles.notificationText}>
+                        <Text style={styles.notificationSubLabel}>{t('settingsInsightPushEnabled')}</Text>
+                        <Text style={styles.notificationSubHint}>{t('settingsInsightPushEnabledHint')}</Text>
+                      </View>
+                      <Switch
+                        value={insightPushEnabled}
+                        disabled={!pushEnabled}
+                        onValueChange={async (v) => {
+                          setInsightPushEnabled(v);
+                          await saveNotificationPrefs({ insightPushEnabled: v });
+                        }}
+                        trackColor={{ false: '#333', true: theme.green + '88' }}
+                        thumbColor={insightPushEnabled && pushEnabled ? theme.green : '#888'}
                       />
                     </View>
                   </View>
@@ -1617,8 +1656,8 @@ clearCalendarCache();
                   <View style={styles.notificationCard}>
                     <View style={styles.notificationHeader}>
                       <View style={styles.notificationText}>
-                        <Text style={styles.notificationTitle}>{t('settingsCalendarReminders')}</Text>
-                        <Text style={styles.notificationHint}>{t('settingsCalendarRemindersHint')}</Text>
+                        <Text style={styles.notificationTitle}>{t('settingsLocalMacroCalendar')}</Text>
+                        <Text style={styles.notificationHint}>{t('settingsLocalMacroCalendarHint')}</Text>
                       </View>
                       <Switch
                         value={localMacroCalendar}
@@ -1626,6 +1665,8 @@ clearCalendarCache();
                           setLocalMacroCalendar(v);
                           const next = {
                             pushEnabled,
+                            briefingPushEnabled,
+                            insightPushEnabled,
                             signalAlertsEnabled,
                             signalWatchlistOnly,
                             localMacroCalendar: v,

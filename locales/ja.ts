@@ -420,22 +420,28 @@ export const ja = {
   settingsScopeWatch: 'ウォッチ',
 
   settingsNotificationsLead:
-    '毎日見る価値のある通知だけを、ウォッチリスト中心にシンプルに管理します。',
+    'サーバープッシュ、インサイト通知、端末の経済カレンダーリマインダーを個別にオン/オフできます。',
   settingsPushEnabled: 'プッシュ通知',
-  settingsPushEnabledHint: 'お知らせ、今日のシグナル、予定リマインダーを端末で受け取ります。',
+  settingsPushEnabledHint:
+    'この端末でサーバープッシュを受け取るかどうかのマスター設定です。登録にはログインが必要です。種類は下で個別に選べます。',
+  settingsBriefingPushEnabled: '市場ブリーフィングプッシュ',
+  settingsBriefingPushEnabledHint: 'プレマーケット・引け後・オーバーナイトなどの市場ブリーフィングをプッシュで受け取ります。',
+  settingsInsightPushEnabled: 'インサイトプッシュ',
+  settingsInsightPushEnabledHint: 'サーバーが選定した銘柄・市場インサイトがプッシュで届いたときに通知します。',
   settingsEarningsOnly: '決算のみ',
-  settingsSignalAlertsEnabled: '今日のシグナル',
-  settingsSignalAlertsHint: 'サーバーが生成した重要シグナルを通知ボックスとプッシュ候補に使います。',
+  settingsSignalAlertsEnabled: 'インサイト通知',
+  settingsSignalAlertsHint:
+    '通知タブにサーバーが生成した銘柄・市場インサイト候補を表示します。プッシュ配信とは別です。',
   settingsSignalWatchlistOnly: 'ウォッチリストのみ',
-  settingsSignalWatchlistOnlyHint: 'オンにすると、ウォッチ銘柄に関連するシグナルだけを表示します。',
+  settingsSignalWatchlistOnlyHint: 'オンにすると、ウォッチ銘柄に関連するインサイト候補だけを通知タブに表示します。',
   settingsCalendarReminders: '投資予定リマインダー',
-  settingsCalendarRemindersHint: '主要な経済予定とウォッチ銘柄の決算日を端末時刻で通知します。',
+  settingsCalendarRemindersHint: 'CPI・FOMC など主要な経済予定を端末の現地時刻で通知します。',
   settingsNewsUnreadCheckKicker: 'ニュース新着チェック',
   settingsNewsUnreadCheckHint:
     'アプリ起動中・バックグラウンドで新着ヘッドラインを確認する間隔です。バックグラウンドはOS最小15分で、iOSではさらに遅れる場合があります。Expo Goでは動作しません。',
   settingsNewsUnreadCheckOption: '{{minutes}}分',
   settingsLocalMacroCalendar: 'ローカル通知 · 経済カレンダー',
-  settingsLocalMacroCalendarHint: 'CPI・FOMC など — 当日 8:00（端末時刻）に1件まとめて通知',
+  settingsLocalMacroCalendarHint: 'CPI・FOMC などのマクロ予定 — 当日 8:00（端末時刻）に1回通知',
   settingsLocalWatchlistEarnings: 'ローカル通知 · ウォッチ決算',
   settingsLocalWatchlistEarningsHint: 'ウォッチ銘柄の決算日当日 7:30（端末時刻）',
 

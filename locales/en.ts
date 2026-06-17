@@ -420,22 +420,28 @@ export const en = {
   settingsScopeWatch: 'Watchlist',
 
   settingsNotificationsLead:
-    'Keep the alerts you will actually revisit, with watchlist-focused conditions.',
+    'Control server push, the insight inbox, and on-device macro calendar reminders separately.',
   settingsPushEnabled: 'Push notifications',
-  settingsPushEnabledHint: 'Receive notices, Today’s Signal, and schedule reminders on this device.',
+  settingsPushEnabledHint:
+    'Master switch for server push on this device. Requires sign-in to register. Choose types below.',
+  settingsBriefingPushEnabled: 'Market briefing push',
+  settingsBriefingPushEnabledHint: 'Receive pushes for pre-market, post-market, and overnight briefings.',
+  settingsInsightPushEnabled: 'Insight push',
+  settingsInsightPushEnabledHint: 'Receive pushes when the server sends asset or market insight alerts.',
   settingsEarningsOnly: 'Earnings alerts only',
-  settingsSignalAlertsEnabled: "Today's Signal",
-  settingsSignalAlertsHint: 'Use important server-generated signals in the notification inbox and push candidates.',
+  settingsSignalAlertsEnabled: 'Insight alerts',
+  settingsSignalAlertsHint:
+    'Show server-generated asset and market insight candidates in the Alerts tab. Separate from push delivery.',
   settingsSignalWatchlistOnly: 'Watchlist only',
-  settingsSignalWatchlistOnlyHint: 'When on, show only signals connected to your watchlist.',
+  settingsSignalWatchlistOnlyHint: 'When on, the Alerts tab lists only insight candidates tied to your watchlist.',
   settingsCalendarReminders: 'Investment schedule reminders',
-  settingsCalendarRemindersHint: 'Notify major macro events and watchlist earnings in device time.',
+  settingsCalendarRemindersHint: 'Notify major macro economic events in device local time.',
   settingsNewsUnreadCheckKicker: 'News update check',
   settingsNewsUnreadCheckHint:
     'How often to check for new headlines while the app is open or in the background. Background tasks use at least a 15-minute OS minimum and may run later on iOS. Not available in Expo Go.',
   settingsNewsUnreadCheckOption: '{{minutes}} min',
   settingsLocalMacroCalendar: 'Local alerts · economic calendar',
-  settingsLocalMacroCalendarHint: 'CPI, FOMC, etc. — one summary at 8:00 on event day (device time)',
+  settingsLocalMacroCalendarHint: 'Macro events such as CPI and FOMC — one alert at 8:00 on event day (device time)',
   settingsLocalWatchlistEarnings: 'Local alerts · watchlist earnings',
   settingsLocalWatchlistEarningsHint: '7:30 on earnings day for watchlist symbols (device time)',
 

@@ -3,17 +3,26 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
 import { appendNotificationFromPayload } from '@/services/notificationHistory';
+import {
+  loadNotificationPrefs,
+  shouldRecordIncomingPush,
+} from '@/services/notificationPreferences';
 import { setSignalUnreadCached } from '@/services/signalUnreadPreference';
 
 if (Platform.OS !== 'web') {
   try {
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: false,
-        shouldSetBadge: false,
-      }),
+      handleNotification: async (notification) => {
+        const data = notification.request.content.data as Record<string, unknown> | undefined;
+        const prefs = await loadNotificationPrefs();
+        const show = shouldRecordIncomingPush(String(data?.type || ''), String(data?.sourceType || ''), prefs);
+        return {
+          shouldShowBanner: show,
+          shouldShowList: show,
+          shouldPlaySound: false,
+          shouldSetBadge: false,
+        };
+      },
     });
   } catch {
     /* 일부 빌드/시뮬레이터에서 네이티브 모듈 미초기화 시 throw 가능 */
@@ -33,13 +42,16 @@ export function NotificationListener() {
       const data = c.data as Record<string, unknown> | undefined;
       const type = String(data?.type || '');
       const sourceType = String(data?.sourceType || '');
-      if (type === 'market_briefing' || sourceType === 'market_briefing') {
-        void setSignalUnreadCached(true);
-      }
-      void appendNotificationFromPayload({
-        title: String(c.title ?? ''),
-        body: String(c.body ?? ''),
-        data,
+      void loadNotificationPrefs().then((prefs) => {
+        if (!shouldRecordIncomingPush(type, sourceType, prefs)) return;
+        if (type === 'market_briefing' || sourceType === 'market_briefing') {
+          void setSignalUnreadCached(true);
+        }
+        void appendNotificationFromPayload({
+          title: String(c.title ?? ''),
+          body: String(c.body ?? ''),
+          data,
+        });
       });
     };
 

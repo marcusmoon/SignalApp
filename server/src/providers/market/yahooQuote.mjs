@@ -34,13 +34,21 @@ async function fetchYahooQuote(yahooSymbol) {
   // Current price: regularMarketPrice is available intraday
   const price = finiteNumber(meta.regularMarketPrice);
 
-  // Previous close: use closes[-2] from bar data (= actual previous trading day).
-  // meta.previousClose with range=5d reflects the price from the START of the 5-day
-  // range, not the previous trading day — so we skip it and use the bars instead.
-  const closes = (result.indicators?.quote?.[0]?.close ?? []).filter((v) => v != null);
-  let previousClose = closes.length >= 2
-    ? finiteNumber(closes[closes.length - 2])
-    : null;
+  // Previous close: use the last settled bar close (second-to-last bar position in raw array).
+  // Rationale: the last bar is today's intraday bar (close = null while market is open).
+  // Using filter()+[-2] on the filtered array skips an extra bar during intraday sessions,
+  // causing stale previousClose (e.g. Wed instead of Thu close on a Friday).
+  // Solution: walk backwards from second-to-last position in the RAW array to find
+  // the most recent non-null close — this correctly returns yesterday's close regardless
+  // of whether today's bar is null (market open) or settled (market closed).
+  const allCloses = result.indicators?.quote?.[0]?.close ?? [];
+  let previousClose = null;
+  for (let i = allCloses.length - 2; i >= 0; i--) {
+    if (allCloses[i] != null) {
+      previousClose = finiteNumber(allCloses[i]);
+      break;
+    }
+  }
 
   // Change percent: always calculate from (price - previousClose) / previousClose.
   // Do NOT use meta.regularMarketChangePercent or meta.previousClose — both reflect

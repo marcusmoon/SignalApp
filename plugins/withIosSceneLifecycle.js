@@ -1,6 +1,6 @@
 const { withAppDelegate, withInfoPlist } = require('@expo/config-plugins');
 
-const sceneConfigurationMethod = `  public override func application(
+const sceneConfigurationMethod = `  public func application(
     _ application: UIApplication,
     configurationForConnecting connectingSceneSession: UISceneSession,
     options: UIScene.ConnectionOptions

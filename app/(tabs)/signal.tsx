@@ -40,7 +40,7 @@ import { addDays, toYmd } from '@/utils/date';
 
 type BriefingMarketKey = 'kr' | 'us';
 
-const MARKET_ORDER: readonly BriefingMarketKey[] = ['kr', 'us'];
+const MARKET_ORDER: readonly BriefingMarketKey[] = ['us', 'kr'];
 const KR_SESSION_TABS = ['morning', 'lunch', 'evening'] as const;
 const SESSION_ORDER: Record<BriefingMarketKey, readonly string[]> = {
   kr: ['morning', 'lunch', 'evening', 'close'],
@@ -92,7 +92,7 @@ export default function SignalScreen() {
   const [selectedYmd, setSelectedYmd] = useState(todayYmd);
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => monthFromYmd(todayYmd));
-  const [briefingMarket, setBriefingMarket] = useState<BriefingMarketKey>('kr');
+  const [briefingMarket, setBriefingMarket] = useState<BriefingMarketKey>('us');
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [marketBriefings, setMarketBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [changeColorConvention, setChangeColorConvention] = useState<QuotesChangeColorConvention>(

@@ -36,6 +36,7 @@ import {
   subscribeQuotesChangeColorConventionChanged,
 } from '@/services/quotesChangeColorPreference';
 import { markSignalFeedSeen, fetchLatestSignalBriefingId } from '@/services/signalUnreadPreference';
+import { useTabPressCycleSegment } from '@/hooks';
 import { addDays, toYmd } from '@/utils/date';
 
 type FlatTabKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-evening';
@@ -319,6 +320,18 @@ export default function SignalScreen() {
   const activeBriefing = activeTabKey ? briefingByTabKey.get(activeTabKey) : undefined;
   const hasAnyBriefing = marketBriefings.length > 0;
 
+  const availableSessionTabKeys = useMemo(
+    () => FLAT_TABS.filter((tab) => briefingByTabKey.has(tab.key)).map((tab) => tab.key),
+    [briefingByTabKey],
+  );
+
+  const onPickSessionTab = useCallback((key: FlatTabKey) => {
+    if (!briefingByTabKey.has(key)) return;
+    setSelectedTabKey(key);
+  }, [briefingByTabKey]);
+
+  useTabPressCycleSegment(activeTabKey, availableSessionTabKeys, onPickSessionTab);
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <Stack.Screen options={{ title: t('screenSignal') }} />
@@ -389,7 +402,7 @@ export default function SignalScreen() {
               return (
                 <Pressable
                   key={tab.key}
-                  onPress={() => setSelectedTabKey(tab.key)}
+                  onPress={() => onPickSessionTab(tab.key)}
                   disabled={!hasBriefing}
                   style={[
                     styles.sessionTab,

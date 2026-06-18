@@ -4,7 +4,7 @@ import { isRunningInExpoGo } from 'expo';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, InteractionManager, LogBox, Platform, useColorScheme, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { enableFreeze } from 'react-native-screens';
@@ -19,11 +19,9 @@ import { SignalThemeProvider, useSignalTheme } from '@/contexts/SignalThemeConte
 import { bootstrapThemeForColorScheme } from '@/constants/theme';
 import { ensureStoredSessionFresh } from '@/integrations/signal-api/httpClient';
 import { getPreviewOtaBannerRaw } from '@/services/env';
-import { initializeAds } from '@/integrations/admob/initializeAds';
-import { syncStoredAppIconVariant } from '@/services/appIconPreference';
+import { runAppBootstrap, SPLASH_MIN_DISPLAY_MS } from '@/services/appBootstrap';
 import { startNewsUnreadBackgroundSync } from '@/services/newsUnreadBackground';
 import {
-  hydrateSignalServerEndpoint,
   subscribeSignalServerEndpointChanged,
 } from '@/services/signalServerEndpoint';
 
@@ -50,10 +48,12 @@ if (Platform.OS !== 'web') {
 
 export default function RootLayout() {
   const systemScheme = useColorScheme();
+  const splashShownAt = useRef(Date.now());
   const bootstrapBg = bootstrapThemeForColorScheme(
     systemScheme === 'light' || systemScheme === 'dark' ? systemScheme : null,
   ).bg;
   const [fontsLoaded, fontError] = useFonts(FontAwesome.font);
+  const [bootstrapReady, setBootstrapReady] = useState(false);
 
   // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
@@ -61,13 +61,28 @@ export default function RootLayout() {
   }, [fontError]);
 
   useEffect(() => {
-    if (fontsLoaded) void SplashScreen.hideAsync();
-  }, [fontsLoaded]);
+    void runAppBootstrap().finally(() => setBootstrapReady(true));
+  }, []);
 
   useEffect(() => {
-    void hydrateSignalServerEndpoint();
-    void import('@/services/mainEntryPreference').then(({ loadMainEntry }) => loadMainEntry());
-  }, []);
+    if (!fontsLoaded || !bootstrapReady) return;
+
+    let cancelled = false;
+    const hideSplash = () => {
+      if (!cancelled) void SplashScreen.hideAsync();
+    };
+
+    const elapsed = Date.now() - splashShownAt.current;
+    const minDelay = Math.max(0, SPLASH_MIN_DISPLAY_MS - elapsed);
+    const timer = setTimeout(() => {
+      InteractionManager.runAfterInteractions(hideSplash);
+    }, minDelay);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [fontsLoaded, bootstrapReady]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: bootstrapBg }}>
@@ -94,13 +109,7 @@ function RootLayoutNav() {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') void ensureStoredSessionFresh();
     });
-    const deferred = InteractionManager.runAfterInteractions(() => {
-      void ensureStoredSessionFresh();
-      void initializeAds().catch(() => {});
-      void syncStoredAppIconVariant();
-    });
     return () => {
-      deferred.cancel();
       sub.remove();
     };
   }, []);

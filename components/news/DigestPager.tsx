@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Linking,
   NativeScrollEvent,
@@ -60,7 +60,27 @@ export function DigestPager({ batches }: Props) {
   const pageWidth = screenWidth - LIST_H_PAD * 2;
   const [pageIndex, setPageIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [pageHeights, setPageHeights] = useState<number[]>([]);
   const styles = makeStyles(theme, scaleFont);
+
+  useEffect(() => {
+    setExpandedId(null);
+  }, [pageIndex]);
+
+  useEffect(() => {
+    setPageHeights([]);
+  }, [batches]);
+
+  const updatePageHeight = useCallback((index: number, height: number) => {
+    setPageHeights((prev) => {
+      if (prev[index] === height) return prev;
+      const next = [...prev];
+      next[index] = height;
+      return next;
+    });
+  }, []);
+
+  const pagerHeight = pageHeights[pageIndex];
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -85,20 +105,25 @@ export function DigestPager({ batches }: Props) {
         </View>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={32}
-        decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
-        snapToInterval={pageWidth}
-        snapToAlignment="start"
-        disableIntervalMomentum
-      >
-        {batches.map((digest) => {
-          const isExpanded = expandedId === digest.id;
-          return (
-            <View key={digest.id} style={[styles.page, { width: pageWidth }]}>
+      <View style={pagerHeight ? { height: pagerHeight } : undefined}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={32}
+          decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
+          snapToInterval={pageWidth}
+          snapToAlignment="start"
+          disableIntervalMomentum
+        >
+          {batches.map((digest, index) => {
+            const isExpanded = expandedId === digest.id && pageIndex === index;
+            return (
+              <View
+                key={digest.id}
+                style={[styles.page, { width: pageWidth }]}
+                onLayout={(e) => updatePageHeight(index, e.nativeEvent.layout.height)}
+              >
               <Pressable
                 onPress={() => toggleExpand(digest.id)}
                 style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
@@ -191,7 +216,8 @@ export function DigestPager({ batches }: Props) {
             </View>
           );
         })}
-      </ScrollView>
+        </ScrollView>
+      </View>
 
       {batches.length > 1 ? (
         <View style={styles.dotsRow}>

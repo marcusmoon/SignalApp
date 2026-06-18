@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import {
+  LayoutAnimation,
   Linking,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -8,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  UIManager,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -20,6 +22,12 @@ import type { NewsDigestItem } from '@/domain/news';
 
 // Must match listContent paddingHorizontal in newsStyles.ts
 const LIST_H_PAD = 16;
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const EXPAND_LAYOUT = LayoutAnimation.create(180, LayoutAnimation.Types.easeOut, LayoutAnimation.Properties.opacity);
 
 function relativeTime(dateStr: string | null, locale: string): string {
   if (!dateStr) return '';
@@ -49,48 +57,154 @@ function relativeTime(dateStr: string | null, locale: string): string {
   }
 }
 
+type DigestCardProps = {
+  digest: NewsDigestItem;
+  isExpanded: boolean;
+  onToggle: (id: string) => void;
+  styles: ReturnType<typeof makeStyles>;
+  theme: AppTheme;
+};
+
+const DigestCard = memo(function DigestCard({
+  digest,
+  isExpanded,
+  onToggle,
+  styles,
+  theme,
+}: DigestCardProps) {
+  const { t, locale } = useLocale();
+  const summaryText = t('feedDigestSummary', {
+    count: String(digest.count),
+    sources: String(digest.sources.length),
+  });
+  const relativeLabel = digest.generatedAt ? relativeTime(digest.generatedAt, locale) : '';
+
+  return (
+    <Pressable
+      onPress={() => onToggle(digest.id)}
+      delayPressIn={0}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      accessibilityRole="button"
+      accessibilityLabel={digest.title}
+      accessibilityState={{ expanded: isExpanded }}
+    >
+      {digest.aiGenerated || digest.topics.length > 0 ? (
+        <View style={styles.badgeRow}>
+          {digest.aiGenerated ? (
+            <View style={styles.aiBadge}>
+              <Text style={styles.aiBadgeText}>✦ AI</Text>
+            </View>
+          ) : null}
+          {digest.topics.slice(0, 4).map((topic) => (
+            <Text key={topic} style={styles.topicChip} numberOfLines={1}>
+              {topic}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+
+      <Text style={styles.title} numberOfLines={2}>
+        {digest.title}
+      </Text>
+
+      {isExpanded && (digest.sourceRefs.length > 0 || digest.sources.length > 0) ? (
+        <View style={styles.sourceList}>
+          {digest.sourceRefs.length > 0
+            ? digest.sourceRefs.slice(0, 5).map((ref, i) => (
+                <Pressable
+                  key={i}
+                  delayPressIn={0}
+                  onPress={
+                    ref.url
+                      ? (e) => {
+                          e.stopPropagation?.();
+                          void Linking.openURL(ref.url!).catch(() => null);
+                        }
+                      : undefined
+                  }
+                  style={({ pressed }) => [styles.sourceRow, pressed && ref.url && styles.sourceRowPressed]}
+                  accessibilityRole={ref.url ? 'link' : 'text'}
+                >
+                  <View style={styles.sourceTextCol}>
+                    <Text
+                      style={[styles.sourceTitle, ref.url && styles.sourceTitleLink]}
+                      numberOfLines={2}
+                    >
+                      {ref.title || ref.sourceName || ref.url || ''}
+                    </Text>
+                    {ref.sourceName ? (
+                      <Text style={styles.sourceName} numberOfLines={1}>
+                        {ref.sourceName}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {ref.url ? (
+                    <FontAwesome name="external-link" size={10} color={theme.accentBlue} />
+                  ) : null}
+                </Pressable>
+              ))
+            : digest.sources.slice(0, 5).map((src, i) => (
+                <View key={i} style={styles.sourceRow}>
+                  <Text style={styles.sourceName} numberOfLines={1}>
+                    {src}
+                  </Text>
+                </View>
+              ))}
+        </View>
+      ) : null}
+
+      <View style={styles.footerRow}>
+        <Text style={styles.footer}>
+          {summaryText}
+          {relativeLabel ? ` · ${relativeLabel}` : ''}
+        </Text>
+        <FontAwesome name={isExpanded ? 'chevron-up' : 'chevron-down'} size={11} color={theme.textDim} />
+      </View>
+    </Pressable>
+  );
+});
+
 type Props = {
   batches: NewsDigestItem[];
 };
 
 export function DigestPager({ batches }: Props) {
   const { theme, scaleFont } = useSignalTheme();
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   const { width: screenWidth } = useWindowDimensions();
   const pageWidth = screenWidth - LIST_H_PAD * 2;
   const [pageIndex, setPageIndex] = useState(0);
+  const [dotIndex, setDotIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [pageHeights, setPageHeights] = useState<number[]>([]);
-  const styles = makeStyles(theme, scaleFont);
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
-  useEffect(() => {
-    setExpandedId(null);
-  }, [pageIndex]);
-
-  useEffect(() => {
-    setPageHeights([]);
-  }, [batches]);
-
-  const updatePageHeight = useCallback((index: number, height: number) => {
-    setPageHeights((prev) => {
-      if (prev[index] === height) return prev;
-      const next = [...prev];
-      next[index] = height;
-      return next;
-    });
-  }, []);
-
-  const pagerHeight = pageHeights[pageIndex];
-
-  const handleScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const index = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
-      setPageIndex(Math.max(0, Math.min(index, batches.length - 1)));
+  const syncPageIndex = useCallback(
+    (offsetX: number, resetExpand: boolean) => {
+      const index = Math.max(0, Math.min(Math.round(offsetX / pageWidth), batches.length - 1));
+      setPageIndex(index);
+      setDotIndex(index);
+      if (resetExpand) setExpandedId(null);
     },
     [pageWidth, batches.length],
   );
 
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const index = Math.max(0, Math.min(Math.round(e.nativeEvent.contentOffset.x / pageWidth), batches.length - 1));
+      setDotIndex((prev) => (prev === index ? prev : index));
+    },
+    [pageWidth, batches.length],
+  );
+
+  const handleScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      syncPageIndex(e.nativeEvent.contentOffset.x, true);
+    },
+    [syncPageIndex],
+  );
+
   const toggleExpand = useCallback((id: string) => {
+    LayoutAnimation.configureNext(EXPAND_LAYOUT);
     setExpandedId((prev) => (prev === id ? null : id));
   }, []);
 
@@ -105,124 +219,40 @@ export function DigestPager({ batches }: Props) {
         </View>
       </View>
 
-      <View style={pagerHeight ? { height: pagerHeight } : undefined}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={32}
-          decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
-          snapToInterval={pageWidth}
-          snapToAlignment="start"
-          disableIntervalMomentum
-        >
-          {batches.map((digest, index) => {
-            const isExpanded = expandedId === digest.id && pageIndex === index;
-            return (
-              <View
-                key={digest.id}
-                style={[styles.page, { width: pageWidth }]}
-                onLayout={(e) => updatePageHeight(index, e.nativeEvent.layout.height)}
-              >
-              <Pressable
-                onPress={() => toggleExpand(digest.id)}
-                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-                accessibilityRole="button"
-                accessibilityLabel={digest.title}
-                accessibilityState={{ expanded: isExpanded }}
-              >
-                {(digest.aiGenerated || digest.topics.length > 0) ? (
-                  <View style={styles.badgeRow}>
-                    {digest.aiGenerated ? (
-                      <View style={styles.aiBadge}>
-                        <Text style={styles.aiBadgeText}>✦ AI</Text>
-                      </View>
-                    ) : null}
-                    {digest.topics.slice(0, 4).map((topic) => (
-                      <Text key={topic} style={styles.topicChip} numberOfLines={1}>
-                        {topic}
-                      </Text>
-                    ))}
-                  </View>
-                ) : null}
-
-                <Text style={styles.title} numberOfLines={2}>
-                  {digest.title}
-                </Text>
-
-                {isExpanded && (digest.sourceRefs.length > 0 || digest.sources.length > 0) ? (
-                  <View style={styles.sourceList}>
-                    {digest.sourceRefs.length > 0
-                      ? digest.sourceRefs.slice(0, 5).map((ref, i) => (
-                          <Pressable
-                            key={i}
-                            onPress={
-                              ref.url
-                                ? (e) => {
-                                    e.stopPropagation?.();
-                                    void Linking.openURL(ref.url!).catch(() => null);
-                                  }
-                                : undefined
-                            }
-                            style={({ pressed }) => [
-                              styles.sourceRow,
-                              pressed && ref.url && styles.sourceRowPressed,
-                            ]}
-                            accessibilityRole={ref.url ? 'link' : 'text'}
-                          >
-                            <View style={styles.sourceTextCol}>
-                              <Text
-                                style={[styles.sourceTitle, ref.url && styles.sourceTitleLink]}
-                                numberOfLines={2}
-                              >
-                                {ref.title || ref.sourceName || ref.url || ''}
-                              </Text>
-                              {ref.sourceName ? (
-                                <Text style={styles.sourceName} numberOfLines={1}>
-                                  {ref.sourceName}
-                                </Text>
-                              ) : null}
-                            </View>
-                            {ref.url ? (
-                              <FontAwesome name="external-link" size={10} color={theme.accentBlue} />
-                            ) : null}
-                          </Pressable>
-                        ))
-                      : digest.sources.slice(0, 5).map((src, i) => (
-                          <View key={i} style={styles.sourceRow}>
-                            <Text style={styles.sourceName} numberOfLines={1}>
-                              {src}
-                            </Text>
-                          </View>
-                        ))}
-                  </View>
-                ) : null}
-
-                <View style={styles.footerRow}>
-                  <Text style={styles.footer}>
-                    {t('feedDigestSummary', {
-                      count: String(digest.count),
-                      sources: String(digest.sources.length),
-                    })}
-                    {digest.generatedAt ? ` · ${relativeTime(digest.generatedAt, locale)}` : ''}
-                  </Text>
-                  <FontAwesome
-                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={11}
-                    color={theme.textDim}
-                  />
-                </View>
-              </Pressable>
+      <ScrollView
+        horizontal
+        nestedScrollEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        onMomentumScrollEnd={handleScrollEnd}
+        onScrollEndDrag={handleScrollEnd}
+        decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
+        snapToInterval={pageWidth}
+        snapToAlignment="start"
+        disableIntervalMomentum
+        keyboardShouldPersistTaps="handled"
+      >
+        {batches.map((digest, index) => {
+          const isExpanded = expandedId === digest.id && pageIndex === index;
+          return (
+            <View key={digest.id} style={[styles.page, { width: pageWidth }]}>
+              <DigestCard
+                digest={digest}
+                isExpanded={isExpanded}
+                onToggle={toggleExpand}
+                styles={styles}
+                theme={theme}
+              />
             </View>
           );
         })}
-        </ScrollView>
-      </View>
+      </ScrollView>
 
       {batches.length > 1 ? (
         <View style={styles.dotsRow}>
           {batches.map((_, i) => (
-            <View key={i} style={[styles.dot, i === pageIndex && styles.dotActive]} />
+            <View key={i} style={[styles.dot, i === dotIndex && styles.dotActive]} />
           ))}
         </View>
       ) : null}
@@ -313,6 +343,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     title: {
       fontSize: sf(15),
       lineHeight: sf(21),
+      minHeight: sf(21) * 2,
       fontWeight: '900',
       color: theme.text,
     },

@@ -4,6 +4,7 @@ export const state = {
   view: 'dashboard',
   settingsTab: 'users',
   operationFilter: 'all',
+  stageFilter: 'all',
   dashboardOperationFilter: 'latest',
   dashboardLimit: 5,
   monitoringSort: 'newest',
@@ -69,10 +70,11 @@ export const state = {
   jobsFilteredLast: [],
   jobTab: 'info',
   jobListEnabled: 'all', // all|enabled|disabled
-  jobListDomain: 'all',
+  jobListArea: 'all',
   jobListProvider: 'all',
   jobListQuery: '',
   jobListSort: 'name', // name|lastRunDesc|intervalAsc
+  jobPresets: [],
   marketLists: [],
   marketListDraft: null,
   newsSourceAliasDraft: null,

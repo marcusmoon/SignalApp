@@ -30,6 +30,7 @@ import { fetchSecEdgarFilings } from '../providers/news/secEdgar.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
 import { fetchYoutubeEconomy, fetchYoutubeVideosByIds } from '../providers/youtube/youtube.mjs';
 import { normalizeYoutubeCurationHandles } from '../youtubeCuration.mjs';
+import { phasesForJob, paramsForPhase, runModeForJob } from './jobPhases.mjs';
 import { ensureRssSourcesCatalog, getRssSource, rssSourceParams } from '../db/rssSources.mjs';
 
 function addSecondsIso(seconds) {
@@ -251,18 +252,20 @@ async function saveYoutubeRows(rows) {
   if (changed.length > 0) await upsertCollectionRows('youtubeVideos', changed);
 }
 
-async function executeHandler(job, dbBefore, { onProgress } = {}) {
-  if (job.provider === 'finnhub' && job.handler === 'market_news') {
-    return { kind: 'news', rows: await fetchFinnhubMarketNews(job.params || {}) };
+async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = {}) {
+  const params = paramsForPhase(job, phase);
+  const effective = { ...job, params };
+
+  if (effective.provider === 'finnhub' && effective.handler === 'market_news') {
+    return { kind: 'news', rows: await fetchFinnhubMarketNews(params) };
   }
-  if (job.provider === 'rss' && job.handler === 'financial_juice') {
-    const sourceId = job.params?.rssSourceId || (Array.isArray(job.params?.rssSourceIds) ? job.params.rssSourceIds[0] : null);
+  if (effective.provider === 'rss' && effective.handler === 'financial_juice') {
+    const sourceId = params?.rssSourceId || (Array.isArray(params?.rssSourceIds) ? params.rssSourceIds[0] : null);
     const source = getRssSource(dbBefore, sourceId);
     if (!source || source.enabled === false) throw new Error('RSS_SOURCE_NOT_CONFIGURED');
-    return { kind: 'news', rows: await fetchFinancialJuiceRssNews(rssSourceParams(source, job.params || {})) };
+    return { kind: 'news', rows: await fetchFinancialJuiceRssNews(rssSourceParams(source, params || {})) };
   }
-  if (job.provider === 'rss' && job.handler === 'newswire_rss') {
-    const params = job.params || {};
+  if (effective.provider === 'rss' && effective.handler === 'newswire_rss') {
     const ids = Array.isArray(params.rssSourceIds)
       ? params.rssSourceIds
       : params.rssSourceId
@@ -277,13 +280,13 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
     }
     return { kind: 'news', rows };
   }
-  if (job.provider === 'sec' && job.handler === 'company_filings') {
-    const listKey = job.params?.listKey || 'default_watchlist';
-    const symbols = Array.isArray(job.params?.symbols) && job.params.symbols.length > 0 ? job.params.symbols : marketListSymbols(dbBefore, listKey);
-    return { kind: 'news', rows: await fetchSecEdgarFilings({ ...(job.params || {}), symbols }) };
+  if (effective.provider === 'sec' && effective.handler === 'company_filings') {
+    const listKey = params?.listKey || 'default_watchlist';
+    const symbols = Array.isArray(params?.symbols) && params.symbols.length > 0 ? params.symbols : marketListSymbols(dbBefore, listKey);
+    return { kind: 'news', rows: await fetchSecEdgarFilings({ ...(params || {}), symbols }) };
   }
-  if (job.provider === 'finnhub' && job.handler === 'economic_calendar') {
-    const rows = await fetchFinnhubEconomicCalendar(job.params || {});
+  if (effective.provider === 'finnhub' && effective.handler === 'economic_calendar') {
+    const rows = await fetchFinnhubEconomicCalendar(params || {});
     if (rows.length === 0) {
       console.warn(
         `[job:${job.jobKey}] economic calendar returned 0 rows — check Finnhub Economic Data subscription or Admin provider key`,
@@ -291,15 +294,24 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
     }
     return { kind: 'calendar', rows };
   }
-  if (job.provider === 'finnhub' && job.handler === 'earnings_calendar') {
-    return { kind: 'calendar', rows: await fetchFinnhubEarningsCalendar(job.params || {}) };
+  if (effective.provider === 'finnhub' && effective.handler === 'earnings_calendar') {
+    return { kind: 'calendar', rows: await fetchFinnhubEarningsCalendar(params || {}) };
   }
-  if (job.provider === 'youtube' && job.handler === 'youtube_economy') {
+  if (effective.provider === 'youtube' && effective.handler === 'youtube_economy') {
+    if (phase === 'reconcile') {
+      const limit = Math.max(1, Math.min(200, Number(params?.limit || 80)));
+      const ids = [...(dbBefore.youtubeVideos || [])]
+        .sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')))
+        .slice(0, limit)
+        .map((item) => item.videoId || item.providerItemId)
+        .filter(Boolean);
+      return { kind: 'youtube', rows: await fetchYoutubeVideosByIds(ids, { order: 'preserve' }) };
+    }
     const handles = normalizeYoutubeCurationHandles(dbBefore.appSettings?.youtubeCurationHandles);
-    return { kind: 'youtube', rows: await fetchYoutubeEconomy({ ...(job.params || {}), handles }) };
+    return { kind: 'youtube', rows: await fetchYoutubeEconomy({ ...(params || {}), handles }) };
   }
-  if (job.provider === 'youtube' && job.handler === 'youtube_economy_reconcile') {
-    const limit = Math.max(1, Math.min(200, Number(job.params?.limit || 80)));
+  if (effective.provider === 'youtube' && effective.handler === 'youtube_economy_reconcile') {
+    const limit = Math.max(1, Math.min(200, Number(params?.limit || 80)));
     const ids = [...(dbBefore.youtubeVideos || [])]
       .sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')))
       .slice(0, limit)
@@ -307,61 +319,92 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
       .filter(Boolean);
     return { kind: 'youtube', rows: await fetchYoutubeVideosByIds(ids, { order: 'preserve' }) };
   }
-  if (job.provider === 'finnhub' && job.handler === 'market_quotes') {
-    const listKey = job.params?.listKey || (job.params?.segment === 'popular' ? 'popular_symbols' : null);
+  if (effective.provider === 'finnhub' && effective.handler === 'market_quotes') {
+    const listKey = params?.listKey || (params?.segment === 'popular' ? 'popular_symbols' : null);
     const symbols = listKey
       ? marketListSymbols(dbBefore, listKey)
-      : Array.isArray(job.params?.symbols) && job.params.symbols.length > 0
-        ? job.params.symbols
+      : Array.isArray(params?.symbols) && params.symbols.length > 0
+        ? params.symbols
         : [];
-    return { kind: 'marketQuotes', rows: await fetchMarketQuotes({ ...(job.params || {}), symbols }) };
+    return { kind: 'marketQuotes', rows: await fetchMarketQuotes({ ...(params || {}), symbols }) };
   }
-  if (job.provider === 'finnhub' && job.handler === 'market_quotes_mcap') {
-    const configuredSymbols = marketListSymbols(dbBefore, job.params?.listKey || 'mcap_top_symbols');
+  if (effective.provider === 'finnhub' && effective.handler === 'market_quotes_mcap') {
+    const configuredSymbols = marketListSymbols(dbBefore, params?.listKey || 'mcap_top_symbols');
     return {
       kind: 'marketQuotes',
       rows: await fetchMcapQuotes({
-        ...(job.params || {}),
+        ...(params || {}),
         symbols: configuredSymbols.length > 0 ? configuredSymbols : marketListSymbols(dbBefore, 'mcap_universe'),
         onProgress,
       }),
     };
   }
-  if (job.provider === 'finnhub' && job.handler === 'market_quotes_mcap_universe') {
+  if (effective.provider === 'finnhub' && effective.handler === 'market_quotes_mcap_universe') {
     return {
       kind: 'marketList',
       rows: [
         await fetchMcapUniverse({
-          ...(job.params || {}),
-          symbols: marketListSymbols(dbBefore, job.params?.sourceListKey || 'mcap_universe'),
-          targetListKey: job.params?.targetListKey || 'mcap_top_symbols',
+          ...(params || {}),
+          symbols: marketListSymbols(dbBefore, params?.sourceListKey || 'mcap_universe'),
+          targetListKey: params?.targetListKey || 'mcap_top_symbols',
           onProgress,
         }),
       ],
     };
   }
-  if (job.provider === 'coingecko' && job.handler === 'coin_markets') {
-    return { kind: 'coinMarkets', rows: await fetchCoinGeckoMarkets(job.params || {}) };
+  if (effective.provider === 'coingecko' && effective.handler === 'coin_markets') {
+    return { kind: 'coinMarkets', rows: await fetchCoinGeckoMarkets(params || {}) };
   }
-  if (job.provider === 'yahoo' && job.handler === 'daily_bars') {
+  if (effective.provider === 'yahoo' && effective.handler === 'daily_bars') {
     return {
       kind: 'priceSeries',
       rows: await fetchYahooDailyPriceSeries({
-        ...(job.params || {}),
-        instruments: dailyBarInstruments(dbBefore, job.params || {}),
+        ...(params || {}),
+        instruments: dailyBarInstruments(dbBefore, params || {}),
       }),
     };
   }
-  if (job.provider === 'signal' && job.handler === 'market_insights') {
-    return { kind: 'insights', rows: generateMarketInsights(dbBefore, job.params || {}) };
+  if (effective.provider === 'signal' && effective.handler === 'market_insights') {
+    return { kind: 'insights', rows: generateMarketInsights(dbBefore, params || {}) };
   }
-  if (job.provider === 'signal' && job.handler === 'news_digest') {
-    return { kind: 'newsDigests', rows: generateNewsDigestItems(dbBefore, job.params || {}) };
+  if (effective.provider === 'signal' && effective.handler === 'news_digest') {
+    return { kind: 'newsDigests', rows: generateNewsDigestItems(dbBefore, params || {}) };
   }
   throw new Error(`UNKNOWN_JOB_HANDLER:${job.provider}:${job.handler}`);
 }
 
-export async function runPollingJob(jobKey, { force = false, trigger = 'schedule' } = {}) {
+async function persistHandlerResult(result, rows) {
+  const directCollectionByKind = {
+    calendar: 'calendarEvents',
+    marketQuotes: 'marketQuotes',
+    marketList: 'marketLists',
+    priceSeries: 'priceSeries',
+    coinMarkets: 'coinMarkets',
+    newsDigests: 'newsDigestItems',
+  };
+  const directCollection = directCollectionByKind[result.kind];
+  if (directCollection) {
+    const savedAt = nowIso();
+    await upsertCollectionRows(
+      directCollection,
+      rows.map((row) => ({ ...row, updatedAt: row.updatedAt || savedAt, createdAt: row.createdAt || savedAt })),
+    );
+  } else if (result.kind === 'insights') {
+    const savedAt = nowIso();
+    await upsertCollectionRows(
+      'insightItems',
+      rows.map((row) => ({ ...row, updatedAt: row.updatedAt || savedAt, createdAt: row.createdAt || savedAt })),
+    );
+    const notificationRows = notificationsFromInsights(rows);
+    for (const row of notificationRows) await saveNotificationItem(row);
+  } else if (result.kind === 'news') {
+    await saveNewsRows(rows);
+  } else if (result.kind === 'youtube') {
+    await saveYoutubeRows(rows);
+  }
+}
+
+export async function runPollingJob(jobKey, { force = false, trigger = 'schedule', mode = 'full' } = {}) {
   const jobForLock = await getPollingJob(jobKey);
   if (!jobForLock) throw new Error(`JOB_NOT_FOUND:${jobKey}`);
   if (!force && !jobForLock.enabled) throw new Error(`JOB_DISABLED:${jobKey}`);
@@ -484,37 +527,29 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
           }
         : null;
 
-    const dbBefore = await readJobContext(job);
-    const result = await executeHandler(job, dbBefore, { onProgress });
-    const rows = result.rows || [];
-    const directCollectionByKind = {
-      calendar: 'calendarEvents',
-      marketQuotes: 'marketQuotes',
-      marketList: 'marketLists',
-      priceSeries: 'priceSeries',
-      coinMarkets: 'coinMarkets',
-      newsDigests: 'newsDigestItems',
-    };
-    const directCollection = directCollectionByKind[result.kind];
-    if (directCollection) {
-      const savedAt = nowIso();
-      await upsertCollectionRows(
-        directCollection,
-        rows.map((row) => ({ ...row, updatedAt: row.updatedAt || savedAt, createdAt: row.createdAt || savedAt })),
-      );
-    } else if (result.kind === 'insights') {
-      const savedAt = nowIso();
-      await upsertCollectionRows(
-        'insightItems',
-        rows.map((row) => ({ ...row, updatedAt: row.updatedAt || savedAt, createdAt: row.createdAt || savedAt })),
-      );
-      const notificationRows = notificationsFromInsights(rows);
-      for (const row of notificationRows) await saveNotificationItem(row);
-    } else {
-      if (result.kind === 'news') {
-        await saveNewsRows(rows);
-      } else if (result.kind === 'youtube') {
-        await saveYoutubeRows(rows);
+    let dbBefore = await readJobContext(job);
+    const phases = phasesForJob(job, runModeForJob(job, mode));
+    if (phases.length === 0) throw new Error(`JOB_NO_PHASES:${jobKey}`);
+
+    let totalItems = 0;
+    let lastKind = null;
+    for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex += 1) {
+      const phase = phases[phaseIndex];
+      if (phase === 'reconcile' && job.provider === 'youtube') {
+        dbBefore = await readJobContext(job);
+      }
+      const result = await executeHandler(job, dbBefore, { onProgress, phase });
+      const rows = result.rows || [];
+      await persistHandlerResult(result, rows);
+      totalItems += rows.length;
+      lastKind = result.kind;
+      if (onProgress && phases.length > 1) {
+        const percent = Math.round(((phaseIndex + 1) / phases.length) * 100);
+        await patchPollingJobRun(run.id, {
+          progressPhase: phase,
+          progressPercent: percent,
+          progressUpdatedAt: nowIso(),
+        });
       }
     }
 
@@ -529,18 +564,18 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       status: 'completed',
       finishedAt,
       durationMs: Date.now() - startedTime,
-      resultKind: result.kind,
-      itemCount: rows.length,
+      resultKind: lastKind,
+      itemCount: totalItems,
       progressPercent: 100,
       progressUpdatedAt: finishedAt,
     });
     return {
       ...run,
       status: 'completed',
-      finishedAt: nowIso(),
+      finishedAt,
       durationMs: Date.now() - startedTime,
-      resultKind: result.kind,
-      itemCount: result.rows.length,
+      resultKind: lastKind,
+      itemCount: totalItems,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

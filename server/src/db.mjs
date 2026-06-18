@@ -287,6 +287,8 @@ const collectionSpecs = [
       operation: textOrNull(row.operation),
       provider: textOrNull(row.provider),
       handler: textOrNull(row.handler),
+      area: textOrNull(row.area),
+      stage: textOrNull(row.stage),
       next_run_at: isoOrNull(row.nextRunAt),
       last_run_at: isoOrNull(row.lastRunAt),
       updated_at: isoOrNull(row.updatedAt) || nowIso(),

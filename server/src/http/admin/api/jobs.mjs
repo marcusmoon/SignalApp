@@ -11,6 +11,8 @@ import {
   releasePollingJobLock,
 } from '../../../db.mjs';
 import { httpMetricsSnapshot } from '../../../httpMetrics.mjs';
+import { enrichJobWithCatalog } from '../../../jobs/catalog.mjs';
+import { getJobPreset, listJobPresets, runJobPreset } from '../../../jobs/presets.mjs';
 import { runPollingJob } from '../../../jobs/runner.mjs';
 import { cleanNewsTitleForDisplay, dateKeyInTimeZone, json, paginate, readBody } from '../../shared.mjs';
 
@@ -181,10 +183,15 @@ function areaJobMatch(area, run) {
 }
 
 function areaJobDefinitionMatch(area, job) {
+  const jobArea = String(job?.area || job?.domain || '').trim();
+  if (area.id === 'signal') return jobArea === 'signal' || job?.domain === 'insights';
   if (area.id === 'marketQuotes') {
-    return job.domain === 'market' && (job.handler === 'market_quotes' || job.handler === 'market_quotes_mcap');
+    return jobArea === 'market' && (job.handler === 'market_quotes' || job.handler === 'market_quotes_mcap');
   }
-  if (area.id === 'coinMarkets') return job.domain === 'market' && job.handler === 'coin_markets';
+  if (area.id === 'coinMarkets') return jobArea === 'market' && job.handler === 'coin_markets';
+  if (area.id === 'news') return jobArea === 'news';
+  if (area.id === 'calendar') return jobArea === 'calendar';
+  if (area.id === 'youtube') return jobArea === 'youtube';
   return job.domain === area.domain;
 }
 
@@ -244,6 +251,7 @@ function dataAreaSummary(db, recentRuns, latestRunByJob) {
     },
     {
       id: 'insights',
+      area: 'signal',
       domain: 'insights',
       resultKind: 'insights',
       count: db.insightItems.length,
@@ -404,17 +412,38 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
     const recentRuns = runs.map((run) => enrichJobRun(run, jobs));
     const lockByJob = new Map((await listPollingJobLocks()).map((lock) => [lock.jobKey, lock]));
     const data = jobs.map((job) => {
+      const enriched = enrichJobWithCatalog(job);
       const latestRun = recentRuns.find((run) => run.jobKey === job.jobKey) || null;
       return {
-        ...job,
+        ...enriched,
         latestRunAt: latestRun?.finishedAt || latestRun?.startedAt || job.lastRunAt || null,
         latestRunStatus: latestRun?.status || null,
         latestRunTrigger: latestRun?.trigger || null,
         latestRunErrorMessage: latestRun?.errorMessage || null,
-        lock: jobLockState({ job, lock: lockByJob.get(job.jobKey) || null, latestRun }),
+        lock: jobLockState({ job: enriched, lock: lockByJob.get(job.jobKey) || null, latestRun }),
       };
     });
-    json(res, 200, { data, runs: runs.slice(0, 50) });
+    json(res, 200, { data, runs: runs.slice(0, 50), presets: listJobPresets() });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/admin/api/job-presets') {
+    json(res, 200, { data: listJobPresets() });
+    return true;
+  }
+
+  const presetRunMatch = pathname.match(/^\/admin\/api\/job-presets\/([^/]+)\/run$/);
+  if (req.method === 'POST' && presetRunMatch) {
+    const presetId = decodeURIComponent(presetRunMatch[1]);
+    const preset = getJobPreset(presetId);
+    if (!preset) {
+      json(res, 404, { error: `JOB_PRESET_NOT_FOUND:${presetId}` });
+      return true;
+    }
+    runJobPreset(presetId, { force: true, trigger: 'preset' }).catch((error) => {
+      console.error(`[preset:${presetId}] run failed`, error);
+    });
+    json(res, 202, { data: { accepted: true, presetId, jobKeys: preset.jobKeys } });
     return true;
   }
 
@@ -446,10 +475,17 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
       json(res, 404, { error: `JOB_NOT_FOUND:${jobKey}` });
       return true;
     }
-    runPollingJob(jobKey, { force: true, trigger: 'manual' }).catch((error) => {
+    let mode = 'full';
+    try {
+      const body = await readBody(req);
+      if (body?.mode) mode = String(body.mode);
+    } catch {
+      /* empty body ok */
+    }
+    runPollingJob(jobKey, { force: true, trigger: 'manual', mode }).catch((error) => {
       console.error(`[job:${jobKey}] manual run failed`, error);
     });
-    json(res, 202, { data: { accepted: true, jobKey } });
+    json(res, 202, { data: { accepted: true, jobKey, mode } });
     return true;
   }
 

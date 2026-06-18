@@ -27,7 +27,7 @@
 ## Admin
 
 - Job 설정/실행/이력 화면의 상세 UX 개선.
-- **Job 영역별 재묶음·운영 정리**: 현재 `domain` 단일 그룹(뉴스·캘린더·유튜브·마켓·인사이트·기타)만으로는 수집/가공/보정 Job이 섞여 분산돼 보인다. Admin Job 보드를 **제품 영역(앱 탭 정렬) × 운영 단계(수집 ingest / 가공 enrich / 보정 reconcile)** 2단으로 재구성하고, `digest` operation 필터·배지 추가, `quant` 등 레거시는 접는 섹션으로 분리. 중장기로 `server/src/jobs/catalog.mjs`(그룹·짝 Job·dependsOn·라벨 단일 기준), DB `area`/`stage`/`pair_job_key` 컬럼, **영역별 일괄 실행 preset**(뉴스 새로고침=수집→digest, 시그널=insights 등), 대시보드 **영역별 신호등**(마지막 성공·0건·lock) 검토. 단기는 UI/catalog만, 안정 후 latest+reconcile handler 통합으로 Job row 축소 검토.
+- ~~**Job 영역별 재묶음·운영 정리**~~ (V19 + catalog/preset/sync — 2026-06): area×stage Admin 보드, reconcile Job 통합, preset API, `catalog.mjs`.
 - 앱 사용자 상세의 세션/소셜/약관/알림 이력 탐색 개선.
 - 약관 버전/언어별 관리 화면 개선.
 - 다크/라이트 테마 색상 회귀 테스트 자동화.

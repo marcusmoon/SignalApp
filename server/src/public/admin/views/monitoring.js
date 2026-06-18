@@ -20,7 +20,14 @@ export async function loadMonitoringView(ctx) {
   if (!$('monitoring')) return;
   const summary = (await api('/admin/api/summary')).data;
   const runsAll = summary.recentRuns || [];
-  const opRuns = state.operationFilter === 'all' ? runsAll : runsAll.filter((r) => (r.operation || 'latest') === state.operationFilter);
+  const opRuns =
+    state.operationFilter === 'all'
+      ? runsAll
+      : runsAll.filter((r) => {
+          const op = String(r.operation || 'latest').toLowerCase();
+          if (state.operationFilter === 'latest') return ['latest', 'popular', 'sync'].includes(op);
+          return op === state.operationFilter;
+        });
   const runs = [...opRuns].sort((a, b) => {
     if (state.monitoringSort === 'name') {
       const an = String(a.displayName || a.jobKey || '').toLowerCase();
@@ -190,7 +197,14 @@ export async function loadErrorsView(ctx) {
   if (!$('errors')) return;
   const body = await api(`/admin/api/job-runs?${new URLSearchParams({ status: 'failed', pageSize: '30', page: '1' }).toString()}`);
   const all = Array.isArray(body.data) ? body.data : [];
-  const filtered = state.operationFilter === 'all' ? all : all.filter((r) => (r.operation || 'latest') === state.operationFilter);
+  const filtered =
+    state.operationFilter === 'all'
+      ? all
+      : all.filter((r) => {
+          const op = String(r.operation || 'latest').toLowerCase();
+          if (state.operationFilter === 'latest') return ['latest', 'popular', 'sync'].includes(op);
+          return op === state.operationFilter;
+        });
   state.errorRows = filtered;
   $('errors').innerHTML =
     `

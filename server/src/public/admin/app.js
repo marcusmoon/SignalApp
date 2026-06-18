@@ -377,36 +377,42 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         };
       }
 
-      function domainLabel(domain) {
-        const d = domain || 'other';
+      function areaLabel(area) {
+        const a = area || 'legacy';
         const key =
-          d === 'news'
-            ? 'domainNews'
-            : d === 'calendar'
-              ? 'domainCalendar'
-              : d === 'youtube'
-                ? 'domainYoutube'
-                : d === 'market'
-                  ? 'domainMarket'
-                  : d === 'insights'
-                    ? 'domainInsights'
-                  : 'domainOther';
+          a === 'news'
+            ? 'areaNews'
+            : a === 'calendar'
+              ? 'areaCalendar'
+              : a === 'youtube'
+                ? 'areaYoutube'
+                : a === 'market'
+                  ? 'areaMarket'
+                  : a === 'signal' || a === 'insights'
+                    ? 'areaSignal'
+                    : 'areaLegacy';
+        return textFor(key);
+      }
+
+      function domainLabel(domain) {
+        return areaLabel(domain === 'insights' ? 'signal' : domain);
+      }
+
+      function stageLabel(stage) {
+        const s = stage || 'ingest';
+        const key = s === 'enrich' ? 'stageEnrich' : s === 'maintain' ? 'stageMaintain' : 'stageIngest';
         return textFor(key);
       }
 
       function operationLabel(operation) {
-        const op = operation || 'latest';
-        const key = op === 'reconcile' ? 'opReconcile' : op === 'maintenance' ? 'opMaintenance' : 'opLatest';
-        return textFor(key);
+        const op = String(operation || 'latest').toLowerCase();
+        if (op === 'sync') return textFor('opSync');
+        if (op === 'reconcile') return textFor('opReconcile');
+        if (op === 'digest') return textFor('opDigest');
+        if (op === 'popular') return textFor('opPopular');
+        if (op === 'maintenance') return textFor('opMaintenance');
+        return textFor('opLatest');
       }
-
-      const domainIcons = {
-        news: '📰',
-        calendar: '📅',
-        youtube: '▶',
-        market: '💹',
-        insights: 'I',
-      };
 
       function jobDisplayName(job) {
         return job.displayName || job.jobKey;
@@ -416,16 +422,44 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         return domainLabel(domain);
       }
 
+      function areaGroupTitle(area) {
+        return areaLabel(area);
+      }
+
+      function stageGroupTitle(stage) {
+        return stageLabel(stage);
+      }
+
       function operationBadge(operation) {
-        const op = operation || 'latest';
-        const css = op === 'reconcile' ? 'opReconcile' : op === 'latest' ? 'opLatest' : 'opMaintenance';
+        const op = String(operation || 'latest').toLowerCase();
+        const css =
+          op === 'reconcile'
+            ? 'opReconcile'
+            : op === 'sync'
+              ? 'opSync'
+              : op === 'digest'
+                ? 'opDigest'
+                : op === 'popular'
+                  ? 'opPopular'
+                  : op === 'latest'
+                    ? 'opLatest'
+                    : 'opMaintenance';
         return `<span class="pill ${css}">${esc(operationLabel(op))}</span>`;
       }
 
+      function areaBadge(area) {
+        const a = String(area || 'legacy');
+        return `<span class="pill">${esc(areaLabel(a === 'insights' ? 'signal' : a))}</span>`;
+      }
+
+      function stageBadge(stage) {
+        const s = String(stage || 'ingest');
+        const css = s === 'enrich' ? 'stageEnrich' : s === 'maintain' ? 'stageMaintain' : 'stageIngest';
+        return `<span class="pill pill--subtle ${css}">${esc(stageLabel(s))}</span>`;
+      }
+
       function domainBadge(domain) {
-        const d = String(domain || 'other');
-        const known = ['news', 'calendar', 'youtube', 'market', 'insights', 'other'].includes(d);
-        return `<span class="pill">${esc(known ? domainLabel(d) : d)}</span>`;
+        return areaBadge(domain);
       }
 
       function providerBadge(provider) {
@@ -869,7 +903,11 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           textForVars,
           jobDisplayName,
           jobGroupTitle,
+          areaGroupTitle,
+          stageGroupTitle,
           operationBadge,
+          areaBadge,
+          stageBadge,
           domainBadge,
           providerBadge,
           jobIntervalLabel,
@@ -1373,9 +1411,10 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             return;
           }
           if (target?.id === 'jobListReset') {
+            state.stageFilter = 'all';
             state.operationFilter = 'all';
             state.jobListEnabled = 'all';
-            state.jobListDomain = 'all';
+            state.jobListArea = 'all';
             state.jobListProvider = 'all';
             state.jobListQuery = '';
             state.jobListSort = 'name';
@@ -1584,9 +1623,20 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             showToast(textFor('btnSave'), textFor('toastSaved'), { kind: 'success' });
             return;
           }
+          if (target.dataset.stageFilter) {
+            state.stageFilter = target.dataset.stageFilter;
+            await Promise.all([loadMonitoring(), loadJobs(), loadErrors()]);
+          }
           if (target.dataset.opFilter) {
             state.operationFilter = target.dataset.opFilter;
             await Promise.all([loadMonitoring(), loadJobs(), loadErrors()]);
+          }
+          if (target.dataset.jobPresetRun) {
+            const presetId = target.dataset.jobPresetRun;
+            await api(`/admin/api/job-presets/${encodeURIComponent(presetId)}/run`, { method: 'POST' });
+            showToast(textFor('jobPresetRunTitle'), textFor('jobPresetRunAccepted'), { kind: 'success' });
+            await Promise.all([loadJobs(), loadMonitoring(), loadDashboard()]);
+            return;
           }
           if (target.dataset.theme) applyTheme(target.dataset.theme);
           if (target.dataset.openJob) {
@@ -2702,8 +2752,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           state.jobListEnabled = event.target.value || 'all';
           await loadJobs();
         }
-        if (event.target.id === 'jobListDomain') {
-          state.jobListDomain = event.target.value || 'all';
+        if (event.target.id === 'jobListArea') {
+          state.jobListArea = event.target.value || 'all';
           await loadJobs();
         }
         if (event.target.id === 'jobListProvider') {

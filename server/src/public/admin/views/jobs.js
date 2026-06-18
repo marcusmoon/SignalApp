@@ -51,6 +51,33 @@ function jobRunsQueryParams({ state, $ }) {
   return params.toString();
 }
 
+const JOB_AREA_ORDER = ['news', 'calendar', 'youtube', 'market', 'signal', 'legacy'];
+const JOB_STAGE_ORDER = ['ingest', 'enrich', 'maintain'];
+
+function renderJobPresetBar({ presets, esc, textFor }) {
+  const items = Array.isArray(presets) ? presets : [];
+  if (items.length === 0) return '';
+  return `
+    <div class="actionBox jobPresetBar">
+      <div class="jobPresetBarHead">
+        <strong>${esc(textFor('jobPresetTitle'))}</strong>
+        <span class="muted">${esc(textFor('jobPresetHint'))}</span>
+      </div>
+      <div class="row jobPresetButtons">
+        ${items
+          .map(
+            (preset) => `
+              <button type="button" class="success" data-job-preset-run="${esc(preset.id)}" title="${esc(textFor(preset.descriptionKey || preset.labelKey))}">
+                ${esc(textFor(preset.labelKey))}
+              </button>
+            `,
+          )
+          .join('')}
+      </div>
+    </div>
+  `;
+}
+
 function renderJobRunsPager({ targetId, state, $, esc, textForVars, textFor }) {
   $(targetId).innerHTML = `
     <div class="muted">${esc(textForVars('pagerSummary', { total: state.jobRunsTotal, page: state.jobRunsPage, pages: state.jobRunsTotalPages }))}</div>
@@ -59,6 +86,19 @@ function renderJobRunsPager({ targetId, state, $, esc, textForVars, textFor }) {
       <button class="secondary" data-job-runs-page="next">${esc(textFor('btnNext'))}</button>
     </div>
   `;
+}
+
+function groupJobsByAreaStage(jobs) {
+  const areas = new Map();
+  for (const job of jobs) {
+    const area = job.legacy ? 'legacy' : job.area || job.domain || 'legacy';
+    const stage = job.stage || 'ingest';
+    if (!areas.has(area)) areas.set(area, new Map());
+    const stages = areas.get(area);
+    if (!stages.has(stage)) stages.set(stage, []);
+    stages.get(stage).push(job);
+  }
+  return areas;
 }
 
 function renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources = [] }) {
@@ -309,7 +349,7 @@ function renderJobSummary({ jobsAll, jobsFiltered, esc, textFor, textForVars }) 
   `;
 }
 
-function renderJobCard({ job, selected, esc, textFor, jobDisplayName, operationBadge, domainBadge, providerBadge, jobIntervalLabel, formatDateTime, rssSources }) {
+function renderJobCard({ job, selected, esc, textFor, jobDisplayName, operationBadge, areaBadge, stageBadge, providerBadge, jobIntervalLabel, formatDateTime, rssSources }) {
   const lastRunStatus = jobLastRunStatusText(job, textFor);
   const lock = jobLockText(job, textFor);
   const lastRun = jobLastRunAt(job);
@@ -332,8 +372,9 @@ function renderJobCard({ job, selected, esc, textFor, jobDisplayName, operationB
           </div>
           <button type="button" class="jobCardDesc jobCardEditTrigger" data-job-edit-open="${esc(job.jobKey)}">${esc(job.description || textFor('jobNoDescription'))}</button>
           <div class="jobCardBadges">
+            ${stageBadge(job.stage)}
             ${operationBadge(job.operation)}
-            ${domainBadge(job.domain)}
+            ${areaBadge(job.area || job.domain)}
             ${providerBadge(job.provider)}
           </div>
         </div>
@@ -380,8 +421,11 @@ export async function loadJobsView(ctx) {
     textForVars,
     jobDisplayName,
     jobGroupTitle,
+    areaGroupTitle,
+    stageGroupTitle,
     operationBadge,
-    domainBadge,
+    areaBadge,
+    stageBadge,
     providerBadge,
     jobIntervalLabel,
     formatDateTime,
@@ -392,6 +436,7 @@ export async function loadJobsView(ctx) {
     api('/admin/api/rss-sources?includeHidden=1'),
   ]);
   state.jobs = body.data;
+  state.jobPresets = Array.isArray(body.presets) ? body.presets : [];
   state.rssSources = Array.isArray(rssSourcesBody.data) ? rssSourcesBody.data : [];
   if ($('jobRunJob')) {
     const current = $('jobRunJob').value;
@@ -407,18 +452,31 @@ export async function loadJobsView(ctx) {
     $('jobRunJob').value = current;
   }
   const jobsAll = body.data;
-  let jobsFiltered =
-    state.operationFilter === 'all' ? jobsAll : jobsAll.filter((j) => (j.operation || 'latest') === state.operationFilter);
+  let jobsFiltered = jobsAll;
+
+  if (state.stageFilter && state.stageFilter !== 'all') {
+    jobsFiltered = jobsFiltered.filter((j) => (j.stage || 'ingest') === state.stageFilter);
+  }
+  if (state.operationFilter && state.operationFilter !== 'all') {
+    jobsFiltered = jobsFiltered.filter((j) => {
+      const op = String(j.operation || 'latest').toLowerCase();
+      if (state.operationFilter === 'sync') return op === 'sync';
+      if (state.operationFilter === 'digest') return op === 'digest';
+      if (state.operationFilter === 'reconcile') return op === 'reconcile';
+      if (state.operationFilter === 'latest') return op === 'latest' || op === 'popular';
+      return true;
+    });
+  }
 
   if (state.jobListEnabled === 'enabled') jobsFiltered = jobsFiltered.filter((j) => !!j.enabled);
   if (state.jobListEnabled === 'disabled') jobsFiltered = jobsFiltered.filter((j) => !j.enabled);
-  if (state.jobListDomain !== 'all') jobsFiltered = jobsFiltered.filter((j) => (j.domain || 'other') === state.jobListDomain);
+  if (state.jobListArea !== 'all') jobsFiltered = jobsFiltered.filter((j) => (j.area || j.domain || 'legacy') === state.jobListArea);
   if (state.jobListProvider !== 'all')
     jobsFiltered = jobsFiltered.filter((j) => String(j.provider || '') === state.jobListProvider);
   const q = String(state.jobListQuery || '').trim().toLowerCase();
   if (q) {
     jobsFiltered = jobsFiltered.filter((j) => {
-      const hay = `${j.jobKey} ${j.displayName || ''} ${j.description || ''} ${j.provider || ''} ${j.domain || ''}`.toLowerCase();
+      const hay = `${j.jobKey} ${j.displayName || ''} ${j.description || ''} ${j.provider || ''} ${j.area || ''} ${j.domain || ''} ${j.stage || ''}`.toLowerCase();
       return hay.includes(q);
     });
   }
@@ -434,40 +492,42 @@ export async function loadJobsView(ctx) {
     return an.localeCompare(bn);
   });
 
-  const groups = new Map();
-  for (const job of jobsFiltered) {
-    const key = job.domain || 'other';
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(job);
-  }
+  const areaGroups = groupJobsByAreaStage(jobsFiltered);
   state.jobsFilteredLast = jobsFiltered.map((job) => job.jobKey).filter(Boolean);
   const validKeys = new Set(state.jobsFilteredLast);
   state.jobListSelected = (state.jobListSelected || []).filter((key) => validKeys.has(String(key)));
   const selected = new Set(state.jobListSelected || []);
 
-  const domains = [...new Set(jobsAll.map((j) => j.domain || 'other'))];
+  const areas = [...new Set(jobsAll.map((j) => j.area || j.domain || 'legacy'))].sort(
+    (a, b) => JOB_AREA_ORDER.indexOf(a) - JOB_AREA_ORDER.indexOf(b),
+  );
   const providers = [...new Set(jobsAll.map((j) => j.provider).filter(Boolean))];
+  const orderedAreaEntries = [...areaGroups.entries()].sort(
+    (a, b) => JOB_AREA_ORDER.indexOf(a[0]) - JOB_AREA_ORDER.indexOf(b[0]),
+  );
   $('jobs').innerHTML = `
     ${renderIngestWorkflowNav({ activeView: 'jobs', esc, textFor })}
     ${renderJobSummary({ jobsAll, jobsFiltered, esc, textFor, textForVars })}
+    ${renderJobPresetBar({ presets: state.jobPresets, esc, textFor })}
     <div class="filterBar filterBox">
       <div class="filterBarTitle filterBoxTitle">${esc(textFor('filterSearchConditions'))}</div>
       <div class="filterBarControls toolbar jobsFilterGroups">
         <div class="filterGroup filterGroup--facets">
           <span class="filterGroupTitle">${esc(textFor('filterGroupFilters'))}</span>
           <div class="tabs opTabs" style="margin:0">
-            <button class="tabBtn ${state.operationFilter === 'all' ? 'active' : ''}" data-op-filter="all">${esc(textFor('tabAll'))}</button>
-            <button class="tabBtn ${state.operationFilter === 'latest' ? 'active' : ''}" data-op-filter="latest">${esc(textFor('tabLatest'))}</button>
-            <button class="tabBtn ${state.operationFilter === 'reconcile' ? 'active' : ''}" data-op-filter="reconcile">${esc(textFor('tabReconcile'))}</button>
+            <button class="tabBtn ${state.stageFilter === 'all' ? 'active' : ''}" data-stage-filter="all">${esc(textFor('tabAll'))}</button>
+            <button class="tabBtn ${state.stageFilter === 'ingest' ? 'active' : ''}" data-stage-filter="ingest">${esc(textFor('stageIngest'))}</button>
+            <button class="tabBtn ${state.stageFilter === 'enrich' ? 'active' : ''}" data-stage-filter="enrich">${esc(textFor('stageEnrich'))}</button>
+            <button class="tabBtn ${state.stageFilter === 'maintain' ? 'active' : ''}" data-stage-filter="maintain">${esc(textFor('stageMaintain'))}</button>
           </div>
+          <select id="jobListArea">
+          <option value="all">${esc(textFor('jobListAreaAll'))}</option>
+          ${areas.map((d) => `<option value="${esc(d)}" ${state.jobListArea === d ? 'selected' : ''}>${esc(areaGroupTitle(d))}</option>`).join('')}
+          </select>
           <select id="jobListEnabled">
           <option value="all" ${state.jobListEnabled === 'all' ? 'selected' : ''}>${esc(textFor('jobListEnabledAll'))}</option>
           <option value="enabled" ${state.jobListEnabled === 'enabled' ? 'selected' : ''}>${esc(textFor('jobListEnabledOn'))}</option>
           <option value="disabled" ${state.jobListEnabled === 'disabled' ? 'selected' : ''}>${esc(textFor('jobListEnabledOff'))}</option>
-          </select>
-          <select id="jobListDomain">
-          <option value="all">${esc(textFor('jobListDomainAll'))}</option>
-          ${domains.map((d) => `<option value="${esc(d)}" ${state.jobListDomain === d ? 'selected' : ''}>${esc(jobGroupTitle(d))}</option>`).join('')}
           </select>
           <select id="jobListProvider">
           <option value="all">${esc(textFor('jobListProviderAll'))}</option>
@@ -508,39 +568,57 @@ export async function loadJobsView(ctx) {
       ${
         jobsFiltered.length === 0
           ? `<p class="muted">${esc(textFor('jobsEmptyFiltered'))}</p>`
-          : [...groups.entries()]
-              .map(
-                ([domain, jobs]) => `
-                  <section class="jobDomainSection">
-                    <div class="jobDomainHead">
+          : orderedAreaEntries
+              .map(([area, stageMap]) => {
+                const stageEntries = [...stageMap.entries()].sort(
+                  (a, b) => JOB_STAGE_ORDER.indexOf(a[0]) - JOB_STAGE_ORDER.indexOf(b[0]),
+                );
+                const jobCount = stageEntries.reduce((sum, [, jobs]) => sum + jobs.length, 0);
+                const collapsed = area === 'legacy' ? ' jobAreaSection--collapsed' : '';
+                return `
+                  <section class="jobAreaSection${collapsed}">
+                    <div class="jobAreaHead">
                       <div class="jobGroupTitle">
-                        <span class="jobGroupIcon">${esc(String(jobGroupTitle(domain)).slice(0, 1))}</span>
-                        <strong>${esc(jobGroupTitle(domain))}</strong>
+                        <span class="jobGroupIcon">${esc(String(areaGroupTitle(area)).slice(0, 1))}</span>
+                        <strong>${esc(areaGroupTitle(area))}</strong>
                       </div>
-                      <span class="muted">${esc(jobs.length)} ${esc(textFor('jobOpsTotal'))}</span>
+                      <span class="muted">${esc(jobCount)} ${esc(textFor('jobOpsTotal'))}</span>
                     </div>
-                    <div class="jobCardsGrid">
-                      ${jobs
-                        .map((job) =>
-                          renderJobCard({
-                            job,
-                            selected,
-                            esc,
-                            textFor,
-                            jobDisplayName,
-                            operationBadge,
-                            domainBadge,
-                            providerBadge,
-                            jobIntervalLabel,
-                            formatDateTime,
-                            rssSources: state.rssSources,
-                          }),
-                        )
-                        .join('')}
-                    </div>
+                    ${stageEntries
+                      .map(
+                        ([stage, jobs]) => `
+                          <div class="jobStageSection">
+                            <div class="jobStageHead">
+                              <strong>${esc(stageGroupTitle(stage))}</strong>
+                              <span class="muted">${esc(jobs.length)}</span>
+                            </div>
+                            <div class="jobCardsGrid">
+                              ${jobs
+                                .map((job) =>
+                                  renderJobCard({
+                                    job,
+                                    selected,
+                                    esc,
+                                    textFor,
+                                    jobDisplayName,
+                                    operationBadge,
+                                    areaBadge,
+                                    stageBadge,
+                                    providerBadge,
+                                    jobIntervalLabel,
+                                    formatDateTime,
+                                    rssSources: state.rssSources,
+                                  }),
+                                )
+                                .join('')}
+                            </div>
+                          </div>
+                        `,
+                      )
+                      .join('')}
                   </section>
-                `,
-              )
+                `;
+              })
               .join('')
       }
     </div>

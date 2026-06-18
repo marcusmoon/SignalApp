@@ -80,16 +80,20 @@ flyway \
 
 ## Job 운영
 
-Admin에서 Job을 등록하고 실행한다. Job 설정에는 provider, schedule, params, lock TTL이 포함된다. 실행 이력은 Admin에서 상태, 시작/종료 시각, 실패 사유, lock 상태를 확인한다.
+Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(stage)** 로 묶여 표시되며, `sync` operation Job은 한 번의 실행에서 수집과 보정을 연속 수행한다.
 
-주요 Job:
+- **area**: `news`, `calendar`, `youtube`, `market`, `signal`, `legacy`
+- **stage**: `ingest`(수집), `enrich`(가공), `maintain`(유지보수)
+- **preset**: Admin Job 화면 상단의 영역별 일괄 실행 (`/admin/api/job-presets/:id/run`)
+- **카탈로그**: `server/src/jobs/catalog.mjs` (그룹·라벨 단일 기준)
 
-- 뉴스 RSS 수집
-- YouTube 최신/인기 수집
-- 투자 캘린더 수집(경제·매크로 일정)
-- 국내주식 야간 참고가 수집
-- 오늘의 시그널 생성
-- 번역/보정
+주요 Job (V19 이후, reconcile 쌍은 `sync`로 통합):
+
+- 뉴스 수집·보정 (`market_news_*`, RSS, SEC) + 주요 이슈 (`news_digest_brief`)
+- 투자 캘린더 (`calendar_economic`, `calendar_earnings`)
+- YouTube (`youtube_economy_latest` sync, `youtube_economy_popular`)
+- 시세·일봉·코인
+- 시장 인사이트 (`insights_market_brief`)
 
 ## 배포
 

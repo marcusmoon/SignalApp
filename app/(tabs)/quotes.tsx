@@ -26,7 +26,7 @@ import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
-import { useQuoteChangeColors, useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
+import { useQuoteChangeColors, useResetRefreshingOnTabBlur, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
@@ -415,6 +415,16 @@ export default function QuotesScreen() {
     ],
   );
 
+  const onPickSegment = useCallback((key: QuoteSegmentKey) => {
+    if (segment === key) return;
+    setLoading(true);
+    setRows([]);
+    setError(null);
+    setSegment(key);
+  }, [segment]);
+
+  useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
+
   const renderQuoteItem = useCallback(
     ({ item: r, index }: { item: Row; index: number }) => {
       const edges = {
@@ -573,13 +583,7 @@ export default function QuotesScreen() {
               <Fragment key={key}>
                 {key === 'coin' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
                 <Pressable
-                  onPress={() => {
-                    if (segment === key) return;
-                    setLoading(true);
-                    setRows([]);
-                    setError(null);
-                    setSegment(key);
-                  }}
+                  onPress={() => onPickSegment(key)}
                   style={[styles.segBtn, key === 'coin' && styles.segBtnCompact, segment === key && styles.segBtnActive]}
                   accessibilityState={{ selected: segment === key }}>
                   <Text style={[styles.segText, segment === key && styles.segTextActive]}>

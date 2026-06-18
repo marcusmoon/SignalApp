@@ -678,6 +678,7 @@ export const en = {
   briefingDetailMacro: 'Macro highlights',
   briefingDetailSources: 'Sources',
   briefingErrorLoad: 'Could not load briefing.',
+  briefingRefreshNotice: '{{count}} new briefings are available.',
   briefingEarnHourBmo: 'Pre-market',
   briefingEarnHourAmc: 'After-hours',
   fiscalYearQuarterShort: 'FY{{y}} Q{{q}}',

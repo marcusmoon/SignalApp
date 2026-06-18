@@ -673,6 +673,7 @@ export const ko = {
   briefingDetailMacro: '거시 이슈',
   briefingDetailSources: '출처',
   briefingErrorLoad: '브리핑을 불러오지 못했습니다.',
+  briefingRefreshNotice: '새 브리핑 {{count}}개가 있습니다.',
   briefingEarnHourBmo: '장전',
   briefingEarnHourAmc: '장후',
   fiscalYearQuarterShort: 'FY{{y}} Q{{q}}',

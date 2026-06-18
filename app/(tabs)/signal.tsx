@@ -14,6 +14,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { MarketBriefingBlock } from '@/components/signal/MarketBriefingBlock';
 import { SignalHeader } from '@/components/signal/SignalHeader';
@@ -34,7 +35,7 @@ import {
   loadQuotesChangeColorConvention,
   subscribeQuotesChangeColorConventionChanged,
 } from '@/services/quotesChangeColorPreference';
-import { markSignalFeedSeen } from '@/services/signalUnreadPreference';
+import { markSignalFeedSeen, fetchLatestSignalBriefingId } from '@/services/signalUnreadPreference';
 import { addDays, toYmd } from '@/utils/date';
 
 type FlatTabKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-evening';
@@ -99,6 +100,9 @@ export default function SignalScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
+  const [newContentAvailable, setNewContentAvailable] = useState(false);
+  const latestSeenIdRef = useRef<string | null>(null);
 
   const selectedDateLabel = useMemo(() => formatSelectedDate(selectedYmd, locale), [locale, selectedYmd]);
   const selectedIsToday = selectedYmd >= todayYmd;
@@ -124,19 +128,22 @@ export default function SignalScreen() {
     [t],
   );
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<SignalApiMarketBriefing[]> => {
     if (!hasSignalApi()) {
       setError(t('errorSignalApiShort'));
       setMarketBriefings([]);
-      return;
+      return [];
     }
     setError(null);
     const rows = await fetchSignalMarketBriefings({ date: selectedYmd, limit: 30 }).catch(
       () => [] as SignalApiMarketBriefing[],
     );
-    setMarketBriefings(
-      [...rows].sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || ''))),
-    );
+    const sorted = [...rows].sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
+    setMarketBriefings(sorted);
+    if (selectedYmd >= todayYmdRef.current && sorted[0]?.id) {
+      latestSeenIdRef.current = sorted[0].id;
+    }
+    return sorted;
   }, [selectedYmd, t]);
 
   useEffect(() => {
@@ -157,15 +164,55 @@ export default function SignalScreen() {
   }, [load, t]);
 
   const onRefresh = useCallback(async () => {
+    const prevIds = new Set(marketBriefings.map((row) => row.id));
     setRefreshing(true);
+    setRefreshNotice(null);
+    setNewContentAvailable(false);
     try {
-      await load();
+      const rows = await load();
+      const newCount = rows.filter((row) => !prevIds.has(row.id)).length;
+      if (newCount > 0) {
+        setRefreshNotice(t('briefingRefreshNotice', { count: String(newCount) }));
+      }
     } catch (e) {
       setError(formatSignalApiError(e, t, 'briefingErrorLoad'));
     } finally {
       setRefreshing(false);
     }
-  }, [load, t]);
+  }, [load, marketBriefings, t]);
+
+  useEffect(() => {
+    if (!refreshNotice) return;
+    const timeout = setTimeout(() => setRefreshNotice(null), 4500);
+    return () => clearTimeout(timeout);
+  }, [refreshNotice]);
+
+  /** 오늘 날짜 화면에서만 백그라운드 폴링으로 새 브리핑 배너 표시 */
+  useEffect(() => {
+    if (selectedYmd < todayYmd) {
+      setNewContentAvailable(false);
+      return;
+    }
+    if (!hasSignalApi()) return;
+    const POLL_MS = 3 * 60 * 1000;
+    const poll = async () => {
+      try {
+        const latestId = await fetchLatestSignalBriefingId();
+        if (!latestId) return;
+        if (latestSeenIdRef.current === null) {
+          latestSeenIdRef.current = latestId;
+          return;
+        }
+        if (latestId !== latestSeenIdRef.current) {
+          setNewContentAvailable(true);
+        }
+      } catch {
+        /* ignore polling errors */
+      }
+    };
+    const id = setInterval(() => void poll(), POLL_MS);
+    return () => clearInterval(id);
+  }, [selectedYmd, todayYmd]);
 
   const moveDate = useCallback(
     (days: number) => {
@@ -276,6 +323,15 @@ export default function SignalScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <Stack.Screen options={{ title: t('screenSignal') }} />
       <SignalHeader compact onBrandPress={() => void onRefresh()} />
+
+      {newContentAvailable && !refreshing && selectedYmd >= todayYmd ? (
+        <FeedUpdateBanner
+          variant="prompt"
+          message={t('feedNewContentAvailable')}
+          onPress={() => void onRefresh()}
+        />
+      ) : null}
+      {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
 
       <View style={styles.datePicker}>
         <Pressable

@@ -4,3 +4,4 @@ export { useResetRefreshingOnTabBlur } from './useResetRefreshingOnTabBlur';
 export { useTabScreenLoadingRecovery } from './useTabScreenLoadingRecovery';
 export { useThemeColor } from './useThemeColor';
 export { useQuoteChangeColors } from './useQuoteChangeColors';
+export { useTabPressCycleSegment } from './useTabPressCycleSegment';

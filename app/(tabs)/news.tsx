@@ -29,6 +29,7 @@ import { NewsCard } from '@/components/signal/NewsCard';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { DigestPager } from '@/components/news/DigestPager';
+import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
 import { makeNewsStyles } from '@/components/news/newsStyles';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
@@ -68,7 +69,7 @@ import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreferen
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
 import { markNewsFeedSeen } from '@/services/newsUnreadPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
-import { useResetRefreshingOnTabBlur } from '@/hooks';
+import { useResetRefreshingOnTabBlur, useTabPressCycleSegment } from '@/hooks';
 import { createScrollLoadMoreGate } from '@/utils/listScrollLoadMoreGate';
 import {
   fetchSignalNews,
@@ -918,6 +919,8 @@ export default function FeedScreen() {
     void saveNewsSegment(key);
   }, [segment]);
 
+  useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
+
   const newsQuickFilter = segment === 'crypto' ? cryptoFilter : globalFilter;
   const digestBatches = useMemo(() => {
     if (segment === 'video' || segment === 'watch') return [];
@@ -1082,22 +1085,13 @@ export default function FeedScreen() {
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>
           {newContentAvailable && !refreshing ? (
-            <Pressable
+            <FeedUpdateBanner
+              variant="prompt"
+              message={t('feedNewContentAvailable')}
               onPress={() => void onRefresh()}
-              style={styles.newContentBanner}
-              accessibilityRole="button">
-              <FontAwesome name="arrow-up" size={11} color={theme.accentBlue} />
-              <Text style={styles.newContentBannerText}>{t('feedNewContentAvailable')}</Text>
-            </Pressable>
+            />
           ) : null}
-          {refreshNotice ? (
-            <View style={styles.refreshNotice}>
-              <FontAwesome name="check-circle" size={13} color={theme.green} />
-              <Text style={styles.refreshNoticeText} numberOfLines={2}>
-                {refreshNotice}
-              </Text>
-            </View>
-          ) : null}
+          {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
           <View style={styles.segment}>
             {segmentOrder.map((key) => (
               <Fragment key={key}>

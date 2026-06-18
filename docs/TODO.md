@@ -4,6 +4,7 @@
 
 - 사용자 활동 기반 개인화: 읽은 뉴스, 열어본 종목, 숨긴 출처, 알림 반응을 랭킹에 반영한다.
 - 시장 브리핑 품질: ingest payload의 종목 가격·등락률 필드 활용과 회차별 비교 UX를 개선한다.
+- **시그널 주간·월간 브리핑**: 일간 외 주/월 요약 제공. 화면은 상단 기간 세그먼트(일·주·월) + 기간별 네비게이터(일=날짜, 주=거래주, 월=달) + 2단 탭(일간=회차 4탭, 주·월=국내·미국). 본문은 `MarketBriefingBlock` 스키마 재사용(headline, overview, sectors, companies, macro, sourceRefs). 서버는 `market_briefings`에 `period`(daily/weekly/monthly), `period_start`/`period_end` 확장 검토. Codex 생성 주기: 주간(금 장후), 월간(월초). Phase 0 UI shell → API/ingest → 자동화·푸시 순 롤아웃.
 
 ## Platform
 

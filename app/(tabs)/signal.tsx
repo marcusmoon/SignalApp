@@ -338,13 +338,19 @@ export default function SignalScreen() {
       <SignalHeader compact onBrandPress={() => void onRefresh()} />
 
       {newContentAvailable && !refreshing && selectedYmd >= todayYmd ? (
-        <FeedUpdateBanner
-          variant="prompt"
-          message={t('feedNewContentAvailable')}
-          onPress={() => void onRefresh()}
-        />
+        <View style={styles.updateBannerWrap}>
+          <FeedUpdateBanner
+            variant="prompt"
+            message={t('feedNewContentAvailable')}
+            onPress={() => void onRefresh()}
+          />
+        </View>
       ) : null}
-      {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
+      {refreshNotice ? (
+        <View style={styles.updateBannerWrap}>
+          <FeedUpdateBanner variant="notice" message={refreshNotice} />
+        </View>
+      ) : null}
 
       <View style={styles.datePicker}>
         <Pressable
@@ -527,6 +533,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
 
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
+    updateBannerWrap: { paddingHorizontal: 16 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     scroll: { flex: 1 },
     content: { paddingHorizontal: 16, paddingTop: 4 },

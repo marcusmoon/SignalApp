@@ -11,6 +11,8 @@ export type StoredNotification = {
   body: string;
   receivedAt: string;
   high: boolean;
+  type?: string;
+  sourceType?: string;
 };
 
 export async function loadNotificationHistory(): Promise<StoredNotification[]> {
@@ -58,6 +60,8 @@ export async function appendNotificationFromPayload(input: {
     body,
     receivedAt: new Date().toISOString(),
     high,
+    type: String(input.data?.type || '').trim() || undefined,
+    sourceType: String(input.data?.sourceType || '').trim() || undefined,
   };
   const prev = await loadNotificationHistory();
   if (shouldSkipDuplicate(prev, item)) return;

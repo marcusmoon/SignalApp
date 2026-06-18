@@ -283,7 +283,13 @@ async function executeHandler(job, dbBefore, { onProgress } = {}) {
     return { kind: 'news', rows: await fetchSecEdgarFilings({ ...(job.params || {}), symbols }) };
   }
   if (job.provider === 'finnhub' && job.handler === 'economic_calendar') {
-    return { kind: 'calendar', rows: await fetchFinnhubEconomicCalendar(job.params || {}) };
+    const rows = await fetchFinnhubEconomicCalendar(job.params || {});
+    if (rows.length === 0) {
+      console.warn(
+        `[job:${job.jobKey}] economic calendar returned 0 rows — check Finnhub Economic Data subscription or Admin provider key`,
+      );
+    }
+    return { kind: 'calendar', rows };
   }
   if (job.provider === 'finnhub' && job.handler === 'earnings_calendar') {
     return { kind: 'calendar', rows: await fetchFinnhubEarningsCalendar(job.params || {}) };

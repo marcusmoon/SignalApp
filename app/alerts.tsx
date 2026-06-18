@@ -23,16 +23,7 @@ import { fetchSignalNotifications } from '@/integrations/signal-api/notification
 import type { SignalApiInsight } from '@/integrations/signal-api/types';
 import { formatRelativeTime } from '@/utils/date';
 
-type AlertsFilter = 'all' | 'high' | 'signal' | 'notice' | 'account';
-
-function alertMatchesFilter(item: StoredNotification, filter: AlertsFilter): boolean {
-  if (filter === 'all') return true;
-  const haystack = `${item.id} ${item.title} ${item.body}`.toLowerCase();
-  if (filter === 'high') return item.high;
-  if (filter === 'signal') return haystack.includes('signal') || haystack.includes('시그널') || haystack.includes('insight');
-  if (filter === 'notice') return haystack.includes('notice') || haystack.includes('공지') || haystack.includes('update');
-  return haystack.includes('account') || haystack.includes('계정') || haystack.includes('login') || haystack.includes('로그인');
-}
+import { alertMatchesFilter, type AlertsFilter } from '@/domain/alerts/notificationCategory';
 
 export default function AlertsScreen() {
   const { theme, scaleFont } = useSignalTheme();
@@ -72,6 +63,7 @@ export default function AlertsScreen() {
       body: item.body,
       receivedAt: item.scheduledAt || item.createdAt || new Date().toISOString(),
       high: item.priority === 'high',
+      type: item.type,
     }));
     const seen = new Set<string>();
     setItems(

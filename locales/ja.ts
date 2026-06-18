@@ -446,7 +446,7 @@ export const ja = {
   settingsLocalWatchlistEarningsHint: 'ウォッチ銘柄の決算日当日 7:30（端末時刻）',
 
   alertsListHint: '1日最大10件・HIGHは即時（PRD）',
-  alertsEmpty: '受信した通知はまだありません。FCM連携後にここに表示されます。',
+  alertsEmpty: '受信した通知はまだありません。新しいお知らせが届くとここに表示されます。',
   alertsFilterEmpty: 'この種類の通知はありません。',
   alertsFilterAll: 'すべて',
   alertsFilterHigh: '重要',

@@ -441,7 +441,7 @@ export const ko = {
   settingsLocalWatchlistEarningsHint: '관심 종목 실적일 당일 7:30(기기)',
 
   alertsListHint: '하루 최대 10건 · HIGH만 즉시 (PRD)',
-  alertsEmpty: '수신한 알림이 없습니다. FCM 연동 후 푸시가 오면 여기에 표시됩니다.',
+  alertsEmpty: '아직 받은 알림이 없습니다. 새 소식이 오면 여기에 표시됩니다.',
   alertsFilterEmpty: '선택한 유형의 알림이 없습니다.',
   alertsFilterAll: '전체',
   alertsFilterHigh: '중요',

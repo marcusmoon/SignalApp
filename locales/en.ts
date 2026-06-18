@@ -446,7 +446,7 @@ export const en = {
   settingsLocalWatchlistEarningsHint: '7:30 on earnings day for watchlist symbols (device time)',
 
   alertsListHint: 'Up to 10/day · HIGH immediate (PRD)',
-  alertsEmpty: 'No notifications yet. They appear here after FCM delivers pushes.',
+  alertsEmpty: 'No notifications yet. New alerts will appear here when they arrive.',
   alertsFilterEmpty: 'No notifications match this type.',
   alertsFilterAll: 'All',
   alertsFilterHigh: 'High',

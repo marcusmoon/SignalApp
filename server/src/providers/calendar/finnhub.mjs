@@ -1,7 +1,10 @@
 import { getProviderSetting } from '../../providerSettings.mjs';
 
-function ymd(date) {
-  return date.toISOString().slice(0, 10);
+function ymdLocal(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function addDays(date, days) {
@@ -10,17 +13,21 @@ function addDays(date, days) {
   return d;
 }
 
-async function finnhub(path, params) {
+async function finnhub(path, params = {}) {
   const setting = await getProviderSetting('finnhub');
   if (!setting.enabled) throw new Error('FINNHUB_PROVIDER_DISABLED');
   if (!setting.apiKey) throw new Error('FINNHUB_TOKEN_MISSING');
   const q = new URLSearchParams({ ...params, token: setting.apiKey });
   const res = await fetch(`https://finnhub.io/api/v1${path}?${q.toString()}`);
+  const body = await res.text();
   if (!res.ok) {
-    const body = await res.text();
     throw new Error(`Finnhub calendar ${res.status}: ${body.slice(0, 200)}`);
   }
-  return res.json();
+  try {
+    return JSON.parse(body);
+  } catch {
+    throw new Error(`Finnhub calendar invalid JSON: ${body.slice(0, 200)}`);
+  }
 }
 
 function classifyMacro(event) {
@@ -39,30 +46,69 @@ function stableHash(value) {
 
 function stableEconomicId(raw) {
   const country = String(raw.country || 'na').trim().toLowerCase() || 'na';
-  const time = String(raw.time || '').trim();
+  const time = String(raw.time || raw.date || '').trim();
   const event = String(raw.event || '').trim().toLowerCase();
   const unit = String(raw.unit || '').trim().toLowerCase();
   return `finnhub-economic-${country}-${time || 'no-time'}-${stableHash(`${event}|${unit}`)}`;
 }
 
+function extractEconomicCalendarRows(json) {
+  if (Array.isArray(json)) return json;
+  if (Array.isArray(json?.economicCalendar)) return json.economicCalendar;
+  if (Array.isArray(json?.economic_calendar)) return json.economic_calendar;
+  if (Array.isArray(json?.data)) return json.data;
+  return [];
+}
+
+function economicEventDate(raw) {
+  const time = String(raw?.time || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(time)) return time.slice(0, 10);
+  const alt = String(raw?.date || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(alt)) return alt.slice(0, 10);
+  return null;
+}
+
+function economicEventAt(raw) {
+  const time = String(raw?.time || '').trim();
+  if (!time || !/^\d{4}-\d{2}-\d{2}/.test(time)) return null;
+  const normalized = time.includes('T') ? time : time.replace(' ', 'T');
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function economicTimeLabel(raw) {
+  const time = String(raw?.time || '').trim();
+  if (time.length >= 16) return `${time.slice(11, 16)} ET`;
+  return '';
+}
+
+function inYmdWindow(raw, fromYmd, toYmd) {
+  const date = economicEventDate(raw);
+  if (!date) return true;
+  if (fromYmd && date < fromYmd) return false;
+  if (toYmd && date > toYmd) return false;
+  return true;
+}
+
 export function normalizeFinnhubEconomic(raw, index = 0) {
   const impact = String(raw.impact || '').trim().toLowerCase();
   const id = stableEconomicId(raw);
+  const date = economicEventDate(raw);
   return {
     id,
     provider: 'finnhub',
-    providerItemId: `${raw.country || ''}|${raw.time || ''}|${raw.event || ''}`,
+    providerItemId: `${raw.country || ''}|${raw.time || raw.date || ''}|${raw.event || ''}`,
     type: classifyMacro(raw.event),
     title: String(raw.event || '').trim(),
     country: String(raw.country || '').trim() || null,
     symbol: null,
-    eventAt: raw.time ? new Date(String(raw.time).replace(' ', 'T')).toISOString() : null,
-    date: raw.time ? String(raw.time).slice(0, 10) : null,
-    timeLabel: raw.time && String(raw.time).length >= 16 ? `${String(raw.time).slice(11, 16)} ET` : '',
+    eventAt: economicEventAt(raw),
+    date,
+    timeLabel: economicTimeLabel(raw),
     impact: impact === 'high' || impact === 'medium' || impact === 'low' ? impact : null,
     actual: raw.actual ?? null,
     estimate: raw.estimate ?? null,
-    previous: raw.prev ?? null,
+    previous: raw.prev ?? raw.previous ?? null,
     unit: raw.unit || null,
     fiscalYear: null,
     fiscalQuarter: null,
@@ -100,15 +146,46 @@ export function normalizeFinnhubEarning(raw) {
 export async function fetchFinnhubEconomicCalendar({ daysBack = 0, daysAhead = 14 } = {}) {
   const from = addDays(new Date(), -Math.max(0, Number(daysBack) || 0));
   const to = addDays(new Date(), Number(daysAhead) || 14);
-  const json = await finnhub('/calendar/economic', { from: ymd(from), to: ymd(to) });
-  const rows = Array.isArray(json.economicCalendar) ? json.economicCalendar : [];
-  return rows.map((raw, index) => normalizeFinnhubEconomic(raw, index));
+  const fromYmd = ymdLocal(from);
+  const toYmd = ymdLocal(to);
+
+  let json;
+  try {
+    json = await finnhub('/calendar/economic', { from: fromYmd, to: toYmd });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('403')) {
+      throw new Error(
+        `FINNHUB_ECONOMIC_CALENDAR_FORBIDDEN: Economic calendar may require a Finnhub Economic Data subscription. ${message}`,
+      );
+    }
+    throw error;
+  }
+  let rawRows = extractEconomicCalendarRows(json);
+
+  // Some Finnhub plans respond with an empty list for ranged queries; retry unscoped then filter.
+  if (rawRows.length === 0) {
+    try {
+      json = await finnhub('/calendar/economic');
+      rawRows = extractEconomicCalendarRows(json).filter((row) => inYmdWindow(row, fromYmd, toYmd));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('403')) {
+        throw new Error(
+          `FINNHUB_ECONOMIC_CALENDAR_FORBIDDEN: Economic calendar may require a Finnhub Economic Data subscription. ${message}`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  return rawRows.map((raw, index) => normalizeFinnhubEconomic(raw, index));
 }
 
 export async function fetchFinnhubEarningsCalendar({ daysBack = 0, daysAhead = 30 } = {}) {
   const from = addDays(new Date(), -Math.max(0, Number(daysBack) || 0));
   const to = addDays(new Date(), Number(daysAhead) || 30);
-  const json = await finnhub('/calendar/earnings', { from: ymd(from), to: ymd(to) });
+  const json = await finnhub('/calendar/earnings', { from: ymdLocal(from), to: ymdLocal(to) });
   const rows = Array.isArray(json.earningsCalendar) ? json.earningsCalendar : [];
   return rows.map((raw) => normalizeFinnhubEarning(raw));
 }

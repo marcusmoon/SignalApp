@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import type { AppTheme } from '@/constants/theme';
@@ -13,10 +13,7 @@ type Props = {
   onPress?: () => void;
 };
 
-/**
- * 새 콘텐츠 알림 — prompt(탭하여 새로고침) / notice(새로고침 후 확인).
- * 세그먼트 탭·필터 칩과 색·굵기로 구분한다.
- */
+/** 새 콘텐츠 알림 — 기존 pill/notice 레이아웃 유지, 가독성만 약간 강조 */
 export function FeedUpdateBanner({ variant, message, onPress }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -24,17 +21,14 @@ export function FeedUpdateBanner({ variant, message, onPress }: Props) {
 
   const content = (
     <>
-      <View style={[styles.iconWrap, isPrompt ? styles.iconWrapPrompt : styles.iconWrapNotice]}>
-        <FontAwesome
-          name={isPrompt ? 'bell' : 'check'}
-          size={isPrompt ? 14 : 11}
-          color={isPrompt ? theme.accentOrange : '#FFFFFF'}
-        />
-      </View>
+      <FontAwesome
+        name={isPrompt ? 'arrow-up' : 'check-circle'}
+        size={isPrompt ? 12 : 14}
+        color={theme.green}
+      />
       <Text style={[styles.message, isPrompt ? styles.messagePrompt : styles.messageNotice]} numberOfLines={2}>
         {message}
       </Text>
-      {isPrompt ? <FontAwesome name="chevron-up" size={12} color={theme.accentOrange} style={styles.chevron} /> : null}
     </>
   );
 
@@ -57,85 +51,54 @@ export function FeedUpdateBanner({ variant, message, onPress }: Props) {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
-  const promptBorder =
-    theme.accentOrange.startsWith('#') && theme.accentOrange.length === 7
-      ? `${theme.accentOrange}66`
-      : theme.accentOrange;
+  const promptBg =
+    theme.accentBlue.startsWith('#') && theme.accentBlue.length === 7
+      ? `${theme.accentBlue}18`
+      : theme.greenDim;
 
   return StyleSheet.create({
     banner: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      marginHorizontal: 16,
+      gap: 8,
       marginTop: 8,
       marginBottom: 4,
-      paddingVertical: 11,
-      paddingHorizontal: 12,
-      borderRadius: 12,
-      borderWidth: StyleSheet.hairlineWidth,
     },
     bannerPrompt: {
-      borderLeftWidth: 4,
-      borderLeftColor: theme.accentOrange,
-      borderColor: promptBorder,
-      backgroundColor: theme.warningDim,
-      ...(Platform.OS === 'ios'
-        ? {
-            shadowColor: theme.accentOrange,
-            shadowOpacity: 0.18,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 3 },
-          }
-        : { elevation: 2 }),
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: 9,
+      paddingHorizontal: 14,
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: `${theme.accentBlue}66`,
+      backgroundColor: promptBg,
     },
     bannerNotice: {
-      borderLeftWidth: 4,
-      borderLeftColor: theme.green,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 10,
+      borderWidth: 1.5,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
     },
     pressed: {
-      opacity: 0.88,
-    },
-    iconWrap: {
-      width: 30,
-      height: 30,
-      borderRadius: 15,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0,
-    },
-    iconWrapPrompt: {
-      backgroundColor:
-        theme.accentOrange.startsWith('#') && theme.accentOrange.length === 7
-          ? `${theme.accentOrange}24`
-          : theme.warningDim,
-      borderWidth: 1,
-      borderColor: promptBorder,
-    },
-    iconWrapNotice: {
-      backgroundColor: theme.green,
+      opacity: 0.9,
     },
     message: {
-      flex: 1,
       minWidth: 0,
       fontSize: sf(13),
-      lineHeight: sf(18),
+      lineHeight: sf(17),
     },
     messagePrompt: {
-      color: theme.text,
+      color: theme.accentBlue,
       fontWeight: '900',
-      letterSpacing: Platform.OS === 'ios' ? -0.25 : 0,
+      flexShrink: 1,
     },
     messageNotice: {
-      color: theme.text,
-      fontWeight: '800',
-      letterSpacing: Platform.OS === 'ios' ? -0.2 : 0,
-    },
-    chevron: {
-      flexShrink: 0,
-      marginLeft: -2,
+      color: theme.green,
+      fontWeight: '900',
+      flex: 1,
     },
   });
 }

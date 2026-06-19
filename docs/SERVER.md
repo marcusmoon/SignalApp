@@ -89,7 +89,7 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 
 주요 Job (V19 이후, reconcile 쌍은 `sync`로 통합):
 
-- 뉴스 수집·보정 (`market_news_*`, RSS, SEC) + 주요 이슈 (`news_digest_brief`)
+- 뉴스 수집·보정 (`market_news_*`, RSS, SEC, DART). 주요 이슈는 `news_digest_items` + `/v1/news-digests` API(ingest)로 유지
 - 투자 캘린더 (`calendar_economic`, `calendar_earnings`)
 - YouTube (`youtube_economy_latest` sync, `youtube_economy_popular`)
 - 시세·일봉·코인

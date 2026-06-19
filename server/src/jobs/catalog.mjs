@@ -13,7 +13,6 @@ export const JOB_CATALOG = {
   market_news_mk_rss: { area: 'news', stage: 'ingest' },
   market_news_dart_filings: { area: 'news', stage: 'ingest' },
   market_news_globenewswire_earnings: { area: 'news', stage: 'ingest' },
-  news_digest_brief: { area: 'news', stage: 'enrich' },
   calendar_economic: { area: 'calendar', stage: 'ingest' },
   calendar_earnings: { area: 'calendar', stage: 'ingest' },
   youtube_economy_latest: { area: 'youtube', stage: 'ingest' },

@@ -16,7 +16,6 @@ export const JOB_PRESETS = {
       'market_news_mk_rss',
       'market_news_dart_filings',
       'market_news_globenewswire_earnings',
-      'news_digest_brief',
     ],
   },
   calendar_refresh: {

@@ -32,6 +32,10 @@ import {
   queryPublicNewsSourceRows,
 } from './db/repositories/newsRepository.mjs';
 import {
+  queryPublicDisclosureRows,
+  queryPublicDisclosureByIdRow,
+} from './db/repositories/disclosuresRepository.mjs';
+import {
   queryPublicNewsDigestRows,
 } from './db/repositories/newsDigestRepository.mjs';
 import {
@@ -337,6 +341,24 @@ const collectionSpecs = [
       news_item_id: textOrNull(row.newsItemId),
       locale: textOrNull(row.locale),
       status: textOrNull(row.status),
+      updated_at: isoOrNull(row.updatedAt) || nowIso(),
+    }),
+  },
+  {
+    key: 'disclosures',
+    store: 'disclosures',
+    table: 'disclosures',
+    pk: 'id',
+    keyOf: (row) => row.id,
+    columns: (row, index) => ({
+      position: index,
+      market: textOrNull(row.market),
+      provider: textOrNull(row.provider),
+      symbol: textOrNull(row.symbol),
+      company_name: textOrNull(row.companyName),
+      form_type: textOrNull(row.formType),
+      filed_at: isoOrNull(row.filedAt),
+      period_end_date: dateOrNull(row.periodEndDate),
       updated_at: isoOrNull(row.updatedAt) || nowIso(),
     }),
   },
@@ -788,6 +810,14 @@ export async function queryPublicNewsDigests(options = {}) {
 
 export async function queryAdminNews(options = {}) {
   return queryAdminNewsRows(options);
+}
+
+export async function queryPublicDisclosures(options = {}) {
+  return cachedPublicRead('publicDisclosures', options, () => queryPublicDisclosureRows(options), 15000);
+}
+
+export async function queryPublicDisclosureById(id) {
+  return cachedPublicRead('publicDisclosureById', { id }, () => queryPublicDisclosureByIdRow(id), 15000);
 }
 
 export async function queryPublicYoutube(options = {}) {

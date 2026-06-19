@@ -1,6 +1,6 @@
 import * as WebBrowser from 'expo-web-browser';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,11 +14,13 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchCompanyNewsForDisplay } from '@/services/companyNewsForSymbol';
 import { fetchSignalInsights } from '@/integrations/signal-api/insights';
+import { fetchSignalDisclosures } from '@/integrations/signal-api/disclosures';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { signalNewsToNewsItem } from '@/integrations/signal-api/news';
 import { fetchSignalStockCandles, fetchSignalStockProfile } from '@/integrations/signal-api/stock';
 import type {
+  SignalApiDisclosure,
   SignalApiInsight,
   SignalApiMarketQuote,
   SignalApiNewsItem,
@@ -255,6 +257,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       padding: 14,
       marginBottom: 12,
     },
+    sectionHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      marginBottom: 10,
+    },
+    sectionLink: { color: theme.green, fontSize: sf(12), fontWeight: '900' },
     signalOverviewHead: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -330,6 +340,42 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'center',
       paddingHorizontal: 24,
     },
+    disclosureCard: {
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      padding: 12,
+      marginBottom: 10,
+    },
+    disclosureMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      marginBottom: 8,
+    },
+    disclosureBadge: {
+      color: theme.green,
+      backgroundColor: theme.greenDim,
+      borderColor: theme.greenBorder,
+      borderWidth: 1,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 7,
+      fontSize: sf(10),
+      fontWeight: '900',
+      overflow: 'hidden',
+    },
+    disclosureType: {
+      flex: 1,
+      minWidth: 0,
+      color: theme.textMuted,
+      fontSize: sf(11),
+      fontWeight: '800',
+    },
+    disclosureTime: { color: theme.textDim, fontSize: sf(11), fontWeight: '700' },
+    disclosureTitle: { color: theme.text, fontSize: sf(14), lineHeight: sf(20), fontWeight: '900' },
+    disclosureSummary: { marginTop: 6, color: theme.textMuted, fontSize: sf(12), lineHeight: sf(18), fontWeight: '700' },
     newsCard: {
       borderRadius: 10,
       borderWidth: 1,
@@ -419,6 +465,7 @@ export default function SymbolDetailScreen() {
   const [candles, setCandles] = useState<SignalApiStockCandles | null>(null);
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
   const [signalNews, setSignalNews] = useState<SignalApiNewsItem[]>([]);
+  const [disclosures, setDisclosures] = useState<SignalApiDisclosure[]>([]);
   const [serverInsights, setServerInsights] = useState<SignalApiInsight[]>([]);
   const [watching, setWatching] = useState(false);
   const isKorea = useMemo(() => isKoreaSymbol(ticker), [ticker]);
@@ -449,19 +496,21 @@ export default function SymbolDetailScreen() {
       setCandles(null);
       setNewsItems([]);
       setSignalNews([]);
+      setDisclosures([]);
       setServerInsights([]);
       setLoading(false);
       return;
     }
 
     setError(null);
-        try {
-      const [watchlist, nextProfile, mqRows, nextCandles, companyNews, insightRows] = await Promise.all([
+    try {
+      const [watchlist, nextProfile, mqRows, nextCandles, companyNews, disclosureRows, insightRows] = await Promise.all([
         loadWatchlistSymbols(),
         fetchSignalStockProfile(ticker),
         fetchSignalMarketQuotes({ symbols: [ticker], limit: 1 }).catch(() => []),
         fetchSignalStockCandles(ticker, 'D', addDays(new Date(), -30), new Date()).catch(() => null),
         fetchCompanyNewsForDisplay(ticker, locale).catch(() => [] as SignalApiNewsItem[]),
+        fetchSignalDisclosures({ symbol: ticker, limit: 5 }).then((result) => result.items).catch(() => []),
         fetchSignalInsights({
           symbol: ticker,
           date: 'today',
@@ -477,8 +526,15 @@ export default function SymbolDetailScreen() {
       const nextQuote = row0 && signalMarketQuoteHasValidPrice(row0) ? row0 : null;
 
       const relatedRaw = companyNews;
+      setWatching(watchlist.includes(ticker));
+      setProfile(nextProfile);
+      setQuote(nextQuote);
+      setCandles(nextCandles);
       setSignalNews(relatedRaw);
       const translatedNews = relatedRaw.map((a) => signalNewsToNewsItem(a, locale));
+      setNewsItems(translatedNews);
+      setDisclosures(disclosureRows);
+      setServerInsights(insightRows);
 
     } catch (e) {
       setServerInsights([]);
@@ -697,6 +753,35 @@ export default function SymbolDetailScreen() {
             />
           </View>
         ) : null}
+
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.section}>{t('symbolDetailSectionDisclosures')}</Text>
+            {disclosures.length > 0 ? (
+              <Pressable onPress={() => router.push(`/disclosures?symbol=${encodeURIComponent(ticker)}` as Href)} hitSlop={10}>
+                <Text style={styles.sectionLink}>{t('symbolDetailDisclosuresAll')}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {disclosures.length > 0 ? (
+            disclosures.slice(0, 5).map((item) => (
+              <Pressable
+                key={item.id}
+                onPress={() => router.push(`/disclosures/${encodeURIComponent(item.id)}` as Href)}
+                style={styles.disclosureCard}>
+                <View style={styles.disclosureMeta}>
+                  <Text style={styles.disclosureBadge}>{item.provider === 'sec' ? 'SEC' : item.provider === 'dart' ? 'DART' : '공시'}</Text>
+                  {item.formType ? <Text style={styles.disclosureType} numberOfLines={1}>{item.formType}</Text> : null}
+                  <Text style={styles.disclosureTime}>{item.filedAt ? toYmd(new Date(item.filedAt)) : '—'}</Text>
+                </View>
+                <Text style={styles.disclosureTitle} numberOfLines={2}>{item.title}</Text>
+                {item.summary ? <Text style={styles.disclosureSummary} numberOfLines={2}>{item.summary}</Text> : null}
+              </Pressable>
+            ))
+          ) : (
+            <Text style={styles.empty}>{t('symbolDetailNoDisclosures')}</Text>
+          )}
+        </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.section}>{t('symbolDetailSectionNews')}</Text>

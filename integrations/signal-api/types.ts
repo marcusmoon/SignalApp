@@ -123,6 +123,22 @@ export type SignalApiNewsSource = {
   order: number;
 };
 
+export type SignalApiDisclosure = {
+  id: string;
+  market: 'us' | 'kr' | string | null;
+  provider: 'sec' | 'dart' | string | null;
+  symbol: string | null;
+  companyName: string | null;
+  formType: string | null;
+  title: string;
+  summary: string;
+  url: string | null;
+  filedAt: string | null;
+  periodEndDate: string | null;
+  fetchedAt: string | null;
+  rawPayload?: unknown;
+};
+
 export type SignalApiCalendarEvent = {
   id: string;
   provider: string;

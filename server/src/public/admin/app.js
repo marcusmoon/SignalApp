@@ -382,6 +382,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         const key =
           a === 'news'
             ? 'areaNews'
+            : a === 'disclosures'
+              ? 'areaDisclosures'
             : a === 'calendar'
               ? 'areaCalendar'
               : a === 'youtube'

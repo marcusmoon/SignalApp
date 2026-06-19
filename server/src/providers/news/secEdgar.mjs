@@ -125,26 +125,28 @@ function normalizeFiling({ symbol, cik, companyName, filing }) {
   const form = String(filing.form || '').trim().toUpperCase();
   const accessionNumber = String(filing.accessionNumber || '').trim();
   const sourceUrl = filingUrl(cik, accessionNumber);
-  const publishedAt = parseAcceptanceDateTime(filing.acceptanceDateTime, filing.filingDate);
+  const filedAt = parseAcceptanceDateTime(filing.acceptanceDateTime, filing.filingDate);
+  const summary = [
+    companyName ? `${companyName} submitted SEC form ${form}.` : `${symbol} submitted SEC form ${form}.`,
+    filing.reportDate ? `Report date: ${filing.reportDate}.` : '',
+    filing.filingDate ? `Filing date: ${filing.filingDate}.` : '',
+  ].filter(Boolean).join(' ');
   return {
     id: `sec-edgar-${symbol}-${accessionNumber}`,
-    provider: 'sec_edgar',
+    market: 'us',
+    provider: 'sec',
     providerItemId: accessionNumber,
-    category: 'global',
-    titleOriginal: filingTitle({ symbol, companyName, form, primaryDocDescription: filing.primaryDocDescription }),
-    summaryOriginal: [
-      companyName ? `${companyName} submitted SEC form ${form}.` : `${symbol} submitted SEC form ${form}.`,
-      filing.reportDate ? `Report date: ${filing.reportDate}.` : '',
-      filing.filingDate ? `Filing date: ${filing.filingDate}.` : '',
-    ].filter(Boolean).join(' '),
-    contentOriginal: '',
+    symbol,
+    companyName,
+    formType: form,
+    title: filingTitle({ symbol, companyName, form, primaryDocDescription: filing.primaryDocDescription }),
+    summary,
     sourceName: 'SEC EDGAR',
-    sourceUrl,
-    imageUrl: null,
-    symbols: [symbol],
-    importance: null,
-    publishedAt,
+    url: sourceUrl,
+    filedAt,
+    periodEndDate: filing.reportDate || null,
     fetchedAt: new Date().toISOString(),
+    accessionNo: accessionNumber,
     rawPayload: {
       cik,
       companyName,

@@ -190,6 +190,7 @@ function areaJobDefinitionMatch(area, job) {
   }
   if (area.id === 'coinMarkets') return jobArea === 'market' && job.handler === 'coin_markets';
   if (area.id === 'news') return jobArea === 'news';
+  if (area.id === 'disclosures') return jobArea === 'disclosures' || job.domain === 'disclosures';
   if (area.id === 'calendar') return jobArea === 'calendar';
   if (area.id === 'youtube') return jobArea === 'youtube';
   return job.domain === area.domain;
@@ -206,6 +207,17 @@ function dataAreaSummary(db, recentRuns, latestRunByJob) {
       quality: {
         translations: db.newsTranslations.length,
         sources: new Set(db.newsItems.map((item) => item.sourceName || item.provider).filter(Boolean)).size,
+      },
+    },
+    {
+      id: 'disclosures',
+      domain: 'disclosures',
+      resultKind: 'disclosures',
+      count: db.disclosures.length,
+      latestItemAt: latestIso(db.disclosures, ['filedAt', 'fetchedAt', 'updatedAt', 'createdAt']),
+      quality: {
+        providers: new Set(db.disclosures.map((item) => item.provider).filter(Boolean)).size,
+        symbols: new Set(db.disclosures.map((item) => item.symbol).filter(Boolean)).size,
       },
     },
     {
@@ -343,6 +355,7 @@ function dashboardSummary(db) {
     counts: {
       news: db.newsItems.length,
       newsTranslations: db.newsTranslations.length,
+      disclosures: db.disclosures.length,
       calendar: db.calendarEvents.length,
       youtube: db.youtubeVideos.length,
       marketQuotes: db.marketQuotes.length,
@@ -373,6 +386,7 @@ async function readDashboardSummaryContext() {
     pollingJobRuns,
     newsItems,
     newsTranslations,
+    disclosures,
     calendarEvents,
     youtubeVideos,
     marketQuotes,
@@ -384,6 +398,7 @@ async function readDashboardSummaryContext() {
     listPollingJobRuns({ limit: 200 }),
     listCollectionPayloads('newsItems'),
     listCollectionPayloads('newsTranslations'),
+    listCollectionPayloads('disclosures'),
     listCollectionPayloads('calendarEvents'),
     listCollectionPayloads('youtubeVideos'),
     listCollectionPayloads('marketQuotes'),
@@ -396,6 +411,7 @@ async function readDashboardSummaryContext() {
     pollingJobRuns,
     newsItems,
     newsTranslations,
+    disclosures,
     calendarEvents,
     youtubeVideos,
     marketQuotes,

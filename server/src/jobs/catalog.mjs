@@ -1,6 +1,6 @@
 /** Admin·runner 공통 Job 메타데이터 (단일 기준). */
 
-export const JOB_AREAS = ['news', 'calendar', 'youtube', 'market', 'signal', 'legacy'];
+export const JOB_AREAS = ['news', 'disclosures', 'calendar', 'youtube', 'market', 'signal', 'legacy'];
 
 export const JOB_STAGES = ['ingest', 'enrich', 'maintain'];
 
@@ -9,9 +9,9 @@ export const JOB_CATALOG = {
   market_news_global: { area: 'news', stage: 'ingest' },
   market_news_crypto: { area: 'news', stage: 'ingest' },
   market_news_financial_juice: { area: 'news', stage: 'ingest' },
-  market_news_sec_edgar_filings: { area: 'news', stage: 'ingest' },
+  market_news_sec_edgar_filings: { area: 'disclosures', stage: 'ingest' },
   market_news_mk_rss: { area: 'news', stage: 'ingest' },
-  market_news_dart_filings: { area: 'news', stage: 'ingest' },
+  market_news_dart_filings: { area: 'disclosures', stage: 'ingest' },
   market_news_globenewswire_earnings: { area: 'news', stage: 'ingest' },
   calendar_economic: { area: 'calendar', stage: 'ingest' },
   calendar_earnings: { area: 'calendar', stage: 'ingest' },
@@ -30,6 +30,7 @@ export const JOB_CATALOG = {
 
 const AREA_FROM_DOMAIN = {
   news: 'news',
+  disclosures: 'disclosures',
   calendar: 'calendar',
   youtube: 'youtube',
   market: 'market',
@@ -66,6 +67,7 @@ export function catalogMetaForJob(job) {
 export function areaLabelKey(area) {
   const map = {
     news: 'areaNews',
+    disclosures: 'areaDisclosures',
     calendar: 'areaCalendar',
     youtube: 'areaYoutube',
     market: 'areaMarket',

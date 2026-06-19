@@ -4,6 +4,7 @@ import { json, readBody } from '../../shared.mjs';
 const RESET_TARGETS = {
   newsItems: 'newsItems',
   newsTranslations: 'newsTranslations',
+  disclosures: 'disclosures',
   calendarEvents: 'calendarEvents',
   youtubeVideos: 'youtubeVideos',
   marketQuotes: 'marketQuotes',

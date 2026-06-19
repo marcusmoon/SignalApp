@@ -246,6 +246,16 @@ async function saveNewsRows(rows) {
   await autoTranslateNewsDirect(safeRows);
 }
 
+async function saveDisclosureRows(rows) {
+  const savedAt = nowIso();
+  const safeRows = rows.map((row) => ({
+    ...row,
+    updatedAt: row.updatedAt || savedAt,
+    createdAt: row.createdAt || savedAt,
+  }));
+  await upsertCollectionRows('disclosures', safeRows);
+}
+
 async function saveYoutubeRows(rows) {
   const current = await listCollectionPayloads('youtubeVideos');
   const changed = [];
@@ -284,12 +294,12 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
   if (effective.provider === 'sec' && effective.handler === 'company_filings') {
     const listKey = params?.listKey || 'default_watchlist';
     const symbols = Array.isArray(params?.symbols) && params.symbols.length > 0 ? params.symbols : marketListSymbols(dbBefore, listKey);
-    return { kind: 'news', rows: await fetchSecEdgarFilings({ ...(params || {}), symbols }) };
+    return { kind: 'disclosures', rows: await fetchSecEdgarFilings({ ...(params || {}), symbols }) };
   }
   if (effective.provider === 'dart' && effective.handler === 'company_filings') {
     const listKey = params?.listKey || 'korea_watchlist';
     const symbols = Array.isArray(params?.symbols) && params.symbols.length > 0 ? params.symbols : marketListSymbols(dbBefore, listKey);
-    return { kind: 'news', rows: await fetchDartFilings({ ...(params || {}), symbols }) };
+    return { kind: 'disclosures', rows: await fetchDartFilings({ ...(params || {}), symbols }) };
   }
   if (effective.provider === 'finnhub' && effective.handler === 'economic_calendar') {
     const rows = await fetchFinnhubEconomicCalendar(params || {});
@@ -405,6 +415,8 @@ async function persistHandlerResult(result, rows) {
     for (const row of notificationRows) await saveNotificationItem(row);
   } else if (result.kind === 'news') {
     await saveNewsRows(rows);
+  } else if (result.kind === 'disclosures') {
+    await saveDisclosureRows(rows);
   } else if (result.kind === 'youtube') {
     await saveYoutubeRows(rows);
   }

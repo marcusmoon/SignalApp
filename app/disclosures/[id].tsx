@@ -1,0 +1,237 @@
+import * as WebBrowser from 'expo-web-browser';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import type { AppTheme } from '@/constants/theme';
+import { useLocale } from '@/contexts/LocaleContext';
+import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { fetchSignalDisclosure } from '@/integrations/signal-api/disclosures';
+import type { SignalApiDisclosure } from '@/integrations/signal-api/types';
+import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
+import { hasSignalApi } from '@/services/env';
+
+function paramId(raw: string | string[] | undefined): string {
+  return String(Array.isArray(raw) ? raw[0] : raw || '').trim();
+}
+
+function dateLabel(value: string | null | undefined): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return String(value).slice(0, 10);
+  return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+function providerLabel(item: SignalApiDisclosure | null): string {
+  if (item?.provider === 'sec') return 'SEC EDGAR';
+  if (item?.provider === 'dart') return 'DART';
+  return String(item?.provider || '').toUpperCase() || '—';
+}
+
+export default function DisclosureDetailScreen() {
+  const { id: rawId } = useLocalSearchParams<{ id?: string | string[] }>();
+  const id = useMemo(() => paramId(rawId), [rawId]);
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { theme, scaleFont } = useSignalTheme();
+  const { t } = useLocale();
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const [item, setItem] = useState<SignalApiDisclosure | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!id || !hasSignalApi()) {
+      setItem(null);
+      setError(t('errorSignalApiShort'));
+      setLoading(false);
+      return;
+    }
+    setError(null);
+    try {
+      setItem(await fetchSignalDisclosure(id));
+    } catch (e) {
+      setError(formatSignalApiError(e, t, 'disclosuresLoadError'));
+    } finally {
+      setLoading(false);
+    }
+  }, [id, t]);
+
+  useEffect(() => {
+    setLoading(true);
+    void load();
+  }, [load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load]);
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <Stack.Screen options={{ title: t('disclosuresDetailTitle') }} />
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <FontAwesome name="chevron-left" size={17} color={theme.text} />
+          <Text style={styles.backText}>{t('commonBack')}</Text>
+        </Pressable>
+        <Text style={styles.title}>{t('disclosuresDetailTitle')}</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+      {loading ? (
+        <View style={styles.loadingWrap}>
+          <SignalLoadingIndicator message={t('commonLoading')} />
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={[styles.scroll, { paddingBottom: 30 + insets.bottom }]}
+          refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {item ? (
+            <>
+              <View style={styles.hero}>
+                <View style={styles.badges}>
+                  <Text style={styles.badge}>{providerLabel(item)}</Text>
+                  {item.formType ? <Text style={styles.badgeMuted}>{item.formType}</Text> : null}
+                </View>
+                <Text style={styles.heroTitle}>{item.title}</Text>
+                {item.companyName || item.symbol ? (
+                  <Text style={styles.company}>{[item.symbol, item.companyName].filter(Boolean).join(' · ')}</Text>
+                ) : null}
+              </View>
+              <View style={styles.card}>
+                <Text style={styles.section}>{t('disclosuresDetailPoints')}</Text>
+                <View style={styles.factRow}>
+                  <Text style={styles.factLabel}>{t('disclosuresFiledAt')}</Text>
+                  <Text style={styles.factValue}>{dateLabel(item.filedAt)}</Text>
+                </View>
+                <View style={styles.factRow}>
+                  <Text style={styles.factLabel}>{t('disclosuresPeriodEnd')}</Text>
+                  <Text style={styles.factValue}>{dateLabel(item.periodEndDate)}</Text>
+                </View>
+                <View style={styles.factRow}>
+                  <Text style={styles.factLabel}>{t('disclosuresFormType')}</Text>
+                  <Text style={styles.factValue}>{item.formType || '—'}</Text>
+                </View>
+              </View>
+              {item.summary ? (
+                <View style={styles.card}>
+                  <Text style={styles.summary}>{item.summary}</Text>
+                </View>
+              ) : null}
+              {item.url ? (
+                <Pressable onPress={() => void WebBrowser.openBrowserAsync(item.url!)} style={styles.primaryBtn}>
+                  <Text style={styles.primaryText}>{t('disclosuresOriginalOpen')}</Text>
+                  <FontAwesome name="external-link" size={13} color="#fff" />
+                </Pressable>
+              ) : null}
+            </>
+          ) : (
+            <Text style={styles.empty}>{t('disclosuresEmpty')}</Text>
+          )}
+        </ScrollView>
+      )}
+    </SafeAreaView>
+  );
+}
+
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.bg },
+    header: {
+      minHeight: 58,
+      paddingHorizontal: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    backBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 9,
+      borderRadius: 999,
+      backgroundColor: theme.bgElevated,
+    },
+    backText: { color: theme.text, fontSize: sf(14), fontWeight: '800' },
+    title: { color: theme.text, fontSize: sf(18), fontWeight: '900' },
+    headerSpacer: { width: 72 },
+    loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    scroll: { padding: 16, gap: 12 },
+    error: {
+      padding: 12,
+      borderRadius: 12,
+      color: theme.danger,
+      backgroundColor: theme.dangerDim,
+      fontSize: sf(13),
+      fontWeight: '800',
+    },
+    empty: { color: theme.textMuted, fontSize: sf(14), fontWeight: '800', textAlign: 'center', padding: 20 },
+    hero: {
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      padding: 16,
+    },
+    badges: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12 },
+    badge: {
+      color: theme.green,
+      backgroundColor: theme.greenDim,
+      borderColor: theme.greenBorder,
+      borderWidth: 1,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      borderRadius: 8,
+      fontSize: sf(11),
+      fontWeight: '900',
+      overflow: 'hidden',
+    },
+    badgeMuted: {
+      color: theme.textMuted,
+      backgroundColor: theme.bgElevated,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      borderRadius: 8,
+      fontSize: sf(11),
+      fontWeight: '900',
+      overflow: 'hidden',
+    },
+    heroTitle: { color: theme.text, fontSize: sf(20), lineHeight: sf(27), fontWeight: '900' },
+    company: { marginTop: 8, color: theme.textMuted, fontSize: sf(13), fontWeight: '800' },
+    card: {
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      padding: 14,
+    },
+    section: { color: theme.text, fontSize: sf(15), fontWeight: '900', marginBottom: 10 },
+    factRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 7 },
+    factLabel: { color: theme.textMuted, fontSize: sf(13), fontWeight: '800' },
+    factValue: { flex: 1, textAlign: 'right', color: theme.text, fontSize: sf(13), fontWeight: '900' },
+    summary: { color: theme.text, fontSize: sf(15), lineHeight: sf(24), fontWeight: '700' },
+    primaryBtn: {
+      minHeight: 48,
+      borderRadius: 13,
+      backgroundColor: theme.green,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 8,
+    },
+    primaryText: { color: '#fff', fontSize: sf(14), fontWeight: '900' },
+  });
+}

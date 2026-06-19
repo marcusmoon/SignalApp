@@ -31,6 +31,7 @@ const HUB_META: Record<
   { href: Href; icon: ComponentProps<typeof FontAwesome>['name']; titleId: MessageId }
 > = {
   youtube: { href: '/youtube' as Href, icon: 'youtube-play', titleId: 'tabYoutube' },
+  disclosures: { href: '/disclosures' as Href, icon: 'file-text-o', titleId: 'screenDisclosures' },
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
   settings: { href: '/settings' as Href, icon: 'cog', titleId: 'screenSettings' },
 };

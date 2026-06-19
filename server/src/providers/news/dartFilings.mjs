@@ -128,28 +128,30 @@ function normalizeDisclosure({ symbol, corpName, filing }) {
   const rceptNo = String(filing.rcept_no || '').trim();
   const reportName = String(filing.report_nm || '').trim();
   const company = String(corpName || filing.corp_name || symbol || '').trim();
-  const publishedAt = parseRceptDate(filing.rcept_dt);
+  const filedAt = parseRceptDate(filing.rcept_dt);
+  const summary = [
+    company ? `${company} DART 공시.` : 'DART 공시.',
+    reportName,
+    filing.rcept_dt ? `접수일: ${filing.rcept_dt}.` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
   return {
     id: `dart-${symbol}-${rceptNo}`,
+    market: 'kr',
     provider: 'dart',
     providerItemId: rceptNo,
-    category: 'korea',
-    titleOriginal: company ? `${company}: ${reportName}` : reportName,
-    summaryOriginal: [
-      company ? `${company} DART 공시.` : 'DART 공시.',
-      reportName,
-      filing.rcept_dt ? `접수일: ${filing.rcept_dt}.` : '',
-    ]
-      .filter(Boolean)
-      .join(' '),
-    contentOriginal: '',
+    symbol,
+    companyName: company,
+    formType: reportName,
+    title: company ? `${company}: ${reportName}` : reportName,
+    summary,
     sourceName: 'DART',
-    sourceUrl: rceptNo ? `${VIEWER_URL}${rceptNo}` : 'https://dart.fss.or.kr/',
-    imageUrl: null,
-    symbols: symbol ? [symbol] : [],
-    importance: null,
-    publishedAt,
+    url: rceptNo ? `${VIEWER_URL}${rceptNo}` : 'https://dart.fss.or.kr/',
+    filedAt,
+    periodEndDate: null,
     fetchedAt: new Date().toISOString(),
+    receiptNo: rceptNo,
     rawPayload: {
       symbol,
       corpName: company,

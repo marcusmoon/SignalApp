@@ -1,6 +1,10 @@
 import { queryPublicCalendar, queryPublicCalendarDateSummaries, upsertCollectionRows } from '../../../db.mjs';
-import { cleanText, json, readBody } from '../../shared.mjs';
+import { json, readBody } from '../../shared.mjs';
 import { config } from '../../../config.mjs';
+
+function cleanText(value) {
+  return String(value == null ? '' : value).trim();
+}
 
 function hasIngestAccess(req) {
   const configured = cleanText(config.automationIngestToken);

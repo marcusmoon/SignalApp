@@ -78,7 +78,7 @@ export default function DisclosureDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <Stack.Screen options={{ title: t('disclosuresDetailTitle') }} />
+      <Stack.Screen options={{ title: t('disclosuresDetailTitle'), headerShown: false }} />
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <FontAwesome name="chevron-left" size={17} color={theme.text} />

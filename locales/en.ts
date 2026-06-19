@@ -547,6 +547,7 @@ export const en = {
   feedNewContentAvailable: 'New content available · Tap to refresh',
   feedRefreshNoticeNews: '{{count}} new headlines are available.',
   feedRefreshNoticeVideo: '{{count}} new videos are available.',
+  disclosuresRefreshNotice: '{{count}} new disclosures are available.',
   feedDigestKicker: 'Top issue',
   feedDigestCount: '{{count}} headlines',
   feedDigestSummary: '{{count}} headlines · {{sources}} sources',

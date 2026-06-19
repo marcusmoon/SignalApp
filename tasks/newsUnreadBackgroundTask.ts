@@ -7,6 +7,7 @@ import {
   newsUnreadBackgroundTaskIntervalMinutes,
 } from '@/services/newsUnreadCheckIntervalPreference';
 import { refreshNewsUnreadFromServer } from '@/services/newsUnreadPreference';
+import { refreshDisclosureUnreadFromServer } from '@/services/disclosureUnreadPreference';
 import { refreshSignalUnreadFromServer } from '@/services/signalUnreadPreference';
 import { isNewsUnreadBackgroundTaskNativeAvailable } from '@/utils/expoNativeModules';
 
@@ -50,6 +51,7 @@ function ensureNewsUnreadTaskDefined(): BackgroundTaskModules | null {
       await Promise.allSettled([
         refreshNewsUnreadFromServer(locale),
         refreshSignalUnreadFromServer(),
+        refreshDisclosureUnreadFromServer(),
       ]);
       return modules.BackgroundTask.BackgroundTaskResult.Success;
     } catch {

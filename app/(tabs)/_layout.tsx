@@ -33,6 +33,11 @@ import {
   subscribeNewsSeenChanged,
 } from '@/services/newsUnreadPreference';
 import {
+  loadDisclosureUnreadCached,
+  refreshDisclosureUnreadFromServer,
+  subscribeDisclosureSeenChanged,
+} from '@/services/disclosureUnreadPreference';
+import {
   loadSignalUnreadCached,
   refreshSignalUnreadFromServer,
   subscribeSignalSeenChanged,
@@ -89,6 +94,7 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const [newsHasUnread, setNewsHasUnread] = useState(false);
   const [signalHasUnread, setSignalHasUnread] = useState(false);
+  const [disclosureHasUnread, setDisclosureHasUnread] = useState(false);
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
   const newsTabFocused = useNavigationState((state) => {
     const route = state.routes[state.index];
@@ -133,6 +139,19 @@ export default function TabLayout() {
     }
   }, [signalTabFocused]);
 
+  const refreshDisclosureUnreadBadge = useCallback(async () => {
+    if (!hasSignalApi()) {
+      setDisclosureHasUnread(false);
+      return;
+    }
+    try {
+      setDisclosureHasUnread(await refreshDisclosureUnreadFromServer());
+    } catch {
+      const cached = await loadDisclosureUnreadCached();
+      if (cached !== null) setDisclosureHasUnread(cached);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     let pollTimer: ReturnType<typeof setInterval> | undefined;
@@ -144,6 +163,7 @@ export default function TabLayout() {
       pollTimer = setInterval(() => {
         void refreshNewsUnreadBadge();
         void refreshSignalUnreadBadge();
+        void refreshDisclosureUnreadBadge();
       }, newsUnreadCheckIntervalMs(minutes));
     };
 
@@ -152,10 +172,15 @@ export default function TabLayout() {
     });
     void refreshNewsUnreadBadge();
     void refreshSignalUnreadBadge();
+    void loadDisclosureUnreadCached().then((cached) => {
+      if (cached === true) setDisclosureHasUnread(true);
+    });
+    void refreshDisclosureUnreadBadge();
     void startPolling();
 
     const unsubscribeSeen = subscribeNewsSeenChanged(() => void refreshNewsUnreadBadge());
     const unsubscribeSignalSeen = subscribeSignalSeenChanged(() => void refreshSignalUnreadBadge());
+    const unsubscribeDisclosureSeen = subscribeDisclosureSeenChanged(() => void refreshDisclosureUnreadBadge());
     const unsubscribeInterval = subscribeNewsUnreadCheckIntervalChanged(() => {
       void startPolling();
     });
@@ -163,17 +188,19 @@ export default function TabLayout() {
       if (next === 'active') {
         void refreshNewsUnreadBadge();
         void refreshSignalUnreadBadge();
+        void refreshDisclosureUnreadBadge();
       }
     });
     return () => {
       cancelled = true;
       unsubscribeSeen();
       unsubscribeSignalSeen();
+      unsubscribeDisclosureSeen();
       unsubscribeInterval();
       if (pollTimer) clearInterval(pollTimer);
       appStateSub.remove();
     };
-  }, [newsTabFocused, refreshNewsUnreadBadge, refreshSignalUnreadBadge]);
+  }, [newsTabFocused, refreshNewsUnreadBadge, refreshSignalUnreadBadge, refreshDisclosureUnreadBadge]);
 
   useEffect(() => {
     void loadSignalUnreadCached().then((cached) => {
@@ -353,7 +380,9 @@ export default function TabLayout() {
         name="more"
         options={{
           title: t('tabMore'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="th-large" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="th-large" color={color} focused={focused} showDot={disclosureHasUnread} />
+          ),
         }}
       />
       <Tabs.Screen

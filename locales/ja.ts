@@ -547,6 +547,7 @@ export const ja = {
   feedNewContentAvailable: '新着情報があります · タップして更新',
   feedRefreshNoticeNews: '新着ニュースが{{count}}件あります。',
   feedRefreshNoticeVideo: '新着動画が{{count}}件あります。',
+  disclosuresRefreshNotice: '新着開示が{{count}}件あります。',
   feedDigestKicker: '主要イシュー',
   feedDigestCount: 'ニュース {{count}}件',
   feedDigestSummary: 'ニュース {{count}}件 · 出所 {{sources}}件',

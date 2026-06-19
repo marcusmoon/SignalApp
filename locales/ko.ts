@@ -542,6 +542,7 @@ export const ko = {
   feedNewContentAvailable: '새 소식이 있어요 · 탭하여 새로고침',
   feedRefreshNoticeNews: '새 뉴스 {{count}}개가 있습니다.',
   feedRefreshNoticeVideo: '새 영상 {{count}}개가 있습니다.',
+  disclosuresRefreshNotice: '새 공시 {{count}}개가 있습니다.',
   feedDigestKicker: '주요 이슈',
   feedDigestCount: '뉴스 {{count}}건',
   feedDigestSummary: '뉴스 {{count}}건 · 출처 {{sources}}곳',

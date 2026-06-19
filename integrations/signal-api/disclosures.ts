@@ -40,6 +40,7 @@ export async function fetchSignalDisclosures(
     from?: string;
     to?: string;
   } = {},
+  _options?: { cacheMode?: 'use' | 'bypass' },
 ): Promise<SignalDisclosuresPage> {
   const json = await signalApi<{ data: SignalApiDisclosure[]; meta?: Partial<SignalNewsListMeta> }>(
     '/v1/disclosures',

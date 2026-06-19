@@ -1,10 +1,12 @@
 import * as WebBrowser from 'expo-web-browser';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack, type Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import type { AppTheme } from '@/constants/theme';
@@ -15,6 +17,7 @@ import type { SignalApiDisclosure } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
+import { markDisclosureFeedSeen } from '@/services/disclosureUnreadPreference';
 import { formatRelativeFromIso } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
 
@@ -54,13 +57,14 @@ export default function DisclosuresScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!hasSignalApi()) {
       setItems([]);
       setError(t('errorSignalApiShort'));
       setLoading(false);
-      return;
+      return [];
     }
     setError(null);
     try {
@@ -74,8 +78,10 @@ export default function DisclosuresScreen() {
         limit: 60,
       });
       setItems(page.items);
+      return page.items;
     } catch (e) {
       setError(formatSignalApiError(e, t, 'disclosuresLoadError'));
+      return [];
     } finally {
       setLoading(false);
     }
@@ -86,21 +92,36 @@ export default function DisclosuresScreen() {
     void load();
   }, [load]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!symbolFilter && items[0]?.id) {
+        void markDisclosureFeedSeen(items[0].id);
+      }
+    }, [items, symbolFilter]),
+  );
+
   const onRefresh = useCallback(async () => {
+    const prevIds = new Set(items.map((item) => item.id));
     setRefreshing(true);
+    setRefreshNotice(null);
     try {
-      await load();
+      const latest = await load();
+      const latestIds = latest.map((item) => item.id);
+      const newCount = latestIds.filter((id) => !prevIds.has(id)).length;
+      if (newCount > 0) {
+        setRefreshNotice(t('disclosuresRefreshNotice', { count: String(newCount) }));
+      }
     } finally {
       setRefreshing(false);
     }
-  }, [load]);
+  }, [items, load, t]);
 
   const emptyText =
     filter === 'watch' && watchlist.length === 0 ? t('symbolDetailNoDisclosures') : t('disclosuresEmpty');
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <Stack.Screen options={{ title: t('screenDisclosures') }} />
+      <Stack.Screen options={{ title: t('screenDisclosures'), headerShown: false }} />
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <FontAwesome name="chevron-left" size={17} color={theme.text} />
@@ -128,6 +149,11 @@ export default function DisclosuresScreen() {
           })}
         </View>
       )}
+      {refreshNotice ? (
+        <View style={styles.noticeWrap}>
+          <FeedUpdateBanner variant="notice" message={refreshNotice} />
+        </View>
+      ) : null}
       {loading ? (
         <View style={styles.loadingWrap}>
           <SignalLoadingIndicator message={t('commonLoading')} />
@@ -235,6 +261,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     symbolFilterText: { color: theme.green, fontSize: sf(13), fontWeight: '900' },
     loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    noticeWrap: { paddingHorizontal: 16 },
     error: {
       marginBottom: 12,
       padding: 12,

@@ -375,9 +375,11 @@ export const ko = {
   settingsFontSizeSection: '글꼴 크기',
   settingsFontSizeHint:
     '뉴스·시세·유튜브·더보기·브리핑·종목·캘린더·콜 요약·알림·설정·상단 바 등 본문 텍스트에 적용됩니다.',
-  settingsFontSizeCompact: '작게',
+  settingsFontSizeCompact: '매우 작게',
+  settingsFontSizeSmall: '작게',
   settingsFontSizeStandard: '기본',
-  settingsFontSizeComfortable: '크게',
+  settingsFontSizeLarge: '크게',
+  settingsFontSizeComfortable: '매우 크게',
   settingsFeedContentWeightSection: '피드 항목 굵기',
   settingsFeedContentWeightHint:
     '홈(시그널·관심종목·관련 뉴스), 뉴스·시세 목록, 유튜브 카드의 글자 굵기와 행 여백에 적용됩니다.',

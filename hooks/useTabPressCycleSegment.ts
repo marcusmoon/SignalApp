@@ -12,15 +12,18 @@ export function useTabPressCycleSegment<T extends string>(
   const navigation = useNavigation();
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('tabPress', () => {
-      if (!navigation.isFocused()) return;
-      if (!segment || segmentOrder.length < 2) return;
-      const idx = segmentOrder.indexOf(segment);
-      if (idx < 0) return;
-      const next = segmentOrder[(idx + 1) % segmentOrder.length];
-      if (next === segment) return;
-      onSelect(next);
-    });
+    const unsubscribe = (navigation as { addListener: (event: 'tabPress', callback: () => void) => () => void }).addListener(
+      'tabPress',
+      () => {
+        if (!navigation.isFocused()) return;
+        if (!segment || segmentOrder.length < 2) return;
+        const idx = segmentOrder.indexOf(segment);
+        if (idx < 0) return;
+        const next = segmentOrder[(idx + 1) % segmentOrder.length];
+        if (next === segment) return;
+        onSelect(next);
+      },
+    );
     return unsubscribe;
   }, [navigation, onSelect, segment, segmentOrder]);
 }

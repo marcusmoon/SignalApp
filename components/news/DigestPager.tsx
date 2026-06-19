@@ -1,5 +1,6 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import {
+  GestureResponderEvent,
   LayoutAnimation,
   Linking,
   NativeScrollEvent,
@@ -22,6 +23,7 @@ import type { NewsDigestItem } from '@/domain/news';
 
 // Must match listContent paddingHorizontal in newsStyles.ts
 const LIST_H_PAD = 16;
+const TAP_MOVE_THRESHOLD = 8;
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -73,16 +75,36 @@ const DigestCard = memo(function DigestCard({
   theme,
 }: DigestCardProps) {
   const { t, locale } = useLocale();
+  const pressStartRef = useRef<{ x: number; y: number } | null>(null);
   const summaryText = t('feedDigestSummary', {
     count: String(digest.count),
     sources: String(digest.sources.length),
   });
   const relativeLabel = digest.generatedAt ? relativeTime(digest.generatedAt, locale) : '';
+  const handlePressIn = useCallback((event: GestureResponderEvent) => {
+    pressStartRef.current = {
+      x: event.nativeEvent.pageX,
+      y: event.nativeEvent.pageY,
+    };
+  }, []);
+  const handlePress = useCallback(
+    (event: GestureResponderEvent) => {
+      const start = pressStartRef.current;
+      pressStartRef.current = null;
+      if (start) {
+        const dx = Math.abs(event.nativeEvent.pageX - start.x);
+        const dy = Math.abs(event.nativeEvent.pageY - start.y);
+        if (dx > TAP_MOVE_THRESHOLD || dy > TAP_MOVE_THRESHOLD) return;
+      }
+      onToggle(digest.id);
+    },
+    [digest.id, onToggle],
+  );
 
   return (
     <Pressable
-      onPress={() => onToggle(digest.id)}
-      delayPressIn={0}
+      onPress={handlePress}
+      onPressIn={handlePressIn}
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       accessibilityRole="button"
       accessibilityLabel={digest.title}
@@ -115,7 +137,6 @@ const DigestCard = memo(function DigestCard({
                 return (
                 <Pressable
                   key={i}
-                  delayPressIn={0}
                   onPress={
                     refUrl
                       ? (e) => {
@@ -230,6 +251,7 @@ export function DigestPager({ batches }: Props) {
         scrollEventThrottle={16}
         onMomentumScrollEnd={handleScrollEnd}
         onScrollEndDrag={handleScrollEnd}
+        directionalLockEnabled
         decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
         snapToInterval={pageWidth}
         snapToAlignment="start"

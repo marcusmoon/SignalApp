@@ -377,9 +377,11 @@ export const en = {
   settingsFontSizeSection: 'Font size',
   settingsFontSizeHint:
     'Scales body text across news, quotes, YouTube, more hub, briefing, symbol detail, calendar, call summary, alerts, settings, and the top header.',
-  settingsFontSizeCompact: 'Compact',
+  settingsFontSizeCompact: 'XS',
+  settingsFontSizeSmall: 'Small',
   settingsFontSizeStandard: 'Default',
-  settingsFontSizeComfortable: 'Comfortable',
+  settingsFontSizeLarge: 'Large',
+  settingsFontSizeComfortable: 'XL',
   settingsFeedContentWeightSection: 'Feed item weight',
   settingsFeedContentWeightHint:
     'Applies to home signals, watchlist, related news, news and quotes rows, and YouTube cards.',

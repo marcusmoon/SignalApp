@@ -2,14 +2,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = '@signal/font_size_preset_v1';
 
-export type FontSizePresetId = 'compact' | 'standard' | 'comfortable';
+export type FontSizePresetId = 'compact' | 'small' | 'standard' | 'large' | 'comfortable';
 
-const VALID = new Set<string>(['compact', 'standard', 'comfortable']);
+const VALID = new Set<string>(['compact', 'small', 'standard', 'large', 'comfortable']);
 
 /** UI 전역에 곱하는 배율 (1 = 기존 PRD 기준) */
 export const FONT_SIZE_PRESET_MULTIPLIER: Record<FontSizePresetId, number> = {
   compact: 0.9,
+  small: 0.95,
   standard: 1,
+  large: 1.06,
   comfortable: 1.12,
 };
 

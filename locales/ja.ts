@@ -377,9 +377,11 @@ export const ja = {
   settingsFontSizeSection: '文字サイズ',
   settingsFontSizeHint:
     'ニュース・相場・YouTube・その他・ブリーフィング・銘柄・カレンダー・コール要約・通知・設定・上部バーなどの本文に反映されます。',
-  settingsFontSizeCompact: '小',
+  settingsFontSizeCompact: '最小',
+  settingsFontSizeSmall: '小',
   settingsFontSizeStandard: '標準',
-  settingsFontSizeComfortable: '大',
+  settingsFontSizeLarge: '大',
+  settingsFontSizeComfortable: '最大',
   settingsFeedContentWeightSection: 'フィード項目の太さ',
   settingsFeedContentWeightHint:
     'ホーム（シグナル・ウォッチ・関連ニュース）、ニュース・株価一覧、YouTubeカードの文字の太さと行の余白に適用されます。',

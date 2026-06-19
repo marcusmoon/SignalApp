@@ -222,10 +222,12 @@ const LOCALE_LABEL: Record<AppLocale, MessageId> = {
   ja: 'localeNameJa',
 };
 
-const FONT_SIZE_PRESET_ORDER: FontSizePresetId[] = ['compact', 'standard', 'comfortable'];
+const FONT_SIZE_PRESET_ORDER: FontSizePresetId[] = ['compact', 'small', 'standard', 'large', 'comfortable'];
 const FONT_SIZE_PRESET_LABEL: Record<FontSizePresetId, MessageId> = {
   compact: 'settingsFontSizeCompact',
+  small: 'settingsFontSizeSmall',
   standard: 'settingsFontSizeStandard',
+  large: 'settingsFontSizeLarge',
   comfortable: 'settingsFontSizeComfortable',
 };
 
@@ -1997,7 +1999,10 @@ clearCalendarCache();
                       style={[
                         styles.langSegmentText,
                         fontSizePreset === id && styles.langSegmentTextActive,
-                      ]}>
+                      ]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.82}>
                       {t(FONT_SIZE_PRESET_LABEL[id])}
                     </Text>
                   </Pressable>

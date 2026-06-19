@@ -30,6 +30,7 @@ export const ko = {
   tabQuotes: '시세',
   tabCalls: '어닝',
   tabMore: '더보기',
+  tabDisclosures: '공시',
   newsOpenVideos: '영상',
   moreHubSegmentDragHandleA11y: '{{name}} 순서 바꾸기(드래그)',
   moreRefLinksKicker: '퀵 링크',

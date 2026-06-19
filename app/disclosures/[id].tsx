@@ -1,6 +1,6 @@
 import * as WebBrowser from 'expo-web-browser';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,7 +35,6 @@ function providerLabel(item: SignalApiDisclosure | null): string {
 export default function DisclosureDetailScreen() {
   const { id: rawId } = useLocalSearchParams<{ id?: string | string[] }>();
   const id = useMemo(() => paramId(rawId), [rawId]);
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
@@ -77,16 +76,8 @@ export default function DisclosureDetailScreen() {
   }, [load]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <Stack.Screen options={{ title: t('disclosuresDetailTitle'), headerShown: false }} />
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <FontAwesome name="chevron-left" size={17} color={theme.text} />
-          <Text style={styles.backText}>{t('commonBack')}</Text>
-        </Pressable>
-        <Text style={styles.title}>{t('disclosuresDetailTitle')}</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+    <SafeAreaView style={styles.safe} edges={['bottom']}>
+      <Stack.Screen options={{ title: t('disclosuresDetailTitle') }} />
       {loading ? (
         <View style={styles.loadingWrap}>
           <SignalLoadingIndicator message={t('commonLoading')} />
@@ -147,27 +138,6 @@ export default function DisclosureDetailScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    header: {
-      minHeight: 58,
-      paddingHorizontal: 16,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    backBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      paddingHorizontal: 10,
-      paddingVertical: 9,
-      borderRadius: 999,
-      backgroundColor: theme.bgElevated,
-    },
-    backText: { color: theme.text, fontSize: sf(14), fontWeight: '800' },
-    title: { color: theme.text, fontSize: sf(18), fontWeight: '900' },
-    headerSpacer: { width: 72 },
     loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     scroll: { padding: 16, gap: 12 },
     error: {

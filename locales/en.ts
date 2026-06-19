@@ -32,6 +32,7 @@ export const en = {
   tabQuotes: 'Quotes',
   tabCalls: 'Calls',
   tabMore: 'More',
+  tabDisclosures: 'Filings',
   newsOpenVideos: 'Video',
   moreHubSegmentDragHandleA11y: 'Reorder {{name}} (drag)',
   moreRefLinksKicker: 'Quick links',

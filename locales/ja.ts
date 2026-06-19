@@ -32,6 +32,7 @@ export const ja = {
   tabQuotes: '相場',
   tabCalls: '決算',
   tabMore: 'その他',
+  tabDisclosures: '開示',
   newsOpenVideos: '動画',
   moreHubSegmentDragHandleA11y: '{{name}}の順番を変更（ドラッグ）',
   moreRefLinksKicker: 'クイックリンク',

@@ -371,7 +371,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="disclosures"
         options={{
-          title: t('screenDisclosures'),
+          title: t('tabDisclosures'),
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="file-alt" color={color} focused={focused} showDot={disclosureHasUnread} />
           ),

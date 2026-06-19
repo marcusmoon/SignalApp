@@ -1,10 +1,10 @@
 import * as WebBrowser from 'expo-web-browser';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Stack, type Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
@@ -12,9 +12,21 @@ import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicat
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { tabBarBottomInset } from '@/constants/tabBar';
+import {
+  SEGMENT_TAB_ACTIVE_TEXT,
+  SEGMENT_TAB_BTN_PADDING_V,
+  SEGMENT_TAB_BTN_RADIUS,
+  SEGMENT_TAB_FONT_SIZE,
+  SEGMENT_TAB_FONT_WEIGHT,
+  SEGMENT_TAB_GAP,
+  SEGMENT_TAB_LINE_HEIGHT,
+  SEGMENT_TAB_OUTER_RADIUS,
+  SEGMENT_TAB_PADDING,
+} from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useTabPressCycleSegment } from '@/hooks/useTabPressCycleSegment';
 import { fetchSignalDisclosures } from '@/integrations/signal-api/disclosures';
 import type { SignalApiDisclosure } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -25,6 +37,8 @@ import { formatRelativeFromIso } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
 
 type FilterKey = 'all' | 'us' | 'kr' | 'watch';
+
+const FILTER_ORDER: FilterKey[] = ['all', 'us', 'kr', 'watch'];
 
 const FILTERS: { key: FilterKey; label: MessageId }[] = [
   { key: 'all', label: 'disclosuresFilterAll' },
@@ -120,93 +134,124 @@ export default function DisclosuresScreen() {
     }
   }, [items, load, t]);
 
+  const onPickFilter = useCallback(
+    (key: FilterKey) => {
+      if (filter === key) return;
+      setLoading(true);
+      setItems([]);
+      setError(null);
+      setRefreshNotice(null);
+      setFilter(key);
+    },
+    [filter],
+  );
+
+  useTabPressCycleSegment(symbolFilter ? null : filter, FILTER_ORDER, onPickFilter);
+
+  const clearSymbolFilter = useCallback(() => {
+    router.setParams({ symbol: undefined });
+  }, [router]);
+
   const emptyText =
     filter === 'watch' && watchlist.length === 0 ? t('symbolDetailNoDisclosures') : t('disclosuresEmpty');
 
+  const bottomPad = 24 + tabBarHeight + tabBarBottomInset(insets.bottom);
+
+  const listHeaderEl = useMemo(
+    () => (
+      <View style={styles.listHeader}>
+        {symbolFilter ? (
+          <View style={styles.symbolFilterRow}>
+            <Text style={styles.symbolFilterText} numberOfLines={1}>
+              {symbolFilter}
+            </Text>
+            <Pressable
+              onPress={clearSymbolFilter}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('feedTagFilterClear')}>
+              <Text style={styles.symbolFilterClear}>{t('feedTagFilterClear')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+      </View>
+    ),
+    [clearSymbolFilter, error, styles, symbolFilter, t],
+  );
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <Stack.Screen options={{ title: t('screenDisclosures'), headerShown: false }} />
       <SignalHeader compact onBrandPress={() => void onRefresh()} />
-      <View style={styles.header}>
-        {symbolFilter ? (
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <FontAwesome name="chevron-left" size={17} color={theme.text} />
-            <Text style={styles.backText}>{t('commonBack')}</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.headerSpacer} />
-        )}
-        <Text style={styles.title}>{t('screenDisclosures')}</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-      {symbolFilter ? (
-        <View style={styles.symbolFilterBar}>
-          <Text style={styles.symbolFilterText}>{symbolFilter}</Text>
-        </View>
-      ) : (
-        <View style={styles.filterRow}>
-          {FILTERS.map((f) => {
-            const selected = filter === f.key;
-            return (
-              <Pressable
-                key={f.key}
-                onPress={() => setFilter(f.key)}
-                style={[styles.filterChip, selected && styles.filterChipActive]}>
-                <Text style={[styles.filterText, selected && styles.filterTextActive]}>{t(f.label)}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      )}
-      {refreshNotice ? (
-        <View style={styles.noticeWrap}>
-          <FeedUpdateBanner variant="notice" message={refreshNotice} />
-        </View>
-      ) : null}
-      {loading ? (
-        <View style={styles.loadingWrap}>
-          <SignalLoadingIndicator message={t('commonLoading')} />
-        </View>
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{
-            padding: 16,
-            paddingBottom: 24 + tabBarHeight + tabBarBottomInset(insets.bottom),
-          }}
-          refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          ListHeaderComponent={error ? <Text style={styles.error}>{error}</Text> : null}
-          ListEmptyComponent={<Text style={styles.empty}>{emptyText}</Text>}
-          renderItem={({ item }) => (
-            <Pressable
-              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-              onPress={() => router.push(`/disclosures/${encodeURIComponent(item.id)}` as Href)}>
-              <View style={styles.cardTop}>
-                <View style={styles.badges}>
-                  <Text style={styles.badge}>{providerLabel(item)}</Text>
-                  {item.formType ? <Text style={styles.badgeMuted}>{item.formType}</Text> : null}
-                </View>
-                <Text style={styles.time}>{disclosureTime(item, locale)}</Text>
-              </View>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              {item.summary ? <Text style={styles.summary} numberOfLines={3}>{item.summary}</Text> : null}
-              <View style={styles.cardBottom}>
-                <Text style={styles.symbol}>{item.symbol || item.companyName || '—'}</Text>
-                {item.url ? (
+      <View style={styles.mainColumn}>
+        <View style={styles.topFixed}>
+          {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
+          {!symbolFilter ? (
+            <View style={styles.segment}>
+              {FILTERS.map((f) => {
+                const selected = filter === f.key;
+                return (
                   <Pressable
-                    onPress={() => void WebBrowser.openBrowserAsync(item.url!)}
-                    hitSlop={10}
-                    style={styles.openBtn}>
-                    <Text style={styles.openText}>{t('disclosuresOriginalOpen')}</Text>
-                    <FontAwesome name="external-link" size={12} color={theme.green} />
+                    key={f.key}
+                    onPress={() => onPickFilter(f.key)}
+                    style={[styles.segBtn, selected && styles.segBtnActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}>
+                    <Text style={[styles.segText, selected && styles.segTextActive]}>{t(f.label)}</Text>
                   </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+        </View>
+        {loading ? (
+          <View style={styles.loadingWrap}>
+            <SignalLoadingIndicator message={t('commonLoading')} />
+          </View>
+        ) : (
+          <FlatList
+            data={items}
+            keyExtractor={(item) => item.id}
+            style={styles.list}
+            contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
+            ListHeaderComponent={listHeaderEl}
+            refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            ListEmptyComponent={<Text style={styles.empty}>{emptyText}</Text>}
+            removeClippedSubviews={Platform.OS === 'android'}
+            renderItem={({ item }) => (
+              <Pressable
+                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+                onPress={() => router.push(`/disclosures/${encodeURIComponent(item.id)}` as Href)}>
+                <View style={styles.cardTop}>
+                  <View style={styles.badges}>
+                    <Text style={styles.badge}>{providerLabel(item)}</Text>
+                    {item.formType ? <Text style={styles.badgeMuted}>{item.formType}</Text> : null}
+                  </View>
+                  <Text style={styles.time}>{disclosureTime(item, locale)}</Text>
+                </View>
+                <Text style={styles.cardTitle}>{item.title}</Text>
+                {item.summary ? (
+                  <Text style={styles.summary} numberOfLines={3}>
+                    {item.summary}
+                  </Text>
                 ) : null}
-              </View>
-            </Pressable>
-          )}
-        />
-      )}
+                <View style={styles.cardBottom}>
+                  <Text style={styles.symbol}>{item.symbol || item.companyName || '—'}</Text>
+                  {item.url ? (
+                    <Pressable
+                      onPress={() => void WebBrowser.openBrowserAsync(item.url!)}
+                      hitSlop={10}
+                      style={styles.openBtn}>
+                      <Text style={styles.openText}>{t('disclosuresOriginalOpen')}</Text>
+                      <FontAwesome name="external-link" size={12} color={theme.green} />
+                    </Pressable>
+                  ) : null}
+                </View>
+              </Pressable>
+            )}
+          />
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -214,66 +259,76 @@ export default function DisclosuresScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    header: {
-      minHeight: 58,
+    mainColumn: { flex: 1, minHeight: 0 },
+    topFixed: {
+      flexShrink: 0,
+      zIndex: 2,
+      elevation: Platform.OS === 'android' ? 2 : 0,
       paddingHorizontal: 16,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      paddingTop: 8,
+      paddingBottom: 10,
+      backgroundColor: theme.bg,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
-    backBtn: {
+    list: { flex: 1, minHeight: 0 },
+    listContent: { paddingHorizontal: 16, paddingTop: 0 },
+    listHeader: { paddingTop: 4 },
+    segment: {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      paddingHorizontal: 10,
-      paddingVertical: 9,
-      borderRadius: 999,
       backgroundColor: theme.bgElevated,
-    },
-    backText: { color: theme.text, fontSize: sf(14), fontWeight: '800' },
-    title: { color: theme.text, fontSize: sf(18), fontWeight: '900' },
-    headerSpacer: { width: 72 },
-    filterRow: {
-      flexDirection: 'row',
-      gap: 8,
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 8,
-    },
-    filterChip: {
-      flex: 1,
-      minHeight: 40,
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
+      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.card,
-      paddingHorizontal: 8,
-    },
-    filterChipActive: {
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.green,
-    },
-    filterText: { color: theme.textMuted, fontSize: sf(12), fontWeight: '900' },
-    filterTextActive: { color: '#fff' },
-    symbolFilterBar: {
-      marginHorizontal: 16,
-      marginTop: 12,
+      padding: SEGMENT_TAB_PADDING,
       marginBottom: 8,
-      minHeight: 40,
-      borderRadius: 12,
+      gap: SEGMENT_TAB_GAP,
+    },
+    segBtn: {
+      flex: 1,
+      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
+      borderRadius: SEGMENT_TAB_BTN_RADIUS,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    segBtnActive: {
+      backgroundColor: theme.green,
+    },
+    segText: {
+      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
+      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
+      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
+      color: theme.textDim,
+    },
+    segTextActive: {
+      color: SEGMENT_TAB_ACTIVE_TEXT,
+    },
+    symbolFilterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginBottom: 10,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      borderRadius: 10,
+      backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
     },
-    symbolFilterText: { color: theme.green, fontSize: sf(13), fontWeight: '900' },
+    symbolFilterText: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: sf(12),
+      fontWeight: '800',
+      color: theme.text,
+    },
+    symbolFilterClear: {
+      fontSize: sf(12),
+      fontWeight: '800',
+      color: theme.green,
+    },
     loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    noticeWrap: { paddingHorizontal: 16 },
     error: {
       marginBottom: 12,
       padding: 12,

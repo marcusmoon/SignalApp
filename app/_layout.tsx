@@ -168,6 +168,7 @@ function RootLayoutNav() {
           'terms-history': t('termsHistoryScreenTitle'),
           oauth: t('screenAccount'),
           'symbol/[ticker]': t('screenSymbolDetail'),
+          'disclosures/[id]': t('disclosuresDetailTitle'),
         };
         return {
           title: titleByName[route.name] ?? route.name,

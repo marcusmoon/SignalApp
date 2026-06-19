@@ -4,7 +4,6 @@ import { applyCorsHeadersIfNeeded, tryHandleCorsPreflight } from './cors.mjs';
 import { handleAdminAppUsersRoutes } from './admin/api/appUsers.mjs';
 import { handleAdminCalendarRoutes } from './admin/api/calendar.mjs';
 import { handleAdminDataResetRoutes } from './admin/api/dataReset.mjs';
-import { handleAdminInsightsRoutes } from './admin/api/insights.mjs';
 import { handleAdminJobsRoutes } from './admin/api/jobs.mjs';
 import { handleAdminLegalTermsRoutes } from './admin/api/legalTerms.mjs';
 import { handleAdminNewsRoutes } from './admin/api/news.mjs';
@@ -48,7 +47,6 @@ const ADMIN_API_HANDLERS = [
   handleAdminLegalTermsRoutes,
   handleAdminJobsRoutes,
   handleAdminNotificationsRoutes,
-  handleAdminInsightsRoutes,
   handleAdminNewsRoutes,
   handleAdminCalendarRoutes,
   handleAdminYoutubeRoutes,

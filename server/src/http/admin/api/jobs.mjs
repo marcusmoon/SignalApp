@@ -261,19 +261,6 @@ function dataAreaSummary(db, recentRuns, latestRunByJob) {
         symbols: new Set(db.coinMarkets.map((item) => item.symbol).filter(Boolean)).size,
       },
     },
-    {
-      id: 'insights',
-      area: 'signal',
-      domain: 'insights',
-      resultKind: 'insights',
-      count: db.insightItems.length,
-      latestItemAt: latestIso(db.insightItems, ['generatedAt', 'updatedAt', 'createdAt']),
-      quality: {
-        pushCandidates: db.insightItems.filter((item) => item.pushCandidate).length,
-        hotSignals: db.insightItems.filter((item) => Number(item.score || 0) >= 55).length,
-        queuedNotifications: db.notificationItems.filter((item) => item.channel === 'push' && item.status === 'queued').length,
-      },
-    },
   ];
 
   return areas.map((area) => {
@@ -360,7 +347,6 @@ function dashboardSummary(db) {
       youtube: db.youtubeVideos.length,
       marketQuotes: db.marketQuotes.length,
       coinMarkets: db.coinMarkets.length,
-      insights: db.insightItems.length,
       notifications: db.notificationItems.length,
       queuedNotifications: db.notificationItems.filter((item) => item.channel === 'push' && item.status === 'queued').length,
       jobs: db.pollingJobs.length,
@@ -374,9 +360,6 @@ function dashboardSummary(db) {
     dataAreas: dataAreaSummary(db, recentRuns, latestRunByJob),
     latestNews,
     latestYoutube,
-    latestInsights: [...db.insightItems]
-      .sort((a, b) => Number(b.score || 0) - Number(a.score || 0) || String(b.generatedAt || '').localeCompare(String(a.generatedAt || '')))
-      .slice(0, 10),
   };
 }
 
@@ -391,7 +374,6 @@ async function readDashboardSummaryContext() {
     youtubeVideos,
     marketQuotes,
     coinMarkets,
-    insightItems,
     notificationItems,
   ] = await Promise.all([
     listPollingJobs(),
@@ -403,7 +385,6 @@ async function readDashboardSummaryContext() {
     listCollectionPayloads('youtubeVideos'),
     listCollectionPayloads('marketQuotes'),
     listCollectionPayloads('coinMarkets'),
-    listCollectionPayloads('insightItems'),
     listCollectionPayloads('notificationItems'),
   ]);
   return {
@@ -416,7 +397,6 @@ async function readDashboardSummaryContext() {
     youtubeVideos,
     marketQuotes,
     coinMarkets,
-    insightItems,
     notificationItems,
   };
 }

@@ -28,7 +28,6 @@ export function applyAdminLanguage() {
     monitoring: 'navMonitoring',
     errors: 'navErrors',
     jobs: 'navJobs',
-    insights: 'navInsights',
     news: 'navNews',
     youtube: 'navYoutube',
     calendar: 'navCalendar',

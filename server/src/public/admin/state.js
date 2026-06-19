@@ -51,20 +51,6 @@ export const state = {
   jobRunsSelected: [], // job run row keys (prefer run.id)
   jobRunsLastRows: [],
   errorRows: [],
-  insightRows: [],
-  insightsPage: 1,
-  insightsTotalPages: 1,
-  insightsTotal: 0,
-  insightFilters: {
-    range: '7d',
-    from: '',
-    to: '',
-    kind: '',
-    level: '',
-    push: '',
-    q: '',
-    pageSize: '30',
-  },
   jobs: [],
   jobListSelected: [], // jobKey values from filtered job list
   jobsFilteredLast: [],

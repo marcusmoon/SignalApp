@@ -853,7 +853,6 @@ export default function FeedScreen() {
         setLoading(true);
         setItems([]);
         setServerRows([]);
-        setServerDigestRows([]);
         setHasMore(false);
         void fetchSignalNews(
           {

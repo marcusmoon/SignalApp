@@ -174,6 +174,7 @@ function isRecent(item, minMs) {
 function categoryOf(item) {
   const category = clean(item?.category).toLowerCase();
   if (category === 'crypto') return 'crypto';
+  if (category === 'korea') return 'korea';
   return 'global';
 }
 
@@ -205,7 +206,7 @@ export function generateNewsDigestItems(db = {}, params = {}) {
   const sourceLimit = Math.max(20, Math.min(500, Number(params.sourceLimit) || 180));
   const maxItemsPerCategory = Math.max(1, Math.min(12, Number(params.maxItemsPerCategory) || 6));
   const categories = new Set(
-    (Array.isArray(params.categories) && params.categories.length > 0 ? params.categories : ['global', 'crypto'])
+    (Array.isArray(params.categories) && params.categories.length > 0 ? params.categories : ['global', 'crypto', 'korea'])
       .map((category) => clean(category).toLowerCase())
       .filter(Boolean),
   );

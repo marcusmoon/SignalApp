@@ -51,7 +51,7 @@ import {
 
 const TAB_ICON_SIZE = 25;
 
-type TabBarIconName = 'newspaper' | 'chart-line' | 'highlighter' | 'youtube' | 'th-large';
+type TabBarIconName = 'newspaper' | 'file-alt' | 'chart-line' | 'highlighter' | 'youtube' | 'th-large';
 
 function TabBarIcon({
   name,
@@ -104,6 +104,10 @@ export default function TabLayout() {
     const route = state.routes[state.index];
     return route?.name === 'signal';
   });
+  const disclosureTabFocused = useNavigationState((state) => {
+    const route = state.routes[state.index];
+    return route?.name === 'disclosures';
+  });
 
   const refreshNewsUnreadBadge = useCallback(async () => {
     if (!hasSignalApi()) {
@@ -144,13 +148,17 @@ export default function TabLayout() {
       setDisclosureHasUnread(false);
       return;
     }
+    if (disclosureTabFocused) {
+      setDisclosureHasUnread(false);
+      return;
+    }
     try {
       setDisclosureHasUnread(await refreshDisclosureUnreadFromServer());
     } catch {
       const cached = await loadDisclosureUnreadCached();
       if (cached !== null) setDisclosureHasUnread(cached);
     }
-  }, []);
+  }, [disclosureTabFocused]);
 
   useEffect(() => {
     let cancelled = false;
@@ -349,7 +357,7 @@ export default function TabLayout() {
       tabBar={isWeb ? undefined : (props) => <SignalFloatingTabBar {...props} />}
       screenOptions={screenOptions}
       detachInactiveScreens={false}>
-      {/* 순서: 뉴스 · 시그널 · 시세 · 더보기. 유튜브는 더보기 허브에서 진입한다. */}
+      {/* 순서: 뉴스 · 공시 · 시그널 · 시세 · 더보기. 유튜브는 더보기 허브에서 진입한다. */}
       <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen
         name="news"
@@ -357,6 +365,15 @@ export default function TabLayout() {
           title: t('tabNews'),
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="newspaper" color={color} focused={focused} showDot={newsHasUnread} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="disclosures"
+        options={{
+          title: t('screenDisclosures'),
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="file-alt" color={color} focused={focused} showDot={disclosureHasUnread} />
           ),
         }}
       />
@@ -380,9 +397,7 @@ export default function TabLayout() {
         name="more"
         options={{
           title: t('tabMore'),
-          tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="th-large" color={color} focused={focused} showDot={disclosureHasUnread} />
-          ),
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="th-large" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen

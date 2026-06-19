@@ -25,19 +25,12 @@ import {
   loadMoreReferenceLinksVisible,
   subscribeMoreReferenceLinksVisibilityChanged,
 } from '@/services/moreReferenceLinksPreference';
-import {
-  loadDisclosureUnreadCached,
-  refreshDisclosureUnreadFromServer,
-  subscribeDisclosureSeenChanged,
-} from '@/services/disclosureUnreadPreference';
-import { hasSignalApi } from '@/services/env';
 
 const HUB_META: Record<
   MoreHubRouteKey,
   { href: Href; icon: ComponentProps<typeof FontAwesome>['name']; titleId: MessageId }
 > = {
   youtube: { href: '/youtube' as Href, icon: 'youtube-play', titleId: 'tabYoutube' },
-  disclosures: { href: '/disclosures' as Href, icon: 'file-text-o', titleId: 'screenDisclosures' },
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
   settings: { href: '/settings' as Href, icon: 'cog', titleId: 'screenSettings' },
 };
@@ -58,7 +51,6 @@ export default function MoreHubScreen() {
   const [order, setOrder] = useState<MoreHubRouteKey[]>([]);
   const [orderReady, setOrderReady] = useState(false);
   const [refLinksVisible, setRefLinksVisible] = useState(true);
-  const [disclosuresHasUnread, setDisclosuresHasUnread] = useState(false);
 
   const reloadOrder = useCallback(async () => {
     const o = await loadMoreHubOrder();
@@ -69,19 +61,6 @@ export default function MoreHubScreen() {
   const reloadRefLinksPref = useCallback(async () => {
     const v = await loadMoreReferenceLinksVisible();
     setRefLinksVisible(v);
-  }, []);
-
-  const reloadDisclosureUnread = useCallback(async () => {
-    if (!hasSignalApi()) {
-      setDisclosuresHasUnread(false);
-      return;
-    }
-    try {
-      setDisclosuresHasUnread(await refreshDisclosureUnreadFromServer());
-    } catch {
-      const cached = await loadDisclosureUnreadCached();
-      if (cached !== null) setDisclosuresHasUnread(cached);
-    }
   }, []);
 
   useEffect(() => {
@@ -96,25 +75,17 @@ export default function MoreHubScreen() {
     });
   }, [reloadRefLinksPref]);
 
-  useEffect(() => {
-    return subscribeDisclosureSeenChanged(() => {
-      void reloadDisclosureUnread();
-    });
-  }, [reloadDisclosureUnread]);
-
   useFocusEffect(
     useCallback(() => {
       void reloadOrder();
       void reloadRefLinksPref();
-      void reloadDisclosureUnread();
-    }, [reloadOrder, reloadRefLinksPref, reloadDisclosureUnread]),
+    }, [reloadOrder, reloadRefLinksPref]),
   );
 
   const onHeaderRefresh = useCallback(() => {
     void reloadOrder();
     void reloadRefLinksPref();
-    void reloadDisclosureUnread();
-  }, [reloadOrder, reloadRefLinksPref, reloadDisclosureUnread]);
+  }, [reloadOrder, reloadRefLinksPref]);
 
   const listFooter = useMemo(
     () => (
@@ -160,7 +131,6 @@ export default function MoreHubScreen() {
                 accessibilityLabel={name}>
                 <View style={styles.iconCircle}>
                   <FontAwesome name={meta.icon} size={18} color={theme.green} />
-                  {item === 'disclosures' && disclosuresHasUnread ? <View style={styles.unreadDot} /> : null}
                 </View>
                 <Text style={styles.rowTitle} numberOfLines={2}>
                   {name}
@@ -206,17 +176,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,
-    },
-    unreadDot: {
-      position: 'absolute',
-      top: -2,
-      right: -2,
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: '#F04452',
-      borderWidth: 1,
-      borderColor: theme.card,
     },
     rowTitle: {
       flex: 1,

@@ -1,6 +1,7 @@
 import * as WebBrowser from 'expo-web-browser';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack, type Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -8,7 +9,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -48,6 +51,7 @@ export default function DisclosuresScreen() {
   );
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -122,11 +126,16 @@ export default function DisclosuresScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <Stack.Screen options={{ title: t('screenDisclosures'), headerShown: false }} />
+      <SignalHeader compact onBrandPress={() => void onRefresh()} />
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <FontAwesome name="chevron-left" size={17} color={theme.text} />
-          <Text style={styles.backText}>{t('commonBack')}</Text>
-        </Pressable>
+        {symbolFilter ? (
+          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+            <FontAwesome name="chevron-left" size={17} color={theme.text} />
+            <Text style={styles.backText}>{t('commonBack')}</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.headerSpacer} />
+        )}
         <Text style={styles.title}>{t('screenDisclosures')}</Text>
         <View style={styles.headerSpacer} />
       </View>
@@ -162,7 +171,10 @@ export default function DisclosuresScreen() {
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ padding: 16, paddingBottom: 30 + insets.bottom }}
+          contentContainerStyle={{
+            padding: 16,
+            paddingBottom: 24 + tabBarHeight + tabBarBottomInset(insets.bottom),
+          }}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListHeaderComponent={error ? <Text style={styles.error}>{error}</Text> : null}
           ListEmptyComponent={<Text style={styles.empty}>{emptyText}</Text>}

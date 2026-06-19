@@ -246,6 +246,7 @@ const APPEARANCE_MODE_LABEL: Record<ThemeAppearanceMode, MessageId> = {
 
 const MAIN_ENTRY_LABEL: Record<MainEntryKey, MessageId> = {
   news: 'settingsEntryNews',
+  disclosures: 'screenDisclosures',
   signal: 'settingsEntrySignal',
   quotes: 'settingsEntryQuotes',
   more: 'settingsEntryMore',

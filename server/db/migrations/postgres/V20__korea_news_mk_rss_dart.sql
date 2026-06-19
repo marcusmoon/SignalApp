@@ -65,7 +65,12 @@ VALUES (
   'dart',
   900,
   true,
-  $json${"provider":"dart","enabled":true,"apiKey":"","updatedAt":"2026-06-19T00:00:00.000Z"}$json$::jsonb,
+  jsonb_build_object(
+    'provider', 'dart',
+    'enabled', true,
+    'apiKey', '',
+    'updatedAt', '2026-06-19T00:00:00.000Z'
+  ),
   '2026-06-19T00:00:00.000Z'::timestamptz
 )
 ON CONFLICT (provider) DO NOTHING;

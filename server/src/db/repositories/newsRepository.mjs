@@ -152,6 +152,7 @@ export async function queryPublicNewsSourceRows(options = {}) {
       name: source.name || source.id,
       category: source.category || 'global',
       enabled: source.enabled !== false,
+      order: Number(source.order) || 0,
     }));
 }
 

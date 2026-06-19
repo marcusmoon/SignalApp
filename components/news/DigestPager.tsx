@@ -194,7 +194,6 @@ type Props = {
 
 export function DigestPager({ batches }: Props) {
   const { theme, scaleFont } = useSignalTheme();
-  const { t } = useLocale();
   const { width: screenWidth } = useWindowDimensions();
   const pageWidth = screenWidth - LIST_H_PAD * 2;
   const [pageIndex, setPageIndex] = useState(0);
@@ -236,13 +235,6 @@ export function DigestPager({ batches }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.kicker}>
-          <FontAwesome name="bolt" size={11} color={theme.green} />
-          <Text style={styles.kickerText}>{t('feedDigestKicker')}</Text>
-        </View>
-      </View>
-
       <ScrollView
         horizontal
         nestedScrollEnabled
@@ -290,28 +282,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     container: {
       marginBottom: 8,
     },
-    sectionHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 8,
-    },
-    kicker: {
-      minHeight: 22,
-      paddingHorizontal: 8,
-      borderRadius: 999,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    kickerText: {
-      fontSize: sf(11),
-      lineHeight: sf(15),
-      fontWeight: '900',
-      color: theme.green,
-    },
     page: {
       gap: 8,
     },
@@ -339,18 +309,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignItems: 'center',
     },
     aiBadge: {
-      paddingHorizontal: 7,
-      paddingVertical: 2,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
       borderRadius: 999,
-      backgroundColor: `${theme.accentBlue}18`,
+      backgroundColor: theme.accentBlue,
       borderWidth: 1,
-      borderColor: `${theme.accentBlue}44`,
+      borderColor: theme.accentBlue,
     },
     aiBadgeText: {
       fontSize: sf(10),
       lineHeight: sf(15),
       fontWeight: '900',
-      color: theme.accentBlue,
+      color: '#FFFFFF',
     },
     topicChip: {
       overflow: 'hidden',

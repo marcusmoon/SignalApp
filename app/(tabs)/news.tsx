@@ -418,7 +418,11 @@ export default function FeedScreen() {
       const pageLimit = FEED_PAGE_GLOBAL;
       const [catalogRows, firstPageResult, digestPage] = await Promise.all([
         fetchSignalNewsSources({ category: 'global' }, { cacheMode })
-          .then((cat) => cat.map((c) => ({ name: c.name, enabled: c.enabled, order: c.order })))
+          .then((cat) =>
+            cat
+              .filter((c) => String(c.category || 'global').toLowerCase() === 'global')
+              .map((c) => ({ name: c.name, enabled: c.enabled, order: c.order })),
+          )
           .catch(() => [] as { name: string; enabled: boolean; order: number }[]),
         fetchSignalNews(
           {
@@ -465,7 +469,9 @@ export default function FeedScreen() {
       setServerDigestRows(digestPage?.items || []);
       setHasMore(meta.hasMore);
 
-      const mergedForSources = [...probe, ...firstPage];
+      const mergedForSources = [...probe, ...firstPage].filter(
+        (row) => row.category === 'global' || String(row.provider || '') === 'financialjuice',
+      );
       setSignalNewsPool(mergedForSources);
       const rawSources = uniqueSignalSources(mergedForSources);
       const sources =

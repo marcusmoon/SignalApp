@@ -19,6 +19,7 @@ function aliasKey(raw) {
 function normalizeNewsCategory(raw) {
   const c = String(raw || '').trim().toLowerCase();
   if (c === 'crypto') return 'crypto';
+  if (c === 'korea') return 'korea';
   // Treat unknown/legacy as global for app UX.
   return 'global';
 }

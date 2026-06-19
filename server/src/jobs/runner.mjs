@@ -26,6 +26,7 @@ import { notificationsFromInsights } from '../notifications/outbox.mjs';
 import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
 import { fetchNewswireRssNews } from '../providers/news/rssNews.mjs';
+import { fetchDartFilings } from '../providers/news/dartFilings.mjs';
 import { fetchSecEdgarFilings } from '../providers/news/secEdgar.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
 import { fetchYoutubeEconomy, fetchYoutubeVideosByIds } from '../providers/youtube/youtube.mjs';
@@ -284,6 +285,11 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
     const listKey = params?.listKey || 'default_watchlist';
     const symbols = Array.isArray(params?.symbols) && params.symbols.length > 0 ? params.symbols : marketListSymbols(dbBefore, listKey);
     return { kind: 'news', rows: await fetchSecEdgarFilings({ ...(params || {}), symbols }) };
+  }
+  if (effective.provider === 'dart' && effective.handler === 'company_filings') {
+    const listKey = params?.listKey || 'korea_watchlist';
+    const symbols = Array.isArray(params?.symbols) && params.symbols.length > 0 ? params.symbols : marketListSymbols(dbBefore, listKey);
+    return { kind: 'news', rows: await fetchDartFilings({ ...(params || {}), symbols }) };
   }
   if (effective.provider === 'finnhub' && effective.handler === 'economic_calendar') {
     const rows = await fetchFinnhubEconomicCalendar(params || {});

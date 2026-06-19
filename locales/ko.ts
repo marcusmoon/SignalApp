@@ -499,6 +499,7 @@ export const ko = {
   insightCalendarToday: '오늘로 이동',
   feedSegmentWatch: '내 관심',
   feedSegmentGlobal: '글로벌',
+  feedSegmentKorea: '한국',
   feedSegmentCrypto: '코인',
   feedSegmentVideo: '영상',
   feedEmptyWatch: '관심종목 뉴스가 없습니다.',

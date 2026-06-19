@@ -4,6 +4,7 @@ import type { NewsSegmentKey } from '@/constants/newsSegment';
 import { isFlashNews } from './flash';
 
 export const FEED_PAGE_GLOBAL = 20;
+export const FEED_PAGE_KOREA = 20;
 export const FEED_PAGE_WATCH = 40;
 export const FEED_PAGE_CRYPTO = 25;
 export const FEED_PAGE_VIDEO = 20;
@@ -13,6 +14,7 @@ export const EMPTY_FILTER_SENTINEL = '__signal_no_match__';
 export const NEWS_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
   watch: 'feedSegmentWatch',
   global: 'feedSegmentGlobal',
+  korea: 'feedSegmentKorea',
   crypto: 'feedSegmentCrypto',
   video: 'feedSegmentVideo',
 };

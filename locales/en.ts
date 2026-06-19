@@ -504,6 +504,7 @@ export const en = {
   insightCalendarToday: 'Back to today',
   feedSegmentWatch: 'My watch',
   feedSegmentGlobal: 'Global',
+  feedSegmentKorea: 'Korea',
   feedSegmentCrypto: 'Crypto',
   feedSegmentVideo: 'Video',
   feedEmptyWatch: 'No watchlist news.',

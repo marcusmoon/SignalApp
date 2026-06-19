@@ -33,6 +33,7 @@ export type SignalNewsListMeta = {
 export type SignalApiNewsDigestSourceRef = {
   type: 'news' | string;
   id: string;
+  newsId?: string;
   title: string;
   url: string | null;
   sourceName: string;

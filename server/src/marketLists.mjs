@@ -1,4 +1,11 @@
-export const MARKET_LIST_KEYS = ['mega_cap', 'mcap_universe', 'mcap_top_symbols', 'popular_symbols', 'default_watchlist'];
+export const MARKET_LIST_KEYS = [
+  'mega_cap',
+  'mcap_universe',
+  'mcap_top_symbols',
+  'popular_symbols',
+  'default_watchlist',
+  'korea_watchlist',
+];
 
 export function normalizeMarketSymbol(value) {
   return String(value || '')

@@ -94,6 +94,7 @@ export const config = {
   youtubeApiKey: process.env.YOUTUBE_API_KEY || '',
   ninjasKey: process.env.NINJAS_KEY || '',
   secUserAgent: process.env.SEC_USER_AGENT || process.env.SIGNAL_SEC_USER_AGENT || '',
+  dartApiKey: process.env.DART_API_KEY || process.env.OPENDART_API_KEY || '',
   translationProvider: process.env.TRANSLATION_PROVIDER || 'mock',
   translationModel: process.env.TRANSLATION_MODEL || 'mock-ko-news-v1',
 };

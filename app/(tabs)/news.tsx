@@ -40,6 +40,7 @@ import {
   buildSourcesFromCatalog,
   FEED_PAGE_CRYPTO,
   FEED_PAGE_GLOBAL,
+  FEED_PAGE_KOREA,
   FEED_PAGE_VIDEO,
   FEED_PAGE_WATCH,
   filterNewsRows,
@@ -163,10 +164,15 @@ export default function FeedScreen() {
   const [filterDraftSources, setFilterDraftSources] = useState<string[]>([]);
   const [globalFilter, setGlobalFilter] = useState<NewsQuickFilterKind>('all');
   const [cryptoFilter, setCryptoFilter] = useState<NewsQuickFilterKind>('all');
+  const [koreaFilter, setKoreaFilter] = useState<NewsQuickFilterKind>('all');
   const [cryptoSourceOptions, setCryptoSourceOptions] = useState<string[]>([]);
+  const [koreaSourceOptions, setKoreaSourceOptions] = useState<string[]>([]);
   const [cryptoSelectedSources, setCryptoSelectedSources] = useState<string[] | null>(null);
+  const [koreaSelectedSources, setKoreaSelectedSources] = useState<string[] | null>(null);
   const [cryptoDraftSources, setCryptoDraftSources] = useState<string[]>([]);
+  const [koreaDraftSources, setKoreaDraftSources] = useState<string[]>([]);
   const [cryptoSourceModalVisible, setCryptoSourceModalVisible] = useState(false);
+  const [koreaSourceModalVisible, setKoreaSourceModalVisible] = useState(false);
   const [watchFilter, setWatchFilter] = useState<WatchFilterKind>('all');
   const [watchSymbolOptions, setWatchSymbolOptions] = useState<string[]>([]);
   const [watchSelectedSymbols, setWatchSelectedSymbols] = useState<string[] | null>(null);
@@ -186,14 +192,18 @@ export default function FeedScreen() {
   const videoItemsRef = useRef(videoItems);
   const globalFilterRef = useRef(globalFilter);
   const cryptoFilterRef = useRef(cryptoFilter);
+  const koreaFilterRef = useRef(koreaFilter);
   const cryptoSelectedSourcesRef = useRef(cryptoSelectedSources);
+  const koreaSelectedSourcesRef = useRef(koreaSelectedSources);
   const watchFilterRef = useRef(watchFilter);
   const watchSelectedSymbolsRef = useRef(watchSelectedSymbols);
   itemsRef.current = items;
   videoItemsRef.current = videoItems;
   globalFilterRef.current = globalFilter;
   cryptoFilterRef.current = cryptoFilter;
+  koreaFilterRef.current = koreaFilter;
   cryptoSelectedSourcesRef.current = cryptoSelectedSources;
+  koreaSelectedSourcesRef.current = koreaSelectedSources;
   watchFilterRef.current = watchFilter;
   watchSelectedSymbolsRef.current = watchSelectedSymbols;
 
@@ -370,6 +380,41 @@ export default function FeedScreen() {
         return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
       }
 
+      if (segment === 'korea') {
+        setSignalNewsPool([]);
+        setAvailableSources([]);
+        setSelectedSources([]);
+        const [newsPage, digestPage] = await Promise.all([
+          fetchSignalNews(
+            {
+              locale,
+              category: 'korea',
+              flash: koreaFilterRef.current === 'flash',
+              sources:
+                koreaFilterRef.current === 'sources'
+                  ? sourceFilterParam(koreaSourceOptions, koreaSelectedSourcesRef.current)
+                  : undefined,
+              limit: FEED_PAGE_KOREA,
+              offset: 0,
+              tag: activeTag || undefined,
+            },
+            { cacheMode },
+          ),
+          fetchSignalNewsDigests({ category: 'korea', limit: 30, batches: 10 }).catch(() => null),
+        ]);
+        const { items: rows, meta } = newsPage;
+        setServerRows(rows);
+        setServerDigestRows(digestPage?.items || []);
+        setHasMore(meta.hasMore);
+        const sourceOptions = uniqueSignalSources(rows);
+        setKoreaSourceOptions(sourceOptions);
+        const selected = normalizeNullableSelection(sourceOptions, koreaSelectedSourcesRef.current);
+        if (koreaSelectedSourcesRef.current !== null) setKoreaSelectedSources(selected);
+        const mapped = rows.map((item) => signalNewsToNewsItem(item, locale));
+        setItems(mapped);
+        return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
+      }
+
       const pageLimit = FEED_PAGE_GLOBAL;
       const [catalogRows, firstPageResult, digestPage] = await Promise.all([
         fetchSignalNewsSources({ category: 'global' }, { cacheMode })
@@ -456,7 +501,7 @@ export default function FeedScreen() {
 
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore || loading || !hasSignalApi()) return;
-    if (segment !== 'watch' && segment !== 'crypto' && segment !== 'global' && segment !== 'video') return;
+    if (segment !== 'watch' && segment !== 'crypto' && segment !== 'korea' && segment !== 'global' && segment !== 'video') return;
 
     setLoadingMore(true);
     setError(null);
@@ -481,8 +526,15 @@ export default function FeedScreen() {
         return;
       }
 
-      const pageLimit = segment === 'watch' ? FEED_PAGE_WATCH : segment === 'crypto' ? FEED_PAGE_CRYPTO : FEED_PAGE_GLOBAL;
-      const category = segment === 'crypto' ? 'crypto' : 'global';
+      const pageLimit =
+        segment === 'watch'
+          ? FEED_PAGE_WATCH
+          : segment === 'crypto'
+            ? FEED_PAGE_CRYPTO
+            : segment === 'korea'
+              ? FEED_PAGE_KOREA
+              : FEED_PAGE_GLOBAL;
+      const category = segment === 'crypto' ? 'crypto' : segment === 'korea' ? 'korea' : 'global';
       const symbols = segment === 'watch' ? (await loadWatchlistSymbols()).slice(0, 40) : [];
       const requestSymbols =
         segment === 'watch' && watchFilterRef.current === 'symbols'
@@ -499,13 +551,16 @@ export default function FeedScreen() {
           symbols: requestSymbols.length > 0 ? requestSymbols.join(',') : undefined,
           flash:
             (segment === 'global' && globalFilterRef.current === 'flash') ||
-            (segment === 'crypto' && cryptoFilterRef.current === 'flash'),
+            (segment === 'crypto' && cryptoFilterRef.current === 'flash') ||
+            (segment === 'korea' && koreaFilterRef.current === 'flash'),
           sources:
             segment === 'global' && globalFilterRef.current === 'sources'
               ? sourceFilterParam(availableSources, selectedSources)
               : segment === 'crypto' && cryptoFilterRef.current === 'sources'
                 ? sourceFilterParam(cryptoSourceOptions, cryptoSelectedSourcesRef.current)
-                : undefined,
+                : segment === 'korea' && koreaFilterRef.current === 'sources'
+                  ? sourceFilterParam(koreaSourceOptions, koreaSelectedSourcesRef.current)
+                  : undefined,
           limit: pageLimit,
           offset: serverRows.length,
           tag: activeTag || undefined,
@@ -534,6 +589,17 @@ export default function FeedScreen() {
         if (cryptoSelectedSourcesRef.current !== null) setCryptoSelectedSources(selected);
         scoped = filterNewsRows(merged, {
           kind: cryptoFilterRef.current,
+          sourceOptions,
+          selectedSources: selected,
+        });
+      }
+      if (segment === 'korea') {
+        const sourceOptions = uniqueSignalSources(merged);
+        setKoreaSourceOptions(sourceOptions);
+        const selected = normalizeNullableSelection(sourceOptions, koreaSelectedSourcesRef.current);
+        if (koreaSelectedSourcesRef.current !== null) setKoreaSelectedSources(selected);
+        scoped = filterNewsRows(merged, {
+          kind: koreaFilterRef.current,
           sourceOptions,
           selectedSources: selected,
         });
@@ -575,7 +641,7 @@ export default function FeedScreen() {
           !loadingMore &&
           !loading &&
           hasSignalApi() &&
-          (segment === 'watch' || segment === 'crypto' || segment === 'global' || segment === 'video'),
+          (segment === 'watch' || segment === 'crypto' || segment === 'korea' || segment === 'global' || segment === 'video'),
         trigger: () => void loadMore(),
       });
     },
@@ -773,6 +839,42 @@ export default function FeedScreen() {
           })
           .catch((e) => setError(formatSignalApiError(e, t, 'feedErrorLoad')))
           .finally(() => setLoading(false));
+        return;
+      }
+
+      if (segment === 'korea') {
+        setKoreaFilter(kind);
+        const selected = normalizeNullableSelection(koreaSourceOptions, koreaSelectedSources);
+        if (kind === 'sources') {
+          setKoreaDraftSources(selected);
+          setKoreaSourceModalVisible(true);
+          return;
+        }
+        setLoading(true);
+        setItems([]);
+        setServerRows([]);
+        setServerDigestRows([]);
+        setHasMore(false);
+        void fetchSignalNews(
+          {
+            locale,
+            category: 'korea',
+            flash: kind === 'flash',
+            limit: FEED_PAGE_KOREA,
+            offset: 0,
+            tag: activeTag || undefined,
+          },
+          { cacheMode: 'bypass' },
+        )
+          .then((page) => {
+            const sourceOptions = uniqueSignalSources(page.items);
+            setKoreaSourceOptions(sourceOptions);
+            setServerRows(page.items);
+            setHasMore(page.meta.hasMore);
+            setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
+          })
+          .catch((e) => setError(formatSignalApiError(e, t, 'feedErrorLoad')))
+          .finally(() => setLoading(false));
       }
     },
     [
@@ -780,6 +882,8 @@ export default function FeedScreen() {
       availableSources,
       cryptoSelectedSources,
       cryptoSourceOptions,
+      koreaSelectedSources,
+      koreaSourceOptions,
       locale,
       segment,
       selectedSources,
@@ -828,6 +932,47 @@ export default function FeedScreen() {
     [cryptoSourceOptions],
   );
   const clearAllCryptoSources = useCallback(() => setCryptoDraftSources([]), []);
+
+  const commitKoreaSourceFilter = useCallback(() => {
+    setKoreaSourceModalVisible(false);
+    setKoreaSelectedSources(koreaDraftSources);
+    setKoreaFilter('sources');
+    setLoading(true);
+    setItems([]);
+    setServerRows([]);
+    setServerDigestRows([]);
+    setHasMore(false);
+    void fetchSignalNews(
+      {
+        locale,
+        category: 'korea',
+        sources: sourceFilterParam(koreaSourceOptions, koreaDraftSources),
+        limit: FEED_PAGE_KOREA,
+        offset: 0,
+        tag: activeTag || undefined,
+      },
+      { cacheMode: 'bypass' },
+    )
+      .then((page) => {
+        setServerRows(page.items);
+        setHasMore(page.meta.hasMore);
+        setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
+      })
+      .catch((e) => setError(formatSignalApiError(e, t, 'feedErrorLoad')))
+      .finally(() => setLoading(false));
+  }, [activeTag, koreaDraftSources, koreaSourceOptions, locale, t]);
+
+  const toggleKoreaSource = useCallback((source: string) => {
+    setKoreaDraftSources((prev) =>
+      prev.includes(source) ? prev.filter((item) => item !== source) : [...prev, source],
+    );
+  }, []);
+
+  const selectAllKoreaSources = useCallback(
+    () => setKoreaDraftSources([...koreaSourceOptions]),
+    [koreaSourceOptions],
+  );
+  const clearAllKoreaSources = useCallback(() => setKoreaDraftSources([]), []);
 
   const reloadWatchFilterFromServer = useCallback(
     async (params?: {
@@ -921,7 +1066,8 @@ export default function FeedScreen() {
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
 
-  const newsQuickFilter = segment === 'crypto' ? cryptoFilter : globalFilter;
+  const newsQuickFilter =
+    segment === 'crypto' ? cryptoFilter : segment === 'korea' ? koreaFilter : globalFilter;
   const digestBatches = useMemo(() => {
     if (segment === 'video' || segment === 'watch') return [];
     if (serverDigestRows.length > 0) {
@@ -1031,7 +1177,7 @@ export default function FeedScreen() {
           </View>
         ) : null}
 
-        {segment === 'global' || segment === 'crypto' ? (
+        {segment === 'global' || segment === 'crypto' || segment === 'korea' ? (
           <View style={styles.watchFilterRow}>
             {NEWS_QUICK_FILTERS.map((filter) => {
               const active = newsQuickFilter === filter.key;
@@ -1242,6 +1388,45 @@ export default function FeedScreen() {
             <Pressable
               key={source}
               onPress={() => toggleCryptoSource(source)}
+              style={[filterRowStyles.row, on && filterRowStyles.rowOn]}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: on }}>
+              <FontAwesome
+                name={on ? 'check-square' : 'square-o'}
+                size={18}
+                color={on ? theme.green : theme.textDim}
+                style={filterRowStyles.checkIcon}
+              />
+              <Text style={[filterRowStyles.name, !on && filterRowStyles.nameOff]} numberOfLines={2}>
+                {source}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </SelectionFilterSheet>
+      <SelectionFilterSheet
+        visible={koreaSourceModalVisible}
+        title={t('feedNewsFilterTitle')}
+        hint={t('feedNewsFilterSub')}
+        onDone={commitKoreaSourceFilter}
+        bottomInset={insets.bottom}
+        toolbar={{
+          sectionLabel: t('feedNewsFilterIncluded'),
+          countLabel: t('filterSheetSelectedCount', {
+            selected: koreaDraftSources.length,
+            total: koreaSourceOptions.length,
+          }),
+          selectAllLabel: t('feedNewsFilterSelectAll'),
+          clearAllLabel: t('feedNewsFilterClearAll'),
+          onSelectAll: selectAllKoreaSources,
+          onClearAll: clearAllKoreaSources,
+        }}>
+        {koreaSourceOptions.map((source) => {
+          const on = koreaDraftSources.includes(source);
+          return (
+            <Pressable
+              key={source}
+              onPress={() => toggleKoreaSource(source)}
               style={[filterRowStyles.row, on && filterRowStyles.rowOn]}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}>

@@ -13,6 +13,7 @@ const FALLBACKS = {
   youtube: { apiKey: config.youtubeApiKey },
   ninjas: { apiKey: config.ninjasKey },
   coingecko: { apiKey: '' },
+  dart: { apiKey: config.dartApiKey },
 };
 
 const LLM_PROVIDERS = new Set(['openai', 'claude']);
@@ -44,7 +45,7 @@ export async function getProviderSetting(provider) {
 }
 
 export async function listProviderSettingsPublic() {
-  const providers = ['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko'];
+  const providers = ['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko', 'dart'];
   const rows = await findProviderSettings(providers);
   const byProvider = new Map(rows.map((row) => [row.provider, row.payload]));
   return providers.map((provider) => {

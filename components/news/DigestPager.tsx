@@ -110,27 +110,29 @@ const DigestCard = memo(function DigestCard({
       {isExpanded && (digest.sourceRefs.length > 0 || digest.sources.length > 0) ? (
         <View style={styles.sourceList}>
           {digest.sourceRefs.length > 0
-            ? digest.sourceRefs.slice(0, 5).map((ref, i) => (
+            ? digest.sourceRefs.slice(0, 5).map((ref, i) => {
+                const refUrl = ref.url || undefined;
+                return (
                 <Pressable
                   key={i}
                   delayPressIn={0}
                   onPress={
-                    ref.url
+                    refUrl
                       ? (e) => {
                           e.stopPropagation?.();
-                          void Linking.openURL(ref.url!).catch(() => null);
+                          void Linking.openURL(refUrl).catch(() => null);
                         }
                       : undefined
                   }
-                  style={({ pressed }) => [styles.sourceRow, pressed && ref.url && styles.sourceRowPressed]}
-                  accessibilityRole={ref.url ? 'link' : 'text'}
+                  style={({ pressed }) => [styles.sourceRow, pressed && refUrl && styles.sourceRowPressed]}
+                  accessibilityRole={refUrl ? 'link' : 'text'}
                 >
                   <View style={styles.sourceTextCol}>
                     <Text
-                      style={[styles.sourceTitle, ref.url && styles.sourceTitleLink]}
+                      style={[styles.sourceTitle, refUrl && styles.sourceTitleLink]}
                       numberOfLines={2}
                     >
-                      {ref.title || ref.sourceName || ref.url || ''}
+                      {ref.title || ref.sourceName || refUrl || ''}
                     </Text>
                     {ref.sourceName ? (
                       <Text style={styles.sourceName} numberOfLines={1}>
@@ -138,11 +140,12 @@ const DigestCard = memo(function DigestCard({
                       </Text>
                     ) : null}
                   </View>
-                  {ref.url ? (
+                  {refUrl ? (
                     <FontAwesome name="external-link" size={10} color={theme.accentBlue} />
                   ) : null}
                 </Pressable>
-              ))
+                );
+              })
             : digest.sources.slice(0, 5).map((src, i) => (
                 <View key={i} style={styles.sourceRow}>
                   <Text style={styles.sourceName} numberOfLines={1}>

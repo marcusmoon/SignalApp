@@ -54,15 +54,16 @@ export async function queryPublicNewsDigestRows(options = {}) {
         ${whereSql}
       ),
       runs AS (
-        SELECT category, digest_date, generated_at
+        SELECT category, digest_date, generated_at,
+          BOOL_OR((payload->>'aiGenerated')::boolean) AS has_ai_generated
         FROM filtered
         GROUP BY category, digest_date, generated_at
       ),
       ranked_runs AS (
-        SELECT category, digest_date, generated_at,
+        SELECT category, digest_date, generated_at, has_ai_generated,
           DENSE_RANK() OVER (
             PARTITION BY category
-            ORDER BY digest_date DESC NULLS LAST, generated_at DESC NULLS LAST
+            ORDER BY digest_date DESC NULLS LAST, has_ai_generated DESC NULLS LAST, generated_at DESC NULLS LAST
           ) AS run_rank
         FROM runs
       )

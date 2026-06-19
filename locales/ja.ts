@@ -504,6 +504,7 @@ export const ja = {
   insightCalendarToday: '今日へ戻る',
   feedSegmentWatch: 'ウォッチ',
   feedSegmentGlobal: 'グローバル',
+  feedSegmentKorea: '国内',
   feedSegmentCrypto: 'コイン',
   feedSegmentVideo: '動画',
   feedEmptyWatch: 'ウォッチニュースはありません。',

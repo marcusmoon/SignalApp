@@ -5,7 +5,6 @@ export type AlertsFilter = 'all' | 'high' | 'signal' | 'notice' | 'account';
 export type AlertNotificationKind = 'signal' | 'notice' | 'account' | 'other';
 
 const SIGNAL_TYPES = new Set([
-  'insight_signal',
   'market_briefing',
   'market_alert',
   'earnings_reminder',
@@ -13,7 +12,7 @@ const SIGNAL_TYPES = new Set([
 
 const NOTICE_TYPES = new Set(['service_notice', 'app_update']);
 
-const SIGNAL_SOURCES = new Set(['insight', 'market_briefing']);
+const SIGNAL_SOURCES = new Set(['market_briefing']);
 
 const NOTICE_SOURCES = new Set(['app_update', 'app_user']);
 

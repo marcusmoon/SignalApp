@@ -11,7 +11,6 @@ import {
   releasePollingJobLock,
   upsertCollectionRows,
   upsertById,
-  upsertNotificationItem as saveNotificationItem,
   upsertPollingJobRun,
 } from '../db.mjs';
 import { config } from '../config.mjs';
@@ -20,9 +19,7 @@ import { fetchFinnhubEarningsCalendar, fetchFinnhubEconomicCalendar } from '../p
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
-import { generateMarketInsights } from '../insights/rules.mjs';
 import { generateNewsDigestItems } from '../digests/newsDigest.mjs';
-import { notificationsFromInsights } from '../notifications/outbox.mjs';
 import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
 import { fetchNewswireRssNews } from '../providers/news/rssNews.mjs';
@@ -132,26 +129,6 @@ async function readJobContext(job) {
     ]);
     context.appSettings = appSettings || {};
     context.youtubeVideos = youtubeVideos;
-  }
-  if (provider === 'signal' && handler === 'market_insights') {
-    const [
-      newsItems,
-      youtubeVideos,
-      marketQuotes,
-      calendarEvents,
-      providerSettings,
-    ] = await Promise.all([
-      listCollectionPayloads('newsItems'),
-      listCollectionPayloads('youtubeVideos'),
-      listCollectionPayloads('marketQuotes'),
-      listCollectionPayloads('calendarEvents'),
-      listCollectionPayloads('providerSettings'),
-    ]);
-    context.newsItems = newsItems;
-    context.youtubeVideos = youtubeVideos;
-    context.marketQuotes = marketQuotes;
-    context.calendarEvents = calendarEvents;
-    context.providerSettings = providerSettings;
   }
   if (provider === 'signal' && handler === 'news_digest') {
     context.newsItems = await listCollectionPayloads('newsItems');
@@ -380,9 +357,6 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
       }),
     };
   }
-  if (effective.provider === 'signal' && effective.handler === 'market_insights') {
-    return { kind: 'insights', rows: generateMarketInsights(dbBefore, params || {}) };
-  }
   if (effective.provider === 'signal' && effective.handler === 'news_digest') {
     return { kind: 'newsDigests', rows: generateNewsDigestItems(dbBefore, params || {}) };
   }
@@ -405,14 +379,6 @@ async function persistHandlerResult(result, rows) {
       directCollection,
       rows.map((row) => ({ ...row, updatedAt: row.updatedAt || savedAt, createdAt: row.createdAt || savedAt })),
     );
-  } else if (result.kind === 'insights') {
-    const savedAt = nowIso();
-    await upsertCollectionRows(
-      'insightItems',
-      rows.map((row) => ({ ...row, updatedAt: row.updatedAt || savedAt, createdAt: row.createdAt || savedAt })),
-    );
-    const notificationRows = notificationsFromInsights(rows);
-    for (const row of notificationRows) await saveNotificationItem(row);
   } else if (result.kind === 'news') {
     await saveNewsRows(rows);
   } else if (result.kind === 'disclosures') {

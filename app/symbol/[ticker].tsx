@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { InsightCard } from '@/components/signal/InsightCard';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import type { AppTheme } from '@/constants/theme';
@@ -13,7 +12,6 @@ import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchCompanyNewsForDisplay } from '@/services/companyNewsForSymbol';
-import { fetchSignalInsights } from '@/integrations/signal-api/insights';
 import { fetchSignalDisclosures } from '@/integrations/signal-api/disclosures';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
@@ -21,7 +19,6 @@ import { signalNewsToNewsItem } from '@/integrations/signal-api/news';
 import { fetchSignalStockCandles, fetchSignalStockProfile } from '@/integrations/signal-api/stock';
 import type {
   SignalApiDisclosure,
-  SignalApiInsight,
   SignalApiMarketQuote,
   SignalApiNewsItem,
   SignalApiStockCandles,
@@ -466,7 +463,6 @@ export default function SymbolDetailScreen() {
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
   const [signalNews, setSignalNews] = useState<SignalApiNewsItem[]>([]);
   const [disclosures, setDisclosures] = useState<SignalApiDisclosure[]>([]);
-  const [serverInsights, setServerInsights] = useState<SignalApiInsight[]>([]);
   const [watching, setWatching] = useState(false);
   const isKorea = useMemo(() => isKoreaSymbol(ticker), [ticker]);
   const displayPrice =
@@ -484,7 +480,6 @@ export default function SymbolDetailScreen() {
   const load = useCallback(async () => {
     if (!ticker) {
       setError(t('symbolDetailErrorLoad'));
-      setServerInsights([]);
       setLoading(false);
       return;
     }
@@ -497,29 +492,19 @@ export default function SymbolDetailScreen() {
       setNewsItems([]);
       setSignalNews([]);
       setDisclosures([]);
-      setServerInsights([]);
       setLoading(false);
       return;
     }
 
     setError(null);
     try {
-      const [watchlist, nextProfile, mqRows, nextCandles, companyNews, disclosureRows, insightRows] = await Promise.all([
+      const [watchlist, nextProfile, mqRows, nextCandles, companyNews, disclosureRows] = await Promise.all([
         loadWatchlistSymbols(),
         fetchSignalStockProfile(ticker),
         fetchSignalMarketQuotes({ symbols: [ticker], limit: 1 }).catch(() => []),
         fetchSignalStockCandles(ticker, 'D', addDays(new Date(), -30), new Date()).catch(() => null),
         fetchCompanyNewsForDisplay(ticker, locale).catch(() => [] as SignalApiNewsItem[]),
         fetchSignalDisclosures({ symbol: ticker, limit: 5 }).then((result) => result.items).catch(() => []),
-        fetchSignalInsights({
-          symbol: ticker,
-          date: 'today',
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          limit: 1,
-          offset: 0,
-        })
-          .then((result) => result.items)
-          .catch(() => [] as SignalApiInsight[]),
       ]);
 
       const row0 = mqRows[0];
@@ -534,10 +519,8 @@ export default function SymbolDetailScreen() {
       const translatedNews = relatedRaw.map((a) => signalNewsToNewsItem(a, locale));
       setNewsItems(translatedNews);
       setDisclosures(disclosureRows);
-      setServerInsights(insightRows);
 
     } catch (e) {
-      setServerInsights([]);
       setError(formatSignalApiError(e, t, 'symbolDetailErrorLoad'));
     } finally {
       setLoading(false);
@@ -738,21 +721,6 @@ export default function SymbolDetailScreen() {
             ).join(' · ')}
           </Text>
         </View>
-
-        {serverInsights.length > 0 ? (
-          <View style={styles.sectionCard}>
-            <Text style={styles.section}>{t('symbolDetailSectionTodaySignal')}</Text>
-            <InsightCard
-              insight={serverInsights[0]!}
-              theme={theme}
-              scaleFont={scaleFont}
-              compact
-              embedded
-              onOpenUrl={(url) => void WebBrowser.openBrowserAsync(url)}
-              onOpenSymbol={(symbol) => router.push(`/symbol/${symbol}`)}
-            />
-          </View>
-        ) : null}
 
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>

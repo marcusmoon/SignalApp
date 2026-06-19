@@ -4,7 +4,7 @@ import { RectButton } from 'react-native-gesture-handler';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
-import { useRouter, type Href } from 'expo-router';
+import { useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import type { AppTheme } from '@/constants/theme';
@@ -14,13 +14,9 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { loadNotificationHistory, loadDismissedNotificationIds, removeNotificationById, type StoredNotification } from '@/services/notificationHistory';
-import { loadNotificationPrefs } from '@/services/notificationPreferences';
-import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { hasSignalApi } from '@/services/env';
 import { loadAppAuthSession, getSessionAccessToken, type StoredAppAuthSession } from '@/services/appAuthSession';
-import { fetchSignalInsights } from '@/integrations/signal-api/insights';
 import { fetchSignalNotifications } from '@/integrations/signal-api/notifications';
-import type { SignalApiInsight } from '@/integrations/signal-api/types';
 import { formatRelativeTime } from '@/utils/date';
 
 import { alertMatchesFilter, type AlertsFilter } from '@/domain/alerts/notificationCategory';
@@ -33,7 +29,6 @@ export default function AlertsScreen() {
   const isFocused = useIsFocused();
   const router = useRouter();
   const [items, setItems] = useState<StoredNotification[]>([]);
-  const [candidates, setCandidates] = useState<SignalApiInsight[]>([]);
   const [authSession, setAuthSession] = useState<StoredAppAuthSession | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,14 +42,11 @@ export default function AlertsScreen() {
     const access = getSessionAccessToken(savedSession);
     if (!access) {
       setItems([]);
-      setCandidates([]);
       return;
     }
-    const [list, serverNotifications, prefs, watchlist, dismissed] = await Promise.all([
+    const [list, serverNotifications, dismissed] = await Promise.all([
       loadNotificationHistory(),
       hasSignalApi() ? fetchSignalNotifications(access, 50).catch(() => []) : Promise.resolve([]),
-      loadNotificationPrefs(),
-      loadWatchlistSymbols().catch(() => [] as string[]),
       loadDismissedNotificationIds(),
     ]);
     const serverItems: StoredNotification[] = serverNotifications.map((item) => ({
@@ -76,20 +68,6 @@ export default function AlertsScreen() {
         })
         .sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime()),
     );
-    if (!hasSignalApi() || !prefs.signalAlertsEnabled) {
-      setCandidates([]);
-      return;
-    }
-    const symbols = prefs.signalWatchlistOnly ? watchlist.map((s) => s.trim().toUpperCase()).filter(Boolean) : [];
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul';
-    const { items: rows } = await fetchSignalInsights({
-      pushCandidate: true,
-      symbols: symbols.length > 0 ? symbols : undefined,
-      date: 'today',
-      timeZone,
-      limit: 10,
-    }).catch(() => ({ items: [] as SignalApiInsight[], meta: { total: 0, limit: 10, offset: 0, hasMore: false } }));
-    setCandidates(rows);
   }, []);
 
   useFocusEffect(
@@ -168,52 +146,9 @@ export default function AlertsScreen() {
           </View>
           {settingsButton}
         </View>
-        {candidates.length > 0 ? (
-          <View style={styles.candidateSection}>
-            <View style={styles.candidateHead}>
-              <Text style={styles.candidateTitle}>{t('alertsCandidateTitle')}</Text>
-              <Pressable
-                onPress={() => router.push('/signal' as Href)}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={t('alertsCandidateOpenAll')}>
-                <Text style={styles.candidateLink}>{t('alertsCandidateOpenAll')}</Text>
-              </Pressable>
-            </View>
-            <Text style={styles.candidateHint}>{t('alertsCandidateHint')}</Text>
-            {candidates.slice(0, 3).map((item) => (
-              <Pressable
-                key={item.id}
-                onPress={() => router.push('/signal' as Href)}
-                accessibilityRole="button"
-                accessibilityLabel={item.pushTitle || item.title}
-                style={({ pressed }) => [styles.candidateCard, pressed && styles.candidateCardPressed]}>
-                <View style={styles.alertTop}>
-                  <Text style={styles.alertTitle} numberOfLines={2}>
-                    {item.pushTitle || item.title}
-                  </Text>
-                  {item.pushPriority === 'high' || item.level === 'alert' ? (
-                    <View style={styles.high}>
-                      <Text style={styles.highText}>{t('alertsHighBadge')}</Text>
-                    </View>
-                  ) : null}
-                </View>
-                <Text style={styles.alertBody} numberOfLines={3}>
-                  {item.pushBody || item.summary}
-                </Text>
-                <View style={styles.candidateMetaRow}>
-                  <Text style={styles.candidateMeta} numberOfLines={1}>
-                    {(item.symbols || []).slice(0, 4).join(', ') || t('insightSectionKicker')}
-                  </Text>
-                  <Text style={styles.candidateMeta}>{formatRelativeTime(item.generatedAt || '', locale)}</Text>
-                </View>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
       </>
     ),
-    [alertFilters, candidates, filter, locale, router, settingsButton, styles, t],
+    [alertFilters, filter, settingsButton, styles, t],
   );
 
   const renderAlert = useCallback(
@@ -301,7 +236,7 @@ export default function AlertsScreen() {
         renderItem={renderAlert}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
-          candidates.length > 0 || filteredItems.length > 0 ? null : (
+          filteredItems.length > 0 ? null : (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyText}>{items.length > 0 ? t('alertsFilterEmpty') : t('alertsEmpty')}</Text>
             </View>
@@ -310,7 +245,7 @@ export default function AlertsScreen() {
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: bottomPad },
-          filteredItems.length === 0 && candidates.length === 0 ? styles.listContentEmpty : null,
+          filteredItems.length === 0 ? styles.listContentEmpty : null,
         ]}
         style={styles.list}
         showsVerticalScrollIndicator={false}

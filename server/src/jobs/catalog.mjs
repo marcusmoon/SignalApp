@@ -23,7 +23,6 @@ export const JOB_CATALOG = {
   market_quotes_mcap_universe: { area: 'market', stage: 'maintain' },
   market_coins_top: { area: 'market', stage: 'ingest' },
   market_price_series_daily: { area: 'market', stage: 'ingest' },
-  insights_market_brief: { area: 'signal', stage: 'enrich' },
   quant_price_series_kr: { area: 'legacy', stage: 'ingest', legacy: true },
   quant_signals_kr: { area: 'legacy', stage: 'enrich', legacy: true },
 };
@@ -59,7 +58,7 @@ export function catalogMetaForJob(job) {
   const area = AREA_FROM_DOMAIN[domain] || 'legacy';
   let stage = STAGE_FROM_OPERATION[operation] || 'ingest';
   if (handler === 'market_quotes_mcap_universe') stage = 'maintain';
-  if (handler === 'market_insights' || handler === 'news_digest') stage = 'enrich';
+  if (handler === 'news_digest') stage = 'enrich';
 
   return { jobKey: key, area, stage, legacy: area === 'legacy' };
 }

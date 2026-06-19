@@ -93,7 +93,6 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 - 투자 캘린더 (`calendar_economic`, `calendar_earnings`)
 - YouTube (`youtube_economy_latest` sync, `youtube_economy_popular`)
 - 시세·일봉·코인
-- 시장 인사이트 (`insights_market_brief`)
 
 ## 배포
 

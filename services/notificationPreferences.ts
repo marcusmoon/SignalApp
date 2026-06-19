@@ -7,12 +7,6 @@ export type NotificationPrefs = {
   pushEnabled: boolean;
   /** market_briefing 푸시 수신 */
   briefingPushEnabled: boolean;
-  /** insight_signal 푸시 수신 */
-  insightPushEnabled: boolean;
-  /** 알림 탭 인사이트 후보 표시 (푸시와 별도) */
-  signalAlertsEnabled: boolean;
-  /** 알림 후보를 기기 관심종목과 매칭되는 시그널로 좁힘 */
-  signalWatchlistOnly: boolean;
   /** 기기 로컬 알림: CPI·FOMC 등 경제 캘린더(다음 10일, 하루 1회 요약 시각) */
   localMacroCalendar: boolean;
 };
@@ -20,9 +14,6 @@ export type NotificationPrefs = {
 const DEFAULTS: NotificationPrefs = {
   pushEnabled: true,
   briefingPushEnabled: true,
-  insightPushEnabled: true,
-  signalAlertsEnabled: true,
-  signalWatchlistOnly: true,
   localMacroCalendar: false,
 };
 
@@ -34,11 +25,11 @@ export function shouldRecordIncomingPush(
   if (!prefs.pushEnabled) return false;
   const normalizedType = String(type || '').toLowerCase();
   const normalizedSource = String(sourceType || '').toLowerCase();
+  if (normalizedType === 'insight_signal' || normalizedSource === 'insight') {
+    return false;
+  }
   if (normalizedType === 'market_briefing' || normalizedSource === 'market_briefing') {
     return prefs.briefingPushEnabled;
-  }
-  if (normalizedType === 'insight_signal' || normalizedSource === 'insight') {
-    return prefs.insightPushEnabled;
   }
   return true;
 }
@@ -50,17 +41,14 @@ export async function loadNotificationPrefs(): Promise<NotificationPrefs> {
     const p = JSON.parse(raw) as Partial<NotificationPrefs> & {
       earningsOnly?: boolean;
       localWatchlistEarnings?: boolean;
+      insightPushEnabled?: boolean;
+      signalAlertsEnabled?: boolean;
+      signalWatchlistOnly?: boolean;
     };
     return {
       pushEnabled: typeof p.pushEnabled === 'boolean' ? p.pushEnabled : DEFAULTS.pushEnabled,
       briefingPushEnabled:
         typeof p.briefingPushEnabled === 'boolean' ? p.briefingPushEnabled : DEFAULTS.briefingPushEnabled,
-      insightPushEnabled:
-        typeof p.insightPushEnabled === 'boolean' ? p.insightPushEnabled : DEFAULTS.insightPushEnabled,
-      signalAlertsEnabled:
-        typeof p.signalAlertsEnabled === 'boolean' ? p.signalAlertsEnabled : DEFAULTS.signalAlertsEnabled,
-      signalWatchlistOnly:
-        typeof p.signalWatchlistOnly === 'boolean' ? p.signalWatchlistOnly : DEFAULTS.signalWatchlistOnly,
       localMacroCalendar:
         typeof p.localMacroCalendar === 'boolean' ? p.localMacroCalendar : DEFAULTS.localMacroCalendar,
     };

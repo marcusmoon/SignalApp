@@ -1004,9 +1004,6 @@ export default function SettingsScreen() {
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [briefingPushEnabled, setBriefingPushEnabled] = useState(true);
-  const [insightPushEnabled, setInsightPushEnabled] = useState(true);
-  const [signalAlertsEnabled, setSignalAlertsEnabled] = useState(true);
-  const [signalWatchlistOnly, setSignalWatchlistOnly] = useState(true);
   const [localMacroCalendar, setLocalMacroCalendar] = useState(false);
   const [prefsReady, setPrefsReady] = useState(false);
   const [newsUnreadCheckMinutes, setNewsUnreadCheckMinutes] = useState(5);
@@ -1126,9 +1123,6 @@ export default function SettingsScreen() {
     ]);
     setPushEnabled(p.pushEnabled);
     setBriefingPushEnabled(p.briefingPushEnabled);
-    setInsightPushEnabled(p.insightPushEnabled);
-    setSignalAlertsEnabled(p.signalAlertsEnabled);
-    setSignalWatchlistOnly(p.signalWatchlistOnly);
     setLocalMacroCalendar(p.localMacroCalendar);
     setNewsUnreadCheckMinutes(newsIntervalMin);
     setNewsUnreadIntervalReady(true);    setPrefsReady(true);
@@ -1661,63 +1655,6 @@ clearCalendarCache();
                       thumbColor={briefingPushEnabled && pushEnabled ? theme.green : '#888'}
                     />
                   </View>
-                  <View style={[styles.notificationSubRow, !pushEnabled && styles.notificationSubRowDisabled]}>
-                    <FontAwesome name="lightbulb-o" size={14} color={theme.textMuted} style={styles.notifSubIcon} />
-                    <View style={styles.notificationText}>
-                      <Text style={styles.notificationSubLabel}>{t('settingsInsightPushEnabled')}</Text>
-                      <Text style={styles.notificationSubHint}>{t('settingsInsightPushEnabledHint')}</Text>
-                    </View>
-                    <Switch
-                      value={insightPushEnabled}
-                      disabled={!pushEnabled}
-                      onValueChange={async (v) => {
-                        setInsightPushEnabled(v);
-                        await saveNotificationPrefs({ insightPushEnabled: v });
-                      }}
-                      trackColor={{ false: '#333', true: theme.green + '88' }}
-                      thumbColor={insightPushEnabled && pushEnabled ? theme.green : '#888'}
-                    />
-                  </View>
-                </View>
-
-                {/* 앱 내 인사이트 알림 카드 */}
-                <View style={styles.notificationCard}>
-                  <View style={styles.notificationHeader}>
-                    <View style={styles.notifIconBadge}>
-                      <FontAwesome name="list-alt" size={17} color={theme.textDim} />
-                    </View>
-                    <View style={styles.notificationText}>
-                      <Text style={styles.notificationTitle}>{t('settingsSignalAlertsEnabled')}</Text>
-                      <Text style={styles.notificationHint}>{t('settingsSignalAlertsHint')}</Text>
-                    </View>
-                    <Switch
-                      value={signalAlertsEnabled}
-                      onValueChange={async (v) => {
-                        setSignalAlertsEnabled(v);
-                        await saveNotificationPrefs({ signalAlertsEnabled: v });
-                      }}
-                      trackColor={{ false: '#333', true: theme.green + '88' }}
-                      thumbColor={signalAlertsEnabled ? theme.green : '#888'}
-                    />
-                  </View>
-                  {signalAlertsEnabled ? (
-                    <View style={styles.notificationSubRow}>
-                      <FontAwesome name="star-o" size={13} color={theme.textMuted} style={styles.notifSubIcon} />
-                      <View style={styles.notificationText}>
-                        <Text style={styles.notificationSubLabel}>{t('settingsSignalWatchlistOnly')}</Text>
-                        <Text style={styles.notificationSubHint}>{t('settingsSignalWatchlistOnlyHint')}</Text>
-                      </View>
-                      <Switch
-                        value={signalWatchlistOnly}
-                        onValueChange={async (v) => {
-                          setSignalWatchlistOnly(v);
-                          await saveNotificationPrefs({ signalWatchlistOnly: v });
-                        }}
-                        trackColor={{ false: '#333', true: theme.green + '88' }}
-                        thumbColor={signalWatchlistOnly ? theme.green : '#888'}
-                      />
-                    </View>
-                  ) : null}
                 </View>
 
                 {/* 로컬 알림 · 경제 캘린더 카드 */}
@@ -1737,9 +1674,6 @@ clearCalendarCache();
                         const next = {
                           pushEnabled,
                           briefingPushEnabled,
-                          insightPushEnabled,
-                          signalAlertsEnabled,
-                          signalWatchlistOnly,
                           localMacroCalendar: v,
                         };
                         await saveNotificationPrefs(next);

@@ -436,20 +436,13 @@ export const ja = {
   settingsScopeWatch: 'ウォッチ',
 
   settingsNotificationsLead:
-    'サーバープッシュ、インサイト通知、端末の経済カレンダーリマインダーを個別にオン/オフできます。',
+    'サーバープッシュ、市場ブリーフィングプッシュ、端末の経済カレンダーリマインダーを個別にオン/オフできます。',
   settingsPushEnabled: 'プッシュ通知',
   settingsPushEnabledHint:
-    'この端末でサーバープッシュを受け取るかどうかのマスター設定です。登録にはログインが必要です。種類は下で個別に選べます。',
+    'この端末でサーバープッシュを受け取るかどうかのマスター設定です。登録にはログインが必要です。ブリーフィングプッシュは下で切り替えできます。',
   settingsBriefingPushEnabled: '市場ブリーフィングプッシュ',
   settingsBriefingPushEnabledHint: 'プレマーケット・引け後・オーバーナイトなどの市場ブリーフィングをプッシュで受け取ります。',
-  settingsInsightPushEnabled: 'インサイトプッシュ',
-  settingsInsightPushEnabledHint: 'サーバーが選定した銘柄・市場インサイトがプッシュで届いたときに通知します。',
   settingsEarningsOnly: '決算のみ',
-  settingsSignalAlertsEnabled: 'インサイト通知',
-  settingsSignalAlertsHint:
-    '通知タブにサーバーが生成した銘柄・市場インサイト候補を表示します。プッシュ配信とは別です。',
-  settingsSignalWatchlistOnly: 'ウォッチリストのみ',
-  settingsSignalWatchlistOnlyHint: 'オンにすると、ウォッチ銘柄に関連するインサイト候補だけを通知タブに表示します。',
   settingsCalendarReminders: '投資予定リマインダー',
   settingsCalendarRemindersHint: 'CPI・FOMC など主要な経済予定を端末の現地時刻で通知します。',
   settingsNewsUnreadCheckKicker: 'ニュース新着チェック',
@@ -472,9 +465,6 @@ export const ja = {
   alertsOpenSettings: '通知設定',
   alertsSwipeDelete: '削除',
   alertsSwipeDeleteA11y: '{{title}}を削除',
-  alertsCandidateTitle: '今日の通知候補',
-  alertsCandidateHint: '実際のプッシュ前に、サーバーが今日生成したシグナル候補を表示します。',
-  alertsCandidateOpenAll: 'すべて見る',
   alertsLoginRequiredTitle: '通知はログイン後に確認できます',
   alertsLoginRequiredBody: 'ユーザー別通知ボックスとプッシュ配信にはアカウント情報が必要です。お知らせ、ウォッチリスト通知、インサイト通知はこのアカウント基準で保存されます。',
   alertsLoginRequiredButton: 'マイ情報へ',

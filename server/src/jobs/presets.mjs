@@ -51,13 +51,6 @@ export const JOB_PRESETS = {
       'market_price_series_daily',
     ],
   },
-  signal_refresh: {
-    id: 'signal_refresh',
-    area: 'signal',
-    labelKey: 'jobPresetSignalRefresh',
-    descriptionKey: 'jobPresetSignalRefreshDesc',
-    jobKeys: ['insights_market_brief'],
-  },
 };
 
 export function listJobPresets() {

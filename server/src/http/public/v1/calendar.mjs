@@ -35,6 +35,7 @@ export async function handlePublicCalendarRoutes({ req, res, url, pathname }) {
       symbol: url.searchParams.get('symbol') || '',
       q: url.searchParams.get('q') || '',
       limit: url.searchParams.get('limit') || '',
+      offset: url.searchParams.get('offset') || '',
     });
     json(res, 200, { data: rows });
     return true;

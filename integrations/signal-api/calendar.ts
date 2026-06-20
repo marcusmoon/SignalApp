@@ -16,6 +16,7 @@ export async function fetchSignalCalendar(
     to?: string;
     type?: string;
     limit?: number;
+    offset?: number;
   },
   options?: { cacheMode?: 'use' | 'bypass' },
 ): Promise<SignalApiCalendarEvent[]> {

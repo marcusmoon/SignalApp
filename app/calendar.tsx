@@ -45,6 +45,8 @@ const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
   holiday: 'calendarTagHoliday',
 };
 
+type CalendarSection = { title: string; data: CalendarEvent[] };
+
 function calendarEventTimeLabel(ev: CalendarEvent, t: (id: MessageId) => string): string {
   return ev.time || '—';
 }
@@ -93,8 +95,8 @@ function shiftYmd(ymd: string, days: number): string {
 
 function rangeForAnchor(ymd: string) {
   return {
-    from: shiftYmd(ymd, -14),
-    to: shiftYmd(ymd, 45),
+    from: shiftYmd(ymd, -30),
+    to: shiftYmd(ymd, 120),
   };
 }
 
@@ -111,12 +113,14 @@ function queryForAnchor(ymd: string, enabledTypes: Set<CalendarEventTypeKey>) {
       from: shiftYmd(ymd, -30),
       to: shiftYmd(ymd, 420),
       type: 'holiday',
-      limit: 1000,
+      limit: 240,
+      offset: 0,
     };
   }
   return {
     ...rangeForAnchor(ymd),
-    limit: 1000,
+    limit: 180,
+    offset: 0,
   };
 }
 
@@ -126,6 +130,15 @@ function normalizeCalendarTypeSelection(input: Set<CalendarEventTypeKey>): Set<C
   }
   const first = CALENDAR_EVENT_TYPE_ORDER.find((type) => input.has(type));
   return first ? new Set<CalendarEventTypeKey>([first]) : new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
+}
+
+function resolveCalendarScrollTarget(
+  sections: CalendarSection[],
+  targetYmd: string | null,
+): string | null {
+  if (!targetYmd) return null;
+  if (sections.some((section) => section.title === targetYmd)) return targetYmd;
+  return sections.find((section) => section.title >= targetYmd)?.title || null;
 }
 
 export default function CalendarScreen() {
@@ -144,7 +157,7 @@ export default function CalendarScreen() {
   const [enabledTypes, setEnabledTypes] = useState(
     () => new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER),
   );
-  const sectionListRef = useRef<SectionList<CalendarEvent, { title: string; data: CalendarEvent[] }>>(null);
+  const sectionListRef = useRef<SectionList<CalendarEvent, CalendarSection>>(null);
 
   useEffect(() => {
     void loadCalendarEventTypeFilter().then((saved) => {
@@ -227,7 +240,10 @@ export default function CalendarScreen() {
       prev.push(event);
       byDate.set(date, prev);
     }
-    if (!byDate.has(selectedYmd)) byDate.set(selectedYmd, []);
+    const sortedDates = [...byDate.keys()].sort((a, b) => a.localeCompare(b));
+    const hasSelectedDate = byDate.has(selectedYmd);
+    const hasFutureDate = sortedDates.some((date) => date >= selectedYmd);
+    if (!hasSelectedDate && !hasFutureDate) byDate.set(selectedYmd, []);
     return [...byDate.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([title, data]) => ({
@@ -285,13 +301,18 @@ export default function CalendarScreen() {
     selectYmd(todayYmd, true);
   }, [selectYmd, todayYmd]);
 
-  const selectedSectionIndex = useMemo(
-    () => sections.findIndex((section) => section.title === pendingScrollYmd),
+  const scrollTargetYmd = useMemo(
+    () => resolveCalendarScrollTarget(sections, pendingScrollYmd),
     [pendingScrollYmd, sections],
   );
 
+  const selectedSectionIndex = useMemo(
+    () => sections.findIndex((section) => section.title === scrollTargetYmd),
+    [scrollTargetYmd, sections],
+  );
+
   useEffect(() => {
-    if (loading || !pendingScrollYmd || selectedSectionIndex < 0) return;
+    if (loading || !pendingScrollYmd || !scrollTargetYmd || selectedSectionIndex < 0) return;
     const timer = setTimeout(() => {
       sectionListRef.current?.scrollToLocation({
         sectionIndex: selectedSectionIndex,
@@ -299,10 +320,13 @@ export default function CalendarScreen() {
         viewOffset: 12,
         animated: true,
       });
+      if (scrollTargetYmd !== pendingScrollYmd) {
+        setSelectedYmd(scrollTargetYmd);
+      }
       setPendingScrollYmd(null);
     }, 40);
     return () => clearTimeout(timer);
-  }, [loading, pendingScrollYmd, selectedSectionIndex]);
+  }, [loading, pendingScrollYmd, scrollTargetYmd, selectedSectionIndex]);
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: Array<{ section?: { title?: string } }> }) => {

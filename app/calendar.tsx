@@ -1,7 +1,7 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
-  ListRenderItem,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,9 +14,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
-import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -33,8 +33,8 @@ import {
   saveCalendarEventTypeFilter,
   type CalendarEventTypeKey,
 } from '@/services/calendarEventTypeFilterPreference';
-import { toYmd, addDays } from '@/utils/date';
-import type { AppLocale, MessageId } from '@/locales/messages';
+import { toYmd } from '@/utils/date';
+import type { MessageId } from '@/locales/messages';
 import type { CalendarEvent } from '@/types/signal';
 
 const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
@@ -87,12 +87,29 @@ function monthBounds(year: number, month: number): { from: string; to: string } 
   return { from: toYmd(first), to: toYmd(last) };
 }
 
-/** 이번 달: 오늘 / 다른 달: 1일 */
-function resolveAutoSelectYmd(year: number, month: number, todayYmd: string): string {
+/** 현재 달이면 오늘 or 가장 가까운 미래 날짜, 다른 달이면 첫 번째 이벤트 날짜 */
+function resolveAutoSelectYmd(
+  year: number,
+  month: number,
+  eventDates: Set<string>,
+  todayYmd: string,
+): string {
+  const sorted = [...eventDates].sort();
+  if (sorted.length === 0) {
+    return toYmd(new Date(year, month, 1));
+  }
   const todayMonth = toYmd(new Date()).slice(0, 7);
   const viewMonthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-  if (viewMonthStr === todayMonth) return todayYmd;
-  return toYmd(new Date(year, month, 1));
+  if (viewMonthStr === todayMonth) {
+    // 오늘 이벤트 있으면 오늘
+    if (eventDates.has(todayYmd)) return todayYmd;
+    // 오늘 이후 가장 가까운 날
+    const future = sorted.find((d) => d > todayYmd);
+    if (future) return future;
+    // 없으면 마지막 날짜
+    return sorted[sorted.length - 1];
+  }
+  return sorted[0];
 }
 
 function normalizeCalendarTypeSelection(input: Set<CalendarEventTypeKey>): Set<CalendarEventTypeKey> {
@@ -106,14 +123,6 @@ function normalizeCalendarTypeSelection(input: Set<CalendarEventTypeKey>): Set<C
 function selectedCalendarType(input: Set<CalendarEventTypeKey>): CalendarEventTypeKey | undefined {
   if (input.size !== 1) return undefined;
   return CALENDAR_EVENT_TYPE_ORDER.find((type) => input.has(type));
-}
-
-function sortDayEvents(events: CalendarEvent[]): CalendarEvent[] {
-  return [...events].sort(
-    (a, b) =>
-      String(a.time || '').localeCompare(String(b.time || '')) ||
-      a.title.localeCompare(b.title),
-  );
 }
 
 export default function CalendarScreen() {
@@ -131,17 +140,19 @@ export default function CalendarScreen() {
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
 
+  // 현재 보는 달의 모든 이벤트 (서버에서 받아온 원본)
   const [monthEvents, setMonthEvents] = useState<CalendarEvent[]>([]);
+
   const [enabledTypes, setEnabledTypes] = useState(
     () => new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER),
   );
+
+  // 현재 보고 있는 달
   const [viewMonth, setViewMonth] = useState(() => monthFromYmd(todayYmd));
+  // 선택된 날짜
   const [selectedYmd, setSelectedYmd] = useState(todayYmd);
 
   const loadSeqRef = useRef(0);
-  const listRef = useRef<FlatList<CalendarEvent>>(null);
-  /** 월 fetch 후 선택일 유지(일 단위 이동·오늘) vs 자동 선택(월 chevron) */
-  const monthChangeIntentRef = useRef<'auto' | 'preserveDay'>('auto');
 
   useEffect(() => {
     void loadCalendarEventTypeFilter().then((saved) => {
@@ -153,6 +164,7 @@ export default function CalendarScreen() {
 
   const typeParam = selectedCalendarType(enabledTypes);
 
+  // 해당 달 이벤트 fetch
   const fetchMonthData = useCallback(
     async (year: number, month: number, forceRefresh?: boolean) => {
       const { from, to } = monthBounds(year, month);
@@ -165,6 +177,7 @@ export default function CalendarScreen() {
     [typeParam],
   );
 
+  // viewMonth 또는 typeParam 변경 시 해당 월 데이터 로드
   useEffect(() => {
     if (!hasSignalApi()) return;
     let cancelled = false;
@@ -173,16 +186,15 @@ export default function CalendarScreen() {
     (async () => {
       setLoading(true);
       setError(null);
-      setMonthEvents([]);
       try {
         const events = await fetchMonthData(viewMonth.year, viewMonth.month);
         if (cancelled || loadSeqRef.current !== seq) return;
         setMonthEvents(events);
-        if (monthChangeIntentRef.current === 'preserveDay') {
-          monthChangeIntentRef.current = 'auto';
-        } else {
-          setSelectedYmd(resolveAutoSelectYmd(viewMonth.year, viewMonth.month, todayYmd));
-        }
+        // 클라이언트 필터 적용해서 이벤트 날짜 계산
+        const filtered = events.filter((e) => enabledTypes.has(e.type));
+        const eventDates = new Set(filtered.map((e) => String(e.date || '').slice(0, 10)).filter(Boolean));
+        const autoSelect = resolveAutoSelectYmd(viewMonth.year, viewMonth.month, eventDates, todayYmd);
+        setSelectedYmd(autoSelect);
       } catch (e) {
         if (!cancelled && loadSeqRef.current === seq) {
           setError(formatSignalApiError(e, t, 'calendarErrorLoad'));
@@ -208,40 +220,28 @@ export default function CalendarScreen() {
     }
   }, [fetchMonthData, viewMonth.year, viewMonth.month, t]);
 
+  // 클라이언트 필터 적용
   const filteredEvents = useMemo(
     () => monthEvents.filter((e) => enabledTypes.has(e.type)),
     [monthEvents, enabledTypes],
   );
 
+  // 미니 캘린더용: 이벤트 있는 날짜 Set
   const eventDates = useMemo(
     () => new Set(filteredEvents.map((e) => String(e.date || '').slice(0, 10)).filter(Boolean)),
     [filteredEvents],
   );
 
-  const selectedDayEvents = useMemo(
+  // 선택 날짜의 이벤트만 (FlatList용)
+  const dayEvents = useMemo(
     () =>
-      sortDayEvents(
-        filteredEvents.filter((e) => String(e.date || '').slice(0, 10) === selectedYmd),
-      ),
+      filteredEvents
+        .filter((e) => String(e.date || '').slice(0, 10) === selectedYmd)
+        .sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')) || a.title.localeCompare(b.title)),
     [filteredEvents, selectedYmd],
   );
 
-  const isViewingCurrentMonth = useMemo(() => {
-    const cm = monthFromYmd(todayYmd);
-    return viewMonth.year === cm.year && viewMonth.month === cm.month;
-  }, [todayYmd, viewMonth.month, viewMonth.year]);
-
-  const selectedDayHeading = useMemo(
-    () => formatDayHeaderLabel(selectedYmd, locale),
-    [locale, selectedYmd],
-  );
-
-  const emptyFiltered = !loading && !error && monthEvents.length > 0 && filteredEvents.length === 0;
   const allEventTypesSelected = enabledTypes.size === CALENDAR_EVENT_TYPE_ORDER.length;
-
-  useEffect(() => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [selectedYmd]);
 
   const onToggleEventType = useCallback((type: CalendarEventTypeKey) => {
     const next = new Set<CalendarEventTypeKey>([type]);
@@ -255,12 +255,20 @@ export default function CalendarScreen() {
     void saveCalendarEventTypeFilter(next);
   }, []);
 
-  const selectYmd = useCallback((ymd: string) => {
-    setSelectedYmd(ymd);
-  }, []);
+  // 필터 변경 시 선택 날짜 재조정
+  useEffect(() => {
+    if (loading) return;
+    const filtered = monthEvents.filter((e) => enabledTypes.has(e.type));
+    const dates = new Set(filtered.map((e) => String(e.date || '').slice(0, 10)).filter(Boolean));
+    if (dates.size === 0) return;
+    // 현재 선택 날짜에 이벤트 없으면 재조정
+    if (!dates.has(selectedYmd)) {
+      setSelectedYmd(resolveAutoSelectYmd(viewMonth.year, viewMonth.month, dates, todayYmd));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabledTypes]);
 
   const onPrevMonth = useCallback(() => {
-    monthChangeIntentRef.current = 'auto';
     setViewMonth((prev) => {
       const d = new Date(prev.year, prev.month - 1, 1);
       return { year: d.getFullYear(), month: d.getMonth() };
@@ -268,74 +276,32 @@ export default function CalendarScreen() {
   }, []);
 
   const onNextMonth = useCallback(() => {
-    monthChangeIntentRef.current = 'auto';
     setViewMonth((prev) => {
       const d = new Date(prev.year, prev.month + 1, 1);
       return { year: d.getFullYear(), month: d.getMonth() };
     });
   }, []);
 
-  const shiftSelectedDay = useCallback(
-    (delta: number) => {
-      const nextYmd = toYmd(addDays(dateFromYmd(selectedYmd), delta));
-      const nextMonth = monthFromYmd(nextYmd);
-      if (nextMonth.year !== viewMonth.year || nextMonth.month !== viewMonth.month) {
-        monthChangeIntentRef.current = 'preserveDay';
-        setViewMonth(nextMonth);
-      }
-      setSelectedYmd(nextYmd);
-    },
-    [selectedYmd, viewMonth.month, viewMonth.year],
-  );
-
-  const onPrevDay = useCallback(() => shiftSelectedDay(-1), [shiftSelectedDay]);
-  const onNextDay = useCallback(() => shiftSelectedDay(1), [shiftSelectedDay]);
-
   const goToday = useCallback(() => {
-    monthChangeIntentRef.current = 'preserveDay';
-    setViewMonth(monthFromYmd(todayYmd));
+    const today = monthFromYmd(todayYmd);
+    setViewMonth(today);
     setSelectedYmd(todayYmd);
   }, [todayYmd]);
 
-  const renderListEmpty = useCallback(() => {
-    if (loading) {
-      return (
-        <View style={styles.emptyDayBox}>
-          <SignalLoadingIndicator message={t('commonLoading')} />
-        </View>
-      );
-    }
-    if (error) return null;
-    return (
-      <View style={styles.emptyDayBox}>
-        <Text style={styles.emptyDayText}>
-          {emptyFiltered ? t('calendarFilterEmptyFiltered') : t('calendarScreenEmptyDay')}
-        </Text>
-      </View>
-    );
-  }, [emptyFiltered, error, loading, styles.emptyDayBox, styles.emptyDayText, t]);
-
-  const renderEventItem = useCallback<ListRenderItem<CalendarEvent>>(
-    ({ item }) => <CalendarEventCard ev={item} theme={theme} cardStyles={styles} t={t} />,
-    [styles, t, theme],
+  const formatDayHeader = useCallback(
+    (ymd: string) => {
+      const p = ymd.split('-').map(Number);
+      if (p.length !== 3 || p.some((x) => Number.isNaN(x))) return ymd;
+      const d = new Date(p[0], p[1] - 1, p[2]);
+      const loc = locale === 'ja' ? 'ja-JP' : locale === 'en' ? 'en-US' : 'ko-KR';
+      return new Intl.DateTimeFormat(loc, {
+        weekday: 'short',
+        month: 'long',
+        day: 'numeric',
+      }).format(d);
+    },
+    [locale],
   );
-
-  const listKeyExtractor = useCallback((item: CalendarEvent) => item.id, []);
-
-  const listHeader = useMemo(
-    () => (
-      <View style={styles.daySection}>
-        <Text style={styles.daySectionMeta}>
-          {selectedDayEvents.length > 0
-            ? `${t('calendarScreenSectionTitle')} · ${selectedDayEvents.length}`
-            : t('calendarScreenSectionTitle')}
-        </Text>
-      </View>
-    ),
-    [selectedDayEvents.length, styles.daySection, styles.daySectionMeta, t],
-  );
-
-  const showTodayNav = selectedYmd !== todayYmd || !isViewingCurrentMonth;
 
   if (!hasSignalApi()) {
     return (
@@ -353,10 +319,143 @@ export default function CalendarScreen() {
     );
   }
 
+  const emptyFiltered = !loading && !error && monthEvents.length > 0 && filteredEvents.length === 0;
+
+  const renderEventCard = useCallback(
+    (ev: CalendarEvent) => {
+      const surprise = calendarSurpriseLabel(ev, t);
+      const isEarnings = ev.type === 'earnings';
+      const isHoliday = ev.type === 'holiday';
+
+      const typeTagStyle = isEarnings
+        ? { borderColor: theme.green + '88', backgroundColor: theme.green + '18' }
+        : ev.type === 'macro'
+          ? { borderColor: theme.accentBlue + '88', backgroundColor: theme.accentBlue + '22' }
+          : ev.type === 'fed'
+            ? { borderColor: theme.accentOrange + '77', backgroundColor: theme.accentOrange + '18' }
+            : isHoliday
+              ? { borderColor: theme.textMuted + '66', backgroundColor: theme.bgElevated }
+              : { borderColor: theme.accentOrange + 'CC', backgroundColor: theme.accentOrange + '30' };
+
+      const typeTagTextStyle = isEarnings
+        ? { color: theme.green }
+        : ev.type === 'macro'
+          ? { color: theme.accentBlue }
+          : isHoliday
+            ? { color: theme.textMuted }
+            : { color: theme.accentOrange };
+
+      const typeTagLabel = isEarnings
+        ? t('calendarTagEarnings')
+        : ev.type === 'fomc'
+          ? t('calendarTagFomc')
+          : ev.type === 'fed'
+            ? t('calendarTagFed')
+            : isHoliday
+              ? t('calendarTagHoliday')
+              : t('calendarTagMacro');
+
+      return (
+        <View style={styles.card}>
+          <View style={styles.cardRow}>
+            <View style={styles.titleBlock}>
+              <View style={styles.titleLine}>
+                <View style={[styles.typeTag, typeTagStyle]}>
+                  <Text style={[styles.typeTagText, typeTagTextStyle]}>{typeTagLabel}</Text>
+                </View>
+                {isEarnings && ev.symbol ? (
+                  <View style={styles.symbolTag}>
+                    <Text style={styles.symbolTagText}>{ev.symbol}</Text>
+                  </View>
+                ) : null}
+                {!isEarnings && ev.impact ? (
+                  <View
+                    style={[
+                      styles.impactTag,
+                      ev.impact === 'high' && styles.impactHigh,
+                      ev.impact === 'medium' && styles.impactMedium,
+                    ]}>
+                    <Text
+                      style={[
+                        styles.impactTagText,
+                        ev.impact === 'high' && { color: theme.accentOrange },
+                        ev.impact === 'medium' && { color: theme.accentBlue },
+                      ]}>
+                      {ev.impact === 'high'
+                        ? t('calendarImpactHigh')
+                        : ev.impact === 'medium'
+                          ? t('calendarImpactMedium')
+                          : t('calendarImpactLow')}
+                    </Text>
+                  </View>
+                ) : null}
+                <Text style={styles.title} numberOfLines={3}>
+                  {ev.title}
+                </Text>
+              </View>
+              {isEarnings && (ev.fiscalYear != null || ev.earningsHour) ? (
+                <View style={styles.metricRow}>
+                  {ev.fiscalYear != null && ev.fiscalQuarter != null ? (
+                    <Text style={styles.metricText}>
+                      FY{ev.fiscalYear} Q{ev.fiscalQuarter}
+                    </Text>
+                  ) : null}
+                  {ev.earningsHour ? (
+                    <Text style={styles.metricText}>{ev.earningsHour}</Text>
+                  ) : null}
+                </View>
+              ) : null}
+              {(ev.actual != null || ev.estimate != null || ev.prev != null) ? (
+                <View style={styles.metricRow}>
+                  <Text style={styles.metricText}>
+                    {isEarnings ? 'EPS ' : ''}{t('calendarMetricActual')}: {formatCalendarMetric(ev.actual, ev.unit)}
+                  </Text>
+                  <Text style={styles.metricText}>
+                    {t('calendarMetricEstimate')}: {formatCalendarMetric(ev.estimate, ev.unit)}
+                  </Text>
+                  {!isEarnings ? (
+                    <Text style={styles.metricText}>
+                      {t('calendarMetricPrevious')}: {formatCalendarMetric(ev.prev, ev.unit)}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+              {surprise ? <Text style={styles.surpriseText}>{surprise}</Text> : null}
+            </View>
+            <Text style={styles.time}>{calendarEventTimeLabel(ev)}</Text>
+          </View>
+        </View>
+      );
+    },
+    [styles, t, theme],
+  );
+
+  const renderListEmpty = useCallback(() => {
+    if (loading) {
+      return (
+        <View style={SCROLL_LOADING_BODY_STYLE}>
+          <SignalLoadingIndicator message={t('commonLoading')} />
+        </View>
+      );
+    }
+    if (error) return null;
+    return (
+      <Text style={styles.empty}>
+        {emptyFiltered ? t('calendarFilterEmptyFiltered') : t('calendarScreenEmptyDay')}
+      </Text>
+    );
+  }, [emptyFiltered, error, loading, styles, t]);
+
+  const isCurrentMonth = (() => {
+    const cm = monthFromYmd(todayYmd);
+    return viewMonth.year === cm.year && viewMonth.month === cm.month;
+  })();
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
 
+      {/* 상단 필터 */}
       <View style={styles.fixedTop}>
         {error ? (
           <View style={styles.errBox}>
@@ -391,13 +490,14 @@ export default function CalendarScreen() {
         </View>
       </View>
 
+      {/* 미니 캘린더 (항상 보임) */}
       <View style={styles.calendarWrapper}>
         <InvestMonthCalendar
           year={viewMonth.year}
           month={viewMonth.month}
           selectedYmd={selectedYmd}
           eventDates={eventDates}
-          onSelectYmd={selectYmd}
+          onSelectYmd={setSelectedYmd}
           onPrevMonth={onPrevMonth}
           onNextMonth={onNextMonth}
           monthPrevA11y={t('calendarMonthPrevA11y')}
@@ -405,39 +505,49 @@ export default function CalendarScreen() {
           todayYmd={todayYmd}
           theme={theme}
           locale={locale}
-          compact
         />
-        <SignalDateNavigator
-          style={styles.dayNavigator}
-          label={selectedDayHeading}
-          labelA11y={selectedDayHeading}
-          previousA11y={t('calendarDayPrevA11y')}
-          nextA11y={t('calendarDayNextA11y')}
-          todayLabel={t('insightCalendarToday')}
-          onPrevious={onPrevDay}
-          onNext={onNextDay}
-          onToday={goToday}
-          showToday={showTodayNav}
-        />
+        {!isCurrentMonth ? (
+          <Pressable
+            onPress={goToday}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.todayBtn, pressed && styles.todayBtnPressed]}>
+            <Text style={styles.todayBtnText}>{t('insightCalendarToday')}</Text>
+          </Pressable>
+        ) : null}
       </View>
 
+      {/* 선택 날짜 헤더 */}
+      <View style={styles.dayHeader}>
+        <Text style={styles.dayHeadingText}>{formatDayHeader(selectedYmd)}</Text>
+        {dayEvents.length > 0 ? (
+          <Text style={styles.dayHeadingCount}>{dayEvents.length}</Text>
+        ) : null}
+      </View>
+
+      {/* 선택 날짜 이벤트 리스트 */}
       <FlatList
-        ref={listRef}
         style={styles.listScroll}
-        data={loading ? [] : selectedDayEvents}
-        keyExtractor={listKeyExtractor}
-        renderItem={renderEventItem}
-        ListHeaderComponent={listHeader}
+        data={dayEvents}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => renderEventCard(item)}
         ListEmptyComponent={renderListEmpty}
         ListFooterComponent={
           <View style={{ paddingBottom: 28 + insets.bottom + 56 }}>
             <SignalBannerAd />
           </View>
         }
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          loading ? SCROLL_CONTENT_LOADING_STYLE : null,
+          dayEvents.length === 0 && !loading ? styles.listContentEmpty : null,
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        keyboardShouldPersistTaps="handled"
+        initialNumToRender={18}
+        maxToRenderPerBatch={18}
+        updateCellsBatchingPeriod={32}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS !== 'web'}
       />
     </SafeAreaView>
   );
@@ -449,53 +559,58 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
     fixedTop: {
       paddingHorizontal: 16,
-      paddingTop: 6,
-      paddingBottom: 6,
+      paddingTop: 8,
+      paddingBottom: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
       backgroundColor: theme.bg,
     },
     calendarWrapper: {
-      paddingHorizontal: 12,
-      paddingTop: 4,
-      paddingBottom: 8,
-      gap: 6,
+      paddingHorizontal: 8,
+      paddingBottom: 4,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
       backgroundColor: theme.bg,
     },
-    daySection: {
-      paddingTop: 8,
-      paddingBottom: 4,
+    todayBtn: {
+      alignSelf: 'center',
+      marginTop: 2,
+      marginBottom: 6,
+      paddingHorizontal: 18,
+      paddingVertical: 7,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
     },
-    daySectionMeta: {
+    todayBtnPressed: { opacity: 0.8 },
+    todayBtnText: {
+      color: theme.green,
+      fontSize: sf(13),
+      fontWeight: '800',
+    },
+    dayHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingTop: 10,
+      paddingBottom: 6,
+    },
+    dayHeadingText: {
+      fontSize: sf(13),
+      fontWeight: '800',
+      color: theme.text,
+      flex: 1,
+    },
+    dayHeadingCount: {
       fontSize: sf(11),
       fontWeight: '700',
       color: theme.textMuted,
     },
-    emptyDayBox: {
-      marginTop: 4,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      paddingVertical: 22,
-      paddingHorizontal: 16,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    emptyDayText: {
-      fontSize: sf(13),
-      fontWeight: '600',
-      color: theme.textMuted,
-      textAlign: 'center',
-      lineHeight: sf(19),
-    },
-    dayNavigator: {
-      marginHorizontal: 0,
-    },
     listScroll: { flex: 1, minHeight: 0 },
-    listContent: { paddingHorizontal: 16, flexGrow: 1 },
+    listContent: { paddingHorizontal: 16, paddingTop: 4 },
+    listContentEmpty: { flexGrow: 1, justifyContent: 'center' },
     filterChips: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -533,6 +648,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginBottom: 8,
     },
     errText: { fontSize: sf(11), color: theme.danger, lineHeight: sf(16) },
+    empty: { fontSize: sf(12), color: theme.textMuted, paddingVertical: 12, textAlign: 'center' },
     card: {
       backgroundColor: theme.card,
       borderRadius: 10,
@@ -615,133 +731,3 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
   });
 }
-
-type CalendarCardStyles = ReturnType<typeof makeStyles>;
-
-function formatDayHeaderLabel(ymd: string, locale: AppLocale): string {
-  const p = ymd.split('-').map(Number);
-  if (p.length !== 3 || p.some((x) => Number.isNaN(x))) return ymd;
-  const d = new Date(p[0], p[1] - 1, p[2]);
-  const loc = locale === 'ja' ? 'ja-JP' : locale === 'en' ? 'en-US' : 'ko-KR';
-  return new Intl.DateTimeFormat(loc, {
-    weekday: 'short',
-    month: 'long',
-    day: 'numeric',
-  }).format(d);
-}
-
-type CalendarEventCardProps = {
-  ev: CalendarEvent;
-  theme: AppTheme;
-  cardStyles: CalendarCardStyles;
-  t: (id: MessageId) => string;
-};
-
-const CalendarEventCard = memo(function CalendarEventCard({
-  ev,
-  theme,
-  cardStyles: styles,
-  t,
-}: CalendarEventCardProps) {
-  const surprise = calendarSurpriseLabel(ev, t);
-  const isEarnings = ev.type === 'earnings';
-  const isHoliday = ev.type === 'holiday';
-
-  const typeTagStyle = isEarnings
-    ? { borderColor: theme.green + '88', backgroundColor: theme.green + '18' }
-    : ev.type === 'macro'
-      ? { borderColor: theme.accentBlue + '88', backgroundColor: theme.accentBlue + '22' }
-      : ev.type === 'fed'
-        ? { borderColor: theme.accentOrange + '77', backgroundColor: theme.accentOrange + '18' }
-        : isHoliday
-          ? { borderColor: theme.textMuted + '66', backgroundColor: theme.bgElevated }
-          : { borderColor: theme.accentOrange + 'CC', backgroundColor: theme.accentOrange + '30' };
-
-  const typeTagTextStyle = isEarnings
-    ? { color: theme.green }
-    : ev.type === 'macro'
-      ? { color: theme.accentBlue }
-      : isHoliday
-        ? { color: theme.textMuted }
-        : { color: theme.accentOrange };
-
-  const typeTagLabel = isEarnings
-    ? t('calendarTagEarnings')
-    : ev.type === 'fomc'
-      ? t('calendarTagFomc')
-      : ev.type === 'fed'
-        ? t('calendarTagFed')
-        : isHoliday
-          ? t('calendarTagHoliday')
-          : t('calendarTagMacro');
-
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardRow}>
-        <View style={styles.titleBlock}>
-          <View style={styles.titleLine}>
-            <View style={[styles.typeTag, typeTagStyle]}>
-              <Text style={[styles.typeTagText, typeTagTextStyle]}>{typeTagLabel}</Text>
-            </View>
-            {isEarnings && ev.symbol ? (
-              <View style={styles.symbolTag}>
-                <Text style={styles.symbolTagText}>{ev.symbol}</Text>
-              </View>
-            ) : null}
-            {!isEarnings && ev.impact ? (
-              <View
-                style={[
-                  styles.impactTag,
-                  ev.impact === 'high' && styles.impactHigh,
-                  ev.impact === 'medium' && styles.impactMedium,
-                ]}>
-                <Text
-                  style={[
-                    styles.impactTagText,
-                    ev.impact === 'high' && { color: theme.accentOrange },
-                    ev.impact === 'medium' && { color: theme.accentBlue },
-                  ]}>
-                  {ev.impact === 'high'
-                    ? t('calendarImpactHigh')
-                    : ev.impact === 'medium'
-                      ? t('calendarImpactMedium')
-                      : t('calendarImpactLow')}
-                </Text>
-              </View>
-            ) : null}
-            <Text style={styles.title} numberOfLines={3}>
-              {ev.title}
-            </Text>
-          </View>
-          {isEarnings && (ev.fiscalYear != null || ev.earningsHour) ? (
-            <View style={styles.metricRow}>
-              {ev.fiscalYear != null && ev.fiscalQuarter != null ? (
-                <Text style={styles.metricText}>
-                  FY{ev.fiscalYear} Q{ev.fiscalQuarter}
-                </Text>
-              ) : null}
-              {ev.earningsHour ? <Text style={styles.metricText}>{ev.earningsHour}</Text> : null}
-            </View>
-          ) : null}
-          {(ev.actual != null || ev.estimate != null || ev.prev != null) ? (
-            <View style={styles.metricRow}>
-              <Text style={styles.metricText}>
-                {isEarnings ? 'EPS ' : ''}{t('calendarMetricActual')}: {formatCalendarMetric(ev.actual, ev.unit)}
-              </Text>
-              <Text style={styles.metricText}>
-                {t('calendarMetricEstimate')}: {formatCalendarMetric(ev.estimate, ev.unit)}
-              </Text>
-              {!isEarnings ? (
-                <Text style={styles.metricText}>
-                  {t('calendarMetricPrevious')}: {formatCalendarMetric(ev.prev, ev.unit)}
-                </Text>
-              ) : null}
-            </View>
-          ) : null}
-          {surprise ? <Text style={styles.surpriseText}>{surprise}</Text> : null}
-        </View>
-        <Text style={styles.time}>{calendarEventTimeLabel(ev)}</Text>
-      </View>
-    </View>
-  );
-});

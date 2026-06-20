@@ -92,8 +92,6 @@ export const ja = {
   calendarScreenEmptyDay: 'この日の予定はありません。',
   calendarMonthPrevA11y: '前の月',
   calendarMonthNextA11y: '次の月',
-  calendarDayPrevA11y: '前の日',
-  calendarDayNextA11y: '次の日',
   calendarTagEarnings: '決算',
   calendarTagFomc: 'FOMC',
   calendarTagFed: 'FRB',

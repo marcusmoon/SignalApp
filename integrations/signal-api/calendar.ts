@@ -58,6 +58,22 @@ export async function fetchSignalCalendarDateSummaries(
   return rows;
 }
 
+export async function fetchSignalCalendarCursor(
+  params: {
+    after?: string;
+    before?: string;
+    type?: string;
+    country?: string;
+    limit?: number;
+  },
+): Promise<SignalApiCalendarEvent[]> {
+  const json = await signalApi<{ data: SignalApiCalendarEvent[] }>('/v1/calendar/events', params, {
+    timeoutMs: 6000,
+    attempts: 1,
+  });
+  return Array.isArray(json.data) ? json.data : [];
+}
+
 export function signalCalendarDateSummariesFromEvents(
   items: SignalApiCalendarEvent[],
 ): SignalApiCalendarDateSummary[] {

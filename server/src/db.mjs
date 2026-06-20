@@ -26,6 +26,7 @@ import {
   deleteCalendarRowById,
   deleteCalendarRowsByIds,
   findDuplicateCalendarIds,
+  queryPublicCalendarCursorRows,
   queryPublicCalendarDateSummaryRows,
   queryPublicCalendarRows,
 } from './db/repositories/calendarRepository.mjs';
@@ -887,6 +888,10 @@ export async function queryPublicCalendar(options = {}) {
 
 export async function queryPublicCalendarDateSummaries(options = {}) {
   return cachedPublicRead('publicCalendarDateSummaries', options, () => queryPublicCalendarDateSummaryRows(options), 30000);
+}
+
+export async function queryPublicCalendarCursor(options = {}) {
+  return queryPublicCalendarCursorRows(options);
 }
 
 export async function deleteCalendarEvent(id) {

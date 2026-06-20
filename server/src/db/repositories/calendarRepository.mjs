@@ -164,6 +164,67 @@ export async function deleteCalendarRowsByIds(ids) {
 }
 
 /**
+ * Cursor-based query: returns up to `limit` events after (or before) a cursor date.
+ * direction is determined by which param is present: `after` = forward, `before` = backward.
+ * Results are always returned in ascending date order.
+ */
+export async function queryPublicCalendarCursorRows(options = {}) {
+  const limit = Math.min(Math.max(parseInt(String(options.limit || '20'), 10) || 20, 1), 100);
+  const params = [];
+  const where = ['event_date IS NOT NULL'];
+
+  const type = cleanText(options.type);
+  if (type) {
+    params.push(type);
+    where.push(`event_type = $${params.length}`);
+  }
+  const country = cleanText(options.country).toUpperCase();
+  if (country) {
+    params.push(country);
+    where.push(`upper(COALESCE(country, '')) = $${params.length}`);
+  }
+  const symbol = cleanText(options.symbol).toUpperCase();
+  if (symbol) {
+    params.push(symbol);
+    where.push(`upper(COALESCE(symbol, '')) = $${params.length}`);
+  }
+
+  const after = cleanText(options.after);
+  const before = cleanText(options.before);
+
+  let order = 'ASC';
+  if (after) {
+    params.push(after);
+    where.push(`event_date >= $${params.length}::date`);
+    order = 'ASC';
+  } else if (before) {
+    params.push(before);
+    where.push(`event_date < $${params.length}::date`);
+    order = 'DESC';
+  }
+
+  params.push(limit);
+  const result = await queryKysely(
+    `
+      SELECT
+        id, event_type, event_date::text, event_at, event_key,
+        country, symbol, title, provider, provider_item_id,
+        time_label, timezone, company_name, source, source_event_id,
+        impact, importance, actual, estimate, previous, unit,
+        fiscal_year, fiscal_quarter, earnings_hour, url, updated_at
+      FROM calendar_events
+      WHERE ${where.join(' AND ')}
+      ORDER BY event_date ${order}, title
+      LIMIT $${params.length}
+    `,
+    params,
+  );
+  const rows = result.rows.map(rowToPublicEvent).filter(Boolean);
+  // 'before' 방향은 DESC로 가져온 뒤 오름차순으로 뒤집어서 반환
+  return order === 'DESC' ? rows.reverse() : rows;
+}
+
+/**
  * Find duplicates by (country, event_type, event_key) — same as the unique constraint.
  * The unique index already prevents true duplicates; this targets any leftover legacy rows
  * that pre-date the constraint. Keeps oldest (smallest id), prefers provider='manual'.

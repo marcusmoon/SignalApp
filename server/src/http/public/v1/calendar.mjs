@@ -1,4 +1,4 @@
-import { queryPublicCalendar, queryPublicCalendarDateSummaries, upsertCollectionRows, deleteCalendarEvent, deduplicateCalendarEvents } from '../../../db.mjs';
+import { queryPublicCalendar, queryPublicCalendarCursor, queryPublicCalendarDateSummaries, upsertCollectionRows, deleteCalendarEvent, deduplicateCalendarEvents } from '../../../db.mjs';
 import { json, readBody } from '../../shared.mjs';
 import { config } from '../../../config.mjs';
 
@@ -21,6 +21,19 @@ export async function handlePublicCalendarRoutes({ req, res, url, pathname }) {
       to: url.searchParams.get('to') || '',
       type: url.searchParams.get('type') || '',
       country: url.searchParams.get('country') || '',
+    });
+    json(res, 200, { data: rows });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/v1/calendar/events') {
+    const rows = await queryPublicCalendarCursor({
+      after: url.searchParams.get('after') || '',
+      before: url.searchParams.get('before') || '',
+      type: url.searchParams.get('type') || '',
+      country: url.searchParams.get('country') || '',
+      symbol: url.searchParams.get('symbol') || '',
+      limit: url.searchParams.get('limit') || '20',
     });
     json(res, 200, { data: rows });
     return true;

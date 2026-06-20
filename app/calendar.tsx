@@ -24,7 +24,7 @@ import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
-  fetchSignalCalendar,
+  fetchSignalCalendarCursor,
   signalCalendarToCalendarEvent,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -49,12 +49,10 @@ const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
 
 type CalendarSection = { title: string; data: CalendarEvent[] };
 
-const CALENDAR_INITIAL_PAST_DAYS = 14;
-const CALENDAR_WINDOW_DAYS = 90;
-const CALENDAR_ALL_LOOKAHEAD_DAYS = 420;
-const CALENDAR_SINGLE_TYPE_LOOKAHEAD_DAYS = 240;
-const CALENDAR_QUERY_LIMIT = 900;
-const CALENDAR_EMPTY_WINDOW_HOPS = 4;
+// 커서 기반 페이지네이션 상수
+const CURSOR_FORWARD_LIMIT = 30;   // 아래 방향: 앵커 이후 이벤트 수
+const CURSOR_BACKWARD_LIMIT = 15;  // 위 방향: 앵커 이전 이벤트 수 (초기 과거 컨텍스트)
+const CURSOR_LOAD_MORE_LIMIT = 25; // 추가 로드 시 요청 이벤트 수
 
 function calendarEventTimeLabel(ev: CalendarEvent, t: (id: MessageId) => string): string {
   return ev.time || '—';
@@ -75,19 +73,19 @@ function calendarSurpriseLabel(ev: CalendarEvent, t: (id: MessageId) => string):
   return t('calendarActualInlineEstimate');
 }
 
-function mergeCalendarEvents(chunks: CalendarEvent[][]): CalendarEvent[] {
+function mergeCalendarEvents(a: CalendarEvent[], b: CalendarEvent[]): CalendarEvent[] {
   const byId = new Map<string, CalendarEvent>();
-  for (const chunk of chunks) {
-    for (const event of chunk) {
-      byId.set(event.id, event);
-    }
-  }
+  for (const ev of [...a, ...b]) byId.set(ev.id, ev);
   return Array.from(byId.values()).sort(
-    (a, b) =>
-      a.date.localeCompare(b.date) ||
-      String(a.time || '').localeCompare(String(b.time || '')) ||
-      a.title.localeCompare(b.title),
+    (x, y) =>
+      String(x.date || '').localeCompare(String(y.date || '')) ||
+      String(x.time || '').localeCompare(String(y.time || '')) ||
+      x.title.localeCompare(y.title),
   );
+}
+
+function rawToCalendarEvent(raw: Parameters<typeof signalCalendarToCalendarEvent>[0]): CalendarEvent | null {
+  return signalCalendarToCalendarEvent(raw);
 }
 
 function dateFromYmd(ymd: string): Date {
@@ -107,43 +105,9 @@ function monthFromYmd(value: string): { year: number; month: number } {
   return { year: date.getFullYear(), month: date.getMonth() };
 }
 
-function isSingleCalendarTypeSelection(
-  input: Set<CalendarEventTypeKey>,
-  type: CalendarEventTypeKey,
-): boolean {
-  return input.size === 1 && input.has(type);
-}
-
 function selectedCalendarType(input: Set<CalendarEventTypeKey>): CalendarEventTypeKey | undefined {
   if (input.size !== 1) return undefined;
   return CALENDAR_EVENT_TYPE_ORDER.find((type) => input.has(type));
-}
-
-function calendarLookaheadDays(input: Set<CalendarEventTypeKey>): number {
-  if (input.size === CALENDAR_EVENT_TYPE_ORDER.length || input.has('holiday')) {
-    return CALENDAR_ALL_LOOKAHEAD_DAYS;
-  }
-  return CALENDAR_SINGLE_TYPE_LOOKAHEAD_DAYS;
-}
-
-function minYmd(a: string, b: string): string {
-  return a <= b ? a : b;
-}
-
-function queryForDateWindow(
-  anchorYmd: string,
-  fromYmd: string,
-  enabledTypes: Set<CalendarEventTypeKey>,
-) {
-  const maxToYmd = shiftYmd(anchorYmd, calendarLookaheadDays(enabledTypes));
-  if (fromYmd > maxToYmd) return null;
-  const type = selectedCalendarType(enabledTypes);
-  return {
-    from: fromYmd,
-    to: minYmd(shiftYmd(fromYmd, CALENDAR_WINDOW_DAYS), maxToYmd),
-    type,
-    limit: CALENDAR_QUERY_LIMIT,
-  };
 }
 
 function normalizeCalendarTypeSelection(input: Set<CalendarEventTypeKey>): Set<CalendarEventTypeKey> {
@@ -176,14 +140,21 @@ export default function CalendarScreen() {
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loadedThroughYmd, setLoadedThroughYmd] = useState<string | null>(null);
-  const [canLoadMore, setCanLoadMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
+  // 커서: 마지막 로드된 이벤트의 날짜 (아래 방향 페이지네이션용)
+  const forwardCursorRef = useRef<string | null>(null);
+  // 커서: 처음 로드된 이벤트의 날짜 (위 방향 페이지네이션용)
+  const backwardCursorRef = useRef<string | null>(null);
+  const [canLoadForward, setCanLoadForward] = useState(true);
+  const [canLoadBackward, setCanLoadBackward] = useState(true);
+  const [loadingForward, setLoadingForward] = useState(false);
+  const [loadingBackward, setLoadingBackward] = useState(false);
   const [enabledTypes, setEnabledTypes] = useState(
     () => new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER),
   );
   const sectionListRef = useRef<SectionList<CalendarEvent, CalendarSection>>(null);
   const ignoreViewableUntilRef = useRef(0);
+  // 위 방향 로드 중복 방지
+  const isLoadingBackwardRef = useRef(false);
 
   useEffect(() => {
     void loadCalendarEventTypeFilter().then((saved) => {
@@ -194,99 +165,112 @@ export default function CalendarScreen() {
   }, []);
 
   const [selectedYmd, setSelectedYmd] = useState(() => toYmd(new Date()));
-  const [rangeAnchorYmd, setRangeAnchorYmd] = useState(() => toYmd(new Date()));
+  const [anchorYmd, setAnchorYmd] = useState(() => toYmd(new Date()));
   const [pendingScrollYmd, setPendingScrollYmd] = useState<string | null>(() => toYmd(new Date()));
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => monthFromYmd(toYmd(new Date())));
 
-  const fetchCalendarWindow = useCallback(
-    async (fromYmd: string, forceRefresh?: boolean) => {
-      const query = queryForDateWindow(rangeAnchorYmd, fromYmd, enabledTypes);
-      if (!query) {
-        return { events: [] as CalendarEvent[], throughYmd: fromYmd, canLoadMore: false };
-      }
-      const cacheMode = forceRefresh ? 'bypass' : 'use';
-      const list = await fetchSignalCalendar(query, { cacheMode });
-      const nextEvents = list
-        .map(signalCalendarToCalendarEvent)
-        .filter((event): event is CalendarEvent => event != null);
-      const maxToYmd = shiftYmd(rangeAnchorYmd, calendarLookaheadDays(enabledTypes));
-      return {
-        events: nextEvents,
-        throughYmd: query.to,
-        canLoadMore: query.to < maxToYmd,
-      };
+  const typeParam = selectedCalendarType(enabledTypes);
+
+  // 커서 기반 fetch 헬퍼
+  const fetchCursor = useCallback(
+    async (params: { after?: string; before?: string }) => {
+      const raw = await fetchSignalCalendarCursor({
+        ...params,
+        type: typeParam,
+        limit: CURSOR_LOAD_MORE_LIMIT,
+      });
+      return raw
+        .map(rawToCalendarEvent)
+        .filter((ev): ev is CalendarEvent => ev != null);
     },
-    [enabledTypes, rangeAnchorYmd],
+    [typeParam],
   );
 
+  // 초기 / 앵커 변경 시 로드
   const load = useCallback(
-    async (forceRefresh?: boolean) => {
+    async (anchor: string, forceRefresh?: boolean) => {
       setError(null);
       if (!hasSignalApi()) {
         setEvents([]);
-        setLoadedThroughYmd(null);
-        setCanLoadMore(false);
         setError(t('errorSignalApiShort'));
         return;
       }
-
-      let fromYmd = shiftYmd(rangeAnchorYmd, -CALENDAR_INITIAL_PAST_DAYS);
-      let nextEvents: CalendarEvent[] = [];
-      let nextLoadedThrough: string | null = null;
-      let nextCanLoadMore = false;
-
-      for (let i = 0; i < CALENDAR_EMPTY_WINDOW_HOPS; i += 1) {
-        const page = await fetchCalendarWindow(fromYmd, forceRefresh);
-        nextEvents = mergeCalendarEvents([nextEvents, page.events]);
-        nextLoadedThrough = page.throughYmd;
-        nextCanLoadMore = page.canLoadMore;
-        const hasFutureTarget = nextEvents.some((event) => String(event.date || '').slice(0, 10) >= rangeAnchorYmd);
-        if (hasFutureTarget || !page.canLoadMore) break;
-        fromYmd = shiftYmd(page.throughYmd, 1);
-      }
-
-      setEvents(nextEvents);
-      setLoadedThroughYmd(nextLoadedThrough);
-      setCanLoadMore(nextCanLoadMore);
+      // 앵커 기준 앞뒤를 동시에 fetch
+      const [fwdRaw, bwdRaw] = await Promise.all([
+        fetchSignalCalendarCursor({
+          after: anchor,
+          type: typeParam,
+          limit: CURSOR_FORWARD_LIMIT,
+        }),
+        fetchSignalCalendarCursor({
+          before: anchor,
+          type: typeParam,
+          limit: CURSOR_BACKWARD_LIMIT,
+        }),
+      ]);
+      const fwd = fwdRaw.map(rawToCalendarEvent).filter((ev): ev is CalendarEvent => ev != null);
+      const bwd = bwdRaw.map(rawToCalendarEvent).filter((ev): ev is CalendarEvent => ev != null);
+      const merged = mergeCalendarEvents(bwd, fwd);
+      setEvents(merged);
+      forwardCursorRef.current = fwd.at(-1)?.date ?? anchor;
+      backwardCursorRef.current = bwd[0]?.date ?? anchor;
+      setCanLoadForward(fwd.length >= CURSOR_FORWARD_LIMIT);
+      setCanLoadBackward(bwd.length >= CURSOR_BACKWARD_LIMIT);
     },
-    [fetchCalendarWindow, rangeAnchorYmd, t],
+    [typeParam, t],
   );
 
-  const loadMore = useCallback(async () => {
-    if (!hasSignalApi() || loading || refreshing || loadingMore || !canLoadMore || !loadedThroughYmd) return;
-    setLoadingMore(true);
+  // 아래 방향 더 로드 (onEndReached)
+  const loadMoreForward = useCallback(async () => {
+    if (!hasSignalApi() || loading || refreshing || loadingForward || !canLoadForward) return;
+    const cursor = forwardCursorRef.current;
+    if (!cursor) return;
+    setLoadingForward(true);
     try {
-      let fromYmd = shiftYmd(loadedThroughYmd, 1);
-      let appendedEvents: CalendarEvent[] = [];
-      let nextLoadedThrough = loadedThroughYmd;
-      let nextCanLoadMore: boolean = canLoadMore;
-
-      for (let i = 0; i < CALENDAR_EMPTY_WINDOW_HOPS; i += 1) {
-        const page = await fetchCalendarWindow(fromYmd);
-        appendedEvents = mergeCalendarEvents([appendedEvents, page.events]);
-        nextLoadedThrough = page.throughYmd;
-        nextCanLoadMore = page.canLoadMore;
-        if (appendedEvents.length > 0 || !page.canLoadMore) break;
-        fromYmd = shiftYmd(page.throughYmd, 1);
+      // cursor 날짜 다음날부터 (같은 날짜 중복 방지)
+      const after = shiftYmd(cursor, 1);
+      const newEvents = await fetchCursor({ after });
+      setEvents((prev) => mergeCalendarEvents(prev, newEvents));
+      if (newEvents.length > 0) {
+        forwardCursorRef.current = newEvents.at(-1)!.date;
       }
-
-      setEvents((prev) => mergeCalendarEvents([prev, appendedEvents]));
-      setLoadedThroughYmd(nextLoadedThrough);
-      setCanLoadMore(nextCanLoadMore);
+      setCanLoadForward(newEvents.length >= CURSOR_LOAD_MORE_LIMIT);
     } catch (e) {
       setError(formatSignalApiError(e, t, 'calendarErrorLoad'));
     } finally {
-      setLoadingMore(false);
+      setLoadingForward(false);
     }
-  }, [canLoadMore, fetchCalendarWindow, loadedThroughYmd, loading, loadingMore, refreshing, t]);
+  }, [canLoadForward, fetchCursor, loading, loadingForward, refreshing, t]);
+
+  // 위 방향 더 로드 (스크롤 상단 감지)
+  const loadMoreBackward = useCallback(async () => {
+    if (!hasSignalApi() || loading || refreshing || isLoadingBackwardRef.current || !canLoadBackward) return;
+    const cursor = backwardCursorRef.current;
+    if (!cursor) return;
+    isLoadingBackwardRef.current = true;
+    setLoadingBackward(true);
+    try {
+      const newEvents = await fetchCursor({ before: cursor });
+      setEvents((prev) => mergeCalendarEvents(newEvents, prev));
+      if (newEvents.length > 0) {
+        backwardCursorRef.current = newEvents[0].date;
+      }
+      setCanLoadBackward(newEvents.length >= CURSOR_LOAD_MORE_LIMIT);
+    } catch (e) {
+      // 위 방향 실패는 조용히 처리 (UX 방해 최소화)
+    } finally {
+      isLoadingBackwardRef.current = false;
+      setLoadingBackward(false);
+    }
+  }, [canLoadBackward, fetchCursor, loading, refreshing]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
-        await load();
+        await load(anchorYmd);
       } catch (e) {
         if (!cancelled) {
           setError(formatSignalApiError(e, t, 'calendarErrorLoad'));
@@ -296,21 +280,29 @@ export default function CalendarScreen() {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [load]);
+    return () => { cancelled = true; };
+  }, [load, anchorYmd]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await load(true);
+      await load(anchorYmd, true);
     } catch (e) {
       setError(formatSignalApiError(e, t, 'feedErrorRefresh'));
     } finally {
       setRefreshing(false);
     }
-  }, [load, t]);
+  }, [load, anchorYmd, t]);
+
+  // 스크롤 위치 감지 → 상단 근처면 과거 로드
+  const onScroll = useCallback(
+    ({ nativeEvent }: { nativeEvent: { contentOffset: { y: number } } }) => {
+      if (nativeEvent.contentOffset.y < 180) {
+        void loadMoreBackward();
+      }
+    },
+    [loadMoreBackward],
+  );
 
   const filteredEvents = useMemo(
     () => events.filter((e) => enabledTypes.has(e.type)),
@@ -343,7 +335,7 @@ export default function CalendarScreen() {
       void saveCalendarEventTypeFilter(next);
       return next;
     });
-    setRangeAnchorYmd(selectedYmd);
+    setAnchorYmd(selectedYmd);
     setPendingScrollYmd(selectedYmd);
   }, [selectedYmd]);
 
@@ -351,7 +343,7 @@ export default function CalendarScreen() {
     const next = new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
     setEnabledTypes(next);
     void saveCalendarEventTypeFilter(next);
-    setRangeAnchorYmd(selectedYmd);
+    setAnchorYmd(selectedYmd);
     setPendingScrollYmd(selectedYmd);
   }, [selectedYmd]);
 
@@ -372,10 +364,10 @@ export default function CalendarScreen() {
 
   const todayYmd = toYmd(new Date());
 
-  const selectYmd = useCallback((ymd: string, reloadRange = false) => {
+  const selectYmd = useCallback((ymd: string, reloadAnchor = false) => {
     ignoreViewableUntilRef.current = Date.now() + 900;
     setSelectedYmd(ymd);
-    if (reloadRange) setRangeAnchorYmd(ymd);
+    if (reloadAnchor) setAnchorYmd(ymd);
     setPendingScrollYmd(ymd);
   }, []);
 
@@ -688,10 +680,17 @@ export default function CalendarScreen() {
             </Text>
           ) : null
         }
+        ListHeaderComponent={
+          loadingBackward ? (
+            <View style={styles.loadMore}>
+              <SignalLoadingIndicator message={t('commonLoading')} />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={renderListEmpty}
         ListFooterComponent={
           <View>
-            {loadingMore ? (
+            {loadingForward ? (
               <View style={styles.loadMore}>
                 <SignalLoadingIndicator message={t('commonLoading')} />
               </View>
@@ -702,8 +701,11 @@ export default function CalendarScreen() {
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         onScrollToIndexFailed={onScrollToIndexFailed}
-        onEndReached={loadMore}
+        onEndReached={loadMoreForward}
         onEndReachedThreshold={0.45}
+        onScroll={onScroll}
+        scrollEventThrottle={200}
+        maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
         contentContainerStyle={[
           styles.listContent,
           loading ? SCROLL_CONTENT_LOADING_STYLE : null,

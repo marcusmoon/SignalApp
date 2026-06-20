@@ -94,6 +94,7 @@ export const ko = {
   calendarTagFomc: 'FOMC',
   calendarTagFed: '연준',
   calendarTagMacro: '지표',
+  calendarTagHoliday: '휴장',
   calendarEarningsHourIntraday: '장중',
   calendarFilterClose: '닫기',
   calendarFilterAll: '전체',

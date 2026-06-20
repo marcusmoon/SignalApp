@@ -97,6 +97,16 @@ export function signalCalendarToCalendarEvent(item: SignalApiCalendarEvent): Cal
       earningsHour: item.earningsHour || null,
     };
   }
+  if (item.type === 'holiday') {
+    return {
+      id: item.id,
+      date: item.date || '—',
+      time: '',
+      title: item.title,
+      type: 'holiday',
+      country: item.country || undefined,
+    };
+  }
   if (item.type !== 'macro' && item.type !== 'fed' && item.type !== 'fomc') return null;
   return {
     id: item.id,

@@ -17,7 +17,7 @@ export type CalendarEvent = {
   date: string;
   time: string;
   title: string;
-  type: 'macro' | 'fed' | 'fomc' | 'earnings';
+  type: 'macro' | 'fed' | 'fomc' | 'earnings' | 'holiday';
   impact?: 'low' | 'medium' | 'high';
   actual?: number | null;
   estimate?: number | null;

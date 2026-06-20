@@ -8,4 +8,5 @@ export const CALENDAR_EVENT_TYPE_ORDER: CalendarEventTypeKey[] = [
   'fed',
   'fomc',
   'earnings',
+  'holiday',
 ];

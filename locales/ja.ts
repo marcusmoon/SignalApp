@@ -96,6 +96,7 @@ export const ja = {
   calendarTagFomc: 'FOMC',
   calendarTagFed: 'FRB',
   calendarTagMacro: '指標',
+  calendarTagHoliday: '休場',
   calendarEarningsHourIntraday: '場中',
   calendarFilterClose: '閉じる',
   calendarFilterAll: 'すべて',

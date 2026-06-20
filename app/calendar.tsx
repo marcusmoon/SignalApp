@@ -46,6 +46,7 @@ const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
   fed: 'calendarTagFed',
   fomc: 'calendarTagFomc',
   earnings: 'calendarTagEarnings',
+  holiday: 'calendarTagHoliday',
 };
 
 function calendarEventTimeLabel(ev: CalendarEvent, t: (id: MessageId) => string): string {
@@ -328,19 +329,25 @@ export default function CalendarScreen() {
       const surprise = calendarSurpriseLabel(ev, t);
       const isEarnings = ev.type === 'earnings';
 
+      const isHoliday = ev.type === 'holiday';
+
       const typeTagStyle = isEarnings
         ? { borderColor: theme.green + '88', backgroundColor: theme.green + '18' }
         : ev.type === 'macro'
           ? { borderColor: theme.accentBlue + '88', backgroundColor: theme.accentBlue + '22' }
           : ev.type === 'fed'
             ? { borderColor: theme.accentOrange + '77', backgroundColor: theme.accentOrange + '18' }
-            : { borderColor: theme.accentOrange + 'CC', backgroundColor: theme.accentOrange + '30' };
+            : isHoliday
+              ? { borderColor: theme.textMuted + '66', backgroundColor: theme.bgElevated }
+              : { borderColor: theme.accentOrange + 'CC', backgroundColor: theme.accentOrange + '30' };
 
       const typeTagTextStyle = isEarnings
         ? { color: theme.green }
         : ev.type === 'macro'
           ? { color: theme.accentBlue }
-          : { color: theme.accentOrange };
+          : isHoliday
+            ? { color: theme.textMuted }
+            : { color: theme.accentOrange };
 
       const typeTagLabel = isEarnings
         ? t('calendarTagEarnings')
@@ -348,7 +355,9 @@ export default function CalendarScreen() {
           ? t('calendarTagFomc')
           : ev.type === 'fed'
             ? t('calendarTagFed')
-            : t('calendarTagMacro');
+            : isHoliday
+              ? t('calendarTagHoliday')
+              : t('calendarTagMacro');
 
       return (
         <View style={styles.card}>

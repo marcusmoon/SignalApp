@@ -96,6 +96,7 @@ export const en = {
   calendarTagFomc: 'FOMC',
   calendarTagFed: 'Fed',
   calendarTagMacro: 'Macro',
+  calendarTagHoliday: 'Holiday',
   calendarEarningsHourIntraday: 'Regular session',
   calendarFilterClose: 'Close',
   calendarFilterAll: 'All',

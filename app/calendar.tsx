@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   ListRenderItem,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -76,6 +77,12 @@ function dateFromYmd(ymd: string): Date {
   return new Date(y, m - 1, d);
 }
 
+function shiftYmd(ymd: string, days: number): string {
+  const d = dateFromYmd(ymd);
+  d.setDate(d.getDate() + days);
+  return toYmd(d);
+}
+
 function monthFromYmd(value: string): { year: number; month: number } {
   const date = dateFromYmd(value);
   return { year: date.getFullYear(), month: date.getMonth() };
@@ -85,34 +92,6 @@ function monthBounds(year: number, month: number): { from: string; to: string } 
   const first = new Date(year, month, 1);
   const last = new Date(year, month + 1, 0);
   return { from: toYmd(first), to: toYmd(last) };
-}
-
-/** 이번 달: 오늘 / 다른 달: 1일 */
-function resolveAutoSelectYmd(year: number, month: number, todayYmd: string): string {
-  const todayMonth = toYmd(new Date()).slice(0, 7);
-  const viewMonthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-  if (viewMonthStr === todayMonth) return todayYmd;
-  return toYmd(new Date(year, month, 1));
-}
-
-/** 버튼 이동: anchor 기준 다음/이전 이벤트일 (같은 달) */
-function resolveAdjacentEventYmd(
-  anchorYmd: string,
-  eventDates: Set<string>,
-  direction: -1 | 1,
-): string | null {
-  if (eventDates.size === 0) return null;
-  const sorted = [...eventDates].sort();
-  if (direction > 0) return sorted.find((d) => d > anchorYmd) ?? null;
-  return [...sorted].reverse().find((d) => d < anchorYmd) ?? null;
-}
-
-function sortedEventDatesFromEvents(events: CalendarEvent[], enabledTypes: Set<CalendarEventTypeKey>): string[] {
-  const dates = events
-    .filter((e) => enabledTypes.has(e.type))
-    .map((e) => String(e.date || '').slice(0, 10))
-    .filter(Boolean);
-  return [...new Set(dates)].sort();
 }
 
 function normalizeCalendarTypeSelection(input: Set<CalendarEventTypeKey>): Set<CalendarEventTypeKey> {
@@ -157,13 +136,10 @@ export default function CalendarScreen() {
   );
   const [viewMonth, setViewMonth] = useState(() => monthFromYmd(todayYmd));
   const [selectedYmd, setSelectedYmd] = useState(todayYmd);
+  const [calendarVisible, setCalendarVisible] = useState(false);
 
   const loadSeqRef = useRef(0);
   const listRef = useRef<FlatList<CalendarEvent>>(null);
-  /** 월 fetch 후 선택일 유지(일 단위 이동·오늘) vs 자동 선택(월 chevron) */
-  const monthChangeIntentRef = useRef<'auto' | 'preserveDay'>('auto');
-  /** 월 경계 넘어갈 때 인접 달 첫/마지막 이벤트일 */
-  const pendingEventNavRef = useRef<'first' | 'last' | null>(null);
 
   useEffect(() => {
     void loadCalendarEventTypeFilter().then((saved) => {
@@ -200,20 +176,6 @@ export default function CalendarScreen() {
         const events = await fetchMonthData(viewMonth.year, viewMonth.month);
         if (cancelled || loadSeqRef.current !== seq) return;
         setMonthEvents(events);
-        const sortedDates = sortedEventDatesFromEvents(events, enabledTypes);
-        const pendingNav = pendingEventNavRef.current;
-        pendingEventNavRef.current = null;
-        if (pendingNav === 'first') {
-          setSelectedYmd(sortedDates[0] ?? resolveAutoSelectYmd(viewMonth.year, viewMonth.month, todayYmd));
-        } else if (pendingNav === 'last') {
-          setSelectedYmd(
-            sortedDates[sortedDates.length - 1] ?? resolveAutoSelectYmd(viewMonth.year, viewMonth.month, todayYmd),
-          );
-        } else if (monthChangeIntentRef.current === 'preserveDay') {
-          monthChangeIntentRef.current = 'auto';
-        } else {
-          setSelectedYmd(resolveAutoSelectYmd(viewMonth.year, viewMonth.month, todayYmd));
-        }
       } catch (e) {
         if (!cancelled && loadSeqRef.current === seq) {
           setError(formatSignalApiError(e, t, 'calendarErrorLoad'));
@@ -224,8 +186,7 @@ export default function CalendarScreen() {
       }
     })();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMonth.year, viewMonth.month, typeParam]);
+  }, [fetchMonthData, t, viewMonth.year, viewMonth.month]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -257,11 +218,6 @@ export default function CalendarScreen() {
     [filteredEvents, selectedYmd],
   );
 
-  const isViewingCurrentMonth = useMemo(() => {
-    const cm = monthFromYmd(todayYmd);
-    return viewMonth.year === cm.year && viewMonth.month === cm.month;
-  }, [todayYmd, viewMonth.month, viewMonth.year]);
-
   const selectedDayHeading = useMemo(
     () => formatDayHeaderLabel(selectedYmd, locale),
     [locale, selectedYmd],
@@ -288,10 +244,10 @@ export default function CalendarScreen() {
 
   const selectYmd = useCallback((ymd: string) => {
     setSelectedYmd(ymd);
+    setViewMonth(monthFromYmd(ymd));
   }, []);
 
   const onPrevMonth = useCallback(() => {
-    monthChangeIntentRef.current = 'auto';
     setViewMonth((prev) => {
       const d = new Date(prev.year, prev.month - 1, 1);
       return { year: d.getFullYear(), month: d.getMonth() };
@@ -299,41 +255,40 @@ export default function CalendarScreen() {
   }, []);
 
   const onNextMonth = useCallback(() => {
-    monthChangeIntentRef.current = 'auto';
     setViewMonth((prev) => {
       const d = new Date(prev.year, prev.month + 1, 1);
       return { year: d.getFullYear(), month: d.getMonth() };
     });
   }, []);
 
-  const shiftSelectedDay = useCallback(
-    (delta: -1 | 1) => {
-      if (eventDates.size === 0) {
-        const adj = new Date(viewMonth.year, viewMonth.month + delta, 1);
-        pendingEventNavRef.current = delta > 0 ? 'first' : 'last';
-        setViewMonth({ year: adj.getFullYear(), month: adj.getMonth() });
-        return;
-      }
-      const adjacent = resolveAdjacentEventYmd(selectedYmd, eventDates, delta);
-      if (adjacent) {
-        setSelectedYmd(adjacent);
-        return;
-      }
-      const adj = new Date(viewMonth.year, viewMonth.month + delta, 1);
-      pendingEventNavRef.current = delta > 0 ? 'first' : 'last';
-      setViewMonth({ year: adj.getFullYear(), month: adj.getMonth() });
-    },
-    [eventDates, selectedYmd, viewMonth.month, viewMonth.year],
-  );
+  const shiftSelectedDay = useCallback((delta: -1 | 1) => {
+    selectYmd(shiftYmd(selectedYmd, delta));
+  }, [selectYmd, selectedYmd]);
 
   const onPrevDay = useCallback(() => shiftSelectedDay(-1), [shiftSelectedDay]);
   const onNextDay = useCallback(() => shiftSelectedDay(1), [shiftSelectedDay]);
 
   const goToday = useCallback(() => {
-    monthChangeIntentRef.current = 'preserveDay';
-    setViewMonth(monthFromYmd(todayYmd));
-    setSelectedYmd(todayYmd);
-  }, [todayYmd]);
+    selectYmd(todayYmd);
+  }, [selectYmd, todayYmd]);
+
+  const openCalendar = useCallback(() => {
+    setViewMonth(monthFromYmd(selectedYmd));
+    setCalendarVisible(true);
+  }, [selectedYmd]);
+
+  const closeCalendar = useCallback(() => {
+    setViewMonth(monthFromYmd(selectedYmd));
+    setCalendarVisible(false);
+  }, [selectedYmd]);
+
+  const pickCalendarDate = useCallback(
+    (ymd: string) => {
+      selectYmd(ymd);
+      setCalendarVisible(false);
+    },
+    [selectYmd],
+  );
 
   const renderListEmpty = useCallback(() => {
     if (loading) {
@@ -373,7 +328,7 @@ export default function CalendarScreen() {
     [selectedDayEvents.length, styles.daySection, styles.daySectionMeta, t],
   );
 
-  const showTodayNav = selectedYmd !== todayYmd || !isViewingCurrentMonth;
+  const showTodayNav = selectedYmd !== todayYmd;
 
   if (!hasSignalApi()) {
     return (
@@ -401,6 +356,18 @@ export default function CalendarScreen() {
             <Text style={styles.errText}>{error}</Text>
           </View>
         ) : null}
+        <SignalDateNavigator
+          label={selectedDayHeading}
+          labelA11y={selectedDayHeading}
+          previousA11y={t('calendarDayPrevA11y')}
+          nextA11y={t('calendarDayNextA11y')}
+          todayLabel={t('insightCalendarToday')}
+          onPrevious={onPrevDay}
+          onNext={onNextDay}
+          onPressLabel={openCalendar}
+          onToday={goToday}
+          showToday={showTodayNav}
+        />
         <View style={styles.filterChips} accessibilityRole="tablist">
           <Pressable
             onPress={onSelectAllEventTypes}
@@ -429,36 +396,6 @@ export default function CalendarScreen() {
         </View>
       </View>
 
-      <View style={styles.calendarWrapper}>
-        <InvestMonthCalendar
-          year={viewMonth.year}
-          month={viewMonth.month}
-          selectedYmd={selectedYmd}
-          eventDates={eventDates}
-          onSelectYmd={selectYmd}
-          onPrevMonth={onPrevMonth}
-          onNextMonth={onNextMonth}
-          monthPrevA11y={t('calendarMonthPrevA11y')}
-          monthNextA11y={t('calendarMonthNextA11y')}
-          todayYmd={todayYmd}
-          theme={theme}
-          locale={locale}
-          compact
-        />
-        <SignalDateNavigator
-          style={styles.dayNavigator}
-          label={selectedDayHeading}
-          labelA11y={selectedDayHeading}
-          previousA11y={t('calendarDayPrevA11y')}
-          nextA11y={t('calendarDayNextA11y')}
-          todayLabel={t('insightCalendarToday')}
-          onPrevious={onPrevDay}
-          onNext={onNextDay}
-          onToday={goToday}
-          showToday={showTodayNav}
-        />
-      </View>
-
       <FlatList
         ref={listRef}
         style={styles.listScroll}
@@ -477,6 +414,55 @@ export default function CalendarScreen() {
         refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         keyboardShouldPersistTaps="handled"
       />
+
+      <Modal
+        animationType="slide"
+        transparent
+        visible={calendarVisible}
+        onRequestClose={closeCalendar}>
+        <View style={styles.modalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeCalendar} />
+          <View style={styles.modalSheet}>
+            <View style={styles.modalGrab} />
+            <View style={styles.modalHead}>
+              <Text style={styles.modalTitle}>{t('insightCalendarTitle')}</Text>
+              <Pressable
+                onPress={closeCalendar}
+                accessibilityRole="button"
+                accessibilityLabel={t('calendarFilterClose')}
+                hitSlop={8}>
+                <Text style={styles.modalClose}>{t('calendarFilterClose')}</Text>
+              </Pressable>
+            </View>
+            <InvestMonthCalendar
+              year={viewMonth.year}
+              month={viewMonth.month}
+              selectedYmd={selectedYmd}
+              eventDates={eventDates}
+              onSelectYmd={pickCalendarDate}
+              onPrevMonth={onPrevMonth}
+              onNextMonth={onNextMonth}
+              monthPrevA11y={t('calendarMonthPrevA11y')}
+              monthNextA11y={t('calendarMonthNextA11y')}
+              todayYmd={todayYmd}
+              theme={theme}
+              locale={locale}
+              compact
+            />
+            <View style={styles.modalFoot}>
+              <Pressable
+                onPress={() => {
+                  goToday();
+                  setCalendarVisible(false);
+                }}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.modalTodayBtn, pressed && styles.dateActionBtnPressed]}>
+                <Text style={styles.modalTodayText}>{t('insightCalendarToday')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -487,17 +473,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
     fixedTop: {
       paddingHorizontal: 16,
-      paddingTop: 6,
-      paddingBottom: 6,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-      backgroundColor: theme.bg,
-    },
-    calendarWrapper: {
-      paddingHorizontal: 12,
-      paddingTop: 4,
+      paddingTop: 8,
       paddingBottom: 8,
-      gap: 6,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
       backgroundColor: theme.bg,
@@ -529,15 +506,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       textAlign: 'center',
       lineHeight: sf(19),
     },
-    dayNavigator: {
-      marginHorizontal: 0,
-    },
     listScroll: { flex: 1, minHeight: 0 },
     listContent: { paddingHorizontal: 16, flexGrow: 1 },
     filterChips: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 7,
+      marginTop: 10,
     },
     filterChip: {
       minHeight: 30,
@@ -651,6 +626,62 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '800',
       color: theme.textDim,
     },
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.58)',
+      justifyContent: 'flex-end',
+    },
+    modalSheet: {
+      backgroundColor: theme.bg,
+      borderTopLeftRadius: 18,
+      borderTopRightRadius: 18,
+      borderWidth: 1,
+      borderBottomWidth: 0,
+      borderColor: theme.border,
+      paddingHorizontal: 16,
+      paddingBottom: 16,
+    },
+    modalGrab: {
+      alignSelf: 'center',
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.border,
+      marginTop: 10,
+      marginBottom: 8,
+    },
+    modalHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    modalTitle: {
+      color: theme.text,
+      fontSize: sf(17),
+      fontWeight: '900',
+    },
+    modalClose: {
+      color: theme.green,
+      fontSize: sf(14),
+      fontWeight: '900',
+    },
+    modalFoot: { paddingTop: 10 },
+    modalTodayBtn: {
+      minHeight: 42,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalTodayText: {
+      color: theme.green,
+      fontSize: sf(14),
+      fontWeight: '900',
+    },
+    dateActionBtnPressed: { opacity: 0.86 },
   });
 }
 

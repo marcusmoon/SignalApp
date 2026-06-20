@@ -165,11 +165,11 @@ export async function findDuplicateCalendarIds() {
           event_date,
           event_type,
           upper(COALESCE(payload->>'country', '')) AS country,
-          COALESCE(payload->>'provider', provider, '') AS prov,
+          COALESCE(payload->>'provider', '') AS prov,
           ROW_NUMBER() OVER (
             PARTITION BY event_date, event_type, upper(COALESCE(payload->>'country', ''))
             ORDER BY
-              CASE WHEN COALESCE(payload->>'provider', provider, '') = 'manual' THEN 0 ELSE 1 END ASC,
+              CASE WHEN COALESCE(payload->>'provider', '') = 'manual' THEN 0 ELSE 1 END ASC,
               id ASC
           ) AS rn
         FROM calendar_events

@@ -101,7 +101,7 @@ export function signalCalendarToCalendarEvent(item: SignalApiCalendarEvent): Cal
     return {
       id: item.id,
       date: item.date || '—',
-      time: '',
+      time: item.timeLabel || '',
       title: item.title,
       type: 'holiday',
       country: item.country || undefined,

@@ -189,3 +189,95 @@ export async function fetchFinnhubEarningsCalendar({ daysBack = 0, daysAhead = 3
   const rows = Array.isArray(json.earningsCalendar) ? json.earningsCalendar : [];
   return rows.map((raw) => normalizeFinnhubEarning(raw));
 }
+
+const DEFAULT_HOLIDAY_EXCHANGES = [{ exchange: 'US', country: 'US' }];
+
+function normalizeHolidayExchangeSpecs(exchanges) {
+  if (Array.isArray(exchanges) && exchanges.length > 0) {
+    return exchanges
+      .map((item) => {
+        if (typeof item === 'string') {
+          const exchange = String(item || '').trim().toUpperCase();
+          if (!exchange) return null;
+          const country =
+            exchange === 'US' ? 'US' : exchange === 'KRX' || exchange === 'KO' || exchange === 'KR' ? 'KR' : exchange;
+          return { exchange, country };
+        }
+        const exchange = String(item?.exchange || '').trim().toUpperCase();
+        const country = String(item?.country || '').trim().toUpperCase();
+        if (!exchange) return null;
+        return { exchange, country: country || exchange };
+      })
+      .filter(Boolean);
+  }
+  return DEFAULT_HOLIDAY_EXCHANGES;
+}
+
+function holidayDateYmd(raw) {
+  const date = String(raw?.atDate || raw?.date || '').trim();
+  return /^\d{4}-\d{2}-\d{2}/.test(date) ? date.slice(0, 10) : null;
+}
+
+function inHolidayDateWindow(dateYmd, fromYmd, toYmd) {
+  if (!dateYmd) return false;
+  if (fromYmd && dateYmd < fromYmd) return false;
+  if (toYmd && dateYmd > toYmd) return false;
+  return true;
+}
+
+export function normalizeFinnhubMarketHoliday(raw, { exchange, country } = {}) {
+  const date = holidayDateYmd(raw);
+  const eventName = String(raw?.eventName || raw?.name || '').trim();
+  const tradingHour = String(raw?.tradingHour || '').trim();
+  const exchangeCode = String(exchange || '').trim().toUpperCase() || 'UNKNOWN';
+  const countryCode = String(country || '').trim().toUpperCase() || null;
+  const id = `finnhub-holiday-${exchangeCode}-${date || 'no-date'}-${stableHash(eventName || tradingHour || 'holiday')}`;
+  return {
+    id,
+    provider: 'finnhub',
+    providerItemId: `${exchangeCode}|${date || ''}|${eventName}`,
+    type: 'holiday',
+    title: eventName || `${exchangeCode} market holiday`,
+    country: countryCode,
+    symbol: null,
+    eventAt: date ? `${date}T00:00:00.000Z` : null,
+    date,
+    timeLabel: tradingHour,
+    impact: null,
+    actual: null,
+    estimate: null,
+    previous: null,
+    unit: null,
+    fiscalYear: null,
+    fiscalQuarter: null,
+    earningsHour: null,
+    fetchedAt: new Date().toISOString(),
+    rawPayload: raw,
+  };
+}
+
+export async function fetchFinnhubMarketHolidays({ daysBack = 0, daysAhead = 365, exchanges } = {}) {
+  const from = addDays(new Date(), -Math.max(0, Number(daysBack) || 0));
+  const to = addDays(new Date(), Math.max(1, Number(daysAhead) || 365));
+  const fromYmd = ymdLocal(from);
+  const toYmd = ymdLocal(to);
+  const specs = normalizeHolidayExchangeSpecs(exchanges);
+  const rows = [];
+
+  for (const spec of specs) {
+    try {
+      const json = await finnhub('/stock/market-holiday', { exchange: spec.exchange });
+      const data = Array.isArray(json?.data) ? json.data : [];
+      for (const raw of data) {
+        const normalized = normalizeFinnhubMarketHoliday(raw, spec);
+        if (!inHolidayDateWindow(normalized.date, fromYmd, toYmd)) continue;
+        rows.push(normalized);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[finnhub] market holiday ${spec.exchange} failed: ${message}`);
+    }
+  }
+
+  return rows;
+}

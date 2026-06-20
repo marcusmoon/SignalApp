@@ -28,7 +28,7 @@ export const JOB_PRESETS = {
     area: 'calendar',
     labelKey: 'jobPresetCalendarRefresh',
     descriptionKey: 'jobPresetCalendarRefreshDesc',
-    jobKeys: ['calendar_economic', 'calendar_earnings'],
+    jobKeys: ['calendar_economic', 'calendar_earnings', 'calendar_holidays'],
   },
   youtube_refresh: {
     id: 'youtube_refresh',

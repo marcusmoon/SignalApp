@@ -143,7 +143,7 @@ export type SignalApiCalendarEvent = {
   id: string;
   provider: string;
   providerItemId: string;
-  type: 'earnings' | 'macro' | 'fed' | 'fomc';
+  type: 'earnings' | 'macro' | 'fed' | 'fomc' | 'holiday';
   title: string;
   country: string | null;
   symbol: string | null;

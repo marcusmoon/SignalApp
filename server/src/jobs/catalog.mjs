@@ -15,6 +15,7 @@ export const JOB_CATALOG = {
   market_news_globenewswire_earnings: { area: 'news', stage: 'ingest' },
   calendar_economic: { area: 'calendar', stage: 'ingest' },
   calendar_earnings: { area: 'calendar', stage: 'ingest' },
+  calendar_holidays: { area: 'calendar', stage: 'ingest' },
   youtube_economy_latest: { area: 'youtube', stage: 'ingest' },
   youtube_economy_popular: { area: 'youtube', stage: 'ingest' },
   market_quotes_popular: { area: 'market', stage: 'ingest' },

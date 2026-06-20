@@ -15,7 +15,7 @@ import {
 } from '../db.mjs';
 import { config } from '../config.mjs';
 import { mergeAutoHashtagsIntoNewsItem } from '../newsHashtags.mjs';
-import { fetchFinnhubEarningsCalendar, fetchFinnhubEconomicCalendar } from '../providers/calendar/finnhub.mjs';
+import { fetchFinnhubEarningsCalendar, fetchFinnhubEconomicCalendar, fetchFinnhubMarketHolidays } from '../providers/calendar/finnhub.mjs';
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
@@ -289,6 +289,9 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
   }
   if (effective.provider === 'finnhub' && effective.handler === 'earnings_calendar') {
     return { kind: 'calendar', rows: await fetchFinnhubEarningsCalendar(params || {}) };
+  }
+  if (effective.provider === 'finnhub' && effective.handler === 'market_holidays') {
+    return { kind: 'calendar', rows: await fetchFinnhubMarketHolidays(params || {}) };
   }
   if (effective.provider === 'youtube' && effective.handler === 'youtube_economy') {
     if (phase === 'reconcile') {

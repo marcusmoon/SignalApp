@@ -50,6 +50,11 @@ export async function queryPublicCalendarRows(options = {}) {
     params.push(type);
     where.push(`event_type = $${params.length}`);
   }
+  const country = cleanText(options.country).toUpperCase();
+  if (country) {
+    params.push(country);
+    where.push(`upper(COALESCE(payload->>'country', '')) = $${params.length}`);
+  }
   const symbol = cleanText(options.symbol).toUpperCase();
   if (symbol) {
     params.push(symbol);
@@ -97,6 +102,11 @@ export async function queryPublicCalendarDateSummaryRows(options = {}) {
     params.push(type);
     where.push(`event_type = $${params.length}`);
   }
+  const country = cleanText(options.country).toUpperCase();
+  if (country) {
+    params.push(country);
+    where.push(`upper(COALESCE(payload->>'country', '')) = $${params.length}`);
+  }
   const result = await queryKysely(
     `
       SELECT event_date::text AS date, COALESCE(event_type, 'unknown') AS type, COUNT(*)::int AS count
@@ -118,4 +128,56 @@ export async function queryPublicCalendarDateSummaryRows(options = {}) {
     byDate.set(date, prev);
   }
   return [...byDate.values()];
+}
+
+export async function deleteCalendarRowById(id) {
+  const clean = cleanText(id);
+  if (!clean) return 0;
+  const result = await queryKysely(
+    `DELETE FROM calendar_events WHERE id = $1`,
+    [clean],
+  );
+  return result.rowCount || 0;
+}
+
+export async function deleteCalendarRowsByIds(ids) {
+  const clean = ids.map(cleanText).filter(Boolean);
+  if (clean.length === 0) return 0;
+  const placeholders = clean.map((_, i) => `$${i + 1}`).join(', ');
+  const result = await queryKysely(
+    `DELETE FROM calendar_events WHERE id IN (${placeholders})`,
+    clean,
+  );
+  return result.rowCount || 0;
+}
+
+/**
+ * Find duplicates: same (event_date, event_type, country).
+ * Within each group keep one — prefer provider='manual', else pick smallest id lexically.
+ * Returns list of ids to delete.
+ */
+export async function findDuplicateCalendarIds() {
+  const result = await queryKysely(
+    `
+      WITH grouped AS (
+        SELECT
+          id,
+          event_date,
+          event_type,
+          upper(COALESCE(payload->>'country', '')) AS country,
+          COALESCE(payload->>'provider', provider, '') AS prov,
+          ROW_NUMBER() OVER (
+            PARTITION BY event_date, event_type, upper(COALESCE(payload->>'country', ''))
+            ORDER BY
+              CASE WHEN COALESCE(payload->>'provider', provider, '') = 'manual' THEN 0 ELSE 1 END ASC,
+              id ASC
+          ) AS rn
+        FROM calendar_events
+        WHERE event_date IS NOT NULL AND event_type IS NOT NULL
+      )
+      SELECT id FROM grouped WHERE rn > 1
+    `,
+    [],
+  );
+  return result.rows.map((r) => r.id);
 }

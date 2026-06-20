@@ -23,6 +23,9 @@ import {
   queryPublicYoutubeRows,
 } from './db/repositories/youtubeRepository.mjs';
 import {
+  deleteCalendarRowById,
+  deleteCalendarRowsByIds,
+  findDuplicateCalendarIds,
   queryPublicCalendarDateSummaryRows,
   queryPublicCalendarRows,
 } from './db/repositories/calendarRepository.mjs';
@@ -844,6 +847,15 @@ export async function queryPublicCalendarDateSummaries(options = {}) {
   return cachedPublicRead('publicCalendarDateSummaries', options, () => queryPublicCalendarDateSummaryRows(options), 30000);
 }
 
+export async function deleteCalendarEvent(id) {
+  return deleteCalendarRowById(id);
+}
+
+export async function deduplicateCalendarEvents() {
+  const idsToDelete = await findDuplicateCalendarIds();
+  if (idsToDelete.length === 0) return 0;
+  return deleteCalendarRowsByIds(idsToDelete);
+}
 
 export async function readPublicMarketLists() {
   return cachedPublicRead('publicMarketLists', {}, async () => {

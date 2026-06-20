@@ -1,4 +1,4 @@
-import { queryPublicCalendar, queryPublicCalendarDateSummaries, upsertCollectionRows } from '../../../db.mjs';
+import { queryPublicCalendar, queryPublicCalendarDateSummaries, upsertCollectionRows, deleteCalendarEvent, deduplicateCalendarEvents } from '../../../db.mjs';
 import { json, readBody } from '../../shared.mjs';
 import { config } from '../../../config.mjs';
 
@@ -20,6 +20,7 @@ export async function handlePublicCalendarRoutes({ req, res, url, pathname }) {
       from: url.searchParams.get('from') || '',
       to: url.searchParams.get('to') || '',
       type: url.searchParams.get('type') || '',
+      country: url.searchParams.get('country') || '',
     });
     json(res, 200, { data: rows });
     return true;
@@ -30,6 +31,7 @@ export async function handlePublicCalendarRoutes({ req, res, url, pathname }) {
       from: url.searchParams.get('from') || '',
       to: url.searchParams.get('to') || '',
       type: url.searchParams.get('type') || '',
+      country: url.searchParams.get('country') || '',
       symbol: url.searchParams.get('symbol') || '',
       q: url.searchParams.get('q') || '',
       limit: url.searchParams.get('limit') || '',
@@ -37,6 +39,31 @@ export async function handlePublicCalendarRoutes({ req, res, url, pathname }) {
     json(res, 200, { data: rows });
     return true;
   }
+  if (req.method === 'DELETE' && pathname.startsWith('/v1/calendar/')) {
+    if (!hasIngestAccess(req)) {
+      json(res, 401, { error: 'UNAUTHORIZED' });
+      return true;
+    }
+    const id = decodeURIComponent(pathname.slice('/v1/calendar/'.length)).trim();
+    if (!id) {
+      json(res, 400, { error: 'ID_REQUIRED' });
+      return true;
+    }
+    const deleted = await deleteCalendarEvent(id);
+    json(res, 200, { ok: true, deleted });
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/v1/calendar/dedup') {
+    if (!hasIngestAccess(req)) {
+      json(res, 401, { error: 'UNAUTHORIZED' });
+      return true;
+    }
+    const deleted = await deduplicateCalendarEvents();
+    json(res, 200, { ok: true, deleted });
+    return true;
+  }
+
   if (req.method === 'POST' && pathname === '/v1/calendar/ingest') {
     if (!hasIngestAccess(req)) {
       json(res, 401, { error: 'UNAUTHORIZED' });

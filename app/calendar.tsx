@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -12,6 +13,7 @@ import { useIsFocused } from "expo-router/react-navigation";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -93,6 +95,11 @@ function shiftYmd(ymd: string, days: number): string {
   return toYmd(d);
 }
 
+function monthFromYmd(value: string): { year: number; month: number } {
+  const date = dateFromYmd(value);
+  return { year: date.getFullYear(), month: date.getMonth() };
+}
+
 function rangeForAnchor(ymd: string) {
   return {
     from: shiftYmd(ymd, -30),
@@ -169,7 +176,9 @@ export default function CalendarScreen() {
 
   const [selectedYmd, setSelectedYmd] = useState(() => toYmd(new Date()));
   const [rangeAnchorYmd, setRangeAnchorYmd] = useState(() => toYmd(new Date()));
-  const [pendingScrollYmd, setPendingScrollYmd] = useState<string | null>(null);
+  const [pendingScrollYmd, setPendingScrollYmd] = useState<string | null>(() => toYmd(new Date()));
+  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => monthFromYmd(toYmd(new Date())));
 
   const load = useCallback(
     async (forceRefresh?: boolean) => {
@@ -258,13 +267,17 @@ export default function CalendarScreen() {
       void saveCalendarEventTypeFilter(next);
       return next;
     });
-  }, []);
+    setRangeAnchorYmd(selectedYmd);
+    setPendingScrollYmd(selectedYmd);
+  }, [selectedYmd]);
 
   const onSelectAllEventTypes = useCallback(() => {
     const next = new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
     setEnabledTypes(next);
     void saveCalendarEventTypeFilter(next);
-  }, []);
+    setRangeAnchorYmd(selectedYmd);
+    setPendingScrollYmd(selectedYmd);
+  }, [selectedYmd]);
 
   const formatDayHeader = useCallback(
     (ymd: string) => {
@@ -289,6 +302,26 @@ export default function CalendarScreen() {
     setPendingScrollYmd(ymd);
   }, []);
 
+  const openCalendar = useCallback(() => {
+    setCalendarMonth(monthFromYmd(selectedYmd));
+    setCalendarVisible(true);
+  }, [selectedYmd]);
+
+  const pickCalendarDate = useCallback(
+    (ymd: string) => {
+      selectYmd(ymd, true);
+      setCalendarVisible(false);
+    },
+    [selectYmd],
+  );
+
+  const shiftCalendarMonth = useCallback((delta: number) => {
+    setCalendarMonth((prev) => {
+      const date = new Date(prev.year, prev.month + delta, 1);
+      return { year: date.getFullYear(), month: date.getMonth() };
+    });
+  }, []);
+
   const goPrevDay = useCallback(() => {
     selectYmd(shiftYmd(selectedYmd, -1), true);
   }, [selectYmd, selectedYmd]);
@@ -299,7 +332,13 @@ export default function CalendarScreen() {
 
   const goToday = useCallback(() => {
     selectYmd(todayYmd, true);
+    setCalendarMonth(monthFromYmd(todayYmd));
   }, [selectYmd, todayYmd]);
+
+  const eventDates = useMemo(
+    () => new Set(filteredEvents.map((event) => String(event.date || '').slice(0, 10)).filter(Boolean)),
+    [filteredEvents],
+  );
 
   const scrollTargetYmd = useMemo(
     () => resolveCalendarScrollTarget(sections, pendingScrollYmd),
@@ -311,22 +350,30 @@ export default function CalendarScreen() {
     [scrollTargetYmd, sections],
   );
 
-  useEffect(() => {
-    if (loading || !pendingScrollYmd || !scrollTargetYmd || selectedSectionIndex < 0) return;
-    const timer = setTimeout(() => {
+  const scrollToSelectedSection = useCallback(
+    (animated = true) => {
+      if (selectedSectionIndex < 0) return;
       sectionListRef.current?.scrollToLocation({
         sectionIndex: selectedSectionIndex,
         itemIndex: 0,
         viewOffset: 12,
-        animated: true,
+        animated,
       });
+    },
+    [selectedSectionIndex],
+  );
+
+  useEffect(() => {
+    if (loading || !pendingScrollYmd || !scrollTargetYmd || selectedSectionIndex < 0) return;
+    const timer = setTimeout(() => {
+      scrollToSelectedSection(true);
       if (scrollTargetYmd !== pendingScrollYmd) {
         setSelectedYmd(scrollTargetYmd);
       }
       setPendingScrollYmd(null);
     }, 40);
     return () => clearTimeout(timer);
-  }, [loading, pendingScrollYmd, scrollTargetYmd, selectedSectionIndex]);
+  }, [loading, pendingScrollYmd, scrollTargetYmd, selectedSectionIndex, scrollToSelectedSection]);
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: Array<{ section?: { title?: string } }> }) => {
@@ -338,8 +385,8 @@ export default function CalendarScreen() {
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 20 }).current;
 
   const onScrollToIndexFailed = useCallback(() => {
-    // SectionList can miss the target before measuring all rows. The next render catches up.
-  }, []);
+    setTimeout(() => scrollToSelectedSection(false), 120);
+  }, [scrollToSelectedSection]);
 
   if (!hasSignalApi()) {
     return (
@@ -502,9 +549,11 @@ export default function CalendarScreen() {
           label={formatDayHeader(selectedYmd)}
           previousA11y={t('calendarMonthPrevA11y')}
           nextA11y={t('calendarMonthNextA11y')}
+          labelA11y={t('insightOpenCalendar')}
           todayLabel={t('insightCalendarToday')}
           onPrevious={goPrevDay}
           onNext={goNextDay}
+          onPressLabel={openCalendar}
           onToday={goToday}
           showToday={selectedYmd !== todayYmd}
         />
@@ -580,6 +629,54 @@ export default function CalendarScreen() {
         removeClippedSubviews={Platform.OS !== 'web'}
       />
 
+      <Modal
+        animationType="slide"
+        transparent
+        visible={calendarVisible}
+        onRequestClose={() => setCalendarVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setCalendarVisible(false)} />
+          <View style={styles.modalSheet}>
+            <View style={styles.modalGrab} />
+            <View style={styles.modalHead}>
+              <Text style={styles.modalTitle}>{t('insightCalendarTitle')}</Text>
+              <Pressable
+                onPress={() => setCalendarVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel={t('calendarFilterClose')}
+                hitSlop={8}>
+                <Text style={styles.modalClose}>{t('calendarFilterClose')}</Text>
+              </Pressable>
+            </View>
+            <InvestMonthCalendar
+              year={calendarMonth.year}
+              month={calendarMonth.month}
+              selectedYmd={selectedYmd}
+              eventDates={eventDates}
+              onSelectYmd={pickCalendarDate}
+              onPrevMonth={() => shiftCalendarMonth(-1)}
+              onNextMonth={() => shiftCalendarMonth(1)}
+              monthPrevA11y={t('calendarMonthPrevA11y')}
+              monthNextA11y={t('calendarMonthNextA11y')}
+              todayYmd={todayYmd}
+              theme={theme}
+              locale={locale}
+              compact
+            />
+            <View style={styles.modalFoot}>
+              <Pressable
+                onPress={() => {
+                  goToday();
+                  setCalendarVisible(false);
+                }}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.modalTodayBtn, pressed && styles.dateActionBtnPressed]}>
+                <Text style={styles.modalTodayText}>{t('insightCalendarToday')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -599,6 +696,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     listScroll: { flex: 1, minHeight: 0 },
     listContent: { paddingHorizontal: 16, paddingTop: 10 },
     listContentEmpty: { flexGrow: 1, justifyContent: 'center' },
+    dateActionBtnPressed: { opacity: 0.86 },
     sectionHeader: {
       backgroundColor: theme.bg,
       paddingTop: 4,
@@ -728,6 +826,61 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(10),
       fontWeight: '800',
       color: theme.textDim,
+    },
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.58)',
+      justifyContent: 'flex-end',
+    },
+    modalSheet: {
+      backgroundColor: theme.bg,
+      borderTopLeftRadius: 18,
+      borderTopRightRadius: 18,
+      borderWidth: 1,
+      borderBottomWidth: 0,
+      borderColor: theme.border,
+      paddingHorizontal: 16,
+      paddingBottom: 16,
+    },
+    modalGrab: {
+      alignSelf: 'center',
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.border,
+      marginTop: 10,
+      marginBottom: 8,
+    },
+    modalHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    modalTitle: {
+      color: theme.text,
+      fontSize: sf(17),
+      fontWeight: '900',
+    },
+    modalClose: {
+      color: theme.green,
+      fontSize: sf(14),
+      fontWeight: '900',
+    },
+    modalFoot: { paddingTop: 10 },
+    modalTodayBtn: {
+      minHeight: 42,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalTodayText: {
+      color: theme.green,
+      fontSize: sf(14),
+      fontWeight: '900',
     },
   });
 }

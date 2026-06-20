@@ -71,7 +71,7 @@ export function SignalDateNavigator({
           accessibilityRole="button"
           accessibilityLabel={todayLabel}
           style={({ pressed }) => [styles.dateTodayBtn, pressed && styles.dateActionBtnPressed]}>
-          <Text style={styles.dateTodayText}>{todayLabel}</Text>
+          <FontAwesome name="dot-circle-o" size={14} color={theme.green} />
         </Pressable>
       ) : null}
       <Pressable
@@ -149,6 +149,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexShrink: 1,
     },
     dateTodayBtn: {
+      width: 34,
       height: 34,
       borderRadius: 10,
       borderWidth: 1,
@@ -156,9 +157,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.greenDim,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 10,
     },
-    dateTodayText: { color: theme.green, fontSize: sf(12), fontWeight: '900' },
     dateActionBtnPressed: { opacity: 0.86 },
   });
 }

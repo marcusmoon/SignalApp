@@ -70,7 +70,6 @@ export const baseEn = {
   calendarEventsForRange: '{{from}} ~ {{to}} · events',
   calendarFilterTitle: 'Filters',
   calendarMonthPanelTitle: 'Pick a date',
-  calendarGridHint: 'Bold dates have events. Tap a day to list them below.',
   calendarSummaryTotal: 'Total events',
   calendarSummaryDates: 'Event dates',
   calendarSummaryEarnings: 'Earnings',

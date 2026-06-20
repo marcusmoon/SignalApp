@@ -70,7 +70,6 @@ export const baseKo = {
   calendarEventsForRange: '{{from}} ~ {{to}} · 이벤트',
   calendarFilterTitle: '검색 조건',
   calendarMonthPanelTitle: '날짜 선택',
-  calendarGridHint: '강조된 날에 일정이 있습니다. 날짜를 누르면 아래에 해당 일정이 표시됩니다.',
   calendarSummaryTotal: '전체 일정',
   calendarSummaryDates: '일정 있는 날',
   calendarSummaryEarnings: '실적',

@@ -70,7 +70,6 @@ export const baseJa = {
   calendarEventsForRange: '{{from}} ~ {{to}} · イベント',
   calendarFilterTitle: '検索条件',
   calendarMonthPanelTitle: '日付を選択',
-  calendarGridHint: '枠が強調された日に予定があります。日付をタップすると下に一覧表示されます。',
   calendarSummaryTotal: '全予定',
   calendarSummaryDates: '予定のある日',
   calendarSummaryEarnings: '決算',

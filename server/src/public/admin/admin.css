@@ -832,12 +832,6 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
         outline: 2px solid var(--color-info);
         outline-offset: 2px;
       }
-      .calendarGridHint {
-        margin: 12px 0 0;
-        font-size: 11px;
-        line-height: 1.45;
-        font-weight: 600;
-      }
       .calendarSide { display: grid; gap: 12px; min-width: 0; }
       .calendarFilters { margin-bottom: 0; }
       .adminSubTabs {
@@ -5582,6 +5576,12 @@ body.adminShellV2.loginMode {
   box-shadow: var(--admin-shadow-card);
 }
 
+.adminShellV2 .tableScroller {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .adminShellV2 .calendarDayHeading {
   margin-bottom: 12px;
   color: #191f28;
@@ -5681,6 +5681,67 @@ body.adminShellV2.loginMode {
 .adminShellV2 .calendarEventsTable strong {
   font-weight: 800;
   line-height: 1.35;
+}
+
+.adminShellV2 .calendarJobList {
+  display: grid;
+  gap: 12px;
+}
+
+.adminShellV2 .calendarJobCard {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  background: #f7f8fa;
+  border: 1px solid #eef1f4;
+}
+
+.adminShellV2 .calendarJobCardHead,
+.adminShellV2 .calendarJobActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.adminShellV2 .calendarJobCardHead strong {
+  color: #191f28;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.adminShellV2 .calendarJobMeta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.adminShellV2 .calendarJobMeta span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #6b7684;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.adminShellV2 .calendarJobMeta strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #191f28;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.adminShellV2 .calendarJobDesc {
+  margin: 0;
+  line-height: 1.45;
 }
 
 /* Job operations redesign — card-first flow for configure, run, inspect. */
@@ -6103,6 +6164,10 @@ body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric.jobOpsMetricWarn .jobOp
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .adminShellV2 .calendarJobMeta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .adminShellV2 .settingsTabsShell {
     flex-basis: 100%;
   }
@@ -6130,6 +6195,10 @@ body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric.jobOpsMetricWarn .jobOp
   }
 
   .adminShellV2 .calendarSummaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .adminShellV2 .calendarJobMeta {
     grid-template-columns: 1fr;
   }
 
@@ -6170,7 +6239,8 @@ body.adminShellV2[data-admin-theme='dark'] .marketListCard,
 body.adminShellV2[data-admin-theme='dark'] .resetOption,
 body.adminShellV2[data-admin-theme='dark'] .symbolRow,
 body.adminShellV2[data-admin-theme='dark'] .notificationMiniCard,
-body.adminShellV2[data-admin-theme='dark'] .appUserCard {
+body.adminShellV2[data-admin-theme='dark'] .appUserCard,
+body.adminShellV2[data-admin-theme='dark'] .calendarJobCard {
   background: var(--admin-surface);
   color: var(--admin-text);
   border-color: var(--admin-border-soft);
@@ -6196,6 +6266,7 @@ body.adminShellV2[data-admin-theme='dark'] .jobCardFacts > div,
 body.adminShellV2[data-admin-theme='dark'] .jobReadonlyItem,
 body.adminShellV2[data-admin-theme='dark'] .jobToggleField span,
 body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric,
+body.adminShellV2[data-admin-theme='dark'] .calendarJobMeta span,
 body.adminShellV2[data-admin-theme='dark'] .previewBar,
 body.adminShellV2[data-admin-theme='dark'] .calCell {
   background: var(--admin-surface-2);
@@ -6222,7 +6293,9 @@ body.adminShellV2[data-admin-theme='dark'] .socialAuthProviderCard strong,
 body.adminShellV2[data-admin-theme='dark'] .jobCardTitle strong,
 body.adminShellV2[data-admin-theme='dark'] .jobCardFacts strong,
 body.adminShellV2[data-admin-theme='dark'] .jobReadonlyItem strong,
-body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric strong {
+body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric strong,
+body.adminShellV2[data-admin-theme='dark'] .calendarJobCardHead strong,
+body.adminShellV2[data-admin-theme='dark'] .calendarJobMeta strong {
   color: var(--admin-text);
 }
 

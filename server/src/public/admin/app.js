@@ -39,13 +39,11 @@ import {
   editCalendarEventDraftView,
   loadCalendarView,
   newCalendarEventDraftView,
-  renderAdminCalendarGrid as renderAdminCalendarGridView,
   renderCalendarDayTable as renderCalendarDayTableView,
   renderCalendarTabs as renderCalendarTabsView,
   runCalendarJobView,
   saveCalendarEventView,
   saveCalendarEventCodeMappingView,
-  shiftCalendarMonth as shiftCalendarMonthView,
 } from './views/calendar.js';
 import {
   closeNewsSourceAliasDialogView,
@@ -1066,16 +1064,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         return updateYoutubeSelectionInfoView({ $, textForVars, textFor });
       }
 
-      function shiftCalendarMonth(ym, delta) {
-        return shiftCalendarMonthView(ym, delta);
-      }
-
       function initCalendarMonthIfNeeded() {
         return initCalendarMonthIfNeededView({ state, ymd });
-      }
-
-      function renderAdminCalendarGrid() {
-        return renderAdminCalendarGridView({ state, $, esc, textFor, ymd });
       }
 
       function renderCalendarDayTable() {
@@ -2474,22 +2464,10 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await runCalendarJob(target.dataset.calendarJobRun);
             return;
           }
-          if (target.dataset.calMonthPrev != null) {
-            state.calendarMonthYm = shiftCalendarMonth(state.calendarMonthYm, -1);
-            state.calendarSelectedYmd = '';
-            await loadCalendar();
-            return;
-          }
-          if (target.dataset.calMonthNext != null) {
-            state.calendarMonthYm = shiftCalendarMonth(state.calendarMonthYm, 1);
-            state.calendarSelectedYmd = '';
-            await loadCalendar();
-            return;
-          }
-          if (target.dataset.calDay) {
-            state.calendarSelectedYmd = target.dataset.calDay;
-            renderAdminCalendarGrid();
-            renderCalendarDayTable();
+          if (target.dataset.openCalendarJobSettings) {
+            state.jobListArea = 'calendar';
+            state.jobListQuery = target.dataset.openCalendarJobSettings || '';
+            await switchView('jobs');
             return;
           }
           if (target.dataset.calendarRangePrev) {

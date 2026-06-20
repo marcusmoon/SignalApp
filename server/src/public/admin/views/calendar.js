@@ -20,22 +20,6 @@ export function calendarMonthMeta(ym) {
   return { y, m, first, last };
 }
 
-export function shiftCalendarMonth(ym, delta) {
-  const meta = calendarMonthMeta(ym);
-  if (!meta) return ym;
-  let { y, m } = meta;
-  m += delta;
-  while (m > 12) {
-    m -= 12;
-    y += 1;
-  }
-  while (m < 1) {
-    m += 12;
-    y -= 1;
-  }
-  return `${y}-${pad2(m)}`;
-}
-
 export function initCalendarMonthIfNeeded({ state, ymd }) {
   if (state.calendarMonthYm) return;
   const t = new Date();
@@ -87,6 +71,7 @@ export function renderCalendarTabs({ state }) {
 
 function calendarEventTable({ rows, esc, textFor }) {
   return `
+    <div class="tableScroller">
     <table class="calendarEventsTable">
       <thead>
         <tr>
@@ -115,6 +100,7 @@ function calendarEventTable({ rows, esc, textFor }) {
           .join('')}
       </tbody>
     </table>
+    </div>
   `;
 }
 
@@ -224,24 +210,31 @@ function renderCalendarJobRunner({ state, $, esc }) {
   if (!host) return;
   const jobs = Array.isArray(state.calendarJobs) ? state.calendarJobs : [];
   host.innerHTML = jobs.length === 0
-    ? '<p class="muted">캘린더 영역에 연결된 Job이 없습니다.</p>'
+    ? '<p class="muted">캘린더 영역에 연결된 Job이 없습니다. 수집 Job 화면에서 area/domain/handler 설정을 확인하세요.</p>'
     : `
-      <div class="mobileRunList">
+      <div class="calendarJobList">
         ${jobs
           .map(
             (job) => `
-              <article class="mobileRunCard">
-                <div class="mobileRunCardHead">
-                  <strong>${esc(job.displayName || job.jobKey)}</strong>
-                  <span class="pill">${job.enabled ? 'enabled' : 'disabled'}</span>
+              <article class="calendarJobCard">
+                <div class="calendarJobCardHead">
+                  <div>
+                    <strong>${esc(job.displayName || job.jobKey)}</strong>
+                    <div class="muted">${esc(job.jobKey)}</div>
+                  </div>
+                  <span class="pill ${job.enabled ? 'pillStatus--ok' : 'pillStatus--warn'}">${job.enabled ? 'enabled' : 'disabled'}</span>
                 </div>
-                <div class="mobileRunStats">
+                <div class="calendarJobMeta">
+                  <span>Provider <strong>${esc(job.provider || '-')}</strong></span>
+                  <span>Handler <strong>${esc(job.handler || '-')}</strong></span>
                   <span>주기 <strong>${esc(String(job.intervalSeconds || 0))}s</strong></span>
                   <span>최근 <strong>${esc(job.latestRunStatus || '-')}</strong></span>
                 </div>
-                <div class="row" style="margin-top:10px">
+                <p class="muted calendarJobDesc">${esc(job.description || '설명이 없습니다.')}</p>
+                <div class="row calendarJobActions">
                   <button type="button" class="success compactBtn" data-calendar-job-run="${esc(job.jobKey)}">수동 실행</button>
                   <button type="button" class="secondary compactBtn" data-open-job-log="${esc(job.jobKey)}">이력</button>
+                  <button type="button" class="secondary compactBtn" data-open-calendar-job-settings="${esc(job.jobKey)}">Job 설정</button>
                 </div>
               </article>
             `,
@@ -314,6 +307,7 @@ function renderCalendarEventCodeMappings({ state, $, esc }) {
       </div>
       <p class="muted" style="margin:8px 0 0">macro/fomc/fed 이벤트의 제목을 안정적인 event key로 묶는 규칙입니다. holiday는 국가+날짜, earnings는 종목+날짜로 자동 묶습니다.</p>
     </div>
+    <div class="tableScroller">
     <table class="calendarEventsTable">
       <thead>
         <tr>
@@ -344,6 +338,7 @@ function renderCalendarEventCodeMappings({ state, $, esc }) {
           .join('')}
       </tbody>
     </table>
+    </div>
   `;
 }
 
@@ -372,35 +367,6 @@ function renderCalendarSummary({ state, $, esc, textFor }) {
       <strong>${macro}</strong>
     </div>
   `;
-}
-
-export function renderAdminCalendarGrid({ state, $, esc, textFor, ymd }) {
-  const host = $('adminCalendarGrid') || $('calendarGrid');
-  if (!host) return;
-  const meta = calendarMonthMeta(state.calendarMonthYm);
-  if (!meta) return;
-  const { y, m } = meta;
-  const first = new Date(y, m - 1, 1);
-  const startWeekday = first.getDay();
-  const dim = daysInMonth(y, m);
-  const eventDates = new Set((state.calendarMonthRows || []).map((r) => String(r.date || '').slice(0, 10)));
-  const sel = state.calendarSelectedYmd;
-  const todayYmd = ymd(new Date());
-  const weekHtml = [0, 1, 2, 3, 4, 5, 6].map((w) => `<div class="calWeekday" aria-hidden="true">${esc(textFor(`calWeek${w}`))}</div>`).join('');
-  let cells = '';
-  for (let i = 0; i < startWeekday; i += 1) cells += '<div class="calCell calCell--pad" aria-hidden="true"></div>';
-  for (let d = 1; d <= dim; d += 1) {
-    const ymdStr = ymdFromParts(y, m, d);
-    const has = eventDates.has(ymdStr);
-    const isSel = sel === ymdStr;
-    const isToday = ymdStr === todayYmd;
-    cells += `<button type="button" class="calCell ${has ? 'calCell--has' : 'calCell--muted'} ${isSel ? 'calCell--selected' : ''} ${isToday ? 'calCell--today' : ''}" data-cal-day="${esc(ymdStr)}" aria-pressed="${isSel ? 'true' : 'false'}">${d}</button>`;
-  }
-  host.innerHTML = `
-    <div class="calendarMonthWrap">
-      <div class="calWeekdays">${weekHtml}</div>
-      <div class="calendarGrid" role="grid" aria-label="${esc(textFor('pageCalendarTitle'))}">${cells}</div>
-    </div>`;
 }
 
 export function renderCalendarDayTable({ state, $, esc, textFor, textForVars }) {
@@ -477,7 +443,7 @@ export async function loadCalendarView(ctx) {
   const to = toValue || calendarMonthMeta(state.calendarMonthYm)?.last || '';
   if (!from || !to) return;
 
-  // Drive the month grid by the "from" month.
+  // Keep legacy month state for preset fallback only. Admin no longer renders a month grid.
   state.calendarMonthYm = from.slice(0, 7);
   const meta = calendarMonthMeta(state.calendarMonthYm);
   if (!meta) return;
@@ -515,14 +481,29 @@ export async function loadCalendarView(ctx) {
     }
   }
   renderCalendarSummary({ state, $, esc, textFor });
-  renderAdminCalendarGrid({ state, $, esc, textFor, ymd });
   renderCalendarDayTable({ state, $, esc, textFor, textForVars: ctx.textForVars });
   const mappings = await api('/admin/api/calendar/event-code-mappings');
   state.calendarEventCodeMappings = Array.isArray(mappings.data) ? mappings.data : [];
   renderCalendarEventCodeMappings({ state, $, esc });
   const jobs = await api('/admin/api/jobs');
   state.calendarJobs = Array.isArray(jobs.data)
-    ? jobs.data.filter((job) => String(job.area || job.domain || '').trim() === 'calendar')
+    ? jobs.data.filter((job) => {
+        const hay = [
+          job.jobKey,
+          job.area,
+          job.domain,
+          job.provider,
+          job.handler,
+          job.operation,
+          job.params?.domain,
+          job.params?.area,
+          job.payload?.domain,
+          job.payload?.area,
+        ]
+          .map((value) => String(value || '').trim().toLowerCase())
+          .filter(Boolean);
+        return hay.some((value) => value === 'calendar' || value.startsWith('calendar_') || value.includes('calendar'));
+      })
     : [];
   renderCalendarJobRunner({ state, $, esc });
   renderCalendarEventEditor({ state, $, esc });

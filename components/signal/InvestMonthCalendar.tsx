@@ -93,16 +93,18 @@ export function InvestMonthCalendar({
           accessibilityRole="button"
           accessibilityLabel={monthPrevA11y}
           hitSlop={10}>
-          <FontAwesome name="chevron-left" size={compact ? 14 : 16} color={theme.green} />
+          <FontAwesome name="chevron-left" size={compact ? 12 : 16} color={theme.green} />
         </Pressable>
-        <Text style={styles.monthTitle}>{monthTitle}</Text>
+        <Text style={styles.monthTitle} numberOfLines={1} pointerEvents="none">
+          {monthTitle}
+        </Text>
         <Pressable
           onPress={onNextMonth}
           style={({ pressed }) => [styles.navBtn, pressed && { opacity: 0.7 }]}
           accessibilityRole="button"
           accessibilityLabel={monthNextA11y}
           hitSlop={10}>
-          <FontAwesome name="chevron-right" size={compact ? 14 : 16} color={theme.green} />
+          <FontAwesome name="chevron-right" size={compact ? 12 : 16} color={theme.green} />
         </Pressable>
       </View>
 
@@ -132,23 +134,31 @@ export function InvestMonthCalendar({
               style={({ pressed }) => [
                 styles.cell,
                 isSelected && styles.cellSelected,
-                isToday && !isSelected && styles.cellToday,
                 disabled && styles.cellDisabled,
                 pressed && !disabled && styles.cellPressed,
               ]}
               accessibilityRole="button"
               accessibilityState={{ selected: isSelected, disabled }}
               accessibilityLabel={cell.ymd}>
-              <Text
-                style={[
-                  styles.dayNum,
-                  isSelected && styles.dayNumSelected,
-                  isToday && !isSelected && styles.dayNumToday,
-                  disabled && styles.dayNumDisabled,
-                ]}>
-                {dayNum}
-              </Text>
-              {hasDot ? <View style={[styles.dot, isSelected && styles.dotOnSelected]} /> : <View style={styles.dotPlaceholder} />}
+              <View style={styles.cellInner}>
+                <Text
+                  style={[
+                    styles.dayNum,
+                    isSelected && styles.dayNumSelected,
+                    isToday && !isSelected && styles.dayNumToday,
+                    disabled && styles.dayNumDisabled,
+                  ]}>
+                  {dayNum}
+                </Text>
+                {hasDot ? (
+                  <View style={[styles.dot, isSelected && styles.dotOnSelected]} />
+                ) : (
+                  <View style={styles.dotPlaceholder} />
+                )}
+                {isToday ? (
+                  <View style={[styles.todayMarker, isSelected && styles.todayMarkerOnSelected]} />
+                ) : null}
+              </View>
             </Pressable>
           );
         })}
@@ -161,65 +171,84 @@ function makeStyles(theme: AppTheme, compact: boolean) {
   return StyleSheet.create({
     wrap: {
       marginBottom: compact ? 0 : 16,
-      borderRadius: compact ? 12 : 14,
+      borderRadius: compact ? 10 : 14,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      padding: compact ? 8 : 12,
+      paddingHorizontal: compact ? 6 : 12,
+      paddingVertical: compact ? 6 : 12,
     },
     monthRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: compact ? 6 : 12,
+      gap: compact ? 4 : 6,
+      marginBottom: compact ? 4 : 12,
     },
-    navBtn: { padding: compact ? 6 : 8 },
+    navBtn: {
+      width: compact ? 28 : 36,
+      height: compact ? 28 : 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     monthTitle: {
-      fontSize: compact ? 15 : 16,
+      fontSize: compact ? 13 : 16,
       fontWeight: '800',
       color: theme.text,
       flex: 1,
       textAlign: 'center',
+      minWidth: 0,
     },
-    weekRow: { flexDirection: 'row', marginBottom: compact ? 4 : 6 },
+    weekRow: { flexDirection: 'row', marginBottom: compact ? 2 : 6 },
     weekday: {
       flex: 1,
       textAlign: 'center',
-      fontSize: compact ? 9 : 10,
+      fontSize: compact ? 8 : 10,
       fontWeight: '700',
       color: theme.textDim,
     },
     grid: { flexDirection: 'row', flexWrap: 'wrap' },
     cell: {
       width: '14.28%',
-      minHeight: compact ? 32 : 40,
+      minHeight: compact ? 26 : 40,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: compact ? 2 : 4,
+      paddingVertical: compact ? 1 : 4,
+    },
+    cellInner: {
+      minWidth: compact ? 24 : 30,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingBottom: compact ? 2 : 3,
     },
     cellSelected: {
       backgroundColor: theme.green,
       borderRadius: 999,
     },
-    cellToday: {
-      borderWidth: 1,
-      borderColor: theme.green + '99',
-      borderRadius: 999,
-    },
     cellPressed: { opacity: 0.85 },
     cellDisabled: { opacity: 0.32 },
-    dayNum: { fontSize: compact ? 12 : 13, fontWeight: '700', color: theme.text },
-    dayNumSelected: { color: '#FFFFFF' },
-    dayNumToday: { color: theme.green },
+    dayNum: { fontSize: compact ? 11 : 13, fontWeight: '700', color: theme.text },
+    dayNumSelected: { color: '#FFFFFF', fontWeight: '800' },
+    dayNumToday: { fontWeight: '900', color: theme.text },
     dayNumDisabled: { color: theme.textDim },
-    dot: {
-      width: 4,
-      height: 4,
+    todayMarker: {
+      position: 'absolute',
+      bottom: 0,
+      width: compact ? 12 : 14,
+      height: compact ? 2 : 3,
       borderRadius: 2,
       backgroundColor: theme.accentBlue,
-      marginTop: 2,
+    },
+    todayMarkerOnSelected: {
+      backgroundColor: 'rgba(255,255,255,0.92)',
+    },
+    dot: {
+      width: compact ? 3 : 4,
+      height: compact ? 3 : 4,
+      borderRadius: compact ? 1.5 : 2,
+      backgroundColor: theme.accentBlue,
+      marginTop: compact ? 1 : 2,
     },
     dotOnSelected: { backgroundColor: '#FFFFFF' },
-    dotPlaceholder: { height: 6, marginTop: 2 },
+    dotPlaceholder: { height: compact ? 4 : 6, marginTop: compact ? 1 : 2 },
   });
 }

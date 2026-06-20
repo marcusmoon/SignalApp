@@ -90,6 +90,8 @@ export const ko = {
   calendarScreenEmptyDay: '이 날짜에 일정이 없습니다.',
   calendarMonthPrevA11y: '이전 달',
   calendarMonthNextA11y: '다음 달',
+  calendarDayPrevA11y: '이전 날',
+  calendarDayNextA11y: '다음 날',
   calendarTagEarnings: '실적',
   calendarTagFomc: 'FOMC',
   calendarTagFed: '연준',

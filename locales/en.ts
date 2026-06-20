@@ -92,6 +92,8 @@ export const en = {
   calendarScreenEmptyDay: 'No events on this date.',
   calendarMonthPrevA11y: 'Previous month',
   calendarMonthNextA11y: 'Next month',
+  calendarDayPrevA11y: 'Previous day',
+  calendarDayNextA11y: 'Next day',
   calendarTagEarnings: 'Earnings',
   calendarTagFomc: 'FOMC',
   calendarTagFed: 'Fed',

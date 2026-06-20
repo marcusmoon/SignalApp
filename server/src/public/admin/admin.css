@@ -7626,3 +7626,275 @@ body.adminShellV2[data-admin-theme='dark'] .jobEditPanelHead {
   background: var(--bg-elevated, #1a2232);
   border-bottom-color: var(--border, rgba(255,255,255,0.08));
 }
+
+/*
+ * Dashboard final normalization.
+ * The dashboard had older light-only rules mixed with the admin theme tokens.
+ * Keep these overrides last so dashboard surfaces, lists, and metrics follow
+ * the active light/dark theme consistently.
+ */
+body.adminShellV2 .opsHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  align-items: stretch;
+  gap: 16px;
+}
+
+body.adminShellV2 .opsHeroMain,
+body.adminShellV2 .opsHeroMetrics,
+body.adminShellV2 .dashboardHealthPanel,
+body.adminShellV2 .dashboardContentPanel,
+body.adminShellV2 .dashboardOpsPanel,
+body.adminShellV2 .dashboardJobsPanel,
+body.adminShellV2 .dashboardSubPanel {
+  background: var(--adm-surface);
+  border: 1px solid var(--adm-border-soft);
+  color: var(--adm-text);
+  box-shadow: var(--adm-shadow);
+}
+
+body.adminShellV2 .opsHeroMain,
+body.adminShellV2 .opsHeroMetrics {
+  border-radius: 24px;
+}
+
+body.adminShellV2 .opsHeroMain {
+  min-height: 0;
+  padding: 26px;
+  background:
+    radial-gradient(circle at 94% 8%, var(--adm-primary-soft), transparent 34%),
+    var(--adm-surface);
+}
+
+body.adminShellV2 .opsEyebrow {
+  color: var(--adm-primary);
+}
+
+body.adminShellV2 .opsHeroMain h2,
+body.adminShellV2 .opsMetric strong,
+body.adminShellV2 .dashboardDataTitle,
+body.adminShellV2 .dashboardDataLine strong,
+body.adminShellV2 .dashboardItemTitle,
+body.adminShellV2 .dashboardJobsHint {
+  color: var(--adm-text);
+}
+
+body.adminShellV2 .opsHeroMain p,
+body.adminShellV2 .opsMetric span,
+body.adminShellV2 .dashboardDataLine,
+body.adminShellV2 .dashboardDataMetaLine,
+body.adminShellV2 .dashboardItemMeta {
+  color: var(--adm-text-tertiary);
+}
+
+body.adminShellV2 .opsHeroMetrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+}
+
+body.adminShellV2 .opsMetric {
+  min-width: 0;
+  min-height: 94px;
+  padding: 18px;
+  background: var(--adm-surface);
+  border: 0;
+  border-top: 1px solid var(--adm-border-soft);
+  border-left: 1px solid var(--adm-border-soft);
+}
+
+body.adminShellV2 .opsMetric:nth-child(1),
+body.adminShellV2 .opsMetric:nth-child(2) {
+  border-top: 0;
+}
+
+body.adminShellV2 .opsMetric:nth-child(odd) {
+  border-left: 0;
+}
+
+body.adminShellV2 .dashboardGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+body.adminShellV2 .dashboardDataGrid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+body.adminShellV2 .dashboardDataCard,
+body.adminShellV2 .dashboardListItem,
+body.adminShellV2 .dashboardOpsStat {
+  min-width: 0;
+  border: 1px solid var(--adm-border-soft);
+  border-radius: 16px;
+  background: var(--adm-surface-muted);
+  color: var(--adm-text-secondary);
+  box-shadow: none;
+}
+
+body.adminShellV2 .dashboardDataCard {
+  grid-template-columns: minmax(0, 1fr);
+  border-left: 4px solid var(--dashboard-status-color);
+}
+
+body.adminShellV2 .dashboardDataHead {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+body.adminShellV2 .dashboardDataTitle,
+body.adminShellV2 .dashboardDataActions,
+body.adminShellV2 .dashboardDataLine,
+body.adminShellV2 .dashboardDataMetaLine {
+  min-width: 0;
+}
+
+body.adminShellV2 .dashboardDataActions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+body.adminShellV2 .dashboardLogPill {
+  background: var(--adm-surface);
+  border-color: var(--adm-border-soft);
+  color: var(--adm-text-secondary);
+}
+
+body.adminShellV2 .dashboardLogPill:hover:not(:disabled) {
+  background: var(--adm-hover);
+  border-color: var(--adm-border-strong);
+  color: var(--adm-text);
+}
+
+body.adminShellV2 .dashboardListItem {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+body.adminShellV2 .dashboardListItem--media {
+  grid-template-columns: 86px minmax(0, 1fr) auto;
+}
+
+body.adminShellV2 .dashboardListItem--media img,
+body.adminShellV2 .dashboardMediaPlaceholder {
+  width: 86px;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  border: 1px solid var(--adm-border-soft);
+  background: var(--adm-surface);
+}
+
+body.adminShellV2 .dashboardListItem--media img {
+  display: block;
+  object-fit: cover;
+}
+
+body.adminShellV2 .dashboardMediaPlaceholder {
+  display: grid;
+  place-items: center;
+  color: var(--adm-primary);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+body.adminShellV2 .dashboardItemMain {
+  min-width: 0;
+}
+
+body.adminShellV2 .dashboardListItem .compactBtn {
+  white-space: nowrap;
+}
+
+body.adminShellV2 .dashboardListItem:hover,
+body.adminShellV2 .dashboardDataCard:hover,
+body.adminShellV2 .dashboardOpsStat:hover {
+  background: var(--adm-hover);
+  border-color: var(--adm-border-strong);
+}
+
+body.adminShellV2 .dashboardOpsStat {
+  border-left: 4px solid var(--dashboard-status-color, var(--adm-primary));
+}
+
+body.adminShellV2 .dashboardOpsStat--warn {
+  border-left-color: var(--adm-warning);
+}
+
+body.adminShellV2 .dashboardOpsStat--danger {
+  border-left-color: var(--adm-danger);
+}
+
+body.adminShellV2 .dashboardOpsStat span {
+  color: var(--adm-text-tertiary);
+}
+
+body.adminShellV2 .dashboardOpsStat strong {
+  color: var(--adm-text);
+}
+
+body.adminShellV2 .dashboardJobsHint {
+  background: var(--adm-surface-muted);
+  border-color: var(--adm-border-soft);
+  box-shadow: none;
+}
+
+@media (max-width: 1180px) {
+  body.adminShellV2 .opsHero,
+  body.adminShellV2 .dashboardGrid {
+    grid-template-columns: 1fr;
+  }
+
+  body.adminShellV2 .opsHeroMetrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  body.adminShellV2 .opsMetric {
+    border-top: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  body.adminShellV2 .opsHeroMain {
+    padding: 20px;
+  }
+
+  body.adminShellV2 .opsHeroMetrics,
+  body.adminShellV2 .dashboardDataGrid {
+    grid-template-columns: 1fr;
+  }
+
+  body.adminShellV2 .opsMetric,
+  body.adminShellV2 .opsMetric:nth-child(odd) {
+    border-left: 0;
+    border-top: 1px solid var(--adm-border-soft);
+  }
+
+  body.adminShellV2 .opsMetric:first-child {
+    border-top: 0;
+  }
+
+  body.adminShellV2 .dashboardToolbar,
+  body.adminShellV2 .dashboardDataHead {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  body.adminShellV2 .dashboardListItem,
+  body.adminShellV2 .dashboardListItem--media {
+    grid-template-columns: 1fr;
+  }
+
+  body.adminShellV2 .dashboardListItem--media img,
+  body.adminShellV2 .dashboardMediaPlaceholder {
+    width: min(100%, 360px);
+  }
+
+  body.adminShellV2 .dashboardListItem .compactBtn,
+  body.adminShellV2 .dashboardDataActions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+}

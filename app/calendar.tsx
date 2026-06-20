@@ -98,6 +98,28 @@ function rangeForAnchor(ymd: string) {
   };
 }
 
+function isSingleCalendarTypeSelection(
+  input: Set<CalendarEventTypeKey>,
+  type: CalendarEventTypeKey,
+): boolean {
+  return input.size === 1 && input.has(type);
+}
+
+function queryForAnchor(ymd: string, enabledTypes: Set<CalendarEventTypeKey>) {
+  if (isSingleCalendarTypeSelection(enabledTypes, 'holiday')) {
+    return {
+      from: shiftYmd(ymd, -30),
+      to: shiftYmd(ymd, 420),
+      type: 'holiday',
+      limit: 1000,
+    };
+  }
+  return {
+    ...rangeForAnchor(ymd),
+    limit: 1000,
+  };
+}
+
 function normalizeCalendarTypeSelection(input: Set<CalendarEventTypeKey>): Set<CalendarEventTypeKey> {
   if (input.size === CALENDAR_EVENT_TYPE_ORDER.length) {
     return new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
@@ -144,9 +166,9 @@ export default function CalendarScreen() {
         setError(t('errorSignalApiShort'));
         return;
       }
-      const range = rangeForAnchor(rangeAnchorYmd);
+      const range = queryForAnchor(rangeAnchorYmd, enabledTypes);
       const cacheMode = forceRefresh ? 'bypass' : 'use';
-      const list = await fetchSignalCalendar({ ...range, limit: 1000 }, { cacheMode });
+      const list = await fetchSignalCalendar(range, { cacheMode });
       setEvents(
         mergeCalendarEvents([
           list
@@ -155,7 +177,7 @@ export default function CalendarScreen() {
         ]),
       );
     },
-    [rangeAnchorYmd, t],
+    [enabledTypes, rangeAnchorYmd, t],
   );
 
   useEffect(() => {
@@ -452,36 +474,39 @@ export default function CalendarScreen() {
             <Text style={styles.errText}>{error}</Text>
           </View>
         ) : null}
-        <View style={styles.dateNav}>
+        <View style={styles.datePicker}>
           <Pressable
             onPress={goPrevDay}
-            style={styles.dateNavButton}
             accessibilityRole="button"
-            accessibilityLabel={t('calendarMonthPrevA11y')}>
-            <FontAwesome name="chevron-left" size={16} color={theme.accentBlue} />
+            accessibilityLabel={t('calendarMonthPrevA11y')}
+            hitSlop={8}
+            style={({ pressed }) => [styles.dateArrow, pressed && styles.dateArrowPressed]}>
+            <FontAwesome name="chevron-left" size={13} color={theme.green} />
           </Pressable>
-          <View style={styles.dateNavCenter}>
-            <FontAwesome name="calendar" size={13} color={theme.accentBlue} />
-            <Text style={styles.dateNavText}>{formatDayHeader(selectedYmd)}</Text>
+          <View style={styles.datePickerCenter}>
+            <FontAwesome name="calendar" size={12} color={theme.green} />
+            <Text style={styles.datePickerValue} numberOfLines={1}>
+              {formatDayHeader(selectedYmd)}
+            </Text>
           </View>
+          {selectedYmd !== todayYmd ? (
+            <Pressable
+              onPress={goToday}
+              accessibilityRole="button"
+              accessibilityLabel={t('insightCalendarToday')}
+              style={({ pressed }) => [styles.dateTodayBtn, pressed && styles.dateActionBtnPressed]}>
+              <Text style={styles.dateTodayText}>{t('insightCalendarToday')}</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={goNextDay}
-            style={styles.dateNavButton}
             accessibilityRole="button"
-            accessibilityLabel={t('calendarMonthNextA11y')}>
-            <FontAwesome name="chevron-right" size={16} color={theme.accentBlue} />
+            accessibilityLabel={t('calendarMonthNextA11y')}
+            hitSlop={8}
+            style={({ pressed }) => [styles.dateArrow, pressed && styles.dateArrowPressed]}>
+            <FontAwesome name="chevron-right" size={13} color={theme.green} />
           </Pressable>
         </View>
-        <Pressable
-          onPress={goToday}
-          style={[styles.todayButton, selectedYmd === todayYmd && styles.todayButtonDisabled]}
-          accessibilityRole="button"
-          disabled={selectedYmd === todayYmd}>
-          <FontAwesome name="dot-circle-o" size={12} color={selectedYmd === todayYmd ? theme.textMuted : theme.accentBlue} />
-          <Text style={[styles.todayButtonText, selectedYmd === todayYmd && styles.todayButtonTextDisabled]}>
-            {t('insightCalendarToday')}
-          </Text>
-        </Pressable>
         <View style={styles.filterChips} accessibilityRole="tablist">
           <Pressable
             onPress={onSelectAllEventTypes}
@@ -559,6 +584,9 @@ export default function CalendarScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+  const digestBg =
+    theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}10` : theme.bgElevated;
+
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
@@ -570,64 +598,61 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomColor: theme.border,
       backgroundColor: theme.bg,
     },
-    dateNav: {
+    datePicker: {
       flexDirection: 'row',
       alignItems: 'center',
+      padding: 8,
       gap: 8,
-    },
-    dateNavButton: {
-      width: 42,
-      height: 42,
-      borderRadius: 14,
       borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    dateNavCenter: {
-      flex: 1,
-      height: 42,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
-      gap: 8,
-      paddingHorizontal: 12,
-    },
-    dateNavText: {
-      fontSize: sf(14),
-      lineHeight: sf(20),
-      fontWeight: '900',
-      color: theme.text,
-    },
-    todayButton: {
-      marginTop: 8,
-      minHeight: 34,
+      borderColor: theme.greenBorder,
       borderRadius: 13,
+      backgroundColor: digestBg,
+    },
+    dateArrow: {
+      width: 34,
+      height: 34,
+      borderRadius: 10,
       borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    dateArrowPressed: { opacity: 0.82 },
+    datePickerCenter: {
+      flex: 1,
+      minWidth: 0,
+      height: 34,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.bgElevated,
       flexDirection: 'row',
-      gap: 6,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 7,
+      paddingHorizontal: 10,
     },
-    todayButtonDisabled: {
-      opacity: 0.56,
-    },
-    todayButtonText: {
-      fontSize: sf(12),
-      lineHeight: sf(17),
+    datePickerValue: {
+      color: theme.text,
+      fontSize: sf(14),
+      lineHeight: sf(18),
       fontWeight: '900',
-      color: theme.accentBlue,
+      textAlign: 'center',
+      flexShrink: 1,
     },
-    todayButtonTextDisabled: {
-      color: theme.textMuted,
+    dateTodayBtn: {
+      height: 34,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 10,
     },
+    dateTodayText: { color: theme.green, fontSize: sf(12), fontWeight: '900' },
+    dateActionBtnPressed: { opacity: 0.86 },
     listScroll: { flex: 1, minHeight: 0 },
     listContent: { paddingHorizontal: 16, paddingTop: 10 },
     listContentEmpty: { flexGrow: 1, justifyContent: 'center' },

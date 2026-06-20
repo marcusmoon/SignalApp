@@ -193,7 +193,9 @@ export async function loadDashboardView(ctx) {
           <div class="dashboardList">
             ${youtubeRows.map((item) => `
               <article class="dashboardListItem dashboardListItem--media">
-                <img src="${esc(item.thumbnailUrl || '')}" alt="" />
+                ${item.thumbnailUrl
+                  ? `<img src="${esc(item.thumbnailUrl)}" alt="" />`
+                  : `<div class="dashboardMediaPlaceholder" aria-hidden="true">YT</div>`}
                 <div class="dashboardItemMain">
                   <div class="dashboardItemTitle">${esc(item.title || '-')}</div>
                   <div class="dashboardItemMeta">

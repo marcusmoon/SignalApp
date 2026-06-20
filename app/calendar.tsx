@@ -49,6 +49,13 @@ const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
 
 type CalendarSection = { title: string; data: CalendarEvent[] };
 
+const CALENDAR_INITIAL_PAST_DAYS = 14;
+const CALENDAR_WINDOW_DAYS = 90;
+const CALENDAR_ALL_LOOKAHEAD_DAYS = 420;
+const CALENDAR_SINGLE_TYPE_LOOKAHEAD_DAYS = 240;
+const CALENDAR_QUERY_LIMIT = 900;
+const CALENDAR_EMPTY_WINDOW_HOPS = 4;
+
 function calendarEventTimeLabel(ev: CalendarEvent, t: (id: MessageId) => string): string {
   return ev.time || '—';
 }
@@ -100,13 +107,6 @@ function monthFromYmd(value: string): { year: number; month: number } {
   return { year: date.getFullYear(), month: date.getMonth() };
 }
 
-function rangeForAnchor(ymd: string) {
-  return {
-    from: shiftYmd(ymd, -30),
-    to: shiftYmd(ymd, 120),
-  };
-}
-
 function isSingleCalendarTypeSelection(
   input: Set<CalendarEventTypeKey>,
   type: CalendarEventTypeKey,
@@ -114,20 +114,35 @@ function isSingleCalendarTypeSelection(
   return input.size === 1 && input.has(type);
 }
 
-function queryForAnchor(ymd: string, enabledTypes: Set<CalendarEventTypeKey>) {
-  if (isSingleCalendarTypeSelection(enabledTypes, 'holiday')) {
-    return {
-      from: shiftYmd(ymd, -30),
-      to: shiftYmd(ymd, 420),
-      type: 'holiday',
-      limit: 240,
-      offset: 0,
-    };
+function selectedCalendarType(input: Set<CalendarEventTypeKey>): CalendarEventTypeKey | undefined {
+  if (input.size !== 1) return undefined;
+  return CALENDAR_EVENT_TYPE_ORDER.find((type) => input.has(type));
+}
+
+function calendarLookaheadDays(input: Set<CalendarEventTypeKey>): number {
+  if (input.size === CALENDAR_EVENT_TYPE_ORDER.length || input.has('holiday')) {
+    return CALENDAR_ALL_LOOKAHEAD_DAYS;
   }
+  return CALENDAR_SINGLE_TYPE_LOOKAHEAD_DAYS;
+}
+
+function minYmd(a: string, b: string): string {
+  return a <= b ? a : b;
+}
+
+function queryForDateWindow(
+  anchorYmd: string,
+  fromYmd: string,
+  enabledTypes: Set<CalendarEventTypeKey>,
+) {
+  const maxToYmd = shiftYmd(anchorYmd, calendarLookaheadDays(enabledTypes));
+  if (fromYmd > maxToYmd) return null;
+  const type = selectedCalendarType(enabledTypes);
   return {
-    ...rangeForAnchor(ymd),
-    limit: 180,
-    offset: 0,
+    from: fromYmd,
+    to: minYmd(shiftYmd(fromYmd, CALENDAR_WINDOW_DAYS), maxToYmd),
+    type,
+    limit: CALENDAR_QUERY_LIMIT,
   };
 }
 
@@ -161,10 +176,14 @@ export default function CalendarScreen() {
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loadedThroughYmd, setLoadedThroughYmd] = useState<string | null>(null);
+  const [canLoadMore, setCanLoadMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [enabledTypes, setEnabledTypes] = useState(
     () => new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER),
   );
   const sectionListRef = useRef<SectionList<CalendarEvent, CalendarSection>>(null);
+  const ignoreViewableUntilRef = useRef(0);
 
   useEffect(() => {
     void loadCalendarEventTypeFilter().then((saved) => {
@@ -180,27 +199,87 @@ export default function CalendarScreen() {
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => monthFromYmd(toYmd(new Date())));
 
+  const fetchCalendarWindow = useCallback(
+    async (fromYmd: string, forceRefresh?: boolean) => {
+      const query = queryForDateWindow(rangeAnchorYmd, fromYmd, enabledTypes);
+      if (!query) {
+        return { events: [] as CalendarEvent[], throughYmd: fromYmd, canLoadMore: false };
+      }
+      const cacheMode = forceRefresh ? 'bypass' : 'use';
+      const list = await fetchSignalCalendar(query, { cacheMode });
+      const nextEvents = list
+        .map(signalCalendarToCalendarEvent)
+        .filter((event): event is CalendarEvent => event != null);
+      const maxToYmd = shiftYmd(rangeAnchorYmd, calendarLookaheadDays(enabledTypes));
+      return {
+        events: nextEvents,
+        throughYmd: query.to,
+        canLoadMore: query.to < maxToYmd,
+      };
+    },
+    [enabledTypes, rangeAnchorYmd],
+  );
+
   const load = useCallback(
     async (forceRefresh?: boolean) => {
       setError(null);
       if (!hasSignalApi()) {
         setEvents([]);
+        setLoadedThroughYmd(null);
+        setCanLoadMore(false);
         setError(t('errorSignalApiShort'));
         return;
       }
-      const range = queryForAnchor(rangeAnchorYmd, enabledTypes);
-      const cacheMode = forceRefresh ? 'bypass' : 'use';
-      const list = await fetchSignalCalendar(range, { cacheMode });
-      setEvents(
-        mergeCalendarEvents([
-          list
-            .map(signalCalendarToCalendarEvent)
-            .filter((event): event is CalendarEvent => event != null),
-        ]),
-      );
+
+      let fromYmd = shiftYmd(rangeAnchorYmd, -CALENDAR_INITIAL_PAST_DAYS);
+      let nextEvents: CalendarEvent[] = [];
+      let nextLoadedThrough: string | null = null;
+      let nextCanLoadMore = false;
+
+      for (let i = 0; i < CALENDAR_EMPTY_WINDOW_HOPS; i += 1) {
+        const page = await fetchCalendarWindow(fromYmd, forceRefresh);
+        nextEvents = mergeCalendarEvents([nextEvents, page.events]);
+        nextLoadedThrough = page.throughYmd;
+        nextCanLoadMore = page.canLoadMore;
+        const hasFutureTarget = nextEvents.some((event) => String(event.date || '').slice(0, 10) >= rangeAnchorYmd);
+        if (hasFutureTarget || !page.canLoadMore) break;
+        fromYmd = shiftYmd(page.throughYmd, 1);
+      }
+
+      setEvents(nextEvents);
+      setLoadedThroughYmd(nextLoadedThrough);
+      setCanLoadMore(nextCanLoadMore);
     },
-    [enabledTypes, rangeAnchorYmd, t],
+    [fetchCalendarWindow, rangeAnchorYmd, t],
   );
+
+  const loadMore = useCallback(async () => {
+    if (!hasSignalApi() || loading || refreshing || loadingMore || !canLoadMore || !loadedThroughYmd) return;
+    setLoadingMore(true);
+    try {
+      let fromYmd = shiftYmd(loadedThroughYmd, 1);
+      let appendedEvents: CalendarEvent[] = [];
+      let nextLoadedThrough = loadedThroughYmd;
+      let nextCanLoadMore: boolean = canLoadMore;
+
+      for (let i = 0; i < CALENDAR_EMPTY_WINDOW_HOPS; i += 1) {
+        const page = await fetchCalendarWindow(fromYmd);
+        appendedEvents = mergeCalendarEvents([appendedEvents, page.events]);
+        nextLoadedThrough = page.throughYmd;
+        nextCanLoadMore = page.canLoadMore;
+        if (appendedEvents.length > 0 || !page.canLoadMore) break;
+        fromYmd = shiftYmd(page.throughYmd, 1);
+      }
+
+      setEvents((prev) => mergeCalendarEvents([prev, appendedEvents]));
+      setLoadedThroughYmd(nextLoadedThrough);
+      setCanLoadMore(nextCanLoadMore);
+    } catch (e) {
+      setError(formatSignalApiError(e, t, 'calendarErrorLoad'));
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [canLoadMore, fetchCalendarWindow, loadedThroughYmd, loading, loadingMore, refreshing, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -249,10 +328,7 @@ export default function CalendarScreen() {
       prev.push(event);
       byDate.set(date, prev);
     }
-    const sortedDates = [...byDate.keys()].sort((a, b) => a.localeCompare(b));
-    const hasSelectedDate = byDate.has(selectedYmd);
-    const hasFutureDate = sortedDates.some((date) => date >= selectedYmd);
-    if (!hasSelectedDate && !hasFutureDate) byDate.set(selectedYmd, []);
+    if (byDate.size === 0) byDate.set(selectedYmd, []);
     return [...byDate.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([title, data]) => ({
@@ -297,6 +373,7 @@ export default function CalendarScreen() {
   const todayYmd = toYmd(new Date());
 
   const selectYmd = useCallback((ymd: string, reloadRange = false) => {
+    ignoreViewableUntilRef.current = Date.now() + 900;
     setSelectedYmd(ymd);
     if (reloadRange) setRangeAnchorYmd(ymd);
     setPendingScrollYmd(ymd);
@@ -366,17 +443,19 @@ export default function CalendarScreen() {
   useEffect(() => {
     if (loading || !pendingScrollYmd || !scrollTargetYmd || selectedSectionIndex < 0) return;
     const timer = setTimeout(() => {
-      scrollToSelectedSection(true);
-      if (scrollTargetYmd !== pendingScrollYmd) {
+      ignoreViewableUntilRef.current = Date.now() + 900;
+      if (scrollTargetYmd !== selectedYmd) {
         setSelectedYmd(scrollTargetYmd);
       }
-      setPendingScrollYmd(null);
+      scrollToSelectedSection(true);
+      setTimeout(() => setPendingScrollYmd(null), 260);
     }, 40);
     return () => clearTimeout(timer);
-  }, [loading, pendingScrollYmd, scrollTargetYmd, selectedSectionIndex, scrollToSelectedSection]);
+  }, [loading, pendingScrollYmd, scrollTargetYmd, selectedYmd, selectedSectionIndex, scrollToSelectedSection]);
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: Array<{ section?: { title?: string } }> }) => {
+      if (Date.now() < ignoreViewableUntilRef.current) return;
       const first = viewableItems.find((item) => item.section?.title)?.section?.title;
       if (first) setSelectedYmd((prev) => (prev === first ? prev : first));
     },
@@ -610,10 +689,21 @@ export default function CalendarScreen() {
           ) : null
         }
         ListEmptyComponent={renderListEmpty}
-        ListFooterComponent={<SignalBannerAd />}
+        ListFooterComponent={
+          <View>
+            {loadingMore ? (
+              <View style={styles.loadMore}>
+                <SignalLoadingIndicator message={t('commonLoading')} />
+              </View>
+            ) : null}
+            <SignalBannerAd />
+          </View>
+        }
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         onScrollToIndexFailed={onScrollToIndexFailed}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.45}
         contentContainerStyle={[
           styles.listContent,
           loading ? SCROLL_CONTENT_LOADING_STYLE : null,
@@ -747,6 +837,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     errText: { fontSize: sf(11), color: theme.danger, lineHeight: sf(16) },
     empty: { fontSize: sf(12), color: theme.textMuted, paddingVertical: 12, textAlign: 'center' },
+    loadMore: {
+      minHeight: 56,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+    },
     card: {
       backgroundColor: theme.card,
       borderRadius: 10,

@@ -41,6 +41,7 @@ import {
   newCalendarEventDraftView,
   renderAdminCalendarGrid as renderAdminCalendarGridView,
   renderCalendarDayTable as renderCalendarDayTableView,
+  renderCalendarTabs as renderCalendarTabsView,
   runCalendarJobView,
   saveCalendarEventView,
   saveCalendarEventCodeMappingView,
@@ -1079,6 +1080,10 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
 
       function renderCalendarDayTable() {
         return renderCalendarDayTableView({ state, $, esc, textFor, textForVars });
+      }
+
+      function renderCalendarTabs() {
+        return renderCalendarTabsView({ state });
       }
 
       async function loadCalendar() {
@@ -2426,10 +2431,16 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             state.calendarSelectedYmd = '';
             await loadCalendar();
           }
+          if (target.dataset.calendarTab) {
+            state.calendarTab = target.dataset.calendarTab;
+            renderCalendarTabs();
+            return;
+          }
           if (target.id === 'resetCalendarBtn') {
             if ($('calendarRange')) $('calendarRange').value = 'today';
             setCalendarDatePreset();
             if ($('calendarType')) $('calendarType').value = '';
+            if ($('calendarCountry')) $('calendarCountry').value = '';
             if ($('calendarSymbol')) $('calendarSymbol').value = '';
             if ($('calendarQuery')) $('calendarQuery').value = '';
             state.calendarSelectedYmd = '';
@@ -2834,6 +2845,11 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         }
         if (event.target.id === 'calendarFrom' || event.target.id === 'calendarTo') {
           state.calendarSelectedYmd = '';
+          await loadCalendar();
+        }
+        if (event.target.id === 'calendarType' || event.target.id === 'calendarCountry') {
+          state.calendarSelectedYmd = '';
+          state.calendarRangeFocusYmd = '';
           await loadCalendar();
         }
         if (event.target.dataset && event.target.dataset.calendarRangeDay === 'pick') {

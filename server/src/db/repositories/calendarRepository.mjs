@@ -1,52 +1,35 @@
 import { queryKysely } from '../kysely/client.mjs';
-import {
-  cleanText,
-  safeLimit,
-  safeOffset,
-} from './publicHelpers.mjs';
+import { cleanText, safeLimit, safeOffset } from './publicHelpers.mjs';
 
-function numberOrNull(value) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function isoOrNull(value) {
-  if (!value) return null;
-  try {
-    return new Date(value).toISOString();
-  } catch {
-    return null;
-  }
-}
-
-function publicCalendarEvent(row) {
+function rowToPublicEvent(row) {
+  if (!row) return null;
   return {
     id: row.id,
-    provider: row.provider || row.source || 'manual',
-    providerItemId: row.provider_item_id || row.source_event_id || row.id,
-    type: row.event_type,
-    title: row.title,
+    provider: row.provider || 'manual',
+    providerItemId: row.provider_item_id || row.id,
+    eventKey: row.event_key || null,
+    type: row.event_type || null,
+    title: row.title || '',
     country: row.country || null,
     symbol: row.symbol || null,
-    eventAt: isoOrNull(row.event_at),
-    date: cleanText(row.event_date).slice(0, 10) || null,
+    eventAt: row.event_at || null,
+    date: row.event_date ? String(row.event_date).slice(0, 10) : null,
     timeLabel: row.time_label || '',
+    timezone: row.timezone || null,
     impact: row.impact || null,
-    actual: numberOrNull(row.actual),
-    estimate: numberOrNull(row.estimate),
-    previous: numberOrNull(row.previous),
+    importance: row.importance || null,
+    actual: row.actual ?? null,
+    estimate: row.estimate ?? null,
+    previous: row.previous ?? null,
     unit: row.unit || null,
-    fiscalYear: row.fiscal_year == null ? null : Number(row.fiscal_year),
-    fiscalQuarter: row.fiscal_quarter == null ? null : Number(row.fiscal_quarter),
+    fiscalYear: row.fiscal_year ?? null,
+    fiscalQuarter: row.fiscal_quarter ?? null,
     earningsHour: row.earnings_hour || null,
-    eventKey: row.event_key || null,
+    companyName: row.company_name || null,
     source: row.source || null,
     sourceEventId: row.source_event_id || null,
-    timezone: row.timezone || null,
-    companyName: row.company_name || null,
-    importance: row.importance || null,
     url: row.url || null,
-    fetchedAt: isoOrNull(row.updated_at) || isoOrNull(row.created_at) || null,
+    fetchedAt: row.updated_at || null,
   };
 }
 
@@ -55,6 +38,7 @@ export async function queryPublicCalendarRows(options = {}) {
   const offset = safeOffset(options.offset);
   const params = [];
   const where = [];
+
   const from = cleanText(options.from);
   if (from) {
     params.push(from);
@@ -88,54 +72,32 @@ export async function queryPublicCalendarRows(options = {}) {
       OR lower(COALESCE(country, '')) LIKE $${params.length}
       OR lower(COALESCE(symbol, '')) LIKE $${params.length}
       OR lower(COALESCE(event_type, '')) LIKE $${params.length}
-      OR lower(COALESCE(source, '')) LIKE $${params.length}
-      OR lower(COALESCE(provider, '')) LIKE $${params.length}
     )`);
   }
+
   params.push(limit, offset);
   const result = await queryKysely(
     `
       SELECT
-        id,
-        event_date::text AS event_date,
-        event_at,
-        event_type,
-        symbol,
-        country,
-        title,
-        provider,
-        provider_item_id,
-        time_label,
-        timezone,
-        company_name,
-        source,
-        source_event_id,
-        event_key,
-        importance,
-        impact,
-        actual,
-        estimate,
-        previous,
-        unit,
-        fiscal_year,
-        fiscal_quarter,
-        earnings_hour,
-        url,
-        created_at,
-        updated_at
+        id, event_type, event_date::text, event_at, event_key,
+        country, symbol, title, provider, provider_item_id,
+        time_label, timezone, company_name, source, source_event_id,
+        impact, importance, actual, estimate, previous, unit,
+        fiscal_year, fiscal_quarter, earnings_hour, url, updated_at
       FROM calendar_events
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-      ORDER BY event_date ASC NULLS LAST, event_at ASC NULLS LAST, COALESCE(time_label, ''), COALESCE(title, '')
+      ORDER BY event_date ASC NULLS LAST, title
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `,
     params,
   );
-  return result.rows.map(publicCalendarEvent);
+  return result.rows.map(rowToPublicEvent).filter(Boolean);
 }
 
 export async function queryPublicCalendarDateSummaryRows(options = {}) {
   const params = [];
   const where = ['event_date IS NOT NULL'];
+
   const from = cleanText(options.from);
   if (from) {
     params.push(from);
@@ -156,6 +118,7 @@ export async function queryPublicCalendarDateSummaryRows(options = {}) {
     params.push(country);
     where.push(`upper(COALESCE(country, '')) = $${params.length}`);
   }
+
   const result = await queryKysely(
     `
       SELECT event_date::text AS date, COALESCE(event_type, 'unknown') AS type, COUNT(*)::int AS count
@@ -201,9 +164,9 @@ export async function deleteCalendarRowsByIds(ids) {
 }
 
 /**
- * Find duplicates: same (country, event_type, event_key).
- * Within each group keep one — prefer manual, then source-backed rows, then latest update.
- * Returns list of ids to delete.
+ * Find duplicates by (country, event_type, event_key) — same as the unique constraint.
+ * The unique index already prevents true duplicates; this targets any leftover legacy rows
+ * that pre-date the constraint. Keeps oldest (smallest id), prefers provider='manual'.
  */
 export async function findDuplicateCalendarIds() {
   const result = await queryKysely(
@@ -211,21 +174,14 @@ export async function findDuplicateCalendarIds() {
       WITH grouped AS (
         SELECT
           id,
-          event_type,
-          upper(COALESCE(country, 'GLOBAL')) AS country,
-          COALESCE(event_key, '') AS event_key,
-          COALESCE(provider, source, '') AS prov,
-          COALESCE(source_event_id, provider_item_id, '') AS source_ref,
           ROW_NUMBER() OVER (
-            PARTITION BY upper(COALESCE(country, 'GLOBAL')), event_type, COALESCE(event_key, '')
+            PARTITION BY country, event_type, event_key
             ORDER BY
-              CASE WHEN COALESCE(provider, source, '') = 'manual' THEN 0 ELSE 1 END ASC,
-              CASE WHEN COALESCE(source_event_id, provider_item_id, '') <> '' THEN 0 ELSE 1 END ASC,
-              updated_at DESC NULLS LAST,
+              CASE WHEN COALESCE(provider, '') = 'manual' THEN 0 ELSE 1 END ASC,
               id ASC
           ) AS rn
         FROM calendar_events
-        WHERE event_type IS NOT NULL AND COALESCE(event_key, '') <> ''
+        WHERE event_key IS NOT NULL AND event_key <> ''
       )
       SELECT id FROM grouped WHERE rn > 1
     `,

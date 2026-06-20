@@ -61,6 +61,30 @@ function formatAdminCalendarDayHeading(ymdValue) {
   }
 }
 
+const CALENDAR_EVENT_TYPES = ['macro', 'earnings', 'holiday', 'fomc', 'fed'];
+
+function calendarTypeLabel(type) {
+  const value = String(type || '').trim();
+  if (value === 'macro') return '지표';
+  if (value === 'earnings') return '실적';
+  if (value === 'holiday') return '휴일';
+  if (value === 'fomc') return 'FOMC';
+  if (value === 'fed') return '연준';
+  return value || '-';
+}
+
+export function renderCalendarTabs({ state }) {
+  const active = state.calendarTab || 'events';
+  document.querySelectorAll('[data-calendar-tab]').forEach((button) => {
+    const isActive = button.dataset.calendarTab === active;
+    button.classList.toggle('active', isActive);
+    button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+  document.querySelectorAll('[data-calendar-panel]').forEach((panel) => {
+    panel.classList.toggle('hidden', panel.dataset.calendarPanel !== active);
+  });
+}
+
 function calendarEventTable({ rows, esc, textFor }) {
   return `
     <table class="calendarEventsTable">
@@ -79,7 +103,7 @@ function calendarEventTable({ rows, esc, textFor }) {
             (item) => `
           <tr>
             <td class="muted">${esc(item.date || '-')}</td>
-            <td><span class="pill">${esc(item.type || '-')}</span></td>
+            <td><span class="pill">${esc(calendarTypeLabel(item.type))}</span></td>
             <td><strong>${esc(item.title || '-')}</strong></td>
             <td class="muted">${esc(item.country || item.symbol || '-')}</td>
             <td>
@@ -134,7 +158,7 @@ function calendarEventEditor({ state, esc }) {
         <div class="filterGroup">
           <span class="filterGroupTitle">타입</span>
           <select id="calendarEventType">
-            ${['macro', 'earnings', 'holiday', 'fomc', 'fed'].map((type) => `<option value="${type}"${draft.type === type ? ' selected' : ''}>${type}</option>`).join('')}
+            ${CALENDAR_EVENT_TYPES.map((type) => `<option value="${type}"${draft.type === type ? ' selected' : ''}>${calendarTypeLabel(type)}</option>`).join('')}
           </select>
         </div>
         <div class="filterGroup">
@@ -236,7 +260,7 @@ function calendarEventCards({ rows, esc, textFor }) {
         <article class="mobileCalendarCard">
           <div class="mobileCalendarCardHead">
             <strong>${esc(item.title || '-')}</strong>
-            <span class="pill">${esc(item.type || '-')}</span>
+            <span class="pill">${esc(calendarTypeLabel(item.type))}</span>
           </div>
           <div class="mobileRunStats">
             <span>${esc(textFor('colDate'))} <strong>${esc(item.date || '-')}</strong></span>
@@ -307,7 +331,7 @@ function renderCalendarEventCodeMappings({ state, $, esc }) {
           .map(
             (row) => `
               <tr>
-                <td><span class="pill">${esc(row.eventType || '-')}</span></td>
+                <td><span class="pill">${esc(calendarTypeLabel(row.eventType))}</span></td>
                 <td><strong>${esc(row.code || '-')}</strong></td>
                 <td>${esc(row.label || '-')}</td>
                 <td class="muted">${esc(row.matchType || '-')}</td>
@@ -382,7 +406,6 @@ export function renderAdminCalendarGrid({ state, $, esc, textFor, ymd }) {
 export function renderCalendarDayTable({ state, $, esc, textFor, textForVars }) {
   const host = $('calendarDayList') || $('calendar');
   if (!host) return;
-  renderCalendarEventEditor({ state, $, esc });
   const headEl = $('calendarDayHeadingText');
   const sel = String(state.calendarSelectedYmd || '').slice(0, 10);
   const rangeFrom = String(state.calendarRangeFrom || '').slice(0, 10);
@@ -464,6 +487,8 @@ export async function loadCalendarView(ctx) {
   state.calendarRangeTo = to;
   const ty = $('calendarType')?.value?.trim();
   if (ty) params.set('type', ty);
+  const country = $('calendarCountry')?.value?.trim();
+  if (country) params.set('country', country.toUpperCase());
   const cq = $('calendarQuery')?.value?.trim();
   if (cq) params.set('q', cq);
   const sym = $('calendarSymbol')?.value?.trim();
@@ -500,12 +525,16 @@ export async function loadCalendarView(ctx) {
     ? jobs.data.filter((job) => String(job.area || job.domain || '').trim() === 'calendar')
     : [];
   renderCalendarJobRunner({ state, $, esc });
+  renderCalendarEventEditor({ state, $, esc });
+  renderCalendarTabs({ state });
 }
 
 export function newCalendarEventDraftView(ctx) {
   const { $, state, esc } = ctx;
   state.calendarEventDraft = emptyCalendarDraft(state);
+  state.calendarTab = 'editor';
   renderCalendarEventEditor({ state, $, esc });
+  renderCalendarTabs({ state });
 }
 
 export function editCalendarEventDraftView(ctx) {
@@ -513,7 +542,9 @@ export function editCalendarEventDraftView(ctx) {
   const row = (state.calendarMonthRows || []).find((item) => item.id === id);
   if (!row) return;
   state.calendarEventDraft = draftFromEvent(row);
+  state.calendarTab = 'editor';
   renderCalendarEventEditor({ state, $, esc });
+  renderCalendarTabs({ state });
 }
 
 function readCalendarEventEditor($, state) {

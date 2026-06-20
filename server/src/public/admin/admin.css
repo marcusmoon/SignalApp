@@ -840,6 +840,27 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
       }
       .calendarSide { display: grid; gap: 12px; min-width: 0; }
       .calendarFilters { margin-bottom: 0; }
+      .adminSubTabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-width: 0;
+      }
+      .adminSubTab {
+        min-height: 34px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--bg-elevated);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 850;
+      }
+      .adminSubTab.active {
+        border-color: var(--accent-border);
+        background: var(--accent-dim);
+        color: var(--accent);
+      }
       .calendarToolbar {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -862,6 +883,17 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
         border: 1px solid var(--border);
         border-radius: var(--radius-lg);
         background: color-mix(in srgb, var(--panel) 88%, black);
+      }
+      .calendarSubTabs {
+        margin-top: 14px;
+        margin-bottom: 12px;
+      }
+      .calendarTabPanels {
+        display: grid;
+        gap: 12px;
+      }
+      .calendarTabPanel {
+        min-width: 0;
       }
       .calendarDayHeading {
         margin: 0 0 10px;
@@ -7839,6 +7871,40 @@ body.adminShellV2 .dashboardJobsHint {
   background: var(--adm-surface-muted);
   border-color: var(--adm-border-soft);
   box-shadow: none;
+}
+
+body.adminShellV2 .adminSubTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+body.adminShellV2 .adminSubTab,
+body.adminShellV2 button.adminSubTab {
+  min-height: 36px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--adm-border-soft);
+  background: var(--adm-surface-muted);
+  color: var(--adm-text-secondary);
+  font-size: 12px;
+  font-weight: 850;
+  box-shadow: none;
+}
+
+body.adminShellV2 .adminSubTab:hover:not(:disabled),
+body.adminShellV2 button.adminSubTab:hover:not(:disabled) {
+  background: var(--adm-hover);
+  border-color: var(--adm-border-strong);
+  color: var(--adm-text);
+}
+
+body.adminShellV2 .adminSubTab.active,
+body.adminShellV2 button.adminSubTab.active {
+  background: var(--adm-primary);
+  border-color: var(--adm-primary);
+  color: #ffffff;
 }
 
 @media (max-width: 1180px) {

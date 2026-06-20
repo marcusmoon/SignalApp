@@ -89,6 +89,7 @@ export async function handleAdminCalendarRoutes({ req, res, url, pathname }) {
       from: url.searchParams.get('from') || '',
       to: url.searchParams.get('to') || '',
       type: url.searchParams.get('type') || '',
+      country: url.searchParams.get('country') || '',
       symbol: url.searchParams.get('symbol') || '',
       q: url.searchParams.get('q') || '',
       limit: String(pageSize + 1),

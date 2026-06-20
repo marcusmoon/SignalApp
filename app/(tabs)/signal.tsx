@@ -1,5 +1,4 @@
 import { useFocusEffect } from "expo-router/react-navigation";
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -17,6 +16,7 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { MarketBriefingBlock } from '@/components/signal/MarketBriefingBlock';
+import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -352,52 +352,20 @@ export default function SignalScreen() {
         </View>
       ) : null}
 
-      <View style={styles.datePicker}>
-        <Pressable
-          onPress={() => moveDate(-1)}
-          accessibilityRole="button"
-          accessibilityLabel={t('insightDatePrevious')}
-          hitSlop={8}
-          style={({ pressed }) => [styles.dateArrow, pressed && styles.dateArrowPressed]}>
-          <FontAwesome name="chevron-left" size={13} color={theme.green} />
-        </Pressable>
-        <Pressable
-          onPress={openCalendar}
-          accessibilityRole="button"
-          accessibilityLabel={t('insightOpenCalendar')}
-          style={({ pressed }) => [styles.datePickerCenter, pressed && styles.dateActionBtnPressed]}>
-          <FontAwesome name="calendar" size={12} color={theme.green} />
-          <Text style={styles.datePickerValue} numberOfLines={1}>
-            {selectedDateLabel}
-          </Text>
-        </Pressable>
-        {!selectedIsToday ? (
-          <Pressable
-            onPress={goToday}
-            accessibilityRole="button"
-            accessibilityLabel={t('insightCalendarToday')}
-            style={({ pressed }) => [styles.dateTodayBtn, pressed && styles.dateActionBtnPressed]}>
-            <Text style={styles.dateTodayText}>{t('insightCalendarToday')}</Text>
-          </Pressable>
-        ) : null}
-        <Pressable
-          onPress={() => moveDate(1)}
-          disabled={selectedIsToday}
-          accessibilityRole="button"
-          accessibilityLabel={t('insightDateNext')}
-          hitSlop={8}
-          style={({ pressed }) => [
-            styles.dateArrow,
-            selectedIsToday && styles.dateArrowDisabled,
-            pressed && !selectedIsToday && styles.dateArrowPressed,
-          ]}>
-          <FontAwesome
-            name="chevron-right"
-            size={13}
-            color={selectedIsToday ? theme.textDim : theme.green}
-          />
-        </Pressable>
-      </View>
+      <SignalDateNavigator
+        label={selectedDateLabel}
+        previousA11y={t('insightDatePrevious')}
+        nextA11y={t('insightDateNext')}
+        labelA11y={t('insightOpenCalendar')}
+        todayLabel={t('insightCalendarToday')}
+        onPrevious={() => moveDate(-1)}
+        onNext={() => moveDate(1)}
+        onPressLabel={openCalendar}
+        onToday={goToday}
+        showToday={!selectedIsToday}
+        nextDisabled={selectedIsToday}
+        style={styles.dateNavigator}
+      />
 
       {!loading ? (
         <View style={styles.sessionTabsWrap}>
@@ -528,76 +496,16 @@ export default function SignalScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
-  const digestBg =
-    theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}10` : theme.bgElevated;
-
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     updateBannerWrap: { paddingHorizontal: 16 },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     scroll: { flex: 1 },
     content: { paddingHorizontal: 16, paddingTop: 4 },
-    datePicker: {
+    dateNavigator: {
       marginHorizontal: 16,
       marginBottom: 10,
-      padding: 8,
-      gap: 8,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      borderRadius: 13,
-      backgroundColor: digestBg,
-      flexDirection: 'row',
-      alignItems: 'center',
     },
-    dateArrow: {
-      width: 34,
-      height: 34,
-      borderRadius: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    dateArrowPressed: { opacity: 0.82 },
-    dateArrowDisabled: {
-      opacity: 0.42,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-    },
-    datePickerCenter: {
-      flex: 1,
-      minWidth: 0,
-      height: 34,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.bgElevated,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 7,
-      paddingHorizontal: 10,
-    },
-    datePickerValue: {
-      color: theme.text,
-      fontSize: sf(14),
-      lineHeight: sf(18),
-      fontWeight: '900',
-      textAlign: 'center',
-      flexShrink: 1,
-    },
-    dateTodayBtn: {
-      height: 34,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 10,
-    },
-    dateTodayText: { color: theme.green, fontSize: sf(12), fontWeight: '900' },
     dateActionBtnPressed: { opacity: 0.86 },
     sessionTabsWrap: {
       marginHorizontal: 16,

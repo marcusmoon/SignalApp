@@ -8,12 +8,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useIsFocused } from "expo-router/react-navigation";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
+import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
@@ -474,39 +474,16 @@ export default function CalendarScreen() {
             <Text style={styles.errText}>{error}</Text>
           </View>
         ) : null}
-        <View style={styles.datePicker}>
-          <Pressable
-            onPress={goPrevDay}
-            accessibilityRole="button"
-            accessibilityLabel={t('calendarMonthPrevA11y')}
-            hitSlop={8}
-            style={({ pressed }) => [styles.dateArrow, pressed && styles.dateArrowPressed]}>
-            <FontAwesome name="chevron-left" size={13} color={theme.green} />
-          </Pressable>
-          <View style={styles.datePickerCenter}>
-            <FontAwesome name="calendar" size={12} color={theme.green} />
-            <Text style={styles.datePickerValue} numberOfLines={1}>
-              {formatDayHeader(selectedYmd)}
-            </Text>
-          </View>
-          {selectedYmd !== todayYmd ? (
-            <Pressable
-              onPress={goToday}
-              accessibilityRole="button"
-              accessibilityLabel={t('insightCalendarToday')}
-              style={({ pressed }) => [styles.dateTodayBtn, pressed && styles.dateActionBtnPressed]}>
-              <Text style={styles.dateTodayText}>{t('insightCalendarToday')}</Text>
-            </Pressable>
-          ) : null}
-          <Pressable
-            onPress={goNextDay}
-            accessibilityRole="button"
-            accessibilityLabel={t('calendarMonthNextA11y')}
-            hitSlop={8}
-            style={({ pressed }) => [styles.dateArrow, pressed && styles.dateArrowPressed]}>
-            <FontAwesome name="chevron-right" size={13} color={theme.green} />
-          </Pressable>
-        </View>
+        <SignalDateNavigator
+          label={formatDayHeader(selectedYmd)}
+          previousA11y={t('calendarMonthPrevA11y')}
+          nextA11y={t('calendarMonthNextA11y')}
+          todayLabel={t('insightCalendarToday')}
+          onPrevious={goPrevDay}
+          onNext={goNextDay}
+          onToday={goToday}
+          showToday={selectedYmd !== todayYmd}
+        />
         <View style={styles.filterChips} accessibilityRole="tablist">
           <Pressable
             onPress={onSelectAllEventTypes}
@@ -584,9 +561,6 @@ export default function CalendarScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
-  const digestBg =
-    theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}10` : theme.bgElevated;
-
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
@@ -598,61 +572,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomColor: theme.border,
       backgroundColor: theme.bg,
     },
-    datePicker: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: 8,
-      gap: 8,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      borderRadius: 13,
-      backgroundColor: digestBg,
-    },
-    dateArrow: {
-      width: 34,
-      height: 34,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    dateArrowPressed: { opacity: 0.82 },
-    datePickerCenter: {
-      flex: 1,
-      minWidth: 0,
-      height: 34,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.bgElevated,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 7,
-      paddingHorizontal: 10,
-    },
-    datePickerValue: {
-      color: theme.text,
-      fontSize: sf(14),
-      lineHeight: sf(18),
-      fontWeight: '900',
-      textAlign: 'center',
-      flexShrink: 1,
-    },
-    dateTodayBtn: {
-      height: 34,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 10,
-    },
-    dateTodayText: { color: theme.green, fontSize: sf(12), fontWeight: '900' },
-    dateActionBtnPressed: { opacity: 0.86 },
     listScroll: { flex: 1, minHeight: 0 },
     listContent: { paddingHorizontal: 16, paddingTop: 10 },
     listContentEmpty: { flexGrow: 1, justifyContent: 'center' },

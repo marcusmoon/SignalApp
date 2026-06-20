@@ -408,9 +408,16 @@
                     <span class="filterGroupTitle" data-i18n="filterGroupFilters">필터</span>
                     <select id="calendarType">
                       <option value="" data-i18n="calendarTypeAll"></option>
-                      <option value="macro">macro</option>
-                      <option value="fed">fed</option>
-                      <option value="fomc">fomc</option>
+                      <option value="macro" data-i18n="calendarTypeMacro">지표</option>
+                      <option value="earnings" data-i18n="calendarTypeEarnings">실적</option>
+                      <option value="holiday" data-i18n="calendarTypeHoliday">휴일</option>
+                      <option value="fed" data-i18n="calendarTypeFed">연준</option>
+                      <option value="fomc" data-i18n="calendarTypeFomc">FOMC</option>
+                    </select>
+                    <select id="calendarCountry" aria-label="국가">
+                      <option value="" data-i18n="statusAll">전체</option>
+                      <option value="US">US</option>
+                      <option value="KR">KR</option>
                     </select>
                     <input id="calendarSymbol" class="narrowTicker" data-i18n-placeholder="calendarSymbolPh" placeholder="" />
                   </div>
@@ -423,23 +430,42 @@
                 </div>
               </div>
               <div id="calendarSummary" class="calendarSummaryGrid" aria-live="polite"></div>
-              <section class="calendarEventsCard" style="margin-top:14px">
-                <h3 class="calendarDayHeading">캘린더 수집 Job</h3>
-                <div id="calendarJobRunner"></div>
-              </section>
-              <div id="adminCalendarGrid" class="adminCalendarHost"></div>
-              <p class="calendarGridHint muted" data-i18n="calendarGridHint"></p>
-              <section class="calendarEventsCard" aria-labelledby="calendarDayHeadingText" style="margin-top:14px">
-                <h3 class="calendarDayHeading">
-                  <span id="calendarDayHeadingText"></span>
-                </h3>
-                <div id="calendarEventEditor"></div>
-                <div id="calendarDayList" class="calendarDayTableHost"></div>
-              </section>
-              <section class="calendarEventsCard" style="margin-top:14px">
-                <h3 class="calendarDayHeading">이벤트 매핑 규칙</h3>
-                <div id="calendarEventCodeMappings"></div>
-              </section>
+              <div class="adminSubTabs calendarSubTabs" role="tablist" aria-label="투자 캘린더 관리">
+                <button type="button" class="adminSubTab active" data-calendar-tab="events" data-i18n="calendarTabEvents">일정 보기</button>
+                <button type="button" class="adminSubTab" data-calendar-tab="editor" data-i18n="calendarTabEditor">이벤트 등록/수정</button>
+                <button type="button" class="adminSubTab" data-calendar-tab="mappings" data-i18n="calendarTabMappings">매핑 규칙</button>
+                <button type="button" class="adminSubTab" data-calendar-tab="jobs" data-i18n="calendarTabJobs">수집 Job</button>
+              </div>
+              <div class="calendarTabPanels">
+                <section class="calendarTabPanel" data-calendar-panel="events">
+                  <div id="adminCalendarGrid" class="adminCalendarHost"></div>
+                  <p class="calendarGridHint muted" data-i18n="calendarGridHint"></p>
+                  <section class="calendarEventsCard" aria-labelledby="calendarDayHeadingText" style="margin-top:14px">
+                    <h3 class="calendarDayHeading">
+                      <span id="calendarDayHeadingText"></span>
+                    </h3>
+                    <div id="calendarDayList" class="calendarDayTableHost"></div>
+                  </section>
+                </section>
+                <section class="calendarTabPanel hidden" data-calendar-panel="editor">
+                  <section class="calendarEventsCard">
+                    <h3 class="calendarDayHeading">이벤트 등록/수정</h3>
+                    <div id="calendarEventEditor"></div>
+                  </section>
+                </section>
+                <section class="calendarTabPanel hidden" data-calendar-panel="mappings">
+                  <section class="calendarEventsCard">
+                    <h3 class="calendarDayHeading">이벤트 매핑 규칙</h3>
+                    <div id="calendarEventCodeMappings"></div>
+                  </section>
+                </section>
+                <section class="calendarTabPanel hidden" data-calendar-panel="jobs">
+                  <section class="calendarEventsCard">
+                    <h3 class="calendarDayHeading">캘린더 수집 Job</h3>
+                    <div id="calendarJobRunner"></div>
+                  </section>
+                </section>
+              </div>
             </div>
           </div>
 

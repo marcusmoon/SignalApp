@@ -41,8 +41,12 @@ export const state = {
   calendarMonthYm: '',
   /** `YYYY-MM-DD` selected day in month view */
   calendarSelectedYmd: '',
+  calendarRangeFocusYmd: '',
+  calendarRangeFrom: '',
+  calendarRangeTo: '',
   /** Full rows for visible month (client-side day filter) */
   calendarMonthRows: [],
+  calendarTab: 'events',
   calendarEventCodeMappings: [],
   calendarEventDraft: null,
   calendarJobs: [],

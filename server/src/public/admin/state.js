@@ -43,6 +43,9 @@ export const state = {
   calendarSelectedYmd: '',
   /** Full rows for visible month (client-side day filter) */
   calendarMonthRows: [],
+  calendarEventCodeMappings: [],
+  calendarEventDraft: null,
+  calendarJobs: [],
   jobRunsPage: 1,
   jobRunsTotalPages: 1,
   jobRunsTotal: 0,

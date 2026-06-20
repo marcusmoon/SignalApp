@@ -70,6 +70,7 @@ function calendarEventTable({ rows, esc, textFor }) {
           <th>${esc(textFor('colType'))}</th>
           <th>${esc(textFor('colTitle'))}</th>
           <th>${esc(textFor('colMeta'))}</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -81,6 +82,9 @@ function calendarEventTable({ rows, esc, textFor }) {
             <td><span class="pill">${esc(item.type || '-')}</span></td>
             <td><strong>${esc(item.title || '-')}</strong></td>
             <td class="muted">${esc(item.country || item.symbol || '-')}</td>
+            <td>
+              <button type="button" class="secondary compactBtn" data-edit-calendar-event="${esc(item.id)}">수정</button>
+            </td>
           </tr>
         `,
           )
@@ -88,6 +92,139 @@ function calendarEventTable({ rows, esc, textFor }) {
       </tbody>
     </table>
   `;
+}
+
+function draftFromEvent(item = {}) {
+  return {
+    id: item.id || '',
+    date: String(item.date || '').slice(0, 10),
+    type: item.type || 'macro',
+    country: item.country || 'US',
+    title: item.title || '',
+    symbol: item.symbol || '',
+    timeLabel: item.timeLabel || '',
+    timezone: item.timezone || '',
+    impact: item.impact || '',
+    actual: item.actual ?? '',
+    estimate: item.estimate ?? '',
+    previous: item.previous ?? '',
+    unit: item.unit || '',
+    provider: item.provider || 'admin',
+    source: item.source || 'admin',
+    sourceEventId: item.sourceEventId || item.providerItemId || '',
+    url: item.url || '',
+  };
+}
+
+function emptyCalendarDraft(state) {
+  const selected = String(state.calendarSelectedYmd || state.calendarRangeFocusYmd || '').slice(0, 10);
+  const fallback = selected && selected !== '__all__' ? selected : new Date().toISOString().slice(0, 10);
+  return draftFromEvent({ date: fallback, type: 'macro', country: 'US', provider: 'admin', source: 'admin' });
+}
+
+function calendarEventEditor({ state, esc }) {
+  const draft = state.calendarEventDraft || emptyCalendarDraft(state);
+  return `
+    <div class="filterBar filterBox" style="margin-bottom:12px">
+      <div class="filterBarControls jobsFilterGroups">
+        <div class="filterGroup">
+          <span class="filterGroupTitle">날짜</span>
+          <input id="calendarEventDate" type="date" value="${esc(draft.date || '')}" />
+        </div>
+        <div class="filterGroup">
+          <span class="filterGroupTitle">타입</span>
+          <select id="calendarEventType">
+            ${['macro', 'earnings', 'holiday', 'fomc', 'fed'].map((type) => `<option value="${type}"${draft.type === type ? ' selected' : ''}>${type}</option>`).join('')}
+          </select>
+        </div>
+        <div class="filterGroup">
+          <span class="filterGroupTitle">국가</span>
+          <input id="calendarEventCountry" value="${esc(draft.country || '')}" placeholder="US / KR" />
+        </div>
+        <div class="filterGroup">
+          <span class="filterGroupTitle">종목</span>
+          <input id="calendarEventSymbol" value="${esc(draft.symbol || '')}" placeholder="AAPL" />
+        </div>
+        <div class="filterGroup filterGroup--search">
+          <span class="filterGroupTitle">제목</span>
+          <input id="calendarEventTitle" class="wide" value="${esc(draft.title || '')}" placeholder="CPI YoY" />
+        </div>
+        <div class="filterGroup">
+          <span class="filterGroupTitle">시간</span>
+          <input id="calendarEventTimeLabel" value="${esc(draft.timeLabel || '')}" placeholder="08:30 ET" />
+        </div>
+        <div class="filterGroup">
+          <span class="filterGroupTitle">중요도</span>
+          <select id="calendarEventImpact">
+            <option value=""${!draft.impact ? ' selected' : ''}>-</option>
+            ${['low', 'medium', 'high'].map((impact) => `<option value="${impact}"${draft.impact === impact ? ' selected' : ''}>${impact}</option>`).join('')}
+          </select>
+        </div>
+        <div class="filterGroup">
+          <span class="filterGroupTitle">실제</span>
+          <input id="calendarEventActual" type="number" step="0.01" value="${esc(draft.actual ?? '')}" />
+        </div>
+        <div class="filterGroup">
+          <span class="filterGroupTitle">예상</span>
+          <input id="calendarEventEstimate" type="number" step="0.01" value="${esc(draft.estimate ?? '')}" />
+        </div>
+        <div class="filterGroup">
+          <span class="filterGroupTitle">이전</span>
+          <input id="calendarEventPrevious" type="number" step="0.01" value="${esc(draft.previous ?? '')}" />
+        </div>
+        <div class="filterGroup">
+          <span class="filterGroupTitle">단위</span>
+          <input id="calendarEventUnit" value="${esc(draft.unit || '')}" placeholder="%" />
+        </div>
+        <div class="filterGroup filterGroup--search">
+          <span class="filterGroupTitle">출처 ID</span>
+          <input id="calendarEventSourceEventId" value="${esc(draft.sourceEventId || '')}" placeholder="optional" />
+          <button type="button" id="newCalendarEventBtn" class="secondary">새 이벤트</button>
+          <button type="button" id="saveCalendarEventBtn" class="primary">${draft.id ? '수정 저장' : '등록'}</button>
+          ${draft.id ? `<button type="button" id="deleteCalendarEventBtn" class="secondary dangerText">삭제</button>` : ''}
+        </div>
+      </div>
+      <p class="muted" style="margin:8px 0 0">저장 시 국가·타입·매핑 규칙 기준으로 event key가 재계산됩니다. 날짜/제목/타입을 바꾸면 기존 이벤트는 삭제 후 새 이벤트로 저장됩니다.</p>
+    </div>
+  `;
+}
+
+function renderCalendarEventEditor({ state, $, esc }) {
+  const host = $('calendarEventEditor');
+  if (!host) return;
+  host.innerHTML = calendarEventEditor({ state, esc });
+}
+
+function renderCalendarJobRunner({ state, $, esc }) {
+  const host = $('calendarJobRunner');
+  if (!host) return;
+  const jobs = Array.isArray(state.calendarJobs) ? state.calendarJobs : [];
+  host.innerHTML = jobs.length === 0
+    ? '<p class="muted">캘린더 영역에 연결된 Job이 없습니다.</p>'
+    : `
+      <div class="mobileRunList">
+        ${jobs
+          .map(
+            (job) => `
+              <article class="mobileRunCard">
+                <div class="mobileRunCardHead">
+                  <strong>${esc(job.displayName || job.jobKey)}</strong>
+                  <span class="pill">${job.enabled ? 'enabled' : 'disabled'}</span>
+                </div>
+                <div class="mobileRunStats">
+                  <span>주기 <strong>${esc(String(job.intervalSeconds || 0))}s</strong></span>
+                  <span>최근 <strong>${esc(job.latestRunStatus || '-')}</strong></span>
+                </div>
+                <div class="row" style="margin-top:10px">
+                  <button type="button" class="success compactBtn" data-calendar-job-run="${esc(job.jobKey)}">수동 실행</button>
+                  <button type="button" class="secondary compactBtn" data-open-job-log="${esc(job.jobKey)}">이력</button>
+                </div>
+              </article>
+            `,
+          )
+          .join('')}
+      </div>
+    `;
 }
 
 function calendarEventCards({ rows, esc, textFor }) {
@@ -110,6 +247,79 @@ function calendarEventCards({ rows, esc, textFor }) {
         )
         .join('')}
     </div>
+  `;
+}
+
+function renderCalendarEventCodeMappings({ state, $, esc }) {
+  const host = $('calendarEventCodeMappings');
+  if (!host) return;
+  const rows = Array.isArray(state.calendarEventCodeMappings) ? state.calendarEventCodeMappings : [];
+  host.innerHTML = `
+    <div class="filterBar filterBox" style="margin-bottom:12px">
+      <div class="filterBarControls jobsFilterGroups">
+        <div class="filterGroup">
+          <span class="filterGroupTitle">타입</span>
+          <select id="calendarMappingEventType">
+            <option value="macro">macro</option>
+            <option value="fomc">fomc</option>
+            <option value="fed">fed</option>
+          </select>
+        </div>
+        <div class="filterGroup">
+          <span class="filterGroupTitle">코드</span>
+          <input id="calendarMappingCode" placeholder="cpi-yoy" />
+        </div>
+        <div class="filterGroup">
+          <span class="filterGroupTitle">이름</span>
+          <input id="calendarMappingLabel" placeholder="CPI YoY" />
+        </div>
+        <div class="filterGroup">
+          <span class="filterGroupTitle">매칭</span>
+          <select id="calendarMappingMatchType">
+            <option value="contains">contains</option>
+            <option value="regex">regex</option>
+            <option value="exact">exact</option>
+            <option value="slug">slug</option>
+          </select>
+        </div>
+        <div class="filterGroup filterGroup--search">
+          <span class="filterGroupTitle">패턴</span>
+          <input id="calendarMappingPattern" class="wide" placeholder="consumer price index" />
+          <button type="button" id="saveCalendarMappingBtn" class="primary">추가</button>
+        </div>
+      </div>
+      <p class="muted" style="margin:8px 0 0">macro/fomc/fed 이벤트의 제목을 안정적인 event key로 묶는 규칙입니다. holiday는 국가+날짜, earnings는 종목+날짜로 자동 묶습니다.</p>
+    </div>
+    <table class="calendarEventsTable">
+      <thead>
+        <tr>
+          <th>타입</th>
+          <th>코드</th>
+          <th>이름</th>
+          <th>매칭</th>
+          <th>패턴</th>
+          <th>우선순위</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (row) => `
+              <tr>
+                <td><span class="pill">${esc(row.eventType || '-')}</span></td>
+                <td><strong>${esc(row.code || '-')}</strong></td>
+                <td>${esc(row.label || '-')}</td>
+                <td class="muted">${esc(row.matchType || '-')}</td>
+                <td class="muted">${esc(row.pattern || '-')}</td>
+                <td class="muted">${esc(row.priority ?? '-')}</td>
+                <td><button type="button" class="secondary dangerText" data-delete-calendar-mapping="${esc(row.id)}">삭제</button></td>
+              </tr>
+            `,
+          )
+          .join('')}
+      </tbody>
+    </table>
   `;
 }
 
@@ -141,7 +351,7 @@ function renderCalendarSummary({ state, $, esc, textFor }) {
 }
 
 export function renderAdminCalendarGrid({ state, $, esc, textFor, ymd }) {
-  const host = $('calendarGrid');
+  const host = $('adminCalendarGrid') || $('calendarGrid');
   if (!host) return;
   const meta = calendarMonthMeta(state.calendarMonthYm);
   if (!meta) return;
@@ -172,6 +382,7 @@ export function renderAdminCalendarGrid({ state, $, esc, textFor, ymd }) {
 export function renderCalendarDayTable({ state, $, esc, textFor, textForVars }) {
   const host = $('calendarDayList') || $('calendar');
   if (!host) return;
+  renderCalendarEventEditor({ state, $, esc });
   const headEl = $('calendarDayHeadingText');
   const sel = String(state.calendarSelectedYmd || '').slice(0, 10);
   const rangeFrom = String(state.calendarRangeFrom || '').slice(0, 10);
@@ -281,4 +492,106 @@ export async function loadCalendarView(ctx) {
   renderCalendarSummary({ state, $, esc, textFor });
   renderAdminCalendarGrid({ state, $, esc, textFor, ymd });
   renderCalendarDayTable({ state, $, esc, textFor, textForVars: ctx.textForVars });
+  const mappings = await api('/admin/api/calendar/event-code-mappings');
+  state.calendarEventCodeMappings = Array.isArray(mappings.data) ? mappings.data : [];
+  renderCalendarEventCodeMappings({ state, $, esc });
+  const jobs = await api('/admin/api/jobs');
+  state.calendarJobs = Array.isArray(jobs.data)
+    ? jobs.data.filter((job) => String(job.area || job.domain || '').trim() === 'calendar')
+    : [];
+  renderCalendarJobRunner({ state, $, esc });
+}
+
+export function newCalendarEventDraftView(ctx) {
+  const { $, state, esc } = ctx;
+  state.calendarEventDraft = emptyCalendarDraft(state);
+  renderCalendarEventEditor({ state, $, esc });
+}
+
+export function editCalendarEventDraftView(ctx) {
+  const { $, state, esc, id } = ctx;
+  const row = (state.calendarMonthRows || []).find((item) => item.id === id);
+  if (!row) return;
+  state.calendarEventDraft = draftFromEvent(row);
+  renderCalendarEventEditor({ state, $, esc });
+}
+
+function readCalendarEventEditor($, state) {
+  const draft = state.calendarEventDraft || {};
+  return {
+    id: draft.id || '',
+    date: $('calendarEventDate')?.value || '',
+    type: $('calendarEventType')?.value || 'macro',
+    country: $('calendarEventCountry')?.value || '',
+    symbol: $('calendarEventSymbol')?.value || '',
+    title: $('calendarEventTitle')?.value || '',
+    timeLabel: $('calendarEventTimeLabel')?.value || '',
+    impact: $('calendarEventImpact')?.value || '',
+    actual: $('calendarEventActual')?.value || null,
+    estimate: $('calendarEventEstimate')?.value || null,
+    previous: $('calendarEventPrevious')?.value || null,
+    unit: $('calendarEventUnit')?.value || '',
+    provider: 'admin',
+    source: 'admin',
+    sourceEventId: $('calendarEventSourceEventId')?.value || '',
+  };
+}
+
+export async function saveCalendarEventView(ctx) {
+  const { api, $, state } = ctx;
+  const body = readCalendarEventEditor($, state);
+  const id = body.id || '';
+  await api(id ? `/admin/api/calendar/events/${encodeURIComponent(id)}` : '/admin/api/calendar/events', {
+    method: id ? 'PATCH' : 'POST',
+    body: JSON.stringify(body),
+  });
+  state.calendarEventDraft = null;
+}
+
+export async function deleteCalendarEventView(ctx) {
+  const { api, state } = ctx;
+  const id = state.calendarEventDraft?.id || '';
+  if (!id) return;
+  await api(`/admin/api/calendar/events/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  state.calendarEventDraft = null;
+}
+
+export async function runCalendarJobView(ctx) {
+  const { api, jobKey } = ctx;
+  if (!jobKey) return;
+  await api(`/admin/api/jobs/${encodeURIComponent(jobKey)}/run`, {
+    method: 'POST',
+    body: JSON.stringify({ mode: 'full' }),
+  });
+}
+
+export async function saveCalendarEventCodeMappingView(ctx) {
+  const { api, $, state, esc } = ctx;
+  const body = {
+    eventType: $('calendarMappingEventType')?.value || 'macro',
+    code: $('calendarMappingCode')?.value || '',
+    label: $('calendarMappingLabel')?.value || '',
+    matchType: $('calendarMappingMatchType')?.value || 'contains',
+    pattern: $('calendarMappingPattern')?.value || '',
+    priority: 1000,
+    enabled: true,
+  };
+  await api('/admin/api/calendar/event-code-mappings', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  const mappings = await api('/admin/api/calendar/event-code-mappings');
+  state.calendarEventCodeMappings = Array.isArray(mappings.data) ? mappings.data : [];
+  renderCalendarEventCodeMappings({ state, $, esc });
+}
+
+export async function deleteCalendarEventCodeMappingView(ctx) {
+  const { api, $, state, esc, id } = ctx;
+  if (!id) return;
+  await api(`/admin/api/calendar/event-code-mappings/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  const mappings = await api('/admin/api/calendar/event-code-mappings');
+  state.calendarEventCodeMappings = Array.isArray(mappings.data) ? mappings.data : [];
+  renderCalendarEventCodeMappings({ state, $, esc });
 }

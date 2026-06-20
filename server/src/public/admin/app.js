@@ -34,9 +34,16 @@ import {
 } from './views/settings.js';
 import {
   initCalendarMonthIfNeeded as initCalendarMonthIfNeededView,
+  deleteCalendarEventCodeMappingView,
+  deleteCalendarEventView,
+  editCalendarEventDraftView,
   loadCalendarView,
+  newCalendarEventDraftView,
   renderAdminCalendarGrid as renderAdminCalendarGridView,
   renderCalendarDayTable as renderCalendarDayTableView,
+  runCalendarJobView,
+  saveCalendarEventView,
+  saveCalendarEventCodeMappingView,
   shiftCalendarMonth as shiftCalendarMonthView,
 } from './views/calendar.js';
 import {
@@ -1078,6 +1085,41 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
         const result = await loadCalendarView({ api, $, state, esc, textFor, textForVars, ymd });
         enhanceMobileAdminSurfaces();
         return result;
+      }
+
+      async function saveCalendarEventCodeMapping() {
+        const result = await saveCalendarEventCodeMappingView({ api, $, state, esc });
+        enhanceMobileAdminSurfaces();
+        return result;
+      }
+
+      async function deleteCalendarEventCodeMapping(id) {
+        const result = await deleteCalendarEventCodeMappingView({ api, $, state, esc, id });
+        enhanceMobileAdminSurfaces();
+        return result;
+      }
+
+      function newCalendarEventDraft() {
+        return newCalendarEventDraftView({ $, state, esc });
+      }
+
+      function editCalendarEventDraft(id) {
+        return editCalendarEventDraftView({ $, state, esc, id });
+      }
+
+      async function saveCalendarEvent() {
+        await saveCalendarEventView({ api, $, state });
+        await loadCalendar();
+      }
+
+      async function deleteCalendarEventDraft() {
+        await deleteCalendarEventView({ api, state });
+        await loadCalendar();
+      }
+
+      async function runCalendarJob(jobKey) {
+        await runCalendarJobView({ api, jobKey });
+        await loadCalendar();
       }
 
       async function loadYoutube() {
@@ -2392,6 +2434,34 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             if ($('calendarQuery')) $('calendarQuery').value = '';
             state.calendarSelectedYmd = '';
             await loadCalendar();
+          }
+          if (target.id === 'saveCalendarMappingBtn') {
+            await saveCalendarEventCodeMapping();
+            return;
+          }
+          if (target.dataset.deleteCalendarMapping) {
+            await deleteCalendarEventCodeMapping(target.dataset.deleteCalendarMapping);
+            return;
+          }
+          if (target.id === 'newCalendarEventBtn') {
+            newCalendarEventDraft();
+            return;
+          }
+          if (target.dataset.editCalendarEvent) {
+            editCalendarEventDraft(target.dataset.editCalendarEvent);
+            return;
+          }
+          if (target.id === 'saveCalendarEventBtn') {
+            await saveCalendarEvent();
+            return;
+          }
+          if (target.id === 'deleteCalendarEventBtn') {
+            await deleteCalendarEventDraft();
+            return;
+          }
+          if (target.dataset.calendarJobRun) {
+            await runCalendarJob(target.dataset.calendarJobRun);
+            return;
           }
           if (target.dataset.calMonthPrev != null) {
             state.calendarMonthYm = shiftCalendarMonth(state.calendarMonthYm, -1);

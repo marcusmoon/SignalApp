@@ -8,6 +8,7 @@ import {
   listPollingJobs,
   nowIso,
   patchPollingJob,
+  queryPublicCalendar,
   releasePollingJobLock,
 } from '../../../db.mjs';
 import { httpMetricsSnapshot } from '../../../httpMetrics.mjs';
@@ -381,7 +382,7 @@ async function readDashboardSummaryContext() {
     listCollectionPayloads('newsItems'),
     listCollectionPayloads('newsTranslations'),
     listCollectionPayloads('disclosures'),
-    listCollectionPayloads('calendarEvents'),
+    queryPublicCalendar({ limit: 10000 }),
     listCollectionPayloads('youtubeVideos'),
     listCollectionPayloads('marketQuotes'),
     listCollectionPayloads('coinMarkets'),

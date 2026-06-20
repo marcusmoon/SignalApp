@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  FlatList,
   Platform,
   Pressable,
   ScrollView,
+  SectionList,
   StyleSheet,
   Text,
   View,
@@ -12,7 +12,6 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useIsFocused } from "expo-router/react-navigation";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -24,12 +23,9 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
   fetchSignalCalendar,
-  fetchSignalCalendarDateSummaries,
-  signalCalendarDateSummariesFromEvents,
   signalCalendarToCalendarEvent,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
-import type { SignalApiCalendarDateSummary } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import {
   CALENDAR_EVENT_TYPE_ORDER,
@@ -68,11 +64,6 @@ function calendarSurpriseLabel(ev: CalendarEvent, t: (id: MessageId) => string):
   return t('calendarActualInlineEstimate');
 }
 
-function ymdInMonth(ymd: string, year: number, month0: number): boolean {
-  const prefix = `${year}-${String(month0 + 1).padStart(2, '0')}-`;
-  return ymd.startsWith(prefix);
-}
-
 function mergeCalendarEvents(chunks: CalendarEvent[][]): CalendarEvent[] {
   const byId = new Map<string, CalendarEvent>();
   for (const chunk of chunks) {
@@ -86,6 +77,25 @@ function mergeCalendarEvents(chunks: CalendarEvent[][]): CalendarEvent[] {
       String(a.time || '').localeCompare(String(b.time || '')) ||
       a.title.localeCompare(b.title),
   );
+}
+
+function dateFromYmd(ymd: string): Date {
+  const [y, m, d] = ymd.split('-').map(Number);
+  if (!y || !m || !d) return new Date();
+  return new Date(y, m - 1, d);
+}
+
+function shiftYmd(ymd: string, days: number): string {
+  const d = dateFromYmd(ymd);
+  d.setDate(d.getDate() + days);
+  return toYmd(d);
+}
+
+function rangeForAnchor(ymd: string) {
+  return {
+    from: shiftYmd(ymd, -14),
+    to: shiftYmd(ymd, 45),
+  };
 }
 
 function normalizeCalendarTypeSelection(input: Set<CalendarEventTypeKey>): Set<CalendarEventTypeKey> {
@@ -109,10 +119,10 @@ export default function CalendarScreen() {
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [dateSummaries, setDateSummaries] = useState<SignalApiCalendarDateSummary[]>([]);
   const [enabledTypes, setEnabledTypes] = useState(
     () => new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER),
   );
+  const sectionListRef = useRef<SectionList<CalendarEvent, { title: string; data: CalendarEvent[] }>>(null);
 
   useEffect(() => {
     void loadCalendarEventTypeFilter().then((saved) => {
@@ -122,64 +132,30 @@ export default function CalendarScreen() {
     });
   }, []);
 
-  const [visibleMonth, setVisibleMonth] = useState(() => {
-    const n = new Date();
-    return { year: n.getFullYear(), month: n.getMonth() };
-  });
   const [selectedYmd, setSelectedYmd] = useState(() => toYmd(new Date()));
-
-  useEffect(() => {
-    setSelectedYmd((prev) => {
-      if (ymdInMonth(prev, visibleMonth.year, visibleMonth.month)) {
-        return prev;
-      }
-      const now = new Date();
-      if (now.getFullYear() === visibleMonth.year && now.getMonth() === visibleMonth.month) {
-        return toYmd(now);
-      }
-      return toYmd(new Date(visibleMonth.year, visibleMonth.month, 1));
-    });
-  }, [visibleMonth]);
+  const [rangeAnchorYmd, setRangeAnchorYmd] = useState(() => toYmd(new Date()));
+  const [pendingScrollYmd, setPendingScrollYmd] = useState<string | null>(null);
 
   const load = useCallback(
     async (forceRefresh?: boolean) => {
       setError(null);
       if (!hasSignalApi()) {
         setEvents([]);
-        setDateSummaries([]);
         setError(t('errorSignalApiShort'));
         return;
       }
-      const rangeFrom = new Date(visibleMonth.year, visibleMonth.month, 1);
-      const rangeTo = new Date(visibleMonth.year, visibleMonth.month + 1, 0);
-      const monthParams = {
-        from: toYmd(rangeFrom),
-        to: toYmd(rangeTo),
-      };
-      const selectedDayParams = ymdInMonth(selectedYmd, visibleMonth.year, visibleMonth.month)
-        ? { from: selectedYmd, to: selectedYmd }
-        : null;
+      const range = rangeForAnchor(rangeAnchorYmd);
       const cacheMode = forceRefresh ? 'bypass' : 'use';
-      const summaryPromise = fetchSignalCalendarDateSummaries(monthParams, { cacheMode }).catch(async () => {
-        const monthRows = await fetchSignalCalendar({ ...monthParams, limit: 10000 }, { cacheMode });
-        return signalCalendarDateSummariesFromEvents(monthRows);
-      });
-      const [summaryList, selectedDayList] = await Promise.all([
-        summaryPromise,
-        selectedDayParams
-          ? fetchSignalCalendar(selectedDayParams, { cacheMode })
-          : Promise.resolve([]),
-      ]);
-      setDateSummaries(summaryList);
+      const list = await fetchSignalCalendar({ ...range, limit: 1000 }, { cacheMode });
       setEvents(
         mergeCalendarEvents([
-          selectedDayList
+          list
             .map(signalCalendarToCalendarEvent)
             .filter((event): event is CalendarEvent => event != null),
         ]),
       );
     },
-    [selectedYmd, visibleMonth, t],
+    [rangeAnchorYmd, t],
   );
 
   useEffect(() => {
@@ -192,7 +168,6 @@ export default function CalendarScreen() {
         if (!cancelled) {
           setError(formatSignalApiError(e, t, 'calendarErrorLoad'));
           setEvents([]);
-          setDateSummaries([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -214,52 +189,30 @@ export default function CalendarScreen() {
     }
   }, [load, t]);
 
-  useEffect(() => {
-    if (loading || !hasSignalApi() || !ymdInMonth(selectedYmd, visibleMonth.year, visibleMonth.month)) {
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const rows = await fetchSignalCalendar({ from: selectedYmd, to: selectedYmd });
-        if (cancelled || rows.length === 0) return;
-        const next = rows
-          .map(signalCalendarToCalendarEvent)
-          .filter((event): event is CalendarEvent => event != null);
-        setEvents((prev) => mergeCalendarEvents([prev, next]));
-      } catch {
-        // 월 조회는 이미 완료된 상태라, 날짜 보강 실패는 화면 전체 오류로 올리지 않는다.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [loading, selectedYmd, visibleMonth]);
-
   const filteredEvents = useMemo(
     () => events.filter((e) => enabledTypes.has(e.type)),
     [events, enabledTypes],
   );
 
   const allEventTypesSelected = enabledTypes.size === CALENDAR_EVENT_TYPE_ORDER.length;
-  const eventDates = useMemo(() => {
-    const allSelected = enabledTypes.size === CALENDAR_EVENT_TYPE_ORDER.length;
-    return new Set(
-      dateSummaries
-        .filter((item) => {
-          if (allSelected) return Number(item.total) > 0;
-          return CALENDAR_EVENT_TYPE_ORDER.some((type) => enabledTypes.has(type) && Number(item.counts?.[type] || 0) > 0);
-        })
-        .map((item) => item.date),
-    );
-  }, [dateSummaries, enabledTypes]);
-  const selectedDayEvents = useMemo(
-    () =>
-      filteredEvents
-        .filter((event) => event.date === selectedYmd)
-        .sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')) || a.title.localeCompare(b.title)),
-    [filteredEvents, selectedYmd],
-  );
+  const sections = useMemo(() => {
+    if (loading) return [];
+    const byDate = new Map<string, CalendarEvent[]>();
+    for (const event of filteredEvents) {
+      const date = String(event.date || '').slice(0, 10);
+      if (!date) continue;
+      const prev = byDate.get(date) || [];
+      prev.push(event);
+      byDate.set(date, prev);
+    }
+    if (!byDate.has(selectedYmd)) byDate.set(selectedYmd, []);
+    return [...byDate.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([title, data]) => ({
+        title,
+        data: data.sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')) || a.title.localeCompare(b.title)),
+      }));
+  }, [filteredEvents, loading, selectedYmd]);
 
   const onToggleEventType = useCallback((type: CalendarEventTypeKey) => {
     setEnabledTypes(() => {
@@ -292,18 +245,54 @@ export default function CalendarScreen() {
 
   const todayYmd = toYmd(new Date());
 
-  const goPrevMonth = useCallback(() => {
-    setVisibleMonth((v) => {
-      const d = new Date(v.year, v.month - 1, 1);
-      return { year: d.getFullYear(), month: d.getMonth() };
-    });
+  const selectYmd = useCallback((ymd: string, reloadRange = false) => {
+    setSelectedYmd(ymd);
+    if (reloadRange) setRangeAnchorYmd(ymd);
+    setPendingScrollYmd(ymd);
   }, []);
 
-  const goNextMonth = useCallback(() => {
-    setVisibleMonth((v) => {
-      const d = new Date(v.year, v.month + 1, 1);
-      return { year: d.getFullYear(), month: d.getMonth() };
-    });
+  const goPrevDay = useCallback(() => {
+    selectYmd(shiftYmd(selectedYmd, -1), true);
+  }, [selectYmd, selectedYmd]);
+
+  const goNextDay = useCallback(() => {
+    selectYmd(shiftYmd(selectedYmd, 1), true);
+  }, [selectYmd, selectedYmd]);
+
+  const goToday = useCallback(() => {
+    selectYmd(todayYmd, true);
+  }, [selectYmd, todayYmd]);
+
+  const selectedSectionIndex = useMemo(
+    () => sections.findIndex((section) => section.title === pendingScrollYmd),
+    [pendingScrollYmd, sections],
+  );
+
+  useEffect(() => {
+    if (loading || !pendingScrollYmd || selectedSectionIndex < 0) return;
+    const timer = setTimeout(() => {
+      sectionListRef.current?.scrollToLocation({
+        sectionIndex: selectedSectionIndex,
+        itemIndex: 0,
+        viewOffset: 12,
+        animated: true,
+      });
+      setPendingScrollYmd(null);
+    }, 40);
+    return () => clearTimeout(timer);
+  }, [loading, pendingScrollYmd, selectedSectionIndex]);
+
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: Array<{ section?: { title?: string } }> }) => {
+      const first = viewableItems.find((item) => item.section?.title)?.section?.title;
+      if (first) setSelectedYmd((prev) => (prev === first ? prev : first));
+    },
+  ).current;
+
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 20 }).current;
+
+  const onScrollToIndexFailed = useCallback(() => {
+    // SectionList can miss the target before measuring all rows. The next render catches up.
   }, []);
 
   if (!hasSignalApi()) {
@@ -463,21 +452,36 @@ export default function CalendarScreen() {
             <Text style={styles.errText}>{error}</Text>
           </View>
         ) : null}
-        <InvestMonthCalendar
-          year={visibleMonth.year}
-          month={visibleMonth.month}
-          selectedYmd={selectedYmd}
-          eventDates={eventDates}
-          onSelectYmd={setSelectedYmd}
-          onPrevMonth={goPrevMonth}
-          onNextMonth={goNextMonth}
-          monthPrevA11y={t('calendarMonthPrevA11y')}
-          monthNextA11y={t('calendarMonthNextA11y')}
-          todayYmd={todayYmd}
-          theme={theme}
-          locale={locale}
-          compact
-        />
+        <View style={styles.dateNav}>
+          <Pressable
+            onPress={goPrevDay}
+            style={styles.dateNavButton}
+            accessibilityRole="button"
+            accessibilityLabel={t('calendarMonthPrevA11y')}>
+            <FontAwesome name="chevron-left" size={16} color={theme.accentBlue} />
+          </Pressable>
+          <View style={styles.dateNavCenter}>
+            <FontAwesome name="calendar" size={13} color={theme.accentBlue} />
+            <Text style={styles.dateNavText}>{formatDayHeader(selectedYmd)}</Text>
+          </View>
+          <Pressable
+            onPress={goNextDay}
+            style={styles.dateNavButton}
+            accessibilityRole="button"
+            accessibilityLabel={t('calendarMonthNextA11y')}>
+            <FontAwesome name="chevron-right" size={16} color={theme.accentBlue} />
+          </Pressable>
+        </View>
+        <Pressable
+          onPress={goToday}
+          style={[styles.todayButton, selectedYmd === todayYmd && styles.todayButtonDisabled]}
+          accessibilityRole="button"
+          disabled={selectedYmd === todayYmd}>
+          <FontAwesome name="dot-circle-o" size={12} color={selectedYmd === todayYmd ? theme.textMuted : theme.accentBlue} />
+          <Text style={[styles.todayButtonText, selectedYmd === todayYmd && styles.todayButtonTextDisabled]}>
+            {t('insightCalendarToday')}
+          </Text>
+        </Pressable>
         <View style={styles.filterChips} accessibilityRole="tablist">
           <Pressable
             onPress={onSelectAllEventTypes}
@@ -512,19 +516,34 @@ export default function CalendarScreen() {
           })}
         </View>
       </View>
-      <FlatList
+      <SectionList
+        ref={sectionListRef}
         style={styles.listScroll}
-        data={selectedDayEvents}
+        sections={sections}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => renderEventCard(item)}
-        ListHeaderComponent={<Text style={styles.monthHeading}>{formatDayHeader(selectedYmd)}</Text>}
+        renderSectionHeader={({ section }) => (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.monthHeading}>{formatDayHeader(section.title)}</Text>
+          </View>
+        )}
+        renderSectionFooter={({ section }) =>
+          section.data.length === 0 ? (
+            <Text style={styles.empty}>
+              {emptyFiltered ? t('calendarFilterEmptyFiltered') : t('calendarScreenEmptyDay')}
+            </Text>
+          ) : null
+        }
         ListEmptyComponent={renderListEmpty}
         ListFooterComponent={<SignalBannerAd />}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        onScrollToIndexFailed={onScrollToIndexFailed}
         contentContainerStyle={[
           styles.listContent,
           loading ? SCROLL_CONTENT_LOADING_STYLE : null,
           { paddingBottom: 28 + insets.bottom + 56 },
-          selectedDayEvents.length === 0 && !loading ? styles.listContentEmpty : null,
+          sections.length === 0 && !loading ? styles.listContentEmpty : null,
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -551,9 +570,72 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomColor: theme.border,
       backgroundColor: theme.bg,
     },
+    dateNav: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    dateNavButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dateNavCenter: {
+      flex: 1,
+      height: 42,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 8,
+      paddingHorizontal: 12,
+    },
+    dateNavText: {
+      fontSize: sf(14),
+      lineHeight: sf(20),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    todayButton: {
+      marginTop: 8,
+      minHeight: 34,
+      borderRadius: 13,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 6,
+    },
+    todayButtonDisabled: {
+      opacity: 0.56,
+    },
+    todayButtonText: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '900',
+      color: theme.accentBlue,
+    },
+    todayButtonTextDisabled: {
+      color: theme.textMuted,
+    },
     listScroll: { flex: 1, minHeight: 0 },
     listContent: { paddingHorizontal: 16, paddingTop: 10 },
     listContentEmpty: { flexGrow: 1, justifyContent: 'center' },
+    sectionHeader: {
+      backgroundColor: theme.bg,
+      paddingTop: 4,
+      paddingBottom: 2,
+    },
     monthHeading: {
       fontSize: 13,
       fontWeight: '800',

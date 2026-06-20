@@ -30,6 +30,12 @@ import {
   queryPublicCalendarRows,
 } from './db/repositories/calendarRepository.mjs';
 import {
+  listCalendarEventCodeMappingPayloads,
+} from './db/repositories/calendarEventCodeMappingsRepository.mjs';
+import {
+  normalizeCalendarEventForStorage,
+} from './calendar/eventKey.mjs';
+import {
   queryAdminNewsRows,
   queryPublicNewsRows,
   queryPublicNewsSourceRows,
@@ -371,12 +377,34 @@ const collectionSpecs = [
     table: 'calendar_events',
     pk: 'id',
     keyOf: (row) => row.id,
+    noPayload: true,
     columns: (row, index) => ({
       position: index,
       event_date: dateOrNull(row.date || row.eventAt),
       event_at: isoOrNull(row.eventAt),
       event_type: textOrNull(row.type),
       symbol: textOrNull(row.symbol),
+      country: textOrNull(row.country) || 'GLOBAL',
+      event_key: textOrNull(row.eventKey),
+      title: textOrNull(row.title),
+      provider: textOrNull(row.provider) || 'manual',
+      provider_item_id: textOrNull(row.providerItemId),
+      time_label: textOrNull(row.timeLabel),
+      timezone: textOrNull(row.timezone),
+      company_name: textOrNull(row.companyName),
+      source: textOrNull(row.source || row.provider) || 'manual',
+      source_event_id: textOrNull(row.sourceEventId || row.providerItemId),
+      importance: textOrNull(row.importance),
+      impact: textOrNull(row.impact),
+      actual: numberOrNull(row.actual),
+      estimate: numberOrNull(row.estimate),
+      previous: numberOrNull(row.previous ?? row.prev),
+      unit: textOrNull(row.unit),
+      fiscal_year: Number.isFinite(Number(row.fiscalYear)) ? Math.floor(Number(row.fiscalYear)) : null,
+      fiscal_quarter: Number.isFinite(Number(row.fiscalQuarter)) ? Math.floor(Number(row.fiscalQuarter)) : null,
+      earnings_hour: textOrNull(row.earningsHour),
+      url: textOrNull(row.url),
+      created_at: isoOrNull(row.createdAt) || nowIso(),
       updated_at: isoOrNull(row.updatedAt) || nowIso(),
     }),
   },
@@ -567,9 +595,13 @@ async function insertCollectionRow(client, spec, row, index) {
   const key = cleanText(spec.keyOf(row));
   if (!key) return;
   const typedColumns = spec.columns(row, index);
-  const columns = [spec.pk, ...Object.keys(typedColumns), 'payload'];
-  const values = [key, ...Object.values(typedColumns), jsonPayload(row)];
-  const placeholders = values.map((_, idx) => (idx === values.length - 1 ? `$${idx + 1}::jsonb` : `$${idx + 1}`));
+  const columns = [spec.pk, ...Object.keys(typedColumns), ...(spec.noPayload ? [] : ['payload'])];
+  const values = [
+    key,
+    ...Object.values(typedColumns),
+    ...(spec.noPayload ? [] : [jsonPayload(spec.payload ? spec.payload(row) : row)]),
+  ];
+  const placeholders = values.map((_, idx) => (!spec.noPayload && idx === values.length - 1 ? `$${idx + 1}::jsonb` : `$${idx + 1}`));
   const updates = columns
     .filter((column) => column !== spec.pk)
     .map((column) => `${column} = excluded.${column}`)
@@ -633,10 +665,17 @@ async function ensureSeeded() {
 export async function upsertCollectionRows(collectionKey, rows = []) {
   const spec = collectionSpecsByKey.get(collectionKey);
   if (!spec) throw new Error(`UNKNOWN_COLLECTION:${collectionKey}`);
-  const safeRows = Array.isArray(rows) ? rows : [];
+  let safeRows = Array.isArray(rows) ? rows : [];
   if (safeRows.length === 0) return { count: 0 };
   return withDbExclusive(async () => {
     await ensureSeeded();
+    if (collectionKey === 'calendarEvents') {
+      const mappings = await listCalendarEventCodeMappingPayloads({ enabled: true }).catch(() => []);
+      safeRows = safeRows
+        .map((row) => normalizeCalendarEventForStorage(row, mappings))
+        .filter((row) => cleanText(row.title) && cleanText(row.eventKey));
+      if (safeRows.length === 0) return { count: 0 };
+    }
     await withKyselyTransaction(async (client) => {
       try {
         for (let index = 0; index < safeRows.length; index += 1) {
@@ -654,6 +693,7 @@ export async function upsertCollectionRows(collectionKey, rows = []) {
 export async function patchCollectionPayload(collectionKey, key, patch = {}) {
   const spec = collectionSpecsByKey.get(collectionKey);
   if (!spec) throw new Error(`UNKNOWN_COLLECTION:${collectionKey}`);
+  if (spec.noPayload) throw new Error(`COLLECTION_HAS_NO_PAYLOAD:${collectionKey}`);
   const id = cleanText(key);
   if (!id) throw new Error('COLLECTION_KEY_REQUIRED');
   return withDbExclusive(async () => {
@@ -680,6 +720,7 @@ export async function patchCollectionPayload(collectionKey, key, patch = {}) {
 export async function listCollectionPayloads(collectionKey) {
   const spec = collectionSpecsByKey.get(collectionKey);
   if (!spec) throw new Error(`UNKNOWN_COLLECTION:${collectionKey}`);
+  if (spec.noPayload) throw new Error(`COLLECTION_HAS_NO_PAYLOAD:${collectionKey}`);
   await ensureSeeded();
   const result = await queryKysely(`SELECT payload FROM ${spec.table} ORDER BY position ASC`);
   return result.rows.map(payloadFromRow).filter(Boolean);
@@ -688,6 +729,7 @@ export async function listCollectionPayloads(collectionKey) {
 export async function getCollectionPayload(collectionKey, key) {
   const spec = collectionSpecsByKey.get(collectionKey);
   if (!spec) throw new Error(`UNKNOWN_COLLECTION:${collectionKey}`);
+  if (spec.noPayload) throw new Error(`COLLECTION_HAS_NO_PAYLOAD:${collectionKey}`);
   const id = cleanText(key);
   if (!id) return null;
   await ensureSeeded();

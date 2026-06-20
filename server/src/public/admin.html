@@ -423,13 +423,22 @@
                 </div>
               </div>
               <div id="calendarSummary" class="calendarSummaryGrid" aria-live="polite"></div>
+              <section class="calendarEventsCard" style="margin-top:14px">
+                <h3 class="calendarDayHeading">캘린더 수집 Job</h3>
+                <div id="calendarJobRunner"></div>
+              </section>
               <div id="adminCalendarGrid" class="adminCalendarHost"></div>
               <p class="calendarGridHint muted" data-i18n="calendarGridHint"></p>
               <section class="calendarEventsCard" aria-labelledby="calendarDayHeadingText" style="margin-top:14px">
                 <h3 class="calendarDayHeading">
                   <span id="calendarDayHeadingText"></span>
                 </h3>
+                <div id="calendarEventEditor"></div>
                 <div id="calendarDayList" class="calendarDayTableHost"></div>
+              </section>
+              <section class="calendarEventsCard" style="margin-top:14px">
+                <h3 class="calendarDayHeading">이벤트 매핑 규칙</h3>
+                <div id="calendarEventCodeMappings"></div>
               </section>
             </div>
           </div>

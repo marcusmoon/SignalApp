@@ -77,7 +77,6 @@ export async function handlePublicCalendarRoutes({ req, res, url, pathname }) {
     }
     const now = new Date().toISOString();
     const rows = items.map((item) => ({
-      id: String(item.id || '').trim(),
       provider: String(item.provider || 'manual').trim(),
       providerItemId: String(item.providerItemId || item.id || '').trim(),
       type: String(item.type || 'macro').trim(),
@@ -87,7 +86,9 @@ export async function handlePublicCalendarRoutes({ req, res, url, pathname }) {
       eventAt: item.eventAt || null,
       date: item.date || null,
       timeLabel: item.timeLabel || '',
+      timezone: item.timezone || null,
       impact: item.impact || null,
+      importance: item.importance || null,
       actual: item.actual ?? null,
       estimate: item.estimate ?? null,
       previous: item.previous ?? null,
@@ -95,8 +96,14 @@ export async function handlePublicCalendarRoutes({ req, res, url, pathname }) {
       fiscalYear: item.fiscalYear ?? null,
       fiscalQuarter: item.fiscalQuarter ?? null,
       earningsHour: item.earningsHour || null,
+      companyName: item.companyName || null,
+      source: item.source || item.provider || 'manual',
+      sourceEventId: item.sourceEventId || item.providerItemId || item.id || null,
+      url: item.url || null,
       fetchedAt: item.fetchedAt || now,
-    })).filter((r) => r.id && r.title);
+      createdAt: item.createdAt || now,
+      updatedAt: item.updatedAt || item.fetchedAt || now,
+    })).filter((r) => r.title);
     if (rows.length === 0) {
       json(res, 400, { error: 'NO_VALID_ITEMS' });
       return true;

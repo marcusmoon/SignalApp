@@ -33,7 +33,7 @@ import {
   saveCalendarEventTypeFilter,
   type CalendarEventTypeKey,
 } from '@/services/calendarEventTypeFilterPreference';
-import { toYmd } from '@/utils/date';
+import { toYmd, addDays } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import type { CalendarEvent } from '@/types/signal';
 
@@ -95,26 +95,6 @@ function resolveAutoSelectYmd(year: number, month: number, todayYmd: string): st
   return toYmd(new Date(year, month, 1));
 }
 
-/** 버튼 이동: anchor 기준 다음/이전 이벤트일 (같은 달) */
-function resolveAdjacentEventYmd(
-  anchorYmd: string,
-  eventDates: Set<string>,
-  direction: -1 | 1,
-): string | null {
-  if (eventDates.size === 0) return null;
-  const sorted = [...eventDates].sort();
-  if (direction > 0) return sorted.find((d) => d > anchorYmd) ?? null;
-  return [...sorted].reverse().find((d) => d < anchorYmd) ?? null;
-}
-
-function sortedEventDatesFromEvents(events: CalendarEvent[], enabledTypes: Set<CalendarEventTypeKey>): string[] {
-  const dates = events
-    .filter((e) => enabledTypes.has(e.type))
-    .map((e) => String(e.date || '').slice(0, 10))
-    .filter(Boolean);
-  return [...new Set(dates)].sort();
-}
-
 function normalizeCalendarTypeSelection(input: Set<CalendarEventTypeKey>): Set<CalendarEventTypeKey> {
   if (input.size === CALENDAR_EVENT_TYPE_ORDER.length) {
     return new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
@@ -162,8 +142,6 @@ export default function CalendarScreen() {
   const listRef = useRef<FlatList<CalendarEvent>>(null);
   /** 월 fetch 후 선택일 유지(일 단위 이동·오늘) vs 자동 선택(월 chevron) */
   const monthChangeIntentRef = useRef<'auto' | 'preserveDay'>('auto');
-  /** 월 경계 넘어갈 때 인접 달 첫/마지막 이벤트일 */
-  const pendingEventNavRef = useRef<'first' | 'last' | null>(null);
 
   useEffect(() => {
     void loadCalendarEventTypeFilter().then((saved) => {
@@ -200,16 +178,7 @@ export default function CalendarScreen() {
         const events = await fetchMonthData(viewMonth.year, viewMonth.month);
         if (cancelled || loadSeqRef.current !== seq) return;
         setMonthEvents(events);
-        const sortedDates = sortedEventDatesFromEvents(events, enabledTypes);
-        const pendingNav = pendingEventNavRef.current;
-        pendingEventNavRef.current = null;
-        if (pendingNav === 'first') {
-          setSelectedYmd(sortedDates[0] ?? resolveAutoSelectYmd(viewMonth.year, viewMonth.month, todayYmd));
-        } else if (pendingNav === 'last') {
-          setSelectedYmd(
-            sortedDates[sortedDates.length - 1] ?? resolveAutoSelectYmd(viewMonth.year, viewMonth.month, todayYmd),
-          );
-        } else if (monthChangeIntentRef.current === 'preserveDay') {
+        if (monthChangeIntentRef.current === 'preserveDay') {
           monthChangeIntentRef.current = 'auto';
         } else {
           setSelectedYmd(resolveAutoSelectYmd(viewMonth.year, viewMonth.month, todayYmd));
@@ -307,23 +276,16 @@ export default function CalendarScreen() {
   }, []);
 
   const shiftSelectedDay = useCallback(
-    (delta: -1 | 1) => {
-      if (eventDates.size === 0) {
-        const adj = new Date(viewMonth.year, viewMonth.month + delta, 1);
-        pendingEventNavRef.current = delta > 0 ? 'first' : 'last';
-        setViewMonth({ year: adj.getFullYear(), month: adj.getMonth() });
-        return;
+    (delta: number) => {
+      const nextYmd = toYmd(addDays(dateFromYmd(selectedYmd), delta));
+      const nextMonth = monthFromYmd(nextYmd);
+      if (nextMonth.year !== viewMonth.year || nextMonth.month !== viewMonth.month) {
+        monthChangeIntentRef.current = 'preserveDay';
+        setViewMonth(nextMonth);
       }
-      const adjacent = resolveAdjacentEventYmd(selectedYmd, eventDates, delta);
-      if (adjacent) {
-        setSelectedYmd(adjacent);
-        return;
-      }
-      const adj = new Date(viewMonth.year, viewMonth.month + delta, 1);
-      pendingEventNavRef.current = delta > 0 ? 'first' : 'last';
-      setViewMonth({ year: adj.getFullYear(), month: adj.getMonth() });
+      setSelectedYmd(nextYmd);
     },
-    [eventDates, selectedYmd, viewMonth.month, viewMonth.year],
+    [selectedYmd, viewMonth.month, viewMonth.year],
   );
 
   const onPrevDay = useCallback(() => shiftSelectedDay(-1), [shiftSelectedDay]);

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  FlatList,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
+  SectionList,
   StyleSheet,
   Text,
   View,
@@ -14,6 +15,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
+import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
@@ -45,9 +47,15 @@ const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
   holiday: 'calendarTagHoliday',
 };
 
-const CALENDAR_MONTH_QUERY_LIMIT = 1000;
+type CalendarSection = { title: string; data: CalendarEvent[] };
 
-function calendarEventTimeLabel(ev: CalendarEvent): string {
+const CALENDAR_INITIAL_PAST_DAYS = 14;
+const CALENDAR_WINDOW_DAYS = 90;
+const CALENDAR_ALL_LOOKAHEAD_DAYS = 420;
+const CALENDAR_QUERY_LIMIT = 1000;
+const CALENDAR_EMPTY_WINDOW_HOPS = 4;
+
+function calendarEventTimeLabel(ev: CalendarEvent, t: (id: MessageId) => string): string {
   return ev.time || '—';
 }
 
@@ -66,6 +74,17 @@ function calendarSurpriseLabel(ev: CalendarEvent, t: (id: MessageId) => string):
   return t('calendarActualInlineEstimate');
 }
 
+function mergeCalendarEvents(a: CalendarEvent[], b: CalendarEvent[]): CalendarEvent[] {
+  const byId = new Map<string, CalendarEvent>();
+  for (const ev of [...a, ...b]) byId.set(ev.id, ev);
+  return Array.from(byId.values()).sort(
+    (x, y) =>
+      String(x.date || '').localeCompare(String(y.date || '')) ||
+      String(x.time || '').localeCompare(String(y.time || '')) ||
+      x.title.localeCompare(y.title),
+  );
+}
+
 function rawToCalendarEvent(raw: Parameters<typeof signalCalendarToCalendarEvent>[0]): CalendarEvent | null {
   return signalCalendarToCalendarEvent(raw);
 }
@@ -76,40 +95,28 @@ function dateFromYmd(ymd: string): Date {
   return new Date(y, m - 1, d);
 }
 
+function shiftYmd(ymd: string, days: number): string {
+  const d = dateFromYmd(ymd);
+  d.setDate(d.getDate() + days);
+  return toYmd(d);
+}
+
 function monthFromYmd(value: string): { year: number; month: number } {
   const date = dateFromYmd(value);
   return { year: date.getFullYear(), month: date.getMonth() };
 }
 
-function monthBounds(year: number, month: number): { from: string; to: string } {
-  const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
-  return { from: toYmd(first), to: toYmd(last) };
+function selectedCalendarType(input: Set<CalendarEventTypeKey>): CalendarEventTypeKey | undefined {
+  if (input.size !== 1) return undefined;
+  return CALENDAR_EVENT_TYPE_ORDER.find((type) => input.has(type));
 }
 
-/** 현재 달이면 오늘 or 가장 가까운 미래 날짜, 다른 달이면 첫 번째 이벤트 날짜 */
-function resolveAutoSelectYmd(
-  year: number,
-  month: number,
-  eventDates: Set<string>,
-  todayYmd: string,
-): string {
-  const sorted = [...eventDates].sort();
-  if (sorted.length === 0) {
-    return toYmd(new Date(year, month, 1));
-  }
-  const todayMonth = toYmd(new Date()).slice(0, 7);
-  const viewMonthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
-  if (viewMonthStr === todayMonth) {
-    // 오늘 이벤트 있으면 오늘
-    if (eventDates.has(todayYmd)) return todayYmd;
-    // 오늘 이후 가장 가까운 날
-    const future = sorted.find((d) => d > todayYmd);
-    if (future) return future;
-    // 없으면 마지막 날짜
-    return sorted[sorted.length - 1];
-  }
-  return sorted[0];
+function calendarLookaheadDays(_input: Set<CalendarEventTypeKey>): number {
+  return CALENDAR_ALL_LOOKAHEAD_DAYS;
+}
+
+function minYmd(a: string, b: string): string {
+  return a <= b ? a : b;
 }
 
 function normalizeCalendarTypeSelection(input: Set<CalendarEventTypeKey>): Set<CalendarEventTypeKey> {
@@ -120,9 +127,13 @@ function normalizeCalendarTypeSelection(input: Set<CalendarEventTypeKey>): Set<C
   return first ? new Set<CalendarEventTypeKey>([first]) : new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
 }
 
-function selectedCalendarType(input: Set<CalendarEventTypeKey>): CalendarEventTypeKey | undefined {
-  if (input.size !== 1) return undefined;
-  return CALENDAR_EVENT_TYPE_ORDER.find((type) => input.has(type));
+function resolveCalendarScrollTarget(
+  sections: CalendarSection[],
+  targetYmd: string | null,
+): string | null {
+  if (!targetYmd) return null;
+  if (sections.some((section) => section.title === targetYmd)) return targetYmd;
+  return sections.find((section) => section.title >= targetYmd)?.title || null;
 }
 
 export default function CalendarScreen() {
@@ -133,26 +144,25 @@ export default function CalendarScreen() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
 
-  const todayYmd = toYmd(new Date());
-
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
-
-  // 현재 보는 달의 모든 이벤트 (서버에서 받아온 원본)
-  const [monthEvents, setMonthEvents] = useState<CalendarEvent[]>([]);
-
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const loadedFromRef = useRef<string | null>(null);
+  const loadedToRef = useRef<string | null>(null);
+  const loadSeqRef = useRef(0);
+  const [canLoadForward, setCanLoadForward] = useState(true);
+  const [canLoadBackward, setCanLoadBackward] = useState(true);
+  const [loadingForward, setLoadingForward] = useState(false);
+  const [loadingBackward, setLoadingBackward] = useState(false);
   const [enabledTypes, setEnabledTypes] = useState(
     () => new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER),
   );
-
-  // 현재 보고 있는 달
-  const [viewMonth, setViewMonth] = useState(() => monthFromYmd(todayYmd));
-  // 선택된 날짜
-  const [selectedYmd, setSelectedYmd] = useState(todayYmd);
-
-  const loadSeqRef = useRef(0);
+  const sectionListRef = useRef<SectionList<CalendarEvent, CalendarSection>>(null);
+  const ignoreViewableUntilRef = useRef(0);
+  // 위 방향 로드 중복 방지
+  const isLoadingBackwardRef = useRef(false);
 
   useEffect(() => {
     void loadCalendarEventTypeFilter().then((saved) => {
@@ -162,131 +172,224 @@ export default function CalendarScreen() {
     });
   }, []);
 
+  const [selectedYmd, setSelectedYmd] = useState(() => toYmd(new Date()));
+  const [anchorYmd, setAnchorYmd] = useState(() => toYmd(new Date()));
+  const [pendingScrollYmd, setPendingScrollYmd] = useState<string | null>(() => toYmd(new Date()));
+  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => monthFromYmd(toYmd(new Date())));
+
   const typeParam = selectedCalendarType(enabledTypes);
 
-  // 해당 달 이벤트 fetch
-  const fetchMonthData = useCallback(
-    async (year: number, month: number, forceRefresh?: boolean) => {
-      const { from, to } = monthBounds(year, month);
+  const fetchDateWindow = useCallback(
+    async (from: string, to: string, forceRefresh?: boolean) => {
       const raw = await fetchSignalCalendar(
-        { from, to, type: typeParam, limit: CALENDAR_MONTH_QUERY_LIMIT },
+        {
+          from,
+          to,
+          type: typeParam,
+          limit: CALENDAR_QUERY_LIMIT,
+        },
         { cacheMode: forceRefresh ? 'bypass' : 'use' },
       );
-      return raw.map(rawToCalendarEvent).filter((ev): ev is CalendarEvent => ev != null);
+      return raw
+        .map(rawToCalendarEvent)
+        .filter((ev): ev is CalendarEvent => ev != null);
     },
     [typeParam],
   );
 
-  // viewMonth 또는 typeParam 변경 시 해당 월 데이터 로드
+  const loadAroundAnchor = useCallback(
+    async (anchor: string, forceRefresh?: boolean) => {
+      const seq = loadSeqRef.current;
+      setError(null);
+      if (!hasSignalApi()) {
+        setEvents([]);
+        loadedFromRef.current = null;
+        loadedToRef.current = null;
+        setCanLoadForward(false);
+        setCanLoadBackward(false);
+        setError(t('errorSignalApiShort'));
+        return;
+      }
+
+      const maxTo = shiftYmd(anchor, calendarLookaheadDays(enabledTypes));
+      const initialFrom = shiftYmd(anchor, -CALENDAR_INITIAL_PAST_DAYS);
+      let from = initialFrom;
+      let to = minYmd(shiftYmd(anchor, CALENDAR_WINDOW_DAYS), maxTo);
+      let merged: CalendarEvent[] = [];
+      let loadedTo = to;
+      let canForward = to < maxTo;
+
+      for (let i = 0; i < CALENDAR_EMPTY_WINDOW_HOPS; i += 1) {
+        const page = await fetchDateWindow(from, to, forceRefresh);
+        merged = mergeCalendarEvents(merged, page);
+        loadedTo = to;
+        canForward = to < maxTo;
+        const hasFutureTarget = merged.some((event) => String(event.date || '').slice(0, 10) >= anchor);
+        if (hasFutureTarget || !canForward) break;
+        from = shiftYmd(to, 1);
+        to = minYmd(shiftYmd(from, CALENDAR_WINDOW_DAYS), maxTo);
+      }
+
+      if (seq !== loadSeqRef.current) return;
+      setEvents(merged);
+      loadedFromRef.current = initialFrom;
+      loadedToRef.current = loadedTo;
+      setCanLoadForward(canForward);
+      setCanLoadBackward(true);
+    },
+    [enabledTypes, fetchDateWindow, t],
+  );
+
+  const loadMoreForward = useCallback(async () => {
+    if (!hasSignalApi() || loading || refreshing || loadingForward || !canLoadForward) return;
+    const loadedTo = loadedToRef.current;
+    if (!loadedTo) return;
+    setLoadingForward(true);
+    try {
+      const maxTo = shiftYmd(anchorYmd, calendarLookaheadDays(enabledTypes));
+      let from = shiftYmd(loadedTo, 1);
+      let to = minYmd(shiftYmd(from, CALENDAR_WINDOW_DAYS), maxTo);
+      let appended: CalendarEvent[] = [];
+      let nextLoadedTo = loadedTo;
+      let nextCanForward = from <= maxTo;
+
+      for (let i = 0; i < CALENDAR_EMPTY_WINDOW_HOPS && from <= maxTo; i += 1) {
+        const page = await fetchDateWindow(from, to);
+        appended = mergeCalendarEvents(appended, page);
+        nextLoadedTo = to;
+        nextCanForward = to < maxTo;
+        if (page.length > 0 || !nextCanForward) break;
+        from = shiftYmd(to, 1);
+        to = minYmd(shiftYmd(from, CALENDAR_WINDOW_DAYS), maxTo);
+      }
+
+      setEvents((prev) => mergeCalendarEvents(prev, appended));
+      loadedToRef.current = nextLoadedTo;
+      setCanLoadForward(nextCanForward);
+    } catch (e) {
+      setError(formatSignalApiError(e, t, 'calendarErrorLoad'));
+    } finally {
+      setLoadingForward(false);
+    }
+  }, [anchorYmd, canLoadForward, enabledTypes, fetchDateWindow, loading, loadingForward, refreshing, t]);
+
+  const loadMoreBackward = useCallback(async () => {
+    if (!hasSignalApi() || loading || refreshing || isLoadingBackwardRef.current || !canLoadBackward) return;
+    const loadedFrom = loadedFromRef.current;
+    if (!loadedFrom) return;
+    isLoadingBackwardRef.current = true;
+    setLoadingBackward(true);
+    try {
+      let to = shiftYmd(loadedFrom, -1);
+      let from = shiftYmd(to, -CALENDAR_WINDOW_DAYS);
+      let prepended: CalendarEvent[] = [];
+      let nextLoadedFrom = loadedFrom;
+
+      for (let i = 0; i < CALENDAR_EMPTY_WINDOW_HOPS; i += 1) {
+        const page = await fetchDateWindow(from, to);
+        prepended = mergeCalendarEvents(page, prepended);
+        nextLoadedFrom = from;
+        if (page.length > 0) break;
+        to = shiftYmd(from, -1);
+        from = shiftYmd(to, -CALENDAR_WINDOW_DAYS);
+      }
+
+      setEvents((prev) => mergeCalendarEvents(prepended, prev));
+      loadedFromRef.current = nextLoadedFrom;
+      setCanLoadBackward(prepended.length > 0);
+    } catch (e) {
+      // 위 방향 실패는 조용히 처리 (UX 방해 최소화)
+    } finally {
+      isLoadingBackwardRef.current = false;
+      setLoadingBackward(false);
+    }
+  }, [canLoadBackward, fetchDateWindow, loading, refreshing]);
+
   useEffect(() => {
-    if (!hasSignalApi()) return;
     let cancelled = false;
     const seq = loadSeqRef.current + 1;
     loadSeqRef.current = seq;
     (async () => {
       setLoading(true);
-      setError(null);
       try {
-        const events = await fetchMonthData(viewMonth.year, viewMonth.month);
-        if (cancelled || loadSeqRef.current !== seq) return;
-        setMonthEvents(events);
-        // 클라이언트 필터 적용해서 이벤트 날짜 계산
-        const filtered = events.filter((e) => enabledTypes.has(e.type));
-        const eventDates = new Set(filtered.map((e) => String(e.date || '').slice(0, 10)).filter(Boolean));
-        const autoSelect = resolveAutoSelectYmd(viewMonth.year, viewMonth.month, eventDates, todayYmd);
-        setSelectedYmd(autoSelect);
+        await loadAroundAnchor(anchorYmd);
       } catch (e) {
         if (!cancelled && loadSeqRef.current === seq) {
           setError(formatSignalApiError(e, t, 'calendarErrorLoad'));
-          setMonthEvents([]);
+          setEvents([]);
         }
       } finally {
         if (!cancelled && loadSeqRef.current === seq) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMonth.year, viewMonth.month, typeParam]);
+  }, [loadAroundAnchor, anchorYmd, t]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const events = await fetchMonthData(viewMonth.year, viewMonth.month, true);
-      setMonthEvents(events);
+      await loadAroundAnchor(anchorYmd, true);
     } catch (e) {
       setError(formatSignalApiError(e, t, 'feedErrorRefresh'));
     } finally {
       setRefreshing(false);
     }
-  }, [fetchMonthData, viewMonth.year, viewMonth.month, t]);
+  }, [loadAroundAnchor, anchorYmd, t]);
 
-  // 클라이언트 필터 적용
+  // 스크롤 위치 감지 → 상단 근처면 과거 로드
+  const onScroll = useCallback(
+    ({ nativeEvent }: { nativeEvent: { contentOffset: { y: number } } }) => {
+      if (nativeEvent.contentOffset.y < 180) {
+        void loadMoreBackward();
+      }
+    },
+    [loadMoreBackward],
+  );
+
   const filteredEvents = useMemo(
-    () => monthEvents.filter((e) => enabledTypes.has(e.type)),
-    [monthEvents, enabledTypes],
-  );
-
-  // 미니 캘린더용: 이벤트 있는 날짜 Set
-  const eventDates = useMemo(
-    () => new Set(filteredEvents.map((e) => String(e.date || '').slice(0, 10)).filter(Boolean)),
-    [filteredEvents],
-  );
-
-  // 선택 날짜의 이벤트만 (FlatList용)
-  const dayEvents = useMemo(
-    () =>
-      filteredEvents
-        .filter((e) => String(e.date || '').slice(0, 10) === selectedYmd)
-        .sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')) || a.title.localeCompare(b.title)),
-    [filteredEvents, selectedYmd],
+    () => events.filter((e) => enabledTypes.has(e.type)),
+    [events, enabledTypes],
   );
 
   const allEventTypesSelected = enabledTypes.size === CALENDAR_EVENT_TYPE_ORDER.length;
+  const sections = useMemo(() => {
+    if (loading) return [];
+    const byDate = new Map<string, CalendarEvent[]>();
+    for (const event of filteredEvents) {
+      const date = String(event.date || '').slice(0, 10);
+      if (!date) continue;
+      const prev = byDate.get(date) || [];
+      prev.push(event);
+      byDate.set(date, prev);
+    }
+    const hasSelectedOrFutureDate = [...byDate.keys()].some((date) => date >= selectedYmd);
+    if (byDate.size === 0 || !hasSelectedOrFutureDate) byDate.set(selectedYmd, []);
+    return [...byDate.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([title, data]) => ({
+        title,
+        data: data.sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')) || a.title.localeCompare(b.title)),
+      }));
+  }, [filteredEvents, loading, selectedYmd]);
 
   const onToggleEventType = useCallback((type: CalendarEventTypeKey) => {
-    const next = new Set<CalendarEventTypeKey>([type]);
-    void saveCalendarEventTypeFilter(next);
-    setEnabledTypes(next);
-  }, []);
+    setEnabledTypes(() => {
+      const next = new Set<CalendarEventTypeKey>([type]);
+      void saveCalendarEventTypeFilter(next);
+      return next;
+    });
+    setAnchorYmd(selectedYmd);
+    setPendingScrollYmd(selectedYmd);
+  }, [selectedYmd]);
 
   const onSelectAllEventTypes = useCallback(() => {
     const next = new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER);
     setEnabledTypes(next);
     void saveCalendarEventTypeFilter(next);
-  }, []);
-
-  // 필터 변경 시 선택 날짜 재조정
-  useEffect(() => {
-    if (loading) return;
-    const filtered = monthEvents.filter((e) => enabledTypes.has(e.type));
-    const dates = new Set(filtered.map((e) => String(e.date || '').slice(0, 10)).filter(Boolean));
-    if (dates.size === 0) return;
-    // 현재 선택 날짜에 이벤트 없으면 재조정
-    if (!dates.has(selectedYmd)) {
-      setSelectedYmd(resolveAutoSelectYmd(viewMonth.year, viewMonth.month, dates, todayYmd));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabledTypes]);
-
-  const onPrevMonth = useCallback(() => {
-    setViewMonth((prev) => {
-      const d = new Date(prev.year, prev.month - 1, 1);
-      return { year: d.getFullYear(), month: d.getMonth() };
-    });
-  }, []);
-
-  const onNextMonth = useCallback(() => {
-    setViewMonth((prev) => {
-      const d = new Date(prev.year, prev.month + 1, 1);
-      return { year: d.getFullYear(), month: d.getMonth() };
-    });
-  }, []);
-
-  const goToday = useCallback(() => {
-    const today = monthFromYmd(todayYmd);
-    setViewMonth(today);
-    setSelectedYmd(todayYmd);
-  }, [todayYmd]);
+    setAnchorYmd(selectedYmd);
+    setPendingScrollYmd(selectedYmd);
+  }, [selectedYmd]);
 
   const formatDayHeader = useCallback(
     (ymd: string) => {
@@ -302,6 +405,103 @@ export default function CalendarScreen() {
     },
     [locale],
   );
+
+  const todayYmd = toYmd(new Date());
+
+  const selectYmd = useCallback((ymd: string, reloadAnchor = false) => {
+    ignoreViewableUntilRef.current = Date.now() + 900;
+    setSelectedYmd(ymd);
+    if (reloadAnchor) setAnchorYmd(ymd);
+    setPendingScrollYmd(ymd);
+  }, []);
+
+  const openCalendar = useCallback(() => {
+    setCalendarMonth(monthFromYmd(selectedYmd));
+    setCalendarVisible(true);
+  }, [selectedYmd]);
+
+  const pickCalendarDate = useCallback(
+    (ymd: string) => {
+      selectYmd(ymd, true);
+      setCalendarVisible(false);
+    },
+    [selectYmd],
+  );
+
+  const shiftCalendarMonth = useCallback((delta: number) => {
+    setCalendarMonth((prev) => {
+      const date = new Date(prev.year, prev.month + delta, 1);
+      return { year: date.getFullYear(), month: date.getMonth() };
+    });
+  }, []);
+
+  const goPrevDay = useCallback(() => {
+    selectYmd(shiftYmd(selectedYmd, -1), true);
+  }, [selectYmd, selectedYmd]);
+
+  const goNextDay = useCallback(() => {
+    selectYmd(shiftYmd(selectedYmd, 1), true);
+  }, [selectYmd, selectedYmd]);
+
+  const goToday = useCallback(() => {
+    selectYmd(todayYmd, true);
+    setCalendarMonth(monthFromYmd(todayYmd));
+  }, [selectYmd, todayYmd]);
+
+  const eventDates = useMemo(
+    () => new Set(filteredEvents.map((event) => String(event.date || '').slice(0, 10)).filter(Boolean)),
+    [filteredEvents],
+  );
+
+  const scrollTargetYmd = useMemo(
+    () => resolveCalendarScrollTarget(sections, pendingScrollYmd),
+    [pendingScrollYmd, sections],
+  );
+
+  const selectedSectionIndex = useMemo(
+    () => sections.findIndex((section) => section.title === scrollTargetYmd),
+    [scrollTargetYmd, sections],
+  );
+
+  const scrollToSelectedSection = useCallback(
+    (animated = true) => {
+      if (selectedSectionIndex < 0) return;
+      sectionListRef.current?.scrollToLocation({
+        sectionIndex: selectedSectionIndex,
+        itemIndex: 0,
+        viewOffset: 12,
+        animated,
+      });
+    },
+    [selectedSectionIndex],
+  );
+
+  useEffect(() => {
+    if (loading || !pendingScrollYmd || !scrollTargetYmd || selectedSectionIndex < 0) return;
+    const timer = setTimeout(() => {
+      ignoreViewableUntilRef.current = Date.now() + 900;
+      if (scrollTargetYmd !== selectedYmd) {
+        setSelectedYmd(scrollTargetYmd);
+      }
+      scrollToSelectedSection(true);
+      setTimeout(() => setPendingScrollYmd(null), 260);
+    }, 40);
+    return () => clearTimeout(timer);
+  }, [loading, pendingScrollYmd, scrollTargetYmd, selectedYmd, selectedSectionIndex, scrollToSelectedSection]);
+
+  const onViewableItemsChanged = useRef(
+    ({ viewableItems }: { viewableItems: Array<{ section?: { title?: string } }> }) => {
+      if (Date.now() < ignoreViewableUntilRef.current) return;
+      const first = viewableItems.find((item) => item.section?.title)?.section?.title;
+      if (first) setSelectedYmd((prev) => (prev === first ? prev : first));
+    },
+  ).current;
+
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 20 }).current;
+
+  const onScrollToIndexFailed = useCallback(() => {
+    setTimeout(() => scrollToSelectedSection(false), 120);
+  }, [scrollToSelectedSection]);
 
   if (!hasSignalApi()) {
     return (
@@ -319,12 +519,13 @@ export default function CalendarScreen() {
     );
   }
 
-  const emptyFiltered = !loading && !error && monthEvents.length > 0 && filteredEvents.length === 0;
+  const emptyFiltered = !loading && !error && events.length > 0 && filteredEvents.length === 0;
 
   const renderEventCard = useCallback(
     (ev: CalendarEvent) => {
       const surprise = calendarSurpriseLabel(ev, t);
       const isEarnings = ev.type === 'earnings';
+
       const isHoliday = ev.type === 'holiday';
 
       const typeTagStyle = isEarnings
@@ -363,11 +564,13 @@ export default function CalendarScreen() {
                 <View style={[styles.typeTag, typeTagStyle]}>
                   <Text style={[styles.typeTagText, typeTagTextStyle]}>{typeTagLabel}</Text>
                 </View>
+                {/* 실적: 종목 심볼 뱃지 */}
                 {isEarnings && ev.symbol ? (
                   <View style={styles.symbolTag}>
                     <Text style={styles.symbolTagText}>{ev.symbol}</Text>
                   </View>
                 ) : null}
+                {/* 매크로: 영향도 뱃지 */}
                 {!isEarnings && ev.impact ? (
                   <View
                     style={[
@@ -393,6 +596,7 @@ export default function CalendarScreen() {
                   {ev.title}
                 </Text>
               </View>
+              {/* 실적: 회계연도 + 발표 시간대 */}
               {isEarnings && (ev.fiscalYear != null || ev.earningsHour) ? (
                 <View style={styles.metricRow}>
                   {ev.fiscalYear != null && ev.fiscalQuarter != null ? (
@@ -405,6 +609,7 @@ export default function CalendarScreen() {
                   ) : null}
                 </View>
               ) : null}
+              {/* EPS / 지표 수치 */}
               {(ev.actual != null || ev.estimate != null || ev.prev != null) ? (
                 <View style={styles.metricRow}>
                   <Text style={styles.metricText}>
@@ -422,7 +627,7 @@ export default function CalendarScreen() {
               ) : null}
               {surprise ? <Text style={styles.surpriseText}>{surprise}</Text> : null}
             </View>
-            <Text style={styles.time}>{calendarEventTimeLabel(ev)}</Text>
+            <Text style={styles.time}>{calendarEventTimeLabel(ev, t)}</Text>
           </View>
         </View>
       );
@@ -446,29 +651,41 @@ export default function CalendarScreen() {
     );
   }, [emptyFiltered, error, loading, styles, t]);
 
-  const isCurrentMonth = (() => {
-    const cm = monthFromYmd(todayYmd);
-    return viewMonth.year === cm.year && viewMonth.month === cm.month;
-  })();
-
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
-
-      {/* 상단 필터 */}
       <View style={styles.fixedTop}>
         {error ? (
           <View style={styles.errBox}>
             <Text style={styles.errText}>{error}</Text>
           </View>
         ) : null}
+        <SignalDateNavigator
+          label={formatDayHeader(selectedYmd)}
+          previousA11y={t('calendarMonthPrevA11y')}
+          nextA11y={t('calendarMonthNextA11y')}
+          labelA11y={t('insightOpenCalendar')}
+          todayLabel={t('insightCalendarToday')}
+          onPrevious={goPrevDay}
+          onNext={goNextDay}
+          onPressLabel={openCalendar}
+          onToday={goToday}
+          showToday={selectedYmd !== todayYmd}
+        />
         <View style={styles.filterChips} accessibilityRole="tablist">
           <Pressable
             onPress={onSelectAllEventTypes}
-            style={[styles.filterChip, allEventTypesSelected && styles.filterChipActive]}
+            style={[
+              styles.filterChip,
+              allEventTypesSelected && styles.filterChipActive,
+            ]}
             accessibilityRole="button"
             accessibilityState={{ selected: allEventTypesSelected }}>
-            <Text style={[styles.filterChipText, allEventTypesSelected && styles.filterChipTextActive]}>
+            <Text
+              style={[
+                styles.filterChipText,
+                allEventTypesSelected && styles.filterChipTextActive,
+              ]}>
               {t('calendarFilterAll')}
             </Text>
           </Pressable>
@@ -489,57 +706,55 @@ export default function CalendarScreen() {
           })}
         </View>
       </View>
-
-      {/* 미니 캘린더 (항상 보임) */}
-      <View style={styles.calendarWrapper}>
-        <InvestMonthCalendar
-          year={viewMonth.year}
-          month={viewMonth.month}
-          selectedYmd={selectedYmd}
-          eventDates={eventDates}
-          onSelectYmd={setSelectedYmd}
-          onPrevMonth={onPrevMonth}
-          onNextMonth={onNextMonth}
-          monthPrevA11y={t('calendarMonthPrevA11y')}
-          monthNextA11y={t('calendarMonthNextA11y')}
-          todayYmd={todayYmd}
-          theme={theme}
-          locale={locale}
-        />
-        {!isCurrentMonth ? (
-          <Pressable
-            onPress={goToday}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.todayBtn, pressed && styles.todayBtnPressed]}>
-            <Text style={styles.todayBtnText}>{t('insightCalendarToday')}</Text>
-          </Pressable>
-        ) : null}
-      </View>
-
-      {/* 선택 날짜 헤더 */}
-      <View style={styles.dayHeader}>
-        <Text style={styles.dayHeadingText}>{formatDayHeader(selectedYmd)}</Text>
-        {dayEvents.length > 0 ? (
-          <Text style={styles.dayHeadingCount}>{dayEvents.length}</Text>
-        ) : null}
-      </View>
-
-      {/* 선택 날짜 이벤트 리스트 */}
-      <FlatList
+      <SectionList
+        ref={sectionListRef}
         style={styles.listScroll}
-        data={dayEvents}
+        sections={sections}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => renderEventCard(item)}
+        renderSectionHeader={({ section }) => (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.monthHeading}>{formatDayHeader(section.title)}</Text>
+          </View>
+        )}
+        renderSectionFooter={({ section }) =>
+          section.data.length === 0 ? (
+            <Text style={styles.empty}>
+              {emptyFiltered ? t('calendarFilterEmptyFiltered') : t('calendarScreenEmptyDay')}
+            </Text>
+          ) : null
+        }
+        ListHeaderComponent={
+          loadingBackward ? (
+            <View style={styles.loadMore}>
+              <SignalLoadingIndicator message={t('commonLoading')} />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={renderListEmpty}
         ListFooterComponent={
-          <View style={{ paddingBottom: 28 + insets.bottom + 56 }}>
+          <View>
+            {loadingForward ? (
+              <View style={styles.loadMore}>
+                <SignalLoadingIndicator message={t('commonLoading')} />
+              </View>
+            ) : null}
             <SignalBannerAd />
           </View>
         }
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        onScrollToIndexFailed={onScrollToIndexFailed}
+        onEndReached={loadMoreForward}
+        onEndReachedThreshold={0.45}
+        onScroll={onScroll}
+        scrollEventThrottle={200}
+        maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
         contentContainerStyle={[
           styles.listContent,
           loading ? SCROLL_CONTENT_LOADING_STYLE : null,
-          dayEvents.length === 0 && !loading ? styles.listContentEmpty : null,
+          { paddingBottom: 28 + insets.bottom + 56 },
+          sections.length === 0 && !loading ? styles.listContentEmpty : null,
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -549,6 +764,55 @@ export default function CalendarScreen() {
         windowSize={7}
         removeClippedSubviews={Platform.OS !== 'web'}
       />
+
+      <Modal
+        animationType="slide"
+        transparent
+        visible={calendarVisible}
+        onRequestClose={() => setCalendarVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setCalendarVisible(false)} />
+          <View style={styles.modalSheet}>
+            <View style={styles.modalGrab} />
+            <View style={styles.modalHead}>
+              <Text style={styles.modalTitle}>{t('insightCalendarTitle')}</Text>
+              <Pressable
+                onPress={() => setCalendarVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel={t('calendarFilterClose')}
+                hitSlop={8}>
+                <Text style={styles.modalClose}>{t('calendarFilterClose')}</Text>
+              </Pressable>
+            </View>
+            <InvestMonthCalendar
+              year={calendarMonth.year}
+              month={calendarMonth.month}
+              selectedYmd={selectedYmd}
+              eventDates={eventDates}
+              onSelectYmd={pickCalendarDate}
+              onPrevMonth={() => shiftCalendarMonth(-1)}
+              onNextMonth={() => shiftCalendarMonth(1)}
+              monthPrevA11y={t('calendarMonthPrevA11y')}
+              monthNextA11y={t('calendarMonthNextA11y')}
+              todayYmd={todayYmd}
+              theme={theme}
+              locale={locale}
+              compact
+            />
+            <View style={styles.modalFoot}>
+              <Pressable
+                onPress={() => {
+                  goToday();
+                  setCalendarVisible(false);
+                }}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.modalTodayBtn, pressed && styles.dateActionBtnPressed]}>
+                <Text style={styles.modalTodayText}>{t('insightCalendarToday')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -565,56 +829,26 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomColor: theme.border,
       backgroundColor: theme.bg,
     },
-    calendarWrapper: {
-      paddingHorizontal: 8,
-      paddingBottom: 4,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
+    listScroll: { flex: 1, minHeight: 0 },
+    listContent: { paddingHorizontal: 16, paddingTop: 10 },
+    listContentEmpty: { flexGrow: 1, justifyContent: 'center' },
+    dateActionBtnPressed: { opacity: 0.86 },
+    sectionHeader: {
       backgroundColor: theme.bg,
+      paddingTop: 4,
+      paddingBottom: 2,
     },
-    todayBtn: {
-      alignSelf: 'center',
-      marginTop: 2,
-      marginBottom: 6,
-      paddingHorizontal: 18,
-      paddingVertical: 7,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    todayBtnPressed: { opacity: 0.8 },
-    todayBtnText: {
-      color: theme.green,
-      fontSize: sf(13),
-      fontWeight: '800',
-    },
-    dayHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      paddingHorizontal: 16,
-      paddingTop: 10,
-      paddingBottom: 6,
-    },
-    dayHeadingText: {
-      fontSize: sf(13),
+    monthHeading: {
+      fontSize: 13,
       fontWeight: '800',
       color: theme.text,
-      flex: 1,
+      marginBottom: 6,
     },
-    dayHeadingCount: {
-      fontSize: sf(11),
-      fontWeight: '700',
-      color: theme.textMuted,
-    },
-    listScroll: { flex: 1, minHeight: 0 },
-    listContent: { paddingHorizontal: 16, paddingTop: 4 },
-    listContentEmpty: { flexGrow: 1, justifyContent: 'center' },
     filterChips: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 7,
+      marginTop: 10,
     },
     filterChip: {
       minHeight: 30,
@@ -649,6 +883,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     errText: { fontSize: sf(11), color: theme.danger, lineHeight: sf(16) },
     empty: { fontSize: sf(12), color: theme.textMuted, paddingVertical: 12, textAlign: 'center' },
+    loadMore: {
+      minHeight: 56,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+    },
     card: {
       backgroundColor: theme.card,
       borderRadius: 10,
@@ -728,6 +968,61 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(10),
       fontWeight: '800',
       color: theme.textDim,
+    },
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.58)',
+      justifyContent: 'flex-end',
+    },
+    modalSheet: {
+      backgroundColor: theme.bg,
+      borderTopLeftRadius: 18,
+      borderTopRightRadius: 18,
+      borderWidth: 1,
+      borderBottomWidth: 0,
+      borderColor: theme.border,
+      paddingHorizontal: 16,
+      paddingBottom: 16,
+    },
+    modalGrab: {
+      alignSelf: 'center',
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.border,
+      marginTop: 10,
+      marginBottom: 8,
+    },
+    modalHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 10,
+    },
+    modalTitle: {
+      color: theme.text,
+      fontSize: sf(17),
+      fontWeight: '900',
+    },
+    modalClose: {
+      color: theme.green,
+      fontSize: sf(14),
+      fontWeight: '900',
+    },
+    modalFoot: { paddingTop: 10 },
+    modalTodayBtn: {
+      minHeight: 42,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalTodayText: {
+      color: theme.green,
+      fontSize: sf(14),
+      fontWeight: '900',
     },
   });
 }

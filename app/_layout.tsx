@@ -128,11 +128,11 @@ function RootLayoutNav() {
   const { theme, effectiveColorScheme } = useSignalTheme();
   const { t } = useLocale();
   /**
-   * iOS release standalone: react-native-screens `statusBarStyle` 사용, plist YES 필요.
-   * iOS dev/Expo Go: native Info.plist가 이전 상태일 수 있어 RNSScreen statusBarStyle 전달 금지.
+   * iOS standalone/dev-client: react-native-screens `statusBarStyle` 사용, plist YES 필요.
+   * Expo Go는 native Info.plist를 통제할 수 없어 RNSScreen statusBarStyle 전달 금지.
    */
   const statusBarStyle = effectiveColorScheme === 'dark' ? ('light' as const) : ('dark' as const);
-  const canUseScreenStatusBar = Platform.OS !== 'ios' || (!__DEV__ && !isRunningInExpoGo());
+  const canUseScreenStatusBar = Platform.OS !== 'ios' || !isRunningInExpoGo();
   const screenStatusBarOptions = useMemo(
     () => (canUseScreenStatusBar ? { statusBarStyle } : {}),
     [canUseScreenStatusBar, statusBarStyle],

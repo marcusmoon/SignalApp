@@ -1,5 +1,6 @@
 import { useFocusEffect } from "expo-router/react-navigation";
 import { Stack } from 'expo-router';
+import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AppState,
@@ -14,12 +15,14 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
+import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { MarketBriefingBlock } from '@/components/signal/MarketBriefingBlock';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -86,6 +89,7 @@ export default function SignalScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   const [todayYmd, setTodayYmd] = useState(() => toYmd(new Date()));
@@ -319,6 +323,7 @@ export default function SignalScreen() {
 
   const activeBriefing = activeTabKey ? briefingByTabKey.get(activeTabKey) : undefined;
   const hasAnyBriefing = marketBriefings.length > 0;
+  const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
 
   const availableSessionTabKeys = useMemo(
     () => FLAT_TABS.filter((tab) => briefingByTabKey.has(tab.key)).map((tab) => tab.key),
@@ -441,6 +446,16 @@ export default function SignalScreen() {
           ) : null}
         </ScrollView>
       )}
+
+      {hasSignalApi() ? (
+        <FloatingGlassFab
+          bottom={fabStackBottom}
+          onPress={() => void onRefresh()}
+          iconName="sync"
+          accessibilityLabel={t('fabRefreshA11y')}
+          disabled={refreshing || loading}
+        />
+      ) : null}
 
       <Modal
         animationType="slide"

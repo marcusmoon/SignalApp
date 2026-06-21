@@ -71,7 +71,7 @@ export const en = {
   screenAccount: 'My info',
   screenAlerts: 'Alerts',
   screenCalendar: 'Invest calendar',
-  screenDisclosures: 'Disclosures',
+  screenDisclosures: 'Filings',
   screenSignal: 'Signal',
   screenSymbolDetail: 'Symbol detail',
   disclosuresFilterAll: 'All',

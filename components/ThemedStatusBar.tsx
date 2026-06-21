@@ -7,8 +7,8 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 /**
  * Android·웹: expo-status-bar.
- * iOS: `UIViewControllerBasedStatusBarAppearance=YES` 상태에서는 expo/RN StatusBar가 충돌하므로
- * Stack의 `statusBarStyle`만 사용하고 이 컴포넌트는 렌더링하지 않는다.
+ * iOS: `UIViewControllerBasedStatusBarAppearance=YES` 기준으로 Stack의 `statusBarStyle`만 사용한다.
+ * RNStatusBar iOS 호출은 plist NO를 요구해 런타임 경고/에러를 만들 수 있다.
  */
 export function ThemedStatusBar() {
   const { theme, effectiveColorScheme } = useSignalTheme();

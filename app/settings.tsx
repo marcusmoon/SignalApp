@@ -845,7 +845,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: '#14141C',
+      backgroundColor: theme.bgElevated,
       minWidth: 88,
       justifyContent: 'flex-end',
     },
@@ -910,7 +910,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: '#14141C',
+      backgroundColor: theme.bgElevated,
     },
     segmentOrderRowGap: {
       marginBottom: QUOTES_SEGMENT_ORDER_ROW_GAP,

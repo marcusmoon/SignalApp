@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type MainEntryKey = 'news' | 'disclosures' | 'signal' | 'quotes' | 'more';
 
-/** 설정「첫 화면」세그먼트 순서 */
+/** 설정「첫 화면」세그먼트 순서 — 하단 메뉴 순서와 동일 */
 export const MAIN_ENTRY_DISPLAY_ORDER: MainEntryKey[] = ['news', 'disclosures', 'signal', 'quotes', 'more'];
 
 const STORAGE_KEY = '@signal/main_entry_v1';

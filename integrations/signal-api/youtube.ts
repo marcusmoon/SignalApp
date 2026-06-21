@@ -33,16 +33,6 @@ function normalizeYoutubeMeta(
   return { limit, offset, total, hasMore, nextOffset };
 }
 
-function formatCompactCount(value: number | null | undefined, locale: AppLocale): string | undefined {
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return undefined;
-  const languageTag = locale === 'ko' ? 'ko-KR' : locale === 'ja' ? 'ja-JP' : 'en-US';
-  return new Intl.NumberFormat(languageTag, {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(n);
-}
-
 export async function fetchSignalYoutube(
   params?: {
     q?: string;
@@ -110,23 +100,9 @@ export function signalYoutubeToYoutubeItem(item: SignalApiYoutubeVideo, locale: 
     title: item.title,
     channel: item.channel,
     viewLabel: formatViewCount(item.viewCount || 0),
-    likeLabel: formatCompactCount(item.likeCount, locale),
-    commentLabel: formatCompactCount(item.commentCount, locale),
     publishedLabel: item.publishedAt ? formatRelativeFromIso(item.publishedAt, locale) : '—',
     durationLabel: item.duration ? formatIso8601Duration(item.duration) : '—',
-    description: item.description || '',
     thumbnailUrl: item.thumbnailUrl,
-    captionAvailable: item.captionAvailable === true,
-    definition: item.definition || '',
-    categoryId: item.categoryId || null,
-    topicCategories: Array.isArray(item.topicCategories) ? item.topicCategories : [],
-    channelThumbnailUrl: item.channelThumbnailUrl || null,
-    channelDescription: item.channelDescription || '',
-    channelSubscriberLabel: formatCompactCount(item.channelSubscriberCount, locale),
-    channelVideoCountLabel: formatCompactCount(item.channelVideoCount, locale),
-    channelViewLabel: formatCompactCount(item.channelViewCount, locale),
-    channelCustomUrl: item.channelCustomUrl || null,
-    channelCountry: item.channelCountry || null,
     videoId: item.videoId,
     url: item.videoId ? `https://www.youtube.com/watch?v=${item.videoId}` : undefined,
   };

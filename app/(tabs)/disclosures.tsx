@@ -384,7 +384,7 @@ export default function DisclosuresScreen() {
           </View>
         )}
       </View>
-      {hasSignalApi() ? (
+      {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
           bottom={fabStackBottom}
           onPress={() => void onRefresh()}

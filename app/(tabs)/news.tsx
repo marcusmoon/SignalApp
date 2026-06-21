@@ -1075,12 +1075,23 @@ export default function FeedScreen() {
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
 
+  const ipadSegmentOrder = useMemo(
+    () => segmentOrder.filter((key) => key !== 'video'),
+    [segmentOrder],
+  );
+
+  useEffect(() => {
+    if (!useTwoPane || segment !== 'video') return;
+    const next = ipadSegmentOrder[0] || DEFAULT_NEWS_SEGMENT;
+    onPickSegment(next);
+  }, [ipadSegmentOrder, onPickSegment, segment, useTwoPane]);
+
   // iPad 사이드바 서브탭 등록
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
       setSubTabs(
-        segmentOrder.map((key) => ({
+        ipadSegmentOrder.map((key) => ({
           key,
           label: t(NEWS_SEGMENT_LABEL[key]),
           active: segment === key,
@@ -1088,7 +1099,7 @@ export default function FeedScreen() {
         })),
       );
       return () => clearSubTabs();
-    }, [useTwoPane, segment, segmentOrder, t, onPickSegment, setSubTabs, clearSubTabs]),
+    }, [useTwoPane, segment, ipadSegmentOrder, t, onPickSegment, setSubTabs, clearSubTabs]),
   );
 
   const newsQuickFilter =
@@ -1372,7 +1383,7 @@ export default function FeedScreen() {
         />
       </View>
 
-      {hasSignalApi() ? (
+      {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
           bottom={fabStackBottom}
           onPress={() => void onRefresh()}

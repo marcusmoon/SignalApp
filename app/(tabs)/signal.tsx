@@ -468,7 +468,7 @@ export default function SignalScreen() {
         </ScrollView>
       )}
 
-      {hasSignalApi() ? (
+      {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
           bottom={fabStackBottom}
           onPress={() => void onRefresh()}

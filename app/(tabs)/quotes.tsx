@@ -683,13 +683,15 @@ export default function QuotesScreen() {
         }
       />
 
-      <FloatingGlassFab
-        bottom={fabStackBottom}
-        onPress={() => void onRefresh()}
-        iconName="sync"
-        accessibilityLabel={t('fabRefreshA11y')}
-        disabled={refreshing || loading}
-      />
+      {!useTwoPane ? (
+        <FloatingGlassFab
+          bottom={fabStackBottom}
+          onPress={() => void onRefresh()}
+          iconName="sync"
+          accessibilityLabel={t('fabRefreshA11y')}
+          disabled={refreshing || loading}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

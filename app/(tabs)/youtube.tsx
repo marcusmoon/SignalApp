@@ -16,7 +16,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -35,6 +34,7 @@ import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { hasSignalApi } from '@/services/env';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
@@ -67,10 +67,10 @@ export default function YoutubeScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const router = useRouter();
-  const routeParams = useLocalSearchParams<{ from?: string }>();
   const { useTwoPane } = useResponsiveLayout();
+  const ipadNav = useIpadSidebarNav();
   const [sort, setSort] = useState<SortKey>('latest');
+  const effectiveSort = useTwoPane && ipadNav.isAvailable ? ipadNav.youtubeSort : sort;
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
@@ -94,6 +94,7 @@ export default function YoutubeScreen() {
   const youtubeReplacingRef = useRef(false);
   /** 필터 적용 시 `setSelectedHandles` 직후 useEffect load() 중복 방지 */
   const skipLoadOnSelectedHandlesRef = useRef(false);
+  const syncedYoutubeSortRef = useRef(ipadNav.youtubeSort);
 
   useTabScreenLoadingRecovery(items, setLoading);
 
@@ -183,7 +184,7 @@ export default function YoutubeScreen() {
       setYoutubeMeta(null);
       try {
         const availableHandles = opts?.availableHandles ?? curationHandles;
-        const requestedSort = opts?.sort ?? sort;
+        const requestedSort = opts?.sort ?? effectiveSort;
         const page = await fetchSignalYoutube(
           {
             offset: 0,
@@ -204,7 +205,7 @@ export default function YoutubeScreen() {
         youtubeReplacingRef.current = false;
       }
     },
-    [selectedHandles, curationHandles, locale, sort, t, applyLoadError],
+    [selectedHandles, curationHandles, locale, effectiveSort, t, applyLoadError],
   );
 
   const loadMore = useCallback(async () => {
@@ -220,7 +221,7 @@ export default function YoutubeScreen() {
         {
           offset: nextOff,
           limit: YOUTUBE_PAGE_SIZE,
-          sort,
+          sort: effectiveSort,
           channelHandles:
             selectedHandles && curationHandles && selectedHandles.length !== curationHandles.length
               ? selectedHandles
@@ -253,7 +254,7 @@ export default function YoutubeScreen() {
     } finally {
       setLoadingMore(false);
     }
-  }, [youtubeMeta, loadingMore, loading, sort, selectedHandles, curationHandles, locale, applyLoadError]);
+  }, [youtubeMeta, loadingMore, loading, effectiveSort, selectedHandles, curationHandles, locale, applyLoadError]);
 
   const onYoutubeScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -274,6 +275,16 @@ export default function YoutubeScreen() {
     }
     void load();
   }, [load, selectedHandles]);
+
+  useEffect(() => {
+    if (!useTwoPane || !ipadNav.isAvailable) return;
+    if (syncedYoutubeSortRef.current === ipadNav.youtubeSort) return;
+    syncedYoutubeSortRef.current = ipadNav.youtubeSort;
+    setSort(ipadNav.youtubeSort);
+    setLoading(true);
+    setItems([]);
+    setYoutubeMeta(null);
+  }, [ipadNav.isAvailable, ipadNav.youtubeSort, useTwoPane]);
 
   const onRefresh = useCallback(async () => {
     if (selectedHandles === null) return;
@@ -439,41 +450,8 @@ export default function YoutubeScreen() {
 
   const youtubeListPanel = (
     <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {useTwoPane && routeParams.from === 'more' ? (
-          <View style={styles.backToMoreWrap}>
-            <Pressable
-              onPress={() => router.replace('/(tabs)/more')}
-              style={({ pressed }) => [styles.backToMoreBtn, pressed && styles.backToMoreBtnPressed]}
-              accessibilityRole="button"
-              accessibilityLabel={t('commonBack')}>
-              <FontAwesome name="chevron-left" size={13} color={theme.green} />
-              <Text style={styles.backToMoreText}>{t('commonBack')}</Text>
-            </Pressable>
-          </View>
-        ) : null}
         {useTwoPane ? (
           <View style={styles.ipadFilterWrap}>
-            <Pressable
-              onPress={applyLatestSortFilter}
-              style={[
-                styles.ipadFilterBtn,
-                sort === 'latest' && !channelFilterActive && styles.ipadFilterBtnActive,
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: sort === 'latest' && !channelFilterActive }}>
-              <Text style={[styles.ipadFilterText, sort === 'latest' && !channelFilterActive && styles.ipadFilterTextActive]}>
-                {t('feedWatchFilterAll')}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={applyPopularFilter}
-              style={[styles.ipadFilterBtn, sort === 'popular' && styles.ipadFilterBtnActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: sort === 'popular' }}>
-              <Text style={[styles.ipadFilterText, sort === 'popular' && styles.ipadFilterTextActive]}>
-                {t('youtubeSortPopular')}
-              </Text>
-            </Pressable>
             <Pressable
               onPress={openChannelFilter}
               disabled={!selectedHandles || !curationHandles}

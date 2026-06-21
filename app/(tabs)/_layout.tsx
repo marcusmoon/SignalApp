@@ -22,6 +22,9 @@ import { SignalFloatingTabBar } from '@/components/signal/SignalFloatingTabBar';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalSidebarTabBar } from '@/components/signal/SignalSidebarTabBar';
 import { SlackTabBarButton } from '@/components/SlackTabBarButton';
+import AccountScreen from '@/app/account';
+import SettingsScreen from '@/app/settings';
+import { IpadSidebarNavProvider, useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -367,31 +370,15 @@ export default function TabLayout() {
 
   if (isWideLayout) {
     return (
-      <SafeAreaView style={sidebarLayoutStyles.safe} edges={['top']}>
-        <SignalHeader compact fullWidth />
-        <View style={sidebarLayoutStyles.body}>
-          <SignalSidebarTabBar
-            newsHasUnread={newsHasUnread}
-            signalHasUnread={signalHasUnread}
-            disclosureHasUnread={disclosureHasUnread}
-          />
-          <View style={sidebarLayoutStyles.content}>
-            <Tabs
-              initialRouteName="news"
-              tabBar={() => null}
-              screenOptions={iPadScreenOptions}
-              detachInactiveScreens={false}>
-              <Tabs.Screen name="index" options={{ href: null }} />
-              <Tabs.Screen name="news" options={{ title: t('tabNews') }} />
-              <Tabs.Screen name="disclosures" options={{ title: t('tabDisclosures') }} />
-              <Tabs.Screen name="signal" options={{ title: t('tabSignal') }} />
-              <Tabs.Screen name="quotes" options={{ title: t('tabQuotes') }} />
-              <Tabs.Screen name="more" options={{ title: t('tabMore') }} />
-              <Tabs.Screen name="youtube" options={{ title: t('tabYoutube') }} />
-            </Tabs>
-          </View>
-        </View>
-      </SafeAreaView>
+      <IpadSidebarNavProvider>
+        <IpadWideTabLayout
+          iPadScreenOptions={iPadScreenOptions}
+          newsHasUnread={newsHasUnread}
+          signalHasUnread={signalHasUnread}
+          disclosureHasUnread={disclosureHasUnread}
+          t={t}
+        />
+      </IpadSidebarNavProvider>
     );
   }
 
@@ -470,3 +457,55 @@ const sidebarLayoutStyles = StyleSheet.create({
     minWidth: 0,
   },
 });
+
+type IpadWideTabLayoutProps = {
+  iPadScreenOptions: BottomTabNavigationOptions;
+  newsHasUnread: boolean;
+  signalHasUnread: boolean;
+  disclosureHasUnread: boolean;
+  t: ReturnType<typeof useLocale>['t'];
+};
+
+function IpadWideTabLayout({
+  iPadScreenOptions,
+  newsHasUnread,
+  signalHasUnread,
+  disclosureHasUnread,
+  t,
+}: IpadWideTabLayoutProps) {
+  const { contentPane } = useIpadSidebarNav();
+
+  return (
+    <SafeAreaView style={sidebarLayoutStyles.safe} edges={['top']}>
+      <SignalHeader compact fullWidth />
+      <View style={sidebarLayoutStyles.body}>
+        <SignalSidebarTabBar
+          newsHasUnread={newsHasUnread}
+          signalHasUnread={signalHasUnread}
+          disclosureHasUnread={disclosureHasUnread}
+        />
+        <View style={sidebarLayoutStyles.content}>
+          {contentPane === 'account' ? (
+            <AccountScreen embedded />
+          ) : contentPane === 'settings' ? (
+            <SettingsScreen embedded />
+          ) : (
+            <Tabs
+              initialRouteName="news"
+              tabBar={() => null}
+              screenOptions={iPadScreenOptions}
+              detachInactiveScreens={false}>
+              <Tabs.Screen name="index" options={{ href: null }} />
+              <Tabs.Screen name="news" options={{ title: t('tabNews') }} />
+              <Tabs.Screen name="disclosures" options={{ title: t('tabDisclosures') }} />
+              <Tabs.Screen name="signal" options={{ title: t('tabSignal') }} />
+              <Tabs.Screen name="quotes" options={{ title: t('tabQuotes') }} />
+              <Tabs.Screen name="more" options={{ title: t('tabMore') }} />
+              <Tabs.Screen name="youtube" options={{ title: t('tabYoutube') }} />
+            </Tabs>
+          )}
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}

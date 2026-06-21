@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 
 export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
@@ -12,6 +12,10 @@ export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
       alignSelf: 'center',
       padding: 16,
       gap: 12,
+    },
+    contentEmbedded: {
+      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
+      alignSelf: 'stretch',
     },
     hero: {
       borderRadius: 16,

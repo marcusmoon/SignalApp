@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
-import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -46,7 +46,6 @@ export default function MoreHubScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
-  const routeParams = useLocalSearchParams<{ section?: string }>();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
@@ -105,7 +104,7 @@ export default function MoreHubScreen() {
         router.push({ pathname: '/account', params: { from: 'more' } } as never);
         return;
       }
-      router.push({ pathname: '/settings', params: { from: 'more' } } as never);
+      router.push({ pathname: '/settings', params: { from: 'sidebar', tab: 'display' } } as never);
     },
     [router, useTwoPane],
   );
@@ -120,10 +119,13 @@ export default function MoreHubScreen() {
     [refLinksVisible, styles.footer, styles.footerAd],
   );
   const visibleOrder = useMemo(
-    () => (useTwoPane ? order.filter((item) => item !== 'account') : order),
+    () =>
+      useTwoPane
+        ? order.filter((item) => item !== 'account' && item !== 'youtube' && item !== 'settings')
+        : order,
     [order, useTwoPane],
   );
-  const showIpadQuickLinks = useTwoPane && (routeParams.section === 'quick' || !routeParams.section);
+  const showIpadQuickLinks = useTwoPane;
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>

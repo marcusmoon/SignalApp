@@ -56,20 +56,25 @@ import {
   type StoredAppAuthSession,
 } from '@/services/appAuthSession';
 import { loadNotificationPrefs, type NotificationPrefs } from '@/services/notificationPreferences';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
-type Mode = 'login' | 'register';
 type AccountTab = 'home' | 'profile' | 'security' | 'info';
 type RegisterStep = 'terms' | 'method' | 'info';
 
-export default function AccountScreen() {
+type AccountScreenProps = {
+  /** iPad 사이드바 우측 패널에 그대로 삽입 */
+  embedded?: boolean;
+};
+
+export default function AccountScreen({ embedded = false }: AccountScreenProps) {
   const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
   const { useTwoPane } = useResponsiveLayout();
   const params = useLocalSearchParams<{ from?: string }>();
-  const useIpadSidebar = useTwoPane && params.from === 'more';
+  const useIpadSidebar = useTwoPane && !embedded;
   const styles = useMemo(() => makeAccountStyles(theme, scaleFont), [theme, scaleFont]);
   const [session, setSession] = useState<StoredAppAuthSession | null>(null);
   const [mode, setMode] = useState<Mode>('login');
@@ -712,9 +717,16 @@ export default function AccountScreen() {
   );
 
   const screen = (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <Stack.Screen options={{ title: t('screenAccount'), headerShown: !useIpadSidebar }} />
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 28 + insets.bottom }]}>
+    <SafeAreaView style={styles.safe} edges={embedded ? [] : ['bottom']}>
+      {!embedded ? (
+        <Stack.Screen options={{ title: t('screenAccount'), headerShown: !useIpadSidebar }} />
+      ) : null}
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          embedded && styles.contentEmbedded,
+          { paddingBottom: 28 + insets.bottom },
+        ]}>
         {!user ? (
           <View style={styles.hero}>
             <View style={styles.heroLogoRow}>
@@ -1360,7 +1372,7 @@ export default function AccountScreen() {
   );
 
   return useIpadSidebar ? (
-    <IpadSidebarScreen title={t('screenAccount')} backHref="/(tabs)/more">
+    <IpadSidebarScreen title={t('screenAccount')} backHref="/(tabs)/news">
       {screen}
     </IpadSidebarScreen>
   ) : (

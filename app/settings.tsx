@@ -25,7 +25,7 @@ import developerAvatar from '@/assets/images/developer-avatar.png';
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
-import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import {
   tabBarBottomInset,
   tabBarHorizontalMargin,
@@ -34,6 +34,7 @@ import {
 } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { formatMessage, type AppLocale, type MessageId } from '@/locales/messages';
@@ -130,6 +131,11 @@ import {
   buildRainbowKoreanAccentPalette,
 } from '@/utils/accentSwatchPalette';
 import {
+  isSettingsTab,
+  SETTINGS_TABS,
+  type SettingsTab,
+} from '@/constants/settingsTabs';
+import {
   SEGMENT_TAB_ACTIVE_TEXT,
   SEGMENT_TAB_BTN_PADDING_V,
   SEGMENT_TAB_BTN_RADIUS,
@@ -140,21 +146,6 @@ import {
   SEGMENT_TAB_OUTER_RADIUS,
   SEGMENT_TAB_PADDING,
 } from '@/constants/segmentTabBar';
-
-type SettingsTab =
-  | 'display'
-  | 'notifications'
-  | 'news'
-  | 'quotes'
-  | 'server';
-
-const SETTINGS_TABS: { key: SettingsTab; labelId: MessageId }[] = [
-  { key: 'display', labelId: 'settingsTabDisplay' },
-  { key: 'notifications', labelId: 'settingsTabNotifications' },
-  { key: 'news', labelId: 'settingsTabNews' },
-  { key: 'quotes', labelId: 'settingsTabQuotes' },
-  { key: 'server', labelId: 'settingsTabServer' },
-];
 
 const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
@@ -282,6 +273,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 16,
       paddingTop: 4,
       paddingBottom: 32,
+    },
+    scrollEmbedded: {
+      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
+      alignSelf: 'stretch',
     },
     tabBar: {
       width: '100%',
@@ -991,7 +986,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
 /** 하단 플로팅 개발자 바 높이(탭바 캡슐과 비슷하게) */
 const SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT = 52;
 
-export default function SettingsScreen() {
+type SettingsScreenProps = {
+  /** iPad 사이드바 우측 패널에 그대로 삽입 */
+  embedded?: boolean;
+};
+
+export default function SettingsScreen({ embedded = false }: SettingsScreenProps) {
   const {
     theme,
     effectiveColorScheme,
@@ -1009,13 +1009,15 @@ export default function SettingsScreen() {
   } = useSignalTheme();
   const { t, locale, setLocale } = useLocale();
   const { useTwoPane } = useResponsiveLayout();
+  const ipadNav = useIpadSidebarNav();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const params = useLocalSearchParams<{ tab?: string; from?: string }>();
   const router = useRouter();
   const isFocused = useIsFocused();
-  const useIpadSidebar = useTwoPane && params.from === 'more';
+  const useIpadSidebar = useTwoPane && !embedded;
   const [tab, setTab] = useState<SettingsTab>('display');
+  const selectedTab = embedded && ipadNav.isAvailable ? ipadNav.settingsTab : tab;
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [briefingPushEnabled, setBriefingPushEnabled] = useState(true);
@@ -1112,18 +1114,13 @@ export default function SettingsScreen() {
   );
 
   useEffect(() => {
+    if (embedded) return;
     const raw = params.tab;
     const tabParam = Array.isArray(raw) ? raw[0] : raw;
-    if (
-      tabParam === 'news' ||
-      tabParam === 'quotes' ||
-      tabParam === 'display' ||
-      tabParam === 'notifications' ||
-      tabParam === 'server'
-    ) {
+    if (isSettingsTab(tabParam)) {
       setTab(tabParam);
     }
-  }, [params.tab]);
+  }, [embedded, params.tab]);
 
   useEffect(() => {
     return () => {
@@ -1258,33 +1255,43 @@ export default function SettingsScreen() {
     setTabBarOpacityReady(true);
   }, []);
 
+  const reloadAllSettingsPrefs = useCallback(() => {
+    void reloadPrefs();
+    void reloadQuotesListLimits();
+    void reloadQuotesSegmentOrder();
+    void reloadQuotesChangeColorConvention();
+    void reloadNewsSegmentOrder();
+    void reloadNewsHashtagDisplayMax();
+    void reloadSignalServerPrefs();
+    void reloadMoreReferenceLinksPref();
+    void reloadMainEntryPref();
+    void reloadAppIconPref();
+    void reloadTabBarOpacityPref();
+  }, [
+    reloadPrefs,
+    reloadQuotesListLimits,
+    reloadQuotesSegmentOrder,
+    reloadQuotesChangeColorConvention,
+    reloadNewsSegmentOrder,
+    reloadNewsHashtagDisplayMax,
+    reloadSignalServerPrefs,
+    reloadMoreReferenceLinksPref,
+    reloadMainEntryPref,
+    reloadAppIconPref,
+    reloadTabBarOpacityPref,
+  ]);
+
   useFocusEffect(
     useCallback(() => {
-      void reloadPrefs();
-      void reloadQuotesListLimits();
-      void reloadQuotesSegmentOrder();
-      void reloadQuotesChangeColorConvention();
-      void reloadNewsSegmentOrder();
-      void reloadNewsHashtagDisplayMax();
-      void reloadSignalServerPrefs();
-      void reloadMoreReferenceLinksPref();
-      void reloadMainEntryPref();
-      void reloadAppIconPref();
-      void reloadTabBarOpacityPref();
-    }, [
-      reloadPrefs,
-      reloadQuotesListLimits,
-      reloadQuotesSegmentOrder,
-      reloadQuotesChangeColorConvention,
-      reloadNewsSegmentOrder,
-      reloadNewsHashtagDisplayMax,
-      reloadSignalServerPrefs,
-      reloadMoreReferenceLinksPref,
-      reloadMainEntryPref,
-      reloadAppIconPref,
-      reloadTabBarOpacityPref,
-    ]),
+      if (embedded) return;
+      reloadAllSettingsPrefs();
+    }, [embedded, reloadAllSettingsPrefs]),
   );
+
+  useEffect(() => {
+    if (!embedded) return;
+    reloadAllSettingsPrefs();
+  }, [embedded, reloadAllSettingsPrefs]);
 
   const onClearAllCaches = () => {
     clearYoutubeCache();
@@ -1311,31 +1318,37 @@ clearCalendarCache();
     /** 상단 edge 없음 — 스택 헤더가 이미 안전 영역을 처리해 `edges.top`을 쓰면 헤더 아래 빈 여백이 커짐 */
     <SafeAreaView style={styles.safe} edges={[]}>
       {isFocused ? <OtaUpdateBanner /> : null}
-      <View style={styles.tabBar}>
-        {SETTINGS_TABS.map((item) => {
-          const selected = tab === item.key;
-          return (
-            <Pressable
-              key={item.key}
-              onPress={() => setTab(item.key)}
-              style={[styles.tabBtn, selected && styles.tabBtnActive]}
-              accessibilityRole="tab"
-              accessibilityState={{ selected }}>
-              <Text
-                style={[styles.tabText, selected && styles.tabTextActive]}
-                numberOfLines={1}>
-                {t(item.labelId)}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {!embedded && !useTwoPane ? (
+        <View style={styles.tabBar}>
+          {SETTINGS_TABS.map((item) => {
+            const selected = selectedTab === item.key;
+            return (
+              <Pressable
+                key={item.key}
+                onPress={() => setTab(item.key)}
+                style={[styles.tabBtn, selected && styles.tabBtnActive]}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}>
+                <Text
+                  style={[styles.tabText, selected && styles.tabTextActive]}
+                  numberOfLines={1}>
+                  {t(item.labelId)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
       <ScrollView
         style={styles.scrollFlex}
-        contentContainerStyle={[styles.scroll, { paddingBottom: scrollContentBottomPad }]}
+        contentContainerStyle={[
+          styles.scroll,
+          embedded && styles.scrollEmbedded,
+          { paddingBottom: scrollContentBottomPad },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
-        {tab === 'quotes' ? (
+        {selectedTab === 'quotes' ? (
           <>
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsQuotesChangeColorKicker')}</Text>
@@ -1498,7 +1511,7 @@ clearCalendarCache();
           </>
         ) : null}
 
-        {tab === 'news' ? (
+        {selectedTab === 'news' ? (
           <>
             <Text style={styles.lead}>{t('settingsNewsTabLead')}</Text>
 
@@ -1628,7 +1641,7 @@ clearCalendarCache();
           </>
         ) : null}
 
-        {tab === 'notifications' ? (
+        {selectedTab === 'notifications' ? (
           <>
             <Text style={styles.lead}>{t('settingsNotificationsLead')}</Text>
             {!prefsReady ? (
@@ -1707,7 +1720,7 @@ clearCalendarCache();
           </>
         ) : null}
 
-        {tab === 'server' ? (
+        {selectedTab === 'server' ? (
           <>
             <View style={styles.displayCard}>
               <Text
@@ -1779,7 +1792,7 @@ clearCalendarCache();
           </>
         ) : null}
 
-        {tab === 'display' ? (
+        {selectedTab === 'display' ? (
           <>
             <Text style={styles.lead}>{t('settingsThemeLead')}</Text>
 
@@ -2225,8 +2238,14 @@ clearCalendarCache();
     </SafeAreaView>
   );
 
-  return useIpadSidebar ? (
-    <IpadSidebarScreen title={t('screenSettings')} backHref="/(tabs)/more">
+  return embedded ? (
+    screen
+  ) : useIpadSidebar ? (
+    <IpadSidebarScreen
+      title={t(
+        SETTINGS_TABS.find((item) => item.key === selectedTab)?.labelId ?? 'screenSettings',
+      )}
+      backHref={params.from === 'more' ? '/(tabs)/more' : '/(tabs)/news'}>
       {screen}
     </IpadSidebarScreen>
   ) : (

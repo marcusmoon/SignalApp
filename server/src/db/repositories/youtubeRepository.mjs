@@ -54,17 +54,15 @@ export async function queryPublicYoutubeRows(options = {}) {
     )`);
   }
   const sort = cleanText(options.sort) === 'popular' ? 'popular' : 'latest';
+  const popularBucketClause = (paramIndex) => `(
+    payload->>'sortBucket' = $${paramIndex}
+    OR COALESCE(payload->'sortBuckets', '[]'::jsonb) @> to_jsonb($${paramIndex}::text)
+  )`;
   let finalWhere = where;
   let finalParams = [...params];
   if (sort === 'popular') {
     const bucketParams = [...params, sort];
-    const bucketWhere = [
-      ...where,
-      `(
-        payload->>'sortBucket' = $${bucketParams.length}
-        OR jsonb_exists(COALESCE(payload->'sortBuckets', '[]'::jsonb), $${bucketParams.length})
-      )`,
-    ];
+    const bucketWhere = [...where, popularBucketClause(bucketParams.length)];
     const bucketExists = await queryKysely(
       `
         SELECT 1

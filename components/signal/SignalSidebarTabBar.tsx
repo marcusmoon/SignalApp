@@ -1,7 +1,7 @@
 /**
  * iPad 전용 좌측 사이드바 내비게이션.
- * - 메인 탭(뉴스·공시·시그널·시세·더보기)을 세로로 표시
- * - 더보기 하위 메뉴와 계정 진입점을 iPad에 맞게 분리
+ * - 메인 탭(뉴스·공시·시그널·시세·유튜브·설정·더보기)을 세로로 표시
+ * - 설정·더보기 하위 메뉴와 계정 진입점을 iPad에 맞게 분리
  */
 import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -9,42 +9,94 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SIDEBAR_WIDTH } from '@/constants/responsiveLayout';
+import { isSettingsTab, SETTINGS_TABS, type SettingsTab } from '@/constants/settingsTabs';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useIpadSidebarNav, type YoutubeSortKey } from '@/contexts/IpadSidebarNavContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import type { MessageId } from '@/locales/messages';
 
 type TabDef = {
   name: string;
   route: string;
-  icon: 'newspaper' | 'file-alt' | 'highlighter' | 'chart-line' | 'th-large';
+  icon: 'newspaper' | 'file-alt' | 'highlighter' | 'chart-line' | 'youtube' | 'cog' | 'th-large';
   labelId: MessageId;
-  dotColor?: string | null;
 };
 
-type MoreSubDef = {
-  key: 'youtube' | 'settings' | 'quick';
+type SidebarSubDef = {
+  key: string;
+  kind: 'settings' | 'navigate' | 'youtube';
   route: string;
-  icon: 'youtube' | 'cog' | 'external-link-alt';
+  icon:
+    | 'youtube'
+    | 'external-link-alt'
+    | 'palette'
+    | 'bell'
+    | 'newspaper'
+    | 'chart-line'
+    | 'server'
+    | 'list'
+    | 'fire';
   labelId: MessageId;
   params?: Record<string, string>;
 };
 
 const SIDEBAR_TABS: TabDef[] = [
-  { name: 'news',        route: '/(tabs)/news',        icon: 'newspaper',   labelId: 'tabNews' },
-  { name: 'disclosures', route: '/(tabs)/disclosures', icon: 'file-alt',    labelId: 'tabDisclosures' },
-  { name: 'signal',      route: '/(tabs)/signal',      icon: 'highlighter', labelId: 'tabSignal' },
-  { name: 'quotes',      route: '/(tabs)/quotes',      icon: 'chart-line',  labelId: 'tabQuotes' },
-  { name: 'more',        route: '/(tabs)/more',        icon: 'th-large',    labelId: 'tabMore' },
+  { name: 'news', route: '/(tabs)/news', icon: 'newspaper', labelId: 'tabNews' },
+  { name: 'disclosures', route: '/(tabs)/disclosures', icon: 'file-alt', labelId: 'tabDisclosures' },
+  { name: 'signal', route: '/(tabs)/signal', icon: 'highlighter', labelId: 'tabSignal' },
+  { name: 'quotes', route: '/(tabs)/quotes', icon: 'chart-line', labelId: 'tabQuotes' },
+  { name: 'youtube', route: '/(tabs)/youtube', icon: 'youtube', labelId: 'tabYoutube' },
+  { name: 'settings', route: '/settings', icon: 'cog', labelId: 'screenSettings' },
+  { name: 'more', route: '/(tabs)/more', icon: 'th-large', labelId: 'tabMore' },
 ];
 
-const MORE_SUB_TABS: MoreSubDef[] = [
-  { key: 'youtube', route: '/(tabs)/youtube', icon: 'youtube', labelId: 'tabYoutube', params: { from: 'more' } },
-  { key: 'settings', route: '/settings', icon: 'cog', labelId: 'screenSettings', params: { from: 'more' } },
-  { key: 'quick', route: '/(tabs)/more', icon: 'external-link-alt', labelId: 'moreRefLinksKicker', params: { section: 'quick' } },
+const YOUTUBE_SUB_TABS: SidebarSubDef[] = [
+  {
+    key: 'latest',
+    kind: 'youtube',
+    route: '/(tabs)/youtube',
+    icon: 'list',
+    labelId: 'feedWatchFilterAll',
+  },
+  {
+    key: 'popular',
+    kind: 'youtube',
+    route: '/(tabs)/youtube',
+    icon: 'fire',
+    labelId: 'youtubeSortPopular',
+  },
 ];
 
-const MORE_AUX_PATHS = ['/settings', '/alerts', '/calendar', '/youtube'];
+const SETTINGS_SUB_TABS: SidebarSubDef[] = SETTINGS_TABS.map((item) => ({
+  key: item.key,
+  kind: 'settings',
+  route: '/settings',
+  icon:
+    item.key === 'display'
+      ? 'palette'
+      : item.key === 'notifications'
+        ? 'bell'
+        : item.key === 'news'
+          ? 'newspaper'
+          : item.key === 'quotes'
+            ? 'chart-line'
+            : 'server',
+  labelId: item.labelId,
+}));
+
+const MORE_SUB_TABS: SidebarSubDef[] = [
+  {
+    key: 'quick',
+    kind: 'navigate',
+    route: '/(tabs)/more',
+    icon: 'external-link-alt',
+    labelId: 'moreRefLinksKicker',
+    params: { section: 'quick' },
+  },
+];
+
+const MORE_AUX_PATHS = ['/alerts', '/calendar'];
 
 type Props = {
   newsHasUnread?: boolean;
@@ -61,30 +113,112 @@ export function SignalSidebarTabBar({
   const { t } = useLocale();
   const router = useRouter();
   const pathname = usePathname();
-  const params = useLocalSearchParams<{ section?: string }>();
+  const params = useLocalSearchParams<{ section?: string; tab?: string }>();
   const insets = useSafeAreaInsets();
   const { subTabs } = useSidebarSubTabs();
+  const ipadNav = useIpadSidebarNav();
 
-  // 현재 활성 탭 이름 추출
-  const accountActive = pathname.startsWith('/account');
+  const accountActive = pathname.startsWith('/account') || ipadNav.isAccountPaneActive;
+  const settingsTabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+  const activeSettingsSubKey: SettingsTab | null = ipadNav.isSettingsPaneActive
+    ? ipadNav.settingsTab
+    : pathname.startsWith('/settings')
+      ? isSettingsTab(settingsTabParam)
+        ? settingsTabParam
+        : 'display'
+      : null;
+
   const activeTabName = accountActive
     ? null
-    : MORE_AUX_PATHS.some((path) => pathname.startsWith(path))
-    ? 'more'
-    : SIDEBAR_TABS.find((tab) =>
-        pathname.startsWith(`/${tab.name}`) || pathname === tab.route.replace('/(tabs)', ''),
-      )?.name ?? 'news';
-  const activeMoreSubKey: MoreSubDef['key'] | null = pathname.startsWith('/youtube')
-    ? 'youtube'
-    : pathname.startsWith('/settings')
+    : ipadNav.isSettingsPaneActive
       ? 'settings'
-      : activeTabName === 'more' && params.section === 'quick'
-        ? 'quick'
-        : activeTabName === 'more'
-          ? 'quick'
-          : null;
+      : pathname.startsWith('/settings')
+      ? 'settings'
+      : MORE_AUX_PATHS.some((path) => pathname.startsWith(path))
+        ? 'more'
+        : SIDEBAR_TABS.find(
+            (tab) =>
+              pathname.startsWith(`/${tab.name}`) || pathname === tab.route.replace('/(tabs)', ''),
+          )?.name ?? 'news';
+
+  const activeMoreSubKey =
+    activeTabName === 'more' && (params.section === 'quick' || !params.section) ? 'quick' : null;
+  const activeYoutubeSubKey: YoutubeSortKey | null =
+    activeTabName === 'youtube' && ipadNav.isAvailable ? ipadNav.youtubeSort : null;
 
   const styles = makeStyles(theme, scaleFont, insets.bottom);
+
+  const navigateMainTab = (tab: TabDef) => {
+    if (tab.name === 'settings') {
+      if (ipadNav.isAvailable) {
+        ipadNav.showSettings('display');
+        return;
+      }
+      router.navigate({
+        pathname: '/settings',
+        params: { from: 'sidebar', tab: 'display' },
+      } as never);
+      return;
+    }
+    if (tab.name === 'youtube') {
+      if (ipadNav.isAvailable) {
+        ipadNav.showYoutubeTab('latest');
+      }
+      ipadNav.showTabs();
+      router.navigate(tab.route as Parameters<typeof router.navigate>[0]);
+      return;
+    }
+    ipadNav.showTabs();
+    router.navigate(tab.route as Parameters<typeof router.navigate>[0]);
+  };
+
+  const renderSubTabs = (items: SidebarSubDef[], activeKey: string | null) => (
+    <View style={styles.subTabList}>
+      {items.map((sub) => {
+        const subActive = activeKey === sub.key;
+        return (
+          <Pressable
+            key={sub.key}
+            style={({ pressed }) => [
+              styles.subTabItem,
+              subActive && styles.subTabItemActive,
+              pressed && styles.subTabItemPressed,
+            ]}
+            onPress={() => {
+              if (sub.kind === 'settings' && ipadNav.isAvailable) {
+                ipadNav.showSettings(sub.key as SettingsTab);
+                return;
+              }
+              if (sub.kind === 'youtube' && ipadNav.isAvailable) {
+                ipadNav.showYoutubeTab(sub.key as YoutubeSortKey);
+                router.navigate(sub.route as Parameters<typeof router.navigate>[0]);
+                return;
+              }
+              ipadNav.showTabs();
+              router.navigate(
+                sub.params
+                  ? ({ pathname: sub.route, params: sub.params } as Parameters<typeof router.navigate>[0])
+                  : (sub.route as Parameters<typeof router.navigate>[0]),
+              );
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: subActive }}>
+            <View style={styles.subIconWrap}>
+              <FontAwesome5
+                name={sub.icon}
+                size={12}
+                color={subActive ? theme.green : theme.textDim}
+                solid
+              />
+            </View>
+            <Text style={[styles.subTabLabel, subActive && styles.subTabLabelActive]} numberOfLines={1}>
+              {t(sub.labelId)}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
 
   return (
     <View style={styles.sidebar}>
@@ -108,7 +242,7 @@ export function SignalSidebarTabBar({
                     isActive && styles.tabItemActive,
                     pressed && styles.tabItemPressed,
                   ]}
-                  onPress={() => router.navigate(tab.route as Parameters<typeof router.navigate>[0])}
+                  onPress={() => navigateMainTab(tab)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isActive }}>
                   <View style={styles.iconWrap}>
@@ -120,54 +254,24 @@ export function SignalSidebarTabBar({
                     />
                     {hasDot ? <View style={styles.dot} /> : null}
                   </View>
-                  <Text
-                    style={[styles.tabLabel, isActive && styles.tabLabelActive]}
-                    numberOfLines={1}>
+                  <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]} numberOfLines={1}>
                     {t(tab.labelId)}
                   </Text>
                 </Pressable>
 
-                {isActive && tab.name === 'more' ? (
-                  <View style={styles.subTabList}>
-                    {MORE_SUB_TABS.map((sub) => {
-                      const subActive = activeMoreSubKey === sub.key;
-                      return (
-                        <Pressable
-                          key={sub.key}
-                          style={({ pressed }) => [
-                            styles.subTabItem,
-                            subActive && styles.subTabItemActive,
-                            pressed && styles.subTabItemPressed,
-                          ]}
-                          onPress={() =>
-                            router.navigate(
-                              sub.params
-                                ? ({ pathname: sub.route, params: sub.params } as Parameters<typeof router.navigate>[0])
-                                : (sub.route as Parameters<typeof router.navigate>[0]),
-                            )
-                          }
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: subActive }}>
-                          <View style={styles.subIconWrap}>
-                            <FontAwesome5
-                              name={sub.icon}
-                              size={12}
-                              color={subActive ? theme.green : theme.textDim}
-                              solid
-                            />
-                          </View>
-                          <Text
-                            style={[styles.subTabLabel, subActive && styles.subTabLabelActive]}
-                            numberOfLines={1}>
-                            {t(sub.labelId)}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                ) : null}
+                {isActive && tab.name === 'settings'
+                  ? renderSubTabs(SETTINGS_SUB_TABS, activeSettingsSubKey)
+                  : null}
+                {isActive && tab.name === 'youtube'
+                  ? renderSubTabs(YOUTUBE_SUB_TABS, activeYoutubeSubKey)
+                  : null}
+                {isActive && tab.name === 'more' ? renderSubTabs(MORE_SUB_TABS, activeMoreSubKey) : null}
 
-                {isActive && tab.name !== 'more' && subTabs.length > 0 ? (
+                {isActive &&
+                tab.name !== 'more' &&
+                tab.name !== 'settings' &&
+                tab.name !== 'youtube' &&
+                subTabs.length > 0 ? (
                   <View style={styles.subTabList}>
                     {subTabs.map((sub) => (
                       <Pressable
@@ -202,7 +306,13 @@ export function SignalSidebarTabBar({
             accountActive && styles.accountButtonActive,
             pressed && styles.tabItemPressed,
           ]}
-          onPress={() => router.navigate({ pathname: '/account', params: { from: 'more' } } as never)}
+          onPress={() => {
+            if (ipadNav.isAvailable) {
+              ipadNav.showAccount();
+              return;
+            }
+            router.navigate({ pathname: '/account', params: { from: 'sidebar' } } as never);
+          }}
           accessibilityRole="button"
           accessibilityState={{ selected: accountActive }}
           accessibilityLabel={t('screenAccount')}>

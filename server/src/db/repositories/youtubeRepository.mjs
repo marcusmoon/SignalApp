@@ -54,9 +54,10 @@ export async function queryPublicYoutubeRows(options = {}) {
     )`);
   }
   const sort = cleanText(options.sort) === 'popular' ? 'popular' : 'latest';
+  // ? 연산자: JSONB 배열에서 문자열 원소 존재 여부 체크 (텍스트 파라미터 사용, @> 방식보다 안전)
   const popularBucketClause = (paramIndex) => `(
     payload->>'sortBucket' = $${paramIndex}
-    OR COALESCE(payload->'sortBuckets', '[]'::jsonb) @> to_jsonb($${paramIndex}::text)
+    OR COALESCE(payload->'sortBuckets', '[]'::jsonb) ? $${paramIndex}::text
   )`;
   let finalWhere = where;
   let finalParams = [...params];

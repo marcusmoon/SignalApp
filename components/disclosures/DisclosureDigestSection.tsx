@@ -1,26 +1,55 @@
 /**
- * 공시 탭 상단 - US/Korea 주요 이슈 다이제스트 섹션
+ * 공시 탭 상단 - 뉴스 주요 이슈(DigestPager)와 동일한 레이아웃
  */
-import { memo, useCallback, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  GestureResponderEvent,
+  LayoutAnimation,
+  Linking,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  UIManager,
+  View,
+} from 'react-native';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
+
+const TAP_MOVE_THRESHOLD = 8;
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const EXPAND_LAYOUT = LayoutAnimation.create(180, LayoutAnimation.Types.easeOut, LayoutAnimation.Properties.opacity);
 
 function relativeTime(dateStr: string | null, locale: string): string {
   if (!dateStr) return '';
   try {
     const diff = Date.now() - new Date(dateStr).getTime();
     const minutes = Math.floor(diff / 60_000);
-    if (minutes < 1) return locale === 'ko' ? '방금' : 'just now';
+    if (minutes < 1) {
+      return locale === 'ko' ? '방금' : locale === 'ja' ? 'たった今' : 'just now';
+    }
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
     if (locale === 'ko') {
       if (minutes < 60) return `${minutes}분 전`;
       if (hours < 24) return `${hours}시간 전`;
       return `${days}일 전`;
+    }
+    if (locale === 'ja') {
+      if (minutes < 60) return `${minutes}分前`;
+      if (hours < 24) return `${hours}時間前`;
+      return `${days}日前`;
     }
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
@@ -30,98 +59,127 @@ function relativeTime(dateStr: string | null, locale: string): string {
   }
 }
 
-function marketLabel(market: string, locale: string): string {
-  if (market === 'kr') return locale === 'ko' ? '한국 공시' : 'Korea';
-  return locale === 'ko' ? '미국 공시' : 'US';
+function marketChipLabel(market: string, locale: string): string {
+  if (market === 'kr') return locale === 'ko' ? '한국' : locale === 'ja' ? '韓国' : 'Korea';
+  return locale === 'ko' ? '미국' : locale === 'ja' ? '米国' : 'US';
 }
 
 type DigestCardProps = {
   item: SignalApiDisclosureDigestItem;
   isExpanded: boolean;
   onToggle: (id: string) => void;
+  styles: ReturnType<typeof makeStyles>;
+  theme: AppTheme;
 };
 
-const DigestCard = memo(function DigestCard({ item, isExpanded, onToggle }: DigestCardProps) {
-  const { theme, scaleFont } = useSignalTheme();
-  const { locale } = useLocale();
-  const s = makeStyles(theme, scaleFont);
+const DigestCard = memo(function DigestCard({
+  item,
+  isExpanded,
+  onToggle,
+  styles,
+  theme,
+}: DigestCardProps) {
+  const { t, locale } = useLocale();
+  const pressStartRef = useRef<{ x: number; y: number } | null>(null);
+  const summaryText = t('disclosuresDigestSummary', {
+    count: String(item.count),
+    symbols: String(item.symbols.length),
+  });
+  const relativeLabel = item.generatedAt ? relativeTime(item.generatedAt, locale) : '';
+  const topicChips = [
+    ...new Set([
+      marketChipLabel(item.market, locale),
+      ...item.symbols.slice(0, 3),
+      ...item.forms.slice(0, 2),
+    ]),
+  ].filter(Boolean);
 
-  const relLabel = relativeTime(item.generatedAt, locale);
-  const mktLabel = marketLabel(item.market, locale);
+  const handlePressIn = useCallback((event: GestureResponderEvent) => {
+    pressStartRef.current = {
+      x: event.nativeEvent.pageX,
+      y: event.nativeEvent.pageY,
+    };
+  }, []);
 
-  const handleToggle = useCallback(() => onToggle(item.id), [item.id, onToggle]);
+  const handlePress = useCallback(
+    (event: GestureResponderEvent) => {
+      const start = pressStartRef.current;
+      pressStartRef.current = null;
+      if (start) {
+        const dx = Math.abs(event.nativeEvent.pageX - start.x);
+        const dy = Math.abs(event.nativeEvent.pageY - start.y);
+        if (dx > TAP_MOVE_THRESHOLD || dy > TAP_MOVE_THRESHOLD) return;
+      }
+      onToggle(item.id);
+    },
+    [item.id, onToggle],
+  );
 
   return (
     <Pressable
-      onPress={handleToggle}
-      style={({ pressed }) => [s.card, pressed && s.cardPressed]}
+      onPress={handlePress}
+      onPressIn={handlePressIn}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       accessibilityRole="button"
+      accessibilityLabel={item.title}
       accessibilityState={{ expanded: isExpanded }}>
-      {/* 헤더 */}
-      <View style={s.cardHeader}>
-        <View style={s.marketBadge}>
-          <Text style={s.marketBadgeText}>{mktLabel}</Text>
+      {topicChips.length > 0 ? (
+        <View style={styles.badgeRow}>
+          {topicChips.map((chip, index) => (
+            <Text key={`${chip}-${index}`} style={styles.topicChip} numberOfLines={1}>
+              {chip}
+            </Text>
+          ))}
         </View>
-        {item.count > 1 ? (
-          <Text style={s.countLabel}>{item.count}건</Text>
-        ) : null}
-        {relLabel ? <Text style={s.timeLabel}>{relLabel}</Text> : null}
-        <FontAwesome5
-          name={isExpanded ? 'chevron-up' : 'chevron-down'}
-          size={10}
-          color={theme.textDim}
-          style={s.chevron}
-        />
-      </View>
+      ) : null}
 
-      {/* 제목 */}
-      <Text style={s.title} numberOfLines={isExpanded ? undefined : 2}>
+      <Text style={styles.title} numberOfLines={2}>
         {item.title}
       </Text>
 
-      {/* 요약 */}
-      {item.summary ? (
-        <Text style={s.summary} numberOfLines={isExpanded ? undefined : 1}>
-          {item.summary}
-        </Text>
-      ) : null}
-
-      {/* 심볼 태그 */}
-      {item.symbols.length > 0 ? (
-        <View style={s.tags}>
-          {item.symbols.slice(0, 4).map((sym) => (
-            <View key={sym} style={s.tag}>
-              <Text style={s.tagText}>{sym}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      {/* 확장: 출처 목록 */}
       {isExpanded && item.sourceRefs.length > 0 ? (
-        <View style={s.sourceList}>
-          {item.sourceRefs.slice(0, 6).map((ref) => (
-            <Pressable
-              key={ref.id}
-              style={({ pressed }) => [s.sourceRow, pressed && s.sourceRowPressed]}
-              onPress={() => ref.url && Linking.openURL(ref.url).catch(() => {})}
-              accessibilityRole="link">
-              <View style={s.sourceDot} />
-              <View style={s.sourceInfo}>
-                <Text style={s.sourceTitle} numberOfLines={2}>
-                  {ref.title || ref.companyName}
-                </Text>
-                {ref.formType ? (
-                  <Text style={s.sourceForm}>{ref.formType}</Text>
-                ) : null}
-              </View>
-              {ref.url ? (
-                <FontAwesome5 name="external-link-alt" size={10} color={theme.textDim} />
-              ) : null}
-            </Pressable>
-          ))}
+        <View style={styles.sourceList}>
+          {item.sourceRefs.slice(0, 5).map((ref) => {
+            const refUrl = ref.url || undefined;
+            return (
+              <Pressable
+                key={ref.id}
+                onPress={
+                  refUrl
+                    ? (e) => {
+                        e.stopPropagation?.();
+                        void Linking.openURL(refUrl).catch(() => null);
+                      }
+                    : undefined
+                }
+                style={({ pressed }) => [styles.sourceRow, pressed && refUrl && styles.sourceRowPressed]}
+                accessibilityRole={refUrl ? 'link' : 'text'}>
+                <View style={styles.sourceTextCol}>
+                  <Text
+                    style={[styles.sourceTitle, refUrl && styles.sourceTitleLink]}
+                    numberOfLines={2}>
+                    {ref.title || ref.companyName}
+                  </Text>
+                  {ref.formType || ref.symbol ? (
+                    <Text style={styles.sourceName} numberOfLines={1}>
+                      {[ref.symbol, ref.formType].filter(Boolean).join(' · ')}
+                    </Text>
+                  ) : null}
+                </View>
+                {refUrl ? <FontAwesome name="external-link" size={10} color={theme.accentBlue} /> : null}
+              </Pressable>
+            );
+          })}
         </View>
       ) : null}
+
+      <View style={styles.footerRow}>
+        <Text style={styles.footer}>
+          {summaryText}
+          {relativeLabel ? ` · ${relativeLabel}` : ''}
+        </Text>
+        <FontAwesome name={isExpanded ? 'chevron-up' : 'chevron-down'} size={11} color={theme.textDim} />
+      </View>
     </Pressable>
   );
 });
@@ -133,11 +191,42 @@ type Props = {
 
 export function DisclosureDigestSection({ items, loading }: Props) {
   const { theme, scaleFont } = useSignalTheme();
-  const { locale } = useLocale();
-  const s = makeStyles(theme, scaleFont);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const pageWidth = Math.max(0, containerWidth || 0);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [dotIndex, setDotIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
-  const handleToggle = useCallback((id: string) => {
+  const syncPageIndex = useCallback(
+    (offsetX: number, resetExpand: boolean) => {
+      if (pageWidth <= 0) return;
+      const index = Math.max(0, Math.min(Math.round(offsetX / pageWidth), items.length - 1));
+      setPageIndex(index);
+      setDotIndex(index);
+      if (resetExpand) setExpandedId(null);
+    },
+    [pageWidth, items.length],
+  );
+
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (pageWidth <= 0) return;
+      const index = Math.max(0, Math.min(Math.round(e.nativeEvent.contentOffset.x / pageWidth), items.length - 1));
+      setDotIndex((prev) => (prev === index ? prev : index));
+    },
+    [pageWidth, items.length],
+  );
+
+  const handleScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      syncPageIndex(e.nativeEvent.contentOffset.x, true);
+    },
+    [syncPageIndex],
+  );
+
+  const toggleExpand = useCallback((id: string) => {
+    LayoutAnimation.configureNext(EXPAND_LAYOUT);
     setExpandedId((prev) => (prev === id ? null : id));
   }, []);
 
@@ -145,166 +234,166 @@ export function DisclosureDigestSection({ items, loading }: Props) {
   if (items.length === 0) return null;
 
   return (
-    <View style={s.section}>
-      {/* 섹션 헤더 */}
-      <View style={s.sectionHeader}>
-        <FontAwesome5 name="fire" size={12} color={theme.green} solid />
-        <Text style={s.sectionTitle}>
-          {locale === 'ko' ? '주요 공시' : 'Key Filings'}
-        </Text>
-      </View>
-
-      {/* 가로 스크롤 카드 */}
+    <View
+      style={styles.container}
+      onLayout={(event) => {
+        const next = Math.max(0, Math.round(event.nativeEvent.layout.width));
+        setContainerWidth((prev) => (prev === next ? prev : next));
+      }}>
       <ScrollView
         horizontal
+        nestedScrollEnabled
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={s.scrollContent}>
-        {items.map((item) => (
-          <DigestCard
-            key={item.id}
-            item={item}
-            isExpanded={expandedId === item.id}
-            onToggle={handleToggle}
-          />
-        ))}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        onMomentumScrollEnd={handleScrollEnd}
+        onScrollEndDrag={handleScrollEnd}
+        directionalLockEnabled
+        decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
+        snapToInterval={pageWidth > 0 ? pageWidth : undefined}
+        snapToAlignment="start"
+        disableIntervalMomentum
+        keyboardShouldPersistTaps="handled">
+        {pageWidth > 0 &&
+          items.map((item, index) => {
+            const isExpanded = expandedId === item.id && pageIndex === index;
+            return (
+              <View key={item.id} style={[styles.page, { width: pageWidth }]}>
+                <DigestCard
+                  item={item}
+                  isExpanded={isExpanded}
+                  onToggle={toggleExpand}
+                  styles={styles}
+                  theme={theme}
+                />
+              </View>
+            );
+          })}
       </ScrollView>
+
+      {items.length > 1 ? (
+        <View style={styles.dotsRow}>
+          {items.map((_, i) => (
+            <View key={i} style={[styles.dot, i === dotIndex && styles.dotActive]} />
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
 
-function makeStyles(
-  theme: ReturnType<typeof useSignalTheme>['theme'],
-  sf: (n: number) => number,
-) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
-    section: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-      paddingBottom: 4,
+    container: {
+      marginBottom: 8,
     },
-    sectionHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 6,
-    },
-    sectionTitle: {
-      fontSize: sf(12),
-      fontWeight: '700',
-      color: theme.textDim,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-    scrollContent: {
-      paddingHorizontal: 12,
-      paddingBottom: 12,
+    page: {
       gap: 8,
     },
     card: {
-      width: 240,
-      backgroundColor: theme.bgElevated,
-      borderRadius: 12,
-      padding: 12,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border,
-    },
-    cardPressed: { opacity: 0.75 },
-    cardHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      paddingHorizontal: 13,
+      paddingVertical: 11,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.card,
       gap: 6,
-      marginBottom: 6,
+      shadowColor: '#000000',
+      shadowOpacity: 0.04,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 5 },
+      elevation: 1,
     },
-    marketBadge: {
-      backgroundColor: theme.greenDim,
-      borderRadius: 4,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
+    cardPressed: {
+      opacity: 0.88,
     },
-    marketBadgeText: {
-      fontSize: sf(10),
-      fontWeight: '700',
-      color: theme.green,
-    },
-    countLabel: {
-      fontSize: sf(11),
-      color: theme.textDim,
-    },
-    timeLabel: {
-      fontSize: sf(11),
-      color: theme.textDim,
-      marginLeft: 'auto',
-    },
-    chevron: {
-      marginLeft: 4,
-    },
-    title: {
-      fontSize: sf(13),
-      fontWeight: '700',
-      color: theme.text,
-      lineHeight: sf(18),
-      marginBottom: 4,
-    },
-    summary: {
-      fontSize: sf(12),
-      color: theme.textDim,
-      lineHeight: sf(16),
-      marginBottom: 6,
-    },
-    tags: {
+    badgeRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 4,
-      marginTop: 2,
+      gap: 5,
+      alignItems: 'center',
     },
-    tag: {
-      backgroundColor: theme.card,
-      borderRadius: 4,
-      paddingHorizontal: 6,
+    topicChip: {
+      overflow: 'hidden',
+      paddingHorizontal: 7,
       paddingVertical: 2,
-      borderWidth: StyleSheet.hairlineWidth,
+      borderRadius: 999,
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
       borderColor: theme.border,
-    },
-    tagText: {
-      fontSize: sf(11),
+      fontSize: sf(10),
+      lineHeight: sf(15),
+      fontWeight: '800',
       color: theme.textMuted,
-      fontWeight: '600',
+    },
+    title: {
+      fontSize: sf(15),
+      lineHeight: sf(21),
+      minHeight: sf(21) * 2,
+      fontWeight: '900',
+      color: theme.text,
+    },
+    footerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    footer: {
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '700',
+      color: theme.textDim,
+      flex: 1,
     },
     sourceList: {
-      marginTop: 8,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.border,
-      paddingTop: 8,
       gap: 6,
     },
     sourceRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 8,
+      gap: 6,
     },
-    sourceRowPressed: { opacity: 0.7 },
-    sourceDot: {
-      width: 4,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: theme.green,
-      marginTop: 5,
-      flexShrink: 0,
+    sourceRowPressed: {
+      opacity: 0.7,
     },
-    sourceInfo: {
+    sourceTextCol: {
       flex: 1,
+      gap: 1,
     },
     sourceTitle: {
       fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '700',
       color: theme.text,
-      lineHeight: sf(16),
     },
-    sourceForm: {
-      fontSize: sf(11),
-      color: theme.textDim,
-      marginTop: 1,
+    sourceTitleLink: {
+      color: theme.accentBlue,
+    },
+    sourceName: {
+      fontSize: sf(10),
+      lineHeight: sf(14),
+      fontWeight: '600',
+      color: theme.textMuted,
+    },
+    dotsRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 5,
+      marginTop: 10,
+    },
+    dot: {
+      width: 5,
+      height: 5,
+      borderRadius: 999,
+      backgroundColor: theme.border,
+    },
+    dotActive: {
+      width: 14,
+      height: 5,
+      borderRadius: 999,
+      backgroundColor: theme.green,
     },
   });
 }

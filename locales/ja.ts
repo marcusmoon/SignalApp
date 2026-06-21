@@ -87,6 +87,7 @@ export const ja = {
   ipadHomeLoadError: 'ホーム情報を読み込めませんでした。',
   screenSymbolDetail: '銘柄詳細',
   disclosuresFilterAll: 'すべて',
+  disclosuresDigestSummary: '開示 {{count}}件 · 銘柄 {{symbols}}件',
   disclosuresFilterUs: '米国 SEC',
   disclosuresFilterKr: '韓国 DART',
   disclosuresFilterWatch: 'ウォッチリスト',

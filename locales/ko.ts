@@ -85,6 +85,7 @@ export const ko = {
   ipadHomeLoadError: '홈 정보를 불러오지 못했습니다.',
   screenSymbolDetail: '종목 상세',
   disclosuresFilterAll: '전체',
+  disclosuresDigestSummary: '공시 {{count}}건 · 종목 {{symbols}}개',
   disclosuresFilterUs: '미국 SEC',
   disclosuresFilterKr: '한국 DART',
   disclosuresFilterWatch: '내 관심',

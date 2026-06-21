@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
@@ -16,7 +16,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { tabBarBottomInset } from '@/constants/tabBar';
-import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
+import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER, parseNewsSegmentKey, type NewsSegmentKey } from '@/constants/newsSegment';
 import { AdPlaceholder } from '@/components/signal/AdPlaceholder';
 import { NewsSourceFilterModal } from '@/components/signal/NewsSourceFilterModal';
 import {
@@ -139,6 +139,7 @@ function digestFromServer(item: SignalApiNewsDigestItem, rows: SignalApiNewsItem
 
 export default function FeedScreen() {
   const router = useRouter();
+  const routeParams = useLocalSearchParams<{ segment?: string }>();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeNewsStyles(theme, scaleFont), [theme, scaleFont]);
@@ -244,9 +245,12 @@ export default function FeedScreen() {
     return () => clearInterval(id);
   }, [locale]);
 
+  const segmentHydratedRef = useRef(false);
+
   useEffect(() => {
+    if (useTwoPane) return;
     void loadNewsSegment().then((s) => setSegment(s));
-  }, []);
+  }, [useTwoPane]);
 
   useEffect(() => {
     void loadNewsSegmentOrder().then((o) => setSegmentOrder(o));
@@ -1059,8 +1063,8 @@ export default function FeedScreen() {
   const selectAllWatchSymbols = useCallback(() => setWatchDraftSymbols([...watchSymbolOptions]), [watchSymbolOptions]);
   const clearAllWatchSymbols = useCallback(() => setWatchDraftSymbols([]), []);
 
-  const onPickSegment = useCallback((key: NewsSegmentKey) => {
-    if (segment === key) return;
+  const onPickSegment = useCallback((key: NewsSegmentKey, options?: { force?: boolean }) => {
+    if (!options?.force && segment === key) return;
     setLoading(true);
     setItems([]);
     setVideoItems([]);
@@ -1088,15 +1092,28 @@ export default function FeedScreen() {
     onPickSegment(next);
   }, [ipadSegmentOrder, onPickSegment, segment, useTwoPane]);
 
-  // iPad 사이드바 서브탭 등록
+  // iPad: 홈·사이드바에서 넘어온 세그먼트를 저장값보다 우선 적용
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane || !ipadNav.isAvailable) return;
+
+      const paramSegment = parseNewsSegmentKey(
+        Array.isArray(routeParams.segment) ? routeParams.segment[0] : routeParams.segment,
+      );
       const pending = ipadNav.takePendingNewsSegment();
-      if (pending && pending !== 'video') {
-        onPickSegment(pending);
+      const target = pending || paramSegment;
+
+      if (target && target !== 'video') {
+        segmentHydratedRef.current = true;
+        onPickSegment(target, { force: true });
+        return;
       }
-    }, [ipadNav, onPickSegment, useTwoPane]),
+
+      if (!segmentHydratedRef.current) {
+        segmentHydratedRef.current = true;
+        void loadNewsSegment().then((s) => setSegment(s));
+      }
+    }, [ipadNav, onPickSegment, routeParams.segment, useTwoPane]),
   );
 
   useFocusEffect(

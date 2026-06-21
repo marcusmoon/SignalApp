@@ -22,7 +22,6 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import type { SignalApiMarketBriefing, SignalApiNewsDigestItem } from '@/integrations/signal-api/types';
-import type { MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
 import type { CalendarEvent } from '@/types/signal';
 import { toYmd } from '@/utils/date';
@@ -84,14 +83,6 @@ function sortDayEvents(events: CalendarEvent[]): CalendarEvent[] {
       String(a.time || '').localeCompare(String(b.time || '')) ||
       a.title.localeCompare(b.title),
   );
-}
-
-function calendarTypeLabel(type: CalendarEvent['type'], t: (id: MessageId) => string): string {
-  if (type === 'earnings') return t('calendarTagEarnings');
-  if (type === 'fomc') return t('calendarTagFomc');
-  if (type === 'fed') return t('calendarTagFed');
-  if (type === 'holiday') return t('calendarTagHoliday');
-  return t('calendarTagMacro');
 }
 
 function briefingLeadText(briefing: SignalApiMarketBriefing): string {
@@ -197,7 +188,10 @@ export function IpadHomeScreen() {
   const goNews = useCallback(
     (segment: HomeDigestCategory) => {
       ipadNav.showNewsTab(segment);
-      router.navigate('/(tabs)/news' as never);
+      router.navigate({
+        pathname: '/(tabs)/news',
+        params: { segment },
+      } as never);
     },
     [ipadNav, router],
   );
@@ -356,16 +350,9 @@ export function IpadHomeScreen() {
                           ]}>
                           <Text style={styles.calendarTime}>{event.time || '—'}</Text>
                           <View style={styles.calendarBody}>
-                            <View style={styles.calendarTitleLine}>
-                              <View style={styles.calendarTypeTag}>
-                                <Text style={styles.calendarTypeTagText}>
-                                  {calendarTypeLabel(event.type, t)}
-                                </Text>
-                              </View>
-                              <Text style={styles.calendarTitle} numberOfLines={2}>
-                                {event.title}
-                              </Text>
-                            </View>
+                            <Text style={styles.calendarTitle} numberOfLines={2}>
+                              {event.title}
+                            </Text>
                             {event.country ? (
                               <Text style={styles.calendarMeta} numberOfLines={1}>
                                 {event.country}
@@ -481,7 +468,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingBottom: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
-      backgroundColor: theme.bgElevated,
+      backgroundColor: theme.greenDim,
       gap: 2,
     },
     sectionTitle: {
@@ -513,7 +500,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingBottom: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
-      backgroundColor: theme.bgElevated,
+      backgroundColor: theme.greenDim,
       gap: 2,
     },
     blockHeaderTitle: {
@@ -599,30 +586,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     calendarBody: {
       flex: 1,
       gap: 2,
-    },
-    calendarTitleLine: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      alignItems: 'flex-start',
-      gap: 6,
-    },
-    calendarTypeTag: {
-      borderRadius: 5,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-      paddingHorizontal: 5,
-      paddingVertical: 2,
-      marginTop: 1,
-    },
-    calendarTypeTagText: {
-      fontSize: sf(9),
-      fontWeight: '800',
-      color: theme.green,
+      justifyContent: 'center',
     },
     calendarTitle: {
-      flex: 1,
-      minWidth: 120,
       fontSize: sf(14),
       fontWeight: '700',
       color: theme.text,

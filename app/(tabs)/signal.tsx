@@ -129,17 +129,6 @@ export default function SignalScreen() {
     [t],
   );
 
-  const flatTabHint = useCallback(
-    (key: FlatTabKey) => {
-      if (key === 'us-overnight') return t('briefingSessionHintOvernight');
-      if (key === 'kr-morning')   return t('briefingSessionHintMorning');
-      if (key === 'kr-lunch')     return t('briefingSessionHintLunch');
-      if (key === 'kr-evening')   return t('briefingSessionHintEvening');
-      return null;
-    },
-    [t],
-  );
-
   const load = useCallback(async (): Promise<SignalApiMarketBriefing[]> => {
     if (!hasSignalApi()) {
       setError(t('errorSignalApiShort'));
@@ -436,9 +425,6 @@ export default function SignalScreen() {
               );
             })}
           </View>
-          {activeTabKey ? (
-            <Text style={styles.sessionHint}>{flatTabHint(activeTabKey)}</Text>
-          ) : null}
         </View>
       ) : null}
 
@@ -614,12 +600,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     sessionTabTextDisabled: {
       color: theme.textDim,
-    },
-    sessionHint: {
-      fontSize: sf(12),
-      fontWeight: '700',
-      color: theme.textMuted,
-      paddingHorizontal: 2,
     },
     emptyCard: {
       borderRadius: 18,

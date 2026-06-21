@@ -42,12 +42,11 @@ import { markDisclosureFeedSeen } from '@/services/disclosureUnreadPreference';
 import { formatRelativeFromIso } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
 
-type FilterKey = 'all' | 'us' | 'kr' | 'watch';
+type FilterKey = 'us' | 'kr' | 'watch';
 
-const FILTER_ORDER: FilterKey[] = ['all', 'us', 'kr', 'watch'];
+const FILTER_ORDER: FilterKey[] = ['us', 'kr', 'watch'];
 
 const FILTERS: { key: FilterKey; label: MessageId }[] = [
-  { key: 'all', label: 'disclosuresFilterAll' },
   { key: 'us', label: 'disclosuresFilterUs' },
   { key: 'kr', label: 'disclosuresFilterKr' },
   { key: 'watch', label: 'disclosuresFilterWatch' },
@@ -88,7 +87,7 @@ export default function DisclosuresScreen() {
   const { useTwoPane } = useResponsiveLayout();
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
-  const [filter, setFilter] = useState<FilterKey>('all');
+  const [filter, setFilter] = useState<FilterKey>('us');
   const [items, setItems] = useState<SignalApiDisclosure[]>([]);
   const [digestItems, setDigestItems] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [digestLoading, setDigestLoading] = useState(false);

@@ -19,6 +19,7 @@ import {
   findPollingJobLocks,
 } from './db/repositories/pollingJobLocksRepository.mjs';
 import {
+  listYoutubeVideoRows,
   queryPublicYoutubeChannelRows,
   queryPublicYoutubeRows,
 } from './db/repositories/youtubeRepository.mjs';
@@ -154,6 +155,11 @@ function dateOrNull(value) {
 function numberOrNull(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+function textArrayOrEmpty(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item || '').trim()).filter(Boolean);
 }
 
 function safeLimit(value, fallback = 30, max = 100) {
@@ -414,11 +420,31 @@ const collectionSpecs = [
     table: 'youtube_videos',
     pk: 'id',
     keyOf: (row) => row.id,
+    noPayload: true,
     columns: (row, index) => ({
       position: index,
+      provider: textOrNull(row.provider) || 'youtube',
+      provider_item_id: textOrNull(row.providerItemId || row.videoId),
+      video_id: textOrNull(row.videoId || row.providerItemId),
+      topic: textOrNull(row.topic),
+      title: textOrNull(row.title) || '',
       channel: textOrNull(row.channel),
+      channel_id: textOrNull(row.channelId),
+      channel_handle: textOrNull(row.channelHandle),
+      description: textOrNull(row.description) || '',
       published_at: isoOrNull(row.publishedAt),
+      duration: textOrNull(row.duration),
+      view_count: Number.isFinite(Number(row.viewCount)) ? Math.floor(Number(row.viewCount)) : 0,
+      thumbnail_url: textOrNull(row.thumbnailUrl),
       fetched_at: isoOrNull(row.fetchedAt),
+      sort_bucket: textOrNull(row.sortBucket),
+      sort_buckets: textArrayOrEmpty(
+        Array.isArray(row.sortBuckets) && row.sortBuckets.length > 0
+          ? row.sortBuckets
+          : row.sortBucket
+            ? [row.sortBucket]
+            : [],
+      ),
       updated_at: isoOrNull(row.updatedAt) || nowIso(),
     }),
   },
@@ -871,6 +897,11 @@ export async function queryPublicYoutube(options = {}) {
 
 export async function queryPublicYoutubeChannels() {
   return cachedPublicRead('publicYoutubeChannels', {}, queryPublicYoutubeChannelRows, 30000);
+}
+
+export async function listYoutubeVideos() {
+  await ensureSeeded();
+  return listYoutubeVideoRows();
 }
 
 export async function queryPublicMarketQuotes(options = {}) {

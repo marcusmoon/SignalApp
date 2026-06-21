@@ -3,6 +3,7 @@ import {
   ensureNewsSourcesFromItems,
   getPollingJob,
   listCollectionPayloads,
+  listYoutubeVideos,
   nowIso,
   patchCollectionPayload,
   patchPollingJob,
@@ -125,7 +126,7 @@ async function readJobContext(job) {
   if (provider === 'youtube') {
     const [appSettings, youtubeVideos] = await Promise.all([
       readSingletonPayload('appSettings'),
-      listCollectionPayloads('youtubeVideos'),
+      listYoutubeVideos(),
     ]);
     context.appSettings = appSettings || {};
     context.youtubeVideos = youtubeVideos;
@@ -234,7 +235,7 @@ async function saveDisclosureRows(rows) {
 }
 
 async function saveYoutubeRows(rows) {
-  const current = await listCollectionPayloads('youtubeVideos');
+  const current = await listYoutubeVideos();
   const changed = [];
   for (const row of rows) changed.push(upsertYoutubeVideo(current, row));
   if (changed.length > 0) await upsertCollectionRows('youtubeVideos', changed);

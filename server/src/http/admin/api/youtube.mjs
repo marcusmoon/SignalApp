@@ -1,4 +1,4 @@
-import { listCollectionPayloads, queryPublicYoutube, queryPublicYoutubeChannels, upsertCollectionRows } from '../../../db.mjs';
+import { listYoutubeVideos, queryPublicYoutube, queryPublicYoutubeChannels, upsertCollectionRows } from '../../../db.mjs';
 import { runPollingJob } from '../../../jobs/runner.mjs';
 import { fetchYoutubeVideosByIds } from '../../../providers/youtube/youtube.mjs';
 import { json, readBody } from '../../shared.mjs';
@@ -36,7 +36,7 @@ export async function handleAdminYoutubeRoutes({ req, res, url, pathname }) {
       return true;
     }
     const idSet = new Set(ids);
-    const videoIds = (await listCollectionPayloads('youtubeVideos'))
+    const videoIds = (await listYoutubeVideos())
       .filter((item) => idSet.has(item.id))
       .map((item) => item.videoId || item.providerItemId)
       .filter(Boolean);

@@ -3,12 +3,43 @@ import { queryKysely } from '../kysely/client.mjs';
 import { normalizeYoutubeHandle } from '../../youtubeCuration.mjs';
 import {
   cleanText,
-  numberSqlExpression,
   pageOptions,
   paginatedSqlRows,
   payloadFromRow,
   sqlStringList,
 } from './publicHelpers.mjs';
+
+const YOUTUBE_ROW_COLUMNS = `
+  id, position, channel, published_at, fetched_at, updated_at,
+  provider, provider_item_id, video_id, topic, title,
+  channel_id, channel_handle, description, duration,
+  view_count, thumbnail_url, sort_bucket, sort_buckets
+`;
+
+export function rowToYoutubeItem(row) {
+  if (!row) return null;
+  const sortBuckets = Array.isArray(row.sort_buckets) ? row.sort_buckets.filter(Boolean) : [];
+  return {
+    id: row.id,
+    provider: row.provider || 'youtube',
+    providerItemId: row.provider_item_id || row.video_id || null,
+    videoId: row.video_id || row.provider_item_id || null,
+    topic: row.topic || null,
+    title: row.title || '',
+    channel: row.channel || '',
+    channelId: row.channel_id || '',
+    channelHandle: row.channel_handle || null,
+    description: row.description || '',
+    publishedAt: row.published_at || null,
+    duration: row.duration || '',
+    viewCount: Number(row.view_count) || 0,
+    thumbnailUrl: row.thumbnail_url || null,
+    sortBucket: row.sort_bucket || undefined,
+    sortBuckets: sortBuckets.length > 0 ? sortBuckets : undefined,
+    fetchedAt: row.fetched_at || null,
+    updatedAt: row.updated_at || null,
+  };
+}
 
 function publicYoutube(item) {
   return {
@@ -30,6 +61,17 @@ function publicYoutube(item) {
   };
 }
 
+export async function listYoutubeVideoRows() {
+  const result = await queryKysely(
+    `
+      SELECT ${YOUTUBE_ROW_COLUMNS}
+      FROM youtube_videos
+      ORDER BY position ASC
+    `,
+  );
+  return result.rows.map(rowToYoutubeItem).filter(Boolean);
+}
+
 export async function queryPublicYoutubeRows(options = {}) {
   const { limit, offset } = pageOptions(options, 30);
   const params = [];
@@ -37,27 +79,26 @@ export async function queryPublicYoutubeRows(options = {}) {
   const channel = cleanText(options.channel).toLowerCase();
   if (channel) {
     params.push(`%${channel}%`);
-    where.push(`lower(COALESCE(channel, payload->>'channel', '')) LIKE $${params.length}`);
+    where.push(`lower(COALESCE(channel, '')) LIKE $${params.length}`);
   }
   const handles = sqlStringList(options.channelHandles).map((handle) => handle.toLowerCase());
   if (handles.length > 0) {
     params.push(handles);
-    where.push(`lower(COALESCE(payload->>'channelHandle', '')) = ANY($${params.length}::text[])`);
+    where.push(`lower(COALESCE(channel_handle, '')) = ANY($${params.length}::text[])`);
   }
   const q = cleanText(options.q).toLowerCase();
   if (q) {
     params.push(`%${q}%`);
     where.push(`(
-      lower(COALESCE(payload->>'title', '')) LIKE $${params.length}
-      OR lower(COALESCE(payload->>'description', '')) LIKE $${params.length}
-      OR lower(COALESCE(channel, payload->>'channel', '')) LIKE $${params.length}
+      lower(COALESCE(title, '')) LIKE $${params.length}
+      OR lower(COALESCE(description, '')) LIKE $${params.length}
+      OR lower(COALESCE(channel, '')) LIKE $${params.length}
     )`);
   }
   const sort = cleanText(options.sort) === 'popular' ? 'popular' : 'latest';
-  // ? 연산자: JSONB 배열에서 문자열 원소 존재 여부 체크 (텍스트 파라미터 사용, @> 방식보다 안전)
   const popularBucketClause = (paramIndex) => `(
-    payload->>'sortBucket' = $${paramIndex}
-    OR COALESCE(payload->'sortBuckets', '[]'::jsonb) ? $${paramIndex}::text
+    sort_bucket = $${paramIndex}
+    OR $${paramIndex} = ANY(sort_buckets)
   )`;
   let finalWhere = where;
   let finalParams = [...params];
@@ -78,11 +119,11 @@ export async function queryPublicYoutubeRows(options = {}) {
   }
   finalParams.push(limit + 1, offset);
   const order = sort === 'popular'
-    ? `ORDER BY ${numberSqlExpression(`payload->>'viewCount'`)} DESC, published_at DESC NULLS LAST`
-    : `ORDER BY published_at DESC NULLS LAST, fetched_at DESC NULLS LAST, id DESC`;
+    ? 'ORDER BY view_count DESC, published_at DESC NULLS LAST'
+    : 'ORDER BY published_at DESC NULLS LAST, fetched_at DESC NULLS LAST, id DESC';
   const result = await queryKysely(
     `
-      SELECT payload
+      SELECT ${YOUTUBE_ROW_COLUMNS}
       FROM youtube_videos
       ${finalWhere.length ? `WHERE ${finalWhere.join(' AND ')}` : ''}
       ${order}
@@ -92,8 +133,8 @@ export async function queryPublicYoutubeRows(options = {}) {
   );
   return paginatedSqlRows(
     result.rows.map((row) => {
-      const payload = payloadFromRow(row);
-      return { ...row, item: payload ? publicYoutube(payload) : null };
+      const item = rowToYoutubeItem(row);
+      return { ...row, item: item ? publicYoutube(item) : null };
     }),
     { limit, offset },
   );
@@ -116,24 +157,24 @@ export async function queryPublicYoutubeChannelRows() {
     .filter((c) => c.handle);
 
   const configuredKeys = new Set(catalog.map((c) => c.key).filter(Boolean));
-  const where = [`COALESCE(payload->>'channelHandle', '') <> ''`];
+  const where = [`COALESCE(channel_handle, '') <> ''`];
   const params = [];
   if (configuredKeys.size > 0) {
     params.push([...configuredKeys]);
-    where.push(`lower(COALESCE(payload->>'channelHandle', '')) = ANY($${params.length}::text[])`);
+    where.push(`lower(COALESCE(channel_handle, '')) = ANY($${params.length}::text[])`);
   }
 
   const result = await queryKysely(
     `
       SELECT
-        lower(COALESCE(payload->>'channelHandle', '')) AS handle_key,
-        (array_agg(COALESCE(payload->>'channelHandle', '') ORDER BY published_at DESC NULLS LAST))[1] AS handle,
-        (array_agg(COALESCE(channel, payload->>'channel', '') ORDER BY published_at DESC NULLS LAST))[1] AS title,
+        lower(COALESCE(channel_handle, '')) AS handle_key,
+        (array_agg(COALESCE(channel_handle, '') ORDER BY published_at DESC NULLS LAST))[1] AS handle,
+        (array_agg(COALESCE(channel, '') ORDER BY published_at DESC NULLS LAST))[1] AS title,
         COUNT(*)::int AS count,
         MAX(published_at) AS latest_at
       FROM youtube_videos
       WHERE ${where.join(' AND ')}
-      GROUP BY lower(COALESCE(payload->>'channelHandle', ''))
+      GROUP BY lower(COALESCE(channel_handle, ''))
       ORDER BY MAX(published_at) DESC NULLS LAST
     `,
     params,

@@ -8,6 +8,7 @@ import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-nat
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
+import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -156,6 +157,7 @@ export default function DisclosuresScreen() {
     filter === 'watch' && watchlist.length === 0 ? t('symbolDetailNoDisclosures') : t('disclosuresEmpty');
 
   const bottomPad = 24 + tabBarHeight + tabBarBottomInset(insets.bottom);
+  const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
 
   const listHeaderEl = useMemo(
     () => (
@@ -252,6 +254,15 @@ export default function DisclosuresScreen() {
           />
         )}
       </View>
+      {hasSignalApi() ? (
+        <FloatingGlassFab
+          bottom={fabStackBottom}
+          onPress={() => void onRefresh()}
+          iconName="sync"
+          accessibilityLabel={t('fabRefreshA11y')}
+          disabled={refreshing || loading}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

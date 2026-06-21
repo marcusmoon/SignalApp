@@ -11,6 +11,7 @@ import { ReferenceLinksSection } from '@/components/more/ReferenceLinksSection';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalHeader } from '@/components/signal/SignalHeader';
+import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { MoreHubRouteKey } from '@/constants/moreHubOrder';
 import type { AppTheme } from '@/constants/theme';
@@ -147,8 +148,19 @@ export default function MoreHubScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    list: { flex: 1, paddingHorizontal: 16 },
-    loadingPad: { padding: 24 },
+    list: {
+      flex: 1,
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
+      paddingHorizontal: 16,
+    },
+    loadingPad: {
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
+      padding: 24,
+    },
     muted: { fontSize: sf(14), color: theme.textDim },
     tile: {
       flexDirection: 'row',

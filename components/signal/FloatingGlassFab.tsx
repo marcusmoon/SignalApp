@@ -1,9 +1,10 @@
 import type { ComponentProps } from 'react';
 import { useMemo } from 'react';
-import { Platform, Pressable, StyleSheet } from 'react-native';
+import { Platform, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 
 import { GlassSurfaceBackground, floatingFabShadow } from '@/components/signal/GlassSurface';
+import { APP_CONTENT_MAX_WIDTH, APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
 import { useTabBarGlassStyle } from '@/hooks/useTabBarGlassStyle';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
@@ -25,8 +26,10 @@ type Props = {
 export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel, disabled }: Props) {
   const { theme } = useSignalTheme();
   const { backgroundColor, edge, effectiveColorScheme } = useTabBarGlassStyle();
+  const { width } = useWindowDimensions();
   const radius = FLOATING_GLASS_FAB_SIZE / 2;
   const fabShadow = useMemo(() => floatingFabShadow(effectiveColorScheme), [effectiveColorScheme]);
+  const right = Math.max(APP_CONTENT_SIDE_PADDING, (width - APP_CONTENT_MAX_WIDTH) / 2 + APP_CONTENT_SIDE_PADDING);
 
   return (
     <Pressable
@@ -35,7 +38,7 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
       style={({ pressed }) => [
         styles.fab,
         fabShadow,
-        { bottom, borderRadius: radius },
+        { bottom, right, borderRadius: radius },
         disabled ? styles.fabDisabled : null,
         pressed && !disabled ? styles.fabPressed : null,
       ]}
@@ -56,7 +59,6 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
 const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
-    right: 16,
     width: FLOATING_GLASS_FAB_SIZE,
     height: FLOATING_GLASS_FAB_SIZE,
     overflow: 'hidden',

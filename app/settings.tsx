@@ -24,6 +24,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import developerAvatar from '@/assets/images/developer-avatar.png';
 import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
+import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import {
   tabBarBottomInset,
   tabBarHorizontalMargin,
@@ -272,8 +273,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     scrollFlex: { flex: 1 },
-    scroll: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 32 },
+    scroll: {
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 4,
+      paddingBottom: 32,
+    },
     tabBar: {
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH - 32,
+      alignSelf: 'center',
       flexShrink: 0,
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -1054,6 +1065,9 @@ export default function SettingsScreen() {
   }, [customHex]);
 
   const { width: winW, height: winH } = useWindowDimensions();
+  const floatingFooterMarginH = tabBarHorizontalMargin();
+  const floatingFooterWidth = Math.min(winW - floatingFooterMarginH * 2, APP_CONTENT_MAX_WIDTH);
+  const floatingFooterLeft = Math.max(floatingFooterMarginH, (winW - floatingFooterWidth) / 2);
   const accentPickerLayout = useMemo(() => {
     const sheetW = Math.min(winW - 40, 340);
     const cols = ACCENT_PALETTE_COLS;
@@ -2017,8 +2031,8 @@ clearCalendarCache();
         style={[
           {
             position: 'absolute',
-            left: tabBarHorizontalMargin(),
-            right: tabBarHorizontalMargin(),
+            left: floatingFooterLeft,
+            width: floatingFooterWidth,
             bottom: tabBarPositionBottom(insets.bottom),
             borderRadius: TAB_BAR_FLOAT_RADIUS,
             overflow: 'hidden',

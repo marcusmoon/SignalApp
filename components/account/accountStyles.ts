@@ -1,11 +1,18 @@
 import { StyleSheet } from 'react-native';
 
+import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 
 export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    content: { padding: 16, gap: 12 },
+    content: {
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
+      padding: 16,
+      gap: 12,
+    },
     hero: {
       borderRadius: 16,
       borderWidth: 1,

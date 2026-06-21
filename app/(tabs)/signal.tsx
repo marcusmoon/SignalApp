@@ -22,6 +22,7 @@ import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -513,16 +514,33 @@ export default function SignalScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    updateBannerWrap: { paddingHorizontal: 16 },
+    updateBannerWrap: {
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
+      paddingHorizontal: 16,
+    },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     scroll: { flex: 1 },
-    content: { paddingHorizontal: 16, paddingTop: 4 },
+    content: {
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 4,
+    },
     dateNavigator: {
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH - 32,
+      alignSelf: 'center',
       marginHorizontal: 16,
       marginBottom: 10,
     },
     dateActionBtnPressed: { opacity: 0.86 },
     sessionTabsWrap: {
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH - 32,
+      alignSelf: 'center',
       marginHorizontal: 16,
       marginBottom: 12,
       gap: 6,

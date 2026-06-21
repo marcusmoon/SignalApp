@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -93,6 +94,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, compact: boolean
       backgroundColor: theme.card,
     },
     topRow: {
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',

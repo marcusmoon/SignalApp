@@ -12,6 +12,7 @@ import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
@@ -270,7 +271,13 @@ export default function DisclosuresScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    mainColumn: { flex: 1, minHeight: 0 },
+    mainColumn: {
+      flex: 1,
+      minHeight: 0,
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
+    },
     topFixed: {
       flexShrink: 0,
       zIndex: 2,

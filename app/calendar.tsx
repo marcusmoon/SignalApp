@@ -18,6 +18,7 @@ import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -470,8 +471,18 @@ export default function CalendarScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
+    scroll: {
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 28,
+    },
     fixedTop: {
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
       paddingHorizontal: 16,
       paddingTop: 8,
       paddingBottom: 8,
@@ -507,7 +518,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       lineHeight: sf(19),
     },
     listScroll: { flex: 1, minHeight: 0 },
-    listContent: { paddingHorizontal: 16, flexGrow: 1 },
+    listContent: {
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
+      paddingHorizontal: 16,
+      flexGrow: 1,
+    },
     filterChips: {
       flexDirection: 'row',
       flexWrap: 'wrap',

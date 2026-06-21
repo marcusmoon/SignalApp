@@ -29,6 +29,7 @@ import {
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
+import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
@@ -597,7 +598,13 @@ export default function YoutubeScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    mainColumn: { flex: 1, minHeight: 0 },
+    mainColumn: {
+      flex: 1,
+      minHeight: 0,
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
+    },
     topFixed: {
       flexShrink: 0,
       paddingHorizontal: 16,

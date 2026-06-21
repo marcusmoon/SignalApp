@@ -1,5 +1,6 @@
 import { Platform, StyleSheet } from 'react-native';
 
+import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import {
@@ -22,7 +23,13 @@ export function makeQuotesStyles(
 ) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    mainColumn: { flex: 1, minHeight: 0 },
+    mainColumn: {
+      flex: 1,
+      minHeight: 0,
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
+    },
     topFixed: {
       flexShrink: 0,
       zIndex: 2,

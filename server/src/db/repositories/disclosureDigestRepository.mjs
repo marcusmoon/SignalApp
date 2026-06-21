@@ -6,6 +6,10 @@ import {
   sqlDateOrTimestamp,
 } from './publicHelpers.mjs';
 
+function isDateOnly(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(cleanText(value));
+}
+
 function publicDisclosureDigest(item) {
   return {
     id: item.id,
@@ -35,16 +39,26 @@ export async function queryPublicDisclosureDigestRows(options = {}) {
     where.push(`market = $${params.length}`);
   }
 
-  const from = sqlDateOrTimestamp(options.from);
+  const fromText = cleanText(options.from);
+  const from = sqlDateOrTimestamp(fromText);
   if (from) {
-    params.push(from);
-    where.push(`generated_at >= $${params.length}::timestamptz`);
+    params.push(isDateOnly(fromText) ? fromText : from);
+    where.push(
+      isDateOnly(fromText)
+        ? `COALESCE(digest_date, generated_at::date) >= $${params.length}::date`
+        : `generated_at >= $${params.length}::timestamptz`,
+    );
   }
 
-  const to = sqlDateOrTimestamp(options.to);
+  const toText = cleanText(options.to);
+  const to = sqlDateOrTimestamp(toText);
   if (to) {
-    params.push(to);
-    where.push(`generated_at <= $${params.length}::timestamptz`);
+    params.push(isDateOnly(toText) ? toText : to);
+    where.push(
+      isDateOnly(toText)
+        ? `COALESCE(digest_date, generated_at::date) <= $${params.length}::date`
+        : `generated_at <= $${params.length}::timestamptz`,
+    );
   }
 
   params.push(maxBatches, limit + 1, offset);

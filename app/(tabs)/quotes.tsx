@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useIsFocused, useFocusEffect } from "expo-router/react-navigation";
 import { useRouter } from 'expo-router';
@@ -18,8 +18,10 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { MasterDetailLayout } from '@/components/layout/MasterDetailLayout';
 import { makeQuotesStyles } from '@/components/quotes/quotesStyles';
 import { SignalHeader } from '@/components/signal/SignalHeader';
+import { SymbolDetailPane } from '@/components/symbol/SymbolDetailPane';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
@@ -29,6 +31,7 @@ import { tabBarBottomInset } from '@/constants/tabBar';
 import { useQuoteChangeColors, useResetRefreshingOnTabBlur, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import {
   fetchSignalCoins,
   fetchSignalMarketList,
@@ -69,6 +72,7 @@ import {
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
 import { openNaverFinanceStock } from '@/utils/naverFinance';
 import type { MessageId } from '@/locales/messages';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 const QUOTE_CARD_TEXT_MAX_SCALE = 1.12;
 const WATCH_MARKET_SOFT_TIMEOUT_MS = 5000;
@@ -95,6 +99,9 @@ export default function QuotesScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const { useTwoPane } = useResponsiveLayout();
+  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [segment, setSegment] = useState<QuoteSegmentKey>('watch');
   const [segmentOrder, setSegmentOrder] = useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
   const [loading, setLoading] = useState(true);
@@ -106,6 +113,21 @@ export default function QuotesScreen() {
   rowsRef.current = rows;
   useTabScreenLoadingRecovery(rows, setLoading);
   const [draftTicker, setDraftTicker] = useState('');
+
+  // iPad 2-패널: 리스트가 로드되면 첫 번째 유효한 종목을 자동 선택
+  useEffect(() => {
+    if (!useTwoPane || segment === 'coin') return;
+    if (rows.length === 0) return;
+    setSelectedSymbol((prev) => {
+      // 이미 현재 리스트에 있으면 유지
+      if (prev && rows.some((r) => r.symbol?.trim().toUpperCase() === prev)) return prev;
+      const first = rows.find((r) => {
+        const sym = r.symbol?.trim();
+        return sym && sym !== '—';
+      });
+      return first?.symbol?.trim().toUpperCase() ?? null;
+    });
+  }, [useTwoPane, rows, segment]);
 
   const load = useCallback(async (forceRefresh?: boolean) => {
     setError(null);
@@ -331,9 +353,13 @@ export default function QuotesScreen() {
     (symbol: string) => {
       const trimmed = symbol.trim().toUpperCase();
       if (!trimmed || trimmed === '—' || segment === 'coin') return;
-      router.push(`/symbol/${trimmed}`);
+      if (useTwoPane) {
+        setSelectedSymbol(trimmed);
+      } else {
+        router.push(`/symbol/${trimmed}`);
+      }
     },
-    [router, segment],
+    [router, segment, useTwoPane],
   );
 
   const onResetWatchDefaults = useCallback(() => {
@@ -424,6 +450,21 @@ export default function QuotesScreen() {
   }, [segment]);
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!useTwoPane) return;
+      setSubTabs(
+        segmentOrder.map((key) => ({
+          key,
+          label: t(QUOTE_SEGMENT_LABEL[key]),
+          active: segment === key,
+          onPress: () => onPickSegment(key),
+        })),
+      );
+      return () => clearSubTabs();
+    }, [clearSubTabs, onPickSegment, segment, segmentOrder, setSubTabs, t, useTwoPane]),
+  );
 
   const renderQuoteItem = useCallback(
     ({ item: r, index }: { item: Row; index: number }) => {
@@ -572,59 +613,74 @@ export default function QuotesScreen() {
     ],
   );
 
-  return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <SignalHeader compact onBrandPress={() => void onRefresh()} />
-      {isFocused ? <OtaUpdateBanner /> : null}
-      <View style={styles.mainColumn}>
-        <View style={styles.topFixed}>
-          <View style={styles.segment}>
-            {segmentOrder.map((key) => (
-              <Fragment key={key}>
-                {key === 'coin' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
-                <Pressable
-                  onPress={() => onPickSegment(key)}
-                  style={[styles.segBtn, key === 'coin' && styles.segBtnCompact, segment === key && styles.segBtnActive]}
-                  accessibilityState={{ selected: segment === key }}>
-                  <Text style={[styles.segText, segment === key && styles.segTextActive]}>
-                    {t(QUOTE_SEGMENT_LABEL[key])}
-                  </Text>
-                </Pressable>
-              </Fragment>
-            ))}
-          </View>
+  const quoteListPanel = (
+    <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
+      {!useTwoPane ? <View style={styles.topFixed}>
+        <View style={styles.segment}>
+          {segmentOrder.map((key) => (
+            <Fragment key={key}>
+              {key === 'coin' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
+              <Pressable
+                onPress={() => onPickSegment(key)}
+                style={[styles.segBtn, key === 'coin' && styles.segBtnCompact, segment === key && styles.segBtnActive]}
+                accessibilityState={{ selected: segment === key }}>
+                <Text style={[styles.segText, segment === key && styles.segTextActive]}>
+                  {t(QUOTE_SEGMENT_LABEL[key])}
+                </Text>
+              </Pressable>
+            </Fragment>
+          ))}
         </View>
+      </View> : null}
 
-        <FlatList
-          data={loading ? [] : rows}
-          keyExtractor={(r) => `${r.symbol}-${r.name ?? ''}`}
-          renderItem={renderQuoteItem}
-          ListHeaderComponent={quotesListHeader}
-          ListEmptyComponent={
-            !loading && !error && rows.length === 0 ? (
-              <Text style={styles.empty}>
-                {segment === 'watch' ? t('quotesEmptyWatch') : t('quotesEmptyGeneric')}
-              </Text>
-            ) : null
-          }
-          style={styles.list}
-          contentContainerStyle={[
-            styles.listContent,
-            loading ? SCROLL_CONTENT_LOADING_STYLE : null,
-            { paddingBottom: bottomPad },
-          ]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            loading ? undefined : (
-              <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            )
-          }
-          removeClippedSubviews={Platform.OS === 'android'}
-          initialNumToRender={12}
-          windowSize={8}
-          maxToRenderPerBatch={16}
-        />
-      </View>
+      <FlatList
+        data={loading ? [] : rows}
+        keyExtractor={(r) => `${r.symbol}-${r.name ?? ''}`}
+        renderItem={renderQuoteItem}
+        ListHeaderComponent={quotesListHeader}
+        ListEmptyComponent={
+          !loading && !error && rows.length === 0 ? (
+            <Text style={styles.empty}>
+              {segment === 'watch' ? t('quotesEmptyWatch') : t('quotesEmptyGeneric')}
+            </Text>
+          ) : null
+        }
+        style={styles.list}
+        contentContainerStyle={[
+          styles.listContent,
+          loading ? SCROLL_CONTENT_LOADING_STYLE : null,
+          { paddingBottom: bottomPad },
+        ]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          loading ? undefined : (
+            <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          )
+        }
+        removeClippedSubviews={Platform.OS === 'android'}
+        initialNumToRender={12}
+        windowSize={8}
+        maxToRenderPerBatch={16}
+      />
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
+      {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
+      {isFocused ? <OtaUpdateBanner /> : null}
+
+      <MasterDetailLayout
+        useTwoPane={useTwoPane}
+        masterPanel={quoteListPanel}
+        detailPanel={
+          useTwoPane && selectedSymbol ? (
+            <View style={styles.detailPanePad}>
+              <SymbolDetailPane ticker={selectedSymbol} bottomPad={24} />
+            </View>
+          ) : undefined
+        }
+      />
 
       <FloatingGlassFab
         bottom={fabStackBottom}

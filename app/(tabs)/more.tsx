@@ -11,12 +11,13 @@ import { ReferenceLinksSection } from '@/components/more/ReferenceLinksSection';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalHeader } from '@/components/signal/SignalHeader';
-import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { MoreHubRouteKey } from '@/constants/moreHubOrder';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { MessageId } from '@/locales/messages';
 import {
   loadMoreHubOrder,
@@ -31,7 +32,7 @@ const HUB_META: Record<
   MoreHubRouteKey,
   { href: Href; icon: ComponentProps<typeof FontAwesome>['name']; titleId: MessageId }
 > = {
-  youtube: { href: '/youtube' as Href, icon: 'youtube-play', titleId: 'tabYoutube' },
+  youtube: { href: '/(tabs)/youtube' as Href, icon: 'youtube-play', titleId: 'tabYoutube' },
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
   settings: { href: '/settings' as Href, icon: 'cog', titleId: 'screenSettings' },
 };
@@ -48,6 +49,7 @@ export default function MoreHubScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
+  const { useTwoPane } = useResponsiveLayout();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const [order, setOrder] = useState<MoreHubRouteKey[]>([]);
   const [orderReady, setOrderReady] = useState(false);
@@ -99,8 +101,8 @@ export default function MoreHubScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <SignalHeader compact onBrandPress={onHeaderRefresh} />
+    <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
+      {!useTwoPane ? <SignalHeader compact onBrandPress={onHeaderRefresh} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
       {!orderReady ? (
         <View style={styles.loadingPad}>
@@ -112,7 +114,7 @@ export default function MoreHubScreen() {
           data={order}
           keyExtractor={(item) => item}
           scrollEnabled
-          style={styles.list}
+          style={[styles.list, useTwoPane && styles.listWide]}
           contentContainerStyle={{
             paddingTop: 10,
             paddingBottom: 24 + tabBarHeight + tabBarBottomInset(insets.bottom),
@@ -154,6 +156,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
       paddingHorizontal: 16,
+    },
+    listWide: {
+      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
+      alignSelf: 'stretch',
     },
     loadingPad: {
       width: '100%',

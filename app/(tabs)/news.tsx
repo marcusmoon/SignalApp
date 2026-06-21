@@ -36,6 +36,8 @@ import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import {
   buildSourcesFromCatalog,
   FEED_PAGE_CRYPTO,
@@ -143,6 +145,8 @@ export default function FeedScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const { useTwoPane } = useResponsiveLayout();
+  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const [segment, setSegment] = useState<NewsSegmentKey>(DEFAULT_NEWS_SEGMENT);
   const [segmentOrder, setSegmentOrder] = useState<NewsSegmentKey[]>([...NEWS_SEGMENT_ORDER]);
   const [loading, setLoading] = useState(false);
@@ -1071,6 +1075,22 @@ export default function FeedScreen() {
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
 
+  // iPad 사이드바 서브탭 등록
+  useFocusEffect(
+    useCallback(() => {
+      if (!useTwoPane) return;
+      setSubTabs(
+        segmentOrder.map((key) => ({
+          key,
+          label: t(NEWS_SEGMENT_LABEL[key]),
+          active: segment === key,
+          onPress: () => onPickSegment(key),
+        })),
+      );
+      return () => clearSubTabs();
+    }, [useTwoPane, segment, segmentOrder, t, onPickSegment, setSubTabs, clearSubTabs]),
+  );
+
   const newsQuickFilter =
     segment === 'crypto' ? cryptoFilter : segment === 'korea' ? koreaFilter : globalFilter;
   const digestBatches = useMemo(() => {
@@ -1230,11 +1250,12 @@ export default function FeedScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <SignalHeader compact onBrandPress={() => void onRefresh()} />
+    <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
+      {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
-      <View style={styles.mainColumn}>
-        <View style={styles.topFixed}>
+      <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
+        {newContentAvailable || refreshNotice || !useTwoPane ? (
+          <View style={styles.topFixed}>
           {newContentAvailable && !refreshing ? (
             <FeedUpdateBanner
               variant="prompt"
@@ -1243,7 +1264,7 @@ export default function FeedScreen() {
             />
           ) : null}
           {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
-          <View style={styles.segment}>
+          {!useTwoPane ? <View style={styles.segment}>
             {segmentOrder.map((key) => (
               <Fragment key={key}>
                 {key === 'video' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
@@ -1258,8 +1279,9 @@ export default function FeedScreen() {
                 </Pressable>
               </Fragment>
             ))}
+          </View> : null}
           </View>
-        </View>
+        ) : null}
 
         <FlatList
           data={loading ? [] : listData}

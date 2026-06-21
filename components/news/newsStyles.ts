@@ -1,6 +1,6 @@
 import { Platform, StyleSheet } from 'react-native';
 
-import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
@@ -26,6 +26,10 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
+    },
+    mainColumnWide: {
+      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
+      alignSelf: 'stretch',
     },
     topFixed: {
       flexShrink: 0,

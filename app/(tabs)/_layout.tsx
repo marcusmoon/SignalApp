@@ -5,6 +5,7 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import type { BottomTabBarButtonProps, BottomTabNavigationOptions } from "expo-router/js-tabs";
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   TAB_BAR_FLOAT_HEIGHT,
@@ -18,9 +19,12 @@ import {
   glassEdgeColors,
 } from '@/components/signal/GlassSurface';
 import { SignalFloatingTabBar } from '@/components/signal/SignalFloatingTabBar';
+import { SignalHeader } from '@/components/signal/SignalHeader';
+import { SignalSidebarTabBar } from '@/components/signal/SignalSidebarTabBar';
 import { SlackTabBarButton } from '@/components/SlackTabBarButton';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { hasSignalApi } from '@/services/env';
 import {
   loadNewsUnreadCheckIntervalMinutes,
@@ -92,6 +96,7 @@ export default function TabLayout() {
   const { theme, effectiveColorScheme } = useSignalTheme();
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
+  const { isWideLayout } = useResponsiveLayout();
   const [newsHasUnread, setNewsHasUnread] = useState(false);
   const [signalHasUnread, setSignalHasUnread] = useState(false);
   const [disclosureHasUnread, setDisclosureHasUnread] = useState(false);
@@ -351,6 +356,45 @@ export default function TabLayout() {
     ],
   );
 
+  // iPad wide 레이아웃: 좌측 사이드바 + 콘텐츠 (탭바 숨김)
+  const iPadScreenOptions = useMemo(
+    (): BottomTabNavigationOptions => ({
+      ...screenOptions,
+      tabBarStyle: { display: 'none' },
+    }),
+    [screenOptions],
+  );
+
+  if (isWideLayout) {
+    return (
+      <SafeAreaView style={sidebarLayoutStyles.safe} edges={['top']}>
+        <SignalHeader compact fullWidth />
+        <View style={sidebarLayoutStyles.body}>
+          <SignalSidebarTabBar
+            newsHasUnread={newsHasUnread}
+            signalHasUnread={signalHasUnread}
+            disclosureHasUnread={disclosureHasUnread}
+          />
+          <View style={sidebarLayoutStyles.content}>
+            <Tabs
+              initialRouteName="news"
+              tabBar={() => null}
+              screenOptions={iPadScreenOptions}
+              detachInactiveScreens={false}>
+              <Tabs.Screen name="index" options={{ href: null }} />
+              <Tabs.Screen name="news" options={{ title: t('tabNews') }} />
+              <Tabs.Screen name="disclosures" options={{ title: t('tabDisclosures') }} />
+              <Tabs.Screen name="signal" options={{ title: t('tabSignal') }} />
+              <Tabs.Screen name="quotes" options={{ title: t('tabQuotes') }} />
+              <Tabs.Screen name="more" options={{ title: t('tabMore') }} />
+              <Tabs.Screen name="youtube" options={{ title: t('tabYoutube') }} />
+            </Tabs>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <Tabs
       initialRouteName="news"
@@ -411,3 +455,18 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const sidebarLayoutStyles = StyleSheet.create({
+  safe: {
+    flex: 1,
+  },
+  body: {
+    flex: 1,
+    flexDirection: 'row',
+    minHeight: 0,
+  },
+  content: {
+    flex: 1,
+    minWidth: 0,
+  },
+});

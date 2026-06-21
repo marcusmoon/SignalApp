@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -7,16 +7,17 @@ import {
   NativeSyntheticEvent,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
-
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -29,12 +30,15 @@ import {
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
-import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { MasterDetailLayout } from '@/components/layout/MasterDetailLayout';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { hasSignalApi } from '@/services/env';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
 import type { ChannelHandleMeta } from '@/domain/youtube/types';
@@ -44,6 +48,7 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { YoutubeItem } from '@/types/signal';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
 import { createScrollLoadMoreGate } from '@/utils/listScrollLoadMoreGate';
+import { openYoutubeItem } from '@/utils/openYoutube';
 import {
   msUntilNextPacificMidnight,
   quotaResetHoursMinutes,
@@ -51,6 +56,156 @@ import {
 } from '@/utils/youtubeQuota';
 
 type SortKey = 'popular' | 'latest';
+
+function YoutubeDetailPane({ item }: { item: YoutubeItem }) {
+  const { theme, scaleFont } = useSignalTheme();
+  const { t } = useLocale();
+  const metrics = [
+    { label: t('youtubeDetailViews'), value: item.viewLabel },
+    { label: t('youtubeDetailLikes'), value: item.likeLabel || '—' },
+    { label: t('youtubeDetailComments'), value: item.commentLabel || '—' },
+    { label: t('youtubeDetailDuration'), value: item.durationLabel },
+  ];
+  const chips = [
+    item.definition?.toLowerCase() === 'hd' ? t('youtubeDetailHd') : null,
+    item.captionAvailable ? t('youtubeDetailCaptions') : null,
+  ].filter(Boolean);
+
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.bg }}
+      contentContainerStyle={{ padding: 18, gap: 14 }}
+      showsVerticalScrollIndicator={false}>
+      <View style={{ borderRadius: 20, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.card, overflow: 'hidden' }}>
+        {item.thumbnailUrl ? (
+          <Image
+            source={{ uri: item.thumbnailUrl }}
+            style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor: theme.bgElevated }}
+            contentFit="cover"
+          />
+        ) : null}
+        <View style={{ padding: 18 }}>
+          <Text style={{ fontSize: scaleFont(20), lineHeight: scaleFont(28), fontWeight: '900', color: theme.text }}>
+            {item.title}
+          </Text>
+          <Text style={{ marginTop: 10, fontSize: scaleFont(13), fontWeight: '800', color: theme.textMuted }}>
+            {[item.channel, item.publishedLabel].filter(Boolean).join(' · ')}
+          </Text>
+
+          {chips.length ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
+              {chips.map((chip) => (
+                <View
+                  key={chip}
+                  style={{
+                    paddingHorizontal: 10,
+                    minHeight: 28,
+                    borderRadius: 999,
+                    backgroundColor: theme.greenDim,
+                    borderWidth: 1,
+                    borderColor: theme.greenBorder,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                  <Text style={{ fontSize: scaleFont(11), fontWeight: '900', color: theme.green }}>{chip}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
+            {metrics.map((metric) => (
+              <View
+                key={metric.label}
+                style={{
+                  flexGrow: 1,
+                  flexBasis: '45%',
+                  borderRadius: 16,
+                  backgroundColor: theme.bgElevated,
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  padding: 12,
+                }}>
+                <Text style={{ fontSize: scaleFont(11), fontWeight: '800', color: theme.textDim }}>{metric.label}</Text>
+                <Text style={{ marginTop: 5, fontSize: scaleFont(16), fontWeight: '900', color: theme.text }}>
+                  {metric.value}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={{ marginTop: 18 }}>
+            <Text style={{ fontSize: scaleFont(13), fontWeight: '900', color: theme.text }}>
+              {t('youtubeDetailSectionVideo')}
+            </Text>
+            <Text style={{ marginTop: 8, fontSize: scaleFont(13), lineHeight: scaleFont(20), fontWeight: '700', color: theme.textMuted }}>
+              {item.description?.trim() || t('youtubeDetailDescriptionEmpty')}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={{ borderRadius: 18, borderWidth: 1, borderColor: theme.border, backgroundColor: theme.card, padding: 16 }}>
+        <Text style={{ fontSize: scaleFont(13), fontWeight: '900', color: theme.text }}>
+          {t('youtubeDetailSectionChannel')}
+        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12 }}>
+          {item.channelThumbnailUrl ? (
+            <Image
+              source={{ uri: item.channelThumbnailUrl }}
+              style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: theme.bgElevated }}
+              contentFit="cover"
+            />
+          ) : (
+            <View
+              style={{
+                width: 46,
+                height: 46,
+                borderRadius: 23,
+                backgroundColor: theme.greenDim,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+              <FontAwesome name="youtube-play" size={20} color={theme.green} />
+            </View>
+          )}
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={{ fontSize: scaleFont(15), fontWeight: '900', color: theme.text }} numberOfLines={1}>
+              {item.channel}
+            </Text>
+            <Text style={{ marginTop: 4, fontSize: scaleFont(12), fontWeight: '800', color: theme.textMuted }} numberOfLines={1}>
+              {[
+                item.channelSubscriberLabel ? t('youtubeDetailSubscribers', { count: item.channelSubscriberLabel }) : null,
+                item.channelVideoCountLabel ? t('youtubeDetailVideos', { count: item.channelVideoCountLabel }) : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
+          </View>
+        </View>
+        {item.channelDescription ? (
+          <Text style={{ marginTop: 12, fontSize: scaleFont(12), lineHeight: scaleFont(18), fontWeight: '700', color: theme.textMuted }}>
+            {item.channelDescription}
+          </Text>
+        ) : null}
+        <Pressable
+          onPress={() => void openYoutubeItem(item)}
+          style={{
+            marginTop: 18,
+            minHeight: 46,
+            borderRadius: 14,
+            backgroundColor: theme.greenDim,
+            borderWidth: 1,
+            borderColor: theme.greenBorder,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+          <Text style={{ fontSize: scaleFont(14), fontWeight: '900', color: theme.green }}>{t('youtubeDetailOpen')}</Text>
+        </Pressable>
+      </View>
+    </ScrollView>
+  );
+}
 
 const YOUTUBE_PAGE_SIZE = 30;
 
@@ -66,6 +221,9 @@ export default function YoutubeScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const { useTwoPane } = useResponsiveLayout();
+  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
+  const [selectedItem, setSelectedItem] = useState<YoutubeItem | null>(null);
   const [sort, setSort] = useState<SortKey>('latest');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -92,6 +250,15 @@ export default function YoutubeScreen() {
   const skipLoadOnSelectedHandlesRef = useRef(false);
 
   useTabScreenLoadingRecovery(items, setLoading);
+
+  useEffect(() => {
+    if (!useTwoPane) return;
+    if (!items.length) {
+      setSelectedItem(null);
+      return;
+    }
+    setSelectedItem((prev) => (prev && items.some((item) => item.id === prev.id) ? prev : items[0]));
+  }, [items, useTwoPane]);
 
   const loadChannelCatalog = useCallback(async (cacheMode: 'use' | 'bypass' = 'use') => {
     let rows: SignalApiYoutubeChannel[] = [];
@@ -340,6 +507,50 @@ export default function YoutubeScreen() {
     });
   }, [filterDraftHandles, handlesEqual, load, selectedHandles, curationHandles]);
 
+  const channelFilterActive = Boolean(
+    selectedHandles &&
+      curationHandles &&
+      selectedHandles.length > 0 &&
+      selectedHandles.length < curationHandles.length,
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!useTwoPane) return;
+      setSubTabs([
+        {
+          key: 'latest',
+          label: t('feedWatchFilterAll'),
+          active: sort === 'latest' && !channelFilterActive,
+          onPress: () => void applyAllFilter(),
+        },
+        {
+          key: 'popular',
+          label: t('youtubeSortPopular'),
+          active: sort === 'popular',
+          onPress: applyPopularFilter,
+        },
+        {
+          key: 'channel',
+          label: t('youtubeFilterChannel'),
+          active: channelFilterActive,
+          onPress: openChannelFilter,
+        },
+      ]);
+      return () => clearSubTabs();
+    }, [
+      applyAllFilter,
+      applyPopularFilter,
+      channelFilterActive,
+      clearSubTabs,
+      openChannelFilter,
+      setSubTabs,
+      sort,
+      t,
+      useTwoPane,
+    ]),
+  );
+
   const toggleChannel = useCallback((handle: string) => {
     setFilterDraftHandles((prev) => {
       if (!prev) return prev;
@@ -365,12 +576,6 @@ export default function YoutubeScreen() {
     return t('youtubeErrorQuotaResetHint', { hours, minutes });
   }, [quotaResetMs, t]);
 
-  const channelFilterActive = Boolean(
-    selectedHandles &&
-      curationHandles &&
-      selectedHandles.length > 0 &&
-      selectedHandles.length < curationHandles.length,
-  );
   const emptyFeedMessage = useMemo(() => {
     if (selectedHandles?.length === 0) return t('youtubeErrorSelectChannel');
     if (channelFilterActive) return t('youtubeEmptyChannelFilter');
@@ -424,12 +629,9 @@ export default function YoutubeScreen() {
 
   const channelRowStyles = useMemo(() => selectionFilterRowStyles(theme, scaleFont), [theme, scaleFont]);
 
-  return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <SignalHeader compact onBrandPress={() => void onRefresh()} />
-      {isFocused ? <OtaUpdateBanner /> : null}
-      <View style={styles.mainColumn}>
-        <View style={styles.topFixed}>
+  const youtubeListPanel = (
+    <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
+        {!useTwoPane ? <View style={styles.topFixed}>
           <View style={styles.quickFilterRow}>
             <Pressable
               onPress={() => void applyAllFilter()}
@@ -471,7 +673,7 @@ export default function YoutubeScreen() {
               </Text>
             </Pressable>
           </View>
-        </View>
+        </View> : null}
 
         <FlatList
           data={showScrollLoading ? [] : items}
@@ -482,7 +684,11 @@ export default function YoutubeScreen() {
                 isFirst: index === 0,
                 isLast: index === items.length - 1,
               })}>
-              <YoutubeCard layout="grouped" item={item} />
+              <YoutubeCard
+                layout="grouped"
+                item={item}
+                onPress={useTwoPane && item.videoId ? (v) => setSelectedItem(v) : undefined}
+              />
             </View>
           )}
           ListHeaderComponent={youtubeListHeader}
@@ -539,6 +745,18 @@ export default function YoutubeScreen() {
           maxToRenderPerBatch={Platform.OS === 'web' ? 30 : 10}
         />
       </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
+      {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
+      {isFocused ? <OtaUpdateBanner /> : null}
+
+      <MasterDetailLayout
+        useTwoPane={useTwoPane}
+        masterPanel={youtubeListPanel}
+        detailPanel={selectedItem ? <YoutubeDetailPane item={selectedItem} /> : undefined}
+      />
 
       {hasSignalApi() ? (
         <FloatingGlassFab
@@ -604,6 +822,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
+    },
+    mainColumnWide: {
+      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
+      alignSelf: 'stretch',
     },
     topFixed: {
       flexShrink: 0,

@@ -22,6 +22,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import developerAvatar from '@/assets/images/developer-avatar.png';
+import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
@@ -113,6 +114,7 @@ import {
   type TabBarOpacityLevel,
 } from '@/services/tabBarOpacityPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import {
   getEffectiveSignalApiBaseUrl,
   loadSignalServerPrefs,
@@ -1006,6 +1008,7 @@ export default function SettingsScreen() {
     scaleFont,
   } = useSignalTheme();
   const { t, locale, setLocale } = useLocale();
+  const { useTwoPane } = useResponsiveLayout();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const params = useLocalSearchParams<{ tab?: string }>();
@@ -1303,7 +1306,7 @@ clearCalendarCache();
     }
   };
 
-  return (
+  const screen = (
     /** 상단 edge 없음 — 스택 헤더가 이미 안전 영역을 처리해 `edges.top`을 쓰면 헤더 아래 빈 여백이 커짐 */
     <SafeAreaView style={styles.safe} edges={[]}>
       {isFocused ? <OtaUpdateBanner /> : null}
@@ -2219,5 +2222,13 @@ clearCalendarCache();
         </View>
       </Modal>
     </SafeAreaView>
+  );
+
+  return useTwoPane ? (
+    <IpadSidebarScreen title={t('screenSettings')} backHref="/(tabs)/more">
+      {screen}
+    </IpadSidebarScreen>
+  ) : (
+    screen
   );
 }

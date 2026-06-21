@@ -13,9 +13,11 @@ import type { YoutubeItem } from '@/types/signal';
 type Props = {
   item: YoutubeItem;
   layout?: 'card' | 'grouped';
+  /** 커스텀 onPress. 없으면 기본 openYoutubeItem 사용 */
+  onPress?: (item: YoutubeItem) => void;
 };
 
-export function YoutubeCard({ item, layout = 'card' }: Props) {
+export function YoutubeCard({ item, layout = 'card', onPress }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
@@ -26,7 +28,7 @@ export function YoutubeCard({ item, layout = 'card' }: Props) {
     <View style={[styles.card, grouped && styles.cardGrouped]}>
       <Pressable
         style={({ pressed }) => [styles.topRow, pressed && styles.pressed]}
-        onPress={() => void openYoutubeItem(item)}
+        onPress={() => onPress ? onPress(item) : void openYoutubeItem(item)}
         accessibilityRole="button"
         accessibilityLabel={`${item.title}, ${item.channel}`}>
         <View style={styles.thumb}>

@@ -5,6 +5,7 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SocialAuthButtons } from '@/components/account/SocialAuthButtons';
+import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { makeAccountStyles } from '@/components/account/accountStyles';
 import { useLocale } from '@/contexts/LocaleContext';
 import type { MessageId } from '@/locales/messages';
@@ -55,6 +56,7 @@ import {
   type StoredAppAuthSession,
 } from '@/services/appAuthSession';
 import { loadNotificationPrefs, type NotificationPrefs } from '@/services/notificationPreferences';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 type Mode = 'login' | 'register';
 type AccountTab = 'home' | 'profile' | 'security' | 'info';
@@ -65,6 +67,7 @@ export default function AccountScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
+  const { useTwoPane } = useResponsiveLayout();
   const styles = useMemo(() => makeAccountStyles(theme, scaleFont), [theme, scaleFont]);
   const [session, setSession] = useState<StoredAppAuthSession | null>(null);
   const [mode, setMode] = useState<Mode>('login');
@@ -706,7 +709,7 @@ export default function AccountScreen() {
     [startSocialLogin, startSocialSignup],
   );
 
-  return (
+  const screen = (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <Stack.Screen options={{ title: t('screenAccount') }} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 28 + insets.bottom }]}>
@@ -1352,5 +1355,13 @@ export default function AccountScreen() {
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+
+  return useTwoPane ? (
+    <IpadSidebarScreen title={t('screenAccount')} backHref="/(tabs)/more">
+      {screen}
+    </IpadSidebarScreen>
+  ) : (
+    screen
   );
 }

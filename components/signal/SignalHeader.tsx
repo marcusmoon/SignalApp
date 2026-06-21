@@ -13,13 +13,15 @@ type Props = {
   onBrandPress?: () => void;
   /** 목록형 탭에서 상단 밀도를 낮춘다. */
   compact?: boolean;
+  /** iPad split layout처럼 헤더가 화면 전체 폭을 써야 하는 경우 */
+  fullWidth?: boolean;
 };
 
-export function SignalHeader({ onBrandPress, compact = false }: Props) {
+export function SignalHeader({ onBrandPress, compact = false, fullWidth = false }: Props) {
   const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont, compact), [compact, theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, compact, fullWidth), [compact, fullWidth, theme, scaleFont]);
   const brandAccent = theme.green;
 
   const logo = (
@@ -83,7 +85,7 @@ export function SignalHeader({ onBrandPress, compact = false }: Props) {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number, compact: boolean) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, compact: boolean, fullWidth: boolean) {
   return StyleSheet.create({
     wrap: {
       paddingHorizontal: 16,
@@ -95,7 +97,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, compact: boolean
     },
     topRow: {
       width: '100%',
-      maxWidth: APP_CONTENT_MAX_WIDTH,
+      maxWidth: fullWidth ? undefined : APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
       flexDirection: 'row',
       alignItems: 'center',

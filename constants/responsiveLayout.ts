@@ -9,3 +9,12 @@ export const APP_WIDE_LAYOUT_MIN_WIDTH = 900;
 export const APP_WIDE_CONTENT_MAX_WIDTH = 1120;
 
 export const APP_CONTENT_SIDE_PADDING = 16;
+
+/** iPad 사이드바 내비게이션 폭 */
+export const SIDEBAR_WIDTH = 200;
+
+/** 2-패널 레이아웃에서 마스터(좌측) 패널의 최소 폭 */
+export const MASTER_PANEL_MIN_WIDTH = 280;
+
+/** 2-패널 레이아웃에서 마스터(좌측) 패널의 최대 폭 비율 */
+export const MASTER_PANEL_WIDTH_RATIO = 0.36;

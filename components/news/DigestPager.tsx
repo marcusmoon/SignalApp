@@ -11,7 +11,6 @@ import {
   StyleSheet,
   Text,
   UIManager,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -21,8 +20,6 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { NewsDigestItem } from '@/domain/news';
 
-// Must match listContent paddingHorizontal in newsStyles.ts
-const LIST_H_PAD = 16;
 const TAP_MOVE_THRESHOLD = 8;
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -194,8 +191,8 @@ type Props = {
 
 export function DigestPager({ batches }: Props) {
   const { theme, scaleFont } = useSignalTheme();
-  const { width: screenWidth } = useWindowDimensions();
-  const pageWidth = screenWidth - LIST_H_PAD * 2;
+  const [containerWidth, setContainerWidth] = useState(0);
+  const pageWidth = Math.max(0, containerWidth || 0);
   const [pageIndex, setPageIndex] = useState(0);
   const [dotIndex, setDotIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -203,6 +200,7 @@ export function DigestPager({ batches }: Props) {
 
   const syncPageIndex = useCallback(
     (offsetX: number, resetExpand: boolean) => {
+      if (pageWidth <= 0) return;
       const index = Math.max(0, Math.min(Math.round(offsetX / pageWidth), batches.length - 1));
       setPageIndex(index);
       setDotIndex(index);
@@ -213,6 +211,7 @@ export function DigestPager({ batches }: Props) {
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (pageWidth <= 0) return;
       const index = Math.max(0, Math.min(Math.round(e.nativeEvent.contentOffset.x / pageWidth), batches.length - 1));
       setDotIndex((prev) => (prev === index ? prev : index));
     },
@@ -234,7 +233,12 @@ export function DigestPager({ batches }: Props) {
   if (batches.length === 0) return null;
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      onLayout={(event) => {
+        const next = Math.max(0, Math.round(event.nativeEvent.layout.width));
+        setContainerWidth((prev) => (prev === next ? prev : next));
+      }}>
       <ScrollView
         horizontal
         nestedScrollEnabled
@@ -245,12 +249,12 @@ export function DigestPager({ batches }: Props) {
         onScrollEndDrag={handleScrollEnd}
         directionalLockEnabled
         decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
-        snapToInterval={pageWidth}
+        snapToInterval={pageWidth > 0 ? pageWidth : undefined}
         snapToAlignment="start"
         disableIntervalMomentum
         keyboardShouldPersistTaps="handled"
       >
-        {batches.map((digest, index) => {
+        {pageWidth > 0 && batches.map((digest, index) => {
           const isExpanded = expandedId === digest.id && pageIndex === index;
           return (
             <View key={digest.id} style={[styles.page, { width: pageWidth }]}>

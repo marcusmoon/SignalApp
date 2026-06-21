@@ -57,6 +57,51 @@ async function searchVideoIdsByKeyword(order) {
   return [];
 }
 
+function numberOrNull(value) {
+  const n = Number.parseInt(String(value ?? ''), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+function bestThumbnail(thumbnails) {
+  return (
+    thumbnails?.maxres?.url ||
+    thumbnails?.standard?.url ||
+    thumbnails?.high?.url ||
+    thumbnails?.medium?.url ||
+    thumbnails?.default?.url ||
+    null
+  );
+}
+
+async function fetchChannelMetaByIds(channelIds) {
+  const ids = [...new Set((channelIds || []).map((id) => String(id || '').trim()).filter(Boolean))];
+  if (ids.length === 0) return new Map();
+
+  const out = new Map();
+  for (let i = 0; i < ids.length; i += 50) {
+    const raw = await youtubeFetch('channels', {
+      part: 'snippet,statistics',
+      id: ids.slice(i, i + 50).join(','),
+    });
+    for (const row of raw.items || []) {
+      const snippet = row.snippet || {};
+      const statistics = row.statistics || {};
+      out.set(row.id, {
+        id: row.id,
+        title: snippet.title || '',
+        description: snippet.description || '',
+        thumbnailUrl: bestThumbnail(snippet.thumbnails),
+        subscriberCount: numberOrNull(statistics.subscriberCount),
+        videoCount: numberOrNull(statistics.videoCount),
+        viewCount: numberOrNull(statistics.viewCount),
+        customUrl: snippet.customUrl || null,
+        country: snippet.country || null,
+      });
+    }
+  }
+  return out;
+}
+
 async function collectVideoIds(order, handles) {
   const idToHandle = new Map();
   for (const handle of handles) {
@@ -74,8 +119,12 @@ async function collectVideoIds(order, handles) {
   return idToHandle;
 }
 
-function normalizeYoutubeVideo(raw, order, channelHandle = null) {
-  const viewCount = Number.parseInt(raw.statistics?.viewCount || '0', 10) || 0;
+function normalizeYoutubeVideo(raw, order, channelHandle = null, channelMeta = null) {
+  const snippet = raw.snippet || {};
+  const statistics = raw.statistics || {};
+  const contentDetails = raw.contentDetails || {};
+  const topicDetails = raw.topicDetails || {};
+  const viewCount = numberOrNull(statistics.viewCount) || 0;
   const sortBucket = order === 'viewCount' ? 'popular' : 'latest';
   const item = {
     id: `youtube-${raw.id}`,
@@ -83,15 +132,28 @@ function normalizeYoutubeVideo(raw, order, channelHandle = null) {
     providerItemId: raw.id,
     videoId: raw.id,
     topic: 'Economy',
-    title: raw.snippet?.title || '',
-    channel: raw.snippet?.channelTitle || '',
-    channelId: raw.snippet?.channelId || '',
+    title: snippet.title || '',
+    channel: snippet.channelTitle || channelMeta?.title || '',
+    channelId: snippet.channelId || '',
     channelHandle,
-    description: raw.snippet?.description || '',
-    publishedAt: raw.snippet?.publishedAt || null,
-    duration: raw.contentDetails?.duration || '',
+    description: snippet.description || '',
+    publishedAt: snippet.publishedAt || null,
+    duration: contentDetails.duration || '',
     viewCount,
-    thumbnailUrl: `https://i.ytimg.com/vi/${raw.id}/mqdefault.jpg`,
+    likeCount: numberOrNull(statistics.likeCount) || 0,
+    commentCount: numberOrNull(statistics.commentCount) || 0,
+    captionAvailable: contentDetails.caption === 'true',
+    definition: contentDetails.definition || '',
+    categoryId: snippet.categoryId || null,
+    topicCategories: Array.isArray(topicDetails.topicCategories) ? topicDetails.topicCategories : [],
+    thumbnailUrl: bestThumbnail(snippet.thumbnails) || `https://i.ytimg.com/vi/${raw.id}/mqdefault.jpg`,
+    channelThumbnailUrl: channelMeta?.thumbnailUrl || null,
+    channelDescription: channelMeta?.description || '',
+    channelSubscriberCount: channelMeta?.subscriberCount ?? null,
+    channelVideoCount: channelMeta?.videoCount ?? null,
+    channelViewCount: channelMeta?.viewCount ?? null,
+    channelCustomUrl: channelMeta?.customUrl || null,
+    channelCountry: channelMeta?.country || null,
     fetchedAt: new Date().toISOString(),
     rawPayload: raw,
   };
@@ -102,6 +164,13 @@ function normalizeYoutubeVideo(raw, order, channelHandle = null) {
   return item;
 }
 
+async function normalizeYoutubeRows(rows, order, idToHandle = new Map()) {
+  const channelMetaById = await fetchChannelMetaByIds(rows.map((row) => row.snippet?.channelId)).catch(() => new Map());
+  return rows.map((row) =>
+    normalizeYoutubeVideo(row, order, idToHandle.get(row.id) || null, channelMetaById.get(row.snippet?.channelId) || null),
+  );
+}
+
 export async function fetchYoutubeEconomy({ order = 'date', handles } = {}) {
   const normalizedOrder = order === 'viewCount' || order === 'popular' ? 'viewCount' : 'date';
   const channelHandles = normalizeYoutubeCurationHandles(handles);
@@ -109,17 +178,17 @@ export async function fetchYoutubeEconomy({ order = 'date', handles } = {}) {
   const ids = [...idToHandle.keys()];
   if (ids.length === 0) return [];
   const raw = await youtubeFetch('videos', {
-    part: 'snippet,contentDetails,statistics',
+    part: 'snippet,contentDetails,statistics,topicDetails',
     id: ids.slice(0, 50).join(','),
   });
   const rows = raw.items || [];
   rows.sort((a, b) => {
     if (normalizedOrder === 'viewCount') {
-      return (Number.parseInt(b.statistics?.viewCount || '0', 10) || 0) - (Number.parseInt(a.statistics?.viewCount || '0', 10) || 0);
+      return (numberOrNull(b.statistics?.viewCount) || 0) - (numberOrNull(a.statistics?.viewCount) || 0);
     }
     return new Date(b.snippet?.publishedAt || 0).getTime() - new Date(a.snippet?.publishedAt || 0).getTime();
   });
-  return rows.map((row) => normalizeYoutubeVideo(row, normalizedOrder, idToHandle.get(row.id) || null));
+  return normalizeYoutubeRows(rows, normalizedOrder, idToHandle);
 }
 
 export async function fetchYoutubeVideosByIds(videoIds, { order = 'date' } = {}) {
@@ -128,10 +197,10 @@ export async function fetchYoutubeVideosByIds(videoIds, { order = 'date' } = {})
   const out = [];
   for (let i = 0; i < ids.length; i += 50) {
     const raw = await youtubeFetch('videos', {
-      part: 'snippet,contentDetails,statistics',
+      part: 'snippet,contentDetails,statistics,topicDetails',
       id: ids.slice(i, i + 50).join(','),
     });
-    for (const row of raw.items || []) out.push(normalizeYoutubeVideo(row, order));
+    out.push(...(await normalizeYoutubeRows(raw.items || [], order)));
   }
   return out;
 }

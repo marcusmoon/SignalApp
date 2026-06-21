@@ -22,11 +22,13 @@ import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import {
   QUOTES_CHANGE_COLOR_CONVENTION_DEFAULT,
   type QuotesChangeColorConvention,
@@ -91,6 +93,8 @@ export default function SignalScreen() {
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const { useTwoPane } = useResponsiveLayout();
+  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   const [todayYmd, setTodayYmd] = useState(() => toYmd(new Date()));
@@ -338,10 +342,26 @@ export default function SignalScreen() {
 
   useTabPressCycleSegment(activeTabKey, availableSessionTabKeys, onPickSessionTab);
 
+  // iPad 사이드바 서브탭 등록
+  useFocusEffect(
+    useCallback(() => {
+      if (!useTwoPane) return;
+      setSubTabs(
+        FLAT_TABS.map((tab) => ({
+          key: tab.key,
+          label: flatTabLabel(tab.key),
+          active: activeTabKey === tab.key,
+          onPress: () => onPickSessionTab(tab.key),
+        })),
+      );
+      return () => clearSubTabs();
+    }, [useTwoPane, activeTabKey, flatTabLabel, onPickSessionTab, setSubTabs, clearSubTabs]),
+  );
+
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       <Stack.Screen options={{ title: t('screenSignal') }} />
-      <SignalHeader compact onBrandPress={() => void onRefresh()} />
+      {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
 
       {newContentAvailable && !refreshing && selectedYmd >= todayYmd ? (
         <View style={styles.updateBannerWrap}>
@@ -370,10 +390,10 @@ export default function SignalScreen() {
         onToday={goToday}
         showToday={!selectedIsToday}
         nextDisabled={selectedIsToday}
-        style={styles.dateNavigator}
+        style={[styles.dateNavigator, useTwoPane && styles.dateNavigatorWide]}
       />
 
-      {!loading ? (
+      {!loading && !useTwoPane ? (
         <View style={styles.sessionTabsWrap}>
           <View style={styles.sessionTabs}>
             {FLAT_TABS.map((tab) => {
@@ -416,7 +436,7 @@ export default function SignalScreen() {
       ) : (
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom }]}
+          contentContainerStyle={[styles.content, useTwoPane && styles.contentWide, { paddingBottom: 24 + insets.bottom }]}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           <OtaUpdateBanner />
 
@@ -529,12 +549,21 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 16,
       paddingTop: 4,
     },
+    contentWide: {
+      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
+      alignSelf: 'stretch',
+      paddingTop: 12,
+    },
     dateNavigator: {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH - 32,
       alignSelf: 'center',
       marginHorizontal: 16,
       marginBottom: 10,
+    },
+    dateNavigatorWide: {
+      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH - 32,
+      marginTop: 12,
     },
     dateActionBtnPressed: { opacity: 0.86 },
     sessionTabsWrap: {

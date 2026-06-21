@@ -28,6 +28,7 @@ import {
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTabPressCycleSegment } from '@/hooks/useTabPressCycleSegment';
 import { fetchSignalDisclosures } from '@/integrations/signal-api/disclosures';
@@ -83,6 +84,7 @@ export default function DisclosuresScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const { useTwoPane } = useResponsiveLayout();
+  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [items, setItems] = useState<SignalApiDisclosure[]>([]);
@@ -174,6 +176,21 @@ export default function DisclosuresScreen() {
   );
 
   useTabPressCycleSegment(symbolFilter ? null : filter, FILTER_ORDER, onPickFilter);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!useTwoPane || symbolFilter) return;
+      setSubTabs(
+        FILTERS.map((item) => ({
+          key: item.key,
+          label: t(item.label),
+          active: filter === item.key,
+          onPress: () => onPickFilter(item.key),
+        })),
+      );
+      return () => clearSubTabs();
+    }, [clearSubTabs, filter, onPickFilter, setSubTabs, symbolFilter, t, useTwoPane]),
+  );
 
   const clearSymbolFilter = useCallback(() => {
     router.setParams({ symbol: undefined });
@@ -320,12 +337,12 @@ export default function DisclosuresScreen() {
   ) : null;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <SignalHeader compact onBrandPress={() => void onRefresh()} />
+    <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
+      {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        <View style={styles.topFixed}>
+        {!useTwoPane || refreshNotice ? <View style={styles.topFixed}>
           {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
-          {!symbolFilter ? (
+          {!symbolFilter && !useTwoPane ? (
             <View style={styles.segment}>
               {FILTERS.map((f) => {
                 const selected = filter === f.key;
@@ -342,7 +359,7 @@ export default function DisclosuresScreen() {
               })}
             </View>
           ) : null}
-        </View>
+        </View> : null}
         {loading ? (
           <View style={styles.loadingWrap}>
             <SignalLoadingIndicator message={t('commonLoading')} />

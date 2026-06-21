@@ -85,6 +85,8 @@ export const ja = {
   disclosuresDetailPoints: '主要情報',
   disclosuresFiledAt: '提出日',
   disclosuresPeriodEnd: '基準日',
+  disclosuresProvider: '提供元',
+  disclosuresSummary: '要約',
   disclosuresFormType: '種類',
   calendarScreenMonthHeading: '今月の予定',
   calendarScreenEmptyMonth: '今月の予定はありません。',

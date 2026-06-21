@@ -4,5 +4,8 @@
  */
 export const APP_CONTENT_MAX_WIDTH = 720;
 
-export const APP_CONTENT_SIDE_PADDING = 16;
+export const APP_WIDE_LAYOUT_MIN_WIDTH = 900;
 
+export const APP_WIDE_CONTENT_MAX_WIDTH = 1120;
+
+export const APP_CONTENT_SIDE_PADDING = 16;

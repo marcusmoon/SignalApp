@@ -70,6 +70,7 @@ function appIconContents(filename) {
           idiom: 'universal',
           platform: 'ios',
           size: '1024x1024',
+          scale: '1x',
         },
       ],
       info: {
@@ -101,13 +102,29 @@ function ensureIosFiles(projectRoot) {
 }
 
 function configureAlternateIcons(plist) {
+  const primaryIconConfig = {
+    CFBundleIconFiles: ['AppIcon'],
+    CFBundleIconName: 'AppIcon',
+    UIPrerenderedIcon: false,
+  };
+
   plist.CFBundleIcons = plist.CFBundleIcons || {};
+  plist.CFBundleIcons.CFBundlePrimaryIcon = plist.CFBundleIcons.CFBundlePrimaryIcon || primaryIconConfig;
   plist.CFBundleIcons.CFBundleAlternateIcons = plist.CFBundleIcons.CFBundleAlternateIcons || {};
+  plist['CFBundleIcons~ipad'] = plist['CFBundleIcons~ipad'] || {};
+  plist['CFBundleIcons~ipad'].CFBundlePrimaryIcon =
+    plist['CFBundleIcons~ipad'].CFBundlePrimaryIcon || primaryIconConfig;
+  plist['CFBundleIcons~ipad'].CFBundleAlternateIcons =
+    plist['CFBundleIcons~ipad'].CFBundleAlternateIcons || {};
+
   for (const icon of ICONS) {
-    plist.CFBundleIcons.CFBundleAlternateIcons[icon.key] = {
+    const iconConfig = {
       CFBundleIconFiles: [icon.key],
+      CFBundleIconName: icon.key,
       UIPrerenderedIcon: false,
     };
+    plist.CFBundleIcons.CFBundleAlternateIcons[icon.key] = iconConfig;
+    plist['CFBundleIcons~ipad'].CFBundleAlternateIcons[icon.key] = iconConfig;
   }
   return plist;
 }
@@ -146,6 +163,7 @@ function configureProject(project) {
     const plistFile = item.buildSettings.INFOPLIST_FILE;
     if (plistFile !== 'SIGNAL/Info.plist' && plistFile !== '"SIGNAL/Info.plist"') continue;
     item.buildSettings.ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = `"${names}"`;
+    item.buildSettings.ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = '"YES"';
   }
 }
 

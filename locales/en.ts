@@ -85,6 +85,8 @@ export const en = {
   disclosuresDetailPoints: 'Key facts',
   disclosuresFiledAt: 'Filed',
   disclosuresPeriodEnd: 'Period end',
+  disclosuresProvider: 'Provider',
+  disclosuresSummary: 'Summary',
   disclosuresFormType: 'Type',
   calendarScreenMonthHeading: 'This month',
   calendarScreenEmptyMonth: 'No events this month.',

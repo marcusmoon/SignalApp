@@ -4,7 +4,7 @@ import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
@@ -12,7 +12,7 @@ import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
@@ -28,6 +28,7 @@ import {
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTabPressCycleSegment } from '@/hooks/useTabPressCycleSegment';
 import { fetchSignalDisclosures } from '@/integrations/signal-api/disclosures';
 import type { SignalApiDisclosure } from '@/integrations/signal-api/types';
@@ -53,6 +54,17 @@ function disclosureTime(item: SignalApiDisclosure, locale: string): string {
   return item.filedAt ? formatRelativeFromIso(item.filedAt, locale as AppLocale) : '—';
 }
 
+function disclosureDate(value: string | null | undefined, locale: string): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(locale, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+}
+
 function providerLabel(item: SignalApiDisclosure): string {
   if (item.provider === 'sec') return 'SEC';
   if (item.provider === 'dart') return 'DART';
@@ -70,9 +82,11 @@ export default function DisclosuresScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
+  const { useTwoPane } = useResponsiveLayout();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [items, setItems] = useState<SignalApiDisclosure[]>([]);
+  const [selectedDisclosureId, setSelectedDisclosureId] = useState<string | null>(null);
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -120,6 +134,17 @@ export default function DisclosuresScreen() {
     }, [items, symbolFilter]),
   );
 
+  useEffect(() => {
+    if (!useTwoPane) return;
+    if (!items.length) {
+      setSelectedDisclosureId(null);
+      return;
+    }
+    if (!selectedDisclosureId || !items.some((item) => item.id === selectedDisclosureId)) {
+      setSelectedDisclosureId(items[0].id);
+    }
+  }, [items, selectedDisclosureId, useTwoPane]);
+
   const onRefresh = useCallback(async () => {
     const prevIds = new Set(items.map((item) => item.id));
     setRefreshing(true);
@@ -157,6 +182,11 @@ export default function DisclosuresScreen() {
   const emptyText =
     filter === 'watch' && watchlist.length === 0 ? t('symbolDetailNoDisclosures') : t('disclosuresEmpty');
 
+  const selectedDisclosure = useMemo(
+    () => items.find((item) => item.id === selectedDisclosureId) ?? null,
+    [items, selectedDisclosureId],
+  );
+
   const bottomPad = 24 + tabBarHeight + tabBarBottomInset(insets.bottom);
   const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
 
@@ -183,10 +213,116 @@ export default function DisclosuresScreen() {
     [clearSymbolFilter, error, styles, symbolFilter, t],
   );
 
+  const renderDisclosureCard = useCallback(
+    ({ item }: { item: SignalApiDisclosure }) => {
+      const selected = useTwoPane && selectedDisclosureId === item.id;
+      return (
+        <Pressable
+          style={({ pressed }) => [
+            styles.card,
+            selected && styles.cardSelected,
+            pressed && styles.cardPressed,
+          ]}
+          onPress={() => {
+            if (useTwoPane) {
+              setSelectedDisclosureId(item.id);
+              return;
+            }
+            router.push(`/disclosures/${encodeURIComponent(item.id)}` as Href);
+          }}>
+          <View style={styles.cardTop}>
+            <View style={styles.badges}>
+              <Text style={styles.badge}>{providerLabel(item)}</Text>
+              {item.formType ? <Text style={styles.badgeMuted}>{item.formType}</Text> : null}
+            </View>
+            <Text style={styles.time}>{disclosureTime(item, locale)}</Text>
+          </View>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          {item.summary ? (
+            <Text style={styles.summary} numberOfLines={useTwoPane ? 2 : 3}>
+              {item.summary}
+            </Text>
+          ) : null}
+          <View style={styles.cardBottom}>
+            <Text style={styles.symbol}>{item.symbol || item.companyName || '—'}</Text>
+            {item.url ? (
+              <Pressable
+                onPress={() => void WebBrowser.openBrowserAsync(item.url!)}
+                hitSlop={10}
+                style={styles.openBtn}>
+                <Text style={styles.openText}>{t('disclosuresOriginalOpen')}</Text>
+                <FontAwesome name="external-link" size={12} color={theme.green} />
+              </Pressable>
+            ) : null}
+          </View>
+        </Pressable>
+      );
+    },
+    [locale, router, selectedDisclosureId, styles, t, theme.green, useTwoPane],
+  );
+
+  const detailPaneEl = useTwoPane ? (
+    <View style={styles.detailPane}>
+      {selectedDisclosure ? (
+        <ScrollView style={styles.detailScroll} contentContainerStyle={styles.detailScrollContent}>
+          <View style={styles.detailHero}>
+            <View style={styles.badges}>
+              <Text style={styles.badge}>{providerLabel(selectedDisclosure)}</Text>
+              {selectedDisclosure.formType ? (
+                <Text style={styles.badgeMuted}>{selectedDisclosure.formType}</Text>
+              ) : null}
+            </View>
+            <Text style={styles.detailTitle}>{selectedDisclosure.title}</Text>
+            <Text style={styles.detailCompany}>
+              {selectedDisclosure.symbol || selectedDisclosure.companyName || '—'}
+              {selectedDisclosure.companyName && selectedDisclosure.symbol
+                ? ` · ${selectedDisclosure.companyName}`
+                : ''}
+            </Text>
+          </View>
+          <View style={styles.detailCard}>
+            <View style={styles.detailFactRow}>
+              <Text style={styles.detailFactLabel}>{t('disclosuresFiledAt')}</Text>
+              <Text style={styles.detailFactValue}>{disclosureDate(selectedDisclosure.filedAt, locale)}</Text>
+            </View>
+            <View style={styles.detailFactRow}>
+              <Text style={styles.detailFactLabel}>{t('disclosuresPeriodEnd')}</Text>
+              <Text style={styles.detailFactValue}>
+                {disclosureDate(selectedDisclosure.periodEndDate, locale)}
+              </Text>
+            </View>
+            <View style={styles.detailFactRow}>
+              <Text style={styles.detailFactLabel}>{t('disclosuresProvider')}</Text>
+              <Text style={styles.detailFactValue}>{providerLabel(selectedDisclosure)}</Text>
+            </View>
+          </View>
+          {selectedDisclosure.summary ? (
+            <View style={styles.detailCard}>
+              <Text style={styles.detailSectionTitle}>{t('disclosuresSummary')}</Text>
+              <Text style={styles.detailSummary}>{selectedDisclosure.summary}</Text>
+            </View>
+          ) : null}
+          {selectedDisclosure.url ? (
+            <Pressable
+              style={styles.detailOpenBtn}
+              onPress={() => void WebBrowser.openBrowserAsync(selectedDisclosure.url!)}>
+              <Text style={styles.detailOpenText}>{t('disclosuresOriginalOpen')}</Text>
+              <FontAwesome name="external-link" size={13} color={theme.green} />
+            </Pressable>
+          ) : null}
+        </ScrollView>
+      ) : (
+        <View style={styles.detailEmpty}>
+          <Text style={styles.empty}>{emptyText}</Text>
+        </View>
+      )}
+    </View>
+  ) : null;
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <SignalHeader compact onBrandPress={() => void onRefresh()} />
-      <View style={styles.mainColumn}>
+      <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
         <View style={styles.topFixed}>
           {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
           {!symbolFilter ? (
@@ -212,47 +348,23 @@ export default function DisclosuresScreen() {
             <SignalLoadingIndicator message={t('commonLoading')} />
           </View>
         ) : (
-          <FlatList
-            data={items}
-            keyExtractor={(item) => item.id}
-            style={styles.list}
-            contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
-            ListHeaderComponent={listHeaderEl}
-            refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-            ListEmptyComponent={<Text style={styles.empty}>{emptyText}</Text>}
-            removeClippedSubviews={Platform.OS === 'android'}
-            renderItem={({ item }) => (
-              <Pressable
-                style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-                onPress={() => router.push(`/disclosures/${encodeURIComponent(item.id)}` as Href)}>
-                <View style={styles.cardTop}>
-                  <View style={styles.badges}>
-                    <Text style={styles.badge}>{providerLabel(item)}</Text>
-                    {item.formType ? <Text style={styles.badgeMuted}>{item.formType}</Text> : null}
-                  </View>
-                  <Text style={styles.time}>{disclosureTime(item, locale)}</Text>
-                </View>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                {item.summary ? (
-                  <Text style={styles.summary} numberOfLines={3}>
-                    {item.summary}
-                  </Text>
-                ) : null}
-                <View style={styles.cardBottom}>
-                  <Text style={styles.symbol}>{item.symbol || item.companyName || '—'}</Text>
-                  {item.url ? (
-                    <Pressable
-                      onPress={() => void WebBrowser.openBrowserAsync(item.url!)}
-                      hitSlop={10}
-                      style={styles.openBtn}>
-                      <Text style={styles.openText}>{t('disclosuresOriginalOpen')}</Text>
-                      <FontAwesome name="external-link" size={12} color={theme.green} />
-                    </Pressable>
-                  ) : null}
-                </View>
-              </Pressable>
-            )}
-          />
+          <View style={useTwoPane ? styles.wideBody : styles.compactBody}>
+            <FlatList
+              data={items}
+              keyExtractor={(item) => item.id}
+              style={[styles.list, useTwoPane && styles.wideList]}
+              contentContainerStyle={[
+                useTwoPane ? styles.wideListContent : styles.listContent,
+                { paddingBottom: bottomPad },
+              ]}
+              ListHeaderComponent={listHeaderEl}
+              refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+              ListEmptyComponent={<Text style={styles.empty}>{emptyText}</Text>}
+              removeClippedSubviews={Platform.OS === 'android'}
+              renderItem={renderDisclosureCard}
+            />
+            {detailPaneEl}
+          </View>
         )}
       </View>
       {hasSignalApi() ? (
@@ -278,6 +390,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
     },
+    mainColumnWide: {
+      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
+      paddingHorizontal: 16,
+    },
     topFixed: {
       flexShrink: 0,
       zIndex: 2,
@@ -289,8 +405,21 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
+    compactBody: { flex: 1, minHeight: 0 },
+    wideBody: {
+      flex: 1,
+      minHeight: 0,
+      flexDirection: 'row',
+      gap: 12,
+      paddingTop: 10,
+    },
     list: { flex: 1, minHeight: 0 },
+    wideList: {
+      flex: 0.45,
+      minWidth: 360,
+    },
     listContent: { paddingHorizontal: 16, paddingTop: 0 },
+    wideListContent: { paddingTop: 0 },
     listHeader: { paddingTop: 4 },
     segment: {
       flexDirection: 'row',
@@ -375,6 +504,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       padding: 14,
       marginBottom: 10,
     },
+    cardSelected: {
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
     cardPressed: { backgroundColor: theme.bgElevated, borderColor: theme.greenBorder },
     cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 9 },
     badges: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 },
@@ -407,5 +540,95 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     symbol: { flex: 1, minWidth: 0, color: theme.textMuted, fontSize: sf(12), fontWeight: '900' },
     openBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     openText: { color: theme.green, fontSize: sf(12), fontWeight: '900' },
+    detailPane: {
+      flex: 0.55,
+      minWidth: 0,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      overflow: 'hidden',
+      marginBottom: 12,
+    },
+    detailScroll: { flex: 1 },
+    detailScrollContent: {
+      padding: 18,
+      gap: 12,
+    },
+    detailHero: {
+      gap: 10,
+      paddingBottom: 4,
+    },
+    detailTitle: {
+      color: theme.text,
+      fontSize: sf(22),
+      lineHeight: sf(30),
+      fontWeight: '900',
+    },
+    detailCompany: {
+      color: theme.textMuted,
+      fontSize: sf(13),
+      lineHeight: sf(19),
+      fontWeight: '800',
+    },
+    detailCard: {
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      padding: 14,
+      gap: 10,
+    },
+    detailFactRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    detailFactLabel: {
+      color: theme.textMuted,
+      fontSize: sf(12),
+      fontWeight: '800',
+    },
+    detailFactValue: {
+      flex: 1,
+      minWidth: 0,
+      color: theme.text,
+      fontSize: sf(13),
+      fontWeight: '900',
+      textAlign: 'right',
+    },
+    detailSectionTitle: {
+      color: theme.text,
+      fontSize: sf(14),
+      fontWeight: '900',
+    },
+    detailSummary: {
+      color: theme.textMuted,
+      fontSize: sf(14),
+      lineHeight: sf(21),
+      fontWeight: '700',
+    },
+    detailOpenBtn: {
+      minHeight: 44,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    detailOpenText: {
+      color: theme.green,
+      fontSize: sf(14),
+      fontWeight: '900',
+    },
+    detailEmpty: {
+      flex: 1,
+      padding: 18,
+      justifyContent: 'center',
+    },
   });
 }

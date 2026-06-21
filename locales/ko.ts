@@ -83,6 +83,8 @@ export const ko = {
   disclosuresDetailPoints: '핵심 정보',
   disclosuresFiledAt: '제출일',
   disclosuresPeriodEnd: '기준일',
+  disclosuresProvider: '출처',
+  disclosuresSummary: '요약',
   disclosuresFormType: '유형',
   calendarScreenMonthHeading: '이 달 일정',
   calendarScreenEmptyMonth: '이 달에 표시할 일정이 없습니다.',

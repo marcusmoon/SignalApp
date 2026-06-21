@@ -1,7 +1,7 @@
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -81,16 +81,16 @@ async function fetchTopDigestsForCategory(category: HomeDigestCategory, date: st
 function categoryTone(category: HomeDigestCategory, theme: AppTheme) {
   if (category === 'crypto') {
     return {
-      bg: theme.bgElevated,
-      border: theme.greenBorder,
-      text: theme.accentBlue,
+      bg: theme.warningDim,
+      border: theme.border,
+      text: theme.warning,
     };
   }
   if (category === 'korea') {
     return {
-      bg: theme.dangerDim,
+      bg: theme.bgElevated,
       border: theme.border,
-      text: theme.danger,
+      text: theme.text,
     };
   }
   return {
@@ -208,15 +208,42 @@ export function IpadHomeScreen() {
 
   const visibleCalendarEvents = calendarEvents.slice(0, HOME_CALENDAR_LIMIT);
   const hiddenCalendarCount = Math.max(0, calendarEvents.length - visibleCalendarEvents.length);
+  const issueRows = useMemo(
+    () =>
+      HOME_DIGEST_CATEGORIES.flatMap((category) =>
+        digests[category].map((item) => ({ category, item })),
+      ).sort(
+        (a, b) =>
+          (b.item.count - a.item.count) ||
+          String(b.item.generatedAt || '').localeCompare(String(a.item.generatedAt || '')),
+      ),
+    [digests],
+  );
+  const leadIssue = issueRows[0] || null;
+  const leadBriefing = useMemo(
+    () => HOME_SIGNAL_SESSIONS.map((session) => briefingBySession.get(session.key)).find(Boolean),
+    [briefingBySession],
+  );
+  const leadBriefingSessionKey = useMemo(
+    () =>
+      HOME_SIGNAL_SESSIONS.find((session) => briefingBySession.get(session.key)?.id === leadBriefing?.id)?.key ||
+      'us-overnight',
+    [briefingBySession, leadBriefing],
+  );
+  const leadBriefingText = leadBriefing ? briefingLeadText(leadBriefing) : '';
 
   const goIssues = useCallback(
     (category: HomeDigestCategory, digestId?: string) => {
+      if (ipadNav.isAvailable) {
+        ipadNav.showNewsIssues({ category, date: todayYmd, digestId });
+        return;
+      }
       router.navigate({
         pathname: '/news-issues',
         params: { category, date: todayYmd, digestId },
       } as never);
     },
-    [router, todayYmd],
+    [ipadNav, router, todayYmd],
   );
 
   const goSignal = useCallback(
@@ -239,9 +266,70 @@ export function IpadHomeScreen() {
       showsVerticalScrollIndicator={false}
       refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
       <View style={styles.inner}>
-        <View style={styles.pageHead}>
-          <Text style={styles.pageTitle}>{t('ipadHomeTitle')}</Text>
-          <Text style={styles.pageDate}>{todayLabel}</Text>
+        <View style={styles.heroPanel}>
+          <View style={styles.heroTop}>
+            <View style={styles.heroTitleCol}>
+              <Text style={styles.pageTitle}>{t('ipadHomeTitle')}</Text>
+              <Text style={styles.pageDate}>{todayLabel}</Text>
+            </View>
+          </View>
+
+          <View style={styles.heroBody}>
+            <Pressable
+              onPress={() => leadIssue ? goIssues(leadIssue.category, leadIssue.item.id) : undefined}
+              accessibilityRole={leadIssue ? 'button' : 'text'}
+              style={({ pressed }) => [styles.leadIssuePanel, pressed && leadIssue && styles.pressed]}>
+              <View style={styles.heroKickerRow}>
+                <Text style={styles.heroKicker}>{t('ipadHomeIssuesTitle')}</Text>
+                {leadIssue ? (
+                  <Text style={styles.heroCategory}>{t(NEWS_SEGMENT_LABEL[leadIssue.category])}</Text>
+                ) : null}
+              </View>
+              <Text style={styles.heroIssueTitle} numberOfLines={2}>
+                {leadIssue?.item.title || t('ipadHomeIssuesEmpty')}
+              </Text>
+              {leadIssue ? (
+                <>
+                  <Text style={styles.heroIssueSummary} numberOfLines={2}>
+                    {leadIssue.item.summary}
+                  </Text>
+                  <View style={styles.heroChipRow}>
+                    {leadIssue.item.topics.slice(0, 3).map((topic) => (
+                      <Text key={topic} style={styles.heroChip} numberOfLines={1}>
+                        {topic}
+                      </Text>
+                    ))}
+                    {leadIssue.item.symbols.slice(0, 3).map((symbol) => (
+                      <Text key={symbol} style={[styles.heroChip, styles.heroSymbolChip]} numberOfLines={1}>
+                        {symbol}
+                      </Text>
+                    ))}
+                  </View>
+                </>
+              ) : null}
+            </Pressable>
+
+            <View style={styles.heroSideRail}>
+              <Pressable
+                onPress={() => leadBriefing ? goSignal(leadBriefingSessionKey) : undefined}
+                accessibilityRole={leadBriefing ? 'button' : 'text'}
+                style={({ pressed }) => [styles.heroMiniCard, pressed && leadBriefing && styles.pressed]}>
+                <Text style={styles.heroMiniLabel}>{t('ipadHomeSignalTitle')}</Text>
+                <Text style={styles.heroMiniTitle} numberOfLines={3}>
+                  {leadBriefingText || t('briefingSessionEmptyTitle')}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={goCalendar}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.heroMiniCard, pressed && styles.pressed]}>
+                <Text style={styles.heroMiniLabel}>{t('ipadHomeCalendarTitle')}</Text>
+                <Text style={styles.heroMiniTitle} numberOfLines={2}>
+                  {visibleCalendarEvents[0]?.title || t('ipadHomeCalendarEmpty')}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
 
         {error ? (
@@ -256,22 +344,25 @@ export function IpadHomeScreen() {
           </View>
         ) : (
           <>
-            <HomeSection
-              title={t('ipadHomeIssuesTitle')}
-              subtitle={t('ipadHomeIssuesSubtitle')}
-              styles={styles}>
-              <View style={styles.sectionStack}>
+            <View style={styles.issueBoard}>
+              <View style={styles.boardHeader}>
+                <View>
+                  <Text style={styles.boardTitle}>{t('ipadHomeIssuesTitle')}</Text>
+                  <Text style={styles.boardSubtitle}>{t('ipadHomeIssuesSubtitle')}</Text>
+                </View>
+              </View>
+              <View style={styles.issueLaneRow}>
                 {HOME_DIGEST_CATEGORIES.map((category) => {
                   const items = digests[category];
                   const tone = categoryTone(category, theme);
                   return (
-                    <View key={category} style={styles.blockCard}>
-                      <View style={[styles.blockHeader, { backgroundColor: tone.bg, borderBottomColor: tone.border }]}>
-                        <View style={styles.blockHeaderTextCol}>
-                          <Text style={[styles.blockHeaderTitle, { color: tone.text }]}>
+                    <View key={category} style={[styles.issueLane, { borderTopColor: tone.text }]}>
+                      <View style={styles.laneHeader}>
+                        <View>
+                          <Text style={[styles.laneTitle, { color: tone.text }]}>
                             {t(NEWS_SEGMENT_LABEL[category])}
                           </Text>
-                          <Text style={styles.blockHeaderHint} numberOfLines={1}>
+                          <Text style={styles.laneMeta} numberOfLines={1}>
                             {items.length > 0
                               ? t('feedDigestSummary', {
                                   count: String(items.reduce((sum, item) => sum + item.count, 0)),
@@ -283,160 +374,133 @@ export function IpadHomeScreen() {
                         <Pressable
                           onPress={() => goIssues(category)}
                           accessibilityRole="button"
-                          style={({ pressed }) => [styles.blockHeaderAction, pressed && styles.pressed]}>
-                          <Text style={[styles.blockHeaderActionText, { color: tone.text }]}>
-                            {t('commonViewAll')}
-                          </Text>
-                          <FontAwesome name="chevron-right" size={10} color={tone.text} />
+                          hitSlop={8}
+                          style={({ pressed }) => [styles.laneMoreBtn, pressed && styles.pressed]}>
+                          <Text style={styles.laneMoreText}>{t('commonViewAll')}</Text>
                         </Pressable>
                       </View>
-                      <View style={styles.blockBody}>
-                        {items.length === 0 ? (
-                          <Text style={styles.emptyLine}>{t('ipadHomeIssuesEmpty')}</Text>
-                        ) : (
-                          items.map((item, index) => (
-                            <View
-                              key={item.id}
-                              style={[styles.issueCard, index < items.length - 1 && styles.issueRowBorder]}>
-                              <Pressable
-                                onPress={() => goIssues(category, item.id)}
-                                accessibilityRole="button"
-                                style={({ pressed }) => [pressed && styles.pressed]}>
-                                {(item.aiGenerated || item.topics.length > 0 || item.symbols.length > 0) ? (
-                                  <View style={styles.issueBadgeRow}>
-                                    {item.aiGenerated ? (
-                                      <View style={styles.aiBadge}>
-                                        <Text style={styles.aiBadgeText}>AI</Text>
-                                      </View>
-                                    ) : null}
-                                    {item.topics.slice(0, 3).map((topic) => (
-                                      <Text key={topic} style={styles.topicChip} numberOfLines={1}>
-                                        {topic}
-                                      </Text>
-                                    ))}
-                                    {item.symbols.slice(0, 2).map((symbol) => (
-                                      <Text key={symbol} style={[styles.topicChip, styles.symbolChip]} numberOfLines={1}>
-                                        {symbol}
-                                      </Text>
-                                    ))}
-                                  </View>
-                                ) : null}
-                                <Text style={styles.issueTitle} numberOfLines={2}>
-                                  {item.title}
-                                </Text>
-                                <Text style={styles.issueSummary} numberOfLines={2}>
-                                  {item.summary}
-                                </Text>
-                              </Pressable>
-                              <View style={styles.issueFooterRow}>
-                                <Text style={styles.issueMeta} numberOfLines={1}>
-                                  {t('feedDigestSummary', {
-                                    count: String(item.count),
-                                    sources: String(item.sources.length),
-                                  })}
-                                </Text>
-                                <Pressable
-                                  onPress={() =>
-                                    setExpandedDigestId((prev) => (prev === item.id ? null : item.id))
-                                  }
-                                  accessibilityRole="button"
-                                  accessibilityState={{ expanded: expandedDigestId === item.id }}
-                                  hitSlop={8}
-                                  style={({ pressed }) => [styles.sourceToggle, pressed && styles.pressed]}>
-                                  <Text style={styles.sourceToggleText}>
-                                    {t(expandedDigestId === item.id ? 'feedDigestCollapse' : 'feedDigestExpand')}
-                                  </Text>
-                                </Pressable>
-                              </View>
-                              {expandedDigestId === item.id ? (
-                                <View style={styles.sourceList}>
-                                  {(item.sourceRefs || []).slice(0, 5).map((ref, refIndex) => (
-                                    <Pressable
-                                      key={`${item.id}-${refIndex}`}
-                                      onPress={ref.url ? () => void Linking.openURL(ref.url!).catch(() => null) : undefined}
-                                      accessibilityRole={ref.url ? 'link' : 'text'}
-                                      style={({ pressed }) => [styles.sourceRow, pressed && ref.url && styles.pressed]}>
-                                      <View style={styles.sourceTextCol}>
-                                        <Text style={styles.sourceTitle} numberOfLines={2}>
-                                          {ref.title || ref.sourceName || ref.url || ''}
-                                        </Text>
-                                        {ref.sourceName ? (
-                                          <Text style={styles.sourceName} numberOfLines={1}>
-                                            {ref.sourceName}
-                                          </Text>
-                                        ) : null}
-                                      </View>
-                                      {ref.url ? <FontAwesome name="external-link" size={10} color={theme.green} /> : null}
-                                    </Pressable>
+
+                      {items.length === 0 ? (
+                        <Text style={styles.emptyLine}>{t('ipadHomeIssuesEmpty')}</Text>
+                      ) : (
+                        items.map((item, index) => (
+                          <View
+                            key={item.id}
+                            style={[styles.issueCard, index < items.length - 1 && styles.issueRowBorder]}>
+                            <Pressable
+                              onPress={() => goIssues(category, item.id)}
+                              accessibilityRole="button"
+                              style={({ pressed }) => [pressed && styles.pressed]}>
+                              {(item.aiGenerated || item.topics.length > 0 || item.symbols.length > 0) ? (
+                                <View style={styles.issueBadgeRow}>
+                                  {item.aiGenerated ? (
+                                    <View style={styles.aiBadge}>
+                                      <Text style={styles.aiBadgeText}>AI</Text>
+                                    </View>
+                                  ) : null}
+                                  {item.topics.slice(0, 3).map((topic) => (
+                                    <Text key={topic} style={styles.topicChip} numberOfLines={1}>
+                                      {topic}
+                                    </Text>
+                                  ))}
+                                  {item.symbols.slice(0, 2).map((symbol) => (
+                                    <Text key={symbol} style={[styles.topicChip, styles.symbolChip]} numberOfLines={1}>
+                                      {symbol}
+                                    </Text>
                                   ))}
                                 </View>
                               ) : null}
+                              <Text style={styles.issueTitle} numberOfLines={2}>
+                                {item.title}
+                              </Text>
+                              <Text style={styles.issueSummary} numberOfLines={2}>
+                                {item.summary}
+                              </Text>
+                            </Pressable>
+                            <View style={styles.issueFooterRow}>
+                              <Text style={styles.issueMeta} numberOfLines={1}>
+                                {t('feedDigestSummary', {
+                                  count: String(item.count),
+                                  sources: String(item.sources.length),
+                                })}
+                              </Text>
+                              <Pressable
+                                onPress={() =>
+                                  setExpandedDigestId((prev) => (prev === item.id ? null : item.id))
+                                }
+                                accessibilityRole="button"
+                                accessibilityState={{ expanded: expandedDigestId === item.id }}
+                                hitSlop={8}
+                                style={({ pressed }) => [styles.sourceToggle, pressed && styles.pressed]}>
+                                <Text style={styles.sourceToggleText}>
+                                  {t(expandedDigestId === item.id ? 'feedDigestCollapse' : 'feedDigestExpand')}
+                                </Text>
+                              </Pressable>
                             </View>
-                          ))
-                        )}
-                      </View>
+                            {expandedDigestId === item.id ? (
+                              <View style={styles.sourceList}>
+                                {(item.sourceRefs || []).slice(0, 5).map((ref, refIndex) => (
+                                  <Pressable
+                                    key={`${item.id}-${refIndex}`}
+                                    onPress={ref.url ? () => void Linking.openURL(ref.url!).catch(() => null) : undefined}
+                                    accessibilityRole={ref.url ? 'link' : 'text'}
+                                    style={({ pressed }) => [styles.sourceRow, pressed && ref.url && styles.pressed]}>
+                                    <View style={styles.sourceTextCol}>
+                                      <Text style={styles.sourceTitle} numberOfLines={2}>
+                                        {ref.title || ref.sourceName || ref.url || ''}
+                                      </Text>
+                                      {ref.sourceName ? (
+                                        <Text style={styles.sourceName} numberOfLines={1}>
+                                          {ref.sourceName}
+                                        </Text>
+                                      ) : null}
+                                    </View>
+                                    {ref.url ? <FontAwesome name="external-link" size={10} color={theme.green} /> : null}
+                                  </Pressable>
+                                ))}
+                              </View>
+                            ) : null}
+                          </View>
+                        ))
+                      )}
                     </View>
                   );
                 })}
               </View>
-            </HomeSection>
+            </View>
 
-            <HomeSection
-              title={t('ipadHomeSignalTitle')}
-              subtitle={t('ipadHomeSignalSubtitle')}
-              styles={styles}>
-              <View style={styles.sectionStack}>
-                {HOME_SIGNAL_SESSIONS.map((session) => {
-                  const briefing = briefingBySession.get(session.key);
-                  const lead = briefing ? briefingLeadText(briefing) : '';
-                  const overview = briefing?.overview.slice(0, 2) || [];
-                  return (
-                    <Pressable
-                      key={session.key}
-                      onPress={() => goSignal(session.key)}
-                      accessibilityRole="button"
-                      style={({ pressed }) => [styles.blockCard, pressed && styles.pressed]}>
-                      <View style={styles.blockHeader}>
-                        <Text style={styles.blockHeaderTitle}>{t(session.labelId)}</Text>
-                        <Text style={styles.blockHeaderHint} numberOfLines={1}>
-                          {t(session.hintId)}
+            <View style={styles.lowerGrid}>
+              <View style={styles.compactPanel}>
+                <View style={styles.compactHeader}>
+                  <Text style={styles.compactTitle}>{t('ipadHomeSignalTitle')}</Text>
+                  <Text style={styles.compactSubtitle}>{t('ipadHomeSignalSubtitle')}</Text>
+                </View>
+                <View style={styles.signalSessionGrid}>
+                  {HOME_SIGNAL_SESSIONS.map((session) => {
+                    const briefing = briefingBySession.get(session.key);
+                    const lead = briefing ? briefingLeadText(briefing) : '';
+                    return (
+                      <Pressable
+                        key={session.key}
+                        onPress={() => goSignal(session.key)}
+                        accessibilityRole="button"
+                        style={({ pressed }) => [styles.sessionCard, pressed && styles.pressed]}>
+                        <Text style={styles.sessionLabel}>{t(session.labelId)}</Text>
+                        <Text style={styles.sessionText} numberOfLines={3}>
+                          {lead || t('briefingSessionEmptyTitle')}
                         </Text>
-                      </View>
-                      <View style={styles.blockBody}>
-                        {briefing && lead ? (
-                          <>
-                            <Text style={styles.signalSummary} numberOfLines={3}>
-                              {lead}
-                            </Text>
-                            {overview.length > 0 ? (
-                              <View style={styles.signalBullets}>
-                                {overview.map((line, index) => (
-                                  <View key={`${session.key}-${index}`} style={styles.signalBulletRow}>
-                                    <View style={styles.signalBulletDot} />
-                                    <Text style={styles.signalBulletText} numberOfLines={2}>
-                                      {line}
-                                    </Text>
-                                  </View>
-                                ))}
-                              </View>
-                            ) : null}
-                          </>
-                        ) : (
-                          <Text style={styles.emptyLine}>{t('briefingSessionEmptyTitle')}</Text>
-                        )}
-                      </View>
-                    </Pressable>
-                  );
-                })}
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
-            </HomeSection>
 
-            <HomeSection
-              title={t('ipadHomeCalendarTitle')}
-              subtitle={t('ipadHomeCalendarSubtitle')}
-              styles={styles}>
-              <View style={styles.blockCard}>
-                <View style={styles.blockBody}>
+              <View style={styles.compactPanel}>
+                <View style={styles.compactHeader}>
+                  <Text style={styles.compactTitle}>{t('ipadHomeCalendarTitle')}</Text>
+                  <Text style={styles.compactSubtitle}>{t('ipadHomeCalendarSubtitle')}</Text>
+                </View>
+                <View>
                   {visibleCalendarEvents.length === 0 ? (
                     <Text style={styles.emptyLine}>{t('ipadHomeCalendarEmpty')}</Text>
                   ) : (
@@ -478,30 +542,11 @@ export function IpadHomeScreen() {
                   )}
                 </View>
               </View>
-            </HomeSection>
+            </View>
           </>
         )}
       </View>
     </ScrollView>
-  );
-}
-
-type HomeSectionProps = {
-  title: string;
-  subtitle: string;
-  styles: ReturnType<typeof makeStyles>;
-  children: ReactNode;
-};
-
-function HomeSection({ title, subtitle, styles, children }: HomeSectionProps) {
-  return (
-    <View style={styles.sectionCard}>
-      <View style={styles.sectionHeaderBand}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.sectionSubtitle}>{subtitle}</Text>
-      </View>
-      <View style={styles.sectionBody}>{children}</View>
-    </View>
   );
 }
 
@@ -534,13 +579,135 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '800',
       color: theme.text,
       letterSpacing: -0.4,
-      textAlign: 'center',
+      textAlign: 'left',
     },
     pageDate: {
       fontSize: sf(13),
       fontWeight: '600',
       color: theme.textMuted,
-      textAlign: 'center',
+      textAlign: 'left',
+    },
+    heroPanel: {
+      overflow: 'hidden',
+      borderRadius: 28,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      padding: 18,
+      gap: 16,
+    },
+    heroTop: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 18,
+    },
+    heroTitleCol: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'flex-start',
+      gap: 4,
+    },
+    heroBody: {
+      flexDirection: 'row',
+      gap: 14,
+      alignItems: 'stretch',
+    },
+    leadIssuePanel: {
+      flex: 1,
+      minHeight: 190,
+      borderRadius: 24,
+      padding: 20,
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    heroKickerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    heroKicker: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '900',
+      color: theme.green,
+    },
+    heroCategory: {
+      overflow: 'hidden',
+      borderRadius: 999,
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      backgroundColor: theme.card,
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    heroIssueTitle: {
+      fontSize: sf(24),
+      lineHeight: sf(32),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    heroIssueSummary: {
+      fontSize: sf(14),
+      lineHeight: sf(22),
+      fontWeight: '700',
+      color: theme.textMuted,
+    },
+    heroChipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    heroChip: {
+      overflow: 'hidden',
+      maxWidth: 160,
+      borderRadius: 999,
+      paddingHorizontal: 9,
+      paddingVertical: 5,
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '900',
+      color: theme.textMuted,
+    },
+    heroSymbolChip: {
+      color: theme.green,
+      borderColor: theme.greenBorder,
+    },
+    heroSideRail: {
+      width: 320,
+      gap: 10,
+    },
+    heroMiniCard: {
+      flex: 1,
+      minHeight: 88,
+      borderRadius: 22,
+      padding: 16,
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
+      borderColor: theme.border,
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    heroMiniLabel: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '900',
+      color: theme.textMuted,
+    },
+    heroMiniTitle: {
+      fontSize: sf(14),
+      lineHeight: sf(21),
+      fontWeight: '800',
+      color: theme.text,
     },
     loadingBox: {
       paddingVertical: 48,
@@ -589,6 +756,139 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     sectionStack: {
       gap: 10,
+    },
+    issueBoard: {
+      borderRadius: 24,
+      padding: 16,
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      gap: 14,
+    },
+    boardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    boardTitle: {
+      fontSize: sf(19),
+      lineHeight: sf(25),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    boardSubtitle: {
+      marginTop: 2,
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '700',
+      color: theme.textMuted,
+    },
+    issueLaneRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+    },
+    issueLane: {
+      flex: 1,
+      minWidth: 0,
+      borderTopWidth: 3,
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingTop: 14,
+      paddingBottom: 4,
+      backgroundColor: theme.bg,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    laneHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 10,
+      marginBottom: 4,
+    },
+    laneTitle: {
+      fontSize: sf(15),
+      lineHeight: sf(20),
+      fontWeight: '900',
+    },
+    laneMeta: {
+      marginTop: 2,
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '700',
+      color: theme.textMuted,
+    },
+    laneMoreBtn: {
+      minHeight: 28,
+      justifyContent: 'center',
+      paddingHorizontal: 8,
+      borderRadius: 999,
+      backgroundColor: theme.bgElevated,
+    },
+    laneMoreText: {
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '900',
+      color: theme.green,
+    },
+    lowerGrid: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 14,
+    },
+    compactPanel: {
+      flex: 1,
+      minWidth: 0,
+      borderRadius: 24,
+      padding: 16,
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      gap: 12,
+    },
+    compactHeader: {
+      gap: 2,
+    },
+    compactTitle: {
+      fontSize: sf(18),
+      lineHeight: sf(24),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    compactSubtitle: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '700',
+      color: theme.textMuted,
+    },
+    signalSessionGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    sessionCard: {
+      width: '48%',
+      minHeight: 114,
+      borderRadius: 18,
+      padding: 13,
+      backgroundColor: theme.bg,
+      borderWidth: 1,
+      borderColor: theme.border,
+      gap: 8,
+    },
+    sessionLabel: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '900',
+      color: theme.green,
+    },
+    sessionText: {
+      fontSize: sf(13),
+      lineHeight: sf(20),
+      fontWeight: '700',
+      color: theme.text,
     },
     blockCard: {
       borderRadius: 14,

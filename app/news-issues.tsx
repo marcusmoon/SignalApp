@@ -65,21 +65,45 @@ function sortDigests(rows: SignalApiNewsDigestItem[]): SignalApiNewsDigestItem[]
   );
 }
 
-export default function NewsIssuesScreen() {
-  const params = useLocalSearchParams<{ category?: string; date?: string; digestId?: string }>();
+type NewsIssuesContentProps = {
+  embedded?: boolean;
+  initialCategory?: HomeDigestCategory;
+  initialDate?: string;
+  initialDigestId?: string | null;
+  onBack?: () => void;
+};
+
+export function NewsIssuesContent({
+  embedded = false,
+  initialCategory = 'global',
+  initialDate = toYmd(new Date()),
+  initialDigestId = null,
+  onBack,
+}: NewsIssuesContentProps) {
   const { useTwoPane } = useResponsiveLayout();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const todayYmd = useMemo(() => toYmd(new Date()), []);
-  const [category, setCategory] = useState<HomeDigestCategory>(() => parseCategory(params.category));
-  const [selectedYmd, setSelectedYmd] = useState(() => parseDateParam(params.date));
+  const isWide = embedded || useTwoPane;
+  const [category, setCategory] = useState<HomeDigestCategory>(initialCategory);
+  const [selectedYmd, setSelectedYmd] = useState(initialDate);
   const [items, setItems] = useState<SignalApiNewsDigestItem[]>([]);
-  const [expandedId, setExpandedId] = useState<string | null>(
-    typeof params.digestId === 'string' ? params.digestId : null,
-  );
+  const [expandedId, setExpandedId] = useState<string | null>(initialDigestId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCategory(initialCategory);
+  }, [initialCategory]);
+
+  useEffect(() => {
+    setSelectedYmd(initialDate);
+  }, [initialDate]);
+
+  useEffect(() => {
+    setExpandedId(initialDigestId);
+  }, [initialDigestId]);
 
   const load = useCallback(async () => {
     if (!hasSignalApi()) {
@@ -112,12 +136,28 @@ export default function NewsIssuesScreen() {
   }, [load]);
 
   const body = (
-    <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
-      {!useTwoPane ? <SignalHeader compact /> : null}
+    <SafeAreaView style={styles.safe} edges={isWide ? [] : ['top']}>
+      {!isWide ? <SignalHeader compact /> : null}
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={[styles.inner, useTwoPane && styles.innerWide]}>
+        <View style={[styles.inner, isWide && styles.innerWide]}>
+          {onBack ? (
+            <View style={styles.paneTopBar}>
+              <Pressable
+                onPress={onBack}
+                accessibilityRole="button"
+                accessibilityLabel={t('commonBack')}
+                style={({ pressed }) => [styles.paneBackBtn, pressed && styles.pressed]}>
+                <FontAwesome name="chevron-left" size={13} color={theme.green} />
+                <Text style={styles.paneBackText}>{t('commonBack')}</Text>
+              </Pressable>
+              <Text style={styles.paneTitle} numberOfLines={1}>
+                {t('newsIssuesTitle')}
+              </Text>
+              <View style={styles.paneSpacer} />
+            </View>
+          ) : null}
           <View style={styles.header}>
-            <Text style={styles.title}>{t('newsIssuesTitle')}</Text>
+            {!onBack ? <Text style={styles.title}>{t('newsIssuesTitle')}</Text> : null}
             <View style={styles.categoryTabs}>
               {HOME_DIGEST_CATEGORIES.map((key) => {
                 const active = category === key;
@@ -232,12 +272,31 @@ export default function NewsIssuesScreen() {
     </SafeAreaView>
   );
 
+  return body;
+}
+
+export default function NewsIssuesScreen() {
+  const params = useLocalSearchParams<{ category?: string; date?: string; digestId?: string }>();
+  const { useTwoPane } = useResponsiveLayout();
+  const { t } = useLocale();
+  const initialCategory = parseCategory(params.category);
+  const initialDate = parseDateParam(params.date);
+  const initialDigestId = typeof params.digestId === 'string' ? params.digestId : null;
+  const content = (
+    <NewsIssuesContent
+      embedded={useTwoPane}
+      initialCategory={initialCategory}
+      initialDate={initialDate}
+      initialDigestId={initialDigestId}
+    />
+  );
+
   return useTwoPane ? (
     <IpadSidebarScreen title={t('newsIssuesTitle')} backHref="/(tabs)/more">
-      {body}
+      {content}
     </IpadSidebarScreen>
   ) : (
-    body
+    content
   );
 }
 
@@ -258,6 +317,42 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
       paddingHorizontal: 20,
       paddingTop: 16,
+    },
+    paneTopBar: {
+      minHeight: 42,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 2,
+    },
+    paneBackBtn: {
+      minHeight: 34,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      paddingHorizontal: 11,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+    },
+    paneBackText: {
+      fontSize: sf(13),
+      lineHeight: sf(17),
+      fontWeight: '900',
+      color: theme.green,
+    },
+    paneTitle: {
+      flex: 1,
+      textAlign: 'center',
+      fontSize: sf(18),
+      lineHeight: sf(24),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    paneSpacer: {
+      width: 78,
+      flexShrink: 0,
     },
     header: { gap: 12 },
     title: {

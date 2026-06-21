@@ -23,6 +23,7 @@ import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalSidebarTabBar } from '@/components/signal/SignalSidebarTabBar';
 import { SlackTabBarButton } from '@/components/SlackTabBarButton';
 import AccountScreen from '@/app/account';
+import { NewsIssuesContent } from '@/app/news-issues';
 import SettingsScreen from '@/app/settings';
 import { IpadHomeScreen } from '@/components/signal/IpadHomeScreen';
 import { IpadSidebarNavProvider, useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
@@ -474,7 +475,7 @@ function IpadWideTabLayout({
   disclosureHasUnread,
   t,
 }: IpadWideTabLayoutProps) {
-  const { contentPane } = useIpadSidebarNav();
+  const { contentPane, newsIssuesParams, showHome } = useIpadSidebarNav();
 
   return (
     <SafeAreaView style={sidebarLayoutStyles.safe} edges={['top']}>
@@ -488,6 +489,14 @@ function IpadWideTabLayout({
         <View style={sidebarLayoutStyles.content}>
           {contentPane === 'home' ? (
             <IpadHomeScreen />
+          ) : contentPane === 'newsIssues' && newsIssuesParams ? (
+            <NewsIssuesContent
+              embedded
+              initialCategory={newsIssuesParams.category}
+              initialDate={newsIssuesParams.date}
+              initialDigestId={newsIssuesParams.digestId}
+              onBack={showHome}
+            />
           ) : contentPane === 'account' ? (
             <AccountScreen embedded />
           ) : contentPane === 'settings' ? (

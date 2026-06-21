@@ -1,12 +1,18 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import type { SignalSessionKey } from '@/constants/ipadHomeNav';
+import type { HomeDigestCategory } from '@/constants/ipadHomeNav';
 import type { SettingsTab } from '@/constants/settingsTabs';
 import type { NewsSegmentKey } from '@/constants/newsSegment';
 
 export type YoutubeSortKey = 'latest' | 'popular';
 
-export type IpadContentPane = 'home' | 'tabs' | 'account' | 'settings';
+export type IpadContentPane = 'home' | 'tabs' | 'account' | 'settings' | 'newsIssues';
+export type IpadNewsIssuesPaneParams = {
+  category: HomeDigestCategory;
+  date: string;
+  digestId?: string | null;
+};
 
 type IpadSidebarNavContextValue = {
   isAvailable: boolean;
@@ -16,10 +22,12 @@ type IpadSidebarNavContextValue = {
   isSettingsPaneActive: boolean;
   settingsTab: SettingsTab;
   youtubeSort: YoutubeSortKey;
+  newsIssuesParams: IpadNewsIssuesPaneParams | null;
   showHome: () => void;
   showAccount: () => void;
   showTabs: () => void;
   showSettings: (tab?: SettingsTab) => void;
+  showNewsIssues: (params: IpadNewsIssuesPaneParams) => void;
   showYoutubeTab: (sort?: YoutubeSortKey) => void;
   showNewsTab: (segment?: NewsSegmentKey) => void;
   showSignalTab: (session?: SignalSessionKey) => void;
@@ -35,10 +43,12 @@ const IpadSidebarNavContext = createContext<IpadSidebarNavContextValue>({
   isSettingsPaneActive: false,
   settingsTab: 'display',
   youtubeSort: 'latest',
+  newsIssuesParams: null,
   showHome: () => {},
   showAccount: () => {},
   showTabs: () => {},
   showSettings: () => {},
+  showNewsIssues: () => {},
   showYoutubeTab: () => {},
   showNewsTab: () => {},
   showSignalTab: () => {},
@@ -50,6 +60,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const [contentPane, setContentPane] = useState<IpadContentPane>('home');
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('display');
   const [youtubeSort, setYoutubeSort] = useState<YoutubeSortKey>('latest');
+  const [newsIssuesParams, setNewsIssuesParams] = useState<IpadNewsIssuesPaneParams | null>(null);
   const pendingNewsSegmentRef = useRef<NewsSegmentKey | null>(null);
   const pendingSignalSessionRef = useRef<SignalSessionKey | null>(null);
 
@@ -68,6 +79,11 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const showSettings = useCallback((tab: SettingsTab = 'display') => {
     setSettingsTab(tab);
     setContentPane('settings');
+  }, []);
+
+  const showNewsIssues = useCallback((params: IpadNewsIssuesPaneParams) => {
+    setNewsIssuesParams(params);
+    setContentPane('newsIssues');
   }, []);
 
   const showYoutubeTab = useCallback((sort: YoutubeSortKey = 'latest') => {
@@ -101,15 +117,17 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     () => ({
       isAvailable: true,
       contentPane,
-      isHomePaneActive: contentPane === 'home',
+      isHomePaneActive: contentPane === 'home' || contentPane === 'newsIssues',
       isAccountPaneActive: contentPane === 'account',
       isSettingsPaneActive: contentPane === 'settings',
       settingsTab,
       youtubeSort,
+      newsIssuesParams,
       showHome,
       showAccount,
       showTabs,
       showSettings,
+      showNewsIssues,
       showYoutubeTab,
       showNewsTab,
       showSignalTab,
@@ -120,10 +138,12 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       contentPane,
       settingsTab,
       youtubeSort,
+      newsIssuesParams,
       showHome,
       showAccount,
       showSettings,
       showTabs,
+      showNewsIssues,
       showYoutubeTab,
       showNewsTab,
       showSignalTab,

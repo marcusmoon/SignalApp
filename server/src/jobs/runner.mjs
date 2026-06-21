@@ -21,7 +21,6 @@ import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
 import { generateNewsDigestItems } from '../digests/newsDigest.mjs';
-import { generateDisclosureDigestItems } from '../digests/disclosureDigest.mjs';
 import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
 import { fetchNewswireRssNews } from '../providers/news/rssNews.mjs';
@@ -134,9 +133,6 @@ async function readJobContext(job) {
   }
   if (provider === 'signal' && handler === 'news_digest') {
     context.newsItems = await listCollectionPayloads('newsItems');
-  }
-  if (provider === 'signal' && handler === 'disclosure_digest') {
-    context.disclosureItems = await listCollectionPayloads('disclosures');
   }
 
   return context;
@@ -368,9 +364,6 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
   if (effective.provider === 'signal' && effective.handler === 'news_digest') {
     return { kind: 'newsDigests', rows: generateNewsDigestItems(dbBefore, params || {}) };
   }
-  if (effective.provider === 'signal' && effective.handler === 'disclosure_digest') {
-    return { kind: 'disclosureDigests', rows: generateDisclosureDigestItems(dbBefore, params || {}) };
-  }
   throw new Error(`UNKNOWN_JOB_HANDLER:${job.provider}:${job.handler}`);
 }
 
@@ -382,7 +375,6 @@ async function persistHandlerResult(result, rows) {
     priceSeries: 'priceSeries',
     coinMarkets: 'coinMarkets',
     newsDigests: 'newsDigestItems',
-    disclosureDigests: 'disclosureDigestItems',
   };
   const directCollection = directCollectionByKind[result.kind];
   if (directCollection) {

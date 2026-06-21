@@ -1,7 +1,42 @@
-import { queryPublicDisclosureById, queryPublicDisclosures, queryPublicDisclosureDigests } from '../../../db.mjs';
-import { json } from '../../shared.mjs';
+import { queryPublicDisclosureById, queryPublicDisclosures, queryPublicDisclosureDigests, upsertCollectionRows } from '../../../db.mjs';
+import { json, readBody } from '../../shared.mjs';
+import { config } from '../../../config.mjs';
+
+function cleanText(value) {
+  return String(value || '').trim();
+}
+
+function hasIngestAccess(req) {
+  const configured = cleanText(config.automationIngestToken);
+  if (!configured) return false;
+  const header = cleanText(req.headers['x-signal-automation-token']);
+  const bearer = cleanText(String(req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
+  return header === configured || bearer === configured;
+}
 
 export async function handlePublicDisclosureRoutes({ req, res, url, pathname }) {
+  if (req.method === 'POST' && pathname === '/v1/disclosure-digests/ingest') {
+    if (!hasIngestAccess(req)) {
+      json(res, 401, { error: 'AUTOMATION_INGEST_AUTH_REQUIRED' });
+      return true;
+    }
+    const body = await readBody(req);
+    const rawItems = Array.isArray(body?.items) ? body.items : [];
+    if (rawItems.length === 0) {
+      json(res, 400, { error: 'ITEMS_REQUIRED' });
+      return true;
+    }
+    const now = new Date().toISOString();
+    const items = rawItems.map((item, index) => ({
+      ...item,
+      score: item.score ?? (100 - index * 10),
+      updatedAt: now,
+    }));
+    await upsertCollectionRows('disclosureDigestItems', items);
+    json(res, 200, { ok: true, count: items.length });
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/v1/disclosure-digests') {
     const page = await queryPublicDisclosureDigests({
       market: url.searchParams.get('market') || '',

@@ -1,9 +1,9 @@
 /**
  * iPad 전용 좌측 사이드바 내비게이션.
  * - 메인 탭(뉴스·공시·시그널·시세·더보기)을 세로로 표시
- * - SidebarSubTabsContext에 등록된 서브탭을 현재 탭 아래에 표시
+ * - 더보기 하위 메뉴와 계정 진입점을 iPad에 맞게 분리
  */
-import { usePathname, useRouter } from 'expo-router';
+import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,9 +17,17 @@ import type { MessageId } from '@/locales/messages';
 type TabDef = {
   name: string;
   route: string;
-  icon: 'newspaper' | 'file-alt' | 'highlighter' | 'chart-line' | 'th-large' | 'youtube';
+  icon: 'newspaper' | 'file-alt' | 'highlighter' | 'chart-line' | 'th-large';
   labelId: MessageId;
   dotColor?: string | null;
+};
+
+type MoreSubDef = {
+  key: 'youtube' | 'settings' | 'quick';
+  route: string;
+  icon: 'youtube' | 'cog' | 'external-link-alt';
+  labelId: MessageId;
+  params?: Record<string, string>;
 };
 
 const SIDEBAR_TABS: TabDef[] = [
@@ -27,11 +35,16 @@ const SIDEBAR_TABS: TabDef[] = [
   { name: 'disclosures', route: '/(tabs)/disclosures', icon: 'file-alt',    labelId: 'tabDisclosures' },
   { name: 'signal',      route: '/(tabs)/signal',      icon: 'highlighter', labelId: 'tabSignal' },
   { name: 'quotes',      route: '/(tabs)/quotes',      icon: 'chart-line',  labelId: 'tabQuotes' },
-  { name: 'youtube',     route: '/(tabs)/youtube',     icon: 'youtube',     labelId: 'tabYoutube' },
   { name: 'more',        route: '/(tabs)/more',        icon: 'th-large',    labelId: 'tabMore' },
 ];
 
-const MORE_AUX_PATHS = ['/account', '/settings', '/alerts', '/calendar'];
+const MORE_SUB_TABS: MoreSubDef[] = [
+  { key: 'youtube', route: '/(tabs)/youtube', icon: 'youtube', labelId: 'tabYoutube', params: { from: 'more' } },
+  { key: 'settings', route: '/settings', icon: 'cog', labelId: 'screenSettings', params: { from: 'more' } },
+  { key: 'quick', route: '/(tabs)/more', icon: 'external-link-alt', labelId: 'moreRefLinksKicker', params: { section: 'quick' } },
+];
+
+const MORE_AUX_PATHS = ['/settings', '/alerts', '/calendar', '/youtube'];
 
 type Props = {
   newsHasUnread?: boolean;
@@ -48,85 +61,164 @@ export function SignalSidebarTabBar({
   const { t } = useLocale();
   const router = useRouter();
   const pathname = usePathname();
+  const params = useLocalSearchParams<{ section?: string }>();
   const insets = useSafeAreaInsets();
   const { subTabs } = useSidebarSubTabs();
 
   // 현재 활성 탭 이름 추출
-  const activeTabName = MORE_AUX_PATHS.some((path) => pathname.startsWith(path))
+  const accountActive = pathname.startsWith('/account');
+  const activeTabName = accountActive
+    ? null
+    : MORE_AUX_PATHS.some((path) => pathname.startsWith(path))
     ? 'more'
     : SIDEBAR_TABS.find((tab) =>
         pathname.startsWith(`/${tab.name}`) || pathname === tab.route.replace('/(tabs)', ''),
       )?.name ?? 'news';
+  const activeMoreSubKey: MoreSubDef['key'] | null = pathname.startsWith('/youtube')
+    ? 'youtube'
+    : pathname.startsWith('/settings')
+      ? 'settings'
+      : activeTabName === 'more' && params.section === 'quick'
+        ? 'quick'
+        : activeTabName === 'more'
+          ? 'quick'
+          : null;
 
   const styles = makeStyles(theme, scaleFont, insets.bottom);
 
   return (
     <View style={styles.sidebar}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
-        {SIDEBAR_TABS.map((tab) => {
-          const isActive = activeTabName === tab.name;
-          const hasDot =
-            (tab.name === 'news' && newsHasUnread) ||
-            (tab.name === 'signal' && signalHasUnread) ||
-            (tab.name === 'disclosures' && disclosureHasUnread);
+      <View style={styles.navArea}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}>
+          {SIDEBAR_TABS.map((tab) => {
+            const isActive = activeTabName === tab.name;
+            const hasDot =
+              (tab.name === 'news' && newsHasUnread) ||
+              (tab.name === 'signal' && signalHasUnread) ||
+              (tab.name === 'disclosures' && disclosureHasUnread);
 
-          return (
-            <View key={tab.name}>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.tabItem,
-                  isActive && styles.tabItemActive,
-                  pressed && styles.tabItemPressed,
-                ]}
-                onPress={() => router.navigate(tab.route as Parameters<typeof router.navigate>[0])}
-                accessibilityRole="button"
-                accessibilityState={{ selected: isActive }}>
-                <View style={styles.iconWrap}>
-                  <FontAwesome5
-                    name={tab.icon}
-                    size={18}
-                    color={isActive ? theme.green : theme.textMuted}
-                    solid
-                  />
-                  {hasDot ? <View style={styles.dot} /> : null}
-                </View>
-                <Text
-                  style={[styles.tabLabel, isActive && styles.tabLabelActive]}
-                  numberOfLines={1}>
-                  {t(tab.labelId)}
-                </Text>
-              </Pressable>
+            return (
+              <View key={tab.name}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.tabItem,
+                    isActive && styles.tabItemActive,
+                    pressed && styles.tabItemPressed,
+                  ]}
+                  onPress={() => router.navigate(tab.route as Parameters<typeof router.navigate>[0])}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}>
+                  <View style={styles.iconWrap}>
+                    <FontAwesome5
+                      name={tab.icon}
+                      size={18}
+                      color={isActive ? theme.green : theme.textMuted}
+                      solid
+                    />
+                    {hasDot ? <View style={styles.dot} /> : null}
+                  </View>
+                  <Text
+                    style={[styles.tabLabel, isActive && styles.tabLabelActive]}
+                    numberOfLines={1}>
+                    {t(tab.labelId)}
+                  </Text>
+                </Pressable>
 
-              {isActive && subTabs.length > 0 ? (
-                <View style={styles.subTabList}>
-                  {subTabs.map((sub) => (
-                    <Pressable
-                      key={sub.key}
-                      style={({ pressed }) => [
-                        styles.subTabItem,
-                        sub.active && styles.subTabItemActive,
-                        pressed && styles.subTabItemPressed,
-                      ]}
-                      onPress={sub.onPress}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: sub.active }}>
-                      <View style={[styles.subTabDot, sub.active && styles.subTabDotActive]} />
-                      <Text
-                        style={[styles.subTabLabel, sub.active && styles.subTabLabelActive]}
-                        numberOfLines={1}>
-                        {sub.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
-            </View>
-          );
-        })}
-      </ScrollView>
+                {isActive && tab.name === 'more' ? (
+                  <View style={styles.subTabList}>
+                    {MORE_SUB_TABS.map((sub) => {
+                      const subActive = activeMoreSubKey === sub.key;
+                      return (
+                        <Pressable
+                          key={sub.key}
+                          style={({ pressed }) => [
+                            styles.subTabItem,
+                            subActive && styles.subTabItemActive,
+                            pressed && styles.subTabItemPressed,
+                          ]}
+                          onPress={() =>
+                            router.navigate(
+                              sub.params
+                                ? ({ pathname: sub.route, params: sub.params } as Parameters<typeof router.navigate>[0])
+                                : (sub.route as Parameters<typeof router.navigate>[0]),
+                            )
+                          }
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: subActive }}>
+                          <View style={styles.subIconWrap}>
+                            <FontAwesome5
+                              name={sub.icon}
+                              size={12}
+                              color={subActive ? theme.green : theme.textDim}
+                              solid
+                            />
+                          </View>
+                          <Text
+                            style={[styles.subTabLabel, subActive && styles.subTabLabelActive]}
+                            numberOfLines={1}>
+                            {t(sub.labelId)}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : null}
+
+                {isActive && tab.name !== 'more' && subTabs.length > 0 ? (
+                  <View style={styles.subTabList}>
+                    {subTabs.map((sub) => (
+                      <Pressable
+                        key={sub.key}
+                        style={({ pressed }) => [
+                          styles.subTabItem,
+                          sub.active && styles.subTabItemActive,
+                          pressed && styles.subTabItemPressed,
+                        ]}
+                        onPress={sub.onPress}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: sub.active }}>
+                        <View style={[styles.subTabDot, sub.active && styles.subTabDotActive]} />
+                        <Text
+                          style={[styles.subTabLabel, sub.active && styles.subTabLabelActive]}
+                          numberOfLines={1}>
+                          {sub.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            );
+          })}
+        </ScrollView>
+      </View>
+      <View style={styles.accountDock}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.accountButton,
+            accountActive && styles.accountButtonActive,
+            pressed && styles.tabItemPressed,
+          ]}
+          onPress={() => router.navigate({ pathname: '/account', params: { from: 'more' } } as never)}
+          accessibilityRole="button"
+          accessibilityState={{ selected: accountActive }}
+          accessibilityLabel={t('screenAccount')}>
+          <View style={styles.iconWrap}>
+            <FontAwesome5
+              name="user-circle"
+              size={18}
+              color={accountActive ? theme.green : theme.textMuted}
+              solid
+            />
+          </View>
+          <Text style={[styles.tabLabel, accountActive && styles.tabLabelActive]} numberOfLines={1}>
+            {t('screenAccount')}
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -142,11 +234,29 @@ function makeStyles(
       backgroundColor: theme.card,
       borderRightWidth: StyleSheet.hairlineWidth,
       borderRightColor: theme.border,
-      paddingBottom: bottomInset,
       flexShrink: 0,
     },
+    navArea: { flex: 1, minHeight: 0 },
     scroll: { flex: 1 },
     scrollContent: { paddingVertical: 12, paddingHorizontal: 8 },
+    accountDock: {
+      paddingHorizontal: 8,
+      paddingTop: 8,
+      paddingBottom: Math.max(12, bottomInset + 8),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.border,
+    },
+    accountButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      borderRadius: 12,
+    },
+    accountButtonActive: {
+      backgroundColor: theme.bgElevated,
+    },
     tabItem: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -210,6 +320,11 @@ function makeStyles(
     },
     subTabDotActive: {
       backgroundColor: theme.green,
+    },
+    subIconWrap: {
+      width: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     subTabLabel: {
       flex: 1,

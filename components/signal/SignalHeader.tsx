@@ -72,13 +72,6 @@ export function SignalHeader({ onBrandPress, compact = false, fullWidth = false 
             accessibilityLabel={t('a11yCalendar')}>
             <FontAwesome name="calendar" size={18} color={theme.textMuted} />
           </Pressable>
-          <Pressable
-            onPress={() => router.push('/account')}
-            style={styles.iconBtn}
-            accessibilityRole="button"
-            accessibilityLabel={t('screenAccount')}>
-            <FontAwesome name="user-circle" size={18} color={theme.textMuted} />
-          </Pressable>
         </View>
       </View>
     </View>

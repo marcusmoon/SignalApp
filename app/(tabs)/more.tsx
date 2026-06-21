@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
-import { type Href, useRouter } from 'expo-router';
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -46,6 +46,7 @@ export default function MoreHubScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
+  const routeParams = useLocalSearchParams<{ section?: string }>();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
@@ -118,6 +119,11 @@ export default function MoreHubScreen() {
     ),
     [refLinksVisible, styles.footer, styles.footerAd],
   );
+  const visibleOrder = useMemo(
+    () => (useTwoPane ? order.filter((item) => item !== 'account') : order),
+    [order, useTwoPane],
+  );
+  const showIpadQuickLinks = useTwoPane && (routeParams.section === 'quick' || !routeParams.section);
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
@@ -130,7 +136,7 @@ export default function MoreHubScreen() {
       ) : (
         <FlatList
           key="more-list"
-          data={order}
+          data={showIpadQuickLinks ? [] : visibleOrder}
           keyExtractor={(item) => item}
           scrollEnabled
           style={[styles.list, useTwoPane && styles.listWide]}
@@ -138,7 +144,14 @@ export default function MoreHubScreen() {
             paddingTop: 10,
             paddingBottom: 24 + tabBarHeight + tabBarBottomInset(insets.bottom),
           }}
-          ListFooterComponent={listFooter}
+          ListHeaderComponent={
+            showIpadQuickLinks ? (
+              <View style={styles.quickOnlyWrap}>
+                {refLinksVisible ? <ReferenceLinksSection /> : null}
+              </View>
+            ) : null
+          }
+          ListFooterComponent={showIpadQuickLinks ? <SignalBannerAd variant="large" style={styles.footerAd} /> : listFooter}
           renderItem={({ item }) => {
             const meta = HUB_META[item];
             const name = t(meta.titleId);
@@ -225,6 +238,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     footer: {
       marginTop: SECTION_GAP,
       gap: SECTION_GAP,
+    },
+    quickOnlyWrap: {
+      marginBottom: SECTION_GAP,
     },
     footerAd: {
       marginTop: 0,

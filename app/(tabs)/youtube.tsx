@@ -36,7 +36,6 @@ import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { hasSignalApi } from '@/services/env';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
 import type { ChannelHandleMeta } from '@/domain/youtube/types';
@@ -71,7 +70,6 @@ export default function YoutubeScreen() {
   const router = useRouter();
   const routeParams = useLocalSearchParams<{ from?: string }>();
   const { useTwoPane } = useResponsiveLayout();
-  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const [sort, setSort] = useState<SortKey>('latest');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -361,35 +359,6 @@ export default function YoutubeScreen() {
       selectedHandles.length < curationHandles.length,
   );
 
-  useFocusEffect(
-    useCallback(() => {
-      if (!useTwoPane) return;
-      setSubTabs([
-        {
-          key: 'latest',
-          label: t('feedWatchFilterAll'),
-          active: sort === 'latest',
-          onPress: applyLatestSortFilter,
-        },
-        {
-          key: 'popular',
-          label: t('youtubeSortPopular'),
-          active: sort === 'popular',
-          onPress: applyPopularFilter,
-        },
-      ]);
-      return () => clearSubTabs();
-    }, [
-      applyLatestSortFilter,
-      applyPopularFilter,
-      clearSubTabs,
-      setSubTabs,
-      sort,
-      t,
-      useTwoPane,
-    ]),
-  );
-
   const toggleChannel = useCallback((handle: string) => {
     setFilterDraftHandles((prev) => {
       if (!prev) return prev;
@@ -484,6 +453,27 @@ export default function YoutubeScreen() {
         ) : null}
         {useTwoPane ? (
           <View style={styles.ipadFilterWrap}>
+            <Pressable
+              onPress={applyLatestSortFilter}
+              style={[
+                styles.ipadFilterBtn,
+                sort === 'latest' && !channelFilterActive && styles.ipadFilterBtnActive,
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: sort === 'latest' && !channelFilterActive }}>
+              <Text style={[styles.ipadFilterText, sort === 'latest' && !channelFilterActive && styles.ipadFilterTextActive]}>
+                {t('feedWatchFilterAll')}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={applyPopularFilter}
+              style={[styles.ipadFilterBtn, sort === 'popular' && styles.ipadFilterBtnActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: sort === 'popular' }}>
+              <Text style={[styles.ipadFilterText, sort === 'popular' && styles.ipadFilterTextActive]}>
+                {t('youtubeSortPopular')}
+              </Text>
+            </Pressable>
             <Pressable
               onPress={openChannelFilter}
               disabled={!selectedHandles || !curationHandles}
@@ -703,6 +693,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     listContent: { paddingHorizontal: 16, paddingTop: 10 },
     ipadFilterWrap: {
       flexShrink: 0,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
       paddingHorizontal: 16,
       paddingTop: 8,
       paddingBottom: 2,

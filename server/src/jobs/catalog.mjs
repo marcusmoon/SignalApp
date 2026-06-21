@@ -60,6 +60,7 @@ export function catalogMetaForJob(job) {
   let stage = STAGE_FROM_OPERATION[operation] || 'ingest';
   if (handler === 'market_quotes_mcap_universe') stage = 'maintain';
   if (handler === 'news_digest') stage = 'enrich';
+  if (handler === 'disclosure_digest') stage = 'enrich';
 
   return { jobKey: key, area, stage, legacy: area === 'legacy' };
 }

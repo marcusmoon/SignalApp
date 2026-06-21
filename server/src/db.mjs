@@ -49,6 +49,9 @@ import {
   queryPublicNewsDigestRows,
 } from './db/repositories/newsDigestRepository.mjs';
 import {
+  queryPublicDisclosureDigestRows,
+} from './db/repositories/disclosureDigestRepository.mjs';
+import {
   queryPublicCoinMarketRows,
   queryPublicMarketQuoteRows,
 } from './db/repositories/marketRepository.mjs';
@@ -541,6 +544,21 @@ const collectionSpecs = [
     }),
   },
   {
+    key: 'disclosureDigestItems',
+    store: 'insights',
+    table: 'disclosure_digest_items',
+    pk: 'id',
+    keyOf: (row) => row.id,
+    columns: (row, index) => ({
+      position: index,
+      market: textOrNull(row.market),
+      digest_date: dateOrNull(row.generatedDate || row.digestDate || row.generatedAt),
+      generated_at: isoOrNull(row.generatedAt),
+      score: numberOrNull(row.score),
+      updated_at: isoOrNull(row.updatedAt) || nowIso(),
+    }),
+  },
+  {
     key: 'marketBriefings',
     store: 'insights',
     table: 'market_briefings',
@@ -885,6 +903,10 @@ export async function queryAdminNews(options = {}) {
 
 export async function queryPublicDisclosures(options = {}) {
   return cachedPublicRead('publicDisclosures', options, () => queryPublicDisclosureRows(options), 15000);
+}
+
+export async function queryPublicDisclosureDigests(options = {}) {
+  return cachedPublicRead('publicDisclosureDigests', options, () => queryPublicDisclosureDigestRows(options), 15000);
 }
 
 export async function queryPublicDisclosureById(id) {

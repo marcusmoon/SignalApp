@@ -139,6 +139,32 @@ export type SignalApiDisclosure = {
   rawPayload?: unknown;
 };
 
+export type SignalApiDisclosureDigestSourceRef = {
+  type: 'disclosure';
+  id: string;
+  title: string;
+  url: string | null;
+  companyName: string;
+  symbol: string | null;
+  formType: string | null;
+  filedAt: string | null;
+};
+
+export type SignalApiDisclosureDigestItem = {
+  id: string;
+  market: 'us' | 'kr' | string;
+  title: string;
+  summary: string;
+  symbols: string[];
+  companies: string[];
+  forms: string[];
+  count: number;
+  generatedDate: string | null;
+  generatedAt: string | null;
+  primaryDisclosureId: string | null;
+  sourceRefs: SignalApiDisclosureDigestSourceRef[];
+};
+
 export type SignalApiCalendarEvent = {
   id: string;
   provider: string;

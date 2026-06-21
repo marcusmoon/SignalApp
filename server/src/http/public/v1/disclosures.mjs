@@ -1,7 +1,29 @@
-import { queryPublicDisclosureById, queryPublicDisclosures } from '../../../db.mjs';
+import { queryPublicDisclosureById, queryPublicDisclosures, queryPublicDisclosureDigests } from '../../../db.mjs';
 import { json } from '../../shared.mjs';
 
 export async function handlePublicDisclosureRoutes({ req, res, url, pathname }) {
+  if (req.method === 'GET' && pathname === '/v1/disclosure-digests') {
+    const page = await queryPublicDisclosureDigests({
+      market: url.searchParams.get('market') || '',
+      from: url.searchParams.get('from') || '',
+      to: url.searchParams.get('to') || '',
+      limit: url.searchParams.get('limit') || '4',
+      offset: url.searchParams.get('offset') || '0',
+      batches: url.searchParams.get('batches') || '1',
+    });
+    json(res, 200, {
+      data: page.rows,
+      meta: {
+        limit: page.limit,
+        offset: page.offset,
+        total: page.total,
+        hasMore: page.hasMore,
+        nextOffset: page.nextOffset,
+      },
+    });
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/v1/disclosures') {
     const page = await queryPublicDisclosures({
       market: url.searchParams.get('market') || '',

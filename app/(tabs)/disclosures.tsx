@@ -12,6 +12,7 @@ import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import {
@@ -32,7 +33,8 @@ import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTabPressCycleSegment } from '@/hooks/useTabPressCycleSegment';
 import { fetchSignalDisclosures } from '@/integrations/signal-api/disclosures';
-import type { SignalApiDisclosure } from '@/integrations/signal-api/types';
+import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
+import type { SignalApiDisclosure, SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
@@ -88,12 +90,33 @@ export default function DisclosuresScreen() {
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const [filter, setFilter] = useState<FilterKey>('all');
   const [items, setItems] = useState<SignalApiDisclosure[]>([]);
+  const [digestItems, setDigestItems] = useState<SignalApiDisclosureDigestItem[]>([]);
+  const [digestLoading, setDigestLoading] = useState(false);
   const [selectedDisclosureId, setSelectedDisclosureId] = useState<string | null>(null);
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
+
+  const loadDigests = useCallback(async () => {
+    if (!hasSignalApi() || symbolFilter) return;
+    setDigestLoading(true);
+    try {
+      const market =
+        filter === 'us' ? 'us' : filter === 'kr' ? 'kr' : undefined;
+      const page = await fetchSignalDisclosureDigests({
+        market,
+        limit: 16,
+        batches: 1,
+      });
+      setDigestItems(page.items);
+    } catch {
+      // 다이제스트 실패해도 리스트는 보여줌
+    } finally {
+      setDigestLoading(false);
+    }
+  }, [filter, symbolFilter]);
 
   const load = useCallback(async () => {
     if (!hasSignalApi()) {
@@ -108,11 +131,10 @@ export default function DisclosuresScreen() {
       setWatchlist(watch);
       const market = symbolFilter ? undefined : filter === 'us' ? 'us' : filter === 'kr' ? 'kr' : undefined;
       const symbols = symbolFilter || (filter === 'watch' ? watch.join(',') : undefined);
-      const page = await fetchSignalDisclosures({
-        market,
-        symbols,
-        limit: 60,
-      });
+      const [page] = await Promise.all([
+        fetchSignalDisclosures({ market, symbols, limit: 60 }),
+        loadDigests(),
+      ]);
       setItems(page.items);
       return page.items;
     } catch (e) {
@@ -121,7 +143,7 @@ export default function DisclosuresScreen() {
     } finally {
       setLoading(false);
     }
-  }, [filter, symbolFilter, t]);
+  }, [filter, symbolFilter, t, loadDigests]);
 
   useEffect(() => {
     setLoading(true);
@@ -210,6 +232,9 @@ export default function DisclosuresScreen() {
   const listHeaderEl = useMemo(
     () => (
       <View style={styles.listHeader}>
+        {!symbolFilter && filter !== 'watch' && digestItems.length > 0 ? (
+          <DisclosureDigestSection items={digestItems} loading={digestLoading} />
+        ) : null}
         {symbolFilter ? (
           <View style={styles.symbolFilterRow}>
             <Text style={styles.symbolFilterText} numberOfLines={1}>
@@ -227,7 +252,7 @@ export default function DisclosuresScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
     ),
-    [clearSymbolFilter, error, styles, symbolFilter, t],
+    [clearSymbolFilter, digestItems, digestLoading, error, filter, styles, symbolFilter, t],
   );
 
   const renderDisclosureCard = useCallback(

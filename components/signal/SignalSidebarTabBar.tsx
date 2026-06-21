@@ -1,7 +1,7 @@
 /**
  * iPad 전용 좌측 사이드바 내비게이션.
- * - 메인 탭(뉴스·공시·시그널·시세·유튜브·설정·더보기)을 세로로 표시
- * - 설정·더보기 하위 메뉴와 계정 진입점을 iPad에 맞게 분리
+ * - 메인 탭(홈·뉴스·공시·시그널·시세·유튜브·더보기)을 세로로 표시
+ * - 설정 세부 항목·퀵 링크와 계정 진입점을 iPad에 맞게 분리
  */
 import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -19,7 +19,7 @@ import type { MessageId } from '@/locales/messages';
 type TabDef = {
   name: string;
   route: string;
-  icon: 'newspaper' | 'file-alt' | 'highlighter' | 'chart-line' | 'youtube' | 'cog' | 'th-large';
+  icon: 'newspaper' | 'file-alt' | 'highlighter' | 'chart-line' | 'youtube' | 'th-large';
   labelId: MessageId;
 };
 
@@ -47,7 +47,6 @@ const SIDEBAR_TABS: TabDef[] = [
   { name: 'signal', route: '/(tabs)/signal', icon: 'highlighter', labelId: 'tabSignal' },
   { name: 'quotes', route: '/(tabs)/quotes', icon: 'chart-line', labelId: 'tabQuotes' },
   { name: 'youtube', route: '/(tabs)/youtube', icon: 'youtube', labelId: 'tabYoutube' },
-  { name: 'settings', route: '/settings', icon: 'cog', labelId: 'screenSettings' },
   { name: 'more', route: '/(tabs)/more', icon: 'th-large', labelId: 'tabMore' },
 ];
 
@@ -86,6 +85,7 @@ const SETTINGS_SUB_TABS: SidebarSubDef[] = SETTINGS_TABS.map((item) => ({
 }));
 
 const MORE_SUB_TABS: SidebarSubDef[] = [
+  ...SETTINGS_SUB_TABS,
   {
     key: 'quick',
     kind: 'navigate',
@@ -133,10 +133,8 @@ export function SignalSidebarTabBar({
     ? null
     : homeActive
       ? null
-      : ipadNav.isSettingsPaneActive
-      ? 'settings'
-      : pathname.startsWith('/settings')
-      ? 'settings'
+      : ipadNav.isSettingsPaneActive || pathname.startsWith('/settings')
+      ? 'more'
       : MORE_AUX_PATHS.some((path) => pathname.startsWith(path))
         ? 'more'
         : SIDEBAR_TABS.find(
@@ -145,24 +143,15 @@ export function SignalSidebarTabBar({
           )?.name ?? 'news';
 
   const activeMoreSubKey =
-    activeTabName === 'more' && (params.section === 'quick' || !params.section) ? 'quick' : null;
+    activeTabName === 'more'
+      ? activeSettingsSubKey || (params.section === 'quick' || !params.section ? 'quick' : null)
+      : null;
   const activeYoutubeSubKey: YoutubeSortKey | null =
     activeTabName === 'youtube' && ipadNav.isAvailable ? ipadNav.youtubeSort : null;
 
   const styles = makeStyles(theme, scaleFont, insets.bottom);
 
   const navigateMainTab = (tab: TabDef) => {
-    if (tab.name === 'settings') {
-      if (ipadNav.isAvailable) {
-        ipadNav.showSettings('display');
-        return;
-      }
-      router.navigate({
-        pathname: '/settings',
-        params: { from: 'sidebar', tab: 'display' },
-      } as never);
-      return;
-    }
     if (tab.name === 'youtube') {
       if (ipadNav.isAvailable) {
         ipadNav.showYoutubeTab('latest');
@@ -284,9 +273,6 @@ export function SignalSidebarTabBar({
                   </Text>
                 </Pressable>
 
-                {isActive && tab.name === 'settings'
-                  ? renderSubTabs(SETTINGS_SUB_TABS, activeSettingsSubKey)
-                  : null}
                 {isActive && tab.name === 'youtube'
                   ? renderSubTabs(YOUTUBE_SUB_TABS, activeYoutubeSubKey)
                   : null}
@@ -294,7 +280,6 @@ export function SignalSidebarTabBar({
 
                 {isActive &&
                 tab.name !== 'more' &&
-                tab.name !== 'settings' &&
                 tab.name !== 'youtube' &&
                 subTabs.length > 0 ? (
                   <View style={styles.subTabList}>

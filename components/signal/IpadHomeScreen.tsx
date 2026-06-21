@@ -1,7 +1,8 @@
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { useRouter } from 'expo-router';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -70,11 +71,33 @@ function sortDigestItems(items: SignalApiNewsDigestItem[]): SignalApiNewsDigestI
     .slice(0, HOME_DIGEST_LIMIT);
 }
 
-async function fetchTopDigestsForCategory(category: HomeDigestCategory): Promise<SignalApiNewsDigestItem[]> {
-  const page = await fetchSignalNewsDigests({ category, limit: 30, batches: 3 }).catch(
+async function fetchTopDigestsForCategory(category: HomeDigestCategory, date: string): Promise<SignalApiNewsDigestItem[]> {
+  const page = await fetchSignalNewsDigests({ category, from: date, to: date, limit: 30, batches: 3 }).catch(
     () => ({ items: [] as SignalApiNewsDigestItem[] }),
   );
   return sortDigestItems(page.items);
+}
+
+function categoryTone(category: HomeDigestCategory, theme: AppTheme) {
+  if (category === 'crypto') {
+    return {
+      bg: theme.bgElevated,
+      border: theme.greenBorder,
+      text: theme.accentBlue,
+    };
+  }
+  if (category === 'korea') {
+    return {
+      bg: theme.dangerDim,
+      border: theme.border,
+      text: theme.danger,
+    };
+  }
+  return {
+    bg: theme.greenDim,
+    border: theme.greenBorder,
+    text: theme.green,
+  };
 }
 
 function sortDayEvents(events: CalendarEvent[]): CalendarEvent[] {
@@ -107,6 +130,7 @@ export function IpadHomeScreen() {
   const [digests, setDigests] = useState<DigestState>(emptyDigestState);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [expandedDigestId, setExpandedDigestId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!hasSignalApi()) {
@@ -121,7 +145,7 @@ export function IpadHomeScreen() {
       const [digestResults, briefingRows, calendarRows] = await Promise.all([
         Promise.all(
           HOME_DIGEST_CATEGORIES.map(async (category) => {
-            const items = await fetchTopDigestsForCategory(category);
+            const items = await fetchTopDigestsForCategory(category, todayYmd);
             return [category, items] as const;
           }),
         ),
@@ -185,15 +209,14 @@ export function IpadHomeScreen() {
   const visibleCalendarEvents = calendarEvents.slice(0, HOME_CALENDAR_LIMIT);
   const hiddenCalendarCount = Math.max(0, calendarEvents.length - visibleCalendarEvents.length);
 
-  const goNews = useCallback(
-    (segment: HomeDigestCategory) => {
-      ipadNav.showNewsTab(segment);
+  const goIssues = useCallback(
+    (category: HomeDigestCategory, digestId?: string) => {
       router.navigate({
-        pathname: '/(tabs)/news',
-        params: { segment },
+        pathname: '/news-issues',
+        params: { category, date: todayYmd, digestId },
       } as never);
     },
-    [ipadNav, router],
+    [router, todayYmd],
   );
 
   const goSignal = useCallback(
@@ -240,35 +263,115 @@ export function IpadHomeScreen() {
               <View style={styles.sectionStack}>
                 {HOME_DIGEST_CATEGORIES.map((category) => {
                   const items = digests[category];
+                  const tone = categoryTone(category, theme);
                   return (
                     <View key={category} style={styles.blockCard}>
-                      <View style={styles.blockHeader}>
-                        <Text style={styles.blockHeaderTitle}>{t(NEWS_SEGMENT_LABEL[category])}</Text>
+                      <View style={[styles.blockHeader, { backgroundColor: tone.bg, borderBottomColor: tone.border }]}>
+                        <View style={styles.blockHeaderTextCol}>
+                          <Text style={[styles.blockHeaderTitle, { color: tone.text }]}>
+                            {t(NEWS_SEGMENT_LABEL[category])}
+                          </Text>
+                          <Text style={styles.blockHeaderHint} numberOfLines={1}>
+                            {items.length > 0
+                              ? t('feedDigestSummary', {
+                                  count: String(items.reduce((sum, item) => sum + item.count, 0)),
+                                  sources: String(new Set(items.flatMap((item) => item.sources)).size),
+                                })
+                              : t('ipadHomeIssuesEmpty')}
+                          </Text>
+                        </View>
+                        <Pressable
+                          onPress={() => goIssues(category)}
+                          accessibilityRole="button"
+                          style={({ pressed }) => [styles.blockHeaderAction, pressed && styles.pressed]}>
+                          <Text style={[styles.blockHeaderActionText, { color: tone.text }]}>
+                            {t('commonViewAll')}
+                          </Text>
+                          <FontAwesome name="chevron-right" size={10} color={tone.text} />
+                        </Pressable>
                       </View>
                       <View style={styles.blockBody}>
                         {items.length === 0 ? (
                           <Text style={styles.emptyLine}>{t('ipadHomeIssuesEmpty')}</Text>
                         ) : (
                           items.map((item, index) => (
-                            <Pressable
+                            <View
                               key={item.id}
-                              onPress={() => goNews(category)}
-                              accessibilityRole="button"
-                              style={({ pressed }) => [
-                                styles.issueRow,
-                                index < items.length - 1 && styles.issueRowBorder,
-                                pressed && styles.pressed,
-                              ]}>
-                              <Text style={styles.issueTitle} numberOfLines={2}>
-                                {item.title}
-                              </Text>
-                              <Text style={styles.issueMeta} numberOfLines={1}>
-                                {t('feedDigestSummary', {
-                                  count: String(item.count),
-                                  sources: String(item.sources.length),
-                                })}
-                              </Text>
-                            </Pressable>
+                              style={[styles.issueCard, index < items.length - 1 && styles.issueRowBorder]}>
+                              <Pressable
+                                onPress={() => goIssues(category, item.id)}
+                                accessibilityRole="button"
+                                style={({ pressed }) => [pressed && styles.pressed]}>
+                                {(item.aiGenerated || item.topics.length > 0 || item.symbols.length > 0) ? (
+                                  <View style={styles.issueBadgeRow}>
+                                    {item.aiGenerated ? (
+                                      <View style={styles.aiBadge}>
+                                        <Text style={styles.aiBadgeText}>AI</Text>
+                                      </View>
+                                    ) : null}
+                                    {item.topics.slice(0, 3).map((topic) => (
+                                      <Text key={topic} style={styles.topicChip} numberOfLines={1}>
+                                        {topic}
+                                      </Text>
+                                    ))}
+                                    {item.symbols.slice(0, 2).map((symbol) => (
+                                      <Text key={symbol} style={[styles.topicChip, styles.symbolChip]} numberOfLines={1}>
+                                        {symbol}
+                                      </Text>
+                                    ))}
+                                  </View>
+                                ) : null}
+                                <Text style={styles.issueTitle} numberOfLines={2}>
+                                  {item.title}
+                                </Text>
+                                <Text style={styles.issueSummary} numberOfLines={2}>
+                                  {item.summary}
+                                </Text>
+                              </Pressable>
+                              <View style={styles.issueFooterRow}>
+                                <Text style={styles.issueMeta} numberOfLines={1}>
+                                  {t('feedDigestSummary', {
+                                    count: String(item.count),
+                                    sources: String(item.sources.length),
+                                  })}
+                                </Text>
+                                <Pressable
+                                  onPress={() =>
+                                    setExpandedDigestId((prev) => (prev === item.id ? null : item.id))
+                                  }
+                                  accessibilityRole="button"
+                                  accessibilityState={{ expanded: expandedDigestId === item.id }}
+                                  hitSlop={8}
+                                  style={({ pressed }) => [styles.sourceToggle, pressed && styles.pressed]}>
+                                  <Text style={styles.sourceToggleText}>
+                                    {t(expandedDigestId === item.id ? 'feedDigestCollapse' : 'feedDigestExpand')}
+                                  </Text>
+                                </Pressable>
+                              </View>
+                              {expandedDigestId === item.id ? (
+                                <View style={styles.sourceList}>
+                                  {(item.sourceRefs || []).slice(0, 5).map((ref, refIndex) => (
+                                    <Pressable
+                                      key={`${item.id}-${refIndex}`}
+                                      onPress={ref.url ? () => void Linking.openURL(ref.url!).catch(() => null) : undefined}
+                                      accessibilityRole={ref.url ? 'link' : 'text'}
+                                      style={({ pressed }) => [styles.sourceRow, pressed && ref.url && styles.pressed]}>
+                                      <View style={styles.sourceTextCol}>
+                                        <Text style={styles.sourceTitle} numberOfLines={2}>
+                                          {ref.title || ref.sourceName || ref.url || ''}
+                                        </Text>
+                                        {ref.sourceName ? (
+                                          <Text style={styles.sourceName} numberOfLines={1}>
+                                            {ref.sourceName}
+                                          </Text>
+                                        ) : null}
+                                      </View>
+                                      {ref.url ? <FontAwesome name="external-link" size={10} color={theme.green} /> : null}
+                                    </Pressable>
+                                  ))}
+                                </View>
+                              ) : null}
+                            </View>
                           ))
                         )}
                       </View>
@@ -495,17 +598,25 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       overflow: 'hidden',
     },
     blockHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
       paddingHorizontal: 12,
       paddingTop: 10,
       paddingBottom: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
       backgroundColor: theme.greenDim,
+    },
+    blockHeaderTextCol: {
+      flex: 1,
+      minWidth: 0,
       gap: 2,
     },
     blockHeaderTitle: {
       fontSize: sf(13),
-      fontWeight: '800',
+      fontWeight: '900',
       color: theme.text,
     },
     blockHeaderHint: {
@@ -513,27 +624,143 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '600',
       color: theme.textMuted,
     },
+    blockHeaderAction: {
+      minHeight: 28,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingHorizontal: 9,
+      borderRadius: 999,
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    blockHeaderActionText: {
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '900',
+    },
     blockBody: {
       paddingHorizontal: 12,
       paddingVertical: 4,
     },
-    issueRow: {
-      gap: 3,
-      paddingVertical: 10,
+    issueCard: {
+      gap: 7,
+      paddingVertical: 11,
     },
     issueRowBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
+    issueBadgeRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: 6,
+    },
+    aiBadge: {
+      minHeight: 20,
+      paddingHorizontal: 7,
+      borderRadius: 999,
+      backgroundColor: theme.green,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    aiBadgeText: {
+      color: '#FFFFFF',
+      fontSize: sf(10),
+      lineHeight: sf(14),
+      fontWeight: '900',
+    },
+    topicChip: {
+      overflow: 'hidden',
+      maxWidth: 150,
+      minHeight: 20,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
+      borderColor: theme.border,
+      fontSize: sf(10),
+      lineHeight: sf(14),
+      fontWeight: '800',
+      color: theme.textMuted,
+    },
+    symbolChip: {
+      color: theme.green,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
     issueTitle: {
       fontSize: sf(14),
-      fontWeight: '700',
+      fontWeight: '900',
       color: theme.text,
       lineHeight: sf(20),
     },
+    issueSummary: {
+      fontSize: sf(12),
+      fontWeight: '700',
+      color: theme.textMuted,
+      lineHeight: sf(18),
+    },
+    issueFooterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
     issueMeta: {
+      flex: 1,
+      minWidth: 0,
       fontSize: sf(11),
-      fontWeight: '600',
+      fontWeight: '700',
+      color: theme.textMuted,
+    },
+    sourceToggle: {
+      flexShrink: 0,
+      paddingVertical: 4,
+      paddingHorizontal: 7,
+      borderRadius: 999,
+      backgroundColor: theme.greenDim,
+    },
+    sourceToggleText: {
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '900',
+      color: theme.green,
+    },
+    sourceList: {
+      overflow: 'hidden',
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+    },
+    sourceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 9,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    sourceTextCol: {
+      flex: 1,
+      minWidth: 0,
+      gap: 2,
+    },
+    sourceTitle: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '800',
+      color: theme.text,
+    },
+    sourceName: {
+      fontSize: sf(10),
+      lineHeight: sf(14),
+      fontWeight: '700',
       color: theme.textMuted,
     },
     signalSummary: {

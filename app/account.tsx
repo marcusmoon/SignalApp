@@ -60,6 +60,7 @@ import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/r
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 
 type AccountTab = 'home' | 'profile' | 'security' | 'info';
+type Mode = 'login' | 'register';
 type RegisterStep = 'terms' | 'method' | 'info';
 
 type AccountScreenProps = {

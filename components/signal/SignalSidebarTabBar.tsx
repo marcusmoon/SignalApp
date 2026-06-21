@@ -119,6 +119,7 @@ export function SignalSidebarTabBar({
   const ipadNav = useIpadSidebarNav();
 
   const accountActive = pathname.startsWith('/account') || ipadNav.isAccountPaneActive;
+  const homeActive = ipadNav.isHomePaneActive && !accountActive && !ipadNav.isSettingsPaneActive;
   const settingsTabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
   const activeSettingsSubKey: SettingsTab | null = ipadNav.isSettingsPaneActive
     ? ipadNav.settingsTab
@@ -130,7 +131,9 @@ export function SignalSidebarTabBar({
 
   const activeTabName = accountActive
     ? null
-    : ipadNav.isSettingsPaneActive
+    : homeActive
+      ? null
+      : ipadNav.isSettingsPaneActive
       ? 'settings'
       : pathname.startsWith('/settings')
       ? 'settings'
@@ -227,6 +230,28 @@ export function SignalSidebarTabBar({
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.tabItem,
+              homeActive && styles.tabItemActive,
+              pressed && styles.tabItemPressed,
+            ]}
+            onPress={() => ipadNav.showHome()}
+            accessibilityRole="button"
+            accessibilityState={{ selected: homeActive }}>
+            <View style={styles.iconWrap}>
+              <FontAwesome5
+                name="home"
+                size={18}
+                color={homeActive ? theme.green : theme.textMuted}
+                solid
+              />
+            </View>
+            <Text style={[styles.tabLabel, homeActive && styles.tabLabelActive]} numberOfLines={1}>
+              {t('tabHome')}
+            </Text>
+          </Pressable>
+
           {SIDEBAR_TABS.map((tab) => {
             const isActive = activeTabName === tab.name;
             const hasDot =

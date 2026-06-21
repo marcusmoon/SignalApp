@@ -24,6 +24,7 @@ import { SignalSidebarTabBar } from '@/components/signal/SignalSidebarTabBar';
 import { SlackTabBarButton } from '@/components/SlackTabBarButton';
 import AccountScreen from '@/app/account';
 import SettingsScreen from '@/app/settings';
+import { IpadHomeScreen } from '@/components/signal/IpadHomeScreen';
 import { IpadSidebarNavProvider, useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -485,7 +486,9 @@ function IpadWideTabLayout({
           disclosureHasUnread={disclosureHasUnread}
         />
         <View style={sidebarLayoutStyles.content}>
-          {contentPane === 'account' ? (
+          {contentPane === 'home' ? (
+            <IpadHomeScreen />
+          ) : contentPane === 'account' ? (
             <AccountScreen embedded />
           ) : contentPane === 'settings' ? (
             <SettingsScreen embedded />

@@ -26,6 +26,7 @@ import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/r
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -94,6 +95,7 @@ export default function SignalScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const { useTwoPane } = useResponsiveLayout();
+  const ipadNav = useIpadSidebarNav();
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
@@ -343,6 +345,17 @@ export default function SignalScreen() {
   useTabPressCycleSegment(activeTabKey, availableSessionTabKeys, onPickSessionTab);
 
   // iPad 사이드바 서브탭 등록
+  useFocusEffect(
+    useCallback(() => {
+      if (!useTwoPane || !ipadNav.isAvailable) return;
+      const pending = ipadNav.takePendingSignalSession();
+      if (pending) {
+        setSelectedYmd(todayYmdRef.current);
+        setSelectedTabKey(pending);
+      }
+    }, [ipadNav, useTwoPane]),
+  );
+
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;

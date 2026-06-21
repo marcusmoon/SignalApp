@@ -35,6 +35,7 @@ import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -146,6 +147,7 @@ export default function FeedScreen() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
+  const ipadNav = useIpadSidebarNav();
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const [segment, setSegment] = useState<NewsSegmentKey>(DEFAULT_NEWS_SEGMENT);
   const [segmentOrder, setSegmentOrder] = useState<NewsSegmentKey[]>([...NEWS_SEGMENT_ORDER]);
@@ -1087,6 +1089,16 @@ export default function FeedScreen() {
   }, [ipadSegmentOrder, onPickSegment, segment, useTwoPane]);
 
   // iPad 사이드바 서브탭 등록
+  useFocusEffect(
+    useCallback(() => {
+      if (!useTwoPane || !ipadNav.isAvailable) return;
+      const pending = ipadNav.takePendingNewsSegment();
+      if (pending && pending !== 'video') {
+        onPickSegment(pending);
+      }
+    }, [ipadNav, onPickSegment, useTwoPane]),
+  );
+
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;

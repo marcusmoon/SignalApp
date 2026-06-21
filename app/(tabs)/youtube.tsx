@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -221,6 +222,8 @@ export default function YoutubeScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const router = useRouter();
+  const routeParams = useLocalSearchParams<{ from?: string }>();
   const { useTwoPane } = useResponsiveLayout();
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const [selectedItem, setSelectedItem] = useState<YoutubeItem | null>(null);
@@ -631,6 +634,18 @@ export default function YoutubeScreen() {
 
   const youtubeListPanel = (
     <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
+        {useTwoPane && routeParams.from === 'more' ? (
+          <View style={styles.backToMoreWrap}>
+            <Pressable
+              onPress={() => router.replace('/(tabs)/more')}
+              style={({ pressed }) => [styles.backToMoreBtn, pressed && styles.backToMoreBtnPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={t('commonBack')}>
+              <FontAwesome name="chevron-left" size={13} color={theme.green} />
+              <Text style={styles.backToMoreText}>{t('commonBack')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
         {!useTwoPane ? <View style={styles.topFixed}>
           <View style={styles.quickFilterRow}>
             <Pressable
@@ -754,6 +769,8 @@ export default function YoutubeScreen() {
 
       <MasterDetailLayout
         useTwoPane={useTwoPane}
+        masterWidthRatio={0.44}
+        masterMinWidth={420}
         masterPanel={youtubeListPanel}
         detailPanel={selectedItem ? <YoutubeDetailPane item={selectedItem} /> : undefined}
       />
@@ -838,6 +855,30 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     list: { flex: 1, minHeight: 0 },
     listContent: { paddingHorizontal: 16, paddingTop: 10 },
+    backToMoreWrap: {
+      flexShrink: 0,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 4,
+    },
+    backToMoreBtn: {
+      alignSelf: 'flex-start',
+      minHeight: 34,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      paddingHorizontal: 12,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+    },
+    backToMoreBtnPressed: { opacity: 0.72 },
+    backToMoreText: {
+      fontSize: sf(12),
+      fontWeight: '900',
+      color: theme.green,
+    },
     footerLoading: {
       flexDirection: 'row',
       alignItems: 'center',

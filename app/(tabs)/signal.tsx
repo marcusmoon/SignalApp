@@ -562,7 +562,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginBottom: 10,
     },
     dateNavigatorWide: {
-      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH - 32,
+      maxWidth: APP_CONTENT_MAX_WIDTH,
       marginTop: 12,
     },
     dateActionBtnPressed: { opacity: 0.86 },

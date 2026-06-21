@@ -7,14 +7,12 @@ import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { loadNotificationHistory, loadDismissedNotificationIds, removeNotificationById, type StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
@@ -31,7 +29,6 @@ export default function AlertsScreen() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const router = useRouter();
-  const { useTwoPane } = useResponsiveLayout();
   const [items, setItems] = useState<StoredNotification[]>([]);
   const [authSession, setAuthSession] = useState<StoredAppAuthSession | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -199,24 +196,17 @@ export default function AlertsScreen() {
   const bottomPad = 28 + insets.bottom;
 
   if (!authChecked) {
-    const screen = (
+    return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         <View style={styles.loadingCenter} accessibilityRole="progressbar" accessibilityLabel={t('commonLoadingA11y')}>
           <ActivityIndicator color={theme.green} />
         </View>
       </SafeAreaView>
     );
-    return useTwoPane ? (
-      <IpadSidebarScreen title={t('screenAlerts')}>
-        {screen}
-      </IpadSidebarScreen>
-    ) : (
-      screen
-    );
   }
 
   if (authChecked && !getSessionAccessToken(authSession)) {
-    const screen = (
+    return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         {isFocused ? <OtaUpdateBanner /> : null}
         <View style={[styles.authGate, { paddingBottom: bottomPad }]}>
@@ -236,16 +226,9 @@ export default function AlertsScreen() {
         </View>
       </SafeAreaView>
     );
-    return useTwoPane ? (
-      <IpadSidebarScreen title={t('screenAlerts')}>
-        {screen}
-      </IpadSidebarScreen>
-    ) : (
-      screen
-    );
   }
 
-  const screen = (
+  return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
       <FlatList
@@ -273,14 +256,6 @@ export default function AlertsScreen() {
         windowSize={7}
       />
     </SafeAreaView>
-  );
-
-  return useTwoPane ? (
-    <IpadSidebarScreen title={t('screenAlerts')}>
-      {screen}
-    </IpadSidebarScreen>
-  ) : (
-    screen
   );
 }
 

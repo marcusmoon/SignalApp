@@ -90,6 +90,25 @@ export default function MoreHubScreen() {
     void reloadRefLinksPref();
   }, [reloadOrder, reloadRefLinksPref]);
 
+  const openHubItem = useCallback(
+    (item: MoreHubRouteKey) => {
+      if (!useTwoPane) {
+        router.push(HUB_META[item].href);
+        return;
+      }
+      if (item === 'youtube') {
+        router.push({ pathname: '/(tabs)/youtube', params: { from: 'more' } } as never);
+        return;
+      }
+      if (item === 'account') {
+        router.push({ pathname: '/account', params: { from: 'more' } } as never);
+        return;
+      }
+      router.push({ pathname: '/settings', params: { from: 'more' } } as never);
+    },
+    [router, useTwoPane],
+  );
+
   const listFooter = useMemo(
     () => (
       <View style={styles.footer}>
@@ -125,7 +144,7 @@ export default function MoreHubScreen() {
             const name = t(meta.titleId);
             return (
               <Pressable
-                onPress={() => router.push(meta.href)}
+                onPress={() => openHubItem(item)}
                 style={({ pressed }) => [
                   styles.tile,
                   pressed && styles.rowPressed,

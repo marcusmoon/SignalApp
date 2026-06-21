@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Image, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Stack, useRouter, type Href } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -68,6 +68,8 @@ export default function AccountScreen() {
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
   const { useTwoPane } = useResponsiveLayout();
+  const params = useLocalSearchParams<{ from?: string }>();
+  const useIpadSidebar = useTwoPane && params.from === 'more';
   const styles = useMemo(() => makeAccountStyles(theme, scaleFont), [theme, scaleFont]);
   const [session, setSession] = useState<StoredAppAuthSession | null>(null);
   const [mode, setMode] = useState<Mode>('login');
@@ -711,7 +713,7 @@ export default function AccountScreen() {
 
   const screen = (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <Stack.Screen options={{ title: t('screenAccount') }} />
+      <Stack.Screen options={{ title: t('screenAccount'), headerShown: !useIpadSidebar }} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 28 + insets.bottom }]}>
         {!user ? (
           <View style={styles.hero}>
@@ -1357,7 +1359,7 @@ export default function AccountScreen() {
     </SafeAreaView>
   );
 
-  return useTwoPane ? (
+  return useIpadSidebar ? (
     <IpadSidebarScreen title={t('screenAccount')} backHref="/(tabs)/more">
       {screen}
     </IpadSidebarScreen>

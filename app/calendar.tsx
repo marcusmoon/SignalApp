@@ -12,7 +12,6 @@ import {
 import { useIsFocused } from "expo-router/react-navigation";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
@@ -22,7 +21,6 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
-import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
@@ -125,7 +123,6 @@ export default function CalendarScreen() {
 
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const { useTwoPane } = useResponsiveLayout();
 
   const todayYmd = toYmd(new Date());
 
@@ -335,7 +332,7 @@ export default function CalendarScreen() {
   const showTodayNav = selectedYmd !== todayYmd;
 
   if (!hasSignalApi()) {
-    const screen = (
+    return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         {isFocused ? <OtaUpdateBanner /> : null}
         <ScrollView
@@ -348,16 +345,9 @@ export default function CalendarScreen() {
         </ScrollView>
       </SafeAreaView>
     );
-    return useTwoPane ? (
-      <IpadSidebarScreen title={t('screenCalendar')}>
-        {screen}
-      </IpadSidebarScreen>
-    ) : (
-      screen
-    );
   }
 
-  const screen = (
+  return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
 
@@ -475,14 +465,6 @@ export default function CalendarScreen() {
         </View>
       </Modal>
     </SafeAreaView>
-  );
-
-  return useTwoPane ? (
-    <IpadSidebarScreen title={t('screenCalendar')}>
-      {screen}
-    </IpadSidebarScreen>
-  ) : (
-    screen
   );
 }
 

@@ -1,4 +1,4 @@
-import { useRouter, type Href } from 'expo-router';
+import { Stack, useRouter, type Href } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -35,6 +35,7 @@ export function IpadSidebarScreen({ title, children, backHref }: Props) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      <Stack.Screen options={{ headerShown: false }} />
       <SignalHeader compact fullWidth />
       <View style={styles.body}>
         <SignalSidebarTabBar />

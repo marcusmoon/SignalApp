@@ -648,6 +648,7 @@ export default function QuotesScreen() {
         style={styles.list}
         contentContainerStyle={[
           styles.listContent,
+          useTwoPane && styles.listContentWide,
           loading ? SCROLL_CONTENT_LOADING_STYLE : null,
           { paddingBottom: bottomPad },
         ]}

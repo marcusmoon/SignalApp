@@ -1011,9 +1011,10 @@ export default function SettingsScreen() {
   const { useTwoPane } = useResponsiveLayout();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
-  const params = useLocalSearchParams<{ tab?: string }>();
+  const params = useLocalSearchParams<{ tab?: string; from?: string }>();
   const router = useRouter();
   const isFocused = useIsFocused();
+  const useIpadSidebar = useTwoPane && params.from === 'more';
   const [tab, setTab] = useState<SettingsTab>('display');
 
   const [pushEnabled, setPushEnabled] = useState(true);
@@ -2224,7 +2225,7 @@ clearCalendarCache();
     </SafeAreaView>
   );
 
-  return useTwoPane ? (
+  return useIpadSidebar ? (
     <IpadSidebarScreen title={t('screenSettings')} backHref="/(tabs)/more">
       {screen}
     </IpadSidebarScreen>

@@ -18,7 +18,6 @@ import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
 import { SignalThemeProvider, useSignalTheme } from '@/contexts/SignalThemeContext';
 import { SidebarSubTabsProvider } from '@/contexts/SidebarSubTabsContext';
 import { bootstrapThemeForColorScheme } from '@/constants/theme';
-import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { ensureStoredSessionFresh } from '@/integrations/signal-api/httpClient';
 import { getPreviewOtaBannerRaw } from '@/services/env';
 import { runAppBootstrap, SPLASH_MIN_DISPLAY_MS } from '@/services/appBootstrap';
@@ -131,7 +130,6 @@ function RootLayoutNav() {
 
   const { theme, effectiveColorScheme } = useSignalTheme();
   const { t } = useLocale();
-  const { useTwoPane } = useResponsiveLayout();
   /**
    * iOS standalone/dev-client: react-native-screens `statusBarStyle` 사용, plist YES 필요.
    * Expo Go는 native Info.plist를 통제할 수 없어 RNSScreen statusBarStyle 전달 금지.
@@ -164,9 +162,6 @@ function RootLayoutNav() {
         if (route.name === '(tabs)') {
           return { headerShown: false, ...screenStatusBarOptions };
         }
-        if (useTwoPane && ['settings', 'account', 'alerts', 'calendar'].includes(route.name)) {
-          return { headerShown: false, ...screenStatusBarOptions };
-        }
         const titleByName: Record<string, string> = {
           settings: t('screenSettings'),
           account: t('screenAccount'),
@@ -187,7 +182,7 @@ function RootLayoutNav() {
           ...screenStatusBarOptions,
         };
       },
-    [screenStatusBarOptions, t, theme, useTwoPane],
+    [screenStatusBarOptions, t, theme],
   );
 
   return (

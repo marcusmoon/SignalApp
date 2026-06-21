@@ -51,6 +51,7 @@ export function makeQuotesStyles(
     },
     list: { flex: 1, minHeight: 0 },
     listContent: { paddingHorizontal: 16, paddingTop: 0 },
+    listContentWide: { paddingTop: 12 },
     segment: {
       flexDirection: 'row',
       backgroundColor: theme.bgElevated,

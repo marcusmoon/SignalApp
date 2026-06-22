@@ -39,7 +39,7 @@ SIGNAL은 **서버 저장·API 통신은 UTC**, **앱 표시는 사용자 로케
 
 ### 캘린더 예외
 
-`calendar_events`만 이중 모델을 쓴다 (`V29__calendar_event_utc_market_dates.sql`).
+`calendar_events`만 이중 모델을 쓴다 (`V1__signal_baseline.sql`의 `calendar_events` 정의).
 
 | 필드 | 의미 |
 |---|---|
@@ -84,7 +84,7 @@ SIGNAL은 **서버 저장·API 통신은 UTC**, **앱 표시는 사용자 로케
 | Repository SQL 경계 | `server/src/db/repositories/publicHelpers.mjs` |
 | 앱 날짜 유틸 | `utils/date.ts` |
 | 로컬 오늘 갱신 | `hooks/useRollingLocalYmd.ts` |
-| 캘린더 스키마 | `server/db/migrations/postgres/V29__calendar_event_utc_market_dates.sql` |
+| 캘린더 스키마 | `server/db/migrations/postgres/V1__signal_baseline.sql` |
 
 ## 새 코드 작성 시
 

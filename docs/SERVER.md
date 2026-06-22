@@ -44,6 +44,20 @@ DB 변경이 필요한 작업은 배포보다 Flyway가 먼저다.
 
 기본 운영 데이터 변경도 코드 seed가 아니라 새 Flyway migration으로 추가한다. 기존 운영자가 바꾼 설정을 덮어야 하는 경우에만 명시적으로 `ON CONFLICT DO UPDATE`를 사용하고, 기본값 추가는 `ON CONFLICT DO NOTHING`을 기본으로 한다.
 
+### Baseline migration (V1 squash)
+
+2026-06 기준으로 과거 `V1`–`V29` migration은 `V1__signal_baseline.sql` 하나로 합쳤다. Flyway 경로에는 이 파일만 둔다. 재생성용 원본은 `server/db/migrations/_archive/postgres/`에 보관한다.
+
+**기존 DB를 전부 초기화할 때** (스키마·시드·ingest 데이터 삭제):
+
+1. 서버·worker를 중지한다.
+2. Postgres DB를 drop/create하거나 `flyway clean` 후 `migrate`한다. (`clean`은 모든 객체를 지우므로 운영에서는 DB 단위 재생성을 권장한다.)
+3. `flyway migrate`로 `V1__signal_baseline.sql`만 적용한다.
+4. Admin에서 provider API 키를 다시 입력한다. (`apiKey`는 migration seed에 빈 문자열)
+5. 필요 시 `ADMIN_USERS`로 초기 관리자를 넣고 서버·worker를 기동한다.
+
+새 환경은 위 3–5만 수행하면 된다. Job·RSS·시장 리스트·약관·캘린더 코드 매핑은 baseline seed에 포함되며, 뉴스·공시·캘린더 이벤트 등 ingest 본문은 Job 실행 후 쌓인다.
+
 설정 예시는 `server/db/flyway.conf.example`에 둔다. 실제 접속 정보가 들어가는 `server/db/flyway.conf`는 git에 커밋하지 않는다.
 
 ```bash

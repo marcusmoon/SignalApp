@@ -22,6 +22,7 @@ export function getPostgresPool() {
     max: Number(process.env.SIGNAL_POSTGRES_POOL_MAX || 10),
     idleTimeoutMillis: Number(process.env.SIGNAL_POSTGRES_IDLE_TIMEOUT_MS || 30000),
     connectionTimeoutMillis: Number(process.env.SIGNAL_POSTGRES_CONNECT_TIMEOUT_MS || 5000),
+    options: '-c timezone=UTC',
   });
   pool.on('error', (error) => {
     console.warn('[postgres] idle client error:', error?.message || error);

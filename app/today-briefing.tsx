@@ -32,7 +32,8 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { CalendarEvent } from '@/types/signal';
-import { toYmd, utcRangeForLocalYmd } from '@/utils/date';
+import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
+import { addDays, formatLocalYmdLabel, parseLocalYmd, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
 const ISSUE_LIMIT = 1;
 const BRIEFING_LIMIT = 30;
@@ -46,34 +47,8 @@ function emptyDigestState(): DigestState {
   return { global: [], korea: [], crypto: [] };
 }
 
-function parseYmd(value: string): Date {
-  const [y, m, d] = value.split('-').map((part) => Number(part));
-  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return new Date();
-  return new Date(y, m - 1, d);
-}
-
 function shiftYmd(ymd: string, days: number): string {
-  const d = parseYmd(ymd);
-  d.setDate(d.getDate() + days);
-  return toYmd(d);
-}
-
-function localeForDate(locale: 'ko' | 'en' | 'ja'): string {
-  if (locale === 'en') return 'en-US';
-  if (locale === 'ja') return 'ja-JP';
-  return 'ko-KR';
-}
-
-function formatTodayLabel(value: string, locale: 'ko' | 'en' | 'ja'): string {
-  try {
-    return new Intl.DateTimeFormat(localeForDate(locale), {
-      month: 'long',
-      day: 'numeric',
-      weekday: 'short',
-    }).format(parseYmd(value));
-  } catch {
-    return value;
-  }
+  return toYmd(addDays(parseLocalYmd(ymd), days));
 }
 
 function sortCalendarEvents(rows: CalendarEvent[]): CalendarEvent[] {
@@ -125,8 +100,16 @@ export default function TodayBriefingScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
-  const todayYmd = useMemo(() => toYmd(new Date()), []);
-  const todayLabel = useMemo(() => formatTodayLabel(todayYmd, locale), [locale, todayYmd]);
+  const todayYmd = useRollingLocalYmd();
+  const todayLabel = useMemo(
+    () =>
+      formatLocalYmdLabel(todayYmd, locale, {
+        month: 'long',
+        day: 'numeric',
+        weekday: 'short',
+      }),
+    [locale, todayYmd],
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);

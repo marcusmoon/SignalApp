@@ -16,19 +16,7 @@ import type {
   SignalApiMarketBriefingMacroItem,
   SignalApiMarketBriefingSector,
 } from '@/integrations/signal-api/types';
-
-function shortMd(isoDate: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(isoDate);
-  if (!m) return isoDate;
-  return `${Number(m[2])}/${Number(m[3])}`;
-}
-
-function shortDateTime(value: string | null | undefined): string {
-  const text = String(value || '').trim();
-  if (text.length >= 16) return `${shortMd(text.slice(0, 10))} ${text.slice(11, 16)}`;
-  if (text.length >= 10) return shortMd(text.slice(0, 10));
-  return text || '—';
-}
+import { formatInstantLabel } from '@/utils/date';
 
 function formatBriefingPrice(price: number | null | undefined, market: string): string {
   if (price == null || !Number.isFinite(price)) return '—';
@@ -201,7 +189,7 @@ export function MarketBriefingBlock({
   scaleFont,
   changeColorConvention,
 }: Props) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { effectiveColorScheme } = useSignalTheme();
   const styles = makeStyles(theme, scaleFont);
   const changeColors = getQuoteChangeColors(changeColorConvention, effectiveColorScheme);
@@ -312,7 +300,7 @@ export function MarketBriefingBlock({
                 <View style={styles.sourceMain}>
                   <Text style={styles.sourceTitle}>{item.title}</Text>
                   <Text style={styles.sourceMeta}>
-                    {[item.sourceName, shortDateTime(item.publishedAt || item.checkedAt)]
+                    {[item.sourceName, formatInstantLabel(item.publishedAt || item.checkedAt, locale)]
                       .filter(Boolean)
                       .join(' · ')}
                   </Text>

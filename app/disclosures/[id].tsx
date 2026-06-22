@@ -14,16 +14,10 @@ import { fetchSignalDisclosure } from '@/integrations/signal-api/disclosures';
 import type { SignalApiDisclosure } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
+import { formatLocalInstantDate } from '@/utils/date';
 
 function paramId(raw: string | string[] | undefined): string {
   return String(Array.isArray(raw) ? raw[0] : raw || '').trim();
-}
-
-function dateLabel(value: string | null | undefined): string {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return String(value).slice(0, 10);
-  return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
 }
 
 function providerLabel(item: SignalApiDisclosure | null): string {
@@ -37,7 +31,7 @@ export default function DisclosureDetailScreen() {
   const id = useMemo(() => paramId(rawId), [rawId]);
   const insets = useSafeAreaInsets();
   const { theme, scaleFont } = useSignalTheme();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const [item, setItem] = useState<SignalApiDisclosure | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,11 +97,23 @@ export default function DisclosureDetailScreen() {
                 <Text style={styles.section}>{t('disclosuresDetailPoints')}</Text>
                 <View style={styles.factRow}>
                   <Text style={styles.factLabel}>{t('disclosuresFiledAt')}</Text>
-                  <Text style={styles.factValue}>{dateLabel(item.filedAt)}</Text>
+                  <Text style={styles.factValue}>
+                    {formatLocalInstantDate(item.filedAt, locale, {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                    })}
+                  </Text>
                 </View>
                 <View style={styles.factRow}>
                   <Text style={styles.factLabel}>{t('disclosuresPeriodEnd')}</Text>
-                  <Text style={styles.factValue}>{dateLabel(item.periodEndDate)}</Text>
+                  <Text style={styles.factValue}>
+                    {formatLocalInstantDate(item.periodEndDate, locale, {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                    })}
+                  </Text>
                 </View>
                 <View style={styles.factRow}>
                   <Text style={styles.factLabel}>{t('disclosuresFormType')}</Text>

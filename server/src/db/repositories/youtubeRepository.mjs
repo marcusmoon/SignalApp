@@ -6,6 +6,7 @@ import {
   pageOptions,
   paginatedSqlRows,
   payloadFromRow,
+  parseToUtcIsoOrNull,
   sqlStringList,
 } from './publicHelpers.mjs';
 
@@ -30,14 +31,14 @@ export function rowToYoutubeItem(row) {
     channelId: row.channel_id || '',
     channelHandle: row.channel_handle || null,
     description: row.description || '',
-    publishedAt: row.published_at || null,
+    publishedAt: parseToUtcIsoOrNull(row.published_at),
     duration: row.duration || '',
     viewCount: Number(row.view_count) || 0,
     thumbnailUrl: row.thumbnail_url || null,
     sortBucket: row.sort_bucket || undefined,
     sortBuckets: sortBuckets.length > 0 ? sortBuckets : undefined,
-    fetchedAt: row.fetched_at || null,
-    updatedAt: row.updated_at || null,
+    fetchedAt: parseToUtcIsoOrNull(row.fetched_at),
+    updatedAt: parseToUtcIsoOrNull(row.updated_at),
   };
 }
 

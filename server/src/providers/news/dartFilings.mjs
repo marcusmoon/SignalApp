@@ -2,6 +2,7 @@ import { inflateRawSync } from 'node:zlib';
 
 import { config } from '../../config.mjs';
 import { getProviderSetting } from '../../providerSettings.mjs';
+import { compactYmdInTimezone } from '../../time/utc.mjs';
 
 const CORP_CODE_URL = 'https://opendart.fss.or.kr/api/corpCode.xml';
 const LIST_URL = 'https://opendart.fss.or.kr/api/list.json';
@@ -185,10 +186,8 @@ export async function fetchDartFilings(params = {}) {
   const allowedTypes = pblntfTySet(params.pblntfTy);
   const end = new Date();
   const start = new Date(end.getTime() - daysBack * 24 * 60 * 60 * 1000);
-  const fmt = (date) =>
-    `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}`;
-  const bgnDe = fmt(start);
-  const endDe = fmt(end);
+  const bgnDe = compactYmdInTimezone(start, 'Asia/Seoul');
+  const endDe = compactYmdInTimezone(end, 'Asia/Seoul');
 
   const corpMap = await stockToCorpCodeMap(apiKey);
   const rows = [];

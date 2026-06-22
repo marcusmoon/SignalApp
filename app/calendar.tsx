@@ -35,9 +35,9 @@ import {
   saveCalendarEventTypeFilter,
   type CalendarEventTypeKey,
 } from '@/services/calendarEventTypeFilterPreference';
-import { toYmd } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import type { CalendarEvent } from '@/types/signal';
+import { localeTagForAppLocale, toYmd } from '@/utils/date';
 
 const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
   macro: 'calendarTagMacro',
@@ -49,13 +49,13 @@ const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
 
 const CALENDAR_MONTH_QUERY_LIMIT = 1000;
 
-function calendarEventTimeLabel(ev: CalendarEvent): string {
+function calendarEventTimeLabel(ev: CalendarEvent, locale: AppLocale): string {
   if (ev.time) return ev.time;
   if (!ev.eventAt || !ev.timezone) return '—';
   try {
     const label =
       ev.timezone === 'America/New_York' ? 'ET' : ev.timezone === 'Asia/Seoul' ? 'KST' : ev.timezone === 'UTC' ? 'UTC' : '';
-    const time = new Intl.DateTimeFormat('en-US', {
+    const time = new Intl.DateTimeFormat(localeTagForAppLocale(locale), {
       timeZone: ev.timezone,
       hour: '2-digit',
       minute: '2-digit',
@@ -325,8 +325,8 @@ export default function CalendarScreen() {
   }, [emptyFiltered, error, loading, styles.emptyDayBox, styles.emptyDayText, t]);
 
   const renderEventItem = useCallback<ListRenderItem<CalendarEvent>>(
-    ({ item }) => <CalendarEventCard ev={item} theme={theme} cardStyles={styles} t={t} />,
-    [styles, t, theme],
+    ({ item }) => <CalendarEventCard ev={item} theme={theme} cardStyles={styles} t={t} locale={locale} />,
+    [locale, styles, t, theme],
   );
 
   const listKeyExtractor = useCallback((item: CalendarEvent) => item.id, []);
@@ -736,6 +736,7 @@ type CalendarEventCardProps = {
   theme: AppTheme;
   cardStyles: CalendarCardStyles;
   t: (id: MessageId) => string;
+  locale: AppLocale;
 };
 
 const CalendarEventCard = memo(function CalendarEventCard({
@@ -743,6 +744,7 @@ const CalendarEventCard = memo(function CalendarEventCard({
   theme,
   cardStyles: styles,
   t,
+  locale,
 }: CalendarEventCardProps) {
   const surprise = calendarSurpriseLabel(ev, t);
   const isEarnings = ev.type === 'earnings';
@@ -841,7 +843,7 @@ const CalendarEventCard = memo(function CalendarEventCard({
           ) : null}
           {surprise ? <Text style={styles.surpriseText}>{surprise}</Text> : null}
         </View>
-        <Text style={styles.time}>{calendarEventTimeLabel(ev)}</Text>
+        <Text style={styles.time}>{calendarEventTimeLabel(ev, locale)}</Text>
       </View>
     </View>
   );

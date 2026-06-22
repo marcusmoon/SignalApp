@@ -6,6 +6,7 @@ import {
   normalizeNewsSourceNameWithAliases,
 } from './db/newsSources.mjs';
 import { nowIso } from './db/time.mjs';
+import { parseToUtcIsoOrNull, sqlUtcRangeFrom, sqlUtcRangeTo, utcDateOnlyOrNull } from './time/utc.mjs';
 import { checkKyselyConnectivity, queryKysely, withKyselyTransaction } from './db/kysely/client.mjs';
 import {
   findPollingJob,
@@ -146,23 +147,15 @@ function textOrNull(value) {
 }
 
 function isoOrNull(value) {
-  const text = cleanText(value);
-  return text ? text : null;
+  return parseToUtcIsoOrNull(value);
 }
 
 function dateOrNull(value) {
-  const text = cleanText(value).slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
-}
-
-function isDateOnly(value) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(cleanText(value));
+  return utcDateOnlyOrNull(value);
 }
 
 function sqlDateOrTimestamp(value) {
-  const text = cleanText(value);
-  if (!text) return null;
-  return text.includes('T') ? text : `${text}T00:00:00.000Z`;
+  return sqlUtcRangeFrom(value);
 }
 
 function numberOrNull(value) {
@@ -1020,23 +1013,15 @@ export async function queryInsightItems(options = {}) {
       params.push(date);
       where.push(`generated_date = $${params.length}::date`);
     }
-    const fromValue = sqlDateOrTimestamp(from);
+    const fromValue = sqlUtcRangeFrom(from);
     if (fromValue) {
-      params.push(isDateOnly(from) ? from : fromValue);
-      where.push(
-        isDateOnly(from)
-          ? `generated_date >= $${params.length}::date`
-          : `generated_at >= $${params.length}::timestamptz`,
-      );
+      params.push(fromValue);
+      where.push(`generated_at >= $${params.length}::timestamptz`);
     }
-    const toValue = sqlDateOrTimestamp(to);
+    const toValue = sqlUtcRangeTo(to);
     if (toValue) {
-      params.push(isDateOnly(to) ? to : toValue);
-      where.push(
-        isDateOnly(to)
-          ? `generated_date <= $${params.length}::date`
-          : `generated_at <= $${params.length}::timestamptz`,
-      );
+      params.push(toValue);
+      where.push(`generated_at <= $${params.length}::timestamptz`);
     }
     if (options.pushOnly) where.push(`push_candidate = true`);
     if (!options.includeExpired) {

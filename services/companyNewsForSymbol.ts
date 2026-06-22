@@ -2,7 +2,7 @@ import { COMPANY_NEWS_DISPLAY_MAX, COMPANY_NEWS_LOOKBACK_DAYS } from '@/constant
 import { fetchSignalNews } from '@/integrations/signal-api/news';
 import type { SignalApiNewsItem } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
-import { addDays, toYmd } from '@/utils/date';
+import { addDays, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
 /**
  * 종목별 회사 뉴스를 한 곳에서 가져와 최신순·노출 상한만 적용합니다.
@@ -16,14 +16,17 @@ export async function fetchCompanyNewsForDisplay(
   if (!sym || !hasSignalApi()) return [];
   const to = new Date();
   const from = addDays(to, -COMPANY_NEWS_LOOKBACK_DAYS);
+  const range = {
+    from: utcRangeForLocalYmd(toYmd(from)).from,
+    to: utcRangeForLocalYmd(toYmd(to)).to,
+  };
   try {
     const { items } = await fetchSignalNews({
       symbol: sym,
       limit: Math.min(COMPANY_NEWS_DISPLAY_MAX * 6, 200),
       offset: 0,
       locale,
-      from: toYmd(from),
-      to: toYmd(to),
+      ...range,
     });
     return [...items]
       .sort((a, b) => {
@@ -47,14 +50,17 @@ export async function fetchCompanyNewsForSymbolsDisplay(
 
   const to = new Date();
   const from = addDays(to, -COMPANY_NEWS_LOOKBACK_DAYS);
+  const range = {
+    from: utcRangeForLocalYmd(toYmd(from)).from,
+    to: utcRangeForLocalYmd(toYmd(to)).to,
+  };
   try {
     const { items } = await fetchSignalNews({
       symbols: syms.join(','),
       limit: Math.min(COMPANY_NEWS_DISPLAY_MAX * syms.length, 100),
       offset: 0,
       locale,
-      from: toYmd(from),
-      to: toYmd(to),
+      ...range,
     });
     const out: Record<string, SignalApiNewsItem[]> = { ...empty };
     for (const item of [...items].sort((a, b) => {

@@ -19,6 +19,8 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { NewsDigestItem } from '@/domain/news';
+import type { AppLocale } from '@/locales/messages';
+import { formatRelativeFromIso } from '@/utils/date';
 
 const TAP_MOVE_THRESHOLD = 8;
 
@@ -27,34 +29,6 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const EXPAND_LAYOUT = LayoutAnimation.create(180, LayoutAnimation.Types.easeOut, LayoutAnimation.Properties.opacity);
-
-function relativeTime(dateStr: string | null, locale: string): string {
-  if (!dateStr) return '';
-  try {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const minutes = Math.floor(diff / 60_000);
-    if (minutes < 1) {
-      return locale === 'ko' ? '방금' : locale === 'ja' ? 'たった今' : 'just now';
-    }
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    if (locale === 'ko') {
-      if (minutes < 60) return `${minutes}분 전`;
-      if (hours < 24) return `${hours}시간 전`;
-      return `${days}일 전`;
-    }
-    if (locale === 'ja') {
-      if (minutes < 60) return `${minutes}分前`;
-      if (hours < 24) return `${hours}時間前`;
-      return `${days}日前`;
-    }
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return `${days}d ago`;
-  } catch {
-    return '';
-  }
-}
 
 type DigestCardProps = {
   digest: NewsDigestItem;
@@ -77,7 +51,7 @@ const DigestCard = memo(function DigestCard({
     count: String(digest.count),
     sources: String(digest.sources.length),
   });
-  const relativeLabel = digest.generatedAt ? relativeTime(digest.generatedAt, locale) : '';
+  const relativeLabel = digest.generatedAt ? formatRelativeFromIso(digest.generatedAt, locale as AppLocale) : '';
   const handlePressIn = useCallback((event: GestureResponderEvent) => {
     pressStartRef.current = {
       x: event.nativeEvent.pageX,

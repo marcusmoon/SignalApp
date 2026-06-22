@@ -18,6 +18,7 @@ import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import type { SignalApiNewsDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
+import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 import { toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
 function parseCategory(value: unknown): HomeDigestCategory {
@@ -83,7 +84,7 @@ export function NewsIssuesContent({
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
-  const todayYmd = useMemo(() => toYmd(new Date()), []);
+  const todayYmd = useRollingLocalYmd();
   const isWide = embedded || useTwoPane;
   const [category, setCategory] = useState<HomeDigestCategory>(initialCategory);
   const [selectedYmd, setSelectedYmd] = useState(initialDate);

@@ -2,6 +2,7 @@ import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
 import { createNotificationItem, NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicMarketBriefings } from '../../../db/repositories/marketBriefingsRepository.mjs';
+import { parseToUtcIsoOrNull, utcDateKeyFromInstant, utcDateOnlyOrNull } from '../../../time/utc.mjs';
 import { json, readBody } from '../../shared.mjs';
 
 const ALLOWED_MARKETS = new Set(['kr', 'us']);
@@ -16,11 +17,11 @@ function cleanArray(value) {
 }
 
 function normalizeBriefingDate(value, publishedAt) {
-  const text = cleanText(value);
-  if (text) return text;
-  const fallback = cleanText(publishedAt);
-  if (fallback.length >= 10) return fallback.slice(0, 10);
-  return new Date().toISOString().slice(0, 10);
+  return (
+    utcDateOnlyOrNull(value) ||
+    utcDateKeyFromInstant(publishedAt) ||
+    utcDateKeyFromInstant(new Date().toISOString())
+  );
 }
 
 function normalizeBriefingPayload(input) {
@@ -30,7 +31,7 @@ function normalizeBriefingPayload(input) {
   const title = cleanText(input?.title);
   const headline = cleanText(input?.headline);
   const summary = cleanText(input?.summary);
-  const publishedAt = cleanText(input?.publishedAt) || new Date().toISOString();
+  const publishedAt = parseToUtcIsoOrNull(input?.publishedAt) || new Date().toISOString();
   if (!id || !title || !headline || !ALLOWED_MARKETS.has(market) || !ALLOWED_SESSIONS.has(session)) return null;
   const pushCandidate = input?.pushCandidate !== false;
   return {

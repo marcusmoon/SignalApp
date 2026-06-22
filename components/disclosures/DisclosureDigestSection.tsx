@@ -22,6 +22,8 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
+import type { AppLocale } from '@/locales/messages';
+import { formatRelativeFromIso } from '@/utils/date';
 
 const TAP_MOVE_THRESHOLD = 8;
 
@@ -30,34 +32,6 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const EXPAND_LAYOUT = LayoutAnimation.create(180, LayoutAnimation.Types.easeOut, LayoutAnimation.Properties.opacity);
-
-function relativeTime(dateStr: string | null, locale: string): string {
-  if (!dateStr) return '';
-  try {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const minutes = Math.floor(diff / 60_000);
-    if (minutes < 1) {
-      return locale === 'ko' ? '방금' : locale === 'ja' ? 'たった今' : 'just now';
-    }
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    if (locale === 'ko') {
-      if (minutes < 60) return `${minutes}분 전`;
-      if (hours < 24) return `${hours}시간 전`;
-      return `${days}일 전`;
-    }
-    if (locale === 'ja') {
-      if (minutes < 60) return `${minutes}分前`;
-      if (hours < 24) return `${hours}時間前`;
-      return `${days}日前`;
-    }
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return `${days}d ago`;
-  } catch {
-    return '';
-  }
-}
 
 function marketChipLabel(market: string, locale: string): string {
   if (market === 'kr') return locale === 'ko' ? '한국' : locale === 'ja' ? '韓国' : 'Korea';
@@ -85,7 +59,7 @@ const DigestCard = memo(function DigestCard({
     count: String(item.count),
     symbols: String(item.symbols.length),
   });
-  const relativeLabel = item.generatedAt ? relativeTime(item.generatedAt, locale) : '';
+  const relativeLabel = item.generatedAt ? formatRelativeFromIso(item.generatedAt, locale as AppLocale) : '';
   const topicChips = [
     ...new Set([
       marketChipLabel(item.market, locale),

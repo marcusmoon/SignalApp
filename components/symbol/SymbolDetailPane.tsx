@@ -34,7 +34,7 @@ import { buildSignalScore } from '@/domain/signals';
 import { loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { NewsItem } from '@/types/signal';
 import { hasSignalApi } from '@/services/env';
-import { addDays, toYmd } from '@/utils/date';
+import { addDays, formatLocalInstantDate } from '@/utils/date';
 import { signalReasonLabel } from '@/utils/signalDisplay';
 import { openNaverFinanceStock } from '@/utils/naverFinance';
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
@@ -693,7 +693,11 @@ export function SymbolDetailPane({ ticker, bottomPad = 24 }: Props) {
                       </Text>
                     ) : null}
                     <Text style={styles.disclosureTime}>
-                      {item.filedAt ? toYmd(new Date(item.filedAt)) : '—'}
+                      {formatLocalInstantDate(item.filedAt, locale, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                      })}
                     </Text>
                   </View>
                   <Text style={styles.disclosureTitle} numberOfLines={2}>

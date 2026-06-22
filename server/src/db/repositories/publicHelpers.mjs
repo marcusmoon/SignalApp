@@ -1,3 +1,12 @@
+import {
+  isDateOnly,
+  parseToUtcIsoOrNull,
+  sqlUtcRangeFrom,
+  sqlUtcRangeTo,
+  utcDateOnlyOrNull,
+  utcDateKeyFromInstant,
+} from '../time/utc.mjs';
+
 export function cleanText(value) {
   return String(value || '').trim();
 }
@@ -31,10 +40,14 @@ export function sqlStringList(value) {
 }
 
 export function sqlDateOrTimestamp(value) {
-  const text = cleanText(value);
-  if (!text) return null;
-  return text.includes('T') ? text : `${text}T00:00:00.000Z`;
+  return sqlUtcRangeFrom(value);
 }
+
+export function sqlUtcRangeEnd(value) {
+  return sqlUtcRangeTo(value);
+}
+
+export { isDateOnly, parseToUtcIsoOrNull, sqlUtcRangeFrom, sqlUtcRangeTo, utcDateOnlyOrNull, utcDateKeyFromInstant };
 
 export function numberSqlExpression(jsonExpression) {
   return `CASE WHEN NULLIF(${jsonExpression}, '') ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN (${jsonExpression})::numeric ELSE 0 END`;

@@ -29,7 +29,7 @@ import { buildSignalScore } from '@/domain/signals';
 import { loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { NewsItem } from '@/types/signal';
 import { hasSignalApi } from '@/services/env';
-import { addDays, toYmd } from '@/utils/date';
+import { addDays, formatLocalInstantDate } from '@/utils/date';
 import { signalReasonLabel } from '@/utils/signalDisplay';
 import { openNaverFinanceStock } from '@/utils/naverFinance';
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
@@ -740,7 +740,13 @@ export default function SymbolDetailScreen() {
                 <View style={styles.disclosureMeta}>
                   <Text style={styles.disclosureBadge}>{item.provider === 'sec' ? 'SEC' : item.provider === 'dart' ? 'DART' : '공시'}</Text>
                   {item.formType ? <Text style={styles.disclosureType} numberOfLines={1}>{item.formType}</Text> : null}
-                  <Text style={styles.disclosureTime}>{item.filedAt ? toYmd(new Date(item.filedAt)) : '—'}</Text>
+                  <Text style={styles.disclosureTime}>
+                    {formatLocalInstantDate(item.filedAt, locale, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </Text>
                 </View>
                 <Text style={styles.disclosureTitle} numberOfLines={2}>{item.title}</Text>
                 {item.summary ? <Text style={styles.disclosureSummary} numberOfLines={2}>{item.summary}</Text> : null}

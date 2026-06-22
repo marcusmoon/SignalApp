@@ -8,6 +8,58 @@ export function toYmd(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+export function todayLocalYmd(): string {
+  return toYmd(new Date());
+}
+
+export function parseLocalYmd(ymd: string): Date {
+  const [year, month, day] = String(ymd || '').split('-').map((part) => Number(part));
+  return new Date(year, month - 1, day);
+}
+
+export function localeTagForAppLocale(locale: AppLocale): string {
+  if (locale === 'en') return 'en-US';
+  if (locale === 'ja') return 'ja-JP';
+  return 'ko-KR';
+}
+
+export function formatLocalYmdLabel(
+  ymd: string,
+  locale: AppLocale,
+  options: Intl.DateTimeFormatOptions,
+): string {
+  try {
+    return new Intl.DateTimeFormat(localeTagForAppLocale(locale), options).format(parseLocalYmd(ymd));
+  } catch {
+    return ymd;
+  }
+}
+
+export function formatLocalInstantDate(
+  iso: string | null | undefined,
+  locale: AppLocale,
+  options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' },
+): string {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return String(iso).slice(0, 10);
+  return new Intl.DateTimeFormat(localeTagForAppLocale(locale), options).format(date);
+}
+
+export function formatInstantLabel(iso: string | null | undefined, locale: AppLocale): string {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return '—';
+  const loc = localeTagForAppLocale(locale);
+  const datePart = new Intl.DateTimeFormat(loc, { month: 'numeric', day: 'numeric' }).format(date);
+  const timePart = new Intl.DateTimeFormat(loc, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(date);
+  return `${datePart} ${timePart}`;
+}
+
 export function addDays(d: Date, days: number): Date {
   const x = new Date(d);
   x.setDate(x.getDate() + days);

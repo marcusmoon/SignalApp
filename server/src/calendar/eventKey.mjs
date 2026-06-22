@@ -15,12 +15,124 @@ export function stableHash(value) {
   return h.toString(16);
 }
 
-function ymdFromEvent(event) {
+function normalizeCalendarTimezone(value, country) {
+  const raw = String(value || '').trim();
+  const upper = raw.toUpperCase();
+  if (upper === 'ET' || upper === 'EST' || upper === 'EDT' || raw === 'America/New_York') return 'America/New_York';
+  if (upper === 'KST' || upper === 'KR' || upper === 'KOREA' || raw === 'Asia/Seoul') return 'Asia/Seoul';
+  if (upper === 'UTC' || upper === 'GMT' || raw === 'Etc/UTC') return 'UTC';
+  if (raw.includes('/')) return raw;
+  if (country === 'US') return 'America/New_York';
+  if (country === 'KR') return 'Asia/Seoul';
+  return raw || null;
+}
+
+function timezoneLabel(timezone) {
+  if (timezone === 'America/New_York') return 'ET';
+  if (timezone === 'Asia/Seoul') return 'KST';
+  if (timezone === 'UTC') return 'UTC';
+  return '';
+}
+
+function ymdInTimezone(value, timezone) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return '';
+  if (!timezone || timezone === 'UTC') return date.toISOString().slice(0, 10);
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+    const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    if (byType.year && byType.month && byType.day) return `${byType.year}-${byType.month}-${byType.day}`;
+  } catch {
+    // Fall through to UTC date.
+  }
+  return date.toISOString().slice(0, 10);
+}
+
+function ymdFromEventInTimezone(event, timezone) {
   const date = String(event?.date || '').trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
   const eventAt = String(event?.eventAt || '').trim();
-  if (/^\d{4}-\d{2}-\d{2}/.test(eventAt)) return eventAt.slice(0, 10);
+  if (eventAt) return ymdInTimezone(eventAt, timezone);
   return '';
+}
+
+function parseTimeLabel(value) {
+  const text = String(value || '').trim();
+  if (!text) return null;
+  const twelve = text.match(/\b(\d{1,2})(?::(\d{2}))?\s*(AM|PM)\b/i);
+  if (twelve) {
+    let hour = Number(twelve[1]);
+    const minute = Number(twelve[2] || 0);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+    const meridiem = twelve[3].toUpperCase();
+    if (meridiem === 'PM' && hour < 12) hour += 12;
+    if (meridiem === 'AM' && hour === 12) hour = 0;
+    if (hour > 23 || minute > 59) return null;
+    return { hour, minute };
+  }
+  const twentyFour = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  if (!twentyFour) return null;
+  return { hour: Number(twentyFour[1]), minute: Number(twentyFour[2]) };
+}
+
+function zonedTimeToUtcIso(dateYmd, timeLabel, timezone) {
+  const parsedTime = parseTimeLabel(timeLabel);
+  if (!dateYmd || !parsedTime || !timezone) return null;
+  const [year, month, day] = String(dateYmd || '').split('-').map((part) => Number(part));
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  if (timezone === 'UTC') {
+    return new Date(Date.UTC(year, month - 1, day, parsedTime.hour, parsedTime.minute, 0, 0)).toISOString();
+  }
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, parsedTime.hour, parsedTime.minute, 0, 0));
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(utcGuess);
+    const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const shownAsUtc = Date.UTC(
+      Number(byType.year),
+      Number(byType.month) - 1,
+      Number(byType.day),
+      Number(byType.hour),
+      Number(byType.minute),
+      Number(byType.second),
+      0,
+    );
+    const targetAsUtc = Date.UTC(year, month - 1, day, parsedTime.hour, parsedTime.minute, 0, 0);
+    return new Date(utcGuess.getTime() - (shownAsUtc - targetAsUtc)).toISOString();
+  } catch {
+    return null;
+  }
+}
+
+function normalizeEventAt(event, date, timezone) {
+  const eventAt = String(event?.eventAt || '').trim();
+  if (eventAt) {
+    const parsed = new Date(eventAt);
+    if (Number.isFinite(parsed.getTime())) return parsed.toISOString();
+  }
+  return zonedTimeToUtcIso(date, event?.timeLabel, timezone);
+}
+
+function normalizeTimeLabel(value, timezone) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (!parseTimeLabel(text)) return text;
+  const label = timezoneLabel(timezone);
+  if (!label) return text;
+  return new RegExp(`\\b${label}\\b`, 'i').test(text) ? text : `${text} ${label}`;
 }
 
 function normalizeMappings(mappings) {
@@ -61,7 +173,9 @@ export function matchCalendarEventCode(event, mappings) {
 
 export function buildCalendarEventKey(event, mappings) {
   const type = normalizeCalendarEventType(event?.type || event?.eventType);
-  const date = ymdFromEvent(event);
+  const country = normalizeCalendarCountry(event?.country);
+  const timezone = normalizeCalendarTimezone(event?.timezone, country);
+  const date = ymdFromEventInTimezone(event, timezone);
   const titleSlug = slugText(event?.title) || 'untitled';
   const symbol = String(event?.symbol || '').trim().toUpperCase();
   const source = slugText(event?.source || event?.provider);
@@ -93,11 +207,13 @@ function inferFedSpeaker(titleSlug) {
 export function normalizeCalendarEventForStorage(event, mappings = []) {
   const type = normalizeCalendarEventType(event?.type || event?.eventType);
   const country = normalizeCalendarCountry(event?.country);
-  const date = ymdFromEvent(event);
+  const timezone = normalizeCalendarTimezone(event?.timezone, country);
+  const date = ymdFromEventInTimezone(event, timezone);
   const eventKey = buildCalendarEventKey({ ...event, type, country, date }, mappings);
   const source = String(event?.source || event?.provider || 'manual').trim() || 'manual';
   const sourceEventId = String(event?.sourceEventId || event?.providerItemId || '').trim();
   const id = `calendar-${country.toLowerCase()}-${type}-${stableHash(eventKey)}`;
+  const eventAt = normalizeEventAt(event, date, timezone);
   return {
     ...event,
     id,
@@ -105,6 +221,9 @@ export function normalizeCalendarEventForStorage(event, mappings = []) {
     eventKey,
     type,
     date: date || null,
+    eventAt,
+    timezone,
+    timeLabel: normalizeTimeLabel(event?.timeLabel, timezone),
     provider: String(event?.provider || source || 'manual').trim() || 'manual',
     source,
     sourceEventId: sourceEventId || null,

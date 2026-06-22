@@ -164,6 +164,15 @@ function calendarEventEditor({ state, esc }) {
           <input id="calendarEventTimeLabel" value="${esc(draft.timeLabel || '')}" placeholder="08:30 ET" />
         </div>
         <div class="filterGroup">
+          <span class="filterGroupTitle">시간대</span>
+          <select id="calendarEventTimezone">
+            <option value=""${!draft.timezone ? ' selected' : ''}>국가 기본값</option>
+            <option value="America/New_York"${draft.timezone === 'America/New_York' ? ' selected' : ''}>US Eastern</option>
+            <option value="Asia/Seoul"${draft.timezone === 'Asia/Seoul' ? ' selected' : ''}>Korea</option>
+            <option value="UTC"${draft.timezone === 'UTC' ? ' selected' : ''}>UTC</option>
+          </select>
+        </div>
+        <div class="filterGroup">
           <span class="filterGroupTitle">중요도</span>
           <select id="calendarEventImpact">
             <option value=""${!draft.impact ? ' selected' : ''}>-</option>
@@ -538,6 +547,7 @@ function readCalendarEventEditor($, state) {
     symbol: $('calendarEventSymbol')?.value || '',
     title: $('calendarEventTitle')?.value || '',
     timeLabel: $('calendarEventTimeLabel')?.value || '',
+    timezone: $('calendarEventTimezone')?.value || '',
     impact: $('calendarEventImpact')?.value || '',
     actual: $('calendarEventActual')?.value || null,
     estimate: $('calendarEventEstimate')?.value || null,

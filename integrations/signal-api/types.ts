@@ -176,6 +176,7 @@ export type SignalApiCalendarEvent = {
   eventAt: string | null;
   date: string | null;
   timeLabel: string;
+  timezone: string | null;
   impact: 'low' | 'medium' | 'high' | null;
   actual: number | null;
   estimate: number | null;

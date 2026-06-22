@@ -1,4 +1,4 @@
-import { timeBasis } from '../format.js';
+import { utcRangeForYmd } from '../format.js';
 import { renderIngestWorkflowNav } from './ingestNav.js';
 import { mobileRunClass, runProgressText, runRowClass, runStatusPillFor } from './runVisuals.js';
 
@@ -37,8 +37,6 @@ function jobRunsQueryParams({ state, $ }) {
   });
   for (const [key, id] of [
     ['q', 'jobRunQuery'],
-    ['from', 'jobRunFrom'],
-    ['to', 'jobRunTo'],
     ['status', 'jobRunStatus'],
     ['type', 'jobRunType'],
     ['jobKey', 'jobRunJob'],
@@ -47,7 +45,10 @@ function jobRunsQueryParams({ state, $ }) {
     const value = $(id).value.trim();
     if (value) params.set(key, value);
   }
-  if (params.has('from') || params.has('to')) params.set('timeZone', timeBasis().timeZone);
+  const fromValue = $('jobRunFrom').value.trim();
+  const toValue = $('jobRunTo').value.trim();
+  if (fromValue) params.set('from', utcRangeForYmd(fromValue).from);
+  if (toValue) params.set('to', utcRangeForYmd(toValue).to);
   return params.toString();
 }
 

@@ -15,8 +15,12 @@ export async function handleAdminCalendarRoutes({ req, res, url, pathname }) {
       json(res, 400, { error: 'CALENDAR_EVENT_TITLE_REQUIRED' });
       return true;
     }
-    await upsertCollectionRows('calendarEvents', [row]);
-    json(res, 200, { ok: true });
+    if (!row.date && !row.eventAt) {
+      json(res, 400, { error: 'CALENDAR_EVENT_DATE_REQUIRED' });
+      return true;
+    }
+    const result = await upsertCollectionRows('calendarEvents', [row]);
+    json(res, 200, { ok: true, count: result.count || 0 });
     return true;
   }
 
@@ -29,9 +33,13 @@ export async function handleAdminCalendarRoutes({ req, res, url, pathname }) {
       json(res, 400, { error: 'CALENDAR_EVENT_TITLE_REQUIRED' });
       return true;
     }
+    if (!row.date && !row.eventAt) {
+      json(res, 400, { error: 'CALENDAR_EVENT_DATE_REQUIRED' });
+      return true;
+    }
     await deleteCalendarEvent(id);
-    await upsertCollectionRows('calendarEvents', [row]);
-    json(res, 200, { ok: true });
+    const result = await upsertCollectionRows('calendarEvents', [row]);
+    json(res, 200, { ok: true, count: result.count || 0 });
     return true;
   }
 

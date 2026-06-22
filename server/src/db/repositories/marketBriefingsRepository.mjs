@@ -4,7 +4,12 @@ import {
   cleanText,
   pageOptions,
   payloadFromRow,
+  sqlDateOrTimestamp,
 } from './publicHelpers.mjs';
+
+function isDateOnly(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(cleanText(value));
+}
 
 function publicBriefing(item) {
   if (!item) return null;
@@ -107,6 +112,8 @@ export async function queryPublicMarketBriefings(options = {}) {
   const market = cleanText(options.market).toLowerCase();
   const session = cleanText(options.session).toLowerCase();
   const date = cleanText(options.date);
+  const fromText = cleanText(options.from);
+  const toText = cleanText(options.to);
   const id = cleanText(options.id);
   if (id) {
     params.push(id);
@@ -123,6 +130,24 @@ export async function queryPublicMarketBriefings(options = {}) {
   if (date) {
     params.push(date);
     where.push(`briefing_date = $${params.length}::date`);
+  }
+  const from = sqlDateOrTimestamp(fromText);
+  if (from) {
+    params.push(isDateOnly(fromText) ? fromText : from);
+    where.push(
+      isDateOnly(fromText)
+        ? `COALESCE(briefing_date, published_at::date) >= $${params.length}::date`
+        : `published_at >= $${params.length}::timestamptz`,
+    );
+  }
+  const to = sqlDateOrTimestamp(toText);
+  if (to) {
+    params.push(isDateOnly(toText) ? toText : to);
+    where.push(
+      isDateOnly(toText)
+        ? `COALESCE(briefing_date, published_at::date) <= $${params.length}::date`
+        : `published_at <= $${params.length}::timestamptz`,
+    );
   }
   params.push(limit + 1, offset);
   const result = await queryKysely(

@@ -44,7 +44,7 @@ import {
 } from '@/services/quotesChangeColorPreference';
 import { markSignalFeedSeen, fetchLatestSignalBriefingId } from '@/services/signalUnreadPreference';
 import { useTabPressCycleSegment } from '@/hooks';
-import { addDays, toYmd } from '@/utils/date';
+import { addDays, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
 type FlatTabKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-evening';
 
@@ -136,7 +136,7 @@ export default function SignalScreen() {
       return [];
     }
     setError(null);
-    const rows = await fetchSignalMarketBriefings({ date: selectedYmd, limit: 30 }).catch(
+    const rows = await fetchSignalMarketBriefings({ ...utcRangeForLocalYmd(selectedYmd), limit: 30 }).catch(
       () => [] as SignalApiMarketBriefing[],
     );
     const sorted = [...rows].sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));

@@ -5,7 +5,6 @@ import { toYmd } from '@/utils/date';
 function calendarEventSortKey(ev: SignalApiCalendarEvent): string {
   const iso = ev.eventAt?.trim();
   if (iso && iso.includes('T')) return iso;
-  if (ev.date && ev.timeLabel) return `${ev.date}T${ev.timeLabel}`;
   if (ev.date) return `${ev.date}T00:00:00`;
   return '';
 }

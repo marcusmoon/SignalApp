@@ -16,6 +16,8 @@ export async function fetchSignalMarketBriefings(params: {
   market?: 'kr' | 'us';
   session?: 'morning' | 'lunch' | 'evening' | 'overnight' | 'close';
   date?: string;
+  from?: string;
+  to?: string;
   limit?: number;
   offset?: number;
 } = {}): Promise<SignalApiMarketBriefing[]> {
@@ -25,6 +27,8 @@ export async function fetchSignalMarketBriefings(params: {
       market: params.market,
       session: params.session,
       date: params.date,
+      from: params.from,
+      to: params.to,
       limit: params.limit ?? 10,
       offset: params.offset ?? 0,
     },

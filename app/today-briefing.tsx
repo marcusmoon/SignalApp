@@ -155,7 +155,7 @@ export default function TodayBriefingScreen() {
             return [category, items] as const;
           }),
         ),
-        fetchSignalMarketBriefings({ date: todayYmd, limit: BRIEFING_LIMIT }).catch(() => []),
+        fetchSignalMarketBriefings({ ...utcRangeForLocalYmd(todayYmd), limit: BRIEFING_LIMIT }).catch(() => []),
         fetchSignalCalendar({
           from: todayYmd,
           to: shiftYmd(todayYmd, SCHEDULE_LOOKAHEAD_DAYS),

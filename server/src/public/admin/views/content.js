@@ -1,4 +1,4 @@
-import { timeBasis } from '../format.js';
+import { utcRangeForYmd } from '../format.js';
 
 const newsEditLocales = [
   { locale: 'en', labelKey: 'localeOriginalEnglish' },
@@ -14,15 +14,16 @@ function newsQueryParams({ state, $, }) {
   });
   for (const [key, id] of [
     ['q', 'newsQuery'],
-    ['from', 'newsFrom'],
-    ['to', 'newsTo'],
     ['category', 'newsCategory'],
     ['translationStatus', 'newsTranslationStatus'],
   ]) {
     const value = $(id).value.trim();
     if (value) params.set(key, value);
   }
-  if (params.has('from') || params.has('to')) params.set('timeZone', timeBasis().timeZone);
+  const fromValue = $('newsFrom').value.trim();
+  const toValue = $('newsTo').value.trim();
+  if (fromValue) params.set('from', utcRangeForYmd(fromValue).from);
+  if (toValue) params.set('to', utcRangeForYmd(toValue).to);
   return params.toString();
 }
 

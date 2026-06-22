@@ -82,7 +82,7 @@ function ymd(date) {
 
 function addDays(date, days) {
   const d = new Date(date);
-  d.setDate(d.getDate() + Number(days || 0));
+  d.setUTCDate(d.getUTCDate() + Number(days || 0));
   return d;
 }
 

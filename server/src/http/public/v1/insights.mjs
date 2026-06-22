@@ -1,9 +1,26 @@
 import { queryInsightItems } from '../../../db.mjs';
 import { normalizeInsightDisplayKey } from '../../../db/insights.mjs';
-import { dateKeyInTimeZone, json } from '../../shared.mjs';
+import { json } from '../../shared.mjs';
 
-function todayInTimeZone(timeZone) {
-  return dateKeyInTimeZone(new Date().toISOString(), timeZone);
+function utcTodayRange() {
+  const now = new Date();
+  return {
+    from: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0)).toISOString(),
+    to: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999)).toISOString(),
+  };
+}
+
+function isDateOnly(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim());
+}
+
+function dateOnlyToUtcRange(value) {
+  const [year, month, day] = String(value || '').split('-').map((part) => Number(part));
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  return {
+    from: new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0)).toISOString(),
+    to: new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999)).toISOString(),
+  };
 }
 
 function insightLogicalKey(item) {
@@ -37,13 +54,19 @@ function insightRequestParams(url) {
   );
   const level = url.searchParams.get('level')?.trim();
   const kind = url.searchParams.get('kind')?.trim();
-  const from = url.searchParams.get('from');
-  const to = url.searchParams.get('to');
-  const timeZone = url.searchParams.get('timeZone') || 'Asia/Seoul';
-  const dateMode = String(url.searchParams.get('date') || 'today').toLowerCase();
+  const fromRaw = url.searchParams.get('from');
+  const toRaw = url.searchParams.get('to');
+  const dateRaw = url.searchParams.get('date');
+  const dateMode = String(dateRaw || 'all').toLowerCase();
   const pushOnly = url.searchParams.get('pushCandidate') === 'true';
   const history = url.searchParams.get('history') === 'true';
-  const today = todayInTimeZone(timeZone);
+  const dateRange = isDateOnly(dateRaw)
+    ? dateOnlyToUtcRange(dateRaw)
+    : dateMode === 'today'
+      ? utcTodayRange()
+      : null;
+  const from = fromRaw || dateRange?.from || '';
+  const to = toRaw || dateRange?.to || '';
   return {
     symbol,
     symbols,
@@ -51,12 +74,11 @@ function insightRequestParams(url) {
     kind,
     from,
     to,
-    timeZone,
     dateMode,
     pushOnly,
     history,
-    queryFrom: dateMode !== 'all' ? from || today : from,
-    queryTo: dateMode !== 'all' ? to || today : to,
+    queryFrom: from,
+    queryTo: to,
   };
 }
 
@@ -67,19 +89,13 @@ function filterInsights(items, params) {
     const expiresAt = item?.expiresAt ? new Date(item.expiresAt).getTime() : null;
     return !Number.isFinite(expiresAt) || expiresAt >= now;
   });
-  if (params.dateMode !== 'all' && !params.from && !params.to) {
-    const today = todayInTimeZone(params.timeZone);
-    rows = rows.filter((item) => item.generatedAt && dateKeyInTimeZone(item.generatedAt, params.timeZone) === today);
-  }
   if (params.from) {
-    rows = rows.filter(
-      (item) => !item.generatedAt || dateKeyInTimeZone(item.generatedAt, params.timeZone) >= params.from,
-    );
+    const fromMs = new Date(params.from).getTime();
+    if (Number.isFinite(fromMs)) rows = rows.filter((item) => !item.generatedAt || new Date(item.generatedAt).getTime() >= fromMs);
   }
   if (params.to) {
-    rows = rows.filter(
-      (item) => !item.generatedAt || dateKeyInTimeZone(item.generatedAt, params.timeZone) <= params.to,
-    );
+    const toMs = new Date(params.to).getTime();
+    if (Number.isFinite(toMs)) rows = rows.filter((item) => !item.generatedAt || new Date(item.generatedAt).getTime() <= toMs);
   }
   if (params.symbols?.size > 0)
     rows = rows.filter((item) => (item.symbols || []).some((s) => params.symbols.has(String(s).toUpperCase())));

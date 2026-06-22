@@ -124,6 +124,8 @@ export async function handlePublicMarketBriefingRoutes({ req, res, url, pathname
       market: url.searchParams.get('market'),
       session: url.searchParams.get('session'),
       date: url.searchParams.get('date'),
+      from: url.searchParams.get('from'),
+      to: url.searchParams.get('to'),
       limit: url.searchParams.get('limit') || 10,
       offset: url.searchParams.get('offset') || 0,
     });

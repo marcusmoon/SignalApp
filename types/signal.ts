@@ -16,6 +16,8 @@ export type CalendarEvent = {
   id: string;
   date: string;
   time: string;
+  eventAt?: string | null;
+  timezone?: string | null;
   title: string;
   type: 'macro' | 'fed' | 'fomc' | 'earnings' | 'holiday';
   impact?: 'low' | 'medium' | 'high';

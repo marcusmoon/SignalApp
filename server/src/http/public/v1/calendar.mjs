@@ -109,8 +109,8 @@ export async function handlePublicCalendarRoutes({ req, res, url, pathname }) {
       json(res, 400, { error: 'NO_VALID_ITEMS' });
       return true;
     }
-    await upsertCollectionRows('calendarEvents', rows);
-    json(res, 200, { ok: true, count: rows.length });
+    const result = await upsertCollectionRows('calendarEvents', rows);
+    json(res, 200, { ok: true, count: result.count || 0 });
     return true;
   }
 

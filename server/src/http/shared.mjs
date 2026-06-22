@@ -59,24 +59,30 @@ export function cleanNewsTitleForDisplay(item, value) {
   return cleaned;
 }
 
-export function dateKeyInTimeZone(value, timeZone) {
+function utcDateKey(value) {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return String(value || '').slice(0, 10);
-  const tz = String(timeZone || '').trim();
-  if (!tz) return date.toISOString().slice(0, 10);
-  try {
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).formatToParts(date);
-    const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-    if (byType.year && byType.month && byType.day) return `${byType.year}-${byType.month}-${byType.day}`;
-  } catch {
-    // Fall back to stored UTC date when an unknown timezone is supplied.
-  }
   return date.toISOString().slice(0, 10);
+}
+
+function isDateOnly(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '').trim());
+}
+
+function isAtOrAfter(value, boundary) {
+  if (!value || !boundary) return true;
+  if (isDateOnly(boundary)) return utcDateKey(value) >= boundary;
+  const valueMs = new Date(value).getTime();
+  const boundaryMs = new Date(boundary).getTime();
+  return !Number.isFinite(valueMs) || !Number.isFinite(boundaryMs) || valueMs >= boundaryMs;
+}
+
+function isAtOrBefore(value, boundary) {
+  if (!value || !boundary) return true;
+  if (isDateOnly(boundary)) return utcDateKey(value) <= boundary;
+  const valueMs = new Date(value).getTime();
+  const boundaryMs = new Date(boundary).getTime();
+  return !Number.isFinite(valueMs) || !Number.isFinite(boundaryMs) || valueMs <= boundaryMs;
 }
 
 export function hasUsableTranslation(tr, item) {
@@ -129,7 +135,6 @@ export function filterNews(items, url) {
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
   const tag = url.searchParams.get('tag')?.trim().toLowerCase();
-  const timeZone = url.searchParams.get('timeZone');
   let rows = [...items];
   if (category) {
     if (category === 'global') {
@@ -160,8 +165,8 @@ export function filterNews(items, url) {
     if (sourceSet.size > 0) rows = rows.filter((item) => sourceSet.has(String(item.sourceName || '').trim()));
   }
   if (flash) rows = rows.filter((item) => isFlashNewsItem(item));
-  if (from) rows = rows.filter((item) => !item.publishedAt || dateKeyInTimeZone(item.publishedAt, timeZone) >= from);
-  if (to) rows = rows.filter((item) => !item.publishedAt || dateKeyInTimeZone(item.publishedAt, timeZone) <= to);
+  if (from) rows = rows.filter((item) => isAtOrAfter(item.publishedAt, from));
+  if (to) rows = rows.filter((item) => isAtOrBefore(item.publishedAt, to));
   if (tag) {
     rows = rows.filter((item) =>
       hashtagLabelsForFilter(item).some((label) => label.toLowerCase() === tag),

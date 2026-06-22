@@ -62,6 +62,49 @@ export function formatDateTime(value) {
   }).format(date);
 }
 
+function zonedTimeToUtc(ymdValue, { hour = 0, minute = 0, second = 0, millisecond = 0 } = {}) {
+  const [year, month, day] = String(ymdValue || '').split('-').map((part) => Number(part));
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  const basis = timeBasis();
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, second, millisecond));
+  if (basis.timeZone === 'UTC') return utcGuess;
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: basis.timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(utcGuess);
+    const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const shownAsUtc = Date.UTC(
+      Number(byType.year),
+      Number(byType.month) - 1,
+      Number(byType.day),
+      Number(byType.hour),
+      Number(byType.minute),
+      Number(byType.second),
+      millisecond,
+    );
+    const targetAsUtc = Date.UTC(year, month - 1, day, hour, minute, second, millisecond);
+    return new Date(utcGuess.getTime() - (shownAsUtc - targetAsUtc));
+  } catch {
+    return new Date(year, month - 1, day, hour, minute, second, millisecond);
+  }
+}
+
+export function utcRangeForYmd(ymdValue) {
+  const from = zonedTimeToUtc(ymdValue, { hour: 0, minute: 0, second: 0, millisecond: 0 });
+  const to = zonedTimeToUtc(ymdValue, { hour: 23, minute: 59, second: 59, millisecond: 999 });
+  return {
+    from: from ? from.toISOString() : '',
+    to: to ? to.toISOString() : '',
+  };
+}
+
 export function jobIntervalLabel(seconds) {
   const n = Number(seconds);
   if (!Number.isFinite(n) || n <= 0) return '-';

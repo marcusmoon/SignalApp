@@ -12,7 +12,7 @@ function rowToPublicEvent(row) {
     title: row.title || '',
     country: row.country || null,
     symbol: row.symbol || null,
-    eventAt: row.event_at || null,
+    eventAt: row.event_at ? new Date(row.event_at).toISOString() : null,
     date: row.event_date ? String(row.event_date).slice(0, 10) : null,
     timeLabel: row.time_label || '',
     timezone: row.timezone || null,
@@ -29,7 +29,7 @@ function rowToPublicEvent(row) {
     source: row.source || null,
     sourceEventId: row.source_event_id || null,
     url: row.url || null,
-    fetchedAt: row.updated_at || null,
+    fetchedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
   };
 }
 
@@ -42,12 +42,12 @@ export async function queryPublicCalendarRows(options = {}) {
   const from = cleanText(options.from);
   if (from) {
     params.push(from);
-    where.push(`(event_date IS NULL OR event_date >= $${params.length}::date)`);
+    where.push(`event_date >= $${params.length}::date`);
   }
   const to = cleanText(options.to);
   if (to) {
     params.push(to);
-    where.push(`(event_date IS NULL OR event_date <= $${params.length}::date)`);
+    where.push(`event_date <= $${params.length}::date`);
   }
   const type = cleanText(options.type);
   if (type) {
@@ -86,7 +86,7 @@ export async function queryPublicCalendarRows(options = {}) {
         fiscal_year, fiscal_quarter, earnings_hour, url, updated_at
       FROM calendar_events
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-      ORDER BY event_date ASC NULLS LAST, title
+      ORDER BY event_date ASC NULLS LAST, event_at ASC NULLS LAST, title
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `,
     params,

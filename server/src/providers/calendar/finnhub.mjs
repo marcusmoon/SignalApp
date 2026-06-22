@@ -1,15 +1,15 @@
 import { getProviderSetting } from '../../providerSettings.mjs';
 
-function ymdLocal(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+function ymdUtc(date) {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 
 function addDays(date, days) {
   const d = new Date(date);
-  d.setDate(d.getDate() + days);
+  d.setUTCDate(d.getUTCDate() + days);
   return d;
 }
 
@@ -68,17 +68,9 @@ function economicEventDate(raw) {
   return null;
 }
 
-function economicEventAt(raw) {
-  const time = String(raw?.time || '').trim();
-  if (!time || !/^\d{4}-\d{2}-\d{2}/.test(time)) return null;
-  const normalized = time.includes('T') ? time : time.replace(' ', 'T');
-  const parsed = new Date(normalized);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
-}
-
 function economicTimeLabel(raw) {
   const time = String(raw?.time || '').trim();
-  if (time.length >= 16) return `${time.slice(11, 16)} ET`;
+  if (time.length >= 16) return time.slice(11, 16);
   return '';
 }
 
@@ -102,9 +94,10 @@ export function normalizeFinnhubEconomic(raw, index = 0) {
     title: String(raw.event || '').trim(),
     country: String(raw.country || '').trim() || null,
     symbol: null,
-    eventAt: economicEventAt(raw),
+    eventAt: null,
     date,
     timeLabel: economicTimeLabel(raw),
+    timezone: 'America/New_York',
     impact: impact === 'high' || impact === 'medium' || impact === 'low' ? impact : null,
     actual: raw.actual ?? null,
     estimate: raw.estimate ?? null,
@@ -127,9 +120,10 @@ export function normalizeFinnhubEarning(raw) {
     title: `${raw.symbol} (FY${raw.year} Q${raw.quarter})`,
     country: 'US',
     symbol: String(raw.symbol || '').trim().toUpperCase(),
-    eventAt: raw.date ? `${raw.date}T00:00:00.000Z` : null,
+    eventAt: null,
     date: raw.date || null,
     timeLabel: raw.hour || '',
+    timezone: 'America/New_York',
     impact: null,
     actual: raw.epsActual ?? null,
     estimate: raw.epsEstimate ?? null,
@@ -146,8 +140,8 @@ export function normalizeFinnhubEarning(raw) {
 export async function fetchFinnhubEconomicCalendar({ daysBack = 0, daysAhead = 14 } = {}) {
   const from = addDays(new Date(), -Math.max(0, Number(daysBack) || 0));
   const to = addDays(new Date(), Number(daysAhead) || 14);
-  const fromYmd = ymdLocal(from);
-  const toYmd = ymdLocal(to);
+  const fromYmd = ymdUtc(from);
+  const toYmd = ymdUtc(to);
 
   let json;
   try {
@@ -185,7 +179,7 @@ export async function fetchFinnhubEconomicCalendar({ daysBack = 0, daysAhead = 1
 export async function fetchFinnhubEarningsCalendar({ daysBack = 0, daysAhead = 30 } = {}) {
   const from = addDays(new Date(), -Math.max(0, Number(daysBack) || 0));
   const to = addDays(new Date(), Number(daysAhead) || 30);
-  const json = await finnhub('/calendar/earnings', { from: ymdLocal(from), to: ymdLocal(to) });
+  const json = await finnhub('/calendar/earnings', { from: ymdUtc(from), to: ymdUtc(to) });
   const rows = Array.isArray(json.earningsCalendar) ? json.earningsCalendar : [];
   return rows.map((raw) => normalizeFinnhubEarning(raw));
 }
@@ -240,9 +234,10 @@ export function normalizeFinnhubMarketHoliday(raw, { exchange, country } = {}) {
     title: eventName || `${exchangeCode} market holiday`,
     country: countryCode,
     symbol: null,
-    eventAt: date ? `${date}T00:00:00.000Z` : null,
+    eventAt: null,
     date,
     timeLabel: tradingHour,
+    timezone: countryCode === 'KR' ? 'Asia/Seoul' : countryCode === 'US' ? 'America/New_York' : null,
     impact: null,
     actual: null,
     estimate: null,
@@ -259,8 +254,8 @@ export function normalizeFinnhubMarketHoliday(raw, { exchange, country } = {}) {
 export async function fetchFinnhubMarketHolidays({ daysBack = 0, daysAhead = 365, exchanges } = {}) {
   const from = addDays(new Date(), -Math.max(0, Number(daysBack) || 0));
   const to = addDays(new Date(), Math.max(1, Number(daysAhead) || 365));
-  const fromYmd = ymdLocal(from);
-  const toYmd = ymdLocal(to);
+  const fromYmd = ymdUtc(from);
+  const toYmd = ymdUtc(to);
   const specs = normalizeHolidayExchangeSpecs(exchanges);
   const rows = [];
 

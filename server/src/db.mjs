@@ -155,6 +155,16 @@ function dateOrNull(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
 }
 
+function isDateOnly(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(cleanText(value));
+}
+
+function sqlDateOrTimestamp(value) {
+  const text = cleanText(value);
+  if (!text) return null;
+  return text.includes('T') ? text : `${text}T00:00:00.000Z`;
+}
+
 function numberOrNull(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
@@ -385,6 +395,7 @@ const collectionSpecs = [
     store: 'calendar',
     table: 'calendar_events',
     pk: 'id',
+    conflictTarget: 'country, event_type, event_key',
     keyOf: (row) => row.id,
     noPayload: true,
     columns: (row, index) => ({
@@ -654,7 +665,7 @@ async function insertCollectionRow(client, spec, row, index) {
     `
       INSERT INTO ${spec.table} (${columns.join(', ')})
       VALUES (${placeholders.join(', ')})
-      ON CONFLICT(${spec.pk}) DO UPDATE SET ${updates}
+      ON CONFLICT(${spec.conflictTarget || spec.pk}) DO UPDATE SET ${updates}
     `,
     values,
   );
@@ -717,7 +728,7 @@ export async function upsertCollectionRows(collectionKey, rows = []) {
       const mappings = await listCalendarEventCodeMappingPayloads({ enabled: true }).catch(() => []);
       safeRows = safeRows
         .map((row) => normalizeCalendarEventForStorage(row, mappings))
-        .filter((row) => cleanText(row.title) && cleanText(row.eventKey));
+        .filter((row) => cleanText(row.title) && cleanText(row.eventKey) && cleanText(row.date));
       if (safeRows.length === 0) return { count: 0 };
     }
     await withKyselyTransaction(async (client) => {
@@ -1009,13 +1020,23 @@ export async function queryInsightItems(options = {}) {
       params.push(date);
       where.push(`generated_date = $${params.length}::date`);
     }
-    if (from) {
-      params.push(from);
-      where.push(`generated_date >= $${params.length}::date`);
+    const fromValue = sqlDateOrTimestamp(from);
+    if (fromValue) {
+      params.push(isDateOnly(from) ? from : fromValue);
+      where.push(
+        isDateOnly(from)
+          ? `generated_date >= $${params.length}::date`
+          : `generated_at >= $${params.length}::timestamptz`,
+      );
     }
-    if (to) {
-      params.push(to);
-      where.push(`generated_date <= $${params.length}::date`);
+    const toValue = sqlDateOrTimestamp(to);
+    if (toValue) {
+      params.push(isDateOnly(to) ? to : toValue);
+      where.push(
+        isDateOnly(to)
+          ? `generated_date <= $${params.length}::date`
+          : `generated_at <= $${params.length}::timestamptz`,
+      );
     }
     if (options.pushOnly) where.push(`push_candidate = true`);
     if (!options.includeExpired) {

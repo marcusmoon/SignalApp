@@ -107,7 +107,6 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
       from: url.searchParams.get('from') || '',
       to: url.searchParams.get('to') || '',
       tag: url.searchParams.get('tag') || '',
-      timeZone: url.searchParams.get('timeZone') || '',
       limit: url.searchParams.get('limit') || '20',
       offset: url.searchParams.get('offset') || '0',
     });

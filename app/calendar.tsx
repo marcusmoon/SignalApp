@@ -50,7 +50,21 @@ const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
 const CALENDAR_MONTH_QUERY_LIMIT = 1000;
 
 function calendarEventTimeLabel(ev: CalendarEvent): string {
-  return ev.time || '—';
+  if (ev.time) return ev.time;
+  if (!ev.eventAt || !ev.timezone) return '—';
+  try {
+    const label =
+      ev.timezone === 'America/New_York' ? 'ET' : ev.timezone === 'Asia/Seoul' ? 'KST' : ev.timezone === 'UTC' ? 'UTC' : '';
+    const time = new Intl.DateTimeFormat('en-US', {
+      timeZone: ev.timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).format(new Date(ev.eventAt));
+    return label ? `${time} ${label}` : time;
+  } catch {
+    return '—';
+  }
 }
 
 function formatCalendarMetric(n: number | null | undefined, unit?: string): string {
@@ -111,6 +125,7 @@ function selectedCalendarType(input: Set<CalendarEventTypeKey>): CalendarEventTy
 function sortDayEvents(events: CalendarEvent[]): CalendarEvent[] {
   return [...events].sort(
     (a, b) =>
+      (a.eventAt && b.eventAt ? String(a.eventAt).localeCompare(String(b.eventAt)) : 0) ||
       String(a.time || '').localeCompare(String(b.time || '')) ||
       a.title.localeCompare(b.title),
   );

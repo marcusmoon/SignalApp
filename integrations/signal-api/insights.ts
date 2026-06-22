@@ -23,7 +23,6 @@ export async function fetchSignalInsights(
     date?: 'today' | 'all';
     from?: string;
     to?: string;
-    timeZone?: string;
     limit?: number;
     offset?: number;
   } = {},
@@ -39,7 +38,6 @@ export async function fetchSignalInsights(
       date: params.date,
       from: params.from,
       to: params.to,
-      timeZone: params.timeZone,
       limit: params.limit ?? 8,
       offset: params.offset ?? 0,
     },

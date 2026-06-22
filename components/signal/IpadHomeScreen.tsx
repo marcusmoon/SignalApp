@@ -186,7 +186,7 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
             return [category, items] as const;
           }),
         ),
-        fetchSignalMarketBriefings({ date: todayYmd, limit: 30 }).catch(() => []),
+        fetchSignalMarketBriefings({ ...utcRangeForLocalYmd(todayYmd), limit: 30 }).catch(() => []),
         fetchSignalCalendar({
           from: todayYmd,
           to: shiftYmd(todayYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),

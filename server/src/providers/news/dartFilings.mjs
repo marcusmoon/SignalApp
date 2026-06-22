@@ -186,7 +186,7 @@ export async function fetchDartFilings(params = {}) {
   const end = new Date();
   const start = new Date(end.getTime() - daysBack * 24 * 60 * 60 * 1000);
   const fmt = (date) =>
-    `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+    `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, '0')}${String(date.getUTCDate()).padStart(2, '0')}`;
   const bgnDe = fmt(start);
   const endDe = fmt(end);
 

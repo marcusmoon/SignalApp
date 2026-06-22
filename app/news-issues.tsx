@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
-import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { HOME_DIGEST_CATEGORIES, type HomeDigestCategory } from '@/constants/ipadHomeNav';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
@@ -19,7 +18,7 @@ import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import type { SignalApiNewsDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
-import { toYmd } from '@/utils/date';
+import { toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
 function parseCategory(value: unknown): HomeDigestCategory {
   const raw = String(Array.isArray(value) ? value[0] : value || '').trim();
@@ -60,8 +59,8 @@ function formatDateLabel(ymd: string, locale: 'ko' | 'en' | 'ja'): string {
 function sortDigests(rows: SignalApiNewsDigestItem[]): SignalApiNewsDigestItem[] {
   return [...rows].sort(
     (a, b) =>
-      (b.count - a.count) ||
-      String(b.generatedAt || '').localeCompare(String(a.generatedAt || '')),
+      String(b.generatedAt || '').localeCompare(String(a.generatedAt || '')) ||
+      (b.count - a.count),
   );
 }
 
@@ -117,8 +116,7 @@ export function NewsIssuesContent({
     try {
       const page = await fetchSignalNewsDigests({
         category,
-        from: selectedYmd,
-        to: selectedYmd,
+        ...utcRangeForLocalYmd(selectedYmd),
         limit: 80,
         batches: 20,
       });
@@ -136,8 +134,7 @@ export function NewsIssuesContent({
   }, [load]);
 
   const body = (
-    <SafeAreaView style={styles.safe} edges={isWide ? [] : ['top']}>
-      {!isWide ? <SignalHeader compact /> : null}
+    <SafeAreaView style={styles.safe} edges={isWide ? [] : ['bottom']}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={[styles.inner, isWide && styles.innerWide]}>
           {onBack ? (
@@ -157,7 +154,6 @@ export function NewsIssuesContent({
             </View>
           ) : null}
           <View style={styles.header}>
-            {!onBack ? <Text style={styles.title}>{t('newsIssuesTitle')}</Text> : null}
             <View style={styles.categoryTabs}>
               {HOME_DIGEST_CATEGORIES.map((key) => {
                 const active = category === key;

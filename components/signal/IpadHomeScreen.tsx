@@ -4,6 +4,8 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useCallback, useMemo, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
+import { ScheduleCarousel } from '@/components/signal/ScheduleCarousel';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
@@ -19,16 +21,24 @@ import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
+import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
-import type { SignalApiMarketBriefing, SignalApiNewsDigestItem } from '@/integrations/signal-api/types';
+import type {
+  SignalApiDisclosureDigestItem,
+  SignalApiMarketBriefing,
+  SignalApiNewsDigestItem,
+} from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
+import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { CalendarEvent } from '@/types/signal';
-import { toYmd } from '@/utils/date';
+import { toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
 const HOME_DIGEST_LIMIT = 3;
 const HOME_CALENDAR_LIMIT = 6;
+const HOME_CALENDAR_LOOKAHEAD_DAYS = 14;
+const HOME_DISCLOSURE_DIGEST_LIMIT = 5;
 
 type DigestState = Record<HomeDigestCategory, SignalApiNewsDigestItem[]>;
 
@@ -40,6 +50,12 @@ function parseYmd(value: string): Date {
   const [y, m, d] = value.split('-').map((part) => Number(part));
   if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return new Date();
   return new Date(y, m - 1, d);
+}
+
+function shiftYmd(ymd: string, days: number): string {
+  const d = parseYmd(ymd);
+  d.setDate(d.getDate() + days);
+  return toYmd(d);
 }
 
 function localeForDate(locale: 'ko' | 'en' | 'ja'): string {
@@ -65,14 +81,15 @@ function sortDigestItems(items: SignalApiNewsDigestItem[]): SignalApiNewsDigestI
   return [...items]
     .sort(
       (a, b) =>
-        (b.count - a.count) ||
-        String(b.generatedAt || '').localeCompare(String(a.generatedAt || '')),
+        String(b.generatedAt || '').localeCompare(String(a.generatedAt || '')) ||
+        (b.count - a.count),
     )
     .slice(0, HOME_DIGEST_LIMIT);
 }
 
 async function fetchTopDigestsForCategory(category: HomeDigestCategory, date: string): Promise<SignalApiNewsDigestItem[]> {
-  const page = await fetchSignalNewsDigests({ category, from: date, to: date, limit: 30, batches: 3 }).catch(
+  const range = utcRangeForLocalYmd(date);
+  const page = await fetchSignalNewsDigests({ category, ...range, limit: 80, batches: 20 }).catch(
     () => ({ items: [] as SignalApiNewsDigestItem[] }),
   );
   return sortDigestItems(page.items);
@@ -103,9 +120,22 @@ function categoryTone(category: HomeDigestCategory, theme: AppTheme) {
 function sortDayEvents(events: CalendarEvent[]): CalendarEvent[] {
   return [...events].sort(
     (a, b) =>
+      String(a.date || '').localeCompare(String(b.date || '')) ||
       String(a.time || '').localeCompare(String(b.time || '')) ||
       a.title.localeCompare(b.title),
   );
+}
+
+function filterHomeCalendarEvents(rows: CalendarEvent[], watchlist: string[]): CalendarEvent[] {
+  const watch = new Set(watchlist.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean));
+  return sortDayEvents(
+    rows.filter((row) => {
+      if (row.type === 'fed' || row.type === 'fomc' || row.type === 'holiday') return true;
+      if (row.type !== 'earnings') return false;
+      const symbol = String(row.symbol || '').trim().toUpperCase();
+      return !!symbol && watch.has(symbol);
+    }),
+  ).slice(0, HOME_CALENDAR_LIMIT);
 }
 
 function briefingLeadText(briefing: SignalApiMarketBriefing): string {
@@ -114,7 +144,11 @@ function briefingLeadText(briefing: SignalApiMarketBriefing): string {
   return briefing.overview[0] || '';
 }
 
-export function IpadHomeScreen() {
+type IpadHomeScreenProps = {
+  showHeading?: boolean;
+};
+
+export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
   const router = useRouter();
   const ipadNav = useIpadSidebarNav();
   const { theme, scaleFont } = useSignalTheme();
@@ -130,6 +164,7 @@ export function IpadHomeScreen() {
   const [digests, setDigests] = useState<DigestState>(emptyDigestState);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [disclosureDigests, setDisclosureDigests] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [expandedDigestId, setExpandedDigestId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -137,12 +172,14 @@ export function IpadHomeScreen() {
       setDigests(emptyDigestState());
       setBriefings([]);
       setCalendarEvents([]);
+      setDisclosureDigests([]);
       setError(t('errorSignalApiShort'));
       return;
     }
     setError(null);
     try {
-      const [digestResults, briefingRows, calendarRows] = await Promise.all([
+      const watchlist = await loadWatchlistSymbols();
+      const [digestResults, briefingRows, calendarRows, disclosurePage] = await Promise.all([
         Promise.all(
           HOME_DIGEST_CATEGORIES.map(async (category) => {
             const items = await fetchTopDigestsForCategory(category, todayYmd);
@@ -150,7 +187,16 @@ export function IpadHomeScreen() {
           }),
         ),
         fetchSignalMarketBriefings({ date: todayYmd, limit: 30 }).catch(() => []),
-        fetchSignalCalendar({ from: todayYmd, to: todayYmd, limit: 40 }).catch(() => []),
+        fetchSignalCalendar({
+          from: todayYmd,
+          to: shiftYmd(todayYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
+          limit: 120,
+        }).catch(() => []),
+        fetchSignalDisclosureDigests({
+          ...utcRangeForLocalYmd(todayYmd),
+          limit: HOME_DISCLOSURE_DIGEST_LIMIT,
+          batches: 1,
+        }).catch(() => ({ items: [] })),
       ]);
 
       const nextDigests = emptyDigestState();
@@ -160,12 +206,14 @@ export function IpadHomeScreen() {
       setDigests(nextDigests);
       setBriefings(briefingRows);
       setCalendarEvents(
-        sortDayEvents(
+        filterHomeCalendarEvents(
           calendarRows
             .map((row) => signalCalendarToCalendarEvent(row))
             .filter((row): row is CalendarEvent => row != null),
+          watchlist,
         ),
       );
+      setDisclosureDigests(disclosurePage.items.slice(0, HOME_DISCLOSURE_DIGEST_LIMIT));
     } catch (e) {
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
     }
@@ -219,18 +267,6 @@ export function IpadHomeScreen() {
       ),
     [digests],
   );
-  const leadIssue = issueRows[0] || null;
-  const leadBriefing = useMemo(
-    () => HOME_SIGNAL_SESSIONS.map((session) => briefingBySession.get(session.key)).find(Boolean),
-    [briefingBySession],
-  );
-  const leadBriefingSessionKey = useMemo(
-    () =>
-      HOME_SIGNAL_SESSIONS.find((session) => briefingBySession.get(session.key)?.id === leadBriefing?.id)?.key ||
-      'us-overnight',
-    [briefingBySession, leadBriefing],
-  );
-  const leadBriefingText = leadBriefing ? briefingLeadText(leadBriefing) : '';
 
   const goIssues = useCallback(
     (category: HomeDigestCategory, digestId?: string) => {
@@ -259,6 +295,11 @@ export function IpadHomeScreen() {
     router.navigate('/calendar' as never);
   }, [ipadNav, router]);
 
+  const goDisclosures = useCallback(() => {
+    ipadNav.showTabs();
+    router.navigate('/(tabs)/disclosures' as never);
+  }, [ipadNav, router]);
+
   return (
     <ScrollView
       style={styles.scroll}
@@ -267,69 +308,14 @@ export function IpadHomeScreen() {
       refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
       <View style={styles.inner}>
         <View style={styles.heroPanel}>
-          <View style={styles.heroTop}>
-            <View style={styles.heroTitleCol}>
-              <Text style={styles.pageTitle}>{t('ipadHomeTitle')}</Text>
-              <Text style={styles.pageDate}>{todayLabel}</Text>
-            </View>
-          </View>
-
-          <View style={styles.heroBody}>
-            <Pressable
-              onPress={() => leadIssue ? goIssues(leadIssue.category, leadIssue.item.id) : undefined}
-              accessibilityRole={leadIssue ? 'button' : 'text'}
-              style={({ pressed }) => [styles.leadIssuePanel, pressed && leadIssue && styles.pressed]}>
-              <View style={styles.heroKickerRow}>
-                <Text style={styles.heroKicker}>{t('ipadHomeIssuesTitle')}</Text>
-                {leadIssue ? (
-                  <Text style={styles.heroCategory}>{t(NEWS_SEGMENT_LABEL[leadIssue.category])}</Text>
-                ) : null}
+          {showHeading ? (
+            <View style={styles.heroTop}>
+              <View style={styles.heroTitleCol}>
+                <Text style={styles.pageTitle}>{t('ipadHomeTitle')}</Text>
+                <Text style={styles.pageDate}>{todayLabel}</Text>
               </View>
-              <Text style={styles.heroIssueTitle} numberOfLines={2}>
-                {leadIssue?.item.title || t('ipadHomeIssuesEmpty')}
-              </Text>
-              {leadIssue ? (
-                <>
-                  <Text style={styles.heroIssueSummary} numberOfLines={2}>
-                    {leadIssue.item.summary}
-                  </Text>
-                  <View style={styles.heroChipRow}>
-                    {leadIssue.item.topics.slice(0, 3).map((topic) => (
-                      <Text key={topic} style={styles.heroChip} numberOfLines={1}>
-                        {topic}
-                      </Text>
-                    ))}
-                    {leadIssue.item.symbols.slice(0, 3).map((symbol) => (
-                      <Text key={symbol} style={[styles.heroChip, styles.heroSymbolChip]} numberOfLines={1}>
-                        {symbol}
-                      </Text>
-                    ))}
-                  </View>
-                </>
-              ) : null}
-            </Pressable>
-
-            <View style={styles.heroSideRail}>
-              <Pressable
-                onPress={() => leadBriefing ? goSignal(leadBriefingSessionKey) : undefined}
-                accessibilityRole={leadBriefing ? 'button' : 'text'}
-                style={({ pressed }) => [styles.heroMiniCard, pressed && leadBriefing && styles.pressed]}>
-                <Text style={styles.heroMiniLabel}>{t('ipadHomeSignalTitle')}</Text>
-                <Text style={styles.heroMiniTitle} numberOfLines={3}>
-                  {leadBriefingText || t('briefingSessionEmptyTitle')}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={goCalendar}
-                accessibilityRole="button"
-                style={({ pressed }) => [styles.heroMiniCard, pressed && styles.pressed]}>
-                <Text style={styles.heroMiniLabel}>{t('ipadHomeCalendarTitle')}</Text>
-                <Text style={styles.heroMiniTitle} numberOfLines={2}>
-                  {visibleCalendarEvents[0]?.title || t('ipadHomeCalendarEmpty')}
-                </Text>
-              </Pressable>
             </View>
-          </View>
+          ) : null}
         </View>
 
         {error ? (
@@ -469,79 +455,79 @@ export function IpadHomeScreen() {
               </View>
             </View>
 
-            <View style={styles.lowerGrid}>
-              <View style={styles.compactPanel}>
-                <View style={styles.compactHeader}>
-                  <Text style={styles.compactTitle}>{t('ipadHomeSignalTitle')}</Text>
-                  <Text style={styles.compactSubtitle}>{t('ipadHomeSignalSubtitle')}</Text>
-                </View>
-                <View style={styles.signalSessionGrid}>
-                  {HOME_SIGNAL_SESSIONS.map((session) => {
-                    const briefing = briefingBySession.get(session.key);
-                    const lead = briefing ? briefingLeadText(briefing) : '';
-                    return (
-                      <Pressable
-                        key={session.key}
-                        onPress={() => goSignal(session.key)}
-                        accessibilityRole="button"
-                        style={({ pressed }) => [styles.sessionCard, pressed && styles.pressed]}>
+            <View style={styles.widePanel}>
+              <View style={styles.compactHeader}>
+                <Text style={styles.compactTitle}>{t('ipadHomeSignalTitle')}</Text>
+                <Text style={styles.compactSubtitle}>{t('ipadHomeSignalSubtitle')}</Text>
+              </View>
+              <View style={styles.signalList}>
+                {HOME_SIGNAL_SESSIONS.map((session, index) => {
+                  const briefing = briefingBySession.get(session.key);
+                  const lead = briefing ? briefingLeadText(briefing) : '';
+                  return (
+                    <Pressable
+                      key={session.key}
+                      onPress={() => goSignal(session.key)}
+                      accessibilityRole="button"
+                      style={({ pressed }) => [
+                        styles.signalListRow,
+                        index < HOME_SIGNAL_SESSIONS.length - 1 && styles.signalListRowBorder,
+                        pressed && styles.pressed,
+                      ]}>
+                      <View style={styles.signalListLabelCol}>
                         <Text style={styles.sessionLabel}>{t(session.labelId)}</Text>
-                        <Text style={styles.sessionText} numberOfLines={3}>
-                          {lead || t('briefingSessionEmptyTitle')}
+                        <Text style={styles.blockHeaderHint} numberOfLines={1}>
+                          {t(session.hintId)}
                         </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
+                      </View>
+                      <Text style={styles.signalListText} numberOfLines={2}>
+                        {lead || t('briefingSessionEmptyTitle')}
+                      </Text>
+                      <FontAwesome name="chevron-right" size={12} color={theme.textDim} />
+                    </Pressable>
+                  );
+                })}
               </View>
+            </View>
 
-              <View style={styles.compactPanel}>
-                <View style={styles.compactHeader}>
-                  <Text style={styles.compactTitle}>{t('ipadHomeCalendarTitle')}</Text>
-                  <Text style={styles.compactSubtitle}>{t('ipadHomeCalendarSubtitle')}</Text>
-                </View>
-                <View>
-                  {visibleCalendarEvents.length === 0 ? (
-                    <Text style={styles.emptyLine}>{t('ipadHomeCalendarEmpty')}</Text>
-                  ) : (
-                    <>
-                      {visibleCalendarEvents.map((event, index) => (
-                        <Pressable
-                          key={event.id}
-                          onPress={goCalendar}
-                          accessibilityRole="button"
-                          style={({ pressed }) => [
-                            styles.calendarRow,
-                            index < visibleCalendarEvents.length - 1 && styles.calendarRowBorder,
-                            pressed && styles.pressed,
-                          ]}>
-                          <Text style={styles.calendarTime}>{event.time || '—'}</Text>
-                          <View style={styles.calendarBody}>
-                            <Text style={styles.calendarTitle} numberOfLines={2}>
-                              {event.title}
-                            </Text>
-                            {event.country ? (
-                              <Text style={styles.calendarMeta} numberOfLines={1}>
-                                {event.country}
-                              </Text>
-                            ) : null}
-                          </View>
-                        </Pressable>
-                      ))}
-                      {hiddenCalendarCount > 0 ? (
-                        <Pressable
-                          onPress={goCalendar}
-                          accessibilityRole="button"
-                          style={({ pressed }) => [styles.calendarMoreBtn, pressed && styles.pressed]}>
-                          <Text style={styles.calendarMoreText}>
-                            {t('ipadHomeCalendarMore', { count: String(hiddenCalendarCount) })}
-                          </Text>
-                        </Pressable>
-                      ) : null}
-                    </>
-                  )}
-                </View>
+            <View style={styles.widePanel}>
+              <View style={styles.compactHeader}>
+                <Text style={styles.compactTitle}>{t('todayBriefingDisclosureDigestTitle')}</Text>
+                <Text style={styles.compactSubtitle}>{t('todayBriefingDisclosureDigestSubtitle')}</Text>
               </View>
+              {disclosureDigests.length > 0 ? (
+                <DisclosureDigestSection items={disclosureDigests} />
+              ) : (
+                <Text style={styles.emptyLine}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
+              )}
+              <Pressable
+                onPress={goDisclosures}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.calendarMoreBtn, pressed && styles.pressed]}>
+                <Text style={styles.calendarMoreText}>{t('commonViewAll')}</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.widePanel}>
+              <View style={styles.compactHeader}>
+                <Text style={styles.compactTitle}>{t('ipadHomeCalendarTitle')}</Text>
+                <Text style={styles.compactSubtitle}>{t('ipadHomeCalendarSubtitle')}</Text>
+              </View>
+              <ScheduleCarousel
+                events={visibleCalendarEvents}
+                emptyText={t('ipadHomeCalendarEmpty')}
+                onPress={goCalendar}
+              />
+              {hiddenCalendarCount > 0 ? (
+                <Pressable
+                  onPress={goCalendar}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [styles.calendarMoreBtn, pressed && styles.pressed]}>
+                  <Text style={styles.calendarMoreText}>
+                    {t('ipadHomeCalendarMore', { count: String(hiddenCalendarCount) })}
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
           </>
         )}
@@ -579,22 +565,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '800',
       color: theme.text,
       letterSpacing: -0.4,
-      textAlign: 'left',
+      textAlign: 'center',
     },
     pageDate: {
       fontSize: sf(13),
       fontWeight: '600',
       color: theme.textMuted,
-      textAlign: 'left',
+      textAlign: 'center',
     },
     heroPanel: {
-      overflow: 'hidden',
-      borderRadius: 28,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      padding: 18,
-      gap: 16,
+      gap: 14,
     },
     heroTop: {
       flexDirection: 'row',
@@ -605,109 +585,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     heroTitleCol: {
       flex: 1,
       minWidth: 0,
-      alignItems: 'flex-start',
-      gap: 4,
-    },
-    heroBody: {
-      flexDirection: 'row',
-      gap: 14,
-      alignItems: 'stretch',
-    },
-    leadIssuePanel: {
-      flex: 1,
-      minHeight: 190,
-      borderRadius: 24,
-      padding: 20,
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      justifyContent: 'space-between',
-      gap: 12,
-    },
-    heroKickerRow: {
-      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 10,
-    },
-    heroKicker: {
-      fontSize: sf(12),
-      lineHeight: sf(17),
-      fontWeight: '900',
-      color: theme.green,
-    },
-    heroCategory: {
-      overflow: 'hidden',
-      borderRadius: 999,
-      paddingHorizontal: 9,
-      paddingVertical: 4,
-      backgroundColor: theme.card,
-      fontSize: sf(11),
-      lineHeight: sf(15),
-      fontWeight: '900',
-      color: theme.text,
-    },
-    heroIssueTitle: {
-      fontSize: sf(24),
-      lineHeight: sf(32),
-      fontWeight: '900',
-      color: theme.text,
-    },
-    heroIssueSummary: {
-      fontSize: sf(14),
-      lineHeight: sf(22),
-      fontWeight: '700',
-      color: theme.textMuted,
-    },
-    heroChipRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 6,
-    },
-    heroChip: {
-      overflow: 'hidden',
-      maxWidth: 160,
-      borderRadius: 999,
-      paddingHorizontal: 9,
-      paddingVertical: 5,
-      backgroundColor: theme.card,
-      borderWidth: 1,
-      borderColor: theme.border,
-      fontSize: sf(11),
-      lineHeight: sf(15),
-      fontWeight: '900',
-      color: theme.textMuted,
-    },
-    heroSymbolChip: {
-      color: theme.green,
-      borderColor: theme.greenBorder,
-    },
-    heroSideRail: {
-      width: 320,
-      gap: 10,
-    },
-    heroMiniCard: {
-      flex: 1,
-      minHeight: 88,
-      borderRadius: 22,
-      padding: 16,
-      backgroundColor: theme.bgElevated,
-      borderWidth: 1,
-      borderColor: theme.border,
-      justifyContent: 'space-between',
-      gap: 10,
-    },
-    heroMiniLabel: {
-      fontSize: sf(12),
-      lineHeight: sf(17),
-      fontWeight: '900',
-      color: theme.textMuted,
-    },
-    heroMiniTitle: {
-      fontSize: sf(14),
-      lineHeight: sf(21),
-      fontWeight: '800',
-      color: theme.text,
+      gap: 4,
     },
     loadingBox: {
       paddingVertical: 48,
@@ -838,6 +717,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignItems: 'flex-start',
       gap: 14,
     },
+    widePanel: {
+      borderRadius: 24,
+      padding: 16,
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      gap: 12,
+    },
     compactPanel: {
       flex: 1,
       minWidth: 0,
@@ -888,6 +775,38 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(13),
       lineHeight: sf(20),
       fontWeight: '700',
+      color: theme.text,
+    },
+    signalList: {
+      overflow: 'hidden',
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bg,
+    },
+    signalListRow: {
+      minHeight: 78,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    signalListRowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    signalListLabelCol: {
+      width: 150,
+      flexShrink: 0,
+      gap: 2,
+    },
+    signalListText: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: sf(14),
+      lineHeight: sf(21),
+      fontWeight: '800',
       color: theme.text,
     },
     blockCard: {

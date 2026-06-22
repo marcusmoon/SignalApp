@@ -77,7 +77,7 @@ export async function queryPublicNewsDigestRows(options = {}) {
         SELECT category, digest_date, generated_at, has_ai_generated,
           DENSE_RANK() OVER (
             PARTITION BY category
-            ORDER BY digest_date DESC NULLS LAST, has_ai_generated DESC NULLS LAST, generated_at DESC NULLS LAST
+            ORDER BY generated_at DESC NULLS LAST, digest_date DESC NULLS LAST, has_ai_generated DESC NULLS LAST
           ) AS run_rank
         FROM runs
       )
@@ -88,7 +88,7 @@ export async function queryPublicNewsDigestRows(options = {}) {
         AND f.digest_date IS NOT DISTINCT FROM r.digest_date
         AND f.generated_at IS NOT DISTINCT FROM r.generated_at
       WHERE r.run_rank <= $${params.length - 2}
-      ORDER BY f.digest_date DESC NULLS LAST, f.generated_at DESC NULLS LAST, f.score DESC NULLS LAST, f.position ASC
+      ORDER BY f.generated_at DESC NULLS LAST, f.digest_date DESC NULLS LAST, f.score DESC NULLS LAST, f.position ASC
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `,
     params,

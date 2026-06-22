@@ -14,6 +14,21 @@ export function addDays(d: Date, days: number): Date {
   return x;
 }
 
+export function utcRangeForLocalYmd(ymd: string): { from: string; to: string } {
+  const [year, month, day] = String(ymd || '').split('-').map((part) => Number(part));
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    const now = new Date();
+    return {
+      from: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).toISOString(),
+      to: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString(),
+    };
+  }
+  return {
+    from: new Date(year, month - 1, day, 0, 0, 0, 0).toISOString(),
+    to: new Date(year, month - 1, day, 23, 59, 59, 999).toISOString(),
+  };
+}
+
 /** Unix seconds → relative label (locale-aware; uses same rules as `formatRelativeTime`) */
 export function formatRelativeFromUnix(sec: number, locale: AppLocale): string {
   const ms = sec * 1000;

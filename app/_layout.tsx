@@ -167,6 +167,7 @@ function RootLayoutNav() {
           account: t('screenAccount'),
           alerts: t('screenAlerts'),
           calendar: t('screenCalendar'),
+          'today-briefing': t('ipadHomeTitle'),
           'news-issues': t('newsIssuesTitle'),
           terms: t('termsScreenTitle'),
           'terms-history': t('termsHistoryScreenTitle'),

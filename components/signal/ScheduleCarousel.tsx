@@ -6,6 +6,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { CalendarEvent } from '@/types/signal';
+import { calendarEventDisplayYmd } from '@/utils/date';
 
 type Props = {
   events: CalendarEvent[];
@@ -113,7 +114,7 @@ export function ScheduleCarousel({ events, emptyText, onPress }: Props) {
                   accessibilityRole="button"
                   style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
                   <View style={styles.badgeRow}>
-                    <Text style={styles.dateBadge}>{formatShortDate(event.date, locale)}</Text>
+                    <Text style={styles.dateBadge}>{formatShortDate(calendarEventDisplayYmd(event), locale)}</Text>
                     <Text style={styles.typeBadge}>{t(calendarTypeLabelId(event.type))}</Text>
                     {event.symbol ? <Text style={styles.symbolBadge}>{event.symbol}</Text> : null}
                   </View>

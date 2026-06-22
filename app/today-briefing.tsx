@@ -33,7 +33,7 @@ import { hasSignalApi } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { CalendarEvent } from '@/types/signal';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
-import { addDays, formatLocalYmdLabel, parseLocalYmd, toYmd, utcRangeForLocalYmd } from '@/utils/date';
+import { addDays, calendarEventDisplayYmd, calendarEventInLocalYmdRange, formatLocalYmdLabel, parseLocalYmd, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
 const ISSUE_LIMIT = 1;
 const BRIEFING_LIMIT = 30;
@@ -54,16 +54,22 @@ function shiftYmd(ymd: string, days: number): string {
 function sortCalendarEvents(rows: CalendarEvent[]): CalendarEvent[] {
   return [...rows].sort(
     (a, b) =>
-      String(a.date || '').localeCompare(String(b.date || '')) ||
+      calendarEventDisplayYmd(a).localeCompare(calendarEventDisplayYmd(b)) ||
       String(a.time || '').localeCompare(String(b.time || '')) ||
       a.title.localeCompare(b.title),
   );
 }
 
-function filterBriefingCalendarEvents(rows: CalendarEvent[], watchlist: string[]): CalendarEvent[] {
+function filterBriefingCalendarEvents(
+  rows: CalendarEvent[],
+  watchlist: string[],
+  fromYmd: string,
+  toYmd: string,
+): CalendarEvent[] {
   const watch = new Set(watchlist.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean));
   return sortCalendarEvents(
     rows.filter((row) => {
+      if (!calendarEventInLocalYmdRange(row, fromYmd, toYmd)) return false;
       if (row.type === 'fed' || row.type === 'fomc' || row.type === 'holiday') return true;
       if (row.type !== 'earnings') return false;
       const symbol = String(row.symbol || '').trim().toUpperCase();
@@ -140,7 +146,7 @@ export default function TodayBriefingScreen() {
         ),
         fetchSignalMarketBriefings({ ...utcRangeForLocalYmd(todayYmd), limit: BRIEFING_LIMIT }).catch(() => []),
         fetchSignalCalendar({
-          from: todayYmd,
+          from: shiftYmd(todayYmd, -1),
           to: shiftYmd(todayYmd, SCHEDULE_LOOKAHEAD_DAYS),
           limit: 120,
         }).catch(() => []),
@@ -163,6 +169,8 @@ export default function TodayBriefingScreen() {
             .map((row) => signalCalendarToCalendarEvent(row))
             .filter((row): row is CalendarEvent => row != null),
           watchlist,
+          todayYmd,
+          shiftYmd(todayYmd, SCHEDULE_LOOKAHEAD_DAYS),
         ),
       );
       setDisclosureDigests(disclosurePage.items.slice(0, DISCLOSURE_DIGEST_LIMIT));

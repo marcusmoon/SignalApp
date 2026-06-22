@@ -66,6 +66,90 @@ export function addDays(d: Date, days: number): Date {
   return x;
 }
 
+function earningsHourSlot(hour: string | null | undefined): { hour: number; minute: number } | null {
+  const text = String(hour || '').trim().toLowerCase();
+  if (text === 'bmo' || text === 'before market open') return { hour: 9, minute: 0 };
+  if (text === 'amc' || text === 'after market close') return { hour: 16, minute: 0 };
+  if (text === 'dmh' || text === 'during market hour') return { hour: 12, minute: 0 };
+  return null;
+}
+
+function localYmdFromZonedWallClock(
+  dateYmd: string,
+  hour: number,
+  minute: number,
+  timeZone: string,
+): string | null {
+  const [year, month, day] = dateYmd.split('-').map((part) => Number(part));
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0));
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(utcGuess);
+    const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const shownAsUtc = Date.UTC(
+      Number(byType.year),
+      Number(byType.month) - 1,
+      Number(byType.day),
+      Number(byType.hour),
+      Number(byType.minute),
+      Number(byType.second),
+    );
+    const targetAsUtc = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+    return toYmd(new Date(utcGuess.getTime() - (shownAsUtc - targetAsUtc)));
+  } catch {
+    return null;
+  }
+}
+
+/** Calendar grid / day list: device-local YMD from eventAt or US earnings hour when available. Holidays always use market event_date. */
+export function calendarEventDisplayYmd(ev: {
+  date?: string;
+  eventAt?: string | null;
+  earningsHour?: string | null;
+  time?: string;
+  timezone?: string | null;
+  country?: string | null;
+  type?: string;
+}): string {
+  if (ev.type === 'holiday') {
+    return String(ev.date || '').slice(0, 10);
+  }
+  const iso = ev.eventAt?.trim();
+  if (iso) {
+    const date = new Date(iso);
+    if (Number.isFinite(date.getTime())) return toYmd(date);
+  }
+  const marketDate = String(ev.date || '').slice(0, 10);
+  const slot = earningsHourSlot(ev.earningsHour || ev.time);
+  const timezone =
+    ev.timezone ||
+    (ev.country === 'KR' ? 'Asia/Seoul' : ev.country === 'US' ? 'America/New_York' : '');
+  if (slot && /^\d{4}-\d{2}-\d{2}$/.test(marketDate) && timezone) {
+    const localYmd = localYmdFromZonedWallClock(marketDate, slot.hour, slot.minute, timezone);
+    if (localYmd) return localYmd;
+  }
+  return marketDate;
+}
+
+export function calendarEventInLocalYmdRange(
+  ev: { date?: string; eventAt?: string | null },
+  fromYmd: string,
+  toYmdValue: string,
+): boolean {
+  const ymd = calendarEventDisplayYmd(ev);
+  if (!ymd) return false;
+  return ymd >= fromYmd && ymd <= toYmdValue;
+}
+
 export function utcRangeForLocalYmd(ymd: string): { from: string; to: string } {
   const [year, month, day] = String(ymd || '').split('-').map((part) => Number(part));
   if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {

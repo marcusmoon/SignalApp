@@ -9,6 +9,7 @@ import {
   storeSignalCalendarDatesCache,
 } from '@/integrations/signal-api/cache/calendarCache';
 import type { CalendarEvent } from '@/types/signal';
+import { calendarEventDisplayYmd } from '@/utils/date';
 
 export async function fetchSignalCalendar(
   params?: {
@@ -64,7 +65,7 @@ export function signalCalendarDateSummariesFromEvents(
   const byDate = new Map<string, SignalApiCalendarDateSummary>();
 
   for (const item of items) {
-    const date = String(item.date || item.eventAt || '').slice(0, 10);
+    const date = calendarEventDisplayYmd(item);
     if (!date) continue;
 
     const current = byDate.get(date) || {

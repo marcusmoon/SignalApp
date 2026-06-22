@@ -34,7 +34,7 @@ import { hasSignalApi } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { CalendarEvent } from '@/types/signal';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
-import { addDays, formatLocalYmdLabel, parseLocalYmd, toYmd, utcRangeForLocalYmd } from '@/utils/date';
+import { addDays, calendarEventDisplayYmd, calendarEventInLocalYmdRange, formatLocalYmdLabel, parseLocalYmd, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
 const HOME_DIGEST_LIMIT = 3;
 const HOME_CALENDAR_LIMIT = 6;
@@ -94,16 +94,22 @@ function categoryTone(category: HomeDigestCategory, theme: AppTheme) {
 function sortDayEvents(events: CalendarEvent[]): CalendarEvent[] {
   return [...events].sort(
     (a, b) =>
-      String(a.date || '').localeCompare(String(b.date || '')) ||
+      calendarEventDisplayYmd(a).localeCompare(calendarEventDisplayYmd(b)) ||
       String(a.time || '').localeCompare(String(b.time || '')) ||
       a.title.localeCompare(b.title),
   );
 }
 
-function filterHomeCalendarEvents(rows: CalendarEvent[], watchlist: string[]): CalendarEvent[] {
+function filterHomeCalendarEvents(
+  rows: CalendarEvent[],
+  watchlist: string[],
+  fromYmd: string,
+  toYmd: string,
+): CalendarEvent[] {
   const watch = new Set(watchlist.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean));
   return sortDayEvents(
     rows.filter((row) => {
+      if (!calendarEventInLocalYmdRange(row, fromYmd, toYmd)) return false;
       if (row.type === 'fed' || row.type === 'fomc' || row.type === 'holiday') return true;
       if (row.type !== 'earnings') return false;
       const symbol = String(row.symbol || '').trim().toUpperCase();
@@ -171,7 +177,7 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
         ),
         fetchSignalMarketBriefings({ ...utcRangeForLocalYmd(todayYmd), limit: 30 }).catch(() => []),
         fetchSignalCalendar({
-          from: todayYmd,
+          from: shiftYmd(todayYmd, -1),
           to: shiftYmd(todayYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
           limit: 120,
         }).catch(() => []),
@@ -194,6 +200,8 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
             .map((row) => signalCalendarToCalendarEvent(row))
             .filter((row): row is CalendarEvent => row != null),
           watchlist,
+          todayYmd,
+          shiftYmd(todayYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
         ),
       );
       setDisclosureDigests(disclosurePage.items.slice(0, HOME_DISCLOSURE_DIGEST_LIMIT));

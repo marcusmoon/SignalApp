@@ -44,8 +44,19 @@ SIGNAL은 **서버 저장·API 통신은 UTC**, **앱 표시는 사용자 로케
 | 필드 | 의미 |
 |---|---|
 | `event_date` | 시장·국가 기준 **캘린더 날짜** (월 그리드·일별 목록) |
-| `event_at` | 이벤트 **UTC 시각** |
+| `event_at` | 이벤트 **UTC instant** — Job upsert 시 `normalizeCalendarEventForStorage()`가 채운다 |
 | `timezone`, `time_label` | 표시용 IANA 타임존·라벨 |
+
+`event_at` 우선순위 (ingest, `server/src/calendar/eventKey.mjs`):
+
+1. provider/API가 준 ISO instant (`eventAt`)
+2. provider raw 시각 (예: Finnhub economic `time`)
+3. `event_date` + `time_label` (파싱 가능한 시:분)
+4. `event_date` + `earnings_hour` (`amc`→16:00 ET, `bmo`→09:00 ET 등)
+
+**휴장(`holiday`)**: Finnhub 기준 `tradingHour`는 **부분 휴장(조기 폐장)** 일 때만 온다. 종일 휴장은 `event_at`을 비운다. 조기 폐장은 `tradingHour`의 **마감 시각**(예: `0930-1300` → 13:00 ET)으로 `event_at`을 채운다. 앱 월력·일별 목록은 휴장을 **항상 `event_date`(시장 캘린더일)** 로 묶는다 — `event_at`으로 로컬 일자를 바꾸지 않는다.
+
+앱은 `event_at`이 있으면 기기 로컬 일자로 묶고, 없을 때만 `earnings_hour` 등으로 폴백한다(휴장 제외).
 
 캘린더 API의 `from`/`to`(날짜-only)는 `event_date`에 대응한다. instant 범위 필터는 `event_at`에 쓴다.
 
@@ -56,7 +67,7 @@ SIGNAL은 **서버 저장·API 통신은 UTC**, **앱 표시는 사용자 로케
 - 사용자가 고른 **로컬 일자**(`toYmd`, 날짜 피커)를 instant API에 넘길 때는 `utcRangeForLocalYmd(ymd)` (`utils/date.ts`)로 변환한다.
   - 로컬 해당일 `00:00:00.000` ~ `23:59:59.999` → `.toISOString()` (UTC `Z`)
 - 종목 뉴스 lookback 등 기간 조회도 동일하게 **시작·끝 로컬 일자 각각**을 UTC 범위로 보낸다 (`services/companyNewsForSymbol.ts`).
-- 캘린더 월/일 조회는 `event_date`용이므로 `toYmd()` **문자열만** 보낸다 (`integrations/signal-api/calendarRange.ts`).
+- 캘린더 월/일 조회는 `event_date`용이므로 `toYmd()` **문자열만** 보낸다 (`integrations/signal-api/calendarRange.ts`). 실적 등 `event_at`·`amc`/`bmo`가 있는 이벤트는 앱이 **기기 로컬 일자**로 다시 묶는다 (`calendarEventDisplayYmd` in `utils/date.ts`). 월 조회는 경계 보정을 위해 ±1일 패딩을 쓸 수 있다.
 
 ### 화면 표시
 

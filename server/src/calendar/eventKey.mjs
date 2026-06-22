@@ -4,6 +4,7 @@ import {
   normalizeCalendarEventType,
   slugText,
 } from './eventCodes.mjs';
+import { parseToUtcIsoOrNull } from '../time/utc.mjs';
 
 export function stableHash(value) {
   const s = String(value || '').trim();
@@ -117,13 +118,83 @@ function zonedTimeToUtcIso(dateYmd, timeLabel, timezone) {
   }
 }
 
+function earningsHourToTimeLabel(hour) {
+  const text = String(hour || '').trim().toLowerCase();
+  if (text === 'bmo' || text === 'before market open') return '9:00 AM';
+  if (text === 'amc' || text === 'after market close') return '4:00 PM';
+  if (text === 'dmh' || text === 'during market hour') return '12:00 PM';
+  return null;
+}
+
+/** Partial close only (Finnhub: tradingHour set when market is not fully closed). */
+function holidayTradingHourToTimeLabel(tradingHour) {
+  const text = String(tradingHour || '').trim();
+  if (!text) return null;
+  const ranged = text.match(/(\d{1,2}):?(\d{2})\s*[-–]\s*(\d{1,2}):?(\d{2})/);
+  if (ranged) {
+    const hour = Number(ranged[3]);
+    const minute = Number(ranged[4]);
+    if (Number.isFinite(hour) && Number.isFinite(minute) && hour <= 23 && minute <= 59) {
+      return `${hour}:${String(minute).padStart(2, '0')}`;
+    }
+  }
+  const compact = text.match(/^(\d{4})\s*[-–]\s*(\d{4})$/);
+  if (compact) {
+    const close = compact[2];
+    const hour = Number(close.slice(0, 2));
+    const minute = Number(close.slice(2, 4));
+    if (Number.isFinite(hour) && Number.isFinite(minute) && hour <= 23 && minute <= 59) {
+      return `${hour}:${String(minute).padStart(2, '0')}`;
+    }
+  }
+  return parseTimeLabel(text) ? text : null;
+}
+
+function resolveEventTimeLabel(event) {
+  const type = normalizeCalendarEventType(event?.type || event?.eventType);
+  if (type === 'holiday') {
+    return holidayTradingHourToTimeLabel(event?.timeLabel) || null;
+  }
+  const timeLabel = String(event?.timeLabel || '').trim();
+  if (timeLabel && parseTimeLabel(timeLabel)) return timeLabel;
+  return earningsHourToTimeLabel(event?.earningsHour) || timeLabel || null;
+}
+
+/** Provider raw fields (e.g. Finnhub economic `time`) before wall-clock fallback. */
+function eventAtFromProviderPayload(event, timezone) {
+  const raw = event?.rawPayload;
+  if (!raw || typeof raw !== 'object') return null;
+  const time = String(raw.time || raw.dateTime || raw.datetime || '').trim();
+  if (!time) return null;
+  if (time.includes('T')) {
+    const iso = parseToUtcIsoOrNull(time);
+    if (iso) return iso;
+  }
+  const dated = time.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})/);
+  if (dated && timezone) {
+    const clock = `${dated[2]}:${dated[3]}`;
+    return zonedTimeToUtcIso(dated[1], clock, timezone);
+  }
+  return null;
+}
+
+/**
+ * Resolve UTC instant for storage. Priority (job ingest / upsert):
+ * 1. explicit eventAt
+ * 2. provider raw datetime (Finnhub economic `time`, etc.)
+ * 3. event_date + parsed timeLabel
+ * 4. event_date + earningsHour slot (amc/bmo/dmh)
+ * Holidays: full closure → null; partial close → tradingHour close time (e.g. 0930-1300).
+ */
 function normalizeEventAt(event, date, timezone) {
   const eventAt = String(event?.eventAt || '').trim();
   if (eventAt) {
     const parsed = new Date(eventAt);
     if (Number.isFinite(parsed.getTime())) return parsed.toISOString();
   }
-  return zonedTimeToUtcIso(date, event?.timeLabel, timezone);
+  const fromProvider = eventAtFromProviderPayload(event, timezone);
+  if (fromProvider) return fromProvider;
+  return zonedTimeToUtcIso(date, resolveEventTimeLabel(event), timezone);
 }
 
 function normalizeTimeLabel(value, timezone) {

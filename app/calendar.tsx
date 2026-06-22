@@ -37,7 +37,7 @@ import {
 } from '@/services/calendarEventTypeFilterPreference';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import type { CalendarEvent } from '@/types/signal';
-import { localeTagForAppLocale, toYmd } from '@/utils/date';
+import { localeTagForAppLocale, toYmd, calendarEventDisplayYmd } from '@/utils/date';
 
 const CALENDAR_FILTER_LABEL: Record<CalendarEventTypeKey, MessageId> = {
   macro: 'calendarTagMacro',
@@ -106,7 +106,8 @@ function monthFromYmd(value: string): { year: number; month: number } {
 function monthBounds(year: number, month: number): { from: string; to: string } {
   const first = new Date(year, month, 1);
   const last = new Date(year, month + 1, 0);
-  return { from: toYmd(first), to: toYmd(last) };
+  // Pad by one day so US market-date earnings (amc) that fall on the next local day are included.
+  return { from: shiftYmd(toYmd(first), -1), to: shiftYmd(toYmd(last), 1) };
 }
 
 function normalizeCalendarTypeSelection(input: Set<CalendarEventTypeKey>): Set<CalendarEventTypeKey> {
@@ -125,6 +126,7 @@ function selectedCalendarType(input: Set<CalendarEventTypeKey>): CalendarEventTy
 function sortDayEvents(events: CalendarEvent[]): CalendarEvent[] {
   return [...events].sort(
     (a, b) =>
+      calendarEventDisplayYmd(a).localeCompare(calendarEventDisplayYmd(b)) ||
       (a.eventAt && b.eventAt ? String(a.eventAt).localeCompare(String(b.eventAt)) : 0) ||
       String(a.time || '').localeCompare(String(b.time || '')) ||
       a.title.localeCompare(b.title),
@@ -222,14 +224,14 @@ export default function CalendarScreen() {
   );
 
   const eventDates = useMemo(
-    () => new Set(filteredEvents.map((e) => String(e.date || '').slice(0, 10)).filter(Boolean)),
+    () => new Set(filteredEvents.map((e) => calendarEventDisplayYmd(e)).filter(Boolean)),
     [filteredEvents],
   );
 
   const selectedDayEvents = useMemo(
     () =>
       sortDayEvents(
-        filteredEvents.filter((e) => String(e.date || '').slice(0, 10) === selectedYmd),
+        filteredEvents.filter((e) => calendarEventDisplayYmd(e) === selectedYmd),
       ),
     [filteredEvents, selectedYmd],
   );

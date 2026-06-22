@@ -31,6 +31,7 @@ npm --prefix server run worker
 - 기본 Job, Provider, RSS, 시장 리스트, 약관은 Flyway migration으로만 관리한다.
 - 서버 런타임은 기본 운영 데이터를 자동 생성하지 않는다. 새 환경은 서버 배포 전에 Flyway가 먼저 성공해야 한다.
 - `ADMIN_USERS`는 `admin_users` 테이블이 비어 있을 때만 초기 관리자 계정으로 들어간다.
+- Postgres 연결은 세션 `timezone=UTC`를 사용한다. instant 컬럼 필터·ingest 규칙은 [DATE-TIME.md](./DATE-TIME.md)를 따른다.
 
 ## Flyway 프로세스
 

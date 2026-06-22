@@ -7,6 +7,7 @@
 | [docs/AGENTS.md](./docs/AGENTS.md) | 작업 규칙과 온보딩 |
 | [docs/SIGNAL-PRD.md](./docs/SIGNAL-PRD.md) | 제품 방향 |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 앱/서버 구조 |
+| [docs/DATE-TIME.md](./docs/DATE-TIME.md) | 날짜·시간 UTC 규칙 (서버·앱) |
 | [docs/SERVER.md](./docs/SERVER.md) | 서버, DB, Job 운영 |
 | [docs/EXPO-EAS-OPERATIONS.md](./docs/EXPO-EAS-OPERATIONS.md) | Expo/EAS 빌드와 OTA |
 | [docs/SOCIAL-AUTH.md](./docs/SOCIAL-AUTH.md) | 앱 사용자 인증과 소셜 로그인 |

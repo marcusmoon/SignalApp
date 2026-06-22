@@ -11,7 +11,7 @@
 | `domain/` | 정렬, 분류, 시드, 순수 제품 규칙 |
 | `integrations/` | Signal API, AdMob, Expo Updates 어댑터 |
 | `services/` | AsyncStorage, 세션, 설정, 캐시 오케스트레이션 |
-| `utils/` | 날짜, 링크, 표시 유틸 |
+| `utils/` | 날짜, 링크, 표시 유틸 ([DATE-TIME.md](./DATE-TIME.md)) |
 | `locales/` | ko/en/ja 문자열 |
 
 앱 화면은 외부 서비스를 직접 호출하지 않는다. 모든 피처 데이터는 `integrations/signal-api/`를 통해 Signal Server에서 가져온다.
@@ -45,6 +45,7 @@
 - 앱 공개 API에서 중복 제거와 최소 응답을 적용한다.
 - Job lock TTL은 Job 설정 기준으로 관리한다.
 - 향후 DB 접근 계층은 repository + typed SQL/query builder로 정리한다.
+- **날짜·시간**: instant는 UTC(`timestamptz`), API·ingest 규칙은 [DATE-TIME.md](./DATE-TIME.md)를 따른다. 캘린더만 `event_date`(시장 일자) + `event_at`(UTC) 이중 모델을 쓴다.
 
 ## 네이티브 구조
 

@@ -7,6 +7,7 @@
 - 화면은 `app/`, 공용 UI는 `components/`, 제품 규칙은 `domain/`, 로컬 설정과 세션은 `services/`에 둔다.
 - 서버는 `server/src/http/`, `server/src/db/`, `server/src/jobs/`, `server/src/providers/` 기준으로 나눈다.
 - 문서는 현재 기준만 유지한다. 과거 이력은 남기지 않는다.
+- **날짜·시간**은 [DATE-TIME.md](./DATE-TIME.md)를 따른다. 서버는 UTC, 앱 API는 UTC ISO, 표시는 로케일·기기 타임존.
 
 ## 실행
 
@@ -45,3 +46,4 @@ npx tsc --noEmit
 | Admin | `server/src/public/admin/` |
 | DB | `server/src/db/` |
 | Job | `server/src/jobs/`, `server/src/worker.mjs` |
+| 날짜·시간 | [DATE-TIME.md](./DATE-TIME.md), `utils/date.ts`, `server/src/time/utc.mjs` |

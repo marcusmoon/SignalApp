@@ -5,7 +5,7 @@ import {
   sqlUtcRangeTo,
   utcDateOnlyOrNull,
   utcDateKeyFromInstant,
-} from '../time/utc.mjs';
+} from '../../time/utc.mjs';
 
 export function cleanText(value) {
   return String(value || '').trim();

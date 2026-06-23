@@ -1,5 +1,5 @@
 import { useFocusEffect } from "expo-router/react-navigation";
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -55,6 +55,17 @@ const FLAT_TABS: ReadonlyArray<{ key: FlatTabKey; market: 'us' | 'kr'; session: 
   { key: 'kr-evening',   market: 'kr', session: 'evening' },
 ];
 
+const FLAT_TAB_KEYS = new Set<FlatTabKey>(FLAT_TABS.map((tab) => tab.key));
+
+function isFlatTabKey(value: string): value is FlatTabKey {
+  return FLAT_TAB_KEYS.has(value as FlatTabKey);
+}
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
 function parseYmd(value: string): Date {
   const [y, m, d] = value.split('-').map((part) => Number(part));
   if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return new Date();
@@ -90,6 +101,8 @@ function monthFromYmd(value: string): { year: number; month: number } {
 }
 
 export default function SignalScreen() {
+  const router = useRouter();
+  const routeParams = useLocalSearchParams<{ session?: string | string[]; date?: string | string[] }>();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
@@ -333,16 +346,28 @@ export default function SignalScreen() {
 
   useTabPressCycleSegment(activeTabKey, availableSessionTabKeys, onPickSessionTab);
 
-  // iPad 사이드바 서브탭 등록
   useFocusEffect(
     useCallback(() => {
-      if (!useTwoPane || !ipadNav.isAvailable) return;
-      const pending = ipadNav.takePendingSignalSession();
-      if (pending) {
-        setSelectedYmd(todayYmdRef.current);
-        setSelectedTabKey(pending);
+      const pendingSession =
+        useTwoPane && ipadNav.isAvailable ? ipadNav.takePendingSignalSession() : null;
+      const sessionParam = pendingSession ?? firstParam(routeParams.session);
+      const dateParam = firstParam(routeParams.date);
+
+      if (sessionParam && isFlatTabKey(sessionParam)) {
+        setSelectedTabKey(sessionParam);
       }
-    }, [ipadNav, useTwoPane]),
+      if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+        const clamped = dateParam > todayYmdRef.current ? todayYmdRef.current : dateParam;
+        setSelectedYmd(clamped);
+        setCalendarMonth(monthFromYmd(clamped));
+      } else if (pendingSession) {
+        setSelectedYmd(todayYmdRef.current);
+      }
+
+      if (sessionParam || dateParam) {
+        router.setParams({ session: undefined, date: undefined } as never);
+      }
+    }, [ipadNav, routeParams.date, routeParams.session, router, useTwoPane]),
   );
 
   useFocusEffect(

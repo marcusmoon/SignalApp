@@ -43,7 +43,6 @@ type SidebarSubDef = {
 
 const SIDEBAR_TABS: TabDef[] = [
   { name: 'news', route: '/(tabs)/news', icon: 'newspaper', labelId: 'tabNews' },
-  { name: 'disclosures', route: '/(tabs)/disclosures', icon: 'file-alt', labelId: 'tabDisclosures' },
   { name: 'signal', route: '/(tabs)/signal', icon: 'highlighter', labelId: 'tabSignal' },
   { name: 'quotes', route: '/(tabs)/quotes', icon: 'chart-line', labelId: 'tabQuotes' },
   { name: 'youtube', route: '/(tabs)/youtube', icon: 'youtube', labelId: 'tabYoutube' },
@@ -246,7 +245,7 @@ export function SignalSidebarTabBar({
             const hasDot =
               (tab.name === 'news' && newsHasUnread) ||
               (tab.name === 'signal' && signalHasUnread) ||
-              (tab.name === 'disclosures' && disclosureHasUnread);
+              (tab.name === 'more' && disclosureHasUnread);
 
             return (
               <View key={tab.name}>

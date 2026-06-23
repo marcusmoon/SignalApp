@@ -60,4 +60,4 @@ export const TAB_BAR_FLOAT_RADIUS = 30;
 export const TAB_BAR_FLOAT_HEIGHT = 54;
 
 /** 하단 탭 표시 순서 — `app/(tabs)/_layout.tsx`의 표시 탭 순서와 동일 */
-export const TAB_BAR_SCREEN_ORDER = ['index', 'news', 'disclosures', 'signal', 'quotes', 'more'] as const;
+export const TAB_BAR_SCREEN_ORDER = ['index', 'home', 'news', 'signal', 'quotes', 'more', 'disclosures'] as const;

@@ -1,11 +1,12 @@
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { ScheduleCarousel } from '@/components/signal/ScheduleCarousel';
+import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
@@ -136,15 +137,24 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   const todayYmd = useRollingLocalYmd();
-  const todayLabel = useMemo(
+  const todayYmdRef = useRef(todayYmd);
+  const [selectedYmd, setSelectedYmd] = useState(todayYmd);
+
+  useEffect(() => {
+    const prevToday = todayYmdRef.current;
+    todayYmdRef.current = todayYmd;
+    setSelectedYmd((prev) => (prev === prevToday ? todayYmd : prev));
+  }, [todayYmd]);
+
+  const selectedDateLabel = useMemo(
     () =>
-      formatLocalYmdLabel(todayYmd, locale, {
+      formatLocalYmdLabel(selectedYmd, locale, {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
         weekday: 'short',
       }),
-    [locale, todayYmd],
+    [locale, selectedYmd],
   );
 
   const [loading, setLoading] = useState(true);
@@ -171,18 +181,18 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
       const [digestResults, briefingRows, calendarRows, disclosurePage] = await Promise.all([
         Promise.all(
           HOME_DIGEST_CATEGORIES.map(async (category) => {
-            const items = await fetchTopDigestsForCategory(category, todayYmd);
+            const items = await fetchTopDigestsForCategory(category, selectedYmd);
             return [category, items] as const;
           }),
         ),
-        fetchSignalMarketBriefings({ ...utcRangeForLocalYmd(todayYmd), limit: 30 }).catch(() => []),
+        fetchSignalMarketBriefings({ ...utcRangeForLocalYmd(selectedYmd), limit: 30 }).catch(() => []),
         fetchSignalCalendar({
-          from: shiftYmd(todayYmd, -1),
-          to: shiftYmd(todayYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
+          from: shiftYmd(selectedYmd, -1),
+          to: shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
           limit: 120,
         }).catch(() => []),
         fetchSignalDisclosureDigests({
-          ...utcRangeForLocalYmd(todayYmd),
+          ...utcRangeForLocalYmd(selectedYmd),
           limit: HOME_DISCLOSURE_DIGEST_LIMIT,
           batches: 1,
         }).catch(() => ({ items: [] })),
@@ -200,15 +210,15 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
             .map((row) => signalCalendarToCalendarEvent(row))
             .filter((row): row is CalendarEvent => row != null),
           watchlist,
-          todayYmd,
-          shiftYmd(todayYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
+          selectedYmd,
+          shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
         ),
       );
       setDisclosureDigests(disclosurePage.items.slice(0, HOME_DISCLOSURE_DIGEST_LIMIT));
     } catch (e) {
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
     }
-  }, [t, todayYmd]);
+  }, [selectedYmd, t]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -262,23 +272,26 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
   const goIssues = useCallback(
     (category: HomeDigestCategory, digestId?: string) => {
       if (ipadNav.isAvailable) {
-        ipadNav.showNewsIssues({ category, date: todayYmd, digestId });
+        ipadNav.showNewsIssues({ category, date: selectedYmd, digestId });
         return;
       }
       router.navigate({
         pathname: '/news-issues',
-        params: { category, date: todayYmd, digestId },
+        params: { category, date: selectedYmd, digestId },
       } as never);
     },
-    [ipadNav, router, todayYmd],
+    [ipadNav, router, selectedYmd],
   );
 
   const goSignal = useCallback(
     (session: SignalSessionKey) => {
       ipadNav.showSignalTab(session);
-      router.navigate('/(tabs)/signal' as never);
+      router.navigate({
+        pathname: '/(tabs)/signal',
+        params: { session, date: selectedYmd },
+      } as never);
     },
-    [ipadNav, router],
+    [ipadNav, router, selectedYmd],
   );
 
   const goCalendar = useCallback(() => {
@@ -303,10 +316,22 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
             <View style={styles.heroTop}>
               <View style={styles.heroTitleCol}>
                 <Text style={styles.pageTitle}>{t('ipadHomeTitle')}</Text>
-                <Text style={styles.pageDate}>{todayLabel}</Text>
               </View>
             </View>
           ) : null}
+          <SignalDateNavigator
+            label={selectedDateLabel}
+            previousA11y={t('insightDatePrevious')}
+            nextA11y={t('insightDateNext')}
+            labelA11y={t('insightOpenCalendar')}
+            todayLabel={t('insightCalendarToday')}
+            onPrevious={() => setSelectedYmd((prev) => shiftYmd(prev, -1))}
+            onNext={() => setSelectedYmd((prev) => shiftYmd(prev, 1))}
+            onPressLabel={goCalendar}
+            onToday={() => setSelectedYmd(todayYmd)}
+            showToday={selectedYmd !== todayYmd}
+            style={styles.dateNav}
+          />
         </View>
 
         {error ? (
@@ -322,18 +347,16 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
         ) : (
           <>
             <View style={styles.issueBoard}>
-              <View style={styles.boardHeader}>
-                <View>
-                  <Text style={styles.boardTitle}>{t('ipadHomeIssuesTitle')}</Text>
-                  <Text style={styles.boardSubtitle}>{t('ipadHomeIssuesSubtitle')}</Text>
-                </View>
+              <View style={styles.issueBoardHeaderBand}>
+                <Text style={styles.boardTitle}>{t('ipadHomeIssuesTitle')}</Text>
+                <Text style={styles.boardSubtitle}>{t('ipadHomeIssuesSubtitle')}</Text>
               </View>
               <View style={styles.issueLaneRow}>
                 {HOME_DIGEST_CATEGORIES.map((category) => {
                   const items = digests[category];
                   const tone = categoryTone(category, theme);
                   return (
-                    <View key={category} style={[styles.issueLane, { borderTopColor: tone.text }]}>
+                    <View key={category} style={[styles.issueLane, { borderTopColor: tone.text, backgroundColor: tone.bg }]}>
                       <View style={styles.laneHeader}>
                         <View>
                           <Text style={[styles.laneTitle, { color: tone.text }]}>
@@ -387,10 +410,10 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                                   ))}
                                 </View>
                               ) : null}
-                              <Text style={styles.issueTitle} numberOfLines={2}>
+                              <Text style={styles.issueTitle} numberOfLines={3}>
                                 {item.title}
                               </Text>
-                              <Text style={styles.issueSummary} numberOfLines={2}>
+                              <Text style={styles.issueSummary} numberOfLines={3}>
                                 {item.summary}
                               </Text>
                             </Pressable>
@@ -567,6 +590,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     heroPanel: {
       gap: 14,
     },
+    dateNav: {
+      marginTop: 2,
+    },
     heroTop: {
       flexDirection: 'row',
       alignItems: 'flex-start',
@@ -629,11 +655,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     issueBoard: {
       borderRadius: 24,
-      padding: 16,
+      overflow: 'hidden',
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
-      gap: 14,
+    },
+    issueBoardHeaderBand: {
+      paddingHorizontal: 18,
+      paddingTop: 16,
+      paddingBottom: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+      backgroundColor: theme.greenDim,
+      gap: 3,
     },
     boardHeader: {
       flexDirection: 'row',
@@ -642,32 +676,31 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 12,
     },
     boardTitle: {
-      fontSize: sf(19),
-      lineHeight: sf(25),
+      fontSize: sf(21),
+      lineHeight: sf(28),
       fontWeight: '900',
       color: theme.text,
     },
     boardSubtitle: {
-      marginTop: 2,
-      fontSize: sf(12),
-      lineHeight: sf(17),
+      fontSize: sf(13),
+      lineHeight: sf(18),
       fontWeight: '700',
       color: theme.textMuted,
     },
     issueLaneRow: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 12,
+      alignItems: 'stretch',
+      gap: 14,
+      padding: 16,
     },
     issueLane: {
       flex: 1,
       minWidth: 0,
-      borderTopWidth: 3,
+      borderTopWidth: 4,
       borderRadius: 20,
-      paddingHorizontal: 14,
-      paddingTop: 14,
-      paddingBottom: 4,
-      backgroundColor: theme.bg,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 8,
       borderWidth: 1,
       borderColor: theme.border,
     },
@@ -679,8 +712,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginBottom: 4,
     },
     laneTitle: {
-      fontSize: sf(15),
-      lineHeight: sf(20),
+      fontSize: sf(16),
+      lineHeight: sf(22),
       fontWeight: '900',
     },
     laneMeta: {
@@ -855,8 +888,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingVertical: 4,
     },
     issueCard: {
-      gap: 7,
-      paddingVertical: 11,
+      gap: 8,
+      paddingVertical: 14,
     },
     issueRowBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -903,16 +936,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.greenDim,
     },
     issueTitle: {
-      fontSize: sf(14),
+      fontSize: sf(16),
       fontWeight: '900',
       color: theme.text,
-      lineHeight: sf(20),
+      lineHeight: sf(23),
     },
     issueSummary: {
-      fontSize: sf(12),
+      fontSize: sf(13),
       fontWeight: '700',
       color: theme.textMuted,
-      lineHeight: sf(18),
+      lineHeight: sf(20),
     },
     issueFooterRow: {
       flexDirection: 'row',

@@ -239,8 +239,8 @@ const APPEARANCE_MODE_LABEL: Record<ThemeAppearanceMode, MessageId> = {
 };
 
 const MAIN_ENTRY_LABEL: Record<MainEntryKey, MessageId> = {
+  home: 'settingsEntryHome',
   news: 'settingsEntryNews',
-  disclosures: 'screenDisclosures',
   signal: 'settingsEntrySignal',
   quotes: 'settingsEntryQuotes',
   more: 'settingsEntryMore',
@@ -1052,7 +1052,7 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
 
   const [moreRefLinksVisible, setMoreRefLinksVisible] = useState(true);
   const [moreRefLinksReady, setMoreRefLinksReady] = useState(false);
-  const [mainEntry, setMainEntry] = useState<MainEntryKey>('news');
+  const [mainEntry, setMainEntry] = useState<MainEntryKey>('home');
   const [mainEntryReady, setMainEntryReady] = useState(false);
   const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
   const [appIconReady, setAppIconReady] = useState(false);

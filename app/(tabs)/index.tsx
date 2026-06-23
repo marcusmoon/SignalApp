@@ -12,7 +12,7 @@ export default function TabsIndexRedirect() {
 
   useEffect(() => {
     void loadMainEntry().then((key) => {
-      setTarget((mainEntryHref(key) ?? '/news') as Href);
+      setTarget((mainEntryHref(key) ?? '/home') as Href);
     });
   }, []);
 

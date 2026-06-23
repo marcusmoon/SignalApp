@@ -60,7 +60,7 @@ import {
 
 const TAB_ICON_SIZE = 25;
 
-type TabBarIconName = 'newspaper' | 'file-alt' | 'chart-line' | 'highlighter' | 'youtube' | 'th-large';
+type TabBarIconName = 'home' | 'newspaper' | 'file-alt' | 'chart-line' | 'highlighter' | 'youtube' | 'th-large';
 
 function TabBarIcon({
   name,
@@ -386,12 +386,19 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      initialRouteName="news"
+      initialRouteName="home"
       tabBar={isWeb ? undefined : (props) => <SignalFloatingTabBar {...props} />}
       screenOptions={screenOptions}
       detachInactiveScreens={false}>
-      {/* 순서: 뉴스 · 공시 · 시그널 · 시세 · 더보기. 유튜브는 더보기 허브에서 진입한다. */}
+      {/* 순서: 홈 · 뉴스 · 시그널 · 시세 · 더보기. 공시·유튜브는 더보기 허브에서 진입한다. */}
       <Tabs.Screen name="index" options={{ href: null }} />
+      <Tabs.Screen
+        name="home"
+        options={{
+          title: t('tabHome'),
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="home" color={color} focused={focused} />,
+        }}
+      />
       <Tabs.Screen
         name="news"
         options={{
@@ -404,6 +411,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="disclosures"
         options={{
+          href: null,
           title: t('tabDisclosures'),
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="file-alt" color={color} focused={focused} showDot={disclosureHasUnread} />
@@ -430,7 +438,9 @@ export default function TabLayout() {
         name="more"
         options={{
           title: t('tabMore'),
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name="th-large" color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="th-large" color={color} focused={focused} showDot={disclosureHasUnread} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -508,8 +518,9 @@ function IpadWideTabLayout({
               screenOptions={iPadScreenOptions}
               detachInactiveScreens={false}>
               <Tabs.Screen name="index" options={{ href: null }} />
+              <Tabs.Screen name="home" options={{ href: null }} />
               <Tabs.Screen name="news" options={{ title: t('tabNews') }} />
-              <Tabs.Screen name="disclosures" options={{ title: t('tabDisclosures') }} />
+              <Tabs.Screen name="disclosures" options={{ href: null, title: t('tabDisclosures') }} />
               <Tabs.Screen name="signal" options={{ title: t('tabSignal') }} />
               <Tabs.Screen name="quotes" options={{ title: t('tabQuotes') }} />
               <Tabs.Screen name="more" options={{ title: t('tabMore') }} />

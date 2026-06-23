@@ -32,7 +32,7 @@ const HUB_META: Record<
   MoreHubRouteKey,
   { href: Href; icon: ComponentProps<typeof FontAwesome>['name']; titleId: MessageId }
 > = {
-  todayBriefing: { href: '/today-briefing' as Href, icon: 'line-chart', titleId: 'ipadHomeTitle' },
+  disclosures: { href: '/(tabs)/disclosures' as Href, icon: 'file-text-o', titleId: 'tabDisclosures' },
   youtube: { href: '/(tabs)/youtube' as Href, icon: 'youtube-play', titleId: 'tabYoutube' },
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
   settings: { href: '/settings' as Href, icon: 'cog', titleId: 'screenSettings' },
@@ -97,8 +97,8 @@ export default function MoreHubScreen() {
         router.push(HUB_META[item].href);
         return;
       }
-      if (item === 'todayBriefing') {
-        router.push('/today-briefing' as never);
+      if (item === 'disclosures') {
+        router.push('/(tabs)/disclosures' as never);
         return;
       }
       if (item === 'youtube') {
@@ -126,7 +126,7 @@ export default function MoreHubScreen() {
   const visibleOrder = useMemo(
     () =>
       useTwoPane
-        ? order.filter((item) => item !== 'todayBriefing' && item !== 'account' && item !== 'youtube' && item !== 'settings')
+        ? order.filter((item) => item !== 'account' && item !== 'youtube' && item !== 'settings')
         : order,
     [order, useTwoPane],
   );

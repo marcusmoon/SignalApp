@@ -43,10 +43,10 @@ const HOME_DIGEST_LIMIT = 3;
 const HOME_CALENDAR_LIMIT = 6;
 const HOME_CALENDAR_LOOKAHEAD_DAYS = 14;
 const HOME_DISCLOSURE_DIGEST_LIMIT = 5;
-const ISSUE_SCROLL_GAP = 10;
-const ISSUE_LIST_TAIL_WIDTH = 100;
+const ISSUE_SCROLL_GAP = 8;
+const ISSUE_CARDS_PER_VIEW = 2;
 const ISSUE_INNER_HORIZONTAL_PADDING = 40; // inner paddingHorizontal 20 × 2
-const ISSUE_LANE_HORIZONTAL_PADDING = 32; // lane paddingHorizontal 16 × 2
+const ISSUE_LANE_HORIZONTAL_PADDING = 28; // lane paddingHorizontal 14 × 2
 
 type DigestState = Record<HomeDigestCategory, SignalApiNewsDigestItem[]>;
 
@@ -158,9 +158,17 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
   const { width: windowWidth } = useWindowDimensions();
   const [issueLaneWidth, setIssueLaneWidth] = useState(0);
   const issueSlideWidth = useMemo(() => {
-    if (issueLaneWidth > 0) return issueLaneWidth;
-    const contentWidth = Math.min(APP_WIDE_CONTENT_MAX_WIDTH, windowWidth - SIDEBAR_WIDTH);
-    return Math.max(260, contentWidth - ISSUE_INNER_HORIZONTAL_PADDING - ISSUE_LANE_HORIZONTAL_PADDING);
+    const laneWidth =
+      issueLaneWidth > 0
+        ? issueLaneWidth
+        : Math.max(
+            260,
+            Math.min(APP_WIDE_CONTENT_MAX_WIDTH, windowWidth - SIDEBAR_WIDTH) -
+              ISSUE_INNER_HORIZONTAL_PADDING -
+              ISSUE_LANE_HORIZONTAL_PADDING,
+          );
+    const gaps = ISSUE_SCROLL_GAP * (ISSUE_CARDS_PER_VIEW - 1);
+    return Math.floor((laneWidth - gaps) / ISSUE_CARDS_PER_VIEW);
   }, [issueLaneWidth, windowWidth]);
   const issueSnapInterval = issueSlideWidth + ISSUE_SCROLL_GAP;
 
@@ -366,16 +374,26 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                   const accent = categoryAccent(category, theme);
                   return (
                     <View key={category} style={[styles.issueLane, { borderTopColor: accent }]}>
-                      <View style={styles.laneHeader}>
-                        <Text style={styles.laneTitle}>{t(NEWS_SEGMENT_LABEL[category])}</Text>
-                        <Text style={styles.laneMeta} numberOfLines={1}>
-                          {items.length > 0
-                            ? t('feedDigestSummary', {
-                                count: String(items.reduce((sum, item) => sum + item.count, 0)),
-                                sources: String(new Set(items.flatMap((item) => item.sources)).size),
-                              })
-                            : t('ipadHomeIssuesEmpty')}
-                        </Text>
+                      <View style={styles.laneHeaderRow}>
+                        <View style={styles.laneHeader}>
+                          <Text style={styles.laneTitle}>{t(NEWS_SEGMENT_LABEL[category])}</Text>
+                          <Text style={styles.laneMeta} numberOfLines={1}>
+                            {items.length > 0
+                              ? t('feedDigestSummary', {
+                                  count: String(items.reduce((sum, item) => sum + item.count, 0)),
+                                  sources: String(new Set(items.flatMap((item) => item.sources)).size),
+                                })
+                              : t('ipadHomeIssuesEmpty')}
+                          </Text>
+                        </View>
+                        {items.length > 0 ? (
+                          <HomeSectionIconButton
+                            icon="list-ul"
+                            accessibilityLabel={t('commonViewAll')}
+                            onPress={() => goIssues(category)}
+                            solid={false}
+                          />
+                        ) : null}
                       </View>
 
                       {items.length === 0 ? (
@@ -426,10 +444,10 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                                       ))}
                                     </View>
                                   ) : null}
-                                  <Text style={styles.issueTitle} numberOfLines={3}>
+                                  <Text style={styles.issueTitle} numberOfLines={2}>
                                     {item.title}
                                   </Text>
-                                  <Text style={styles.issueSummary} numberOfLines={3}>
+                                  <Text style={styles.issueSummary} numberOfLines={2}>
                                     {item.summary}
                                   </Text>
                                 </Pressable>
@@ -485,17 +503,6 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                                 ) : null}
                               </View>
                             ))}
-                            <Pressable
-                              onPress={() => goIssues(category)}
-                              accessibilityRole="button"
-                              accessibilityLabel={t('commonViewAll')}
-                              style={({ pressed }) => [
-                                styles.issueListTail,
-                                pressed && styles.pressed,
-                              ]}>
-                              <FontAwesome name="list-ul" size={18} color={theme.green} />
-                              <Text style={styles.issueListTailText}>{t('commonViewAll')}</Text>
-                            </Pressable>
                           </ScrollView>
                         </View>
                       )}
@@ -521,22 +528,17 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                   solid={false}
                 />
               </View>
-              <View style={styles.signalList}>
-                {HOME_SIGNAL_SESSIONS.map((session, index) => {
+              <View style={styles.signalSessionGrid}>
+                {HOME_SIGNAL_SESSIONS.map((session) => {
                   const briefing = briefingBySession.get(session.key);
                   const lead = briefing ? briefingLeadText(briefing) : '';
                   return (
-                    <View
-                      key={session.key}
-                      style={[
-                        styles.signalCard,
-                        index < HOME_SIGNAL_SESSIONS.length - 1 && styles.signalListRowBorder,
-                      ]}>
-                      <View style={styles.signalCardHeader}>
-                        <View style={styles.signalCardLabelCol}>
-                          <Text style={styles.sessionLabel}>{t(session.labelId)}</Text>
-                          <Text style={styles.blockHeaderHint}>{t(session.hintId)}</Text>
-                        </View>
+                    <View key={session.key} style={styles.signalGridCard}>
+                      <View style={styles.signalCardLabelCol}>
+                        <Text style={styles.sessionLabel}>{t(session.labelId)}</Text>
+                        <Text style={styles.blockHeaderHint} numberOfLines={1}>
+                          {t(session.hintId)}
+                        </Text>
                       </View>
                       {briefing ? (
                         <Pressable
@@ -547,7 +549,9 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                           <Text style={styles.signalCardBody}>{lead}</Text>
                         </Pressable>
                       ) : (
-                        <Text style={styles.signalCardBody}>{t('briefingSessionEmptyTitle')}</Text>
+                        <Text style={[styles.signalCardBody, styles.signalCardEmpty]}>
+                          {t('briefingSessionEmptyTitle')}
+                        </Text>
                       )}
                     </View>
                   );
@@ -555,54 +559,56 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
               </View>
             </View>
 
-            <View style={styles.widePanel}>
-              <View style={styles.compactHeaderRow}>
-                <View style={styles.compactHeader}>
-                  <Text style={styles.compactTitle}>{t('todayBriefingDisclosureDigestTitle')}</Text>
-                  <Text style={styles.compactSubtitle}>{t('todayBriefingDisclosureDigestSubtitle')}</Text>
-                </View>
-                <HomeSectionIconButton
-                  icon="chevron-right"
-                  accessibilityLabel={t('commonViewAll')}
-                  onPress={goDisclosures}
-                  solid={false}
-                />
-              </View>
-              {disclosureDigests.length > 0 ? (
-                <DisclosureDigestSection items={disclosureDigests} />
-              ) : (
-                <Text style={styles.emptyLine}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
-              )}
-            </View>
-
-            <View style={styles.widePanel}>
-              <View style={styles.compactHeaderRow}>
-                <View style={styles.compactHeader}>
-                  <Text style={styles.compactTitle}>{t('ipadHomeCalendarTitle')}</Text>
-                  <Text style={styles.compactSubtitle}>{t('ipadHomeCalendarSubtitle')}</Text>
-                </View>
-                <HomeSectionIconButton
-                  icon="chevron-right"
-                  accessibilityLabel={t('commonViewAll')}
-                  onPress={goCalendar}
-                  solid={false}
-                />
-              </View>
-              <ScheduleCarousel
-                events={visibleCalendarEvents}
-                emptyText={t('ipadHomeCalendarEmpty')}
-                onPress={goCalendar}
-              />
-              {hiddenCalendarCount > 0 ? (
-                <View style={styles.calendarMoreRow}>
+            <View style={styles.lowerGrid}>
+              <View style={styles.compactPanel}>
+                <View style={styles.compactHeaderRow}>
+                  <View style={styles.compactHeader}>
+                    <Text style={styles.compactTitle}>{t('todayBriefingDisclosureDigestTitle')}</Text>
+                    <Text style={styles.compactSubtitle}>{t('todayBriefingDisclosureDigestSubtitle')}</Text>
+                  </View>
                   <HomeSectionIconButton
                     icon="chevron-right"
-                    accessibilityLabel={t('ipadHomeCalendarMore', { count: String(hiddenCalendarCount) })}
+                    accessibilityLabel={t('commonViewAll')}
+                    onPress={goDisclosures}
+                    solid={false}
+                  />
+                </View>
+                {disclosureDigests.length > 0 ? (
+                  <DisclosureDigestSection items={disclosureDigests} />
+                ) : (
+                  <Text style={styles.emptyLine}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
+                )}
+              </View>
+
+              <View style={styles.compactPanel}>
+                <View style={styles.compactHeaderRow}>
+                  <View style={styles.compactHeader}>
+                    <Text style={styles.compactTitle}>{t('ipadHomeCalendarTitle')}</Text>
+                    <Text style={styles.compactSubtitle}>{t('ipadHomeCalendarSubtitle')}</Text>
+                  </View>
+                  <HomeSectionIconButton
+                    icon="chevron-right"
+                    accessibilityLabel={t('commonViewAll')}
                     onPress={goCalendar}
                     solid={false}
                   />
                 </View>
-              ) : null}
+                <ScheduleCarousel
+                  events={visibleCalendarEvents}
+                  emptyText={t('ipadHomeCalendarEmpty')}
+                  onPress={goCalendar}
+                />
+                {hiddenCalendarCount > 0 ? (
+                  <View style={styles.calendarMoreRow}>
+                    <HomeSectionIconButton
+                      icon="chevron-right"
+                      accessibilityLabel={t('ipadHomeCalendarMore', { count: String(hiddenCalendarCount) })}
+                      onPress={goCalendar}
+                      solid={false}
+                    />
+                  </View>
+                ) : null}
+              </View>
             </View>
           </>
         )}
@@ -626,8 +632,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
       paddingHorizontal: 20,
-      paddingTop: 12,
-      gap: 16,
+      paddingTop: 10,
+      gap: 12,
     },
     pageHead: {
       alignItems: 'center',
@@ -649,7 +655,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       textAlign: 'center',
     },
     heroPanel: {
-      gap: 14,
+      gap: 10,
     },
     dateNav: {
       marginTop: 2,
@@ -715,17 +721,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 10,
     },
     issueBoard: {
-      borderRadius: 24,
+      borderRadius: 20,
       overflow: 'hidden',
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
     },
     issueBoardHeaderBand: {
-      paddingHorizontal: 18,
-      paddingTop: 16,
-      paddingBottom: 12,
-      gap: 3,
+      paddingHorizontal: 14,
+      paddingTop: 12,
+      paddingBottom: 8,
+      gap: 2,
     },
     boardHeader: {
       flexDirection: 'row',
@@ -739,27 +745,27 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 8,
     },
     boardTitle: {
-      fontSize: sf(21),
-      lineHeight: sf(28),
+      fontSize: sf(19),
+      lineHeight: sf(26),
       fontWeight: '900',
       color: theme.text,
     },
     boardSubtitle: {
-      fontSize: sf(13),
-      lineHeight: sf(18),
+      fontSize: sf(12),
+      lineHeight: sf(17),
       fontWeight: '700',
       color: theme.textMuted,
     },
     issueLaneStack: {
-      paddingBottom: 4,
+      paddingBottom: 2,
       gap: 0,
     },
     issueLane: {
       borderTopWidth: 2,
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 12,
-      gap: 8,
+      paddingHorizontal: 14,
+      paddingTop: 10,
+      paddingBottom: 10,
+      gap: 6,
     },
     issueScrollWrap: {
       width: '100%',
@@ -775,47 +781,33 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingRight: 4,
     },
     issueScrollCard: {
-      borderRadius: 14,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bg,
-      padding: 12,
-      gap: 6,
+      padding: 10,
+      gap: 5,
     },
-    issueListTail: {
-      width: ISSUE_LIST_TAIL_WIDTH,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-      alignSelf: 'stretch',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      paddingHorizontal: 10,
-      paddingVertical: 12,
-    },
-    issueListTailText: {
-      fontSize: sf(14),
-      lineHeight: sf(19),
-      fontWeight: '900',
-      color: theme.green,
-      textAlign: 'center',
+    laneHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 8,
     },
     laneHeader: {
-      gap: 2,
-      marginBottom: 2,
+      flex: 1,
+      minWidth: 0,
+      gap: 1,
     },
     laneTitle: {
-      fontSize: sf(15),
-      lineHeight: sf(21),
+      fontSize: sf(14),
+      lineHeight: sf(20),
       fontWeight: '900',
       color: theme.text,
     },
     laneMeta: {
-      marginTop: 2,
-      fontSize: sf(11),
-      lineHeight: sf(15),
+      fontSize: sf(10),
+      lineHeight: sf(14),
       fontWeight: '700',
       color: theme.textMuted,
     },
@@ -834,26 +826,26 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     lowerGrid: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 14,
+      alignItems: 'stretch',
+      gap: 12,
     },
     widePanel: {
-      borderRadius: 24,
-      padding: 16,
+      borderRadius: 20,
+      padding: 14,
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
-      gap: 12,
+      gap: 10,
     },
     compactPanel: {
       flex: 1,
       minWidth: 0,
-      borderRadius: 24,
-      padding: 16,
+      borderRadius: 20,
+      padding: 14,
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
-      gap: 12,
+      gap: 10,
     },
     compactHeader: {
       flex: 1,
@@ -885,17 +877,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     signalSessionGrid: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
       gap: 10,
     },
-    sessionCard: {
-      width: '48%',
-      minHeight: 114,
-      borderRadius: 18,
-      padding: 13,
-      backgroundColor: theme.bg,
+    signalGridCard: {
+      flex: 1,
+      minWidth: 0,
+      borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.border,
+      backgroundColor: theme.bg,
+      padding: 12,
       gap: 8,
     },
     sessionLabel: {
@@ -910,38 +901,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '700',
       color: theme.text,
     },
-    signalList: {
-      overflow: 'hidden',
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bg,
-    },
-    signalCard: {
-      paddingHorizontal: 14,
-      paddingVertical: 14,
-      gap: 10,
-    },
-    signalCardHeader: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      gap: 12,
-    },
     signalCardLabelCol: {
       flex: 1,
       minWidth: 0,
       gap: 2,
     },
     signalCardBody: {
-      fontSize: sf(14),
-      lineHeight: sf(22),
+      fontSize: sf(13),
+      lineHeight: sf(20),
       fontWeight: '800',
       color: theme.text,
     },
-    signalListRowBorder: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
+    signalCardEmpty: {
+      color: theme.textMuted,
+      fontWeight: '700',
     },
     calendarMoreRow: {
       alignItems: 'flex-end',
@@ -1027,13 +1000,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.greenDim,
     },
     issueTitle: {
-      fontSize: sf(16),
+      fontSize: sf(14),
       fontWeight: '900',
       color: theme.text,
-      lineHeight: sf(23),
+      lineHeight: sf(20),
     },
     issueSummary: {
-      fontSize: sf(13),
+      fontSize: sf(12),
       fontWeight: '700',
       color: theme.textMuted,
       lineHeight: sf(20),

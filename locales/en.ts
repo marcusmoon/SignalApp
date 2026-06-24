@@ -16,6 +16,7 @@ export const en = {
   commonViewAll: 'View all',
   homeSignalOpenFull: 'Read briefing',
   homeSignalOpenFullA11y: 'Open briefing in Signal tab',
+  homeAiGeneratedA11y: 'AI-generated summary',
   commonComingSoon: 'Coming soon',
   commonAd: 'Ad',
   commonLoadingA11y: 'Loading',

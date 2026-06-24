@@ -14,6 +14,7 @@ export const ko = {
   commonViewAll: '전체보기',
   homeSignalOpenFull: '브리핑 보기',
   homeSignalOpenFullA11y: '시그널 탭에서 브리핑 열기',
+  homeAiGeneratedA11y: 'AI가 생성한 요약',
   commonComingSoon: '준비 중',
   commonAd: '광고',
   commonLoadingA11y: '불러오는 중',

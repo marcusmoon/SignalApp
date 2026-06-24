@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
+import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
+import { HomeSectionIconButton } from '@/components/signal/HomeSectionIconButton';
 import { ScheduleCarousel } from '@/components/signal/ScheduleCarousel';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -294,6 +296,14 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
     [ipadNav, router, selectedYmd],
   );
 
+  const openSignalTab = useCallback(() => {
+    ipadNav.showTabs();
+    router.navigate({
+      pathname: '/(tabs)/signal',
+      params: { date: selectedYmd },
+    } as never);
+  }, [ipadNav, router, selectedYmd]);
+
   const goCalendar = useCallback(() => {
     ipadNav.showTabs();
     router.navigate('/calendar' as never);
@@ -348,7 +358,10 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
           <>
             <View style={styles.issueBoard}>
               <View style={styles.issueBoardHeaderBand}>
-                <Text style={styles.boardTitle}>{t('ipadHomeIssuesTitle')}</Text>
+                <View style={styles.boardTitleRow}>
+                  <Text style={styles.boardTitle}>{t('ipadHomeIssuesTitle')}</Text>
+                  <HomeAiBadge />
+                </View>
                 <Text style={styles.boardSubtitle}>{t('ipadHomeIssuesSubtitle')}</Text>
               </View>
               <View style={styles.issueLaneRow}>
@@ -371,13 +384,12 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                               : t('ipadHomeIssuesEmpty')}
                           </Text>
                         </View>
-                        <Pressable
+                        <HomeSectionIconButton
+                          icon="chevron-right"
+                          accessibilityLabel={t('commonViewAll')}
                           onPress={() => goIssues(category)}
-                          accessibilityRole="button"
-                          hitSlop={8}
-                          style={({ pressed }) => [styles.laneMoreBtn, pressed && styles.pressed]}>
-                          <Text style={styles.laneMoreText}>{t('commonViewAll')}</Text>
-                        </Pressable>
+                          solid={false}
+                        />
                       </View>
 
                       {items.length === 0 ? (
@@ -391,13 +403,8 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                               onPress={() => goIssues(category, item.id)}
                               accessibilityRole="button"
                               style={({ pressed }) => [pressed && styles.pressed]}>
-                              {(item.aiGenerated || item.topics.length > 0 || item.symbols.length > 0) ? (
+                              {(item.topics.length > 0 || item.symbols.length > 0) ? (
                                 <View style={styles.issueBadgeRow}>
-                                  {item.aiGenerated ? (
-                                    <View style={styles.aiBadge}>
-                                      <Text style={styles.aiBadgeText}>AI</Text>
-                                    </View>
-                                  ) : null}
                                   {item.topics.slice(0, 3).map((topic) => (
                                     <Text key={topic} style={styles.topicChip} numberOfLines={1}>
                                       {topic}
@@ -470,62 +477,87 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
             </View>
 
             <View style={styles.widePanel}>
-              <View style={styles.compactHeader}>
-                <Text style={styles.compactTitle}>{t('ipadHomeSignalTitle')}</Text>
-                <Text style={styles.compactSubtitle}>{t('ipadHomeSignalSubtitle')}</Text>
+              <View style={styles.compactHeaderRow}>
+                <View style={styles.compactHeader}>
+                  <View style={styles.compactTitleRow}>
+                    <Text style={styles.compactTitle}>{t('ipadHomeSignalTitle')}</Text>
+                    <HomeAiBadge />
+                  </View>
+                  <Text style={styles.compactSubtitle}>{t('ipadHomeSignalSubtitle')}</Text>
+                </View>
+                <HomeSectionIconButton
+                  icon="chevron-right"
+                  accessibilityLabel={t('commonViewAll')}
+                  onPress={openSignalTab}
+                  solid={false}
+                />
               </View>
               <View style={styles.signalList}>
                 {HOME_SIGNAL_SESSIONS.map((session, index) => {
                   const briefing = briefingBySession.get(session.key);
                   const lead = briefing ? briefingLeadText(briefing) : '';
                   return (
-                    <Pressable
+                    <View
                       key={session.key}
-                      onPress={() => goSignal(session.key)}
-                      accessibilityRole="button"
-                      style={({ pressed }) => [
-                        styles.signalListRow,
+                      style={[
+                        styles.signalCard,
                         index < HOME_SIGNAL_SESSIONS.length - 1 && styles.signalListRowBorder,
-                        pressed && styles.pressed,
                       ]}>
-                      <View style={styles.signalListLabelCol}>
-                        <Text style={styles.sessionLabel}>{t(session.labelId)}</Text>
-                        <Text style={styles.blockHeaderHint} numberOfLines={1}>
-                          {t(session.hintId)}
-                        </Text>
+                      <View style={styles.signalCardHeader}>
+                        <View style={styles.signalCardLabelCol}>
+                          <Text style={styles.sessionLabel}>{t(session.labelId)}</Text>
+                          <Text style={styles.blockHeaderHint}>{t(session.hintId)}</Text>
+                        </View>
+                        {briefing ? (
+                          <HomeSectionIconButton
+                            icon="arrow-right"
+                            accessibilityLabel={t('homeSignalOpenFullA11y')}
+                            onPress={() => goSignal(session.key)}
+                            solid={false}
+                          />
+                        ) : null}
                       </View>
-                      <Text style={styles.signalListText} numberOfLines={2}>
+                      <Text style={styles.signalCardBody}>
                         {lead || t('briefingSessionEmptyTitle')}
                       </Text>
-                      <FontAwesome name="chevron-right" size={12} color={theme.textDim} />
-                    </Pressable>
+                    </View>
                   );
                 })}
               </View>
             </View>
 
             <View style={styles.widePanel}>
-              <View style={styles.compactHeader}>
-                <Text style={styles.compactTitle}>{t('todayBriefingDisclosureDigestTitle')}</Text>
-                <Text style={styles.compactSubtitle}>{t('todayBriefingDisclosureDigestSubtitle')}</Text>
+              <View style={styles.compactHeaderRow}>
+                <View style={styles.compactHeader}>
+                  <Text style={styles.compactTitle}>{t('todayBriefingDisclosureDigestTitle')}</Text>
+                  <Text style={styles.compactSubtitle}>{t('todayBriefingDisclosureDigestSubtitle')}</Text>
+                </View>
+                <HomeSectionIconButton
+                  icon="chevron-right"
+                  accessibilityLabel={t('commonViewAll')}
+                  onPress={goDisclosures}
+                  solid={false}
+                />
               </View>
               {disclosureDigests.length > 0 ? (
                 <DisclosureDigestSection items={disclosureDigests} />
               ) : (
                 <Text style={styles.emptyLine}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
               )}
-              <Pressable
-                onPress={goDisclosures}
-                accessibilityRole="button"
-                style={({ pressed }) => [styles.calendarMoreBtn, pressed && styles.pressed]}>
-                <Text style={styles.calendarMoreText}>{t('commonViewAll')}</Text>
-              </Pressable>
             </View>
 
             <View style={styles.widePanel}>
-              <View style={styles.compactHeader}>
-                <Text style={styles.compactTitle}>{t('ipadHomeCalendarTitle')}</Text>
-                <Text style={styles.compactSubtitle}>{t('ipadHomeCalendarSubtitle')}</Text>
+              <View style={styles.compactHeaderRow}>
+                <View style={styles.compactHeader}>
+                  <Text style={styles.compactTitle}>{t('ipadHomeCalendarTitle')}</Text>
+                  <Text style={styles.compactSubtitle}>{t('ipadHomeCalendarSubtitle')}</Text>
+                </View>
+                <HomeSectionIconButton
+                  icon="chevron-right"
+                  accessibilityLabel={t('commonViewAll')}
+                  onPress={goCalendar}
+                  solid={false}
+                />
               </View>
               <ScheduleCarousel
                 events={visibleCalendarEvents}
@@ -533,14 +565,14 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                 onPress={goCalendar}
               />
               {hiddenCalendarCount > 0 ? (
-                <Pressable
-                  onPress={goCalendar}
-                  accessibilityRole="button"
-                  style={({ pressed }) => [styles.calendarMoreBtn, pressed && styles.pressed]}>
-                  <Text style={styles.calendarMoreText}>
-                    {t('ipadHomeCalendarMore', { count: String(hiddenCalendarCount) })}
-                  </Text>
-                </Pressable>
+                <View style={styles.calendarMoreRow}>
+                  <HomeSectionIconButton
+                    icon="chevron-right"
+                    accessibilityLabel={t('ipadHomeCalendarMore', { count: String(hiddenCalendarCount) })}
+                    onPress={goCalendar}
+                    solid={false}
+                  />
+                </View>
               ) : null}
             </View>
           </>
@@ -675,6 +707,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'space-between',
       gap: 12,
     },
+    boardTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
     boardTitle: {
       fontSize: sf(21),
       lineHeight: sf(28),
@@ -760,7 +797,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 12,
     },
     compactHeader: {
+      flex: 1,
+      minWidth: 0,
       gap: 2,
+    },
+    compactHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    compactTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
     compactTitle: {
       fontSize: sf(18),
@@ -808,30 +858,34 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.border,
       backgroundColor: theme.bg,
     },
-    signalListRow: {
-      minHeight: 78,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 14,
+    signalCard: {
       paddingHorizontal: 14,
-      paddingVertical: 12,
+      paddingVertical: 14,
+      gap: 10,
+    },
+    signalCardHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    signalCardLabelCol: {
+      flex: 1,
+      minWidth: 0,
+      gap: 2,
+    },
+    signalCardBody: {
+      fontSize: sf(14),
+      lineHeight: sf(22),
+      fontWeight: '800',
+      color: theme.text,
     },
     signalListRowBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
-    signalListLabelCol: {
-      width: 150,
-      flexShrink: 0,
-      gap: 2,
-    },
-    signalListText: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: sf(14),
-      lineHeight: sf(21),
-      fontWeight: '800',
-      color: theme.text,
+    calendarMoreRow: {
+      alignItems: 'flex-end',
     },
     blockCard: {
       borderRadius: 14,
@@ -900,20 +954,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexWrap: 'wrap',
       alignItems: 'center',
       gap: 6,
-    },
-    aiBadge: {
-      minHeight: 20,
-      paddingHorizontal: 7,
-      borderRadius: 999,
-      backgroundColor: theme.green,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    aiBadgeText: {
-      color: '#FFFFFF',
-      fontSize: sf(10),
-      lineHeight: sf(14),
-      fontWeight: '900',
     },
     topicChip: {
       overflow: 'hidden',

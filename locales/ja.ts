@@ -16,6 +16,7 @@ export const ja = {
   commonViewAll: 'すべて見る',
   homeSignalOpenFull: 'ブリーフィング',
   homeSignalOpenFullA11y: 'シグナルタブでブリーフィングを開く',
+  homeAiGeneratedA11y: 'AI生成の要約',
   commonComingSoon: '準備中',
   commonAd: '広告',
   commonLoadingA11y: '読み込み中',

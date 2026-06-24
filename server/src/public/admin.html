@@ -5,12 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Signal Admin</title>
     <link rel="stylesheet" href="/admin/admin.css?v=2026-05-20-toss-admin-polish" />
-    <link rel="stylesheet" href="/admin/admin-contract.css?v=2026-06-13" />
+    <link rel="stylesheet" href="/admin/admin-contract.css?v=2026-06-25-anthropic" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.33.0/dist/tabler-icons.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" />
   </head>
-  <body class="sessionPending adminShellV2">
+  <body class="sessionPending adminShellV2" data-admin-theme="light">
     <header>
       <div class="headerLeft">
-        <button id="hamburgerBtn" class="secondary hamburgerBtn" data-i18n-aria-label="ariaHamburger">☰</button>
+        <button id="hamburgerBtn" class="secondary hamburgerBtn" data-i18n-aria-label="ariaHamburger"><i class="ti ti-menu-2" aria-hidden="true"></i></button>
         <div class="signalLogo" aria-label="Signal Admin">
           <div class="signalBars" aria-hidden="true">
             <span></span><span></span><span></span><span></span>
@@ -25,9 +29,9 @@
         <label class="headerSearch" aria-label="Global search">
           <input id="globalSearchInput" data-i18n-aria-label="ariaGlobalSearch" data-i18n-placeholder="headerSearchPh" placeholder="" />
         </label>
-        <button id="headerSearchBtn" class="secondary iconOnly mobileOnly" data-i18n-aria-label="ariaGlobalSearch">⌕</button>
-        <button id="headerNotifBtn" class="secondary iconOnly" data-i18n-aria-label="ariaNotifications">🔔<span id="headerNotifBadge" class="pill muted" style="margin-left:6px;display:none">0</span></button>
-        <button id="headerHelpBtn" class="secondary iconOnly" data-i18n-aria-label="ariaHelp">?</button>
+        <button id="headerSearchBtn" class="secondary iconOnly mobileOnly" data-i18n-aria-label="ariaGlobalSearch"><i class="ti ti-search" aria-hidden="true"></i></button>
+        <button id="headerNotifBtn" class="secondary iconOnly" data-i18n-aria-label="ariaNotifications"><i class="ti ti-bell" aria-hidden="true"></i><span id="headerNotifBadge" class="pill muted" style="margin-left:6px;display:none">0</span></button>
+        <button id="headerHelpBtn" class="secondary iconOnly" data-i18n-aria-label="ariaHelp"><i class="ti ti-help" aria-hidden="true"></i></button>
         <button id="headerProfileBtn" class="secondary" data-i18n-aria-label="ariaProfileMenu"><span id="headerProfileName">admin</span> ▾</button>
         <select id="adminLanguage">
           <option value="ko">한국어</option>
@@ -87,34 +91,34 @@
             <small data-i18n="workspaceSub">Live content and user operations</small>
           </div>
           <div class="navGroup">
-            <button class="navBtn active" data-view="dashboard" data-icon="⌂">대시보드</button>
+            <button class="navBtn active" data-view="dashboard" data-icon="⌂"><i class="ti ti-layout-dashboard" aria-hidden="true"></i><span>대시보드</span></button>
 
-            <div class="navSectionTitle muted" data-i18n="navSectionContent">콘텐츠 관리</div>
-            <button class="navBtn secondary" data-view="news" data-icon="N">뉴스 목록</button>
-            <button class="navBtn secondary" data-view="youtube" data-icon="Y">유튜브 관리</button>
-            <button class="navBtn secondary" data-view="calendar" data-icon="D">투자 캘린더</button>
+            <div class="navSectionTitle muted" data-i18n="navSectionContent"><span>콘텐츠 관리</span></div>
+            <button class="navBtn secondary" data-view="news" data-icon="N"><i class="ti ti-news" aria-hidden="true"></i><span>뉴스 목록</span></button>
+            <button class="navBtn secondary" data-view="youtube" data-icon="Y"><i class="ti ti-brand-youtube" aria-hidden="true"></i><span>유튜브 관리</span></button>
+            <button class="navBtn secondary" data-view="calendar" data-icon="D"><i class="ti ti-calendar-event" aria-hidden="true"></i><span>투자 캘린더</span></button>
 
-            <div class="navSectionTitle muted" style="margin-top:10px" data-i18n="navSectionIngest">콘텐츠 수집 관리</div>
-            <button class="navBtn secondary" data-view="jobs" data-icon="J">수집 Job</button>
-            <button class="navBtn secondary" data-view="monitoring" data-icon="M">실행 모니터링</button>
-            <button class="navBtn secondary" data-view="errors" data-icon="!">실패/오류 로그</button>
+            <div class="navSectionTitle muted" data-i18n="navSectionIngest"><span>콘텐츠 수집</span></div>
+            <button class="navBtn secondary" data-view="jobs" data-icon="J"><i class="ti ti-player-play" aria-hidden="true"></i><span>수집 Job</span></button>
+            <button class="navBtn secondary" data-view="monitoring" data-icon="M"><i class="ti ti-activity" aria-hidden="true"></i><span>실행 모니터링</span></button>
+            <button class="navBtn secondary" data-view="errors" data-icon="!"><i class="ti ti-alert-triangle" aria-hidden="true"></i><span>실패/오류 로그</span></button>
 
-            <div class="navSectionTitle muted" style="margin-top:10px" data-i18n="navSectionAppUsers">앱 사용자</div>
-            <button class="navBtn secondary" data-view="app-users" data-icon="U" data-i18n="navAppUserManagement">사용자 관리</button>
-            <button class="navBtn secondary" data-view="app-devices" data-icon="D" data-i18n="navAppDevices">디바이스 관리</button>
-            <button class="navBtn secondary" data-view="app-notifications" data-icon="A" data-i18n="navAppNotifications">알림 조회</button>
-            <button class="navBtn secondary" data-view="app-push" data-icon="P" data-i18n="navAppNotificationComposer">푸시/알림 발송</button>
+            <div class="navSectionTitle muted" data-i18n="navSectionAppUsers"><span>앱 사용자</span></div>
+            <button class="navBtn secondary" data-view="app-users" data-icon="U" data-i18n="navAppUserManagement"><i class="ti ti-users" aria-hidden="true"></i><span>사용자 관리</span></button>
+            <button class="navBtn secondary" data-view="app-devices" data-icon="D" data-i18n="navAppDevices"><i class="ti ti-device-mobile" aria-hidden="true"></i><span>디바이스 관리</span></button>
+            <button class="navBtn secondary" data-view="app-notifications" data-icon="A" data-i18n="navAppNotifications"><i class="ti ti-bell" aria-hidden="true"></i><span>알림 조회</span></button>
+            <button class="navBtn secondary" data-view="app-push" data-icon="P" data-i18n="navAppNotificationComposer"><i class="ti ti-send" aria-hidden="true"></i><span>푸시/알림 발송</span></button>
 
-            <div class="navSectionTitle muted" style="margin-top:10px" data-i18n="navSectionSystem">시스템</div>
-            <button class="navBtn secondary" data-view="settings-users" data-icon="U">어드민 사용자</button>
-            <button class="navBtn secondary" data-view="settings-legal" data-icon="T">약관</button>
-            <button class="navBtn secondary" data-view="settings-sources" data-icon="S">뉴스 출처</button>
-            <button class="navBtn secondary" data-view="settings-youtube" data-icon="Y">유튜브 채널</button>
-            <button class="navBtn secondary" data-view="settings-lists" data-icon="L">마켓 리스트</button>
-            <button class="navBtn secondary" data-view="settings-keys" data-icon="P">Provider</button>
-            <button class="navBtn secondary" data-view="translations" data-icon="G">번역 설정</button>
-            <button class="navBtn secondary" data-view="settings-theme" data-icon="T">테마</button>
-            <button class="navBtn secondary" data-view="settings-danger" data-icon="R">데이터 초기화</button>
+            <div class="navSectionTitle muted" data-i18n="navSectionSystem"><span>시스템</span></div>
+            <button class="navBtn secondary" data-view="settings-users" data-icon="U"><i class="ti ti-user-cog" aria-hidden="true"></i><span>어드민 사용자</span></button>
+            <button class="navBtn secondary" data-view="settings-legal" data-icon="T"><i class="ti ti-file-text" aria-hidden="true"></i><span>약관</span></button>
+            <button class="navBtn secondary" data-view="settings-sources" data-icon="S"><i class="ti ti-rss" aria-hidden="true"></i><span>뉴스 출처</span></button>
+            <button class="navBtn secondary" data-view="settings-youtube" data-icon="Y"><i class="ti ti-brand-youtube" aria-hidden="true"></i><span>유튜브 채널</span></button>
+            <button class="navBtn secondary" data-view="settings-lists" data-icon="L"><i class="ti ti-list" aria-hidden="true"></i><span>마켓 리스트</span></button>
+            <button class="navBtn secondary" data-view="settings-keys" data-icon="P"><i class="ti ti-key" aria-hidden="true"></i><span>Provider</span></button>
+            <button class="navBtn secondary" data-view="translations" data-icon="G"><i class="ti ti-language" aria-hidden="true"></i><span>번역 설정</span></button>
+            <button class="navBtn secondary" data-view="settings-theme" data-icon="T"><i class="ti ti-palette" aria-hidden="true"></i><span>테마</span></button>
+            <button class="navBtn secondary" data-view="settings-danger" data-icon="R"><i class="ti ti-trash" aria-hidden="true"></i><span>데이터 초기화</span></button>
           </div>
           <a
             class="floatingProfile"
@@ -122,7 +126,7 @@
             target="_blank"
             rel="noreferrer"
             data-i18n-aria-label="developerLinkedInA11y">
-            <img class="profileAvatar" src="/assets/images/developer-avatar.png" alt="" />
+            <div class="profileAvatarWrap"><img class="profileAvatar" src="/assets/images/developer-avatar.png" alt="" /></div>
             <span class="profileText">
               <strong>Marcus</strong>
               <span data-i18n="profileLinkedInSub">LinkedIn profile</span>

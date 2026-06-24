@@ -120,3 +120,641 @@ body.adminShellV2 .staleRow td {
     justify-self: start;
   }
 }
+
+/* ─────────────────────────────────────────────────────────
+   Signal Admin — Anthropic brand redesign layer
+   Loaded after admin.css. Light theme default; dark preserved.
+   ───────────────────────────────────────────────────────── */
+
+/* Fonts */
+body.adminShellV2 { font-family: "Lora", Georgia, serif; }
+body.adminShellV2 h1, body.adminShellV2 h2, body.adminShellV2 h3, body.adminShellV2 h4,
+body.adminShellV2 .pageTitle, body.adminShellV2 .cardKicker,
+body.adminShellV2 .navSectionTitle, body.adminShellV2 .signalBrand,
+body.adminShellV2 .filterBarTitle, body.adminShellV2 .filterBoxTitle,
+body.adminShellV2 .filterGroupTitle, body.adminShellV2 thead th {
+  font-family: "Poppins", Arial, sans-serif;
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+body.adminShellV2 header {
+  height: 54px;
+  padding: 0 20px;
+  background: rgba(255,255,255,0.94);
+  border-bottom: 0.5px solid var(--adm-border,#e8e6dc);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+body.adminShellV2 .signalBrand {
+  font-family: "Poppins", Arial, sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.2px;
+}
+body.adminShellV2 .signalTag {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-family: "Poppins", Arial, sans-serif;
+}
+body.adminShellV2 #hamburgerBtn,
+body.adminShellV2 #headerSearchBtn,
+body.adminShellV2 #headerNotifBtn,
+body.adminShellV2 #headerHelpBtn {
+  width: 34px; height: 34px; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; background: transparent; border: none;
+  color: var(--adm-text-secondary,#5c5a54);
+  font-size: 18px; cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+body.adminShellV2 #hamburgerBtn:hover,
+body.adminShellV2 #headerSearchBtn:hover,
+body.adminShellV2 #headerNotifBtn:hover,
+body.adminShellV2 #headerHelpBtn:hover {
+  background: var(--adm-hover,rgba(217,119,87,0.06));
+  color: var(--adm-text,#141413);
+}
+body.adminShellV2 .headerSearch input {
+  height: 32px; padding: 0 10px;
+  border-radius: 8px;
+  border: 0.5px solid var(--adm-border,#e8e6dc);
+  background: var(--adm-input,#f7f5ef);
+  font-size: 13px; font-family: "Lora",Georgia,serif;
+  color: var(--adm-text,#141413); outline: none;
+  transition: border-color 150ms, background 150ms;
+}
+body.adminShellV2 .headerSearch input:focus {
+  border-color: var(--adm-primary,#d97757);
+  background: var(--adm-surface,#fff);
+}
+body.adminShellV2 .topTools {
+  display: flex; align-items: center; gap: 6px; margin-left: auto;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+body.adminShellV2 .side {
+  background: var(--adm-sidebar,#f0ede4);
+  border-right: 0.5px solid var(--adm-border,#e8e6dc);
+  display: flex; flex-direction: column;
+}
+body.adminShellV2 .sideWorkspace {
+  padding: 14px 16px 12px;
+  border-bottom: 0.5px solid var(--adm-border,#e8e6dc);
+  background: transparent;
+}
+body.adminShellV2 .sideWorkspace span {
+  display: block; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.07em; color: var(--adm-text-tertiary,#b0aea5);
+  font-family: "Poppins",Arial,sans-serif; margin-bottom: 3px;
+}
+body.adminShellV2 .sideWorkspace strong {
+  font-family: "Poppins",Arial,sans-serif; font-size: 13px;
+  font-weight: 600; color: var(--adm-text,#141413); display: block;
+}
+body.adminShellV2 .sideWorkspace small {
+  font-size: 11px; color: var(--adm-text-tertiary,#b0aea5); display: block; margin-top: 2px;
+}
+body.adminShellV2 .navSectionTitle {
+  font-family: "Poppins",Arial,sans-serif; font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--adm-text-tertiary,#b0aea5); padding: 12px 16px 4px;
+}
+body.adminShellV2 .navGroup {
+  padding: 8px 8px; flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column;
+}
+body.adminShellV2 .navBtn {
+  width: calc(100% - 8px); margin: 1px 4px;
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 10px; border-radius: 8px;
+  font-size: 13px; font-family: "Lora",Georgia,serif;
+  color: var(--adm-text-secondary,#5c5a54);
+  background: transparent; border: none; text-align: left; cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+body.adminShellV2 .navBtn .ti { font-size: 16px; flex-shrink: 0; opacity: 0.65; }
+body.adminShellV2 .navBtn span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.adminShellV2 .navBtn:hover { background: rgba(217,119,87,0.07); color: var(--adm-text,#141413); }
+body.adminShellV2 .navBtn:hover .ti { opacity: 1; }
+body.adminShellV2 .navBtn.active { background: rgba(217,119,87,0.13); color: #c46745; font-weight: 500; }
+body.adminShellV2 .navBtn.active .ti { opacity: 1; color: #d97757; }
+body.adminShellV2 .floatingProfile {
+  margin: auto 8px 12px; padding: 10px 12px; border-radius: 10px;
+  background: rgba(217,119,87,0.06); border: 0.5px solid rgba(217,119,87,0.15);
+  display: flex; align-items: center; gap: 10px; text-decoration: none; transition: background 150ms;
+}
+body.adminShellV2 .floatingProfile:hover { background: rgba(217,119,87,0.10); }
+body.adminShellV2 .profileAvatarWrap,
+body.adminShellV2 .profileAvatar {
+  width: 30px; height: 30px; border-radius: 50%; overflow: hidden; flex-shrink: 0; object-fit: cover;
+}
+body.adminShellV2 .profileText strong {
+  font-family: "Poppins",Arial,sans-serif; font-size: 12px; font-weight: 600;
+  color: var(--adm-text,#141413); display: block;
+}
+body.adminShellV2 .profileText span { font-size: 10px; color: var(--adm-text-tertiary,#b0aea5); }
+
+/* ── Content area ────────────────────────────────────────── */
+body.adminShellV2 .panel { padding: 20px 24px; }
+body.adminShellV2 .pageHeader {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; margin-bottom: 20px; padding-bottom: 16px;
+  border-bottom: 0.5px solid var(--adm-border,#e8e6dc);
+}
+body.adminShellV2 .pageTitle {
+  font-family: "Poppins",Arial,sans-serif; font-size: 20px; font-weight: 600;
+  color: var(--adm-text,#141413); line-height: 1.2;
+}
+body.adminShellV2 .pageDesc { font-size: 13px; color: var(--adm-text-tertiary,#8a8880); margin-top: 4px; }
+
+/* ── Filter bars ─────────────────────────────────────────── */
+body.adminShellV2 .filterBar,
+body.adminShellV2 .filterBox {
+  background: var(--adm-surface,#fff);
+  border: 0.5px solid var(--adm-border,#e8e6dc);
+  border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;
+}
+body.adminShellV2 .filterBarTitle,
+body.adminShellV2 .filterBoxTitle {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--adm-text-tertiary,#b0aea5); margin-bottom: 10px;
+}
+body.adminShellV2 .filterBarControls { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+body.adminShellV2 .filterGroup { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+body.adminShellV2 .filterGroupTitle {
+  font-size: 11px; font-weight: 500; color: var(--adm-text-tertiary,#b0aea5); white-space: nowrap;
+}
+
+/* ── Form controls ───────────────────────────────────────── */
+body.adminShellV2 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+body.adminShellV2 select,
+body.adminShellV2 textarea {
+  height: 34px; padding: 0 10px;
+  border-radius: 8px;
+  border: 0.5px solid var(--adm-border,#e8e6dc);
+  background: var(--adm-input,#f7f5ef);
+  font-size: 13px; font-family: "Lora",Georgia,serif;
+  color: var(--adm-text,#141413); outline: none;
+  transition: border-color 150ms, background 150ms;
+  -webkit-appearance: none; appearance: none;
+}
+body.adminShellV2 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+body.adminShellV2 select:focus {
+  border-color: var(--adm-primary,#d97757);
+  background: var(--adm-surface,#fff);
+  box-shadow: 0 0 0 3px rgba(217,119,87,0.12);
+}
+body.adminShellV2 select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23b0aea5' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+}
+body.adminShellV2 textarea { height: auto; padding: 8px 10px; resize: vertical; }
+
+/* ── Buttons ─────────────────────────────────────────────── */
+body.adminShellV2 button {
+  height: 34px; padding: 0 14px; border-radius: 8px;
+  font-size: 13px; font-family: "Poppins",Arial,sans-serif; font-weight: 500;
+  cursor: pointer; transition: background 120ms, border-color 120ms, color 120ms; white-space: nowrap;
+}
+body.adminShellV2 button.secondary {
+  background: var(--adm-surface,#fff); border: 0.5px solid var(--adm-border,#e8e6dc);
+  color: var(--adm-text-secondary,#5c5a54);
+}
+body.adminShellV2 button.secondary:hover {
+  background: var(--adm-hover,rgba(217,119,87,0.05));
+  border-color: var(--adm-border-strong,#d4d0c4); color: var(--adm-text,#141413);
+}
+body.adminShellV2 button.danger {
+  background: rgba(192,57,43,0.07); border: 0.5px solid rgba(192,57,43,0.28);
+  color: var(--adm-danger,#c0392b);
+}
+body.adminShellV2 button.danger:hover { background: rgba(192,57,43,0.13); }
+body.adminShellV2 button.success {
+  background: rgba(120,140,93,0.10); border: 0.5px solid rgba(120,140,93,0.28); color: #788c5d;
+}
+body.adminShellV2 button.success:hover { background: rgba(120,140,93,0.17); }
+body.adminShellV2 button.warning {
+  background: rgba(200,127,42,0.09); border: 0.5px solid rgba(200,127,42,0.28); color: #c87f2a;
+}
+
+/* ── Cards ───────────────────────────────────────────────── */
+body.adminShellV2 .card {
+  background: var(--adm-surface,#fff);
+  border: 0.5px solid var(--adm-border,#e8e6dc);
+  border-radius: 12px; overflow: hidden;
+}
+body.adminShellV2 .cardHead {
+  padding: 14px 16px 12px;
+  border-bottom: 0.5px solid var(--adm-border-soft,#f0ede4);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+body.adminShellV2 .cardKicker {
+  font-size: 13px; font-weight: 600; color: var(--adm-text,#141413);
+}
+body.adminShellV2 .cardHint { font-size: 12px; color: var(--adm-text-tertiary,#8a8880); margin-top: 3px; }
+
+/* ── Tables ──────────────────────────────────────────────── */
+body.adminShellV2 table { width: 100%; border-collapse: collapse; font-size: 13px; }
+body.adminShellV2 thead th {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--adm-text-tertiary,#b0aea5); padding: 8px 12px;
+  border-bottom: 0.5px solid var(--adm-border,#e8e6dc); text-align: left;
+  background: var(--adm-surface-muted,#f7f5ef);
+}
+body.adminShellV2 tbody tr {
+  border-bottom: 0.5px solid var(--adm-border-soft,#f0ede4); transition: background 100ms;
+}
+body.adminShellV2 tbody tr:last-child { border-bottom: none; }
+body.adminShellV2 tbody tr:hover { background: var(--adm-hover,rgba(217,119,87,0.04)); }
+body.adminShellV2 tbody td { padding: 10px 12px; color: var(--adm-text,#141413); vertical-align: middle; }
+
+/* ── Segmented controls ──────────────────────────────────── */
+body.adminShellV2 .segmented {
+  display: flex; gap: 2px;
+  background: var(--adm-surface-muted,#f0ede4); border-radius: 9px; padding: 2px;
+}
+body.adminShellV2 .segBtn {
+  height: 28px; padding: 0 12px; border-radius: 7px; font-size: 12px;
+  border: none; background: transparent; color: var(--adm-text-secondary,#5c5a54);
+}
+body.adminShellV2 .segBtn:hover { background: rgba(217,119,87,0.06); }
+body.adminShellV2 .segBtn.active {
+  background: var(--adm-surface,#fff); color: var(--adm-primary,#d97757);
+  font-weight: 600; box-shadow: 0 1px 3px rgba(20,20,19,0.08);
+}
+
+/* ── Dialogs ─────────────────────────────────────────────── */
+body.adminShellV2 .dialogBackdrop { background: rgba(20,20,19,0.38); backdrop-filter: blur(8px); }
+body.adminShellV2 .dialogPanel {
+  background: var(--adm-surface,#fff); border: 0.5px solid var(--adm-border,#e8e6dc);
+  border-radius: 14px; box-shadow: 0 16px 48px rgba(20,20,19,0.12), 0 2px 8px rgba(20,20,19,0.06);
+}
+body.adminShellV2 .dialogHead {
+  padding: 16px 18px 14px; border-bottom: 0.5px solid var(--adm-border-soft,#f0ede4);
+}
+body.adminShellV2 .dialogHead h3 {
+  font-family: "Poppins",Arial,sans-serif; font-size: 15px; font-weight: 600;
+  color: var(--adm-text,#141413); margin: 0;
+}
+body.adminShellV2 .dialogBody { padding: 16px 18px; }
+body.adminShellV2 .dialogFoot { padding: 12px 18px 14px; border-top: 0.5px solid var(--adm-border-soft,#f0ede4); }
+
+/* ── Action box ──────────────────────────────────────────── */
+body.adminShellV2 .actionBox {
+  background: rgba(217,119,87,0.05); border: 0.5px solid rgba(217,119,87,0.16);
+  border-radius: 10px; padding: 12px 16px; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+
+/* ── Settings hero ───────────────────────────────────────── */
+body.adminShellV2 .settingsHero {
+  display: flex; align-items: flex-start; gap: 14px; padding: 16px;
+  background: rgba(217,119,87,0.04); border: 0.5px solid rgba(217,119,87,0.12);
+  border-radius: 12px; margin-bottom: 16px;
+}
+body.adminShellV2 .settingsHeroIcon {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: rgba(217,119,87,0.12); color: #d97757;
+  font-family: "Poppins",Arial,sans-serif; font-size: 16px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+/* ── Login ───────────────────────────────────────────────── */
+body.loginMode {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(217,119,87,0.11), transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(106,155,204,0.08), transparent 50%),
+    #faf9f5;
+}
+body.loginMode .loginCard {
+  background: #fff; border-radius: 16px; padding: 28px 24px;
+  border: 0.5px solid #e8e6dc; box-shadow: 0 8px 32px rgba(20,20,19,0.10);
+}
+
+/* ── Dark mode ───────────────────────────────────────────── */
+body.adminShellV2[data-admin-theme='dark'] header {
+  background: rgba(11,16,32,0.94); border-bottom-color: rgba(148,163,184,0.16);
+}
+body.adminShellV2[data-admin-theme='dark'] .side {
+  background: var(--adm-sidebar,#0b1020); border-right-color: rgba(148,163,184,0.12);
+}
+body.adminShellV2[data-admin-theme='dark'] .navBtn { color: rgba(203,213,225,0.75); }
+body.adminShellV2[data-admin-theme='dark'] .navBtn:hover { background: rgba(148,163,184,0.08); color: #f8fafc; }
+body.adminShellV2[data-admin-theme='dark'] .navBtn.active { background: rgba(96,165,250,0.16); color: #93c5fd; }
+body.adminShellV2[data-admin-theme='dark'] .navBtn.active .ti { color: #60a5fa; }
+body.adminShellV2[data-admin-theme='dark'] .floatingProfile { background: rgba(96,165,250,0.08); border-color: rgba(96,165,250,0.15); }
+body.adminShellV2[data-admin-theme='dark'] .filterBar,
+body.adminShellV2[data-admin-theme='dark'] .filterBox,
+body.adminShellV2[data-admin-theme='dark'] .card,
+body.adminShellV2[data-admin-theme='dark'] .dialogPanel {
+  background: var(--adm-surface,#111827); border-color: var(--adm-border,#2a3854);
+}
+body.adminShellV2[data-admin-theme='dark'] button.secondary {
+  background: var(--adm-surface,#111827); border-color: var(--adm-border,#2a3854); color: var(--adm-text-secondary,#cbd5e1);
+}
+body.adminShellV2[data-admin-theme='dark'] .segmented { background: rgba(148,163,184,0.08); }
+body.adminShellV2[data-admin-theme='dark'] .segBtn.active { background: var(--adm-surface,#111827); color: #60a5fa; }
+body.adminShellV2[data-admin-theme='dark'] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+body.adminShellV2[data-admin-theme='dark'] select,
+body.adminShellV2[data-admin-theme='dark'] textarea {
+  background: var(--adm-input,#172033); border-color: var(--adm-border,#2a3854); color: var(--adm-text,#f8fafc);
+}
+body.adminShellV2[data-admin-theme='dark'] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+body.adminShellV2[data-admin-theme='dark'] select:focus {
+  border-color: #60a5fa; background: var(--adm-surface,#111827); box-shadow: 0 0 0 3px rgba(96,165,250,0.15);
+}
+body.adminShellV2[data-admin-theme='dark'] thead th {
+  background: var(--adm-surface-muted,#172033); color: #64748b; border-bottom-color: var(--adm-border,#2a3854);
+}
+body.adminShellV2[data-admin-theme='dark'] .settingsHero {
+  background: rgba(96,165,250,0.05); border-color: rgba(96,165,250,0.12);
+}
+body.adminShellV2[data-admin-theme='dark'] .settingsHeroIcon { background: rgba(96,165,250,0.14); color: #60a5fa; }
+body.adminShellV2[data-admin-theme='dark'] .actionBox { background: rgba(96,165,250,0.06); border-color: rgba(96,165,250,0.15); }
+
+/* ── Job cards — improved layout ─────────────────────────── */
+body.adminShellV2 .jobCardLine {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+}
+body.adminShellV2 .jobCardMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+body.adminShellV2 .jobCardRow1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+body.adminShellV2 .jobCardRow2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+body.adminShellV2 .jobCardTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+body.adminShellV2 .jobCardTitle strong {
+  font-family: "Poppins", Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--adm-text, #141413);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.adminShellV2 .jobCardKey {
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 10px;
+  color: var(--adm-text-tertiary, #b0aea5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
+}
+body.adminShellV2 .jobCardMeta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+body.adminShellV2 .jobCardLastRun {
+  font-size: 11px;
+  color: var(--adm-text-tertiary, #b0aea5);
+  font-family: "Poppins", Arial, sans-serif;
+}
+body.adminShellV2 .jobCardRowActions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+body.adminShellV2 .compactBtn {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: 7px;
+}
+body.adminShellV2 .jobCardsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+body.adminShellV2 .jobCard {
+  background: var(--adm-surface, #fff);
+  border: 0.5px solid var(--adm-border, #e8e6dc);
+  border-radius: 10px;
+  overflow: hidden;
+}
+body.adminShellV2 .jobCard--failed,
+body.adminShellV2 .jobCard--staleLock {
+  border-left: 2px solid var(--adm-danger, #c0392b);
+}
+body.adminShellV2 .jobCard--disabled {
+  opacity: 0.7;
+}
+body.adminShellV2 .jobCard:hover {
+  border-color: var(--adm-border-strong, #d4d0c4);
+}
+
+/* ── Job edit panel ───────────────────────────────────────── */
+body.adminShellV2 .jobEditPanelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 0.5px solid var(--adm-border-soft, #f0ede4);
+  background: var(--adm-surface-muted, #f7f5ef);
+}
+body.adminShellV2 .jobEditPanelTitle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+body.adminShellV2 .jobEditPanelKey {
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 11px;
+  color: var(--adm-text-tertiary, #b0aea5);
+  background: rgba(176,174,165,0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+body.adminShellV2 .jobEditSection {
+  padding: 14px 16px;
+  border-bottom: 0.5px solid var(--adm-border-soft, #f0ede4);
+}
+body.adminShellV2 .jobEditSectionHead {
+  margin-bottom: 10px;
+}
+body.adminShellV2 .jobEditSectionHead strong {
+  font-family: "Poppins", Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--adm-text-secondary, #5c5a54);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+body.adminShellV2 .jobSettingsIdentity,
+body.adminShellV2 .jobSettingsSchedule {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+body.adminShellV2 .fieldLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--adm-text-secondary, #5c5a54);
+  font-family: "Poppins", Arial, sans-serif;
+}
+body.adminShellV2 .jobReadonlyGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+body.adminShellV2 .jobReadonlyItem {
+  background: var(--adm-surface-muted, #f7f5ef);
+  border: 0.5px solid var(--adm-border, #e8e6dc);
+  border-radius: 7px;
+  padding: 6px 10px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+body.adminShellV2 .jobReadonlyItem span {
+  color: var(--adm-text-tertiary, #b0aea5);
+  font-size: 10px;
+  font-family: "Poppins", Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+body.adminShellV2 .jobReadonlyItem strong {
+  color: var(--adm-text, #141413);
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 12px;
+}
+body.adminShellV2 .jobAdvancedParams {
+  padding: 12px 16px;
+}
+body.adminShellV2 .jobAdvancedParams summary {
+  font-family: "Poppins", Arial, sans-serif;
+  font-size: 12px;
+  color: var(--adm-text-secondary, #5c5a54);
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+body.adminShellV2 .jobEditActions {
+  padding: 12px 16px 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  background: var(--adm-surface-muted, #f7f5ef);
+}
+
+/* ── Settings hero icon ───────────────────────────────────── */
+body.adminShellV2 .settingsHeroIcon {
+  font-size: 20px;
+  color: #d97757;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+body.adminShellV2 .settingsHeroIcon .ti {
+  font-size: 22px;
+}
+
+/* ── Settings tabs — simplified ──────────────────────────── */
+body.adminShellV2 .settingsTabsShell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+body.adminShellV2 .settingsTabsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+body.adminShellV2 .settingsNavLabel {
+  font-family: "Poppins", Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--adm-text-tertiary, #b0aea5);
+  padding: 0 4px;
+}
+
+/* ── Job ops summary cards ────────────────────────────────── */
+body.adminShellV2 .jobOpsSummaryGrid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+body.adminShellV2 .jobOpsMetric {
+  background: var(--adm-surface, #fff);
+  border: 0.5px solid var(--adm-border, #e8e6dc);
+  border-radius: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 90px;
+}
+body.adminShellV2 .jobOpsMetric span {
+  font-family: "Poppins", Arial, sans-serif;
+  font-size: 10px;
+  color: var(--adm-text-tertiary, #b0aea5);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+body.adminShellV2 .jobOpsMetric strong {
+  font-family: "Poppins", Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--adm-text, #141413);
+  line-height: 1;
+}
+
+/* ── Dark mode for jobs ───────────────────────────────────── */
+body.adminShellV2[data-admin-theme='dark'] .jobCard {
+  background: var(--adm-surface, #111827);
+  border-color: var(--adm-border, #2a3854);
+}
+body.adminShellV2[data-admin-theme='dark'] .jobEditPanelHead,
+body.adminShellV2[data-admin-theme='dark'] .jobEditActions {
+  background: var(--adm-surface-muted, #172033);
+  border-color: var(--adm-border, #2a3854);
+}
+body.adminShellV2[data-admin-theme='dark'] .jobReadonlyItem {
+  background: var(--adm-surface-muted, #172033);
+  border-color: var(--adm-border, #2a3854);
+}
+body.adminShellV2[data-admin-theme='dark'] .jobEditPanelKey {
+  background: rgba(148,163,184,0.12);
+}
+body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric {
+  background: var(--adm-surface, #111827);
+  border-color: var(--adm-border, #2a3854);
+}

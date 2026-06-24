@@ -68,7 +68,7 @@ export async function loadTranslationSettingsView(ctx) {
 
   $('translationSettings').innerHTML = `
     <div class="settingsHero">
-      <span class="settingsHeroIcon">G</span>
+      <span class="settingsHeroIcon"><i class="ti ti-language" aria-hidden="true"></i></span>
       <div>
         <div class="cardKicker">${esc(textFor('translationPipelineTitle'))}</div>
         <p class="summary">${esc(textFor('translationPipelineHint'))}</p>

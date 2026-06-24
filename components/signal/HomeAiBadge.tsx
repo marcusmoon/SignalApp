@@ -12,7 +12,7 @@ export function HomeAiBadge() {
 
   return (
     <View style={styles.chip} accessibilityLabel={t('homeAiGeneratedA11y')} accessibilityRole="text">
-      <Text style={styles.text}>AI</Text>
+      <Text style={styles.text}>✦ AI</Text>
     </View>
   );
 }
@@ -20,18 +20,19 @@ export function HomeAiBadge() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     chip: {
-      minHeight: 20,
-      paddingHorizontal: 7,
-      paddingVertical: 2,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
       borderRadius: 999,
-      backgroundColor: theme.green,
+      backgroundColor: theme.accentBlue,
+      borderWidth: 1,
+      borderColor: theme.accentBlue,
       alignItems: 'center',
       justifyContent: 'center',
     },
     text: {
       color: '#FFFFFF',
       fontSize: sf(10),
-      lineHeight: sf(14),
+      lineHeight: sf(15),
       fontWeight: '900',
     },
   });

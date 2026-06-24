@@ -2,7 +2,7 @@ import { useFocusEffect } from 'expo-router/react-navigation';
 import { useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
@@ -17,7 +17,7 @@ import {
   type HomeDigestCategory,
   type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
-import { APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_WIDE_CONTENT_MAX_WIDTH, SIDEBAR_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
@@ -43,6 +43,10 @@ const HOME_DIGEST_LIMIT = 3;
 const HOME_CALENDAR_LIMIT = 6;
 const HOME_CALENDAR_LOOKAHEAD_DAYS = 14;
 const HOME_DISCLOSURE_DIGEST_LIMIT = 5;
+const ISSUE_SCROLL_GAP = 10;
+const ISSUE_LIST_TAIL_WIDTH = 100;
+const ISSUE_INNER_HORIZONTAL_PADDING = 40; // inner paddingHorizontal 20 × 2
+const ISSUE_LANE_HORIZONTAL_PADDING = 32; // lane paddingHorizontal 16 × 2
 
 type DigestState = Record<HomeDigestCategory, SignalApiNewsDigestItem[]>;
 
@@ -72,26 +76,10 @@ async function fetchTopDigestsForCategory(category: HomeDigestCategory, date: st
   return sortDigestItems(page.items);
 }
 
-function categoryTone(category: HomeDigestCategory, theme: AppTheme) {
-  if (category === 'crypto') {
-    return {
-      bg: theme.warningDim,
-      border: theme.border,
-      text: theme.warning,
-    };
-  }
-  if (category === 'korea') {
-    return {
-      bg: theme.bgElevated,
-      border: theme.border,
-      text: theme.text,
-    };
-  }
-  return {
-    bg: theme.greenDim,
-    border: theme.greenBorder,
-    text: theme.green,
-  };
+function categoryAccent(category: HomeDigestCategory, theme: AppTheme): string {
+  if (category === 'crypto') return theme.warning;
+  if (category === 'korea') return theme.textMuted;
+  return theme.green;
 }
 
 function sortDayEvents(events: CalendarEvent[]): CalendarEvent[] {
@@ -167,6 +155,14 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [disclosureDigests, setDisclosureDigests] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [expandedDigestId, setExpandedDigestId] = useState<string | null>(null);
+  const { width: windowWidth } = useWindowDimensions();
+  const [issueLaneWidth, setIssueLaneWidth] = useState(0);
+  const issueSlideWidth = useMemo(() => {
+    if (issueLaneWidth > 0) return issueLaneWidth;
+    const contentWidth = Math.min(APP_WIDE_CONTENT_MAX_WIDTH, windowWidth - SIDEBAR_WIDTH);
+    return Math.max(260, contentWidth - ISSUE_INNER_HORIZONTAL_PADDING - ISSUE_LANE_HORIZONTAL_PADDING);
+  }, [issueLaneWidth, windowWidth]);
+  const issueSnapInterval = issueSlideWidth + ISSUE_SCROLL_GAP;
 
   const load = useCallback(async () => {
     if (!hasSignalApi()) {
@@ -364,111 +360,144 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                 </View>
                 <Text style={styles.boardSubtitle}>{t('ipadHomeIssuesSubtitle')}</Text>
               </View>
-              <View style={styles.issueLaneRow}>
-                {HOME_DIGEST_CATEGORIES.map((category) => {
+              <View style={styles.issueLaneStack}>
+                {HOME_DIGEST_CATEGORIES.map((category, laneIndex) => {
                   const items = digests[category];
-                  const tone = categoryTone(category, theme);
+                  const accent = categoryAccent(category, theme);
                   return (
-                    <View key={category} style={[styles.issueLane, { borderTopColor: tone.text, backgroundColor: tone.bg }]}>
+                    <View key={category} style={[styles.issueLane, { borderTopColor: accent }]}>
                       <View style={styles.laneHeader}>
-                        <View>
-                          <Text style={[styles.laneTitle, { color: tone.text }]}>
-                            {t(NEWS_SEGMENT_LABEL[category])}
-                          </Text>
-                          <Text style={styles.laneMeta} numberOfLines={1}>
-                            {items.length > 0
-                              ? t('feedDigestSummary', {
-                                  count: String(items.reduce((sum, item) => sum + item.count, 0)),
-                                  sources: String(new Set(items.flatMap((item) => item.sources)).size),
-                                })
-                              : t('ipadHomeIssuesEmpty')}
-                          </Text>
-                        </View>
-                        <HomeSectionIconButton
-                          icon="chevron-right"
-                          accessibilityLabel={t('commonViewAll')}
-                          onPress={() => goIssues(category)}
-                          solid={false}
-                        />
+                        <Text style={styles.laneTitle}>{t(NEWS_SEGMENT_LABEL[category])}</Text>
+                        <Text style={styles.laneMeta} numberOfLines={1}>
+                          {items.length > 0
+                            ? t('feedDigestSummary', {
+                                count: String(items.reduce((sum, item) => sum + item.count, 0)),
+                                sources: String(new Set(items.flatMap((item) => item.sources)).size),
+                              })
+                            : t('ipadHomeIssuesEmpty')}
+                        </Text>
                       </View>
 
                       {items.length === 0 ? (
                         <Text style={styles.emptyLine}>{t('ipadHomeIssuesEmpty')}</Text>
                       ) : (
-                        items.map((item, index) => (
-                          <View
-                            key={item.id}
-                            style={[styles.issueCard, index < items.length - 1 && styles.issueRowBorder]}>
-                            <Pressable
-                              onPress={() => goIssues(category, item.id)}
-                              accessibilityRole="button"
-                              style={({ pressed }) => [pressed && styles.pressed]}>
-                              {(item.topics.length > 0 || item.symbols.length > 0) ? (
-                                <View style={styles.issueBadgeRow}>
-                                  {item.topics.slice(0, 3).map((topic) => (
-                                    <Text key={topic} style={styles.topicChip} numberOfLines={1}>
-                                      {topic}
-                                    </Text>
-                                  ))}
-                                  {item.symbols.slice(0, 2).map((symbol) => (
-                                    <Text key={symbol} style={[styles.topicChip, styles.symbolChip]} numberOfLines={1}>
-                                      {symbol}
-                                    </Text>
-                                  ))}
-                                </View>
-                              ) : null}
-                              <Text style={styles.issueTitle} numberOfLines={3}>
-                                {item.title}
-                              </Text>
-                              <Text style={styles.issueSummary} numberOfLines={3}>
-                                {item.summary}
-                              </Text>
-                            </Pressable>
-                            <View style={styles.issueFooterRow}>
-                              <Text style={styles.issueMeta} numberOfLines={1}>
-                                {t('feedDigestSummary', {
-                                  count: String(item.count),
-                                  sources: String(item.sources.length),
-                                })}
-                              </Text>
-                              <Pressable
-                                onPress={() =>
-                                  setExpandedDigestId((prev) => (prev === item.id ? null : item.id))
+                        <View
+                          style={styles.issueScrollWrap}
+                          onLayout={
+                            laneIndex === 0
+                              ? (event) => {
+                                  const width = event.nativeEvent.layout.width;
+                                  if (width > 0) setIssueLaneWidth(width);
                                 }
-                                accessibilityRole="button"
-                                accessibilityState={{ expanded: expandedDigestId === item.id }}
-                                hitSlop={8}
-                                style={({ pressed }) => [styles.sourceToggle, pressed && styles.pressed]}>
-                                <Text style={styles.sourceToggleText}>
-                                  {t(expandedDigestId === item.id ? 'feedDigestCollapse' : 'feedDigestExpand')}
-                                </Text>
-                              </Pressable>
-                            </View>
-                            {expandedDigestId === item.id ? (
-                              <View style={styles.sourceList}>
-                                {(item.sourceRefs || []).slice(0, 5).map((ref, refIndex) => (
-                                  <Pressable
-                                    key={`${item.id}-${refIndex}`}
-                                    onPress={ref.url ? () => void Linking.openURL(ref.url!).catch(() => null) : undefined}
-                                    accessibilityRole={ref.url ? 'link' : 'text'}
-                                    style={({ pressed }) => [styles.sourceRow, pressed && ref.url && styles.pressed]}>
-                                    <View style={styles.sourceTextCol}>
-                                      <Text style={styles.sourceTitle} numberOfLines={2}>
-                                        {ref.title || ref.sourceName || ref.url || ''}
-                                      </Text>
-                                      {ref.sourceName ? (
-                                        <Text style={styles.sourceName} numberOfLines={1}>
-                                          {ref.sourceName}
+                              : undefined
+                          }>
+                          <ScrollView
+                            horizontal
+                            nestedScrollEnabled
+                            showsHorizontalScrollIndicator={false}
+                            decelerationRate="fast"
+                            disableIntervalMomentum
+                            snapToAlignment="start"
+                            snapToInterval={issueSnapInterval}
+                            style={styles.issueScroll}
+                            contentContainerStyle={styles.issueScrollContent}>
+                            {items.map((item) => (
+                              <View
+                                key={item.id}
+                                style={[styles.issueScrollCard, { width: issueSlideWidth }]}>
+                                <Pressable
+                                  onPress={() => goIssues(category, item.id)}
+                                  accessibilityRole="button"
+                                  style={({ pressed }) => [pressed && styles.pressed]}>
+                                  {(item.topics.length > 0 || item.symbols.length > 0) ? (
+                                    <View style={styles.issueBadgeRow}>
+                                      {item.topics.slice(0, 3).map((topic) => (
+                                        <Text key={topic} style={styles.topicChip} numberOfLines={1}>
+                                          {topic}
                                         </Text>
-                                      ) : null}
+                                      ))}
+                                      {item.symbols.slice(0, 2).map((symbol) => (
+                                        <Text
+                                          key={symbol}
+                                          style={[styles.topicChip, styles.symbolChip]}
+                                          numberOfLines={1}>
+                                          {symbol}
+                                        </Text>
+                                      ))}
                                     </View>
-                                    {ref.url ? <FontAwesome name="external-link" size={10} color={theme.green} /> : null}
+                                  ) : null}
+                                  <Text style={styles.issueTitle} numberOfLines={3}>
+                                    {item.title}
+                                  </Text>
+                                  <Text style={styles.issueSummary} numberOfLines={3}>
+                                    {item.summary}
+                                  </Text>
+                                </Pressable>
+                                <View style={styles.issueFooterRow}>
+                                  <Text style={styles.issueMeta} numberOfLines={1}>
+                                    {t('feedDigestSummary', {
+                                      count: String(item.count),
+                                      sources: String(item.sources.length),
+                                    })}
+                                  </Text>
+                                  <Pressable
+                                    onPress={() =>
+                                      setExpandedDigestId((prev) => (prev === item.id ? null : item.id))
+                                    }
+                                    accessibilityRole="button"
+                                    accessibilityState={{ expanded: expandedDigestId === item.id }}
+                                    hitSlop={8}
+                                    style={({ pressed }) => [styles.sourceToggle, pressed && styles.pressed]}>
+                                    <Text style={styles.sourceToggleText}>
+                                      {t(expandedDigestId === item.id ? 'feedDigestCollapse' : 'feedDigestExpand')}
+                                    </Text>
                                   </Pressable>
-                                ))}
+                                </View>
+                                {expandedDigestId === item.id ? (
+                                  <View style={styles.sourceList}>
+                                    {(item.sourceRefs || []).slice(0, 5).map((ref, refIndex) => (
+                                      <Pressable
+                                        key={`${item.id}-${refIndex}`}
+                                        onPress={
+                                          ref.url ? () => void Linking.openURL(ref.url!).catch(() => null) : undefined
+                                        }
+                                        accessibilityRole={ref.url ? 'link' : 'text'}
+                                        style={({ pressed }) => [
+                                          styles.sourceRow,
+                                          pressed && ref.url && styles.pressed,
+                                        ]}>
+                                        <View style={styles.sourceTextCol}>
+                                          <Text style={styles.sourceTitle} numberOfLines={2}>
+                                            {ref.title || ref.sourceName || ref.url || ''}
+                                          </Text>
+                                          {ref.sourceName ? (
+                                            <Text style={styles.sourceName} numberOfLines={1}>
+                                              {ref.sourceName}
+                                            </Text>
+                                          ) : null}
+                                        </View>
+                                        {ref.url ? (
+                                          <FontAwesome name="external-link" size={10} color={theme.green} />
+                                        ) : null}
+                                      </Pressable>
+                                    ))}
+                                  </View>
+                                ) : null}
                               </View>
-                            ) : null}
-                          </View>
-                        ))
+                            ))}
+                            <Pressable
+                              onPress={() => goIssues(category)}
+                              accessibilityRole="button"
+                              accessibilityLabel={t('commonViewAll')}
+                              style={({ pressed }) => [
+                                styles.issueListTail,
+                                pressed && styles.pressed,
+                              ]}>
+                              <FontAwesome name="list-ul" size={18} color={theme.green} />
+                              <Text style={styles.issueListTailText}>{t('commonViewAll')}</Text>
+                            </Pressable>
+                          </ScrollView>
+                        </View>
                       )}
                     </View>
                   );
@@ -508,18 +537,18 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                           <Text style={styles.sessionLabel}>{t(session.labelId)}</Text>
                           <Text style={styles.blockHeaderHint}>{t(session.hintId)}</Text>
                         </View>
-                        {briefing ? (
-                          <HomeSectionIconButton
-                            icon="arrow-right"
-                            accessibilityLabel={t('homeSignalOpenFullA11y')}
-                            onPress={() => goSignal(session.key)}
-                            solid={false}
-                          />
-                        ) : null}
                       </View>
-                      <Text style={styles.signalCardBody}>
-                        {lead || t('briefingSessionEmptyTitle')}
-                      </Text>
+                      {briefing ? (
+                        <Pressable
+                          onPress={() => goSignal(session.key)}
+                          accessibilityRole="button"
+                          accessibilityLabel={t('homeSignalOpenFullA11y')}
+                          style={({ pressed }) => [pressed && styles.pressed]}>
+                          <Text style={styles.signalCardBody}>{lead}</Text>
+                        </Pressable>
+                      ) : (
+                        <Text style={styles.signalCardBody}>{t('briefingSessionEmptyTitle')}</Text>
+                      )}
                     </View>
                   );
                 })}
@@ -695,10 +724,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     issueBoardHeaderBand: {
       paddingHorizontal: 18,
       paddingTop: 16,
-      paddingBottom: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-      backgroundColor: theme.greenDim,
+      paddingBottom: 12,
       gap: 3,
     },
     boardHeader: {
@@ -724,34 +750,67 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '700',
       color: theme.textMuted,
     },
-    issueLaneRow: {
-      flexDirection: 'row',
-      alignItems: 'stretch',
-      gap: 14,
-      padding: 16,
+    issueLaneStack: {
+      paddingBottom: 4,
+      gap: 0,
     },
     issueLane: {
-      flex: 1,
-      minWidth: 0,
-      borderTopWidth: 4,
-      borderRadius: 20,
+      borderTopWidth: 2,
       paddingHorizontal: 16,
-      paddingTop: 16,
-      paddingBottom: 8,
+      paddingTop: 12,
+      paddingBottom: 12,
+      gap: 8,
+    },
+    issueScrollWrap: {
+      width: '100%',
+      maxWidth: '100%',
+      overflow: 'hidden',
+    },
+    issueScroll: {
+      width: '100%',
+      overflow: 'hidden',
+    },
+    issueScrollContent: {
+      gap: ISSUE_SCROLL_GAP,
+      paddingRight: 4,
+    },
+    issueScrollCard: {
+      borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.border,
+      backgroundColor: theme.bg,
+      padding: 12,
+      gap: 6,
+    },
+    issueListTail: {
+      width: ISSUE_LIST_TAIL_WIDTH,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      alignSelf: 'stretch',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 12,
+    },
+    issueListTailText: {
+      fontSize: sf(14),
+      lineHeight: sf(19),
+      fontWeight: '900',
+      color: theme.green,
+      textAlign: 'center',
     },
     laneHeader: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      gap: 10,
-      marginBottom: 4,
+      gap: 2,
+      marginBottom: 2,
     },
     laneTitle: {
-      fontSize: sf(16),
-      lineHeight: sf(22),
+      fontSize: sf(15),
+      lineHeight: sf(21),
       fontWeight: '900',
+      color: theme.text,
     },
     laneMeta: {
       marginTop: 2,
@@ -940,14 +999,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     blockBody: {
       paddingHorizontal: 12,
       paddingVertical: 4,
-    },
-    issueCard: {
-      gap: 8,
-      paddingVertical: 14,
-    },
-    issueRowBorder: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
     },
     issueBadgeRow: {
       flexDirection: 'row',

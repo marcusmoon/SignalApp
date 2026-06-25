@@ -684,26 +684,29 @@ body.adminShellV2 .settingsHeroIcon .ti {
   font-size: 22px;
 }
 
-/* ── Settings tabs — simplified ──────────────────────────── */
+/* ── Settings tabs — single horizontal row ───────────────── */
 body.adminShellV2 .settingsTabsShell {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: flex-start;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+body.adminShellV2 .settingsTabsShell::-webkit-scrollbar { display: none; }
 body.adminShellV2 .settingsTabsGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: contents; /* flatten groups — all segmented controls in one row */
 }
 body.adminShellV2 .settingsNavLabel {
-  font-family: "Poppins", Arial, sans-serif;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--adm-text-tertiary, #b0aea5);
-  padding: 0 4px;
+  display: none; /* group labels removed — buttons are self-explanatory */
+}
+/* thin divider between groups */
+body.adminShellV2 .settingsTabsGroup + .settingsTabsGroup > .segmented:first-of-type {
+  margin-left: 4px;
+  padding-left: 4px;
+  border-left: 1px solid var(--adm-border, #e8e6dc);
 }
 
 /* ── Job ops summary cards ────────────────────────────────── */
@@ -757,4 +760,68 @@ body.adminShellV2[data-admin-theme='dark'] .jobEditPanelKey {
 body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric {
   background: var(--adm-surface, #111827);
   border-color: var(--adm-border, #2a3854);
+}
+
+/* ── Filter bar — compact single-row ─────────────────────── */
+/* Remove "검색 조건" section title — adds height with no value */
+body.adminShellV2 .filterBarTitle,
+body.adminShellV2 .filterBoxTitle {
+  display: none;
+}
+/* Overall bar: tighter padding */
+body.adminShellV2 .filterBar,
+body.adminShellV2 .filterBox {
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+/* Flatten groups into a single flex row instead of stacked grid */
+body.adminShellV2 .filterBarControls.jobsFilterGroups,
+body.adminShellV2 .filterBarControls.toolbar.jobsFilterGroups {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px;
+}
+/* Remove box styling from each filter group */
+body.adminShellV2 .filterGroup {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  gap: 6px;
+  align-items: flex-end;
+}
+/* Hide redundant group title labels */
+body.adminShellV2 .filterGroupTitle {
+  display: none;
+}
+/* Thin divider between logical groups */
+body.adminShellV2 .filterGroup + .filterGroup {
+  padding-left: 8px !important;
+  border-left: 1px solid var(--adm-border, #e8e6dc) !important;
+}
+/* Consistent control heights */
+body.adminShellV2 .filterGroup select,
+body.adminShellV2 .filterGroup input,
+body.adminShellV2 .filterGroup button {
+  height: 32px;
+  min-height: 32px;
+}
+/* Search input: expand to fill available space */
+body.adminShellV2 .filterGroup .wide {
+  min-width: 180px;
+}
+/* Operation tabs: stay compact */
+body.adminShellV2 .filterGroup .tabs.opTabs {
+  height: 32px;
+}
+body.adminShellV2 .filterGroup .tabs.opTabs .tabBtn {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+/* Dark mode filter */
+body.adminShellV2[data-admin-theme='dark'] .filterGroup + .filterGroup {
+  border-left-color: var(--adm-border, #2a3854) !important;
 }

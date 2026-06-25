@@ -18,24 +18,12 @@ export function ymd(date) {
   return `${y}-${m}-${day}`;
 }
 
-export function adminLocale() {
-  const basis = timeBasis();
-  if (basis.locale === 'utc') return 'en-GB';
-  return basis.locale;
-}
-
-export function timeMode() {
-  return timeBasis().timeZone === 'UTC' ? 'utc' : 'local';
-}
-
-export function timeBasis() {
-  const legacyLocale = localStorage.getItem('signalAdminLocale');
-  const legacyMode = localStorage.getItem('signalAdminTimeMode');
-  const raw =
-    localStorage.getItem('signalAdminTimeBasis') ||
-    (legacyMode === 'utc' ? 'utc|UTC' : legacyLocale ? `${legacyLocale}|${localeToTimeZone(legacyLocale)}` : 'ko-KR|Asia/Seoul');
-  const [locale = 'ko-KR', timeZone = 'Asia/Seoul'] = raw.split('|');
-  return { locale, timeZone };
+/** Admin UI language (ko/en/ja) → Intl locale tag for date formatting. */
+export function adminUiLocale() {
+  const lang = localStorage.getItem('signalAdminLanguage') || 'ko';
+  if (lang === 'en') return 'en-US';
+  if (lang === 'ja') return 'ja-JP';
+  return 'ko-KR';
 }
 
 function localeToTimeZone(locale) {
@@ -44,33 +32,83 @@ function localeToTimeZone(locale) {
   return 'Asia/Seoul';
 }
 
+/** Selected admin timezone (IANA). Defaults to UTC to match server-stored instants. */
+export function readAdminTimeZone() {
+  const raw = String(localStorage.getItem('signalAdminTimeBasis') || '').trim();
+  if (raw.includes('|')) {
+    const tz = raw.split('|')[1]?.trim();
+    if (tz) return tz;
+  }
+  if (raw) return raw;
+  const legacyMode = localStorage.getItem('signalAdminTimeMode');
+  if (legacyMode === 'utc') return 'UTC';
+  const legacyLocale = localStorage.getItem('signalAdminLocale');
+  if (legacyLocale) return localeToTimeZone(legacyLocale);
+  return 'UTC';
+}
+
+export function timeBasis() {
+  return { locale: adminUiLocale(), timeZone: readAdminTimeZone() };
+}
+
+export function adminLocale() {
+  return adminUiLocale();
+}
+
+export function timeMode() {
+  return readAdminTimeZone() === 'UTC' ? 'utc' : 'local';
+}
+
+/** Calendar YMD in the admin-selected timezone (for date pickers and presets). */
+export function ymdInAdminTime(date) {
+  const d = date instanceof Date ? date : new Date(date);
+  if (!Number.isFinite(d.getTime())) return '';
+  const { timeZone } = timeBasis();
+  if (timeZone === 'UTC') return d.toISOString().slice(0, 10);
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(d);
+    const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    if (byType.year && byType.month && byType.day) {
+      return `${byType.year}-${byType.month}-${byType.day}`;
+    }
+  } catch {
+    // Fall through to browser-local date.
+  }
+  return ymd(d);
+}
+
 export function formatDateTime(value) {
   if (!value) return '-';
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return String(value);
-  const basis = timeBasis();
-  // Remove timezone suffixes like "GMT+9" / "UTC" from UI output.
-  if (basis.timeZone === 'UTC') return date.toISOString().replace('T', ' ').replace('.000Z', '');
-  return new Intl.DateTimeFormat(adminLocale(), {
+  const { locale, timeZone } = timeBasis();
+  const formatted = new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: basis.timeZone,
-    timeZoneName: undefined,
+    second: '2-digit',
+    hourCycle: 'h23',
+    timeZone,
   }).format(date);
+  return timeZone === 'UTC' ? `${formatted} UTC` : formatted;
 }
 
 function zonedTimeToUtc(ymdValue, { hour = 0, minute = 0, second = 0, millisecond = 0 } = {}) {
   const [year, month, day] = String(ymdValue || '').split('-').map((part) => Number(part));
   if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
-  const basis = timeBasis();
+  const { timeZone } = timeBasis();
   const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, second, millisecond));
-  if (basis.timeZone === 'UTC') return utcGuess;
+  if (timeZone === 'UTC') return utcGuess;
   try {
     const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: basis.timeZone,
+      timeZone,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -96,6 +134,7 @@ function zonedTimeToUtc(ymdValue, { hour = 0, minute = 0, second = 0, millisecon
   }
 }
 
+/** Convert admin date-picker YMD (in selected timezone) to UTC ISO range for API filters. */
 export function utcRangeForYmd(ymdValue) {
   const from = zonedTimeToUtc(ymdValue, { hour: 0, minute: 0, second: 0, millisecond: 0 });
   const to = zonedTimeToUtc(ymdValue, { hour: 23, minute: 59, second: 59, millisecond: 999 });

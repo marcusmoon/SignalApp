@@ -1,3 +1,5 @@
+import { ymdInAdminTime } from '../format.js';
+
 function pad2(n) {
   return String(Math.max(0, Number(n) || 0)).padStart(2, '0');
 }
@@ -20,11 +22,12 @@ export function calendarMonthMeta(ym) {
   return { y, m, first, last };
 }
 
-export function initCalendarMonthIfNeeded({ state, ymd }) {
+export function initCalendarMonthIfNeeded({ state }) {
   if (state.calendarMonthYm) return;
-  const t = new Date();
-  state.calendarMonthYm = `${t.getFullYear()}-${pad2(t.getMonth() + 1)}`;
-  state.calendarSelectedYmd = ymd(t);
+  const today = ymdInAdminTime(new Date());
+  const [y, m] = today.split('-');
+  state.calendarMonthYm = `${y}-${m}`;
+  state.calendarSelectedYmd = today;
 }
 
 function adminBcp47() {
@@ -128,7 +131,7 @@ function draftFromEvent(item = {}) {
 
 function emptyCalendarDraft(state) {
   const selected = String(state.calendarSelectedYmd || state.calendarRangeFocusYmd || '').slice(0, 10);
-  const fallback = selected && selected !== '__all__' ? selected : new Date().toISOString().slice(0, 10);
+  const fallback = selected && selected !== '__all__' ? selected : ymdInAdminTime(new Date());
   return draftFromEvent({ date: fallback, type: 'macro', country: 'US', provider: 'admin', source: 'admin' });
 }
 
@@ -440,10 +443,10 @@ export function renderCalendarDayTable({ state, $, esc, textFor, textForVars }) 
 }
 
 export async function loadCalendarView(ctx) {
-  const { api, $, state, esc, textFor, ymd } = ctx;
+  const { api, $, state, esc, textFor, textForVars } = ctx;
   const host = $('calendarDayList') || $('calendar');
   if (!host) return;
-  initCalendarMonthIfNeeded({ state, ymd });
+  initCalendarMonthIfNeeded({ state });
 
   // Prefer explicit range (news-like) when inputs exist.
   const fromValue = $('calendarFrom')?.value?.slice(0, 10) || '';

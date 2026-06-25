@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { esc, formatDateTime, jobIntervalLabel, timeBasis, ymd } from './format.js';
+import { esc, formatDateTime, jobIntervalLabel, readAdminTimeZone, ymdInAdminTime } from './format.js';
 import { applyAdminLanguage, textFor, textForVars } from './i18n.js';
 import { closeConfirm, confirmState, openConfirm } from './modal.js';
 import { $, state } from './state.js';
@@ -303,24 +303,6 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           $(`${prefix}From`).value = from;
           $(`${prefix}To`).value = to;
         }
-      }
-
-      function ymdInAdminTime(date) {
-        const basis = timeBasis();
-        if (basis.timeZone === 'UTC') return date.toISOString().slice(0, 10);
-        try {
-          const parts = new Intl.DateTimeFormat('en-US', {
-            timeZone: basis.timeZone,
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-          }).formatToParts(date);
-          const byType = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-          if (byType.year && byType.month && byType.day) return `${byType.year}-${byType.month}-${byType.day}`;
-        } catch {
-          // Fall through to browser-local date.
-        }
-        return ymd(date);
       }
 
       function shiftYmd(value, days) {
@@ -1065,7 +1047,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       }
 
       function initCalendarMonthIfNeeded() {
-        return initCalendarMonthIfNeededView({ state, ymd });
+        return initCalendarMonthIfNeededView({ state });
       }
 
       function renderCalendarDayTable() {
@@ -1077,7 +1059,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       }
 
       async function loadCalendar() {
-        const result = await loadCalendarView({ api, $, state, esc, textFor, textForVars, ymd });
+        const result = await loadCalendarView({ api, $, state, esc, textFor, textForVars });
         enhanceMobileAdminSurfaces();
         return result;
       }
@@ -2664,7 +2646,11 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           setDatePreset();
           setJobRunDatePreset();
           setCalendarDatePreset();
-          await Promise.all([loadDashboard(), loadJobs(), loadJobRuns(), loadNews(), loadYoutube()]);
+          const adminOpen = $('adminPanel') && !$('adminPanel').classList.contains('hidden');
+          if (adminOpen) {
+            await reloadAllAdminData();
+            await switchView(state.view || 'dashboard');
+          }
         }
         if (event.target.dataset && event.target.dataset.newsSourceEnabled) {
           const id = event.target.dataset.newsSourceEnabled;
@@ -2913,11 +2899,11 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
       const urlLang = normalizeAdminLang(getUrlParam('lang'));
       if (urlLang) localStorage.setItem('signalAdminLanguage', urlLang);
       $('adminLanguage').value = localStorage.getItem('signalAdminLanguage') || 'ko';
-      $('adminTimeBasis').value =
-        localStorage.getItem('signalAdminTimeBasis') ||
-        (localStorage.getItem('signalAdminTimeMode') === 'utc'
-          ? 'utc|UTC'
-          : `${localStorage.getItem('signalAdminLocale') || 'ko-KR'}|${localStorage.getItem('signalAdminLocale') === 'en-US' ? 'America/New_York' : localStorage.getItem('signalAdminLocale') === 'ja-JP' ? 'Asia/Tokyo' : 'Asia/Seoul'}`);
+      const adminTimeZone = readAdminTimeZone();
+      $('adminTimeBasis').value = $('adminTimeBasis').querySelector(`option[value="${adminTimeZone}"]`)
+        ? adminTimeZone
+        : 'UTC';
+      localStorage.setItem('signalAdminTimeBasis', $('adminTimeBasis').value);
       applyAdminLanguage();
       setNewsMode(state.newsMode || 'filter');
       setYoutubeMode(state.youtubeMode || 'filter');

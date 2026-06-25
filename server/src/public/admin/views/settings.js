@@ -67,13 +67,6 @@ export async function loadTranslationSettingsView(ctx) {
     textFor('providerDefaultModelNone');
 
   $('translationSettings').innerHTML = `
-    <div class="settingsHero">
-      <span class="settingsHeroIcon"><i class="ti ti-language" aria-hidden="true"></i></span>
-      <div>
-        <div class="cardKicker">${esc(textFor('translationPipelineTitle'))}</div>
-        <p class="summary">${esc(textFor('translationPipelineHint'))}</p>
-      </div>
-    </div>
     <div class="card settingsControlCard">
       <div class="settingsFormRow settingsFormRow--spread">
         <div>
@@ -286,22 +279,22 @@ export async function loadLegalTermsView({ api, $, state, esc, textFor, formatDa
   const localeTitle = textFor(`legalTermsLocale${activeLocale.toUpperCase()}`);
   $('legalTerms').innerHTML = `
     <div class="legalManager">
-      <aside class="card settingsControlCard legalNavPanel">
-        <div class="cardKicker">${esc(textFor('settingsLegalHeroKicker'))}</div>
-        <div class="cardHint">${esc(textFor('settingsLegalHeroSummary'))}</div>
-        <div class="legalNavGroup">
+      <div class="legalNavBar card settingsControlCard">
+        <div class="legalNavRow">
           <span class="settingsNavLabel">${esc(textFor('legalTermsTypeTitle'))}</span>
-          ${types
-            .map(
-              (type) => `
-                <button type="button" class="secondary legalNavBtn ${type === activeType ? 'active' : ''}" data-legal-type-tab="${esc(type)}">
+          <div class="segmented legalTypeTabs">
+            ${types
+              .map(
+                (type) => `
+                <button type="button" class="secondary segBtn ${type === activeType ? 'active' : ''}" data-legal-type-tab="${esc(type)}">
                   ${esc(type === 'service' ? textFor('termsServiceTitle') : textFor('termsPrivacyTitle'))}
                 </button>
               `,
-            )
-            .join('')}
+              )
+              .join('')}
+          </div>
         </div>
-        <div class="legalNavGroup">
+        <div class="legalNavRow">
           <span class="settingsNavLabel">${esc(textFor('legalTermsLocaleTitle'))}</span>
           <div class="legalLocaleGrid">
             ${locales
@@ -315,7 +308,7 @@ export async function loadLegalTermsView({ api, $, state, esc, textFor, formatDa
               .join('')}
           </div>
         </div>
-      </aside>
+      </div>
 
       <section class="card settingsControlCard legalEditorPanel">
         <div class="cardHead">

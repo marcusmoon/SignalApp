@@ -5260,12 +5260,16 @@ body.adminShellV2.loginMode {
 .adminShellV2 #view-settings .pageHeader {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
+  gap: 12px;
 }
 
-.adminShellV2 #view-settings .pageHeaderActions {
-  justify-content: flex-start;
-  min-width: 0;
+.adminShellV2 #view-settings .pageHeaderMain--settings {
+  display: none;
+}
+
+.adminShellV2 #view-settings .pageHeaderActions--settings {
+  width: 100%;
+  justify-content: space-between;
 }
 
 .adminShellV2 #view-settings .segmented {
@@ -5290,23 +5294,14 @@ body.adminShellV2.loginMode {
   margin-left: auto;
 }
 
-@media (min-width: 1120px) {
-  .adminShellV2 #view-settings .settingsTab:not(.hidden) {
-    display: grid;
-    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
-    gap: 22px;
-    align-items: start;
-  }
+.adminShellV2 #view-settings .settingsTab:not(.hidden) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
 
-  .adminShellV2 #view-settings .settingsHero,
-  .adminShellV2 #view-settings .dangerIntro {
-    position: sticky;
-    top: calc(var(--admin-header-h, 64px) + 24px);
-  }
-
-  .adminShellV2 #view-settings .settingsTab > :not(.settingsHero):not(.dangerIntro) {
-    min-width: 0;
-  }
+.adminShellV2 #view-settings .settingsTab > * {
+  min-width: 0;
 }
 
 .adminShellV2 #providerSettings .settingsSectionGrid {
@@ -6074,6 +6069,19 @@ body.adminShellV2[data-admin-theme='dark'] .jobOpsMetric.jobOpsMetricWarn .jobOp
 .adminShellV2 #view-translations .pageHeaderActions {
   align-items: flex-start;
   justify-content: space-between;
+  width: 100%;
+}
+
+.adminShellV2 #view-translations .pageHeader {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.adminShellV2 #view-translations .pageHeaderMain--settings {
+  display: none;
+}
+
+.adminShellV2 #view-translations .pageHeaderActions--settings {
+  width: 100%;
 }
 
 .adminShellV2 .settingsTabsShell {
@@ -6503,8 +6511,39 @@ body.adminShellV2:not(.loginMode) {
 
 .adminShellV2 .legalManager {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
+}
+
+.adminShellV2 .legalNavBar {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.adminShellV2 .legalNavRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.adminShellV2 .legalNavRow .settingsNavLabel {
+  flex: 0 0 auto;
+  min-width: 52px;
+  margin: 0;
+  padding-left: 0;
+}
+
+.adminShellV2 .legalNavRow .segmented,
+.adminShellV2 .legalNavRow .legalLocaleGrid {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.adminShellV2 .legalTypeTabs {
+  width: auto;
+  flex-wrap: wrap;
 }
 
 .adminShellV2 .legalNavPanel,

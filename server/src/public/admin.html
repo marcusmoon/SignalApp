@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Signal Admin</title>
     <link rel="stylesheet" href="/admin/admin.css?v=2026-05-20-toss-admin-polish" />
-    <link rel="stylesheet" href="/admin/admin-contract.css?v=2026-06-25-anthropic" />
+    <link rel="stylesheet" href="/admin/admin-contract.css?v=2026-06-25-settings-full" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.33.0/dist/tabler-icons.min.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -340,11 +340,11 @@
           <div id="view-translations" class="view hidden">
             <div class="panel">
               <div class="pageHeader">
-                <div class="pageHeaderMain">
+                <div class="pageHeaderMain pageHeaderMain--settings" hidden>
                   <div class="pageTitle" data-i18n="pageTranslationsTitle"></div>
                   <div class="pageDesc" data-i18n="pageTranslationsDesc"></div>
                 </div>
-                <div class="pageHeaderActions">
+                <div class="pageHeaderActions pageHeaderActions--settings">
                   <div class="settingsTabsShell" role="tablist" aria-label="Settings sections">
                     <div class="settingsTabsGroup">
                       <span class="settingsNavLabel" data-i18n="settingsGroupAccount">계정·정책</span>
@@ -539,11 +539,11 @@
           <div id="view-settings" class="view hidden">
             <div class="panel">
               <div class="pageHeader">
-                <div class="pageHeaderMain">
+                <div class="pageHeaderMain pageHeaderMain--settings" hidden>
                   <div class="pageTitle" id="settingsTitle">Provider</div>
                   <div class="pageDesc" id="settingsDesc" data-i18n="settingsProviderDesc">외부 Provider API Key와 LLM 모델 프리셋을 관리합니다.</div>
                 </div>
-                <div class="pageHeaderActions">
+                <div class="pageHeaderActions pageHeaderActions--settings">
                   <div class="settingsTabsShell" role="tablist" aria-label="Settings sections">
                     <div class="settingsTabsGroup">
                       <span class="settingsNavLabel" data-i18n="settingsGroupAccount">계정·정책</span>
@@ -580,24 +580,10 @@
               </div>
 
               <div id="settingsTab-keys" class="settingsTab">
-                <div class="settingsHero">
-                  <span class="settingsHeroIcon">P</span>
-                  <div>
-                    <div class="cardKicker" data-i18n="settingsKeysHeroKicker">Provider 연결 상태</div>
-                    <p class="summary" data-i18n="settingsKeysHeroSummary">외부 데이터 Provider의 API Key와 LLM Provider의 모델·프리셋을 한 화면에서 관리합니다. 키는 저장 후 마스킹되어 표시됩니다.</p>
-                  </div>
-                </div>
                 <div id="providerSettings"></div>
               </div>
 
               <div id="settingsTab-theme" class="settingsTab hidden">
-                <div class="settingsHero">
-                  <span class="settingsHeroIcon">T</span>
-                  <div>
-                    <div class="cardKicker" data-i18n="settingsThemeHeroKicker">관리자 화면 테마</div>
-                    <p class="summary" data-i18n="settingsThemeHeroSummary">관리자 화면은 라이트/다크 테마만 제공합니다. 선택값은 이 브라우저에 저장됩니다.</p>
-                  </div>
-                </div>
                 <div class="card settingsControlCard">
                   <div class="cardHead">
                     <div class="cardHeadMain">
@@ -614,69 +600,26 @@
               </div>
 
               <div id="settingsTab-users" class="settingsTab hidden">
-                <div class="settingsHero">
-                  <span class="settingsHeroIcon">U</span>
-                  <div>
-                    <div class="cardKicker" data-i18n="settingsUsersHeroKicker">어드민 사용자</div>
-                    <p class="summary" data-i18n="settingsUsersHeroSummary">Postgres에 저장된 어드민 로그인 계정과 활성 상태를 관리합니다.</p>
-                  </div>
-                </div>
                 <div id="adminUsers"></div>
               </div>
 
               <div id="settingsTab-legal" class="settingsTab hidden">
-                <div class="settingsHero">
-                  <span class="settingsHeroIcon">T</span>
-                  <div>
-                    <div class="cardKicker" data-i18n="settingsLegalHeroKicker">약관 관리</div>
-                    <p class="summary" data-i18n="settingsLegalHeroSummary">앱 가입과 내정보 화면에서 사용하는 약관을 언어/버전별로 관리합니다.</p>
-                  </div>
-                </div>
                 <div id="legalTerms"></div>
               </div>
 
               <div id="settingsTab-lists" class="settingsTab hidden">
-                <div class="settingsHero">
-                  <span class="settingsHeroIcon">L</span>
-                  <div>
-                    <div class="cardKicker" data-i18n="settingsListsHeroKicker">앱 공용 리스트</div>
-                    <p class="summary" data-i18n="settingsListsHeroSummary">앱과 수집 Job이 함께 쓰는 마켓 리스트를 관리합니다. 종목 기준을 바꾸면 다음 수집과 앱 조회에 반영됩니다.</p>
-                  </div>
-                </div>
                 <div id="marketLists"></div>
               </div>
 
               <div id="settingsTab-sources" class="settingsTab hidden">
-                <div class="settingsHero">
-                  <span class="settingsHeroIcon">S</span>
-                  <div>
-                    <div class="cardKicker" data-i18n="settingsSourcesHeroKicker">뉴스 출처 관리</div>
-                    <p class="summary" data-i18n="settingsSourcesHeroSummary">앱 뉴스 필터에 노출되는 출처 목록, 표시 여부, 순서, 별칭을 관리합니다.</p>
-                  </div>
-                </div>
                 <div id="newsSources"></div>
               </div>
 
               <div id="settingsTab-youtube" class="settingsTab hidden">
-                <div class="settingsHero">
-                  <span class="settingsHeroIcon">Y</span>
-                  <div>
-                    <div class="cardKicker" data-i18n="settingsYoutubeHeroKicker">유튜브 채널 관리</div>
-                    <p class="summary" data-i18n="settingsYoutubeHeroSummary">앱 유튜브 필터와 수집 Job이 사용하는 채널 목록·순서·노출 여부를 관리합니다.</p>
-                  </div>
-                </div>
                 <div id="youtubeChannels"></div>
               </div>
 
               <div id="settingsTab-danger" class="settingsTab hidden">
-                <div class="dangerIntro">
-                  <div>
-                    <div class="cardKicker" data-i18n="settingsDangerHeroKicker">로컬 수집 데이터 초기화</div>
-                    <p class="summary" data-i18n="settingsDangerHeroSummary">외부 API에서 가져와 저장한 데이터만 선택해서 비웁니다. Provider 키, 테마, Job 정의, 마켓 리스트 설정은 유지됩니다.</p>
-                  </div>
-                  <span class="pill pillStatus--fail" data-i18n="settingsDangerIrreversible">되돌릴 수 없음</span>
-                </div>
-
                 <div class="resetLayout">
                   <div class="card resetPanel">
                     <div class="cardHead">

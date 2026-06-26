@@ -36,6 +36,8 @@ export default function HomeTabScreen() {
           todayYmd={todayYmd}
           onSelectedYmdChange={setSelectedYmd}
           scrollContentPaddingBottom={24 + tabBarHeight + tabBarBottomInset(insets.bottom)}
+          showRefreshFab
+          fabBottom={tabBarHeight + tabBarBottomInset(insets.bottom) + 8}
         />
       </View>
     </SafeAreaView>

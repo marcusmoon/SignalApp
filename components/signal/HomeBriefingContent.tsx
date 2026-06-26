@@ -1,10 +1,10 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
-import { useFocusEffect } from 'expo-router/react-navigation';
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
+import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionIconButton } from '@/components/signal/HomeSectionIconButton';
 import { ScheduleCarousel } from '@/components/signal/ScheduleCarousel';
@@ -59,6 +59,8 @@ type HomeBriefingContentProps = {
   showDateNavigator?: boolean;
   scrollContentPaddingBottom?: number;
   headerAccessory?: ReactNode;
+  showRefreshFab?: boolean;
+  fabBottom?: number;
 };
 
 function emptyDigestState(): DigestState {
@@ -126,6 +128,8 @@ export function HomeBriefingContent({
   showDateNavigator = true,
   scrollContentPaddingBottom = 28,
   headerAccessory,
+  showRefreshFab = false,
+  fabBottom = 88,
 }: HomeBriefingContentProps) {
   const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
@@ -151,6 +155,7 @@ export function HomeBriefingContent({
   const [scheduleItems, setScheduleItems] = useState<CalendarEvent[]>([]);
   const [disclosureDigests, setDisclosureDigests] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [expandedSignalKey, setExpandedSignalKey] = useState<SignalSessionKey | null>(null);
+  const loadedYmdRef = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     if (!hasSignalApi()) {
@@ -215,22 +220,22 @@ export function HomeBriefingContent({
     }
   }, [load]);
 
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      void (async () => {
-        setLoading(true);
-        try {
-          await load();
-        } finally {
-          if (!cancelled) setLoading(false);
-        }
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }, [load]),
-  );
+  useEffect(() => {
+    let cancelled = false;
+    const needsInitialLoad = loadedYmdRef.current !== selectedYmd;
+    if (needsInitialLoad) setLoading(true);
+    void (async () => {
+      try {
+        await load();
+        if (!cancelled) loadedYmdRef.current = selectedYmd;
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [load, selectedYmd]);
 
   const latestIssues = useMemo(
     () =>
@@ -286,11 +291,12 @@ export function HomeBriefingContent({
   }, [router]);
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[styles.content, { paddingBottom: scrollContentPaddingBottom }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
+    <>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.content, { paddingBottom: scrollContentPaddingBottom }]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
       {headerAccessory}
       {showDateNavigator ? (
         <SignalDateNavigator
@@ -470,7 +476,17 @@ export function HomeBriefingContent({
           </View>
         </>
       )}
-    </ScrollView>
+      </ScrollView>
+      {showRefreshFab && hasSignalApi() ? (
+        <FloatingGlassFab
+          bottom={fabBottom}
+          onPress={() => void refresh()}
+          iconName="sync"
+          accessibilityLabel={t('fabRefreshA11y')}
+          disabled={refreshing || loading}
+        />
+      ) : null}
+    </>
   );
 }
 

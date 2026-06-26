@@ -1,4 +1,3 @@
-import { useFocusEffect } from 'expo-router/react-navigation';
 import { useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -45,6 +44,16 @@ const HOME_CALENDAR_LOOKAHEAD_DAYS = 14;
 const HOME_DISCLOSURE_DIGEST_LIMIT = 5;
 
 type DigestState = Record<HomeDigestCategory, SignalApiNewsDigestItem[]>;
+
+type IpadHomeDataCache = {
+  ymd: string;
+  digests: DigestState;
+  briefings: SignalApiMarketBriefing[];
+  calendarEvents: CalendarEvent[];
+  disclosureDigests: SignalApiDisclosureDigestItem[];
+};
+
+let ipadHomeDataCache: IpadHomeDataCache | null = null;
 
 function emptyDigestState(): DigestState {
   return { global: [], korea: [], crypto: [] };
@@ -143,14 +152,19 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
     [locale, selectedYmd],
   );
 
-  const [loading, setLoading] = useState(true);
+  const restored = ipadHomeDataCache?.ymd === selectedYmd ? ipadHomeDataCache : null;
+
+  const [loading, setLoading] = useState(!restored);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [digests, setDigests] = useState<DigestState>(emptyDigestState);
-  const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-  const [disclosureDigests, setDisclosureDigests] = useState<SignalApiDisclosureDigestItem[]>([]);
+  const [digests, setDigests] = useState<DigestState>(() => restored?.digests ?? emptyDigestState());
+  const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>(() => restored?.briefings ?? []);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => restored?.calendarEvents ?? []);
+  const [disclosureDigests, setDisclosureDigests] = useState<SignalApiDisclosureDigestItem[]>(
+    () => restored?.disclosureDigests ?? [],
+  );
   const [expandedDigestId, setExpandedDigestId] = useState<string | null>(null);
+  const loadedYmdRef = useRef<string | null>(restored?.ymd ?? null);
 
   const load = useCallback(async () => {
     if (!hasSignalApi()) {
@@ -188,19 +202,26 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
       for (const [category, items] of digestResults) {
         nextDigests[category] = items;
       }
+      const nextCalendarEvents = filterHomeCalendarEvents(
+        calendarRows
+          .map((row) => signalCalendarToCalendarEvent(row))
+          .filter((row): row is CalendarEvent => row != null),
+        watchlist,
+        selectedYmd,
+        shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
+      );
+      const nextDisclosureDigests = disclosurePage.items.slice(0, HOME_DISCLOSURE_DIGEST_LIMIT);
       setDigests(nextDigests);
       setBriefings(briefingRows);
-      setCalendarEvents(
-        filterHomeCalendarEvents(
-          calendarRows
-            .map((row) => signalCalendarToCalendarEvent(row))
-            .filter((row): row is CalendarEvent => row != null),
-          watchlist,
-          selectedYmd,
-          shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
-        ),
-      );
-      setDisclosureDigests(disclosurePage.items.slice(0, HOME_DISCLOSURE_DIGEST_LIMIT));
+      setCalendarEvents(nextCalendarEvents);
+      setDisclosureDigests(nextDisclosureDigests);
+      ipadHomeDataCache = {
+        ymd: selectedYmd,
+        digests: nextDigests,
+        briefings: briefingRows,
+        calendarEvents: nextCalendarEvents,
+        disclosureDigests: nextDisclosureDigests,
+      };
     } catch (e) {
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
     }
@@ -215,22 +236,23 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
     }
   }, [load]);
 
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      void (async () => {
-        setLoading(true);
-        try {
-          await load();
-        } finally {
-          if (!cancelled) setLoading(false);
-        }
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }, [load]),
-  );
+  useEffect(() => {
+    let cancelled = false;
+    const needsLoad = loadedYmdRef.current !== selectedYmd;
+    if (!needsLoad) return undefined;
+    setLoading(true);
+    void (async () => {
+      try {
+        await load();
+        if (!cancelled) loadedYmdRef.current = selectedYmd;
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [load, selectedYmd]);
 
   const briefingBySession = useMemo(() => {
     const map = new Map<SignalSessionKey, SignalApiMarketBriefing>();

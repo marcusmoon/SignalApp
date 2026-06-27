@@ -5,6 +5,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
+import { HomeFocusContent } from '@/components/signal/HomeFocusContent';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { ScheduleCarousel } from '@/components/signal/ScheduleCarousel';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -33,6 +34,7 @@ import type {
   SignalApiNewsDigestItem,
 } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
+import { loadHomeVariant, subscribeHomeVariantChanged, type HomeVariant } from '@/services/homeVariantPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { CalendarEvent } from '@/types/signal';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
@@ -125,6 +127,51 @@ type IpadHomeScreenProps = {
 };
 
 export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
+  const { theme, scaleFont } = useSignalTheme();
+  const { t } = useLocale();
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const todayYmd = useRollingLocalYmd();
+  const todayYmdRef = useRef(todayYmd);
+  const [selectedYmd, setSelectedYmd] = useState(todayYmd);
+  const [homeVariant, setHomeVariant] = useState<HomeVariant>('classic');
+
+  useEffect(() => {
+    const prevToday = todayYmdRef.current;
+    todayYmdRef.current = todayYmd;
+    setSelectedYmd((prev) => (prev === prevToday || prev > todayYmd ? todayYmd : prev));
+  }, [todayYmd]);
+
+  useEffect(() => {
+    void loadHomeVariant().then(setHomeVariant);
+    return subscribeHomeVariantChanged(() => {
+      void loadHomeVariant().then(setHomeVariant);
+    });
+  }, []);
+
+  if (homeVariant === 'focus') {
+    return (
+      <HomeFocusContent
+        selectedYmd={selectedYmd}
+        todayYmd={todayYmd}
+        onSelectedYmdChange={setSelectedYmd}
+        scrollContentPaddingBottom={32}
+        contentMaxWidth={APP_WIDE_CONTENT_MAX_WIDTH}
+        showIssueSummary
+        headerAccessory={
+          showHeading ? (
+            <View style={styles.focusHeading}>
+              <Text style={styles.pageTitle}>{t('ipadHomeTitle')}</Text>
+            </View>
+          ) : undefined
+        }
+      />
+    );
+  }
+
+  return <IpadHomeClassicScreen showHeading={showHeading} />;
+}
+
+function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
   const router = useRouter();
   const ipadNav = useIpadSidebarNav();
   const { theme, scaleFont } = useSignalTheme();
@@ -280,16 +327,14 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
 
   const visibleCalendarEvents = calendarEvents.slice(0, HOME_CALENDAR_LIMIT);
   const hiddenCalendarCount = Math.max(0, calendarEvents.length - visibleCalendarEvents.length);
-  const issueRows = useMemo(
-    () =>
-      HOME_DIGEST_CATEGORIES.flatMap((category) =>
-        digests[category].map((item) => ({ category, item })),
-      ).sort(
-        (a, b) =>
-          (b.item.count - a.item.count) ||
-          String(b.item.generatedAt || '').localeCompare(String(a.item.generatedAt || '')),
-      ),
+  const digestCategoriesWithItems = useMemo(
+    () => HOME_DIGEST_CATEGORIES.filter((category) => digests[category].length > 0),
     [digests],
+  );
+  const hasDigestItems = digestCategoriesWithItems.length > 0;
+  const signalSessionsWithBriefing = useMemo(
+    () => HOME_SIGNAL_SESSIONS.filter((session) => briefingBySession.has(session.key)),
+    [briefingBySession],
   );
 
   const goIssues = useCallback(
@@ -308,7 +353,7 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
 
   const goSignal = useCallback(
     (session: SignalSessionKey) => {
-      ipadNav.showSignalTab(session);
+      ipadNav.showSignalTab(session, selectedYmd);
       router.navigate({
         pathname: '/(tabs)/signal',
         params: { session, date: selectedYmd },
@@ -318,7 +363,7 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
   );
 
   const openSignalTab = useCallback(() => {
-    ipadNav.showTabs();
+    ipadNav.showSignalTab(undefined, selectedYmd);
     router.navigate({
       pathname: '/(tabs)/signal',
       params: { date: selectedYmd },
@@ -386,38 +431,37 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                 </View>
                 <Text style={styles.boardSubtitle}>{t('ipadHomeIssuesSubtitle')}</Text>
               </View>
-              <View style={styles.issueLaneRow}>
-                {HOME_DIGEST_CATEGORIES.map((category) => {
-                  const items = digests[category];
-                  const accent = categoryAccent(category, theme);
-                  return (
-                    <View key={category} style={[styles.issueLane, { borderTopColor: accent }]}>
-                      <Pressable
-                        onPress={items.length > 0 ? () => goIssues(category) : undefined}
-                        disabled={items.length === 0}
-                        accessibilityRole={items.length > 0 ? 'button' : undefined}
-                        accessibilityLabel={items.length > 0 ? t('commonViewAll') : undefined}
-                        style={({ pressed }) => [styles.laneHeader, items.length > 0 && pressed && styles.pressed]}>
-                        <View style={styles.laneHeaderText}>
-                          <Text style={styles.laneTitle}>{t(NEWS_SEGMENT_LABEL[category])}</Text>
-                          <Text style={styles.laneMeta} numberOfLines={1}>
-                            {items.length > 0
-                              ? t('feedDigestSummary', {
-                                  count: String(items.reduce((sum, item) => sum + item.count, 0)),
-                                  sources: String(new Set(items.flatMap((item) => item.sources)).size),
-                                })
-                              : t('ipadHomeIssuesEmpty')}
-                          </Text>
-                        </View>
-                        {items.length > 0 ? (
+              {!hasDigestItems ? (
+                <View style={styles.issueBoardEmptyWrap}>
+                  <View style={styles.emptyCard}>
+                    <Text style={styles.emptyCardText}>{t('ipadHomeIssuesEmpty')}</Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.issueLaneRow}>
+                  {digestCategoriesWithItems.map((category) => {
+                    const items = digests[category];
+                    const accent = categoryAccent(category, theme);
+                    return (
+                      <View key={category} style={[styles.issueLane, { borderTopColor: accent }]}>
+                        <Pressable
+                          onPress={() => goIssues(category)}
+                          accessibilityRole="button"
+                          accessibilityLabel={t('commonViewAll')}
+                          style={({ pressed }) => [styles.laneHeader, pressed && styles.pressed]}>
+                          <View style={styles.laneHeaderText}>
+                            <Text style={styles.laneTitle}>{t(NEWS_SEGMENT_LABEL[category])}</Text>
+                            <Text style={styles.laneMeta} numberOfLines={1}>
+                              {t('feedDigestSummary', {
+                                count: String(items.reduce((sum, item) => sum + item.count, 0)),
+                                sources: String(new Set(items.flatMap((item) => item.sources)).size),
+                              })}
+                            </Text>
+                          </View>
                           <FontAwesome name="chevron-right" size={12} color={theme.textDim} />
-                        ) : null}
-                      </Pressable>
+                        </Pressable>
 
-                      {items.length === 0 ? (
-                        <Text style={styles.emptyLine}>{t('ipadHomeIssuesEmpty')}</Text>
-                      ) : (
-                        items.map((item, index) => (
+                        {items.map((item, index) => (
                           <View
                             key={item.id}
                             style={[styles.issueCard, index < items.length - 1 && styles.issueRowBorder]}>
@@ -500,12 +544,12 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                               </View>
                             ) : null}
                           </View>
-                        ))
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
+                        ))}
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
             </View>
 
             <View style={styles.widePanel}>
@@ -516,22 +560,26 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                 onPress={openSignalTab}
                 accessibilityLabel={t('commonViewAll')}
               />
-              <View style={styles.signalList}>
-                {HOME_SIGNAL_SESSIONS.map((session, index) => {
-                  const briefing = briefingBySession.get(session.key);
-                  const lead = briefing ? briefingLeadText(briefing) : '';
-                  return (
-                    <View
-                      key={session.key}
-                      style={[
-                        styles.signalCard,
-                        index < HOME_SIGNAL_SESSIONS.length - 1 && styles.signalListRowBorder,
-                      ]}>
-                      <View style={styles.signalCardLabelCol}>
-                        <Text style={styles.sessionLabel}>{t(session.labelId)}</Text>
-                        <Text style={styles.blockHeaderHint}>{t(session.hintId)}</Text>
-                      </View>
-                      {briefing ? (
+              {briefingBySession.size === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyCardText}>{t('homeFocusSignalEmpty')}</Text>
+                </View>
+              ) : (
+                <View style={styles.signalList}>
+                  {signalSessionsWithBriefing.map((session, index) => {
+                    const briefing = briefingBySession.get(session.key)!;
+                    const lead = briefingLeadText(briefing);
+                    return (
+                      <View
+                        key={session.key}
+                        style={[
+                          styles.signalCard,
+                          index < signalSessionsWithBriefing.length - 1 && styles.signalListRowBorder,
+                        ]}>
+                        <View style={styles.signalCardLabelCol}>
+                          <Text style={styles.sessionLabel}>{t(session.labelId)}</Text>
+                          <Text style={styles.blockHeaderHint}>{t(session.hintId)}</Text>
+                        </View>
                         <Pressable
                           onPress={() => goSignal(session.key)}
                           accessibilityRole="button"
@@ -539,15 +587,11 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                           style={({ pressed }) => [pressed && styles.pressed]}>
                           <Text style={styles.signalCardBody}>{lead}</Text>
                         </Pressable>
-                      ) : (
-                        <Text style={[styles.signalCardBody, styles.signalCardEmpty]}>
-                          {t('briefingSessionEmptyTitle')}
-                        </Text>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
             </View>
 
             <View style={styles.widePanel}>
@@ -560,7 +604,9 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
               {disclosureDigests.length > 0 ? (
                 <DisclosureDigestSection items={disclosureDigests} />
               ) : (
-                <Text style={styles.emptyLine}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyCardText}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
+                </View>
               )}
             </View>
 
@@ -626,6 +672,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.text,
       letterSpacing: -0.4,
       textAlign: 'center',
+    },
+    focusHeading: {
+      alignItems: 'center',
+      paddingTop: 4,
+      paddingBottom: 2,
     },
     pageDate: {
       fontSize: sf(13),
@@ -742,6 +793,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 14,
       paddingBottom: 14,
     },
+    issueBoardEmptyWrap: {
+      paddingHorizontal: 14,
+      paddingBottom: 14,
+    },
     issueLane: {
       flex: 1,
       minWidth: 0,
@@ -806,6 +861,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.border,
       gap: 12,
+    },
+    emptyCard: {
+      minHeight: 76,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bg,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+      justifyContent: 'center',
+    },
+    emptyCardText: {
+      fontSize: sf(13),
+      lineHeight: sf(20),
+      fontWeight: '800',
+      color: theme.textMuted,
     },
     compactHeader: {
       flex: 1,

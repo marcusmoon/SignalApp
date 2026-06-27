@@ -53,6 +53,8 @@ type HomeFocusContentProps = {
   onSelectedYmdChange: (ymd: string) => void;
   scrollContentPaddingBottom?: number;
   headerAccessory?: ReactNode;
+  contentMaxWidth?: number;
+  showIssueSummary?: boolean;
 };
 
 type IssueRow = {
@@ -143,6 +145,8 @@ export function HomeFocusContent({
   onSelectedYmdChange,
   scrollContentPaddingBottom = 28,
   headerAccessory,
+  contentMaxWidth,
+  showIssueSummary = false,
 }: HomeFocusContentProps) {
   const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
@@ -316,13 +320,18 @@ export function HomeFocusContent({
   const openSignal = useCallback(
     (row?: SignalApiMarketBriefing) => {
       const session = signalSessionKeyForBriefing(row);
+      const params = { date: selectedYmd, ...(session ? { session } : null) };
       if (ipadNav.isAvailable) {
         ipadNav.showSignalTab(session, selectedYmd);
+        router.navigate({
+          pathname: '/(tabs)/signal',
+          params,
+        } as never);
         return;
       }
       router.navigate({
         pathname: '/(tabs)/signal',
-        params: { date: selectedYmd, ...(session ? { session } : null) },
+        params,
       } as never);
     },
     [ipadNav, router, selectedYmd],
@@ -396,7 +405,7 @@ export function HomeFocusContent({
       <Pressable
         onPress={() => openIssue(row)}
         accessibilityRole="button"
-        style={({ pressed }) => [styles.heroCard, pressed && styles.pressed]}>
+        style={({ pressed }) => [styles.heroCard, showIssueSummary && styles.heroCardSummary, pressed && styles.pressed]}>
         <View style={styles.heroNoteLine} />
         <View style={styles.heroMetaRow}>
           <View style={styles.heroMetaLeft}>
@@ -412,6 +421,11 @@ export function HomeFocusContent({
         <Text style={styles.heroTitle} numberOfLines={2}>
           {row.item.title}
         </Text>
+        {showIssueSummary && row.item.summary ? (
+          <Text style={styles.heroSummary} numberOfLines={3}>
+            {row.item.summary}
+          </Text>
+        ) : null}
         <View style={styles.heroFooter}>
           <View style={styles.chipRow}>
             {row.item.topics.slice(0, 2).map((topic) => (
@@ -426,7 +440,7 @@ export function HomeFocusContent({
         </View>
       </Pressable>
     ),
-    [openIssue, styles, t, theme.textDim],
+    [openIssue, showIssueSummary, styles, t, theme.textDim],
   );
 
   const renderBriefingCard = useCallback(
@@ -468,7 +482,11 @@ export function HomeFocusContent({
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={[styles.content, { paddingBottom: scrollContentPaddingBottom }]}
+      contentContainerStyle={[
+        styles.content,
+        contentMaxWidth ? { maxWidth: contentMaxWidth, alignSelf: 'center', width: '100%' } : null,
+        { paddingBottom: scrollContentPaddingBottom },
+      ]}
       showsVerticalScrollIndicator={false}
       refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
       {headerAccessory}
@@ -741,6 +759,9 @@ function makeStyles(
       shadowOffset: { width: 0, height: 5 },
       elevation: 1,
     },
+    heroCardSummary: {
+      minHeight: 190,
+    },
     heroNoteLine: {
       position: 'absolute',
       left: 0,
@@ -809,6 +830,12 @@ function makeStyles(
       minHeight: sf(23) * 2,
       fontWeight: '900',
       color: theme.text,
+    },
+    heroSummary: {
+      fontSize: sf(13),
+      lineHeight: sf(20),
+      fontWeight: '700',
+      color: theme.textMuted,
     },
     heroFooter: {
       flexDirection: 'row',

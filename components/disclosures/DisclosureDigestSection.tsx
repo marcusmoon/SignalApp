@@ -97,6 +97,7 @@ const DigestCard = memo(function DigestCard({
       accessibilityRole="button"
       accessibilityLabel={item.title}
       accessibilityState={{ expanded: isExpanded }}>
+      <View style={styles.accentLine} />
       {topicChips.length > 0 ? (
         <View style={styles.badgeRow}>
           {topicChips.map((chip, index) => (
@@ -161,21 +162,34 @@ const DigestCard = memo(function DigestCard({
 type Props = {
   items: SignalApiDisclosureDigestItem[];
   loading?: boolean;
+  accentColor?: string;
 };
 
-export function DisclosureDigestSection({ items, loading }: Props) {
+export function DisclosureDigestSection({ items, loading, accentColor }: Props) {
   const { theme, scaleFont } = useSignalTheme();
+  const scrollRef = useRef<ScrollView | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const pageWidth = Math.max(0, containerWidth || 0);
   const [pageIndex, setPageIndex] = useState(0);
   const [dotIndex, setDotIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const loopItems = useMemo(() => (items.length > 1 ? [...items, items[0]] : items), [items]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, accentColor), [theme, scaleFont, accentColor]);
 
   const syncPageIndex = useCallback(
     (offsetX: number, resetExpand: boolean) => {
       if (pageWidth <= 0) return;
-      const index = Math.max(0, Math.min(Math.round(offsetX / pageWidth), items.length - 1));
+      const rawIndex = Math.round(offsetX / pageWidth);
+      if (items.length > 1 && rawIndex >= items.length) {
+        requestAnimationFrame(() => {
+          scrollRef.current?.scrollTo({ x: 0, animated: false });
+        });
+        setPageIndex(0);
+        setDotIndex(0);
+        if (resetExpand) setExpandedId(null);
+        return;
+      }
+      const index = Math.max(0, Math.min(rawIndex, items.length - 1));
       setPageIndex(index);
       setDotIndex(index);
       if (resetExpand) setExpandedId(null);
@@ -186,7 +200,8 @@ export function DisclosureDigestSection({ items, loading }: Props) {
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (pageWidth <= 0) return;
-      const index = Math.max(0, Math.min(Math.round(e.nativeEvent.contentOffset.x / pageWidth), items.length - 1));
+      const rawIndex = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
+      const index = items.length > 1 && rawIndex >= items.length ? 0 : Math.max(0, Math.min(rawIndex, items.length - 1));
       setDotIndex((prev) => (prev === index ? prev : index));
     },
     [pageWidth, items.length],
@@ -215,6 +230,7 @@ export function DisclosureDigestSection({ items, loading }: Props) {
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
       <ScrollView
+        ref={scrollRef}
         horizontal
         nestedScrollEnabled
         showsHorizontalScrollIndicator={false}
@@ -229,10 +245,11 @@ export function DisclosureDigestSection({ items, loading }: Props) {
         disableIntervalMomentum
         keyboardShouldPersistTaps="handled">
         {pageWidth > 0 &&
-          items.map((item, index) => {
-            const isExpanded = expandedId === item.id && pageIndex === index;
+          loopItems.map((item, index) => {
+            const isLoopClone = index >= items.length;
+            const isExpanded = !isLoopClone && expandedId === item.id && pageIndex === index;
             return (
-              <View key={item.id} style={[styles.page, { width: pageWidth }]}>
+              <View key={`${item.id}-${index}`} style={[styles.page, { width: pageWidth }]}>
                 <DigestCard
                   item={item}
                   isExpanded={isExpanded}
@@ -256,7 +273,7 @@ export function DisclosureDigestSection({ items, loading }: Props) {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, accentColor?: string) {
   return StyleSheet.create({
     container: {
       marginBottom: 8,
@@ -265,18 +282,28 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 8,
     },
     card: {
-      paddingHorizontal: 13,
+      paddingLeft: 18,
+      paddingRight: 13,
       paddingVertical: 11,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.greenBorder,
-      backgroundColor: theme.card,
+      backgroundColor: theme.colorScheme === 'dark' ? '#111927' : '#FFFFFF',
       gap: 6,
+      overflow: 'hidden',
       shadowColor: '#000000',
       shadowOpacity: 0.04,
       shadowRadius: 10,
       shadowOffset: { width: 0, height: 5 },
       elevation: 1,
+    },
+    accentLine: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: 4,
+      backgroundColor: accentColor || theme.warning,
     },
     cardPressed: {
       opacity: 0.88,

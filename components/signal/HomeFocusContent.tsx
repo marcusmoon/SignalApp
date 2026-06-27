@@ -9,10 +9,16 @@ import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { HOME_DIGEST_CATEGORIES, HOME_SIGNAL_SESSIONS, type HomeDigestCategory } from '@/constants/ipadHomeNav';
+import {
+  HOME_DIGEST_CATEGORIES,
+  HOME_SIGNAL_SESSIONS,
+  type HomeDigestCategory,
+  type SignalSessionKey,
+} from '@/constants/ipadHomeNav';
 import type { AppTheme } from '@/constants/theme';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useQuoteChangeColors } from '@/hooks';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -29,11 +35,15 @@ import type {
 } from '@/integrations/signal-api/types';
 import type { MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
+import {
+  HOME_WATCHLIST_DISPLAY_DEFAULT,
+  loadHomeWatchlistDisplayCount,
+  subscribeHomeWatchlistDisplayCountChanged,
+} from '@/services/homeWatchlistDisplayPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { addDays, formatLocalYmdLabel, parseLocalYmd, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
 const ISSUE_FETCH_LIMIT = 80;
-const WATCH_QUOTE_LIMIT = 6;
 const BRIEFING_LIMIT = 30;
 const DISCLOSURE_LIMIT = 3;
 
@@ -62,6 +72,22 @@ function briefingLeadText(row: SignalApiMarketBriefing): string {
   const summary = String(row.summary || row.headline || '').trim();
   if (summary) return summary;
   return row.overview[0] || '';
+}
+
+function briefingVisibleKey(row: SignalApiMarketBriefing): string {
+  return [row.market, row.session, briefingLeadText(row)].map((part) => String(part || '').trim().toLowerCase()).join('|');
+}
+
+function uniqueVisibleBriefings(rows: SignalApiMarketBriefing[]): SignalApiMarketBriefing[] {
+  const seen = new Set<string>();
+  const unique: SignalApiMarketBriefing[] = [];
+  for (const row of rows) {
+    const key = briefingVisibleKey(row);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(row);
+  }
+  return unique;
 }
 
 async function fetchTopIssues(date: string): Promise<IssueRow[]> {
@@ -104,6 +130,13 @@ function marketLabel(market: string): string {
   return key ? key.toUpperCase() : 'SIGNAL';
 }
 
+function signalSessionKeyForBriefing(row?: SignalApiMarketBriefing): SignalSessionKey | undefined {
+  if (!row) return undefined;
+  return HOME_SIGNAL_SESSIONS.find(
+    (session) => session.market === row.market && session.session === row.session,
+  )?.key;
+}
+
 export function HomeFocusContent({
   selectedYmd,
   todayYmd,
@@ -115,6 +148,7 @@ export function HomeFocusContent({
   const { theme, scaleFont } = useSignalTheme();
   const quoteChange = useQuoteChangeColors();
   const { t, locale } = useLocale();
+  const ipadNav = useIpadSidebarNav();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const selectedIsToday = selectedYmd >= todayYmd;
   const loadedYmdRef = useRef<string | null>(null);
@@ -122,6 +156,7 @@ export function HomeFocusContent({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
@@ -130,6 +165,13 @@ export function HomeFocusContent({
   const [activeBriefingIndex, setActiveBriefingIndex] = useState(0);
   const [issueCarouselWidth, setIssueCarouselWidth] = useState(0);
   const [briefingCarouselWidth, setBriefingCarouselWidth] = useState(0);
+  const issueScrollRef = useRef<ScrollView | null>(null);
+  const briefingScrollRef = useRef<ScrollView | null>(null);
+  const loopIssues = useMemo(() => (issues.length > 1 ? [...issues, issues[0]] : issues), [issues]);
+  const loopBriefings = useMemo(
+    () => (briefings.length > 1 ? [...briefings, briefings[0]] : briefings),
+    [briefings],
+  );
 
   const selectedDateLabel = useMemo(
     () =>
@@ -161,7 +203,7 @@ export function HomeFocusContent({
     setError(null);
     try {
       const watchlist = await loadWatchlistSymbols();
-      const symbols = watchlist.slice(0, WATCH_QUOTE_LIMIT);
+      const symbols = watchlist.slice(0, watchlistDisplayCount);
       const [nextIssues, quoteRows, briefings, disclosurePage] = await Promise.all([
         fetchTopIssues(selectedYmd),
         symbols.length > 0
@@ -185,12 +227,14 @@ export function HomeFocusContent({
           return quoteBySymbol.get(key) ?? { symbol, quote: null, error: 'NO_SERVER_QUOTE' };
         }),
       );
-      setBriefings([...briefings].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a))).slice(0, 6));
+      setBriefings(
+        uniqueVisibleBriefings([...briefings].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a)))).slice(0, 6),
+      );
       setDisclosures(disclosurePage.items.slice(0, DISCLOSURE_LIMIT));
     } catch (e) {
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
     }
-  }, [selectedYmd, t]);
+  }, [selectedYmd, t, watchlistDisplayCount]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -223,6 +267,22 @@ export function HomeFocusContent({
   }, [changeSelectedYmd, selectedYmd, todayYmd]);
 
   useEffect(() => {
+    let cancelled = false;
+    const refreshCount = async () => {
+      const next = await loadHomeWatchlistDisplayCount();
+      if (!cancelled) setWatchlistDisplayCount(next);
+    };
+    void refreshCount();
+    const unsubscribe = subscribeHomeWatchlistDisplayCountChanged(() => {
+      void refreshCount();
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
     if (activeIssueIndex > Math.max(0, issues.length - 1)) {
       setActiveIssueIndex(0);
     }
@@ -236,21 +296,50 @@ export function HomeFocusContent({
 
   const openIssue = useCallback(
     (row?: IssueRow) => {
+      const params = {
+        category: row?.category ?? 'global',
+        date: selectedYmd,
+        digestId: row?.item.id,
+      };
+      if (ipadNav.isAvailable) {
+        ipadNav.showNewsIssues(params);
+        return;
+      }
       router.navigate({
         pathname: '/news-issues',
-        params: { category: row?.category ?? 'global', date: selectedYmd, digestId: row?.item.id },
+        params,
       } as never);
     },
-    [router, selectedYmd],
+    [ipadNav, router, selectedYmd],
   );
 
-  const openSignal = useCallback(() => {
-    router.navigate({ pathname: '/(tabs)/signal', params: { date: selectedYmd } } as never);
-  }, [router, selectedYmd]);
+  const openSignal = useCallback(
+    (row?: SignalApiMarketBriefing) => {
+      const session = signalSessionKeyForBriefing(row);
+      if (ipadNav.isAvailable) {
+        ipadNav.showSignalTab(session, selectedYmd);
+        return;
+      }
+      router.navigate({
+        pathname: '/(tabs)/signal',
+        params: { date: selectedYmd, ...(session ? { session } : null) },
+      } as never);
+    },
+    [ipadNav, router, selectedYmd],
+  );
 
   const openQuotes = useCallback(() => {
     router.navigate('/(tabs)/quotes' as never);
   }, [router]);
+
+  const openSymbolDetail = useCallback(
+    (symbol: string) => {
+      const trimmed = symbol.trim().toUpperCase();
+      if (!trimmed || trimmed === '—') return;
+      router.push(`/symbol/${encodeURIComponent(trimmed)}` as never);
+    },
+    [router],
+  );
 
   const openDisclosures = useCallback(() => {
     router.navigate('/(tabs)/disclosures' as never);
@@ -259,16 +348,122 @@ export function HomeFocusContent({
   const onIssueScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const width = event.nativeEvent.layoutMeasurement.width;
     if (width <= 0) return;
-    const next = Math.round(event.nativeEvent.contentOffset.x / width);
-    setActiveIssueIndex(Math.max(0, Math.min(next, issues.length - 1)));
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const rawIndex = Math.round(offsetX / width);
+    if (issues.length > 1 && rawIndex >= issues.length) {
+      requestAnimationFrame(() => {
+        issueScrollRef.current?.scrollTo({ x: 0, animated: false });
+      });
+      setActiveIssueIndex(0);
+      return;
+    }
+    setActiveIssueIndex(Math.max(0, Math.min(rawIndex, issues.length - 1)));
+  }, [issues.length]);
+
+  const onIssueScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const width = event.nativeEvent.layoutMeasurement.width;
+    if (width <= 0 || issues.length <= 1) return;
+    const rawIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+    const next = rawIndex >= issues.length ? 0 : Math.max(0, Math.min(rawIndex, issues.length - 1));
+    setActiveIssueIndex((prev) => (prev === next ? prev : next));
   }, [issues.length]);
 
   const onBriefingScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const width = event.nativeEvent.layoutMeasurement.width;
     if (width <= 0) return;
-    const next = Math.round(event.nativeEvent.contentOffset.x / width);
-    setActiveBriefingIndex(Math.max(0, Math.min(next, briefings.length - 1)));
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const rawIndex = Math.round(offsetX / width);
+    if (briefings.length > 1 && rawIndex >= briefings.length) {
+      requestAnimationFrame(() => {
+        briefingScrollRef.current?.scrollTo({ x: 0, animated: false });
+      });
+      setActiveBriefingIndex(0);
+      return;
+    }
+    setActiveBriefingIndex(Math.max(0, Math.min(rawIndex, briefings.length - 1)));
   }, [briefings.length]);
+
+  const onBriefingScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const width = event.nativeEvent.layoutMeasurement.width;
+    if (width <= 0 || briefings.length <= 1) return;
+    const rawIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+    const next = rawIndex >= briefings.length ? 0 : Math.max(0, Math.min(rawIndex, briefings.length - 1));
+    setActiveBriefingIndex((prev) => (prev === next ? prev : next));
+  }, [briefings.length]);
+
+  const renderIssueCard = useCallback(
+    (row: IssueRow) => (
+      <Pressable
+        onPress={() => openIssue(row)}
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.heroCard, pressed && styles.pressed]}>
+        <View style={styles.heroNoteLine} />
+        <View style={styles.heroMetaRow}>
+          <View style={styles.heroMetaLeft}>
+            <Text style={styles.categoryPill}>{t(NEWS_SEGMENT_LABEL[row.category])}</Text>
+            {row.item.symbols.slice(0, 2).map((symbol) => (
+              <Text key={symbol} style={styles.symbolChip}>
+                {symbol}
+              </Text>
+            ))}
+          </View>
+          <FontAwesome name={issueIconName(row.category)} size={13} color={theme.textDim} />
+        </View>
+        <Text style={styles.heroTitle} numberOfLines={2}>
+          {row.item.title}
+        </Text>
+        <View style={styles.heroFooter}>
+          <View style={styles.chipRow}>
+            {row.item.topics.slice(0, 2).map((topic) => (
+              <Text key={topic} style={styles.topicChip} numberOfLines={1}>
+                {topic}
+              </Text>
+            ))}
+          </View>
+          <Text style={styles.sourcePill}>
+            {t('homeFocusSourceCount', { count: String(row.item.sources.length) })}
+          </Text>
+        </View>
+      </Pressable>
+    ),
+    [openIssue, styles, t, theme.textDim],
+  );
+
+  const renderBriefingCard = useCallback(
+    (row: SignalApiMarketBriefing) => {
+      const session = HOME_SIGNAL_SESSIONS.find(
+        (candidate) => candidate.market === row.market && candidate.session === row.session,
+      );
+      return (
+        <Pressable
+          onPress={() => openSignal(row)}
+          accessibilityRole="button"
+          style={({ pressed }) => [styles.signalCard, styles.briefingCard, pressed && styles.pressed]}>
+          <View style={styles.signalNoteLine} />
+          <View style={styles.signalHead}>
+            <View style={styles.signalPillRow}>
+              <Text style={styles.marketPill}>{marketLabel(row.market)}</Text>
+              <Text style={styles.sessionBadge}>
+                {session ? t(session.labelId as MessageId) : t('briefingSessionEmptyTitle')}
+              </Text>
+            </View>
+            <FontAwesome name="line-chart" size={13} color={theme.textDim} />
+          </View>
+          <View style={styles.signalBody}>
+            <Text style={styles.signalText} numberOfLines={4}>
+              {briefingLeadText(row)}
+            </Text>
+          </View>
+          {row.sourceRefs.length > 0 ? (
+            <Text style={styles.signalMetaText}>
+              {t('homeFocusSourceCount', { count: String(row.sourceRefs.length) })}
+            </Text>
+          ) : null}
+        </Pressable>
+      );
+    },
+    [openSignal, styles, t, theme.textDim],
+  );
 
   return (
     <ScrollView
@@ -312,52 +507,29 @@ export function HomeFocusContent({
               <View
                 style={styles.issueCarouselWrap}
                 onLayout={(event) => setIssueCarouselWidth(Math.round(event.nativeEvent.layout.width))}>
-                <ScrollView
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  decelerationRate="fast"
-                  snapToInterval={issueCarouselWidth > 0 ? issueCarouselWidth : undefined}
-                  onMomentumScrollEnd={onIssueScrollEnd}
-                  style={styles.issueCarousel}>
-                  {issues.map((row) => (
-                    <View
-                      key={`${row.category}-${row.item.id}`}
-                      style={[styles.heroSlide, issueCarouselWidth > 0 && { width: issueCarouselWidth }]}>
-                      <Pressable
-                        onPress={() => openIssue(row)}
-                        accessibilityRole="button"
-                        style={({ pressed }) => [styles.heroCard, pressed && styles.pressed]}>
-                        <View style={styles.heroMetaRow}>
-                          <View style={styles.heroMetaLeft}>
-                            <Text style={styles.categoryPill}>{t(NEWS_SEGMENT_LABEL[row.category])}</Text>
-                            {row.item.symbols.slice(0, 2).map((symbol) => (
-                              <Text key={symbol} style={styles.symbolChip}>
-                                {symbol}
-                              </Text>
-                            ))}
-                          </View>
-                          <FontAwesome name={issueIconName(row.category)} size={13} color={theme.textDim} />
-                        </View>
-                        <Text style={styles.heroTitle} numberOfLines={2}>
-                          {row.item.title}
-                        </Text>
-                        <View style={styles.heroFooter}>
-                          <View style={styles.chipRow}>
-                            {row.item.topics.slice(0, 2).map((topic) => (
-                              <Text key={topic} style={styles.topicChip} numberOfLines={1}>
-                                {topic}
-                              </Text>
-                            ))}
-                          </View>
-                          <Text style={styles.sourcePill}>
-                            {t('homeFocusSourceCount', { count: String(row.item.sources.length) })}
-                          </Text>
-                        </View>
-                      </Pressable>
-                    </View>
-                  ))}
-                </ScrollView>
+                {issues.length === 1 ? (
+                  renderIssueCard(issues[0])
+                ) : (
+                  <ScrollView
+                    ref={issueScrollRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    decelerationRate="fast"
+                    snapToInterval={issueCarouselWidth > 0 ? issueCarouselWidth : undefined}
+                    onScroll={onIssueScroll}
+                    scrollEventThrottle={16}
+                    onMomentumScrollEnd={onIssueScrollEnd}
+                    style={styles.issueCarousel}>
+                    {loopIssues.map((row, index) => (
+                      <View
+                        key={`${row.category}-${row.item.id}-${index}`}
+                        style={[styles.heroSlide, issueCarouselWidth > 0 && { width: issueCarouselWidth }]}>
+                        {renderIssueCard(row)}
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
                 {issues.length > 1 ? (
                   <View style={styles.issueDots}>
                     {issues.map((row, index) => (
@@ -380,57 +552,36 @@ export function HomeFocusContent({
             <HomeSectionHeader
               title={t('homeFocusSignalTitle')}
               badge={<HomeAiBadge />}
-              onPress={openSignal}
-              accessibilityLabel={t('commonViewAll')}
+              onPress={briefings.length > 0 ? openSignal : undefined}
+              accessibilityLabel={briefings.length > 0 ? t('commonViewAll') : undefined}
             />
             {briefings.length > 0 ? (
               <View
                 style={styles.briefingCarouselWrap}
                 onLayout={(event) => setBriefingCarouselWidth(Math.round(event.nativeEvent.layout.width))}>
-                <ScrollView
-                  horizontal
-                  pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  decelerationRate="fast"
-                  snapToInterval={briefingCarouselWidth > 0 ? briefingCarouselWidth : undefined}
-                  onMomentumScrollEnd={onBriefingScrollEnd}
-                  style={styles.issueCarousel}>
-                  {briefings.map((row) => {
-                    const session = HOME_SIGNAL_SESSIONS.find(
-                      (candidate) => candidate.market === row.market && candidate.session === row.session,
-                    );
-                    return (
+                {briefings.length === 1 ? (
+                  renderBriefingCard(briefings[0])
+                ) : (
+                  <ScrollView
+                    ref={briefingScrollRef}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    decelerationRate="fast"
+                    snapToInterval={briefingCarouselWidth > 0 ? briefingCarouselWidth : undefined}
+                    onScroll={onBriefingScroll}
+                    scrollEventThrottle={16}
+                    onMomentumScrollEnd={onBriefingScrollEnd}
+                    style={styles.issueCarousel}>
+                    {loopBriefings.map((row, index) => (
                       <View
-                        key={row.id}
+                        key={`${row.id}-${index}`}
                         style={[styles.heroSlide, briefingCarouselWidth > 0 && { width: briefingCarouselWidth }]}>
-                        <Pressable
-                          onPress={openSignal}
-                          accessibilityRole="button"
-                          style={({ pressed }) => [styles.signalCard, styles.briefingCard, pressed && styles.pressed]}>
-                          <View style={styles.signalHead}>
-                            <View style={styles.signalPillRow}>
-                              <Text style={styles.marketPill}>{marketLabel(row.market)}</Text>
-                              <Text style={styles.sessionBadge}>
-                                {session ? t(session.labelId as MessageId) : t('briefingSessionEmptyTitle')}
-                              </Text>
-                            </View>
-                            <FontAwesome name="line-chart" size={13} color={theme.textDim} />
-                          </View>
-                          <View style={styles.signalBody}>
-                            <Text style={styles.signalText} numberOfLines={3}>
-                              {briefingLeadText(row)}
-                            </Text>
-                          </View>
-                          {row.sourceRefs.length > 0 ? (
-                            <Text style={styles.signalMetaText}>
-                              {t('homeFocusSourceCount', { count: String(row.sourceRefs.length) })}
-                            </Text>
-                          ) : null}
-                        </Pressable>
+                        {renderBriefingCard(row)}
                       </View>
-                    );
-                  })}
-                </ScrollView>
+                    ))}
+                  </ScrollView>
+                )}
                 {briefings.length > 1 ? (
                   <View style={styles.issueDots}>
                     {briefings.map((row, index) => (
@@ -443,16 +594,10 @@ export function HomeFocusContent({
                 ) : null}
               </View>
             ) : (
-              <View style={[styles.signalCard, styles.briefingCard]}>
-                <View style={styles.signalHead}>
-                  <Text style={styles.sessionBadge}>{t('briefingSessionEmptyTitle')}</Text>
-                  <FontAwesome name="line-chart" size={13} color={theme.textDim} />
-                </View>
-                <View style={styles.signalBody}>
-                  <Text style={[styles.signalText, styles.dimmedText]} numberOfLines={3}>
-                    {t('briefingHubEmptyTitle')}
-                  </Text>
-                </View>
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>
+                  {t('homeFocusSignalEmpty')}
+                </Text>
               </View>
             )}
           </View>
@@ -467,7 +612,12 @@ export function HomeFocusContent({
                   const pct = row.quote?.changePercent;
                   const up = typeof pct === 'number' && pct >= 0;
                   return (
-                    <View key={`${row.symbol}-${index}`} style={styles.quoteTile}>
+                    <Pressable
+                      key={`${row.symbol}-${index}`}
+                      onPress={() => openSymbolDetail(row.symbol)}
+                      accessibilityRole="button"
+                      accessibilityLabel={row.symbol}
+                      style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
                       <View style={styles.quoteTileContent}>
                         <View style={styles.quoteNameCol}>
                           <Text style={styles.quoteSymbol} numberOfLines={1}>
@@ -486,7 +636,7 @@ export function HomeFocusContent({
                           </Text>
                         </View>
                       </View>
-                    </View>
+                    </Pressable>
                   );
                 })
               )}
@@ -500,7 +650,7 @@ export function HomeFocusContent({
               accessibilityLabel={t('commonViewAll')}
             />
             {disclosures.length > 0 ? (
-              <DisclosureDigestSection items={disclosures} />
+              <DisclosureDigestSection items={disclosures} accentColor={theme.warning} />
             ) : (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyText}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
@@ -546,12 +696,13 @@ function makeStyles(
       justifyContent: 'center',
     },
     heroBlock: {
-      gap: 10,
+      gap: 12,
     },
     heroHead: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-start',
+      gap: 8,
     },
     heroKicker: {
       fontSize: sf(18),
@@ -573,14 +724,15 @@ function makeStyles(
       paddingRight: 0,
     },
     heroCard: {
-      minHeight: 132,
+      minHeight: 146,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.greenBorder,
-      backgroundColor: theme.card,
-      paddingHorizontal: 13,
-      paddingVertical: 11,
-      gap: 6,
+      backgroundColor: theme.colorScheme === 'dark' ? '#111927' : '#FFFFFF',
+      paddingLeft: 18,
+      paddingRight: 13,
+      paddingVertical: 13,
+      gap: 8,
       justifyContent: 'space-between',
       overflow: 'hidden',
       shadowColor: '#000000',
@@ -589,7 +741,7 @@ function makeStyles(
       shadowOffset: { width: 0, height: 5 },
       elevation: 1,
     },
-    heroAccentLine: {
+    heroNoteLine: {
       position: 'absolute',
       left: 0,
       top: 0,
@@ -652,9 +804,9 @@ function makeStyles(
       color: theme.textDim,
     },
     heroTitle: {
-      fontSize: sf(15),
-      lineHeight: sf(21),
-      minHeight: sf(21) * 2,
+      fontSize: sf(16),
+      lineHeight: sf(23),
+      minHeight: sf(23) * 2,
       fontWeight: '900',
       color: theme.text,
     },
@@ -712,7 +864,7 @@ function makeStyles(
       backgroundColor: theme.green,
     },
     section: {
-      gap: 10,
+      gap: 12,
     },
     quoteCard: {
       borderRadius: 18,
@@ -732,8 +884,13 @@ function makeStyles(
       borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.card,
+      backgroundColor: theme.colorScheme === 'dark' ? '#111722' : '#FBFCFE',
       overflow: 'hidden',
+      shadowColor: '#000000',
+      shadowOpacity: 0.03,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 1,
     },
     quoteTileContent: {
       flex: 1,
@@ -802,8 +959,9 @@ function makeStyles(
       borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.greenBorder,
-      backgroundColor: theme.card,
-      paddingHorizontal: 13,
+      backgroundColor: theme.colorScheme === 'dark' ? '#111927' : '#FFFFFF',
+      paddingLeft: 18,
+      paddingRight: 13,
       paddingVertical: 11,
       gap: 6,
       overflow: 'hidden',
@@ -814,14 +972,14 @@ function makeStyles(
       elevation: 1,
     },
     briefingCard: {
-      height: 132,
+      height: 164,
     },
-    signalAccentLine: {
+    signalNoteLine: {
       position: 'absolute',
       left: 0,
       top: 0,
       bottom: 0,
-      width: 3,
+      width: 4,
       backgroundColor: theme.green,
     },
     signalHead: {

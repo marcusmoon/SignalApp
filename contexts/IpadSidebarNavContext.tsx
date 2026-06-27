@@ -30,9 +30,10 @@ type IpadSidebarNavContextValue = {
   showNewsIssues: (params: IpadNewsIssuesPaneParams) => void;
   showYoutubeTab: (sort?: YoutubeSortKey) => void;
   showNewsTab: (segment?: NewsSegmentKey) => void;
-  showSignalTab: (session?: SignalSessionKey) => void;
+  showSignalTab: (session?: SignalSessionKey, date?: string) => void;
   takePendingNewsSegment: () => NewsSegmentKey | null;
   takePendingSignalSession: () => SignalSessionKey | null;
+  takePendingSignalDate: () => string | null;
 };
 
 const IpadSidebarNavContext = createContext<IpadSidebarNavContextValue>({
@@ -54,6 +55,7 @@ const IpadSidebarNavContext = createContext<IpadSidebarNavContextValue>({
   showSignalTab: () => {},
   takePendingNewsSegment: () => null,
   takePendingSignalSession: () => null,
+  takePendingSignalDate: () => null,
 });
 
 export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
@@ -63,6 +65,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const [newsIssuesParams, setNewsIssuesParams] = useState<IpadNewsIssuesPaneParams | null>(null);
   const pendingNewsSegmentRef = useRef<NewsSegmentKey | null>(null);
   const pendingSignalSessionRef = useRef<SignalSessionKey | null>(null);
+  const pendingSignalDateRef = useRef<string | null>(null);
 
   const showHome = useCallback(() => {
     setContentPane('home');
@@ -96,8 +99,9 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     setContentPane('tabs');
   }, []);
 
-  const showSignalTab = useCallback((session?: SignalSessionKey) => {
+  const showSignalTab = useCallback((session?: SignalSessionKey, date?: string) => {
     if (session) pendingSignalSessionRef.current = session;
+    if (date) pendingSignalDateRef.current = date;
     setContentPane('tabs');
   }, []);
 
@@ -111,6 +115,12 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     const session = pendingSignalSessionRef.current;
     pendingSignalSessionRef.current = null;
     return session;
+  }, []);
+
+  const takePendingSignalDate = useCallback(() => {
+    const date = pendingSignalDateRef.current;
+    pendingSignalDateRef.current = null;
+    return date;
   }, []);
 
   const value = useMemo(
@@ -133,6 +143,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showSignalTab,
       takePendingNewsSegment,
       takePendingSignalSession,
+      takePendingSignalDate,
     }),
     [
       contentPane,
@@ -149,6 +160,7 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
       showSignalTab,
       takePendingNewsSegment,
       takePendingSignalSession,
+      takePendingSignalDate,
     ],
   );
 

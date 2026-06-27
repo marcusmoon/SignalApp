@@ -350,8 +350,10 @@ export default function SignalScreen() {
     useCallback(() => {
       const pendingSession =
         useTwoPane && ipadNav.isAvailable ? ipadNav.takePendingSignalSession() : null;
+      const pendingDate =
+        useTwoPane && ipadNav.isAvailable ? ipadNav.takePendingSignalDate() : null;
       const sessionParam = pendingSession ?? firstParam(routeParams.session);
-      const dateParam = firstParam(routeParams.date);
+      const dateParam = pendingDate ?? firstParam(routeParams.date);
 
       if (sessionParam && isFlatTabKey(sessionParam)) {
         setSelectedTabKey(sessionParam);

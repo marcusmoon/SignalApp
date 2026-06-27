@@ -27,10 +27,12 @@ export function HomeSectionHeader({
     <View style={styles.row}>
       <View style={styles.titleRow}>
         <View style={styles.titleCol}>
-          <Text style={styles.title}>{title}</Text>
+          <View style={styles.titleLine}>
+            <Text style={styles.title}>{title}</Text>
+            {badge}
+          </View>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
-        {badge}
       </View>
       {onPress ? <FontAwesome name="chevron-right" size={12} color={theme.textDim} /> : null}
     </View>
@@ -68,6 +70,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
       minWidth: 0,
       gap: 3,
+    },
+    titleLine: {
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
     title: {
       fontSize: sf(18),

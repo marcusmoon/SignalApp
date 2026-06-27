@@ -115,6 +115,13 @@ import {
   type HomeVariant,
 } from '@/services/homeVariantPreference';
 import {
+  HOME_WATCHLIST_DISPLAY_MAX,
+  HOME_WATCHLIST_DISPLAY_MIN,
+  HOME_WATCHLIST_DISPLAY_DEFAULT,
+  loadHomeWatchlistDisplayCount,
+  saveHomeWatchlistDisplayCount,
+} from '@/services/homeWatchlistDisplayPreference';
+import {
   loadTabBarOpacityLevel,
   saveTabBarOpacityLevel,
   tabBarOpacityPercent,
@@ -1067,6 +1074,8 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   const [mainEntryReady, setMainEntryReady] = useState(false);
   const [homeVariant, setHomeVariant] = useState<HomeVariant>('classic');
   const [homeVariantReady, setHomeVariantReady] = useState(false);
+  const [homeWatchlistDisplayCount, setHomeWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
+  const [homeWatchlistDisplayReady, setHomeWatchlistDisplayReady] = useState(false);
   const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
   const [appIconReady, setAppIconReady] = useState(false);
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
@@ -1262,6 +1271,22 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     setHomeVariantReady(true);
   }, []);
 
+  const reloadHomeWatchlistDisplayPref = useCallback(async () => {
+    const v = await loadHomeWatchlistDisplayCount();
+    setHomeWatchlistDisplayCount(v);
+    setHomeWatchlistDisplayReady(true);
+  }, []);
+
+  const bumpHomeWatchlistDisplayCount = useCallback(async (delta: number) => {
+    const v = await loadHomeWatchlistDisplayCount();
+    const next = Math.min(
+      HOME_WATCHLIST_DISPLAY_MAX,
+      Math.max(HOME_WATCHLIST_DISPLAY_MIN, v + delta),
+    );
+    await saveHomeWatchlistDisplayCount(next);
+    setHomeWatchlistDisplayCount(next);
+  }, []);
+
   const reloadAppIconPref = useCallback(async () => {
     const v = await loadAppIconVariant();
     setAppIconVariant(v);
@@ -1285,6 +1310,7 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     void reloadMoreReferenceLinksPref();
     void reloadMainEntryPref();
     void reloadHomeVariantPref();
+    void reloadHomeWatchlistDisplayPref();
     void reloadAppIconPref();
     void reloadTabBarOpacityPref();
   }, [
@@ -1298,6 +1324,7 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     reloadMoreReferenceLinksPref,
     reloadMainEntryPref,
     reloadHomeVariantPref,
+    reloadHomeWatchlistDisplayPref,
     reloadAppIconPref,
     reloadTabBarOpacityPref,
   ]);
@@ -1895,6 +1922,44 @@ clearCalendarCache();
                       </Text>
                     </Pressable>
                   ))}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsHomeWatchlistDisplaySection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsHomeWatchlistDisplayHint')}</Text>
+              {!homeWatchlistDisplayReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <View style={[styles.row, { marginTop: 8 }]}>
+                  <Text style={styles.handleText}>
+                    {t('settingsHomeWatchlistDisplayValue', {
+                      count: String(homeWatchlistDisplayCount),
+                    })}
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Pressable
+                      onPress={() => void bumpHomeWatchlistDisplayCount(-1)}
+                      disabled={homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN}
+                      style={({ pressed }) => [
+                        styles.addBtn,
+                        (homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN || pressed) && { opacity: 0.55 },
+                      ]}
+                      accessibilityRole="button">
+                      <Text style={styles.addBtnText}>−</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => void bumpHomeWatchlistDisplayCount(1)}
+                      disabled={homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX}
+                      style={({ pressed }) => [
+                        styles.addBtn,
+                        (homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX || pressed) && { opacity: 0.55 },
+                      ]}
+                      accessibilityRole="button">
+                      <Text style={styles.addBtnText}>+</Text>
+                    </Pressable>
+                  </View>
                 </View>
               )}
             </View>

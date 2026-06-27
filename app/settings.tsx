@@ -109,6 +109,12 @@ import {
   type MainEntryKey,
 } from '@/services/mainEntryPreference';
 import {
+  HOME_VARIANT_ORDER,
+  loadHomeVariant,
+  saveHomeVariant,
+  type HomeVariant,
+} from '@/services/homeVariantPreference';
+import {
   loadTabBarOpacityLevel,
   saveTabBarOpacityLevel,
   tabBarOpacityPercent,
@@ -244,6 +250,11 @@ const MAIN_ENTRY_LABEL: Record<MainEntryKey, MessageId> = {
   signal: 'settingsEntrySignal',
   quotes: 'settingsEntryQuotes',
   more: 'settingsEntryMore',
+};
+
+const HOME_VARIANT_LABEL: Record<HomeVariant, MessageId> = {
+  classic: 'settingsHomeVariantClassic',
+  focus: 'settingsHomeVariantFocus',
 };
 
 const APP_ICON_LABEL: Record<AppIconVariant, MessageId> = {
@@ -1054,6 +1065,8 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   const [moreRefLinksReady, setMoreRefLinksReady] = useState(false);
   const [mainEntry, setMainEntry] = useState<MainEntryKey>('home');
   const [mainEntryReady, setMainEntryReady] = useState(false);
+  const [homeVariant, setHomeVariant] = useState<HomeVariant>('classic');
+  const [homeVariantReady, setHomeVariantReady] = useState(false);
   const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
   const [appIconReady, setAppIconReady] = useState(false);
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
@@ -1243,6 +1256,12 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     setMainEntryReady(true);
   }, []);
 
+  const reloadHomeVariantPref = useCallback(async () => {
+    const v = await loadHomeVariant();
+    setHomeVariant(v);
+    setHomeVariantReady(true);
+  }, []);
+
   const reloadAppIconPref = useCallback(async () => {
     const v = await loadAppIconVariant();
     setAppIconVariant(v);
@@ -1265,6 +1284,7 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     void reloadSignalServerPrefs();
     void reloadMoreReferenceLinksPref();
     void reloadMainEntryPref();
+    void reloadHomeVariantPref();
     void reloadAppIconPref();
     void reloadTabBarOpacityPref();
   }, [
@@ -1277,6 +1297,7 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     reloadSignalServerPrefs,
     reloadMoreReferenceLinksPref,
     reloadMainEntryPref,
+    reloadHomeVariantPref,
     reloadAppIconPref,
     reloadTabBarOpacityPref,
   ]);
@@ -1840,6 +1861,37 @@ clearCalendarCache();
                           mainEntry === entry && styles.langSegmentTextActive,
                         ]}>
                         {t(MAIN_ENTRY_LABEL[entry])}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsHomeVariantSection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsHomeVariantHint')}</Text>
+              {!homeVariantReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <View style={styles.langSegmentedTrack}>
+                  {HOME_VARIANT_ORDER.map((variant) => (
+                    <Pressable
+                      key={variant}
+                      onPress={() => {
+                        setHomeVariant(variant);
+                        void saveHomeVariant(variant);
+                      }}
+                      style={[styles.langSegment, homeVariant === variant && styles.langSegmentActive]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: homeVariant === variant }}
+                      accessibilityLabel={t(HOME_VARIANT_LABEL[variant])}>
+                      <Text
+                        style={[
+                          styles.langSegmentText,
+                          homeVariant === variant && styles.langSegmentTextActive,
+                        ]}>
+                        {t(HOME_VARIANT_LABEL[variant])}
                       </Text>
                     </Pressable>
                   ))}

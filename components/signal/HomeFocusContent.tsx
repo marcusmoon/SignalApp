@@ -1,0 +1,899 @@
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+
+import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
+import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
+import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
+import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
+import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { HOME_DIGEST_CATEGORIES, HOME_SIGNAL_SESSIONS, type HomeDigestCategory } from '@/constants/ipadHomeNav';
+import type { AppTheme } from '@/constants/theme';
+import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
+import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
+import { useLocale } from '@/contexts/LocaleContext';
+import { useQuoteChangeColors } from '@/hooks';
+import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
+import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
+import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
+import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
+import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
+import type {
+  SignalApiDisclosureDigestItem,
+  SignalApiMarketBriefing,
+  SignalApiMarketQuote,
+  SignalApiNewsDigestItem,
+} from '@/integrations/signal-api/types';
+import type { MessageId } from '@/locales/messages';
+import { hasSignalApi } from '@/services/env';
+import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
+import { addDays, formatLocalYmdLabel, parseLocalYmd, toYmd, utcRangeForLocalYmd } from '@/utils/date';
+
+const ISSUE_FETCH_LIMIT = 80;
+const WATCH_QUOTE_LIMIT = 6;
+const BRIEFING_LIMIT = 30;
+const DISCLOSURE_LIMIT = 3;
+
+type HomeFocusContentProps = {
+  selectedYmd: string;
+  todayYmd: string;
+  onSelectedYmdChange: (ymd: string) => void;
+  scrollContentPaddingBottom?: number;
+  headerAccessory?: ReactNode;
+};
+
+type IssueRow = {
+  category: HomeDigestCategory;
+  item: SignalApiNewsDigestItem;
+};
+
+function shiftYmd(ymd: string, days: number): string {
+  return toYmd(addDays(parseLocalYmd(ymd), days));
+}
+
+function sortBriefingTime(row: SignalApiMarketBriefing): string {
+  return String(row.publishedAt || row.updatedAt || row.createdAt || row.briefingDate || '');
+}
+
+function briefingLeadText(row: SignalApiMarketBriefing): string {
+  const summary = String(row.summary || row.headline || '').trim();
+  if (summary) return summary;
+  return row.overview[0] || '';
+}
+
+async function fetchTopIssues(date: string): Promise<IssueRow[]> {
+  const range = utcRangeForLocalYmd(date);
+  const results = await Promise.all(
+    HOME_DIGEST_CATEGORIES.map(async (category) => {
+      const page = await fetchSignalNewsDigests({
+        category,
+        ...range,
+        limit: ISSUE_FETCH_LIMIT,
+        batches: 20,
+      }).catch(() => ({ items: [] as SignalApiNewsDigestItem[] }));
+      const item = [...page.items].sort(
+        (a, b) =>
+          String(b.generatedAt || '').localeCompare(String(a.generatedAt || '')) ||
+          b.count - a.count,
+      )[0];
+      return item ? { category, item } : null;
+    }),
+  );
+  return results.filter((row): row is IssueRow => row != null);
+}
+
+function formatPrice(row: QuoteRow): string {
+  const value = row.quote?.currentPrice;
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+  return isKoreaStockQuote(row) ? formatKrw(value) : formatUsd(value);
+}
+
+function issueIconName(category: HomeDigestCategory): ComponentProps<typeof FontAwesome>['name'] {
+  if (category === 'crypto') return 'bitcoin';
+  if (category === 'korea') return 'flag';
+  return 'globe';
+}
+
+function marketLabel(market: string): string {
+  const key = String(market || '').trim().toLowerCase();
+  if (key === 'us') return 'US';
+  if (key === 'kr') return 'KR';
+  return key ? key.toUpperCase() : 'SIGNAL';
+}
+
+export function HomeFocusContent({
+  selectedYmd,
+  todayYmd,
+  onSelectedYmdChange,
+  scrollContentPaddingBottom = 28,
+  headerAccessory,
+}: HomeFocusContentProps) {
+  const router = useRouter();
+  const { theme, scaleFont } = useSignalTheme();
+  const quoteChange = useQuoteChangeColors();
+  const { t, locale } = useLocale();
+  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const selectedIsToday = selectedYmd >= todayYmd;
+  const loadedYmdRef = useRef<string | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [issues, setIssues] = useState<IssueRow[]>([]);
+  const [quotes, setQuotes] = useState<QuoteRow[]>([]);
+  const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
+  const [disclosures, setDisclosures] = useState<SignalApiDisclosureDigestItem[]>([]);
+  const [activeIssueIndex, setActiveIssueIndex] = useState(0);
+  const [activeBriefingIndex, setActiveBriefingIndex] = useState(0);
+  const [issueCarouselWidth, setIssueCarouselWidth] = useState(0);
+  const [briefingCarouselWidth, setBriefingCarouselWidth] = useState(0);
+
+  const selectedDateLabel = useMemo(
+    () =>
+      formatLocalYmdLabel(selectedYmd, locale, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'short',
+      }),
+    [locale, selectedYmd],
+  );
+
+  const changeSelectedYmd = useCallback(
+    (ymd: string) => {
+      onSelectedYmdChange(ymd > todayYmd ? todayYmd : ymd);
+    },
+    [onSelectedYmdChange, todayYmd],
+  );
+
+  const load = useCallback(async () => {
+    if (!hasSignalApi()) {
+      setIssues([]);
+      setQuotes([]);
+      setBriefings([]);
+      setDisclosures([]);
+      setError(t('errorSignalApiShort'));
+      return;
+    }
+    setError(null);
+    try {
+      const watchlist = await loadWatchlistSymbols();
+      const symbols = watchlist.slice(0, WATCH_QUOTE_LIMIT);
+      const [nextIssues, quoteRows, briefings, disclosurePage] = await Promise.all([
+        fetchTopIssues(selectedYmd),
+        symbols.length > 0
+          ? fetchSignalMarketQuotes({ symbols, limit: symbols.length }).catch(() => [] as SignalApiMarketQuote[])
+          : Promise.resolve([] as SignalApiMarketQuote[]),
+        fetchSignalMarketBriefings({ ...utcRangeForLocalYmd(selectedYmd), limit: BRIEFING_LIMIT }).catch(() => []),
+        fetchSignalDisclosureDigests({ ...utcRangeForLocalYmd(selectedYmd), limit: DISCLOSURE_LIMIT, batches: 1 }).catch(
+          () => ({ items: [] }),
+        ),
+      ]);
+
+      const quoteBySymbol = new Map<string, QuoteRow>();
+      for (const item of quoteRows) {
+        const row = mapSignalQuoteToRow(item);
+        for (const key of quoteLookupKeys(item, row)) quoteBySymbol.set(key, row);
+      }
+      setIssues(nextIssues);
+      setQuotes(
+        symbols.map((symbol) => {
+          const key = symbol.trim().toUpperCase();
+          return quoteBySymbol.get(key) ?? { symbol, quote: null, error: 'NO_SERVER_QUOTE' };
+        }),
+      );
+      setBriefings([...briefings].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a))).slice(0, 6));
+      setDisclosures(disclosurePage.items.slice(0, DISCLOSURE_LIMIT));
+    } catch (e) {
+      setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
+    }
+  }, [selectedYmd, t]);
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await load();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const needsInitialLoad = loadedYmdRef.current !== selectedYmd;
+    if (needsInitialLoad) setLoading(true);
+    void (async () => {
+      try {
+        await load();
+        if (!cancelled) loadedYmdRef.current = selectedYmd;
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [load, selectedYmd]);
+
+  useEffect(() => {
+    if (selectedYmd > todayYmd) changeSelectedYmd(todayYmd);
+  }, [changeSelectedYmd, selectedYmd, todayYmd]);
+
+  useEffect(() => {
+    if (activeIssueIndex > Math.max(0, issues.length - 1)) {
+      setActiveIssueIndex(0);
+    }
+  }, [activeIssueIndex, issues.length]);
+
+  useEffect(() => {
+    if (activeBriefingIndex > Math.max(0, briefings.length - 1)) {
+      setActiveBriefingIndex(0);
+    }
+  }, [activeBriefingIndex, briefings.length]);
+
+  const openIssue = useCallback(
+    (row?: IssueRow) => {
+      router.navigate({
+        pathname: '/news-issues',
+        params: { category: row?.category ?? 'global', date: selectedYmd, digestId: row?.item.id },
+      } as never);
+    },
+    [router, selectedYmd],
+  );
+
+  const openSignal = useCallback(() => {
+    router.navigate({ pathname: '/(tabs)/signal', params: { date: selectedYmd } } as never);
+  }, [router, selectedYmd]);
+
+  const openQuotes = useCallback(() => {
+    router.navigate('/(tabs)/quotes' as never);
+  }, [router]);
+
+  const openDisclosures = useCallback(() => {
+    router.navigate('/(tabs)/disclosures' as never);
+  }, [router]);
+
+  const onIssueScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const width = event.nativeEvent.layoutMeasurement.width;
+    if (width <= 0) return;
+    const next = Math.round(event.nativeEvent.contentOffset.x / width);
+    setActiveIssueIndex(Math.max(0, Math.min(next, issues.length - 1)));
+  }, [issues.length]);
+
+  const onBriefingScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const width = event.nativeEvent.layoutMeasurement.width;
+    if (width <= 0) return;
+    const next = Math.round(event.nativeEvent.contentOffset.x / width);
+    setActiveBriefingIndex(Math.max(0, Math.min(next, briefings.length - 1)));
+  }, [briefings.length]);
+
+  return (
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={[styles.content, { paddingBottom: scrollContentPaddingBottom }]}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
+      {headerAccessory}
+      <SignalDateNavigator
+        label={selectedDateLabel}
+        previousA11y={t('insightDatePrevious')}
+        nextA11y={t('insightDateNext')}
+        labelA11y={t('insightOpenCalendar')}
+        todayLabel={t('insightCalendarToday')}
+        onPrevious={() => changeSelectedYmd(shiftYmd(selectedYmd, -1))}
+        onNext={() => changeSelectedYmd(shiftYmd(selectedYmd, 1))}
+        onPressLabel={() => router.navigate('/calendar' as never)}
+        onToday={() => changeSelectedYmd(todayYmd)}
+        showToday={!selectedIsToday}
+        nextDisabled={selectedIsToday}
+      />
+
+      {error ? (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
+
+      {loading ? (
+        <View style={styles.loadingBox}>
+          <SignalLoadingIndicator message={t('commonLoading')} />
+        </View>
+      ) : (
+        <>
+          <View style={styles.heroBlock}>
+            <View style={styles.heroHead}>
+              <Text style={styles.heroKicker}>{t('homeFocusHeroKicker')}</Text>
+              <HomeAiBadge />
+            </View>
+            {issues.length > 0 ? (
+              <View
+                style={styles.issueCarouselWrap}
+                onLayout={(event) => setIssueCarouselWidth(Math.round(event.nativeEvent.layout.width))}>
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  decelerationRate="fast"
+                  snapToInterval={issueCarouselWidth > 0 ? issueCarouselWidth : undefined}
+                  onMomentumScrollEnd={onIssueScrollEnd}
+                  style={styles.issueCarousel}>
+                  {issues.map((row) => (
+                    <View
+                      key={`${row.category}-${row.item.id}`}
+                      style={[styles.heroSlide, issueCarouselWidth > 0 && { width: issueCarouselWidth }]}>
+                      <Pressable
+                        onPress={() => openIssue(row)}
+                        accessibilityRole="button"
+                        style={({ pressed }) => [styles.heroCard, pressed && styles.pressed]}>
+                        <View style={styles.heroMetaRow}>
+                          <View style={styles.heroMetaLeft}>
+                            <Text style={styles.categoryPill}>{t(NEWS_SEGMENT_LABEL[row.category])}</Text>
+                            {row.item.symbols.slice(0, 2).map((symbol) => (
+                              <Text key={symbol} style={styles.symbolChip}>
+                                {symbol}
+                              </Text>
+                            ))}
+                          </View>
+                          <FontAwesome name={issueIconName(row.category)} size={13} color={theme.textDim} />
+                        </View>
+                        <Text style={styles.heroTitle} numberOfLines={2}>
+                          {row.item.title}
+                        </Text>
+                        <View style={styles.heroFooter}>
+                          <View style={styles.chipRow}>
+                            {row.item.topics.slice(0, 2).map((topic) => (
+                              <Text key={topic} style={styles.topicChip} numberOfLines={1}>
+                                {topic}
+                              </Text>
+                            ))}
+                          </View>
+                          <Text style={styles.sourcePill}>
+                            {t('homeFocusSourceCount', { count: String(row.item.sources.length) })}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    </View>
+                  ))}
+                </ScrollView>
+                {issues.length > 1 ? (
+                  <View style={styles.issueDots}>
+                    {issues.map((row, index) => (
+                      <View
+                        key={`${row.category}-${row.item.id}-dot`}
+                        style={[styles.issueDot, activeIssueIndex === index && styles.issueDotActive]}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <HomeSectionHeader
+              title={t('homeFocusSignalTitle')}
+              badge={<HomeAiBadge />}
+              onPress={openSignal}
+              accessibilityLabel={t('commonViewAll')}
+            />
+            {briefings.length > 0 ? (
+              <View
+                style={styles.briefingCarouselWrap}
+                onLayout={(event) => setBriefingCarouselWidth(Math.round(event.nativeEvent.layout.width))}>
+                <ScrollView
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  decelerationRate="fast"
+                  snapToInterval={briefingCarouselWidth > 0 ? briefingCarouselWidth : undefined}
+                  onMomentumScrollEnd={onBriefingScrollEnd}
+                  style={styles.issueCarousel}>
+                  {briefings.map((row) => {
+                    const session = HOME_SIGNAL_SESSIONS.find(
+                      (candidate) => candidate.market === row.market && candidate.session === row.session,
+                    );
+                    return (
+                      <View
+                        key={row.id}
+                        style={[styles.heroSlide, briefingCarouselWidth > 0 && { width: briefingCarouselWidth }]}>
+                        <Pressable
+                          onPress={openSignal}
+                          accessibilityRole="button"
+                          style={({ pressed }) => [styles.signalCard, styles.briefingCard, pressed && styles.pressed]}>
+                          <View style={styles.signalHead}>
+                            <View style={styles.signalPillRow}>
+                              <Text style={styles.marketPill}>{marketLabel(row.market)}</Text>
+                              <Text style={styles.sessionBadge}>
+                                {session ? t(session.labelId as MessageId) : t('briefingSessionEmptyTitle')}
+                              </Text>
+                            </View>
+                            <FontAwesome name="line-chart" size={13} color={theme.textDim} />
+                          </View>
+                          <View style={styles.signalBody}>
+                            <Text style={styles.signalText} numberOfLines={3}>
+                              {briefingLeadText(row)}
+                            </Text>
+                          </View>
+                          {row.sourceRefs.length > 0 ? (
+                            <Text style={styles.signalMetaText}>
+                              {t('homeFocusSourceCount', { count: String(row.sourceRefs.length) })}
+                            </Text>
+                          ) : null}
+                        </Pressable>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+                {briefings.length > 1 ? (
+                  <View style={styles.issueDots}>
+                    {briefings.map((row, index) => (
+                      <View
+                        key={`${row.id}-dot`}
+                        style={[styles.issueDot, activeBriefingIndex === index && styles.issueDotActive]}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            ) : (
+              <View style={[styles.signalCard, styles.briefingCard]}>
+                <View style={styles.signalHead}>
+                  <Text style={styles.sessionBadge}>{t('briefingSessionEmptyTitle')}</Text>
+                  <FontAwesome name="line-chart" size={13} color={theme.textDim} />
+                </View>
+                <View style={styles.signalBody}>
+                  <Text style={[styles.signalText, styles.dimmedText]} numberOfLines={3}>
+                    {t('briefingHubEmptyTitle')}
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <HomeSectionHeader title={t('homeFocusWatchTitle')} onPress={openQuotes} accessibilityLabel={t('commonViewAll')} />
+            <View style={styles.quoteGrid}>
+              {quotes.length === 0 ? (
+                <Text style={styles.emptyText}>{t('quotesEmptyWatch')}</Text>
+              ) : (
+                quotes.map((row, index) => {
+                  const pct = row.quote?.changePercent;
+                  const up = typeof pct === 'number' && pct >= 0;
+                  return (
+                    <View key={`${row.symbol}-${index}`} style={styles.quoteTile}>
+                      <View style={styles.quoteTileContent}>
+                        <View style={styles.quoteNameCol}>
+                          <Text style={styles.quoteSymbol} numberOfLines={1}>
+                            {row.symbol}
+                          </Text>
+                          <Text style={styles.quoteName} numberOfLines={1}>
+                            {row.name || row.quote?.name || '—'}
+                          </Text>
+                        </View>
+                        <View style={styles.quoteTileFooter}>
+                          <Text style={styles.priceText} numberOfLines={1}>
+                            {formatPrice(row)}
+                          </Text>
+                          <Text style={[styles.changeText, { color: up ? quoteChange.colors.up : quoteChange.colors.down }]}>
+                            {formatQuoteDpPct(pct)}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <HomeSectionHeader
+              title={t('todayBriefingDisclosureDigestTitle')}
+              onPress={openDisclosures}
+              accessibilityLabel={t('commonViewAll')}
+            />
+            {disclosures.length > 0 ? (
+              <DisclosureDigestSection items={disclosures} />
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
+              </View>
+            )}
+          </View>
+        </>
+      )}
+    </ScrollView>
+  );
+}
+
+function makeStyles(
+  theme: AppTheme,
+  sf: (n: number) => number,
+) {
+  return StyleSheet.create({
+    scroll: {
+      flex: 1,
+      backgroundColor: theme.bg,
+    },
+    content: {
+      paddingHorizontal: 16,
+      paddingTop: 14,
+      gap: 18,
+    },
+    errorBox: {
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.danger,
+      backgroundColor: theme.dangerDim,
+      padding: 12,
+    },
+    errorText: {
+      fontSize: sf(13),
+      lineHeight: sf(18),
+      fontWeight: '800',
+      color: theme.danger,
+    },
+    loadingBox: {
+      minHeight: 260,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    heroBlock: {
+      gap: 10,
+    },
+    heroHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    heroKicker: {
+      fontSize: sf(18),
+      lineHeight: sf(24),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    issueCarouselWrap: {
+      gap: 10,
+    },
+    briefingCarouselWrap: {
+      gap: 10,
+    },
+    issueCarousel: {
+      width: '100%',
+      overflow: 'hidden',
+    },
+    heroSlide: {
+      paddingRight: 0,
+    },
+    heroCard: {
+      minHeight: 132,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.card,
+      paddingHorizontal: 13,
+      paddingVertical: 11,
+      gap: 6,
+      justifyContent: 'space-between',
+      overflow: 'hidden',
+      shadowColor: '#000000',
+      shadowOpacity: 0.04,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 5 },
+      elevation: 1,
+    },
+    heroAccentLine: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: 4,
+      backgroundColor: theme.green,
+    },
+    heroMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    heroMetaLeft: {
+      minWidth: 0,
+      flexShrink: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+    },
+    heroIconBadge: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+    },
+    categoryPill: {
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      color: theme.green,
+      fontSize: sf(10),
+      lineHeight: sf(15),
+      fontWeight: '800',
+    },
+    sourcePill: {
+      flexShrink: 0,
+      borderRadius: 999,
+      overflow: 'hidden',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      backgroundColor: theme.bgElevated,
+      color: theme.textDim,
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '800',
+    },
+    mutedText: {
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '700',
+      color: theme.textDim,
+    },
+    heroTitle: {
+      fontSize: sf(15),
+      lineHeight: sf(21),
+      minHeight: sf(21) * 2,
+      fontWeight: '900',
+      color: theme.text,
+    },
+    heroFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    chipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+      flex: 1,
+    },
+    symbolChip: {
+      borderRadius: 999,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      overflow: 'hidden',
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
+      borderColor: theme.border,
+      color: theme.textMuted,
+      fontSize: sf(10),
+      lineHeight: sf(15),
+      fontWeight: '800',
+    },
+    topicChip: {
+      maxWidth: 120,
+      borderRadius: 999,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      overflow: 'hidden',
+      backgroundColor: theme.bgElevated,
+      color: theme.textMuted,
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '800',
+    },
+    issueDots: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 6,
+    },
+    issueDot: {
+      width: 5,
+      height: 5,
+      borderRadius: 999,
+      backgroundColor: theme.border,
+    },
+    issueDotActive: {
+      width: 16,
+      backgroundColor: theme.green,
+    },
+    section: {
+      gap: 10,
+    },
+    quoteCard: {
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      overflow: 'hidden',
+    },
+    quoteGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    quoteTile: {
+      width: '48.5%',
+      minHeight: 72,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      overflow: 'hidden',
+    },
+    quoteTileContent: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+      gap: 8,
+    },
+    quoteTileFooter: {
+      minWidth: 62,
+      gap: 2,
+      alignItems: 'flex-end',
+    },
+    quoteRow: {
+      minHeight: 72,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    rowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    quoteNameCol: {
+      flex: 1,
+      minWidth: 0,
+    },
+    quoteSymbol: {
+      fontSize: sf(14),
+      lineHeight: sf(18),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    quoteName: {
+      marginTop: 2,
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '700',
+      color: theme.textMuted,
+    },
+    priceBox: {
+      minWidth: 88,
+      borderRadius: 12,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      alignItems: 'flex-end',
+    },
+    priceText: {
+      fontSize: sf(13),
+      lineHeight: sf(17),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    changeText: {
+      marginTop: 2,
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '900',
+    },
+    signalCard: {
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.card,
+      paddingHorizontal: 13,
+      paddingVertical: 11,
+      gap: 6,
+      overflow: 'hidden',
+      shadowColor: '#000000',
+      shadowOpacity: 0.04,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 5 },
+      elevation: 1,
+    },
+    briefingCard: {
+      height: 132,
+    },
+    signalAccentLine: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: 3,
+      backgroundColor: theme.green,
+    },
+    signalHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    signalPillRow: {
+      minWidth: 0,
+      flexShrink: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    marketPill: {
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      overflow: 'hidden',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      backgroundColor: theme.bgElevated,
+      color: theme.textMuted,
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '900',
+    },
+    sessionBadge: {
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      overflow: 'hidden',
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      backgroundColor: theme.greenDim,
+      color: theme.green,
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '900',
+    },
+    signalBody: {
+      flex: 1,
+      justifyContent: 'center',
+    },
+    signalText: {
+      fontSize: sf(15),
+      lineHeight: sf(21),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    signalMetaText: {
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '700',
+      color: theme.textDim,
+    },
+    emptyCard: {
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      padding: 16,
+    },
+    emptyText: {
+      fontSize: sf(13),
+      lineHeight: sf(19),
+      fontWeight: '700',
+      color: theme.textDim,
+    },
+    dimmedText: {
+      color: theme.textMuted,
+    },
+    pressed: {
+      opacity: 0.72,
+    },
+  });
+}

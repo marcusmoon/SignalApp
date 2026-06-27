@@ -5,11 +5,13 @@ import { View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HomeBriefingContent } from '@/components/signal/HomeBriefingContent';
+import { HomeFocusContent } from '@/components/signal/HomeFocusContent';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
+import { loadHomeVariant, subscribeHomeVariantChanged, type HomeVariant } from '@/services/homeVariantPreference';
 
 export default function HomeTabScreen() {
   const { theme } = useSignalTheme();
@@ -19,19 +21,29 @@ export default function HomeTabScreen() {
   const todayYmd = useRollingLocalYmd();
   const todayYmdRef = useRef(todayYmd);
   const [selectedYmd, setSelectedYmd] = useState(todayYmd);
+  const [homeVariant, setHomeVariant] = useState<HomeVariant>('classic');
 
   useEffect(() => {
     const prevToday = todayYmdRef.current;
     todayYmdRef.current = todayYmd;
-    setSelectedYmd((prev) => (prev === prevToday ? todayYmd : prev));
+    setSelectedYmd((prev) => (prev === prevToday || prev > todayYmd ? todayYmd : prev));
   }, [todayYmd]);
+
+  useEffect(() => {
+    void loadHomeVariant().then(setHomeVariant);
+    return subscribeHomeVariantChanged(() => {
+      void loadHomeVariant().then(setHomeVariant);
+    });
+  }, []);
+
+  const HomeContent = homeVariant === 'focus' ? HomeFocusContent : HomeBriefingContent;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
       <SignalHeader compact />
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={{ flex: 1 }}>
-        <HomeBriefingContent
+        <HomeContent
           selectedYmd={selectedYmd}
           todayYmd={todayYmd}
           onSelectedYmdChange={setSelectedYmd}

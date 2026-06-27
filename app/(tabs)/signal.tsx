@@ -22,7 +22,7 @@ import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_CONTENT_SIDE_PADDING, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -405,20 +405,22 @@ export default function SignalScreen() {
         </View>
       ) : null}
 
-      <SignalDateNavigator
-        label={selectedDateLabel}
-        previousA11y={t('insightDatePrevious')}
-        nextA11y={t('insightDateNext')}
-        labelA11y={t('insightOpenCalendar')}
-        todayLabel={t('insightCalendarToday')}
-        onPrevious={() => moveDate(-1)}
-        onNext={() => moveDate(1)}
-        onPressLabel={openCalendar}
-        onToday={goToday}
-        showToday={!selectedIsToday}
-        nextDisabled={selectedIsToday}
-        style={[styles.dateNavigator, useTwoPane && styles.dateNavigatorWide]}
-      />
+      <View style={[styles.dateNavigatorWrap, useTwoPane && styles.dateNavigatorWrapWide]}>
+        <SignalDateNavigator
+          label={selectedDateLabel}
+          previousA11y={t('insightDatePrevious')}
+          nextA11y={t('insightDateNext')}
+          labelA11y={t('insightOpenCalendar')}
+          todayLabel={t('insightCalendarToday')}
+          onPrevious={() => moveDate(-1)}
+          onNext={() => moveDate(1)}
+          onPressLabel={openCalendar}
+          onToday={goToday}
+          showToday={!selectedIsToday}
+          nextDisabled={selectedIsToday}
+          style={styles.dateNavigator}
+        />
+      </View>
 
       {!loading && !useTwoPane ? (
         <View style={styles.sessionTabsWrap}>
@@ -578,23 +580,26 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignSelf: 'stretch',
       paddingTop: 12,
     },
-    dateNavigator: {
+    dateNavigatorWrap: {
       width: '100%',
-      maxWidth: APP_CONTENT_MAX_WIDTH - 32,
+      maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
-      marginHorizontal: 16,
+      paddingHorizontal: APP_CONTENT_SIDE_PADDING,
       marginBottom: 10,
     },
-    dateNavigatorWide: {
+    dateNavigatorWrapWide: {
       maxWidth: APP_CONTENT_MAX_WIDTH,
       marginTop: 12,
+    },
+    dateNavigator: {
+      width: '100%',
     },
     dateActionBtnPressed: { opacity: 0.86 },
     sessionTabsWrap: {
       width: '100%',
-      maxWidth: APP_CONTENT_MAX_WIDTH - 32,
+      maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
-      marginHorizontal: 16,
+      paddingHorizontal: APP_CONTENT_SIDE_PADDING,
       marginBottom: 12,
       gap: 6,
     },

@@ -5,7 +5,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
-import { HomeSectionIconButton } from '@/components/signal/HomeSectionIconButton';
+import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { ScheduleCarousel } from '@/components/signal/ScheduleCarousel';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -138,8 +138,17 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
   useEffect(() => {
     const prevToday = todayYmdRef.current;
     todayYmdRef.current = todayYmd;
-    setSelectedYmd((prev) => (prev === prevToday ? todayYmd : prev));
+    setSelectedYmd((prev) => (prev === prevToday || prev > todayYmd ? todayYmd : prev));
   }, [todayYmd]);
+
+  const selectedIsToday = selectedYmd >= todayYmd;
+
+  const changeSelectedYmd = useCallback(
+    (ymd: string) => {
+      setSelectedYmd(ymd > todayYmd ? todayYmd : ymd);
+    },
+    [todayYmd],
+  );
 
   const selectedDateLabel = useMemo(
     () =>
@@ -151,6 +160,12 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
       }),
     [locale, selectedYmd],
   );
+
+  useEffect(() => {
+    if (selectedYmd > todayYmd) {
+      changeSelectedYmd(todayYmd);
+    }
+  }, [changeSelectedYmd, selectedYmd, todayYmd]);
 
   const restored = ipadHomeDataCache?.ymd === selectedYmd ? ipadHomeDataCache : null;
 
@@ -341,11 +356,12 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
             nextA11y={t('insightDateNext')}
             labelA11y={t('insightOpenCalendar')}
             todayLabel={t('insightCalendarToday')}
-            onPrevious={() => setSelectedYmd((prev) => shiftYmd(prev, -1))}
-            onNext={() => setSelectedYmd((prev) => shiftYmd(prev, 1))}
+            onPrevious={() => changeSelectedYmd(shiftYmd(selectedYmd, -1))}
+            onNext={() => changeSelectedYmd(shiftYmd(selectedYmd, 1))}
             onPressLabel={goCalendar}
-            onToday={() => setSelectedYmd(todayYmd)}
-            showToday={selectedYmd !== todayYmd}
+            onToday={() => changeSelectedYmd(todayYmd)}
+            showToday={!selectedIsToday}
+            nextDisabled={selectedIsToday}
             style={styles.dateNav}
           />
         </View>
@@ -376,7 +392,12 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                   const accent = categoryAccent(category, theme);
                   return (
                     <View key={category} style={[styles.issueLane, { borderTopColor: accent }]}>
-                      <View style={styles.laneHeader}>
+                      <Pressable
+                        onPress={items.length > 0 ? () => goIssues(category) : undefined}
+                        disabled={items.length === 0}
+                        accessibilityRole={items.length > 0 ? 'button' : undefined}
+                        accessibilityLabel={items.length > 0 ? t('commonViewAll') : undefined}
+                        style={({ pressed }) => [styles.laneHeader, items.length > 0 && pressed && styles.pressed]}>
                         <View style={styles.laneHeaderText}>
                           <Text style={styles.laneTitle}>{t(NEWS_SEGMENT_LABEL[category])}</Text>
                           <Text style={styles.laneMeta} numberOfLines={1}>
@@ -389,14 +410,9 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
                           </Text>
                         </View>
                         {items.length > 0 ? (
-                          <HomeSectionIconButton
-                            icon="chevron-right"
-                            accessibilityLabel={t('commonViewAll')}
-                            onPress={() => goIssues(category)}
-                            solid={false}
-                          />
+                          <FontAwesome name="chevron-right" size={12} color={theme.textDim} />
                         ) : null}
-                      </View>
+                      </Pressable>
 
                       {items.length === 0 ? (
                         <Text style={styles.emptyLine}>{t('ipadHomeIssuesEmpty')}</Text>
@@ -493,21 +509,13 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
             </View>
 
             <View style={styles.widePanel}>
-              <View style={styles.compactHeaderRow}>
-                <View style={styles.compactHeader}>
-                  <View style={styles.compactTitleRow}>
-                    <Text style={styles.compactTitle}>{t('ipadHomeSignalTitle')}</Text>
-                    <HomeAiBadge />
-                  </View>
-                  <Text style={styles.compactSubtitle}>{t('ipadHomeSignalSubtitle')}</Text>
-                </View>
-                <HomeSectionIconButton
-                  icon="chevron-right"
-                  accessibilityLabel={t('commonViewAll')}
-                  onPress={openSignalTab}
-                  solid={false}
-                />
-              </View>
+              <HomeSectionHeader
+                title={t('ipadHomeSignalTitle')}
+                subtitle={t('ipadHomeSignalSubtitle')}
+                badge={<HomeAiBadge />}
+                onPress={openSignalTab}
+                accessibilityLabel={t('commonViewAll')}
+              />
               <View style={styles.signalList}>
                 {HOME_SIGNAL_SESSIONS.map((session, index) => {
                   const briefing = briefingBySession.get(session.key);
@@ -543,18 +551,12 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
             </View>
 
             <View style={styles.widePanel}>
-              <View style={styles.compactHeaderRow}>
-                <View style={styles.compactHeader}>
-                  <Text style={styles.compactTitle}>{t('todayBriefingDisclosureDigestTitle')}</Text>
-                  <Text style={styles.compactSubtitle}>{t('todayBriefingDisclosureDigestSubtitle')}</Text>
-                </View>
-                <HomeSectionIconButton
-                  icon="chevron-right"
-                  accessibilityLabel={t('commonViewAll')}
-                  onPress={goDisclosures}
-                  solid={false}
-                />
-              </View>
+              <HomeSectionHeader
+                title={t('todayBriefingDisclosureDigestTitle')}
+                subtitle={t('todayBriefingDisclosureDigestSubtitle')}
+                onPress={goDisclosures}
+                accessibilityLabel={t('commonViewAll')}
+              />
               {disclosureDigests.length > 0 ? (
                 <DisclosureDigestSection items={disclosureDigests} />
               ) : (
@@ -563,32 +565,28 @@ export function IpadHomeScreen({ showHeading = true }: IpadHomeScreenProps) {
             </View>
 
             <View style={styles.widePanel}>
-              <View style={styles.compactHeaderRow}>
-                <View style={styles.compactHeader}>
-                  <Text style={styles.compactTitle}>{t('ipadHomeCalendarTitle')}</Text>
-                  <Text style={styles.compactSubtitle}>{t('ipadHomeCalendarSubtitle')}</Text>
-                </View>
-                <HomeSectionIconButton
-                  icon="chevron-right"
-                  accessibilityLabel={t('commonViewAll')}
-                  onPress={goCalendar}
-                  solid={false}
-                />
-              </View>
+              <HomeSectionHeader
+                title={t('ipadHomeCalendarTitle')}
+                subtitle={t('ipadHomeCalendarSubtitle')}
+                onPress={goCalendar}
+                accessibilityLabel={t('commonViewAll')}
+              />
               <ScheduleCarousel
                 events={visibleCalendarEvents}
                 emptyText={t('ipadHomeCalendarEmpty')}
                 onPress={goCalendar}
               />
               {hiddenCalendarCount > 0 ? (
-                <View style={styles.calendarMoreRow}>
-                  <HomeSectionIconButton
-                    icon="chevron-right"
-                    accessibilityLabel={t('ipadHomeCalendarMore', { count: String(hiddenCalendarCount) })}
-                    onPress={goCalendar}
-                    solid={false}
-                  />
-                </View>
+                <Pressable
+                  onPress={goCalendar}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('ipadHomeCalendarMore', { count: String(hiddenCalendarCount) })}
+                  style={({ pressed }) => [styles.calendarMoreRow, pressed && styles.pressed]}>
+                  <Text style={styles.calendarMoreText}>
+                    {t('ipadHomeCalendarMore', { count: String(hiddenCalendarCount) })}
+                  </Text>
+                  <FontAwesome name="chevron-right" size={11} color={theme.textDim} />
+                </Pressable>
               ) : null}
             </View>
           </>
@@ -881,7 +879,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomColor: theme.border,
     },
     calendarMoreRow: {
-      alignItems: 'flex-end',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: 4,
+      paddingTop: 4,
+    },
+    calendarMoreText: {
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '700',
+      color: theme.textDim,
     },
     blockCard: {
       borderRadius: 14,
@@ -1101,11 +1109,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignSelf: 'flex-start',
       paddingVertical: 10,
       paddingHorizontal: 2,
-    },
-    calendarMoreText: {
-      fontSize: sf(12),
-      fontWeight: '700',
-      color: theme.green,
     },
     emptyLine: {
       fontSize: sf(12),

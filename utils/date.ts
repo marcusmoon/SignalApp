@@ -112,10 +112,10 @@ function localYmdFromZonedWallClock(
 
 /** Calendar grid / day list: device-local YMD from eventAt or US earnings hour when available. Holidays always use market event_date. */
 export function calendarEventDisplayYmd(ev: {
-  date?: string;
+  date?: string | null;
   eventAt?: string | null;
   earningsHour?: string | null;
-  time?: string;
+  time?: string | null;
   timezone?: string | null;
   country?: string | null;
   type?: string;

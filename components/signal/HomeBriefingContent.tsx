@@ -1,12 +1,10 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
-import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
-import { HomeSectionIconButton } from '@/components/signal/HomeSectionIconButton';
+import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { ScheduleCarousel } from '@/components/signal/ScheduleCarousel';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -59,8 +57,6 @@ type HomeBriefingContentProps = {
   showDateNavigator?: boolean;
   scrollContentPaddingBottom?: number;
   headerAccessory?: ReactNode;
-  showRefreshFab?: boolean;
-  fabBottom?: number;
 };
 
 function emptyDigestState(): DigestState {
@@ -128,8 +124,6 @@ export function HomeBriefingContent({
   showDateNavigator = true,
   scrollContentPaddingBottom = 28,
   headerAccessory,
-  showRefreshFab = false,
-  fabBottom = 88,
 }: HomeBriefingContentProps) {
   const router = useRouter();
   const { theme, scaleFont } = useSignalTheme();
@@ -146,6 +140,14 @@ export function HomeBriefingContent({
       }),
     [locale, selectedYmd],
   );
+  const selectedIsToday = selectedYmd >= todayYmd;
+
+  const changeSelectedYmd = useCallback(
+    (ymd: string) => {
+      onSelectedYmdChange(ymd > todayYmd ? todayYmd : ymd);
+    },
+    [onSelectedYmdChange, todayYmd],
+  );
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -154,7 +156,6 @@ export function HomeBriefingContent({
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [scheduleItems, setScheduleItems] = useState<CalendarEvent[]>([]);
   const [disclosureDigests, setDisclosureDigests] = useState<SignalApiDisclosureDigestItem[]>([]);
-  const [expandedSignalKey, setExpandedSignalKey] = useState<SignalSessionKey | null>(null);
   const loadedYmdRef = useRef<string | null>(null);
 
   const load = useCallback(async () => {
@@ -237,6 +238,12 @@ export function HomeBriefingContent({
     };
   }, [load, selectedYmd]);
 
+  useEffect(() => {
+    if (selectedYmd > todayYmd) {
+      changeSelectedYmd(todayYmd);
+    }
+  }, [changeSelectedYmd, selectedYmd, todayYmd]);
+
   const latestIssues = useMemo(
     () =>
       HOME_DIGEST_CATEGORIES.flatMap((category) =>
@@ -291,12 +298,11 @@ export function HomeBriefingContent({
   }, [router]);
 
   return (
-    <>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingBottom: scrollContentPaddingBottom }]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={[styles.content, { paddingBottom: scrollContentPaddingBottom }]}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
       {headerAccessory}
       {showDateNavigator ? (
         <SignalDateNavigator
@@ -305,11 +311,12 @@ export function HomeBriefingContent({
           nextA11y={t('insightDateNext')}
           labelA11y={t('insightOpenCalendar')}
           todayLabel={t('insightCalendarToday')}
-          onPrevious={() => onSelectedYmdChange(shiftYmd(selectedYmd, -1))}
-          onNext={() => onSelectedYmdChange(shiftYmd(selectedYmd, 1))}
+          onPrevious={() => changeSelectedYmd(shiftYmd(selectedYmd, -1))}
+          onNext={() => changeSelectedYmd(shiftYmd(selectedYmd, 1))}
           onPressLabel={openCalendar}
-          onToday={() => onSelectedYmdChange(todayYmd)}
-          showToday={selectedYmd !== todayYmd}
+          onToday={() => changeSelectedYmd(todayYmd)}
+          showToday={!selectedIsToday}
+          nextDisabled={selectedIsToday}
         />
       ) : null}
 
@@ -326,18 +333,12 @@ export function HomeBriefingContent({
       ) : (
         <>
           <View style={styles.section}>
-            <View style={styles.sectionHead}>
-              <View style={styles.sectionTitleRow}>
-                <Text style={styles.sectionTitle}>{t('ipadHomeIssuesTitle')}</Text>
-                <HomeAiBadge />
-              </View>
-              <HomeSectionIconButton
-                icon="chevron-right"
-                accessibilityLabel={t('commonViewAll')}
-                onPress={() => openIssue('global')}
-                solid={false}
-              />
-            </View>
+            <HomeSectionHeader
+              title={t('ipadHomeIssuesTitle')}
+              badge={<HomeAiBadge />}
+              onPress={() => openIssue('global')}
+              accessibilityLabel={t('commonViewAll')}
+            />
             {latestIssues.length === 0 ? (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
@@ -354,23 +355,18 @@ export function HomeBriefingContent({
                       index < latestIssues.length - 1 && styles.rowBorder,
                       pressed && styles.pressed,
                     ]}>
-                    <View style={styles.rowTop}>
-                      <Text style={styles.categoryLabel}>{t(NEWS_SEGMENT_LABEL[category])}</Text>
+                    <View style={styles.sessionBadge}>
+                      <Text style={styles.sessionBadgeText}>{t(NEWS_SEGMENT_LABEL[category])}</Text>
                     </View>
-                    <View style={styles.rowBody}>
-                      <View style={styles.rowTextCol}>
-                        <Text style={styles.issueTitle} numberOfLines={2}>
-                          {item.title}
-                        </Text>
-                        <Text style={styles.metaText} numberOfLines={1}>
-                          {t('feedDigestSummary', {
-                            count: String(item.count),
-                            sources: String(item.sources.length),
-                          })}
-                        </Text>
-                      </View>
-                      <FontAwesome name="chevron-right" size={12} color={theme.textDim} />
-                    </View>
+                    <Text style={styles.issueTitle} numberOfLines={2}>
+                      {item.title}
+                    </Text>
+                    <Text style={styles.metaText} numberOfLines={1}>
+                      {t('feedDigestSummary', {
+                        count: String(item.count),
+                        sources: String(item.sources.length),
+                      })}
+                    </Text>
                   </Pressable>
                 ))}
               </View>
@@ -378,77 +374,47 @@ export function HomeBriefingContent({
           </View>
 
           <View style={styles.section}>
-            <View style={styles.sectionHead}>
-              <View style={styles.sectionTitleRow}>
-                <Text style={styles.sectionTitle}>{t('ipadHomeSignalTitle')}</Text>
-                <HomeAiBadge />
-              </View>
-              <HomeSectionIconButton
-                icon="chevron-right"
-                accessibilityLabel={t('commonViewAll')}
-                onPress={openSignal}
-                solid={false}
-              />
-            </View>
+            <HomeSectionHeader
+              title={t('ipadHomeSignalTitle')}
+              badge={<HomeAiBadge />}
+              onPress={openSignal}
+              accessibilityLabel={t('commonViewAll')}
+            />
             <View style={styles.listCard}>
               {HOME_SIGNAL_SESSIONS.map((session, index) => {
                 const briefing = briefingBySession.get(session.key);
                 const text = briefing ? briefingLeadText(briefing) : t('briefingSessionEmptyTitle');
-                const expanded = expandedSignalKey === session.key;
                 const canOpenFull = !!briefing;
                 return (
-                  <View
+                  <Pressable
                     key={session.key}
-                    style={[styles.signalRow, index < HOME_SIGNAL_SESSIONS.length - 1 && styles.rowBorder]}>
-                    <View style={styles.signalRowHeader}>
-                      <View style={styles.sessionBadge}>
-                        <Text style={styles.sessionBadgeText}>{t(session.labelId)}</Text>
-                      </View>
-                      {canOpenFull ? (
-                        <HomeSectionIconButton
-                          icon="arrow-right"
-                          accessibilityLabel={t('homeSignalOpenFullA11y')}
-                          onPress={() => openSignalSession(session.key)}
-                          solid={false}
-                        />
-                      ) : null}
+                    onPress={canOpenFull ? () => openSignalSession(session.key) : undefined}
+                    disabled={!canOpenFull}
+                    accessibilityRole={canOpenFull ? 'button' : undefined}
+                    accessibilityLabel={canOpenFull ? t('homeSignalOpenFullA11y') : undefined}
+                    style={({ pressed }) => [
+                      styles.signalRow,
+                      index < HOME_SIGNAL_SESSIONS.length - 1 && styles.rowBorder,
+                      canOpenFull && pressed && styles.pressed,
+                    ]}>
+                    <View style={styles.sessionBadge}>
+                      <Text style={styles.sessionBadgeText}>{t(session.labelId)}</Text>
                     </View>
-                    {canOpenFull ? (
-                      <Pressable
-                        onPress={() => setExpandedSignalKey((prev) => (prev === session.key ? null : session.key))}
-                        accessibilityRole="button"
-                        accessibilityState={{ expanded }}
-                        style={({ pressed }) => [styles.signalTextRow, pressed && styles.pressed]}>
-                        <Text style={styles.signalText} numberOfLines={expanded ? undefined : 2}>
-                          {text}
-                        </Text>
-                        <FontAwesome
-                          name={expanded ? 'chevron-up' : 'chevron-down'}
-                          size={11}
-                          color={theme.textDim}
-                        />
-                      </Pressable>
-                    ) : (
-                      <Text style={styles.signalText} numberOfLines={2}>
-                        {text}
-                      </Text>
-                    )}
-                  </View>
+                    <Text style={[styles.signalText, !canOpenFull && styles.signalTextEmpty]} numberOfLines={3}>
+                      {text}
+                    </Text>
+                  </Pressable>
                 );
               })}
             </View>
           </View>
 
           <View style={styles.section}>
-            <View style={styles.sectionHead}>
-              <Text style={styles.sectionTitle}>{t('todayBriefingDisclosureDigestTitle')}</Text>
-              <HomeSectionIconButton
-                icon="chevron-right"
-                accessibilityLabel={t('commonViewAll')}
-                onPress={openDisclosures}
-                solid={false}
-              />
-            </View>
+            <HomeSectionHeader
+              title={t('todayBriefingDisclosureDigestTitle')}
+              onPress={openDisclosures}
+              accessibilityLabel={t('commonViewAll')}
+            />
             {disclosureDigests.length === 0 ? (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyText}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
@@ -459,15 +425,11 @@ export function HomeBriefingContent({
           </View>
 
           <View style={styles.section}>
-            <View style={styles.sectionHead}>
-              <Text style={styles.sectionTitle}>{t('screenCalendar')}</Text>
-              <HomeSectionIconButton
-                icon="chevron-right"
-                accessibilityLabel={t('commonViewAll')}
-                onPress={openCalendar}
-                solid={false}
-              />
-            </View>
+            <HomeSectionHeader
+              title={t('screenCalendar')}
+              onPress={openCalendar}
+              accessibilityLabel={t('commonViewAll')}
+            />
             <ScheduleCarousel
               events={scheduleItems}
               emptyText={t('ipadHomeCalendarEmpty')}
@@ -476,17 +438,7 @@ export function HomeBriefingContent({
           </View>
         </>
       )}
-      </ScrollView>
-      {showRefreshFab && hasSignalApi() ? (
-        <FloatingGlassFab
-          bottom={fabBottom}
-          onPress={() => void refresh()}
-          iconName="sync"
-          accessibilityLabel={t('fabRefreshA11y')}
-          disabled={refreshing || loading}
-        />
-      ) : null}
-    </>
+    </ScrollView>
   );
 }
 
@@ -522,26 +474,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     section: {
       gap: 10,
     },
-    sectionHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-    },
-    sectionTitleRow: {
-      flex: 1,
-      minWidth: 0,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    sectionTitle: {
-      flexShrink: 1,
-      fontSize: sf(18),
-      lineHeight: sf(24),
-      fontWeight: '900',
-      color: theme.text,
-    },
     listCard: {
       overflow: 'hidden',
       borderRadius: 18,
@@ -572,41 +504,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingVertical: 13,
       gap: 8,
     },
-    signalRowHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 10,
-    },
     rowBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
-    },
-    rowTop: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    categoryLabel: {
-      overflow: 'hidden',
-      borderRadius: 999,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      backgroundColor: theme.bgElevated,
-      fontSize: sf(11),
-      lineHeight: sf(14),
-      fontWeight: '900',
-      color: theme.green,
-    },
-    rowBody: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-    },
-    rowTextCol: {
-      flex: 1,
-      minWidth: 0,
-      gap: 4,
     },
     issueTitle: {
       fontSize: sf(15),
@@ -636,17 +536,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.green,
     },
     signalText: {
-      flex: 1,
-      minWidth: 0,
       fontSize: sf(14),
       lineHeight: sf(20),
       fontWeight: '800',
       color: theme.text,
     },
-    signalTextRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 8,
+    signalTextEmpty: {
+      color: theme.textDim,
     },
     pressed: {
       opacity: 0.72,

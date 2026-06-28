@@ -13,7 +13,7 @@ import {
   tabBarPositionBottom,
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
-import { webTabNavigatorHostStyle, webTabSceneStyle, webFlexFill, webSidebarContentStyle } from '@/constants/webLayout';
+import { webTabNavigatorHostStyle, webTabSceneStyle, webFlexFill, webSidebarContentStyle, webSidebarPaneFill } from '@/constants/webLayout';
 import {
   GlassSurfaceBackground,
   colorWithAlpha,
@@ -467,13 +467,16 @@ const sidebarLayoutStyles = StyleSheet.create({
   body: {
     ...webFlexFill,
     flexDirection: 'row',
+    alignItems: 'stretch',
   },
   content: {
     ...webSidebarContentStyle,
   },
+  paneFill: {
+    ...webSidebarPaneFill,
+  },
   tabsHost: {
     ...webTabNavigatorHostStyle,
-    width: '100%',
   },
 });
 
@@ -506,19 +509,27 @@ function IpadWideTabLayout({
         />
         <View style={[sidebarLayoutStyles.content, { backgroundColor: theme.bg }]}>
           {contentPane === 'home' ? (
-            <IpadHomeScreen />
+            <View style={sidebarLayoutStyles.paneFill}>
+              <IpadHomeScreen />
+            </View>
           ) : contentPane === 'newsIssues' && newsIssuesParams ? (
-            <NewsIssuesContent
-              embedded
-              initialCategory={newsIssuesParams.category}
-              initialDate={newsIssuesParams.date}
-              initialDigestId={newsIssuesParams.digestId}
-              onBack={showHome}
-            />
+            <View style={sidebarLayoutStyles.paneFill}>
+              <NewsIssuesContent
+                embedded
+                initialCategory={newsIssuesParams.category}
+                initialDate={newsIssuesParams.date}
+                initialDigestId={newsIssuesParams.digestId}
+                onBack={showHome}
+              />
+            </View>
           ) : contentPane === 'account' ? (
-            <AccountScreen embedded />
+            <View style={sidebarLayoutStyles.paneFill}>
+              <AccountScreen embedded />
+            </View>
           ) : contentPane === 'settings' ? (
-            <SettingsScreen embedded />
+            <View style={sidebarLayoutStyles.paneFill}>
+              <SettingsScreen embedded />
+            </View>
           ) : (
             <View style={sidebarLayoutStyles.tabsHost}>
               <Tabs

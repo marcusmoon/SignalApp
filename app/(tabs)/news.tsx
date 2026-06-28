@@ -4,8 +4,7 @@ import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   ActivityIndicator,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
+  FlatList,
   Platform,
   Pressable,
   Text,
@@ -79,7 +78,7 @@ import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceS
 import { markNewsFeedSeen } from '@/services/newsUnreadPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { useResetRefreshingOnTabBlur, useTabPressCycleSegment } from '@/hooks';
-import { createScrollLoadMoreGate } from '@/utils/listScrollLoadMoreGate';
+import { useWebFlatListLoadMore } from '@/hooks/useWebFlatListLoadMore';
 import {
   fetchSignalNews,
   fetchSignalNewsDigests,
@@ -198,8 +197,16 @@ export default function FeedScreen() {
   const latestSeenIdRef = useRef<string | null>(null);
 
   /** 웹: 리스트 콘텐츠 높이 < 뷰포트면 onEndReached가 안 나와 다음 페이지를 못 불러오는 경우가 있음 */
-  const feedListViewportH = useRef(0);
-  const feedScrollLoadGateRef = useRef(createScrollLoadMoreGate());
+  const hasMoreRef = useRef(hasMore);
+  const loadingMoreRef = useRef(loadingMore);
+  const loadingRef = useRef(loading);
+  hasMoreRef.current = hasMore;
+  loadingMoreRef.current = loadingMore;
+  loadingRef.current = loading;
+  const serverRowsRef = useRef(serverRows);
+  const youtubeRowsRef = useRef(youtubeRows);
+  serverRowsRef.current = serverRows;
+  youtubeRowsRef.current = youtubeRows;
   const itemsRef = useRef(items);
   const videoItemsRef = useRef(videoItems);
   const globalFilterRef = useRef(globalFilter);
@@ -521,7 +528,7 @@ export default function FeedScreen() {
   );
 
   const loadMore = useCallback(async () => {
-    if (!hasMore || loadingMore || loading || !hasSignalApi()) return;
+    if (!hasMoreRef.current || loadingMoreRef.current || loadingRef.current || !hasSignalApi()) return;
     if (segment !== 'watch' && segment !== 'crypto' && segment !== 'korea' && segment !== 'global' && segment !== 'video') return;
 
     setLoadingMore(true);
@@ -532,7 +539,7 @@ export default function FeedScreen() {
           {
             sort: 'latest',
             limit: FEED_PAGE_VIDEO,
-            offset: youtubeRows.length,
+            offset: youtubeRowsRef.current.length,
           },
           { cacheMode: 'use' },
         );
@@ -540,7 +547,8 @@ export default function FeedScreen() {
           setHasMore(false);
           return;
         }
-        const merged = [...youtubeRows, ...page.items];
+        const merged = [...youtubeRowsRef.current, ...page.items];
+        youtubeRowsRef.current = merged;
         setYoutubeRows(merged);
         setVideoItems(merged.map((item) => signalYoutubeToYoutubeItem(item, locale)));
         setHasMore(page.meta.hasMore);
@@ -583,7 +591,7 @@ export default function FeedScreen() {
                   ? sourceFilterParam(koreaSourceOptions, koreaSelectedSourcesRef.current)
                   : undefined,
           limit: pageLimit,
-          offset: serverRows.length,
+          offset: serverRowsRef.current.length,
           tag: activeTag || undefined,
         },
         { cacheMode: 'use' },
@@ -592,7 +600,8 @@ export default function FeedScreen() {
         setHasMore(false);
         return;
       }
-      const merged = [...serverRows, ...nextRows];
+      const merged = [...serverRowsRef.current, ...nextRows];
+      serverRowsRef.current = merged;
       setServerRows(merged);
       setHasMore(meta.hasMore);
       let scoped = merged;
@@ -641,33 +650,22 @@ export default function FeedScreen() {
     }
   }, [
     activeTag,
-    hasMore,
-    loading,
-    loadingMore,
     locale,
     segment,
     availableSources,
     selectedSources,
-    serverRows,
     t,
     watchSymbolOptions,
-    youtubeRows,
   ]);
 
-  const onFeedScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      feedScrollLoadGateRef.current.onScrollNearEnd(e, {
-        enabled:
-          hasMore &&
-          !loadingMore &&
-          !loading &&
-          hasSignalApi() &&
-          (segment === 'watch' || segment === 'crypto' || segment === 'korea' || segment === 'global' || segment === 'video'),
-        trigger: () => void loadMore(),
-      });
-    },
-    [hasMore, loadingMore, loading, segment, loadMore],
-  );
+  const feedListRef = useRef<FlatList<FeedRow>>(null);
+  const webFeedLoadMore = useWebFlatListLoadMore({
+    hasMore,
+    loadingMore,
+    loading,
+    loadMore,
+    enabled: Platform.OS === 'web' && isFocused,
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -1329,6 +1327,7 @@ export default function FeedScreen() {
         ) : null}
 
         <WebWheelFlatList
+          ref={feedListRef}
           data={loading ? [] : listData}
           keyExtractor={(row) =>
             row.kind === 'ad' ? row.key : row.kind === 'video' ? row.video.id : row.news.id
@@ -1382,26 +1381,10 @@ export default function FeedScreen() {
           }
           onEndReached={() => void loadMore()}
           onEndReachedThreshold={0.55}
-          onScroll={onFeedScroll}
+          onScroll={webFeedLoadMore.onScroll}
           scrollEventThrottle={350}
-          onLayout={
-            Platform.OS === 'web'
-              ? (e) => {
-                  feedListViewportH.current = e.nativeEvent.layout.height;
-                }
-              : undefined
-          }
-          onContentSizeChange={
-            Platform.OS === 'web'
-              ? (_, h) => {
-                  if (!hasMore || loadingMore || loading) return;
-                  const vh = feedListViewportH.current;
-                  if (vh <= 0 || h <= 0) return;
-                  if (h >= vh + 32) return;
-                  void loadMore();
-                }
-              : undefined
-          }
+          onLayout={webFeedLoadMore.onLayout}
+          onContentSizeChange={webFeedLoadMore.onContentSizeChange}
           style={styles.list}
           contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
           showsVerticalScrollIndicator={false}

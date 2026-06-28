@@ -476,6 +476,10 @@ const sidebarLayoutStyles = StyleSheet.create({
   tabsHost: {
     ...webTabNavigatorHostStyle,
   },
+  tabsHostVisible: {
+    flex: 1,
+    alignSelf: 'stretch',
+  },
   /** Keep mounted tabs laid out (display:none breaks FlatList viewport + pagination on web). */
   tabsHostHidden: {
     position: 'absolute',
@@ -535,7 +539,7 @@ function IpadWideTabLayout({
           <View
             style={[
               sidebarLayoutStyles.tabsHost,
-              contentPane !== 'tabs' ? sidebarLayoutStyles.tabsHostHidden : null,
+              contentPane === 'tabs' ? sidebarLayoutStyles.tabsHostVisible : sidebarLayoutStyles.tabsHostHidden,
             ]}>
             <Tabs
               initialRouteName="news"

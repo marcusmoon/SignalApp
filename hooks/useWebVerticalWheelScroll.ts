@@ -2,28 +2,52 @@ import { useEffect, useRef, type RefObject } from 'react';
 import { Platform, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 
 import {
-  dispatchDomScrollEvent,
   isDomNearScrollEnd,
   syntheticScrollEventFromDom,
 } from '@/utils/listScrollLoadMoreGate';
 
 type ScrollableRef = RefObject<{
   getScrollableNode?: () => HTMLElement;
+  getScrollRef?: () => { scrollTo?: (opts: { x?: number; y?: number; animated?: boolean }) => void };
+  scrollTo?: (opts: { x?: number; y?: number; animated?: boolean }) => void;
+  scrollToOffset?: (opts: { offset: number; animated?: boolean }) => void;
 } | null>;
 
 type WebVerticalWheelScrollOptions = {
   enabled?: boolean;
-  /** FlatList/ScrollView onScroll — not fired when we set scrollTop manually on web. */
   onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
-  /** FlatList onEndReached — same gap after manual wheel scroll. */
   onEndReached?: () => void;
   nearEndPadPx?: number;
   nearEndCooldownMs?: number;
 };
 
+function scrollInstanceToY(
+  instance: NonNullable<ScrollableRef['current']>,
+  node: HTMLElement,
+  y: number,
+) {
+  const maxY = Math.max(0, node.scrollHeight - node.clientHeight);
+  const nextY = Math.max(0, Math.min(maxY, y));
+
+  if (typeof instance.scrollToOffset === 'function') {
+    instance.scrollToOffset({ offset: nextY, animated: false });
+    return nextY;
+  }
+
+  const scrollRef = instance.getScrollRef?.() ?? instance;
+  if (typeof scrollRef.scrollTo === 'function') {
+    scrollRef.scrollTo({ y: nextY, animated: false });
+    return nextY;
+  }
+
+  node.scrollTop = nextY;
+  return nextY;
+}
+
 /**
  * RN Web: wheel over list rows targets non-scrollable children, so FlatList/ScrollView
- * does not scroll. Forward vertical wheel to the scroll container (capture phase).
+ * does not scroll. Forward vertical wheel through RN scroll APIs so VirtualizedList
+ * metrics stay in sync (required for pagination / onEndReached).
  */
 export function useWebVerticalWheelScroll(
   scrollRef: ScrollableRef,
@@ -51,7 +75,6 @@ export function useWebVerticalWheelScroll(
 
     const notifyScroll = () => {
       if (!node) return;
-      dispatchDomScrollEvent(node);
       onScrollRef.current?.(syntheticScrollEventFromDom(node));
       if (
         onEndReachedRef.current &&
@@ -64,23 +87,32 @@ export function useWebVerticalWheelScroll(
     };
 
     const onWheel = (ev: WheelEvent) => {
-      if (!node) return;
-      if (node.scrollHeight <= node.clientHeight + 1) return;
+      const instance = scrollRef.current;
+      if (!instance?.getScrollableNode || !node) return;
 
       const deltaY = ev.deltaY;
       if (deltaY === 0) return;
       if (Math.abs(ev.deltaX) > Math.abs(deltaY)) return;
 
+      const canScroll = node.scrollHeight > node.clientHeight + 1;
+
+      if (!canScroll) {
+        if (deltaY > 0) notifyScroll();
+        return;
+      }
+
       const atTop = node.scrollTop <= 0;
       const atBottom = node.scrollTop + node.clientHeight >= node.scrollHeight - 1;
       if (deltaY < 0 && atTop) return;
+
+      ev.preventDefault();
+
       if (deltaY > 0 && atBottom) {
         notifyScroll();
         return;
       }
 
-      ev.preventDefault();
-      node.scrollTop += deltaY;
+      scrollInstanceToY(instance, node, node.scrollTop + deltaY);
       notifyScroll();
     };
 

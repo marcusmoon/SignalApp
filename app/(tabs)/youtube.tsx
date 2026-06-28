@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   Linking,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Platform,
   Pressable,
   StyleSheet,
@@ -45,7 +44,7 @@ import type { SignalApiYoutubeChannel, SignalYoutubeListMeta } from '@/integrati
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { YoutubeItem } from '@/types/signal';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
-import { createScrollLoadMoreGate } from '@/utils/listScrollLoadMoreGate';
+import { useWebFlatListLoadMore } from '@/hooks/useWebFlatListLoadMore';
 import {
   msUntilNextPacificMidnight,
   quotaResetHoursMinutes,
@@ -89,8 +88,12 @@ export default function YoutubeScreen() {
   /** load() 안에서 이미 화면에 목록이 있는지 — 캐시 재적중 시 전체 로딩 스킵 */
   const itemsRef = useRef<YoutubeItem[]>([]);
   itemsRef.current = items;
-  const ytListViewportH = useRef(0);
-  const ytScrollLoadGateRef = useRef(createScrollLoadMoreGate());
+  const youtubeMetaRef = useRef(youtubeMeta);
+  youtubeMetaRef.current = youtubeMeta;
+  const loadingMoreRef = useRef(loadingMore);
+  const loadingRef = useRef(loading);
+  loadingMoreRef.current = loadingMore;
+  loadingRef.current = loading;
   /** `hadItems`인데도 `setLoading(true)`를 생략하는 경로(채널 토글 등)에서 loadMore와 겹치지 않게 함 */
   const youtubeReplacingRef = useRef(false);
   /** 필터 적용 시 `setSelectedHandles` 직후 useEffect load() 중복 방지 */
@@ -211,8 +214,9 @@ export default function YoutubeScreen() {
 
   const loadMore = useCallback(async () => {
     if (youtubeReplacingRef.current) return;
-    if (!youtubeMeta?.hasMore || loadingMore || loading || !hasSignalApi()) return;
-    const nextOff = youtubeMeta.nextOffset;
+    const meta = youtubeMetaRef.current;
+    if (!meta?.hasMore || loadingMoreRef.current || loadingRef.current || !hasSignalApi()) return;
+    const nextOff = meta.nextOffset;
     if (nextOff == null) return;
 
     setLoadingMore(true);
@@ -255,18 +259,16 @@ export default function YoutubeScreen() {
     } finally {
       setLoadingMore(false);
     }
-  }, [youtubeMeta, loadingMore, loading, effectiveSort, selectedHandles, curationHandles, locale, applyLoadError]);
+  }, [effectiveSort, selectedHandles, curationHandles, locale, applyLoadError]);
 
-  const onYoutubeScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      ytScrollLoadGateRef.current.onScrollNearEnd(e, {
-        enabled:
-          Boolean(youtubeMeta?.hasMore) && !loadingMore && !loading && !youtubeReplacingRef.current && hasSignalApi(),
-        trigger: () => void loadMore(),
-      });
-    },
-    [youtubeMeta?.hasMore, loadingMore, loading, loadMore],
-  );
+  const ytListRef = useRef<FlatList<YoutubeItem>>(null);
+  const webFeedLoadMore = useWebFlatListLoadMore({
+    hasMore: Boolean(youtubeMeta?.hasMore),
+    loadingMore,
+    loading,
+    loadMore,
+    enabled: Platform.OS === 'web' && isFocused,
+  });
 
   useEffect(() => {
     if (selectedHandles === null) return;
@@ -516,6 +518,7 @@ export default function YoutubeScreen() {
         </View> : null}
 
         <WebWheelFlatList
+          ref={ytListRef}
           data={showScrollLoading ? [] : items}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
@@ -543,26 +546,10 @@ export default function YoutubeScreen() {
           }
           onEndReached={() => void loadMore()}
           onEndReachedThreshold={0.55}
-          onScroll={onYoutubeScroll}
+          onScroll={webFeedLoadMore.onScroll}
           scrollEventThrottle={350}
-          onLayout={
-            Platform.OS === 'web'
-              ? (e) => {
-                  ytListViewportH.current = e.nativeEvent.layout.height;
-                }
-              : undefined
-          }
-          onContentSizeChange={
-            Platform.OS === 'web'
-              ? (_, h) => {
-                  if (!youtubeMeta?.hasMore || loadingMore || loading || youtubeReplacingRef.current) return;
-                  const vh = ytListViewportH.current;
-                  if (vh <= 0 || h <= 0) return;
-                  if (h >= vh + 32) return;
-                  void loadMore();
-                }
-              : undefined
-          }
+          onLayout={webFeedLoadMore.onLayout}
+          onContentSizeChange={webFeedLoadMore.onContentSizeChange}
           style={styles.list}
           contentContainerStyle={[
             styles.listContent,

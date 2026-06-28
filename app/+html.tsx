@@ -18,7 +18,8 @@ export default function Root({ children }: { children: React.ReactNode }) {
         */}
         <ScrollViewStyleReset />
 
-        {/* Using raw CSS styles as an escape-hatch to ensure the background color never flickers in dark-mode. */}
+        {/* Keep the document background aligned with the persisted app theme before React hydrates. */}
+        <script dangerouslySetInnerHTML={{ __html: initialThemeScript }} />
         <style dangerouslySetInnerHTML={{ __html: responsiveBackground }} />
         {/* Add any additional <head> elements that you want globally available on web... */}
       </head>
@@ -27,12 +28,46 @@ export default function Root({ children }: { children: React.ReactNode }) {
   );
 }
 
+const initialThemeScript = `
+(function () {
+  try {
+    var stored =
+      window.localStorage.getItem('AsyncStorage:@signal/theme_appearance_mode_v1') ||
+      window.localStorage.getItem('@signal/theme_appearance_mode_v1') ||
+      '';
+    var mode = String(stored).replace(/^"|"$/g, '');
+    var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var scheme = mode === 'dark' || (mode !== 'light' && systemDark) ? 'dark' : 'light';
+    var bg = scheme === 'dark' ? '#090A0F' : '#F7F8FA';
+    document.documentElement.dataset.signalTheme = scheme;
+    document.documentElement.style.backgroundColor = bg;
+    if (document.body) document.body.style.backgroundColor = bg;
+  } catch (e) {}
+})();
+`;
+
 const responsiveBackground = `
+html,
+body,
+#root {
+  height: 100%;
+  min-height: 100%;
+  background-color: #F7F8FA;
+}
+
 body {
-  background-color: #fff;
+  background-color: #F7F8FA;
+}
+
+html[data-signal-theme="dark"],
+html[data-signal-theme="dark"] body,
+html[data-signal-theme="dark"] #root {
+  background-color: #090A0F;
 }
 @media (prefers-color-scheme: dark) {
-  body {
-    background-color: #000;
+  html:not([data-signal-theme]),
+  html:not([data-signal-theme]) body,
+  html:not([data-signal-theme]) #root {
+    background-color: #090A0F;
   }
 }`;

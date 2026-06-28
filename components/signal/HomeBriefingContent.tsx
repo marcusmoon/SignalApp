@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
@@ -302,7 +302,9 @@ export function HomeBriefingContent({
       style={styles.scroll}
       contentContainerStyle={[styles.content, { paddingBottom: scrollContentPaddingBottom }]}
       showsVerticalScrollIndicator={false}
-      refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
+      refreshControl={
+        Platform.OS === 'web' ? undefined : <ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />
+      }>
       {headerAccessory}
       {showDateNavigator ? (
         <SignalDateNavigator
@@ -446,9 +448,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     scroll: {
       flex: 1,
+      minHeight: 0,
       backgroundColor: theme.bg,
     },
     content: {
+      flexGrow: 1,
       paddingHorizontal: 16,
       paddingTop: 14,
       gap: 18,

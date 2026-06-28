@@ -39,10 +39,10 @@ export default function HomeTabScreen() {
   const HomeContent = homeVariant === 'focus' ? HomeFocusContent : HomeBriefingContent;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, minHeight: 0, backgroundColor: theme.bg }} edges={['top']}>
       <SignalHeader compact />
       {isFocused ? <OtaUpdateBanner /> : null}
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, minHeight: 0 }}>
         <HomeContent
           selectedYmd={selectedYmd}
           todayYmd={todayYmd}

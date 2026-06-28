@@ -1,7 +1,16 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
@@ -515,7 +524,9 @@ export function HomeFocusContent({
         { paddingBottom: scrollContentPaddingBottom },
       ]}
       showsVerticalScrollIndicator={false}
-      refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
+      refreshControl={
+        Platform.OS === 'web' ? undefined : <ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />
+      }>
       {headerAccessory}
       <SignalDateNavigator
         label={selectedDateLabel}
@@ -558,9 +569,12 @@ export function HomeFocusContent({
                   <ScrollView
                     ref={issueScrollRef}
                     horizontal
+                    nestedScrollEnabled
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
                     decelerationRate="fast"
+                    directionalLockEnabled
+                    keyboardShouldPersistTaps="handled"
                     snapToInterval={issueCarouselWidth > 0 ? issueCarouselWidth : undefined}
                     onScroll={onIssueScroll}
                     scrollEventThrottle={16}
@@ -610,9 +624,12 @@ export function HomeFocusContent({
                   <ScrollView
                     ref={briefingScrollRef}
                     horizontal
+                    nestedScrollEnabled
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
                     decelerationRate="fast"
+                    directionalLockEnabled
+                    keyboardShouldPersistTaps="handled"
                     snapToInterval={briefingCarouselWidth > 0 ? briefingCarouselWidth : undefined}
                     onScroll={onBriefingScroll}
                     scrollEventThrottle={16}
@@ -715,9 +732,11 @@ function makeStyles(
   return StyleSheet.create({
     scroll: {
       flex: 1,
+      minHeight: 0,
       backgroundColor: theme.bg,
     },
     content: {
+      flexGrow: 1,
       paddingHorizontal: 16,
       paddingTop: 14,
       gap: 18,

@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useColorScheme } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
 
 import type { AppTheme, ThemeColorScheme } from '@/constants/theme';
 import {
@@ -98,6 +98,13 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
     () => getThemeForPreset(presetId, customHex, effectiveColorScheme),
     [presetId, customHex, effectiveColorScheme],
   );
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    document.documentElement.dataset.signalTheme = effectiveColorScheme;
+    document.documentElement.style.backgroundColor = theme.bg;
+    document.body.style.backgroundColor = theme.bg;
+  }, [effectiveColorScheme, theme.bg]);
 
   const fontMultiplier = useMemo(() => fontSizeMultiplierForPreset(fontSizePreset), [fontSizePreset]);
 

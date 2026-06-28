@@ -10,17 +10,10 @@ export const APP_WIDE_CONTENT_MAX_WIDTH = 1120;
 
 export const APP_CONTENT_SIDE_PADDING = 16;
 
-/** iPad / desktop web: centered content column inside the sidebar pane */
-export const wideContentColumn = {
-  width: '100%' as const,
-  maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
-  alignSelf: 'center' as const,
-};
-
-/** Tab/list screens in wide mode: fill the centered content column */
+/** Tab/list screens in wide mode: fill the sidebar content pane edge-to-edge */
 export const wideContentFill = {
   width: '100%' as const,
-  maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
+  maxWidth: '100%' as const,
   alignSelf: 'stretch' as const,
 };
 

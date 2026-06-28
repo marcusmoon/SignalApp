@@ -13,7 +13,6 @@ import {
   tabBarPositionBottom,
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
-import { wideContentColumn } from '@/constants/responsiveLayout';
 import {
   GlassSurfaceBackground,
   colorWithAlpha,
@@ -472,12 +471,6 @@ const sidebarLayoutStyles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     minHeight: 0,
-    alignItems: 'center',
-  },
-  contentInner: {
-    flex: 1,
-    minHeight: 0,
-    ...wideContentColumn,
   },
   tabsHost: {
     flex: 1,
@@ -502,18 +495,18 @@ function IpadWideTabLayout({
   t,
 }: IpadWideTabLayoutProps) {
   const { contentPane, newsIssuesParams, showHome } = useIpadSidebarNav();
+  const { theme } = useSignalTheme();
 
   return (
-    <SafeAreaView style={sidebarLayoutStyles.safe} edges={['top']}>
+    <SafeAreaView style={[sidebarLayoutStyles.safe, { backgroundColor: theme.bg }]} edges={['top']}>
       <SignalHeader compact fullWidth />
-      <View style={sidebarLayoutStyles.body}>
+      <View style={[sidebarLayoutStyles.body, { backgroundColor: theme.bg }]}>
         <SignalSidebarTabBar
           newsHasUnread={newsHasUnread}
           signalHasUnread={signalHasUnread}
           disclosureHasUnread={disclosureHasUnread}
         />
-        <View style={sidebarLayoutStyles.content}>
-          <View style={sidebarLayoutStyles.contentInner}>
+        <View style={[sidebarLayoutStyles.content, { backgroundColor: theme.bg }]}>
           {contentPane === 'home' ? (
             <IpadHomeScreen />
           ) : contentPane === 'newsIssues' && newsIssuesParams ? (
@@ -546,7 +539,6 @@ function IpadWideTabLayout({
               </Tabs>
             </View>
           )}
-          </View>
         </View>
       </View>
     </SafeAreaView>

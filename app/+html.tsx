@@ -83,6 +83,14 @@ body {
   overflow: hidden;
 }
 
+/* Tab navigators must fill height so inner lists get a bounded scroll viewport on web. */
+#root > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
 html[data-signal-theme="light"],
 html[data-signal-theme="light"] body,
 html[data-signal-theme="light"] #root {

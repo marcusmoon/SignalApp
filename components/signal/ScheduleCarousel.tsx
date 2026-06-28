@@ -1,10 +1,12 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { HorizontalCarouselNav } from '@/components/layout/HorizontalCarouselNav';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useWebHorizontalWheelScroll } from '@/hooks/useWebHorizontalWheelScroll';
 import type { CalendarEvent } from '@/types/signal';
 import { calendarEventDisplayYmd } from '@/utils/date';
 
@@ -53,13 +55,26 @@ export function ScheduleCarousel({ events, emptyText, onPress }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const scrollRef = useRef<ScrollView | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
   const pageWidth = Math.max(0, containerWidth);
 
+  useWebHorizontalWheelScroll(scrollRef, events.length > 1);
+
   useEffect(() => {
     setPageIndex((prev) => Math.min(prev, Math.max(0, events.length - 1)));
   }, [events.length]);
+
+  const goToPage = useCallback(
+    (index: number) => {
+      if (pageWidth <= 0) return;
+      const next = Math.max(0, Math.min(index, events.length - 1));
+      scrollRef.current?.scrollTo({ x: pageWidth * next, animated: true });
+      setPageIndex(next);
+    },
+    [events.length, pageWidth],
+  );
 
   const syncPageIndex = useCallback(
     (offsetX: number) => {
@@ -93,9 +108,10 @@ export function ScheduleCarousel({ events, emptyText, onPress }: Props) {
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
       <ScrollView
+        ref={scrollRef}
         horizontal
         nestedScrollEnabled
-        showsHorizontalScrollIndicator={false}
+        showsHorizontalScrollIndicator={Platform.OS === 'web'}
         scrollEventThrottle={16}
         onScroll={handleScroll}
         onMomentumScrollEnd={handleScroll}
@@ -133,16 +149,24 @@ export function ScheduleCarousel({ events, emptyText, onPress }: Props) {
           : null}
       </ScrollView>
 
-      <View style={styles.navigator}>
-        <View style={styles.dotsRow}>
-          {events.map((event, index) => (
-            <View key={event.id} style={[styles.dot, index === pageIndex && styles.dotActive]} />
-          ))}
-        </View>
-        <Text style={styles.counter}>
-          {pageIndex + 1} / {events.length}
-        </Text>
-      </View>
+      {events.length > 1 ? (
+        <HorizontalCarouselNav
+          pageIndex={pageIndex}
+          pageCount={events.length}
+          onPrev={() => goToPage(pageIndex - 1)}
+          onNext={() => goToPage(pageIndex + 1)}>
+          <View style={styles.navigator}>
+            <View style={styles.dotsRow}>
+              {events.map((event, index) => (
+                <View key={event.id} style={[styles.dot, index === pageIndex && styles.dotActive]} />
+              ))}
+            </View>
+            <Text style={styles.counter}>
+              {pageIndex + 1} / {events.length}
+            </Text>
+          </View>
+        </HorizontalCarouselNav>
+      ) : null}
     </View>
   );
 }

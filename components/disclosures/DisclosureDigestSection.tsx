@@ -18,9 +18,11 @@ import {
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
+import { HorizontalCarouselNav } from '@/components/layout/HorizontalCarouselNav';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useWebHorizontalWheelScroll } from '@/hooks/useWebHorizontalWheelScroll';
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import type { AppLocale } from '@/locales/messages';
 import { formatRelativeFromIso } from '@/utils/date';
@@ -176,6 +178,20 @@ export function DisclosureDigestSection({ items, loading, accentColor }: Props) 
   const loopItems = useMemo(() => (items.length > 1 ? [...items, items[0]] : items), [items]);
   const styles = useMemo(() => makeStyles(theme, scaleFont, accentColor), [theme, scaleFont, accentColor]);
 
+  useWebHorizontalWheelScroll(scrollRef, items.length > 1);
+
+  const goToPage = useCallback(
+    (index: number) => {
+      if (pageWidth <= 0) return;
+      const next = Math.max(0, Math.min(index, items.length - 1));
+      scrollRef.current?.scrollTo({ x: pageWidth * next, animated: true });
+      setPageIndex(next);
+      setDotIndex(next);
+      setExpandedId(null);
+    },
+    [items.length, pageWidth],
+  );
+
   const syncPageIndex = useCallback(
     (offsetX: number, resetExpand: boolean) => {
       if (pageWidth <= 0) return;
@@ -233,7 +249,7 @@ export function DisclosureDigestSection({ items, loading, accentColor }: Props) 
         ref={scrollRef}
         horizontal
         nestedScrollEnabled
-        showsHorizontalScrollIndicator={false}
+        showsHorizontalScrollIndicator={Platform.OS === 'web'}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         onMomentumScrollEnd={handleScrollEnd}
@@ -263,11 +279,17 @@ export function DisclosureDigestSection({ items, loading, accentColor }: Props) 
       </ScrollView>
 
       {items.length > 1 ? (
-        <View style={styles.dotsRow}>
-          {items.map((_, i) => (
-            <View key={i} style={[styles.dot, i === dotIndex && styles.dotActive]} />
-          ))}
-        </View>
+        <HorizontalCarouselNav
+          pageIndex={pageIndex}
+          pageCount={items.length}
+          onPrev={() => goToPage(pageIndex - 1)}
+          onNext={() => goToPage(pageIndex + 1)}>
+          <View style={styles.dotsRow}>
+            {items.map((_, i) => (
+              <View key={i} style={[styles.dot, i === dotIndex && styles.dotActive]} />
+            ))}
+          </View>
+        </HorizontalCarouselNav>
       ) : null}
     </View>
   );
@@ -382,7 +404,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, accentColor?: st
       justifyContent: 'center',
       alignItems: 'center',
       gap: 5,
-      marginTop: 10,
     },
     dot: {
       width: 5,

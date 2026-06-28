@@ -646,6 +646,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     scroll: {
       flex: 1,
+      minHeight: 0,
       backgroundColor: theme.bg,
     },
     scrollContent: {

@@ -15,9 +15,11 @@ import {
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
+import { HorizontalCarouselNav } from '@/components/layout/HorizontalCarouselNav';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useWebHorizontalWheelScroll } from '@/hooks/useWebHorizontalWheelScroll';
 import type { NewsDigestItem } from '@/domain/news';
 import type { AppLocale } from '@/locales/messages';
 import { formatRelativeFromIso } from '@/utils/date';
@@ -165,12 +167,27 @@ type Props = {
 
 export function DigestPager({ batches }: Props) {
   const { theme, scaleFont } = useSignalTheme();
+  const scrollRef = useRef<ScrollView | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const pageWidth = Math.max(0, containerWidth || 0);
   const [pageIndex, setPageIndex] = useState(0);
   const [dotIndex, setDotIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+
+  useWebHorizontalWheelScroll(scrollRef, batches.length > 1);
+
+  const goToPage = useCallback(
+    (index: number) => {
+      if (pageWidth <= 0) return;
+      const next = Math.max(0, Math.min(index, batches.length - 1));
+      scrollRef.current?.scrollTo({ x: pageWidth * next, animated: true });
+      setPageIndex(next);
+      setDotIndex(next);
+      setExpandedId(null);
+    },
+    [batches.length, pageWidth],
+  );
 
   const syncPageIndex = useCallback(
     (offsetX: number, resetExpand: boolean) => {
@@ -214,9 +231,10 @@ export function DigestPager({ batches }: Props) {
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
       <ScrollView
+        ref={scrollRef}
         horizontal
         nestedScrollEnabled
-        showsHorizontalScrollIndicator={false}
+        showsHorizontalScrollIndicator={Platform.OS === 'web'}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         onMomentumScrollEnd={handleScrollEnd}
@@ -245,11 +263,17 @@ export function DigestPager({ batches }: Props) {
       </ScrollView>
 
       {batches.length > 1 ? (
-        <View style={styles.dotsRow}>
-          {batches.map((_, i) => (
-            <View key={i} style={[styles.dot, i === dotIndex && styles.dotActive]} />
-          ))}
-        </View>
+        <HorizontalCarouselNav
+          pageIndex={pageIndex}
+          pageCount={batches.length}
+          onPrev={() => goToPage(pageIndex - 1)}
+          onNext={() => goToPage(pageIndex + 1)}>
+          <View style={styles.dotsRow}>
+            {batches.map((_, i) => (
+              <View key={i} style={[styles.dot, i === dotIndex && styles.dotActive]} />
+            ))}
+          </View>
+        </HorizontalCarouselNav>
       ) : null}
     </View>
   );
@@ -368,7 +392,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'center',
       alignItems: 'center',
       gap: 5,
-      marginTop: 10,
     },
     dot: {
       width: 5,

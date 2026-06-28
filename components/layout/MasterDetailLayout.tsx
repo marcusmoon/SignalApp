@@ -77,6 +77,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     flexDirection: 'row',
+    minHeight: 0,
   },
   masterPanel: {
     flexShrink: 0,
@@ -87,6 +88,7 @@ const styles = StyleSheet.create({
   detailPanel: {
     flex: 1,
     minWidth: 0,
+    minHeight: 0,
     overflow: 'hidden',
   },
 });

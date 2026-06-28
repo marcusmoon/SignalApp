@@ -13,6 +13,7 @@ import {
   tabBarPositionBottom,
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
+import { webTabNavigatorHostStyle, webTabSceneStyle } from '@/constants/webLayout';
 import {
   GlassSurfaceBackground,
   colorWithAlpha,
@@ -340,7 +341,7 @@ export default function TabLayout() {
         tabBarButton: (props: BottomTabBarButtonProps) => <SlackTabBarButton {...props} />,
         headerShown: false,
         /** Web FlatList/ScrollView need a bounded flex column from the tab scene downward. */
-        ...(isWeb ? { sceneContainerStyle: { flex: 1, minHeight: 0 } } : null),
+        ...(webTabSceneStyle ? { sceneStyle: webTabSceneStyle } : null),
         /** 탭 복귀 시 화면이 비는(react-native-screens freeze) 경우 완화 */
         freezeOnBlur: false,
         /** 첫 탭 진입 시 레이아웃만 있고 내용이 안 그려지는 경우 완화 */
@@ -473,8 +474,7 @@ const sidebarLayoutStyles = StyleSheet.create({
     minHeight: 0,
   },
   tabsHost: {
-    flex: 1,
-    minHeight: 0,
+    ...webTabNavigatorHostStyle,
     width: '100%',
   },
 });

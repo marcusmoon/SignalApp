@@ -544,6 +544,15 @@ export default function YoutubeScreen() {
                 <ActivityIndicator color={theme.green} />
                 <Text style={styles.footerLoadingText}>{t('feedLoadingMore')}</Text>
               </View>
+            ) : Platform.OS === 'web' && youtubeMeta?.hasMore ? (
+              <View style={styles.footerLoading}>
+                <Pressable
+                  onPress={() => void loadMore()}
+                  style={styles.footerLoadMoreButton}
+                  accessibilityRole="button">
+                  <Text style={styles.footerLoadMoreText}>{t('feedDigestExpand')}</Text>
+                </Pressable>
+              </View>
             ) : null
           }
           onEndReached={() => void loadMore()}
@@ -724,6 +733,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     footerLoadingText: {
       fontSize: sf(12),
       color: theme.textMuted,
+    },
+    footerLoadMoreButton: {
+      minHeight: 38,
+      paddingHorizontal: 18,
+      borderRadius: 999,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.green,
+    },
+    footerLoadMoreText: {
+      fontSize: sf(13),
+      fontWeight: '900',
+      color: theme.bg,
     },
     quickFilterRow: {
       flexDirection: 'row',

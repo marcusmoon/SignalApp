@@ -304,6 +304,19 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(12),
       color: theme.textMuted,
     },
+    footerLoadMoreButton: {
+      minHeight: 38,
+      paddingHorizontal: 18,
+      borderRadius: 999,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.green,
+    },
+    footerLoadMoreText: {
+      fontSize: sf(13),
+      fontWeight: '900',
+      color: theme.bg,
+    },
     segment: {
       flexDirection: 'row',
       backgroundColor: theme.bgElevated,

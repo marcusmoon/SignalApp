@@ -224,6 +224,30 @@ function WebWheelFlatListInner<T>(
   if (Platform.OS === 'web') {
     const rows = Array.from(data ?? []);
     const Separator = ItemSeparatorComponent as React.ComponentType | null | undefined;
+    const emitFromWebEvent = (event: unknown) => {
+      const node = (event as { currentTarget?: HTMLElement | null })?.currentTarget
+        ?? (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
+        ?? null;
+      if (!node) return;
+      emitWebScroll(node);
+      emitWebEndReached(node);
+    };
+    const scheduleWebNearEndProbe = (event: unknown) => {
+      const node = (event as { currentTarget?: HTMLElement | null })?.currentTarget
+        ?? (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
+        ?? null;
+      if (!node) return;
+      setTimeout(() => {
+        emitWebScroll(node);
+        emitWebEndReached(node);
+      }, 40);
+    };
+    const webEventProps = {
+      onScroll: emitFromWebEvent,
+      onWheel: scheduleWebNearEndProbe,
+      onTouchEnd: scheduleWebNearEndProbe,
+      onKeyUp: scheduleWebNearEndProbe,
+    };
     const setWebRef = (instance: View | null) => {
       webRef.current = instance;
       const node = (instance as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
@@ -248,7 +272,7 @@ function WebWheelFlatListInner<T>(
     };
 
     return (
-      <View ref={setWebRef} style={[webListViewportStyle, style] as never}>
+      <View ref={setWebRef} style={[webListViewportStyle, style] as never} {...(webEventProps as Record<string, unknown>)}>
         <View ref={webContentRef} style={contentContainerStyle}>
           {renderListSlot(ListHeaderComponent)}
           {rows.length === 0 ? renderListSlot(ListEmptyComponent) : null}

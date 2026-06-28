@@ -1495,6 +1495,15 @@ export default function FeedScreen() {
                 <ActivityIndicator color={theme.green} />
                 <Text style={styles.footerLoadingText}>{t('feedLoadingMore')}</Text>
               </View>
+            ) : Platform.OS === 'web' && hasMore ? (
+              <View style={styles.footerLoading}>
+                <Pressable
+                  onPress={() => void loadMore()}
+                  style={styles.footerLoadMoreButton}
+                  accessibilityRole="button">
+                  <Text style={styles.footerLoadMoreText}>{t('feedDigestExpand')}</Text>
+                </Pressable>
+              </View>
             ) : null
           }
           onEndReached={() => void loadMore()}

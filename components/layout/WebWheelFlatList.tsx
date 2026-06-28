@@ -67,6 +67,7 @@ function WebWheelFlatListInner<T>(
   const localRef = useRef<FlatList<T>>(null);
   const webRef = useRef<View>(null);
   const webContentRef = useRef<View>(null);
+  const webEndSentinelRef = useRef<View>(null);
   const onLayoutRef = useRef(onLayout);
   const onContentSizeChangeRef = useRef(onContentSizeChange);
   const onScrollRef = useRef(onScroll);
@@ -122,16 +123,22 @@ function WebWheelFlatListInner<T>(
 
     let node: HTMLElement | null = null;
     let contentNode: HTMLElement | null = null;
+    let sentinelNode: HTMLElement | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let observer: ResizeObserver | null = null;
+    let endObserver: IntersectionObserver | null = null;
     let handleScroll: (() => void) | null = null;
+    let handleNearEndProbe: (() => void) | null = null;
+    let nearEndProbeTimer: ReturnType<typeof setTimeout> | null = null;
 
     const attach = () => {
       node = (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
         ?.getScrollableNode?.() ?? null;
       contentNode = (webContentRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
         ?.getScrollableNode?.() ?? null;
-      if (!node || !contentNode) {
+      sentinelNode = (webEndSentinelRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
+        ?.getScrollableNode?.() ?? null;
+      if (!node || !contentNode || !sentinelNode) {
         retryTimer = setTimeout(attach, 50);
         return;
       }
@@ -140,24 +147,59 @@ function WebWheelFlatListInner<T>(
         emitWebScroll(node);
         emitWebEndReached(node);
       };
+      handleNearEndProbe = () => {
+        if (nearEndProbeTimer) clearTimeout(nearEndProbeTimer);
+        nearEndProbeTimer = setTimeout(() => {
+          if (!node) return;
+          emitWebScroll(node);
+          emitWebEndReached(node);
+        }, 40);
+      };
       node.addEventListener('scroll', handleScroll, { passive: true });
+      node.addEventListener('wheel', handleNearEndProbe, { passive: true });
+      node.addEventListener('touchend', handleNearEndProbe, { passive: true });
+      node.addEventListener('keyup', handleNearEndProbe);
       observer = new ResizeObserver(() => {
         if (!node || node.clientHeight <= 0) return;
         emitWebLayout(node);
         emitWebContentSize(node);
+        emitWebEndReached(node);
       });
       observer.observe(node);
       observer.observe(contentNode);
+      const threshold = typeof onEndReachedThresholdRef.current === 'number'
+        ? onEndReachedThresholdRef.current
+        : 0.5;
+      const rootMargin = `${Math.max(120, node.clientHeight * threshold)}px 0px`;
+      endObserver = new IntersectionObserver(
+        (entries) => {
+          if (!node) return;
+          if (entries.some((entry) => entry.isIntersecting)) {
+            emitWebScroll(node);
+            emitWebEndReached(node);
+          }
+        },
+        { root: node, rootMargin, threshold: 0.01 },
+      );
+      endObserver.observe(sentinelNode);
       emitWebLayout(node);
       emitWebContentSize(node);
+      emitWebEndReached(node);
     };
 
     attach();
 
     return () => {
       if (retryTimer) clearTimeout(retryTimer);
+      if (nearEndProbeTimer) clearTimeout(nearEndProbeTimer);
       if (node && handleScroll) node.removeEventListener('scroll', handleScroll);
+      if (node && handleNearEndProbe) {
+        node.removeEventListener('wheel', handleNearEndProbe);
+        node.removeEventListener('touchend', handleNearEndProbe);
+        node.removeEventListener('keyup', handleNearEndProbe);
+      }
       observer?.disconnect();
+      endObserver?.disconnect();
     };
   }, [emitWebContentSize, emitWebEndReached, emitWebLayout, emitWebScroll]);
 
@@ -166,10 +208,13 @@ function WebWheelFlatListInner<T>(
     const timer = setTimeout(() => {
       const node = (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
         ?.getScrollableNode?.() ?? null;
-      if (node) emitWebContentSize(node);
+      if (node) {
+        emitWebContentSize(node);
+        emitWebEndReached(node);
+      }
     }, 0);
     return () => clearTimeout(timer);
-  }, [data, ListEmptyComponent, ListFooterComponent, ListHeaderComponent, emitWebContentSize]);
+  }, [data, ListEmptyComponent, ListFooterComponent, ListHeaderComponent, emitWebContentSize, emitWebEndReached]);
 
   const handleLayout = (e: LayoutChangeEvent) => {
     onLayout?.(e);
@@ -216,6 +261,7 @@ function WebWheelFlatListInner<T>(
               {Separator && index < rows.length - 1 ? <Separator /> : null}
             </View>
           ))}
+          <View ref={webEndSentinelRef} style={{ height: 1 }} />
           {renderListSlot(ListFooterComponent)}
         </View>
       </View>

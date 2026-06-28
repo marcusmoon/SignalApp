@@ -38,10 +38,14 @@ export function SignalFloatingTabBar(props: BottomTabBarProps) {
         const options = descriptors[route.key]?.options as { href?: unknown } | undefined;
         return options?.href !== null;
       });
+  const webDataProps = Platform.OS === 'web'
+    ? ({ dataSet: { signalFloatingTabbar: 'true' } } as Record<string, unknown>)
+    : undefined;
 
   return (
     <View
       pointerEvents="box-none"
+      {...webDataProps}
       style={[
         styles.host,
         Platform.OS === 'web' ? styles.webHost : null,

@@ -101,6 +101,29 @@ body {
   display: none;
 }
 
+/* Mobile Safari can miss RN Web's initial fixed/absolute measurements until resize.
+   Keep floating navigation controls in a CSS-owned fixed layer from first paint. */
+[data-signal-floating-tabbar="true"] {
+  position: fixed !important;
+  left: max(16px, env(safe-area-inset-left)) !important;
+  right: max(16px, env(safe-area-inset-right)) !important;
+  bottom: max(10px, env(safe-area-inset-bottom)) !important;
+  width: auto !important;
+  z-index: 2147483000 !important;
+  pointer-events: auto !important;
+  transform: translateZ(0);
+}
+
+[data-signal-floating-fab="true"] {
+  position: fixed !important;
+  right: max(16px, env(safe-area-inset-right)) !important;
+  bottom: calc(max(10px, env(safe-area-inset-bottom)) + 92px) !important;
+  z-index: 2147483001 !important;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  transform: translateZ(0);
+}
+
 html[data-signal-theme="light"],
 html[data-signal-theme="light"] body,
 html[data-signal-theme="light"] #root {

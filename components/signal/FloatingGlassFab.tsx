@@ -30,6 +30,9 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
   const radius = FLOATING_GLASS_FAB_SIZE / 2;
   const fabShadow = useMemo(() => floatingFabShadow(effectiveColorScheme), [effectiveColorScheme]);
   const right = Math.max(APP_CONTENT_SIDE_PADDING, (width - APP_CONTENT_MAX_WIDTH) / 2 + APP_CONTENT_SIDE_PADDING);
+  const webDataProps = Platform.OS === 'web'
+    ? ({ dataSet: { signalFloatingFab: 'true' } } as Record<string, unknown>)
+    : undefined;
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
@@ -37,6 +40,7 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
         onPress={onPress}
         disabled={disabled}
         hitSlop={10}
+        {...webDataProps}
         style={({ pressed }) => [
           styles.fab,
           Platform.OS === 'web' ? styles.webFab : null,

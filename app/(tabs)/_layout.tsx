@@ -393,7 +393,7 @@ export default function TabLayout() {
   return (
     <Tabs
       initialRouteName="home"
-      tabBar={isWeb ? undefined : (props) => <SignalFloatingTabBar {...props} />}
+      tabBar={(props) => <SignalFloatingTabBar {...props} />}
       screenOptions={screenOptions}
       detachInactiveScreens={isWeb}>
       {/* 순서: 홈 · 뉴스 · 시그널 · 시세 · 더보기. 공시·유튜브는 더보기 허브에서 진입한다. */}

@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
 import { useMemo } from 'react';
-import { Platform, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 
 import { GlassSurfaceBackground, floatingFabShadow } from '@/components/signal/GlassSurface';
@@ -32,27 +32,30 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
   const right = Math.max(APP_CONTENT_SIDE_PADDING, (width - APP_CONTENT_MAX_WIDTH) / 2 + APP_CONTENT_SIDE_PADDING);
 
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [
-        styles.fab,
-        fabShadow,
-        { bottom, right, borderRadius: radius },
-        disabled ? styles.fabDisabled : null,
-        pressed && !disabled ? styles.fabPressed : null,
-      ]}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: Boolean(disabled) }}
-      accessibilityLabel={accessibilityLabel}>
-      <GlassSurfaceBackground
-        backgroundColor={backgroundColor}
-        borderRadius={radius}
-        edge={edge}
-        showTopHighlight={false}
-      />
-      <FontAwesome5 name={iconName} size={FAB_ICON_SIZE} color={theme.green} solid />
-    </Pressable>
+    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+      <Pressable
+        onPress={onPress}
+        disabled={disabled}
+        hitSlop={10}
+        style={({ pressed }) => [
+          styles.fab,
+          fabShadow,
+          { bottom, right, borderRadius: radius },
+          disabled ? styles.fabDisabled : null,
+          pressed && !disabled ? styles.fabPressed : null,
+        ]}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: Boolean(disabled) }}
+        accessibilityLabel={accessibilityLabel}>
+        <GlassSurfaceBackground
+          backgroundColor={backgroundColor}
+          borderRadius={radius}
+          edge={edge}
+          showTopHighlight={false}
+        />
+        <FontAwesome5 name={iconName} size={FAB_ICON_SIZE} color={theme.green} solid />
+      </Pressable>
+    </View>
   );
 }
 

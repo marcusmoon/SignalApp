@@ -3,6 +3,29 @@ import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 const DEFAULT_PAD_PX = 240;
 const COOLDOWN_MS = 400;
 
+/** Build a RN scroll event from a DOM scroll container (RN Web wheel forwarding). */
+export function syntheticScrollEventFromDom(node: HTMLElement): NativeSyntheticEvent<NativeScrollEvent> {
+  return {
+    nativeEvent: {
+      contentOffset: { x: node.scrollLeft, y: node.scrollTop },
+      contentSize: { width: node.scrollWidth, height: node.scrollHeight },
+      layoutMeasurement: { width: node.clientWidth, height: node.clientHeight },
+    },
+  } as NativeSyntheticEvent<NativeScrollEvent>;
+}
+
+export function isDomNearScrollEnd(node: HTMLElement, padPx = DEFAULT_PAD_PX): boolean {
+  const viewH = node.clientHeight;
+  const ch = node.scrollHeight;
+  if (ch <= viewH + 8) return false;
+  const distFromBottom = ch - (node.scrollTop + viewH);
+  return distFromBottom <= padPx;
+}
+
+export function dispatchDomScrollEvent(node: HTMLElement) {
+  node.dispatchEvent(new Event('scroll', { bubbles: true }));
+}
+
 export type ScrollLoadMoreGate = {
   onScrollNearEnd: (
     e: NativeSyntheticEvent<NativeScrollEvent>,

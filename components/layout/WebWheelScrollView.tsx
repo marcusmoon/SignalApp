@@ -4,15 +4,16 @@ import { ScrollView, type ScrollViewProps } from 'react-native';
 import { useWebVerticalWheelScroll } from '@/hooks/useWebVerticalWheelScroll';
 
 export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(function WebWheelScrollView(
-  props,
+  { onScroll, ...rest },
   forwardedRef,
 ) {
   const localRef = useRef<ScrollView>(null);
-  useWebVerticalWheelScroll(localRef);
+  useWebVerticalWheelScroll(localRef, { onScroll });
 
   return (
     <ScrollView
-      {...props}
+      {...rest}
+      onScroll={onScroll}
       ref={(instance) => {
         localRef.current = instance;
         if (typeof forwardedRef === 'function') {

@@ -471,11 +471,22 @@ const sidebarLayoutStyles = StyleSheet.create({
   },
   content: {
     ...webSidebarContentStyle,
+    position: 'relative',
   },
   tabsHost: {
     ...webTabNavigatorHostStyle,
   },
-  tabsHostHidden: { display: 'none' as const },
+  /** Keep mounted tabs laid out (display:none breaks FlatList viewport + pagination on web). */
+  tabsHostHidden: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    opacity: 0,
+    pointerEvents: 'none',
+    zIndex: -1,
+  },
 });
 
 type IpadWideTabLayoutProps = {

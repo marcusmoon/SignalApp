@@ -4,15 +4,20 @@ import { FlatList, type FlatListProps } from 'react-native';
 import { useWebVerticalWheelScroll } from '@/hooks/useWebVerticalWheelScroll';
 
 function WebWheelFlatListInner<T>(
-  props: FlatListProps<T>,
+  { onScroll, onEndReached, ...rest }: FlatListProps<T>,
   forwardedRef: React.Ref<FlatList<T>>,
 ) {
   const localRef = useRef<FlatList<T>>(null);
-  useWebVerticalWheelScroll(localRef);
+  useWebVerticalWheelScroll(localRef, {
+    onScroll,
+    onEndReached: onEndReached ? () => onEndReached({ distanceFromEnd: 0 }) : undefined,
+  });
 
   return (
     <FlatList
-      {...props}
+      {...rest}
+      onScroll={onScroll}
+      onEndReached={onEndReached}
       ref={(instance) => {
         localRef.current = instance;
         if (typeof forwardedRef === 'function') {

@@ -1,20 +1,67 @@
-import { useEffect, type RefObject } from 'react';
-import { Platform } from 'react-native';
+import { useEffect, useRef, type RefObject } from 'react';
+import { Platform, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+
+import {
+  dispatchDomScrollEvent,
+  isDomNearScrollEnd,
+  syntheticScrollEventFromDom,
+} from '@/utils/listScrollLoadMoreGate';
 
 type ScrollableRef = RefObject<{
   getScrollableNode?: () => HTMLElement;
 } | null>;
 
+type WebVerticalWheelScrollOptions = {
+  enabled?: boolean;
+  /** FlatList/ScrollView onScroll — not fired when we set scrollTop manually on web. */
+  onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  /** FlatList onEndReached — same gap after manual wheel scroll. */
+  onEndReached?: () => void;
+  nearEndPadPx?: number;
+  nearEndCooldownMs?: number;
+};
+
 /**
  * RN Web: wheel over list rows targets non-scrollable children, so FlatList/ScrollView
  * does not scroll. Forward vertical wheel to the scroll container (capture phase).
  */
-export function useWebVerticalWheelScroll(scrollRef: ScrollableRef, enabled = true) {
+export function useWebVerticalWheelScroll(
+  scrollRef: ScrollableRef,
+  options: WebVerticalWheelScrollOptions = {},
+) {
+  const {
+    enabled = true,
+    onScroll,
+    onEndReached,
+    nearEndPadPx = 240,
+    nearEndCooldownMs = 400,
+  } = options;
+
+  const onScrollRef = useRef(onScroll);
+  const onEndReachedRef = useRef(onEndReached);
+  onScrollRef.current = onScroll;
+  onEndReachedRef.current = onEndReached;
+
   useEffect(() => {
     if (Platform.OS !== 'web' || !enabled) return;
 
     let node: HTMLElement | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastNearEnd = 0;
+
+    const notifyScroll = () => {
+      if (!node) return;
+      dispatchDomScrollEvent(node);
+      onScrollRef.current?.(syntheticScrollEventFromDom(node));
+      if (
+        onEndReachedRef.current &&
+        isDomNearScrollEnd(node, nearEndPadPx) &&
+        Date.now() - lastNearEnd >= nearEndCooldownMs
+      ) {
+        lastNearEnd = Date.now();
+        onEndReachedRef.current();
+      }
+    };
 
     const onWheel = (ev: WheelEvent) => {
       if (!node) return;
@@ -26,10 +73,15 @@ export function useWebVerticalWheelScroll(scrollRef: ScrollableRef, enabled = tr
 
       const atTop = node.scrollTop <= 0;
       const atBottom = node.scrollTop + node.clientHeight >= node.scrollHeight - 1;
-      if ((deltaY < 0 && atTop) || (deltaY > 0 && atBottom)) return;
+      if (deltaY < 0 && atTop) return;
+      if (deltaY > 0 && atBottom) {
+        notifyScroll();
+        return;
+      }
 
       ev.preventDefault();
       node.scrollTop += deltaY;
+      notifyScroll();
     };
 
     const attach = () => {
@@ -52,5 +104,5 @@ export function useWebVerticalWheelScroll(scrollRef: ScrollableRef, enabled = tr
       if (retryTimer) clearTimeout(retryTimer);
       if (node) node.removeEventListener('wheel', onWheel, { capture: true });
     };
-  }, [scrollRef, enabled]);
+  }, [scrollRef, enabled, nearEndPadPx, nearEndCooldownMs]);
 }

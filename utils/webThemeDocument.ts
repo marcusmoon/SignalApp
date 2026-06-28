@@ -1,7 +1,11 @@
 import { SIGNAL_DARK, SIGNAL_LIGHT, type AppTheme, type ThemeColorScheme } from '@/constants/theme';
-import type { ThemeAppearanceMode } from '@/services/themeAppearancePreference';
+import {
+  WEB_THEME_APPEARANCE_MIRROR_KEY,
+  type ThemeAppearanceMode,
+} from '@/services/themeAppearancePreference';
 
 export const WEB_THEME_APPEARANCE_KEYS = [
+  WEB_THEME_APPEARANCE_MIRROR_KEY,
   'AsyncStorage:@signal/theme_appearance_mode_v1',
   '@signal/theme_appearance_mode_v1',
 ] as const;
@@ -68,10 +72,10 @@ export function applyWebThemeCssVariables(root: HTMLElement, theme: Pick<AppThem
 }
 
 /** Keep html/body/#root aligned with the active app theme on web. */
-export function applyWebDocumentTheme(scheme: ThemeColorScheme, bg: string): void {
+export function applyWebDocumentTheme(scheme: ThemeColorScheme, bg: string, activeTheme?: AppTheme): void {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  const theme = themeTokensForScheme(scheme);
+  const theme = activeTheme ?? themeTokensForScheme(scheme);
   root.dataset.signalTheme = scheme;
   root.style.colorScheme = scheme;
   root.style.backgroundColor = bg;

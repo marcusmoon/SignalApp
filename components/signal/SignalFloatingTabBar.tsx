@@ -31,6 +31,10 @@ export function SignalFloatingTabBar(props: BottomTabBarProps) {
   const tabBarWidth = Math.min(availableWidth, APP_CONTENT_MAX_WIDTH);
   const left = Math.max(marginH, (width - tabBarWidth) / 2);
   const hostHeight = Platform.OS === 'web' ? TAB_BAR_FLOAT_HEIGHT + 29 : TAB_BAR_FLOAT_HEIGHT + 13;
+  const surfaceBackground = Platform.OS === 'web' ? 'var(--signal-card)' : backgroundColor;
+  const surfaceEdge = Platform.OS === 'web'
+    ? { ring: 'var(--signal-border)', topHighlight: 'rgba(255,255,255,0.1)' }
+    : edge;
   const visibleRoutes = state.routes.filter((route) => VISIBLE_TAB_NAMES.has(route.name));
   const fallbackRoutes = visibleRoutes.length > 0
     ? visibleRoutes
@@ -50,12 +54,12 @@ export function SignalFloatingTabBar(props: BottomTabBarProps) {
         styles.host,
         Platform.OS === 'web' ? styles.webHost : null,
         floatingGlassShadow(effectiveColorScheme),
-        { left, width: tabBarWidth, bottom, height: hostHeight, backgroundColor },
+        { left, width: tabBarWidth, bottom, height: hostHeight, backgroundColor: surfaceBackground },
       ]}>
       <GlassSurfaceBackground
-        backgroundColor={backgroundColor}
+        backgroundColor={surfaceBackground}
         borderRadius={TAB_BAR_FLOAT_RADIUS}
-        edge={edge}
+        edge={surfaceEdge}
         showTopHighlight
       />
       <View style={styles.row}>
@@ -64,9 +68,13 @@ export function SignalFloatingTabBar(props: BottomTabBarProps) {
           const focused = state.index === routeIndex;
           const descriptor = descriptors[route.key];
           const options = descriptor.options;
-          const color = focused
-            ? options.tabBarActiveTintColor ?? theme.green
-            : options.tabBarInactiveTintColor ?? theme.textMuted;
+          const color = Platform.OS === 'web'
+            ? focused
+              ? 'var(--signal-green)'
+              : 'var(--signal-text-muted)'
+            : focused
+              ? options.tabBarActiveTintColor ?? theme.green
+              : options.tabBarInactiveTintColor ?? theme.textMuted;
           const labelBase =
             typeof options.tabBarLabel === 'string'
               ? options.tabBarLabel

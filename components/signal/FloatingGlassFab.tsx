@@ -31,19 +31,26 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
   const radius = FLOATING_GLASS_FAB_SIZE / 2;
   const fabShadow = useMemo(() => floatingFabShadow(effectiveColorScheme), [effectiveColorScheme]);
   const right = Math.max(APP_CONTENT_SIDE_PADDING, (width - APP_CONTENT_MAX_WIDTH) / 2 + APP_CONTENT_SIDE_PADDING);
+  const effectiveDisabled = Platform.OS === 'web' ? false : Boolean(disabled);
+  const surfaceBackground = Platform.OS === 'web' ? 'var(--signal-card)' : backgroundColor;
+  const surfaceEdge = Platform.OS === 'web'
+    ? { ring: 'var(--signal-border)', topHighlight: 'rgba(255,255,255,0.1)' }
+    : edge;
+  const iconColor = Platform.OS === 'web' ? 'var(--signal-green)' : theme.green;
   const triggerPress = useCallback(() => {
-    if (disabled) return;
+    if (effectiveDisabled) return;
+    if (Date.now() - lastPressAtRef.current < 120) return;
     lastPressAtRef.current = Date.now();
     onPress();
-  }, [disabled, onPress]);
+  }, [effectiveDisabled, onPress]);
   const triggerWebFallback = useCallback((event?: { preventDefault?: () => void; stopPropagation?: () => void }) => {
-    if (disabled) return;
+    if (effectiveDisabled) return;
     if (Date.now() - lastPressAtRef.current < 250) return;
     event?.preventDefault?.();
     event?.stopPropagation?.();
     lastPressAtRef.current = Date.now();
     onPress();
-  }, [disabled, onPress]);
+  }, [effectiveDisabled, onPress]);
   const webDataProps = Platform.OS === 'web'
     ? ({
         dataSet: { signalFloatingFab: 'true' },
@@ -56,7 +63,8 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       <Pressable
         onPress={triggerPress}
-        disabled={disabled}
+        onPressIn={Platform.OS === 'web' ? triggerWebFallback : undefined}
+        disabled={effectiveDisabled}
         hitSlop={10}
         {...webDataProps}
         style={({ pressed }) => [
@@ -64,19 +72,19 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
           Platform.OS === 'web' ? styles.webFab : null,
           fabShadow,
           { bottom, right, borderRadius: radius },
-          disabled ? styles.fabDisabled : null,
-          pressed && !disabled ? styles.fabPressed : null,
+          effectiveDisabled ? styles.fabDisabled : null,
+          pressed && !effectiveDisabled ? styles.fabPressed : null,
         ]}
         accessibilityRole="button"
-        accessibilityState={{ disabled: Boolean(disabled) }}
+        accessibilityState={{ disabled: effectiveDisabled }}
         accessibilityLabel={accessibilityLabel}>
         <GlassSurfaceBackground
-          backgroundColor={backgroundColor}
+          backgroundColor={surfaceBackground}
           borderRadius={radius}
-          edge={edge}
+          edge={surfaceEdge}
           showTopHighlight={false}
         />
-        <FontAwesome5 name={iconName} size={FAB_ICON_SIZE} color={theme.green} solid />
+        <FontAwesome5 name={iconName} size={FAB_ICON_SIZE} color={iconColor} solid />
       </Pressable>
     </View>
   );

@@ -104,8 +104,8 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
-    applyWebDocumentTheme(effectiveColorScheme, theme.bg);
-  }, [effectiveColorScheme, theme.bg]);
+    applyWebDocumentTheme(effectiveColorScheme, theme.bg, theme);
+  }, [effectiveColorScheme, theme]);
 
   const fontMultiplier = useMemo(() => fontSizeMultiplierForPreset(fontSizePreset), [fontSizePreset]);
 

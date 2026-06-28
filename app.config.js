@@ -40,6 +40,12 @@ function envFlag(value) {
   return /^(1|true|yes|on)$/i.test(String(value ?? '').trim());
 }
 
+function normalizeBasePath(value) {
+  const path = String(value ?? '').trim();
+  if (!path) return undefined;
+  return `/${path.replace(/^\/+/, '').replace(/\/+$/, '')}`;
+}
+
 function pluginName(plugin) {
   return Array.isArray(plugin) ? plugin[0] : plugin;
 }
@@ -56,6 +62,7 @@ function hasPlugin(plugins, name) {
 module.exports = () => {
   const previewOtaBanner = readEnvValue('EXPO_PUBLIC_PREVIEW_OTA_BANNER');
   const easProjectId = readEnvValue('EAS_PROJECT_ID') || readEnvValue('EXPO_PROJECT_ID');
+  const webBasePath = normalizeBasePath(readEnvValue('SIGNAL_WEB_BASE_PATH'));
   const iosRemotePushEnabled = envFlag(readEnvValue('SIGNAL_IOS_REMOTE_PUSH_ENABLED'));
   const iosAppleSignInEnabled = envFlag(readEnvValue('SIGNAL_IOS_APPLE_SIGN_IN_ENABLED'));
 
@@ -132,6 +139,10 @@ module.exports = () => {
       updates: {
         ...(appJson.expo.updates ?? {}),
         ...(easProjectId ? { url: `https://u.expo.dev/${easProjectId}` } : {}),
+      },
+      experiments: {
+        ...(appJson.expo.experiments ?? {}),
+        ...(webBasePath ? { baseUrl: webBasePath } : {}),
       },
       extra: {
         ...(appJson.expo.extra ?? {}),

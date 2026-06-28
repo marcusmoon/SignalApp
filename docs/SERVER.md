@@ -118,4 +118,12 @@ npm run railway:build
 npm run railway:start
 ```
 
+`railway.json`은 저장소 루트를 기준으로 `npm run railway:build`를 실행한다. 이 빌드는 Expo web bundle을 `server/src/public/web`에 생성한 뒤 server dependency를 설치한다.
+
+- Node.js는 루트와 server `package.json`의 `engines.node` 기준을 따른다.
+- Web client는 `/web` 하위가 canonical 경로다. 예: `/web/news`, `/web/signal`, `/web/quotes`
+- 기존 root 앱 경로(`/news`, `/signal` 등)는 호환용으로 `/web/*`에 redirect한다.
+- Web asset은 `/web/_expo/*`, `/web/assets/*`, `/web/favicon.ico`로 제공한다.
+- API/Admin 경로(`/v1/*`, `/admin`, `/docs`, `/health`)는 web static보다 먼저 처리한다.
+
 서버 배포 전 운영 DB에 Flyway migration이 먼저 적용되어 있어야 한다.

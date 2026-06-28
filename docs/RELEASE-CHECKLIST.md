@@ -15,6 +15,9 @@
 - [ ] 운영 DB에 Flyway migration 선적용
 - [ ] `npm --prefix server run start` 기동 확인
 - [ ] `/health` 확인
+- [ ] `/web`, `/web/news`, `/web/signal` 웹 클라이언트 route 확인
+- [ ] `/web/_expo/*`, `/web/assets/*` asset 응답 확인
+- [ ] `/news` 같은 root 웹 route가 `/web/news`로 redirect되는지 확인
 - [ ] 주요 public API 응답 확인 (`/v1/market-briefings`, `/v1/news` 등)
 - [ ] Admin 로그인 확인
 - [ ] Job 수동 실행과 이력 저장 확인
@@ -23,6 +26,7 @@
 ## 배포
 
 - [ ] Railway 환경 변수 확인
+- [ ] Railway build command가 `npm run railway:build`, start command가 `npm run railway:start`인지 확인
 - [ ] EAS secret 확인
 - [ ] iOS build number / Android versionCode 증가
 - [ ] OTA 가능 변경인지 native rebuild 필요 변경인지 구분

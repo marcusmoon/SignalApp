@@ -74,6 +74,14 @@ eas update --channel production --message "update message"
 - Xcode로 직접 만든 Release 빌드도 `Expo.plist`의 `EXUpdatesRequestHeaders.expo-channel-name`이 `production`이어야 production OTA를 받는다.
 - 현재 앱은 시작 지연을 줄이기 위해 `checkAutomatically=NEVER`를 사용하고, 앱 활성화 시 자체 업데이트 확인 UI로 다운로드/재시작한다.
 
+## Web Client
+
+Railway에 같이 배포되는 web client는 EAS Update 대상이 아니다. 저장소 루트에서 `npm run web:export`를 실행하면 `/web` base path로 `server/src/public/web` bundle을 생성한다. Railway는 `railway.json`의 `npm run railway:build`에서 이 export를 자동 실행한다.
+
+- Web route: `/web`, `/web/news`, `/web/signal`
+- Web asset: `/web/_expo/*`, `/web/assets/*`
+- 앱 native bundle 반영은 EAS Update 또는 새 빌드가 필요하고, web client 반영은 Railway 재배포가 필요하다.
+
 ## iOS Xcode 빌드
 
 ```bash

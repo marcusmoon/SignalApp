@@ -69,7 +69,7 @@ export async function handleRequest(req, res) {
 
     // 2) Static clients: Admin and Expo web export.
     if (await handleAdminStaticRoutes({ req, res, pathname })) return;
-    if (await handleWebStaticRoutes({ req, res, pathname })) return;
+    if (await handleWebStaticRoutes({ req, res, url, pathname })) return;
 
     // 3) Admin session/auth (no admin guard required for these)
     if (await handleAdminSessionRoutes({ req, res, pathname })) return;

@@ -20,12 +20,13 @@
 
 | 탭 | 화면 | 역할 |
 |---|---|---|
-| 뉴스 | `app/(tabs)/news.tsx` | 글로벌/코인/관심/영상 피드 |
+| 뉴스 | `app/(tabs)/news.tsx` | 글로벌/한국/코인/내 관심 뉴스 피드 |
+| 공시 | `app/(tabs)/disclosures.tsx` | SEC/DART 공시와 관심 종목 공시 |
 | 시그널 | `app/(tabs)/signal.tsx` | Codex 시장 브리핑(국내·미국, 날짜·회차) |
 | 시세 | `app/(tabs)/quotes.tsx` | 관심·인기·시총·코인 시세 |
-| 더보기 | `app/(tabs)/more.tsx` | 유튜브, 계정·설정 |
+| 더보기 | `app/(tabs)/more.tsx` | 유튜브, 계정·설정 등 보조 기능 |
 
-유튜브(`app/(tabs)/youtube.tsx`)는 탭에서 숨기고 더보기에서 진입한다.
+유튜브(`app/(tabs)/youtube.tsx`)는 iPhone에서 더보기로 진입하고, iPad에서는 넓은 화면용 사이드 메뉴에서 직접 진입할 수 있다.
 
 ## 서버 구조
 
@@ -33,6 +34,7 @@
 |---|---|
 | `server/src/http/public/v1/` | 앱 공개 API |
 | `server/src/http/admin/api/` | Admin API |
+| `server/src/http/webStatic.mjs` | Expo web export를 `/web` 하위로 서빙 |
 | `server/src/db/` | Postgres client, shape/repository helpers |
 | `server/src/jobs/` | 수집·인사이트 Job |
 | `server/src/providers/` | RSS, YouTube, calendar, LLM 등 provider |

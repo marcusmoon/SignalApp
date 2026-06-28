@@ -5,6 +5,28 @@ import { config } from '../config.mjs';
 import { json } from './shared.mjs';
 
 const WEB_ROOT = path.join(config.rootDir, 'src', 'public', 'web');
+const WEB_PREFIX = '/web';
+const WEB_ROOT_ASSET_PREFIXES = ['/_expo/', '/assets/'];
+const WEB_ROOT_APP_PATHS = new Set([
+  '/',
+  '/account',
+  '/alerts',
+  '/calendar',
+  '/disclosures',
+  '/home',
+  '/more',
+  '/news',
+  '/news-issues',
+  '/oauth',
+  '/quotes',
+  '/settings',
+  '/signal',
+  '/terms',
+  '/terms-history',
+  '/today-briefing',
+  '/youtube',
+]);
+const WEB_ROOT_APP_PREFIXES = ['/disclosures/', '/symbol/'];
 
 const CONTENT_TYPES = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -76,31 +98,53 @@ async function serveMissingWebBundle(res) {
   });
 }
 
-/** Handles Expo web static export: `/web`, `/web/*`, and Expo root assets `/_expo/*`. */
-export async function handleWebStaticRoutes({ req, res, pathname }) {
+function isWebRootAppRoute(pathname) {
+  return WEB_ROOT_APP_PATHS.has(pathname) || WEB_ROOT_APP_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+function redirectToWebRoute({ res, url, pathname }) {
+  const targetPath = pathname === '/' ? WEB_PREFIX : `${WEB_PREFIX}${pathname}`;
+  res.writeHead(302, {
+    location: `${targetPath}${url?.search || ''}`,
+    'cache-control': 'no-cache',
+  });
+  res.end();
+}
+
+async function serveWebAsset(res, pathname) {
+  const file = await resolveWebFile(pathname.slice(1));
+  if (!file) {
+    json(res, 404, { error: 'WEB_ASSET_NOT_FOUND' });
+  } else {
+    await serveFile(res, file);
+  }
+}
+
+/** Handles Expo web static export under `/web` and its root-based exported assets/routes. */
+export async function handleWebStaticRoutes({ req, res, url, pathname }) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return false;
 
-  if (pathname === '/web') {
+  if (pathname === WEB_PREFIX) {
     const file = await resolveWebFile('index.html');
     if (!file) await serveMissingWebBundle(res);
     else await serveFile(res, file);
     return true;
   }
 
-  if (pathname.startsWith('/web/')) {
-    const file = await resolveWebFile(pathname.slice('/web/'.length));
+  if (pathname.startsWith(`${WEB_PREFIX}/`)) {
+    const file = await resolveWebFile(pathname.slice(`${WEB_PREFIX}/`.length));
     if (!file) await serveMissingWebBundle(res);
     else await serveFile(res, file);
     return true;
   }
 
-  if (pathname.startsWith('/_expo/')) {
-    const file = await resolveWebFile(pathname.slice(1));
-    if (!file) {
-      json(res, 404, { error: 'WEB_ASSET_NOT_FOUND' });
-    } else {
-      await serveFile(res, file);
-    }
+  if (WEB_ROOT_ASSET_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    await serveWebAsset(res, pathname);
+    return true;
+  }
+
+  if (isWebRootAppRoute(pathname)) {
+    redirectToWebRoute({ res, url, pathname });
     return true;
   }
 

@@ -97,7 +97,13 @@ export default function RootLayout() {
   }, [fontsLoaded, bootstrapReady]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: bootstrapBg }}>
+    <GestureHandlerRootView
+      style={{
+        flex: 1,
+        minHeight: 0,
+        backgroundColor: bootstrapBg,
+        ...(Platform.OS === 'web' ? { height: '100%', overflow: 'hidden' as const } : null),
+      }}>
       <LocaleProvider>
         <SignalThemeProvider>
           <SidebarSubTabsProvider>
@@ -206,7 +212,7 @@ function RootLayoutNav() {
     <ThemeProvider value={navTheme}>
       <NotificationListener />
       <PushDeviceRegistrar />
-      <View style={{ flex: 1, backgroundColor: theme.bg }}>
+      <View style={{ flex: 1, minHeight: 0, backgroundColor: theme.bg }}>
         <ThemedStatusBar />
         <Stack screenOptions={rootScreenOptions} />
       </View>

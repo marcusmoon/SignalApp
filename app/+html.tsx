@@ -61,15 +61,26 @@ const initialThemeScript = `
 `;
 
 const responsiveBackground = `
-html,
-body,
-#root {
+html {
   height: 100%;
-  min-height: 100%;
+  color-scheme: light dark;
 }
 
-html {
-  color-scheme: light dark;
+body {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#root {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 html[data-signal-theme="light"],

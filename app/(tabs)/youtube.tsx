@@ -28,7 +28,7 @@ import {
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
@@ -655,8 +655,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignSelf: 'center',
     },
     mainColumnWide: {
-      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
-      alignSelf: 'stretch',
+      ...wideContentFill,
     },
     topFixed: {
       flexShrink: 0,

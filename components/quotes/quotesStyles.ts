@@ -1,6 +1,6 @@
 import { Platform, StyleSheet } from 'react-native';
 
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import {
@@ -31,8 +31,7 @@ export function makeQuotesStyles(
       alignSelf: 'center',
     },
     mainColumnWide: {
-      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
-      alignSelf: 'stretch',
+      ...wideContentFill,
     },
     detailPanePad: {
       flex: 1,

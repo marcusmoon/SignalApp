@@ -11,7 +11,7 @@ import { ReferenceLinksSection } from '@/components/more/ReferenceLinksSection';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalHeader } from '@/components/signal/SignalHeader';
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { MoreHubRouteKey } from '@/constants/moreHubOrder';
 import type { AppTheme } from '@/constants/theme';
@@ -197,8 +197,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 16,
     },
     listWide: {
-      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
-      alignSelf: 'stretch',
+      ...wideContentFill,
     },
     loadingPad: {
       width: '100%',

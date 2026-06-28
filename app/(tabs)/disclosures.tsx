@@ -13,7 +13,7 @@ import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicat
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
@@ -432,7 +432,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignSelf: 'center',
     },
     mainColumnWide: {
-      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
+      ...wideContentFill,
       paddingHorizontal: 16,
     },
     topFixed: {

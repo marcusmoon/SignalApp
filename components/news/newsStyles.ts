@@ -1,6 +1,10 @@
 import { Platform, StyleSheet } from 'react-native';
 
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import {
+  APP_CONTENT_MAX_WIDTH,
+  APP_WIDE_CONTENT_MAX_WIDTH,
+  wideContentFill,
+} from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
@@ -18,6 +22,7 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: {
       flex: 1,
+      minHeight: 0,
       backgroundColor: theme.bg,
     },
     mainColumn: {
@@ -28,8 +33,7 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       alignSelf: 'center',
     },
     mainColumnWide: {
-      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
-      alignSelf: 'stretch',
+      ...wideContentFill,
     },
     topFixed: {
       flexShrink: 0,

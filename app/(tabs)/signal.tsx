@@ -22,7 +22,7 @@ import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { APP_CONTENT_MAX_WIDTH, APP_CONTENT_SIDE_PADDING, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, APP_CONTENT_SIDE_PADDING, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -392,6 +392,7 @@ export default function SignalScreen() {
       <Stack.Screen options={{ title: t('screenSignal') }} />
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
 
+      <View style={[styles.pageColumn, useTwoPane && styles.pageColumnWide]}>
       {newContentAvailable && !refreshing && selectedYmd >= todayYmd ? (
         <View style={styles.updateBannerWrap}>
           <FeedUpdateBanner
@@ -495,6 +496,7 @@ export default function SignalScreen() {
           ) : null}
         </ScrollView>
       )}
+      </View>
 
       {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
@@ -562,35 +564,36 @@ export default function SignalScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    updateBannerWrap: {
+    pageColumn: {
+      flex: 1,
+      minHeight: 0,
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
+    },
+    pageColumnWide: {
+      ...wideContentFill,
+    },
+    updateBannerWrap: {
+      width: '100%',
       paddingHorizontal: 16,
     },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     scroll: { flex: 1 },
     content: {
       width: '100%',
-      maxWidth: APP_CONTENT_MAX_WIDTH,
-      alignSelf: 'center',
       paddingHorizontal: 16,
       paddingTop: 4,
     },
     contentWide: {
-      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
-      alignSelf: 'stretch',
       paddingTop: 12,
     },
     dateNavigatorWrap: {
       width: '100%',
-      maxWidth: APP_CONTENT_MAX_WIDTH,
-      alignSelf: 'center',
       paddingHorizontal: APP_CONTENT_SIDE_PADDING,
       marginBottom: 10,
     },
     dateNavigatorWrapWide: {
-      maxWidth: APP_CONTENT_MAX_WIDTH,
       marginTop: 12,
     },
     dateNavigator: {

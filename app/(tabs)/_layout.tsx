@@ -13,6 +13,7 @@ import {
   tabBarPositionBottom,
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
+import { wideContentColumn } from '@/constants/responsiveLayout';
 import {
   GlassSurfaceBackground,
   colorWithAlpha,
@@ -339,6 +340,8 @@ export default function TabLayout() {
         },
         tabBarButton: (props: BottomTabBarButtonProps) => <SlackTabBarButton {...props} />,
         headerShown: false,
+        /** Web FlatList/ScrollView need a bounded flex column from the tab scene downward. */
+        ...(isWeb ? { sceneContainerStyle: { flex: 1, minHeight: 0 } } : null),
         /** 탭 복귀 시 화면이 비는(react-native-screens freeze) 경우 완화 */
         freezeOnBlur: false,
         /** 첫 탭 진입 시 레이아웃만 있고 내용이 안 그려지는 경우 완화 */
@@ -458,6 +461,7 @@ export default function TabLayout() {
 const sidebarLayoutStyles = StyleSheet.create({
   safe: {
     flex: 1,
+    minHeight: 0,
   },
   body: {
     flex: 1,
@@ -467,6 +471,18 @@ const sidebarLayoutStyles = StyleSheet.create({
   content: {
     flex: 1,
     minWidth: 0,
+    minHeight: 0,
+    alignItems: 'center',
+  },
+  contentInner: {
+    flex: 1,
+    minHeight: 0,
+    ...wideContentColumn,
+  },
+  tabsHost: {
+    flex: 1,
+    minHeight: 0,
+    width: '100%',
   },
 });
 
@@ -497,6 +513,7 @@ function IpadWideTabLayout({
           disclosureHasUnread={disclosureHasUnread}
         />
         <View style={sidebarLayoutStyles.content}>
+          <View style={sidebarLayoutStyles.contentInner}>
           {contentPane === 'home' ? (
             <IpadHomeScreen />
           ) : contentPane === 'newsIssues' && newsIssuesParams ? (
@@ -512,11 +529,12 @@ function IpadWideTabLayout({
           ) : contentPane === 'settings' ? (
             <SettingsScreen embedded />
           ) : (
-            <Tabs
-              initialRouteName="news"
-              tabBar={() => null}
-              screenOptions={iPadScreenOptions}
-              detachInactiveScreens={false}>
+            <View style={sidebarLayoutStyles.tabsHost}>
+              <Tabs
+                initialRouteName="news"
+                tabBar={() => null}
+                screenOptions={iPadScreenOptions}
+                detachInactiveScreens={false}>
               <Tabs.Screen name="index" options={{ href: null }} />
               <Tabs.Screen name="home" options={{ href: null }} />
               <Tabs.Screen name="news" options={{ title: t('tabNews') }} />
@@ -525,8 +543,10 @@ function IpadWideTabLayout({
               <Tabs.Screen name="quotes" options={{ title: t('tabQuotes') }} />
               <Tabs.Screen name="more" options={{ title: t('tabMore') }} />
               <Tabs.Screen name="youtube" options={{ title: t('tabYoutube') }} />
-            </Tabs>
+              </Tabs>
+            </View>
           )}
+          </View>
         </View>
       </View>
     </SafeAreaView>

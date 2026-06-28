@@ -59,6 +59,8 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
 const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
+    zIndex: 1000,
+    elevation: 24,
     width: FLOATING_GLASS_FAB_SIZE,
     height: FLOATING_GLASS_FAB_SIZE,
     overflow: 'hidden',
@@ -67,6 +69,7 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web'
       ? {
           boxShadow: '0 8px 24px rgba(25, 31, 40, 0.2)',
+          cursor: 'pointer',
         }
       : {}),
   },

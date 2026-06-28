@@ -1,6 +1,7 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 
 import {
+  themeTokensForScheme,
   themeBackgroundForScheme,
   WEB_THEME_APPEARANCE_KEYS,
 } from '@/utils/webThemeDocument';
@@ -36,6 +37,8 @@ export default function Root({ children }: { children: React.ReactNode }) {
 const storageKeysJson = JSON.stringify(WEB_THEME_APPEARANCE_KEYS);
 const lightBg = themeBackgroundForScheme('light');
 const darkBg = themeBackgroundForScheme('dark');
+const lightTokens = themeTokensForScheme('light');
+const darkTokens = themeTokensForScheme('dark');
 
 const initialThemeScript = `
 (function () {
@@ -50,9 +53,20 @@ const initialThemeScript = `
     var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     var scheme = mode === 'dark' || (mode !== 'light' && systemDark) ? 'dark' : 'light';
     var bg = scheme === 'dark' ? ${JSON.stringify(darkBg)} : ${JSON.stringify(lightBg)};
+    var tokens = scheme === 'dark' ? ${JSON.stringify(darkTokens)} : ${JSON.stringify(lightTokens)};
     document.documentElement.dataset.signalTheme = scheme;
     document.documentElement.style.colorScheme = scheme;
     document.documentElement.style.backgroundColor = bg;
+    document.documentElement.style.setProperty('--signal-bg', tokens.bg);
+    document.documentElement.style.setProperty('--signal-bg-elevated', tokens.bgElevated);
+    document.documentElement.style.setProperty('--signal-card', tokens.card);
+    document.documentElement.style.setProperty('--signal-border', tokens.border);
+    document.documentElement.style.setProperty('--signal-text', tokens.text);
+    document.documentElement.style.setProperty('--signal-text-muted', tokens.textMuted);
+    document.documentElement.style.setProperty('--signal-text-dim', tokens.textDim);
+    document.documentElement.style.setProperty('--signal-green', tokens.green);
+    document.documentElement.style.setProperty('--signal-green-dim', tokens.greenDim);
+    document.documentElement.style.setProperty('--signal-green-border', tokens.greenBorder);
     if (document.body) document.body.style.backgroundColor = bg;
     var root = document.getElementById('root');
     if (root) root.style.backgroundColor = bg;
@@ -109,6 +123,9 @@ body {
   right: max(16px, env(safe-area-inset-right)) !important;
   bottom: max(10px, env(safe-area-inset-bottom)) !important;
   width: auto !important;
+  background-color: var(--signal-card) !important;
+  border: 1px solid var(--signal-border) !important;
+  color: var(--signal-text-muted) !important;
   z-index: 2147483000 !important;
   pointer-events: auto !important;
   transform: translateZ(0);
@@ -118,6 +135,9 @@ body {
   position: fixed !important;
   right: max(16px, env(safe-area-inset-right)) !important;
   bottom: calc(max(10px, env(safe-area-inset-bottom)) + 92px) !important;
+  background-color: var(--signal-card) !important;
+  border: 1px solid var(--signal-border) !important;
+  color: var(--signal-green) !important;
   z-index: 2147483001 !important;
   pointer-events: auto !important;
   touch-action: manipulation;

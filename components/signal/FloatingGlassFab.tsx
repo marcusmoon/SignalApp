@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 
@@ -27,17 +27,35 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
   const { theme } = useSignalTheme();
   const { backgroundColor, edge, effectiveColorScheme } = useTabBarGlassStyle();
   const { width } = useWindowDimensions();
+  const lastPressAtRef = useRef(0);
   const radius = FLOATING_GLASS_FAB_SIZE / 2;
   const fabShadow = useMemo(() => floatingFabShadow(effectiveColorScheme), [effectiveColorScheme]);
   const right = Math.max(APP_CONTENT_SIDE_PADDING, (width - APP_CONTENT_MAX_WIDTH) / 2 + APP_CONTENT_SIDE_PADDING);
+  const triggerPress = useCallback(() => {
+    if (disabled) return;
+    lastPressAtRef.current = Date.now();
+    onPress();
+  }, [disabled, onPress]);
+  const triggerWebFallback = useCallback((event?: { preventDefault?: () => void; stopPropagation?: () => void }) => {
+    if (disabled) return;
+    if (Date.now() - lastPressAtRef.current < 250) return;
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    lastPressAtRef.current = Date.now();
+    onPress();
+  }, [disabled, onPress]);
   const webDataProps = Platform.OS === 'web'
-    ? ({ dataSet: { signalFloatingFab: 'true' } } as Record<string, unknown>)
+    ? ({
+        dataSet: { signalFloatingFab: 'true' },
+        onClick: triggerWebFallback,
+        onPointerUp: triggerWebFallback,
+      } as Record<string, unknown>)
     : undefined;
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       <Pressable
-        onPress={onPress}
+        onPress={triggerPress}
         disabled={disabled}
         hitSlop={10}
         {...webDataProps}

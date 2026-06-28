@@ -38,6 +38,7 @@ import {
   saveThemeAppearanceMode,
   type ThemeAppearanceMode,
 } from '@/services/themeAppearancePreference';
+import { applyWebDocumentTheme, readWebThemeAppearanceMode } from '@/utils/webThemeDocument';
 
 type SignalThemeContextValue = {
   appearanceMode: ThemeAppearanceMode;
@@ -65,7 +66,9 @@ const SignalThemeContext = createContext<SignalThemeContextValue | null>(null);
 
 export function SignalThemeProvider({ children }: { children: ReactNode }) {
   const systemColorScheme = useColorScheme();
-  const [appearanceMode, setAppearanceModeState] = useState<ThemeAppearanceMode>('system');
+  const [appearanceMode, setAppearanceModeState] = useState<ThemeAppearanceMode>(() =>
+    Platform.OS === 'web' ? readWebThemeAppearanceMode() : 'system',
+  );
   const [presetId, setPresetIdState] = useState<AccentPresetId>('blue');
   const [customHex, setCustomHex] = useState<string>(DEFAULT_CUSTOM_ACCENT_HEX);
   const [fontSizePreset, setFontSizePresetState] = useState<FontSizePresetId>('standard');
@@ -100,10 +103,8 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
-    document.documentElement.dataset.signalTheme = effectiveColorScheme;
-    document.documentElement.style.backgroundColor = theme.bg;
-    document.body.style.backgroundColor = theme.bg;
+    if (Platform.OS !== 'web') return;
+    applyWebDocumentTheme(effectiveColorScheme, theme.bg);
   }, [effectiveColorScheme, theme.bg]);
 
   const fontMultiplier = useMemo(() => fontSizeMultiplierForPreset(fontSizePreset), [fontSizePreset]);

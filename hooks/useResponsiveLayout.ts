@@ -11,15 +11,18 @@ export type ResponsiveLayoutMode = 'compact' | 'regular' | 'wide';
 export function useResponsiveLayout() {
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
+  const isWeb = Platform.OS === 'web';
   const isIOS = Platform.OS === 'ios';
-  const isPad = Platform.OS === 'ios' && Platform.isPad === true;
-  const isWideLayout = isPad && width >= APP_WIDE_LAYOUT_MIN_WIDTH;
+  const isPad = isIOS && 'isPad' in Platform && Platform.isPad === true;
+  /** iPad or desktop web: sidebar + wide content instead of floating phone tab bar. */
+  const isWideLayout = (isPad || isWeb) && width >= APP_WIDE_LAYOUT_MIN_WIDTH;
   const mode: ResponsiveLayoutMode = isWideLayout ? 'wide' : width >= 768 ? 'regular' : 'compact';
 
   return {
     width,
     height,
     isLandscape,
+    isWeb,
     isIOS,
     isPad,
     isWideLayout,

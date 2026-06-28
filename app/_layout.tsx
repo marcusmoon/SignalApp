@@ -1,5 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, ThemeProvider } from "expo-router/react-navigation";
+import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
 import { isRunningInExpoGo } from 'expo';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
@@ -25,6 +25,11 @@ import { startNewsUnreadBackgroundSync } from '@/services/newsUnreadBackground';
 import {
   subscribeSignalServerEndpointChanged,
 } from '@/services/signalServerEndpoint';
+import {
+  readWebThemeAppearanceMode,
+  resolveThemeColorScheme,
+  themeBackgroundForScheme,
+} from '@/utils/webThemeDocument';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -50,9 +55,15 @@ if (Platform.OS !== 'web') {
 export default function RootLayout() {
   const systemScheme = useColorScheme();
   const splashShownAt = useRef(Date.now());
-  const bootstrapBg = bootstrapThemeForColorScheme(
-    systemScheme === 'light' || systemScheme === 'dark' ? systemScheme : null,
-  ).bg;
+  const bootstrapBg = useMemo(() => {
+    if (Platform.OS === 'web') {
+      const scheme = resolveThemeColorScheme(readWebThemeAppearanceMode());
+      return themeBackgroundForScheme(scheme);
+    }
+    return bootstrapThemeForColorScheme(
+      systemScheme === 'light' || systemScheme === 'dark' ? systemScheme : null,
+    ).bg;
+  }, [systemScheme]);
   const [fontsLoaded, fontError] = useFonts(FontAwesome.font);
   const [bootstrapReady, setBootstrapReady] = useState(false);
 
@@ -141,19 +152,23 @@ function RootLayoutNav() {
     [canUseScreenStatusBar, statusBarStyle],
   );
   const navTheme = useMemo(
-    () => ({
-      ...DarkTheme,
-      colors: {
-        ...DarkTheme.colors,
-        primary: theme.green,
-        background: theme.bg,
-        card: theme.bgElevated,
-        text: theme.text,
-        border: theme.border,
-        notification: theme.green,
-      },
-    }),
-    [theme],
+    () => {
+      const base = effectiveColorScheme === 'dark' ? DarkTheme : DefaultTheme;
+      return {
+        ...base,
+        dark: effectiveColorScheme === 'dark',
+        colors: {
+          ...base.colors,
+          primary: theme.green,
+          background: theme.bg,
+          card: theme.bgElevated,
+          text: theme.text,
+          border: theme.border,
+          notification: theme.green,
+        },
+      };
+    },
+    [effectiveColorScheme, theme],
   );
 
   const rootScreenOptions = useMemo(

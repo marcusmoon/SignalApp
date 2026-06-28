@@ -36,8 +36,24 @@ function extractTag(block, tag) {
   return stripCdata(m[1]).trim();
 }
 
+function canonicalLinkForId(link) {
+  const raw = String(link || '').trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    for (const key of [...url.searchParams.keys()]) {
+      if (/^(utm_|xy$|oc$)/i.test(key)) url.searchParams.delete(key);
+    }
+    url.hash = '';
+    const query = url.searchParams.toString();
+    return `${url.origin}${url.pathname}${query ? `?${query}` : ''}`;
+  } catch {
+    return raw.replace(/[?#].*$/, '');
+  }
+}
+
 function stableIdFromLink(link) {
-  const s = String(link || '').trim();
+  const s = canonicalLinkForId(link) || String(link || '').trim();
   let h = 0;
   for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
   return `fj-${h.toString(16)}`;

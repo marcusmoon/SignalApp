@@ -112,6 +112,51 @@ export function filterWatchRows(
   });
 }
 
+function cleanFeedText(value: unknown): string {
+  return String(value || '').trim();
+}
+
+/** Canonical story URL — strips tracking/query noise so duplicate provider rows collapse. */
+export function newsFeedCanonicalUrl(item: SignalApiNewsItem): string {
+  const raw = cleanFeedText(item.sourceUrl);
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    for (const key of [...url.searchParams.keys()]) {
+      if (/^(utm_|xy$|oc$)/i.test(key)) url.searchParams.delete(key);
+    }
+    url.hash = '';
+    const query = url.searchParams.toString();
+    return `${url.origin}${url.pathname}${query ? `?${query}` : ''}`;
+  } catch {
+    return raw.replace(/[?#].*$/, '');
+  }
+}
+
+export function newsFeedDedupeKey(item: SignalApiNewsItem): string {
+  const url = newsFeedCanonicalUrl(item);
+  if (url) return url.toLowerCase();
+  const title = cleanFeedText(item.originalTitle || item.title)
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+  const source = cleanFeedText(item.sourceName).toLowerCase();
+  return `${source}:${title}`;
+}
+
+/** Remove duplicate stories (same canonical URL/title) while preserving feed order. */
+export function dedupeNewsFeedRows(rows: SignalApiNewsItem[]): SignalApiNewsItem[] {
+  const seen = new Set<string>();
+  const out: SignalApiNewsItem[] = [];
+  for (const row of rows) {
+    const key = newsFeedDedupeKey(row);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(row);
+  }
+  return out;
+}
+
 /** Append feed rows by id — duplicate provider copies must not block pagination advance. */
 export function appendUniqueNewsRows(
   existing: SignalApiNewsItem[],
@@ -120,13 +165,15 @@ export function appendUniqueNewsRows(
   if (incoming.length === 0) {
     return { merged: existing, addedCount: 0 };
   }
-  const seen = new Set(existing.map((row) => row.id));
+  const seenIds = new Set(existing.map((row) => row.id));
+  const seenKeys = new Set(existing.map((row) => newsFeedDedupeKey(row)));
   const added: SignalApiNewsItem[] = [];
   for (const row of incoming) {
-    if (!seen.has(row.id)) {
-      seen.add(row.id);
-      added.push(row);
-    }
+    const key = newsFeedDedupeKey(row);
+    if (seenIds.has(row.id) || seenKeys.has(key)) continue;
+    seenIds.add(row.id);
+    seenKeys.add(key);
+    added.push(row);
   }
   return { merged: [...existing, ...added], addedCount: added.length };
 }

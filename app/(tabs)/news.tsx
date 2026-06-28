@@ -46,6 +46,7 @@ import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import {
   appendUniqueNewsRows,
   buildSourcesFromCatalog,
+  dedupeNewsFeedRows,
   FEED_PAGE_CRYPTO,
   FEED_PAGE_GLOBAL,
   FEED_PAGE_KOREA,
@@ -284,6 +285,13 @@ export default function FeedScreen() {
     });
   }, []);
 
+  const syncServerRows = useCallback((rows: SignalApiNewsItem[]) => {
+    const deduped = dedupeNewsFeedRows(rows);
+    serverRowsRef.current = deduped;
+    setServerRows(deduped);
+    return deduped;
+  }, []);
+
   const load = useCallback(
     async (forceRefresh?: boolean): Promise<FeedLoadResult> => {
       setError(null);
@@ -368,12 +376,12 @@ export default function FeedScreen() {
           },
           { cacheMode },
         );
-        setServerRows(rows);
+        const dedupedRows = syncServerRows(rows);
         setServerDigestRows([]);
         feedMetaRef.current = meta;
         hasMoreRef.current = meta.hasMore;
         setHasMore(meta.hasMore);
-        const mapped = rows.map((item) => signalNewsToNewsItem(item, locale));
+        const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
         return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
       }
@@ -401,16 +409,16 @@ export default function FeedScreen() {
           fetchSignalNewsDigests({ category: 'crypto', limit: 30, batches: 10 }).catch(() => null),
         ]);
         const { items: rows, meta } = newsPage;
-        setServerRows(rows);
+        const dedupedRows = syncServerRows(rows);
         setServerDigestRows(digestPage?.items || []);
         feedMetaRef.current = meta;
         hasMoreRef.current = meta.hasMore;
         setHasMore(meta.hasMore);
-        const sourceOptions = uniqueSignalSources(rows);
+        const sourceOptions = uniqueSignalSources(dedupedRows);
         setCryptoSourceOptions(sourceOptions);
         const selected = normalizeNullableSelection(sourceOptions, cryptoSelectedSourcesRef.current);
         if (cryptoSelectedSourcesRef.current !== null) setCryptoSelectedSources(selected);
-        const mapped = rows.map((item) => signalNewsToNewsItem(item, locale));
+        const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
         return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
       }
@@ -438,16 +446,16 @@ export default function FeedScreen() {
           fetchSignalNewsDigests({ category: 'korea', limit: 30, batches: 10 }).catch(() => null),
         ]);
         const { items: rows, meta } = newsPage;
-        setServerRows(rows);
+        const dedupedRows = syncServerRows(rows);
         setServerDigestRows(digestPage?.items || []);
         feedMetaRef.current = meta;
         hasMoreRef.current = meta.hasMore;
         setHasMore(meta.hasMore);
-        const sourceOptions = uniqueSignalSources(rows);
+        const sourceOptions = uniqueSignalSources(dedupedRows);
         setKoreaSourceOptions(sourceOptions);
         const selected = normalizeNullableSelection(sourceOptions, koreaSelectedSourcesRef.current);
         if (koreaSelectedSourcesRef.current !== null) setKoreaSelectedSources(selected);
-        const mapped = rows.map((item) => signalNewsToNewsItem(item, locale));
+        const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
         return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
       }
@@ -502,14 +510,13 @@ export default function FeedScreen() {
       }
 
       const { items: firstPage, meta } = firstPageResult;
-      serverRowsRef.current = firstPage;
-      setServerRows(firstPage);
+      const dedupedFirst = syncServerRows(firstPage);
       setServerDigestRows(digestPage?.items || []);
       feedMetaRef.current = meta;
       hasMoreRef.current = meta.hasMore;
       setHasMore(meta.hasMore);
 
-      const mergedForSources = [...probe, ...firstPage].filter(
+      const mergedForSources = [...probe, ...dedupedFirst].filter(
         (row) => row.category === 'global' || String(row.provider || '') === 'financialjuice',
       );
       setSignalNewsPool(mergedForSources);
@@ -519,7 +526,7 @@ export default function FeedScreen() {
       setAvailableSources(sources);
       const selected = await loadSelectedSources(sources);
       setSelectedSources(selected);
-      let displayPage = firstPage;
+      let displayPage = dedupedFirst;
       if (globalFilterRef.current === 'sources') {
         const sourcePage = await fetchSignalNews(
           {
@@ -532,9 +539,7 @@ export default function FeedScreen() {
           },
           { cacheMode },
         );
-        displayPage = sourcePage.items;
-        serverRowsRef.current = displayPage;
-        setServerRows(displayPage);
+        displayPage = syncServerRows(sourcePage.items);
         feedMetaRef.current = sourcePage.meta;
         hasMoreRef.current = sourcePage.meta.hasMore;
         setHasMore(sourcePage.meta.hasMore);
@@ -545,43 +550,43 @@ export default function FeedScreen() {
       if (displayPage[0]?.id) latestSeenIdRef.current = displayPage[0].id;
       return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
     },
-    [activeTag, locale, segment, t],
+    [activeTag, locale, segment, syncServerRows, t],
   );
 
   const applyMergedNewsRows = useCallback(
     (merged: SignalApiNewsItem[]) => {
-      let scoped = merged;
+      let scoped = dedupeNewsFeedRows(merged);
       if (segment === 'global') {
-        scoped = filterNewsRows(merged, {
+        scoped = filterNewsRows(scoped, {
           kind: globalFilterRef.current,
           sourceOptions: availableSources,
           selectedSources,
         });
       }
       if (segment === 'crypto') {
-        const sourceOptions = uniqueSignalSources(merged);
+        const sourceOptions = uniqueSignalSources(scoped);
         setCryptoSourceOptions(sourceOptions);
         const selected = normalizeNullableSelection(sourceOptions, cryptoSelectedSourcesRef.current);
         if (cryptoSelectedSourcesRef.current !== null) setCryptoSelectedSources(selected);
-        scoped = filterNewsRows(merged, {
+        scoped = filterNewsRows(scoped, {
           kind: cryptoFilterRef.current,
           sourceOptions,
           selectedSources: selected,
         });
       }
       if (segment === 'korea') {
-        const sourceOptions = uniqueSignalSources(merged);
+        const sourceOptions = uniqueSignalSources(scoped);
         setKoreaSourceOptions(sourceOptions);
         const selected = normalizeNullableSelection(sourceOptions, koreaSelectedSourcesRef.current);
         if (koreaSelectedSourcesRef.current !== null) setKoreaSelectedSources(selected);
-        scoped = filterNewsRows(merged, {
+        scoped = filterNewsRows(scoped, {
           kind: koreaFilterRef.current,
           sourceOptions,
           selectedSources: selected,
         });
       }
       if (segment === 'watch') {
-        scoped = filterWatchRows(merged, {
+        scoped = filterWatchRows(scoped, {
           kind: watchFilterRef.current,
           symbolOptions: watchSymbolOptions,
           selectedSymbols: watchSelectedSymbolsRef.current,
@@ -605,19 +610,24 @@ export default function FeedScreen() {
     setLoadingMore(true);
     setError(null);
 
-    const commitPaginationMeta = (totalAdded: number, lastMeta: SignalNewsListMeta | null) => {
-      if (!lastMeta) return;
-      const more = totalAdded > 0 && lastMeta.hasMore;
-      hasMoreRef.current = more;
-      setHasMore(more);
+    const commitPaginationMeta = (lastMeta: SignalNewsListMeta | null) => {
+      if (!lastMeta) {
+        hasMoreRef.current = false;
+        setHasMore(false);
+        return;
+      }
+      hasMoreRef.current = lastMeta.hasMore;
+      setHasMore(lastMeta.hasMore);
     };
+
+    const MAX_SKIP_PAGES = 10;
 
     try {
       if (segment === 'video') {
         let requestOffset = feedMetaRef.current?.nextOffset ?? youtubeRowsRef.current.length;
         let totalAdded = 0;
         let lastMeta: SignalNewsListMeta | null = feedMetaRef.current;
-        for (let skipPages = 0; skipPages < 5; skipPages += 1) {
+        for (let skipPages = 0; skipPages < MAX_SKIP_PAGES; skipPages += 1) {
           const page = await fetchSignalYoutube(
             {
               sort: 'latest',
@@ -654,7 +664,7 @@ export default function FeedScreen() {
           }
           requestOffset = page.meta.nextOffset;
         }
-        commitPaginationMeta(totalAdded, lastMeta);
+        commitPaginationMeta(lastMeta);
         return;
       }
 
@@ -681,7 +691,7 @@ export default function FeedScreen() {
       let requestOffset = feedMetaRef.current?.nextOffset ?? serverRowsRef.current.length;
       let totalAdded = 0;
       let lastMeta: SignalNewsListMeta | null = feedMetaRef.current;
-      for (let skipPages = 0; skipPages < 5; skipPages += 1) {
+      for (let skipPages = 0; skipPages < MAX_SKIP_PAGES; skipPages += 1) {
         const { items: nextRows, meta } = await fetchSignalNews(
           {
             locale,
@@ -714,8 +724,7 @@ export default function FeedScreen() {
 
         const { merged, addedCount } = appendUniqueNewsRows(serverRowsRef.current, nextRows);
         totalAdded += addedCount;
-        serverRowsRef.current = merged;
-        setServerRows(merged);
+        syncServerRows(merged);
 
         if (addedCount > 0) {
           applyMergedNewsRows(merged);
@@ -731,7 +740,7 @@ export default function FeedScreen() {
 
         requestOffset = meta.nextOffset;
       }
-      commitPaginationMeta(totalAdded, lastMeta);
+      commitPaginationMeta(lastMeta);
     } catch (e) {
       setError(formatSignalApiError(e, t, 'feedErrorLoad'));
     } finally {
@@ -746,6 +755,7 @@ export default function FeedScreen() {
     locale,
     segment,
     selectedSources,
+    syncServerRows,
     t,
     watchSymbolOptions,
   ]);

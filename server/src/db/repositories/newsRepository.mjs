@@ -32,6 +32,42 @@ function publicNews(item) {
   };
 }
 
+function canonicalNewsUrl(raw) {
+  const value = cleanText(raw);
+  if (!value) return '';
+  try {
+    const url = new URL(value);
+    for (const key of [...url.searchParams.keys()]) {
+      if (/^(utm_|xy$|oc$)/i.test(key)) url.searchParams.delete(key);
+    }
+    url.hash = '';
+    const query = url.searchParams.toString();
+    return `${url.origin}${url.pathname}${query ? `?${query}` : ''}`.toLowerCase();
+  } catch {
+    return value.replace(/[?#].*$/, '').toLowerCase();
+  }
+}
+
+function newsDedupeKey(item) {
+  const url = canonicalNewsUrl(item?.sourceUrl);
+  if (url) return url;
+  const title = cleanText(item?.originalTitle || item?.title).toLowerCase().replace(/\s+/g, ' ').trim();
+  const source = cleanText(item?.sourceName).toLowerCase();
+  return `${source}:${title}`;
+}
+
+function dedupePublicNewsRows(rows) {
+  const seen = new Set();
+  const out = [];
+  for (const row of rows) {
+    const key = newsDedupeKey(row);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(row);
+  }
+  return out;
+}
+
 export async function queryPublicNewsRows(options = {}) {
   const { limit, offset } = pageOptions(options, 20);
   const locale = cleanText(options.locale) || 'ko';
@@ -115,15 +151,15 @@ export async function queryPublicNewsRows(options = {}) {
       return publicNews(displayNews(item, translation ? [translation] : [], locale));
     })
     .filter(Boolean);
-  const pageRows = rows.slice(0, limit);
   const hasMore = rows.length > limit;
+  const pageRows = dedupePublicNewsRows(rows).slice(0, limit);
   return {
     rows: pageRows,
-    total: offset + pageRows.length + (hasMore ? 1 : 0),
+    total: offset + rows.slice(0, limit).length + (hasMore ? 1 : 0),
     limit,
     offset,
     hasMore,
-    nextOffset: hasMore ? offset + pageRows.length : null,
+    nextOffset: hasMore ? offset + limit : null,
   };
 }
 

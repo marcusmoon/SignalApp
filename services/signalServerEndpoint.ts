@@ -16,7 +16,24 @@ type Stored = {
   customUrl?: string;
 };
 
-const BUNDLE_URL = (process.env.EXPO_PUBLIC_SIGNAL_API_BASE_URL ?? '').trim();
+function resolveSameOriginWebSignalServerUrl(): string {
+  if (typeof window === 'undefined') return '';
+  const origin = String(window.location?.origin ?? '').trim();
+  if (!origin) return '';
+  try {
+    const url = new URL(origin);
+    const host = url.hostname.toLowerCase();
+    const port = url.port;
+    const isLocalDevHost = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
+    const isMetroDevPort = port === '8081' || port === '19006';
+    if (isLocalDevHost && isMetroDevPort) return '';
+  } catch {
+    return '';
+  }
+  return origin;
+}
+
+const BUNDLE_URL = (process.env.EXPO_PUBLIC_SIGNAL_API_BASE_URL ?? '').trim() || resolveSameOriginWebSignalServerUrl();
 
 /** 저장값이 없을 때는 번들(.env) 모드를 씁니다. */
 let cachedMode: SignalServerMode = 'bundle';

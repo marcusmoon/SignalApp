@@ -1,13 +1,12 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  FlatList,
-  ListRenderItem,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
+  type FlatList,
+  type ListRenderItem,
 } from 'react-native';
 import { useIsFocused } from "expo-router/react-navigation";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +17,8 @@ import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
+import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
@@ -352,14 +353,14 @@ export default function CalendarScreen() {
     return (
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         {isFocused ? <OtaUpdateBanner /> : null}
-        <ScrollView
+        <WebWheelScrollView
           contentContainerStyle={[styles.scroll, { paddingBottom: 28 + insets.bottom }]}
           showsVerticalScrollIndicator={false}>
           <View style={styles.errBox}>
             <Text style={styles.errText}>{t('errorSignalApiShort')}</Text>
           </View>
           <SignalBannerAd />
-        </ScrollView>
+        </WebWheelScrollView>
       </SafeAreaView>
     );
   }
@@ -414,7 +415,7 @@ export default function CalendarScreen() {
         </View>
       </View>
 
-      <FlatList
+      <WebWheelFlatList
         ref={listRef}
         style={styles.listScroll}
         data={loading ? [] : selectedDayEvents}

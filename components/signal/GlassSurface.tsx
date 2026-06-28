@@ -47,7 +47,7 @@ export function GlassSurfaceBackground({
   const resolvedBorderWidth = borderWidth ?? glassSurfaceBorderWidth();
 
   return (
-    <View style={[StyleSheet.absoluteFill, { borderRadius, overflow: 'hidden' }]}>
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius, overflow: 'hidden' }]}>
       <View style={[StyleSheet.absoluteFill, { backgroundColor, borderRadius }]} />
       <View
         pointerEvents="none"

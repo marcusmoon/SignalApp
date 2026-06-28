@@ -1533,7 +1533,7 @@ export default function FeedScreen() {
           onPress={() => void onRefresh()}
           iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}
-          disabled={refreshing || loading}
+          disabled={refreshing}
         />
       ) : null}
 

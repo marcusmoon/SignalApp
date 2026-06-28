@@ -31,15 +31,20 @@ export function SignalFloatingTabBar(props: BottomTabBarProps) {
   const tabBarWidth = Math.min(availableWidth, APP_CONTENT_MAX_WIDTH);
   const left = Math.max(marginH, (width - tabBarWidth) / 2);
   const hostHeight = Platform.OS === 'web' ? TAB_BAR_FLOAT_HEIGHT + 29 : TAB_BAR_FLOAT_HEIGHT + 13;
-  const visibleRoutes = state.routes.filter((route) => {
-    return VISIBLE_TAB_NAMES.has(route.name);
-  });
+  const visibleRoutes = state.routes.filter((route) => VISIBLE_TAB_NAMES.has(route.name));
+  const fallbackRoutes = visibleRoutes.length > 0
+    ? visibleRoutes
+    : state.routes.filter((route) => {
+        const options = descriptors[route.key]?.options as { href?: unknown } | undefined;
+        return options?.href !== null;
+      });
 
   return (
     <View
       pointerEvents="box-none"
       style={[
         styles.host,
+        Platform.OS === 'web' ? styles.webHost : null,
         floatingGlassShadow(effectiveColorScheme),
         { left, width: tabBarWidth, bottom, height: hostHeight, backgroundColor },
       ]}>
@@ -50,7 +55,7 @@ export function SignalFloatingTabBar(props: BottomTabBarProps) {
         showTopHighlight
       />
       <View style={styles.row}>
-        {visibleRoutes.map((route) => {
+        {fallbackRoutes.map((route) => {
           const routeIndex = state.routes.findIndex((r) => r.key === route.key);
           const focused = state.index === routeIndex;
           const descriptor = descriptors[route.key];
@@ -140,6 +145,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     zIndex: 900,
     elevation: 20,
+  },
+  webHost: {
+    position: 'fixed' as never,
+    zIndex: 2147483000,
   },
   row: {
     flex: 1,

@@ -39,6 +39,7 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
         hitSlop={10}
         style={({ pressed }) => [
           styles.fab,
+          Platform.OS === 'web' ? styles.webFab : null,
           fabShadow,
           { bottom, right, borderRadius: radius },
           disabled ? styles.fabDisabled : null,
@@ -75,6 +76,10 @@ const styles = StyleSheet.create({
           cursor: 'pointer',
         }
       : {}),
+  },
+  webFab: {
+    position: 'fixed' as never,
+    zIndex: 2147483001,
   },
   fabPressed: {
     opacity: 0.88,

@@ -18,6 +18,7 @@ import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
 import { SignalThemeProvider, useSignalTheme } from '@/contexts/SignalThemeContext';
 import { SidebarSubTabsProvider } from '@/contexts/SidebarSubTabsContext';
 import { bootstrapThemeForColorScheme } from '@/constants/theme';
+import { webFlexFill } from '@/constants/webLayout';
 import { ensureStoredSessionFresh } from '@/integrations/signal-api/httpClient';
 import { getPreviewOtaBannerRaw } from '@/services/env';
 import { runAppBootstrap, SPLASH_MIN_DISPLAY_MS } from '@/services/appBootstrap';
@@ -212,7 +213,7 @@ function RootLayoutNav() {
     <ThemeProvider value={navTheme}>
       <NotificationListener />
       <PushDeviceRegistrar />
-      <View style={{ flex: 1, minHeight: 0, backgroundColor: theme.bg }}>
+      <View style={{ ...webFlexFill, backgroundColor: theme.bg }}>
         <ThemedStatusBar />
         <Stack screenOptions={rootScreenOptions} />
       </View>

@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-import { HorizontalCarouselNav } from '@/components/layout/HorizontalCarouselNav';
+import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -245,52 +245,53 @@ export function DisclosureDigestSection({ items, loading, accentColor }: Props) 
         const next = Math.max(0, Math.round(event.nativeEvent.layout.width));
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        nestedScrollEnabled
-        showsHorizontalScrollIndicator={Platform.OS === 'web'}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        onMomentumScrollEnd={handleScrollEnd}
-        onScrollEndDrag={handleScrollEnd}
-        directionalLockEnabled
-        decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
-        snapToInterval={pageWidth > 0 ? pageWidth : undefined}
-        snapToAlignment="start"
-        disableIntervalMomentum
-        keyboardShouldPersistTaps="handled">
-        {pageWidth > 0 &&
-          loopItems.map((item, index) => {
-            const isLoopClone = index >= items.length;
-            const isExpanded = !isLoopClone && expandedId === item.id && pageIndex === index;
-            return (
-              <View key={`${item.id}-${index}`} style={[styles.page, { width: pageWidth }]}>
-                <DigestCard
-                  item={item}
-                  isExpanded={isExpanded}
-                  onToggle={toggleExpand}
-                  styles={styles}
-                  theme={theme}
-                />
-              </View>
-            );
-          })}
-      </ScrollView>
-
-      {items.length > 1 ? (
-        <HorizontalCarouselNav
-          pageIndex={pageIndex}
-          pageCount={items.length}
-          onPrev={() => goToPage(pageIndex - 1)}
-          onNext={() => goToPage(pageIndex + 1)}>
-          <View style={styles.dotsRow}>
-            {items.map((_, i) => (
-              <View key={i} style={[styles.dot, i === dotIndex && styles.dotActive]} />
-            ))}
-          </View>
-        </HorizontalCarouselNav>
-      ) : null}
+      <HorizontalCarouselShell
+        pageIndex={pageIndex}
+        pageCount={items.length}
+        onPrev={() => goToPage(pageIndex - 1)}
+        onNext={() => goToPage(pageIndex + 1)}
+        footer={
+          items.length > 1 ? (
+            <View style={styles.dotsRow}>
+              {items.map((_, i) => (
+                <View key={i} style={[styles.dot, i === dotIndex && styles.dotActive]} />
+              ))}
+            </View>
+          ) : null
+        }>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={Platform.OS === 'web'}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={handleScrollEnd}
+          onScrollEndDrag={handleScrollEnd}
+          directionalLockEnabled
+          decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
+          snapToInterval={pageWidth > 0 ? pageWidth : undefined}
+          snapToAlignment="start"
+          disableIntervalMomentum
+          keyboardShouldPersistTaps="handled">
+          {pageWidth > 0 &&
+            loopItems.map((item, index) => {
+              const isLoopClone = index >= items.length;
+              const isExpanded = !isLoopClone && expandedId === item.id && pageIndex === index;
+              return (
+                <View key={`${item.id}-${index}`} style={[styles.page, { width: pageWidth }]}>
+                  <DigestCard
+                    item={item}
+                    isExpanded={isExpanded}
+                    onToggle={toggleExpand}
+                    styles={styles}
+                    theme={theme}
+                  />
+                </View>
+              );
+            })}
+        </ScrollView>
+      </HorizontalCarouselShell>
     </View>
   );
 }

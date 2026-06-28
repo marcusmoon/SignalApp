@@ -2,7 +2,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { HorizontalCarouselNav } from '@/components/layout/HorizontalCarouselNav';
+import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -107,66 +107,67 @@ export function ScheduleCarousel({ events, emptyText, onPress }: Props) {
         const next = Math.max(0, Math.round(event.nativeEvent.layout.width));
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        nestedScrollEnabled
-        showsHorizontalScrollIndicator={Platform.OS === 'web'}
-        scrollEventThrottle={16}
-        onScroll={handleScroll}
-        onMomentumScrollEnd={handleScroll}
-        onScrollEndDrag={handleScroll}
-        snapToInterval={pageWidth > 0 ? pageWidth : undefined}
-        snapToAlignment="start"
-        disableIntervalMomentum
-        decelerationRate="fast"
-        directionalLockEnabled
-        keyboardShouldPersistTaps="handled">
-        {pageWidth > 0
-          ? events.map((event) => (
-              <View key={event.id} style={[styles.page, { width: pageWidth }]}>
-                <Pressable
-                  onPress={onPress}
-                  accessibilityRole="button"
-                  style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
-                  <View style={styles.badgeRow}>
-                    <Text style={styles.dateBadge}>{formatShortDate(calendarEventDisplayYmd(event), locale)}</Text>
-                    <Text style={styles.typeBadge}>{t(calendarTypeLabelId(event.type))}</Text>
-                    {event.symbol ? <Text style={styles.symbolBadge}>{event.symbol}</Text> : null}
-                  </View>
-                  <Text style={styles.title} numberOfLines={3}>
-                    {event.title}
-                  </Text>
-                  <View style={styles.metaRow}>
-                    <Text style={styles.meta} numberOfLines={1}>
-                      {[event.time, event.country].filter(Boolean).join(' · ') || '-'}
-                    </Text>
-                    <FontAwesome name="chevron-right" size={11} color={theme.textDim} />
-                  </View>
-                </Pressable>
+      <HorizontalCarouselShell
+        pageIndex={pageIndex}
+        pageCount={events.length}
+        onPrev={() => goToPage(pageIndex - 1)}
+        onNext={() => goToPage(pageIndex + 1)}
+        footer={
+          events.length > 1 ? (
+            <View style={styles.navigator}>
+              <View style={styles.dotsRow}>
+                {events.map((event, index) => (
+                  <View key={event.id} style={[styles.dot, index === pageIndex && styles.dotActive]} />
+                ))}
               </View>
-            ))
-          : null}
-      </ScrollView>
-
-      {events.length > 1 ? (
-        <HorizontalCarouselNav
-          pageIndex={pageIndex}
-          pageCount={events.length}
-          onPrev={() => goToPage(pageIndex - 1)}
-          onNext={() => goToPage(pageIndex + 1)}>
-          <View style={styles.navigator}>
-            <View style={styles.dotsRow}>
-              {events.map((event, index) => (
-                <View key={event.id} style={[styles.dot, index === pageIndex && styles.dotActive]} />
-              ))}
+              <Text style={styles.counter}>
+                {pageIndex + 1} / {events.length}
+              </Text>
             </View>
-            <Text style={styles.counter}>
-              {pageIndex + 1} / {events.length}
-            </Text>
-          </View>
-        </HorizontalCarouselNav>
-      ) : null}
+          ) : null
+        }>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={Platform.OS === 'web'}
+          scrollEventThrottle={16}
+          onScroll={handleScroll}
+          onMomentumScrollEnd={handleScroll}
+          onScrollEndDrag={handleScroll}
+          snapToInterval={pageWidth > 0 ? pageWidth : undefined}
+          snapToAlignment="start"
+          disableIntervalMomentum
+          decelerationRate="fast"
+          directionalLockEnabled
+          keyboardShouldPersistTaps="handled">
+          {pageWidth > 0
+            ? events.map((event) => (
+                <View key={event.id} style={[styles.page, { width: pageWidth }]}>
+                  <Pressable
+                    onPress={onPress}
+                    accessibilityRole="button"
+                    style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+                    <View style={styles.badgeRow}>
+                      <Text style={styles.dateBadge}>{formatShortDate(calendarEventDisplayYmd(event), locale)}</Text>
+                      <Text style={styles.typeBadge}>{t(calendarTypeLabelId(event.type))}</Text>
+                      {event.symbol ? <Text style={styles.symbolBadge}>{event.symbol}</Text> : null}
+                    </View>
+                    <Text style={styles.title} numberOfLines={3}>
+                      {event.title}
+                    </Text>
+                    <View style={styles.metaRow}>
+                      <Text style={styles.meta} numberOfLines={1}>
+                        {[event.time, event.country].filter(Boolean).join(' · ') || '-'}
+                      </Text>
+                      <FontAwesome name="chevron-right" size={11} color={theme.textDim} />
+                    </View>
+                  </Pressable>
+                </View>
+              ))
+            : null}
+        </ScrollView>
+      </HorizontalCarouselShell>
     </View>
   );
 }

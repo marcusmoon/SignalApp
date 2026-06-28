@@ -25,6 +25,7 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { APP_CONTENT_MAX_WIDTH, APP_CONTENT_SIDE_PADDING, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
+import { webFlexFill, webScrollViewportStyle } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -563,10 +564,9 @@ export default function SignalScreen() {
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.bg },
+    safe: { ...webFlexFill, backgroundColor: theme.bg },
     pageColumn: {
-      flex: 1,
-      minHeight: 0,
+      ...webFlexFill,
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
@@ -579,7 +579,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 16,
     },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    scroll: { flex: 1 },
+    scroll: { ...webScrollViewportStyle },
     content: {
       width: '100%',
       paddingHorizontal: 16,

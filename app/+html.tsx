@@ -89,6 +89,13 @@ body {
   flex: 1;
   flex-direction: column;
   min-height: 0;
+  height: 100%;
+}
+
+/* RN Web: force flex children to shrink instead of expanding to content height. */
+#root div[style*="flex: 1"],
+#root div[style*="flex:1"] {
+  min-height: 0;
 }
 
 html[data-signal-theme="light"],

@@ -25,6 +25,7 @@ import {
   type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
 import type { AppTheme } from '@/constants/theme';
+import { webScrollViewportStyle } from '@/constants/webLayout';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
@@ -731,8 +732,7 @@ function makeStyles(
 ) {
   return StyleSheet.create({
     scroll: {
-      flex: 1,
-      minHeight: 0,
+      ...webScrollViewportStyle,
       backgroundColor: theme.bg,
     },
     content: {

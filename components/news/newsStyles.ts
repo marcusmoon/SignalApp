@@ -6,6 +6,7 @@ import {
   wideContentFill,
 } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
+import { webFlexFill, webScrollViewportStyle } from '@/constants/webLayout';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
   SEGMENT_TAB_BTN_PADDING_V,
@@ -21,13 +22,11 @@ import {
 export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: {
-      flex: 1,
-      minHeight: 0,
+      ...webFlexFill,
       backgroundColor: theme.bg,
     },
     mainColumn: {
-      flex: 1,
-      minHeight: 0,
+      ...webFlexFill,
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
@@ -47,8 +46,7 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomColor: theme.border,
     },
     list: {
-      flex: 1,
-      minHeight: 0,
+      ...webScrollViewportStyle,
     },
     listContent: {
       paddingHorizontal: 16,

@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-import { HorizontalCarouselNav } from '@/components/layout/HorizontalCarouselNav';
+import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -230,51 +230,52 @@ export function DigestPager({ batches }: Props) {
         const next = Math.max(0, Math.round(event.nativeEvent.layout.width));
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        nestedScrollEnabled
-        showsHorizontalScrollIndicator={Platform.OS === 'web'}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        onMomentumScrollEnd={handleScrollEnd}
-        onScrollEndDrag={handleScrollEnd}
-        directionalLockEnabled
-        decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
-        snapToInterval={pageWidth > 0 ? pageWidth : undefined}
-        snapToAlignment="start"
-        disableIntervalMomentum
-        keyboardShouldPersistTaps="handled"
-      >
-        {pageWidth > 0 && batches.map((digest, index) => {
-          const isExpanded = expandedId === digest.id && pageIndex === index;
-          return (
-            <View key={digest.id} style={[styles.page, { width: pageWidth }]}>
-              <DigestCard
-                digest={digest}
-                isExpanded={isExpanded}
-                onToggle={toggleExpand}
-                styles={styles}
-                theme={theme}
-              />
+      <HorizontalCarouselShell
+        pageIndex={pageIndex}
+        pageCount={batches.length}
+        onPrev={() => goToPage(pageIndex - 1)}
+        onNext={() => goToPage(pageIndex + 1)}
+        footer={
+          batches.length > 1 ? (
+            <View style={styles.dotsRow}>
+              {batches.map((_, i) => (
+                <View key={i} style={[styles.dot, i === dotIndex && styles.dotActive]} />
+              ))}
             </View>
-          );
-        })}
-      </ScrollView>
-
-      {batches.length > 1 ? (
-        <HorizontalCarouselNav
-          pageIndex={pageIndex}
-          pageCount={batches.length}
-          onPrev={() => goToPage(pageIndex - 1)}
-          onNext={() => goToPage(pageIndex + 1)}>
-          <View style={styles.dotsRow}>
-            {batches.map((_, i) => (
-              <View key={i} style={[styles.dot, i === dotIndex && styles.dotActive]} />
-            ))}
-          </View>
-        </HorizontalCarouselNav>
-      ) : null}
+          ) : null
+        }>
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={Platform.OS === 'web'}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={handleScrollEnd}
+          onScrollEndDrag={handleScrollEnd}
+          directionalLockEnabled
+          decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
+          snapToInterval={pageWidth > 0 ? pageWidth : undefined}
+          snapToAlignment="start"
+          disableIntervalMomentum
+          keyboardShouldPersistTaps="handled">
+          {pageWidth > 0 &&
+            batches.map((digest, index) => {
+              const isExpanded = expandedId === digest.id && pageIndex === index;
+              return (
+                <View key={digest.id} style={[styles.page, { width: pageWidth }]}>
+                  <DigestCard
+                    digest={digest}
+                    isExpanded={isExpanded}
+                    onToggle={toggleExpand}
+                    styles={styles}
+                    theme={theme}
+                  />
+                </View>
+              );
+            })}
+        </ScrollView>
+      </HorizontalCarouselShell>
     </View>
   );
 }

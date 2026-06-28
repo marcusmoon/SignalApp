@@ -9,6 +9,7 @@ import { HomeFocusContent } from '@/components/signal/HomeFocusContent';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { tabBarBottomInset } from '@/constants/tabBar';
+import { webFlexFill } from '@/constants/webLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 import { loadHomeVariant, subscribeHomeVariantChanged, type HomeVariant } from '@/services/homeVariantPreference';
@@ -39,10 +40,10 @@ export default function HomeTabScreen() {
   const HomeContent = homeVariant === 'focus' ? HomeFocusContent : HomeBriefingContent;
 
   return (
-    <SafeAreaView style={{ flex: 1, minHeight: 0, backgroundColor: theme.bg }} edges={['top']}>
+    <SafeAreaView style={{ ...webFlexFill, backgroundColor: theme.bg }} edges={['top']}>
       <SignalHeader compact />
       {isFocused ? <OtaUpdateBanner /> : null}
-      <View style={{ flex: 1, minHeight: 0 }}>
+      <View style={webFlexFill}>
         <HomeContent
           selectedYmd={selectedYmd}
           todayYmd={todayYmd}

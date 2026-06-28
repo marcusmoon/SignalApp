@@ -2,6 +2,8 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { webScrollViewportStyle } from '@/constants/webLayout';
+
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
@@ -447,8 +449,7 @@ export function HomeBriefingContent({
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     scroll: {
-      flex: 1,
-      minHeight: 0,
+      ...webScrollViewportStyle,
       backgroundColor: theme.bg,
     },
     content: {

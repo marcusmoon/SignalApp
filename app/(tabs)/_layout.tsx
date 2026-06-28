@@ -13,7 +13,7 @@ import {
   tabBarPositionBottom,
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
-import { webTabNavigatorHostStyle, webTabSceneStyle } from '@/constants/webLayout';
+import { webTabNavigatorHostStyle, webTabSceneStyle, webFlexFill } from '@/constants/webLayout';
 import {
   GlassSurfaceBackground,
   colorWithAlpha,
@@ -460,18 +460,15 @@ export default function TabLayout() {
 
 const sidebarLayoutStyles = StyleSheet.create({
   safe: {
-    flex: 1,
-    minHeight: 0,
+    ...webFlexFill,
   },
   body: {
-    flex: 1,
+    ...webFlexFill,
     flexDirection: 'row',
-    minHeight: 0,
   },
   content: {
-    flex: 1,
+    ...webFlexFill,
     minWidth: 0,
-    minHeight: 0,
   },
   tabsHost: {
     ...webTabNavigatorHostStyle,

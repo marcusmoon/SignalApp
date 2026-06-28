@@ -2,6 +2,7 @@ import { Platform, StyleSheet } from 'react-native';
 
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
+import { webFlexFill, webScrollViewportStyle } from '@/constants/webLayout';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
@@ -22,10 +23,9 @@ export function makeQuotesStyles(
   changeColors: { up: string; down: string },
 ) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.bg },
+    safe: { ...webFlexFill, backgroundColor: theme.bg },
     mainColumn: {
-      flex: 1,
-      minHeight: 0,
+      ...webFlexFill,
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
@@ -48,7 +48,7 @@ export function makeQuotesStyles(
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
-    list: { flex: 1, minHeight: 0 },
+    list: { ...webScrollViewportStyle },
     listContent: { paddingHorizontal: 16, paddingTop: 8 },
     listContentWide: { paddingTop: 12 },
     segment: {

@@ -18,6 +18,7 @@ import {
   type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
 import { APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { webScrollViewportStyle } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
@@ -645,8 +646,7 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     scroll: {
-      flex: 1,
-      minHeight: 0,
+      ...webScrollViewportStyle,
       backgroundColor: theme.bg,
     },
     scrollContent: {

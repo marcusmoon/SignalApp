@@ -15,7 +15,7 @@
     "web": "expo start --web",
     "web:export": "SIGNAL_WEB_BASE_PATH=/web expo export --platform web --output-dir server/src/public/web",
     "server:build-with-web": "npm run web:export && npm --prefix server install",
-    "railway:build": "npm run web:export && npm --prefix server install",
+    "railway:build": "CI=1 npm run web:export && npm --prefix server install",
     "railway:start": "npm --prefix server run start",
     "generate:splash": "node scripts/generateNativeSplash.mjs",
     "server:dev": "npm --prefix server run dev",

@@ -73,7 +73,7 @@ function WebWheelFlatListInner<T>(
   const onScrollRef = useRef(onScroll);
   const onEndReachedRef = useRef(onEndReached);
   const onEndReachedThresholdRef = useRef(onEndReachedThreshold);
-  const lastWebEndReachedRef = useRef({ at: 0, contentHeight: 0 });
+  const lastWebEndReachedAtRef = useRef(0);
   onLayoutRef.current = onLayout;
   onContentSizeChangeRef.current = onContentSizeChange;
   onScrollRef.current = onScroll;
@@ -108,11 +108,10 @@ function WebWheelFlatListInner<T>(
     if (!isDomNearScrollEnd(node, padPx)) return;
 
     const now = Date.now();
-    const contentHeight = node.scrollHeight;
-    const last = lastWebEndReachedRef.current;
-    if (contentHeight === last.contentHeight && now - last.at < 700) return;
+    if (now - lastWebEndReachedAtRef.current < 250) return;
 
-    lastWebEndReachedRef.current = { at: now, contentHeight };
+    lastWebEndReachedAtRef.current = now;
+    const contentHeight = node.scrollHeight;
     const distanceFromEnd = Math.max(0, contentHeight - (node.scrollTop + node.clientHeight));
     handler({ distanceFromEnd } as EndReachedInfo);
   }, []);
@@ -138,7 +137,7 @@ function WebWheelFlatListInner<T>(
         ?.getScrollableNode?.() ?? null;
       sentinelNode = (webEndSentinelRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
         ?.getScrollableNode?.() ?? null;
-      if (!node || !contentNode || !sentinelNode) {
+      if (!node || !contentNode) {
         retryTimer = setTimeout(attach, 50);
         return;
       }
@@ -167,21 +166,23 @@ function WebWheelFlatListInner<T>(
       });
       observer.observe(node);
       observer.observe(contentNode);
-      const threshold = typeof onEndReachedThresholdRef.current === 'number'
-        ? onEndReachedThresholdRef.current
-        : 0.5;
-      const rootMargin = `${Math.max(120, node.clientHeight * threshold)}px 0px`;
-      endObserver = new IntersectionObserver(
-        (entries) => {
-          if (!node) return;
-          if (entries.some((entry) => entry.isIntersecting)) {
-            emitWebScroll(node);
-            emitWebEndReached(node);
-          }
-        },
-        { root: node, rootMargin, threshold: 0.01 },
-      );
-      endObserver.observe(sentinelNode);
+      if (sentinelNode) {
+        const threshold = typeof onEndReachedThresholdRef.current === 'number'
+          ? onEndReachedThresholdRef.current
+          : 0.5;
+        const rootMargin = `${Math.max(120, node.clientHeight * threshold)}px 0px`;
+        endObserver = new IntersectionObserver(
+          (entries) => {
+            if (!node) return;
+            if (entries.some((entry) => entry.isIntersecting)) {
+              emitWebScroll(node);
+              emitWebEndReached(node);
+            }
+          },
+          { root: node, rootMargin, threshold: 0.01 },
+        );
+        endObserver.observe(sentinelNode);
+      }
       emitWebLayout(node);
       emitWebContentSize(node);
       emitWebEndReached(node);

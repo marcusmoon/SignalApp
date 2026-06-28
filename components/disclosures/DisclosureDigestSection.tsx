@@ -184,7 +184,7 @@ export function DisclosureDigestSection({ items, loading, accentColor }: Props) 
   const goToPage = useCallback(
     (index: number) => {
       if (pageWidth <= 0) return;
-      const next = Math.max(0, Math.min(index, items.length - 1));
+      const next = index < 0 ? items.length - 1 : index >= items.length ? 0 : Math.max(0, Math.min(index, items.length - 1));
       scrollRef.current?.scrollTo({ x: pageWidth * next, animated: true });
       setPageIndex(next);
       setDotIndex(next);
@@ -251,6 +251,7 @@ export function DisclosureDigestSection({ items, loading, accentColor }: Props) 
         pageCount={items.length}
         onPrev={() => goToPage(pageIndex - 1)}
         onNext={() => goToPage(pageIndex + 1)}
+        loop
         footer={
           items.length > 1 ? (
             <View style={styles.dotsRow}>

@@ -1,5 +1,5 @@
 import { forwardRef, isValidElement, useRef } from 'react';
-import { Platform, ScrollView, View, type ScrollViewProps } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, View, type ScrollViewProps } from 'react-native';
 
 import { useWebVerticalWheelScroll } from '@/hooks/useWebVerticalWheelScroll';
 
@@ -83,7 +83,10 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
         ref={localRef as never}
         {...(webEventProps as Record<string, unknown>)}
         style={[webViewportStyle, style]}>
-        <View style={contentContainerStyle}>{children}</View>
+        <View style={contentContainerStyle}>
+          {refreshControlProps?.refreshing ? <WebRefreshStatus /> : null}
+          {children}
+        </View>
       </View>
     );
   }
@@ -115,4 +118,30 @@ const webViewportStyle = {
   overflowY: 'auto',
   overflowX: 'hidden',
   WebkitOverflowScrolling: 'touch',
+} as const;
+
+function WebRefreshStatus() {
+  return (
+    <View style={webRefreshStatusStyle}>
+      <ActivityIndicator size="small" color={'var(--signal-green)' as never} />
+    </View>
+  );
+}
+
+const webRefreshStatusStyle = {
+  position: 'sticky',
+  top: 8,
+  zIndex: 20,
+  alignSelf: 'center',
+  width: 36,
+  height: 36,
+  marginTop: 8,
+  marginBottom: 8,
+  borderRadius: 18,
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: 'var(--signal-card)',
+  borderWidth: 1,
+  borderColor: 'var(--signal-border)',
+  boxShadow: '0 8px 20px rgba(0,0,0,0.14)',
 } as const;

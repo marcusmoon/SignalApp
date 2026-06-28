@@ -1,5 +1,5 @@
 import type { ComponentProps } from 'react';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 
@@ -28,6 +28,7 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
   const { backgroundColor, edge, effectiveColorScheme } = useTabBarGlassStyle();
   const { width } = useWindowDimensions();
   const lastPressAtRef = useRef(0);
+  const fabRef = useRef<View | null>(null);
   const radius = FLOATING_GLASS_FAB_SIZE / 2;
   const fabShadow = useMemo(() => floatingFabShadow(effectiveColorScheme), [effectiveColorScheme]);
   const right = Math.max(APP_CONTENT_SIDE_PADDING, (width - APP_CONTENT_MAX_WIDTH) / 2 + APP_CONTENT_SIDE_PADDING);
@@ -59,9 +60,34 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
       } as Record<string, unknown>)
     : undefined;
 
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const node = (fabRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
+      ?.getScrollableNode?.()
+      ?? document.querySelector('[data-signal-floating-fab="true"]');
+    if (!node) return;
+
+    const handleDomPress = (event: Event) => {
+      triggerWebFallback({
+        preventDefault: () => event.preventDefault(),
+        stopPropagation: () => event.stopPropagation(),
+      });
+    };
+
+    node.addEventListener('click', handleDomPress);
+    node.addEventListener('pointerup', handleDomPress);
+    node.addEventListener('touchend', handleDomPress);
+    return () => {
+      node.removeEventListener('click', handleDomPress);
+      node.removeEventListener('pointerup', handleDomPress);
+      node.removeEventListener('touchend', handleDomPress);
+    };
+  }, [triggerWebFallback]);
+
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       <Pressable
+        ref={fabRef as never}
         onPress={triggerPress}
         onPressIn={Platform.OS === 'web' ? triggerWebFallback : undefined}
         disabled={effectiveDisabled}

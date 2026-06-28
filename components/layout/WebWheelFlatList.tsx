@@ -1,5 +1,6 @@
 import { forwardRef, isValidElement, useCallback, useEffect, useRef } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Platform,
   View,
@@ -20,11 +21,37 @@ const webListViewportStyle = {
   WebkitOverflowScrolling: 'touch',
 } as const;
 
+const webRefreshStatusStyle = {
+  position: 'sticky',
+  top: 8,
+  zIndex: 20,
+  alignSelf: 'center',
+  width: 36,
+  height: 36,
+  marginTop: 8,
+  marginBottom: 8,
+  borderRadius: 18,
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: 'var(--signal-card)',
+  borderWidth: 1,
+  borderColor: 'var(--signal-border)',
+  boxShadow: '0 8px 20px rgba(0,0,0,0.14)',
+} as const;
+
 const webSeparators = {
   highlight: () => {},
   unhighlight: () => {},
   updateProps: () => {},
 };
+
+function WebRefreshStatus() {
+  return (
+    <View style={webRefreshStatusStyle}>
+      <ActivityIndicator size="small" color={'var(--signal-green)' as never} />
+    </View>
+  );
+}
 
 type EndReachedInfo = Parameters<NonNullable<FlatListProps<unknown>['onEndReached']>>[0];
 
@@ -347,6 +374,7 @@ function WebWheelFlatListInner<T>(
     return (
       <View ref={setWebRef} style={[webListViewportStyle, style] as never} {...(webEventProps as Record<string, unknown>)}>
         <View ref={webContentRef} style={contentContainerStyle}>
+          {refreshControlProps?.refreshing ? <WebRefreshStatus /> : null}
           {renderListSlot(ListHeaderComponent)}
           {rows.length === 0 ? renderListSlot(ListEmptyComponent) : null}
           {rows.map((item, index) => (

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
+import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -408,6 +409,16 @@ export function HomeFocusContent({
     setActiveIssueIndex((prev) => (prev === next ? prev : next));
   }, [issueGroups.length]);
 
+  const goToIssuePage = useCallback(
+    (index: number) => {
+      if (issueCarouselWidth <= 0 || issueGroups.length <= 1) return;
+      const next = index < 0 ? issueGroups.length - 1 : index >= issueGroups.length ? 0 : index;
+      issueScrollRef.current?.scrollTo({ x: issueCarouselWidth * next, animated: true });
+      setActiveIssueIndex(next);
+    },
+    [issueCarouselWidth, issueGroups.length],
+  );
+
   const onBriefingScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const width = event.nativeEvent.layoutMeasurement.width;
     if (width <= 0) return;
@@ -430,6 +441,16 @@ export function HomeFocusContent({
     const next = rawIndex >= briefings.length ? 0 : Math.max(0, Math.min(rawIndex, briefings.length - 1));
     setActiveBriefingIndex((prev) => (prev === next ? prev : next));
   }, [briefings.length]);
+
+  const goToBriefingPage = useCallback(
+    (index: number) => {
+      if (briefingCarouselWidth <= 0 || briefings.length <= 1) return;
+      const next = index < 0 ? briefings.length - 1 : index >= briefings.length ? 0 : index;
+      briefingScrollRef.current?.scrollTo({ x: briefingCarouselWidth * next, animated: true });
+      setActiveBriefingIndex(next);
+    },
+    [briefingCarouselWidth, briefings.length],
+  );
 
   const renderIssueGroup = useCallback(
     (group: IssueGroup) => (
@@ -565,42 +586,51 @@ export function HomeFocusContent({
               <View
                 style={styles.issueCarouselWrap}
                 onLayout={(event) => setIssueCarouselWidth(Math.round(event.nativeEvent.layout.width))}>
-                {issueGroups.length === 1 ? (
-                  renderIssueGroup(issueGroups[0])
-                ) : (
-                  <ScrollView
-                    ref={issueScrollRef}
-                    horizontal
-                    nestedScrollEnabled
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    decelerationRate="fast"
-                    directionalLockEnabled
-                    keyboardShouldPersistTaps="handled"
-                    snapToInterval={issueCarouselWidth > 0 ? issueCarouselWidth : undefined}
-                    onScroll={onIssueScroll}
-                    scrollEventThrottle={16}
-                    onMomentumScrollEnd={onIssueScrollEnd}
-                    style={styles.issueCarousel}>
-                    {loopIssueGroups.map((group, index) => (
-                      <View
-                        key={`${group.category}-${index}`}
-                        style={[styles.heroSlide, issueCarouselWidth > 0 && { width: issueCarouselWidth }]}>
-                        {renderIssueGroup(group)}
+                <HorizontalCarouselShell
+                  pageIndex={activeIssueIndex}
+                  pageCount={issueGroups.length}
+                  onPrev={() => goToIssuePage(activeIssueIndex - 1)}
+                  onNext={() => goToIssuePage(activeIssueIndex + 1)}
+                  loop
+                  footer={
+                    issueGroups.length > 1 ? (
+                      <View style={styles.issueDots}>
+                        {issueGroups.map((group, index) => (
+                          <View
+                            key={`${group.category}-dot`}
+                            style={[styles.issueDot, activeIssueIndex === index && styles.issueDotActive]}
+                          />
+                        ))}
                       </View>
-                    ))}
-                  </ScrollView>
-                )}
-                {issueGroups.length > 1 ? (
-                  <View style={styles.issueDots}>
-                    {issueGroups.map((group, index) => (
-                      <View
-                        key={`${group.category}-dot`}
-                        style={[styles.issueDot, activeIssueIndex === index && styles.issueDotActive]}
-                      />
-                    ))}
-                  </View>
-                ) : null}
+                    ) : null
+                  }>
+                  {issueGroups.length === 1 ? (
+                    renderIssueGroup(issueGroups[0])
+                  ) : (
+                    <ScrollView
+                      ref={issueScrollRef}
+                      horizontal
+                      nestedScrollEnabled
+                      pagingEnabled
+                      showsHorizontalScrollIndicator={false}
+                      decelerationRate="fast"
+                      directionalLockEnabled
+                      keyboardShouldPersistTaps="handled"
+                      snapToInterval={issueCarouselWidth > 0 ? issueCarouselWidth : undefined}
+                      onScroll={onIssueScroll}
+                      scrollEventThrottle={16}
+                      onMomentumScrollEnd={onIssueScrollEnd}
+                      style={styles.issueCarousel}>
+                      {loopIssueGroups.map((group, index) => (
+                        <View
+                          key={`${group.category}-${index}`}
+                          style={[styles.heroSlide, issueCarouselWidth > 0 && { width: issueCarouselWidth }]}>
+                          {renderIssueGroup(group)}
+                        </View>
+                      ))}
+                    </ScrollView>
+                  )}
+                </HorizontalCarouselShell>
               </View>
             ) : (
               <View style={styles.emptyCard}>
@@ -620,42 +650,51 @@ export function HomeFocusContent({
               <View
                 style={styles.briefingCarouselWrap}
                 onLayout={(event) => setBriefingCarouselWidth(Math.round(event.nativeEvent.layout.width))}>
-                {briefings.length === 1 ? (
-                  renderBriefingCard(briefings[0])
-                ) : (
-                  <ScrollView
-                    ref={briefingScrollRef}
-                    horizontal
-                    nestedScrollEnabled
-                    pagingEnabled
-                    showsHorizontalScrollIndicator={false}
-                    decelerationRate="fast"
-                    directionalLockEnabled
-                    keyboardShouldPersistTaps="handled"
-                    snapToInterval={briefingCarouselWidth > 0 ? briefingCarouselWidth : undefined}
-                    onScroll={onBriefingScroll}
-                    scrollEventThrottle={16}
-                    onMomentumScrollEnd={onBriefingScrollEnd}
-                    style={styles.issueCarousel}>
-                    {loopBriefings.map((row, index) => (
-                      <View
-                        key={`${row.id}-${index}`}
-                        style={[styles.heroSlide, briefingCarouselWidth > 0 && { width: briefingCarouselWidth }]}>
-                        {renderBriefingCard(row)}
+                <HorizontalCarouselShell
+                  pageIndex={activeBriefingIndex}
+                  pageCount={briefings.length}
+                  onPrev={() => goToBriefingPage(activeBriefingIndex - 1)}
+                  onNext={() => goToBriefingPage(activeBriefingIndex + 1)}
+                  loop
+                  footer={
+                    briefings.length > 1 ? (
+                      <View style={styles.issueDots}>
+                        {briefings.map((row, index) => (
+                          <View
+                            key={`${row.id}-dot`}
+                            style={[styles.issueDot, activeBriefingIndex === index && styles.issueDotActive]}
+                          />
+                        ))}
                       </View>
-                    ))}
-                  </ScrollView>
-                )}
-                {briefings.length > 1 ? (
-                  <View style={styles.issueDots}>
-                    {briefings.map((row, index) => (
-                      <View
-                        key={`${row.id}-dot`}
-                        style={[styles.issueDot, activeBriefingIndex === index && styles.issueDotActive]}
-                      />
-                    ))}
-                  </View>
-                ) : null}
+                    ) : null
+                  }>
+                  {briefings.length === 1 ? (
+                    renderBriefingCard(briefings[0])
+                  ) : (
+                    <ScrollView
+                      ref={briefingScrollRef}
+                      horizontal
+                      nestedScrollEnabled
+                      pagingEnabled
+                      showsHorizontalScrollIndicator={false}
+                      decelerationRate="fast"
+                      directionalLockEnabled
+                      keyboardShouldPersistTaps="handled"
+                      snapToInterval={briefingCarouselWidth > 0 ? briefingCarouselWidth : undefined}
+                      onScroll={onBriefingScroll}
+                      scrollEventThrottle={16}
+                      onMomentumScrollEnd={onBriefingScrollEnd}
+                      style={styles.issueCarousel}>
+                      {loopBriefings.map((row, index) => (
+                        <View
+                          key={`${row.id}-${index}`}
+                          style={[styles.heroSlide, briefingCarouselWidth > 0 && { width: briefingCarouselWidth }]}>
+                          {renderBriefingCard(row)}
+                        </View>
+                      ))}
+                    </ScrollView>
+                  )}
+                </HorizontalCarouselShell>
               </View>
             ) : (
               <View style={styles.emptyCard}>

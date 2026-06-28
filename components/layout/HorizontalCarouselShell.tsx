@@ -77,9 +77,9 @@ function makeStyles(theme: AppTheme) {
     arrow: {
       position: 'absolute',
       top: '50%',
-      width: 36,
-      height: 36,
-      marginTop: -18,
+      width: 34,
+      height: 34,
+      marginTop: -17,
       borderRadius: 999,
       alignItems: 'center',
       justifyContent: 'center',
@@ -87,6 +87,7 @@ function makeStyles(theme: AppTheme) {
       borderColor: theme.border,
       backgroundColor: theme.card,
       zIndex: 3,
+      opacity: 0.92,
       shadowColor: '#000000',
       shadowOpacity: 0.18,
       shadowRadius: 8,
@@ -94,10 +95,10 @@ function makeStyles(theme: AppTheme) {
       elevation: 3,
     },
     arrowLeft: {
-      left: 6,
+      left: -17,
     },
     arrowRight: {
-      right: 6,
+      right: -17,
     },
     arrowPressed: {
       opacity: 0.82,

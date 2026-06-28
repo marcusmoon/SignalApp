@@ -16,6 +16,7 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
+import { webHorizontalCarouselScrollProps } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -248,7 +249,7 @@ export function DigestPager({ batches }: Props) {
           ref={scrollRef}
           horizontal
           nestedScrollEnabled
-          showsHorizontalScrollIndicator={Platform.OS === 'web'}
+          {...webHorizontalCarouselScrollProps}
           onScroll={handleScroll}
           scrollEventThrottle={16}
           onMomentumScrollEnd={handleScrollEnd}

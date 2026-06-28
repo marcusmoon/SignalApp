@@ -16,6 +16,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { tabBarBottomInset } from '@/constants/tabBar';
+import {
+  WEB_FLATLIST_BATCH,
+  WEB_FLATLIST_INITIAL,
+  WEB_FLATLIST_WINDOW,
+} from '@/constants/webLayout';
 import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER, parseNewsSegmentKey, type NewsSegmentKey } from '@/constants/newsSegment';
 import { AdPlaceholder } from '@/components/signal/AdPlaceholder';
 import { NewsSourceFilterModal } from '@/components/signal/NewsSourceFilterModal';
@@ -1406,9 +1411,9 @@ export default function FeedScreen() {
             )
           }
           removeClippedSubviews={Platform.OS === 'android'}
-          initialNumToRender={Platform.OS === 'web' ? 28 : 8}
-          windowSize={Platform.OS === 'web' ? 12 : 7}
-          maxToRenderPerBatch={Platform.OS === 'web' ? 24 : 12}
+          initialNumToRender={Platform.OS === 'web' ? WEB_FLATLIST_INITIAL : 8}
+          windowSize={Platform.OS === 'web' ? WEB_FLATLIST_WINDOW : 7}
+          maxToRenderPerBatch={Platform.OS === 'web' ? WEB_FLATLIST_BATCH : 12}
         />
       </View>
 

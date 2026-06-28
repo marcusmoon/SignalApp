@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
+import { webHorizontalCarouselScrollProps } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -130,7 +131,7 @@ export function ScheduleCarousel({ events, emptyText, onPress }: Props) {
           ref={scrollRef}
           horizontal
           nestedScrollEnabled
-          showsHorizontalScrollIndicator={Platform.OS === 'web'}
+          {...webHorizontalCarouselScrollProps}
           scrollEventThrottle={16}
           onScroll={handleScroll}
           onMomentumScrollEnd={handleScroll}

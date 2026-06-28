@@ -29,7 +29,7 @@ import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
-import { webFlexFill, webScrollViewportStyle } from '@/constants/webLayout';
+import { webFlexFill, webScrollViewportStyle, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
@@ -576,9 +576,9 @@ export default function YoutubeScreen() {
             )
           }
           removeClippedSubviews={Platform.OS === 'android'}
-          initialNumToRender={Platform.OS === 'web' ? 36 : 6}
-          windowSize={Platform.OS === 'web' ? 12 : 7}
-          maxToRenderPerBatch={Platform.OS === 'web' ? 30 : 10}
+          initialNumToRender={Platform.OS === 'web' ? WEB_FLATLIST_INITIAL : 6}
+          windowSize={Platform.OS === 'web' ? WEB_FLATLIST_WINDOW : 7}
+          maxToRenderPerBatch={Platform.OS === 'web' ? WEB_FLATLIST_BATCH : 10}
         />
       </View>
   );

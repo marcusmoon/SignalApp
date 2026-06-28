@@ -92,10 +92,13 @@ body {
   height: 100%;
 }
 
-/* RN Web: force flex children to shrink instead of expanding to content height. */
-#root div[style*="flex: 1"],
-#root div[style*="flex:1"] {
-  min-height: 0;
+/* Hide scrollbars on horizontal card carousels (navigation uses overlay arrows). */
+[data-signal-horizontal-carousel="true"] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+[data-signal-horizontal-carousel="true"]::-webkit-scrollbar {
+  display: none;
 }
 
 html[data-signal-theme="light"],

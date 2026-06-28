@@ -344,8 +344,8 @@ export default function TabLayout() {
         ...(webTabSceneStyle ? { sceneStyle: webTabSceneStyle } : null),
         /** 탭 복귀 시 화면이 비는(react-native-screens freeze) 경우 완화 */
         freezeOnBlur: false,
-        /** 첫 탭 진입 시 레이아웃만 있고 내용이 안 그려지는 경우 완화 */
-        lazy: false,
+        /** Web: lazy-mount tabs to avoid rendering every feed at once. Native phone keeps eager mount. */
+        lazy: isWeb,
       }),
     [
       tabBarTotalHeight,
@@ -369,6 +369,8 @@ export default function TabLayout() {
     (): BottomTabNavigationOptions => ({
       ...screenOptions,
       tabBarStyle: { display: 'none' },
+      /** Sidebar switches tabs explicitly — only mount the active screen. */
+      lazy: true,
     }),
     [screenOptions],
   );
@@ -392,7 +394,7 @@ export default function TabLayout() {
       initialRouteName="home"
       tabBar={isWeb ? undefined : (props) => <SignalFloatingTabBar {...props} />}
       screenOptions={screenOptions}
-      detachInactiveScreens={false}>
+      detachInactiveScreens={isWeb}>
       {/* 순서: 홈 · 뉴스 · 시그널 · 시세 · 더보기. 공시·유튜브는 더보기 허브에서 진입한다. */}
       <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen
@@ -523,7 +525,7 @@ function IpadWideTabLayout({
                 initialRouteName="news"
                 tabBar={() => null}
                 screenOptions={iPadScreenOptions}
-                detachInactiveScreens={false}>
+                detachInactiveScreens>
               <Tabs.Screen name="index" options={{ href: null }} />
               <Tabs.Screen name="home" options={{ href: null }} />
               <Tabs.Screen name="news" options={{ title: t('tabNews') }} />

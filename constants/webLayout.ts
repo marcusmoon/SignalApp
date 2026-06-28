@@ -28,3 +28,18 @@ export const webSidebarContentStyle = {
   minHeight: 0,
   alignSelf: 'stretch' as const,
 };
+
+/** FlatList tuning on web — avoid rendering every tab's feed at once. */
+export const WEB_FLATLIST_INITIAL = 12;
+export const WEB_FLATLIST_WINDOW = 7;
+export const WEB_FLATLIST_BATCH = 10;
+
+/** Horizontal carousels on web — hide native scrollbars (use arrow nav instead). */
+export const webHorizontalCarouselScrollProps =
+  Platform.OS === 'web'
+    ? ({
+        showsHorizontalScrollIndicator: false as const,
+        dataSet: { signalHorizontalCarousel: 'true' },
+      } as const)
+    : ({ showsHorizontalScrollIndicator: false as const } as const);
+

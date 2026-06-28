@@ -13,7 +13,7 @@ import {
   tabBarPositionBottom,
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
-import { webTabNavigatorHostStyle, webTabSceneStyle, webFlexFill, webSidebarContentStyle, webSidebarPaneFill } from '@/constants/webLayout';
+import { webTabNavigatorHostStyle, webTabSceneStyle, webFlexFill, webSidebarContentStyle } from '@/constants/webLayout';
 import {
   GlassSurfaceBackground,
   colorWithAlpha,
@@ -369,8 +369,8 @@ export default function TabLayout() {
     (): BottomTabNavigationOptions => ({
       ...screenOptions,
       tabBarStyle: { display: 'none' },
-      /** Sidebar switches tabs explicitly — only mount the active screen. */
-      lazy: true,
+      /** Wide sidebar: eager mount — lazy + detach blanked the right pane on web. */
+      lazy: false,
     }),
     [screenOptions],
   );
@@ -472,12 +472,10 @@ const sidebarLayoutStyles = StyleSheet.create({
   content: {
     ...webSidebarContentStyle,
   },
-  paneFill: {
-    ...webSidebarPaneFill,
-  },
   tabsHost: {
     ...webTabNavigatorHostStyle,
   },
+  tabsHostHidden: { display: 'none' as const },
 });
 
 type IpadWideTabLayoutProps = {
@@ -509,34 +507,30 @@ function IpadWideTabLayout({
         />
         <View style={[sidebarLayoutStyles.content, { backgroundColor: theme.bg }]}>
           {contentPane === 'home' ? (
-            <View style={sidebarLayoutStyles.paneFill}>
-              <IpadHomeScreen />
-            </View>
+            <IpadHomeScreen />
           ) : contentPane === 'newsIssues' && newsIssuesParams ? (
-            <View style={sidebarLayoutStyles.paneFill}>
-              <NewsIssuesContent
-                embedded
-                initialCategory={newsIssuesParams.category}
-                initialDate={newsIssuesParams.date}
-                initialDigestId={newsIssuesParams.digestId}
-                onBack={showHome}
-              />
-            </View>
+            <NewsIssuesContent
+              embedded
+              initialCategory={newsIssuesParams.category}
+              initialDate={newsIssuesParams.date}
+              initialDigestId={newsIssuesParams.digestId}
+              onBack={showHome}
+            />
           ) : contentPane === 'account' ? (
-            <View style={sidebarLayoutStyles.paneFill}>
-              <AccountScreen embedded />
-            </View>
+            <AccountScreen embedded />
           ) : contentPane === 'settings' ? (
-            <View style={sidebarLayoutStyles.paneFill}>
-              <SettingsScreen embedded />
-            </View>
-          ) : (
-            <View style={sidebarLayoutStyles.tabsHost}>
-              <Tabs
-                initialRouteName="news"
-                tabBar={() => null}
-                screenOptions={iPadScreenOptions}
-                detachInactiveScreens>
+            <SettingsScreen embedded />
+          ) : null}
+          <View
+            style={[
+              sidebarLayoutStyles.tabsHost,
+              contentPane !== 'tabs' ? sidebarLayoutStyles.tabsHostHidden : null,
+            ]}>
+            <Tabs
+              initialRouteName="news"
+              tabBar={() => null}
+              screenOptions={iPadScreenOptions}
+              detachInactiveScreens={false}>
               <Tabs.Screen name="index" options={{ href: null }} />
               <Tabs.Screen name="home" options={{ href: null }} />
               <Tabs.Screen name="news" options={{ title: t('tabNews') }} />
@@ -545,9 +539,8 @@ function IpadWideTabLayout({
               <Tabs.Screen name="quotes" options={{ title: t('tabQuotes') }} />
               <Tabs.Screen name="more" options={{ title: t('tabMore') }} />
               <Tabs.Screen name="youtube" options={{ title: t('tabYoutube') }} />
-              </Tabs>
-            </View>
-          )}
+            </Tabs>
+          </View>
         </View>
       </View>
     </SafeAreaView>

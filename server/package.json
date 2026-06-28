@@ -11,7 +11,7 @@
     "start": "node --disable-warning=ExperimentalWarning src/server.mjs",
     "worker": "node --disable-warning=ExperimentalWarning src/worker.mjs",
     "db:postgres:check": "node scripts/checkPostgres.mjs",
-    "railway:build": "npm install",
+    "railway:build": "cd .. && npm install && npm run web:export && npm --prefix server install",
     "railway:start": "npm run start"
   },
   "dependencies": {

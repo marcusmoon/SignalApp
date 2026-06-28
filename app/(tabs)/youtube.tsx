@@ -219,6 +219,7 @@ export default function YoutubeScreen() {
     const nextOff = meta.nextOffset;
     if (nextOff == null) return;
 
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     setError(null);
     try {
@@ -257,6 +258,7 @@ export default function YoutubeScreen() {
     } catch (e) {
       applyLoadError(e, 'youtubeErrorLoad');
     } finally {
+      loadingMoreRef.current = false;
       setLoadingMore(false);
     }
   }, [effectiveSort, selectedHandles, curationHandles, locale, applyLoadError]);

@@ -8,7 +8,7 @@ import {
   type ListRenderItemInfo,
 } from 'react-native';
 
-import { syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
+import { isDomNearScrollEnd, syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
 
 const webListViewportStyle = {
   flex: 1,
@@ -25,6 +25,8 @@ const webSeparators = {
   unhighlight: () => {},
   updateProps: () => {},
 };
+
+type EndReachedInfo = Parameters<NonNullable<FlatListProps<unknown>['onEndReached']>>[0];
 
 function renderListSlot(slot: unknown) {
   if (!slot) return null;
@@ -55,6 +57,7 @@ function WebWheelFlatListInner<T>(
     style,
     onScroll,
     onEndReached,
+    onEndReachedThreshold,
     onLayout,
     onContentSizeChange,
     ...rest
@@ -67,9 +70,14 @@ function WebWheelFlatListInner<T>(
   const onLayoutRef = useRef(onLayout);
   const onContentSizeChangeRef = useRef(onContentSizeChange);
   const onScrollRef = useRef(onScroll);
+  const onEndReachedRef = useRef(onEndReached);
+  const onEndReachedThresholdRef = useRef(onEndReachedThreshold);
+  const lastWebEndReachedRef = useRef({ at: 0, contentHeight: 0 });
   onLayoutRef.current = onLayout;
   onContentSizeChangeRef.current = onContentSizeChange;
   onScrollRef.current = onScroll;
+  onEndReachedRef.current = onEndReached;
+  onEndReachedThresholdRef.current = onEndReachedThreshold;
 
   const emitWebLayout = useCallback((node: HTMLElement) => {
     onLayoutRef.current?.({
@@ -86,6 +94,26 @@ function WebWheelFlatListInner<T>(
   const emitWebScroll = useCallback((node: HTMLElement) => {
     const event = syntheticScrollEventFromDom(node);
     onScrollRef.current?.(event);
+  }, []);
+
+  const emitWebEndReached = useCallback((node: HTMLElement) => {
+    const handler = onEndReachedRef.current;
+    if (!handler) return;
+
+    const threshold = typeof onEndReachedThresholdRef.current === 'number'
+      ? onEndReachedThresholdRef.current
+      : 0.5;
+    const padPx = Math.max(120, node.clientHeight * threshold);
+    if (!isDomNearScrollEnd(node, padPx)) return;
+
+    const now = Date.now();
+    const contentHeight = node.scrollHeight;
+    const last = lastWebEndReachedRef.current;
+    if (contentHeight === last.contentHeight && now - last.at < 700) return;
+
+    lastWebEndReachedRef.current = { at: now, contentHeight };
+    const distanceFromEnd = Math.max(0, contentHeight - (node.scrollTop + node.clientHeight));
+    handler({ distanceFromEnd } as EndReachedInfo);
   }, []);
 
   /** Sidebar pane toggles can skip RN onLayout — observe the scroll node directly on web. */
@@ -110,6 +138,7 @@ function WebWheelFlatListInner<T>(
       handleScroll = () => {
         if (!node) return;
         emitWebScroll(node);
+        emitWebEndReached(node);
       };
       node.addEventListener('scroll', handleScroll, { passive: true });
       observer = new ResizeObserver(() => {
@@ -130,7 +159,7 @@ function WebWheelFlatListInner<T>(
       if (node && handleScroll) node.removeEventListener('scroll', handleScroll);
       observer?.disconnect();
     };
-  }, [emitWebContentSize, emitWebLayout, emitWebScroll]);
+  }, [emitWebContentSize, emitWebEndReached, emitWebLayout, emitWebScroll]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -207,6 +236,7 @@ function WebWheelFlatListInner<T>(
       style={style}
       onScroll={onScroll}
       onEndReached={onEndReached}
+      onEndReachedThreshold={onEndReachedThreshold}
       onLayout={handleLayout}
       onContentSizeChange={onContentSizeChange}
       ref={(instance) => {

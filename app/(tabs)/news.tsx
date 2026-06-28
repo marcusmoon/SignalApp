@@ -1497,7 +1497,7 @@ export default function FeedScreen() {
               </View>
             ) : null
           }
-          onEndReached={Platform.OS === 'web' ? undefined : () => void loadMore()}
+          onEndReached={() => void loadMore()}
           onEndReachedThreshold={0.55}
           onScroll={webFeedLoadMore.onScroll}
           scrollEventThrottle={350}

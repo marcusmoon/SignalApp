@@ -175,13 +175,22 @@ export function DigestPager({ batches }: Props) {
   const [dotIndex, setDotIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const carouselPages = useMemo(() => (batches.length > 1 ? [...batches, batches[0]] : batches), [batches]);
 
   useWebHorizontalWheelScroll(scrollRef, batches.length > 1);
 
   const goToPage = useCallback(
     (index: number) => {
       if (pageWidth <= 0) return;
-      const next = Math.max(0, Math.min(index, batches.length - 1));
+      if (batches.length <= 1) return;
+      if (index >= batches.length) {
+        scrollRef.current?.scrollTo({ x: pageWidth * batches.length, animated: true });
+        setPageIndex(0);
+        setDotIndex(0);
+        setExpandedId(null);
+        return;
+      }
+      const next = index < 0 ? batches.length - 1 : Math.max(0, Math.min(index, batches.length - 1));
       scrollRef.current?.scrollTo({ x: pageWidth * next, animated: true });
       setPageIndex(next);
       setDotIndex(next);
@@ -193,7 +202,15 @@ export function DigestPager({ batches }: Props) {
   const syncPageIndex = useCallback(
     (offsetX: number, resetExpand: boolean) => {
       if (pageWidth <= 0) return;
-      const index = Math.max(0, Math.min(Math.round(offsetX / pageWidth), batches.length - 1));
+      const rawIndex = Math.max(0, Math.round(offsetX / pageWidth));
+      if (batches.length > 1 && rawIndex >= batches.length) {
+        scrollRef.current?.scrollTo({ x: 0, animated: false });
+        setPageIndex(0);
+        setDotIndex(0);
+        if (resetExpand) setExpandedId(null);
+        return;
+      }
+      const index = Math.max(0, Math.min(rawIndex, batches.length - 1));
       setPageIndex(index);
       setDotIndex(index);
       if (resetExpand) setExpandedId(null);
@@ -204,7 +221,10 @@ export function DigestPager({ batches }: Props) {
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (pageWidth <= 0) return;
-      const index = Math.max(0, Math.min(Math.round(e.nativeEvent.contentOffset.x / pageWidth), batches.length - 1));
+      const rawIndex = Math.max(0, Math.round(e.nativeEvent.contentOffset.x / pageWidth));
+      const index = batches.length > 1 && rawIndex >= batches.length
+        ? 0
+        : Math.max(0, Math.min(rawIndex, batches.length - 1));
       setDotIndex((prev) => (prev === index ? prev : index));
     },
     [pageWidth, batches.length],
@@ -236,6 +256,7 @@ export function DigestPager({ batches }: Props) {
         pageCount={batches.length}
         onPrev={() => goToPage(pageIndex - 1)}
         onNext={() => goToPage(pageIndex + 1)}
+        loop
         footer={
           batches.length > 1 ? (
             <View style={styles.dotsRow}>
@@ -261,10 +282,11 @@ export function DigestPager({ batches }: Props) {
           disableIntervalMomentum
           keyboardShouldPersistTaps="handled">
           {pageWidth > 0 &&
-            batches.map((digest, index) => {
-              const isExpanded = expandedId === digest.id && pageIndex === index;
+            carouselPages.map((digest, index) => {
+              const realIndex = batches.length > 1 && index >= batches.length ? 0 : index;
+              const isExpanded = expandedId === digest.id && pageIndex === realIndex;
               return (
-                <View key={digest.id} style={[styles.page, { width: pageWidth }]}>
+                <View key={`${digest.id}-${index}`} style={[styles.page, { width: pageWidth }]}>
                   <DigestCard
                     digest={digest}
                     isExpanded={isExpanded}

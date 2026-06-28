@@ -1,10 +1,11 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
+import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { HOME_DIGEST_CATEGORIES, type HomeDigestCategory } from '@/constants/ipadHomeNav';
@@ -136,7 +137,7 @@ export function NewsIssuesContent({
 
   const body = (
     <SafeAreaView style={styles.safe} edges={isWide ? [] : ['bottom']}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <WebWheelScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={[styles.inner, isWide && styles.innerWide]}>
           {onBack ? (
             <View style={styles.paneTopBar}>
@@ -265,7 +266,7 @@ export function NewsIssuesContent({
             </View>
           )}
         </View>
-      </ScrollView>
+      </WebWheelScrollView>
     </SafeAreaView>
   );
 
@@ -299,8 +300,8 @@ export default function NewsIssuesScreen() {
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.bg },
-    scroll: { flex: 1 },
+    safe: { flex: 1, minHeight: 0, backgroundColor: theme.bg },
+    scroll: { flex: 1, minHeight: 0 },
     scrollContent: { flexGrow: 1, paddingBottom: 32 },
     inner: {
       width: '100%',
@@ -383,7 +384,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     categoryTabTextActive: { color: '#FFFFFF' },
     dateNav: { marginTop: 2 },
-    loadingBox: { paddingVertical: 56, alignItems: 'center' },
+    loadingBox: { flex: 1, minHeight: 260, paddingVertical: 56, alignItems: 'center', justifyContent: 'center' },
     errorBox: {
       padding: 12,
       borderRadius: 14,

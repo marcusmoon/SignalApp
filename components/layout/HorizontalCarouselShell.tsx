@@ -15,6 +15,8 @@ type Props = {
   footer?: ReactNode;
   /** Show prev/next on wide layout (desktop web + iPad). Defaults true. */
   showArrows?: boolean;
+  /** Keep arrows available at edges; caller handles wrap behavior. */
+  loop?: boolean;
 };
 
 /** Wraps a horizontal ScrollView with overlay ‹ › controls on iPad / desktop web. */
@@ -26,13 +28,14 @@ export function HorizontalCarouselShell({
   children,
   footer,
   showArrows = true,
+  loop = false,
 }: Props) {
   const { theme } = useSignalTheme();
   const { isWideLayout } = useResponsiveLayout();
   const styles = makeStyles(theme);
 
-  const canPrev = pageIndex > 0;
-  const canNext = pageIndex < pageCount - 1;
+  const canPrev = loop || pageIndex > 0;
+  const canNext = loop || pageIndex < pageCount - 1;
   const arrowsVisible = showArrows && isWideLayout && pageCount > 1;
 
   return (

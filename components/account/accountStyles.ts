@@ -5,7 +5,7 @@ import type { AppTheme } from '@/constants/theme';
 
 export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.bg },
+    safe: { flex: 1, minHeight: 0, backgroundColor: theme.bg },
     content: {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,

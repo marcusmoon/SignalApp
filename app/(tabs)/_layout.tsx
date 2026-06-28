@@ -473,11 +473,19 @@ const sidebarLayoutStyles = StyleSheet.create({
     ...webSidebarContentStyle,
     position: 'relative',
   },
+  contentPane: {
+    flex: 1,
+    minHeight: 0,
+    maxHeight: '100%',
+    overflow: 'hidden',
+  },
   tabsHost: {
     ...webTabNavigatorHostStyle,
+    overflow: 'hidden',
   },
   tabsHostVisible: {
     flex: 1,
+    minHeight: 0,
     alignSelf: 'stretch',
   },
   /** Keep mounted tabs laid out (display:none breaks FlatList viewport + pagination on web). */
@@ -521,20 +529,24 @@ function IpadWideTabLayout({
           disclosureHasUnread={disclosureHasUnread}
         />
         <View style={[sidebarLayoutStyles.content, { backgroundColor: theme.bg }]}>
-          {contentPane === 'home' ? (
-            <IpadHomeScreen />
-          ) : contentPane === 'newsIssues' && newsIssuesParams ? (
-            <NewsIssuesContent
-              embedded
-              initialCategory={newsIssuesParams.category}
-              initialDate={newsIssuesParams.date}
-              initialDigestId={newsIssuesParams.digestId}
-              onBack={showHome}
-            />
-          ) : contentPane === 'account' ? (
-            <AccountScreen embedded />
-          ) : contentPane === 'settings' ? (
-            <SettingsScreen embedded />
+          {contentPane !== 'tabs' ? (
+            <View style={sidebarLayoutStyles.contentPane}>
+              {contentPane === 'home' ? (
+                <IpadHomeScreen />
+              ) : contentPane === 'newsIssues' && newsIssuesParams ? (
+                <NewsIssuesContent
+                  embedded
+                  initialCategory={newsIssuesParams.category}
+                  initialDate={newsIssuesParams.date}
+                  initialDigestId={newsIssuesParams.digestId}
+                  onBack={showHome}
+                />
+              ) : contentPane === 'account' ? (
+                <AccountScreen embedded />
+              ) : contentPane === 'settings' ? (
+                <SettingsScreen embedded />
+              ) : null}
+            </View>
           ) : null}
           <View
             style={[

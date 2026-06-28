@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SocialAuthButtons } from '@/components/account/SocialAuthButtons';
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
+import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { makeAccountStyles } from '@/components/account/accountStyles';
 import { useLocale } from '@/contexts/LocaleContext';
 import type { MessageId } from '@/locales/messages';
@@ -722,7 +723,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
       {!embedded ? (
         <Stack.Screen options={{ title: t('screenAccount'), headerShown: !useIpadSidebar }} />
       ) : null}
-      <ScrollView
+      <WebWheelScrollView
         contentContainerStyle={[
           styles.content,
           embedded && styles.contentEmbedded,
@@ -1368,7 +1369,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             )}
           </>
         )}
-      </ScrollView>
+      </WebWheelScrollView>
     </SafeAreaView>
   );
 

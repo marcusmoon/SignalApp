@@ -8,11 +8,12 @@ export const webFlexFill = {
 
 /**
  * ScrollView / FlatList viewport inside a bounded column.
- * height:0 on web stops the list from expanding to full content height (which breaks wheel scroll).
+ * Web wide panes need an explicit 100% height cap; otherwise RN Web can let
+ * ScrollView grow to content height, leaving no internal scroll range.
  */
 export const webScrollViewportStyle =
   Platform.OS === 'web'
-    ? ({ flex: 1, minHeight: 0, height: 0 } as const)
+    ? ({ flex: 1, minHeight: 0, height: '100%', maxHeight: '100%' } as const)
     : webFlexFill;
 
 /** Bottom-tab scene wrapper: bounded height for list scroll on web. */
@@ -33,6 +34,7 @@ export const webSidebarContentStyle = {
   minWidth: 0,
   minHeight: 0,
   alignSelf: 'stretch' as const,
+  overflow: 'hidden' as const,
 };
 
 /** FlatList tuning on web — avoid rendering every tab's feed at once. */

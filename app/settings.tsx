@@ -23,6 +23,7 @@ import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import developerAvatar from '@/assets/images/developer-avatar.png';
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
+import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
@@ -282,8 +283,8 @@ const TAB_BAR_OPACITY_ORDER: TabBarOpacityLevel[] = [0, 1, 2, 3, 4];
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.bg },
-    scrollFlex: { flex: 1 },
+    safe: { flex: 1, minHeight: 0, backgroundColor: theme.bg },
+    scrollFlex: { flex: 1, minHeight: 0 },
     scroll: {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
@@ -1387,7 +1388,7 @@ clearCalendarCache();
           })}
         </View>
       ) : null}
-      <ScrollView
+      <WebWheelScrollView
         style={styles.scrollFlex}
         contentContainerStyle={[
           styles.scroll,
@@ -2159,7 +2160,7 @@ clearCalendarCache();
           </>
         ) : null}
 
-      </ScrollView>
+      </WebWheelScrollView>
       <View
         pointerEvents="box-none"
         style={[

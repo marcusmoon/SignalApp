@@ -4,7 +4,7 @@ import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
@@ -14,6 +14,7 @@ import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
+import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { webFlexFill, webScrollViewportStyle } from '@/constants/webLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
@@ -307,7 +308,7 @@ export default function DisclosuresScreen() {
   const detailPaneEl = useTwoPane ? (
     <View style={styles.detailPane}>
       {selectedDisclosure ? (
-        <ScrollView style={styles.detailScroll} contentContainerStyle={styles.detailScrollContent}>
+        <WebWheelScrollView style={styles.detailScroll} contentContainerStyle={styles.detailScrollContent}>
           <View style={styles.detailHero}>
             <View style={styles.badges}>
               <Text style={styles.badge}>{providerLabel(selectedDisclosure)}</Text>
@@ -353,7 +354,7 @@ export default function DisclosuresScreen() {
               <FontAwesome name="external-link" size={13} color={theme.green} />
             </Pressable>
           ) : null}
-        </ScrollView>
+        </WebWheelScrollView>
       ) : (
         <View style={styles.detailEmpty}>
           <Text style={styles.empty}>{emptyText}</Text>
@@ -591,7 +592,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       overflow: 'hidden',
       marginBottom: 12,
     },
-    detailScroll: { flex: 1 },
+    detailScroll: { flex: 1, minHeight: 0 },
     detailScrollContent: {
       padding: 18,
       gap: 12,

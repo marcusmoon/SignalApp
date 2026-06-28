@@ -8,8 +8,9 @@ import * as WebBrowser from 'expo-web-browser';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { type Href, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { type LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import type { AppTheme } from '@/constants/theme';
@@ -511,7 +512,7 @@ export function SymbolDetailPane({ ticker, bottomPad = 24 }: Props) {
           <SignalLoadingIndicator message={t('commonLoading')} />
         </View>
       ) : (
-        <ScrollView
+        <WebWheelScrollView
           contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           showsVerticalScrollIndicator={false}>
@@ -735,7 +736,7 @@ export function SymbolDetailPane({ ticker, bottomPad = 24 }: Props) {
             )}
             <Text style={styles.sourceFootnote}>{t('symbolDetailNewsSourceShort')}</Text>
           </View>
-        </ScrollView>
+        </WebWheelScrollView>
       )}
     </View>
   );

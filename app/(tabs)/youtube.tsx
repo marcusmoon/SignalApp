@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Linking,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -17,6 +16,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -515,7 +515,7 @@ export default function YoutubeScreen() {
           </View>
         </View> : null}
 
-        <FlatList
+        <WebWheelFlatList
           data={showScrollLoading ? [] : items}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (

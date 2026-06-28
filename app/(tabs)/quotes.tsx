@@ -4,7 +4,6 @@ import { useIsFocused, useFocusEffect } from "expo-router/react-navigation";
 import { useRouter } from 'expo-router';
 import {
   Alert,
-  FlatList,
   InteractionManager,
   Platform,
   Pressable,
@@ -19,6 +18,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { MasterDetailLayout } from '@/components/layout/MasterDetailLayout';
+import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { makeQuotesStyles } from '@/components/quotes/quotesStyles';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SymbolDetailPane } from '@/components/symbol/SymbolDetailPane';
@@ -633,7 +633,7 @@ export default function QuotesScreen() {
         </View>
       </View> : null}
 
-      <FlatList
+      <WebWheelFlatList
         data={loading ? [] : rows}
         keyExtractor={(r) => `${r.symbol}-${r.name ?? ''}`}
         renderItem={renderQuoteItem}

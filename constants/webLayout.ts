@@ -12,7 +12,7 @@ export const webFlexFill = {
  */
 export const webScrollViewportStyle =
   Platform.OS === 'web'
-    ? ({ flex: 1, minHeight: 0, height: 0 } as const)
+    ? ({ flex: 1, minHeight: 0, flexBasis: 0 } as const)
     : webFlexFill;
 
 /** Bottom-tab scene wrapper: bounded height for list scroll on web. */

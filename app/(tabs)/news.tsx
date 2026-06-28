@@ -4,7 +4,6 @@ import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   ActivityIndicator,
-  FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
@@ -34,6 +33,7 @@ import { NewsCard } from '@/components/signal/NewsCard';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { DigestPager } from '@/components/news/DigestPager';
+import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
 import { makeNewsStyles } from '@/components/news/newsStyles';
 import { SignalHeader } from '@/components/signal/SignalHeader';
@@ -1328,7 +1328,7 @@ export default function FeedScreen() {
           </View>
         ) : null}
 
-        <FlatList
+        <WebWheelFlatList
           data={loading ? [] : listData}
           keyExtractor={(row) =>
             row.kind === 'ad' ? row.key : row.kind === 'video' ? row.video.id : row.news.id

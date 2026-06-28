@@ -4,10 +4,11 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { type Href, useRouter } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ReferenceLinksSection } from '@/components/more/ReferenceLinksSection';
+import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalHeader } from '@/components/signal/SignalHeader';
@@ -141,7 +142,7 @@ export default function MoreHubScreen() {
           <Text style={styles.muted}>{t('commonLoading')}</Text>
         </View>
       ) : (
-        <FlatList
+        <WebWheelFlatList
           key="more-list"
           data={showIpadQuickLinks ? [] : visibleOrder}
           keyExtractor={(item) => item}

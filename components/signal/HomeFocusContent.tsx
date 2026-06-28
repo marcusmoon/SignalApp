@@ -26,6 +26,7 @@ import {
 } from '@/constants/ipadHomeNav';
 import type { AppTheme } from '@/constants/theme';
 import { webScrollViewportStyle } from '@/constants/webLayout';
+import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
@@ -517,7 +518,7 @@ export function HomeFocusContent({
   );
 
   return (
-    <ScrollView
+    <WebWheelScrollView
       style={styles.scroll}
       contentContainerStyle={[
         styles.content,
@@ -722,7 +723,7 @@ export function HomeFocusContent({
           </View>
         </>
       )}
-    </ScrollView>
+    </WebWheelScrollView>
   );
 }
 

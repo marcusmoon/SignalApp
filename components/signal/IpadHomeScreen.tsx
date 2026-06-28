@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
@@ -19,6 +19,7 @@ import {
 } from '@/constants/ipadHomeNav';
 import { APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { webScrollViewportStyle } from '@/constants/webLayout';
+import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import type { AppTheme } from '@/constants/theme';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
@@ -382,7 +383,7 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
   }, [ipadNav, router]);
 
   return (
-    <ScrollView
+    <WebWheelScrollView
       style={styles.scroll}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
@@ -639,7 +640,7 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
           </>
         )}
       </View>
-    </ScrollView>
+    </WebWheelScrollView>
   );
 }
 

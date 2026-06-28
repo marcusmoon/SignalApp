@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { webScrollViewportStyle } from '@/constants/webLayout';
+import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
@@ -300,7 +301,7 @@ export function HomeBriefingContent({
   }, [router]);
 
   return (
-    <ScrollView
+    <WebWheelScrollView
       style={styles.scroll}
       contentContainerStyle={[styles.content, { paddingBottom: scrollContentPaddingBottom }]}
       showsVerticalScrollIndicator={false}
@@ -442,7 +443,7 @@ export function HomeBriefingContent({
           </View>
         </>
       )}
-    </ScrollView>
+    </WebWheelScrollView>
   );
 }
 

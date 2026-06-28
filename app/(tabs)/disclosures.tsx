@@ -4,7 +4,7 @@ import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
@@ -13,6 +13,7 @@ import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicat
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
+import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { webFlexFill, webScrollViewportStyle } from '@/constants/webLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
@@ -391,7 +392,7 @@ export default function DisclosuresScreen() {
           </View>
         ) : (
           <View style={useTwoPane ? styles.wideBody : styles.compactBody}>
-            <FlatList
+            <WebWheelFlatList
               data={items}
               keyExtractor={(item) => item.id}
               style={[styles.list, useTwoPane && styles.wideList]}

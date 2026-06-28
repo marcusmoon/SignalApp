@@ -6,7 +6,6 @@ import {
   AppState,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -14,6 +13,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
@@ -464,7 +464,7 @@ export default function SignalScreen() {
           <SignalLoadingIndicator message={t('commonLoading')} />
         </View>
       ) : (
-        <ScrollView
+        <WebWheelScrollView
           style={styles.scroll}
           contentContainerStyle={[styles.content, useTwoPane && styles.contentWide, { paddingBottom: 24 + insets.bottom }]}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
@@ -495,7 +495,7 @@ export default function SignalScreen() {
               </View>
             )
           ) : null}
-        </ScrollView>
+        </WebWheelScrollView>
       )}
       </View>
 

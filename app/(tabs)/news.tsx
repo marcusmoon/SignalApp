@@ -290,6 +290,7 @@ export default function FeedScreen() {
       setHasMore(false);
       setLoadingMore(false);
       loadingMoreRef.current = false;
+      loadMoreInFlightRef.current = false;
       hasMoreRef.current = false;
       feedMetaRef.current = null;
       if (!hasSignalApi()) {
@@ -547,12 +548,6 @@ export default function FeedScreen() {
     [activeTag, locale, segment, t],
   );
 
-  const storeFeedMeta = useCallback((meta: SignalNewsListMeta) => {
-    feedMetaRef.current = meta;
-    hasMoreRef.current = meta.hasMore;
-    setHasMore(meta.hasMore);
-  }, []);
-
   const applyMergedNewsRows = useCallback(
     (merged: SignalApiNewsItem[]) => {
       let scoped = merged;
@@ -609,9 +604,19 @@ export default function FeedScreen() {
     loadingMoreRef.current = true;
     setLoadingMore(true);
     setError(null);
+
+    const commitPaginationMeta = (totalAdded: number, lastMeta: SignalNewsListMeta | null) => {
+      if (!lastMeta) return;
+      const more = totalAdded > 0 && lastMeta.hasMore;
+      hasMoreRef.current = more;
+      setHasMore(more);
+    };
+
     try {
       if (segment === 'video') {
         let requestOffset = feedMetaRef.current?.nextOffset ?? youtubeRowsRef.current.length;
+        let totalAdded = 0;
+        let lastMeta: SignalNewsListMeta | null = feedMetaRef.current;
         for (let skipPages = 0; skipPages < 5; skipPages += 1) {
           const page = await fetchSignalYoutube(
             {
@@ -621,10 +626,10 @@ export default function FeedScreen() {
             },
             { cacheMode: 'use' },
           );
-          storeFeedMeta(page.meta);
+          feedMetaRef.current = page.meta;
+          lastMeta = page.meta;
           if (page.items.length === 0) {
             hasMoreRef.current = false;
-            setHasMore(false);
             break;
           }
           const prev = youtubeRowsRef.current;
@@ -636,6 +641,7 @@ export default function FeedScreen() {
               added.push(row);
             }
           }
+          totalAdded += added.length;
           const merged = [...prev, ...added];
           youtubeRowsRef.current = merged;
           setYoutubeRows(merged);
@@ -644,12 +650,11 @@ export default function FeedScreen() {
             break;
           }
           if (page.meta.nextOffset == null || page.meta.nextOffset === requestOffset) {
-            hasMoreRef.current = false;
-            setHasMore(false);
             break;
           }
           requestOffset = page.meta.nextOffset;
         }
+        commitPaginationMeta(totalAdded, lastMeta);
         return;
       }
 
@@ -674,6 +679,8 @@ export default function FeedScreen() {
       }
 
       let requestOffset = feedMetaRef.current?.nextOffset ?? serverRowsRef.current.length;
+      let totalAdded = 0;
+      let lastMeta: SignalNewsListMeta | null = feedMetaRef.current;
       for (let skipPages = 0; skipPages < 5; skipPages += 1) {
         const { items: nextRows, meta } = await fetchSignalNews(
           {
@@ -698,14 +705,15 @@ export default function FeedScreen() {
           },
           { cacheMode: 'use' },
         );
-        storeFeedMeta(meta);
+        feedMetaRef.current = meta;
+        lastMeta = meta;
         if (nextRows.length === 0) {
           hasMoreRef.current = false;
-          setHasMore(false);
           break;
         }
 
         const { merged, addedCount } = appendUniqueNewsRows(serverRowsRef.current, nextRows);
+        totalAdded += addedCount;
         serverRowsRef.current = merged;
         setServerRows(merged);
 
@@ -718,13 +726,12 @@ export default function FeedScreen() {
         }
 
         if (meta.nextOffset == null || meta.nextOffset === requestOffset) {
-          hasMoreRef.current = false;
-          setHasMore(false);
           break;
         }
 
         requestOffset = meta.nextOffset;
       }
+      commitPaginationMeta(totalAdded, lastMeta);
     } catch (e) {
       setError(formatSignalApiError(e, t, 'feedErrorLoad'));
     } finally {
@@ -739,7 +746,6 @@ export default function FeedScreen() {
     locale,
     segment,
     selectedSources,
-    storeFeedMeta,
     t,
     watchSymbolOptions,
   ]);
@@ -751,6 +757,7 @@ export default function FeedScreen() {
     loading,
     loadMore,
     enabled: Platform.OS === 'web' && isFocused,
+    isBusyRef: loadMoreInFlightRef,
   });
 
   useFocusEffect(
@@ -1429,6 +1436,7 @@ export default function FeedScreen() {
         <WebWheelFlatList
           ref={feedListRef}
           data={loading ? [] : listData}
+          extraData={listData.length}
           keyExtractor={(row) =>
             row.kind === 'ad' ? row.key : row.kind === 'video' ? row.video.id : row.news.id
           }
@@ -1479,7 +1487,7 @@ export default function FeedScreen() {
               </View>
             ) : null
           }
-          onEndReached={() => void loadMore()}
+          onEndReached={Platform.OS === 'web' ? undefined : () => void loadMore()}
           onEndReachedThreshold={0.55}
           onScroll={webFeedLoadMore.onScroll}
           scrollEventThrottle={350}

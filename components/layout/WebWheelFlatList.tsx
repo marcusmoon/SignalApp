@@ -13,7 +13,6 @@ function WebWheelFlatListInner<T>(
 
   useWebVerticalWheelScroll(localRef, {
     onScroll,
-    onEndReached: onEndReached ? () => onEndReached({ distanceFromEnd: 0 }) : undefined,
   });
 
   /** Sidebar pane toggles can skip RN onLayout — observe the scroll node directly on web. */

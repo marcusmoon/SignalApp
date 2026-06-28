@@ -1,63 +1,214 @@
-import { forwardRef, useEffect, useRef } from 'react';
-import { FlatList, Platform, type FlatListProps, type LayoutChangeEvent } from 'react-native';
+import { forwardRef, useCallback, useEffect, useRef } from 'react';
+import {
+  FlatList,
+  Platform,
+  View,
+  type FlatListProps,
+  type LayoutChangeEvent,
+  type ListRenderItemInfo,
+} from 'react-native';
 
-import { useWebVerticalWheelScroll } from '@/hooks/useWebVerticalWheelScroll';
+import { syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
+
+const webListViewportStyle = {
+  flex: 1,
+  minHeight: 0,
+  height: '100%',
+  maxHeight: '100%',
+  overflowY: 'auto',
+  overflowX: 'hidden',
+  WebkitOverflowScrolling: 'touch',
+} as const;
+
+const webSeparators = {
+  highlight: () => {},
+  unhighlight: () => {},
+  updateProps: () => {},
+};
+
+function renderListSlot(slot: unknown) {
+  if (!slot) return null;
+  if (typeof slot === 'function') {
+    const Slot = slot as React.ComponentType;
+    return <Slot />;
+  }
+  return slot as React.ReactElement;
+}
+
+function getDefaultKey<T>(item: T, index: number) {
+  const maybeKey = item as { key?: unknown; id?: unknown };
+  if (maybeKey?.key != null) return String(maybeKey.key);
+  if (maybeKey?.id != null) return String(maybeKey.id);
+  return String(index);
+}
 
 function WebWheelFlatListInner<T>(
-  { onScroll, onEndReached, onLayout, ...rest }: FlatListProps<T>,
+  {
+    data,
+    renderItem,
+    keyExtractor,
+    ListHeaderComponent,
+    ListFooterComponent,
+    ListEmptyComponent,
+    ItemSeparatorComponent,
+    contentContainerStyle,
+    style,
+    onScroll,
+    onEndReached,
+    onLayout,
+    onContentSizeChange,
+    ...rest
+  }: FlatListProps<T>,
   forwardedRef: React.Ref<FlatList<T>>,
 ) {
   const localRef = useRef<FlatList<T>>(null);
+  const webRef = useRef<View>(null);
+  const webContentRef = useRef<View>(null);
   const onLayoutRef = useRef(onLayout);
+  const onContentSizeChangeRef = useRef(onContentSizeChange);
+  const onScrollRef = useRef(onScroll);
   onLayoutRef.current = onLayout;
+  onContentSizeChangeRef.current = onContentSizeChange;
+  onScrollRef.current = onScroll;
 
-  useWebVerticalWheelScroll(localRef, {
-    onScroll,
-  });
+  const emitWebLayout = useCallback((node: HTMLElement) => {
+    onLayoutRef.current?.({
+      nativeEvent: {
+        layout: { height: node.clientHeight, width: node.clientWidth, x: 0, y: 0 },
+      },
+    } as LayoutChangeEvent);
+  }, []);
+
+  const emitWebContentSize = useCallback((node: HTMLElement) => {
+    onContentSizeChangeRef.current?.(node.scrollWidth, node.scrollHeight);
+  }, []);
+
+  const emitWebScroll = useCallback((node: HTMLElement) => {
+    const event = syntheticScrollEventFromDom(node);
+    onScrollRef.current?.(event);
+  }, []);
 
   /** Sidebar pane toggles can skip RN onLayout — observe the scroll node directly on web. */
   useEffect(() => {
     if (Platform.OS !== 'web') return;
 
     let node: HTMLElement | null = null;
+    let contentNode: HTMLElement | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let observer: ResizeObserver | null = null;
+    let handleScroll: (() => void) | null = null;
 
     const attach = () => {
-      node = localRef.current?.getScrollableNode?.() as HTMLElement | null;
-      if (!node) {
+      node = (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
+        ?.getScrollableNode?.() ?? null;
+      contentNode = (webContentRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
+        ?.getScrollableNode?.() ?? null;
+      if (!node || !contentNode) {
         retryTimer = setTimeout(attach, 50);
         return;
       }
+      handleScroll = () => {
+        if (!node) return;
+        emitWebScroll(node);
+      };
+      node.addEventListener('scroll', handleScroll, { passive: true });
       observer = new ResizeObserver(() => {
         if (!node || node.clientHeight <= 0) return;
-        onLayoutRef.current?.({
-          nativeEvent: {
-            layout: { height: node.clientHeight, width: node.clientWidth, x: 0, y: 0 },
-          },
-        } as LayoutChangeEvent);
+        emitWebLayout(node);
+        emitWebContentSize(node);
       });
       observer.observe(node);
+      observer.observe(contentNode);
+      emitWebLayout(node);
+      emitWebContentSize(node);
     };
 
     attach();
 
     return () => {
       if (retryTimer) clearTimeout(retryTimer);
+      if (node && handleScroll) node.removeEventListener('scroll', handleScroll);
       observer?.disconnect();
     };
-  }, []);
+  }, [emitWebContentSize, emitWebLayout, emitWebScroll]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const timer = setTimeout(() => {
+      const node = (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
+        ?.getScrollableNode?.() ?? null;
+      if (node) emitWebContentSize(node);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [data, ListEmptyComponent, ListFooterComponent, ListHeaderComponent, emitWebContentSize]);
 
   const handleLayout = (e: LayoutChangeEvent) => {
     onLayout?.(e);
   };
 
+  if (Platform.OS === 'web') {
+    const rows = Array.from(data ?? []);
+    const Separator = ItemSeparatorComponent as React.ComponentType | null | undefined;
+    const setWebRef = (instance: View | null) => {
+      webRef.current = instance;
+      const node = (instance as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
+        ?.getScrollableNode?.() ?? null;
+      const api = node
+        ? ({
+            getScrollableNode: () => node,
+            scrollToOffset: ({ offset, animated }: { offset: number; animated?: boolean }) => {
+              node.scrollTo({ top: offset, behavior: animated ? 'smooth' : 'auto' });
+            },
+            scrollToEnd: ({ animated }: { animated?: boolean } = {}) => {
+              node.scrollTo({ top: node.scrollHeight, behavior: animated ? 'smooth' : 'auto' });
+            },
+          } as unknown as FlatList<T>)
+        : null;
+
+      if (typeof forwardedRef === 'function') {
+        forwardedRef(api);
+      } else if (forwardedRef) {
+        forwardedRef.current = api;
+      }
+    };
+
+    return (
+      <View ref={setWebRef} style={[webListViewportStyle, style] as never}>
+        <View ref={webContentRef} style={contentContainerStyle}>
+          {renderListSlot(ListHeaderComponent)}
+          {rows.length === 0 ? renderListSlot(ListEmptyComponent) : null}
+          {rows.map((item, index) => (
+            <View key={keyExtractor?.(item, index) ?? getDefaultKey(item, index)}>
+              {renderItem?.({
+                item,
+                index,
+                separators: webSeparators,
+              } as ListRenderItemInfo<T>)}
+              {Separator && index < rows.length - 1 ? <Separator /> : null}
+            </View>
+          ))}
+          {renderListSlot(ListFooterComponent)}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <FlatList
       {...rest}
+      data={data}
+      renderItem={renderItem}
+      keyExtractor={keyExtractor}
+      ListHeaderComponent={ListHeaderComponent}
+      ListFooterComponent={ListFooterComponent}
+      ListEmptyComponent={ListEmptyComponent}
+      ItemSeparatorComponent={ItemSeparatorComponent}
+      contentContainerStyle={contentContainerStyle}
+      style={style}
       onScroll={onScroll}
       onEndReached={onEndReached}
       onLayout={handleLayout}
+      onContentSizeChange={onContentSizeChange}
       ref={(instance) => {
         localRef.current = instance;
         if (typeof forwardedRef === 'function') {

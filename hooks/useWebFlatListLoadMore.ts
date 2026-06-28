@@ -10,6 +10,7 @@ type WebFlatListLoadMoreOptions = {
   enabled?: boolean;
   loadMore: () => void | Promise<void>;
   fillPadPx?: number;
+  autoFillCooldownMs?: number;
 };
 
 /**
@@ -23,11 +24,14 @@ export function useWebFlatListLoadMore({
   enabled = true,
   loadMore,
   fillPadPx = 32,
+  autoFillCooldownMs = 900,
 }: WebFlatListLoadMoreOptions) {
   const viewportH = useRef(0);
+  const lastContentH = useRef(0);
+  const lastAutoFillAt = useRef(0);
   const scrollGateRef = useRef(createScrollLoadMoreGate());
-  const stateRef = useRef({ hasMore, loadingMore, loading, enabled, loadMore, fillPadPx });
-  stateRef.current = { hasMore, loadingMore, loading, enabled, loadMore, fillPadPx };
+  const stateRef = useRef({ hasMore, loadingMore, loading, enabled, loadMore, fillPadPx, autoFillCooldownMs });
+  stateRef.current = { hasMore, loadingMore, loading, enabled, loadMore, fillPadPx, autoFillCooldownMs };
 
   const tryAutoFill = useCallback((contentH: number) => {
     if (Platform.OS !== 'web') return;
@@ -36,6 +40,13 @@ export function useWebFlatListLoadMore({
     const vh = viewportH.current;
     if (vh <= 0 || contentH <= 0) return;
     if (contentH >= vh + s.fillPadPx) return;
+
+    const now = Date.now();
+    if (contentH === lastContentH.current && now - lastAutoFillAt.current < s.autoFillCooldownMs) {
+      return;
+    }
+    lastContentH.current = contentH;
+    lastAutoFillAt.current = now;
     void s.loadMore();
   }, []);
 

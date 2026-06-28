@@ -111,3 +111,22 @@ export function filterWatchRows(
     return symbols.some((symbol) => selected.has(String(symbol).trim().toUpperCase()));
   });
 }
+
+/** Append feed rows by id — duplicate provider copies must not block pagination advance. */
+export function appendUniqueNewsRows(
+  existing: SignalApiNewsItem[],
+  incoming: SignalApiNewsItem[],
+): { merged: SignalApiNewsItem[]; addedCount: number } {
+  if (incoming.length === 0) {
+    return { merged: existing, addedCount: 0 };
+  }
+  const seen = new Set(existing.map((row) => row.id));
+  const added: SignalApiNewsItem[] = [];
+  for (const row of incoming) {
+    if (!seen.has(row.id)) {
+      seen.add(row.id);
+      added.push(row);
+    }
+  }
+  return { merged: [...existing, ...added], addedCount: added.length };
+}

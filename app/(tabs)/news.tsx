@@ -44,6 +44,7 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import {
+  appendUniqueNewsRows,
   buildSourcesFromCatalog,
   FEED_PAGE_CRYPTO,
   FEED_PAGE_GLOBAL,
@@ -88,7 +89,7 @@ import {
   signalYoutubeToYoutubeItem,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
-import type { SignalApiNewsDigestItem, SignalApiNewsItem, SignalApiYoutubeVideo } from '@/integrations/signal-api/types';
+import type { SignalApiNewsDigestItem, SignalApiNewsItem, SignalApiYoutubeVideo, SignalNewsListMeta } from '@/integrations/signal-api/types';
 import type { NewsItem, YoutubeItem } from '@/types/signal';
 
 type FeedRow =
@@ -207,6 +208,8 @@ export default function FeedScreen() {
   const youtubeRowsRef = useRef(youtubeRows);
   serverRowsRef.current = serverRows;
   youtubeRowsRef.current = youtubeRows;
+  const feedMetaRef = useRef<SignalNewsListMeta | null>(null);
+  const loadMoreInFlightRef = useRef(false);
   const itemsRef = useRef(items);
   const videoItemsRef = useRef(videoItems);
   const globalFilterRef = useRef(globalFilter);
@@ -286,6 +289,9 @@ export default function FeedScreen() {
       setError(null);
       setHasMore(false);
       setLoadingMore(false);
+      loadingMoreRef.current = false;
+      hasMoreRef.current = false;
+      feedMetaRef.current = null;
       if (!hasSignalApi()) {
         setItems([]);
         setVideoItems([]);
@@ -321,6 +327,8 @@ export default function FeedScreen() {
           { cacheMode },
         );
         setYoutubeRows(rows);
+        feedMetaRef.current = meta;
+        hasMoreRef.current = meta.hasMore;
         setHasMore(meta.hasMore);
         const mapped = rows.map((item) => signalYoutubeToYoutubeItem(item, locale));
         setVideoItems(mapped);
@@ -361,6 +369,8 @@ export default function FeedScreen() {
         );
         setServerRows(rows);
         setServerDigestRows([]);
+        feedMetaRef.current = meta;
+        hasMoreRef.current = meta.hasMore;
         setHasMore(meta.hasMore);
         const mapped = rows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
@@ -392,6 +402,8 @@ export default function FeedScreen() {
         const { items: rows, meta } = newsPage;
         setServerRows(rows);
         setServerDigestRows(digestPage?.items || []);
+        feedMetaRef.current = meta;
+        hasMoreRef.current = meta.hasMore;
         setHasMore(meta.hasMore);
         const sourceOptions = uniqueSignalSources(rows);
         setCryptoSourceOptions(sourceOptions);
@@ -427,6 +439,8 @@ export default function FeedScreen() {
         const { items: rows, meta } = newsPage;
         setServerRows(rows);
         setServerDigestRows(digestPage?.items || []);
+        feedMetaRef.current = meta;
+        hasMoreRef.current = meta.hasMore;
         setHasMore(meta.hasMore);
         const sourceOptions = uniqueSignalSources(rows);
         setKoreaSourceOptions(sourceOptions);
@@ -487,8 +501,11 @@ export default function FeedScreen() {
       }
 
       const { items: firstPage, meta } = firstPageResult;
+      serverRowsRef.current = firstPage;
       setServerRows(firstPage);
       setServerDigestRows(digestPage?.items || []);
+      feedMetaRef.current = meta;
+      hasMoreRef.current = meta.hasMore;
       setHasMore(meta.hasMore);
 
       const mergedForSources = [...probe, ...firstPage].filter(
@@ -515,7 +532,10 @@ export default function FeedScreen() {
           { cacheMode },
         );
         displayPage = sourcePage.items;
+        serverRowsRef.current = displayPage;
         setServerRows(displayPage);
+        feedMetaRef.current = sourcePage.meta;
+        hasMoreRef.current = sourcePage.meta.hasMore;
         setHasMore(sourcePage.meta.hasMore);
       }
       const mapped = displayPage.map((item) => signalNewsToNewsItem(item, locale));
@@ -527,83 +547,14 @@ export default function FeedScreen() {
     [activeTag, locale, segment, t],
   );
 
-  const loadMore = useCallback(async () => {
-    if (!hasMoreRef.current || loadingMoreRef.current || loadingRef.current || !hasSignalApi()) return;
-    if (segment !== 'watch' && segment !== 'crypto' && segment !== 'korea' && segment !== 'global' && segment !== 'video') return;
+  const storeFeedMeta = useCallback((meta: SignalNewsListMeta) => {
+    feedMetaRef.current = meta;
+    hasMoreRef.current = meta.hasMore;
+    setHasMore(meta.hasMore);
+  }, []);
 
-    setLoadingMore(true);
-    setError(null);
-    try {
-      if (segment === 'video') {
-        const page = await fetchSignalYoutube(
-          {
-            sort: 'latest',
-            limit: FEED_PAGE_VIDEO,
-            offset: youtubeRowsRef.current.length,
-          },
-          { cacheMode: 'use' },
-        );
-        if (page.items.length === 0) {
-          setHasMore(false);
-          return;
-        }
-        const merged = [...youtubeRowsRef.current, ...page.items];
-        youtubeRowsRef.current = merged;
-        setYoutubeRows(merged);
-        setVideoItems(merged.map((item) => signalYoutubeToYoutubeItem(item, locale)));
-        setHasMore(page.meta.hasMore);
-        return;
-      }
-
-      const pageLimit =
-        segment === 'watch'
-          ? FEED_PAGE_WATCH
-          : segment === 'crypto'
-            ? FEED_PAGE_CRYPTO
-            : segment === 'korea'
-              ? FEED_PAGE_KOREA
-              : FEED_PAGE_GLOBAL;
-      const category = segment === 'crypto' ? 'crypto' : segment === 'korea' ? 'korea' : 'global';
-      const symbols = segment === 'watch' ? (await loadWatchlistSymbols()).slice(0, 40) : [];
-      const requestSymbols =
-        segment === 'watch' && watchFilterRef.current === 'symbols'
-          ? normalizeNullableSelection(symbols, watchSelectedSymbolsRef.current)
-          : symbols;
-      if (segment === 'watch' && (symbols.length === 0 || requestSymbols.length === 0)) {
-        setHasMore(false);
-        return;
-      }
-      const { items: nextRows, meta } = await fetchSignalNews(
-        {
-          locale,
-          category,
-          symbols: requestSymbols.length > 0 ? requestSymbols.join(',') : undefined,
-          flash:
-            (segment === 'global' && globalFilterRef.current === 'flash') ||
-            (segment === 'crypto' && cryptoFilterRef.current === 'flash') ||
-            (segment === 'korea' && koreaFilterRef.current === 'flash'),
-          sources:
-            segment === 'global' && globalFilterRef.current === 'sources'
-              ? sourceFilterParam(availableSources, selectedSources)
-              : segment === 'crypto' && cryptoFilterRef.current === 'sources'
-                ? sourceFilterParam(cryptoSourceOptions, cryptoSelectedSourcesRef.current)
-                : segment === 'korea' && koreaFilterRef.current === 'sources'
-                  ? sourceFilterParam(koreaSourceOptions, koreaSelectedSourcesRef.current)
-                  : undefined,
-          limit: pageLimit,
-          offset: serverRowsRef.current.length,
-          tag: activeTag || undefined,
-        },
-        { cacheMode: 'use' },
-      );
-      if (nextRows.length === 0) {
-        setHasMore(false);
-        return;
-      }
-      const merged = [...serverRowsRef.current, ...nextRows];
-      serverRowsRef.current = merged;
-      setServerRows(merged);
-      setHasMore(meta.hasMore);
+  const applyMergedNewsRows = useCallback(
+    (merged: SignalApiNewsItem[]) => {
       let scoped = merged;
       if (segment === 'global') {
         scoped = filterNewsRows(merged, {
@@ -635,25 +586,160 @@ export default function FeedScreen() {
         });
       }
       if (segment === 'watch') {
-        const symbolOptions = watchSymbolOptions;
         scoped = filterWatchRows(merged, {
           kind: watchFilterRef.current,
-          symbolOptions,
+          symbolOptions: watchSymbolOptions,
           selectedSymbols: watchSelectedSymbolsRef.current,
         });
       }
       setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
+    },
+    [availableSources, locale, segment, selectedSources, watchSymbolOptions],
+  );
+
+  const loadMore = useCallback(async () => {
+    if (loadMoreInFlightRef.current || !hasMoreRef.current || loadingMoreRef.current || loadingRef.current || !hasSignalApi()) {
+      return;
+    }
+    if (segment !== 'watch' && segment !== 'crypto' && segment !== 'korea' && segment !== 'global' && segment !== 'video') {
+      return;
+    }
+
+    loadMoreInFlightRef.current = true;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    setError(null);
+    try {
+      if (segment === 'video') {
+        let requestOffset = feedMetaRef.current?.nextOffset ?? youtubeRowsRef.current.length;
+        for (let skipPages = 0; skipPages < 5; skipPages += 1) {
+          const page = await fetchSignalYoutube(
+            {
+              sort: 'latest',
+              limit: FEED_PAGE_VIDEO,
+              offset: requestOffset,
+            },
+            { cacheMode: 'use' },
+          );
+          storeFeedMeta(page.meta);
+          if (page.items.length === 0) {
+            hasMoreRef.current = false;
+            setHasMore(false);
+            break;
+          }
+          const prev = youtubeRowsRef.current;
+          const seen = new Set(prev.map((row) => row.id));
+          const added: SignalApiYoutubeVideo[] = [];
+          for (const row of page.items) {
+            if (!seen.has(row.id)) {
+              seen.add(row.id);
+              added.push(row);
+            }
+          }
+          const merged = [...prev, ...added];
+          youtubeRowsRef.current = merged;
+          setYoutubeRows(merged);
+          setVideoItems(merged.map((item) => signalYoutubeToYoutubeItem(item, locale)));
+          if (added.length > 0 || !page.meta.hasMore) {
+            break;
+          }
+          if (page.meta.nextOffset == null || page.meta.nextOffset === requestOffset) {
+            hasMoreRef.current = false;
+            setHasMore(false);
+            break;
+          }
+          requestOffset = page.meta.nextOffset;
+        }
+        return;
+      }
+
+      const pageLimit =
+        segment === 'watch'
+          ? FEED_PAGE_WATCH
+          : segment === 'crypto'
+            ? FEED_PAGE_CRYPTO
+            : segment === 'korea'
+              ? FEED_PAGE_KOREA
+              : FEED_PAGE_GLOBAL;
+      const category = segment === 'crypto' ? 'crypto' : segment === 'korea' ? 'korea' : 'global';
+      const symbols = segment === 'watch' ? (await loadWatchlistSymbols()).slice(0, 40) : [];
+      const requestSymbols =
+        segment === 'watch' && watchFilterRef.current === 'symbols'
+          ? normalizeNullableSelection(symbols, watchSelectedSymbolsRef.current)
+          : symbols;
+      if (segment === 'watch' && (symbols.length === 0 || requestSymbols.length === 0)) {
+        hasMoreRef.current = false;
+        setHasMore(false);
+        return;
+      }
+
+      let requestOffset = feedMetaRef.current?.nextOffset ?? serverRowsRef.current.length;
+      for (let skipPages = 0; skipPages < 5; skipPages += 1) {
+        const { items: nextRows, meta } = await fetchSignalNews(
+          {
+            locale,
+            category,
+            symbols: requestSymbols.length > 0 ? requestSymbols.join(',') : undefined,
+            flash:
+              (segment === 'global' && globalFilterRef.current === 'flash') ||
+              (segment === 'crypto' && cryptoFilterRef.current === 'flash') ||
+              (segment === 'korea' && koreaFilterRef.current === 'flash'),
+            sources:
+              segment === 'global' && globalFilterRef.current === 'sources'
+                ? sourceFilterParam(availableSources, selectedSources)
+                : segment === 'crypto' && cryptoFilterRef.current === 'sources'
+                  ? sourceFilterParam(cryptoSourceOptions, cryptoSelectedSourcesRef.current)
+                  : segment === 'korea' && koreaFilterRef.current === 'sources'
+                    ? sourceFilterParam(koreaSourceOptions, koreaSelectedSourcesRef.current)
+                    : undefined,
+            limit: pageLimit,
+            offset: requestOffset,
+            tag: activeTag || undefined,
+          },
+          { cacheMode: 'use' },
+        );
+        storeFeedMeta(meta);
+        if (nextRows.length === 0) {
+          hasMoreRef.current = false;
+          setHasMore(false);
+          break;
+        }
+
+        const { merged, addedCount } = appendUniqueNewsRows(serverRowsRef.current, nextRows);
+        serverRowsRef.current = merged;
+        setServerRows(merged);
+
+        if (addedCount > 0) {
+          applyMergedNewsRows(merged);
+        }
+
+        if (addedCount > 0 || !meta.hasMore) {
+          break;
+        }
+
+        if (meta.nextOffset == null || meta.nextOffset === requestOffset) {
+          hasMoreRef.current = false;
+          setHasMore(false);
+          break;
+        }
+
+        requestOffset = meta.nextOffset;
+      }
     } catch (e) {
       setError(formatSignalApiError(e, t, 'feedErrorLoad'));
     } finally {
+      loadMoreInFlightRef.current = false;
+      loadingMoreRef.current = false;
       setLoadingMore(false);
     }
   }, [
     activeTag,
+    applyMergedNewsRows,
+    availableSources,
     locale,
     segment,
-    availableSources,
     selectedSources,
+    storeFeedMeta,
     t,
     watchSymbolOptions,
   ]);
@@ -743,6 +829,8 @@ export default function FeedScreen() {
             { cacheMode: 'bypass' },
           );
           setServerRows(page.items);
+          feedMetaRef.current = page.meta;
+          hasMoreRef.current = page.meta.hasMore;
           setHasMore(page.meta.hasMore);
           setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
         }
@@ -818,6 +906,8 @@ export default function FeedScreen() {
         )
           .then((page) => {
             setServerRows(page.items);
+            feedMetaRef.current = page.meta;
+            hasMoreRef.current = page.meta.hasMore;
             setHasMore(page.meta.hasMore);
             setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
           })
@@ -853,6 +943,8 @@ export default function FeedScreen() {
             const sourceOptions = uniqueSignalSources(page.items);
             setCryptoSourceOptions(sourceOptions);
             setServerRows(page.items);
+            feedMetaRef.current = page.meta;
+            hasMoreRef.current = page.meta.hasMore;
             setHasMore(page.meta.hasMore);
             setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
           })
@@ -888,6 +980,8 @@ export default function FeedScreen() {
             const sourceOptions = uniqueSignalSources(page.items);
             setKoreaSourceOptions(sourceOptions);
             setServerRows(page.items);
+            feedMetaRef.current = page.meta;
+            hasMoreRef.current = page.meta.hasMore;
             setHasMore(page.meta.hasMore);
             setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
           })
@@ -932,6 +1026,8 @@ export default function FeedScreen() {
     )
       .then((page) => {
         setServerRows(page.items);
+        feedMetaRef.current = page.meta;
+        hasMoreRef.current = page.meta.hasMore;
         setHasMore(page.meta.hasMore);
         setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
       })
@@ -973,6 +1069,8 @@ export default function FeedScreen() {
     )
       .then((page) => {
         setServerRows(page.items);
+        feedMetaRef.current = page.meta;
+        hasMoreRef.current = page.meta.hasMore;
         setHasMore(page.meta.hasMore);
         setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
       })
@@ -1026,6 +1124,8 @@ export default function FeedScreen() {
           { cacheMode: 'bypass' },
         );
         setServerRows(page.items);
+        feedMetaRef.current = page.meta;
+        hasMoreRef.current = page.meta.hasMore;
         setHasMore(page.meta.hasMore);
         setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
       } catch (e) {

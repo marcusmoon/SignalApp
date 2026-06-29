@@ -181,14 +181,20 @@ export function DisclosureDigestSection({ items, loading, accentColor }: Props) 
 
   useWebHorizontalWheelScroll(scrollRef, items.length > 1);
 
+  const resetLoopToStart = useCallback(() => {
+    const reset = () => scrollRef.current?.scrollTo({ x: 0, animated: false });
+    reset();
+    requestAnimationFrame(reset);
+    setTimeout(reset, 50);
+    setTimeout(reset, 150);
+  }, []);
+
   const syncPageIndex = useCallback(
     (offsetX: number, resetExpand: boolean) => {
       if (pageWidth <= 0) return;
       const rawIndex = Math.round(offsetX / pageWidth);
       if (items.length > 1 && rawIndex >= items.length) {
-        requestAnimationFrame(() => {
-          scrollRef.current?.scrollTo({ x: 0, animated: false });
-        });
+        resetLoopToStart();
         setPageIndex(0);
         setDotIndex(0);
         if (resetExpand) setExpandedId(null);
@@ -199,7 +205,7 @@ export function DisclosureDigestSection({ items, loading, accentColor }: Props) 
       setDotIndex(index);
       if (resetExpand) setExpandedId(null);
     },
-    [pageWidth, items.length],
+    [pageWidth, items.length, resetLoopToStart],
   );
 
   const handleScroll = useCallback(

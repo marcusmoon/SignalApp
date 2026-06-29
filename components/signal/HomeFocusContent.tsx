@@ -385,20 +385,34 @@ export function HomeFocusContent({
     router.navigate('/(tabs)/disclosures' as never);
   }, [router]);
 
+  const resetIssueLoopToStart = useCallback(() => {
+    const reset = () => issueScrollRef.current?.scrollTo({ x: 0, animated: false });
+    reset();
+    requestAnimationFrame(reset);
+    setTimeout(reset, 50);
+    setTimeout(reset, 150);
+  }, []);
+
+  const resetBriefingLoopToStart = useCallback(() => {
+    const reset = () => briefingScrollRef.current?.scrollTo({ x: 0, animated: false });
+    reset();
+    requestAnimationFrame(reset);
+    setTimeout(reset, 50);
+    setTimeout(reset, 150);
+  }, []);
+
   const onIssueScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const width = event.nativeEvent.layoutMeasurement.width;
     if (width <= 0) return;
     const offsetX = event.nativeEvent.contentOffset.x;
     const rawIndex = Math.round(offsetX / width);
     if (issueGroups.length > 1 && rawIndex >= issueGroups.length) {
-      requestAnimationFrame(() => {
-        issueScrollRef.current?.scrollTo({ x: 0, animated: false });
-      });
+      resetIssueLoopToStart();
       setActiveIssueIndex(0);
       return;
     }
     setActiveIssueIndex(Math.max(0, Math.min(rawIndex, issueGroups.length - 1)));
-  }, [issueGroups.length]);
+  }, [issueGroups.length, resetIssueLoopToStart]);
 
   const onIssueScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const width = event.nativeEvent.layoutMeasurement.width;
@@ -415,14 +429,12 @@ export function HomeFocusContent({
     const offsetX = event.nativeEvent.contentOffset.x;
     const rawIndex = Math.round(offsetX / width);
     if (briefings.length > 1 && rawIndex >= briefings.length) {
-      requestAnimationFrame(() => {
-        briefingScrollRef.current?.scrollTo({ x: 0, animated: false });
-      });
+      resetBriefingLoopToStart();
       setActiveBriefingIndex(0);
       return;
     }
     setActiveBriefingIndex(Math.max(0, Math.min(rawIndex, briefings.length - 1)));
-  }, [briefings.length]);
+  }, [briefings.length, resetBriefingLoopToStart]);
 
   const onBriefingScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const width = event.nativeEvent.layoutMeasurement.width;

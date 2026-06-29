@@ -179,12 +179,20 @@ export function DigestPager({ batches }: Props) {
 
   useWebHorizontalWheelScroll(scrollRef, batches.length > 1);
 
+  const resetLoopToStart = useCallback(() => {
+    const reset = () => scrollRef.current?.scrollTo({ x: 0, animated: false });
+    reset();
+    requestAnimationFrame(reset);
+    setTimeout(reset, 50);
+    setTimeout(reset, 150);
+  }, []);
+
   const syncPageIndex = useCallback(
     (offsetX: number, resetExpand: boolean) => {
       if (pageWidth <= 0) return;
       const rawIndex = Math.max(0, Math.round(offsetX / pageWidth));
       if (batches.length > 1 && rawIndex >= batches.length) {
-        scrollRef.current?.scrollTo({ x: 0, animated: false });
+        resetLoopToStart();
         setPageIndex(0);
         setDotIndex(0);
         if (resetExpand) setExpandedId(null);
@@ -195,7 +203,7 @@ export function DigestPager({ batches }: Props) {
       setDotIndex(index);
       if (resetExpand) setExpandedId(null);
     },
-    [pageWidth, batches.length],
+    [pageWidth, batches.length, resetLoopToStart],
   );
 
   const handleScroll = useCallback(

@@ -1,6 +1,5 @@
-import { forwardRef, isValidElement, useCallback, useEffect, useRef } from 'react';
+import { forwardRef, useCallback, useEffect, useRef } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Platform,
   View,
@@ -9,6 +8,11 @@ import {
   type ListRenderItemInfo,
 } from 'react-native';
 
+import {
+  getWebRefreshControlProps,
+  useWebRefreshHandlers,
+  WebRefreshStatus,
+} from '@/components/layout/webRefreshControl';
 import { isDomNearScrollEnd, syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
 
 const webListViewportStyle = {
@@ -21,37 +25,11 @@ const webListViewportStyle = {
   WebkitOverflowScrolling: 'touch',
 } as const;
 
-const webRefreshStatusStyle = {
-  position: 'sticky',
-  top: 8,
-  zIndex: 20,
-  alignSelf: 'center',
-  width: 36,
-  height: 36,
-  marginTop: 8,
-  marginBottom: 8,
-  borderRadius: 18,
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: 'var(--signal-card)',
-  borderWidth: 1,
-  borderColor: 'var(--signal-border)',
-  boxShadow: '0 8px 20px rgba(0,0,0,0.14)',
-} as const;
-
 const webSeparators = {
   highlight: () => {},
   unhighlight: () => {},
   updateProps: () => {},
 };
-
-function WebRefreshStatus() {
-  return (
-    <View style={webRefreshStatusStyle}>
-      <ActivityIndicator size="small" color={'var(--signal-green)' as never} />
-    </View>
-  );
-}
 
 type EndReachedInfo = Parameters<NonNullable<FlatListProps<unknown>['onEndReached']>>[0];
 
@@ -96,9 +74,6 @@ function WebWheelFlatListInner<T>(
   const webRef = useRef<View>(null);
   const webContentRef = useRef<View>(null);
   const webEndSentinelRef = useRef<View>(null);
-  const webRefreshStartYRef = useRef<number | null>(null);
-  const webRefreshTriggeredRef = useRef(false);
-  const webWheelPullDistanceRef = useRef(0);
   const onLayoutRef = useRef(onLayout);
   const onContentSizeChangeRef = useRef(onContentSizeChange);
   const onScrollRef = useRef(onScroll);
@@ -110,9 +85,7 @@ function WebWheelFlatListInner<T>(
   onScrollRef.current = onScroll;
   onEndReachedRef.current = onEndReached;
   onEndReachedThresholdRef.current = onEndReachedThreshold;
-  const refreshControlProps = isValidElement(refreshControl)
-    ? (refreshControl.props as { enabled?: boolean; refreshing?: boolean; onRefresh?: () => void })
-    : null;
+  const refreshControlProps = getWebRefreshControlProps(refreshControl);
 
   const emitWebLayout = useCallback((node: HTMLElement) => {
     onLayoutRef.current?.({
@@ -149,6 +122,13 @@ function WebWheelFlatListInner<T>(
     const distanceFromEnd = Math.max(0, contentHeight - (node.scrollTop + node.clientHeight));
     handler({ distanceFromEnd } as EndReachedInfo);
   }, []);
+
+  const getWebNode = useCallback((event?: unknown) => (
+    (event as { currentTarget?: HTMLElement | null } | undefined)?.currentTarget
+    ?? (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
+    ?? null
+  ), []);
+  const webRefreshHandlers = useWebRefreshHandlers(refreshControlProps, getWebNode);
 
   /** Sidebar pane toggles can skip RN onLayout — observe the scroll node directly on web. */
   useEffect(() => {
@@ -259,92 +239,30 @@ function WebWheelFlatListInner<T>(
     const rows = Array.from(data ?? []);
     const Separator = ItemSeparatorComponent as React.ComponentType | null | undefined;
     const emitFromWebEvent = (event: unknown) => {
-      const node = (event as { currentTarget?: HTMLElement | null })?.currentTarget
-        ?? (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
-        ?? null;
+      const node = getWebNode(event);
       if (!node) return;
       emitWebScroll(node);
       emitWebEndReached(node);
     };
     const scheduleWebNearEndProbe = (event: unknown) => {
-      const node = (event as { currentTarget?: HTMLElement | null })?.currentTarget
-        ?? (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
-        ?? null;
+      const node = getWebNode(event);
       if (!node) return;
       setTimeout(() => {
         emitWebScroll(node);
         emitWebEndReached(node);
       }, 40);
     };
-    const triggerWebRefresh = (node: HTMLElement | null) => {
-      if (!node || node.scrollTop > 2) return;
-      if (!refreshControlProps?.onRefresh || refreshControlProps.refreshing || refreshControlProps.enabled === false) return;
-      refreshControlProps.onRefresh();
-    };
-    const getTouchY = (event: unknown) => {
-      const nativeEvent = (event as { nativeEvent?: { touches?: Array<{ clientY?: number; pageY?: number }> } })
-        ?.nativeEvent;
-      const touches = nativeEvent?.touches;
-      const touch = touches?.[0];
-      return touch?.clientY ?? touch?.pageY ?? null;
-    };
-    const handleWebRefreshTouchStart = (event: unknown) => {
-      const node = (event as { currentTarget?: HTMLElement | null })?.currentTarget
-        ?? (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
-        ?? null;
-      if (!node || node.scrollTop > 2) {
-        webRefreshStartYRef.current = null;
-        return;
-      }
-      webRefreshStartYRef.current = getTouchY(event);
-      webRefreshTriggeredRef.current = false;
-    };
-    const handleWebRefreshTouchMove = (event: unknown) => {
-      const startY = webRefreshStartYRef.current;
-      if (startY == null || webRefreshTriggeredRef.current) return;
-      const y = getTouchY(event);
-      if (y == null || y - startY < 72) return;
-      const node = (event as { currentTarget?: HTMLElement | null })?.currentTarget
-        ?? (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
-        ?? null;
-      webRefreshTriggeredRef.current = true;
-      triggerWebRefresh(node);
-    };
-    const handleWebRefreshTouchEnd = () => {
-      webRefreshStartYRef.current = null;
-      webRefreshTriggeredRef.current = false;
-    };
-    const handleWebRefreshWheel = (event: unknown) => {
-      const node = (event as { currentTarget?: HTMLElement | null })?.currentTarget
-        ?? (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
-        ?? null;
-      if (!node || node.scrollTop > 2) {
-        webWheelPullDistanceRef.current = 0;
-        return;
-      }
-      const deltaY = (event as { nativeEvent?: { deltaY?: number }; deltaY?: number })?.nativeEvent?.deltaY
-        ?? (event as { deltaY?: number })?.deltaY
-        ?? 0;
-      if (deltaY >= 0) {
-        webWheelPullDistanceRef.current = 0;
-        return;
-      }
-      webWheelPullDistanceRef.current += Math.abs(deltaY);
-      if (webWheelPullDistanceRef.current < 110) return;
-      webWheelPullDistanceRef.current = 0;
-      triggerWebRefresh(node);
-    };
     const webEventProps = {
       onScroll: emitFromWebEvent,
       onWheel: (event: unknown) => {
         scheduleWebNearEndProbe(event);
-        handleWebRefreshWheel(event);
+        webRefreshHandlers.onWheel(event);
       },
-      onTouchStart: handleWebRefreshTouchStart,
-      onTouchMove: handleWebRefreshTouchMove,
+      onTouchStart: webRefreshHandlers.onTouchStart,
+      onTouchMove: webRefreshHandlers.onTouchMove,
       onTouchEnd: (event: unknown) => {
         scheduleWebNearEndProbe(event);
-        handleWebRefreshTouchEnd();
+        webRefreshHandlers.onTouchEnd();
       },
       onKeyUp: scheduleWebNearEndProbe,
     };

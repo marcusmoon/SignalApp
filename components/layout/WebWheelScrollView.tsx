@@ -1,6 +1,11 @@
-import { forwardRef, isValidElement, useRef } from 'react';
-import { ActivityIndicator, Platform, ScrollView, View, type ScrollViewProps } from 'react-native';
+import { forwardRef, useCallback, useRef } from 'react';
+import { Platform, ScrollView, View, type ScrollViewProps } from 'react-native';
 
+import {
+  getWebRefreshControlProps,
+  useWebRefreshHandlers,
+  WebRefreshStatus,
+} from '@/components/layout/webRefreshControl';
 import { useWebVerticalWheelScroll } from '@/hooks/useWebVerticalWheelScroll';
 
 export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(function WebWheelScrollView(
@@ -8,74 +13,21 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
   forwardedRef,
 ) {
   const localRef = useRef<ScrollView>(null);
-  const webRefreshStartYRef = useRef<number | null>(null);
-  const webRefreshTriggeredRef = useRef(false);
-  const webWheelPullDistanceRef = useRef(0);
   useWebVerticalWheelScroll(localRef, { onScroll });
-  const refreshControlProps = isValidElement(_refreshControl)
-    ? (_refreshControl.props as { enabled?: boolean; refreshing?: boolean; onRefresh?: () => void })
-    : null;
+  const refreshControlProps = getWebRefreshControlProps(_refreshControl);
+  const getNode = useCallback((event?: unknown) => (
+    (event as { currentTarget?: HTMLElement | null } | undefined)?.currentTarget
+    ?? (localRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
+    ?? null
+  ), []);
+  const webRefreshHandlers = useWebRefreshHandlers(refreshControlProps, getNode);
 
   if (Platform.OS === 'web') {
-    const getNode = (event?: unknown) =>
-      (event as { currentTarget?: HTMLElement | null } | undefined)?.currentTarget
-      ?? (localRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
-      ?? null;
-    const triggerRefresh = (node: HTMLElement | null) => {
-      if (!node || node.scrollTop > 2) return;
-      if (!refreshControlProps?.onRefresh || refreshControlProps.refreshing || refreshControlProps.enabled === false) return;
-      refreshControlProps.onRefresh();
-    };
-    const getTouchY = (event: unknown) => {
-      const nativeEvent = (event as { nativeEvent?: { touches?: Array<{ clientY?: number; pageY?: number }> } })
-        ?.nativeEvent;
-      const touch = nativeEvent?.touches?.[0];
-      return touch?.clientY ?? touch?.pageY ?? null;
-    };
-    const handleTouchStart = (event: unknown) => {
-      const node = getNode(event);
-      if (!node || node.scrollTop > 2) {
-        webRefreshStartYRef.current = null;
-        return;
-      }
-      webRefreshStartYRef.current = getTouchY(event);
-      webRefreshTriggeredRef.current = false;
-    };
-    const handleTouchMove = (event: unknown) => {
-      const startY = webRefreshStartYRef.current;
-      if (startY == null || webRefreshTriggeredRef.current) return;
-      const y = getTouchY(event);
-      if (y == null || y - startY < 72) return;
-      webRefreshTriggeredRef.current = true;
-      triggerRefresh(getNode(event));
-    };
-    const handleTouchEnd = () => {
-      webRefreshStartYRef.current = null;
-      webRefreshTriggeredRef.current = false;
-    };
-    const handleWheel = (event: unknown) => {
-      const node = getNode(event);
-      if (!node || node.scrollTop > 2) {
-        webWheelPullDistanceRef.current = 0;
-        return;
-      }
-      const deltaY = (event as { nativeEvent?: { deltaY?: number }; deltaY?: number })?.nativeEvent?.deltaY
-        ?? (event as { deltaY?: number })?.deltaY
-        ?? 0;
-      if (deltaY >= 0) {
-        webWheelPullDistanceRef.current = 0;
-        return;
-      }
-      webWheelPullDistanceRef.current += Math.abs(deltaY);
-      if (webWheelPullDistanceRef.current < 110) return;
-      webWheelPullDistanceRef.current = 0;
-      triggerRefresh(node);
-    };
     const webEventProps = {
-      onTouchStart: handleTouchStart,
-      onTouchMove: handleTouchMove,
-      onTouchEnd: handleTouchEnd,
-      onWheel: handleWheel,
+      onTouchStart: webRefreshHandlers.onTouchStart,
+      onTouchMove: webRefreshHandlers.onTouchMove,
+      onTouchEnd: webRefreshHandlers.onTouchEnd,
+      onWheel: webRefreshHandlers.onWheel,
     };
     return (
       <View
@@ -118,30 +70,4 @@ const webViewportStyle = {
   overflowY: 'auto',
   overflowX: 'hidden',
   WebkitOverflowScrolling: 'touch',
-} as const;
-
-function WebRefreshStatus() {
-  return (
-    <View style={webRefreshStatusStyle}>
-      <ActivityIndicator size="small" color={'var(--signal-green)' as never} />
-    </View>
-  );
-}
-
-const webRefreshStatusStyle = {
-  position: 'sticky',
-  top: 8,
-  zIndex: 20,
-  alignSelf: 'center',
-  width: 36,
-  height: 36,
-  marginTop: 8,
-  marginBottom: 8,
-  borderRadius: 18,
-  alignItems: 'center',
-  justifyContent: 'center',
-  backgroundColor: 'var(--signal-card)',
-  borderWidth: 1,
-  borderColor: 'var(--signal-border)',
-  boxShadow: '0 8px 20px rgba(0,0,0,0.14)',
 } as const;

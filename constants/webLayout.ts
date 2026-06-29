@@ -1,5 +1,16 @@
 import { Platform } from 'react-native';
 
+export const isWeb = Platform.OS === 'web';
+
+export const WEB_SIGNAL_CSS = {
+  card: 'var(--signal-card)',
+  border: 'var(--signal-border)',
+  text: 'var(--signal-text)',
+  textMuted: 'var(--signal-text-muted)',
+  green: 'var(--signal-green)',
+  topHighlight: 'rgba(255,255,255,0.1)',
+} as const;
+
 /** Flex child for layout shells (safe areas, columns). Never use height:0 here. */
 export const webFlexFill = {
   flex: 1,
@@ -12,12 +23,12 @@ export const webFlexFill = {
  * ScrollView grow to content height, leaving no internal scroll range.
  */
 export const webScrollViewportStyle =
-  Platform.OS === 'web'
+  isWeb
     ? ({ flex: 1, minHeight: 0, height: '100%', maxHeight: '100%' } as const)
     : webFlexFill;
 
 /** Bottom-tab scene wrapper: bounded height for list scroll on web. */
-export const webTabSceneStyle = Platform.OS === 'web' ? webScrollViewportStyle : undefined;
+export const webTabSceneStyle = isWeb ? webScrollViewportStyle : undefined;
 
 /** Tab navigator host inside sidebar content pane. */
 export const webTabNavigatorHostStyle = {
@@ -44,7 +55,7 @@ export const WEB_FLATLIST_BATCH = 10;
 
 /** Horizontal carousels on web — hide native scrollbars (use arrow nav instead). */
 export const webHorizontalCarouselScrollProps =
-  Platform.OS === 'web'
+  isWeb
     ? ({
         showsHorizontalScrollIndicator: false as const,
         dataSet: { signalHorizontalCarousel: 'true' },

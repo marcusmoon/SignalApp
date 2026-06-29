@@ -1,5 +1,5 @@
 import type { BottomTabBarProps } from "expo-router/js-tabs";
-import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GlassSurfaceBackground, floatingGlassShadow } from '@/components/signal/GlassSurface';
@@ -10,6 +10,7 @@ import {
   tabBarHorizontalMargin,
   tabBarPositionBottom,
 } from '@/constants/tabBar';
+import { isWeb, WEB_SIGNAL_CSS } from '@/constants/webLayout';
 import { useTabBarGlassStyle } from '@/hooks/useTabBarGlassStyle';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
@@ -30,10 +31,10 @@ export function SignalFloatingTabBar(props: BottomTabBarProps) {
   const availableWidth = Math.max(0, width - marginH * 2);
   const tabBarWidth = Math.min(availableWidth, APP_CONTENT_MAX_WIDTH);
   const left = Math.max(marginH, (width - tabBarWidth) / 2);
-  const hostHeight = Platform.OS === 'web' ? TAB_BAR_FLOAT_HEIGHT + 29 : TAB_BAR_FLOAT_HEIGHT + 13;
-  const surfaceBackground = Platform.OS === 'web' ? 'var(--signal-card)' : backgroundColor;
-  const surfaceEdge = Platform.OS === 'web'
-    ? { ring: 'var(--signal-border)', topHighlight: 'rgba(255,255,255,0.1)' }
+  const hostHeight = isWeb ? TAB_BAR_FLOAT_HEIGHT + 29 : TAB_BAR_FLOAT_HEIGHT + 13;
+  const surfaceBackground = isWeb ? WEB_SIGNAL_CSS.card : backgroundColor;
+  const surfaceEdge = isWeb
+    ? { ring: WEB_SIGNAL_CSS.border, topHighlight: WEB_SIGNAL_CSS.topHighlight }
     : edge;
   const visibleRoutes = state.routes.filter((route) => VISIBLE_TAB_NAMES.has(route.name));
   const fallbackRoutes = visibleRoutes.length > 0
@@ -42,7 +43,7 @@ export function SignalFloatingTabBar(props: BottomTabBarProps) {
         const options = descriptors[route.key]?.options as { href?: unknown } | undefined;
         return options?.href !== null;
       });
-  const webDataProps = Platform.OS === 'web'
+  const webDataProps = isWeb
     ? ({ dataSet: { signalFloatingTabbar: 'true' } } as Record<string, unknown>)
     : undefined;
 
@@ -52,7 +53,7 @@ export function SignalFloatingTabBar(props: BottomTabBarProps) {
       {...webDataProps}
       style={[
         styles.host,
-        Platform.OS === 'web' ? styles.webHost : null,
+        isWeb ? styles.webHost : null,
         floatingGlassShadow(effectiveColorScheme),
         { left, width: tabBarWidth, bottom, height: hostHeight, backgroundColor: surfaceBackground },
       ]}>
@@ -68,10 +69,10 @@ export function SignalFloatingTabBar(props: BottomTabBarProps) {
           const focused = state.index === routeIndex;
           const descriptor = descriptors[route.key];
           const options = descriptor.options;
-          const color = Platform.OS === 'web'
+          const color = isWeb
             ? focused
-              ? 'var(--signal-green)'
-              : 'var(--signal-text-muted)'
+              ? WEB_SIGNAL_CSS.green
+              : WEB_SIGNAL_CSS.textMuted
             : focused
               ? options.tabBarActiveTintColor ?? theme.green
               : options.tabBarInactiveTintColor ?? theme.textMuted;

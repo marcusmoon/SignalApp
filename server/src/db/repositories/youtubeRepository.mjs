@@ -99,7 +99,7 @@ export async function queryPublicYoutubeRows(options = {}) {
   const sort = cleanText(options.sort) === 'popular' ? 'popular' : 'latest';
   const popularBucketClause = (paramIndex) => `(
     sort_bucket = $${paramIndex}
-    OR $${paramIndex} = ANY(sort_buckets)
+    OR $${paramIndex} = ANY(COALESCE(sort_buckets, '{}'::text[]))
   )`;
   let finalWhere = where;
   let finalParams = [...params];
@@ -116,7 +116,8 @@ export async function queryPublicYoutubeRows(options = {}) {
       bucketParams,
     );
     finalWhere = bucketExists.rows.length > 0 ? bucketWhere : where;
-    finalParams = bucketExists.rows.length > 0 ? bucketParams : [...params];
+    // Kysely freezes parameter arrays during execution; never mutate a params array after passing it to queryKysely.
+    finalParams = bucketExists.rows.length > 0 ? [...bucketParams] : [...params];
   }
   finalParams.push(limit + 1, offset);
   const order = sort === 'popular'

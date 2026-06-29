@@ -179,26 +179,6 @@ export function DigestPager({ batches }: Props) {
 
   useWebHorizontalWheelScroll(scrollRef, batches.length > 1);
 
-  const goToPage = useCallback(
-    (index: number) => {
-      if (pageWidth <= 0) return;
-      if (batches.length <= 1) return;
-      if (index >= batches.length) {
-        scrollRef.current?.scrollTo({ x: pageWidth * batches.length, animated: true });
-        setPageIndex(0);
-        setDotIndex(0);
-        setExpandedId(null);
-        return;
-      }
-      const next = index < 0 ? batches.length - 1 : Math.max(0, Math.min(index, batches.length - 1));
-      scrollRef.current?.scrollTo({ x: pageWidth * next, animated: true });
-      setPageIndex(next);
-      setDotIndex(next);
-      setExpandedId(null);
-    },
-    [batches.length, pageWidth],
-  );
-
   const syncPageIndex = useCallback(
     (offsetX: number, resetExpand: boolean) => {
       if (pageWidth <= 0) return;
@@ -254,8 +234,6 @@ export function DigestPager({ batches }: Props) {
       <HorizontalCarouselShell
         pageIndex={pageIndex}
         pageCount={batches.length}
-        onPrev={() => goToPage(pageIndex - 1)}
-        onNext={() => goToPage(pageIndex + 1)}
         loop
         footer={
           batches.length > 1 ? (

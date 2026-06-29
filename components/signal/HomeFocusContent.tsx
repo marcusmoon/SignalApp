@@ -409,16 +409,6 @@ export function HomeFocusContent({
     setActiveIssueIndex((prev) => (prev === next ? prev : next));
   }, [issueGroups.length]);
 
-  const goToIssuePage = useCallback(
-    (index: number) => {
-      if (issueCarouselWidth <= 0 || issueGroups.length <= 1) return;
-      const next = index < 0 ? issueGroups.length - 1 : index >= issueGroups.length ? 0 : index;
-      issueScrollRef.current?.scrollTo({ x: issueCarouselWidth * next, animated: true });
-      setActiveIssueIndex(next);
-    },
-    [issueCarouselWidth, issueGroups.length],
-  );
-
   const onBriefingScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const width = event.nativeEvent.layoutMeasurement.width;
     if (width <= 0) return;
@@ -441,16 +431,6 @@ export function HomeFocusContent({
     const next = rawIndex >= briefings.length ? 0 : Math.max(0, Math.min(rawIndex, briefings.length - 1));
     setActiveBriefingIndex((prev) => (prev === next ? prev : next));
   }, [briefings.length]);
-
-  const goToBriefingPage = useCallback(
-    (index: number) => {
-      if (briefingCarouselWidth <= 0 || briefings.length <= 1) return;
-      const next = index < 0 ? briefings.length - 1 : index >= briefings.length ? 0 : index;
-      briefingScrollRef.current?.scrollTo({ x: briefingCarouselWidth * next, animated: true });
-      setActiveBriefingIndex(next);
-    },
-    [briefingCarouselWidth, briefings.length],
-  );
 
   const renderIssueGroup = useCallback(
     (group: IssueGroup) => (
@@ -589,8 +569,6 @@ export function HomeFocusContent({
                 <HorizontalCarouselShell
                   pageIndex={activeIssueIndex}
                   pageCount={issueGroups.length}
-                  onPrev={() => goToIssuePage(activeIssueIndex - 1)}
-                  onNext={() => goToIssuePage(activeIssueIndex + 1)}
                   loop
                   footer={
                     issueGroups.length > 1 ? (
@@ -653,8 +631,6 @@ export function HomeFocusContent({
                 <HorizontalCarouselShell
                   pageIndex={activeBriefingIndex}
                   pageCount={briefings.length}
-                  onPrev={() => goToBriefingPage(activeBriefingIndex - 1)}
-                  onNext={() => goToBriefingPage(activeBriefingIndex + 1)}
                   loop
                   footer={
                     briefings.length > 1 ? (

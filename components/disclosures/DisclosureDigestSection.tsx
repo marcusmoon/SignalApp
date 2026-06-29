@@ -181,18 +181,6 @@ export function DisclosureDigestSection({ items, loading, accentColor }: Props) 
 
   useWebHorizontalWheelScroll(scrollRef, items.length > 1);
 
-  const goToPage = useCallback(
-    (index: number) => {
-      if (pageWidth <= 0) return;
-      const next = index < 0 ? items.length - 1 : index >= items.length ? 0 : Math.max(0, Math.min(index, items.length - 1));
-      scrollRef.current?.scrollTo({ x: pageWidth * next, animated: true });
-      setPageIndex(next);
-      setDotIndex(next);
-      setExpandedId(null);
-    },
-    [items.length, pageWidth],
-  );
-
   const syncPageIndex = useCallback(
     (offsetX: number, resetExpand: boolean) => {
       if (pageWidth <= 0) return;
@@ -249,8 +237,6 @@ export function DisclosureDigestSection({ items, loading, accentColor }: Props) 
       <HorizontalCarouselShell
         pageIndex={pageIndex}
         pageCount={items.length}
-        onPrev={() => goToPage(pageIndex - 1)}
-        onNext={() => goToPage(pageIndex + 1)}
         loop
         footer={
           items.length > 1 ? (

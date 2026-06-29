@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   GestureResponderEvent,
   LayoutAnimation,
@@ -175,43 +175,70 @@ export function DigestPager({ batches }: Props) {
   const [dotIndex, setDotIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
-  const carouselPages = useMemo(() => (batches.length > 1 ? [...batches, batches[0]] : batches), [batches]);
+  const carouselPages = useMemo(() => {
+    if (batches.length <= 1) return batches;
+    return [batches[batches.length - 1], ...batches, batches[0]];
+  }, [batches]);
 
   useWebHorizontalWheelScroll(scrollRef, batches.length > 1);
 
-  const resetLoopToStart = useCallback(() => {
-    const reset = () => scrollRef.current?.scrollTo({ x: 0, animated: false });
+  const jumpToVisualPage = useCallback((visualIndex: number) => {
+    if (pageWidth <= 0) return;
+    const x = pageWidth * visualIndex;
+    const reset = () => scrollRef.current?.scrollTo({ x, animated: false });
     reset();
     requestAnimationFrame(reset);
     setTimeout(reset, 50);
     setTimeout(reset, 150);
-  }, []);
+  }, [pageWidth]);
+
+  useEffect(() => {
+    if (pageWidth <= 0 || batches.length <= 1) return;
+    jumpToVisualPage(1);
+    setPageIndex(0);
+    setDotIndex(0);
+    setExpandedId(null);
+  }, [batches, jumpToVisualPage, pageWidth]);
 
   const syncPageIndex = useCallback(
     (offsetX: number, resetExpand: boolean) => {
       if (pageWidth <= 0) return;
       const rawIndex = Math.max(0, Math.round(offsetX / pageWidth));
-      if (batches.length > 1 && rawIndex >= batches.length) {
-        resetLoopToStart();
+      if (batches.length > 1 && rawIndex <= 0) {
+        const index = batches.length - 1;
+        jumpToVisualPage(batches.length);
+        setPageIndex(index);
+        setDotIndex(index);
+        if (resetExpand) setExpandedId(null);
+        return;
+      }
+      if (batches.length > 1 && rawIndex >= batches.length + 1) {
+        jumpToVisualPage(1);
         setPageIndex(0);
         setDotIndex(0);
         if (resetExpand) setExpandedId(null);
         return;
       }
-      const index = Math.max(0, Math.min(rawIndex, batches.length - 1));
+      const index = batches.length > 1
+        ? Math.max(0, Math.min(rawIndex - 1, batches.length - 1))
+        : Math.max(0, Math.min(rawIndex, batches.length - 1));
       setPageIndex(index);
       setDotIndex(index);
       if (resetExpand) setExpandedId(null);
     },
-    [pageWidth, batches.length, resetLoopToStart],
+    [pageWidth, batches.length, jumpToVisualPage],
   );
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (pageWidth <= 0) return;
       const rawIndex = Math.max(0, Math.round(e.nativeEvent.contentOffset.x / pageWidth));
-      const index = batches.length > 1 && rawIndex >= batches.length
-        ? 0
+      const index = batches.length > 1
+        ? rawIndex <= 0
+          ? batches.length - 1
+          : rawIndex >= batches.length + 1
+            ? 0
+            : Math.max(0, Math.min(rawIndex - 1, batches.length - 1))
         : Math.max(0, Math.min(rawIndex, batches.length - 1));
       setDotIndex((prev) => (prev === index ? prev : index));
     },
@@ -269,7 +296,13 @@ export function DigestPager({ batches }: Props) {
           keyboardShouldPersistTaps="handled">
           {pageWidth > 0 &&
             carouselPages.map((digest, index) => {
-              const realIndex = batches.length > 1 && index >= batches.length ? 0 : index;
+              const realIndex = batches.length > 1
+                ? index <= 0
+                  ? batches.length - 1
+                  : index >= batches.length + 1
+                    ? 0
+                    : index - 1
+                : index;
               const isExpanded = expandedId === digest.id && pageIndex === realIndex;
               return (
                 <View key={`${digest.id}-${index}`} style={[styles.page, { width: pageWidth }]}>

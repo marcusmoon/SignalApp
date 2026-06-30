@@ -469,7 +469,7 @@ export function HomeFocusContent({
                 {row.item.title}
               </Text>
               {showIssueSummary && row.item.summary ? (
-                <Text style={styles.issueGroupSummary} numberOfLines={2}>
+                <Text style={styles.issueGroupSummary} numberOfLines={1}>
                   {row.item.summary}
                 </Text>
               ) : null}
@@ -788,7 +788,7 @@ function makeStyles(
       justifyContent: 'center',
     },
     heroBlock: {
-      gap: 12,
+      gap: 8,
     },
     heroHead: {
       flexDirection: 'row',
@@ -803,7 +803,7 @@ function makeStyles(
       color: theme.text,
     },
     issueCarouselWrap: {
-      gap: 10,
+      gap: 8,
     },
     briefingCarouselWrap: {
       gap: 10,
@@ -816,16 +816,14 @@ function makeStyles(
       paddingRight: 0,
     },
     heroCard: {
-      minHeight: 146,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.colorScheme === 'dark' ? '#111927' : '#FFFFFF',
-      paddingLeft: 18,
-      paddingRight: 13,
-      paddingVertical: 13,
-      gap: 8,
-      justifyContent: 'space-between',
+      paddingLeft: 16,
+      paddingRight: 12,
+      paddingVertical: 10,
+      gap: 6,
       overflow: 'hidden',
       shadowColor: '#000000',
       shadowOpacity: 0.04,
@@ -834,10 +832,10 @@ function makeStyles(
       elevation: 1,
     },
     heroCardSummary: {
-      minHeight: 190,
+      minHeight: 0,
     },
     heroCardGrouped: {
-      minHeight: 188,
+      minHeight: 0,
     },
     heroNoteLine: {
       position: 'absolute',
@@ -877,8 +875,8 @@ function makeStyles(
       gap: 0,
     },
     issueGroupItem: {
-      gap: 7,
-      paddingVertical: 8,
+      gap: 4,
+      paddingVertical: 6,
       borderRadius: 10,
     },
     issueGroupItemBorder: {
@@ -886,20 +884,20 @@ function makeStyles(
       borderBottomColor: theme.border,
     },
     issueGroupTitle: {
-      fontSize: sf(15),
-      lineHeight: sf(21),
+      fontSize: sf(14),
+      lineHeight: sf(19),
       fontWeight: '900',
       color: theme.text,
     },
     issueGroupSummary: {
       fontSize: sf(12),
-      lineHeight: sf(18),
+      lineHeight: sf(17),
       fontWeight: '700',
       color: theme.textMuted,
     },
     issueGroupMetaText: {
-      fontSize: sf(11),
-      lineHeight: sf(15),
+      fontSize: sf(10),
+      lineHeight: sf(14),
       fontWeight: '800',
       color: theme.textDim,
     },
@@ -907,7 +905,7 @@ function makeStyles(
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: 6,
+      gap: 5,
     },
     issueDot: {
       width: 5,

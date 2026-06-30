@@ -174,6 +174,7 @@ export function DigestPager({ batches }: Props) {
   const [pageIndex, setPageIndex] = useState(0);
   const [dotIndex, setDotIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const loopResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const carouselPages = useMemo(() => {
     if (batches.length <= 1) return batches;
@@ -192,6 +193,28 @@ export function DigestPager({ batches }: Props) {
     setTimeout(reset, 150);
   }, [pageWidth]);
 
+  const clearScheduledLoopReset = useCallback(() => {
+    if (!loopResetTimerRef.current) return;
+    clearTimeout(loopResetTimerRef.current);
+    loopResetTimerRef.current = null;
+  }, []);
+
+  const scheduleLoopReset = useCallback(
+    (visualIndex: number, logicalIndex: number) => {
+      clearScheduledLoopReset();
+      loopResetTimerRef.current = setTimeout(() => {
+        jumpToVisualPage(visualIndex);
+        setPageIndex(logicalIndex);
+        setDotIndex(logicalIndex);
+        setExpandedId(null);
+        loopResetTimerRef.current = null;
+      }, 90);
+    },
+    [clearScheduledLoopReset, jumpToVisualPage],
+  );
+
+  useEffect(() => () => clearScheduledLoopReset(), [clearScheduledLoopReset]);
+
   useEffect(() => {
     if (pageWidth <= 0 || batches.length <= 1) return;
     jumpToVisualPage(1);
@@ -205,6 +228,7 @@ export function DigestPager({ batches }: Props) {
       if (pageWidth <= 0) return;
       const rawIndex = Math.max(0, Math.round(offsetX / pageWidth));
       if (batches.length > 1 && rawIndex <= 0) {
+        clearScheduledLoopReset();
         const index = batches.length - 1;
         jumpToVisualPage(batches.length);
         setPageIndex(index);
@@ -213,12 +237,14 @@ export function DigestPager({ batches }: Props) {
         return;
       }
       if (batches.length > 1 && rawIndex >= batches.length + 1) {
+        clearScheduledLoopReset();
         jumpToVisualPage(1);
         setPageIndex(0);
         setDotIndex(0);
         if (resetExpand) setExpandedId(null);
         return;
       }
+      clearScheduledLoopReset();
       const index = batches.length > 1
         ? Math.max(0, Math.min(rawIndex - 1, batches.length - 1))
         : Math.max(0, Math.min(rawIndex, batches.length - 1));
@@ -226,23 +252,31 @@ export function DigestPager({ batches }: Props) {
       setDotIndex(index);
       if (resetExpand) setExpandedId(null);
     },
-    [pageWidth, batches.length, jumpToVisualPage],
+    [pageWidth, batches.length, jumpToVisualPage, clearScheduledLoopReset],
   );
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (pageWidth <= 0) return;
       const rawIndex = Math.max(0, Math.round(e.nativeEvent.contentOffset.x / pageWidth));
+      if (batches.length > 1 && rawIndex <= 0) {
+        const index = batches.length - 1;
+        setDotIndex((prev) => (prev === index ? prev : index));
+        scheduleLoopReset(batches.length, index);
+        return;
+      }
+      if (batches.length > 1 && rawIndex >= batches.length + 1) {
+        setDotIndex((prev) => (prev === 0 ? prev : 0));
+        scheduleLoopReset(1, 0);
+        return;
+      }
+      clearScheduledLoopReset();
       const index = batches.length > 1
-        ? rawIndex <= 0
-          ? batches.length - 1
-          : rawIndex >= batches.length + 1
-            ? 0
-            : Math.max(0, Math.min(rawIndex - 1, batches.length - 1))
+        ? Math.max(0, Math.min(rawIndex - 1, batches.length - 1))
         : Math.max(0, Math.min(rawIndex, batches.length - 1));
       setDotIndex((prev) => (prev === index ? prev : index));
     },
-    [pageWidth, batches.length],
+    [pageWidth, batches.length, clearScheduledLoopReset, scheduleLoopReset],
   );
 
   const handleScrollEnd = useCallback(

@@ -6,8 +6,11 @@ import { isWeb } from '@/constants/webLayout';
 type PressEventHandler = (event: { preventDefault?: () => void; stopPropagation?: () => void }) => void;
 
 function getDomNode(ref: RefObject<View | null>, selector: string): HTMLElement | null {
-  return (ref.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
-    ?? document.querySelector(selector);
+  const scrollNode = (ref.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
+    ?.getScrollableNode?.();
+  if (scrollNode) return scrollNode;
+  if (typeof document === 'undefined') return null;
+  return document.querySelector(selector);
 }
 
 /** RN Web Pressable can miss mobile Safari taps in fixed overlays; bind DOM events as a narrow web fallback. */

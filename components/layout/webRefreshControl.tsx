@@ -1,5 +1,5 @@
 import { isValidElement, useCallback, useRef } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 
 import { WEB_SIGNAL_CSS } from '@/constants/webLayout';
 
@@ -25,6 +25,7 @@ export function getWebRefreshControlProps(refreshControl: unknown): WebRefreshCo
 }
 
 export function WebRefreshStatus() {
+  if (Platform.OS !== 'web') return null;
   return (
     <View style={webRefreshStatusStyle}>
       <ActivityIndicator size="small" color={WEB_SIGNAL_CSS.green as never} />
@@ -36,17 +37,19 @@ export function useWebRefreshHandlers(
   refreshControlProps: WebRefreshControlProps,
   getNode: (event?: unknown) => HTMLElement | null,
 ) {
+  const enabled = Platform.OS === 'web';
   const touchStartYRef = useRef<number | null>(null);
   const touchTriggeredRef = useRef(false);
   const wheelPullDistanceRef = useRef(0);
 
   const triggerRefresh = useCallback(
     (node: HTMLElement | null) => {
+      if (!enabled) return;
       if (!node || node.scrollTop > 2) return;
       if (!refreshControlProps?.onRefresh || refreshControlProps.refreshing || refreshControlProps.enabled === false) return;
       refreshControlProps.onRefresh();
     },
-    [refreshControlProps],
+    [enabled, refreshControlProps],
   );
 
   const getTouchY = useCallback((event: unknown) => {
@@ -58,6 +61,7 @@ export function useWebRefreshHandlers(
   const onTouchStart = useCallback(
     (event: unknown) => {
       const node = getNode(event);
+      if (!enabled) return;
       if (!node || node.scrollTop > 2) {
         touchStartYRef.current = null;
         return;
@@ -65,19 +69,20 @@ export function useWebRefreshHandlers(
       touchStartYRef.current = getTouchY(event);
       touchTriggeredRef.current = false;
     },
-    [getNode, getTouchY],
+    [enabled, getNode, getTouchY],
   );
 
   const onTouchMove = useCallback(
     (event: unknown) => {
       const startY = touchStartYRef.current;
+      if (!enabled) return;
       if (startY == null || touchTriggeredRef.current) return;
       const y = getTouchY(event);
       if (y == null || y - startY < 72) return;
       touchTriggeredRef.current = true;
       triggerRefresh(getNode(event));
     },
-    [getNode, getTouchY, triggerRefresh],
+    [enabled, getNode, getTouchY, triggerRefresh],
   );
 
   const onTouchEnd = useCallback(() => {
@@ -88,6 +93,7 @@ export function useWebRefreshHandlers(
   const onWheel = useCallback(
     (event: unknown) => {
       const node = getNode(event);
+      if (!enabled) return;
       if (!node || node.scrollTop > 2) {
         wheelPullDistanceRef.current = 0;
         return;
@@ -102,7 +108,7 @@ export function useWebRefreshHandlers(
       wheelPullDistanceRef.current = 0;
       triggerRefresh(node);
     },
-    [getNode, triggerRefresh],
+    [enabled, getNode, triggerRefresh],
   );
 
   return {

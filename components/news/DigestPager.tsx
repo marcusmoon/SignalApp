@@ -33,6 +33,14 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const EXPAND_LAYOUT = LayoutAnimation.create(180, LayoutAnimation.Types.easeOut, LayoutAnimation.Properties.opacity);
 
+function runAfterFrame(callback: () => void) {
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(callback);
+    return;
+  }
+  setTimeout(callback, 0);
+}
+
 type DigestCardProps = {
   digest: NewsDigestItem;
   isExpanded: boolean;
@@ -188,7 +196,7 @@ export function DigestPager({ batches }: Props) {
     const x = pageWidth * visualIndex;
     const reset = () => scrollRef.current?.scrollTo({ x, animated: false });
     reset();
-    requestAnimationFrame(reset);
+    runAfterFrame(reset);
     setTimeout(reset, 50);
     setTimeout(reset, 150);
   }, [pageWidth]);

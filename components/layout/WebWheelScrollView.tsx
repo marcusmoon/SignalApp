@@ -58,7 +58,9 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
           forwardedRef.current = instance;
         }
       }}
-    />
+    >
+      {children}
+    </ScrollView>
   );
 });
 

@@ -3,6 +3,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import type { AppTheme } from '@/constants/theme';
+import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
@@ -354,7 +355,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 8,
     },
     sectionAccent: {
-      width: 4,
+      width: CONTENT_ACCENT_LINE_WIDTH,
       height: 20,
       borderRadius: 2,
       backgroundColor: theme.green,
@@ -507,7 +508,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
-      borderLeftWidth: 3,
+      borderLeftWidth: CONTENT_ACCENT_LINE_WIDTH,
       borderLeftColor: theme.accentOrange,
       paddingVertical: 12,
       paddingHorizontal: 14,

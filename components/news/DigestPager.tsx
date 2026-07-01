@@ -16,6 +16,7 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
+import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { webHorizontalCarouselScrollProps } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -92,6 +93,7 @@ const DigestCard = memo(function DigestCard({
       accessibilityLabel={digest.title}
       accessibilityState={{ expanded: isExpanded }}
     >
+      <View style={styles.accentLine} />
       {digest.aiGenerated || digest.topics.length > 0 ? (
         <View style={styles.badgeRow}>
           {digest.aiGenerated ? (
@@ -373,18 +375,28 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 8,
     },
     card: {
-      paddingHorizontal: 13,
+      paddingLeft: 18,
+      paddingRight: 13,
       paddingVertical: 11,
       borderRadius: 16,
       borderWidth: 1,
-      borderColor: theme.greenBorder,
+      borderColor: theme.border,
       backgroundColor: theme.card,
       gap: 6,
+      overflow: 'hidden',
       shadowColor: '#000000',
       shadowOpacity: 0.04,
       shadowRadius: 10,
       shadowOffset: { width: 0, height: 5 },
       elevation: 1,
+    },
+    accentLine: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: CONTENT_ACCENT_LINE_WIDTH,
+      backgroundColor: theme.green,
     },
     cardPressed: {
       opacity: 0.88,

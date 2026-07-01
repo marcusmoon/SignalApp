@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
+import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import type { SignalApiInsight } from '@/integrations/signal-api/types';
 import { primaryInsightSourceRef } from '@/utils/primaryInsightSourceRef';
 
@@ -108,7 +109,7 @@ function makeInsightCardStyles(theme: AppTheme, sf: (n: number) => number, embed
       padding: 13,
       borderRadius: 12,
       borderWidth: 1,
-      borderLeftWidth: embedded ? 1 : 3,
+      borderLeftWidth: embedded ? 1 : CONTENT_ACCENT_LINE_WIDTH,
       borderColor: embedded ? theme.border : theme.greenBorder,
       borderLeftColor: embedded ? theme.border : theme.green,
       backgroundColor: embedded ? insightTintSurface(theme) : theme.card,

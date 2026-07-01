@@ -19,7 +19,7 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
-import { HOME_SECTION_ACCENT_WIDTH, homeSectionAccentColor, type HomeAccentSection } from '@/constants/homeSectionAccent';
+import { CONTENT_ACCENT_LINE_WIDTH, homeSectionAccentColor, type HomeAccentSection } from '@/constants/homeSectionAccent';
 import { webHorizontalCarouselScrollProps } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -322,7 +322,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, accentColor?: st
       left: 0,
       top: 0,
       bottom: 0,
-      width: HOME_SECTION_ACCENT_WIDTH,
+      width: CONTENT_ACCENT_LINE_WIDTH,
       backgroundColor: accentColor || theme.warning,
     },
     cardPressed: {

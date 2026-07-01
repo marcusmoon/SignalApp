@@ -4,6 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
+import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -202,7 +203,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     cardFlash: {
       borderColor: theme.danger,
-      borderLeftWidth: 3,
+      borderLeftWidth: CONTENT_ACCENT_LINE_WIDTH,
       borderLeftColor: theme.danger,
       backgroundColor: theme.dangerDim,
     },
@@ -214,7 +215,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       left: 0,
       top: ft.pad(10),
       bottom: ft.pad(10),
-      width: 3,
+      width: CONTENT_ACCENT_LINE_WIDTH,
       borderRadius: 999,
       backgroundColor: theme.danger,
     },

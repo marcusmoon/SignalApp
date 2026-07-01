@@ -9,6 +9,7 @@ type HomeSectionHeaderProps = {
   title: string;
   subtitle?: string;
   badge?: ReactNode;
+  accent?: string;
   onPress?: () => void;
   accessibilityLabel?: string;
 };
@@ -17,6 +18,7 @@ export function HomeSectionHeader({
   title,
   subtitle,
   badge,
+  accent,
   onPress,
   accessibilityLabel,
 }: HomeSectionHeaderProps) {
@@ -26,6 +28,7 @@ export function HomeSectionHeader({
   const content = (
     <View style={styles.row}>
       <View style={styles.titleRow}>
+        {accent ? <View style={[styles.accentDot, { backgroundColor: accent }]} /> : null}
         <View style={styles.titleCol}>
           <View style={styles.titleLine}>
             <Text style={styles.title}>{title}</Text>
@@ -65,6 +68,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 8,
+    },
+    accentDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 999,
+      marginTop: 8,
+      flexShrink: 0,
     },
     titleCol: {
       flex: 1,

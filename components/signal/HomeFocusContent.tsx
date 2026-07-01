@@ -19,6 +19,14 @@ import {
   type HomeDigestCategory,
   type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
+import {
+  homeCategoryPalette,
+  homeSectionAccentLineStyle,
+  homeSectionCardStyle,
+  homeSectionPalette,
+  homeSignalSessionPalette,
+  type HomeSectionPalette,
+} from '@/constants/homeSectionTheme';
 import type { AppTheme } from '@/constants/theme';
 import { webScrollViewportStyle } from '@/constants/webLayout';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
@@ -175,6 +183,15 @@ export function HomeFocusContent({
   const { t, locale } = useLocale();
   const ipadNav = useIpadSidebarNav();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
+  const sectionPalettes = useMemo(
+    () => ({
+      issues: homeSectionPalette('issues', theme.colorScheme),
+      signal: homeSectionPalette('signal', theme.colorScheme),
+      disclosure: homeSectionPalette('disclosure', theme.colorScheme),
+      watchlist: homeSectionPalette('watchlist', theme.colorScheme),
+    }),
+    [theme.colorScheme],
+  );
   const selectedIsToday = selectedYmd >= todayYmd;
   const loadedYmdRef = useRef<string | null>(null);
 
@@ -357,11 +374,13 @@ export function HomeFocusContent({
   }, [router]);
 
   const renderIssueCard = useCallback(
-    (rows: IssueRow[]) => (
-      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
-        <View style={styles.heroNoteLine} />
+    (rows: IssueRow[], palette: HomeSectionPalette) => (
+      <View style={[styles.heroCard, homeSectionCardStyle(palette), showIssueSummary && styles.heroCardSummary]}>
+        <View style={homeSectionAccentLineStyle(palette)} />
         <View style={styles.issueGroupList}>
-          {rows.map((row, index) => (
+          {rows.map((row, index) => {
+            const categoryPalette = homeCategoryPalette(row.category, theme.colorScheme);
+            return (
             <Pressable
               key={row.item.id}
               onPress={() => openIssue(row)}
@@ -373,9 +392,18 @@ export function HomeFocusContent({
               ]}>
               <View style={styles.issueRowTop}>
                 <View style={styles.issueMetaInline}>
-                  <View style={styles.issueCategoryMark}>
-                    <FontAwesome name={issueIconName(row.category)} size={11} color={theme.green} />
-                    <Text style={styles.issueCategoryText}>{t(NEWS_SEGMENT_LABEL[row.category])}</Text>
+                  <View
+                    style={[
+                      styles.issueCategoryMark,
+                      {
+                        backgroundColor: categoryPalette.dim,
+                        borderColor: categoryPalette.border,
+                      },
+                    ]}>
+                    <FontAwesome name={issueIconName(row.category)} size={11} color={categoryPalette.accent} />
+                    <Text style={[styles.issueCategoryText, { color: categoryPalette.accent }]}>
+                      {t(NEWS_SEGMENT_LABEL[row.category])}
+                    </Text>
                   </View>
                   {[row.item.topics[0], row.item.symbols[0]].filter(Boolean).length > 0 ? (
                     <Text style={styles.issueInlineMetaText} numberOfLines={1}>
@@ -396,22 +424,24 @@ export function HomeFocusContent({
                 </Text>
               ) : null}
             </Pressable>
-          ))}
+            );
+          })}
         </View>
       </View>
     ),
-    [openIssue, showIssueSummary, styles, t, theme.green],
+    [openIssue, showIssueSummary, styles, t, theme.colorScheme],
   );
 
   const renderSignalCard = useCallback(
-    (rows: SignalApiMarketBriefing[]) => (
-      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
-        <View style={styles.heroNoteLine} />
+    (rows: SignalApiMarketBriefing[], palette: HomeSectionPalette) => (
+      <View style={[styles.heroCard, homeSectionCardStyle(palette), showIssueSummary && styles.heroCardSummary]}>
+        <View style={homeSectionAccentLineStyle(palette)} />
         <View style={styles.issueGroupList}>
           {rows.map((row, index) => {
             const session = HOME_SIGNAL_SESSIONS.find(
               (candidate) => candidate.market === row.market && candidate.session === row.session,
             );
+            const sessionPalette = homeSignalSessionPalette(row.market === 'kr' ? 'kr' : 'us', theme.colorScheme);
             return (
               <Pressable
                 key={row.id}
@@ -424,8 +454,26 @@ export function HomeFocusContent({
                 ]}>
                 <View style={styles.issueRowTop}>
                   <View style={styles.signalPillRow}>
-                    <Text style={styles.marketPill}>{marketLabel(row.market)}</Text>
-                    <Text style={styles.sessionBadge}>
+                    <Text
+                      style={[
+                        styles.marketPill,
+                        {
+                          backgroundColor: sessionPalette.dim,
+                          borderColor: sessionPalette.border,
+                          color: sessionPalette.accent,
+                        },
+                      ]}>
+                      {marketLabel(row.market)}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.sessionBadge,
+                        {
+                          backgroundColor: sessionPalette.dim,
+                          borderColor: sessionPalette.border,
+                          color: sessionPalette.accent,
+                        },
+                      ]}>
                       {session ? t(session.labelId as MessageId) : t('briefingSessionEmptyTitle')}
                     </Text>
                   </View>
@@ -444,13 +492,13 @@ export function HomeFocusContent({
         </View>
       </View>
     ),
-    [openSignal, showIssueSummary, styles, t],
+    [openSignal, showIssueSummary, styles, t, theme.colorScheme],
   );
 
   const renderDisclosureCard = useCallback(
-    (rows: SignalApiDisclosureDigestItem[]) => (
-      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
-        <View style={styles.disclosureNoteLine} />
+    (rows: SignalApiDisclosureDigestItem[], palette: HomeSectionPalette) => (
+      <View style={[styles.heroCard, homeSectionCardStyle(palette), showIssueSummary && styles.heroCardSummary]}>
+        <View style={homeSectionAccentLineStyle(palette)} />
         <View style={styles.issueGroupList}>
           {rows.map((row, index) => (
             <Pressable
@@ -535,13 +583,15 @@ export function HomeFocusContent({
         <>
           <View style={styles.heroBlock}>
             <View style={styles.heroHead}>
+              <View style={[styles.heroAccentDot, { backgroundColor: sectionPalettes.issues.accent }]} />
               <Text style={styles.heroKicker}>{t('homeFocusHeroKicker')}</Text>
               <HomeAiBadge />
             </View>
             {homeIssues.length > 0 ? (
-              renderIssueCard(homeIssues)
+              renderIssueCard(homeIssues, sectionPalettes.issues)
             ) : (
-              <View style={styles.emptyCard}>
+              <View style={[styles.emptyCard, homeSectionCardStyle(sectionPalettes.issues)]}>
+                <View style={homeSectionAccentLineStyle(sectionPalettes.issues)} />
                 <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
               </View>
             )}
@@ -550,14 +600,16 @@ export function HomeFocusContent({
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('homeFocusSignalTitle')}
+              accent={sectionPalettes.signal.accent}
               badge={<HomeAiBadge />}
               onPress={briefings.length > 0 ? openSignal : undefined}
               accessibilityLabel={briefings.length > 0 ? t('commonViewAll') : undefined}
             />
             {briefings.length > 0 ? (
-              renderSignalCard(briefings)
+              renderSignalCard(briefings, sectionPalettes.signal)
             ) : (
-              <View style={styles.emptyCard}>
+              <View style={[styles.emptyCard, homeSectionCardStyle(sectionPalettes.signal)]}>
+                <View style={homeSectionAccentLineStyle(sectionPalettes.signal)} />
                 <Text style={styles.emptyText}>
                   {t('homeFocusSignalEmpty')}
                 </Text>
@@ -566,7 +618,12 @@ export function HomeFocusContent({
           </View>
 
           <View style={styles.section}>
-            <HomeSectionHeader title={t('homeFocusWatchTitle')} onPress={openQuotes} accessibilityLabel={t('commonViewAll')} />
+            <HomeSectionHeader
+              title={t('homeFocusWatchTitle')}
+              accent={sectionPalettes.watchlist.accent}
+              onPress={openQuotes}
+              accessibilityLabel={t('commonViewAll')}
+            />
             <View style={styles.quoteGrid}>
               {quotes.length === 0 ? (
                 <Text style={styles.emptyText}>{t('quotesEmptyWatch')}</Text>
@@ -580,7 +637,14 @@ export function HomeFocusContent({
                       onPress={() => openSymbolDetail(row.symbol)}
                       accessibilityRole="button"
                       accessibilityLabel={row.symbol}
-                      style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
+                      style={({ pressed }) => [
+                        styles.quoteTile,
+                        {
+                          borderColor: sectionPalettes.watchlist.border,
+                          backgroundColor: sectionPalettes.watchlist.dim,
+                        },
+                        pressed && styles.pressed,
+                      ]}>
                       <View style={styles.quoteTileContent}>
                         <View style={styles.quoteNameCol}>
                           <Text style={styles.quoteSymbol} numberOfLines={1}>
@@ -609,13 +673,15 @@ export function HomeFocusContent({
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('todayBriefingDisclosureDigestTitle')}
+              accent={sectionPalettes.disclosure.accent}
               onPress={openDisclosures}
               accessibilityLabel={t('commonViewAll')}
             />
             {disclosures.length > 0 ? (
-              renderDisclosureCard(disclosures)
+              renderDisclosureCard(disclosures, sectionPalettes.disclosure)
             ) : (
-              <View style={styles.emptyCard}>
+              <View style={[styles.emptyCard, homeSectionCardStyle(sectionPalettes.disclosure)]}>
+                <View style={homeSectionAccentLineStyle(sectionPalettes.disclosure)} />
                 <Text style={styles.emptyText}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
               </View>
             )}
@@ -669,6 +735,12 @@ function makeStyles(
       justifyContent: 'flex-start',
       gap: 8,
     },
+    heroAccentDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 999,
+      flexShrink: 0,
+    },
     heroKicker: {
       fontSize: sf(18),
       lineHeight: sf(24),
@@ -676,15 +748,10 @@ function makeStyles(
       color: theme.text,
     },
     heroCard: {
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.colorScheme === 'dark' ? '#111927' : '#FFFFFF',
       paddingLeft: 16,
       paddingRight: 12,
       paddingVertical: 10,
       gap: 6,
-      overflow: 'hidden',
       shadowColor: '#000000',
       shadowOpacity: 0.04,
       shadowRadius: 10,
@@ -693,22 +760,6 @@ function makeStyles(
     },
     heroCardSummary: {
       minHeight: 0,
-    },
-    heroNoteLine: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: 4,
-      backgroundColor: theme.green,
-    },
-    disclosureNoteLine: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: 4,
-      backgroundColor: theme.warning,
     },
     issueRowTop: {
       flexDirection: 'row',
@@ -733,12 +784,9 @@ function makeStyles(
       borderRadius: 999,
       paddingHorizontal: 7,
       paddingVertical: 2,
-      backgroundColor: theme.bgElevated,
       borderWidth: 1,
-      borderColor: theme.greenBorder,
     },
     issueCategoryText: {
-      color: theme.green,
       fontSize: ft.ff(10),
       lineHeight: sf(15),
       fontWeight: ft.emphasisWeight,
@@ -801,8 +849,6 @@ function makeStyles(
       minHeight: 72,
       borderRadius: 16,
       borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.colorScheme === 'dark' ? '#111722' : '#FBFCFE',
       overflow: 'hidden',
       shadowColor: '#000000',
       shadowOpacity: 0.03,
@@ -886,8 +932,7 @@ function makeStyles(
       overflow: 'hidden',
       paddingHorizontal: 8,
       paddingVertical: 4,
-      backgroundColor: theme.bgElevated,
-      color: theme.textMuted,
+      borderWidth: 1,
       fontSize: ft.ff(11),
       lineHeight: sf(15),
       fontWeight: ft.emphasisWeight,
@@ -898,8 +943,7 @@ function makeStyles(
       overflow: 'hidden',
       paddingHorizontal: 9,
       paddingVertical: 4,
-      backgroundColor: theme.greenDim,
-      color: theme.green,
+      borderWidth: 1,
       fontSize: ft.ff(11),
       lineHeight: sf(15),
       fontWeight: ft.emphasisWeight,
@@ -944,11 +988,9 @@ function makeStyles(
       color: theme.text,
     },
     emptyCard: {
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
+      overflow: 'hidden',
       padding: 16,
+      paddingLeft: 18,
     },
     emptyText: {
       fontSize: ft.ff(13),

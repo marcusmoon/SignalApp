@@ -5,6 +5,7 @@ import { NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable, ScrollVie
 import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
 import { webHorizontalCarouselScrollProps } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
+import { homeSectionAccentLineStyle, type HomeSectionPalette } from '@/constants/homeSectionTheme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useWebHorizontalWheelScroll } from '@/hooks/useWebHorizontalWheelScroll';
@@ -15,6 +16,7 @@ type Props = {
   events: CalendarEvent[];
   emptyText: string;
   onPress: () => void;
+  sectionPalette?: HomeSectionPalette;
 };
 
 function parseYmd(value: string): Date {
@@ -52,10 +54,10 @@ function calendarTypeLabelId(type: CalendarEvent['type']) {
   return 'calendarTagMacro';
 }
 
-export function ScheduleCarousel({ events, emptyText, onPress }: Props) {
+export function ScheduleCarousel({ events, emptyText, onPress, sectionPalette }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, sectionPalette), [theme, scaleFont, sectionPalette]);
   const scrollRef = useRef<ScrollView | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
@@ -149,6 +151,7 @@ export function ScheduleCarousel({ events, emptyText, onPress }: Props) {
                     onPress={onPress}
                     accessibilityRole="button"
                     style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+                    {sectionPalette ? <View style={homeSectionAccentLineStyle(sectionPalette)} /> : null}
                     <View style={styles.badgeRow}>
                       <Text style={styles.dateBadge}>{formatShortDate(calendarEventDisplayYmd(event), locale)}</Text>
                       <Text style={styles.typeBadge}>{t(calendarTypeLabelId(event.type))}</Text>
@@ -173,7 +176,11 @@ export function ScheduleCarousel({ events, emptyText, onPress }: Props) {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, sectionPalette?: HomeSectionPalette) {
+  const cardBorderColor = sectionPalette?.border ?? theme.greenBorder;
+  const cardBackgroundColor = sectionPalette?.dim ?? theme.card;
+  const accent = sectionPalette?.accent ?? theme.green;
+
   return StyleSheet.create({
     container: {
       gap: 10,
@@ -185,12 +192,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       minHeight: 132,
       borderRadius: 18,
       borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.card,
+      borderColor: cardBorderColor,
+      backgroundColor: cardBackgroundColor,
       paddingHorizontal: 14,
+      paddingLeft: sectionPalette ? 16 : 14,
       paddingVertical: 13,
       gap: 12,
       justifyContent: 'space-between',
+      overflow: 'hidden',
     },
     pressed: {
       opacity: 0.82,
@@ -206,13 +215,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderRadius: 999,
       paddingHorizontal: 9,
       paddingVertical: 4,
-      backgroundColor: theme.greenDim,
+      backgroundColor: sectionPalette?.dim ?? theme.greenDim,
       borderWidth: 1,
-      borderColor: theme.greenBorder,
+      borderColor: sectionPalette?.border ?? theme.greenBorder,
       fontSize: sf(11),
       lineHeight: sf(15),
       fontWeight: '900',
-      color: theme.green,
+      color: accent,
     },
     typeBadge: {
       overflow: 'hidden',
@@ -278,7 +287,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     dotActive: {
       width: 16,
-      backgroundColor: theme.green,
+      backgroundColor: accent,
     },
     counter: {
       fontSize: sf(11),
@@ -289,10 +298,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     emptyCard: {
       borderRadius: 16,
       borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
+      borderColor: cardBorderColor,
+      backgroundColor: cardBackgroundColor,
       paddingHorizontal: 14,
       paddingVertical: 13,
+      overflow: 'hidden',
     },
     emptyText: {
       fontSize: sf(12),

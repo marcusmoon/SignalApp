@@ -17,6 +17,7 @@ import {
   type HomeDigestCategory,
   type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
+import { homeCategoryPalette, homeSectionPalette } from '@/constants/homeSectionTheme';
 import { APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { webScrollViewportStyle } from '@/constants/webLayout';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
@@ -83,12 +84,6 @@ async function fetchTopDigestsForCategory(category: HomeDigestCategory, date: st
     () => ({ items: [] as SignalApiNewsDigestItem[] }),
   );
   return sortDigestItems(page.items);
-}
-
-function categoryAccent(category: HomeDigestCategory, theme: AppTheme): string {
-  if (category === 'crypto') return theme.warning;
-  if (category === 'korea') return theme.textMuted;
-  return theme.green;
 }
 
 function sortDayEvents(events: CalendarEvent[]): CalendarEvent[] {
@@ -179,6 +174,14 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const sectionPalettes = useMemo(
+    () => ({
+      signal: homeSectionPalette('signal', theme.colorScheme),
+      disclosure: homeSectionPalette('disclosure', theme.colorScheme),
+      calendar: homeSectionPalette('calendar', theme.colorScheme),
+    }),
+    [theme.colorScheme],
+  );
 
   const todayYmd = useRollingLocalYmd();
   const todayYmdRef = useRef(todayYmd);
@@ -443,7 +446,7 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
                 <View style={styles.issueLaneRow}>
                   {digestCategoriesWithItems.map((category) => {
                     const items = digests[category];
-                    const accent = categoryAccent(category, theme);
+                    const accent = homeCategoryPalette(category, theme.colorScheme).accent;
                     return (
                       <View key={category} style={[styles.issueLane, { borderTopColor: accent }]}>
                         <Pressable
@@ -558,6 +561,7 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
               <HomeSectionHeader
                 title={t('ipadHomeSignalTitle')}
                 subtitle={t('ipadHomeSignalSubtitle')}
+                accent={sectionPalettes.signal.accent}
                 badge={<HomeAiBadge />}
                 onPress={openSignalTab}
                 accessibilityLabel={t('commonViewAll')}
@@ -600,11 +604,12 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
               <HomeSectionHeader
                 title={t('todayBriefingDisclosureDigestTitle')}
                 subtitle={t('todayBriefingDisclosureDigestSubtitle')}
+                accent={sectionPalettes.disclosure.accent}
                 onPress={goDisclosures}
                 accessibilityLabel={t('commonViewAll')}
               />
               {disclosureDigests.length > 0 ? (
-                <DisclosureDigestSection items={disclosureDigests} />
+                <DisclosureDigestSection items={disclosureDigests} sectionPalette={sectionPalettes.disclosure} />
               ) : (
                 <View style={styles.emptyCard}>
                   <Text style={styles.emptyCardText}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
@@ -616,6 +621,7 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
               <HomeSectionHeader
                 title={t('ipadHomeCalendarTitle')}
                 subtitle={t('ipadHomeCalendarSubtitle')}
+                accent={sectionPalettes.calendar.accent}
                 onPress={goCalendar}
                 accessibilityLabel={t('commonViewAll')}
               />
@@ -623,6 +629,7 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
                 events={visibleCalendarEvents}
                 emptyText={t('ipadHomeCalendarEmpty')}
                 onPress={goCalendar}
+                sectionPalette={sectionPalettes.calendar}
               />
               {hiddenCalendarCount > 0 ? (
                 <Pressable

@@ -6,6 +6,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeFocusContent } from '@/components/signal/HomeFocusContent';
+import { HomeSectionDivider } from '@/components/signal/HomeSectionDivider';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { ScheduleCarousel } from '@/components/signal/ScheduleCarousel';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -14,6 +15,7 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
   HOME_DIGEST_CATEGORIES,
   HOME_SIGNAL_SESSIONS,
+  homeDigestCategoryIcon,
   type HomeDigestCategory,
   type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
@@ -83,12 +85,6 @@ async function fetchTopDigestsForCategory(category: HomeDigestCategory, date: st
     () => ({ items: [] as SignalApiNewsDigestItem[] }),
   );
   return sortDigestItems(page.items);
-}
-
-function categoryAccent(category: HomeDigestCategory, theme: AppTheme): string {
-  if (category === 'crypto') return theme.warning;
-  if (category === 'korea') return theme.textMuted;
-  return theme.green;
 }
 
 function sortDayEvents(events: CalendarEvent[]): CalendarEvent[] {
@@ -443,16 +439,22 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
                 <View style={styles.issueLaneRow}>
                   {digestCategoriesWithItems.map((category) => {
                     const items = digests[category];
-                    const accent = categoryAccent(category, theme);
                     return (
-                      <View key={category} style={[styles.issueLane, { borderTopColor: accent }]}>
+                      <View key={category} style={styles.issueLane}>
                         <Pressable
                           onPress={() => goIssues(category)}
                           accessibilityRole="button"
                           accessibilityLabel={t('commonViewAll')}
                           style={({ pressed }) => [styles.laneHeader, pressed && styles.pressed]}>
                           <View style={styles.laneHeaderText}>
-                            <Text style={styles.laneTitle}>{t(NEWS_SEGMENT_LABEL[category])}</Text>
+                            <View style={styles.laneTitleRow}>
+                              <FontAwesome
+                                name={homeDigestCategoryIcon(category)}
+                                size={12}
+                                color={theme.textMuted}
+                              />
+                              <Text style={styles.laneTitle}>{t(NEWS_SEGMENT_LABEL[category])}</Text>
+                            </View>
                             <Text style={styles.laneMeta} numberOfLines={1}>
                               {t('feedDigestSummary', {
                                 count: String(items.reduce((sum, item) => sum + item.count, 0)),
@@ -554,6 +556,8 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
               )}
             </View>
 
+            <HomeSectionDivider />
+
             <View style={styles.widePanel}>
               <HomeSectionHeader
                 title={t('ipadHomeSignalTitle')}
@@ -596,6 +600,8 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
               )}
             </View>
 
+            <HomeSectionDivider />
+
             <View style={styles.widePanel}>
               <HomeSectionHeader
                 title={t('todayBriefingDisclosureDigestTitle')}
@@ -611,6 +617,8 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
                 </View>
               )}
             </View>
+
+            <HomeSectionDivider />
 
             <View style={styles.widePanel}>
               <HomeSectionHeader
@@ -660,7 +668,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignSelf: 'center',
       paddingHorizontal: 20,
       paddingTop: 12,
-      gap: 14,
+      gap: 18,
     },
     pageHead: {
       alignItems: 'center',
@@ -803,6 +811,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
       minWidth: 0,
       borderTopWidth: 3,
+      borderTopColor: theme.border,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.border,
@@ -822,6 +831,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
       minWidth: 0,
       gap: 2,
+    },
+    laneTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minWidth: 0,
     },
     laneTitle: {
       fontSize: sf(15),
@@ -941,7 +956,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(14),
       lineHeight: sf(22),
       fontWeight: '800',
-      color: theme.text,
+      color: theme.textMuted,
     },
     signalCardEmpty: {
       color: theme.textMuted,

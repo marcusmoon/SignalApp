@@ -78,9 +78,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 8,
     },
     title: {
-      fontSize: sf(18),
-      lineHeight: sf(24),
-      fontWeight: '900',
+      fontSize: sf(16),
+      lineHeight: sf(22),
+      fontWeight: '800',
       color: theme.text,
     },
     subtitle: {

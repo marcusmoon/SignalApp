@@ -5,6 +5,14 @@ export type HomeDigestCategory = Extract<NewsSegmentKey, 'global' | 'korea' | 'c
 
 export const HOME_DIGEST_CATEGORIES: HomeDigestCategory[] = ['global', 'korea', 'crypto'];
 
+export type HomeDigestCategoryIcon = 'globe' | 'flag' | 'bitcoin';
+
+export function homeDigestCategoryIcon(category: HomeDigestCategory): HomeDigestCategoryIcon {
+  if (category === 'crypto') return 'bitcoin';
+  if (category === 'korea') return 'flag';
+  return 'globe';
+}
+
 export type SignalSessionKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-evening';
 
 export const HOME_SIGNAL_SESSIONS: ReadonlyArray<{

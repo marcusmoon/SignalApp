@@ -1,6 +1,6 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
+import { HomeSectionDivider } from '@/components/signal/HomeSectionDivider';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -16,6 +17,7 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
   HOME_DIGEST_CATEGORIES,
   HOME_SIGNAL_SESSIONS,
+  homeDigestCategoryIcon,
   type HomeDigestCategory,
   type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
@@ -131,12 +133,6 @@ function formatPrice(row: QuoteRow): string {
   const value = row.quote?.currentPrice;
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
   return isKoreaStockQuote(row) ? formatKrw(value) : formatUsd(value);
-}
-
-function issueIconName(category: HomeDigestCategory): ComponentProps<typeof FontAwesome>['name'] {
-  if (category === 'crypto') return 'bitcoin';
-  if (category === 'korea') return 'flag';
-  return 'globe';
 }
 
 function marketLabel(market: string): string {
@@ -374,7 +370,7 @@ export function HomeFocusContent({
               <View style={styles.issueRowTop}>
                 <View style={styles.issueMetaInline}>
                   <View style={styles.issueCategoryMark}>
-                    <FontAwesome name={issueIconName(row.category)} size={11} color={theme.green} />
+                    <FontAwesome name={homeDigestCategoryIcon(row.category)} size={11} color={theme.textMuted} />
                     <Text style={styles.issueCategoryText}>{t(NEWS_SEGMENT_LABEL[row.category])}</Text>
                   </View>
                   {[row.item.topics[0], row.item.symbols[0]].filter(Boolean).length > 0 ? (
@@ -400,7 +396,7 @@ export function HomeFocusContent({
         </View>
       </View>
     ),
-    [openIssue, showIssueSummary, styles, t, theme.green],
+    [openIssue, showIssueSummary, styles, t, theme.textMuted],
   );
 
   const renderSignalCard = useCallback(
@@ -547,6 +543,8 @@ export function HomeFocusContent({
             )}
           </View>
 
+          <HomeSectionDivider />
+
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('homeFocusSignalTitle')}
@@ -564,6 +562,8 @@ export function HomeFocusContent({
               </View>
             )}
           </View>
+
+          <HomeSectionDivider />
 
           <View style={styles.section}>
             <HomeSectionHeader title={t('homeFocusWatchTitle')} onPress={openQuotes} accessibilityLabel={t('commonViewAll')} />
@@ -606,6 +606,8 @@ export function HomeFocusContent({
             </View>
           </View>
 
+          <HomeSectionDivider />
+
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('todayBriefingDisclosureDigestTitle')}
@@ -640,7 +642,7 @@ function makeStyles(
       flexGrow: 1,
       paddingHorizontal: 16,
       paddingTop: 14,
-      gap: 18,
+      gap: 24,
     },
     errorBox: {
       borderRadius: 14,
@@ -735,10 +737,10 @@ function makeStyles(
       paddingVertical: 2,
       backgroundColor: theme.bgElevated,
       borderWidth: 1,
-      borderColor: theme.greenBorder,
+      borderColor: theme.border,
     },
     issueCategoryText: {
-      color: theme.green,
+      color: theme.textMuted,
       fontSize: ft.ff(10),
       lineHeight: sf(15),
       fontWeight: ft.emphasisWeight,
@@ -941,7 +943,7 @@ function makeStyles(
       fontSize: ft.signalBodyFont(14),
       lineHeight: sf(21),
       fontWeight: ft.signalBodyWeight,
-      color: theme.text,
+      color: theme.textMuted,
     },
     emptyCard: {
       borderRadius: 18,

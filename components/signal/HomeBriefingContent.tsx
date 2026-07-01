@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -7,6 +8,7 @@ import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
+import { HomeSectionDivider } from '@/components/signal/HomeSectionDivider';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { ScheduleCarousel } from '@/components/signal/ScheduleCarousel';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -15,6 +17,7 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
   HOME_DIGEST_CATEGORIES,
   HOME_SIGNAL_SESSIONS,
+  homeDigestCategoryIcon,
   type HomeDigestCategory,
   type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
@@ -359,8 +362,9 @@ export function HomeBriefingContent({
                       index < latestIssues.length - 1 && styles.rowBorder,
                       pressed && styles.pressed,
                     ]}>
-                    <View style={styles.sessionBadge}>
-                      <Text style={styles.sessionBadgeText}>{t(NEWS_SEGMENT_LABEL[category])}</Text>
+                    <View style={styles.categoryBadge}>
+                      <FontAwesome name={homeDigestCategoryIcon(category)} size={11} color={theme.textMuted} />
+                      <Text style={styles.categoryBadgeText}>{t(NEWS_SEGMENT_LABEL[category])}</Text>
                     </View>
                     <Text style={styles.issueTitle} numberOfLines={2}>
                       {item.title}
@@ -376,6 +380,8 @@ export function HomeBriefingContent({
               </View>
             )}
           </View>
+
+          <HomeSectionDivider />
 
           <View style={styles.section}>
             <HomeSectionHeader
@@ -413,6 +419,8 @@ export function HomeBriefingContent({
             </View>
           </View>
 
+          <HomeSectionDivider />
+
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('todayBriefingDisclosureDigestTitle')}
@@ -427,6 +435,8 @@ export function HomeBriefingContent({
               <DisclosureDigestSection items={disclosureDigests} />
             )}
           </View>
+
+          <HomeSectionDivider />
 
           <View style={styles.section}>
             <HomeSectionHeader
@@ -456,7 +466,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexGrow: 1,
       paddingHorizontal: 16,
       paddingTop: 14,
-      gap: 18,
+      gap: 24,
     },
     errorBox: {
       borderRadius: 14,
@@ -525,6 +535,24 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.metaWeight,
       color: theme.textDim,
     },
+    categoryBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    categoryBadgeText: {
+      fontSize: ft.ff(11),
+      lineHeight: sf(14),
+      fontWeight: ft.emphasisWeight,
+      color: theme.textMuted,
+    },
     sessionBadge: {
       alignSelf: 'flex-start',
       borderRadius: 999,
@@ -544,7 +572,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontSize: ft.signalBodyFont(14),
       lineHeight: sf(20),
       fontWeight: ft.signalBodyWeight,
-      color: theme.text,
+      color: theme.textMuted,
     },
     signalTextEmpty: {
       color: theme.textDim,

@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "sendPush": true,
+  "run": {
+    "id": "news-issues:2026-07-01T00:00:00Z",
+    "generatedAt": "2026-07-01T00:00:00Z",
+    "generatedDate": "2026-07-01",
+    "locale": "ko",
+    "window": {
+      "from": "2026-06-30T00:00:00Z",
+      "to": "2026-07-01T00:00:00Z",
+      "hoursBack": 24
+    },
+    "categories": ["global", "korea", "crypto"],
+    "policy": {
+      "dedupe": "canonical_url_or_source_title",
+      "cluster": "time_window_plus_symbol_topic_event",
+      "ranking": "array_order_is_priority"
+    }
+  },
+  "items": [
+    {
+      "id": "news-digest:2026-07-01:global:ai-semiconductor-demand",
+      "category": "global",
+      "title": "AI 반도체 수요 기대가 관련 종목을 다시 밀어올렸습니다",
+      "summary": "엔비디아와 AMD를 중심으로 AI 인프라 수요 기대가 이어졌고, 반도체 공급망 관련 뉴스가 같은 방향으로 묶였습니다.",
+      "symbols": ["NVDA", "AMD", "TSM"],
+      "sources": ["Reuters", "FinancialJuice", "Yahoo Finance"],
+      "topics": ["AI 반도체", "데이터센터", "공급망"],
+      "count": 5,
+      "generatedDate": "2026-07-01",
+      "generatedAt": "2026-07-01T00:00:00Z",
+      "primaryNewsId": "news:reuters:2026-06-30:nvda-ai-chip-demand",
+      "primaryPublishedAt": "2026-06-30T22:35:00Z",
+      "groupKey": "global:sector:ai-semiconductor-demand:2026-07-01",
+      "aiGenerated": true,
+      "cluster": {
+        "kind": "sector",
+        "eventType": "market_flow",
+        "confidence": 0.84,
+        "timeWindowHours": 24,
+        "dedupeKey": "ai-semiconductor-demand",
+        "reason": "여러 출처가 AI 칩 수요와 관련 종목 강세를 같은 시간대에 반복 보도했습니다."
+      },
+      "impact": {
+        "direction": "positive",
+        "horizon": "short",
+        "affectedAreas": ["AI 인프라", "반도체", "나스닥"],
+        "watchSymbols": ["NVDA", "AMD", "TSM"]
+      },
+      "sourceRefs": [
+        {
+          "type": "news",
+          "id": "news:reuters:2026-06-30:nvda-ai-chip-demand",
+          "title": "Nvidia rises as AI chip demand remains strong",
+          "url": "https://example.com/reuters/nvidia-ai-chip-demand",
+          "sourceName": "Reuters",
+          "publishedAt": "2026-06-30T22:35:00Z",
+          "relation": "primary"
+        },
+        {
+          "type": "news",
+          "id": "news:financialjuice:2026-06-30:amd-ai-chip",
+          "title": "AMD shares gain with AI semiconductor names",
+          "url": "https://example.com/financialjuice/amd-ai-chip",
+          "sourceName": "FinancialJuice",
+          "publishedAt": "2026-06-30T22:48:00Z",
+          "relation": "supporting"
+        }
+      ],
+      "pushCandidate": true,
+      "pushTitle": "AI 반도체 이슈 업데이트",
+      "pushBody": "NVDA, AMD, TSM 관련 이슈가 새로 묶였습니다."
+    },
+    {
+      "id": "news-digest:2026-07-01:korea:memory-supply-chain",
+      "category": "korea",
+      "title": "메모리 업황 기대가 국내 반도체 뉴스의 중심입니다",
+      "summary": "삼성전자와 SK하이닉스 관련 뉴스가 메모리 가격과 AI 서버 수요 기대를 중심으로 묶였습니다.",
+      "symbols": ["005930", "000660"],
+      "sources": ["매일경제", "FinancialJuice"],
+      "topics": ["메모리", "AI 서버", "국내 반도체"],
+      "count": 3,
+      "generatedDate": "2026-07-01",
+      "generatedAt": "2026-07-01T00:00:00Z",
+      "primaryNewsId": "news:mk:2026-07-01:memory-cycle",
+      "primaryPublishedAt": "2026-06-30T23:20:00Z",
+      "groupKey": "korea:sector:memory-supply-chain:2026-07-01",
+      "aiGenerated": true,
+      "cluster": {
+        "kind": "sector",
+        "eventType": "market_flow",
+        "confidence": 0.78,
+        "timeWindowHours": 24,
+        "dedupeKey": "memory-supply-chain",
+        "reason": "국내 반도체 종목과 메모리 업황 키워드가 같은 뉴스 흐름에서 반복됐습니다."
+      },
+      "impact": {
+        "direction": "mixed",
+        "horizon": "short",
+        "affectedAreas": ["국내 반도체", "코스피"],
+        "watchSymbols": ["005930", "000660"]
+      },
+      "sourceRefs": [
+        {
+          "type": "news",
+          "id": "news:mk:2026-07-01:memory-cycle",
+          "title": "메모리 가격 회복 기대에 반도체주 주목",
+          "url": "https://example.com/mk/memory-cycle",
+          "sourceName": "매일경제",
+          "publishedAt": "2026-06-30T23:20:00Z",
+          "relation": "primary"
+        }
+      ],
+      "pushCandidate": false
+    },
+    {
+      "id": "news-digest:2026-07-01:crypto:bitcoin-etf-flow",
+      "category": "crypto",
+      "title": "비트코인은 ETF 자금 흐름과 위험자산 심리에 반응했습니다",
+      "summary": "비트코인 관련 뉴스는 ETF 유입과 달러·금리 흐름을 함께 반영하는 방향으로 묶였습니다.",
+      "symbols": ["BTC"],
+      "sources": ["CoinDesk", "FinancialJuice"],
+      "topics": ["비트코인", "ETF", "위험자산"],
+      "count": 4,
+      "generatedDate": "2026-07-01",
+      "generatedAt": "2026-07-01T00:00:00Z",
+      "primaryNewsId": "news:coindesk:2026-06-30:bitcoin-etf-flow",
+      "primaryPublishedAt": "2026-06-30T21:50:00Z",
+      "groupKey": "crypto:asset:bitcoin-etf-flow:2026-07-01",
+      "aiGenerated": true,
+      "cluster": {
+        "kind": "crypto",
+        "eventType": "market_flow",
+        "confidence": 0.81,
+        "timeWindowHours": 24,
+        "dedupeKey": "bitcoin-etf-flow",
+        "reason": "ETF 자금 흐름과 비트코인 가격 반응을 다룬 뉴스가 같은 시간대에 집중됐습니다."
+      },
+      "impact": {
+        "direction": "neutral",
+        "horizon": "intraday",
+        "affectedAreas": ["비트코인", "크립토"],
+        "watchSymbols": ["BTC"]
+      },
+      "sourceRefs": [
+        {
+          "type": "news",
+          "id": "news:coindesk:2026-06-30:bitcoin-etf-flow",
+          "title": "Bitcoin watches ETF flows as risk sentiment shifts",
+          "url": "https://example.com/coindesk/bitcoin-etf-flow",
+          "sourceName": "CoinDesk",
+          "publishedAt": "2026-06-30T21:50:00Z",
+          "relation": "primary"
+        }
+      ],
+      "pushCandidate": false
+    }
+  ]
+}

@@ -4,16 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps,
 import {
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
 } from 'react-native';
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
-import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -55,9 +51,10 @@ import {
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { addDays, formatLocalYmdLabel, parseLocalYmd, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
-const ISSUE_FETCH_LIMIT = 80;
-const ISSUE_PER_CATEGORY_LIMIT = 2;
+const ISSUE_FETCH_LIMIT = 24;
+const HOME_ISSUE_LIMIT = 6;
 const BRIEFING_LIMIT = 30;
+const HOME_SIGNAL_LIMIT = 4;
 const DISCLOSURE_LIMIT = 3;
 
 type HomeFocusContentProps = {
@@ -75,13 +72,12 @@ type IssueRow = {
   item: SignalApiNewsDigestItem;
 };
 
-type IssueGroup = {
-  category: HomeDigestCategory;
-  rows: IssueRow[];
-};
-
 function shiftYmd(ymd: string, days: number): string {
   return toYmd(addDays(parseLocalYmd(ymd), days));
+}
+
+function issueSortTime(row: IssueRow): string {
+  return String(row.item.generatedAt || row.item.sourceRefs[0]?.publishedAt || row.item.generatedDate || '');
 }
 
 function sortBriefingTime(row: SignalApiMarketBriefing): string {
@@ -126,11 +122,10 @@ async function fetchTopIssues(date: string): Promise<IssueRow[]> {
             String(b.generatedAt || '').localeCompare(String(a.generatedAt || '')) ||
             b.count - a.count,
         )
-        .slice(0, ISSUE_PER_CATEGORY_LIMIT)
         .map((item) => ({ category, item }));
     }),
   );
-  return results.flat();
+  return results.flat().sort((a, b) => issueSortTime(b).localeCompare(issueSortTime(a)) || b.item.count - a.item.count);
 }
 
 function formatPrice(row: QuoteRow): string {
@@ -185,27 +180,9 @@ export function HomeFocusContent({
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [disclosures, setDisclosures] = useState<SignalApiDisclosureDigestItem[]>([]);
-  const [activeIssueIndex, setActiveIssueIndex] = useState(0);
-  const [activeBriefingIndex, setActiveBriefingIndex] = useState(0);
-  const [issueCarouselWidth, setIssueCarouselWidth] = useState(0);
-  const [briefingCarouselWidth, setBriefingCarouselWidth] = useState(0);
-  const issueScrollRef = useRef<ScrollView | null>(null);
-  const briefingScrollRef = useRef<ScrollView | null>(null);
-  const issueGroups = useMemo<IssueGroup[]>(
-    () =>
-      HOME_DIGEST_CATEGORIES.map((category) => ({
-        category,
-        rows: issues.filter((row) => row.category === category).slice(0, ISSUE_PER_CATEGORY_LIMIT),
-      })).filter((group) => group.rows.length > 0),
+  const homeIssues = useMemo(
+    () => [...issues].sort((a, b) => issueSortTime(b).localeCompare(issueSortTime(a)) || b.item.count - a.item.count).slice(0, HOME_ISSUE_LIMIT),
     [issues],
-  );
-  const loopIssueGroups = useMemo(
-    () => (issueGroups.length > 1 ? [...issueGroups, issueGroups[0]] : issueGroups),
-    [issueGroups],
-  );
-  const loopBriefings = useMemo(
-    () => (briefings.length > 1 ? [...briefings, briefings[0]] : briefings),
-    [briefings],
   );
 
   const selectedDateLabel = useMemo(
@@ -263,7 +240,7 @@ export function HomeFocusContent({
         }),
       );
       setBriefings(
-        uniqueVisibleBriefings([...briefings].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a)))).slice(0, 6),
+        uniqueVisibleBriefings([...briefings].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a)))).slice(0, HOME_SIGNAL_LIMIT),
       );
       setDisclosures(disclosurePage.items.slice(0, DISCLOSURE_LIMIT));
     } catch (e) {
@@ -316,18 +293,6 @@ export function HomeFocusContent({
       unsubscribe();
     };
   }, []);
-
-  useEffect(() => {
-    if (activeIssueIndex > Math.max(0, issues.length - 1)) {
-      setActiveIssueIndex(0);
-    }
-  }, [activeIssueIndex, issues.length]);
-
-  useEffect(() => {
-    if (activeBriefingIndex > Math.max(0, briefings.length - 1)) {
-      setActiveBriefingIndex(0);
-    }
-  }, [activeBriefingIndex, briefings.length]);
 
   const openIssue = useCallback(
     (row?: IssueRow) => {
@@ -385,86 +350,30 @@ export function HomeFocusContent({
     router.navigate('/(tabs)/disclosures' as never);
   }, [router]);
 
-  const resetIssueLoopToStart = useCallback(() => {
-    const reset = () => issueScrollRef.current?.scrollTo({ x: 0, animated: false });
-    reset();
-    requestAnimationFrame(reset);
-    setTimeout(reset, 50);
-    setTimeout(reset, 150);
-  }, []);
-
-  const resetBriefingLoopToStart = useCallback(() => {
-    const reset = () => briefingScrollRef.current?.scrollTo({ x: 0, animated: false });
-    reset();
-    requestAnimationFrame(reset);
-    setTimeout(reset, 50);
-    setTimeout(reset, 150);
-  }, []);
-
-  const onIssueScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const width = event.nativeEvent.layoutMeasurement.width;
-    if (width <= 0) return;
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const rawIndex = Math.round(offsetX / width);
-    if (issueGroups.length > 1 && rawIndex >= issueGroups.length) {
-      resetIssueLoopToStart();
-      setActiveIssueIndex(0);
-      return;
-    }
-    setActiveIssueIndex(Math.max(0, Math.min(rawIndex, issueGroups.length - 1)));
-  }, [issueGroups.length, resetIssueLoopToStart]);
-
-  const onIssueScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const width = event.nativeEvent.layoutMeasurement.width;
-    if (width <= 0 || issueGroups.length <= 1) return;
-    const rawIndex = Math.round(event.nativeEvent.contentOffset.x / width);
-    const next =
-      rawIndex >= issueGroups.length ? 0 : Math.max(0, Math.min(rawIndex, issueGroups.length - 1));
-    setActiveIssueIndex((prev) => (prev === next ? prev : next));
-  }, [issueGroups.length]);
-
-  const onBriefingScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const width = event.nativeEvent.layoutMeasurement.width;
-    if (width <= 0) return;
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const rawIndex = Math.round(offsetX / width);
-    if (briefings.length > 1 && rawIndex >= briefings.length) {
-      resetBriefingLoopToStart();
-      setActiveBriefingIndex(0);
-      return;
-    }
-    setActiveBriefingIndex(Math.max(0, Math.min(rawIndex, briefings.length - 1)));
-  }, [briefings.length, resetBriefingLoopToStart]);
-
-  const onBriefingScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const width = event.nativeEvent.layoutMeasurement.width;
-    if (width <= 0 || briefings.length <= 1) return;
-    const rawIndex = Math.round(event.nativeEvent.contentOffset.x / width);
-    const next = rawIndex >= briefings.length ? 0 : Math.max(0, Math.min(rawIndex, briefings.length - 1));
-    setActiveBriefingIndex((prev) => (prev === next ? prev : next));
-  }, [briefings.length]);
-
-  const renderIssueGroup = useCallback(
-    (group: IssueGroup) => (
-      <View style={[styles.heroCard, styles.heroCardGrouped, showIssueSummary && styles.heroCardSummary]}>
+  const renderIssueCard = useCallback(
+    (rows: IssueRow[]) => (
+      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
         <View style={styles.heroNoteLine} />
-        <View style={styles.heroMetaRow}>
-          <View style={styles.heroMetaLeft}>
-            <Text style={styles.categoryPill}>{t(NEWS_SEGMENT_LABEL[group.category])}</Text>
-          </View>
-          <FontAwesome name={issueIconName(group.category)} size={13} color={theme.textDim} />
-        </View>
         <View style={styles.issueGroupList}>
-          {group.rows.map((row, index) => (
+          {rows.map((row, index) => (
             <Pressable
               key={row.item.id}
               onPress={() => openIssue(row)}
               accessibilityRole="button"
               style={({ pressed }) => [
                 styles.issueGroupItem,
-                index < group.rows.length - 1 && styles.issueGroupItemBorder,
+                index < rows.length - 1 && styles.issueGroupItemBorder,
                 pressed && styles.pressed,
               ]}>
+              <View style={styles.issueRowTop}>
+                <View style={styles.issueCategoryMark}>
+                  <FontAwesome name={issueIconName(row.category)} size={11} color={theme.green} />
+                  <Text style={styles.issueCategoryText}>{t(NEWS_SEGMENT_LABEL[row.category])}</Text>
+                </View>
+                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
+                  {t('homeFocusSourceCount', { count: String(row.item.sources.length) })}
+                </Text>
+              </View>
               <Text style={styles.issueGroupTitle} numberOfLines={2}>
                 {row.item.title}
               </Text>
@@ -474,20 +383,14 @@ export function HomeFocusContent({
                 </Text>
               ) : null}
               <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                {[
-                  row.item.topics[0],
-                  row.item.symbols[0],
-                  t('homeFocusSourceCount', { count: String(row.item.sources.length) }),
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
+                {[row.item.topics[0], row.item.symbols[0]].filter(Boolean).join(' · ')}
               </Text>
             </Pressable>
           ))}
         </View>
       </View>
     ),
-    [openIssue, showIssueSummary, styles, t, theme.textDim],
+    [openIssue, showIssueSummary, styles, t, theme.green],
   );
 
   const renderBriefingCard = useCallback(
@@ -499,12 +402,7 @@ export function HomeFocusContent({
         <Pressable
           onPress={() => openSignal(row)}
           accessibilityRole="button"
-          style={({ pressed }) => [
-            styles.signalCard,
-            styles.briefingCard,
-            showIssueSummary && styles.briefingCardSummary,
-            pressed && styles.pressed,
-          ]}>
+          style={({ pressed }) => [styles.signalCard, pressed && styles.pressed]}>
           <View style={styles.signalNoteLine} />
           <View style={styles.signalHead}>
             <View style={styles.signalPillRow}>
@@ -519,7 +417,7 @@ export function HomeFocusContent({
               </Text>
             ) : null}
           </View>
-          <View style={styles.signalBody}>
+          <View>
             <Text style={styles.signalText} numberOfLines={showIssueSummary ? 4 : 3}>
               {briefingLeadText(row)}
             </Text>
@@ -574,54 +472,8 @@ export function HomeFocusContent({
               <Text style={styles.heroKicker}>{t('homeFocusHeroKicker')}</Text>
               <HomeAiBadge />
             </View>
-            {issueGroups.length > 0 ? (
-              <View
-                style={styles.issueCarouselWrap}
-                onLayout={(event) => setIssueCarouselWidth(Math.round(event.nativeEvent.layout.width))}>
-                <HorizontalCarouselShell
-                  pageIndex={activeIssueIndex}
-                  pageCount={issueGroups.length}
-                  loop
-                  footer={
-                    issueGroups.length > 1 ? (
-                      <View style={styles.issueDots}>
-                        {issueGroups.map((group, index) => (
-                          <View
-                            key={`${group.category}-dot`}
-                            style={[styles.issueDot, activeIssueIndex === index && styles.issueDotActive]}
-                          />
-                        ))}
-                      </View>
-                    ) : null
-                  }>
-                  {issueGroups.length === 1 ? (
-                    renderIssueGroup(issueGroups[0])
-                  ) : (
-                    <ScrollView
-                      ref={issueScrollRef}
-                      horizontal
-                      nestedScrollEnabled
-                      pagingEnabled
-                      showsHorizontalScrollIndicator={false}
-                      decelerationRate="fast"
-                      directionalLockEnabled
-                      keyboardShouldPersistTaps="handled"
-                      snapToInterval={issueCarouselWidth > 0 ? issueCarouselWidth : undefined}
-                      onScroll={onIssueScroll}
-                      scrollEventThrottle={16}
-                      onMomentumScrollEnd={onIssueScrollEnd}
-                      style={styles.issueCarousel}>
-                      {loopIssueGroups.map((group, index) => (
-                        <View
-                          key={`${group.category}-${index}`}
-                          style={[styles.heroSlide, issueCarouselWidth > 0 && { width: issueCarouselWidth }]}>
-                          {renderIssueGroup(group)}
-                        </View>
-                      ))}
-                    </ScrollView>
-                  )}
-                </HorizontalCarouselShell>
-              </View>
+            {homeIssues.length > 0 ? (
+              renderIssueCard(homeIssues)
             ) : (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
@@ -637,52 +489,10 @@ export function HomeFocusContent({
               accessibilityLabel={briefings.length > 0 ? t('commonViewAll') : undefined}
             />
             {briefings.length > 0 ? (
-              <View
-                style={styles.briefingCarouselWrap}
-                onLayout={(event) => setBriefingCarouselWidth(Math.round(event.nativeEvent.layout.width))}>
-                <HorizontalCarouselShell
-                  pageIndex={activeBriefingIndex}
-                  pageCount={briefings.length}
-                  loop
-                  footer={
-                    briefings.length > 1 ? (
-                      <View style={styles.issueDots}>
-                        {briefings.map((row, index) => (
-                          <View
-                            key={`${row.id}-dot`}
-                            style={[styles.issueDot, activeBriefingIndex === index && styles.issueDotActive]}
-                          />
-                        ))}
-                      </View>
-                    ) : null
-                  }>
-                  {briefings.length === 1 ? (
-                    renderBriefingCard(briefings[0])
-                  ) : (
-                    <ScrollView
-                      ref={briefingScrollRef}
-                      horizontal
-                      nestedScrollEnabled
-                      pagingEnabled
-                      showsHorizontalScrollIndicator={false}
-                      decelerationRate="fast"
-                      directionalLockEnabled
-                      keyboardShouldPersistTaps="handled"
-                      snapToInterval={briefingCarouselWidth > 0 ? briefingCarouselWidth : undefined}
-                      onScroll={onBriefingScroll}
-                      scrollEventThrottle={16}
-                      onMomentumScrollEnd={onBriefingScrollEnd}
-                      style={styles.issueCarousel}>
-                      {loopBriefings.map((row, index) => (
-                        <View
-                          key={`${row.id}-${index}`}
-                          style={[styles.heroSlide, briefingCarouselWidth > 0 && { width: briefingCarouselWidth }]}>
-                          {renderBriefingCard(row)}
-                        </View>
-                      ))}
-                    </ScrollView>
-                  )}
-                </HorizontalCarouselShell>
+              <View style={styles.signalList}>
+                {briefings.map((row) => (
+                  <View key={row.id}>{renderBriefingCard(row)}</View>
+                ))}
               </View>
             ) : (
               <View style={styles.emptyCard}>
@@ -802,19 +612,6 @@ function makeStyles(
       fontWeight: '900',
       color: theme.text,
     },
-    issueCarouselWrap: {
-      gap: 8,
-    },
-    briefingCarouselWrap: {
-      gap: 10,
-    },
-    issueCarousel: {
-      width: '100%',
-      overflow: 'hidden',
-    },
-    heroSlide: {
-      paddingRight: 0,
-    },
     heroCard: {
       borderRadius: 16,
       borderWidth: 1,
@@ -834,9 +631,6 @@ function makeStyles(
     heroCardSummary: {
       minHeight: 0,
     },
-    heroCardGrouped: {
-      minHeight: 0,
-    },
     heroNoteLine: {
       position: 'absolute',
       left: 0,
@@ -845,20 +639,18 @@ function makeStyles(
       width: 4,
       backgroundColor: theme.green,
     },
-    heroMetaRow: {
+    issueRowTop: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: 8,
     },
-    heroMetaLeft: {
-      minWidth: 0,
-      flexShrink: 1,
+    issueCategoryMark: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 7,
-    },
-    categoryPill: {
+      gap: 5,
+      minWidth: 0,
+      flexShrink: 1,
       alignSelf: 'flex-start',
       borderRadius: 999,
       paddingHorizontal: 7,
@@ -866,6 +658,8 @@ function makeStyles(
       backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.greenBorder,
+    },
+    issueCategoryText: {
       color: theme.green,
       fontSize: sf(10),
       lineHeight: sf(15),
@@ -901,24 +695,11 @@ function makeStyles(
       fontWeight: '800',
       color: theme.textDim,
     },
-    issueDots: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 5,
-    },
-    issueDot: {
-      width: 5,
-      height: 5,
-      borderRadius: 999,
-      backgroundColor: theme.border,
-    },
-    issueDotActive: {
-      width: 16,
-      backgroundColor: theme.green,
-    },
     section: {
       gap: 12,
+    },
+    signalList: {
+      gap: 8,
     },
     quoteCard: {
       borderRadius: 18,
@@ -1025,12 +806,6 @@ function makeStyles(
       shadowOffset: { width: 0, height: 5 },
       elevation: 1,
     },
-    briefingCard: {
-      height: 136,
-    },
-    briefingCardSummary: {
-      height: 158,
-    },
     signalNoteLine: {
       position: 'absolute',
       left: 0,
@@ -1074,10 +849,6 @@ function makeStyles(
       fontSize: sf(11),
       lineHeight: sf(15),
       fontWeight: '900',
-    },
-    signalBody: {
-      flex: 1,
-      justifyContent: 'center',
     },
     signalText: {
       fontSize: sf(15),

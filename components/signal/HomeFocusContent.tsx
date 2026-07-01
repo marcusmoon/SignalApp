@@ -393,38 +393,47 @@ export function HomeFocusContent({
     [openIssue, showIssueSummary, styles, t, theme.green],
   );
 
-  const renderBriefingCard = useCallback(
-    (row: SignalApiMarketBriefing) => {
-      const session = HOME_SIGNAL_SESSIONS.find(
-        (candidate) => candidate.market === row.market && candidate.session === row.session,
-      );
-      return (
-        <Pressable
-          onPress={() => openSignal(row)}
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.signalCard, pressed && styles.pressed]}>
-          <View style={styles.signalNoteLine} />
-          <View style={styles.signalHead}>
-            <View style={styles.signalPillRow}>
-              <Text style={styles.marketPill}>{marketLabel(row.market)}</Text>
-              <Text style={styles.sessionBadge}>
-                {session ? t(session.labelId as MessageId) : t('briefingSessionEmptyTitle')}
-              </Text>
-            </View>
-            {row.sourceRefs.length > 0 ? (
-              <Text style={styles.signalMetaText}>
-                {t('homeFocusSourceCount', { count: String(row.sourceRefs.length) })}
-              </Text>
-            ) : null}
-          </View>
-          <View>
-            <Text style={styles.signalText} numberOfLines={showIssueSummary ? 4 : 3}>
-              {briefingLeadText(row)}
-            </Text>
-          </View>
-        </Pressable>
-      );
-    },
+  const renderSignalCard = useCallback(
+    (rows: SignalApiMarketBriefing[]) => (
+      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
+        <View style={styles.heroNoteLine} />
+        <View style={styles.issueGroupList}>
+          {rows.map((row, index) => {
+            const session = HOME_SIGNAL_SESSIONS.find(
+              (candidate) => candidate.market === row.market && candidate.session === row.session,
+            );
+            return (
+              <Pressable
+                key={row.id}
+                onPress={() => openSignal(row)}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.issueGroupItem,
+                  index < rows.length - 1 && styles.issueGroupItemBorder,
+                  pressed && styles.pressed,
+                ]}>
+                <View style={styles.issueRowTop}>
+                  <View style={styles.signalPillRow}>
+                    <Text style={styles.marketPill}>{marketLabel(row.market)}</Text>
+                    <Text style={styles.sessionBadge}>
+                      {session ? t(session.labelId as MessageId) : t('briefingSessionEmptyTitle')}
+                    </Text>
+                  </View>
+                  {row.sourceRefs.length > 0 ? (
+                    <Text style={styles.issueGroupMetaText} numberOfLines={1}>
+                      {t('homeFocusSourceCount', { count: String(row.sourceRefs.length) })}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={styles.signalText} numberOfLines={showIssueSummary ? 4 : 2}>
+                  {briefingLeadText(row)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    ),
     [openSignal, showIssueSummary, styles, t],
   );
 
@@ -489,11 +498,7 @@ export function HomeFocusContent({
               accessibilityLabel={briefings.length > 0 ? t('commonViewAll') : undefined}
             />
             {briefings.length > 0 ? (
-              <View style={styles.signalList}>
-                {briefings.map((row) => (
-                  <View key={row.id}>{renderBriefingCard(row)}</View>
-                ))}
-              </View>
+              renderSignalCard(briefings)
             ) : (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyText}>
@@ -698,9 +703,6 @@ function makeStyles(
     section: {
       gap: 12,
     },
-    signalList: {
-      gap: 8,
-    },
     quoteCard: {
       borderRadius: 18,
       borderWidth: 1,
@@ -790,35 +792,6 @@ function makeStyles(
       lineHeight: sf(16),
       fontWeight: '900',
     },
-    signalCard: {
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.colorScheme === 'dark' ? '#111927' : '#FFFFFF',
-      paddingLeft: 18,
-      paddingRight: 13,
-      paddingVertical: 11,
-      gap: 6,
-      overflow: 'hidden',
-      shadowColor: '#000000',
-      shadowOpacity: 0.04,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 5 },
-      elevation: 1,
-    },
-    signalNoteLine: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: 4,
-      backgroundColor: theme.green,
-    },
-    signalHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
     signalPillRow: {
       minWidth: 0,
       flexShrink: 1,
@@ -855,12 +828,6 @@ function makeStyles(
       lineHeight: sf(21),
       fontWeight: '900',
       color: theme.text,
-    },
-    signalMetaText: {
-      fontSize: sf(12),
-      lineHeight: sf(16),
-      fontWeight: '700',
-      color: theme.textDim,
     },
     emptyCard: {
       borderRadius: 18,

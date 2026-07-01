@@ -372,19 +372,21 @@ export function HomeFocusContent({
                 pressed && styles.pressed,
               ]}>
               <View style={styles.issueRowTop}>
-                <View style={styles.issueCategoryMark}>
-                  <FontAwesome name={issueIconName(row.category)} size={11} color={theme.green} />
-                  <Text style={styles.issueCategoryText}>{t(NEWS_SEGMENT_LABEL[row.category])}</Text>
+                <View style={styles.issueMetaInline}>
+                  <View style={styles.issueCategoryMark}>
+                    <FontAwesome name={issueIconName(row.category)} size={11} color={theme.green} />
+                    <Text style={styles.issueCategoryText}>{t(NEWS_SEGMENT_LABEL[row.category])}</Text>
+                  </View>
+                  {[row.item.topics[0], row.item.symbols[0]].filter(Boolean).length > 0 ? (
+                    <Text style={styles.issueInlineMetaText} numberOfLines={1}>
+                      {[row.item.topics[0], row.item.symbols[0]].filter(Boolean).join(' · ')}
+                    </Text>
+                  ) : null}
                 </View>
                 <Text style={styles.issueGroupMetaText} numberOfLines={1}>
                   {t('homeFocusSourceCount', { count: String(row.item.sources.length) })}
                 </Text>
               </View>
-              {[row.item.topics[0], row.item.symbols[0]].filter(Boolean).length > 0 ? (
-                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                  {[row.item.topics[0], row.item.symbols[0]].filter(Boolean).join(' · ')}
-                </Text>
-              ) : null}
               <Text style={styles.issueGroupTitle} numberOfLines={2}>
                 {row.item.title}
               </Text>
@@ -468,16 +470,16 @@ export function HomeFocusContent({
                       {row.forms[0]}
                     </Text>
                   ) : null}
+                  {row.symbols.length > 0 ? (
+                    <Text style={styles.issueInlineMetaText} numberOfLines={1}>
+                      {row.symbols.slice(0, 3).join(' · ')}
+                    </Text>
+                  ) : null}
                 </View>
                 <Text style={styles.issueGroupMetaText} numberOfLines={1}>
                   {t('homeFocusSourceCount', { count: String(row.sourceRefs.length || row.count) })}
                 </Text>
               </View>
-              {row.symbols.length > 0 ? (
-                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                  {row.symbols.slice(0, 3).join(' · ')}
-                </Text>
-              ) : null}
               <Text style={styles.issueGroupTitle} numberOfLines={2}>
                 {row.title}
               </Text>
@@ -715,6 +717,13 @@ function makeStyles(
       justifyContent: 'space-between',
       gap: 8,
     },
+    issueMetaInline: {
+      minWidth: 0,
+      flexShrink: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
     issueCategoryMark: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -760,6 +769,14 @@ function makeStyles(
       color: theme.textMuted,
     },
     issueGroupMetaText: {
+      fontSize: sf(10),
+      lineHeight: sf(14),
+      fontWeight: '800',
+      color: theme.textDim,
+    },
+    issueInlineMetaText: {
+      minWidth: 0,
+      flexShrink: 1,
       fontSize: sf(10),
       lineHeight: sf(14),
       fontWeight: '800',
@@ -891,6 +908,7 @@ function makeStyles(
     disclosurePillRow: {
       minWidth: 0,
       flexShrink: 1,
+      flexGrow: 1,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,

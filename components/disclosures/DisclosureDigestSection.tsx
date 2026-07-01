@@ -19,6 +19,7 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
+import { HOME_SECTION_ACCENT_WIDTH, homeSectionAccentColor, type HomeAccentSection } from '@/constants/homeSectionAccent';
 import { webHorizontalCarouselScrollProps } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -166,9 +167,10 @@ type Props = {
   items: SignalApiDisclosureDigestItem[];
   loading?: boolean;
   accentColor?: string;
+  accentSection?: HomeAccentSection;
 };
 
-export function DisclosureDigestSection({ items, loading, accentColor }: Props) {
+export function DisclosureDigestSection({ items, loading, accentColor, accentSection }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const scrollRef = useRef<ScrollView | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -177,7 +179,8 @@ export function DisclosureDigestSection({ items, loading, accentColor }: Props) 
   const [dotIndex, setDotIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const loopItems = useMemo(() => (items.length > 1 ? [...items, items[0]] : items), [items]);
-  const styles = useMemo(() => makeStyles(theme, scaleFont, accentColor), [theme, scaleFont, accentColor]);
+  const resolvedAccent = accentSection ? homeSectionAccentColor(accentSection, theme) : accentColor;
+  const styles = useMemo(() => makeStyles(theme, scaleFont, resolvedAccent), [theme, scaleFont, resolvedAccent]);
 
   useWebHorizontalWheelScroll(scrollRef, items.length > 1);
 
@@ -304,8 +307,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, accentColor?: st
       paddingVertical: 11,
       borderRadius: 16,
       borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.colorScheme === 'dark' ? '#111927' : '#FFFFFF',
+      borderColor: theme.border,
+      backgroundColor: theme.card,
       gap: 6,
       overflow: 'hidden',
       shadowColor: '#000000',
@@ -319,7 +322,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, accentColor?: st
       left: 0,
       top: 0,
       bottom: 0,
-      width: 4,
+      width: HOME_SECTION_ACCENT_WIDTH,
       backgroundColor: accentColor || theme.warning,
     },
     cardPressed: {

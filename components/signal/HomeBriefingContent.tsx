@@ -8,6 +8,7 @@ import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
+import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionDivider } from '@/components/signal/HomeSectionDivider';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { ScheduleCarousel } from '@/components/signal/ScheduleCarousel';
@@ -348,10 +349,12 @@ export function HomeBriefingContent({
             />
             {latestIssues.length === 0 ? (
               <View style={styles.emptyCard}>
+                <HomeSectionAccentLine section="issues" />
                 <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
               </View>
             ) : (
               <View style={styles.listCard}>
+                <HomeSectionAccentLine section="issues" />
                 {latestIssues.map(({ category, item }, index) => (
                   <Pressable
                     key={`${category}-${item.id}`}
@@ -391,6 +394,7 @@ export function HomeBriefingContent({
               accessibilityLabel={t('commonViewAll')}
             />
             <View style={styles.listCard}>
+              <HomeSectionAccentLine section="signal" />
               {HOME_SIGNAL_SESSIONS.map((session, index) => {
                 const briefing = briefingBySession.get(session.key);
                 const text = briefing ? briefingLeadText(briefing) : t('briefingSessionEmptyTitle');
@@ -429,10 +433,11 @@ export function HomeBriefingContent({
             />
             {disclosureDigests.length === 0 ? (
               <View style={styles.emptyCard}>
+                <HomeSectionAccentLine section="disclosure" />
                 <Text style={styles.emptyText}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
               </View>
             ) : (
-              <DisclosureDigestSection items={disclosureDigests} />
+              <DisclosureDigestSection items={disclosureDigests} accentSection="disclosure" />
             )}
           </View>
 
@@ -487,9 +492,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       justifyContent: 'center',
     },
     section: {
-      gap: 10,
+      gap: 12,
     },
     listCard: {
+      position: 'relative',
       overflow: 'hidden',
       borderRadius: 18,
       borderWidth: 1,
@@ -497,11 +503,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       backgroundColor: theme.card,
     },
     emptyCard: {
+      position: 'relative',
+      overflow: 'hidden',
       borderRadius: 18,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       padding: 16,
+      paddingLeft: 18,
     },
     emptyText: {
       fontSize: ft.ff(13),
@@ -511,11 +520,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     issueRow: {
       paddingHorizontal: 14,
+      paddingLeft: 16,
       paddingVertical: ft.row(13),
       gap: 8,
     },
     signalRow: {
       paddingHorizontal: 14,
+      paddingLeft: 16,
       paddingVertical: ft.signalRow(13),
       gap: 8,
     },

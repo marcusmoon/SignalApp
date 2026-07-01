@@ -6,6 +6,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeFocusContent } from '@/components/signal/HomeFocusContent';
+import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionDivider } from '@/components/signal/HomeSectionDivider';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { ScheduleCarousel } from '@/components/signal/ScheduleCarousel';
@@ -422,6 +423,7 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
         ) : (
           <>
             <View style={styles.issueBoard}>
+              <HomeSectionAccentLine section="issues" />
               <View style={styles.issueBoardHeaderBand}>
                 <View style={styles.boardTitleRow}>
                   <Text style={styles.boardTitle}>{t('ipadHomeIssuesTitle')}</Text>
@@ -559,6 +561,7 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
             <HomeSectionDivider />
 
             <View style={styles.widePanel}>
+              <HomeSectionAccentLine section="signal" />
               <HomeSectionHeader
                 title={t('ipadHomeSignalTitle')}
                 subtitle={t('ipadHomeSignalSubtitle')}
@@ -603,6 +606,7 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
             <HomeSectionDivider />
 
             <View style={styles.widePanel}>
+              <HomeSectionAccentLine section="disclosure" />
               <HomeSectionHeader
                 title={t('todayBriefingDisclosureDigestTitle')}
                 subtitle={t('todayBriefingDisclosureDigestSubtitle')}
@@ -610,7 +614,7 @@ function IpadHomeClassicScreen({ showHeading = true }: IpadHomeScreenProps) {
                 accessibilityLabel={t('commonViewAll')}
               />
               {disclosureDigests.length > 0 ? (
-                <DisclosureDigestSection items={disclosureDigests} />
+                <DisclosureDigestSection items={disclosureDigests} accentSection="disclosure" />
               ) : (
                 <View style={styles.emptyCard}>
                   <Text style={styles.emptyCardText}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
@@ -761,6 +765,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 10,
     },
     issueBoard: {
+      position: 'relative',
       borderRadius: 22,
       overflow: 'hidden',
       backgroundColor: theme.card,
@@ -872,12 +877,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.green,
     },
     widePanel: {
+      position: 'relative',
       borderRadius: 22,
       padding: 16,
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
       gap: 12,
+      overflow: 'hidden',
     },
     emptyCard: {
       minHeight: 76,

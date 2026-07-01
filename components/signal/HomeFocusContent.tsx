@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
+import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionDivider } from '@/components/signal/HomeSectionDivider';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -355,7 +356,7 @@ export function HomeFocusContent({
   const renderIssueCard = useCallback(
     (rows: IssueRow[]) => (
       <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
-        <View style={styles.heroNoteLine} />
+        <HomeSectionAccentLine section="issues" opacity={0.55} />
         <View style={styles.issueGroupList}>
           {rows.map((row, index) => (
             <Pressable
@@ -402,7 +403,7 @@ export function HomeFocusContent({
   const renderSignalCard = useCallback(
     (rows: SignalApiMarketBriefing[]) => (
       <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
-        <View style={styles.heroNoteLine} />
+        <HomeSectionAccentLine section="signal" />
         <View style={styles.issueGroupList}>
           {rows.map((row, index) => {
             const session = HOME_SIGNAL_SESSIONS.find(
@@ -446,7 +447,7 @@ export function HomeFocusContent({
   const renderDisclosureCard = useCallback(
     (rows: SignalApiDisclosureDigestItem[]) => (
       <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
-        <View style={styles.disclosureNoteLine} />
+        <HomeSectionAccentLine section="disclosure" />
         <View style={styles.issueGroupList}>
           {rows.map((row, index) => (
             <Pressable
@@ -538,6 +539,7 @@ export function HomeFocusContent({
               renderIssueCard(homeIssues)
             ) : (
               <View style={styles.emptyCard}>
+                <HomeSectionAccentLine section="issues" opacity={0.55} />
                 <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
               </View>
             )}
@@ -556,6 +558,7 @@ export function HomeFocusContent({
               renderSignalCard(briefings)
             ) : (
               <View style={styles.emptyCard}>
+                <HomeSectionAccentLine section="signal" />
                 <Text style={styles.emptyText}>
                   {t('homeFocusSignalEmpty')}
                 </Text>
@@ -618,6 +621,7 @@ export function HomeFocusContent({
               renderDisclosureCard(disclosures)
             ) : (
               <View style={styles.emptyCard}>
+                <HomeSectionAccentLine section="disclosure" />
                 <Text style={styles.emptyText}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
               </View>
             )}
@@ -678,10 +682,11 @@ function makeStyles(
       color: theme.text,
     },
     heroCard: {
+      position: 'relative',
       borderRadius: 16,
       borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.colorScheme === 'dark' ? '#111927' : '#FFFFFF',
+      borderColor: theme.border,
+      backgroundColor: theme.card,
       paddingLeft: 16,
       paddingRight: 12,
       paddingVertical: 10,
@@ -695,22 +700,6 @@ function makeStyles(
     },
     heroCardSummary: {
       minHeight: 0,
-    },
-    heroNoteLine: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: 4,
-      backgroundColor: theme.green,
-    },
-    disclosureNoteLine: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: 4,
-      backgroundColor: theme.warning,
     },
     issueRowTop: {
       flexDirection: 'row',
@@ -785,13 +774,6 @@ function makeStyles(
     },
     section: {
       gap: 12,
-    },
-    quoteCard: {
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      overflow: 'hidden',
     },
     quoteGrid: {
       flexDirection: 'row',
@@ -946,11 +928,14 @@ function makeStyles(
       color: theme.textMuted,
     },
     emptyCard: {
+      position: 'relative',
+      overflow: 'hidden',
       borderRadius: 18,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       padding: 16,
+      paddingLeft: 18,
     },
     emptyText: {
       fontSize: ft.ff(13),

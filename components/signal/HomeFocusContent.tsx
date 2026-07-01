@@ -46,6 +46,7 @@ import {
   loadHomeWatchlistDisplayCount,
   subscribeHomeWatchlistDisplayCountChanged,
 } from '@/services/homeWatchlistDisplayPreference';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { addDays, formatLocalYmdLabel, parseLocalYmd, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
@@ -169,11 +170,11 @@ export function HomeFocusContent({
   showIssueSummary = false,
 }: HomeFocusContentProps) {
   const router = useRouter();
-  const { theme, scaleFont } = useSignalTheme();
+  const { theme, scaleFont, feedTypo } = useSignalTheme();
   const quoteChange = useQuoteChangeColors();
   const { t, locale } = useLocale();
   const ipadNav = useIpadSidebarNav();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const selectedIsToday = selectedYmd >= todayYmd;
   const loadedYmdRef = useRef<string | null>(null);
 
@@ -628,6 +629,7 @@ export function HomeFocusContent({
 function makeStyles(
   theme: AppTheme,
   sf: (n: number) => number,
+  ft: FeedContentTypography,
 ) {
   return StyleSheet.create({
     scroll: {
@@ -737,16 +739,16 @@ function makeStyles(
     },
     issueCategoryText: {
       color: theme.green,
-      fontSize: sf(10),
+      fontSize: ft.ff(10),
       lineHeight: sf(15),
-      fontWeight: '800',
+      fontWeight: ft.emphasisWeight,
     },
     issueGroupList: {
       gap: 0,
     },
     issueGroupItem: {
       gap: 4,
-      paddingVertical: 6,
+      paddingVertical: ft.row(6),
       borderRadius: 10,
     },
     issueGroupItemBorder: {
@@ -754,29 +756,29 @@ function makeStyles(
       borderBottomColor: theme.border,
     },
     issueGroupTitle: {
-      fontSize: sf(14),
+      fontSize: ft.ff(14),
       lineHeight: sf(19),
-      fontWeight: '900',
+      fontWeight: ft.titleWeight,
       color: theme.text,
     },
     issueGroupSummary: {
-      fontSize: sf(12),
+      fontSize: ft.ff(12),
       lineHeight: sf(17),
-      fontWeight: '700',
+      fontWeight: ft.bodyWeight,
       color: theme.textMuted,
     },
     issueGroupMetaText: {
-      fontSize: sf(10),
+      fontSize: ft.ff(10),
       lineHeight: sf(14),
-      fontWeight: '800',
+      fontWeight: ft.metaWeight,
       color: theme.textDim,
     },
     issueInlineMetaText: {
       minWidth: 0,
       flexShrink: 1,
-      fontSize: sf(10),
+      fontSize: ft.ff(10),
       lineHeight: sf(14),
-      fontWeight: '800',
+      fontWeight: ft.metaWeight,
       color: theme.textDim,
     },
     section: {
@@ -840,16 +842,16 @@ function makeStyles(
       minWidth: 0,
     },
     quoteSymbol: {
-      fontSize: sf(14),
+      fontSize: ft.ff(14),
       lineHeight: sf(18),
-      fontWeight: '900',
+      fontWeight: ft.titleWeight,
       color: theme.text,
     },
     quoteName: {
       marginTop: 2,
-      fontSize: sf(12),
+      fontSize: ft.ff(12),
       lineHeight: sf(16),
-      fontWeight: '700',
+      fontWeight: ft.metaWeight,
       color: theme.textMuted,
     },
     priceBox: {
@@ -860,16 +862,16 @@ function makeStyles(
       alignItems: 'flex-end',
     },
     priceText: {
-      fontSize: sf(13),
+      fontSize: ft.ff(13),
       lineHeight: sf(17),
-      fontWeight: '900',
+      fontWeight: ft.emphasisWeight,
       color: theme.text,
     },
     changeText: {
       marginTop: 2,
-      fontSize: sf(12),
+      fontSize: ft.ff(12),
       lineHeight: sf(16),
-      fontWeight: '900',
+      fontWeight: ft.emphasisWeight,
     },
     signalPillRow: {
       minWidth: 0,
@@ -886,9 +888,9 @@ function makeStyles(
       paddingVertical: 4,
       backgroundColor: theme.bgElevated,
       color: theme.textMuted,
-      fontSize: sf(11),
+      fontSize: ft.ff(11),
       lineHeight: sf(15),
-      fontWeight: '900',
+      fontWeight: ft.emphasisWeight,
     },
     sessionBadge: {
       alignSelf: 'flex-start',
@@ -898,9 +900,9 @@ function makeStyles(
       paddingVertical: 4,
       backgroundColor: theme.greenDim,
       color: theme.green,
-      fontSize: sf(11),
+      fontSize: ft.ff(11),
       lineHeight: sf(15),
-      fontWeight: '900',
+      fontWeight: ft.emphasisWeight,
     },
     disclosurePillRow: {
       minWidth: 0,
@@ -918,9 +920,9 @@ function makeStyles(
       paddingVertical: 4,
       backgroundColor: theme.warningDim,
       color: theme.warning,
-      fontSize: sf(11),
+      fontSize: ft.ff(11),
       lineHeight: sf(15),
-      fontWeight: '900',
+      fontWeight: ft.emphasisWeight,
     },
     disclosureFormPill: {
       alignSelf: 'flex-start',
@@ -930,15 +932,15 @@ function makeStyles(
       paddingVertical: 4,
       backgroundColor: theme.bgElevated,
       color: theme.textMuted,
-      fontSize: sf(11),
+      fontSize: ft.ff(11),
       lineHeight: sf(15),
-      fontWeight: '900',
+      fontWeight: ft.emphasisWeight,
       maxWidth: 120,
     },
     signalText: {
-      fontSize: sf(15),
+      fontSize: ft.signalBodyFont(14),
       lineHeight: sf(21),
-      fontWeight: '900',
+      fontWeight: ft.signalBodyWeight,
       color: theme.text,
     },
     emptyCard: {
@@ -949,9 +951,9 @@ function makeStyles(
       padding: 16,
     },
     emptyText: {
-      fontSize: sf(13),
+      fontSize: ft.ff(13),
       lineHeight: sf(19),
-      fontWeight: '700',
+      fontWeight: ft.bodyWeight,
       color: theme.textDim,
     },
     dimmedText: {

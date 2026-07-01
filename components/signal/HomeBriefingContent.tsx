@@ -22,6 +22,7 @@ import type { AppTheme } from '@/constants/theme';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api/calendar';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -129,9 +130,9 @@ export function HomeBriefingContent({
   headerAccessory,
 }: HomeBriefingContentProps) {
   const router = useRouter();
-  const { theme, scaleFont } = useSignalTheme();
+  const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
 
   const selectedDateLabel = useMemo(
     () =>
@@ -445,7 +446,7 @@ export function HomeBriefingContent({
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
   return StyleSheet.create({
     scroll: {
       ...webScrollViewportStyle,
@@ -493,19 +494,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       padding: 16,
     },
     emptyText: {
-      fontSize: sf(13),
+      fontSize: ft.ff(13),
       lineHeight: sf(19),
-      fontWeight: '700',
+      fontWeight: ft.bodyWeight,
       color: theme.textDim,
     },
     issueRow: {
       paddingHorizontal: 14,
-      paddingVertical: 13,
+      paddingVertical: ft.row(13),
       gap: 8,
     },
     signalRow: {
       paddingHorizontal: 14,
-      paddingVertical: 13,
+      paddingVertical: ft.signalRow(13),
       gap: 8,
     },
     rowBorder: {
@@ -513,15 +514,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomColor: theme.border,
     },
     issueTitle: {
-      fontSize: sf(15),
+      fontSize: ft.ff(15),
       lineHeight: sf(21),
-      fontWeight: '900',
+      fontWeight: ft.titleWeight,
       color: theme.text,
     },
     metaText: {
-      fontSize: sf(12),
+      fontSize: ft.ff(12),
       lineHeight: sf(16),
-      fontWeight: '700',
+      fontWeight: ft.metaWeight,
       color: theme.textDim,
     },
     sessionBadge: {
@@ -534,15 +535,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.greenBorder,
     },
     sessionBadgeText: {
-      fontSize: sf(11),
+      fontSize: ft.ff(11),
       lineHeight: sf(14),
-      fontWeight: '900',
+      fontWeight: ft.emphasisWeight,
       color: theme.green,
     },
     signalText: {
-      fontSize: sf(14),
+      fontSize: ft.signalBodyFont(14),
       lineHeight: sf(20),
-      fontWeight: '800',
+      fontWeight: ft.signalBodyWeight,
       color: theme.text,
     },
     signalTextEmpty: {

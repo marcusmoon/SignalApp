@@ -21,7 +21,6 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
 import { webHorizontalCarouselScrollProps } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
-import type { HomeSectionPalette } from '@/constants/homeSectionTheme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useWebHorizontalWheelScroll } from '@/hooks/useWebHorizontalWheelScroll';
@@ -167,10 +166,9 @@ type Props = {
   items: SignalApiDisclosureDigestItem[];
   loading?: boolean;
   accentColor?: string;
-  sectionPalette?: HomeSectionPalette;
 };
 
-export function DisclosureDigestSection({ items, loading, accentColor, sectionPalette }: Props) {
+export function DisclosureDigestSection({ items, loading, accentColor }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const scrollRef = useRef<ScrollView | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -179,11 +177,7 @@ export function DisclosureDigestSection({ items, loading, accentColor, sectionPa
   const [dotIndex, setDotIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const loopItems = useMemo(() => (items.length > 1 ? [...items, items[0]] : items), [items]);
-  const resolvedAccent = sectionPalette?.accent ?? accentColor;
-  const styles = useMemo(
-    () => makeStyles(theme, scaleFont, resolvedAccent, sectionPalette),
-    [theme, scaleFont, resolvedAccent, sectionPalette],
-  );
+  const styles = useMemo(() => makeStyles(theme, scaleFont, accentColor), [theme, scaleFont, accentColor]);
 
   useWebHorizontalWheelScroll(scrollRef, items.length > 1);
 
@@ -296,16 +290,7 @@ export function DisclosureDigestSection({ items, loading, accentColor, sectionPa
   );
 }
 
-function makeStyles(
-  theme: AppTheme,
-  sf: (n: number) => number,
-  accentColor?: string,
-  sectionPalette?: HomeSectionPalette,
-) {
-  const cardBorderColor = sectionPalette?.border ?? theme.greenBorder;
-  const cardBackgroundColor = sectionPalette?.dim ?? (theme.colorScheme === 'dark' ? '#111927' : '#FFFFFF');
-  const accent = accentColor || sectionPalette?.accent || theme.warning;
-
+function makeStyles(theme: AppTheme, sf: (n: number) => number, accentColor?: string) {
   return StyleSheet.create({
     container: {
       marginBottom: 8,
@@ -319,8 +304,8 @@ function makeStyles(
       paddingVertical: 11,
       borderRadius: 16,
       borderWidth: 1,
-      borderColor: cardBorderColor,
-      backgroundColor: cardBackgroundColor,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.colorScheme === 'dark' ? '#111927' : '#FFFFFF',
       gap: 6,
       overflow: 'hidden',
       shadowColor: '#000000',
@@ -335,7 +320,7 @@ function makeStyles(
       top: 0,
       bottom: 0,
       width: 4,
-      backgroundColor: accent,
+      backgroundColor: accentColor || theme.warning,
     },
     cardPressed: {
       opacity: 0.88,
@@ -425,7 +410,7 @@ function makeStyles(
       width: 14,
       height: 5,
       borderRadius: 999,
-      backgroundColor: accent,
+      backgroundColor: theme.green,
     },
   });
 }

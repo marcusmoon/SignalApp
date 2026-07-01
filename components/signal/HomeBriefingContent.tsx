@@ -18,13 +18,6 @@ import {
   type HomeDigestCategory,
   type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
-import {
-  homeCategoryPalette,
-  homeSectionAccentLineStyle,
-  homeSectionCardStyle,
-  homeSectionPalette,
-  homeSignalSessionPalette,
-} from '@/constants/homeSectionTheme';
 import type { AppTheme } from '@/constants/theme';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -140,15 +133,6 @@ export function HomeBriefingContent({
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
-  const sectionPalettes = useMemo(
-    () => ({
-      issues: homeSectionPalette('issues', theme.colorScheme),
-      signal: homeSectionPalette('signal', theme.colorScheme),
-      disclosure: homeSectionPalette('disclosure', theme.colorScheme),
-      calendar: homeSectionPalette('calendar', theme.colorScheme),
-    }),
-    [theme.colorScheme],
-  );
 
   const selectedDateLabel = useMemo(
     () =>
@@ -355,22 +339,17 @@ export function HomeBriefingContent({
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('ipadHomeIssuesTitle')}
-              accent={sectionPalettes.issues.accent}
               badge={<HomeAiBadge />}
               onPress={() => openIssue('global')}
               accessibilityLabel={t('commonViewAll')}
             />
             {latestIssues.length === 0 ? (
-              <View style={[styles.emptyCard, homeSectionCardStyle(sectionPalettes.issues)]}>
-                <View style={homeSectionAccentLineStyle(sectionPalettes.issues)} />
+              <View style={styles.emptyCard}>
                 <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
               </View>
             ) : (
-              <View style={[styles.listCard, homeSectionCardStyle(sectionPalettes.issues)]}>
-                <View style={homeSectionAccentLineStyle(sectionPalettes.issues)} />
-                {latestIssues.map(({ category, item }, index) => {
-                  const categoryPalette = homeCategoryPalette(category, theme.colorScheme);
-                  return (
+              <View style={styles.listCard}>
+                {latestIssues.map(({ category, item }, index) => (
                   <Pressable
                     key={`${category}-${item.id}`}
                     onPress={() => openIssue(category, item.id)}
@@ -380,17 +359,8 @@ export function HomeBriefingContent({
                       index < latestIssues.length - 1 && styles.rowBorder,
                       pressed && styles.pressed,
                     ]}>
-                    <View
-                      style={[
-                        styles.sessionBadge,
-                        {
-                          backgroundColor: categoryPalette.dim,
-                          borderColor: categoryPalette.border,
-                        },
-                      ]}>
-                      <Text style={[styles.sessionBadgeText, { color: categoryPalette.accent }]}>
-                        {t(NEWS_SEGMENT_LABEL[category])}
-                      </Text>
+                    <View style={styles.sessionBadge}>
+                      <Text style={styles.sessionBadgeText}>{t(NEWS_SEGMENT_LABEL[category])}</Text>
                     </View>
                     <Text style={styles.issueTitle} numberOfLines={2}>
                       {item.title}
@@ -402,8 +372,7 @@ export function HomeBriefingContent({
                       })}
                     </Text>
                   </Pressable>
-                  );
-                })}
+                ))}
               </View>
             )}
           </View>
@@ -411,18 +380,15 @@ export function HomeBriefingContent({
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('ipadHomeSignalTitle')}
-              accent={sectionPalettes.signal.accent}
               badge={<HomeAiBadge />}
               onPress={openSignal}
               accessibilityLabel={t('commonViewAll')}
             />
-            <View style={[styles.listCard, homeSectionCardStyle(sectionPalettes.signal)]}>
-              <View style={homeSectionAccentLineStyle(sectionPalettes.signal)} />
+            <View style={styles.listCard}>
               {HOME_SIGNAL_SESSIONS.map((session, index) => {
                 const briefing = briefingBySession.get(session.key);
                 const text = briefing ? briefingLeadText(briefing) : t('briefingSessionEmptyTitle');
                 const canOpenFull = !!briefing;
-                const sessionPalette = homeSignalSessionPalette(session.market, theme.colorScheme);
                 return (
                   <Pressable
                     key={session.key}
@@ -435,17 +401,8 @@ export function HomeBriefingContent({
                       index < HOME_SIGNAL_SESSIONS.length - 1 && styles.rowBorder,
                       canOpenFull && pressed && styles.pressed,
                     ]}>
-                    <View
-                      style={[
-                        styles.sessionBadge,
-                        {
-                          backgroundColor: sessionPalette.dim,
-                          borderColor: sessionPalette.border,
-                        },
-                      ]}>
-                      <Text style={[styles.sessionBadgeText, { color: sessionPalette.accent }]}>
-                        {t(session.labelId)}
-                      </Text>
+                    <View style={styles.sessionBadge}>
+                      <Text style={styles.sessionBadgeText}>{t(session.labelId)}</Text>
                     </View>
                     <Text style={[styles.signalText, !canOpenFull && styles.signalTextEmpty]} numberOfLines={3}>
                       {text}
@@ -459,24 +416,21 @@ export function HomeBriefingContent({
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('todayBriefingDisclosureDigestTitle')}
-              accent={sectionPalettes.disclosure.accent}
               onPress={openDisclosures}
               accessibilityLabel={t('commonViewAll')}
             />
             {disclosureDigests.length === 0 ? (
-              <View style={[styles.emptyCard, homeSectionCardStyle(sectionPalettes.disclosure)]}>
-                <View style={homeSectionAccentLineStyle(sectionPalettes.disclosure)} />
+              <View style={styles.emptyCard}>
                 <Text style={styles.emptyText}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
               </View>
             ) : (
-              <DisclosureDigestSection items={disclosureDigests} sectionPalette={sectionPalettes.disclosure} />
+              <DisclosureDigestSection items={disclosureDigests} />
             )}
           </View>
 
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('screenCalendar')}
-              accent={sectionPalettes.calendar.accent}
               onPress={openCalendar}
               accessibilityLabel={t('commonViewAll')}
             />
@@ -484,7 +438,6 @@ export function HomeBriefingContent({
               events={scheduleItems}
               emptyText={t('ipadHomeCalendarEmpty')}
               onPress={openCalendar}
-              sectionPalette={sectionPalettes.calendar}
             />
           </View>
         </>
@@ -528,11 +481,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     listCard: {
       overflow: 'hidden',
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
     },
     emptyCard: {
-      overflow: 'hidden',
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
       padding: 16,
-      paddingLeft: 18,
     },
     emptyText: {
       fontSize: ft.ff(13),
@@ -542,13 +501,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     issueRow: {
       paddingHorizontal: 14,
-      paddingLeft: 16,
       paddingVertical: ft.row(13),
       gap: 8,
     },
     signalRow: {
       paddingHorizontal: 14,
-      paddingLeft: 16,
       paddingVertical: ft.signalRow(13),
       gap: 8,
     },
@@ -573,12 +530,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderRadius: 999,
       paddingHorizontal: 8,
       paddingVertical: 3,
+      backgroundColor: theme.greenDim,
       borderWidth: 1,
+      borderColor: theme.greenBorder,
     },
     sessionBadgeText: {
       fontSize: ft.ff(11),
       lineHeight: sf(14),
       fontWeight: ft.emphasisWeight,
+      color: theme.green,
     },
     signalText: {
       fontSize: ft.signalBodyFont(14),

@@ -9,7 +9,6 @@ import {
   View,
 } from 'react-native';
 
-import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDigestSection';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -144,6 +143,13 @@ function marketLabel(market: string): string {
   const key = String(market || '').trim().toLowerCase();
   if (key === 'us') return 'US';
   if (key === 'kr') return 'KR';
+  return key ? key.toUpperCase() : 'SIGNAL';
+}
+
+function disclosureMarketLabel(market: string, locale: string): string {
+  const key = String(market || '').trim().toLowerCase();
+  if (key === 'kr') return locale === 'ko' ? '한국' : locale === 'ja' ? '韓国' : 'Korea';
+  if (key === 'us') return locale === 'ko' ? '미국' : locale === 'ja' ? '米国' : 'US';
   return key ? key.toUpperCase() : 'SIGNAL';
 }
 
@@ -374,6 +380,11 @@ export function HomeFocusContent({
                   {t('homeFocusSourceCount', { count: String(row.item.sources.length) })}
                 </Text>
               </View>
+              {[row.item.topics[0], row.item.symbols[0]].filter(Boolean).length > 0 ? (
+                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
+                  {[row.item.topics[0], row.item.symbols[0]].filter(Boolean).join(' · ')}
+                </Text>
+              ) : null}
               <Text style={styles.issueGroupTitle} numberOfLines={2}>
                 {row.item.title}
               </Text>
@@ -382,9 +393,6 @@ export function HomeFocusContent({
                   {row.item.summary}
                 </Text>
               ) : null}
-              <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                {[row.item.topics[0], row.item.symbols[0]].filter(Boolean).join(' · ')}
-              </Text>
             </Pressable>
           ))}
         </View>
@@ -435,6 +443,55 @@ export function HomeFocusContent({
       </View>
     ),
     [openSignal, showIssueSummary, styles, t],
+  );
+
+  const renderDisclosureCard = useCallback(
+    (rows: SignalApiDisclosureDigestItem[]) => (
+      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
+        <View style={styles.disclosureNoteLine} />
+        <View style={styles.issueGroupList}>
+          {rows.map((row, index) => (
+            <Pressable
+              key={row.id}
+              onPress={openDisclosures}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.issueGroupItem,
+                index < rows.length - 1 && styles.issueGroupItemBorder,
+                pressed && styles.pressed,
+              ]}>
+              <View style={styles.issueRowTop}>
+                <View style={styles.disclosurePillRow}>
+                  <Text style={styles.disclosureMarketPill}>{disclosureMarketLabel(row.market, locale)}</Text>
+                  {row.forms[0] ? (
+                    <Text style={styles.disclosureFormPill} numberOfLines={1}>
+                      {row.forms[0]}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
+                  {t('homeFocusSourceCount', { count: String(row.sourceRefs.length || row.count) })}
+                </Text>
+              </View>
+              {row.symbols.length > 0 ? (
+                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
+                  {row.symbols.slice(0, 3).join(' · ')}
+                </Text>
+              ) : null}
+              <Text style={styles.issueGroupTitle} numberOfLines={2}>
+                {row.title}
+              </Text>
+              {showIssueSummary && row.summary ? (
+                <Text style={styles.issueGroupSummary} numberOfLines={1}>
+                  {row.summary}
+                </Text>
+              ) : null}
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    ),
+    [locale, openDisclosures, showIssueSummary, styles, t],
   );
 
   return (
@@ -556,7 +613,7 @@ export function HomeFocusContent({
               accessibilityLabel={t('commonViewAll')}
             />
             {disclosures.length > 0 ? (
-              <DisclosureDigestSection items={disclosures} accentColor={theme.warning} />
+              renderDisclosureCard(disclosures)
             ) : (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyText}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
@@ -643,6 +700,14 @@ function makeStyles(
       bottom: 0,
       width: 4,
       backgroundColor: theme.green,
+    },
+    disclosureNoteLine: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: 4,
+      backgroundColor: theme.warning,
     },
     issueRowTop: {
       flexDirection: 'row',
@@ -822,6 +887,38 @@ function makeStyles(
       fontSize: sf(11),
       lineHeight: sf(15),
       fontWeight: '900',
+    },
+    disclosurePillRow: {
+      minWidth: 0,
+      flexShrink: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    disclosureMarketPill: {
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      overflow: 'hidden',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      backgroundColor: theme.warningDim,
+      color: theme.warning,
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '900',
+    },
+    disclosureFormPill: {
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      overflow: 'hidden',
+      paddingHorizontal: 9,
+      paddingVertical: 4,
+      backgroundColor: theme.bgElevated,
+      color: theme.textMuted,
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '900',
+      maxWidth: 120,
     },
     signalText: {
       fontSize: sf(15),

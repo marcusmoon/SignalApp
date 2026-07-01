@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { webScrollViewportStyle } from '@/constants/webLayout';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
@@ -305,9 +305,7 @@ export function HomeBriefingContent({
       style={styles.scroll}
       contentContainerStyle={[styles.content, { paddingBottom: scrollContentPaddingBottom }]}
       showsVerticalScrollIndicator={false}
-      refreshControl={
-        Platform.OS === 'web' ? undefined : <ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />
-      }>
+      refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
       {headerAccessory}
       {showDateNavigator ? (
         <SignalDateNavigator

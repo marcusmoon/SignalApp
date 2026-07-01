@@ -2,7 +2,6 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import {
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -435,7 +434,7 @@ export function HomeFocusContent({
                     </Text>
                   ) : null}
                 </View>
-                <Text style={styles.signalText} numberOfLines={showIssueSummary ? 4 : 2}>
+                <Text style={styles.signalText} numberOfLines={showIssueSummary ? 4 : 3}>
                   {briefingLeadText(row)}
                 </Text>
               </Pressable>
@@ -505,9 +504,7 @@ export function HomeFocusContent({
         { paddingBottom: scrollContentPaddingBottom },
       ]}
       showsVerticalScrollIndicator={false}
-      refreshControl={
-        Platform.OS === 'web' ? undefined : <ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />
-      }>
+      refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
       {headerAccessory}
       <SignalDateNavigator
         label={selectedDateLabel}

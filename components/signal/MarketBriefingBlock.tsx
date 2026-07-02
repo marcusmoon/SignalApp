@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useMemo } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
@@ -6,6 +7,7 @@ import type { AppTheme } from '@/constants/theme';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import {
   getQuoteChangeColors,
   isQuoteChangePositive,
@@ -191,8 +193,8 @@ export function MarketBriefingBlock({
   changeColorConvention,
 }: Props) {
   const { t, locale } = useLocale();
-  const { effectiveColorScheme } = useSignalTheme();
-  const styles = makeStyles(theme, scaleFont);
+  const { effectiveColorScheme, feedTypo } = useSignalTheme();
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const changeColors = getQuoteChangeColors(changeColorConvention, effectiveColorScheme);
 
   const hasLead = Boolean(briefing.summary) || briefing.overview.length > 0;
@@ -316,7 +318,7 @@ export function MarketBriefingBlock({
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
   const leadTint =
     theme.green.startsWith('#') && theme.green.length === 7 ? `${theme.green}0A` : theme.bgElevated;
 
@@ -329,7 +331,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: leadTint,
-      padding: 16,
+      padding: ft.pad(16),
       gap: 14,
     },
     leadDivider: {
@@ -341,9 +343,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 10,
     },
     summary: {
-      fontSize: sf(17),
+      fontSize: ft.signalBodyFont(17),
       lineHeight: sf(26),
-      fontWeight: '700',
+      fontWeight: ft.signalBodyWeight,
       color: theme.text,
     },
     sectionWrap: {
@@ -369,8 +371,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     sectionTitle: {
       flex: 1,
       minWidth: 0,
-      fontSize: sf(16),
-      fontWeight: '900',
+      fontSize: ft.signalTitleFont(16),
+      fontWeight: ft.signalTitleWeight,
       letterSpacing: -0.15,
       color: theme.text,
     },
@@ -384,8 +386,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'center',
     },
     sectionCountText: {
-      fontSize: sf(12),
-      fontWeight: '900',
+      fontSize: ft.ff(12),
+      fontWeight: ft.metaWeight,
       color: theme.textMuted,
     },
     overviewList: {
@@ -407,9 +409,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     overviewText: {
       flex: 1,
       minWidth: 0,
-      fontSize: sf(16),
+      fontSize: ft.signalBodyFont(16),
       lineHeight: sf(25),
-      fontWeight: '600',
+      fontWeight: ft.signalBodyWeight,
       color: theme.text,
     },
     cardStack: {
@@ -430,16 +432,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       textAlign: 'center',
     },
     sectorName: {
-      fontSize: sf(13),
-      fontWeight: '900',
+      fontSize: ft.ff(13),
+      fontWeight: ft.emphasisWeight,
       color: theme.text,
       width: 64,
     },
     sectorSummary: {
       flex: 1,
       minWidth: 0,
-      fontSize: sf(13),
-      fontWeight: '500',
+      fontSize: ft.signalBodyFont(13),
+      fontWeight: ft.signalMetaWeight,
       color: theme.textDim,
       lineHeight: sf(18),
     },
@@ -448,7 +450,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
-      padding: 14,
+      padding: ft.pad(14),
       gap: 10,
     },
     companyHead: {
@@ -463,14 +465,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 3,
     },
     companySymbol: {
-      fontSize: sf(17),
-      fontWeight: '900',
+      fontSize: ft.signalTitleFont(17),
+      fontWeight: ft.signalTitleWeight,
       letterSpacing: -0.2,
       color: theme.green,
     },
     companyName: {
-      fontSize: sf(13),
-      fontWeight: '700',
+      fontSize: ft.ff(13),
+      fontWeight: ft.bodyWeight,
       color: theme.textMuted,
     },
     companyQuoteBox: {
@@ -495,9 +497,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontVariant: ['tabular-nums'],
     },
     companySummary: {
-      fontSize: sf(15),
+      fontSize: ft.signalBodyFont(15),
       lineHeight: sf(23),
-      fontWeight: '600',
+      fontWeight: ft.signalBodyWeight,
       color: theme.textDim,
       paddingTop: 4,
       borderTopWidth: StyleSheet.hairlineWidth,
@@ -510,20 +512,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.bgElevated,
       borderLeftWidth: CONTENT_ACCENT_LINE_WIDTH,
       borderLeftColor: theme.accentOrange,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
+      paddingVertical: ft.row(12),
+      paddingHorizontal: ft.pad(14),
       gap: 6,
     },
     macroTitle: {
-      fontSize: sf(15),
-      fontWeight: '900',
+      fontSize: ft.ff(15),
+      fontWeight: ft.titleWeight,
       color: theme.text,
       lineHeight: sf(22),
     },
     macroBody: {
-      fontSize: sf(15),
+      fontSize: ft.signalBodyFont(15),
       lineHeight: sf(23),
-      fontWeight: '600',
+      fontWeight: ft.signalBodyWeight,
       color: theme.textDim,
     },
     link: {
@@ -552,14 +554,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 3,
     },
     sourceTitle: {
-      fontSize: sf(14),
-      fontWeight: '800',
+      fontSize: ft.ff(14),
+      fontWeight: ft.bodyWeight,
       color: theme.text,
       lineHeight: sf(20),
     },
     sourceMeta: {
-      fontSize: sf(12),
-      fontWeight: '700',
+      fontSize: ft.ff(12),
+      fontWeight: ft.metaWeight,
       color: theme.textMuted,
     },
   });

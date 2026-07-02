@@ -17,6 +17,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { fetchCompanyNewsForDisplay } from '@/services/companyNewsForSymbol';
 import { fetchSignalDisclosures } from '@/integrations/signal-api/disclosures';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -187,7 +188,7 @@ const sparkStyles = StyleSheet.create({
 // Styles
 // ─────────────────────────────────────────────
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
   return StyleSheet.create({
     root: { flex: 1 },
     centeredLoadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -329,17 +330,33 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     disclosureType: { fontSize: sf(11), color: theme.textMuted, fontWeight: '600', flex: 1 },
     disclosureTime: { fontSize: sf(11), color: theme.textDim },
-    disclosureTitle: { fontSize: sf(13), fontWeight: '700', color: theme.text, lineHeight: sf(19) },
-    disclosureSummary: { fontSize: sf(11), color: theme.textMuted, lineHeight: sf(16), marginTop: 3 },
+    disclosureTitle: {
+      fontSize: ft.ff(13),
+      fontWeight: ft.titleWeight,
+      color: theme.text,
+      lineHeight: ft.ff(19),
+    },
+    disclosureSummary: {
+      fontSize: ft.ff(11),
+      fontWeight: ft.bodyWeight,
+      color: theme.textMuted,
+      lineHeight: ft.ff(16),
+      marginTop: 3,
+    },
     newsCard: {
-      paddingVertical: 10,
+      paddingVertical: ft.row(10),
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
     },
     newsMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
-    newsSource: { fontSize: sf(11), fontWeight: '700', color: theme.green },
-    newsTime: { fontSize: sf(11), color: theme.textDim },
-    newsTitle: { fontSize: sf(13), fontWeight: '600', color: theme.text, lineHeight: sf(19) },
+    newsSource: { fontSize: ft.ff(11), fontWeight: ft.emphasisWeight, color: theme.green },
+    newsTime: { fontSize: ft.ff(11), fontWeight: ft.metaWeight, color: theme.textDim },
+    newsTitle: {
+      fontSize: ft.ff(13),
+      fontWeight: ft.bodyWeight,
+      color: theme.text,
+      lineHeight: ft.ff(19),
+    },
     sourceFootnote: { fontSize: sf(10), color: theme.textDim, marginTop: 8, lineHeight: sf(15) },
     empty: { fontSize: sf(13), color: theme.textMuted, lineHeight: sf(20), paddingVertical: 6 },
   });
@@ -356,11 +373,11 @@ type Props = {
 };
 
 export function SymbolDetailPane({ ticker, bottomPad = 24 }: Props) {
-  const { theme, scaleFont } = useSignalTheme();
+  const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const router = useRouter();
   const quoteChange = useQuoteChangeColors();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

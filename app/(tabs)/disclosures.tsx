@@ -42,6 +42,7 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { markDisclosureFeedSeen } from '@/services/disclosureUnreadPreference';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { formatRelativeFromIso } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
 
@@ -85,11 +86,11 @@ export default function DisclosuresScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
-  const { theme, scaleFont } = useSignalTheme();
+  const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const { useTwoPane } = useResponsiveLayout();
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const [filter, setFilter] = useState<FilterKey>('us');
   const [items, setItems] = useState<SignalApiDisclosure[]>([]);
   const [digestItems, setDigestItems] = useState<SignalApiDisclosureDigestItem[]>([]);
@@ -424,7 +425,7 @@ export default function DisclosuresScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: theme.bg },
     mainColumn: {
@@ -543,7 +544,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      padding: 14,
+      padding: ft.pad(14),
       marginBottom: 10,
     },
     cardSelected: {
@@ -561,8 +562,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 7,
-      fontSize: sf(10),
-      fontWeight: '900',
+      fontSize: ft.ff(10),
+      fontWeight: ft.emphasisWeight,
       overflow: 'hidden',
     },
     badgeMuted: {
@@ -571,17 +572,28 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 7,
-      fontSize: sf(10),
-      fontWeight: '900',
+      fontSize: ft.ff(10),
+      fontWeight: ft.emphasisWeight,
       overflow: 'hidden',
     },
-    time: { color: theme.textDim, fontSize: sf(11), fontWeight: '700' },
-    cardTitle: { color: theme.text, fontSize: sf(15), lineHeight: sf(21), fontWeight: '900' },
-    summary: { marginTop: 7, color: theme.textMuted, fontSize: sf(13), lineHeight: sf(19), fontWeight: '700' },
+    time: { color: theme.textDim, fontSize: ft.ff(11), fontWeight: ft.metaWeight },
+    cardTitle: {
+      color: theme.text,
+      fontSize: ft.ff(15),
+      lineHeight: ft.ff(21),
+      fontWeight: ft.titleWeight,
+    },
+    summary: {
+      marginTop: 7,
+      color: theme.textMuted,
+      fontSize: ft.ff(13),
+      lineHeight: ft.ff(19),
+      fontWeight: ft.bodyWeight,
+    },
     cardBottom: { marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-    symbol: { flex: 1, minWidth: 0, color: theme.textMuted, fontSize: sf(12), fontWeight: '900' },
+    symbol: { flex: 1, minWidth: 0, color: theme.textMuted, fontSize: ft.ff(12), fontWeight: ft.emphasisWeight },
     openBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    openText: { color: theme.green, fontSize: sf(12), fontWeight: '900' },
+    openText: { color: theme.green, fontSize: ft.ff(12), fontWeight: ft.emphasisWeight },
     detailPane: {
       flex: 0.55,
       minWidth: 0,
@@ -647,9 +659,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     detailSummary: {
       color: theme.textMuted,
-      fontSize: sf(14),
-      lineHeight: sf(21),
-      fontWeight: '700',
+      fontSize: ft.ff(14),
+      lineHeight: ft.ff(21),
+      fontWeight: ft.bodyWeight,
     },
     detailOpenBtn: {
       minHeight: 44,

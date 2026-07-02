@@ -24,6 +24,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import {
   fetchSignalCalendar,
   signalCalendarToCalendarEvent,
@@ -135,9 +136,9 @@ function sortDayEvents(events: CalendarEvent[]): CalendarEvent[] {
 }
 
 export default function CalendarScreen() {
-  const { theme, scaleFont } = useSignalTheme();
+  const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
 
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
@@ -486,7 +487,7 @@ export default function CalendarScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     scroll: {
@@ -513,8 +514,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingBottom: 4,
     },
     daySectionMeta: {
-      fontSize: sf(11),
-      fontWeight: '700',
+      fontSize: ft.ff(11),
+      fontWeight: ft.metaWeight,
       color: theme.textMuted,
     },
     emptyDayBox: {
@@ -529,11 +530,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'center',
     },
     emptyDayText: {
-      fontSize: sf(13),
-      fontWeight: '600',
+      fontSize: ft.ff(13),
+      fontWeight: ft.bodyWeight,
       color: theme.textMuted,
       textAlign: 'center',
-      lineHeight: sf(19),
+      lineHeight: ft.ff(19),
     },
     listScroll: { flex: 1, minHeight: 0 },
     listContent: {
@@ -638,15 +639,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.green + '18',
     },
     symbolTagText: { fontSize: sf(9), fontWeight: '900', color: theme.green },
-    time: { fontSize: sf(10), color: theme.textMuted, marginTop: 1, flexShrink: 0 },
+    time: { fontSize: ft.ff(10), fontWeight: ft.metaWeight, color: theme.textMuted, marginTop: 1, flexShrink: 0 },
     title: {
       flexGrow: 1,
       flexShrink: 1,
       minWidth: 0,
-      fontSize: sf(13),
-      fontWeight: '700',
+      fontSize: ft.ff(13),
+      fontWeight: ft.titleWeight,
       color: theme.text,
-      lineHeight: sf(18),
+      lineHeight: ft.ff(18),
     },
     metricRow: {
       flexDirection: 'row',
@@ -654,11 +655,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 7,
       marginTop: 7,
     },
-    metricText: { fontSize: sf(10), fontWeight: '700', color: theme.textMuted },
+    metricText: { fontSize: ft.ff(10), fontWeight: ft.metaWeight, color: theme.textMuted },
     surpriseText: {
       marginTop: 6,
-      fontSize: sf(10),
-      fontWeight: '800',
+      fontSize: ft.ff(10),
+      fontWeight: ft.emphasisWeight,
       color: theme.textDim,
     },
     modalBackdrop: {

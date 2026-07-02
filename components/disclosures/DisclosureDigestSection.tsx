@@ -22,6 +22,7 @@ import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselS
 import { CONTENT_ACCENT_LINE_WIDTH, homeSectionAccentColor, type HomeAccentSection } from '@/constants/homeSectionAccent';
 import { webHorizontalCarouselScrollProps } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useWebHorizontalWheelScroll } from '@/hooks/useWebHorizontalWheelScroll';
@@ -171,7 +172,7 @@ type Props = {
 };
 
 export function DisclosureDigestSection({ items, loading, accentColor, accentSection }: Props) {
-  const { theme, scaleFont } = useSignalTheme();
+  const { theme, scaleFont, feedTypo } = useSignalTheme();
   const scrollRef = useRef<ScrollView | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const pageWidth = Math.max(0, containerWidth || 0);
@@ -180,7 +181,10 @@ export function DisclosureDigestSection({ items, loading, accentColor, accentSec
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const loopItems = useMemo(() => (items.length > 1 ? [...items, items[0]] : items), [items]);
   const resolvedAccent = accentSection ? homeSectionAccentColor(accentSection, theme) : accentColor;
-  const styles = useMemo(() => makeStyles(theme, scaleFont, resolvedAccent), [theme, scaleFont, resolvedAccent]);
+  const styles = useMemo(
+    () => makeStyles(theme, scaleFont, feedTypo, resolvedAccent),
+    [theme, scaleFont, feedTypo, resolvedAccent],
+  );
 
   useWebHorizontalWheelScroll(scrollRef, items.length > 1);
 
@@ -293,7 +297,12 @@ export function DisclosureDigestSection({ items, loading, accentColor, accentSec
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number, accentColor?: string) {
+function makeStyles(
+  theme: AppTheme,
+  sf: (n: number) => number,
+  ft: FeedContentTypography,
+  accentColor?: string,
+) {
   return StyleSheet.create({
     container: {
       marginBottom: 8,
@@ -303,8 +312,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, accentColor?: st
     },
     card: {
       paddingLeft: 18,
-      paddingRight: 13,
-      paddingVertical: 11,
+      paddingRight: ft.pad(13),
+      paddingVertical: ft.pad(11),
       borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.border,
@@ -342,16 +351,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, accentColor?: st
       backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.border,
-      fontSize: sf(10),
+      fontSize: ft.ff(10),
       lineHeight: sf(15),
-      fontWeight: '800',
+      fontWeight: ft.emphasisWeight,
       color: theme.textMuted,
     },
     title: {
-      fontSize: sf(15),
-      lineHeight: sf(21),
-      minHeight: sf(21) * 2,
-      fontWeight: '900',
+      fontSize: ft.ff(15),
+      lineHeight: ft.ff(21),
+      minHeight: ft.ff(21) * 2,
+      fontWeight: ft.titleWeight,
       color: theme.text,
     },
     footerRow: {
@@ -361,9 +370,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, accentColor?: st
       gap: 8,
     },
     footer: {
-      fontSize: sf(11),
+      fontSize: ft.ff(11),
       lineHeight: sf(15),
-      fontWeight: '700',
+      fontWeight: ft.metaWeight,
       color: theme.textDim,
       flex: 1,
     },
@@ -383,18 +392,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, accentColor?: st
       gap: 1,
     },
     sourceTitle: {
-      fontSize: sf(12),
-      lineHeight: sf(17),
-      fontWeight: '700',
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(17),
+      fontWeight: ft.bodyWeight,
       color: theme.text,
     },
     sourceTitleLink: {
       color: theme.accentBlue,
     },
     sourceName: {
-      fontSize: sf(10),
+      fontSize: ft.ff(10),
       lineHeight: sf(14),
-      fontWeight: '600',
+      fontWeight: ft.metaWeight,
       color: theme.textMuted,
     },
     dotsRow: {

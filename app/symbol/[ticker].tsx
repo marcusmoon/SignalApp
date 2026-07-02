@@ -27,6 +27,7 @@ import type {
 import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
 import { buildSignalScore } from '@/domain/signals';
 import { loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatchlist';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import type { NewsItem } from '@/types/signal';
 import { hasSignalApi } from '@/services/env';
 import { addDays, formatLocalInstantDate } from '@/utils/date';
@@ -179,7 +180,7 @@ function Sparkline({
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     scroll: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 },
@@ -368,11 +369,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       minWidth: 0,
       color: theme.textMuted,
       fontSize: sf(11),
-      fontWeight: '800',
+      fontWeight: '600',
     },
-    disclosureTime: { color: theme.textDim, fontSize: sf(11), fontWeight: '700' },
-    disclosureTitle: { color: theme.text, fontSize: sf(14), lineHeight: sf(20), fontWeight: '900' },
-    disclosureSummary: { marginTop: 6, color: theme.textMuted, fontSize: sf(12), lineHeight: sf(18), fontWeight: '700' },
+    disclosureTime: { color: theme.textDim, fontSize: ft.ff(11), fontWeight: ft.metaWeight },
+    disclosureTitle: {
+      color: theme.text,
+      fontSize: ft.ff(13),
+      lineHeight: ft.ff(19),
+      fontWeight: ft.titleWeight,
+    },
+    disclosureSummary: {
+      marginTop: 6,
+      color: theme.textMuted,
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.bodyWeight,
+    },
     newsCard: {
       borderRadius: 10,
       borderWidth: 1,
@@ -388,9 +400,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 10,
       marginBottom: 8,
     },
-    newsSource: { fontSize: sf(11), fontWeight: '800', color: theme.textDim },
-    newsTime: { fontSize: sf(11), color: theme.textMuted },
-    newsTitle: { fontSize: sf(14), lineHeight: sf(20), color: theme.text, fontWeight: '700', marginBottom: 4 },
+    newsSource: { fontSize: ft.ff(11), fontWeight: ft.emphasisWeight, color: theme.textDim },
+    newsTime: { fontSize: ft.ff(11), fontWeight: ft.metaWeight, color: theme.textMuted },
+    newsTitle: {
+      fontSize: ft.ff(13),
+      lineHeight: ft.ff(19),
+      color: theme.text,
+      fontWeight: ft.bodyWeight,
+      marginBottom: 4,
+    },
     empty: { fontSize: sf(13), color: theme.textMuted },
     sourceFootnote: {
       fontSize: sf(11),
@@ -448,10 +466,10 @@ export default function SymbolDetailScreen() {
   const { ticker: tickerParam } = useLocalSearchParams<{ ticker?: string | string[] }>();
   const ticker = useMemo(() => normalizeTicker(tickerParam), [tickerParam]);
   const router = useRouter();
-  const { theme, scaleFont } = useSignalTheme();
+  const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const quoteChange = useQuoteChangeColors();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);

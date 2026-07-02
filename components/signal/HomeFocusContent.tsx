@@ -33,6 +33,7 @@ import { useQuoteChangeColors } from '@/hooks';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
+import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
 import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
@@ -51,13 +52,24 @@ import {
 } from '@/services/homeWatchlistDisplayPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
-import { addDays, formatLocalYmdLabel, parseLocalYmd, toYmd, utcRangeForLocalYmd } from '@/utils/date';
+import type { CalendarEvent } from '@/types/signal';
+import {
+  addDays,
+  calendarEventDisplayYmd,
+  calendarEventInLocalYmdRange,
+  formatLocalYmdLabel,
+  parseLocalYmd,
+  toYmd,
+  utcRangeForLocalYmd,
+} from '@/utils/date';
 
 const ISSUE_FETCH_LIMIT = 24;
 const HOME_ISSUE_LIMIT = 6;
 const BRIEFING_LIMIT = 30;
 const HOME_SIGNAL_LIMIT = 4;
 const DISCLOSURE_LIMIT = 3;
+const HOME_CALENDAR_LIMIT = 6;
+const HOME_CALENDAR_LOOKAHEAD_DAYS = 14;
 
 type HomeFocusContentProps = {
   selectedYmd: string;
@@ -157,6 +169,41 @@ function signalSessionKeyForBriefing(row?: SignalApiMarketBriefing): SignalSessi
   )?.key;
 }
 
+function sortCalendarEvents(rows: CalendarEvent[]): CalendarEvent[] {
+  return [...rows].sort(
+    (a, b) =>
+      calendarEventDisplayYmd(a).localeCompare(calendarEventDisplayYmd(b)) ||
+      String(a.time || '').localeCompare(String(b.time || '')) ||
+      a.title.localeCompare(b.title),
+  );
+}
+
+function filterHomeCalendarEvents(
+  rows: CalendarEvent[],
+  watchlist: string[],
+  fromYmd: string,
+  toYmd: string,
+): CalendarEvent[] {
+  const watch = new Set(watchlist.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean));
+  return sortCalendarEvents(
+    rows.filter((row) => {
+      if (!calendarEventInLocalYmdRange(row, fromYmd, toYmd)) return false;
+      if (row.type === 'fed' || row.type === 'fomc' || row.type === 'holiday') return true;
+      if (row.type !== 'earnings') return false;
+      const symbol = String(row.symbol || '').trim().toUpperCase();
+      return !!symbol && watch.has(symbol);
+    }),
+  );
+}
+
+function calendarTypeLabelId(type: CalendarEvent['type']): MessageId {
+  if (type === 'earnings') return 'calendarTagEarnings';
+  if (type === 'fed') return 'calendarTagFed';
+  if (type === 'fomc') return 'calendarTagFomc';
+  if (type === 'holiday') return 'calendarTagHoliday';
+  return 'calendarTagMacro';
+}
+
 export function HomeFocusContent({
   selectedYmd,
   todayYmd,
@@ -183,6 +230,12 @@ export function HomeFocusContent({
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const [disclosures, setDisclosures] = useState<SignalApiDisclosureDigestItem[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const visibleCalendarEvents = useMemo(
+    () => calendarEvents.slice(0, HOME_CALENDAR_LIMIT),
+    [calendarEvents],
+  );
+  const hiddenCalendarCount = Math.max(0, calendarEvents.length - visibleCalendarEvents.length);
   const homeIssues = useMemo(
     () => [...issues].sort((a, b) => issueSortTime(b).localeCompare(issueSortTime(a)) || b.item.count - a.item.count).slice(0, HOME_ISSUE_LIMIT),
     [issues],
@@ -212,6 +265,7 @@ export function HomeFocusContent({
       setQuotes([]);
       setBriefings([]);
       setDisclosures([]);
+      setCalendarEvents([]);
       setError(t('errorSignalApiShort'));
       return;
     }
@@ -219,7 +273,7 @@ export function HomeFocusContent({
     try {
       const watchlist = await loadWatchlistSymbols();
       const symbols = watchlist.slice(0, watchlistDisplayCount);
-      const [nextIssues, quoteRows, briefings, disclosurePage] = await Promise.all([
+      const [nextIssues, quoteRows, briefings, disclosurePage, calendarRows] = await Promise.all([
         fetchTopIssues(selectedYmd),
         symbols.length > 0
           ? fetchSignalMarketQuotes({ symbols, limit: symbols.length }).catch(() => [] as SignalApiMarketQuote[])
@@ -228,6 +282,11 @@ export function HomeFocusContent({
         fetchSignalDisclosureDigests({ ...utcRangeForLocalYmd(selectedYmd), limit: DISCLOSURE_LIMIT, batches: 1 }).catch(
           () => ({ items: [] }),
         ),
+        fetchSignalCalendar({
+          from: shiftYmd(selectedYmd, -1),
+          to: shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
+          limit: 120,
+        }).catch(() => []),
       ]);
 
       const quoteBySymbol = new Map<string, QuoteRow>();
@@ -246,6 +305,16 @@ export function HomeFocusContent({
         uniqueVisibleBriefings([...briefings].sort((a, b) => sortBriefingTime(b).localeCompare(sortBriefingTime(a)))).slice(0, HOME_SIGNAL_LIMIT),
       );
       setDisclosures(disclosurePage.items.slice(0, DISCLOSURE_LIMIT));
+      setCalendarEvents(
+        filterHomeCalendarEvents(
+          calendarRows
+            .map((row) => signalCalendarToCalendarEvent(row))
+            .filter((row): row is CalendarEvent => row != null),
+          watchlist,
+          selectedYmd,
+          shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
+        ),
+      );
     } catch (e) {
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
     }
@@ -352,6 +421,20 @@ export function HomeFocusContent({
   const openDisclosures = useCallback(() => {
     router.navigate('/(tabs)/disclosures' as never);
   }, [router]);
+
+  const openCalendar = useCallback(() => {
+    router.navigate('/calendar' as never);
+  }, [router]);
+
+  const formatCalendarDateLabel = useCallback(
+    (event: CalendarEvent) =>
+      formatLocalYmdLabel(calendarEventDisplayYmd(event), locale, {
+        month: 'short',
+        day: 'numeric',
+        weekday: 'short',
+      }),
+    [locale],
+  );
 
   const renderIssueCard = useCallback(
     (rows: IssueRow[]) => (
@@ -493,6 +576,45 @@ export function HomeFocusContent({
     [locale, openDisclosures, showIssueSummary, styles, t],
   );
 
+  const renderCalendarCard = useCallback(
+    (rows: CalendarEvent[]) => (
+      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
+        <View style={styles.issueGroupList}>
+          {rows.map((event, index) => (
+            <Pressable
+              key={event.id}
+              onPress={openCalendar}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.issueGroupItem,
+                index < rows.length - 1 && styles.issueGroupItemBorder,
+                pressed && styles.pressed,
+              ]}>
+              <View style={styles.issueRowTop}>
+                <View style={styles.calendarPillRow}>
+                  <Text style={styles.calendarDatePill}>{formatCalendarDateLabel(event)}</Text>
+                  <Text style={styles.calendarTypePill}>{t(calendarTypeLabelId(event.type))}</Text>
+                  {event.symbol ? (
+                    <Text style={styles.issueInlineMetaText} numberOfLines={1}>
+                      {event.symbol}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
+                  {[event.time, event.country].filter(Boolean).join(' · ') || '—'}
+                </Text>
+              </View>
+              <Text style={styles.issueGroupTitle} numberOfLines={2}>
+                {event.title}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    ),
+    [formatCalendarDateLabel, openCalendar, showIssueSummary, styles, t],
+  );
+
   return (
     <WebWheelScrollView
       style={styles.scroll}
@@ -623,6 +745,38 @@ export function HomeFocusContent({
               <View style={styles.emptyCard}>
                 <HomeSectionAccentLine section="disclosure" />
                 <Text style={styles.emptyText}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
+              </View>
+            )}
+          </View>
+
+          <HomeSectionDivider />
+
+          <View style={styles.section}>
+            <HomeSectionHeader
+              title={t('ipadHomeCalendarTitle')}
+              subtitle={t('ipadHomeCalendarSubtitle')}
+              onPress={openCalendar}
+              accessibilityLabel={t('commonViewAll')}
+            />
+            {visibleCalendarEvents.length > 0 ? (
+              <>
+                {renderCalendarCard(visibleCalendarEvents)}
+                {hiddenCalendarCount > 0 ? (
+                  <Pressable
+                    onPress={openCalendar}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('ipadHomeCalendarMore', { count: String(hiddenCalendarCount) })}
+                    style={({ pressed }) => [styles.calendarMoreRow, pressed && styles.pressed]}>
+                    <Text style={styles.calendarMoreText}>
+                      {t('ipadHomeCalendarMore', { count: String(hiddenCalendarCount) })}
+                    </Text>
+                    <FontAwesome name="chevron-right" size={11} color={theme.textDim} />
+                  </Pressable>
+                ) : null}
+              </>
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>{t('ipadHomeCalendarEmpty')}</Text>
               </View>
             )}
           </View>
@@ -920,6 +1074,51 @@ function makeStyles(
       lineHeight: sf(15),
       fontWeight: ft.emphasisWeight,
       maxWidth: 120,
+    },
+    calendarPillRow: {
+      minWidth: 0,
+      flexShrink: 1,
+      flexGrow: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    calendarDatePill: {
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      overflow: 'hidden',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      backgroundColor: theme.greenDim,
+      color: theme.green,
+      fontSize: ft.ff(11),
+      lineHeight: sf(15),
+      fontWeight: ft.emphasisWeight,
+    },
+    calendarTypePill: {
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      overflow: 'hidden',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      backgroundColor: theme.bgElevated,
+      color: theme.textMuted,
+      fontSize: ft.ff(11),
+      lineHeight: sf(15),
+      fontWeight: ft.emphasisWeight,
+    },
+    calendarMoreRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: 4,
+      paddingTop: 2,
+    },
+    calendarMoreText: {
+      fontSize: ft.ff(12),
+      lineHeight: sf(16),
+      fontWeight: ft.metaWeight,
+      color: theme.textDim,
     },
     signalText: {
       fontSize: ft.signalBodyFont(14),

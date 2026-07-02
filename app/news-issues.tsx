@@ -19,6 +19,7 @@ import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import type { SignalApiNewsDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 import { toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
@@ -82,9 +83,9 @@ export function NewsIssuesContent({
   onBack,
 }: NewsIssuesContentProps) {
   const { useTwoPane } = useResponsiveLayout();
-  const { theme, scaleFont } = useSignalTheme();
+  const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const todayYmd = useRollingLocalYmd();
   const isWide = embedded || useTwoPane;
   const [category, setCategory] = useState<HomeDigestCategory>(initialCategory);
@@ -298,7 +299,7 @@ export default function NewsIssuesScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
   return StyleSheet.create({
     safe: { flex: 1, minHeight: 0, backgroundColor: theme.bg },
     scroll: { flex: 1, minHeight: 0 },
@@ -416,7 +417,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      padding: 14,
+      padding: ft.pad(14),
       gap: 9,
     },
     badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
@@ -440,26 +441,47 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
       color: theme.textMuted,
-      fontSize: sf(11),
-      lineHeight: sf(15),
-      fontWeight: '800',
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(15),
+      fontWeight: ft.emphasisWeight,
     },
     symbolChip: {
       color: theme.green,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
     },
-    cardTitle: { color: theme.text, fontSize: sf(17), lineHeight: sf(24), fontWeight: '900' },
-    summary: { color: theme.textMuted, fontSize: sf(13), lineHeight: sf(20), fontWeight: '700' },
+    cardTitle: {
+      color: theme.text,
+      fontSize: ft.ff(17),
+      lineHeight: ft.ff(24),
+      fontWeight: ft.titleWeight,
+    },
+    summary: {
+      color: theme.textMuted,
+      fontSize: ft.ff(13),
+      lineHeight: ft.ff(20),
+      fontWeight: ft.bodyWeight,
+    },
     footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-    meta: { flex: 1, minWidth: 0, color: theme.textDim, fontSize: sf(12), fontWeight: '800' },
+    meta: {
+      flex: 1,
+      minWidth: 0,
+      color: theme.textDim,
+      fontSize: ft.ff(12),
+      fontWeight: ft.metaWeight,
+    },
     sourceToggle: {
       paddingVertical: 5,
       paddingHorizontal: 9,
       borderRadius: 999,
       backgroundColor: theme.greenDim,
     },
-    sourceToggleText: { color: theme.green, fontSize: sf(12), lineHeight: sf(16), fontWeight: '900' },
+    sourceToggleText: {
+      color: theme.green,
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.emphasisWeight,
+    },
     sourceList: {
       overflow: 'hidden',
       borderRadius: 12,
@@ -477,8 +499,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomColor: theme.border,
     },
     sourceTextCol: { flex: 1, minWidth: 0, gap: 2 },
-    sourceTitle: { color: theme.text, fontSize: sf(13), lineHeight: sf(18), fontWeight: '800' },
-    sourceName: { color: theme.textMuted, fontSize: sf(11), lineHeight: sf(15), fontWeight: '700' },
+    sourceTitle: {
+      color: theme.text,
+      fontSize: ft.ff(13),
+      lineHeight: ft.ff(18),
+      fontWeight: ft.bodyWeight,
+    },
+    sourceName: {
+      color: theme.textMuted,
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(15),
+      fontWeight: ft.metaWeight,
+    },
     pressed: { opacity: 0.75 },
   });
 }

@@ -28,8 +28,8 @@ export function HomeSectionHeader({
       <View style={styles.titleRow}>
         <View style={styles.titleCol}>
           <View style={styles.titleLine}>
-            <Text style={styles.title}>{title}</Text>
             {badge}
+            <Text style={styles.title}>{title}</Text>
           </View>
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>

@@ -438,6 +438,13 @@ export function HomeFocusContent({
     router.navigate('/calendar' as never);
   }, [router]);
 
+  const openTodayBriefing = useCallback(() => {
+    router.navigate({
+      pathname: '/today-briefing',
+      params: { date: selectedYmd },
+    } as never);
+  }, [router, selectedYmd]);
+
   const formatCalendarDateLabel = useCallback(
     (event: CalendarEvent) =>
       formatLocalYmdLabel(calendarEventDisplayYmd(event), locale, {
@@ -449,39 +456,48 @@ export function HomeFocusContent({
   );
 
   const renderTodayBriefingCard = useCallback(
-    (item: SignalApiTodayBriefing) => (
-      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
-        <HomeSectionAccentLine section="signal" />
-        <View style={styles.issueGroupList}>
-          <View style={styles.issueGroupItem}>
-            <View style={styles.issueRowTop}>
-              <View style={styles.signalPillRow}>
-                <Text style={styles.marketPill}>SIGNAL</Text>
-                <Text style={styles.sessionBadge}>{item.title || t('ipadHomeTitle')}</Text>
-              </View>
-              {item.sourceRefs.length > 0 ? (
-                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                  {t('homeFocusSourceCount', { count: String(item.sourceRefs.length) })}
+    (item: SignalApiTodayBriefing) => {
+      const leadText = item.headline?.trim() || item.summary?.trim() || '';
+      const bodyText = item.summary?.trim() || '';
+      const previewText = bodyText && bodyText !== leadText ? bodyText : '';
+      return (
+        <Pressable
+          onPress={openTodayBriefing}
+          accessibilityRole="button"
+          accessibilityLabel={t('ipadHomeTitle')}
+          style={({ pressed }) => [
+            styles.heroCard,
+            showIssueSummary && styles.heroCardSummary,
+            pressed && styles.pressed,
+          ]}>
+          <HomeSectionAccentLine section="todayBriefing" />
+          <View style={styles.issueGroupList}>
+            <View style={styles.issueGroupItem}>
+              {leadText ? (
+                <Text style={styles.issueGroupTitle} numberOfLines={showIssueSummary ? 3 : 2}>
+                  {leadText}
                 </Text>
               ) : null}
+              {previewText ? (
+                <Text style={styles.signalText} numberOfLines={showIssueSummary ? 4 : 3}>
+                  {previewText}
+                </Text>
+              ) : null}
+              {item.keyPoints.length > 0 ? (
+                <View style={styles.overviewMiniList}>
+                  {item.keyPoints.slice(0, 2).map((point, index) => (
+                    <Text key={`${item.id}-point-${index}`} style={styles.issueGroupSummary} numberOfLines={1}>
+                      {point}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
             </View>
-            <Text style={styles.signalText} numberOfLines={showIssueSummary ? 4 : 3}>
-              {item.summary || item.headline}
-            </Text>
-            {item.keyPoints.length > 0 ? (
-              <View style={styles.overviewMiniList}>
-                {item.keyPoints.slice(0, 3).map((point, index) => (
-                  <Text key={`${item.id}-point-${index}`} style={styles.issueGroupSummary} numberOfLines={1}>
-                    {point}
-                  </Text>
-                ))}
-              </View>
-            ) : null}
           </View>
-        </View>
-      </View>
-    ),
-    [showIssueSummary, styles, t],
+        </Pressable>
+      );
+    },
+    [openTodayBriefing, showIssueSummary, styles, t],
   );
 
   const renderIssueCard = useCallback(
@@ -700,33 +716,33 @@ export function HomeFocusContent({
         </View>
       ) : (
         <>
-          {todayBriefing ? (
-            <>
+          <View style={styles.heroStack}>
+            {todayBriefing ? (
               <View style={styles.heroBlock}>
-                <View style={styles.heroHead}>
-                  <Text style={styles.heroKicker}>{t('ipadHomeTitle')}</Text>
-                  <HomeAiBadge />
-                </View>
+                <HomeSectionHeader
+                  title={t('ipadHomeTitle')}
+                  badge={<HomeAiBadge />}
+                  onPress={openTodayBriefing}
+                  accessibilityLabel={t('commonViewAll')}
+                />
                 {renderTodayBriefingCard(todayBriefing)}
               </View>
+            ) : null}
 
-              <HomeSectionDivider />
-            </>
-          ) : null}
-
-          <View style={styles.heroBlock}>
-            <View style={styles.heroHead}>
-              <Text style={styles.heroKicker}>{t('homeFocusHeroKicker')}</Text>
-              <HomeAiBadge />
-            </View>
-            {homeIssues.length > 0 ? (
-              renderIssueCard(homeIssues)
-            ) : (
-              <View style={styles.emptyCard}>
-                <HomeSectionAccentLine section="issues" opacity={0.55} />
-                <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
+            <View style={styles.heroBlock}>
+              <View style={styles.heroHead}>
+                <HomeAiBadge />
+                <Text style={styles.heroKicker}>{t('homeFocusHeroKicker')}</Text>
               </View>
-            )}
+              {homeIssues.length > 0 ? (
+                renderIssueCard(homeIssues)
+              ) : (
+                <View style={styles.emptyCard}>
+                  <HomeSectionAccentLine section="issues" opacity={0.55} />
+                  <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
+                </View>
+              )}
+            </View>
           </View>
 
           <HomeSectionDivider />
@@ -862,7 +878,7 @@ function makeStyles(
       flexGrow: 1,
       paddingHorizontal: 16,
       paddingTop: 14,
-      gap: 24,
+      gap: 18,
     },
     errorBox: {
       borderRadius: 14,
@@ -881,6 +897,9 @@ function makeStyles(
       minHeight: 260,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    heroStack: {
+      gap: 16,
     },
     heroBlock: {
       gap: 8,

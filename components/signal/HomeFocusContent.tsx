@@ -144,6 +144,12 @@ async function fetchTopIssues(date: string): Promise<IssueRow[]> {
   return results.flat().sort((a, b) => issueSortTime(b).localeCompare(issueSortTime(a)) || b.item.count - a.item.count);
 }
 
+async function fetchTodayBriefingWithFallback(date: string, locale: string): Promise<SignalApiTodayBriefing | null> {
+  const primary = await fetchSignalTodayBriefing({ date, locale }).catch(() => null);
+  if (primary || locale === 'ko') return primary;
+  return fetchSignalTodayBriefing({ date, locale: 'ko' }).catch(() => null);
+}
+
 function formatPrice(row: QuoteRow): string {
   const value = row.quote?.currentPrice;
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
@@ -278,7 +284,7 @@ export function HomeFocusContent({
       const watchlist = await loadWatchlistSymbols();
       const symbols = watchlist.slice(0, watchlistDisplayCount);
       const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows] = await Promise.all([
-        fetchSignalTodayBriefing({ date: selectedYmd, locale }).catch(() => null),
+        fetchTodayBriefingWithFallback(selectedYmd, locale),
         fetchTopIssues(selectedYmd),
         symbols.length > 0
           ? fetchSignalMarketQuotes({ symbols, limit: symbols.length }).catch(() => [] as SignalApiMarketQuote[])

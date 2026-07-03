@@ -832,7 +832,6 @@ export function HomeFocusContent({
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('ipadHomeCalendarTitle')}
-              subtitle={t('ipadHomeCalendarSubtitle')}
               onPress={openCalendar}
               accessibilityLabel={t('commonViewAll')}
             />

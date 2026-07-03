@@ -115,6 +115,37 @@ export type SignalApiMarketBriefing = {
   updatedAt: string | null;
 };
 
+export type SignalApiTodayBriefingSourceRef = {
+  kind?: string;
+  title: string;
+  url: string | null;
+  sourceName?: string | null;
+  publishedAt?: string | null;
+};
+
+export type SignalApiTodayBriefing = {
+  id: string;
+  locale: string;
+  title: string;
+  headline: string;
+  summary: string;
+  keyPoints: string[];
+  sections: unknown[];
+  marketSnapshot: Record<string, unknown> | null;
+  sourceRefs: SignalApiTodayBriefingSourceRef[];
+  relatedDigestIds: string[];
+  relatedMarketBriefingIds: string[];
+  generatedAt: string | null;
+  publishedAt: string | null;
+  briefingDate: string | null;
+  status: string;
+  pushCandidate: boolean;
+  pushTitle: string;
+  pushBody: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
 export type SignalApiNewsSource = {
   id: string;
   name: string;

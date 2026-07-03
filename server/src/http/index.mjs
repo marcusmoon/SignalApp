@@ -23,6 +23,7 @@ import { handleMarketDataProxyRoutes } from './public/v1/marketDataProxy.mjs';
 import { handlePublicMarketRoutes } from './public/v1/market.mjs';
 import { handlePublicNewsRoutes } from './public/v1/news.mjs';
 import { handlePublicNotificationRoutes } from './public/v1/notifications.mjs';
+import { handlePublicTodayBriefingRoutes } from './public/v1/todayBriefings.mjs';
 import { handlePublicYoutubeRoutes } from './public/v1/youtube.mjs';
 import { handlePublicMiscRoutes } from './public/routes.mjs';
 import { json } from './shared.mjs';
@@ -32,6 +33,7 @@ const PUBLIC_ROUTE_HANDLERS = [
   handlePublicAuthRoutes,
   handlePublicLegalRoutes,
   handlePublicMarketBriefingRoutes,
+  handlePublicTodayBriefingRoutes,
   handleMarketDataProxyRoutes,
   handlePublicNotificationRoutes,
   handlePublicNewsRoutes,

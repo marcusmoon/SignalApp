@@ -579,6 +579,23 @@ const collectionSpecs = [
     }),
   },
   {
+    key: 'todayBriefings',
+    store: 'insights',
+    table: 'today_briefings',
+    pk: 'id',
+    keyOf: (row) => row.id,
+    columns: (row, index) => ({
+      position: index,
+      locale: textOrNull(row.locale) || 'ko',
+      briefing_date: dateOrNull(row.briefingDate || row.generatedDate || row.publishedAt),
+      published_at: isoOrNull(row.publishedAt || row.generatedAt),
+      generated_at: isoOrNull(row.generatedAt || row.publishedAt),
+      status: textOrNull(row.status) || 'published',
+      push_candidate: row.pushCandidate === true,
+      updated_at: isoOrNull(row.updatedAt) || nowIso(),
+    }),
+  },
+  {
     key: 'notificationItems',
     store: 'insights',
     table: 'notification_items',

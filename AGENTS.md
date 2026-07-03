@@ -10,6 +10,7 @@
 | [docs/DATE-TIME.md](./docs/DATE-TIME.md) | 날짜·시간 UTC 규칙 (서버·앱) |
 | [docs/SERVER.md](./docs/SERVER.md) | 서버, DB, Job 운영 |
 | [docs/NEWS-ISSUE-AUTOMATION.md](./docs/NEWS-ISSUE-AUTOMATION.md) | Codex 예약 기반 뉴스 이슈 묶음 JSON 계약 |
+| [docs/TODAY-BRIEFING-AUTOMATION.md](./docs/TODAY-BRIEFING-AUTOMATION.md) | 홈 최상단 오늘의 브리핑 JSON 계약 |
 | [docs/EXPO-EAS-OPERATIONS.md](./docs/EXPO-EAS-OPERATIONS.md) | Expo/EAS 빌드와 OTA |
 | [docs/SOCIAL-AUTH.md](./docs/SOCIAL-AUTH.md) | 앱 사용자 인증과 소셜 로그인 |
 | [docs/SIGNAL-ADMIN-UIUX.md](./docs/SIGNAL-ADMIN-UIUX.md) | Admin UI 기준 |

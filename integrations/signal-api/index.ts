@@ -16,5 +16,6 @@ export * from '@/integrations/signal-api/notifications';
 export * from '@/integrations/signal-api/cache/newsCache';
 export * from '@/integrations/signal-api/newsSources';
 export * from '@/integrations/signal-api/stock';
+export * from '@/integrations/signal-api/todayBriefings';
 export * from '@/integrations/signal-api/types';
 export * from '@/integrations/signal-api/youtube';

@@ -38,6 +38,7 @@ npx tsc --noEmit
 | 시그널 | `app/(tabs)/signal.tsx`, `components/signal/MarketBriefingBlock.tsx` |
 | 뉴스 | `app/(tabs)/news.tsx`, `components/signal/NewsCard.tsx` |
 | 뉴스 이슈 자동화 | [NEWS-ISSUE-AUTOMATION.md](./NEWS-ISSUE-AUTOMATION.md), [schemas/news-issue-digest.v1.schema.json](./schemas/news-issue-digest.v1.schema.json) |
+| 오늘의 브리핑 자동화 | [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) |
 | 시세 | `app/(tabs)/quotes.tsx` |
 | 더보기 | `app/(tabs)/more.tsx` |
 | 유튜브 | `app/(tabs)/youtube.tsx` |

@@ -37,11 +37,13 @@ import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integratio
 import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
+import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefings';
 import type {
   SignalApiDisclosureDigestItem,
   SignalApiMarketBriefing,
   SignalApiMarketQuote,
   SignalApiNewsDigestItem,
+  SignalApiTodayBriefing,
 } from '@/integrations/signal-api/types';
 import type { MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
@@ -229,6 +231,7 @@ export function HomeFocusContent({
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
+  const [todayBriefing, setTodayBriefing] = useState<SignalApiTodayBriefing | null>(null);
   const [disclosures, setDisclosures] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const visibleCalendarEvents = useMemo(
@@ -264,6 +267,7 @@ export function HomeFocusContent({
       setIssues([]);
       setQuotes([]);
       setBriefings([]);
+      setTodayBriefing(null);
       setDisclosures([]);
       setCalendarEvents([]);
       setError(t('errorSignalApiShort'));
@@ -273,7 +277,8 @@ export function HomeFocusContent({
     try {
       const watchlist = await loadWatchlistSymbols();
       const symbols = watchlist.slice(0, watchlistDisplayCount);
-      const [nextIssues, quoteRows, briefings, disclosurePage, calendarRows] = await Promise.all([
+      const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows] = await Promise.all([
+        fetchSignalTodayBriefing({ date: selectedYmd, locale }).catch(() => null),
         fetchTopIssues(selectedYmd),
         symbols.length > 0
           ? fetchSignalMarketQuotes({ symbols, limit: symbols.length }).catch(() => [] as SignalApiMarketQuote[])
@@ -294,6 +299,7 @@ export function HomeFocusContent({
         const row = mapSignalQuoteToRow(item);
         for (const key of quoteLookupKeys(item, row)) quoteBySymbol.set(key, row);
       }
+      setTodayBriefing(todayBriefing);
       setIssues(nextIssues);
       setQuotes(
         symbols.map((symbol) => {
@@ -318,7 +324,7 @@ export function HomeFocusContent({
     } catch (e) {
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
     }
-  }, [selectedYmd, t, watchlistDisplayCount]);
+  }, [locale, selectedYmd, t, watchlistDisplayCount]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -434,6 +440,42 @@ export function HomeFocusContent({
         weekday: 'short',
       }),
     [locale],
+  );
+
+  const renderTodayBriefingCard = useCallback(
+    (item: SignalApiTodayBriefing) => (
+      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
+        <HomeSectionAccentLine section="signal" />
+        <View style={styles.issueGroupList}>
+          <View style={styles.issueGroupItem}>
+            <View style={styles.issueRowTop}>
+              <View style={styles.signalPillRow}>
+                <Text style={styles.marketPill}>SIGNAL</Text>
+                <Text style={styles.sessionBadge}>{item.title || t('ipadHomeTitle')}</Text>
+              </View>
+              {item.sourceRefs.length > 0 ? (
+                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
+                  {t('homeFocusSourceCount', { count: String(item.sourceRefs.length) })}
+                </Text>
+              ) : null}
+            </View>
+            <Text style={styles.signalText} numberOfLines={showIssueSummary ? 4 : 3}>
+              {item.summary || item.headline}
+            </Text>
+            {item.keyPoints.length > 0 ? (
+              <View style={styles.overviewMiniList}>
+                {item.keyPoints.slice(0, 3).map((point, index) => (
+                  <Text key={`${item.id}-point-${index}`} style={styles.issueGroupSummary} numberOfLines={1}>
+                    {point}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </View>
+    ),
+    [showIssueSummary, styles, t],
   );
 
   const renderIssueCard = useCallback(
@@ -652,6 +694,20 @@ export function HomeFocusContent({
         </View>
       ) : (
         <>
+          {todayBriefing ? (
+            <>
+              <View style={styles.heroBlock}>
+                <View style={styles.heroHead}>
+                  <Text style={styles.heroKicker}>{t('ipadHomeTitle')}</Text>
+                  <HomeAiBadge />
+                </View>
+                {renderTodayBriefingCard(todayBriefing)}
+              </View>
+
+              <HomeSectionDivider />
+            </>
+          ) : null}
+
           <View style={styles.heroBlock}>
             <View style={styles.heroHead}>
               <Text style={styles.heroKicker}>{t('homeFocusHeroKicker')}</Text>
@@ -911,6 +967,10 @@ function makeStyles(
       lineHeight: sf(17),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
+    },
+    overviewMiniList: {
+      gap: 2,
+      marginTop: 2,
     },
     issueGroupMetaText: {
       fontSize: ft.ff(10),

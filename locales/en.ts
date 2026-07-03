@@ -82,7 +82,7 @@ export const en = {
   screenCalendar: 'Invest calendar',
   screenDisclosures: 'Filings',
   screenSignal: 'Signal',
-  ipadHomeTitle: "Today's briefing",
+  ipadHomeTitle: 'Market wrap',
   ipadHomeIssuesTitle: 'Top issues',
   ipadHomeIssuesSubtitle: 'Key issues by category',
   ipadHomeIssuesEmpty: 'No top issues to show.',

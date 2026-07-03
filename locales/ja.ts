@@ -82,7 +82,7 @@ export const ja = {
   screenCalendar: '投資カレンダー',
   screenDisclosures: '開示',
   screenSignal: 'シグナル',
-  ipadHomeTitle: '今日のブリーフィング',
+  ipadHomeTitle: '市況まとめ',
   ipadHomeIssuesTitle: '主要イシュー',
   ipadHomeIssuesSubtitle: 'カテゴリ別の注目テーマ',
   ipadHomeIssuesEmpty: '表示する主要イシューがありません。',

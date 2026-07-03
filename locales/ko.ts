@@ -80,7 +80,7 @@ export const ko = {
   screenCalendar: '투자 캘린더',
   screenDisclosures: '공시',
   screenSignal: '시그널',
-  ipadHomeTitle: '오늘의 브리핑',
+  ipadHomeTitle: '시황 마감',
   ipadHomeIssuesTitle: '주요 이슈',
   ipadHomeIssuesSubtitle: '카테고리별 핵심 이슈',
   ipadHomeIssuesEmpty: '표시할 주요 이슈가 없습니다.',

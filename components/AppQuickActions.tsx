@@ -20,6 +20,7 @@ export function AppQuickActions() {
   const { locale } = useLocale();
   const { isAvailable: isIpadSidebar, showTabs } = useIpadSidebarNav();
   const handledInitialRef = useRef(false);
+  const lastHandledRef = useRef<{ key: string; at: number } | null>(null);
 
   const flushPending = useCallback(() => {
     if (!navReady) return;
@@ -28,6 +29,13 @@ export function AppQuickActions() {
 
     const href = quickActionHref(action);
     if (!href) return;
+
+    const actionKey = `${action.id}:${typeof href === 'string' ? href : JSON.stringify(href)}`;
+    const now = Date.now();
+    if (lastHandledRef.current?.key === actionKey && now - lastHandledRef.current.at < 3000) {
+      return;
+    }
+    lastHandledRef.current = { key: actionKey, at: now };
 
     if (isIpadSidebar) {
       showTabs();

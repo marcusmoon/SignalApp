@@ -18,6 +18,7 @@ const sceneConfigurationMethod = `#if os(iOS) || os(tvOS)
 const sceneDelegateClass = `class SceneDelegate: UIResponder, UIWindowSceneDelegate {
   ${SCENE_DELEGATE_MARKER}
   var window: UIWindow?
+  private var pendingShortcutItem: UIApplicationShortcutItem?
 
   func scene(
     _ scene: UIScene,
@@ -49,6 +50,10 @@ const sceneDelegateClass = `class SceneDelegate: UIResponder, UIWindowSceneDeleg
 
     for userActivity in connectionOptions.userActivities {
       self.scene(scene, continue: userActivity)
+    }
+
+    if let shortcutItem = connectionOptions.shortcutItem {
+      dispatchQuickAction(shortcutItem)
     }
   }
 
@@ -104,6 +109,37 @@ const sceneDelegateClass = `class SceneDelegate: UIResponder, UIWindowSceneDeleg
       continue: userActivity,
       restorationHandler: { _ in })
   }
+
+  func windowScene(
+    _ windowScene: UIWindowScene,
+    performActionFor shortcutItem: UIApplicationShortcutItem,
+    completionHandler: @escaping (Bool) -> Void
+  ) {
+    dispatchQuickAction(shortcutItem)
+    completionHandler(true)
+  }
+
+  private func dispatchQuickAction(_ shortcutItem: UIApplicationShortcutItem, attempt: Int = 0) {
+    pendingShortcutItem = shortcutItem
+
+    let delay = attempt == 0 ? 0.25 : 0.45
+    DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+      guard let self,
+        let pending = self.pendingShortcutItem,
+        pending.type == shortcutItem.type
+      else {
+        return
+      }
+
+      NotificationCenter.default.post(name: Notification.Name("onQuickAction"), object: pending)
+
+      if attempt < 5 {
+        self.dispatchQuickAction(pending, attempt: attempt + 1)
+      } else {
+        self.pendingShortcutItem = nil
+      }
+    }
+  }
 }
 `;
 
@@ -144,7 +180,19 @@ function normalizeSceneConfigurationMethod(contents) {
 
 function patchAppDelegate(contents) {
   if (contents.includes(SCENE_DELEGATE_MARKER)) {
-    return contents;
+    if (contents.includes('dispatchQuickAction(_ shortcutItem: UIApplicationShortcutItem')) {
+      return contents;
+    }
+
+    const reactNativeDelegateMarker = '\nclass ReactNativeDelegate: ExpoReactNativeFactoryDelegate';
+    if (!contents.includes(reactNativeDelegateMarker)) {
+      throw new Error('Could not find ReactNativeDelegate to update SceneDelegate.');
+    }
+
+    return removeLegacySceneDelegate(contents).replace(
+      reactNativeDelegateMarker,
+      `\n${sceneDelegateClass}${reactNativeDelegateMarker}`,
+    );
   }
 
   let nextContents = contents;

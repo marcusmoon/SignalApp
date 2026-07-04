@@ -1,11 +1,14 @@
+import * as WebBrowser from 'expo-web-browser';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CommunityPostDetailContent } from '@/components/community/CommunityPostDetailContent';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { communityShowsOriginalLink } from '@/constants/communitySources';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -61,9 +64,29 @@ export default function CommunityPostDetailScreen() {
     }
   }, [load]);
 
+  const originalUrl = item?.sourceUrl?.trim() || '';
+  const showOriginalLink = Boolean(item && communityShowsOriginalLink(item.source) && originalUrl.length > 0);
+
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <Stack.Screen options={{ title: t('communityDetailTitle') }} />
+      <Stack.Screen
+        options={{
+          title: t('communityDetailTitle'),
+          headerRight: showOriginalLink
+            ? () => (
+                <Pressable
+                  onPress={() => void WebBrowser.openBrowserAsync(originalUrl)}
+                  hitSlop={10}
+                  accessibilityRole="link"
+                  accessibilityLabel={t('communityOriginalOpen')}
+                  style={({ pressed }) => [styles.headerLink, pressed && styles.headerLinkPressed]}>
+                  <Text style={styles.headerLinkText}>{t('communityOriginalOpen')}</Text>
+                  <FontAwesome name="external-link" size={12} color={theme.green} />
+                </Pressable>
+              )
+            : undefined,
+        }}
+      />
       {loading ? (
         <View style={styles.loadingWrap}>
           <SignalLoadingIndicator message={t('commonLoading')} />
@@ -104,6 +127,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '800',
       textAlign: 'center',
       padding: 20,
+    },
+    headerLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingRight: 4,
+    },
+    headerLinkPressed: { opacity: 0.65 },
+    headerLinkText: {
+      color: theme.green,
+      fontSize: sf(13),
+      fontWeight: '800',
     },
   });
 }

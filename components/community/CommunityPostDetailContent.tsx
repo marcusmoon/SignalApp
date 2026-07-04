@@ -1,11 +1,8 @@
-import * as WebBrowser from 'expo-web-browser';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { CommunityPostBody } from '@/components/community/CommunityPostBody';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
-import { communityShowsOriginalLink } from '@/constants/communitySources';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -24,8 +21,6 @@ export function CommunityPostDetailContent({ item, bottomPad = 24 }: Props) {
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const sourceLabelId = communitySourceLabelId(item.source);
   const timeLabel = item.publishedAt ? formatRelativeFromIso(item.publishedAt, locale) : '—';
-  const originalUrl = item.sourceUrl?.trim() || '';
-  const showOriginalLink = communityShowsOriginalLink(item.source) && originalUrl.length > 0;
 
   return (
     <View style={[styles.wrap, { paddingBottom: bottomPad }]}>
@@ -36,14 +31,6 @@ export function CommunityPostDetailContent({ item, bottomPad = 24 }: Props) {
           </View>
           <Text style={styles.time}>{timeLabel}</Text>
         </View>
-
-        {showOriginalLink ? (
-          <Pressable onPress={() => void WebBrowser.openBrowserAsync(originalUrl)} style={styles.openBtn}>
-            <Text style={styles.openText}>{t('communityOriginalOpen')}</Text>
-            <FontAwesome name="external-link" size={13} color={theme.green} />
-          </Pressable>
-        ) : null}
-
         <Text style={styles.title}>{item.title}</Text>
       </View>
 
@@ -105,24 +92,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       backgroundColor: theme.bgElevated,
       paddingHorizontal: 16,
       paddingVertical: 18,
-    },
-    openBtn: {
-      minHeight: 40,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
-      gap: 8,
-      alignSelf: 'flex-start',
-      paddingHorizontal: 14,
-    },
-    openText: {
-      color: theme.green,
-      fontSize: sf(14),
-      fontWeight: '900',
     },
   });
 }

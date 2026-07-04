@@ -1,6 +1,5 @@
 import { useRouter } from 'expo-router';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
@@ -24,15 +23,12 @@ export function CommunityPostCard({ item, sourceLabelId }: Props) {
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const timeLabel = item.publishedAt ? formatRelativeFromIso(item.publishedAt, locale) : '—';
 
-  const openDetail = useCallback(() => {
-    router.push(`/community/${encodeURIComponent(item.id)}`);
-  }, [item.id, router]);
-
   return (
     <Pressable
-      onPress={openDetail}
+      onPress={() => {
+        router.push(`/community/${encodeURIComponent(item.id)}`);
+      }}
       accessibilityRole="button"
-      accessibilityHint={t('communityReadBody')}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <View style={styles.metaRow}>
         <Text style={styles.source}>{t(sourceLabelId)}</Text>
@@ -44,10 +40,6 @@ export function CommunityPostCard({ item, sourceLabelId }: Props) {
       <Text style={styles.body} numberOfLines={6}>
         {item.body}
       </Text>
-      <View style={styles.detailFooter} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        <Text style={styles.detailLinkText}>{t('communityReadBody')}</Text>
-        <FontAwesome name="angle-right" size={14} color={theme.green} />
-      </View>
     </Pressable>
   );
 }
@@ -78,19 +70,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: 10,
-    },
-    detailFooter: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      gap: 2,
-      marginTop: 2,
-    },
-    detailLinkText: {
-      fontSize: ft.ff(12),
-      lineHeight: sf(16),
-      fontWeight: '800',
-      color: theme.green,
     },
     source: {
       flexShrink: 1,

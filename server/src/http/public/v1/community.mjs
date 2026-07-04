@@ -1,4 +1,4 @@
-import { queryPublicCommunityPostById, queryPublicCommunityRows } from '../../../db.mjs';
+import { queryPublicCommunity, queryPublicCommunityPostById } from '../../../db.mjs';
 import { COMMUNITY_SOURCES } from '../../../db/repositories/communityRepository.mjs';
 import { json } from '../../shared.mjs';
 
@@ -20,7 +20,7 @@ export async function handlePublicCommunityRoutes({ req, res, url, pathname }) {
   }
 
   if (req.method === 'GET' && pathname === '/v1/community') {
-    const page = await queryPublicCommunityRows({
+    const page = await queryPublicCommunity({
       source: url.searchParams.get('source') || '',
       q: url.searchParams.get('q') || '',
       from: url.searchParams.get('from') || '',

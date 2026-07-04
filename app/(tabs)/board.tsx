@@ -153,7 +153,6 @@ export default function BoardScreen() {
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane ? <SignalHeader compact /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
-      <Text style={styles.screenTitle}>{t('screenBoard')}</Text>
       <View style={styles.filterRow}>
         {COMMUNITY_SOURCE_ORDER.map((key) => {
           const active = source === key;
@@ -218,17 +217,6 @@ export default function BoardScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: theme.bg },
-    screenTitle: {
-      width: '100%',
-      maxWidth: APP_CONTENT_MAX_WIDTH,
-      alignSelf: 'center',
-      paddingHorizontal: 16,
-      paddingTop: 8,
-      fontSize: sf(22),
-      lineHeight: sf(28),
-      fontWeight: '800',
-      color: theme.text,
-    },
     filterRow: {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,

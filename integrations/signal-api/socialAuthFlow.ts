@@ -183,7 +183,9 @@ export async function obtainSocialCredential(
     const result = await request.promptAsync(kakaoDiscovery as AuthSession.DiscoveryDocument);
     if (result.type === 'cancel' || result.type === 'dismiss') throw new SocialAuthCancelledError();
     if (result.type !== 'success') {
-      const kakaoErr = String(result.params?.error || result.errorCode || '');
+      const maybeParams = 'params' in result ? result.params : undefined;
+      const maybeErrorCode = 'errorCode' in result ? result.errorCode : undefined;
+      const kakaoErr = String(maybeParams?.error || maybeErrorCode || '');
       if (/KOE006/i.test(kakaoErr)) {
         throw new SocialAuthFlowError(`kakao_redirect_uri:${redirectUri}`);
       }

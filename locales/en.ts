@@ -46,6 +46,7 @@ export const en = {
   communityErrorLoad: 'Could not load the board.',
   communityDetailTitle: 'Post',
   communityOriginalOpen: 'Open original',
+  communityOriginalShort: 'Source',
   newsOpenVideos: 'Video',
   moreHubSegmentDragHandleA11y: 'Reorder {{name}} (drag)',
   moreRefLinksKicker: 'Quick links',

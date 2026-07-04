@@ -49,17 +49,17 @@ export function CommunityPostDetailContent({ item, bottomPad = 24, refreshing = 
             </View>
             <Text style={styles.time}>{timeLabel}</Text>
           </View>
-          <View style={styles.titleBlock}>
+          <View style={styles.titleRow}>
             <Text style={styles.title}>{item.title}</Text>
             {showOriginalLink ? (
               <Pressable
                 onPress={() => void WebBrowser.openBrowserAsync(originalUrl)}
                 accessibilityRole="link"
                 accessibilityLabel={t('communityOriginalOpen')}
-                hitSlop={6}
+                hitSlop={8}
                 style={({ pressed }) => [styles.originalLink, pressed && styles.pressed]}>
-                <Text style={styles.originalLinkText}>{t('communityOriginalOpen')}</Text>
-                <FontAwesome name="external-link" size={10} color={accent.accent} />
+                <Text style={styles.originalLinkText}>{t('communityOriginalShort')}</Text>
+                <FontAwesome name="external-link" size={9} color={accent.accent} />
               </Pressable>
             ) : null}
           </View>
@@ -141,10 +141,14 @@ function makeStyles(
       color: theme.textDim,
       textAlign: 'right',
     },
-    titleBlock: {
-      gap: 4,
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
     },
     title: {
+      flex: 1,
+      minWidth: 0,
       color: theme.text,
       fontSize: ft.ff(22),
       lineHeight: sf(30),
@@ -152,17 +156,17 @@ function makeStyles(
       letterSpacing: -0.2,
     },
     originalLink: {
-      alignSelf: 'flex-start',
+      flexShrink: 0,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
-      marginTop: 1,
+      gap: 3,
+      marginTop: 5,
     },
     originalLinkText: {
       color: accent.accent,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
-      fontWeight: ft.emphasisWeight,
+      fontSize: ft.ff(10),
+      lineHeight: sf(13),
+      fontWeight: ft.metaWeight,
     },
     bodyScroll: {
       ...webScrollViewportStyle,

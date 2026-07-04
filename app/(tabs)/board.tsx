@@ -22,6 +22,7 @@ import { webFlexFill, webScrollViewportStyle, WEB_FLATLIST_BATCH, WEB_FLATLIST_I
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { fetchSignalCommunity } from '@/integrations/signal-api/community';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiCommunityPost, SignalCommunityListMeta } from '@/integrations/signal-api/types';
@@ -44,6 +45,7 @@ export default function BoardScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
+  const { useTwoPane } = useResponsiveLayout();
   const [source, setSource] = useState<CommunitySourceFilter>(COMMUNITY_SOURCE_ALL);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -148,8 +150,8 @@ export default function BoardScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <SignalHeader compact />
+    <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
+      {!useTwoPane ? <SignalHeader compact /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
       <Text style={styles.screenTitle}>{t('screenBoard')}</Text>
       <View style={styles.filterRow}>

@@ -8,7 +8,7 @@ function cleanText(value) {
 }
 
 function postUrl(postId) {
-  return `https://www.saveticker.com/community/detail/${postId}`;
+  return `https://www.saveticker.com/community/${postId}`;
 }
 
 function normalizeRow(post) {

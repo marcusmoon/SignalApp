@@ -11,7 +11,7 @@ function cleanText(value) {
 }
 
 function articleUrl(articleId) {
-  return `https://cafe.naver.com/ArticleRead.nhn?clubid=${CLUB_ID}&articleid=${articleId}`;
+  return `https://m.cafe.naver.com/ca-fe/web/cafes/${CLUB_ID}/articles/${articleId}`;
 }
 
 function normalizeRow(item) {

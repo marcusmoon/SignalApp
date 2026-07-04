@@ -12,6 +12,33 @@ const ROW_COLUMNS = `
   published_at, fetched_at, updated_at
 `;
 
+const NAVER_LIKEUSSTOCK_CLUB_ID = '28497937';
+
+function naverCafeMobileUrl(articleId) {
+  const id = cleanText(articleId);
+  return id ? `https://m.cafe.naver.com/ca-fe/web/cafes/${NAVER_LIKEUSSTOCK_CLUB_ID}/articles/${id}` : null;
+}
+
+function publicSourceUrl(row) {
+  const raw = cleanText(row?.source_url);
+  if (row?.source === 'naver_likeusstock_free') {
+    if (!raw) return naverCafeMobileUrl(row?.provider_item_id);
+    try {
+      const parsed = new URL(raw);
+      const articleId = parsed.searchParams.get('articleid') || parsed.pathname.match(/\/articles\/([^/?#]+)/)?.[1];
+      return naverCafeMobileUrl(articleId || row?.provider_item_id) || raw;
+    } catch {
+      return naverCafeMobileUrl(row?.provider_item_id) || raw;
+    }
+  }
+  if (row?.source === 'save_user_news') {
+    if (raw) return raw.replace('/community/detail/', '/community/');
+    const postId = cleanText(row?.provider_item_id);
+    return postId ? `https://www.saveticker.com/community/${postId}` : null;
+  }
+  return raw || null;
+}
+
 function publicCommunityPost(row) {
   if (!row) return null;
   return {
@@ -20,7 +47,7 @@ function publicCommunityPost(row) {
     provider: row.provider || null,
     title: row.title || '',
     body: row.body || '',
-    sourceUrl: row.source_url || null,
+    sourceUrl: publicSourceUrl(row),
     publishedAt: parseToUtcIsoOrNull(row.published_at),
     fetchedAt: parseToUtcIsoOrNull(row.fetched_at),
     updatedAt: parseToUtcIsoOrNull(row.updated_at),

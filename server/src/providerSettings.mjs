@@ -18,6 +18,12 @@ const FALLBACKS = {
 
 const LLM_PROVIDERS = new Set(['openai', 'claude']);
 
+/** Providers shown in Admin > Provider settings. */
+export const PUBLIC_PROVIDER_SETTING_IDS = ['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko', 'dart'];
+
+/** Providers allowed for PATCH /admin/api/provider-settings/:id (includes legacy ids). */
+export const PATCHABLE_PROVIDER_SETTING_IDS = [...PUBLIC_PROVIDER_SETTING_IDS, 'sec', 'rss'];
+
 export function maskSecret(value) {
   const s = String(value || '');
   if (!s) return '';
@@ -45,7 +51,7 @@ export async function getProviderSetting(provider) {
 }
 
 export async function listProviderSettingsPublic() {
-  const providers = ['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko', 'dart'];
+  const providers = PUBLIC_PROVIDER_SETTING_IDS;
   const rows = await findProviderSettings(providers);
   const byProvider = new Map(rows.map((row) => [row.provider, row.payload]));
   return providers.map((provider) => {

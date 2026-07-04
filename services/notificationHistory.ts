@@ -86,15 +86,27 @@ async function saveDismissedNotificationIds(ids: string[]): Promise<void> {
 }
 
 export async function removeNotificationById(id: string): Promise<void> {
-  if (id.startsWith('server:')) {
-    const dismissed = await loadDismissedNotificationIds();
-    if (dismissed.has(id)) return;
-    await saveDismissedNotificationIds([id, ...dismissed]);
-    return;
+  await removeNotificationsByIds([id]);
+}
+
+export async function removeNotificationsByIds(ids: readonly string[]): Promise<void> {
+  if (!ids.length) return;
+  const serverIds: string[] = [];
+  const localIds = new Set<string>();
+  for (const id of ids) {
+    if (id.startsWith('server:')) serverIds.push(id);
+    else localIds.add(id);
   }
-  const list = await loadNotificationHistory();
-  const next = list.filter((item) => item.id !== id);
-  if (next.length !== list.length) await save(next);
+  if (serverIds.length) {
+    const dismissed = await loadDismissedNotificationIds();
+    const next = new Set([...serverIds, ...dismissed]);
+    await saveDismissedNotificationIds([...next]);
+  }
+  if (localIds.size) {
+    const list = await loadNotificationHistory();
+    const next = list.filter((item) => !localIds.has(item.id));
+    if (next.length !== list.length) await save(next);
+  }
 }
 
 export async function clearNotificationHistory(): Promise<void> {

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RectButton } from 'react-native-gesture-handler';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,13 +15,13 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { markAlertsSeen } from '@/services/alertsUnreadPreference';
-import { loadNotificationHistory, loadDismissedNotificationIds, removeNotificationById, type StoredNotification } from '@/services/notificationHistory';
+import { loadNotificationHistory, loadDismissedNotificationIds, removeNotificationById, removeNotificationsByIds, type StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
 import { loadAppAuthSession, getSessionAccessToken, type StoredAppAuthSession } from '@/services/appAuthSession';
 import { fetchSignalNotifications } from '@/integrations/signal-api/notifications';
 import { formatRelativeTime } from '@/utils/date';
 
-import { alertMatchesFilter, type AlertsFilter } from '@/domain/alerts/notificationCategory';
+import { alertMatchesFilter, alertTypeMessageId, type AlertsFilter } from '@/domain/alerts/notificationCategory';
 import { resolveAlertHref } from '@/domain/alerts/alertNavigation';
 import type { Href } from 'expo-router';
 
@@ -100,8 +100,7 @@ export default function AlertsScreen() {
         { key: 'all', label: t('alertsFilterAll') },
         { key: 'high', label: t('alertsFilterHigh') },
         { key: 'signal', label: t('alertsFilterSignal') },
-        { key: 'notice', label: t('alertsFilterNotice') },
-        { key: 'account', label: t('alertsFilterAccount') },
+        { key: 'system', label: t('alertsFilterSystem') },
       ] as const,
     [t],
   );
@@ -129,6 +128,22 @@ export default function AlertsScreen() {
     await removeNotificationById(id);
   }, []);
 
+  const onDeleteAllAlerts = useCallback(() => {
+    if (items.length === 0) return;
+    Alert.alert(t('alertsDeleteAllConfirmTitle'), t('alertsDeleteAllConfirmBody'), [
+      { text: t('commonCancel'), style: 'cancel' },
+      {
+        text: t('alertsSwipeDelete'),
+        style: 'destructive',
+        onPress: () => {
+          const ids = items.map((item) => item.id);
+          setItems([]);
+          void removeNotificationsByIds(ids);
+        },
+      },
+    ]);
+  }, [items, t]);
+
   const filteredItems = useMemo(
     () => items.filter((item) => alertMatchesFilter(item, filter)),
     [filter, items],
@@ -155,9 +170,21 @@ export default function AlertsScreen() {
           </View>
           {settingsButton}
         </View>
+        {items.length > 0 ? (
+          <View style={styles.listActionsRow}>
+            <Pressable
+              onPress={onDeleteAllAlerts}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={t('alertsDeleteAllA11y')}
+              style={({ pressed }) => [styles.deleteAllBtn, pressed && styles.deleteAllBtnPressed]}>
+              <Text style={styles.deleteAllText}>{t('alertsDeleteAll')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </>
     ),
-    [alertFilters, filter, settingsButton, styles, t],
+    [alertFilters, filter, items.length, onDeleteAllAlerts, settingsButton, styles, t],
   );
 
   const onOpenAlert = useCallback(
@@ -171,10 +198,13 @@ export default function AlertsScreen() {
   const renderAlert = useCallback(
     ({ item: a }: { item: StoredNotification }) => {
       const href = resolveAlertHref(a);
+      const typeLabel = t(alertTypeMessageId(a));
       const card = (
         <View style={styles.alertCard}>
           <View style={styles.alertTop}>
-            <Text style={styles.alertTitle}>{a.title}</Text>
+            <View style={styles.typeBadge}>
+              <Text style={styles.typeBadgeText}>{typeLabel}</Text>
+            </View>
             {a.high ? (
               <View style={styles.high}>
                 <Text style={styles.highText}>{t('alertsHighBadge')}</Text>
@@ -183,6 +213,7 @@ export default function AlertsScreen() {
               <Text style={styles.time}>{formatRelativeTime(a.receivedAt, locale)}</Text>
             )}
           </View>
+          <Text style={styles.alertTitle}>{a.title}</Text>
           <Text style={styles.alertBody}>{a.body}</Text>
           {a.high ? <Text style={styles.timeRight}>{formatRelativeTime(a.receivedAt, locale)}</Text> : null}
         </View>
@@ -208,7 +239,7 @@ export default function AlertsScreen() {
               onPress={() => onOpenAlert(a)}
               style={({ pressed }) => [pressed && styles.alertCardPressed]}
               accessibilityRole="button"
-              accessibilityLabel={a.title}>
+              accessibilityLabel={`${typeLabel}. ${a.title}`}>
               {card}
             </Pressable>
           ) : (
@@ -334,6 +365,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     filterTabText: { fontSize: sf(12), fontWeight: '800', color: theme.textMuted },
     filterTabTextActive: { color: theme.green },
+    listActionsRow: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      marginBottom: 10,
+    },
+    deleteAllBtn: {
+      minHeight: 32,
+      paddingHorizontal: 4,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    deleteAllBtnPressed: { opacity: 0.65 },
+    deleteAllText: { fontSize: sf(12), fontWeight: '800', color: theme.textDim },
     candidateSection: {
       marginBottom: 14,
       padding: 14,
@@ -408,8 +452,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(15),
       fontWeight: '800',
     },
-    alertTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-    alertTitle: { fontSize: sf(13), fontWeight: '700', color: theme.text, flex: 1, paddingRight: 8 },
+    alertTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    typeBadge: {
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 999,
+    },
+    typeBadgeText: { fontSize: sf(10), fontWeight: '900', color: theme.green },
+    alertTitle: { fontSize: sf(13), fontWeight: '700', color: theme.text, marginBottom: 6 },
     alertBody: { fontSize: sf(12), color: theme.textMuted, lineHeight: sf(18) },
     time: { fontSize: sf(11), color: theme.textDim },
     timeRight: { fontSize: sf(11), color: theme.textDim, marginTop: 6 },

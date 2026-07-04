@@ -489,8 +489,8 @@ export const ja = {
   settingsPushEnabled: 'プッシュ通知',
   settingsPushEnabledHint:
     'この端末でサーバープッシュを受け取るかどうかのマスター設定です。登録にはログインが必要です。ブリーフィングプッシュは下で切り替えできます。',
-  settingsBriefingPushEnabled: '市場ブリーフィングプッシュ',
-  settingsBriefingPushEnabledHint: 'プレマーケット・引け後・オーバーナイトなどの市場ブリーフィングをプッシュで受け取ります。',
+  settingsBriefingPushEnabled: 'AIブリーフィング通知',
+  settingsBriefingPushEnabledHint: '引けブリーフィング、ニュース、市場ブリーフィングの到着を通知とプッシュで受け取ります。',
   settingsEarningsOnly: '決算のみ',
   settingsCalendarReminders: '投資予定リマインダー',
   settingsCalendarRemindersHint: 'CPI・FOMC など主要な経済予定を端末の現地時刻で通知します。',

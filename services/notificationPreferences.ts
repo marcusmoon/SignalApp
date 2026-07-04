@@ -5,7 +5,7 @@ const KEY = '@signal/notification_prefs_v1';
 export type NotificationPrefs = {
   /** OS 권한 + 서버 디바이스 등록 마스터 */
   pushEnabled: boolean;
-  /** market_briefing 푸시 수신 */
+  /** market wrap · news flow · market briefing 푸시 수신 */
   briefingPushEnabled: boolean;
   /** 기기 로컬 알림: CPI·FOMC 등 경제 캘린더(다음 10일, 하루 1회 요약 시각) */
   localMacroCalendar: boolean;
@@ -28,7 +28,14 @@ export function shouldRecordIncomingPush(
   if (normalizedType === 'insight_signal' || normalizedSource === 'insight') {
     return false;
   }
-  if (normalizedType === 'market_briefing' || normalizedSource === 'market_briefing') {
+  const isBriefingPush =
+    normalizedType === 'market_briefing' ||
+    normalizedSource === 'market_briefing' ||
+    normalizedType === 'today_briefing' ||
+    normalizedSource === 'today_briefing' ||
+    normalizedType === 'news_digest' ||
+    normalizedSource === 'news_digest';
+  if (isBriefingPush) {
     return prefs.briefingPushEnabled;
   }
   return true;

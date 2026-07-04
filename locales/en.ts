@@ -489,8 +489,8 @@ export const en = {
   settingsPushEnabled: 'Push notifications',
   settingsPushEnabledHint:
     'Master switch for server push on this device. Requires sign-in to register. Toggle briefing push below.',
-  settingsBriefingPushEnabled: 'Market briefing push',
-  settingsBriefingPushEnabledHint: 'Receive pushes for pre-market, post-market, and overnight briefings.',
+  settingsBriefingPushEnabled: 'AI briefing alerts',
+  settingsBriefingPushEnabledHint: 'Get alerts and push for market wrap, news flow, and market briefings.',
   settingsEarningsOnly: 'Earnings alerts only',
   settingsCalendarReminders: 'Investment schedule reminders',
   settingsCalendarRemindersHint: 'Notify major macro economic events in device local time.',

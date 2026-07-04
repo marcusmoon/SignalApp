@@ -5,7 +5,7 @@ import {
   upsertCollectionRows,
   upsertNotificationItem,
 } from '../../../db.mjs';
-import { createNotificationItem } from '../../../notifications/outbox.mjs';
+import { createNotificationItem, NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
 import { config } from '../../../config.mjs';
 import { json, readBody } from '../../shared.mjs';
 
@@ -23,9 +23,15 @@ function hasIngestAccess(req) {
 
 async function maybeQueueDigestPush(item) {
   if (!item?.pushCandidate) return null;
+  const category = cleanText(item?.category) || 'global';
+  const date = cleanText(item?.generatedDate).slice(0, 10);
+  const digestId = cleanText(item?.id);
+  const params = new URLSearchParams({ category });
+  if (date) params.set('date', date);
+  if (digestId) params.set('digestId', digestId);
   const notification = createNotificationItem({
     id: `notification:push:news_digest:${item.id}`,
-    type: 'news_digest',
+    type: NOTIFICATION_TYPES.newsDigest,
     title: item.pushTitle || item.title,
     body: item.pushBody || item.summary,
     channel: 'push',
@@ -34,10 +40,10 @@ async function maybeQueueDigestPush(item) {
     targetType: 'all',
     sourceType: 'news_digest',
     sourceId: item.id,
-    deepLink: '/news',
-    reason: `news digest updated: ${item.category}`,
+    deepLink: `/news-issues?${params.toString()}`,
+    reason: `news digest updated: ${category}`,
     scheduledAt: item.generatedAt,
-    payload: { digestId: item.id, category: item.category },
+    payload: { digestId: item.id, category },
   });
   if (!notification) return null;
   return upsertNotificationItem(notification);

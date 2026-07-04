@@ -52,7 +52,9 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
   "generatedAt": "2026-07-03T14:00:00Z",
   "publishedAt": "2026-07-03T14:00:00Z",
   "status": "published",
-  "pushCandidate": false
+  "pushCandidate": true,
+  "pushTitle": "마감 브리핑 도착",
+  "pushBody": "오늘 시장을 한눈에 정리했습니다."
 }
 ```
 
@@ -61,4 +63,5 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
 - 매일 23:00 KST 실행을 기본으로 한다.
 - dry-run 확인 전에는 `/v1/today-briefings/ingest`를 호출하지 않는다.
 - Signal Server GET API 응답에 없는 출처, URL, 수치, 제목은 만들지 않는다.
-- 확인 후 ingest할 때도 `sendPush`는 사용하지 않는다. 오늘의 브리핑은 홈 노출용이며 푸시는 별도 정책으로 다룬다.
+- 확인 후 ingest 시 `pushCandidate=true`(기본)이면 알림 outbox에 등록된다. `sendPush=false`로 푸시만 건너뛸 수 있다.
+- 푸시 `deepLink`는 `/today-briefing?date=<briefingDate>`이다.

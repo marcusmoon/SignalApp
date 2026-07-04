@@ -170,8 +170,23 @@ export async function queryNotificationRows(options = {}) {
 
 export async function queryPublicNotificationsForUserRows(userId, options = {}) {
   const { limit } = pageOptions(options, 50);
-  const rows = await queryNotificationRows({ appUserId: userId, pageSize: limit });
-  return rows.rows;
+  const params = [cleanText(userId), limit + 1];
+  const result = await queryKysely(
+    `
+      SELECT payload
+      FROM notification_items
+      WHERE (
+        app_user_id = $1
+        OR (target_type = 'all' AND app_user_id IS NULL)
+      )
+      AND (expires_at IS NULL OR expires_at > NOW())
+      ORDER BY COALESCE(scheduled_at, NULLIF(payload->>'createdAt', '')::timestamptz, updated_at) DESC NULLS LAST
+      LIMIT $2
+    `,
+    params,
+  );
+  const rows = result.rows.map(payloadFromRow).filter(Boolean).slice(0, limit);
+  return rows;
 }
 
 export async function claimPushNotificationRows({ limit = 20, now = nowIso(), provider = 'mock' } = {}) {

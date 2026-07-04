@@ -1,4 +1,5 @@
-import { upsertCollectionRows } from '../../../db.mjs';
+import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
+import { createNotificationItem, NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicTodayBriefings } from '../../../db/repositories/todayBriefingsRepository.mjs';
 import { parseToUtcIsoOrNull, utcDateKeyFromInstant, utcDateOnlyOrNull } from '../../../time/utc.mjs';
@@ -28,7 +29,7 @@ function normalizeTodayBriefingPayload(input) {
   const generatedAt = parseToUtcIsoOrNull(input?.generatedAt) || publishedAt;
   if (!id || !title || !headline) return null;
   const summary = cleanText(input?.summary);
-  const pushCandidate = input?.pushCandidate === true;
+  const pushCandidate = input?.pushCandidate !== false;
   return {
     id,
     locale: cleanText(input?.locale) || 'ko',
@@ -61,6 +62,33 @@ function hasIngestAccess(req) {
   return header === configured || bearer === configured;
 }
 
+async function maybeQueueTodayBriefingPush(briefing) {
+  if (!briefing?.pushCandidate) return null;
+  if (cleanText(briefing.status) && briefing.status !== 'published') return null;
+  const notification = createNotificationItem({
+    id: `notification:push:today_briefing:${briefing.id}`,
+    type: NOTIFICATION_TYPES.todayBriefing,
+    title: briefing.pushTitle || briefing.title,
+    body: briefing.pushBody || briefing.headline,
+    channel: 'push',
+    status: 'queued',
+    priority: 'normal',
+    targetType: 'all',
+    sourceType: 'today_briefing',
+    sourceId: briefing.id,
+    deepLink: briefing.briefingDate ? `/today-briefing?date=${briefing.briefingDate}` : '/home',
+    reason: `today briefing updated: ${briefing.briefingDate || briefing.locale}`,
+    scheduledAt: briefing.publishedAt,
+    payload: {
+      briefingId: briefing.id,
+      briefingDate: briefing.briefingDate,
+      locale: briefing.locale,
+    },
+  });
+  if (!notification) return null;
+  return upsertNotificationItem(notification);
+}
+
 export async function handlePublicTodayBriefingRoutes({ req, res, url, pathname }) {
   if (req.method === 'POST' && pathname === '/v1/today-briefings/ingest') {
     if (!hasIngestAccess(req)) {
@@ -75,7 +103,8 @@ export async function handlePublicTodayBriefingRoutes({ req, res, url, pathname 
       return true;
     }
     await upsertCollectionRows('todayBriefings', [briefing]);
-    json(res, 201, { data: briefing, meta: { notificationQueued: false } });
+    const notification = body?.sendPush === false ? null : await maybeQueueTodayBriefingPush(briefing);
+    json(res, 201, { data: briefing, meta: { notificationQueued: !!notification } });
     return true;
   }
 

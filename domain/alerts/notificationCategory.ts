@@ -6,13 +6,15 @@ export type AlertNotificationKind = 'signal' | 'notice' | 'account' | 'other';
 
 const SIGNAL_TYPES = new Set([
   'market_briefing',
+  'today_briefing',
+  'news_digest',
   'market_alert',
   'earnings_reminder',
 ]);
 
 const NOTICE_TYPES = new Set(['service_notice', 'app_update']);
 
-const SIGNAL_SOURCES = new Set(['market_briefing']);
+const SIGNAL_SOURCES = new Set(['market_briefing', 'today_briefing', 'news_digest']);
 
 const NOTICE_SOURCES = new Set(['app_update', 'app_user']);
 

@@ -57,6 +57,7 @@ export default function AlertsScreen() {
       receivedAt: item.scheduledAt || item.createdAt || new Date().toISOString(),
       high: item.priority === 'high',
       type: item.type,
+      sourceType: item.sourceType,
     }));
     const seen = new Set<string>();
     setItems(

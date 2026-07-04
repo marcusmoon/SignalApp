@@ -30,6 +30,7 @@ function publicNotification(item) {
     priority: item.priority || 'normal',
     title: item.title || '',
     body: item.body || '',
+    sourceType: item.sourceType || '',
     deepLink: item.deepLink || '',
     scheduledAt: item.scheduledAt || item.createdAt || null,
     createdAt: item.createdAt || null,

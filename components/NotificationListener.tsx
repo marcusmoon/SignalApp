@@ -44,7 +44,12 @@ export function NotificationListener() {
       const sourceType = String(data?.sourceType || '');
       void loadNotificationPrefs().then((prefs) => {
         if (!shouldRecordIncomingPush(type, sourceType, prefs)) return;
-        if (type === 'market_briefing' || sourceType === 'market_briefing') {
+        if (
+          type === 'market_briefing' ||
+          sourceType === 'market_briefing' ||
+          type === 'today_briefing' ||
+          sourceType === 'today_briefing'
+        ) {
           void setSignalUnreadCached(true);
         }
         void appendNotificationFromPayload({

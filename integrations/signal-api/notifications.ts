@@ -8,6 +8,7 @@ export type SignalNotificationItem = {
   priority: string;
   title: string;
   body: string;
+  sourceType?: string;
   deepLink?: string;
   scheduledAt?: string | null;
   createdAt?: string | null;

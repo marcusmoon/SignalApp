@@ -32,7 +32,7 @@ export function AppQuickActions() {
     if (isIpadSidebar) {
       showTabs();
     }
-    router.push(href);
+    router.navigate(href);
   }, [navReady, router, isIpadSidebar, showTabs]);
 
   const enqueue = useCallback(

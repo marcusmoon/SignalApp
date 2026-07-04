@@ -18,6 +18,18 @@ import { getJobPreset, listJobPresets, runJobPreset } from '../../../jobs/preset
 import { runPollingJob } from '../../../jobs/runner.mjs';
 import { cleanNewsTitleForDisplay, json, paginate, readBody } from '../../shared.mjs';
 
+function normalizeCommunityJobParams(job, params) {
+  if (!params || typeof params !== 'object') return params;
+  const domain = String(job?.domain || job?.area || '').trim().toLowerCase();
+  if (domain !== 'community') return params;
+  const next = { ...params };
+  if (next.pageSize != null) {
+    const pageSize = Number(next.pageSize);
+    next.pageSize = Number.isFinite(pageSize) ? Math.min(50, Math.max(5, Math.round(pageSize))) : 30;
+  }
+  return next;
+}
+
 function enrichJobRun(item, jobs) {
   const job = jobs.find((candidate) => candidate.jobKey === item.jobKey);
   return {
@@ -533,7 +545,9 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
     if (Number.isFinite(Number(patch.staleLockSeconds)) && Number(patch.staleLockSeconds) > 0) {
       next.staleLockSeconds = Number(patch.staleLockSeconds);
     }
-    if (patch.params && typeof patch.params === 'object') next.params = patch.params;
+    if (patch.params && typeof patch.params === 'object') {
+      next.params = normalizeCommunityJobParams(job, patch.params);
+    }
     next.updatedAt = nowIso();
     const updated = await patchPollingJob(jobKey, next);
     json(res, 200, { data: updated });

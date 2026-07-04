@@ -1664,6 +1664,20 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
               };
               hasParamsPatch = true;
             }
+            const communityPageSizeInput = scope.querySelector(`[data-job-community-pagesize="${key}"]`);
+            if (communityPageSizeInput) {
+              const pageSize = Number(communityPageSizeInput.value);
+              if (!Number.isFinite(pageSize) || pageSize < 5 || pageSize > 50) {
+                showToast(textFor('jobCommunityPageSizeInvalidTitle'), textFor('jobCommunityPageSizeInvalidBody'), { kind: 'error' });
+                return;
+              }
+              paramsPatch = {
+                ...((state.jobs || []).find((job) => job.jobKey === key)?.params || {}),
+                ...(paramsPatch || {}),
+                pageSize,
+              };
+              hasParamsPatch = true;
+            }
             const afterRows = [...scope.querySelectorAll(`[data-job-after-row="${key}"]`)];
             if (afterRows.length > 0) {
               const instruments = afterRows

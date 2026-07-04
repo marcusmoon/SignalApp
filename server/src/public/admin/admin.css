@@ -539,6 +539,16 @@ header { position: sticky; top: 0; z-index: 3; display: flex; justify-content: s
       }
       .jobAfterHoursNotice { grid-column: 1 / -1; }
       .jobAfterHoursNotice textarea { min-height: 58px; resize: vertical; }
+      .jobCommunityMetaGrid { display: grid; gap: 8px; max-width: 280px; }
+      .jobCommunityMetaGrid label {
+        display: grid;
+        gap: 5px;
+        min-width: 0;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 850;
+      }
+      .jobCommunityHint { margin: 0; font-size: 11px; line-height: 1.45; }
       .jobAfterHoursTable { display: grid; gap: 6px; }
       .jobAfterHoursTableHead,
       .jobAfterHoursRow {

@@ -16,7 +16,7 @@ import {
   COMMUNITY_SOURCE_ORDER,
   type CommunitySourceFilter,
 } from '@/constants/communitySources';
-import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { webFlexFill, webScrollViewportStyle, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
@@ -155,63 +155,65 @@ export default function BoardScreen() {
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane ? <SignalHeader compact onBrandPress={onRefresh} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
-      <View style={styles.filterRow}>
-        {COMMUNITY_SOURCE_ORDER.map((key) => {
-          const active = source === key;
-          return (
-            <Pressable
-              key={key}
-              onPress={() => changeSource(key)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              style={({ pressed }) => [styles.filterChip, active && styles.filterChipActive, pressed && styles.pressed]}>
-              <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{t(SOURCE_LABEL[key])}</Text>
-            </Pressable>
-          );
-        })}
+      <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
+        <View style={styles.filterRow}>
+          {COMMUNITY_SOURCE_ORDER.map((key) => {
+            const active = source === key;
+            return (
+              <Pressable
+                key={key}
+                onPress={() => changeSource(key)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                style={({ pressed }) => [styles.filterChip, active && styles.filterChipActive, pressed && styles.pressed]}>
+                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{t(SOURCE_LABEL[key])}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {error ? (
+          <View style={styles.errBox}>
+            <Text style={styles.errText}>{error}</Text>
+          </View>
+        ) : null}
+        {loading && items.length === 0 ? (
+          <View style={styles.loadingBox}>
+            <SignalLoadingIndicator message={t('commonLoading')} />
+          </View>
+        ) : (
+          <WebWheelFlatList
+            style={styles.list}
+            contentContainerStyle={{ paddingBottom: listBottomPad, paddingHorizontal: 16, paddingTop: 8 }}
+            data={items}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            onEndReached={onEndReached}
+            onEndReachedThreshold={0.35}
+            onLayout={onLayout}
+            onContentSizeChange={onContentSizeChange}
+            onScroll={onScroll}
+            scrollEventThrottle={16}
+            initialNumToRender={WEB_FLATLIST_INITIAL}
+            maxToRenderPerBatch={WEB_FLATLIST_BATCH}
+            windowSize={WEB_FLATLIST_WINDOW}
+            ListEmptyComponent={
+              !loading ? (
+                <View style={styles.emptyBox}>
+                  <Text style={styles.emptyText}>{t('communityEmpty')}</Text>
+                </View>
+              ) : null
+            }
+            ListFooterComponent={
+              loadingMore ? (
+                <View style={styles.footerLoading}>
+                  <SignalLoadingIndicator message={t('commonLoading')} />
+                </View>
+              ) : null
+            }
+          />
+        )}
       </View>
-      {error ? (
-        <View style={styles.errBox}>
-          <Text style={styles.errText}>{error}</Text>
-        </View>
-      ) : null}
-      {loading && items.length === 0 ? (
-        <View style={styles.loadingBox}>
-          <SignalLoadingIndicator message={t('commonLoading')} />
-        </View>
-      ) : (
-        <WebWheelFlatList
-          style={styles.list}
-          contentContainerStyle={{ paddingBottom: listBottomPad, paddingHorizontal: 16, paddingTop: 8 }}
-          data={items}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          onEndReached={onEndReached}
-          onEndReachedThreshold={0.35}
-          onLayout={onLayout}
-          onContentSizeChange={onContentSizeChange}
-          onScroll={onScroll}
-          scrollEventThrottle={16}
-          initialNumToRender={WEB_FLATLIST_INITIAL}
-          maxToRenderPerBatch={WEB_FLATLIST_BATCH}
-          windowSize={WEB_FLATLIST_WINDOW}
-          ListEmptyComponent={
-            !loading ? (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>{t('communityEmpty')}</Text>
-              </View>
-            ) : null
-          }
-          ListFooterComponent={
-            loadingMore ? (
-              <View style={styles.footerLoading}>
-                <SignalLoadingIndicator message={t('commonLoading')} />
-              </View>
-            ) : null
-          }
-        />
-      )}
       {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
           bottom={fabStackBottom}
@@ -228,10 +230,17 @@ export default function BoardScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: theme.bg },
-    filterRow: {
+    mainColumn: {
+      ...webFlexFill,
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
+    },
+    mainColumnWide: {
+      ...wideContentFill,
+    },
+    filterRow: {
+      width: '100%',
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 8,

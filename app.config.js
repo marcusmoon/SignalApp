@@ -127,6 +127,9 @@ module.exports = () => {
   if (!hasPlugin(plugins, './plugins/withIosSceneLifecycle.js')) {
     plugins.push('./plugins/withIosSceneLifecycle.js');
   }
+  if (!hasPlugin(plugins, 'expo-quick-actions')) {
+    plugins.push('expo-quick-actions');
+  }
 
   if (kakaoNativeKey) {
     plugins.push(['@react-native-seoul/kakao-login', { kakaoAppKey: kakaoNativeKey }]);

@@ -19,6 +19,7 @@ import {
   colorWithAlpha,
   glassEdgeColors,
 } from '@/components/signal/GlassSurface';
+import { AppQuickActions } from '@/components/AppQuickActions';
 import { SignalFloatingTabBar } from '@/components/signal/SignalFloatingTabBar';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalSidebarTabBar } from '@/components/signal/SignalSidebarTabBar';
@@ -391,7 +392,8 @@ export default function TabLayout() {
   }
 
   return (
-    <Tabs
+    <>
+      <Tabs
       initialRouteName="home"
       tabBar={(props) => <SignalFloatingTabBar {...props} />}
       screenOptions={screenOptions}
@@ -466,6 +468,8 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+      <AppQuickActions />
+    </>
   );
 }
 
@@ -529,7 +533,8 @@ function IpadWideTabLayout({
   const { theme } = useSignalTheme();
 
   return (
-    <SafeAreaView style={[sidebarLayoutStyles.safe, { backgroundColor: theme.bg }]} edges={['top']}>
+    <>
+      <SafeAreaView style={[sidebarLayoutStyles.safe, { backgroundColor: theme.bg }]} edges={['top']}>
       <SignalHeader compact fullWidth />
       <View style={[sidebarLayoutStyles.body, { backgroundColor: theme.bg }]}>
         <SignalSidebarTabBar
@@ -581,5 +586,7 @@ function IpadWideTabLayout({
         </View>
       </View>
     </SafeAreaView>
+      <AppQuickActions />
+    </>
   );
 }

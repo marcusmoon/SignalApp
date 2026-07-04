@@ -55,3 +55,13 @@ export async function fetchSignalCommunitySources(): Promise<string[]> {
   });
   return Array.isArray(json.data) ? json.data : [];
 }
+
+export async function fetchSignalCommunityPost(id: string): Promise<SignalApiCommunityPost | null> {
+  const key = String(id || '').trim();
+  if (!key) return null;
+  const json = await signalApi<{ data?: SignalApiCommunityPost }>(`/v1/community/${encodeURIComponent(key)}`, undefined, {
+    timeoutMs: 8000,
+    attempts: 1,
+  });
+  return json.data || null;
+}

@@ -10,3 +10,9 @@ export const COMMUNITY_SOURCE_ORDER: CommunitySourceFilter[] = [
   COMMUNITY_SOURCE_ALL,
   ...COMMUNITY_SOURCES,
 ];
+
+const COMMUNITY_SOURCES_WITH_ORIGINAL_LINK = new Set<CommunitySourceKey>(['naver_likeusstock_free']);
+
+export function communityShowsOriginalLink(source: string): boolean {
+  return COMMUNITY_SOURCES_WITH_ORIGINAL_LINK.has(source as CommunitySourceKey);
+}

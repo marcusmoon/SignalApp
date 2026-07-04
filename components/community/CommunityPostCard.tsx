@@ -1,4 +1,4 @@
-import * as WebBrowser from 'expo-web-browser';
+import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -17,6 +17,7 @@ type Props = {
 };
 
 export function CommunityPostCard({ item, sourceLabelId }: Props) {
+  const router = useRouter();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
@@ -25,10 +26,9 @@ export function CommunityPostCard({ item, sourceLabelId }: Props) {
   return (
     <Pressable
       onPress={() => {
-        if (!item.sourceUrl) return;
-        void WebBrowser.openBrowserAsync(item.sourceUrl);
+        router.push(`/community/${encodeURIComponent(item.id)}`);
       }}
-      accessibilityRole={item.sourceUrl ? 'link' : 'text'}
+      accessibilityRole="button"
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <View style={styles.metaRow}>
         <Text style={styles.source}>{t(sourceLabelId)}</Text>

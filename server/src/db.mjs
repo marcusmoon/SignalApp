@@ -24,7 +24,11 @@ import {
   queryPublicYoutubeChannelRows,
   queryPublicYoutubeRows,
 } from './db/repositories/youtubeRepository.mjs';
-import { queryPublicCommunityRows } from './db/repositories/communityRepository.mjs';
+import {
+  pruneCommunityPostsForSource as pruneCommunityPostsForSourceRows,
+  queryPublicCommunityPostByIdRow,
+  queryPublicCommunityRows,
+} from './db/repositories/communityRepository.mjs';
 import {
   deleteCalendarRowById,
   deleteCalendarRowsByIds,
@@ -962,6 +966,19 @@ export async function queryPublicYoutube(options = {}) {
 
 export async function queryPublicCommunity(options = {}) {
   return cachedPublicRead('publicCommunity', options, () => queryPublicCommunityRows(options), 15000);
+}
+
+export async function queryPublicCommunityPostById(id) {
+  return cachedPublicRead('publicCommunityById', { id }, () => queryPublicCommunityPostByIdRow(id), 15000);
+}
+
+export async function pruneCommunityPostsForSource(source, providerItemIds = []) {
+  return withDbExclusive(async () => {
+    await ensureSeeded();
+    const result = await pruneCommunityPostsForSourceRows(source, providerItemIds);
+    clearPublicReadCache();
+    return result;
+  });
 }
 
 export async function queryPublicYoutubeChannels() {

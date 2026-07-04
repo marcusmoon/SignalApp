@@ -196,6 +196,7 @@ function RootLayoutNav() {
           oauth: t('screenAccount'),
           'symbol/[ticker]': t('screenSymbolDetail'),
           'disclosures/[id]': t('disclosuresDetailTitle'),
+          'community/[id]': t('communityDetailTitle'),
         };
         return {
           title: titleByName[route.name] ?? route.name,

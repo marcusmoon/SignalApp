@@ -11,6 +11,7 @@ import {
   readSingletonPayload,
   releasePollingJobLock,
   upsertCollectionRows,
+  pruneCommunityPostsForSource,
   upsertById,
   upsertPollingJobRun,
 } from '../db.mjs';
@@ -388,10 +389,21 @@ async function persistHandlerResult(result, rows) {
   const directCollection = directCollectionByKind[result.kind];
   if (directCollection) {
     const savedAt = nowIso();
-    await upsertCollectionRows(
-      directCollection,
-      rows.map((row) => ({ ...row, updatedAt: row.updatedAt || savedAt, createdAt: row.createdAt || savedAt })),
-    );
+    const safeRows = rows.map((row) => ({ ...row, updatedAt: row.updatedAt || savedAt, createdAt: row.createdAt || savedAt }));
+    await upsertCollectionRows(directCollection, safeRows);
+    if (result.kind === 'community') {
+      const idsBySource = new Map();
+      for (const row of safeRows) {
+        const source = row.source;
+        const providerItemId = row.providerItemId;
+        if (!source || !providerItemId) continue;
+        if (!idsBySource.has(source)) idsBySource.set(source, []);
+        idsBySource.get(source).push(providerItemId);
+      }
+      for (const [source, providerItemIds] of idsBySource) {
+        await pruneCommunityPostsForSource(source, providerItemIds);
+      }
+    }
   } else if (result.kind === 'news') {
     await saveNewsRows(rows);
   } else if (result.kind === 'disclosures') {

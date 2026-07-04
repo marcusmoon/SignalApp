@@ -44,6 +44,8 @@ export const en = {
   communitySourceSaveUserNews: 'SAVE user news',
   communityEmpty: 'No posts to show.',
   communityErrorLoad: 'Could not load the board.',
+  communityDetailTitle: 'Post',
+  communityOriginalOpen: 'Open original',
   newsOpenVideos: 'Video',
   moreHubSegmentDragHandleA11y: 'Reorder {{name}} (drag)',
   moreRefLinksKicker: 'Quick links',

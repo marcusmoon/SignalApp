@@ -42,6 +42,8 @@ export const ko = {
   communitySourceSaveUserNews: '세이브 유저뉴스',
   communityEmpty: '표시할 게시글이 없습니다.',
   communityErrorLoad: '게시판을 불러오지 못했습니다.',
+  communityDetailTitle: '게시글',
+  communityOriginalOpen: '원문으로 가기',
   newsOpenVideos: '영상',
   moreHubSegmentDragHandleA11y: '{{name}} 순서 바꾸기(드래그)',
   moreRefLinksKicker: '퀵 링크',

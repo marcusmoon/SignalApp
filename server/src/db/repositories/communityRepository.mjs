@@ -56,6 +56,24 @@ function publicCommunityPost(row) {
 
 export const COMMUNITY_SOURCES = ['naver_likeusstock_free', 'save_user_news'];
 
+/** Drop rows for `source` that were not in the latest ingest window. */
+export async function pruneCommunityPostsForSource(source, providerItemIds = []) {
+  const cleanSource = cleanText(source);
+  if (!cleanSource) return { deleted: 0 };
+  const keepIds = [...new Set((providerItemIds || []).map((id) => cleanText(id)).filter(Boolean))];
+  if (keepIds.length === 0) return { deleted: 0 };
+
+  const result = await queryKysely(
+    `
+      DELETE FROM community_posts
+      WHERE source = $1
+        AND NOT (provider_item_id = ANY($2::text[]))
+    `,
+    [cleanSource, keepIds],
+  );
+  return { deleted: Number(result.rowCount) || 0 };
+}
+
 export async function queryPublicCommunityRows(options = {}) {
   const { limit, offset } = pageOptions(options, 30);
   const params = [];
@@ -104,4 +122,19 @@ export async function queryPublicCommunityRows(options = {}) {
     hasMore,
     nextOffset: hasMore ? offset + pageRows.length : null,
   };
+}
+
+export async function queryPublicCommunityPostByIdRow(id) {
+  const key = cleanText(id);
+  if (!key) return null;
+  const result = await queryKysely(
+    `
+      SELECT ${ROW_COLUMNS}
+      FROM community_posts
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [key],
+  );
+  return publicCommunityPost(result.rows[0]);
 }

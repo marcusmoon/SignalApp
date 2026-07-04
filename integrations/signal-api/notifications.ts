@@ -9,7 +9,9 @@ export type SignalNotificationItem = {
   title: string;
   body: string;
   sourceType?: string;
+  sourceId?: string;
   deepLink?: string;
+  payload?: Record<string, unknown>;
   scheduledAt?: string | null;
   createdAt?: string | null;
 };

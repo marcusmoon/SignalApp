@@ -13,7 +13,9 @@ export type StoredNotification = {
   high: boolean;
   type?: string;
   sourceType?: string;
+  sourceId?: string;
   deepLink?: string;
+  payload?: Record<string, unknown>;
 };
 
 export async function loadNotificationHistory(): Promise<StoredNotification[]> {
@@ -47,6 +49,20 @@ function shouldSkipDuplicate(prev: StoredNotification[], next: StoredNotificatio
   return dt >= 0 && dt < 2000;
 }
 
+function payloadFromPushData(data?: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (!data) return undefined;
+  const nested = data.payload;
+  if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+    return nested as Record<string, unknown>;
+  }
+  const payload: Record<string, unknown> = {};
+  for (const key of ['briefingDate', 'generatedDate', 'digestId', 'category', 'market', 'session', 'locale']) {
+    const value = String(data[key] ?? '').trim();
+    if (value) payload[key] = value;
+  }
+  return Object.keys(payload).length ? payload : undefined;
+}
+
 export async function appendNotificationFromPayload(input: {
   title: string;
   body: string;
@@ -63,7 +79,9 @@ export async function appendNotificationFromPayload(input: {
     high,
     type: String(input.data?.type || '').trim() || undefined,
     sourceType: String(input.data?.sourceType || '').trim() || undefined,
+    sourceId: String(input.data?.sourceId || '').trim() || undefined,
     deepLink: String(input.data?.deepLink || '').trim() || undefined,
+    payload: payloadFromPushData(input.data),
   };
   const prev = await loadNotificationHistory();
   if (shouldSkipDuplicate(prev, item)) return;

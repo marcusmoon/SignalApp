@@ -16,6 +16,7 @@ function providerName() {
 }
 
 function expoMessageFor(notification, device) {
+  const payload = notification.payload && typeof notification.payload === 'object' ? notification.payload : {};
   return {
     to: device.pushToken,
     sound: 'default',
@@ -29,6 +30,14 @@ function expoMessageFor(notification, device) {
       sourceType: notification.sourceType || '',
       sourceId: notification.sourceId || '',
       symbols: Array.isArray(notification.symbols) ? notification.symbols : [],
+      payload: {
+        briefingDate: payload.briefingDate || null,
+        generatedDate: payload.generatedDate || null,
+        digestId: payload.digestId || null,
+        category: payload.category || null,
+        market: payload.market || null,
+        session: payload.session || null,
+      },
     },
   };
 }

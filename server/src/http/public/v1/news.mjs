@@ -7,6 +7,7 @@ import {
 } from '../../../db.mjs';
 import { createNotificationItem, NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
 import { config } from '../../../config.mjs';
+import { utcDateKeyFromInstant } from '../../../time/utc.mjs';
 import { json, readBody } from '../../shared.mjs';
 
 function cleanText(value) {
@@ -24,7 +25,10 @@ function hasIngestAccess(req) {
 async function maybeQueueDigestPush(item) {
   if (!item?.pushCandidate) return null;
   const category = cleanText(item?.category) || 'global';
-  const date = cleanText(item?.generatedDate).slice(0, 10);
+  const date =
+    cleanText(item?.generatedDate).slice(0, 10) ||
+    utcDateKeyFromInstant(item?.generatedAt) ||
+    utcDateKeyFromInstant(item?.publishedAt);
   const digestId = cleanText(item?.id);
   const params = new URLSearchParams({ category });
   if (date) params.set('date', date);
@@ -43,7 +47,7 @@ async function maybeQueueDigestPush(item) {
     deepLink: `/news-issues?${params.toString()}`,
     reason: `news digest updated: ${category}`,
     scheduledAt: item.generatedAt,
-    payload: { digestId: item.id, category },
+    payload: { digestId: item.id, category, ...(date ? { generatedDate: date } : {}) },
   });
   if (!notification) return null;
   return upsertNotificationItem(notification);

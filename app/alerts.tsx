@@ -22,7 +22,7 @@ import { fetchSignalNotifications } from '@/integrations/signal-api/notification
 import { formatRelativeTime } from '@/utils/date';
 
 import { alertMatchesFilter, alertTypeMessageId, type AlertsFilter } from '@/domain/alerts/notificationCategory';
-import { resolveAlertHref } from '@/domain/alerts/alertNavigation';
+import { resolveAlertHref, resolveAlertNavigationTarget } from '@/domain/alerts/alertNavigation';
 import type { Href } from 'expo-router';
 
 export default function AlertsScreen() {
@@ -61,7 +61,9 @@ export default function AlertsScreen() {
       high: item.priority === 'high',
       type: item.type,
       sourceType: item.sourceType,
+      sourceId: item.sourceId,
       deepLink: item.deepLink,
+      payload: item.payload,
     }));
     const seen = new Set<string>();
     setItems(
@@ -189,8 +191,13 @@ export default function AlertsScreen() {
 
   const onOpenAlert = useCallback(
     (item: StoredNotification) => {
-      const href = resolveAlertHref(item);
-      if (href) router.push(href as Href);
+      const target = resolveAlertNavigationTarget(item);
+      if (!target) return;
+      if (target.params && Object.keys(target.params).length > 0) {
+        router.navigate({ pathname: target.pathname, params: target.params } as Href);
+        return;
+      }
+      router.push(target.pathname as Href);
     },
     [router],
   );

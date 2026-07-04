@@ -70,6 +70,11 @@ function hasIngestAccess(req) {
 
 async function maybeQueueBriefingPush(briefing) {
   if (!briefing?.pushCandidate) return null;
+  const sessionTab = `${briefing.market}-${briefing.session}`;
+  const params = new URLSearchParams();
+  if (briefing.briefingDate) params.set('date', briefing.briefingDate);
+  if (sessionTab) params.set('session', sessionTab);
+  const deepLink = params.toString() ? `/signal?${params.toString()}` : '/signal';
   const notification = createNotificationItem({
     id: `notification:push:market_briefing:${briefing.id}`,
     type: NOTIFICATION_TYPES.marketBriefing,
@@ -81,7 +86,7 @@ async function maybeQueueBriefingPush(briefing) {
     targetType: 'all',
     sourceType: 'market_briefing',
     sourceId: briefing.id,
-    deepLink: '/signal',
+    deepLink,
     symbols: cleanArray(briefing.companies).map((company) => company?.symbol).filter(Boolean),
     sourceRefs: briefing.sourceRefs,
     reason: `${briefing.market}/${briefing.session} market briefing updated`,

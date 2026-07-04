@@ -22,6 +22,7 @@ async function requireAppUser(req, res) {
 }
 
 function publicNotification(item) {
+  const payload = item?.payload && typeof item.payload === 'object' ? item.payload : {};
   return {
     id: item.id,
     type: item.type || '',
@@ -29,9 +30,11 @@ function publicNotification(item) {
     status: item.status || 'queued',
     priority: item.priority || 'normal',
     title: item.title || '',
-    body: item.body || '',
+    body: item.body || payload.body || '',
     sourceType: item.sourceType || '',
+    sourceId: item.sourceId || '',
     deepLink: item.deepLink || '',
+    payload,
     scheduledAt: item.scheduledAt || item.createdAt || null,
     createdAt: item.createdAt || null,
   };

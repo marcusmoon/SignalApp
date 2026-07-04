@@ -49,17 +49,20 @@ export function CommunityPostDetailContent({ item, bottomPad = 24, refreshing = 
             </View>
             <Text style={styles.time}>{timeLabel}</Text>
           </View>
-          <Text style={styles.title}>{item.title}</Text>
-          {showOriginalLink ? (
-            <Pressable
-              onPress={() => void WebBrowser.openBrowserAsync(originalUrl)}
-              accessibilityRole="link"
-              accessibilityLabel={t('communityOriginalOpen')}
-              style={({ pressed }) => [styles.originalLink, pressed && styles.pressed]}>
-              <Text style={styles.originalLinkText}>{t('communityOriginalOpen')}</Text>
-              <FontAwesome name="external-link" size={12} color={accent.accent} />
-            </Pressable>
-          ) : null}
+          <View style={styles.titleBlock}>
+            <Text style={styles.title}>{item.title}</Text>
+            {showOriginalLink ? (
+              <Pressable
+                onPress={() => void WebBrowser.openBrowserAsync(originalUrl)}
+                accessibilityRole="link"
+                accessibilityLabel={t('communityOriginalOpen')}
+                hitSlop={6}
+                style={({ pressed }) => [styles.originalLink, pressed && styles.pressed]}>
+                <Text style={styles.originalLinkText}>{t('communityOriginalOpen')}</Text>
+                <FontAwesome name="external-link" size={10} color={accent.accent} />
+              </Pressable>
+            ) : null}
+          </View>
         </View>
       </View>
 
@@ -103,8 +106,8 @@ function makeStyles(
     headerInner: {
       paddingHorizontal: 18,
       paddingTop: 12,
-      paddingBottom: 14,
-      gap: 10,
+      paddingBottom: 12,
+      gap: 8,
     },
     metaRow: {
       flexDirection: 'row',
@@ -138,6 +141,9 @@ function makeStyles(
       color: theme.textDim,
       textAlign: 'right',
     },
+    titleBlock: {
+      gap: 4,
+    },
     title: {
       color: theme.text,
       fontSize: ft.ff(22),
@@ -149,18 +155,14 @@ function makeStyles(
       alignSelf: 'flex-start',
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: accent.border,
-      backgroundColor: accent.dim,
+      gap: 4,
+      marginTop: 1,
     },
     originalLinkText: {
       color: accent.accent,
-      fontSize: sf(13),
-      fontWeight: '800',
+      fontSize: ft.ff(11),
+      lineHeight: sf(15),
+      fontWeight: ft.emphasisWeight,
     },
     bodyScroll: {
       ...webScrollViewportStyle,

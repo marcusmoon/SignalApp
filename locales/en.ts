@@ -267,6 +267,8 @@ export const en = {
   accountSocialInvalid: 'Social sign-in failed. Try again in a moment.',
   accountSocialKakaoUpstream:
     'Kakao rejected the token or user lookup. Confirm the server REST API key matches the same Kakao app as your prebuild native key (`KAKAO_NATIVE_APP_KEY`), and review Redirect URI and Client Secret settings in the Kakao developer console.',
+  accountSocialKakaoRedirectUri:
+    'The Kakao Redirect URI is missing or does not match (KOE006). In Kakao Developers → your app → Kakao Login → Redirect URI, add the address below exactly. The Web platform must also be enabled.',
   accountSocialSignupRequired: 'This social account is new to SIGNAL. Agree to the required terms, then continue social sign-up.',
   accountSignupMethodLead: 'Sign up quickly with a social account, or create an email sign-in account.',
   accountSocialSignupInfoTitle: 'Confirm sign-up info',

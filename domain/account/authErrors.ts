@@ -29,6 +29,10 @@ function socialApiCodeMessage(code: string | undefined): MessageId | null {
 }
 
 function mapSocialFlowErrorMessage(flowCode: string, translate: (id: MessageId) => string): string {
+  if (flowCode.startsWith('kakao_redirect_uri:')) {
+    const uri = flowCode.slice('kakao_redirect_uri:'.length);
+    return `${translate('accountSocialKakaoRedirectUri')}\n\n${uri}`;
+  }
   switch (flowCode) {
     case 'disabled':
       return translate('accountSocialDisabled');

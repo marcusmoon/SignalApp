@@ -18,6 +18,16 @@ export class SocialAuthFlowError extends Error {
   override name = 'SocialAuthFlowError';
 }
 
+/** `/web` static export: baseUrl may be missing from runtime config; infer from current path. */
+function webBasePathForRedirect(): string {
+  const configured = String(Constants.expoConfig?.experiments?.baseUrl ?? '').replace(/\/+$/, '');
+  if (configured) return configured;
+  if (typeof window === 'undefined') return '';
+  const path = window.location.pathname;
+  if (path === '/web' || path.startsWith('/web/')) return '/web';
+  return '';
+}
+
 function redirectUriFor(path: string) {
   const schemeMatch = path.trim().match(/^[A-Za-z][A-Za-z0-9+.-]*:\/\/([^/?#]+)([^?#]*)?/);
   const p =
@@ -26,11 +36,21 @@ function redirectUriFor(path: string) {
       .replace(/[?#].*$/, '')
       .trim() || 'oauth';
   const scheme = 'signalapp';
+
+  // Web OAuth (Kakao/Naver/Google) needs an https/http redirect, not signalapp://.
+  // makeRedirectUri() can emit a custom scheme on static web export; use the current origin instead.
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      const basePath = webBasePathForRedirect();
+      return `${window.location.origin}${basePath}/${p}`;
+    }
+    return AuthSession.makeRedirectUri({ scheme, path: p });
+  }
+
   const nativeRedirect = `${scheme}://${p}`;
   if (
-    Platform.OS !== 'web' &&
-    (Constants.executionEnvironment === ExecutionEnvironment.Bare ||
-      Constants.executionEnvironment === ExecutionEnvironment.Standalone)
+    Constants.executionEnvironment === ExecutionEnvironment.Bare ||
+    Constants.executionEnvironment === ExecutionEnvironment.Standalone
   ) {
     return AuthSession.makeRedirectUri({
       scheme,
@@ -159,9 +179,16 @@ export async function obtainSocialCredential(
       authorizationEndpoint: 'https://kauth.kakao.com/oauth/authorize',
       tokenEndpoint: 'https://kauth.kakao.com/oauth/token',
     };
+    if (__DEV__) console.info('[Kakao web OAuth] redirectUri=', redirectUri);
     const result = await request.promptAsync(kakaoDiscovery as AuthSession.DiscoveryDocument);
     if (result.type === 'cancel' || result.type === 'dismiss') throw new SocialAuthCancelledError();
-    if (result.type !== 'success') throw new SocialAuthFlowError('kakao_failed');
+    if (result.type !== 'success') {
+      const kakaoErr = String(result.params?.error || result.errorCode || '');
+      if (/KOE006/i.test(kakaoErr)) {
+        throw new SocialAuthFlowError(`kakao_redirect_uri:${redirectUri}`);
+      }
+      throw new SocialAuthFlowError('kakao_failed');
+    }
     const code = result.params.code ? String(result.params.code) : '';
     if (!code) throw new SocialAuthFlowError('no_code');
     return { code, redirectUri };

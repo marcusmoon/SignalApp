@@ -267,6 +267,8 @@ export const ja = {
   accountSocialInvalid: 'ソーシャル認証に失敗しました。しばらくしてから再試行してください。',
   accountSocialKakaoUpstream:
     'カカオ側がトークンまたはユーザー照会を拒否しました。サーバーの REST API キーが prebuild の `KAKAO_NATIVE_APP_KEY` と同一のカカオアプリケーションか、Redirect URI と Client Secret 設定が合っているか確認してください。',
+  accountSocialKakaoRedirectUri:
+    'Kakao Redirect URI が未登録か一致しません (KOE006)。Kakao Developers → アプリ → カカオログイン → Redirect URI に下記をそのまま追加してください。Web プラットフォームも有効にしてください。',
   accountSocialSignupRequired: '初めて使うソーシャルアカウントです。必須規約に同意してからソーシャル登録を続けてください。',
   accountSignupMethodLead: 'ソーシャルで素早く登録するか、メールで直接登録できます。',
   accountSocialSignupInfoTitle: '登録情報の確認',

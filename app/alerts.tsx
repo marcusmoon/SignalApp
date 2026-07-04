@@ -22,6 +22,8 @@ import { fetchSignalNotifications } from '@/integrations/signal-api/notification
 import { formatRelativeTime } from '@/utils/date';
 
 import { alertMatchesFilter, type AlertsFilter } from '@/domain/alerts/notificationCategory';
+import { resolveAlertHref } from '@/domain/alerts/alertNavigation';
+import type { Href } from 'expo-router';
 
 export default function AlertsScreen() {
   const { theme, scaleFont } = useSignalTheme();
@@ -59,6 +61,7 @@ export default function AlertsScreen() {
       high: item.priority === 'high',
       type: item.type,
       sourceType: item.sourceType,
+      deepLink: item.deepLink,
     }));
     const seen = new Set<string>();
     setItems(
@@ -157,8 +160,17 @@ export default function AlertsScreen() {
     [alertFilters, filter, settingsButton, styles, t],
   );
 
+  const onOpenAlert = useCallback(
+    (item: StoredNotification) => {
+      const href = resolveAlertHref(item);
+      if (href) router.push(href as Href);
+    },
+    [router],
+  );
+
   const renderAlert = useCallback(
     ({ item: a }: { item: StoredNotification }) => {
+      const href = resolveAlertHref(a);
       const card = (
         <View style={styles.alertCard}>
           <View style={styles.alertTop}>
@@ -191,11 +203,21 @@ export default function AlertsScreen() {
               </RectButton>
             </View>
           )}>
-          {card}
+          {href ? (
+            <Pressable
+              onPress={() => onOpenAlert(a)}
+              style={({ pressed }) => [pressed && styles.alertCardPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={a.title}>
+              {card}
+            </Pressable>
+          ) : (
+            card
+          )}
         </ReanimatedSwipeable>
       );
     },
-    [locale, onDeleteAlert, styles, t],
+    [locale, onDeleteAlert, onOpenAlert, styles, t],
   );
 
   const bottomPad = 28 + insets.bottom;
@@ -364,6 +386,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.border,
       padding: 14,
     },
+    alertCardPressed: { opacity: 0.78 },
     swipeRow: {
       marginBottom: 10,
       borderRadius: 12,

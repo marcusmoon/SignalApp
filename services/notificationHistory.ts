@@ -13,6 +13,7 @@ export type StoredNotification = {
   high: boolean;
   type?: string;
   sourceType?: string;
+  deepLink?: string;
 };
 
 export async function loadNotificationHistory(): Promise<StoredNotification[]> {
@@ -62,6 +63,7 @@ export async function appendNotificationFromPayload(input: {
     high,
     type: String(input.data?.type || '').trim() || undefined,
     sourceType: String(input.data?.sourceType || '').trim() || undefined,
+    deepLink: String(input.data?.deepLink || '').trim() || undefined,
   };
   const prev = await loadNotificationHistory();
   if (shouldSkipDuplicate(prev, item)) return;

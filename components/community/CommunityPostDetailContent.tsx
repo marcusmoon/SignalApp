@@ -3,6 +3,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CommunityPostBody } from '@/components/community/CommunityPostBody';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
 import { communityShowsOriginalLink } from '@/constants/communitySources';
 import type { AppTheme } from '@/constants/theme';
@@ -28,18 +29,22 @@ export function CommunityPostDetailContent({ item, bottomPad = 24 }: Props) {
 
   return (
     <View style={[styles.wrap, { paddingBottom: bottomPad }]}>
-      <View style={styles.hero}>
+      <View style={styles.header}>
         <View style={styles.metaRow}>
-          <Text style={styles.source}>{t(sourceLabelId)}</Text>
+          <View style={styles.sourcePill}>
+            <Text style={styles.source}>{t(sourceLabelId)}</Text>
+          </View>
           <Text style={styles.time}>{timeLabel}</Text>
         </View>
         <Text style={styles.title}>{item.title}</Text>
       </View>
+
       {item.body ? (
         <View style={styles.bodyCard}>
-          <Text style={styles.body}>{item.body}</Text>
+          <CommunityPostBody body={item.body} />
         </View>
       ) : null}
+
       {showOriginalLink ? (
         <Pressable onPress={() => void WebBrowser.openBrowserAsync(originalUrl)} style={styles.openBtn}>
           <Text style={styles.openText}>{t('communityOriginalOpen')}</Text>
@@ -52,14 +57,13 @@ export function CommunityPostDetailContent({ item, bottomPad = 24 }: Props) {
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
   return StyleSheet.create({
-    wrap: { padding: 16, gap: 12 },
-    hero: {
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      padding: 16,
-      gap: 10,
+    wrap: {
+      paddingHorizontal: 18,
+      paddingTop: 12,
+      gap: 16,
+    },
+    header: {
+      gap: 12,
     },
     metaRow: {
       flexDirection: 'row',
@@ -67,8 +71,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       justifyContent: 'space-between',
       gap: 10,
     },
+    sourcePill: {
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
     source: {
-      flexShrink: 1,
       fontSize: ft.ff(11),
       lineHeight: sf(15),
       fontWeight: ft.emphasisWeight,
@@ -83,26 +94,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     title: {
       color: theme.text,
-      fontSize: ft.ff(20),
-      lineHeight: sf(28),
+      fontSize: ft.ff(22),
+      lineHeight: sf(30),
       fontWeight: ft.titleWeight,
+      letterSpacing: -0.2,
     },
     bodyCard: {
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      padding: 14,
-    },
-    body: {
-      color: theme.text,
-      fontSize: ft.ff(15),
-      lineHeight: sf(24),
-      fontWeight: ft.bodyWeight,
+      borderRadius: 16,
+      backgroundColor: theme.bgElevated,
+      paddingHorizontal: 16,
+      paddingVertical: 18,
     },
     openBtn: {
       minHeight: 48,
-      borderRadius: 13,
+      borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
@@ -110,6 +115,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       justifyContent: 'center',
       flexDirection: 'row',
       gap: 8,
+      marginTop: 4,
     },
     openText: {
       color: theme.green,

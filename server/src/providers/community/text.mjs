@@ -12,7 +12,27 @@ function decodeEntities(text) {
 }
 
 export function stripHtml(html) {
-  return decodeEntities(String(html || '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+  return htmlToPlainText(html);
+}
+
+export function htmlToPlainText(html) {
+  let text = String(html || '');
+  text = text.replace(/<(br|BR)\s*\/?>/g, '\n');
+  text = text.replace(/<\/p\s*>/gi, '\n\n');
+  text = text.replace(/<\/div\s*>/gi, '\n');
+  text = text.replace(/<\/li\s*>/gi, '\n');
+  text = text.replace(/<li[^>]*>/gi, '• ');
+  text = text.replace(/<[^>]+>/g, ' ');
+  text = decodeEntities(text);
+  text = text.replace(/[ \t\f\v]+/g, ' ');
+  text = text.replace(/\n[ \t]+/g, '\n');
+  text = text.replace(/\n{3,}/g, '\n\n');
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join('\n')
+    .trim();
 }
 
 export function saveDetailBody(post) {

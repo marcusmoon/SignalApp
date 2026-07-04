@@ -1,5 +1,5 @@
 import { parseToUtcIsoOrNull, utcNowIso } from '../../time/utc.mjs';
-import { mapWithConcurrency, stripHtml } from './text.mjs';
+import { mapWithConcurrency, htmlToPlainText } from './text.mjs';
 
 const CLUB_ID = '28497937';
 const MENU_ID = 5;
@@ -50,7 +50,7 @@ async function fetchNaverArticleBody(articleId) {
   if (!response.ok) return null;
   const json = await response.json();
   const html = json?.result?.article?.contentHtml || '';
-  const body = stripHtml(html);
+  const body = htmlToPlainText(html);
   return body || null;
 }
 

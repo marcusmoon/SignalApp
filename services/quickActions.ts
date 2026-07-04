@@ -8,21 +8,36 @@ export const QUICK_ACTION_IDS = ['market', 'board', 'youtube', 'filings'] as con
 
 export type QuickActionId = (typeof QUICK_ACTION_IDS)[number];
 
-export const QUICK_ACTION_HREFS: Record<QuickActionId, Href> = {
-  market: '/(tabs)/signal',
-  board: '/(tabs)/board',
-  youtube: '/(tabs)/youtube',
-  filings: '/(tabs)/disclosures',
+export const QUICK_ACTION_HREFS: Record<QuickActionId, string> = {
+  market: '/signal',
+  board: '/board',
+  youtube: '/youtube',
+  filings: '/disclosures',
 };
 
 export function isQuickActionId(value: string): value is QuickActionId {
   return QUICK_ACTION_IDS.includes(value as QuickActionId);
 }
 
+function isHref(value: unknown): value is Href {
+  return (
+    typeof value === 'string' ||
+    (typeof value === 'object' &&
+      value !== null &&
+      'pathname' in value &&
+      typeof (value as { pathname?: unknown }).pathname === 'string')
+  );
+}
+
 export function quickActionHref(action: QuickActions.Action): Href | null {
+  const href = action.params?.href;
+  if (isHref(href)) return href as Href;
+
   if (typeof action.id === 'string' && isQuickActionId(action.id)) {
-    return QUICK_ACTION_HREFS[action.id];
+    return QUICK_ACTION_HREFS[action.id] as Href;
   }
+  if (action.id === 'signal') return QUICK_ACTION_HREFS.market as Href;
+  if (action.id === 'disclosures') return QUICK_ACTION_HREFS.filings as Href;
   return null;
 }
 
@@ -44,6 +59,7 @@ export async function syncAppQuickActions(locale: AppLocale): Promise<void> {
     QUICK_ACTION_IDS.map((id) => ({
       id,
       title: quickActionTitle(locale, id),
+      params: { href: QUICK_ACTION_HREFS[id] },
       icon: Platform.select({
         ios:
           id === 'market'

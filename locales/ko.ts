@@ -265,6 +265,10 @@ export const ko = {
   accountSocialInvalid: '소셜 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.',
   accountSocialKakaoUpstream:
     '카카오 서버가 토큰·회원 조회를 거부했습니다. 서버의 REST API 키와 prebuild에 쓴 `KAKAO_NATIVE_APP_KEY`가 같은 카카오 애플리케이션인지, Redirect URI와 Client Secret 설정이 서버 설정과 맞는지 확인해 주세요.',
+  accountSocialKakaoClientSecret:
+    '웹 카카오 로그인은 서버에서 토큰 교환을 합니다. Kakao Developers → [플랫폼 키] → [REST API 키] → Client secret 코드를 Signal Admin → 소셜 로그인 → Kakao Client secret에 입력하고 저장하세요. (카카오는 기본 ON · iOS 네이티브 로그인과 별도 설정)',
+  accountSocialKakaoRedirectMismatch:
+    '카카오 인가와 토큰 교환의 Redirect URI가 다릅니다. Kakao [REST API 키] → Redirect URI에 앱과 같은 주소(예: https://<도메인>/web/oauth)가 등록돼 있는지 확인하세요.',
   accountSocialKakaoRedirectUri:
     'Kakao Redirect URI가 등록되어 있지 않거나 주소가 다릅니다(KOE006). Kakao Developers → 내 애플리케이션 → 카카오 로그인 → Redirect URI에 아래 주소를 그대로 추가하세요. Web 플랫폼도 켜져 있어야 합니다.',
   accountSocialSignupRequired: '처음 사용하는 소셜 계정입니다. 필수 약관에 동의한 뒤 다시 소셜 가입을 완료해 주세요.',

@@ -143,9 +143,26 @@ export async function exchangeKakaoCode(code, redirectUri, runtime) {
   }
   if (!res.ok || !json.access_token) {
     logKakaoFailure('kauth/token', res.status, text);
-    throw new Error(json.error ? 'APP_USER_SOCIAL_KAKAO_UPSTREAM' : 'APP_USER_SOCIAL_INVALID_TOKEN');
+    throw new Error(mapKakaoOAuthError(json));
   }
   return kakaoProfileFromAccessToken(String(json.access_token));
+}
+
+function mapKakaoOAuthError(json) {
+  const err = clean(json?.error);
+  const code = clean(json?.error_code);
+  const desc = clean(json?.error_description).toLowerCase();
+  if (code === 'KOE010' || (err === 'invalid_client' && desc.includes('bad client credentials'))) {
+    return 'APP_USER_SOCIAL_KAKAO_CLIENT_SECRET';
+  }
+  if (code === 'KOE303' || desc.includes('redirect uri mismatch')) {
+    return 'APP_USER_SOCIAL_KAKAO_REDIRECT_MISMATCH';
+  }
+  if (code === 'KOE101' || (err === 'invalid_client' && desc.includes('client_id'))) {
+    return 'APP_USER_SOCIAL_NOT_CONFIGURED';
+  }
+  if (err) return 'APP_USER_SOCIAL_KAKAO_UPSTREAM';
+  return 'APP_USER_SOCIAL_INVALID_TOKEN';
 }
 
 async function naverProfileFromAccessToken(accessToken) {

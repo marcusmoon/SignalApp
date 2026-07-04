@@ -267,6 +267,10 @@ export const ja = {
   accountSocialInvalid: 'ソーシャル認証に失敗しました。しばらくしてから再試行してください。',
   accountSocialKakaoUpstream:
     'カカオ側がトークンまたはユーザー照会を拒否しました。サーバーの REST API キーが prebuild の `KAKAO_NATIVE_APP_KEY` と同一のカカオアプリケーションか、Redirect URI と Client Secret 設定が合っているか確認してください。',
+  accountSocialKakaoClientSecret:
+    'Web のカカオログインはサーバーでトークン交換します。Kakao Developers → [プラットフォームキー] → [REST API キー] → Client secret を Signal Admin → ソーシャルログイン → Kakao Client secret に入力して保存してください。（カカオはデフォルト ON · iOS ネイティブとは別設定）',
+  accountSocialKakaoRedirectMismatch:
+    '認可とトークン交換の Redirect URI が一致しません。Kakao [REST API キー] → Redirect URI にアプリと同じ URL（例: https://<ドメイン>/web/oauth）が登録されているか確認してください。',
   accountSocialKakaoRedirectUri:
     'Kakao Redirect URI が未登録か一致しません (KOE006)。Kakao Developers → アプリ → カカオログイン → Redirect URI に下記をそのまま追加してください。Web プラットフォームも有効にしてください。',
   accountSocialSignupRequired: '初めて使うソーシャルアカウントです。必須規約に同意してからソーシャル登録を続けてください。',

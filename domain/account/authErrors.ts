@@ -19,6 +19,10 @@ function socialApiCodeMessage(code: string | undefined): MessageId | null {
       return 'accountSocialDisabled';
     case 'APP_USER_SOCIAL_KAKAO_UPSTREAM':
       return 'accountSocialKakaoUpstream';
+    case 'APP_USER_SOCIAL_KAKAO_CLIENT_SECRET':
+      return 'accountSocialKakaoClientSecret';
+    case 'APP_USER_SOCIAL_KAKAO_REDIRECT_MISMATCH':
+      return 'accountSocialKakaoRedirectMismatch';
     case 'APP_USER_SOCIAL_INVALID_TOKEN':
     case 'APP_USER_SOCIAL_INVALID_PROFILE':
     case 'APP_USER_SOCIAL_UNSUPPORTED':

@@ -45,6 +45,7 @@ export const en = {
   communityEmpty: 'No posts to show.',
   communityErrorLoad: 'Could not load the board.',
   communityDetailTitle: 'Post',
+  communityReadBody: 'Read post',
   communityOriginalOpen: 'Open original',
   newsOpenVideos: 'Video',
   moreHubSegmentDragHandleA11y: 'Reorder {{name}} (drag)',

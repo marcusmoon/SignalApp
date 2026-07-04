@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { useCallback, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
@@ -23,17 +24,28 @@ export function CommunityPostCard({ item, sourceLabelId }: Props) {
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const timeLabel = item.publishedAt ? formatRelativeFromIso(item.publishedAt, locale) : '—';
 
+  const openDetail = useCallback(() => {
+    router.push(`/community/${encodeURIComponent(item.id)}`);
+  }, [item.id, router]);
+
   return (
     <Pressable
-      onPress={() => {
-        router.push(`/community/${encodeURIComponent(item.id)}`);
-      }}
+      onPress={openDetail}
       accessibilityRole="button"
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <View style={styles.metaRow}>
         <Text style={styles.source}>{t(sourceLabelId)}</Text>
-        <Text style={styles.time}>{timeLabel}</Text>
+        <Pressable
+          onPress={openDetail}
+          hitSlop={8}
+          accessibilityRole="link"
+          accessibilityLabel={t('communityReadBody')}
+          style={({ pressed }) => [styles.detailLink, pressed && styles.pressed]}>
+          <Text style={styles.detailLinkText}>{t('communityReadBody')}</Text>
+          <FontAwesome name="angle-right" size={14} color={theme.green} />
+        </Pressable>
       </View>
+      <Text style={styles.time}>{timeLabel}</Text>
       <Text style={styles.title} numberOfLines={2}>
         {item.title}
       </Text>
@@ -71,6 +83,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       justifyContent: 'space-between',
       gap: 10,
     },
+    detailLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      flexShrink: 0,
+    },
+    detailLinkText: {
+      fontSize: ft.ff(11),
+      lineHeight: sf(15),
+      fontWeight: '800',
+      color: theme.green,
+    },
     source: {
       flexShrink: 1,
       fontSize: ft.ff(11),
@@ -79,7 +103,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.green,
     },
     time: {
-      flexShrink: 0,
       fontSize: ft.ff(11),
       lineHeight: sf(15),
       fontWeight: ft.metaWeight,

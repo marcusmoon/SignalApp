@@ -36,6 +36,14 @@ export function CommunityPostDetailContent({ item, bottomPad = 24 }: Props) {
           </View>
           <Text style={styles.time}>{timeLabel}</Text>
         </View>
+
+        {showOriginalLink ? (
+          <Pressable onPress={() => void WebBrowser.openBrowserAsync(originalUrl)} style={styles.openBtn}>
+            <Text style={styles.openText}>{t('communityOriginalOpen')}</Text>
+            <FontAwesome name="external-link" size={13} color={theme.green} />
+          </Pressable>
+        ) : null}
+
         <Text style={styles.title}>{item.title}</Text>
       </View>
 
@@ -43,13 +51,6 @@ export function CommunityPostDetailContent({ item, bottomPad = 24 }: Props) {
         <View style={styles.bodyCard}>
           <CommunityPostBody body={item.body} />
         </View>
-      ) : null}
-
-      {showOriginalLink ? (
-        <Pressable onPress={() => void WebBrowser.openBrowserAsync(originalUrl)} style={styles.openBtn}>
-          <Text style={styles.openText}>{t('communityOriginalOpen')}</Text>
-          <FontAwesome name="external-link" size={13} color={theme.green} />
-        </Pressable>
       ) : null}
     </View>
   );
@@ -106,8 +107,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingVertical: 18,
     },
     openBtn: {
-      minHeight: 48,
-      borderRadius: 14,
+      minHeight: 40,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
@@ -115,7 +116,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       justifyContent: 'center',
       flexDirection: 'row',
       gap: 8,
-      marginTop: 4,
+      alignSelf: 'flex-start',
+      paddingHorizontal: 14,
     },
     openText: {
       color: theme.green,

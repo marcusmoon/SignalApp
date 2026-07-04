@@ -61,7 +61,7 @@ import {
 
 const TAB_ICON_SIZE = 25;
 
-type TabBarIconName = 'home' | 'newspaper' | 'file-alt' | 'chart-line' | 'highlighter' | 'youtube' | 'th-large' | 'comments';
+type TabBarIconName = 'home' | 'newspaper' | 'file-alt' | 'chart-line' | 'chart-area' | 'youtube' | 'th-large' | 'comments';
 
 function TabBarIcon({
   name,
@@ -429,7 +429,7 @@ export default function TabLayout() {
         options={{
           title: t('tabSignal'),
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="highlighter" color={color} focused={focused} showDot={signalHasUnread} />
+            <TabBarIcon name="chart-area" color={color} focused={focused} showDot={signalHasUnread} />
           ),
         }}
       />

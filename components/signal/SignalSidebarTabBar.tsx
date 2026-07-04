@@ -1,6 +1,6 @@
 /**
  * iPad 전용 좌측 사이드바 내비게이션.
- * - 메인 탭(홈·뉴스·공시·시장·시세·유튜브·더보기)을 세로로 표시
+ * - 메인 탭(홈·뉴스·공시·시장·시세·유튜브·게시판·더보기)을 세로로 표시
  * - 설정 세부 항목·퀵 링크와 계정 진입점을 iPad에 맞게 분리
  */
 import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
@@ -19,7 +19,7 @@ import type { MessageId } from '@/locales/messages';
 type TabDef = {
   name: string;
   route: string;
-  icon: 'newspaper' | 'file-alt' | 'highlighter' | 'chart-line' | 'youtube' | 'th-large';
+  icon: 'newspaper' | 'file-alt' | 'chart-area' | 'chart-line' | 'youtube' | 'comments' | 'th-large';
   labelId: MessageId;
 };
 
@@ -43,9 +43,10 @@ type SidebarSubDef = {
 
 const SIDEBAR_TABS: TabDef[] = [
   { name: 'news', route: '/(tabs)/news', icon: 'newspaper', labelId: 'tabNews' },
-  { name: 'signal', route: '/(tabs)/signal', icon: 'highlighter', labelId: 'tabSignal' },
+  { name: 'signal', route: '/(tabs)/signal', icon: 'chart-area', labelId: 'tabSignal' },
   { name: 'quotes', route: '/(tabs)/quotes', icon: 'chart-line', labelId: 'tabQuotes' },
   { name: 'youtube', route: '/(tabs)/youtube', icon: 'youtube', labelId: 'tabYoutube' },
+  { name: 'board', route: '/(tabs)/board', icon: 'comments', labelId: 'screenBoard' },
   { name: 'more', route: '/(tabs)/more', icon: 'th-large', labelId: 'tabMore' },
 ];
 

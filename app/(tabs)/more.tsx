@@ -132,7 +132,7 @@ export default function MoreHubScreen() {
   const visibleOrder = useMemo(
     () =>
       useTwoPane
-        ? order.filter((item) => item !== 'account' && item !== 'youtube' && item !== 'settings')
+        ? order.filter((item) => item !== 'account' && item !== 'youtube' && item !== 'settings' && item !== 'board')
         : order,
     [order, useTwoPane],
   );

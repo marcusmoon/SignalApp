@@ -347,6 +347,7 @@ export const ko = {
 
   headerTagline: '노이즈는 걸러내고, 진짜 시그널만',
   a11yAlerts: '알림',
+  a11yAlertsUnread: '알림, 새 알림 있음',
   a11yCalendar: '투자 캘린더',
   a11ySettings: '설정',
   a11yNewsFilter: '뉴스 제공사 필터 열기',

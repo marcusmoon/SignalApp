@@ -349,6 +349,7 @@ export const ja = {
 
   headerTagline: 'ノイズを捨て、本当のシグナルだけを。',
   a11yAlerts: '通知',
+  a11yAlertsUnread: '通知、新着あり',
   a11yCalendar: '投資カレンダー',
   a11ySettings: '設定',
   a11yNewsFilter: 'ニュース提供元フィルタを開く',

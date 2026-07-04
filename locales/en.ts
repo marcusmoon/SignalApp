@@ -349,6 +349,7 @@ export const en = {
 
   headerTagline: 'Cut the noise. Keep the signal.',
   a11yAlerts: 'Alerts',
+  a11yAlertsUnread: 'Alerts, new notifications',
   a11yCalendar: 'Invest calendar',
   a11ySettings: 'Settings',
   a11yNewsFilter: 'Open news source filter',

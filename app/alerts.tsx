@@ -14,6 +14,7 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
+import { markAlertsSeen } from '@/services/alertsUnreadPreference';
 import { loadNotificationHistory, loadDismissedNotificationIds, removeNotificationById, type StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
 import { loadAppAuthSession, getSessionAccessToken, type StoredAppAuthSession } from '@/services/appAuthSession';
@@ -74,7 +75,10 @@ export default function AlertsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void reload();
+      void (async () => {
+        await reload();
+        await markAlertsSeen();
+      })();
     }, [reload]),
   );
 

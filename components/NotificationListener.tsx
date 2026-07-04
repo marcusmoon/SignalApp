@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
 import { appendNotificationFromPayload } from '@/services/notificationHistory';
+import { setAlertsUnreadCached } from '@/services/alertsUnreadPreference';
 import {
   loadNotificationPrefs,
   shouldRecordIncomingPush,
@@ -44,6 +45,7 @@ export function NotificationListener() {
       const sourceType = String(data?.sourceType || '');
       void loadNotificationPrefs().then((prefs) => {
         if (!shouldRecordIncomingPush(type, sourceType, prefs)) return;
+        void setAlertsUnreadCached(true);
         if (
           type === 'market_briefing' ||
           sourceType === 'market_briefing' ||

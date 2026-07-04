@@ -1,6 +1,6 @@
 /**
  * iPad 전용 좌측 사이드바 내비게이션.
- * - 메인 탭(홈·뉴스·공시·시그널·시세·유튜브·더보기)을 세로로 표시
+ * - 메인 탭(홈·뉴스·공시·시장·시세·유튜브·더보기)을 세로로 표시
  * - 설정 세부 항목·퀵 링크와 계정 진입점을 iPad에 맞게 분리
  */
 import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';

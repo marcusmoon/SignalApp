@@ -396,7 +396,7 @@ export default function TabLayout() {
       tabBar={(props) => <SignalFloatingTabBar {...props} />}
       screenOptions={screenOptions}
       detachInactiveScreens={isWeb}>
-      {/* 순서: 홈 · 뉴스 · 시그널 · 시세 · 더보기. 공시·유튜브는 더보기 허브에서 진입한다. */}
+      {/* 순서: 홈 · 뉴스 · 시장 · 시세 · 더보기. 공시·유튜브는 더보기 허브에서 진입한다. */}
       <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen
         name="home"

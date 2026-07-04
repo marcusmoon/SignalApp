@@ -228,6 +228,7 @@ export function HomeFocusContent({
   const ipadNav = useIpadSidebarNav();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const selectedIsToday = selectedYmd >= todayYmd;
+  const selectedIsExactToday = selectedYmd === todayYmd;
   const loadedYmdRef = useRef<string | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -282,7 +283,7 @@ export function HomeFocusContent({
     setError(null);
     try {
       const watchlist = await loadWatchlistSymbols();
-      const symbols = watchlist.slice(0, watchlistDisplayCount);
+      const symbols = selectedYmd === todayYmd ? watchlist.slice(0, watchlistDisplayCount) : [];
       const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows] = await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale),
         fetchTopIssues(selectedYmd),
@@ -330,7 +331,7 @@ export function HomeFocusContent({
     } catch (e) {
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
     }
-  }, [locale, selectedYmd, t, watchlistDisplayCount]);
+  }, [locale, selectedYmd, t, todayYmd, watchlistDisplayCount]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -766,48 +767,52 @@ export function HomeFocusContent({
             )}
           </View>
 
-          <HomeSectionDivider />
+          {selectedIsExactToday ? (
+            <>
+              <HomeSectionDivider />
 
-          <View style={styles.section}>
-            <HomeSectionHeader title={t('homeFocusWatchTitle')} onPress={openQuotes} accessibilityLabel={t('commonViewAll')} />
-            <View style={styles.quoteGrid}>
-              {quotes.length === 0 ? (
-                <Text style={styles.emptyText}>{t('quotesEmptyWatch')}</Text>
-              ) : (
-                quotes.map((row, index) => {
-                  const pct = row.quote?.changePercent;
-                  const up = typeof pct === 'number' && pct >= 0;
-                  return (
-                    <Pressable
-                      key={`${row.symbol}-${index}`}
-                      onPress={() => openSymbolDetail(row.symbol)}
-                      accessibilityRole="button"
-                      accessibilityLabel={row.symbol}
-                      style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
-                      <View style={styles.quoteTileContent}>
-                        <View style={styles.quoteNameCol}>
-                          <Text style={styles.quoteSymbol} numberOfLines={1}>
-                            {row.symbol}
-                          </Text>
-                          <Text style={styles.quoteName} numberOfLines={1}>
-                            {row.name || row.quote?.name || '—'}
-                          </Text>
-                        </View>
-                        <View style={styles.quoteTileFooter}>
-                          <Text style={styles.priceText} numberOfLines={1}>
-                            {formatPrice(row)}
-                          </Text>
-                          <Text style={[styles.changeText, { color: up ? quoteChange.colors.up : quoteChange.colors.down }]}>
-                            {formatQuoteDpPct(pct)}
-                          </Text>
-                        </View>
-                      </View>
-                    </Pressable>
-                  );
-                })
-              )}
-            </View>
-          </View>
+              <View style={styles.section}>
+                <HomeSectionHeader title={t('homeFocusWatchTitle')} onPress={openQuotes} accessibilityLabel={t('commonViewAll')} />
+                <View style={styles.quoteGrid}>
+                  {quotes.length === 0 ? (
+                    <Text style={styles.emptyText}>{t('quotesEmptyWatch')}</Text>
+                  ) : (
+                    quotes.map((row, index) => {
+                      const pct = row.quote?.changePercent;
+                      const up = typeof pct === 'number' && pct >= 0;
+                      return (
+                        <Pressable
+                          key={`${row.symbol}-${index}`}
+                          onPress={() => openSymbolDetail(row.symbol)}
+                          accessibilityRole="button"
+                          accessibilityLabel={row.symbol}
+                          style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
+                          <View style={styles.quoteTileContent}>
+                            <View style={styles.quoteNameCol}>
+                              <Text style={styles.quoteSymbol} numberOfLines={1}>
+                                {row.symbol}
+                              </Text>
+                              <Text style={styles.quoteName} numberOfLines={1}>
+                                {row.name || row.quote?.name || '—'}
+                              </Text>
+                            </View>
+                            <View style={styles.quoteTileFooter}>
+                              <Text style={styles.priceText} numberOfLines={1}>
+                                {formatPrice(row)}
+                              </Text>
+                              <Text style={[styles.changeText, { color: up ? quoteChange.colors.up : quoteChange.colors.down }]}>
+                                {formatQuoteDpPct(pct)}
+                              </Text>
+                            </View>
+                          </View>
+                        </Pressable>
+                      );
+                    })
+                  )}
+                </View>
+              </View>
+            </>
+          ) : null}
 
           <HomeSectionDivider />
 

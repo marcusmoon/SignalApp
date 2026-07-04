@@ -17,7 +17,7 @@ Mac 내장 디스크 용량을 줄이기 위해 **Xcode 앱은 그대로 두고*
 | 폴더 | 대략 용량 | 설명 |
 |---|---|---|
 | `~/Library/Developer/Xcode/iOS DeviceSupport` | 수 GB | 실기기 연결 시 생성, 필요 시 재다운로드 |
-| `~/Library/Developer/CoreDevice` | ~2GB | 실기기 디버깅용 `DeviceFS` 캐시 |
+| `~/Library/Developer/CoreDevice` | ~4KB (실제) | 실기기 연결 시 `DeviceFS` **마운트 지점**. `du`만 보면 수 GB처럼 보이지만 대부분 연결된 기기 파일시스템이라 **내장 디스크 절약 효과는 거의 없음** |
 | `<프로젝트>/ios/build` | 수 GB | 프로젝트 빌드 산출물, 삭제·재생성 가능 |
 | `~/Library/Developer/Xcode/DerivedData` | 수 GB | Xcode 빌드 캐시, **가장 안전하게 옮길 항목** |
 | `~/Library/Developer/Xcode/Archives` | 가변 | 배포용 아카이브 (있을 때만) |
@@ -70,15 +70,31 @@ mv ~/Library/Developer/Xcode/Archives "/Volumes/marcus/Xcode/Archives"
 ln -s "/Volumes/marcus/Xcode/Archives" ~/Library/Developer/Xcode/Archives
 ```
 
-## 4. CoreDevice (실기기 디버깅 캐시)
+## 4. CoreDevice (실기기 디버깅 — 용량 절약 효과 낮음)
 
-`DeviceFS` 등 실기기 연결·디버깅 시 쌓이는 캐시입니다. `~/Library/Developer` **전체**를 symlink하면 Xcode 15+에서 문제가 날 수 있으므로, **하위 폴더만** 옮깁니다.
+`DeviceFS`는 **폴더가 아니라 마운트 포인트**입니다. iPhone/iPad가 연결되면 `CoreDeviceService`가 여기에 기기 파일시스템을 붙입니다.  
+`du ~/Library/Developer/CoreDevice`는 연결된 기기 용량까지 합산해 **수 GB처럼 보일 수 있지만**, 내장 디스크 실사용은 보통 **수 KB**입니다 (`du -sh -x ~/Library/Developer/CoreDevice`로 확인).
+
+**용량 확보 목적이라면 CoreDevice 이전은 우선순위가 낮습니다.** DerivedData·DeviceSupport를 먼저 옮기세요.
+
+그래도 경로를 외장으로 맞추려면 **기기 연결 해제 + Xcode 종료** 후:
 
 ```bash
+killall CoreDeviceService DeviceFS 2>/dev/null
+diskutil unmount force ~/Library/Developer/CoreDevice/DeviceFS
+
+# 잘못 만들어진 외장 중첩 폴더 정리 (있을 때)
+rm -rf "/Volumes/marcus/Xcode/CoreDevice/CoreDevice"
+
+# 내장 폴더 제거 후 symlink (DeviceFS 마운트 지점은 외장에서 다시 생성됨)
+rmdir ~/Library/Developer/CoreDevice/DeviceFS 2>/dev/null
+rmdir ~/Library/Developer/CoreDevice 2>/dev/null
 mkdir -p "/Volumes/marcus/Xcode/CoreDevice"
-mv ~/Library/Developer/CoreDevice "/Volumes/marcus/Xcode/CoreDevice"
 ln -s "/Volumes/marcus/Xcode/CoreDevice" ~/Library/Developer/CoreDevice
 ```
+
+`Operation not permitted` / `Resource busy`가 나오면 iPhone·iPad **USB 분리** 후 다시 시도하세요.  
+외장에 `CoreDevice` 폴더가 **이미 있을 때** `mv … /Volumes/marcus/Xcode/CoreDevice`로 옮기면 **안쪽에 중첩**되므로, 위처럼 `mkdir` + `ln -s`만 사용합니다.
 
 ## 5. SignalApp `ios/build` (프로젝트별)
 
@@ -100,7 +116,8 @@ ls -la ~/Library/Developer/Xcode/iOS\ DeviceSupport
 ls -la ~/Library/Developer/CoreDevice
 ```
 
-`DerivedData -> /Volumes/marcus/Xcode/DerivedData` 형태면 정상입니다.
+`DerivedData -> /Volumes/marcus/Xcode/DerivedData` 형태면 정상입니다.  
+`CoreDevice`도 `CoreDevice -> /Volumes/marcus/Xcode/CoreDevice`이어야 하며, **그 안에 또 `CoreDevice` 링크가 있으면** 위 §4 복구 절차를 따릅니다.
 
 ## 되돌리기
 

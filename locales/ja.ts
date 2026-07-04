@@ -46,7 +46,6 @@ export const ja = {
   communityErrorLoad: '掲示板を読み込めませんでした。',
   communityDetailTitle: '投稿',
   communityOriginalOpen: '原文を開く',
-  communityOriginalShort: '原文',
   newsOpenVideos: '動画',
   moreHubSegmentDragHandleA11y: '{{name}}の順番を変更（ドラッグ）',
   moreRefLinksKicker: 'クイックリンク',

@@ -44,7 +44,6 @@ export const ko = {
   communityErrorLoad: '게시판을 불러오지 못했습니다.',
   communityDetailTitle: '게시글',
   communityOriginalOpen: '원문으로 가기',
-  communityOriginalShort: '원문',
   newsOpenVideos: '영상',
   moreHubSegmentDragHandleA11y: '{{name}} 순서 바꾸기(드래그)',
   moreRefLinksKicker: '퀵 링크',

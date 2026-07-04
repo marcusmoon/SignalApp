@@ -56,10 +56,9 @@ export function CommunityPostDetailContent({ item, bottomPad = 24, refreshing = 
                 onPress={() => void WebBrowser.openBrowserAsync(originalUrl)}
                 accessibilityRole="link"
                 accessibilityLabel={t('communityOriginalOpen')}
-                hitSlop={8}
+                hitSlop={10}
                 style={({ pressed }) => [styles.originalLink, pressed && styles.pressed]}>
-                <Text style={styles.originalLinkText}>{t('communityOriginalShort')}</Text>
-                <FontAwesome name="external-link" size={9} color={accent.accent} />
+                <FontAwesome name="external-link" size={11} color={accent.accent} />
               </Pressable>
             ) : null}
           </View>
@@ -157,16 +156,10 @@ function makeStyles(
     },
     originalLink: {
       flexShrink: 0,
-      flexDirection: 'row',
       alignItems: 'center',
-      gap: 3,
-      marginTop: 5,
-    },
-    originalLinkText: {
-      color: accent.accent,
-      fontSize: ft.ff(10),
-      lineHeight: sf(13),
-      fontWeight: ft.metaWeight,
+      justifyContent: 'center',
+      marginTop: 6,
+      opacity: 0.92,
     },
     bodyScroll: {
       ...webScrollViewportStyle,

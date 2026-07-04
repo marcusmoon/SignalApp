@@ -262,6 +262,25 @@ export type SignalYoutubePage = {
   meta: SignalYoutubeListMeta;
 };
 
+export type SignalApiCommunityPost = {
+  id: string;
+  source: string;
+  provider: string | null;
+  title: string;
+  body: string;
+  sourceUrl: string | null;
+  publishedAt: string | null;
+  fetchedAt: string | null;
+  updatedAt: string | null;
+};
+
+export type SignalCommunityListMeta = SignalNewsListMeta;
+
+export type SignalCommunityPage = {
+  items: SignalApiCommunityPost[];
+  meta: SignalCommunityListMeta;
+};
+
 export type SignalApiMarketList = {
   key: string;
   displayName: string;

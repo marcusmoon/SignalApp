@@ -25,6 +25,7 @@ import { handlePublicNewsRoutes } from './public/v1/news.mjs';
 import { handlePublicNotificationRoutes } from './public/v1/notifications.mjs';
 import { handlePublicTodayBriefingRoutes } from './public/v1/todayBriefings.mjs';
 import { handlePublicYoutubeRoutes } from './public/v1/youtube.mjs';
+import { handlePublicCommunityRoutes } from './public/v1/community.mjs';
 import { handlePublicMiscRoutes } from './public/routes.mjs';
 import { json } from './shared.mjs';
 
@@ -41,6 +42,7 @@ const PUBLIC_ROUTE_HANDLERS = [
   handlePublicCalendarRoutes,
   handlePublicInsightRoutes,
   handlePublicYoutubeRoutes,
+  handlePublicCommunityRoutes,
   handlePublicMarketRoutes,
 ];
 

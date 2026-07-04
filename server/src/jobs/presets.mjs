@@ -37,6 +37,13 @@ export const JOB_PRESETS = {
     descriptionKey: 'jobPresetYoutubeRefreshDesc',
     jobKeys: ['youtube_economy_latest', 'youtube_economy_popular'],
   },
+  community_refresh: {
+    id: 'community_refresh',
+    area: 'community',
+    labelKey: 'jobPresetCommunityRefresh',
+    descriptionKey: 'jobPresetCommunityRefreshDesc',
+    jobKeys: ['community_naver_likeusstock_free', 'community_save_user_news'],
+  },
   market_refresh: {
     id: 'market_refresh',
     area: 'market',

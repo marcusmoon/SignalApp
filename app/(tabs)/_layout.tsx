@@ -61,7 +61,7 @@ import {
 
 const TAB_ICON_SIZE = 25;
 
-type TabBarIconName = 'home' | 'newspaper' | 'file-alt' | 'chart-line' | 'highlighter' | 'youtube' | 'th-large';
+type TabBarIconName = 'home' | 'newspaper' | 'file-alt' | 'chart-line' | 'highlighter' | 'youtube' | 'th-large' | 'comments';
 
 function TabBarIcon({
   name,
@@ -457,6 +457,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => <TabBarIcon name="youtube" color={color} focused={focused} />,
         }}
       />
+      <Tabs.Screen
+        name="board"
+        options={{
+          title: t('screenBoard'),
+          href: null,
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name="comments" color={color} focused={focused} />,
+        }}
+      />
     </Tabs>
   );
 }
@@ -567,6 +575,7 @@ function IpadWideTabLayout({
               <Tabs.Screen name="quotes" options={{ title: t('tabQuotes') }} />
               <Tabs.Screen name="more" options={{ title: t('tabMore') }} />
               <Tabs.Screen name="youtube" options={{ title: t('tabYoutube') }} />
+              <Tabs.Screen name="board" options={{ href: null, title: t('screenBoard') }} />
             </Tabs>
           </View>
         </View>

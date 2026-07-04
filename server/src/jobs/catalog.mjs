@@ -1,6 +1,6 @@
 /** Admin·runner 공통 Job 메타데이터 (단일 기준). */
 
-export const JOB_AREAS = ['news', 'disclosures', 'calendar', 'youtube', 'market', 'signal', 'legacy'];
+export const JOB_AREAS = ['news', 'disclosures', 'calendar', 'youtube', 'market', 'signal', 'community', 'legacy'];
 
 export const JOB_STAGES = ['ingest', 'enrich', 'maintain'];
 
@@ -26,6 +26,8 @@ export const JOB_CATALOG = {
   market_price_series_daily: { area: 'market', stage: 'ingest' },
   quant_price_series_kr: { area: 'legacy', stage: 'ingest', legacy: true },
   quant_signals_kr: { area: 'legacy', stage: 'enrich', legacy: true },
+  community_naver_likeusstock_free: { area: 'community', stage: 'ingest' },
+  community_save_user_news: { area: 'community', stage: 'ingest' },
 };
 
 const AREA_FROM_DOMAIN = {
@@ -35,6 +37,7 @@ const AREA_FROM_DOMAIN = {
   youtube: 'youtube',
   market: 'market',
   insights: 'signal',
+  community: 'community',
   quant: 'legacy',
   concalls: 'legacy',
 };
@@ -73,6 +76,7 @@ export function areaLabelKey(area) {
     youtube: 'areaYoutube',
     market: 'areaMarket',
     signal: 'areaSignal',
+    community: 'areaCommunity',
     legacy: 'areaLegacy',
   };
   return map[area] || 'areaLegacy';

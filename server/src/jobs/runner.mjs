@@ -27,6 +27,8 @@ import { fetchNewswireRssNews } from '../providers/news/rssNews.mjs';
 import { fetchDartFilings } from '../providers/news/dartFilings.mjs';
 import { fetchSecEdgarFilings } from '../providers/news/secEdgar.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
+import { fetchNaverCafeLikeusstockFree } from '../providers/community/naverCafeLikeusstock.mjs';
+import { fetchSaveUserNews } from '../providers/community/saveUserNews.mjs';
 import { fetchYoutubeEconomy, fetchYoutubeVideosByIds } from '../providers/youtube/youtube.mjs';
 import { normalizeYoutubeCurationHandles } from '../youtubeCuration.mjs';
 import { phasesForJob, paramsForPhase, runModeForJob } from './jobPhases.mjs';
@@ -364,6 +366,12 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
   if (effective.provider === 'signal' && effective.handler === 'news_digest') {
     return { kind: 'newsDigests', rows: generateNewsDigestItems(dbBefore, params || {}) };
   }
+  if (effective.provider === 'naver_cafe' && effective.handler === 'likeusstock_free') {
+    return { kind: 'community', rows: await fetchNaverCafeLikeusstockFree(params || {}) };
+  }
+  if (effective.provider === 'save' && effective.handler === 'user_news') {
+    return { kind: 'community', rows: await fetchSaveUserNews(params || {}) };
+  }
   throw new Error(`UNKNOWN_JOB_HANDLER:${job.provider}:${job.handler}`);
 }
 
@@ -375,6 +383,7 @@ async function persistHandlerResult(result, rows) {
     priceSeries: 'priceSeries',
     coinMarkets: 'coinMarkets',
     newsDigests: 'newsDigestItems',
+    community: 'communityPosts',
   };
   const directCollection = directCollectionByKind[result.kind];
   if (directCollection) {

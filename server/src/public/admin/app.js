@@ -336,6 +336,8 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
               ? 'areaCalendar'
               : a === 'youtube'
                 ? 'areaYoutube'
+                : a === 'community'
+                  ? 'areaCommunity'
                 : a === 'market'
                   ? 'areaMarket'
                   : a === 'signal' || a === 'insights'

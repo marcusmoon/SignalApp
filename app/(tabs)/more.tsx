@@ -33,6 +33,7 @@ const HUB_META: Record<
   MoreHubRouteKey,
   { href: Href; icon: ComponentProps<typeof FontAwesome>['name']; titleId: MessageId }
 > = {
+  board: { href: '/(tabs)/board' as Href, icon: 'comments', titleId: 'screenBoard' },
   disclosures: { href: '/(tabs)/disclosures' as Href, icon: 'file-text-o', titleId: 'tabDisclosures' },
   youtube: { href: '/(tabs)/youtube' as Href, icon: 'youtube-play', titleId: 'tabYoutube' },
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
@@ -100,6 +101,10 @@ export default function MoreHubScreen() {
       }
       if (item === 'disclosures') {
         router.push('/(tabs)/disclosures' as never);
+        return;
+      }
+      if (item === 'board') {
+        router.push('/(tabs)/board' as never);
         return;
       }
       if (item === 'youtube') {

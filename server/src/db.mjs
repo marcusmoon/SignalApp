@@ -24,6 +24,7 @@ import {
   queryPublicYoutubeChannelRows,
   queryPublicYoutubeRows,
 } from './db/repositories/youtubeRepository.mjs';
+import { queryPublicCommunityRows } from './db/repositories/communityRepository.mjs';
 import {
   deleteCalendarRowById,
   deleteCalendarRowsByIds,
@@ -596,6 +597,27 @@ const collectionSpecs = [
     }),
   },
   {
+    key: 'communityPosts',
+    store: 'community',
+    table: 'community_posts',
+    pk: 'id',
+    conflictTarget: 'source, provider_item_id',
+    keyOf: (row) => row.id,
+    noPayload: true,
+    columns: (row, index) => ({
+      position: index,
+      source: textOrNull(row.source),
+      provider: textOrNull(row.provider),
+      provider_item_id: textOrNull(row.providerItemId),
+      title: textOrNull(row.title) || '',
+      body: textOrNull(row.body) || '',
+      source_url: textOrNull(row.sourceUrl),
+      published_at: isoOrNull(row.publishedAt),
+      fetched_at: isoOrNull(row.fetchedAt),
+      updated_at: isoOrNull(row.updatedAt) || nowIso(),
+    }),
+  },
+  {
     key: 'notificationItems',
     store: 'insights',
     table: 'notification_items',
@@ -936,6 +958,10 @@ export async function queryPublicDisclosureById(id) {
 
 export async function queryPublicYoutube(options = {}) {
   return cachedPublicRead('publicYoutube', options, () => queryPublicYoutubeRows(options));
+}
+
+export async function queryPublicCommunity(options = {}) {
+  return cachedPublicRead('publicCommunity', options, () => queryPublicCommunityRows(options), 15000);
 }
 
 export async function queryPublicYoutubeChannels() {

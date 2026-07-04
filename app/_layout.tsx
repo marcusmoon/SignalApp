@@ -11,7 +11,6 @@ import { enableFreeze } from 'react-native-screens';
 import 'react-native-reanimated';
 
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
-import { AppQuickActions } from '@/components/AppQuickActions';
 import { NotificationListener } from '@/components/NotificationListener';
 import { PushDeviceRegistrar } from '@/components/PushDeviceRegistrar';
 import { OtaBannerProvider } from '@/contexts/OtaBannerContext';
@@ -213,7 +212,6 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={navTheme}>
-      <AppQuickActions />
       <NotificationListener />
       <PushDeviceRegistrar />
       <View style={{ ...webFlexFill, backgroundColor: theme.bg }}>

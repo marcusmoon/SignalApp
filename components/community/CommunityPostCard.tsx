@@ -32,26 +32,22 @@ export function CommunityPostCard({ item, sourceLabelId }: Props) {
     <Pressable
       onPress={openDetail}
       accessibilityRole="button"
+      accessibilityHint={t('communityReadBody')}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <View style={styles.metaRow}>
         <Text style={styles.source}>{t(sourceLabelId)}</Text>
-        <Pressable
-          onPress={openDetail}
-          hitSlop={8}
-          accessibilityRole="link"
-          accessibilityLabel={t('communityReadBody')}
-          style={({ pressed }) => [styles.detailLink, pressed && styles.pressed]}>
-          <Text style={styles.detailLinkText}>{t('communityReadBody')}</Text>
-          <FontAwesome name="angle-right" size={14} color={theme.green} />
-        </Pressable>
+        <Text style={styles.time}>{timeLabel}</Text>
       </View>
-      <Text style={styles.time}>{timeLabel}</Text>
       <Text style={styles.title} numberOfLines={2}>
         {item.title}
       </Text>
       <Text style={styles.body} numberOfLines={6}>
         {item.body}
       </Text>
+      <View style={styles.detailFooter} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Text style={styles.detailLinkText}>{t('communityReadBody')}</Text>
+        <FontAwesome name="angle-right" size={14} color={theme.green} />
+      </View>
     </Pressable>
   );
 }
@@ -83,15 +79,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       justifyContent: 'space-between',
       gap: 10,
     },
-    detailLink: {
+    detailFooter: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'flex-end',
       gap: 2,
-      flexShrink: 0,
+      marginTop: 2,
     },
     detailLinkText: {
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
+      fontSize: ft.ff(12),
+      lineHeight: sf(16),
       fontWeight: '800',
       color: theme.green,
     },
@@ -103,6 +100,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.green,
     },
     time: {
+      flexShrink: 0,
       fontSize: ft.ff(11),
       lineHeight: sf(15),
       fontWeight: ft.metaWeight,

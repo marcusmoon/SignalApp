@@ -45,7 +45,7 @@ export const ja = {
   communityEmpty: '表示する投稿がありません。',
   communityErrorLoad: '掲示板を読み込めませんでした。',
   communityDetailTitle: '投稿',
-  communityReadBody: '本文を見る',
+  communityReadBody: '本文を見る →',
   communityOriginalOpen: '原文を開く',
   newsOpenVideos: '動画',
   moreHubSegmentDragHandleA11y: '{{name}}の順番を変更（ドラッグ）',

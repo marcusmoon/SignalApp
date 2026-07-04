@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useIsFocused } from 'expo-router/react-navigation';
@@ -16,6 +16,17 @@ import {
   COMMUNITY_SOURCE_ORDER,
   type CommunitySourceFilter,
 } from '@/constants/communitySources';
+import {
+  SEGMENT_TAB_ACTIVE_TEXT,
+  SEGMENT_TAB_BTN_PADDING_V,
+  SEGMENT_TAB_BTN_RADIUS,
+  SEGMENT_TAB_FONT_SIZE,
+  SEGMENT_TAB_FONT_WEIGHT,
+  SEGMENT_TAB_GAP,
+  SEGMENT_TAB_LINE_HEIGHT,
+  SEGMENT_TAB_OUTER_RADIUS,
+  SEGMENT_TAB_PADDING,
+} from '@/constants/segmentTabBar';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
@@ -156,20 +167,22 @@ export default function BoardScreen() {
       {!useTwoPane ? <SignalHeader compact onBrandPress={onRefresh} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        <View style={styles.filterRow}>
-          {COMMUNITY_SOURCE_ORDER.map((key) => {
-            const active = source === key;
-            return (
-              <Pressable
-                key={key}
-                onPress={() => changeSource(key)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                style={({ pressed }) => [styles.filterChip, active && styles.filterChipActive, pressed && styles.pressed]}>
-                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{t(SOURCE_LABEL[key])}</Text>
-              </Pressable>
-            );
-          })}
+        <View style={styles.topFixed}>
+          <View style={styles.segment}>
+            {COMMUNITY_SOURCE_ORDER.map((key) => {
+              const active = source === key;
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => changeSource(key)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  style={({ pressed }) => [styles.segBtn, active && styles.segBtnActive, pressed && styles.pressed]}>
+                  <Text style={[styles.segText, active && styles.segTextActive]}>{t(SOURCE_LABEL[key])}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
         {error ? (
           <View style={styles.errBox}>
@@ -183,7 +196,7 @@ export default function BoardScreen() {
         ) : (
           <WebWheelFlatList
             style={styles.list}
-            contentContainerStyle={{ paddingBottom: listBottomPad, paddingHorizontal: 16, paddingTop: 8 }}
+            contentContainerStyle={{ paddingBottom: listBottomPad, paddingHorizontal: 16, paddingTop: 4 }}
             data={items}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
@@ -239,37 +252,44 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     mainColumnWide: {
       ...wideContentFill,
     },
-    filterRow: {
-      width: '100%',
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
+    topFixed: {
+      flexShrink: 0,
+      zIndex: 2,
+      elevation: Platform.OS === 'android' ? 2 : 0,
       paddingHorizontal: 16,
       paddingTop: 10,
-      paddingBottom: 6,
+      paddingBottom: 10,
+      backgroundColor: theme.bg,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
     },
-    filterChip: {
-      minHeight: 32,
-      paddingHorizontal: 12,
-      borderRadius: 999,
+    segment: {
+      flexDirection: 'row',
+      backgroundColor: theme.bgElevated,
+      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
+      padding: SEGMENT_TAB_PADDING,
+      gap: SEGMENT_TAB_GAP,
+    },
+    segBtn: {
+      flex: 1,
+      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
+      borderRadius: SEGMENT_TAB_BTN_RADIUS,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    filterChipActive: {
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
+    segBtnActive: {
+      backgroundColor: theme.green,
     },
-    filterChipText: {
-      fontSize: sf(12),
-      lineHeight: sf(16),
-      fontWeight: '700',
+    segText: {
+      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
+      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
+      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
       color: theme.textDim,
     },
-    filterChipTextActive: {
-      color: theme.green,
+    segTextActive: {
+      color: SEGMENT_TAB_ACTIVE_TEXT,
     },
     list: { ...webScrollViewportStyle },
     rowWrap: { marginBottom: 10 },

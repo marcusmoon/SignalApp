@@ -1,9 +1,15 @@
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
+import {
+  communityShowsOriginalLink,
+  communitySourceAccent,
+  type CommunitySourceKey,
+} from '@/constants/communitySources';
 import type { AppTheme } from '@/constants/theme';
-import type { CommunitySourceKey } from '@/constants/communitySources';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -20,8 +26,11 @@ export function CommunityPostCard({ item, sourceLabelId }: Props) {
   const router = useRouter();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
-  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
+  const accent = useMemo(() => communitySourceAccent(item.source, theme), [item.source, theme]);
+  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo, accent), [theme, scaleFont, feedTypo, accent]);
   const timeLabel = item.publishedAt ? formatRelativeFromIso(item.publishedAt, locale) : '—';
+  const hasOriginalLink =
+    communityShowsOriginalLink(item.source) && (item.sourceUrl?.trim() || '').length > 0;
 
   return (
     <Pressable
@@ -30,16 +39,30 @@ export function CommunityPostCard({ item, sourceLabelId }: Props) {
       }}
       accessibilityRole="button"
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+      <View pointerEvents="none" style={styles.accentBar} />
       <View style={styles.metaRow}>
-        <Text style={styles.source}>{t(sourceLabelId)}</Text>
-        <Text style={styles.time}>{timeLabel}</Text>
+        <View style={styles.sourcePill}>
+          <Text style={styles.sourceName} numberOfLines={1}>
+            {t(sourceLabelId)}
+          </Text>
+        </View>
+        <View style={styles.metaTrail}>
+          {hasOriginalLink ? (
+            <FontAwesome name="external-link" size={11} color={accent.accent} style={styles.linkIcon} />
+          ) : null}
+          <View style={styles.timePill}>
+            <Text style={styles.time}>{timeLabel}</Text>
+          </View>
+        </View>
       </View>
       <Text style={styles.title} numberOfLines={2}>
         {item.title}
       </Text>
-      <Text style={styles.body} numberOfLines={6}>
-        {item.body}
-      </Text>
+      {item.body ? (
+        <Text style={styles.body} numberOfLines={2}>
+          {item.body}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -53,37 +76,87 @@ export function isCommunitySourceKey(source: string): source is CommunitySourceK
   return source === 'naver_likeusstock_free' || source === 'save_user_news';
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
+function makeStyles(
+  theme: AppTheme,
+  sf: (n: number) => number,
+  ft: FeedContentTypography,
+  accent: ReturnType<typeof communitySourceAccent>,
+) {
   return StyleSheet.create({
     card: {
-      borderRadius: 16,
+      position: 'relative',
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      gap: 8,
+      paddingLeft: ft.pad(14) + CONTENT_ACCENT_LINE_WIDTH + 6,
+      paddingRight: ft.pad(14),
+      paddingTop: ft.pad(12),
+      paddingBottom: ft.pad(12),
+      gap: 6,
+      overflow: 'hidden',
     },
-    pressed: { opacity: 0.78 },
+    accentBar: {
+      position: 'absolute',
+      left: 0,
+      top: ft.pad(10),
+      bottom: ft.pad(10),
+      width: CONTENT_ACCENT_LINE_WIDTH,
+      borderRadius: 999,
+      backgroundColor: accent.accent,
+    },
+    pressed: { opacity: 0.88 },
     metaRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 10,
+      gap: ft.pad(8),
+      marginBottom: 2,
     },
-    source: {
+    sourcePill: {
+      flexShrink: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      maxWidth: '62%',
+      paddingHorizontal: ft.pad(10),
+      paddingVertical: ft.pad(4),
+      borderRadius: 999,
+      backgroundColor: accent.dim,
+      borderWidth: 1,
+      borderColor: accent.border,
+    },
+    sourceName: {
       flexShrink: 1,
       fontSize: ft.ff(11),
       lineHeight: sf(15),
       fontWeight: ft.emphasisWeight,
-      color: theme.green,
+      color: accent.accent,
+    },
+    metaTrail: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      flexShrink: 0,
+    },
+    linkIcon: {
+      opacity: 0.9,
+    },
+    timePill: {
+      flexShrink: 0,
+      paddingHorizontal: ft.pad(8),
+      paddingVertical: ft.pad(3),
+      borderRadius: 999,
+      backgroundColor: theme.bgElevated,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
     },
     time: {
-      flexShrink: 0,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
+      fontSize: ft.ff(10),
+      lineHeight: sf(14),
       fontWeight: ft.metaWeight,
-      color: theme.textDim,
+      color: theme.textMuted,
     },
     title: {
       fontSize: ft.ff(15),
@@ -93,7 +166,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     body: {
       fontSize: ft.ff(13),
-      lineHeight: sf(20),
+      lineHeight: sf(19),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
     },

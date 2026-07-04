@@ -1,13 +1,16 @@
 import * as WebBrowser from 'expo-web-browser';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CommunityPostBody } from '@/components/community/CommunityPostBody';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
+import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
+import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { communityShowsOriginalLink, communitySourceAccent } from '@/constants/communitySources';
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
+import { webScrollViewportStyle } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { SignalApiCommunityPost } from '@/integrations/signal-api/types';
@@ -17,9 +20,11 @@ import { formatInstantLabel, formatRelativeFromIso } from '@/utils/date';
 type Props = {
   item: SignalApiCommunityPost;
   bottomPad?: number;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 };
 
-export function CommunityPostDetailContent({ item, bottomPad = 24 }: Props) {
+export function CommunityPostDetailContent({ item, bottomPad = 24, refreshing = false, onRefresh }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const accent = useMemo(() => communitySourceAccent(item.source, theme), [item.source, theme]);
@@ -35,33 +40,41 @@ export function CommunityPostDetailContent({ item, bottomPad = 24 }: Props) {
   const showOriginalLink = communityShowsOriginalLink(item.source) && originalUrl.length > 0;
 
   return (
-    <View style={[styles.wrap, { paddingBottom: bottomPad }]}>
-      <View style={styles.hero}>
-        <View style={styles.metaRow}>
-          <View style={styles.sourcePill}>
-            <Text style={styles.source}>{t(sourceLabelId)}</Text>
+    <View style={styles.root}>
+      <View style={styles.headerFixed}>
+        <View style={styles.headerInner}>
+          <View style={styles.metaRow}>
+            <View style={styles.sourcePill}>
+              <Text style={styles.source}>{t(sourceLabelId)}</Text>
+            </View>
+            <Text style={styles.time}>{timeLabel}</Text>
           </View>
-          <Text style={styles.time}>{timeLabel}</Text>
+          <Text style={styles.title}>{item.title}</Text>
+          {showOriginalLink ? (
+            <Pressable
+              onPress={() => void WebBrowser.openBrowserAsync(originalUrl)}
+              accessibilityRole="link"
+              accessibilityLabel={t('communityOriginalOpen')}
+              style={({ pressed }) => [styles.originalLink, pressed && styles.pressed]}>
+              <Text style={styles.originalLinkText}>{t('communityOriginalOpen')}</Text>
+              <FontAwesome name="external-link" size={12} color={accent.accent} />
+            </Pressable>
+          ) : null}
         </View>
-        <Text style={styles.title}>{item.title}</Text>
       </View>
 
-      {item.body ? (
-        <View style={styles.bodyCard}>
-          <CommunityPostBody body={item.body} />
-        </View>
-      ) : null}
-
-      {showOriginalLink ? (
-        <Pressable
-          onPress={() => void WebBrowser.openBrowserAsync(originalUrl)}
-          accessibilityRole="link"
-          accessibilityLabel={t('communityOriginalOpen')}
-          style={({ pressed }) => [styles.openBtn, pressed && styles.pressed]}>
-          <Text style={styles.openText}>{t('communityOriginalOpen')}</Text>
-          <FontAwesome name="external-link" size={13} color={accent.accent} />
-        </Pressable>
-      ) : null}
+      <WebWheelScrollView
+        style={styles.bodyScroll}
+        contentContainerStyle={[styles.bodyScrollContent, { paddingBottom: bottomPad }]}
+        refreshControl={
+          onRefresh ? <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined
+        }>
+        {item.body ? (
+          <View style={styles.bodyCard}>
+            <CommunityPostBody body={item.body} />
+          </View>
+        ) : null}
+      </WebWheelScrollView>
     </View>
   );
 }
@@ -73,15 +86,24 @@ function makeStyles(
   accent: ReturnType<typeof communitySourceAccent>,
 ) {
   return StyleSheet.create({
-    wrap: {
+    root: {
+      flex: 1,
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
+    },
+    headerFixed: {
+      flexShrink: 0,
+      zIndex: 2,
+      elevation: Platform.OS === 'android' ? 2 : 0,
+      backgroundColor: theme.bg,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    headerInner: {
       paddingHorizontal: 18,
       paddingTop: 12,
-      gap: 16,
-    },
-    hero: {
+      paddingBottom: 14,
       gap: 10,
     },
     metaRow: {
@@ -123,6 +145,31 @@ function makeStyles(
       fontWeight: ft.titleWeight,
       letterSpacing: -0.2,
     },
+    originalLink: {
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: accent.border,
+      backgroundColor: accent.dim,
+    },
+    originalLinkText: {
+      color: accent.accent,
+      fontSize: sf(13),
+      fontWeight: '800',
+    },
+    bodyScroll: {
+      ...webScrollViewportStyle,
+    },
+    bodyScrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: 18,
+      paddingTop: 16,
+    },
     bodyCard: {
       borderRadius: 14,
       borderWidth: 1,
@@ -130,22 +177,6 @@ function makeStyles(
       backgroundColor: theme.card,
       paddingHorizontal: 16,
       paddingVertical: 18,
-    },
-    openBtn: {
-      minHeight: 44,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: accent.border,
-      backgroundColor: accent.dim,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-    },
-    openText: {
-      color: accent.accent,
-      fontSize: sf(14),
-      fontWeight: '900',
     },
     pressed: { opacity: 0.78 },
   });

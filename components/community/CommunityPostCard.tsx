@@ -1,14 +1,9 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
-import {
-  communityShowsOriginalLink,
-  communitySourceAccent,
-  type CommunitySourceKey,
-} from '@/constants/communitySources';
+import { communitySourceAccent, type CommunitySourceKey } from '@/constants/communitySources';
 import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -29,8 +24,6 @@ export function CommunityPostCard({ item, sourceLabelId }: Props) {
   const accent = useMemo(() => communitySourceAccent(item.source, theme), [item.source, theme]);
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo, accent), [theme, scaleFont, feedTypo, accent]);
   const timeLabel = item.publishedAt ? formatRelativeFromIso(item.publishedAt, locale) : '—';
-  const hasOriginalLink =
-    communityShowsOriginalLink(item.source) && (item.sourceUrl?.trim() || '').length > 0;
 
   return (
     <Pressable
@@ -46,13 +39,8 @@ export function CommunityPostCard({ item, sourceLabelId }: Props) {
             {t(sourceLabelId)}
           </Text>
         </View>
-        <View style={styles.metaTrail}>
-          {hasOriginalLink ? (
-            <FontAwesome name="external-link" size={11} color={accent.accent} style={styles.linkIcon} />
-          ) : null}
-          <View style={styles.timePill}>
-            <Text style={styles.time}>{timeLabel}</Text>
-          </View>
+        <View style={styles.timePill}>
+          <Text style={styles.time}>{timeLabel}</Text>
         </View>
       </View>
       <Text style={styles.title} numberOfLines={2}>
@@ -133,15 +121,6 @@ function makeStyles(
       lineHeight: sf(15),
       fontWeight: ft.emphasisWeight,
       color: accent.accent,
-    },
-    metaTrail: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      flexShrink: 0,
-    },
-    linkIcon: {
-      opacity: 0.9,
     },
     timePill: {
       flexShrink: 0,

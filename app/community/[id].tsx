@@ -1,13 +1,10 @@
-import * as WebBrowser from 'expo-web-browser';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CommunityPostDetailContent } from '@/components/community/CommunityPostDetailContent';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
-import { communityShowsOriginalLink, communitySourceAccent } from '@/constants/communitySources';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import type { AppTheme } from '@/constants/theme';
@@ -66,44 +63,22 @@ export default function CommunityPostDetailScreen() {
   }, [load]);
 
   const screenTitle = item ? t(communitySourceLabelId(item.source)) : t('communityDetailTitle');
-  const originalUrl = item?.sourceUrl?.trim() || '';
-  const showHeaderOriginal =
-    item != null && communityShowsOriginalLink(item.source) && originalUrl.length > 0;
-  const headerAccent = item ? communitySourceAccent(item.source, theme) : null;
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <Stack.Screen
-        options={{
-          title: screenTitle,
-          headerRight: showHeaderOriginal
-            ? () => (
-                <Pressable
-                  onPress={() => void WebBrowser.openBrowserAsync(originalUrl)}
-                  accessibilityRole="link"
-                  accessibilityLabel={t('communityOriginalOpen')}
-                  hitSlop={8}
-                  style={({ pressed }) => [styles.headerLinkBtn, pressed && styles.headerLinkPressed]}>
-                  <FontAwesome name="external-link" size={18} color={headerAccent?.accent ?? theme.green} />
-                </Pressable>
-              )
-            : undefined,
-        }}
-      />
+      <Stack.Screen options={{ title: screenTitle }} />
       {loading ? (
         <View style={styles.loadingWrap}>
           <SignalLoadingIndicator message={t('commonLoading')} />
         </View>
+      ) : item ? (
+        <CommunityPostDetailContent item={item} refreshing={refreshing} onRefresh={onRefresh} />
       ) : (
         <ScrollView
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           contentContainerStyle={styles.scrollContent}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          {item ? (
-            <CommunityPostDetailContent item={item} />
-          ) : !error ? (
-            <Text style={styles.empty}>{t('communityEmpty')}</Text>
-          ) : null}
+          {!error ? <Text style={styles.empty}>{t('communityEmpty')}</Text> : null}
         </ScrollView>
       )}
     </SafeAreaView>
@@ -131,10 +106,5 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       textAlign: 'center',
       padding: 20,
     },
-    headerLinkBtn: {
-      paddingHorizontal: 4,
-      paddingVertical: 4,
-    },
-    headerLinkPressed: { opacity: 0.72 },
   });
 }

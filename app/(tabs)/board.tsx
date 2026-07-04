@@ -10,6 +10,7 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import {
   COMMUNITY_SOURCE_ALL,
   COMMUNITY_SOURCE_ORDER,
@@ -139,6 +140,7 @@ export default function BoardScreen() {
   );
 
   const listBottomPad = 16 + tabBarHeight + tabBarBottomInset(insets.bottom);
+  const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
 
   const renderItem = useCallback(
     ({ item }: { item: SignalApiCommunityPost }) => (
@@ -151,7 +153,7 @@ export default function BoardScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
-      {!useTwoPane ? <SignalHeader compact /> : null}
+      {!useTwoPane ? <SignalHeader compact onBrandPress={onRefresh} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.filterRow}>
         {COMMUNITY_SOURCE_ORDER.map((key) => {
@@ -210,6 +212,15 @@ export default function BoardScreen() {
           }
         />
       )}
+      {hasSignalApi() && !useTwoPane ? (
+        <FloatingGlassFab
+          bottom={fabStackBottom}
+          onPress={onRefresh}
+          iconName="sync"
+          accessibilityLabel={t('fabRefreshA11y')}
+          disabled={refreshing}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

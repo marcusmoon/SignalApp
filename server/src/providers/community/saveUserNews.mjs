@@ -5,7 +5,7 @@ const SOURCE = 'save_user_news';
 const LIST_URL = 'https://api.saveticker.com/api/community/list';
 const DETAIL_URL = 'https://api.saveticker.com/api/community/detail';
 const FETCH_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 SIGNAL-CommunityBot/1.0',
+  'User-Agent': 'Mozilla/5.0 (compatible; CommunityBot/1.0)',
   Origin: 'https://www.saveticker.com',
   Referer: 'https://www.saveticker.com/community',
 };

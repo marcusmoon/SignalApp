@@ -39,7 +39,7 @@ export const ko = {
   screenBoard: '게시판',
   communitySourceAll: '전체',
   communitySourceNaverLikeusstock: '미주미',
-  communitySourceSaveUserNews: '세이브 유저뉴스',
+  communitySourceSaveUserNews: '세이브',
   communityEmpty: '표시할 게시글이 없습니다.',
   communityErrorLoad: '게시판을 불러오지 못했습니다.',
   communityDetailTitle: '게시글',

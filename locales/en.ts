@@ -41,7 +41,7 @@ export const en = {
   screenBoard: 'Board',
   communitySourceAll: 'All',
   communitySourceNaverLikeusstock: 'LikeUSStock',
-  communitySourceSaveUserNews: 'SAVE user news',
+  communitySourceSaveUserNews: 'SAVE',
   communityEmpty: 'No posts to show.',
   communityErrorLoad: 'Could not load the board.',
   communityDetailTitle: 'Post',

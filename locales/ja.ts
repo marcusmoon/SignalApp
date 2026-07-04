@@ -41,7 +41,7 @@ export const ja = {
   screenBoard: '掲示板',
   communitySourceAll: 'すべて',
   communitySourceNaverLikeusstock: 'LikeUSStock',
-  communitySourceSaveUserNews: 'SAVEユーザーニュース',
+  communitySourceSaveUserNews: 'SAVE',
   communityEmpty: '表示する投稿がありません。',
   communityErrorLoad: '掲示板を読み込めませんでした。',
   communityDetailTitle: '投稿',

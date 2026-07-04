@@ -1,6 +1,6 @@
 export const COMMUNITY_SOURCE_ALL = 'all' as const;
 
-export const COMMUNITY_SOURCES = ['naver_likeusstock_free', 'save_user_news'] as const;
+export const COMMUNITY_SOURCES = ['save_user_news', 'naver_likeusstock_free'] as const;
 
 export type CommunitySourceKey = (typeof COMMUNITY_SOURCES)[number];
 

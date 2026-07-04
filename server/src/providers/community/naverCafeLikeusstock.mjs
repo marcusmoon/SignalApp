@@ -8,7 +8,7 @@ const SOURCE = 'naver_likeusstock_free';
 const LIST_URL = `https://apis.naver.com/cafe-web/cafe-boardlist-api/v1/cafes/${CLUB_ID}/menus/${MENU_ID}/articles`;
 const DETAIL_URL = `https://apis.naver.com/cafe-web/cafe-articleapi/v3/cafes/${CLUB_ID}/articles`;
 const FETCH_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 SIGNAL-CommunityBot/1.0',
+  'User-Agent': 'Mozilla/5.0 (compatible; CommunityBot/1.0)',
   Referer: CAFE_REFERER,
 };
 

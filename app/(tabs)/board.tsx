@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect, useIsFocused } from 'expo-router/react-navigation';
@@ -69,6 +69,7 @@ export default function BoardScreen() {
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const [source, setSource] = useState<CommunitySourceFilter>(COMMUNITY_SOURCE_ALL);
   const [loading, setLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -93,8 +94,9 @@ export default function BoardScreen() {
         if (loadingMoreRef.current || !meta?.hasMore) return;
         loadingMoreRef.current = true;
         setLoadingMore(true);
-      } else if (!opts?.refresh && itemsRef.current.length === 0) {
-        setLoading(true);
+      } else if (!opts?.refresh) {
+        if (itemsRef.current.length === 0) setLoading(true);
+        else setListLoading(true);
       }
       setError(null);
       try {
@@ -118,6 +120,7 @@ export default function BoardScreen() {
           setLoadingMore(false);
         } else {
           setLoading(false);
+          setListLoading(false);
           setRefreshing(false);
         }
       }
@@ -142,7 +145,7 @@ export default function BoardScreen() {
   const { onLayout, onContentSizeChange, onScroll } = useWebFlatListLoadMore({
     hasMore: meta?.hasMore === true,
     loadingMore,
-    loading,
+    loading: loading || listLoading,
     loadMore: onEndReached,
     isBusyRef: loadingMoreRef,
   });
@@ -151,9 +154,7 @@ export default function BoardScreen() {
     (next: CommunitySourceFilter) => {
       if (next === source) return;
       setSource(next);
-      setItems([]);
-      setMeta(null);
-      setLoading(true);
+      setError(null);
       void load({ sourceFilter: next });
     },
     [load, source],
@@ -193,6 +194,16 @@ export default function BoardScreen() {
       </View>
     ),
     [styles.rowWrap],
+  );
+
+  const listHeaderEl = useMemo(
+    () =>
+      listLoading ? (
+        <View style={styles.listLoadingRow}>
+          <ActivityIndicator color={theme.green} size="small" />
+        </View>
+      ) : null,
+    [listLoading, styles.listLoadingRow, theme.green],
   );
 
   return (
@@ -235,6 +246,7 @@ export default function BoardScreen() {
             data={items}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
+            ListHeaderComponent={listHeaderEl}
             refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             onEndReached={onEndReached}
             onEndReachedThreshold={0.35}
@@ -246,7 +258,7 @@ export default function BoardScreen() {
             maxToRenderPerBatch={WEB_FLATLIST_BATCH}
             windowSize={WEB_FLATLIST_WINDOW}
             ListEmptyComponent={
-              !loading ? (
+              !loading && !listLoading ? (
                 <View style={styles.emptyBox}>
                   <Text style={styles.emptyText}>{t('communityEmpty')}</Text>
                 </View>
@@ -315,6 +327,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     footerLoading: {
       paddingVertical: 18,
       alignItems: 'center',
+    },
+    listLoadingRow: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 10,
+      marginBottom: 4,
     },
     emptyBox: {
       paddingVertical: 48,

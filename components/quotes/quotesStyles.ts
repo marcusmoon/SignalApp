@@ -106,6 +106,12 @@ export function makeQuotesStyles(
       marginBottom: 12,
     },
     errText: { fontSize: sf(12), color: theme.danger, lineHeight: sf(18) },
+    listLoadingRow: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 10,
+      marginBottom: 4,
+    },
     empty: { fontSize: sf(13), color: theme.textMuted, marginTop: 8 },
     cardGrouped: {
       backgroundColor: 'transparent',

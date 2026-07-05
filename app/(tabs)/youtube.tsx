@@ -82,6 +82,7 @@ export default function YoutubeScreen() {
   const [sort, setSort] = useState<SortKey>('latest');
   const effectiveSort = useTwoPane && ipadNav.isAvailable ? ipadNav.youtubeSort : sort;
   const [loading, setLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
@@ -193,6 +194,8 @@ export default function YoutubeScreen() {
       const hadItems = itemsRef.current.length > 0;
       if (!hadItems) {
         setLoading(true);
+      } else {
+        setListLoading(true);
       }
       youtubeReplacingRef.current = true;
       setYoutubeMeta(null);
@@ -216,6 +219,7 @@ export default function YoutubeScreen() {
         setYoutubeMeta(null);
       } finally {
         setLoading(false);
+        setListLoading(false);
         youtubeReplacingRef.current = false;
       }
     },
@@ -289,16 +293,13 @@ export default function YoutubeScreen() {
       return;
     }
     void load();
-  }, [load, selectedHandles]);
+  }, [load, selectedHandles, effectiveSort]);
 
   useEffect(() => {
     if (!useTwoPane || !ipadNav.isAvailable) return;
     if (syncedYoutubeSortRef.current === ipadNav.youtubeSort) return;
     syncedYoutubeSortRef.current = ipadNav.youtubeSort;
     setSort(ipadNav.youtubeSort);
-    setLoading(true);
-    setItems([]);
-    setYoutubeMeta(null);
   }, [ipadNav.isAvailable, ipadNav.youtubeSort, useTwoPane]);
 
   const onRefresh = useCallback(async () => {
@@ -331,17 +332,11 @@ export default function YoutubeScreen() {
 
   const applyPopularFilter = useCallback(() => {
     if (sort === 'popular') return;
-    setLoading(true);
-    setItems([]);
-    setYoutubeMeta(null);
     setSort('popular');
   }, [sort]);
 
   const applyLatestSortFilter = useCallback(() => {
     if (sort === 'latest') return;
-    setLoading(true);
-    setItems([]);
-    setYoutubeMeta(null);
     setSort('latest');
   }, [sort]);
 
@@ -406,7 +401,7 @@ export default function YoutubeScreen() {
           loading,
           awaitingBootstrap: true,
         })
-      : loading;
+      : loading && items.length === 0;
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const fabStackBottomOffset = fabStackBottom(tabBarHeight, insets.bottom);
@@ -453,6 +448,11 @@ export default function YoutubeScreen() {
             <SignalLoadingIndicator message={t('commonLoading')} />
           </View>
         ) : null}
+        {listLoading ? (
+          <View style={styles.listLoadingRow}>
+            <ActivityIndicator color={theme.green} size="small" />
+          </View>
+        ) : null}
       </>
     ),
     [
@@ -460,6 +460,7 @@ export default function YoutubeScreen() {
       curationHandles,
       error,
       isQuotaError,
+      listLoading,
       openChannelFilter,
       quotaResetHintLine,
       selectedHandles,
@@ -702,6 +703,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'center',
       gap: 10,
       paddingVertical: 16,
+    },
+    listLoadingRow: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 10,
+      marginBottom: 4,
     },
     footerLoadingText: {
       fontSize: sf(12),

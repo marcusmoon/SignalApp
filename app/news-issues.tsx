@@ -1,7 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
@@ -101,8 +101,11 @@ export function NewsIssuesContent({
   const [category, setCategory] = useState<NewsIssuesCategory>(initialCategory);
   const [selectedYmd, setSelectedYmd] = useState(initialDate);
   const [items, setItems] = useState<SignalApiNewsDigestItem[]>([]);
+  const itemsRef = useRef<SignalApiNewsDigestItem[]>([]);
+  itemsRef.current = items;
   const [expandedId, setExpandedId] = useState<string | null>(initialDigestId);
   const [loading, setLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -130,7 +133,9 @@ export function NewsIssuesContent({
       setLoading(false);
       return;
     }
-    setLoading(true);
+    const hadItems = itemsRef.current.length > 0;
+    if (!hadItems) setLoading(true);
+    else setListLoading(true);
     setError(null);
     try {
       if (category === 'all') {
@@ -159,6 +164,7 @@ export function NewsIssuesContent({
       setItems([]);
     } finally {
       setLoading(false);
+      setListLoading(false);
     }
   }, [category, selectedYmd, t]);
 
@@ -227,11 +233,17 @@ export function NewsIssuesContent({
             </View>
           ) : null}
 
-          {loading ? (
+          {listLoading ? (
+            <View style={styles.listLoadingRow}>
+              <ActivityIndicator color={theme.green} size="small" />
+            </View>
+          ) : null}
+
+          {loading && items.length === 0 ? (
             <View style={styles.loadingBox}>
               <SignalLoadingIndicator message={t('commonLoading')} />
             </View>
-          ) : items.length === 0 ? (
+          ) : !loading && !listLoading && items.length === 0 ? (
             <Text style={styles.empty}>{t('newsIssuesEmpty')}</Text>
           ) : (
             <View style={styles.issueList}>
@@ -427,6 +439,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     categoryTabTextActive: { color: '#FFFFFF' },
     dateNav: { marginTop: 2 },
     loadingBox: { flex: 1, minHeight: 260, paddingVertical: 56, alignItems: 'center', justifyContent: 'center' },
+    listLoadingRow: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
     errorBox: {
       padding: 12,
       borderRadius: 14,

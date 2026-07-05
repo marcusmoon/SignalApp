@@ -3,6 +3,7 @@ import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useIsFocused, useFocusEffect } from "expo-router/react-navigation";
 import { useRouter } from 'expo-router';
 import {
+  ActivityIndicator,
   Alert,
   InteractionManager,
   Platform,
@@ -108,6 +109,7 @@ export default function QuotesScreen() {
   const [segment, setSegment] = useState<QuoteSegmentKey>('watch');
   const [segmentOrder, setSegmentOrder] = useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
   const [loading, setLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
@@ -248,6 +250,7 @@ export default function QuotesScreen() {
         if (cancelled) return;
         void (async () => {
           if (rowsRef.current.length === 0) setLoading(true);
+          else setListLoading(true);
           try {
             await load();
           } catch (e) {
@@ -256,7 +259,10 @@ export default function QuotesScreen() {
               setRows([]);
             }
           } finally {
-            if (!cancelled) setLoading(false);
+            if (!cancelled) {
+              setLoading(false);
+              setListLoading(false);
+            }
           }
         })();
       };
@@ -389,7 +395,7 @@ export default function QuotesScreen() {
   const quotesListHeader = useMemo(
     () => (
       <>
-        {loading ? (
+        {loading && rows.length === 0 ? (
           <View style={SCROLL_LOADING_BODY_STYLE}>
             <SignalLoadingIndicator message={t('commonLoading')} />
           </View>
@@ -427,6 +433,11 @@ export default function QuotesScreen() {
                 </Pressable>
               </View>
             ) : null}
+            {listLoading ? (
+              <View style={styles.listLoadingRow}>
+                <ActivityIndicator color={theme.green} size="small" />
+              </View>
+            ) : null}
           </>
         )}
       </>
@@ -434,20 +445,21 @@ export default function QuotesScreen() {
     [
       draftTicker,
       error,
+      listLoading,
       loading,
       onAddWatch,
       onResetWatchDefaults,
+      rows.length,
       segment,
       styles,
       t,
+      theme.green,
       theme.textDim,
     ],
   );
 
   const onPickSegment = useCallback((key: QuoteSegmentKey) => {
     if (segment === key) return;
-    setLoading(true);
-    setRows([]);
     setError(null);
     setSegment(key);
   }, [segment]);
@@ -637,12 +649,12 @@ export default function QuotesScreen() {
       </View> : null}
 
       <WebWheelFlatList
-        data={loading ? [] : rows}
+        data={loading && rows.length === 0 ? [] : rows}
         keyExtractor={(r) => `${r.symbol}-${r.name ?? ''}`}
         renderItem={renderQuoteItem}
         ListHeaderComponent={quotesListHeader}
         ListEmptyComponent={
-          !loading && !error && rows.length === 0 ? (
+          !loading && !listLoading && !error && rows.length === 0 ? (
             <Text style={styles.empty}>
               {segment === 'watch' ? t('quotesEmptyWatch') : t('quotesEmptyGeneric')}
             </Text>
@@ -652,12 +664,12 @@ export default function QuotesScreen() {
         contentContainerStyle={[
           styles.listContent,
           useTwoPane && styles.listContentWide,
-          loading ? SCROLL_CONTENT_LOADING_STYLE : null,
+          loading && rows.length === 0 ? SCROLL_CONTENT_LOADING_STYLE : null,
           { paddingBottom: bottomPad },
         ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          loading ? undefined : (
+          loading && rows.length === 0 ? undefined : (
             <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           )
         }

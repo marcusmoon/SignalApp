@@ -29,6 +29,7 @@ import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
+  getSegmentTabBarStyles,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
@@ -473,7 +474,7 @@ export default function YoutubeScreen() {
               style={({ pressed }) => [
                 styles.ipadFilterBtn,
                 channelFilterActive && styles.ipadFilterBtnActive,
-                (!selectedHandles || !curationHandles) && styles.quickFilterChipDisabled,
+                (!selectedHandles || !curationHandles) && styles.channelFilterChipDisabled,
                 pressed && { opacity: 0.78 },
               ]}
               accessibilityRole="button"
@@ -486,43 +487,46 @@ export default function YoutubeScreen() {
           </View>
         ) : null}
         {!useTwoPane ? <View style={styles.topFixed}>
-          <View style={styles.quickFilterRow}>
+          <View style={styles.segment}>
             <Pressable
               onPress={() => void applyAllFilter()}
               style={[
-                styles.quickFilterChip,
-                sort === 'latest' && !channelFilterActive && styles.quickFilterChipActive,
+                styles.segBtn,
+                sort === 'latest' && !channelFilterActive && styles.segBtnActive,
               ]}
               accessibilityRole="button"
               accessibilityState={{ selected: sort === 'latest' && !channelFilterActive }}>
               <Text
                 style={[
-                  styles.quickFilterText,
-                  sort === 'latest' && !channelFilterActive && styles.quickFilterTextActive,
+                  styles.segText,
+                  sort === 'latest' && !channelFilterActive && styles.segTextActive,
                 ]}>
                 {t('feedWatchFilterAll')}
               </Text>
             </Pressable>
             <Pressable
               onPress={applyPopularFilter}
-              style={[styles.quickFilterChip, sort === 'popular' && styles.quickFilterChipActive]}
+              style={[styles.segBtn, sort === 'popular' && styles.segBtnActive]}
               accessibilityRole="button"
               accessibilityState={{ selected: sort === 'popular' }}>
-              <Text style={[styles.quickFilterText, sort === 'popular' && styles.quickFilterTextActive]}>
+              <Text style={[styles.segText, sort === 'popular' && styles.segTextActive]}>
                 {t('youtubeSortPopular')}
               </Text>
             </Pressable>
+          </View>
+          <View style={styles.channelFilterRow}>
             <Pressable
               onPress={openChannelFilter}
               disabled={!selectedHandles || !curationHandles}
               style={[
-                styles.quickFilterChip,
-                !selectedHandles || !curationHandles ? styles.quickFilterChipDisabled : null,
-                channelFilterActive && styles.quickFilterChipActive,
+                styles.channelFilterChip,
+                !selectedHandles || !curationHandles ? styles.channelFilterChipDisabled : null,
+                channelFilterActive && styles.channelFilterChipActive,
               ]}
               accessibilityRole="button"
               accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
-              <Text style={[styles.quickFilterText, channelFilterActive && styles.quickFilterTextActive]}>
+              <FontAwesome name="filter" size={11} color={channelFilterActive ? theme.green : theme.textMuted} />
+              <Text style={[styles.channelFilterText, channelFilterActive && styles.channelFilterTextActive]}>
                 {t('youtubeFilterChannel')}
               </Text>
             </Pressable>
@@ -654,6 +658,7 @@ export default function YoutubeScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     mainColumn: {
@@ -757,37 +762,40 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '900',
       color: theme.bg,
     },
-    quickFilterRow: {
+    segment: segmentTab.segment,
+    segBtn: segmentTab.segBtn,
+    segBtnActive: segmentTab.segBtnActive,
+    segText: segmentTab.segText,
+    segTextActive: segmentTab.segTextActive,
+    channelFilterRow: {
       flexDirection: 'row',
-      gap: 4,
-      padding: 4,
-      borderRadius: 16,
-      backgroundColor: theme.bgElevated,
+      marginTop: 8,
+    },
+    channelFilterChip: {
+      minHeight: 32,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 11,
+      borderRadius: 999,
       borderWidth: 1,
       borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
     },
-    quickFilterChip: {
-      flex: 1,
-      minHeight: 34,
-      paddingHorizontal: 10,
-      borderRadius: 12,
-      backgroundColor: 'transparent',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    quickFilterChipActive: {
+    channelFilterChipActive: {
+      borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
     },
-    quickFilterChipDisabled: {
+    channelFilterChipDisabled: {
       opacity: 0.45,
     },
-    quickFilterText: {
+    channelFilterText: {
       fontSize: sf(12),
       lineHeight: sf(17),
       fontWeight: '800',
       color: theme.textDim,
     },
-    quickFilterTextActive: {
+    channelFilterTextActive: {
       color: theme.green,
     },
     errBox: {

@@ -1,6 +1,6 @@
 /** 앱 공시 유형 칩·Job 수집 범위와 맞춘 분류 코드 */
-export const DART_TYPE_CATEGORY_CODES = ['A', 'B', 'C', 'D', 'E', 'I'] as const;
-export const SEC_TYPE_CATEGORY_CODES = ['8-K', '10-Q', '10-K', '6-K', '20-F', 'S-1'] as const;
+export const DART_TYPE_CATEGORY_CODES = ['A', 'B', 'C', 'D', 'E', 'I'];
+export const SEC_TYPE_CATEGORY_CODES = ['8-K', '10-Q', '10-K', '6-K', '20-F', 'S-1'];
 
 const DART_PATTERN_RULES = [
   ['B', /주요사항/],

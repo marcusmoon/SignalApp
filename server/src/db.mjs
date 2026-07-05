@@ -52,6 +52,7 @@ import {
 import {
   queryPublicDisclosureRows,
   queryPublicDisclosureByIdRow,
+  queryPublicDisclosureTypeCategoryRows,
 } from './db/repositories/disclosuresRepository.mjs';
 import {
   queryPublicNewsDigestRows,
@@ -385,6 +386,7 @@ const collectionSpecs = [
       symbol: textOrNull(row.symbol),
       company_name: textOrNull(row.companyName),
       form_type: textOrNull(row.formType),
+      type_category: textOrNull(row.typeCategory),
       filed_at: isoOrNull(row.filedAt),
       period_end_date: dateOrNull(row.periodEndDate),
       updated_at: isoOrNull(row.updatedAt) || nowIso(),
@@ -960,6 +962,15 @@ export async function queryPublicDisclosureDigests(options = {}) {
 
 export async function queryPublicDisclosureById(id) {
   return cachedPublicRead('publicDisclosureById', { id }, () => queryPublicDisclosureByIdRow(id), 15000);
+}
+
+export async function queryPublicDisclosureTypeCategories(options = {}) {
+  return cachedPublicRead(
+    'publicDisclosureTypeCategories',
+    options,
+    () => queryPublicDisclosureTypeCategoryRows(options),
+    15000,
+  );
 }
 
 export async function queryPublicYoutube(options = {}) {

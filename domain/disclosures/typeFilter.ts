@@ -55,6 +55,9 @@ function resolveSecForm(item: SignalApiDisclosure): string {
 }
 
 export function disclosureTypeFilterKey(item: SignalApiDisclosure): string {
+  const stored = String(item.typeCategory || '').trim();
+  if (stored) return stored;
+
   if (item.provider === 'dart' || item.market === 'kr') {
     return `dart:${resolveDartPblntfTy(item)}`;
   }
@@ -81,10 +84,11 @@ export function disclosureTypeFilterLabelId(key: string): MessageId {
   return DISCLOSURE_TYPE_LABEL[key] ?? 'disclosuresTypeOther';
 }
 
-export function filterDisclosuresByType(
-  items: SignalApiDisclosure[],
-  typeFilter: DisclosureTypeFilterKey,
-): SignalApiDisclosure[] {
-  if (typeFilter === 'all') return items;
-  return items.filter((item) => disclosureTypeFilterKey(item) === typeFilter);
+export function typeCategoryApiParam(typeFilter: DisclosureTypeFilterKey): string | undefined {
+  if (typeFilter === 'all') return undefined;
+  return typeFilter;
+}
+
+export function sortDisclosureTypeFilterKeys(keys: string[]): string[] {
+  return sortTypeFilterKeys(keys);
 }

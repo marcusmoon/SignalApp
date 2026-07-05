@@ -154,6 +154,11 @@ export type SignalApiNewsSource = {
   order: number;
 };
 
+export type SignalDisclosureTypeCategory = {
+  key: string;
+  count: number;
+};
+
 export type SignalApiDisclosure = {
   id: string;
   market: 'us' | 'kr' | string | null;
@@ -161,6 +166,7 @@ export type SignalApiDisclosure = {
   symbol: string | null;
   companyName: string | null;
   formType: string | null;
+  typeCategory?: string | null;
   title: string;
   summary: string;
   url: string | null;

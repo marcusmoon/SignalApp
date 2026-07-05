@@ -1,5 +1,7 @@
 import { inflateRawSync } from 'node:zlib';
 
+import { resolveDisclosureTypeCategory } from '../../disclosures/typeCategory.mjs';
+
 import { config } from '../../config.mjs';
 import { getProviderSetting } from '../../providerSettings.mjs';
 import { compactYmdInTimezone } from '../../time/utc.mjs';
@@ -301,6 +303,13 @@ function normalizeDisclosure({ symbol, corpName, filing }) {
   };
 }
 
+function withTypeCategory(row) {
+  return {
+    ...row,
+    typeCategory: resolveDisclosureTypeCategory(row),
+  };
+}
+
 function matchesPblntfTy(filing, allowed) {
   if (!allowed || allowed.size === 0) return true;
   const apiTy = String(filing?.pblntf_ty || '').trim().toUpperCase();
@@ -342,14 +351,16 @@ async function fetchFilingsForSymbol({
     if (!matchesPblntfTy(filing, allowedTypes)) continue;
     const rceptNo = String(filing.rcept_no || '').trim();
     if (!rceptNo || merged.has(rceptNo)) continue;
-    merged.set(
-      rceptNo,
-      normalizeDisclosure({
-        symbol,
-        corpName: filing.corp_name,
-        filing,
-      }),
-    );
+      merged.set(
+        rceptNo,
+        withTypeCategory(
+          normalizeDisclosure({
+            symbol,
+            corpName: filing.corp_name,
+            filing,
+          }),
+        ),
+      );
   }
 
   return [...merged.values()]

@@ -1,4 +1,4 @@
-import { queryPublicDisclosureById, queryPublicDisclosures, queryPublicDisclosureDigests, upsertCollectionRows } from '../../../db.mjs';
+import { queryPublicDisclosureById, queryPublicDisclosures, queryPublicDisclosureDigests, queryPublicDisclosureTypeCategories, upsertCollectionRows } from '../../../db.mjs';
 import { json, readBody } from '../../shared.mjs';
 import { config } from '../../../config.mjs';
 
@@ -59,11 +59,25 @@ export async function handlePublicDisclosureRoutes({ req, res, url, pathname }) 
     return true;
   }
 
+  if (req.method === 'GET' && pathname === '/v1/disclosures/type-categories') {
+    const page = await queryPublicDisclosureTypeCategories({
+      market: url.searchParams.get('market') || '',
+      provider: url.searchParams.get('provider') || '',
+      symbol: url.searchParams.get('symbol') || '',
+      symbols: url.searchParams.get('symbols') || '',
+      from: url.searchParams.get('from') || '',
+      to: url.searchParams.get('to') || '',
+    });
+    json(res, 200, { data: page.rows });
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/v1/disclosures') {
     const page = await queryPublicDisclosures({
       market: url.searchParams.get('market') || '',
       provider: url.searchParams.get('provider') || '',
       formType: url.searchParams.get('formType') || '',
+      typeCategory: url.searchParams.get('typeCategory') || '',
       symbol: url.searchParams.get('symbol') || '',
       symbols: url.searchParams.get('symbols') || '',
       q: url.searchParams.get('q') || '',

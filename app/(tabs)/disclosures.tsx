@@ -35,9 +35,9 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTabPressCycleSegment } from '@/hooks/useTabPressCycleSegment';
-import { fetchSignalDisclosures } from '@/integrations/signal-api/disclosures';
+import { fetchSignalDisclosures, fetchSignalDisclosureTypeCategories } from '@/integrations/signal-api/disclosures';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
-import type { SignalApiDisclosure, SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
+import type { SignalApiDisclosure, SignalApiDisclosureDigestItem, SignalDisclosureTypeCategory } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
@@ -46,9 +46,8 @@ import type { FeedContentTypography } from '@/services/feedContentWeightPreferen
 import { formatRelativeFromIso } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import {
-  availableDisclosureTypeFilters,
   disclosureTypeFilterLabelId,
-  filterDisclosuresByType,
+  typeCategoryApiParam,
   type DisclosureTypeFilterKey,
 } from '@/domain/disclosures';
 
@@ -99,6 +98,7 @@ export default function DisclosuresScreen() {
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const [filter, setFilter] = useState<FilterKey>('us');
   const [typeFilter, setTypeFilter] = useState<DisclosureTypeFilterKey>('all');
+  const [typeCategories, setTypeCategories] = useState<SignalDisclosureTypeCategory[]>([]);
   const [items, setItems] = useState<SignalApiDisclosure[]>([]);
   const [digestItems, setDigestItems] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [digestLoading, setDigestLoading] = useState(false);
@@ -141,10 +141,19 @@ export default function DisclosuresScreen() {
       setWatchlist(watch);
       const market = symbolFilter ? undefined : filter === 'us' ? 'us' : filter === 'kr' ? 'kr' : undefined;
       const symbols = symbolFilter || (filter === 'watch' ? watch.join(',') : undefined);
-      const [page] = await Promise.all([
-        fetchSignalDisclosures({ market, symbols, limit: 60 }),
+      const listParams = {
+        market,
+        symbols,
+        typeCategory: typeCategoryApiParam(typeFilter),
+        limit: 60,
+      };
+      const categoryParams = { market, symbols };
+      const [page, categoriesPage] = await Promise.all([
+        fetchSignalDisclosures(listParams),
+        fetchSignalDisclosureTypeCategories(categoryParams),
         loadDigests(),
       ]);
+      setTypeCategories(categoriesPage.items);
       setItems(page.items);
       return page.items;
     } catch (e) {
@@ -153,7 +162,7 @@ export default function DisclosuresScreen() {
     } finally {
       setLoading(false);
     }
-  }, [filter, symbolFilter, t, loadDigests]);
+  }, [filter, symbolFilter, t, typeFilter, loadDigests]);
 
   useEffect(() => {
     setLoading(true);
@@ -169,13 +178,15 @@ export default function DisclosuresScreen() {
   );
 
   const onPickTypeFilter = useCallback((key: DisclosureTypeFilterKey) => {
-    setTypeFilter((prev) => (prev === key ? prev : key));
-  }, []);
+    if (typeFilter === key) return;
+    setLoading(true);
+    setItems([]);
+    setTypeFilter(key);
+  }, [typeFilter]);
 
-  const typeFilterOptions = useMemo(() => availableDisclosureTypeFilters(items), [items]);
-  const filteredItems = useMemo(
-    () => filterDisclosuresByType(items, typeFilter),
-    [items, typeFilter],
+  const typeFilterOptions = useMemo(
+    () => typeCategories.map((row) => row.key).filter(Boolean),
+    [typeCategories],
   );
 
   useEffect(() => {
@@ -187,14 +198,14 @@ export default function DisclosuresScreen() {
 
   useEffect(() => {
     if (!useTwoPane) return;
-    if (!filteredItems.length) {
+    if (!items.length) {
       setSelectedDisclosureId(null);
       return;
     }
-    if (!selectedDisclosureId || !filteredItems.some((item) => item.id === selectedDisclosureId)) {
-      setSelectedDisclosureId(filteredItems[0].id);
+    if (!selectedDisclosureId || !items.some((item) => item.id === selectedDisclosureId)) {
+      setSelectedDisclosureId(items[0].id);
     }
-  }, [filteredItems, selectedDisclosureId, useTwoPane]);
+  }, [items, selectedDisclosureId, useTwoPane]);
 
   const onRefresh = useCallback(async () => {
     const prevIds = new Set(items.map((item) => item.id));
@@ -254,8 +265,8 @@ export default function DisclosuresScreen() {
         : t('disclosuresEmpty');
 
   const selectedDisclosure = useMemo(
-    () => filteredItems.find((item) => item.id === selectedDisclosureId) ?? null,
-    [filteredItems, selectedDisclosureId],
+    () => items.find((item) => item.id === selectedDisclosureId) ?? null,
+    [items, selectedDisclosureId],
   );
 
   const bottomPad = 24 + tabBarHeight + tabBarBottomInset(insets.bottom);
@@ -452,7 +463,7 @@ export default function DisclosuresScreen() {
         ) : (
           <View style={useTwoPane ? styles.wideBody : styles.compactBody}>
             <WebWheelFlatList
-              data={filteredItems}
+              data={items}
               keyExtractor={(item) => item.id}
               style={[styles.list, useTwoPane && styles.wideList]}
               contentContainerStyle={[

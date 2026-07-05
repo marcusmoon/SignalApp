@@ -1,5 +1,5 @@
 import { signalApi } from '@/integrations/signal-api/httpClient';
-import type { SignalApiDisclosure, SignalNewsListMeta } from '@/integrations/signal-api/types';
+import type { SignalApiDisclosure, SignalNewsListMeta, SignalDisclosureTypeCategory } from '@/integrations/signal-api/types';
 
 export type SignalDisclosuresPage = {
   items: SignalApiDisclosure[];
@@ -32,6 +32,7 @@ export async function fetchSignalDisclosures(
     market?: string;
     provider?: string;
     formType?: string;
+    typeCategory?: string;
     symbol?: string;
     symbols?: string;
     q?: string;
@@ -56,4 +57,23 @@ export async function fetchSignalDisclosure(id: string): Promise<SignalApiDisclo
   if (!key) return null;
   const json = await signalApi<{ data?: SignalApiDisclosure }>(`/v1/disclosures/${encodeURIComponent(key)}`);
   return json.data || null;
+}
+
+export async function fetchSignalDisclosureTypeCategories(
+  params: {
+    market?: string;
+    provider?: string;
+    symbol?: string;
+    symbols?: string;
+    from?: string;
+    to?: string;
+  } = {},
+): Promise<{ items: SignalDisclosureTypeCategory[] }> {
+  const json = await signalApi<{ data?: SignalDisclosureTypeCategory[] }>(
+    '/v1/disclosures/type-categories',
+    params,
+    { timeoutMs: 6000, attempts: 1 },
+  );
+  const rows = Array.isArray(json.data) ? json.data : [];
+  return { items: rows.filter((row) => row?.key) };
 }

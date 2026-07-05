@@ -2,6 +2,7 @@ export {
   availableDisclosureTypeFilters,
   disclosureTypeFilterKey,
   disclosureTypeFilterLabelId,
-  filterDisclosuresByType,
+  sortDisclosureTypeFilterKeys,
+  typeCategoryApiParam,
   type DisclosureTypeFilterKey,
 } from './typeFilter';

@@ -4,7 +4,6 @@ import { useCallback, useMemo } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
-import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -19,8 +18,6 @@ type Props = {
   layout?: 'card' | 'grouped';
   /** 관심뉴스처럼 컨텍스트가 이미 명확한 목록에서는 메타를 한 줄로 압축 */
   compactMeta?: boolean;
-  /** 목록 첫 뉴스 등 사용자가 먼저 봐야 하는 항목을 더 크게 강조 */
-  featured?: boolean;
   /** 미지정 시 URL이 있으면 원문 브라우저 오픈 (추후 상세 화면으로 교체 예정) */
   onPress?: () => void;
 };
@@ -31,7 +28,6 @@ export function NewsCard({
   onTagPress,
   layout = 'card',
   compactMeta = false,
-  featured = false,
   onPress,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
@@ -102,14 +98,7 @@ export function NewsCard({
   );
 
   return (
-    <View
-      style={[
-        styles.card,
-        grouped && styles.cardGrouped,
-        featured && styles.cardFeatured,
-        featured && grouped && styles.cardFeaturedGrouped,
-      ]}>
-      {featured && grouped ? <View pointerEvents="none" style={[styles.featuredSideLine]} /> : null}
+    <View style={[styles.card, grouped && styles.cardGrouped]}>
       <Pressable
         onPress={openArticle}
         disabled={!rowPressEnabled}
@@ -156,7 +145,7 @@ export function NewsCard({
             {canOpenSymbol ? renderSourceBelowMeta() : null}
           </>
         )}
-        <Text style={[styles.title, featured && styles.titleFeatured, tags.length === 0 && styles.titleLast]}>{item.titleKo}</Text>
+        <Text style={[styles.title, tags.length === 0 && styles.titleLast]}>{item.titleKo}</Text>
       </Pressable>
       {tags.length > 0 ? (
         <View style={[styles.footer, grouped && styles.footerGrouped]}>
@@ -200,26 +189,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingTop: ft.pad(12),
       paddingBottom: ft.pad(4),
       position: 'relative',
-    },
-    cardFeatured: {
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-      paddingTop: ft.pad(16),
-      paddingBottom: ft.pad(9),
-    },
-    cardFeaturedGrouped: {
-      backgroundColor: theme.greenDim,
-      paddingTop: ft.pad(16),
-      paddingBottom: ft.pad(8),
-    },
-    featuredSideLine: {
-      position: 'absolute',
-      left: 0,
-      top: ft.pad(10),
-      bottom: ft.pad(10),
-      width: CONTENT_ACCENT_LINE_WIDTH,
-      borderRadius: 999,
-      backgroundColor: theme.green,
     },
     rowPress: {
       alignSelf: 'stretch',
@@ -330,10 +299,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.titleWeight,
       marginBottom: ft.pad(6),
       lineHeight: ft.ff(21),
-    },
-    titleFeatured: {
-      fontSize: ft.ff(17),
-      lineHeight: ft.ff(24),
     },
     titleLast: {
       marginBottom: 0,

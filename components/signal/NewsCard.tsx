@@ -108,9 +108,8 @@ export function NewsCard({
         grouped && styles.cardGrouped,
         featured && styles.cardFeatured,
         featured && grouped && styles.cardFeaturedGrouped,
-        isFlash && (grouped ? styles.cardFlashGrouped : styles.cardFlash),
       ]}>
-      {(isFlash || featured) && grouped ? <View pointerEvents="none" style={[styles.flashSideLine, featured && !isFlash && styles.featuredSideLine]} /> : null}
+      {featured && grouped ? <View pointerEvents="none" style={[styles.featuredSideLine]} /> : null}
       <Pressable
         onPress={openArticle}
         disabled={!rowPressEnabled}
@@ -213,25 +212,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingTop: ft.pad(16),
       paddingBottom: ft.pad(8),
     },
-    cardFlash: {
-      borderColor: theme.border,
-      borderLeftWidth: CONTENT_ACCENT_LINE_WIDTH,
-      borderLeftColor: theme.accentOrange,
-    },
-    cardFlashGrouped: {
-      backgroundColor: theme.bgElevated,
-    },
-    flashSideLine: {
+    featuredSideLine: {
       position: 'absolute',
       left: 0,
       top: ft.pad(10),
       bottom: ft.pad(10),
       width: CONTENT_ACCENT_LINE_WIDTH,
       borderRadius: 999,
-      backgroundColor: theme.accentOrange,
-      opacity: 0.72,
-    },
-    featuredSideLine: {
       backgroundColor: theme.green,
     },
     rowPress: {

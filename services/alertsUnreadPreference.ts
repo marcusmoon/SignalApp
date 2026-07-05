@@ -1,20 +1,16 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
+  fetchSignalNotificationInbox,
   fetchSignalNotificationInboxUnreadCount,
-  fetchSignalNotifications,
   markSignalNotificationInboxRead,
+  type SignalNotificationInboxItem,
   SIGNAL_NOTIFICATION_INBOX_MAX,
 } from '@/integrations/signal-api/notifications';
 import { hasSignalApi } from '@/services/env';
 import { getSessionAccessToken, loadAppAuthSession } from '@/services/appAuthSession';
-import {
-  loadDismissedNotificationIds,
-  loadNotificationHistory,
-  type StoredNotification,
-} from '@/services/notificationHistory';
+import type { StoredNotification } from '@/services/notificationHistory';
 
-const LAST_SEEN_AT_KEY = '@signal/alerts_last_seen_at_v1';
 const UNREAD_CACHE_KEY = '@signal/alerts_has_unread_v1';
 const REFRESH_DEDUPE_MS = 30 * 1000;
 
@@ -39,11 +35,6 @@ export function subscribeAlertsUnreadChanged(listener: Listener): () => void {
   return () => listeners.delete(listener);
 }
 
-export async function loadLastSeenAlertsAt(): Promise<string | null> {
-  const v = await AsyncStorage.getItem(LAST_SEEN_AT_KEY);
-  return v && v.trim() ? v.trim() : null;
-}
-
 export async function loadAlertsUnreadCached(): Promise<boolean | null> {
   const v = await AsyncStorage.getItem(UNREAD_CACHE_KEY);
   if (v === '1') return true;
@@ -56,14 +47,9 @@ export async function setAlertsUnreadCached(hasUnread: boolean): Promise<void> {
   notify();
 }
 
-async function saveLastSeenAlertsAt(iso: string): Promise<void> {
-  if (!iso.trim()) return;
-  await AsyncStorage.setItem(LAST_SEEN_AT_KEY, iso.trim());
-}
-
-function mapServerNotification(item: Awaited<ReturnType<typeof fetchSignalNotifications>>[number]): StoredNotification {
+export function mapInboxToStoredNotification(item: SignalNotificationInboxItem): StoredNotification {
   return {
-    id: item.inboxId || `server:${item.id}`,
+    id: item.id,
     title: item.title,
     body: item.body,
     receivedAt: item.deliveredAt || item.scheduledAt || item.createdAt || new Date().toISOString(),
@@ -76,48 +62,22 @@ function mapServerNotification(item: Awaited<ReturnType<typeof fetchSignalNotifi
   };
 }
 
-async function loadVisibleAlerts(): Promise<StoredNotification[]> {
-  const savedSession = await loadAppAuthSession();
-  const access = getSessionAccessToken(savedSession);
-  const [list, serverNotifications, dismissed] = await Promise.all([
-    loadNotificationHistory(),
-    access && hasSignalApi()
-      ? fetchSignalNotifications(access, SIGNAL_NOTIFICATION_INBOX_MAX).catch(() => [])
-      : Promise.resolve([]),
-    loadDismissedNotificationIds(),
-  ]);
-  const serverItems = serverNotifications.map(mapServerNotification);
-  const seen = new Set<string>();
-  return [...serverItems, ...list]
-    .filter((item) => {
-      if (dismissed.has(item.id)) return false;
-      if (seen.has(item.id)) return false;
-      seen.add(item.id);
-      return true;
-    })
-    .sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime())
-    .slice(0, SIGNAL_NOTIFICATION_INBOX_MAX);
+async function loadInboxAlerts(access: string): Promise<StoredNotification[]> {
+  const rows = await fetchSignalNotificationInbox(access, SIGNAL_NOTIFICATION_INBOX_MAX);
+  return rows.map(mapInboxToStoredNotification);
 }
 
 export async function checkAlertsHasUnread(): Promise<boolean> {
   const savedSession = await loadAppAuthSession();
   const access = getSessionAccessToken(savedSession);
-  if (access && hasSignalApi()) {
-    try {
-      const count = await fetchSignalNotificationInboxUnreadCount(access);
-      return count > 0;
-    } catch {
-      /* fall through to local merge */
-    }
+  if (!access || !hasSignalApi()) return false;
+  try {
+    const count = await fetchSignalNotificationInboxUnreadCount(access);
+    return count > 0;
+  } catch {
+    const cached = await loadAlertsUnreadCached();
+    return cached ?? false;
   }
-  const items = await loadVisibleAlerts();
-  if (items.length === 0) return false;
-  const lastSeenAt = await loadLastSeenAlertsAt();
-  if (!lastSeenAt) return true;
-  const newestMs = new Date(items[0].receivedAt).getTime();
-  const seenMs = new Date(lastSeenAt).getTime();
-  if (!Number.isFinite(newestMs) || !Number.isFinite(seenMs)) return true;
-  return newestMs > seenMs;
 }
 
 export async function refreshAlertsUnreadFromServer(options?: { force?: boolean }): Promise<boolean> {
@@ -142,7 +102,7 @@ export async function refreshAlertsUnreadFromServer(options?: { force?: boolean 
   return refreshInFlight;
 }
 
-/** 알림함 진입 시 호출 — 서버 인박스 read + 로컬 배지 갱신 */
+/** 알림함 진입 시 호출 — 서버 인박스 전체 읽음 처리 */
 export async function markAlertsSeen(): Promise<void> {
   const savedSession = await loadAppAuthSession();
   const access = getSessionAccessToken(savedSession);
@@ -150,15 +110,17 @@ export async function markAlertsSeen(): Promise<void> {
     try {
       await markSignalNotificationInboxRead(access, { all: true });
     } catch {
-      /* keep local fallback below */
+      /* badge cache still cleared below */
     }
   }
-  const items = await loadVisibleAlerts();
-  const newestAt = items[0]?.receivedAt || new Date().toISOString();
-  await saveLastSeenAlertsAt(newestAt);
   await setAlertsUnreadCached(false);
 }
 
-export function isServerInboxNotificationId(id: string): boolean {
-  return /^[^:]+:notification:/.test(String(id || '').trim());
+export async function loadAlertsFromInbox(access: string): Promise<StoredNotification[]> {
+  if (!hasSignalApi()) return [];
+  try {
+    return await loadInboxAlerts(access);
+  } catch {
+    return [];
+  }
 }

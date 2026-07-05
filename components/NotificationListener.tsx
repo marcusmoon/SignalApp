@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
 import { deliverSignalNotificationInbox } from '@/integrations/signal-api/notifications';
-import { appendNotificationFromPayload } from '@/services/notificationHistory';
 import { setAlertsUnreadCached } from '@/services/alertsUnreadPreference';
 import { getSessionAccessToken, loadAppAuthSession } from '@/services/appAuthSession';
 import { hasSignalApi } from '@/services/env';
@@ -34,8 +33,8 @@ if (Platform.OS !== 'web') {
 }
 
 /**
- * Records incoming push payloads into local history (AsyncStorage).
- * Requires FCM/APNs + expo-notifications; web is skipped.
+ * 포그라운드 push 수신 시 서버 inbox deliver + 배지 갱신.
+ * 목록은 GET /v1/notifications/inbox 단일 소스.
  */
 export function NotificationListener() {
   useEffect(() => {
@@ -65,11 +64,6 @@ export function NotificationListener() {
         ) {
           void setSignalUnreadCached(true);
         }
-        void appendNotificationFromPayload({
-          title: String(c.title ?? ''),
-          body: String(c.body ?? ''),
-          data,
-        });
       });
     };
 

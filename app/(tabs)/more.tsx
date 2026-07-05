@@ -189,7 +189,7 @@ export default function MoreHubScreen() {
                 </View>
                 <Text
                   style={[styles.rowTitle, useTwoColumnHub && styles.gridTitle]}
-                  numberOfLines={useTwoColumnHub ? 2 : 2}>
+                  numberOfLines={2}>
                   {name}
                 </Text>
               </Pressable>

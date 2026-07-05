@@ -1,14 +1,12 @@
 import { isRunningInExpoGo } from 'expo';
 
+import { refreshFeedUnreadBadgesInBackground } from '@/services/feedUnreadBadges';
 import { hasSignalApi } from '@/services/env';
 import { loadLocale } from '@/services/localePreference';
 import {
   loadNewsUnreadCheckIntervalMinutes,
   newsUnreadBackgroundTaskIntervalMinutes,
 } from '@/services/newsUnreadCheckIntervalPreference';
-import { refreshNewsUnreadFromServer } from '@/services/newsUnreadPreference';
-import { refreshDisclosureUnreadFromServer } from '@/services/disclosureUnreadPreference';
-import { refreshSignalUnreadFromServer } from '@/services/signalUnreadPreference';
 import { isNewsUnreadBackgroundTaskNativeAvailable } from '@/utils/expoNativeModules';
 
 export const NEWS_UNREAD_BACKGROUND_TASK = 'signal-news-unread-check';
@@ -48,11 +46,7 @@ function ensureNewsUnreadTaskDefined(): BackgroundTaskModules | null {
         return modules.BackgroundTask.BackgroundTaskResult.Success;
       }
       const locale = await loadLocale();
-      await Promise.allSettled([
-        refreshNewsUnreadFromServer(locale),
-        refreshSignalUnreadFromServer(),
-        refreshDisclosureUnreadFromServer(),
-      ]);
+      await refreshFeedUnreadBadgesInBackground(locale);
       return modules.BackgroundTask.BackgroundTaskResult.Success;
     } catch {
       return modules.BackgroundTask.BackgroundTaskResult.Failed;

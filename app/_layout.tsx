@@ -15,6 +15,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
 import { NotificationListener } from '@/components/NotificationListener';
 import { PushDeviceRegistrar } from '@/components/PushDeviceRegistrar';
+import { FeedUnreadBadgesProvider } from '@/contexts/FeedUnreadBadgesContext';
 import { OtaBannerProvider } from '@/contexts/OtaBannerContext';
 import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
 import { SignalThemeProvider, useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -210,12 +211,14 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={navTheme}>
-      <NotificationListener />
-      <PushDeviceRegistrar />
-      <View style={{ ...webFlexFill, backgroundColor: webShellBackground(theme.bg) }}>
-        <ThemedStatusBar />
-        <Stack screenOptions={rootScreenOptions} />
-      </View>
+      <FeedUnreadBadgesProvider>
+        <NotificationListener />
+        <PushDeviceRegistrar />
+        <View style={{ ...webFlexFill, backgroundColor: webShellBackground(theme.bg) }}>
+          <ThemedStatusBar />
+          <Stack screenOptions={rootScreenOptions} />
+        </View>
+      </FeedUnreadBadgesProvider>
     </ThemeProvider>
   );
 }

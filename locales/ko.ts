@@ -46,6 +46,8 @@ export const ko = {
   communityOriginalOpen: '원문으로 가기',
   newsOpenVideos: '영상',
   moreHubSegmentDragHandleA11y: '{{name}} 순서 바꾸기(드래그)',
+  moreHubUnreadLabel: '새',
+  moreHubUnreadDisclosuresA11y: '{{name}}, 새 공시',
   moreRefLinksKicker: '퀵 링크',
   moreRefLinksSwipeA11y: '좌우로 밀어 더 많은 링크 보기',
   moreRefTitleYahoo: 'Yahoo Finance',

@@ -9,6 +9,7 @@ import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { DISCLOSURE_FLOW_MARKET_ORDER, type DisclosureFlowMarket } from '@/constants/ipadHomeNav';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -19,8 +20,21 @@ import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/ty
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
+import type { MessageId } from '@/locales/messages';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 import { toYmd, utcRangeForLocalYmd } from '@/utils/date';
+
+const MARKET_LABEL: Record<DisclosureFlowMarket, MessageId> = {
+  all: 'disclosuresFilterAll',
+  us: 'disclosuresFilterUs',
+  kr: 'disclosuresFilterKr',
+};
+
+function parseMarketParam(value: unknown): DisclosureFlowMarket {
+  const raw = String(Array.isArray(value) ? value[0] : value || '').trim();
+  if (raw === 'us' || raw === 'kr') return raw;
+  return 'all';
+}
 
 function parseDateParam(value: unknown): string {
   const raw = String(Array.isArray(value) ? value[0] : value || '').slice(0, 10);
@@ -78,6 +92,7 @@ function disclosureMarketLabel(market: string, locale: 'ko' | 'en' | 'ja'): stri
 type DisclosureFlowContentProps = {
   embedded?: boolean;
   initialDate?: string;
+  initialMarket?: DisclosureFlowMarket;
   initialDigestId?: string | null;
   onBack?: () => void;
 };
@@ -85,6 +100,7 @@ type DisclosureFlowContentProps = {
 export function DisclosureFlowContent({
   embedded = false,
   initialDate = toYmd(new Date()),
+  initialMarket = 'all',
   initialDigestId = null,
   onBack,
 }: DisclosureFlowContentProps) {
@@ -96,6 +112,7 @@ export function DisclosureFlowContent({
   const todayYmd = useRollingLocalYmd();
   const isWide = embedded || useTwoPane;
   const [selectedYmd, setSelectedYmd] = useState(initialDate);
+  const [market, setMarket] = useState<DisclosureFlowMarket>(initialMarket);
   const [items, setItems] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [highlightId, setHighlightId] = useState<string | null>(initialDigestId);
   const [loading, setLoading] = useState(true);
@@ -104,6 +121,10 @@ export function DisclosureFlowContent({
   useEffect(() => {
     setSelectedYmd(initialDate);
   }, [initialDate]);
+
+  useEffect(() => {
+    setMarket(initialMarket);
+  }, [initialMarket]);
 
   useEffect(() => {
     setHighlightId(initialDigestId);
@@ -130,6 +151,7 @@ export function DisclosureFlowContent({
     try {
       const page = await fetchSignalDisclosureDigests({
         ...utcRangeForLocalYmd(selectedYmd),
+        ...(market !== 'all' ? { market } : {}),
         limit: 80,
         batches: 20,
       });
@@ -140,7 +162,7 @@ export function DisclosureFlowContent({
     } finally {
       setLoading(false);
     }
-  }, [selectedYmd, t]);
+  }, [market, selectedYmd, t]);
 
   useEffect(() => {
     void load();
@@ -166,6 +188,26 @@ export function DisclosureFlowContent({
               <View style={styles.paneSpacer} />
             </View>
           ) : null}
+
+          <View style={styles.header}>
+            <View style={styles.categoryTabs}>
+              {DISCLOSURE_FLOW_MARKET_ORDER.map((key) => {
+                const active = market === key;
+                return (
+                  <Pressable
+                    key={key}
+                    onPress={() => setMarket(key)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    style={[styles.categoryTab, active && styles.categoryTabActive]}>
+                    <Text style={[styles.categoryTabText, active && styles.categoryTabTextActive]}>
+                      {t(MARKET_LABEL[key])}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
 
           <SignalDateNavigator
             label={formatDateLabel(selectedYmd, locale)}
@@ -241,15 +283,17 @@ export function DisclosureFlowContent({
 }
 
 export default function DisclosureFlowScreen() {
-  const params = useLocalSearchParams<{ date?: string; digestId?: string }>();
+  const params = useLocalSearchParams<{ date?: string; market?: string; digestId?: string }>();
   const { useTwoPane } = useResponsiveLayout();
   const { t } = useLocale();
   const initialDate = parseDateParam(params.date);
+  const initialMarket = parseMarketParam(params.market);
   const initialDigestId = typeof params.digestId === 'string' ? params.digestId : null;
   const content = (
     <DisclosureFlowContent
       embedded={useTwoPane}
       initialDate={initialDate}
+      initialMarket={initialMarket}
       initialDigestId={initialDigestId}
     />
   );
@@ -320,6 +364,31 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       width: 78,
       flexShrink: 0,
     },
+    header: { gap: 12 },
+    categoryTabs: {
+      flexDirection: 'row',
+      gap: 4,
+      padding: 4,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+    },
+    categoryTab: {
+      flex: 1,
+      minHeight: 34,
+      borderRadius: 9,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    categoryTabActive: { backgroundColor: theme.green },
+    categoryTabText: {
+      fontSize: sf(13),
+      lineHeight: sf(17),
+      fontWeight: '800',
+      color: theme.textDim,
+    },
+    categoryTabTextActive: { color: '#FFFFFF' },
     dateNav: { marginTop: 2 },
     loadingBox: { flex: 1, minHeight: 260, paddingVertical: 56, alignItems: 'center', justifyContent: 'center' },
     errorBox: {

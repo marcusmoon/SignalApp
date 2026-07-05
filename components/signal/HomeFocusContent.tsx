@@ -18,6 +18,7 @@ import {
   HOME_DIGEST_CATEGORIES,
   HOME_SIGNAL_SESSIONS,
   homeDigestCategoryIcon,
+  type DisclosureFlowMarket,
   type HomeDigestCategory,
   type NewsIssuesCategory,
   type SignalSessionKey,
@@ -441,9 +442,17 @@ export function HomeFocusContent({
   const openDisclosureFlow = useCallback(
     (row?: SignalApiDisclosureDigestItem) => {
       const params: Record<string, string> = { date: selectedYmd };
+      const rowMarket = String(row?.market || '').trim().toLowerCase();
+      if (rowMarket === 'us' || rowMarket === 'kr') {
+        params.market = rowMarket;
+      }
       if (row?.id) params.digestId = row.id;
       if (ipadNav.isAvailable) {
-        ipadNav.showDisclosureFlow(params);
+        ipadNav.showDisclosureFlow({
+          date: params.date,
+          market: (params.market as DisclosureFlowMarket | undefined) ?? 'all',
+          digestId: params.digestId ?? null,
+        });
         return;
       }
       router.push({

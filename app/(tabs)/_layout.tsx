@@ -563,6 +563,7 @@ function IpadWideTabLayout({
                 <DisclosureFlowContent
                   embedded
                   initialDate={disclosureFlowParams.date}
+                  initialMarket={disclosureFlowParams.market}
                   initialDigestId={disclosureFlowParams.digestId}
                   onBack={showHome}
                 />

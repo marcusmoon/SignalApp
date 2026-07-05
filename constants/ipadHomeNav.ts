@@ -9,6 +9,10 @@ export const HOME_DIGEST_CATEGORIES: HomeDigestCategory[] = ['global', 'korea', 
 
 export const NEWS_ISSUES_CATEGORY_ORDER: NewsIssuesCategory[] = ['all', ...HOME_DIGEST_CATEGORIES];
 
+export type DisclosureFlowMarket = 'all' | 'us' | 'kr';
+
+export const DISCLOSURE_FLOW_MARKET_ORDER: DisclosureFlowMarket[] = ['all', 'us', 'kr'];
+
 export type HomeDigestCategoryIcon = 'globe' | 'flag' | 'bitcoin';
 
 export function homeDigestCategoryIcon(category: HomeDigestCategory): HomeDigestCategoryIcon {

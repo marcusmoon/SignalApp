@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import type { SignalSessionKey } from '@/constants/ipadHomeNav';
-import type { HomeDigestCategory, NewsIssuesCategory } from '@/constants/ipadHomeNav';
+import type { DisclosureFlowMarket, HomeDigestCategory, NewsIssuesCategory } from '@/constants/ipadHomeNav';
 import type { SettingsTab } from '@/constants/settingsTabs';
 import type { NewsSegmentKey } from '@/constants/newsSegment';
 
@@ -15,6 +15,7 @@ export type IpadNewsIssuesPaneParams = {
 };
 export type IpadDisclosureFlowPaneParams = {
   date: string;
+  market?: DisclosureFlowMarket;
   digestId?: string | null;
 };
 

@@ -8,6 +8,7 @@
 - 서버는 `server/src/http/`, `server/src/db/`, `server/src/jobs/`, `server/src/providers/` 기준으로 나눈다.
 - 문서는 현재 기준만 유지한다. 과거 이력은 남기지 않는다.
 - **날짜·시간**은 [DATE-TIME.md](./DATE-TIME.md)를 따른다. 서버는 UTC, 앱 API는 UTC ISO, 표시는 로케일·기기 타임존.
+- **화면 레이아웃·여백**은 [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)와 `constants/screenLayout.ts`를 따른다.
 
 ## 실행
 

@@ -27,7 +27,10 @@ import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
-import { tabBarBottomInset } from '@/constants/tabBar';
+import {
+  fabStackBottom,
+  tabScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
 import { useQuoteChangeColors, useResetRefreshingOnTabBlur, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -380,8 +383,8 @@ export default function QuotesScreen() {
     );
   }, [load, t]);
 
-  const bottomPad = 28 + tabBarHeight + tabBarBottomInset(insets.bottom);
-  const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
+  const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const fabStackBottomOffset = fabStackBottom(tabBarHeight, insets.bottom);
 
   const quotesListHeader = useMemo(
     () => (
@@ -685,7 +688,7 @@ export default function QuotesScreen() {
 
       {!useTwoPane ? (
         <FloatingGlassFab
-          bottom={fabStackBottom}
+          bottom={fabStackBottomOffset}
           onPress={() => void onRefresh()}
           iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}

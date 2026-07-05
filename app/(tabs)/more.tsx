@@ -13,8 +13,11 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
+import {
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  tabScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
 import { webShellBackground } from '@/constants/webLayout';
-import { tabBarBottomInset } from '@/constants/tabBar';
 import type { MoreHubRouteKey } from '@/constants/moreHubOrder';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -199,8 +202,8 @@ export default function MoreHubScreen() {
           scrollEnabled
           style={[styles.list, useTwoPane && styles.listWide]}
           contentContainerStyle={{
-            paddingTop: 8,
-            paddingBottom: 24 + tabBarHeight + tabBarBottomInset(insets.bottom),
+            paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+            paddingBottom: tabScreenScrollBottomPadding(tabBarHeight, insets.bottom),
           }}
           ListHeaderComponent={
             showIpadQuickLinks ? (

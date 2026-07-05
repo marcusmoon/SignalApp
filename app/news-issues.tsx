@@ -10,6 +10,12 @@ import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { HOME_DIGEST_CATEGORIES, NEWS_ISSUES_CATEGORY_ORDER, type NewsIssuesCategory } from '@/constants/ipadHomeNav';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import {
+  SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
+  SCREEN_EMBEDDED_WIDE_PADDING_TOP,
+  SCREEN_HEADER_CONTENT_GAP,
+  SCREEN_WIDE_SCROLL_BOTTOM_BASE,
+} from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -338,19 +344,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
   return StyleSheet.create({
     safe: { flex: 1, minHeight: 0, backgroundColor: theme.bg },
     scroll: { flex: 1, minHeight: 0 },
-    scrollContent: { flexGrow: 1, paddingBottom: 32 },
+    scrollContent: { flexGrow: 1, paddingBottom: SCREEN_WIDE_SCROLL_BOTTOM_BASE },
     inner: {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
       paddingHorizontal: 16,
-      paddingTop: 12,
+      paddingTop: SCREEN_HEADER_CONTENT_GAP,
       gap: 12,
     },
     innerWide: {
       maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
-      paddingHorizontal: 20,
-      paddingTop: 16,
+      paddingHorizontal: SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
+      paddingTop: SCREEN_EMBEDDED_WIDE_PADDING_TOP,
     },
     paneTopBar: {
       minHeight: 42,

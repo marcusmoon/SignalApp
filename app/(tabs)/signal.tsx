@@ -27,7 +27,12 @@ import {
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
-import { tabBarBottomInset } from '@/constants/tabBar';
+import {
+  fabStackBottom,
+  SCREEN_HEADER_CONTENT_GAP,
+  SCREEN_WIDE_SCROLL_BOTTOM_BASE,
+  tabScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -337,7 +342,10 @@ export default function SignalScreen() {
 
   const activeBriefing = activeTabKey ? briefingByTabKey.get(activeTabKey) : undefined;
   const hasAnyBriefing = marketBriefings.length > 0;
-  const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
+  const fabStackBottomOffset = fabStackBottom(tabBarHeight, insets.bottom);
+  const scrollBottomPadding = useTwoPane
+    ? SCREEN_WIDE_SCROLL_BOTTOM_BASE
+    : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
 
   const availableSessionTabKeys = useMemo(
     () => FLAT_TABS.filter((tab) => briefingByTabKey.has(tab.key)).map((tab) => tab.key),
@@ -470,7 +478,7 @@ export default function SignalScreen() {
       ) : (
         <WebWheelScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.content, useTwoPane && styles.contentWide, { paddingBottom: 24 + insets.bottom }]}
+          contentContainerStyle={[styles.content, useTwoPane && styles.contentWide, { paddingBottom: scrollBottomPadding }]}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           <OtaUpdateBanner />
 
@@ -505,7 +513,7 @@ export default function SignalScreen() {
 
       {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
-          bottom={fabStackBottom}
+          bottom={fabStackBottomOffset}
           onPress={() => void onRefresh()}
           iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}
@@ -595,11 +603,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     dateNavigatorWrap: {
       width: '100%',
       paddingHorizontal: APP_CONTENT_SIDE_PADDING,
-      marginTop: 12,
+      marginTop: SCREEN_HEADER_CONTENT_GAP,
       marginBottom: 10,
     },
     dateNavigatorWrapWide: {
-      marginTop: 12,
+      marginTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
     },
     dateNavigator: {
       width: '100%',

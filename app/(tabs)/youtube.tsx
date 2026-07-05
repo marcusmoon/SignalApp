@@ -34,7 +34,13 @@ import {
 } from '@/constants/segmentTabBar';
 import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import { tabBarBottomInset } from '@/constants/tabBar';
+import {
+  fabStackBottom,
+  SCREEN_FIXED_HEADER_PADDING_BOTTOM,
+  SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+  SCREEN_FIXED_HEADER_PADDING_TOP,
+  tabScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -422,8 +428,8 @@ export default function YoutubeScreen() {
         })
       : loading;
 
-  const bottomPad = 28 + tabBarHeight + tabBarBottomInset(insets.bottom);
-  const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
+  const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const fabStackBottomOffset = fabStackBottom(tabBarHeight, insets.bottom);
 
   const youtubeListHeader = useMemo(
     () => (
@@ -594,7 +600,7 @@ export default function YoutubeScreen() {
 
       {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
-          bottom={fabStackBottom}
+          bottom={fabStackBottomOffset}
           onPress={() => void onRefresh()}
           iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}
@@ -661,9 +667,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     topFixed: {
       flexShrink: 0,
-      paddingHorizontal: 16,
-      paddingTop: 10,
-      paddingBottom: 12,
+      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+      paddingTop: SCREEN_FIXED_HEADER_PADDING_TOP,
+      paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
       backgroundColor: theme.card,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,

@@ -32,6 +32,9 @@ import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useQuoteChangeColors } from '@/hooks';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
+import {
+  SCREEN_HEADER_CONTENT_GAP,
+} from '@/constants/screenLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -925,7 +928,7 @@ function makeStyles(
     content: {
       flexGrow: 1,
       paddingHorizontal: 16,
-      paddingTop: 14,
+      paddingTop: SCREEN_HEADER_CONTENT_GAP,
       gap: 24,
     },
     errorBox: {

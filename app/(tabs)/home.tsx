@@ -7,7 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { HomeFocusContent } from '@/components/signal/HomeFocusContent';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
-import { tabBarBottomInset } from '@/constants/tabBar';
+import { tabScreenScrollBottomPadding } from '@/constants/screenLayout';
 import { webFlexFill, webShellBackground } from '@/constants/webLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
@@ -36,7 +36,7 @@ export default function HomeTabScreen() {
           selectedYmd={selectedYmd}
           todayYmd={todayYmd}
           onSelectedYmdChange={setSelectedYmd}
-          scrollContentPaddingBottom={24 + tabBarHeight + tabBarBottomInset(insets.bottom)}
+          scrollContentPaddingBottom={tabScreenScrollBottomPadding(tabBarHeight, insets.bottom)}
         />
       </View>
     </SafeAreaView>

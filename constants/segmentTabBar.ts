@@ -16,12 +16,12 @@ export const SEGMENT_TAB_FONT_WEIGHT = '800' as const;
 
 export const SEGMENT_TAB_ACTIVE_TEXT = '#FFFFFF';
 
-/** 세그먼트/고정 헤더 아래 스크롤 리스트 상단 여백 */
-export const SCREEN_LIST_CONTENT_PADDING_TOP = 8;
-/** 2-pane 본문 컬럼 상단 여백 */
-export const SCREEN_WIDE_CONTENT_PADDING_TOP = 12;
-/** FlatList ListHeaderComponent 블록 */
-export const SCREEN_LIST_HEADER_PADDING_TOP = 8;
-export const SCREEN_LIST_HEADER_PADDING_BOTTOM = 4;
-/** 사이드바 컨텍스트 서브탭 아래 여백 */
-export const SCREEN_SIDEBAR_SUBTAB_MARGIN_BOTTOM = 12;
+export {
+  SCREEN_FIXED_HEADER_PADDING_BOTTOM,
+  SCREEN_FIXED_HEADER_PADDING_TOP,
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  SCREEN_LIST_HEADER_PADDING_BOTTOM,
+  SCREEN_LIST_HEADER_PADDING_TOP,
+  SCREEN_SIDEBAR_SUBTAB_MARGIN_BOTTOM,
+  SCREEN_WIDE_CONTENT_PADDING_TOP,
+} from '@/constants/screenLayout';

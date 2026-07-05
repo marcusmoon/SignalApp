@@ -8,6 +8,10 @@ import { useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import {
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  stackScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
 import { webShellBackground } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -259,7 +263,7 @@ export default function AlertsScreen() {
     [locale, onDeleteAlert, onOpenAlert, styles, t],
   );
 
-  const bottomPad = 28 + insets.bottom;
+  const bottomPad = stackScreenScrollBottomPadding(insets.bottom);
 
   if (!authChecked) {
     return (
@@ -335,7 +339,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
     },
-    listContent: { paddingHorizontal: 16, paddingTop: 8 },
+    listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
     listContentEmpty: { flexGrow: 1 },
     filterRow: {
       flexDirection: 'row',

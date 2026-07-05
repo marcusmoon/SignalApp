@@ -13,7 +13,10 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-import { tabBarBottomInset } from '@/constants/tabBar';
+import {
+  fabStackBottom,
+  tabScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
 import {
   WEB_FLATLIST_BATCH,
   WEB_FLATLIST_INITIAL,
@@ -1299,8 +1302,8 @@ export default function FeedScreen() {
         : t('feedEmpty')
       : null;
 
-  const bottomPad = 28 + tabBarHeight + tabBarBottomInset(insets.bottom);
-  const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
+  const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const fabStackBottomOffset = fabStackBottom(tabBarHeight, insets.bottom);
 
   const listHeaderEl = useMemo(
     () => (
@@ -1529,7 +1532,7 @@ export default function FeedScreen() {
 
       {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
-          bottom={fabStackBottom}
+          bottom={fabStackBottomOffset}
           onPress={() => void onRefresh()}
           iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}

@@ -7,6 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -618,7 +619,7 @@ export default function SymbolDetailScreen() {
         </View>
       ) : (
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: 24 + insets.bottom }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) }]}
         refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>

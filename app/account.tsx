@@ -8,6 +8,7 @@ import { SocialAuthButtons } from '@/components/account/SocialAuthButtons';
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { makeAccountStyles } from '@/components/account/accountStyles';
+import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import type { MessageId } from '@/locales/messages';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -727,7 +728,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         contentContainerStyle={[
           styles.content,
           embedded && styles.contentEmbedded,
-          { paddingBottom: 28 + insets.bottom },
+          { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) },
         ]}>
         {!user ? (
           <View style={styles.hero}>

@@ -29,7 +29,13 @@ import {
   SCREEN_LIST_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
-import { tabBarBottomInset } from '@/constants/tabBar';
+import {
+  fabStackBottom,
+  SCREEN_FIXED_HEADER_PADDING_BOTTOM,
+  SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+  SCREEN_FIXED_HEADER_PADDING_TOP,
+  tabScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -168,8 +174,8 @@ export default function BoardScreen() {
     }, [changeSource, clearSubTabs, setSubTabs, source, t, useTwoPane]),
   );
 
-  const listBottomPad = 16 + tabBarHeight + tabBarBottomInset(insets.bottom);
-  const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
+  const listBottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const fabStackBottomOffset = fabStackBottom(tabBarHeight, insets.bottom);
 
   const renderItem = useCallback(
     ({ item }: { item: SignalApiCommunityPost }) => (
@@ -249,7 +255,7 @@ export default function BoardScreen() {
       </View>
       {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
-          bottom={fabStackBottom}
+          bottom={fabStackBottomOffset}
           onPress={onRefresh}
           iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}
@@ -276,9 +282,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexShrink: 0,
       zIndex: 2,
       elevation: Platform.OS === 'android' ? 2 : 0,
-      paddingHorizontal: 16,
-      paddingTop: 10,
-      paddingBottom: 12,
+      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+      paddingTop: SCREEN_FIXED_HEADER_PADDING_TOP,
+      paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
       backgroundColor: theme.bg,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,

@@ -17,6 +17,11 @@ import {
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
+import {
+  SCREEN_FIXED_HEADER_PADDING_BOTTOM,
+  SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+  SCREEN_FIXED_HEADER_PADDING_TOP,
+} from '@/constants/screenLayout';
 
 export function makeQuotesStyles(
   theme: AppTheme,
@@ -43,9 +48,9 @@ export function makeQuotesStyles(
       flexShrink: 0,
       zIndex: 2,
       elevation: Platform.OS === 'android' ? 2 : 0,
-      paddingHorizontal: 16,
-      paddingTop: 10,
-      paddingBottom: 12,
+      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+      paddingTop: SCREEN_FIXED_HEADER_PADDING_TOP,
+      paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
       backgroundColor: theme.card,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,

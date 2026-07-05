@@ -20,6 +20,10 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import {
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  stackScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -355,7 +359,7 @@ export default function CalendarScreen() {
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         {isFocused ? <OtaUpdateBanner /> : null}
         <WebWheelScrollView
-          contentContainerStyle={[styles.scroll, { paddingBottom: 28 + insets.bottom }]}
+          contentContainerStyle={[styles.scroll, { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) }]}
           showsVerticalScrollIndicator={false}>
           <View style={styles.errBox}>
             <Text style={styles.errText}>{t('errorSignalApiShort')}</Text>
@@ -425,7 +429,7 @@ export default function CalendarScreen() {
         ListHeaderComponent={listHeader}
         ListEmptyComponent={renderListEmpty}
         ListFooterComponent={
-          <View style={{ paddingBottom: 28 + insets.bottom + 56 }}>
+          <View style={{ paddingBottom: stackScreenScrollBottomPadding(insets.bottom) + 56 }}>
             <SignalBannerAd />
           </View>
         }
@@ -495,22 +499,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
       paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 28,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+      paddingBottom: stackScreenScrollBottomPadding(0),
     },
     fixedTop: {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
       paddingHorizontal: 16,
-      paddingTop: 8,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
       paddingBottom: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
       backgroundColor: theme.bg,
     },
     daySection: {
-      paddingTop: 8,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
       paddingBottom: 4,
     },
     daySectionMeta: {

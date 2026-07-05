@@ -17,7 +17,13 @@ import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
-import { tabBarBottomInset } from '@/constants/tabBar';
+import {
+  fabStackBottom,
+  SCREEN_FIXED_HEADER_PADDING_BOTTOM,
+  SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+  SCREEN_FIXED_HEADER_PADDING_TOP,
+  tabScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
   SEGMENT_TAB_BTN_PADDING_V,
@@ -344,8 +350,8 @@ export default function DisclosuresScreen() {
     [items, selectedDisclosureId],
   );
 
-  const bottomPad = 24 + tabBarHeight + tabBarBottomInset(insets.bottom);
-  const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
+  const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const fabStackBottomOffset = fabStackBottom(tabBarHeight, insets.bottom);
 
   const listHeaderEl = useMemo(
     () => (
@@ -559,7 +565,7 @@ export default function DisclosuresScreen() {
       </View>
       {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
-          bottom={fabStackBottom}
+          bottom={fabStackBottomOffset}
           onPress={() => void onRefresh()}
           iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}
@@ -587,9 +593,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexShrink: 0,
       zIndex: 2,
       elevation: Platform.OS === 'android' ? 2 : 0,
-      paddingHorizontal: 16,
-      paddingTop: 10,
-      paddingBottom: 12,
+      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+      paddingTop: SCREEN_FIXED_HEADER_PADDING_TOP,
+      paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
       backgroundColor: theme.card,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,

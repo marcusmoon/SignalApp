@@ -331,10 +331,10 @@ export function HomeFocusContent({
           to: shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
           limit: 120,
         }).catch(() => []),
-        useTwoPane
+        useTwoPane || selectedYmd !== todayYmd
           ? Promise.resolve({ items: [] as SignalApiCommunityPost[] })
           : fetchSignalCommunity({ source: 'naver_likeusstock_free', limit: 1 }).catch(() => ({ items: [] as SignalApiCommunityPost[] })),
-        useTwoPane
+        useTwoPane || selectedYmd !== todayYmd
           ? Promise.resolve({ items: [] as SignalApiCommunityPost[] })
           : fetchSignalCommunity({ source: 'save_user_news', limit: 1 }).catch(() => ({ items: [] as SignalApiCommunityPost[] })),
       ]);
@@ -366,10 +366,15 @@ export function HomeFocusContent({
           shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
         ),
       );
-      if (!useTwoPane) {
+      if (!useTwoPane && selectedYmd === todayYmd) {
         setBoardPreviews({
           naver_likeusstock_free: naverBoardPage.items[0] ?? null,
           save_user_news: saveBoardPage.items[0] ?? null,
+        });
+      } else if (!useTwoPane) {
+        setBoardPreviews({
+          naver_likeusstock_free: null,
+          save_user_news: null,
         });
       }
     } catch (e) {
@@ -864,7 +869,24 @@ export function HomeFocusContent({
             )}
           </View>
 
-          {!useTwoPane ? (
+          <View style={styles.section}>
+            <HomeSectionHeader
+              title={t('disclosureFlowTitle')}
+              badge={<HomeAiBadge />}
+              onPress={() => openDisclosureFlow()}
+              accessibilityLabel={t('commonViewAll')}
+            />
+            {disclosures.length > 0 ? (
+              renderDisclosureCard(disclosures)
+            ) : (
+              <View style={styles.emptyCard}>
+                <HomeSectionAccentLine section="disclosure" />
+                <Text style={styles.emptyText}>{t('disclosureFlowEmpty')}</Text>
+              </View>
+            )}
+          </View>
+
+          {!useTwoPane && selectedIsExactToday ? (
             <View style={styles.section}>
               <HomeSectionHeader
                 title={t('screenBoard')}
@@ -949,23 +971,6 @@ export function HomeFocusContent({
                 </View>
               </View>
           ) : null}
-
-          <View style={styles.section}>
-            <HomeSectionHeader
-              title={t('disclosureFlowTitle')}
-              badge={<HomeAiBadge />}
-              onPress={() => openDisclosureFlow()}
-              accessibilityLabel={t('commonViewAll')}
-            />
-            {disclosures.length > 0 ? (
-              renderDisclosureCard(disclosures)
-            ) : (
-              <View style={styles.emptyCard}>
-                <HomeSectionAccentLine section="disclosure" />
-                <Text style={styles.emptyText}>{t('disclosureFlowEmpty')}</Text>
-              </View>
-            )}
-          </View>
 
           <View style={styles.section}>
             <HomeSectionHeader

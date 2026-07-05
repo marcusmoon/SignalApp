@@ -592,7 +592,7 @@ export const ko = {
   insightDatePrevious: '이전 날짜',
   insightDateNext: '다음 날짜',
   insightOpenCalendar: '날짜 선택',
-  insightCalendarTitle: '시그널 날짜 선택',
+  insightCalendarTitle: '날짜 선택',
   insightCalendarToday: '오늘로 이동',
   feedSegmentWatch: '내 관심',
   feedSegmentGlobal: '글로벌',

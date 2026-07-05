@@ -596,7 +596,7 @@ export const en = {
   insightDatePrevious: 'Previous date',
   insightDateNext: 'Next date',
   insightOpenCalendar: 'Pick date',
-  insightCalendarTitle: 'Choose signal date',
+  insightCalendarTitle: 'Choose date',
   insightCalendarToday: 'Back to today',
   feedSegmentWatch: 'My watch',
   feedSegmentGlobal: 'Global',

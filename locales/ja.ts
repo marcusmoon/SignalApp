@@ -596,7 +596,7 @@ export const ja = {
   insightDatePrevious: '前の日付',
   insightDateNext: '次の日付',
   insightOpenCalendar: '日付を選択',
-  insightCalendarTitle: 'シグナル日付を選択',
+  insightCalendarTitle: '日付を選択',
   insightCalendarToday: '今日へ戻る',
   feedSegmentWatch: 'ウォッチ',
   feedSegmentGlobal: 'グローバル',

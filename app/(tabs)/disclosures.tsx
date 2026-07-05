@@ -3,7 +3,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect } from 'expo-router/react-navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -110,13 +110,21 @@ export default function DisclosuresScreen() {
   const [selectedDisclosureId, setSelectedDisclosureId] = useState<string | null>(null);
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [listFetching, setListFetching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
+  const itemsRef = useRef<SignalApiDisclosure[]>([]);
+  const digestItemsRef = useRef<SignalApiDisclosureDigestItem[]>([]);
+  const watchlistRef = useRef<string[]>([]);
+  const loadSeqRef = useRef(0);
+  itemsRef.current = items;
+  digestItemsRef.current = digestItems;
+  watchlistRef.current = watchlist;
 
   const loadDigests = useCallback(async () => {
     if (!hasSignalApi() || symbolFilter) return;
-    setDigestLoading(true);
+    if (digestItemsRef.current.length === 0) setDigestLoading(true);
     try {
       const market =
         filter === 'us' ? 'us' : filter === 'kr' ? 'kr' : undefined;
@@ -133,41 +141,65 @@ export default function DisclosuresScreen() {
     }
   }, [filter, symbolFilter]);
 
-  const load = useCallback(async () => {
+  const fetchList = useCallback(async () => {
     if (!hasSignalApi()) {
       setItems([]);
       setError(t('errorSignalApiShort'));
-      setLoading(false);
       return [];
     }
-    setError(null);
-    try {
-      const watch = await loadWatchlistSymbols();
+
+    let watch = watchlistRef.current;
+    if (filter === 'watch') {
+      watch = await loadWatchlistSymbols();
+      watchlistRef.current = watch;
       setWatchlist(watch);
-      const market = symbolFilter ? undefined : filter === 'us' ? 'us' : filter === 'kr' ? 'kr' : undefined;
-      const symbols = symbolFilter || (filter === 'watch' ? watch.join(',') : undefined);
-      const listParams = {
-        market,
-        symbols,
-        typeCategory: typeCategoryApiParam(typeFilter),
-        limit: 60,
-      };
-      const page = await fetchSignalDisclosures(listParams);
-      await loadDigests();
-      setItems(page.items);
-      return page.items;
-    } catch (e) {
-      setError(formatSignalApiError(e, t, 'disclosuresLoadError'));
-      return [];
-    } finally {
-      setLoading(false);
     }
-  }, [filter, symbolFilter, t, typeFilter, loadDigests]);
+
+    const market = symbolFilter ? undefined : filter === 'us' ? 'us' : filter === 'kr' ? 'kr' : undefined;
+    const symbols = symbolFilter || (filter === 'watch' ? watch.join(',') : undefined);
+    const page = await fetchSignalDisclosures({
+      market,
+      symbols,
+      typeCategory: typeCategoryApiParam(typeFilter),
+      limit: 60,
+    });
+    setError(null);
+    setItems(page.items);
+    return page.items;
+  }, [filter, symbolFilter, t, typeFilter]);
 
   useEffect(() => {
-    setLoading(true);
-    void load();
-  }, [load]);
+    void loadDigests();
+  }, [loadDigests]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const seq = ++loadSeqRef.current;
+    const hadItems = itemsRef.current.length > 0;
+    if (!hadItems) setLoading(true);
+    else setListFetching(true);
+
+    void (async () => {
+      try {
+        const rows = await fetchList();
+        if (cancelled || seq !== loadSeqRef.current) return;
+        if (!rows.length && !hadItems) {
+          // keep empty state
+        }
+      } catch (e) {
+        if (cancelled || seq !== loadSeqRef.current) return;
+        setError(formatSignalApiError(e, t, 'disclosuresLoadError'));
+      } finally {
+        if (cancelled || seq !== loadSeqRef.current) return;
+        setLoading(false);
+        setListFetching(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchList, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -179,8 +211,6 @@ export default function DisclosuresScreen() {
 
   const onPickTypeFilter = useCallback((key: DisclosureTypeFilterKey) => {
     if (typeFilter === key) return;
-    setLoading(true);
-    setItems([]);
     setTypeFilter(key);
   }, [typeFilter]);
 
@@ -215,23 +245,26 @@ export default function DisclosuresScreen() {
     const prevIds = new Set(items.map((item) => item.id));
     setRefreshing(true);
     setRefreshNotice(null);
+    const seq = ++loadSeqRef.current;
     try {
-      const latest = await load();
+      const latest = await fetchList();
+      if (seq !== loadSeqRef.current) return;
+      await loadDigests();
       const latestIds = latest.map((item) => item.id);
       const newCount = latestIds.filter((id) => !prevIds.has(id)).length;
       if (newCount > 0) {
         setRefreshNotice(t('disclosuresRefreshNotice', { count: String(newCount) }));
       }
     } finally {
-      setRefreshing(false);
+      if (seq === loadSeqRef.current) {
+        setRefreshing(false);
+      }
     }
-  }, [items, load, t]);
+  }, [fetchList, items, loadDigests, t]);
 
   const onPickFilter = useCallback(
     (key: FilterKey) => {
       if (filter === key) return;
-      setLoading(true);
-      setItems([]);
       setError(null);
       setRefreshNotice(null);
       setTypeFilter('all');
@@ -460,7 +493,7 @@ export default function DisclosuresScreen() {
             </View>
           ) : null}
         </View> : null}
-        {loading ? (
+        {loading && items.length === 0 ? (
           <View style={styles.loadingWrap}>
             <SignalLoadingIndicator message={t('commonLoading')} />
           </View>
@@ -476,7 +509,9 @@ export default function DisclosuresScreen() {
               ]}
               ListHeaderComponent={listHeaderEl}
               refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-              ListEmptyComponent={<Text style={styles.empty}>{emptyText}</Text>}
+              ListEmptyComponent={
+                listFetching ? null : <Text style={styles.empty}>{emptyText}</Text>
+              }
               removeClippedSubviews={Platform.OS === 'android'}
               renderItem={renderDisclosureCard}
             />

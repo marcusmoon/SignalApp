@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { Platform } from 'react-native';
 
 import {
   readThemeAppearanceModeSync,
@@ -8,8 +9,14 @@ import {
 
 const SERVER_SNAPSHOT: ThemeAppearanceMode = 'system';
 
-function subscribe(onStoreChange: () => void): () => void {
-  if (typeof window === 'undefined') return () => {};
+function noopSubscribe(_onStoreChange: () => void): () => void {
+  return () => {};
+}
+
+function subscribeWeb(onStoreChange: () => void): () => void {
+  if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') {
+    return () => {};
+  }
   const onStorage = (event: StorageEvent) => {
     if (event.key == null || event.key.includes('theme_appearance')) {
       onStoreChange();
@@ -23,15 +30,20 @@ function subscribe(onStoreChange: () => void): () => void {
   };
 }
 
-function getSnapshot(): ThemeAppearanceMode {
+function getWebSnapshot(): ThemeAppearanceMode {
   return readThemeAppearanceModeSync();
 }
 
-function getServerSnapshot(): ThemeAppearanceMode {
+function getNativeSnapshot(): ThemeAppearanceMode {
   return SERVER_SNAPSHOT;
 }
 
-/** Web-only: read appearance mode from localStorage with SSR-safe hydration recovery. */
+/** Web-only store read; native uses a no-op subscribe so hooks order stays stable. */
 export function useWebThemeAppearanceMode(): ThemeAppearanceMode {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const isWeb = Platform.OS === 'web';
+  return useSyncExternalStore(
+    isWeb ? subscribeWeb : noopSubscribe,
+    isWeb ? getWebSnapshot : getNativeSnapshot,
+    () => SERVER_SNAPSHOT,
+  );
 }

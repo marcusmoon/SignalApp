@@ -42,8 +42,23 @@ const HUB_META: Record<
 
 const GRID_GAP = 8;
 const TILE_HEIGHT = 54;
+const LIST_HORIZONTAL_PAD = 32;
+/** 2열 셀 폭이 이 값 이상이면 아이콘 옆(가로), 미만이면 아래(세로) */
+const HUB_TILE_HORIZONTAL_MIN_WIDTH = 158;
 /** 허브 행 ↔ 하단 링크·광고 등 섹션 사이 */
 const SECTION_GAP = 10;
+
+type HubTileLayout = 'list' | 'grid-row' | 'grid-stack';
+
+function resolveHubTileLayout(useTwoColumnHub: boolean, cellWidth: number): HubTileLayout {
+  if (!useTwoColumnHub) return 'list';
+  return cellWidth >= HUB_TILE_HORIZONTAL_MIN_WIDTH ? 'grid-row' : 'grid-stack';
+}
+
+function hubCellWidthForScreen(width: number): number {
+  const listInner = Math.min(width, APP_CONTENT_MAX_WIDTH) - LIST_HORIZONTAL_PAD;
+  return Math.max(0, (listInner - GRID_GAP) / 2);
+}
 
 export default function MoreHubScreen() {
   const { theme, scaleFont } = useSignalTheme();
@@ -52,12 +67,17 @@ export default function MoreHubScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
-  const { useTwoPane, isIOS, isPad, isWeb } = useResponsiveLayout();
+  const { width, useTwoPane, isIOS, isPad, isWeb } = useResponsiveLayout();
   const showIpadQuickLinks = useTwoPane;
   const useTwoColumnHub = !useTwoPane && ((isIOS && !isPad) || isWeb);
+  const hubCellWidth = useMemo(() => hubCellWidthForScreen(width), [width]);
+  const hubTileLayout = useMemo(
+    () => resolveHubTileLayout(useTwoColumnHub, hubCellWidth),
+    [hubCellWidth, useTwoColumnHub],
+  );
   const styles = useMemo(
-    () => makeStyles(theme, scaleFont, useTwoColumnHub),
-    [theme, scaleFont, useTwoColumnHub],
+    () => makeStyles(theme, scaleFont, hubTileLayout),
+    [theme, scaleFont, hubTileLayout],
   );
   const [order, setOrder] = useState<MoreHubRouteKey[]>([]);
   const [orderReady, setOrderReady] = useState(false);
@@ -152,7 +172,7 @@ export default function MoreHubScreen() {
         </View>
       ) : (
         <WebWheelFlatList
-          key={useTwoColumnHub ? 'more-grid' : 'more-list'}
+          key={hubTileLayout === 'list' ? 'more-list' : `more-grid-${hubTileLayout}`}
           data={showIpadQuickLinks ? [] : visibleOrder}
           keyExtractor={(item) => item}
           numColumns={useTwoColumnHub ? 2 : 1}
@@ -179,17 +199,30 @@ export default function MoreHubScreen() {
                 onPress={() => openHubItem(item)}
                 style={({ pressed }) => [
                   styles.tile,
-                  useTwoColumnHub && styles.tileGrid,
+                  hubTileLayout === 'grid-row' && styles.tileGridRow,
+                  hubTileLayout === 'grid-stack' && styles.tileGridStack,
                   pressed && styles.rowPressed,
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel={name}>
-                <View style={[styles.iconCircle, useTwoColumnHub && styles.gridIconCircle]}>
-                  <FontAwesome name={meta.icon} size={useTwoColumnHub ? 15 : 18} color={theme.green} />
+                <View
+                  style={[
+                    styles.iconCircle,
+                    hubTileLayout !== 'list' && styles.gridIconCircle,
+                  ]}>
+                  <FontAwesome
+                    name={meta.icon}
+                    size={hubTileLayout === 'list' ? 18 : hubTileLayout === 'grid-row' ? 15 : 16}
+                    color={theme.green}
+                  />
                 </View>
                 <Text
-                  style={[styles.rowTitle, useTwoColumnHub && styles.gridTitle]}
-                  numberOfLines={useTwoColumnHub ? 1 : 2}>
+                  style={[
+                    styles.rowTitle,
+                    hubTileLayout === 'grid-row' && styles.gridTitleRow,
+                    hubTileLayout === 'grid-stack' && styles.gridTitleStack,
+                  ]}
+                  numberOfLines={hubTileLayout === 'grid-stack' ? 2 : hubTileLayout === 'grid-row' ? 1 : 2}>
                   {name}
                 </Text>
               </Pressable>
@@ -201,7 +234,7 @@ export default function MoreHubScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number, twoColumn: boolean) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, hubTileLayout: HubTileLayout) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     list: {
@@ -237,14 +270,26 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, twoColumn: boole
       minHeight: TILE_HEIGHT,
       paddingVertical: 8,
       paddingHorizontal: 10,
-      marginBottom: twoColumn ? 0 : GRID_GAP,
+      marginBottom: hubTileLayout === 'list' ? GRID_GAP : 0,
     },
-    tileGrid: {
+    tileGridRow: {
       flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
       minHeight: 46,
       paddingVertical: 6,
       paddingHorizontal: 8,
       gap: 7,
+    },
+    tileGridStack: {
+      flex: 1,
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 72,
+      paddingVertical: 8,
+      paddingHorizontal: 6,
+      gap: 6,
     },
     rowPressed: {
       backgroundColor: theme.bgElevated,
@@ -273,9 +318,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, twoColumn: boole
       color: theme.text,
       lineHeight: sf(17),
     },
-    gridTitle: {
+    gridTitleRow: {
       fontSize: sf(12),
       lineHeight: sf(15),
+    },
+    gridTitleStack: {
+      flex: 0,
+      textAlign: 'center',
+      fontSize: sf(11),
+      lineHeight: sf(14),
     },
     footer: {
       marginTop: SECTION_GAP,

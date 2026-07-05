@@ -112,6 +112,7 @@ export const ko = {
   homeFocusSourceCount: '출처 {{count}}개',
   homeFocusWatchTitle: '관심 종목',
   homeFocusBoardSubtitle: '미주미 · 세이브 커뮤니티',
+  homeFocusBoardEmpty: '최신 글이 없습니다',
   homeFocusSignalTitle: '시장 브리핑',
   homeFocusSignalEmpty: '표시할 시장 브리핑이 없습니다.',
   newsIssuesTitle: '뉴스 흐름',

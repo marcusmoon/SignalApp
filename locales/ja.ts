@@ -114,6 +114,7 @@ export const ja = {
   homeFocusSourceCount: '出典 {{count}}件',
   homeFocusWatchTitle: 'ウォッチリスト',
   homeFocusBoardSubtitle: 'LikeUSStock · SAVE コミュニティ',
+  homeFocusBoardEmpty: '新着投稿はありません',
   homeFocusSignalTitle: '市場ブリーフィング',
   homeFocusSignalEmpty: '表示する市場ブリーフィングがありません。',
   newsIssuesTitle: 'ニュースフロー',

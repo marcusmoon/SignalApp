@@ -114,6 +114,7 @@ export const en = {
   homeFocusSourceCount: '{{count}} sources',
   homeFocusWatchTitle: 'Watchlist',
   homeFocusBoardSubtitle: 'LikeUSStock · SAVE community',
+  homeFocusBoardEmpty: 'No recent posts',
   homeFocusSignalTitle: 'Market Briefing',
   homeFocusSignalEmpty: 'No market briefing to show.',
   newsIssuesTitle: 'News Flow',

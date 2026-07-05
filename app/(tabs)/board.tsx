@@ -3,8 +3,9 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect, useIsFocused } from 'expo-router/react-navigation';
+import { useLocalSearchParams } from 'expo-router';
 
-import { CommunityPostCard, communitySourceLabelId } from '@/components/community/CommunityPostCard';
+import { CommunityPostCard, communitySourceLabelId, isCommunitySourceKey } from '@/components/community/CommunityPostCard';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
@@ -44,6 +45,12 @@ import { useWebFlatListLoadMore } from '@/hooks/useWebFlatListLoadMore';
 
 const PAGE_SIZE = 30;
 
+function parseCommunitySourceParam(raw: string | string[] | undefined): CommunitySourceFilter | null {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (!value || value === COMMUNITY_SOURCE_ALL) return null;
+  return isCommunitySourceKey(value) ? value : null;
+}
+
 const SOURCE_LABEL: Record<CommunitySourceFilter, MessageId> = {
   all: 'communitySourceAll',
   naver_likeusstock_free: 'communitySourceNaverLikeusstock',
@@ -52,6 +59,7 @@ const SOURCE_LABEL: Record<CommunitySourceFilter, MessageId> = {
 
 export default function BoardScreen() {
   const { t } = useLocale();
+  const routeParams = useLocalSearchParams<{ source?: string | string[] }>();
   const { theme, scaleFont } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const insets = useSafeAreaInsets();
@@ -149,6 +157,15 @@ export default function BoardScreen() {
       void load({ sourceFilter: next });
     },
     [load, source],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const paramSource = parseCommunitySourceParam(routeParams.source);
+      if (paramSource && paramSource !== source) {
+        changeSource(paramSource);
+      }
+    }, [changeSource, routeParams.source, source]),
   );
 
   useFocusEffect(

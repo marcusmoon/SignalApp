@@ -1,5 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -259,7 +259,10 @@ export default function DisclosureFlowScreen() {
       {content}
     </IpadSidebarScreen>
   ) : (
-    content
+    <>
+      <Stack.Screen options={{ title: t('disclosureFlowTitle') }} />
+      {content}
+    </>
   );
 }
 

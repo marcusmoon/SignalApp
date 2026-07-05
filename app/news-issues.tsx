@@ -1,5 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
-import { HOME_DIGEST_CATEGORIES, type HomeDigestCategory } from '@/constants/ipadHomeNav';
+import { HOME_DIGEST_CATEGORIES, NEWS_ISSUES_CATEGORY_ORDER, type NewsIssuesCategory } from '@/constants/ipadHomeNav';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
@@ -23,9 +23,12 @@ import type { FeedContentTypography } from '@/services/feedContentWeightPreferen
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 import { toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
-function parseCategory(value: unknown): HomeDigestCategory {
+function parseCategory(value: unknown): NewsIssuesCategory {
   const raw = String(Array.isArray(value) ? value[0] : value || '').trim();
-  return HOME_DIGEST_CATEGORIES.includes(raw as HomeDigestCategory) ? (raw as HomeDigestCategory) : 'global';
+  if (raw === 'all') return 'all';
+  return HOME_DIGEST_CATEGORIES.includes(raw as (typeof HOME_DIGEST_CATEGORIES)[number])
+    ? (raw as (typeof HOME_DIGEST_CATEGORIES)[number])
+    : 'all';
 }
 
 function parseDateParam(value: unknown): string {
@@ -69,7 +72,7 @@ function sortDigests(rows: SignalApiNewsDigestItem[]): SignalApiNewsDigestItem[]
 
 type NewsIssuesContentProps = {
   embedded?: boolean;
-  initialCategory?: HomeDigestCategory;
+  initialCategory?: NewsIssuesCategory;
   initialDate?: string;
   initialDigestId?: string | null;
   onBack?: () => void;
@@ -77,7 +80,7 @@ type NewsIssuesContentProps = {
 
 export function NewsIssuesContent({
   embedded = false,
-  initialCategory = 'global',
+  initialCategory = 'all',
   initialDate = toYmd(new Date()),
   initialDigestId = null,
   onBack,
@@ -88,7 +91,7 @@ export function NewsIssuesContent({
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const todayYmd = useRollingLocalYmd();
   const isWide = embedded || useTwoPane;
-  const [category, setCategory] = useState<HomeDigestCategory>(initialCategory);
+  const [category, setCategory] = useState<NewsIssuesCategory>(initialCategory);
   const [selectedYmd, setSelectedYmd] = useState(initialDate);
   const [items, setItems] = useState<SignalApiNewsDigestItem[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(initialDigestId);
@@ -117,13 +120,27 @@ export function NewsIssuesContent({
     setLoading(true);
     setError(null);
     try {
-      const page = await fetchSignalNewsDigests({
-        category,
-        ...utcRangeForLocalYmd(selectedYmd),
-        limit: 80,
-        batches: 20,
-      });
-      setItems(sortDigests(page.items));
+      if (category === 'all') {
+        const results = await Promise.all(
+          HOME_DIGEST_CATEGORIES.map((cat) =>
+            fetchSignalNewsDigests({
+              category: cat,
+              ...utcRangeForLocalYmd(selectedYmd),
+              limit: 80,
+              batches: 20,
+            }).catch(() => ({ items: [] as SignalApiNewsDigestItem[] })),
+          ),
+        );
+        setItems(sortDigests(results.flatMap((page) => page.items)));
+      } else {
+        const page = await fetchSignalNewsDigests({
+          category,
+          ...utcRangeForLocalYmd(selectedYmd),
+          limit: 80,
+          batches: 20,
+        });
+        setItems(sortDigests(page.items));
+      }
     } catch (e) {
       setError(formatSignalApiError(e, t, 'newsIssuesLoadError'));
       setItems([]);
@@ -158,7 +175,7 @@ export function NewsIssuesContent({
           ) : null}
           <View style={styles.header}>
             <View style={styles.categoryTabs}>
-              {HOME_DIGEST_CATEGORIES.map((key) => {
+              {NEWS_ISSUES_CATEGORY_ORDER.map((key) => {
                 const active = category === key;
                 return (
                   <Pressable
@@ -168,7 +185,7 @@ export function NewsIssuesContent({
                     accessibilityState={{ selected: active }}
                     style={[styles.categoryTab, active && styles.categoryTabActive]}>
                     <Text style={[styles.categoryTabText, active && styles.categoryTabTextActive]}>
-                      {t(NEWS_SEGMENT_LABEL[key])}
+                      {key === 'all' ? t('newsIssuesCategoryAll') : t(NEWS_SEGMENT_LABEL[key])}
                     </Text>
                   </Pressable>
                 );
@@ -295,7 +312,10 @@ export default function NewsIssuesScreen() {
       {content}
     </IpadSidebarScreen>
   ) : (
-    content
+    <>
+      <Stack.Screen options={{ title: t('newsIssuesTitle') }} />
+      {content}
+    </>
   );
 }
 

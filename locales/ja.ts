@@ -116,6 +116,7 @@ export const ja = {
   homeFocusSignalTitle: '市場ブリーフィング',
   homeFocusSignalEmpty: '表示する市場ブリーフィングがありません。',
   newsIssuesTitle: 'ニュースフロー',
+  newsIssuesCategoryAll: 'すべて',
   newsIssuesEmpty: 'この日付のニュースフローはありません。',
   newsIssuesLoadError: 'ニュースフローを読み込めませんでした。',
   disclosureFlowTitle: '開示フロー',

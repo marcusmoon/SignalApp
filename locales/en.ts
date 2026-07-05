@@ -116,6 +116,7 @@ export const en = {
   homeFocusSignalTitle: 'Market Briefing',
   homeFocusSignalEmpty: 'No market briefing to show.',
   newsIssuesTitle: 'News Flow',
+  newsIssuesCategoryAll: 'All',
   newsIssuesEmpty: 'No news flow for this date.',
   newsIssuesLoadError: 'Could not load news flow.',
   disclosureFlowTitle: 'Filing Flow',

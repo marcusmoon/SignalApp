@@ -3,7 +3,11 @@ import type { NewsSegmentKey } from '@/constants/newsSegment';
 
 export type HomeDigestCategory = Extract<NewsSegmentKey, 'global' | 'korea' | 'crypto'>;
 
+export type NewsIssuesCategory = HomeDigestCategory | 'all';
+
 export const HOME_DIGEST_CATEGORIES: HomeDigestCategory[] = ['global', 'korea', 'crypto'];
+
+export const NEWS_ISSUES_CATEGORY_ORDER: NewsIssuesCategory[] = ['all', ...HOME_DIGEST_CATEGORIES];
 
 export type HomeDigestCategoryIcon = 'globe' | 'flag' | 'bitcoin';
 

@@ -1,5 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Pressable,
@@ -19,6 +19,7 @@ import {
   HOME_SIGNAL_SESSIONS,
   homeDigestCategoryIcon,
   type HomeDigestCategory,
+  type NewsIssuesCategory,
   type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
 import type { AppTheme } from '@/constants/theme';
@@ -380,19 +381,23 @@ export function HomeFocusContent({
 
   const openIssue = useCallback(
     (row?: IssueRow) => {
-      const params = {
-        category: row?.category ?? 'global',
+      const params: Record<string, string> = {
         date: selectedYmd,
-        digestId: row?.item.id,
+        category: row?.category ?? 'all',
       };
+      if (row?.item.id) params.digestId = row.item.id;
       if (ipadNav.isAvailable) {
-        ipadNav.showNewsIssues(params);
+        ipadNav.showNewsIssues({
+          category: params.category as NewsIssuesCategory,
+          date: params.date,
+          digestId: params.digestId ?? null,
+        });
         return;
       }
-      router.navigate({
+      router.push({
         pathname: '/news-issues',
         params,
-      } as never);
+      } as Href);
     },
     [ipadNav, router, selectedYmd],
   );
@@ -435,18 +440,16 @@ export function HomeFocusContent({
 
   const openDisclosureFlow = useCallback(
     (row?: SignalApiDisclosureDigestItem) => {
-      const params = {
-        date: selectedYmd,
-        digestId: row?.id,
-      };
+      const params: Record<string, string> = { date: selectedYmd };
+      if (row?.id) params.digestId = row.id;
       if (ipadNav.isAvailable) {
         ipadNav.showDisclosureFlow(params);
         return;
       }
-      router.navigate({
+      router.push({
         pathname: '/disclosure-flow',
         params,
-      } as never);
+      } as Href);
     },
     [ipadNav, router, selectedYmd],
   );
@@ -460,7 +463,7 @@ export function HomeFocusContent({
         openDisclosureFlow(row);
         return;
       }
-      router.push(`/disclosures/${encodeURIComponent(id)}` as never);
+      router.push(`/disclosures/${encodeURIComponent(id)}` as Href);
     },
     [openDisclosureFlow, router],
   );

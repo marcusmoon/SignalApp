@@ -114,6 +114,7 @@ export const ko = {
   homeFocusSignalTitle: '시장 브리핑',
   homeFocusSignalEmpty: '표시할 시장 브리핑이 없습니다.',
   newsIssuesTitle: '뉴스 흐름',
+  newsIssuesCategoryAll: '전체',
   newsIssuesEmpty: '이 날짜에 표시할 뉴스 흐름이 없습니다.',
   newsIssuesLoadError: '뉴스 흐름을 불러오지 못했습니다.',
   disclosureFlowTitle: '공시 흐름',

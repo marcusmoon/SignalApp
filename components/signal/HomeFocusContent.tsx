@@ -860,6 +860,7 @@ export function HomeFocusContent({
                 title={t('screenBoard')}
                 onPress={openBoard}
                 accessibilityLabel={t('commonViewAll')}
+                showChevron={false}
               />
               <View style={styles.quoteGrid}>
                 {HOME_BOARD_SOURCES.map((sourceKey) => {
@@ -874,7 +875,6 @@ export function HomeFocusContent({
                       <Text style={styles.quoteSymbol} numberOfLines={1}>
                         {t(labelId)}
                       </Text>
-                      <FontAwesome name="chevron-right" size={11} color={theme.textDim} />
                     </Pressable>
                   );
                 })}
@@ -1132,12 +1132,10 @@ function makeStyles(
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.colorScheme === 'dark' ? theme.bgElevated : theme.card,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      justifyContent: 'center',
       paddingHorizontal: 12,
       paddingVertical: 12,
-      gap: 8,
       shadowColor: '#000000',
       shadowOpacity: 0.03,
       shadowRadius: 8,

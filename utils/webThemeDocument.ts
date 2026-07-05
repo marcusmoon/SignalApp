@@ -25,11 +25,10 @@ export function systemPrefersDark(): boolean {
 
 export function resolveThemeColorScheme(
   appearanceMode: ThemeAppearanceMode,
-  prefersDark = systemPrefersDark(),
+  _prefersDark = systemPrefersDark(),
 ): ThemeColorScheme {
-  if (appearanceMode === 'dark') return 'dark';
   if (appearanceMode === 'light') return 'light';
-  return prefersDark ? 'dark' : 'light';
+  return 'dark';
 }
 
 export function themeBackgroundForScheme(scheme: ThemeColorScheme): string {

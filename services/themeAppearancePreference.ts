@@ -36,22 +36,9 @@ function normalizeMode(v: string | null | undefined): ThemeAppearanceMode | null
   return raw && VALID.has(raw as ThemeAppearanceMode) ? (raw as ThemeAppearanceMode) : null;
 }
 
-function systemPrefersDark(): boolean {
-  if (typeof window === 'undefined') return false;
-  try {
-    return Boolean(window.matchMedia?.('(prefers-color-scheme: dark)').matches);
-  } catch {
-    return false;
-  }
-}
-
-function resolveEffectiveScheme(
-  appearanceMode: ThemeAppearanceMode,
-  prefersDark = systemPrefersDark(),
-): ThemeColorScheme {
-  if (appearanceMode === 'dark') return 'dark';
+function resolveEffectiveScheme(appearanceMode: ThemeAppearanceMode): ThemeColorScheme {
   if (appearanceMode === 'light') return 'light';
-  return prefersDark ? 'dark' : 'light';
+  return 'dark';
 }
 
 function normalizeEffectiveScheme(v: string | null | undefined): ThemeColorScheme | null {
@@ -162,16 +149,9 @@ export function readThemeAppearanceModeSync(): ThemeAppearanceMode {
 }
 
 /** Sync read of the resolved palette for web head script and hydration guards. */
-export function readEffectiveColorSchemeSync(prefersDark = systemPrefersDark()): ThemeColorScheme {
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    try {
-      const stored = normalizeEffectiveScheme(window.localStorage.getItem(WEB_THEME_EFFECTIVE_SCHEME_KEY));
-      if (stored) return stored;
-    } catch {
-      // ignore
-    }
-  }
-  return resolveEffectiveScheme(readThemeAppearanceModeSync(), prefersDark);
+export function readEffectiveColorSchemeSync(): ThemeColorScheme {
+  const mode = readThemeAppearanceModeSync();
+  return resolveEffectiveScheme(mode);
 }
 
 export async function loadThemeAppearanceMode(): Promise<ThemeAppearanceMode> {
@@ -179,7 +159,16 @@ export async function loadThemeAppearanceMode(): Promise<ThemeAppearanceMode> {
     const stored = readWebStoredModes();
     const mode = pickCanonicalWebMode(stored);
     cleanupLegacyWebThemeKeys(mode, stored);
-    if (webStorageNeedsReconcile(stored, mode)) {
+    const expectedScheme = resolveEffectiveScheme(mode);
+    let storedEffective: ThemeColorScheme | null = null;
+    try {
+      storedEffective = normalizeEffectiveScheme(
+        window.localStorage.getItem(WEB_THEME_EFFECTIVE_SCHEME_KEY),
+      );
+    } catch {
+      // ignore
+    }
+    if (webStorageNeedsReconcile(stored, mode) || storedEffective !== expectedScheme) {
       await saveThemeAppearanceMode(mode);
     }
     return mode;
@@ -190,7 +179,7 @@ export async function loadThemeAppearanceMode(): Promise<ThemeAppearanceMode> {
 
 export async function saveThemeAppearanceMode(mode: ThemeAppearanceMode): Promise<void> {
   const next = VALID.has(mode) ? mode : 'system';
-  const effectiveScheme = resolveEffectiveScheme(next, systemPrefersDark());
+  const effectiveScheme = resolveEffectiveScheme(next);
   writeWebPrimary(next);
   writeWebMirror(next);
   writeWebEffectiveScheme(effectiveScheme);

@@ -19,7 +19,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <meta name="color-scheme" content="light dark" />
-        <meta name="theme-color" content={lightBg} />
+        <meta name="theme-color" content={darkBg} />
 
         <script dangerouslySetInnerHTML={{ __html: initialThemeScript }} />
 
@@ -36,7 +36,6 @@ export default function Root({ children }: { children: React.ReactNode }) {
 }
 
 const storageKeysJson = JSON.stringify(WEB_THEME_APPEARANCE_KEYS);
-const effectiveSchemeKeyJson = JSON.stringify(WEB_THEME_EFFECTIVE_SCHEME_KEY);
 const lightBg = themeBackgroundForScheme('light');
 const darkBg = themeBackgroundForScheme('dark');
 const lightTokens = themeTokensForScheme('light');
@@ -46,9 +45,7 @@ const initialThemeScript = `
 (function () {
   function applySignalTheme() {
     try {
-      var effectiveKey = ${effectiveSchemeKeyJson};
-      var effectiveStored = window.localStorage.getItem(effectiveKey);
-      var effectiveCandidate = effectiveStored ? String(effectiveStored).trim().replace(/^"|"$/g, '') : '';
+      var effectiveKey = ${JSON.stringify(WEB_THEME_EFFECTIVE_SCHEME_KEY)};
       var keys = ${storageKeysJson};
       var stored = '';
       for (var i = 0; i < keys.length; i++) {
@@ -61,10 +58,8 @@ const initialThemeScript = `
         }
       }
       var mode = stored || 'system';
-      var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      var scheme = effectiveCandidate === 'dark' || effectiveCandidate === 'light'
-        ? effectiveCandidate
-        : mode === 'dark' || (mode !== 'light' && systemDark) ? 'dark' : 'light';
+      var scheme = mode === 'light' ? 'light' : 'dark';
+      try { window.localStorage.setItem(effectiveKey, scheme); } catch (e) {}
       var bg = scheme === 'dark' ? ${JSON.stringify(darkBg)} : ${JSON.stringify(lightBg)};
       var tokens = scheme === 'dark' ? ${JSON.stringify(darkTokens)} : ${JSON.stringify(lightTokens)};
       document.documentElement.dataset.signalTheme = scheme;
@@ -107,16 +102,16 @@ const responsiveBackground = `
 html {
   height: 100%;
   color-scheme: light dark;
-  --signal-bg: ${lightBg};
-  --signal-bg-elevated: ${lightTokens.bgElevated};
-  --signal-card: ${lightTokens.card};
-  --signal-border: ${lightTokens.border};
-  --signal-text: ${lightTokens.text};
-  --signal-text-muted: ${lightTokens.textMuted};
-  --signal-text-dim: ${lightTokens.textDim};
-  --signal-green: ${lightTokens.green};
-  --signal-green-dim: ${lightTokens.greenDim};
-  --signal-green-border: ${lightTokens.greenBorder};
+  --signal-bg: ${darkBg};
+  --signal-bg-elevated: ${darkTokens.bgElevated};
+  --signal-card: ${darkTokens.card};
+  --signal-border: ${darkTokens.border};
+  --signal-text: ${darkTokens.text};
+  --signal-text-muted: ${darkTokens.textMuted};
+  --signal-text-dim: ${darkTokens.textDim};
+  --signal-green: ${darkTokens.green};
+  --signal-green-dim: ${darkTokens.greenDim};
+  --signal-green-border: ${darkTokens.greenBorder};
 }
 
 body {
@@ -188,21 +183,6 @@ body {
   pointer-events: auto !important;
   touch-action: manipulation;
   transform: translateZ(0);
-}
-
-@media (prefers-color-scheme: dark) {
-  html:not([data-signal-theme="light"]) {
-    --signal-bg: ${darkBg};
-    --signal-bg-elevated: ${darkTokens.bgElevated};
-    --signal-card: ${darkTokens.card};
-    --signal-border: ${darkTokens.border};
-    --signal-text: ${darkTokens.text};
-    --signal-text-muted: ${darkTokens.textMuted};
-    --signal-text-dim: ${darkTokens.textDim};
-    --signal-green: ${darkTokens.green};
-    --signal-green-dim: ${darkTokens.greenDim};
-    --signal-green-border: ${darkTokens.greenBorder};
-  }
 }
 
 html[data-signal-theme="dark"] {

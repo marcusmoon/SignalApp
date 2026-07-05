@@ -105,7 +105,7 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
     if (resolvedAppearanceMode === 'dark') return 'dark';
     if (resolvedAppearanceMode === 'light') return 'light';
     if (Platform.OS === 'web') {
-      return readEffectiveColorSchemeSync(systemColorScheme === 'dark');
+      return readEffectiveColorSchemeSync();
     }
     return systemColorScheme === 'dark' ? 'dark' : 'light';
   }, [resolvedAppearanceMode, systemColorScheme]);

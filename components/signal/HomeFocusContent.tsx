@@ -830,6 +830,7 @@ export function HomeFocusContent({
             <View style={styles.heroBlock}>
               <HomeSectionHeader
                 title={t('newsIssuesTitle')}
+                badge={<HomeAiBadge />}
                 onPress={() => openIssue()}
                 accessibilityLabel={t('commonViewAll')}
               />

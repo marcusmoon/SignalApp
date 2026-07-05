@@ -39,6 +39,7 @@ import {
 } from '@/services/fontSizePreference';
 import {
   loadThemeAppearanceMode,
+  readEffectiveColorSchemeSync,
   readThemeAppearanceModeSync,
   saveThemeAppearanceMode,
   type ThemeAppearanceMode,
@@ -103,6 +104,9 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
   const effectiveColorScheme = useMemo<ThemeColorScheme>(() => {
     if (resolvedAppearanceMode === 'dark') return 'dark';
     if (resolvedAppearanceMode === 'light') return 'light';
+    if (Platform.OS === 'web') {
+      return readEffectiveColorSchemeSync(systemColorScheme === 'dark');
+    }
     return systemColorScheme === 'dark' ? 'dark' : 'light';
   }, [resolvedAppearanceMode, systemColorScheme]);
 

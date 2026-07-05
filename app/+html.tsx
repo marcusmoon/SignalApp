@@ -4,6 +4,7 @@ import {
   themeTokensForScheme,
   themeBackgroundForScheme,
   WEB_THEME_APPEARANCE_KEYS,
+  WEB_THEME_EFFECTIVE_SCHEME_KEY,
 } from '@/utils/webThemeDocument';
 
 // This file is web-only and used to configure the root HTML for every
@@ -20,13 +21,13 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <meta name="color-scheme" content="light dark" />
         <meta name="theme-color" content={lightBg} />
 
+        <script dangerouslySetInnerHTML={{ __html: initialThemeScript }} />
+
         {/* 
           Disable body scrolling on web. This makes ScrollView components work closer to how they do on native. 
           However, body scrolling is often nice to have for mobile web. If you want to enable it, remove this line.
         */}
         <ScrollViewStyleReset />
-
-        <script dangerouslySetInnerHTML={{ __html: initialThemeScript }} />
         <style dangerouslySetInnerHTML={{ __html: responsiveBackground }} />
       </head>
       <body>{children}</body>
@@ -35,6 +36,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
 }
 
 const storageKeysJson = JSON.stringify(WEB_THEME_APPEARANCE_KEYS);
+const effectiveSchemeKeyJson = JSON.stringify(WEB_THEME_EFFECTIVE_SCHEME_KEY);
 const lightBg = themeBackgroundForScheme('light');
 const darkBg = themeBackgroundForScheme('dark');
 const lightTokens = themeTokensForScheme('light');
@@ -44,6 +46,9 @@ const initialThemeScript = `
 (function () {
   function applySignalTheme() {
     try {
+      var effectiveKey = ${effectiveSchemeKeyJson};
+      var effectiveStored = window.localStorage.getItem(effectiveKey);
+      var effectiveCandidate = effectiveStored ? String(effectiveStored).trim().replace(/^"|"$/g, '') : '';
       var keys = ${storageKeysJson};
       var stored = '';
       for (var i = 0; i < keys.length; i++) {
@@ -57,7 +62,9 @@ const initialThemeScript = `
       }
       var mode = stored || 'system';
       var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      var scheme = mode === 'dark' || (mode !== 'light' && systemDark) ? 'dark' : 'light';
+      var scheme = effectiveCandidate === 'dark' || effectiveCandidate === 'light'
+        ? effectiveCandidate
+        : mode === 'dark' || (mode !== 'light' && systemDark) ? 'dark' : 'light';
       var bg = scheme === 'dark' ? ${JSON.stringify(darkBg)} : ${JSON.stringify(lightBg)};
       var tokens = scheme === 'dark' ? ${JSON.stringify(darkTokens)} : ${JSON.stringify(lightTokens)};
       document.documentElement.dataset.signalTheme = scheme;
@@ -196,5 +203,31 @@ body {
     --signal-green-dim: ${darkTokens.greenDim};
     --signal-green-border: ${darkTokens.greenBorder};
   }
+}
+
+html[data-signal-theme="dark"] {
+  --signal-bg: ${darkBg};
+  --signal-bg-elevated: ${darkTokens.bgElevated};
+  --signal-card: ${darkTokens.card};
+  --signal-border: ${darkTokens.border};
+  --signal-text: ${darkTokens.text};
+  --signal-text-muted: ${darkTokens.textMuted};
+  --signal-text-dim: ${darkTokens.textDim};
+  --signal-green: ${darkTokens.green};
+  --signal-green-dim: ${darkTokens.greenDim};
+  --signal-green-border: ${darkTokens.greenBorder};
+}
+
+html[data-signal-theme="light"] {
+  --signal-bg: ${lightBg};
+  --signal-bg-elevated: ${lightTokens.bgElevated};
+  --signal-card: ${lightTokens.card};
+  --signal-border: ${lightTokens.border};
+  --signal-text: ${lightTokens.text};
+  --signal-text-muted: ${lightTokens.textMuted};
+  --signal-text-dim: ${lightTokens.textDim};
+  --signal-green: ${lightTokens.green};
+  --signal-green-dim: ${lightTokens.greenDim};
+  --signal-green-border: ${lightTokens.greenBorder};
 }
 `;

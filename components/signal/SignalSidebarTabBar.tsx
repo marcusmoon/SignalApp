@@ -46,6 +46,7 @@ const SIDEBAR_TABS: TabDef[] = [
   { name: 'news', route: '/(tabs)/news', icon: 'newspaper', labelId: 'tabNews' },
   { name: 'signal', route: '/(tabs)/signal', icon: 'chart-area', labelId: 'tabSignal' },
   { name: 'quotes', route: '/(tabs)/quotes', icon: 'chart-line', labelId: 'tabQuotes' },
+  { name: 'disclosures', route: '/(tabs)/disclosures', icon: 'file-alt', labelId: 'tabDisclosures' },
   { name: 'youtube', route: '/(tabs)/youtube', icon: 'youtube', labelId: 'tabYoutube' },
   { name: 'board', route: '/(tabs)/board', icon: 'comments', labelId: 'screenBoard' },
   { name: 'more', route: '/(tabs)/more', icon: 'th-large', labelId: 'tabMore' },
@@ -247,6 +248,7 @@ export function SignalSidebarTabBar({
             const hasDot =
               (tab.name === 'news' && newsHasUnread) ||
               (tab.name === 'signal' && signalHasUnread) ||
+              (tab.name === 'disclosures' && disclosureHasUnread) ||
               (tab.name === 'more' && disclosureHasUnread);
 
             return (

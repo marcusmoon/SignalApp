@@ -18,6 +18,7 @@ import { tabBarBottomInset } from '@/constants/tabBar';
 import type { MoreHubRouteKey } from '@/constants/moreHubOrder';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { MessageId } from '@/locales/messages';
@@ -65,6 +66,7 @@ export default function MoreHubScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
+  const ipadNav = useIpadSidebarNav();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
@@ -126,14 +128,23 @@ export default function MoreHubScreen() {
         return;
       }
       if (item === 'disclosures') {
+        if (ipadNav.isAvailable) {
+          ipadNav.showTabs();
+        }
         router.push('/(tabs)/disclosures' as never);
         return;
       }
       if (item === 'board') {
+        if (ipadNav.isAvailable) {
+          ipadNav.showTabs();
+        }
         router.push('/(tabs)/board' as never);
         return;
       }
       if (item === 'youtube') {
+        if (ipadNav.isAvailable) {
+          ipadNav.showYoutubeTab('latest');
+        }
         router.push({ pathname: '/(tabs)/youtube', params: { from: 'more' } } as never);
         return;
       }
@@ -143,7 +154,7 @@ export default function MoreHubScreen() {
       }
       router.push({ pathname: '/settings', params: { from: 'sidebar', tab: 'display' } } as never);
     },
-    [router, useTwoPane],
+    [ipadNav, router, useTwoPane],
   );
 
   const listFooter = useMemo(
@@ -158,7 +169,14 @@ export default function MoreHubScreen() {
   const visibleOrder = useMemo(
     () =>
       useTwoPane
-        ? order.filter((item) => item !== 'account' && item !== 'youtube' && item !== 'settings' && item !== 'board')
+        ? order.filter(
+            (item) =>
+              item !== 'account' &&
+              item !== 'youtube' &&
+              item !== 'settings' &&
+              item !== 'board' &&
+              item !== 'disclosures',
+          )
         : order,
     [order, useTwoPane],
   );

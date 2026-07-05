@@ -419,8 +419,11 @@ export function HomeFocusContent({
   );
 
   const openQuotes = useCallback(() => {
+    if (ipadNav.isAvailable) {
+      ipadNav.showTabs();
+    }
     router.navigate('/(tabs)/quotes' as never);
-  }, [router]);
+  }, [ipadNav, router]);
 
   const openSymbolDetail = useCallback(
     (symbol: string) => {
@@ -432,8 +435,11 @@ export function HomeFocusContent({
   );
 
   const openDisclosures = useCallback(() => {
+    if (ipadNav.isAvailable) {
+      ipadNav.showTabs();
+    }
     router.navigate('/(tabs)/disclosures' as never);
-  }, [router]);
+  }, [ipadNav, router]);
 
   const openCalendar = useCallback(() => {
     router.navigate('/calendar' as never);

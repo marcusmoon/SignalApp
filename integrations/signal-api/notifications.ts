@@ -23,25 +23,12 @@ export type SignalNotificationInboxItem = SignalNotificationItem & {
   notificationId: string;
 };
 
-type NotificationsResponse = {
-  data?: SignalNotificationItem[];
-  maxItems?: number;
-};
-
 type InboxResponse = {
   data?: SignalNotificationInboxItem[];
   maxItems?: number;
 };
 
 export const SIGNAL_NOTIFICATION_INBOX_MAX = 50;
-
-export async function fetchSignalNotifications(token: string, limit = SIGNAL_NOTIFICATION_INBOX_MAX): Promise<SignalNotificationItem[]> {
-  const body = await signalApiRequest<NotificationsResponse>('/v1/notifications', {
-    token,
-    params: { limit },
-  });
-  return Array.isArray(body.data) ? body.data : [];
-}
 
 export async function fetchSignalNotificationInbox(
   token: string,

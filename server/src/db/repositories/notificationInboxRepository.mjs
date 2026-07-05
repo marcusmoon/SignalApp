@@ -259,26 +259,3 @@ export async function recordInboxDeliveriesForUsers(userIds, notificationId, del
   }
   return count;
 }
-
-/** Legacy list shape for GET /v1/notifications */
-export function inboxRowAsLegacyNotification(row) {
-  if (!row) return null;
-  return {
-    id: row.notificationId,
-    type: row.type,
-    channel: row.channel,
-    status: row.status,
-    priority: row.priority,
-    title: row.title,
-    body: row.body,
-    sourceType: row.sourceType,
-    sourceId: row.sourceId,
-    deepLink: row.deepLink,
-    payload: row.payload,
-    scheduledAt: row.scheduledAt || row.deliveredAt,
-    createdAt: row.createdAt || row.deliveredAt,
-    inboxId: row.id,
-    readAt: row.readAt,
-    deliveredAt: row.deliveredAt,
-  };
-}

@@ -3,7 +3,6 @@ import {
   deleteUserNotificationInbox,
   deliverUserNotificationInbox,
   markUserNotificationInboxReadState,
-  queryPublicNotificationsForUser,
   queryUserNotificationInbox,
   upsertNotificationItem,
   verifyAppUserToken,
@@ -32,7 +31,7 @@ async function requireAppUser(req, res) {
   return user;
 }
 
-function publicNotification(item) {
+function publicOutboxNotification(item) {
   const payload = item?.payload && typeof item.payload === 'object' ? item.payload : {};
   return {
     id: item.id,
@@ -48,9 +47,6 @@ function publicNotification(item) {
     payload,
     scheduledAt: item.scheduledAt || item.createdAt || null,
     createdAt: item.createdAt || null,
-    inboxId: item.inboxId || null,
-    readAt: item.readAt || null,
-    deliveredAt: item.deliveredAt || null,
   };
 }
 
@@ -108,7 +104,7 @@ export async function handlePublicNotificationRoutes({ req, res, url, pathname }
       },
       updatedAt: now,
     });
-    json(res, 201, { data: publicNotification(item) });
+    json(res, 201, { data: publicOutboxNotification(item) });
     return true;
   }
 
@@ -167,14 +163,6 @@ export async function handlePublicNotificationRoutes({ req, res, url, pathname }
       return true;
     }
     json(res, 200, { data: { ok: true } });
-    return true;
-  }
-
-  if (req.method === 'GET' && pathname === '/v1/notifications') {
-    const user = await requireAppUser(req, res);
-    if (!user) return true;
-    const rows = (await queryPublicNotificationsForUser(user.id, { limit: inboxLimit(url) })).map(publicNotification);
-    json(res, 200, { data: rows, maxItems: USER_NOTIFICATION_INBOX_MAX });
     return true;
   }
 

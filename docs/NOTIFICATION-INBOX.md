@@ -90,7 +90,3 @@ AND status IN ('sent', 'skipped')
 | 서버 repo | `server/src/db/repositories/notificationInboxRepository.mjs` |
 | 서버 HTTP | `server/src/http/public/v1/notifications.mjs` |
 | 발송 | `server/src/notifications/sender.mjs` |
-
-## 후속 (별도 과제)
-
-- 서버 저장 사용자 알림 설정(`notification_prefs`)

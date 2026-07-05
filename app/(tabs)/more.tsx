@@ -40,10 +40,10 @@ const HUB_META: Record<
   settings: { href: '/settings' as Href, icon: 'cog', titleId: 'screenSettings' },
 };
 
-const GRID_GAP = 12;
+const GRID_GAP = 8;
 const TILE_HEIGHT = 54;
 /** 허브 행 ↔ 하단 링크·광고 등 섹션 사이 */
-const SECTION_GAP = 14;
+const SECTION_GAP = 10;
 
 export default function MoreHubScreen() {
   const { theme, scaleFont } = useSignalTheme();
@@ -160,7 +160,7 @@ export default function MoreHubScreen() {
           scrollEnabled
           style={[styles.list, useTwoPane && styles.listWide]}
           contentContainerStyle={{
-            paddingTop: 10,
+            paddingTop: 8,
             paddingBottom: 24 + tabBarHeight + tabBarBottomInset(insets.bottom),
           }}
           ListHeaderComponent={
@@ -184,12 +184,12 @@ export default function MoreHubScreen() {
                 ]}
                 accessibilityRole="button"
                 accessibilityLabel={name}>
-                <View style={styles.iconCircle}>
-                  <FontAwesome name={meta.icon} size={18} color={theme.green} />
+                <View style={[styles.iconCircle, useTwoColumnHub && styles.gridIconCircle]}>
+                  <FontAwesome name={meta.icon} size={useTwoColumnHub ? 15 : 18} color={theme.green} />
                 </View>
                 <Text
                   style={[styles.rowTitle, useTwoColumnHub && styles.gridTitle]}
-                  numberOfLines={2}>
+                  numberOfLines={useTwoColumnHub ? 1 : 2}>
                   {name}
                 </Text>
               </Pressable>
@@ -241,13 +241,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, twoColumn: boole
     },
     tileGrid: {
       flex: 1,
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: 88,
-      paddingVertical: 12,
+      minHeight: 46,
+      paddingVertical: 6,
       paddingHorizontal: 8,
-      gap: 8,
+      gap: 7,
     },
     rowPressed: {
       backgroundColor: theme.bgElevated,
@@ -263,6 +260,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, twoColumn: boole
       borderWidth: 1,
       borderColor: theme.greenBorder,
     },
+    gridIconCircle: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+    },
     rowTitle: {
       flex: 1,
       minWidth: 0,
@@ -272,10 +274,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, twoColumn: boole
       lineHeight: sf(17),
     },
     gridTitle: {
-      flex: 0,
-      textAlign: 'center',
       fontSize: sf(12),
-      lineHeight: sf(16),
+      lineHeight: sf(15),
     },
     footer: {
       marginTop: SECTION_GAP,

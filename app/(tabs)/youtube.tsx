@@ -512,17 +512,20 @@ export default function YoutubeScreen() {
                 {t('youtubeSortPopular')}
               </Text>
             </Pressable>
+          </View>
+          <View style={styles.channelFilterRow}>
             <Pressable
               onPress={openChannelFilter}
               disabled={!selectedHandles || !curationHandles}
               style={[
-                styles.quickFilterChip,
-                !selectedHandles || !curationHandles ? styles.quickFilterChipDisabled : null,
-                channelFilterActive && styles.quickFilterChipActive,
+                styles.channelFilterChip,
+                !selectedHandles || !curationHandles ? styles.channelFilterChipDisabled : null,
+                channelFilterActive && styles.channelFilterChipActive,
               ]}
               accessibilityRole="button"
               accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
-              <Text style={[styles.quickFilterText, channelFilterActive && styles.quickFilterTextActive]}>
+              <FontAwesome name="filter" size={11} color={channelFilterActive ? theme.green : theme.textMuted} />
+              <Text style={[styles.channelFilterText, channelFilterActive && styles.channelFilterTextActive]}>
                 {t('youtubeFilterChannel')}
               </Text>
             </Pressable>
@@ -788,6 +791,37 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.textDim,
     },
     quickFilterTextActive: {
+      color: theme.green,
+    },
+    channelFilterRow: {
+      marginTop: 8,
+    },
+    channelFilterChip: {
+      alignSelf: 'flex-start',
+      minHeight: 32,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 11,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+    },
+    channelFilterChipActive: {
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    channelFilterChipDisabled: {
+      opacity: 0.45,
+    },
+    channelFilterText: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '800',
+      color: theme.textDim,
+    },
+    channelFilterTextActive: {
       color: theme.green,
     },
     errBox: {

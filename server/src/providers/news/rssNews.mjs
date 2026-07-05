@@ -1,5 +1,9 @@
 const DEFAULT_USER_AGENT = 'SignalServer/0.1 RSS';
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
+}
+
 function decodeEntities(text) {
   return String(text || '')
     .replace(/&amp;/g, '&')
@@ -179,6 +183,48 @@ function parseItems(xml) {
   return items;
 }
 
+/** 저장된 RSS 뉴스를 rawPayload 기준으로 재보정 (reconcile phase). */
+export function reconcileRssNewsItems(items, { providerIds = [], limit = 60 } = {}) {
+  const safeLimit = Math.max(1, Math.min(200, Number(limit) || 60));
+  const providerFilter = new Set(
+    (Array.isArray(providerIds) ? providerIds : [])
+      .map((id) => String(id || '').trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const reconciledAt = new Date().toISOString();
+  return [...(Array.isArray(items) ? items : [])]
+    .filter((item) => {
+      if (providerFilter.size === 0) return true;
+      return providerFilter.has(String(item?.provider || '').trim().toLowerCase());
+    })
+    .sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')))
+    .slice(0, safeLimit)
+    .map((item) => {
+      const raw = item?.rawPayload && typeof item.rawPayload === 'object' ? item.rawPayload : {};
+      const params = {
+        sourceName: raw.sourceName || item.sourceName || 'Newswire',
+        providerId: item.provider,
+        category: item.category || 'global',
+      };
+      const normalized = normalizeRssItem({
+        item: {
+          title: raw.title || item.titleOriginal || '',
+          link: raw.link || item.sourceUrl || '',
+          guid: raw.guid || item.providerItemId || '',
+          pubDate: raw.pubDate || item.publishedAt || '',
+          description: raw.description || item.summaryOriginal || '',
+        },
+        params,
+      });
+      return {
+        ...normalized,
+        id: item.id,
+        createdAt: item.createdAt || reconciledAt,
+        fetchedAt: reconciledAt,
+      };
+    });
+}
+
 export async function fetchNewswireRssNews(params = {}) {
   const feedUrl = String(params.feedUrl || '').trim();
   if (!feedUrl) throw new Error('RSS_FEED_URL_MISSING');
@@ -187,16 +233,50 @@ export async function fetchNewswireRssNews(params = {}) {
   const includeKeywords = normalizeKeywords(params.includeKeywords);
   const excludeKeywords = normalizeKeywords(params.excludeKeywords);
   const cutoffMs = daysBack > 0 ? Date.now() - daysBack * 24 * 60 * 60 * 1000 : 0;
+  const maxRetries = Math.max(0, Math.min(4, Number(params.maxRetries ?? 3)));
+  const baseDelayMs = Math.max(250, Math.min(10_000, Number(params.baseDelayMs ?? 800)));
+  const timeoutMs = Math.max(5_000, Math.min(120_000, Number(params.timeoutMs ?? 30_000)));
 
-  const res = await fetch(feedUrl, {
-    headers: {
-      'user-agent': String(params.userAgent || DEFAULT_USER_AGENT),
-      accept: 'application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.1',
-    },
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`RSS ${res.status}: ${body.slice(0, 200)}`);
+  let res = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      res = await fetch(feedUrl, {
+        headers: {
+          'user-agent': String(params.userAgent || DEFAULT_USER_AGENT),
+          accept: 'application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.1',
+        },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (error) {
+      if (attempt >= maxRetries) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`RSS fetch failed: ${message}`);
+      }
+      const expo = baseDelayMs * 2 ** attempt;
+      const jitter = Math.floor(Math.random() * 200);
+      await sleep(expo + jitter);
+      continue;
+    }
+
+    if (res.status === 429) {
+      if (attempt >= maxRetries) {
+        console.warn(`[rssNews] rate limited (429). Skipping this feed. feedUrl=${feedUrl}`);
+        return [];
+      }
+      const retryAfter = Number(res.headers.get('retry-after') || '');
+      const retryAfterMs = Number.isFinite(retryAfter) ? retryAfter * 1000 : 0;
+      const expo = baseDelayMs * 2 ** attempt;
+      const jitter = Math.floor(Math.random() * 200);
+      await sleep(Math.max(retryAfterMs, expo) + jitter);
+      continue;
+    }
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`RSS ${res.status}: ${body.slice(0, 200)}`);
+    }
+
+    break;
   }
 
   const xml = await res.text();

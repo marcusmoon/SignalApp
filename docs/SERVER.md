@@ -103,7 +103,8 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 - **stage**: `ingest`(수집), `enrich`(가공), `maintain`(유지보수)
 - **preset**: Admin Job 화면 상단의 영역별 일괄 실행 (`/admin/api/job-presets/:id/run`)
 - **카탈로그**: `server/src/jobs/catalog.mjs` (그룹·라벨 단일 기준)
-- **Lock**: `polling_job_locks`로 worker/API 간 중복 실행을 막는다. 재배포·프로세스 중단으로 lock/run이 남으면 worker가 60초마다 만료 lock과 orphaned `running` run을 정리한다. Admin Job 카드에서 lock 만료 시각과 해제 가능 여부를 확인할 수 있다.
+- **Lock**: `polling_job_locks`로 worker/API 간 중복 실행을 막는다. 재배포·프로세스 중단으로 lock/run이 남으면 worker가 60초마다 만료 lock과 orphaned `running` run을 정리한다(`JOB_WORKER_LOST`). Admin Job 카드에서 lock 만료 시각과 해제 가능 여부를 확인할 수 있다.
+- **Lock TTL**: Job별 `lockTtlSeconds` / `staleLockSeconds`(payload)로 긴 수집·번역 run의 lock 만료를 조정한다. runner는 phase 전환·번역·시총 진행 중 `renewPollingJobLock`과 `progressUpdatedAt` heartbeat로 lock을 갱신한다. 뉴스 sync Job의 reconcile phase는 API 재조회가 아니라 DB에 저장된 `rawPayload`를 재보정한다(Finnhub/RSS). 캘린더·YouTube reconcile은 의도적으로 provider API를 다시 호출한다.
 
 주요 Job (V19 이후, reconcile 쌍은 `sync`로 통합):
 

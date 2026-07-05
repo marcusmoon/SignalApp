@@ -26,8 +26,8 @@ import { startNewsUnreadBackgroundSync } from '@/services/newsUnreadBackground';
 import {
   subscribeSignalServerEndpointChanged,
 } from '@/services/signalServerEndpoint';
+import { readThemeAppearanceModeSync } from '@/services/themeAppearancePreference';
 import {
-  readWebThemeAppearanceMode,
   resolveThemeColorScheme,
   themeBackgroundForScheme,
 } from '@/utils/webThemeDocument';
@@ -58,7 +58,7 @@ export default function RootLayout() {
   const splashShownAt = useRef(Date.now());
   const bootstrapBg = useMemo(() => {
     if (Platform.OS === 'web') {
-      const scheme = resolveThemeColorScheme(readWebThemeAppearanceMode());
+      const scheme = resolveThemeColorScheme(readThemeAppearanceModeSync());
       return themeBackgroundForScheme(scheme);
     }
     return bootstrapThemeForColorScheme(

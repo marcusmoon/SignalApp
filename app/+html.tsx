@@ -18,6 +18,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <meta name="color-scheme" content="light dark" />
+        <meta name="theme-color" content={lightBg} />
 
         {/* 
           Disable body scrolling on web. This makes ScrollView components work closer to how they do on native. 
@@ -47,9 +48,14 @@ const initialThemeScript = `
     var stored = '';
     for (var i = 0; i < keys.length; i++) {
       var value = window.localStorage.getItem(keys[i]);
-      if (value) { stored = value; break; }
+      if (!value) continue;
+      var candidate = String(value).trim().replace(/^"|"$/g, '');
+      if (candidate === 'light' || candidate === 'dark' || candidate === 'system') {
+        stored = candidate;
+        break;
+      }
     }
-    var mode = String(stored).replace(/^"|"$/g, '');
+    var mode = stored || 'system';
     var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     var scheme = mode === 'dark' || (mode !== 'light' && systemDark) ? 'dark' : 'light';
     var bg = scheme === 'dark' ? ${JSON.stringify(darkBg)} : ${JSON.stringify(lightBg)};
@@ -57,6 +63,8 @@ const initialThemeScript = `
     document.documentElement.dataset.signalTheme = scheme;
     document.documentElement.style.colorScheme = scheme;
     document.documentElement.style.backgroundColor = bg;
+    var themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) themeColorMeta.setAttribute('content', bg);
     document.documentElement.style.setProperty('--signal-bg', tokens.bg);
     document.documentElement.style.setProperty('--signal-bg-elevated', tokens.bgElevated);
     document.documentElement.style.setProperty('--signal-card', tokens.card);

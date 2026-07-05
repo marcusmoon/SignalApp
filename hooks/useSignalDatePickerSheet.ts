@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactElement } from 'react';
+import { createElement, useCallback, useMemo, useState, type ReactElement } from 'react';
 
 import { SignalDatePickerSheet } from '@/components/signal/SignalDatePickerSheet';
 import { monthPartsFromYmd } from '@/utils/date';
@@ -56,21 +56,20 @@ export function useSignalDatePickerSheet({
   }, [onSelectYmd, todayYmd]);
 
   const datePickerSheet = useMemo(
-    () => (
-      <SignalDatePickerSheet
-        visible={visible}
-        onClose={closeDatePicker}
-        selectedYmd={selectedYmd}
-        todayYmd={todayYmd}
-        maxYmd={max}
-        calendarMonth={calendarMonth}
-        eventDates={eventDates}
-        onSelectYmd={pickCalendarDate}
-        onPrevMonth={() => shiftCalendarMonth(-1)}
-        onNextMonth={() => shiftCalendarMonth(1)}
-        onGoToday={goTodayInPicker}
-      />
-    ),
+    () =>
+      createElement(SignalDatePickerSheet, {
+        visible,
+        onClose: closeDatePicker,
+        selectedYmd,
+        todayYmd,
+        maxYmd: max,
+        calendarMonth,
+        eventDates,
+        onSelectYmd: pickCalendarDate,
+        onPrevMonth: () => shiftCalendarMonth(-1),
+        onNextMonth: () => shiftCalendarMonth(1),
+        onGoToday: goTodayInPicker,
+      }),
     [
       calendarMonth,
       closeDatePicker,

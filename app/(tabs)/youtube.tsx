@@ -29,6 +29,7 @@ import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
+  getSegmentTabBarStyles,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
@@ -434,6 +435,23 @@ export default function YoutubeScreen() {
   const youtubeListHeader = useMemo(
     () => (
       <>
+        <View style={styles.channelFilterRow}>
+          <Pressable
+            onPress={openChannelFilter}
+            disabled={!selectedHandles || !curationHandles}
+            style={[
+              styles.channelFilterChip,
+              !selectedHandles || !curationHandles ? styles.channelFilterChipDisabled : null,
+              channelFilterActive && styles.channelFilterChipActive,
+            ]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
+            <FontAwesome name="filter" size={11} color={channelFilterActive ? theme.green : theme.textMuted} />
+            <Text style={[styles.channelFilterText, channelFilterActive && styles.channelFilterTextActive]}>
+              {t('youtubeFilterChannel')}
+            </Text>
+          </Pressable>
+        </View>
         {error ? (
           <View style={styles.errBox}>
             <Text style={styles.errText}>{error}</Text>
@@ -458,79 +476,57 @@ export default function YoutubeScreen() {
         ) : null}
       </>
     ),
-    [error, isQuotaError, quotaResetHintLine, showScrollLoading, styles, t],
+    [
+      channelFilterActive,
+      curationHandles,
+      error,
+      isQuotaError,
+      openChannelFilter,
+      quotaResetHintLine,
+      selectedHandles,
+      showScrollLoading,
+      styles,
+      t,
+      theme.green,
+      theme.textMuted,
+    ],
   );
 
   const channelRowStyles = useMemo(() => selectionFilterRowStyles(theme, scaleFont), [theme, scaleFont]);
 
   const youtubeListPanel = (
     <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {useTwoPane ? (
-          <View style={styles.ipadFilterWrap}>
-            <Pressable
-              onPress={openChannelFilter}
-              disabled={!selectedHandles || !curationHandles}
-              style={({ pressed }) => [
-                styles.ipadFilterBtn,
-                channelFilterActive && styles.ipadFilterBtnActive,
-                (!selectedHandles || !curationHandles) && styles.quickFilterChipDisabled,
-                pressed && { opacity: 0.78 },
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
-              <FontAwesome name="filter" size={12} color={channelFilterActive ? theme.green : theme.textMuted} />
-              <Text style={[styles.ipadFilterText, channelFilterActive && styles.ipadFilterTextActive]}>
-                {t('youtubeFilterChannel')}
-              </Text>
-            </Pressable>
+        {!useTwoPane ? (
+          <View style={styles.topFixed}>
+            <View style={styles.segment}>
+              <Pressable
+                onPress={() => void applyAllFilter()}
+                style={[
+                  styles.segBtn,
+                  sort === 'latest' && !channelFilterActive && styles.segBtnActive,
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: sort === 'latest' && !channelFilterActive }}>
+                <Text
+                  style={[
+                    styles.segText,
+                    sort === 'latest' && !channelFilterActive && styles.segTextActive,
+                  ]}>
+                  {t('feedWatchFilterAll')}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={applyPopularFilter}
+                style={[styles.segBtn, sort === 'popular' && styles.segBtnActive]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: sort === 'popular' }}>
+                <Text style={[styles.segText, sort === 'popular' && styles.segTextActive]}>
+                  {t('youtubeSortPopular')}
+                </Text>
+              </Pressable>
+            </View>
           </View>
         ) : null}
-        {!useTwoPane ? <View style={styles.topFixed}>
-          <View style={styles.quickFilterRow}>
-            <Pressable
-              onPress={() => void applyAllFilter()}
-              style={[
-                styles.quickFilterChip,
-                sort === 'latest' && !channelFilterActive && styles.quickFilterChipActive,
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: sort === 'latest' && !channelFilterActive }}>
-              <Text
-                style={[
-                  styles.quickFilterText,
-                  sort === 'latest' && !channelFilterActive && styles.quickFilterTextActive,
-                ]}>
-                {t('feedWatchFilterAll')}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={applyPopularFilter}
-              style={[styles.quickFilterChip, sort === 'popular' && styles.quickFilterChipActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: sort === 'popular' }}>
-              <Text style={[styles.quickFilterText, sort === 'popular' && styles.quickFilterTextActive]}>
-                {t('youtubeSortPopular')}
-              </Text>
-            </Pressable>
-          </View>
-          <View style={styles.channelFilterRow}>
-            <Pressable
-              onPress={openChannelFilter}
-              disabled={!selectedHandles || !curationHandles}
-              style={[
-                styles.channelFilterChip,
-                !selectedHandles || !curationHandles ? styles.channelFilterChipDisabled : null,
-                channelFilterActive && styles.channelFilterChipActive,
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
-              <FontAwesome name="filter" size={11} color={channelFilterActive ? theme.green : theme.textMuted} />
-              <Text style={[styles.channelFilterText, channelFilterActive && styles.channelFilterTextActive]}>
-                {t('youtubeFilterChannel')}
-              </Text>
-            </Pressable>
-          </View>
-        </View> : null}
 
         <WebWheelFlatList
           ref={ytListRef}
@@ -657,6 +653,7 @@ export default function YoutubeScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     mainColumn: {
@@ -670,6 +667,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     topFixed: {
       flexShrink: 0,
+      zIndex: 2,
+      elevation: Platform.OS === 'android' ? 2 : 0,
       paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
       paddingTop: SCREEN_FIXED_HEADER_PADDING_TOP,
       paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
@@ -677,40 +676,29 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
+    segment: segmentTab.segment,
+    segBtn: segmentTab.segBtn,
+    segBtnActive: segmentTab.segBtnActive,
+    segText: segmentTab.segText,
+    segTextActive: segmentTab.segTextActive,
     list: { ...webScrollViewportStyle },
     listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
-    ipadFilterWrap: {
-      flexShrink: 0,
+    channelFilterRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 8,
-      paddingHorizontal: 16,
-      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
-      paddingBottom: 4,
+      marginBottom: 10,
     },
-    ipadFilterBtn: {
-      alignSelf: 'flex-start',
+    channelFilterChip: {
       minHeight: 32,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 7,
+      gap: 6,
       paddingHorizontal: 11,
       borderRadius: 999,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.card,
-    },
-    ipadFilterBtnActive: {
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    ipadFilterText: {
-      fontSize: sf(12),
-      fontWeight: '900',
-      color: theme.textMuted,
-    },
-    ipadFilterTextActive: {
-      color: theme.green,
+      backgroundColor: theme.bgElevated,
     },
     backToMoreWrap: {
       flexShrink: 0,
@@ -759,54 +747,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(13),
       fontWeight: '900',
       color: theme.bg,
-    },
-    quickFilterRow: {
-      flexDirection: 'row',
-      gap: 4,
-      padding: 4,
-      borderRadius: 16,
-      backgroundColor: theme.bgElevated,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    quickFilterChip: {
-      flex: 1,
-      minHeight: 34,
-      paddingHorizontal: 10,
-      borderRadius: 12,
-      backgroundColor: 'transparent',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    quickFilterChipActive: {
-      backgroundColor: theme.greenDim,
-    },
-    quickFilterChipDisabled: {
-      opacity: 0.45,
-    },
-    quickFilterText: {
-      fontSize: sf(12),
-      lineHeight: sf(17),
-      fontWeight: '800',
-      color: theme.textDim,
-    },
-    quickFilterTextActive: {
-      color: theme.green,
-    },
-    channelFilterRow: {
-      marginTop: 8,
-    },
-    channelFilterChip: {
-      alignSelf: 'flex-start',
-      minHeight: 32,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 11,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
     },
     channelFilterChipActive: {
       borderColor: theme.greenBorder,

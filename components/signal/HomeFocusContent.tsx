@@ -31,6 +31,7 @@ import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuo
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useQuoteChangeColors } from '@/hooks';
+import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -269,6 +270,12 @@ export function HomeFocusContent({
     },
     [onSelectedYmdChange, todayYmd],
   );
+
+  const { openDatePicker, datePickerSheet } = useSignalDatePickerSheet({
+    selectedYmd,
+    todayYmd,
+    onSelectYmd: changeSelectedYmd,
+  });
 
   const load = useCallback(async () => {
     if (!hasSignalApi()) {
@@ -723,6 +730,7 @@ export function HomeFocusContent({
   );
 
   return (
+    <>
     <WebWheelScrollView
       style={styles.scroll}
       contentContainerStyle={[
@@ -741,7 +749,7 @@ export function HomeFocusContent({
         todayLabel={t('insightCalendarToday')}
         onPrevious={() => changeSelectedYmd(shiftYmd(selectedYmd, -1))}
         onNext={() => changeSelectedYmd(shiftYmd(selectedYmd, 1))}
-        onPressLabel={() => router.navigate('/calendar' as never)}
+        onPressLabel={openDatePicker}
         onToday={() => changeSelectedYmd(todayYmd)}
         showToday={!selectedIsToday}
         nextDisabled={selectedIsToday}
@@ -899,6 +907,8 @@ export function HomeFocusContent({
         </>
       )}
     </WebWheelScrollView>
+    {datePickerSheet}
+    </>
   );
 }
 

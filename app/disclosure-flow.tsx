@@ -15,6 +15,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -130,6 +131,12 @@ export function DisclosureFlowContent({
     setHighlightId(initialDigestId);
   }, [initialDigestId]);
 
+  const { openDatePicker, datePickerSheet } = useSignalDatePickerSheet({
+    selectedYmd,
+    todayYmd,
+    onSelectYmd: setSelectedYmd,
+  });
+
   const openDetail = useCallback(
     (item: SignalApiDisclosureDigestItem) => {
       const id = resolveDisclosureDetailId(item);
@@ -169,6 +176,7 @@ export function DisclosureFlowContent({
   }, [load]);
 
   return (
+    <>
     <SafeAreaView style={styles.safe} edges={isWide ? [] : ['bottom']}>
       <WebWheelScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={[styles.inner, isWide && styles.innerWide]}>
@@ -213,11 +221,14 @@ export function DisclosureFlowContent({
             label={formatDateLabel(selectedYmd, locale)}
             previousA11y={t('calendarDayPrevA11y')}
             nextA11y={t('calendarDayNextA11y')}
+            labelA11y={t('insightOpenCalendar')}
             todayLabel={t('commonToday')}
             onPrevious={() => setSelectedYmd((prev) => shiftYmd(prev, -1))}
             onNext={() => setSelectedYmd((prev) => shiftYmd(prev, 1))}
+            onPressLabel={openDatePicker}
             onToday={() => setSelectedYmd(todayYmd)}
             showToday={selectedYmd !== todayYmd}
+            nextDisabled={selectedYmd >= todayYmd}
             style={styles.dateNav}
           />
 
@@ -279,6 +290,8 @@ export function DisclosureFlowContent({
         </View>
       </WebWheelScrollView>
     </SafeAreaView>
+    {datePickerSheet}
+    </>
   );
 }
 

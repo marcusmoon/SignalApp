@@ -17,6 +17,15 @@ export function parseLocalYmd(ymd: string): Date {
   return new Date(year, month - 1, day);
 }
 
+export function monthPartsFromYmd(ymd: string): { year: number; month: number } {
+  const date = parseLocalYmd(ymd);
+  return { year: date.getFullYear(), month: date.getMonth() };
+}
+
+export function shiftLocalYmd(ymd: string, days: number): string {
+  return toYmd(addDays(parseLocalYmd(ymd), days));
+}
+
 export function localeTagForAppLocale(locale: AppLocale): string {
   if (locale === 'en') return 'en-US';
   if (locale === 'ja') return 'ja-JP';

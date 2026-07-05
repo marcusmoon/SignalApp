@@ -15,6 +15,7 @@ import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import type { SignalApiNewsDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
@@ -110,6 +111,12 @@ export function NewsIssuesContent({
     setExpandedId(initialDigestId);
   }, [initialDigestId]);
 
+  const { openDatePicker, datePickerSheet } = useSignalDatePickerSheet({
+    selectedYmd,
+    todayYmd,
+    onSelectYmd: setSelectedYmd,
+  });
+
   const load = useCallback(async () => {
     if (!hasSignalApi()) {
       setItems([]);
@@ -197,11 +204,14 @@ export function NewsIssuesContent({
             label={formatDateLabel(selectedYmd, locale)}
             previousA11y={t('calendarDayPrevA11y')}
             nextA11y={t('calendarDayNextA11y')}
+            labelA11y={t('insightOpenCalendar')}
             todayLabel={t('commonToday')}
             onPrevious={() => setSelectedYmd((prev) => shiftYmd(prev, -1))}
             onNext={() => setSelectedYmd((prev) => shiftYmd(prev, 1))}
+            onPressLabel={openDatePicker}
             onToday={() => setSelectedYmd(todayYmd)}
             showToday={selectedYmd !== todayYmd}
+            nextDisabled={selectedYmd >= todayYmd}
             style={styles.dateNav}
           />
 
@@ -288,7 +298,12 @@ export function NewsIssuesContent({
     </SafeAreaView>
   );
 
-  return body;
+  return (
+    <>
+      {body}
+      {datePickerSheet}
+    </>
+  );
 }
 
 export default function NewsIssuesScreen() {

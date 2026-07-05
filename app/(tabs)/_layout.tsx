@@ -26,6 +26,7 @@ import { SignalSidebarTabBar } from '@/components/signal/SignalSidebarTabBar';
 import { SlackTabBarButton } from '@/components/SlackTabBarButton';
 import AccountScreen from '@/app/account';
 import { NewsIssuesContent } from '@/app/news-issues';
+import { DisclosureFlowContent } from '@/app/disclosure-flow';
 import SettingsScreen from '@/app/settings';
 import { IpadHomeScreen } from '@/components/signal/IpadHomeScreen';
 import { IpadSidebarNavProvider, useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
@@ -532,7 +533,7 @@ function IpadWideTabLayout({
   disclosureHasUnread,
   t,
 }: IpadWideTabLayoutProps) {
-  const { contentPane, newsIssuesParams, showHome } = useIpadSidebarNav();
+  const { contentPane, newsIssuesParams, disclosureFlowParams, showHome } = useIpadSidebarNav();
   const { theme } = useSignalTheme();
 
   return (
@@ -556,6 +557,13 @@ function IpadWideTabLayout({
                   initialCategory={newsIssuesParams.category}
                   initialDate={newsIssuesParams.date}
                   initialDigestId={newsIssuesParams.digestId}
+                  onBack={showHome}
+                />
+              ) : contentPane === 'disclosureFlow' && disclosureFlowParams ? (
+                <DisclosureFlowContent
+                  embedded
+                  initialDate={disclosureFlowParams.date}
+                  initialDigestId={disclosureFlowParams.digestId}
                   onBack={showHome}
                 />
               ) : contentPane === 'account' ? (

@@ -433,12 +433,37 @@ export function HomeFocusContent({
     [router],
   );
 
-  const openDisclosures = useCallback(() => {
-    if (ipadNav.isAvailable) {
-      ipadNav.showTabs();
-    }
-    router.navigate('/(tabs)/disclosures' as never);
-  }, [ipadNav, router]);
+  const openDisclosureFlow = useCallback(
+    (row?: SignalApiDisclosureDigestItem) => {
+      const params = {
+        date: selectedYmd,
+        digestId: row?.id,
+      };
+      if (ipadNav.isAvailable) {
+        ipadNav.showDisclosureFlow(params);
+        return;
+      }
+      router.navigate({
+        pathname: '/disclosure-flow',
+        params,
+      } as never);
+    },
+    [ipadNav, router, selectedYmd],
+  );
+
+  const openDisclosureDetail = useCallback(
+    (row: SignalApiDisclosureDigestItem) => {
+      const primary = String(row.primaryDisclosureId || '').trim();
+      const refId = row.sourceRefs.find((ref) => String(ref.id || '').trim())?.id;
+      const id = primary || (refId ? String(refId).trim() : '');
+      if (!id) {
+        openDisclosureFlow(row);
+        return;
+      }
+      router.push(`/disclosures/${encodeURIComponent(id)}` as never);
+    },
+    [openDisclosureFlow, router],
+  );
 
   const openCalendar = useCallback(() => {
     router.navigate('/calendar' as never);
@@ -605,7 +630,7 @@ export function HomeFocusContent({
           {rows.map((row, index) => (
             <Pressable
               key={row.id}
-              onPress={openDisclosures}
+              onPress={() => openDisclosureDetail(row)}
               accessibilityRole="button"
               style={({ pressed }) => [
                 styles.issueGroupItem,
@@ -643,7 +668,7 @@ export function HomeFocusContent({
         </View>
       </View>
     ),
-    [locale, openDisclosures, showIssueSummary, styles, t],
+    [locale, openDisclosureDetail, showIssueSummary, styles, t],
   );
 
   const renderCalendarCard = useCallback(
@@ -736,10 +761,11 @@ export function HomeFocusContent({
             ) : null}
 
             <View style={styles.heroBlock}>
-              <View style={styles.heroHead}>
-                <HomeAiBadge />
-                <Text style={styles.heroKicker}>{t('homeFocusHeroKicker')}</Text>
-              </View>
+              <HomeSectionHeader
+                title={t('newsIssuesTitle')}
+                onPress={() => openIssue()}
+                accessibilityLabel={t('commonViewAll')}
+              />
               {homeIssues.length > 0 ? (
                 renderIssueCard(homeIssues)
               ) : (
@@ -815,8 +841,8 @@ export function HomeFocusContent({
 
           <View style={styles.section}>
             <HomeSectionHeader
-              title={t('todayBriefingDisclosureDigestTitle')}
-              onPress={openDisclosures}
+              title={t('disclosureFlowTitle')}
+              onPress={() => openDisclosureFlow()}
               accessibilityLabel={t('commonViewAll')}
             />
             {disclosures.length > 0 ? (
@@ -824,7 +850,7 @@ export function HomeFocusContent({
             ) : (
               <View style={styles.emptyCard}>
                 <HomeSectionAccentLine section="disclosure" />
-                <Text style={styles.emptyText}>{t('todayBriefingDisclosureDigestEmpty')}</Text>
+                <Text style={styles.emptyText}>{t('disclosureFlowEmpty')}</Text>
               </View>
             )}
           </View>

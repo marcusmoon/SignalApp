@@ -6,6 +6,7 @@ import {
   useWebRefreshHandlers,
   WebRefreshStatus,
 } from '@/components/layout/webRefreshControl';
+import { WEB_THEME_BG } from '@/constants/webLayout';
 import { useWebVerticalWheelScroll } from '@/hooks/useWebVerticalWheelScroll';
 
 export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(function WebWheelScrollView(
@@ -23,8 +24,8 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
   const webRefreshHandlers = useWebRefreshHandlers(refreshControlProps, getNode);
 
   if (Platform.OS === 'web') {
-    const flatStyle = StyleSheet.flatten(style);
-    const backgroundColor = flatStyle?.backgroundColor;
+    const flatStyle = StyleSheet.flatten([{ backgroundColor: WEB_THEME_BG }, style]);
+    const backgroundColor = flatStyle?.backgroundColor ?? WEB_THEME_BG;
     const webEventProps = {
       onTouchStart: webRefreshHandlers.onTouchStart,
       onTouchMove: webRefreshHandlers.onTouchMove,
@@ -36,13 +37,11 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
         {...(rest as object)}
         ref={localRef as never}
         {...(webEventProps as Record<string, unknown>)}
-        style={[webViewportStyle, style]}>
+        style={[webViewportStyle, { backgroundColor }, style]}>
         <View
           style={[
             contentContainerStyle,
-            backgroundColor != null
-              ? { backgroundColor, flexGrow: 1, minHeight: '100%' as const }
-              : null,
+            { backgroundColor, flexGrow: 1, minHeight: '100%' as const },
           ]}>
           {refreshControlProps?.refreshing ? <WebRefreshStatus /> : null}
           {children}

@@ -27,6 +27,7 @@ import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { webShellBackground } from '@/constants/webLayout';
 import {
   tabBarBottomInset,
   tabBarHorizontalMargin,
@@ -271,9 +272,10 @@ const APP_ICON_PREVIEW_IMAGE: Record<AppIconVariant, number> = {
 const TAB_BAR_OPACITY_ORDER: TabBarOpacityLevel[] = [0, 1, 2, 3, 4];
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+  const shellBg = webShellBackground(theme.bg);
   return StyleSheet.create({
-    safe: { flex: 1, minHeight: 0, backgroundColor: theme.bg },
-    scrollFlex: { flex: 1, minHeight: 0, backgroundColor: theme.bg },
+    safe: { flex: 1, minHeight: 0, backgroundColor: shellBg },
+    scrollFlex: { flex: 1, minHeight: 0, backgroundColor: shellBg },
     scroll: {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
@@ -281,7 +283,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 16,
       paddingTop: 4,
       paddingBottom: 32,
-      backgroundColor: theme.bg,
+      backgroundColor: shellBg,
     },
     scrollEmbedded: {
       maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,

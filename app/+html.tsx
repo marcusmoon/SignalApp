@@ -79,7 +79,13 @@ const initialThemeScript = `
     var root = document.getElementById('root');
     if (root) {
       root.style.backgroundColor = bg;
-      if (root.firstElementChild) root.firstElementChild.style.backgroundColor = bg;
+      var shell = root.firstElementChild;
+      if (shell instanceof HTMLElement) {
+        shell.style.backgroundColor = bg;
+        if (shell.firstElementChild instanceof HTMLElement) {
+          shell.firstElementChild.style.backgroundColor = bg;
+        }
+      }
     }
     } catch (e) {}
   }
@@ -94,6 +100,16 @@ const responsiveBackground = `
 html {
   height: 100%;
   color-scheme: light dark;
+  --signal-bg: ${lightBg};
+  --signal-bg-elevated: ${lightTokens.bgElevated};
+  --signal-card: ${lightTokens.card};
+  --signal-border: ${lightTokens.border};
+  --signal-text: ${lightTokens.text};
+  --signal-text-muted: ${lightTokens.textMuted};
+  --signal-text-dim: ${lightTokens.textDim};
+  --signal-green: ${lightTokens.green};
+  --signal-green-dim: ${lightTokens.greenDim};
+  --signal-green-border: ${lightTokens.greenBorder};
 }
 
 body {
@@ -101,6 +117,7 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  background-color: var(--signal-bg);
 }
 
 #root {
@@ -111,6 +128,7 @@ body {
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  background-color: var(--signal-bg);
 }
 
 /* Tab navigators must fill height so inner lists get a bounded scroll viewport on web. */
@@ -120,6 +138,11 @@ body {
   flex-direction: column;
   min-height: 0;
   height: 100%;
+  background-color: var(--signal-bg);
+}
+
+#root > div > div {
+  background-color: var(--signal-bg);
 }
 
 /* Hide scrollbars on horizontal card carousels (navigation uses overlay arrows). */
@@ -160,35 +183,18 @@ body {
   transform: translateZ(0);
 }
 
-html[data-signal-theme="light"],
-html[data-signal-theme="light"] body,
-html[data-signal-theme="light"] #root,
-html[data-signal-theme="light"] #root > div {
-  background-color: ${lightBg};
-}
-
-html[data-signal-theme="dark"],
-html[data-signal-theme="dark"] body,
-html[data-signal-theme="dark"] #root,
-html[data-signal-theme="dark"] #root > div {
-  background-color: ${darkBg};
-}
-
 @media (prefers-color-scheme: dark) {
-  html:not([data-signal-theme]),
-  html:not([data-signal-theme]) body,
-  html:not([data-signal-theme]) #root,
-  html:not([data-signal-theme]) #root > div {
-    background-color: ${darkBg};
-  }
-}
-
-@media (prefers-color-scheme: light) {
-  html:not([data-signal-theme]),
-  html:not([data-signal-theme]) body,
-  html:not([data-signal-theme]) #root,
-  html:not([data-signal-theme]) #root > div {
-    background-color: ${lightBg};
+  html:not([data-signal-theme="light"]) {
+    --signal-bg: ${darkBg};
+    --signal-bg-elevated: ${darkTokens.bgElevated};
+    --signal-card: ${darkTokens.card};
+    --signal-border: ${darkTokens.border};
+    --signal-text: ${darkTokens.text};
+    --signal-text-muted: ${darkTokens.textMuted};
+    --signal-text-dim: ${darkTokens.textDim};
+    --signal-green: ${darkTokens.green};
+    --signal-green-dim: ${darkTokens.greenDim};
+    --signal-green-border: ${darkTokens.greenBorder};
   }
 }
 `;

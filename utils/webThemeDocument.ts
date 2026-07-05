@@ -66,7 +66,12 @@ export function applyWebDocumentTheme(scheme: ThemeColorScheme, bg: string, acti
   if (appRoot) {
     appRoot.style.backgroundColor = bg;
     const appShell = appRoot.firstElementChild;
-    if (appShell instanceof HTMLElement) appShell.style.backgroundColor = bg;
+    if (appShell instanceof HTMLElement) {
+      appShell.style.backgroundColor = bg;
+      if (appShell.firstElementChild instanceof HTMLElement) {
+        appShell.firstElementChild.style.backgroundColor = bg;
+      }
+    }
   }
 
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');

@@ -2,7 +2,15 @@ import { Platform } from 'react-native';
 
 export const isWeb = Platform.OS === 'web';
 
+/** Set by +html inline script before React; survives static-export hydration. */
+export const WEB_THEME_BG = 'var(--signal-bg)' as const;
+
+export function webShellBackground(themeBg: string): string {
+  return isWeb ? WEB_THEME_BG : themeBg;
+}
+
 export const WEB_SIGNAL_CSS = {
+  bg: WEB_THEME_BG,
   card: 'var(--signal-card)',
   border: 'var(--signal-border)',
   text: 'var(--signal-text)',

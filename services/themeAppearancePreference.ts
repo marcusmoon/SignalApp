@@ -5,6 +5,7 @@ export type ThemeAppearanceMode = 'system' | 'light' | 'dark';
 
 const STORAGE_KEY = '@signal/theme_appearance_mode_v1';
 export const WEB_THEME_APPEARANCE_MIRROR_KEY = 'signal_theme_appearance_mode';
+export const THEME_APPEARANCE_CHANGED_EVENT = 'signal-theme-appearance-changed';
 /** Older builds incorrectly read this prefixed key; keep only as legacy fallback. */
 export const WEB_THEME_LEGACY_ASYNC_STORAGE_KEY = `AsyncStorage:${STORAGE_KEY}`;
 
@@ -40,6 +41,20 @@ function writeWebMirror(mode: ThemeAppearanceMode): void {
   } catch {
     // localStorage may be unavailable in private contexts.
   }
+}
+
+function writeWebPrimary(mode: ThemeAppearanceMode): void {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, mode);
+  } catch {
+    // localStorage may be unavailable in private contexts.
+  }
+}
+
+export function notifyThemeAppearanceChanged(): void {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(THEME_APPEARANCE_CHANGED_EVENT));
 }
 
 function removeWebLocalStorage(key: string): void {
@@ -110,7 +125,9 @@ export async function loadThemeAppearanceMode(): Promise<ThemeAppearanceMode> {
 
 export async function saveThemeAppearanceMode(mode: ThemeAppearanceMode): Promise<void> {
   const next = VALID.has(mode) ? mode : 'system';
-  await AsyncStorage.setItem(STORAGE_KEY, next);
+  writeWebPrimary(next);
   writeWebMirror(next);
   removeWebLocalStorage(WEB_THEME_LEGACY_ASYNC_STORAGE_KEY);
+  await AsyncStorage.setItem(STORAGE_KEY, next);
+  notifyThemeAppearanceChanged();
 }

@@ -11,6 +11,7 @@ import {
 import { Platform } from 'react-native';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useWebThemeAppearanceMode } from '@/hooks/useWebThemeAppearanceMode';
 
 import type { AppTheme, ThemeColorScheme } from '@/constants/theme';
 import {
@@ -70,9 +71,11 @@ const SignalThemeContext = createContext<SignalThemeContextValue | null>(null);
 
 export function SignalThemeProvider({ children }: { children: ReactNode }) {
   const systemColorScheme = useColorScheme();
+  const webAppearanceMode = useWebThemeAppearanceMode();
   const [appearanceMode, setAppearanceModeState] = useState<ThemeAppearanceMode>(() =>
     Platform.OS === 'web' ? readThemeAppearanceModeSync() : 'system',
   );
+  const resolvedAppearanceMode = Platform.OS === 'web' ? webAppearanceMode : appearanceMode;
   const [presetId, setPresetIdState] = useState<AccentPresetId>('blue');
   const [customHex, setCustomHex] = useState<string>(DEFAULT_CUSTOM_ACCENT_HEX);
   const [fontSizePreset, setFontSizePresetState] = useState<FontSizePresetId>('standard');
@@ -87,7 +90,9 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
         loadFontSizePreset(),
         loadFeedContentWeight(),
       ]);
-      setAppearanceModeState((current) => (current === mode ? current : mode));
+      if (Platform.OS !== 'web') {
+        setAppearanceModeState((current) => (current === mode ? current : mode));
+      }
       setPresetIdState(id);
       setCustomHex(hex);
       setFontSizePresetState(fontId);
@@ -96,10 +101,10 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const effectiveColorScheme = useMemo<ThemeColorScheme>(() => {
-    if (appearanceMode === 'dark') return 'dark';
-    if (appearanceMode === 'light') return 'light';
+    if (resolvedAppearanceMode === 'dark') return 'dark';
+    if (resolvedAppearanceMode === 'light') return 'light';
     return systemColorScheme === 'dark' ? 'dark' : 'light';
-  }, [appearanceMode, systemColorScheme]);
+  }, [resolvedAppearanceMode, systemColorScheme]);
 
   const theme = useMemo(
     () => getThemeForPreset(presetId, customHex, effectiveColorScheme),
@@ -157,7 +162,7 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SignalThemeContextValue>(
     () => ({
       presetId,
-      appearanceMode,
+      appearanceMode: resolvedAppearanceMode,
       effectiveColorScheme,
       setAppearanceMode,
       customHex,
@@ -173,7 +178,7 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
     }),
     [
       presetId,
-      appearanceMode,
+      resolvedAppearanceMode,
       effectiveColorScheme,
       setAppearanceMode,
       customHex,

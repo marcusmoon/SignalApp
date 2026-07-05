@@ -13,7 +13,7 @@ import {
   tabBarPositionBottom,
   TAB_BAR_FLOAT_RADIUS,
 } from '@/constants/tabBar';
-import { webTabNavigatorHostStyle, webTabSceneStyle, webFlexFill, webSidebarContentStyle } from '@/constants/webLayout';
+import { webTabNavigatorHostStyle, webTabSceneStyle, webFlexFill, webSidebarContentStyle, webShellBackground } from '@/constants/webLayout';
 import {
   GlassSurfaceBackground,
   colorWithAlpha,
@@ -343,7 +343,7 @@ export default function TabLayout() {
         tabBarButton: (props: BottomTabBarButtonProps) => <SlackTabBarButton {...props} />,
         headerShown: false,
         sceneStyle: {
-          backgroundColor: theme.bg,
+          backgroundColor: webShellBackground(theme.bg),
           ...(webTabSceneStyle ?? {}),
         },
         /** Web: lazy-mount tabs to avoid rendering every feed at once. Native phone keeps eager mount. */
@@ -537,15 +537,15 @@ function IpadWideTabLayout({
 
   return (
     <>
-      <SafeAreaView style={[sidebarLayoutStyles.safe, { backgroundColor: theme.bg }]} edges={['top']}>
+      <SafeAreaView style={[sidebarLayoutStyles.safe, { backgroundColor: webShellBackground(theme.bg) }]} edges={['top']}>
       <SignalHeader compact fullWidth />
-      <View style={[sidebarLayoutStyles.body, { backgroundColor: theme.bg }]}>
+      <View style={[sidebarLayoutStyles.body, { backgroundColor: webShellBackground(theme.bg) }]}>
         <SignalSidebarTabBar
           newsHasUnread={newsHasUnread}
           signalHasUnread={signalHasUnread}
           disclosureHasUnread={disclosureHasUnread}
         />
-        <View style={[sidebarLayoutStyles.content, { backgroundColor: theme.bg }]}>
+        <View style={[sidebarLayoutStyles.content, { backgroundColor: webShellBackground(theme.bg) }]}>
           {contentPane !== 'tabs' ? (
             <View style={sidebarLayoutStyles.contentPane}>
               {contentPane === 'home' ? (

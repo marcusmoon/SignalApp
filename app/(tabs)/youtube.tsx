@@ -29,7 +29,6 @@ import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
-  getSegmentTabBarStyles,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
@@ -43,11 +42,10 @@ import {
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
-import { useResetRefreshingOnTabBlur, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
+import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { hasSignalApi } from '@/services/env';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
 import type { ChannelHandleMeta } from '@/domain/youtube/types';
@@ -65,16 +63,6 @@ import {
 
 type SortKey = 'popular' | 'latest';
 
-type YoutubeFeedTabKey = 'all' | 'latest' | 'popular';
-
-const YOUTUBE_FEED_TAB_ORDER: YoutubeFeedTabKey[] = ['all', 'latest', 'popular'];
-
-function resolveYoutubeFeedTab(sort: SortKey, channelFilterActive: boolean): YoutubeFeedTabKey {
-  if (sort === 'popular') return 'popular';
-  if (channelFilterActive) return 'latest';
-  return 'all';
-}
-
 const YOUTUBE_PAGE_SIZE = 30;
 
 /** 채널 배열이 동일하면 상태 갱신·load 재실행을 막기 위한 키 (탭 복귀 시 매번 새 배열 참조 방지) */
@@ -91,7 +79,6 @@ export default function YoutubeScreen() {
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
-  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const [sort, setSort] = useState<SortKey>('latest');
   const effectiveSort = useTwoPane && ipadNav.isAvailable ? ipadNav.youtubeSort : sort;
   const [loading, setLoading] = useState(false);
@@ -398,46 +385,6 @@ export default function YoutubeScreen() {
       selectedHandles.length < curationHandles.length,
   );
 
-  const activeFeedTab = resolveYoutubeFeedTab(sort, channelFilterActive);
-
-  const onPickFeedTab = useCallback(
-    (key: YoutubeFeedTabKey) => {
-      if (key === 'all') void applyAllFilter();
-      else if (key === 'latest') applyLatestSortFilter();
-      else applyPopularFilter();
-    },
-    [applyAllFilter, applyLatestSortFilter, applyPopularFilter],
-  );
-
-  useTabPressCycleSegment(activeFeedTab, YOUTUBE_FEED_TAB_ORDER, onPickFeedTab);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!useTwoPane) return;
-      setSubTabs([
-        {
-          key: 'all',
-          label: t('feedWatchFilterAll'),
-          active: activeFeedTab === 'all',
-          onPress: () => onPickFeedTab('all'),
-        },
-        {
-          key: 'latest',
-          label: t('youtubeSortLatest'),
-          active: activeFeedTab === 'latest',
-          onPress: () => onPickFeedTab('latest'),
-        },
-        {
-          key: 'popular',
-          label: t('youtubeSortPopular'),
-          active: activeFeedTab === 'popular',
-          onPress: () => onPickFeedTab('popular'),
-        },
-      ]);
-      return () => clearSubTabs();
-    }, [activeFeedTab, clearSubTabs, onPickFeedTab, setSubTabs, t, useTwoPane]),
-  );
-
   const toggleChannel = useCallback((handle: string) => {
     setFilterDraftHandles((prev) => {
       if (!prev) return prev;
@@ -526,7 +473,7 @@ export default function YoutubeScreen() {
               style={({ pressed }) => [
                 styles.ipadFilterBtn,
                 channelFilterActive && styles.ipadFilterBtnActive,
-                (!selectedHandles || !curationHandles) && styles.channelFilterChipDisabled,
+                (!selectedHandles || !curationHandles) && styles.quickFilterChipDisabled,
                 pressed && { opacity: 0.78 },
               ]}
               accessibilityRole="button"
@@ -539,48 +486,43 @@ export default function YoutubeScreen() {
           </View>
         ) : null}
         {!useTwoPane ? <View style={styles.topFixed}>
-          <View style={styles.segment}>
+          <View style={styles.quickFilterRow}>
             <Pressable
-              onPress={() => void onPickFeedTab('all')}
-              style={[styles.segBtn, activeFeedTab === 'all' && styles.segBtnActive]}
+              onPress={() => void applyAllFilter()}
+              style={[
+                styles.quickFilterChip,
+                sort === 'latest' && !channelFilterActive && styles.quickFilterChipActive,
+              ]}
               accessibilityRole="button"
-              accessibilityState={{ selected: activeFeedTab === 'all' }}>
-              <Text style={[styles.segText, activeFeedTab === 'all' && styles.segTextActive]}>
+              accessibilityState={{ selected: sort === 'latest' && !channelFilterActive }}>
+              <Text
+                style={[
+                  styles.quickFilterText,
+                  sort === 'latest' && !channelFilterActive && styles.quickFilterTextActive,
+                ]}>
                 {t('feedWatchFilterAll')}
               </Text>
             </Pressable>
             <Pressable
-              onPress={() => onPickFeedTab('latest')}
-              style={[styles.segBtn, activeFeedTab === 'latest' && styles.segBtnActive]}
+              onPress={applyPopularFilter}
+              style={[styles.quickFilterChip, sort === 'popular' && styles.quickFilterChipActive]}
               accessibilityRole="button"
-              accessibilityState={{ selected: activeFeedTab === 'latest' }}>
-              <Text style={[styles.segText, activeFeedTab === 'latest' && styles.segTextActive]}>
-                {t('youtubeSortLatest')}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => onPickFeedTab('popular')}
-              style={[styles.segBtn, activeFeedTab === 'popular' && styles.segBtnActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: activeFeedTab === 'popular' }}>
-              <Text style={[styles.segText, activeFeedTab === 'popular' && styles.segTextActive]}>
+              accessibilityState={{ selected: sort === 'popular' }}>
+              <Text style={[styles.quickFilterText, sort === 'popular' && styles.quickFilterTextActive]}>
                 {t('youtubeSortPopular')}
               </Text>
             </Pressable>
-          </View>
-          <View style={styles.channelFilterRow}>
             <Pressable
               onPress={openChannelFilter}
               disabled={!selectedHandles || !curationHandles}
               style={[
-                styles.channelFilterChip,
-                !selectedHandles || !curationHandles ? styles.channelFilterChipDisabled : null,
-                channelFilterActive && styles.channelFilterChipActive,
+                styles.quickFilterChip,
+                !selectedHandles || !curationHandles ? styles.quickFilterChipDisabled : null,
+                channelFilterActive && styles.quickFilterChipActive,
               ]}
               accessibilityRole="button"
               accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
-              <FontAwesome name="filter" size={11} color={channelFilterActive ? theme.green : theme.textMuted} />
-              <Text style={[styles.channelFilterText, channelFilterActive && styles.channelFilterTextActive]}>
+              <Text style={[styles.quickFilterText, channelFilterActive && styles.quickFilterTextActive]}>
                 {t('youtubeFilterChannel')}
               </Text>
             </Pressable>
@@ -712,7 +654,6 @@ export default function YoutubeScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
-  const segmentTab = getSegmentTabBarStyles(theme, sf);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     mainColumn: {
@@ -816,40 +757,37 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '900',
       color: theme.bg,
     },
-    segment: segmentTab.segment,
-    segBtn: segmentTab.segBtn,
-    segBtnActive: segmentTab.segBtnActive,
-    segText: segmentTab.segText,
-    segTextActive: segmentTab.segTextActive,
-    channelFilterRow: {
+    quickFilterRow: {
       flexDirection: 'row',
-      marginTop: 8,
-    },
-    channelFilterChip: {
-      minHeight: 32,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      paddingHorizontal: 11,
-      borderRadius: 999,
+      gap: 4,
+      padding: 4,
+      borderRadius: 16,
+      backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
     },
-    channelFilterChipActive: {
-      borderColor: theme.greenBorder,
+    quickFilterChip: {
+      flex: 1,
+      minHeight: 34,
+      paddingHorizontal: 10,
+      borderRadius: 12,
+      backgroundColor: 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    quickFilterChipActive: {
       backgroundColor: theme.greenDim,
     },
-    channelFilterChipDisabled: {
+    quickFilterChipDisabled: {
       opacity: 0.45,
     },
-    channelFilterText: {
+    quickFilterText: {
       fontSize: sf(12),
       lineHeight: sf(17),
       fontWeight: '800',
       color: theme.textDim,
     },
-    channelFilterTextActive: {
+    quickFilterTextActive: {
       color: theme.green,
     },
     errBox: {

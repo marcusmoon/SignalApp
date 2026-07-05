@@ -19,11 +19,15 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
-import { markAlertsSeen } from '@/services/alertsUnreadPreference';
+import { markAlertsSeen, isServerInboxNotificationId } from '@/services/alertsUnreadPreference';
 import { loadNotificationHistory, loadDismissedNotificationIds, removeNotificationById, removeNotificationsByIds, type StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
 import { loadAppAuthSession, getSessionAccessToken, type StoredAppAuthSession } from '@/services/appAuthSession';
-import { fetchSignalNotifications } from '@/integrations/signal-api/notifications';
+import {
+  deleteSignalNotificationInboxItems,
+  fetchSignalNotifications,
+  SIGNAL_NOTIFICATION_INBOX_MAX,
+} from '@/integrations/signal-api/notifications';
 import { formatRelativeTime } from '@/utils/date';
 
 import { alertMatchesFilter, alertTypeMessageId, type AlertsFilter } from '@/domain/alerts/notificationCategory';
@@ -55,14 +59,14 @@ export default function AlertsScreen() {
     }
     const [list, serverNotifications, dismissed] = await Promise.all([
       loadNotificationHistory(),
-      hasSignalApi() ? fetchSignalNotifications(access, 50).catch(() => []) : Promise.resolve([]),
+      hasSignalApi() ? fetchSignalNotifications(access, SIGNAL_NOTIFICATION_INBOX_MAX).catch(() => []) : Promise.resolve([]),
       loadDismissedNotificationIds(),
     ]);
     const serverItems: StoredNotification[] = serverNotifications.map((item) => ({
-      id: `server:${item.id}`,
+      id: item.inboxId || `server:${item.id}`,
       title: item.title,
       body: item.body,
-      receivedAt: item.scheduledAt || item.createdAt || new Date().toISOString(),
+      receivedAt: item.deliveredAt || item.scheduledAt || item.createdAt || new Date().toISOString(),
       high: item.priority === 'high',
       type: item.type,
       sourceType: item.sourceType,
@@ -79,7 +83,8 @@ export default function AlertsScreen() {
           seen.add(item.id);
           return true;
         })
-        .sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime()),
+        .sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime())
+        .slice(0, SIGNAL_NOTIFICATION_INBOX_MAX),
     );
   }, []);
 
@@ -132,8 +137,13 @@ export default function AlertsScreen() {
 
   const onDeleteAlert = useCallback(async (id: string) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
+    const access = getSessionAccessToken(authSession);
+    if (isServerInboxNotificationId(id) && access && hasSignalApi()) {
+      await deleteSignalNotificationInboxItems(access, { ids: [id] }).catch(() => {});
+      return;
+    }
     await removeNotificationById(id);
-  }, []);
+  }, [authSession]);
 
   const onDeleteAllAlerts = useCallback(() => {
     if (items.length === 0) return;
@@ -143,13 +153,18 @@ export default function AlertsScreen() {
         text: t('alertsSwipeDelete'),
         style: 'destructive',
         onPress: () => {
-          const ids = items.map((item) => item.id);
+          const access = getSessionAccessToken(authSession);
+          const inboxIds = items.filter((item) => isServerInboxNotificationId(item.id)).map((item) => item.id);
+          const localIds = items.filter((item) => !isServerInboxNotificationId(item.id)).map((item) => item.id);
           setItems([]);
-          void removeNotificationsByIds(ids);
+          if (access && hasSignalApi() && inboxIds.length) {
+            void deleteSignalNotificationInboxItems(access, { ids: inboxIds }).catch(() => {});
+          }
+          if (localIds.length) void removeNotificationsByIds(localIds);
         },
       },
     ]);
-  }, [items, t]);
+  }, [authSession, items, t]);
 
   const filteredItems = useMemo(
     () => items.filter((item) => alertMatchesFilter(item, filter)),

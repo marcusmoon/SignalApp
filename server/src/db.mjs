@@ -84,6 +84,17 @@ import {
   upsertNotificationRow,
 } from './db/repositories/notificationsRepository.mjs';
 import {
+  countUnreadUserNotificationInbox,
+  deleteUserNotificationInboxItems,
+  inboxRowAsLegacyNotification,
+  markUserNotificationInboxRead,
+  queryUserNotificationInboxRows,
+  recordInboxDeliveriesForUsers,
+  syncLazyInboxLinksForUser,
+  upsertUserNotificationInboxRow,
+  USER_NOTIFICATION_INBOX_MAX,
+} from './db/repositories/notificationInboxRepository.mjs';
+import {
   listAppUserTermAcceptanceRows,
   listLegalTermRows,
   updateLegalTermRow,
@@ -1998,8 +2009,41 @@ export async function queryNotifications(options = {}) {
 }
 
 export async function queryPublicNotificationsForUser(userId, options = {}) {
-  return queryPublicNotificationsForUserRows(userId, options);
+  const rows = await queryUserNotificationInboxRows(userId, {
+    limit: Math.min(USER_NOTIFICATION_INBOX_MAX, options.limit ?? USER_NOTIFICATION_INBOX_MAX),
+  });
+  return rows.map(inboxRowAsLegacyNotification).filter(Boolean);
 }
+
+export async function queryUserNotificationInbox(userId, options = {}) {
+  return queryUserNotificationInboxRows(userId, options);
+}
+
+export async function countUserNotificationInboxUnread(userId) {
+  return countUnreadUserNotificationInbox(userId);
+}
+
+export async function markUserNotificationInboxReadState(userId, options = {}) {
+  return markUserNotificationInboxRead(userId, options);
+}
+
+export async function deleteUserNotificationInbox(userId, options = {}) {
+  return deleteUserNotificationInboxItems(userId, options);
+}
+
+export async function deliverUserNotificationInbox(userId, notificationId, deliveredAt) {
+  return upsertUserNotificationInboxRow(userId, notificationId, { deliveredAt });
+}
+
+export async function recordNotificationInboxDeliveries(userIds, notificationId, deliveredAt) {
+  return recordInboxDeliveriesForUsers(userIds, notificationId, deliveredAt);
+}
+
+export async function syncUserNotificationInboxLinks(userId) {
+  return syncLazyInboxLinksForUser(userId);
+}
+
+export { USER_NOTIFICATION_INBOX_MAX };
 
 export async function claimPushNotificationsForDelivery({ limit = 20, now = nowIso(), provider = 'mock' } = {}) {
   return withDbExclusive(() => claimPushNotificationRows({ limit, now, provider }));

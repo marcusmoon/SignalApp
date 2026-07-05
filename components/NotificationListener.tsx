@@ -2,8 +2,11 @@ import * as Notifications from 'expo-notifications';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
+import { deliverSignalNotificationInbox } from '@/integrations/signal-api/notifications';
 import { appendNotificationFromPayload } from '@/services/notificationHistory';
 import { setAlertsUnreadCached } from '@/services/alertsUnreadPreference';
+import { getSessionAccessToken, loadAppAuthSession } from '@/services/appAuthSession';
+import { hasSignalApi } from '@/services/env';
 import {
   loadNotificationPrefs,
   shouldRecordIncomingPush,
@@ -46,6 +49,14 @@ export function NotificationListener() {
       void loadNotificationPrefs().then((prefs) => {
         if (!shouldRecordIncomingPush(type, sourceType, prefs)) return;
         void setAlertsUnreadCached(true);
+        const notificationId = String(data?.notificationId || '').trim();
+        if (notificationId && hasSignalApi()) {
+          void loadAppAuthSession().then((session) => {
+            const access = getSessionAccessToken(session);
+            if (!access) return;
+            void deliverSignalNotificationInbox(access, notificationId).catch(() => {});
+          });
+        }
         if (
           type === 'market_briefing' ||
           sourceType === 'market_briefing' ||

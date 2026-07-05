@@ -13,7 +13,6 @@ const GAP = 6;
 const ROW_GAP = 16;
 const BOX_PAD = 10;
 const MIN_CELL_WIDTH = 72;
-const MAX_CELL_WIDTH = 112;
 
 function chunkItems<T>(items: T[], columns: number): T[][] {
   const rows: T[][] = [];
@@ -29,7 +28,6 @@ export function computeReferenceLinkGridColumns(
   itemCount: number,
   gap = GAP,
   minCellWidth = MIN_CELL_WIDTH,
-  maxCellWidth = MAX_CELL_WIDTH,
 ): number {
   if (innerWidth <= 0 || itemCount <= 0) return 1;
 
@@ -47,11 +45,8 @@ export function computeReferenceLinkGridColumns(
     const fullRows = remainder === 0;
     const orphanRatio = remainder === 0 ? 0 : remainder / columns;
 
-    const score =
-      (fullRows ? 1000 : 0) +
-      (1 - orphanRatio) * 100 +
-      Math.min(cellWidth, maxCellWidth) +
-      columns * 0.1;
+    // 꽉 찬 행 우선, 동률이면 열 수가 많은 쪽(아이콘 숏컷은 촘촘한 그리드가 자연스럽다)
+    const score = (fullRows ? 1000 : 0) + (1 - orphanRatio) * 100 + columns * 10;
 
     if (score > bestScore) {
       bestScore = score;

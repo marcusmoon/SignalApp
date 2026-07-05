@@ -351,6 +351,8 @@ function WebWheelFlatListInner<T>(
   return (
     <FlatList
       {...rest}
+      numColumns={numColumns}
+      columnWrapperStyle={columnWrapperStyle}
       data={data}
       renderItem={renderItem}
       keyExtractor={keyExtractor}

@@ -273,7 +273,7 @@ const TAB_BAR_OPACITY_ORDER: TabBarOpacityLevel[] = [0, 1, 2, 3, 4];
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, minHeight: 0, backgroundColor: theme.bg },
-    scrollFlex: { flex: 1, minHeight: 0 },
+    scrollFlex: { flex: 1, minHeight: 0, backgroundColor: theme.bg },
     scroll: {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
@@ -281,6 +281,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 16,
       paddingTop: 4,
       paddingBottom: 32,
+      backgroundColor: theme.bg,
     },
     scrollEmbedded: {
       maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,

@@ -342,12 +342,14 @@ export default function TabLayout() {
         },
         tabBarButton: (props: BottomTabBarButtonProps) => <SlackTabBarButton {...props} />,
         headerShown: false,
-        /** Web FlatList/ScrollView need a bounded flex column from the tab scene downward. */
-        ...(webTabSceneStyle ? { sceneStyle: webTabSceneStyle } : null),
-        /** 탭 복귀 시 화면이 비는(react-native-screens freeze) 경우 완화 */
-        freezeOnBlur: false,
+        sceneStyle: {
+          backgroundColor: theme.bg,
+          ...(webTabSceneStyle ?? {}),
+        },
         /** Web: lazy-mount tabs to avoid rendering every feed at once. Native phone keeps eager mount. */
         lazy: isWeb,
+        /** 탭 복귀 시 화면이 비는(react-native-screens freeze) 경우 완화 */
+        freezeOnBlur: false,
       }),
     [
       tabBarTotalHeight,
@@ -362,6 +364,7 @@ export default function TabLayout() {
       isWeb,
       theme.green,
       theme.textMuted,
+      theme.bg,
       effectiveColorScheme,
     ],
   );

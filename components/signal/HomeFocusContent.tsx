@@ -1029,7 +1029,7 @@ function makeStyles(
       borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.colorScheme === 'dark' ? '#111722' : '#FBFCFE',
+      backgroundColor: theme.colorScheme === 'dark' ? theme.bgElevated : theme.card,
       overflow: 'hidden',
       shadowColor: '#000000',
       shadowOpacity: 0.03,

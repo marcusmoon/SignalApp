@@ -63,7 +63,11 @@ export function applyWebDocumentTheme(scheme: ThemeColorScheme, bg: string, acti
   applyWebThemeCssVariables(root, theme);
   document.body.style.backgroundColor = bg;
   const appRoot = document.getElementById('root');
-  if (appRoot) appRoot.style.backgroundColor = bg;
+  if (appRoot) {
+    appRoot.style.backgroundColor = bg;
+    const appShell = appRoot.firstElementChild;
+    if (appShell instanceof HTMLElement) appShell.style.backgroundColor = bg;
+  }
 
   const themeColorMeta = document.querySelector('meta[name="theme-color"]');
   if (themeColorMeta) themeColorMeta.setAttribute('content', bg);

@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useRef } from 'react';
-import { Platform, ScrollView, View, type ScrollViewProps } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View, type ScrollViewProps } from 'react-native';
 
 import {
   getWebRefreshControlProps,
@@ -23,6 +23,8 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
   const webRefreshHandlers = useWebRefreshHandlers(refreshControlProps, getNode);
 
   if (Platform.OS === 'web') {
+    const flatStyle = StyleSheet.flatten(style);
+    const backgroundColor = flatStyle?.backgroundColor;
     const webEventProps = {
       onTouchStart: webRefreshHandlers.onTouchStart,
       onTouchMove: webRefreshHandlers.onTouchMove,
@@ -35,7 +37,13 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
         ref={localRef as never}
         {...(webEventProps as Record<string, unknown>)}
         style={[webViewportStyle, style]}>
-        <View style={contentContainerStyle}>
+        <View
+          style={[
+            contentContainerStyle,
+            backgroundColor != null
+              ? { backgroundColor, flexGrow: 1, minHeight: '100%' as const }
+              : null,
+          ]}>
           {refreshControlProps?.refreshing ? <WebRefreshStatus /> : null}
           {children}
         </View>

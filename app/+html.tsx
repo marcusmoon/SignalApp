@@ -75,9 +75,12 @@ const initialThemeScript = `
       document.documentElement.style.setProperty('--signal-green', tokens.green);
       document.documentElement.style.setProperty('--signal-green-dim', tokens.greenDim);
       document.documentElement.style.setProperty('--signal-green-border', tokens.greenBorder);
-      if (document.body) document.body.style.backgroundColor = bg;
-      var root = document.getElementById('root');
-      if (root) root.style.backgroundColor = bg;
+    if (document.body) document.body.style.backgroundColor = bg;
+    var root = document.getElementById('root');
+    if (root) {
+      root.style.backgroundColor = bg;
+      if (root.firstElementChild) root.firstElementChild.style.backgroundColor = bg;
+    }
     } catch (e) {}
   }
   applySignalTheme();
@@ -159,20 +162,23 @@ body {
 
 html[data-signal-theme="light"],
 html[data-signal-theme="light"] body,
-html[data-signal-theme="light"] #root {
+html[data-signal-theme="light"] #root,
+html[data-signal-theme="light"] #root > div {
   background-color: ${lightBg};
 }
 
 html[data-signal-theme="dark"],
 html[data-signal-theme="dark"] body,
-html[data-signal-theme="dark"] #root {
+html[data-signal-theme="dark"] #root,
+html[data-signal-theme="dark"] #root > div {
   background-color: ${darkBg};
 }
 
 @media (prefers-color-scheme: dark) {
   html:not([data-signal-theme]),
   html:not([data-signal-theme]) body,
-  html:not([data-signal-theme]) #root {
+  html:not([data-signal-theme]) #root,
+  html:not([data-signal-theme]) #root > div {
     background-color: ${darkBg};
   }
 }
@@ -180,7 +186,8 @@ html[data-signal-theme="dark"] #root {
 @media (prefers-color-scheme: light) {
   html:not([data-signal-theme]),
   html:not([data-signal-theme]) body,
-  html:not([data-signal-theme]) #root {
+  html:not([data-signal-theme]) #root,
+  html:not([data-signal-theme]) #root > div {
     background-color: ${lightBg};
   }
 }

@@ -181,7 +181,7 @@ function RootLayoutNav() {
     () =>
       ({ route }: { route: { name: string } }) => {
         if (route.name === '(tabs)') {
-          return { headerShown: false, ...screenStatusBarOptions };
+          return { headerShown: false, contentStyle: { backgroundColor: theme.bg }, ...screenStatusBarOptions };
         }
         const titleByName: Record<string, string> = {
           settings: t('screenSettings'),
@@ -200,6 +200,7 @@ function RootLayoutNav() {
         return {
           title: titleByName[route.name] ?? route.name,
           headerBackTitle: t('commonBack'),
+          contentStyle: { backgroundColor: theme.bg },
           headerStyle: { backgroundColor: theme.bg },
           headerTintColor: theme.green,
           headerTitleStyle: { fontWeight: '800' as const, color: theme.text },

@@ -28,6 +28,10 @@ import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
+import {
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  SCREEN_WIDE_CONTENT_PADDING_TOP,
+} from '@/constants/segmentTabBar';
 import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
@@ -665,15 +669,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomColor: theme.border,
     },
     list: { ...webScrollViewportStyle },
-    listContent: { paddingHorizontal: 16, paddingTop: 10 },
+    listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
     ipadFilterWrap: {
       flexShrink: 0,
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 8,
       paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 2,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+      paddingBottom: 4,
     },
     ipadFilterBtn: {
       alignSelf: 'flex-start',

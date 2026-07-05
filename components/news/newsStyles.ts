@@ -17,6 +17,10 @@ import {
   SEGMENT_TAB_LINE_HEIGHT,
   SEGMENT_TAB_OUTER_RADIUS,
   SEGMENT_TAB_PADDING,
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  SCREEN_LIST_HEADER_PADDING_BOTTOM,
+  SCREEN_LIST_HEADER_PADDING_TOP,
+  SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
 
 export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
@@ -50,13 +54,14 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     listContent: {
       paddingHorizontal: 16,
-      paddingTop: 8,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
     },
     adBetweenGroups: {
       marginVertical: 10,
     },
     listHeader: {
-      paddingBottom: 4,
+      paddingTop: SCREEN_LIST_HEADER_PADDING_TOP,
+      paddingBottom: SCREEN_LIST_HEADER_PADDING_BOTTOM,
     },
     skeletonBlock: {
       marginTop: 4,

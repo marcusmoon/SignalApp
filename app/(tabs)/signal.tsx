@@ -23,6 +23,10 @@ import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { APP_CONTENT_MAX_WIDTH, APP_CONTENT_SIDE_PADDING, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
+import {
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  SCREEN_WIDE_CONTENT_PADDING_TOP,
+} from '@/constants/segmentTabBar';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
@@ -583,10 +587,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     content: {
       width: '100%',
       paddingHorizontal: 16,
-      paddingTop: 4,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
     },
     contentWide: {
-      paddingTop: 12,
+      paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
     },
     dateNavigatorWrap: {
       width: '100%',

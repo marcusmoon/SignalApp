@@ -9,6 +9,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SIDEBAR_WIDTH } from '@/constants/responsiveLayout';
+import { SCREEN_SIDEBAR_SUBTAB_MARGIN_BOTTOM } from '@/constants/segmentTabBar';
 import { isSettingsTab, SETTINGS_TABS, type SettingsTab } from '@/constants/settingsTabs';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -416,7 +417,7 @@ function makeStyles(
       fontWeight: '800',
     },
     subTabList: {
-      marginBottom: 6,
+      marginBottom: SCREEN_SIDEBAR_SUBTAB_MARGIN_BOTTOM,
       paddingLeft: 18,
     },
     subTabItem: {

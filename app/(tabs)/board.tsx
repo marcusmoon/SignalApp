@@ -26,6 +26,7 @@ import {
   SEGMENT_TAB_LINE_HEIGHT,
   SEGMENT_TAB_OUTER_RADIUS,
   SEGMENT_TAB_PADDING,
+  SCREEN_LIST_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
@@ -196,7 +197,7 @@ export default function BoardScreen() {
         ) : (
           <WebWheelFlatList
             style={styles.list}
-            contentContainerStyle={{ paddingBottom: listBottomPad, paddingHorizontal: 16, paddingTop: 4 }}
+            contentContainerStyle={{ paddingBottom: listBottomPad, paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP }}
             data={items}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
@@ -258,7 +259,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       elevation: Platform.OS === 'android' ? 2 : 0,
       paddingHorizontal: 16,
       paddingTop: 10,
-      paddingBottom: 10,
+      paddingBottom: 12,
       backgroundColor: theme.bg,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,

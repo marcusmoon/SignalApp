@@ -28,6 +28,10 @@ import {
   SEGMENT_TAB_LINE_HEIGHT,
   SEGMENT_TAB_OUTER_RADIUS,
   SEGMENT_TAB_PADDING,
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  SCREEN_LIST_HEADER_PADDING_BOTTOM,
+  SCREEN_LIST_HEADER_PADDING_TOP,
+  SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -522,16 +526,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       ...webFlexFill,
       flexDirection: 'row',
       gap: 12,
-      paddingTop: 10,
+      paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
     },
     list: { ...webScrollViewportStyle },
     wideList: {
       flex: 0.45,
       minWidth: 360,
     },
-    listContent: { paddingHorizontal: 16, paddingTop: 0 },
-    wideListContent: { paddingTop: 0 },
-    listHeader: { paddingTop: 4 },
+    listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
+    wideListContent: { paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP },
+    listHeader: {
+      paddingTop: SCREEN_LIST_HEADER_PADDING_TOP,
+      paddingBottom: SCREEN_LIST_HEADER_PADDING_BOTTOM,
+    },
     segment: {
       flexDirection: 'row',
       backgroundColor: theme.bgElevated,
@@ -590,7 +597,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 8,
-      marginBottom: 10,
+      marginTop: 2,
+      marginBottom: 12,
     },
     typeFilterChip: {
       minHeight: 32,

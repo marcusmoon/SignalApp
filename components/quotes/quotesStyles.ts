@@ -14,6 +14,8 @@ import {
   SEGMENT_TAB_LINE_HEIGHT,
   SEGMENT_TAB_OUTER_RADIUS,
   SEGMENT_TAB_PADDING,
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
 
 export function makeQuotesStyles(
@@ -35,7 +37,7 @@ export function makeQuotesStyles(
     },
     detailPanePad: {
       flex: 1,
-      paddingTop: 10,
+      paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
     },
     topFixed: {
       flexShrink: 0,
@@ -49,8 +51,8 @@ export function makeQuotesStyles(
       borderBottomColor: theme.border,
     },
     list: { ...webScrollViewportStyle },
-    listContent: { paddingHorizontal: 16, paddingTop: 8 },
-    listContentWide: { paddingTop: 12 },
+    listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
+    listContentWide: { paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP },
     segment: {
       flexDirection: 'row',
       backgroundColor: theme.bgElevated,

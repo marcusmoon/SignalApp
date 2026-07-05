@@ -10,7 +10,6 @@ import {
 
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
-import { HomeSectionDivider } from '@/components/signal/HomeSectionDivider';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -752,8 +751,6 @@ export function HomeFocusContent({
             </View>
           </View>
 
-          <HomeSectionDivider />
-
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('homeFocusSignalTitle')}
@@ -774,10 +771,7 @@ export function HomeFocusContent({
           </View>
 
           {selectedIsExactToday ? (
-            <>
-              <HomeSectionDivider />
-
-              <View style={styles.section}>
+            <View style={styles.section}>
                 <HomeSectionHeader title={t('homeFocusWatchTitle')} onPress={openQuotes} accessibilityLabel={t('commonViewAll')} />
                 <View style={styles.quoteGrid}>
                   {quotes.length === 0 ? (
@@ -817,10 +811,7 @@ export function HomeFocusContent({
                   )}
                 </View>
               </View>
-            </>
           ) : null}
-
-          <HomeSectionDivider />
 
           <View style={styles.section}>
             <HomeSectionHeader
@@ -837,8 +828,6 @@ export function HomeFocusContent({
               </View>
             )}
           </View>
-
-          <HomeSectionDivider />
 
           <View style={styles.section}>
             <HomeSectionHeader
@@ -888,7 +877,7 @@ function makeStyles(
       flexGrow: 1,
       paddingHorizontal: 16,
       paddingTop: 14,
-      gap: 18,
+      gap: 24,
     },
     errorBox: {
       borderRadius: 14,

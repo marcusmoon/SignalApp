@@ -1,6 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Modal,
   Pressable,
   StyleSheet,
@@ -151,7 +150,6 @@ export default function CalendarScreen() {
   const todayYmd = toYmd(new Date());
 
   const [loading, setLoading] = useState(true);
-  const [listLoading, setListLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
@@ -199,7 +197,6 @@ export default function CalendarScreen() {
     (async () => {
       const hadEvents = monthEventsRef.current.length > 0;
       if (!hadEvents) setLoading(true);
-      else setListLoading(true);
       setError(null);
       try {
         const events = await fetchMonthData(viewMonth.year, viewMonth.month);
@@ -213,7 +210,6 @@ export default function CalendarScreen() {
       } finally {
         if (!cancelled && loadSeqRef.current === seq) {
           setLoading(false);
-          setListLoading(false);
         }
       }
     })();
@@ -255,7 +251,7 @@ export default function CalendarScreen() {
     [locale, selectedYmd],
   );
 
-  const emptyFiltered = !loading && !listLoading && !error && monthEvents.length > 0 && filteredEvents.length === 0;
+  const emptyFiltered = !loading && !error && monthEvents.length > 0 && filteredEvents.length === 0;
   const allEventTypesSelected = enabledTypes.size === CALENDAR_EVENT_TYPE_ORDER.length;
 
   useEffect(() => {
@@ -350,11 +346,6 @@ export default function CalendarScreen() {
   const listHeader = useMemo(
     () => (
       <View style={styles.daySection}>
-        {listLoading ? (
-          <View style={styles.listLoadingRow}>
-            <ActivityIndicator color={theme.green} size="small" />
-          </View>
-        ) : null}
         <Text style={styles.daySectionMeta}>
           {selectedDayEvents.length > 0
             ? `${t('calendarScreenSectionTitle')} · ${selectedDayEvents.length}`
@@ -362,7 +353,7 @@ export default function CalendarScreen() {
         </Text>
       </View>
     ),
-    [listLoading, selectedDayEvents.length, styles.daySection, styles.daySectionMeta, styles.listLoadingRow, t, theme.green],
+    [selectedDayEvents.length, styles.daySection, styles.daySectionMeta, t],
   );
 
   const showTodayNav = selectedYmd !== todayYmd;

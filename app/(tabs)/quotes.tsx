@@ -3,7 +3,6 @@ import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useIsFocused, useFocusEffect } from "expo-router/react-navigation";
 import { useRouter } from 'expo-router';
 import {
-  ActivityIndicator,
   Alert,
   InteractionManager,
   Platform,
@@ -109,7 +108,6 @@ export default function QuotesScreen() {
   const [segment, setSegment] = useState<QuoteSegmentKey>('watch');
   const [segmentOrder, setSegmentOrder] = useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
   const [loading, setLoading] = useState(true);
-  const [listLoading, setListLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
@@ -250,7 +248,6 @@ export default function QuotesScreen() {
         if (cancelled) return;
         void (async () => {
           if (rowsRef.current.length === 0) setLoading(true);
-          else setListLoading(true);
           try {
             await load();
           } catch (e) {
@@ -259,10 +256,7 @@ export default function QuotesScreen() {
               setRows([]);
             }
           } finally {
-            if (!cancelled) {
-              setLoading(false);
-              setListLoading(false);
-            }
+            if (!cancelled) setLoading(false);
           }
         })();
       };
@@ -433,11 +427,6 @@ export default function QuotesScreen() {
                 </Pressable>
               </View>
             ) : null}
-            {listLoading ? (
-              <View style={styles.listLoadingRow}>
-                <ActivityIndicator color={theme.green} size="small" />
-              </View>
-            ) : null}
           </>
         )}
       </>
@@ -445,7 +434,6 @@ export default function QuotesScreen() {
     [
       draftTicker,
       error,
-      listLoading,
       loading,
       onAddWatch,
       onResetWatchDefaults,
@@ -453,7 +441,6 @@ export default function QuotesScreen() {
       segment,
       styles,
       t,
-      theme.green,
       theme.textDim,
     ],
   );
@@ -654,7 +641,7 @@ export default function QuotesScreen() {
         renderItem={renderQuoteItem}
         ListHeaderComponent={quotesListHeader}
         ListEmptyComponent={
-          !loading && !listLoading && !error && rows.length === 0 ? (
+          !loading && !error && rows.length === 0 ? (
             <Text style={styles.empty}>
               {segment === 'watch' ? t('quotesEmptyWatch') : t('quotesEmptyGeneric')}
             </Text>

@@ -1,7 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack, type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
@@ -125,7 +125,6 @@ export function DisclosureFlowContent({
   itemsRef.current = items;
   const [highlightId, setHighlightId] = useState<string | null>(initialDigestId);
   const [loading, setLoading] = useState(true);
-  const [listLoading, setListLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -164,7 +163,6 @@ export function DisclosureFlowContent({
     }
     const hadItems = itemsRef.current.length > 0;
     if (!hadItems) setLoading(true);
-    else setListLoading(true);
     setError(null);
     try {
       const page = await fetchSignalDisclosureDigests({
@@ -179,7 +177,6 @@ export function DisclosureFlowContent({
       setItems([]);
     } finally {
       setLoading(false);
-      setListLoading(false);
     }
   }, [market, selectedYmd, t]);
 
@@ -250,17 +247,11 @@ export function DisclosureFlowContent({
             </View>
           ) : null}
 
-          {listLoading ? (
-            <View style={styles.listLoadingRow}>
-              <ActivityIndicator color={theme.green} size="small" />
-            </View>
-          ) : null}
-
           {loading && items.length === 0 ? (
             <View style={styles.loadingBox}>
               <SignalLoadingIndicator message={t('commonLoading')} />
             </View>
-          ) : !loading && !listLoading && items.length === 0 ? (
+          ) : !loading && items.length === 0 ? (
             <Text style={styles.empty}>{t('disclosureFlowEmpty')}</Text>
           ) : (
             <View style={styles.issueList}>

@@ -923,7 +923,10 @@ export default function FeedScreen() {
         }
         globalFilterRef.current = kind;
         setGlobalFilter(kind);
-      } else if (segment === 'crypto') {
+        applyMergedNewsRows(serverRowsRef.current);
+        return;
+      }
+      if (segment === 'crypto') {
         if (kind === 'sources') {
           setCryptoDraftSources(normalizeNullableSelection(cryptoSourceOptions, cryptoSelectedSources));
           setCryptoSourceModalVisible(true);
@@ -931,7 +934,10 @@ export default function FeedScreen() {
         }
         cryptoFilterRef.current = kind;
         setCryptoFilter(kind);
-      } else if (segment === 'korea') {
+        applyMergedNewsRows(serverRowsRef.current);
+        return;
+      }
+      if (segment === 'korea') {
         if (kind === 'sources') {
           setKoreaDraftSources(normalizeNullableSelection(koreaSourceOptions, koreaSelectedSources));
           setKoreaSourceModalVisible(true);
@@ -939,53 +945,17 @@ export default function FeedScreen() {
         }
         koreaFilterRef.current = kind;
         setKoreaFilter(kind);
-      } else {
-        return;
+        applyMergedNewsRows(serverRowsRef.current);
       }
-
-      const category = segment === 'crypto' ? 'crypto' : segment === 'korea' ? 'korea' : 'global';
-      const limit =
-        segment === 'crypto' ? FEED_PAGE_CRYPTO : segment === 'korea' ? FEED_PAGE_KOREA : FEED_PAGE_GLOBAL;
-
-      setListLoading(true);
-      setError(null);
-      void fetchSignalNews(
-        {
-          locale,
-          category,
-          flash: kind === 'flash',
-          limit,
-          offset: 0,
-          tag: activeTag || undefined,
-        },
-        { cacheMode: 'bypass' },
-      )
-        .then((page) => {
-          const deduped = dedupeNewsFeedRows(page.items);
-          feedMetaRef.current = page.meta;
-          hasMoreRef.current = page.meta.hasMore;
-          setHasMore(page.meta.hasMore);
-          if (segment === 'crypto') {
-            setCryptoSourceOptions(uniqueSignalSources(deduped));
-          }
-          if (segment === 'korea') {
-            setKoreaSourceOptions(uniqueSignalSources(deduped));
-          }
-          setItems(deduped.map((item) => signalNewsToNewsItem(item, locale)));
-        })
-        .catch((e) => setError(formatSignalApiError(e, t, 'feedErrorLoad')))
-        .finally(() => setListLoading(false));
     },
     [
-      activeTag,
+      applyMergedNewsRows,
       cryptoSelectedSources,
       cryptoSourceOptions,
       koreaSelectedSources,
       koreaSourceOptions,
-      locale,
       segment,
       selectedSources,
-      t,
     ],
   );
 
@@ -1004,8 +974,8 @@ export default function FeedScreen() {
         offset: 0,
         tag: activeTag || undefined,
       },
-      { cacheMode: 'bypass' },
-    )
+        { cacheMode: 'use' },
+      )
       .then((page) => {
         const deduped = dedupeNewsFeedRows(page.items);
         syncServerRows(deduped);
@@ -1045,8 +1015,8 @@ export default function FeedScreen() {
         offset: 0,
         tag: activeTag || undefined,
       },
-      { cacheMode: 'bypass' },
-    )
+        { cacheMode: 'use' },
+      )
       .then((page) => {
         const deduped = dedupeNewsFeedRows(page.items);
         syncServerRows(deduped);
@@ -1352,19 +1322,12 @@ export default function FeedScreen() {
             <SkeletonFeed />
           </View>
         ) : null}
-
-        {listLoading ? (
-          <View style={styles.footerLoading}>
-            <ActivityIndicator color={theme.green} size="small" />
-          </View>
-        ) : null}
       </View>
     ),
     [
       activeTag,
       error,
       listData.length,
-      listLoading,
       loading,
       applyNewsQuickFilter,
       newsQuickFilter,

@@ -78,6 +78,9 @@ export default function BoardScreen() {
   const [meta, setMeta] = useState<SignalCommunityListMeta | null>(null);
   const loadingMoreRef = useRef(false);
   const itemsRef = useRef<SignalApiCommunityPost[]>([]);
+  const listCacheRef = useRef<Map<CommunitySourceFilter, { items: SignalApiCommunityPost[]; meta: SignalCommunityListMeta }>>(
+    new Map(),
+  );
   itemsRef.current = items;
 
   const load = useCallback(
@@ -94,9 +97,17 @@ export default function BoardScreen() {
         if (loadingMoreRef.current || !meta?.hasMore) return;
         loadingMoreRef.current = true;
         setLoadingMore(true);
-      } else if (!opts?.refresh) {
+      } else if (opts?.refresh) {
+        listCacheRef.current.delete(nextSource);
         if (itemsRef.current.length === 0) setLoading(true);
-        else setListLoading(true);
+      } else {
+        const cached = listCacheRef.current.get(nextSource);
+        if (cached) {
+          setItems(cached.items);
+          setMeta(cached.meta);
+        }
+        if (!cached && itemsRef.current.length === 0) setLoading(true);
+        else if (!cached) setListLoading(true);
       }
       setError(null);
       try {
@@ -106,6 +117,9 @@ export default function BoardScreen() {
           limit: PAGE_SIZE,
           offset,
         });
+        if (!loadMore) {
+          listCacheRef.current.set(nextSource, { items: page.items, meta: page.meta });
+        }
         setItems((prev) => (loadMore ? [...prev, ...page.items] : page.items));
         setMeta(page.meta);
       } catch (e) {

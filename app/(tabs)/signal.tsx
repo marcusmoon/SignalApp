@@ -3,7 +3,6 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   AppState,
   Modal,
   Pressable,
@@ -137,7 +136,6 @@ export default function SignalScreen() {
     QUOTES_CHANGE_COLOR_CONVENTION_DEFAULT,
   );
   const [loading, setLoading] = useState(true);
-  const [listLoading, setListLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
@@ -180,16 +178,12 @@ export default function SignalScreen() {
     void (async () => {
       const hadBriefings = marketBriefingsRef.current.length > 0;
       if (!hadBriefings) setLoading(true);
-      else setListLoading(true);
       try {
         await load();
       } catch (e) {
         if (!cancelled) setError(formatSignalApiError(e, t, 'briefingErrorLoad'));
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-          setListLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
@@ -491,12 +485,6 @@ export default function SignalScreen() {
           contentContainerStyle={[styles.content, useTwoPane && styles.contentWide, { paddingBottom: scrollBottomPadding }]}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           <OtaUpdateBanner />
-
-          {listLoading ? (
-            <View style={styles.listLoadingRow}>
-              <ActivityIndicator color={theme.green} size="small" />
-            </View>
-          ) : null}
 
           {error ? (
             <View style={styles.errBox}>

@@ -1,7 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
@@ -105,7 +105,6 @@ export function NewsIssuesContent({
   itemsRef.current = items;
   const [expandedId, setExpandedId] = useState<string | null>(initialDigestId);
   const [loading, setLoading] = useState(true);
-  const [listLoading, setListLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -135,7 +134,6 @@ export function NewsIssuesContent({
     }
     const hadItems = itemsRef.current.length > 0;
     if (!hadItems) setLoading(true);
-    else setListLoading(true);
     setError(null);
     try {
       if (category === 'all') {
@@ -164,7 +162,6 @@ export function NewsIssuesContent({
       setItems([]);
     } finally {
       setLoading(false);
-      setListLoading(false);
     }
   }, [category, selectedYmd, t]);
 
@@ -233,17 +230,11 @@ export function NewsIssuesContent({
             </View>
           ) : null}
 
-          {listLoading ? (
-            <View style={styles.listLoadingRow}>
-              <ActivityIndicator color={theme.green} size="small" />
-            </View>
-          ) : null}
-
           {loading && items.length === 0 ? (
             <View style={styles.loadingBox}>
               <SignalLoadingIndicator message={t('commonLoading')} />
             </View>
-          ) : !loading && !listLoading && items.length === 0 ? (
+          ) : !loading && items.length === 0 ? (
             <Text style={styles.empty}>{t('newsIssuesEmpty')}</Text>
           ) : (
             <View style={styles.issueList}>

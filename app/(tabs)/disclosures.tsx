@@ -200,7 +200,7 @@ export default function DisclosuresScreen() {
     let cancelled = false;
     const seq = ++loadSeqRef.current;
     if (!hasInitialLoadRef.current) setLoading(true);
-    setListFetching(true);
+    else if (cached === undefined) setListFetching(true);
 
     void (async () => {
       try {

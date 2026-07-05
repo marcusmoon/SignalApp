@@ -82,7 +82,6 @@ export default function YoutubeScreen() {
   const [sort, setSort] = useState<SortKey>('latest');
   const effectiveSort = useTwoPane && ipadNav.isAvailable ? ipadNav.youtubeSort : sort;
   const [loading, setLoading] = useState(false);
-  const [listLoading, setListLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
@@ -194,8 +193,6 @@ export default function YoutubeScreen() {
       const hadItems = itemsRef.current.length > 0;
       if (!hadItems) {
         setLoading(true);
-      } else {
-        setListLoading(true);
       }
       youtubeReplacingRef.current = true;
       setYoutubeMeta(null);
@@ -219,7 +216,6 @@ export default function YoutubeScreen() {
         setYoutubeMeta(null);
       } finally {
         setLoading(false);
-        setListLoading(false);
         youtubeReplacingRef.current = false;
       }
     },
@@ -448,11 +444,6 @@ export default function YoutubeScreen() {
             <SignalLoadingIndicator message={t('commonLoading')} />
           </View>
         ) : null}
-        {listLoading ? (
-          <View style={styles.listLoadingRow}>
-            <ActivityIndicator color={theme.green} size="small" />
-          </View>
-        ) : null}
       </>
     ),
     [
@@ -460,7 +451,6 @@ export default function YoutubeScreen() {
       curationHandles,
       error,
       isQuotaError,
-      listLoading,
       openChannelFilter,
       quotaResetHintLine,
       selectedHandles,

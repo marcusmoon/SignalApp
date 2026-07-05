@@ -419,7 +419,7 @@ export default function FeedScreen() {
             },
             { cacheMode },
           ),
-          fetchSignalNewsDigests({ category: 'crypto', limit: 30, batches: 10 }).catch(() => null),
+          fetchSignalNewsDigests({ category: 'crypto', limit: 30, batches: 10 }, { cacheMode }).catch(() => null),
         ]);
         const { items: rows, meta } = newsPage;
         const dedupedRows = syncServerRows(rows);
@@ -457,7 +457,7 @@ export default function FeedScreen() {
             },
             { cacheMode },
           ),
-          fetchSignalNewsDigests({ category: 'korea', limit: 30, batches: 10 }).catch(() => null),
+          fetchSignalNewsDigests({ category: 'korea', limit: 30, batches: 10 }, { cacheMode }).catch(() => null),
         ]);
         const { items: rows, meta } = newsPage;
         const dedupedRows = syncServerRows(rows);
@@ -499,7 +499,7 @@ export default function FeedScreen() {
           },
           { cacheMode },
         ),
-        fetchSignalNewsDigests({ category: 'global', limit: 30, batches: 10 }).catch(() => null),
+        fetchSignalNewsDigests({ category: 'global', limit: 30, batches: 10 }, { cacheMode }).catch(() => null),
       ]);
 
       const enabledCatalog = (catalogRows || [])
@@ -650,7 +650,7 @@ export default function FeedScreen() {
               limit: FEED_PAGE_VIDEO,
               offset: requestOffset,
             },
-            { cacheMode: 'use' },
+            { cacheMode: signalCacheMode() },
           );
           feedMetaRef.current = page.meta;
           lastMeta = page.meta;
@@ -729,7 +729,7 @@ export default function FeedScreen() {
             offset: requestOffset,
             tag: activeTag || undefined,
           },
-          { cacheMode: 'use' },
+          { cacheMode: signalCacheMode() },
         );
         feedMetaRef.current = meta;
         lastMeta = meta;
@@ -859,7 +859,7 @@ export default function FeedScreen() {
               offset: 0,
               tag: activeTag || undefined,
             },
-            { cacheMode: 'use' },
+            { cacheMode: signalCacheMode() },
           );
           const deduped = dedupeNewsFeedRows(page.items);
           syncServerRows(deduped);
@@ -975,7 +975,7 @@ export default function FeedScreen() {
         offset: 0,
         tag: activeTag || undefined,
       },
-        { cacheMode: 'use' },
+        { cacheMode: signalCacheMode() },
       )
       .then((page) => {
         const deduped = dedupeNewsFeedRows(page.items);
@@ -1016,7 +1016,7 @@ export default function FeedScreen() {
         offset: 0,
         tag: activeTag || undefined,
       },
-        { cacheMode: 'use' },
+        { cacheMode: signalCacheMode() },
       )
       .then((page) => {
         const deduped = dedupeNewsFeedRows(page.items);
@@ -1070,7 +1070,7 @@ export default function FeedScreen() {
             offset: 0,
             tag: activeTag || undefined,
           },
-          { cacheMode: 'use' },
+          { cacheMode: signalCacheMode() },
         );
         const deduped = dedupeNewsFeedRows(page.items);
         syncServerRows(deduped);

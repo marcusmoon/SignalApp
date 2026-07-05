@@ -1,7 +1,7 @@
 import type { SignalApiDisclosure, SignalNewsListMeta } from '@/integrations/signal-api/types';
-import { peekCache, storeCache } from '@/integrations/signal-api/cache/common';
+import { peekCache, SIGNAL_FEED_CACHE_TTL_MS, storeCache } from '@/integrations/signal-api/cache/common';
 
-export const SIGNAL_DISCLOSURES_CACHE_TTL_MS = 2 * 60 * 1000;
+export { SIGNAL_FEED_CACHE_TTL_MS as SIGNAL_DISCLOSURES_CACHE_TTL_MS };
 
 type DisclosuresCacheValue = { items: SignalApiDisclosure[]; meta: SignalNewsListMeta };
 const disclosuresCache = new Map<string, { value: DisclosuresCacheValue; expiresAt: number }>();
@@ -45,7 +45,7 @@ export function peekSignalDisclosuresCache(key: string): DisclosuresCacheValue |
 }
 
 export function storeSignalDisclosuresCache(key: string, value: DisclosuresCacheValue): void {
-  storeCache(disclosuresCache, key, value, SIGNAL_DISCLOSURES_CACHE_TTL_MS);
+  storeCache(disclosuresCache, key, value, SIGNAL_FEED_CACHE_TTL_MS);
 }
 
 export function clearSignalDisclosuresCache(): void {

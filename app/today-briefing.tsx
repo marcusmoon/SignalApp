@@ -14,6 +14,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefings';
+import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import type { SignalApiTodayBriefing } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
@@ -24,10 +25,14 @@ function parseDateParam(value: unknown): string {
   return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : toYmd(new Date());
 }
 
-async function fetchTodayBriefingWithFallback(date: string, locale: string): Promise<SignalApiTodayBriefing | null> {
-  const primary = await fetchSignalTodayBriefing({ date, locale }).catch(() => null);
+async function fetchTodayBriefingWithFallback(
+  date: string,
+  locale: string,
+  cacheMode: ReturnType<typeof signalCacheMode>,
+): Promise<SignalApiTodayBriefing | null> {
+  const primary = await fetchSignalTodayBriefing({ date, locale }, { cacheMode }).catch(() => null);
   if (primary || locale === 'ko') return primary;
-  return fetchSignalTodayBriefing({ date, locale: 'ko' }).catch(() => null);
+  return fetchSignalTodayBriefing({ date, locale: 'ko' }, { cacheMode }).catch(() => null);
 }
 
 export default function TodayBriefingScreen() {
@@ -52,7 +57,7 @@ export default function TodayBriefingScreen() {
     [date, locale],
   );
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (forceRefresh?: boolean) => {
     if (!hasSignalApi()) {
       setItem(null);
       setError(t('errorSignalApiShort'));
@@ -61,7 +66,7 @@ export default function TodayBriefingScreen() {
     }
     setError(null);
     try {
-      setItem(await fetchTodayBriefingWithFallback(date, locale));
+      setItem(await fetchTodayBriefingWithFallback(date, locale, signalCacheMode(forceRefresh)));
     } catch (e) {
       setError(formatSignalApiError(e, t, 'todayBriefingLoadError'));
     } finally {
@@ -77,7 +82,7 @@ export default function TodayBriefingScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await load();
+      await load(true);
     } finally {
       setRefreshing(false);
     }

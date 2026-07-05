@@ -244,7 +244,7 @@ export default function YoutubeScreen() {
               ? selectedHandles
               : undefined,
         },
-        { cacheMode: 'use' },
+        { cacheMode: signalCacheMode() },
       );
       if (page.items.length === 0) {
         setYoutubeMeta((m) => (m ? { ...m, hasMore: false, nextOffset: null } : null));

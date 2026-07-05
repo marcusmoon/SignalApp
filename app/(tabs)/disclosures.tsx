@@ -131,17 +131,20 @@ export default function DisclosuresScreen() {
     [filter, symbolFilter, typeFilter],
   );
 
-  const loadDigests = useCallback(async () => {
+  const loadDigests = useCallback(async (refresh?: boolean) => {
     if (!hasSignalApi() || symbolFilter) return;
     if (digestItemsRef.current.length === 0) setDigestLoading(true);
     try {
       const market =
         filter === 'us' ? 'us' : filter === 'kr' ? 'kr' : undefined;
-      const page = await fetchSignalDisclosureDigests({
-        market,
-        limit: 16,
-        batches: 1,
-      });
+      const page = await fetchSignalDisclosureDigests(
+        {
+          market,
+          limit: 16,
+          batches: 1,
+        },
+        { cacheMode: signalCacheMode(refresh) },
+      );
       setDigestItems(page.items);
     } catch {
       // 다이제스트 실패해도 리스트는 보여줌
@@ -273,7 +276,7 @@ export default function DisclosuresScreen() {
       if (seq !== loadSeqRef.current) return;
       setItems(latest);
       setError(null);
-      await loadDigests();
+      await loadDigests(true);
       const latestIds = latest.map((item) => item.id);
       const newCount = latestIds.filter((id) => !prevIds.has(id)).length;
       if (newCount > 0) {

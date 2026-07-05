@@ -1,5 +1,11 @@
 import { signalApi } from '@/integrations/signal-api/httpClient';
+import type { SignalCacheMode } from '@/integrations/signal-api/cacheMode';
 import type { SignalApiTodayBriefing } from '@/integrations/signal-api/types';
+import {
+  buildSignalTodayBriefingCacheKey,
+  peekSignalTodayBriefingCache,
+  storeSignalTodayBriefingCache,
+} from '@/integrations/signal-api/cache/todayBriefingsCache';
 
 export async function fetchSignalTodayBriefing(
   params: {
@@ -8,7 +14,14 @@ export async function fetchSignalTodayBriefing(
     from?: string;
     to?: string;
   } = {},
+  options?: { cacheMode?: SignalCacheMode },
 ): Promise<SignalApiTodayBriefing | null> {
+  const cacheMode = options?.cacheMode || 'use';
+  const cacheKey = buildSignalTodayBriefingCacheKey(params);
+  if (cacheMode !== 'bypass') {
+    const hit = peekSignalTodayBriefingCache(cacheKey);
+    if (hit !== undefined) return hit;
+  }
   const json = await signalApi<{ data: SignalApiTodayBriefing | null }>(
     '/v1/today-briefing',
     {
@@ -19,5 +32,7 @@ export async function fetchSignalTodayBriefing(
     },
     { timeoutMs: 4000, attempts: 1 },
   );
-  return json.data ?? null;
+  const value = json.data ?? null;
+  if (cacheMode !== 'bypass') storeSignalTodayBriefingCache(cacheKey, value);
+  return value;
 }

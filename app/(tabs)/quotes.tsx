@@ -41,6 +41,7 @@ import {
   fetchSignalMarketQuotes,
   type SignalApiMarketQuote,
 } from '@/integrations/signal-api';
+import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import {
@@ -61,11 +62,6 @@ import {
   loadQuotesSegmentOrder,
   type QuoteSegmentKey,
 } from '@/services/quotesSegmentOrderPreference';
-import {
-  buildQuotesCacheKey,
-  peekQuotes,
-  storeQuotes,
-} from '@/services/cache/quotesCache';
 import {
   isValidQuoteSymbol,
   loadWatchlistSymbols,
@@ -134,6 +130,7 @@ export default function QuotesScreen() {
 
   const load = useCallback(async (forceRefresh?: boolean) => {
     setError(null);
+    const cacheMode = signalCacheMode(forceRefresh);
     const limits = await loadQuotesListLimits();
 
     if (!hasSignalApi()) {
@@ -143,18 +140,11 @@ export default function QuotesScreen() {
     }
 
     if (segment === 'coin') {
-      const cacheKey = buildQuotesCacheKey('coin', [], limits.coinMax);
-      if (!forceRefresh) {
-        const hit = peekQuotes(cacheKey);
-        if (hit) {
-          setRows(hit.rows);
-          return;
-        }
-      }
       try {
-        const list = (await fetchSignalCoins({ limit: limits.coinMax })).slice(0, limits.coinMax).map(mapSignalCoinToRow);
+        const list = (await fetchSignalCoins({ limit: limits.coinMax }, { cacheMode }))
+          .slice(0, limits.coinMax)
+          .map(mapSignalCoinToRow);
         setRows(list);
-        storeQuotes(cacheKey, list);
       } catch (e) {
         setRows([]);
         setError(formatSignalApiError(e, t, 'quotesErrorLoadCoin'));
@@ -168,17 +158,8 @@ export default function QuotesScreen() {
         setRows([]);
         return;
       }
-      const cacheKey = buildQuotesCacheKey('watch', [...symbols].sort());
-      if (!forceRefresh) {
-        const hit = peekQuotes(cacheKey);
-        if (hit) {
-          setRows(hit.rows);
-          return;
-        }
-      }
-      // 국내·미국 종목 모두 시장 시세 API로 채운다.
       const quoteRows = await withSoftTimeout<SignalApiMarketQuote[]>(
-        fetchSignalMarketQuotes({ symbols, limit: Math.max(symbols.length, 1) }).catch(() => []),
+        fetchSignalMarketQuotes({ symbols, limit: Math.max(symbols.length, 1) }, { cacheMode }).catch(() => []),
         WATCH_MARKET_SOFT_TIMEOUT_MS,
         [],
       );
@@ -194,14 +175,13 @@ export default function QuotesScreen() {
         return { symbol: sym, quote: null, error: 'NO_SERVER_QUOTE' };
       });
       setRows(baseRows);
-      storeQuotes(cacheKey, baseRows);
       return;
     }
 
     let symbols: string[] = [];
     if (segment === 'popular') {
       try {
-        const list = await fetchSignalMarketList('popular_symbols');
+        const list = await fetchSignalMarketList('popular_symbols', { cacheMode });
         symbols = list.symbols.slice(0, limits.popularMax);
       } catch {
         symbols = [...POPULAR_SYMBOLS_ORDERED].slice(0, limits.popularMax);
@@ -213,25 +193,15 @@ export default function QuotesScreen() {
       return;
     }
 
-    const cacheKey = buildQuotesCacheKey(
-      segment === 'popular' ? 'popular' : 'mcap',
-      [`n${segment === 'popular' ? limits.popularMax : limits.mcapMax}`],
+    const serverRows = await fetchSignalMarketQuotes(
+      {
+        segment: segment === 'popular' ? 'popular' : 'mcap',
+        limit: segment === 'popular' ? limits.popularMax : limits.mcapMax,
+      },
+      { cacheMode },
     );
-    if (!forceRefresh) {
-      const hit = peekQuotes(cacheKey);
-      if (hit) {
-        setRows(hit.rows);
-        return;
-      }
-    }
-
-    const serverRows = await fetchSignalMarketQuotes({
-      segment: segment === 'popular' ? 'popular' : 'mcap',
-      limit: segment === 'popular' ? limits.popularMax : limits.mcapMax,
-    });
     const baseRows = serverRows.map(mapSignalQuoteToRow);
     setRows(baseRows);
-    storeQuotes(cacheKey, baseRows);
   }, [segment, t]);
 
   useFocusEffect(
@@ -308,7 +278,10 @@ export default function QuotesScreen() {
       return;
     }
     try {
-      const rows = await fetchSignalMarketQuotes({ symbols: [sym], limit: 1, refresh: true });
+      const rows = await fetchSignalMarketQuotes(
+        { symbols: [sym], limit: 1, refresh: true },
+        { cacheMode: 'bypass' },
+      );
       if (rows.length === 0 || rows.every((row) => row.currentPrice == null)) {
         Alert.alert(t('alertTitleUnknownTicker'), t('quotesTickerNotFoundBody'));
         return;

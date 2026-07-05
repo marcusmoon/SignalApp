@@ -42,6 +42,7 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
+import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
@@ -132,16 +133,19 @@ function uniqueVisibleBriefings(rows: SignalApiMarketBriefing[]): SignalApiMarke
   return unique;
 }
 
-async function fetchTopIssues(date: string): Promise<IssueRow[]> {
+async function fetchTopIssues(date: string, cacheMode: ReturnType<typeof signalCacheMode>): Promise<IssueRow[]> {
   const range = utcRangeForLocalYmd(date);
   const results = await Promise.all(
     HOME_DIGEST_CATEGORIES.map(async (category) => {
-      const page = await fetchSignalNewsDigests({
-        category,
-        ...range,
-        limit: ISSUE_FETCH_LIMIT,
-        batches: 20,
-      }).catch(() => ({ items: [] as SignalApiNewsDigestItem[] }));
+      const page = await fetchSignalNewsDigests(
+        {
+          category,
+          ...range,
+          limit: ISSUE_FETCH_LIMIT,
+          batches: 20,
+        },
+        { cacheMode },
+      ).catch(() => ({ items: [] as SignalApiNewsDigestItem[] }));
       return [...page.items]
         .sort(
           (a, b) =>
@@ -154,10 +158,14 @@ async function fetchTopIssues(date: string): Promise<IssueRow[]> {
   return results.flat().sort((a, b) => issueSortTime(b).localeCompare(issueSortTime(a)) || b.item.count - a.item.count);
 }
 
-async function fetchTodayBriefingWithFallback(date: string, locale: string): Promise<SignalApiTodayBriefing | null> {
-  const primary = await fetchSignalTodayBriefing({ date, locale }).catch(() => null);
+async function fetchTodayBriefingWithFallback(
+  date: string,
+  locale: string,
+  cacheMode: ReturnType<typeof signalCacheMode>,
+): Promise<SignalApiTodayBriefing | null> {
+  const primary = await fetchSignalTodayBriefing({ date, locale }, { cacheMode }).catch(() => null);
   if (primary || locale === 'ko') return primary;
-  return fetchSignalTodayBriefing({ date, locale: 'ko' }).catch(() => null);
+  return fetchSignalTodayBriefing({ date, locale: 'ko' }, { cacheMode }).catch(() => null);
 }
 
 function formatPrice(row: QuoteRow): string {
@@ -286,7 +294,7 @@ export function HomeFocusContent({
     onSelectYmd: changeSelectedYmd,
   });
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (forceRefresh?: boolean) => {
     if (!hasSignalApi()) {
       setIssues([]);
       setQuotes([]);
@@ -297,25 +305,34 @@ export function HomeFocusContent({
       setError(t('errorSignalApiShort'));
       return;
     }
+    const cacheMode = signalCacheMode(forceRefresh);
     setError(null);
     try {
       const watchlist = await loadWatchlistSymbols();
       const symbols = selectedYmd === todayYmd ? watchlist.slice(0, watchlistDisplayCount) : [];
       const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows] = await Promise.all([
-        fetchTodayBriefingWithFallback(selectedYmd, locale),
-        fetchTopIssues(selectedYmd),
+        fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
+        fetchTopIssues(selectedYmd, cacheMode),
         symbols.length > 0
-          ? fetchSignalMarketQuotes({ symbols, limit: symbols.length }).catch(() => [] as SignalApiMarketQuote[])
+          ? fetchSignalMarketQuotes({ symbols, limit: symbols.length }, { cacheMode }).catch(
+              () => [] as SignalApiMarketQuote[],
+            )
           : Promise.resolve([] as SignalApiMarketQuote[]),
-        fetchSignalMarketBriefings({ ...utcRangeForLocalYmd(selectedYmd), limit: BRIEFING_LIMIT }).catch(() => []),
-        fetchSignalDisclosureDigests({ ...utcRangeForLocalYmd(selectedYmd), limit: DISCLOSURE_LIMIT, batches: 1 }).catch(
-          () => ({ items: [] }),
+        fetchSignalMarketBriefings({ ...utcRangeForLocalYmd(selectedYmd), limit: BRIEFING_LIMIT }, { cacheMode }).catch(
+          () => [],
         ),
-        fetchSignalCalendar({
-          from: shiftYmd(selectedYmd, -1),
-          to: shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
-          limit: 120,
-        }).catch(() => []),
+        fetchSignalDisclosureDigests(
+          { ...utcRangeForLocalYmd(selectedYmd), limit: DISCLOSURE_LIMIT, batches: 1 },
+          { cacheMode },
+        ).catch(() => ({ items: [] })),
+        fetchSignalCalendar(
+          {
+            from: shiftYmd(selectedYmd, -1),
+            to: shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
+            limit: 120,
+          },
+          { cacheMode },
+        ).catch(() => []),
       ]);
 
       const quoteBySymbol = new Map<string, QuoteRow>();
@@ -353,7 +370,7 @@ export function HomeFocusContent({
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await load();
+      await load(true);
     } finally {
       setRefreshing(false);
     }

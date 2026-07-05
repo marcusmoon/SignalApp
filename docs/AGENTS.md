@@ -16,8 +16,26 @@
 
 - **기본** `cacheMode: 'use'` (`signalCacheMode()`): 필터·탭 전환·재진입. 캐시 hit이면 네트워크 없이 즉시 표시.
 - **새로고침** `cacheMode: 'bypass'` (`signalCacheMode(true)`): 당겨서 새로고침만 네트워크 강제.
-- 화면마다 `listCacheRef` 등 **중복 캐시를 두지 않는다** — API 레이어(`integrations/signal-api/cache/`)에 위임.
+- **폴링·배지** (`newsUnreadPreference`, `disclosureUnreadPreference`, `signalUnreadPreference`): 최신 id 확인만 `bypass`.
+- 화면마다 `listCacheRef`·`peekQuotes` 등 **중복 캐시를 두지 않는다** — API 레이어(`integrations/signal-api/cache/`)에 위임.
 - All/속보 등 **서버 필터가 아닌 조건**은 클라이언트 필터(`domain/news/feedFilters.ts` 등)로 처리한다.
+
+캐시 모듈(`integrations/signal-api/cache/`):
+
+| 모듈 | API | TTL |
+|---|---|---|
+| `newsCache` | 뉴스·소스 | 2분 / 10분(소스) |
+| `newsDigestsCache` | 뉴스 다이제스트 | 2분 |
+| `communityCache` | 게시판 | 2분 |
+| `disclosuresCache` | 공시 리스트 | 2분 |
+| `disclosureDigestsCache` | 공시 다이제스트 | 2분 |
+| `youtubeCache` | 유튜브·채널 | 2분 |
+| `marketBriefingsCache` | 시장 브리핑 | 2분 |
+| `todayBriefingsCache` | 오늘의 브리핑 | 2분 |
+| `marketCache` | 시세·코인·마켓 리스트 | 5분 / 10분(리스트) |
+| `calendarCache` | 캘린더 | 15분 |
+
+설정에서 **캐시 삭제** 시 `clearSignalApiCache()`가 위 모듈을 모두 비운다.
 
 ## 실행
 

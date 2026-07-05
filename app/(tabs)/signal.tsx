@@ -46,6 +46,7 @@ import {
   type QuotesChangeColorConvention,
 } from '@/domain/quotes/changeColorConvention';
 import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBriefings';
+import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiMarketBriefing } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
@@ -155,16 +156,17 @@ export default function SignalScreen() {
     [t],
   );
 
-  const load = useCallback(async (): Promise<SignalApiMarketBriefing[]> => {
+  const load = useCallback(async (forceRefresh?: boolean): Promise<SignalApiMarketBriefing[]> => {
     if (!hasSignalApi()) {
       setError(t('errorSignalApiShort'));
       setMarketBriefings([]);
       return [];
     }
     setError(null);
-    const rows = await fetchSignalMarketBriefings({ ...utcRangeForLocalYmd(selectedYmd), limit: 30 }).catch(
-      () => [] as SignalApiMarketBriefing[],
-    );
+    const rows = await fetchSignalMarketBriefings(
+      { ...utcRangeForLocalYmd(selectedYmd), limit: 30 },
+      { cacheMode: signalCacheMode(forceRefresh) },
+    ).catch(() => [] as SignalApiMarketBriefing[]);
     const sorted = [...rows].sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
     setMarketBriefings(sorted);
     if (selectedYmd >= todayYmdRef.current && sorted[0]?.id) {
@@ -197,7 +199,7 @@ export default function SignalScreen() {
     setRefreshNotice(null);
     setNewContentAvailable(false);
     try {
-      const rows = await load();
+      const rows = await load(true);
       const newCount = rows.filter((row) => !prevIds.has(row.id)).length;
       if (newCount > 0) {
         setRefreshNotice(t('briefingRefreshNotice', { count: String(newCount) }));

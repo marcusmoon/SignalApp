@@ -1,5 +1,11 @@
 import { signalApi } from '@/integrations/signal-api/httpClient';
+import type { SignalCacheMode } from '@/integrations/signal-api/cacheMode';
 import type { SignalApiMarketBriefing } from '@/integrations/signal-api/types';
+import {
+  buildSignalMarketBriefingsCacheKey,
+  peekSignalMarketBriefingsCache,
+  storeSignalMarketBriefingsCache,
+} from '@/integrations/signal-api/cache/marketBriefingsCache';
 
 type MarketBriefingPage = {
   data: SignalApiMarketBriefing[];
@@ -12,15 +18,24 @@ type MarketBriefingPage = {
   };
 };
 
-export async function fetchSignalMarketBriefings(params: {
-  market?: 'kr' | 'us';
-  session?: 'morning' | 'lunch' | 'evening' | 'overnight' | 'close';
-  date?: string;
-  from?: string;
-  to?: string;
-  limit?: number;
-  offset?: number;
-} = {}): Promise<SignalApiMarketBriefing[]> {
+export async function fetchSignalMarketBriefings(
+  params: {
+    market?: 'kr' | 'us';
+    session?: 'morning' | 'lunch' | 'evening' | 'overnight' | 'close';
+    date?: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+    offset?: number;
+  } = {},
+  options?: { cacheMode?: SignalCacheMode },
+): Promise<SignalApiMarketBriefing[]> {
+  const cacheMode = options?.cacheMode || 'use';
+  const cacheKey = buildSignalMarketBriefingsCacheKey(params);
+  if (cacheMode !== 'bypass') {
+    const hit = peekSignalMarketBriefingsCache(cacheKey);
+    if (hit) return hit;
+  }
   const json = await signalApi<MarketBriefingPage>(
     '/v1/market-briefings',
     {
@@ -34,5 +49,7 @@ export async function fetchSignalMarketBriefings(params: {
     },
     { timeoutMs: 5000, attempts: 1 },
   );
-  return Array.isArray(json.data) ? json.data : [];
+  const rows = Array.isArray(json.data) ? json.data : [];
+  if (cacheMode !== 'bypass') storeSignalMarketBriefingsCache(cacheKey, rows);
+  return rows;
 }

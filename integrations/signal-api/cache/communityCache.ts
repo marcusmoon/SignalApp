@@ -1,7 +1,7 @@
 import type { SignalApiCommunityPost, SignalCommunityListMeta } from '@/integrations/signal-api/types';
-import { peekCache, storeCache } from '@/integrations/signal-api/cache/common';
+import { peekCache, SIGNAL_FEED_CACHE_TTL_MS, storeCache } from '@/integrations/signal-api/cache/common';
 
-export const SIGNAL_COMMUNITY_CACHE_TTL_MS = 2 * 60 * 1000;
+export { SIGNAL_FEED_CACHE_TTL_MS as SIGNAL_COMMUNITY_CACHE_TTL_MS };
 
 type CommunityCacheValue = { items: SignalApiCommunityPost[]; meta: SignalCommunityListMeta };
 const communityCache = new Map<string, { value: CommunityCacheValue; expiresAt: number }>();
@@ -30,7 +30,7 @@ export function peekSignalCommunityCache(key: string): CommunityCacheValue | nul
 }
 
 export function storeSignalCommunityCache(key: string, value: CommunityCacheValue): void {
-  storeCache(communityCache, key, value, SIGNAL_COMMUNITY_CACHE_TTL_MS);
+  storeCache(communityCache, key, value, SIGNAL_FEED_CACHE_TTL_MS);
 }
 
 export function clearSignalCommunityCache(): void {

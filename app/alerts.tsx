@@ -19,15 +19,11 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
-import { markAlertsSeen, isServerInboxNotificationId } from '@/services/alertsUnreadPreference';
-import { loadNotificationHistory, loadDismissedNotificationIds, removeNotificationById, removeNotificationsByIds, type StoredNotification } from '@/services/notificationHistory';
+import { loadAlertsFromInbox, markAlertsSeen } from '@/services/alertsUnreadPreference';
+import type { StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
 import { loadAppAuthSession, getSessionAccessToken, type StoredAppAuthSession } from '@/services/appAuthSession';
-import {
-  deleteSignalNotificationInboxItems,
-  fetchSignalNotifications,
-  SIGNAL_NOTIFICATION_INBOX_MAX,
-} from '@/integrations/signal-api/notifications';
+import { deleteSignalNotificationInboxItems } from '@/integrations/signal-api/notifications';
 import { formatRelativeTime } from '@/utils/date';
 
 import { alertMatchesFilter, alertTypeMessageId, type AlertsFilter } from '@/domain/alerts/notificationCategory';
@@ -57,35 +53,11 @@ export default function AlertsScreen() {
       setItems([]);
       return;
     }
-    const [list, serverNotifications, dismissed] = await Promise.all([
-      loadNotificationHistory(),
-      hasSignalApi() ? fetchSignalNotifications(access, SIGNAL_NOTIFICATION_INBOX_MAX).catch(() => []) : Promise.resolve([]),
-      loadDismissedNotificationIds(),
-    ]);
-    const serverItems: StoredNotification[] = serverNotifications.map((item) => ({
-      id: item.inboxId || `server:${item.id}`,
-      title: item.title,
-      body: item.body,
-      receivedAt: item.deliveredAt || item.scheduledAt || item.createdAt || new Date().toISOString(),
-      high: item.priority === 'high',
-      type: item.type,
-      sourceType: item.sourceType,
-      sourceId: item.sourceId,
-      deepLink: item.deepLink,
-      payload: item.payload,
-    }));
-    const seen = new Set<string>();
-    setItems(
-      [...serverItems, ...list]
-        .filter((item) => {
-          if (dismissed.has(item.id)) return false;
-          if (seen.has(item.id)) return false;
-          seen.add(item.id);
-          return true;
-        })
-        .sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime())
-        .slice(0, SIGNAL_NOTIFICATION_INBOX_MAX),
-    );
+    if (!hasSignalApi()) {
+      setItems([]);
+      return;
+    }
+    setItems(await loadAlertsFromInbox(access));
   }, []);
 
   useFocusEffect(
@@ -138,11 +110,9 @@ export default function AlertsScreen() {
   const onDeleteAlert = useCallback(async (id: string) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
     const access = getSessionAccessToken(authSession);
-    if (isServerInboxNotificationId(id) && access && hasSignalApi()) {
+    if (access && hasSignalApi()) {
       await deleteSignalNotificationInboxItems(access, { ids: [id] }).catch(() => {});
-      return;
     }
-    await removeNotificationById(id);
   }, [authSession]);
 
   const onDeleteAllAlerts = useCallback(() => {
@@ -154,17 +124,14 @@ export default function AlertsScreen() {
         style: 'destructive',
         onPress: () => {
           const access = getSessionAccessToken(authSession);
-          const inboxIds = items.filter((item) => isServerInboxNotificationId(item.id)).map((item) => item.id);
-          const localIds = items.filter((item) => !isServerInboxNotificationId(item.id)).map((item) => item.id);
           setItems([]);
-          if (access && hasSignalApi() && inboxIds.length) {
-            void deleteSignalNotificationInboxItems(access, { ids: inboxIds }).catch(() => {});
+          if (access && hasSignalApi()) {
+            void deleteSignalNotificationInboxItems(access, { all: true }).catch(() => {});
           }
-          if (localIds.length) void removeNotificationsByIds(localIds);
         },
       },
     ]);
-  }, [authSession, items, t]);
+  }, [authSession, items.length, t]);
 
   const filteredItems = useMemo(
     () => items.filter((item) => alertMatchesFilter(item, filter)),

@@ -150,20 +150,20 @@ Body: `{ "notificationId": "notification:push:..." }`
 - `integrations/signal-api/notifications.ts`
 - `server/src/notifications/sender.mjs` — 발송 성공 시 inbox upsert
 
-### Phase 2 — 앱 인박스
+### Phase 2 — 앱 인박스 (완료)
 
 | 파일 | 변경 |
 |---|---|
-| `app/alerts.tsx` | `fetchSignalNotificationInbox` 단일 소스, 삭제/전체삭제 → `DELETE` API |
-| `services/alertsUnreadPreference.ts` | `GET unread-count` 또는 inbox 기반 unread |
-| `components/NotificationListener.tsx` | `notificationId`로 deliver API, 로컬 history append 축소 |
-| `services/notificationHistory.ts` | deprecated; 오프라인 fallback만 잔존 |
+| `app/alerts.tsx` | `fetchSignalNotificationInbox` 단일 소스, 삭제/전체삭제 → inbox API |
+| `services/alertsUnreadPreference.ts` | inbox unread-count·read, `loadAlertsFromInbox` |
+| `components/NotificationListener.tsx` | deliver API만, 로컬 history append 제거 |
+| `services/notificationHistory.ts` | `StoredNotification` 타입만 유지 |
 
-제거 대상 (Phase 2 완료 후):
+제거됨:
 
+- `@signal/notification_history_v1` 로컬 목록
 - `@signal/dismissed_notification_ids_v1`
-- 서버+로컬 merge 로직 (`server:{id}` prefix)
-- `markAlertsSeen` 로컬 timestamp → `PATCH read` + `{ all: true }` on focus
+- 서버+로컬 merge 로직
 
 ### Phase 3 — 정리
 

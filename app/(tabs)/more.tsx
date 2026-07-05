@@ -52,9 +52,9 @@ export default function MoreHubScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
-  const { useTwoPane, isIOS, isPad } = useResponsiveLayout();
+  const { useTwoPane, isIOS, isPad, isWeb } = useResponsiveLayout();
   const showIpadQuickLinks = useTwoPane;
-  const useTwoColumnHub = isIOS && !isPad && !useTwoPane;
+  const useTwoColumnHub = !useTwoPane && ((isIOS && !isPad) || isWeb);
   const styles = useMemo(
     () => makeStyles(theme, scaleFont, useTwoColumnHub),
     [theme, scaleFont, useTwoColumnHub],
@@ -222,6 +222,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, twoColumn: boole
     },
     muted: { fontSize: sf(14), color: theme.textDim },
     gridRow: {
+      flexDirection: 'row',
       gap: GRID_GAP,
       marginBottom: GRID_GAP,
     },

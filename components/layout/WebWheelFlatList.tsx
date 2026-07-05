@@ -66,6 +66,8 @@ function WebWheelFlatListInner<T>(
     onLayout,
     onContentSizeChange,
     refreshControl,
+    numColumns = 1,
+    columnWrapperStyle,
     ...rest
   }: FlatListProps<T>,
   forwardedRef: React.Ref<FlatList<T>>,
@@ -236,7 +238,7 @@ function WebWheelFlatListInner<T>(
   };
 
   if (Platform.OS === 'web') {
-    const rows = Array.from(data ?? []);
+    const items = Array.from(data ?? []);
     const Separator = ItemSeparatorComponent as React.ComponentType | null | undefined;
     const emitFromWebEvent = (event: unknown) => {
       const node = getWebNode(event);
@@ -294,17 +296,51 @@ function WebWheelFlatListInner<T>(
         <View ref={webContentRef} style={contentContainerStyle}>
           {refreshControlProps?.refreshing ? <WebRefreshStatus /> : null}
           {renderListSlot(ListHeaderComponent)}
-          {rows.length === 0 ? renderListSlot(ListEmptyComponent) : null}
-          {rows.map((item, index) => (
-            <View key={keyExtractor?.(item, index) ?? getDefaultKey(item, index)}>
-              {renderItem?.({
-                item,
-                index,
-                separators: webSeparators,
-              } as ListRenderItemInfo<T>)}
-              {Separator && index < rows.length - 1 ? <Separator /> : null}
-            </View>
-          ))}
+          {items.length === 0 ? renderListSlot(ListEmptyComponent) : null}
+          {numColumns > 1
+            ? (() => {
+                const rowViews: React.ReactElement[] = [];
+                for (let rowStart = 0; rowStart < items.length; rowStart += numColumns) {
+                  const rowItems = items.slice(rowStart, rowStart + numColumns);
+                  const rowIndex = rowStart / numColumns;
+                  rowViews.push(
+                    <View
+                      key={`web-row-${rowIndex}`}
+                      style={[{ flexDirection: 'row' }, columnWrapperStyle]}>
+                      {rowItems.map((item, colIndex) => {
+                        const index = rowStart + colIndex;
+                        return (
+                          <View
+                            key={keyExtractor?.(item, index) ?? getDefaultKey(item, index)}
+                            style={{ flex: 1, minWidth: 0 }}>
+                            {renderItem?.({
+                              item,
+                              index,
+                              separators: webSeparators,
+                            } as ListRenderItemInfo<T>)}
+                          </View>
+                        );
+                      })}
+                      {rowItems.length < numColumns
+                        ? Array.from({ length: numColumns - rowItems.length }, (_, padIndex) => (
+                            <View key={`web-pad-${rowIndex}-${padIndex}`} style={{ flex: 1, minWidth: 0 }} />
+                          ))
+                        : null}
+                    </View>,
+                  );
+                }
+                return rowViews;
+              })()
+            : items.map((item, index) => (
+                <View key={keyExtractor?.(item, index) ?? getDefaultKey(item, index)}>
+                  {renderItem?.({
+                    item,
+                    index,
+                    separators: webSeparators,
+                  } as ListRenderItemInfo<T>)}
+                  {Separator && index < items.length - 1 ? <Separator /> : null}
+                </View>
+              ))}
           <View ref={webEndSentinelRef} style={{ height: 1 }} />
           {renderListSlot(ListFooterComponent)}
         </View>

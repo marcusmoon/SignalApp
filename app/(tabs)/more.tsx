@@ -52,8 +52,13 @@ export default function MoreHubScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
-  const { useTwoPane } = useResponsiveLayout();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const { useTwoPane, isIOS, isPad } = useResponsiveLayout();
+  const showIpadQuickLinks = useTwoPane;
+  const useTwoColumnHub = isIOS && !isPad && !useTwoPane;
+  const styles = useMemo(
+    () => makeStyles(theme, scaleFont, useTwoColumnHub),
+    [theme, scaleFont, useTwoColumnHub],
+  );
   const [order, setOrder] = useState<MoreHubRouteKey[]>([]);
   const [orderReady, setOrderReady] = useState(false);
   const [refLinksVisible, setRefLinksVisible] = useState(true);
@@ -136,7 +141,6 @@ export default function MoreHubScreen() {
         : order,
     [order, useTwoPane],
   );
-  const showIpadQuickLinks = useTwoPane;
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
@@ -148,9 +152,11 @@ export default function MoreHubScreen() {
         </View>
       ) : (
         <WebWheelFlatList
-          key="more-list"
+          key={useTwoColumnHub ? 'more-grid' : 'more-list'}
           data={showIpadQuickLinks ? [] : visibleOrder}
           keyExtractor={(item) => item}
+          numColumns={useTwoColumnHub ? 2 : 1}
+          columnWrapperStyle={useTwoColumnHub ? styles.gridRow : undefined}
           scrollEnabled
           style={[styles.list, useTwoPane && styles.listWide]}
           contentContainerStyle={{
@@ -173,6 +179,7 @@ export default function MoreHubScreen() {
                 onPress={() => openHubItem(item)}
                 style={({ pressed }) => [
                   styles.tile,
+                  useTwoColumnHub && styles.tileGrid,
                   pressed && styles.rowPressed,
                 ]}
                 accessibilityRole="button"
@@ -180,7 +187,9 @@ export default function MoreHubScreen() {
                 <View style={styles.iconCircle}>
                   <FontAwesome name={meta.icon} size={18} color={theme.green} />
                 </View>
-                <Text style={styles.rowTitle} numberOfLines={2}>
+                <Text
+                  style={[styles.rowTitle, useTwoColumnHub && styles.gridTitle]}
+                  numberOfLines={useTwoColumnHub ? 2 : 2}>
                   {name}
                 </Text>
               </Pressable>
@@ -192,7 +201,7 @@ export default function MoreHubScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, twoColumn: boolean) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     list: {
@@ -212,6 +221,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       padding: 24,
     },
     muted: { fontSize: sf(14), color: theme.textDim },
+    gridRow: {
+      gap: GRID_GAP,
+      marginBottom: GRID_GAP,
+    },
     tile: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -223,7 +236,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       minHeight: TILE_HEIGHT,
       paddingVertical: 8,
       paddingHorizontal: 10,
-      marginBottom: GRID_GAP,
+      marginBottom: twoColumn ? 0 : GRID_GAP,
+    },
+    tileGrid: {
+      flex: 1,
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 88,
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      gap: 8,
     },
     rowPressed: {
       backgroundColor: theme.bgElevated,
@@ -246,6 +269,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '800',
       color: theme.text,
       lineHeight: sf(17),
+    },
+    gridTitle: {
+      flex: 0,
+      textAlign: 'center',
+      fontSize: sf(12),
+      lineHeight: sf(16),
     },
     footer: {
       marginTop: SECTION_GAP,

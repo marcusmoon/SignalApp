@@ -47,18 +47,144 @@ async function dartApiKey() {
   return key;
 }
 
-function extractZipPayload(buffer) {
-  const sig = buffer.indexOf(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
-  if (sig < 0) throw new Error('DART_CORP_ZIP_INVALID');
-  const compressionMethod = buffer.readUInt16LE(sig + 8);
-  const compressedSize = buffer.readUInt32LE(sig + 18);
-  const fileNameLength = buffer.readUInt16LE(sig + 26);
-  const extraLength = buffer.readUInt16LE(sig + 28);
-  const dataStart = sig + 30 + fileNameLength + extraLength;
-  const compressed = buffer.subarray(dataStart, dataStart + compressedSize);
+const ZIP_LOCAL_SIG = 0x04034b50;
+const ZIP_CENTRAL_SIG = 0x02014b50;
+const ZIP_EOCD_SIG = 0x06054b50;
+const ZIP_DATA_DESC_SIG = 0x08074b50;
+
+function isZipSignature(value) {
+  return (
+    value === ZIP_LOCAL_SIG ||
+    value === ZIP_CENTRAL_SIG ||
+    value === ZIP_EOCD_SIG ||
+    value === ZIP_DATA_DESC_SIG
+  );
+}
+
+function findNextZipSignature(buffer, start) {
+  for (let offset = Math.max(0, start); offset <= buffer.length - 4; offset += 1) {
+    if (buffer[offset] !== 0x50 || buffer[offset + 1] !== 0x4b) continue;
+    const signature = buffer.readUInt32LE(offset);
+    if (isZipSignature(signature)) return offset;
+  }
+  return -1;
+}
+
+function findEocdOffset(buffer) {
+  const minOffset = Math.max(0, buffer.length - 65557);
+  for (let offset = buffer.length - 22; offset >= minOffset; offset -= 1) {
+    if (buffer.readUInt32LE(offset) === ZIP_EOCD_SIG) return offset;
+  }
+  return -1;
+}
+
+function inflateZipEntry(compressionMethod, compressed) {
   if (compressionMethod === 0) return compressed;
-  if (compressionMethod === 8) return inflateRawSync(compressed);
+  if (compressionMethod === 8) {
+    try {
+      return inflateRawSync(compressed);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`DART_CORP_INFLATE:${message}`);
+    }
+  }
   throw new Error(`DART_CORP_ZIP_UNSUPPORTED:${compressionMethod}`);
+}
+
+function extractZipPayloadFromCentralDirectory(buffer) {
+  const eocdOffset = findEocdOffset(buffer);
+  if (eocdOffset < 0) return null;
+
+  const centralOffset = buffer.readUInt32LE(eocdOffset + 16);
+  if (centralOffset >= buffer.length || buffer.readUInt32LE(centralOffset) !== ZIP_CENTRAL_SIG) {
+    return null;
+  }
+
+  const compressionMethod = buffer.readUInt16LE(centralOffset + 10);
+  const compressedSize = buffer.readUInt32LE(centralOffset + 20);
+  const fileNameLength = buffer.readUInt16LE(centralOffset + 28);
+  const extraLength = buffer.readUInt16LE(centralOffset + 30);
+  const localHeaderOffset = buffer.readUInt32LE(centralOffset + 42);
+  if (localHeaderOffset >= buffer.length || buffer.readUInt32LE(localHeaderOffset) !== ZIP_LOCAL_SIG) {
+    return null;
+  }
+
+  const localFileNameLength = buffer.readUInt16LE(localHeaderOffset + 26);
+  const localExtraLength = buffer.readUInt16LE(localHeaderOffset + 28);
+  const dataStart = localHeaderOffset + 30 + localFileNameLength + localExtraLength;
+  if (!compressedSize || dataStart + compressedSize > buffer.length) return null;
+
+  const fileName = buffer
+    .subarray(centralOffset + 46, centralOffset + 46 + fileNameLength + extraLength)
+    .toString('utf8')
+    .split('\0')[0];
+  if (fileName && !/CORPCODE\.XML/i.test(fileName)) return null;
+
+  return inflateZipEntry(compressionMethod, buffer.subarray(dataStart, dataStart + compressedSize));
+}
+
+function extractZipPayloadFromLocalHeader(buffer) {
+  const localOffset = buffer.indexOf(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
+  if (localOffset < 0) return null;
+
+  const gpFlag = buffer.readUInt16LE(localOffset + 6);
+  const compressionMethod = buffer.readUInt16LE(localOffset + 8);
+  let compressedSize = buffer.readUInt32LE(localOffset + 18);
+  const fileNameLength = buffer.readUInt16LE(localOffset + 26);
+  const extraLength = buffer.readUInt16LE(localOffset + 28);
+  const dataStart = localOffset + 30 + fileNameLength + extraLength;
+
+  if ((gpFlag & 0x08) !== 0 || compressedSize === 0) {
+    const nextOffset = findNextZipSignature(buffer, dataStart);
+    compressedSize = nextOffset >= 0 ? nextOffset - dataStart : buffer.length - dataStart;
+  }
+
+  if (dataStart <= 0 || compressedSize <= 0 || dataStart + compressedSize > buffer.length) {
+    return null;
+  }
+
+  return inflateZipEntry(
+    compressionMethod,
+    buffer.subarray(dataStart, dataStart + compressedSize),
+  );
+}
+
+function extractZipPayload(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 22) {
+    throw new Error('DART_CORP_ZIP_INVALID');
+  }
+
+  const fromCentral = extractZipPayloadFromCentralDirectory(buffer);
+  if (fromCentral) return fromCentral;
+
+  const fromLocal = extractZipPayloadFromLocalHeader(buffer);
+  if (fromLocal) return fromLocal;
+
+  throw new Error('DART_CORP_ZIP_INVALID');
+}
+
+async function fetchCorpCodeBuffer(apiKey, attempt = 1) {
+  const res = await fetch(`${CORP_CODE_URL}?crtfc_key=${encodeURIComponent(apiKey)}`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`DART_CORP_${res.status}: ${body.slice(0, 200)}`);
+  }
+
+  const buffer = Buffer.from(await res.arrayBuffer());
+  if (buffer.length < 22) {
+    if (attempt < 3) {
+      await sleep(400 * attempt);
+      return fetchCorpCodeBuffer(apiKey, attempt + 1);
+    }
+    throw new Error('DART_CORP_ZIP_TRUNCATED');
+  }
+
+  const preview = buffer.subarray(0, Math.min(buffer.length, 200)).toString('utf8').trim();
+  if (preview.startsWith('{') || preview.startsWith('<status>')) {
+    throw new Error(`DART_CORP_ERROR: ${preview.slice(0, 200)}`);
+  }
+
+  return { buffer, contentType: String(res.headers.get('content-type') || '').toLowerCase() };
 }
 
 function parseCorpCodeXml(xml) {
@@ -81,17 +207,26 @@ async function stockToCorpCodeMap(apiKey) {
   const now = Date.now();
   if (corpCache && now - corpCacheAt < CORP_CACHE_TTL_MS) return corpCache;
 
-  const res = await fetch(`${CORP_CODE_URL}?crtfc_key=${encodeURIComponent(apiKey)}`);
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`DART_CORP_${res.status}: ${body.slice(0, 200)}`);
+  let buffer;
+  let contentType = '';
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      ({ buffer, contentType } = await fetchCorpCodeBuffer(apiKey, attempt));
+      break;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const retryable =
+        /DART_CORP_ZIP_(INVALID|TRUNCATED|INFLATE)/.test(message) ||
+        /unexpected end of file/i.test(message);
+      if (!retryable || attempt >= 3) throw error;
+      await sleep(400 * attempt);
+    }
   }
 
-  const buffer = Buffer.from(await res.arrayBuffer());
-  const contentType = String(res.headers.get('content-type') || '').toLowerCase();
-  const xml = contentType.includes('xml') && !contentType.includes('zip')
-    ? buffer.toString('utf8')
-    : extractZipPayload(buffer).toString('utf8');
+  const xml =
+    contentType.includes('xml') && !contentType.includes('zip')
+      ? buffer.toString('utf8')
+      : extractZipPayload(buffer).toString('utf8');
 
   if (xml.includes('<status>')) {
     const status = /<status>([^<]+)<\/status>/i.exec(xml)?.[1]?.trim();

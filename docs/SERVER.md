@@ -23,6 +23,8 @@ npm --prefix server run worker
 | `NINJAS_KEY` | Ninjas provider 키(레거시; 현재 미사용) |
 | `SEC_USER_AGENT` | SEC EDGAR API 식별 User-Agent |
 | `SIGNAL_AUTOMATION_INGEST_TOKEN` | 외부 자동화가 `/v1/market-briefings/ingest` webhook으로 브리핑을 적재할 때 쓰는 토큰 |
+| `SIGNAL_JOB_LOCK_TTL_MS` | Job lock 기본 TTL(ms). Job별 `lockTtlSeconds`가 없을 때 사용 |
+| `SIGNAL_JOB_LOCK_MAINTENANCE_MS` | 만료 lock·orphaned run 정리 주기(ms, 기본 60000) |
 
 ## DB 운영 원칙
 
@@ -101,6 +103,7 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 - **stage**: `ingest`(수집), `enrich`(가공), `maintain`(유지보수)
 - **preset**: Admin Job 화면 상단의 영역별 일괄 실행 (`/admin/api/job-presets/:id/run`)
 - **카탈로그**: `server/src/jobs/catalog.mjs` (그룹·라벨 단일 기준)
+- **Lock**: `polling_job_locks`로 worker/API 간 중복 실행을 막는다. 재배포·프로세스 중단으로 lock/run이 남으면 worker가 60초마다 만료 lock과 orphaned `running` run을 정리한다. Admin Job 카드에서 lock 만료 시각과 해제 가능 여부를 확인할 수 있다.
 
 주요 Job (V19 이후, reconcile 쌍은 `sync`로 통합):
 

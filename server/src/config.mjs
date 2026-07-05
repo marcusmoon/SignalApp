@@ -81,6 +81,7 @@ export const config = {
   verySlowRequestMs: Number(process.env.SIGNAL_VERY_SLOW_REQUEST_MS || 5000),
   httpLogAll: boolEnv('SIGNAL_HTTP_LOG_ALL', false),
   jobLockTtlMs: Number(process.env.SIGNAL_JOB_LOCK_TTL_MS || 2 * 60 * 60 * 1000),
+  jobLockMaintenanceIntervalMs: Number(process.env.SIGNAL_JOB_LOCK_MAINTENANCE_MS || 60_000),
   /** RS256 app user access tokens (issuer/audience must match verification). */
   jwtIssuer: String(process.env.SIGNAL_JWT_ISSUER || 'signal-api').trim() || 'signal-api',
   jwtAudience: String(process.env.SIGNAL_JWT_AUDIENCE || 'signal-app').trim() || 'signal-app',

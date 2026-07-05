@@ -312,10 +312,19 @@ function jobLastRunStatusText(job, textFor) {
   return status;
 }
 
-function jobLockText(job, textFor) {
+function jobLockText(job, textFor, textForVars, formatDateTime) {
   if (!job?.lock?.locked) return '';
-  if (job.lock.canForceUnlock) return textFor('jobLockStale');
-  return textFor('jobLockActive');
+  if (job.lock.canForceUnlock) {
+    const reasonKey = {
+      expired: 'jobLockReasonExpired',
+      quiet_ttl: 'jobLockReasonQuiet',
+      running_ttl: 'jobLockReasonRunning',
+      orphaned_lock: 'jobLockReasonOrphan',
+    }[job.lock.reason];
+    return reasonKey ? textFor(reasonKey) : textFor('jobLockStale');
+  }
+  const expiresAt = job.lock.expiresAt ? formatDateTime(job.lock.expiresAt) : '-';
+  return textForVars('jobLockActiveUntil', { time: expiresAt });
 }
 
 function jobForceUnlockButton(job, esc, textFor) {
@@ -392,9 +401,9 @@ function renderJobSummary({ jobsAll, jobsFiltered, esc, textFor, textForVars }) 
   `;
 }
 
-function renderJobCard({ job, selected, esc, textFor, jobDisplayName, operationBadge, areaBadge, stageBadge, providerBadge, jobIntervalLabel, formatDateTime, rssSources }) {
+function renderJobCard({ job, selected, esc, textFor, textForVars, jobDisplayName, operationBadge, areaBadge, stageBadge, providerBadge, jobIntervalLabel, formatDateTime, rssSources }) {
   const lastRunStatus = jobLastRunStatusText(job, textFor);
-  const lock = jobLockText(job, textFor);
+  const lock = jobLockText(job, textFor, textForVars, formatDateTime);
   const lastRun = jobLastRunAt(job);
   const checked = selected.has(job.jobKey);
   return `
@@ -626,6 +635,7 @@ export async function loadJobsView(ctx) {
                                     selected,
                                     esc,
                                     textFor,
+                                    textForVars,
                                     jobDisplayName,
                                     operationBadge,
                                     areaBadge,

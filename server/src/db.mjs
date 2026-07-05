@@ -15,7 +15,9 @@ import {
 } from './db/repositories/pollingJobsRepository.mjs';
 import {
   acquirePollingJobLockRow,
+  deleteExpiredPollingJobLocks,
   deletePollingJobLock,
+  deletePollingJobLockByJobKey,
   findPollingJobLock,
   findPollingJobLocks,
 } from './db/repositories/pollingJobLocksRepository.mjs';
@@ -1148,13 +1150,25 @@ export async function acquirePollingJobLock(jobKey, { ttlMs = 2 * 60 * 60 * 1000
     const now = nowIso();
     const token = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + Math.max(60_000, Number(ttlMs) || ttlMs)).toISOString();
-    return acquirePollingJobLockRow(key, { token, lockedAt: now, expiresAt });
+    const result = await acquirePollingJobLockRow(key, { token, lockedAt: now, expiresAt });
+    if (!result?.acquired) return null;
+    return result.lock;
   });
 }
 
 export async function releasePollingJobLock(jobKey, token) {
   await ensureSeeded();
   return deletePollingJobLock(jobKey, token);
+}
+
+export async function forceReleasePollingJobLock(jobKey) {
+  await ensureSeeded();
+  return deletePollingJobLockByJobKey(jobKey);
+}
+
+export async function purgeExpiredPollingJobLocks(now = Date.now()) {
+  await ensureSeeded();
+  return deleteExpiredPollingJobLocks(now);
 }
 
 export async function verifyAdminLogin(loginId, password) {

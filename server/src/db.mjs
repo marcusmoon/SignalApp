@@ -20,6 +20,7 @@ import {
   deletePollingJobLockByJobKey,
   findPollingJobLock,
   findPollingJobLocks,
+  renewPollingJobLockRow,
 } from './db/repositories/pollingJobLocksRepository.mjs';
 import {
   listYoutubeVideoRows,
@@ -1160,6 +1161,15 @@ export async function acquirePollingJobLock(jobKey, { ttlMs = 2 * 60 * 60 * 1000
 export async function releasePollingJobLock(jobKey, token) {
   await ensureSeeded();
   return deletePollingJobLock(jobKey, token);
+}
+
+export async function renewPollingJobLock(jobKey, token, { ttlMs = 2 * 60 * 60 * 1000 } = {}) {
+  await ensureSeeded();
+  const key = cleanText(jobKey);
+  const lockToken = cleanText(token);
+  if (!key || !lockToken) return false;
+  const expiresAt = new Date(Date.now() + Math.max(60_000, Number(ttlMs) || ttlMs)).toISOString();
+  return renewPollingJobLockRow(key, lockToken, expiresAt);
 }
 
 export async function forceReleasePollingJobLock(jobKey) {

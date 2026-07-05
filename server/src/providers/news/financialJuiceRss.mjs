@@ -65,9 +65,6 @@ function parsePubDate(raw) {
   return new Date(t).toISOString();
 }
 
-/**
- * Parse RSS/Atom-ish XML and map items into the same news row shape as Finnhub items.
- */
 export function normalizeFinancialJuiceRssItem({ title, link, pubDate, description }) {
   const sourceUrl = String(link || '').trim();
   const providerItemId = sourceUrl || String(title || '').slice(0, 120);
@@ -92,20 +89,59 @@ export function normalizeFinancialJuiceRssItem({ title, link, pubDate, descripti
   };
 }
 
+/** Re-read stored Financial Juice rows and re-apply normalization (reconcile phase). */
+export function reconcileFinancialJuiceNewsItems(items, limit = 60) {
+  const safeLimit = Math.max(1, Math.min(200, Number(limit) || 60));
+  const sorted = [...(Array.isArray(items) ? items : [])]
+    .filter((item) => String(item?.provider || '').toLowerCase() === 'financialjuice')
+    .sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')))
+    .slice(0, safeLimit);
+
+  const reconciledAt = new Date().toISOString();
+  return sorted.map((item) => {
+    const raw = item?.rawPayload && typeof item.rawPayload === 'object' ? item.rawPayload : {};
+    const normalized = normalizeFinancialJuiceRssItem({
+      title: raw.title || item.titleOriginal || item.title || '',
+      link: raw.link || item.sourceUrl || '',
+      pubDate: raw.pubDate || item.publishedAt || '',
+      description: raw.description || item.summaryOriginal || item.summary || '',
+    });
+    return {
+      ...normalized,
+      id: item.id,
+      createdAt: item.createdAt || reconciledAt,
+      fetchedAt: reconciledAt,
+    };
+  });
+}
+
 export async function fetchFinancialJuiceRssNews(params = {}) {
   const feedUrl = String(params.feedUrl || DEFAULT_FEED_URL).trim() || DEFAULT_FEED_URL;
   const limit = Math.max(1, Math.min(80, Number(params.limit || 40) || 40));
   const maxRetries = Math.max(0, Math.min(4, Number(params.maxRetries ?? 3)));
   const baseDelayMs = Math.max(250, Math.min(10_000, Number(params.baseDelayMs ?? 800)));
+  const timeoutMs = Math.max(5_000, Math.min(120_000, Number(params.timeoutMs ?? 30_000)));
 
   let res = null;
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-    res = await fetch(feedUrl, {
-      headers: {
-        'user-agent': 'SignalServer/0.1 RSS',
-        accept: 'application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.1',
-      },
-    });
+    try {
+      res = await fetch(feedUrl, {
+        headers: {
+          'user-agent': 'SignalServer/0.1 RSS',
+          accept: 'application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.1',
+        },
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (error) {
+      if (attempt >= maxRetries) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`RSS fetch failed: ${message}`);
+      }
+      const expo = baseDelayMs * (2 ** attempt);
+      const jitter = Math.floor(Math.random() * 200);
+      await sleep(expo + jitter);
+      continue;
+    }
 
     // FinancialJuice occasionally rate-limits RSS (429). Treat as a soft-failure:
     // backoff + retry, then return empty list so the job run is not permanently "failed".

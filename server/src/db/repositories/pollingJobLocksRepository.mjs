@@ -97,3 +97,16 @@ export async function deleteExpiredPollingJobLocks(now = Date.now()) {
   return Number(result?.numDeletedRows || 0);
 }
 
+export async function renewPollingJobLockRow(jobKey, token, expiresAt) {
+  const key = cleanText(jobKey);
+  const lockToken = cleanText(token);
+  if (!key || !lockToken) return false;
+  const result = await getKyselyDb()
+    .updateTable('polling_job_locks')
+    .set({ expires_at: expiresAt })
+    .where('job_key', '=', key)
+    .where('lock_token', '=', lockToken)
+    .executeTakeFirst();
+  return Number(result?.numUpdatedRows || 0) > 0;
+}
+

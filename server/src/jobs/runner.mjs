@@ -10,6 +10,7 @@ import {
   patchPollingJobRun,
   readSingletonPayload,
   releasePollingJobLock,
+  renewPollingJobLock,
   upsertCollectionRows,
   pruneCommunityPostsForSource,
   upsertById,
@@ -22,7 +23,7 @@ import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
 import { generateNewsDigestItems } from '../digests/newsDigest.mjs';
-import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
+import { fetchFinancialJuiceRssNews, reconcileFinancialJuiceNewsItems } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
 import { fetchNewswireRssNews } from '../providers/news/rssNews.mjs';
 import { fetchDartFilings } from '../providers/news/dartFilings.mjs';
@@ -117,6 +118,9 @@ async function readJobContext(job) {
 
   if (provider === 'rss') {
     context.rssSources = await listCollectionPayloads('rssSources');
+    if (handler === 'financial_juice' && job?.params?.reconcile) {
+      context.newsItems = await listCollectionPayloads('newsItems');
+    }
   }
   if (
     provider === 'sec' ||
@@ -157,12 +161,13 @@ async function ensureNewsSourcesForRows(newsItems) {
   if (changed) await upsertCollectionRows('newsSources', db.newsSources);
 }
 
-async function autoTranslateNewsDirect(newsItems) {
+async function autoTranslateNewsDirect(newsItems, { onHeartbeat } = {}) {
   const settings = (await listCollectionPayloads('translationSettings')).filter((s) => s.enabled && s.autoTranslateNews);
   if (settings.length === 0 || !Array.isArray(newsItems) || newsItems.length === 0) return;
   const existingTranslations = await listCollectionPayloads('newsTranslations');
   const byId = new Map(existingTranslations.map((row) => [row.id, row]));
   const translationRows = [];
+  let heartbeatCounter = 0;
 
   for (const item of newsItems) {
     for (const setting of settings) {
@@ -211,12 +216,16 @@ async function autoTranslateNewsDirect(newsItems) {
         });
       }
     }
+    heartbeatCounter += 1;
+    if (onHeartbeat && heartbeatCounter % 3 === 0) {
+      await onHeartbeat();
+    }
   }
 
   if (translationRows.length > 0) await upsertCollectionRows('newsTranslations', translationRows);
 }
 
-async function saveNewsRows(rows) {
+async function saveNewsRows(rows, { onHeartbeat } = {}) {
   const savedAt = nowIso();
   const safeRows = rows.map((row) => ({
     ...row,
@@ -225,7 +234,7 @@ async function saveNewsRows(rows) {
   }));
   await upsertCollectionRows('newsItems', safeRows);
   await ensureNewsSourcesForRows(safeRows);
-  await autoTranslateNewsDirect(safeRows);
+  await autoTranslateNewsDirect(safeRows, { onHeartbeat });
 }
 
 async function saveDisclosureRows(rows) {
@@ -256,6 +265,11 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
     const sourceId = params?.rssSourceId || (Array.isArray(params?.rssSourceIds) ? params.rssSourceIds[0] : null);
     const source = getRssSource(dbBefore, sourceId);
     if (!source || source.enabled === false) throw new Error('RSS_SOURCE_NOT_CONFIGURED');
+    if (phase === 'reconcile') {
+      const newsItems = dbBefore.newsItems || (await listCollectionPayloads('newsItems'));
+      const limit = Math.max(1, Math.min(200, Number(params?.limit || 60) || 60));
+      return { kind: 'news', rows: reconcileFinancialJuiceNewsItems(newsItems, limit) };
+    }
     return { kind: 'news', rows: await fetchFinancialJuiceRssNews(rssSourceParams(source, params || {})) };
   }
   if (effective.provider === 'rss' && effective.handler === 'newswire_rss') {
@@ -377,7 +391,7 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
   throw new Error(`UNKNOWN_JOB_HANDLER:${job.provider}:${job.handler}`);
 }
 
-async function persistHandlerResult(result, rows) {
+async function persistHandlerResult(result, rows, { onHeartbeat } = {}) {
   const directCollectionByKind = {
     calendar: 'calendarEvents',
     marketQuotes: 'marketQuotes',
@@ -406,7 +420,7 @@ async function persistHandlerResult(result, rows) {
       }
     }
   } else if (result.kind === 'news') {
-    await saveNewsRows(rows);
+    await saveNewsRows(rows, { onHeartbeat });
   } else if (result.kind === 'disclosures') {
     await saveDisclosureRows(rows);
   } else if (result.kind === 'youtube') {
@@ -541,6 +555,16 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
     const phases = phasesForJob(job, runModeForJob(job, mode));
     if (phases.length === 0) throw new Error(`JOB_NO_PHASES:${jobKey}`);
 
+    const touchRunProgress = async (patch = {}) => {
+      await renewPollingJobLock(jobKey, lock.token, { ttlMs: jobLockTtlMs(job) }).catch((error) => {
+        console.warn(`[job:${jobKey}] failed to renew lock`, error?.message || error);
+      });
+      await patchPollingJobRun(run.id, {
+        progressUpdatedAt: nowIso(),
+        ...patch,
+      });
+    };
+
     let totalItems = 0;
     let lastKind = null;
     for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex += 1) {
@@ -548,9 +572,15 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       if (phase === 'reconcile' && job.provider === 'youtube') {
         dbBefore = await readJobContext(job);
       }
+      if (phase === 'reconcile' && job.provider === 'rss' && job.handler === 'financial_juice') {
+        dbBefore = await readJobContext(job);
+      }
+      await touchRunProgress({ progressPhase: phase });
       const result = await executeHandler(job, dbBefore, { onProgress, phase });
       const rows = result.rows || [];
-      await persistHandlerResult(result, rows);
+      await persistHandlerResult(result, rows, {
+        onHeartbeat: () => touchRunProgress({ progressPhase: phase }),
+      });
       totalItems += rows.length;
       lastKind = result.kind;
       if (onProgress && phases.length > 1) {

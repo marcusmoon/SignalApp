@@ -58,7 +58,7 @@ const YOUTUBE_SUB_TABS: SidebarSubDef[] = [
     kind: 'youtube',
     route: '/(tabs)/youtube',
     icon: 'list',
-    labelId: 'feedWatchFilterAll',
+    labelId: 'youtubeSortLatest',
   },
   {
     key: 'popular',

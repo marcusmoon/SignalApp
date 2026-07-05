@@ -329,26 +329,6 @@ export default function YoutubeScreen() {
     setChannelModalVisible(true);
   }, [selectedHandles]);
 
-  const applyAllFilter = useCallback(async () => {
-    const handles = curationHandles ?? selectedHandles ?? [];
-    setSort('latest');
-    if (handles.length > 0) {
-      skipLoadOnSelectedHandlesRef.current = true;
-      setSelectedHandles(handles);
-      await saveSelectedChannels(handles);
-      await load({
-        forceRefresh: true,
-        channelHandles: handles,
-        availableHandles: curationHandles ?? handles,
-        sort: 'latest',
-      });
-      return;
-    }
-    setLoading(true);
-    setItems([]);
-    setYoutubeMeta(null);
-  }, [curationHandles, load, selectedHandles]);
-
   const applyPopularFilter = useCallback(() => {
     if (sort === 'popular') return;
     setLoading(true);
@@ -499,19 +479,12 @@ export default function YoutubeScreen() {
           <View style={styles.topFixed}>
             <View style={styles.segment}>
               <Pressable
-                onPress={() => void applyAllFilter()}
-                style={[
-                  styles.segBtn,
-                  sort === 'latest' && !channelFilterActive && styles.segBtnActive,
-                ]}
+                onPress={applyLatestSortFilter}
+                style={[styles.segBtn, sort === 'latest' && styles.segBtnActive]}
                 accessibilityRole="button"
-                accessibilityState={{ selected: sort === 'latest' && !channelFilterActive }}>
-                <Text
-                  style={[
-                    styles.segText,
-                    sort === 'latest' && !channelFilterActive && styles.segTextActive,
-                  ]}>
-                  {t('feedWatchFilterAll')}
+                accessibilityState={{ selected: sort === 'latest' }}>
+                <Text style={[styles.segText, sort === 'latest' && styles.segTextActive]}>
+                  {t('youtubeSortLatest')}
                 </Text>
               </Pressable>
               <Pressable

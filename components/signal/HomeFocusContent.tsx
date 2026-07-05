@@ -8,12 +8,17 @@ import {
   View,
 } from 'react-native';
 
+import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import {
+  communitySourceAccent,
+  type CommunitySourceKey,
+} from '@/constants/communitySources';
 import {
   HOME_DIGEST_CATEGORIES,
   HOME_SIGNAL_SESSIONS,
@@ -37,6 +42,7 @@ import {
   SCREEN_HEADER_CONTENT_GAP,
 } from '@/constants/screenLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { fetchSignalCommunity } from '@/integrations/signal-api/community';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalCalendar, signalCalendarToCalendarEvent } from '@/integrations/signal-api';
@@ -45,6 +51,7 @@ import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefings';
 import type {
+  SignalApiCommunityPost,
   SignalApiDisclosureDigestItem,
   SignalApiMarketBriefing,
   SignalApiMarketQuote,
@@ -66,10 +73,13 @@ import {
   calendarEventDisplayYmd,
   calendarEventInLocalYmdRange,
   formatLocalYmdLabel,
+  formatRelativeFromIso,
   parseLocalYmd,
   toYmd,
   utcRangeForLocalYmd,
 } from '@/utils/date';
+
+const HOME_BOARD_SOURCES: CommunitySourceKey[] = ['naver_likeusstock_free', 'save_user_news'];
 
 const ISSUE_FETCH_LIMIT = 24;
 const HOME_ISSUE_LIMIT = 6;
@@ -248,6 +258,10 @@ export function HomeFocusContent({
   const [todayBriefing, setTodayBriefing] = useState<SignalApiTodayBriefing | null>(null);
   const [disclosures, setDisclosures] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [boardPreviews, setBoardPreviews] = useState<Record<CommunitySourceKey, SignalApiCommunityPost | null>>({
+    naver_likeusstock_free: null,
+    save_user_news: null,
+  });
   const visibleCalendarEvents = useMemo(
     () => calendarEvents.slice(0, HOME_CALENDAR_LIMIT),
     [calendarEvents],
@@ -290,6 +304,10 @@ export function HomeFocusContent({
       setTodayBriefing(null);
       setDisclosures([]);
       setCalendarEvents([]);
+      setBoardPreviews({
+        naver_likeusstock_free: null,
+        save_user_news: null,
+      });
       setError(t('errorSignalApiShort'));
       return;
     }
@@ -297,7 +315,8 @@ export function HomeFocusContent({
     try {
       const watchlist = await loadWatchlistSymbols();
       const symbols = selectedYmd === todayYmd ? watchlist.slice(0, watchlistDisplayCount) : [];
-      const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows] = await Promise.all([
+      const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows, naverBoardPage, saveBoardPage] =
+        await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale),
         fetchTopIssues(selectedYmd),
         symbols.length > 0
@@ -312,6 +331,12 @@ export function HomeFocusContent({
           to: shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
           limit: 120,
         }).catch(() => []),
+        useTwoPane
+          ? Promise.resolve({ items: [] as SignalApiCommunityPost[] })
+          : fetchSignalCommunity({ source: 'naver_likeusstock_free', limit: 1 }).catch(() => ({ items: [] as SignalApiCommunityPost[] })),
+        useTwoPane
+          ? Promise.resolve({ items: [] as SignalApiCommunityPost[] })
+          : fetchSignalCommunity({ source: 'save_user_news', limit: 1 }).catch(() => ({ items: [] as SignalApiCommunityPost[] })),
       ]);
 
       const quoteBySymbol = new Map<string, QuoteRow>();
@@ -341,10 +366,16 @@ export function HomeFocusContent({
           shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
         ),
       );
+      if (!useTwoPane) {
+        setBoardPreviews({
+          naver_likeusstock_free: naverBoardPage.items[0] ?? null,
+          save_user_news: saveBoardPage.items[0] ?? null,
+        });
+      }
     } catch (e) {
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
     }
-  }, [locale, selectedYmd, t, todayYmd, watchlistDisplayCount]);
+  }, [locale, selectedYmd, t, todayYmd, useTwoPane, watchlistDisplayCount]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -445,6 +476,13 @@ export function HomeFocusContent({
   const openBoard = useCallback(() => {
     router.navigate('/(tabs)/board' as never);
   }, [router]);
+
+  const openBoardSource = useCallback(
+    (sourceKey: CommunitySourceKey) => {
+      router.navigate(`/(tabs)/board?source=${encodeURIComponent(sourceKey)}` as never);
+    },
+    [router],
+  );
 
   const openSymbolDetail = useCallback(
     (symbol: string) => {
@@ -829,10 +867,42 @@ export function HomeFocusContent({
             <View style={styles.section}>
               <HomeSectionHeader
                 title={t('screenBoard')}
-                subtitle={t('homeFocusBoardSubtitle')}
                 onPress={openBoard}
-                accessibilityLabel={t('screenBoard')}
+                accessibilityLabel={t('commonViewAll')}
               />
+              <View style={styles.quoteGrid}>
+                {HOME_BOARD_SOURCES.map((sourceKey) => {
+                  const preview = boardPreviews[sourceKey];
+                  const accent = communitySourceAccent(sourceKey, theme);
+                  const labelId = communitySourceLabelId(sourceKey);
+                  const timeLabel = preview?.publishedAt ? formatRelativeFromIso(preview.publishedAt, locale) : '—';
+                  return (
+                    <Pressable
+                      key={sourceKey}
+                      onPress={() => openBoardSource(sourceKey)}
+                      accessibilityRole="button"
+                      accessibilityLabel={t(labelId)}
+                      style={({ pressed }) => [styles.boardTile, { borderColor: accent.border }, pressed && styles.pressed]}>
+                      <View pointerEvents="none" style={[styles.boardTileAccent, { backgroundColor: accent.accent }]} />
+                      <View style={styles.boardTileContent}>
+                        <View style={styles.quoteNameCol}>
+                          <Text style={styles.quoteSymbol} numberOfLines={1}>
+                            {t(labelId)}
+                          </Text>
+                          <Text style={styles.quoteName} numberOfLines={2}>
+                            {preview?.title?.trim() || t('homeFocusBoardEmpty')}
+                          </Text>
+                        </View>
+                        <View style={styles.quoteTileFooter}>
+                          <Text style={styles.boardTimeText} numberOfLines={1}>
+                            {timeLabel}
+                          </Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
           ) : null}
 
@@ -1100,6 +1170,46 @@ function makeStyles(
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 4 },
       elevation: 1,
+    },
+    boardTile: {
+      width: '48.5%',
+      minHeight: 68,
+      borderRadius: 16,
+      borderWidth: 1,
+      backgroundColor: theme.colorScheme === 'dark' ? theme.bgElevated : theme.card,
+      overflow: 'hidden',
+      shadowColor: '#000000',
+      shadowOpacity: 0.03,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 1,
+      position: 'relative',
+    },
+    boardTileAccent: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: 3,
+      borderTopLeftRadius: 16,
+      borderBottomLeftRadius: 16,
+    },
+    boardTileContent: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+      paddingLeft: 12,
+      gap: 8,
+    },
+    boardTimeText: {
+      fontSize: ft.ff(11),
+      lineHeight: sf(15),
+      fontWeight: ft.metaWeight,
+      color: theme.textDim,
     },
     quoteTileContent: {
       flex: 1,

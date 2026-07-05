@@ -11,6 +11,7 @@ type HomeSectionHeaderProps = {
   badge?: ReactNode;
   onPress?: () => void;
   accessibilityLabel?: string;
+  showChevron?: boolean;
 };
 
 export function HomeSectionHeader({
@@ -19,6 +20,7 @@ export function HomeSectionHeader({
   badge,
   onPress,
   accessibilityLabel,
+  showChevron = true,
 }: HomeSectionHeaderProps) {
   const { theme, scaleFont } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -34,7 +36,7 @@ export function HomeSectionHeader({
           {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
         </View>
       </View>
-      {onPress ? <FontAwesome name="chevron-right" size={12} color={theme.textDim} /> : null}
+      {onPress && showChevron ? <FontAwesome name="chevron-right" size={12} color={theme.textDim} /> : null}
     </View>
   );
 

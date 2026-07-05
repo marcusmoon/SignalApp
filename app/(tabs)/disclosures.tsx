@@ -35,9 +35,9 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTabPressCycleSegment } from '@/hooks/useTabPressCycleSegment';
-import { fetchSignalDisclosures, fetchSignalDisclosureTypeCategories } from '@/integrations/signal-api/disclosures';
+import { fetchSignalDisclosures } from '@/integrations/signal-api/disclosures';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
-import type { SignalApiDisclosure, SignalApiDisclosureDigestItem, SignalDisclosureTypeCategory } from '@/integrations/signal-api/types';
+import type { SignalApiDisclosure, SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
@@ -47,6 +47,8 @@ import { formatRelativeFromIso } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import {
   disclosureTypeFilterLabelId,
+  disclosureTypeFiltersForScope,
+  resolveDisclosureTypeScope,
   typeCategoryApiParam,
   type DisclosureTypeFilterKey,
 } from '@/domain/disclosures';
@@ -98,7 +100,6 @@ export default function DisclosuresScreen() {
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const [filter, setFilter] = useState<FilterKey>('us');
   const [typeFilter, setTypeFilter] = useState<DisclosureTypeFilterKey>('all');
-  const [typeCategories, setTypeCategories] = useState<SignalDisclosureTypeCategory[]>([]);
   const [items, setItems] = useState<SignalApiDisclosure[]>([]);
   const [digestItems, setDigestItems] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [digestLoading, setDigestLoading] = useState(false);
@@ -147,13 +148,8 @@ export default function DisclosuresScreen() {
         typeCategory: typeCategoryApiParam(typeFilter),
         limit: 60,
       };
-      const categoryParams = { market, symbols };
-      const [page, categoriesPage] = await Promise.all([
-        fetchSignalDisclosures(listParams),
-        fetchSignalDisclosureTypeCategories(categoryParams),
-        loadDigests(),
-      ]);
-      setTypeCategories(categoriesPage.items);
+      const page = await fetchSignalDisclosures(listParams);
+      await loadDigests();
       setItems(page.items);
       return page.items;
     } catch (e) {
@@ -184,9 +180,13 @@ export default function DisclosuresScreen() {
     setTypeFilter(key);
   }, [typeFilter]);
 
+  const typeScope = useMemo(
+    () => resolveDisclosureTypeScope({ marketFilter: filter, symbolFilter }),
+    [filter, symbolFilter],
+  );
   const typeFilterOptions = useMemo(
-    () => typeCategories.map((row) => row.key).filter(Boolean),
-    [typeCategories],
+    () => [...disclosureTypeFiltersForScope(typeScope)],
+    [typeScope],
   );
 
   useEffect(() => {
@@ -260,7 +260,7 @@ export default function DisclosuresScreen() {
   const emptyText =
     filter === 'watch' && watchlist.length === 0
       ? t('symbolDetailNoDisclosures')
-      : typeFilter !== 'all' && items.length > 0
+      : typeFilter !== 'all'
         ? t('disclosuresEmptyType')
         : t('disclosuresEmpty');
 
@@ -292,7 +292,7 @@ export default function DisclosuresScreen() {
             </Pressable>
           </View>
         ) : null}
-        {typeFilterOptions.length > 1 ? (
+        {typeFilterOptions.length > 0 ? (
           <View style={styles.typeFilterRow}>
             <Pressable
               onPress={() => onPickTypeFilter('all')}

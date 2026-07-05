@@ -1,5 +1,5 @@
 import { queryKysely } from '../kysely/client.mjs';
-import { resolveDisclosureTypeCategory, sortDisclosureTypeCategories } from '../../disclosures/typeCategory.mjs';
+import { resolveDisclosureTypeCategory } from '../../disclosures/typeCategory.mjs';
 import {
   cleanText,
   pageOptions,
@@ -120,32 +120,4 @@ export async function queryPublicDisclosureByIdRow(id) {
   const result = await queryKysely('SELECT payload FROM disclosures WHERE id = $1 LIMIT 1', [key]);
   const item = payloadFromRow(result.rows[0]);
   return item ? publicDisclosure(item) : null;
-}
-
-export async function queryPublicDisclosureTypeCategoryRows(options = {}) {
-  const params = [];
-  const where = buildDisclosureWhere(options, params);
-  where.push(`${effectiveTypeCategoryExpr()} IS NOT NULL`);
-  const result = await queryKysely(
-    `
-      SELECT ${effectiveTypeCategoryExpr()} AS type_category, COUNT(*)::int AS count
-      FROM disclosures
-      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-      GROUP BY 1
-      ORDER BY count DESC, type_category ASC
-    `,
-    params,
-  );
-  const rows = result.rows
-    .map((row) => ({
-      key: cleanText(row.type_category),
-      count: Number(row.count) || 0,
-    }))
-    .filter((row) => row.key && row.count > 0);
-  return {
-    rows: sortDisclosureTypeCategories(rows.map((row) => row.key)).map((key) => ({
-      key,
-      count: rows.find((row) => row.key === key)?.count || 0,
-    })),
-  };
 }

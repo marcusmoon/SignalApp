@@ -52,7 +52,6 @@ import {
 import {
   queryPublicDisclosureRows,
   queryPublicDisclosureByIdRow,
-  queryPublicDisclosureTypeCategoryRows,
 } from './db/repositories/disclosuresRepository.mjs';
 import {
   queryPublicNewsDigestRows,
@@ -962,15 +961,6 @@ export async function queryPublicDisclosureDigests(options = {}) {
 
 export async function queryPublicDisclosureById(id) {
   return cachedPublicRead('publicDisclosureById', { id }, () => queryPublicDisclosureByIdRow(id), 15000);
-}
-
-export async function queryPublicDisclosureTypeCategories(options = {}) {
-  return cachedPublicRead(
-    'publicDisclosureTypeCategories',
-    options,
-    () => queryPublicDisclosureTypeCategoryRows(options),
-    15000,
-  );
 }
 
 export async function queryPublicYoutube(options = {}) {

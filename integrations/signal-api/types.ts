@@ -154,11 +154,6 @@ export type SignalApiNewsSource = {
   order: number;
 };
 
-export type SignalDisclosureTypeCategory = {
-  key: string;
-  count: number;
-};
-
 export type SignalApiDisclosure = {
   id: string;
   market: 'us' | 'kr' | string | null;

@@ -1,8 +1,10 @@
 export {
-  availableDisclosureTypeFilters,
-  disclosureTypeFilterKey,
+  DART_TYPE_FILTERS,
+  SEC_TYPE_FILTERS,
   disclosureTypeFilterLabelId,
-  sortDisclosureTypeFilterKeys,
+  disclosureTypeFiltersForScope,
+  resolveDisclosureTypeScope,
   typeCategoryApiParam,
   type DisclosureTypeFilterKey,
+  type DisclosureTypeScope,
 } from './typeFilter';

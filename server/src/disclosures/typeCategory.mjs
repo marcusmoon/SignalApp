@@ -1,3 +1,7 @@
+/** 앱 공시 유형 칩·Job 수집 범위와 맞춘 분류 코드 */
+export const DART_TYPE_CATEGORY_CODES = ['A', 'B', 'C', 'D', 'E', 'I'] as const;
+export const SEC_TYPE_CATEGORY_CODES = ['8-K', '10-Q', '10-K', '6-K', '20-F', 'S-1'] as const;
+
 const DART_PATTERN_RULES = [
   ['B', /주요사항/],
   ['C', /발행|증권신고|공모|채권/],
@@ -7,7 +11,7 @@ const DART_PATTERN_RULES = [
   ['E', /기타|자율공시|경영사항/],
 ];
 
-const SEC_FORMS = new Set(['8-K', '10-Q', '10-K', '6-K', '20-F', 'S-1']);
+const SEC_FORMS = new Set(SEC_TYPE_CATEGORY_CODES);
 
 function cleanText(value) {
   return String(value || '').trim();

@@ -355,7 +355,7 @@ export default function DisclosuresScreen() {
 
   const listHeaderEl = useMemo(
     () => (
-      <View style={styles.listHeader}>
+      <View style={[styles.listHeader, useTwoPane && styles.listHeaderWide]}>
         {!symbolFilter && filter !== 'watch' && digestItems.length > 0 ? (
           <DisclosureDigestSection items={digestItems} loading={digestLoading} />
         ) : null}
@@ -404,7 +404,7 @@ export default function DisclosuresScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
     ),
-    [clearSymbolFilter, digestItems, digestLoading, error, filter, onPickTypeFilter, styles, symbolFilter, t, typeFilter, typeFilterOptions],
+    [clearSymbolFilter, digestItems, digestLoading, error, filter, onPickTypeFilter, styles, symbolFilter, t, typeFilter, typeFilterOptions, useTwoPane],
   );
 
   const renderDisclosureCard = useCallback(
@@ -613,10 +613,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minWidth: 360,
     },
     listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
-    wideListContent: { paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP },
+    wideListContent: { paddingTop: 0 },
     listHeader: {
       paddingTop: SCREEN_LIST_HEADER_PADDING_TOP,
       paddingBottom: SCREEN_LIST_HEADER_PADDING_BOTTOM,
+    },
+    listHeaderWide: {
+      paddingTop: 0,
     },
     segment: {
       flexDirection: 'row',

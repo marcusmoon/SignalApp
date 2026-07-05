@@ -112,6 +112,8 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 | `IpadHomeScreen` | wide 홈 |
 | `WebWheelScrollView` / `WebWheelFlatList` | 웹 휠 스크롤 |
 
+**wide 2-pane 주의:** `SCREEN_WIDE_CONTENT_PADDING_TOP`은 **행(`wideBody`) 또는 리스트(`listContentWide`) 중 한 곳에만** 적용한다. 둘 다 더하면 왼쪽 리스트 상단이 과하게 벌어진다. `ListHeaderComponent`는 wide에서 `paddingTop: 0`(`listHeaderWide`)으로 두고, 행 padding만 쓴다.
+
 새 화면은 위 패턴 중 하나를 선택하고, 여백은 `screenLayout` 상수만 사용한다.
 
 ## 새 화면 체크리스트

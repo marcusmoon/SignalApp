@@ -3,7 +3,6 @@ import { useSyncExternalStore } from 'react';
 import {
   readThemeAppearanceModeSync,
   THEME_APPEARANCE_CHANGED_EVENT,
-  WEB_THEME_EFFECTIVE_SCHEME_KEY,
   type ThemeAppearanceMode,
 } from '@/services/themeAppearancePreference';
 
@@ -12,11 +11,7 @@ const SERVER_SNAPSHOT: ThemeAppearanceMode = 'system';
 function subscribe(onStoreChange: () => void): () => void {
   if (typeof window === 'undefined') return () => {};
   const onStorage = (event: StorageEvent) => {
-    if (
-      event.key == null ||
-      event.key.includes('theme_appearance') ||
-      event.key === WEB_THEME_EFFECTIVE_SCHEME_KEY
-    ) {
+    if (event.key == null || event.key.includes('theme_appearance')) {
       onStoreChange();
     }
   };

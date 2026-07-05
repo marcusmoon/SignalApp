@@ -1,35 +1,10 @@
 import { SIGNAL_DARK, SIGNAL_LIGHT, type AppTheme, type ThemeColorScheme } from '@/constants/theme';
 import {
-  readThemeAppearanceModeSync,
   WEB_THEME_APPEARANCE_KEYS,
-  WEB_THEME_APPEARANCE_MIRROR_KEY,
   WEB_THEME_EFFECTIVE_SCHEME_KEY,
-  type ThemeAppearanceMode,
 } from '@/services/themeAppearancePreference';
 
-export { WEB_THEME_APPEARANCE_KEYS, WEB_THEME_APPEARANCE_MIRROR_KEY, WEB_THEME_EFFECTIVE_SCHEME_KEY };
-
-/** @deprecated Prefer readThemeAppearanceModeSync from themeAppearancePreference. */
-export function readWebThemeAppearanceMode(): ThemeAppearanceMode {
-  return readThemeAppearanceModeSync();
-}
-
-export function systemPrefersDark(): boolean {
-  if (typeof window === 'undefined') return false;
-  try {
-    return Boolean(window.matchMedia?.('(prefers-color-scheme: dark)').matches);
-  } catch {
-    return false;
-  }
-}
-
-export function resolveThemeColorScheme(
-  appearanceMode: ThemeAppearanceMode,
-  _prefersDark = systemPrefersDark(),
-): ThemeColorScheme {
-  if (appearanceMode === 'light') return 'light';
-  return 'dark';
-}
+export { WEB_THEME_APPEARANCE_KEYS, WEB_THEME_EFFECTIVE_SCHEME_KEY };
 
 export function themeBackgroundForScheme(scheme: ThemeColorScheme): string {
   return scheme === 'dark' ? SIGNAL_DARK.bg : SIGNAL_LIGHT.bg;
@@ -61,13 +36,6 @@ export function applyWebDocumentTheme(scheme: ThemeColorScheme, bg: string, acti
   root.style.colorScheme = scheme;
   root.style.backgroundColor = bg;
   applyWebThemeCssVariables(root, theme);
-  if (typeof window !== 'undefined') {
-    try {
-      window.localStorage.setItem(WEB_THEME_EFFECTIVE_SCHEME_KEY, scheme);
-    } catch {
-      // ignore quota / private mode
-    }
-  }
   document.body.style.backgroundColor = bg;
   const appRoot = document.getElementById('root');
   if (appRoot) {

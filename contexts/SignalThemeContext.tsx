@@ -10,7 +10,6 @@ import {
 } from 'react';
 import { Platform } from 'react-native';
 
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { useWebThemeAppearanceMode } from '@/hooks/useWebThemeAppearanceMode';
 
 import type { AppTheme, ThemeColorScheme } from '@/constants/theme';
@@ -38,9 +37,8 @@ import {
   saveFontSizePreset,
 } from '@/services/fontSizePreference';
 import {
+  effectiveColorSchemeForMode,
   loadThemeAppearanceMode,
-  readEffectiveColorSchemeSync,
-  readThemeAppearanceModeSync,
   saveThemeAppearanceMode,
   type ThemeAppearanceMode,
 } from '@/services/themeAppearancePreference';
@@ -71,11 +69,8 @@ type SignalThemeContextValue = {
 const SignalThemeContext = createContext<SignalThemeContextValue | null>(null);
 
 export function SignalThemeProvider({ children }: { children: ReactNode }) {
-  const systemColorScheme = useColorScheme();
   const webAppearanceMode = useWebThemeAppearanceMode();
-  const [appearanceMode, setAppearanceModeState] = useState<ThemeAppearanceMode>(() =>
-    Platform.OS === 'web' ? readThemeAppearanceModeSync() : 'system',
-  );
+  const [appearanceMode, setAppearanceModeState] = useState<ThemeAppearanceMode>('system');
   const resolvedAppearanceMode = Platform.OS === 'web' ? webAppearanceMode : appearanceMode;
   const [presetId, setPresetIdState] = useState<AccentPresetId>('blue');
   const [customHex, setCustomHex] = useState<string>(DEFAULT_CUSTOM_ACCENT_HEX);
@@ -101,14 +96,10 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
-  const effectiveColorScheme = useMemo<ThemeColorScheme>(() => {
-    if (resolvedAppearanceMode === 'dark') return 'dark';
-    if (resolvedAppearanceMode === 'light') return 'light';
-    if (Platform.OS === 'web') {
-      return readEffectiveColorSchemeSync();
-    }
-    return systemColorScheme === 'dark' ? 'dark' : 'light';
-  }, [resolvedAppearanceMode, systemColorScheme]);
+  const effectiveColorScheme = useMemo<ThemeColorScheme>(
+    () => effectiveColorSchemeForMode(resolvedAppearanceMode),
+    [resolvedAppearanceMode],
+  );
 
   const theme = useMemo(
     () => getThemeForPreset(presetId, customHex, effectiveColorScheme),
@@ -142,7 +133,9 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
 
   const setAppearanceMode = useCallback(async (mode: ThemeAppearanceMode) => {
     await saveThemeAppearanceMode(mode);
-    setAppearanceModeState(mode);
+    if (Platform.OS !== 'web') {
+      setAppearanceModeState(mode);
+    }
   }, []);
 
   const setCustomAccent = useCallback(async (hex: string) => {

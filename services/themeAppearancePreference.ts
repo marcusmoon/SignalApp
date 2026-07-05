@@ -7,7 +7,7 @@ export type ThemeAppearanceMode = 'system' | 'light' | 'dark';
 
 const STORAGE_KEY = '@signal/theme_appearance_mode_v1';
 export const WEB_THEME_APPEARANCE_MIRROR_KEY = 'signal_theme_appearance_mode';
-/** Resolved palette written on every save/apply for head-script reads. */
+/** Cached resolved palette for legacy clients; recomputed from appearance mode. */
 export const WEB_THEME_EFFECTIVE_SCHEME_KEY = 'signal_theme_effective_scheme';
 export const THEME_APPEARANCE_CHANGED_EVENT = 'signal-theme-appearance-changed';
 /** Older builds incorrectly read this prefixed key; keep only as legacy fallback. */
@@ -36,7 +36,7 @@ function normalizeMode(v: string | null | undefined): ThemeAppearanceMode | null
   return raw && VALID.has(raw as ThemeAppearanceMode) ? (raw as ThemeAppearanceMode) : null;
 }
 
-function resolveEffectiveScheme(appearanceMode: ThemeAppearanceMode): ThemeColorScheme {
+export function effectiveColorSchemeForMode(appearanceMode: ThemeAppearanceMode): ThemeColorScheme {
   if (appearanceMode === 'light') return 'light';
   return 'dark';
 }
@@ -75,15 +75,6 @@ function writeWebEffectiveScheme(scheme: ThemeColorScheme): void {
   }
 }
 
-function writeWebPrimary(mode: ThemeAppearanceMode): void {
-  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, mode);
-  } catch {
-    // localStorage may be unavailable in private contexts.
-  }
-}
-
 export function notifyThemeAppearanceChanged(): void {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return;
   window.dispatchEvent(new Event(THEME_APPEARANCE_CHANGED_EVENT));
@@ -114,7 +105,6 @@ function pickCanonicalWebMode(
   const mirror = stored[WEB_THEME_APPEARANCE_MIRROR_KEY];
   const primary = stored[STORAGE_KEY];
   if (mirror && primary && mirror !== primary) {
-    // Mirror is updated synchronously on every save; primary can lag from older builds.
     return mirror;
   }
 
@@ -142,16 +132,10 @@ function cleanupLegacyWebThemeKeys(canonical: ThemeAppearanceMode, stored: Parti
   }
 }
 
-/** Sync read for web pre-hydration paths (+html script, provider init, layout bootstrap). */
+/** Sync read for web pre-hydration paths (+html script, provider init). */
 export function readThemeAppearanceModeSync(): ThemeAppearanceMode {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return 'system';
   return pickCanonicalWebMode(readWebStoredModes());
-}
-
-/** Sync read of the resolved palette for web head script and hydration guards. */
-export function readEffectiveColorSchemeSync(): ThemeColorScheme {
-  const mode = readThemeAppearanceModeSync();
-  return resolveEffectiveScheme(mode);
 }
 
 export async function loadThemeAppearanceMode(): Promise<ThemeAppearanceMode> {
@@ -159,7 +143,7 @@ export async function loadThemeAppearanceMode(): Promise<ThemeAppearanceMode> {
     const stored = readWebStoredModes();
     const mode = pickCanonicalWebMode(stored);
     cleanupLegacyWebThemeKeys(mode, stored);
-    const expectedScheme = resolveEffectiveScheme(mode);
+    const expectedScheme = effectiveColorSchemeForMode(mode);
     let storedEffective: ThemeColorScheme | null = null;
     try {
       storedEffective = normalizeEffectiveScheme(
@@ -179,8 +163,7 @@ export async function loadThemeAppearanceMode(): Promise<ThemeAppearanceMode> {
 
 export async function saveThemeAppearanceMode(mode: ThemeAppearanceMode): Promise<void> {
   const next = VALID.has(mode) ? mode : 'system';
-  const effectiveScheme = resolveEffectiveScheme(next);
-  writeWebPrimary(next);
+  const effectiveScheme = effectiveColorSchemeForMode(next);
   writeWebMirror(next);
   writeWebEffectiveScheme(effectiveScheme);
   removeWebLocalStorage(WEB_THEME_LEGACY_ASYNC_STORAGE_KEY);

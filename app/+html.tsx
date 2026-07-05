@@ -185,19 +185,6 @@ body {
   transform: translateZ(0);
 }
 
-html[data-signal-theme="dark"] {
-  --signal-bg: ${darkBg};
-  --signal-bg-elevated: ${darkTokens.bgElevated};
-  --signal-card: ${darkTokens.card};
-  --signal-border: ${darkTokens.border};
-  --signal-text: ${darkTokens.text};
-  --signal-text-muted: ${darkTokens.textMuted};
-  --signal-text-dim: ${darkTokens.textDim};
-  --signal-green: ${darkTokens.green};
-  --signal-green-dim: ${darkTokens.greenDim};
-  --signal-green-border: ${darkTokens.greenBorder};
-}
-
 html[data-signal-theme="light"] {
   --signal-bg: ${lightBg};
   --signal-bg-elevated: ${lightTokens.bgElevated};

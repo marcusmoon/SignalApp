@@ -10,7 +10,6 @@ export function webShellBackground(themeBg: string): string {
 }
 
 export const WEB_SIGNAL_CSS = {
-  bg: WEB_THEME_BG,
   card: 'var(--signal-card)',
   border: 'var(--signal-border)',
   text: 'var(--signal-text)',

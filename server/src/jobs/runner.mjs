@@ -120,6 +120,7 @@ async function readJobContext(job) {
   }
   if (
     provider === 'sec' ||
+    provider === 'dart' ||
     (provider === 'finnhub' &&
       (handler === 'market_quotes' || handler === 'market_quotes_mcap' || handler === 'market_quotes_mcap_universe')) ||
     (provider === 'yahoo' && handler === 'daily_bars')

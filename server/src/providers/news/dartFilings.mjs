@@ -161,24 +161,98 @@ function normalizeDisclosure({ symbol, corpName, filing }) {
   };
 }
 
-function matchesPblntfTy(reportName, allowed) {
+function matchesPblntfTy(filing, allowed) {
   if (!allowed || allowed.size === 0) return true;
-  const name = String(reportName || '').trim();
-  if (!name) return true;
+  const apiTy = String(filing?.pblntf_ty || '').trim().toUpperCase();
+  if (apiTy && allowed.has(apiTy)) return true;
+
+  const reportName = String(filing?.report_nm || '').trim();
+  if (!reportName) return true;
   for (const ty of allowed) {
-    if (ty === 'B' && /주요사항/.test(name)) return true;
-    if (ty === 'C' && /발행|증권신고|공모|채권/.test(name)) return true;
-    if (ty === 'D' && /지분|주식등|대량보유|공개매수/.test(name)) return true;
-    if (ty === 'I' && /공시|거래소|코스피|코스닥/.test(name)) return true;
-    if (ty === 'A' && /사업보고|반기보고|분기보고|감사보고|연결감사/.test(name)) return true;
+    if (ty === 'B' && /주요사항/.test(reportName)) return true;
+    if (ty === 'C' && /발행|증권신고|공모|채권/.test(reportName)) return true;
+    if (ty === 'D' && /지분|주식|대량보유|공개매수|소유상황|임원|주요주주/.test(reportName)) return true;
+    if (ty === 'I' && /거래소|코스피|코스닥/.test(reportName)) return true;
+    if (ty === 'A' && /사업보고|반기보고|분기보고|감사보고|연결감사/.test(reportName)) return true;
+    if (ty === 'E' && /기타|자율공시|경영사항/.test(reportName)) return true;
   }
   return false;
+}
+
+async function fetchFilingsForSymbol({
+  apiKey,
+  symbol,
+  corpCode,
+  bgnDe,
+  endDe,
+  allowedTypes,
+  limitPerSymbol,
+}) {
+  const merged = new Map();
+  const types = [...allowedTypes];
+
+  for (const pblntfTy of types) {
+    const filings = await fetchDisclosureList(apiKey, {
+      corp_code: corpCode,
+      bgn_de: bgnDe,
+      end_de: endDe,
+      pblntf_ty: pblntfTy,
+      page_count: Math.min(100, Math.max(limitPerSymbol, limitPerSymbol * 2)),
+      sort: 'date',
+      sort_mth: 'desc',
+    });
+
+    for (const filing of filings) {
+      if (!matchesPblntfTy(filing, allowedTypes)) continue;
+      const rceptNo = String(filing.rcept_no || '').trim();
+      if (!rceptNo || merged.has(rceptNo)) continue;
+      merged.set(
+        rceptNo,
+        normalizeDisclosure({
+          symbol,
+          corpName: filing.corp_name,
+          filing,
+        }),
+      );
+    }
+  }
+
+  if (merged.size === 0) {
+    const filings = await fetchDisclosureList(apiKey, {
+      corp_code: corpCode,
+      bgn_de: bgnDe,
+      end_de: endDe,
+      page_count: Math.min(100, limitPerSymbol * 3),
+      sort: 'date',
+      sort_mth: 'desc',
+    });
+    for (const filing of filings) {
+      if (!matchesPblntfTy(filing, allowedTypes)) continue;
+      const rceptNo = String(filing.rcept_no || '').trim();
+      if (!rceptNo || merged.has(rceptNo)) continue;
+      merged.set(
+        rceptNo,
+        normalizeDisclosure({
+          symbol,
+          corpName: filing.corp_name,
+          filing,
+        }),
+      );
+    }
+  }
+
+  return [...merged.values()]
+    .sort((a, b) => String(b.filedAt || '').localeCompare(String(a.filedAt || '')))
+    .slice(0, limitPerSymbol);
 }
 
 export async function fetchDartFilings(params = {}) {
   const apiKey = await dartApiKey();
   const symbols = Array.isArray(params.symbols) ? params.symbols.map(stableKrSymbol).filter(Boolean) : [];
-  if (symbols.length === 0) return [];
+  if (symbols.length === 0) {
+    console.warn('[dart] no symbols to query (check market list / job params)');
+    return [];
+  }
 
   const daysBack = Math.max(1, Math.min(90, Number(params.daysBack || 14) || 14));
   const limitPerSymbol = Math.max(1, Math.min(50, Number(params.limitPerSymbol || 8) || 8));
@@ -195,32 +269,22 @@ export async function fetchDartFilings(params = {}) {
   for (let i = 0; i < symbols.length; i += 1) {
     const symbol = symbols[i];
     const corpCode = corpMap.get(symbol);
-    if (!corpCode) continue;
+    if (!corpCode) {
+      console.warn(`[dart] skip symbol without corp_code mapping: ${symbol}`);
+      continue;
+    }
     if (i > 0 && requestDelayMs > 0) await sleep(requestDelayMs);
 
-    const filings = await fetchDisclosureList(apiKey, {
-      corp_code: corpCode,
-      bgn_de: bgnDe,
-      end_de: endDe,
-      page_count: Math.min(100, limitPerSymbol * 3),
-      sort: 'date',
-      sort_mth: 'desc',
+    const filings = await fetchFilingsForSymbol({
+      apiKey,
+      symbol,
+      corpCode,
+      bgnDe,
+      endDe,
+      allowedTypes,
+      limitPerSymbol,
     });
-
-    let count = 0;
-    for (const filing of filings) {
-      if (!matchesPblntfTy(filing.report_nm, allowedTypes)) continue;
-      const stockCode = stableKrSymbol(filing.stock_code) || symbol;
-      rows.push(
-        normalizeDisclosure({
-          symbol: stockCode,
-          corpName: filing.corp_name,
-          filing,
-        }),
-      );
-      count += 1;
-      if (count >= limitPerSymbol) break;
-    }
+    rows.push(...filings);
   }
 
   return rows;

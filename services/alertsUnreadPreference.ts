@@ -1,6 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { fetchSignalNotifications } from '@/integrations/signal-api/notifications';
+import {
+  fetchSignalNotificationInboxUnreadCount,
+  fetchSignalNotifications,
+  markSignalNotificationInboxRead,
+  SIGNAL_NOTIFICATION_INBOX_MAX,
+} from '@/integrations/signal-api/notifications';
 import { hasSignalApi } from '@/services/env';
 import { getSessionAccessToken, loadAppAuthSession } from '@/services/appAuthSession';
 import {
@@ -56,23 +61,32 @@ async function saveLastSeenAlertsAt(iso: string): Promise<void> {
   await AsyncStorage.setItem(LAST_SEEN_AT_KEY, iso.trim());
 }
 
+function mapServerNotification(item: Awaited<ReturnType<typeof fetchSignalNotifications>>[number]): StoredNotification {
+  return {
+    id: item.inboxId || `server:${item.id}`,
+    title: item.title,
+    body: item.body,
+    receivedAt: item.deliveredAt || item.scheduledAt || item.createdAt || new Date().toISOString(),
+    high: item.priority === 'high',
+    type: item.type,
+    sourceType: item.sourceType,
+    sourceId: item.sourceId,
+    deepLink: item.deepLink,
+    payload: item.payload,
+  };
+}
+
 async function loadVisibleAlerts(): Promise<StoredNotification[]> {
   const savedSession = await loadAppAuthSession();
   const access = getSessionAccessToken(savedSession);
   const [list, serverNotifications, dismissed] = await Promise.all([
     loadNotificationHistory(),
-    access && hasSignalApi() ? fetchSignalNotifications(access, 50).catch(() => []) : Promise.resolve([]),
+    access && hasSignalApi()
+      ? fetchSignalNotifications(access, SIGNAL_NOTIFICATION_INBOX_MAX).catch(() => [])
+      : Promise.resolve([]),
     loadDismissedNotificationIds(),
   ]);
-  const serverItems: StoredNotification[] = serverNotifications.map((item) => ({
-    id: `server:${item.id}`,
-    title: item.title,
-    body: item.body,
-    receivedAt: item.scheduledAt || item.createdAt || new Date().toISOString(),
-    high: item.priority === 'high',
-    type: item.type,
-    sourceType: item.sourceType,
-  }));
+  const serverItems = serverNotifications.map(mapServerNotification);
   const seen = new Set<string>();
   return [...serverItems, ...list]
     .filter((item) => {
@@ -81,10 +95,21 @@ async function loadVisibleAlerts(): Promise<StoredNotification[]> {
       seen.add(item.id);
       return true;
     })
-    .sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime());
+    .sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime())
+    .slice(0, SIGNAL_NOTIFICATION_INBOX_MAX);
 }
 
 export async function checkAlertsHasUnread(): Promise<boolean> {
+  const savedSession = await loadAppAuthSession();
+  const access = getSessionAccessToken(savedSession);
+  if (access && hasSignalApi()) {
+    try {
+      const count = await fetchSignalNotificationInboxUnreadCount(access);
+      return count > 0;
+    } catch {
+      /* fall through to local merge */
+    }
+  }
   const items = await loadVisibleAlerts();
   if (items.length === 0) return false;
   const lastSeenAt = await loadLastSeenAlertsAt();
@@ -117,10 +142,23 @@ export async function refreshAlertsUnreadFromServer(options?: { force?: boolean 
   return refreshInFlight;
 }
 
-/** 알림함 진입 시 호출 — 현재 목록 기준으로 읽음 처리 */
+/** 알림함 진입 시 호출 — 서버 인박스 read + 로컬 배지 갱신 */
 export async function markAlertsSeen(): Promise<void> {
+  const savedSession = await loadAppAuthSession();
+  const access = getSessionAccessToken(savedSession);
+  if (access && hasSignalApi()) {
+    try {
+      await markSignalNotificationInboxRead(access, { all: true });
+    } catch {
+      /* keep local fallback below */
+    }
+  }
   const items = await loadVisibleAlerts();
   const newestAt = items[0]?.receivedAt || new Date().toISOString();
   await saveLastSeenAlertsAt(newestAt);
   await setAlertsUnreadCached(false);
+}
+
+export function isServerInboxNotificationId(id: string): boolean {
+  return /^[^:]+:notification:/.test(String(id || '').trim());
 }

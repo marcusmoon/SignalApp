@@ -1,6 +1,7 @@
 import { config } from '../config.mjs';
 import {
   claimPushNotificationsForDelivery,
+  recordNotificationInboxDeliveries,
   resolvePushDevicesForNotification,
   updateNotificationSendState,
 } from '../db.mjs';
@@ -72,6 +73,7 @@ async function sendNotification(notification) {
       status: 'skipped',
       provider,
       errorMessage: 'NO_ACTIVE_PUSH_DEVICE',
+      devices,
     };
   }
   if (provider === 'mock') {
@@ -79,6 +81,7 @@ async function sendNotification(notification) {
       status: 'sent',
       provider,
       providerMessageId: `mock:${notification.id}:${devices.length}`,
+      devices,
     };
   }
   if (provider === 'expo') {
@@ -87,12 +90,14 @@ async function sendNotification(notification) {
       status: 'sent',
       provider,
       providerMessageId: result.providerMessageId,
+      devices,
     };
   }
   return {
     status: 'failed',
     provider,
     errorMessage: `UNSUPPORTED_PUSH_PROVIDER:${provider}`,
+    devices,
   };
 }
 
@@ -115,6 +120,10 @@ export async function processNotificationOutbox({ limit = config.notificationSen
         attempts,
         sentAt: result.status === 'sent' ? nowIso() : null,
       });
+      if (result.status === 'sent' && Array.isArray(result.devices) && result.devices.length) {
+        const userIds = [...new Set(result.devices.map((device) => device.userId).filter(Boolean))];
+        await recordNotificationInboxDeliveries(userIds, notification.id, nowIso());
+      }
     } catch (error) {
       summary.failed += 1;
       await updateNotificationSendState(notification.id, {

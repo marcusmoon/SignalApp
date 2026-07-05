@@ -14,18 +14,83 @@ export type SignalNotificationItem = {
   payload?: Record<string, unknown>;
   scheduledAt?: string | null;
   createdAt?: string | null;
+  inboxId?: string | null;
+  readAt?: string | null;
+  deliveredAt?: string | null;
+};
+
+export type SignalNotificationInboxItem = SignalNotificationItem & {
+  notificationId: string;
 };
 
 type NotificationsResponse = {
   data?: SignalNotificationItem[];
+  maxItems?: number;
 };
 
-export async function fetchSignalNotifications(token: string, limit = 50): Promise<SignalNotificationItem[]> {
+type InboxResponse = {
+  data?: SignalNotificationInboxItem[];
+  maxItems?: number;
+};
+
+export const SIGNAL_NOTIFICATION_INBOX_MAX = 50;
+
+export async function fetchSignalNotifications(token: string, limit = SIGNAL_NOTIFICATION_INBOX_MAX): Promise<SignalNotificationItem[]> {
   const body = await signalApiRequest<NotificationsResponse>('/v1/notifications', {
     token,
     params: { limit },
   });
   return Array.isArray(body.data) ? body.data : [];
+}
+
+export async function fetchSignalNotificationInbox(
+  token: string,
+  limit = SIGNAL_NOTIFICATION_INBOX_MAX,
+): Promise<SignalNotificationInboxItem[]> {
+  const body = await signalApiRequest<InboxResponse>('/v1/notifications/inbox', {
+    token,
+    params: { limit },
+  });
+  return Array.isArray(body.data) ? body.data : [];
+}
+
+export async function fetchSignalNotificationInboxUnreadCount(token: string): Promise<number> {
+  const body = await signalApiRequest<{ data?: { count?: number } }>('/v1/notifications/inbox/unread-count', {
+    token,
+  });
+  return Number(body.data?.count) || 0;
+}
+
+export async function markSignalNotificationInboxRead(
+  token: string,
+  options: { ids?: string[]; all?: boolean },
+): Promise<number> {
+  const body = await signalApiRequest<{ data?: { updated?: number } }>('/v1/notifications/inbox/read', {
+    method: 'PATCH',
+    token,
+    body: options,
+  });
+  return Number(body.data?.updated) || 0;
+}
+
+export async function deleteSignalNotificationInboxItems(
+  token: string,
+  options: { ids?: string[]; all?: boolean },
+): Promise<number> {
+  const body = await signalApiRequest<{ data?: { deleted?: number } }>('/v1/notifications/inbox', {
+    method: 'DELETE',
+    token,
+    body: options,
+  });
+  return Number(body.data?.deleted) || 0;
+}
+
+export async function deliverSignalNotificationInbox(token: string, notificationId: string): Promise<void> {
+  await signalApiRequest('/v1/notifications/inbox/deliver', {
+    method: 'POST',
+    token,
+    body: { notificationId },
+  });
 }
 
 export async function requestSignalPushTest(token: string): Promise<SignalNotificationItem> {

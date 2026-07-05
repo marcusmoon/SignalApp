@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY = '@signal/notification_history_v1';
 const DISMISSED_KEY = '@signal/dismissed_notification_ids_v1';
-const MAX_ITEMS = 100;
-const MAX_DISMISSED = 200;
+const MAX_ITEMS = 50;
+const MAX_DISMISSED = 50;
 
 export type StoredNotification = {
   id: string;

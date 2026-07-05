@@ -2,6 +2,12 @@
 
 알림센터는 **서버 인박스**를 단일 진실 원천으로 한다. 알림 **본문(템플릿)** 은 공통으로 두고, 사용자별 **읽음·삭제·노출** 은 `user_notification_inbox`에만 기록한다.
 
+## 운영 규칙
+
+- **최대 50건**: 사용자당 인박스 row는 `delivered_at` 기준 최신 50개만 유지한다. 초과분은 서버에서 hard delete.
+- **등록 사용자만**: `app_users.active = true`인 계정만 lazy link·적재·발송 대상이다. 비활성/미등록 계정은 inbox API·push 대상에서 제외.
+- **발송 대상**: push는 `app_user_devices`에 등록된 활성 기기를 가진 등록 사용자에게만 전달한다. 발송 성공 시 해당 사용자 inbox row를 upsert한다.
+
 ## 현재 vs 목표
 
 | | 현재 | 목표 |
@@ -71,7 +77,7 @@ Query:
 
 | param | 기본 | 설명 |
 |---|---|---|
-| `limit` | 50 | 1–100 |
+| `limit` | 50 | 1–50 (고정 상한) |
 | `cursor` | — | `delivered_at` + `id` 기반 opaque cursor |
 | `filter` | `all` | `all` \| `high` \| `signal` \| `system` (서버 또는 앱 domain 필터) |
 
@@ -137,12 +143,12 @@ Body: `{ "notificationId": "notification:push:..." }`
 - Flyway `V7__notification_inbox.sql`
 - 본 문서
 
-### Phase 1 — 서버 API
+### Phase 1 — 서버 API (완료)
 
 - `server/src/db/repositories/notificationInboxRepository.mjs`
-- `server/src/http/public/v1/notificationInbox.mjs`
-- `integrations/signal-api/notificationInbox.ts`
-- Admin/ingest 변경 없음
+- `server/src/http/public/v1/notifications.mjs` — inbox CRUD + legacy `GET /v1/notifications`
+- `integrations/signal-api/notifications.ts`
+- `server/src/notifications/sender.mjs` — 발송 성공 시 inbox upsert
 
 ### Phase 2 — 앱 인박스
 

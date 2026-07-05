@@ -595,6 +595,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     dateNavigatorWrap: {
       width: '100%',
       paddingHorizontal: APP_CONTENT_SIDE_PADDING,
+      marginTop: 12,
       marginBottom: 10,
     },
     dateNavigatorWrapWide: {

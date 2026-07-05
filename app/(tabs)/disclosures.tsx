@@ -45,6 +45,12 @@ import { markDisclosureFeedSeen } from '@/services/disclosureUnreadPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { formatRelativeFromIso } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
+import {
+  availableDisclosureTypeFilters,
+  disclosureTypeFilterLabelId,
+  filterDisclosuresByType,
+  type DisclosureTypeFilterKey,
+} from '@/domain/disclosures';
 
 type FilterKey = 'us' | 'kr' | 'watch';
 
@@ -92,6 +98,7 @@ export default function DisclosuresScreen() {
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const [filter, setFilter] = useState<FilterKey>('us');
+  const [typeFilter, setTypeFilter] = useState<DisclosureTypeFilterKey>('all');
   const [items, setItems] = useState<SignalApiDisclosure[]>([]);
   const [digestItems, setDigestItems] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [digestLoading, setDigestLoading] = useState(false);
@@ -161,16 +168,33 @@ export default function DisclosuresScreen() {
     }, [items, symbolFilter]),
   );
 
+  const onPickTypeFilter = useCallback((key: DisclosureTypeFilterKey) => {
+    setTypeFilter((prev) => (prev === key ? prev : key));
+  }, []);
+
+  const typeFilterOptions = useMemo(() => availableDisclosureTypeFilters(items), [items]);
+  const filteredItems = useMemo(
+    () => filterDisclosuresByType(items, typeFilter),
+    [items, typeFilter],
+  );
+
+  useEffect(() => {
+    if (typeFilter === 'all') return;
+    if (!typeFilterOptions.includes(typeFilter)) {
+      setTypeFilter('all');
+    }
+  }, [typeFilter, typeFilterOptions]);
+
   useEffect(() => {
     if (!useTwoPane) return;
-    if (!items.length) {
+    if (!filteredItems.length) {
       setSelectedDisclosureId(null);
       return;
     }
-    if (!selectedDisclosureId || !items.some((item) => item.id === selectedDisclosureId)) {
-      setSelectedDisclosureId(items[0].id);
+    if (!selectedDisclosureId || !filteredItems.some((item) => item.id === selectedDisclosureId)) {
+      setSelectedDisclosureId(filteredItems[0].id);
     }
-  }, [items, selectedDisclosureId, useTwoPane]);
+  }, [filteredItems, selectedDisclosureId, useTwoPane]);
 
   const onRefresh = useCallback(async () => {
     const prevIds = new Set(items.map((item) => item.id));
@@ -195,6 +219,7 @@ export default function DisclosuresScreen() {
       setItems([]);
       setError(null);
       setRefreshNotice(null);
+      setTypeFilter('all');
       setFilter(key);
     },
     [filter],
@@ -222,11 +247,15 @@ export default function DisclosuresScreen() {
   }, [router]);
 
   const emptyText =
-    filter === 'watch' && watchlist.length === 0 ? t('symbolDetailNoDisclosures') : t('disclosuresEmpty');
+    filter === 'watch' && watchlist.length === 0
+      ? t('symbolDetailNoDisclosures')
+      : typeFilter !== 'all' && items.length > 0
+        ? t('disclosuresEmptyType')
+        : t('disclosuresEmpty');
 
   const selectedDisclosure = useMemo(
-    () => items.find((item) => item.id === selectedDisclosureId) ?? null,
-    [items, selectedDisclosureId],
+    () => filteredItems.find((item) => item.id === selectedDisclosureId) ?? null,
+    [filteredItems, selectedDisclosureId],
   );
 
   const bottomPad = 24 + tabBarHeight + tabBarBottomInset(insets.bottom);
@@ -252,10 +281,38 @@ export default function DisclosuresScreen() {
             </Pressable>
           </View>
         ) : null}
+        {typeFilterOptions.length > 1 ? (
+          <View style={styles.typeFilterRow}>
+            <Pressable
+              onPress={() => onPickTypeFilter('all')}
+              style={[styles.typeFilterChip, typeFilter === 'all' && styles.typeFilterChipActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: typeFilter === 'all' }}>
+              <Text style={[styles.typeFilterText, typeFilter === 'all' && styles.typeFilterTextActive]}>
+                {t('disclosuresFilterAll')}
+              </Text>
+            </Pressable>
+            {typeFilterOptions.map((key) => {
+              const active = typeFilter === key;
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => onPickTypeFilter(key)}
+                  style={[styles.typeFilterChip, active && styles.typeFilterChipActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}>
+                  <Text style={[styles.typeFilterText, active && styles.typeFilterTextActive]}>
+                    {t(disclosureTypeFilterLabelId(key))}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
     ),
-    [clearSymbolFilter, digestItems, digestLoading, error, filter, styles, symbolFilter, t],
+    [clearSymbolFilter, digestItems, digestLoading, error, filter, onPickTypeFilter, styles, symbolFilter, t, typeFilter, typeFilterOptions],
   );
 
   const renderDisclosureCard = useCallback(
@@ -395,7 +452,7 @@ export default function DisclosuresScreen() {
         ) : (
           <View style={useTwoPane ? styles.wideBody : styles.compactBody}>
             <WebWheelFlatList
-              data={items}
+              data={filteredItems}
               keyExtractor={(item) => item.id}
               style={[styles.list, useTwoPane && styles.wideList]}
               contentContainerStyle={[
@@ -516,6 +573,35 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     symbolFilterClear: {
       fontSize: sf(12),
       fontWeight: '800',
+      color: theme.green,
+    },
+    typeFilterRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 10,
+    },
+    typeFilterChip: {
+      minHeight: 32,
+      paddingHorizontal: 11,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    typeFilterChipActive: {
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+    },
+    typeFilterText: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '800',
+      color: theme.textDim,
+    },
+    typeFilterTextActive: {
       color: theme.green,
     },
     loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },

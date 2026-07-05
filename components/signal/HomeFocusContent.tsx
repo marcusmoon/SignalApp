@@ -468,7 +468,7 @@ export function HomeFocusContent({
       router.push({
         pathname: '/disclosure-flow',
         params,
-      } as Href);
+      } as unknown as Href);
     },
     [ipadNav, router, selectedYmd],
   );

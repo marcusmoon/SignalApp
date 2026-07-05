@@ -9,6 +9,7 @@ const LIST_URL = 'https://opendart.fss.or.kr/api/list.json';
 const VIEWER_URL = 'https://dart.fss.or.kr/dsaf001/main.do?rcpNo=';
 const DEFAULT_PBLNTF_TY = ['B', 'C', 'D', 'I'];
 const CORP_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const DART_EMPTY_LIST_STATUSES = new Set(['013']);
 
 let corpCache = null;
 let corpCacheAt = 0;
@@ -254,10 +255,14 @@ async function fetchDisclosureList(apiKey, params) {
     throw new Error(`DART_LIST_${res.status}: ${body.slice(0, 200)}`);
   }
   const json = await res.json();
-  if (String(json?.status || '') !== '000') {
-    throw new Error(`DART_LIST_${json?.status || 'ERROR'}: ${json?.message || 'request failed'}`);
+  const status = String(json?.status || '').trim();
+  if (status === '000') {
+    return Array.isArray(json?.list) ? json.list : [];
   }
-  return Array.isArray(json?.list) ? json.list : [];
+  if (DART_EMPTY_LIST_STATUSES.has(status)) {
+    return [];
+  }
+  throw new Error(`DART_LIST_${status || 'ERROR'}: ${json?.message || 'request failed'}`);
 }
 
 function normalizeDisclosure({ symbol, corpName, filing }) {
@@ -324,56 +329,27 @@ async function fetchFilingsForSymbol({
   limitPerSymbol,
 }) {
   const merged = new Map();
-  const types = [...allowedTypes];
+  const filings = await fetchDisclosureList(apiKey, {
+    corp_code: corpCode,
+    bgn_de: bgnDe,
+    end_de: endDe,
+    page_count: Math.min(100, Math.max(limitPerSymbol, limitPerSymbol * 3)),
+    sort: 'date',
+    sort_mth: 'desc',
+  });
 
-  for (const pblntfTy of types) {
-    const filings = await fetchDisclosureList(apiKey, {
-      corp_code: corpCode,
-      bgn_de: bgnDe,
-      end_de: endDe,
-      pblntf_ty: pblntfTy,
-      page_count: Math.min(100, Math.max(limitPerSymbol, limitPerSymbol * 2)),
-      sort: 'date',
-      sort_mth: 'desc',
-    });
-
-    for (const filing of filings) {
-      if (!matchesPblntfTy(filing, allowedTypes)) continue;
-      const rceptNo = String(filing.rcept_no || '').trim();
-      if (!rceptNo || merged.has(rceptNo)) continue;
-      merged.set(
-        rceptNo,
-        normalizeDisclosure({
-          symbol,
-          corpName: filing.corp_name,
-          filing,
-        }),
-      );
-    }
-  }
-
-  if (merged.size === 0) {
-    const filings = await fetchDisclosureList(apiKey, {
-      corp_code: corpCode,
-      bgn_de: bgnDe,
-      end_de: endDe,
-      page_count: Math.min(100, limitPerSymbol * 3),
-      sort: 'date',
-      sort_mth: 'desc',
-    });
-    for (const filing of filings) {
-      if (!matchesPblntfTy(filing, allowedTypes)) continue;
-      const rceptNo = String(filing.rcept_no || '').trim();
-      if (!rceptNo || merged.has(rceptNo)) continue;
-      merged.set(
-        rceptNo,
-        normalizeDisclosure({
-          symbol,
-          corpName: filing.corp_name,
-          filing,
-        }),
-      );
-    }
+  for (const filing of filings) {
+    if (!matchesPblntfTy(filing, allowedTypes)) continue;
+    const rceptNo = String(filing.rcept_no || '').trim();
+    if (!rceptNo || merged.has(rceptNo)) continue;
+    merged.set(
+      rceptNo,
+      normalizeDisclosure({
+        symbol,
+        corpName: filing.corp_name,
+        filing,
+      }),
+    );
   }
 
   return [...merged.values()]

@@ -144,17 +144,7 @@ import {
   SETTINGS_TABS,
   type SettingsTab,
 } from '@/constants/settingsTabs';
-import {
-  SEGMENT_TAB_ACTIVE_TEXT,
-  SEGMENT_TAB_BTN_PADDING_V,
-  SEGMENT_TAB_BTN_RADIUS,
-  SEGMENT_TAB_FONT_SIZE,
-  SEGMENT_TAB_FONT_WEIGHT,
-  SEGMENT_TAB_GAP,
-  SEGMENT_TAB_LINE_HEIGHT,
-  SEGMENT_TAB_OUTER_RADIUS,
-  SEGMENT_TAB_PADDING,
-} from '@/constants/segmentTabBar';
+import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
 
 const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
@@ -273,6 +263,7 @@ const TAB_BAR_OPACITY_ORDER: TabBarOpacityLevel[] = [0, 1, 2, 3, 4];
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   const shellBg = webShellBackground(theme.bg);
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
   return StyleSheet.create({
     safe: { flex: 1, minHeight: 0, backgroundColor: shellBg },
     scrollFlex: { flex: 1, minHeight: 0, backgroundColor: shellBg },
@@ -290,44 +281,26 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignSelf: 'stretch',
     },
     tabBar: {
+      ...segmentTab.segment,
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH - 32,
       alignSelf: 'center',
       flexShrink: 0,
-      flexDirection: 'row',
       flexWrap: 'wrap',
       marginHorizontal: 16,
       marginTop: 10,
       marginBottom: 6,
-      backgroundColor: theme.bgElevated,
-      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
-      borderWidth: 1,
-      borderColor: theme.border,
-      padding: SEGMENT_TAB_PADDING,
-      gap: SEGMENT_TAB_GAP,
     },
     tabBtn: {
+      ...segmentTab.segBtn,
       flexGrow: 1,
       flexBasis: '30%',
       minWidth: 0,
-      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
       paddingHorizontal: 8,
-      borderRadius: SEGMENT_TAB_BTN_RADIUS,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
-    tabBtnActive: {
-      backgroundColor: theme.green,
-    },
-    tabText: {
-      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
-      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
-      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
-      color: theme.textDim,
-    },
-    tabTextActive: {
-      color: SEGMENT_TAB_ACTIVE_TEXT,
-    },
+    tabBtnActive: segmentTab.segBtnActive,
+    tabText: segmentTab.segText,
+    tabTextActive: segmentTab.segTextActive,
     lead: {
       fontSize: sf(14),
       fontWeight: '500',

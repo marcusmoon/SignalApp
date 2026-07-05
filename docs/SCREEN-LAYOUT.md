@@ -131,7 +131,7 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 
 - `constants/screenLayout.ts` — 여백 상수·헬퍼
 - `constants/responsiveLayout.ts` — 폭·breakpoint
-- `constants/segmentTabBar.ts` — 세그먼트 pill 스타일 (+ screenLayout re-export)
+- `constants/segmentTabBar.ts` — 세그먼트 pill 스타일 (`getSegmentTabBarStyles`) + screenLayout re-export
 - `constants/webLayout.ts` — 웹 flex/scroll
 - `constants/tabBar.ts` — 탭바 치수·inset
 - `components/signal/SignalHeader.tsx`

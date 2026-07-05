@@ -5,15 +5,7 @@ import type { AppTheme } from '@/constants/theme';
 import { webFlexFill, webScrollViewportStyle } from '@/constants/webLayout';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import {
-  SEGMENT_TAB_ACTIVE_TEXT,
-  SEGMENT_TAB_BTN_PADDING_V,
-  SEGMENT_TAB_BTN_RADIUS,
-  SEGMENT_TAB_FONT_SIZE,
-  SEGMENT_TAB_FONT_WEIGHT,
-  SEGMENT_TAB_GAP,
-  SEGMENT_TAB_LINE_HEIGHT,
-  SEGMENT_TAB_OUTER_RADIUS,
-  SEGMENT_TAB_PADDING,
+  getSegmentTabBarStyles,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
@@ -29,6 +21,7 @@ export function makeQuotesStyles(
   ft: FeedContentTypography,
   changeColors: { up: string; down: string },
 ) {
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: theme.bg },
     mainColumn: {
@@ -58,46 +51,13 @@ export function makeQuotesStyles(
     list: { ...webScrollViewportStyle },
     listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
     listContentWide: { paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP },
-    segment: {
-      flexDirection: 'row',
-      backgroundColor: theme.bgElevated,
-      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
-      borderWidth: 1,
-      borderColor: theme.border,
-      padding: SEGMENT_TAB_PADDING,
-      marginBottom: 0,
-      gap: SEGMENT_TAB_GAP,
-    },
-    segBtn: {
-      flex: 1,
-      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
-      borderRadius: SEGMENT_TAB_BTN_RADIUS,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    segBtnCompact: {
-      flex: 0.86,
-    },
-    segmentDivider: {
-      width: 1,
-      height: 18,
-      alignSelf: 'center',
-      marginHorizontal: 2,
-      borderRadius: 999,
-      backgroundColor: theme.border,
-    },
-    segBtnActive: {
-      backgroundColor: theme.green,
-    },
-    segText: {
-      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
-      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
-      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
-      color: theme.textDim,
-    },
-    segTextActive: {
-      color: SEGMENT_TAB_ACTIVE_TEXT,
-    },
+    segment: segmentTab.segment,
+    segBtn: segmentTab.segBtn,
+    segBtnCompact: segmentTab.segBtnCompact,
+    segmentDivider: segmentTab.segmentDivider,
+    segBtnActive: segmentTab.segBtnActive,
+    segText: segmentTab.segText,
+    segTextActive: segmentTab.segTextActive,
     updated: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted, marginBottom: 10 },
     addRow: {
       flexDirection: 'row',

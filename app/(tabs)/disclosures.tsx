@@ -25,15 +25,7 @@ import {
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import {
-  SEGMENT_TAB_ACTIVE_TEXT,
-  SEGMENT_TAB_BTN_PADDING_V,
-  SEGMENT_TAB_BTN_RADIUS,
-  SEGMENT_TAB_FONT_SIZE,
-  SEGMENT_TAB_FONT_WEIGHT,
-  SEGMENT_TAB_GAP,
-  SEGMENT_TAB_LINE_HEIGHT,
-  SEGMENT_TAB_OUTER_RADIUS,
-  SEGMENT_TAB_PADDING,
+  getSegmentTabBarStyles,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_LIST_HEADER_PADDING_BOTTOM,
   SCREEN_LIST_HEADER_PADDING_TOP,
@@ -577,6 +569,7 @@ export default function DisclosuresScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     mainColumn: {
@@ -621,35 +614,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     listHeaderWide: {
       paddingTop: 0,
     },
-    segment: {
-      flexDirection: 'row',
-      backgroundColor: theme.bgElevated,
-      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
-      borderWidth: 1,
-      borderColor: theme.border,
-      padding: SEGMENT_TAB_PADDING,
-      marginBottom: 0,
-      gap: SEGMENT_TAB_GAP,
-    },
-    segBtn: {
-      flex: 1,
-      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
-      borderRadius: SEGMENT_TAB_BTN_RADIUS,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    segBtnActive: {
-      backgroundColor: theme.green,
-    },
-    segText: {
-      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
-      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
-      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
-      color: theme.textDim,
-    },
-    segTextActive: {
-      color: SEGMENT_TAB_ACTIVE_TEXT,
-    },
+    segment: segmentTab.segment,
+    segBtn: segmentTab.segBtn,
+    segBtnActive: segmentTab.segBtnActive,
+    segText: segmentTab.segText,
+    segTextActive: segmentTab.segTextActive,
     symbolFilterRow: {
       flexDirection: 'row',
       alignItems: 'center',

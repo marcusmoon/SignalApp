@@ -17,15 +17,7 @@ import {
   type CommunitySourceFilter,
 } from '@/constants/communitySources';
 import {
-  SEGMENT_TAB_ACTIVE_TEXT,
-  SEGMENT_TAB_BTN_PADDING_V,
-  SEGMENT_TAB_BTN_RADIUS,
-  SEGMENT_TAB_FONT_SIZE,
-  SEGMENT_TAB_FONT_WEIGHT,
-  SEGMENT_TAB_GAP,
-  SEGMENT_TAB_LINE_HEIGHT,
-  SEGMENT_TAB_OUTER_RADIUS,
-  SEGMENT_TAB_PADDING,
+  getSegmentTabBarStyles,
   SCREEN_LIST_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
@@ -267,6 +259,7 @@ export default function BoardScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     mainColumn: {
@@ -285,38 +278,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
       paddingTop: SCREEN_FIXED_HEADER_PADDING_TOP,
       paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
-      backgroundColor: theme.bg,
+      backgroundColor: theme.card,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
-    segment: {
-      flexDirection: 'row',
-      backgroundColor: theme.bgElevated,
-      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
-      borderWidth: 1,
-      borderColor: theme.border,
-      padding: SEGMENT_TAB_PADDING,
-      gap: SEGMENT_TAB_GAP,
-    },
-    segBtn: {
-      flex: 1,
-      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
-      borderRadius: SEGMENT_TAB_BTN_RADIUS,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    segBtnActive: {
-      backgroundColor: theme.green,
-    },
-    segText: {
-      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
-      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
-      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
-      color: theme.textDim,
-    },
-    segTextActive: {
-      color: SEGMENT_TAB_ACTIVE_TEXT,
-    },
+    segment: segmentTab.segment,
+    segBtn: segmentTab.segBtn,
+    segBtnActive: segmentTab.segBtnActive,
+    segText: segmentTab.segText,
+    segTextActive: segmentTab.segTextActive,
     list: { ...webScrollViewportStyle },
     rowWrap: { marginBottom: 10 },
     loadingBox: {

@@ -24,6 +24,7 @@ import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicat
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { APP_CONTENT_MAX_WIDTH, APP_CONTENT_SIDE_PADDING, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
+  getSegmentTabBarStyles,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
@@ -440,7 +441,7 @@ export default function SignalScreen() {
 
       {!loading && !useTwoPane ? (
         <View style={styles.sessionTabsWrap}>
-          <View style={styles.sessionTabs}>
+          <View style={styles.segment}>
             {FLAT_TABS.map((tab) => {
               const hasBriefing = briefingByTabKey.has(tab.key);
               const isActive = activeTabKey === tab.key;
@@ -450,17 +451,17 @@ export default function SignalScreen() {
                   onPress={() => onPickSessionTab(tab.key)}
                   disabled={!hasBriefing}
                   style={[
-                    styles.sessionTab,
-                    isActive && styles.sessionTabActive,
-                    !hasBriefing && styles.sessionTabDisabled,
+                    styles.segBtn,
+                    isActive && styles.segBtnActive,
+                    !hasBriefing && styles.segBtnDisabled,
                   ]}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isActive, disabled: !hasBriefing }}>
                   <Text
                     style={[
-                      styles.sessionTabText,
-                      isActive && styles.sessionTabTextActive,
-                      !hasBriefing && styles.sessionTabTextDisabled,
+                      styles.segText,
+                      isActive && styles.segTextActive,
+                      !hasBriefing && styles.segTextDisabled,
                     ]}>
                     {flatTabLabel(tab.key)}
                   </Text>
@@ -575,6 +576,7 @@ export default function SignalScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     pageColumn: {
@@ -619,36 +621,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignSelf: 'center',
       paddingHorizontal: APP_CONTENT_SIDE_PADDING,
       marginBottom: 12,
-      gap: 6,
     },
-    sessionTabs: {
-      flexDirection: 'row',
-      gap: 8,
-    },
-    sessionTab: {
-      flex: 1,
-      paddingVertical: 10,
-      borderRadius: 10,
-      backgroundColor: theme.bgElevated,
-      alignItems: 'center',
-    },
-    sessionTabActive: {
-      backgroundColor: theme.greenDim,
-    },
-    sessionTabDisabled: {
-      opacity: 0.38,
-    },
-    sessionTabText: {
-      fontSize: sf(13),
-      fontWeight: '900',
-      color: theme.textDim,
-    },
-    sessionTabTextActive: {
-      color: theme.green,
-    },
-    sessionTabTextDisabled: {
-      color: theme.textDim,
-    },
+    segment: segmentTab.segment,
+    segBtn: segmentTab.segBtn,
+    segBtnActive: segmentTab.segBtnActive,
+    segBtnDisabled: segmentTab.segBtnDisabled,
+    segText: segmentTab.segText,
+    segTextActive: segmentTab.segTextActive,
+    segTextDisabled: segmentTab.segTextDisabled,
     emptyCard: {
       borderRadius: 18,
       borderWidth: 1,

@@ -8,15 +8,7 @@ import {
 import type { AppTheme } from '@/constants/theme';
 import { webFlexFill, webScrollViewportStyle } from '@/constants/webLayout';
 import {
-  SEGMENT_TAB_ACTIVE_TEXT,
-  SEGMENT_TAB_BTN_PADDING_V,
-  SEGMENT_TAB_BTN_RADIUS,
-  SEGMENT_TAB_FONT_SIZE,
-  SEGMENT_TAB_FONT_WEIGHT,
-  SEGMENT_TAB_GAP,
-  SEGMENT_TAB_LINE_HEIGHT,
-  SEGMENT_TAB_OUTER_RADIUS,
-  SEGMENT_TAB_PADDING,
+  getSegmentTabBarStyles,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_LIST_HEADER_PADDING_BOTTOM,
   SCREEN_LIST_HEADER_PADDING_TOP,
@@ -29,6 +21,7 @@ import {
 } from '@/constants/screenLayout';
 
 export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
   return StyleSheet.create({
     safe: {
       ...webFlexFill,
@@ -327,44 +320,13 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '900',
       color: theme.bg,
     },
-    segment: {
-      flexDirection: 'row',
-      backgroundColor: theme.bgElevated,
-      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
-      padding: SEGMENT_TAB_PADDING,
-      marginBottom: 0,
-      gap: SEGMENT_TAB_GAP,
-    },
-    segBtn: {
-      flex: 1,
-      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
-      borderRadius: SEGMENT_TAB_BTN_RADIUS,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    segBtnVideo: {
-      flex: 0.86,
-    },
-    segmentDivider: {
-      width: 1,
-      height: 18,
-      alignSelf: 'center',
-      marginHorizontal: 2,
-      borderRadius: 999,
-      backgroundColor: theme.border,
-    },
-    segBtnActive: {
-      backgroundColor: theme.green,
-    },
-    segText: {
-      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
-      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
-      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
-      color: theme.textDim,
-    },
-    segTextActive: {
-      color: SEGMENT_TAB_ACTIVE_TEXT,
-    },
+    segment: segmentTab.segment,
+    segBtn: segmentTab.segBtn,
+    segBtnVideo: segmentTab.segBtnVideo,
+    segmentDivider: segmentTab.segmentDivider,
+    segBtnActive: segmentTab.segBtnActive,
+    segText: segmentTab.segText,
+    segTextActive: segmentTab.segTextActive,
     errBox: {
       padding: 12,
       borderRadius: 14,

@@ -12,7 +12,7 @@ import {
 import { httpMetricsSnapshot } from '../../../httpMetrics.mjs';
 import { enrichJobWithCatalog } from '../../../jobs/catalog.mjs';
 import { jobLockState, resolveActiveRunningRun, runTiming } from '../../../jobs/jobLock.mjs';
-import { forceReleaseStaleJobLock } from '../../../jobs/jobLockMaintenance.mjs';
+import { forceReleaseStaleJobLock, reconcileJobLocksAndRuns } from '../../../jobs/jobLockMaintenance.mjs';
 import { getJobPreset, listJobPresets, runJobPreset } from '../../../jobs/presets.mjs';
 import { runPollingJob } from '../../../jobs/runner.mjs';
 import { cleanNewsTitleForDisplay, json, paginate, readBody } from '../../shared.mjs';
@@ -364,6 +364,9 @@ async function readDashboardSummaryContext() {
 
 export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/admin/api/jobs') {
+    await reconcileJobLocksAndRuns().catch((error) => {
+      console.warn('[admin/jobs] lock reconcile failed', error?.message || error);
+    });
     const jobs = await listPollingJobs();
     const runs = await listPollingJobRuns({ limit: 200 });
     const recentRuns = runs.map((run) => enrichJobRun(run, jobs));

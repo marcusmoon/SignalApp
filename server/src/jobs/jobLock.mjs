@@ -43,7 +43,16 @@ export function resolveActiveRunningRun(latestRun, recentRuns = []) {
 
 export function jobLockState({ job, lock, latestRun, activeRunningRun = null }) {
   if (!lock) {
-    return { locked: false, canForceUnlock: false, reason: null, lockedAt: null, expiresAt: null, staleAfterMs: null };
+    return {
+      locked: false,
+      hasLockRow: false,
+      canForceUnlock: false,
+      reason: null,
+      lockedAt: null,
+      expiresAt: null,
+      staleAfterMs: null,
+      activeRunningRunId: null,
+    };
   }
   const runningRun = activeRunningRun || resolveActiveRunningRun(latestRun);
   const timing = runTiming(runningRun, job);
@@ -56,14 +65,23 @@ export function jobLockState({ job, lock, latestRun, activeRunningRun = null }) 
   const quietStale = running && Number.isFinite(Number(timing.quietMs)) && Number(timing.quietMs) >= staleAfterMs;
   const lockAgeMs = lockedAtMs == null ? null : Date.now() - lockedAtMs;
   const orphanedLock = !running && lockAgeMs != null && lockAgeMs >= staleAfterMs;
-  const canForceUnlock = expired || elapsedStale || quietStale || orphanedLock;
+  const latestFinishedMs = validTime(latestRun?.finishedAt);
+  const runCompletedWhileLocked =
+    !running &&
+    latestRun &&
+    latestRun.status !== 'running' &&
+    latestFinishedMs != null &&
+    (lockedAtMs == null || latestFinishedMs >= lockedAtMs);
+  const canForceUnlock = expired || elapsedStale || quietStale || orphanedLock || runCompletedWhileLocked;
   let reason = 'active';
   if (expired) reason = 'expired';
+  else if (runCompletedWhileLocked) reason = 'completed_run';
   else if (quietStale) reason = 'quiet_ttl';
   else if (elapsedStale) reason = 'running_ttl';
   else if (orphanedLock) reason = 'orphaned_lock';
   return {
-    locked: true,
+    locked: !canForceUnlock,
+    hasLockRow: true,
     canForceUnlock,
     reason,
     lockedAt: lock.lockedAt || null,

@@ -320,6 +320,7 @@ function jobLockText(job, textFor, textForVars, formatDateTime) {
       quiet_ttl: 'jobLockReasonQuiet',
       running_ttl: 'jobLockReasonRunning',
       orphaned_lock: 'jobLockReasonOrphan',
+      completed_run: 'jobLockReasonCompletedRun',
     }[job.lock.reason];
     return reasonKey ? textFor(reasonKey) : textFor('jobLockStale');
   }
@@ -369,13 +370,13 @@ function jobHealthClass(job) {
 
 function renderJobSummary({ jobsAll, jobsFiltered, esc, textFor, textForVars }) {
   const enabled = jobsAll.filter((j) => j.enabled).length;
-  const locked = jobsAll.filter((j) => j?.lock?.locked).length;
+  const activeLocks = jobsAll.filter((j) => j?.lock?.locked).length;
   const staleLocks = jobsAll.filter((j) => j?.lock?.canForceUnlock).length;
   const failed = jobsAll.filter((j) => String(j.latestRunStatus || '') === 'failed').length;
   const cards = [
     [textFor('jobOpsTotal'), jobsAll.length],
     [textFor('jobOpsEnabled'), enabled],
-    [textFor('jobOpsLocked'), locked],
+    [textFor('jobOpsLocked'), activeLocks],
     [textFor('jobOpsStaleLocks'), staleLocks],
     [textFor('jobOpsFailed'), failed],
   ];

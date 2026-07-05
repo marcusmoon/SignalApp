@@ -10,6 +10,15 @@
 - **날짜·시간**은 [DATE-TIME.md](./DATE-TIME.md)를 따른다. 서버는 UTC, 앱 API는 UTC ISO, 표시는 로케일·기기 타임존.
 - **화면 레이아웃·여백**은 [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)와 `constants/screenLayout.ts`를 따른다.
 
+## 피드 API 캐시
+
+리스트·피드 화면의 HTTP 호출은 `integrations/signal-api/` 메모리 캐시(TTL)를 공통으로 쓴다.
+
+- **기본** `cacheMode: 'use'` (`signalCacheMode()`): 필터·탭 전환·재진입. 캐시 hit이면 네트워크 없이 즉시 표시.
+- **새로고침** `cacheMode: 'bypass'` (`signalCacheMode(true)`): 당겨서 새로고침만 네트워크 강제.
+- 화면마다 `listCacheRef` 등 **중복 캐시를 두지 않는다** — API 레이어(`integrations/signal-api/cache/`)에 위임.
+- All/속보 등 **서버 필터가 아닌 조건**은 클라이언트 필터(`domain/news/feedFilters.ts` 등)로 처리한다.
+
 ## 실행
 
 ```bash

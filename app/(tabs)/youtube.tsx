@@ -53,6 +53,7 @@ import { fetchSignalYoutube, fetchSignalYoutubeChannels, signalYoutubeToYoutubeI
 import type { SignalApiYoutubeChannel, SignalYoutubeListMeta } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { YoutubeItem } from '@/types/signal';
+import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
 import { useWebFlatListLoadMore } from '@/hooks/useWebFlatListLoadMore';
 import {
@@ -206,7 +207,7 @@ export default function YoutubeScreen() {
             sort: requestedSort,
             channelHandles: availableHandles && handles.length === availableHandles.length ? undefined : handles,
           },
-          { cacheMode: opts?.forceRefresh ? 'bypass' : 'use' },
+          { cacheMode: signalCacheMode(opts?.forceRefresh) },
         );
         setYoutubeMeta(page.meta);
         setItems(page.items.map((item) => signalYoutubeToYoutubeItem(item, locale)));

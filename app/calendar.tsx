@@ -34,6 +34,7 @@ import {
   signalCalendarToCalendarEvent,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
+import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { hasSignalApi } from '@/services/env';
 import {
   CALENDAR_EVENT_TYPE_ORDER,
@@ -182,7 +183,7 @@ export default function CalendarScreen() {
       const { from, to } = monthBounds(year, month);
       const raw = await fetchSignalCalendar(
         { from, to, type: typeParam, limit: CALENDAR_MONTH_QUERY_LIMIT },
-        { cacheMode: forceRefresh ? 'bypass' : 'use' },
+        { cacheMode: signalCacheMode(forceRefresh) },
       );
       return raw.map(rawToCalendarEvent).filter((ev): ev is CalendarEvent => ev != null);
     },

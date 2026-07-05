@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect, useIsFocused } from 'expo-router/react-navigation';
@@ -37,6 +37,7 @@ import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { fetchSignalCommunity } from '@/integrations/signal-api/community';
+import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiCommunityPost, SignalCommunityListMeta } from '@/integrations/signal-api/types';
 import type { MessageId } from '@/locales/messages';
@@ -69,7 +70,6 @@ export default function BoardScreen() {
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const [source, setSource] = useState<CommunitySourceFilter>(COMMUNITY_SOURCE_ALL);
   const [loading, setLoading] = useState(true);
-  const [listLoading, setListLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -78,9 +78,6 @@ export default function BoardScreen() {
   const [meta, setMeta] = useState<SignalCommunityListMeta | null>(null);
   const loadingMoreRef = useRef(false);
   const itemsRef = useRef<SignalApiCommunityPost[]>([]);
-  const listCacheRef = useRef<Map<CommunitySourceFilter, { items: SignalApiCommunityPost[]; meta: SignalCommunityListMeta }>>(
-    new Map(),
-  );
   itemsRef.current = items;
 
   const load = useCallback(
@@ -97,29 +94,20 @@ export default function BoardScreen() {
         if (loadingMoreRef.current || !meta?.hasMore) return;
         loadingMoreRef.current = true;
         setLoadingMore(true);
-      } else if (opts?.refresh) {
-        listCacheRef.current.delete(nextSource);
-        if (itemsRef.current.length === 0) setLoading(true);
-      } else {
-        const cached = listCacheRef.current.get(nextSource);
-        if (cached) {
-          setItems(cached.items);
-          setMeta(cached.meta);
-        }
-        if (!cached && itemsRef.current.length === 0) setLoading(true);
-        else if (!cached) setListLoading(true);
+      } else if (itemsRef.current.length === 0) {
+        setLoading(true);
       }
       setError(null);
       try {
         const offset = loadMore ? meta?.nextOffset ?? itemsRef.current.length : 0;
-        const page = await fetchSignalCommunity({
-          source: nextSource,
-          limit: PAGE_SIZE,
-          offset,
-        });
-        if (!loadMore) {
-          listCacheRef.current.set(nextSource, { items: page.items, meta: page.meta });
-        }
+        const page = await fetchSignalCommunity(
+          {
+            source: nextSource,
+            limit: PAGE_SIZE,
+            offset,
+          },
+          { cacheMode: signalCacheMode(opts?.refresh) },
+        );
         setItems((prev) => (loadMore ? [...prev, ...page.items] : page.items));
         setMeta(page.meta);
       } catch (e) {
@@ -134,7 +122,6 @@ export default function BoardScreen() {
           setLoadingMore(false);
         } else {
           setLoading(false);
-          setListLoading(false);
           setRefreshing(false);
         }
       }
@@ -159,7 +146,7 @@ export default function BoardScreen() {
   const { onLayout, onContentSizeChange, onScroll } = useWebFlatListLoadMore({
     hasMore: meta?.hasMore === true,
     loadingMore,
-    loading: loading || listLoading,
+    loading,
     loadMore: onEndReached,
     isBusyRef: loadingMoreRef,
   });
@@ -210,16 +197,6 @@ export default function BoardScreen() {
     [styles.rowWrap],
   );
 
-  const listHeaderEl = useMemo(
-    () =>
-      listLoading ? (
-        <View style={styles.listLoadingRow}>
-          <ActivityIndicator color={theme.green} size="small" />
-        </View>
-      ) : null,
-    [listLoading, styles.listLoadingRow, theme.green],
-  );
-
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane ? <SignalHeader compact onBrandPress={onRefresh} /> : null}
@@ -260,7 +237,6 @@ export default function BoardScreen() {
             data={items}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
-            ListHeaderComponent={listHeaderEl}
             refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
             onEndReached={onEndReached}
             onEndReachedThreshold={0.35}
@@ -272,7 +248,7 @@ export default function BoardScreen() {
             maxToRenderPerBatch={WEB_FLATLIST_BATCH}
             windowSize={WEB_FLATLIST_WINDOW}
             ListEmptyComponent={
-              !loading && !listLoading ? (
+              !loading ? (
                 <View style={styles.emptyBox}>
                   <Text style={styles.emptyText}>{t('communityEmpty')}</Text>
                 </View>
@@ -341,12 +317,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     footerLoading: {
       paddingVertical: 18,
       alignItems: 'center',
-    },
-    listLoadingRow: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 10,
-      marginBottom: 4,
     },
     emptyBox: {
       paddingVertical: 48,

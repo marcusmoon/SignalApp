@@ -3,6 +3,7 @@ export * from '@/integrations/signal-api/auth';
 export * from '@/integrations/signal-api/socialAuth';
 export * from '@/integrations/signal-api/legalTerms';
 export * from '@/integrations/signal-api/cache';
+export * from '@/integrations/signal-api/cacheMode';
 export * from '@/integrations/signal-api/config';
 export * from '@/integrations/signal-api/httpClient';
 export * from '@/integrations/signal-api/calendarRange';

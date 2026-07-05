@@ -68,6 +68,7 @@ import {
   type NewsQuickFilterKind,
   type WatchFilterKind,
 } from '@/domain/news';
+import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { hasSignalApi } from '@/services/env';
 import {
   DEFAULT_NEWS_HASHTAG_DISPLAY_MAX,
@@ -327,7 +328,7 @@ export default function FeedScreen() {
         return { itemIds: [], kind: 'news', insightIds: [] };
       }
 
-      const cacheMode = forceRefresh ? 'bypass' : 'use';
+      const cacheMode = signalCacheMode(forceRefresh);
 
       if (segment === 'video') {
         setSignalNewsPool([]);
@@ -858,7 +859,7 @@ export default function FeedScreen() {
               offset: 0,
               tag: activeTag || undefined,
             },
-            { cacheMode: 'bypass' },
+            { cacheMode: 'use' },
           );
           const deduped = dedupeNewsFeedRows(page.items);
           syncServerRows(deduped);
@@ -1069,7 +1070,7 @@ export default function FeedScreen() {
             offset: 0,
             tag: activeTag || undefined,
           },
-          { cacheMode: 'bypass' },
+          { cacheMode: 'use' },
         );
         const deduped = dedupeNewsFeedRows(page.items);
         syncServerRows(deduped);

@@ -1,5 +1,11 @@
 import { signalApi } from '@/integrations/signal-api/httpClient';
 import type { SignalApiDisclosure, SignalNewsListMeta } from '@/integrations/signal-api/types';
+import type { SignalCacheMode } from '@/integrations/signal-api/cacheMode';
+import {
+  buildSignalDisclosuresCacheKey,
+  peekSignalDisclosuresCache,
+  storeSignalDisclosuresCache,
+} from '@/integrations/signal-api/cache/disclosuresCache';
 
 export type SignalDisclosuresPage = {
   items: SignalApiDisclosure[];
@@ -41,15 +47,23 @@ export async function fetchSignalDisclosures(
     from?: string;
     to?: string;
   } = {},
-  _options?: { cacheMode?: 'use' | 'bypass' },
+  options?: { cacheMode?: SignalCacheMode },
 ): Promise<SignalDisclosuresPage> {
+  const cacheMode = options?.cacheMode || 'use';
+  const cacheKey = buildSignalDisclosuresCacheKey(params);
+  if (cacheMode !== 'bypass') {
+    const hit = peekSignalDisclosuresCache(cacheKey);
+    if (hit) return hit;
+  }
   const json = await signalApi<{ data: SignalApiDisclosure[]; meta?: Partial<SignalNewsListMeta> }>(
     '/v1/disclosures',
     params,
     { timeoutMs: 6000, attempts: 1 },
   );
   const rows = Array.isArray(json.data) ? json.data : [];
-  return { items: rows, meta: normalizeMeta({ ...json, data: rows }, params) };
+  const value = { items: rows, meta: normalizeMeta({ ...json, data: rows }, params) };
+  if (cacheMode !== 'bypass') storeSignalDisclosuresCache(cacheKey, value);
+  return value;
 }
 
 export async function fetchSignalDisclosure(id: string): Promise<SignalApiDisclosure | null> {

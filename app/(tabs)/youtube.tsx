@@ -31,7 +31,6 @@ import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } fr
 import {
   getSegmentTabBarStyles,
   SCREEN_LIST_CONTENT_PADDING_TOP,
-  SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
 import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';

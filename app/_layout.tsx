@@ -5,10 +5,12 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, InteractionManager, LogBox, Platform, useColorScheme, View } from 'react-native';
+import { AppState, InteractionManager, LogBox, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { enableFreeze } from 'react-native-screens';
 import 'react-native-reanimated';
+
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
 import { NotificationListener } from '@/components/NotificationListener';
@@ -56,15 +58,12 @@ if (Platform.OS !== 'web') {
 export default function RootLayout() {
   const systemScheme = useColorScheme();
   const splashShownAt = useRef(Date.now());
-  const bootstrapBg = useMemo(() => {
-    if (Platform.OS === 'web') {
-      const scheme = resolveThemeColorScheme(readThemeAppearanceModeSync());
-      return themeBackgroundForScheme(scheme);
-    }
-    return bootstrapThemeForColorScheme(
-      systemScheme === 'light' || systemScheme === 'dark' ? systemScheme : null,
-    ).bg;
-  }, [systemScheme]);
+  const bootstrapBg =
+    Platform.OS === 'web'
+      ? themeBackgroundForScheme(resolveThemeColorScheme(readThemeAppearanceModeSync(), systemScheme === 'dark'))
+      : bootstrapThemeForColorScheme(
+          systemScheme === 'light' || systemScheme === 'dark' ? systemScheme : null,
+        ).bg;
   const [fontsLoaded, fontError] = useFonts(FontAwesome.font);
   const [bootstrapReady, setBootstrapReady] = useState(false);
 

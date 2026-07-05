@@ -5,13 +5,14 @@ export type ThemeAppearanceMode = 'system' | 'light' | 'dark';
 
 const STORAGE_KEY = '@signal/theme_appearance_mode_v1';
 export const WEB_THEME_APPEARANCE_MIRROR_KEY = 'signal_theme_appearance_mode';
-export const WEB_THEME_ASYNC_STORAGE_KEY = `AsyncStorage:${STORAGE_KEY}`;
+/** Older builds incorrectly read this prefixed key; keep only as legacy fallback. */
+export const WEB_THEME_LEGACY_ASYNC_STORAGE_KEY = `AsyncStorage:${STORAGE_KEY}`;
 
 /** Web sync readers should use the same key priority everywhere. */
 export const WEB_THEME_APPEARANCE_KEYS = [
-  WEB_THEME_ASYNC_STORAGE_KEY,
   STORAGE_KEY,
   WEB_THEME_APPEARANCE_MIRROR_KEY,
+  WEB_THEME_LEGACY_ASYNC_STORAGE_KEY,
 ] as const;
 
 const VALID = new Set<ThemeAppearanceMode>(['system', 'light', 'dark']);
@@ -41,6 +42,15 @@ function writeWebMirror(mode: ThemeAppearanceMode): void {
   }
 }
 
+function removeWebLocalStorage(key: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
 function readWebStoredModes(): Partial<Record<(typeof WEB_THEME_APPEARANCE_KEYS)[number], ThemeAppearanceMode>> {
   const out: Partial<Record<(typeof WEB_THEME_APPEARANCE_KEYS)[number], ThemeAppearanceMode>> = {};
   if (typeof window === 'undefined') return out;
@@ -49,17 +59,6 @@ function readWebStoredModes(): Partial<Record<(typeof WEB_THEME_APPEARANCE_KEYS)
     if (parsed) out[key] = parsed;
   }
   return out;
-}
-
-/** Sync read for web pre-hydration paths (+html script, provider init, layout bootstrap). */
-export function readThemeAppearanceModeSync(): ThemeAppearanceMode {
-  if (Platform.OS !== 'web' || typeof window === 'undefined') return 'system';
-  const stored = readWebStoredModes();
-  for (const key of WEB_THEME_APPEARANCE_KEYS) {
-    const mode = stored[key];
-    if (mode) return mode;
-  }
-  return 'system';
 }
 
 function pickCanonicalWebMode(
@@ -81,10 +80,25 @@ function webStorageNeedsReconcile(
   return values.some((mode) => mode !== canonical);
 }
 
+function cleanupLegacyWebThemeKeys(canonical: ThemeAppearanceMode, stored: Partial<Record<string, ThemeAppearanceMode>>): void {
+  if (typeof window === 'undefined') return;
+  const legacy = stored[WEB_THEME_LEGACY_ASYNC_STORAGE_KEY];
+  if (legacy && legacy !== canonical) {
+    removeWebLocalStorage(WEB_THEME_LEGACY_ASYNC_STORAGE_KEY);
+  }
+}
+
+/** Sync read for web pre-hydration paths (+html script, provider init, layout bootstrap). */
+export function readThemeAppearanceModeSync(): ThemeAppearanceMode {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return 'system';
+  return pickCanonicalWebMode(readWebStoredModes());
+}
+
 export async function loadThemeAppearanceMode(): Promise<ThemeAppearanceMode> {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const stored = readWebStoredModes();
     const mode = pickCanonicalWebMode(stored);
+    cleanupLegacyWebThemeKeys(mode, stored);
     if (webStorageNeedsReconcile(stored, mode)) {
       await saveThemeAppearanceMode(mode);
     }
@@ -98,4 +112,5 @@ export async function saveThemeAppearanceMode(mode: ThemeAppearanceMode): Promis
   const next = VALID.has(mode) ? mode : 'system';
   await AsyncStorage.setItem(STORAGE_KEY, next);
   writeWebMirror(next);
+  removeWebLocalStorage(WEB_THEME_LEGACY_ASYNC_STORAGE_KEY);
 }

@@ -8,7 +8,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { Platform, useColorScheme } from 'react-native';
+import { Platform } from 'react-native';
+
+import { useColorScheme } from '@/hooks/useColorScheme';
 
 import type { AppTheme, ThemeColorScheme } from '@/constants/theme';
 import {

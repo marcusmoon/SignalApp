@@ -26,7 +26,6 @@ export default function Root({ children }: { children: React.ReactNode }) {
         */}
         <ScrollViewStyleReset />
 
-        {/* Keep the document background aligned with the persisted app theme before React hydrates. */}
         <script dangerouslySetInnerHTML={{ __html: initialThemeScript }} />
         <style dangerouslySetInnerHTML={{ __html: responsiveBackground }} />
       </head>
@@ -43,42 +42,48 @@ const darkTokens = themeTokensForScheme('dark');
 
 const initialThemeScript = `
 (function () {
-  try {
-    var keys = ${storageKeysJson};
-    var stored = '';
-    for (var i = 0; i < keys.length; i++) {
-      var value = window.localStorage.getItem(keys[i]);
-      if (!value) continue;
-      var candidate = String(value).trim().replace(/^"|"$/g, '');
-      if (candidate === 'light' || candidate === 'dark' || candidate === 'system') {
-        stored = candidate;
-        break;
+  function applySignalTheme() {
+    try {
+      var keys = ${storageKeysJson};
+      var stored = '';
+      for (var i = 0; i < keys.length; i++) {
+        var value = window.localStorage.getItem(keys[i]);
+        if (!value) continue;
+        var candidate = String(value).trim().replace(/^"|"$/g, '');
+        if (candidate === 'light' || candidate === 'dark' || candidate === 'system') {
+          stored = candidate;
+          break;
+        }
       }
-    }
-    var mode = stored || 'system';
-    var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    var scheme = mode === 'dark' || (mode !== 'light' && systemDark) ? 'dark' : 'light';
-    var bg = scheme === 'dark' ? ${JSON.stringify(darkBg)} : ${JSON.stringify(lightBg)};
-    var tokens = scheme === 'dark' ? ${JSON.stringify(darkTokens)} : ${JSON.stringify(lightTokens)};
-    document.documentElement.dataset.signalTheme = scheme;
-    document.documentElement.style.colorScheme = scheme;
-    document.documentElement.style.backgroundColor = bg;
-    var themeColorMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeColorMeta) themeColorMeta.setAttribute('content', bg);
-    document.documentElement.style.setProperty('--signal-bg', tokens.bg);
-    document.documentElement.style.setProperty('--signal-bg-elevated', tokens.bgElevated);
-    document.documentElement.style.setProperty('--signal-card', tokens.card);
-    document.documentElement.style.setProperty('--signal-border', tokens.border);
-    document.documentElement.style.setProperty('--signal-text', tokens.text);
-    document.documentElement.style.setProperty('--signal-text-muted', tokens.textMuted);
-    document.documentElement.style.setProperty('--signal-text-dim', tokens.textDim);
-    document.documentElement.style.setProperty('--signal-green', tokens.green);
-    document.documentElement.style.setProperty('--signal-green-dim', tokens.greenDim);
-    document.documentElement.style.setProperty('--signal-green-border', tokens.greenBorder);
-    if (document.body) document.body.style.backgroundColor = bg;
-    var root = document.getElementById('root');
-    if (root) root.style.backgroundColor = bg;
-  } catch (e) {}
+      var mode = stored || 'system';
+      var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var scheme = mode === 'dark' || (mode !== 'light' && systemDark) ? 'dark' : 'light';
+      var bg = scheme === 'dark' ? ${JSON.stringify(darkBg)} : ${JSON.stringify(lightBg)};
+      var tokens = scheme === 'dark' ? ${JSON.stringify(darkTokens)} : ${JSON.stringify(lightTokens)};
+      document.documentElement.dataset.signalTheme = scheme;
+      document.documentElement.style.colorScheme = scheme;
+      document.documentElement.style.backgroundColor = bg;
+      var themeColorMeta = document.querySelector('meta[name="theme-color"]');
+      if (themeColorMeta) themeColorMeta.setAttribute('content', bg);
+      document.documentElement.style.setProperty('--signal-bg', tokens.bg);
+      document.documentElement.style.setProperty('--signal-bg-elevated', tokens.bgElevated);
+      document.documentElement.style.setProperty('--signal-card', tokens.card);
+      document.documentElement.style.setProperty('--signal-border', tokens.border);
+      document.documentElement.style.setProperty('--signal-text', tokens.text);
+      document.documentElement.style.setProperty('--signal-text-muted', tokens.textMuted);
+      document.documentElement.style.setProperty('--signal-text-dim', tokens.textDim);
+      document.documentElement.style.setProperty('--signal-green', tokens.green);
+      document.documentElement.style.setProperty('--signal-green-dim', tokens.greenDim);
+      document.documentElement.style.setProperty('--signal-green-border', tokens.greenBorder);
+      if (document.body) document.body.style.backgroundColor = bg;
+      var root = document.getElementById('root');
+      if (root) root.style.backgroundColor = bg;
+    } catch (e) {}
+  }
+  applySignalTheme();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applySignalTheme);
+  }
 })();
 `;
 

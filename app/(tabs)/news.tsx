@@ -55,8 +55,6 @@ import {
   FEED_PAGE_KOREA,
   FEED_PAGE_VIDEO,
   FEED_PAGE_WATCH,
-  filterNewsRows,
-  filterWatchRows,
   NEWS_QUICK_FILTERS,
   NEWS_SEGMENT_LABEL,
   normalizeNullableSelection,
@@ -569,48 +567,69 @@ export default function FeedScreen() {
     [activeTag, commitDigestLookupRows, locale, segment, syncServerRows, t],
   );
 
-  const applyMergedNewsRows = useCallback(
-    (merged: SignalApiNewsItem[]) => {
-      let scoped = dedupeNewsFeedRows(merged);
-      if (segment === 'global') {
-        scoped = filterNewsRows(scoped, {
-          kind: globalFilterRef.current,
-          sourceOptions: availableSources,
-          selectedSources,
-        });
+  const reloadNewsQuickFilterFromServer = useCallback(
+    async (params: {
+      segment: 'global' | 'crypto' | 'korea';
+      kind: NewsQuickFilterKind;
+      selectedSources?: string[] | null;
+    }) => {
+      const { segment: feedSegment, kind } = params;
+      const pageLimit =
+        feedSegment === 'crypto' ? FEED_PAGE_CRYPTO : feedSegment === 'korea' ? FEED_PAGE_KOREA : FEED_PAGE_GLOBAL;
+      let sources: string | undefined;
+      if (kind === 'sources') {
+        const selected =
+          params.selectedSources ??
+          (feedSegment === 'global'
+            ? selectedSources
+            : feedSegment === 'crypto'
+              ? cryptoSelectedSourcesRef.current
+              : koreaSelectedSourcesRef.current);
+        const options =
+          feedSegment === 'global'
+            ? availableSources
+            : feedSegment === 'crypto'
+              ? cryptoSourceOptions
+              : koreaSourceOptions;
+        sources = sourceFilterParam(options, selected);
       }
-      if (segment === 'crypto') {
-        const sourceOptions = uniqueSignalSources(scoped);
-        setCryptoSourceOptions(sourceOptions);
-        const selected = normalizeNullableSelection(sourceOptions, cryptoSelectedSourcesRef.current);
-        if (cryptoSelectedSourcesRef.current !== null) setCryptoSelectedSources(selected);
-        scoped = filterNewsRows(scoped, {
-          kind: cryptoFilterRef.current,
-          sourceOptions,
-          selectedSources: selected,
-        });
+      setListLoading(true);
+      setError(null);
+      try {
+        const page = await fetchSignalNews(
+          {
+            locale,
+            category: feedSegment,
+            flash: kind === 'flash',
+            sources,
+            limit: pageLimit,
+            offset: 0,
+            tag: activeTag || undefined,
+          },
+          { cacheMode: signalCacheMode() },
+        );
+        const deduped = dedupeNewsFeedRows(page.items);
+        syncServerRows(deduped);
+        feedMetaRef.current = page.meta;
+        hasMoreRef.current = page.meta.hasMore;
+        setHasMore(page.meta.hasMore);
+        setItems(deduped.map((item) => signalNewsToNewsItem(item, locale)));
+      } catch (e) {
+        setError(formatSignalApiError(e, t, 'feedErrorLoad'));
+      } finally {
+        setListLoading(false);
       }
-      if (segment === 'korea') {
-        const sourceOptions = uniqueSignalSources(scoped);
-        setKoreaSourceOptions(sourceOptions);
-        const selected = normalizeNullableSelection(sourceOptions, koreaSelectedSourcesRef.current);
-        if (koreaSelectedSourcesRef.current !== null) setKoreaSelectedSources(selected);
-        scoped = filterNewsRows(scoped, {
-          kind: koreaFilterRef.current,
-          sourceOptions,
-          selectedSources: selected,
-        });
-      }
-      if (segment === 'watch') {
-        scoped = filterWatchRows(scoped, {
-          kind: watchFilterRef.current,
-          symbolOptions: watchSymbolOptions,
-          selectedSymbols: watchSelectedSymbolsRef.current,
-        });
-      }
-      setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
     },
-    [availableSources, locale, segment, selectedSources, watchSymbolOptions],
+    [
+      activeTag,
+      availableSources,
+      cryptoSourceOptions,
+      koreaSourceOptions,
+      locale,
+      selectedSources,
+      syncServerRows,
+      t,
+    ],
   );
 
   const loadMore = useCallback(async () => {
@@ -743,7 +762,7 @@ export default function FeedScreen() {
         syncServerRows(merged);
 
         if (addedCount > 0) {
-          applyMergedNewsRows(merged);
+          setItems(dedupeNewsFeedRows(merged).map((item) => signalNewsToNewsItem(item, locale)));
         }
 
         if (addedCount > 0 || !meta.hasMore) {
@@ -766,8 +785,9 @@ export default function FeedScreen() {
     }
   }, [
     activeTag,
-    applyMergedNewsRows,
     availableSources,
+    cryptoSourceOptions,
+    koreaSourceOptions,
     locale,
     segment,
     selectedSources,
@@ -848,33 +868,15 @@ export default function FeedScreen() {
         await saveSelectedSources(next);
         setSelectedSources(next);
         setGlobalFilter('sources');
-        if (serverRows.length > 0 && segment === 'global') {
-          setListLoading(true);
-          const page = await fetchSignalNews(
-            {
-              locale,
-              category: 'global',
-              sources: sourceFilterParam(availableSources, next),
-              limit: FEED_PAGE_GLOBAL,
-              offset: 0,
-              tag: activeTag || undefined,
-            },
-            { cacheMode: signalCacheMode() },
-          );
-          const deduped = dedupeNewsFeedRows(page.items);
-          syncServerRows(deduped);
-          feedMetaRef.current = page.meta;
-          hasMoreRef.current = page.meta.hasMore;
-          setHasMore(page.meta.hasMore);
-          setItems(deduped.map((item) => signalNewsToNewsItem(item, locale)));
+        globalFilterRef.current = 'sources';
+        if (segment === 'global') {
+          await reloadNewsQuickFilterFromServer({ segment: 'global', kind: 'sources', selectedSources: next });
         }
       } catch (e) {
         setError(formatSignalApiError(e, t, 'feedErrorLoad'));
-      } finally {
-        setListLoading(false);
       }
     },
-    [activeTag, availableSources, locale, segment, serverRows, syncServerRows, t],
+    [reloadNewsQuickFilterFromServer, segment, t],
   );
 
   const sourcesEqual = useCallback((a: string[], b: string[]) => {
@@ -887,18 +889,10 @@ export default function FeedScreen() {
     setFilterModalVisible(false);
     setGlobalFilter('sources');
     if (sourcesEqual(filterDraftSources, selectedSources)) {
-      if (segment === 'global') {
-        const scoped = filterNewsRows(serverRows, {
-          kind: 'sources',
-          sourceOptions: availableSources,
-          selectedSources,
-        });
-        setItems(scoped.map((item) => signalNewsToNewsItem(item, locale)));
-      }
       return;
     }
     await applySelection(filterDraftSources);
-  }, [applySelection, availableSources, filterDraftSources, locale, segment, selectedSources, serverRows, sourcesEqual]);
+  }, [applySelection, filterDraftSources, selectedSources, sourcesEqual]);
 
   const toggleSource = useCallback((source: string) => {
     setFilterDraftSources((prev) =>
@@ -924,7 +918,7 @@ export default function FeedScreen() {
         }
         globalFilterRef.current = kind;
         setGlobalFilter(kind);
-        applyMergedNewsRows(serverRowsRef.current);
+        void reloadNewsQuickFilterFromServer({ segment: 'global', kind });
         return;
       }
       if (segment === 'crypto') {
@@ -935,7 +929,7 @@ export default function FeedScreen() {
         }
         cryptoFilterRef.current = kind;
         setCryptoFilter(kind);
-        applyMergedNewsRows(serverRowsRef.current);
+        void reloadNewsQuickFilterFromServer({ segment: 'crypto', kind });
         return;
       }
       if (segment === 'korea') {
@@ -946,15 +940,15 @@ export default function FeedScreen() {
         }
         koreaFilterRef.current = kind;
         setKoreaFilter(kind);
-        applyMergedNewsRows(serverRowsRef.current);
+        void reloadNewsQuickFilterFromServer({ segment: 'korea', kind });
       }
     },
     [
-      applyMergedNewsRows,
       cryptoSelectedSources,
       cryptoSourceOptions,
       koreaSelectedSources,
       koreaSourceOptions,
+      reloadNewsQuickFilterFromServer,
       segment,
       selectedSources,
     ],
@@ -964,30 +958,13 @@ export default function FeedScreen() {
     setCryptoSourceModalVisible(false);
     setCryptoSelectedSources(cryptoDraftSources);
     setCryptoFilter('sources');
-    setListLoading(true);
-    setError(null);
-    void fetchSignalNews(
-      {
-        locale,
-        category: 'crypto',
-        sources: sourceFilterParam(cryptoSourceOptions, cryptoDraftSources),
-        limit: FEED_PAGE_CRYPTO,
-        offset: 0,
-        tag: activeTag || undefined,
-      },
-        { cacheMode: signalCacheMode() },
-      )
-      .then((page) => {
-        const deduped = dedupeNewsFeedRows(page.items);
-        syncServerRows(deduped);
-        feedMetaRef.current = page.meta;
-        hasMoreRef.current = page.meta.hasMore;
-        setHasMore(page.meta.hasMore);
-        setItems(deduped.map((item) => signalNewsToNewsItem(item, locale)));
-      })
-      .catch((e) => setError(formatSignalApiError(e, t, 'feedErrorLoad')))
-      .finally(() => setListLoading(false));
-  }, [activeTag, cryptoDraftSources, cryptoSourceOptions, locale, syncServerRows, t]);
+    cryptoFilterRef.current = 'sources';
+    void reloadNewsQuickFilterFromServer({
+      segment: 'crypto',
+      kind: 'sources',
+      selectedSources: cryptoDraftSources,
+    });
+  }, [cryptoDraftSources, reloadNewsQuickFilterFromServer]);
 
   const toggleCryptoSource = useCallback((source: string) => {
     setCryptoDraftSources((prev) =>
@@ -1005,30 +982,13 @@ export default function FeedScreen() {
     setKoreaSourceModalVisible(false);
     setKoreaSelectedSources(koreaDraftSources);
     setKoreaFilter('sources');
-    setListLoading(true);
-    setError(null);
-    void fetchSignalNews(
-      {
-        locale,
-        category: 'korea',
-        sources: sourceFilterParam(koreaSourceOptions, koreaDraftSources),
-        limit: FEED_PAGE_KOREA,
-        offset: 0,
-        tag: activeTag || undefined,
-      },
-        { cacheMode: signalCacheMode() },
-      )
-      .then((page) => {
-        const deduped = dedupeNewsFeedRows(page.items);
-        syncServerRows(deduped);
-        feedMetaRef.current = page.meta;
-        hasMoreRef.current = page.meta.hasMore;
-        setHasMore(page.meta.hasMore);
-        setItems(deduped.map((item) => signalNewsToNewsItem(item, locale)));
-      })
-      .catch((e) => setError(formatSignalApiError(e, t, 'feedErrorLoad')))
-      .finally(() => setListLoading(false));
-  }, [activeTag, koreaDraftSources, koreaSourceOptions, locale, syncServerRows, t]);
+    koreaFilterRef.current = 'sources';
+    void reloadNewsQuickFilterFromServer({
+      segment: 'korea',
+      kind: 'sources',
+      selectedSources: koreaDraftSources,
+    });
+  }, [koreaDraftSources, reloadNewsQuickFilterFromServer]);
 
   const toggleKoreaSource = useCallback((source: string) => {
     setKoreaDraftSources((prev) =>

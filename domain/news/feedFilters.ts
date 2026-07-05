@@ -1,7 +1,6 @@
 import type { MessageId } from '@/locales/messages';
 import type { SignalApiNewsItem } from '@/integrations/signal-api/types';
 import type { NewsSegmentKey } from '@/constants/newsSegment';
-import { isFlashNews } from './flash';
 
 export const FEED_PAGE_GLOBAL = 20;
 export const FEED_PAGE_KOREA = 20;
@@ -74,42 +73,6 @@ export function sourceFilterParam(options: string[], selected: string[] | null):
   const normalized = normalizeNullableSelection(options, selected);
   if (normalized.length === options.length) return undefined;
   return normalized.length > 0 ? normalized.join(',') : EMPTY_FILTER_SENTINEL;
-}
-
-export function filterNewsRows(
-  rows: SignalApiNewsItem[],
-  params: {
-    kind: NewsQuickFilterKind;
-    sourceOptions: string[];
-    selectedSources: string[] | null;
-  },
-): SignalApiNewsItem[] {
-  if (params.kind === 'all') return rows;
-  if (params.kind === 'flash') return rows.filter((row) => isFlashNews(row));
-  const selectedSources = new Set(normalizeNullableSelection(params.sourceOptions, params.selectedSources));
-  if (selectedSources.size === 0) return [];
-  return rows.filter((row) => selectedSources.has(signalSourceLabel(row)));
-}
-
-export function filterWatchRows(
-  rows: SignalApiNewsItem[],
-  params: {
-    kind: WatchFilterKind;
-    symbolOptions: string[];
-    selectedSymbols: string[] | null;
-  },
-): SignalApiNewsItem[] {
-  if (params.kind === 'all') return rows;
-  const selected = new Set(
-    normalizeNullableSelection(params.symbolOptions, params.selectedSymbols).map((symbol) =>
-      symbol.toUpperCase(),
-    ),
-  );
-  if (selected.size === 0) return [];
-  return rows.filter((row) => {
-    const symbols = Array.isArray(row.symbols) ? row.symbols : [];
-    return symbols.some((symbol) => selected.has(String(symbol).trim().toUpperCase()));
-  });
 }
 
 function cleanFeedText(value: unknown): string {

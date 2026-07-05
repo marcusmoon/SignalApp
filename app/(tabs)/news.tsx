@@ -162,6 +162,7 @@ export default function FeedScreen() {
   const [segment, setSegment] = useState<NewsSegmentKey>(DEFAULT_NEWS_SEGMENT);
   const [segmentOrder, setSegmentOrder] = useState<NewsSegmentKey[]>([...NEWS_SEGMENT_ORDER]);
   const [loading, setLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
@@ -205,10 +206,13 @@ export default function FeedScreen() {
   const hasMoreRef = useRef(hasMore);
   const loadingMoreRef = useRef(loadingMore);
   const loadingRef = useRef(loading);
+  const listLoadingRef = useRef(listLoading);
   hasMoreRef.current = hasMore;
   loadingMoreRef.current = loadingMore;
   loadingRef.current = loading;
+  listLoadingRef.current = listLoading;
   const serverRowsRef = useRef(serverRows);
+  const digestLookupRowsRef = useRef<SignalApiNewsItem[]>([]);
   const youtubeRowsRef = useRef(youtubeRows);
   serverRowsRef.current = serverRows;
   youtubeRowsRef.current = youtubeRows;
@@ -293,6 +297,10 @@ export default function FeedScreen() {
     serverRowsRef.current = deduped;
     setServerRows(deduped);
     return deduped;
+  }, []);
+
+  const commitDigestLookupRows = useCallback((rows: SignalApiNewsItem[]) => {
+    digestLookupRowsRef.current = dedupeNewsFeedRows(rows);
   }, []);
 
   const load = useCallback(
@@ -380,6 +388,7 @@ export default function FeedScreen() {
           { cacheMode },
         );
         const dedupedRows = syncServerRows(rows);
+        commitDigestLookupRows(dedupedRows);
         setServerDigestRows([]);
         feedMetaRef.current = meta;
         hasMoreRef.current = meta.hasMore;
@@ -413,6 +422,7 @@ export default function FeedScreen() {
         ]);
         const { items: rows, meta } = newsPage;
         const dedupedRows = syncServerRows(rows);
+        commitDigestLookupRows(dedupedRows);
         setServerDigestRows(digestPage?.items || []);
         feedMetaRef.current = meta;
         hasMoreRef.current = meta.hasMore;
@@ -450,6 +460,7 @@ export default function FeedScreen() {
         ]);
         const { items: rows, meta } = newsPage;
         const dedupedRows = syncServerRows(rows);
+        commitDigestLookupRows(dedupedRows);
         setServerDigestRows(digestPage?.items || []);
         feedMetaRef.current = meta;
         hasMoreRef.current = meta.hasMore;
@@ -514,6 +525,7 @@ export default function FeedScreen() {
 
       const { items: firstPage, meta } = firstPageResult;
       const dedupedFirst = syncServerRows(firstPage);
+      commitDigestLookupRows(dedupedFirst);
       setServerDigestRows(digestPage?.items || []);
       feedMetaRef.current = meta;
       hasMoreRef.current = meta.hasMore;
@@ -553,7 +565,7 @@ export default function FeedScreen() {
       if (displayPage[0]?.id) latestSeenIdRef.current = displayPage[0].id;
       return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
     },
-    [activeTag, locale, segment, syncServerRows, t],
+    [activeTag, commitDigestLookupRows, locale, segment, syncServerRows, t],
   );
 
   const applyMergedNewsRows = useCallback(
@@ -601,7 +613,7 @@ export default function FeedScreen() {
   );
 
   const loadMore = useCallback(async () => {
-    if (loadMoreInFlightRef.current || !hasMoreRef.current || loadingMoreRef.current || loadingRef.current || !hasSignalApi()) {
+    if (loadMoreInFlightRef.current || !hasMoreRef.current || loadingMoreRef.current || loadingRef.current || listLoadingRef.current || !hasSignalApi()) {
       return;
     }
     if (segment !== 'watch' && segment !== 'crypto' && segment !== 'korea' && segment !== 'global' && segment !== 'video') {
@@ -836,7 +848,7 @@ export default function FeedScreen() {
         setSelectedSources(next);
         setGlobalFilter('sources');
         if (serverRows.length > 0 && segment === 'global') {
-          setLoading(true);
+          setListLoading(true);
           const page = await fetchSignalNews(
             {
               locale,
@@ -848,19 +860,20 @@ export default function FeedScreen() {
             },
             { cacheMode: 'bypass' },
           );
-          setServerRows(page.items);
+          const deduped = dedupeNewsFeedRows(page.items);
+          syncServerRows(deduped);
           feedMetaRef.current = page.meta;
           hasMoreRef.current = page.meta.hasMore;
           setHasMore(page.meta.hasMore);
-          setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
+          setItems(deduped.map((item) => signalNewsToNewsItem(item, locale)));
         }
       } catch (e) {
         setError(formatSignalApiError(e, t, 'feedErrorLoad'));
       } finally {
-        setLoading(false);
+        setListLoading(false);
       }
     },
-    [activeTag, availableSources, locale, segment, serverRows, t],
+    [activeTag, availableSources, locale, segment, serverRows, syncServerRows, t],
   );
 
   const sourcesEqual = useCallback((a: string[], b: string[]) => {
@@ -910,11 +923,7 @@ export default function FeedScreen() {
         }
         globalFilterRef.current = kind;
         setGlobalFilter(kind);
-        applyMergedNewsRows(serverRowsRef.current);
-        return;
-      }
-
-      if (segment === 'crypto') {
+      } else if (segment === 'crypto') {
         if (kind === 'sources') {
           setCryptoDraftSources(normalizeNullableSelection(cryptoSourceOptions, cryptoSelectedSources));
           setCryptoSourceModalVisible(true);
@@ -922,11 +931,7 @@ export default function FeedScreen() {
         }
         cryptoFilterRef.current = kind;
         setCryptoFilter(kind);
-        applyMergedNewsRows(serverRowsRef.current);
-        return;
-      }
-
-      if (segment === 'korea') {
+      } else if (segment === 'korea') {
         if (kind === 'sources') {
           setKoreaDraftSources(normalizeNullableSelection(koreaSourceOptions, koreaSelectedSources));
           setKoreaSourceModalVisible(true);
@@ -934,17 +939,53 @@ export default function FeedScreen() {
         }
         koreaFilterRef.current = kind;
         setKoreaFilter(kind);
-        applyMergedNewsRows(serverRowsRef.current);
+      } else {
+        return;
       }
+
+      const category = segment === 'crypto' ? 'crypto' : segment === 'korea' ? 'korea' : 'global';
+      const limit =
+        segment === 'crypto' ? FEED_PAGE_CRYPTO : segment === 'korea' ? FEED_PAGE_KOREA : FEED_PAGE_GLOBAL;
+
+      setListLoading(true);
+      setError(null);
+      void fetchSignalNews(
+        {
+          locale,
+          category,
+          flash: kind === 'flash',
+          limit,
+          offset: 0,
+          tag: activeTag || undefined,
+        },
+        { cacheMode: 'bypass' },
+      )
+        .then((page) => {
+          const deduped = dedupeNewsFeedRows(page.items);
+          feedMetaRef.current = page.meta;
+          hasMoreRef.current = page.meta.hasMore;
+          setHasMore(page.meta.hasMore);
+          if (segment === 'crypto') {
+            setCryptoSourceOptions(uniqueSignalSources(deduped));
+          }
+          if (segment === 'korea') {
+            setKoreaSourceOptions(uniqueSignalSources(deduped));
+          }
+          setItems(deduped.map((item) => signalNewsToNewsItem(item, locale)));
+        })
+        .catch((e) => setError(formatSignalApiError(e, t, 'feedErrorLoad')))
+        .finally(() => setListLoading(false));
     },
     [
-      applyMergedNewsRows,
+      activeTag,
       cryptoSelectedSources,
       cryptoSourceOptions,
       koreaSelectedSources,
       koreaSourceOptions,
+      locale,
       segment,
       selectedSources,
+      t,
     ],
   );
 
@@ -952,11 +993,8 @@ export default function FeedScreen() {
     setCryptoSourceModalVisible(false);
     setCryptoSelectedSources(cryptoDraftSources);
     setCryptoFilter('sources');
-    setLoading(true);
-    setItems([]);
-    setServerRows([]);
-    setServerDigestRows([]);
-    setHasMore(false);
+    setListLoading(true);
+    setError(null);
     void fetchSignalNews(
       {
         locale,
@@ -969,15 +1007,16 @@ export default function FeedScreen() {
       { cacheMode: 'bypass' },
     )
       .then((page) => {
-        setServerRows(page.items);
+        const deduped = dedupeNewsFeedRows(page.items);
+        syncServerRows(deduped);
         feedMetaRef.current = page.meta;
         hasMoreRef.current = page.meta.hasMore;
         setHasMore(page.meta.hasMore);
-        setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
+        setItems(deduped.map((item) => signalNewsToNewsItem(item, locale)));
       })
       .catch((e) => setError(formatSignalApiError(e, t, 'feedErrorLoad')))
-      .finally(() => setLoading(false));
-  }, [activeTag, cryptoDraftSources, cryptoSourceOptions, locale, t]);
+      .finally(() => setListLoading(false));
+  }, [activeTag, cryptoDraftSources, cryptoSourceOptions, locale, syncServerRows, t]);
 
   const toggleCryptoSource = useCallback((source: string) => {
     setCryptoDraftSources((prev) =>
@@ -995,11 +1034,8 @@ export default function FeedScreen() {
     setKoreaSourceModalVisible(false);
     setKoreaSelectedSources(koreaDraftSources);
     setKoreaFilter('sources');
-    setLoading(true);
-    setItems([]);
-    setServerRows([]);
-    setServerDigestRows([]);
-    setHasMore(false);
+    setListLoading(true);
+    setError(null);
     void fetchSignalNews(
       {
         locale,
@@ -1012,15 +1048,16 @@ export default function FeedScreen() {
       { cacheMode: 'bypass' },
     )
       .then((page) => {
-        setServerRows(page.items);
+        const deduped = dedupeNewsFeedRows(page.items);
+        syncServerRows(deduped);
         feedMetaRef.current = page.meta;
         hasMoreRef.current = page.meta.hasMore;
         setHasMore(page.meta.hasMore);
-        setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
+        setItems(deduped.map((item) => signalNewsToNewsItem(item, locale)));
       })
       .catch((e) => setError(formatSignalApiError(e, t, 'feedErrorLoad')))
-      .finally(() => setLoading(false));
-  }, [activeTag, koreaDraftSources, koreaSourceOptions, locale, t]);
+      .finally(() => setListLoading(false));
+  }, [activeTag, koreaDraftSources, koreaSourceOptions, locale, syncServerRows, t]);
 
   const toggleKoreaSource = useCallback((source: string) => {
     setKoreaDraftSources((prev) =>
@@ -1051,11 +1088,8 @@ export default function FeedScreen() {
         setHasMore(false);
         return;
       }
-      setLoading(true);
-      setItems([]);
-      setServerRows([]);
-      setServerDigestRows([]);
-      setHasMore(false);
+      setListLoading(true);
+      setError(null);
       try {
         const page = await fetchSignalNews(
           {
@@ -1067,18 +1101,19 @@ export default function FeedScreen() {
           },
           { cacheMode: 'bypass' },
         );
-        setServerRows(page.items);
+        const deduped = dedupeNewsFeedRows(page.items);
+        syncServerRows(deduped);
         feedMetaRef.current = page.meta;
         hasMoreRef.current = page.meta.hasMore;
         setHasMore(page.meta.hasMore);
-        setItems(page.items.map((item) => signalNewsToNewsItem(item, locale)));
+        setItems(deduped.map((item) => signalNewsToNewsItem(item, locale)));
       } catch (e) {
         setError(formatSignalApiError(e, t, 'feedErrorLoad'));
       } finally {
-        setLoading(false);
+        setListLoading(false);
       }
     },
-    [activeTag, locale, t, watchSymbolOptions],
+    [activeTag, locale, syncServerRows, t, watchSymbolOptions],
   );
 
   const onPickWatchFilter = useCallback(
@@ -1183,6 +1218,7 @@ export default function FeedScreen() {
   const digestBatches = useMemo(() => {
     if (segment === 'video' || segment === 'watch') return [];
     if (serverDigestRows.length > 0) {
+      const lookupRows = digestLookupRowsRef.current;
       const byTs = new Map<string, SignalApiNewsDigestItem[]>();
       for (const item of serverDigestRows) {
         const key = item.generatedAt || 'unknown';
@@ -1195,12 +1231,12 @@ export default function FeedScreen() {
         .map((key) => {
           const items = byTs.get(key)!;
           const top = items.reduce((a, b) => (b.count > a.count ? b : a));
-          return digestFromServer(top, serverRows);
+          return digestFromServer(top, lookupRows);
         })
         .slice(0, 10);
     }
     return [];
-  }, [segment, serverDigestRows, serverRows]);
+  }, [segment, serverDigestRows]);
 
   const listData: FeedRow[] = useMemo(() => {
     const out: FeedRow[] = [];
@@ -1218,7 +1254,7 @@ export default function FeedScreen() {
   }, [items, segment, videoItems]);
 
   const emptyMessage =
-    !loading && listData.length === 0 && !error
+    !loading && !listLoading && listData.length === 0 && !error
       ? segment === 'video'
         ? t('feedEmptyVideo')
         : segment === 'watch'
@@ -1309,11 +1345,17 @@ export default function FeedScreen() {
           </View>
         ) : null}
 
-        {loading ? (
+        {loading && listData.length === 0 ? (
           <View style={styles.skeletonBlock}>
             <SkeletonFeed />
             <SkeletonFeed />
             <SkeletonFeed />
+          </View>
+        ) : null}
+
+        {listLoading ? (
+          <View style={styles.footerLoading}>
+            <ActivityIndicator color={theme.green} size="small" />
           </View>
         ) : null}
       </View>
@@ -1321,6 +1363,8 @@ export default function FeedScreen() {
     [
       activeTag,
       error,
+      listData.length,
+      listLoading,
       loading,
       applyNewsQuickFilter,
       newsQuickFilter,
@@ -1372,7 +1416,7 @@ export default function FeedScreen() {
 
         <WebWheelFlatList
           ref={feedListRef}
-          data={loading ? [] : listData}
+          data={loading && listData.length === 0 ? [] : listData}
           extraData={listData.length}
           keyExtractor={(row) =>
             row.kind === 'ad' ? row.key : row.kind === 'video' ? row.video.id : row.news.id

@@ -48,6 +48,8 @@ export const ja = {
   communityOriginalOpen: '原文を開く',
   newsOpenVideos: '動画',
   moreHubSegmentDragHandleA11y: '{{name}}の順番を変更（ドラッグ）',
+  moreHubUnreadLabel: '新',
+  moreHubUnreadDisclosuresA11y: '{{name}}、新着開示',
   moreRefLinksKicker: 'クイックリンク',
   moreRefLinksSwipeA11y: '左右にスワイプしてリンクをもっと見る',
   moreRefTitleYahoo: 'Yahoo Finance',

@@ -48,6 +48,8 @@ export const en = {
   communityOriginalOpen: 'Open original',
   newsOpenVideos: 'Video',
   moreHubSegmentDragHandleA11y: 'Reorder {{name}} (drag)',
+  moreHubUnreadLabel: 'New',
+  moreHubUnreadDisclosuresA11y: '{{name}}, new disclosures',
   moreRefLinksKicker: 'Quick links',
   moreRefLinksSwipeA11y: 'Swipe left or right for more links',
   moreRefTitleYahoo: 'Yahoo Finance',

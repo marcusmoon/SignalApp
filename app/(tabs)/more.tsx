@@ -24,6 +24,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useDisclosureUnreadBadge } from '@/hooks/useDisclosureUnreadBadge';
 import type { MessageId } from '@/locales/messages';
 import {
   loadMoreHubOrder,
@@ -88,6 +89,12 @@ export default function MoreHubScreen() {
   const [order, setOrder] = useState<MoreHubRouteKey[]>([]);
   const [orderReady, setOrderReady] = useState(false);
   const [refLinksVisible, setRefLinksVisible] = useState(true);
+  const disclosureHasUnread = useDisclosureUnreadBadge();
+
+  const hubHasUnread = useCallback(
+    (item: MoreHubRouteKey) => item === 'disclosures' && disclosureHasUnread,
+    [disclosureHasUnread],
+  );
 
   const reloadOrder = useCallback(async () => {
     const o = await loadMoreHubOrder();
@@ -216,6 +223,8 @@ export default function MoreHubScreen() {
           renderItem={({ item }) => {
             const meta = HUB_META[item];
             const name = t(meta.titleId);
+            const hasUnread = hubHasUnread(item);
+            const a11yLabel = hasUnread ? t('moreHubUnreadDisclosuresA11y', { name }) : name;
             return (
               <Pressable
                 onPress={() => openHubItem(item)}
@@ -226,17 +235,19 @@ export default function MoreHubScreen() {
                   pressed && styles.rowPressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={name}>
+                accessibilityLabel={a11yLabel}>
                 <View
                   style={[
                     styles.iconCircle,
                     hubTileLayout !== 'list' && styles.gridIconCircle,
+                    styles.iconCircleWrap,
                   ]}>
                   <FontAwesome
                     name={meta.icon}
                     size={hubTileLayout === 'list' ? 18 : hubTileLayout === 'grid-row' ? 15 : 16}
                     color={theme.green}
                   />
+                  {hasUnread ? <View style={styles.unreadDot} /> : null}
                 </View>
                 <Text
                   style={[
@@ -247,6 +258,11 @@ export default function MoreHubScreen() {
                   numberOfLines={hubTileLayout === 'grid-stack' ? 2 : hubTileLayout === 'grid-row' ? 1 : 2}>
                   {name}
                 </Text>
+                {hasUnread && hubTileLayout !== 'grid-stack' ? (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadBadgeText}>{t('moreHubUnreadLabel')}</Text>
+                  </View>
+                ) : null}
               </Pressable>
             );
           }}
@@ -326,6 +342,34 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, hubTileLayout: H
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,
+    },
+    iconCircleWrap: {
+      position: 'relative',
+    },
+    unreadDot: {
+      position: 'absolute',
+      top: -2,
+      right: -2,
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+      backgroundColor: '#F04452',
+      borderWidth: 1.5,
+      borderColor: theme.card,
+    },
+    unreadBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: '#F0445218',
+      borderWidth: 1,
+      borderColor: '#F0445240',
+    },
+    unreadBadgeText: {
+      fontSize: sf(10),
+      fontWeight: '900',
+      color: '#F04452',
+      letterSpacing: 0.2,
     },
     gridIconCircle: {
       width: 28,

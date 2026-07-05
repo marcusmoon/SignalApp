@@ -1,4 +1,12 @@
 import { signalApiRequest } from './httpClient';
+import type { SignalCacheMode } from '@/integrations/signal-api/cacheMode';
+import {
+  buildSignalNotificationsCacheKey,
+  peekSignalNotificationsCache,
+  storeSignalNotificationsCache,
+} from '@/integrations/signal-api/cache/notificationsCache';
+
+export type AlertsFilter = 'all' | 'high' | 'signal' | 'system';
 
 export type SignalNotificationItem = {
   id: string;
@@ -28,13 +36,27 @@ export const SIGNAL_NOTIFICATION_MAX = 50;
 
 export async function fetchSignalNotifications(
   token: string,
-  limit = SIGNAL_NOTIFICATION_MAX,
+  options: {
+    limit?: number;
+    filter?: AlertsFilter;
+    cacheMode?: SignalCacheMode;
+  } = {},
 ): Promise<SignalNotificationItem[]> {
+  const limit = options.limit ?? SIGNAL_NOTIFICATION_MAX;
+  const filter = options.filter ?? 'all';
+  const cacheMode = options.cacheMode ?? 'use';
+  const cacheKey = buildSignalNotificationsCacheKey({ token, filter, limit });
+  if (cacheMode !== 'bypass') {
+    const cached = peekSignalNotificationsCache(cacheKey);
+    if (cached) return cached;
+  }
   const body = await signalApiRequest<NotificationsResponse>('/v1/notifications', {
     token,
-    params: { limit },
+    params: { limit, filter },
   });
-  return Array.isArray(body.data) ? body.data : [];
+  const rows = Array.isArray(body.data) ? body.data : [];
+  if (cacheMode !== 'bypass') storeSignalNotificationsCache(cacheKey, rows);
+  return rows;
 }
 
 export async function fetchSignalNotificationsUnreadCount(token: string): Promise<number> {

@@ -87,6 +87,7 @@ import {
   deleteUserNotificationInboxItems,
   markUserNotificationInboxRead,
   queryUserNotificationInboxRows,
+  queryUserNotificationInboxPage,
   recordInboxDeliveriesForUsers,
   syncLazyInboxLinksForUser,
   upsertUserNotificationInboxRow,
@@ -2008,6 +2009,10 @@ export async function queryNotifications(options = {}) {
 
 export async function queryUserNotificationInbox(userId, options = {}) {
   return queryUserNotificationInboxRows(userId, options);
+}
+
+export async function queryUserNotificationInboxAdminPage(userId, options = {}) {
+  return queryUserNotificationInboxPage(userId, options);
 }
 
 export async function countUserNotificationInboxUnread(userId) {

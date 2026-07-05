@@ -23,10 +23,11 @@ import { loadAlertsFromServer, markAlertsSeen } from '@/services/alertsUnreadPre
 import type { StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
 import { loadAppAuthSession, getSessionAccessToken, type StoredAppAuthSession } from '@/services/appAuthSession';
-import { deleteSignalNotifications } from '@/integrations/signal-api/notifications';
+import { deleteSignalNotifications, type AlertsFilter } from '@/integrations/signal-api/notifications';
+import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { formatRelativeTime } from '@/utils/date';
 
-import { alertMatchesFilter, alertTypeMessageId, type AlertsFilter } from '@/domain/alerts/notificationCategory';
+import { alertTypeMessageId } from '@/domain/alerts/notificationCategory';
 import { resolveAlertHref, resolveAlertNavigationTarget } from '@/domain/alerts/alertNavigation';
 import type { Href } from 'expo-router';
 
@@ -44,7 +45,7 @@ export default function AlertsScreen() {
   const [filter, setFilter] = useState<AlertsFilter>('all');
   useResetRefreshingOnTabBlur(setRefreshing);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (activeFilter: AlertsFilter = filter, forceRefresh = false) => {
     const savedSession = await loadAppAuthSession();
     setAuthSession(savedSession);
     setAuthChecked(true);
@@ -57,8 +58,8 @@ export default function AlertsScreen() {
       setItems([]);
       return;
     }
-    setItems(await loadAlertsFromServer(access));
-  }, []);
+    setItems(await loadAlertsFromServer(access, activeFilter, { cacheMode: signalCacheMode(forceRefresh) }));
+  }, [filter]);
 
   useFocusEffect(
     useCallback(() => {
@@ -72,11 +73,11 @@ export default function AlertsScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await reload();
+      await reload(filter, true);
     } finally {
       setRefreshing(false);
     }
-  }, [reload]);
+  }, [filter, reload]);
 
   const alertFilters = useMemo(
     () =>
@@ -133,10 +134,10 @@ export default function AlertsScreen() {
     ]);
   }, [authSession, items.length, t]);
 
-  const filteredItems = useMemo(
-    () => items.filter((item) => alertMatchesFilter(item, filter)),
-    [filter, items],
-  );
+  const filteredItems = items;
+
+  const listEmptyMessage =
+    items.length === 0 ? (filter === 'all' ? t('alertsEmpty') : t('alertsFilterEmpty')) : null;
 
   const listHeader = useMemo(
     () => (
@@ -148,7 +149,10 @@ export default function AlertsScreen() {
               return (
                 <Pressable
                   key={item.key}
-                  onPress={() => setFilter(item.key)}
+                  onPress={() => {
+                    setFilter(item.key);
+                    void reload(item.key);
+                  }}
                   style={[styles.filterTab, selected && styles.filterTabActive]}
                   accessibilityRole="tab"
                   accessibilityState={{ selected }}>
@@ -289,11 +293,11 @@ export default function AlertsScreen() {
         renderItem={renderAlert}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
-          filteredItems.length > 0 ? null : (
+          listEmptyMessage ? (
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>{items.length > 0 ? t('alertsFilterEmpty') : t('alertsEmpty')}</Text>
+              <Text style={styles.emptyText}>{listEmptyMessage}</Text>
             </View>
-          )
+          ) : null
         }
         contentContainerStyle={[
           styles.listContent,

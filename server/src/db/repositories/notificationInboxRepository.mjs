@@ -1,5 +1,6 @@
 import { queryKysely } from '../kysely/client.mjs';
 import { nowIso } from '../time.mjs';
+import { buildNotificationCategoryClause } from '../../notifications/notificationCategory.mjs';
 import { cleanText, safeLimit } from './publicHelpers.mjs';
 
 export const USER_NOTIFICATION_INBOX_MAX = 50;
@@ -129,6 +130,20 @@ export async function syncLazyInboxLinksForUser(userId) {
   return inserted;
 }
 
+function inboxListQueryParts(userId, options = {}) {
+  const params = [userId];
+  const categoryClause = buildNotificationCategoryClause(options.filter, 'n', params);
+  return {
+    params,
+    where: `
+      i.user_id = $1
+      AND i.deleted_at IS NULL
+      AND (n.expires_at IS NULL OR n.expires_at > NOW())
+      ${categoryClause}
+    `,
+  };
+}
+
 export async function queryUserNotificationInboxRows(userId, options = {}) {
   const uid = cleanText(userId);
   if (!uid || !(await isActiveRegisteredAppUser(uid))) return [];
@@ -136,6 +151,8 @@ export async function queryUserNotificationInboxRows(userId, options = {}) {
   await syncLazyInboxLinksForUser(uid);
 
   const limit = Math.min(USER_NOTIFICATION_INBOX_MAX, safeLimit(options.limit, USER_NOTIFICATION_INBOX_MAX, USER_NOTIFICATION_INBOX_MAX));
+  const { params, where } = inboxListQueryParts(uid, options);
+  params.push(limit);
   const result = await queryKysely(
     `
       SELECT
@@ -156,15 +173,63 @@ export async function queryUserNotificationInboxRows(userId, options = {}) {
         n.payload
       FROM user_notification_inbox i
       JOIN notification_items n ON n.id = i.notification_id
-      WHERE i.user_id = $1
-        AND i.deleted_at IS NULL
-        AND (n.expires_at IS NULL OR n.expires_at > NOW())
+      WHERE ${where}
       ORDER BY i.delivered_at DESC, i.id DESC
-      LIMIT $2
+      LIMIT $${params.length}
     `,
-    [uid, limit],
+    params,
   );
   return result.rows.map(publicInboxRow).filter(Boolean);
+}
+
+export async function queryUserNotificationInboxPage(userId, options = {}) {
+  const uid = cleanText(userId);
+  if (!uid || !(await isActiveRegisteredAppUser(uid))) {
+    return { rows: [], page: 1, pageSize: 20, total: 0, totalPages: 1 };
+  }
+
+  await syncLazyInboxLinksForUser(uid);
+
+  const page = Math.max(1, Number.parseInt(options.page || '1', 10) || 1);
+  const pageSize = safeLimit(options.pageSize, 20, 50);
+  const offset = (page - 1) * pageSize;
+  const { params, where } = inboxListQueryParts(uid, options);
+  params.push(pageSize + 1, offset);
+  const result = await queryKysely(
+    `
+      SELECT
+        i.id AS inbox_id,
+        i.notification_id,
+        i.delivered_at,
+        i.read_at,
+        i.deleted_at,
+        i.created_at,
+        n.type,
+        n.channel,
+        n.status,
+        n.priority,
+        n.title,
+        n.source_type,
+        n.source_id,
+        n.scheduled_at,
+        n.payload
+      FROM user_notification_inbox i
+      JOIN notification_items n ON n.id = i.notification_id
+      WHERE ${where}
+      ORDER BY i.delivered_at DESC, i.id DESC
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `,
+    params,
+  );
+  const rows = result.rows.map(publicInboxRow).filter(Boolean).slice(0, pageSize);
+  const hasMore = result.rows.length > pageSize;
+  return {
+    rows,
+    page,
+    pageSize,
+    total: offset + rows.length + (hasMore ? 1 : 0),
+    totalPages: hasMore ? page + 1 : page,
+  };
 }
 
 export async function countUnreadUserNotificationInbox(userId) {

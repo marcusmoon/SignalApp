@@ -1,8 +1,8 @@
 import { queryKysely, withKyselyTransaction } from '../kysely/client.mjs';
 import { nowIso } from '../time.mjs';
+import { buildNotificationCategoryClause } from '../../notifications/notificationCategory.mjs';
 import {
   cleanText,
-  pageOptions,
   payloadFromRow,
   safeLimit,
 } from './publicHelpers.mjs';
@@ -138,21 +138,54 @@ export async function queryNotificationRows(options = {}) {
   const offset = (page - 1) * pageSize;
   const params = [];
   const where = [];
+  const alias = 'n';
+
   if (options.appUserId) {
     params.push(cleanText(options.appUserId));
-    where.push(`app_user_id = $${params.length}`);
+    where.push(`${alias}.app_user_id = $${params.length}`);
   }
   if (options.status) {
     params.push(cleanText(options.status));
-    where.push(`status = $${params.length}`);
+    where.push(`${alias}.status = $${params.length}`);
   }
+  if (options.type) {
+    params.push(cleanText(options.type));
+    where.push(`LOWER(COALESCE(${alias}.type, '')) = LOWER($${params.length})`);
+  }
+  if (options.channel) {
+    params.push(cleanText(options.channel));
+    where.push(`LOWER(COALESCE(${alias}.channel, '')) = LOWER($${params.length})`);
+  }
+  if (options.sourceType) {
+    params.push(cleanText(options.sourceType));
+    where.push(`LOWER(COALESCE(${alias}.source_type, '')) = LOWER($${params.length})`);
+  }
+  if (options.targetType) {
+    params.push(cleanText(options.targetType));
+    where.push(`LOWER(COALESCE(${alias}.target_type, '')) = LOWER($${params.length})`);
+  }
+  const q = cleanText(options.q);
+  if (q) {
+    params.push(`%${q}%`);
+    const idx = params.length;
+    where.push(`(
+      ${alias}.title ILIKE $${idx}
+      OR COALESCE(${alias}.payload->>'body', '') ILIKE $${idx}
+      OR ${alias}.app_user_id ILIKE $${idx}
+      OR ${alias}.source_id ILIKE $${idx}
+      OR ${alias}.id ILIKE $${idx}
+    )`);
+  }
+  const categoryClause = buildNotificationCategoryClause(options.filter, alias, params);
+  if (categoryClause) where.push(categoryClause.replace(/^AND\s+/, ''));
+
   params.push(pageSize + 1, offset);
   const result = await queryKysely(
     `
-      SELECT payload
-      FROM notification_items
+      SELECT ${alias}.payload
+      FROM notification_items ${alias}
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-      ORDER BY COALESCE(scheduled_at, NULLIF(payload->>'createdAt', '')::timestamptz, updated_at) DESC NULLS LAST
+      ORDER BY COALESCE(${alias}.scheduled_at, NULLIF(${alias}.payload->>'createdAt', '')::timestamptz, ${alias}.updated_at) DESC NULLS LAST
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `,
     params,

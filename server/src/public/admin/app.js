@@ -2083,11 +2083,36 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await loadAppUsers();
             return;
           }
+          if (target.dataset.appUserInboxPage === 'prev' && state.appUserInboxPage > 1) {
+            state.appUserInboxPage -= 1;
+            await loadAppUsers();
+            return;
+          }
+          if (target.dataset.appUserInboxPage === 'next' && state.appUserInboxPage < state.appUserInboxTotalPages) {
+            state.appUserInboxPage += 1;
+            await loadAppUsers();
+            return;
+          }
+          const appNotificationsFilter = target instanceof Element ? target.closest('[data-app-notifications-filter]') : null;
+          if (appNotificationsFilter?.dataset?.appNotificationsFilter) {
+            state.appNotificationsCategory = appNotificationsFilter.dataset.appNotificationsFilter;
+            state.appNotificationsPage = 1;
+            await loadAppUsers();
+            return;
+          }
+          const appUserInboxFilter = target instanceof Element ? target.closest('[data-app-user-inbox-filter]') : null;
+          if (appUserInboxFilter?.dataset?.appUserInboxFilter) {
+            state.appUserInboxFilter = appUserInboxFilter.dataset.appUserInboxFilter;
+            state.appUserInboxPage = 1;
+            await loadAppUsers();
+            return;
+          }
           const appUserRowTarget = target instanceof Element ? target.closest('[data-app-user-row]') : null;
           if (appUserRowTarget?.dataset?.appUserRow) {
             const interactiveTarget = target.closest('button, input, select, textarea, label, a');
             if (!interactiveTarget) {
               state.appUsersSelectedId = appUserRowTarget.dataset.appUserRow;
+              state.appUserInboxPage = 1;
               await loadAppUsers();
               document.querySelector('.appUserDetailCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               return;
@@ -2095,12 +2120,16 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           }
           if (target.dataset.appUserSelect) {
             state.appUsersSelectedId = target.dataset.appUserSelect;
+            state.appUserInboxPage = 1;
             await loadAppUsers();
             document.querySelector('.appUserDetailCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             return;
           }
           if (target.dataset.appUserDetailTab) {
             state.appUsersDetailTab = target.dataset.appUserDetailTab;
+            if (target.dataset.appUserDetailTab === 'notifications') {
+              state.appUserInboxPage = 1;
+            }
             await loadAppUsers();
             return;
           }

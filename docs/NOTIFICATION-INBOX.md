@@ -37,7 +37,7 @@ AND status IN ('sent', 'skipped')
 
 | Method | Path | 설명 |
 |---|---|---|
-| GET | `/v1/notifications` | 목록 (limit 1–50, lazy link) |
+| GET | `/v1/notifications` | 목록 (limit 1–50, lazy link, `filter=all\|high\|signal\|system`) |
 | GET | `/v1/notifications/unread-count` | 미읽음 건수 |
 | PATCH | `/v1/notifications/read` | `{ "ids": [] }` 또는 `{ "all": true }` |
 | DELETE | `/v1/notifications` | soft delete |
@@ -72,6 +72,11 @@ AND status IN ('sent', 'skipped')
 ## Admin
 
 `POST /admin/api/notifications` → `notification_items` 적재. `target_type = 'user'`는 발송 후 inbox link, `all`은 lazy link.
+
+| Method | Path | 설명 |
+|---|---|---|
+| GET | `/admin/api/notifications` | outbox 검색 (`type`, `status`, `targetType`, `q`, `filter`) |
+| GET | `/admin/api/app-users/:userId/inbox` | 앱과 동일한 사용자 인박스 (`filter`, page) |
 
 ## 시간 기준
 

@@ -119,8 +119,12 @@ export async function handlePublicNotificationRoutes({ req, res, url, pathname }
   if (req.method === 'GET' && pathname === '/v1/notifications') {
     const user = await requireAppUser(req, res);
     if (!user) return true;
-    const rows = (await queryUserNotificationInbox(user.id, { limit: inboxLimit(url) })).map(publicInboxItem);
-    json(res, 200, { data: rows, maxItems: USER_NOTIFICATION_INBOX_MAX });
+    const filter = url.searchParams.get('filter') || 'all';
+    const rows = (await queryUserNotificationInbox(user.id, {
+      limit: inboxLimit(url),
+      filter,
+    })).map(publicInboxItem);
+    json(res, 200, { data: rows, maxItems: USER_NOTIFICATION_INBOX_MAX, filter });
     return true;
   }
 

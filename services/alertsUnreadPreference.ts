@@ -4,9 +4,11 @@ import {
   fetchSignalNotifications,
   fetchSignalNotificationsUnreadCount,
   markSignalNotificationsRead,
+  type AlertsFilter,
   type SignalNotificationItem,
   SIGNAL_NOTIFICATION_MAX,
 } from '@/integrations/signal-api/notifications';
+import type { SignalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { hasSignalApi } from '@/services/env';
 import { getSessionAccessToken, loadAppAuthSession } from '@/services/appAuthSession';
 import type { StoredNotification } from '@/services/notificationHistory';
@@ -62,8 +64,16 @@ export function mapNotificationToStored(item: SignalNotificationItem): StoredNot
   };
 }
 
-async function loadVisibleAlerts(access: string): Promise<StoredNotification[]> {
-  const rows = await fetchSignalNotifications(access, SIGNAL_NOTIFICATION_MAX);
+async function loadVisibleAlerts(
+  access: string,
+  filter: AlertsFilter = 'all',
+  cacheMode: SignalCacheMode = 'use',
+): Promise<StoredNotification[]> {
+  const rows = await fetchSignalNotifications(access, {
+    limit: SIGNAL_NOTIFICATION_MAX,
+    filter,
+    cacheMode,
+  });
   return rows.map(mapNotificationToStored);
 }
 
@@ -116,10 +126,14 @@ export async function markAlertsSeen(): Promise<void> {
   await setAlertsUnreadCached(false);
 }
 
-export async function loadAlertsFromServer(access: string): Promise<StoredNotification[]> {
+export async function loadAlertsFromServer(
+  access: string,
+  filter: AlertsFilter = 'all',
+  options?: { cacheMode?: SignalCacheMode },
+): Promise<StoredNotification[]> {
   if (!hasSignalApi()) return [];
   try {
-    return await loadVisibleAlerts(access);
+    return await loadVisibleAlerts(access, filter, options?.cacheMode ?? 'use');
   } catch {
     return [];
   }

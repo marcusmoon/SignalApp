@@ -19,13 +19,11 @@ function compactNotification(item) {
     deepLink: item.deepLink || '',
     provider: item.provider || '',
     providerMessageId: item.providerMessageId || '',
-    attempts: Number(item.attempts) || 0,
+    attempts: Number.isFinite(Number(item.attempts)) ? Number(item.attempts) : 0,
     errorMessage: item.errorMessage || '',
     scheduledAt: item.scheduledAt || null,
     expiresAt: item.expiresAt || null,
     sentAt: item.sentAt || null,
-    attempts: Number.isFinite(Number(item.attempts)) ? Number(item.attempts) : 0,
-    errorMessage: item.errorMessage || null,
     createdAt: item.createdAt || null,
     updatedAt: item.updatedAt || null,
   };
@@ -41,6 +39,7 @@ export async function handleAdminNotificationsRoutes({ req, res, url, pathname }
       targetType: url.searchParams.get('targetType') || '',
       appUserId: url.searchParams.get('appUserId') || '',
       q: url.searchParams.get('q') || '',
+      filter: url.searchParams.get('filter') || '',
       page: url.searchParams.get('page') || '1',
       pageSize: url.searchParams.get('pageSize') || '30',
     });

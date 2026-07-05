@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
-  fetchSignalNotificationInbox,
-  fetchSignalNotificationInboxUnreadCount,
-  markSignalNotificationInboxRead,
-  type SignalNotificationInboxItem,
-  SIGNAL_NOTIFICATION_INBOX_MAX,
+  fetchSignalNotifications,
+  fetchSignalNotificationsUnreadCount,
+  markSignalNotificationsRead,
+  type SignalNotificationItem,
+  SIGNAL_NOTIFICATION_MAX,
 } from '@/integrations/signal-api/notifications';
 import { hasSignalApi } from '@/services/env';
 import { getSessionAccessToken, loadAppAuthSession } from '@/services/appAuthSession';
@@ -47,7 +47,7 @@ export async function setAlertsUnreadCached(hasUnread: boolean): Promise<void> {
   notify();
 }
 
-export function mapInboxToStoredNotification(item: SignalNotificationInboxItem): StoredNotification {
+export function mapNotificationToStored(item: SignalNotificationItem): StoredNotification {
   return {
     id: item.id,
     title: item.title,
@@ -62,9 +62,9 @@ export function mapInboxToStoredNotification(item: SignalNotificationInboxItem):
   };
 }
 
-async function loadInboxAlerts(access: string): Promise<StoredNotification[]> {
-  const rows = await fetchSignalNotificationInbox(access, SIGNAL_NOTIFICATION_INBOX_MAX);
-  return rows.map(mapInboxToStoredNotification);
+async function loadVisibleAlerts(access: string): Promise<StoredNotification[]> {
+  const rows = await fetchSignalNotifications(access, SIGNAL_NOTIFICATION_MAX);
+  return rows.map(mapNotificationToStored);
 }
 
 export async function checkAlertsHasUnread(): Promise<boolean> {
@@ -72,7 +72,7 @@ export async function checkAlertsHasUnread(): Promise<boolean> {
   const access = getSessionAccessToken(savedSession);
   if (!access || !hasSignalApi()) return false;
   try {
-    const count = await fetchSignalNotificationInboxUnreadCount(access);
+    const count = await fetchSignalNotificationsUnreadCount(access);
     return count > 0;
   } catch {
     const cached = await loadAlertsUnreadCached();
@@ -102,13 +102,13 @@ export async function refreshAlertsUnreadFromServer(options?: { force?: boolean 
   return refreshInFlight;
 }
 
-/** 알림함 진입 시 호출 — 서버 인박스 전체 읽음 처리 */
+/** 알림함 진입 시 호출 — 서버 read + 로컬 배지 갱신 */
 export async function markAlertsSeen(): Promise<void> {
   const savedSession = await loadAppAuthSession();
   const access = getSessionAccessToken(savedSession);
   if (access && hasSignalApi()) {
     try {
-      await markSignalNotificationInboxRead(access, { all: true });
+      await markSignalNotificationsRead(access, { all: true });
     } catch {
       /* badge cache still cleared below */
     }
@@ -116,11 +116,15 @@ export async function markAlertsSeen(): Promise<void> {
   await setAlertsUnreadCached(false);
 }
 
-export async function loadAlertsFromInbox(access: string): Promise<StoredNotification[]> {
+export async function loadAlertsFromServer(access: string): Promise<StoredNotification[]> {
   if (!hasSignalApi()) return [];
   try {
-    return await loadInboxAlerts(access);
+    return await loadVisibleAlerts(access);
   } catch {
     return [];
   }
+}
+
+export function isServerNotificationId(id: string): boolean {
+  return /^[^:]+:notification:/.test(String(id || '').trim());
 }

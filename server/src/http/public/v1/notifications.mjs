@@ -108,7 +108,7 @@ export async function handlePublicNotificationRoutes({ req, res, url, pathname }
     return true;
   }
 
-  if (req.method === 'GET' && pathname === '/v1/notifications/inbox/unread-count') {
+  if (req.method === 'GET' && pathname === '/v1/notifications/unread-count') {
     const user = await requireAppUser(req, res);
     if (!user) return true;
     const count = await countUserNotificationInboxUnread(user.id);
@@ -116,7 +116,7 @@ export async function handlePublicNotificationRoutes({ req, res, url, pathname }
     return true;
   }
 
-  if (req.method === 'GET' && pathname === '/v1/notifications/inbox') {
+  if (req.method === 'GET' && pathname === '/v1/notifications') {
     const user = await requireAppUser(req, res);
     if (!user) return true;
     const rows = (await queryUserNotificationInbox(user.id, { limit: inboxLimit(url) })).map(publicInboxItem);
@@ -124,7 +124,7 @@ export async function handlePublicNotificationRoutes({ req, res, url, pathname }
     return true;
   }
 
-  if (req.method === 'PATCH' && pathname === '/v1/notifications/inbox/read') {
+  if (req.method === 'PATCH' && pathname === '/v1/notifications/read') {
     const user = await requireAppUser(req, res);
     if (!user) return true;
     const body = (await readBody(req)) || {};
@@ -136,7 +136,7 @@ export async function handlePublicNotificationRoutes({ req, res, url, pathname }
     return true;
   }
 
-  if (req.method === 'DELETE' && pathname === '/v1/notifications/inbox') {
+  if (req.method === 'DELETE' && pathname === '/v1/notifications') {
     const user = await requireAppUser(req, res);
     if (!user) return true;
     const body = (await readBody(req)) || {};
@@ -148,7 +148,7 @@ export async function handlePublicNotificationRoutes({ req, res, url, pathname }
     return true;
   }
 
-  if (req.method === 'POST' && pathname === '/v1/notifications/inbox/deliver') {
+  if (req.method === 'POST' && pathname === '/v1/notifications/deliver') {
     const user = await requireAppUser(req, res);
     if (!user) return true;
     const body = (await readBody(req)) || {};

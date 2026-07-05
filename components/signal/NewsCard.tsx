@@ -79,9 +79,27 @@ export function NewsCard({
     </View>
   );
 
-  const renderSourceInMeta = () => <View style={styles.sourceRowCompact}>{sourceContent}</View>;
+  const flashBadge = isFlash ? (
+    <View style={styles.sourcePill} accessibilityLabel={t('newsFlashBadge')}>
+      <Text style={styles.sourceName} numberOfLines={1}>
+        {t('newsFlashBadge')}
+      </Text>
+    </View>
+  ) : null;
 
-  const renderSourceBelowMeta = () => <View style={styles.sourceRow}>{sourceContent}</View>;
+  const renderSourceInMeta = () => (
+    <View style={styles.sourceRowCompact}>
+      {flashBadge}
+      {sourceContent}
+    </View>
+  );
+
+  const renderSourceBelowMeta = () => (
+    <View style={styles.sourceRow}>
+      {flashBadge}
+      {sourceContent}
+    </View>
+  );
 
   return (
     <View
@@ -100,15 +118,9 @@ export function NewsCard({
         accessibilityRole={rowPressEnabled ? 'button' : undefined}
         accessibilityLabel={rowPressEnabled ? rowA11yLabel : undefined}
         accessibilityHint={rowPressEnabled ? t('newsReadMore') : undefined}>
-        {isFlash ? (
-          <View style={styles.flashBadgeWrap} accessibilityLabel={t('newsFlashBadge')}>
-            <View style={styles.flashBadge}>
-              <Text style={styles.flashBadgeText}>{t('newsFlashBadge')}</Text>
-            </View>
-          </View>
-        ) : null}
         {compactMeta ? (
           <View style={styles.compactMetaRow}>
+            {flashBadge}
             {canOpenSymbol ? (
               <Pressable
                 onPress={() => router.push(`/symbol/${symbol}`)}
@@ -228,24 +240,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     rowPressPressed: {
       opacity: 0.92,
     },
-    flashBadgeWrap: {
-      marginBottom: 6,
-    },
-    flashBadge: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: 7,
-      paddingVertical: 2,
-      borderRadius: 999,
-      backgroundColor: theme.bgElevated,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border,
-    },
-    flashBadgeText: {
-      fontSize: ft.ff(10),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-      letterSpacing: 0.2,
-    },
     metaRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -319,6 +313,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minWidth: 0,
       marginBottom: 0,
       alignSelf: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: ft.pad(6),
     },
     sourcePill: {
       flexDirection: 'row',

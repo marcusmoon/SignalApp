@@ -59,6 +59,16 @@ import {
 
 type FilterKey = 'us' | 'kr' | 'watch';
 
+type ListQuery = {
+  filter: FilterKey;
+  typeFilter: DisclosureTypeFilterKey;
+  symbolFilter: string;
+};
+
+function listQueryKey(query: ListQuery): string {
+  return `${query.filter}|${query.typeFilter}|${query.symbolFilter}`;
+}
+
 const FILTER_ORDER: FilterKey[] = ['us', 'kr', 'watch'];
 
 const FILTERS: { key: FilterKey; label: MessageId }[] = [
@@ -110,17 +120,23 @@ export default function DisclosuresScreen() {
   const [selectedDisclosureId, setSelectedDisclosureId] = useState<string | null>(null);
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [listFetching, setListFetching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
-  const itemsRef = useRef<SignalApiDisclosure[]>([]);
   const digestItemsRef = useRef<SignalApiDisclosureDigestItem[]>([]);
   const watchlistRef = useRef<string[]>([]);
+  const listCacheRef = useRef<Map<string, SignalApiDisclosure[]>>(new Map());
+  const hasInitialLoadRef = useRef(false);
   const loadSeqRef = useRef(0);
-  itemsRef.current = items;
   digestItemsRef.current = digestItems;
   watchlistRef.current = watchlist;
+
+  const currentQuery = useMemo<ListQuery>(
+    () => ({ filter, typeFilter, symbolFilter }),
+    [filter, symbolFilter, typeFilter],
+  );
 
   const loadDigests = useCallback(async () => {
     if (!hasSignalApi() || symbolFilter) return;
@@ -141,65 +157,79 @@ export default function DisclosuresScreen() {
     }
   }, [filter, symbolFilter]);
 
-  const fetchList = useCallback(async () => {
+  const queryDisclosureList = useCallback(async (query: ListQuery): Promise<SignalApiDisclosure[]> => {
     if (!hasSignalApi()) {
-      setItems([]);
-      setError(t('errorSignalApiShort'));
-      return [];
+      throw new Error(t('errorSignalApiShort'));
     }
 
     let watch = watchlistRef.current;
-    if (filter === 'watch') {
+    if (query.filter === 'watch') {
       watch = await loadWatchlistSymbols();
       watchlistRef.current = watch;
       setWatchlist(watch);
     }
 
-    const market = symbolFilter ? undefined : filter === 'us' ? 'us' : filter === 'kr' ? 'kr' : undefined;
-    const symbols = symbolFilter || (filter === 'watch' ? watch.join(',') : undefined);
+    const market = query.symbolFilter
+      ? undefined
+      : query.filter === 'us'
+        ? 'us'
+        : query.filter === 'kr'
+          ? 'kr'
+          : undefined;
+    const symbols =
+      query.symbolFilter || (query.filter === 'watch' ? watch.join(',') : undefined);
     const page = await fetchSignalDisclosures({
       market,
       symbols,
-      typeCategory: typeCategoryApiParam(typeFilter),
+      typeCategory: typeCategoryApiParam(query.typeFilter),
       limit: 60,
     });
-    setError(null);
-    setItems(page.items);
     return page.items;
-  }, [filter, symbolFilter, t, typeFilter]);
+  }, [t]);
 
   useEffect(() => {
     void loadDigests();
   }, [loadDigests]);
 
   useEffect(() => {
+    const query = currentQuery;
+    const cacheKey = listQueryKey(query);
+    const cached = listCacheRef.current.get(cacheKey);
+    if (cached !== undefined) {
+      setItems(cached);
+    }
+
     let cancelled = false;
     const seq = ++loadSeqRef.current;
-    const hadItems = itemsRef.current.length > 0;
-    if (!hadItems) setLoading(true);
-    else setListFetching(true);
+    if (!hasInitialLoadRef.current) setLoading(true);
+    setListFetching(true);
 
     void (async () => {
       try {
-        const rows = await fetchList();
+        const rows = await queryDisclosureList(query);
         if (cancelled || seq !== loadSeqRef.current) return;
-        if (!rows.length && !hadItems) {
-          // keep empty state
-        }
+        listCacheRef.current.set(cacheKey, rows);
+        setItems(rows);
+        setError(null);
       } catch (e) {
         if (cancelled || seq !== loadSeqRef.current) return;
+        if (!hasSignalApi()) {
+          setItems([]);
+        }
         setError(formatSignalApiError(e, t, 'disclosuresLoadError'));
       } finally {
         if (cancelled || seq !== loadSeqRef.current) return;
+        hasInitialLoadRef.current = true;
         setLoading(false);
         setListFetching(false);
+        setInitialLoadDone(true);
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [fetchList, t]);
+  }, [currentQuery, queryDisclosureList, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -246,21 +276,29 @@ export default function DisclosuresScreen() {
     setRefreshing(true);
     setRefreshNotice(null);
     const seq = ++loadSeqRef.current;
+    const query = currentQuery;
+    const cacheKey = listQueryKey(query);
     try {
-      const latest = await fetchList();
+      const latest = await queryDisclosureList(query);
       if (seq !== loadSeqRef.current) return;
+      listCacheRef.current.set(cacheKey, latest);
+      setItems(latest);
+      setError(null);
       await loadDigests();
       const latestIds = latest.map((item) => item.id);
       const newCount = latestIds.filter((id) => !prevIds.has(id)).length;
       if (newCount > 0) {
         setRefreshNotice(t('disclosuresRefreshNotice', { count: String(newCount) }));
       }
+    } catch (e) {
+      if (seq !== loadSeqRef.current) return;
+      setError(formatSignalApiError(e, t, 'disclosuresLoadError'));
     } finally {
       if (seq === loadSeqRef.current) {
         setRefreshing(false);
       }
     }
-  }, [fetchList, items, loadDigests, t]);
+  }, [currentQuery, items, loadDigests, queryDisclosureList, t]);
 
   const onPickFilter = useCallback(
     (key: FilterKey) => {
@@ -493,7 +531,7 @@ export default function DisclosuresScreen() {
             </View>
           ) : null}
         </View> : null}
-        {loading && items.length === 0 ? (
+        {!initialLoadDone && loading ? (
           <View style={styles.loadingWrap}>
             <SignalLoadingIndicator message={t('commonLoading')} />
           </View>

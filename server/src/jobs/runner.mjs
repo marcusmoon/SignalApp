@@ -10,7 +10,6 @@ import {
   patchPollingJobRun,
   readSingletonPayload,
   releasePollingJobLock,
-  renewPollingJobLock,
   upsertCollectionRows,
   pruneCommunityPostsForSource,
   upsertById,
@@ -24,8 +23,8 @@ import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.m
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
 import { generateNewsDigestItems } from '../digests/newsDigest.mjs';
 import { fetchFinancialJuiceRssNews, reconcileFinancialJuiceNewsItems } from '../providers/news/financialJuiceRss.mjs';
-import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
-import { fetchNewswireRssNews } from '../providers/news/rssNews.mjs';
+import { fetchFinnhubMarketNews, reconcileFinnhubNewsItems } from '../providers/news/finnhub.mjs';
+import { fetchNewswireRssNews, reconcileRssNewsItems } from '../providers/news/rssNews.mjs';
 import { fetchDartFilings } from '../providers/news/dartFilings.mjs';
 import { fetchSecEdgarFilings } from '../providers/news/secEdgar.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
@@ -34,6 +33,13 @@ import { fetchSaveUserNews } from '../providers/community/saveUserNews.mjs';
 import { fetchYoutubeEconomy, fetchYoutubeVideosByIds } from '../providers/youtube/youtube.mjs';
 import { normalizeYoutubeCurationHandles } from '../youtubeCuration.mjs';
 import { phasesForJob, paramsForPhase, runModeForJob } from './jobPhases.mjs';
+import {
+  createJobRunProgress,
+  createMcapProgressHandler,
+  jobHasStoredNewsReconcile,
+  jobNeedsFreshContext,
+  jobUsesMcapProgress,
+} from './jobRunProgress.mjs';
 import { ensureRssSourcesCatalog, getRssSource, rssSourceParams } from '../db/rssSources.mjs';
 
 function addSecondsIso(seconds) {
@@ -118,9 +124,9 @@ async function readJobContext(job) {
 
   if (provider === 'rss') {
     context.rssSources = await listCollectionPayloads('rssSources');
-    if (handler === 'financial_juice' && job?.params?.reconcile) {
-      context.newsItems = await listCollectionPayloads('newsItems');
-    }
+  }
+  if (jobHasStoredNewsReconcile(job) || (provider === 'signal' && handler === 'news_digest')) {
+    context.newsItems = await listCollectionPayloads('newsItems');
   }
   if (
     provider === 'sec' ||
@@ -138,9 +144,6 @@ async function readJobContext(job) {
     ]);
     context.appSettings = appSettings || {};
     context.youtubeVideos = youtubeVideos;
-  }
-  if (provider === 'signal' && handler === 'news_digest') {
-    context.newsItems = await listCollectionPayloads('newsItems');
   }
 
   return context;
@@ -259,6 +262,12 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
   const effective = { ...job, params };
 
   if (effective.provider === 'finnhub' && effective.handler === 'market_news') {
+    if (phase === 'reconcile') {
+      const newsItems = dbBefore.newsItems || (await listCollectionPayloads('newsItems'));
+      const category = params?.category || 'general';
+      const limit = Math.max(1, Math.min(200, Number(params?.limit || 100) || 100));
+      return { kind: 'news', rows: reconcileFinnhubNewsItems(newsItems, { category, limit }) };
+    }
     return { kind: 'news', rows: await fetchFinnhubMarketNews(params) };
   }
   if (effective.provider === 'rss' && effective.handler === 'financial_juice') {
@@ -280,6 +289,12 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
         : [];
     const sources = ids.map((id) => getRssSource(dbBefore, id)).filter((source) => source && source.enabled !== false);
     if (sources.length === 0) throw new Error('RSS_SOURCE_NOT_CONFIGURED');
+    if (phase === 'reconcile') {
+      const newsItems = dbBefore.newsItems || (await listCollectionPayloads('newsItems'));
+      const limit = Math.max(1, Math.min(200, Number(params?.limit || 60) || 60));
+      const providerIds = sources.map((source) => source.providerId || source.id).filter(Boolean);
+      return { kind: 'news', rows: reconcileRssNewsItems(newsItems, { providerIds, limit }) };
+    }
     const rows = [];
     ensureRssSourcesCatalog(dbBefore);
     for (const source of sources) {
@@ -511,68 +526,26 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       updatedAt: run.startedAt,
     });
 
-    let lastProgressAt = 0;
-    let lastProgressPercent = -1;
-    const onProgress =
-      jobKey === 'market_quotes_mcap'
-        ? async ({ phase, done, total, symbol } = {}) => {
-            const safeDone = Math.max(0, Number(done) || 0);
-            const safeTotal = Math.max(0, Number(total) || 0);
-            const now = Date.now();
-
-            let percent = 0;
-            if (phase === 'profiles') percent = safeTotal > 0 ? Math.round((safeDone / safeTotal) * 50) : 0;
-            else if (phase === 'quotes') percent = safeTotal > 0 ? 50 + Math.round((safeDone / safeTotal) * 50) : 50;
-            else if (phase === 'transcripts') percent = safeTotal > 0 ? Math.round((safeDone / safeTotal) * 100) : 0;
-
-            const percentDelta = Math.abs(percent - lastProgressPercent);
-            const shouldPersist =
-              percent !== lastProgressPercent &&
-              (now - lastProgressAt > 5000 ||
-                percent === 0 ||
-                percent === 100 ||
-                safeDone === safeTotal ||
-                percentDelta >= 10);
-
-            if (shouldPersist) {
-              lastProgressAt = now;
-              lastProgressPercent = percent;
-              console.log(
-                `[job:${jobKey}] progress ${percent}% (${phase || 'unknown'} ${safeDone}/${safeTotal})${symbol ? ` ${symbol}` : ''}`,
-              );
-              await patchPollingJobRun(run.id, {
-                progressPhase: phase || null,
-                progressDone: safeDone,
-                progressTotal: safeTotal,
-                progressPercent: percent,
-                progressUpdatedAt: nowIso(),
-              });
-            }
-          }
-        : null;
+    const { touch: touchRunProgress } = createJobRunProgress({
+      jobKey,
+      job,
+      lock,
+      runId: run.id,
+      jobLockTtlMs,
+    });
+    const onProgress = jobUsesMcapProgress(job.handler)
+      ? createMcapProgressHandler({ jobKey, touch: touchRunProgress })
+      : null;
 
     let dbBefore = await readJobContext(job);
     const phases = phasesForJob(job, runModeForJob(job, mode));
     if (phases.length === 0) throw new Error(`JOB_NO_PHASES:${jobKey}`);
 
-    const touchRunProgress = async (patch = {}) => {
-      await renewPollingJobLock(jobKey, lock.token, { ttlMs: jobLockTtlMs(job) }).catch((error) => {
-        console.warn(`[job:${jobKey}] failed to renew lock`, error?.message || error);
-      });
-      await patchPollingJobRun(run.id, {
-        progressUpdatedAt: nowIso(),
-        ...patch,
-      });
-    };
-
     let totalItems = 0;
     let lastKind = null;
     for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex += 1) {
       const phase = phases[phaseIndex];
-      if (phase === 'reconcile' && job.provider === 'youtube') {
-        dbBefore = await readJobContext(job);
-      }
-      if (phase === 'reconcile' && job.provider === 'rss' && job.handler === 'financial_juice') {
+      if (jobNeedsFreshContext(job, phase)) {
         dbBefore = await readJobContext(job);
       }
       await touchRunProgress({ progressPhase: phase });

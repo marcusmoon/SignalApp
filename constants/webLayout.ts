@@ -5,13 +5,7 @@ export const isWeb = Platform.OS === 'web';
 /** Set by +html inline script before React; survives static-export hydration. */
 export const WEB_THEME_BG = 'var(--signal-bg)' as const;
 
-/** Screen/list shells above the root pattern layer. */
-export function webShellBackground(_themeBg: string): string {
-  return 'transparent';
-}
-
-/** Opaque chrome (root shell, stack headers, modals). */
-export function webOpaqueShellBackground(themeBg: string): string {
+export function webShellBackground(themeBg: string): string {
   return isWeb ? WEB_THEME_BG : themeBg;
 }
 

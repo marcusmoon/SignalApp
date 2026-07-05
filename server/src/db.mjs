@@ -78,7 +78,6 @@ import {
 import {
   claimPushNotificationRows,
   queryNotificationRows,
-  queryPublicNotificationsForUserRows,
   resolvePushDeviceRows,
   updateNotificationSendStateRow,
   upsertNotificationRow,
@@ -86,7 +85,6 @@ import {
 import {
   countUnreadUserNotificationInbox,
   deleteUserNotificationInboxItems,
-  inboxRowAsLegacyNotification,
   markUserNotificationInboxRead,
   queryUserNotificationInboxRows,
   recordInboxDeliveriesForUsers,
@@ -2006,13 +2004,6 @@ export const upsertNotificationItem = upsertNotification;
 
 export async function queryNotifications(options = {}) {
   return queryNotificationRows(options);
-}
-
-export async function queryPublicNotificationsForUser(userId, options = {}) {
-  const rows = await queryUserNotificationInboxRows(userId, {
-    limit: Math.min(USER_NOTIFICATION_INBOX_MAX, options.limit ?? USER_NOTIFICATION_INBOX_MAX),
-  });
-  return rows.map(inboxRowAsLegacyNotification).filter(Boolean);
 }
 
 export async function queryUserNotificationInbox(userId, options = {}) {

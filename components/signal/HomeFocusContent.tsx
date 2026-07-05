@@ -845,6 +845,7 @@ export function HomeFocusContent({
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('disclosureFlowTitle')}
+              badge={<HomeAiBadge />}
               onPress={() => openDisclosureFlow()}
               accessibilityLabel={t('commonViewAll')}
             />

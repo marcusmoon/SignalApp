@@ -43,10 +43,11 @@ import {
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
-import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
+import { useResetRefreshingOnTabBlur, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { hasSignalApi } from '@/services/env';
 import { loadSelectedChannels, saveSelectedChannels } from '@/services/youtubeChannelSelection';
 import type { ChannelHandleMeta } from '@/domain/youtube/types';
@@ -64,6 +65,16 @@ import {
 
 type SortKey = 'popular' | 'latest';
 
+type YoutubeFeedTabKey = 'all' | 'latest' | 'popular';
+
+const YOUTUBE_FEED_TAB_ORDER: YoutubeFeedTabKey[] = ['all', 'latest', 'popular'];
+
+function resolveYoutubeFeedTab(sort: SortKey, channelFilterActive: boolean): YoutubeFeedTabKey {
+  if (sort === 'popular') return 'popular';
+  if (channelFilterActive) return 'latest';
+  return 'all';
+}
+
 const YOUTUBE_PAGE_SIZE = 30;
 
 /** 채널 배열이 동일하면 상태 갱신·load 재실행을 막기 위한 키 (탭 복귀 시 매번 새 배열 참조 방지) */
@@ -80,6 +91,7 @@ export default function YoutubeScreen() {
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
+  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const [sort, setSort] = useState<SortKey>('latest');
   const effectiveSort = useTwoPane && ipadNav.isAvailable ? ipadNav.youtubeSort : sort;
   const [loading, setLoading] = useState(false);
@@ -386,6 +398,46 @@ export default function YoutubeScreen() {
       selectedHandles.length < curationHandles.length,
   );
 
+  const activeFeedTab = resolveYoutubeFeedTab(sort, channelFilterActive);
+
+  const onPickFeedTab = useCallback(
+    (key: YoutubeFeedTabKey) => {
+      if (key === 'all') void applyAllFilter();
+      else if (key === 'latest') applyLatestSortFilter();
+      else applyPopularFilter();
+    },
+    [applyAllFilter, applyLatestSortFilter, applyPopularFilter],
+  );
+
+  useTabPressCycleSegment(activeFeedTab, YOUTUBE_FEED_TAB_ORDER, onPickFeedTab);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!useTwoPane) return;
+      setSubTabs([
+        {
+          key: 'all',
+          label: t('feedWatchFilterAll'),
+          active: activeFeedTab === 'all',
+          onPress: () => onPickFeedTab('all'),
+        },
+        {
+          key: 'latest',
+          label: t('youtubeSortLatest'),
+          active: activeFeedTab === 'latest',
+          onPress: () => onPickFeedTab('latest'),
+        },
+        {
+          key: 'popular',
+          label: t('youtubeSortPopular'),
+          active: activeFeedTab === 'popular',
+          onPress: () => onPickFeedTab('popular'),
+        },
+      ]);
+      return () => clearSubTabs();
+    }, [activeFeedTab, clearSubTabs, onPickFeedTab, setSubTabs, t, useTwoPane]),
+  );
+
   const toggleChannel = useCallback((handle: string) => {
     setFilterDraftHandles((prev) => {
       if (!prev) return prev;
@@ -489,27 +541,29 @@ export default function YoutubeScreen() {
         {!useTwoPane ? <View style={styles.topFixed}>
           <View style={styles.segment}>
             <Pressable
-              onPress={() => void applyAllFilter()}
-              style={[
-                styles.segBtn,
-                sort === 'latest' && !channelFilterActive && styles.segBtnActive,
-              ]}
+              onPress={() => void onPickFeedTab('all')}
+              style={[styles.segBtn, activeFeedTab === 'all' && styles.segBtnActive]}
               accessibilityRole="button"
-              accessibilityState={{ selected: sort === 'latest' && !channelFilterActive }}>
-              <Text
-                style={[
-                  styles.segText,
-                  sort === 'latest' && !channelFilterActive && styles.segTextActive,
-                ]}>
+              accessibilityState={{ selected: activeFeedTab === 'all' }}>
+              <Text style={[styles.segText, activeFeedTab === 'all' && styles.segTextActive]}>
                 {t('feedWatchFilterAll')}
               </Text>
             </Pressable>
             <Pressable
-              onPress={applyPopularFilter}
-              style={[styles.segBtn, sort === 'popular' && styles.segBtnActive]}
+              onPress={() => onPickFeedTab('latest')}
+              style={[styles.segBtn, activeFeedTab === 'latest' && styles.segBtnActive]}
               accessibilityRole="button"
-              accessibilityState={{ selected: sort === 'popular' }}>
-              <Text style={[styles.segText, sort === 'popular' && styles.segTextActive]}>
+              accessibilityState={{ selected: activeFeedTab === 'latest' }}>
+              <Text style={[styles.segText, activeFeedTab === 'latest' && styles.segTextActive]}>
+                {t('youtubeSortLatest')}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => onPickFeedTab('popular')}
+              style={[styles.segBtn, activeFeedTab === 'popular' && styles.segBtnActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: activeFeedTab === 'popular' }}>
+              <Text style={[styles.segText, activeFeedTab === 'popular' && styles.segTextActive]}>
                 {t('youtubeSortPopular')}
               </Text>
             </Pressable>

@@ -13,7 +13,7 @@ import { SCREEN_SIDEBAR_SUBTAB_MARGIN_BOTTOM } from '@/constants/segmentTabBar';
 import { isSettingsTab, SETTINGS_TABS, type SettingsTab } from '@/constants/settingsTabs';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useLocale } from '@/contexts/LocaleContext';
-import { useIpadSidebarNav, type YoutubeSortKey } from '@/contexts/IpadSidebarNavContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import type { MessageId } from '@/locales/messages';
 
@@ -26,7 +26,7 @@ type TabDef = {
 
 type SidebarSubDef = {
   key: string;
-  kind: 'settings' | 'navigate' | 'youtube';
+  kind: 'settings' | 'navigate';
   route: string;
   icon:
     | 'youtube'
@@ -50,23 +50,6 @@ const SIDEBAR_TABS: TabDef[] = [
   { name: 'youtube', route: '/(tabs)/youtube', icon: 'youtube', labelId: 'tabYoutube' },
   { name: 'board', route: '/(tabs)/board', icon: 'comments', labelId: 'screenBoard' },
   { name: 'more', route: '/(tabs)/more', icon: 'th-large', labelId: 'tabMore' },
-];
-
-const YOUTUBE_SUB_TABS: SidebarSubDef[] = [
-  {
-    key: 'latest',
-    kind: 'youtube',
-    route: '/(tabs)/youtube',
-    icon: 'list',
-    labelId: 'feedWatchFilterAll',
-  },
-  {
-    key: 'popular',
-    kind: 'youtube',
-    route: '/(tabs)/youtube',
-    icon: 'fire',
-    labelId: 'youtubeSortPopular',
-  },
 ];
 
 const SETTINGS_SUB_TABS: SidebarSubDef[] = SETTINGS_TABS.map((item) => ({
@@ -148,8 +131,6 @@ export function SignalSidebarTabBar({
     activeTabName === 'more'
       ? activeSettingsSubKey || (params.section === 'quick' || !params.section ? 'quick' : null)
       : null;
-  const activeYoutubeSubKey: YoutubeSortKey | null =
-    activeTabName === 'youtube' && ipadNav.isAvailable ? ipadNav.youtubeSort : null;
 
   const styles = makeStyles(theme, scaleFont, insets.bottom);
 
@@ -181,11 +162,6 @@ export function SignalSidebarTabBar({
             onPress={() => {
               if (sub.kind === 'settings' && ipadNav.isAvailable) {
                 ipadNav.showSettings(sub.key as SettingsTab);
-                return;
-              }
-              if (sub.kind === 'youtube' && ipadNav.isAvailable) {
-                ipadNav.showYoutubeTab(sub.key as YoutubeSortKey);
-                router.navigate(sub.route as Parameters<typeof router.navigate>[0]);
                 return;
               }
               ipadNav.showTabs();
@@ -276,15 +252,9 @@ export function SignalSidebarTabBar({
                   </Text>
                 </Pressable>
 
-                {isActive && tab.name === 'youtube'
-                  ? renderSubTabs(YOUTUBE_SUB_TABS, activeYoutubeSubKey)
-                  : null}
                 {isActive && tab.name === 'more' ? renderSubTabs(MORE_SUB_TABS, activeMoreSubKey) : null}
 
-                {isActive &&
-                tab.name !== 'more' &&
-                tab.name !== 'youtube' &&
-                subTabs.length > 0 ? (
+                {isActive && tab.name !== 'more' && subTabs.length > 0 ? (
                   <View style={styles.subTabList}>
                     {subTabs.map((sub) => (
                       <Pressable

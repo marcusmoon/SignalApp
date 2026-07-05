@@ -4,7 +4,7 @@ import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
@@ -349,7 +349,7 @@ export default function DisclosuresScreen() {
     () => (
       <View style={[styles.listHeader, useTwoPane && styles.listHeaderWide]}>
         {!symbolFilter && filter !== 'watch' && digestItems.length > 0 ? (
-          <DisclosureDigestSection items={digestItems} loading={digestLoading} />
+          <DisclosureDigestSection items={digestItems} loading={digestLoading && digestItems.length === 0} />
         ) : null}
         {symbolFilter ? (
           <View style={styles.symbolFilterRow}>
@@ -393,10 +393,15 @@ export default function DisclosuresScreen() {
             })}
           </View>
         ) : null}
+        {listFetching ? (
+          <View style={styles.listFetchingRow}>
+            <ActivityIndicator color={theme.green} size="small" />
+          </View>
+        ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
     ),
-    [clearSymbolFilter, digestItems, digestLoading, error, filter, onPickTypeFilter, styles, symbolFilter, t, typeFilter, typeFilterOptions, useTwoPane],
+    [clearSymbolFilter, digestItems, digestLoading, error, filter, listFetching, onPickTypeFilter, styles, symbolFilter, t, theme.green, typeFilter, typeFilterOptions, useTwoPane],
   );
 
   const renderDisclosureCard = useCallback(
@@ -673,6 +678,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     typeFilterTextActive: {
       color: theme.green,
+    },
+    listFetchingRow: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+      marginBottom: 4,
     },
     loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     error: {

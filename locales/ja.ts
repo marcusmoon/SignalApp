@@ -113,6 +113,7 @@ export const ja = {
   homeFocusHeroKicker: 'ニュースフロー',
   homeFocusSourceCount: '出典 {{count}}件',
   homeFocusWatchTitle: 'ウォッチリスト',
+  homeFocusBoardSubtitle: 'LikeUSStock · SAVE コミュニティ',
   homeFocusSignalTitle: '市場ブリーフィング',
   homeFocusSignalEmpty: '表示する市場ブリーフィングがありません。',
   newsIssuesTitle: 'ニュースフロー',

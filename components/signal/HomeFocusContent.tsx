@@ -31,6 +31,7 @@ import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuo
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useQuoteChangeColors } from '@/hooks';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
 import {
   SCREEN_HEADER_CONTENT_GAP,
@@ -231,6 +232,7 @@ export function HomeFocusContent({
   const quoteChange = useQuoteChangeColors();
   const { t, locale } = useLocale();
   const ipadNav = useIpadSidebarNav();
+  const { useTwoPane } = useResponsiveLayout();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const selectedIsToday = selectedYmd >= todayYmd;
   const selectedIsExactToday = selectedYmd === todayYmd;
@@ -439,6 +441,10 @@ export function HomeFocusContent({
     }
     router.navigate('/(tabs)/quotes' as never);
   }, [ipadNav, router]);
+
+  const openBoard = useCallback(() => {
+    router.navigate('/(tabs)/board' as never);
+  }, [router]);
 
   const openSymbolDetail = useCallback(
     (symbol: string) => {
@@ -818,6 +824,17 @@ export function HomeFocusContent({
               </View>
             )}
           </View>
+
+          {!useTwoPane ? (
+            <View style={styles.section}>
+              <HomeSectionHeader
+                title={t('screenBoard')}
+                subtitle={t('homeFocusBoardSubtitle')}
+                onPress={openBoard}
+                accessibilityLabel={t('screenBoard')}
+              />
+            </View>
+          ) : null}
 
           {selectedIsExactToday ? (
             <View style={styles.section}>

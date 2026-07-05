@@ -96,6 +96,10 @@ export const config = {
   ninjasKey: process.env.NINJAS_KEY || '',
   secUserAgent: process.env.SEC_USER_AGENT || process.env.SIGNAL_SEC_USER_AGENT || '',
   dartApiKey: process.env.DART_API_KEY || process.env.OPENDART_API_KEY || '',
+  tossinvestClientId: process.env.TOSSINVEST_CLIENT_ID || '',
+  tossinvestClientSecret: process.env.TOSSINVEST_CLIENT_SECRET || '',
+  tossinvestAccountSeq: process.env.TOSSINVEST_ACCOUNT_SEQ || '',
+  tossinvestApiBaseUrl: process.env.TOSSINVEST_API_BASE_URL || '',
   translationProvider: process.env.TRANSLATION_PROVIDER || 'mock',
   translationModel: process.env.TRANSLATION_MODEL || 'mock-ko-news-v1',
 };

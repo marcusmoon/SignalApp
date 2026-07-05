@@ -13,7 +13,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
-import { SignalBackgroundPattern } from '@/components/theme/SignalBackgroundPattern';
+import { SignalBackgroundPattern, SignalBackgroundPatternWeb } from '@/components/theme/SignalBackgroundPattern';
 import { NotificationListener } from '@/components/NotificationListener';
 import { PushDeviceRegistrar } from '@/components/PushDeviceRegistrar';
 import { OtaBannerProvider } from '@/contexts/OtaBannerContext';
@@ -160,7 +160,7 @@ function RootLayoutNav() {
         colors: {
           ...base.colors,
           primary: theme.green,
-          background: webOpaqueShellBackground(theme.bg),
+          background: 'transparent',
           card: theme.bgElevated,
           text: theme.text,
           border: theme.border,
@@ -214,6 +214,7 @@ function RootLayoutNav() {
       <PushDeviceRegistrar />
       <View style={{ ...webFlexFill, backgroundColor: Platform.OS === 'web' ? 'transparent' : theme.bg }}>
         <SignalBackgroundPattern scheme={effectiveColorScheme} />
+        {Platform.OS === 'web' ? <SignalBackgroundPatternWeb scheme={effectiveColorScheme} /> : null}
         <ThemedStatusBar />
         <Stack screenOptions={rootScreenOptions} />
       </View>

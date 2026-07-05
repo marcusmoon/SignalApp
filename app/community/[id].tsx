@@ -8,6 +8,7 @@ import { communitySourceLabelId } from '@/components/community/CommunityPostCard
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import type { AppTheme } from '@/constants/theme';
+import { webShellBackground } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchSignalCommunityPost } from '@/integrations/signal-api/community';
@@ -87,7 +88,7 @@ export default function CommunityPostDetailScreen() {
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.bg },
+    safe: { flex: 1, backgroundColor: webShellBackground(theme.bg) },
     loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     scrollContent: { flexGrow: 1 },
     error: {

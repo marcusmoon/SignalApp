@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { webShellBackground } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
@@ -326,7 +327,7 @@ export default function AlertsScreen() {
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.bg },
+    safe: { flex: 1, backgroundColor: webShellBackground(theme.bg) },
     list: {
       flex: 1,
       minHeight: 0,

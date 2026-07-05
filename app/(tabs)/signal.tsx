@@ -3,6 +3,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   AppState,
   Modal,
   Pressable,
@@ -130,10 +131,13 @@ export default function SignalScreen() {
   const [calendarMonth, setCalendarMonth] = useState(() => monthFromYmd(todayYmd));
   const [selectedTabKey, setSelectedTabKey] = useState<FlatTabKey | null>(null);
   const [marketBriefings, setMarketBriefings] = useState<SignalApiMarketBriefing[]>([]);
+  const marketBriefingsRef = useRef(marketBriefings);
+  marketBriefingsRef.current = marketBriefings;
   const [changeColorConvention, setChangeColorConvention] = useState<QuotesChangeColorConvention>(
     QUOTES_CHANGE_COLOR_CONVENTION_DEFAULT,
   );
   const [loading, setLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
@@ -174,13 +178,18 @@ export default function SignalScreen() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      setLoading(true);
+      const hadBriefings = marketBriefingsRef.current.length > 0;
+      if (!hadBriefings) setLoading(true);
+      else setListLoading(true);
       try {
         await load();
       } catch (e) {
         if (!cancelled) setError(formatSignalApiError(e, t, 'briefingErrorLoad'));
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setListLoading(false);
+        }
       }
     })();
     return () => {
@@ -472,7 +481,7 @@ export default function SignalScreen() {
         </View>
       ) : null}
 
-      {loading ? (
+      {loading && marketBriefings.length === 0 ? (
         <View style={styles.center}>
           <SignalLoadingIndicator message={t('commonLoading')} />
         </View>
@@ -482,6 +491,12 @@ export default function SignalScreen() {
           contentContainerStyle={[styles.content, useTwoPane && styles.contentWide, { paddingBottom: scrollBottomPadding }]}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           <OtaUpdateBanner />
+
+          {listLoading ? (
+            <View style={styles.listLoadingRow}>
+              <ActivityIndicator color={theme.green} size="small" />
+            </View>
+          ) : null}
 
           {error ? (
             <View style={styles.errBox}>
@@ -593,6 +608,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 16,
     },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    listLoadingRow: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
     scroll: { ...webScrollViewportStyle },
     content: {
       width: '100%',

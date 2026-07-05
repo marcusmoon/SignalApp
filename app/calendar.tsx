@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   StyleSheet,
@@ -150,11 +151,14 @@ export default function CalendarScreen() {
   const todayYmd = toYmd(new Date());
 
   const [loading, setLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
 
   const [monthEvents, setMonthEvents] = useState<CalendarEvent[]>([]);
+  const monthEventsRef = useRef<CalendarEvent[]>([]);
+  monthEventsRef.current = monthEvents;
   const [enabledTypes, setEnabledTypes] = useState(
     () => new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER),
   );
@@ -193,9 +197,10 @@ export default function CalendarScreen() {
     const seq = loadSeqRef.current + 1;
     loadSeqRef.current = seq;
     (async () => {
-      setLoading(true);
+      const hadEvents = monthEventsRef.current.length > 0;
+      if (!hadEvents) setLoading(true);
+      else setListLoading(true);
       setError(null);
-      setMonthEvents([]);
       try {
         const events = await fetchMonthData(viewMonth.year, viewMonth.month);
         if (cancelled || loadSeqRef.current !== seq) return;
@@ -206,7 +211,10 @@ export default function CalendarScreen() {
           setMonthEvents([]);
         }
       } finally {
-        if (!cancelled && loadSeqRef.current === seq) setLoading(false);
+        if (!cancelled && loadSeqRef.current === seq) {
+          setLoading(false);
+          setListLoading(false);
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -247,7 +255,7 @@ export default function CalendarScreen() {
     [locale, selectedYmd],
   );
 
-  const emptyFiltered = !loading && !error && monthEvents.length > 0 && filteredEvents.length === 0;
+  const emptyFiltered = !loading && !listLoading && !error && monthEvents.length > 0 && filteredEvents.length === 0;
   const allEventTypesSelected = enabledTypes.size === CALENDAR_EVENT_TYPE_ORDER.length;
 
   useEffect(() => {
@@ -315,7 +323,7 @@ export default function CalendarScreen() {
   );
 
   const renderListEmpty = useCallback(() => {
-    if (loading) {
+    if (loading && selectedDayEvents.length === 0) {
       return (
         <View style={styles.emptyDayBox}>
           <SignalLoadingIndicator message={t('commonLoading')} />
@@ -330,7 +338,7 @@ export default function CalendarScreen() {
         </Text>
       </View>
     );
-  }, [emptyFiltered, error, loading, styles.emptyDayBox, styles.emptyDayText, t]);
+  }, [emptyFiltered, error, loading, selectedDayEvents.length, styles.emptyDayBox, styles.emptyDayText, t]);
 
   const renderEventItem = useCallback<ListRenderItem<CalendarEvent>>(
     ({ item }) => <CalendarEventCard ev={item} theme={theme} cardStyles={styles} t={t} locale={locale} />,
@@ -342,6 +350,11 @@ export default function CalendarScreen() {
   const listHeader = useMemo(
     () => (
       <View style={styles.daySection}>
+        {listLoading ? (
+          <View style={styles.listLoadingRow}>
+            <ActivityIndicator color={theme.green} size="small" />
+          </View>
+        ) : null}
         <Text style={styles.daySectionMeta}>
           {selectedDayEvents.length > 0
             ? `${t('calendarScreenSectionTitle')} · ${selectedDayEvents.length}`
@@ -349,7 +362,7 @@ export default function CalendarScreen() {
         </Text>
       </View>
     ),
-    [selectedDayEvents.length, styles.daySection, styles.daySectionMeta, t],
+    [listLoading, selectedDayEvents.length, styles.daySection, styles.daySectionMeta, styles.listLoadingRow, t, theme.green],
   );
 
   const showTodayNav = selectedYmd !== todayYmd;
@@ -423,7 +436,7 @@ export default function CalendarScreen() {
       <WebWheelFlatList
         ref={listRef}
         style={styles.listScroll}
-        data={loading ? [] : selectedDayEvents}
+        data={loading && selectedDayEvents.length === 0 ? [] : selectedDayEvents}
         keyExtractor={listKeyExtractor}
         renderItem={renderEventItem}
         ListHeaderComponent={listHeader}
@@ -516,6 +529,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     daySection: {
       paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
       paddingBottom: 4,
+    },
+    listLoadingRow: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingBottom: 8,
     },
     daySectionMeta: {
       fontSize: ft.ff(11),

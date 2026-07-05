@@ -5,9 +5,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
+import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useAlertsUnreadBadge } from '@/hooks/useAlertsUnreadBadge';
 
 type Props = {
   /** SIGNAL 로고 탭 시 (보통 현재 탭 pull-to-refresh와 동일) */
@@ -24,7 +24,7 @@ export function SignalHeader({ onBrandPress, compact = false, fullWidth = false 
   const { t } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont, compact, fullWidth), [compact, fullWidth, theme, scaleFont]);
   const brandAccent = theme.green;
-  const alertsHasUnread = useAlertsUnreadBadge();
+  const { alerts: alertsHasUnread } = useFeedUnreadBadges();
 
   const logo = (
     <>

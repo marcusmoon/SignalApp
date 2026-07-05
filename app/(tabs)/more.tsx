@@ -20,11 +20,11 @@ import {
 import { webShellBackground } from '@/constants/webLayout';
 import type { MoreHubRouteKey } from '@/constants/moreHubOrder';
 import type { AppTheme } from '@/constants/theme';
+import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import { useDisclosureUnreadBadge } from '@/hooks/useDisclosureUnreadBadge';
 import type { MessageId } from '@/locales/messages';
 import {
   loadMoreHubOrder,
@@ -89,7 +89,7 @@ export default function MoreHubScreen() {
   const [order, setOrder] = useState<MoreHubRouteKey[]>([]);
   const [orderReady, setOrderReady] = useState(false);
   const [refLinksVisible, setRefLinksVisible] = useState(true);
-  const disclosureHasUnread = useDisclosureUnreadBadge();
+  const { disclosure: disclosureHasUnread } = useFeedUnreadBadges();
 
   const hubHasUnread = useCallback(
     (item: MoreHubRouteKey) => item === 'disclosures' && disclosureHasUnread,

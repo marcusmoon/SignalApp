@@ -67,6 +67,7 @@ npx tsc --noEmit
 | 뉴스 | `app/(tabs)/news.tsx`, `components/signal/NewsCard.tsx` |
 | 뉴스 이슈 자동화 | [NEWS-ISSUE-AUTOMATION.md](./NEWS-ISSUE-AUTOMATION.md), [schemas/news-issue-digest.v1.schema.json](./schemas/news-issue-digest.v1.schema.json) |
 | 오늘의 브리핑 자동화 | [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) |
+| 알림센터 인박스 | [NOTIFICATION-INBOX.md](./NOTIFICATION-INBOX.md), `app/alerts.tsx` |
 | 시세 | `app/(tabs)/quotes.tsx` |
 | 더보기 | `app/(tabs)/more.tsx` |
 | 유튜브 | `app/(tabs)/youtube.tsx` |

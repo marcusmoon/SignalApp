@@ -2,7 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
-import { deliverSignalNotificationInbox } from '@/integrations/signal-api/notifications';
+import { deliverSignalNotification } from '@/integrations/signal-api/notifications';
 import { setAlertsUnreadCached } from '@/services/alertsUnreadPreference';
 import { getSessionAccessToken, loadAppAuthSession } from '@/services/appAuthSession';
 import { hasSignalApi } from '@/services/env';
@@ -34,7 +34,7 @@ if (Platform.OS !== 'web') {
 
 /**
  * 포그라운드 push 수신 시 서버 inbox deliver + 배지 갱신.
- * 목록은 GET /v1/notifications/inbox 단일 소스.
+ * 목록은 GET /v1/notifications 단일 소스.
  */
 export function NotificationListener() {
   useEffect(() => {
@@ -53,7 +53,7 @@ export function NotificationListener() {
           void loadAppAuthSession().then((session) => {
             const access = getSessionAccessToken(session);
             if (!access) return;
-            void deliverSignalNotificationInbox(access, notificationId).catch(() => {});
+            void deliverSignalNotification(access, notificationId).catch(() => {});
           });
         }
         if (

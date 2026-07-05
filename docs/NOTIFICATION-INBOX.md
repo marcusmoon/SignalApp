@@ -1,6 +1,6 @@
-# 알림센터 인박스 (템플릿 + 사용자 링크)
+# 알림센터 (템플릿 + 사용자 링크)
 
-알림센터는 **서버 인박스**를 단일 진실 원천으로 한다. 알림 **본문(템플릿)** 은 `notification_items`에 공통 저장하고, 사용자별 **읽음·삭제·노출** 은 `user_notification_inbox`에만 기록한다.
+알림센터는 **서버**를 단일 진실 원천으로 한다. 알림 **본문(템플릿)** 은 `notification_items`에 공통 저장하고, 사용자별 **읽음·삭제·노출** 은 `user_notification_inbox`에만 기록한다.
 
 ## 운영 규칙
 
@@ -15,11 +15,11 @@
 |---|---|
 | `notification_items` | 템플릿·발송 outbox (브로드캐스트 row 공유) |
 | `user_notification_inbox` | 사용자별 `read_at`, `deleted_at`, `delivered_at` |
-| 앱 `app/alerts.tsx` | `GET /v1/notifications/inbox` 단일 소스 |
+| 앱 `app/alerts.tsx` | `GET /v1/notifications` 단일 소스 |
 
 ## 링크 생성
 
-**Lazy (목록 조회):** inbox API 호출 시 노출 가능한 `notification_items` 중 미연결 row를 insert.
+**Lazy (목록 조회):** 알림 API 호출 시 노출 가능한 `notification_items` 중 미연결 row를 insert.
 
 ```sql
 (app_user_id = :userId OR (target_type = 'all' AND app_user_id IS NULL))
@@ -29,7 +29,7 @@ AND status IN ('sent', 'skipped')
 
 **Push 성공 후:** sender가 수신 `user_id` 목록에 inbox upsert.
 
-**푸시 수신(앱):** `POST /v1/notifications/inbox/deliver` (`data.notificationId`).
+**푸시 수신(앱):** `POST /v1/notifications/deliver` (`data.notificationId`).
 
 ## API
 
@@ -37,11 +37,11 @@ AND status IN ('sent', 'skipped')
 
 | Method | Path | 설명 |
 |---|---|---|
-| GET | `/v1/notifications/inbox` | 목록 (limit 1–50, lazy link) |
-| GET | `/v1/notifications/inbox/unread-count` | 미읽음 건수 |
-| PATCH | `/v1/notifications/inbox/read` | `{ "ids": [] }` 또는 `{ "all": true }` |
-| DELETE | `/v1/notifications/inbox` | soft delete |
-| POST | `/v1/notifications/inbox/deliver` | `{ "notificationId": "..." }` |
+| GET | `/v1/notifications` | 목록 (limit 1–50, lazy link) |
+| GET | `/v1/notifications/unread-count` | 미읽음 건수 |
+| PATCH | `/v1/notifications/read` | `{ "ids": [] }` 또는 `{ "all": true }` |
+| DELETE | `/v1/notifications` | soft delete |
+| POST | `/v1/notifications/deliver` | `{ "notificationId": "..." }` |
 | POST | `/v1/notifications/test` | push 테스트 (outbox enqueue) |
 
 목록 항목 예:
@@ -62,10 +62,10 @@ AND status IN ('sent', 'skipped')
 
 | 파일 | 역할 |
 |---|---|
-| `app/alerts.tsx` | inbox 목록·삭제 |
-| `services/alertsUnreadPreference.ts` | unread-count, read, `loadAlertsFromInbox` |
+| `app/alerts.tsx` | 목록·삭제 |
+| `services/alertsUnreadPreference.ts` | unread-count, read, `loadAlertsFromServer` |
 | `components/NotificationListener.tsx` | deliver + 배지 |
-| `integrations/signal-api/notifications.ts` | inbox API 클라이언트 |
+| `integrations/signal-api/notifications.ts` | API 클라이언트 |
 
 로컬 `@signal/notification_history_v1`, `@signal/dismissed_notification_ids_v1`는 사용하지 않는다.
 

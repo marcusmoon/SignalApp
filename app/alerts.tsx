@@ -19,11 +19,11 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
-import { loadAlertsFromInbox, markAlertsSeen } from '@/services/alertsUnreadPreference';
+import { loadAlertsFromServer, markAlertsSeen } from '@/services/alertsUnreadPreference';
 import type { StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
 import { loadAppAuthSession, getSessionAccessToken, type StoredAppAuthSession } from '@/services/appAuthSession';
-import { deleteSignalNotificationInboxItems } from '@/integrations/signal-api/notifications';
+import { deleteSignalNotifications } from '@/integrations/signal-api/notifications';
 import { formatRelativeTime } from '@/utils/date';
 
 import { alertMatchesFilter, alertTypeMessageId, type AlertsFilter } from '@/domain/alerts/notificationCategory';
@@ -57,7 +57,7 @@ export default function AlertsScreen() {
       setItems([]);
       return;
     }
-    setItems(await loadAlertsFromInbox(access));
+    setItems(await loadAlertsFromServer(access));
   }, []);
 
   useFocusEffect(
@@ -111,7 +111,7 @@ export default function AlertsScreen() {
     setItems((prev) => prev.filter((item) => item.id !== id));
     const access = getSessionAccessToken(authSession);
     if (access && hasSignalApi()) {
-      await deleteSignalNotificationInboxItems(access, { ids: [id] }).catch(() => {});
+      await deleteSignalNotifications(access, { ids: [id] }).catch(() => {});
     }
   }, [authSession]);
 
@@ -126,7 +126,7 @@ export default function AlertsScreen() {
           const access = getSessionAccessToken(authSession);
           setItems([]);
           if (access && hasSignalApi()) {
-            void deleteSignalNotificationInboxItems(access, { all: true }).catch(() => {});
+            void deleteSignalNotifications(access, { all: true }).catch(() => {});
           }
         },
       },

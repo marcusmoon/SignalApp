@@ -2,6 +2,7 @@ import { Redirect, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
+import { webShellBackground } from '@/constants/webLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { loadMainEntry, mainEntryHref } from '@/services/mainEntryPreference';
 
@@ -17,7 +18,7 @@ export default function TabsIndexRedirect() {
   }, []);
 
   if (!target) {
-    return <View style={{ flex: 1, backgroundColor: theme.bg }} />;
+    return <View style={{ flex: 1, backgroundColor: webShellBackground(theme.bg) }} />;
   }
   return <Redirect href={target} />;
 }

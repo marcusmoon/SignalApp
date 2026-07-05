@@ -30,7 +30,7 @@ import {
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
-import { webFlexFill, webScrollViewportStyle, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
+import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
@@ -242,7 +242,7 @@ export default function BoardScreen() {
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
-    safe: { ...webFlexFill, backgroundColor: theme.bg },
+    safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     mainColumn: {
       ...webFlexFill,
       width: '100%',

@@ -25,7 +25,7 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { APP_CONTENT_MAX_WIDTH, APP_CONTENT_SIDE_PADDING, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
-import { webFlexFill, webScrollViewportStyle } from '@/constants/webLayout';
+import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -564,7 +564,7 @@ export default function SignalScreen() {
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
-    safe: { ...webFlexFill, backgroundColor: theme.bg },
+    safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     pageColumn: {
       ...webFlexFill,
       width: '100%',

@@ -16,7 +16,7 @@ import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDige
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
-import { webFlexFill, webScrollViewportStyle } from '@/constants/webLayout';
+import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import {
   SEGMENT_TAB_ACTIVE_TEXT,
@@ -427,7 +427,7 @@ export default function DisclosuresScreen() {
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
   return StyleSheet.create({
-    safe: { ...webFlexFill, backgroundColor: theme.bg },
+    safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     mainColumn: {
       ...webFlexFill,
       width: '100%',

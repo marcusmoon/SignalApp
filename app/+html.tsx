@@ -1,6 +1,10 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 
 import {
+  THEME_BACKGROUND_PATTERN_TILE,
+  themeBackgroundPatternCssValue,
+} from '@/constants/themeBackgroundPattern';
+import {
   themeTokensForScheme,
   themeBackgroundForScheme,
   WEB_THEME_APPEARANCE_KEYS,
@@ -40,6 +44,15 @@ const lightBg = themeBackgroundForScheme('light');
 const darkBg = themeBackgroundForScheme('dark');
 const lightTokens = themeTokensForScheme('light');
 const darkTokens = themeTokensForScheme('dark');
+const lightPattern = themeBackgroundPatternCssValue('light');
+const darkPattern = themeBackgroundPatternCssValue('dark');
+const patternTilePx = `${THEME_BACKGROUND_PATTERN_TILE}px`;
+const patternLayerCss = `
+  background-color: var(--signal-bg);
+  background-image: var(--signal-bg-pattern);
+  background-repeat: repeat;
+  background-size: ${patternTilePx} ${patternTilePx};
+`;
 
 const initialThemeScript = `
 (function () {
@@ -68,6 +81,7 @@ const initialThemeScript = `
       var themeColorMeta = document.querySelector('meta[name="theme-color"]');
       if (themeColorMeta) themeColorMeta.setAttribute('content', bg);
       document.documentElement.style.setProperty('--signal-bg', tokens.bg);
+      document.documentElement.style.setProperty('--signal-bg-pattern', scheme === 'dark' ? ${JSON.stringify(darkPattern)} : ${JSON.stringify(lightPattern)});
       document.documentElement.style.setProperty('--signal-bg-elevated', tokens.bgElevated);
       document.documentElement.style.setProperty('--signal-card', tokens.card);
       document.documentElement.style.setProperty('--signal-border', tokens.border);
@@ -77,15 +91,15 @@ const initialThemeScript = `
       document.documentElement.style.setProperty('--signal-green', tokens.green);
       document.documentElement.style.setProperty('--signal-green-dim', tokens.greenDim);
       document.documentElement.style.setProperty('--signal-green-border', tokens.greenBorder);
-    if (document.body) document.body.style.backgroundColor = bg;
+    if (document.body) document.body.style.backgroundColor = 'transparent';
     var root = document.getElementById('root');
     if (root) {
-      root.style.backgroundColor = bg;
+      root.style.backgroundColor = 'transparent';
       var shell = root.firstElementChild;
       if (shell instanceof HTMLElement) {
-        shell.style.backgroundColor = bg;
+        shell.style.backgroundColor = 'transparent';
         if (shell.firstElementChild instanceof HTMLElement) {
-          shell.firstElementChild.style.backgroundColor = bg;
+          shell.firstElementChild.style.backgroundColor = 'transparent';
         }
       }
     }
@@ -103,15 +117,9 @@ html {
   height: 100%;
   color-scheme: light dark;
   --signal-bg: ${darkBg};
+  --signal-bg-pattern: ${darkPattern};
   --signal-bg-elevated: ${darkTokens.bgElevated};
-  --signal-card: ${darkTokens.card};
-  --signal-border: ${darkTokens.border};
-  --signal-text: ${darkTokens.text};
-  --signal-text-muted: ${darkTokens.textMuted};
-  --signal-text-dim: ${darkTokens.textDim};
-  --signal-green: ${darkTokens.green};
-  --signal-green-dim: ${darkTokens.greenDim};
-  --signal-green-border: ${darkTokens.greenBorder};
+  ${patternLayerCss}
 }
 
 body {
@@ -119,7 +127,7 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background-color: var(--signal-bg);
+  background-color: transparent;
 }
 
 #root {
@@ -130,7 +138,7 @@ body {
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  background-color: var(--signal-bg);
+  background-color: transparent;
 }
 
 /* Tab navigators must fill height so inner lists get a bounded scroll viewport on web. */
@@ -140,11 +148,11 @@ body {
   flex-direction: column;
   min-height: 0;
   height: 100%;
-  background-color: var(--signal-bg);
+  background-color: transparent;
 }
 
 #root > div > div {
-  background-color: var(--signal-bg);
+  background-color: transparent;
 }
 
 /* Hide scrollbars on horizontal card carousels (navigation uses overlay arrows). */
@@ -187,6 +195,7 @@ body {
 
 html[data-signal-theme="light"] {
   --signal-bg: ${lightBg};
+  --signal-bg-pattern: ${lightPattern};
   --signal-bg-elevated: ${lightTokens.bgElevated};
   --signal-card: ${lightTokens.card};
   --signal-border: ${lightTokens.border};
@@ -196,5 +205,16 @@ html[data-signal-theme="light"] {
   --signal-green: ${lightTokens.green};
   --signal-green-dim: ${lightTokens.greenDim};
   --signal-green-border: ${lightTokens.greenBorder};
+}
+
+html:not([data-signal-theme="light"]) {
+  --signal-card: ${darkTokens.card};
+  --signal-border: ${darkTokens.border};
+  --signal-text: ${darkTokens.text};
+  --signal-text-muted: ${darkTokens.textMuted};
+  --signal-text-dim: ${darkTokens.textDim};
+  --signal-green: ${darkTokens.green};
+  --signal-green-dim: ${darkTokens.greenDim};
+  --signal-green-border: ${darkTokens.greenBorder};
 }
 `;

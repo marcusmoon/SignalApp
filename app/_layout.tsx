@@ -13,6 +13,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/useColorScheme';
 
 import { ThemedStatusBar } from '@/components/ThemedStatusBar';
+import { SignalBackgroundPattern } from '@/components/theme/SignalBackgroundPattern';
 import { NotificationListener } from '@/components/NotificationListener';
 import { PushDeviceRegistrar } from '@/components/PushDeviceRegistrar';
 import { OtaBannerProvider } from '@/contexts/OtaBannerContext';
@@ -20,7 +21,7 @@ import { LocaleProvider, useLocale } from '@/contexts/LocaleContext';
 import { SignalThemeProvider, useSignalTheme } from '@/contexts/SignalThemeContext';
 import { SidebarSubTabsProvider } from '@/contexts/SidebarSubTabsContext';
 import { bootstrapThemeForColorScheme } from '@/constants/theme';
-import { WEB_THEME_BG, webFlexFill, webShellBackground } from '@/constants/webLayout';
+import { WEB_THEME_BG, webFlexFill, webOpaqueShellBackground, webShellBackground } from '@/constants/webLayout';
 import { ensureStoredSessionFresh } from '@/integrations/signal-api/httpClient';
 import { getPreviewOtaBannerRaw } from '@/services/env';
 import { runAppBootstrap, SPLASH_MIN_DISPLAY_MS } from '@/services/appBootstrap';
@@ -159,7 +160,7 @@ function RootLayoutNav() {
         colors: {
           ...base.colors,
           primary: theme.green,
-          background: webShellBackground(theme.bg),
+          background: webOpaqueShellBackground(theme.bg),
           card: theme.bgElevated,
           text: theme.text,
           border: theme.border,
@@ -198,7 +199,7 @@ function RootLayoutNav() {
           title: titleByName[route.name] ?? route.name,
           headerBackTitle: t('commonBack'),
           contentStyle: { backgroundColor: webShellBackground(theme.bg) },
-          headerStyle: { backgroundColor: webShellBackground(theme.bg) },
+          headerStyle: { backgroundColor: webOpaqueShellBackground(theme.bg) },
           headerTintColor: theme.green,
           headerTitleStyle: { fontWeight: '800' as const, color: theme.text },
           ...screenStatusBarOptions,
@@ -211,7 +212,8 @@ function RootLayoutNav() {
     <ThemeProvider value={navTheme}>
       <NotificationListener />
       <PushDeviceRegistrar />
-      <View style={{ ...webFlexFill, backgroundColor: webShellBackground(theme.bg) }}>
+      <View style={{ ...webFlexFill, backgroundColor: Platform.OS === 'web' ? 'transparent' : theme.bg }}>
+        <SignalBackgroundPattern scheme={effectiveColorScheme} />
         <ThemedStatusBar />
         <Stack screenOptions={rootScreenOptions} />
       </View>

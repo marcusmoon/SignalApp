@@ -13,6 +13,7 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
+import { webShellBackground } from '@/constants/webLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { MoreHubRouteKey } from '@/constants/moreHubOrder';
 import type { AppTheme } from '@/constants/theme';
@@ -236,7 +237,7 @@ export default function MoreHubScreen() {
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number, hubTileLayout: HubTileLayout) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.bg },
+    safe: { flex: 1, backgroundColor: webShellBackground(theme.bg) },
     list: {
       flex: 1,
       width: '100%',

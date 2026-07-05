@@ -28,7 +28,7 @@ import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
-import { webFlexFill, webScrollViewportStyle, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
+import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { tabBarBottomInset } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
@@ -645,7 +645,7 @@ export default function YoutubeScreen() {
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
-    safe: { ...webFlexFill, backgroundColor: theme.bg },
+    safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     mainColumn: {
       ...webFlexFill,
       width: '100%',

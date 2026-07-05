@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
-import { useIsFocused } from 'expo-router/react-navigation';
+import { useFocusEffect, useIsFocused } from 'expo-router/react-navigation';
 
 import { CommunityPostCard, communitySourceLabelId } from '@/components/community/CommunityPostCard';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
@@ -34,6 +34,7 @@ import type { AppTheme } from '@/constants/theme';
 import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { fetchSignalCommunity } from '@/integrations/signal-api/community';
@@ -59,6 +60,7 @@ export default function BoardScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
+  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const [source, setSource] = useState<CommunitySourceFilter>(COMMUNITY_SOURCE_ALL);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -151,6 +153,21 @@ export default function BoardScreen() {
     [load, source],
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!useTwoPane) return;
+      setSubTabs(
+        COMMUNITY_SOURCE_ORDER.map((key) => ({
+          key,
+          label: t(SOURCE_LABEL[key]),
+          active: source === key,
+          onPress: () => changeSource(key),
+        })),
+      );
+      return () => clearSubTabs();
+    }, [changeSource, clearSubTabs, setSubTabs, source, t, useTwoPane]),
+  );
+
   const listBottomPad = 16 + tabBarHeight + tabBarBottomInset(insets.bottom);
   const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
 
@@ -168,23 +185,25 @@ export default function BoardScreen() {
       {!useTwoPane ? <SignalHeader compact onBrandPress={onRefresh} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        <View style={styles.topFixed}>
-          <View style={styles.segment}>
-            {COMMUNITY_SOURCE_ORDER.map((key) => {
-              const active = source === key;
-              return (
-                <Pressable
-                  key={key}
-                  onPress={() => changeSource(key)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  style={({ pressed }) => [styles.segBtn, active && styles.segBtnActive, pressed && styles.pressed]}>
-                  <Text style={[styles.segText, active && styles.segTextActive]}>{t(SOURCE_LABEL[key])}</Text>
-                </Pressable>
-              );
-            })}
+        {!useTwoPane ? (
+          <View style={styles.topFixed}>
+            <View style={styles.segment}>
+              {COMMUNITY_SOURCE_ORDER.map((key) => {
+                const active = source === key;
+                return (
+                  <Pressable
+                    key={key}
+                    onPress={() => changeSource(key)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    style={({ pressed }) => [styles.segBtn, active && styles.segBtnActive, pressed && styles.pressed]}>
+                    <Text style={[styles.segText, active && styles.segTextActive]}>{t(SOURCE_LABEL[key])}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
-        </View>
+        ) : null}
         {error ? (
           <View style={styles.errBox}>
             <Text style={styles.errText}>{error}</Text>

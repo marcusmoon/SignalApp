@@ -8,6 +8,7 @@ import {
 } from '@/components/layout/webRefreshControl';
 import { WEB_THEME_BG } from '@/constants/webLayout';
 import { useWebVerticalWheelScroll } from '@/hooks/useWebVerticalWheelScroll';
+import { createLazyWebScrollApi } from '@/utils/scrollToTop';
 
 export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(function WebWheelScrollView(
   { children, contentContainerStyle, onScroll, refreshControl: _refreshControl, style, ...rest },
@@ -34,19 +35,7 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
     };
     const setWebRef = (instance: View | null) => {
       localRef.current = instance as never;
-      const node = (instance as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
-        ?.getScrollableNode?.() ?? null;
-      const api = node
-        ? ({
-            getScrollableNode: () => node,
-            scrollToOffset: ({ offset, animated }: { offset: number; animated?: boolean }) => {
-              node.scrollTo({ top: offset, behavior: animated ? 'smooth' : 'auto' });
-            },
-            scrollTo: ({ y, animated }: { y?: number; animated?: boolean }) => {
-              node.scrollTo({ top: y ?? 0, behavior: animated ? 'smooth' : 'auto' });
-            },
-          } as unknown as ScrollView)
-        : null;
+      const api = createLazyWebScrollApi(() => localRef.current) as unknown as ScrollView;
 
       if (typeof forwardedRef === 'function') {
         forwardedRef(api);

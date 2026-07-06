@@ -6,6 +6,9 @@ export function useRefreshWithScrollToTop(
 ) {
   return useCallback(() => {
     scrollToTop(false);
-    void onRefresh();
+    void Promise.resolve(onRefresh()).finally(() => {
+      scrollToTop(false);
+      requestAnimationFrame(() => scrollToTop(false));
+    });
   }, [onRefresh, scrollToTop]);
 }

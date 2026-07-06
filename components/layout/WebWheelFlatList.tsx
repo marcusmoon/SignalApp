@@ -14,6 +14,7 @@ import {
   WebRefreshStatus,
 } from '@/components/layout/webRefreshControl';
 import { isDomNearScrollEnd, syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
+import { createLazyWebScrollApi } from '@/utils/scrollToTop';
 
 const webListViewportStyle = {
   flex: 1,
@@ -270,19 +271,7 @@ function WebWheelFlatListInner<T>(
     };
     const setWebRef = (instance: View | null) => {
       webRef.current = instance;
-      const node = (instance as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
-        ?.getScrollableNode?.() ?? null;
-      const api = node
-        ? ({
-            getScrollableNode: () => node,
-            scrollToOffset: ({ offset, animated }: { offset: number; animated?: boolean }) => {
-              node.scrollTo({ top: offset, behavior: animated ? 'smooth' : 'auto' });
-            },
-            scrollToEnd: ({ animated }: { animated?: boolean } = {}) => {
-              node.scrollTo({ top: node.scrollHeight, behavior: animated ? 'smooth' : 'auto' });
-            },
-          } as unknown as FlatList<T>)
-        : null;
+      const api = createLazyWebScrollApi(() => webRef.current) as unknown as FlatList<T>;
 
       if (typeof forwardedRef === 'function') {
         forwardedRef(api);

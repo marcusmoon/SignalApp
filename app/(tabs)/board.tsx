@@ -30,7 +30,7 @@ import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_B
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
-import { useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
+import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { fetchSignalCommunity } from '@/integrations/signal-api/community';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
@@ -65,7 +65,7 @@ export default function BoardScreen() {
   const { useTwoPane } = useResponsiveLayout();
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const [source, setSource] = useState<CommunitySourceFilter>(COMMUNITY_SOURCE_ALL);
-  const { ref: listRef, scrollToTop } = useScrollToTopOnChange([source]);
+  const { ref: listRef } = useScrollToTopOnChange([source]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
@@ -136,7 +136,7 @@ export default function BoardScreen() {
     await load({ refresh: true });
   }, [load]);
 
-  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
+  const onRefresh = onRefreshBase;
 
   const onEndReached = useCallback(() => {
     void load({ loadMore: true });
@@ -197,7 +197,7 @@ export default function BoardScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
-      {!useTwoPane ? <SignalHeader compact onBrandPress={onRefresh} /> : null}
+      {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
         {!useTwoPane ? (

@@ -26,12 +26,11 @@ import { SymbolDetailPane } from '@/components/symbol/SymbolDetailPane';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import {
   fabStackBottom,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
-import { useQuoteChangeColors, useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
+import { useQuoteChangeColors, useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
@@ -103,7 +102,7 @@ export default function QuotesScreen() {
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [segment, setSegment] = useState<QuoteSegmentKey>('watch');
   const [segmentOrder, setSegmentOrder] = useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
-  const { ref: listRef, scrollToTop } = useScrollToTopOnChange([segment]);
+  const { ref: listRef } = useScrollToTopOnChange([segment]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
@@ -268,7 +267,7 @@ export default function QuotesScreen() {
     }
   }, [load, t]);
 
-  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
+  const onRefresh = onRefreshBase;
 
   const onAddWatch = useCallback(async (): Promise<boolean> => {
     const raw = draftTicker.trim();
@@ -386,23 +385,6 @@ export default function QuotesScreen() {
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const fabBottom = fabStackBottom(tabBarHeight, insets.bottom);
-
-  const quotesListHeader = useMemo(
-    () => (
-      <>
-        {loading && rows.length === 0 ? (
-          <View style={SCROLL_LOADING_BODY_STYLE}>
-            <SignalLoadingIndicator message={t('commonLoading')} />
-          </View>
-        ) : error ? (
-          <View style={styles.errBox}>
-            <Text style={styles.errText}>{error}</Text>
-          </View>
-        ) : null}
-      </>
-    ),
-    [error, loading, rows.length, styles, t],
-  );
 
   const onPickSegment = useCallback((key: QuoteSegmentKey) => {
     if (segment === key) return;
@@ -594,12 +576,21 @@ export default function QuotesScreen() {
         </View>
       </View> : null}
 
+      {error ? (
+        <View style={styles.errBox}>
+          <Text style={styles.errText}>{error}</Text>
+        </View>
+      ) : null}
+      {loading && rows.length === 0 ? (
+        <View style={styles.loadingBox}>
+          <SignalLoadingIndicator message={t('commonLoading')} />
+        </View>
+      ) : (
       <WebWheelFlatList
         ref={listRef as never}
-        data={loading && rows.length === 0 ? [] : rows}
+        data={rows}
         keyExtractor={(r) => `${r.symbol}-${r.name ?? ''}`}
         renderItem={renderQuoteItem}
-        ListHeaderComponent={quotesListHeader}
         ListEmptyComponent={
           !loading && !error && rows.length === 0 ? (
             <Text style={styles.empty}>
@@ -611,20 +602,16 @@ export default function QuotesScreen() {
         contentContainerStyle={[
           styles.listContent,
           useTwoPane && styles.listContentWide,
-          loading && rows.length === 0 ? SCROLL_CONTENT_LOADING_STYLE : null,
           { paddingBottom: bottomPad },
         ]}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          loading && rows.length === 0 ? undefined : (
-            <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          )
-        }
+        refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         removeClippedSubviews={Platform.OS === 'android'}
         initialNumToRender={12}
         windowSize={8}
         maxToRenderPerBatch={16}
       />
+      )}
     </View>
   );
 

@@ -769,7 +769,7 @@ export const en = {
   briefingMarketUs: 'US',
   briefingSessionMorning: 'Pre-mkt',
   briefingSessionLunch: 'Intraday',
-  briefingSessionEvening: 'Close',
+  briefingSessionEvening: 'Post-close',
   briefingSessionOvernight: 'US Mkt',
   briefingSessionClose: 'Close',
   briefingSessionEmptyTitle: 'No briefing for this session yet.',

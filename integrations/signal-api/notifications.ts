@@ -108,3 +108,31 @@ export async function requestSignalPushTest(token: string): Promise<Omit<SignalN
   );
   return body.data;
 }
+
+export type SignalNotificationPrefs = {
+  pushEnabled: boolean;
+  briefingPushEnabled: boolean;
+};
+
+export async function fetchSignalNotificationPrefs(token: string): Promise<SignalNotificationPrefs> {
+  const body = await signalApiRequest<{ data?: SignalNotificationPrefs }>('/v1/notifications/prefs', { token });
+  return {
+    pushEnabled: body.data?.pushEnabled !== false,
+    briefingPushEnabled: body.data?.briefingPushEnabled !== false,
+  };
+}
+
+export async function updateSignalNotificationPrefs(
+  token: string,
+  prefs: Partial<SignalNotificationPrefs>,
+): Promise<SignalNotificationPrefs> {
+  const body = await signalApiRequest<{ data?: SignalNotificationPrefs }>('/v1/notifications/prefs', {
+    method: 'PATCH',
+    token,
+    body: prefs,
+  });
+  return {
+    pushEnabled: body.data?.pushEnabled !== false,
+    briefingPushEnabled: body.data?.briefingPushEnabled !== false,
+  };
+}

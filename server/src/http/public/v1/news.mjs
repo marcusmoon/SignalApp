@@ -5,7 +5,8 @@ import {
   upsertCollectionRows,
   upsertNotificationItem,
 } from '../../../db.mjs';
-import { createNotificationItem, NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
+import { NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
+import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { utcDateKeyFromInstant } from '../../../time/utc.mjs';
 import { json, readBody } from '../../shared.mjs';
@@ -22,7 +23,7 @@ function hasIngestAccess(req) {
   return header === configured || bearer === configured;
 }
 
-async function maybeQueueDigestPush(item) {
+async function publishDigestNotification(item, queuePush) {
   if (!item?.pushCandidate) return null;
   const category = cleanText(item?.category) || 'global';
   const date =
@@ -33,22 +34,24 @@ async function maybeQueueDigestPush(item) {
   const params = new URLSearchParams({ category });
   if (date) params.set('date', date);
   if (digestId) params.set('digestId', digestId);
-  const notification = createNotificationItem({
-    id: `notification:push:news_digest:${item.id}`,
-    type: NOTIFICATION_TYPES.newsDigest,
-    title: item.pushTitle || item.title,
-    body: item.pushBody || item.summary,
-    channel: 'push',
-    status: 'queued',
-    priority: 'normal',
-    targetType: 'all',
-    sourceType: 'news_digest',
-    sourceId: item.id,
-    deepLink: `/news-issues?${params.toString()}`,
-    reason: `news digest updated: ${category}`,
-    scheduledAt: item.generatedAt,
-    payload: { digestId: item.id, category, ...(date ? { generatedDate: date } : {}) },
-  });
+  const notification = buildPublishedNotification(
+    {
+      id: `notification:push:news_digest:${item.id}`,
+      type: NOTIFICATION_TYPES.newsDigest,
+      title: item.pushTitle || item.title,
+      body: item.pushBody || item.summary,
+      channel: 'push',
+      priority: 'normal',
+      targetType: 'all',
+      sourceType: 'news_digest',
+      sourceId: item.id,
+      deepLink: `/news-issues?${params.toString()}`,
+      reason: `news digest updated: ${category}`,
+      scheduledAt: item.generatedAt,
+      payload: { digestId: item.id, category, ...(date ? { generatedDate: date } : {}) },
+    },
+    { queuePush },
+  );
   if (!notification) return null;
   return upsertNotificationItem(notification);
 }
@@ -73,12 +76,16 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
       updatedAt: now,
     }));
     await upsertCollectionRows('newsDigestItems', items);
-    let pushed = 0;
-    if (sendPush) {
-      const pushResults = await Promise.all(items.map(maybeQueueDigestPush));
-      pushed = pushResults.filter(Boolean).length;
+    let published = 0;
+    let pushQueued = 0;
+    for (const item of items) {
+      const saved = await publishDigestNotification(item, sendPush);
+      if (saved) {
+        published += 1;
+        if (sendPush) pushQueued += 1;
+      }
     }
-    json(res, 200, { ok: true, count: items.length, pushed });
+    json(res, 200, { ok: true, count: items.length, published, pushQueued });
     return true;
   }
 

@@ -11,6 +11,8 @@ export type NotificationPrefs = {
   localMacroCalendar: boolean;
 };
 
+export type ServerNotificationPrefs = Pick<NotificationPrefs, 'pushEnabled' | 'briefingPushEnabled'>;
+
 const DEFAULTS: NotificationPrefs = {
   pushEnabled: true,
   briefingPushEnabled: true,
@@ -66,5 +68,29 @@ export async function loadNotificationPrefs(): Promise<NotificationPrefs> {
 
 export async function saveNotificationPrefs(next: Partial<NotificationPrefs>): Promise<void> {
   const cur = await loadNotificationPrefs();
-  await AsyncStorage.setItem(KEY, JSON.stringify({ ...cur, ...next }));
+  const merged = { ...cur, ...next };
+  await AsyncStorage.setItem(KEY, JSON.stringify(merged));
+  void syncServerNotificationPrefs(merged);
+}
+
+async function syncServerNotificationPrefs(prefs: NotificationPrefs): Promise<void> {
+  try {
+    const { hasSignalApi } = await import('@/services/env');
+    if (!hasSignalApi()) return;
+    const { getSessionAccessToken, loadAppAuthSession } = await import('@/services/appAuthSession');
+    const { updateSignalNotificationPrefs } = await import('@/integrations/signal-api/notifications');
+    const session = await loadAppAuthSession();
+    const access = getSessionAccessToken(session);
+    if (!access) return;
+    await updateSignalNotificationPrefs(access, {
+      pushEnabled: prefs.pushEnabled,
+      briefingPushEnabled: prefs.briefingPushEnabled,
+    });
+  } catch {
+    /* local prefs remain source of truth for UI */
+  }
+}
+
+export async function syncNotificationPrefsFromLocal(): Promise<void> {
+  await syncServerNotificationPrefs(await loadNotificationPrefs());
 }

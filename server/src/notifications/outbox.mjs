@@ -33,7 +33,7 @@ function normalizeChannel(value) {
 
 function normalizeStatus(value) {
   const text = cleanText(value).toLowerCase();
-  if (text === 'planned' || text === 'pending') return text;
+  if (text === 'planned' || text === 'pending' || text === 'published') return text;
   if (SEND_STATE_STATUSES.has(text)) return text;
   return 'queued';
 }

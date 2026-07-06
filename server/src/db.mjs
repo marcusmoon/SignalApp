@@ -76,6 +76,10 @@ import {
   verifyAdminLoginRow,
 } from './db/repositories/adminUsersRepository.mjs';
 import {
+  getAppUserNotificationPrefs,
+  updateAppUserNotificationPrefs,
+} from './db/repositories/appUserNotificationPrefsRepository.mjs';
+import {
   claimPushNotificationRows,
   queryNotificationRows,
   resolvePushDeviceRows,
@@ -2034,6 +2038,8 @@ export async function deliverUserNotificationInbox(userId, notificationId, deliv
 export async function recordNotificationInboxDeliveries(userIds, notificationId, deliveredAt) {
   return recordInboxDeliveriesForUsers(userIds, notificationId, deliveredAt);
 }
+
+export { getAppUserNotificationPrefs, updateAppUserNotificationPrefs };
 
 export async function syncUserNotificationInboxLinks(userId) {
   return syncLazyInboxLinksForUser(userId);

@@ -1,5 +1,6 @@
 import { queryKysely, withKyselyTransaction } from '../kysely/client.mjs';
 import { nowIso } from '../time.mjs';
+import { shouldDeliverPushToUser } from '../../notifications/notificationPreferences.mjs';
 import { buildNotificationCategoryClause } from '../../notifications/notificationCategory.mjs';
 import {
   cleanText,
@@ -105,6 +106,10 @@ export async function upsertNotificationRow(next) {
                 END,
                 'errorMessage', notification_items.payload->>'errorMessage'
               )
+          WHEN notification_items.status = 'published'
+            AND notification_items.payload->>'pushDelivery' IN ('sent', 'skipped')
+            THEN excluded.payload
+              || jsonb_build_object('pushDelivery', notification_items.payload->>'pushDelivery')
           ELSE excluded.payload
         END,
         updated_at = excluded.updated_at
@@ -207,9 +212,14 @@ export async function claimPushNotificationRows({ limit = 20, now = nowIso(), pr
       `
         SELECT *
         FROM notification_items
-        WHERE status = 'queued' AND channel = 'push'
+        WHERE channel = 'push'
           AND (scheduled_at IS NULL OR scheduled_at <= $1)
           AND (expires_at IS NULL OR expires_at > $1)
+          AND COALESCE(payload->>'pushDelivery', '') NOT IN ('sending', 'sent', 'skipped', 'none')
+          AND (
+            (status = 'queued' AND COALESCE(payload->>'pushDelivery', 'pending') = 'pending')
+            OR (status = 'published' AND payload->>'pushDelivery' = 'pending')
+          )
         ORDER BY COALESCE(scheduled_at, updated_at) ASC
         LIMIT $2
         FOR UPDATE SKIP LOCKED
@@ -219,10 +229,18 @@ export async function claimPushNotificationRows({ limit = 20, now = nowIso(), pr
     const claimed = [];
     for (const row of result.rows) {
       const payload = row.payload && typeof row.payload === 'object' ? row.payload : {};
-      const next = { ...payload, status: 'sending', provider, attempts: Number(payload.attempts) || 0, updatedAt: now };
+      const preservePublished = row.status === 'published';
+      const next = {
+        ...payload,
+        pushDelivery: 'sending',
+        status: preservePublished ? 'published' : 'sending',
+        provider,
+        attempts: Number(payload.attempts) || 0,
+        updatedAt: now,
+      };
       const update = await client.query(
         'UPDATE notification_items SET status = $1, payload = $2::jsonb, updated_at = $3 WHERE id = $4 RETURNING *',
-        ['sending', jsonPayload(next), now, row.id],
+        [preservePublished ? 'published' : 'sending', jsonPayload(next), now, row.id],
       );
       claimed.push(publicNotification(update.rows[0]));
     }
@@ -238,8 +256,15 @@ export async function resolvePushDeviceRows(notification) {
     params.push(notification.appUserId);
     where += ` AND d.user_id = $${params.length}`;
   }
-  const result = await queryKysely(`SELECT d.* FROM app_user_devices d JOIN app_users u ON u.id = d.user_id WHERE ${where} AND u.active = true`, params);
-  return result.rows.map(publicDevice);
+  const result = await queryKysely(
+    `SELECT d.*, u.notification_prefs FROM app_user_devices d JOIN app_users u ON u.id = d.user_id WHERE ${where} AND u.active = true`,
+    params,
+  );
+  return result.rows
+    .filter((row) =>
+      shouldDeliverPushToUser(notification?.type, notification?.sourceType, row.notification_prefs),
+    )
+    .map(publicDevice);
 }
 
 export async function updateNotificationSendStateRow(notificationId, patch = {}) {
@@ -247,11 +272,18 @@ export async function updateNotificationSendStateRow(notificationId, patch = {})
   const row = publicNotification(existing.rows[0]);
   if (!row) return null;
   const now = nowIso();
+  const preservePublished = row.status === 'published' || patch.preservePublished === true;
+  const pushDelivery = cleanText(patch.pushDelivery);
   const next = {
     ...row,
     ...patch,
+    status: preservePublished ? 'published' : patch.status ?? row.status,
     attempts: patch.attempts ?? row.attempts,
     updatedAt: now,
+    payload: {
+      ...(row.payload && typeof row.payload === 'object' ? row.payload : {}),
+      ...(pushDelivery ? { pushDelivery } : {}),
+    },
   };
   const result = await queryKysely(
     `

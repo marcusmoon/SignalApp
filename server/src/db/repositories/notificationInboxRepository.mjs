@@ -5,8 +5,8 @@ import { cleanText, safeLimit } from './publicHelpers.mjs';
 
 export const USER_NOTIFICATION_INBOX_MAX = 50;
 
-/** Inbox lazy-link: 알림함은 푸시 발송 완료를 기다리지 않는다. 예약 시각이 지난 queued 포함. */
-const INBOX_LAZY_LINK_STATUSES = ['sent', 'skipped', 'queued'];
+/** Inbox lazy-link: published = 알림함 기본 노출. pushDelivery는 푸시 파이프라인 전용. */
+const INBOX_LAZY_LINK_STATUSES = ['published', 'sent', 'skipped', 'queued'];
 
 function inboxRowId(userId, notificationId) {
   return `${cleanText(userId)}:${cleanText(notificationId)}`;

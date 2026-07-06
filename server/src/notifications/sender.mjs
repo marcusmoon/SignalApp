@@ -1,7 +1,6 @@
 import { config } from '../config.mjs';
 import {
   claimPushNotificationsForDelivery,
-  recordNotificationInboxDeliveries,
   resolvePushDevicesForNotification,
   updateNotificationSendState,
 } from '../db.mjs';
@@ -112,22 +111,24 @@ export async function processNotificationOutbox({ limit = config.notificationSen
       if (result.status === 'sent') summary.sent += 1;
       else if (result.status === 'skipped') summary.skipped += 1;
       else summary.failed += 1;
+      const preservePublished = notification.status === 'published';
+      const pushOutcome = result.status === 'sent' ? 'sent' : 'skipped';
       await updateNotificationSendState(notification.id, {
-        status: result.status,
+        preservePublished,
+        status: preservePublished ? 'published' : result.status,
+        pushDelivery: preservePublished ? pushOutcome : undefined,
         provider: result.provider,
         providerMessageId: result.providerMessageId || null,
         errorMessage: result.errorMessage || null,
         attempts,
         sentAt: result.status === 'sent' ? nowIso() : null,
       });
-      if (result.status === 'sent' && Array.isArray(result.devices) && result.devices.length) {
-        const userIds = [...new Set(result.devices.map((device) => device.userId).filter(Boolean))];
-        await recordNotificationInboxDeliveries(userIds, notification.id, nowIso());
-      }
     } catch (error) {
       summary.failed += 1;
       await updateNotificationSendState(notification.id, {
-        status: 'failed',
+        preservePublished: notification.status === 'published',
+        status: notification.status === 'published' ? 'published' : 'failed',
+        pushDelivery: notification.status === 'published' ? 'skipped' : undefined,
         provider,
         errorMessage: error instanceof Error ? error.message : String(error),
         attempts,

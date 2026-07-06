@@ -2,8 +2,10 @@ import {
   countUserNotificationInboxUnread,
   deleteUserNotificationInbox,
   deliverUserNotificationInbox,
+  getAppUserNotificationPrefs,
   markUserNotificationInboxReadState,
   queryUserNotificationInbox,
+  updateAppUserNotificationPrefs,
   upsertNotificationItem,
   verifyAppUserToken,
   USER_NOTIFICATION_INBOX_MAX,
@@ -105,6 +107,29 @@ export async function handlePublicNotificationRoutes({ req, res, url, pathname }
       updatedAt: now,
     });
     json(res, 201, { data: publicOutboxNotification(item) });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/v1/notifications/prefs') {
+    const user = await requireAppUser(req, res);
+    if (!user) return true;
+    json(res, 200, { data: await getAppUserNotificationPrefs(user.id) });
+    return true;
+  }
+
+  if (req.method === 'PATCH' && pathname === '/v1/notifications/prefs') {
+    const user = await requireAppUser(req, res);
+    if (!user) return true;
+    const body = (await readBody(req)) || {};
+    const saved = await updateAppUserNotificationPrefs(user.id, {
+      pushEnabled: typeof body.pushEnabled === 'boolean' ? body.pushEnabled : undefined,
+      briefingPushEnabled: typeof body.briefingPushEnabled === 'boolean' ? body.briefingPushEnabled : undefined,
+    });
+    if (!saved) {
+      json(res, 404, { error: 'APP_USER_NOT_FOUND' });
+      return true;
+    }
+    json(res, 200, { data: saved });
     return true;
   }
 

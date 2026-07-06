@@ -2,20 +2,35 @@
 
 알림센터는 **서버**를 단일 진실 원천으로 한다. 알림 **본문(템플릿)** 은 `notification_items`에 공통 저장하고, 사용자별 **읽음·삭제·노출** 은 `user_notification_inbox`에만 기록한다.
 
+**알림함 적재와 기기 푸시는 분리한다.**
+
+| 경로 | 역할 |
+|---|---|
+| 알림함 (inbox) | ingest 시 `status: published` — 로그인 사용자 목록에 기본 노출 (lazy link) |
+| 푸시 (push) | `payload.pushDelivery: pending` 일 때만 worker sender가 발송. 사용자 `notification_prefs` 반영 |
+
 ## 운영 규칙
 
 - **최대 50건**: 사용자당 inbox row는 `delivered_at` 기준 최신 50개만 유지한다. 초과분은 서버에서 hard delete.
-- **등록 사용자만**: `app_users.active = true`인 계정만 lazy link·적재·발송 대상이다.
-- **발송 대상**: push는 `app_user_devices`에 등록된 활성 기기를 가진 등록 사용자에게만 전달한다. 발송 성공 시 해당 사용자 inbox row를 upsert한다.
-- **DB**: Flyway `V7__notification_inbox.sql` (`user_notification_inbox` 테이블).
+- **등록 사용자만**: `app_users.active = true`인 계정만 lazy link·적재 대상이다.
+- **푸시 발송**: `app_user_devices` 활성 토큰 + `app_users.notification_prefs` (`pushEnabled`, `briefingPushEnabled`)를 만족할 때만 Expo/mock sender가 전송한다.
+- **DB**: Flyway `V7__notification_inbox.sql`, `V8__app_user_notification_prefs.sql`.
 
 ## 구조
 
 | 레이어 | 역할 |
 |---|---|
-| `notification_items` | 템플릿·발송 outbox (브로드캐스트 row 공유) |
+| `notification_items` | 템플릿 (`published`) + 푸시 배달 상태 (`payload.pushDelivery`) |
 | `user_notification_inbox` | 사용자별 `read_at`, `deleted_at`, `delivered_at` |
+| `app_users.notification_prefs` | 서버 푸시 필터 (`pushEnabled`, `briefingPushEnabled`) |
 | 앱 `app/alerts.tsx` | `GET /v1/notifications` 단일 소스 |
+
+### ingest (브리핑·주요이슈)
+
+1. 콘텐츠 저장
+2. `pushCandidate=true`이면 `notification_items`에 **`published`** upsert → 알림함 노출
+3. `sendPush=true`이면 `payload.pushDelivery = 'pending'` → worker가 푸시 시도
+4. `sendPush=false`이면 `pushDelivery = 'none'` → 알림함만, 푸시 없음
 
 ## 링크 생성
 
@@ -25,14 +40,10 @@
 (app_user_id = :userId OR (target_type = 'all' AND app_user_id IS NULL))
 AND (expires_at IS NULL OR expires_at > NOW())
 AND (scheduled_at IS NULL OR scheduled_at <= NOW())
-AND status IN ('sent', 'skipped', 'queued')
+AND status IN ('published', 'sent', 'skipped', 'queued')
 ```
 
-브리핑·주요이슈 ingest는 outbox에 `queued`로 쌓인다. **알림함 목록은 sender 완료를 기다리지 않는다** — 예약 시각이 지난 `queued`도 lazy link 대상이다. 실제 기기 푸시는 worker sender(`SIGNAL_NOTIFICATION_SENDER_ENABLED=true`)가 처리한다.
-
-**Push 성공 후:** sender가 수신 `user_id` 목록에 inbox upsert.
-
-**푸시 수신(앱):** `POST /v1/notifications/deliver` (`data.notificationId`).
+**푸시 수신(앱, 보조):** `POST /v1/notifications/deliver` (`data.notificationId`) — 포그라운드 수신 시 deliver API.
 
 ## API
 
@@ -41,25 +52,13 @@ AND status IN ('sent', 'skipped', 'queued')
 | Method | Path | 설명 |
 |---|---|---|
 | GET | `/v1/notifications` | 목록 (limit 1–50, lazy link, `filter=all\|high\|signal\|system`) |
+| GET | `/v1/notifications/prefs` | 서버 푸시 설정 조회 |
+| PATCH | `/v1/notifications/prefs` | `{ pushEnabled?, briefingPushEnabled? }` |
 | GET | `/v1/notifications/unread-count` | 미읽음 건수 |
 | PATCH | `/v1/notifications/read` | `{ "ids": [] }` 또는 `{ "all": true }` |
 | DELETE | `/v1/notifications` | soft delete |
 | POST | `/v1/notifications/deliver` | `{ "notificationId": "..." }` |
 | POST | `/v1/notifications/test` | push 테스트 (outbox enqueue) |
-
-목록 항목 예:
-
-```json
-{
-  "id": "user123:notification:push:market_briefing:...",
-  "notificationId": "notification:push:market_briefing:...",
-  "type": "market_briefing",
-  "title": "오전 시장 브리핑",
-  "body": "...",
-  "deliveredAt": "2026-07-05T08:00:00.000Z",
-  "readAt": null
-}
-```
 
 ## 앱 연동
 
@@ -67,19 +66,18 @@ AND status IN ('sent', 'skipped', 'queued')
 |---|---|
 | `app/alerts.tsx` | 목록·삭제 |
 | `services/alertsUnreadPreference.ts` | unread-count, read, `loadAlertsFromServer` |
+| `services/notificationPreferences.ts` | 로컬 설정 + 서버 `PATCH /prefs` 동기화 |
 | `components/NotificationListener.tsx` | deliver + 배지 |
 | `integrations/signal-api/notifications.ts` | API 클라이언트 |
 
-로컬 `@signal/notification_history_v1`, `@signal/dismissed_notification_ids_v1`는 사용하지 않는다.
+로컬 `localMacroCalendar`는 기기 로컬 알림 전용. 서버 푸시와 무관.
 
 ## Admin
 
-`POST /admin/api/notifications` → `notification_items` 적재. `target_type = 'user'`는 발송 후 inbox link, `all`은 lazy link.
-
 | Method | Path | 설명 |
 |---|---|---|
-| GET | `/admin/api/notifications` | outbox 검색 (`type`, `status`, `targetType`, `q`, `filter`) |
-| GET | `/admin/api/app-users/:userId/inbox` | 앱과 동일한 사용자 인박스 (`filter`, page) |
+| GET | `/admin/api/notifications` | outbox 검색 |
+| GET | `/admin/api/app-users/:userId/inbox` | 사용자 인박스 |
 
 ## 시간 기준
 
@@ -89,7 +87,8 @@ AND status IN ('sent', 'skipped', 'queued')
 
 | 영역 | 파일 |
 |---|---|
-| DB | `server/db/migrations/postgres/V7__notification_inbox.sql` |
+| DB | `server/db/migrations/postgres/V7__notification_inbox.sql`, `V8__app_user_notification_prefs.sql` |
+| publish | `server/src/notifications/publish.mjs` |
 | 서버 repo | `server/src/db/repositories/notificationInboxRepository.mjs` |
-| 서버 HTTP | `server/src/http/public/v1/notifications.mjs` |
+| 푸시 prefs | `server/src/notifications/notificationPreferences.mjs` |
 | 발송 | `server/src/notifications/sender.mjs` |

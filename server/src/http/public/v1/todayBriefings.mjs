@@ -1,5 +1,6 @@
 import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
-import { createNotificationItem, NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
+import { NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
+import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicTodayBriefings } from '../../../db/repositories/todayBriefingsRepository.mjs';
 import { parseToUtcIsoOrNull, utcDateKeyFromInstant, utcDateOnlyOrNull } from '../../../time/utc.mjs';
@@ -62,29 +63,31 @@ function hasIngestAccess(req) {
   return header === configured || bearer === configured;
 }
 
-async function maybeQueueTodayBriefingPush(briefing) {
+async function publishTodayBriefingNotification(briefing, queuePush) {
   if (!briefing?.pushCandidate) return null;
   if (cleanText(briefing.status) && briefing.status !== 'published') return null;
-  const notification = createNotificationItem({
-    id: `notification:push:today_briefing:${briefing.id}`,
-    type: NOTIFICATION_TYPES.todayBriefing,
-    title: briefing.pushTitle || briefing.title,
-    body: briefing.pushBody || briefing.headline,
-    channel: 'push',
-    status: 'queued',
-    priority: 'normal',
-    targetType: 'all',
-    sourceType: 'today_briefing',
-    sourceId: briefing.id,
-    deepLink: briefing.briefingDate ? `/today-briefing?date=${briefing.briefingDate}` : '/home',
-    reason: `today briefing updated: ${briefing.briefingDate || briefing.locale}`,
-    scheduledAt: briefing.publishedAt,
-    payload: {
-      briefingId: briefing.id,
-      briefingDate: briefing.briefingDate,
-      locale: briefing.locale,
+  const notification = buildPublishedNotification(
+    {
+      id: `notification:push:today_briefing:${briefing.id}`,
+      type: NOTIFICATION_TYPES.todayBriefing,
+      title: briefing.pushTitle || briefing.title,
+      body: briefing.pushBody || briefing.headline,
+      channel: 'push',
+      priority: 'normal',
+      targetType: 'all',
+      sourceType: 'today_briefing',
+      sourceId: briefing.id,
+      deepLink: briefing.briefingDate ? `/today-briefing?date=${briefing.briefingDate}` : '/home',
+      reason: `today briefing updated: ${briefing.briefingDate || briefing.locale}`,
+      scheduledAt: briefing.publishedAt,
+      payload: {
+        briefingId: briefing.id,
+        briefingDate: briefing.briefingDate,
+        locale: briefing.locale,
+      },
     },
-  });
+    { queuePush },
+  );
   if (!notification) return null;
   return upsertNotificationItem(notification);
 }
@@ -103,8 +106,8 @@ export async function handlePublicTodayBriefingRoutes({ req, res, url, pathname 
       return true;
     }
     await upsertCollectionRows('todayBriefings', [briefing]);
-    const notification = body?.sendPush === false ? null : await maybeQueueTodayBriefingPush(briefing);
-    json(res, 201, { data: briefing, meta: { notificationQueued: !!notification } });
+    const notification = await publishTodayBriefingNotification(briefing, body?.sendPush !== false);
+    json(res, 201, { data: briefing, meta: { notificationPublished: !!notification, pushQueued: body?.sendPush !== false && !!notification } });
     return true;
   }
 

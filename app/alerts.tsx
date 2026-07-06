@@ -15,6 +15,7 @@ import {
   SCREEN_LIST_CONTENT_PADDING_TOP,
   stackScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import { webShellBackground } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -330,6 +331,7 @@ export default function AlertsScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: webShellBackground(theme.bg) },
     mainColumn: {
@@ -339,17 +341,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
     },
-    topFixed: {
-      flexShrink: 0,
-      zIndex: 2,
-      elevation: Platform.OS === 'android' ? 2 : 0,
-      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
-      paddingTop: SCREEN_FIXED_HEADER_PADDING_TOP,
-      paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
-      backgroundColor: theme.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
+    topFixed: fixedHeader.strip,
     list: {
       flex: 1,
       minHeight: 0,

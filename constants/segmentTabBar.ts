@@ -82,3 +82,4 @@ export {
   SCREEN_SIDEBAR_SUBTAB_MARGIN_BOTTOM,
   SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/screenLayout';
+export { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';

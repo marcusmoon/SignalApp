@@ -27,6 +27,7 @@ import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import { webShellBackground } from '@/constants/webLayout';
 import {
   tabBarBottomInset,
@@ -264,6 +265,7 @@ const TAB_BAR_OPACITY_ORDER: TabBarOpacityLevel[] = [0, 1, 2, 3, 4];
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   const shellBg = webShellBackground(theme.bg);
   const segmentTab = getSegmentTabBarStyles(theme, sf);
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { flex: 1, minHeight: 0, backgroundColor: shellBg },
     scrollFlex: { flex: 1, minHeight: 0, backgroundColor: shellBg },
@@ -280,16 +282,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
       alignSelf: 'stretch',
     },
+    topFixed: fixedHeader.strip,
     tabBar: {
       ...segmentTab.segment,
       width: '100%',
-      maxWidth: APP_CONTENT_MAX_WIDTH - 32,
-      alignSelf: 'center',
+      alignSelf: 'stretch',
       flexShrink: 0,
       flexWrap: 'wrap',
-      marginHorizontal: 16,
-      marginTop: 10,
-      marginBottom: 6,
+      marginBottom: 0,
     },
     tabBtn: {
       ...segmentTab.segBtn,
@@ -1323,7 +1323,8 @@ clearCalendarCache();
     <SafeAreaView style={styles.safe} edges={[]}>
       {isFocused ? <OtaUpdateBanner /> : null}
       {!embedded && !useTwoPane ? (
-        <View style={styles.tabBar}>
+        <View style={styles.topFixed}>
+          <View style={styles.tabBar}>
           {SETTINGS_TABS.map((item) => {
             const selected = selectedTab === item.key;
             return (
@@ -1341,6 +1342,7 @@ clearCalendarCache();
               </Pressable>
             );
           })}
+          </View>
         </View>
       ) : null}
       <WebWheelScrollView

@@ -16,10 +16,8 @@ import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
-  SCREEN_FIXED_HEADER_PADDING_BOTTOM,
-  SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
-  SCREEN_FIXED_HEADER_PADDING_TOP,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import {
@@ -504,7 +502,8 @@ export default function DisclosuresScreen() {
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {!useTwoPane || refreshNotice ? <View style={styles.topFixed}>
+        {!useTwoPane || refreshNotice || (showDigest && !useTwoPane) ? (
+          <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
           {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
           {!symbolFilter && !useTwoPane ? (
             <View style={styles.segment}>
@@ -523,7 +522,14 @@ export default function DisclosuresScreen() {
               })}
             </View>
           ) : null}
-        </View> : null}
+          {showDigest && !useTwoPane ? (
+            <DisclosureDigestSection
+              items={digestItems}
+              loading={digestLoading && digestItems.length === 0}
+            />
+          ) : null}
+        </View>
+        ) : null}
         {!initialLoadDone && loading ? (
           <View style={styles.loadingWrap}>
             <SignalLoadingIndicator message={t('commonLoading')} />
@@ -531,8 +537,8 @@ export default function DisclosuresScreen() {
         ) : (
           <View style={useTwoPane ? styles.wideBody : styles.compactBody}>
             <View style={useTwoPane ? styles.listColumnWide : styles.listColumn}>
-              {showDigest ? (
-                <View style={[styles.digestFixed, useTwoPane && styles.digestFixedWide]}>
+              {showDigest && useTwoPane ? (
+                <View style={styles.topFixed}>
                   <DisclosureDigestSection
                     items={digestItems}
                     loading={digestLoading && digestItems.length === 0}
@@ -565,6 +571,7 @@ export default function DisclosuresScreen() {
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
   const segmentTab = getSegmentTabBarStyles(theme, sf);
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     mainColumn: {
@@ -577,17 +584,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       ...wideContentFill,
       paddingHorizontal: 16,
     },
-    topFixed: {
-      flexShrink: 0,
-      zIndex: 2,
-      elevation: Platform.OS === 'android' ? 2 : 0,
-      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
-      paddingTop: SCREEN_FIXED_HEADER_PADDING_TOP,
-      paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
-      backgroundColor: theme.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
+    topFixed: fixedHeader.strip,
+    topFixedWide: fixedHeader.stripWide,
     compactBody: { ...webFlexFill },
     listColumn: {
       ...webFlexFill,
@@ -596,17 +594,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flex: 0.45,
       minWidth: 360,
       minHeight: 0,
-    },
-    digestFixed: {
-      flexShrink: 0,
-      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
-      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
-      backgroundColor: theme.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    digestFixedWide: {
-      paddingTop: 0,
     },
     wideBody: {
       ...webFlexFill,

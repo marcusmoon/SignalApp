@@ -1319,8 +1319,8 @@ export default function FeedScreen() {
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {newContentAvailable || refreshNotice || !useTwoPane ? (
-          <View style={styles.topFixed}>
+        {newContentAvailable || refreshNotice || !useTwoPane || showDigest ? (
+          <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
           {newContentAvailable && !refreshing ? (
             <FeedUpdateBanner
               variant="prompt"
@@ -1345,12 +1345,7 @@ export default function FeedScreen() {
               </Fragment>
             ))}
           </View> : null}
-          </View>
-        ) : null}
-
-        {showDigest ? (
-          <View style={[styles.digestFixed, useTwoPane && styles.digestFixedWide]}>
-            <DigestPager batches={digestBatches} />
+          {showDigest ? <DigestPager batches={digestBatches} /> : null}
           </View>
         ) : null}
 

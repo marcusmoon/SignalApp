@@ -725,7 +725,8 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         <Stack.Screen options={{ title: t('screenAccount'), headerShown: !useIpadSidebar }} />
       ) : null}
       {user ? (
-        <View style={[styles.tabBar, embedded && styles.tabBarEmbedded]} accessibilityRole="tablist">
+        <View style={styles.topFixed}>
+          <View style={[styles.tabBar, embedded && styles.tabBarEmbedded]} accessibilityRole="tablist">
           {accountTabs.map((tab) => {
             const selected = accountTab === tab.key;
             return (
@@ -741,6 +742,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
               </Pressable>
             );
           })}
+          </View>
         </View>
       ) : null}
       <WebWheelScrollView

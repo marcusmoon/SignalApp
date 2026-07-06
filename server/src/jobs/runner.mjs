@@ -21,7 +21,6 @@ import { fetchFinnhubEarningsCalendar, fetchFinnhubEconomicCalendar, fetchFinnhu
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
-import { generateNewsDigestItems } from '../digests/newsDigest.mjs';
 import { fetchFinancialJuiceRssNews, reconcileFinancialJuiceNewsItems } from '../providers/news/financialJuiceRss.mjs';
 import { fetchFinnhubMarketNews, reconcileFinnhubNewsItems } from '../providers/news/finnhub.mjs';
 import { fetchNewswireRssNews, reconcileRssNewsItems } from '../providers/news/rssNews.mjs';
@@ -125,7 +124,7 @@ async function readJobContext(job) {
   if (provider === 'rss') {
     context.rssSources = await listCollectionPayloads('rssSources');
   }
-  if (jobHasStoredNewsReconcile(job) || (provider === 'signal' && handler === 'news_digest')) {
+  if (jobHasStoredNewsReconcile(job)) {
     context.newsItems = await listCollectionPayloads('newsItems');
   }
   if (
@@ -394,9 +393,6 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
       }),
     };
   }
-  if (effective.provider === 'signal' && effective.handler === 'news_digest') {
-    return { kind: 'newsDigests', rows: generateNewsDigestItems(dbBefore, params || {}) };
-  }
   if (effective.provider === 'naver_cafe' && effective.handler === 'likeusstock_free') {
     return { kind: 'community', rows: await fetchNaverCafeLikeusstockFree(params || {}) };
   }
@@ -413,7 +409,6 @@ async function persistHandlerResult(result, rows, { onHeartbeat } = {}) {
     marketList: 'marketLists',
     priceSeries: 'priceSeries',
     coinMarkets: 'coinMarkets',
-    newsDigests: 'newsDigestItems',
     community: 'communityPosts',
   };
   const directCollection = directCollectionByKind[result.kind];

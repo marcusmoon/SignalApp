@@ -4,7 +4,7 @@ import { Platform, ScrollView, StyleSheet, View, type ScrollViewProps } from 're
 import {
   getWebRefreshControlProps,
   useWebRefreshHandlers,
-  WebRefreshStatus,
+  WebRefreshOverlay,
 } from '@/components/layout/webRefreshControl';
 import { WEB_THEME_BG } from '@/constants/webLayout';
 import { useWebVerticalWheelScroll } from '@/hooks/useWebVerticalWheelScroll';
@@ -51,12 +51,12 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
         ref={setWebRef}
         {...(webEventProps as Record<string, unknown>)}
         style={[webViewportStyle, { backgroundColor }, style]}>
+        <WebRefreshOverlay visible={!!refreshControlProps?.refreshing} />
         <View
           style={[
             contentContainerStyle,
             { backgroundColor, flexGrow: 1, minHeight: '100%' as const },
           ]}>
-          {refreshControlProps?.refreshing ? <WebRefreshStatus /> : null}
           {children}
         </View>
       </View>
@@ -85,6 +85,7 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
 });
 
 const webViewportStyle = {
+  position: 'relative',
   flex: 1,
   minHeight: 0,
   height: '100%',

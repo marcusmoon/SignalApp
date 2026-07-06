@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RectButton } from 'react-native-gesture-handler';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +21,7 @@ import { webShellBackground } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -328,7 +329,7 @@ export default function AlertsScreen() {
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>{alertsTopFixed}</View>
-        <FlatList
+        <WebWheelFlatList
           ref={listRef as never}
           data={filteredItems}
           keyExtractor={(a) => a.id}

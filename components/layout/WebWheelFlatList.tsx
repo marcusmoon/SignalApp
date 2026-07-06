@@ -11,12 +11,13 @@ import {
 import {
   getWebRefreshControlProps,
   useWebRefreshHandlers,
-  WebRefreshStatus,
+  WebRefreshOverlay,
 } from '@/components/layout/webRefreshControl';
 import { isDomNearScrollEnd, syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
 import { createLazyWebScrollApi } from '@/utils/scrollToTop';
 
 const webListViewportStyle = {
+  position: 'relative',
   flex: 1,
   minHeight: 0,
   height: '100%',
@@ -255,10 +256,20 @@ function WebWheelFlatListInner<T>(
         emitWebEndReached(node);
       }, 40);
     };
+    const isPullRefreshWheel = (event: unknown) => {
+      const node = getWebNode(event);
+      if (!node || node.scrollTop > 2) return false;
+      const deltaY = (event as { nativeEvent?: { deltaY?: number }; deltaY?: number })?.nativeEvent?.deltaY
+        ?? (event as { deltaY?: number })?.deltaY
+        ?? 0;
+      return deltaY < 0;
+    };
     const webEventProps = {
       onScroll: emitFromWebEvent,
       onWheel: (event: unknown) => {
-        scheduleWebNearEndProbe(event);
+        if (!isPullRefreshWheel(event)) {
+          scheduleWebNearEndProbe(event);
+        }
         webRefreshHandlers.onWheel(event);
       },
       onTouchStart: webRefreshHandlers.onTouchStart,
@@ -284,8 +295,8 @@ function WebWheelFlatListInner<T>(
 
     return (
       <View ref={setWebRef} style={[webListViewportStyle, style] as never} {...(webEventProps as Record<string, unknown>)}>
+        <WebRefreshOverlay visible={!!refreshControlProps?.refreshing} />
         <View ref={webContentRef} style={contentContainerStyle}>
-          {refreshControlProps?.refreshing ? <WebRefreshStatus /> : null}
           {renderListSlot(ListHeaderComponent)}
           {items.length === 0 ? renderListSlot(ListEmptyComponent) : null}
           {numColumns > 1

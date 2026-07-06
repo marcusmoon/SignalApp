@@ -567,6 +567,7 @@ export default function YoutubeScreen() {
       {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
           bottom={fabStackBottomOffset}
+          listRef={ytListRef}
           onPress={() => void onRefresh()}
           iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}

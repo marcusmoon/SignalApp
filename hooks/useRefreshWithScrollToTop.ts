@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { InteractionManager } from 'react-native';
 
 export function useRefreshWithScrollToTop(
   onRefresh: () => void | Promise<void>,
@@ -8,7 +9,10 @@ export function useRefreshWithScrollToTop(
     scrollToTop(false);
     void Promise.resolve(onRefresh()).finally(() => {
       scrollToTop(false);
-      requestAnimationFrame(() => scrollToTop(false));
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => scrollToTop(false));
+      }
+      InteractionManager.runAfterInteractions(() => scrollToTop(false));
     });
   }, [onRefresh, scrollToTop]);
 }

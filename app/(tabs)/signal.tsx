@@ -525,6 +525,7 @@ export default function SignalScreen() {
       {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
           bottom={fabStackBottomOffset}
+          listRef={scrollRef}
           onPress={() => void onRefresh()}
           iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}

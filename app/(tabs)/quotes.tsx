@@ -665,6 +665,7 @@ export default function QuotesScreen() {
       {!useTwoPane ? (
         <FloatingGlassFab
           bottom={fabStackBottomOffset}
+          listRef={listRef}
           onPress={() => void onRefresh()}
           iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}

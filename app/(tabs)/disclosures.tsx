@@ -556,6 +556,7 @@ export default function DisclosuresScreen() {
       {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
           bottom={fabStackBottomOffset}
+          listRef={listRef}
           onPress={() => void onRefresh()}
           iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}

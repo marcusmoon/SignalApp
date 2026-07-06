@@ -1438,6 +1438,7 @@ export default function FeedScreen() {
       {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
           bottom={fabStackBottomOffset}
+          listRef={feedListRef}
           onPress={() => void onRefresh()}
           iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}

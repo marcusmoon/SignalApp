@@ -271,7 +271,9 @@ function WebWheelFlatListInner<T>(
     };
     const setWebRef = (instance: View | null) => {
       webRef.current = instance;
-      const api = createLazyWebScrollApi(() => webRef.current) as unknown as FlatList<T>;
+      const api = createLazyWebScrollApi(
+        () => webRef.current as { getScrollableNode?: () => HTMLElement | null } | null,
+      ) as unknown as FlatList<T>;
 
       if (typeof forwardedRef === 'function') {
         forwardedRef(api);

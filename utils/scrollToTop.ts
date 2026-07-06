@@ -1,9 +1,11 @@
 import type { RefObject } from 'react';
+import { InteractionManager, Platform } from 'react-native';
 
 export type ScrollToTopTarget = {
   getScrollableNode?: () => HTMLElement | null;
   scrollToOffset?: (opts: { offset: number; animated?: boolean }) => void;
   scrollTo?: (opts: { x?: number; y?: number; animated?: boolean }) => void;
+  scrollToIndex?: (opts: { index: number; animated?: boolean; viewOffset?: number }) => void;
 } | null;
 
 function scrollDomNode(node: HTMLElement, offset: number, animated: boolean) {
@@ -12,6 +14,27 @@ function scrollDomNode(node: HTMLElement, offset: number, animated: boolean) {
     return;
   }
   node.scrollTop = offset;
+}
+
+function scrollInstanceOnce(instance: NonNullable<ScrollToTopTarget>, animated: boolean) {
+  if (typeof instance.scrollToOffset === 'function') {
+    instance.scrollToOffset({ offset: 0, animated });
+  }
+
+  if (typeof instance.scrollToIndex === 'function') {
+    try {
+      instance.scrollToIndex({ index: 0, animated, viewOffset: 0 });
+    } catch {
+      // List may be empty or not measured yet.
+    }
+  }
+
+  if (typeof instance.scrollTo === 'function') {
+    instance.scrollTo({ y: 0, animated });
+  }
+
+  const node = instance.getScrollableNode?.();
+  if (node) scrollDomNode(node, 0, animated);
 }
 
 /** Lazy web scroll API: resolves the DOM node when scroll is invoked, not only at ref attach. */
@@ -35,17 +58,20 @@ export function createLazyWebScrollApi(
 export function scrollToTop(ref: RefObject<ScrollToTopTarget>, animated = false) {
   const instance = ref.current;
   if (!instance) return;
+  scrollInstanceOnce(instance, animated);
+}
 
-  if (typeof instance.scrollToOffset === 'function') {
-    instance.scrollToOffset({ offset: 0, animated });
-    return;
+/** Retry scroll after layout / data updates (refresh FAB, filter change). */
+export function scrollToTopWithRetry(ref: RefObject<ScrollToTopTarget>, animated = false) {
+  const run = () => scrollToTop(ref, animated);
+  run();
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(run);
   }
-
-  if (typeof instance.scrollTo === 'function') {
-    instance.scrollTo({ y: 0, animated });
-    return;
+  setTimeout(run, 0);
+  setTimeout(run, 50);
+  setTimeout(run, 150);
+  if (Platform.OS !== 'web') {
+    InteractionManager.runAfterInteractions(run);
   }
-
-  const node = instance.getScrollableNode?.();
-  if (node) scrollDomNode(node, 0, animated);
 }

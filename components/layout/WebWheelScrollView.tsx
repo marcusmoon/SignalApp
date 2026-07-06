@@ -35,7 +35,9 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
     };
     const setWebRef = (instance: View | null) => {
       localRef.current = instance as never;
-      const api = createLazyWebScrollApi(() => localRef.current) as unknown as ScrollView;
+      const api = createLazyWebScrollApi(
+        () => localRef.current as { getScrollableNode?: () => HTMLElement | null } | null,
+      ) as unknown as ScrollView;
 
       if (typeof forwardedRef === 'function') {
         forwardedRef(api);

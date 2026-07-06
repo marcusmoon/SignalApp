@@ -135,9 +135,9 @@ export default function BoardScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onRefreshBase = useCallback(() => {
+  const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
-    void load({ refresh: true });
+    await load({ refresh: true });
   }, [load]);
 
   const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
@@ -271,6 +271,7 @@ export default function BoardScreen() {
       {hasSignalApi() && !useTwoPane ? (
         <FloatingGlassFab
           bottom={fabStackBottomOffset}
+          listRef={listRef}
           onPress={onRefresh}
           iconName="sync"
           accessibilityLabel={t('fabRefreshA11y')}

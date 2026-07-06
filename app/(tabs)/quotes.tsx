@@ -31,7 +31,7 @@ import {
   fabStackBottom,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
-import { useQuoteChangeColors, useResetRefreshingOnTabBlur, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
+import { useQuoteChangeColors, useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
@@ -103,6 +103,7 @@ export default function QuotesScreen() {
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [segment, setSegment] = useState<QuoteSegmentKey>('watch');
   const [segmentOrder, setSegmentOrder] = useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
+  const { ref: listRef, scrollToTop } = useScrollToTopOnChange([segment]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
@@ -248,7 +249,7 @@ export default function QuotesScreen() {
     }, [load, t]),
   );
 
-  const onRefresh = useCallback(async () => {
+  const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
     const refreshPromise = load(true);
     try {
@@ -264,6 +265,8 @@ export default function QuotesScreen() {
       setRefreshing(false);
     }
   }, [load, t]);
+
+  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
 
   const onAddWatch = useCallback(async () => {
     const raw = draftTicker.trim();
@@ -609,6 +612,7 @@ export default function QuotesScreen() {
       </View> : null}
 
       <WebWheelFlatList
+        ref={listRef as never}
         data={loading && rows.length === 0 ? [] : rows}
         keyExtractor={(r) => `${r.symbol}-${r.name ?? ''}`}
         renderItem={renderQuoteItem}

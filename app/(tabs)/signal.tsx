@@ -55,7 +55,7 @@ import {
   subscribeQuotesChangeColorConventionChanged,
 } from '@/services/quotesChangeColorPreference';
 import { markSignalFeedSeen, fetchLatestSignalBriefingId } from '@/services/signalUnreadPreference';
-import { useTabPressCycleSegment } from '@/hooks';
+import { useRefreshWithScrollToTop, useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
 import { addDays, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
 type FlatTabKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-evening' | 'kr-close';
@@ -195,7 +195,7 @@ export default function SignalScreen() {
     };
   }, [load, t]);
 
-  const onRefresh = useCallback(async () => {
+  const onRefreshBase = useCallback(async () => {
     const prevIds = new Set(marketBriefings.map((row) => row.id));
     setRefreshing(true);
     setRefreshNotice(null);
@@ -349,6 +349,8 @@ export default function SignalScreen() {
   }, [briefingByTabKey, selectedTabKey]);
 
   const activeBriefing = activeTabKey ? briefingByTabKey.get(activeTabKey) : undefined;
+  const { ref: scrollRef, scrollToTop } = useScrollToTopOnChange([activeTabKey, selectedYmd]);
+  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
   const hasAnyBriefing = marketBriefings.length > 0;
   const fabStackBottomOffset = fabStackBottom(tabBarHeight, insets.bottom);
   const scrollBottomPadding = useTwoPane
@@ -485,6 +487,7 @@ export default function SignalScreen() {
         </View>
       ) : (
         <WebWheelScrollView
+          ref={scrollRef as never}
           style={styles.scroll}
           contentContainerStyle={[styles.content, useTwoPane && styles.contentWide, { paddingBottom: scrollBottomPadding }]}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>

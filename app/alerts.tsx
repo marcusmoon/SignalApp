@@ -19,7 +19,7 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
-import { useResetRefreshingOnTabBlur } from '@/hooks';
+import { useResetRefreshingOnTabBlur, useRefreshWithScrollToTop, useScrollToTopOnChange } from '@/hooks';
 import { loadAlertsFromServer, markAlertsSeen } from '@/services/alertsUnreadPreference';
 import type { StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
@@ -45,6 +45,7 @@ export default function AlertsScreen() {
   const [authChecked, setAuthChecked] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<AlertsFilter>('all');
+  const { ref: listRef, scrollToTop } = useScrollToTopOnChange([filter]);
   useResetRefreshingOnTabBlur(setRefreshing);
 
   const reload = useCallback(async (activeFilter: AlertsFilter = filter, forceRefresh = false) => {
@@ -72,7 +73,7 @@ export default function AlertsScreen() {
     }, [reload]),
   );
 
-  const onRefresh = useCallback(async () => {
+  const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
     try {
       await reload(filter, true);
@@ -80,6 +81,8 @@ export default function AlertsScreen() {
       setRefreshing(false);
     }
   }, [filter, reload]);
+
+  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
 
   const alertFilters = useMemo(
     () =>
@@ -286,6 +289,7 @@ export default function AlertsScreen() {
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
       <FlatList
+        ref={listRef as never}
         data={filteredItems}
         keyExtractor={(a) => a.id}
         renderItem={renderAlert}

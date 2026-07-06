@@ -25,7 +25,7 @@ import {
   stackScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
-import { useResetRefreshingOnTabBlur } from '@/hooks';
+import { useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
@@ -166,7 +166,6 @@ export default function CalendarScreen() {
   const [calendarVisible, setCalendarVisible] = useState(false);
 
   const loadSeqRef = useRef(0);
-  const listRef = useRef<FlatList<CalendarEvent>>(null);
 
   useEffect(() => {
     void loadCalendarEventTypeFilter().then((saved) => {
@@ -177,6 +176,7 @@ export default function CalendarScreen() {
   }, []);
 
   const typeParam = selectedCalendarType(enabledTypes);
+  const { ref: listRef, scrollToTop } = useScrollToTopOnChange([selectedYmd, typeParam], { skipInitial: false });
 
   const fetchMonthData = useCallback(
     async (year: number, month: number, forceRefresh?: boolean) => {
@@ -217,7 +217,7 @@ export default function CalendarScreen() {
     return () => { cancelled = true; };
   }, [fetchMonthData, t, viewMonth.year, viewMonth.month]);
 
-  const onRefresh = useCallback(async () => {
+  const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
     try {
       const events = await fetchMonthData(viewMonth.year, viewMonth.month, true);
@@ -228,6 +228,8 @@ export default function CalendarScreen() {
       setRefreshing(false);
     }
   }, [fetchMonthData, viewMonth.year, viewMonth.month, t]);
+
+  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
 
   const filteredEvents = useMemo(
     () => monthEvents.filter((e) => enabledTypes.has(e.type)),
@@ -254,10 +256,6 @@ export default function CalendarScreen() {
 
   const emptyFiltered = !loading && !error && monthEvents.length > 0 && filteredEvents.length === 0;
   const allEventTypesSelected = enabledTypes.size === CALENDAR_EVENT_TYPE_ORDER.length;
-
-  useEffect(() => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [selectedYmd]);
 
   const onToggleEventType = useCallback((type: CalendarEventTypeKey) => {
     const next = new Set<CalendarEventTypeKey>([type]);
@@ -426,7 +424,7 @@ export default function CalendarScreen() {
       </View>
 
       <WebWheelFlatList
-        ref={listRef}
+        ref={listRef as never}
         style={styles.listScroll}
         data={loading && selectedDayEvents.length === 0 ? [] : selectedDayEvents}
         keyExtractor={listKeyExtractor}

@@ -81,7 +81,7 @@ import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreferen
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
 import { markNewsFeedSeen } from '@/services/newsUnreadPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
-import { useResetRefreshingOnTabBlur, useTabPressCycleSegment } from '@/hooks';
+import { useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
 import { useWebFlatListLoadMore } from '@/hooks/useWebFlatListLoadMore';
 import {
   fetchSignalNews,
@@ -235,6 +235,19 @@ export default function FeedScreen() {
   koreaSelectedSourcesRef.current = koreaSelectedSources;
   watchFilterRef.current = watchFilter;
   watchSelectedSymbolsRef.current = watchSelectedSymbols;
+
+  const { ref: feedListRef, scrollToTop } = useScrollToTopOnChange([
+    segment,
+    globalFilter,
+    cryptoFilter,
+    koreaFilter,
+    watchFilter,
+    activeTag,
+    selectedSources,
+    cryptoSelectedSources,
+    koreaSelectedSources,
+    watchSelectedSymbols,
+  ]);
 
   useEffect(() => {
     if (!refreshNotice) return;
@@ -796,7 +809,31 @@ export default function FeedScreen() {
     watchSymbolOptions,
   ]);
 
-  const feedListRef = useRef<FlatList<FeedRow>>(null);
+  const onRefreshBase = useCallback(async () => {
+    const prevNewsIds = new Set(items.map((item) => item.id));
+    const prevVideoIds = new Set(videoItems.map((item) => item.id));
+    setRefreshing(true);
+    setRefreshNotice(null);
+    setNewContentAvailable(false);
+    try {
+      const result = await load(true);
+      setError(null);
+      const previousIds = result.kind === 'video' ? prevVideoIds : prevNewsIds;
+      const newNewsCount = result.itemIds.filter((id) => !previousIds.has(id)).length;
+      if (newNewsCount > 0 && result.kind === 'video') {
+        setRefreshNotice(t('feedRefreshNoticeVideo', { count: String(newNewsCount) }));
+      } else if (newNewsCount > 0) {
+        setRefreshNotice(t('feedRefreshNoticeNews', { count: String(newNewsCount) }));
+      }
+    } catch (e) {
+      setError(formatSignalApiError(e, t, 'feedErrorRefresh'));
+    } finally {
+      setRefreshing(false);
+    }
+  }, [items, load, t, videoItems]);
+
+  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
+
   const webFeedLoadMore = useWebFlatListLoadMore({
     hasMore,
     loadingMore,
@@ -838,29 +875,6 @@ export default function FeedScreen() {
       };
     }, [load, t]),
   );
-
-  const onRefresh = useCallback(async () => {
-    const prevNewsIds = new Set(items.map((item) => item.id));
-    const prevVideoIds = new Set(videoItems.map((item) => item.id));
-    setRefreshing(true);
-    setRefreshNotice(null);
-    setNewContentAvailable(false);
-    try {
-      const result = await load(true);
-      setError(null);
-      const previousIds = result.kind === 'video' ? prevVideoIds : prevNewsIds;
-      const newNewsCount = result.itemIds.filter((id) => !previousIds.has(id)).length;
-      if (newNewsCount > 0 && result.kind === 'video') {
-        setRefreshNotice(t('feedRefreshNoticeVideo', { count: String(newNewsCount) }));
-      } else if (newNewsCount > 0) {
-        setRefreshNotice(t('feedRefreshNoticeNews', { count: String(newNewsCount) }));
-      }
-    } catch (e) {
-      setError(formatSignalApiError(e, t, 'feedErrorRefresh'));
-    } finally {
-      setRefreshing(false);
-    }
-  }, [items, load, t, videoItems]);
 
   const applySelection = useCallback(
     async (next: string[]) => {
@@ -1339,7 +1353,7 @@ export default function FeedScreen() {
         ) : null}
 
         <WebWheelFlatList
-          ref={feedListRef}
+          ref={feedListRef as never}
           data={loading && listData.length === 0 ? [] : listData}
           extraData={listData.length}
           keyExtractor={(row) =>

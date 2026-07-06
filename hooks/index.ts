@@ -6,3 +6,5 @@ export { useThemeColor } from './useThemeColor';
 export { useQuoteChangeColors } from './useQuoteChangeColors';
 export { useTabPressCycleSegment } from './useTabPressCycleSegment';
 export { useResponsiveLayout } from './useResponsiveLayout';
+export { useScrollToTopOnChange } from './useScrollToTopOnChange';
+export { useRefreshWithScrollToTop } from './useRefreshWithScrollToTop';

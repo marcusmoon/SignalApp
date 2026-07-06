@@ -42,7 +42,7 @@ import {
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
-import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
+import { useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -110,6 +110,8 @@ export default function YoutubeScreen() {
   /** 필터 적용 시 `setSelectedHandles` 직후 useEffect load() 중복 방지 */
   const skipLoadOnSelectedHandlesRef = useRef(false);
   const syncedYoutubeSortRef = useRef(ipadNav.youtubeSort);
+
+  const { ref: ytListRef, scrollToTop } = useScrollToTopOnChange([effectiveSort, selectedHandles]);
 
   useTabScreenLoadingRecovery(items, setLoading);
 
@@ -274,7 +276,24 @@ export default function YoutubeScreen() {
     }
   }, [effectiveSort, selectedHandles, curationHandles, locale, applyLoadError]);
 
-  const ytListRef = useRef<FlatList<YoutubeItem>>(null);
+  const onRefreshBase = useCallback(async () => {
+    if (selectedHandles === null) return;
+    setRefreshing(true);
+    try {
+      const catalog = await loadChannelCatalog('bypass');
+      await load({
+        forceRefresh: true,
+        channelHandles: catalog.selected,
+        availableHandles: catalog.handles,
+        errorFallback: 'youtubeErrorRefresh',
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load, loadChannelCatalog, selectedHandles]);
+
+  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
+
   const webFeedLoadMore = useWebFlatListLoadMore({
     hasMore: Boolean(youtubeMeta?.hasMore),
     loadingMore,
@@ -298,22 +317,6 @@ export default function YoutubeScreen() {
     syncedYoutubeSortRef.current = ipadNav.youtubeSort;
     setSort(ipadNav.youtubeSort);
   }, [ipadNav.isAvailable, ipadNav.youtubeSort, useTwoPane]);
-
-  const onRefresh = useCallback(async () => {
-    if (selectedHandles === null) return;
-    setRefreshing(true);
-    try {
-      const catalog = await loadChannelCatalog('bypass');
-      await load({
-        forceRefresh: true,
-        channelHandles: catalog.selected,
-        availableHandles: catalog.handles,
-        errorFallback: 'youtubeErrorRefresh',
-      });
-    } finally {
-      setRefreshing(false);
-    }
-  }, [load, loadChannelCatalog, selectedHandles]);
 
   const handlesEqual = useCallback((a: string[] | null, b: string[] | null) => {
     if (a === null || b === null) return a === b;
@@ -493,7 +496,7 @@ export default function YoutubeScreen() {
         ) : null}
 
         <WebWheelFlatList
-          ref={ytListRef}
+          ref={ytListRef as never}
           data={showScrollLoading ? [] : items}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (

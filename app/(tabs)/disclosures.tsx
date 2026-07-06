@@ -35,6 +35,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
+import { useRefreshWithScrollToTop, useScrollToTopOnChange } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTabPressCycleSegment } from '@/hooks/useTabPressCycleSegment';
 import { fetchSignalDisclosures } from '@/integrations/signal-api/disclosures';
@@ -125,6 +126,8 @@ export default function DisclosuresScreen() {
   const loadSeqRef = useRef(0);
   digestItemsRef.current = digestItems;
   watchlistRef.current = watchlist;
+
+  const { ref: listRef, scrollToTop } = useScrollToTopOnChange([filter, typeFilter, symbolFilter]);
 
   const currentQuery = useMemo<ListQuery>(
     () => ({ filter, typeFilter, symbolFilter }),
@@ -265,7 +268,7 @@ export default function DisclosuresScreen() {
     }
   }, [items, selectedDisclosureId, useTwoPane]);
 
-  const onRefresh = useCallback(async () => {
+  const onRefreshBase = useCallback(async () => {
     const prevIds = new Set(items.map((item) => item.id));
     setRefreshing(true);
     setRefreshNotice(null);
@@ -291,6 +294,8 @@ export default function DisclosuresScreen() {
       }
     }
   }, [currentQuery, items, loadDigests, queryDisclosureList, t]);
+
+  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
 
   const onPickFilter = useCallback(
     (key: FilterKey) => {
@@ -530,6 +535,7 @@ export default function DisclosuresScreen() {
         ) : (
           <View style={useTwoPane ? styles.wideBody : styles.compactBody}>
             <WebWheelFlatList
+              ref={listRef as never}
               data={items}
               keyExtractor={(item) => item.id}
               style={[styles.list, useTwoPane && styles.wideList]}

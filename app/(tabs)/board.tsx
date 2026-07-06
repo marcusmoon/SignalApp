@@ -34,7 +34,7 @@ import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_B
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
-import { useResetRefreshingOnTabBlur } from '@/hooks';
+import { useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { fetchSignalCommunity } from '@/integrations/signal-api/community';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
@@ -69,6 +69,7 @@ export default function BoardScreen() {
   const { useTwoPane } = useResponsiveLayout();
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const [source, setSource] = useState<CommunitySourceFilter>(COMMUNITY_SOURCE_ALL);
+  const { ref: listRef, scrollToTop } = useScrollToTopOnChange([source]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
@@ -134,10 +135,12 @@ export default function BoardScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onRefresh = useCallback(() => {
+  const onRefreshBase = useCallback(() => {
     setRefreshing(true);
     void load({ refresh: true });
   }, [load]);
+
+  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
 
   const onEndReached = useCallback(() => {
     void load({ loadMore: true });
@@ -232,6 +235,7 @@ export default function BoardScreen() {
           </View>
         ) : (
           <WebWheelFlatList
+            ref={listRef as never}
             style={styles.list}
             contentContainerStyle={{ paddingBottom: listBottomPad, paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP }}
             data={items}

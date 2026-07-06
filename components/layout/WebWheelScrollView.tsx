@@ -32,10 +32,32 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
       onTouchEnd: webRefreshHandlers.onTouchEnd,
       onWheel: webRefreshHandlers.onWheel,
     };
+    const setWebRef = (instance: View | null) => {
+      localRef.current = instance as never;
+      const node = (instance as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
+        ?.getScrollableNode?.() ?? null;
+      const api = node
+        ? ({
+            getScrollableNode: () => node,
+            scrollToOffset: ({ offset, animated }: { offset: number; animated?: boolean }) => {
+              node.scrollTo({ top: offset, behavior: animated ? 'smooth' : 'auto' });
+            },
+            scrollTo: ({ y, animated }: { y?: number; animated?: boolean }) => {
+              node.scrollTo({ top: y ?? 0, behavior: animated ? 'smooth' : 'auto' });
+            },
+          } as unknown as ScrollView)
+        : null;
+
+      if (typeof forwardedRef === 'function') {
+        forwardedRef(api);
+      } else if (forwardedRef) {
+        forwardedRef.current = api;
+      }
+    };
     return (
       <View
         {...(rest as object)}
-        ref={localRef as never}
+        ref={setWebRef}
         {...(webEventProps as Record<string, unknown>)}
         style={[webViewportStyle, { backgroundColor }, style]}>
         <View

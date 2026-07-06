@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RectButton } from 'react-native-gesture-handler';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
@@ -13,6 +13,7 @@ import {
   SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
   SCREEN_FIXED_HEADER_PADDING_TOP,
   SCREEN_LIST_CONTENT_PADDING_TOP,
+  stackNewContentChipBottom,
   stackScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
@@ -20,11 +21,12 @@ import { webShellBackground } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
-import { loadAlertsFromServer, markAlertsSeen } from '@/services/alertsUnreadPreference';
+import { checkAlertsHasUnread, loadAlertsFromServer, markAlertsSeen } from '@/services/alertsUnreadPreference';
 import type { StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
 import { loadAppAuthSession, getSessionAccessToken, type StoredAppAuthSession } from '@/services/appAuthSession';
@@ -48,6 +50,7 @@ export default function AlertsScreen() {
   const [authSession, setAuthSession] = useState<StoredAppAuthSession | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [newContentAvailable, setNewContentAvailable] = useState(false);
   const [filter, setFilter] = useState<AlertsFilter>('all');
   const { ref: listRef } = useScrollToTopOnChange([filter]);
   useResetRefreshingOnTabBlur(setRefreshing);
@@ -71,16 +74,39 @@ export default function AlertsScreen() {
   useFocusEffect(
     useCallback(() => {
       void (async () => {
+        setNewContentAvailable(false);
         await reload();
         await markAlertsSeen();
       })();
     }, [reload]),
   );
 
+  /** 알림함 포커스 중 새 알림 도착 시 chip (탭 배지는 suppress로 숨김) */
+  useEffect(() => {
+    const access = getSessionAccessToken(authSession);
+    if (!isFocused || !access || !hasSignalApi()) {
+      setNewContentAvailable(false);
+      return;
+    }
+    const POLL_MS = 3 * 60 * 1000;
+    const poll = async () => {
+      try {
+        const hasUnread = await checkAlertsHasUnread();
+        if (hasUnread) setNewContentAvailable(true);
+      } catch {
+        /* ignore polling errors */
+      }
+    };
+    const id = setInterval(() => void poll(), POLL_MS);
+    return () => clearInterval(id);
+  }, [authSession, isFocused]);
+
   const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
+    setNewContentAvailable(false);
     try {
       await reload(filter, true);
+      await markAlertsSeen();
     } finally {
       setRefreshing(false);
     }
@@ -262,6 +288,7 @@ export default function AlertsScreen() {
   );
 
   const bottomPad = stackScreenScrollBottomPadding(insets.bottom);
+  const newContentChipBottom = stackNewContentChipBottom(insets.bottom);
 
   if (!authChecked) {
     return (
@@ -326,6 +353,16 @@ export default function AlertsScreen() {
           windowSize={7}
         />
       </View>
+
+      {isFocused ? (
+        <FeedNewContentChip
+          visible={newContentAvailable}
+          refreshing={refreshing}
+          message={t('feedNewContentAvailable')}
+          onPress={() => void onRefresh()}
+          bottom={newContentChipBottom}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

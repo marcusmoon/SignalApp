@@ -76,3 +76,11 @@ export function feedNewContentChipBottom(
   }
   return fabStackBottom(tabBarHeight, safeAreaBottom);
 }
+
+/** 스택 화면(알림함 등) chip bottom — 하단 safe area 위 */
+export function stackNewContentChipBottom(
+  safeAreaBottom: number,
+  offset = SCREEN_FAB_ABOVE_TAB_OFFSET,
+): number {
+  return safeAreaBottom + offset;
+}

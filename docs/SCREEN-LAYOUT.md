@@ -79,11 +79,11 @@ SafeAreaView edges={['top']}
 | 항목 | 규칙 |
 |---|---|
 | 표시 | `newContentAvailable && !refreshing && 탭 포커스` |
-| 위치 | `feedNewContentChipBottom(useTwoPane, tabBarHeight, insets.bottom)` — 탭바(또는 wide 하단) 바로 위, 가로 중앙 |
+| 위치 | `feedNewContentChipBottom()` (탭) · `stackNewContentChipBottom()` (스택 알림함) |
 | 탭 | `onRefresh()` → 리스트 + 고정 다이제스트 함께 `signalCacheMode(true)` |
 | 상단 prompt | chip으로 대체. 갱신 완료 notice(`FeedUpdateBanner` notice)만 `topFixed`에 유지 |
 
-적용: **뉴스**, **공시**, **시장(시그널)**.
+적용: **뉴스**, **공시**, **시장(시그널)**, **알림함**.
 
 ### 고정 다이제스트 (뉴스 `DigestPager`, 공시 `DisclosureDigestSection`)
 
@@ -94,6 +94,8 @@ SafeAreaView edges={['top']}
 | 백그라운드 폴링 | digest **갱신 안 함** — chip만 표시 |
 
 별도 digest-only 새로고침 UI는 두지 않는다. chip/PTR이 리스트와 digest를 한 번에 맞춘다.
+
+글로벌 **탭 배지**(`FeedUnreadBadgesContext`)는 같은 4영역(뉴스·시장·공시·알림)을 폴링하며, 해당 탭/화면 포커스 중에는 배지를 숨기고 **chip**으로 대체한다.
 
 ## 하단 스크롤 패딩
 
@@ -126,8 +128,11 @@ paddingBottom: SCREEN_WIDE_SCROLL_BOTTOM_BASE;
 // FAB
 bottom: fabStackBottom(tabBarHeight, insets.bottom);
 
-// 새 소식 chip
+// 새 소식 chip (탭 화면)
 bottom: feedNewContentChipBottom(useTwoPane, tabBarHeight, insets.bottom);
+
+// 새 소식 chip (스택 — 알림함)
+bottom: stackNewContentChipBottom(insets.bottom);
 ```
 
 `tabBarHeight`는 `useBottomTabBarHeight()`, inset은 `useSafeAreaInsets().bottom`.

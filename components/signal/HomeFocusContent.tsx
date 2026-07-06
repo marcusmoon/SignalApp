@@ -3,6 +3,7 @@ import { type Href, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Pressable,
+  Platform,
   StyleSheet,
   Text,
   View,
@@ -36,7 +37,11 @@ import { useQuoteChangeColors } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
 import {
+  SCREEN_FIXED_HEADER_PADDING_BOTTOM,
+  SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
   SCREEN_HEADER_CONTENT_GAP,
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/screenLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
@@ -768,42 +773,48 @@ export function HomeFocusContent({
 
   return (
     <>
-    <WebWheelScrollView
-      style={styles.scroll}
-      contentContainerStyle={[
-        styles.content,
+    <View
+      style={[
+        styles.root,
         contentMaxWidth ? { maxWidth: contentMaxWidth, alignSelf: 'center', width: '100%' } : null,
-        { paddingBottom: scrollContentPaddingBottom },
-      ]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
-      {headerAccessory}
-      <SignalDateNavigator
-        label={selectedDateLabel}
-        previousA11y={t('insightDatePrevious')}
-        nextA11y={t('insightDateNext')}
-        labelA11y={t('insightOpenCalendar')}
-        todayLabel={t('insightCalendarToday')}
-        onPrevious={() => changeSelectedYmd(shiftYmd(selectedYmd, -1))}
-        onNext={() => changeSelectedYmd(shiftYmd(selectedYmd, 1))}
-        onPressLabel={openDatePicker}
-        onToday={() => changeSelectedYmd(todayYmd)}
-        showToday={!selectedIsToday}
-        nextDisabled={selectedIsToday}
-      />
+      ]}>
+      <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
+        {headerAccessory}
+        <SignalDateNavigator
+          label={selectedDateLabel}
+          previousA11y={t('insightDatePrevious')}
+          nextA11y={t('insightDateNext')}
+          labelA11y={t('insightOpenCalendar')}
+          todayLabel={t('insightCalendarToday')}
+          onPrevious={() => changeSelectedYmd(shiftYmd(selectedYmd, -1))}
+          onNext={() => changeSelectedYmd(shiftYmd(selectedYmd, 1))}
+          onPressLabel={openDatePicker}
+          onToday={() => changeSelectedYmd(todayYmd)}
+          showToday={!selectedIsToday}
+          nextDisabled={selectedIsToday}
+        />
+      </View>
 
-      {error ? (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
+      <WebWheelScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: scrollContentPaddingBottom },
+        ]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
 
-      {loading ? (
-        <View style={styles.loadingBox}>
-          <SignalLoadingIndicator message={t('commonLoading')} />
-        </View>
-      ) : (
-        <>
+        {loading ? (
+          <View style={styles.loadingBox}>
+            <SignalLoadingIndicator message={t('commonLoading')} />
+          </View>
+        ) : (
+          <>
           <View style={styles.heroStack}>
             {todayBriefing ? (
               <View style={styles.heroBlock}>
@@ -967,7 +978,8 @@ export function HomeFocusContent({
           </View>
         </>
       )}
-    </WebWheelScrollView>
+      </WebWheelScrollView>
+    </View>
     {datePickerSheet}
     </>
   );
@@ -979,14 +991,34 @@ function makeStyles(
   ft: FeedContentTypography,
 ) {
   return StyleSheet.create({
+    root: {
+      flex: 1,
+      minHeight: 0,
+    },
+    topFixed: {
+      flexShrink: 0,
+      zIndex: 2,
+      elevation: Platform.OS === 'android' ? 2 : 0,
+      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+      paddingTop: SCREEN_HEADER_CONTENT_GAP,
+      paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
+      backgroundColor: webShellBackground(theme.bg),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    topFixedWide: {
+      paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
+    },
     scroll: {
       ...webScrollViewportStyle,
+      flex: 1,
+      minHeight: 0,
       backgroundColor: webShellBackground(theme.bg),
     },
     content: {
       flexGrow: 1,
       paddingHorizontal: 16,
-      paddingTop: SCREEN_HEADER_CONTENT_GAP,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
       gap: 24,
     },
     errorBox: {

@@ -2,11 +2,15 @@ import type { RefObject } from 'react';
 import { InteractionManager, Platform } from 'react-native';
 
 export type ScrollToTopTarget = {
-  getScrollableNode?: () => HTMLElement | null;
+  getScrollableNode?: () => unknown;
   scrollToOffset?: (opts: { offset: number; animated?: boolean }) => void;
   scrollTo?: (opts: { x?: number; y?: number; animated?: boolean }) => void;
   scrollToIndex?: (opts: { index: number; animated?: boolean; viewOffset?: number }) => void;
 } | null;
+
+function isDomScrollNode(node: unknown): node is HTMLElement {
+  return typeof node === 'object' && node !== null && 'scrollTop' in node;
+}
 
 function scrollDomNode(node: HTMLElement, offset: number, animated: boolean) {
   if (animated) {
@@ -19,6 +23,8 @@ function scrollDomNode(node: HTMLElement, offset: number, animated: boolean) {
 function scrollInstanceOnce(instance: NonNullable<ScrollToTopTarget>, animated: boolean) {
   if (typeof instance.scrollToOffset === 'function') {
     instance.scrollToOffset({ offset: 0, animated });
+  } else if (typeof instance.scrollTo === 'function') {
+    instance.scrollTo({ y: 0, animated });
   }
 
   if (typeof instance.scrollToIndex === 'function') {
@@ -29,19 +35,20 @@ function scrollInstanceOnce(instance: NonNullable<ScrollToTopTarget>, animated: 
     }
   }
 
-  if (typeof instance.scrollTo === 'function') {
-    instance.scrollTo({ y: 0, animated });
-  }
+  if (Platform.OS !== 'web') return;
 
   const node = instance.getScrollableNode?.();
-  if (node) scrollDomNode(node, 0, animated);
+  if (isDomScrollNode(node)) scrollDomNode(node, 0, animated);
 }
 
 /** Lazy web scroll API: resolves the DOM node when scroll is invoked, not only at ref attach. */
 export function createLazyWebScrollApi(
-  getViewRef: () => { getScrollableNode?: () => HTMLElement | null } | null,
+  getViewRef: () => { getScrollableNode?: () => unknown } | null,
 ): NonNullable<ScrollToTopTarget> {
-  const resolveNode = () => getViewRef()?.getScrollableNode?.() ?? null;
+  const resolveNode = () => {
+    const node = getViewRef()?.getScrollableNode?.() ?? null;
+    return isDomScrollNode(node) ? node : null;
+  };
   return {
     getScrollableNode: resolveNode,
     scrollToOffset: ({ offset, animated = false }) => {

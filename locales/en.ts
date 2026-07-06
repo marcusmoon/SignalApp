@@ -544,6 +544,7 @@ export const en = {
   alertsTypeTodayBriefing: 'Market wrap',
   alertsTypeMarketBriefing: 'Market briefing',
   alertsTypeNewsDigest: 'News flow',
+  alertsTypeDisclosureDigest: 'Disclosure flow',
   alertsTypeMarketAlert: 'Market alert',
   alertsTypeEarnings: 'Earnings',
   alertsTypeAppUpdate: 'Update',

@@ -544,6 +544,7 @@ export const ja = {
   alertsTypeTodayBriefing: '引けブリーフィング',
   alertsTypeMarketBriefing: '市場ブリーフィング',
   alertsTypeNewsDigest: 'ニュースフロー',
+  alertsTypeDisclosureDigest: '開示フロー',
   alertsTypeMarketAlert: '市場アラート',
   alertsTypeEarnings: '決算',
   alertsTypeAppUpdate: 'アップデート',

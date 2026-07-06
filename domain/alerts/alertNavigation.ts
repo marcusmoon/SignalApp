@@ -130,6 +130,26 @@ function enrichNewsIssuesTarget(
   return { pathname: '/news-issues', params };
 }
 
+function enrichDisclosureFlowTarget(
+  target: AlertNavigationTarget,
+  item: StoredNotification,
+): AlertNavigationTarget {
+  const payload = notificationPayload(item);
+  const params = { ...(target.params || {}) };
+  if (!isYmd(params.date || '')) {
+    const date = payloadDate(payload, item.receivedAt);
+    if (date) params.date = date;
+  }
+  if (!cleanText(params.market)) {
+    params.market = cleanText(payload.market) || 'us';
+  }
+  if (!cleanText(params.digestId)) {
+    const digestId = cleanText(payload.digestId) || cleanText(item.sourceId);
+    if (digestId) params.digestId = digestId;
+  }
+  return { pathname: '/disclosure-flow', params };
+}
+
 function enrichTodayBriefingTarget(
   target: AlertNavigationTarget,
   item: StoredNotification,
@@ -170,6 +190,7 @@ function enrichTarget(item: StoredNotification, target: AlertNavigationTarget): 
     return enrichTodayBriefingTarget({ pathname: '/today-briefing' }, item);
   }
   if (pathname === '/news-issues') return enrichNewsIssuesTarget({ ...target, pathname }, item);
+  if (pathname === '/disclosure-flow') return enrichDisclosureFlowTarget({ ...target, pathname }, item);
   if (pathname === '/today-briefing') return enrichTodayBriefingTarget({ ...target, pathname }, item);
   if (pathname === '/signal' || pathname === '/(tabs)/signal') return enrichSignalTarget(target, item);
   return target;
@@ -184,6 +205,9 @@ function fallbackTargetFromNotification(item: StoredNotification): AlertNavigati
   }
   if (type === 'news_digest' || source === 'news_digest') {
     return enrichNewsIssuesTarget({ pathname: '/news-issues' }, item);
+  }
+  if (type === 'disclosure_digest' || source === 'disclosure_digest') {
+    return enrichDisclosureFlowTarget({ pathname: '/disclosure-flow' }, item);
   }
   if (
     type === 'market_briefing' ||

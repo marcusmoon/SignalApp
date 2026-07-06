@@ -6,6 +6,7 @@ const NOTIFICATION_TYPE_OPTIONS = [
   'market_briefing',
   'today_briefing',
   'news_digest',
+  'disclosure_digest',
 ];
 
 const NOTIFICATION_CATEGORY_OPTIONS = ['all', 'high', 'signal', 'system'];

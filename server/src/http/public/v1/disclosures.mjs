@@ -1,6 +1,16 @@
-import { queryPublicDisclosureById, queryPublicDisclosures, queryPublicDisclosureDigests, upsertCollectionRows } from '../../../db.mjs';
-import { json, readBody } from '../../shared.mjs';
+import {
+  queryPublicDisclosureById,
+  queryPublicDisclosures,
+  queryPublicDisclosureDigests,
+  upsertCollectionRows,
+  upsertNotificationItem,
+} from '../../../db.mjs';
+import { NOTIFICATION_TYPES } from '../../../notifications/notificationItem.mjs';
+import { resolveDigestItemNotifyInbox, resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
+import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
+import { utcDateKeyFromInstant } from '../../../time/utc.mjs';
+import { json, readBody } from '../../shared.mjs';
 
 function cleanText(value) {
   return String(value || '').trim();
@@ -12,6 +22,37 @@ function hasIngestAccess(req) {
   const header = cleanText(req.headers['x-signal-automation-token']);
   const bearer = cleanText(String(req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
   return header === configured || bearer === configured;
+}
+
+async function publishDigestNotification(item, queuePush) {
+  const market = cleanText(item?.market) || 'us';
+  const date =
+    cleanText(item?.generatedDate).slice(0, 10) ||
+    utcDateKeyFromInstant(item?.generatedAt);
+  const digestId = cleanText(item?.id);
+  const params = new URLSearchParams({ market });
+  if (date) params.set('date', date);
+  if (digestId) params.set('digestId', digestId);
+  const notification = buildPublishedNotification(
+    {
+      id: `notification:push:disclosure_digest:${item.id}`,
+      type: NOTIFICATION_TYPES.disclosureDigest,
+      title: item.pushTitle || item.title,
+      body: item.pushBody || item.summary,
+      channel: 'push',
+      priority: 'normal',
+      targetType: 'all',
+      sourceType: 'disclosure_digest',
+      sourceId: item.id,
+      deepLink: `/disclosure-flow?${params.toString()}`,
+      reason: `disclosure digest updated: ${market}`,
+      scheduledAt: item.generatedAt,
+      payload: { digestId: item.id, market, ...(date ? { generatedDate: date } : {}) },
+    },
+    { queuePush },
+  );
+  if (!notification) return null;
+  return upsertNotificationItem(notification);
 }
 
 export async function handlePublicDisclosureRoutes({ req, res, url, pathname }) {
@@ -26,6 +67,8 @@ export async function handlePublicDisclosureRoutes({ req, res, url, pathname }) 
       json(res, 400, { error: 'ITEMS_REQUIRED' });
       return true;
     }
+    const sendPush = resolveIngestSendPush(body);
+    const notifyInbox = resolveIngestNotifyInbox(body);
     const now = new Date().toISOString();
     const items = rawItems.map((item, index) => ({
       ...item,
@@ -33,7 +76,24 @@ export async function handlePublicDisclosureRoutes({ req, res, url, pathname }) 
       updatedAt: now,
     }));
     await upsertCollectionRows('disclosureDigestItems', items);
-    json(res, 200, { ok: true, count: items.length });
+    let inboxPublished = 0;
+    let pushQueued = 0;
+    for (const item of items) {
+      if (!resolveDigestItemNotifyInbox(body, item)) continue;
+      const saved = await publishDigestNotification(item, sendPush);
+      if (saved) {
+        inboxPublished += 1;
+        if (sendPush) pushQueued += 1;
+      }
+    }
+    json(res, 200, {
+      ok: true,
+      count: items.length,
+      notifyInbox,
+      sendPush,
+      inboxPublished,
+      pushQueued,
+    });
     return true;
   }
 

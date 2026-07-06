@@ -44,6 +44,8 @@
 
 뉴스 다이제스트는 요청 `notifyInbox`(기본 `true`)로 알림함 적재를 제어한다. 항목별 제외는 `notifyInbox: false`만 사용한다.
 
+공시 다이제스트(`/v1/disclosure-digests/ingest`)도 동일하게 `notifyInbox`·`sendPush`를 지원한다.
+
 ## 링크 생성
 
 **Lazy (목록 조회):** 알림 API 호출 시 노출 가능한 `notification_items` 중 사용자 inbox에 없는 row를 연결한다. 새 알림은 먼저 넣고, 50건을 넘으면 `delivered_at`이 오래된 row부터 삭제한다. 같은 digest id로 재 ingest되면 `updated_at` 기준으로 다시 올린다.

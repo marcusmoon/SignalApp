@@ -8,6 +8,7 @@ export const NOTIFICATION_TYPES = {
   marketBriefing: 'market_briefing',
   todayBriefing: 'today_briefing',
   newsDigest: 'news_digest',
+  disclosureDigest: 'disclosure_digest',
 };
 
 const SEND_STATE_STATUSES = new Set(['sending', 'sent', 'failed', 'cancelled', 'skipped']);

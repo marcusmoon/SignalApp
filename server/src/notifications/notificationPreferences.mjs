@@ -25,7 +25,9 @@ export function shouldDeliverPushToUser(type, sourceType, prefs) {
     normalizedType === 'today_briefing' ||
     normalizedSource === 'today_briefing' ||
     normalizedType === 'news_digest' ||
-    normalizedSource === 'news_digest';
+    normalizedSource === 'news_digest' ||
+    normalizedType === 'disclosure_digest' ||
+    normalizedSource === 'disclosure_digest';
   if (isBriefingPush) return normalized.briefingPushEnabled;
 
   return true;

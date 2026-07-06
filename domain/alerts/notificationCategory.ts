@@ -9,6 +9,7 @@ export type AlertNotificationTypeKey =
   | 'today_briefing'
   | 'market_briefing'
   | 'news_digest'
+  | 'disclosure_digest'
   | 'market_alert'
   | 'earnings_reminder'
   | 'app_update'
@@ -21,6 +22,7 @@ const ALERT_TYPE_MESSAGE_IDS: Record<AlertNotificationTypeKey, MessageId> = {
   today_briefing: 'alertsTypeTodayBriefing',
   market_briefing: 'alertsTypeMarketBriefing',
   news_digest: 'alertsTypeNewsDigest',
+  disclosure_digest: 'alertsTypeDisclosureDigest',
   market_alert: 'alertsTypeMarketAlert',
   earnings_reminder: 'alertsTypeEarnings',
   app_update: 'alertsTypeAppUpdate',
@@ -34,11 +36,12 @@ const SIGNAL_TYPES = new Set([
   'market_briefing',
   'today_briefing',
   'news_digest',
+  'disclosure_digest',
   'market_alert',
   'earnings_reminder',
 ]);
 
-const SIGNAL_SOURCES = new Set(['market_briefing', 'today_briefing', 'news_digest']);
+const SIGNAL_SOURCES = new Set(['market_briefing', 'today_briefing', 'news_digest', 'disclosure_digest']);
 
 const SYSTEM_TYPES = new Set(['service_notice', 'app_update']);
 
@@ -77,6 +80,7 @@ export function resolveAlertNotificationTypeKey(item: StoredNotification): Alert
   if (type === 'today_briefing' || source === 'today_briefing') return 'today_briefing';
   if (type === 'market_briefing' || source === 'market_briefing') return 'market_briefing';
   if (type === 'news_digest' || source === 'news_digest') return 'news_digest';
+  if (type === 'disclosure_digest' || source === 'disclosure_digest') return 'disclosure_digest';
   if (type === 'market_alert') return 'market_alert';
   if (type === 'earnings_reminder') return 'earnings_reminder';
   if (type === 'app_update' || source === 'app_update') return 'app_update';

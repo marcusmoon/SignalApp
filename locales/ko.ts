@@ -540,6 +540,7 @@ export const ko = {
   alertsTypeTodayBriefing: '마감 브리핑',
   alertsTypeMarketBriefing: '시장 브리핑',
   alertsTypeNewsDigest: '뉴스 이슈',
+  alertsTypeDisclosureDigest: '공시 흐름',
   alertsTypeMarketAlert: '시장 알림',
   alertsTypeEarnings: '실적 알림',
   alertsTypeAppUpdate: '업데이트',

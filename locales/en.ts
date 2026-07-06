@@ -131,7 +131,6 @@ export const en = {
   disclosuresDigestSummary: '{{count}} filings · {{symbols}} symbols',
   disclosuresFilterUs: 'US SEC',
   disclosuresFilterKr: 'Korea DART',
-  disclosuresFilterWatch: 'Watchlist',
   disclosuresEmpty: 'No disclosures to show.',
   disclosuresLoadError: 'Could not load disclosures.',
   disclosuresOriginalOpen: 'Open filing',

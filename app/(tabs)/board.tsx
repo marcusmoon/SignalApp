@@ -21,10 +21,8 @@ import {
   SCREEN_LIST_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
-  SCREEN_FIXED_HEADER_PADDING_BOTTOM,
-  SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
-  SCREEN_FIXED_HEADER_PADDING_TOP,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
@@ -271,6 +269,7 @@ export default function BoardScreen() {
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   const segmentTab = getSegmentTabBarStyles(theme, sf);
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     mainColumn: {
@@ -282,17 +281,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     mainColumnWide: {
       ...wideContentFill,
     },
-    topFixed: {
-      flexShrink: 0,
-      zIndex: 2,
-      elevation: Platform.OS === 'android' ? 2 : 0,
-      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
-      paddingTop: SCREEN_FIXED_HEADER_PADDING_TOP,
-      paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
-      backgroundColor: theme.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
+    topFixed: fixedHeader.strip,
     segment: segmentTab.segment,
     segBtn: segmentTab.segBtn,
     segBtnActive: segmentTab.segBtnActive,

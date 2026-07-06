@@ -9,11 +9,7 @@ import {
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
-import {
-  SCREEN_FIXED_HEADER_PADDING_BOTTOM,
-  SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
-  SCREEN_FIXED_HEADER_PADDING_TOP,
-} from '@/constants/screenLayout';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 
 export function makeQuotesStyles(
   theme: AppTheme,
@@ -22,6 +18,7 @@ export function makeQuotesStyles(
   changeColors: { up: string; down: string },
 ) {
   const segmentTab = getSegmentTabBarStyles(theme, sf);
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: theme.bg },
     mainColumn: {
@@ -37,17 +34,7 @@ export function makeQuotesStyles(
       flex: 1,
       paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
     },
-    topFixed: {
-      flexShrink: 0,
-      zIndex: 2,
-      elevation: Platform.OS === 'android' ? 2 : 0,
-      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
-      paddingTop: SCREEN_FIXED_HEADER_PADDING_TOP,
-      paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
-      backgroundColor: theme.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
+    topFixed: fixedHeader.strip,
     list: { ...webScrollViewportStyle },
     listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
     listContentWide: { paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP },

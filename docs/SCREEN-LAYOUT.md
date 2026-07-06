@@ -54,9 +54,9 @@ SafeAreaView edges={['top']}
   SignalFloatingTabBar (layout)
 ```
 
-- **`topFixed` 패턴**: 뉴스·시세·공시·유튜브·게시판 — 세그먼트를 스크롤 밖에 고정.
-- **날짜 바 패턴**: 홈·시장·뉴스 이슈·공시 흐름 — `SignalDateNavigator`를 스크롤 밖 고정 영역(`topFixed` / `dateNavigatorWrap`)에 배치. 홈·시장은 pull-to-refresh 시 날짜 바 고정.
-- **스택 서브탭**: 설정·My info — `getSegmentTabBarStyles` pill 바를 `WebWheelScrollView` 위에 고정 (`settings.tsx` `tabBar`, `account.tsx` 동일).
+- **`topFixed` 패턴**: 뉴스·시세·공시·유튜브·게시판·알림·홈·시장 — `getScreenFixedHeaderStyles()` 스트립(`theme.card` + 하단 구분선)으로 스크롤 밖 고정.
+- **날짜 바 패턴**: 홈·시장 — `SignalDateNavigator`를 `topFixed` 스트립 안에 배치.
+- **스택 서브탭**: 설정·My info — pill 바를 `topFixed` 스트립 안에 배치 (`settings.tsx`, `account.tsx`).
 
 ## 하단 스크롤 패딩
 
@@ -121,7 +121,7 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 1. `useResponsiveLayout()` → `useTwoPane` 분기
 2. Safe Area `edges` 표준 적용
 3. iPhone만 `SignalHeader compact` (wide는 중복 금지)
-4. 고정 UI 있으면 `topFixed` + `SCREEN_FIXED_HEADER_*`
+4. 고정 UI 있으면 `getScreenFixedHeaderStyles()` → `topFixed` + `SCREEN_FIXED_HEADER_*`
 5. 리스트 `paddingTop`: `SCREEN_LIST_CONTENT_PADDING_TOP`
 6. 하단: `tabScreenScrollBottomPadding` / `stackScreenScrollBottomPadding` / `SCREEN_WIDE_SCROLL_BOTTOM_BASE`
 7. 가로: `APP_CONTENT_SIDE_PADDING` (리터럴 `16` 지양)
@@ -129,6 +129,7 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 
 ## 관련 파일
 
+- `constants/screenFixedHeader.ts` — 상단 고정 스트립 스타일 (`getScreenFixedHeaderStyles`)
 - `constants/screenLayout.ts` — 여백 상수·헬퍼
 - `constants/responsiveLayout.ts` — 폭·breakpoint
 - `constants/segmentTabBar.ts` — 세그먼트 pill 스타일 (`getSegmentTabBarStyles`) + screenLayout re-export

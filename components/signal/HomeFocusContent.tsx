@@ -3,7 +3,6 @@ import { type Href, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Pressable,
-  Platform,
   StyleSheet,
   Text,
   View,
@@ -36,12 +35,9 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useQuoteChangeColors } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
-  SCREEN_FIXED_HEADER_PADDING_BOTTOM,
-  SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
-  SCREEN_HEADER_CONTENT_GAP,
   SCREEN_LIST_CONTENT_PADDING_TOP,
-  SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/screenLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
@@ -990,25 +986,14 @@ function makeStyles(
   sf: (n: number) => number,
   ft: FeedContentTypography,
 ) {
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     root: {
       flex: 1,
       minHeight: 0,
     },
-    topFixed: {
-      flexShrink: 0,
-      zIndex: 2,
-      elevation: Platform.OS === 'android' ? 2 : 0,
-      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
-      paddingTop: SCREEN_HEADER_CONTENT_GAP,
-      paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
-      backgroundColor: webShellBackground(theme.bg),
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    topFixedWide: {
-      paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
-    },
+    topFixed: fixedHeader.strip,
+    topFixedWide: fixedHeader.stripWide,
     scroll: {
       ...webScrollViewportStyle,
       flex: 1,

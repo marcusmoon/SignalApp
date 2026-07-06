@@ -27,8 +27,8 @@ import {
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
-  SCREEN_HEADER_CONTENT_GAP,
   SCREEN_WIDE_SCROLL_BOTTOM_BASE,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
@@ -413,22 +413,18 @@ export default function SignalScreen() {
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
 
       <View style={[styles.pageColumn, useTwoPane && styles.pageColumnWide]}>
+      <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
       {newContentAvailable && !refreshing && selectedYmd >= todayYmd ? (
-        <View style={styles.updateBannerWrap}>
-          <FeedUpdateBanner
-            variant="prompt"
-            message={t('feedNewContentAvailable')}
-            onPress={() => void onRefresh()}
-          />
-        </View>
+        <FeedUpdateBanner
+          variant="prompt"
+          message={t('feedNewContentAvailable')}
+          onPress={() => void onRefresh()}
+        />
       ) : null}
       {refreshNotice ? (
-        <View style={styles.updateBannerWrap}>
-          <FeedUpdateBanner variant="notice" message={refreshNotice} />
-        </View>
+        <FeedUpdateBanner variant="notice" message={refreshNotice} />
       ) : null}
 
-      <View style={[styles.dateNavigatorWrap, useTwoPane && styles.dateNavigatorWrapWide]}>
         <SignalDateNavigator
           label={selectedDateLabel}
           previousA11y={t('insightDatePrevious')}
@@ -443,11 +439,9 @@ export default function SignalScreen() {
           nextDisabled={selectedIsToday}
           style={styles.dateNavigator}
         />
-      </View>
 
       {!loading && !useTwoPane ? (
-        <View style={styles.sessionTabsWrap}>
-          <View style={styles.segment}>
+        <View style={styles.segment}>
             {FLAT_TABS.map((tab) => {
               const hasBriefing = briefingByTabKey.has(tab.key);
               const isActive = activeTabKey === tab.key;
@@ -474,9 +468,9 @@ export default function SignalScreen() {
                 </Pressable>
               );
             })}
-          </View>
         </View>
       ) : null}
+      </View>
 
       {loading && marketBriefings.length === 0 ? (
         <View style={styles.center}>
@@ -574,6 +568,7 @@ export default function SignalScreen() {
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   const segmentTab = getSegmentTabBarStyles(theme, sf);
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     pageColumn: {
@@ -585,10 +580,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     pageColumnWide: {
       ...wideContentFill,
     },
-    updateBannerWrap: {
-      width: '100%',
-      paddingHorizontal: 16,
-    },
+    topFixed: fixedHeader.strip,
+    topFixedWide: fixedHeader.stripWide,
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     listLoadingRow: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
     scroll: { ...webScrollViewportStyle },
@@ -600,26 +593,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     contentWide: {
       paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
     },
-    dateNavigatorWrap: {
-      width: '100%',
-      paddingHorizontal: APP_CONTENT_SIDE_PADDING,
-      marginTop: SCREEN_HEADER_CONTENT_GAP,
-      marginBottom: 10,
-    },
-    dateNavigatorWrapWide: {
-      marginTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
-    },
     dateNavigator: {
       width: '100%',
     },
     dateActionBtnPressed: { opacity: 0.86 },
-    sessionTabsWrap: {
-      width: '100%',
-      maxWidth: APP_CONTENT_MAX_WIDTH,
-      alignSelf: 'center',
-      paddingHorizontal: APP_CONTENT_SIDE_PADDING,
-      marginBottom: 12,
-    },
     segment: segmentTab.segment,
     segBtn: segmentTab.segBtn,
     segBtnActive: segmentTab.segBtnActive,

@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native';
 
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import { SCREEN_HEADER_CONTENT_GAP } from '@/constants/screenLayout';
 import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
@@ -9,21 +10,19 @@ import type { AppTheme } from '@/constants/theme';
 export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
   const shellBg = webShellBackground(theme.bg);
   const segmentTab = getSegmentTabBarStyles(theme, sf);
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { flex: 1, minHeight: 0, backgroundColor: shellBg },
     scrollFlex: { ...webScrollViewportStyle, flex: 1, minHeight: 0, backgroundColor: shellBg },
+    topFixed: fixedHeader.strip,
     tabBar: {
       ...segmentTab.segment,
       width: '100%',
-      maxWidth: APP_CONTENT_MAX_WIDTH - 32,
-      alignSelf: 'center',
+      alignSelf: 'stretch',
       flexShrink: 0,
-      marginHorizontal: 16,
-      marginTop: SCREEN_HEADER_CONTENT_GAP,
-      marginBottom: 6,
+      marginBottom: 0,
     },
     tabBarEmbedded: {
-      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH - 32,
       alignSelf: 'stretch',
     },
     tabBtn: {

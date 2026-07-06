@@ -43,6 +43,8 @@
 
 뉴스 다이제스트는 요청에 `notifyInbox`가 없으면 항목별 레거시 `pushCandidate`로 알림함 적재 여부를 판단한다.
 
+시장·오늘의 브리핑 ingest는 **요청 `notifyInbox`만** 알림함을 제어한다. 본문 `pushCandidate`는 콘텐츠 메타데이터이며 알림 적재와 무관하다.
+
 ## 링크 생성
 
 **Lazy (목록 조회):** 알림 API 호출 시 노출 가능한 `notification_items` 중 미연결 row를 insert.

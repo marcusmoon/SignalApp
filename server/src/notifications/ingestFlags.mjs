@@ -20,3 +20,11 @@ export function resolveIngestNotifyInbox(body, item) {
   }
   return true;
 }
+
+/** Briefing ingest: inbox is request-level only (content pushCandidate is metadata). */
+export function resolveBriefingIngestNotifyInbox(body) {
+  if (hasOwnFlag(body, 'notifyInbox')) {
+    return body.notifyInbox !== false;
+  }
+  return true;
+}

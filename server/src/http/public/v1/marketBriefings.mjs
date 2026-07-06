@@ -1,6 +1,6 @@
 import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
 import { NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
-import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
+import { resolveBriefingIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicMarketBriefings } from '../../../db/repositories/marketBriefingsRepository.mjs';
@@ -123,7 +123,7 @@ export async function handlePublicMarketBriefingRoutes({ req, res, url, pathname
       return true;
     }
     await upsertCollectionRows('marketBriefings', [briefing]);
-    const notifyInbox = resolveIngestNotifyInbox(body, briefing);
+    const notifyInbox = resolveBriefingIngestNotifyInbox(body);
     const sendPush = resolveIngestSendPush(body);
     const notification = notifyInbox ? await publishBriefingNotification(briefing, sendPush) : null;
     json(res, 201, {

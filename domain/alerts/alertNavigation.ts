@@ -14,6 +14,7 @@ const SIGNAL_TAB_KEYS = new Set<SignalSessionKey>([
   'kr-morning',
   'kr-lunch',
   'kr-evening',
+  'kr-close',
 ]);
 
 type AlertIpadNav = {
@@ -43,7 +44,6 @@ function isSignalSessionKey(value: string): value is SignalSessionKey {
 function normalizeSignalSessionParam(value: string): SignalSessionKey | null {
   const session = cleanText(value).toLowerCase();
   if (isSignalSessionKey(session)) return session;
-  if (session === 'kr-close') return 'kr-evening';
   if (session === 'us-close') return 'us-overnight';
   return null;
 }
@@ -54,7 +54,8 @@ function marketSessionTabKey(market?: string, session?: string): SignalSessionKe
   if (m === 'us' && s === 'overnight') return 'us-overnight';
   if (m === 'kr' && s === 'morning') return 'kr-morning';
   if (m === 'kr' && s === 'lunch') return 'kr-lunch';
-  if (m === 'kr' && (s === 'evening' || s === 'close')) return 'kr-evening';
+  if (m === 'kr' && s === 'evening') return 'kr-evening';
+  if (m === 'kr' && s === 'close') return 'kr-close';
   if (m === 'us' && s === 'close') return 'us-overnight';
   return null;
 }

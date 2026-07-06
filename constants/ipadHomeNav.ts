@@ -21,7 +21,7 @@ export function homeDigestCategoryIcon(category: HomeDigestCategory): HomeDigest
   return 'globe';
 }
 
-export type SignalSessionKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-evening';
+export type SignalSessionKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-evening' | 'kr-close';
 
 export const HOME_SIGNAL_SESSIONS: ReadonlyArray<{
   key: SignalSessionKey;
@@ -56,6 +56,13 @@ export const HOME_SIGNAL_SESSIONS: ReadonlyArray<{
     market: 'kr',
     session: 'evening',
     labelId: 'briefingSessionEvening',
+    hintId: 'briefingSessionHintEvening',
+  },
+  {
+    key: 'kr-close',
+    market: 'kr',
+    session: 'close',
+    labelId: 'briefingSessionClose',
     hintId: 'briefingSessionHintEvening',
   },
 ];

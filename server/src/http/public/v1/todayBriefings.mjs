@@ -1,6 +1,6 @@
 import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
 import { NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
-import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
+import { resolveBriefingIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicTodayBriefings } from '../../../db/repositories/todayBriefingsRepository.mjs';
@@ -108,7 +108,7 @@ export async function handlePublicTodayBriefingRoutes({ req, res, url, pathname 
       return true;
     }
     await upsertCollectionRows('todayBriefings', [briefing]);
-    const notifyInbox = resolveIngestNotifyInbox(body, briefing);
+    const notifyInbox = resolveBriefingIngestNotifyInbox(body);
     const sendPush = resolveIngestSendPush(body);
     const notification = notifyInbox ? await publishTodayBriefingNotification(briefing, sendPush) : null;
     json(res, 201, {

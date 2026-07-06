@@ -18,8 +18,9 @@
 | `morning` | 장 시작 전 | 장 시작 전 관전 포인트 |
 | `lunch` | 점심 | 오전장 흐름과 오후장 변수 |
 | `evening` | 저녁 | 장 마감 요약과 다음 거래일 체크포인트 |
+| `close` | 마감 | 장 종료 후 마감 브리핑 (`kr` 전용) |
 
-앱 **시그널** 탭 국내 필터(오전/오후/저녁)는 위 `session` 값과 1:1로 대응한다.
+앱 **시그널** 탭 국내 필터(오전/오후/장후/마감)는 위 `session` 값과 1:1로 대응한다.
 
 ## Ingest Endpoint
 
@@ -33,6 +34,8 @@
 |---|---|
 | `notifyInbox` | 알림센터(`notification_items`) 적재 |
 | `sendPush` | 기기 푸시 큐 (`payload.pushDelivery: pending`) |
+
+본문 `pushCandidate`는 콘텐츠 메타데이터이며, 알림함 적재는 요청 `notifyInbox`(기본 `true`)만 따른다.
 
 ## 최소 Payload
 

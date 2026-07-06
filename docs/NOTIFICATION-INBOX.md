@@ -12,7 +12,7 @@
 ## 운영 규칙
 
 - **최대 50건**: 사용자당 inbox row는 `delivered_at` 기준 최신 50개만 유지한다. 초과분은 서버에서 **hard delete** (오래된 것부터).
-- **삭제**: 앱에서 삭제하면 `user_notification_inbox` row를 서버에서 즉시 삭제한다 (soft delete 없음).
+- **삭제**: 앱에서 삭제하면 `deleted_at`으로 숨긴다. row는 남아 lazy link 재적재를 막는다. 목록에는 다시 나오지 않는다.
 - **등록 사용자만**: `app_users.active = true`인 계정만 lazy link·적재 대상이다.
 - **푸시 발송**: `app_user_devices` 활성 토큰 + `app_users.notification_prefs` (`pushEnabled`, `briefingPushEnabled`)를 만족할 때만 Expo/mock sender가 전송한다.
 - **DB**: Flyway `V7__notification_inbox.sql`, `V8__app_user_notification_prefs.sql`.
@@ -22,7 +22,7 @@
 | 레이어 | 역할 |
 |---|---|
 | `notification_items` | 템플릿 (`published`) + 푸시 배달 상태 (`payload.pushDelivery`) |
-| `user_notification_inbox` | 사용자별 `read_at`, `delivered_at` (삭제 시 row 제거) |
+| `user_notification_inbox` | 사용자별 `read_at`, `deleted_at`, `delivered_at` |
 | `app_users.notification_prefs` | 서버 푸시 필터 (`pushEnabled`, `briefingPushEnabled`) |
 | 앱 `app/alerts.tsx` | `GET /v1/notifications` 단일 소스 |
 
@@ -70,7 +70,7 @@ AND status IN ('published', 'sent', 'skipped', 'queued')
 | PATCH | `/v1/notifications/prefs` | `{ pushEnabled?, briefingPushEnabled? }` |
 | GET | `/v1/notifications/unread-count` | 미읽음 건수 |
 | PATCH | `/v1/notifications/read` | `{ "ids": [] }` 또는 `{ "all": true }` |
-| DELETE | `/v1/notifications` | 선택·전체 삭제 (서버 row hard delete) |
+| DELETE | `/v1/notifications` | 선택·전체 삭제 (`deleted_at` 설정, lazy link 재적재 방지) |
 | POST | `/v1/notifications/deliver` | `{ "notificationId": "..." }` |
 | POST | `/v1/notifications/test` | push 테스트 (`published` + `pushDelivery: pending`) |
 
@@ -95,7 +95,7 @@ AND status IN ('published', 'sent', 'skipped', 'queued')
 
 ## 시간 기준
 
-`delivered_at`, `read_at`, `scheduled_at`, `expires_at`은 UTC ISO. [DATE-TIME.md](./DATE-TIME.md) 준수.
+`delivered_at`, `read_at`, `deleted_at`, `scheduled_at`, `expires_at`은 UTC ISO. [DATE-TIME.md](./DATE-TIME.md) 준수.
 
 ## 관련 파일
 

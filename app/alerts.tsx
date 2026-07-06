@@ -25,6 +25,7 @@ import type { StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
 import { loadAppAuthSession, getSessionAccessToken, type StoredAppAuthSession } from '@/services/appAuthSession';
 import { deleteSignalNotifications } from '@/integrations/signal-api/notifications';
+import { clearSignalNotificationsCache } from '@/integrations/signal-api/cache/notificationsCache';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { formatRelativeTime } from '@/utils/date';
 
@@ -114,6 +115,7 @@ export default function AlertsScreen() {
     const access = getSessionAccessToken(authSession);
     if (access && hasSignalApi()) {
       await deleteSignalNotifications(access, { ids: [id] }).catch(() => {});
+      clearSignalNotificationsCache();
     }
   }, [authSession]);
 
@@ -129,6 +131,7 @@ export default function AlertsScreen() {
           setItems([]);
           if (access && hasSignalApi()) {
             void deleteSignalNotifications(access, { all: true }).catch(() => {});
+            clearSignalNotificationsCache();
           }
         },
       },

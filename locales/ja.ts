@@ -748,6 +748,8 @@ export const ja = {
   quotesScreenTitle: 'リアルタイム相場',
   quotesPlaceholderTicker: 'ティッカー（例: AAPL）',
   quotesAddButton: '追加',
+  quotesAddWatchTitle: 'ウォッチに追加',
+  quotesFabAddA11y: 'ウォッチに追加',
   quotesErrorNoPrice: '価格なし',
   quotesErrorLoadCoin: '仮想通貨の相場を読み込めませんでした。',
   quotesErrorLoadQuotes: '相場を読み込めませんでした。',
@@ -756,7 +758,7 @@ export const ja = {
   quotesAlertDupWatchlist: 'すでにウォッチにあります。',
   quotesAlertTickerFormatBody: '米国ティッカーまたは韓国株の6桁コードを入力してください。',
   quotesDataUnavailable: 'データなし',
-  quotesEmptyWatch: 'ウォッチがありません。ティッカーを追加してください。',
+  quotesEmptyWatch: 'ウォッチがありません。+ ボタンでティッカーを追加してください。',
   quotesEmptyGeneric: '表示する相場がありません。',
 
   briefingHubEmptyTitle: 'まだ市場ブリーフィングが生成されていません。',

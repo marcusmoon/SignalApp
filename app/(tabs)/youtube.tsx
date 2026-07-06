@@ -25,7 +25,6 @@ import {
   selectionFilterRowStyles,
 } from '@/components/signal/SelectionFilterSheet';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
-import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
   getSegmentTabBarStyles,
@@ -38,7 +37,7 @@ import {
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
-import { useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabScreenLoadingRecovery } from '@/hooks';
+import { useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -107,7 +106,7 @@ export default function YoutubeScreen() {
   const skipLoadOnSelectedHandlesRef = useRef(false);
   const syncedYoutubeSortRef = useRef(ipadNav.youtubeSort);
 
-  const { ref: ytListRef, scrollToTop } = useScrollToTopOnChange([effectiveSort, selectedHandles]);
+  const { ref: ytListRef } = useScrollToTopOnChange([effectiveSort, selectedHandles]);
 
   useTabScreenLoadingRecovery(items, setLoading);
 
@@ -288,7 +287,7 @@ export default function YoutubeScreen() {
     }
   }, [load, loadChannelCatalog, selectedHandles]);
 
-  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
+  const onRefresh = onRefreshBase;
 
   const webFeedLoadMore = useWebFlatListLoadMore({
     hasMore: Boolean(youtubeMeta?.hasMore),
@@ -401,72 +400,12 @@ export default function YoutubeScreen() {
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
 
-  const youtubeListHeader = useMemo(
-    () => (
-      <>
-        <View style={styles.channelFilterRow}>
-          <Pressable
-            onPress={openChannelFilter}
-            disabled={!selectedHandles || !curationHandles}
-            style={[
-              styles.channelFilterChip,
-              !selectedHandles || !curationHandles ? styles.channelFilterChipDisabled : null,
-              channelFilterActive && styles.channelFilterChipActive,
-            ]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
-            <FontAwesome name="filter" size={11} color={channelFilterActive ? theme.green : theme.textMuted} />
-            <Text style={[styles.channelFilterText, channelFilterActive && styles.channelFilterTextActive]}>
-              {t('youtubeFilterChannel')}
-            </Text>
-          </Pressable>
-        </View>
-        {error ? (
-          <View style={styles.errBox}>
-            <Text style={styles.errText}>{error}</Text>
-            {isQuotaError ? (
-              <>
-                <Text style={styles.errSub}>{quotaResetHintLine}</Text>
-                <Pressable
-                  onPress={() => void Linking.openURL(YOUTUBE_DATA_API_QUOTAS_CONSOLE_URL)}
-                  style={({ pressed }) => [styles.errLinkWrap, pressed && { opacity: 0.85 }]}
-                  accessibilityRole="link"
-                  accessibilityLabel={t('youtubeErrorQuotaConsoleLink')}>
-                  <Text style={styles.errLink}>{t('youtubeErrorQuotaConsoleLink')}</Text>
-                </Pressable>
-              </>
-            ) : null}
-          </View>
-        ) : null}
-        {showScrollLoading ? (
-          <View style={SCROLL_LOADING_BODY_STYLE}>
-            <SignalLoadingIndicator message={t('commonLoading')} />
-          </View>
-        ) : null}
-      </>
-    ),
-    [
-      channelFilterActive,
-      curationHandles,
-      error,
-      isQuotaError,
-      openChannelFilter,
-      quotaResetHintLine,
-      selectedHandles,
-      showScrollLoading,
-      styles,
-      t,
-      theme.green,
-      theme.textMuted,
-    ],
-  );
-
   const channelRowStyles = useMemo(() => selectionFilterRowStyles(theme, scaleFont), [theme, scaleFont]);
 
   const youtubeListPanel = (
     <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {!useTwoPane ? (
-          <View style={styles.topFixed}>
+        <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
+          {!useTwoPane ? (
             <View style={styles.segment}>
               <Pressable
                 onPress={applyLatestSortFilter}
@@ -487,12 +426,52 @@ export default function YoutubeScreen() {
                 </Text>
               </Pressable>
             </View>
+          ) : null}
+          <View style={styles.channelFilterRow}>
+            <Pressable
+              onPress={openChannelFilter}
+              disabled={!selectedHandles || !curationHandles}
+              style={[
+                styles.channelFilterChip,
+                !selectedHandles || !curationHandles ? styles.channelFilterChipDisabled : null,
+                channelFilterActive && styles.channelFilterChipActive,
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
+              <FontAwesome name="filter" size={11} color={channelFilterActive ? theme.green : theme.textMuted} />
+              <Text style={[styles.channelFilterText, channelFilterActive && styles.channelFilterTextActive]}>
+                {t('youtubeFilterChannel')}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {error ? (
+          <View style={styles.errBox}>
+            <Text style={styles.errText}>{error}</Text>
+            {isQuotaError ? (
+              <>
+                <Text style={styles.errSub}>{quotaResetHintLine}</Text>
+                <Pressable
+                  onPress={() => void Linking.openURL(YOUTUBE_DATA_API_QUOTAS_CONSOLE_URL)}
+                  style={({ pressed }) => [styles.errLinkWrap, pressed && { opacity: 0.85 }]}
+                  accessibilityRole="link"
+                  accessibilityLabel={t('youtubeErrorQuotaConsoleLink')}>
+                  <Text style={styles.errLink}>{t('youtubeErrorQuotaConsoleLink')}</Text>
+                </Pressable>
+              </>
+            ) : null}
           </View>
         ) : null}
 
+        {showScrollLoading ? (
+          <View style={styles.loadingBox}>
+            <SignalLoadingIndicator message={t('commonLoading')} />
+          </View>
+        ) : (
         <WebWheelFlatList
           ref={ytListRef as never}
-          data={showScrollLoading ? [] : items}
+          data={items}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
             <View
@@ -503,9 +482,8 @@ export default function YoutubeScreen() {
               <YoutubeCard layout="grouped" item={item} />
             </View>
           )}
-          ListHeaderComponent={youtubeListHeader}
           ListEmptyComponent={
-            !error && !showScrollLoading && items.length === 0 ? (
+            !error && items.length === 0 ? (
               <Text style={styles.empty}>{emptyFeedMessage}</Text>
             ) : null
           }
@@ -533,22 +511,15 @@ export default function YoutubeScreen() {
           onLayout={webFeedLoadMore.onLayout}
           onContentSizeChange={webFeedLoadMore.onContentSizeChange}
           style={styles.list}
-          contentContainerStyle={[
-            styles.listContent,
-            showScrollLoading ? SCROLL_CONTENT_LOADING_STYLE : null,
-            { paddingBottom: bottomPad },
-          ]}
+          contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            showScrollLoading ? undefined : (
-              <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            )
-          }
+          refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           removeClippedSubviews={Platform.OS === 'android'}
           initialNumToRender={Platform.OS === 'web' ? WEB_FLATLIST_INITIAL : 6}
           windowSize={Platform.OS === 'web' ? WEB_FLATLIST_WINDOW : 7}
           maxToRenderPerBatch={Platform.OS === 'web' ? WEB_FLATLIST_BATCH : 10}
         />
+        )}
       </View>
   );
 
@@ -619,6 +590,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       ...wideContentFill,
     },
     topFixed: fixedHeader.strip,
+    topFixedWide: fixedHeader.stripWide,
     segment: segmentTab.segment,
     segBtn: segmentTab.segBtn,
     segBtnActive: segmentTab.segBtnActive,
@@ -630,7 +602,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 8,
-      marginBottom: 10,
     },
     channelFilterChip: {
       minHeight: 32,
@@ -674,12 +645,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 10,
       paddingVertical: 16,
     },
-    listLoadingRow: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: 10,
-      marginBottom: 4,
-    },
     footerLoadingText: {
       fontSize: sf(12),
       color: theme.textMuted,
@@ -714,14 +679,21 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.green,
     },
     errBox: {
+      marginHorizontal: 16,
+      marginBottom: 8,
       padding: 12,
       borderRadius: 14,
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
       borderColor: '#FFD6DA',
-      marginBottom: 12,
     },
     errText: { fontSize: sf(12), color: theme.danger, lineHeight: sf(18) },
+    loadingBox: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 48,
+    },
     errSub: {
       fontSize: sf(11),
       color: theme.textMuted,

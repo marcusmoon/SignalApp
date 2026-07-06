@@ -25,7 +25,7 @@ import {
   stackScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
-import { useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
+import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
@@ -176,7 +176,7 @@ export default function CalendarScreen() {
   }, []);
 
   const typeParam = selectedCalendarType(enabledTypes);
-  const { ref: listRef, scrollToTop } = useScrollToTopOnChange([selectedYmd, typeParam], { skipInitial: false });
+  const { ref: listRef } = useScrollToTopOnChange([selectedYmd, typeParam], { skipInitial: false });
 
   const fetchMonthData = useCallback(
     async (year: number, month: number, forceRefresh?: boolean) => {
@@ -229,7 +229,7 @@ export default function CalendarScreen() {
     }
   }, [fetchMonthData, viewMonth.year, viewMonth.month, t]);
 
-  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
+  const onRefresh = onRefreshBase;
 
   const filteredEvents = useMemo(
     () => monthEvents.filter((e) => enabledTypes.has(e.type)),

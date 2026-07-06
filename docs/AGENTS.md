@@ -37,6 +37,14 @@
 
 설정에서 **캐시 삭제** 시 `clearSignalApiCache()`가 위 모듈을 모두 비운다.
 
+## Pull-to-refresh UX
+
+피드·리스트 화면은 [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md#pull-to-refresh-ptr) 규칙을 따른다.
+
+- 새로고침(PTR·상단 브랜드 탭): `onRefreshBase`만 호출. 스크롤 위치 유지.
+- 필터·세그먼트·날짜 변경: `useScrollToTopOnChange`로 맨 위 이동.
+- 로딩·에러·필터 UI는 스크롤 밖(`topFixed` 등)에 둔다.
+
 ## 실행
 
 ```bash
@@ -64,6 +72,7 @@ npx tsc --noEmit
 | 기능 | 파일 |
 |---|---|
 | 시그널 | `app/(tabs)/signal.tsx`, `components/signal/MarketBriefingBlock.tsx` |
+| 게시판 | `app/(tabs)/board.tsx` |
 | 뉴스 | `app/(tabs)/news.tsx`, `components/signal/NewsCard.tsx` |
 | 뉴스 이슈 자동화 | [NEWS-ISSUE-AUTOMATION.md](./NEWS-ISSUE-AUTOMATION.md), [schemas/news-issue-digest.v1.schema.json](./schemas/news-issue-digest.v1.schema.json) |
 | 오늘의 브리핑 자동화 | [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) |

@@ -55,8 +55,22 @@ SafeAreaView edges={['top']}
 ```
 
 - **`topFixed` 패턴**: 뉴스·시세·공시·유튜브·게시판·알림·홈·시장 — `getScreenFixedHeaderStyles()` 스트립(`theme.card` + 하단 구분선)으로 스크롤 밖 고정.
-- **날짜 바 패턴**: 홈·시장 — `SignalDateNavigator`를 `topFixed` 스트립 안에 배치.
+- **날짜 바 패턴**: 홈·시장·캘린더 — `SignalDateNavigator`를 고정 스트립(`topFixed` / `fixedTop`) 안에 배치.
 - **스택 서브탭**: 설정·My info — pill 바를 `topFixed` 스트립 안에 배치 (`settings.tsx`, `account.tsx`).
+
+## Pull-to-refresh (PTR)
+
+리스트·피드 화면의 당겨서 새로고침과 상단 `SignalHeader` 브랜드 탭은 **스크롤 위치를 바꾸지 않는다**. 고정 UI만 유지하고 본문 데이터만 갱신한다.
+
+| 규칙 | 설명 |
+|---|---|
+| 새로고침 | `onRefreshBase`를 `ThemedRefreshControl` / `SignalHeader onBrandPress`에 직접 연결 |
+| 필터·탭·날짜 변경 | `useScrollToTopOnChange`로 맨 위 스크롤 (새로고침과 분리) |
+| 고정 UI | 세그먼트·날짜·다이제스트·채널 필터·OTA·에러는 `topFixed` 또는 스크롤 밖 |
+| `ListHeaderComponent` | 초기 로딩·에러·필터 칩을 넣지 않음 (PTR 시 헤더 높이 변화 방지) |
+| 캐시 | 새로고침만 `signalCacheMode(true)` (`bypass`) |
+
+적용 화면: 뉴스, 공시, 시세, 게시판, 시장(시그널), 유튜브, 캘린더, 알림 등.
 
 ## 하단 스크롤 패딩
 
@@ -126,6 +140,7 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 6. 하단: `tabScreenScrollBottomPadding` / `stackScreenScrollBottomPadding` / `SCREEN_WIDE_SCROLL_BOTTOM_BASE`
 7. 가로: `APP_CONTENT_SIDE_PADDING` (리터럴 `16` 지양)
 8. FAB: `fabStackBottom` (예: 시세 관심 탭 추가 버튼)
+9. PTR: [Pull-to-refresh](#pull-to-refresh-ptr) 규칙 — 새로고침 시 스크롤 강제 이동 금지
 
 ## 관련 파일
 

@@ -13,11 +13,11 @@
 
 - **최대 50건**: 사용자당 inbox row는 `delivered_at` 기준 최신 50개만 유지한다. 초과분은 서버에서 **hard delete** (오래된 것부터).
 - **삭제**: 앱에서 삭제하면 inbox row **hard delete**. lazy link 커서가 이미 지난 알림은 다시 붙지 않는다.
-- **lazy link 커서**: 사용자당 `user_notification_lazy_link_state`에 마지막으로 읽어간 최신 알림(`last_notification_id`, `last_delivered_at`)을 기록한다. 이후 sync는 커서 **이후** 알림만 연결한다.
+- **lazy link 커서**: 사용자당 `user_notification_state`에 마지막으로 읽어간 최신 알림(`last_notification_id`, `last_delivered_at`)을 기록한다. 이후 sync는 커서 **이후** 알림만 연결한다.
 - **신규 사용자**: 커서 row가 없으면 `app_users.created_at` 이후 알림만 첫 연결한다. sync 후 전역 최신 알림으로 커서를 갱신한다.
 - **등록 사용자만**: `app_users.active = true`인 계정만 lazy link·적재 대상이다.
 - **푸시 발송**: `app_user_devices` 활성 토큰 + `app_users.notification_prefs` (`pushEnabled`, `briefingPushEnabled`)를 만족할 때만 Expo/mock sender가 전송한다.
-- **DB**: Flyway `V7__notification_inbox.sql`, `V8__app_user_notification_prefs.sql`, `V12__notification_lazy_link_state.sql`.
+- **DB**: Flyway `V7__notification_inbox.sql`, `V8__app_user_notification_prefs.sql`, `V12__notification_state.sql`.
 
 ## 구조
 
@@ -25,7 +25,7 @@
 |---|---|
 | `notification_items` | 템플릿 (`published`) + 푸시 배달 상태 (`payload.pushDelivery`) |
 | `user_notification_inbox` | 사용자별 `read_at`, `delivered_at` (활성 목록만, 최대 50) |
-| `user_notification_lazy_link_state` | lazy link가 어디까지 소비했는지 (유저당 1 row) |
+| `user_notification_state` | lazy link가 어디까지 소비했는지 (유저당 1 row) |
 | `app_users.notification_prefs` | 서버 푸시 필터 (`pushEnabled`, `briefingPushEnabled`) |
 | 앱 `app/alerts.tsx` | `GET /v1/notifications` 단일 소스 |
 
@@ -110,7 +110,7 @@ AND status IN ('published', 'sent', 'skipped', 'queued')
 
 | 영역 | 파일 |
 |---|---|
-| DB | `server/db/migrations/postgres/V7__notification_inbox.sql`, `V8__app_user_notification_prefs.sql`, `V12__notification_lazy_link_state.sql` |
+| DB | `server/db/migrations/postgres/V7__notification_inbox.sql`, `V8__app_user_notification_prefs.sql`, `V12__notification_state.sql` |
 | publish | `server/src/notifications/publish.mjs`, `server/src/notifications/notificationItem.mjs` |
 | 서버 repo | `server/src/db/repositories/notificationInboxRepository.mjs` |
 | 푸시 prefs | `server/src/notifications/notificationPreferences.mjs` |

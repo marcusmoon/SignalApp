@@ -42,7 +42,7 @@ async function getLazyLinkState(userId) {
   const result = await queryKysely(
     `
       SELECT last_notification_id, last_delivered_at
-      FROM user_notification_lazy_link_state
+      FROM user_notification_state
       WHERE user_id = $1
     `,
     [userId],
@@ -55,17 +55,17 @@ async function upsertLazyLinkState(userId, notificationId, deliveredAt) {
   if (!nid || !deliveredAt) return;
   await queryKysely(
     `
-      INSERT INTO user_notification_lazy_link_state (
+      INSERT INTO user_notification_state (
         user_id, last_notification_id, last_delivered_at, updated_at
       ) VALUES ($1, $2, $3::timestamptz, NOW())
       ON CONFLICT (user_id) DO UPDATE SET
         last_notification_id = excluded.last_notification_id,
         last_delivered_at = excluded.last_delivered_at,
         updated_at = NOW()
-      WHERE excluded.last_delivered_at > user_notification_lazy_link_state.last_delivered_at
+      WHERE excluded.last_delivered_at > user_notification_state.last_delivered_at
         OR (
-          excluded.last_delivered_at = user_notification_lazy_link_state.last_delivered_at
-          AND excluded.last_notification_id > COALESCE(user_notification_lazy_link_state.last_notification_id, '')
+          excluded.last_delivered_at = user_notification_state.last_delivered_at
+          AND excluded.last_notification_id > COALESCE(user_notification_state.last_notification_id, '')
         )
     `,
     [userId, nid, deliveredAt],

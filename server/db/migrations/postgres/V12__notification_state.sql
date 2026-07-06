@@ -1,6 +1,6 @@
--- Per-user lazy link cursor: only link notifications newer than the last seen head.
+-- Per-user notification state: lazy link cursor for inbox sync.
 
-CREATE TABLE user_notification_lazy_link_state (
+CREATE TABLE user_notification_state (
   user_id text PRIMARY KEY REFERENCES app_users(id) ON DELETE CASCADE,
   last_notification_id text REFERENCES notification_items(id) ON DELETE SET NULL,
   last_delivered_at timestamptz NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE user_notification_lazy_link_state (
 DELETE FROM user_notification_inbox WHERE deleted_at IS NOT NULL;
 
 -- Existing inbox users: resume from their newest linked notification.
-INSERT INTO user_notification_lazy_link_state (user_id, last_notification_id, last_delivered_at, updated_at)
+INSERT INTO user_notification_state (user_id, last_notification_id, last_delivered_at, updated_at)
 SELECT DISTINCT ON (i.user_id)
   i.user_id,
   i.notification_id,

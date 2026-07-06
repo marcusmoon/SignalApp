@@ -27,6 +27,13 @@
 - URL: `/v1/market-briefings/ingest`
 - Header: `x-signal-automation-token: $SIGNAL_AUTOMATION_INGEST_TOKEN`
 
+요청 본문 최상위(또는 `briefing` 객체와 형제)에 알림 플래그를 둔다. 기본값은 둘 다 `true`이며 서로 독립이다.
+
+| 필드 | 역할 |
+|---|---|
+| `notifyInbox` | 알림센터(`notification_items`) 적재 |
+| `sendPush` | 기기 푸시 큐 (`payload.pushDelivery: pending`) |
+
 ## 최소 Payload
 
 ```json
@@ -101,3 +108,4 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/market-briefings/ingest" \
 - 앱 **시그널** 탭이 `/v1/market-briefings` 목록 API를 날짜·시장 필터로 읽는다.
 - 브리핑 전문은 탭 안에서 바로 표시한다(별도 상세 화면 없음).
 - `pushCandidate=true` ingest 시 푸시 `deepLink`는 `/signal`이다.
+- ingest 요청: `notifyInbox`(알림함), `sendPush`(기기 푸시) — 독립 플래그, 기본값 `true`

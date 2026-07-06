@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "notifyInbox": true,
   "sendPush": true,
   "run": {
     "id": "news-issues:2026-07-01T00:00:00Z",

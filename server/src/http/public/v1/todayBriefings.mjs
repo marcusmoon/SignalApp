@@ -1,5 +1,6 @@
 import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
 import { NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
+import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicTodayBriefings } from '../../../db/repositories/todayBriefingsRepository.mjs';
@@ -64,7 +65,6 @@ function hasIngestAccess(req) {
 }
 
 async function publishTodayBriefingNotification(briefing, queuePush) {
-  if (!briefing?.pushCandidate) return null;
   if (cleanText(briefing.status) && briefing.status !== 'published') return null;
   const notification = buildPublishedNotification(
     {
@@ -108,8 +108,18 @@ export async function handlePublicTodayBriefingRoutes({ req, res, url, pathname 
       return true;
     }
     await upsertCollectionRows('todayBriefings', [briefing]);
-    const notification = await publishTodayBriefingNotification(briefing, body?.sendPush !== false);
-    json(res, 201, { data: briefing, meta: { notificationPublished: !!notification, pushQueued: body?.sendPush !== false && !!notification } });
+    const notifyInbox = resolveIngestNotifyInbox(body, briefing);
+    const sendPush = resolveIngestSendPush(body);
+    const notification = notifyInbox ? await publishTodayBriefingNotification(briefing, sendPush) : null;
+    json(res, 201, {
+      data: briefing,
+      meta: {
+        notifyInbox,
+        sendPush,
+        inboxPublished: !!notification,
+        pushQueued: sendPush && !!notification,
+      },
+    });
     return true;
   }
 

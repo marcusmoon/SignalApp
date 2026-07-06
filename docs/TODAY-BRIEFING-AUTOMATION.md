@@ -14,6 +14,8 @@
 - URL: `/v1/today-briefings/ingest`
 - Header: `x-signal-automation-token: $SIGNAL_AUTOMATION_INGEST_TOKEN`
 
+요청 본문 최상위에 `notifyInbox`(알림센터 적재)와 `sendPush`(기기 푸시)를 둔다. 기본값 `true`, 서로 독립.
+
 ## 조회 Endpoint
 
 ```text
@@ -63,5 +65,5 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
 - 매일 23:00 KST 실행을 기본으로 한다.
 - dry-run 확인 전에는 `/v1/today-briefings/ingest`를 호출하지 않는다.
 - Signal Server GET API 응답에 없는 출처, URL, 수치, 제목은 만들지 않는다.
-- 확인 후 ingest 시 `pushCandidate=true`(기본)이면 알림 outbox에 등록된다. `sendPush=false`로 푸시만 건너뛸 수 있다.
+- 확인 후 ingest 시 `notifyInbox=true`(기본)이면 알림함에 적재된다. `sendPush=false`로 푸시만 건너뛸 수 있다. 두 플래그는 독립이다.
 - 푸시 `deepLink`는 `/today-briefing?date=<briefingDate>`이다.

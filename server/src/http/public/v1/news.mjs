@@ -6,6 +6,7 @@ import {
   upsertNotificationItem,
 } from '../../../db.mjs';
 import { NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
+import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { utcDateKeyFromInstant } from '../../../time/utc.mjs';
@@ -24,7 +25,6 @@ function hasIngestAccess(req) {
 }
 
 async function publishDigestNotification(item, queuePush) {
-  if (!item?.pushCandidate) return null;
   const category = cleanText(item?.category) || 'global';
   const date =
     cleanText(item?.generatedDate).slice(0, 10) ||
@@ -68,7 +68,7 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
       json(res, 400, { error: 'ITEMS_REQUIRED' });
       return true;
     }
-    const sendPush = body?.sendPush !== false;
+    const sendPush = resolveIngestSendPush(body);
     const now = new Date().toISOString();
     const items = rawItems.map((item, index) => ({
       ...item,
@@ -76,16 +76,27 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
       updatedAt: now,
     }));
     await upsertCollectionRows('newsDigestItems', items);
-    let published = 0;
+    let inboxPublished = 0;
     let pushQueued = 0;
     for (const item of items) {
+      if (!resolveIngestNotifyInbox(body, item)) continue;
       const saved = await publishDigestNotification(item, sendPush);
       if (saved) {
-        published += 1;
+        inboxPublished += 1;
         if (sendPush) pushQueued += 1;
       }
     }
-    json(res, 200, { ok: true, count: items.length, published, pushQueued });
+    const meta = {
+      ok: true,
+      count: items.length,
+      sendPush,
+      inboxPublished,
+      pushQueued,
+    };
+    if (body != null && Object.prototype.hasOwnProperty.call(body, 'notifyInbox')) {
+      meta.notifyInbox = body.notifyInbox !== false;
+    }
+    json(res, 200, meta);
     return true;
   }
 

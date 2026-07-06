@@ -27,10 +27,21 @@
 
 ### ingest (브리핑·주요이슈)
 
+요청 본문에 **독립 플래그** 두 개만 넘긴다. 서버가 `status: published`와 `payload.pushDelivery`를 설정한다.
+
+| 플래그 | 기본값 | 역할 |
+|---|---|---|
+| `notifyInbox` | `true` | `true`이면 `notification_items` upsert → 알림함 노출 |
+| `sendPush` | `true` | `true`이면 `payload.pushDelivery = 'pending'` → worker 푸시 시도 |
+
 1. 콘텐츠 저장
-2. `pushCandidate=true`이면 `notification_items`에 **`published`** upsert → 알림함 노출
-3. `sendPush=true`이면 `payload.pushDelivery = 'pending'` → worker가 푸시 시도
-4. `sendPush=false`이면 `pushDelivery = 'none'` → 알림함만, 푸시 없음
+2. `notifyInbox=true`이면 `notification_items`에 **`published`** upsert
+3. `sendPush=true`이면 `payload.pushDelivery = 'pending'`
+4. `sendPush=false`이면 `pushDelivery = 'none'` (알림함만)
+
+**조합 예:** dry-run `notifyInbox=false`, `sendPush=false` / 운영 `둘 다 true` / 알림함만 `notifyInbox=true`, `sendPush=false`.
+
+뉴스 다이제스트는 요청에 `notifyInbox`가 없으면 항목별 레거시 `pushCandidate`로 알림함 적재 여부를 판단한다.
 
 ## 링크 생성
 

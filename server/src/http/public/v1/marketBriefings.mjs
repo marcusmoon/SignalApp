@@ -1,5 +1,6 @@
 import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
 import { NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
+import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicMarketBriefings } from '../../../db/repositories/marketBriefingsRepository.mjs';
@@ -70,7 +71,6 @@ function hasIngestAccess(req) {
 }
 
 async function publishBriefingNotification(briefing, queuePush) {
-  if (!briefing?.pushCandidate) return null;
   const sessionTab = `${briefing.market}-${briefing.session}`;
   const params = new URLSearchParams();
   if (briefing.briefingDate) params.set('date', briefing.briefingDate);
@@ -123,8 +123,18 @@ export async function handlePublicMarketBriefingRoutes({ req, res, url, pathname
       return true;
     }
     await upsertCollectionRows('marketBriefings', [briefing]);
-    const notification = await publishBriefingNotification(briefing, body?.sendPush !== false);
-    json(res, 201, { data: publicBriefing(briefing), meta: { notificationPublished: !!notification, pushQueued: body?.sendPush !== false && !!notification } });
+    const notifyInbox = resolveIngestNotifyInbox(body, briefing);
+    const sendPush = resolveIngestSendPush(body);
+    const notification = notifyInbox ? await publishBriefingNotification(briefing, sendPush) : null;
+    json(res, 201, {
+      data: publicBriefing(briefing),
+      meta: {
+        notifyInbox,
+        sendPush,
+        inboxPublished: !!notification,
+        pushQueued: sendPush && !!notification,
+      },
+    });
     return true;
   }
 

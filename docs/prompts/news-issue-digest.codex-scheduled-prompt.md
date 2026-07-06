@@ -56,6 +56,7 @@ docs/schemas/news-issue-digest.v1.schema.json 구조를 따른다.
 {
   "schemaVersion": 1,
   "sendPush": false,
+  "notifyInbox": false,
   "run": {
     "id": "news-issues:<UTC generatedAt>",
     "generatedAt": "<UTC ISO>",
@@ -94,7 +95,7 @@ docs/schemas/news-issue-digest.v1.schema.json 구조를 따른다.
 - cluster: kind, eventType, confidence, timeWindowHours, dedupeKey, reason
 - impact: direction, horizon, affectedAreas, watchSymbols
 - sourceRefs: 원문 목록. 최소 1개. 각 항목은 type, title, url, sourceName, publishedAt, relation 포함
-- pushCandidate: false
+- pushCandidate: false (레거시. dry-run 기본. 확인 후 ingest 시 요청 notifyInbox/sendPush로 제어)
 
 검증:
 - sourceRefs URL은 Signal Server 응답의 sourceUrl만 넣는다.
@@ -106,7 +107,7 @@ docs/schemas/news-issue-digest.v1.schema.json 구조를 따른다.
 
 ## 확인 후 서버 전송할 때
 
-사람이 결과를 확인한 뒤 앱에 반영하려면 JSON의 `sendPush`를 필요에 따라 조정하고 아래 endpoint로 보낸다.
+사람이 결과를 확인한 뒤 앱에 반영하려면 JSON의 `notifyInbox`, `sendPush`를 필요에 따라 조정하고 아래 endpoint로 보낸다.
 
 ```bash
 curl -X POST "$SIGNAL_SERVER_URL/v1/news-digests/ingest" \

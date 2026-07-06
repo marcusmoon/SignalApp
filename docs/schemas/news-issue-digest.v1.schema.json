@@ -14,6 +14,11 @@
       "type": "boolean",
       "default": true
     },
+    "notifyInbox": {
+      "type": "boolean",
+      "default": true,
+      "description": "When true, upsert notification_items for inbox. Independent of sendPush."
+    },
     "run": {
       "type": "object",
       "additionalProperties": false,
@@ -188,7 +193,8 @@
           }
         },
         "pushCandidate": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Legacy per-item inbox gate when request notifyInbox is omitted"
         },
         "pushTitle": {
           "type": "string",

@@ -1,4 +1,3 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { isValidElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 
@@ -22,8 +21,9 @@ type WebEvent = {
 };
 
 const WEB_REFRESH_COOLDOWN_MS = 1000;
-const WEB_TOUCH_PULL_THRESHOLD = 72;
-const WEB_WHEEL_PULL_THRESHOLD = 110;
+const WEB_TOUCH_PULL_THRESHOLD = 80;
+const WEB_WHEEL_PULL_THRESHOLD = 160;
+const WEB_PULL_IDLE_MS = 180;
 
 export function getWebRefreshControlProps(refreshControl: unknown): WebRefreshControlProps {
   return isValidElement(refreshControl)
@@ -33,11 +33,12 @@ export function getWebRefreshControlProps(refreshControl: unknown): WebRefreshCo
 
 type WebRefreshOverlayProps = {
   pullProgress: number;
+  pullActive: boolean;
   refreshing: boolean;
 };
 
-/** 스크롤 viewport 위 PTR 피드백 — 당김 진행률 + 새로고침 상태 */
-export function WebRefreshOverlay({ pullProgress, refreshing }: WebRefreshOverlayProps) {
+/** 스크롤 viewport 위 PTR 피드백 — 당김 중 얇은 바, 새로고침 중만 짧은 pill */
+export function WebRefreshOverlay({ pullProgress, pullActive, refreshing }: WebRefreshOverlayProps) {
   const { t } = useLocale();
   const { theme, scaleFont } = useSignalTheme();
   const styles = useMemo(() => makeOverlayStyles(theme, scaleFont), [theme, scaleFont]);
@@ -45,64 +46,37 @@ export function WebRefreshOverlay({ pullProgress, refreshing }: WebRefreshOverla
   if (Platform.OS !== 'web') return null;
 
   const clampedProgress = Math.max(0, Math.min(1, pullProgress));
-  const visible = refreshing || clampedProgress > 0.04;
-  if (!visible) return null;
+  const showPullHint = pullActive && !refreshing && clampedProgress > 0.06;
+  const showRefreshing = refreshing;
 
-  const ready = clampedProgress >= 1 && !refreshing;
-  const message = refreshing
-    ? t('webRefreshing')
-    : ready
-      ? t('webReleaseToRefresh')
-      : t('webPullToRefresh');
-  const opacity = refreshing ? 1 : Math.min(1, 0.35 + clampedProgress * 0.65);
-  const translateY = refreshing ? 0 : (1 - clampedProgress) * -18;
-  const scale = refreshing ? 1 : 0.9 + clampedProgress * 0.1;
+  if (!showPullHint && !showRefreshing) return null;
+
+  if (showRefreshing) {
+    return (
+      <View pointerEvents="none" style={styles.overlay}>
+        <View
+          style={styles.refreshPill}
+          accessibilityRole="progressbar"
+          accessibilityLabel={t('webRefreshing')}>
+          <View {...({ dataSet: { signalWebRefreshSpinner: 'true' } } as object)} />
+          <Text style={styles.refreshText}>{t('webRefreshing')}</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View pointerEvents="none" style={styles.overlay}>
       <View
-        style={[
-          styles.pill,
-          ready && styles.pillReady,
-          refreshing && styles.pillRefreshing,
-          {
-            opacity,
-            transform: [{ translateY }, { scale }],
-          },
-        ]}
+        style={styles.pullTrack}
         accessibilityRole="progressbar"
-        accessibilityLabel={message}
+        accessibilityLabel={t('webPullToRefresh')}
         accessibilityValue={{
           min: 0,
           max: 100,
-          now: refreshing ? 100 : Math.round(clampedProgress * 100),
+          now: Math.round(clampedProgress * 100),
         }}>
-        {refreshing ? (
-          <View {...({ dataSet: { signalWebRefreshSpinner: 'true' } } as object)} />
-        ) : (
-          <FontAwesome
-            name="arrow-down"
-            size={14}
-            color={ready ? theme.green : theme.textMuted}
-            style={{
-              transform: [{ rotate: `${Math.min(180, clampedProgress * 180)}deg` }],
-            }}
-          />
-        )}
-        <Text style={[styles.message, ready && styles.messageReady, refreshing && styles.messageRefreshing]}>
-          {message}
-        </Text>
-        {!refreshing ? (
-          <View style={styles.progressTrack}>
-            <View
-              style={[
-                styles.progressFill,
-                ready && styles.progressFillReady,
-                { width: `${Math.max(8, clampedProgress * 100)}%` },
-              ]}
-            />
-          </View>
-        ) : null}
+        <View style={[styles.pullFill, { width: `${Math.max(10, clampedProgress * 100)}%` }]} />
       </View>
     </View>
   );
@@ -118,43 +92,90 @@ export type WebRefreshHandlerBag = {
 export function useWebRefreshHandlers(
   refreshControlProps: WebRefreshControlProps,
   getNode: (event?: unknown) => HTMLElement | null,
-): { handlers: WebRefreshHandlerBag; pullProgress: number } {
+): { handlers: WebRefreshHandlerBag; pullProgress: number; pullActive: boolean } {
   const enabled = Platform.OS === 'web';
   const refreshRef = useRef(refreshControlProps);
   refreshRef.current = refreshControlProps;
+  const isRefreshingRef = useRef(false);
   const touchStartYRef = useRef<number | null>(null);
   const touchTriggeredRef = useRef(false);
   const wheelPullDistanceRef = useRef(0);
   const lastRefreshAtRef = useRef(0);
   const [pullProgress, setPullProgress] = useState(0);
+  const [pullActive, setPullActive] = useState(false);
   const pendingProgressRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
+  const pullIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const setPullProgressRaf = useCallback((value: number) => {
-    pendingProgressRef.current = Math.max(0, Math.min(1, value));
-    if (rafRef.current != null) return;
-    rafRef.current = requestAnimationFrame(() => {
+  const resetPullState = useCallback(() => {
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
-      if (pendingProgressRef.current != null) {
-        setPullProgress(pendingProgressRef.current);
-        pendingProgressRef.current = null;
-      }
-    });
+    }
+    pendingProgressRef.current = null;
+    wheelPullDistanceRef.current = 0;
+    touchStartYRef.current = null;
+    touchTriggeredRef.current = false;
+    setPullProgress(0);
+    setPullActive(false);
+    if (pullIdleTimerRef.current != null) {
+      clearTimeout(pullIdleTimerRef.current);
+      pullIdleTimerRef.current = null;
+    }
   }, []);
+
+  const schedulePullIdleReset = useCallback(() => {
+    if (pullIdleTimerRef.current != null) {
+      clearTimeout(pullIdleTimerRef.current);
+    }
+    pullIdleTimerRef.current = setTimeout(() => {
+      pullIdleTimerRef.current = null;
+      if (!isRefreshingRef.current) {
+        resetPullState();
+      }
+    }, WEB_PULL_IDLE_MS);
+  }, [resetPullState]);
+
+  const setPullProgressRaf = useCallback(
+    (value: number) => {
+      if (isRefreshingRef.current) return;
+      pendingProgressRef.current = Math.max(0, Math.min(1, value));
+      if (rafRef.current != null) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        if (pendingProgressRef.current != null && !isRefreshingRef.current) {
+          setPullProgress(pendingProgressRef.current);
+          pendingProgressRef.current = null;
+        }
+      });
+    },
+    [],
+  );
+
+  const markPullActive = useCallback(
+    (progress: number) => {
+      if (isRefreshingRef.current) return;
+      setPullActive(true);
+      setPullProgressRaf(progress);
+      schedulePullIdleReset();
+    },
+    [schedulePullIdleReset, setPullProgressRaf],
+  );
 
   useEffect(
     () => () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      if (pullIdleTimerRef.current != null) clearTimeout(pullIdleTimerRef.current);
     },
     [],
   );
 
   useEffect(() => {
+    isRefreshingRef.current = !!refreshControlProps?.refreshing;
     if (!refreshControlProps?.refreshing) {
-      setPullProgress(0);
-      wheelPullDistanceRef.current = 0;
+      resetPullState();
     }
-  }, [refreshControlProps?.refreshing]);
+  }, [refreshControlProps?.refreshing, resetPullState]);
 
   const triggerRefresh = useCallback(
     (node: HTMLElement | null) => {
@@ -167,10 +188,10 @@ export function useWebRefreshHandlers(
       const now = Date.now();
       if (now - lastRefreshAtRef.current < WEB_REFRESH_COOLDOWN_MS) return;
       lastRefreshAtRef.current = now;
-      setPullProgressRaf(1);
+      resetPullState();
       props.onRefresh();
     },
-    [enabled, setPullProgressRaf],
+    [enabled, resetPullState],
   );
 
   const getTouchY = useCallback((event: unknown) => {
@@ -182,23 +203,23 @@ export function useWebRefreshHandlers(
   const onTouchStart = useCallback(
     (event: unknown) => {
       const node = getNode(event);
-      if (!enabled) return;
+      if (!enabled || isRefreshingRef.current) return;
       if (!node || node.scrollTop > 2) {
-        touchStartYRef.current = null;
-        setPullProgressRaf(0);
+        resetPullState();
         return;
       }
       touchStartYRef.current = getTouchY(event);
       touchTriggeredRef.current = false;
+      setPullActive(true);
       setPullProgressRaf(0);
     },
-    [enabled, getNode, getTouchY, setPullProgressRaf],
+    [enabled, getNode, getTouchY, resetPullState, setPullProgressRaf],
   );
 
   const onTouchMove = useCallback(
     (event: unknown) => {
       const startY = touchStartYRef.current;
-      if (!enabled) return;
+      if (!enabled || isRefreshingRef.current) return;
       if (startY == null) return;
 
       const y = getTouchY(event);
@@ -207,54 +228,50 @@ export function useWebRefreshHandlers(
       const pull = y - startY;
       if (pull <= 0) {
         setPullProgressRaf(0);
+        schedulePullIdleReset();
         return;
       }
 
       const progress = Math.min(1, pull / WEB_TOUCH_PULL_THRESHOLD);
-      setPullProgressRaf(progress);
+      markPullActive(progress);
 
       if (touchTriggeredRef.current || progress < 1) return;
       touchTriggeredRef.current = true;
       triggerRefresh(getNode(event));
     },
-    [enabled, getNode, getTouchY, setPullProgressRaf, triggerRefresh],
+    [enabled, getNode, getTouchY, markPullActive, schedulePullIdleReset, setPullProgressRaf, triggerRefresh],
   );
 
   const onTouchEnd = useCallback(() => {
-    touchStartYRef.current = null;
-    touchTriggeredRef.current = false;
-    wheelPullDistanceRef.current = 0;
-    if (!refreshRef.current?.refreshing) {
-      setPullProgressRaf(0);
+    if (!isRefreshingRef.current) {
+      schedulePullIdleReset();
     }
-  }, [setPullProgressRaf]);
+  }, [schedulePullIdleReset]);
 
   const onWheel = useCallback(
     (event: unknown) => {
       const node = getNode(event);
-      if (!enabled) return;
+      if (!enabled || isRefreshingRef.current) return;
       if (!node || node.scrollTop > 2) {
-        wheelPullDistanceRef.current = 0;
-        setPullProgressRaf(0);
+        resetPullState();
         return;
       }
 
       const deltaY = (event as WebEvent)?.nativeEvent?.deltaY ?? (event as WebEvent)?.deltaY ?? 0;
       if (deltaY >= 0) {
-        wheelPullDistanceRef.current = 0;
-        setPullProgressRaf(0);
+        schedulePullIdleReset();
         return;
       }
 
       wheelPullDistanceRef.current += Math.abs(deltaY);
       const progress = Math.min(1, wheelPullDistanceRef.current / WEB_WHEEL_PULL_THRESHOLD);
-      setPullProgressRaf(progress);
+      markPullActive(progress);
 
       if (wheelPullDistanceRef.current < WEB_WHEEL_PULL_THRESHOLD) return;
       wheelPullDistanceRef.current = 0;
       triggerRefresh(node);
     },
-    [enabled, getNode, setPullProgressRaf, triggerRefresh],
+    [enabled, getNode, markPullActive, resetPullState, schedulePullIdleReset, triggerRefresh],
   );
 
   return {
@@ -265,6 +282,7 @@ export function useWebRefreshHandlers(
       onWheel,
     },
     pullProgress,
+    pullActive,
   };
 }
 
@@ -272,61 +290,43 @@ function makeOverlayStyles(theme: ReturnType<typeof useSignalTheme>['theme'], sf
   return {
     overlay: {
       position: 'absolute',
-      top: 8,
+      top: 6,
       left: 0,
       right: 0,
       zIndex: 30,
       alignItems: 'center',
       pointerEvents: 'none',
     } as const,
-    pill: {
-      minWidth: 220,
-      maxWidth: 320,
-      paddingTop: 10,
-      paddingBottom: 9,
-      paddingHorizontal: 14,
-      borderRadius: 18,
-      alignItems: 'center',
-      gap: 6,
-      backgroundColor: WEB_SIGNAL_CSS.card,
-      borderWidth: 1,
-      borderColor: WEB_SIGNAL_CSS.border,
-      boxShadow: '0 8px 24px rgba(0,0,0,0.14)',
-    } as const,
-    pillReady: {
-      borderColor: `${theme.green}88`,
-      backgroundColor: theme.greenDim,
-    } as const,
-    pillRefreshing: {
-      borderColor: `${theme.green}88`,
-    } as const,
-    message: {
-      fontSize: sf(13),
-      lineHeight: sf(17),
-      fontWeight: '800',
-      color: theme.textMuted,
-      textAlign: 'center',
-    } as const,
-    messageReady: {
-      color: theme.green,
-    } as const,
-    messageRefreshing: {
-      color: theme.text,
-    } as const,
-    progressTrack: {
-      alignSelf: 'stretch',
+    pullTrack: {
+      width: 96,
       height: 3,
       borderRadius: 2,
       backgroundColor: `${theme.border}`,
       overflow: 'hidden',
     } as const,
-    progressFill: {
+    pullFill: {
       height: '100%',
       borderRadius: 2,
-      backgroundColor: theme.textMuted,
-    } as const,
-    progressFillReady: {
       backgroundColor: theme.green,
+      opacity: 0.85,
+    } as const,
+    refreshPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 16,
+      backgroundColor: WEB_SIGNAL_CSS.card,
+      borderWidth: 1,
+      borderColor: WEB_SIGNAL_CSS.border,
+      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+    } as const,
+    refreshText: {
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '700',
+      color: theme.textMuted,
     } as const,
   };
 }

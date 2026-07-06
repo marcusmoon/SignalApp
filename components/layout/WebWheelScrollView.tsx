@@ -22,7 +22,7 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
     ?? (localRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
     ?? null
   ), []);
-  const { handlers: webRefreshHandlers, pullProgress } = useWebRefreshHandlers(refreshControlProps, getNode);
+  const { handlers: webRefreshHandlers, pullProgress, pullActive } = useWebRefreshHandlers(refreshControlProps, getNode);
 
   if (Platform.OS === 'web') {
     const flatStyle = StyleSheet.flatten([{ backgroundColor: WEB_THEME_BG }, style]);
@@ -53,6 +53,7 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
         style={[webViewportStyle, { backgroundColor }, style]}>
         <WebRefreshOverlay
           pullProgress={pullProgress}
+          pullActive={pullActive}
           refreshing={!!refreshControlProps?.refreshing}
         />
         <View

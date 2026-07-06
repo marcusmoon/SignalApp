@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import type { AppTheme } from '@/constants/theme';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { FeedUpdatePromptPill } from '@/components/signal/FeedNewContentChip';
 
 export type FeedUpdateBannerVariant = 'prompt' | 'notice';
 
@@ -19,43 +20,27 @@ export function FeedUpdateBanner({ variant, message, onPress }: Props) {
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const isPrompt = variant === 'prompt';
 
-  const content = (
-    <>
-      <FontAwesome
-        name={isPrompt ? 'arrow-up' : 'check-circle'}
-        size={isPrompt ? 12 : 14}
-        color={theme.green}
-      />
-      <Text style={[styles.message, isPrompt ? styles.messagePrompt : styles.messageNotice]} numberOfLines={2}>
-        {message}
-      </Text>
-    </>
-  );
-
   if (isPrompt && onPress) {
     return (
-      <Pressable
+      <FeedUpdatePromptPill
+        message={message}
         onPress={onPress}
-        accessibilityRole="button"
-        style={({ pressed }) => [styles.banner, styles.bannerPrompt, pressed && styles.pressed]}>
-        {content}
-      </Pressable>
+        style={[styles.banner, styles.bannerPrompt]}
+      />
     );
   }
 
   return (
     <View style={[styles.banner, styles.bannerNotice]} accessibilityRole="alert" accessibilityLiveRegion="polite">
-      {content}
+      <FontAwesome name="check-circle" size={14} color={theme.green} />
+      <Text style={[styles.message, styles.messageNotice]} numberOfLines={2}>
+        {message}
+      </Text>
     </View>
   );
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
-  const promptBg =
-    theme.accentBlue.startsWith('#') && theme.accentBlue.length === 7
-      ? `${theme.accentBlue}18`
-      : theme.greenDim;
-
   return StyleSheet.create({
     banner: {
       flexDirection: 'row',
@@ -64,16 +49,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginTop: 8,
       marginBottom: 4,
     },
-    bannerPrompt: {
-      justifyContent: 'center',
-      gap: 6,
-      paddingVertical: 9,
-      paddingHorizontal: 14,
-      borderRadius: 20,
-      borderWidth: 1.5,
-      borderColor: `${theme.accentBlue}66`,
-      backgroundColor: promptBg,
-    },
+    bannerPrompt: {},
     bannerNotice: {
       paddingVertical: 10,
       paddingHorizontal: 12,
@@ -82,18 +58,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
     },
-    pressed: {
-      opacity: 0.9,
-    },
     message: {
       minWidth: 0,
       fontSize: sf(13),
       lineHeight: sf(17),
-    },
-    messagePrompt: {
-      color: theme.accentBlue,
-      fontWeight: '900',
-      flexShrink: 1,
     },
     messageNotice: {
       color: theme.green,

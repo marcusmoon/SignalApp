@@ -72,6 +72,29 @@ SafeAreaView edges={['top']}
 
 적용 화면: 뉴스, 공시, 시세, 게시판, 시장(시그널), 유튜브, 캘린더, 알림 등.
 
+### 새 소식 chip (`FeedNewContentChip`)
+
+백그라운드 폴링(약 3분)으로 서버에 더 새로운 항목이 있으면 chip을 띄운다. **리스트·다이제스트는 chip/PTR/헤더 탭으로 사용자가 새로고침할 때만** 갱신한다.
+
+| 항목 | 규칙 |
+|---|---|
+| 표시 | `newContentAvailable && !refreshing && 탭 포커스` |
+| 위치 | `feedNewContentChipBottom(useTwoPane, tabBarHeight, insets.bottom)` — 탭바(또는 wide 하단) 바로 위, 가로 중앙 |
+| 탭 | `onRefresh()` → 리스트 + 고정 다이제스트 함께 `signalCacheMode(true)` |
+| 상단 prompt | chip으로 대체. 갱신 완료 notice(`FeedUpdateBanner` notice)만 `topFixed`에 유지 |
+
+적용: **뉴스**, **공시**, **시장(시그널)**.
+
+### 고정 다이제스트 (뉴스 `DigestPager`, 공시 `DisclosureDigestSection`)
+
+| 갱신 시점 | 동작 |
+|---|---|
+| PTR · 상단 브랜드 탭 · 새 소식 chip | 리스트와 **동시에** digest API 재호출 (`bypass`) |
+| 세그먼트·필터·날짜 변경 | 해당 scope digest 재로드 |
+| 백그라운드 폴링 | digest **갱신 안 함** — chip만 표시 |
+
+별도 digest-only 새로고침 UI는 두지 않는다. chip/PTR이 리스트와 digest를 한 번에 맞춘다.
+
 ## 하단 스크롤 패딩
 
 | 상수 | px | 용도 |
@@ -79,13 +102,14 @@ SafeAreaView edges={['top']}
 | `SCREEN_TAB_SCROLL_BOTTOM_BASE` | 24 | iPhone 탭 + 플로팅 탭바 |
 | `SCREEN_STACK_SCROLL_BOTTOM_BASE` | 28 | 스택 화면 |
 | `SCREEN_WIDE_SCROLL_BOTTOM_BASE` | 32 | iPad·wide (탭바 없음) |
-| `SCREEN_FAB_ABOVE_TAB_OFFSET` | 8 | FAB lift |
+| `SCREEN_FAB_ABOVE_TAB_OFFSET` | 8 | FAB·새 소식 chip lift |
 
 ### 헬퍼 (직접 숫자 합산 지양)
 
 ```ts
 import {
   fabStackBottom,
+  feedNewContentChipBottom,
   stackScreenScrollBottomPadding,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
@@ -101,6 +125,9 @@ paddingBottom: SCREEN_WIDE_SCROLL_BOTTOM_BASE;
 
 // FAB
 bottom: fabStackBottom(tabBarHeight, insets.bottom);
+
+// 새 소식 chip
+bottom: feedNewContentChipBottom(useTwoPane, tabBarHeight, insets.bottom);
 ```
 
 `tabBarHeight`는 `useBottomTabBarHeight()`, inset은 `useSafeAreaInsets().bottom`.
@@ -145,10 +172,12 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 ## 관련 파일
 
 - `constants/screenFixedHeader.ts` — 상단 고정 스트립 스타일 (`getScreenFixedHeaderStyles`)
-- `constants/screenLayout.ts` — 여백 상수·헬퍼
+- `constants/screenLayout.ts` — 여백 상수·헬퍼 (`feedNewContentChipBottom`)
 - `constants/responsiveLayout.ts` — 폭·breakpoint
 - `constants/segmentTabBar.ts` — 세그먼트 pill 스타일 (`getSegmentTabBarStyles`) + screenLayout re-export
 - `constants/webLayout.ts` — 웹 flex/scroll
 - `constants/tabBar.ts` — 탭바 치수·inset
+- `components/signal/FeedNewContentChip.tsx`
+- `components/signal/FeedUpdateBanner.tsx`
 - `components/signal/SignalHeader.tsx`
 - `app/(tabs)/_layout.tsx` — wide 탭 셸

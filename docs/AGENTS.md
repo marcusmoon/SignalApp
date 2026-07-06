@@ -44,6 +44,7 @@
 - 새로고침(PTR·상단 브랜드 탭): `onRefreshBase`만 호출. 스크롤 위치 유지.
 - 필터·세그먼트·날짜 변경: `useScrollToTopOnChange`로 맨 위 이동.
 - 로딩·에러·필터 UI는 스크롤 밖(`topFixed` 등)에 둔다.
+- 백그라운드 폴링 새 소식: `FeedNewContentChip`(탭바 위). digest·리스트는 chip/PTR/헤더 탭으로만 갱신 — [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md#고정-다이제스트-뉴스-digestpager-공시-disclosuredigestsection)
 
 ## 실행
 

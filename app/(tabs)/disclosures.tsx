@@ -33,7 +33,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
-import { useRefreshWithScrollToTop, useScrollToTopOnChange } from '@/hooks';
+import { useScrollToTopOnChange } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTabPressCycleSegment } from '@/hooks/useTabPressCycleSegment';
 import { fetchSignalDisclosures } from '@/integrations/signal-api/disclosures';
@@ -125,7 +125,7 @@ export default function DisclosuresScreen() {
   digestItemsRef.current = digestItems;
   watchlistRef.current = watchlist;
 
-  const { ref: listRef, scrollToTop } = useScrollToTopOnChange([filter, typeFilter, symbolFilter]);
+  const { ref: listRef } = useScrollToTopOnChange([filter, typeFilter, symbolFilter]);
 
   const currentQuery = useMemo<ListQuery>(
     () => ({ filter, typeFilter, symbolFilter }),
@@ -293,7 +293,7 @@ export default function DisclosuresScreen() {
     }
   }, [currentQuery, items, loadDigests, queryDisclosureList, t]);
 
-  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
+  const onRefresh = onRefreshBase;
 
   const onPickFilter = useCallback(
     (key: FilterKey) => {
@@ -344,9 +344,6 @@ export default function DisclosuresScreen() {
   const listHeaderEl = useMemo(
     () => (
       <View style={[styles.listHeader, useTwoPane && styles.listHeaderWide]}>
-        {!symbolFilter && filter !== 'watch' && digestItems.length > 0 ? (
-          <DisclosureDigestSection items={digestItems} loading={digestLoading && digestItems.length === 0} />
-        ) : null}
         {symbolFilter ? (
           <View style={styles.symbolFilterRow}>
             <Text style={styles.symbolFilterText} numberOfLines={1}>
@@ -392,7 +389,7 @@ export default function DisclosuresScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
     ),
-    [clearSymbolFilter, digestItems, digestLoading, error, filter, onPickTypeFilter, styles, symbolFilter, t, typeFilter, typeFilterOptions, useTwoPane],
+    [clearSymbolFilter, error, filter, onPickTypeFilter, styles, symbolFilter, t, typeFilter, typeFilterOptions, useTwoPane],
   );
 
   const renderDisclosureCard = useCallback(
@@ -501,6 +498,8 @@ export default function DisclosuresScreen() {
     </View>
   ) : null;
 
+  const showDigest = !symbolFilter && filter !== 'watch';
+
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
@@ -531,21 +530,31 @@ export default function DisclosuresScreen() {
           </View>
         ) : (
           <View style={useTwoPane ? styles.wideBody : styles.compactBody}>
-            <WebWheelFlatList
-              ref={listRef as never}
-              data={items}
-              keyExtractor={(item) => item.id}
-              style={[styles.list, useTwoPane && styles.wideList]}
-              contentContainerStyle={[
-                useTwoPane ? styles.wideListContent : styles.listContent,
-                { paddingBottom: bottomPad },
-              ]}
-              ListHeaderComponent={listHeaderEl}
-              refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-              ListEmptyComponent={<Text style={styles.empty}>{emptyText}</Text>}
-              removeClippedSubviews={Platform.OS === 'android'}
-              renderItem={renderDisclosureCard}
-            />
+            <View style={useTwoPane ? styles.listColumnWide : styles.listColumn}>
+              {showDigest ? (
+                <View style={[styles.digestFixed, useTwoPane && styles.digestFixedWide]}>
+                  <DisclosureDigestSection
+                    items={digestItems}
+                    loading={digestLoading && digestItems.length === 0}
+                  />
+                </View>
+              ) : null}
+              <WebWheelFlatList
+                ref={listRef as never}
+                data={items}
+                keyExtractor={(item) => item.id}
+                style={[styles.list, useTwoPane && styles.wideList]}
+                contentContainerStyle={[
+                  useTwoPane ? styles.wideListContent : styles.listContent,
+                  { paddingBottom: bottomPad },
+                ]}
+                ListHeaderComponent={listHeaderEl}
+                refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                ListEmptyComponent={<Text style={styles.empty}>{emptyText}</Text>}
+                removeClippedSubviews={Platform.OS === 'android'}
+                renderItem={renderDisclosureCard}
+              />
+            </View>
             {detailPaneEl}
           </View>
         )}
@@ -580,6 +589,25 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderBottomColor: theme.border,
     },
     compactBody: { ...webFlexFill },
+    listColumn: {
+      ...webFlexFill,
+    },
+    listColumnWide: {
+      flex: 0.45,
+      minWidth: 360,
+      minHeight: 0,
+    },
+    digestFixed: {
+      flexShrink: 0,
+      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+      backgroundColor: theme.card,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    digestFixedWide: {
+      paddingTop: 0,
+    },
     wideBody: {
       ...webFlexFill,
       flexDirection: 'row',
@@ -588,8 +616,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     list: { ...webScrollViewportStyle },
     wideList: {
-      flex: 0.45,
-      minWidth: 360,
+      flex: 1,
+      minHeight: 0,
     },
     listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
     wideListContent: { paddingTop: 0 },

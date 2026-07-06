@@ -79,7 +79,7 @@ import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreferen
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
 import { markNewsFeedSeen } from '@/services/newsUnreadPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
-import { useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
+import { useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
 import { useWebFlatListLoadMore } from '@/hooks/useWebFlatListLoadMore';
 import {
   fetchSignalNews,
@@ -234,7 +234,7 @@ export default function FeedScreen() {
   watchFilterRef.current = watchFilter;
   watchSelectedSymbolsRef.current = watchSelectedSymbols;
 
-  const { ref: feedListRef, scrollToTop } = useScrollToTopOnChange([
+  const { ref: feedListRef } = useScrollToTopOnChange([
     segment,
     globalFilter,
     cryptoFilter,
@@ -830,7 +830,7 @@ export default function FeedScreen() {
     }
   }, [items, load, t, videoItems]);
 
-  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
+  const onRefresh = onRefreshBase;
 
   const webFeedLoadMore = useWebFlatListLoadMore({
     hasMore,
@@ -1245,8 +1245,6 @@ export default function FeedScreen() {
           </Pressable>
         ) : null}
 
-        <DigestPager batches={digestBatches} />
-
         {segment === 'watch' ? (
           <View style={styles.watchFilterRow}>
             {WATCH_FILTERS.map((filter) => {
@@ -1311,9 +1309,10 @@ export default function FeedScreen() {
       theme.textDim,
       theme.green,
       theme.greenBorder,
-      digestBatches,
     ],
   );
+
+  const showDigest = segment !== 'video' && segment !== 'watch';
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
@@ -1346,6 +1345,12 @@ export default function FeedScreen() {
               </Fragment>
             ))}
           </View> : null}
+          </View>
+        ) : null}
+
+        {showDigest ? (
+          <View style={[styles.digestFixed, useTwoPane && styles.digestFixedWide]}>
+            <DigestPager batches={digestBatches} />
           </View>
         ) : null}
 

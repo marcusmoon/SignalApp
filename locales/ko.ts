@@ -745,6 +745,8 @@ export const ko = {
   quotesScreenTitle: '실시간 시세',
   quotesPlaceholderTicker: '티커 (예: AAPL)',
   quotesAddButton: '추가',
+  quotesAddWatchTitle: '관심 종목 추가',
+  quotesFabAddA11y: '관심 종목 추가',
   quotesErrorNoPrice: '가격 없음',
   quotesErrorLoadCoin: '코인 시세를 불러오지 못했습니다.',
   quotesErrorLoadQuotes: '시세를 불러오지 못했습니다.',
@@ -753,7 +755,7 @@ export const ko = {
   quotesAlertDupWatchlist: '이미 관심 목록에 있습니다.',
   quotesAlertTickerFormatBody: '미국 티커 또는 국내 6자리 종목코드를 입력해 주세요.',
   quotesDataUnavailable: '데이터 없음',
-  quotesEmptyWatch: '관심 종목이 없습니다. 티커를 추가해 주세요.',
+  quotesEmptyWatch: '관심 종목이 없습니다. + 버튼으로 티커를 추가해 주세요.',
   quotesEmptyGeneric: '표시할 시세가 없습니다.',
 
   briefingHubEmptyTitle: '시장 브리핑을 준비중입니다.',

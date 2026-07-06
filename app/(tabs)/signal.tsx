@@ -15,6 +15,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
+import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { MarketBriefingBlock } from '@/components/signal/MarketBriefingBlock';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -30,6 +31,7 @@ import {
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
   SCREEN_WIDE_SCROLL_BOTTOM_BASE,
+  feedNewContentChipBottom,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
@@ -358,6 +360,7 @@ export default function SignalScreen() {
   const scrollBottomPadding = useTwoPane
     ? SCREEN_WIDE_SCROLL_BOTTOM_BASE
     : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const newContentChipBottom = feedNewContentChipBottom(useTwoPane, tabBarHeight, insets.bottom);
 
   const availableSessionTabKeys = useMemo(
     () => FLAT_TABS.filter((tab) => briefingByTabKey.has(tab.key)).map((tab) => tab.key),
@@ -420,13 +423,6 @@ export default function SignalScreen() {
 
       <View style={[styles.pageColumn, useTwoPane && styles.pageColumnWide]}>
       <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
-      {newContentAvailable && !refreshing && selectedYmd >= todayYmd ? (
-        <FeedUpdateBanner
-          variant="prompt"
-          message={t('feedNewContentAvailable')}
-          onPress={() => void onRefresh()}
-        />
-      ) : null}
       {refreshNotice ? (
         <FeedUpdateBanner variant="notice" message={refreshNotice} />
       ) : null}
@@ -566,6 +562,16 @@ export default function SignalScreen() {
           </View>
         </View>
       </Modal>
+
+      {isFocused && selectedYmd >= todayYmd ? (
+        <FeedNewContentChip
+          visible={newContentAvailable}
+          refreshing={refreshing}
+          message={t('feedNewContentAvailable')}
+          onPress={() => void onRefresh()}
+          bottom={newContentChipBottom}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

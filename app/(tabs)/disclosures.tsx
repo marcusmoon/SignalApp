@@ -2,12 +2,13 @@ import * as WebBrowser from 'expo-web-browser';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
-import { useFocusEffect } from 'expo-router/react-navigation';
+import { useFocusEffect, useIsFocused } from 'expo-router/react-navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
+import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -18,6 +19,7 @@ import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } fr
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
+  feedNewContentChipBottom,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import {
@@ -40,7 +42,7 @@ import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosu
 import type { SignalApiDisclosure, SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
-import { markDisclosureFeedSeen } from '@/services/disclosureUnreadPreference';
+import { markDisclosureFeedSeen, fetchLatestDisclosureId } from '@/services/disclosureUnreadPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { formatRelativeFromIso } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
@@ -97,6 +99,7 @@ export default function DisclosuresScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const isFocused = useIsFocused();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const { useTwoPane } = useResponsiveLayout();
@@ -113,6 +116,8 @@ export default function DisclosuresScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
+  const [newContentAvailable, setNewContentAvailable] = useState(false);
+  const latestSeenIdRef = useRef<string | null>(null);
   const digestItemsRef = useRef<SignalApiDisclosureDigestItem[]>([]);
   const hasInitialLoadRef = useRef(false);
   const loadSeqRef = useRef(0);
@@ -172,6 +177,38 @@ export default function DisclosuresScreen() {
     void loadDigests();
   }, [loadDigests]);
 
+  /** 백그라운드 폴링: 3분마다 최신 공시 ID 확인 → chip 표시 (다이제스트·리스트는 탭 시 함께 갱신) */
+  useEffect(() => {
+    if (symbolFilter || !hasSignalApi()) {
+      setNewContentAvailable(false);
+      return;
+    }
+    const POLL_MS = 3 * 60 * 1000;
+    const poll = async () => {
+      try {
+        const latestId = await fetchLatestDisclosureId({ cacheMode: 'bypass' });
+        if (!latestId) return;
+        if (latestSeenIdRef.current === null) {
+          latestSeenIdRef.current = latestId;
+          return;
+        }
+        if (latestId !== latestSeenIdRef.current) {
+          setNewContentAvailable(true);
+        }
+      } catch {
+        /* ignore polling errors */
+      }
+    };
+    const id = setInterval(() => void poll(), POLL_MS);
+    return () => clearInterval(id);
+  }, [symbolFilter]);
+
+  useEffect(() => {
+    if (!refreshNotice) return;
+    const timeout = setTimeout(() => setRefreshNotice(null), 4500);
+    return () => clearTimeout(timeout);
+  }, [refreshNotice]);
+
   useEffect(() => {
     const query = currentQuery;
 
@@ -185,6 +222,7 @@ export default function DisclosuresScreen() {
         if (cancelled || seq !== loadSeqRef.current) return;
         setItems(rows);
         setError(null);
+        if (rows[0]?.id) latestSeenIdRef.current = rows[0].id;
       } catch (e) {
         if (cancelled || seq !== loadSeqRef.current) return;
         if (!hasSignalApi()) {
@@ -248,6 +286,7 @@ export default function DisclosuresScreen() {
     const prevIds = new Set(items.map((item) => item.id));
     setRefreshing(true);
     setRefreshNotice(null);
+    setNewContentAvailable(false);
     const seq = ++loadSeqRef.current;
     const query = currentQuery;
     try {
@@ -255,6 +294,7 @@ export default function DisclosuresScreen() {
       if (seq !== loadSeqRef.current) return;
       setItems(latest);
       setError(null);
+      if (latest[0]?.id) latestSeenIdRef.current = latest[0].id;
       await loadDigests(true);
       const latestIds = latest.map((item) => item.id);
       const newCount = latestIds.filter((id) => !prevIds.has(id)).length;
@@ -314,6 +354,7 @@ export default function DisclosuresScreen() {
   );
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const newContentChipBottom = feedNewContentChipBottom(useTwoPane, tabBarHeight, insets.bottom);
 
   const listHeaderEl = useMemo(
     () => (
@@ -541,6 +582,16 @@ export default function DisclosuresScreen() {
           </View>
         )}
       </View>
+
+      {isFocused && !symbolFilter ? (
+        <FeedNewContentChip
+          visible={newContentAvailable}
+          refreshing={refreshing}
+          message={t('feedNewContentAvailable')}
+          onPress={() => void onRefresh()}
+          bottom={newContentChipBottom}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

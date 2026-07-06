@@ -64,3 +64,15 @@ export function fabStackBottom(
 ): number {
   return tabBarHeight + tabBarBottomInset(safeAreaBottom) + offset;
 }
+
+/** `FeedNewContentChip` bottom inset — iPhone 탭바 위 / iPad·wide 하단 safe area 위 */
+export function feedNewContentChipBottom(
+  useTwoPane: boolean,
+  tabBarHeight: number,
+  safeAreaBottom: number,
+): number {
+  if (useTwoPane) {
+    return SCREEN_WIDE_SCROLL_BOTTOM_BASE + safeAreaBottom;
+  }
+  return fabStackBottom(tabBarHeight, safeAreaBottom);
+}

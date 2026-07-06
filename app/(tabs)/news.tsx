@@ -14,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import {
+  feedNewContentChipBottom,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import {
@@ -35,6 +36,7 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { DigestPager } from '@/components/news/DigestPager';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
+import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { makeNewsStyles } from '@/components/news/newsStyles';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
@@ -1206,6 +1208,7 @@ export default function FeedScreen() {
       : null;
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const newContentChipBottom = feedNewContentChipBottom(useTwoPane, tabBarHeight, insets.bottom);
 
   const listHeaderEl = useMemo(
     () => (
@@ -1319,15 +1322,8 @@ export default function FeedScreen() {
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {newContentAvailable || refreshNotice || !useTwoPane || showDigest ? (
+        {refreshNotice || !useTwoPane || showDigest ? (
           <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
-          {newContentAvailable && !refreshing ? (
-            <FeedUpdateBanner
-              variant="prompt"
-              message={t('feedNewContentAvailable')}
-              onPress={() => void onRefresh()}
-            />
-          ) : null}
           {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
           {!useTwoPane ? <View style={styles.segment}>
             {segmentOrder.map((key) => (
@@ -1559,6 +1555,16 @@ export default function FeedScreen() {
           );
         })}
       </SelectionFilterSheet>
+
+      {isFocused ? (
+        <FeedNewContentChip
+          visible={newContentAvailable}
+          refreshing={refreshing}
+          message={t('feedNewContentAvailable')}
+          onPress={() => void onRefresh()}
+          bottom={newContentChipBottom}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

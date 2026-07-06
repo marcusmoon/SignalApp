@@ -1,17 +1,51 @@
 import { StyleSheet } from 'react-native';
 
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
+import { SCREEN_HEADER_CONTENT_GAP } from '@/constants/screenLayout';
+import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 
 export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
+  const shellBg = webShellBackground(theme.bg);
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
   return StyleSheet.create({
-    safe: { flex: 1, minHeight: 0, backgroundColor: theme.bg },
+    safe: { flex: 1, minHeight: 0, backgroundColor: shellBg },
+    scrollFlex: { ...webScrollViewportStyle, flex: 1, minHeight: 0, backgroundColor: shellBg },
+    tabBar: {
+      ...segmentTab.segment,
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH - 32,
+      alignSelf: 'center',
+      flexShrink: 0,
+      marginHorizontal: 16,
+      marginTop: SCREEN_HEADER_CONTENT_GAP,
+      marginBottom: 6,
+    },
+    tabBarEmbedded: {
+      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH - 32,
+      alignSelf: 'stretch',
+    },
+    tabBtn: {
+      ...segmentTab.segBtn,
+      flexGrow: 1,
+      flexBasis: 0,
+      minWidth: 0,
+      paddingHorizontal: 6,
+    },
+    tabBtnActive: segmentTab.segBtnActive,
+    tabText: segmentTab.segText,
+    tabTextActive: segmentTab.segTextActive,
     content: {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
-      padding: 16,
+      paddingHorizontal: 16,
+      paddingTop: 4,
       gap: 12,
+    },
+    contentAuth: {
+      paddingTop: SCREEN_HEADER_CONTENT_GAP,
     },
     contentEmbedded: {
       maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
@@ -44,26 +78,6 @@ export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
     errBox: { borderRadius: 14, borderWidth: 1, borderColor: '#FFD6DA', backgroundColor: theme.dangerDim, padding: 12 },
     errText: { color: theme.danger, fontSize: sf(12), lineHeight: sf(18) },
     noticeText: { color: theme.green, fontSize: sf(12), lineHeight: sf(18), fontWeight: '800' },
-    accountTabs: {
-      minHeight: 44,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      flexDirection: 'row',
-      padding: 4,
-      gap: 4,
-    },
-    accountTab: {
-      flex: 1,
-      minHeight: 34,
-      borderRadius: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    accountTabActive: { backgroundColor: theme.greenDim, borderWidth: 1, borderColor: theme.greenBorder },
-    accountTabText: { color: theme.textMuted, fontSize: sf(12), fontWeight: '900' },
-    accountTabTextActive: { color: theme.green },
     sectionTitle: { color: theme.text, fontSize: sf(16), fontWeight: '900' },
     sectionLead: { color: theme.textMuted, fontSize: sf(12), lineHeight: sf(18), marginTop: -4 },
     authCardTitle: { color: theme.text, fontSize: sf(17), fontWeight: '900', textAlign: 'center' },

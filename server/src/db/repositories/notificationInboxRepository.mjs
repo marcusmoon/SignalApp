@@ -8,6 +8,26 @@ export const USER_NOTIFICATION_INBOX_MAX = 50;
 /** Inbox lazy-link: published = 알림함 기본 노출. pushDelivery는 푸시 파이프라인 전용. */
 const INBOX_LAZY_LINK_STATUSES = ['published', 'sent', 'skipped', 'queued'];
 
+function notificationDeliveredAtExpr(alias = 'n') {
+  return `COALESCE(${alias}.updated_at, ${alias}.sent_at, ${alias}.scheduled_at)`;
+}
+
+function notificationAudienceClause(alias = 'n', userParam = '$1') {
+  return `(
+    ${alias}.app_user_id = ${userParam}
+    OR (COALESCE(${alias}.target_type, 'all') = 'all' AND ${alias}.app_user_id IS NULL)
+  )`;
+}
+
+function notificationEligibilityClause(alias = 'n', userParam = '$1') {
+  return `
+    ${notificationAudienceClause(alias, userParam)}
+    AND (${alias}.expires_at IS NULL OR ${alias}.expires_at > NOW())
+    AND (${alias}.scheduled_at IS NULL OR ${alias}.scheduled_at <= NOW())
+    AND ${alias}.status = ANY($2::text[])
+  `;
+}
+
 function inboxRowId(userId, notificationId) {
   return `${cleanText(userId)}:${cleanText(notificationId)}`;
 }
@@ -51,7 +71,7 @@ async function trimUserInboxToMax(userId, max = USER_NOTIFICATION_INBOX_MAX) {
       WHERE id IN (
         SELECT id
         FROM user_notification_inbox
-        WHERE user_id = $1
+        WHERE user_id = $1 AND deleted_at IS NULL
         ORDER BY delivered_at DESC, id DESC
         OFFSET $2
       )
@@ -79,6 +99,12 @@ export async function upsertUserNotificationInboxRow(userId, notificationId, opt
             THEN excluded.delivered_at
           ELSE user_notification_inbox.delivered_at
         END,
+        read_at = CASE
+          WHEN user_notification_inbox.delivered_at IS NULL OR excluded.delivered_at > user_notification_inbox.delivered_at
+            THEN NULL
+          ELSE user_notification_inbox.read_at
+        END,
+        deleted_at = NULL,
         updated_at = excluded.updated_at
       RETURNING *
     `,
@@ -92,40 +118,63 @@ export async function syncLazyInboxLinksForUser(userId) {
   const uid = cleanText(userId);
   if (!uid || !(await isActiveRegisteredAppUser(uid))) return 0;
 
+  const eligibility = notificationEligibilityClause('n', '$1');
+
+  const resurfaced = await queryKysely(
+    `
+      UPDATE user_notification_inbox i
+      SET
+        delivered_at = src.delivered_at,
+        deleted_at = NULL,
+        read_at = NULL,
+        updated_at = NOW()
+      FROM (
+        SELECT
+          n.id,
+          ${notificationDeliveredAtExpr('n')} AS delivered_at
+        FROM notification_items n
+        WHERE ${eligibility}
+      ) src
+      WHERE i.user_id = $1
+        AND i.notification_id = src.id
+        AND (
+          i.deleted_at IS NOT NULL
+          OR src.delivered_at > i.delivered_at
+        )
+    `,
+    [uid, INBOX_LAZY_LINK_STATUSES],
+  );
+  let inserted = resurfaced.rowCount || 0;
+
   const countResult = await queryKysely(
-    'SELECT COUNT(*)::int AS count FROM user_notification_inbox WHERE user_id = $1',
+    'SELECT COUNT(*)::int AS count FROM user_notification_inbox WHERE user_id = $1 AND deleted_at IS NULL',
     [uid],
   );
   const currentCount = Number(countResult.rows[0]?.count) || 0;
   const remaining = USER_NOTIFICATION_INBOX_MAX - currentCount;
   if (remaining <= 0) {
     await trimUserInboxToMax(uid);
-    return 0;
+    return inserted;
   }
 
   const candidates = await queryKysely(
     `
-      SELECT n.id, COALESCE(n.sent_at, n.scheduled_at, n.updated_at) AS delivered_at
+      SELECT n.id, ${notificationDeliveredAtExpr('n')} AS delivered_at
       FROM notification_items n
-      WHERE (
-        n.app_user_id = $1
-        OR (n.target_type = 'all' AND n.app_user_id IS NULL)
-      )
-      AND (n.expires_at IS NULL OR n.expires_at > NOW())
-      AND (n.scheduled_at IS NULL OR n.scheduled_at <= NOW())
-      AND n.status = ANY($3::text[])
+      WHERE ${eligibility}
       AND NOT EXISTS (
         SELECT 1
         FROM user_notification_inbox i
-        WHERE i.user_id = $1 AND i.notification_id = n.id
+        WHERE i.user_id = $1
+          AND i.notification_id = n.id
+          AND i.deleted_at IS NULL
       )
-      ORDER BY COALESCE(n.sent_at, n.scheduled_at, n.updated_at) DESC NULLS LAST, n.id DESC
-      LIMIT $2
+      ORDER BY ${notificationDeliveredAtExpr('n')} DESC NULLS LAST, n.id DESC
+      LIMIT $3
     `,
-    [uid, remaining, INBOX_LAZY_LINK_STATUSES],
+    [uid, INBOX_LAZY_LINK_STATUSES, remaining],
   );
 
-  let inserted = 0;
   for (const row of candidates.rows) {
     const deliveredAt = row.delivered_at ? new Date(row.delivered_at).toISOString() : nowIso();
     const saved = await upsertUserNotificationInboxRow(uid, row.id, { deliveredAt });

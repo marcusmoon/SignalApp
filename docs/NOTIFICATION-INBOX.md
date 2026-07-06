@@ -45,10 +45,10 @@
 
 ## 링크 생성
 
-**Lazy (목록 조회):** 알림 API 호출 시 노출 가능한 `notification_items` 중 미연결 row를 insert.
+**Lazy (목록 조회):** 알림 API 호출 시 노출 가능한 `notification_items` 중 사용자 inbox에 없는 row를 연결한다. 이전에 삭제했거나 같은 digest id로 재 ingest된 `published` 알림은 `updated_at` 기준으로 다시 올린다.
 
 ```sql
-(app_user_id = :userId OR (target_type = 'all' AND app_user_id IS NULL))
+(app_user_id = :userId OR (COALESCE(target_type, 'all') = 'all' AND app_user_id IS NULL))
 AND (expires_at IS NULL OR expires_at > NOW())
 AND (scheduled_at IS NULL OR scheduled_at <= NOW())
 AND status IN ('published', 'sent', 'skipped', 'queued')

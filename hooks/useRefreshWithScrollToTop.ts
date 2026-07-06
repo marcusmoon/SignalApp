@@ -12,7 +12,10 @@ export function useRefreshWithScrollToTop(
       if (typeof requestAnimationFrame === 'function') {
         requestAnimationFrame(() => scrollToTop(false));
       }
-      InteractionManager.runAfterInteractions(() => scrollToTop(false));
+      InteractionManager.runAfterInteractions(() => {
+        scrollToTop(false);
+        setTimeout(() => scrollToTop(false), 300);
+      });
     });
   }, [onRefresh, scrollToTop]);
 }

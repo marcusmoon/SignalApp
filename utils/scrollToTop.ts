@@ -5,7 +5,6 @@ export type ScrollToTopTarget = {
   getScrollableNode?: () => unknown;
   scrollToOffset?: (opts: { offset: number; animated?: boolean }) => void;
   scrollTo?: (opts: { x?: number; y?: number; animated?: boolean }) => void;
-  scrollToIndex?: (opts: { index: number; animated?: boolean; viewOffset?: number }) => void;
 } | null;
 
 function isDomScrollNode(node: unknown): node is HTMLElement {
@@ -20,19 +19,19 @@ function scrollDomNode(node: HTMLElement, offset: number, animated: boolean) {
   node.scrollTop = offset;
 }
 
+/**
+ * Scroll to offset 0 so ListHeaderComponent (digest, filters) stays visible.
+ * Do not use scrollToIndex(0) — it jumps past the header to the first data row.
+ */
 function scrollInstanceOnce(instance: NonNullable<ScrollToTopTarget>, animated: boolean) {
   if (typeof instance.scrollToOffset === 'function') {
     instance.scrollToOffset({ offset: 0, animated });
-  } else if (typeof instance.scrollTo === 'function') {
-    instance.scrollTo({ y: 0, animated });
+    return;
   }
 
-  if (typeof instance.scrollToIndex === 'function') {
-    try {
-      instance.scrollToIndex({ index: 0, animated, viewOffset: 0 });
-    } catch {
-      // List may be empty or not measured yet.
-    }
+  if (typeof instance.scrollTo === 'function') {
+    instance.scrollTo({ y: 0, animated });
+    return;
   }
 
   if (Platform.OS !== 'web') return;
@@ -78,6 +77,7 @@ export function scrollToTopWithRetry(ref: RefObject<ScrollToTopTarget>, animated
   setTimeout(run, 0);
   setTimeout(run, 50);
   setTimeout(run, 150);
+  setTimeout(run, 300);
   if (Platform.OS !== 'web') {
     InteractionManager.runAfterInteractions(run);
   }

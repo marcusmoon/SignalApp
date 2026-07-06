@@ -129,7 +129,6 @@ export const ko = {
   disclosuresDigestSummary: '공시 {{count}}건 · 종목 {{symbols}}개',
   disclosuresFilterUs: '미국 SEC',
   disclosuresFilterKr: '한국 DART',
-  disclosuresFilterWatch: '내 관심',
   disclosuresEmpty: '표시할 공시가 없습니다.',
   disclosuresLoadError: '공시를 불러오지 못했습니다.',
   disclosuresOriginalOpen: '원문 보기',

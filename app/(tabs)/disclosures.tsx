@@ -40,7 +40,6 @@ import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosu
 import type { SignalApiDisclosure, SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
-import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { markDisclosureFeedSeen } from '@/services/disclosureUnreadPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { formatRelativeFromIso } from '@/utils/date';
@@ -53,7 +52,7 @@ import {
   type DisclosureTypeFilterKey,
 } from '@/domain/disclosures';
 
-type FilterKey = 'us' | 'kr' | 'watch';
+type FilterKey = 'us' | 'kr';
 
 type ListQuery = {
   filter: FilterKey;
@@ -61,12 +60,11 @@ type ListQuery = {
   symbolFilter: string;
 };
 
-const FILTER_ORDER: FilterKey[] = ['us', 'kr', 'watch'];
+const FILTER_ORDER: FilterKey[] = ['us', 'kr'];
 
 const FILTERS: { key: FilterKey; label: MessageId }[] = [
   { key: 'us', label: 'disclosuresFilterUs' },
   { key: 'kr', label: 'disclosuresFilterKr' },
-  { key: 'watch', label: 'disclosuresFilterWatch' },
 ];
 
 function disclosureTime(item: SignalApiDisclosure, locale: string): string {
@@ -110,18 +108,15 @@ export default function DisclosuresScreen() {
   const [digestItems, setDigestItems] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [digestLoading, setDigestLoading] = useState(false);
   const [selectedDisclosureId, setSelectedDisclosureId] = useState<string | null>(null);
-  const [watchlist, setWatchlist] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const digestItemsRef = useRef<SignalApiDisclosureDigestItem[]>([]);
-  const watchlistRef = useRef<string[]>([]);
   const hasInitialLoadRef = useRef(false);
   const loadSeqRef = useRef(0);
   digestItemsRef.current = digestItems;
-  watchlistRef.current = watchlist;
 
   const { ref: listRef } = useScrollToTopOnChange([filter, typeFilter, symbolFilter]);
 
@@ -134,8 +129,7 @@ export default function DisclosuresScreen() {
     if (!hasSignalApi() || symbolFilter) return;
     if (digestItemsRef.current.length === 0) setDigestLoading(true);
     try {
-      const market =
-        filter === 'us' ? 'us' : filter === 'kr' ? 'kr' : undefined;
+      const market = filter === 'us' ? 'us' : 'kr';
       const page = await fetchSignalDisclosureDigests(
         {
           market,
@@ -158,22 +152,8 @@ export default function DisclosuresScreen() {
         throw new Error(t('errorSignalApiShort'));
       }
 
-      let watch = watchlistRef.current;
-      if (query.filter === 'watch') {
-        watch = await loadWatchlistSymbols();
-        watchlistRef.current = watch;
-        setWatchlist(watch);
-      }
-
-      const market = query.symbolFilter
-        ? undefined
-        : query.filter === 'us'
-          ? 'us'
-          : query.filter === 'kr'
-            ? 'kr'
-            : undefined;
-      const symbols =
-        query.symbolFilter || (query.filter === 'watch' ? watch.join(',') : undefined);
+      const market = query.symbolFilter ? undefined : query.filter === 'us' ? 'us' : 'kr';
+      const symbols = query.symbolFilter || undefined;
       const page = await fetchSignalDisclosures(
         {
           market,
@@ -326,11 +306,7 @@ export default function DisclosuresScreen() {
   }, [router]);
 
   const emptyText =
-    filter === 'watch' && watchlist.length === 0
-      ? t('symbolDetailNoDisclosures')
-      : typeFilter !== 'all'
-        ? t('disclosuresEmptyType')
-        : t('disclosuresEmpty');
+    typeFilter !== 'all' ? t('disclosuresEmptyType') : t('disclosuresEmpty');
 
   const selectedDisclosure = useMemo(
     () => items.find((item) => item.id === selectedDisclosureId) ?? null,
@@ -496,7 +472,7 @@ export default function DisclosuresScreen() {
     </View>
   ) : null;
 
-  const showDigest = !symbolFilter && filter !== 'watch';
+  const showDigest = !symbolFilter;
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>

@@ -8,7 +8,7 @@ export const DART_TYPE_FILTERS = ['dart:B', 'dart:C', 'dart:D', 'dart:I'] as con
 /** SEC Job `forms`와 동일 */
 export const SEC_TYPE_FILTERS = ['sec:8-K', 'sec:10-Q', 'sec:10-K', 'sec:6-K', 'sec:20-F', 'sec:S-1'] as const;
 
-export type DisclosureTypeScope = 'us' | 'kr' | 'watch' | 'symbol';
+export type DisclosureTypeScope = 'us' | 'kr' | 'symbol';
 
 export const DISCLOSURE_TYPE_LABEL: Record<string, MessageId> = {
   'dart:B': 'disclosuresTypeDartB',
@@ -39,7 +39,7 @@ export function typeCategoryApiParam(typeFilter: DisclosureTypeFilterKey): strin
 }
 
 export function resolveDisclosureTypeScope(params: {
-  marketFilter: 'us' | 'kr' | 'watch';
+  marketFilter: 'us' | 'kr';
   symbolFilter?: string;
 }): DisclosureTypeScope {
   if (params.symbolFilter) return 'symbol';

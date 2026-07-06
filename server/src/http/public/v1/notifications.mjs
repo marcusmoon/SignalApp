@@ -11,6 +11,7 @@ import {
   USER_NOTIFICATION_INBOX_MAX,
 } from '../../../db.mjs';
 import { nowIso } from '../../../db/time.mjs';
+import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { json, readBody } from '../../shared.mjs';
 
 function bearerToken(req) {
@@ -33,7 +34,7 @@ async function requireAppUser(req, res) {
   return user;
 }
 
-function publicOutboxNotification(item) {
+function publicNotificationRecord(item) {
   const payload = item?.payload && typeof item.payload === 'object' ? item.payload : {};
   return {
     id: item.id,
@@ -84,29 +85,31 @@ export async function handlePublicNotificationRoutes({ req, res, url, pathname }
   if (req.method === 'POST' && pathname === '/v1/notifications/test') {
     const user = await requireAppUser(req, res);
     if (!user) return true;
-    const now = new Date().toISOString();
-    const item = await upsertNotificationItem({
-      id: `push-test:${user.id}:${Date.now()}`,
-      type: 'service_notice',
-      channel: 'push',
-      status: 'queued',
-      priority: 'normal',
-      title: 'SIGNAL push test',
-      body: '푸시 알림 테스트입니다. 이 알림이 보이면 기기 등록과 outbox 흐름이 정상입니다.',
-      appUserId: user.id,
-      targetType: 'user',
-      targetKey: user.id,
-      sourceType: 'app_user',
-      sourceId: user.id,
-      scheduledAt: now,
-      payload: {
+    const now = nowIso();
+    const draft = buildPublishedNotification(
+      {
+        id: `push-test:${user.id}:${Date.now()}`,
+        type: 'service_notice',
+        channel: 'push',
+        priority: 'normal',
         title: 'SIGNAL push test',
-        body: '푸시 알림 테스트입니다. 이 알림이 보이면 기기 등록과 outbox 흐름이 정상입니다.',
+        body: '푸시 알림 테스트입니다. 이 알림이 보이면 기기 등록과 푸시 발송 흐름이 정상입니다.',
+        appUserId: user.id,
+        targetType: 'user',
+        targetKey: user.id,
+        sourceType: 'app_user',
+        sourceId: user.id,
         deepLink: '/alerts',
+        scheduledAt: now,
       },
-      updatedAt: now,
-    });
-    json(res, 201, { data: publicOutboxNotification(item) });
+      { queuePush: true },
+    );
+    if (!draft) {
+      json(res, 400, { error: 'INVALID_NOTIFICATION' });
+      return true;
+    }
+    const item = await upsertNotificationItem(draft);
+    json(res, 201, { data: publicNotificationRecord(item) });
     return true;
   }
 

@@ -544,7 +544,6 @@ export const en = {
   alertsTypeTodayBriefing: 'Market wrap',
   alertsTypeMarketBriefing: 'Market briefing',
   alertsTypeNewsDigest: 'News flow',
-  alertsTypeInsight: 'Insight',
   alertsTypeMarketAlert: 'Market alert',
   alertsTypeEarnings: 'Earnings',
   alertsTypeAppUpdate: 'Update',
@@ -560,7 +559,7 @@ export const en = {
   alertsDeleteAllConfirmTitle: 'Clear all alerts?',
   alertsDeleteAllConfirmBody: 'Every alert in this list will be removed. You can still receive new alerts afterward.',
   alertsLoginRequiredTitle: 'Sign in to view alerts',
-  alertsLoginRequiredBody: 'User-based notification inboxes and push delivery need an account. Notices, watchlist alerts, and insight alerts will be stored against this account.',
+  alertsLoginRequiredBody: 'User-based notification inboxes and push delivery need an account. Notices and watchlist alerts will be stored against this account.',
   alertsLoginRequiredButton: 'Go to My info',
 
   localeNameKo: '한국어',

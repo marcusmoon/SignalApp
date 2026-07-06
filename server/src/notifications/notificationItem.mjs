@@ -12,6 +12,8 @@ export const NOTIFICATION_TYPES = {
 
 const SEND_STATE_STATUSES = new Set(['sending', 'sent', 'failed', 'cancelled', 'skipped']);
 
+const TERMINAL_PUSH_DELIVERY = new Set(['sending', 'sent', 'skipped', 'none']);
+
 function cleanText(value) {
   return String(value || '').trim();
 }
@@ -67,6 +69,18 @@ function notificationIdFor({ type, sourceType, sourceId, targetType, targetKey, 
   return `notification:${normalizeChannel(channel)}:${srcType}:${srcId}${target}`;
 }
 
+/** True when a push-channel row is waiting for the notification sender worker. */
+export function isPendingPushDelivery(item) {
+  if (!item || cleanText(item.channel).toLowerCase() !== 'push') return false;
+  const payload = item.payload && typeof item.payload === 'object' ? item.payload : {};
+  const pushDelivery = cleanText(payload.pushDelivery);
+  if (TERMINAL_PUSH_DELIVERY.has(pushDelivery)) return false;
+  const status = cleanText(item.status).toLowerCase();
+  if (status === 'queued' && (!pushDelivery || pushDelivery === 'pending')) return true;
+  if (status === 'published' && pushDelivery === 'pending') return true;
+  return false;
+}
+
 export function createNotificationItem(input, generatedAt = nowIso()) {
   const type = cleanText(input?.type || NOTIFICATION_TYPES.serviceNotice);
   const title = cleanText(input?.title);
@@ -109,54 +123,4 @@ export function createNotificationItem(input, generatedAt = nowIso()) {
     errorMessage: cleanText(input?.errorMessage) || null,
     payload: input?.payload && typeof input.payload === 'object' ? input.payload : {},
   };
-}
-
-export function notificationFromAppUpdate(update, generatedAt = nowIso()) {
-  const version = cleanText(update?.version || update?.runtimeVersion || update?.buildNumber || 'latest');
-  return createNotificationItem({
-    id: update?.id ? `notification:push:app_update:${cleanText(update.id)}` : `notification:push:app_update:${version}`,
-    type: NOTIFICATION_TYPES.appUpdate,
-    channel: update?.channel || 'push',
-    status: update?.status || 'queued',
-    priority: update?.priority || 'normal',
-    title: update?.title || 'SIGNAL 업데이트',
-    body: update?.body || '새 버전이 준비되었습니다.',
-    targetType: update?.targetType || 'all',
-    targetKey: update?.targetKey || null,
-    sourceType: 'app_update',
-    sourceId: update?.id || version,
-    deepLink: update?.deepLink || '/settings',
-    scheduledAt: update?.scheduledAt || generatedAt,
-    expiresAt: update?.expiresAt || null,
-    payload: {
-      version,
-      runtimeVersion: update?.runtimeVersion || null,
-      buildNumber: update?.buildNumber || null,
-      releaseNotes: update?.releaseNotes || '',
-    },
-  }, generatedAt);
-}
-
-export function upsertNotificationItem(items, next) {
-  if (!next?.id) return items;
-  const index = items.findIndex((item) => item.id === next.id);
-  if (index < 0) {
-    items.unshift(next);
-    return items;
-  }
-  const previous = items[index];
-  const preserveSendState = SEND_STATE_STATUSES.has(String(previous.status || 'queued'));
-  items[index] = {
-    ...previous,
-    ...next,
-    status: preserveSendState ? previous.status : next.status,
-    sentAt: preserveSendState ? previous.sentAt : next.sentAt,
-    provider: preserveSendState ? previous.provider : next.provider,
-    providerMessageId: preserveSendState ? previous.providerMessageId : next.providerMessageId,
-    attempts: preserveSendState ? previous.attempts : next.attempts,
-    errorMessage: preserveSendState ? previous.errorMessage : next.errorMessage,
-    createdAt: previous.createdAt || next.createdAt,
-    updatedAt: next.updatedAt,
-  };
-  return items;
 }

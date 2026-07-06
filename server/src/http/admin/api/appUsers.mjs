@@ -13,7 +13,7 @@ import {
   updateAppUserDeviceAdmin,
   upsertNotification,
 } from '../../../db.mjs';
-import { createNotificationItem } from '../../../notifications/outbox.mjs';
+import { createNotificationItem } from '../../../notifications/notificationItem.mjs';
 import { json, readBody } from '../../shared.mjs';
 
 function compactInboxItem(item) {

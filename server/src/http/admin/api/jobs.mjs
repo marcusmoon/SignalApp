@@ -10,6 +10,7 @@ import {
   queryPublicCalendar,
 } from '../../../db.mjs';
 import { httpMetricsSnapshot } from '../../../httpMetrics.mjs';
+import { isPendingPushDelivery } from '../../../notifications/notificationItem.mjs';
 import { enrichJobWithCatalog } from '../../../jobs/catalog.mjs';
 import { jobLockState, resolveActiveRunningRun, runTiming } from '../../../jobs/jobLock.mjs';
 import { forceReleaseStaleJobLock, reconcileJobLocksAndRuns } from '../../../jobs/jobLockMaintenance.mjs';
@@ -309,7 +310,7 @@ function dashboardSummary(db) {
       marketQuotes: db.marketQuotes.length,
       coinMarkets: db.coinMarkets.length,
       notifications: db.notificationItems.length,
-      queuedNotifications: db.notificationItems.filter((item) => item.channel === 'push' && item.status === 'queued').length,
+      queuedNotifications: db.notificationItems.filter((item) => isPendingPushDelivery(item)).length,
       jobs: db.pollingJobs.length,
       enabledJobs: db.pollingJobs.filter((job) => job.enabled).length,
       recentFailedRuns: recentRuns.filter((run) => run.status === 'failed').length,

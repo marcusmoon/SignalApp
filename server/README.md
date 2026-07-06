@@ -50,7 +50,7 @@ npm run web:export
 - `ADMIN_USERS`: `admin_users` 테이블이 비어 있을 때만 쓰는 초기 seed.
 - `SIGNAL_JWT_PRIVATE_KEY_B64`: 앱 사용자 JWT 발급용 private key.
 - `SIGNAL_SCHEDULER_ENABLED`: API/worker 실행 역할 분리.
-- `SIGNAL_NOTIFICATION_SENDER_ENABLED`: worker의 알림 outbox 발송 루프.
+- `SIGNAL_NOTIFICATION_SENDER_ENABLED`: worker의 알림 푸시 발송 루프.
 - `SIGNAL_NOTIFICATION_PUSH_PROVIDER`: `mock` 또는 `expo`.
 - `SIGNAL_HTTP_LOG_ALL`: 운영 기본은 `false`; 느린 요청과 오류만 로그로 남긴다.
 
@@ -71,7 +71,7 @@ Provider key는 env seed로 넣을 수 있지만, 일반 운영은 Admin 설정�
 - `src/http/`: public/admin HTTP route. 도메인별 파일로 분리한다.
 - `src/jobs/`: 수집 job runner/scheduler.
 - `src/providers/`: 외부 provider 호출과 정규화.
-- `src/notifications/`: 알림 outbox sender.
+- `src/notifications/`: 알림 템플릿·푸시 sender.
 - `src/db/`: Postgres client, Kysely helpers, feature repository, public query helper.
 - `src/db.mjs`: DB 공개 facade. 외부 모듈은 이 파일을 우선 사용한다.
 

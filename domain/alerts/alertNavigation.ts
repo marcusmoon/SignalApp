@@ -188,8 +188,6 @@ function fallbackTargetFromNotification(item: StoredNotification): AlertNavigati
   if (
     type === 'market_briefing' ||
     source === 'market_briefing' ||
-    type === 'insight_signal' ||
-    source === 'insight' ||
     type === 'market_alert'
   ) {
     return enrichSignalTarget({ pathname: '/(tabs)/signal' }, item);

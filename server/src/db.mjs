@@ -92,8 +92,6 @@ import {
   markUserNotificationInboxRead,
   queryUserNotificationInboxRows,
   queryUserNotificationInboxPage,
-  recordInboxDeliveriesForUsers,
-  syncLazyInboxLinksForUser,
   upsertUserNotificationInboxRow,
   USER_NOTIFICATION_INBOX_MAX,
 } from './db/repositories/notificationInboxRepository.mjs';
@@ -1958,15 +1956,7 @@ export async function deliverUserNotificationInbox(userId, notificationId, deliv
   return upsertUserNotificationInboxRow(userId, notificationId, { deliveredAt });
 }
 
-export async function recordNotificationInboxDeliveries(userIds, notificationId, deliveredAt) {
-  return recordInboxDeliveriesForUsers(userIds, notificationId, deliveredAt);
-}
-
 export { getAppUserNotificationPrefs, updateAppUserNotificationPrefs };
-
-export async function syncUserNotificationInboxLinks(userId) {
-  return syncLazyInboxLinksForUser(userId);
-}
 
 export { USER_NOTIFICATION_INBOX_MAX };
 

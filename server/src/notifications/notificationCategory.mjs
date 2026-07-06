@@ -4,12 +4,11 @@ const SIGNAL_TYPES = [
   'market_briefing',
   'today_briefing',
   'news_digest',
-  'insight_signal',
   'market_alert',
   'earnings_reminder',
 ];
 
-const SIGNAL_SOURCES = ['market_briefing', 'today_briefing', 'news_digest', 'insight'];
+const SIGNAL_SOURCES = ['market_briefing', 'today_briefing', 'news_digest'];
 
 const SYSTEM_TYPES = ['service_notice', 'app_update'];
 

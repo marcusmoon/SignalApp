@@ -25,7 +25,7 @@ npm --prefix server run worker
 | `SIGNAL_AUTOMATION_INGEST_TOKEN` | 외부 자동화가 `/v1/market-briefings/ingest` webhook으로 브리핑을 적재할 때 쓰는 토큰 |
 | `SIGNAL_JOB_LOCK_TTL_MS` | Job lock 기본 TTL(ms). Job별 `lockTtlSeconds`가 없을 때 사용 |
 | `SIGNAL_JOB_LOCK_MAINTENANCE_MS` | 만료 lock·orphaned run 정리 주기(ms, 기본 60000) |
-| `SIGNAL_NOTIFICATION_SENDER_ENABLED` | worker 푸시 outbox 발송 루프 (기본 `false`). 알림함 목록은 sender 없이도 lazy link로 표시되나, **기기 푸시**는 `true` + worker 필요 |
+| `SIGNAL_NOTIFICATION_SENDER_ENABLED` | worker 푸시 발송 루프 (기본 `false`). 알림함 목록은 sender 없이도 lazy link로 표시되나, **기기 푸시**는 `true` + worker 필요 |
 | `SIGNAL_NOTIFICATION_PUSH_PROVIDER` | `mock` \| `expo` (기본 `mock`) |
 
 ## DB 운영 원칙

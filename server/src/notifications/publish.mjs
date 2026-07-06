@@ -1,4 +1,4 @@
-import { createNotificationItem } from './outbox.mjs';
+import { createNotificationItem } from './notificationItem.mjs';
 
 /** 알림함 노출용 — 푸시 발송과 분리 */
 export function buildPublishedNotification(input, { queuePush = false } = {}) {

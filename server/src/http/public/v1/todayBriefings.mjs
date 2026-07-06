@@ -1,5 +1,5 @@
 import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
-import { NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
+import { NOTIFICATION_TYPES } from '../../../notifications/notificationItem.mjs';
 import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';

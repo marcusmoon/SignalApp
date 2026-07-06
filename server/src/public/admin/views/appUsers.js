@@ -1,7 +1,6 @@
 const NOTIFICATION_TYPE_OPTIONS = [
   'service_notice',
   'app_update',
-  'insight_signal',
   'market_alert',
   'earnings_reminder',
   'market_briefing',

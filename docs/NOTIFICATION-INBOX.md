@@ -69,7 +69,7 @@ AND status IN ('published', 'sent', 'skipped', 'queued')
 | PATCH | `/v1/notifications/read` | `{ "ids": [] }` 또는 `{ "all": true }` |
 | DELETE | `/v1/notifications` | soft delete |
 | POST | `/v1/notifications/deliver` | `{ "notificationId": "..." }` |
-| POST | `/v1/notifications/test` | push 테스트 (outbox enqueue) |
+| POST | `/v1/notifications/test` | push 테스트 (`published` + `pushDelivery: pending`) |
 
 ## 앱 연동
 
@@ -87,7 +87,7 @@ AND status IN ('published', 'sent', 'skipped', 'queued')
 
 | Method | Path | 설명 |
 |---|---|---|
-| GET | `/admin/api/notifications` | outbox 검색 |
+| GET | `/admin/api/notifications` | 알림 템플릿 검색 |
 | GET | `/admin/api/app-users/:userId/inbox` | 사용자 인박스 |
 
 ## 시간 기준
@@ -99,7 +99,7 @@ AND status IN ('published', 'sent', 'skipped', 'queued')
 | 영역 | 파일 |
 |---|---|
 | DB | `server/db/migrations/postgres/V7__notification_inbox.sql`, `V8__app_user_notification_prefs.sql` |
-| publish | `server/src/notifications/publish.mjs` |
+| publish | `server/src/notifications/publish.mjs`, `server/src/notifications/notificationItem.mjs` |
 | 서버 repo | `server/src/db/repositories/notificationInboxRepository.mjs` |
 | 푸시 prefs | `server/src/notifications/notificationPreferences.mjs` |
 | 발송 | `server/src/notifications/sender.mjs` |

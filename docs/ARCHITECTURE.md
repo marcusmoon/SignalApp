@@ -20,11 +20,12 @@
 
 | 탭 | 화면 | 역할 |
 |---|---|---|
+| 홈 | `app/(tabs)/home.tsx` | 오늘의 브리핑·홈 다이제스트 |
 | 뉴스 | `app/(tabs)/news.tsx` | 글로벌/한국/코인/내 관심 뉴스 피드 |
-| 공시 | `app/(tabs)/disclosures.tsx` | SEC/DART 공시와 관심 종목 공시 |
-| 시그널 | `app/(tabs)/signal.tsx` | Codex 시장 브리핑(국내·미국, 날짜·회차) |
+| 공시 | `app/(tabs)/disclosures.tsx` | SEC/DART 공시 (미국·한국) |
+| 시그널 | `app/(tabs)/signal.tsx` | 시장 브리핑 — 미장·장전·장중·마감 4회차 |
 | 시세 | `app/(tabs)/quotes.tsx` | 관심·인기·시총·코인 시세 |
-| 더보기 | `app/(tabs)/more.tsx` | 유튜브, 계정·설정 등 보조 기능 |
+| 더보기 | `app/(tabs)/more.tsx` | 게시판·캘린더·설정 등 보조 기능 |
 
 유튜브(`app/(tabs)/youtube.tsx`)는 iPhone에서 더보기로 진입하고, iPad에서는 넓은 화면용 사이드 메뉴에서 직접 진입할 수 있다.
 

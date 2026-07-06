@@ -51,7 +51,6 @@ SafeAreaView edges={['top']}
   topFixed | dateNavigatorWrap     ← SCREEN_HEADER_CONTENT_GAP / FIXED_HEADER_*
     세그먼트 · 날짜 바 · 배너
   ScrollView / FlatList            ← SCREEN_LIST_CONTENT_PADDING_TOP
-  FloatingGlassFab (선택)
   SignalFloatingTabBar (layout)
 ```
 

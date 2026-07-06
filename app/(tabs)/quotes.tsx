@@ -24,11 +24,9 @@ import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SymbolDetailPane } from '@/components/symbol/SymbolDetailPane';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
-import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import {
-  fabStackBottom,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import { useQuoteChangeColors, useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
@@ -360,7 +358,6 @@ export default function QuotesScreen() {
   }, [load, t]);
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
-  const fabStackBottomOffset = fabStackBottom(tabBarHeight, insets.bottom);
 
   const quotesListHeader = useMemo(
     () => (
@@ -661,17 +658,6 @@ export default function QuotesScreen() {
           ) : undefined
         }
       />
-
-      {!useTwoPane ? (
-        <FloatingGlassFab
-          bottom={fabStackBottomOffset}
-          listRef={listRef}
-          onPress={() => void onRefresh()}
-          iconName="sync"
-          accessibilityLabel={t('fabRefreshA11y')}
-          disabled={refreshing}
-        />
-      ) : null}
     </SafeAreaView>
   );
 }

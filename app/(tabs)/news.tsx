@@ -14,7 +14,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import {
-  fabStackBottom,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import {
@@ -29,7 +28,6 @@ import {
   SelectionFilterSheet,
   selectionFilterRowStyles,
 } from '@/components/signal/SelectionFilterSheet';
-import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { groupedFeedRowEdges, groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { NewsCard } from '@/components/signal/NewsCard';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
@@ -1208,7 +1206,6 @@ export default function FeedScreen() {
       : null;
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
-  const fabStackBottomOffset = fabStackBottom(tabBarHeight, insets.bottom);
 
   const listHeaderEl = useMemo(
     () => (
@@ -1434,17 +1431,6 @@ export default function FeedScreen() {
           maxToRenderPerBatch={Platform.OS === 'web' ? WEB_FLATLIST_BATCH : 12}
         />
       </View>
-
-      {hasSignalApi() && !useTwoPane ? (
-        <FloatingGlassFab
-          bottom={fabStackBottomOffset}
-          listRef={feedListRef}
-          onPress={() => void onRefresh()}
-          iconName="sync"
-          accessibilityLabel={t('fabRefreshA11y')}
-          disabled={refreshing}
-        />
-      ) : null}
 
       <NewsSourceFilterModal
         visible={filterModalVisible}

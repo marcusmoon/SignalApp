@@ -25,7 +25,6 @@ import {
   selectionFilterRowStyles,
 } from '@/components/signal/SelectionFilterSheet';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
-import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
@@ -35,7 +34,6 @@ import {
 import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import {
-  fabStackBottom,
   SCREEN_FIXED_HEADER_PADDING_BOTTOM,
   SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
   SCREEN_FIXED_HEADER_PADDING_TOP,
@@ -404,7 +402,6 @@ export default function YoutubeScreen() {
       : loading && items.length === 0;
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
-  const fabStackBottomOffset = fabStackBottom(tabBarHeight, insets.bottom);
 
   const youtubeListHeader = useMemo(
     () => (
@@ -563,17 +560,6 @@ export default function YoutubeScreen() {
       {isFocused ? <OtaUpdateBanner /> : null}
 
       {youtubeListPanel}
-
-      {hasSignalApi() && !useTwoPane ? (
-        <FloatingGlassFab
-          bottom={fabStackBottomOffset}
-          listRef={ytListRef}
-          onPress={() => void onRefresh()}
-          iconName="sync"
-          accessibilityLabel={t('fabRefreshA11y')}
-          disabled={refreshing}
-        />
-      ) : null}
 
       <SelectionFilterSheet
         visible={channelModalVisible}

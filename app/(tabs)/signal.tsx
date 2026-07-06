@@ -15,7 +15,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
-import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { MarketBriefingBlock } from '@/components/signal/MarketBriefingBlock';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -29,7 +28,6 @@ import {
   SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/segmentTabBar';
 import {
-  fabStackBottom,
   SCREEN_HEADER_CONTENT_GAP,
   SCREEN_WIDE_SCROLL_BOTTOM_BASE,
   tabScreenScrollBottomPadding,
@@ -352,7 +350,6 @@ export default function SignalScreen() {
   const { ref: scrollRef, scrollToTop } = useScrollToTopOnChange([activeTabKey, selectedYmd]);
   const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
   const hasAnyBriefing = marketBriefings.length > 0;
-  const fabStackBottomOffset = fabStackBottom(tabBarHeight, insets.bottom);
   const scrollBottomPadding = useTwoPane
     ? SCREEN_WIDE_SCROLL_BOTTOM_BASE
     : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
@@ -521,17 +518,6 @@ export default function SignalScreen() {
         </WebWheelScrollView>
       )}
       </View>
-
-      {hasSignalApi() && !useTwoPane ? (
-        <FloatingGlassFab
-          bottom={fabStackBottomOffset}
-          listRef={scrollRef}
-          onPress={() => void onRefresh()}
-          iconName="sync"
-          accessibilityLabel={t('fabRefreshA11y')}
-          disabled={refreshing}
-        />
-      ) : null}
 
       <Modal
         animationType="slide"

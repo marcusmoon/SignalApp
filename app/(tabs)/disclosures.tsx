@@ -8,7 +8,6 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
-import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -18,7 +17,6 @@ import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import {
-  fabStackBottom,
   SCREEN_FIXED_HEADER_PADDING_BOTTOM,
   SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
   SCREEN_FIXED_HEADER_PADDING_TOP,
@@ -342,7 +340,6 @@ export default function DisclosuresScreen() {
   );
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
-  const fabStackBottomOffset = fabStackBottom(tabBarHeight, insets.bottom);
 
   const listHeaderEl = useMemo(
     () => (
@@ -553,16 +550,6 @@ export default function DisclosuresScreen() {
           </View>
         )}
       </View>
-      {hasSignalApi() && !useTwoPane ? (
-        <FloatingGlassFab
-          bottom={fabStackBottomOffset}
-          listRef={listRef}
-          onPress={() => void onRefresh()}
-          iconName="sync"
-          accessibilityLabel={t('fabRefreshA11y')}
-          disabled={refreshing}
-        />
-      ) : null}
     </SafeAreaView>
   );
 }

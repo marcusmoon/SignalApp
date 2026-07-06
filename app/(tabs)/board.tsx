@@ -11,7 +11,6 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import {
   COMMUNITY_SOURCE_ALL,
   COMMUNITY_SOURCE_ORDER,
@@ -23,7 +22,6 @@ import {
 } from '@/constants/segmentTabBar';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import {
-  fabStackBottom,
   SCREEN_FIXED_HEADER_PADDING_BOTTOM,
   SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
   SCREEN_FIXED_HEADER_PADDING_TOP,
@@ -189,7 +187,6 @@ export default function BoardScreen() {
   );
 
   const listBottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
-  const fabStackBottomOffset = fabStackBottom(tabBarHeight, insets.bottom);
 
   const renderItem = useCallback(
     ({ item }: { item: SignalApiCommunityPost }) => (
@@ -268,16 +265,6 @@ export default function BoardScreen() {
           />
         )}
       </View>
-      {hasSignalApi() && !useTwoPane ? (
-        <FloatingGlassFab
-          bottom={fabStackBottomOffset}
-          listRef={listRef}
-          onPress={onRefresh}
-          iconName="sync"
-          accessibilityLabel={t('fabRefreshA11y')}
-          disabled={refreshing}
-        />
-      ) : null}
     </SafeAreaView>
   );
 }

@@ -47,6 +47,17 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
+    digestFixed: {
+      flexShrink: 0,
+      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+      backgroundColor: theme.card,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    digestFixedWide: {
+      paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
+    },
     list: {
       ...webScrollViewportStyle,
     },

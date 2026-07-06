@@ -8,7 +8,6 @@ import {
   Platform,
   Pressable,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { RectButton } from 'react-native-gesture-handler';
@@ -19,7 +18,9 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { MasterDetailLayout } from '@/components/layout/MasterDetailLayout';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
+import { WatchlistAddSheet } from '@/components/quotes/WatchlistAddSheet';
 import { makeQuotesStyles } from '@/components/quotes/quotesStyles';
+import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SymbolDetailPane } from '@/components/symbol/SymbolDetailPane';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -27,6 +28,7 @@ import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import {
+  fabStackBottom,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import { useQuoteChangeColors, useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
@@ -111,6 +113,8 @@ export default function QuotesScreen() {
   rowsRef.current = rows;
   useTabScreenLoadingRecovery(rows, setLoading);
   const [draftTicker, setDraftTicker] = useState('');
+  const [addSheetVisible, setAddSheetVisible] = useState(false);
+  const [addingWatch, setAddingWatch] = useState(false);
 
   // iPad 2-패널: 리스트가 로드되면 첫 번째 유효한 종목을 자동 선택
   useEffect(() => {
@@ -266,17 +270,17 @@ export default function QuotesScreen() {
 
   const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
 
-  const onAddWatch = useCallback(async () => {
+  const onAddWatch = useCallback(async (): Promise<boolean> => {
     const raw = draftTicker.trim();
-    if (!raw) return;
+    if (!raw) return false;
     if (!isValidQuoteSymbol(raw)) {
       Alert.alert(t('alertTitleFormatError'), t('quotesAlertTickerFormatBody'));
-      return;
+      return false;
     }
     const sym = raw.toUpperCase().replace(/\s+/g, '');
     if (!hasSignalApi()) {
       setError(t('errorSignalApiShort'));
-      return;
+      return false;
     }
     try {
       const rows = await fetchSignalMarketQuotes(
@@ -285,24 +289,45 @@ export default function QuotesScreen() {
       );
       if (rows.length === 0 || rows.every((row) => row.currentPrice == null)) {
         Alert.alert(t('alertTitleUnknownTicker'), t('quotesTickerNotFoundBody'));
-        return;
+        return false;
       }
     } catch (e) {
       Alert.alert(
         t('alertTitleFormatError'),
         formatSignalApiError(e, t, 'quotesErrorLookup'),
       );
-      return;
+      return false;
     }
     const current = await loadWatchlistSymbols();
     if (current.includes(sym)) {
       Alert.alert(t('commonNotice'), t('quotesAlertDupWatchlist'));
-      return;
+      return false;
     }
     await saveWatchlistSymbols([...current, sym]);
     setDraftTicker('');
     await load();
+    return true;
   }, [draftTicker, load, t]);
+
+  const onAddWatchFromSheet = useCallback(async () => {
+    if (addingWatch) return;
+    setAddingWatch(true);
+    try {
+      const added = await onAddWatch();
+      if (added) setAddSheetVisible(false);
+    } finally {
+      setAddingWatch(false);
+    }
+  }, [addingWatch, onAddWatch]);
+
+  const openAddSheet = useCallback(() => {
+    setAddSheetVisible(true);
+  }, []);
+
+  const closeAddSheet = useCallback(() => {
+    if (addingWatch) return;
+    setAddSheetVisible(false);
+  }, [addingWatch]);
 
   const onRemoveWatch = useCallback(
     async (symbol: string) => {
@@ -350,6 +375,8 @@ export default function QuotesScreen() {
           style: 'destructive',
           onPress: async () => {
             await resetWatchlistToDefaults();
+            setDraftTicker('');
+            setAddSheetVisible(false);
             await load();
           },
         },
@@ -358,6 +385,7 @@ export default function QuotesScreen() {
   }, [load, t]);
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const fabBottom = fabStackBottom(tabBarHeight, insets.bottom);
 
   const quotesListHeader = useMemo(
     () => (
@@ -366,56 +394,14 @@ export default function QuotesScreen() {
           <View style={SCROLL_LOADING_BODY_STYLE}>
             <SignalLoadingIndicator message={t('commonLoading')} />
           </View>
-        ) : (
-          <>
-            {error ? (
-              <View style={styles.errBox}>
-                <Text style={styles.errText}>{error}</Text>
-              </View>
-            ) : null}
-            {segment === 'watch' ? (
-              <View style={styles.addRow}>
-                <TextInput
-                  value={draftTicker}
-                  onChangeText={setDraftTicker}
-                  placeholder={t('quotesPlaceholderTicker')}
-                  placeholderTextColor={theme.textDim}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  style={styles.addInput}
-                  onSubmitEditing={() => void onAddWatch()}
-                  returnKeyType="done"
-                />
-                <Pressable onPress={() => void onAddWatch()} style={styles.addBtn} accessibilityRole="button">
-                  <Text style={styles.addBtnText}>{t('quotesAddButton')}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={onResetWatchDefaults}
-                  style={styles.watchResetBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('settingsQuotesReset')}>
-                  <Text style={styles.watchResetBtnText} numberOfLines={1}>
-                    {t('settingsQuotesReset')}
-                  </Text>
-                </Pressable>
-              </View>
-            ) : null}
-          </>
-        )}
+        ) : error ? (
+          <View style={styles.errBox}>
+            <Text style={styles.errText}>{error}</Text>
+          </View>
+        ) : null}
       </>
     ),
-    [
-      draftTicker,
-      error,
-      loading,
-      onAddWatch,
-      onResetWatchDefaults,
-      rows.length,
-      segment,
-      styles,
-      t,
-      theme.textDim,
-    ],
+    [error, loading, rows.length, styles, t],
   );
 
   const onPickSegment = useCallback((key: QuoteSegmentKey) => {
@@ -657,6 +643,26 @@ export default function QuotesScreen() {
             </View>
           ) : undefined
         }
+      />
+
+      {segment === 'watch' && isFocused ? (
+        <FloatingGlassFab
+          bottom={fabBottom}
+          iconName="plus"
+          accessibilityLabel={t('quotesFabAddA11y')}
+          onPress={openAddSheet}
+        />
+      ) : null}
+
+      <WatchlistAddSheet
+        visible={addSheetVisible}
+        value={draftTicker}
+        onChangeText={setDraftTicker}
+        onAdd={onAddWatchFromSheet}
+        onReset={onResetWatchDefaults}
+        onDismiss={closeAddSheet}
+        bottomInset={insets.bottom}
+        adding={addingWatch}
       />
     </SafeAreaView>
   );

@@ -749,6 +749,8 @@ export const en = {
   quotesScreenTitle: 'Live quotes',
   quotesPlaceholderTicker: 'Ticker (e.g. AAPL)',
   quotesAddButton: 'Add',
+  quotesAddWatchTitle: 'Add to watchlist',
+  quotesFabAddA11y: 'Add to watchlist',
   quotesErrorNoPrice: 'No price',
   quotesErrorLoadCoin: 'Could not load crypto quotes.',
   quotesErrorLoadQuotes: 'Could not load quotes.',
@@ -757,7 +759,7 @@ export const en = {
   quotesAlertDupWatchlist: 'Already in your watchlist.',
   quotesAlertTickerFormatBody: 'Enter a US ticker or a 6-digit Korean stock code.',
   quotesDataUnavailable: 'No data',
-  quotesEmptyWatch: 'No watchlist tickers. Add a ticker below.',
+  quotesEmptyWatch: 'No watchlist tickers. Tap + to add a ticker.',
   quotesEmptyGeneric: 'No quotes to show.',
 
   briefingHubEmptyTitle: 'No market brief has been generated yet.',

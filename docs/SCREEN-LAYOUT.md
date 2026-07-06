@@ -125,7 +125,7 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 5. 리스트 `paddingTop`: `SCREEN_LIST_CONTENT_PADDING_TOP`
 6. 하단: `tabScreenScrollBottomPadding` / `stackScreenScrollBottomPadding` / `SCREEN_WIDE_SCROLL_BOTTOM_BASE`
 7. 가로: `APP_CONTENT_SIDE_PADDING` (리터럴 `16` 지양)
-8. FAB: `fabStackBottom`
+8. FAB: `fabStackBottom` (예: 시세 관심 탭 추가 버튼)
 
 ## 관련 파일
 

@@ -89,6 +89,6 @@ export async function refreshDisclosureUnreadFromServer(options?: { force?: bool
 }
 
 export async function markDisclosureFeedSeen(disclosureId?: string | null): Promise<void> {
-  const id = disclosureId?.trim() || (await fetchLatestDisclosureId());
+  const id = disclosureId?.trim() || (await fetchLatestDisclosureId({ cacheMode: 'bypass' }));
   if (id) await saveLastSeenDisclosureId(id);
 }

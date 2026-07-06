@@ -227,10 +227,10 @@ export default function DisclosuresScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (!symbolFilter && items[0]?.id) {
-        void markDisclosureFeedSeen(items[0].id);
+      if (!symbolFilter) {
+        void markDisclosureFeedSeen();
       }
-    }, [items, symbolFilter]),
+    }, [symbolFilter]),
   );
 
   const onPickTypeFilter = useCallback((key: DisclosureTypeFilterKey) => {

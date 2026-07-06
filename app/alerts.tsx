@@ -9,6 +9,9 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import {
+  SCREEN_FIXED_HEADER_PADDING_BOTTOM,
+  SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+  SCREEN_FIXED_HEADER_PADDING_TOP,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   stackScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
@@ -19,7 +22,7 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
-import { useResetRefreshingOnTabBlur, useRefreshWithScrollToTop, useScrollToTopOnChange } from '@/hooks';
+import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
 import { loadAlertsFromServer, markAlertsSeen } from '@/services/alertsUnreadPreference';
 import type { StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
@@ -45,7 +48,7 @@ export default function AlertsScreen() {
   const [authChecked, setAuthChecked] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<AlertsFilter>('all');
-  const { ref: listRef, scrollToTop } = useScrollToTopOnChange([filter]);
+  const { ref: listRef } = useScrollToTopOnChange([filter]);
   useResetRefreshingOnTabBlur(setRefreshing);
 
   const reload = useCallback(async (activeFilter: AlertsFilter = filter, forceRefresh = false) => {
@@ -82,7 +85,7 @@ export default function AlertsScreen() {
     }
   }, [filter, reload]);
 
-  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
+  const onRefresh = onRefreshBase;
 
   const alertFilters = useMemo(
     () =>
@@ -146,7 +149,7 @@ export default function AlertsScreen() {
   const listEmptyMessage =
     items.length === 0 ? (filter === 'all' ? t('alertsEmpty') : t('alertsFilterEmpty')) : null;
 
-  const listHeader = useMemo(
+  const alertsTopFixed = useMemo(
     () => (
       <>
         <View style={styles.filterRow}>
@@ -288,31 +291,33 @@ export default function AlertsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
-      <FlatList
-        ref={listRef as never}
-        data={filteredItems}
-        keyExtractor={(a) => a.id}
-        renderItem={renderAlert}
-        ListHeaderComponent={listHeader}
-        ListEmptyComponent={
-          listEmptyMessage ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>{listEmptyMessage}</Text>
-            </View>
-          ) : null
-        }
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: bottomPad },
-          filteredItems.length === 0 ? styles.listContentEmpty : null,
-        ]}
-        style={styles.list}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        removeClippedSubviews={Platform.OS === 'android'}
-        initialNumToRender={12}
-        windowSize={7}
-      />
+      <View style={styles.mainColumn}>
+        <View style={styles.topFixed}>{alertsTopFixed}</View>
+        <FlatList
+          ref={listRef as never}
+          data={filteredItems}
+          keyExtractor={(a) => a.id}
+          renderItem={renderAlert}
+          ListEmptyComponent={
+            listEmptyMessage ? (
+              <View style={styles.emptyBox}>
+                <Text style={styles.emptyText}>{listEmptyMessage}</Text>
+              </View>
+            ) : null
+          }
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: bottomPad },
+            filteredItems.length === 0 ? styles.listContentEmpty : null,
+          ]}
+          style={styles.list}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          removeClippedSubviews={Platform.OS === 'android'}
+          initialNumToRender={12}
+          windowSize={7}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -320,12 +325,27 @@ export default function AlertsScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: webShellBackground(theme.bg) },
-    list: {
+    mainColumn: {
       flex: 1,
       minHeight: 0,
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
+    },
+    topFixed: {
+      flexShrink: 0,
+      zIndex: 2,
+      elevation: Platform.OS === 'android' ? 2 : 0,
+      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+      paddingTop: SCREEN_FIXED_HEADER_PADDING_TOP,
+      paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
+      backgroundColor: theme.card,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    list: {
+      flex: 1,
+      minHeight: 0,
     },
     listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
     listContentEmpty: { flexGrow: 1 },

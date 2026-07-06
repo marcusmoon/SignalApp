@@ -28,6 +28,67 @@ function notificationEligibilityClause(alias = 'n', userParam = '$1') {
   `;
 }
 
+function notificationAfterCursorClause(alias = 'n', deliveredAtParam, notificationIdParam) {
+  return `(
+    ${notificationDeliveredAtExpr(alias)} > ${deliveredAtParam}::timestamptz
+    OR (
+      ${notificationDeliveredAtExpr(alias)} = ${deliveredAtParam}::timestamptz
+      AND ${alias}.id > ${notificationIdParam}
+    )
+  )`;
+}
+
+async function getLazyLinkState(userId) {
+  const result = await queryKysely(
+    `
+      SELECT last_notification_id, last_delivered_at
+      FROM user_notification_lazy_link_state
+      WHERE user_id = $1
+    `,
+    [userId],
+  );
+  return result.rows[0] || null;
+}
+
+async function upsertLazyLinkState(userId, notificationId, deliveredAt) {
+  const nid = cleanText(notificationId);
+  if (!nid || !deliveredAt) return;
+  await queryKysely(
+    `
+      INSERT INTO user_notification_lazy_link_state (
+        user_id, last_notification_id, last_delivered_at, updated_at
+      ) VALUES ($1, $2, $3::timestamptz, NOW())
+      ON CONFLICT (user_id) DO UPDATE SET
+        last_notification_id = excluded.last_notification_id,
+        last_delivered_at = excluded.last_delivered_at,
+        updated_at = NOW()
+      WHERE excluded.last_delivered_at > user_notification_lazy_link_state.last_delivered_at
+        OR (
+          excluded.last_delivered_at = user_notification_lazy_link_state.last_delivered_at
+          AND excluded.last_notification_id > COALESCE(user_notification_lazy_link_state.last_notification_id, '')
+        )
+    `,
+    [userId, nid, deliveredAt],
+  );
+}
+
+async function queryEligibleNotificationHead(userId) {
+  const eligibility = notificationEligibilityClause('n', '$1');
+  const result = await queryKysely(
+    `
+      SELECT
+        n.id,
+        ${notificationDeliveredAtExpr('n')} AS delivered_at
+      FROM notification_items n
+      WHERE ${eligibility}
+      ORDER BY ${notificationDeliveredAtExpr('n')} DESC NULLS LAST, n.id DESC
+      LIMIT 1
+    `,
+    [userId, INBOX_LAZY_LINK_STATUSES],
+  );
+  return result.rows[0] || null;
+}
+
 function inboxRowId(userId, notificationId) {
   return `${cleanText(userId)}:${cleanText(notificationId)}`;
 }
@@ -125,8 +186,7 @@ export async function syncLazyInboxLinksForUser(userId) {
   const user = await getActiveAppUser(userId);
   if (!user) return 0;
   const uid = user.id;
-  const userCreatedAt = user.created_at;
-
+  const state = await getLazyLinkState(uid);
   const eligibility = notificationEligibilityClause('n', '$1');
   let touched = 0;
 
@@ -143,41 +203,39 @@ export async function syncLazyInboxLinksForUser(userId) {
           ${notificationDeliveredAtExpr('n')} AS delivered_at
         FROM notification_items n
         WHERE ${eligibility}
-          AND ${notificationDeliveredAtExpr('n')} >= $3::timestamptz
       ) src
       WHERE i.user_id = $1
         AND i.notification_id = src.id
         AND src.delivered_at > i.delivered_at
-        AND NOT EXISTS (
-          SELECT 1
-          FROM user_notification_dismissals d
-          WHERE d.user_id = $1 AND d.notification_id = src.id
-        )
     `,
-    [uid, INBOX_LAZY_LINK_STATUSES, userCreatedAt],
+    [uid, INBOX_LAZY_LINK_STATUSES],
   );
   touched += resurfaced.rowCount || 0;
+
+  let afterClause;
+  let afterParams;
+  if (state?.last_delivered_at) {
+    afterClause = notificationAfterCursorClause('n', '$3', '$4');
+    afterParams = [state.last_delivered_at, state.last_notification_id || ''];
+  } else {
+    afterClause = `${notificationDeliveredAtExpr('n')} >= $3::timestamptz`;
+    afterParams = [user.created_at];
+  }
 
   const candidates = await queryKysely(
     `
       SELECT n.id, ${notificationDeliveredAtExpr('n')} AS delivered_at
       FROM notification_items n
       WHERE ${eligibility}
-        AND ${notificationDeliveredAtExpr('n')} >= $3::timestamptz
+        AND ${afterClause}
         AND NOT EXISTS (
           SELECT 1
           FROM user_notification_inbox i
           WHERE i.user_id = $1 AND i.notification_id = n.id
         )
-        AND NOT EXISTS (
-          SELECT 1
-          FROM user_notification_dismissals d
-          WHERE d.user_id = $1 AND d.notification_id = n.id
-        )
-      ORDER BY ${notificationDeliveredAtExpr('n')} DESC NULLS LAST, n.id DESC
-      LIMIT $4
+      ORDER BY ${notificationDeliveredAtExpr('n')} ASC NULLS LAST, n.id ASC
     `,
-    [uid, INBOX_LAZY_LINK_STATUSES, userCreatedAt, USER_NOTIFICATION_INBOX_MAX],
+    [uid, INBOX_LAZY_LINK_STATUSES, ...afterParams],
   );
 
   for (const row of candidates.rows) {
@@ -187,6 +245,16 @@ export async function syncLazyInboxLinksForUser(userId) {
   }
 
   await trimUserInboxToMax(uid);
+
+  const head = await queryEligibleNotificationHead(uid);
+  if (head?.id && head?.delivered_at) {
+    await upsertLazyLinkState(
+      uid,
+      head.id,
+      head.delivered_at instanceof Date ? head.delivered_at.toISOString() : head.delivered_at,
+    );
+  }
+
   return touched;
 }
 
@@ -343,18 +411,7 @@ export async function deleteUserNotificationInboxItems(userId, options = {}) {
   const uid = cleanText(userId);
   if (!uid || !(await isActiveRegisteredAppUser(uid))) return 0;
 
-  const now = nowIso();
   if (options.all) {
-    await queryKysely(
-      `
-        INSERT INTO user_notification_dismissals (user_id, notification_id, dismissed_at)
-        SELECT user_id, notification_id, $2::timestamptz
-        FROM user_notification_inbox
-        WHERE user_id = $1
-        ON CONFLICT (user_id, notification_id) DO NOTHING
-      `,
-      [uid, now],
-    );
     const result = await queryKysely(
       'DELETE FROM user_notification_inbox WHERE user_id = $1',
       [uid],
@@ -364,16 +421,6 @@ export async function deleteUserNotificationInboxItems(userId, options = {}) {
 
   const ids = Array.isArray(options.ids) ? options.ids.map(cleanText).filter(Boolean) : [];
   if (!ids.length) return 0;
-  await queryKysely(
-    `
-      INSERT INTO user_notification_dismissals (user_id, notification_id, dismissed_at)
-      SELECT user_id, notification_id, $2::timestamptz
-      FROM user_notification_inbox
-      WHERE user_id = $1 AND id = ANY($3::text[])
-      ON CONFLICT (user_id, notification_id) DO NOTHING
-    `,
-    [uid, now, ids],
-  );
   const result = await queryKysely(
     'DELETE FROM user_notification_inbox WHERE user_id = $1 AND id = ANY($2::text[])',
     [uid, ids],

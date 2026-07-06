@@ -1,4 +1,4 @@
-import { useFocusEffect } from "expo-router/react-navigation";
+import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -53,7 +53,7 @@ import {
   subscribeQuotesChangeColorConventionChanged,
 } from '@/services/quotesChangeColorPreference';
 import { markSignalFeedSeen, fetchLatestSignalBriefingId } from '@/services/signalUnreadPreference';
-import { useRefreshWithScrollToTop, useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
+import { useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
 import { addDays, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
 type FlatTabKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-close';
@@ -117,6 +117,7 @@ export default function SignalScreen() {
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
@@ -351,8 +352,8 @@ export default function SignalScreen() {
   }, [briefingByTabKey, selectedTabKey]);
 
   const activeBriefing = activeTabKey ? briefingByTabKey.get(activeTabKey) : undefined;
-  const { ref: scrollRef, scrollToTop } = useScrollToTopOnChange([activeTabKey, selectedYmd]);
-  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
+  const { ref: scrollRef } = useScrollToTopOnChange([activeTabKey, selectedYmd]);
+  const onRefresh = onRefreshBase;
   const hasAnyBriefing = marketBriefings.length > 0;
   const scrollBottomPadding = useTwoPane
     ? SCREEN_WIDE_SCROLL_BOTTOM_BASE
@@ -415,6 +416,7 @@ export default function SignalScreen() {
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       <Stack.Screen options={{ title: t('screenSignal') }} />
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
+      {isFocused ? <OtaUpdateBanner /> : null}
 
       <View style={[styles.pageColumn, useTwoPane && styles.pageColumnWide]}>
       <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
@@ -476,6 +478,12 @@ export default function SignalScreen() {
       ) : null}
       </View>
 
+      {error ? (
+        <View style={styles.errBox}>
+          <Text style={styles.errText}>{error}</Text>
+        </View>
+      ) : null}
+
       {loading && marketBriefings.length === 0 ? (
         <View style={styles.center}>
           <SignalLoadingIndicator message={t('commonLoading')} />
@@ -486,14 +494,6 @@ export default function SignalScreen() {
           style={styles.scroll}
           contentContainerStyle={[styles.content, useTwoPane && styles.contentWide, { paddingBottom: scrollBottomPadding }]}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-          <OtaUpdateBanner />
-
-          {error ? (
-            <View style={styles.errBox}>
-              <Text style={styles.errText}>{error}</Text>
-            </View>
-          ) : null}
-
           {!error ? (
             activeBriefing ? (
               <MarketBriefingBlock
@@ -631,12 +631,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.textDim,
     },
     errBox: {
+      marginHorizontal: 16,
+      marginBottom: 8,
       padding: 12,
       borderRadius: 12,
       backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.border,
-      marginBottom: 10,
     },
     errText: { color: theme.text, fontSize: sf(14), lineHeight: sf(20) },
     modalBackdrop: {

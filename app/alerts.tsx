@@ -102,29 +102,6 @@ export default function AlertsScreen() {
     router.push('/settings?tab=notifications');
   }, [router]);
 
-  const settingsButton = useMemo(
-    () => (
-      <Pressable
-        onPress={openNotificationSettings}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel={t('alertsOpenSettings')}
-        style={({ pressed }) => [styles.filterSettingsBtn, pressed && styles.filterSettingsBtnPressed]}>
-        <FontAwesome name="cog" size={18} color={theme.textMuted} />
-      </Pressable>
-    ),
-    [openNotificationSettings, styles.filterSettingsBtn, styles.filterSettingsBtnPressed, t, theme.textMuted],
-  );
-
-  const onDeleteAlert = useCallback(async (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
-    const access = getSessionAccessToken(authSession);
-    if (access && hasSignalApi()) {
-      await deleteSignalNotifications(access, { ids: [id] }).catch(() => {});
-      clearSignalNotificationsCache();
-    }
-  }, [authSession]);
-
   const onDeleteAllAlerts = useCallback(() => {
     if (items.length === 0) return;
     Alert.alert(t('alertsDeleteAllConfirmTitle'), t('alertsDeleteAllConfirmBody'), [
@@ -143,6 +120,48 @@ export default function AlertsScreen() {
       },
     ]);
   }, [authSession, items.length, t]);
+
+  const notificationSettingsButton = useMemo(
+    () => (
+      <Pressable
+        onPress={openNotificationSettings}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={t('alertsOpenSettings')}
+        style={({ pressed }) => [styles.filterHeaderBtn, pressed && styles.filterHeaderBtnPressed]}>
+        <FontAwesome name="cog" size={18} color={theme.textMuted} />
+      </Pressable>
+    ),
+    [openNotificationSettings, styles, t, theme.textMuted],
+  );
+
+  const headerActions = useMemo(
+    () => (
+      <View style={styles.filterHeaderActions}>
+        {items.length > 0 ? (
+          <Pressable
+            onPress={onDeleteAllAlerts}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('alertsDeleteAllA11y')}
+            style={({ pressed }) => [styles.filterHeaderBtn, pressed && styles.filterHeaderBtnPressed]}>
+            <FontAwesome name="trash-o" size={18} color={theme.textMuted} />
+          </Pressable>
+        ) : null}
+        {notificationSettingsButton}
+      </View>
+    ),
+    [items.length, notificationSettingsButton, onDeleteAllAlerts, styles, t],
+  );
+
+  const onDeleteAlert = useCallback(async (id: string) => {
+    setItems((prev) => prev.filter((item) => item.id !== id));
+    const access = getSessionAccessToken(authSession);
+    if (access && hasSignalApi()) {
+      await deleteSignalNotifications(access, { ids: [id] }).catch(() => {});
+      clearSignalNotificationsCache();
+    }
+  }, [authSession]);
 
   const filteredItems = items;
 
@@ -171,23 +190,11 @@ export default function AlertsScreen() {
               );
             })}
           </View>
-          {settingsButton}
+          {headerActions}
         </View>
-        {items.length > 0 ? (
-          <View style={styles.listActionsRow}>
-            <Pressable
-              onPress={onDeleteAllAlerts}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={t('alertsDeleteAllA11y')}
-              style={({ pressed }) => [styles.deleteAllBtn, pressed && styles.deleteAllBtnPressed]}>
-              <Text style={styles.deleteAllText}>{t('alertsDeleteAll')}</Text>
-            </Pressable>
-          </View>
-        ) : null}
       </>
     ),
-    [alertFilters, filter, items.length, onDeleteAllAlerts, settingsButton, styles, t],
+    [alertFilters, filter, headerActions, styles, t],
   );
 
   const onOpenAlert = useCallback(
@@ -270,7 +277,7 @@ export default function AlertsScreen() {
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         {isFocused ? <OtaUpdateBanner /> : null}
         <View style={[styles.authGate, { paddingBottom: bottomPad }]}>
-          <View style={styles.authGateTopBar}>{settingsButton}</View>
+          <View style={styles.authGateTopBar}>{notificationSettingsButton}</View>
           <View style={styles.authGateCard}>
             <Text style={styles.authGateKicker}>{t('screenAlerts')}</Text>
             <Text style={styles.authGateTitle}>{t('alertsLoginRequiredTitle')}</Text>
@@ -353,22 +360,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 8,
-      marginBottom: 14,
     },
-    filterTabs: {
-      flex: 1,
+    filterHeaderActions: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
+      alignItems: 'center',
+      gap: 2,
+      flexShrink: 0,
     },
-    filterSettingsBtn: {
+    filterHeaderBtn: {
       minWidth: 36,
       minHeight: 36,
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: 0,
     },
-    filterSettingsBtnPressed: { opacity: 0.65 },
+    filterHeaderBtnPressed: { opacity: 0.65 },
     filterTab: {
       minHeight: 36,
       paddingHorizontal: 12,
@@ -385,19 +390,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     filterTabText: { fontSize: sf(12), fontWeight: '800', color: theme.textMuted },
     filterTabTextActive: { color: theme.green },
-    listActionsRow: {
+    filterTabs: {
+      flex: 1,
       flexDirection: 'row',
-      justifyContent: 'flex-end',
-      marginBottom: 10,
+      flexWrap: 'wrap',
+      gap: 8,
     },
-    deleteAllBtn: {
-      minHeight: 32,
-      paddingHorizontal: 4,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    deleteAllBtnPressed: { opacity: 0.65 },
-    deleteAllText: { fontSize: sf(12), fontWeight: '800', color: theme.textDim },
     candidateSection: {
       marginBottom: 14,
       padding: 14,

@@ -55,7 +55,7 @@ SafeAreaView edges={['top']}
 ```
 
 - **`topFixed` 패턴**: 뉴스·시세·공시·유튜브·게시판 — 세그먼트를 스크롤 밖에 고정.
-- **날짜 바 패턴**: 홈·시장·뉴스 이슈·공시 흐름 — `SignalDateNavigator`를 스크롤 위 또는 내부 첫 행으로 배치. 헤더 직후면 `marginTop: SCREEN_HEADER_CONTENT_GAP`.
+- **날짜 바 패턴**: 홈·시장·뉴스 이슈·공시 흐름 — `SignalDateNavigator`를 스크롤 밖 고정 영역(`topFixed` / `dateNavigatorWrap`)에 배치. 홈·시장은 pull-to-refresh 시 날짜 바 고정.
 
 ## 하단 스크롤 패딩
 

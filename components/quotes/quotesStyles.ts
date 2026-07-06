@@ -47,19 +47,20 @@ export function makeQuotesStyles(
     segTextActive: segmentTab.segTextActive,
     updated: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted, marginBottom: 10 },
     errBox: {
+      marginHorizontal: 16,
+      marginBottom: 8,
       padding: 12,
       borderRadius: 14,
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
       borderColor: '#FFD6DA',
-      marginBottom: 12,
     },
     errText: { fontSize: sf(12), color: theme.danger, lineHeight: sf(18) },
-    listLoadingRow: {
+    loadingBox: {
+      flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 10,
-      marginBottom: 4,
+      paddingVertical: 48,
     },
     empty: { fontSize: sf(13), color: theme.textMuted, marginTop: 8 },
     cardGrouped: {

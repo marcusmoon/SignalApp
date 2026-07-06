@@ -5,6 +5,9 @@ import { cleanText, safeLimit } from './publicHelpers.mjs';
 
 export const USER_NOTIFICATION_INBOX_MAX = 50;
 
+/** Inbox lazy-link: 알림함은 푸시 발송 완료를 기다리지 않는다. 예약 시각이 지난 queued 포함. */
+const INBOX_LAZY_LINK_STATUSES = ['sent', 'skipped', 'queued'];
+
 function inboxRowId(userId, notificationId) {
   return `${cleanText(userId)}:${cleanText(notificationId)}`;
 }
@@ -109,7 +112,8 @@ export async function syncLazyInboxLinksForUser(userId) {
         OR (n.target_type = 'all' AND n.app_user_id IS NULL)
       )
       AND (n.expires_at IS NULL OR n.expires_at > NOW())
-      AND n.status IN ('sent', 'skipped')
+      AND (n.scheduled_at IS NULL OR n.scheduled_at <= NOW())
+      AND n.status = ANY($3::text[])
       AND NOT EXISTS (
         SELECT 1
         FROM user_notification_inbox i
@@ -118,7 +122,7 @@ export async function syncLazyInboxLinksForUser(userId) {
       ORDER BY COALESCE(n.sent_at, n.scheduled_at, n.updated_at) DESC NULLS LAST, n.id DESC
       LIMIT $2
     `,
-    [uid, remaining],
+    [uid, remaining, INBOX_LAZY_LINK_STATUSES],
   );
 
   let inserted = 0;

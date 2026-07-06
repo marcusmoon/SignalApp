@@ -24,8 +24,11 @@
 ```sql
 (app_user_id = :userId OR (target_type = 'all' AND app_user_id IS NULL))
 AND (expires_at IS NULL OR expires_at > NOW())
-AND status IN ('sent', 'skipped')
+AND (scheduled_at IS NULL OR scheduled_at <= NOW())
+AND status IN ('sent', 'skipped', 'queued')
 ```
+
+브리핑·주요이슈 ingest는 outbox에 `queued`로 쌓인다. **알림함 목록은 sender 완료를 기다리지 않는다** — 예약 시각이 지난 `queued`도 lazy link 대상이다. 실제 기기 푸시는 worker sender(`SIGNAL_NOTIFICATION_SENDER_ENABLED=true`)가 처리한다.
 
 **Push 성공 후:** sender가 수신 `user_id` 목록에 inbox upsert.
 

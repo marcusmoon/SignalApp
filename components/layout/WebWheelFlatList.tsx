@@ -132,7 +132,7 @@ function WebWheelFlatListInner<T>(
     ?? (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
     ?? null
   ), []);
-  const webRefreshHandlers = useWebRefreshHandlers(refreshControlProps, getWebNode);
+  const { handlers: webRefreshHandlers, pullProgress } = useWebRefreshHandlers(refreshControlProps, getWebNode);
 
   /** Sidebar pane toggles can skip RN onLayout — observe the scroll node directly on web. */
   useEffect(() => {
@@ -295,7 +295,10 @@ function WebWheelFlatListInner<T>(
 
     return (
       <View ref={setWebRef} style={[webListViewportStyle, style] as never} {...(webEventProps as Record<string, unknown>)}>
-        <WebRefreshOverlay visible={!!refreshControlProps?.refreshing} />
+        <WebRefreshOverlay
+          pullProgress={pullProgress}
+          refreshing={!!refreshControlProps?.refreshing}
+        />
         <View ref={webContentRef} style={contentContainerStyle}>
           {renderListSlot(ListHeaderComponent)}
           {items.length === 0 ? renderListSlot(ListEmptyComponent) : null}

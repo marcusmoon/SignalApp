@@ -36,7 +36,6 @@ const AREA_FROM_DOMAIN = {
   calendar: 'calendar',
   youtube: 'youtube',
   market: 'market',
-  insights: 'signal',
   community: 'community',
   quant: 'legacy',
   concalls: 'legacy',

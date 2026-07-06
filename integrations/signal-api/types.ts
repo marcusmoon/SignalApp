@@ -338,46 +338,6 @@ export type SignalApiCoinMarket = {
   fetchedAt: string;
 };
 
-export type SignalApiInsightSourceRef = {
-  type: 'news' | 'youtube' | string;
-  id: string;
-  title: string;
-  url?: string;
-  sourceName?: string;
-  publishedAt?: string | null;
-};
-
-export type SignalApiInsight = {
-  id: string;
-  kind: 'market_brief' | 'asset_signal' | string;
-  level: 'brief' | 'watch' | 'alert' | string;
-  score: number;
-  title: string;
-  summary: string;
-  whyNow?: string;
-  actionLabel?: string;
-  signalDrivers?: string[];
-  sourceStats?: {
-    news?: number;
-    youtube?: number;
-    quote?: number;
-    earnings?: number;
-  } | null;
-  nextSteps?: string[];
-  priceMovePercent?: number | null;
-  earningsDate?: string | null;
-  symbols: string[];
-  topics: string[];
-  reasoning: string[];
-  sourceRefs: SignalApiInsightSourceRef[];
-  pushCandidate: boolean;
-  pushPriority?: 'high' | 'normal' | 'none' | string;
-  pushTitle?: string;
-  pushBody?: string;
-  generatedAt: string | null;
-  expiresAt: string | null;
-};
-
 /** `/v1/stock-profile` — shape matches server `data` payload */
 export type SignalApiStockProfile = {
   symbol?: string;

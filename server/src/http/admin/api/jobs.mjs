@@ -145,7 +145,7 @@ function areaJobMatch(area, run) {
 
 function areaJobDefinitionMatch(area, job) {
   const jobArea = String(job?.area || job?.domain || '').trim();
-  if (area.id === 'signal') return jobArea === 'signal' || job?.domain === 'insights';
+  if (area.id === 'signal') return jobArea === 'signal';
   if (area.id === 'marketQuotes') {
     return jobArea === 'market' && (job.handler === 'market_quotes' || job.handler === 'market_quotes_mcap');
   }

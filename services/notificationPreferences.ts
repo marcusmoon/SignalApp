@@ -27,9 +27,6 @@ export function shouldRecordIncomingPush(
   if (!prefs.pushEnabled) return false;
   const normalizedType = String(type || '').toLowerCase();
   const normalizedSource = String(sourceType || '').toLowerCase();
-  if (normalizedType === 'insight_signal' || normalizedSource === 'insight') {
-    return false;
-  }
   const isBriefingPush =
     normalizedType === 'market_briefing' ||
     normalizedSource === 'market_briefing' ||
@@ -50,7 +47,6 @@ export async function loadNotificationPrefs(): Promise<NotificationPrefs> {
     const p = JSON.parse(raw) as Partial<NotificationPrefs> & {
       earningsOnly?: boolean;
       localWatchlistEarnings?: boolean;
-      insightPushEnabled?: boolean;
       signalAlertsEnabled?: boolean;
       signalWatchlistOnly?: boolean;
     };

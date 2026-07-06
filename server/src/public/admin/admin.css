@@ -2773,58 +2773,6 @@ tbody tr:hover td {
   font-size: 12px;
 }
 
-.insightAdminSummary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 12px;
-  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
-  background: color-mix(in srgb, var(--panel) 92%, var(--accent) 8%);
-}
-
-.insightSummaryCell {
-  margin-top: 5px;
-  max-width: 58ch;
-  line-height: 1.4;
-}
-
-.insightSymbolRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 7px;
-}
-
-.insightReasonBlock {
-  display: grid;
-  gap: 5px;
-  margin-top: 8px;
-  padding: 8px;
-  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
-}
-
-.insightReasonBlock div {
-  display: flex;
-  gap: 8px;
-  min-width: 0;
-}
-
-.insightReasonBlock strong {
-  flex: 0 0 auto;
-  color: var(--accent);
-  font-size: 11px;
-}
-
-.insightReasonBlock span {
-  min-width: 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
 .miniMeta {
   margin-top: 6px;
   color: var(--muted);
@@ -2840,20 +2788,6 @@ tbody tr:hover td {
 
 .inlineSourceLink:hover {
   text-decoration: underline;
-}
-
-.mobileInsightList {
-  display: none;
-}
-
-.mobileInsightCard {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
-  border-left: 4px solid var(--accent);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--panel) 94%, var(--accent) 6%);
 }
 
 @media (max-width: 1023px) {
@@ -2887,20 +2821,6 @@ tbody tr:hover td {
 
   .ingestWorkflow {
     grid-template-columns: 1fr;
-  }
-
-  .insightAdminSummary {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .insightDesktopTableCard {
-    display: none;
-  }
-
-  .mobileInsightList {
-    display: grid;
-    gap: 10px;
   }
 
   .pageHeader {

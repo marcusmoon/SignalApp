@@ -99,7 +99,7 @@ type FeedRow =
   | { kind: 'news'; news: NewsItem }
   | { kind: 'video'; video: YoutubeItem }
   | { kind: 'ad'; key: string };
-type FeedLoadResult = { itemIds: string[]; kind: 'news' | 'video'; insightIds: string[] };
+type FeedLoadResult = { itemIds: string[]; kind: 'news' | 'video' };
 
 function digestSourceUrl(item: SignalApiNewsDigestItem): string {
   return item.sourceRefs.find((ref) => ref.url)?.url || '';
@@ -323,7 +323,7 @@ export default function FeedScreen() {
         setCryptoSourceOptions([]);
         setCryptoSelectedSources(null);
         setError(t('errorSignalApiShort'));
-        return { itemIds: [], kind: 'news', insightIds: [] };
+        return { itemIds: [], kind: 'news' };
       }
 
       const cacheMode = signalCacheMode(forceRefresh);
@@ -351,7 +351,7 @@ export default function FeedScreen() {
         setHasMore(meta.hasMore);
         const mapped = rows.map((item) => signalYoutubeToYoutubeItem(item, locale));
         setVideoItems(mapped);
-        return { itemIds: mapped.map((item) => item.id), kind: 'video', insightIds: [] };
+        return { itemIds: mapped.map((item) => item.id), kind: 'video' };
       }
 
       setVideoItems([]);
@@ -374,7 +374,7 @@ export default function FeedScreen() {
           setServerDigestRows([]);
           setItems([]);
           setHasMore(false);
-          return { itemIds: [], kind: 'news', insightIds: [] };
+          return { itemIds: [], kind: 'news' };
         }
         const { items: rows, meta } = await fetchSignalNews(
           {
@@ -394,7 +394,7 @@ export default function FeedScreen() {
         setHasMore(meta.hasMore);
         const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
-        return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
+        return { itemIds: mapped.map((item) => item.id), kind: 'news' };
       }
 
       if (segment === 'crypto') {
@@ -432,7 +432,7 @@ export default function FeedScreen() {
         if (cryptoSelectedSourcesRef.current !== null) setCryptoSelectedSources(selected);
         const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
-        return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
+        return { itemIds: mapped.map((item) => item.id), kind: 'news' };
       }
 
       if (segment === 'korea') {
@@ -470,7 +470,7 @@ export default function FeedScreen() {
         if (koreaSelectedSourcesRef.current !== null) setKoreaSelectedSources(selected);
         const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
-        return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
+        return { itemIds: mapped.map((item) => item.id), kind: 'news' };
       }
 
       const pageLimit = FEED_PAGE_GLOBAL;
@@ -562,7 +562,7 @@ export default function FeedScreen() {
       setItems(mapped);
       // 백그라운드 폴링 기준 ID 갱신
       if (displayPage[0]?.id) latestSeenIdRef.current = displayPage[0].id;
-      return { itemIds: mapped.map((item) => item.id), kind: 'news', insightIds: [] };
+      return { itemIds: mapped.map((item) => item.id), kind: 'news' };
     },
     [activeTag, commitDigestLookupRows, locale, segment, syncServerRows, t],
   );

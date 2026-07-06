@@ -18,7 +18,6 @@ export function shouldDeliverPushToUser(type, sourceType, prefs) {
 
   const normalizedType = String(type || '').trim().toLowerCase();
   const normalizedSource = String(sourceType || '').trim().toLowerCase();
-  if (normalizedType === 'insight_signal' || normalizedSource === 'insight') return false;
 
   const isBriefingPush =
     normalizedType === 'market_briefing' ||

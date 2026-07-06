@@ -1,7 +1,6 @@
 import { nowIso } from '../db/time.mjs';
 
 export const NOTIFICATION_TYPES = {
-  insightSignal: 'insight_signal',
   appUpdate: 'app_update',
   serviceNotice: 'service_notice',
   earningsReminder: 'earnings_reminder',
@@ -112,40 +111,6 @@ export function createNotificationItem(input, generatedAt = nowIso()) {
   };
 }
 
-export function notificationFromInsight(insight, generatedAt = nowIso()) {
-  if (!insight?.pushCandidate) return null;
-  const title = cleanText(insight.pushTitle || insight.title);
-  const body = cleanText(insight.pushBody || insight.summary);
-  if (!title || !body) return null;
-  const insightId = cleanText(insight.id);
-  if (!insightId) return null;
-  return createNotificationItem({
-    id: `notification:push:insight:${insightId}`,
-    type: NOTIFICATION_TYPES.insightSignal,
-    title,
-    body,
-    channel: 'push',
-    status: 'queued',
-    priority: insight.pushPriority || (insight.level === 'alert' ? 'high' : 'normal'),
-    targetType: 'watchlist',
-    sourceType: 'insight',
-    sourceId: insightId,
-    symbols: safeSymbols(insight.symbols),
-    topics: safeTopics(insight.topics),
-    reason: cleanText(insight.pushReason),
-    deepLink: '/signal',
-    sourceRefs: sourceRefs(insight.sourceRefs),
-    scheduledAt: insight.generatedAt || generatedAt,
-    expiresAt: insight.expiresAt || null,
-    payload: {
-      insightId,
-      level: insight.level || null,
-      score: Number.isFinite(Number(insight.score)) ? Number(insight.score) : null,
-      generatedAt: insight.generatedAt || null,
-    },
-  }, generatedAt);
-}
-
 export function notificationFromAppUpdate(update, generatedAt = nowIso()) {
   const version = cleanText(update?.version || update?.runtimeVersion || update?.buildNumber || 'latest');
   return createNotificationItem({
@@ -170,12 +135,6 @@ export function notificationFromAppUpdate(update, generatedAt = nowIso()) {
       releaseNotes: update?.releaseNotes || '',
     },
   }, generatedAt);
-}
-
-export function notificationsFromInsights(insights, generatedAt = nowIso()) {
-  return (Array.isArray(insights) ? insights : [])
-    .map((insight) => notificationFromInsight(insight, generatedAt))
-    .filter(Boolean);
 }
 
 export function upsertNotificationItem(items, next) {

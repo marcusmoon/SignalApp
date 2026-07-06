@@ -340,14 +340,14 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                   ? 'areaCommunity'
                 : a === 'market'
                   ? 'areaMarket'
-                  : a === 'signal' || a === 'insights'
+                  : a === 'signal'
                     ? 'areaSignal'
                     : 'areaLegacy';
         return textFor(key);
       }
 
       function domainLabel(domain) {
-        return areaLabel(domain === 'insights' ? 'signal' : domain);
+        return areaLabel(domain);
       }
 
       function stageLabel(stage) {
@@ -401,7 +401,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
 
       function areaBadge(area) {
         const a = String(area || 'legacy');
-        return `<span class="pill">${esc(areaLabel(a === 'insights' ? 'signal' : a))}</span>`;
+        return `<span class="pill">${esc(areaLabel(a))}</span>`;
       }
 
       function stageBadge(stage) {

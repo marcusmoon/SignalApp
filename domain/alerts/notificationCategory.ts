@@ -90,7 +90,6 @@ export function resolveAlertNotificationTypeKey(item: StoredNotification): Alert
 
   const kind = resolveAlertNotificationKind(item);
   if (kind === 'system') return 'service_notice';
-  if (kind === 'signal') return 'insight_signal';
   return 'other';
 }
 

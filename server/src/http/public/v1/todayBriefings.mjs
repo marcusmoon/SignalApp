@@ -1,6 +1,6 @@
 import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
 import { NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
-import { resolveBriefingIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
+import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicTodayBriefings } from '../../../db/repositories/todayBriefingsRepository.mjs';
@@ -31,7 +31,6 @@ function normalizeTodayBriefingPayload(input) {
   const generatedAt = parseToUtcIsoOrNull(input?.generatedAt) || publishedAt;
   if (!id || !title || !headline) return null;
   const summary = cleanText(input?.summary);
-  const pushCandidate = input?.pushCandidate !== false;
   return {
     id,
     locale: cleanText(input?.locale) || 'ko',
@@ -48,7 +47,6 @@ function normalizeTodayBriefingPayload(input) {
     generatedAt,
     publishedAt,
     status: cleanText(input?.status) || 'published',
-    pushCandidate,
     pushTitle: cleanText(input?.pushTitle) || title,
     pushBody: cleanText(input?.pushBody) || headline,
     createdAt: cleanText(input?.createdAt) || generatedAt,
@@ -108,7 +106,7 @@ export async function handlePublicTodayBriefingRoutes({ req, res, url, pathname 
       return true;
     }
     await upsertCollectionRows('todayBriefings', [briefing]);
-    const notifyInbox = resolveBriefingIngestNotifyInbox(body);
+    const notifyInbox = resolveIngestNotifyInbox(body);
     const sendPush = resolveIngestSendPush(body);
     const notification = notifyInbox ? await publishTodayBriefingNotification(briefing, sendPush) : null;
     json(res, 201, {

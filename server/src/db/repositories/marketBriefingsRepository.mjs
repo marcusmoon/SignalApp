@@ -24,7 +24,6 @@ function publicBriefing(item) {
     sourceRefs: Array.isArray(item.sourceRefs) ? item.sourceRefs : [],
     publishedAt: item.publishedAt || item.generatedAt || null,
     briefingDate: item.briefingDate || item.generatedDate || null,
-    pushCandidate: item.pushCandidate === true,
     pushTitle: item.pushTitle || '',
     pushBody: item.pushBody || '',
     createdAt: item.createdAt || null,

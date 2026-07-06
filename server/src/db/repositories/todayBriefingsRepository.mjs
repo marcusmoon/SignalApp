@@ -25,7 +25,6 @@ function publicTodayBriefing(item) {
     publishedAt: item.publishedAt || item.generatedAt || null,
     briefingDate: item.briefingDate || item.generatedDate || null,
     status: item.status || 'published',
-    pushCandidate: item.pushCandidate === true,
     pushTitle: item.pushTitle || '',
     pushBody: item.pushBody || '',
     createdAt: item.createdAt || null,

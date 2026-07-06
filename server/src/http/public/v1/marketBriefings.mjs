@@ -1,6 +1,6 @@
 import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
 import { NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
-import { resolveBriefingIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
+import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicMarketBriefings } from '../../../db/repositories/marketBriefingsRepository.mjs';
@@ -35,7 +35,6 @@ function normalizeBriefingPayload(input) {
   const summary = cleanText(input?.summary);
   const publishedAt = parseToUtcIsoOrNull(input?.publishedAt) || new Date().toISOString();
   if (!id || !title || !headline || !ALLOWED_MARKETS.has(market) || !ALLOWED_SESSIONS.has(session)) return null;
-  const pushCandidate = input?.pushCandidate !== false;
   return {
     id,
     market,
@@ -54,7 +53,6 @@ function normalizeBriefingPayload(input) {
     sourceRefs: cleanArray(input?.sourceRefs).slice(0, 20),
     briefingDate: normalizeBriefingDate(input?.briefingDate || input?.generatedDate, publishedAt),
     publishedAt,
-    pushCandidate,
     pushTitle: cleanText(input?.pushTitle) || title,
     pushBody: cleanText(input?.pushBody) || headline,
     createdAt: cleanText(input?.createdAt) || publishedAt,
@@ -123,7 +121,7 @@ export async function handlePublicMarketBriefingRoutes({ req, res, url, pathname
       return true;
     }
     await upsertCollectionRows('marketBriefings', [briefing]);
-    const notifyInbox = resolveBriefingIngestNotifyInbox(body);
+    const notifyInbox = resolveIngestNotifyInbox(body);
     const sendPush = resolveIngestSendPush(body);
     const notification = notifyInbox ? await publishBriefingNotification(briefing, sendPush) : null;
     json(res, 201, {

@@ -6,7 +6,7 @@ import {
   upsertNotificationItem,
 } from '../../../db.mjs';
 import { NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
-import { resolveBriefingIngestNotifyInbox, resolveDigestItemNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
+import { resolveDigestItemNotifyInbox, resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { utcDateKeyFromInstant } from '../../../time/utc.mjs';
@@ -69,7 +69,7 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
       return true;
     }
     const sendPush = resolveIngestSendPush(body);
-    const notifyInbox = resolveBriefingIngestNotifyInbox(body);
+    const notifyInbox = resolveIngestNotifyInbox(body);
     const now = new Date().toISOString();
     const items = rawItems.map((item, index) => ({
       ...item,

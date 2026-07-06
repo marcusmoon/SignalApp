@@ -27,6 +27,8 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
 
 ```json
 {
+  "notifyInbox": true,
+  "sendPush": true,
   "id": "today-briefing:2026-07-03:ko",
   "locale": "ko",
   "title": "오늘의 브리핑",
@@ -54,7 +56,6 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
   "generatedAt": "2026-07-03T14:00:00Z",
   "publishedAt": "2026-07-03T14:00:00Z",
   "status": "published",
-  "pushCandidate": true,
   "pushTitle": "마감 브리핑 도착",
   "pushBody": "오늘 시장을 한눈에 정리했습니다."
 }

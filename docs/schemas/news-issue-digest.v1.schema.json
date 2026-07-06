@@ -192,10 +192,6 @@
             "$ref": "#/$defs/sourceRef"
           }
         },
-        "pushCandidate": {
-          "type": "boolean",
-          "description": "Legacy metadata; does not gate inbox"
-        },
         "notifyInbox": {
           "type": "boolean",
           "description": "Per-item inbox opt-out when false; defaults to request notifyInbox"

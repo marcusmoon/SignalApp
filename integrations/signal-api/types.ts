@@ -108,9 +108,8 @@ export type SignalApiMarketBriefing = {
   sourceRefs: SignalApiMarketBriefingSourceRef[];
   publishedAt: string | null;
   briefingDate: string | null;
-  pushCandidate: boolean;
-  pushTitle: string;
-  pushBody: string;
+  pushTitle?: string;
+  pushBody?: string;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -139,9 +138,8 @@ export type SignalApiTodayBriefing = {
   publishedAt: string | null;
   briefingDate: string | null;
   status: string;
-  pushCandidate: boolean;
-  pushTitle: string;
-  pushBody: string;
+  pushTitle?: string;
+  pushBody?: string;
   createdAt: string | null;
   updatedAt: string | null;
 };

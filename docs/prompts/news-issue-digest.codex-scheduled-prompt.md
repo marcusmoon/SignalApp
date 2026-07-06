@@ -95,7 +95,6 @@ docs/schemas/news-issue-digest.v1.schema.json 구조를 따른다.
 - cluster: kind, eventType, confidence, timeWindowHours, dedupeKey, reason
 - impact: direction, horizon, affectedAreas, watchSymbols
 - sourceRefs: 원문 목록. 최소 1개. 각 항목은 type, title, url, sourceName, publishedAt, relation 포함
-- pushCandidate: false (레거시 메타. 알림 적재는 요청 notifyInbox·항목 notifyInbox로만 제어)
 
 검증:
 - sourceRefs URL은 Signal Server 응답의 sourceUrl만 넣는다.

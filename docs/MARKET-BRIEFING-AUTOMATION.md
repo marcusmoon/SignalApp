@@ -35,12 +35,12 @@
 | `notifyInbox` | 알림센터(`notification_items`) 적재 |
 | `sendPush` | 기기 푸시 큐 (`payload.pushDelivery: pending`) |
 
-본문 `pushCandidate`는 콘텐츠 메타데이터이며, 알림함 적재는 요청 `notifyInbox`(기본 `true`)만 따른다.
-
 ## 최소 Payload
 
 ```json
 {
+  "notifyInbox": true,
+  "sendPush": true,
   "id": "kr-2026-06-14-morning",
   "market": "kr",
   "session": "morning",
@@ -79,7 +79,6 @@
   ],
   "publishedAt": "2026-06-13T22:30:00Z",
   "briefingDate": "2026-06-14",
-  "pushCandidate": true,
   "pushTitle": "국내 아침 브리핑 도착",
   "pushBody": "장 시작 전 핵심 이슈를 확인하세요."
 }
@@ -110,5 +109,5 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/market-briefings/ingest" \
 
 - 앱 **시그널** 탭이 `/v1/market-briefings` 목록 API를 날짜·시장 필터로 읽는다.
 - 브리핑 전문은 탭 안에서 바로 표시한다(별도 상세 화면 없음).
-- `pushCandidate=true` ingest 시 푸시 `deepLink`는 `/signal`이다.
 - ingest 요청: `notifyInbox`(알림함), `sendPush`(기기 푸시) — 독립 플래그, 기본값 `true`
+- 알림 `deepLink`는 `/signal`이다.

@@ -18,18 +18,18 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useResetRefreshingOnTabBlur } from '@/hooks';
 import { loadAlertsFromServer, markAlertsSeen } from '@/services/alertsUnreadPreference';
 import type { StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
 import { loadAppAuthSession, getSessionAccessToken, type StoredAppAuthSession } from '@/services/appAuthSession';
-import { deleteSignalNotifications, type AlertsFilter } from '@/integrations/signal-api/notifications';
+import { deleteSignalNotifications } from '@/integrations/signal-api/notifications';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { formatRelativeTime } from '@/utils/date';
 
-import { alertTypeMessageId } from '@/domain/alerts/notificationCategory';
-import { resolveAlertHref, resolveAlertNavigationTarget } from '@/domain/alerts/alertNavigation';
-import type { Href } from 'expo-router';
+import { alertTypeMessageId, type AlertsFilter } from '@/domain/alerts/notificationCategory';
+import { navigateToAlert, resolveAlertHref } from '@/domain/alerts/alertNavigation';
 
 export default function AlertsScreen() {
   const { theme, scaleFont } = useSignalTheme();
@@ -38,6 +38,7 @@ export default function AlertsScreen() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const router = useRouter();
+  const ipadNav = useIpadSidebarNav();
   const [items, setItems] = useState<StoredNotification[]>([]);
   const [authSession, setAuthSession] = useState<StoredAppAuthSession | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -182,15 +183,9 @@ export default function AlertsScreen() {
 
   const onOpenAlert = useCallback(
     (item: StoredNotification) => {
-      const target = resolveAlertNavigationTarget(item);
-      if (!target) return;
-      if (target.params && Object.keys(target.params).length > 0) {
-        router.navigate({ pathname: target.pathname, params: target.params } as Href);
-        return;
-      }
-      router.push(target.pathname as Href);
+      navigateToAlert(router, ipadNav, item);
     },
-    [router],
+    [ipadNav, router],
   );
 
   const renderAlert = useCallback(

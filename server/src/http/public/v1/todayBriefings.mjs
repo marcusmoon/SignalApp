@@ -77,7 +77,9 @@ async function publishTodayBriefingNotification(briefing, queuePush) {
       targetType: 'all',
       sourceType: 'today_briefing',
       sourceId: briefing.id,
-      deepLink: briefing.briefingDate ? `/today-briefing?date=${briefing.briefingDate}` : '/home',
+      deepLink: briefing.briefingDate
+        ? `/today-briefing?date=${briefing.briefingDate}`
+        : '/today-briefing',
       reason: `today briefing updated: ${briefing.briefingDate || briefing.locale}`,
       scheduledAt: briefing.publishedAt,
       payload: {

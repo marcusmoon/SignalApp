@@ -315,13 +315,19 @@ export function NewsIssuesContent({
   );
 }
 
+function firstStringParam(value: string | string[] | undefined): string | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const text = String(raw || '').trim();
+  return text || null;
+}
+
 export default function NewsIssuesScreen() {
   const params = useLocalSearchParams<{ category?: string; date?: string; digestId?: string }>();
   const { useTwoPane } = useResponsiveLayout();
   const { t } = useLocale();
   const initialCategory = parseCategory(params.category);
   const initialDate = parseDateParam(params.date);
-  const initialDigestId = typeof params.digestId === 'string' ? params.digestId : null;
+  const initialDigestId = firstStringParam(params.digestId);
   const content = (
     <NewsIssuesContent
       embedded={useTwoPane}

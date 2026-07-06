@@ -1,8 +1,25 @@
+import type { Href } from 'expo-router';
+
+import type { NewsIssuesCategory, SignalSessionKey } from '@/constants/ipadHomeNav';
 import type { StoredNotification } from '@/services/notificationHistory';
+import { toYmd } from '@/utils/date';
 
 export type AlertNavigationTarget = {
   pathname: string;
   params?: Record<string, string>;
+};
+
+const SIGNAL_TAB_KEYS = new Set<SignalSessionKey>([
+  'us-overnight',
+  'kr-morning',
+  'kr-lunch',
+  'kr-evening',
+]);
+
+type AlertIpadNav = {
+  isAvailable: boolean;
+  showNewsIssues: (params: { category: NewsIssuesCategory; date: string; digestId?: string | null }) => void;
+  showSignalTab: (session?: SignalSessionKey, date?: string) => void;
 };
 
 function cleanText(value: unknown): string {
@@ -19,13 +36,26 @@ function utcYmdFromIso(iso: string): string | null {
   return date.toISOString().slice(0, 10);
 }
 
-function marketSessionTabKey(market?: string, session?: string): string | null {
+function isSignalSessionKey(value: string): value is SignalSessionKey {
+  return SIGNAL_TAB_KEYS.has(value as SignalSessionKey);
+}
+
+function normalizeSignalSessionParam(value: string): SignalSessionKey | null {
+  const session = cleanText(value).toLowerCase();
+  if (isSignalSessionKey(session)) return session;
+  if (session === 'kr-close') return 'kr-evening';
+  if (session === 'us-close') return 'us-overnight';
+  return null;
+}
+
+function marketSessionTabKey(market?: string, session?: string): SignalSessionKey | null {
   const m = cleanText(market).toLowerCase();
   const s = cleanText(session).toLowerCase();
   if (m === 'us' && s === 'overnight') return 'us-overnight';
   if (m === 'kr' && s === 'morning') return 'kr-morning';
   if (m === 'kr' && s === 'lunch') return 'kr-lunch';
-  if (m === 'kr' && s === 'evening') return 'kr-evening';
+  if (m === 'kr' && (s === 'evening' || s === 'close')) return 'kr-evening';
+  if (m === 'us' && s === 'close') return 'us-overnight';
   return null;
 }
 
@@ -96,7 +126,7 @@ function enrichNewsIssuesTarget(
     const digestId = cleanText(payload.digestId) || cleanText(item.sourceId);
     if (digestId) params.digestId = digestId;
   }
-  return { pathname: target.pathname, params };
+  return { pathname: '/news-issues', params };
 }
 
 function enrichTodayBriefingTarget(
@@ -109,7 +139,7 @@ function enrichTodayBriefingTarget(
     const date = payloadDate(payload, item.receivedAt);
     if (date) params.date = date;
   }
-  return { pathname: target.pathname, params: Object.keys(params).length ? params : undefined };
+  return { pathname: '/today-briefing', params: Object.keys(params).length ? params : undefined };
 }
 
 function enrichSignalTarget(
@@ -122,11 +152,12 @@ function enrichSignalTarget(
     const date = payloadDate(payload, item.receivedAt);
     if (date) params.date = date;
   }
-  if (!cleanText(params.session)) {
-    const tabKey = marketSessionTabKey(
-      cleanText(payload.market),
-      cleanText(payload.session),
-    );
+  const fromParams = normalizeSignalSessionParam(params.session || '');
+  if (fromParams) {
+    params.session = fromParams;
+  } else {
+    delete params.session;
+    const tabKey = marketSessionTabKey(cleanText(payload.market), cleanText(payload.session));
     if (tabKey) params.session = tabKey;
   }
   return { pathname: '/(tabs)/signal', params: Object.keys(params).length ? params : undefined };
@@ -134,6 +165,9 @@ function enrichSignalTarget(
 
 function enrichTarget(item: StoredNotification, target: AlertNavigationTarget): AlertNavigationTarget {
   const pathname = target.pathname.replace(/\/$/, '') || target.pathname;
+  if (pathname === '/home' || pathname === '/(tabs)' || pathname === '/(tabs)/index') {
+    return enrichTodayBriefingTarget({ pathname: '/today-briefing' }, item);
+  }
   if (pathname === '/news-issues') return enrichNewsIssuesTarget({ ...target, pathname }, item);
   if (pathname === '/today-briefing') return enrichTodayBriefingTarget({ ...target, pathname }, item);
   if (pathname === '/signal' || pathname === '/(tabs)/signal') return enrichSignalTarget(target, item);
@@ -181,4 +215,58 @@ export function resolveAlertHref(item: StoredNotification): string | null {
   if (!target) return null;
   const qs = target.params ? new URLSearchParams(target.params).toString() : '';
   return qs ? `${target.pathname}?${qs}` : target.pathname;
+}
+
+/** 알림 카드 탭 — iPad 사이드바·탭 라우트 패턴과 동일하게 이동 */
+export function navigateToAlert(
+  router: { push: (href: Href) => void; navigate: (href: Href) => void },
+  ipadNav: AlertIpadNav,
+  item: StoredNotification,
+): void {
+  const target = resolveAlertNavigationTarget(item);
+  if (!target) return;
+
+  const params = target.params ?? {};
+
+  if (target.pathname === '/news-issues') {
+    const date = isYmd(params.date || '') ? params.date! : toYmd(new Date());
+    const category = (cleanText(params.category) || 'global') as NewsIssuesCategory;
+    const digestId = cleanText(params.digestId) || null;
+    if (ipadNav.isAvailable) {
+      ipadNav.showNewsIssues({ category, date, digestId });
+      return;
+    }
+    router.push({
+      pathname: '/news-issues',
+      params: { category, date, ...(digestId ? { digestId } : {}) },
+    } as Href);
+    return;
+  }
+
+  if (target.pathname === '/(tabs)/signal') {
+    const date = isYmd(params.date || '') ? params.date : undefined;
+    const session = normalizeSignalSessionParam(params.session || '') ?? undefined;
+    if (ipadNav.isAvailable) {
+      ipadNav.showSignalTab(session, date);
+    }
+    router.navigate({
+      pathname: '/(tabs)/signal',
+      params: { ...(date ? { date } : {}), ...(session ? { session } : {}) },
+    } as never);
+    return;
+  }
+
+  if (target.pathname === '/today-briefing') {
+    router.push({
+      pathname: '/today-briefing',
+      params: isYmd(params.date || '') ? { date: params.date } : undefined,
+    } as Href);
+    return;
+  }
+
+  if (Object.keys(params).length > 0) {
+    router.push({ pathname: target.pathname, params } as Href);
+    return;
+  }
+  router.push(target.pathname as Href);
 }

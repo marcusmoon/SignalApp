@@ -50,6 +50,8 @@ export async function setAlertsUnreadCached(hasUnread: boolean): Promise<void> {
 }
 
 export function mapNotificationToStored(item: SignalNotificationItem): StoredNotification {
+  const payload = item.payload && typeof item.payload === 'object' ? item.payload : {};
+  const payloadDeepLink = cleanText((payload as { deepLink?: string }).deepLink);
   return {
     id: item.id,
     title: item.title,
@@ -59,9 +61,13 @@ export function mapNotificationToStored(item: SignalNotificationItem): StoredNot
     type: item.type,
     sourceType: item.sourceType,
     sourceId: item.sourceId,
-    deepLink: item.deepLink,
-    payload: item.payload,
+    deepLink: cleanText(item.deepLink) || payloadDeepLink,
+    payload,
   };
+}
+
+function cleanText(value: unknown): string {
+  return String(value ?? '').trim();
 }
 
 async function loadVisibleAlerts(

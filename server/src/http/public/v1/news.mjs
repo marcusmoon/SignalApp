@@ -6,7 +6,7 @@ import {
   upsertNotificationItem,
 } from '../../../db.mjs';
 import { NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
-import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
+import { resolveBriefingIngestNotifyInbox, resolveDigestItemNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { utcDateKeyFromInstant } from '../../../time/utc.mjs';
@@ -69,6 +69,7 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
       return true;
     }
     const sendPush = resolveIngestSendPush(body);
+    const notifyInbox = resolveBriefingIngestNotifyInbox(body);
     const now = new Date().toISOString();
     const items = rawItems.map((item, index) => ({
       ...item,
@@ -79,7 +80,7 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
     let inboxPublished = 0;
     let pushQueued = 0;
     for (const item of items) {
-      if (!resolveIngestNotifyInbox(body, item)) continue;
+      if (!resolveDigestItemNotifyInbox(body, item)) continue;
       const saved = await publishDigestNotification(item, sendPush);
       if (saved) {
         inboxPublished += 1;
@@ -89,13 +90,11 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
     const meta = {
       ok: true,
       count: items.length,
+      notifyInbox,
       sendPush,
       inboxPublished,
       pushQueued,
     };
-    if (body != null && Object.prototype.hasOwnProperty.call(body, 'notifyInbox')) {
-      meta.notifyInbox = body.notifyInbox !== false;
-    }
     json(res, 200, meta);
     return true;
   }

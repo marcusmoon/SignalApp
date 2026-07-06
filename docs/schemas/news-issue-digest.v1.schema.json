@@ -194,7 +194,11 @@
         },
         "pushCandidate": {
           "type": "boolean",
-          "description": "Legacy per-item inbox gate when request notifyInbox is omitted"
+          "description": "Legacy metadata; does not gate inbox"
+        },
+        "notifyInbox": {
+          "type": "boolean",
+          "description": "Per-item inbox opt-out when false; defaults to request notifyInbox"
         },
         "pushTitle": {
           "type": "string",

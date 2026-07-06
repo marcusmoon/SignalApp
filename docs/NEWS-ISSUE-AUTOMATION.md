@@ -12,7 +12,7 @@ Codex 예약 작업은 먼저 Signal Server의 `/v1/news` 최신 뉴스만 읽�
 - Schema: [`docs/schemas/news-issue-digest.v1.schema.json`](./schemas/news-issue-digest.v1.schema.json)
 - Example: [`docs/examples/news-issue-digest.ingest.example.json`](./examples/news-issue-digest.ingest.example.json)
 
-요청 최상위 `notifyInbox`·`sendPush`는 독립 플래그(기본 `true`). 뉴스 항목별 알림함 제외는 레거시 `pushCandidate: false` 또는 요청 `notifyInbox: false`.
+요청 최상위 `notifyInbox`·`sendPush`는 독립 플래그(기본 `true`). dry-run JSON의 `notifyInbox: false`·항목 `pushCandidate`는 ingest 전에 바꾸거나, 운영 ingest 시 `notifyInbox`를 생략(기본 적재)한다. 항목별 제외는 `notifyInbox: false`만 사용한다.
 
 ## 생성 단위
 
@@ -67,8 +67,9 @@ GET /v1/news?category=crypto&from=<UTC_FROM>&to=<UTC_TO>&limit=120&offset=0&loca
 - `primaryNewsId`, `primaryPublishedAt`: 대표 기사
 - `cluster`: 묶음 판단 근거
 - `impact`: 사용자에게 보여줄 영향 방향
-- `pushTitle`, `pushBody`: 알림 제목·본문 (ingest 시 `notifyInbox`가 true인 항목에 사용)
-- `pushCandidate`: (레거시) 요청에 `notifyInbox`가 없을 때 항목별 알림함 적재 여부. 신규 ingest는 요청 `notifyInbox` 사용 권장
+- `pushTitle`, `pushBody`: 알림 제목·본문
+- `notifyInbox`: (선택) 항목별 알림함 제외 시 `false`. 생략 시 요청 `notifyInbox` 따름
+- `pushCandidate`: (레거시) 알림 적재와 무관한 메타데이터
 
 `score`는 생성 JSON에서 쓰지 않는다. 서버 ingest는 현재 입력 순서 기반으로 점수를 재계산하므로, 중요도는 `items` 배열 순서로 표현한다.
 

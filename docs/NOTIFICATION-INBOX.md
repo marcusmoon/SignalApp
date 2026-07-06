@@ -41,7 +41,7 @@
 
 **조합 예:** dry-run `notifyInbox=false`, `sendPush=false` / 운영 `둘 다 true` / 알림함만 `notifyInbox=true`, `sendPush=false`.
 
-뉴스 다이제스트는 요청에 `notifyInbox`가 없으면 항목별 레거시 `pushCandidate`로 알림함 적재 여부를 판단한다.
+뉴스 다이제스트 ingest도 **요청 `notifyInbox`**(기본 `true`)로 알림함 적재를 제어한다. 항목별 `notifyInbox: false`로만 제외할 수 있다. `pushCandidate`는 레거시 메타데이터다.
 
 시장·오늘의 브리핑 ingest는 **요청 `notifyInbox`만** 알림함을 제어한다. 본문 `pushCandidate`는 콘텐츠 메타데이터이며 알림 적재와 무관하다.
 

@@ -112,6 +112,7 @@ SafeAreaView edges={['top']}
 import {
   fabStackBottom,
   feedNewContentChipBottom,
+  stackNewContentChipBottom,
   stackScreenScrollBottomPadding,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';

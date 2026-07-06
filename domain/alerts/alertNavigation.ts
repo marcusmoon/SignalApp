@@ -13,7 +13,6 @@ const SIGNAL_TAB_KEYS = new Set<SignalSessionKey>([
   'us-overnight',
   'kr-morning',
   'kr-lunch',
-  'kr-evening',
   'kr-close',
 ]);
 
@@ -54,8 +53,7 @@ function marketSessionTabKey(market?: string, session?: string): SignalSessionKe
   if (m === 'us' && s === 'overnight') return 'us-overnight';
   if (m === 'kr' && s === 'morning') return 'kr-morning';
   if (m === 'kr' && s === 'lunch') return 'kr-lunch';
-  if (m === 'kr' && s === 'evening') return 'kr-evening';
-  if (m === 'kr' && s === 'close') return 'kr-close';
+  if (m === 'kr' && (s === 'close' || s === 'evening')) return 'kr-close';
   if (m === 'us' && s === 'close') return 'us-overnight';
   return null;
 }

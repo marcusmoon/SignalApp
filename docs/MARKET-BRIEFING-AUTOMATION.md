@@ -6,7 +6,7 @@
 
 - 국내 오전(`morning`): 매 영업일 오전 7:30 KST — 장 시작 전
 - 국내 오후(`lunch`): 매 영업일 오후 12:10 KST — 점심
-- 국내 저녁(`evening`): 매 영업일 오후 6:00 KST — 장 마감 후
+- 국내 마감(`close`): 매 영업일 장 종료 후 — 마감 브리핑
 - 미국 밤사이(`overnight`): 매 영업일 오전 6:30 KST
 
 ## 국내 session 기준
@@ -17,10 +17,10 @@
 |---|---|---|
 | `morning` | 장 시작 전 | 장 시작 전 관전 포인트 |
 | `lunch` | 점심 | 오전장 흐름과 오후장 변수 |
-| `evening` | 저녁 | 장 마감 요약과 다음 거래일 체크포인트 |
 | `close` | 마감 | 장 종료 후 마감 브리핑 (`kr` 전용) |
+| `overnight` | 미국 밤사이 | 직전 미국장 종가 · 밤사이 뉴스 (`us` 전용) |
 
-앱 **시그널** 탭 국내 필터(오전/오후/장후/마감)는 위 `session` 값과 1:1로 대응한다.
+앱 **시그널** 탭 필터(미장 · 장전 · 장중 · 마감)는 위 `session` 값과 1:1로 대응한다. 총 4회차다.
 
 ## Ingest Endpoint
 
@@ -95,7 +95,7 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/market-briefings/ingest" \
 
 ## Codex 자동화 프롬프트 가이드
 
-국내 브리핑 자동화는 회차별로 `market=kr`, `session=morning|lunch|evening`만 바꾸고 같은 형식으로 작성한다.
+국내 브리핑 자동화는 회차별로 `market=kr`, `session=morning|lunch|close`만 바꾸고 같은 형식으로 작성한다.
 미국 브리핑 자동화는 `market=us`, `session=overnight`로 작성한다.
 
 - 최신 기사와 시세는 반드시 웹 검증

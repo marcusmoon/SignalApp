@@ -56,13 +56,12 @@ import { markSignalFeedSeen, fetchLatestSignalBriefingId } from '@/services/sign
 import { useRefreshWithScrollToTop, useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
 import { addDays, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
-type FlatTabKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-evening' | 'kr-close';
+type FlatTabKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-close';
 
 const FLAT_TABS: ReadonlyArray<{ key: FlatTabKey; market: 'us' | 'kr'; session: string }> = [
   { key: 'us-overnight', market: 'us', session: 'overnight' },
   { key: 'kr-morning',   market: 'kr', session: 'morning' },
   { key: 'kr-lunch',     market: 'kr', session: 'lunch' },
-  { key: 'kr-evening',   market: 'kr', session: 'evening' },
   { key: 'kr-close',     market: 'kr', session: 'close' },
 ];
 
@@ -147,11 +146,16 @@ export default function SignalScreen() {
 
   const flatTabLabel = useCallback(
     (key: FlatTabKey) => {
-      if (key === 'us-overnight') return t('briefingSessionOvernight');
-      if (key === 'kr-morning')   return t('briefingSessionMorning');
-      if (key === 'kr-lunch')     return t('briefingSessionLunch');
-      if (key === 'kr-close')     return t('briefingSessionClose');
-      return t('briefingSessionEvening');
+      switch (key) {
+        case 'us-overnight':
+          return t('briefingSessionOvernight');
+        case 'kr-morning':
+          return t('briefingSessionMorning');
+        case 'kr-lunch':
+          return t('briefingSessionLunch');
+        case 'kr-close':
+          return t('briefingSessionClose');
+      }
     },
     [t],
   );

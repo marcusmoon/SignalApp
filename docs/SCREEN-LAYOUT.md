@@ -56,6 +56,7 @@ SafeAreaView edges={['top']}
 
 - **`topFixed` 패턴**: 뉴스·시세·공시·유튜브·게시판 — 세그먼트를 스크롤 밖에 고정.
 - **날짜 바 패턴**: 홈·시장·뉴스 이슈·공시 흐름 — `SignalDateNavigator`를 스크롤 밖 고정 영역(`topFixed` / `dateNavigatorWrap`)에 배치. 홈·시장은 pull-to-refresh 시 날짜 바 고정.
+- **스택 서브탭**: 설정·My info — `getSegmentTabBarStyles` pill 바를 `WebWheelScrollView` 위에 고정 (`settings.tsx` `tabBar`, `account.tsx` 동일).
 
 ## 하단 스크롤 패딩
 

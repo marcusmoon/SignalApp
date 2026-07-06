@@ -724,10 +724,31 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
       {!embedded ? (
         <Stack.Screen options={{ title: t('screenAccount'), headerShown: !useIpadSidebar }} />
       ) : null}
+      {user ? (
+        <View style={[styles.tabBar, embedded && styles.tabBarEmbedded]} accessibilityRole="tablist">
+          {accountTabs.map((tab) => {
+            const selected = accountTab === tab.key;
+            return (
+              <Pressable
+                key={tab.key}
+                onPress={() => setAccountTab(tab.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                style={[styles.tabBtn, selected && styles.tabBtnActive]}>
+                <Text style={[styles.tabText, selected && styles.tabTextActive]} numberOfLines={1}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
       <WebWheelScrollView
+        style={styles.scrollFlex}
         contentContainerStyle={[
           styles.content,
           embedded && styles.contentEmbedded,
+          !user && styles.contentAuth,
           { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) },
         ]}>
         {!user ? (
@@ -753,22 +774,6 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
 
         {user ? (
           <>
-            <View style={styles.accountTabs} accessibilityRole="tablist">
-              {accountTabs.map((tab) => {
-                const selected = accountTab === tab.key;
-                return (
-                  <Pressable
-                    key={tab.key}
-                    onPress={() => setAccountTab(tab.key)}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected }}
-                    style={[styles.accountTab, selected && styles.accountTabActive]}>
-                    <Text style={[styles.accountTabText, selected && styles.accountTabTextActive]}>{tab.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
             {accountTab === 'home' ? (
               <>
             <View style={[styles.card, styles.profileHeroCard]}>

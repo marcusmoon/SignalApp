@@ -110,6 +110,7 @@ export function NewsIssuesContent({
   const { ref: scrollRef } = useScrollToTopOnChange([category, selectedYmd], {
     resyncDeps: [items],
   });
+  const scrollResetKey = `${category}:${selectedYmd}`;
 
   useEffect(() => {
     setCategory(initialCategory);
@@ -177,6 +178,8 @@ export function NewsIssuesContent({
     <SafeAreaView style={styles.safe} edges={isWide ? [] : ['bottom']}>
       <WebWheelScrollView
         ref={scrollRef as never}
+        scrollResetKey={scrollResetKey}
+        contentRevision={items}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>

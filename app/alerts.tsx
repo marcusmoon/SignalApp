@@ -54,6 +54,7 @@ export default function AlertsScreen() {
   const [newContentAvailable, setNewContentAvailable] = useState(false);
   const [filter, setFilter] = useState<AlertsFilter>('all');
   const { ref: listRef } = useScrollToTopOnChange([filter], { resyncDeps: [items] });
+  const listScrollResetKey = filter;
   useResetRefreshingOnTabBlur(setRefreshing);
 
   const reload = useCallback(async (activeFilter: AlertsFilter = filter, forceRefresh = false) => {
@@ -330,6 +331,7 @@ export default function AlertsScreen() {
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>{alertsTopFixed}</View>
         <WebWheelFlatList
+          scrollResetKey={listScrollResetKey}
           ref={listRef as never}
           data={filteredItems}
           keyExtractor={(a) => a.id}

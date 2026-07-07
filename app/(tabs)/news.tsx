@@ -252,6 +252,33 @@ export default function FeedScreen() {
   ],
     { resyncDeps: [items, videoItems] },
   );
+  const feedScrollResetKey = useMemo(
+    () =>
+      [
+        segment,
+        globalFilter,
+        cryptoFilter,
+        koreaFilter,
+        watchFilter,
+        activeTag,
+        (selectedSources ?? []).join(','),
+        (cryptoSelectedSources ?? []).join(','),
+        (koreaSelectedSources ?? []).join(','),
+        (watchSelectedSymbols ?? []).join(','),
+      ].join('|'),
+    [
+      segment,
+      globalFilter,
+      cryptoFilter,
+      koreaFilter,
+      watchFilter,
+      activeTag,
+      selectedSources,
+      cryptoSelectedSources,
+      koreaSelectedSources,
+      watchSelectedSymbols,
+    ],
+  );
 
   useEffect(() => {
     if (!refreshNotice) return;
@@ -1351,6 +1378,7 @@ export default function FeedScreen() {
         ) : null}
 
         <WebWheelFlatList
+          scrollResetKey={feedScrollResetKey}
           ref={feedListRef as never}
           data={loading && listData.length === 0 ? [] : listData}
           extraData={listData.length}

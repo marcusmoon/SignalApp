@@ -127,6 +127,7 @@ export default function DisclosuresScreen() {
   const { ref: listRef } = useScrollToTopOnChange([filter, typeFilter, symbolFilter], {
     resyncDeps: [items, digestItems],
   });
+  const listScrollResetKey = `${filter}:${typeFilter}:${symbolFilter ?? ''}`;
 
   const currentQuery = useMemo<ListQuery>(
     () => ({ filter, typeFilter, symbolFilter }),
@@ -567,6 +568,7 @@ export default function DisclosuresScreen() {
                 </View>
               ) : null}
               <WebWheelFlatList
+                scrollResetKey={listScrollResetKey}
                 ref={listRef as never}
                 data={items}
                 keyExtractor={(item) => item.id}

@@ -358,6 +358,7 @@ export default function SignalScreen() {
   const { ref: scrollRef } = useScrollToTopOnChange([activeTabKey, selectedYmd], {
     resyncDeps: [activeBriefing?.id, marketBriefings.length],
   });
+  const scrollResetKey = `${activeTabKey ?? 'none'}:${selectedYmd}`;
   const onRefresh = onRefreshBase;
   useRegisterWebHeaderRefresh(() => void onRefresh());
   const hasAnyBriefing = marketBriefings.length > 0;
@@ -491,6 +492,8 @@ export default function SignalScreen() {
       ) : (
         <WebWheelScrollView
           ref={scrollRef as never}
+          scrollResetKey={scrollResetKey}
+          contentRevision={[activeBriefing?.id, marketBriefings.length]}
           style={styles.scroll}
           contentContainerStyle={[styles.content, useTwoPane && styles.contentWide, { paddingBottom: scrollBottomPadding }]}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>

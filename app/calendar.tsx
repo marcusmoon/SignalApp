@@ -180,6 +180,7 @@ export default function CalendarScreen() {
     skipInitial: false,
     resyncDeps: [monthEvents, selectedYmd],
   });
+  const listScrollResetKey = `${selectedYmd}:${typeParam}`;
 
   const fetchMonthData = useCallback(
     async (year: number, month: number, forceRefresh?: boolean) => {
@@ -427,6 +428,7 @@ export default function CalendarScreen() {
       </View>
 
       <WebWheelFlatList
+        scrollResetKey={listScrollResetKey}
         ref={listRef as never}
         style={styles.listScroll}
         data={loading && selectedDayEvents.length === 0 ? [] : selectedDayEvents}

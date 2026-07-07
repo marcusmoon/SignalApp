@@ -1004,6 +1004,7 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   const [tab, setTab] = useState<SettingsTab>('display');
   const selectedTab = embedded && ipadNav.isAvailable ? ipadNav.settingsTab : tab;
   const { ref: settingsScrollRef } = useScrollToTopOnChange([selectedTab]);
+  const scrollResetKey = selectedTab;
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [briefingPushEnabled, setBriefingPushEnabled] = useState(true);
@@ -1349,6 +1350,7 @@ clearCalendarCache();
       ) : null}
       <WebWheelScrollView
         ref={settingsScrollRef as never}
+        scrollResetKey={scrollResetKey}
         style={styles.scrollFlex}
         contentContainerStyle={[
           styles.scroll,

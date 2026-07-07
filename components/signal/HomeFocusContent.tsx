@@ -275,6 +275,7 @@ export function HomeFocusContent({
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
     resyncDeps: [issues, briefings, todayBriefing, disclosures, calendarEvents, loading],
   });
+  const scrollResetKey = selectedYmd;
 
   const selectedDateLabel = useMemo(
     () =>
@@ -800,6 +801,8 @@ export function HomeFocusContent({
 
       <WebWheelScrollView
         ref={scrollRef as never}
+        scrollResetKey={scrollResetKey}
+        contentRevision={[issues, briefings, todayBriefing, disclosures, calendarEvents, loading]}
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,

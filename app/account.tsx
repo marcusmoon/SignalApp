@@ -103,6 +103,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   const [socialSignupDraft, setSocialSignupDraft] = useState<SocialSignupDraft | null>(null);
   const [accountTab, setAccountTab] = useState<AccountTab>('home');
   const { ref: accountScrollRef } = useScrollToTopOnChange([accountTab]);
+  const scrollResetKey = accountTab;
   const [emailAuthExpanded, setEmailAuthExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -749,6 +750,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
       ) : null}
       <WebWheelScrollView
         ref={accountScrollRef as never}
+        scrollResetKey={scrollResetKey}
         style={styles.scrollFlex}
         contentContainerStyle={[
           styles.content,

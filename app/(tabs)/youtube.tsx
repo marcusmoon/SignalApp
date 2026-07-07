@@ -110,6 +110,10 @@ export default function YoutubeScreen() {
   const { ref: ytListRef } = useScrollToTopOnChange([effectiveSort, selectedHandles], {
     resyncDeps: [items],
   });
+  const listScrollResetKey = useMemo(
+    () => `${effectiveSort}:${normalizeHandlesKey(selectedHandles ?? [])}`,
+    [effectiveSort, selectedHandles],
+  );
 
   useTabScreenLoadingRecovery(items, setLoading);
 
@@ -474,6 +478,7 @@ export default function YoutubeScreen() {
           </View>
         ) : (
         <WebWheelFlatList
+          scrollResetKey={listScrollResetKey}
           ref={ytListRef as never}
           data={items}
           keyExtractor={(item) => item.id}

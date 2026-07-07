@@ -47,6 +47,7 @@ export default function TodayBriefingScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { ref: scrollRef } = useScrollToTopOnChange([date], { resyncDeps: [item, loading] });
+  const scrollResetKey = date;
 
   const dateLabel = useMemo(
     () =>
@@ -103,6 +104,8 @@ export default function TodayBriefingScreen() {
       ) : (
         <WebWheelScrollView
           ref={scrollRef as never}
+          scrollResetKey={scrollResetKey}
+          contentRevision={item}
           style={styles.scroll}
           contentContainerStyle={styles.content}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}>

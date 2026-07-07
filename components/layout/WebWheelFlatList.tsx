@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 
 import { isDomNearScrollEnd, syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
+import { useWebScrollResetOnKey } from '@/hooks/useWebScrollResetOnKey';
 import { createLazyWebScrollApi } from '@/utils/scrollToTop';
 
 const webListViewportStyle = {
@@ -46,6 +47,10 @@ function getDefaultKey<T>(item: T, index: number) {
   return String(index);
 }
 
+type WebWheelFlatListProps<T> = FlatListProps<T> & {
+  scrollResetKey?: string | number | null;
+};
+
 function WebWheelFlatListInner<T>(
   {
     data,
@@ -63,10 +68,11 @@ function WebWheelFlatListInner<T>(
     onLayout,
     onContentSizeChange,
     refreshControl,
+    scrollResetKey,
     numColumns = 1,
     columnWrapperStyle,
     ...rest
-  }: FlatListProps<T>,
+  }: WebWheelFlatListProps<T>,
   forwardedRef: React.Ref<FlatList<T>>,
 ) {
   const localRef = useRef<FlatList<T>>(null);
@@ -126,6 +132,14 @@ function WebWheelFlatListInner<T>(
     ?? (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
     ?? null
   ), []);
+
+  const getWebScrollNode = useCallback(
+    () =>
+      (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
+        ?.getScrollableNode?.() ?? null,
+    [],
+  );
+  useWebScrollResetOnKey(getWebScrollNode, scrollResetKey, data);
 
   /** Sidebar pane toggles can skip RN onLayout — observe the scroll node directly on web. */
   useEffect(() => {
@@ -357,5 +371,5 @@ function WebWheelFlatListInner<T>(
 }
 
 export const WebWheelFlatList = forwardRef(WebWheelFlatListInner) as <T>(
-  props: FlatListProps<T> & { ref?: React.Ref<FlatList<T>> },
+  props: WebWheelFlatListProps<T> & { ref?: React.Ref<FlatList<T>> },
 ) => React.ReactElement | null;

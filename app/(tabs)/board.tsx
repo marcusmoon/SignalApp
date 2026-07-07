@@ -73,6 +73,7 @@ export default function BoardScreen() {
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<SignalApiCommunityPost[]>([]);
   const { ref: listRef } = useScrollToTopOnChange([source], { resyncDeps: [items] });
+  const listScrollResetKey = source;
   const [meta, setMeta] = useState<SignalCommunityListMeta | null>(null);
   const loadingMoreRef = useRef(false);
   const itemsRef = useRef<SignalApiCommunityPost[]>([]);
@@ -232,6 +233,7 @@ export default function BoardScreen() {
           </View>
         ) : (
           <WebWheelFlatList
+            scrollResetKey={listScrollResetKey}
             ref={listRef as never}
             style={styles.list}
             contentContainerStyle={{ paddingBottom: listBottomPad, paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP }}

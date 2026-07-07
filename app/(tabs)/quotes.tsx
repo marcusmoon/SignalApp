@@ -109,6 +109,7 @@ export default function QuotesScreen() {
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const { ref: listRef } = useScrollToTopOnChange([segment], { resyncDeps: [rows] });
+  const listScrollResetKey = segment;
   const rowsRef = useRef<Row[]>([]);
   rowsRef.current = rows;
   useTabScreenLoadingRecovery(rows, setLoading);
@@ -589,6 +590,7 @@ export default function QuotesScreen() {
         </View>
       ) : (
       <WebWheelFlatList
+        scrollResetKey={listScrollResetKey}
         ref={listRef as never}
         data={rows}
         keyExtractor={(r) => `${r.symbol}-${r.name ?? ''}`}

@@ -38,6 +38,8 @@ export const SCREEN_STACK_SCROLL_BOTTOM_BASE = 28;
 
 /** iPad·넓은 웹(하단 탭 없음) 스크롤 하단 */
 export const SCREEN_WIDE_SCROLL_BOTTOM_BASE = 32;
+/** iPad·넓은 웹 새소식 chip — 하단 중앙에서 조금 더 위 */
+export const SCREEN_WIDE_NEW_CONTENT_CHIP_BOTTOM = 64;
 
 /** FAB를 탭바 위에 띄울 때 추가 lift */
 export const SCREEN_FAB_ABOVE_TAB_OFFSET = 8;
@@ -65,14 +67,14 @@ export function fabStackBottom(
   return tabBarHeight + tabBarBottomInset(safeAreaBottom) + offset;
 }
 
-/** `FeedNewContentChip` bottom inset — iPhone 탭바 위 / iPad·wide 하단 safe area 위 */
+/** `FeedNewContentChip` bottom inset — iPhone 홈 메뉴 위 / iPad·wide 하단 중앙 위 */
 export function feedNewContentChipBottom(
   useTwoPane: boolean,
   tabBarHeight: number,
   safeAreaBottom: number,
 ): number {
   if (useTwoPane) {
-    return SCREEN_WIDE_SCROLL_BOTTOM_BASE + safeAreaBottom;
+    return SCREEN_WIDE_NEW_CONTENT_CHIP_BOTTOM + safeAreaBottom;
   }
   return fabStackBottom(tabBarHeight, safeAreaBottom);
 }

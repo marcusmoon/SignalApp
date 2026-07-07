@@ -51,8 +51,11 @@ export const WebWheelScrollView = forwardRef<ScrollView, WebWheelScrollViewProps
         forwardedRef.current = api;
       }
     };
+    const webScrollKey = scrollResetKey != null ? `wws-${scrollResetKey}` : undefined;
+
     return (
       <View
+        key={webScrollKey}
         {...(rest as object)}
         ref={setWebRef}
         style={[webViewportStyle, { backgroundColor }, style]}>

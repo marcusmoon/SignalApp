@@ -282,8 +282,14 @@ function WebWheelFlatListInner<T>(
       }
     };
 
+    const webScrollKey = scrollResetKey != null ? `wwf-${scrollResetKey}` : undefined;
+
     return (
-      <View ref={setWebRef} style={[webListViewportStyle, style] as never} {...(webEventProps as Record<string, unknown>)}>
+      <View
+        key={webScrollKey}
+        ref={setWebRef}
+        style={[webListViewportStyle, style] as never}
+        {...(webEventProps as Record<string, unknown>)}>
         <View ref={webContentRef} style={contentContainerStyle}>
           {renderListSlot(ListHeaderComponent)}
           {items.length === 0 ? renderListSlot(ListEmptyComponent) : null}

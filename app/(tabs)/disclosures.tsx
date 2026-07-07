@@ -360,10 +360,11 @@ export default function DisclosuresScreen() {
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const newContentChipBottom = feedNewContentChipBottom(useTwoPane, tabBarHeight, insets.bottom);
+  const showDigest = !symbolFilter;
 
   const listHeaderEl = useMemo(
     () => (
-      <View style={[styles.listHeader, useTwoPane && styles.listHeaderWide]}>
+      <View style={[styles.listHeader, useTwoPane && styles.listHeaderWide, useTwoPane && showDigest && styles.listHeaderBelowDigest]}>
         {symbolFilter ? (
           <View style={styles.symbolFilterRow}>
             <Text style={styles.symbolFilterText} numberOfLines={1}>
@@ -409,7 +410,7 @@ export default function DisclosuresScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
     ),
-    [clearSymbolFilter, error, filter, onPickTypeFilter, styles, symbolFilter, t, typeFilter, typeFilterOptions, useTwoPane],
+    [clearSymbolFilter, error, filter, onPickTypeFilter, showDigest, styles, symbolFilter, t, typeFilter, typeFilterOptions, useTwoPane],
   );
 
   const renderDisclosureCard = useCallback(
@@ -518,8 +519,6 @@ export default function DisclosuresScreen() {
     </View>
   ) : null;
 
-  const showDigest = !symbolFilter;
-
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
@@ -560,7 +559,7 @@ export default function DisclosuresScreen() {
           <View style={useTwoPane ? styles.wideBody : styles.compactBody}>
             <View style={useTwoPane ? styles.listColumnWide : styles.listColumn}>
               {showDigest && useTwoPane ? (
-                <View style={styles.topFixed}>
+                <View style={styles.wideDigestDock}>
                   <DisclosureDigestSection
                     items={digestItems}
                     loading={digestLoading && digestItems.length === 0}
@@ -628,6 +627,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minWidth: 360,
       minHeight: 0,
     },
+    wideDigestDock: {
+      flexShrink: 0,
+      marginBottom: SCREEN_LIST_HEADER_PADDING_TOP + SCREEN_LIST_CONTENT_PADDING_TOP,
+    },
     wideBody: {
       ...webFlexFill,
       flexDirection: 'row',
@@ -647,6 +650,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     listHeaderWide: {
       paddingTop: 0,
+    },
+    listHeaderBelowDigest: {
+      paddingTop: SCREEN_LIST_HEADER_PADDING_TOP,
     },
     segment: segmentTab.segment,
     segBtn: segmentTab.segBtn,

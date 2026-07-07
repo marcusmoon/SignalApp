@@ -523,7 +523,7 @@ export default function DisclosuresScreen() {
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {refreshNotice || !useTwoPane || showDigest ? (
+        {refreshNotice || !useTwoPane ? (
           <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
           {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
           {!symbolFilter && !useTwoPane ? (
@@ -543,7 +543,7 @@ export default function DisclosuresScreen() {
               })}
             </View>
           ) : null}
-          {showDigest ? (
+          {showDigest && !useTwoPane ? (
             <DisclosureDigestSection
               items={digestItems}
               loading={digestLoading && digestItems.length === 0}
@@ -556,8 +556,16 @@ export default function DisclosuresScreen() {
             <SignalLoadingIndicator message={t('commonLoading')} />
           </View>
         ) : (
-          <View style={[useTwoPane ? styles.wideBody : styles.compactBody, useTwoPane && showDigest && styles.wideBodyBelowDigest]}>
+          <View style={useTwoPane ? styles.wideBody : styles.compactBody}>
             <View style={useTwoPane ? styles.listColumnWide : styles.listColumn}>
+              {showDigest && useTwoPane ? (
+                <View style={[styles.topFixed, styles.listColumnDigestStrip]}>
+                  <DisclosureDigestSection
+                    items={digestItems}
+                    loading={digestLoading && digestItems.length === 0}
+                  />
+                </View>
+              ) : null}
               <WebWheelFlatList
                 scrollResetKey={listScrollResetKey}
                 ref={listRef as never}
@@ -619,14 +627,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minWidth: 360,
       minHeight: 0,
     },
+    listColumnDigestStrip: {
+      flexShrink: 0,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+    },
     wideBody: {
       ...webFlexFill,
       flexDirection: 'row',
       gap: 12,
       paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
-    },
-    wideBodyBelowDigest: {
-      paddingTop: 0,
     },
     list: { ...webScrollViewportStyle },
     wideList: {

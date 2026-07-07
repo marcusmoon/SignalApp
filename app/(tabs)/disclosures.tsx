@@ -125,7 +125,7 @@ export default function DisclosuresScreen() {
   digestItemsRef.current = digestItems;
 
   const { ref: listRef } = useScrollToTopOnChange([filter, typeFilter, symbolFilter], {
-    resyncDeps: [items],
+    resyncDeps: [items, digestItems],
   });
 
   const currentQuery = useMemo<ListQuery>(

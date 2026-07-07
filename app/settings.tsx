@@ -126,6 +126,7 @@ import {
 } from '@/services/tabBarOpacityPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import {
   getEffectiveSignalApiBaseUrl,
   loadSignalServerPrefs,
@@ -1002,6 +1003,7 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   const useIpadSidebar = useTwoPane && !embedded;
   const [tab, setTab] = useState<SettingsTab>('display');
   const selectedTab = embedded && ipadNav.isAvailable ? ipadNav.settingsTab : tab;
+  const { ref: settingsScrollRef } = useScrollToTopOnChange([selectedTab]);
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [briefingPushEnabled, setBriefingPushEnabled] = useState(true);
@@ -1346,6 +1348,7 @@ clearCalendarCache();
         </View>
       ) : null}
       <WebWheelScrollView
+        ref={settingsScrollRef as never}
         style={styles.scrollFlex}
         contentContainerStyle={[
           styles.scroll,

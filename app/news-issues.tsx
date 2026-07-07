@@ -21,6 +21,7 @@ import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import type { SignalApiNewsDigestItem } from '@/integrations/signal-api/types';
@@ -106,6 +107,9 @@ export function NewsIssuesContent({
   const [expandedId, setExpandedId] = useState<string | null>(initialDigestId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { ref: scrollRef } = useScrollToTopOnChange([category, selectedYmd], {
+    resyncDeps: [items],
+  });
 
   useEffect(() => {
     setCategory(initialCategory);
@@ -171,7 +175,11 @@ export function NewsIssuesContent({
 
   const body = (
     <SafeAreaView style={styles.safe} edges={isWide ? [] : ['bottom']}>
-      <WebWheelScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <WebWheelScrollView
+        ref={scrollRef as never}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
         <View style={[styles.inner, isWide && styles.innerWide]}>
           {onBack ? (
             <View style={styles.paneTopBar}>

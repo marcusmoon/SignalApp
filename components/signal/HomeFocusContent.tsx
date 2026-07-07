@@ -35,6 +35,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useQuoteChangeColors } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
@@ -271,6 +272,9 @@ export function HomeFocusContent({
     () => [...issues].sort((a, b) => issueSortTime(b).localeCompare(issueSortTime(a)) || b.item.count - a.item.count).slice(0, HOME_ISSUE_LIMIT),
     [issues],
   );
+  const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
+    resyncDeps: [issues, briefings, todayBriefing, disclosures, calendarEvents, loading],
+  });
 
   const selectedDateLabel = useMemo(
     () =>
@@ -795,6 +799,7 @@ export function HomeFocusContent({
       </View>
 
       <WebWheelScrollView
+        ref={scrollRef as never}
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,

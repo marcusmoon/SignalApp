@@ -21,6 +21,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
@@ -126,6 +127,9 @@ export function DisclosureFlowContent({
   const [highlightId, setHighlightId] = useState<string | null>(initialDigestId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { ref: scrollRef } = useScrollToTopOnChange([market, selectedYmd], {
+    resyncDeps: [items],
+  });
 
   useEffect(() => {
     setSelectedYmd(initialDate);
@@ -187,7 +191,11 @@ export function DisclosureFlowContent({
   return (
     <>
     <SafeAreaView style={styles.safe} edges={isWide ? [] : ['bottom']}>
-      <WebWheelScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <WebWheelScrollView
+        ref={scrollRef as never}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
         <View style={[styles.inner, isWide && styles.innerWide]}>
           {onBack ? (
             <View style={styles.paneTopBar}>

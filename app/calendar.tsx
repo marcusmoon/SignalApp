@@ -176,7 +176,10 @@ export default function CalendarScreen() {
   }, []);
 
   const typeParam = selectedCalendarType(enabledTypes);
-  const { ref: listRef } = useScrollToTopOnChange([selectedYmd, typeParam], { skipInitial: false });
+  const { ref: listRef } = useScrollToTopOnChange([selectedYmd, typeParam], {
+    skipInitial: false,
+    resyncDeps: [monthEvents, selectedYmd],
+  });
 
   const fetchMonthData = useCallback(
     async (year: number, month: number, forceRefresh?: boolean) => {

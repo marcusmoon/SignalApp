@@ -12,6 +12,7 @@ import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefings';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
@@ -45,6 +46,7 @@ export default function TodayBriefingScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { ref: scrollRef } = useScrollToTopOnChange([date], { resyncDeps: [item, loading] });
 
   const dateLabel = useMemo(
     () =>
@@ -100,6 +102,7 @@ export default function TodayBriefingScreen() {
         </View>
       ) : (
         <WebWheelScrollView
+          ref={scrollRef as never}
           style={styles.scroll}
           contentContainerStyle={styles.content}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}>

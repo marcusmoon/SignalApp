@@ -30,7 +30,6 @@ import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/r
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import { webShellBackground } from '@/constants/webLayout';
 import {
-  tabBarBottomInset,
   tabBarHorizontalMargin,
   tabBarPositionBottom,
   TAB_BAR_FLOAT_RADIUS,
@@ -712,6 +711,28 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: '#FFFFFF',
     },
     /** 개발자 푸터 내부(플로팅 글래스 캡슐 위) */
+    settingsFooterDock: {
+      position: 'absolute',
+      pointerEvents: 'box-none',
+    },
+    settingsFooterDockCompact: {
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+    },
+    settingsFooterCapsule: {
+      borderRadius: TAB_BAR_FLOAT_RADIUS,
+      overflow: 'hidden',
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+      width: '100%',
+    },
+    settingsFooterCapsuleCompact: {
+      width: undefined,
+      alignSelf: 'center',
+      borderRadius: 999,
+    },
     settingsFooterPress: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -720,10 +741,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingVertical: 12,
       paddingHorizontal: 14,
     },
+    settingsFooterPressCompact: {
+      gap: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+    },
     settingsFooterAvatar: {
       width: 36,
       height: 36,
       borderRadius: 18,
+    },
+    settingsFooterAvatarCompact: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
     },
     settingsFooterText: {
       flexShrink: 1,
@@ -970,6 +1001,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
 
 /** 하단 플로팅 개발자 바 높이(탭바 캡슐과 비슷하게) */
 const SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT = 52;
+/** iPad·넓은 웹: 하단 중앙 소형 캡슐 */
+const SETTINGS_DEV_FOOTER_COMPACT_INNER_MIN_HEIGHT = 40;
 
 type SettingsScreenProps = {
   /** iPad 사이드바 우측 패널에 그대로 삽입 */
@@ -1060,9 +1093,16 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   }, [customHex]);
 
   const { width: winW, height: winH } = useWindowDimensions();
+  const useCompactDeveloperFooter = useTwoPane;
   const floatingFooterMarginH = tabBarHorizontalMargin();
   const floatingFooterWidth = Math.min(winW - floatingFooterMarginH * 2, APP_CONTENT_MAX_WIDTH);
   const floatingFooterLeft = Math.max(floatingFooterMarginH, (winW - floatingFooterWidth) / 2);
+  const developerFooterBottom = useCompactDeveloperFooter
+    ? Math.max(16, insets.bottom + 10)
+    : tabBarPositionBottom(insets.bottom);
+  const developerFooterInnerHeight = useCompactDeveloperFooter
+    ? SETTINGS_DEV_FOOTER_COMPACT_INNER_MIN_HEIGHT
+    : SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT;
   const accentPickerLayout = useMemo(() => {
     const sheetW = Math.min(winW - 40, 340);
     const cols = ACCENT_PALETTE_COLS;
@@ -1096,10 +1136,10 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   const scrollContentBottomPad = useMemo(
     () =>
       32 +
-      tabBarBottomInset(insets.bottom) +
-      SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT +
+      developerFooterBottom +
+      developerFooterInnerHeight +
       12,
-    [insets.bottom],
+    [developerFooterBottom, developerFooterInnerHeight],
   );
 
   useEffect(() => {
@@ -2095,47 +2135,57 @@ clearCalendarCache();
       <View
         pointerEvents="box-none"
         style={[
-          {
-            position: 'absolute',
-            left: floatingFooterLeft,
-            width: floatingFooterWidth,
-            bottom: tabBarPositionBottom(insets.bottom),
-            borderRadius: TAB_BAR_FLOAT_RADIUS,
-            overflow: 'hidden',
-            backgroundColor: theme.card,
-            borderWidth: 1,
-            borderColor: theme.border,
-          },
-          Platform.OS === 'ios'
-            ? {
-                shadowColor: '#191F28',
-                shadowOpacity: 0.08,
-                shadowRadius: 18,
-                shadowOffset: { width: 0, height: 8 },
-              }
+          styles.settingsFooterDock,
+          useCompactDeveloperFooter
+            ? styles.settingsFooterDockCompact
             : {
-                shadowColor: '#191F28',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 14,
-                elevation: 8,
+                left: floatingFooterLeft,
+                width: floatingFooterWidth,
               },
+          { bottom: developerFooterBottom },
         ]}>
-        <Pressable
-          onPress={() => void Linking.openURL(DEVELOPER_LINKEDIN_URL)}
-          style={({ pressed }) => [styles.settingsFooterPress, pressed && { opacity: 0.88 }]}
-          accessibilityRole="link"
-          accessibilityLabel={t('settingsDeveloperLinkedInA11y')}>
-          <Image
-            source={developerAvatar}
-            style={styles.settingsFooterAvatar}
-            accessible={false}
-            importantForAccessibility="no"
-          />
-          <Text style={styles.settingsFooterText} numberOfLines={1}>
-            {t('settingsDeveloperFooterLine')}
-          </Text>
-        </Pressable>
+        <View
+          style={[
+            styles.settingsFooterCapsule,
+            useCompactDeveloperFooter && styles.settingsFooterCapsuleCompact,
+            Platform.OS === 'ios'
+              ? {
+                  shadowColor: '#191F28',
+                  shadowOpacity: 0.08,
+                  shadowRadius: useCompactDeveloperFooter ? 12 : 18,
+                  shadowOffset: { width: 0, height: useCompactDeveloperFooter ? 4 : 8 },
+                }
+              : {
+                  shadowColor: '#191F28',
+                  shadowOffset: { width: 0, height: useCompactDeveloperFooter ? 2 : 4 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: useCompactDeveloperFooter ? 10 : 14,
+                  elevation: useCompactDeveloperFooter ? 6 : 8,
+                },
+          ]}>
+          <Pressable
+            onPress={() => void Linking.openURL(DEVELOPER_LINKEDIN_URL)}
+            style={({ pressed }) => [
+              styles.settingsFooterPress,
+              useCompactDeveloperFooter && styles.settingsFooterPressCompact,
+              pressed && { opacity: 0.88 },
+            ]}
+            accessibilityRole="link"
+            accessibilityLabel={t('settingsDeveloperLinkedInA11y')}>
+            <Image
+              source={developerAvatar}
+              style={[
+                styles.settingsFooterAvatar,
+                useCompactDeveloperFooter && styles.settingsFooterAvatarCompact,
+              ]}
+              accessible={false}
+              importantForAccessibility="no"
+            />
+            <Text style={styles.settingsFooterText} numberOfLines={1}>
+              {t('settingsDeveloperFooterLine')}
+            </Text>
+          </Pressable>
+        </View>
       </View>
       <Modal
         visible={quotesLimitPicker != null}

@@ -15,6 +15,8 @@ export const WEB_SIGNAL_CSS = {
   text: 'var(--signal-text)',
   textMuted: 'var(--signal-text-muted)',
   green: 'var(--signal-green)',
+  greenDim: 'var(--signal-green-dim)',
+  greenBorder: 'var(--signal-green-border)',
   topHighlight: 'rgba(255,255,255,0.1)',
 } as const;
 

@@ -185,6 +185,17 @@ body {
   transform: translateZ(0);
 }
 
+[data-signal-new-content-chip="true"] {
+  background-color: var(--signal-green-dim) !important;
+  border: 1.5px solid var(--signal-green-border) !important;
+  color: var(--signal-green) !important;
+  box-shadow: 0 8px 24px rgba(25, 31, 40, 0.2) !important;
+  z-index: 2147483000 !important;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  transform: translateZ(0);
+}
+
 html[data-signal-theme="light"] {
   --signal-bg: ${lightBg};
   --signal-bg-elevated: ${lightTokens.bgElevated};

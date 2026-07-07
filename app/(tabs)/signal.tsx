@@ -355,7 +355,9 @@ export default function SignalScreen() {
   }, [briefingByTabKey, selectedTabKey]);
 
   const activeBriefing = activeTabKey ? briefingByTabKey.get(activeTabKey) : undefined;
-  const { ref: scrollRef } = useScrollToTopOnChange([activeTabKey, selectedYmd]);
+  const { ref: scrollRef } = useScrollToTopOnChange([activeTabKey, selectedYmd], {
+    resyncDeps: [activeBriefing?.id, marketBriefings.length],
+  });
   const onRefresh = onRefreshBase;
   useRegisterWebHeaderRefresh(() => void onRefresh());
   const hasAnyBriefing = marketBriefings.length > 0;

@@ -107,7 +107,9 @@ export default function YoutubeScreen() {
   const skipLoadOnSelectedHandlesRef = useRef(false);
   const syncedYoutubeSortRef = useRef(ipadNav.youtubeSort);
 
-  const { ref: ytListRef } = useScrollToTopOnChange([effectiveSort, selectedHandles]);
+  const { ref: ytListRef } = useScrollToTopOnChange([effectiveSort, selectedHandles], {
+    resyncDeps: [items],
+  });
 
   useTabScreenLoadingRecovery(items, setLoading);
 

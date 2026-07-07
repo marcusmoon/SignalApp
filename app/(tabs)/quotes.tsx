@@ -103,12 +103,12 @@ export default function QuotesScreen() {
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [segment, setSegment] = useState<QuoteSegmentKey>('watch');
   const [segmentOrder, setSegmentOrder] = useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
-  const { ref: listRef } = useScrollToTopOnChange([segment]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
+  const { ref: listRef } = useScrollToTopOnChange([segment], { resyncDeps: [rows] });
   const rowsRef = useRef<Row[]>([]);
   rowsRef.current = rows;
   useTabScreenLoadingRecovery(rows, setLoading);

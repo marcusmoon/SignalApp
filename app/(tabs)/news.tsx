@@ -237,7 +237,8 @@ export default function FeedScreen() {
   watchFilterRef.current = watchFilter;
   watchSelectedSymbolsRef.current = watchSelectedSymbols;
 
-  const { ref: feedListRef } = useScrollToTopOnChange([
+  const { ref: feedListRef } = useScrollToTopOnChange(
+    [
     segment,
     globalFilter,
     cryptoFilter,
@@ -248,7 +249,9 @@ export default function FeedScreen() {
     cryptoSelectedSources,
     koreaSelectedSources,
     watchSelectedSymbols,
-  ]);
+  ],
+    { resyncDeps: [items, videoItems] },
+  );
 
   useEffect(() => {
     if (!refreshNotice) return;

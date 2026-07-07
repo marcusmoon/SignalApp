@@ -53,7 +53,7 @@ export default function AlertsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [newContentAvailable, setNewContentAvailable] = useState(false);
   const [filter, setFilter] = useState<AlertsFilter>('all');
-  const { ref: listRef } = useScrollToTopOnChange([filter]);
+  const { ref: listRef } = useScrollToTopOnChange([filter], { resyncDeps: [items] });
   useResetRefreshingOnTabBlur(setRefreshing);
 
   const reload = useCallback(async (activeFilter: AlertsFilter = filter, forceRefresh = false) => {

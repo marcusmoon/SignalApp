@@ -66,13 +66,13 @@ export default function BoardScreen() {
   const { useTwoPane } = useResponsiveLayout();
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const [source, setSource] = useState<CommunitySourceFilter>(COMMUNITY_SOURCE_ALL);
-  const { ref: listRef } = useScrollToTopOnChange([source]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<SignalApiCommunityPost[]>([]);
+  const { ref: listRef } = useScrollToTopOnChange([source], { resyncDeps: [items] });
   const [meta, setMeta] = useState<SignalCommunityListMeta | null>(null);
   const loadingMoreRef = useRef(false);
   const itemsRef = useRef<SignalApiCommunityPost[]>([]);

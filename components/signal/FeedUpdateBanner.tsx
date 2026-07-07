@@ -4,7 +4,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import type { AppTheme } from '@/constants/theme';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { FeedUpdatePromptPill } from '@/components/signal/FeedNewContentChip';
+import { FeedUpdatePromptPill } from '@/components/signal/UpdatePromptStrip';
 
 export type FeedUpdateBannerVariant = 'prompt' | 'notice';
 

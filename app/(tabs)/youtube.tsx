@@ -199,8 +199,11 @@ export default function YoutubeScreen() {
       if (!hadItems) {
         setLoading(true);
       }
+      const isRefresh = opts?.forceRefresh === true;
       youtubeReplacingRef.current = true;
-      setYoutubeMeta(null);
+      if (!isRefresh) {
+        setYoutubeMeta(null);
+      }
       try {
         const availableHandles = opts?.availableHandles ?? curationHandles;
         const requestedSort = opts?.sort ?? effectiveSort;

@@ -95,7 +95,6 @@ import {
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiNewsDigestItem, SignalApiNewsItem, SignalApiYoutubeVideo, SignalNewsListMeta } from '@/integrations/signal-api/types';
 import type { NewsItem, YoutubeItem } from '@/types/signal';
-import { delayRemainingRefreshMin } from '@/utils/minimumRefreshDuration';
 
 type FeedRow =
   | { kind: 'news'; news: NewsItem }
@@ -350,12 +349,19 @@ export default function FeedScreen() {
   const load = useCallback(
     async (forceRefresh?: boolean): Promise<FeedLoadResult> => {
       setError(null);
-      setHasMore(false);
-      setLoadingMore(false);
-      loadingMoreRef.current = false;
-      loadMoreInFlightRef.current = false;
-      hasMoreRef.current = false;
-      feedMetaRef.current = null;
+      const isRefresh = forceRefresh === true;
+      if (!isRefresh) {
+        setHasMore(false);
+        setLoadingMore(false);
+        loadingMoreRef.current = false;
+        loadMoreInFlightRef.current = false;
+        hasMoreRef.current = false;
+        feedMetaRef.current = null;
+      } else {
+        loadMoreInFlightRef.current = true;
+      }
+
+      try {
       if (!hasSignalApi()) {
         setItems([]);
         setVideoItems([]);
@@ -374,14 +380,16 @@ export default function FeedScreen() {
       const cacheMode = signalCacheMode(forceRefresh);
 
       if (segment === 'video') {
-        setSignalNewsPool([]);
-        setAvailableSources([]);
-        setSelectedSources([]);
-        setCryptoSourceOptions([]);
-        setCryptoSelectedSources(null);
-        setItems([]);
-        setServerRows([]);
-        setServerDigestRows([]);
+        if (!isRefresh) {
+          setSignalNewsPool([]);
+          setAvailableSources([]);
+          setSelectedSources([]);
+          setCryptoSourceOptions([]);
+          setCryptoSelectedSources(null);
+          setItems([]);
+          setServerRows([]);
+          setServerDigestRows([]);
+        }
         const { items: rows, meta } = await fetchSignalYoutube(
           {
             sort: 'latest',
@@ -399,8 +407,10 @@ export default function FeedScreen() {
         return { itemIds: mapped.map((item) => item.id), kind: 'video' };
       }
 
-      setVideoItems([]);
-      setYoutubeRows([]);
+      if (!isRefresh) {
+        setVideoItems([]);
+        setYoutubeRows([]);
+      }
 
       if (segment === 'watch') {
         setSignalNewsPool([]);
@@ -608,6 +618,9 @@ export default function FeedScreen() {
       // 백그라운드 폴링 기준 ID 갱신
       if (displayPage[0]?.id) latestSeenIdRef.current = displayPage[0].id;
       return { itemIds: mapped.map((item) => item.id), kind: 'news' };
+      } finally {
+        if (isRefresh) loadMoreInFlightRef.current = false;
+      }
     },
     [activeTag, commitDigestLookupRows, locale, segment, syncServerRows, t],
   );
@@ -844,7 +857,6 @@ export default function FeedScreen() {
   const onRefreshBase = useCallback(async () => {
     const prevNewsIds = new Set(items.map((item) => item.id));
     const prevVideoIds = new Set(videoItems.map((item) => item.id));
-    const startedAt = Date.now();
     setRefreshing(true);
     setRefreshNotice(null);
     setNewContentAvailable(false);
@@ -861,7 +873,6 @@ export default function FeedScreen() {
     } catch (e) {
       setError(formatSignalApiError(e, t, 'feedErrorRefresh'));
     } finally {
-      await delayRemainingRefreshMin(startedAt);
       setRefreshing(false);
     }
   }, [items, load, t, videoItems]);

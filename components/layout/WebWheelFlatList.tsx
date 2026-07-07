@@ -8,11 +8,6 @@ import {
   type ListRenderItemInfo,
 } from 'react-native';
 
-import {
-  getWebRefreshControlProps,
-  useWebRefreshHandlers,
-  WebRefreshOverlay,
-} from '@/components/layout/webRefreshControl';
 import { isDomNearScrollEnd, syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
 import { createLazyWebScrollApi } from '@/utils/scrollToTop';
 
@@ -89,7 +84,6 @@ function WebWheelFlatListInner<T>(
   onScrollRef.current = onScroll;
   onEndReachedRef.current = onEndReached;
   onEndReachedThresholdRef.current = onEndReachedThreshold;
-  const refreshControlProps = getWebRefreshControlProps(refreshControl);
 
   const emitWebLayout = useCallback((node: HTMLElement) => {
     onLayoutRef.current?.({
@@ -132,7 +126,6 @@ function WebWheelFlatListInner<T>(
     ?? (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
     ?? null
   ), []);
-  const { handlers: webRefreshHandlers, pullProgress, pullActive } = useWebRefreshHandlers(refreshControlProps, getWebNode);
 
   /** Sidebar pane toggles can skip RN onLayout — observe the scroll node directly on web. */
   useEffect(() => {
@@ -256,28 +249,10 @@ function WebWheelFlatListInner<T>(
         emitWebEndReached(node);
       }, 40);
     };
-    const isPullRefreshWheel = (event: unknown) => {
-      const node = getWebNode(event);
-      if (!node || node.scrollTop > 2) return false;
-      const deltaY = (event as { nativeEvent?: { deltaY?: number }; deltaY?: number })?.nativeEvent?.deltaY
-        ?? (event as { deltaY?: number })?.deltaY
-        ?? 0;
-      return deltaY < 0;
-    };
     const webEventProps = {
       onScroll: emitFromWebEvent,
-      onWheel: (event: unknown) => {
-        if (!isPullRefreshWheel(event)) {
-          scheduleWebNearEndProbe(event);
-        }
-        webRefreshHandlers.onWheel(event);
-      },
-      onTouchStart: webRefreshHandlers.onTouchStart,
-      onTouchMove: webRefreshHandlers.onTouchMove,
-      onTouchEnd: (event: unknown) => {
-        scheduleWebNearEndProbe(event);
-        webRefreshHandlers.onTouchEnd();
-      },
+      onWheel: scheduleWebNearEndProbe,
+      onTouchEnd: scheduleWebNearEndProbe,
       onKeyUp: scheduleWebNearEndProbe,
     };
     const setWebRef = (instance: View | null) => {
@@ -295,11 +270,6 @@ function WebWheelFlatListInner<T>(
 
     return (
       <View ref={setWebRef} style={[webListViewportStyle, style] as never} {...(webEventProps as Record<string, unknown>)}>
-        <WebRefreshOverlay
-          pullProgress={pullProgress}
-          pullActive={pullActive}
-          refreshing={!!refreshControlProps?.refreshing}
-        />
         <View ref={webContentRef} style={contentContainerStyle}>
           {renderListSlot(ListHeaderComponent)}
           {items.length === 0 ? renderListSlot(ListEmptyComponent) : null}

@@ -32,6 +32,7 @@ import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useQuoteChangeColors } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
@@ -376,6 +377,8 @@ export function HomeFocusContent({
       setRefreshing(false);
     }
   }, [load]);
+
+  useRegisterWebHeaderRefresh(() => void refresh(), showIssueSummary ? 'mount' : 'focus');
 
   useEffect(() => {
     let cancelled = false;

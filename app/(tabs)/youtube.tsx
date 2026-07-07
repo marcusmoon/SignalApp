@@ -39,6 +39,7 @@ import {
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { hasSignalApi } from '@/services/env';
@@ -288,6 +289,7 @@ export default function YoutubeScreen() {
   }, [load, loadChannelCatalog, selectedHandles]);
 
   const onRefresh = onRefreshBase;
+  useRegisterWebHeaderRefresh(() => void onRefresh());
 
   const webFeedLoadMore = useWebFlatListLoadMore({
     hasMore: Boolean(youtubeMeta?.hasMore),

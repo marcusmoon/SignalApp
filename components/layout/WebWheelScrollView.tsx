@@ -1,38 +1,20 @@
-import { forwardRef, useCallback, useRef } from 'react';
+import { forwardRef, useRef } from 'react';
 import { Platform, ScrollView, StyleSheet, View, type ScrollViewProps } from 'react-native';
 
-import {
-  getWebRefreshControlProps,
-  useWebRefreshHandlers,
-  WebRefreshOverlay,
-} from '@/components/layout/webRefreshControl';
 import { WEB_THEME_BG } from '@/constants/webLayout';
 import { useWebVerticalWheelScroll } from '@/hooks/useWebVerticalWheelScroll';
 import { createLazyWebScrollApi } from '@/utils/scrollToTop';
 
 export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(function WebWheelScrollView(
-  { children, contentContainerStyle, onScroll, refreshControl: _refreshControl, style, ...rest },
+  { children, contentContainerStyle, onScroll, refreshControl, style, ...rest },
   forwardedRef,
 ) {
   const localRef = useRef<ScrollView>(null);
   useWebVerticalWheelScroll(localRef, { onScroll });
-  const refreshControlProps = getWebRefreshControlProps(_refreshControl);
-  const getNode = useCallback((event?: unknown) => (
-    (event as { currentTarget?: HTMLElement | null } | undefined)?.currentTarget
-    ?? (localRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
-    ?? null
-  ), []);
-  const { handlers: webRefreshHandlers, pullProgress, pullActive } = useWebRefreshHandlers(refreshControlProps, getNode);
 
   if (Platform.OS === 'web') {
     const flatStyle = StyleSheet.flatten([{ backgroundColor: WEB_THEME_BG }, style]);
     const backgroundColor = flatStyle?.backgroundColor ?? WEB_THEME_BG;
-    const webEventProps = {
-      onTouchStart: webRefreshHandlers.onTouchStart,
-      onTouchMove: webRefreshHandlers.onTouchMove,
-      onTouchEnd: webRefreshHandlers.onTouchEnd,
-      onWheel: webRefreshHandlers.onWheel,
-    };
     const setWebRef = (instance: View | null) => {
       localRef.current = instance as never;
       const api = createLazyWebScrollApi(
@@ -49,13 +31,7 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
       <View
         {...(rest as object)}
         ref={setWebRef}
-        {...(webEventProps as Record<string, unknown>)}
         style={[webViewportStyle, { backgroundColor }, style]}>
-        <WebRefreshOverlay
-          pullProgress={pullProgress}
-          pullActive={pullActive}
-          refreshing={!!refreshControlProps?.refreshing}
-        />
         <View
           style={[
             contentContainerStyle,
@@ -72,7 +48,7 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
       {...rest}
       contentContainerStyle={contentContainerStyle}
       onScroll={onScroll}
-      refreshControl={_refreshControl}
+      refreshControl={refreshControl}
       style={style}
       ref={(instance) => {
         localRef.current = instance;

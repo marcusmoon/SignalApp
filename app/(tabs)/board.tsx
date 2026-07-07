@@ -28,6 +28,7 @@ import {
 import type { AppTheme } from '@/constants/theme';
 import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
@@ -137,6 +138,7 @@ export default function BoardScreen() {
   }, [load]);
 
   const onRefresh = onRefreshBase;
+  useRegisterWebHeaderRefresh(() => void onRefresh());
 
   const onEndReached = useCallback(() => {
     void load({ loadMore: true });

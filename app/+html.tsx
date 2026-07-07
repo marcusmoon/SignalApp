@@ -156,23 +156,6 @@ body {
   display: none;
 }
 
-@keyframes signalWebRefreshSpin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-[data-signal-web-refresh-spinner="true"] {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid color-mix(in srgb, var(--signal-green) 22%, transparent);
-  border-top-color: var(--signal-green);
-  box-sizing: border-box;
-  animation: signalWebRefreshSpin 0.7s linear infinite;
-  will-change: transform;
-}
-
 /* Mobile Safari can miss RN Web's initial fixed/absolute measurements until resize.
    Keep floating navigation controls in a CSS-owned fixed layer from first paint. */
 [data-signal-floating-tabbar="true"] {

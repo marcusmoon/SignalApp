@@ -42,6 +42,7 @@ import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
@@ -833,6 +834,7 @@ export default function FeedScreen() {
   }, [items, load, t, videoItems]);
 
   const onRefresh = onRefreshBase;
+  useRegisterWebHeaderRefresh(() => void onRefresh());
 
   const webFeedLoadMore = useWebFlatListLoadMore({
     hasMore,

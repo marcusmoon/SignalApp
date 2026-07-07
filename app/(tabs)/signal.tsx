@@ -37,6 +37,7 @@ import {
 import type { AppTheme } from '@/constants/theme';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
@@ -356,6 +357,7 @@ export default function SignalScreen() {
   const activeBriefing = activeTabKey ? briefingByTabKey.get(activeTabKey) : undefined;
   const { ref: scrollRef } = useScrollToTopOnChange([activeTabKey, selectedYmd]);
   const onRefresh = onRefreshBase;
+  useRegisterWebHeaderRefresh(() => void onRefresh());
   const hasAnyBriefing = marketBriefings.length > 0;
   const scrollBottomPadding = useTwoPane
     ? SCREEN_WIDE_SCROLL_BOTTOM_BASE

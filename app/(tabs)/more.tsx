@@ -22,6 +22,7 @@ import type { MoreHubRouteKey } from '@/constants/moreHubOrder';
 import type { AppTheme } from '@/constants/theme';
 import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -130,6 +131,7 @@ export default function MoreHubScreen() {
     void reloadOrder();
     void reloadRefLinksPref();
   }, [reloadOrder, reloadRefLinksPref]);
+  useRegisterWebHeaderRefresh(onHeaderRefresh);
 
   const openHubItem = useCallback(
     (item: MoreHubRouteKey) => {

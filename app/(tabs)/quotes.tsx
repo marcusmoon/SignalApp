@@ -32,6 +32,7 @@ import {
 } from '@/constants/screenLayout';
 import { useQuoteChangeColors, useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import {
@@ -268,6 +269,7 @@ export default function QuotesScreen() {
   }, [load, t]);
 
   const onRefresh = onRefreshBase;
+  useRegisterWebHeaderRefresh(() => void onRefresh());
 
   const onAddWatch = useCallback(async (): Promise<boolean> => {
     const raw = draftTicker.trim();

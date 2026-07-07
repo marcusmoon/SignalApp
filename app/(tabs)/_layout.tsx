@@ -30,6 +30,7 @@ import SettingsScreen from '@/app/settings';
 import { IpadHomeScreen } from '@/components/signal/IpadHomeScreen';
 import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
 import { IpadSidebarNavProvider, useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
+import { WebHeaderRefreshProvider, useWebHeaderRefreshTrigger } from '@/contexts/WebHeaderRefreshContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -246,13 +247,15 @@ export default function TabLayout() {
   if (isWideLayout) {
     return (
       <IpadSidebarNavProvider>
-        <IpadWideTabLayout
-          iPadScreenOptions={iPadScreenOptions}
-          newsTabBadge={newsTabBadge}
-          signalTabBadge={signalTabBadge}
-          disclosureTabBadge={disclosureTabBadge}
-          t={t}
-        />
+        <WebHeaderRefreshProvider>
+          <IpadWideTabLayout
+            iPadScreenOptions={iPadScreenOptions}
+            newsTabBadge={newsTabBadge}
+            signalTabBadge={signalTabBadge}
+            disclosureTabBadge={disclosureTabBadge}
+            t={t}
+          />
+        </WebHeaderRefreshProvider>
       </IpadSidebarNavProvider>
     );
   }
@@ -397,11 +400,16 @@ function IpadWideTabLayout({
 }: IpadWideTabLayoutProps) {
   const { contentPane, newsIssuesParams, disclosureFlowParams, showHome } = useIpadSidebarNav();
   const { theme } = useSignalTheme();
+  const triggerHeaderRefresh = useWebHeaderRefreshTrigger();
 
   return (
     <>
       <SafeAreaView style={[sidebarLayoutStyles.safe, { backgroundColor: webShellBackground(theme.bg) }]} edges={['top']}>
-      <SignalHeader compact fullWidth />
+      <SignalHeader
+        compact
+        fullWidth
+        onBrandPress={Platform.OS === 'web' ? () => void triggerHeaderRefresh() : undefined}
+      />
       <View style={[sidebarLayoutStyles.body, { backgroundColor: webShellBackground(theme.bg) }]}>
         <SignalSidebarTabBar
           newsHasUnread={newsTabBadge}

@@ -31,6 +31,7 @@ import {
 } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useScrollToTopOnChange } from '@/hooks';
@@ -312,6 +313,7 @@ export default function DisclosuresScreen() {
   }, [currentQuery, items, loadDigests, queryDisclosureList, t]);
 
   const onRefresh = onRefreshBase;
+  useRegisterWebHeaderRefresh(() => void onRefresh());
 
   const onPickFilter = useCallback(
     (key: FilterKey) => {

@@ -21,9 +21,9 @@
 | 탭 | 화면 | 역할 |
 |---|---|---|
 | 홈 | `app/(tabs)/home.tsx` | 오늘의 브리핑·홈 다이제스트 |
-| 뉴스 | `app/(tabs)/news.tsx` | 글로벌/한국/코인/내 관심 뉴스 피드 |
+| 뉴스 | `app/(tabs)/news.tsx` | 글로벌·한국·코인·와치·영상 피드 |
 | 공시 | `app/(tabs)/disclosures.tsx` | SEC/DART 공시 (미국·한국) |
-| 시그널 | `app/(tabs)/signal.tsx` | 시장 브리핑 — 미장·장전·장중·마감 4회차 |
+| 시장 | `app/(tabs)/signal.tsx` | 시장 브리핑 — 미장·장전·장중·마감 |
 | 시세 | `app/(tabs)/quotes.tsx` | 관심·인기·시총·코인 시세 |
 | 더보기 | `app/(tabs)/more.tsx` | 게시판·캘린더·설정 등 보조 기능 |
 
@@ -47,7 +47,7 @@
 - 스키마와 기본 운영 데이터는 Flyway migration으로 관리한다.
 - 앱 공개 API에서 중복 제거와 최소 응답을 적용한다.
 - Job lock TTL은 Job 설정 기준으로 관리한다.
-- 향후 DB 접근 계층은 repository + typed SQL/query builder로 정리한다.
+- DB 접근은 Flyway migration + repository(`server/src/db/repositories/`) + Kysely(`server/src/db/kysely/`) 조합으로 확장한다. legacy raw SQL은 점진 이전한다.
 - **날짜·시간**: instant는 UTC(`timestamptz`), API·ingest 규칙은 [DATE-TIME.md](./DATE-TIME.md)를 따른다. 캘린더만 `event_date`(시장 일자) + `event_at`(UTC) 이중 모델을 쓴다.
 
 ## 네이티브 구조

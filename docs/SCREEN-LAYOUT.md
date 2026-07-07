@@ -54,7 +54,7 @@ SafeAreaView edges={['top']}
   SignalFloatingTabBar (layout)
 ```
 
-- **`topFixed` 패턴**: 뉴스·시세·공시·유튜브·게시판·알림·홈·시장 — `getScreenFixedHeaderStyles()` 스트립(`theme.card` + 하단 구분선)으로 스크롤 밖 고정.
+- **`topFixed` 패턴**: 뉴스·시세·공시·유튜브·게시판·홈·시장 — `getScreenFixedHeaderStyles()` 스트립(`theme.card` + 하단 구분선)으로 스크롤 밖 고정. 알림함(`app/alerts.tsx`) 등 스택 화면도 동일 스트립 패턴.
 - **날짜 바 패턴**: 홈·시장·캘린더 — `SignalDateNavigator`를 고정 스트립(`topFixed` / `fixedTop`) 안에 배치.
 - **스택 서브탭**: 설정·My info — pill 바를 `topFixed` 스트립 안에 배치 (`settings.tsx`, `account.tsx`).
 

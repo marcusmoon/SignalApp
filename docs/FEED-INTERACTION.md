@@ -156,7 +156,8 @@ if (latestId !== seen) markScopeHasNewContent(scope);
 | 경로 | 역할 |
 |---|---|
 | 화면 내 `setInterval` (~3분) | 포커스/백그라운드 중 scope별 chip |
-| `services/feedUnreadBadges.ts` | 탭 아이콘 배지 (뉴스·공시·마켓·알림) |
+| `services/feedUnreadBadges.ts` | 탭 아이콘 배지 (뉴스·공시·시장·알림) |
+| `services/newsUnreadPreference.ts` · `disclosureUnreadPreference.ts` · `signalUnreadPreference.ts` · `alertsUnreadPreference.ts` | scope별 unread·chip 폴링 |
 | `tasks/newsUnreadBackgroundTask.ts` | 백그라운드 배지 갱신 |
 
 - 폴링 API는 항상 `{ cacheMode: 'bypass' }`.

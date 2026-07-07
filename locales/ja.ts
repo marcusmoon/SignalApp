@@ -782,7 +782,6 @@ export const ja = {
   briefingDetailMacro: 'マクロ材料',
   briefingDetailSources: '出典',
   briefingErrorLoad: 'ブリーフィングを読み込めませんでした。',
-  briefingRefreshNotice: '新着ブリーフィングが{{count}}件あります。',
   briefingEarnHourBmo: 'プレ',
   briefingEarnHourAmc: 'アフター',
   fiscalYearQuarterShort: 'FY{{y}} Q{{q}}',

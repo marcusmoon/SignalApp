@@ -3,11 +3,14 @@
 ## 앱
 
 - [ ] `npx tsc --noEmit` 통과
-- [ ] 뉴스, 시그널, 시세, 더보기 주요 흐름 확인
-- [ ] 시그널 탭: 날짜·국내/미국 전환, 브리핑 전체 본문·종목 가격 표시 확인
+- [ ] 홈·뉴스·공시·시장·시세·더보기 주요 흐름 확인
+- [ ] 시장 탭: 날짜·회차(미장·장전·장중·마감), 브리핑 본문·종목 가격 표시
+- [ ] 피드 PTR: 당겨서 새로고침 시 스크롤 위치 유지 ([FEED-INTERACTION.md](./FEED-INTERACTION.md))
+- [ ] 새 소식 chip: scope별 표시·탭 전환 시 독립 동작 (뉴스·공시·시장·알림함)
 - [ ] 로그인, 가입, 소셜 로그인, 로그아웃, 탈퇴 확인
 - [ ] 알림 권한, push token 등록, 알림함 확인
 - [ ] iOS 실기기 하단 safe area, status bar, splash 확인
+- [ ] iPad·wide 웹: 사이드바·2-pane·전역 헤더 새로고침 확인
 - [ ] 앱 아이콘, alternate icon, deep link 확인
 
 ## 서버
@@ -30,4 +33,4 @@
 - [ ] EAS secret 확인
 - [ ] iOS build number / Android versionCode 증가
 - [ ] OTA 가능 변경인지 native rebuild 필요 변경인지 구분
-- [ ] 문서와 TODO 업데이트
+- [ ] [TODO.md](./TODO.md) 후속 과제 반영

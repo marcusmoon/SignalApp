@@ -1,5 +1,26 @@
 # SIGNAL 에이전트 온보딩
 
+## 문서 목록
+
+| 문서 | 용도 |
+|---|---|
+| [FEED-INTERACTION.md](./FEED-INTERACTION.md) | PTR·chip·폴링·피드 캐시 상호작용 |
+| [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md) | Safe Area·여백·고정 헤더·2-pane 레이아웃 |
+| [DATE-TIME.md](./DATE-TIME.md) | UTC·API·표시 시간 규칙 |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | 앱·서버 디렉터리 구조 |
+| [SIGNAL-PRD.md](./SIGNAL-PRD.md) | 제품 방향·화면 역할 |
+| [SERVER.md](./SERVER.md) | Signal Server·DB·Job 운영 |
+| [NOTIFICATION-INBOX.md](./NOTIFICATION-INBOX.md) | 알림센터 서버·앱 계약 |
+| [NEWS-ISSUE-AUTOMATION.md](./NEWS-ISSUE-AUTOMATION.md) | 뉴스 이슈 ingest JSON |
+| [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) | 오늘의 브리핑 ingest |
+| [MARKET-BRIEFING-AUTOMATION.md](./MARKET-BRIEFING-AUTOMATION.md) | 시장 브리핑 ingest |
+| [EXPO-EAS-OPERATIONS.md](./EXPO-EAS-OPERATIONS.md) | Expo/EAS·Xcode 빌드 |
+| [SOCIAL-AUTH.md](./SOCIAL-AUTH.md) | 소셜 로그인·JWT |
+| [SIGNAL-ADMIN-UIUX.md](./SIGNAL-ADMIN-UIUX.md) | Admin UI 기준 |
+| [RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md) | 출시 전 점검 |
+| [TODO.md](./TODO.md) | 후속 과제 |
+| [XCODE-EXTERNAL-DRIVE.md](./XCODE-EXTERNAL-DRIVE.md) | (선택) Xcode 캐시 외장 디스크 |
+
 ## 원칙
 
 - 앱은 Signal Server만 호출한다. 외부 provider 키와 호출은 서버/Admin에서 관리한다.
@@ -17,7 +38,7 @@
 
 - **기본** `cacheMode: 'use'` (`signalCacheMode()`): 필터·탭 전환·재진입. 캐시 hit이면 네트워크 없이 즉시 표시.
 - **새로고침** `cacheMode: 'bypass'` (`signalCacheMode(true)`): 당겨서 새로고침만 네트워크 강제.
-- **폴링·배지** (`newsUnreadPreference`, `disclosureUnreadPreference`, `signalUnreadPreference`): 최신 id 확인만 `bypass`.
+- **폴링·배지** (`newsUnreadPreference`, `disclosureUnreadPreference`, `signalUnreadPreference`, `alertsUnreadPreference`): 최신 id 확인만 `bypass`.
 - 화면마다 `listCacheRef`·`peekQuotes` 등 **중복 캐시를 두지 않는다** — API 레이어(`integrations/signal-api/cache/`)에 위임.
 - 필터(All/속보/소스·시장·세션 등)는 **각각 별도 API 호출**로 가져오고, 재선택·재진입은 `signalCacheMode()` 캐시 hit으로 즉시 표시한다. 전체 리스트를 받아 클라이언트에서 거르지 않는다.
 
@@ -75,16 +96,19 @@ npx tsc --noEmit
 
 | 기능 | 파일 |
 |---|---|
-| 시그널 | `app/(tabs)/signal.tsx`, `components/signal/MarketBriefingBlock.tsx` |
-| 게시판 | `app/(tabs)/board.tsx` |
+| 홈 | `app/(tabs)/home.tsx`, `components/signal/HomeFocusContent.tsx` |
+| 시장 | `app/(tabs)/signal.tsx`, `components/signal/MarketBriefingBlock.tsx` |
 | 뉴스 | `app/(tabs)/news.tsx`, `components/signal/NewsCard.tsx` |
-| 뉴스 이슈 자동화 | [NEWS-ISSUE-AUTOMATION.md](./NEWS-ISSUE-AUTOMATION.md), [schemas/news-issue-digest.v1.schema.json](./schemas/news-issue-digest.v1.schema.json) |
-| 오늘의 브리핑 자동화 | [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) |
-| 알림센터 인박스 | [NOTIFICATION-INBOX.md](./NOTIFICATION-INBOX.md), `app/alerts.tsx` |
+| 공시 | `app/(tabs)/disclosures.tsx` |
+| 게시판 | `app/(tabs)/board.tsx` |
 | 시세 | `app/(tabs)/quotes.tsx` |
 | 더보기 | `app/(tabs)/more.tsx` |
 | 유튜브 | `app/(tabs)/youtube.tsx` |
 | 캘린더 | `app/calendar.tsx`, `components/signal/InvestMonthCalendar.tsx` |
+| 알림함 | [NOTIFICATION-INBOX.md](./NOTIFICATION-INBOX.md), `app/alerts.tsx` |
+| 피드 UX | [FEED-INTERACTION.md](./FEED-INTERACTION.md) |
+| 뉴스 이슈 자동화 | [NEWS-ISSUE-AUTOMATION.md](./NEWS-ISSUE-AUTOMATION.md), [schemas/news-issue-digest.v1.schema.json](./schemas/news-issue-digest.v1.schema.json) |
+| 오늘의 브리핑 자동화 | [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) |
 | 계정 | `app/account.tsx`, `services/appAuthSession.ts` |
 | Signal API | `integrations/signal-api/` |
 | Admin | `server/src/public/admin/` |

@@ -1246,11 +1246,6 @@ export default function FeedScreen() {
   const listHeaderEl = useMemo(
     () => (
       <View style={styles.listHeader}>
-        {showDigest && digestBatches.length > 0 ? (
-          <View style={styles.digestListHeader}>
-            <DigestPager batches={digestBatches} />
-          </View>
-        ) : null}
         {activeTag ? (
           <View style={styles.tagFilterRow}>
             <Text style={styles.tagFilterText} numberOfLines={1}>
@@ -1337,7 +1332,6 @@ export default function FeedScreen() {
     ),
     [
       activeTag,
-      digestBatches,
       error,
       listData.length,
       loading,
@@ -1345,7 +1339,6 @@ export default function FeedScreen() {
       newsQuickFilter,
       onPickWatchFilter,
       segment,
-      showDigest,
       styles,
       t,
       watchFilter,
@@ -1380,10 +1373,17 @@ export default function FeedScreen() {
               </Fragment>
             ))}
           </View> : null}
+          {showDigest && !useTwoPane ? <DigestPager batches={digestBatches} /> : null}
           </View>
         ) : null}
 
-        <WebWheelFlatList
+        <View style={styles.listColumn}>
+          {showDigest && useTwoPane ? (
+            <View style={[styles.topFixed, styles.listColumnDigestStrip]}>
+              <DigestPager batches={digestBatches} />
+            </View>
+          ) : null}
+          <WebWheelFlatList
           scrollResetKey={feedScrollResetKey}
           ref={feedListRef as never}
           data={loading && listData.length === 0 ? [] : listData}
@@ -1466,7 +1466,8 @@ export default function FeedScreen() {
           initialNumToRender={Platform.OS === 'web' ? WEB_FLATLIST_INITIAL : 8}
           windowSize={Platform.OS === 'web' ? WEB_FLATLIST_WINDOW : 7}
           maxToRenderPerBatch={Platform.OS === 'web' ? WEB_FLATLIST_BATCH : 12}
-        />
+          />
+        </View>
       </View>
 
       <NewsSourceFilterModal

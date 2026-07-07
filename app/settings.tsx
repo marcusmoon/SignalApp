@@ -726,12 +726,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
+    },
+    settingsFooterCapsuleWide: {
       width: '100%',
     },
     settingsFooterCapsuleCompact: {
-      width: undefined,
       alignSelf: 'center',
+      flexGrow: 0,
+      flexShrink: 0,
       borderRadius: 999,
+      ...(Platform.OS === 'web'
+        ? ({ width: 'max-content', maxWidth: '92%' } as const)
+        : ({ width: 'auto' as const })),
     },
     settingsFooterPress: {
       flexDirection: 'row',
@@ -745,6 +751,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 8,
       paddingVertical: 8,
       paddingHorizontal: 12,
+      alignSelf: 'center',
+      flexGrow: 0,
     },
     settingsFooterAvatar: {
       width: 36,
@@ -757,11 +765,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderRadius: 14,
     },
     settingsFooterText: {
-      flexShrink: 1,
       fontSize: sf(12),
       fontWeight: '600',
       color: theme.textMuted,
       letterSpacing: 0.2,
+    },
+    settingsFooterTextWide: {
+      flexShrink: 1,
     },
     cacheOneLiner: {
       fontSize: sf(12),
@@ -2147,7 +2157,9 @@ clearCalendarCache();
         <View
           style={[
             styles.settingsFooterCapsule,
-            useCompactDeveloperFooter && styles.settingsFooterCapsuleCompact,
+            useCompactDeveloperFooter
+              ? styles.settingsFooterCapsuleCompact
+              : styles.settingsFooterCapsuleWide,
             Platform.OS === 'ios'
               ? {
                   shadowColor: '#191F28',
@@ -2181,7 +2193,12 @@ clearCalendarCache();
               accessible={false}
               importantForAccessibility="no"
             />
-            <Text style={styles.settingsFooterText} numberOfLines={1}>
+            <Text
+              style={[
+                styles.settingsFooterText,
+                !useCompactDeveloperFooter && styles.settingsFooterTextWide,
+              ]}
+              numberOfLines={1}>
               {t('settingsDeveloperFooterLine')}
             </Text>
           </Pressable>

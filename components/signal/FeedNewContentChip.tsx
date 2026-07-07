@@ -23,7 +23,7 @@ export function FeedUpdatePromptPill({ message, onPress, style }: FeedUpdateProm
       accessibilityRole="button"
       style={({ pressed }) => [styles.pill, pressed && styles.pressed, style]}
       accessibilityLabel={message}>
-      <FontAwesome name="arrow-up" size={12} color={theme.accentBlue} />
+      <FontAwesome name="arrow-up" size={12} color={theme.green} />
       <Text style={styles.message} numberOfLines={2}>
         {message}
       </Text>
@@ -53,11 +53,6 @@ export function FeedNewContentChip({ visible, refreshing, message, onPress, bott
 }
 
 function makePromptStyles(theme: AppTheme, sf: (n: number) => number) {
-  const promptBg =
-    theme.accentBlue.startsWith('#') && theme.accentBlue.length === 7
-      ? `${theme.accentBlue}18`
-      : theme.greenDim;
-
   return StyleSheet.create({
     pill: {
       flexDirection: 'row',
@@ -69,8 +64,8 @@ function makePromptStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 14,
       borderRadius: 20,
       borderWidth: 1.5,
-      borderColor: `${theme.accentBlue}66`,
-      backgroundColor: promptBg,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
     },
     pressed: {
       opacity: 0.9,
@@ -80,7 +75,7 @@ function makePromptStyles(theme: AppTheme, sf: (n: number) => number) {
       flexShrink: 1,
       fontSize: sf(13),
       lineHeight: sf(17),
-      color: theme.accentBlue,
+      color: theme.green,
       fontWeight: '900',
     },
   });

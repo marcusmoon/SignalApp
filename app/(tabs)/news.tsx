@@ -193,11 +193,11 @@ export default function FeedScreen() {
   const [watchSelectedSymbols, setWatchSelectedSymbols] = useState<string[] | null>(null);
   const [watchDraftSymbols, setWatchDraftSymbols] = useState<string[]>([]);
   const [watchSymbolModalVisible, setWatchSymbolModalVisible] = useState(false);
-  const [newContentAvailable, setNewContentAvailable] = useState(false);
+  const [newContentSegments, setNewContentSegments] = useState(() => new Set<NewsSegmentKey>());
   /** 출처 필터 UI용(카탈로그 비었을 때 샘플 + 첫 페이지 병합) */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
-  /** 백그라운드 폴링: 가장 최근에 본 뉴스 ID */
-  const latestSeenIdRef = useRef<string | null>(null);
+  /** 백그라운드 폴링: 세그먼트별 가장 최근에 본 항목 ID */
+  const latestSeenIdBySegmentRef = useRef<Partial<Record<NewsSegmentKey, string>>>({});
 
   /** 웹: 리스트 콘텐츠 높이 < 뷰포트면 onEndReached가 안 나와 다음 페이지를 못 불러오는 경우가 있음 */
   const hasMoreRef = useRef(hasMore);
@@ -233,6 +233,34 @@ export default function FeedScreen() {
   koreaSelectedSourcesRef.current = koreaSelectedSources;
   watchFilterRef.current = watchFilter;
   watchSelectedSymbolsRef.current = watchSelectedSymbols;
+
+  const markSegmentHasNewContent = useCallback((seg: NewsSegmentKey) => {
+    setNewContentSegments((prev) => {
+      if (prev.has(seg)) return prev;
+      const next = new Set(prev);
+      next.add(seg);
+      return next;
+    });
+  }, []);
+
+  const clearSegmentNewContent = useCallback((seg: NewsSegmentKey) => {
+    setNewContentSegments((prev) => {
+      if (!prev.has(seg)) return prev;
+      const next = new Set(prev);
+      next.delete(seg);
+      return next;
+    });
+  }, []);
+
+  const syncSegmentLatestSeen = useCallback(
+    (seg: NewsSegmentKey, latestId: string | null | undefined) => {
+      const id = latestId?.trim();
+      if (!id) return;
+      latestSeenIdBySegmentRef.current[seg] = id;
+      clearSegmentNewContent(seg);
+    },
+    [clearSegmentNewContent],
+  );
 
   const { ref: feedListRef } = useScrollToTopOnChange(
     [
@@ -280,26 +308,49 @@ export default function FeedScreen() {
   useEffect(() => {
     if (!hasSignalApi()) return;
     const POLL_MS = 3 * 60 * 1000;
-    const poll = async () => {
-      try {
-        const page = await fetchSignalNews({ locale, category: 'global', limit: 1, offset: 0 }, { cacheMode: 'bypass' });
-        const latestId = page.items[0]?.id ?? null;
-        if (!latestId) return;
-        if (latestSeenIdRef.current === null) {
-          // 초기화: 현재 화면에 있는 가장 최근 뉴스 ID를 기준으로 설정
-          latestSeenIdRef.current = latestId;
-          return;
-        }
-        if (latestId !== latestSeenIdRef.current) {
-          setNewContentAvailable(true);
-        }
-      } catch {
-        // 폴링 에러는 무시
+    const pollSegments: NewsSegmentKey[] = ['global', 'korea', 'crypto', 'watch', 'video'];
+
+    const fetchLatestIdForSegment = async (seg: NewsSegmentKey): Promise<string | null> => {
+      if (seg === 'video') {
+        const page = await fetchSignalYoutube({ sort: 'latest', limit: 1, offset: 0 }, { cacheMode: 'bypass' });
+        return page.items[0]?.id ?? null;
       }
+      if (seg === 'watch') {
+        const symbols = (await loadWatchlistSymbols()).slice(0, 40);
+        if (symbols.length === 0) return null;
+        const requestSymbols =
+          watchFilterRef.current === 'symbols'
+            ? normalizeNullableSelection(symbols, watchSelectedSymbolsRef.current)
+            : symbols;
+        if (requestSymbols.length === 0) return null;
+        const page = await fetchSignalNews(
+          { locale, symbols: requestSymbols.join(','), limit: 1, offset: 0 },
+          { cacheMode: 'bypass' },
+        );
+        return page.items[0]?.id ?? null;
+      }
+      const page = await fetchSignalNews({ locale, category: seg, limit: 1, offset: 0 }, { cacheMode: 'bypass' });
+      return page.items[0]?.id ?? null;
+    };
+
+    const poll = async () => {
+      await Promise.all(
+        pollSegments.map(async (seg) => {
+          try {
+            const latestId = await fetchLatestIdForSegment(seg);
+            if (!latestId) return;
+            const seen = latestSeenIdBySegmentRef.current[seg];
+            if (!seen) return;
+            if (latestId !== seen) markSegmentHasNewContent(seg);
+          } catch {
+            // 폴링 에러는 무시
+          }
+        }),
+      );
     };
     const id = setInterval(() => void poll(), POLL_MS);
     return () => clearInterval(id);
-  }, [locale]);
+  }, [locale, markSegmentHasNewContent]);
 
   const segmentHydratedRef = useRef(false);
 
@@ -394,6 +445,7 @@ export default function FeedScreen() {
         setHasMore(meta.hasMore);
         const mapped = rows.map((item) => signalYoutubeToYoutubeItem(item, locale));
         setVideoItems(mapped);
+        syncSegmentLatestSeen('video', rows[0]?.id);
         return { itemIds: mapped.map((item) => item.id), kind: 'video' };
       }
 
@@ -419,6 +471,8 @@ export default function FeedScreen() {
           setServerDigestRows([]);
           setItems([]);
           setHasMore(false);
+          clearSegmentNewContent('watch');
+          delete latestSeenIdBySegmentRef.current.watch;
           return { itemIds: [], kind: 'news' };
         }
         const { items: rows, meta } = await fetchSignalNews(
@@ -439,6 +493,7 @@ export default function FeedScreen() {
         setHasMore(meta.hasMore);
         const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
+        syncSegmentLatestSeen('watch', dedupedRows[0]?.id);
         return { itemIds: mapped.map((item) => item.id), kind: 'news' };
       }
 
@@ -477,6 +532,7 @@ export default function FeedScreen() {
         if (cryptoSelectedSourcesRef.current !== null) setCryptoSelectedSources(selected);
         const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
+        syncSegmentLatestSeen('crypto', dedupedRows[0]?.id);
         return { itemIds: mapped.map((item) => item.id), kind: 'news' };
       }
 
@@ -515,6 +571,7 @@ export default function FeedScreen() {
         if (koreaSelectedSourcesRef.current !== null) setKoreaSelectedSources(selected);
         const mapped = dedupedRows.map((item) => signalNewsToNewsItem(item, locale));
         setItems(mapped);
+        syncSegmentLatestSeen('korea', dedupedRows[0]?.id);
         return { itemIds: mapped.map((item) => item.id), kind: 'news' };
       }
 
@@ -605,14 +662,13 @@ export default function FeedScreen() {
       }
       const mapped = displayPage.map((item) => signalNewsToNewsItem(item, locale));
       setItems(mapped);
-      // 백그라운드 폴링 기준 ID 갱신
-      if (displayPage[0]?.id) latestSeenIdRef.current = displayPage[0].id;
+      syncSegmentLatestSeen('global', displayPage[0]?.id);
       return { itemIds: mapped.map((item) => item.id), kind: 'news' };
       } finally {
         if (isRefresh) loadMoreInFlightRef.current = false;
       }
     },
-    [activeTag, commitDigestLookupRows, locale, segment, syncServerRows, t],
+    [activeTag, clearSegmentNewContent, commitDigestLookupRows, locale, segment, syncSegmentLatestSeen, syncServerRows, t],
   );
 
   const reloadNewsQuickFilterFromServer = useCallback(
@@ -846,7 +902,7 @@ export default function FeedScreen() {
 
   const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
-    setNewContentAvailable(false);
+    clearSegmentNewContent(segment);
     try {
       await load(true);
       setError(null);
@@ -855,7 +911,7 @@ export default function FeedScreen() {
     } finally {
       setRefreshing(false);
     }
-  }, [load, t]);
+  }, [clearSegmentNewContent, load, segment, t]);
 
   const onRefresh = onRefreshBase;
   useRegisterWebHeaderRefresh(() => void onRefresh());
@@ -1234,6 +1290,8 @@ export default function FeedScreen() {
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const showDigest = segment !== 'video' && segment !== 'watch';
+  const newContentAvailable =
+    newContentSegments.has(segment) && !(segment === 'watch' && watchSymbolOptions.length === 0);
 
   const listHeaderEl = useMemo(
     () => (

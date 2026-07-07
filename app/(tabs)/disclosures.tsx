@@ -41,7 +41,7 @@ import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosu
 import type { SignalApiDisclosure, SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
-import { markDisclosureFeedSeen, fetchLatestDisclosureId } from '@/services/disclosureUnreadPreference';
+import { markDisclosureFeedSeen } from '@/services/disclosureUnreadPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { formatRelativeFromIso } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
@@ -114,12 +114,40 @@ export default function DisclosuresScreen() {
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [newContentAvailable, setNewContentAvailable] = useState(false);
-  const latestSeenIdRef = useRef<string | null>(null);
+  const [newContentFilters, setNewContentFilters] = useState(() => new Set<FilterKey>());
+  const latestSeenIdByFilterRef = useRef<Partial<Record<FilterKey, string>>>({});
   const digestItemsRef = useRef<SignalApiDisclosureDigestItem[]>([]);
   const hasInitialLoadRef = useRef(false);
   const loadSeqRef = useRef(0);
   digestItemsRef.current = digestItems;
+
+  const markFilterHasNewContent = useCallback((key: FilterKey) => {
+    setNewContentFilters((prev) => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  }, []);
+
+  const clearFilterNewContent = useCallback((key: FilterKey) => {
+    setNewContentFilters((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }, []);
+
+  const syncFilterLatestSeen = useCallback(
+    (key: FilterKey, latestId: string | null | undefined) => {
+      const id = latestId?.trim();
+      if (!id) return;
+      latestSeenIdByFilterRef.current[key] = id;
+      clearFilterNewContent(key);
+    },
+    [clearFilterNewContent],
+  );
 
   const { ref: listRef } = useScrollToTopOnChange([filter, typeFilter, symbolFilter], {
     resyncDeps: [items, digestItems],
@@ -178,31 +206,29 @@ export default function DisclosuresScreen() {
     void loadDigests();
   }, [loadDigests]);
 
-  /** 백그라운드 폴링: 3분마다 최신 공시 ID 확인 → chip 표시 (다이제스트·리스트는 탭 시 함께 갱신) */
+  /** 백그라운드 폴링: 3분마다 시장별 최신 공시 ID 확인 → chip 표시 (다이제스트·리스트는 탭 시 함께 갱신) */
   useEffect(() => {
-    if (symbolFilter || !hasSignalApi()) {
-      setNewContentAvailable(false);
-      return;
-    }
+    if (symbolFilter || !hasSignalApi()) return;
     const POLL_MS = 3 * 60 * 1000;
     const poll = async () => {
-      try {
-        const latestId = await fetchLatestDisclosureId({ cacheMode: 'bypass' });
-        if (!latestId) return;
-        if (latestSeenIdRef.current === null) {
-          latestSeenIdRef.current = latestId;
-          return;
-        }
-        if (latestId !== latestSeenIdRef.current) {
-          setNewContentAvailable(true);
-        }
-      } catch {
-        /* ignore polling errors */
-      }
+      await Promise.all(
+        FILTER_ORDER.map(async (market) => {
+          try {
+            const page = await fetchSignalDisclosures({ market, limit: 1, offset: 0 }, { cacheMode: 'bypass' });
+            const latestId = page.items[0]?.id ?? null;
+            if (!latestId) return;
+            const seen = latestSeenIdByFilterRef.current[market];
+            if (!seen) return;
+            if (latestId !== seen) markFilterHasNewContent(market);
+          } catch {
+            /* ignore polling errors */
+          }
+        }),
+      );
     };
     const id = setInterval(() => void poll(), POLL_MS);
     return () => clearInterval(id);
-  }, [symbolFilter]);
+  }, [markFilterHasNewContent, symbolFilter]);
 
   useEffect(() => {
     const query = currentQuery;
@@ -217,7 +243,7 @@ export default function DisclosuresScreen() {
         if (cancelled || seq !== loadSeqRef.current) return;
         setItems(rows);
         setError(null);
-        if (rows[0]?.id) latestSeenIdRef.current = rows[0].id;
+        syncFilterLatestSeen(query.filter, rows[0]?.id);
       } catch (e) {
         if (cancelled || seq !== loadSeqRef.current) return;
         if (!hasSignalApi()) {
@@ -235,7 +261,7 @@ export default function DisclosuresScreen() {
     return () => {
       cancelled = true;
     };
-  }, [currentQuery, queryDisclosureList, t]);
+  }, [currentQuery, queryDisclosureList, syncFilterLatestSeen, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -279,7 +305,7 @@ export default function DisclosuresScreen() {
 
   const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
-    setNewContentAvailable(false);
+    clearFilterNewContent(currentQuery.filter);
     const seq = ++loadSeqRef.current;
     const query = currentQuery;
     try {
@@ -287,7 +313,7 @@ export default function DisclosuresScreen() {
       if (seq !== loadSeqRef.current) return;
       setItems(latest);
       setError(null);
-      if (latest[0]?.id) latestSeenIdRef.current = latest[0].id;
+      syncFilterLatestSeen(query.filter, latest[0]?.id);
       await loadDigests(true);
     } catch (e) {
       if (seq !== loadSeqRef.current) return;
@@ -297,7 +323,7 @@ export default function DisclosuresScreen() {
         setRefreshing(false);
       }
     }
-  }, [currentQuery, loadDigests, queryDisclosureList, t]);
+  }, [clearFilterNewContent, currentQuery, loadDigests, queryDisclosureList, syncFilterLatestSeen, t]);
 
   const onRefresh = onRefreshBase;
   useRegisterWebHeaderRefresh(() => void onRefresh());
@@ -343,6 +369,7 @@ export default function DisclosuresScreen() {
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const showDigest = !symbolFilter;
+  const newContentAvailable = !symbolFilter && newContentFilters.has(filter);
 
   const listHeaderEl = useMemo(
     () => (

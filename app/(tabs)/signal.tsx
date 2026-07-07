@@ -53,7 +53,7 @@ import {
   loadQuotesChangeColorConvention,
   subscribeQuotesChangeColorConventionChanged,
 } from '@/services/quotesChangeColorPreference';
-import { markSignalFeedSeen, fetchLatestSignalBriefingId } from '@/services/signalUnreadPreference';
+import { markSignalFeedSeen } from '@/services/signalUnreadPreference';
 import { useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
 import { addDays, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
@@ -139,11 +139,49 @@ export default function SignalScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [newContentAvailable, setNewContentAvailable] = useState(false);
-  const latestSeenIdRef = useRef<string | null>(null);
+  const [newContentTabs, setNewContentTabs] = useState(() => new Set<FlatTabKey>());
+  const latestSeenIdByTabRef = useRef<Partial<Record<FlatTabKey, string>>>({});
 
   const selectedDateLabel = useMemo(() => formatSelectedDate(selectedYmd, locale), [locale, selectedYmd]);
   const selectedIsToday = selectedYmd >= todayYmd;
+
+  const markTabHasNewContent = useCallback((key: FlatTabKey) => {
+    setNewContentTabs((prev) => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  }, []);
+
+  const clearTabNewContent = useCallback((key: FlatTabKey) => {
+    setNewContentTabs((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }, []);
+
+  const syncTabLatestSeen = useCallback(
+    (key: FlatTabKey, latestId: string | null | undefined) => {
+      const id = latestId?.trim();
+      if (!id) return;
+      latestSeenIdByTabRef.current[key] = id;
+      clearTabNewContent(key);
+    },
+    [clearTabNewContent],
+  );
+
+  const syncBriefingsLatestSeen = useCallback(
+    (rows: SignalApiMarketBriefing[]) => {
+      for (const tab of FLAT_TABS) {
+        const match = rows.find((row) => row.market === tab.market && row.session === tab.session);
+        syncTabLatestSeen(tab.key, match?.id);
+      }
+    },
+    [syncTabLatestSeen],
+  );
 
   const flatTabLabel = useCallback(
     (key: FlatTabKey) => {
@@ -161,7 +199,7 @@ export default function SignalScreen() {
     [t],
   );
 
-  const load = useCallback(async (forceRefresh?: boolean): Promise<SignalApiMarketBriefing[]> => {
+  const load = useCallback(async (forceRefresh?: boolean, syncScope: 'all' | FlatTabKey = 'all'): Promise<SignalApiMarketBriefing[]> => {
     if (!hasSignalApi()) {
       setError(t('errorSignalApiShort'));
       setMarketBriefings([]);
@@ -174,11 +212,19 @@ export default function SignalScreen() {
     ).catch(() => [] as SignalApiMarketBriefing[]);
     const sorted = [...rows].sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
     setMarketBriefings(sorted);
-    if (selectedYmd >= todayYmdRef.current && sorted[0]?.id) {
-      latestSeenIdRef.current = sorted[0].id;
+    if (selectedYmd >= todayYmdRef.current) {
+      if (syncScope === 'all') {
+        syncBriefingsLatestSeen(sorted);
+      } else {
+        const tab = FLAT_TABS.find((item) => item.key === syncScope);
+        const match = tab
+          ? sorted.find((row) => row.market === tab.market && row.session === tab.session)
+          : undefined;
+        syncTabLatestSeen(syncScope, match?.id);
+      }
     }
     return sorted;
-  }, [selectedYmd, t]);
+  }, [selectedYmd, syncBriefingsLatestSeen, syncTabLatestSeen, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -198,36 +244,24 @@ export default function SignalScreen() {
     };
   }, [load, t]);
 
-  const onRefreshBase = useCallback(async () => {
-    setRefreshing(true);
-    setNewContentAvailable(false);
-    try {
-      await load(true);
-    } catch (e) {
-      setError(formatSignalApiError(e, t, 'briefingErrorLoad'));
-    } finally {
-      setRefreshing(false);
-    }
-  }, [load, t]);
-
-  /** 오늘 날짜 화면에서만 백그라운드 폴링으로 새 브리핑 배너 표시 */
+  /** 오늘 날짜 화면에서만 백그라운드 폴링으로 세션별 새 브리핑 chip 표시 */
   useEffect(() => {
-    if (selectedYmd < todayYmd) {
-      setNewContentAvailable(false);
-      return;
-    }
+    if (selectedYmd < todayYmd) return;
     if (!hasSignalApi()) return;
     const POLL_MS = 3 * 60 * 1000;
     const poll = async () => {
       try {
-        const latestId = await fetchLatestSignalBriefingId();
-        if (!latestId) return;
-        if (latestSeenIdRef.current === null) {
-          latestSeenIdRef.current = latestId;
-          return;
-        }
-        if (latestId !== latestSeenIdRef.current) {
-          setNewContentAvailable(true);
+        const rows = await fetchSignalMarketBriefings(
+          { ...utcRangeForLocalYmd(todayYmdRef.current), limit: 30 },
+          { cacheMode: 'bypass' },
+        );
+        for (const tab of FLAT_TABS) {
+          const match = rows.find((row) => row.market === tab.market && row.session === tab.session);
+          const latestId = match?.id ?? null;
+          if (!latestId) continue;
+          const seen = latestSeenIdByTabRef.current[tab.key];
+          if (!seen) continue;
+          if (latestId !== seen) markTabHasNewContent(tab.key);
         }
       } catch {
         /* ignore polling errors */
@@ -235,6 +269,12 @@ export default function SignalScreen() {
     };
     const id = setInterval(() => void poll(), POLL_MS);
     return () => clearInterval(id);
+  }, [markTabHasNewContent, selectedYmd, todayYmd]);
+
+  useEffect(() => {
+    if (selectedYmd < todayYmd) {
+      setNewContentTabs(new Set());
+    }
   }, [selectedYmd, todayYmd]);
 
   const moveDate = useCallback(
@@ -340,11 +380,22 @@ export default function SignalScreen() {
   }, [briefingByTabKey, selectedTabKey]);
 
   const activeBriefing = activeTabKey ? briefingByTabKey.get(activeTabKey) : undefined;
+  const newContentAvailable = activeTabKey ? newContentTabs.has(activeTabKey) : false;
   const { ref: scrollRef } = useScrollToTopOnChange([activeTabKey, selectedYmd], {
     resyncDeps: [activeBriefing?.id, marketBriefings.length],
   });
   const scrollResetKey = `${activeTabKey ?? 'none'}:${selectedYmd}`;
-  const onRefresh = onRefreshBase;
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    if (activeTabKey) clearTabNewContent(activeTabKey);
+    try {
+      await load(true, activeTabKey ?? 'all');
+    } catch (e) {
+      setError(formatSignalApiError(e, t, 'briefingErrorLoad'));
+    } finally {
+      setRefreshing(false);
+    }
+  }, [activeTabKey, clearTabNewContent, load, t]);
   useRegisterWebHeaderRefresh(() => void onRefresh());
   const hasAnyBriefing = marketBriefings.length > 0;
   const scrollBottomPadding = useTwoPane

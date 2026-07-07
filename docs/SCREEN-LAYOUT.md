@@ -58,44 +58,15 @@ SafeAreaView edges={['top']}
 - **날짜 바 패턴**: 홈·시장·캘린더 — `SignalDateNavigator`를 고정 스트립(`topFixed` / `fixedTop`) 안에 배치.
 - **스택 서브탭**: 설정·My info — pill 바를 `topFixed` 스트립 안에 배치 (`settings.tsx`, `account.tsx`).
 
-## Pull-to-refresh (PTR)
+## Pull-to-refresh · chip · digest (상호작용)
 
-리스트·피드 화면의 당겨서 새로고침과 상단 `SignalHeader` 브랜드 탭은 **스크롤 위치를 바꾸지 않는다**. 고정 UI만 유지하고 본문 데이터만 갱신한다.
+PTR, 새 소식 chip, digest 갱신, 폴링, 캐시 모드는 **[FEED-INTERACTION.md](./FEED-INTERACTION.md)** 를 따른다.
 
-| 규칙 | 설명 |
-|---|---|
-| 새로고침 | `onRefreshBase`를 `ThemedRefreshControl` / `SignalHeader onBrandPress`에 직접 연결 |
-| 필터·탭·날짜 변경 | `useScrollToTopOnChange`로 맨 위 스크롤 (새로고침과 분리) |
-| 고정 UI | 세그먼트·날짜·다이제스트·채널 필터·OTA·에러는 `topFixed` 또는 스크롤 밖 |
-| `ListHeaderComponent` | 초기 로딩·에러·필터 칩을 넣지 않음 (PTR 시 헤더 높이 변화 방지) |
-| 캐시 | 새로고침만 `signalCacheMode(true)` (`bypass`) |
+레이아웃 관점만 요약:
 
-적용 화면: 뉴스, 공시, 시세, 게시판, 시장(시그널), 유튜브, 캘린더, 알림 등.
-
-### 새 소식 chip (`FeedNewContentChip`)
-
-백그라운드 폴링(약 3분)으로 서버에 더 새로운 항목이 있으면 chip을 띄운다. **리스트·다이제스트는 chip/PTR/헤더 탭으로 사용자가 새로고침할 때만** 갱신한다.
-
-| 항목 | 규칙 |
-|---|---|
-| 표시 | `newContentAvailable && !refreshing && 탭 포커스` |
-| 위치 | `feedNewContentChipBottom()` (탭) · `stackNewContentChipBottom()` (스택 알림함) |
-| 탭 | `onRefresh()` → 리스트 + 고정 다이제스트 함께 `signalCacheMode(true)` |
-| 상단 prompt | chip으로 대체. 갱신 완료 notice(`FeedUpdateBanner` notice)만 `topFixed`에 유지 |
-
-적용: **뉴스**, **공시**, **시장(시그널)**, **알림함**.
-
-### 고정 다이제스트 (뉴스 `DigestPager`, 공시 `DisclosureDigestSection`)
-
-| 갱신 시점 | 동작 |
-|---|---|
-| PTR · 상단 브랜드 탭 · 새 소식 chip | 리스트와 **동시에** digest API 재호출 (`bypass`) |
-| 세그먼트·필터·날짜 변경 | 해당 scope digest 재로드 |
-| 백그라운드 폴링 | digest **갱신 안 함** — chip만 표시 |
-
-별도 digest-only 새로고침 UI는 두지 않는다. chip/PTR이 리스트와 digest를 한 번에 맞춘다.
-
-글로벌 **탭 배지**(`FeedUnreadBadgesContext`)는 같은 4영역(뉴스·시장·공시·알림)을 폴링하며, 해당 탭/화면 포커스 중에는 배지를 숨기고 **chip**으로 대체한다.
+- digest·세그먼트·날짜·OTA는 **스크롤 밖** (`topFixed`).
+- chip·OTA strip은 **리스트 바로 위** (`UpdatePromptStrip`).
+- `ListHeaderComponent`에는 digest·필터·로딩을 넣지 않는다.
 
 ## 하단 스크롤 패딩
 
@@ -104,15 +75,13 @@ SafeAreaView edges={['top']}
 | `SCREEN_TAB_SCROLL_BOTTOM_BASE` | 24 | iPhone 탭 + 플로팅 탭바 |
 | `SCREEN_STACK_SCROLL_BOTTOM_BASE` | 28 | 스택 화면 |
 | `SCREEN_WIDE_SCROLL_BOTTOM_BASE` | 32 | iPad·wide (탭바 없음) |
-| `SCREEN_FAB_ABOVE_TAB_OFFSET` | 8 | FAB·새 소식 chip lift |
+| `SCREEN_FAB_ABOVE_TAB_OFFSET` | 8 | FAB lift |
 
 ### 헬퍼 (직접 숫자 합산 지양)
 
 ```ts
 import {
   fabStackBottom,
-  feedNewContentChipBottom,
-  stackNewContentChipBottom,
   stackScreenScrollBottomPadding,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
@@ -128,12 +97,6 @@ paddingBottom: SCREEN_WIDE_SCROLL_BOTTOM_BASE;
 
 // FAB
 bottom: fabStackBottom(tabBarHeight, insets.bottom);
-
-// 새 소식 chip (탭 화면)
-bottom: feedNewContentChipBottom(useTwoPane, tabBarHeight, insets.bottom);
-
-// 새 소식 chip (스택 — 알림함)
-bottom: stackNewContentChipBottom(insets.bottom);
 ```
 
 `tabBarHeight`는 `useBottomTabBarHeight()`, inset은 `useSafeAreaInsets().bottom`.
@@ -173,17 +136,18 @@ bottom: stackNewContentChipBottom(insets.bottom);
 6. 하단: `tabScreenScrollBottomPadding` / `stackScreenScrollBottomPadding` / `SCREEN_WIDE_SCROLL_BOTTOM_BASE`
 7. 가로: `APP_CONTENT_SIDE_PADDING` (리터럴 `16` 지양)
 8. FAB: `fabStackBottom` (예: 시세 관심 탭 추가 버튼)
-9. PTR: [Pull-to-refresh](#pull-to-refresh-ptr) 규칙 — 새로고침 시 스크롤 강제 이동 금지
+9. PTR·chip·폴링: [FEED-INTERACTION.md](./FEED-INTERACTION.md) 체크리스트
 
 ## 관련 파일
 
 - `constants/screenFixedHeader.ts` — 상단 고정 스트립 스타일 (`getScreenFixedHeaderStyles`)
-- `constants/screenLayout.ts` — 여백 상수·헬퍼 (`feedNewContentChipBottom`)
+- `constants/screenLayout.ts` — 여백 상수·헬퍼
 - `constants/responsiveLayout.ts` — 폭·breakpoint
 - `constants/segmentTabBar.ts` — 세그먼트 pill 스타일 (`getSegmentTabBarStyles`) + screenLayout re-export
 - `constants/webLayout.ts` — 웹 flex/scroll
 - `constants/tabBar.ts` — 탭바 치수·inset
+- `docs/FEED-INTERACTION.md` — PTR·chip·폴링·캐시 상호작용
+- `components/signal/UpdatePromptStrip.tsx` — chip·OTA strip UI
 - `components/signal/FeedNewContentChip.tsx`
-- `components/signal/FeedUpdateBanner.tsx`
 - `components/signal/SignalHeader.tsx`
 - `app/(tabs)/_layout.tsx` — wide 탭 셸

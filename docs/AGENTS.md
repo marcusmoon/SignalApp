@@ -9,6 +9,7 @@
 - 문서는 현재 기준만 유지한다. 과거 이력은 남기지 않는다.
 - **날짜·시간**은 [DATE-TIME.md](./DATE-TIME.md)를 따른다. 서버는 UTC, 앱 API는 UTC ISO, 표시는 로케일·기기 타임존.
 - **화면 레이아웃·여백**은 [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)와 `constants/screenLayout.ts`를 따른다.
+- **PTR·chip·폴링·피드 캐시 상호작용**은 [FEED-INTERACTION.md](./FEED-INTERACTION.md)를 따른다.
 
 ## 피드 API 캐시
 
@@ -37,14 +38,16 @@
 
 설정에서 **캐시 삭제** 시 `clearSignalApiCache()`가 위 모듈을 모두 비운다.
 
-## Pull-to-refresh UX
+## Pull-to-refresh · chip · 폴링
 
-피드·리스트 화면은 [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md#pull-to-refresh-ptr) 규칙을 따른다.
+피드·리스트 상호작용 전체 규칙: **[FEED-INTERACTION.md](./FEED-INTERACTION.md)**
 
-- 새로고침(PTR·상단 브랜드 탭): `onRefreshBase`만 호출. 스크롤 위치 유지.
-- 필터·세그먼트·날짜 변경: `useScrollToTopOnChange`로 맨 위 이동.
-- 로딩·에러·필터 UI는 스크롤 밖(`topFixed` 등)에 둔다.
-- 백그라운드 폴링 새 소식: `FeedNewContentChip`(탭바 위). digest·리스트는 chip/PTR/헤더 탭으로만 갱신 — [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md#고정-다이제스트-뉴스-digestpager-공시-disclosuredigestsection)
+요약:
+
+- PTR·헤더 탭: `onRefreshBase` → `signalCacheMode(true)`, **스크롤 위치 유지**
+- 필터·탭·날짜 변경: `useScrollToTopOnChange` (PTR과 분리)
+- 새 소식 chip: 리스트 위 strip, **scope별** state, 폴링은 chip만 (자동 fetch 금지)
+- digest: `topFixed`, PTR/chip과 동시 `bypass` 갱신
 
 ## 실행
 

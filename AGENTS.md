@@ -9,6 +9,7 @@
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 앱/서버 구조 |
 | [docs/DATE-TIME.md](./docs/DATE-TIME.md) | 날짜·시간 UTC 규칙 (서버·앱) |
 | [docs/SCREEN-LAYOUT.md](./docs/SCREEN-LAYOUT.md) | 앱 화면 레이아웃·여백 기준 (iPhone / iPad / web) |
+| [docs/FEED-INTERACTION.md](./docs/FEED-INTERACTION.md) | PTR·chip·폴링·피드 캐시 상호작용 규칙 |
 | [docs/SERVER.md](./docs/SERVER.md) | 서버, DB, Job 운영 |
 | [docs/NEWS-ISSUE-AUTOMATION.md](./docs/NEWS-ISSUE-AUTOMATION.md) | Codex 예약 기반 뉴스 이슈 묶음 JSON 계약 |
 | [docs/TODAY-BRIEFING-AUTOMATION.md](./docs/TODAY-BRIEFING-AUTOMATION.md) | 홈 최상단 오늘의 브리핑 JSON 계약 |

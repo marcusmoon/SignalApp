@@ -34,6 +34,7 @@ import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useQuoteChangeColors } from '@/hooks';
+import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
@@ -95,6 +96,8 @@ type HomeFocusContentProps = {
   headerAccessory?: ReactNode;
   contentMaxWidth?: number;
   showIssueSummary?: boolean;
+  /** iPhone `SignalHeader` 브랜드 탭 → PTR 연결용 */
+  onPullRefreshReady?: (refresh: () => void) => void;
 };
 
 type IssueRow = {
@@ -241,6 +244,7 @@ export function HomeFocusContent({
   headerAccessory,
   contentMaxWidth,
   showIssueSummary = false,
+  onPullRefreshReady,
 }: HomeFocusContentProps) {
   const router = useRouter();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
@@ -255,6 +259,7 @@ export function HomeFocusContent({
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [issues, setIssues] = useState<IssueRow[]>([]);
@@ -382,6 +387,10 @@ export function HomeFocusContent({
       setRefreshing(false);
     }
   }, [load]);
+
+  useEffect(() => {
+    onPullRefreshReady?.(() => void refresh());
+  }, [onPullRefreshReady, refresh]);
 
   useRegisterWebHeaderRefresh(() => void refresh(), showIssueSummary ? 'mount' : 'focus');
 

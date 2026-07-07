@@ -95,6 +95,7 @@ import {
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiNewsDigestItem, SignalApiNewsItem, SignalApiYoutubeVideo, SignalNewsListMeta } from '@/integrations/signal-api/types';
 import type { NewsItem, YoutubeItem } from '@/types/signal';
+import { delayRemainingRefreshMin } from '@/utils/minimumRefreshDuration';
 
 type FeedRow =
   | { kind: 'news'; news: NewsItem }
@@ -843,6 +844,7 @@ export default function FeedScreen() {
   const onRefreshBase = useCallback(async () => {
     const prevNewsIds = new Set(items.map((item) => item.id));
     const prevVideoIds = new Set(videoItems.map((item) => item.id));
+    const startedAt = Date.now();
     setRefreshing(true);
     setRefreshNotice(null);
     setNewContentAvailable(false);
@@ -859,6 +861,7 @@ export default function FeedScreen() {
     } catch (e) {
       setError(formatSignalApiError(e, t, 'feedErrorRefresh'));
     } finally {
+      await delayRemainingRefreshMin(startedAt);
       setRefreshing(false);
     }
   }, [items, load, t, videoItems]);
@@ -1456,11 +1459,9 @@ export default function FeedScreen() {
           contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <ThemedRefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              enabled={!loading || listData.length > 0}
-            />
+            loading && listData.length === 0 ? undefined : (
+              <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            )
           }
           removeClippedSubviews={Platform.OS === 'android'}
           initialNumToRender={Platform.OS === 'web' ? WEB_FLATLIST_INITIAL : 8}

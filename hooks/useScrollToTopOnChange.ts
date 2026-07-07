@@ -21,7 +21,8 @@ export function useScrollToTopOnChange<T extends ScrollToTopTarget = ScrollToTop
 ) {
   const ref = useRef<T | null>(null);
   const skipInitialRef = useRef(options.skipInitial !== false);
-  const pendingScrollRef = useRef(false);
+  /** True after filter deps change until the first list-data resync (pagination must not re-scroll). */
+  const awaitingListResyncRef = useRef(false);
   const animated = options.animated ?? false;
 
   const scrollToTop = useCallback(
@@ -32,12 +33,12 @@ export function useScrollToTopOnChange<T extends ScrollToTopTarget = ScrollToTop
   );
 
   const beginFilterScroll = useCallback(() => {
-    pendingScrollRef.current = true;
+    awaitingListResyncRef.current = true;
     scrollToTop(false);
     if (Platform.OS === 'web') {
       enforceScrollToTopOnWeb(
         ref as RefObject<ScrollToTopTarget>,
-        () => pendingScrollRef.current,
+        () => awaitingListResyncRef.current,
         false,
       );
     }
@@ -53,18 +54,9 @@ export function useScrollToTopOnChange<T extends ScrollToTopTarget = ScrollToTop
   }, deps);
 
   useEffect(() => {
-    if (!pendingScrollRef.current) return;
+    if (!awaitingListResyncRef.current) return;
+    awaitingListResyncRef.current = false;
     scrollToTop(false);
-    const node = ref.current?.getScrollableNode?.();
-    if (
-      Platform.OS === 'web' &&
-      node &&
-      typeof node === 'object' &&
-      'scrollTop' in node &&
-      (node as HTMLElement).scrollTop <= 1
-    ) {
-      pendingScrollRef.current = false;
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- resync when caller list data updates
   }, options.resyncDeps ?? []);
 

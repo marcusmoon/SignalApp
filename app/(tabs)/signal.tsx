@@ -14,7 +14,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { MarketBriefingBlock } from '@/components/signal/MarketBriefingBlock';
@@ -31,7 +30,6 @@ import {
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
   SCREEN_WIDE_SCROLL_BOTTOM_BASE,
-  feedNewContentChipBottom,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
@@ -141,7 +139,6 @@ export default function SignalScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const [newContentAvailable, setNewContentAvailable] = useState(false);
   const latestSeenIdRef = useRef<string | null>(null);
 
@@ -202,28 +199,16 @@ export default function SignalScreen() {
   }, [load, t]);
 
   const onRefreshBase = useCallback(async () => {
-    const prevIds = new Set(marketBriefings.map((row) => row.id));
     setRefreshing(true);
-    setRefreshNotice(null);
     setNewContentAvailable(false);
     try {
-      const rows = await load(true);
-      const newCount = rows.filter((row) => !prevIds.has(row.id)).length;
-      if (newCount > 0) {
-        setRefreshNotice(t('briefingRefreshNotice', { count: String(newCount) }));
-      }
+      await load(true);
     } catch (e) {
       setError(formatSignalApiError(e, t, 'briefingErrorLoad'));
     } finally {
       setRefreshing(false);
     }
-  }, [load, marketBriefings, t]);
-
-  useEffect(() => {
-    if (!refreshNotice) return;
-    const timeout = setTimeout(() => setRefreshNotice(null), 4500);
-    return () => clearTimeout(timeout);
-  }, [refreshNotice]);
+  }, [load, t]);
 
   /** 오늘 날짜 화면에서만 백그라운드 폴링으로 새 브리핑 배너 표시 */
   useEffect(() => {
@@ -365,7 +350,6 @@ export default function SignalScreen() {
   const scrollBottomPadding = useTwoPane
     ? SCREEN_WIDE_SCROLL_BOTTOM_BASE
     : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
-  const newContentChipBottom = feedNewContentChipBottom(useTwoPane, tabBarHeight, insets.bottom);
 
   const availableSessionTabKeys = useMemo(
     () => FLAT_TABS.filter((tab) => briefingByTabKey.has(tab.key)).map((tab) => tab.key),
@@ -428,10 +412,6 @@ export default function SignalScreen() {
 
       <View style={[styles.pageColumn, useTwoPane && styles.pageColumnWide]}>
       <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
-      {refreshNotice ? (
-        <FeedUpdateBanner variant="notice" message={refreshNotice} />
-      ) : null}
-
         <SignalDateNavigator
           label={selectedDateLabel}
           previousA11y={t('insightDatePrevious')}
@@ -478,6 +458,15 @@ export default function SignalScreen() {
         </View>
       ) : null}
       </View>
+
+      {isFocused && selectedYmd >= todayYmd ? (
+        <FeedNewContentChip
+          visible={newContentAvailable}
+          refreshing={refreshing}
+          message={t('feedNewContentAvailable')}
+          onPress={() => void onRefresh()}
+        />
+      ) : null}
 
       {error ? (
         <View style={styles.errBox}>
@@ -569,16 +558,6 @@ export default function SignalScreen() {
           </View>
         </View>
       </Modal>
-
-      {isFocused && selectedYmd >= todayYmd ? (
-        <FeedNewContentChip
-          visible={newContentAvailable}
-          refreshing={refreshing}
-          message={t('feedNewContentAvailable')}
-          onPress={() => void onRefresh()}
-          bottom={newContentChipBottom}
-        />
-      ) : null}
     </SafeAreaView>
   );
 }

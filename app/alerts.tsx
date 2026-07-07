@@ -13,7 +13,6 @@ import {
   SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
   SCREEN_FIXED_HEADER_PADDING_TOP,
   SCREEN_LIST_CONTENT_PADDING_TOP,
-  stackNewContentChipBottom,
   stackScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
@@ -290,7 +289,6 @@ export default function AlertsScreen() {
   );
 
   const bottomPad = stackScreenScrollBottomPadding(insets.bottom);
-  const newContentChipBottom = stackNewContentChipBottom(insets.bottom);
 
   if (!authChecked) {
     return (
@@ -330,6 +328,14 @@ export default function AlertsScreen() {
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>{alertsTopFixed}</View>
+        {isFocused ? (
+          <FeedNewContentChip
+            visible={newContentAvailable}
+            refreshing={refreshing}
+            message={t('feedNewContentAvailable')}
+            onPress={() => void onRefresh()}
+          />
+        ) : null}
         <WebWheelFlatList
           scrollResetKey={listScrollResetKey}
           ref={listRef as never}
@@ -356,16 +362,6 @@ export default function AlertsScreen() {
           windowSize={7}
         />
       </View>
-
-      {isFocused ? (
-        <FeedNewContentChip
-          visible={newContentAvailable}
-          refreshing={refreshing}
-          message={t('feedNewContentAvailable')}
-          onPress={() => void onRefresh()}
-          bottom={newContentChipBottom}
-        />
-      ) : null}
     </SafeAreaView>
   );
 }

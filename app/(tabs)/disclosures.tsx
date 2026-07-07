@@ -7,7 +7,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
@@ -19,7 +18,6 @@ import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } fr
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
-  feedNewContentChipBottom,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import {
@@ -116,7 +114,6 @@ export default function DisclosuresScreen() {
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const [newContentAvailable, setNewContentAvailable] = useState(false);
   const latestSeenIdRef = useRef<string | null>(null);
   const digestItemsRef = useRef<SignalApiDisclosureDigestItem[]>([]);
@@ -208,12 +205,6 @@ export default function DisclosuresScreen() {
   }, [symbolFilter]);
 
   useEffect(() => {
-    if (!refreshNotice) return;
-    const timeout = setTimeout(() => setRefreshNotice(null), 4500);
-    return () => clearTimeout(timeout);
-  }, [refreshNotice]);
-
-  useEffect(() => {
     const query = currentQuery;
 
     let cancelled = false;
@@ -287,9 +278,7 @@ export default function DisclosuresScreen() {
   }, [items, selectedDisclosureId, useTwoPane]);
 
   const onRefreshBase = useCallback(async () => {
-    const prevIds = new Set(items.map((item) => item.id));
     setRefreshing(true);
-    setRefreshNotice(null);
     setNewContentAvailable(false);
     const seq = ++loadSeqRef.current;
     const query = currentQuery;
@@ -300,11 +289,6 @@ export default function DisclosuresScreen() {
       setError(null);
       if (latest[0]?.id) latestSeenIdRef.current = latest[0].id;
       await loadDigests(true);
-      const latestIds = latest.map((item) => item.id);
-      const newCount = latestIds.filter((id) => !prevIds.has(id)).length;
-      if (newCount > 0) {
-        setRefreshNotice(t('disclosuresRefreshNotice', { count: String(newCount) }));
-      }
     } catch (e) {
       if (seq !== loadSeqRef.current) return;
       setError(formatSignalApiError(e, t, 'disclosuresLoadError'));
@@ -313,7 +297,7 @@ export default function DisclosuresScreen() {
         setRefreshing(false);
       }
     }
-  }, [currentQuery, items, loadDigests, queryDisclosureList, t]);
+  }, [currentQuery, loadDigests, queryDisclosureList, t]);
 
   const onRefresh = onRefreshBase;
   useRegisterWebHeaderRefresh(() => void onRefresh());
@@ -322,7 +306,6 @@ export default function DisclosuresScreen() {
     (key: FilterKey) => {
       if (filter === key) return;
       setError(null);
-      setRefreshNotice(null);
       setTypeFilter('all');
       setFilter(key);
     },
@@ -359,7 +342,6 @@ export default function DisclosuresScreen() {
   );
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
-  const newContentChipBottom = feedNewContentChipBottom(useTwoPane, tabBarHeight, insets.bottom);
   const showDigest = !symbolFilter;
 
   const listHeaderEl = useMemo(
@@ -523,9 +505,8 @@ export default function DisclosuresScreen() {
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {refreshNotice || !useTwoPane ? (
+        {!useTwoPane ? (
           <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
-          {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
           {!symbolFilter && !useTwoPane ? (
             <View style={styles.segment}>
               {FILTERS.map((f) => {
@@ -566,6 +547,14 @@ export default function DisclosuresScreen() {
                   />
                 </View>
               ) : null}
+              {isFocused && !symbolFilter ? (
+                <FeedNewContentChip
+                  visible={newContentAvailable}
+                  refreshing={refreshing}
+                  message={t('feedNewContentAvailable')}
+                  onPress={() => void onRefresh()}
+                />
+              ) : null}
               <WebWheelFlatList
                 scrollResetKey={listScrollResetKey}
                 ref={listRef as never}
@@ -587,16 +576,6 @@ export default function DisclosuresScreen() {
           </View>
         )}
       </View>
-
-      {isFocused && !symbolFilter ? (
-        <FeedNewContentChip
-          visible={newContentAvailable}
-          refreshing={refreshing}
-          message={t('feedNewContentAvailable')}
-          onPress={() => void onRefresh()}
-          bottom={newContentChipBottom}
-        />
-      ) : null}
     </SafeAreaView>
   );
 }

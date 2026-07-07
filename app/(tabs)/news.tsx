@@ -14,7 +14,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import {
-  feedNewContentChipBottom,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import {
@@ -35,7 +34,6 @@ import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { DigestPager } from '@/components/news/DigestPager';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
-import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { makeNewsStyles } from '@/components/news/newsStyles';
 import { SignalHeader } from '@/components/signal/SignalHeader';
@@ -195,7 +193,6 @@ export default function FeedScreen() {
   const [watchSelectedSymbols, setWatchSelectedSymbols] = useState<string[] | null>(null);
   const [watchDraftSymbols, setWatchDraftSymbols] = useState<string[]>([]);
   const [watchSymbolModalVisible, setWatchSymbolModalVisible] = useState(false);
-  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
   const [newContentAvailable, setNewContentAvailable] = useState(false);
   /** 출처 필터 UI용(카탈로그 비었을 때 샘플 + 첫 페이지 병합) */
   const [signalNewsPool, setSignalNewsPool] = useState<SignalApiNewsItem[]>([]);
@@ -280,13 +277,6 @@ export default function FeedScreen() {
     ],
   );
 
-  useEffect(() => {
-    if (!refreshNotice) return;
-    const timeout = setTimeout(() => setRefreshNotice(null), 4500);
-    return () => clearTimeout(timeout);
-  }, [refreshNotice]);
-
-  /** 백그라운드 폴링: 3분마다 최신 뉴스 ID 확인 → 새 항목 있으면 배너 표시 */
   useEffect(() => {
     if (!hasSignalApi()) return;
     const POLL_MS = 3 * 60 * 1000;
@@ -855,27 +845,17 @@ export default function FeedScreen() {
   ]);
 
   const onRefreshBase = useCallback(async () => {
-    const prevNewsIds = new Set(items.map((item) => item.id));
-    const prevVideoIds = new Set(videoItems.map((item) => item.id));
     setRefreshing(true);
-    setRefreshNotice(null);
     setNewContentAvailable(false);
     try {
-      const result = await load(true);
+      await load(true);
       setError(null);
-      const previousIds = result.kind === 'video' ? prevVideoIds : prevNewsIds;
-      const newNewsCount = result.itemIds.filter((id) => !previousIds.has(id)).length;
-      if (newNewsCount > 0 && result.kind === 'video') {
-        setRefreshNotice(t('feedRefreshNoticeVideo', { count: String(newNewsCount) }));
-      } else if (newNewsCount > 0) {
-        setRefreshNotice(t('feedRefreshNoticeNews', { count: String(newNewsCount) }));
-      }
     } catch (e) {
       setError(formatSignalApiError(e, t, 'feedErrorRefresh'));
     } finally {
       setRefreshing(false);
     }
-  }, [items, load, t, videoItems]);
+  }, [load, t]);
 
   const onRefresh = onRefreshBase;
   useRegisterWebHeaderRefresh(() => void onRefresh());
@@ -1146,7 +1126,6 @@ export default function FeedScreen() {
     setYoutubeRows([]);
     setHasMore(false);
     setError(null);
-    setRefreshNotice(null);
     if (key === 'video') setActiveTag(null);
     setSegment(key);
     void saveNewsSegment(key);
@@ -1254,7 +1233,6 @@ export default function FeedScreen() {
       : null;
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
-  const newContentChipBottom = feedNewContentChipBottom(useTwoPane, tabBarHeight, insets.bottom);
   const showDigest = segment !== 'video' && segment !== 'watch';
 
   const listHeaderEl = useMemo(
@@ -1368,9 +1346,8 @@ export default function FeedScreen() {
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {refreshNotice || !useTwoPane ? (
+        {!useTwoPane ? (
           <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
-          {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
           {!useTwoPane ? <View style={styles.segment}>
             {segmentOrder.map((key) => (
               <Fragment key={key}>
@@ -1396,6 +1373,14 @@ export default function FeedScreen() {
             <View style={[styles.topFixed, styles.listColumnDigestStrip]}>
               <DigestPager batches={digestBatches} />
             </View>
+          ) : null}
+          {isFocused ? (
+            <FeedNewContentChip
+              visible={newContentAvailable}
+              refreshing={refreshing}
+              message={t('feedNewContentAvailable')}
+              onPress={() => void onRefresh()}
+            />
           ) : null}
           <WebWheelFlatList
           scrollResetKey={feedScrollResetKey}
@@ -1609,16 +1594,6 @@ export default function FeedScreen() {
           );
         })}
       </SelectionFilterSheet>
-
-      {isFocused ? (
-        <FeedNewContentChip
-          visible={newContentAvailable}
-          refreshing={refreshing}
-          message={t('feedNewContentAvailable')}
-          onPress={() => void onRefresh()}
-          bottom={newContentChipBottom}
-        />
-      ) : null}
     </SafeAreaView>
   );
 }

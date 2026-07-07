@@ -1241,10 +1241,16 @@ export default function FeedScreen() {
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const newContentChipBottom = feedNewContentChipBottom(useTwoPane, tabBarHeight, insets.bottom);
+  const showDigest = segment !== 'video' && segment !== 'watch';
 
   const listHeaderEl = useMemo(
     () => (
       <View style={styles.listHeader}>
+        {showDigest && digestBatches.length > 0 ? (
+          <View style={styles.digestListHeader}>
+            <DigestPager batches={digestBatches} />
+          </View>
+        ) : null}
         {activeTag ? (
           <View style={styles.tagFilterRow}>
             <Text style={styles.tagFilterText} numberOfLines={1}>
@@ -1331,6 +1337,7 @@ export default function FeedScreen() {
     ),
     [
       activeTag,
+      digestBatches,
       error,
       listData.length,
       loading,
@@ -1338,23 +1345,23 @@ export default function FeedScreen() {
       newsQuickFilter,
       onPickWatchFilter,
       segment,
+      showDigest,
       styles,
       t,
       watchFilter,
       theme.textDim,
       theme.green,
       theme.greenBorder,
+      router,
     ],
   );
-
-  const showDigest = segment !== 'video' && segment !== 'watch';
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {refreshNotice || !useTwoPane || showDigest ? (
+        {refreshNotice || !useTwoPane ? (
           <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
           {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
           {!useTwoPane ? <View style={styles.segment}>
@@ -1373,7 +1380,6 @@ export default function FeedScreen() {
               </Fragment>
             ))}
           </View> : null}
-          {showDigest ? <DigestPager batches={digestBatches} /> : null}
           </View>
         ) : null}
 
@@ -1450,9 +1456,11 @@ export default function FeedScreen() {
           contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            loading ? undefined : (
-              <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            )
+            <ThemedRefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              enabled={!loading || listData.length > 0}
+            />
           }
           removeClippedSubviews={Platform.OS === 'android'}
           initialNumToRender={Platform.OS === 'web' ? WEB_FLATLIST_INITIAL : 8}

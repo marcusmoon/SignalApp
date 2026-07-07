@@ -28,6 +28,11 @@ import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
+import {
+  SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
+  SCREEN_EMBEDDED_WIDE_PADDING_TOP,
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+} from '@/constants/screenLayout';
 import { webShellBackground } from '@/constants/webLayout';
 import {
   tabBarHorizontalMargin,
@@ -274,13 +279,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
       paddingHorizontal: 16,
-      paddingTop: 4,
       paddingBottom: 32,
       backgroundColor: shellBg,
     },
     scrollEmbedded: {
       maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
       alignSelf: 'stretch',
+      paddingHorizontal: SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
     },
     topFixed: fixedHeader.strip,
     tabBar: {
@@ -301,13 +306,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     tabBtnActive: segmentTab.segBtnActive,
     tabText: segmentTab.segText,
     tabTextActive: segmentTab.segTextActive,
-    lead: {
-      fontSize: sf(14),
-      fontWeight: '500',
-      color: theme.textDim,
-      lineHeight: sf(21),
-      marginBottom: 16,
-    },
     card: {
       padding: 12,
       borderRadius: 14,
@@ -461,7 +459,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.textMuted,
       letterSpacing: 1.1,
       textTransform: 'uppercase',
-      marginBottom: 10,
+      marginBottom: 8,
     },
     themePreviewShell: {
       borderRadius: 12,
@@ -813,13 +811,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     limitRowLast: {
       marginBottom: 0,
     },
-    quotesCardHint: {
-      fontSize: sf(12),
-      fontWeight: '500',
-      color: theme.textDim,
-      lineHeight: sf(17),
-      marginBottom: 12,
-    },
     quotesSegmentOrderListWrap: {
       marginBottom: 2,
     },
@@ -1044,6 +1035,8 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   const router = useRouter();
   const isFocused = useIsFocused();
   const useIpadSidebar = useTwoPane && !embedded;
+  const settingsScrollTopPad =
+    embedded || useTwoPane ? SCREEN_EMBEDDED_WIDE_PADDING_TOP : SCREEN_LIST_CONTENT_PADDING_TOP;
   const [tab, setTab] = useState<SettingsTab>('display');
   const selectedTab = embedded && ipadNav.isAvailable ? ipadNav.settingsTab : tab;
   const { ref: settingsScrollRef } = useScrollToTopOnChange([selectedTab]);
@@ -1404,8 +1397,8 @@ clearCalendarCache();
         style={styles.scrollFlex}
         contentContainerStyle={[
           styles.scroll,
-          embedded && styles.scrollEmbedded,
-          { paddingBottom: scrollContentBottomPad },
+          (embedded || useTwoPane) && styles.scrollEmbedded,
+          { paddingTop: settingsScrollTopPad, paddingBottom: scrollContentBottomPad },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
@@ -1413,7 +1406,6 @@ clearCalendarCache();
           <>
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsQuotesChangeColorKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsQuotesChangeColorHint')}</Text>
               {!quotesChangeColorReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
@@ -1471,7 +1463,6 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsQuotesSegmentOrderKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsQuotesSegmentOrderHint')}</Text>
               {!quotesSegmentOrderReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
@@ -1522,13 +1513,6 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsQuotesLimitsKicker')}</Text>
-              <Text style={styles.quotesCardHint}>
-                {formatMessage(t('settingsQuotesListLimitsHint'), {
-                  popMax: QUOTES_LIST_LIMIT_BOUNDS.popular.max,
-                  mcapMax: QUOTES_LIST_LIMIT_BOUNDS.mcap.max,
-                  coinMax: QUOTES_LIST_LIMIT_BOUNDS.coin.max,
-                })}
-              </Text>
               {!quotesLimitsReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
@@ -1574,11 +1558,8 @@ clearCalendarCache();
 
         {selectedTab === 'news' ? (
           <>
-            <Text style={styles.lead}>{t('settingsNewsTabLead')}</Text>
-
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsNewsSegmentOrderKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsNewsSegmentOrderHint')}</Text>
               {!newsSegmentOrderReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
@@ -1629,7 +1610,6 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsNewsHashtagDisplayKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsNewsHashtagDisplayHint')}</Text>
               {!newsHashtagDisplayReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
@@ -1665,7 +1645,6 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsNewsUnreadCheckKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsNewsUnreadCheckHint')}</Text>
               {!newsUnreadIntervalReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
@@ -1704,7 +1683,6 @@ clearCalendarCache();
 
         {selectedTab === 'notifications' ? (
           <>
-            <Text style={styles.lead}>{t('settingsNotificationsLead')}</Text>
             {!prefsReady ? (
               <Text style={styles.muted}>{t('commonLoading')}</Text>
             ) : (
@@ -1793,9 +1771,6 @@ clearCalendarCache();
                 })}>
                 {getEffectiveSignalApiBaseUrl() || '—'}
               </Text>
-              <Text style={[styles.muted, { fontSize: 12, lineHeight: 17, marginBottom: 10 }]}>
-                {t('settingsSignalServerShortNote')}
-              </Text>
               {!signalServerPrefsReady ? (
                 <Text style={[styles.muted, { marginTop: 10 }]}>{t('commonLoading')}</Text>
               ) : (
@@ -1855,8 +1830,6 @@ clearCalendarCache();
 
         {selectedTab === 'display' ? (
           <>
-            <Text style={styles.lead}>{t('settingsThemeLead')}</Text>
-
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsThemeLanguageSection')}</Text>
               <View style={styles.langSegmentedTrack}>
@@ -1879,7 +1852,6 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsMainEntrySection')}</Text>
-              <Text style={styles.prefHint}>{t('settingsMainEntryHint')}</Text>
               {!mainEntryReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
@@ -1910,7 +1882,6 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsHomeWatchlistDisplaySection')}</Text>
-              <Text style={styles.prefHint}>{t('settingsHomeWatchlistDisplayHint')}</Text>
               {!homeWatchlistDisplayReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
@@ -1971,7 +1942,6 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsAppIconSection')}</Text>
-              <Text style={styles.prefHint}>{t('settingsAppIconHint')}</Text>
               {!appIconReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
@@ -2014,7 +1984,6 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsTabBarOpacitySection')}</Text>
-              <Text style={styles.prefHint}>{t('settingsTabBarOpacityHint')}</Text>
               {!tabBarOpacityReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
@@ -2050,7 +2019,6 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsFontSizeSection')}</Text>
-              <Text style={styles.prefHint}>{t('settingsFontSizeHint')}</Text>
               <View style={styles.langSegmentedTrack}>
                 {FONT_SIZE_PRESET_ORDER.map((id) => (
                   <Pressable
@@ -2076,7 +2044,6 @@ clearCalendarCache();
               <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
                 {t('settingsFeedContentWeightSection')}
               </Text>
-              <Text style={styles.prefHint}>{t('settingsFeedContentWeightHint')}</Text>
               <View style={styles.langSegmentedTrack}>
                 {FEED_CONTENT_WEIGHT_ORDER.map((id) => (
                   <Pressable
@@ -2100,7 +2067,6 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsMoreReferenceLinksKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsMoreReferenceLinksHint')}</Text>
               {!moreRefLinksReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
@@ -2121,7 +2087,6 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsCacheSectionTitle')}</Text>
-              <Text style={styles.prefHint}>{t('settingsCacheHint')}</Text>
               <Pressable
                 onPress={onClearAllCaches}
                 style={({ pressed }) => [styles.cacheClearBtn, pressed && { opacity: 0.88 }]}

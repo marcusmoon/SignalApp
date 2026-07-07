@@ -635,7 +635,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       ...webFlexFill,
       flexDirection: 'row',
       gap: 12,
-      paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
     },
     list: { ...webScrollViewportStyle },
     wideList: {

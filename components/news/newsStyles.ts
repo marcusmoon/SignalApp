@@ -48,6 +48,10 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingTop: SCREEN_LIST_HEADER_PADDING_TOP,
       paddingBottom: SCREEN_LIST_HEADER_PADDING_BOTTOM,
     },
+    digestListHeader: {
+      marginTop: -SCREEN_LIST_HEADER_PADDING_TOP,
+      marginBottom: 4,
+    },
     skeletonBlock: {
       marginTop: 4,
     },

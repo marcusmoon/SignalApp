@@ -364,7 +364,7 @@ export default function DisclosuresScreen() {
 
   const listHeaderEl = useMemo(
     () => (
-      <View style={[styles.listHeader, useTwoPane && styles.listHeaderWide, useTwoPane && showDigest && styles.listHeaderBelowDigest]}>
+      <View style={styles.listHeader}>
         {symbolFilter ? (
           <View style={styles.symbolFilterRow}>
             <Text style={styles.symbolFilterText} numberOfLines={1}>
@@ -410,7 +410,7 @@ export default function DisclosuresScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
     ),
-    [clearSymbolFilter, error, filter, onPickTypeFilter, showDigest, styles, symbolFilter, t, typeFilter, typeFilterOptions, useTwoPane],
+    [clearSymbolFilter, error, filter, onPickTypeFilter, styles, symbolFilter, t, typeFilter, typeFilterOptions],
   );
 
   const renderDisclosureCard = useCallback(
@@ -523,7 +523,7 @@ export default function DisclosuresScreen() {
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {!useTwoPane || refreshNotice || (showDigest && !useTwoPane) ? (
+        {refreshNotice || !useTwoPane || showDigest ? (
           <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
           {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
           {!symbolFilter && !useTwoPane ? (
@@ -543,7 +543,7 @@ export default function DisclosuresScreen() {
               })}
             </View>
           ) : null}
-          {showDigest && !useTwoPane ? (
+          {showDigest ? (
             <DisclosureDigestSection
               items={digestItems}
               loading={digestLoading && digestItems.length === 0}
@@ -556,16 +556,8 @@ export default function DisclosuresScreen() {
             <SignalLoadingIndicator message={t('commonLoading')} />
           </View>
         ) : (
-          <View style={useTwoPane ? styles.wideBody : styles.compactBody}>
+          <View style={[useTwoPane ? styles.wideBody : styles.compactBody, useTwoPane && showDigest && styles.wideBodyBelowDigest]}>
             <View style={useTwoPane ? styles.listColumnWide : styles.listColumn}>
-              {showDigest && useTwoPane ? (
-                <View style={styles.wideDigestDock}>
-                  <DisclosureDigestSection
-                    items={digestItems}
-                    loading={digestLoading && digestItems.length === 0}
-                  />
-                </View>
-              ) : null}
               <WebWheelFlatList
                 scrollResetKey={listScrollResetKey}
                 ref={listRef as never}
@@ -627,15 +619,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minWidth: 360,
       minHeight: 0,
     },
-    wideDigestDock: {
-      flexShrink: 0,
-      marginBottom: SCREEN_LIST_HEADER_PADDING_TOP + SCREEN_LIST_CONTENT_PADDING_TOP,
-    },
     wideBody: {
       ...webFlexFill,
       flexDirection: 'row',
       gap: 12,
       paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,
+    },
+    wideBodyBelowDigest: {
+      paddingTop: 0,
     },
     list: { ...webScrollViewportStyle },
     wideList: {
@@ -643,16 +634,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minHeight: 0,
     },
     listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
-    wideListContent: { paddingTop: 0 },
+    wideListContent: {
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+    },
     listHeader: {
       paddingTop: SCREEN_LIST_HEADER_PADDING_TOP,
       paddingBottom: SCREEN_LIST_HEADER_PADDING_BOTTOM,
-    },
-    listHeaderWide: {
-      paddingTop: 0,
-    },
-    listHeaderBelowDigest: {
-      paddingTop: SCREEN_LIST_HEADER_PADDING_TOP,
     },
     segment: segmentTab.segment,
     segBtn: segmentTab.segBtn,

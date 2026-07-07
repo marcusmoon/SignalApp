@@ -733,9 +733,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexGrow: 0,
       flexShrink: 0,
       borderRadius: 999,
-      ...(Platform.OS === 'web'
-        ? ({ width: 'max-content', maxWidth: '92%' } as const)
-        : ({ width: 'auto' as const })),
+      maxWidth: '92%',
     },
     settingsFooterPress: {
       flexDirection: 'row',

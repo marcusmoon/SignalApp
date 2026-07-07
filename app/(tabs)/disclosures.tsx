@@ -614,7 +614,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     mainColumnWide: {
       ...wideContentFill,
-      paddingHorizontal: 16,
     },
     topFixed: fixedHeader.strip,
     topFixedWide: fixedHeader.stripWide,
@@ -629,7 +628,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     listColumnDigestStrip: {
       flexShrink: 0,
-      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+      paddingTop: 0,
+      paddingHorizontal: 0,
     },
     wideBody: {
       ...webFlexFill,
@@ -643,6 +643,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
     wideListContent: {
+      paddingHorizontal: 16,
       paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
     },
     listHeader: {

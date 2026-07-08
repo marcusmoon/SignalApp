@@ -26,7 +26,7 @@ import {
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
-import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
+import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW, isWeb } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -77,13 +77,18 @@ export default function BoardScreen() {
   const [meta, setMeta] = useState<SignalCommunityListMeta | null>(null);
   const loadingMoreRef = useRef(false);
   const itemsRef = useRef<SignalApiCommunityPost[]>([]);
+  const sourceRef = useRef(source);
+  const loadSeqRef = useRef(0);
   itemsRef.current = items;
+  sourceRef.current = source;
 
   const load = useCallback(
     async (opts?: { refresh?: boolean; loadMore?: boolean; sourceFilter?: CommunitySourceFilter }) => {
-      const nextSource = opts?.sourceFilter ?? source;
+      const nextSource = opts?.sourceFilter ?? sourceRef.current;
       const loadMore = opts?.loadMore === true;
+      const seq = ++loadSeqRef.current;
       if (!hasSignalApi()) {
+        if (seq !== loadSeqRef.current) return;
         setItems([]);
         setMeta(null);
         setError(t('errorSignalApiShort'));
@@ -107,9 +112,11 @@ export default function BoardScreen() {
           },
           { cacheMode: signalCacheMode(opts?.refresh) },
         );
+        if (seq !== loadSeqRef.current) return;
         setItems((prev) => (loadMore ? [...prev, ...page.items] : page.items));
         setMeta(page.meta);
       } catch (e) {
+        if (seq !== loadSeqRef.current) return;
         if (!loadMore) {
           setItems([]);
           setMeta(null);
@@ -119,13 +126,13 @@ export default function BoardScreen() {
         if (loadMore) {
           loadingMoreRef.current = false;
           setLoadingMore(false);
-        } else {
+        } else if (seq === loadSeqRef.current) {
           setLoading(false);
           setRefreshing(false);
         }
       }
     },
-    [meta?.hasMore, meta?.nextOffset, source, t],
+    [meta?.hasMore, meta?.nextOffset, t],
   );
 
   useEffect(() => {
@@ -155,12 +162,12 @@ export default function BoardScreen() {
 
   const changeSource = useCallback(
     (next: CommunitySourceFilter) => {
-      if (next === source) return;
+      if (next === sourceRef.current) return;
       setSource(next);
       setError(null);
       void load({ sourceFilter: next });
     },
-    [load, source],
+    [load],
   );
 
   useFocusEffect(
@@ -222,50 +229,52 @@ export default function BoardScreen() {
             </View>
           </View>
         ) : null}
-        {error ? (
-          <View style={styles.errBox}>
-            <Text style={styles.errText}>{error}</Text>
-          </View>
-        ) : null}
-        {loading && items.length === 0 ? (
-          <View style={styles.loadingBox}>
-            <SignalLoadingIndicator message={t('commonLoading')} />
-          </View>
-        ) : (
-          <WebWheelFlatList
-            scrollResetKey={listScrollResetKey}
-            ref={listRef as never}
-            style={styles.list}
-            contentContainerStyle={{ paddingBottom: listBottomPad, paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP }}
-            data={items}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-            onEndReached={onEndReached}
-            onEndReachedThreshold={0.35}
-            onLayout={onLayout}
-            onContentSizeChange={onContentSizeChange}
-            onScroll={onScroll}
-            scrollEventThrottle={16}
-            initialNumToRender={WEB_FLATLIST_INITIAL}
-            maxToRenderPerBatch={WEB_FLATLIST_BATCH}
-            windowSize={WEB_FLATLIST_WINDOW}
-            ListEmptyComponent={
-              !loading ? (
-                <View style={styles.emptyBox}>
-                  <Text style={styles.emptyText}>{t('communityEmpty')}</Text>
-                </View>
-              ) : null
-            }
-            ListFooterComponent={
-              loadingMore ? (
-                <View style={styles.footerLoading}>
-                  <SignalLoadingIndicator message={t('commonLoading')} />
-                </View>
-              ) : null
-            }
-          />
-        )}
+        <View style={styles.listColumn}>
+          {error ? (
+            <View style={styles.errBox}>
+              <Text style={styles.errText}>{error}</Text>
+            </View>
+          ) : null}
+          {loading && items.length === 0 ? (
+            <View style={styles.loadingBox}>
+              <SignalLoadingIndicator message={t('commonLoading')} />
+            </View>
+          ) : (
+            <WebWheelFlatList
+              scrollResetKey={listScrollResetKey}
+              ref={listRef as never}
+              style={styles.list}
+              contentContainerStyle={{ paddingBottom: listBottomPad, paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP }}
+              data={items}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+              onEndReached={onEndReached}
+              onEndReachedThreshold={0.35}
+              onLayout={onLayout}
+              onContentSizeChange={onContentSizeChange}
+              onScroll={onScroll}
+              scrollEventThrottle={16}
+              initialNumToRender={WEB_FLATLIST_INITIAL}
+              maxToRenderPerBatch={WEB_FLATLIST_BATCH}
+              windowSize={WEB_FLATLIST_WINDOW}
+              ListEmptyComponent={
+                !loading ? (
+                  <View style={styles.emptyBox}>
+                    <Text style={styles.emptyText}>{t('communityEmpty')}</Text>
+                  </View>
+                ) : null
+              }
+              ListFooterComponent={
+                loadingMore ? (
+                  <View style={styles.footerLoading}>
+                    <SignalLoadingIndicator message={t('commonLoading')} />
+                  </View>
+                ) : null
+              }
+            />
+          )}
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -284,6 +293,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     mainColumnWide: {
       ...wideContentFill,
+    },
+    listColumn: {
+      ...webFlexFill,
+      minHeight: 0,
+      ...(isWeb ? { overflow: 'hidden' as const } : null),
     },
     topFixed: fixedHeader.strip,
     segment: segmentTab.segment,

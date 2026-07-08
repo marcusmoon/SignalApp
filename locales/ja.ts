@@ -642,6 +642,9 @@ export const ja = {
   feedLoadingMore: '読み込み中…',
 
   newsReadMore: '原文を見る →',
+  newsOriginalShow: '原文を表示',
+  newsOriginalHide: '原文を閉じる',
+  newsOriginalLabel: '原文',
   newsSourceLabel: '出所',
   newsFlashBadge: '速報',
   alertsHighBadge: 'HIGH',

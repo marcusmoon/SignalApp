@@ -638,6 +638,9 @@ export const ko = {
   feedLoadingMore: '불러오는 중…',
 
   newsReadMore: '원문 보기 →',
+  newsOriginalShow: '원문 보기',
+  newsOriginalHide: '원문 접기',
+  newsOriginalLabel: '원문',
   newsSourceLabel: '출처',
   newsFlashBadge: '속보',
   alertsHighBadge: 'HIGH',

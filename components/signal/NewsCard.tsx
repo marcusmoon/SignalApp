@@ -1,6 +1,6 @@
 import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
@@ -33,6 +33,7 @@ export function NewsCard({
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
+  const [showOriginal, setShowOriginal] = useState(false);
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
 
   const sourceName = item.source?.trim() || '—';
@@ -55,6 +56,11 @@ export function NewsCard({
   const articleUrl = item.url?.trim() ?? '';
   const canOpenArticle = articleUrl.length > 0;
   const rowPressEnabled = Boolean(onPress) || canOpenArticle;
+  const originalTitle = item.originalTitle?.trim() ?? '';
+  const originalSummary = item.originalSummary?.trim() ?? '';
+  const hasOriginal =
+    originalTitle.length > 0 &&
+    originalTitle.localeCompare(item.titleKo.trim(), undefined, { sensitivity: 'base' }) !== 0;
 
   const openArticle = useCallback(() => {
     if (onPress) {
@@ -147,6 +153,29 @@ export function NewsCard({
         )}
         <Text style={[styles.title, tags.length === 0 && styles.titleLast]}>{item.titleKo}</Text>
       </Pressable>
+      {hasOriginal ? (
+        <View style={styles.originalArea}>
+          <Pressable
+            onPress={() => setShowOriginal((value) => !value)}
+            hitSlop={8}
+            style={({ pressed }) => [styles.originalToggle, pressed && styles.originalTogglePressed]}
+            accessibilityRole="button"
+            accessibilityLabel={showOriginal ? t('newsOriginalHide') : t('newsOriginalShow')}>
+            <Text style={styles.originalToggleText}>
+              {showOriginal ? t('newsOriginalHide') : t('newsOriginalShow')}
+            </Text>
+          </Pressable>
+          {showOriginal ? (
+            <View style={styles.originalBox}>
+              <Text style={styles.originalLabel}>{t('newsOriginalLabel')}</Text>
+              <Text style={styles.originalTitle}>{originalTitle}</Text>
+              {originalSummary.length > 0 ? (
+                <Text style={styles.originalSummary}>{originalSummary}</Text>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
       {tags.length > 0 ? (
         <View style={[styles.footer, grouped && styles.footerGrouped]}>
           <View style={styles.footerTagsCol}>
@@ -302,6 +331,50 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     titleLast: {
       marginBottom: 0,
+    },
+    originalArea: {
+      marginTop: ft.pad(2),
+      marginBottom: ft.pad(4),
+      alignItems: 'flex-start',
+    },
+    originalToggle: {
+      paddingVertical: ft.pad(4),
+      paddingHorizontal: ft.pad(2),
+    },
+    originalTogglePressed: {
+      opacity: 0.75,
+    },
+    originalToggleText: {
+      color: theme.green,
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.emphasisWeight,
+    },
+    originalBox: {
+      alignSelf: 'stretch',
+      marginTop: ft.pad(6),
+      paddingTop: ft.pad(8),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.border,
+      gap: ft.pad(4),
+    },
+    originalLabel: {
+      color: theme.textMuted,
+      fontSize: ft.ff(10),
+      lineHeight: ft.ff(14),
+      fontWeight: ft.metaWeight,
+    },
+    originalTitle: {
+      color: theme.text,
+      fontSize: ft.ff(13),
+      lineHeight: ft.ff(18),
+      fontWeight: ft.bodyWeight,
+    },
+    originalSummary: {
+      color: theme.textMuted,
+      fontSize: ft.ff(12),
+      lineHeight: ft.ff(17),
+      fontWeight: ft.bodyWeight,
     },
     footerTagsCol: {
       flex: 1,

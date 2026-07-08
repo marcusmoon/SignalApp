@@ -642,6 +642,9 @@ export const en = {
   feedLoadingMore: 'Loading…',
 
   newsReadMore: 'Open article →',
+  newsOriginalShow: 'Show original',
+  newsOriginalHide: 'Hide original',
+  newsOriginalLabel: 'Original',
   newsSourceLabel: 'Source',
   newsFlashBadge: 'Breaking',
   alertsHighBadge: 'HIGH',

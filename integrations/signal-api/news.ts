@@ -92,6 +92,8 @@ export function signalNewsToNewsItem(item: SignalApiNewsItem, locale: AppLocale)
     id: item.id,
     ticker: item.symbols?.[0]?.trim() || '',
     titleKo: item.title || item.originalTitle,
+    originalTitle: item.originalTitle,
+    originalSummary: item.originalSummary,
     source: item.sourceName,
     timeLabel: item.publishedAt ? formatRelativeFromIso(item.publishedAt, locale) : '—',
     url: item.sourceUrl,

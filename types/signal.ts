@@ -2,6 +2,8 @@ export type NewsItem = {
   id: string;
   ticker: string;
   titleKo: string;
+  originalTitle?: string;
+  originalSummary?: string;
   /** 기사 매체·출처명 (표시용) */
   source: string;
   timeLabel: string;

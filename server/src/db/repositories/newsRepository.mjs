@@ -1,9 +1,7 @@
 import { queryKysely } from '../kysely/client.mjs';
 import {
-  cleanNewsTitleForDisplay,
-  cleanTranslationText,
   displayNews,
-  hasUsableTranslation,
+  resolveAlternateTitle,
 } from '../../http/shared.mjs';
 import {
   cleanText,
@@ -13,22 +11,25 @@ import {
   sqlStringList,
 } from './publicHelpers.mjs';
 
-function publicNews(item) {
+function publicNews(item, translations, locale) {
+  const displayed = displayNews(item, translations, locale);
+  const alternateTitle = resolveAlternateTitle(item, translations, locale, displayed);
   return {
-    id: item.id,
-    category: item.category,
-    title: item.title,
-    summary: item.summary,
-    originalTitle: item.originalTitle,
-    originalSummary: item.originalSummary,
-    sourceName: item.sourceName,
-    sourceUrl: item.sourceUrl,
-    imageUrl: item.imageUrl || null,
-    symbols: Array.isArray(item.symbols) ? item.symbols : [],
-    hashtags: Array.isArray(item.hashtags) ? item.hashtags : [],
-    provider: item.provider,
-    publishedAt: item.publishedAt || null,
-    fetchedAt: item.fetchedAt,
+    id: displayed.id,
+    category: displayed.category,
+    title: displayed.title,
+    summary: displayed.summary,
+    originalTitle: displayed.originalTitle,
+    originalSummary: displayed.originalSummary,
+    alternateTitle: alternateTitle || undefined,
+    sourceName: displayed.sourceName,
+    sourceUrl: displayed.sourceUrl,
+    imageUrl: displayed.imageUrl || null,
+    symbols: Array.isArray(displayed.symbols) ? displayed.symbols : [],
+    hashtags: Array.isArray(displayed.hashtags) ? displayed.hashtags : [],
+    provider: displayed.provider,
+    publishedAt: displayed.publishedAt || null,
+    fetchedAt: displayed.fetchedAt,
   };
 }
 
@@ -134,9 +135,10 @@ export async function queryPublicNewsRows(options = {}) {
   params.push(limit + 1, offset);
   const result = await queryKysely(
     `
-      SELECT n.payload, t.payload AS translation_payload
+      SELECT n.payload, t.payload AS translation_payload, t_ko.payload AS ko_translation_payload
       FROM news_items n
       LEFT JOIN news_translations t ON t.news_item_id = n.id AND t.locale = $1
+      LEFT JOIN news_translations t_ko ON t_ko.news_item_id = n.id AND t_ko.locale = 'ko' AND $1 = 'en'
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
       ORDER BY n.published_at DESC NULLS LAST, n.position ASC
       LIMIT $${params.length - 1} OFFSET $${params.length}
@@ -147,8 +149,10 @@ export async function queryPublicNewsRows(options = {}) {
     .map((row) => {
       const item = payloadFromRow(row);
       const translation = payloadFromRow({ payload: row.translation_payload });
+      const koTranslation = payloadFromRow({ payload: row.ko_translation_payload });
       if (!item) return null;
-      return publicNews(displayNews(item, translation ? [translation] : [], locale));
+      const translations = [translation, koTranslation].filter(Boolean);
+      return publicNews(item, translations, locale);
     })
     .filter(Boolean);
   const hasMore = rows.length > limit;

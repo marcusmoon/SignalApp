@@ -101,6 +101,28 @@ export function hasUsableTranslation(tr, item) {
   return true;
 }
 
+function titlesDiffer(a, b) {
+  const left = String(a || '').trim();
+  const right = String(b || '').trim();
+  if (!left || !right) return false;
+  return left.localeCompare(right, undefined, { sensitivity: 'base' }) !== 0;
+}
+
+/** Card title toggle — ko/ja show English original; en shows Korean translation when available. */
+export function resolveAlternateTitle(item, translations, locale, displayed) {
+  const titleOriginal = cleanNewsTitleForDisplay(item, item.titleOriginal);
+  if (locale === 'ko' || locale === 'ja') {
+    return titlesDiffer(displayed.title, titleOriginal) ? titleOriginal : null;
+  }
+  if (locale === 'en') {
+    const koTr = translations.find((t) => t.newsItemId === item.id && t.locale === 'ko');
+    if (!hasUsableTranslation(koTr, item)) return null;
+    const koTitle = cleanNewsTitleForDisplay(item, koTr.title);
+    return titlesDiffer(koTitle, displayed.title) ? koTitle : null;
+  }
+  return null;
+}
+
 export function displayNews(item, translations, locale) {
   const tr = translations.find((t) => t.newsItemId === item.id && t.locale === locale);
   const completed = hasUsableTranslation(tr, item);

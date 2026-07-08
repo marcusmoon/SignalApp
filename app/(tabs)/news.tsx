@@ -1471,6 +1471,7 @@ export default function FeedScreen() {
                   layout="grouped"
                   item={item.news}
                   compactMeta
+                  titleToggle={segment === 'global' || segment === 'crypto'}
                   maxHashtagsToShow={segment === 'watch' ? 0 : maxHashtagDisplay}
                   onTagPress={(label) => {
                     const next = label.trim();

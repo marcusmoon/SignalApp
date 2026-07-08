@@ -4,6 +4,8 @@ export type NewsItem = {
   titleKo: string;
   originalTitle?: string;
   originalSummary?: string;
+  /** 제목 토글용 대체 언어 제목 */
+  alternateTitle?: string;
   /** 기사 매체·출처명 (표시용) */
   source: string;
   timeLabel: string;

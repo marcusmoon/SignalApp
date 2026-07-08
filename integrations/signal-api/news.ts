@@ -87,13 +87,26 @@ function sortedHashtags(item: SignalApiNewsItem) {
     }));
 }
 
+function resolveAlternateTitleForItem(item: SignalApiNewsItem, locale: AppLocale, primaryTitle: string): string | undefined {
+  const fromServer = item.alternateTitle?.trim();
+  if (fromServer) return fromServer;
+  if (locale === 'en') return undefined;
+  const original = item.originalTitle?.trim();
+  if (!original || !primaryTitle) return undefined;
+  if (original.localeCompare(primaryTitle, undefined, { sensitivity: 'base' }) === 0) return undefined;
+  return original;
+}
+
 export function signalNewsToNewsItem(item: SignalApiNewsItem, locale: AppLocale): NewsItem {
+  const primaryTitle = item.title || item.originalTitle;
+  const alternateTitle = resolveAlternateTitleForItem(item, locale, primaryTitle);
   return {
     id: item.id,
     ticker: item.symbols?.[0]?.trim() || '',
-    titleKo: item.title || item.originalTitle,
+    titleKo: primaryTitle,
     originalTitle: item.originalTitle,
     originalSummary: item.originalSummary,
+    alternateTitle,
     source: item.sourceName,
     timeLabel: item.publishedAt ? formatRelativeFromIso(item.publishedAt, locale) : '—',
     url: item.sourceUrl,

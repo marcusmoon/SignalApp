@@ -1,6 +1,7 @@
 import * as WebBrowser from 'expo-web-browser';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
@@ -18,6 +19,8 @@ type Props = {
   layout?: 'card' | 'grouped';
   /** 관심뉴스처럼 컨텍스트가 이미 명확한 목록에서는 메타를 한 줄로 압축 */
   compactMeta?: boolean;
+  /** 글로벌·크립토 등에서 메타 행 제목 토글 아이콘 노출 */
+  titleToggle?: boolean;
   /** 미지정 시 URL이 있으면 원문 브라우저 오픈 (추후 상세 화면으로 교체 예정) */
   onPress?: () => void;
 };
@@ -28,12 +31,13 @@ export function NewsCard({
   onTagPress,
   layout = 'card',
   compactMeta = false,
+  titleToggle = false,
   onPress,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const router = useRouter();
-  const [showOriginal, setShowOriginal] = useState(false);
+  const [showAlternate, setShowAlternate] = useState(false);
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
 
   const sourceName = item.source?.trim() || '—';
@@ -43,6 +47,16 @@ export function NewsCard({
     symbol.length === 0 || symbol === 'GLOBAL' || symbol === '—';
   const canOpenSymbol = !showSourceInHeader;
   const headerLabel = showSourceInHeader ? sourceName : item.ticker;
+
+  const alternateTitle = item.alternateTitle?.trim() ?? '';
+  const hasTitleToggle = titleToggle && alternateTitle.length > 0;
+  const showingAlternate = hasTitleToggle && showAlternate;
+  const displayTitle = showingAlternate ? alternateTitle : item.titleKo;
+  const alternateIsTranslation = locale === 'en';
+
+  useEffect(() => {
+    setShowAlternate(false);
+  }, [item.id]);
 
   const tags =
     maxHashtagsToShow > 0
@@ -56,11 +70,6 @@ export function NewsCard({
   const articleUrl = item.url?.trim() ?? '';
   const canOpenArticle = articleUrl.length > 0;
   const rowPressEnabled = Boolean(onPress) || canOpenArticle;
-  const originalTitle = item.originalTitle?.trim() ?? '';
-  const originalSummary = item.originalSummary?.trim() ?? '';
-  const hasOriginal =
-    originalTitle.length > 0 &&
-    originalTitle.localeCompare(item.titleKo.trim(), undefined, { sensitivity: 'base' }) !== 0;
 
   const openArticle = useCallback(() => {
     if (onPress) {
@@ -71,7 +80,13 @@ export function NewsCard({
     void WebBrowser.openBrowserAsync(articleUrl);
   }, [articleUrl, canOpenArticle, onPress]);
 
-  const rowA11yLabel = [item.titleKo, sourceName, item.timeLabel].filter(Boolean).join(', ');
+  const rowA11yLabel = [displayTitle, sourceName, item.timeLabel].filter(Boolean).join(', ');
+
+  const titleToggleA11y = showingAlternate
+    ? t('newsTitleShowLocalized')
+    : alternateIsTranslation
+      ? t('newsTitleShowTranslation')
+      : t('newsTitleShowOriginal');
 
   const sourceContent = (
     <View style={styles.sourcePill}>
@@ -89,9 +104,30 @@ export function NewsCard({
     </View>
   ) : null;
 
+  const titleToggleBtn = hasTitleToggle ? (
+    <Pressable
+      onPress={() => setShowAlternate((value) => !value)}
+      hitSlop={8}
+      style={({ pressed }) => [
+        styles.titleToggleBtn,
+        showingAlternate && styles.titleToggleBtnActive,
+        pressed && styles.titleToggleBtnPressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: showingAlternate }}
+      accessibilityLabel={titleToggleA11y}>
+      <FontAwesome
+        name={alternateIsTranslation ? 'language' : 'globe'}
+        size={12}
+        color={showingAlternate ? theme.green : theme.textMuted}
+      />
+    </Pressable>
+  ) : null;
+
   const renderSourceInMeta = () => (
     <View style={styles.sourceRowCompact}>
       {flashBadge}
+      {titleToggleBtn}
       {sourceContent}
     </View>
   );
@@ -99,6 +135,7 @@ export function NewsCard({
   const renderSourceBelowMeta = () => (
     <View style={styles.sourceRow}>
       {flashBadge}
+      {titleToggleBtn}
       {sourceContent}
     </View>
   );
@@ -115,6 +152,7 @@ export function NewsCard({
         {compactMeta ? (
           <View style={styles.compactMetaRow}>
             {flashBadge}
+            {titleToggleBtn}
             {canOpenSymbol ? (
               <Pressable
                 onPress={() => router.push(`/symbol/${symbol}`)}
@@ -144,38 +182,18 @@ export function NewsCard({
               ) : (
                 renderSourceInMeta()
               )}
-              <View style={styles.timePill}>
-                <Text style={styles.time}>{item.timeLabel}</Text>
+              <View style={styles.metaTrail}>
+                {canOpenSymbol ? titleToggleBtn : null}
+                <View style={styles.timePill}>
+                  <Text style={styles.time}>{item.timeLabel}</Text>
+                </View>
               </View>
             </View>
             {canOpenSymbol ? renderSourceBelowMeta() : null}
           </>
         )}
-        <Text style={[styles.title, tags.length === 0 && styles.titleLast]}>{item.titleKo}</Text>
+        <Text style={[styles.title, tags.length === 0 && styles.titleLast]}>{displayTitle}</Text>
       </Pressable>
-      {hasOriginal ? (
-        <View style={styles.originalArea}>
-          <Pressable
-            onPress={() => setShowOriginal((value) => !value)}
-            hitSlop={8}
-            style={({ pressed }) => [styles.originalToggle, pressed && styles.originalTogglePressed]}
-            accessibilityRole="button"
-            accessibilityLabel={showOriginal ? t('newsOriginalHide') : t('newsOriginalShow')}>
-            <Text style={styles.originalToggleText}>
-              {showOriginal ? t('newsOriginalHide') : t('newsOriginalShow')}
-            </Text>
-          </Pressable>
-          {showOriginal ? (
-            <View style={styles.originalBox}>
-              <Text style={styles.originalLabel}>{t('newsOriginalLabel')}</Text>
-              <Text style={styles.originalTitle}>{originalTitle}</Text>
-              {originalSummary.length > 0 ? (
-                <Text style={styles.originalSummary}>{originalSummary}</Text>
-              ) : null}
-            </View>
-          ) : null}
-        </View>
-      ) : null}
       {tags.length > 0 ? (
         <View style={[styles.footer, grouped && styles.footerGrouped]}>
           <View style={styles.footerTagsCol}>
@@ -239,6 +257,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flex: 1,
       minWidth: 0,
     },
+    metaTrail: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: ft.pad(6),
+      flexShrink: 0,
+    },
     ticker: {
       flexShrink: 1,
       color: theme.green,
@@ -286,6 +310,24 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: ft.ff(16),
       fontWeight: ft.metaWeight,
     },
+    titleToggleBtn: {
+      flexShrink: 0,
+      width: 24,
+      height: 24,
+      borderRadius: 999,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.bgElevated,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    titleToggleBtnActive: {
+      backgroundColor: theme.greenDim,
+      borderColor: theme.greenBorder,
+    },
+    titleToggleBtnPressed: {
+      opacity: 0.82,
+    },
     sourceRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -331,50 +373,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     titleLast: {
       marginBottom: 0,
-    },
-    originalArea: {
-      marginTop: ft.pad(2),
-      marginBottom: ft.pad(4),
-      alignItems: 'flex-start',
-    },
-    originalToggle: {
-      paddingVertical: ft.pad(4),
-      paddingHorizontal: ft.pad(2),
-    },
-    originalTogglePressed: {
-      opacity: 0.75,
-    },
-    originalToggleText: {
-      color: theme.green,
-      fontSize: ft.ff(12),
-      lineHeight: ft.ff(16),
-      fontWeight: ft.emphasisWeight,
-    },
-    originalBox: {
-      alignSelf: 'stretch',
-      marginTop: ft.pad(6),
-      paddingTop: ft.pad(8),
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.border,
-      gap: ft.pad(4),
-    },
-    originalLabel: {
-      color: theme.textMuted,
-      fontSize: ft.ff(10),
-      lineHeight: ft.ff(14),
-      fontWeight: ft.metaWeight,
-    },
-    originalTitle: {
-      color: theme.text,
-      fontSize: ft.ff(13),
-      lineHeight: ft.ff(18),
-      fontWeight: ft.bodyWeight,
-    },
-    originalSummary: {
-      color: theme.textMuted,
-      fontSize: ft.ff(12),
-      lineHeight: ft.ff(17),
-      fontWeight: ft.bodyWeight,
     },
     footerTagsCol: {
       flex: 1,

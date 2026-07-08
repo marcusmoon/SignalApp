@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 import {
   queryPublicNews,
   queryPublicNewsDigests,
@@ -9,11 +11,16 @@ import { NOTIFICATION_TYPES } from '../../../notifications/notificationItem.mjs'
 import { resolveDigestItemNotifyInbox, resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
+import { hashtagRecordsFromLabels, normalizeNewsHashtagLabels } from '../../../newsHashtags.mjs';
 import { utcDateKeyFromInstant } from '../../../time/utc.mjs';
 import { json, readBody } from '../../shared.mjs';
 
 function cleanText(value) {
   return String(value || '').trim();
+}
+
+function cleanArray(value) {
+  return Array.isArray(value) ? value : [];
 }
 
 function hasIngestAccess(req) {
@@ -22,6 +29,88 @@ function hasIngestAccess(req) {
   const header = cleanText(req.headers['x-signal-automation-token']);
   const bearer = cleanText(String(req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
   return header === configured || bearer === configured;
+}
+
+function stableNewsItemId(item) {
+  const category = cleanText(item?.category).toLowerCase() || 'global';
+  const basis = [
+    cleanText(item?.sourceUrl).toLowerCase(),
+    cleanText(item?.sourceName).toLowerCase(),
+    cleanText(item?.titleOriginal || item?.title).toLowerCase(),
+    cleanText(item?.publishedAt).slice(0, 10),
+  ].join('|');
+  const hash = crypto.createHash('sha1').update(basis).digest('hex').slice(0, 16);
+  return `codex-news:${category}:${hash}`;
+}
+
+function normalizeNewsIngestTranslation(raw, newsItem, now) {
+  const input = raw?.translation && typeof raw.translation === 'object'
+    ? raw.translation
+    : raw?.translations?.ko && typeof raw.translations.ko === 'object'
+      ? { locale: 'ko', ...raw.translations.ko }
+      : null;
+  if (!input) return null;
+  const locale = cleanText(input.locale || 'ko').toLowerCase() || 'ko';
+  const title = cleanText(input.title);
+  const summary = cleanText(input.summary);
+  const content = cleanText(input.content);
+  if (!locale || (!title && !summary && !content)) return null;
+  return {
+    id: `${newsItem.id}:${locale}`,
+    newsItemId: newsItem.id,
+    locale,
+    provider: cleanText(input.provider) || 'codex',
+    model: cleanText(input.model) || cleanText(raw?.model) || 'codex-scheduled-news-ingest',
+    status: cleanText(input.status) || 'completed',
+    title,
+    summary,
+    content,
+    errorMessage: null,
+    translatedAt: cleanText(input.translatedAt) || now,
+    editedByAdminId: null,
+    editedAt: null,
+    updatedAt: now,
+  };
+}
+
+function normalizeNewsIngestItem(raw, index, now) {
+  const category = cleanText(raw?.category).toLowerCase() || 'global';
+  if (!['global', 'crypto', 'korea'].includes(category)) return null;
+  const titleOriginal = cleanText(raw?.titleOriginal || raw?.originalTitle || raw?.title);
+  const summaryOriginal = cleanText(raw?.summaryOriginal || raw?.originalSummary || raw?.summary);
+  const contentOriginal = cleanText(raw?.contentOriginal || raw?.originalContent || raw?.content || summaryOriginal);
+  const sourceName = cleanText(raw?.sourceName || raw?.source);
+  const sourceUrl = cleanText(raw?.sourceUrl || raw?.url);
+  if (!titleOriginal || !sourceName || !sourceUrl) return null;
+  const labels = normalizeNewsHashtagLabels([
+    ...cleanArray(raw?.hashtags).map((tag) => (typeof tag === 'string' ? tag : tag?.label)),
+    ...cleanArray(raw?.hashtagLabels),
+    ...cleanArray(raw?.symbols),
+    ...cleanArray(raw?.translation?.hashtags),
+    ...cleanArray(raw?.translations?.ko?.hashtags),
+  ]);
+  const item = {
+    id: cleanText(raw?.id) || stableNewsItemId({ ...raw, category, titleOriginal, sourceName, sourceUrl }),
+    category,
+    provider: cleanText(raw?.provider) || 'codex',
+    sourceName,
+    sourceUrl,
+    imageUrl: cleanText(raw?.imageUrl) || null,
+    titleOriginal,
+    summaryOriginal,
+    contentOriginal,
+    symbols: cleanArray(raw?.symbols).map((s) => cleanText(s).toUpperCase()).filter(Boolean).slice(0, 12),
+    hashtags: hashtagRecordsFromLabels(labels, 'auto'),
+    hashtagSource: 'auto',
+    hashtagsUpdatedAt: labels.length ? now : null,
+    publishedAt: cleanText(raw?.publishedAt) || now,
+    fetchedAt: cleanText(raw?.fetchedAt) || now,
+    createdAt: cleanText(raw?.createdAt) || now,
+    updatedAt: now,
+    codexIngest: true,
+    position: index,
+  };
+  return { item, translation: normalizeNewsIngestTranslation(raw, item, now) };
 }
 
 async function publishDigestNotification(item, queuePush) {
@@ -57,6 +146,40 @@ async function publishDigestNotification(item, queuePush) {
 }
 
 export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
+  if (req.method === 'POST' && pathname === '/v1/news/ingest') {
+    if (!hasIngestAccess(req)) {
+      json(res, 401, { error: 'AUTOMATION_INGEST_AUTH_REQUIRED' });
+      return true;
+    }
+    const body = await readBody(req);
+    const rawItems = Array.isArray(body?.items) ? body.items : [];
+    if (rawItems.length === 0) {
+      json(res, 400, { error: 'ITEMS_REQUIRED' });
+      return true;
+    }
+    const now = new Date().toISOString();
+    const normalized = rawItems
+      .slice(0, 50)
+      .map((item, index) => normalizeNewsIngestItem(item, index, now))
+      .filter(Boolean);
+    if (normalized.length === 0) {
+      json(res, 400, { error: 'VALID_ITEMS_REQUIRED' });
+      return true;
+    }
+    const items = normalized.map((row) => row.item);
+    const translations = normalized.map((row) => row.translation).filter(Boolean);
+    await upsertCollectionRows('newsItems', items);
+    if (translations.length > 0) await upsertCollectionRows('newsTranslations', translations);
+    json(res, 201, {
+      data: {
+        count: items.length,
+        translationCount: translations.length,
+        ids: items.map((item) => item.id),
+      },
+    });
+    return true;
+  }
+
   if (req.method === 'POST' && pathname === '/v1/news-digests/ingest') {
     if (!hasIngestAccess(req)) {
       json(res, 401, { error: 'AUTOMATION_INGEST_AUTH_REQUIRED' });

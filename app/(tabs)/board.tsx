@@ -3,7 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect, useIsFocused } from 'expo-router/react-navigation';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { CommunityPostCard, communitySourceLabelId, isCommunitySourceKey } from '@/components/community/CommunityPostCard';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
@@ -57,6 +57,7 @@ const SOURCE_LABEL: Record<CommunitySourceFilter, MessageId> = {
 
 export default function BoardScreen() {
   const { t } = useLocale();
+  const router = useRouter();
   const routeParams = useLocalSearchParams<{ source?: string | string[] }>();
   const { theme, scaleFont } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -161,22 +162,29 @@ export default function BoardScreen() {
   });
 
   const changeSource = useCallback(
-    (next: CommunitySourceFilter) => {
+    (next: CommunitySourceFilter, options?: { fromRoute?: boolean }) => {
       if (next === sourceRef.current) return;
+      sourceRef.current = next;
       setSource(next);
       setError(null);
+      setItems([]);
+      setMeta(null);
+      setLoading(true);
+      if (!options?.fromRoute) {
+        router.setParams({ source: next === COMMUNITY_SOURCE_ALL ? undefined : next });
+      }
       void load({ sourceFilter: next });
     },
-    [load],
+    [load, router],
   );
 
   useFocusEffect(
     useCallback(() => {
       const paramSource = parseCommunitySourceParam(routeParams.source);
-      if (paramSource && paramSource !== source) {
-        changeSource(paramSource);
+      if (paramSource) {
+        changeSource(paramSource, { fromRoute: true });
       }
-    }, [changeSource, routeParams.source, source]),
+    }, [changeSource, routeParams.source]),
   );
 
   useFocusEffect(
@@ -219,6 +227,7 @@ export default function BoardScreen() {
                   <Pressable
                     key={key}
                     onPress={() => changeSource(key)}
+                    hitSlop={Platform.OS === 'web' ? undefined : { top: 6, bottom: 6, left: 2, right: 2 }}
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
                     style={({ pressed }) => [styles.segBtn, active && styles.segBtnActive, pressed && styles.pressed]}>
@@ -297,9 +306,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     listColumn: {
       ...webFlexFill,
       minHeight: 0,
+      zIndex: 0,
       ...(isWeb ? { overflow: 'hidden' as const } : null),
     },
-    topFixed: fixedHeader.strip,
+    topFixed: {
+      ...fixedHeader.strip,
+      zIndex: 3,
+    },
     segment: segmentTab.segment,
     segBtn: segmentTab.segBtn,
     segBtnActive: segmentTab.segBtnActive,

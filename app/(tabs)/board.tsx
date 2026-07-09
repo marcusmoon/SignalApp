@@ -3,7 +3,9 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect, useIsFocused } from 'expo-router/react-navigation';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+
+import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 
 import { CommunityPostCard, communitySourceLabelId, isCommunitySourceKey } from '@/components/community/CommunityPostCard';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
@@ -57,7 +59,7 @@ const SOURCE_LABEL: Record<CommunitySourceFilter, MessageId> = {
 
 export default function BoardScreen() {
   const { t } = useLocale();
-  const router = useRouter();
+  const setRouteParams = useSafeSetRouteParams();
   const routeParams = useLocalSearchParams<{ source?: string | string[] }>();
   const { theme, scaleFont } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -171,11 +173,11 @@ export default function BoardScreen() {
       setMeta(null);
       setLoading(true);
       if (!options?.fromRoute) {
-        router.setParams({ source: next === COMMUNITY_SOURCE_ALL ? undefined : next });
+        setRouteParams({ source: next === COMMUNITY_SOURCE_ALL ? undefined : next });
       }
       void load({ sourceFilter: next });
     },
-    [load, router],
+    [load, setRouteParams],
   );
 
   useFocusEffect(

@@ -287,14 +287,23 @@ export default function SignalScreen() {
     }
   }, [selectedYmd, todayYmd]);
 
+  const syncDateRouteParam = useCallback(
+    (ymd: string) => {
+      setRouteParams({ date: ymd === todayYmdRef.current ? undefined : ymd });
+    },
+    [setRouteParams],
+  );
+
   const moveDate = useCallback(
     (days: number) => {
       setSelectedYmd((prev) => {
         const next = shiftYmd(prev, days);
-        return next > todayYmd ? todayYmd : next;
+        const clamped = next > todayYmd ? todayYmd : next;
+        syncDateRouteParam(clamped);
+        return clamped;
       });
     },
-    [todayYmd],
+    [syncDateRouteParam, todayYmd],
   );
 
   const openCalendar = useCallback(() => {
@@ -304,10 +313,12 @@ export default function SignalScreen() {
 
   const pickCalendarDate = useCallback(
     (ymd: string) => {
-      setSelectedYmd(ymd > todayYmd ? todayYmd : ymd);
+      const clamped = ymd > todayYmd ? todayYmd : ymd;
+      setSelectedYmd(clamped);
+      syncDateRouteParam(clamped);
       setCalendarVisible(false);
     },
-    [todayYmd],
+    [syncDateRouteParam, todayYmd],
   );
 
   const shiftCalendarMonth = useCallback((delta: number) => {
@@ -319,8 +330,9 @@ export default function SignalScreen() {
 
   const goToday = useCallback(() => {
     setSelectedYmd(todayYmd);
+    syncDateRouteParam(todayYmd);
     setCalendarMonth(monthFromYmd(todayYmd));
-  }, [todayYmd]);
+  }, [syncDateRouteParam, todayYmd]);
 
   const reloadChangeColorConvention = useCallback(async () => {
     setChangeColorConvention(await loadQuotesChangeColorConvention());
@@ -424,15 +436,6 @@ export default function SignalScreen() {
   }, [briefingByTabKey, setRouteParams]);
 
   useTabPressCycleSegment(activeTabKey, availableSessionTabKeys, onPickSessionTab);
-
-  useEffect(() => {
-    setRouteParams({ date: selectedYmd === todayYmd ? undefined : selectedYmd });
-  }, [selectedYmd, setRouteParams, todayYmd]);
-
-  useEffect(() => {
-    if (!activeTabKey) return;
-    setRouteParams({ session: activeTabKey });
-  }, [activeTabKey, setRouteParams]);
 
   useFocusEffect(
     useCallback(() => {

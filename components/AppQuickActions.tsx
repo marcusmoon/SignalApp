@@ -5,6 +5,7 @@ import { InteractionManager, Platform } from 'react-native';
 
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useNavigationDispatchReady } from '@/utils/safeRouteParams';
 import {
   quickActionHref,
   stashPendingQuickAction,
@@ -17,13 +18,14 @@ export function AppQuickActions() {
   const router = useRouter();
   const rootNavigationState = useRootNavigationState();
   const navReady = Boolean(rootNavigationState?.key);
+  const dispatchReady = useNavigationDispatchReady();
   const { locale } = useLocale();
   const { isAvailable: isIpadSidebar, showTabs } = useIpadSidebarNav();
   const handledInitialRef = useRef(false);
   const lastHandledRef = useRef<{ key: string; at: number } | null>(null);
 
   const flushPending = useCallback(() => {
-    if (!navReady) return;
+    if (!navReady || !dispatchReady) return;
     const action = takePendingQuickAction();
     if (!action) return;
 
@@ -41,7 +43,7 @@ export function AppQuickActions() {
       showTabs();
     }
     router.navigate(href);
-  }, [navReady, router, isIpadSidebar, showTabs]);
+  }, [dispatchReady, navReady, router, isIpadSidebar, showTabs]);
 
   const enqueue = useCallback(
     (action: QuickActions.Action, coldStart = false) => {
@@ -74,9 +76,9 @@ export function AppQuickActions() {
   }, [enqueue]);
 
   useEffect(() => {
-    if (!navReady) return;
+    if (!navReady || !dispatchReady) return;
     flushPending();
-  }, [navReady, flushPending]);
+  }, [dispatchReady, flushPending, navReady]);
 
   return null;
 }

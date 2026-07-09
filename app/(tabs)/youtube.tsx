@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
@@ -52,6 +52,7 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { YoutubeItem } from '@/types/signal';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { firstRouteParam } from '@/utils/routeSearchParams';
+import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
 import { useWebFlatListLoadMore } from '@/hooks/useWebFlatListLoadMore';
 import {
@@ -77,6 +78,7 @@ export default function YoutubeScreen() {
   const { t, locale } = useLocale();
   const { theme, scaleFont } = useSignalTheme();
   const router = useRouter();
+  const setRouteParams = useSafeSetRouteParams();
   const { sort: sortParam } = useLocalSearchParams<{ sort?: string | string[] }>();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const tabBarHeight = useBottomTabBarHeight();
@@ -348,15 +350,15 @@ export default function YoutubeScreen() {
     if (sort === 'popular') return;
     setSort('popular');
     if (useTwoPane && ipadNav.isAvailable) ipadNav.showYoutubeTab('popular');
-    router.setParams({ sort: 'popular' });
-  }, [ipadNav, router, sort, useTwoPane]);
+    setRouteParams({ sort: 'popular' });
+  }, [ipadNav, setRouteParams, sort, useTwoPane]);
 
   const applyLatestSortFilter = useCallback(() => {
     if (sort === 'latest') return;
     setSort('latest');
     if (useTwoPane && ipadNav.isAvailable) ipadNav.showYoutubeTab('latest');
-    router.setParams({ sort: undefined });
-  }, [ipadNav, router, sort, useTwoPane]);
+    setRouteParams({ sort: undefined });
+  }, [ipadNav, setRouteParams, sort, useTwoPane]);
 
   const commitChannelFilter = useCallback(async () => {
     setChannelModalVisible(false);

@@ -53,6 +53,7 @@ import {
   type DisclosureTypeFilterKey,
 } from '@/domain/disclosures';
 import { firstRouteParam } from '@/utils/routeSearchParams';
+import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 
 type FilterKey = 'us' | 'kr';
 
@@ -110,6 +111,7 @@ export default function DisclosuresScreen() {
     [symbolParam],
   );
   const router = useRouter();
+  const setRouteParams = useSafeSetRouteParams();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
@@ -288,8 +290,8 @@ export default function DisclosuresScreen() {
   const onPickTypeFilter = useCallback((key: DisclosureTypeFilterKey) => {
     if (typeFilter === key) return;
     setTypeFilter(key);
-    router.setParams({ type: key === 'all' ? undefined : key });
-  }, [router, typeFilter]);
+    setRouteParams({ type: key === 'all' ? undefined : key });
+  }, [router, setRouteParams, typeFilter]);
 
   const typeScope = useMemo(
     () => resolveDisclosureTypeScope({ marketFilter: filter, symbolFilter }),
@@ -349,12 +351,12 @@ export default function DisclosuresScreen() {
       setError(null);
       setTypeFilter('all');
       setFilter(key);
-      router.setParams({
+      setRouteParams({
         market: key === 'us' ? undefined : key,
         type: undefined,
       });
     },
-    [filter, router],
+    [filter, setRouteParams],
   );
 
   useTabPressCycleSegment(symbolFilter ? null : filter, FILTER_ORDER, onPickFilter);
@@ -375,8 +377,8 @@ export default function DisclosuresScreen() {
   );
 
   const clearSymbolFilter = useCallback(() => {
-    router.setParams({ symbol: undefined });
-  }, [router]);
+    setRouteParams({ symbol: undefined });
+  }, [setRouteParams]);
 
   const emptyText =
     typeFilter !== 'all' ? t('disclosuresEmptyType') : t('disclosuresEmpty');

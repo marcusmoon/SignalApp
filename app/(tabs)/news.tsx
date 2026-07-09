@@ -85,6 +85,7 @@ import {
 } from '@/services/newsSegmentOrderPreference';
 import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreference';
 import { firstRouteParam } from '@/utils/routeSearchParams';
+import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
 import { markNewsFeedSeen } from '@/services/newsUnreadPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
@@ -154,6 +155,7 @@ function digestFromServer(item: SignalApiNewsDigestItem, rows: SignalApiNewsItem
 
 export default function FeedScreen() {
   const router = useRouter();
+  const setRouteParams = useSafeSetRouteParams();
   const routeParams = useLocalSearchParams<{ segment?: string }>();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
@@ -1214,8 +1216,8 @@ export default function FeedScreen() {
     if (key === 'video') setActiveTag(null);
     setSegment(key);
     void saveNewsSegment(key);
-    router.setParams({ segment: key === DEFAULT_NEWS_SEGMENT ? undefined : key });
-  }, [router, segment]);
+    setRouteParams({ segment: key === DEFAULT_NEWS_SEGMENT ? undefined : key });
+  }, [segment, setRouteParams]);
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
 

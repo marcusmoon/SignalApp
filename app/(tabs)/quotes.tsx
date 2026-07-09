@@ -64,6 +64,7 @@ import {
 } from '@/services/quotesSegmentOrderPreference';
 import { QUOTES_SEGMENT_KEYS } from '@/domain/quotes/constants';
 import { firstRouteParam } from '@/utils/routeSearchParams';
+import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import {
   isValidQuoteSymbol,
   loadWatchlistSymbols,
@@ -99,6 +100,7 @@ export default function QuotesScreen() {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
+  const setRouteParams = useSafeSetRouteParams();
   const { segment: segmentParam } = useLocalSearchParams<{ segment?: string | string[] }>();
   const quoteChange = useQuoteChangeColors();
   const styles = useMemo(
@@ -403,8 +405,8 @@ export default function QuotesScreen() {
     if (segment === key) return;
     setError(null);
     setSegment(key);
-    router.setParams({ segment: key === 'watch' ? undefined : key });
-  }, [router, segment]);
+    setRouteParams({ segment: key === 'watch' ? undefined : key });
+  }, [segment, setRouteParams]);
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
 

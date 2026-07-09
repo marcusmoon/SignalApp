@@ -73,6 +73,11 @@ import {
   subscribeNewsHashtagDisplayMaxChanged,
 } from '@/services/newsHashtagDisplayPreference';
 import {
+  loadNewsTitleDisplayMode,
+  saveNewsTitleDisplayMode,
+  type NewsTitleDisplayMode,
+} from '@/services/newsTitleDisplayPreference';
+import {
   loadNewsSegmentOrder,
   subscribeNewsSegmentOrderChanged,
 } from '@/services/newsSegmentOrderPreference';
@@ -177,6 +182,7 @@ export default function FeedScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [maxHashtagDisplay, setMaxHashtagDisplay] = useState(DEFAULT_NEWS_HASHTAG_DISPLAY_MAX);
+  const [newsTitleDisplayMode, setNewsTitleDisplayMode] = useState<NewsTitleDisplayMode>('localized');
   const [availableSources, setAvailableSources] = useState<string[]>([]);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
@@ -382,6 +388,18 @@ export default function FeedScreen() {
     void loadNewsHashtagDisplayMax().then(setMaxHashtagDisplay);
     return subscribeNewsHashtagDisplayMaxChanged(() => {
       void loadNewsHashtagDisplayMax().then(setMaxHashtagDisplay);
+    });
+  }, []);
+
+  useEffect(() => {
+    void loadNewsTitleDisplayMode().then(setNewsTitleDisplayMode);
+  }, []);
+
+  const toggleNewsTitleDisplayMode = useCallback(() => {
+    setNewsTitleDisplayMode((prev) => {
+      const next: NewsTitleDisplayMode = prev === 'localized' ? 'alternate' : 'localized';
+      void saveNewsTitleDisplayMode(next);
+      return next;
     });
   }, []);
 
@@ -1251,6 +1269,14 @@ export default function FeedScreen() {
 
   const newsQuickFilter =
     segment === 'crypto' ? cryptoFilter : segment === 'korea' ? koreaFilter : globalFilter;
+  const newsTitleShowAlternate = newsTitleDisplayMode === 'alternate';
+  const newsTitleAlternateIsTranslation = locale === 'en';
+  const showNewsTitleListToggle = segment === 'global' || segment === 'crypto';
+  const newsTitleListToggleA11y = newsTitleShowAlternate
+    ? t('newsTitleListShowLocalized')
+    : newsTitleAlternateIsTranslation
+      ? t('newsTitleListShowTranslation')
+      : t('newsTitleListShowOriginal');
   const digestBatches = useMemo(() => {
     if (segment === 'video' || segment === 'watch') return [];
     if (serverDigestRows.length > 0) {
@@ -1362,22 +1388,43 @@ export default function FeedScreen() {
         ) : null}
 
         {segment === 'global' || segment === 'crypto' || segment === 'korea' ? (
-          <View style={styles.watchFilterRow}>
-            {NEWS_QUICK_FILTERS.map((filter) => {
-              const active = newsQuickFilter === filter.key;
-              return (
-                <Pressable
-                  key={filter.key}
-                  onPress={() => applyNewsQuickFilter(filter.key)}
-                  style={[styles.watchFilterChip, active && styles.watchFilterChipActive]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}>
-                  <Text style={[styles.watchFilterText, active && styles.watchFilterTextActive]}>
-                    {t(filter.labelId)}
-                  </Text>
-                </Pressable>
-              );
-            })}
+          <View style={styles.quickFilterBar}>
+            <View style={[styles.watchFilterRow, styles.watchFilterRowInBar]}>
+              {NEWS_QUICK_FILTERS.map((filter) => {
+                const active = newsQuickFilter === filter.key;
+                return (
+                  <Pressable
+                    key={filter.key}
+                    onPress={() => applyNewsQuickFilter(filter.key)}
+                    style={[styles.watchFilterChip, active && styles.watchFilterChipActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}>
+                    <Text style={[styles.watchFilterText, active && styles.watchFilterTextActive]}>
+                      {t(filter.labelId)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {showNewsTitleListToggle ? (
+              <Pressable
+                onPress={toggleNewsTitleDisplayMode}
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.newsTitleListToggle,
+                  newsTitleShowAlternate && styles.newsTitleListToggleActive,
+                  pressed && styles.newsTitleListTogglePressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: newsTitleShowAlternate }}
+                accessibilityLabel={newsTitleListToggleA11y}>
+                <FontAwesome
+                  name={newsTitleAlternateIsTranslation ? 'language' : 'globe'}
+                  size={14}
+                  color={newsTitleShowAlternate ? theme.green : theme.textMuted}
+                />
+              </Pressable>
+            ) : null}
           </View>
         ) : null}
 
@@ -1397,12 +1444,18 @@ export default function FeedScreen() {
       loading,
       applyNewsQuickFilter,
       newsQuickFilter,
+      newsTitleAlternateIsTranslation,
+      newsTitleListToggleA11y,
+      newsTitleShowAlternate,
       onPickWatchFilter,
       segment,
+      showNewsTitleListToggle,
       styles,
       t,
+      toggleNewsTitleDisplayMode,
       watchFilter,
       theme.textDim,
+      theme.textMuted,
       theme.green,
       theme.greenBorder,
       router,
@@ -1454,7 +1507,7 @@ export default function FeedScreen() {
           scrollResetKey={feedScrollResetKey}
           ref={feedListRef as never}
           data={loading && listData.length === 0 ? [] : listData}
-          extraData={listData.length}
+          extraData={`${listData.length}:${newsTitleShowAlternate ? 'alt' : 'loc'}`}
           keyExtractor={(row) =>
             row.kind === 'ad' ? row.key : row.kind === 'video' ? row.video.id : row.news.id
           }
@@ -1482,6 +1535,9 @@ export default function FeedScreen() {
                   item={item.news}
                   compactMeta
                   titleToggle={segment === 'global' || segment === 'crypto'}
+                  titleShowAlternate={
+                    segment === 'global' || segment === 'crypto' ? newsTitleShowAlternate : undefined
+                  }
                   maxHashtagsToShow={segment === 'watch' ? 0 : maxHashtagDisplay}
                   onTagPress={(label) => {
                     const next = label.trim();

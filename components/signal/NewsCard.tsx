@@ -21,6 +21,8 @@ type Props = {
   compactMeta?: boolean;
   /** 글로벌·크립토 등에서 메타 행 제목 토글 아이콘 노출 */
   titleToggle?: boolean;
+  /** 목록 전체 제목 표시 모드(지정 시 카드별 토글 숨김) */
+  titleShowAlternate?: boolean;
   /** 미지정 시 URL이 있으면 원문 브라우저 오픈 (추후 상세 화면으로 교체 예정) */
   onPress?: () => void;
 };
@@ -32,12 +34,14 @@ export function NewsCard({
   layout = 'card',
   compactMeta = false,
   titleToggle = false,
+  titleShowAlternate,
   onPress,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const router = useRouter();
-  const [showAlternate, setShowAlternate] = useState(false);
+  const listTitleMode = titleShowAlternate !== undefined;
+  const [localShowAlternate, setLocalShowAlternate] = useState(false);
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
 
   const sourceName = item.source?.trim() || '—';
@@ -50,13 +54,16 @@ export function NewsCard({
 
   const alternateTitle = item.alternateTitle?.trim() ?? '';
   const hasTitleToggle = titleToggle && alternateTitle.length > 0;
+  const showAlternate = listTitleMode ? Boolean(titleShowAlternate) : localShowAlternate;
   const showingAlternate = hasTitleToggle && showAlternate;
   const displayTitle = showingAlternate ? alternateTitle : item.titleKo;
   const alternateIsTranslation = locale === 'en';
+  const showPerItemToggle = hasTitleToggle && !listTitleMode;
 
   useEffect(() => {
-    setShowAlternate(false);
-  }, [item.id]);
+    if (listTitleMode) return;
+    setLocalShowAlternate(false);
+  }, [item.id, listTitleMode]);
 
   const tags =
     maxHashtagsToShow > 0
@@ -104,9 +111,9 @@ export function NewsCard({
     </View>
   ) : null;
 
-  const titleToggleBtn = hasTitleToggle ? (
+  const titleToggleBtn = showPerItemToggle ? (
     <Pressable
-      onPress={() => setShowAlternate((value) => !value)}
+      onPress={() => setLocalShowAlternate((value) => !value)}
       hitSlop={8}
       style={({ pressed }) => [
         styles.titleToggleBtn,

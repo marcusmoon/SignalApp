@@ -263,11 +263,40 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '900',
       color: theme.green,
     },
+    quickFilterBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 10,
+    },
     watchFilterRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 8,
       marginBottom: 10,
+    },
+    watchFilterRowInBar: {
+      flex: 1,
+      minWidth: 0,
+      marginBottom: 0,
+    },
+    newsTitleListToggle: {
+      flexShrink: 0,
+      width: 32,
+      height: 32,
+      borderRadius: 999,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.bgElevated,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    newsTitleListToggleActive: {
+      backgroundColor: theme.greenDim,
+      borderColor: theme.greenBorder,
+    },
+    newsTitleListTogglePressed: {
+      opacity: 0.82,
     },
     watchFilterChip: {
       minHeight: 32,

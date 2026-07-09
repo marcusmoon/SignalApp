@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
@@ -50,6 +51,7 @@ import type { SignalApiYoutubeChannel, SignalYoutubeListMeta } from '@/integrati
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { YoutubeItem } from '@/types/signal';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
+import { firstRouteParam } from '@/utils/routeSearchParams';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
 import { useWebFlatListLoadMore } from '@/hooks/useWebFlatListLoadMore';
 import {
@@ -62,6 +64,10 @@ type SortKey = 'popular' | 'latest';
 
 const YOUTUBE_PAGE_SIZE = 30;
 
+function parseYoutubeSortParam(raw: string | string[] | undefined): SortKey {
+  return firstRouteParam(raw) === 'popular' ? 'popular' : 'latest';
+}
+
 /** 채널 배열이 동일하면 상태 갱신·load 재실행을 막기 위한 키 (탭 복귀 시 매번 새 배열 참조 방지) */
 function normalizeHandlesKey(handles: string[]): string {
   return [...handles].map((h) => h.trim().toLowerCase()).sort().join('\0');
@@ -70,13 +76,15 @@ function normalizeHandlesKey(handles: string[]): string {
 export default function YoutubeScreen() {
   const { t, locale } = useLocale();
   const { theme, scaleFont } = useSignalTheme();
+  const router = useRouter();
+  const { sort: sortParam } = useLocalSearchParams<{ sort?: string | string[] }>();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
-  const [sort, setSort] = useState<SortKey>('latest');
+  const [sort, setSort] = useState<SortKey>(() => parseYoutubeSortParam(sortParam));
   const effectiveSort = useTwoPane && ipadNav.isAvailable ? ipadNav.youtubeSort : sort;
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -339,12 +347,16 @@ export default function YoutubeScreen() {
   const applyPopularFilter = useCallback(() => {
     if (sort === 'popular') return;
     setSort('popular');
-  }, [sort]);
+    if (useTwoPane && ipadNav.isAvailable) ipadNav.showYoutubeTab('popular');
+    router.setParams({ sort: 'popular' });
+  }, [ipadNav, router, sort, useTwoPane]);
 
   const applyLatestSortFilter = useCallback(() => {
     if (sort === 'latest') return;
     setSort('latest');
-  }, [sort]);
+    if (useTwoPane && ipadNav.isAvailable) ipadNav.showYoutubeTab('latest');
+    router.setParams({ sort: undefined });
+  }, [ipadNav, router, sort, useTwoPane]);
 
   const commitChannelFilter = useCallback(async () => {
     setChannelModalVisible(false);

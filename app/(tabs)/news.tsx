@@ -77,6 +77,7 @@ import {
   subscribeNewsSegmentOrderChanged,
 } from '@/services/newsSegmentOrderPreference';
 import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreference';
+import { firstRouteParam } from '@/utils/routeSearchParams';
 import { loadSelectedSources, saveSelectedSources } from '@/services/newsSourceSelection';
 import { markNewsFeedSeen } from '@/services/newsUnreadPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
@@ -157,7 +158,10 @@ export default function FeedScreen() {
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
-  const [segment, setSegment] = useState<NewsSegmentKey>(DEFAULT_NEWS_SEGMENT);
+  const [segment, setSegment] = useState<NewsSegmentKey>(() => {
+    const fromUrl = parseNewsSegmentKey(firstRouteParam(routeParams.segment));
+    return fromUrl ?? DEFAULT_NEWS_SEGMENT;
+  });
   const [segmentOrder, setSegmentOrder] = useState<NewsSegmentKey[]>([...NEWS_SEGMENT_ORDER]);
   const [loading, setLoading] = useState(false);
   const [listLoading, setListLoading] = useState(false);
@@ -355,9 +359,14 @@ export default function FeedScreen() {
   const segmentHydratedRef = useRef(false);
 
   useEffect(() => {
+    const fromUrl = parseNewsSegmentKey(firstRouteParam(routeParams.segment));
+    if (fromUrl) {
+      segmentHydratedRef.current = true;
+      return;
+    }
     if (useTwoPane) return;
     void loadNewsSegment().then((s) => setSegment(s));
-  }, [useTwoPane]);
+  }, [routeParams.segment, useTwoPane]);
 
   useEffect(() => {
     void loadNewsSegmentOrder().then((o) => setSegmentOrder(o));
@@ -1185,7 +1194,8 @@ export default function FeedScreen() {
     if (key === 'video') setActiveTag(null);
     setSegment(key);
     void saveNewsSegment(key);
-  }, [segment]);
+    router.setParams({ segment: key === DEFAULT_NEWS_SEGMENT ? undefined : key });
+  }, [router, segment]);
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
 

@@ -184,8 +184,12 @@ export function SignalSidebarTabBar({
                 return;
               }
               if (sub.kind === 'youtube' && ipadNav.isAvailable) {
-                ipadNav.showYoutubeTab(sub.key as YoutubeSortKey);
-                router.navigate(sub.route as Parameters<typeof router.navigate>[0]);
+                const sortKey = sub.key as YoutubeSortKey;
+                ipadNav.showYoutubeTab(sortKey);
+                router.navigate({
+                  pathname: sub.route,
+                  params: { sort: sortKey === 'latest' ? undefined : sortKey },
+                } as Parameters<typeof router.navigate>[0]);
                 return;
               }
               ipadNav.showTabs();

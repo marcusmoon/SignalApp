@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useIsFocused, useFocusEffect } from "expo-router/react-navigation";
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Alert,
   InteractionManager,
@@ -62,6 +62,8 @@ import {
   loadQuotesSegmentOrder,
   type QuoteSegmentKey,
 } from '@/services/quotesSegmentOrderPreference';
+import { QUOTES_SEGMENT_KEYS } from '@/domain/quotes/constants';
+import { firstRouteParam } from '@/utils/routeSearchParams';
 import {
   isValidQuoteSymbol,
   loadWatchlistSymbols,
@@ -86,10 +88,18 @@ const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
 
 type Row = QuoteRow;
 
+function parseQuoteSegmentParam(raw: string | string[] | undefined): QuoteSegmentKey {
+  const value = firstRouteParam(raw);
+  return (QUOTES_SEGMENT_KEYS as readonly string[]).includes(value)
+    ? (value as QuoteSegmentKey)
+    : 'watch';
+}
+
 export default function QuotesScreen() {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
+  const { segment: segmentParam } = useLocalSearchParams<{ segment?: string | string[] }>();
   const quoteChange = useQuoteChangeColors();
   const styles = useMemo(
     () => makeQuotesStyles(theme, scaleFont, feedTypo, quoteChange.colors),
@@ -101,7 +111,7 @@ export default function QuotesScreen() {
   const { useTwoPane } = useResponsiveLayout();
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
-  const [segment, setSegment] = useState<QuoteSegmentKey>('watch');
+  const [segment, setSegment] = useState<QuoteSegmentKey>(() => parseQuoteSegmentParam(segmentParam));
   const [segmentOrder, setSegmentOrder] = useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -393,7 +403,8 @@ export default function QuotesScreen() {
     if (segment === key) return;
     setError(null);
     setSegment(key);
-  }, [segment]);
+    router.setParams({ segment: key === 'watch' ? undefined : key });
+  }, [router, segment]);
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
 

@@ -56,6 +56,7 @@ import {
 import { markSignalFeedSeen } from '@/services/signalUnreadPreference';
 import { useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
 import { addDays, toYmd, utcRangeForLocalYmd } from '@/utils/date';
+import { firstRouteParam } from '@/utils/routeSearchParams';
 
 type FlatTabKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-close';
 
@@ -70,11 +71,6 @@ const FLAT_TAB_KEYS = new Set<FlatTabKey>(FLAT_TABS.map((tab) => tab.key));
 
 function isFlatTabKey(value: string): value is FlatTabKey {
   return FLAT_TAB_KEYS.has(value as FlatTabKey);
-}
-
-function firstParam(value: string | string[] | undefined): string | undefined {
-  if (Array.isArray(value)) return value[0];
-  return value;
 }
 
 function parseYmd(value: string): Date {
@@ -124,12 +120,25 @@ export default function SignalScreen() {
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
-  const [todayYmd, setTodayYmd] = useState(() => toYmd(new Date()));
+  const initialTodayYmd = toYmd(new Date());
+  const routeSessionInit = firstRouteParam(routeParams.session);
+  const routeDateInit = firstRouteParam(routeParams.date);
+
+  const [todayYmd, setTodayYmd] = useState(initialTodayYmd);
   const todayYmdRef = useRef(todayYmd);
-  const [selectedYmd, setSelectedYmd] = useState(todayYmd);
+  const [selectedYmd, setSelectedYmd] = useState(() => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(routeDateInit)) {
+      return routeDateInit > initialTodayYmd ? initialTodayYmd : routeDateInit;
+    }
+    return initialTodayYmd;
+  });
   const [calendarVisible, setCalendarVisible] = useState(false);
-  const [calendarMonth, setCalendarMonth] = useState(() => monthFromYmd(todayYmd));
-  const [selectedTabKey, setSelectedTabKey] = useState<FlatTabKey | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => monthFromYmd(
+    /^\d{4}-\d{2}-\d{2}$/.test(routeDateInit) ? (routeDateInit > initialTodayYmd ? initialTodayYmd : routeDateInit) : initialTodayYmd,
+  ));
+  const [selectedTabKey, setSelectedTabKey] = useState<FlatTabKey | null>(() =>
+    isFlatTabKey(routeSessionInit) ? routeSessionInit : null,
+  );
   const [marketBriefings, setMarketBriefings] = useState<SignalApiMarketBriefing[]>([]);
   const marketBriefingsRef = useRef(marketBriefings);
   marketBriefingsRef.current = marketBriefings;
@@ -410,9 +419,19 @@ export default function SignalScreen() {
   const onPickSessionTab = useCallback((key: FlatTabKey) => {
     if (!briefingByTabKey.has(key)) return;
     setSelectedTabKey(key);
-  }, [briefingByTabKey]);
+    router.setParams({ session: key });
+  }, [briefingByTabKey, router]);
 
   useTabPressCycleSegment(activeTabKey, availableSessionTabKeys, onPickSessionTab);
+
+  useEffect(() => {
+    router.setParams({ date: selectedYmd === todayYmd ? undefined : selectedYmd });
+  }, [router, selectedYmd, todayYmd]);
+
+  useEffect(() => {
+    if (!activeTabKey) return;
+    router.setParams({ session: activeTabKey });
+  }, [activeTabKey, router]);
 
   useFocusEffect(
     useCallback(() => {
@@ -420,24 +439,20 @@ export default function SignalScreen() {
         useTwoPane && ipadNav.isAvailable ? ipadNav.takePendingSignalSession() : null;
       const pendingDate =
         useTwoPane && ipadNav.isAvailable ? ipadNav.takePendingSignalDate() : null;
-      const sessionParam = pendingSession ?? firstParam(routeParams.session);
-      const dateParam = pendingDate ?? firstParam(routeParams.date);
 
-      if (sessionParam && isFlatTabKey(sessionParam)) {
-        setSelectedTabKey(sessionParam);
+      if (pendingSession && isFlatTabKey(pendingSession)) {
+        setSelectedTabKey(pendingSession);
+        router.setParams({ session: pendingSession });
       }
-      if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
-        const clamped = dateParam > todayYmdRef.current ? todayYmdRef.current : dateParam;
+      if (pendingDate && /^\d{4}-\d{2}-\d{2}$/.test(pendingDate)) {
+        const clamped = pendingDate > todayYmdRef.current ? todayYmdRef.current : pendingDate;
         setSelectedYmd(clamped);
         setCalendarMonth(monthFromYmd(clamped));
+        router.setParams({ date: clamped === todayYmdRef.current ? undefined : clamped });
       } else if (pendingSession) {
         setSelectedYmd(todayYmdRef.current);
       }
-
-      if (sessionParam || dateParam) {
-        router.setParams({ session: undefined, date: undefined } as never);
-      }
-    }, [ipadNav, routeParams.date, routeParams.session, router, useTwoPane]),
+    }, [ipadNav, router, useTwoPane]),
   );
 
   useFocusEffect(

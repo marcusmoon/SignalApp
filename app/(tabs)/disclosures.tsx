@@ -52,6 +52,7 @@ import {
   typeCategoryApiParam,
   type DisclosureTypeFilterKey,
 } from '@/domain/disclosures';
+import { firstRouteParam } from '@/utils/routeSearchParams';
 
 type FilterKey = 'us' | 'kr';
 
@@ -67,6 +68,15 @@ const FILTERS: { key: FilterKey; label: MessageId }[] = [
   { key: 'us', label: 'disclosuresFilterUs' },
   { key: 'kr', label: 'disclosuresFilterKr' },
 ];
+
+function parseDisclosureMarketParam(raw: string | string[] | undefined): FilterKey {
+  return firstRouteParam(raw) === 'kr' ? 'kr' : 'us';
+}
+
+function parseDisclosureTypeParam(raw: string | string[] | undefined): DisclosureTypeFilterKey {
+  const value = firstRouteParam(raw);
+  return value || 'all';
+}
 
 function disclosureTime(item: SignalApiDisclosure, locale: string): string {
   return item.filedAt ? formatRelativeFromIso(item.filedAt, locale as AppLocale) : '—';
@@ -90,7 +100,11 @@ function providerLabel(item: SignalApiDisclosure): string {
 }
 
 export default function DisclosuresScreen() {
-  const { symbol: symbolParam } = useLocalSearchParams<{ symbol?: string | string[] }>();
+  const { symbol: symbolParam, market: marketParam, type: typeParam } = useLocalSearchParams<{
+    symbol?: string | string[];
+    market?: string | string[];
+    type?: string | string[];
+  }>();
   const symbolFilter = useMemo(
     () => String(Array.isArray(symbolParam) ? symbolParam[0] : symbolParam || '').trim().toUpperCase(),
     [symbolParam],
@@ -104,8 +118,8 @@ export default function DisclosuresScreen() {
   const { useTwoPane } = useResponsiveLayout();
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
-  const [filter, setFilter] = useState<FilterKey>('us');
-  const [typeFilter, setTypeFilter] = useState<DisclosureTypeFilterKey>('all');
+  const [filter, setFilter] = useState<FilterKey>(() => parseDisclosureMarketParam(marketParam));
+  const [typeFilter, setTypeFilter] = useState<DisclosureTypeFilterKey>(() => parseDisclosureTypeParam(typeParam));
   const [items, setItems] = useState<SignalApiDisclosure[]>([]);
   const [digestItems, setDigestItems] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [digestLoading, setDigestLoading] = useState(false);
@@ -274,7 +288,8 @@ export default function DisclosuresScreen() {
   const onPickTypeFilter = useCallback((key: DisclosureTypeFilterKey) => {
     if (typeFilter === key) return;
     setTypeFilter(key);
-  }, [typeFilter]);
+    router.setParams({ type: key === 'all' ? undefined : key });
+  }, [router, typeFilter]);
 
   const typeScope = useMemo(
     () => resolveDisclosureTypeScope({ marketFilter: filter, symbolFilter }),
@@ -334,8 +349,12 @@ export default function DisclosuresScreen() {
       setError(null);
       setTypeFilter('all');
       setFilter(key);
+      router.setParams({
+        market: key === 'us' ? undefined : key,
+        type: undefined,
+      });
     },
-    [filter],
+    [filter, router],
   );
 
   useTabPressCycleSegment(symbolFilter ? null : filter, FILTER_ORDER, onPickFilter);

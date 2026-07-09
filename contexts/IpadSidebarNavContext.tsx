@@ -71,7 +71,7 @@ const IpadSidebarNavContext = createContext<IpadSidebarNavContextValue>({
 
 export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const params = useLocalSearchParams<{ tab?: string | string[] }>();
+  const params = useLocalSearchParams<{ tab?: string | string[]; sort?: string | string[] }>();
   const restoredFromUrlRef = useRef(false);
   const [contentPane, setContentPane] = useState<IpadContentPane>(() =>
     resolveIpadContentPaneFromPathname(pathname),
@@ -80,7 +80,10 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     const tab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
     return isSettingsTab(tab) ? tab : 'display';
   });
-  const [youtubeSort, setYoutubeSort] = useState<YoutubeSortKey>('latest');
+  const [youtubeSort, setYoutubeSort] = useState<YoutubeSortKey>(() => {
+    const sort = Array.isArray(params.sort) ? params.sort[0] : params.sort;
+    return sort === 'popular' ? 'popular' : 'latest';
+  });
   const [newsIssuesParams, setNewsIssuesParams] = useState<IpadNewsIssuesPaneParams | null>(null);
   const [disclosureFlowParams, setDisclosureFlowParams] = useState<IpadDisclosureFlowPaneParams | null>(null);
   const pendingNewsSegmentRef = useRef<NewsSegmentKey | null>(null);
@@ -95,7 +98,11 @@ export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
     setContentPane(resolveIpadContentPaneFromPathname(pathname));
     const tab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
     if (isSettingsTab(tab)) setSettingsTab(tab);
-  }, [pathname, params.tab]);
+    if (pathname.includes('/youtube')) {
+      const sort = Array.isArray(params.sort) ? params.sort[0] : params.sort;
+      if (sort === 'popular') setYoutubeSort('popular');
+    }
+  }, [pathname, params.sort, params.tab]);
 
   const showHome = useCallback(() => {
     setContentPane('home');

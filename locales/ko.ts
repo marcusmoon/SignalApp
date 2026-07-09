@@ -382,12 +382,12 @@ export const ko = {
   a11yNewsFilter: '뉴스 제공사 필터 열기',
   a11yCallsFilter: '어닝 관심종목 필터 열기',
 
-  otaUpdateAvailable: '새 화면이 준비되었습니다. 적용하면 최신 JS 번들로 다시 시작합니다.',
+  otaUpdateAvailable: '원활한 서비스 이용을 위해 업데이트해 주세요.',
   otaUpdateApply: '업데이트',
   otaUpdateDismiss: '나중에',
   otaUpdateErrorTitle: '업데이트',
   otaUpdateErrorBody: '다운로드에 실패했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.',
-  otaUpdatePreviewMessage: '[미리보기] 새 화면이 준비되었습니다. (실제 OTA 아님)',
+  otaUpdatePreviewMessage: '[미리보기] 업데이트를 적용해 보세요.',
   otaUpdatePreviewTitle: '미리보기',
   otaUpdatePreviewBody: '실제 OTA가 아닙니다. 배너 모양만 확인한 것입니다.',
 

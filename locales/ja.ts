@@ -384,12 +384,12 @@ export const ja = {
   a11yNewsFilter: 'ニュース提供元フィルタを開く',
   a11yCallsFilter: 'カンファレンス・コールのウォッチリストフィルタを開く',
 
-  otaUpdateAvailable: '新しい画面の準備ができました。適用すると最新のJSに切り替わります。',
+  otaUpdateAvailable: '快適にご利用いただくため、更新してください。',
   otaUpdateApply: '更新',
   otaUpdateDismiss: 'あとで',
   otaUpdateErrorTitle: '更新',
   otaUpdateErrorBody: 'ダウンロードに失敗しました。通信状況を確認して再度お試しください。',
-  otaUpdatePreviewMessage: '[プレビュー] 新しい画面の準備ができました（実OTAではありません）',
+  otaUpdatePreviewMessage: '[プレビュー] 更新をお試しください。',
   otaUpdatePreviewTitle: 'プレビュー',
   otaUpdatePreviewBody: '実際のOTAではありません。バナー表示の確認用です。',
 

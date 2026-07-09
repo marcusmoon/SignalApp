@@ -14,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import {
+  fabStackBottom,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import {
@@ -35,6 +36,7 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { DigestPager } from '@/components/news/DigestPager';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
+import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { makeNewsStyles } from '@/components/news/newsStyles';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SkeletonFeed } from '@/components/signal/SkeletonFeed';
@@ -1325,6 +1327,8 @@ export default function FeedScreen() {
       : null;
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const fabBottom = fabStackBottom(tabBarHeight, insets.bottom);
+  const useNewsTitleFab = showNewsTitleListToggle && Platform.OS !== 'web' && !useTwoPane;
   const showDigest = segment !== 'video' && segment !== 'watch';
   const newContentAvailable =
     newContentSegments.has(segment) && !(segment === 'watch' && watchSymbolOptions.length === 0);
@@ -1388,43 +1392,22 @@ export default function FeedScreen() {
         ) : null}
 
         {segment === 'global' || segment === 'crypto' || segment === 'korea' ? (
-          <View style={styles.quickFilterBar}>
-            <View style={[styles.watchFilterRow, styles.watchFilterRowInBar]}>
-              {NEWS_QUICK_FILTERS.map((filter) => {
-                const active = newsQuickFilter === filter.key;
-                return (
-                  <Pressable
-                    key={filter.key}
-                    onPress={() => applyNewsQuickFilter(filter.key)}
-                    style={[styles.watchFilterChip, active && styles.watchFilterChipActive]}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active }}>
-                    <Text style={[styles.watchFilterText, active && styles.watchFilterTextActive]}>
-                      {t(filter.labelId)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            {showNewsTitleListToggle ? (
-              <Pressable
-                onPress={toggleNewsTitleDisplayMode}
-                hitSlop={8}
-                style={({ pressed }) => [
-                  styles.newsTitleListToggle,
-                  newsTitleShowAlternate && styles.newsTitleListToggleActive,
-                  pressed && styles.newsTitleListTogglePressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: newsTitleShowAlternate }}
-                accessibilityLabel={newsTitleListToggleA11y}>
-                <FontAwesome
-                  name={newsTitleAlternateIsTranslation ? 'language' : 'globe'}
-                  size={14}
-                  color={newsTitleShowAlternate ? theme.green : theme.textMuted}
-                />
-              </Pressable>
-            ) : null}
+          <View style={styles.watchFilterRow}>
+            {NEWS_QUICK_FILTERS.map((filter) => {
+              const active = newsQuickFilter === filter.key;
+              return (
+                <Pressable
+                  key={filter.key}
+                  onPress={() => applyNewsQuickFilter(filter.key)}
+                  style={[styles.watchFilterChip, active && styles.watchFilterChipActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}>
+                  <Text style={[styles.watchFilterText, active && styles.watchFilterTextActive]}>
+                    {t(filter.labelId)}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         ) : null}
 
@@ -1444,18 +1427,12 @@ export default function FeedScreen() {
       loading,
       applyNewsQuickFilter,
       newsQuickFilter,
-      newsTitleAlternateIsTranslation,
-      newsTitleListToggleA11y,
-      newsTitleShowAlternate,
       onPickWatchFilter,
       segment,
-      showNewsTitleListToggle,
       styles,
       t,
-      toggleNewsTitleDisplayMode,
       watchFilter,
       theme.textDim,
-      theme.textMuted,
       theme.green,
       theme.greenBorder,
       router,
@@ -1536,7 +1513,7 @@ export default function FeedScreen() {
                   compactMeta
                   titleToggle={segment === 'global' || segment === 'crypto'}
                   titleShowAlternate={
-                    segment === 'global' || segment === 'crypto' ? newsTitleShowAlternate : undefined
+                    useNewsTitleFab ? newsTitleShowAlternate : undefined
                   }
                   maxHashtagsToShow={segment === 'watch' ? 0 : maxHashtagDisplay}
                   onTagPress={(label) => {
@@ -1591,6 +1568,15 @@ export default function FeedScreen() {
           />
         </View>
       </View>
+
+      {useNewsTitleFab && isFocused ? (
+        <FloatingGlassFab
+          bottom={fabBottom}
+          iconName={newsTitleAlternateIsTranslation ? 'language' : 'globe'}
+          accessibilityLabel={newsTitleListToggleA11y}
+          onPress={toggleNewsTitleDisplayMode}
+        />
+      ) : null}
 
       <NewsSourceFilterModal
         visible={filterModalVisible}

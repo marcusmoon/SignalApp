@@ -384,12 +384,12 @@ export const en = {
   a11yNewsFilter: 'Open news source filter',
   a11yCallsFilter: 'Open conference call watchlist filter',
 
-  otaUpdateAvailable: 'A new JS bundle is ready. Apply to restart on the latest update.',
+  otaUpdateAvailable: 'Please update for the best experience.',
   otaUpdateApply: 'Update',
   otaUpdateDismiss: 'Later',
   otaUpdateErrorTitle: 'Update',
   otaUpdateErrorBody: 'Download failed. Check your network and try again.',
-  otaUpdatePreviewMessage: '[Preview] A new bundle is ready. (not a real OTA)',
+  otaUpdatePreviewMessage: '[Preview] Tap Update to try the banner.',
   otaUpdatePreviewTitle: 'Preview',
   otaUpdatePreviewBody: 'This is not a real OTA. You are only previewing the banner UI.',
 

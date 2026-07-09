@@ -1,5 +1,5 @@
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -57,6 +57,7 @@ import { markSignalFeedSeen } from '@/services/signalUnreadPreference';
 import { useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
 import { addDays, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 import { firstRouteParam } from '@/utils/routeSearchParams';
+import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 
 type FlatTabKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-close';
 
@@ -108,7 +109,7 @@ function monthFromYmd(value: string): { year: number; month: number } {
 }
 
 export default function SignalScreen() {
-  const router = useRouter();
+  const setRouteParams = useSafeSetRouteParams();
   const routeParams = useLocalSearchParams<{ session?: string | string[]; date?: string | string[] }>();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
@@ -419,19 +420,19 @@ export default function SignalScreen() {
   const onPickSessionTab = useCallback((key: FlatTabKey) => {
     if (!briefingByTabKey.has(key)) return;
     setSelectedTabKey(key);
-    router.setParams({ session: key });
-  }, [briefingByTabKey, router]);
+    setRouteParams({ session: key });
+  }, [briefingByTabKey, setRouteParams]);
 
   useTabPressCycleSegment(activeTabKey, availableSessionTabKeys, onPickSessionTab);
 
   useEffect(() => {
-    router.setParams({ date: selectedYmd === todayYmd ? undefined : selectedYmd });
-  }, [router, selectedYmd, todayYmd]);
+    setRouteParams({ date: selectedYmd === todayYmd ? undefined : selectedYmd });
+  }, [selectedYmd, setRouteParams, todayYmd]);
 
   useEffect(() => {
     if (!activeTabKey) return;
-    router.setParams({ session: activeTabKey });
-  }, [activeTabKey, router]);
+    setRouteParams({ session: activeTabKey });
+  }, [activeTabKey, setRouteParams]);
 
   useFocusEffect(
     useCallback(() => {
@@ -442,17 +443,17 @@ export default function SignalScreen() {
 
       if (pendingSession && isFlatTabKey(pendingSession)) {
         setSelectedTabKey(pendingSession);
-        router.setParams({ session: pendingSession });
+        setRouteParams({ session: pendingSession });
       }
       if (pendingDate && /^\d{4}-\d{2}-\d{2}$/.test(pendingDate)) {
         const clamped = pendingDate > todayYmdRef.current ? todayYmdRef.current : pendingDate;
         setSelectedYmd(clamped);
         setCalendarMonth(monthFromYmd(clamped));
-        router.setParams({ date: clamped === todayYmdRef.current ? undefined : clamped });
+        setRouteParams({ date: clamped === todayYmdRef.current ? undefined : clamped });
       } else if (pendingSession) {
         setSelectedYmd(todayYmdRef.current);
       }
-    }, [ipadNav, router, useTwoPane]),
+    }, [ipadNav, setRouteParams, useTwoPane]),
   );
 
   useFocusEffect(

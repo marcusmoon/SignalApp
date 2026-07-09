@@ -1574,6 +1574,7 @@ export default function FeedScreen() {
           bottom={fabBottom}
           iconName={newsTitleAlternateIsTranslation ? 'language' : 'globe'}
           accessibilityLabel={newsTitleListToggleA11y}
+          active={newsTitleShowAlternate}
           onPress={toggleNewsTitleDisplayMode}
         />
       ) : null}

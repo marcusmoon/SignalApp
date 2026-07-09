@@ -24,11 +24,21 @@ type Props = {
   iconName: FaName;
   accessibilityLabel: string;
   disabled?: boolean;
+  /** 토글·필터 등 선택된 상태 */
+  active?: boolean;
   /** List to scroll to top before refresh (FAB). */
   listRef?: RefObject<ScrollToTopTarget>;
 };
 
-export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel, disabled, listRef }: Props) {
+export function FloatingGlassFab({
+  bottom,
+  onPress,
+  iconName,
+  accessibilityLabel,
+  disabled,
+  active = false,
+  listRef,
+}: Props) {
   const { theme } = useSignalTheme();
   const { backgroundColor, edge, effectiveColorScheme } = useTabBarGlassStyle();
   const { width } = useWindowDimensions();
@@ -38,11 +48,17 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
   const fabShadow = useMemo(() => floatingFabShadow(effectiveColorScheme), [effectiveColorScheme]);
   const right = Math.max(APP_CONTENT_SIDE_PADDING, (width - APP_CONTENT_MAX_WIDTH) / 2 + APP_CONTENT_SIDE_PADDING);
   const effectiveDisabled = isWeb ? false : Boolean(disabled);
-  const surfaceBackground = isWeb ? WEB_SIGNAL_CSS.card : backgroundColor;
-  const surfaceEdge = isWeb
-    ? { ring: WEB_SIGNAL_CSS.border, topHighlight: WEB_SIGNAL_CSS.topHighlight }
-    : edge;
-  const iconColor = isWeb ? WEB_SIGNAL_CSS.green : theme.green;
+  const surfaceBackground = active
+    ? theme.greenDim
+    : isWeb
+      ? WEB_SIGNAL_CSS.card
+      : backgroundColor;
+  const surfaceEdge = active
+    ? { ring: theme.greenBorder, topHighlight: theme.greenBorder }
+    : isWeb
+      ? { ring: WEB_SIGNAL_CSS.border, topHighlight: WEB_SIGNAL_CSS.topHighlight }
+      : edge;
+  const iconColor = active ? theme.green : theme.textMuted;
   const firePress = useCallback(() => {
     if (listRef) scrollToTopWithRetry(listRef, false);
     onPress();
@@ -85,11 +101,12 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
           isWeb ? styles.webFab : null,
           fabShadow,
           { bottom, right, borderRadius: radius },
+          active ? [styles.fabActive, { borderColor: theme.greenBorder }] : null,
           effectiveDisabled ? styles.fabDisabled : null,
           pressed && !effectiveDisabled ? styles.fabPressed : null,
         ]}
         accessibilityRole="button"
-        accessibilityState={{ disabled: effectiveDisabled }}
+        accessibilityState={{ disabled: effectiveDisabled, selected: active }}
         accessibilityLabel={accessibilityLabel}>
         <GlassSurfaceBackground
           backgroundColor={surfaceBackground}
@@ -127,6 +144,9 @@ const styles = StyleSheet.create({
   fabPressed: {
     opacity: 0.88,
     transform: [{ scale: 0.96 }],
+  },
+  fabActive: {
+    borderWidth: 1,
   },
   fabDisabled: {
     opacity: 0.45,

@@ -1,9 +1,11 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useLocalSearchParams, usePathname } from 'expo-router';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
+import { isSettingsTab, type SettingsTab } from '@/constants/settingsTabs';
 import type { SignalSessionKey } from '@/constants/ipadHomeNav';
 import type { DisclosureFlowMarket, HomeDigestCategory, NewsIssuesCategory } from '@/constants/ipadHomeNav';
-import type { SettingsTab } from '@/constants/settingsTabs';
 import type { NewsSegmentKey } from '@/constants/newsSegment';
+import { resolveIpadContentPaneFromPathname } from '@/utils/ipadContentPaneFromPath';
 
 export type YoutubeSortKey = 'latest' | 'popular';
 
@@ -68,14 +70,32 @@ const IpadSidebarNavContext = createContext<IpadSidebarNavContextValue>({
 });
 
 export function IpadSidebarNavProvider({ children }: { children: ReactNode }) {
-  const [contentPane, setContentPane] = useState<IpadContentPane>('home');
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>('display');
+  const pathname = usePathname();
+  const params = useLocalSearchParams<{ tab?: string | string[] }>();
+  const restoredFromUrlRef = useRef(false);
+  const [contentPane, setContentPane] = useState<IpadContentPane>(() =>
+    resolveIpadContentPaneFromPathname(pathname),
+  );
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => {
+    const tab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+    return isSettingsTab(tab) ? tab : 'display';
+  });
   const [youtubeSort, setYoutubeSort] = useState<YoutubeSortKey>('latest');
   const [newsIssuesParams, setNewsIssuesParams] = useState<IpadNewsIssuesPaneParams | null>(null);
   const [disclosureFlowParams, setDisclosureFlowParams] = useState<IpadDisclosureFlowPaneParams | null>(null);
   const pendingNewsSegmentRef = useRef<NewsSegmentKey | null>(null);
   const pendingSignalSessionRef = useRef<SignalSessionKey | null>(null);
   const pendingSignalDateRef = useRef<string | null>(null);
+
+  /** 브라우저 새로고침: URL이 준비된 뒤 한 번만 pane을 복원한다. */
+  useEffect(() => {
+    if (restoredFromUrlRef.current) return;
+    if (!pathname) return;
+    restoredFromUrlRef.current = true;
+    setContentPane(resolveIpadContentPaneFromPathname(pathname));
+    const tab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+    if (isSettingsTab(tab)) setSettingsTab(tab);
+  }, [pathname, params.tab]);
 
   const showHome = useCallback(() => {
     setContentPane('home');

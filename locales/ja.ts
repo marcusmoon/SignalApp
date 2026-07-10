@@ -536,7 +536,6 @@ export const ja = {
   newsDigestFeedEmpty: 'この期間にまとめられたイシューはありません。',
   newsDigestFeedNewsSectionTitle: 'ニュース',
   newsDigestFeedDigestSectionTitle: 'イシュー要約',
-  newsDigestFeedDigestSectionHint: '直近{{hours}}時間',
   newsDigestFeedRealtimeEmpty: '表示できる記事がありません。',
   settingsLocalMacroCalendar: 'ローカル通知 · 経済カレンダー',
   settingsLocalMacroCalendarHint: 'CPI・FOMC などのマクロ予定 — 当日 8:00（端末時刻）に1回通知',

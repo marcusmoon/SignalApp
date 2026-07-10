@@ -532,7 +532,6 @@ export const ko = {
   newsDigestFeedEmpty: '이 시간대에 묶인 이슈가 없습니다.',
   newsDigestFeedNewsSectionTitle: '뉴스',
   newsDigestFeedDigestSectionTitle: '이슈 요약',
-  newsDigestFeedDigestSectionHint: '최근 {{hours}}시간',
   newsDigestFeedRealtimeEmpty: '표시할 기사가 없어요.',
   settingsLocalMacroCalendar: '로컬 알림 · 경제 캘린더',
   settingsLocalMacroCalendarHint: 'CPI·FOMC 등 매크로 일정 — 해당일 오전 8:00(기기)에 한 번 알림',

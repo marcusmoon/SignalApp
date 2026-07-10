@@ -15,6 +15,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
+import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { MasterDetailLayout } from '@/components/layout/MasterDetailLayout';
 import { makeNewsStyles } from '@/components/news/newsStyles';
 import { NewsDigestIssueCard } from '@/components/news/NewsDigestIssueCard';
@@ -50,7 +51,7 @@ import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { fetchSignalNews, fetchSignalNewsDigests, signalNewsToNewsItem } from '@/integrations/signal-api';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
-import type { SignalApiNewsDigestItem, SignalApiNewsItem } from '@/integrations/signal-api/types';
+import type { SignalApiNewsDigestItem, SignalApiNewsItem, SignalNewsListMeta } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import {
   DEFAULT_NEWS_HASHTAG_DISPLAY_MAX,
@@ -73,6 +74,7 @@ const NEWS_INITIAL_LIMIT = 50;
 const NEWS_PAGE_LIMIT = 20;
 const DIGEST_INITIAL_LIMIT = 20;
 const DIGEST_PAGE_LIMIT = 20;
+const MAX_NEWS_SKIP_PAGES = 10;
 
 type SegmentLatestSeen = { newsId?: string; digestId?: string };
 
@@ -177,8 +179,9 @@ export function DigestNewsFeedScreen() {
   const [newsPoolRows, setNewsPoolRows] = useState<SignalApiNewsItem[]>([]);
   const [newsHasMore, setNewsHasMore] = useState(false);
   const [newsLoadingMore, setNewsLoadingMore] = useState(false);
-  const newsLoadingMoreRef = useRef(false);
-  newsLoadingMoreRef.current = newsLoadingMore;
+  const loadMoreInFlightRef = useRef(false);
+  const newsHasMoreRef = useRef(false);
+  const newsMetaRef = useRef<SignalNewsListMeta | null>(null);
   const [digestHasMore, setDigestHasMore] = useState(false);
   const [digestLoadingMore, setDigestLoadingMore] = useState(false);
   const digestLoadingMoreRef = useRef(false);
@@ -191,6 +194,53 @@ export function DigestNewsFeedScreen() {
   const newsPoolRowsRef = useRef(newsPoolRows);
   digestRowsRef.current = digestRows;
   newsPoolRowsRef.current = newsPoolRows;
+  newsHasMoreRef.current = newsHasMore;
+
+  const fetchNewsPages = useCallback(
+    async (
+      startPool: SignalApiNewsItem[],
+      startMeta: SignalNewsListMeta,
+      digestSnapshot: SignalApiNewsDigestItem[],
+      pageLimit: number,
+      cacheMode: ReturnType<typeof signalCacheMode>,
+    ): Promise<{ pool: SignalApiNewsItem[]; meta: SignalNewsListMeta }> => {
+      let pool = startPool;
+      let meta = startMeta;
+
+      if (filterRealtimeNewsRows(pool, digestSnapshot).length > 0 || !meta.hasMore) {
+        return { pool, meta };
+      }
+
+      let requestOffset = meta.nextOffset ?? pool.length;
+      for (let page = 0; page < MAX_NEWS_SKIP_PAGES; page += 1) {
+        const pageResult = await fetchSignalNews(
+          { locale, category: segment, limit: pageLimit, offset: requestOffset },
+          { cacheMode },
+        );
+        meta = pageResult.meta;
+        if (pageResult.items.length === 0) {
+          break;
+        }
+
+        const prevVisible = filterRealtimeNewsRows(pool, digestSnapshot).length;
+        pool = mergeNewsRows(pool, pageResult.items);
+        const nextVisible = filterRealtimeNewsRows(pool, digestSnapshot).length;
+        const visibleAdded = nextVisible - prevVisible;
+
+        if (visibleAdded > 0 || !meta.hasMore) {
+          break;
+        }
+
+        if (meta.nextOffset == null || meta.nextOffset === requestOffset) {
+          break;
+        }
+        requestOffset = meta.nextOffset;
+      }
+
+      return { pool, meta };
+    },
+    [locale, segment],
+  );
 
   const markSegmentHasNewContent = useCallback((seg: NewsSegmentKey) => {
     setNewContentSegments((prev) => {
@@ -250,7 +300,7 @@ export function DigestNewsFeedScreen() {
       const cacheMode = signalCacheMode(forceRefresh);
       const range = utcRangeLastHours(DIGEST_WINDOW_HOURS);
       try {
-        const [digestPage, newsPage] = await Promise.all([
+        const [digestPage, newsSeed] = await Promise.all([
           fetchSignalNewsDigests(
             {
               category: segment,
@@ -267,12 +317,21 @@ export function DigestNewsFeedScreen() {
             { cacheMode },
           ),
         ]);
+        const { pool: newsPool, meta: newsMeta } = await fetchNewsPages(
+          newsSeed.items,
+          newsSeed.meta,
+          digestPage.items,
+          NEWS_PAGE_LIMIT,
+          cacheMode,
+        );
         setDigestRows(digestPage.items);
-        setNewsPoolRows(newsPage.items);
-        setNewsHasMore(newsPage.meta.hasMore);
+        setNewsPoolRows(newsPool);
+        newsMetaRef.current = newsMeta;
+        setNewsHasMore(newsMeta.hasMore);
+        newsHasMoreRef.current = newsMeta.hasMore;
         setDigestHasMore(digestPage.meta.hasMore);
         syncSegmentLatestSeen(segment, {
-          newsId: newsPage.items[0]?.id ?? null,
+          newsId: newsPool[0]?.id ?? null,
           digestId: digestPage.items[0]?.id ?? null,
         });
       } catch (e) {
@@ -280,10 +339,12 @@ export function DigestNewsFeedScreen() {
         setDigestRows([]);
         setNewsPoolRows([]);
         setNewsHasMore(false);
+        newsHasMoreRef.current = false;
+        newsMetaRef.current = null;
         setDigestHasMore(false);
       }
     },
-    [locale, segment, syncSegmentLatestSeen, t],
+    [fetchNewsPages, locale, segment, syncSegmentLatestSeen, t],
   );
 
   const loadMoreDigests = useCallback(async () => {
@@ -313,27 +374,57 @@ export function DigestNewsFeedScreen() {
   }, [digestHasMore, digestLoadingMore, segment]);
 
   const loadMoreNews = useCallback(async () => {
-    if (!hasSignalApi() || newsLoadingMore || !newsHasMore) return;
+    if (!hasSignalApi() || loadMoreInFlightRef.current || !newsHasMoreRef.current) return;
 
+    loadMoreInFlightRef.current = true;
     setNewsLoadingMore(true);
     try {
-      const page = await fetchSignalNews(
-        {
-          locale,
-          category: segment,
-          limit: NEWS_PAGE_LIMIT,
-          offset: newsPoolRowsRef.current.length,
-        },
-        { cacheMode: signalCacheMode() },
-      );
-      setNewsPoolRows((prev) => mergeNewsRows(prev, page.items));
-      setNewsHasMore(page.meta.hasMore);
+      const digestSnapshot = digestRowsRef.current;
+      let pool = newsPoolRowsRef.current;
+      let requestOffset = newsMetaRef.current?.nextOffset ?? pool.length;
+      let lastMeta = newsMetaRef.current;
+
+      for (let skipPages = 0; skipPages < MAX_NEWS_SKIP_PAGES; skipPages += 1) {
+        const page = await fetchSignalNews(
+          { locale, category: segment, limit: NEWS_PAGE_LIMIT, offset: requestOffset },
+          { cacheMode: signalCacheMode() },
+        );
+        lastMeta = page.meta;
+        if (page.items.length === 0) {
+          newsHasMoreRef.current = false;
+          setNewsHasMore(false);
+          break;
+        }
+
+        const prevVisible = filterRealtimeNewsRows(pool, digestSnapshot).length;
+        pool = mergeNewsRows(pool, page.items);
+        const visibleAdded =
+          filterRealtimeNewsRows(pool, digestSnapshot).length - prevVisible;
+
+        if (visibleAdded > 0 || !page.meta.hasMore) {
+          break;
+        }
+
+        if (page.meta.nextOffset == null || page.meta.nextOffset === requestOffset) {
+          break;
+        }
+        requestOffset = page.meta.nextOffset;
+      }
+
+      if (lastMeta) {
+        newsMetaRef.current = lastMeta;
+        newsHasMoreRef.current = lastMeta.hasMore;
+        setNewsHasMore(lastMeta.hasMore);
+      }
+      newsPoolRowsRef.current = pool;
+      setNewsPoolRows(pool);
     } catch {
       /* ignore pagination errors */
     } finally {
+      loadMoreInFlightRef.current = false;
       setNewsLoadingMore(false);
     }
-  }, [locale, newsHasMore, newsLoadingMore, segment]);
+  }, [locale, segment]);
 
   useEffect(() => {
     if (!hasSignalApi() || !isFocused) return;
@@ -400,6 +491,8 @@ export function DigestNewsFeedScreen() {
             setNewsPoolRows([]);
             setNewsHasMore(false);
             setDigestHasMore(false);
+            newsHasMoreRef.current = false;
+            newsMetaRef.current = null;
           }
         } finally {
           if (!cancelled) setLoading(false);
@@ -438,6 +531,8 @@ export function DigestNewsFeedScreen() {
       setNewsPoolRows([]);
       setNewsHasMore(false);
       setDigestHasMore(false);
+      newsHasMoreRef.current = false;
+      newsMetaRef.current = null;
       setError(null);
       setSegment(key);
       void saveNewsSegment(key);
@@ -483,7 +578,7 @@ export function DigestNewsFeedScreen() {
     () => newsPoolItems.map((row) => signalNewsToNewsItem(row, locale)),
     [locale, newsPoolItems],
   );
-  const showNewsLoadMore = newsHasMore && newsItems.length > 0;
+  const showNewsLoadMore = newsHasMore;
 
   const scrollLoadMoreGateRef = useRef(createScrollLoadMoreGate());
   const digestScrollLoadMoreGateRef = useRef(createScrollLoadMoreGate());
@@ -493,7 +588,7 @@ export function DigestNewsFeedScreen() {
     loading,
     loadMore: loadMoreNews,
     enabled: Platform.OS === 'web' && isFocused,
-    isBusyRef: newsLoadingMoreRef,
+    isBusyRef: loadMoreInFlightRef,
   });
   const webDigestLoadMore = useWebFlatListLoadMore({
     hasMore: digestHasMore,
@@ -506,7 +601,7 @@ export function DigestNewsFeedScreen() {
 
   const onFeedScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (!showNewsLoadMore || newsLoadingMore || loading) return;
+      if (!showNewsLoadMore || loadMoreInFlightRef.current || loading) return;
       if (Platform.OS === 'web') {
         webNewsLoadMore.onScroll(e);
         return;
@@ -516,7 +611,7 @@ export function DigestNewsFeedScreen() {
         trigger: () => void loadMoreNews(),
       });
     },
-    [loading, loadMoreNews, newsLoadingMore, showNewsLoadMore, webNewsLoadMore],
+    [loading, loadMoreNews, showNewsLoadMore, webNewsLoadMore],
   );
 
   const onDigestScroll = useCallback(
@@ -534,6 +629,16 @@ export function DigestNewsFeedScreen() {
     [digestHasMore, digestLoadingMore, loadMoreDigests, loading, useTwoPane, webDigestLoadMore],
   );
 
+  const handleFeedEndReached = useCallback(() => {
+    if (newsHasMoreRef.current) {
+      void loadMoreNews();
+      return;
+    }
+    if (!useTwoPane && digestHasMore) {
+      void loadMoreDigests();
+    }
+  }, [digestHasMore, loadMoreDigests, loadMoreNews, useTwoPane]);
+
   const newsTitleShowAlternate = newsTitleDisplayMode === 'alternate';
   const newsTitleAlternateIsTranslation = locale === 'en';
   const useNewsTitleFab = Platform.OS !== 'web' && !useTwoPane;
@@ -549,23 +654,21 @@ export function DigestNewsFeedScreen() {
     : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const fabBottom = fabStackBottom(tabBarHeight, insets.bottom);
 
-  const renderNewsArticles = (items: typeof newsItems) => {
-    const rowKinds = items.map(() => ({ kind: 'news' as const }));
-    return items.map((item, index) => {
-      const edges = groupedFeedRowEdges(rowKinds, index, 'news');
-      return (
-        <View key={item.id} style={edges ? groupedFeedRowShell(theme, edges) : undefined}>
-          <NewsCard
-            layout="grouped"
-            item={item}
-            compactMeta
-            titleToggle={titleToggle}
-            titleShowAlternate={useNewsTitleFab ? newsTitleShowAlternate : undefined}
-            maxHashtagsToShow={maxHashtagDisplay}
-          />
-        </View>
-      );
-    });
+  const renderNewsRow = ({ item, index }: { item: (typeof newsItems)[number]; index: number }) => {
+    const rowKinds = newsItems.map(() => ({ kind: 'news' as const }));
+    const edges = groupedFeedRowEdges(rowKinds, index, 'news');
+    return (
+      <View style={edges ? groupedFeedRowShell(theme, edges) : undefined}>
+        <NewsCard
+          layout="grouped"
+          item={item}
+          compactMeta
+          titleToggle={titleToggle}
+          titleShowAlternate={useNewsTitleFab ? newsTitleShowAlternate : undefined}
+          maxHashtagsToShow={maxHashtagDisplay}
+        />
+      </View>
+    );
   };
 
   const renderNewsLoadMore = () => {
@@ -635,6 +738,28 @@ export function DigestNewsFeedScreen() {
   const renderDigestCards = () =>
     digestItems.map((item) => <NewsDigestIssueCard key={item.id} digest={item} />);
 
+  const mobileListHeader = (
+    <View style={styles.listHeader}>
+      <Text style={styles.digestRealtimeHeader}>{t('newsDigestFeedNewsSectionTitle')}</Text>
+      {renderNewsError()}
+      {renderNewsLoading()}
+      {renderNewsEmpty()}
+    </View>
+  );
+
+  const mobileDigestFooter = (
+    <View style={styles.listHeader}>
+      {renderNewsLoadMore()}
+      <DigestFeedSection title={t('newsDigestFeedDigestSectionTitle')} isLast styles={styles}>
+        {renderDigestError()}
+        {renderDigestLoading()}
+        {renderDigestEmpty()}
+        {renderDigestCards()}
+        {renderDigestLoadMore()}
+      </DigestFeedSection>
+    </View>
+  );
+
   const newsListRefreshControl =
     loading && digestItems.length === 0 && newsItems.length === 0 ? undefined : (
       <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -669,7 +794,9 @@ export function DigestNewsFeedScreen() {
         {renderNewsError()}
         {renderNewsLoading()}
         {renderNewsEmpty()}
-        {renderNewsArticles(newsItems)}
+        {newsItems.map((item, index) => (
+          <View key={item.id}>{renderNewsRow({ item, index })}</View>
+        ))}
         {renderNewsLoadMore()}
       </WebWheelScrollView>
     </View>
@@ -680,7 +807,6 @@ export function DigestNewsFeedScreen() {
       <DigestPaneHeader
         wide
         title={t('newsDigestFeedDigestSectionTitle')}
-        hint={t('newsDigestFeedDigestSectionHint', { hours: String(DIGEST_WINDOW_HOURS) })}
         styles={styles}
       />
       <WebWheelScrollView
@@ -704,9 +830,17 @@ export function DigestNewsFeedScreen() {
   );
 
   const mobileFeedContent = (
-    <WebWheelScrollView
+    <WebWheelFlatList
       ref={feedScrollRef as never}
       scrollResetKey={feedScrollResetKey}
+      data={loading && newsItems.length === 0 ? [] : newsItems}
+      extraData={`${newsItems.length}:${newsTitleShowAlternate ? 'alt' : 'loc'}`}
+      keyExtractor={(item) => item.id}
+      renderItem={renderNewsRow}
+      ListHeaderComponent={mobileListHeader}
+      ListFooterComponent={mobileDigestFooter}
+      onEndReached={() => void handleFeedEndReached()}
+      onEndReachedThreshold={0.55}
       style={styles.list}
       contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
       showsVerticalScrollIndicator={false}
@@ -714,28 +848,9 @@ export function DigestNewsFeedScreen() {
       scrollEventThrottle={350}
       onLayout={webNewsLoadMore.onLayout}
       onContentSizeChange={webNewsLoadMore.onContentSizeChange}
-      refreshControl={newsListRefreshControl}>
-      <View style={styles.listHeader}>
-        <DigestFeedSection title={t('newsDigestFeedNewsSectionTitle')} styles={styles}>
-          {renderNewsError()}
-          {renderNewsLoading()}
-          {renderNewsEmpty()}
-          {renderNewsArticles(newsItems)}
-          {renderNewsLoadMore()}
-        </DigestFeedSection>
-
-        <DigestFeedSection
-          title={t('newsDigestFeedDigestSectionTitle')}
-          hint={t('newsDigestFeedDigestSectionHint', { hours: String(DIGEST_WINDOW_HOURS) })}
-          isLast
-          styles={styles}>
-          {renderDigestError()}
-          {renderDigestLoading()}
-          {renderDigestEmpty()}
-          {renderDigestCards()}
-        </DigestFeedSection>
-      </View>
-    </WebWheelScrollView>
+      refreshControl={newsListRefreshControl}
+      removeClippedSubviews={Platform.OS === 'android'}
+    />
   );
 
   return (

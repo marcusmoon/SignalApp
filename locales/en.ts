@@ -536,7 +536,6 @@ export const en = {
   newsDigestFeedEmpty: 'No issue digests in this window.',
   newsDigestFeedNewsSectionTitle: 'News',
   newsDigestFeedDigestSectionTitle: 'Issue digests',
-  newsDigestFeedDigestSectionHint: 'Last {{hours}} hours',
   newsDigestFeedRealtimeEmpty: 'No articles to show.',
   settingsLocalMacroCalendar: 'Local alerts · economic calendar',
   settingsLocalMacroCalendarHint: 'Macro events such as CPI and FOMC — one alert at 8:00 on event day (device time)',

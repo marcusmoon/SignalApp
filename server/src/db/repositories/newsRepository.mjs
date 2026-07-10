@@ -3,7 +3,6 @@ import {
   cleanNewsTitleForDisplay,
   cleanTranslationText,
   displayNews,
-  hasUsableTranslation,
   resolveAlternateTitle,
 } from '../../http/shared.mjs';
 import {
@@ -13,6 +12,10 @@ import {
   sqlDateOrTimestamp,
   sqlStringList,
 } from './publicHelpers.mjs';
+
+function sqlPendingTranslation(alias) {
+  return `(${alias}.id IS NULL OR ${alias}.status NOT IN ('completed', 'manual'))`;
+}
 
 function publicNews(item, translations, locale) {
   const displayed = displayNews(item, translations, locale);
@@ -217,9 +220,7 @@ function pendingNewsTranslationRow(item, targetLocale) {
 
 function buildPendingNewsTranslationFilters(options = {}, targetLocale) {
   const params = [targetLocale];
-  const where = [
-    `(t_target.id IS NULL OR t_target.status NOT IN ('completed', 'manual') OR COALESCE(t_target.payload->>'provider', '') = 'mock')`,
-  ];
+  const where = [sqlPendingTranslation('t_target')];
   const category = cleanText(options.category);
   if (category) {
     if (category === 'global') {
@@ -350,7 +351,7 @@ export async function queryAdminNewsRows(options = {}) {
   }
   const translationStatus = cleanText(options.translationStatus);
   if (translationStatus === 'missing') {
-    where.push(`(t_locale.id IS NULL OR t_locale.status NOT IN ('completed', 'manual') OR t_locale.payload->>'provider' = 'mock')`);
+    where.push(sqlPendingTranslation('t_locale'));
   } else if (translationStatus) {
     params.push(translationStatus);
     where.push(`t_locale.status = $${params.length}`);
@@ -386,7 +387,6 @@ export async function queryAdminNewsRows(options = {}) {
           title: cleanNewsTitleForDisplay(item, t.title),
           summary: cleanTranslationText(t.summary),
           content: cleanTranslationText(t.content),
-          status: hasUsableTranslation(t, item) ? t.status : 'missing',
         })),
       };
     })

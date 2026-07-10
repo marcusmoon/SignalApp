@@ -74,36 +74,6 @@ function normalizeTranslationIngestItem(raw, now) {
   };
 }
 
-function normalizeNewsIngestTranslation(raw, newsItem, now) {
-  const input = raw?.translation && typeof raw.translation === 'object'
-    ? raw.translation
-    : raw?.translations?.ko && typeof raw.translations.ko === 'object'
-      ? { locale: 'ko', ...raw.translations.ko }
-      : null;
-  if (!input) return null;
-  const locale = cleanText(input.locale || 'ko').toLowerCase() || 'ko';
-  const title = cleanText(input.title);
-  const summary = cleanText(input.summary);
-  const content = cleanText(input.content);
-  if (!locale || (!title && !summary && !content)) return null;
-  return {
-    id: `${newsItem.id}:${locale}`,
-    newsItemId: newsItem.id,
-    locale,
-    provider: cleanText(input.provider) || 'codex',
-    model: cleanText(input.model) || cleanText(raw?.model) || 'codex-scheduled-news-ingest',
-    status: cleanText(input.status) || 'completed',
-    title,
-    summary,
-    content,
-    errorMessage: null,
-    translatedAt: cleanText(input.translatedAt) || now,
-    editedByAdminId: null,
-    editedAt: null,
-    updatedAt: now,
-  };
-}
-
 function normalizeNewsIngestItem(raw, index, now) {
   const category = cleanText(raw?.category).toLowerCase() || 'global';
   if (!['global', 'crypto', 'korea'].includes(category)) return null;
@@ -117,10 +87,8 @@ function normalizeNewsIngestItem(raw, index, now) {
     ...cleanArray(raw?.hashtags).map((tag) => (typeof tag === 'string' ? tag : tag?.label)),
     ...cleanArray(raw?.hashtagLabels),
     ...cleanArray(raw?.symbols),
-    ...cleanArray(raw?.translation?.hashtags),
-    ...cleanArray(raw?.translations?.ko?.hashtags),
   ]);
-  const item = {
+  return {
     id: cleanText(raw?.id) || stableNewsItemId({ ...raw, category, titleOriginal, sourceName, sourceUrl }),
     category,
     provider: cleanText(raw?.provider) || 'codex',
@@ -141,7 +109,6 @@ function normalizeNewsIngestItem(raw, index, now) {
     codexIngest: true,
     position: index,
   };
-  return { item, translation: normalizeNewsIngestTranslation(raw, item, now) };
 }
 
 async function publishDigestNotification(item, queuePush) {
@@ -197,14 +164,11 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
       json(res, 400, { error: 'VALID_ITEMS_REQUIRED' });
       return true;
     }
-    const items = normalized.map((row) => row.item);
-    const translations = normalized.map((row) => row.translation).filter(Boolean);
+    const items = normalized;
     await upsertCollectionRows('newsItems', items);
-    if (translations.length > 0) await upsertCollectionRows('newsTranslations', translations);
     json(res, 201, {
       data: {
         count: items.length,
-        translationCount: translations.length,
         ids: items.map((item) => item.id),
       },
     });

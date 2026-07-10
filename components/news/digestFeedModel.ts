@@ -76,6 +76,28 @@ export function utcRangeLastHours(hours: number): { from: string; to: string } {
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
+export function isNewsPublishedWithinHours(
+  item: SignalApiNewsItem,
+  hours: number,
+  nowMs = Date.now(),
+): boolean {
+  const raw = item.publishedAt?.trim();
+  if (!raw) return true;
+  const ts = Date.parse(raw);
+  if (!Number.isFinite(ts)) return true;
+  return nowMs - ts <= hours * 60 * 60 * 1000;
+}
+
+export function mergeNewsRows(
+  existing: SignalApiNewsItem[],
+  incoming: SignalApiNewsItem[],
+): SignalApiNewsItem[] {
+  if (incoming.length === 0) return existing;
+  const ids = new Set(existing.map((row) => row.id));
+  const added = incoming.filter((row) => !ids.has(row.id));
+  return added.length > 0 ? [...existing, ...added] : existing;
+}
+
 export function filterRealtimeNewsRows(
   rows: SignalApiNewsItem[],
   digests: SignalApiNewsDigestItem[],

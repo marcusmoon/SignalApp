@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type React
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect, useIsFocused } from 'expo-router/react-navigation';
 import { useLocalSearchParams } from 'expo-router';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
@@ -11,9 +11,12 @@ import { NewsDigestIssueCard } from '@/components/news/NewsDigestIssueCard';
 import {
   digestFromServer,
   filterRealtimeNewsRows,
+  isNewsPublishedWithinHours,
+  mergeNewsRows,
   utcRangeLastHours,
 } from '@/components/news/digestFeedModel';
 import { NewsCard } from '@/components/signal/NewsCard';
+import { groupedFeedRowEdges, groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
@@ -35,6 +38,10 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { SignalApiNewsDigestItem, SignalApiNewsItem } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import {
+  DEFAULT_NEWS_HASHTAG_DISPLAY_MAX,
+  loadNewsHashtagDisplayMax,
+} from '@/services/newsHashtagDisplayPreference';
+import {
   loadNewsTitleDisplayMode,
   saveNewsTitleDisplayMode,
   type NewsTitleDisplayMode,
@@ -46,8 +53,10 @@ import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 
 const DIGEST_SEGMENTS = new Set<NewsSegmentKey>(['global', 'korea', 'crypto']);
 const DIGEST_WINDOW_HOURS = 24;
-const REALTIME_LIMIT = 25;
-const PENDING_PREVIEW_LIMIT = 5;
+const RECENT_WINDOW_HOURS = 48;
+const RECENT_INITIAL_LIMIT = 50;
+const RECENT_PAGE_LIMIT = 20;
+const PENDING_PREVIEW_LIMIT = 10;
 
 type DigestFeedViewMode = 'digest' | 'live';
 
@@ -118,14 +127,18 @@ export function DigestNewsFeedScreen() {
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [digestRows, setDigestRows] = useState<SignalApiNewsDigestItem[]>([]);
-  const [realtimeRows, setRealtimeRows] = useState<SignalApiNewsItem[]>([]);
+  const [newsPoolRows, setNewsPoolRows] = useState<SignalApiNewsItem[]>([]);
+  const [newsHasMore, setNewsHasMore] = useState(false);
+  const [newsLoadingMore, setNewsLoadingMore] = useState(false);
+  const [recentShowOlder, setRecentShowOlder] = useState(false);
+  const [maxHashtagDisplay, setMaxHashtagDisplay] = useState(DEFAULT_NEWS_HASHTAG_DISPLAY_MAX);
   const [newsTitleDisplayMode, setNewsTitleDisplayMode] = useState<NewsTitleDisplayMode>('localized');
   const [newContentSegments, setNewContentSegments] = useState(() => new Set<NewsSegmentKey>());
   const latestSeenIdBySegmentRef = useRef<Partial<Record<NewsSegmentKey, string>>>({});
   const digestRowsRef = useRef(digestRows);
-  const realtimeRowsRef = useRef(realtimeRows);
+  const newsPoolRowsRef = useRef(newsPoolRows);
   digestRowsRef.current = digestRows;
-  realtimeRowsRef.current = realtimeRows;
+  newsPoolRowsRef.current = newsPoolRows;
 
   const markSegmentHasNewContent = useCallback((seg: NewsSegmentKey) => {
     setNewContentSegments((prev) => {
@@ -156,7 +169,7 @@ export function DigestNewsFeedScreen() {
   );
 
   const { ref: feedScrollRef } = useScrollToTopOnChange([segment, viewMode], {
-    resyncDeps: [digestRows, realtimeRows],
+    resyncDeps: [digestRows, newsPoolRows, recentShowOlder],
   });
   const feedScrollResetKey = `${segment}:${viewMode}`;
 
@@ -170,10 +183,12 @@ export function DigestNewsFeedScreen() {
       setError(null);
       if (!hasSignalApi()) {
         setDigestRows([]);
-        setRealtimeRows([]);
+        setNewsPoolRows([]);
+        setNewsHasMore(false);
         setError(t('errorSignalApiShort'));
         return;
       }
+      const isRefresh = forceRefresh === true;
       const cacheMode = signalCacheMode(forceRefresh);
       const range = utcRangeLastHours(DIGEST_WINDOW_HOURS);
       try {
@@ -183,26 +198,65 @@ export function DigestNewsFeedScreen() {
             { cacheMode },
           ),
           fetchSignalNews(
-            { locale, category: segment, limit: REALTIME_LIMIT, offset: 0 },
+            { locale, category: segment, limit: RECENT_INITIAL_LIMIT, offset: 0 },
             { cacheMode },
           ),
         ]);
-        const lookupRows = newsPage.items;
         setDigestRows(digestPage.items);
-        setRealtimeRows(filterRealtimeNewsRows(newsPage.items, digestPage.items));
+        setNewsPoolRows(newsPage.items);
+        setNewsHasMore(newsPage.meta.hasMore);
+        if (!isRefresh) setRecentShowOlder(false);
         syncSegmentLatestSeen(
           segment,
           digestPage.items[0]?.id ?? newsPage.items[0]?.id ?? null,
         );
-        void lookupRows;
       } catch (e) {
         setError(formatSignalApiError(e, t, 'feedErrorLoad'));
         setDigestRows([]);
-        setRealtimeRows([]);
+        setNewsPoolRows([]);
+        setNewsHasMore(false);
       }
     },
     [locale, segment, syncSegmentLatestSeen, t],
   );
+
+  const loadMoreRecent = useCallback(async () => {
+    if (!hasSignalApi() || newsLoadingMore) return;
+
+    const poolRows = newsPoolRowsRef.current;
+    const digestItems = digestRowsRef.current;
+    const recentPool = filterRealtimeNewsRows(poolRows, digestItems);
+    const hasHiddenOlder = recentPool.some(
+      (row) => !isNewsPublishedWithinHours(row, RECENT_WINDOW_HOURS),
+    );
+
+    if (!recentShowOlder) {
+      setRecentShowOlder(true);
+      if (hasHiddenOlder || !newsHasMore) return;
+    }
+
+    if (!newsHasMore) return;
+
+    setNewsLoadingMore(true);
+    try {
+      const page = await fetchSignalNews(
+        {
+          locale,
+          category: segment,
+          limit: RECENT_PAGE_LIMIT,
+          offset: poolRows.length,
+        },
+        { cacheMode: signalCacheMode() },
+      );
+      setNewsPoolRows((prev) => mergeNewsRows(prev, page.items));
+      setNewsHasMore(page.meta.hasMore);
+      setRecentShowOlder(true);
+    } catch {
+      /* ignore pagination errors */
+    } finally {
+      setNewsLoadingMore(false);
+    }
+  }, [locale, newsHasMore, newsLoadingMore, recentShowOlder, segment]);
 
   useEffect(() => {
     if (!hasSignalApi() || !isFocused) return;
@@ -238,6 +292,7 @@ export function DigestNewsFeedScreen() {
   useEffect(() => {
     void loadNewsSegmentOrder().then(setSegmentOrder);
     void loadNewsTitleDisplayMode().then(setNewsTitleDisplayMode);
+    void loadNewsHashtagDisplayMax().then(setMaxHashtagDisplay);
   }, []);
 
   useFocusEffect(
@@ -245,7 +300,7 @@ export function DigestNewsFeedScreen() {
       let cancelled = false;
       void (async () => {
         const showLoading =
-          digestRowsRef.current.length === 0 && realtimeRowsRef.current.length === 0;
+          digestRowsRef.current.length === 0 && newsPoolRowsRef.current.length === 0;
         if (showLoading) setLoading(true);
         try {
           await load(false);
@@ -253,7 +308,8 @@ export function DigestNewsFeedScreen() {
           if (!cancelled) {
             setError(formatSignalApiError(e, t, 'feedErrorLoad'));
             setDigestRows([]);
-            setRealtimeRows([]);
+            setNewsPoolRows([]);
+            setNewsHasMore(false);
           }
         } finally {
           if (!cancelled) setLoading(false);
@@ -268,6 +324,7 @@ export function DigestNewsFeedScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     clearSegmentNewContent(segment);
+    setRecentShowOlder(false);
     try {
       await load(true);
     } finally {
@@ -282,7 +339,9 @@ export function DigestNewsFeedScreen() {
       if (segment === key) return;
       setLoading(true);
       setDigestRows([]);
-      setRealtimeRows([]);
+      setNewsPoolRows([]);
+      setNewsHasMore(false);
+      setRecentShowOlder(false);
       setError(null);
       setSegment(key);
       void saveNewsSegment(key);
@@ -317,18 +376,39 @@ export function DigestNewsFeedScreen() {
   }, []);
 
   const digestItems = useMemo(
-    () => digestRows.map((row) => digestFromServer(row, realtimeRows)),
-    [digestRows, realtimeRows],
+    () => digestRows.map((row) => digestFromServer(row, newsPoolRows)),
+    [digestRows, newsPoolRows],
   );
-  const realtimeItems = useMemo(
-    () => realtimeRows.map((row) => signalNewsToNewsItem(row, locale)),
-    [locale, realtimeRows],
+  const recentPoolItems = useMemo(
+    () => filterRealtimeNewsRows(newsPoolRows, digestRows),
+    [digestRows, newsPoolRows],
+  );
+  const visibleRecentPoolItems = useMemo(
+    () =>
+      recentShowOlder
+        ? recentPoolItems
+        : recentPoolItems.filter((row) => isNewsPublishedWithinHours(row, RECENT_WINDOW_HOURS)),
+    [recentPoolItems, recentShowOlder],
+  );
+  const recentItems = useMemo(
+    () => visibleRecentPoolItems.map((row) => signalNewsToNewsItem(row, locale)),
+    [locale, visibleRecentPoolItems],
   );
   const pendingPreviewItems = useMemo(
-    () => realtimeItems.slice(0, PENDING_PREVIEW_LIMIT),
-    [realtimeItems],
+    () => recentItems.slice(0, PENDING_PREVIEW_LIMIT),
+    [recentItems],
   );
-  const pendingMoreCount = Math.max(0, realtimeItems.length - PENDING_PREVIEW_LIMIT);
+  const hasHiddenOlderInPool = useMemo(
+    () =>
+      recentPoolItems.some((row) => !isNewsPublishedWithinHours(row, RECENT_WINDOW_HOURS)),
+    [recentPoolItems],
+  );
+  const showRecentLoadMore = useMemo(() => {
+    if (recentItems.length === 0) return false;
+    if (!recentShowOlder) return hasHiddenOlderInPool || newsHasMore;
+    return newsHasMore;
+  }, [hasHiddenOlderInPool, newsHasMore, recentItems.length, recentShowOlder]);
+  const showRecentViewAll = recentItems.length > PENDING_PREVIEW_LIMIT;
   const newsTitleShowAlternate = newsTitleDisplayMode === 'alternate';
   const newsTitleAlternateIsTranslation = locale === 'en';
   const useNewsTitleFab = Platform.OS !== 'web' && !useTwoPane;
@@ -341,17 +421,54 @@ export function DigestNewsFeedScreen() {
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const fabBottom = fabStackBottom(tabBarHeight, insets.bottom);
 
-  const renderRealtimeCards = (items: typeof realtimeItems) =>
-    items.map((item) => (
-      <NewsCard
-        key={item.id}
-        layout="grouped"
-        item={item}
-        compactMeta
-        titleToggle={segment === 'global' || segment === 'crypto'}
-        titleShowAlternate={useNewsTitleFab ? newsTitleShowAlternate : undefined}
-      />
-    ));
+  const recentSectionMeta = recentShowOlder
+    ? undefined
+    : t('newsDigestFeedRecentWindowMeta', { hours: String(RECENT_WINDOW_HOURS) });
+
+  const renderRecentArticles = (items: typeof recentItems) => {
+    const rowKinds = items.map(() => ({ kind: 'news' as const }));
+    return items.map((item, index) => {
+      const edges = groupedFeedRowEdges(rowKinds, index, 'news');
+      return (
+        <View key={item.id} style={edges ? groupedFeedRowShell(theme, edges) : undefined}>
+          <NewsCard
+            layout="grouped"
+            item={item}
+            titleToggle={segment === 'global' || segment === 'crypto'}
+            titleShowAlternate={useNewsTitleFab ? newsTitleShowAlternate : undefined}
+            maxHashtagsToShow={maxHashtagDisplay}
+          />
+        </View>
+      );
+    });
+  };
+
+  const renderRecentLoadMore = () => {
+    if (!showRecentLoadMore) return null;
+    if (newsLoadingMore) {
+      return (
+        <View style={styles.footerLoading}>
+          <ActivityIndicator color={theme.green} />
+          <Text style={styles.footerLoadingText}>{t('feedLoadingMore')}</Text>
+        </View>
+      );
+    }
+    return (
+      <View style={styles.footerLoading}>
+        <Pressable
+          onPress={() => void loadMoreRecent()}
+          style={styles.footerLoadMoreButton}
+          accessibilityRole="button"
+          accessibilityLabel={
+            recentShowOlder ? t('feedDigestExpand') : t('newsDigestFeedLoadMoreOlder')
+          }>
+          <Text style={styles.footerLoadMoreText}>
+            {recentShowOlder ? t('feedDigestExpand') : t('newsDigestFeedLoadMoreOlder')}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  };
 
   const viewModePicker = (
     <View style={[styles.segment, !useTwoPane && styles.digestViewModeSegment]}>
@@ -421,7 +538,7 @@ export function DigestNewsFeedScreen() {
           contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            loading && digestItems.length === 0 && realtimeItems.length === 0 ? undefined : (
+            loading && digestItems.length === 0 && recentItems.length === 0 ? undefined : (
               <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             )
           }>
@@ -429,7 +546,7 @@ export function DigestNewsFeedScreen() {
             {viewMode === 'live' ? (
               <DigestFeedSection
                 title={t('newsDigestFeedRecentSectionTitle')}
-                hint={t('newsDigestFeedLiveSectionHint')}
+                hint={recentSectionMeta}
                 isLast
                 styles={styles}>
                 {error ? (
@@ -437,26 +554,27 @@ export function DigestNewsFeedScreen() {
                     <Text style={styles.errText}>{error}</Text>
                   </View>
                 ) : null}
-                {loading && realtimeItems.length === 0 ? (
+                {loading && recentItems.length === 0 ? (
                   <View style={styles.skeletonBlock}>
                     <SignalLoadingIndicator message={t('commonLoading')} />
                   </View>
                 ) : null}
-                {!loading && realtimeItems.length === 0 && !error ? (
+                {!loading && recentItems.length === 0 && !error ? (
                   <Text style={styles.empty}>{t('newsDigestFeedRealtimeEmpty')}</Text>
                 ) : null}
-                {renderRealtimeCards(realtimeItems)}
+                {renderRecentArticles(recentItems)}
+                {renderRecentLoadMore()}
               </DigestFeedSection>
             ) : (
               <>
                 {pendingPreviewItems.length > 0 ? (
                   <DigestFeedSection
                     title={t('newsDigestFeedRecentSectionTitle')}
-                    hint={t('newsDigestFeedRecentSectionHint')}
-                    actionLabel={pendingMoreCount > 0 ? t('newsDigestFeedShowAllRecent') : undefined}
-                    onAction={pendingMoreCount > 0 ? () => setViewMode('live') : undefined}
+                    hint={recentSectionMeta}
+                    actionLabel={showRecentViewAll ? t('newsDigestFeedShowAllRecent') : undefined}
+                    onAction={showRecentViewAll ? () => setViewMode('live') : undefined}
                     styles={styles}>
-                    {renderRealtimeCards(pendingPreviewItems)}
+                    {renderRecentArticles(pendingPreviewItems)}
                   </DigestFeedSection>
                 ) : null}
                 <DigestFeedSection

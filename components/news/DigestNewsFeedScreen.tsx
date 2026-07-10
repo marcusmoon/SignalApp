@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect, useIsFocused } from 'expo-router/react-navigation';
 import { useLocalSearchParams } from 'expo-router';
@@ -27,7 +27,7 @@ import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext'
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news';
-import { useResetRefreshingOnTabBlur, useTabPressCycleSegment } from '@/hooks';
+import { useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { fetchSignalNews, fetchSignalNewsDigests, signalNewsToNewsItem } from '@/integrations/signal-api';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
@@ -73,7 +73,45 @@ export function DigestNewsFeedScreen() {
   const [digestRows, setDigestRows] = useState<SignalApiNewsDigestItem[]>([]);
   const [realtimeRows, setRealtimeRows] = useState<SignalApiNewsItem[]>([]);
   const [newsTitleDisplayMode, setNewsTitleDisplayMode] = useState<NewsTitleDisplayMode>('localized');
-  const [newContent, setNewContent] = useState(false);
+  const [newContentSegments, setNewContentSegments] = useState(() => new Set<NewsSegmentKey>());
+  const latestSeenIdBySegmentRef = useRef<Partial<Record<NewsSegmentKey, string>>>({});
+  const digestRowsRef = useRef(digestRows);
+  const realtimeRowsRef = useRef(realtimeRows);
+  digestRowsRef.current = digestRows;
+  realtimeRowsRef.current = realtimeRows;
+
+  const markSegmentHasNewContent = useCallback((seg: NewsSegmentKey) => {
+    setNewContentSegments((prev) => {
+      if (prev.has(seg)) return prev;
+      const next = new Set(prev);
+      next.add(seg);
+      return next;
+    });
+  }, []);
+
+  const clearSegmentNewContent = useCallback((seg: NewsSegmentKey) => {
+    setNewContentSegments((prev) => {
+      if (!prev.has(seg)) return prev;
+      const next = new Set(prev);
+      next.delete(seg);
+      return next;
+    });
+  }, []);
+
+  const syncSegmentLatestSeen = useCallback(
+    (seg: NewsSegmentKey, latestId: string | null | undefined) => {
+      const id = latestId?.trim();
+      if (!id) return;
+      latestSeenIdBySegmentRef.current[seg] = id;
+      clearSegmentNewContent(seg);
+    },
+    [clearSegmentNewContent],
+  );
+
+  const { ref: feedScrollRef } = useScrollToTopOnChange([segment], {
+    resyncDeps: [digestRows, realtimeRows],
+  });
+  const feedScrollResetKey = segment;
 
   const digestSegmentOrder = useMemo(
     () => segmentOrder.filter((key) => DIGEST_SEGMENTS.has(key)),
@@ -105,6 +143,10 @@ export function DigestNewsFeedScreen() {
         const lookupRows = newsPage.items;
         setDigestRows(digestPage.items);
         setRealtimeRows(filterRealtimeNewsRows(newsPage.items, digestPage.items));
+        syncSegmentLatestSeen(
+          segment,
+          digestPage.items[0]?.id ?? newsPage.items[0]?.id ?? null,
+        );
         void lookupRows;
       } catch (e) {
         setError(formatSignalApiError(e, t, 'feedErrorLoad'));
@@ -112,34 +154,94 @@ export function DigestNewsFeedScreen() {
         setRealtimeRows([]);
       }
     },
-    [locale, segment, t],
+    [locale, segment, syncSegmentLatestSeen, t],
   );
+
+  useEffect(() => {
+    if (!hasSignalApi()) return;
+    const POLL_MS = 3 * 60 * 1000;
+    const pollSegments = digestSegmentOrder;
+
+    const fetchLatestIdForSegment = async (seg: NewsSegmentKey): Promise<string | null> => {
+      const range = utcRangeLastHours(DIGEST_WINDOW_HOURS);
+      const [digestPage, newsPage] = await Promise.all([
+        fetchSignalNewsDigests(
+          { category: seg, from: range.from, to: range.to, limit: 1, batches: 1 },
+          { cacheMode: 'bypass' },
+        ),
+        fetchSignalNews({ locale, category: seg, limit: 1, offset: 0 }, { cacheMode: 'bypass' }),
+      ]);
+      return digestPage.items[0]?.id ?? newsPage.items[0]?.id ?? null;
+    };
+
+    const poll = async () => {
+      await Promise.all(
+        pollSegments.map(async (seg) => {
+          try {
+            const latestId = await fetchLatestIdForSegment(seg);
+            if (!latestId) return;
+            const seen = latestSeenIdBySegmentRef.current[seg];
+            if (!seen) return;
+            if (latestId !== seen) markSegmentHasNewContent(seg);
+          } catch {
+            /* ignore polling errors */
+          }
+        }),
+      );
+    };
+    const id = setInterval(() => void poll(), POLL_MS);
+    return () => clearInterval(id);
+  }, [digestSegmentOrder, locale, markSegmentHasNewContent]);
 
   useEffect(() => {
     void loadNewsSegmentOrder().then(setSegmentOrder);
     void loadNewsTitleDisplayMode().then(setNewsTitleDisplayMode);
   }, []);
 
-  useEffect(() => {
-    setLoading(true);
-    void load().finally(() => setLoading(false));
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      void (async () => {
+        const showLoading =
+          digestRowsRef.current.length === 0 && realtimeRowsRef.current.length === 0;
+        if (showLoading) setLoading(true);
+        try {
+          await load(false);
+        } catch (e) {
+          if (!cancelled) {
+            setError(formatSignalApiError(e, t, 'feedErrorLoad'));
+            setDigestRows([]);
+            setRealtimeRows([]);
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [load, t]),
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setNewContent(false);
+    clearSegmentNewContent(segment);
     try {
       await load(true);
     } finally {
       setRefreshing(false);
     }
-  }, [load]);
+  }, [clearSegmentNewContent, load, segment]);
   useRegisterWebHeaderRefresh(() => void onRefresh());
 
   const onPickSegment = useCallback(
     (key: NewsSegmentKey) => {
       if (!DIGEST_SEGMENTS.has(key)) return;
       if (segment === key) return;
+      setLoading(true);
+      setDigestRows([]);
+      setRealtimeRows([]);
+      setError(null);
       setSegment(key);
       void saveNewsSegment(key);
       setRouteParams({ segment: key === DEFAULT_NEWS_SEGMENT ? undefined : key });
@@ -188,6 +290,7 @@ export function DigestNewsFeedScreen() {
     : newsTitleAlternateIsTranslation
       ? t('newsTitleListShowTranslation')
       : t('newsTitleListShowOriginal');
+  const newContentAvailable = newContentSegments.has(segment);
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const fabBottom = fabStackBottom(tabBarHeight, insets.bottom);
 
@@ -221,7 +324,7 @@ export function DigestNewsFeedScreen() {
 
         {isFocused ? (
           <FeedNewContentChip
-            visible={newContent}
+            visible={newContentAvailable}
             refreshing={refreshing}
             message={t('feedNewContentAvailable')}
             onPress={() => void onRefresh()}
@@ -229,6 +332,8 @@ export function DigestNewsFeedScreen() {
         ) : null}
 
         <WebWheelScrollView
+          ref={feedScrollRef as never}
+          scrollResetKey={feedScrollResetKey}
           style={styles.list}
           contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
           showsVerticalScrollIndicator={false}

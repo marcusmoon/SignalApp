@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   View,
   type NativeScrollEvent,
@@ -14,6 +15,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
+import { MasterDetailLayout } from '@/components/layout/MasterDetailLayout';
 import { makeNewsStyles } from '@/components/news/newsStyles';
 import { NewsDigestIssueCard } from '@/components/news/NewsDigestIssueCard';
 import {
@@ -32,7 +34,7 @@ import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER, parseNewsSegmentKey, type NewsSegmentKey } from '@/constants/newsSegment';
-import { fabStackBottom, tabScreenScrollBottomPadding } from '@/constants/screenLayout';
+import { fabStackBottom, SCREEN_WIDE_SCROLL_BOTTOM_BASE, tabScreenScrollBottomPadding } from '@/constants/screenLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -188,13 +190,16 @@ export function DigestNewsFeedScreen() {
     [clearSegmentNewContent],
   );
 
-  const { ref: feedScrollRef, scrollToTop } = useScrollToTopOnChange(
-    [segment, timelineExpanded, recentShowOlder],
-    {
-      resyncDeps: [digestRows, newsPoolRows],
-    },
-  );
-  const feedScrollResetKey = `${segment}:${timelineExpanded ? 'timeline' : 'headlines'}:${recentShowOlder ? 'all' : '48h'}`;
+  const scrollTopDeps = useTwoPane
+    ? [segment, recentShowOlder]
+    : [segment, timelineExpanded, recentShowOlder];
+  const { ref: feedScrollRef, scrollToTop } = useScrollToTopOnChange(scrollTopDeps, {
+    resyncDeps: [digestRows, newsPoolRows],
+  });
+  const digestScrollRef = useRef<ScrollView>(null);
+  const feedScrollResetKey = useTwoPane
+    ? `${segment}:wide:${recentShowOlder ? 'all' : '48h'}`
+    : `${segment}:${timelineExpanded ? 'timeline' : 'headlines'}:${recentShowOlder ? 'all' : '48h'}`;
 
   const digestSegmentOrder = useMemo(
     () => segmentOrder.filter((key) => DIGEST_SEGMENTS.has(key)),
@@ -373,6 +378,7 @@ export function DigestNewsFeedScreen() {
   const onNewContentChipPress = useCallback(async () => {
     await onRefresh();
     scrollToTop(false);
+    digestScrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [onRefresh, scrollToTop]);
 
   useRegisterWebHeaderRefresh(() => void onRefresh());
@@ -463,13 +469,14 @@ export function DigestNewsFeedScreen() {
     loadingMore: newsLoadingMore,
     loading,
     loadMore: loadMoreRecent,
-    enabled: Platform.OS === 'web' && isFocused && timelineExpanded,
+    enabled: Platform.OS === 'web' && isFocused && (useTwoPane || timelineExpanded),
     isBusyRef: newsLoadingMoreRef,
   });
 
   const onFeedScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (!timelineExpanded || !showTimelineLoadMore || newsLoadingMore || loading) return;
+      const newsListActive = useTwoPane || timelineExpanded;
+      if (!newsListActive || !showTimelineLoadMore || newsLoadingMore || loading) return;
       if (Platform.OS === 'web') {
         webTimelineLoadMore.onScroll(e);
         return;
@@ -485,6 +492,7 @@ export function DigestNewsFeedScreen() {
       newsLoadingMore,
       showTimelineLoadMore,
       timelineExpanded,
+      useTwoPane,
       webTimelineLoadMore,
     ],
   );
@@ -499,7 +507,9 @@ export function DigestNewsFeedScreen() {
       ? t('newsTitleListShowTranslation')
       : t('newsTitleListShowOriginal');
   const newContentAvailable = newContentSegments.has(segment);
-  const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const bottomPad = useTwoPane
+    ? SCREEN_WIDE_SCROLL_BOTTOM_BASE
+    : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const fabBottom = fabStackBottom(tabBarHeight, insets.bottom);
   const recentWindowMeta = recentShowOlder
     ? undefined
@@ -552,6 +562,178 @@ export function DigestNewsFeedScreen() {
     );
   };
 
+  const renderNewsError = () =>
+    error ? (
+      <View style={styles.errBox}>
+        <Text style={styles.errText}>{error}</Text>
+      </View>
+    ) : null;
+
+  const renderNewsLoading = () =>
+    loading && recentItems.length === 0 ? (
+      <View style={styles.skeletonBlock}>
+        <SignalLoadingIndicator message={t('commonLoading')} />
+      </View>
+    ) : null;
+
+  const renderNewsEmpty = () =>
+    !loading && recentItems.length === 0 && !error ? (
+      <Text style={styles.empty}>{t('newsDigestFeedRealtimeEmpty')}</Text>
+    ) : null;
+
+  const renderDigestError = () =>
+    error ? (
+      <View style={styles.errBox}>
+        <Text style={styles.errText}>{error}</Text>
+      </View>
+    ) : null;
+
+  const renderDigestLoading = () =>
+    loading && digestItems.length === 0 ? (
+      <View style={styles.skeletonBlock}>
+        <SignalLoadingIndicator message={t('commonLoading')} />
+      </View>
+    ) : null;
+
+  const renderDigestEmpty = () =>
+    !loading && digestItems.length === 0 && !error ? (
+      <Text style={styles.empty}>{t('newsDigestFeedEmpty')}</Text>
+    ) : null;
+
+  const renderDigestCards = () =>
+    digestItems.map((item) => <NewsDigestIssueCard key={item.id} digest={item} />);
+
+  const newsListRefreshControl =
+    loading && digestItems.length === 0 && recentItems.length === 0 ? undefined : (
+      <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+    );
+
+  const wideNewsPane = (
+    <View style={styles.widePane}>
+      {isFocused ? (
+        <FeedNewContentChip
+          visible={newContentAvailable}
+          refreshing={refreshing}
+          message={t('feedNewContentAvailable')}
+          onPress={() => void onNewContentChipPress()}
+        />
+      ) : null}
+      <WebWheelScrollView
+        ref={feedScrollRef as never}
+        scrollResetKey={feedScrollResetKey}
+        style={styles.widePaneScroll}
+        contentContainerStyle={[styles.widePaneContent, { paddingBottom: bottomPad }]}
+        showsVerticalScrollIndicator={false}
+        onScroll={onFeedScroll}
+        scrollEventThrottle={350}
+        onLayout={webTimelineLoadMore.onLayout}
+        onContentSizeChange={webTimelineLoadMore.onContentSizeChange}
+        refreshControl={newsListRefreshControl}>
+        <View style={styles.listHeader}>
+          <DigestFeedSection
+            title={t('newsDigestFeedTimelineSectionTitle')}
+            hint={recentWindowMeta}
+            isLast
+            styles={styles}>
+            {renderNewsError()}
+            {renderNewsLoading()}
+            {renderNewsEmpty()}
+            {renderTimelineArticles(recentItems)}
+            {renderTimelineLoadMore()}
+          </DigestFeedSection>
+        </View>
+      </WebWheelScrollView>
+    </View>
+  );
+
+  const wideDigestPane = (
+    <View style={styles.widePane}>
+      <WebWheelScrollView
+        ref={digestScrollRef as never}
+        scrollResetKey={`${feedScrollResetKey}:digest`}
+        style={styles.widePaneScroll}
+        contentContainerStyle={[styles.widePaneContent, { paddingBottom: bottomPad }]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={newsListRefreshControl}>
+        <View style={styles.listHeader}>
+          <DigestFeedSection
+            title={t('newsDigestFeedDigestSectionTitle')}
+            hint={t('newsDigestFeedDigestSectionHint', { hours: String(DIGEST_WINDOW_HOURS) })}
+            isLast
+            styles={styles}>
+            {renderDigestError()}
+            {renderDigestLoading()}
+            {renderDigestEmpty()}
+            {renderDigestCards()}
+          </DigestFeedSection>
+        </View>
+      </WebWheelScrollView>
+    </View>
+  );
+
+  const mobileFeedContent = (
+    <WebWheelScrollView
+      ref={feedScrollRef as never}
+      scrollResetKey={feedScrollResetKey}
+      style={styles.list}
+      contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
+      showsVerticalScrollIndicator={false}
+      onScroll={onFeedScroll}
+      scrollEventThrottle={350}
+      onLayout={timelineExpanded ? webTimelineLoadMore.onLayout : undefined}
+      onContentSizeChange={timelineExpanded ? webTimelineLoadMore.onContentSizeChange : undefined}
+      refreshControl={newsListRefreshControl}>
+      <View style={styles.listHeader}>
+        {!timelineExpanded && headlinePreviewItems.length > 0 ? (
+          <DigestFeedSection
+            title={t('newsDigestFeedHeadlineSectionTitle')}
+            hint={recentWindowMeta}
+            styles={styles}>
+            {renderTimelineArticles(headlinePreviewItems)}
+            {showOpenTimeline ? (
+              <Pressable
+                onPress={() => setTimelineExpanded(true)}
+                style={styles.digestTimelineToggleBtn}
+                accessibilityRole="button"
+                accessibilityLabel={t('newsDigestFeedOpenTimeline')}>
+                <Text style={styles.digestTimelineToggleText}>{t('newsDigestFeedOpenTimeline')}</Text>
+              </Pressable>
+            ) : null}
+          </DigestFeedSection>
+        ) : null}
+
+        {timelineExpanded ? (
+          <DigestFeedSection
+            title={t('newsDigestFeedTimelineSectionTitle')}
+            hint={recentWindowMeta}
+            actionLabel={t('newsDigestFeedCloseTimeline')}
+            onAction={() => {
+              setTimelineExpanded(false);
+              setRecentShowOlder(false);
+            }}
+            styles={styles}>
+            {renderNewsError()}
+            {renderNewsLoading()}
+            {renderNewsEmpty()}
+            {renderTimelineArticles(recentItems)}
+            {renderTimelineLoadMore()}
+          </DigestFeedSection>
+        ) : null}
+
+        <DigestFeedSection
+          title={t('newsDigestFeedDigestSectionTitle')}
+          hint={t('newsDigestFeedDigestSectionHint', { hours: String(DIGEST_WINDOW_HOURS) })}
+          isLast
+          styles={styles}>
+          {renderDigestError()}
+          {renderDigestLoading()}
+          {renderDigestEmpty()}
+          {renderDigestCards()}
+        </DigestFeedSection>
+      </View>
+    </WebWheelScrollView>
+  );
+
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
@@ -580,7 +762,7 @@ export function DigestNewsFeedScreen() {
           </View>
         ) : null}
 
-        {isFocused ? (
+        {isFocused && !useTwoPane ? (
           <FeedNewContentChip
             visible={newContentAvailable}
             refreshing={refreshing}
@@ -589,92 +771,13 @@ export function DigestNewsFeedScreen() {
           />
         ) : null}
 
-        <WebWheelScrollView
-          ref={feedScrollRef as never}
-          scrollResetKey={feedScrollResetKey}
-          style={styles.list}
-          contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
-          showsVerticalScrollIndicator={false}
-          onScroll={onFeedScroll}
-          scrollEventThrottle={350}
-          onLayout={timelineExpanded ? webTimelineLoadMore.onLayout : undefined}
-          onContentSizeChange={timelineExpanded ? webTimelineLoadMore.onContentSizeChange : undefined}
-          refreshControl={
-            loading && digestItems.length === 0 && recentItems.length === 0 ? undefined : (
-              <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            )
-          }>
-          <View style={styles.listHeader}>
-            {!timelineExpanded && headlinePreviewItems.length > 0 ? (
-              <DigestFeedSection
-                title={t('newsDigestFeedHeadlineSectionTitle')}
-                hint={recentWindowMeta}
-                styles={styles}>
-                {renderTimelineArticles(headlinePreviewItems)}
-                {showOpenTimeline ? (
-                  <Pressable
-                    onPress={() => setTimelineExpanded(true)}
-                    style={styles.digestTimelineToggleBtn}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('newsDigestFeedOpenTimeline')}>
-                    <Text style={styles.digestTimelineToggleText}>{t('newsDigestFeedOpenTimeline')}</Text>
-                  </Pressable>
-                ) : null}
-              </DigestFeedSection>
-            ) : null}
-
-            {timelineExpanded ? (
-              <DigestFeedSection
-                title={t('newsDigestFeedTimelineSectionTitle')}
-                hint={recentWindowMeta}
-                actionLabel={t('newsDigestFeedCloseTimeline')}
-                onAction={() => {
-                  setTimelineExpanded(false);
-                  setRecentShowOlder(false);
-                }}
-                styles={styles}>
-                {error ? (
-                  <View style={styles.errBox}>
-                    <Text style={styles.errText}>{error}</Text>
-                  </View>
-                ) : null}
-                {loading && recentItems.length === 0 ? (
-                  <View style={styles.skeletonBlock}>
-                    <SignalLoadingIndicator message={t('commonLoading')} />
-                  </View>
-                ) : null}
-                {!loading && recentItems.length === 0 && !error ? (
-                  <Text style={styles.empty}>{t('newsDigestFeedRealtimeEmpty')}</Text>
-                ) : null}
-                {renderTimelineArticles(recentItems)}
-                {renderTimelineLoadMore()}
-              </DigestFeedSection>
-            ) : null}
-
-            <DigestFeedSection
-              title={t('newsDigestFeedDigestSectionTitle')}
-              hint={t('newsDigestFeedDigestSectionHint', { hours: String(DIGEST_WINDOW_HOURS) })}
-              isLast
-              styles={styles}>
-              {error ? (
-                <View style={styles.errBox}>
-                  <Text style={styles.errText}>{error}</Text>
-                </View>
-              ) : null}
-              {loading && digestItems.length === 0 ? (
-                <View style={styles.skeletonBlock}>
-                  <SignalLoadingIndicator message={t('commonLoading')} />
-                </View>
-              ) : null}
-              {!loading && digestItems.length === 0 && !error ? (
-                <Text style={styles.empty}>{t('newsDigestFeedEmpty')}</Text>
-              ) : null}
-              {digestItems.map((item) => (
-                <NewsDigestIssueCard key={item.id} digest={item} />
-              ))}
-            </DigestFeedSection>
-          </View>
-        </WebWheelScrollView>
+        <MasterDetailLayout
+          useTwoPane={useTwoPane}
+          masterWidthRatio={0.48}
+          dividerColor={theme.border}
+          masterPanel={useTwoPane ? wideNewsPane : mobileFeedContent}
+          detailPanel={useTwoPane ? wideDigestPane : undefined}
+        />
       </View>
 
       {useNewsTitleFab && isFocused && titleToggle ? (

@@ -57,6 +57,19 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingTop: 0,
       paddingHorizontal: 0,
     },
+    widePane: {
+      flex: 1,
+      minHeight: 0,
+      minWidth: 0,
+    },
+    widePaneScroll: {
+      ...webScrollViewportStyle,
+      flex: 1,
+    },
+    widePaneContent: {
+      paddingHorizontal: 16,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+    },
     skeletonBlock: {
       marginTop: 4,
     },

@@ -66,9 +66,13 @@ export function collectDigestReferencedNewsIds(items: SignalApiNewsDigestItem[])
   return ids;
 }
 
+/** 15분 단위로 `to`를 맞춰 digest 캐시 키가 매 요청마다 바뀌지 않게 한다. */
+const DIGEST_RANGE_BUCKET_MS = 15 * 60 * 1000;
+
 export function utcRangeLastHours(hours: number): { from: string; to: string } {
-  const to = new Date();
-  const from = new Date(to.getTime() - hours * 60 * 60 * 1000);
+  const toMs = Math.floor(Date.now() / DIGEST_RANGE_BUCKET_MS) * DIGEST_RANGE_BUCKET_MS;
+  const to = new Date(toMs);
+  const from = new Date(toMs - hours * 60 * 60 * 1000);
   return { from: from.toISOString(), to: to.toISOString() };
 }
 

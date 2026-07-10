@@ -158,25 +158,20 @@ export function DigestNewsFeedScreen() {
   );
 
   useEffect(() => {
-    if (!hasSignalApi()) return;
+    if (!hasSignalApi() || !isFocused) return;
     const POLL_MS = 3 * 60 * 1000;
-    const pollSegments = digestSegmentOrder;
 
     const fetchLatestIdForSegment = async (seg: NewsSegmentKey): Promise<string | null> => {
-      const range = utcRangeLastHours(DIGEST_WINDOW_HOURS);
-      const [digestPage, newsPage] = await Promise.all([
-        fetchSignalNewsDigests(
-          { category: seg, from: range.from, to: range.to, limit: 1, batches: 1 },
-          { cacheMode: 'bypass' },
-        ),
-        fetchSignalNews({ locale, category: seg, limit: 1, offset: 0 }, { cacheMode: 'bypass' }),
-      ]);
-      return digestPage.items[0]?.id ?? newsPage.items[0]?.id ?? null;
+      const page = await fetchSignalNews(
+        { locale, category: seg, limit: 1, offset: 0 },
+        { cacheMode: 'bypass' },
+      );
+      return page.items[0]?.id ?? null;
     };
 
     const poll = async () => {
       await Promise.all(
-        pollSegments.map(async (seg) => {
+        digestSegmentOrder.map(async (seg) => {
           try {
             const latestId = await fetchLatestIdForSegment(seg);
             if (!latestId) return;
@@ -191,7 +186,7 @@ export function DigestNewsFeedScreen() {
     };
     const id = setInterval(() => void poll(), POLL_MS);
     return () => clearInterval(id);
-  }, [digestSegmentOrder, locale, markSegmentHasNewContent]);
+  }, [digestSegmentOrder, isFocused, locale, markSegmentHasNewContent]);
 
   useEffect(() => {
     void loadNewsSegmentOrder().then(setSegmentOrder);

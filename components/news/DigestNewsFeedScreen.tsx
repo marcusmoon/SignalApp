@@ -21,7 +21,6 @@ import { NewsDigestIssueCard } from '@/components/news/NewsDigestIssueCard';
 import {
   digestFromServer,
   filterRealtimeNewsRows,
-  isNewsPublishedWithinHours,
   mergeDigestRows,
   mergeNewsRows,
   utcRangeLastHours,
@@ -70,12 +69,10 @@ import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 
 const DIGEST_SEGMENTS = new Set<NewsSegmentKey>(['global', 'korea', 'crypto']);
 const DIGEST_WINDOW_HOURS = 24;
-const RECENT_WINDOW_HOURS = 48;
-const RECENT_INITIAL_LIMIT = 50;
-const RECENT_PAGE_LIMIT = 20;
+const NEWS_INITIAL_LIMIT = 50;
+const NEWS_PAGE_LIMIT = 20;
 const DIGEST_INITIAL_LIMIT = 20;
 const DIGEST_PAGE_LIMIT = 20;
-const HEADLINE_PREVIEW_LIMIT = 8;
 
 type SegmentLatestSeen = { newsId?: string; digestId?: string };
 
@@ -172,7 +169,6 @@ export function DigestNewsFeedScreen() {
     return DIGEST_SEGMENTS.has(initial) ? initial : DEFAULT_NEWS_SEGMENT;
   });
   const [segmentOrder, setSegmentOrder] = useState<NewsSegmentKey[]>([...NEWS_SEGMENT_ORDER]);
-  const [timelineExpanded, setTimelineExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
@@ -187,7 +183,6 @@ export function DigestNewsFeedScreen() {
   const [digestLoadingMore, setDigestLoadingMore] = useState(false);
   const digestLoadingMoreRef = useRef(false);
   digestLoadingMoreRef.current = digestLoadingMore;
-  const [recentShowOlder, setRecentShowOlder] = useState(false);
   const [maxHashtagDisplay, setMaxHashtagDisplay] = useState(DEFAULT_NEWS_HASHTAG_DISPLAY_MAX);
   const [newsTitleDisplayMode, setNewsTitleDisplayMode] = useState<NewsTitleDisplayMode>('localized');
   const [newContentSegments, setNewContentSegments] = useState(() => new Set<NewsSegmentKey>());
@@ -229,16 +224,12 @@ export function DigestNewsFeedScreen() {
     [clearSegmentNewContent],
   );
 
-  const scrollTopDeps = useTwoPane
-    ? [segment, recentShowOlder]
-    : [segment, timelineExpanded, recentShowOlder];
+  const scrollTopDeps = [segment];
   const { ref: feedScrollRef, scrollToTop } = useScrollToTopOnChange(scrollTopDeps, {
     resyncDeps: [digestRows, newsPoolRows],
   });
   const digestScrollRef = useRef<ScrollView>(null);
-  const feedScrollResetKey = useTwoPane
-    ? `${segment}:wide:${recentShowOlder ? 'all' : '48h'}`
-    : `${segment}:${timelineExpanded ? 'timeline' : 'headlines'}:${recentShowOlder ? 'all' : '48h'}`;
+  const feedScrollResetKey = useTwoPane ? `${segment}:wide:news` : `${segment}:news`;
 
   const digestSegmentOrder = useMemo(
     () => segmentOrder.filter((key) => DIGEST_SEGMENTS.has(key)),
@@ -256,7 +247,6 @@ export function DigestNewsFeedScreen() {
         setError(t('errorSignalApiShort'));
         return;
       }
-      const isRefresh = forceRefresh === true;
       const cacheMode = signalCacheMode(forceRefresh);
       const range = utcRangeLastHours(DIGEST_WINDOW_HOURS);
       try {
@@ -273,7 +263,7 @@ export function DigestNewsFeedScreen() {
             { cacheMode },
           ),
           fetchSignalNews(
-            { locale, category: segment, limit: RECENT_INITIAL_LIMIT, offset: 0 },
+            { locale, category: segment, limit: NEWS_INITIAL_LIMIT, offset: 0 },
             { cacheMode },
           ),
         ]);
@@ -281,10 +271,6 @@ export function DigestNewsFeedScreen() {
         setNewsPoolRows(newsPage.items);
         setNewsHasMore(newsPage.meta.hasMore);
         setDigestHasMore(digestPage.meta.hasMore);
-        if (!isRefresh) {
-          setRecentShowOlder(false);
-          setTimelineExpanded(false);
-        }
         syncSegmentLatestSeen(segment, {
           newsId: newsPage.items[0]?.id ?? null,
           digestId: digestPage.items[0]?.id ?? null,
@@ -326,22 +312,8 @@ export function DigestNewsFeedScreen() {
     }
   }, [digestHasMore, digestLoadingMore, segment]);
 
-  const loadMoreRecent = useCallback(async () => {
-    if (!hasSignalApi() || newsLoadingMore) return;
-
-    const poolRows = newsPoolRowsRef.current;
-    const digestItems = digestRowsRef.current;
-    const recentPool = filterRealtimeNewsRows(poolRows, digestItems);
-    const hasHiddenOlder = recentPool.some(
-      (row) => !isNewsPublishedWithinHours(row, RECENT_WINDOW_HOURS),
-    );
-
-    if (!recentShowOlder) {
-      setRecentShowOlder(true);
-      if (hasHiddenOlder || !newsHasMore) return;
-    }
-
-    if (!newsHasMore) return;
+  const loadMoreNews = useCallback(async () => {
+    if (!hasSignalApi() || newsLoadingMore || !newsHasMore) return;
 
     setNewsLoadingMore(true);
     try {
@@ -349,20 +321,19 @@ export function DigestNewsFeedScreen() {
         {
           locale,
           category: segment,
-          limit: RECENT_PAGE_LIMIT,
-          offset: poolRows.length,
+          limit: NEWS_PAGE_LIMIT,
+          offset: newsPoolRowsRef.current.length,
         },
         { cacheMode: signalCacheMode() },
       );
       setNewsPoolRows((prev) => mergeNewsRows(prev, page.items));
       setNewsHasMore(page.meta.hasMore);
-      setRecentShowOlder(true);
     } catch {
       /* ignore pagination errors */
     } finally {
       setNewsLoadingMore(false);
     }
-  }, [locale, newsHasMore, newsLoadingMore, recentShowOlder, segment]);
+  }, [locale, newsHasMore, newsLoadingMore, segment]);
 
   useEffect(() => {
     if (!hasSignalApi() || !isFocused) return;
@@ -443,7 +414,6 @@ export function DigestNewsFeedScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     clearSegmentNewContent(segment);
-    setRecentShowOlder(false);
     try {
       await load(true);
     } finally {
@@ -468,8 +438,6 @@ export function DigestNewsFeedScreen() {
       setNewsPoolRows([]);
       setNewsHasMore(false);
       setDigestHasMore(false);
-      setRecentShowOlder(false);
-      setTimelineExpanded(false);
       setError(null);
       setSegment(key);
       void saveNewsSegment(key);
@@ -507,47 +475,24 @@ export function DigestNewsFeedScreen() {
     () => digestRows.map((row) => digestFromServer(row, newsPoolRows)),
     [digestRows, newsPoolRows],
   );
-  const recentPoolItems = useMemo(
+  const newsPoolItems = useMemo(
     () => filterRealtimeNewsRows(newsPoolRows, digestRows),
     [digestRows, newsPoolRows],
   );
-  const visibleRecentPoolItems = useMemo(
-    () =>
-      recentShowOlder
-        ? recentPoolItems
-        : recentPoolItems.filter((row) => isNewsPublishedWithinHours(row, RECENT_WINDOW_HOURS)),
-    [recentPoolItems, recentShowOlder],
+  const newsItems = useMemo(
+    () => newsPoolItems.map((row) => signalNewsToNewsItem(row, locale)),
+    [locale, newsPoolItems],
   );
-  const recentItems = useMemo(
-    () => visibleRecentPoolItems.map((row) => signalNewsToNewsItem(row, locale)),
-    [locale, visibleRecentPoolItems],
-  );
-  const headlinePreviewItems = useMemo(
-    () => recentItems.slice(0, HEADLINE_PREVIEW_LIMIT),
-    [recentItems],
-  );
-  const hasHiddenOlderInPool = useMemo(
-    () =>
-      recentPoolItems.some((row) => !isNewsPublishedWithinHours(row, RECENT_WINDOW_HOURS)),
-    [recentPoolItems],
-  );
-  const showTimelineLoadMore = useMemo(() => {
-    if (recentItems.length === 0) return false;
-    if (!recentShowOlder) return hasHiddenOlderInPool || newsHasMore;
-    return newsHasMore;
-  }, [hasHiddenOlderInPool, newsHasMore, recentItems.length, recentShowOlder]);
-  const showOpenTimeline =
-    recentItems.length > 0 &&
-    (timelineExpanded || recentItems.length > HEADLINE_PREVIEW_LIMIT || hasHiddenOlderInPool || newsHasMore);
+  const showNewsLoadMore = newsHasMore && newsItems.length > 0;
 
   const scrollLoadMoreGateRef = useRef(createScrollLoadMoreGate());
   const digestScrollLoadMoreGateRef = useRef(createScrollLoadMoreGate());
-  const webTimelineLoadMore = useWebFlatListLoadMore({
-    hasMore: showTimelineLoadMore,
+  const webNewsLoadMore = useWebFlatListLoadMore({
+    hasMore: showNewsLoadMore,
     loadingMore: newsLoadingMore,
     loading,
-    loadMore: loadMoreRecent,
-    enabled: Platform.OS === 'web' && isFocused && (useTwoPane || timelineExpanded),
+    loadMore: loadMoreNews,
+    enabled: Platform.OS === 'web' && isFocused,
     isBusyRef: newsLoadingMoreRef,
   });
   const webDigestLoadMore = useWebFlatListLoadMore({
@@ -561,26 +506,17 @@ export function DigestNewsFeedScreen() {
 
   const onFeedScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const newsListActive = useTwoPane || timelineExpanded;
-      if (!newsListActive || !showTimelineLoadMore || newsLoadingMore || loading) return;
+      if (!showNewsLoadMore || newsLoadingMore || loading) return;
       if (Platform.OS === 'web') {
-        webTimelineLoadMore.onScroll(e);
+        webNewsLoadMore.onScroll(e);
         return;
       }
       scrollLoadMoreGateRef.current.onScrollNearEnd(e, {
         enabled: true,
-        trigger: () => void loadMoreRecent(),
+        trigger: () => void loadMoreNews(),
       });
     },
-    [
-      loading,
-      loadMoreRecent,
-      newsLoadingMore,
-      showTimelineLoadMore,
-      timelineExpanded,
-      useTwoPane,
-      webTimelineLoadMore,
-    ],
+    [loading, loadMoreNews, newsLoadingMore, showNewsLoadMore, webNewsLoadMore],
   );
 
   const onDigestScroll = useCallback(
@@ -612,11 +548,8 @@ export function DigestNewsFeedScreen() {
     ? SCREEN_WIDE_SCROLL_BOTTOM_BASE
     : tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const fabBottom = fabStackBottom(tabBarHeight, insets.bottom);
-  const recentWindowMeta = recentShowOlder
-    ? undefined
-    : t('newsDigestFeedRecentWindowMeta', { hours: String(RECENT_WINDOW_HOURS) });
 
-  const renderTimelineArticles = (items: typeof recentItems) => {
+  const renderNewsArticles = (items: typeof newsItems) => {
     const rowKinds = items.map(() => ({ kind: 'news' as const }));
     return items.map((item, index) => {
       const edges = groupedFeedRowEdges(rowKinds, index, 'news');
@@ -635,8 +568,8 @@ export function DigestNewsFeedScreen() {
     });
   };
 
-  const renderTimelineLoadMore = () => {
-    if (!showTimelineLoadMore && !newsLoadingMore) return null;
+  const renderNewsLoadMore = () => {
+    if (!showNewsLoadMore && !newsLoadingMore) return null;
     if (newsLoadingMore) {
       return (
         <View style={styles.footerLoading}>
@@ -645,22 +578,7 @@ export function DigestNewsFeedScreen() {
         </View>
       );
     }
-    if (Platform.OS !== 'web' || useTwoPane) return null;
-    return (
-      <View style={styles.footerLoading}>
-        <Pressable
-          onPress={() => void loadMoreRecent()}
-          style={styles.footerLoadMoreButton}
-          accessibilityRole="button"
-          accessibilityLabel={
-            recentShowOlder ? t('feedDigestExpand') : t('newsDigestFeedLoadMoreOlder')
-          }>
-          <Text style={styles.footerLoadMoreText}>
-            {recentShowOlder ? t('feedDigestExpand') : t('newsDigestFeedLoadMoreOlder')}
-          </Text>
-        </Pressable>
-      </View>
-    );
+    return null;
   };
 
   const renderDigestLoadMore = () => {
@@ -684,14 +602,14 @@ export function DigestNewsFeedScreen() {
     ) : null;
 
   const renderNewsLoading = () =>
-    loading && recentItems.length === 0 ? (
+    loading && newsItems.length === 0 ? (
       <View style={styles.skeletonBlock}>
         <SignalLoadingIndicator message={t('commonLoading')} />
       </View>
     ) : null;
 
   const renderNewsEmpty = () =>
-    !loading && recentItems.length === 0 && !error ? (
+    !loading && newsItems.length === 0 && !error ? (
       <Text style={styles.empty}>{t('newsDigestFeedRealtimeEmpty')}</Text>
     ) : null;
 
@@ -718,7 +636,7 @@ export function DigestNewsFeedScreen() {
     digestItems.map((item) => <NewsDigestIssueCard key={item.id} digest={item} />);
 
   const newsListRefreshControl =
-    loading && digestItems.length === 0 && recentItems.length === 0 ? undefined : (
+    loading && digestItems.length === 0 && newsItems.length === 0 ? undefined : (
       <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
     );
 
@@ -734,8 +652,7 @@ export function DigestNewsFeedScreen() {
       ) : null}
       <DigestPaneHeader
         wide
-        title={t('newsDigestFeedTimelineSectionTitle')}
-        hint={recentWindowMeta}
+        title={t('newsDigestFeedNewsSectionTitle')}
         styles={styles}
       />
       <WebWheelScrollView
@@ -746,14 +663,14 @@ export function DigestNewsFeedScreen() {
         showsVerticalScrollIndicator={false}
         onScroll={onFeedScroll}
         scrollEventThrottle={350}
-        onLayout={webTimelineLoadMore.onLayout}
-        onContentSizeChange={webTimelineLoadMore.onContentSizeChange}
+        onLayout={webNewsLoadMore.onLayout}
+        onContentSizeChange={webNewsLoadMore.onContentSizeChange}
         refreshControl={newsListRefreshControl}>
         {renderNewsError()}
         {renderNewsLoading()}
         {renderNewsEmpty()}
-        {renderTimelineArticles(recentItems)}
-        {renderTimelineLoadMore()}
+        {renderNewsArticles(newsItems)}
+        {renderNewsLoadMore()}
       </WebWheelScrollView>
     </View>
   );
@@ -795,45 +712,17 @@ export function DigestNewsFeedScreen() {
       showsVerticalScrollIndicator={false}
       onScroll={onFeedScroll}
       scrollEventThrottle={350}
-      onLayout={timelineExpanded ? webTimelineLoadMore.onLayout : undefined}
-      onContentSizeChange={timelineExpanded ? webTimelineLoadMore.onContentSizeChange : undefined}
+      onLayout={webNewsLoadMore.onLayout}
+      onContentSizeChange={webNewsLoadMore.onContentSizeChange}
       refreshControl={newsListRefreshControl}>
       <View style={styles.listHeader}>
-        {!timelineExpanded && headlinePreviewItems.length > 0 ? (
-          <DigestFeedSection
-            title={t('newsDigestFeedHeadlineSectionTitle')}
-            hint={recentWindowMeta}
-            styles={styles}>
-            {renderTimelineArticles(headlinePreviewItems)}
-            {showOpenTimeline ? (
-              <Pressable
-                onPress={() => setTimelineExpanded(true)}
-                style={styles.digestTimelineToggleBtn}
-                accessibilityRole="button"
-                accessibilityLabel={t('newsDigestFeedOpenTimeline')}>
-                <Text style={styles.digestTimelineToggleText}>{t('newsDigestFeedOpenTimeline')}</Text>
-              </Pressable>
-            ) : null}
-          </DigestFeedSection>
-        ) : null}
-
-        {timelineExpanded ? (
-          <DigestFeedSection
-            title={t('newsDigestFeedTimelineSectionTitle')}
-            hint={recentWindowMeta}
-            actionLabel={t('newsDigestFeedCloseTimeline')}
-            onAction={() => {
-              setTimelineExpanded(false);
-              setRecentShowOlder(false);
-            }}
-            styles={styles}>
-            {renderNewsError()}
-            {renderNewsLoading()}
-            {renderNewsEmpty()}
-            {renderTimelineArticles(recentItems)}
-            {renderTimelineLoadMore()}
-          </DigestFeedSection>
-        ) : null}
+        <DigestFeedSection title={t('newsDigestFeedNewsSectionTitle')} styles={styles}>
+          {renderNewsError()}
+          {renderNewsLoading()}
+          {renderNewsEmpty()}
+          {renderNewsArticles(newsItems)}
+          {renderNewsLoadMore()}
+        </DigestFeedSection>
 
         <DigestFeedSection
           title={t('newsDigestFeedDigestSectionTitle')}

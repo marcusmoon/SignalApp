@@ -14,7 +14,6 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { DigestHeadlineRow } from '@/components/news/DigestHeadlineRow';
 import { makeNewsStyles } from '@/components/news/newsStyles';
 import { NewsDigestIssueCard } from '@/components/news/NewsDigestIssueCard';
 import {
@@ -611,16 +610,7 @@ export function DigestNewsFeedScreen() {
                 title={t('newsDigestFeedHeadlineSectionTitle')}
                 hint={recentWindowMeta}
                 styles={styles}>
-                <View style={styles.digestHeadlineList}>
-                  {headlinePreviewItems.map((item) => (
-                    <DigestHeadlineRow
-                      key={item.id}
-                      item={item}
-                      titleToggle={titleToggle}
-                      titleShowAlternate={useNewsTitleFab ? newsTitleShowAlternate : undefined}
-                    />
-                  ))}
-                </View>
+                {renderTimelineArticles(headlinePreviewItems)}
                 {showOpenTimeline ? (
                   <Pressable
                     onPress={() => setTimelineExpanded(true)}

@@ -402,9 +402,6 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '800',
       color: theme.textMuted,
     },
-    digestHeadlineList: {
-      marginBottom: 2,
-    },
     digestTimelineToggleBtn: {
       alignSelf: 'flex-start',
       marginTop: 4,

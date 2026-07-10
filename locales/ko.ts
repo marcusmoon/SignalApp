@@ -496,6 +496,11 @@ export const ko = {
   settingsSignalServerCustomEmpty: 'URL을 입력해 주세요.',
 
   settingsNewsTabLead: '뉴스 화면에서 쓰는 옵션입니다. 이 기기에만 저장됩니다.',
+  settingsNewsFeedLayoutKicker: '뉴스 화면 스타일',
+  settingsNewsFeedLayoutLegacy: '기존',
+  settingsNewsFeedLayoutDigest: '신규',
+  settingsNewsFeedLayoutHint:
+    '기존은 지금까지의 기사 목록 방식입니다. 신규는 24시간 이슈 요약을 중심으로 보여 줍니다. 내 관심·영상 탭은 기존 방식으로 열립니다.',
   settingsNewsSegmentOrderKicker: '뉴스 탭 순서',
   settingsNewsSegmentOrderHint:
     '뉴스 화면 상단의 글로벌·코인·내 관심·영상 순서입니다. 오른쪽 ≡을 드래그해 바꿉니다.',
@@ -524,6 +529,10 @@ export const ko = {
   settingsNewsUnreadCheckHint:
     '앱이 켜져 있을 때와 백그라운드에서 새 뉴스를 확인하는 간격입니다. 백그라운드 작업은 OS 최소 15분이며, iOS는 그보다 더 늦을 수 있습니다. Expo Go에서는 백그라운드 작업이 동작하지 않습니다.',
   settingsNewsUnreadCheckOption: '{{minutes}}분',
+  newsDigestFeedWindowMeta: '최근 {{hours}}시간 이슈 요약',
+  newsDigestFeedEmpty: '이 시간대에 묶인 이슈가 없습니다.',
+  newsDigestFeedRealtimeHeader: '실시간 기사',
+  newsDigestFeedRealtimeEmpty: '다이제스트에 포함되지 않은 실시간 기사가 없습니다.',
   settingsLocalMacroCalendar: '로컬 알림 · 경제 캘린더',
   settingsLocalMacroCalendarHint: 'CPI·FOMC 등 매크로 일정 — 해당일 오전 8:00(기기)에 한 번 알림',
   settingsLocalWatchlistEarnings: '로컬 알림 · 관심 실적',

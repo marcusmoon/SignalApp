@@ -336,6 +336,28 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.danger,
       lineHeight: sf(18),
     },
+    digestFeedMeta: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      fontWeight: '700',
+      color: theme.textMuted,
+      marginBottom: 10,
+    },
+    digestRealtimeHeader: {
+      marginTop: 6,
+      marginBottom: 10,
+      fontSize: sf(13),
+      lineHeight: sf(18),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    digestRealtimeEmpty: {
+      fontSize: sf(12),
+      lineHeight: sf(17),
+      color: theme.textDim,
+      marginTop: 4,
+      marginBottom: 8,
+    },
     empty: {
       fontSize: sf(13),
       color: theme.textMuted,

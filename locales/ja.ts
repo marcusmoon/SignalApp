@@ -499,6 +499,11 @@ export const ja = {
   settingsSignalServerCustomEmpty: 'URL を入力してください。',
 
   settingsNewsTabLead: 'ニュース画面のオプションです。この端末にのみ保存されます。',
+  settingsNewsFeedLayoutKicker: 'ニュース画面のスタイル',
+  settingsNewsFeedLayoutLegacy: '従来',
+  settingsNewsFeedLayoutDigest: '新規',
+  settingsNewsFeedLayoutHint:
+    '従来は今までの記事一覧です。新規は24時間のイシュー要約を中心に表示します。ウォッチ・動画タブは従来の表示のままです。',
   settingsNewsSegmentOrderKicker: 'ニュースタブの順序',
   settingsNewsSegmentOrderHint:
     'ニュース画面上部のグローバル・コイン・ウォッチ・動画の並びです。右の≡をドラッグして並べ替えます。',
@@ -528,6 +533,10 @@ export const ja = {
   settingsNewsUnreadCheckHint:
     'アプリ起動中・バックグラウンドで新着ヘッドラインを確認する間隔です。バックグラウンドはOS最小15分で、iOSではさらに遅れる場合があります。Expo Goでは動作しません。',
   settingsNewsUnreadCheckOption: '{{minutes}}分',
+  newsDigestFeedWindowMeta: '直近{{hours}}時間のイシュー要約',
+  newsDigestFeedEmpty: 'この期間にまとめられたイシューはありません。',
+  newsDigestFeedRealtimeHeader: 'リアルタイム記事',
+  newsDigestFeedRealtimeEmpty: 'ダイジェストに含まれないリアルタイム記事はありません。',
   settingsLocalMacroCalendar: 'ローカル通知 · 経済カレンダー',
   settingsLocalMacroCalendarHint: 'CPI・FOMC などのマクロ予定 — 当日 8:00（端末時刻）に1回通知',
   settingsLocalWatchlistEarnings: 'ローカル通知 · ウォッチ決算',

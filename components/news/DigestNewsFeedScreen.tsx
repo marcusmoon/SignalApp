@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect, useIsFocused } from 'expo-router/react-navigation';
 import { useLocalSearchParams } from 'expo-router';
@@ -50,6 +50,49 @@ const REALTIME_LIMIT = 25;
 const PENDING_PREVIEW_LIMIT = 5;
 
 type DigestFeedViewMode = 'digest' | 'live';
+
+type DigestFeedSectionProps = {
+  title: string;
+  hint?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  isLast?: boolean;
+  styles: ReturnType<typeof makeNewsStyles>;
+  children: ReactNode;
+};
+
+function DigestFeedSection({
+  title,
+  hint,
+  actionLabel,
+  onAction,
+  isLast,
+  styles,
+  children,
+}: DigestFeedSectionProps) {
+  return (
+    <View style={[styles.digestFeedSection, isLast && styles.digestFeedSectionLast]}>
+      <View style={styles.digestFeedSectionHeader}>
+        <View style={styles.digestFeedSectionHeaderRow}>
+          <View style={styles.digestFeedSectionHeaderText}>
+            <Text style={styles.digestFeedSectionTitle}>{title}</Text>
+            {hint ? <Text style={styles.digestFeedSectionHint}>{hint}</Text> : null}
+          </View>
+          {actionLabel && onAction ? (
+            <Pressable
+              onPress={onAction}
+              style={styles.digestFeedSectionMoreBtn}
+              accessibilityRole="button"
+              accessibilityLabel={actionLabel}>
+              <Text style={styles.digestFeedSectionMoreText}>{actionLabel}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+      {children}
+    </View>
+  );
+}
 
 export function DigestNewsFeedScreen() {
   const routeParams = useLocalSearchParams<{ segment?: string }>();
@@ -384,8 +427,11 @@ export function DigestNewsFeedScreen() {
           }>
           <View style={styles.listHeader}>
             {viewMode === 'live' ? (
-              <>
-                <Text style={styles.digestFeedMeta}>{t('newsDigestFeedLiveMeta')}</Text>
+              <DigestFeedSection
+                title={t('newsDigestFeedRecentSectionTitle')}
+                hint={t('newsDigestFeedLiveSectionHint')}
+                isLast
+                styles={styles}>
                 {error ? (
                   <View style={styles.errBox}>
                     <Text style={styles.errText}>{error}</Text>
@@ -400,49 +446,41 @@ export function DigestNewsFeedScreen() {
                   <Text style={styles.empty}>{t('newsDigestFeedRealtimeEmpty')}</Text>
                 ) : null}
                 {renderRealtimeCards(realtimeItems)}
-              </>
+              </DigestFeedSection>
             ) : (
               <>
                 {pendingPreviewItems.length > 0 ? (
-                  <View style={styles.digestPendingBlock}>
-                    <View style={styles.digestPendingHeaderRow}>
-                      <Text style={styles.digestPendingHeader}>{t('newsDigestFeedPendingHeader')}</Text>
-                      {pendingMoreCount > 0 ? (
-                        <Pressable
-                          onPress={() => setViewMode('live')}
-                          style={styles.digestPendingMoreBtn}
-                          accessibilityRole="button"
-                          accessibilityLabel={t('newsDigestFeedPendingMore', {
-                            count: String(pendingMoreCount),
-                          })}>
-                          <Text style={styles.digestPendingMoreText}>
-                            {t('newsDigestFeedPendingMore', { count: String(pendingMoreCount) })}
-                          </Text>
-                        </Pressable>
-                      ) : null}
-                    </View>
+                  <DigestFeedSection
+                    title={t('newsDigestFeedRecentSectionTitle')}
+                    hint={t('newsDigestFeedRecentSectionHint')}
+                    actionLabel={pendingMoreCount > 0 ? t('newsDigestFeedShowAllRecent') : undefined}
+                    onAction={pendingMoreCount > 0 ? () => setViewMode('live') : undefined}
+                    styles={styles}>
                     {renderRealtimeCards(pendingPreviewItems)}
-                  </View>
+                  </DigestFeedSection>
                 ) : null}
-                <Text style={styles.digestFeedMeta}>
-                  {t('newsDigestFeedWindowMeta', { hours: String(DIGEST_WINDOW_HOURS) })}
-                </Text>
-                {error ? (
-                  <View style={styles.errBox}>
-                    <Text style={styles.errText}>{error}</Text>
-                  </View>
-                ) : null}
-                {loading && digestItems.length === 0 ? (
-                  <View style={styles.skeletonBlock}>
-                    <SignalLoadingIndicator message={t('commonLoading')} />
-                  </View>
-                ) : null}
-                {!loading && digestItems.length === 0 && !error ? (
-                  <Text style={styles.empty}>{t('newsDigestFeedEmpty')}</Text>
-                ) : null}
-                {digestItems.map((item) => (
-                  <NewsDigestIssueCard key={item.id} digest={item} />
-                ))}
+                <DigestFeedSection
+                  title={t('newsDigestFeedDigestSectionTitle')}
+                  hint={t('newsDigestFeedDigestSectionHint', { hours: String(DIGEST_WINDOW_HOURS) })}
+                  isLast
+                  styles={styles}>
+                  {error ? (
+                    <View style={styles.errBox}>
+                      <Text style={styles.errText}>{error}</Text>
+                    </View>
+                  ) : null}
+                  {loading && digestItems.length === 0 ? (
+                    <View style={styles.skeletonBlock}>
+                      <SignalLoadingIndicator message={t('commonLoading')} />
+                    </View>
+                  ) : null}
+                  {!loading && digestItems.length === 0 && !error ? (
+                    <Text style={styles.empty}>{t('newsDigestFeedEmpty')}</Text>
+                  ) : null}
+                  {digestItems.map((item) => (
+                    <NewsDigestIssueCard key={item.id} digest={item} />
+                  ))}
+                </DigestFeedSection>
               </>
             )}
           </View>

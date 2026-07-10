@@ -346,35 +346,61 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
     digestViewModeSegment: {
       marginTop: 8,
     },
-    digestPendingHeaderRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 10,
-      marginBottom: 10,
+    digestFeedSection: {
+      marginBottom: 14,
+      paddingHorizontal: 12,
+      paddingTop: 12,
+      paddingBottom: 10,
+      borderRadius: 12,
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
     },
-    digestPendingHeader: {
-      flex: 1,
-      fontSize: sf(13),
-      lineHeight: sf(18),
+    digestFeedSectionLast: {
+      marginBottom: 4,
+    },
+    digestFeedSectionHeader: {
+      marginBottom: 10,
+      paddingBottom: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    digestFeedSectionTitle: {
+      fontSize: sf(14),
+      lineHeight: sf(19),
       fontWeight: '900',
       color: theme.text,
     },
-    digestPendingMoreBtn: {
+    digestFeedSectionHint: {
+      marginTop: 3,
+      fontSize: sf(11),
+      lineHeight: sf(16),
+      fontWeight: '500',
+      color: theme.textDim,
+    },
+    digestFeedSectionHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    digestFeedSectionHeaderText: {
+      flex: 1,
+      minWidth: 0,
+    },
+    digestFeedSectionMoreBtn: {
+      marginTop: 1,
       paddingVertical: 6,
       paddingHorizontal: 10,
       borderRadius: 999,
-      backgroundColor: theme.greenDim,
+      backgroundColor: theme.bgElevated,
       borderWidth: 1,
-      borderColor: theme.greenBorder,
+      borderColor: theme.border,
     },
-    digestPendingMoreText: {
+    digestFeedSectionMoreText: {
       fontSize: sf(11),
       fontWeight: '800',
-      color: theme.green,
-    },
-    digestPendingBlock: {
-      marginBottom: 14,
+      color: theme.textMuted,
     },
     digestRealtimeHeader: {
       marginTop: 0,

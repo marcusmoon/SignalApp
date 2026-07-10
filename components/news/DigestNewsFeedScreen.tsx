@@ -2,7 +2,15 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type React
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect, useIsFocused } from 'expo-router/react-navigation';
 import { useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  Text,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
@@ -31,7 +39,12 @@ import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext'
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news';
-import { useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
+import {
+  useResetRefreshingOnTabBlur,
+  useScrollToTopOnChange,
+  useTabPressCycleSegment,
+} from '@/hooks';
+import { useWebFlatListLoadMore } from '@/hooks/useWebFlatListLoadMore';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { fetchSignalNews, fetchSignalNewsDigests, signalNewsToNewsItem } from '@/integrations/signal-api';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
@@ -49,6 +62,7 @@ import {
 } from '@/services/newsTitleDisplayPreference';
 import { loadNewsSegmentOrder } from '@/services/newsSegmentOrderPreference';
 import { saveNewsSegment } from '@/services/newsSegmentPreference';
+import { createScrollLoadMoreGate } from '@/utils/listScrollLoadMoreGate';
 import { firstRouteParam } from '@/utils/routeSearchParams';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 
@@ -131,6 +145,8 @@ export function DigestNewsFeedScreen() {
   const [newsPoolRows, setNewsPoolRows] = useState<SignalApiNewsItem[]>([]);
   const [newsHasMore, setNewsHasMore] = useState(false);
   const [newsLoadingMore, setNewsLoadingMore] = useState(false);
+  const newsLoadingMoreRef = useRef(false);
+  newsLoadingMoreRef.current = newsLoadingMore;
   const [recentShowOlder, setRecentShowOlder] = useState(false);
   const [maxHashtagDisplay, setMaxHashtagDisplay] = useState(DEFAULT_NEWS_HASHTAG_DISPLAY_MAX);
   const [newsTitleDisplayMode, setNewsTitleDisplayMode] = useState<NewsTitleDisplayMode>('localized');
@@ -442,6 +458,38 @@ export function DigestNewsFeedScreen() {
     recentItems.length > 0 &&
     (timelineExpanded || recentItems.length > HEADLINE_PREVIEW_LIMIT || hasHiddenOlderInPool || newsHasMore);
 
+  const scrollLoadMoreGateRef = useRef(createScrollLoadMoreGate());
+  const webTimelineLoadMore = useWebFlatListLoadMore({
+    hasMore: showTimelineLoadMore,
+    loadingMore: newsLoadingMore,
+    loading,
+    loadMore: loadMoreRecent,
+    enabled: Platform.OS === 'web' && isFocused && timelineExpanded,
+    isBusyRef: newsLoadingMoreRef,
+  });
+
+  const onFeedScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (!timelineExpanded || !showTimelineLoadMore || newsLoadingMore || loading) return;
+      if (Platform.OS === 'web') {
+        webTimelineLoadMore.onScroll(e);
+        return;
+      }
+      scrollLoadMoreGateRef.current.onScrollNearEnd(e, {
+        enabled: true,
+        trigger: () => void loadMoreRecent(),
+      });
+    },
+    [
+      loading,
+      loadMoreRecent,
+      newsLoadingMore,
+      showTimelineLoadMore,
+      timelineExpanded,
+      webTimelineLoadMore,
+    ],
+  );
+
   const newsTitleShowAlternate = newsTitleDisplayMode === 'alternate';
   const newsTitleAlternateIsTranslation = locale === 'en';
   const useNewsTitleFab = Platform.OS !== 'web' && !useTwoPane;
@@ -478,7 +526,7 @@ export function DigestNewsFeedScreen() {
   };
 
   const renderTimelineLoadMore = () => {
-    if (!showTimelineLoadMore) return null;
+    if (!showTimelineLoadMore && !newsLoadingMore) return null;
     if (newsLoadingMore) {
       return (
         <View style={styles.footerLoading}>
@@ -487,6 +535,7 @@ export function DigestNewsFeedScreen() {
         </View>
       );
     }
+    if (Platform.OS !== 'web') return null;
     return (
       <View style={styles.footerLoading}>
         <Pressable
@@ -547,6 +596,10 @@ export function DigestNewsFeedScreen() {
           style={styles.list}
           contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
           showsVerticalScrollIndicator={false}
+          onScroll={onFeedScroll}
+          scrollEventThrottle={350}
+          onLayout={timelineExpanded ? webTimelineLoadMore.onLayout : undefined}
+          onContentSizeChange={timelineExpanded ? webTimelineLoadMore.onContentSizeChange : undefined}
           refreshControl={
             loading && digestItems.length === 0 && recentItems.length === 0 ? undefined : (
               <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />

@@ -47,6 +47,9 @@ import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 const DIGEST_SEGMENTS = new Set<NewsSegmentKey>(['global', 'korea', 'crypto']);
 const DIGEST_WINDOW_HOURS = 24;
 const REALTIME_LIMIT = 25;
+const PENDING_PREVIEW_LIMIT = 5;
+
+type DigestFeedViewMode = 'digest' | 'live';
 
 export function DigestNewsFeedScreen() {
   const routeParams = useLocalSearchParams<{ segment?: string }>();
@@ -66,6 +69,7 @@ export function DigestNewsFeedScreen() {
     return DIGEST_SEGMENTS.has(initial) ? initial : DEFAULT_NEWS_SEGMENT;
   });
   const [segmentOrder, setSegmentOrder] = useState<NewsSegmentKey[]>([...NEWS_SEGMENT_ORDER]);
+  const [viewMode, setViewMode] = useState<DigestFeedViewMode>('digest');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
@@ -108,10 +112,10 @@ export function DigestNewsFeedScreen() {
     [clearSegmentNewContent],
   );
 
-  const { ref: feedScrollRef } = useScrollToTopOnChange([segment], {
+  const { ref: feedScrollRef } = useScrollToTopOnChange([segment, viewMode], {
     resyncDeps: [digestRows, realtimeRows],
   });
-  const feedScrollResetKey = segment;
+  const feedScrollResetKey = `${segment}:${viewMode}`;
 
   const digestSegmentOrder = useMemo(
     () => segmentOrder.filter((key) => DIGEST_SEGMENTS.has(key)),
@@ -277,6 +281,11 @@ export function DigestNewsFeedScreen() {
     () => realtimeRows.map((row) => signalNewsToNewsItem(row, locale)),
     [locale, realtimeRows],
   );
+  const pendingPreviewItems = useMemo(
+    () => realtimeItems.slice(0, PENDING_PREVIEW_LIMIT),
+    [realtimeItems],
+  );
+  const pendingMoreCount = Math.max(0, realtimeItems.length - PENDING_PREVIEW_LIMIT);
   const newsTitleShowAlternate = newsTitleDisplayMode === 'alternate';
   const newsTitleAlternateIsTranslation = locale === 'en';
   const useNewsTitleFab = Platform.OS !== 'web' && !useTwoPane;
@@ -288,6 +297,39 @@ export function DigestNewsFeedScreen() {
   const newContentAvailable = newContentSegments.has(segment);
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const fabBottom = fabStackBottom(tabBarHeight, insets.bottom);
+
+  const renderRealtimeCards = (items: typeof realtimeItems) =>
+    items.map((item) => (
+      <NewsCard
+        key={item.id}
+        layout="grouped"
+        item={item}
+        compactMeta
+        titleToggle={segment === 'global' || segment === 'crypto'}
+        titleShowAlternate={useNewsTitleFab ? newsTitleShowAlternate : undefined}
+      />
+    ));
+
+  const viewModePicker = (
+    <View style={[styles.segment, !useTwoPane && styles.digestViewModeSegment]}>
+      {(['digest', 'live'] as const).map((mode) => {
+        const selected = viewMode === mode;
+        const label =
+          mode === 'digest' ? t('newsDigestViewModeDigest') : t('newsDigestViewModeLive');
+        return (
+          <Pressable
+            key={mode}
+            onPress={() => setViewMode(mode)}
+            style={[styles.segBtn, selected && styles.segBtnActive]}
+            accessibilityRole="radio"
+            accessibilityState={{ selected }}
+            accessibilityLabel={label}>
+            <Text style={[styles.segText, selected && styles.segTextActive]}>{label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
@@ -314,8 +356,11 @@ export function DigestNewsFeedScreen() {
                 );
               })}
             </View>
+            {viewModePicker}
           </View>
-        ) : null}
+        ) : (
+          <View style={[styles.topFixed, styles.listColumnDigestStrip]}>{viewModePicker}</View>
+        )}
 
         {isFocused ? (
           <FeedNewContentChip
@@ -338,41 +383,68 @@ export function DigestNewsFeedScreen() {
             )
           }>
           <View style={styles.listHeader}>
-            <Text style={styles.digestFeedMeta}>{t('newsDigestFeedWindowMeta', { hours: String(DIGEST_WINDOW_HOURS) })}</Text>
-            {error ? (
-              <View style={styles.errBox}>
-                <Text style={styles.errText}>{error}</Text>
-              </View>
-            ) : null}
-            {loading && digestItems.length === 0 ? (
-              <View style={styles.skeletonBlock}>
-                <SignalLoadingIndicator message={t('commonLoading')} />
-              </View>
-            ) : null}
-            {!loading && digestItems.length === 0 && !error ? (
-              <Text style={styles.empty}>{t('newsDigestFeedEmpty')}</Text>
-            ) : null}
-            {digestItems.map((item) => (
-              <NewsDigestIssueCard key={item.id} digest={item} />
-            ))}
-            {realtimeItems.length > 0 ? (
+            {viewMode === 'live' ? (
               <>
-                <Text style={styles.digestRealtimeHeader}>{t('newsDigestFeedRealtimeHeader')}</Text>
-                {realtimeItems.map((item) => (
-                  <NewsCard
-                    key={item.id}
-                    layout="grouped"
-                    item={item}
-                    compactMeta
-                    titleToggle={segment === 'global' || segment === 'crypto'}
-                    titleShowAlternate={useNewsTitleFab ? newsTitleShowAlternate : undefined}
-                  />
+                <Text style={styles.digestFeedMeta}>{t('newsDigestFeedLiveMeta')}</Text>
+                {error ? (
+                  <View style={styles.errBox}>
+                    <Text style={styles.errText}>{error}</Text>
+                  </View>
+                ) : null}
+                {loading && realtimeItems.length === 0 ? (
+                  <View style={styles.skeletonBlock}>
+                    <SignalLoadingIndicator message={t('commonLoading')} />
+                  </View>
+                ) : null}
+                {!loading && realtimeItems.length === 0 && !error ? (
+                  <Text style={styles.empty}>{t('newsDigestFeedRealtimeEmpty')}</Text>
+                ) : null}
+                {renderRealtimeCards(realtimeItems)}
+              </>
+            ) : (
+              <>
+                {pendingPreviewItems.length > 0 ? (
+                  <View style={styles.digestPendingBlock}>
+                    <View style={styles.digestPendingHeaderRow}>
+                      <Text style={styles.digestPendingHeader}>{t('newsDigestFeedPendingHeader')}</Text>
+                      {pendingMoreCount > 0 ? (
+                        <Pressable
+                          onPress={() => setViewMode('live')}
+                          style={styles.digestPendingMoreBtn}
+                          accessibilityRole="button"
+                          accessibilityLabel={t('newsDigestFeedPendingMore', {
+                            count: String(pendingMoreCount),
+                          })}>
+                          <Text style={styles.digestPendingMoreText}>
+                            {t('newsDigestFeedPendingMore', { count: String(pendingMoreCount) })}
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                    {renderRealtimeCards(pendingPreviewItems)}
+                  </View>
+                ) : null}
+                <Text style={styles.digestFeedMeta}>
+                  {t('newsDigestFeedWindowMeta', { hours: String(DIGEST_WINDOW_HOURS) })}
+                </Text>
+                {error ? (
+                  <View style={styles.errBox}>
+                    <Text style={styles.errText}>{error}</Text>
+                  </View>
+                ) : null}
+                {loading && digestItems.length === 0 ? (
+                  <View style={styles.skeletonBlock}>
+                    <SignalLoadingIndicator message={t('commonLoading')} />
+                  </View>
+                ) : null}
+                {!loading && digestItems.length === 0 && !error ? (
+                  <Text style={styles.empty}>{t('newsDigestFeedEmpty')}</Text>
+                ) : null}
+                {digestItems.map((item) => (
+                  <NewsDigestIssueCard key={item.id} digest={item} />
                 ))}
               </>
-            ) : null}
-            {!loading && digestItems.length > 0 && realtimeItems.length === 0 ? (
-              <Text style={styles.digestRealtimeEmpty}>{t('newsDigestFeedRealtimeEmpty')}</Text>
-            ) : null}
+            )}
           </View>
         </WebWheelScrollView>
       </View>

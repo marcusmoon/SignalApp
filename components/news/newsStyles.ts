@@ -343,8 +343,41 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.textMuted,
       marginBottom: 10,
     },
+    digestViewModeSegment: {
+      marginTop: 8,
+    },
+    digestPendingHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      marginBottom: 10,
+    },
+    digestPendingHeader: {
+      flex: 1,
+      fontSize: sf(13),
+      lineHeight: sf(18),
+      fontWeight: '900',
+      color: theme.text,
+    },
+    digestPendingMoreBtn: {
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+    },
+    digestPendingMoreText: {
+      fontSize: sf(11),
+      fontWeight: '800',
+      color: theme.green,
+    },
+    digestPendingBlock: {
+      marginBottom: 14,
+    },
     digestRealtimeHeader: {
-      marginTop: 6,
+      marginTop: 0,
       marginBottom: 10,
       fontSize: sf(13),
       lineHeight: sf(18),

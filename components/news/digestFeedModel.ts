@@ -98,6 +98,16 @@ export function mergeNewsRows(
   return added.length > 0 ? [...existing, ...added] : existing;
 }
 
+export function mergeDigestRows(
+  existing: SignalApiNewsDigestItem[],
+  incoming: SignalApiNewsDigestItem[],
+): SignalApiNewsDigestItem[] {
+  if (incoming.length === 0) return existing;
+  const ids = new Set(existing.map((row) => row.id));
+  const added = incoming.filter((row) => !ids.has(row.id));
+  return added.length > 0 ? [...existing, ...added] : existing;
+}
+
 export function filterRealtimeNewsRows(
   rows: SignalApiNewsItem[],
   digests: SignalApiNewsDigestItem[],

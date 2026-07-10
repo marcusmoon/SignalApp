@@ -22,6 +22,7 @@ import {
   digestFromServer,
   filterRealtimeNewsRows,
   isNewsPublishedWithinHours,
+  mergeDigestRows,
   mergeNewsRows,
   utcRangeLastHours,
 } from '@/components/news/digestFeedModel';
@@ -72,6 +73,8 @@ const DIGEST_WINDOW_HOURS = 24;
 const RECENT_WINDOW_HOURS = 48;
 const RECENT_INITIAL_LIMIT = 50;
 const RECENT_PAGE_LIMIT = 20;
+const DIGEST_INITIAL_LIMIT = 20;
+const DIGEST_PAGE_LIMIT = 20;
 const HEADLINE_PREVIEW_LIMIT = 8;
 
 type SegmentLatestSeen = { newsId?: string; digestId?: string };
@@ -97,26 +100,58 @@ function DigestFeedSection({
 }: DigestFeedSectionProps) {
   return (
     <View style={[styles.digestFeedSection, isLast && styles.digestFeedSectionLast]}>
-      <View style={styles.digestFeedSectionHeader}>
-        <View style={styles.digestFeedSectionHeaderRow}>
-          <View style={styles.digestFeedSectionHeaderText}>
-            <Text style={styles.digestFeedSectionTitle}>{title}</Text>
-            {hint ? <Text style={styles.digestFeedSectionHint}>{hint}</Text> : null}
-          </View>
-          {actionLabel && onAction ? (
-            <Pressable
-              onPress={onAction}
-              style={styles.digestFeedSectionMoreBtn}
-              accessibilityRole="button"
-              accessibilityLabel={actionLabel}>
-              <Text style={styles.digestFeedSectionMoreText}>{actionLabel}</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
+      <DigestPaneHeader
+        title={title}
+        hint={hint}
+        actionLabel={actionLabel}
+        onAction={onAction}
+        styles={styles}
+      />
       {children}
     </View>
   );
+}
+
+type DigestPaneHeaderProps = {
+  title: string;
+  hint?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  styles: ReturnType<typeof makeNewsStyles>;
+  wide?: boolean;
+};
+
+function DigestPaneHeader({
+  title,
+  hint,
+  actionLabel,
+  onAction,
+  styles,
+  wide = false,
+}: DigestPaneHeaderProps) {
+  const headerRow = (
+    <View style={styles.digestFeedSectionHeaderRow}>
+      <View style={styles.digestFeedSectionHeaderText}>
+        <Text style={styles.digestFeedSectionTitle}>{title}</Text>
+        {hint ? <Text style={styles.digestFeedSectionHint}>{hint}</Text> : null}
+      </View>
+      {actionLabel && onAction ? (
+        <Pressable
+          onPress={onAction}
+          style={styles.digestFeedSectionMoreBtn}
+          accessibilityRole="button"
+          accessibilityLabel={actionLabel}>
+          <Text style={styles.digestFeedSectionMoreText}>{actionLabel}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+
+  if (wide) {
+    return <View style={styles.widePaneHeader}>{headerRow}</View>;
+  }
+
+  return <View style={styles.digestFeedSectionHeader}>{headerRow}</View>;
 }
 
 export function DigestNewsFeedScreen() {
@@ -148,6 +183,10 @@ export function DigestNewsFeedScreen() {
   const [newsLoadingMore, setNewsLoadingMore] = useState(false);
   const newsLoadingMoreRef = useRef(false);
   newsLoadingMoreRef.current = newsLoadingMore;
+  const [digestHasMore, setDigestHasMore] = useState(false);
+  const [digestLoadingMore, setDigestLoadingMore] = useState(false);
+  const digestLoadingMoreRef = useRef(false);
+  digestLoadingMoreRef.current = digestLoadingMore;
   const [recentShowOlder, setRecentShowOlder] = useState(false);
   const [maxHashtagDisplay, setMaxHashtagDisplay] = useState(DEFAULT_NEWS_HASHTAG_DISPLAY_MAX);
   const [newsTitleDisplayMode, setNewsTitleDisplayMode] = useState<NewsTitleDisplayMode>('localized');
@@ -213,6 +252,7 @@ export function DigestNewsFeedScreen() {
         setDigestRows([]);
         setNewsPoolRows([]);
         setNewsHasMore(false);
+        setDigestHasMore(false);
         setError(t('errorSignalApiShort'));
         return;
       }
@@ -222,7 +262,14 @@ export function DigestNewsFeedScreen() {
       try {
         const [digestPage, newsPage] = await Promise.all([
           fetchSignalNewsDigests(
-            { category: segment, from: range.from, to: range.to, limit: 40, batches: 20 },
+            {
+              category: segment,
+              from: range.from,
+              to: range.to,
+              limit: DIGEST_INITIAL_LIMIT,
+              offset: 0,
+              batches: 20,
+            },
             { cacheMode },
           ),
           fetchSignalNews(
@@ -233,6 +280,7 @@ export function DigestNewsFeedScreen() {
         setDigestRows(digestPage.items);
         setNewsPoolRows(newsPage.items);
         setNewsHasMore(newsPage.meta.hasMore);
+        setDigestHasMore(digestPage.meta.hasMore);
         if (!isRefresh) {
           setRecentShowOlder(false);
           setTimelineExpanded(false);
@@ -246,10 +294,37 @@ export function DigestNewsFeedScreen() {
         setDigestRows([]);
         setNewsPoolRows([]);
         setNewsHasMore(false);
+        setDigestHasMore(false);
       }
     },
     [locale, segment, syncSegmentLatestSeen, t],
   );
+
+  const loadMoreDigests = useCallback(async () => {
+    if (!hasSignalApi() || digestLoadingMore || !digestHasMore) return;
+
+    setDigestLoadingMore(true);
+    try {
+      const range = utcRangeLastHours(DIGEST_WINDOW_HOURS);
+      const page = await fetchSignalNewsDigests(
+        {
+          category: segment,
+          from: range.from,
+          to: range.to,
+          limit: DIGEST_PAGE_LIMIT,
+          offset: digestRowsRef.current.length,
+          batches: 20,
+        },
+        { cacheMode: signalCacheMode() },
+      );
+      setDigestRows((prev) => mergeDigestRows(prev, page.items));
+      setDigestHasMore(page.meta.hasMore);
+    } catch {
+      /* ignore pagination errors */
+    } finally {
+      setDigestLoadingMore(false);
+    }
+  }, [digestHasMore, digestLoadingMore, segment]);
 
   const loadMoreRecent = useCallback(async () => {
     if (!hasSignalApi() || newsLoadingMore) return;
@@ -353,6 +428,7 @@ export function DigestNewsFeedScreen() {
             setDigestRows([]);
             setNewsPoolRows([]);
             setNewsHasMore(false);
+            setDigestHasMore(false);
           }
         } finally {
           if (!cancelled) setLoading(false);
@@ -391,6 +467,7 @@ export function DigestNewsFeedScreen() {
       setDigestRows([]);
       setNewsPoolRows([]);
       setNewsHasMore(false);
+      setDigestHasMore(false);
       setRecentShowOlder(false);
       setTimelineExpanded(false);
       setError(null);
@@ -464,6 +541,7 @@ export function DigestNewsFeedScreen() {
     (timelineExpanded || recentItems.length > HEADLINE_PREVIEW_LIMIT || hasHiddenOlderInPool || newsHasMore);
 
   const scrollLoadMoreGateRef = useRef(createScrollLoadMoreGate());
+  const digestScrollLoadMoreGateRef = useRef(createScrollLoadMoreGate());
   const webTimelineLoadMore = useWebFlatListLoadMore({
     hasMore: showTimelineLoadMore,
     loadingMore: newsLoadingMore,
@@ -471,6 +549,14 @@ export function DigestNewsFeedScreen() {
     loadMore: loadMoreRecent,
     enabled: Platform.OS === 'web' && isFocused && (useTwoPane || timelineExpanded),
     isBusyRef: newsLoadingMoreRef,
+  });
+  const webDigestLoadMore = useWebFlatListLoadMore({
+    hasMore: digestHasMore,
+    loadingMore: digestLoadingMore,
+    loading,
+    loadMore: loadMoreDigests,
+    enabled: Platform.OS === 'web' && isFocused && useTwoPane,
+    isBusyRef: digestLoadingMoreRef,
   });
 
   const onFeedScroll = useCallback(
@@ -495,6 +581,21 @@ export function DigestNewsFeedScreen() {
       useTwoPane,
       webTimelineLoadMore,
     ],
+  );
+
+  const onDigestScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (!useTwoPane || !digestHasMore || digestLoadingMore || loading) return;
+      if (Platform.OS === 'web') {
+        webDigestLoadMore.onScroll(e);
+        return;
+      }
+      digestScrollLoadMoreGateRef.current.onScrollNearEnd(e, {
+        enabled: true,
+        trigger: () => void loadMoreDigests(),
+      });
+    },
+    [digestHasMore, digestLoadingMore, loadMoreDigests, loading, useTwoPane, webDigestLoadMore],
   );
 
   const newsTitleShowAlternate = newsTitleDisplayMode === 'alternate';
@@ -544,7 +645,7 @@ export function DigestNewsFeedScreen() {
         </View>
       );
     }
-    if (Platform.OS !== 'web') return null;
+    if (Platform.OS !== 'web' || useTwoPane) return null;
     return (
       <View style={styles.footerLoading}>
         <Pressable
@@ -560,6 +661,19 @@ export function DigestNewsFeedScreen() {
         </Pressable>
       </View>
     );
+  };
+
+  const renderDigestLoadMore = () => {
+    if (!digestHasMore && !digestLoadingMore) return null;
+    if (digestLoadingMore) {
+      return (
+        <View style={styles.footerLoading}>
+          <ActivityIndicator color={theme.green} />
+          <Text style={styles.footerLoadingText}>{t('feedLoadingMore')}</Text>
+        </View>
+      );
+    }
+    return null;
   };
 
   const renderNewsError = () =>
@@ -618,55 +732,56 @@ export function DigestNewsFeedScreen() {
           onPress={() => void onNewContentChipPress()}
         />
       ) : null}
+      <DigestPaneHeader
+        wide
+        title={t('newsDigestFeedTimelineSectionTitle')}
+        hint={recentWindowMeta}
+        styles={styles}
+      />
       <WebWheelScrollView
         ref={feedScrollRef as never}
         scrollResetKey={feedScrollResetKey}
         style={styles.widePaneScroll}
-        contentContainerStyle={[styles.widePaneContent, { paddingBottom: bottomPad }]}
+        contentContainerStyle={[styles.widePaneListContent, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
         onScroll={onFeedScroll}
         scrollEventThrottle={350}
         onLayout={webTimelineLoadMore.onLayout}
         onContentSizeChange={webTimelineLoadMore.onContentSizeChange}
         refreshControl={newsListRefreshControl}>
-        <View style={styles.listHeader}>
-          <DigestFeedSection
-            title={t('newsDigestFeedTimelineSectionTitle')}
-            hint={recentWindowMeta}
-            isLast
-            styles={styles}>
-            {renderNewsError()}
-            {renderNewsLoading()}
-            {renderNewsEmpty()}
-            {renderTimelineArticles(recentItems)}
-            {renderTimelineLoadMore()}
-          </DigestFeedSection>
-        </View>
+        {renderNewsError()}
+        {renderNewsLoading()}
+        {renderNewsEmpty()}
+        {renderTimelineArticles(recentItems)}
+        {renderTimelineLoadMore()}
       </WebWheelScrollView>
     </View>
   );
 
   const wideDigestPane = (
     <View style={styles.widePane}>
+      <DigestPaneHeader
+        wide
+        title={t('newsDigestFeedDigestSectionTitle')}
+        hint={t('newsDigestFeedDigestSectionHint', { hours: String(DIGEST_WINDOW_HOURS) })}
+        styles={styles}
+      />
       <WebWheelScrollView
         ref={digestScrollRef as never}
         scrollResetKey={`${feedScrollResetKey}:digest`}
         style={styles.widePaneScroll}
-        contentContainerStyle={[styles.widePaneContent, { paddingBottom: bottomPad }]}
+        contentContainerStyle={[styles.widePaneListContent, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
+        onScroll={onDigestScroll}
+        scrollEventThrottle={350}
+        onLayout={webDigestLoadMore.onLayout}
+        onContentSizeChange={webDigestLoadMore.onContentSizeChange}
         refreshControl={newsListRefreshControl}>
-        <View style={styles.listHeader}>
-          <DigestFeedSection
-            title={t('newsDigestFeedDigestSectionTitle')}
-            hint={t('newsDigestFeedDigestSectionHint', { hours: String(DIGEST_WINDOW_HOURS) })}
-            isLast
-            styles={styles}>
-            {renderDigestError()}
-            {renderDigestLoading()}
-            {renderDigestEmpty()}
-            {renderDigestCards()}
-          </DigestFeedSection>
-        </View>
+        {renderDigestError()}
+        {renderDigestLoading()}
+        {renderDigestEmpty()}
+        {renderDigestCards()}
+        {renderDigestLoadMore()}
       </WebWheelScrollView>
     </View>
   );
@@ -773,7 +888,8 @@ export function DigestNewsFeedScreen() {
 
         <MasterDetailLayout
           useTwoPane={useTwoPane}
-          masterWidthRatio={0.48}
+          style={useTwoPane ? styles.wideLayoutFill : undefined}
+          masterWidthRatio={0.5}
           dividerColor={theme.border}
           masterPanel={useTwoPane ? wideNewsPane : mobileFeedContent}
           detailPanel={useTwoPane ? wideDigestPane : undefined}

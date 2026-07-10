@@ -14,6 +14,7 @@ import {
   SCREEN_LIST_HEADER_PADDING_TOP,
 } from '@/constants/segmentTabBar';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
+import { SCREEN_FIXED_HEADER_PADDING_HORIZONTAL } from '@/constants/screenLayout';
 
 export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
   const segmentTab = getSegmentTabBarStyles(theme, sf);
@@ -61,10 +62,23 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
       minHeight: 0,
       minWidth: 0,
+      flexDirection: 'column',
+    },
+    wideLayoutFill: {
+      flex: 1,
+      minHeight: 0,
+    },
+    widePaneHeader: {
+      ...fixedHeader.strip,
+      ...fixedHeader.stripWide,
     },
     widePaneScroll: {
       ...webScrollViewportStyle,
       flex: 1,
+    },
+    widePaneListContent: {
+      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
     },
     widePaneContent: {
       paddingHorizontal: 16,

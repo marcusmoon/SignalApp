@@ -499,11 +499,6 @@ export const en = {
   settingsSignalServerCustomEmpty: 'Enter a URL.',
 
   settingsNewsTabLead: 'Options for the News screen. Stored on this device only.',
-  settingsNewsFeedLayoutKicker: 'News layout',
-  settingsNewsFeedLayoutLegacy: 'Classic',
-  settingsNewsFeedLayoutDigest: 'New',
-  settingsNewsFeedLayoutHint:
-    'Classic shows the article list you use today. New prioritizes 24-hour issue digests. Watch and Video tabs always use Classic.',
   settingsNewsSegmentOrderKicker: 'News tab order',
   settingsNewsSegmentOrderHint:
     'Order of Global, Crypto, My watch, and Video on the News screen. Drag the ≡ handle to reorder.',
@@ -533,10 +528,6 @@ export const en = {
   settingsNewsUnreadCheckHint:
     'How often to check for new headlines while the app is open or in the background. Background tasks use at least a 15-minute OS minimum and may run later on iOS. Not available in Expo Go.',
   settingsNewsUnreadCheckOption: '{{minutes}} min',
-  newsDigestFeedEmpty: 'No issue digests in this window.',
-  newsDigestFeedNewsSectionTitle: 'News',
-  newsDigestFeedDigestSectionTitle: 'Issue digests',
-  newsDigestFeedRealtimeEmpty: 'No articles to show.',
   settingsLocalMacroCalendar: 'Local alerts · economic calendar',
   settingsLocalMacroCalendarHint: 'Macro events such as CPI and FOMC — one alert at 8:00 on event day (device time)',
   settingsLocalWatchlistEarnings: 'Local alerts · watchlist earnings',

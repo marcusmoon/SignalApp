@@ -100,12 +100,6 @@ import {
   saveNewsUnreadCheckIntervalMinutes,
 } from '@/services/newsUnreadCheckIntervalPreference';
 import {
-  DEFAULT_NEWS_FEED_LAYOUT,
-  loadNewsFeedLayout,
-  saveNewsFeedLayout,
-  type NewsFeedLayout,
-} from '@/services/newsFeedLayoutPreference';
-import {
   loadMoreReferenceLinksVisible,
   saveMoreReferenceLinksVisible,
 } from '@/services/moreReferenceLinksPreference';
@@ -181,12 +175,6 @@ const NEWS_FEED_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
   korea: 'feedSegmentKorea',
   crypto: 'feedSegmentCrypto',
   video: 'feedSegmentVideo',
-};
-
-const NEWS_FEED_LAYOUT_OPTIONS: NewsFeedLayout[] = ['legacy', 'digest'];
-const NEWS_FEED_LAYOUT_LABEL: Record<NewsFeedLayout, MessageId> = {
-  legacy: 'settingsNewsFeedLayoutLegacy',
-  digest: 'settingsNewsFeedLayoutDigest',
 };
 
 const SIGNAL_SERVER_LABEL: Record<SignalServerMode, MessageId> = {
@@ -1078,8 +1066,6 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   const [newsSegmentOrderReady, setNewsSegmentOrderReady] = useState(false);
   const [newsHashtagDisplayMax, setNewsHashtagDisplayMax] = useState(DEFAULT_NEWS_HASHTAG_DISPLAY_MAX);
   const [newsHashtagDisplayReady, setNewsHashtagDisplayReady] = useState(false);
-  const [newsFeedLayout, setNewsFeedLayout] = useState<NewsFeedLayout>(DEFAULT_NEWS_FEED_LAYOUT);
-  const [newsFeedLayoutReady, setNewsFeedLayoutReady] = useState(false);
   const [signalServerMode, setSignalServerMode] = useState<SignalServerMode>('bundle');
   const [signalCustomDraft, setSignalCustomDraft] = useState('');
   const [signalServerPrefsReady, setSignalServerPrefsReady] = useState(false);
@@ -1222,12 +1208,6 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     setNewsHashtagDisplayReady(true);
   }, []);
 
-  const reloadNewsFeedLayout = useCallback(async () => {
-    const layout = await loadNewsFeedLayout();
-    setNewsFeedLayout(layout);
-    setNewsFeedLayoutReady(true);
-  }, []);
-
   const reloadSignalServerPrefs = useCallback(async () => {
     const p = await loadSignalServerPrefs();
     setSignalServerMode(p.mode);
@@ -1328,7 +1308,6 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     void reloadQuotesChangeColorConvention();
     void reloadNewsSegmentOrder();
     void reloadNewsHashtagDisplayMax();
-    void reloadNewsFeedLayout();
     void reloadSignalServerPrefs();
     void reloadMoreReferenceLinksPref();
     void reloadMainEntryPref();
@@ -1342,7 +1321,6 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     reloadQuotesChangeColorConvention,
     reloadNewsSegmentOrder,
     reloadNewsHashtagDisplayMax,
-    reloadNewsFeedLayout,
     reloadSignalServerPrefs,
     reloadMoreReferenceLinksPref,
     reloadMainEntryPref,
@@ -1578,39 +1556,6 @@ clearCalendarCache();
 
         {selectedTab === 'news' ? (
           <>
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsNewsFeedLayoutKicker')}</Text>
-              {!newsFeedLayoutReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
-              ) : (
-                <>
-                  <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
-                    {NEWS_FEED_LAYOUT_OPTIONS.map((layout) => (
-                      <Pressable
-                        key={layout}
-                        onPress={() => {
-                          setNewsFeedLayout(layout);
-                          void saveNewsFeedLayout(layout);
-                        }}
-                        style={[styles.langSegment, newsFeedLayout === layout && styles.langSegmentActive]}
-                        accessibilityRole="radio"
-                        accessibilityState={{ selected: newsFeedLayout === layout }}
-                        accessibilityLabel={t(NEWS_FEED_LAYOUT_LABEL[layout])}>
-                        <Text
-                          style={[
-                            styles.langSegmentText,
-                            newsFeedLayout === layout && styles.langSegmentTextActive,
-                          ]}>
-                          {t(NEWS_FEED_LAYOUT_LABEL[layout])}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                  <Text style={[styles.cardHint, { marginTop: 10 }]}>{t('settingsNewsFeedLayoutHint')}</Text>
-                </>
-              )}
-            </View>
-
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsNewsSegmentOrderKicker')}</Text>
               {!newsSegmentOrderReady ? (

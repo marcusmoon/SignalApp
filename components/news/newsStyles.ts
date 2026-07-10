@@ -14,7 +14,6 @@ import {
   SCREEN_LIST_HEADER_PADDING_TOP,
 } from '@/constants/segmentTabBar';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
-import { SCREEN_FIXED_HEADER_PADDING_HORIZONTAL } from '@/constants/screenLayout';
 
 export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
   const segmentTab = getSegmentTabBarStyles(theme, sf);
@@ -57,32 +56,6 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       flexShrink: 0,
       paddingTop: 0,
       paddingHorizontal: 0,
-    },
-    widePane: {
-      flex: 1,
-      minHeight: 0,
-      minWidth: 0,
-      flexDirection: 'column',
-    },
-    wideLayoutFill: {
-      flex: 1,
-      minHeight: 0,
-    },
-    widePaneHeader: {
-      ...fixedHeader.strip,
-      ...fixedHeader.stripWide,
-    },
-    widePaneScroll: {
-      ...webScrollViewportStyle,
-      flex: 1,
-    },
-    widePaneListContent: {
-      paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
-      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
-    },
-    widePaneContent: {
-      paddingHorizontal: 16,
-      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
     },
     skeletonBlock: {
       marginTop: 4,
@@ -362,102 +335,6 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(12),
       color: theme.danger,
       lineHeight: sf(18),
-    },
-    digestFeedMeta: {
-      fontSize: sf(12),
-      lineHeight: sf(17),
-      fontWeight: '700',
-      color: theme.textMuted,
-      marginBottom: 10,
-    },
-    digestViewModeSegment: {
-      marginTop: 8,
-    },
-    digestFeedSection: {
-      marginBottom: 14,
-      paddingHorizontal: 12,
-      paddingTop: 12,
-      paddingBottom: 10,
-      borderRadius: 12,
-      backgroundColor: theme.card,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    digestFeedSectionLast: {
-      marginBottom: 4,
-    },
-    digestFeedSectionHeader: {
-      marginBottom: 10,
-      paddingBottom: 10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
-    digestFeedSectionTitle: {
-      fontSize: sf(14),
-      lineHeight: sf(19),
-      fontWeight: '900',
-      color: theme.text,
-    },
-    digestFeedSectionHint: {
-      marginTop: 3,
-      fontSize: sf(11),
-      lineHeight: sf(16),
-      fontWeight: '500',
-      color: theme.textDim,
-    },
-    digestFeedSectionHeaderRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      gap: 10,
-    },
-    digestFeedSectionHeaderText: {
-      flex: 1,
-      minWidth: 0,
-    },
-    digestFeedSectionMoreBtn: {
-      marginTop: 1,
-      paddingVertical: 6,
-      paddingHorizontal: 10,
-      borderRadius: 999,
-      backgroundColor: theme.bgElevated,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    digestFeedSectionMoreText: {
-      fontSize: sf(11),
-      fontWeight: '800',
-      color: theme.textMuted,
-    },
-    digestTimelineToggleBtn: {
-      alignSelf: 'flex-start',
-      marginTop: 4,
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderRadius: 999,
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-    },
-    digestTimelineToggleText: {
-      fontSize: sf(12),
-      fontWeight: '800',
-      color: theme.green,
-    },
-    digestRealtimeHeader: {
-      marginTop: 0,
-      marginBottom: 10,
-      fontSize: sf(13),
-      lineHeight: sf(18),
-      fontWeight: '900',
-      color: theme.text,
-    },
-    digestRealtimeEmpty: {
-      fontSize: sf(12),
-      lineHeight: sf(17),
-      color: theme.textDim,
-      marginTop: 4,
-      marginBottom: 8,
     },
     empty: {
       fontSize: sf(13),

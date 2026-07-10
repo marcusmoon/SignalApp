@@ -1,6 +1,9 @@
 import { queryKysely } from '../kysely/client.mjs';
 import {
+  cleanNewsTitleForDisplay,
+  cleanTranslationText,
   displayNews,
+  hasUsableTranslation,
   resolveAlternateTitle,
 } from '../../http/shared.mjs';
 import {
@@ -196,12 +199,36 @@ export async function queryPublicNewsSourceRows(options = {}) {
     }));
 }
 
-export async function queryPendingNewsTranslationRows(options = {}) {
-  const { limit, offset } = pageOptions(options, 50);
-  const targetLocale = cleanText(options.targetLocale) || 'ko';
-  const params = [targetLocale];
-  const where = ['t_target.id IS NULL'];
+function pendingNewsTranslationRow(item, translation, targetLocale) {
+  const existing = translation
+    ? {
+        locale: translation.locale || targetLocale,
+        status: translation.status || 'missing',
+        provider: translation.provider || null,
+        errorMessage: translation.errorMessage || null,
+      }
+    : null;
+  return {
+    id: item.id,
+    category: item.category,
+    titleOriginal: item.titleOriginal || item.title || '',
+    summaryOriginal: item.summaryOriginal || item.summary || '',
+    contentOriginal: item.contentOriginal || item.summaryOriginal || item.summary || '',
+    sourceName: item.sourceName || '',
+    sourceUrl: item.sourceUrl || '',
+    imageUrl: item.imageUrl || null,
+    symbols: Array.isArray(item.symbols) ? item.symbols : [],
+    publishedAt: item.publishedAt || null,
+    targetLocale,
+    existingTranslation: existing,
+  };
+}
 
+function buildPendingNewsTranslationFilters(options = {}, targetLocale) {
+  const params = [targetLocale];
+  const where = [
+    `(t_target.id IS NULL OR t_target.status NOT IN ('completed', 'manual') OR t_target.payload->>'provider' = 'mock')`,
+  ];
   const category = cleanText(options.category);
   if (category) {
     if (category === 'global') {
@@ -211,54 +238,59 @@ export async function queryPendingNewsTranslationRows(options = {}) {
       where.push(`n.category = $${params.length}`);
     }
   }
-
   const from = sqlDateOrTimestamp(options.from);
   if (from) {
     params.push(from);
     where.push(`(n.published_at IS NULL OR n.published_at >= $${params.length}::timestamptz)`);
   }
+  return { params, where };
+}
 
-  params.push(limit + 1, offset);
-  const result = await queryKysely(
-    `
-      SELECT n.payload
-      FROM news_items n
-      LEFT JOIN news_translations t_target ON t_target.news_item_id = n.id AND t_target.locale = $1
-      WHERE ${where.join(' AND ')}
-      ORDER BY n.published_at ASC NULLS LAST, n.position ASC
-      LIMIT $${params.length - 1} OFFSET $${params.length}
-    `,
-    params,
-  );
+export async function queryPendingNewsTranslationRows(options = {}) {
+  const { limit, offset } = pageOptions(options, 50);
+  const targetLocale = cleanText(options.targetLocale) || 'ko';
+  const pending = [];
+  let scanOffset = 0;
+  const scanBatch = Math.max(limit * 4, 100);
 
-  const rows = result.rows
-    .slice(0, limit)
-    .map((row) => {
+  while (pending.length < offset + limit + 1) {
+    const { params, where } = buildPendingNewsTranslationFilters(options, targetLocale);
+    params.push(scanBatch, scanOffset);
+    const result = await queryKysely(
+      `
+        SELECT n.payload, t_target.payload AS translation_payload
+        FROM news_items n
+        LEFT JOIN news_translations t_target ON t_target.news_item_id = n.id AND t_target.locale = $1
+        WHERE ${where.join(' AND ')}
+        ORDER BY n.published_at ASC NULLS LAST, n.position ASC
+        LIMIT $${params.length - 1} OFFSET $${params.length}
+      `,
+      params,
+    );
+    if (result.rows.length === 0) break;
+
+    for (const row of result.rows) {
       const item = payloadFromRow(row);
-      if (!item) return null;
-      return {
-        id: item.id,
-        category: item.category,
-        titleOriginal: item.titleOriginal || item.title || '',
-        summaryOriginal: item.summaryOriginal || item.summary || '',
-        contentOriginal: item.contentOriginal || item.summaryOriginal || item.summary || '',
-        sourceName: item.sourceName || '',
-        sourceUrl: item.sourceUrl || '',
-        imageUrl: item.imageUrl || null,
-        symbols: Array.isArray(item.symbols) ? item.symbols : [],
-        publishedAt: item.publishedAt || null,
-      };
-    })
-    .filter(Boolean);
+      if (!item) continue;
+      const translation = payloadFromRow({ payload: row.translation_payload });
+      if (hasUsableTranslation(translation, item)) continue;
+      pending.push(pendingNewsTranslationRow(item, translation, targetLocale));
+    }
 
-  const hasMore = result.rows.length > limit;
+    if (result.rows.length < scanBatch) break;
+    scanOffset += scanBatch;
+  }
+
+  const rows = pending.slice(offset, offset + limit);
+  const hasMore = pending.length > offset + limit;
   return {
     rows,
-    total: offset + rows.slice(0, limit).length + (hasMore ? 1 : 0),
+    total: offset + rows.length + (hasMore ? 1 : 0),
     limit,
     offset,
     hasMore,
     nextOffset: hasMore ? offset + limit : null,
+    targetLocale,
   };
 }
 

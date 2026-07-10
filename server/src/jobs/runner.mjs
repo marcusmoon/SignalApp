@@ -26,6 +26,7 @@ import { fetchFinnhubMarketNews, reconcileFinnhubNewsItems } from '../providers/
 import { fetchNewswireRssNews, reconcileRssNewsItems } from '../providers/news/rssNews.mjs';
 import { fetchDartFilings } from '../providers/news/dartFilings.mjs';
 import { fetchSecEdgarFilings } from '../providers/news/secEdgar.mjs';
+import { hasUsableTranslation } from '../http/shared.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
 import { fetchNaverCafeLikeusstockFree } from '../providers/community/naverCafeLikeusstock.mjs';
 import { fetchSaveUserNews } from '../providers/community/saveUserNews.mjs';
@@ -175,7 +176,7 @@ async function autoTranslateNewsDirect(newsItems, { onHeartbeat } = {}) {
     for (const setting of settings) {
       const id = translationId(item.id, setting.locale);
       const existing = byId.get(id);
-      if (existing?.status === 'completed' || existing?.status === 'manual') continue;
+      if (hasUsableTranslation(existing, item)) continue;
       try {
         const translated = await translateNews({
           newsItem: item,

@@ -289,6 +289,7 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
     json(res, 200, {
       data: page.rows,
       meta: {
+        targetLocale: page.targetLocale,
         limit: page.limit,
         offset: page.offset,
         total: page.total,

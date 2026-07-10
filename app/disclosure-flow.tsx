@@ -27,10 +27,11 @@ import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosu
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
+import { disclosureDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import type { MessageId } from '@/locales/messages';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
-import { toYmd, utcRangeForLocalYmd } from '@/utils/date';
+import { formatFeedItemTimeLabel, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
 const MARKET_LABEL: Record<DisclosureFlowMarket, MessageId> = {
   all: 'disclosuresFilterAll',
@@ -295,6 +296,9 @@ export function DisclosureFlowContent({
                       ))}
                     </View>
                     <Text style={styles.cardTitle}>{item.title}</Text>
+                    <Text style={styles.createdAt}>
+                      {formatFeedItemTimeLabel(disclosureDigestCreatedIso(item), locale)}
+                    </Text>
                     {item.summary ? <Text style={styles.summary}>{item.summary}</Text> : null}
                     <Text style={styles.meta} numberOfLines={1}>
                       {t('disclosuresDigestSummary', {
@@ -511,6 +515,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontSize: ft.ff(17),
       lineHeight: ft.ff(24),
       fontWeight: ft.titleWeight,
+    },
+    createdAt: {
+      color: theme.textDim,
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(15),
+      fontWeight: ft.metaWeight,
     },
     summary: {
       color: theme.textMuted,

@@ -29,6 +29,7 @@ import type { AppTheme } from '@/constants/theme';
 import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
+import { disclosureDigestCreatedIso, newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -73,6 +74,7 @@ import {
   calendarEventDisplayYmd,
   calendarEventInLocalYmdRange,
   formatLocalYmdLabel,
+  formatFeedItemTimeLabel,
   parseLocalYmd,
   toYmd,
   utcRangeForLocalYmd,
@@ -633,7 +635,7 @@ export function HomeFocusContent({
                   ) : null}
                 </View>
                 <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                  {t('homeFocusSourceCount', { count: String(row.item.sources.length) })}
+                  {formatFeedItemTimeLabel(newsDigestCreatedIso(row.item), locale)}
                 </Text>
               </View>
               <Text style={styles.issueGroupTitle} numberOfLines={2}>
@@ -649,7 +651,7 @@ export function HomeFocusContent({
         </View>
       </View>
     ),
-    [openIssue, showIssueSummary, styles, t, theme.textMuted],
+    [openIssue, showIssueSummary, styles, locale, t, theme.textMuted],
   );
 
   const renderSignalCard = useCallback(
@@ -726,7 +728,7 @@ export function HomeFocusContent({
                   ) : null}
                 </View>
                 <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                  {t('homeFocusSourceCount', { count: String(row.sourceRefs.length || row.count) })}
+                  {formatFeedItemTimeLabel(disclosureDigestCreatedIso(row), locale)}
                 </Text>
               </View>
               <Text style={styles.issueGroupTitle} numberOfLines={2}>

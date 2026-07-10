@@ -28,7 +28,8 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useWebHorizontalWheelScroll } from '@/hooks/useWebHorizontalWheelScroll';
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import type { AppLocale } from '@/locales/messages';
-import { formatRelativeFromIso } from '@/utils/date';
+import { disclosureDigestCreatedIso } from '@/domain/digests/createdAt';
+import { formatFeedItemTimeLabel } from '@/utils/date';
 
 const TAP_MOVE_THRESHOLD = 8;
 
@@ -64,7 +65,7 @@ const DigestCard = memo(function DigestCard({
     count: String(item.count),
     symbols: String(item.symbols.length),
   });
-  const relativeLabel = item.generatedAt ? formatRelativeFromIso(item.generatedAt, locale as AppLocale) : '';
+  const createdLabel = formatFeedItemTimeLabel(disclosureDigestCreatedIso(item), locale as AppLocale);
   const topicChips = [
     ...new Set([
       marketChipLabel(item.market, locale),
@@ -156,7 +157,7 @@ const DigestCard = memo(function DigestCard({
       <View style={styles.footerRow}>
         <Text style={styles.footer}>
           {summaryText}
-          {relativeLabel ? ` · ${relativeLabel}` : ''}
+          {createdLabel !== '—' ? ` · ${createdLabel}` : ''}
         </Text>
         <FontAwesome name={isExpanded ? 'chevron-up' : 'chevron-down'} size={11} color={theme.textDim} />
       </View>

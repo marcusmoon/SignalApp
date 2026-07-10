@@ -27,9 +27,10 @@ import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import type { SignalApiNewsDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
+import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
-import { toYmd, utcRangeForLocalYmd } from '@/utils/date';
+import { formatFeedItemTimeLabel, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
 function parseCategory(value: unknown): NewsIssuesCategory {
   const raw = String(Array.isArray(value) ? value[0] : value || '').trim();
@@ -273,6 +274,9 @@ export function NewsIssuesContent({
                       </View>
                     ) : null}
                     <Text style={styles.cardTitle}>{item.title}</Text>
+                    <Text style={styles.createdAt}>
+                      {formatFeedItemTimeLabel(newsDigestCreatedIso(item), locale)}
+                    </Text>
                     <Text style={styles.summary}>{item.summary}</Text>
                     <View style={styles.footerRow}>
                       <Text style={styles.meta} numberOfLines={1}>
@@ -302,6 +306,11 @@ export function NewsIssuesContent({
                             <View style={styles.sourceTextCol}>
                               <Text style={styles.sourceTitle}>{ref.title || ref.sourceName || ref.url || ''}</Text>
                               {ref.sourceName ? <Text style={styles.sourceName}>{ref.sourceName}</Text> : null}
+                              {ref.publishedAt ? (
+                                <Text style={styles.sourceTime}>
+                                  {formatFeedItemTimeLabel(ref.publishedAt, locale)}
+                                </Text>
+                              ) : null}
                             </View>
                             {ref.url ? <FontAwesome name="external-link" size={10} color={theme.green} /> : null}
                           </Pressable>
@@ -518,6 +527,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: ft.ff(24),
       fontWeight: ft.titleWeight,
     },
+    createdAt: {
+      color: theme.textDim,
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(15),
+      fontWeight: ft.metaWeight,
+    },
     summary: {
       color: theme.textMuted,
       fontSize: ft.ff(13),
@@ -571,6 +586,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.textMuted,
       fontSize: ft.ff(11),
       lineHeight: ft.ff(15),
+      fontWeight: ft.metaWeight,
+    },
+    sourceTime: {
+      color: theme.textDim,
+      fontSize: ft.ff(10),
+      lineHeight: ft.ff(14),
       fontWeight: ft.metaWeight,
     },
     pressed: { opacity: 0.75 },

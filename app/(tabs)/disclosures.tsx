@@ -43,7 +43,7 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import { markDisclosureFeedSeen } from '@/services/disclosureUnreadPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
-import { formatRelativeFromIso } from '@/utils/date';
+import { formatFeedItemTimeLabel } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import {
   disclosureTypeFilterLabelId,
@@ -80,7 +80,7 @@ function parseDisclosureTypeParam(raw: string | string[] | undefined): Disclosur
 }
 
 function disclosureTime(item: SignalApiDisclosure, locale: string): string {
-  return item.filedAt ? formatRelativeFromIso(item.filedAt, locale as AppLocale) : '—';
+  return formatFeedItemTimeLabel(item.filedAt, locale as AppLocale);
 }
 
 function disclosureDate(value: string | null | undefined, locale: string): string {

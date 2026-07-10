@@ -69,6 +69,16 @@ export function formatInstantLabel(iso: string | null | undefined, locale: AppLo
   return `${datePart} ${timePart}`;
 }
 
+/** 피드·흐름 카드용: 상대 시각 + 절대 시각 (예: 2시간 전 · 7/10 14:30) */
+export function formatFeedItemTimeLabel(iso: string | null | undefined, locale: AppLocale): string {
+  if (!iso) return '—';
+  const relative = formatRelativeFromIso(iso, locale);
+  const absolute = formatInstantLabel(iso, locale);
+  if (!relative || relative === '—') return absolute;
+  if (!absolute || absolute === '—') return relative;
+  return `${relative} · ${absolute}`;
+}
+
 export function addDays(d: Date, days: number): Date {
   const x = new Date(d);
   x.setDate(x.getDate() + days);

@@ -24,8 +24,9 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useWebHorizontalWheelScroll } from '@/hooks/useWebHorizontalWheelScroll';
 import type { NewsDigestItem } from '@/domain/news';
+import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { AppLocale } from '@/locales/messages';
-import { formatRelativeFromIso } from '@/utils/date';
+import { formatFeedItemTimeLabel } from '@/utils/date';
 
 const TAP_MOVE_THRESHOLD = 8;
 
@@ -64,7 +65,7 @@ const DigestCard = memo(function DigestCard({
     count: String(digest.count),
     sources: String(digest.sources.length),
   });
-  const relativeLabel = digest.generatedAt ? formatRelativeFromIso(digest.generatedAt, locale as AppLocale) : '';
+  const createdLabel = formatFeedItemTimeLabel(newsDigestCreatedIso(digest), locale as AppLocale);
   const handlePressIn = useCallback((event: GestureResponderEvent) => {
     pressStartRef.current = {
       x: event.nativeEvent.pageX,
@@ -165,7 +166,7 @@ const DigestCard = memo(function DigestCard({
       <View style={styles.footerRow}>
         <Text style={styles.footer}>
           {summaryText}
-          {relativeLabel ? ` · ${relativeLabel}` : ''}
+          {createdLabel !== '—' ? ` · ${createdLabel}` : ''}
         </Text>
         <FontAwesome name={isExpanded ? 'chevron-up' : 'chevron-down'} size={11} color={theme.textDim} />
       </View>

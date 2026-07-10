@@ -196,6 +196,72 @@ export async function queryPublicNewsSourceRows(options = {}) {
     }));
 }
 
+export async function queryPendingNewsTranslationRows(options = {}) {
+  const { limit, offset } = pageOptions(options, 50);
+  const targetLocale = cleanText(options.targetLocale) || 'ko';
+  const params = [targetLocale];
+  const where = ['t_target.id IS NULL'];
+
+  const category = cleanText(options.category);
+  if (category) {
+    if (category === 'global') {
+      where.push(`(n.category = 'global' OR n.provider = 'financialjuice')`);
+    } else {
+      params.push(category);
+      where.push(`n.category = $${params.length}`);
+    }
+  }
+
+  const from = sqlDateOrTimestamp(options.from);
+  if (from) {
+    params.push(from);
+    where.push(`(n.published_at IS NULL OR n.published_at >= $${params.length}::timestamptz)`);
+  }
+
+  params.push(limit + 1, offset);
+  const result = await queryKysely(
+    `
+      SELECT n.payload
+      FROM news_items n
+      LEFT JOIN news_translations t_target ON t_target.news_item_id = n.id AND t_target.locale = $1
+      WHERE ${where.join(' AND ')}
+      ORDER BY n.published_at ASC NULLS LAST, n.position ASC
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `,
+    params,
+  );
+
+  const rows = result.rows
+    .slice(0, limit)
+    .map((row) => {
+      const item = payloadFromRow(row);
+      if (!item) return null;
+      return {
+        id: item.id,
+        category: item.category,
+        titleOriginal: item.titleOriginal || item.title || '',
+        summaryOriginal: item.summaryOriginal || item.summary || '',
+        contentOriginal: item.contentOriginal || item.summaryOriginal || item.summary || '',
+        sourceName: item.sourceName || '',
+        sourceUrl: item.sourceUrl || '',
+        imageUrl: item.imageUrl || null,
+        symbols: Array.isArray(item.symbols) ? item.symbols : [],
+        publishedAt: item.publishedAt || null,
+      };
+    })
+    .filter(Boolean);
+
+  const hasMore = result.rows.length > limit;
+  return {
+    rows,
+    total: offset + rows.slice(0, limit).length + (hasMore ? 1 : 0),
+    limit,
+    offset,
+    hasMore,
+    nextOffset: hasMore ? offset + limit : null,
+  };
+}
+
 export async function queryAdminNewsRows(options = {}) {
   const { limit, offset } = pageOptions(options, 30);
   const locale = cleanText(options.locale) || 'ko';

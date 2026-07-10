@@ -4,6 +4,7 @@ import {
   queryPublicNews,
   queryPublicNewsDigests,
   queryPublicNewsSources,
+  queryPendingNewsTranslations,
   upsertCollectionRows,
   upsertNotificationItem,
 } from '../../../db.mjs';
@@ -258,6 +259,31 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
       to: url.searchParams.get('to') || '',
       tag: url.searchParams.get('tag') || '',
       limit: url.searchParams.get('limit') || '20',
+      offset: url.searchParams.get('offset') || '0',
+    });
+    json(res, 200, {
+      data: page.rows,
+      meta: {
+        limit: page.limit,
+        offset: page.offset,
+        total: page.total,
+        hasMore: page.hasMore,
+        nextOffset: page.nextOffset,
+      },
+    });
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/v1/news/pending-translations') {
+    if (!hasIngestAccess(req)) {
+      json(res, 401, { error: 'AUTOMATION_INGEST_AUTH_REQUIRED' });
+      return true;
+    }
+    const page = await queryPendingNewsTranslations({
+      targetLocale: url.searchParams.get('target_locale') || 'ko',
+      category: url.searchParams.get('category') || '',
+      from: url.searchParams.get('from') || '',
+      limit: url.searchParams.get('limit') || '50',
       offset: url.searchParams.get('offset') || '0',
     });
     json(res, 200, {

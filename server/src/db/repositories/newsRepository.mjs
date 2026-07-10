@@ -199,15 +199,7 @@ export async function queryPublicNewsSourceRows(options = {}) {
     }));
 }
 
-function pendingNewsTranslationRow(item, translation, targetLocale) {
-  const existing = translation
-    ? {
-        locale: translation.locale || targetLocale,
-        status: translation.status || 'missing',
-        provider: translation.provider || null,
-        errorMessage: translation.errorMessage || null,
-      }
-    : null;
+function pendingNewsTranslationRow(item, targetLocale) {
   return {
     id: item.id,
     category: item.category,
@@ -220,14 +212,13 @@ function pendingNewsTranslationRow(item, translation, targetLocale) {
     symbols: Array.isArray(item.symbols) ? item.symbols : [],
     publishedAt: item.publishedAt || null,
     targetLocale,
-    existingTranslation: existing,
   };
 }
 
 function buildPendingNewsTranslationFilters(options = {}, targetLocale) {
   const params = [targetLocale];
   const where = [
-    `(t_target.id IS NULL OR t_target.status NOT IN ('completed', 'manual') OR t_target.payload->>'provider' = 'mock')`,
+    `(t_target.id IS NULL OR t_target.status NOT IN ('completed', 'manual') OR COALESCE(t_target.payload->>'provider', '') = 'mock')`,
   ];
   const category = cleanText(options.category);
   if (category) {
@@ -246,43 +237,43 @@ function buildPendingNewsTranslationFilters(options = {}, targetLocale) {
   return { params, where };
 }
 
+export async function findNewsItemIds(ids = []) {
+  const safeIds = [...new Set(ids.map((id) => cleanText(id)).filter(Boolean))];
+  if (safeIds.length === 0) return new Set();
+  const result = await queryKysely(
+    `SELECT id FROM news_items WHERE id = ANY($1::text[])`,
+    [safeIds],
+  );
+  return new Set(result.rows.map((row) => row.id));
+}
+
 export async function queryPendingNewsTranslationRows(options = {}) {
   const { limit, offset } = pageOptions(options, 50);
   const targetLocale = cleanText(options.targetLocale) || 'ko';
-  const pending = [];
-  let scanOffset = 0;
-  const scanBatch = Math.max(limit * 4, 100);
+  const { params, where } = buildPendingNewsTranslationFilters(options, targetLocale);
+  params.push(limit + 1, offset);
+  const result = await queryKysely(
+    `
+      SELECT n.payload
+      FROM news_items n
+      LEFT JOIN news_translations t_target ON t_target.news_item_id = n.id AND t_target.locale = $1
+      WHERE ${where.join(' AND ')}
+      ORDER BY n.published_at DESC NULLS LAST, n.position ASC
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `,
+    params,
+  );
 
-  while (pending.length < offset + limit + 1) {
-    const { params, where } = buildPendingNewsTranslationFilters(options, targetLocale);
-    params.push(scanBatch, scanOffset);
-    const result = await queryKysely(
-      `
-        SELECT n.payload, t_target.payload AS translation_payload
-        FROM news_items n
-        LEFT JOIN news_translations t_target ON t_target.news_item_id = n.id AND t_target.locale = $1
-        WHERE ${where.join(' AND ')}
-        ORDER BY n.published_at ASC NULLS LAST, n.position ASC
-        LIMIT $${params.length - 1} OFFSET $${params.length}
-      `,
-      params,
-    );
-    if (result.rows.length === 0) break;
-
-    for (const row of result.rows) {
+  const rows = result.rows
+    .slice(0, limit)
+    .map((row) => {
       const item = payloadFromRow(row);
-      if (!item) continue;
-      const translation = payloadFromRow({ payload: row.translation_payload });
-      if (hasUsableTranslation(translation, item)) continue;
-      pending.push(pendingNewsTranslationRow(item, translation, targetLocale));
-    }
+      if (!item) return null;
+      return pendingNewsTranslationRow(item, targetLocale);
+    })
+    .filter(Boolean);
 
-    if (result.rows.length < scanBatch) break;
-    scanOffset += scanBatch;
-  }
-
-  const rows = pending.slice(offset, offset + limit);
-  const hasMore = pending.length > offset + limit;
+  const hasMore = result.rows.length > limit;
   return {
     rows,
     total: offset + rows.length + (hasMore ? 1 : 0),

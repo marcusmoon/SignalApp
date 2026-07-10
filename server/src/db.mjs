@@ -47,6 +47,7 @@ import {
 } from './calendar/eventKey.mjs';
 import {
   queryAdminNewsRows,
+  findNewsItemIds,
   queryPendingNewsTranslationRows,
   queryPublicNewsRows,
   queryPublicNewsSourceRows,
@@ -946,6 +947,10 @@ export async function queryAdminNews(options = {}) {
 
 export async function queryPendingNewsTranslations(options = {}) {
   return queryPendingNewsTranslationRows(options);
+}
+
+export async function findNewsItemsByIds(ids = []) {
+  return findNewsItemIds(ids);
 }
 
 export async function queryPublicDisclosures(options = {}) {

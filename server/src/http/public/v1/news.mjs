@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 
 import {
+  findNewsItemsByIds,
   queryPublicNews,
   queryPublicNewsDigests,
   queryPublicNewsSources,
@@ -42,6 +43,35 @@ function stableNewsItemId(item) {
   ].join('|');
   const hash = crypto.createHash('sha1').update(basis).digest('hex').slice(0, 16);
   return `codex-news:${category}:${hash}`;
+}
+
+function defaultPendingFrom() {
+  return new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
+}
+
+function normalizeTranslationIngestItem(raw, now) {
+  const newsItemId = cleanText(raw?.newsItemId || raw?.id);
+  const locale = cleanText(raw?.locale || 'ko').toLowerCase() || 'ko';
+  const title = cleanText(raw?.title);
+  const summary = cleanText(raw?.summary);
+  const content = cleanText(raw?.content);
+  if (!newsItemId || !locale || (!title && !summary && !content)) return null;
+  return {
+    id: `${newsItemId}:${locale}`,
+    newsItemId,
+    locale,
+    provider: cleanText(raw?.provider) || 'codex',
+    model: cleanText(raw?.model) || 'codex-scheduled-news-translation',
+    status: cleanText(raw?.status) || 'completed',
+    title,
+    summary,
+    content,
+    errorMessage: null,
+    translatedAt: cleanText(raw?.translatedAt) || now,
+    editedByAdminId: null,
+    editedAt: null,
+    updatedAt: now,
+  };
 }
 
 function normalizeNewsIngestTranslation(raw, newsItem, now) {
@@ -181,6 +211,43 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
     return true;
   }
 
+  if (req.method === 'POST' && pathname === '/v1/news/translations/ingest') {
+    if (!hasIngestAccess(req)) {
+      json(res, 401, { error: 'AUTOMATION_INGEST_AUTH_REQUIRED' });
+      return true;
+    }
+    const body = await readBody(req);
+    const rawItems = Array.isArray(body?.items) ? body.items : [];
+    if (rawItems.length === 0) {
+      json(res, 400, { error: 'ITEMS_REQUIRED' });
+      return true;
+    }
+    const now = new Date().toISOString();
+    const normalized = rawItems
+      .slice(0, 50)
+      .map((item) => normalizeTranslationIngestItem(item, now))
+      .filter(Boolean);
+    if (normalized.length === 0) {
+      json(res, 400, { error: 'VALID_ITEMS_REQUIRED' });
+      return true;
+    }
+    const existingIds = await findNewsItemsByIds(normalized.map((item) => item.newsItemId));
+    const translations = normalized.filter((item) => existingIds.has(item.newsItemId));
+    if (translations.length === 0) {
+      json(res, 400, { error: 'NEWS_ITEMS_NOT_FOUND' });
+      return true;
+    }
+    await upsertCollectionRows('newsTranslations', translations);
+    json(res, 201, {
+      data: {
+        count: translations.length,
+        skipped: normalized.length - translations.length,
+        ids: translations.map((item) => item.newsItemId),
+      },
+    });
+    return true;
+  }
+
   if (req.method === 'POST' && pathname === '/v1/news-digests/ingest') {
     if (!hasIngestAccess(req)) {
       json(res, 401, { error: 'AUTOMATION_INGEST_AUTH_REQUIRED' });
@@ -282,7 +349,7 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
     const page = await queryPendingNewsTranslations({
       targetLocale: url.searchParams.get('target_locale') || 'ko',
       category: url.searchParams.get('category') || '',
-      from: url.searchParams.get('from') || '',
+      from: url.searchParams.get('from') || defaultPendingFrom(),
       limit: url.searchParams.get('limit') || '50',
       offset: url.searchParams.get('offset') || '0',
     });

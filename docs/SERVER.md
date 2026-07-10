@@ -94,9 +94,17 @@ flyway \
 
 | 그룹 | 경로 |
 |---|---|
-| 공개 | `/v1/news`, `/v1/news/ingest`, `/v1/news/pending-translations`, `/v1/youtube`, `/v1/market-quotes`, `/v1/market-briefings`, `/v1/today-briefing`, `/v1/calendar` |
+| 공개 | `/v1/news`, `/v1/news/ingest`, `/v1/news/pending-translations`, `/v1/news/translations/ingest`, `/v1/youtube`, `/v1/market-quotes`, `/v1/market-briefings`, `/v1/today-briefing`, `/v1/calendar` |
 | 인증 | `/v1/auth/*`, `/v1/notifications`, `/v1/legal/terms` |
 | Admin | `/admin/api/*` |
+
+## 뉴스 번역 (Codex)
+
+뉴스 수집 Job은 원문만 저장한다. ko 번역은 Codex 예약 작업이 담당한다.
+
+- 대상 조회: `GET /v1/news/pending-translations`
+- 번역 적재: `POST /v1/news/translations/ingest`
+- 계약: [NEWS-TRANSLATION-AUTOMATION.md](./NEWS-TRANSLATION-AUTOMATION.md)
 
 ## Job 운영
 

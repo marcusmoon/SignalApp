@@ -236,7 +236,7 @@ function makeStyles(
       paddingLeft: 18,
       paddingRight: 14,
       paddingVertical: 14,
-      gap: 10,
+      gap: 16,
     },
     headline: {
       fontSize: ft.ff(17),
@@ -257,7 +257,7 @@ function makeStyles(
       backgroundColor: theme.card,
       paddingHorizontal: 14,
       paddingVertical: 12,
-      gap: 10,
+      gap: 16,
     },
     sectionTitle: {
       fontSize: ft.ff(13),
@@ -266,12 +266,12 @@ function makeStyles(
       color: theme.text,
     },
     pointList: {
-      gap: 8,
+      gap: 16,
     },
     pointRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 8,
+      gap: 16,
     },
     pointBullet: {
       fontSize: ft.ff(14),
@@ -286,18 +286,18 @@ function makeStyles(
       color: theme.textMuted,
     },
     sourceList: {
-      gap: 8,
+      gap: 16,
     },
     sourceRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: 16,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
       paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingVertical: 12,
     },
     sourceTextCol: {
       flex: 1,

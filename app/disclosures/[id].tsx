@@ -145,7 +145,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    scroll: { padding: 16, gap: 12 },
+    scroll: { padding: 16, gap: 20 },
     error: {
       padding: 12,
       borderRadius: 12,
@@ -162,7 +162,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.card,
       padding: 16,
     },
-    badges: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 12 },
+    badges: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 16 },
     badge: {
       color: theme.green,
       backgroundColor: theme.greenDim,
@@ -194,8 +194,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.card,
       padding: 14,
     },
-    section: { color: theme.text, fontSize: sf(15), fontWeight: '900', marginBottom: 10 },
-    factRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 7 },
+    section: { color: theme.text, fontSize: sf(15), fontWeight: '900', marginBottom: 14 },
+    factRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 20, paddingVertical: 7 },
     factLabel: { color: theme.textMuted, fontSize: sf(13), fontWeight: '800' },
     factValue: { flex: 1, textAlign: 'right', color: theme.text, fontSize: sf(13), fontWeight: '900' },
     summary: { color: theme.text, fontSize: sf(15), lineHeight: sf(24), fontWeight: '700' },
@@ -206,7 +206,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignItems: 'center',
       justifyContent: 'center',
       flexDirection: 'row',
-      gap: 8,
+      gap: 16,
     },
     primaryText: { color: '#fff', fontSize: sf(14), fontWeight: '900' },
   });

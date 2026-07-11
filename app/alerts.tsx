@@ -387,7 +387,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     filterRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 8,
+      gap: 16,
     },
     filterHeaderActions: {
       flexDirection: 'row',
@@ -422,7 +422,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
+      gap: 16,
     },
     candidateSection: {
       marginBottom: 14,
@@ -436,12 +436,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 10,
+      gap: 16,
       marginBottom: 4,
     },
     candidateTitle: { flex: 1, fontSize: sf(14), fontWeight: '900', color: theme.text },
     candidateLink: { fontSize: sf(12), fontWeight: '800', color: theme.green },
-    candidateHint: { fontSize: sf(11), color: theme.textMuted, lineHeight: sf(16), marginBottom: 10 },
+    candidateHint: { fontSize: sf(11), color: theme.textMuted, lineHeight: sf(16), marginBottom: 14 },
     candidateCard: {
       paddingVertical: 12,
       paddingHorizontal: 12,
@@ -453,10 +453,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     candidateCardPressed: { opacity: 0.78 },
     candidateMetaRow: {
-      marginTop: 9,
+      marginTop: 16,
       flexDirection: 'row',
       justifyContent: 'space-between',
-      gap: 10,
+      gap: 16,
     },
     candidateMeta: { flexShrink: 1, fontSize: sf(11), color: theme.textDim, fontWeight: '700' },
     emptyBox: {
@@ -466,7 +466,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      marginBottom: 12,
+      marginBottom: 16,
     },
     emptyText: { fontSize: sf(13), color: theme.textMuted, lineHeight: sf(20) },
     alertCard: {
@@ -478,7 +478,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     alertCardPressed: { opacity: 0.78 },
     swipeRow: {
-      marginBottom: 10,
+      marginBottom: 14,
       borderRadius: 12,
       overflow: 'hidden',
     },
@@ -523,14 +523,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     highText: { fontSize: sf(10), fontWeight: '900', color: '#FF6B6B' },
     loadingCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     authGate: { flex: 1, justifyContent: 'center', paddingHorizontal: 16 },
-    authGateTopBar: { alignItems: 'flex-end', marginBottom: 12 },
+    authGateTopBar: { alignItems: 'flex-end', marginBottom: 16 },
     authGateCard: {
       borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.card,
       padding: 18,
-      gap: 10,
+      gap: 16,
     },
     authGateKicker: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
     authGateTitle: { color: theme.text, fontSize: sf(21), lineHeight: sf(27), fontWeight: '900' },

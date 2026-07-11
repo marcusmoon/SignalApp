@@ -45,7 +45,7 @@ export function makeQuotesStyles(
     segBtnActive: segmentTab.segBtnActive,
     segText: segmentTab.segText,
     segTextActive: segmentTab.segTextActive,
-    updated: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted, marginBottom: 10 },
+    updated: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted, marginBottom: 14 },
     errBox: {
       marginHorizontal: 16,
       marginBottom: 8,
@@ -95,7 +95,7 @@ export function makeQuotesStyles(
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
-      gap: 10,
+      gap: 16,
       marginBottom: 6,
     },
     priceCol: {
@@ -108,7 +108,7 @@ export function makeQuotesStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      gap: 8,
+      gap: 16,
     },
     symCol: { flex: 1, minWidth: 0, flexShrink: 1 },
     symBlock: { alignSelf: 'flex-start', maxWidth: '100%' },
@@ -162,7 +162,7 @@ export function makeQuotesStyles(
     yahooInline: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: 6,
       flexShrink: 1,
       minWidth: 0,
       marginLeft: 8,

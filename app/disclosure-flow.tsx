@@ -359,7 +359,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       alignSelf: 'center',
       paddingHorizontal: 16,
       paddingTop: SCREEN_HEADER_CONTENT_GAP,
-      gap: 12,
+      gap: 20,
     },
     innerWide: {
       maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
@@ -370,7 +370,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minHeight: 42,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: 16,
       marginBottom: 2,
     },
     paneBackBtn: {
@@ -402,10 +402,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       width: 78,
       flexShrink: 0,
     },
-    header: { gap: 12 },
+    header: { gap: 20 },
     categoryTabs: {
       flexDirection: 'row',
-      gap: 4,
+      gap: 6,
       padding: 4,
       borderRadius: 12,
       borderWidth: 1,
@@ -455,7 +455,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: '800',
       textAlign: 'center',
     },
-    issueList: { gap: 10 },
+    issueList: { gap: 16 },
     card: {
       position: 'relative',
       overflow: 'hidden',
@@ -466,7 +466,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingLeft: 18,
       paddingRight: ft.pad(14),
       paddingVertical: ft.pad(14),
-      gap: 8,
+      gap: 16,
     },
     cardHighlighted: {
       borderColor: theme.greenBorder,
@@ -476,7 +476,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderTopLeftRadius: 16,
       borderBottomLeftRadius: 16,
     },
-    badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     marketChip: {
       overflow: 'hidden',
       minHeight: 22,

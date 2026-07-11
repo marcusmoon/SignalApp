@@ -100,14 +100,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, compact: boolean
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 8,
+      gap: 16,
     },
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
       flexShrink: 0,
       marginRight: -2,
-      gap: 6,
+      gap: 8,
     },
     iconBtn: {
       width: 36,
@@ -139,7 +139,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, compact: boolean
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 16,
       minWidth: 0,
     },
     logoRowPressed: {

@@ -6,28 +6,28 @@ import { tabBarBottomInset } from '@/constants/tabBar';
  */
 
 /** SignalHeader 아래 → 첫 고정 UI(세그먼트·날짜 바)까지 */
-export const SCREEN_HEADER_CONTENT_GAP = 10;
+export const SCREEN_HEADER_CONTENT_GAP = 12;
 
 /** 고정 헤더 블록(topFixed) 내부 */
 export const SCREEN_FIXED_HEADER_PADDING_TOP = SCREEN_HEADER_CONTENT_GAP;
-export const SCREEN_FIXED_HEADER_PADDING_BOTTOM = 12;
+export const SCREEN_FIXED_HEADER_PADDING_BOTTOM = 16;
 export const SCREEN_FIXED_HEADER_PADDING_HORIZONTAL = 16;
 
 /** 고정 헤더 아래 스크롤 리스트 상단 */
-export const SCREEN_LIST_CONTENT_PADDING_TOP = 8;
+export const SCREEN_LIST_CONTENT_PADDING_TOP = 12;
 
 /** iPad·넓은 웹 2-pane 본문 컬럼 상단 */
-export const SCREEN_WIDE_CONTENT_PADDING_TOP = 12;
+export const SCREEN_WIDE_CONTENT_PADDING_TOP = 16;
 
 /** FlatList ListHeaderComponent 블록 */
-export const SCREEN_LIST_HEADER_PADDING_TOP = 8;
-export const SCREEN_LIST_HEADER_PADDING_BOTTOM = 4;
+export const SCREEN_LIST_HEADER_PADDING_TOP = 12;
+export const SCREEN_LIST_HEADER_PADDING_BOTTOM = 8;
 
 /** 사이드바 서브탭 아래 */
-export const SCREEN_SIDEBAR_SUBTAB_MARGIN_BOTTOM = 12;
+export const SCREEN_SIDEBAR_SUBTAB_MARGIN_BOTTOM = 16;
 
 /** iPad·웹 사이드바 임베디드 스택(뉴스 이슈·공시 흐름 등) */
-export const SCREEN_EMBEDDED_WIDE_PADDING_TOP = 16;
+export const SCREEN_EMBEDDED_WIDE_PADDING_TOP = 18;
 export const SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL = 20;
 
 /** 하단 탭 화면 스크롤 하단 기본값(탭바·FAB 위) */

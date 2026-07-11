@@ -1,6 +1,6 @@
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 
-export const DIGEST_CARD_GAP = 10;
+export const DIGEST_CARD_GAP = 12;
 /** wide 스트립 가로 inset (compact는 topFixed padding과 맞춤) */
 export const DIGEST_CARD_EDGE_PAD = 12;
 /** iPhone 1열: 다음 카드가 보이는 peek 폭 */
@@ -27,7 +27,7 @@ export function digestStripCardMinHeight(
   const titleLine = pairLayout ? ft.ff(19) : ft.ff(21);
   const padV = pairLayout ? ft.pad(8) : ft.pad(9);
   const badgeH = pairLayout ? DIGEST_STRIP_BADGE_ROW_HEIGHT_PAIR : DIGEST_STRIP_BADGE_ROW_HEIGHT;
-  const gap = pairLayout ? 4 : 5;
+  const gap = pairLayout ? 6 : 7;
   return Math.ceil(padV * 2 + badgeH + gap * 2 + titleLine * 2 + DIGEST_STRIP_FOOTER_MIN_HEIGHT);
 }
 

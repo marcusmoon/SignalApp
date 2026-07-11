@@ -8,7 +8,13 @@ import {
   View,
 } from 'react-native';
 
-import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
+import {
+  COMFORT_GAP_LG,
+  COMFORT_GAP_MD,
+  COMFORT_GAP_PAGE,
+  COMFORT_GAP_SM,
+  COMFORT_PADDING_ROW_V,
+} from '@/constants/comfortDensity';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
@@ -1058,7 +1064,7 @@ function makeStyles(
       flexGrow: 1,
       paddingHorizontal: 16,
       paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
-      gap: 24,
+      gap: COMFORT_GAP_PAGE,
     },
     errorBox: {
       borderRadius: 14,
@@ -1079,16 +1085,16 @@ function makeStyles(
       justifyContent: 'center',
     },
     heroStack: {
-      gap: 16,
+      gap: COMFORT_GAP_LG,
     },
     heroBlock: {
-      gap: 8,
+      gap: COMFORT_GAP_SM,
     },
     heroHead: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-start',
-      gap: 8,
+      gap: COMFORT_GAP_SM,
     },
     heroKicker: {
       fontSize: sf(18),
@@ -1104,8 +1110,8 @@ function makeStyles(
       backgroundColor: theme.card,
       paddingLeft: 16,
       paddingRight: 12,
-      paddingVertical: 10,
-      gap: 6,
+      paddingVertical: COMFORT_PADDING_ROW_V,
+      gap: COMFORT_GAP_SM,
       overflow: 'hidden',
       shadowColor: '#000000',
       shadowOpacity: 0.04,
@@ -1120,19 +1126,19 @@ function makeStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 8,
+      gap: COMFORT_GAP_SM,
     },
     issueMetaInline: {
       minWidth: 0,
       flexShrink: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: COMFORT_GAP_SM,
     },
     issueCategoryMark: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 5,
+      gap: COMFORT_GAP_SM,
       minWidth: 0,
       flexShrink: 1,
       alignSelf: 'flex-start',
@@ -1153,7 +1159,7 @@ function makeStyles(
       gap: 0,
     },
     issueGroupItem: {
-      gap: 4,
+      gap: COMFORT_GAP_SM,
       paddingVertical: ft.row(6),
       borderRadius: 10,
     },
@@ -1192,12 +1198,12 @@ function makeStyles(
       color: theme.textDim,
     },
     section: {
-      gap: 12,
+      gap: COMFORT_GAP_LG,
     },
     quoteGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 10,
+      gap: COMFORT_GAP_MD,
     },
     quoteTile: {
       width: '48.5%',
@@ -1238,7 +1244,7 @@ function makeStyles(
       justifyContent: 'space-between',
       paddingHorizontal: 8,
       paddingVertical: 7,
-      gap: 6,
+      gap: COMFORT_GAP_SM,
     },
     quoteTileFooter: {
       minWidth: 62,
@@ -1249,9 +1255,9 @@ function makeStyles(
       minHeight: 72,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: COMFORT_GAP_MD,
       paddingHorizontal: 14,
-      paddingVertical: 10,
+      paddingVertical: COMFORT_PADDING_ROW_V,
     },
     rowBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -1278,7 +1284,7 @@ function makeStyles(
       minWidth: 88,
       borderRadius: 12,
       paddingHorizontal: 10,
-      paddingVertical: 8,
+      paddingVertical: 10,
       alignItems: 'flex-end',
     },
     priceText: {
@@ -1298,7 +1304,7 @@ function makeStyles(
       flexShrink: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: COMFORT_GAP_SM,
     },
     marketPill: {
       alignSelf: 'flex-start',
@@ -1330,7 +1336,7 @@ function makeStyles(
       flexGrow: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: COMFORT_GAP_SM,
     },
     disclosureMarketPill: {
       alignSelf: 'flex-start',
@@ -1363,7 +1369,7 @@ function makeStyles(
       flexGrow: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: COMFORT_GAP_SM,
     },
     calendarDatePill: {
       alignSelf: 'flex-start',
@@ -1393,7 +1399,7 @@ function makeStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      gap: 4,
+      gap: COMFORT_GAP_SM,
       paddingTop: 2,
     },
     calendarMoreText: {

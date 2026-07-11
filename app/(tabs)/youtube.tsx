@@ -626,13 +626,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     channelFilterRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
+      gap: 16,
     },
     channelFilterChip: {
       minHeight: 32,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: 8,
       paddingHorizontal: 11,
       borderRadius: 999,
       borderWidth: 1,
@@ -643,7 +643,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexShrink: 0,
       paddingHorizontal: 16,
       paddingTop: 12,
-      paddingBottom: 4,
+      paddingBottom: 8,
     },
     backToMoreBtn: {
       alignSelf: 'flex-start',
@@ -667,7 +667,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 10,
+      gap: 16,
       paddingVertical: 16,
     },
     footerLoadingText: {
@@ -727,7 +727,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     errLinkWrap: {
       alignSelf: 'flex-start',
-      marginTop: 10,
+      marginTop: 16,
     },
     errLink: {
       fontSize: sf(12),

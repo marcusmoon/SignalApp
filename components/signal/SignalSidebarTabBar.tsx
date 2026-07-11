@@ -379,7 +379,7 @@ function makeStyles(
     accountButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: 20,
       paddingHorizontal: 12,
       paddingVertical: 12,
       borderRadius: 12,
@@ -390,7 +390,7 @@ function makeStyles(
     tabItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: 20,
       paddingHorizontal: 12,
       paddingVertical: 12,
       borderRadius: 12,
@@ -432,9 +432,9 @@ function makeStyles(
     subTabItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 16,
       paddingHorizontal: 10,
-      paddingVertical: 8,
+      paddingVertical: 10,
       borderRadius: 10,
       marginBottom: 2,
     },

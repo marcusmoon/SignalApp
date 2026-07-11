@@ -102,7 +102,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     datePicker: {
       padding: 8,
-      gap: 8,
+      gap: 16,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       borderRadius: 13,

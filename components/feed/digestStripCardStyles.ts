@@ -1,6 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
+import { COMFORT_GAP_SM } from '@/constants/comfortDensity';
 import {
   DIGEST_STRIP_BADGE_ROW_HEIGHT,
   DIGEST_STRIP_BADGE_ROW_HEIGHT_PAIR,
@@ -25,7 +26,7 @@ export function makeDigestStripCardStyles(
   const titleLine = pairLayout ? ft.ff(19) : ft.ff(21);
   const badgeHeight = pairLayout ? DIGEST_STRIP_BADGE_ROW_HEIGHT_PAIR : DIGEST_STRIP_BADGE_ROW_HEIGHT;
   const cardMinHeight = digestStripCardMinHeight(pairLayout, ft);
-  const sectionGap = pairLayout ? 4 : 5;
+  const sectionGap = pairLayout ? 6 : 7;
 
   return StyleSheet.create({
     card: {
@@ -33,7 +34,7 @@ export function makeDigestStripCardStyles(
       minHeight: cardMinHeight,
       paddingLeft: pairLayout ? 14 : 18,
       paddingRight: pairLayout ? ft.pad(11) : ft.pad(13),
-      paddingVertical: pairLayout ? ft.pad(8) : ft.pad(9),
+      paddingVertical: pairLayout ? ft.pad(10) : ft.pad(11),
       borderRadius: pairLayout ? 12 : 16,
       borderWidth: 1,
       borderColor: theme.border,
@@ -63,7 +64,7 @@ export function makeDigestStripCardStyles(
       flexDirection: 'row',
       flexWrap: 'nowrap',
       alignItems: 'center',
-      gap: 5,
+      gap: 6,
       height: badgeHeight,
       flexShrink: 0,
       overflow: 'hidden',
@@ -111,7 +112,7 @@ export function makeDigestStripCardStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 8,
+      gap: COMFORT_GAP_SM,
       minHeight: DIGEST_STRIP_FOOTER_MIN_HEIGHT,
       flexShrink: 0,
     },

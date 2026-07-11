@@ -340,7 +340,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       marginBottom: 2,
     },
     overviewBlock: {
-      gap: 10,
+      gap: 16,
     },
     summary: {
       fontSize: ft.signalBodyFont(17),
@@ -349,12 +349,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.text,
     },
     sectionWrap: {
-      gap: 10,
+      gap: 16,
     },
     sectionHead: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 16,
     },
     sectionAccent: {
       width: CONTENT_ACCENT_LINE_WIDTH,
@@ -391,12 +391,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.textMuted,
     },
     overviewList: {
-      gap: 12,
+      gap: 20,
     },
     overviewRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 12,
+      gap: 20,
     },
     overviewDot: {
       width: 8,
@@ -415,12 +415,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.text,
     },
     cardStack: {
-      gap: 10,
+      gap: 16,
     },
     sectorRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 8,
+      gap: 16,
       paddingVertical: 7,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
@@ -451,13 +451,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
       padding: ft.pad(14),
-      gap: 10,
+      gap: 16,
     },
     companyHead: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
-      gap: 10,
+      gap: 16,
     },
     companySymbolBox: {
       flex: 1,
@@ -479,7 +479,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexShrink: 0,
       alignItems: 'flex-end',
       borderWidth: 1,
-      paddingVertical: 8,
+      paddingVertical: 10,
       paddingHorizontal: 10,
       borderRadius: 10,
       gap: 2,
@@ -501,7 +501,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(23),
       fontWeight: ft.signalBodyWeight,
       color: theme.textDim,
-      paddingTop: 4,
+      paddingTop: 8,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
     },
@@ -514,7 +514,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderLeftColor: theme.accentOrange,
       paddingVertical: ft.row(12),
       paddingHorizontal: ft.pad(14),
-      gap: 6,
+      gap: 8,
     },
     macroTitle: {
       fontSize: ft.ff(15),
@@ -537,7 +537,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     sourceRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: 16,
       borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.border,

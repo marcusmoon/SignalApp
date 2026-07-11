@@ -62,7 +62,7 @@ function makeStyles(theme: AppTheme) {
       width: DIGEST_REFRESH_TAIL_WIDTH,
       flexShrink: 0,
       alignSelf: 'stretch',
-      gap: 8,
+      gap: 16,
     },
     btn: {
       flex: 1,

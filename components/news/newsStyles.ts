@@ -42,7 +42,7 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
     },
     adBetweenGroups: {
-      marginVertical: 10,
+      marginVertical: 16,
     },
     listHeader: {
       paddingTop: SCREEN_LIST_HEADER_PADDING_TOP,
@@ -63,9 +63,9 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 12,
-      marginBottom: 10,
-      paddingVertical: 8,
+      gap: 20,
+      marginBottom: 14,
+      paddingVertical: 10,
       paddingHorizontal: 10,
       borderRadius: 10,
       backgroundColor: theme.greenDim,
@@ -87,9 +87,9 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
     videoOpenAll: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      marginBottom: 10,
-      paddingVertical: 8,
+      gap: 16,
+      marginBottom: 14,
+      paddingVertical: 10,
       paddingHorizontal: 11,
       borderRadius: 13,
       borderWidth: 1,
@@ -139,7 +139,7 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 8,
+      gap: 16,
     },
     digestKicker: {
       minHeight: 22,
@@ -147,7 +147,7 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       borderRadius: 999,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 5,
+      gap: 6,
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,
@@ -162,7 +162,7 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       flexShrink: 0,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: 8,
     },
     digestCount: {
       flexShrink: 0,
@@ -186,7 +186,7 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
     digestChipRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 6,
+      gap: 8,
     },
     digestSymbolChip: {
       overflow: 'hidden',
@@ -226,7 +226,7 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     digestMoreRow: {
       paddingHorizontal: 11,
-      paddingVertical: 10,
+      paddingVertical: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
       gap: 2,
@@ -250,7 +250,7 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       borderRadius: 999,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: 8,
       backgroundColor: theme.greenDim,
     },
     digestTogglePressed: {
@@ -265,8 +265,8 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
     watchFilterRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
-      marginBottom: 10,
+      gap: 16,
+      marginBottom: 14,
     },
     watchFilterChip: {
       minHeight: 32,
@@ -295,7 +295,7 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 10,
+      gap: 16,
       paddingVertical: 16,
     },
     footerLoadingText: {
@@ -328,7 +328,7 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
       borderColor: '#FFD6DA',
-      marginBottom: 12,
+      marginBottom: 16,
     },
     errText: {
       fontSize: sf(12),

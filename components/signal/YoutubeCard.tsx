@@ -80,7 +80,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderWidth: 1,
       borderColor: theme.border,
       padding: ft.pad(10),
-      marginBottom: 10,
+      marginBottom: 14,
     },
     cardGrouped: {
       backgroundColor: 'transparent',
@@ -135,7 +135,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 8,
+      gap: 16,
       marginBottom: 4,
     },
     topicWrap: {
@@ -176,7 +176,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     linkChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: 6,
       flexShrink: 0,
       paddingVertical: 2,
       paddingLeft: 2,

@@ -85,14 +85,14 @@ export default function TermsHistoryScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    content: { padding: 16, gap: 12 },
+    content: { padding: 16, gap: 20 },
     headerCard: {
       borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.card,
       padding: 16,
-      gap: 8,
+      gap: 16,
     },
     kicker: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
     title: { color: theme.text, fontSize: sf(20), lineHeight: sf(27), fontWeight: '900' },
@@ -103,10 +103,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.border,
       backgroundColor: theme.card,
       padding: 14,
-      gap: 8,
+      gap: 16,
     },
     rowPressed: { opacity: 0.76 },
-    rowTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    rowTop: { flexDirection: 'row', alignItems: 'center', gap: 16 },
     rowTitle: { flex: 1, color: theme.text, fontSize: sf(14), lineHeight: sf(20), fontWeight: '900' },
     badge: {
       borderRadius: 999,

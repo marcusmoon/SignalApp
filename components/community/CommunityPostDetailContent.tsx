@@ -106,13 +106,13 @@ function makeStyles(
       paddingHorizontal: 18,
       paddingTop: 12,
       paddingBottom: 12,
-      gap: 8,
+      gap: 16,
     },
     metaRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 12,
+      gap: 20,
     },
     sourcePill: {
       flexDirection: 'row',
@@ -143,7 +143,7 @@ function makeStyles(
     titleRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 10,
+      gap: 16,
     },
     title: {
       flex: 1,

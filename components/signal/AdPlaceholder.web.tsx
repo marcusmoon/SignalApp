@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#2A2A35',
     padding: 14,
-    marginBottom: 10,
+    marginBottom: 14,
   },
   badge: {
     alignSelf: 'flex-start',

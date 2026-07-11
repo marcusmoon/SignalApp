@@ -67,7 +67,7 @@ function makeActionStyles(theme: AppTheme) {
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 16,
       width: '100%',
     },
     icon: {

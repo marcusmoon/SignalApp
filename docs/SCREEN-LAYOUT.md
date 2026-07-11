@@ -4,6 +4,8 @@
 
 구현 상수·헬퍼는 코드가 단일 출처(source of truth)이며, 이 문서는 규칙과 패턴을 설명한다.
 
+**Comfortable density:** 전역 여유 밀도는 `constants/comfortDensity.ts` + `screenLayout.ts` 상수 bump로 적용한다. 롤백 시 해당 커밋을 `git revert` 하면 된다.
+
 ## 반응형 모드
 
 `useResponsiveLayout()` (`hooks/useResponsiveLayout.ts`):
@@ -34,12 +36,12 @@
 
 | 상수 | px | 용도 |
 |---|---:|---|
-| `SCREEN_HEADER_CONTENT_GAP` | 10 | `SignalHeader` 아래 → 날짜 바·세그먼트 등 **첫 고정 UI** |
-| `SCREEN_FIXED_HEADER_PADDING_TOP` | 10 | `topFixed` 블록 상단 (=`HEADER_CONTENT_GAP`) |
-| `SCREEN_FIXED_HEADER_PADDING_BOTTOM` | 12 | `topFixed` 블록 하단 |
-| `SCREEN_LIST_CONTENT_PADDING_TOP` | 8 | 고정 UI 아래 **스크롤 리스트** 상단 |
-| `SCREEN_WIDE_CONTENT_PADDING_TOP` | 12 | wide 2-pane 본문 컬럼 상단 |
-| `SCREEN_EMBEDDED_WIDE_PADDING_TOP` | 16 | 사이드바 임베디드 스택 본문 상단 |
+| `SCREEN_HEADER_CONTENT_GAP` | 12 | `SignalHeader` 아래 → 날짜 바·세그먼트 등 **첫 고정 UI** |
+| `SCREEN_FIXED_HEADER_PADDING_TOP` | 12 | `topFixed` 블록 상단 (=`HEADER_CONTENT_GAP`) |
+| `SCREEN_FIXED_HEADER_PADDING_BOTTOM` | 16 | `topFixed` 블록 하단 |
+| `SCREEN_LIST_CONTENT_PADDING_TOP` | 12 | 고정 UI 아래 **스크롤 리스트** 상단 |
+| `SCREEN_WIDE_CONTENT_PADDING_TOP` | 16 | wide 2-pane 본문 컬럼 상단 |
+| `SCREEN_EMBEDDED_WIDE_PADDING_TOP` | 18 | 사이드바 임베디드 스택 본문 상단 |
 | `SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL` | 20 | 사이드바 임베디드 스택 가로 |
 
 ### 레이어 구조 (iPhone 탭)

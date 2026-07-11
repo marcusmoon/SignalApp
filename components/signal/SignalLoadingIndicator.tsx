@@ -10,7 +10,7 @@ const BAR_PRESETS = {
   default: {
     heights: [16, 26, 36, 46],
     width: 9,
-    gap: 4,
+    gap: 6,
     rowHeight: 46,
     captionSize: 13,
     captionMarginTop: 14,

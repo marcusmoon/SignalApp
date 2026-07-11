@@ -130,6 +130,13 @@ import {
   saveHomeWatchlistDisplayCount,
 } from '@/services/homeWatchlistDisplayPreference';
 import {
+  HOME_BOARD_DISPLAY_MAX,
+  HOME_BOARD_DISPLAY_MIN,
+  HOME_BOARD_DISPLAY_DEFAULT,
+  loadHomeBoardDisplayCount,
+  saveHomeBoardDisplayCount,
+} from '@/services/homeBoardDisplayPreference';
+import {
   loadTabBarOpacityLevel,
   saveTabBarOpacityLevel,
   tabBarOpacityPercent,
@@ -1086,6 +1093,8 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   const [homeNewsFlowDisplayReady, setHomeNewsFlowDisplayReady] = useState(false);
   const [homeWatchlistDisplayCount, setHomeWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [homeWatchlistDisplayReady, setHomeWatchlistDisplayReady] = useState(false);
+  const [homeBoardDisplayCount, setHomeBoardDisplayCount] = useState(HOME_BOARD_DISPLAY_DEFAULT);
+  const [homeBoardDisplayReady, setHomeBoardDisplayReady] = useState(false);
   const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
   const [appIconReady, setAppIconReady] = useState(false);
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
@@ -1314,6 +1323,22 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     setHomeWatchlistDisplayCount(next);
   }, []);
 
+  const reloadHomeBoardDisplayPref = useCallback(async () => {
+    const v = await loadHomeBoardDisplayCount();
+    setHomeBoardDisplayCount(v);
+    setHomeBoardDisplayReady(true);
+  }, []);
+
+  const bumpHomeBoardDisplayCount = useCallback(async (delta: number) => {
+    const v = await loadHomeBoardDisplayCount();
+    const next = Math.min(
+      HOME_BOARD_DISPLAY_MAX,
+      Math.max(HOME_BOARD_DISPLAY_MIN, v + delta),
+    );
+    await saveHomeBoardDisplayCount(next);
+    setHomeBoardDisplayCount(next);
+  }, []);
+
   const reloadAppIconPref = useCallback(async () => {
     const v = await loadAppIconVariant();
     setAppIconVariant(v);
@@ -1338,6 +1363,7 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     void reloadMainEntryPref();
     void reloadHomeNewsFlowDisplayPref();
     void reloadHomeWatchlistDisplayPref();
+    void reloadHomeBoardDisplayPref();
     void reloadAppIconPref();
     void reloadTabBarOpacityPref();
   }, [
@@ -1352,6 +1378,7 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     reloadMainEntryPref,
     reloadHomeNewsFlowDisplayPref,
     reloadHomeWatchlistDisplayPref,
+    reloadHomeBoardDisplayPref,
     reloadAppIconPref,
     reloadTabBarOpacityPref,
   ]);
@@ -1880,7 +1907,7 @@ clearCalendarCache();
           <>
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsHomeDisplaySection')}</Text>
-              {!homeNewsFlowDisplayReady || !homeWatchlistDisplayReady ? (
+              {!homeNewsFlowDisplayReady || !homeWatchlistDisplayReady || !homeBoardDisplayReady ? (
                 <Text style={styles.muted}>{t('commonLoading')}</Text>
               ) : (
                 <>
@@ -1943,6 +1970,40 @@ clearCalendarCache();
                         style={({ pressed }) => [
                           styles.addBtn,
                           (homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.addBtnText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                    {t('settingsHomeBoardDisplaySection')}
+                  </Text>
+                  <Text style={styles.prefHint}>{t('settingsHomeBoardDisplayHint')}</Text>
+                  <View style={[styles.row, { marginTop: 8 }]}>
+                    <Text style={styles.handleText}>
+                      {t('settingsHomeBoardDisplayValue', {
+                        count: String(homeBoardDisplayCount),
+                      })}
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 16 }}>
+                      <Pressable
+                        onPress={() => void bumpHomeBoardDisplayCount(-1)}
+                        disabled={homeBoardDisplayCount <= HOME_BOARD_DISPLAY_MIN}
+                        style={({ pressed }) => [
+                          styles.addBtn,
+                          (homeBoardDisplayCount <= HOME_BOARD_DISPLAY_MIN || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.addBtnText}>−</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void bumpHomeBoardDisplayCount(1)}
+                        disabled={homeBoardDisplayCount >= HOME_BOARD_DISPLAY_MAX}
+                        style={({ pressed }) => [
+                          styles.addBtn,
+                          (homeBoardDisplayCount >= HOME_BOARD_DISPLAY_MAX || pressed) && { opacity: 0.55 },
                         ]}
                         accessibilityRole="button">
                         <Text style={styles.addBtnText}>+</Text>

@@ -27,7 +27,7 @@ import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
-import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
+import { CommunityPostCard, communitySourceLabelId } from '@/components/community/CommunityPostCard';
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import {
   briefingSourceIconEntries,
@@ -76,7 +76,9 @@ import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBrie
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefings';
+import { fetchSignalCommunity } from '@/integrations/signal-api/community';
 import type {
+  SignalApiCommunityPost,
   SignalApiDisclosureDigestItem,
   SignalApiMarketBriefing,
   SignalApiMarketQuote,
@@ -85,6 +87,11 @@ import type {
 } from '@/integrations/signal-api/types';
 import type { MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
+import {
+  HOME_BOARD_DISPLAY_DEFAULT,
+  loadHomeBoardDisplayCount,
+  subscribeHomeBoardDisplayCountChanged,
+} from '@/services/homeBoardDisplayPreference';
 import {
   HOME_NEWS_FLOW_DISPLAY_DEFAULT,
   loadHomeNewsFlowDisplayCount,
@@ -110,6 +117,13 @@ import {
 } from '@/utils/date';
 
 const HOME_BOARD_SOURCES: CommunitySourceKey[] = ['naver_likeusstock_free', 'save_user_news'];
+
+function emptyBoardPosts(): Record<CommunitySourceKey, SignalApiCommunityPost[]> {
+  return {
+    naver_likeusstock_free: [],
+    save_user_news: [],
+  };
+}
 
 const ISSUE_FETCH_LIMIT = 24;
 const BRIEFING_LIMIT = 30;
@@ -298,6 +312,8 @@ export function HomeFocusContent({
   const [error, setError] = useState<string | null>(null);
   const [newsFlowDisplayCount, setNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
   const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
+  const [boardDisplayCount, setBoardDisplayCount] = useState(HOME_BOARD_DISPLAY_DEFAULT);
+  const [boardPostsBySource, setBoardPostsBySource] = useState(emptyBoardPosts);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
@@ -317,7 +333,7 @@ export function HomeFocusContent({
     [issues, newsFlowDisplayCount],
   );
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
-    resyncDeps: [issues, briefings, todayBriefing, disclosures, calendarEvents, loading],
+    resyncDeps: [issues, briefings, todayBriefing, disclosures, calendarEvents, boardPostsBySource, loading],
   });
   const scrollResetKey = selectedYmd;
 
@@ -353,6 +369,7 @@ export function HomeFocusContent({
       setTodayBriefing(null);
       setDisclosures([]);
       setCalendarEvents([]);
+      setBoardPostsBySource(emptyBoardPosts());
       setError(t('errorSignalApiShort'));
       return;
     }
@@ -361,7 +378,19 @@ export function HomeFocusContent({
     try {
       const watchlist = await loadWatchlistSymbols();
       const symbols = selectedYmd === todayYmd ? watchlist.slice(0, watchlistDisplayCount) : [];
-      const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows] = await Promise.all([
+      const fetchBoardPosts =
+        selectedYmd === todayYmd
+          ? Promise.all(
+              HOME_BOARD_SOURCES.map((source) =>
+                fetchSignalCommunity({ source, limit: boardDisplayCount }, { cacheMode }).catch(() => ({
+                  items: [] as SignalApiCommunityPost[],
+                  meta: { limit: boardDisplayCount, offset: 0, total: 0, hasMore: false, nextOffset: null },
+                })),
+              ),
+            )
+          : Promise.resolve([] as Array<{ items: SignalApiCommunityPost[] }>);
+      const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows, boardPages] =
+        await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
         fetchTopIssues(selectedYmd, locale, cacheMode),
         symbols.length > 0
@@ -387,6 +416,7 @@ export function HomeFocusContent({
           },
           { cacheMode },
         ).catch(() => []),
+        fetchBoardPosts,
       ]);
 
       const quoteBySymbol = new Map<string, QuoteRow>();
@@ -416,10 +446,19 @@ export function HomeFocusContent({
           shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
         ),
       );
+      if (selectedYmd === todayYmd) {
+        const nextBoard = emptyBoardPosts();
+        HOME_BOARD_SOURCES.forEach((source, index) => {
+          nextBoard[source] = (boardPages[index]?.items ?? []).slice(0, boardDisplayCount);
+        });
+        setBoardPostsBySource(nextBoard);
+      } else {
+        setBoardPostsBySource(emptyBoardPosts());
+      }
     } catch (e) {
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
     }
-  }, [locale, selectedYmd, t, todayYmd, watchlistDisplayCount]);
+  }, [locale, selectedYmd, t, todayYmd, watchlistDisplayCount, boardDisplayCount]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -482,6 +521,22 @@ export function HomeFocusContent({
     void refreshWatchlistCount();
     const unsubscribe = subscribeHomeWatchlistDisplayCountChanged(() => {
       void refreshWatchlistCount();
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshBoardCount = async () => {
+      const next = await loadHomeBoardDisplayCount();
+      if (!cancelled) setBoardDisplayCount(next);
+    };
+    void refreshBoardCount();
+    const unsubscribe = subscribeHomeBoardDisplayCountChanged(() => {
+      void refreshBoardCount();
     });
     return () => {
       cancelled = true;
@@ -822,6 +877,53 @@ export function HomeFocusContent({
     [formatCalendarDateLabel, openCalendar, showIssueSummary, styles, t],
   );
 
+  const renderBoardCard = useCallback(
+    () => (
+      <View style={styles.heroCard}>
+        <View style={styles.boardSourceList}>
+          {HOME_BOARD_SOURCES.map((sourceKey, sourceIndex) => {
+            const posts = boardPostsBySource[sourceKey] ?? [];
+            const labelId = communitySourceLabelId(sourceKey);
+            const accent = communitySourceAccent(sourceKey, theme);
+            return (
+              <View
+                key={sourceKey}
+                style={[styles.boardSourceBlock, sourceIndex > 0 && styles.boardSourceBlockBorder]}>
+                <Pressable
+                  onPress={() => openBoardSource(sourceKey)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(labelId)}
+                  style={({ pressed }) => [styles.boardSourceHead, pressed && styles.pressed]}>
+                  <CommunitySourceMark accent={accent} size={22} />
+                  <Text style={styles.boardSourceLabel} numberOfLines={1}>
+                    {t(labelId)}
+                  </Text>
+                  <FontAwesome name="chevron-right" size={10} color={theme.textDim} />
+                </Pressable>
+                {posts.length > 0 ? (
+                  <View style={styles.boardPostList}>
+                    {posts.map((post) => (
+                      <CommunityPostCard
+                        key={post.id}
+                        item={post}
+                        sourceLabelId={labelId}
+                        showSource={false}
+                        bodyLines={1}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.boardEmptyText}>{t('homeFocusBoardEmpty')}</Text>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    ),
+    [boardPostsBySource, openBoardSource, styles, t, theme.textDim],
+  );
+
   return (
     <>
     <View
@@ -849,7 +951,7 @@ export function HomeFocusContent({
       <WebWheelScrollView
         ref={scrollRef as never}
         scrollResetKey={scrollResetKey}
-        contentRevision={[issues, briefings, todayBriefing, disclosures, calendarEvents, loading]}
+        contentRevision={[issues, briefings, todayBriefing, disclosures, calendarEvents, boardPostsBySource, loading]}
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
@@ -940,26 +1042,11 @@ export function HomeFocusContent({
             <View style={styles.section}>
               <HomeSectionHeader
                 title={t('screenBoard')}
+                subtitle={t('homeFocusBoardSubtitle')}
                 onPress={openBoard}
                 accessibilityLabel={t('commonViewAll')}
-                showChevron={false}
               />
-              <View style={styles.quoteGrid}>
-                {HOME_BOARD_SOURCES.map((sourceKey) => {
-                  const labelId = communitySourceLabelId(sourceKey);
-                  const accent = communitySourceAccent(sourceKey, theme);
-                  return (
-                    <Pressable
-                      key={sourceKey}
-                      onPress={() => openBoardSource(sourceKey)}
-                      accessibilityRole="button"
-                      accessibilityLabel={t(labelId)}
-                      style={({ pressed }) => [styles.boardEntryTile, pressed && styles.pressed]}>
-                      <CommunitySourceMark accent={accent} size={36} />
-                    </Pressable>
-                  );
-                })}
-              </View>
+              {renderBoardCard()}
             </View>
           ) : null}
 
@@ -1224,22 +1311,42 @@ function makeStyles(
       shadowOffset: { width: 0, height: 3 },
       elevation: 1,
     },
-    boardEntryTile: {
-      width: '48%',
-      minHeight: 54,
-      borderRadius: UI_RADIUS_CARD,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.colorScheme === 'dark' ? theme.bgElevated : theme.card,
+    boardSourceList: {
+      gap: 0,
+    },
+    boardSourceBlock: {
+      gap: COMFORT_GAP_SM,
+      paddingVertical: 8,
+    },
+    boardSourceBlockBorder: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.border,
+      marginTop: 4,
+      paddingTop: 12,
+    },
+    boardSourceHead: {
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 8,
-      paddingVertical: 10,
-      shadowColor: '#000000',
-      shadowOpacity: 0.03,
-      shadowRadius: 6,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: 1,
+      gap: 8,
+      minWidth: 0,
+    },
+    boardSourceLabel: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: ft.ff(FEED_BODY_PX),
+      lineHeight: sf(17),
+      fontWeight: ft.emphasisWeight,
+      color: theme.text,
+    },
+    boardPostList: {
+      gap: COMFORT_GAP_SM,
+    },
+    boardEmptyText: {
+      fontSize: ft.ff(FEED_SUMMARY_PX),
+      lineHeight: sf(15),
+      fontWeight: ft.bodyWeight,
+      color: theme.textDim,
+      paddingLeft: 30,
     },
     quoteTileContent: {
       flex: 1,

@@ -23,9 +23,11 @@ type Props = {
   sourceLabelId: MessageId;
   /** 전체 탭 등 출처 구분이 필요할 때만 표시 */
   showSource?: boolean;
+  /** 0이면 본문 숨김 */
+  bodyLines?: number;
 };
 
-export function CommunityPostCard({ item, sourceLabelId, showSource = true }: Props) {
+export function CommunityPostCard({ item, sourceLabelId, showSource = true, bodyLines = 2 }: Props) {
   const router = useRouter();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
@@ -52,8 +54,8 @@ export function CommunityPostCard({ item, sourceLabelId, showSource = true }: Pr
       <Text style={styles.title} numberOfLines={2}>
         {item.title}
       </Text>
-      {item.body ? (
-        <Text style={styles.body} numberOfLines={2}>
+      {item.body && bodyLines > 0 ? (
+        <Text style={styles.body} numberOfLines={bodyLines}>
           {item.body}
         </Text>
       ) : null}

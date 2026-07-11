@@ -23,6 +23,8 @@ GET /v1/today-briefing?date=<UTC_YYYY-MM-DD>&locale=ko
 GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
 ```
 
+`sourceRefs`는 ingest 시 `type`+`id`만 저장하고 read 시 hydrate한다([`DIGEST-SOURCE-REF-HYDRATION.md`](./DIGEST-SOURCE-REF-HYDRATION.md)).
+
 ## 최소 Payload
 
 ```json
@@ -43,11 +45,9 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
   "marketSnapshot": {},
   "sourceRefs": [
     {
-      "kind": "digest",
-      "title": "코스피 8000 붕괴 하루 만에 6% 급반등",
-      "url": "https://example.com/story",
-      "sourceName": "Example News",
-      "publishedAt": "2026-07-03T08:51:38Z"
+      "type": "news",
+      "id": "codex-news:global:abc123",
+      "relation": "primary"
     }
   ],
   "relatedDigestIds": [],

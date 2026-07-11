@@ -4,6 +4,7 @@ import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifi
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicMarketBriefings } from '../../../db/repositories/marketBriefingsRepository.mjs';
+import { normalizeSourceRefs } from '../../../sources/normalizeSourceRefs.mjs';
 import { parseToUtcIsoOrNull, utcDateKeyFromInstant, utcDateOnlyOrNull } from '../../../time/utc.mjs';
 import { json, readBody } from '../../shared.mjs';
 
@@ -50,7 +51,7 @@ function normalizeBriefingPayload(input) {
     })).filter((s) => s.name),
     companies: cleanArray(input?.companies).slice(0, 12),
     macro: cleanArray(input?.macro).slice(0, 8),
-    sourceRefs: cleanArray(input?.sourceRefs).slice(0, 20),
+    sourceRefs: normalizeSourceRefs(input?.sourceRefs, { limit: 20 }),
     briefingDate: normalizeBriefingDate(input?.briefingDate || input?.generatedDate, publishedAt),
     publishedAt,
     pushTitle: cleanText(input?.pushTitle) || title,
@@ -145,6 +146,7 @@ export async function handlePublicMarketBriefingRoutes({ req, res, url, pathname
       to: url.searchParams.get('to'),
       limit: url.searchParams.get('limit') || 10,
       offset: url.searchParams.get('offset') || 0,
+      locale: url.searchParams.get('locale') || 'ko',
     });
     json(res, 200, {
       data: page.rows.map(publicBriefing),

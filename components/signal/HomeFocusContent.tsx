@@ -345,7 +345,10 @@ export function HomeFocusContent({
               () => [] as SignalApiMarketQuote[],
             )
           : Promise.resolve([] as SignalApiMarketQuote[]),
-        fetchSignalMarketBriefings({ ...utcRangeForLocalYmd(selectedYmd), limit: BRIEFING_LIMIT }, { cacheMode }).catch(
+        fetchSignalMarketBriefings(
+          { ...utcRangeForLocalYmd(selectedYmd), limit: BRIEFING_LIMIT, locale },
+          { cacheMode },
+        ).catch(
           () => [],
         ),
         fetchSignalDisclosureDigests(

@@ -9,8 +9,8 @@ Codex 예약 작업은 먼저 Signal Server의 `/v1/news` 최신 뉴스만 읽�
 - Method: `POST`
 - URL: `/v1/news-digests/ingest`
 - Header: `x-signal-automation-token: $SIGNAL_AUTOMATION_INGEST_TOKEN`
-- Schema: [`docs/schemas/news-issue-digest.v1.schema.json`](./schemas/news-issue-digest.v1.schema.json)
-- Example: [`docs/examples/news-issue-digest.ingest.example.json`](./examples/news-issue-digest.ingest.example.json)
+- Schema: [`docs/schemas/news-issue-digest.v2.schema.json`](./schemas/news-issue-digest.v2.schema.json) (권장). v1 스냅샷도 ingest 시 정규화되어 저장된다.
+- Example: [`docs/examples/news-issue-digest.v2.ingest.example.json`](./examples/news-issue-digest.v2.ingest.example.json)
 
 요청 최상위 `notifyInbox`·`sendPush`는 독립 플래그(기본 `true`). dry-run은 둘 다 `false`, 운영 ingest는 필요에 따라 조정한다. 항목별 알림 제외는 `notifyInbox: false`만 사용한다.
 
@@ -56,13 +56,13 @@ GET /v1/news?category=crypto&from=<UTC_FROM>&to=<UTC_TO>&limit=120&offset=0&loca
 - `generatedDate`: UTC 기준 생성일 `YYYY-MM-DD`
 - `generatedAt`: UTC ISO 시각
 - `groupKey`: 사람이 읽을 수 있는 묶음 키
-- `sourceRefs`: 원문 뉴스 목록 — 분석 시 참조용. **앱 표시**는 `id`로 `news_items`·번역을 조회해 hydrate한다([`DIGEST-SOURCE-REF-HYDRATION.md`](./DIGEST-SOURCE-REF-HYDRATION.md)). v2 ingest에서는 `type`+`id`만 넣어도 된다.
+- `sourceRefs`: 원문 뉴스 목록 — **v2 ingest**에서는 `type`+`id`(+`relation`)만 넣는다. `title`·`url`·`sourceName`은 생략. 앱 표시는 read 시 `news_items`·번역을 hydrate([`DIGEST-SOURCE-REF-HYDRATION.md`](./DIGEST-SOURCE-REF-HYDRATION.md)).
 
 권장 필드:
 
 - `symbols`: 관련 종목 코드
 - `topics`: 대표 주제 태그
-- `sources`: 출처명 중복 제거 목록
+- `sources`: (v2 ingest 생략) read 시 hydrate된 `sourceRefs`에서 파생
 - `count`: 묶인 원문 수
 - `primaryNewsId`, `primaryPublishedAt`: 대표 기사
 - `cluster`: 묶음 판단 근거
@@ -89,7 +89,7 @@ GET /v1/news?category=crypto&from=<UTC_FROM>&to=<UTC_TO>&limit=120&offset=0&loca
 curl -X POST "$SIGNAL_SERVER_URL/v1/news-digests/ingest" \
   -H "content-type: application/json" \
   -H "x-signal-automation-token: $SIGNAL_AUTOMATION_INGEST_TOKEN" \
-  --data @docs/examples/news-issue-digest.ingest.example.json
+  --data @docs/examples/news-issue-digest.v2.ingest.example.json
 ```
 
 ## 앱 반영 방향

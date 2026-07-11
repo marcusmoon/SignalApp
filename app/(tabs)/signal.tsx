@@ -217,7 +217,7 @@ export default function SignalScreen() {
     }
     setError(null);
     const rows = await fetchSignalMarketBriefings(
-      { ...utcRangeForLocalYmd(selectedYmd), limit: 30 },
+      { ...utcRangeForLocalYmd(selectedYmd), limit: 30, locale },
       { cacheMode: signalCacheMode(forceRefresh) },
     ).catch(() => [] as SignalApiMarketBriefing[]);
     const sorted = [...rows].sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
@@ -234,7 +234,7 @@ export default function SignalScreen() {
       }
     }
     return sorted;
-  }, [selectedYmd, syncBriefingsLatestSeen, syncTabLatestSeen, t]);
+  }, [selectedYmd, syncBriefingsLatestSeen, syncTabLatestSeen, t, locale]);
 
   useEffect(() => {
     let cancelled = false;
@@ -262,7 +262,7 @@ export default function SignalScreen() {
     const poll = async () => {
       try {
         const rows = await fetchSignalMarketBriefings(
-          { ...utcRangeForLocalYmd(todayYmdRef.current), limit: 30 },
+          { ...utcRangeForLocalYmd(todayYmdRef.current), limit: 30, locale },
           { cacheMode: 'bypass' },
         );
         for (const tab of FLAT_TABS) {
@@ -279,7 +279,7 @@ export default function SignalScreen() {
     };
     const id = setInterval(() => void poll(), POLL_MS);
     return () => clearInterval(id);
-  }, [markTabHasNewContent, selectedYmd, todayYmd]);
+  }, [locale, markTabHasNewContent, selectedYmd, todayYmd]);
 
   useEffect(() => {
     if (selectedYmd < todayYmd) {

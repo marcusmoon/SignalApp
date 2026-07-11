@@ -145,3 +145,25 @@ export async function hydrateDisclosureDigestItems(items, options = {}) {
   const rows = Array.isArray(items) ? items : [];
   return Promise.all(rows.map((item) => hydrateDisclosureDigestItem(item, options)));
 }
+
+export async function hydrateMarketBriefingItem(item, options = {}) {
+  if (!item || typeof item !== 'object') return item;
+  const sourceRefs = await hydrateSourceRefs(item.sourceRefs, options);
+  return { ...item, sourceRefs };
+}
+
+export async function hydrateTodayBriefingItem(item, options = {}) {
+  if (!item || typeof item !== 'object') return item;
+  const sourceRefs = await hydrateSourceRefs(item.sourceRefs, options);
+  return { ...item, sourceRefs };
+}
+
+export async function hydrateMarketBriefingItems(items, options = {}) {
+  const rows = Array.isArray(items) ? items : [];
+  return Promise.all(rows.map((item) => hydrateMarketBriefingItem(item, options)));
+}
+
+export async function hydrateTodayBriefingItems(items, options = {}) {
+  const rows = Array.isArray(items) ? items : [];
+  return Promise.all(rows.map((item) => hydrateTodayBriefingItem(item, options)));
+}

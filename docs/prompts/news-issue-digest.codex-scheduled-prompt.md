@@ -29,7 +29,7 @@ Signal Server에 이미 수집된 최신 뉴스 중 최근 24시간의 글로벌
 - 페이지가 더 있더라도 category별 최대 120개까지만 사용한다.
 - 외부 웹 검색, 외부 뉴스 API, 원문 사이트 추가 조회는 하지 않는다.
 - Signal Server 응답에 들어있는 `id`, `title`, `originalTitle`, `sourceName`, `sourceUrl`, `publishedAt`, `symbols`, `hashtags`, `category`만 근거로 사용한다.
-- `sourceRefs.url`은 Signal Server 응답의 `sourceUrl`만 사용한다.
+- sourceRefs의 news id는 `/v1/news` 응답 id만 사용한다.
 
 시간 기준:
 - 모든 generatedAt, publishedAt, window.from, window.to는 UTC ISO 8601 형식으로 작성한다.
@@ -50,11 +50,11 @@ Signal Server에 이미 수집된 최신 뉴스 중 최근 24시간의 글로벌
 6. 중요도는 items 배열 순서로 표현한다. score 필드는 만들지 않는다.
 
 출력 JSON 스키마:
-docs/schemas/news-issue-digest.v1.schema.json 구조를 따른다.
+docs/schemas/news-issue-digest.v2.schema.json 구조를 따른다. schemaVersion은 2.
 
 출력 형식:
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "sendPush": false,
   "notifyInbox": false,
   "run": {
@@ -83,7 +83,6 @@ docs/schemas/news-issue-digest.v1.schema.json 구조를 따른다.
 - title: 한국어 제목, 120자 이하
 - summary: 한국어 1~3문장
 - symbols: 관련 종목 코드. 없으면 []
-- sources: 출처명 중복 제거
 - topics: 대표 주제 태그
 - count: 묶인 원문 수
 - generatedDate
@@ -94,11 +93,11 @@ docs/schemas/news-issue-digest.v1.schema.json 구조를 따른다.
 - aiGenerated: true
 - cluster: kind, eventType, confidence, timeWindowHours, dedupeKey, reason
 - impact: direction, horizon, affectedAreas, watchSymbols
-- sourceRefs: 원문 목록. 최소 1개. 각 항목은 type, title, url, sourceName, publishedAt, relation 포함
+- sourceRefs: 원문 목록. 최소 1개. news/disclosure는 type, id, relation만 넣는다. title, url, sourceName은 넣지 않는다.
 
 검증:
-- sourceRefs URL은 Signal Server 응답의 sourceUrl만 넣는다.
-- 출처명과 기사 제목을 추정하지 않는다. Signal Server 응답에 없는 정보는 만들지 않는다.
+- sourceRefs의 news 항목 id는 Signal Server `/v1/news` 응답의 id만 사용한다.
+- Signal Server 응답에 없는 id는 sourceRefs에 넣지 않는다.
 - 불확실하면 confidence를 낮추고 summary에 단정 표현을 피한다.
 - Signal Server 응답이 비어 있으면 items를 억지로 만들지 말고 빈 배열로 둔다.
 - 최종 출력은 JSON만 한다.

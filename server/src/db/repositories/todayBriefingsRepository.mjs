@@ -1,4 +1,5 @@
 import { queryKysely } from '../kysely/client.mjs';
+import { hydrateTodayBriefingItems } from '../../sources/resolveSourceRefs.mjs';
 import {
   cleanText,
   pageOptions,
@@ -80,8 +81,9 @@ export async function queryPublicTodayBriefings(options = {}) {
     params,
   );
   const rows = result.rows.map(payloadFromRow).filter(Boolean).map(publicTodayBriefing);
-  const pageRows = rows.slice(0, limit);
-  const hasMore = rows.length > limit;
+  const hydrated = await hydrateTodayBriefingItems(rows, { locale });
+  const pageRows = hydrated.slice(0, limit);
+  const hasMore = hydrated.length > limit;
   return {
     rows: pageRows,
     total: offset + pageRows.length + (hasMore ? 1 : 0),

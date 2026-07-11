@@ -75,7 +75,12 @@ import { firstRouteParam } from '@/utils/routeSearchParams';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { markNewsFeedSeen } from '@/services/newsUnreadPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
-import { useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
+import {
+  useResetRefreshingOnTabBlur,
+  useScrollToTopOnChange,
+  useTabPressCycleSegment,
+  useTabScreenLoadingRecovery,
+} from '@/hooks';
 import { useWebFlatListLoadMore } from '@/hooks/useWebFlatListLoadMore';
 import {
   fetchSignalNews,
@@ -190,10 +195,10 @@ export function LegacyNewsFeedScreen() {
   youtubeRowsRef.current = youtubeRows;
   const feedMetaRef = useRef<SignalNewsListMeta | null>(null);
   const loadMoreInFlightRef = useRef(false);
-  const itemsRef = useRef(items);
-  const videoItemsRef = useRef(videoItems);
-  itemsRef.current = items;
-  videoItemsRef.current = videoItems;
+  const loadSeqRef = useRef(0);
+  const [feedReloadNonce, setFeedReloadNonce] = useState(0);
+  const segmentRef = useRef(segment);
+  segmentRef.current = segment;
 
   const markSegmentHasNewContent = useCallback((seg: NewsSegmentKey) => {
     setNewContentSegments((prev) => {
@@ -650,13 +655,18 @@ export function LegacyNewsFeedScreen() {
   const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
     clearSegmentNewContent(segment);
+    const seq = ++loadSeqRef.current;
     try {
       await load(true);
+      if (seq !== loadSeqRef.current) return;
       setError(null);
     } catch (e) {
+      if (seq !== loadSeqRef.current) return;
       setError(formatSignalApiError(e, t, 'feedErrorRefresh'));
     } finally {
-      setRefreshing(false);
+      if (seq === loadSeqRef.current) {
+        setRefreshing(false);
+      }
     }
   }, [clearSegmentNewContent, load, segment, t]);
 
@@ -679,36 +689,12 @@ export function LegacyNewsFeedScreen() {
     }, [locale]),
   );
 
-  /** 앱 시작 시 마운트만으로 fetch 하지 않음 — 뉴스 탭 포커스·세그먼트 변경 시에만 */
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      void (async () => {
-        const showLoading = itemsRef.current.length === 0 && videoItemsRef.current.length === 0;
-        if (showLoading) setLoading(true);
-        try {
-          await load(false);
-        } catch (e) {
-          if (!cancelled) {
-            setError(formatSignalApiError(e, t, 'feedErrorLoad'));
-            setItems([]);
-            setServerRows([]);
-          }
-        } finally {
-          if (!cancelled) setLoading(false);
-        }
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }, [load, t]),
-  );
+  /** 포커스·세그먼트·태그 변경 시 로드. loadSeq로 경합 시 stale 응답·loading 고착을 막는다. */
+  useEffect(() => {
+    if (!isFocused) return;
 
-  const onPickSegment = useCallback((key: NewsSegmentKey, options?: { force?: boolean }) => {
-    if (!options?.force && segment === key) {
-      if (useTwoPane) setActiveSubTabKey(key);
-      return;
-    }
+    let cancelled = false;
+    const seq = ++loadSeqRef.current;
     setLoading(true);
     setItems([]);
     setVideoItems([]);
@@ -717,6 +703,39 @@ export function LegacyNewsFeedScreen() {
     setYoutubeRows([]);
     setHasMore(false);
     setError(null);
+
+    void (async () => {
+      try {
+        await load(false);
+      } catch (e) {
+        if (cancelled || seq !== loadSeqRef.current) return;
+        setError(formatSignalApiError(e, t, 'feedErrorLoad'));
+        setItems([]);
+        setServerRows([]);
+      } finally {
+        if (cancelled || seq !== loadSeqRef.current) return;
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTag, feedReloadNonce, isFocused, load, locale, segment, t]);
+
+  const recoveryItems = segment === 'video' ? videoItems : items;
+  useTabScreenLoadingRecovery(recoveryItems, setLoading);
+
+  const onPickSegment = useCallback((key: NewsSegmentKey, options?: { force?: boolean }) => {
+    if (!options?.force && segment === key) {
+      if (useTwoPane) setActiveSubTabKey(key);
+      return;
+    }
+    if (options?.force && segment === key) {
+      setFeedReloadNonce((n) => n + 1);
+      if (useTwoPane) setActiveSubTabKey(key);
+      return;
+    }
     if (key === 'video') setActiveTag(null);
     setSegment(key);
     if (useTwoPane) setActiveSubTabKey(key);
@@ -770,7 +789,9 @@ export function LegacyNewsFeedScreen() {
 
       if (target && target !== 'video') {
         segmentHydratedRef.current = true;
-        onPickSegmentRef.current(target, { force: true });
+        if (target !== segmentRef.current) {
+          onPickSegmentRef.current(target, { force: true });
+        }
         return;
       }
 

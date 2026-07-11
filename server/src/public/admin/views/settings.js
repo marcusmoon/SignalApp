@@ -94,8 +94,6 @@ export async function loadTranslationSettingsView(ctx) {
         <thead>
           <tr>
             <th>${esc(textFor('colLocale'))}</th>
-            <th>${esc(textFor('colEnabled'))}</th>
-            <th>${esc(textFor('colAutoNews'))}</th>
             <th>${esc(textFor('colProvider'))}</th>
             <th>${esc(textFor('colModel'))}</th>
             <th>${esc(textFor('btnSave'))}</th>
@@ -107,11 +105,8 @@ export async function loadTranslationSettingsView(ctx) {
               (s) => `
             <tr>
               <td><span class="pill">${esc(s.locale)}</span></td>
-              <td><label class="switchRow switchRow--compact"><input class="switchInput" type="checkbox" data-ts-enabled="${esc(s.locale)}" ${s.enabled ? 'checked' : ''}/><span class="switchUi" aria-hidden="true"></span></label></td>
-              <td><label class="switchRow switchRow--compact"><input class="switchInput" type="checkbox" data-ts-auto="${esc(s.locale)}" ${s.autoTranslateNews ? 'checked' : ''}/><span class="switchUi" aria-hidden="true"></span></label></td>
               <td>
                 <select data-ts-provider="${esc(s.locale)}">
-                  <option value="mock" ${s.provider === 'mock' ? 'selected' : ''}>mock</option>
                   <option value="openai" ${s.provider === 'openai' ? 'selected' : ''}>OpenAI</option>
                   <option value="claude" ${s.provider === 'claude' ? 'selected' : ''}>Claude</option>
                 </select>
@@ -134,7 +129,6 @@ export async function loadTranslationSettingsView(ctx) {
       </div>
       <div class="settingsFormRow">
         <select id="translationTestProvider">
-          <option value="mock">mock</option>
           <option value="openai">OpenAI</option>
           <option value="claude">Claude</option>
         </select>

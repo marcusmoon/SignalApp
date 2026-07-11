@@ -22,7 +22,7 @@ npm --prefix server run worker
 | `YOUTUBE_API_KEY` | YouTube 수집 키 |
 | `NINJAS_KEY` | Ninjas provider 키(레거시; 현재 미사용) |
 | `SEC_USER_AGENT` | SEC EDGAR API 식별 User-Agent |
-| `SIGNAL_AUTOMATION_INGEST_TOKEN` | 외부 자동화가 `/v1/market-briefings/ingest` webhook으로 브리핑을 적재할 때 쓰는 토큰 |
+| `SIGNAL_AUTOMATION_INGEST_TOKEN` | 외부 자동화가 `/v1/news/ingest`, `/v1/market-briefings/ingest` 등 ingest webhook에 적재할 때 쓰는 토큰 |
 | `SIGNAL_JOB_LOCK_TTL_MS` | Job lock 기본 TTL(ms). Job별 `lockTtlSeconds`가 없을 때 사용 |
 | `SIGNAL_JOB_LOCK_MAINTENANCE_MS` | 만료 lock·orphaned run 정리 주기(ms, 기본 60000) |
 | `SIGNAL_NOTIFICATION_SENDER_ENABLED` | worker 푸시 발송 루프 (기본 `false`). 알림함 목록은 sender 없이도 lazy link로 표시되나, **기기 푸시**는 `true` + worker 필요 |
@@ -48,15 +48,16 @@ DB 변경이 필요한 작업은 배포보다 Flyway가 먼저다.
 
 기본 운영 데이터 변경도 코드 seed가 아니라 새 Flyway migration으로 추가한다. 기존 운영자가 바꾼 설정을 덮어야 하는 경우에만 명시적으로 `ON CONFLICT DO UPDATE`를 사용하고, 기본값 추가는 `ON CONFLICT DO NOTHING`을 기본으로 한다.
 
-### Baseline migration (V1 squash)
+### Migration 경로
 
-2026-06 기준으로 과거 `V1`–`V29` migration은 `V1__signal_baseline.sql` 하나로 합쳤다. Flyway 경로에는 이 파일만 둔다. 재생성용 원본은 `server/db/migrations/_archive/postgres/`에 보관한다.
+- 활성 migration: `server/db/migrations/postgres/` (`V1__signal_baseline.sql`부터 순번 증가)
+- 참고용 SQL 보관: `server/db/migrations/_archive/postgres/` (런타임 Flyway 경로 아님)
 
-**기존 DB를 전부 초기화할 때** (스키마·시드·ingest 데이터 삭제):
+**DB를 처음부터 다시 만들 때**
 
 1. 서버·worker를 중지한다.
 2. Postgres DB를 drop/create하거나 `flyway clean` 후 `migrate`한다. (`clean`은 모든 객체를 지우므로 운영에서는 DB 단위 재생성을 권장한다.)
-3. `flyway migrate`로 `V1__signal_baseline.sql`만 적용한다.
+3. `flyway migrate`로 baseline부터 순서대로 적용한다.
 4. Admin에서 provider API 키를 다시 입력한다. (`apiKey`는 migration seed에 빈 문자열)
 5. 필요 시 `ADMIN_USERS`로 초기 관리자를 넣고 서버·worker를 기동한다.
 
@@ -93,9 +94,17 @@ flyway \
 
 | 그룹 | 경로 |
 |---|---|
-| 공개 | `/v1/news`, `/v1/youtube`, `/v1/market-quotes`, `/v1/market-briefings`, `/v1/today-briefing`, `/v1/calendar` |
+| 공개 | `/v1/news`, `/v1/news/ingest`, `/v1/news/pending-translations`, `/v1/news/translations/ingest`, `/v1/youtube`, `/v1/market-quotes`, `/v1/market-briefings`, `/v1/today-briefing`, `/v1/calendar` |
 | 인증 | `/v1/auth/*`, `/v1/notifications`, `/v1/legal/terms` |
 | Admin | `/admin/api/*` |
+
+## 뉴스 번역 (Codex)
+
+뉴스 수집 Job은 원문만 저장한다. ko 번역은 Codex 예약 작업이 담당한다.
+
+- 대상 조회: `GET /v1/news/pending-translations`
+- 번역 적재: `POST /v1/news/translations/ingest`
+- 계약: [NEWS-TRANSLATION-AUTOMATION.md](./NEWS-TRANSLATION-AUTOMATION.md)
 
 ## Job 운영
 
@@ -106,9 +115,9 @@ Admin에서 Job을 등록하고 실행한다. Job은 **영역(area) × 단계(st
 - **preset**: Admin Job 화면 상단의 영역별 일괄 실행 (`/admin/api/job-presets/:id/run`)
 - **카탈로그**: `server/src/jobs/catalog.mjs` (그룹·라벨 단일 기준)
 - **Lock**: `polling_job_locks`로 worker/API 간 중복 실행을 막는다. 재배포·프로세스 중단으로 lock/run이 남으면 worker가 60초마다 만료 lock과 orphaned `running` run을 정리한다(`JOB_WORKER_LOST`). Admin Job 카드에서 lock 만료 시각과 해제 가능 여부를 확인할 수 있다.
-- **Lock TTL**: Job별 `lockTtlSeconds` / `staleLockSeconds`(payload)로 긴 수집·번역 run의 lock 만료를 조정한다. runner는 phase 전환·번역·시총 진행 중 `renewPollingJobLock`과 `progressUpdatedAt` heartbeat로 lock을 갱신한다. 뉴스 sync Job의 reconcile phase는 API 재조회가 아니라 DB에 저장된 `rawPayload`를 재보정한다(Finnhub/RSS). 캘린더·YouTube reconcile은 의도적으로 provider API를 다시 호출한다.
+- **Lock TTL**: Job별 `lockTtlSeconds` / `staleLockSeconds`(payload)로 긴 수집 run의 lock 만료를 조정한다. runner는 phase 전환·시총 진행 중 `renewPollingJobLock`과 `progressUpdatedAt` heartbeat로 lock을 갱신한다. 뉴스 sync Job의 reconcile phase는 API 재조회가 아니라 DB에 저장된 `rawPayload`를 재보정한다(Finnhub/RSS). 캘린더·YouTube reconcile은 의도적으로 provider API를 다시 호출한다.
 
-주요 Job (V19 이후, reconcile 쌍은 `sync`로 통합):
+주요 Job (reconcile 쌍은 `sync`로 통합):
 
 - 뉴스 수집·보정 (`market_news_*`, RSS, SEC, DART). 주요 이슈는 `news_digest_items` + `/v1/news-digests` API(ingest)로 유지
 - 투자 캘린더 (`calendar_economic`, `calendar_earnings`, `calendar_holidays` — Finnhub US 휴장)

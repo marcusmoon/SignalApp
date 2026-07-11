@@ -45,21 +45,22 @@ export function makeQuotesStyles(
     segBtnActive: segmentTab.segBtnActive,
     segText: segmentTab.segText,
     segTextActive: segmentTab.segTextActive,
-    updated: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted, marginBottom: 10 },
+    updated: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted, marginBottom: 14 },
     errBox: {
+      marginHorizontal: 16,
+      marginBottom: 8,
       padding: 12,
-      borderRadius: 14,
+      borderRadius: 8,
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
       borderColor: '#FFD6DA',
-      marginBottom: 12,
     },
     errText: { fontSize: sf(12), color: theme.danger, lineHeight: sf(18) },
-    listLoadingRow: {
+    loadingBox: {
+      flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 10,
-      marginBottom: 4,
+      paddingVertical: 48,
     },
     empty: { fontSize: sf(13), color: theme.textMuted, marginTop: 8 },
     cardGrouped: {
@@ -94,7 +95,7 @@ export function makeQuotesStyles(
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
-      gap: 10,
+      gap: 16,
       marginBottom: 6,
     },
     priceCol: {
@@ -107,7 +108,7 @@ export function makeQuotesStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      gap: 8,
+      gap: 16,
     },
     symCol: { flex: 1, minWidth: 0, flexShrink: 1 },
     symBlock: { alignSelf: 'flex-start', maxWidth: '100%' },
@@ -115,6 +116,7 @@ export function makeQuotesStyles(
       flexDirection: 'row',
       alignItems: 'center',
       flexWrap: 'nowrap',
+      gap: 8,
     },
     symPressable: { flexShrink: 0, minWidth: 0 },
     sym: {
@@ -161,7 +163,7 @@ export function makeQuotesStyles(
     yahooInline: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: 6,
       flexShrink: 1,
       minWidth: 0,
       marginLeft: 8,

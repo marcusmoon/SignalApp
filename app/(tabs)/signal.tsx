@@ -1,5 +1,5 @@
-import { useFocusEffect } from "expo-router/react-navigation";
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -14,7 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
+import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { MarketBriefingBlock } from '@/components/signal/MarketBriefingBlock';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -35,6 +35,7 @@ import {
 import type { AppTheme } from '@/constants/theme';
 import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
@@ -52,17 +53,18 @@ import {
   loadQuotesChangeColorConvention,
   subscribeQuotesChangeColorConventionChanged,
 } from '@/services/quotesChangeColorPreference';
-import { markSignalFeedSeen, fetchLatestSignalBriefingId } from '@/services/signalUnreadPreference';
-import { useRefreshWithScrollToTop, useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
+import { markSignalFeedSeen } from '@/services/signalUnreadPreference';
+import { useScrollToTopOnChange, useTabPressCycleSegment } from '@/hooks';
 import { addDays, toYmd, utcRangeForLocalYmd } from '@/utils/date';
+import { firstRouteParam } from '@/utils/routeSearchParams';
+import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 
-type FlatTabKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-evening' | 'kr-close';
+type FlatTabKey = 'us-overnight' | 'kr-morning' | 'kr-lunch' | 'kr-close';
 
 const FLAT_TABS: ReadonlyArray<{ key: FlatTabKey; market: 'us' | 'kr'; session: string }> = [
   { key: 'us-overnight', market: 'us', session: 'overnight' },
   { key: 'kr-morning',   market: 'kr', session: 'morning' },
   { key: 'kr-lunch',     market: 'kr', session: 'lunch' },
-  { key: 'kr-evening',   market: 'kr', session: 'evening' },
   { key: 'kr-close',     market: 'kr', session: 'close' },
 ];
 
@@ -70,11 +72,6 @@ const FLAT_TAB_KEYS = new Set<FlatTabKey>(FLAT_TABS.map((tab) => tab.key));
 
 function isFlatTabKey(value: string): value is FlatTabKey {
   return FLAT_TAB_KEYS.has(value as FlatTabKey);
-}
-
-function firstParam(value: string | string[] | undefined): string | undefined {
-  if (Array.isArray(value)) return value[0];
-  return value;
 }
 
 function parseYmd(value: string): Date {
@@ -112,51 +109,106 @@ function monthFromYmd(value: string): { year: number; month: number } {
 }
 
 export default function SignalScreen() {
-  const router = useRouter();
+  const setRouteParams = useSafeSetRouteParams();
   const routeParams = useLocalSearchParams<{ session?: string | string[]; date?: string | string[] }>();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
-  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
+  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
-  const [todayYmd, setTodayYmd] = useState(() => toYmd(new Date()));
+  const initialTodayYmd = toYmd(new Date());
+  const routeSessionInit = firstRouteParam(routeParams.session);
+  const routeDateInit = firstRouteParam(routeParams.date);
+
+  const [todayYmd, setTodayYmd] = useState(initialTodayYmd);
   const todayYmdRef = useRef(todayYmd);
-  const [selectedYmd, setSelectedYmd] = useState(todayYmd);
+  const [selectedYmd, setSelectedYmd] = useState(() => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(routeDateInit)) {
+      return routeDateInit > initialTodayYmd ? initialTodayYmd : routeDateInit;
+    }
+    return initialTodayYmd;
+  });
   const [calendarVisible, setCalendarVisible] = useState(false);
-  const [calendarMonth, setCalendarMonth] = useState(() => monthFromYmd(todayYmd));
-  const [selectedTabKey, setSelectedTabKey] = useState<FlatTabKey | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => monthFromYmd(
+    /^\d{4}-\d{2}-\d{2}$/.test(routeDateInit) ? (routeDateInit > initialTodayYmd ? initialTodayYmd : routeDateInit) : initialTodayYmd,
+  ));
+  const [selectedTabKey, setSelectedTabKey] = useState<FlatTabKey | null>(() =>
+    isFlatTabKey(routeSessionInit) ? routeSessionInit : null,
+  );
   const [marketBriefings, setMarketBriefings] = useState<SignalApiMarketBriefing[]>([]);
-  const marketBriefingsRef = useRef(marketBriefings);
-  marketBriefingsRef.current = marketBriefings;
   const [changeColorConvention, setChangeColorConvention] = useState<QuotesChangeColorConvention>(
     QUOTES_CHANGE_COLOR_CONVENTION_DEFAULT,
   );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
-  const [newContentAvailable, setNewContentAvailable] = useState(false);
-  const latestSeenIdRef = useRef<string | null>(null);
+  const loadedYmdRef = useRef<string | null>(null);
+  const [newContentTabs, setNewContentTabs] = useState(() => new Set<FlatTabKey>());
+  const latestSeenIdByTabRef = useRef<Partial<Record<FlatTabKey, string>>>({});
 
   const selectedDateLabel = useMemo(() => formatSelectedDate(selectedYmd, locale), [locale, selectedYmd]);
   const selectedIsToday = selectedYmd >= todayYmd;
 
+  const markTabHasNewContent = useCallback((key: FlatTabKey) => {
+    setNewContentTabs((prev) => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  }, []);
+
+  const clearTabNewContent = useCallback((key: FlatTabKey) => {
+    setNewContentTabs((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }, []);
+
+  const syncTabLatestSeen = useCallback(
+    (key: FlatTabKey, latestId: string | null | undefined) => {
+      const id = latestId?.trim();
+      if (!id) return;
+      latestSeenIdByTabRef.current[key] = id;
+      clearTabNewContent(key);
+    },
+    [clearTabNewContent],
+  );
+
+  const syncBriefingsLatestSeen = useCallback(
+    (rows: SignalApiMarketBriefing[]) => {
+      for (const tab of FLAT_TABS) {
+        const match = rows.find((row) => row.market === tab.market && row.session === tab.session);
+        syncTabLatestSeen(tab.key, match?.id);
+      }
+    },
+    [syncTabLatestSeen],
+  );
+
   const flatTabLabel = useCallback(
     (key: FlatTabKey) => {
-      if (key === 'us-overnight') return t('briefingSessionOvernight');
-      if (key === 'kr-morning')   return t('briefingSessionMorning');
-      if (key === 'kr-lunch')     return t('briefingSessionLunch');
-      if (key === 'kr-close')     return t('briefingSessionClose');
-      return t('briefingSessionEvening');
+      switch (key) {
+        case 'us-overnight':
+          return t('briefingSessionOvernight');
+        case 'kr-morning':
+          return t('briefingSessionMorning');
+        case 'kr-lunch':
+          return t('briefingSessionLunch');
+        case 'kr-close':
+          return t('briefingSessionClose');
+      }
     },
     [t],
   );
 
-  const load = useCallback(async (forceRefresh?: boolean): Promise<SignalApiMarketBriefing[]> => {
+  const load = useCallback(async (forceRefresh?: boolean, syncScope: 'all' | FlatTabKey = 'all'): Promise<SignalApiMarketBriefing[]> => {
     if (!hasSignalApi()) {
       setError(t('errorSignalApiShort'));
       setMarketBriefings([]);
@@ -164,24 +216,36 @@ export default function SignalScreen() {
     }
     setError(null);
     const rows = await fetchSignalMarketBriefings(
-      { ...utcRangeForLocalYmd(selectedYmd), limit: 30 },
+      { ...utcRangeForLocalYmd(selectedYmd), limit: 30, locale },
       { cacheMode: signalCacheMode(forceRefresh) },
     ).catch(() => [] as SignalApiMarketBriefing[]);
     const sorted = [...rows].sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
     setMarketBriefings(sorted);
-    if (selectedYmd >= todayYmdRef.current && sorted[0]?.id) {
-      latestSeenIdRef.current = sorted[0].id;
+    if (selectedYmd >= todayYmdRef.current) {
+      if (syncScope === 'all') {
+        syncBriefingsLatestSeen(sorted);
+      } else {
+        const tab = FLAT_TABS.find((item) => item.key === syncScope);
+        const match = tab
+          ? sorted.find((row) => row.market === tab.market && row.session === tab.session)
+          : undefined;
+        syncTabLatestSeen(syncScope, match?.id);
+      }
     }
     return sorted;
-  }, [selectedYmd, t]);
+  }, [selectedYmd, syncBriefingsLatestSeen, syncTabLatestSeen, t, locale]);
 
   useEffect(() => {
     let cancelled = false;
+    const ymdChanged = loadedYmdRef.current !== selectedYmd;
+    setLoading(true);
+    if (ymdChanged) {
+      setMarketBriefings([]);
+    }
     void (async () => {
-      const hadBriefings = marketBriefingsRef.current.length > 0;
-      if (!hadBriefings) setLoading(true);
       try {
         await load();
+        if (!cancelled) loadedYmdRef.current = selectedYmd;
       } catch (e) {
         if (!cancelled) setError(formatSignalApiError(e, t, 'briefingErrorLoad'));
       } finally {
@@ -191,50 +255,41 @@ export default function SignalScreen() {
     return () => {
       cancelled = true;
     };
-  }, [load, t]);
+  }, [load, selectedYmd, t]);
 
-  const onRefreshBase = useCallback(async () => {
-    const prevIds = new Set(marketBriefings.map((row) => row.id));
-    setRefreshing(true);
-    setRefreshNotice(null);
-    setNewContentAvailable(false);
-    try {
-      const rows = await load(true);
-      const newCount = rows.filter((row) => !prevIds.has(row.id)).length;
-      if (newCount > 0) {
-        setRefreshNotice(t('briefingRefreshNotice', { count: String(newCount) }));
+  useFocusEffect(
+    useCallback(() => {
+      const session = firstRouteParam(routeParams.session);
+      const date = firstRouteParam(routeParams.date);
+      if (isFlatTabKey(session)) {
+        setSelectedTabKey(session);
       }
-    } catch (e) {
-      setError(formatSignalApiError(e, t, 'briefingErrorLoad'));
-    } finally {
-      setRefreshing(false);
-    }
-  }, [load, marketBriefings, t]);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        const clamped = date > todayYmdRef.current ? todayYmdRef.current : date;
+        setSelectedYmd((prev) => (prev === clamped ? prev : clamped));
+        setCalendarMonth(monthFromYmd(clamped));
+      }
+    }, [routeParams.date, routeParams.session]),
+  );
 
+  /** 오늘 날짜 화면에서만 백그라운드 폴링으로 세션별 새 브리핑 chip 표시 */
   useEffect(() => {
-    if (!refreshNotice) return;
-    const timeout = setTimeout(() => setRefreshNotice(null), 4500);
-    return () => clearTimeout(timeout);
-  }, [refreshNotice]);
-
-  /** 오늘 날짜 화면에서만 백그라운드 폴링으로 새 브리핑 배너 표시 */
-  useEffect(() => {
-    if (selectedYmd < todayYmd) {
-      setNewContentAvailable(false);
-      return;
-    }
+    if (selectedYmd < todayYmd) return;
     if (!hasSignalApi()) return;
     const POLL_MS = 3 * 60 * 1000;
     const poll = async () => {
       try {
-        const latestId = await fetchLatestSignalBriefingId();
-        if (!latestId) return;
-        if (latestSeenIdRef.current === null) {
-          latestSeenIdRef.current = latestId;
-          return;
-        }
-        if (latestId !== latestSeenIdRef.current) {
-          setNewContentAvailable(true);
+        const rows = await fetchSignalMarketBriefings(
+          { ...utcRangeForLocalYmd(todayYmdRef.current), limit: 30, locale },
+          { cacheMode: 'bypass' },
+        );
+        for (const tab of FLAT_TABS) {
+          const match = rows.find((row) => row.market === tab.market && row.session === tab.session);
+          const latestId = match?.id ?? null;
+          if (!latestId) continue;
+          const seen = latestSeenIdByTabRef.current[tab.key];
+          if (!seen) continue;
+          if (latestId !== seen) markTabHasNewContent(tab.key);
         }
       } catch {
         /* ignore polling errors */
@@ -242,16 +297,31 @@ export default function SignalScreen() {
     };
     const id = setInterval(() => void poll(), POLL_MS);
     return () => clearInterval(id);
+  }, [locale, markTabHasNewContent, selectedYmd, todayYmd]);
+
+  useEffect(() => {
+    if (selectedYmd < todayYmd) {
+      setNewContentTabs(new Set());
+    }
   }, [selectedYmd, todayYmd]);
+
+  const syncDateRouteParam = useCallback(
+    (ymd: string) => {
+      setRouteParams({ date: ymd === todayYmdRef.current ? undefined : ymd });
+    },
+    [setRouteParams],
+  );
 
   const moveDate = useCallback(
     (days: number) => {
       setSelectedYmd((prev) => {
         const next = shiftYmd(prev, days);
-        return next > todayYmd ? todayYmd : next;
+        const clamped = next > todayYmd ? todayYmd : next;
+        syncDateRouteParam(clamped);
+        return clamped;
       });
     },
-    [todayYmd],
+    [syncDateRouteParam, todayYmd],
   );
 
   const openCalendar = useCallback(() => {
@@ -261,10 +331,12 @@ export default function SignalScreen() {
 
   const pickCalendarDate = useCallback(
     (ymd: string) => {
-      setSelectedYmd(ymd > todayYmd ? todayYmd : ymd);
+      const clamped = ymd > todayYmd ? todayYmd : ymd;
+      setSelectedYmd(clamped);
+      syncDateRouteParam(clamped);
       setCalendarVisible(false);
     },
-    [todayYmd],
+    [syncDateRouteParam, todayYmd],
   );
 
   const shiftCalendarMonth = useCallback((delta: number) => {
@@ -276,8 +348,9 @@ export default function SignalScreen() {
 
   const goToday = useCallback(() => {
     setSelectedYmd(todayYmd);
+    syncDateRouteParam(todayYmd);
     setCalendarMonth(monthFromYmd(todayYmd));
-  }, [todayYmd]);
+  }, [syncDateRouteParam, todayYmd]);
 
   const reloadChangeColorConvention = useCallback(async () => {
     setChangeColorConvention(await loadQuotesChangeColorConvention());
@@ -334,11 +407,16 @@ export default function SignalScreen() {
   }, [marketBriefings]);
 
   useEffect(() => {
+    const session = firstRouteParam(routeParams.session);
+    if (isFlatTabKey(session)) {
+      setSelectedTabKey(session);
+      return;
+    }
     setSelectedTabKey(null);
-  }, [selectedYmd]);
+  }, [selectedYmd, routeParams.session]);
 
   const activeTabKey = useMemo((): FlatTabKey | null => {
-    if (selectedTabKey && briefingByTabKey.has(selectedTabKey)) return selectedTabKey;
+    if (selectedTabKey) return selectedTabKey;
     // Auto-select: last tab (most recent session) that has data
     for (let i = FLAT_TABS.length - 1; i >= 0; i--) {
       if (briefingByTabKey.has(FLAT_TABS[i].key)) return FLAT_TABS[i].key;
@@ -347,8 +425,23 @@ export default function SignalScreen() {
   }, [briefingByTabKey, selectedTabKey]);
 
   const activeBriefing = activeTabKey ? briefingByTabKey.get(activeTabKey) : undefined;
-  const { ref: scrollRef, scrollToTop } = useScrollToTopOnChange([activeTabKey, selectedYmd]);
-  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
+  const newContentAvailable = activeTabKey ? newContentTabs.has(activeTabKey) : false;
+  const { ref: scrollRef } = useScrollToTopOnChange([activeTabKey, selectedYmd], {
+    resyncDeps: [activeBriefing?.id, marketBriefings.length],
+  });
+  const scrollResetKey = `${activeTabKey ?? 'none'}:${selectedYmd}`;
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    if (activeTabKey) clearTabNewContent(activeTabKey);
+    try {
+      await load(true, activeTabKey ?? 'all');
+    } catch (e) {
+      setError(formatSignalApiError(e, t, 'briefingErrorLoad'));
+    } finally {
+      setRefreshing(false);
+    }
+  }, [activeTabKey, clearTabNewContent, load, t]);
+  useRegisterWebHeaderRefresh(() => void onRefresh());
   const hasAnyBriefing = marketBriefings.length > 0;
   const scrollBottomPadding = useTwoPane
     ? SCREEN_WIDE_SCROLL_BOTTOM_BASE
@@ -362,9 +455,28 @@ export default function SignalScreen() {
   const onPickSessionTab = useCallback((key: FlatTabKey) => {
     if (!briefingByTabKey.has(key)) return;
     setSelectedTabKey(key);
-  }, [briefingByTabKey]);
+    if (useTwoPane) setActiveSubTabKey(key);
+    setRouteParams({ session: key });
+  }, [briefingByTabKey, setActiveSubTabKey, setRouteParams, useTwoPane]);
 
   useTabPressCycleSegment(activeTabKey, availableSessionTabKeys, onPickSessionTab);
+
+  const registerSignalSubTabs = useCallback(() => {
+    if (!useTwoPane) return;
+    if (activeTabKey) setActiveSubTabKey(activeTabKey);
+    setSubTabs(
+      FLAT_TABS.map((tab) => ({
+        key: tab.key,
+        label: flatTabLabel(tab.key),
+        onPress: () => onPickSessionTab(tab.key),
+      })),
+    );
+  }, [activeTabKey, flatTabLabel, onPickSessionTab, setActiveSubTabKey, setSubTabs, useTwoPane]);
+
+  useEffect(() => {
+    if (!useTwoPane || !isFocused) return;
+    registerSignalSubTabs();
+  }, [isFocused, registerSignalSubTabs, useTwoPane]);
 
   useFocusEffect(
     useCallback(() => {
@@ -372,59 +484,38 @@ export default function SignalScreen() {
         useTwoPane && ipadNav.isAvailable ? ipadNav.takePendingSignalSession() : null;
       const pendingDate =
         useTwoPane && ipadNav.isAvailable ? ipadNav.takePendingSignalDate() : null;
-      const sessionParam = pendingSession ?? firstParam(routeParams.session);
-      const dateParam = pendingDate ?? firstParam(routeParams.date);
 
-      if (sessionParam && isFlatTabKey(sessionParam)) {
-        setSelectedTabKey(sessionParam);
+      if (pendingSession && isFlatTabKey(pendingSession)) {
+        setSelectedTabKey(pendingSession);
+        setRouteParams({ session: pendingSession });
       }
-      if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
-        const clamped = dateParam > todayYmdRef.current ? todayYmdRef.current : dateParam;
+      if (pendingDate && /^\d{4}-\d{2}-\d{2}$/.test(pendingDate)) {
+        const clamped = pendingDate > todayYmdRef.current ? todayYmdRef.current : pendingDate;
         setSelectedYmd(clamped);
         setCalendarMonth(monthFromYmd(clamped));
+        setRouteParams({ date: clamped === todayYmdRef.current ? undefined : clamped });
       } else if (pendingSession) {
         setSelectedYmd(todayYmdRef.current);
       }
-
-      if (sessionParam || dateParam) {
-        router.setParams({ session: undefined, date: undefined } as never);
-      }
-    }, [ipadNav, routeParams.date, routeParams.session, router, useTwoPane]),
+    }, [ipadNav, setRouteParams, useTwoPane]),
   );
 
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
-      setSubTabs(
-        FLAT_TABS.map((tab) => ({
-          key: tab.key,
-          label: flatTabLabel(tab.key),
-          active: activeTabKey === tab.key,
-          onPress: () => onPickSessionTab(tab.key),
-        })),
-      );
+      registerSignalSubTabs();
       return () => clearSubTabs();
-    }, [useTwoPane, activeTabKey, flatTabLabel, onPickSessionTab, setSubTabs, clearSubTabs]),
+    }, [clearSubTabs, registerSignalSubTabs, useTwoPane]),
   );
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       <Stack.Screen options={{ title: t('screenSignal') }} />
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
+      {isFocused ? <OtaUpdateBanner /> : null}
 
       <View style={[styles.pageColumn, useTwoPane && styles.pageColumnWide]}>
       <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
-      {newContentAvailable && !refreshing && selectedYmd >= todayYmd ? (
-        <FeedUpdateBanner
-          variant="prompt"
-          message={t('feedNewContentAvailable')}
-          onPress={() => void onRefresh()}
-        />
-      ) : null}
-      {refreshNotice ? (
-        <FeedUpdateBanner variant="notice" message={refreshNotice} />
-      ) : null}
-
         <SignalDateNavigator
           label={selectedDateLabel}
           previousA11y={t('insightDatePrevious')}
@@ -472,6 +563,21 @@ export default function SignalScreen() {
       ) : null}
       </View>
 
+      {isFocused && selectedYmd >= todayYmd ? (
+        <FeedNewContentChip
+          visible={newContentAvailable}
+          refreshing={refreshing}
+          message={t('feedNewContentAvailable')}
+          onPress={() => void onRefresh()}
+        />
+      ) : null}
+
+      {error ? (
+        <View style={styles.errBox}>
+          <Text style={styles.errText}>{error}</Text>
+        </View>
+      ) : null}
+
       {loading && marketBriefings.length === 0 ? (
         <View style={styles.center}>
           <SignalLoadingIndicator message={t('commonLoading')} />
@@ -479,17 +585,11 @@ export default function SignalScreen() {
       ) : (
         <WebWheelScrollView
           ref={scrollRef as never}
+          scrollResetKey={scrollResetKey}
+          contentRevision={[activeBriefing?.id, marketBriefings.length]}
           style={styles.scroll}
           contentContainerStyle={[styles.content, useTwoPane && styles.contentWide, { paddingBottom: scrollBottomPadding }]}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-          <OtaUpdateBanner />
-
-          {error ? (
-            <View style={styles.errBox}>
-              <Text style={styles.errText}>{error}</Text>
-            </View>
-          ) : null}
-
           {!error ? (
             activeBriefing ? (
               <MarketBriefingBlock
@@ -498,6 +598,10 @@ export default function SignalScreen() {
                 scaleFont={scaleFont}
                 changeColorConvention={changeColorConvention}
               />
+            ) : loading ? (
+              <View style={styles.center}>
+                <SignalLoadingIndicator message={t('commonLoading')} />
+              </View>
             ) : (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyTitle}>
@@ -605,7 +709,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     segTextActive: segmentTab.segTextActive,
     segTextDisabled: segmentTab.segTextDisabled,
     emptyCard: {
-      borderRadius: 18,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -627,12 +731,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.textDim,
     },
     errBox: {
+      marginHorizontal: 16,
+      marginBottom: 8,
       padding: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.border,
-      marginBottom: 10,
     },
     errText: { color: theme.text, fontSize: sf(14), lineHeight: sf(20) },
     modalBackdrop: {
@@ -656,14 +761,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       height: 4,
       borderRadius: 2,
       backgroundColor: theme.border,
-      marginTop: 10,
+      marginTop: 16,
       marginBottom: 8,
     },
     modalHead: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 10,
+      marginBottom: 14,
     },
     modalTitle: {
       color: theme.text,
@@ -678,7 +783,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     modalFoot: { paddingTop: 10 },
     modalTodayBtn: {
       minHeight: 42,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,

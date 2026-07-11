@@ -20,6 +20,7 @@ export default function HomeTabScreen() {
   const todayYmd = useRollingLocalYmd();
   const todayYmdRef = useRef(todayYmd);
   const [selectedYmd, setSelectedYmd] = useState(todayYmd);
+  const pullRefreshRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const prevToday = todayYmdRef.current;
@@ -29,7 +30,7 @@ export default function HomeTabScreen() {
 
   return (
       <SafeAreaView style={{ ...webFlexFill, backgroundColor: webShellBackground(theme.bg) }} edges={['top']}>
-      <SignalHeader compact />
+      <SignalHeader compact onBrandPress={() => pullRefreshRef.current?.()} />
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={{ ...webFlexFill, backgroundColor: webShellBackground(theme.bg) }}>
         <HomeFocusContent
@@ -37,6 +38,9 @@ export default function HomeTabScreen() {
           todayYmd={todayYmd}
           onSelectedYmdChange={setSelectedYmd}
           scrollContentPaddingBottom={tabScreenScrollBottomPadding(tabBarHeight, insets.bottom)}
+          onPullRefreshReady={(refresh) => {
+            pullRefreshRef.current = refresh;
+          }}
         />
       </View>
     </SafeAreaView>

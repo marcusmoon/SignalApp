@@ -82,17 +82,17 @@ export function SocialAuthButtons({
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
-    stack: { gap: 8 },
+    stack: { gap: 16 },
     button: {
       minHeight: 48,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
       alignItems: 'center',
       justifyContent: 'flex-start',
       flexDirection: 'row',
-      gap: 10,
+      gap: 16,
       paddingHorizontal: 12,
     },
     buttonPressed: { opacity: 0.78 },

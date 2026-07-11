@@ -60,6 +60,7 @@ import {
 import { loadNotificationPrefs, type NotificationPrefs } from '@/services/notificationPreferences';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 
 type AccountTab = 'home' | 'profile' | 'security' | 'info';
 type Mode = 'login' | 'register';
@@ -101,6 +102,8 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   const [pendingSocialProvider, setPendingSocialProvider] = useState<SocialProviderKey | null>(null);
   const [socialSignupDraft, setSocialSignupDraft] = useState<SocialSignupDraft | null>(null);
   const [accountTab, setAccountTab] = useState<AccountTab>('home');
+  const { ref: accountScrollRef } = useScrollToTopOnChange([accountTab]);
+  const scrollResetKey = accountTab;
   const [emailAuthExpanded, setEmailAuthExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -746,6 +749,8 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         </View>
       ) : null}
       <WebWheelScrollView
+        ref={accountScrollRef as never}
+        scrollResetKey={scrollResetKey}
         style={styles.scrollFlex}
         contentContainerStyle={[
           styles.content,

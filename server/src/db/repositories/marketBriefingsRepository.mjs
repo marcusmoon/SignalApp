@@ -1,4 +1,5 @@
 import { queryKysely } from '../kysely/client.mjs';
+import { hydrateMarketBriefingItems } from '../../sources/resolveSourceRefs.mjs';
 import { queryPublicMarketQuoteRows } from './marketRepository.mjs';
 import {
   cleanText,
@@ -151,8 +152,11 @@ export async function queryPublicMarketBriefings(options = {}) {
   const rows = await enrichBriefingCompanies(
     result.rows.map(payloadFromRow).filter(Boolean).map(publicBriefing),
   );
-  const pageRows = rows.slice(0, limit);
-  const hasMore = rows.length > limit;
+  const hydrated = await hydrateMarketBriefingItems(rows, {
+    locale: cleanText(options.locale) || 'ko',
+  });
+  const pageRows = hydrated.slice(0, limit);
+  const hasMore = hydrated.length > limit;
   return {
     rows: pageRows,
     total: offset + pageRows.length + (hasMore ? 1 : 0),

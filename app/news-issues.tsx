@@ -6,9 +6,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
+import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
-import { HOME_DIGEST_CATEGORIES, NEWS_ISSUES_CATEGORY_ORDER, type NewsIssuesCategory } from '@/constants/ipadHomeNav';
+import { digestSourceIconEntries } from '@/components/signal/SourceIconStack';
+import {
+  FEED_BADGE_PX,
+  FEED_BODY_PX,
+  FEED_META_TIME_PX,
+  FEED_PREVIEW_BODY_PX,
+  FEED_SUMMARY_PX,
+} from '@/constants/feedTypography';
+import { HOME_DIGEST_CATEGORIES, NEWS_ISSUES_CATEGORY_ORDER, homeDigestCategoryIcon, type HomeDigestCategory, type NewsIssuesCategory } from '@/constants/ipadHomeNav';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import {
   SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
@@ -21,14 +30,16 @@ import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import type { SignalApiNewsDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
+import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
-import { toYmd, utcRangeForLocalYmd } from '@/utils/date';
+import { formatFeedItemTimeLabel, toYmd, utcRangeForLocalYmd } from '@/utils/date';
 
 function parseCategory(value: unknown): NewsIssuesCategory {
   const raw = String(Array.isArray(value) ? value[0] : value || '').trim();
@@ -77,6 +88,11 @@ function sortDigests(rows: SignalApiNewsDigestItem[]): SignalApiNewsDigestItem[]
   );
 }
 
+function digestCategory(item: SignalApiNewsDigestItem): HomeDigestCategory | null {
+  const key = String(item.category || '').trim();
+  return HOME_DIGEST_CATEGORIES.includes(key as HomeDigestCategory) ? (key as HomeDigestCategory) : null;
+}
+
 type NewsIssuesContentProps = {
   embedded?: boolean;
   initialCategory?: NewsIssuesCategory;
@@ -106,6 +122,10 @@ export function NewsIssuesContent({
   const [expandedId, setExpandedId] = useState<string | null>(initialDigestId);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { ref: scrollRef } = useScrollToTopOnChange([category, selectedYmd], {
+    resyncDeps: [items],
+  });
+  const scrollResetKey = `${category}:${selectedYmd}`;
 
   useEffect(() => {
     setCategory(initialCategory);
@@ -144,6 +164,7 @@ export function NewsIssuesContent({
               ...utcRangeForLocalYmd(selectedYmd),
               limit: 80,
               batches: 20,
+              locale,
             }).catch(() => ({ items: [] as SignalApiNewsDigestItem[] })),
           ),
         );
@@ -154,6 +175,7 @@ export function NewsIssuesContent({
           ...utcRangeForLocalYmd(selectedYmd),
           limit: 80,
           batches: 20,
+          locale,
         });
         setItems(sortDigests(page.items));
       }
@@ -163,7 +185,7 @@ export function NewsIssuesContent({
     } finally {
       setLoading(false);
     }
-  }, [category, selectedYmd, t]);
+  }, [category, locale, selectedYmd, t]);
 
   useEffect(() => {
     void load();
@@ -171,7 +193,13 @@ export function NewsIssuesContent({
 
   const body = (
     <SafeAreaView style={styles.safe} edges={isWide ? [] : ['bottom']}>
-      <WebWheelScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <WebWheelScrollView
+        ref={scrollRef as never}
+        scrollResetKey={scrollResetKey}
+        contentRevision={items}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
         <View style={[styles.inner, isWide && styles.innerWide]}>
           {onBack ? (
             <View style={styles.paneTopBar}>
@@ -240,29 +268,39 @@ export function NewsIssuesContent({
             <View style={styles.issueList}>
               {items.map((item) => {
                 const expanded = expandedId === item.id;
+                const itemCat = digestCategory(item);
+                const sourceEntries = digestSourceIconEntries(item.sourceRefs, item.sources);
+                const trailText = [item.topics[0], item.symbols[0]].filter(Boolean).join(' · ');
                 return (
                   <View key={item.id} style={styles.card}>
-                    {(item.aiGenerated || item.topics.length > 0 || item.symbols.length > 0) ? (
-                      <View style={styles.badgeRow}>
-                        {item.aiGenerated ? (
-                          <View style={styles.aiBadge}>
-                            <Text style={styles.aiBadgeText}>AI</Text>
-                          </View>
-                        ) : null}
-                        {item.topics.slice(0, 5).map((topic) => (
-                          <Text key={topic} style={styles.topicChip} numberOfLines={1}>
-                            {topic}
-                          </Text>
-                        ))}
-                        {item.symbols.slice(0, 4).map((symbol) => (
-                          <Text key={symbol} style={[styles.topicChip, styles.symbolChip]} numberOfLines={1}>
-                            {symbol}
-                          </Text>
-                        ))}
-                      </View>
-                    ) : null}
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    <Text style={styles.summary}>{item.summary}</Text>
+                    <HomeDigestFeedRow
+                      title={item.title}
+                      titleLines={2}
+                      timeLabel={formatFeedItemTimeLabel(newsDigestCreatedIso(item), locale)}
+                      trailText={trailText || null}
+                      summary={item.summary}
+                      summaryLines={3}
+                      sourceEntries={sourceEntries}
+                      badges={
+                        <>
+                          {item.aiGenerated ? (
+                            <View style={styles.aiBadge}>
+                              <Text style={styles.aiBadgeText}>AI</Text>
+                            </View>
+                          ) : null}
+                          {category === 'all' && itemCat ? (
+                            <View style={styles.categoryMark}>
+                              <FontAwesome
+                                name={homeDigestCategoryIcon(itemCat)}
+                                size={10}
+                                color={theme.textMuted}
+                              />
+                              <Text style={styles.categoryText}>{t(NEWS_SEGMENT_LABEL[itemCat])}</Text>
+                            </View>
+                          ) : null}
+                        </>
+                      }
+                    />
                     <View style={styles.footerRow}>
                       <Text style={styles.meta} numberOfLines={1}>
                         {t('feedDigestSummary', {
@@ -291,6 +329,11 @@ export function NewsIssuesContent({
                             <View style={styles.sourceTextCol}>
                               <Text style={styles.sourceTitle}>{ref.title || ref.sourceName || ref.url || ''}</Text>
                               {ref.sourceName ? <Text style={styles.sourceName}>{ref.sourceName}</Text> : null}
+                              {ref.publishedAt ? (
+                                <Text style={styles.sourceTime}>
+                                  {formatFeedItemTimeLabel(ref.publishedAt, locale)}
+                                </Text>
+                              ) : null}
                             </View>
                             {ref.url ? <FontAwesome name="external-link" size={10} color={theme.green} /> : null}
                           </Pressable>
@@ -360,7 +403,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       alignSelf: 'center',
       paddingHorizontal: 16,
       paddingTop: SCREEN_HEADER_CONTENT_GAP,
-      gap: 12,
+      gap: 20,
     },
     innerWide: {
       maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
@@ -371,7 +414,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minHeight: 42,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: 16,
       marginBottom: 2,
     },
     paneBackBtn: {
@@ -403,7 +446,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       width: 78,
       flexShrink: 0,
     },
-    header: { gap: 12 },
+    header: { gap: 20 },
     title: {
       fontSize: sf(22),
       lineHeight: sf(28),
@@ -412,9 +455,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     categoryTabs: {
       flexDirection: 'row',
-      gap: 4,
+      gap: 6,
       padding: 4,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -439,7 +482,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     listLoadingRow: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
     errorBox: {
       padding: 12,
-      borderRadius: 14,
+      borderRadius: 8,
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
       borderColor: theme.border,
@@ -452,7 +495,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     empty: {
       padding: 18,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -462,63 +505,51 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: '800',
       textAlign: 'center',
     },
-    issueList: { gap: 10 },
+    issueList: { gap: 12 },
     card: {
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      padding: ft.pad(14),
-      gap: 9,
+      paddingHorizontal: ft.pad(12),
+      paddingVertical: ft.pad(10),
+      gap: 6,
     },
-    badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     aiBadge: {
-      minHeight: 22,
-      paddingHorizontal: 8,
+      minHeight: 20,
+      paddingHorizontal: 6,
       borderRadius: 999,
       backgroundColor: theme.green,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    aiBadgeText: { color: '#FFFFFF', fontSize: sf(10), lineHeight: sf(14), fontWeight: '900' },
-    topicChip: {
-      overflow: 'hidden',
-      maxWidth: 180,
-      minHeight: 22,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
+    aiBadgeText: { color: '#FFFFFF', fontSize: ft.ff(FEED_BADGE_PX), lineHeight: sf(13), fontWeight: '900' },
+    categoryMark: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      minWidth: 0,
+      flexShrink: 0,
+      alignSelf: 'flex-start',
       borderRadius: 999,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
+    },
+    categoryText: {
       color: theme.textMuted,
-      fontSize: ft.ff(11),
-      lineHeight: ft.ff(15),
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
-    symbolChip: {
-      color: theme.green,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    cardTitle: {
-      color: theme.text,
-      fontSize: ft.ff(17),
-      lineHeight: ft.ff(24),
-      fontWeight: ft.titleWeight,
-    },
-    summary: {
-      color: theme.textMuted,
-      fontSize: ft.ff(13),
-      lineHeight: ft.ff(20),
-      fontWeight: ft.bodyWeight,
-    },
-    footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+    footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 2 },
     meta: {
       flex: 1,
       minWidth: 0,
       color: theme.textDim,
-      fontSize: ft.ff(12),
+      fontSize: ft.ff(FEED_BODY_PX),
       fontWeight: ft.metaWeight,
     },
     sourceToggle: {
@@ -529,13 +560,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     sourceToggleText: {
       color: theme.green,
-      fontSize: ft.ff(12),
-      lineHeight: ft.ff(16),
+      fontSize: ft.ff(FEED_BODY_PX),
+      lineHeight: sf(16),
       fontWeight: ft.emphasisWeight,
     },
     sourceList: {
       overflow: 'hidden',
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -543,23 +574,29 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     sourceRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 16,
       paddingHorizontal: 10,
-      paddingVertical: 10,
+      paddingVertical: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
     sourceTextCol: { flex: 1, minWidth: 0, gap: 2 },
     sourceTitle: {
       color: theme.text,
-      fontSize: ft.ff(13),
-      lineHeight: ft.ff(18),
+      fontSize: ft.ff(FEED_PREVIEW_BODY_PX),
+      lineHeight: sf(18),
       fontWeight: ft.bodyWeight,
     },
     sourceName: {
       color: theme.textMuted,
-      fontSize: ft.ff(11),
-      lineHeight: ft.ff(15),
+      fontSize: ft.ff(FEED_SUMMARY_PX),
+      lineHeight: sf(15),
+      fontWeight: ft.metaWeight,
+    },
+    sourceTime: {
+      color: theme.textDim,
+      fontSize: ft.ff(FEED_META_TIME_PX),
+      lineHeight: sf(14),
       fontWeight: ft.metaWeight,
     },
     pressed: { opacity: 0.75 },

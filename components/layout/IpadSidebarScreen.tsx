@@ -84,7 +84,7 @@ function makeStyles(
       minHeight: 54,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: 20,
       paddingHorizontal: 18,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,

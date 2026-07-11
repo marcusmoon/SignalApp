@@ -11,6 +11,7 @@ export function buildSignalMarketBriefingsCacheKey(params?: {
   to?: string;
   limit?: number;
   offset?: number;
+  locale?: string;
 }): string {
   const p = {
     market: String(params?.market || '').trim(),
@@ -20,8 +21,9 @@ export function buildSignalMarketBriefingsCacheKey(params?: {
     to: String(params?.to || '').trim(),
     limit: Number(params?.limit) || 0,
     offset: Number(params?.offset) || 0,
+    locale: String(params?.locale || '').trim() || 'ko',
   };
-  return `market-briefings|${p.market}|${p.session}|${p.date}|${p.from}|${p.to}|${p.limit}|${p.offset}`;
+  return `market-briefings|${p.market}|${p.session}|${p.date}|${p.from}|${p.to}|${p.limit}|${p.offset}|${p.locale}`;
 }
 
 export function peekSignalMarketBriefingsCache(key: string): SignalApiMarketBriefing[] | null {

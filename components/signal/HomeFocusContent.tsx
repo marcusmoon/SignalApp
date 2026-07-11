@@ -8,14 +8,36 @@ import {
   View,
 } from 'react-native';
 
-import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
+import {
+  COMFORT_GAP_LG,
+  COMFORT_GAP_MD,
+  COMFORT_GAP_PAGE,
+  COMFORT_GAP_SM,
+  COMFORT_PADDING_ROW_V,
+} from '@/constants/comfortDensity';
+import {
+  FEED_BADGE_PX,
+  FEED_BODY_PX,
+  FEED_DIGEST_TITLE_PX,
+  FEED_META_TIME_PX,
+  FEED_META_TRAIL_PX,
+  FEED_SUMMARY_PX,
+} from '@/constants/feedTypography';
+import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
+import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
+import {
+  briefingSourceIconEntries,
+  digestSourceIconEntries,
+} from '@/components/signal/SourceIconStack';
+import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
+import { SymbolLogo } from '@/components/signal/SymbolLogo';
+import { COMMUNITY_SOURCES } from '@/constants/communitySources';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { type CommunitySourceKey } from '@/constants/communitySources';
 import {
   HOME_DIGEST_CATEGORIES,
   HOME_SIGNAL_SESSIONS,
@@ -29,11 +51,15 @@ import type { AppTheme } from '@/constants/theme';
 import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
+import { disclosureDigestCreatedIso, newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import { formatQuoteDpPct, formatUsd, formatKrw, isKoreaStockQuote, mapSignalQuoteToRow, quoteLookupKeys, type QuoteRow } from '@/domain/quotes/rows';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useQuoteChangeColors } from '@/hooks';
+import { useResetRefreshingOnTabBlur } from '@/hooks/useResetRefreshingOnTabBlur';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { useSignalDatePickerSheet } from '@/hooks/useSignalDatePickerSheet';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
@@ -48,7 +74,9 @@ import { fetchSignalMarketBriefings } from '@/integrations/signal-api/marketBrie
 import { fetchSignalMarketQuotes } from '@/integrations/signal-api/market';
 import { fetchSignalNewsDigests } from '@/integrations/signal-api/newsDigests';
 import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefings';
+import { fetchSignalCommunity } from '@/integrations/signal-api/community';
 import type {
+  SignalApiCommunityPost,
   SignalApiDisclosureDigestItem,
   SignalApiMarketBriefing,
   SignalApiMarketQuote,
@@ -57,6 +85,16 @@ import type {
 } from '@/integrations/signal-api/types';
 import type { MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
+import {
+  HOME_BOARD_DISPLAY_DEFAULT,
+  loadHomeBoardDisplayCount,
+  subscribeHomeBoardDisplayCountChanged,
+} from '@/services/homeBoardDisplayPreference';
+import {
+  HOME_NEWS_FLOW_DISPLAY_DEFAULT,
+  loadHomeNewsFlowDisplayCount,
+  subscribeHomeNewsFlowDisplayCountChanged,
+} from '@/services/homeNewsFlowDisplayPreference';
 import {
   HOME_WATCHLIST_DISPLAY_DEFAULT,
   loadHomeWatchlistDisplayCount,
@@ -70,15 +108,13 @@ import {
   calendarEventDisplayYmd,
   calendarEventInLocalYmdRange,
   formatLocalYmdLabel,
+  formatFeedItemTimeLabel,
   parseLocalYmd,
   toYmd,
   utcRangeForLocalYmd,
 } from '@/utils/date';
 
-const HOME_BOARD_SOURCES: CommunitySourceKey[] = ['naver_likeusstock_free', 'save_user_news'];
-
 const ISSUE_FETCH_LIMIT = 24;
-const HOME_ISSUE_LIMIT = 6;
 const BRIEFING_LIMIT = 30;
 const HOME_SIGNAL_LIMIT = 4;
 const DISCLOSURE_LIMIT = 3;
@@ -93,6 +129,8 @@ type HomeFocusContentProps = {
   headerAccessory?: ReactNode;
   contentMaxWidth?: number;
   showIssueSummary?: boolean;
+  /** iPhone `SignalHeader` 브랜드 탭 → PTR 연결용 */
+  onPullRefreshReady?: (refresh: () => void) => void;
 };
 
 type IssueRow = {
@@ -134,7 +172,11 @@ function uniqueVisibleBriefings(rows: SignalApiMarketBriefing[]): SignalApiMarke
   return unique;
 }
 
-async function fetchTopIssues(date: string, cacheMode: ReturnType<typeof signalCacheMode>): Promise<IssueRow[]> {
+async function fetchTopIssues(
+  date: string,
+  locale: string,
+  cacheMode: ReturnType<typeof signalCacheMode>,
+): Promise<IssueRow[]> {
   const range = utcRangeForLocalYmd(date);
   const results = await Promise.all(
     HOME_DIGEST_CATEGORIES.map(async (category) => {
@@ -144,6 +186,7 @@ async function fetchTopIssues(date: string, cacheMode: ReturnType<typeof signalC
           ...range,
           limit: ISSUE_FETCH_LIMIT,
           batches: 20,
+          locale,
         },
         { cacheMode },
       ).catch(() => ({ items: [] as SignalApiNewsDigestItem[] }));
@@ -239,6 +282,7 @@ export function HomeFocusContent({
   headerAccessory,
   contentMaxWidth,
   showIssueSummary = false,
+  onPullRefreshReady,
 }: HomeFocusContentProps) {
   const router = useRouter();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
@@ -253,8 +297,12 @@ export function HomeFocusContent({
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
+  const [newsFlowDisplayCount, setNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
   const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
+  const [boardDisplayCount, setBoardDisplayCount] = useState(HOME_BOARD_DISPLAY_DEFAULT);
+  const [boardPosts, setBoardPosts] = useState<SignalApiCommunityPost[]>([]);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
@@ -267,9 +315,16 @@ export function HomeFocusContent({
   );
   const hiddenCalendarCount = Math.max(0, calendarEvents.length - visibleCalendarEvents.length);
   const homeIssues = useMemo(
-    () => [...issues].sort((a, b) => issueSortTime(b).localeCompare(issueSortTime(a)) || b.item.count - a.item.count).slice(0, HOME_ISSUE_LIMIT),
-    [issues],
+    () =>
+      [...issues]
+        .sort((a, b) => issueSortTime(b).localeCompare(issueSortTime(a)) || b.item.count - a.item.count)
+        .slice(0, newsFlowDisplayCount),
+    [issues, newsFlowDisplayCount],
   );
+  const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
+    resyncDeps: [issues, briefings, todayBriefing, disclosures, calendarEvents, boardPosts, loading],
+  });
+  const scrollResetKey = selectedYmd;
 
   const selectedDateLabel = useMemo(
     () =>
@@ -303,6 +358,7 @@ export function HomeFocusContent({
       setTodayBriefing(null);
       setDisclosures([]);
       setCalendarEvents([]);
+      setBoardPosts([]);
       setError(t('errorSignalApiShort'));
       return;
     }
@@ -311,19 +367,33 @@ export function HomeFocusContent({
     try {
       const watchlist = await loadWatchlistSymbols();
       const symbols = selectedYmd === todayYmd ? watchlist.slice(0, watchlistDisplayCount) : [];
-      const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows] = await Promise.all([
+      const fetchBoardPosts =
+        selectedYmd === todayYmd
+          ? fetchSignalCommunity(
+              { limit: boardDisplayCount * COMMUNITY_SOURCES.length },
+              { cacheMode },
+            ).catch(() => ({
+              items: [] as SignalApiCommunityPost[],
+              meta: { limit: boardDisplayCount, offset: 0, total: 0, hasMore: false, nextOffset: null },
+            }))
+          : Promise.resolve({ items: [] as SignalApiCommunityPost[] });
+      const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows, boardPage] =
+        await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
-        fetchTopIssues(selectedYmd, cacheMode),
+        fetchTopIssues(selectedYmd, locale, cacheMode),
         symbols.length > 0
           ? fetchSignalMarketQuotes({ symbols, limit: symbols.length }, { cacheMode }).catch(
               () => [] as SignalApiMarketQuote[],
             )
           : Promise.resolve([] as SignalApiMarketQuote[]),
-        fetchSignalMarketBriefings({ ...utcRangeForLocalYmd(selectedYmd), limit: BRIEFING_LIMIT }, { cacheMode }).catch(
+        fetchSignalMarketBriefings(
+          { ...utcRangeForLocalYmd(selectedYmd), limit: BRIEFING_LIMIT, locale },
+          { cacheMode },
+        ).catch(
           () => [],
         ),
         fetchSignalDisclosureDigests(
-          { ...utcRangeForLocalYmd(selectedYmd), limit: DISCLOSURE_LIMIT, batches: 1 },
+          { ...utcRangeForLocalYmd(selectedYmd), limit: DISCLOSURE_LIMIT, batches: 1, locale },
           { cacheMode },
         ).catch(() => ({ items: [] })),
         fetchSignalCalendar(
@@ -334,6 +404,7 @@ export function HomeFocusContent({
           },
           { cacheMode },
         ).catch(() => []),
+        fetchBoardPosts,
       ]);
 
       const quoteBySymbol = new Map<string, QuoteRow>();
@@ -363,10 +434,15 @@ export function HomeFocusContent({
           shiftYmd(selectedYmd, HOME_CALENDAR_LOOKAHEAD_DAYS),
         ),
       );
+      if (selectedYmd === todayYmd) {
+        setBoardPosts(boardPage.items ?? []);
+      } else {
+        setBoardPosts([]);
+      }
     } catch (e) {
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
     }
-  }, [locale, selectedYmd, t, todayYmd, watchlistDisplayCount]);
+  }, [locale, selectedYmd, t, todayYmd, watchlistDisplayCount, boardDisplayCount]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -376,6 +452,12 @@ export function HomeFocusContent({
       setRefreshing(false);
     }
   }, [load]);
+
+  useEffect(() => {
+    onPullRefreshReady?.(() => void refresh());
+  }, [onPullRefreshReady, refresh]);
+
+  useRegisterWebHeaderRefresh(() => void refresh(), showIssueSummary ? 'mount' : 'focus');
 
   useEffect(() => {
     let cancelled = false;
@@ -400,13 +482,45 @@ export function HomeFocusContent({
 
   useEffect(() => {
     let cancelled = false;
-    const refreshCount = async () => {
+    const refreshNewsFlowCount = async () => {
+      const next = await loadHomeNewsFlowDisplayCount();
+      if (!cancelled) setNewsFlowDisplayCount(next);
+    };
+    void refreshNewsFlowCount();
+    const unsubscribe = subscribeHomeNewsFlowDisplayCountChanged(() => {
+      void refreshNewsFlowCount();
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshWatchlistCount = async () => {
       const next = await loadHomeWatchlistDisplayCount();
       if (!cancelled) setWatchlistDisplayCount(next);
     };
-    void refreshCount();
+    void refreshWatchlistCount();
     const unsubscribe = subscribeHomeWatchlistDisplayCountChanged(() => {
-      void refreshCount();
+      void refreshWatchlistCount();
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshBoardCount = async () => {
+      const next = await loadHomeBoardDisplayCount();
+      if (!cancelled) setBoardDisplayCount(next);
+    };
+    void refreshBoardCount();
+    const unsubscribe = subscribeHomeBoardDisplayCountChanged(() => {
+      void refreshBoardCount();
     });
     return () => {
       cancelled = true;
@@ -467,13 +581,6 @@ export function HomeFocusContent({
   const openBoard = useCallback(() => {
     router.navigate('/(tabs)/board' as never);
   }, [router]);
-
-  const openBoardSource = useCallback(
-    (sourceKey: CommunitySourceKey) => {
-      router.navigate(`/(tabs)/board?source=${encodeURIComponent(sourceKey)}` as never);
-    },
-    [router],
-  );
 
   const openSymbolDetail = useCallback(
     (symbol: string) => {
@@ -590,49 +697,36 @@ export function HomeFocusContent({
 
   const renderIssueCard = useCallback(
     (rows: IssueRow[]) => (
-      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
+      <View style={[styles.heroCard, styles.heroCardCompact, showIssueSummary && styles.heroCardSummary]}>
         <HomeSectionAccentLine section="issues" opacity={0.55} />
         <View style={styles.issueGroupList}>
-          {rows.map((row, index) => (
-            <Pressable
-              key={row.item.id}
-              onPress={() => openIssue(row)}
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.issueGroupItem,
-                index < rows.length - 1 && styles.issueGroupItemBorder,
-                pressed && styles.pressed,
-              ]}>
-              <View style={styles.issueRowTop}>
-                <View style={styles.issueMetaInline}>
+          {rows.map((row, index) => {
+            const sourceEntries = digestSourceIconEntries(row.item.sourceRefs, row.item.sources);
+            const trailText = [row.item.topics[0], row.item.symbols[0]].filter(Boolean).join(' · ');
+            return (
+              <HomeDigestFeedRow
+                key={row.item.id}
+                title={row.item.title}
+                titleLines={2}
+                timeLabel={formatFeedItemTimeLabel(newsDigestCreatedIso(row.item), locale)}
+                trailText={trailText || null}
+                summary={showIssueSummary ? row.item.summary : null}
+                sourceEntries={sourceEntries}
+                bordered={index < rows.length - 1}
+                onPress={() => openIssue(row)}
+                badges={
                   <View style={styles.issueCategoryMark}>
-                    <FontAwesome name={homeDigestCategoryIcon(row.category)} size={11} color={theme.textMuted} />
+                    <FontAwesome name={homeDigestCategoryIcon(row.category)} size={10} color={theme.textMuted} />
                     <Text style={styles.issueCategoryText}>{t(NEWS_SEGMENT_LABEL[row.category])}</Text>
                   </View>
-                  {[row.item.topics[0], row.item.symbols[0]].filter(Boolean).length > 0 ? (
-                    <Text style={styles.issueInlineMetaText} numberOfLines={1}>
-                      {[row.item.topics[0], row.item.symbols[0]].filter(Boolean).join(' · ')}
-                    </Text>
-                  ) : null}
-                </View>
-                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                  {t('homeFocusSourceCount', { count: String(row.item.sources.length) })}
-                </Text>
-              </View>
-              <Text style={styles.issueGroupTitle} numberOfLines={2}>
-                {row.item.title}
-              </Text>
-              {showIssueSummary && row.item.summary ? (
-                <Text style={styles.issueGroupSummary} numberOfLines={1}>
-                  {row.item.summary}
-                </Text>
-              ) : null}
-            </Pressable>
-          ))}
+                }
+              />
+            );
+          })}
         </View>
       </View>
     ),
-    [openIssue, showIssueSummary, styles, t, theme.textMuted],
+    [openIssue, showIssueSummary, styles, locale, t, theme.textMuted],
   );
 
   const renderSignalCard = useCallback(
@@ -644,39 +738,32 @@ export function HomeFocusContent({
             const session = HOME_SIGNAL_SESSIONS.find(
               (candidate) => candidate.market === row.market && candidate.session === row.session,
             );
+            const sourceEntries = briefingSourceIconEntries(row.sourceRefs);
             return (
-              <Pressable
+              <HomeDigestFeedRow
                 key={row.id}
+                variant="signal"
+                title={briefingLeadText(row)}
+                titleLines={showIssueSummary ? 4 : 3}
+                timeLabel={formatFeedItemTimeLabel(sortBriefingTime(row), locale)}
+                sourceEntries={sourceEntries}
+                bordered={index < rows.length - 1}
                 onPress={() => openSignal(row)}
-                accessibilityRole="button"
-                style={({ pressed }) => [
-                  styles.issueGroupItem,
-                  index < rows.length - 1 && styles.issueGroupItemBorder,
-                  pressed && styles.pressed,
-                ]}>
-                <View style={styles.issueRowTop}>
-                  <View style={styles.signalPillRow}>
+                badges={
+                  <>
                     <Text style={styles.marketPill}>{marketLabel(row.market)}</Text>
                     <Text style={styles.sessionBadge}>
                       {session ? t(session.labelId as MessageId) : t('briefingSessionEmptyTitle')}
                     </Text>
-                  </View>
-                  {row.sourceRefs.length > 0 ? (
-                    <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                      {t('homeFocusSourceCount', { count: String(row.sourceRefs.length) })}
-                    </Text>
-                  ) : null}
-                </View>
-                <Text style={styles.signalText} numberOfLines={showIssueSummary ? 4 : 3}>
-                  {briefingLeadText(row)}
-                </Text>
-              </Pressable>
+                  </>
+                }
+              />
             );
           })}
         </View>
       </View>
     ),
-    [openSignal, showIssueSummary, styles, t],
+    [openSignal, showIssueSummary, styles, locale, t],
   );
 
   const renderDisclosureCard = useCallback(
@@ -709,7 +796,7 @@ export function HomeFocusContent({
                   ) : null}
                 </View>
                 <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                  {t('homeFocusSourceCount', { count: String(row.sourceRefs.length || row.count) })}
+                  {formatFeedItemTimeLabel(disclosureDigestCreatedIso(row), locale)}
                 </Text>
               </View>
               <Text style={styles.issueGroupTitle} numberOfLines={2}>
@@ -767,6 +854,34 @@ export function HomeFocusContent({
     [formatCalendarDateLabel, openCalendar, showIssueSummary, styles, t],
   );
 
+  const renderBoardCard = useCallback(
+    () => (
+      <View style={[styles.heroCard, styles.heroCardCompact]}>
+        {boardPosts.length > 0 ? (
+          <View style={styles.issueGroupList}>
+            {boardPosts.map((post, index) => (
+              <HomeDigestFeedRow
+                key={post.id}
+                title={post.title}
+                titleLines={2}
+                timeLabel={formatFeedItemTimeLabel(post.publishedAt, locale)}
+                trailText={t(communitySourceLabelId(post.source))}
+                summary={post.body?.trim() || null}
+                summaryLines={1}
+                metaBeforeTitle
+                bordered={index < boardPosts.length - 1}
+                onPress={() => router.push(`/community/${encodeURIComponent(post.id)}`)}
+              />
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.boardEmptyText}>{t('homeFocusBoardEmpty')}</Text>
+        )}
+      </View>
+    ),
+    [boardPosts, locale, router, styles, t],
+  );
+
   return (
     <>
     <View
@@ -792,6 +907,9 @@ export function HomeFocusContent({
       </View>
 
       <WebWheelScrollView
+        ref={scrollRef as never}
+        scrollResetKey={scrollResetKey}
+        contentRevision={[issues, briefings, todayBriefing, disclosures, calendarEvents, boardPosts, loading]}
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
@@ -824,7 +942,7 @@ export function HomeFocusContent({
               </View>
             ) : null}
 
-            <View style={styles.heroBlock}>
+            <View style={[styles.heroBlock, styles.heroBlockCompact]}>
               <HomeSectionHeader
                 title={t('newsIssuesTitle')}
                 badge={<HomeAiBadge />}
@@ -842,7 +960,7 @@ export function HomeFocusContent({
             </View>
           </View>
 
-          <View style={styles.section}>
+          <View style={[styles.section, styles.heroBlockCompact]}>
             <HomeSectionHeader
               title={t('homeFocusSignalTitle')}
               badge={<HomeAiBadge />}
@@ -884,25 +1002,8 @@ export function HomeFocusContent({
                 title={t('screenBoard')}
                 onPress={openBoard}
                 accessibilityLabel={t('commonViewAll')}
-                showChevron={false}
               />
-              <View style={styles.quoteGrid}>
-                {HOME_BOARD_SOURCES.map((sourceKey) => {
-                  const labelId = communitySourceLabelId(sourceKey);
-                  return (
-                    <Pressable
-                      key={sourceKey}
-                      onPress={() => openBoardSource(sourceKey)}
-                      accessibilityRole="button"
-                      accessibilityLabel={t(labelId)}
-                      style={({ pressed }) => [styles.boardEntryTile, pressed && styles.pressed]}>
-                      <Text style={styles.quoteSymbol} numberOfLines={1}>
-                        {t(labelId)}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              {renderBoardCard()}
             </View>
           ) : null}
 
@@ -924,9 +1025,12 @@ export function HomeFocusContent({
                           accessibilityLabel={row.symbol}
                           style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
                           <View style={styles.quoteTileContent}>
-                            <Text style={styles.quoteSymbol} numberOfLines={1}>
-                              {row.symbol}
-                            </Text>
+                            <View style={styles.quoteTileLead}>
+                              <SymbolLogo symbol={row.symbol} size={22} />
+                              <Text style={styles.quoteSymbol} numberOfLines={1}>
+                                {row.symbol}
+                              </Text>
+                            </View>
                             <View style={styles.quoteTileFooter}>
                               <Text style={styles.priceText} numberOfLines={1}>
                                 {formatPrice(row)}
@@ -1004,10 +1108,10 @@ function makeStyles(
       flexGrow: 1,
       paddingHorizontal: 16,
       paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
-      gap: 24,
+      gap: COMFORT_GAP_PAGE,
     },
     errorBox: {
-      borderRadius: 14,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.danger,
       backgroundColor: theme.dangerDim,
@@ -1025,16 +1129,19 @@ function makeStyles(
       justifyContent: 'center',
     },
     heroStack: {
-      gap: 16,
+      gap: COMFORT_GAP_LG,
     },
     heroBlock: {
-      gap: 8,
+      gap: COMFORT_GAP_SM,
+    },
+    heroBlockCompact: {
+      gap: 4,
     },
     heroHead: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-start',
-      gap: 8,
+      gap: COMFORT_GAP_SM,
     },
     heroKicker: {
       fontSize: sf(18),
@@ -1044,20 +1151,26 @@ function makeStyles(
     },
     heroCard: {
       position: 'relative',
-      borderRadius: 16,
+      borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       paddingLeft: 16,
       paddingRight: 12,
-      paddingVertical: 10,
-      gap: 6,
+      paddingVertical: COMFORT_PADDING_ROW_V,
+      gap: COMFORT_GAP_SM,
       overflow: 'hidden',
       shadowColor: '#000000',
       shadowOpacity: 0.04,
       shadowRadius: 10,
       shadowOffset: { width: 0, height: 5 },
       elevation: 1,
+    },
+    heroCardCompact: {
+      paddingLeft: 12,
+      paddingRight: 10,
+      paddingVertical: 8,
+      gap: 4,
     },
     heroCardSummary: {
       minHeight: 0,
@@ -1066,89 +1179,85 @@ function makeStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 8,
-    },
-    issueMetaInline: {
-      minWidth: 0,
-      flexShrink: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
+      gap: COMFORT_GAP_SM,
     },
     issueCategoryMark: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 5,
+      gap: 4,
       minWidth: 0,
-      flexShrink: 1,
+      flexShrink: 0,
       alignSelf: 'flex-start',
       borderRadius: 999,
-      paddingHorizontal: 7,
-      paddingVertical: 2,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
       backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.border,
     },
     issueCategoryText: {
       color: theme.textMuted,
-      fontSize: ft.ff(10),
-      lineHeight: sf(15),
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
     issueGroupList: {
       gap: 0,
     },
     issueGroupItem: {
-      gap: 4,
+      gap: COMFORT_GAP_SM,
       paddingVertical: ft.row(6),
-      borderRadius: 10,
+      borderRadius: UI_RADIUS_CARD,
     },
     issueGroupItemBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
     issueGroupTitle: {
-      fontSize: ft.ff(14),
-      lineHeight: sf(19),
+      fontSize: ft.ff(FEED_DIGEST_TITLE_PX),
+      lineHeight: sf(18),
       fontWeight: ft.titleWeight,
       color: theme.text,
     },
     issueGroupSummary: {
-      fontSize: ft.ff(12),
-      lineHeight: sf(17),
+      fontSize: ft.ff(FEED_SUMMARY_PX),
+      lineHeight: sf(15),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
+      marginTop: 1,
     },
     overviewMiniList: {
       gap: 2,
       marginTop: 2,
     },
     issueGroupMetaText: {
-      fontSize: ft.ff(10),
-      lineHeight: sf(14),
+      flexShrink: 0,
+      fontSize: ft.ff(FEED_META_TIME_PX),
+      lineHeight: sf(13),
       fontWeight: ft.metaWeight,
       color: theme.textDim,
     },
     issueInlineMetaText: {
       minWidth: 0,
       flexShrink: 1,
-      fontSize: ft.ff(10),
-      lineHeight: sf(14),
+      fontSize: ft.ff(FEED_META_TRAIL_PX),
+      lineHeight: sf(12),
       fontWeight: ft.metaWeight,
       color: theme.textDim,
     },
     section: {
-      gap: 12,
+      gap: COMFORT_GAP_LG,
     },
     quoteGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 10,
+      justifyContent: 'space-between',
+      rowGap: COMFORT_GAP_MD,
     },
     quoteTile: {
-      width: '48.5%',
+      width: '48%',
       minHeight: 54,
-      borderRadius: 14,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.colorScheme === 'dark' ? theme.bgElevated : theme.card,
@@ -1159,22 +1268,11 @@ function makeStyles(
       shadowOffset: { width: 0, height: 3 },
       elevation: 1,
     },
-    boardEntryTile: {
-      width: '48.5%',
-      minHeight: 52,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.colorScheme === 'dark' ? theme.bgElevated : theme.card,
-      alignItems: 'flex-start',
-      justifyContent: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-      shadowColor: '#000000',
-      shadowOpacity: 0.03,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 1,
+    boardEmptyText: {
+      fontSize: ft.ff(FEED_SUMMARY_PX),
+      lineHeight: sf(15),
+      fontWeight: ft.bodyWeight,
+      color: theme.textDim,
     },
     quoteTileContent: {
       flex: 1,
@@ -1184,6 +1282,13 @@ function makeStyles(
       justifyContent: 'space-between',
       paddingHorizontal: 8,
       paddingVertical: 7,
+      gap: COMFORT_GAP_SM,
+    },
+    quoteTileLead: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: 6,
     },
     quoteTileFooter: {
@@ -1195,9 +1300,9 @@ function makeStyles(
       minHeight: 72,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
+      gap: COMFORT_GAP_MD,
       paddingHorizontal: 14,
-      paddingVertical: 10,
+      paddingVertical: COMFORT_PADDING_ROW_V,
     },
     rowBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -1222,9 +1327,9 @@ function makeStyles(
     },
     priceBox: {
       minWidth: 88,
-      borderRadius: 12,
+      borderRadius: UI_RADIUS_CARD,
       paddingHorizontal: 10,
-      paddingVertical: 8,
+      paddingVertical: 10,
       alignItems: 'flex-end',
     },
     priceText: {
@@ -1239,35 +1344,28 @@ function makeStyles(
       lineHeight: sf(16),
       fontWeight: ft.emphasisWeight,
     },
-    signalPillRow: {
-      minWidth: 0,
-      flexShrink: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
     marketPill: {
       alignSelf: 'flex-start',
       borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
       backgroundColor: theme.bgElevated,
       color: theme.textMuted,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
     sessionBadge: {
       alignSelf: 'flex-start',
       borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 9,
-      paddingVertical: 4,
+      paddingHorizontal: 7,
+      paddingVertical: 1,
       backgroundColor: theme.greenDim,
       color: theme.green,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
     disclosurePillRow: {
@@ -1276,30 +1374,30 @@ function makeStyles(
       flexGrow: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: COMFORT_GAP_SM,
     },
     disclosureMarketPill: {
       alignSelf: 'flex-start',
       borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
       backgroundColor: theme.warningDim,
       color: theme.warning,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
     disclosureFormPill: {
       alignSelf: 'flex-start',
       borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 9,
-      paddingVertical: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
       backgroundColor: theme.bgElevated,
       color: theme.textMuted,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
       maxWidth: 120,
     },
@@ -1309,37 +1407,37 @@ function makeStyles(
       flexGrow: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      gap: COMFORT_GAP_SM,
     },
     calendarDatePill: {
       alignSelf: 'flex-start',
       borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
       backgroundColor: theme.greenDim,
       color: theme.green,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
     calendarTypePill: {
       alignSelf: 'flex-start',
       borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
       backgroundColor: theme.bgElevated,
       color: theme.textMuted,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
     calendarMoreRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-end',
-      gap: 4,
+      gap: COMFORT_GAP_SM,
       paddingTop: 2,
     },
     calendarMoreText: {
@@ -1357,7 +1455,7 @@ function makeStyles(
     emptyCard: {
       position: 'relative',
       overflow: 'hidden',
-      borderRadius: 18,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -1369,9 +1467,6 @@ function makeStyles(
       lineHeight: sf(19),
       fontWeight: ft.bodyWeight,
       color: theme.textDim,
-    },
-    dimmedText: {
-      color: theme.textMuted,
     },
     pressed: {
       opacity: 0.72,

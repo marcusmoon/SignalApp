@@ -507,15 +507,10 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
     const locale = decodeURIComponent(settingMatch[1]);
     const patch = await readBody(req);
     const settings = await listCollectionPayloads('translationSettings');
-    const current = settings.find((s) => s.locale === locale) || { locale, provider: 'mock', enabled: false, autoTranslateNews: false };
-    const next = { ...current };
-    for (const key of ['provider']) {
-      if (typeof patch[key] === 'string') next[key] = patch[key];
-    }
+    const current = settings.find((s) => s.locale === locale) || { locale, provider: 'openai', autoTranslateNews: false };
+    const next = { ...current, provider: typeof patch.provider === 'string' ? patch.provider : current.provider };
+    next.autoTranslateNews = false;
     next.model = null;
-    for (const key of ['enabled', 'autoTranslateNews']) {
-      if (typeof patch[key] === 'boolean') next[key] = patch[key];
-    }
     next.updatedAt = nowIso();
     const updated = await patchCollectionPayload('translationSettings', locale, next);
     json(res, 200, { data: updated });

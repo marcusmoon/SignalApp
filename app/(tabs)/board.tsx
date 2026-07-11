@@ -5,6 +5,8 @@ import { useBottomTabBarHeight } from 'expo-router/js-tabs';
 import { useFocusEffect, useIsFocused } from 'expo-router/react-navigation';
 import { useLocalSearchParams } from 'expo-router';
 
+import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
+
 import { CommunityPostCard, communitySourceLabelId, isCommunitySourceKey } from '@/components/community/CommunityPostCard';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
@@ -26,11 +28,12 @@ import {
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
-import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
+import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW, isWeb } from '@/constants/webLayout';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
-import { useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
+import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { fetchSignalCommunity } from '@/integrations/signal-api/community';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
@@ -56,6 +59,7 @@ const SOURCE_LABEL: Record<CommunitySourceFilter, MessageId> = {
 
 export default function BoardScreen() {
   const { t } = useLocale();
+  const setRouteParams = useSafeSetRouteParams();
   const routeParams = useLocalSearchParams<{ source?: string | string[] }>();
   const { theme, scaleFont } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
@@ -63,25 +67,31 @@ export default function BoardScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
-  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
+  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
   const [source, setSource] = useState<CommunitySourceFilter>(COMMUNITY_SOURCE_ALL);
-  const { ref: listRef, scrollToTop } = useScrollToTopOnChange([source]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<SignalApiCommunityPost[]>([]);
+  const { ref: listRef } = useScrollToTopOnChange([source], { resyncDeps: [items] });
+  const listScrollResetKey = source;
   const [meta, setMeta] = useState<SignalCommunityListMeta | null>(null);
   const loadingMoreRef = useRef(false);
   const itemsRef = useRef<SignalApiCommunityPost[]>([]);
+  const sourceRef = useRef(source);
+  const loadSeqRef = useRef(0);
   itemsRef.current = items;
+  sourceRef.current = source;
 
   const load = useCallback(
     async (opts?: { refresh?: boolean; loadMore?: boolean; sourceFilter?: CommunitySourceFilter }) => {
-      const nextSource = opts?.sourceFilter ?? source;
+      const nextSource = opts?.sourceFilter ?? sourceRef.current;
       const loadMore = opts?.loadMore === true;
+      const seq = ++loadSeqRef.current;
       if (!hasSignalApi()) {
+        if (seq !== loadSeqRef.current) return;
         setItems([]);
         setMeta(null);
         setError(t('errorSignalApiShort'));
@@ -105,9 +115,11 @@ export default function BoardScreen() {
           },
           { cacheMode: signalCacheMode(opts?.refresh) },
         );
+        if (seq !== loadSeqRef.current) return;
         setItems((prev) => (loadMore ? [...prev, ...page.items] : page.items));
         setMeta(page.meta);
       } catch (e) {
+        if (seq !== loadSeqRef.current) return;
         if (!loadMore) {
           setItems([]);
           setMeta(null);
@@ -117,13 +129,13 @@ export default function BoardScreen() {
         if (loadMore) {
           loadingMoreRef.current = false;
           setLoadingMore(false);
-        } else {
+        } else if (seq === loadSeqRef.current) {
           setLoading(false);
           setRefreshing(false);
         }
       }
     },
-    [meta?.hasMore, meta?.nextOffset, source, t],
+    [meta?.hasMore, meta?.nextOffset, t],
   );
 
   useEffect(() => {
@@ -136,7 +148,8 @@ export default function BoardScreen() {
     await load({ refresh: true });
   }, [load]);
 
-  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
+  const onRefresh = onRefreshBase;
+  useRegisterWebHeaderRefresh(() => void onRefresh());
 
   const onEndReached = useCallback(() => {
     void load({ loadMore: true });
@@ -151,37 +164,58 @@ export default function BoardScreen() {
   });
 
   const changeSource = useCallback(
-    (next: CommunitySourceFilter) => {
-      if (next === source) return;
+    (next: CommunitySourceFilter, options?: { fromRoute?: boolean }) => {
+      if (next === sourceRef.current) {
+        if (useTwoPane) setActiveSubTabKey(next);
+        return;
+      }
+      sourceRef.current = next;
       setSource(next);
+      if (useTwoPane) setActiveSubTabKey(next);
       setError(null);
+      setItems([]);
+      setMeta(null);
+      setLoading(true);
+      if (!options?.fromRoute) {
+        setRouteParams({ source: next === COMMUNITY_SOURCE_ALL ? undefined : next });
+      }
       void load({ sourceFilter: next });
     },
-    [load, source],
+    [load, setActiveSubTabKey, setRouteParams, useTwoPane],
   );
 
   useFocusEffect(
     useCallback(() => {
       const paramSource = parseCommunitySourceParam(routeParams.source);
-      if (paramSource && paramSource !== source) {
-        changeSource(paramSource);
+      if (paramSource) {
+        changeSource(paramSource, { fromRoute: true });
       }
-    }, [changeSource, routeParams.source, source]),
+    }, [changeSource, routeParams.source]),
   );
+
+  const registerBoardSubTabs = useCallback(() => {
+    if (!useTwoPane) return;
+    setActiveSubTabKey(source);
+    setSubTabs(
+      COMMUNITY_SOURCE_ORDER.map((key) => ({
+        key,
+        label: t(SOURCE_LABEL[key]),
+        onPress: () => changeSource(key),
+      })),
+    );
+  }, [changeSource, setActiveSubTabKey, setSubTabs, source, t, useTwoPane]);
+
+  useEffect(() => {
+    if (!useTwoPane || !isFocused) return;
+    registerBoardSubTabs();
+  }, [isFocused, registerBoardSubTabs, useTwoPane]);
 
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
-      setSubTabs(
-        COMMUNITY_SOURCE_ORDER.map((key) => ({
-          key,
-          label: t(SOURCE_LABEL[key]),
-          active: source === key,
-          onPress: () => changeSource(key),
-        })),
-      );
+      registerBoardSubTabs();
       return () => clearSubTabs();
-    }, [changeSource, clearSubTabs, setSubTabs, source, t, useTwoPane]),
+    }, [clearSubTabs, registerBoardSubTabs, useTwoPane]),
   );
 
   const listBottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
@@ -189,15 +223,19 @@ export default function BoardScreen() {
   const renderItem = useCallback(
     ({ item }: { item: SignalApiCommunityPost }) => (
       <View style={styles.rowWrap}>
-        <CommunityPostCard item={item} sourceLabelId={communitySourceLabelId(item.source)} />
+        <CommunityPostCard
+          item={item}
+          sourceLabelId={communitySourceLabelId(item.source)}
+          showSource={source === COMMUNITY_SOURCE_ALL}
+        />
       </View>
     ),
-    [styles.rowWrap],
+    [source, styles.rowWrap],
   );
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
-      {!useTwoPane ? <SignalHeader compact onBrandPress={onRefresh} /> : null}
+      {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
         {!useTwoPane ? (
@@ -209,6 +247,7 @@ export default function BoardScreen() {
                   <Pressable
                     key={key}
                     onPress={() => changeSource(key)}
+                    hitSlop={Platform.OS === 'web' ? undefined : { top: 6, bottom: 6, left: 2, right: 2 }}
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
                     style={({ pressed }) => [styles.segBtn, active && styles.segBtnActive, pressed && styles.pressed]}>
@@ -219,49 +258,52 @@ export default function BoardScreen() {
             </View>
           </View>
         ) : null}
-        {error ? (
-          <View style={styles.errBox}>
-            <Text style={styles.errText}>{error}</Text>
-          </View>
-        ) : null}
-        {loading && items.length === 0 ? (
-          <View style={styles.loadingBox}>
-            <SignalLoadingIndicator message={t('commonLoading')} />
-          </View>
-        ) : (
-          <WebWheelFlatList
-            ref={listRef as never}
-            style={styles.list}
-            contentContainerStyle={{ paddingBottom: listBottomPad, paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP }}
-            data={items}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-            onEndReached={onEndReached}
-            onEndReachedThreshold={0.35}
-            onLayout={onLayout}
-            onContentSizeChange={onContentSizeChange}
-            onScroll={onScroll}
-            scrollEventThrottle={16}
-            initialNumToRender={WEB_FLATLIST_INITIAL}
-            maxToRenderPerBatch={WEB_FLATLIST_BATCH}
-            windowSize={WEB_FLATLIST_WINDOW}
-            ListEmptyComponent={
-              !loading ? (
-                <View style={styles.emptyBox}>
-                  <Text style={styles.emptyText}>{t('communityEmpty')}</Text>
-                </View>
-              ) : null
-            }
-            ListFooterComponent={
-              loadingMore ? (
-                <View style={styles.footerLoading}>
-                  <SignalLoadingIndicator message={t('commonLoading')} />
-                </View>
-              ) : null
-            }
-          />
-        )}
+        <View style={styles.listColumn}>
+          {error ? (
+            <View style={styles.errBox}>
+              <Text style={styles.errText}>{error}</Text>
+            </View>
+          ) : null}
+          {loading && items.length === 0 ? (
+            <View style={styles.loadingBox}>
+              <SignalLoadingIndicator message={t('commonLoading')} />
+            </View>
+          ) : (
+            <WebWheelFlatList
+              scrollResetKey={listScrollResetKey}
+              ref={listRef as never}
+              style={styles.list}
+              contentContainerStyle={{ paddingBottom: listBottomPad, paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP }}
+              data={items}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+              onEndReached={onEndReached}
+              onEndReachedThreshold={0.35}
+              onLayout={onLayout}
+              onContentSizeChange={onContentSizeChange}
+              onScroll={onScroll}
+              scrollEventThrottle={16}
+              initialNumToRender={WEB_FLATLIST_INITIAL}
+              maxToRenderPerBatch={WEB_FLATLIST_BATCH}
+              windowSize={WEB_FLATLIST_WINDOW}
+              ListEmptyComponent={
+                !loading ? (
+                  <View style={styles.emptyBox}>
+                    <Text style={styles.emptyText}>{t('communityEmpty')}</Text>
+                  </View>
+                ) : null
+              }
+              ListFooterComponent={
+                loadingMore ? (
+                  <View style={styles.footerLoading}>
+                    <SignalLoadingIndicator message={t('commonLoading')} />
+                  </View>
+                ) : null
+              }
+            />
+          )}
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -281,14 +323,23 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     mainColumnWide: {
       ...wideContentFill,
     },
-    topFixed: fixedHeader.strip,
+    listColumn: {
+      ...webFlexFill,
+      minHeight: 0,
+      zIndex: 0,
+      ...(isWeb ? { overflow: 'hidden' as const } : null),
+    },
+    topFixed: {
+      ...fixedHeader.strip,
+      zIndex: 3,
+    },
     segment: segmentTab.segment,
     segBtn: segmentTab.segBtn,
     segBtnActive: segmentTab.segBtnActive,
     segText: segmentTab.segText,
     segTextActive: segmentTab.segTextActive,
     list: { ...webScrollViewportStyle },
-    rowWrap: { marginBottom: 10 },
+    rowWrap: { marginBottom: 14 },
     loadingBox: {
       flex: 1,
       alignItems: 'center',
@@ -314,7 +365,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginHorizontal: 16,
       marginBottom: 8,
       padding: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.danger,
       backgroundColor: theme.dangerDim,

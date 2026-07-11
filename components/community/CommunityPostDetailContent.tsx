@@ -5,6 +5,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CommunityPostBody } from '@/components/community/CommunityPostBody';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
+import { SourceBadge } from '@/components/signal/SourceBadge';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { communityShowsOriginalLink, communitySourceAccent } from '@/constants/communitySources';
@@ -44,9 +45,7 @@ export function CommunityPostDetailContent({ item, bottomPad = 24, refreshing = 
       <View style={styles.headerFixed}>
         <View style={styles.headerInner}>
           <View style={styles.metaRow}>
-            <View style={styles.sourcePill}>
-              <Text style={styles.source}>{t(sourceLabelId)}</Text>
-            </View>
+            <SourceBadge label={t(sourceLabelId)} accent={accent} variant="news" />
             <Text style={styles.time}>{timeLabel}</Text>
           </View>
           <View style={styles.titleRow}>
@@ -106,30 +105,13 @@ function makeStyles(
       paddingHorizontal: 18,
       paddingTop: 12,
       paddingBottom: 12,
-      gap: 8,
+      gap: 16,
     },
     metaRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: 12,
-    },
-    sourcePill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flexShrink: 0,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: accent.border,
-      backgroundColor: accent.dim,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-    },
-    source: {
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
-      fontWeight: ft.emphasisWeight,
-      color: accent.accent,
     },
     time: {
       flex: 1,
@@ -143,7 +125,7 @@ function makeStyles(
     titleRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 10,
+      gap: 16,
     },
     title: {
       flex: 1,
@@ -170,7 +152,7 @@ function makeStyles(
       paddingTop: 16,
     },
     bodyCard: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,

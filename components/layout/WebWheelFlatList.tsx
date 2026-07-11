@@ -8,15 +8,12 @@ import {
   type ListRenderItemInfo,
 } from 'react-native';
 
-import {
-  getWebRefreshControlProps,
-  useWebRefreshHandlers,
-  WebRefreshStatus,
-} from '@/components/layout/webRefreshControl';
 import { isDomNearScrollEnd, syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
+import { useWebScrollResetOnKey } from '@/hooks/useWebScrollResetOnKey';
 import { createLazyWebScrollApi } from '@/utils/scrollToTop';
 
 const webListViewportStyle = {
+  position: 'relative',
   flex: 1,
   minHeight: 0,
   height: '100%',
@@ -50,6 +47,10 @@ function getDefaultKey<T>(item: T, index: number) {
   return String(index);
 }
 
+type WebWheelFlatListProps<T> = FlatListProps<T> & {
+  scrollResetKey?: string | number | null;
+};
+
 function WebWheelFlatListInner<T>(
   {
     data,
@@ -67,10 +68,11 @@ function WebWheelFlatListInner<T>(
     onLayout,
     onContentSizeChange,
     refreshControl,
+    scrollResetKey,
     numColumns = 1,
     columnWrapperStyle,
     ...rest
-  }: FlatListProps<T>,
+  }: WebWheelFlatListProps<T>,
   forwardedRef: React.Ref<FlatList<T>>,
 ) {
   const localRef = useRef<FlatList<T>>(null);
@@ -88,7 +90,6 @@ function WebWheelFlatListInner<T>(
   onScrollRef.current = onScroll;
   onEndReachedRef.current = onEndReached;
   onEndReachedThresholdRef.current = onEndReachedThreshold;
-  const refreshControlProps = getWebRefreshControlProps(refreshControl);
 
   const emitWebLayout = useCallback((node: HTMLElement) => {
     onLayoutRef.current?.({
@@ -131,7 +132,14 @@ function WebWheelFlatListInner<T>(
     ?? (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
     ?? null
   ), []);
-  const webRefreshHandlers = useWebRefreshHandlers(refreshControlProps, getWebNode);
+
+  const getWebScrollNode = useCallback(
+    () =>
+      (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
+        ?.getScrollableNode?.() ?? null,
+    [],
+  );
+  useWebScrollResetOnKey(getWebScrollNode, scrollResetKey, data);
 
   /** Sidebar pane toggles can skip RN onLayout — observe the scroll node directly on web. */
   useEffect(() => {
@@ -257,16 +265,8 @@ function WebWheelFlatListInner<T>(
     };
     const webEventProps = {
       onScroll: emitFromWebEvent,
-      onWheel: (event: unknown) => {
-        scheduleWebNearEndProbe(event);
-        webRefreshHandlers.onWheel(event);
-      },
-      onTouchStart: webRefreshHandlers.onTouchStart,
-      onTouchMove: webRefreshHandlers.onTouchMove,
-      onTouchEnd: (event: unknown) => {
-        scheduleWebNearEndProbe(event);
-        webRefreshHandlers.onTouchEnd();
-      },
+      onWheel: scheduleWebNearEndProbe,
+      onTouchEnd: scheduleWebNearEndProbe,
       onKeyUp: scheduleWebNearEndProbe,
     };
     const setWebRef = (instance: View | null) => {
@@ -282,10 +282,15 @@ function WebWheelFlatListInner<T>(
       }
     };
 
+    const webScrollKey = scrollResetKey != null ? `wwf-${scrollResetKey}` : undefined;
+
     return (
-      <View ref={setWebRef} style={[webListViewportStyle, style] as never} {...(webEventProps as Record<string, unknown>)}>
+      <View
+        key={webScrollKey}
+        ref={setWebRef}
+        style={[webListViewportStyle, style] as never}
+        {...(webEventProps as Record<string, unknown>)}>
         <View ref={webContentRef} style={contentContainerStyle}>
-          {refreshControlProps?.refreshing ? <WebRefreshStatus /> : null}
           {renderListSlot(ListHeaderComponent)}
           {items.length === 0 ? renderListSlot(ListEmptyComponent) : null}
           {numColumns > 1
@@ -372,5 +377,5 @@ function WebWheelFlatListInner<T>(
 }
 
 export const WebWheelFlatList = forwardRef(WebWheelFlatListInner) as <T>(
-  props: FlatListProps<T> & { ref?: React.Ref<FlatList<T>> },
+  props: WebWheelFlatListProps<T> & { ref?: React.Ref<FlatList<T>> },
 ) => React.ReactElement | null;

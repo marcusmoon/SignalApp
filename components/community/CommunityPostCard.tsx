@@ -2,8 +2,14 @@ import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import {
+  FEED_ARTICLE_TITLE_PX,
+  FEED_META_TIME_PX,
+  FEED_PREVIEW_BODY_PX,
+} from '@/constants/feedTypography';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { communitySourceAccent, type CommunitySourceKey } from '@/constants/communitySources';
+import { SourceBadge } from '@/components/signal/SourceBadge';
 import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -15,9 +21,13 @@ import { formatRelativeFromIso } from '@/utils/date';
 type Props = {
   item: SignalApiCommunityPost;
   sourceLabelId: MessageId;
+  /** 전체 탭 등 출처 구분이 필요할 때만 표시 */
+  showSource?: boolean;
+  /** 0이면 본문 숨김 */
+  bodyLines?: number;
 };
 
-export function CommunityPostCard({ item, sourceLabelId }: Props) {
+export function CommunityPostCard({ item, sourceLabelId, showSource = true, bodyLines = 2 }: Props) {
   const router = useRouter();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
@@ -34,20 +44,18 @@ export function CommunityPostCard({ item, sourceLabelId }: Props) {
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <View pointerEvents="none" style={styles.accentBar} />
       <View style={styles.metaRow}>
-        <View style={styles.sourcePill}>
-          <Text style={styles.sourceName} numberOfLines={1}>
-            {t(sourceLabelId)}
-          </Text>
-        </View>
-        <View style={styles.timePill}>
+        {showSource ? (
+          <SourceBadge label={t(sourceLabelId)} accent={accent} variant="news" />
+        ) : null}
+        <View style={[styles.timePill, !showSource && styles.timePillLead]}>
           <Text style={styles.time}>{timeLabel}</Text>
         </View>
       </View>
       <Text style={styles.title} numberOfLines={2}>
         {item.title}
       </Text>
-      {item.body ? (
-        <Text style={styles.body} numberOfLines={2}>
+      {item.body && bodyLines > 0 ? (
+        <Text style={styles.body} numberOfLines={bodyLines}>
           {item.body}
         </Text>
       ) : null}
@@ -73,7 +81,7 @@ function makeStyles(
   return StyleSheet.create({
     card: {
       position: 'relative',
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -81,7 +89,7 @@ function makeStyles(
       paddingRight: ft.pad(14),
       paddingTop: ft.pad(12),
       paddingBottom: ft.pad(12),
-      gap: 6,
+      gap: 8,
       overflow: 'hidden',
     },
     accentBar: {
@@ -100,30 +108,12 @@ function makeStyles(
       justifyContent: 'space-between',
       gap: ft.pad(8),
       marginBottom: 2,
-    },
-    sourcePill: {
-      flexShrink: 1,
       minWidth: 0,
-      flexDirection: 'row',
-      alignItems: 'center',
-      alignSelf: 'flex-start',
-      maxWidth: '62%',
-      paddingHorizontal: ft.pad(10),
-      paddingVertical: ft.pad(4),
-      borderRadius: 999,
-      backgroundColor: accent.dim,
-      borderWidth: 1,
-      borderColor: accent.border,
-    },
-    sourceName: {
-      flexShrink: 1,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
-      fontWeight: ft.emphasisWeight,
-      color: accent.accent,
+      overflow: 'hidden',
     },
     timePill: {
       flexShrink: 0,
+      marginLeft: 'auto',
       paddingHorizontal: ft.pad(8),
       paddingVertical: ft.pad(3),
       borderRadius: 999,
@@ -131,20 +121,23 @@ function makeStyles(
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
     },
+    timePillLead: {
+      marginLeft: 0,
+    },
     time: {
-      fontSize: ft.ff(10),
+      fontSize: ft.ff(FEED_META_TIME_PX),
       lineHeight: sf(14),
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
     },
     title: {
-      fontSize: ft.ff(15),
+      fontSize: ft.ff(FEED_ARTICLE_TITLE_PX),
       lineHeight: sf(21),
       fontWeight: ft.titleWeight,
       color: theme.text,
     },
     body: {
-      fontSize: ft.ff(13),
+      fontSize: ft.ff(FEED_PREVIEW_BODY_PX),
       lineHeight: sf(19),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,

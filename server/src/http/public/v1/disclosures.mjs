@@ -10,6 +10,7 @@ import { resolveDigestItemNotifyInbox, resolveIngestNotifyInbox, resolveIngestSe
 import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { utcDateKeyFromInstant } from '../../../time/utc.mjs';
+import { normalizeSourceRefs } from '../../../sources/normalizeSourceRefs.mjs';
 import { json, readBody } from '../../shared.mjs';
 
 function cleanText(value) {
@@ -72,6 +73,7 @@ export async function handlePublicDisclosureRoutes({ req, res, url, pathname }) 
     const now = new Date().toISOString();
     const items = rawItems.map((item, index) => ({
       ...item,
+      sourceRefs: normalizeSourceRefs(item.sourceRefs, { limit: 12 }),
       score: item.score ?? (100 - index * 10),
       updatedAt: now,
     }));
@@ -105,6 +107,7 @@ export async function handlePublicDisclosureRoutes({ req, res, url, pathname }) 
       limit: url.searchParams.get('limit') || '4',
       offset: url.searchParams.get('offset') || '0',
       batches: url.searchParams.get('batches') || '1',
+      locale: url.searchParams.get('locale') || 'ko',
     });
     json(res, 200, {
       data: page.rows,

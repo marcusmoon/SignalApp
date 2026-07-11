@@ -22,6 +22,7 @@ import type { MoreHubRouteKey } from '@/constants/moreHubOrder';
 import type { AppTheme } from '@/constants/theme';
 import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
@@ -130,6 +131,7 @@ export default function MoreHubScreen() {
     void reloadOrder();
     void reloadRefLinksPref();
   }, [reloadOrder, reloadRefLinksPref]);
+  useRegisterWebHeaderRefresh(onHeaderRefresh);
 
   const openHubItem = useCallback(
     (item: MoreHubRouteKey) => {
@@ -300,13 +302,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, hubTileLayout: H
     tile: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      borderRadius: 13,
+      gap: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       minHeight: TILE_HEIGHT,
-      paddingVertical: 8,
+      paddingVertical: 10,
       paddingHorizontal: 10,
       marginBottom: hubTileLayout === 'list' ? GRID_GAP : 0,
     },
@@ -325,9 +327,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, hubTileLayout: H
       alignItems: 'center',
       justifyContent: 'center',
       minHeight: 72,
-      paddingVertical: 8,
+      paddingVertical: 10,
       paddingHorizontal: 6,
-      gap: 6,
+      gap: 8,
     },
     rowPressed: {
       backgroundColor: theme.bgElevated,

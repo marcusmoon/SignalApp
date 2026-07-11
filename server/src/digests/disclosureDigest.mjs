@@ -83,12 +83,6 @@ function sourceRef(item) {
   return {
     type: 'disclosure',
     id: item.id,
-    title: itemTitle(item),
-    url: sourceUrl(item) || null,
-    companyName: companyName(item),
-    symbol: symbol(item) || null,
-    formType: formType(item) || null,
-    filedAt: item.filedAt || item.publishedAt || null,
   };
 }
 

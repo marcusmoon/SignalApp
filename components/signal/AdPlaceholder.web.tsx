@@ -22,11 +22,11 @@ export function AdPlaceholder() {
 const styles = StyleSheet.create({
   wrap: {
     backgroundColor: '#15151C',
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#2A2A35',
     padding: 14,
-    marginBottom: 10,
+    marginBottom: 14,
   },
   badge: {
     alignSelf: 'flex-start',

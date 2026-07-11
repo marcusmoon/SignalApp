@@ -117,7 +117,7 @@ export function SignalSidebarTabBar({
   const pathname = usePathname();
   const params = useLocalSearchParams<{ section?: string; tab?: string }>();
   const insets = useSafeAreaInsets();
-  const { subTabs } = useSidebarSubTabs();
+  const { subTabs, activeSubTabKey } = useSidebarSubTabs();
   const ipadNav = useIpadSidebarNav();
 
   const accountActive = pathname.startsWith('/account') || ipadNav.isAccountPaneActive;
@@ -184,8 +184,12 @@ export function SignalSidebarTabBar({
                 return;
               }
               if (sub.kind === 'youtube' && ipadNav.isAvailable) {
-                ipadNav.showYoutubeTab(sub.key as YoutubeSortKey);
-                router.navigate(sub.route as Parameters<typeof router.navigate>[0]);
+                const sortKey = sub.key as YoutubeSortKey;
+                ipadNav.showYoutubeTab(sortKey);
+                router.navigate({
+                  pathname: sub.route,
+                  params: { sort: sortKey === 'latest' ? undefined : sortKey },
+                } as Parameters<typeof router.navigate>[0]);
                 return;
               }
               ipadNav.showTabs();
@@ -286,25 +290,28 @@ export function SignalSidebarTabBar({
                 tab.name !== 'youtube' &&
                 subTabs.length > 0 ? (
                   <View style={styles.subTabList}>
-                    {subTabs.map((sub) => (
+                    {subTabs.map((sub) => {
+                      const subActive = activeSubTabKey === sub.key;
+                      return (
                       <Pressable
                         key={sub.key}
                         style={({ pressed }) => [
                           styles.subTabItem,
-                          sub.active && styles.subTabItemActive,
+                          subActive && styles.subTabItemActive,
                           pressed && styles.subTabItemPressed,
                         ]}
                         onPress={sub.onPress}
                         accessibilityRole="button"
-                        accessibilityState={{ selected: sub.active }}>
-                        <View style={[styles.subTabDot, sub.active && styles.subTabDotActive]} />
+                        accessibilityState={{ selected: subActive }}>
+                        <View style={[styles.subTabDot, subActive && styles.subTabDotActive]} />
                         <Text
-                          style={[styles.subTabLabel, sub.active && styles.subTabLabelActive]}
+                          style={[styles.subTabLabel, subActive && styles.subTabLabelActive]}
                           numberOfLines={1}>
                           {sub.label}
                         </Text>
                       </Pressable>
-                    ))}
+                      );
+                    })}
                   </View>
                 ) : null}
               </View>
@@ -372,10 +379,10 @@ function makeStyles(
     accountButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: 20,
       paddingHorizontal: 12,
       paddingVertical: 12,
-      borderRadius: 12,
+      borderRadius: 8,
     },
     accountButtonActive: {
       backgroundColor: theme.bgElevated,
@@ -383,10 +390,10 @@ function makeStyles(
     tabItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: 20,
       paddingHorizontal: 12,
       paddingVertical: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       marginBottom: 4,
     },
     tabItemActive: {
@@ -425,10 +432,10 @@ function makeStyles(
     subTabItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 16,
       paddingHorizontal: 10,
-      paddingVertical: 8,
-      borderRadius: 10,
+      paddingVertical: 10,
+      borderRadius: 8,
       marginBottom: 2,
     },
     subTabItemActive: {

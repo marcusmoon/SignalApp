@@ -26,7 +26,7 @@ import {
 } from '@/constants/screenLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import type { AppTheme } from '@/constants/theme';
-import { useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
+import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
@@ -177,7 +177,11 @@ export default function CalendarScreen() {
   }, []);
 
   const typeParam = selectedCalendarType(enabledTypes);
-  const { ref: listRef, scrollToTop } = useScrollToTopOnChange([selectedYmd, typeParam], { skipInitial: false });
+  const { ref: listRef } = useScrollToTopOnChange([selectedYmd, typeParam], {
+    skipInitial: false,
+    resyncDeps: [monthEvents, selectedYmd],
+  });
+  const listScrollResetKey = `${selectedYmd}:${typeParam}`;
 
   const fetchMonthData = useCallback(
     async (year: number, month: number, forceRefresh?: boolean) => {
@@ -230,7 +234,7 @@ export default function CalendarScreen() {
     }
   }, [fetchMonthData, viewMonth.year, viewMonth.month, t]);
 
-  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
+  const onRefresh = onRefreshBase;
 
   const filteredEvents = useMemo(
     () => monthEvents.filter((e) => enabledTypes.has(e.type)),
@@ -425,6 +429,7 @@ export default function CalendarScreen() {
       </View>
 
       <WebWheelFlatList
+        scrollResetKey={listScrollResetKey}
         ref={listRef as never}
         style={styles.listScroll}
         data={loading && selectedDayEvents.length === 0 ? [] : selectedDayEvents}
@@ -515,7 +520,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     daySection: {
       paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
-      paddingBottom: 4,
+      paddingBottom: 8,
     },
     listLoadingRow: {
       alignItems: 'center',
@@ -529,7 +534,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     emptyDayBox: {
       marginTop: 4,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -557,7 +562,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 7,
-      marginTop: 10,
+      marginTop: 16,
     },
     filterChip: {
       minHeight: 30,
@@ -584,7 +589,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     errBox: {
       padding: 10,
-      borderRadius: 14,
+      borderRadius: 8,
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
       borderColor: '#FFD6DA',
@@ -593,24 +598,24 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     errText: { fontSize: sf(11), color: theme.danger, lineHeight: sf(16) },
     card: {
       backgroundColor: theme.card,
-      borderRadius: 10,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       paddingHorizontal: 10,
-      paddingVertical: 8,
+      paddingVertical: 10,
       marginBottom: 6,
     },
     cardRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 10,
+      gap: 16,
     },
     titleBlock: { flex: 1, minWidth: 0 },
     titleLine: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'flex-start',
-      gap: 6,
+      gap: 8,
     },
     typeTag: {
       borderWidth: 1,
@@ -692,14 +697,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       height: 4,
       borderRadius: 2,
       backgroundColor: theme.border,
-      marginTop: 10,
+      marginTop: 16,
       marginBottom: 8,
     },
     modalHead: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 10,
+      marginBottom: 14,
     },
     modalTitle: {
       color: theme.text,
@@ -714,7 +719,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     modalFoot: { paddingTop: 10 },
     modalTodayBtn: {
       minHeight: 42,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,

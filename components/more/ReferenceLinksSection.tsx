@@ -155,7 +155,7 @@ export function ReferenceLinksSection() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     box: {
-      borderRadius: 13,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -180,7 +180,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       minHeight: 74,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 10,
+      borderRadius: 8,
       paddingHorizontal: 5,
       paddingVertical: 6,
     },

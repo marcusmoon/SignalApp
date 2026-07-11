@@ -1780,8 +1780,6 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await api(`/admin/api/translation-settings/${locale}`, {
               method: 'PATCH',
               body: JSON.stringify({
-                enabled: document.querySelector(`[data-ts-enabled="${locale}"]`).checked,
-                autoTranslateNews: document.querySelector(`[data-ts-auto="${locale}"]`).checked,
                 provider,
               }),
             });

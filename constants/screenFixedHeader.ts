@@ -1,6 +1,7 @@
 import { Platform, StyleSheet } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
+import { COMFORT_TOP_FIXED_GAP } from '@/constants/comfortDensity';
 import {
   SCREEN_FIXED_HEADER_PADDING_BOTTOM,
   SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
@@ -24,7 +25,7 @@ export function getScreenFixedHeaderStyles(theme: AppTheme) {
       backgroundColor: theme.card,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
-      gap: 8,
+      gap: COMFORT_TOP_FIXED_GAP,
     },
     stripWide: {
       paddingTop: SCREEN_WIDE_CONTENT_PADDING_TOP,

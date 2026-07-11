@@ -38,7 +38,7 @@ export function SlackTabBarButton(props: BottomTabBarButtonProps) {
           alignItems: 'center',
         },
         Platform.OS === 'web' && {
-          borderRadius: 12,
+          borderRadius: 8,
           overflow: 'visible' as const,
         },
       ]}

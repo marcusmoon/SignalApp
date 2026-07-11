@@ -54,11 +54,11 @@ function makeStyles(theme: AppTheme) {
   return StyleSheet.create({
     card: {
       backgroundColor: theme.card,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       padding: 14,
-      marginBottom: 10,
+      marginBottom: 14,
     },
     line: {
       height: 12,

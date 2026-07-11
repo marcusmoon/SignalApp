@@ -67,18 +67,47 @@ export function scrollToTop(ref: RefObject<ScrollToTopTarget>, animated = false)
   scrollInstanceOnce(instance, animated);
 }
 
+const WEB_SCROLL_RETRY_MS = [0, 50, 150, 300, 500, 800, 1200];
+const NATIVE_SCROLL_RETRY_MS = [0, 50, 150, 300];
+
 /** Retry scroll after layout / data updates (refresh FAB, filter change). */
 export function scrollToTopWithRetry(ref: RefObject<ScrollToTopTarget>, animated = false) {
   const run = () => scrollToTop(ref, animated);
-  run();
-  if (typeof requestAnimationFrame === 'function') {
-    requestAnimationFrame(run);
+  const delays = Platform.OS === 'web' ? WEB_SCROLL_RETRY_MS : NATIVE_SCROLL_RETRY_MS;
+  for (const delay of delays) {
+    if (delay === 0) {
+      run();
+    } else {
+      setTimeout(run, delay);
+    }
   }
-  setTimeout(run, 0);
-  setTimeout(run, 50);
-  setTimeout(run, 150);
-  setTimeout(run, 300);
   if (Platform.OS !== 'web') {
     InteractionManager.runAfterInteractions(run);
   }
+}
+
+/** Web DOM scroll keeps position when list data swaps — poll until top after filter changes. */
+export function enforceScrollToTopOnWeb(
+  ref: RefObject<ScrollToTopTarget>,
+  isActive: () => boolean,
+  animated = false,
+) {
+  if (Platform.OS !== 'web') return;
+
+  let attempts = 0;
+  const maxAttempts = 120;
+
+  const tick = () => {
+    if (!isActive()) return;
+    scrollToTop(ref, animated);
+    const node = ref.current?.getScrollableNode?.();
+    if (isDomScrollNode(node) && node.scrollTop <= 1) return;
+    attempts += 1;
+    if (attempts < maxAttempts) {
+      requestAnimationFrame(tick);
+    }
+  };
+
+  scrollToTopWithRetry(ref, animated);
+  requestAnimationFrame(tick);
 }

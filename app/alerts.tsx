@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RectButton } from 'react-native-gesture-handler';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,11 +20,13 @@ import { webShellBackground } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
+import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
-import { loadAlertsFromServer, markAlertsSeen } from '@/services/alertsUnreadPreference';
+import { checkAlertsHasUnread, loadAlertsFromServer, markAlertsSeen } from '@/services/alertsUnreadPreference';
 import type { StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
 import { loadAppAuthSession, getSessionAccessToken, type StoredAppAuthSession } from '@/services/appAuthSession';
@@ -48,8 +50,10 @@ export default function AlertsScreen() {
   const [authSession, setAuthSession] = useState<StoredAppAuthSession | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [newContentAvailable, setNewContentAvailable] = useState(false);
   const [filter, setFilter] = useState<AlertsFilter>('all');
-  const { ref: listRef } = useScrollToTopOnChange([filter]);
+  const { ref: listRef } = useScrollToTopOnChange([filter], { resyncDeps: [items] });
+  const listScrollResetKey = filter;
   useResetRefreshingOnTabBlur(setRefreshing);
 
   const reload = useCallback(async (activeFilter: AlertsFilter = filter, forceRefresh = false) => {
@@ -71,16 +75,39 @@ export default function AlertsScreen() {
   useFocusEffect(
     useCallback(() => {
       void (async () => {
+        setNewContentAvailable(false);
         await reload();
         await markAlertsSeen();
       })();
     }, [reload]),
   );
 
+  /** 알림함 포커스 중 새 알림 도착 시 chip (탭 배지는 suppress로 숨김) */
+  useEffect(() => {
+    const access = getSessionAccessToken(authSession);
+    if (!isFocused || !access || !hasSignalApi()) {
+      setNewContentAvailable(false);
+      return;
+    }
+    const POLL_MS = 3 * 60 * 1000;
+    const poll = async () => {
+      try {
+        const hasUnread = await checkAlertsHasUnread();
+        if (hasUnread) setNewContentAvailable(true);
+      } catch {
+        /* ignore polling errors */
+      }
+    };
+    const id = setInterval(() => void poll(), POLL_MS);
+    return () => clearInterval(id);
+  }, [authSession, isFocused]);
+
   const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
+    setNewContentAvailable(false);
     try {
       await reload(filter, true);
+      await markAlertsSeen();
     } finally {
       setRefreshing(false);
     }
@@ -301,7 +328,16 @@ export default function AlertsScreen() {
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={styles.mainColumn}>
         <View style={styles.topFixed}>{alertsTopFixed}</View>
-        <FlatList
+        {isFocused ? (
+          <FeedNewContentChip
+            visible={newContentAvailable}
+            refreshing={refreshing}
+            message={t('feedNewContentAvailable')}
+            onPress={() => void onRefresh()}
+          />
+        ) : null}
+        <WebWheelFlatList
+          scrollResetKey={listScrollResetKey}
           ref={listRef as never}
           data={filteredItems}
           keyExtractor={(a) => a.id}
@@ -351,7 +387,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     filterRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 8,
+      gap: 16,
     },
     filterHeaderActions: {
       flexDirection: 'row',
@@ -386,12 +422,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
+      gap: 16,
     },
     candidateSection: {
       marginBottom: 14,
       padding: 14,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 2,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
@@ -400,16 +436,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 10,
+      gap: 16,
       marginBottom: 4,
     },
     candidateTitle: { flex: 1, fontSize: sf(14), fontWeight: '900', color: theme.text },
     candidateLink: { fontSize: sf(12), fontWeight: '800', color: theme.green },
-    candidateHint: { fontSize: sf(11), color: theme.textMuted, lineHeight: sf(16), marginBottom: 10 },
+    candidateHint: { fontSize: sf(11), color: theme.textMuted, lineHeight: sf(16), marginBottom: 14 },
     candidateCard: {
       paddingVertical: 12,
       paddingHorizontal: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.card,
@@ -417,33 +453,33 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     candidateCardPressed: { opacity: 0.78 },
     candidateMetaRow: {
-      marginTop: 9,
+      marginTop: 16,
       flexDirection: 'row',
       justifyContent: 'space-between',
-      gap: 10,
+      gap: 16,
     },
     candidateMeta: { flexShrink: 1, fontSize: sf(11), color: theme.textDim, fontWeight: '700' },
     emptyBox: {
       paddingVertical: 24,
       paddingHorizontal: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      marginBottom: 12,
+      marginBottom: 16,
     },
     emptyText: { fontSize: sf(13), color: theme.textMuted, lineHeight: sf(20) },
     alertCard: {
       backgroundColor: theme.card,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       padding: 14,
     },
     alertCardPressed: { opacity: 0.78 },
     swipeRow: {
-      marginBottom: 10,
-      borderRadius: 12,
+      marginBottom: 14,
+      borderRadius: 8,
       overflow: 'hidden',
     },
     swipeRight: {
@@ -487,21 +523,21 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     highText: { fontSize: sf(10), fontWeight: '900', color: '#FF6B6B' },
     loadingCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     authGate: { flex: 1, justifyContent: 'center', paddingHorizontal: 16 },
-    authGateTopBar: { alignItems: 'flex-end', marginBottom: 12 },
+    authGateTopBar: { alignItems: 'flex-end', marginBottom: 16 },
     authGateCard: {
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.card,
       padding: 18,
-      gap: 10,
+      gap: 16,
     },
     authGateKicker: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
     authGateTitle: { color: theme.text, fontSize: sf(21), lineHeight: sf(27), fontWeight: '900' },
     authGateBody: { color: theme.textMuted, fontSize: sf(13), lineHeight: sf(19) },
     authGateButton: {
       minHeight: 44,
-      borderRadius: 12,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.green,

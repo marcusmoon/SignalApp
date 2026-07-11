@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useIsFocused, useFocusEffect } from "expo-router/react-navigation";
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Alert,
   InteractionManager,
@@ -21,18 +21,19 @@ import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WatchlistAddSheet } from '@/components/quotes/WatchlistAddSheet';
 import { makeQuotesStyles } from '@/components/quotes/quotesStyles';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
+import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SymbolDetailPane } from '@/components/symbol/SymbolDetailPane';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import {
   fabStackBottom,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
-import { useQuoteChangeColors, useRefreshWithScrollToTop, useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
+import { useQuoteChangeColors, useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabPressCycleSegment, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import {
@@ -62,6 +63,9 @@ import {
   loadQuotesSegmentOrder,
   type QuoteSegmentKey,
 } from '@/services/quotesSegmentOrderPreference';
+import { QUOTES_SEGMENT_KEYS } from '@/domain/quotes/constants';
+import { firstRouteParam } from '@/utils/routeSearchParams';
+import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import {
   isValidQuoteSymbol,
   loadWatchlistSymbols,
@@ -86,10 +90,19 @@ const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
 
 type Row = QuoteRow;
 
+function parseQuoteSegmentParam(raw: string | string[] | undefined): QuoteSegmentKey {
+  const value = firstRouteParam(raw);
+  return (QUOTES_SEGMENT_KEYS as readonly string[]).includes(value)
+    ? (value as QuoteSegmentKey)
+    : 'watch';
+}
+
 export default function QuotesScreen() {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
+  const setRouteParams = useSafeSetRouteParams();
+  const { segment: segmentParam } = useLocalSearchParams<{ segment?: string | string[] }>();
   const quoteChange = useQuoteChangeColors();
   const styles = useMemo(
     () => makeQuotesStyles(theme, scaleFont, feedTypo, quoteChange.colors),
@@ -99,16 +112,17 @@ export default function QuotesScreen() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
-  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
+  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
-  const [segment, setSegment] = useState<QuoteSegmentKey>('watch');
+  const [segment, setSegment] = useState<QuoteSegmentKey>(() => parseQuoteSegmentParam(segmentParam));
   const [segmentOrder, setSegmentOrder] = useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
-  const { ref: listRef, scrollToTop } = useScrollToTopOnChange([segment]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
+  const { ref: listRef } = useScrollToTopOnChange([segment], { resyncDeps: [rows] });
+  const listScrollResetKey = segment;
   const rowsRef = useRef<Row[]>([]);
   rowsRef.current = rows;
   useTabScreenLoadingRecovery(rows, setLoading);
@@ -268,7 +282,8 @@ export default function QuotesScreen() {
     }
   }, [load, t]);
 
-  const onRefresh = useRefreshWithScrollToTop(onRefreshBase, scrollToTop);
+  const onRefresh = onRefreshBase;
+  useRegisterWebHeaderRefresh(() => void onRefresh());
 
   const onAddWatch = useCallback(async (): Promise<boolean> => {
     const raw = draftTicker.trim();
@@ -387,44 +402,42 @@ export default function QuotesScreen() {
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const fabBottom = fabStackBottom(tabBarHeight, insets.bottom);
 
-  const quotesListHeader = useMemo(
-    () => (
-      <>
-        {loading && rows.length === 0 ? (
-          <View style={SCROLL_LOADING_BODY_STYLE}>
-            <SignalLoadingIndicator message={t('commonLoading')} />
-          </View>
-        ) : error ? (
-          <View style={styles.errBox}>
-            <Text style={styles.errText}>{error}</Text>
-          </View>
-        ) : null}
-      </>
-    ),
-    [error, loading, rows.length, styles, t],
-  );
-
   const onPickSegment = useCallback((key: QuoteSegmentKey) => {
-    if (segment === key) return;
+    if (segment === key) {
+      if (useTwoPane) setActiveSubTabKey(key);
+      return;
+    }
     setError(null);
     setSegment(key);
-  }, [segment]);
+    if (useTwoPane) setActiveSubTabKey(key);
+    setRouteParams({ segment: key === 'watch' ? undefined : key });
+  }, [segment, setActiveSubTabKey, setRouteParams, useTwoPane]);
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
+
+  const registerQuoteSubTabs = useCallback(() => {
+    if (!useTwoPane) return;
+    setActiveSubTabKey(segment);
+    setSubTabs(
+      segmentOrder.map((key) => ({
+        key,
+        label: t(QUOTE_SEGMENT_LABEL[key]),
+        onPress: () => onPickSegment(key),
+      })),
+    );
+  }, [onPickSegment, segment, segmentOrder, setActiveSubTabKey, setSubTabs, t, useTwoPane]);
+
+  useEffect(() => {
+    if (!useTwoPane || !isFocused) return;
+    registerQuoteSubTabs();
+  }, [isFocused, registerQuoteSubTabs, useTwoPane]);
 
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
-      setSubTabs(
-        segmentOrder.map((key) => ({
-          key,
-          label: t(QUOTE_SEGMENT_LABEL[key]),
-          active: segment === key,
-          onPress: () => onPickSegment(key),
-        })),
-      );
+      registerQuoteSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, onPickSegment, segment, segmentOrder, setSubTabs, t, useTwoPane]),
+    }, [clearSubTabs, registerQuoteSubTabs, useTwoPane]),
   );
 
   const renderQuoteItem = useCallback(
@@ -447,6 +460,7 @@ export default function QuotesScreen() {
             <View style={styles.symCol}>
               <View style={styles.symBlock}>
                 <View style={styles.symRow}>
+                  <SymbolLogo symbol={r.symbol} size={28} />
                   <Pressable onPress={() => openSymbolDetail(r.symbol)} hitSlop={6} style={styles.symPressable}>
                     <Text style={styles.sym} numberOfLines={1} maxFontSizeMultiplier={QUOTE_CARD_TEXT_MAX_SCALE}>
                       {titleText}
@@ -585,7 +599,11 @@ export default function QuotesScreen() {
                 onPress={() => onPickSegment(key)}
                 style={[styles.segBtn, key === 'coin' && styles.segBtnCompact, segment === key && styles.segBtnActive]}
                 accessibilityState={{ selected: segment === key }}>
-                <Text style={[styles.segText, segment === key && styles.segTextActive]}>
+                <Text
+                  style={[styles.segText, segment === key && styles.segTextActive]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.85}>
                   {t(QUOTE_SEGMENT_LABEL[key])}
                 </Text>
               </Pressable>
@@ -594,12 +612,22 @@ export default function QuotesScreen() {
         </View>
       </View> : null}
 
+      {error ? (
+        <View style={styles.errBox}>
+          <Text style={styles.errText}>{error}</Text>
+        </View>
+      ) : null}
+      {loading && rows.length === 0 ? (
+        <View style={styles.loadingBox}>
+          <SignalLoadingIndicator message={t('commonLoading')} />
+        </View>
+      ) : (
       <WebWheelFlatList
+        scrollResetKey={listScrollResetKey}
         ref={listRef as never}
-        data={loading && rows.length === 0 ? [] : rows}
+        data={rows}
         keyExtractor={(r) => `${r.symbol}-${r.name ?? ''}`}
         renderItem={renderQuoteItem}
-        ListHeaderComponent={quotesListHeader}
         ListEmptyComponent={
           !loading && !error && rows.length === 0 ? (
             <Text style={styles.empty}>
@@ -611,20 +639,16 @@ export default function QuotesScreen() {
         contentContainerStyle={[
           styles.listContent,
           useTwoPane && styles.listContentWide,
-          loading && rows.length === 0 ? SCROLL_CONTENT_LOADING_STYLE : null,
           { paddingBottom: bottomPad },
         ]}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          loading && rows.length === 0 ? undefined : (
-            <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          )
-        }
+        refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         removeClippedSubviews={Platform.OS === 'android'}
         initialNumToRender={12}
         windowSize={8}
         maxToRenderPerBatch={16}
       />
+      )}
     </View>
   );
 

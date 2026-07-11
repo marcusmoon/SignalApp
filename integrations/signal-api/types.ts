@@ -11,6 +11,8 @@ export type SignalApiNewsItem = {
   summary: string;
   originalTitle: string;
   originalSummary: string;
+  /** 제목 토글용 대체 언어 제목 (ko/ja→원문, en→한국어 번역) */
+  alternateTitle?: string;
   sourceName: string;
   sourceUrl: string;
   imageUrl?: string | null;

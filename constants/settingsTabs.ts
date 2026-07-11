@@ -4,9 +4,9 @@ export type SettingsTab = 'display' | 'notifications' | 'news' | 'quotes' | 'ser
 
 export const SETTINGS_TAB_ORDER: SettingsTab[] = [
   'display',
-  'notifications',
   'news',
   'quotes',
+  'notifications',
   'server',
 ];
 

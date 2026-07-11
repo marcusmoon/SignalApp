@@ -47,6 +47,8 @@ import {
 } from './calendar/eventKey.mjs';
 import {
   queryAdminNewsRows,
+  findNewsItemIds,
+  queryPendingNewsTranslationRows,
   queryPublicNewsRows,
   queryPublicNewsSourceRows,
 } from './db/repositories/newsRepository.mjs';
@@ -941,6 +943,14 @@ export async function queryPublicNewsDigests(options = {}) {
 
 export async function queryAdminNews(options = {}) {
   return queryAdminNewsRows(options);
+}
+
+export async function queryPendingNewsTranslations(options = {}) {
+  return queryPendingNewsTranslationRows(options);
+}
+
+export async function findNewsItemsByIds(ids = []) {
+  return findNewsItemIds(ids);
 }
 
 export async function queryPublicDisclosures(options = {}) {

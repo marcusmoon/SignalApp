@@ -1,4 +1,5 @@
 import { queryKysely } from '../kysely/client.mjs';
+import { hydrateDisclosureDigestItems } from '../../sources/resolveSourceRefs.mjs';
 import {
   cleanText,
   pageOptions,
@@ -87,7 +88,10 @@ export async function queryPublicDisclosureDigestRows(options = {}) {
   );
 
   const rows = result.rows.map(payloadFromRow).filter(Boolean).map(publicDisclosureDigest);
-  const pageRows = rows.slice(0, limit);
+  const hydrated = await hydrateDisclosureDigestItems(rows, {
+    locale: cleanText(options.locale) || 'ko',
+  });
+  const pageRows = hydrated.slice(0, limit);
   const hasMore = rows.length > limit;
   return {
     rows: pageRows,

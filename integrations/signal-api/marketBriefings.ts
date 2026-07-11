@@ -27,6 +27,7 @@ export async function fetchSignalMarketBriefings(
     to?: string;
     limit?: number;
     offset?: number;
+    locale?: string;
   } = {},
   options?: { cacheMode?: SignalCacheMode },
 ): Promise<SignalApiMarketBriefing[]> {
@@ -46,6 +47,7 @@ export async function fetchSignalMarketBriefings(
       to: params.to,
       limit: params.limit ?? 10,
       offset: params.offset ?? 0,
+      locale: params.locale ?? 'ko',
     },
     { timeoutMs: 5000, attempts: 1 },
   );

@@ -11,6 +11,7 @@ export function buildSignalDisclosureDigestsCacheKey(params?: {
   from?: string;
   to?: string;
   batches?: number;
+  locale?: string;
 }): string {
   const p = {
     market: String(params?.market || '').trim(),
@@ -19,8 +20,9 @@ export function buildSignalDisclosureDigestsCacheKey(params?: {
     from: String(params?.from || '').trim(),
     to: String(params?.to || '').trim(),
     batches: Number(params?.batches) || 0,
+    locale: String(params?.locale || '').trim() || 'ko',
   };
-  return `disclosure-digests|${p.market}|${p.limit}|${p.offset}|${p.from}|${p.to}|${p.batches}`;
+  return `disclosure-digests|${p.market}|${p.limit}|${p.offset}|${p.from}|${p.to}|${p.batches}|${p.locale}`;
 }
 
 export function peekSignalDisclosureDigestsCache(key: string): DisclosureDigestCacheValue | null {

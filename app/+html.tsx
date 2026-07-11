@@ -147,10 +147,15 @@ body {
   background-color: var(--signal-bg);
 }
 
-/* Hide scrollbars on horizontal card carousels (navigation uses overlay arrows). */
+/* Native horizontal digest strip on web — browser momentum, no wheel hijack. */
 [data-signal-horizontal-carousel="true"] {
   scrollbar-width: none;
   -ms-overflow-style: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
 }
 [data-signal-horizontal-carousel="true"]::-webkit-scrollbar {
   display: none;

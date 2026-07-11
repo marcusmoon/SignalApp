@@ -12,6 +12,7 @@ import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react
 
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import type { AppTheme } from '@/constants/theme';
 import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
@@ -194,10 +195,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     centeredLoadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     scroll: { paddingHorizontal: 16, paddingTop: 12 },
     hero: {
-      borderRadius: 16,
+      borderRadius: 8,
       backgroundColor: theme.bgElevated,
       padding: 18,
-      marginBottom: 12,
+      marginBottom: 16,
+    },
+    heroHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 8,
+    },
+    heroTitleCol: {
+      flex: 1,
+      minWidth: 0,
     },
     company: {
       fontSize: sf(17),
@@ -205,22 +216,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.text,
       marginBottom: 2,
     },
-    companyMeta: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted, marginBottom: 6 },
+    companyMeta: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted, marginBottom: 0 },
     priceRow: {
       flexDirection: 'row',
       alignItems: 'flex-end',
       justifyContent: 'space-between',
-      gap: 12,
+      gap: 20,
       flexWrap: 'wrap',
     },
     price: { fontSize: sf(28), fontWeight: '900', color: theme.text },
-    priceMeta: { alignItems: 'flex-end', gap: 4 },
+    priceMeta: { alignItems: 'flex-end', gap: 6 },
     changeMetric: { fontSize: sf(13), fontWeight: '800' },
     heroMcap: {
       fontSize: sf(12),
       fontWeight: '700',
       color: theme.textMuted,
-      marginTop: 10,
+      marginTop: 16,
       letterSpacing: 0.1,
     },
     chartWrap: {
@@ -233,13 +244,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      gap: 10,
+      gap: 16,
       marginBottom: 8,
     },
     chartLabel: { fontSize: sf(11), fontWeight: '800', color: theme.textDim },
     chartValue: { fontSize: sf(12), fontWeight: '700', color: theme.textMuted },
     chartEmpty: { fontSize: sf(12), color: theme.textMuted, lineHeight: sf(18) },
-    actionRow: { flexDirection: 'row', gap: 8, marginTop: 14 },
+    actionRow: { flexDirection: 'row', gap: 16, marginTop: 14 },
     actionBtn: {
       paddingHorizontal: 12,
       paddingVertical: 7,
@@ -248,7 +259,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.greenBorder,
     },
-    actionBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    actionBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     actionBtnText: { fontSize: sf(12), fontWeight: '700', color: theme.green },
     actionBtnAlt: {
       paddingHorizontal: 12,
@@ -260,23 +271,23 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     actionBtnTextAlt: { color: theme.textMuted },
     errorBox: {
-      borderRadius: 12,
+      borderRadius: 8,
       backgroundColor: theme.bgElevated,
       padding: 14,
-      marginBottom: 12,
+      marginBottom: 16,
     },
     errorText: { fontSize: sf(13), color: theme.textMuted, lineHeight: sf(20) },
     sectionCard: {
-      borderRadius: 16,
+      borderRadius: 8,
       backgroundColor: theme.bgElevated,
       padding: 18,
-      marginBottom: 12,
+      marginBottom: 16,
     },
     sectionHeaderRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 10,
+      marginBottom: 14,
     },
     section: { fontSize: sf(16), fontWeight: '800', color: theme.text, marginBottom: 0 },
     sectionLink: { fontSize: sf(13), fontWeight: '700', color: theme.green },
@@ -284,7 +295,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
-      marginBottom: 12,
+      marginBottom: 16,
     },
     signalOverviewCopy: { flex: 1 },
     signalOverviewSub: { fontSize: sf(12), color: theme.textMuted, marginTop: 4 },
@@ -292,9 +303,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.greenDim,
-      borderRadius: 12,
+      borderRadius: 8,
       paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingVertical: 10,
       minWidth: 56,
     },
     signalScoreBadgeHot: { backgroundColor: '#3D1414' },
@@ -306,19 +317,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     signalScoreLabelHot: { color: '#FF6B6B' },
     signalStatGrid: {
       flexDirection: 'row',
-      gap: 12,
-      marginBottom: 10,
+      gap: 20,
+      marginBottom: 14,
     },
     signalStat: { flex: 1, alignItems: 'center' },
     signalStatLabel: { fontSize: sf(11), color: theme.textDim, fontWeight: '600', marginBottom: 3 },
     signalStatValue: { fontSize: sf(16), fontWeight: '800', color: theme.text },
     signalReasonLine: { fontSize: sf(11), color: theme.textMuted, lineHeight: sf(16) },
     disclosureCard: {
-      paddingVertical: 10,
+      paddingVertical: 12,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
     },
-    disclosureMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+    disclosureMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
     disclosureBadge: {
       fontSize: sf(10),
       fontWeight: '800',
@@ -348,7 +359,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
     },
-    newsMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
+    newsMeta: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 3 },
     newsSource: { fontSize: ft.ff(11), fontWeight: ft.emphasisWeight, color: theme.green },
     newsTime: { fontSize: ft.ff(11), fontWeight: ft.metaWeight, color: theme.textDim },
     newsTitle: {
@@ -534,10 +545,15 @@ export function SymbolDetailPane({ ticker, bottomPad = 24 }: Props) {
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           showsVerticalScrollIndicator={false}>
           <View style={styles.hero}>
-            <Text style={styles.company}>{displayCompanyName}</Text>
-            {isKorea && ticker ? (
-              <Text style={styles.companyMeta}>{ticker}</Text>
-            ) : null}
+            <View style={styles.heroHead}>
+              <SymbolLogo symbol={ticker} size={40} />
+              <View style={styles.heroTitleCol}>
+                <Text style={styles.company}>{displayCompanyName}</Text>
+                {isKorea && ticker ? (
+                  <Text style={styles.companyMeta}>{ticker}</Text>
+                ) : null}
+              </View>
+            </View>
             <View style={styles.priceRow}>
               <Text style={styles.price}>
                 {displayPrice != null

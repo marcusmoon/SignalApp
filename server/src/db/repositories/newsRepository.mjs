@@ -3,7 +3,7 @@ import {
   cleanNewsTitleForDisplay,
   cleanTranslationText,
   displayNews,
-  hasUsableTranslation,
+  resolveAlternateTitle,
 } from '../../http/shared.mjs';
 import {
   cleanText,
@@ -13,22 +13,29 @@ import {
   sqlStringList,
 } from './publicHelpers.mjs';
 
-function publicNews(item) {
+function sqlPendingTranslation(alias) {
+  return `(${alias}.id IS NULL OR ${alias}.status NOT IN ('completed', 'manual'))`;
+}
+
+function publicNews(item, translations, locale) {
+  const displayed = displayNews(item, translations, locale);
+  const alternateTitle = resolveAlternateTitle(item, translations, locale, displayed);
   return {
-    id: item.id,
-    category: item.category,
-    title: item.title,
-    summary: item.summary,
-    originalTitle: item.originalTitle,
-    originalSummary: item.originalSummary,
-    sourceName: item.sourceName,
-    sourceUrl: item.sourceUrl,
-    imageUrl: item.imageUrl || null,
-    symbols: Array.isArray(item.symbols) ? item.symbols : [],
-    hashtags: Array.isArray(item.hashtags) ? item.hashtags : [],
-    provider: item.provider,
-    publishedAt: item.publishedAt || null,
-    fetchedAt: item.fetchedAt,
+    id: displayed.id,
+    category: displayed.category,
+    title: displayed.title,
+    summary: displayed.summary,
+    originalTitle: displayed.originalTitle,
+    originalSummary: displayed.originalSummary,
+    alternateTitle: alternateTitle || undefined,
+    sourceName: displayed.sourceName,
+    sourceUrl: displayed.sourceUrl,
+    imageUrl: displayed.imageUrl || null,
+    symbols: Array.isArray(displayed.symbols) ? displayed.symbols : [],
+    hashtags: Array.isArray(displayed.hashtags) ? displayed.hashtags : [],
+    provider: displayed.provider,
+    publishedAt: displayed.publishedAt || null,
+    fetchedAt: displayed.fetchedAt,
   };
 }
 
@@ -134,9 +141,10 @@ export async function queryPublicNewsRows(options = {}) {
   params.push(limit + 1, offset);
   const result = await queryKysely(
     `
-      SELECT n.payload, t.payload AS translation_payload
+      SELECT n.payload, t.payload AS translation_payload, t_ko.payload AS ko_translation_payload
       FROM news_items n
       LEFT JOIN news_translations t ON t.news_item_id = n.id AND t.locale = $1
+      LEFT JOIN news_translations t_ko ON t_ko.news_item_id = n.id AND t_ko.locale = 'ko' AND $1 = 'en'
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
       ORDER BY n.published_at DESC NULLS LAST, n.position ASC
       LIMIT $${params.length - 1} OFFSET $${params.length}
@@ -147,8 +155,10 @@ export async function queryPublicNewsRows(options = {}) {
     .map((row) => {
       const item = payloadFromRow(row);
       const translation = payloadFromRow({ payload: row.translation_payload });
+      const koTranslation = payloadFromRow({ payload: row.ko_translation_payload });
       if (!item) return null;
-      return publicNews(displayNews(item, translation ? [translation] : [], locale));
+      const translations = [translation, koTranslation].filter(Boolean);
+      return publicNews(item, translations, locale);
     })
     .filter(Boolean);
   const hasMore = rows.length > limit;
@@ -190,6 +200,116 @@ export async function queryPublicNewsSourceRows(options = {}) {
       enabled: source.enabled !== false,
       order: Number(source.order) || 0,
     }));
+}
+
+function pendingNewsTranslationRow(item, targetLocale) {
+  return {
+    id: item.id,
+    category: item.category,
+    titleOriginal: item.titleOriginal || item.title || '',
+    summaryOriginal: item.summaryOriginal || item.summary || '',
+    contentOriginal: item.contentOriginal || item.summaryOriginal || item.summary || '',
+    sourceName: item.sourceName || '',
+    sourceUrl: item.sourceUrl || '',
+    imageUrl: item.imageUrl || null,
+    symbols: Array.isArray(item.symbols) ? item.symbols : [],
+    publishedAt: item.publishedAt || null,
+    targetLocale,
+  };
+}
+
+function buildPendingNewsTranslationFilters(options = {}, targetLocale) {
+  const params = [targetLocale];
+  const where = [sqlPendingTranslation('t_target')];
+  const category = cleanText(options.category);
+  if (category) {
+    if (category === 'global') {
+      where.push(`(n.category = 'global' OR n.provider = 'financialjuice')`);
+    } else {
+      params.push(category);
+      where.push(`n.category = $${params.length}`);
+    }
+  }
+  const from = sqlDateOrTimestamp(options.from);
+  if (from) {
+    params.push(from);
+    where.push(`(n.published_at IS NULL OR n.published_at >= $${params.length}::timestamptz)`);
+  }
+  return { params, where };
+}
+
+export async function findNewsItemIds(ids = []) {
+  const safeIds = [...new Set(ids.map((id) => cleanText(id)).filter(Boolean))];
+  if (safeIds.length === 0) return new Set();
+  const result = await queryKysely(
+    `SELECT id FROM news_items WHERE id = ANY($1::text[])`,
+    [safeIds],
+  );
+  return new Set(result.rows.map((row) => row.id));
+}
+
+export async function fetchPublicNewsByIds(ids = [], locale = 'ko') {
+  const safeIds = [...new Set(ids.map((id) => cleanText(id)).filter(Boolean))];
+  const map = new Map();
+  if (safeIds.length === 0) return map;
+  const loc = cleanText(locale) || 'ko';
+  const result = await queryKysely(
+    `
+      SELECT n.payload, t.payload AS translation_payload, t_ko.payload AS ko_translation_payload
+      FROM news_items n
+      LEFT JOIN news_translations t ON t.news_item_id = n.id AND t.locale = $1
+      LEFT JOIN news_translations t_ko ON t_ko.news_item_id = n.id AND t_ko.locale = 'ko' AND $1 = 'en'
+      WHERE n.id = ANY($2::text[])
+    `,
+    [loc, safeIds],
+  );
+  for (const row of result.rows) {
+    const item = payloadFromRow(row);
+    const translation = payloadFromRow({ payload: row.translation_payload });
+    const koTranslation = payloadFromRow({ payload: row.ko_translation_payload });
+    if (!item) continue;
+    const translations = [translation, koTranslation].filter(Boolean);
+    map.set(item.id, publicNews(item, translations, loc));
+  }
+  return map;
+}
+
+export async function queryPendingNewsTranslationRows(options = {}) {
+  const { limit, offset } = pageOptions(options, 50);
+  const targetLocale = cleanText(options.targetLocale) || 'ko';
+  const { params, where } = buildPendingNewsTranslationFilters(options, targetLocale);
+  params.push(limit + 1, offset);
+  const result = await queryKysely(
+    `
+      SELECT n.payload
+      FROM news_items n
+      LEFT JOIN news_translations t_target ON t_target.news_item_id = n.id AND t_target.locale = $1
+      WHERE ${where.join(' AND ')}
+      ORDER BY n.published_at DESC NULLS LAST, n.position ASC
+      LIMIT $${params.length - 1} OFFSET $${params.length}
+    `,
+    params,
+  );
+
+  const rows = result.rows
+    .slice(0, limit)
+    .map((row) => {
+      const item = payloadFromRow(row);
+      if (!item) return null;
+      return pendingNewsTranslationRow(item, targetLocale);
+    })
+    .filter(Boolean);
+
+  const hasMore = result.rows.length > limit;
+  return {
+    rows,
+    total: offset + rows.length + (hasMore ? 1 : 0),
+    limit,
+    offset,
+    hasMore,
+    nextOffset: hasMore ? offset + limit : null,
+    targetLocale,
+  };
 }
 
 export async function queryAdminNewsRows(options = {}) {
@@ -257,7 +377,7 @@ export async function queryAdminNewsRows(options = {}) {
   }
   const translationStatus = cleanText(options.translationStatus);
   if (translationStatus === 'missing') {
-    where.push(`(t_locale.id IS NULL OR t_locale.status NOT IN ('completed', 'manual') OR t_locale.payload->>'provider' = 'mock')`);
+    where.push(sqlPendingTranslation('t_locale'));
   } else if (translationStatus) {
     params.push(translationStatus);
     where.push(`t_locale.status = $${params.length}`);
@@ -293,7 +413,6 @@ export async function queryAdminNewsRows(options = {}) {
           title: cleanNewsTitleForDisplay(item, t.title),
           summary: cleanTranslationText(t.summary),
           content: cleanTranslationText(t.content),
-          status: hasUsableTranslation(t, item) ? t.status : 'missing',
         })),
       };
     })

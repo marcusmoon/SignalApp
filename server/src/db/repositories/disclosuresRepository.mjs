@@ -121,3 +121,16 @@ export async function queryPublicDisclosureByIdRow(id) {
   const item = payloadFromRow(result.rows[0]);
   return item ? publicDisclosure(item) : null;
 }
+
+export async function fetchPublicDisclosuresByIds(ids = []) {
+  const safeIds = [...new Set(ids.map((id) => cleanText(id)).filter(Boolean))];
+  const map = new Map();
+  if (safeIds.length === 0) return map;
+  const result = await queryKysely('SELECT payload FROM disclosures WHERE id = ANY($1::text[])', [safeIds]);
+  for (const row of result.rows) {
+    const item = payloadFromRow(row);
+    if (!item?.id) continue;
+    map.set(item.id, publicDisclosure(item));
+  }
+  return map;
+}

@@ -163,70 +163,6 @@ async function ensureNewsSourcesForRows(newsItems) {
   if (changed) await upsertCollectionRows('newsSources', db.newsSources);
 }
 
-async function autoTranslateNewsDirect(newsItems, { onHeartbeat } = {}) {
-  const settings = (await listCollectionPayloads('translationSettings')).filter((s) => s.enabled && s.autoTranslateNews);
-  if (settings.length === 0 || !Array.isArray(newsItems) || newsItems.length === 0) return;
-  const existingTranslations = await listCollectionPayloads('newsTranslations');
-  const byId = new Map(existingTranslations.map((row) => [row.id, row]));
-  const translationRows = [];
-  let heartbeatCounter = 0;
-
-  for (const item of newsItems) {
-    for (const setting of settings) {
-      const id = translationId(item.id, setting.locale);
-      const existing = byId.get(id);
-      if (existing?.status === 'completed' || existing?.status === 'manual') continue;
-      try {
-        const translated = await translateNews({
-          newsItem: item,
-          locale: setting.locale,
-          provider: setting.provider,
-        });
-        const { hashtagLabels = [], ...trRest } = translated;
-        translationRows.push({
-          id,
-          newsItemId: item.id,
-          ...trRest,
-          editedByAdminId: null,
-          editedAt: null,
-        });
-        if (trRest.status === 'completed') {
-          const nextItem = { ...item };
-          mergeAutoHashtagsIntoNewsItem(nextItem, hashtagLabels);
-          await patchCollectionPayload('newsItems', item.id, {
-            hashtags: nextItem.hashtags,
-            autoHashtags: nextItem.autoHashtags,
-            hashtagLabels: nextItem.hashtagLabels,
-            updatedAt: nowIso(),
-          });
-        }
-      } catch (error) {
-        translationRows.push({
-          id,
-          newsItemId: item.id,
-          locale: setting.locale,
-          provider: setting.provider,
-          model: setting.model,
-          status: 'failed',
-          title: '',
-          summary: '',
-          content: '',
-          errorMessage: error instanceof Error ? error.message : String(error),
-          translatedAt: null,
-          editedByAdminId: null,
-          editedAt: null,
-        });
-      }
-    }
-    heartbeatCounter += 1;
-    if (onHeartbeat && heartbeatCounter % 3 === 0) {
-      await onHeartbeat();
-    }
-  }
-
-  if (translationRows.length > 0) await upsertCollectionRows('newsTranslations', translationRows);
-}
-
 async function saveNewsRows(rows, { onHeartbeat } = {}) {
   const savedAt = nowIso();
   const safeRows = rows.map((row) => ({
@@ -236,7 +172,6 @@ async function saveNewsRows(rows, { onHeartbeat } = {}) {
   }));
   await upsertCollectionRows('newsItems', safeRows);
   await ensureNewsSourcesForRows(safeRows);
-  await autoTranslateNewsDirect(safeRows, { onHeartbeat });
 }
 
 async function saveDisclosureRows(rows) {

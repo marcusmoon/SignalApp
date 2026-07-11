@@ -1,38 +1,44 @@
-import { forwardRef, useCallback, useRef } from 'react';
+import { forwardRef, useCallback, useRef, type ReactNode } from 'react';
 import { Platform, ScrollView, StyleSheet, View, type ScrollViewProps } from 'react-native';
 
-import {
-  getWebRefreshControlProps,
-  useWebRefreshHandlers,
-  WebRefreshStatus,
-} from '@/components/layout/webRefreshControl';
 import { WEB_THEME_BG } from '@/constants/webLayout';
+import { useWebScrollResetOnKey } from '@/hooks/useWebScrollResetOnKey';
 import { useWebVerticalWheelScroll } from '@/hooks/useWebVerticalWheelScroll';
 import { createLazyWebScrollApi } from '@/utils/scrollToTop';
 
-export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(function WebWheelScrollView(
-  { children, contentContainerStyle, onScroll, refreshControl: _refreshControl, style, ...rest },
+type WebWheelScrollViewProps = ScrollViewProps & {
+  scrollResetKey?: string | number | null;
+  contentRevision?: unknown;
+  children?: ReactNode;
+};
+
+export const WebWheelScrollView = forwardRef<ScrollView, WebWheelScrollViewProps>(function WebWheelScrollView(
+  {
+    children,
+    contentContainerStyle,
+    onScroll,
+    refreshControl,
+    scrollResetKey,
+    contentRevision,
+    style,
+    ...rest
+  },
   forwardedRef,
 ) {
   const localRef = useRef<ScrollView>(null);
   useWebVerticalWheelScroll(localRef, { onScroll });
-  const refreshControlProps = getWebRefreshControlProps(_refreshControl);
-  const getNode = useCallback((event?: unknown) => (
-    (event as { currentTarget?: HTMLElement | null } | undefined)?.currentTarget
-    ?? (localRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
-    ?? null
-  ), []);
-  const webRefreshHandlers = useWebRefreshHandlers(refreshControlProps, getNode);
+
+  const getWebScrollNode = useCallback(
+    () =>
+      (localRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
+        ?.getScrollableNode?.() ?? null,
+    [],
+  );
+  useWebScrollResetOnKey(getWebScrollNode, scrollResetKey, contentRevision ?? children);
 
   if (Platform.OS === 'web') {
     const flatStyle = StyleSheet.flatten([{ backgroundColor: WEB_THEME_BG }, style]);
     const backgroundColor = flatStyle?.backgroundColor ?? WEB_THEME_BG;
-    const webEventProps = {
-      onTouchStart: webRefreshHandlers.onTouchStart,
-      onTouchMove: webRefreshHandlers.onTouchMove,
-      onTouchEnd: webRefreshHandlers.onTouchEnd,
-      onWheel: webRefreshHandlers.onWheel,
-    };
     const setWebRef = (instance: View | null) => {
       localRef.current = instance as never;
       const api = createLazyWebScrollApi(
@@ -45,18 +51,19 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
         forwardedRef.current = api;
       }
     };
+    const webScrollKey = scrollResetKey != null ? `wws-${scrollResetKey}` : undefined;
+
     return (
       <View
+        key={webScrollKey}
         {...(rest as object)}
         ref={setWebRef}
-        {...(webEventProps as Record<string, unknown>)}
         style={[webViewportStyle, { backgroundColor }, style]}>
         <View
           style={[
             contentContainerStyle,
             { backgroundColor, flexGrow: 1, minHeight: '100%' as const },
           ]}>
-          {refreshControlProps?.refreshing ? <WebRefreshStatus /> : null}
           {children}
         </View>
       </View>
@@ -68,7 +75,7 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
       {...rest}
       contentContainerStyle={contentContainerStyle}
       onScroll={onScroll}
-      refreshControl={_refreshControl}
+      refreshControl={refreshControl}
       style={style}
       ref={(instance) => {
         localRef.current = instance;
@@ -85,6 +92,7 @@ export const WebWheelScrollView = forwardRef<ScrollView, ScrollViewProps>(functi
 });
 
 const webViewportStyle = {
+  position: 'relative',
   flex: 1,
   minHeight: 0,
   height: '100%',

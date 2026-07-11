@@ -1,166 +1,122 @@
 /**
- * 공시 탭 상단 - 뉴스 주요 이슈(DigestPager)와 동일한 레이아웃
+ * 공시 탭 상단 - 뉴스 주요 이슈(DigestPager)와 동일한 자유 가로 스크롤 스트립
  */
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
-import {
-  GestureResponderEvent,
-  LayoutAnimation,
-  Linking,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  UIManager,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
-import { CONTENT_ACCENT_LINE_WIDTH, homeSectionAccentColor, type HomeAccentSection } from '@/constants/homeSectionAccent';
-import { webHorizontalCarouselScrollProps } from '@/constants/webLayout';
+import { DigestRefreshTail } from '@/components/feed/DigestRefreshTail';
+import { makeDigestStripCardStyles } from '@/components/feed/digestStripCardStyles';
+import { WebHorizontalScrollStrip, type WebHorizontalScrollStripHandle } from '@/components/layout/WebHorizontalScrollStrip';
+import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
+import { homeSectionAccentColor, type HomeAccentSection } from '@/constants/homeSectionAccent';
+import {
+  DIGEST_CARD_GAP,
+  DISCLOSURE_DIGEST_TAG_MAX_PAIR,
+  DISCLOSURE_DIGEST_TAG_MAX_SINGLE,
+  digestStripCardMinHeight,
+  digestStripCardWidth,
+  digestStripScrollPadding,
+} from '@/constants/digestStripLayout';
 import type { AppTheme } from '@/constants/theme';
-import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useWebHorizontalWheelScroll } from '@/hooks/useWebHorizontalWheelScroll';
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import type { AppLocale } from '@/locales/messages';
-import { formatRelativeFromIso } from '@/utils/date';
+import { disclosureDigestCreatedIso } from '@/domain/digests/createdAt';
+import { formatFeedItemTimeLabel } from '@/utils/date';
 
-const TAP_MOVE_THRESHOLD = 8;
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
+function disclosureSourceRows(item: SignalApiDisclosureDigestItem): DigestSourceSheetRow[] {
+  return item.sourceRefs.map((ref) => ({
+    key: ref.id,
+    title: ref.title || ref.companyName,
+    subtitle: [ref.symbol, ref.formType].filter(Boolean).join(' · ') || undefined,
+    url: ref.url,
+  }));
 }
-
-const EXPAND_LAYOUT = LayoutAnimation.create(180, LayoutAnimation.Types.easeOut, LayoutAnimation.Properties.opacity);
 
 function marketChipLabel(market: string, locale: string): string {
   if (market === 'kr') return locale === 'ko' ? '한국' : locale === 'ja' ? '韓国' : 'Korea';
   return locale === 'ko' ? '미국' : locale === 'ja' ? '米国' : 'US';
 }
 
+function buildTopicChips(
+  item: SignalApiDisclosureDigestItem,
+  locale: string,
+  pairLayout: boolean,
+): string[] {
+  const maxTags = pairLayout ? DISCLOSURE_DIGEST_TAG_MAX_PAIR : DISCLOSURE_DIGEST_TAG_MAX_SINGLE;
+  const candidates = [
+    marketChipLabel(item.market, locale),
+    ...item.symbols,
+    ...item.forms,
+  ].filter(Boolean);
+  return [...new Set(candidates)].slice(0, maxTags);
+}
+
 type DigestCardProps = {
   item: SignalApiDisclosureDigestItem;
-  isExpanded: boolean;
-  onToggle: (id: string) => void;
-  styles: ReturnType<typeof makeStyles>;
+  onOpenSources: (item: SignalApiDisclosureDigestItem) => void;
+  styles: ReturnType<typeof makeDigestStripCardStyles>;
   theme: AppTheme;
+  pairLayout?: boolean;
 };
 
 const DigestCard = memo(function DigestCard({
   item,
-  isExpanded,
-  onToggle,
+  onOpenSources,
   styles,
   theme,
+  pairLayout = false,
 }: DigestCardProps) {
   const { t, locale } = useLocale();
-  const pressStartRef = useRef<{ x: number; y: number } | null>(null);
   const summaryText = t('disclosuresDigestSummary', {
     count: String(item.count),
     symbols: String(item.symbols.length),
   });
-  const relativeLabel = item.generatedAt ? formatRelativeFromIso(item.generatedAt, locale as AppLocale) : '';
-  const topicChips = [
-    ...new Set([
-      marketChipLabel(item.market, locale),
-      ...item.symbols.slice(0, 3),
-      ...item.forms.slice(0, 2),
-    ]),
-  ].filter(Boolean);
-
-  const handlePressIn = useCallback((event: GestureResponderEvent) => {
-    pressStartRef.current = {
-      x: event.nativeEvent.pageX,
-      y: event.nativeEvent.pageY,
-    };
-  }, []);
-
-  const handlePress = useCallback(
-    (event: GestureResponderEvent) => {
-      const start = pressStartRef.current;
-      pressStartRef.current = null;
-      if (start) {
-        const dx = Math.abs(event.nativeEvent.pageX - start.x);
-        const dy = Math.abs(event.nativeEvent.pageY - start.y);
-        if (dx > TAP_MOVE_THRESHOLD || dy > TAP_MOVE_THRESHOLD) return;
-      }
-      onToggle(item.id);
-    },
-    [item.id, onToggle],
-  );
+  const createdLabel = formatFeedItemTimeLabel(disclosureDigestCreatedIso(item), locale as AppLocale);
+  const topicChips = buildTopicChips(item, locale, pairLayout);
+  const showDetail = Boolean(item.title?.trim() || item.summary?.trim() || item.sourceRefs.length > 0);
+  const showCountChip = topicChips.length === 0 && item.count > 0;
 
   return (
-    <Pressable
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      accessibilityRole="button"
-      accessibilityLabel={item.title}
-      accessibilityState={{ expanded: isExpanded }}>
+    <View style={styles.card}>
       <View style={styles.accentLine} />
-      {topicChips.length > 0 ? (
-        <View style={styles.badgeRow}>
-          {topicChips.map((chip, index) => (
-            <Text key={`${chip}-${index}`} style={styles.topicChip} numberOfLines={1}>
-              {chip}
-            </Text>
-          ))}
-        </View>
-      ) : null}
+      <View style={styles.badgeRow}>
+        {topicChips.map((chip, index) => (
+          <Text key={`${chip}-${index}`} style={styles.topicChip} numberOfLines={1}>
+            {chip}
+          </Text>
+        ))}
+        {showCountChip ? (
+          <Text style={styles.topicChip} numberOfLines={1}>
+            {t('feedDigestCount', { count: String(item.count) })}
+          </Text>
+        ) : null}
+      </View>
 
-      <Text style={styles.title} numberOfLines={2}>
-        {item.title}
-      </Text>
-
-      {isExpanded && item.sourceRefs.length > 0 ? (
-        <View style={styles.sourceList}>
-          {item.sourceRefs.slice(0, 5).map((ref) => {
-            const refUrl = ref.url || undefined;
-            return (
-              <Pressable
-                key={ref.id}
-                onPress={
-                  refUrl
-                    ? (e) => {
-                        e.stopPropagation?.();
-                        void Linking.openURL(refUrl).catch(() => null);
-                      }
-                    : undefined
-                }
-                style={({ pressed }) => [styles.sourceRow, pressed && refUrl && styles.sourceRowPressed]}
-                accessibilityRole={refUrl ? 'link' : 'text'}>
-                <View style={styles.sourceTextCol}>
-                  <Text
-                    style={[styles.sourceTitle, refUrl && styles.sourceTitleLink]}
-                    numberOfLines={2}>
-                    {ref.title || ref.companyName}
-                  </Text>
-                  {ref.formType || ref.symbol ? (
-                    <Text style={styles.sourceName} numberOfLines={1}>
-                      {[ref.symbol, ref.formType].filter(Boolean).join(' · ')}
-                    </Text>
-                  ) : null}
-                </View>
-                {refUrl ? <FontAwesome name="external-link" size={10} color={theme.accentBlue} /> : null}
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
+      <View style={styles.titleBody}>
+        <Text style={styles.title} numberOfLines={2}>
+          {item.title}
+        </Text>
+      </View>
 
       <View style={styles.footerRow}>
-        <Text style={styles.footer}>
+        <Text style={styles.footer} numberOfLines={1}>
           {summaryText}
-          {relativeLabel ? ` · ${relativeLabel}` : ''}
+          {createdLabel !== '—' ? ` · ${createdLabel}` : ''}
         </Text>
-        <FontAwesome name={isExpanded ? 'chevron-up' : 'chevron-down'} size={11} color={theme.textDim} />
+        {showDetail ? (
+          <Pressable
+            onPress={() => onOpenSources(item)}
+            style={({ pressed }) => [styles.detailBtn, pressed && styles.detailBtnPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('feedDigestDetailA11y')}>
+            <FontAwesome name="info-circle" size={14} color={theme.green} />
+          </Pressable>
+        ) : null}
       </View>
-    </Pressable>
+    </View>
   );
 });
 
@@ -169,73 +125,73 @@ type Props = {
   loading?: boolean;
   accentColor?: string;
   accentSection?: HomeAccentSection;
+  /** iPad·wide 웹 등 넓은 화면에서 한 줄에 2장씩 표시 */
+  columns?: 1 | 2;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  onGoToList?: () => void;
+  goToListA11y?: string;
 };
 
-export function DisclosureDigestSection({ items, loading, accentColor, accentSection }: Props) {
+export function DisclosureDigestSection({
+  items,
+  loading,
+  accentColor,
+  accentSection,
+  columns = 1,
+  onRefresh,
+  refreshing,
+  onGoToList,
+  goToListA11y,
+}: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
-  const scrollRef = useRef<ScrollView | null>(null);
+  const pairLayout = columns === 2;
+  const stripRef = useRef<WebHorizontalScrollStripHandle>(null);
   const [containerWidth, setContainerWidth] = useState(0);
-  const pageWidth = Math.max(0, containerWidth || 0);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [dotIndex, setDotIndex] = useState(0);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const loopItems = useMemo(() => (items.length > 1 ? [...items, items[0]] : items), [items]);
+  const [sourcesItem, setSourcesItem] = useState<SignalApiDisclosureDigestItem | null>(null);
+  const cardWidth = digestStripCardWidth(containerWidth, pairLayout, items.length);
+  const scrollPadding = digestStripScrollPadding(pairLayout, items.length);
   const resolvedAccent = accentSection ? homeSectionAccentColor(accentSection, theme) : accentColor;
+  const stripMinHeight = digestStripCardMinHeight(pairLayout, feedTypo);
   const styles = useMemo(
-    () => makeStyles(theme, scaleFont, feedTypo, resolvedAccent),
-    [theme, scaleFont, feedTypo, resolvedAccent],
+    () => ({
+      ...makeStripStyles(scrollPadding, stripMinHeight),
+      ...makeDigestStripCardStyles(theme, scaleFont, feedTypo, {
+        pairLayout,
+        accentColor: resolvedAccent || theme.warning,
+      }),
+    }),
+    [theme, scaleFont, feedTypo, resolvedAccent, pairLayout, scrollPadding, stripMinHeight],
   );
 
-  useWebHorizontalWheelScroll(scrollRef, items.length > 1);
-
-  const resetLoopToStart = useCallback(() => {
-    const reset = () => scrollRef.current?.scrollTo({ x: 0, animated: false });
-    reset();
-    requestAnimationFrame(reset);
-    setTimeout(reset, 50);
-    setTimeout(reset, 150);
+  const openSources = useCallback((item: SignalApiDisclosureDigestItem) => {
+    setSourcesItem(item);
   }, []);
 
-  const syncPageIndex = useCallback(
-    (offsetX: number, resetExpand: boolean) => {
-      if (pageWidth <= 0) return;
-      const rawIndex = Math.round(offsetX / pageWidth);
-      if (items.length > 1 && rawIndex >= items.length) {
-        resetLoopToStart();
-        setPageIndex(0);
-        setDotIndex(0);
-        if (resetExpand) setExpandedId(null);
-        return;
-      }
-      const index = Math.max(0, Math.min(rawIndex, items.length - 1));
-      setPageIndex(index);
-      setDotIndex(index);
-      if (resetExpand) setExpandedId(null);
-    },
-    [pageWidth, items.length, resetLoopToStart],
-  );
-
-  const handleScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (pageWidth <= 0) return;
-      const rawIndex = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
-      const index = items.length > 1 && rawIndex >= items.length ? 0 : Math.max(0, Math.min(rawIndex, items.length - 1));
-      setDotIndex((prev) => (prev === index ? prev : index));
-    },
-    [pageWidth, items.length],
-  );
-
-  const handleScrollEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      syncPageIndex(e.nativeEvent.contentOffset.x, true);
-    },
-    [syncPageIndex],
-  );
-
-  const toggleExpand = useCallback((id: string) => {
-    LayoutAnimation.configureNext(EXPAND_LAYOUT);
-    setExpandedId((prev) => (prev === id ? null : id));
+  const closeSources = useCallback(() => {
+    setSourcesItem(null);
   }, []);
+
+  const closeSourcesOnScroll = useCallback(() => {
+    setSourcesItem(null);
+  }, []);
+
+  const handleGoToList = useCallback(() => {
+    stripRef.current?.scrollToStart();
+    setSourcesItem(null);
+    onGoToList?.();
+  }, [onGoToList]);
+
+  const handleRefresh = useCallback(() => {
+    stripRef.current?.scrollToStart();
+    setSourcesItem(null);
+    onRefresh?.();
+  }, [onRefresh]);
+
+  const sourceRows = useMemo(
+    () => (sourcesItem ? disclosureSourceRows(sourcesItem) : []),
+    [sourcesItem],
+  );
 
   if (loading && items.length === 0) return null;
   if (items.length === 0) return null;
@@ -247,182 +203,61 @@ export function DisclosureDigestSection({ items, loading, accentColor, accentSec
         const next = Math.max(0, Math.round(event.nativeEvent.layout.width));
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
-      <HorizontalCarouselShell
-        pageIndex={pageIndex}
-        pageCount={items.length}
-        loop
-        footer={
-          items.length > 1 ? (
-            <View style={styles.dotsRow}>
-              {items.map((_, i) => (
-                <View key={i} style={[styles.dot, i === dotIndex && styles.dotActive]} />
-              ))}
+      <WebHorizontalScrollStrip
+        ref={stripRef}
+        onScrollBeginDrag={closeSourcesOnScroll}
+        contentContainerStyle={styles.scrollContent}>
+        {cardWidth > 0 &&
+          items.map((item) => (
+            <View key={item.id} style={[styles.cardSlot, { width: cardWidth }]}>
+              <DigestCard
+                item={item}
+                onOpenSources={openSources}
+                styles={styles}
+                theme={theme}
+                pairLayout={pairLayout}
+              />
             </View>
-          ) : null
-        }>
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          nestedScrollEnabled
-          {...webHorizontalCarouselScrollProps}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          onMomentumScrollEnd={handleScrollEnd}
-          onScrollEndDrag={handleScrollEnd}
-          directionalLockEnabled
-          decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
-          snapToInterval={pageWidth > 0 ? pageWidth : undefined}
-          snapToAlignment="start"
-          disableIntervalMomentum
-          keyboardShouldPersistTaps="handled">
-          {pageWidth > 0 &&
-            loopItems.map((item, index) => {
-              const isLoopClone = index >= items.length;
-              const isExpanded = !isLoopClone && expandedId === item.id && pageIndex === index;
-              return (
-                <View key={`${item.id}-${index}`} style={[styles.page, { width: pageWidth }]}>
-                  <DigestCard
-                    item={item}
-                    isExpanded={isExpanded}
-                    onToggle={toggleExpand}
-                    styles={styles}
-                    theme={theme}
-                  />
-                </View>
-              );
-            })}
-        </ScrollView>
-      </HorizontalCarouselShell>
+          ))}
+        {onRefresh || onGoToList ? (
+          <DigestRefreshTail
+            onRefresh={onRefresh ? handleRefresh : undefined}
+            refreshing={refreshing}
+            onGoToList={onGoToList ? handleGoToList : undefined}
+            goToListA11y={goToListA11y}
+          />
+        ) : null}
+      </WebHorizontalScrollStrip>
+      <DigestSourcesSheet
+        visible={sourcesItem != null}
+        digestTitle={sourcesItem?.title ?? ''}
+        digestSummary={sourcesItem?.summary?.trim() || undefined}
+        rows={sourceRows}
+        onClose={closeSources}
+      />
     </View>
   );
 }
 
-function makeStyles(
-  theme: AppTheme,
-  sf: (n: number) => number,
-  ft: FeedContentTypography,
-  accentColor?: string,
+function makeStripStyles(
+  scrollPadding: ReturnType<typeof digestStripScrollPadding>,
+  minHeight: number,
 ) {
   return StyleSheet.create({
     container: {
-      marginBottom: 10,
+      marginBottom: 0,
+      minHeight,
     },
-    page: {
-      gap: 8,
-    },
-    card: {
-      paddingLeft: 18,
-      paddingRight: ft.pad(13),
-      paddingVertical: ft.pad(11),
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      gap: 6,
-      overflow: 'hidden',
-      shadowColor: '#000000',
-      shadowOpacity: 0.04,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 5 },
-      elevation: 1,
-    },
-    accentLine: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: CONTENT_ACCENT_LINE_WIDTH,
-      backgroundColor: accentColor || theme.warning,
-    },
-    cardPressed: {
-      opacity: 0.88,
-    },
-    badgeRow: {
+    scrollContent: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 5,
-      alignItems: 'center',
+      alignItems: 'stretch',
+      gap: DIGEST_CARD_GAP,
+      paddingHorizontal: scrollPadding.paddingHorizontal,
+      paddingRight: scrollPadding.paddingRight,
     },
-    topicChip: {
-      overflow: 'hidden',
-      paddingHorizontal: 7,
-      paddingVertical: 2,
-      borderRadius: 999,
-      backgroundColor: theme.bgElevated,
-      borderWidth: 1,
-      borderColor: theme.border,
-      fontSize: ft.ff(10),
-      lineHeight: sf(15),
-      fontWeight: ft.emphasisWeight,
-      color: theme.textMuted,
-    },
-    title: {
-      fontSize: ft.ff(15),
-      lineHeight: ft.ff(21),
-      minHeight: ft.ff(21) * 2,
-      fontWeight: ft.titleWeight,
-      color: theme.text,
-    },
-    footerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 8,
-    },
-    footer: {
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
-      fontWeight: ft.metaWeight,
-      color: theme.textDim,
-      flex: 1,
-    },
-    sourceList: {
-      gap: 6,
-    },
-    sourceRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 6,
-    },
-    sourceRowPressed: {
-      opacity: 0.7,
-    },
-    sourceTextCol: {
-      flex: 1,
-      gap: 1,
-    },
-    sourceTitle: {
-      fontSize: ft.ff(12),
-      lineHeight: ft.ff(17),
-      fontWeight: ft.bodyWeight,
-      color: theme.text,
-    },
-    sourceTitleLink: {
-      color: theme.accentBlue,
-    },
-    sourceName: {
-      fontSize: ft.ff(10),
-      lineHeight: sf(14),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
-    },
-    dotsRow: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 5,
-    },
-    dot: {
-      width: 5,
-      height: 5,
-      borderRadius: 999,
-      backgroundColor: theme.border,
-    },
-    dotActive: {
-      width: 14,
-      height: 5,
-      borderRadius: 999,
-      backgroundColor: theme.green,
+    cardSlot: {
+      flexShrink: 0,
+      alignSelf: 'stretch',
     },
   });
 }

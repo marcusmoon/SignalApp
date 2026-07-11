@@ -6,9 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
+import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
-import { HOME_DIGEST_CATEGORIES, NEWS_ISSUES_CATEGORY_ORDER, type NewsIssuesCategory } from '@/constants/ipadHomeNav';
+import { digestSourceIconEntries } from '@/components/signal/SourceIconStack';
+import { HOME_DIGEST_CATEGORIES, NEWS_ISSUES_CATEGORY_ORDER, homeDigestCategoryIcon, type HomeDigestCategory, type NewsIssuesCategory } from '@/constants/ipadHomeNav';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import {
   SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
@@ -77,6 +79,11 @@ function sortDigests(rows: SignalApiNewsDigestItem[]): SignalApiNewsDigestItem[]
       String(b.generatedAt || '').localeCompare(String(a.generatedAt || '')) ||
       (b.count - a.count),
   );
+}
+
+function digestCategory(item: SignalApiNewsDigestItem): HomeDigestCategory | null {
+  const key = String(item.category || '').trim();
+  return HOME_DIGEST_CATEGORIES.includes(key as HomeDigestCategory) ? (key as HomeDigestCategory) : null;
 }
 
 type NewsIssuesContentProps = {
@@ -254,32 +261,39 @@ export function NewsIssuesContent({
             <View style={styles.issueList}>
               {items.map((item) => {
                 const expanded = expandedId === item.id;
+                const itemCat = digestCategory(item);
+                const sourceEntries = digestSourceIconEntries(item.sourceRefs, item.sources);
+                const trailText = [item.topics[0], item.symbols[0]].filter(Boolean).join(' · ');
                 return (
                   <View key={item.id} style={styles.card}>
-                    {(item.aiGenerated || item.topics.length > 0 || item.symbols.length > 0) ? (
-                      <View style={styles.badgeRow}>
-                        {item.aiGenerated ? (
-                          <View style={styles.aiBadge}>
-                            <Text style={styles.aiBadgeText}>AI</Text>
-                          </View>
-                        ) : null}
-                        {item.topics.slice(0, 5).map((topic) => (
-                          <Text key={topic} style={styles.topicChip} numberOfLines={1}>
-                            {topic}
-                          </Text>
-                        ))}
-                        {item.symbols.slice(0, 4).map((symbol) => (
-                          <Text key={symbol} style={[styles.topicChip, styles.symbolChip]} numberOfLines={1}>
-                            {symbol}
-                          </Text>
-                        ))}
-                      </View>
-                    ) : null}
-                    <Text style={styles.cardTitle}>{item.title}</Text>
-                    <Text style={styles.createdAt}>
-                      {formatFeedItemTimeLabel(newsDigestCreatedIso(item), locale)}
-                    </Text>
-                    <Text style={styles.summary}>{item.summary}</Text>
+                    <HomeDigestFeedRow
+                      title={item.title}
+                      titleLines={2}
+                      timeLabel={formatFeedItemTimeLabel(newsDigestCreatedIso(item), locale)}
+                      trailText={trailText || null}
+                      summary={item.summary}
+                      summaryLines={3}
+                      sourceEntries={sourceEntries}
+                      badges={
+                        <>
+                          {item.aiGenerated ? (
+                            <View style={styles.aiBadge}>
+                              <Text style={styles.aiBadgeText}>AI</Text>
+                            </View>
+                          ) : null}
+                          {category === 'all' && itemCat ? (
+                            <View style={styles.categoryMark}>
+                              <FontAwesome
+                                name={homeDigestCategoryIcon(itemCat)}
+                                size={10}
+                                color={theme.textMuted}
+                              />
+                              <Text style={styles.categoryText}>{t(NEWS_SEGMENT_LABEL[itemCat])}</Text>
+                            </View>
+                          ) : null}
+                        </>
+                      }
+                    />
                     <View style={styles.footerRow}>
                       <Text style={styles.meta} numberOfLines={1}>
                         {t('feedDigestSummary', {
@@ -484,64 +498,46 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: '800',
       textAlign: 'center',
     },
-    issueList: { gap: 16 },
+    issueList: { gap: 12 },
     card: {
       borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      padding: ft.pad(14),
-      gap: 9,
+      paddingHorizontal: ft.pad(12),
+      paddingVertical: ft.pad(10),
+      gap: 6,
     },
-    badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     aiBadge: {
-      minHeight: 22,
-      paddingHorizontal: 8,
+      minHeight: 20,
+      paddingHorizontal: 6,
       borderRadius: 999,
       backgroundColor: theme.green,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    aiBadgeText: { color: '#FFFFFF', fontSize: sf(10), lineHeight: sf(14), fontWeight: '900' },
-    topicChip: {
-      overflow: 'hidden',
-      maxWidth: 180,
-      minHeight: 22,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
+    aiBadgeText: { color: '#FFFFFF', fontSize: sf(9), lineHeight: sf(13), fontWeight: '900' },
+    categoryMark: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      minWidth: 0,
+      flexShrink: 0,
+      alignSelf: 'flex-start',
       borderRadius: 999,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
+    },
+    categoryText: {
       color: theme.textMuted,
-      fontSize: ft.ff(11),
-      lineHeight: ft.ff(15),
+      fontSize: ft.ff(9),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
-    symbolChip: {
-      color: theme.green,
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    cardTitle: {
-      color: theme.text,
-      fontSize: ft.ff(17),
-      lineHeight: ft.ff(24),
-      fontWeight: ft.titleWeight,
-    },
-    createdAt: {
-      color: theme.textDim,
-      fontSize: ft.ff(11),
-      lineHeight: ft.ff(15),
-      fontWeight: ft.metaWeight,
-    },
-    summary: {
-      color: theme.textMuted,
-      fontSize: ft.ff(13),
-      lineHeight: ft.ff(20),
-      fontWeight: ft.bodyWeight,
-    },
-    footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
+    footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 2 },
     meta: {
       flex: 1,
       minWidth: 0,

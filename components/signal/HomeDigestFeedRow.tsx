@@ -13,6 +13,8 @@ type Props = {
   timeLabel?: string | null;
   trailText?: string | null;
   summary?: string | null;
+  /** 기본 1줄. 목록 상세 화면 등에서 늘릴 때 사용 */
+  summaryLines?: number;
   sourceEntries?: SourceIconEntry[];
   badges?: ReactNode;
   bordered?: boolean;
@@ -29,6 +31,7 @@ export function HomeDigestFeedRow({
   timeLabel,
   trailText,
   summary,
+  summaryLines = 1,
   sourceEntries = [],
   badges,
   bordered = false,
@@ -72,8 +75,8 @@ export function HomeDigestFeedRow({
           ) : null}
         </View>
       ) : null}
-      {trimmedSummary ? (
-        <Text style={styles.summary} numberOfLines={1}>
+      {trimmedSummary && summaryLines > 0 ? (
+        <Text style={styles.summary} numberOfLines={summaryLines}>
           {trimmedSummary}
         </Text>
       ) : null}

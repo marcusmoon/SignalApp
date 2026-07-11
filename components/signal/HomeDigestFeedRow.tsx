@@ -27,15 +27,14 @@ type Props = {
   sourceEntries?: SourceIconEntry[];
   badges?: ReactNode;
   bordered?: boolean;
-  /** 출처·시간 메타를 제목 위에 표시 (홈 게시판 등) */
-  metaBeforeTitle?: boolean;
+  /** 푸터 왼쪽 커스텀 영역 (홈 게시판 출처 아이콘+이름 등) */
+  footerLead?: ReactNode;
   onPress?: () => void;
 };
 
 /**
  * 홈 뉴스 플로우·마켓 브리핑 공통 행 레이아웃
  * [badges?] → 제목 → [요약?] → [출처 아이콘 스택 · 보조텍스트 | 시간]
- * metaBeforeTitle 시: [badges?] → 메타 → 제목 → [요약?]
  */
 export function HomeDigestFeedRow({
   title,
@@ -48,7 +47,7 @@ export function HomeDigestFeedRow({
   sourceEntries = [],
   badges,
   bordered = false,
-  metaBeforeTitle = false,
+  footerLead,
   onPress,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
@@ -56,12 +55,17 @@ export function HomeDigestFeedRow({
     () => makeStyles(theme, scaleFont, feedTypo, variant),
     [theme, scaleFont, feedTypo, variant],
   );
-  const hasFooter = sourceEntries.length > 0 || Boolean(trailText?.trim()) || Boolean(timeLabel?.trim() && timeLabel !== '—');
+  const hasFooter =
+    Boolean(footerLead) ||
+    sourceEntries.length > 0 ||
+    Boolean(trailText?.trim()) ||
+    Boolean(timeLabel?.trim() && timeLabel !== '—');
   const trimmedSummary = summary?.trim() || '';
 
   const footer = hasFooter ? (
     <View style={styles.footer}>
       <View style={styles.footerLead}>
+        {footerLead}
         {sourceEntries.length > 0 ? (
           <SourceIconStack sources={sourceEntries} size={18} maxVisible={4} />
         ) : null}
@@ -90,7 +94,6 @@ export function HomeDigestFeedRow({
         onPress && pressed && styles.rowPressed,
       ]}>
       {badges ? <View style={styles.badgeRow}>{badges}</View> : null}
-      {metaBeforeTitle ? footer : null}
       <Text style={styles.title} numberOfLines={titleLines}>
         {title}
       </Text>
@@ -99,7 +102,7 @@ export function HomeDigestFeedRow({
           {trimmedSummary}
         </Text>
       ) : null}
-      {!metaBeforeTitle ? footer : null}
+      {footer}
     </Pressable>
   );
 }

@@ -32,9 +32,10 @@ import {
   briefingSourceIconEntries,
   digestSourceIconEntries,
 } from '@/components/signal/SourceIconStack';
+import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
-import { COMMUNITY_SOURCES } from '@/constants/communitySources';
+import { COMMUNITY_SOURCES, communitySourceAccent } from '@/constants/communitySources';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -859,27 +860,37 @@ export function HomeFocusContent({
       <View style={[styles.heroCard, styles.heroCardCompact]}>
         {boardPosts.length > 0 ? (
           <View style={styles.issueGroupList}>
-            {boardPosts.map((post, index) => (
+            {boardPosts.map((post, index) => {
+              const sourceLabel = t(communitySourceLabelId(post.source));
+              const sourceAccent = communitySourceAccent(post.source, theme);
+              return (
               <HomeDigestFeedRow
                 key={post.id}
                 title={post.title}
                 titleLines={2}
                 timeLabel={formatFeedItemTimeLabel(post.publishedAt, locale)}
-                trailText={t(communitySourceLabelId(post.source))}
                 summary={post.body?.trim() || null}
                 summaryLines={1}
-                metaBeforeTitle
+                footerLead={
+                  <View style={styles.boardFooterLead}>
+                    <CommunitySourceMark accent={sourceAccent} size={18} />
+                    <Text style={styles.boardSourceLabel} numberOfLines={1}>
+                      {sourceLabel}
+                    </Text>
+                  </View>
+                }
                 bordered={index < boardPosts.length - 1}
                 onPress={() => router.push(`/community/${encodeURIComponent(post.id)}`)}
               />
-            ))}
+            );
+            })}
           </View>
         ) : (
           <Text style={styles.boardEmptyText}>{t('homeFocusBoardEmpty')}</Text>
         )}
       </View>
     ),
-    [boardPosts, locale, router, styles, t],
+    [boardPosts, locale, router, styles, t, theme],
   );
 
   return (
@@ -1272,6 +1283,21 @@ function makeStyles(
       fontSize: ft.ff(FEED_SUMMARY_PX),
       lineHeight: sf(15),
       fontWeight: ft.bodyWeight,
+      color: theme.textDim,
+    },
+    boardFooterLead: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    boardSourceLabel: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: ft.ff(FEED_META_TRAIL_PX),
+      lineHeight: sf(12),
+      fontWeight: ft.metaWeight,
       color: theme.textDim,
     },
     quoteTileContent: {

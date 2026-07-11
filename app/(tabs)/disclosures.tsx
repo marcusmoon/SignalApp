@@ -576,6 +576,8 @@ export default function DisclosuresScreen() {
             <DisclosureDigestSection
               items={digestItems}
               loading={digestLoading && digestItems.length === 0}
+              onRefresh={() => void onRefresh()}
+              refreshing={refreshing}
             />
           ) : null}
         </View>
@@ -588,10 +590,13 @@ export default function DisclosuresScreen() {
           <View style={useTwoPane ? styles.wideBody : styles.compactBody}>
             <View style={useTwoPane ? styles.listColumnWide : styles.listColumn}>
               {showDigest && useTwoPane ? (
-                <View style={[styles.topFixed, styles.listColumnDigestStrip]}>
+                <View style={[styles.topFixed, styles.topFixedWide, styles.listColumnDigestStrip]}>
                   <DisclosureDigestSection
                     items={digestItems}
                     loading={digestLoading && digestItems.length === 0}
+                    columns={2}
+                    onRefresh={() => void onRefresh()}
+                    refreshing={refreshing}
                   />
                 </View>
               ) : null}
@@ -655,7 +660,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     listColumnDigestStrip: {
       flexShrink: 0,
-      paddingTop: 0,
       paddingHorizontal: 0,
     },
     wideBody: {

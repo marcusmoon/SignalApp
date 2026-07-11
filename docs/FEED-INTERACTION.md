@@ -90,9 +90,9 @@ const { ref: listRef } = useScrollToTopOnChange([segment, filter, selectedYmd], 
 | 세그먼트·필터·날짜 변경 | 해당 scope digest 재로드 |
 | 백그라운드 폴링 | digest **갱신 안 함** — chip만 표시 |
 
-digest-only 새로고침 UI는 두지 않는다.
+digest-only API 갱신 UI는 두지 않는다. 스트립 **끝 refresh 타일**(`DigestRefreshTail`)은 PTR·헤더 탭과 동일한 `onRefresh` shortcut이다.
 
-적용: **뉴스** (`DigestPager`), **공시** (`DisclosureDigestSection`).
+적용: **뉴스** (`DigestPager`), **공시** (`DisclosureDigestSection`). 레이아웃 상수는 `constants/digestStripLayout.ts`를 공유한다.
 
 ### 가로 스크롤 (자유 스크롤 스트립)
 
@@ -108,7 +108,7 @@ digest-only 새로고침 UI는 두지 않는다.
 
 #### 카드 너비 (peek)
 
-다음 카드가 살짝 보이도록 너비를 잡는다 (`DigestPager`):
+다음 카드가 살짝 보이도록 너비를 잡는다 (`DigestPager` · `DisclosureDigestSection` — `constants/digestStripLayout.ts`):
 
 | 레이아웃 | 조건 | 카드 너비 |
 |---|---|---|
@@ -116,7 +116,11 @@ digest-only 새로고침 UI는 두지 않는다.
 | 2열 | iPad·wide (`columns={2}`) | (컨테이너 − gap) × **0.48** |
 
 compact 1열은 스트립 `paddingHorizontal: 0` — `topFixed`의 `SCREEN_FIXED_HEADER_PADDING_HORIZONTAL`(16)만 사용.  
-하단 여백은 `DigestPager` `marginBottom` 없이 `topFixed` `paddingBottom`(12) + `gap`(8)만 따른다.
+하단 여백은 다이제스트 `marginBottom` 없이 `topFixed` `paddingBottom`(12) + `gap`(8)만 따른다.
+
+#### 스트립 끝 refresh
+
+카드 끝에 좁은 refresh 타일(`components/feed/DigestRefreshTail.tsx`)을 둔다. 탭 시 화면 `onRefresh`(PTR·헤더 탭·chip과 동일)를 호출한다. `refreshing` 중에는 스피너로 바뀌고 비활성화된다.
 
 #### wide 여백 (iPad·웹)
 
@@ -154,7 +158,8 @@ compact 1열은 스트립 `paddingHorizontal: 0` — `topFixed`의 `SCREEN_FIXED
 | 공시 다이제스트 | `components/disclosures/DisclosureDigestSection.tsx` |
 | 가로 스트립 셸 | `components/layout/WebHorizontalScrollStrip.tsx` |
 | 출처 시트 | `components/news/DigestSourcesSheet.tsx` |
-| wide 2열 마운트 | `components/news/LegacyNewsFeedScreen.tsx` — `useTwoPane`일 때 `columns={2}` |
+| refresh 타일 | `components/feed/DigestRefreshTail.tsx` |
+| wide 2열 마운트 | `components/news/LegacyNewsFeedScreen.tsx` · `app/(tabs)/disclosures.tsx` — `useTwoPane`일 때 `columns={2}` + `topFixedWide` |
 
 #### 안티패턴 (digest 스크롤)
 

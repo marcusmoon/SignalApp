@@ -5,9 +5,15 @@ import { memo, useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
+import { DigestRefreshTail } from '@/components/feed/DigestRefreshTail';
 import { WebHorizontalScrollStrip } from '@/components/layout/WebHorizontalScrollStrip';
 import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
 import { CONTENT_ACCENT_LINE_WIDTH, homeSectionAccentColor, type HomeAccentSection } from '@/constants/homeSectionAccent';
+import {
+  DIGEST_CARD_GAP,
+  digestStripCardWidth,
+  digestStripScrollPadding,
+} from '@/constants/digestStripLayout';
 import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -16,10 +22,6 @@ import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/ty
 import type { AppLocale } from '@/locales/messages';
 import { disclosureDigestCreatedIso } from '@/domain/digests/createdAt';
 import { formatFeedItemTimeLabel } from '@/utils/date';
-
-const CARD_GAP = 10;
-const CARD_EDGE_PAD = 12;
-const CARD_WIDTH_RATIO = 0.88;
 
 function disclosureSourceRows(item: SignalApiDisclosureDigestItem): DigestSourceSheetRow[] {
   return item.sourceRefs.map((ref) => ({
@@ -40,9 +42,16 @@ type DigestCardProps = {
   onOpenSources: (item: SignalApiDisclosureDigestItem) => void;
   styles: ReturnType<typeof makeStyles>;
   theme: AppTheme;
+  pairLayout?: boolean;
 };
 
-const DigestCard = memo(function DigestCard({ item, onOpenSources, styles, theme }: DigestCardProps) {
+const DigestCard = memo(function DigestCard({
+  item,
+  onOpenSources,
+  styles,
+  theme,
+  pairLayout = false,
+}: DigestCardProps) {
   const { t, locale } = useLocale();
   const summaryText = t('disclosuresDigestSummary', {
     count: String(item.count),
@@ -52,15 +61,15 @@ const DigestCard = memo(function DigestCard({ item, onOpenSources, styles, theme
   const topicChips = [
     ...new Set([
       marketChipLabel(item.market, locale),
-      ...item.symbols.slice(0, 3),
-      ...item.forms.slice(0, 2),
+      ...item.symbols.slice(0, pairLayout ? 2 : 3),
+      ...item.forms.slice(0, pairLayout ? 1 : 2),
     ]),
   ].filter(Boolean);
   const showSources = item.sourceRefs.length > 0;
 
   return (
-    <View style={styles.card}>
-      <View style={styles.accentLine} />
+    <View style={[styles.card, pairLayout && styles.cardPair]}>
+      <View style={[styles.accentLine, pairLayout && styles.accentLinePair]} />
       {topicChips.length > 0 ? (
         <View style={styles.badgeRow}>
           {topicChips.map((chip, index) => (
@@ -71,7 +80,7 @@ const DigestCard = memo(function DigestCard({ item, onOpenSources, styles, theme
         </View>
       ) : null}
 
-      <Text style={styles.title} numberOfLines={2}>
+      <Text style={[styles.title, pairLayout && styles.titlePair]} numberOfLines={2}>
         {item.title}
       </Text>
 
@@ -100,17 +109,31 @@ type Props = {
   loading?: boolean;
   accentColor?: string;
   accentSection?: HomeAccentSection;
+  /** iPad·wide 웹 등 넓은 화면에서 한 줄에 2장씩 표시 */
+  columns?: 1 | 2;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 };
 
-export function DisclosureDigestSection({ items, loading, accentColor, accentSection }: Props) {
+export function DisclosureDigestSection({
+  items,
+  loading,
+  accentColor,
+  accentSection,
+  columns = 1,
+  onRefresh,
+  refreshing,
+}: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
+  const pairLayout = columns === 2;
   const [containerWidth, setContainerWidth] = useState(0);
   const [sourcesItem, setSourcesItem] = useState<SignalApiDisclosureDigestItem | null>(null);
-  const cardWidth = Math.max(0, Math.floor(containerWidth * CARD_WIDTH_RATIO));
+  const cardWidth = digestStripCardWidth(containerWidth, pairLayout, items.length);
+  const scrollPadding = digestStripScrollPadding(pairLayout, items.length);
   const resolvedAccent = accentSection ? homeSectionAccentColor(accentSection, theme) : accentColor;
   const styles = useMemo(
-    () => makeStyles(theme, scaleFont, feedTypo, resolvedAccent),
-    [theme, scaleFont, feedTypo, resolvedAccent],
+    () => makeStyles(theme, scaleFont, feedTypo, resolvedAccent, pairLayout, scrollPadding),
+    [theme, scaleFont, feedTypo, resolvedAccent, pairLayout, scrollPadding],
   );
 
   const openSources = useCallback((item: SignalApiDisclosureDigestItem) => {
@@ -118,6 +141,10 @@ export function DisclosureDigestSection({ items, loading, accentColor, accentSec
   }, []);
 
   const closeSources = useCallback(() => {
+    setSourcesItem(null);
+  }, []);
+
+  const closeSourcesOnScroll = useCallback(() => {
     setSourcesItem(null);
   }, []);
 
@@ -137,14 +164,23 @@ export function DisclosureDigestSection({ items, loading, accentColor, accentSec
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
       <WebHorizontalScrollStrip
-        onScrollBeginDrag={closeSources}
+        onScrollBeginDrag={closeSourcesOnScroll}
         contentContainerStyle={styles.scrollContent}>
         {cardWidth > 0 &&
           items.map((item) => (
             <View key={item.id} style={[styles.cardSlot, { width: cardWidth }]}>
-              <DigestCard item={item} onOpenSources={openSources} styles={styles} theme={theme} />
+              <DigestCard
+                item={item}
+                onOpenSources={openSources}
+                styles={styles}
+                theme={theme}
+                pairLayout={pairLayout}
+              />
             </View>
           ))}
+        {onRefresh ? (
+          <DigestRefreshTail onRefresh={onRefresh} refreshing={refreshing} />
+        ) : null}
       </WebHorizontalScrollStrip>
       <DigestSourcesSheet
         visible={sourcesItem != null}
@@ -160,18 +196,20 @@ function makeStyles(
   theme: AppTheme,
   sf: (n: number) => number,
   ft: FeedContentTypography,
-  accentColor?: string,
+  accentColor: string | undefined,
+  pairLayout: boolean,
+  scrollPadding: ReturnType<typeof digestStripScrollPadding>,
 ) {
   return StyleSheet.create({
     container: {
-      marginBottom: 10,
+      marginBottom: 0,
     },
     scrollContent: {
       flexDirection: 'row',
       alignItems: 'stretch',
-      gap: CARD_GAP,
-      paddingHorizontal: CARD_EDGE_PAD,
-      paddingRight: CARD_EDGE_PAD + 4,
+      gap: DIGEST_CARD_GAP,
+      paddingHorizontal: scrollPadding.paddingHorizontal,
+      paddingRight: scrollPadding.paddingRight,
     },
     cardSlot: {
       flexShrink: 0,
@@ -192,6 +230,17 @@ function makeStyles(
       shadowOffset: { width: 0, height: 5 },
       elevation: 1,
     },
+    cardPair: {
+      paddingLeft: 14,
+      paddingRight: ft.pad(11),
+      paddingVertical: ft.pad(9),
+      borderRadius: 12,
+      gap: 5,
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 0,
+    },
     accentLine: {
       position: 'absolute',
       left: 0,
@@ -199,6 +248,9 @@ function makeStyles(
       bottom: 0,
       width: CONTENT_ACCENT_LINE_WIDTH,
       backgroundColor: accentColor || theme.warning,
+    },
+    accentLinePair: {
+      opacity: 0.45,
     },
     badgeRow: {
       flexDirection: 'row',
@@ -225,6 +277,11 @@ function makeStyles(
       minHeight: ft.ff(21) * 2,
       fontWeight: ft.titleWeight,
       color: theme.text,
+    },
+    titlePair: {
+      fontSize: ft.ff(14),
+      lineHeight: ft.ff(19),
+      minHeight: undefined,
     },
     footerRow: {
       flexDirection: 'row',

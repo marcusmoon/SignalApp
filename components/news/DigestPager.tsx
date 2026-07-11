@@ -7,9 +7,15 @@ import {
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
+import { DigestRefreshTail } from '@/components/feed/DigestRefreshTail';
 import { WebHorizontalScrollStrip } from '@/components/layout/WebHorizontalScrollStrip';
 import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
+import {
+  DIGEST_CARD_GAP,
+  digestStripCardWidth,
+  digestStripScrollPadding,
+} from '@/constants/digestStripLayout';
 import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -18,14 +24,6 @@ import type { NewsDigestItem } from '@/domain/news';
 import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { AppLocale } from '@/locales/messages';
 import { formatFeedItemTimeLabel } from '@/utils/date';
-
-const CARD_GAP = 10;
-/** wide 스트립 가로 inset (compact는 topFixed padding과 맞춤) */
-const CARD_EDGE_PAD = 12;
-/** iPhone 1열: 다음 카드가 보이는 peek 폭 */
-const SINGLE_NEXT_CARD_PEEK = 36;
-/** wide: 다음 카드가 살짝 보이도록 */
-const PAIR_CARD_WIDTH_RATIO = 0.48;
 
 function digestSourceRows(digest: NewsDigestItem): DigestSourceSheetRow[] {
   if (digest.sourceRefs.length > 0) {
@@ -115,26 +113,20 @@ type Props = {
   batches: NewsDigestItem[];
   /** iPad·wide 웹 등 넓은 화면에서 한 페이지에 2장씩 표시 */
   columns?: 1 | 2;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 };
 
-function digestCardWidth(containerWidth: number, pairLayout: boolean, itemCount: number): number {
-  if (containerWidth <= 0) return 0;
-  if (pairLayout) {
-    return Math.floor((containerWidth - CARD_GAP) * PAIR_CARD_WIDTH_RATIO);
-  }
-  if (itemCount <= 1) return containerWidth;
-  return Math.max(0, containerWidth - SINGLE_NEXT_CARD_PEEK);
-}
-
-export function DigestPager({ batches, columns = 1 }: Props) {
+export function DigestPager({ batches, columns = 1, onRefresh, refreshing }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const pairLayout = columns === 2;
   const [containerWidth, setContainerWidth] = useState(0);
   const [sourcesDigest, setSourcesDigest] = useState<NewsDigestItem | null>(null);
-  const cardWidth = digestCardWidth(containerWidth, pairLayout, batches.length);
+  const cardWidth = digestStripCardWidth(containerWidth, pairLayout, batches.length);
+  const scrollPadding = digestStripScrollPadding(pairLayout, batches.length);
   const styles = useMemo(
-    () => makeStyles(theme, scaleFont, feedTypo, pairLayout, batches.length),
-    [theme, scaleFont, feedTypo, pairLayout, batches.length],
+    () => makeStyles(theme, scaleFont, feedTypo, pairLayout, scrollPadding),
+    [theme, scaleFont, feedTypo, pairLayout, scrollPadding],
   );
 
   const openSources = useCallback((digest: NewsDigestItem) => {
@@ -178,6 +170,9 @@ export function DigestPager({ batches, columns = 1 }: Props) {
               />
             </View>
           ))}
+        {onRefresh ? (
+          <DigestRefreshTail onRefresh={onRefresh} refreshing={refreshing} />
+        ) : null}
       </WebHorizontalScrollStrip>
       <DigestSourcesSheet
         visible={sourcesDigest != null}
@@ -194,9 +189,8 @@ function makeStyles(
   sf: (n: number) => number,
   ft: FeedContentTypography,
   pairLayout: boolean,
-  itemCount: number,
+  scrollPadding: ReturnType<typeof digestStripScrollPadding>,
 ) {
-  const showSinglePeek = !pairLayout && itemCount > 1;
   return StyleSheet.create({
     container: {
       marginBottom: 0,
@@ -204,9 +198,9 @@ function makeStyles(
     scrollContent: {
       flexDirection: 'row',
       alignItems: 'stretch',
-      gap: CARD_GAP,
-      paddingHorizontal: pairLayout ? CARD_EDGE_PAD : 0,
-      paddingRight: pairLayout ? CARD_EDGE_PAD + 4 : showSinglePeek ? SINGLE_NEXT_CARD_PEEK : 0,
+      gap: DIGEST_CARD_GAP,
+      paddingHorizontal: scrollPadding.paddingHorizontal,
+      paddingRight: scrollPadding.paddingRight,
     },
     cardSlot: {
       flexShrink: 0,

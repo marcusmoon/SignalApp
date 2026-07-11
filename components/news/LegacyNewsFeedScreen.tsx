@@ -1464,14 +1464,25 @@ export function LegacyNewsFeedScreen() {
               </Fragment>
             ))}
           </View> : null}
-          {showDigest && !useTwoPane ? <DigestPager batches={digestBatches} /> : null}
+          {showDigest && !useTwoPane ? (
+            <DigestPager
+              batches={digestBatches}
+              onRefresh={() => void onRefresh()}
+              refreshing={refreshing}
+            />
+          ) : null}
           </View>
         ) : null}
 
         <View style={styles.listColumn}>
           {showDigest && useTwoPane ? (
             <View style={[styles.topFixed, styles.topFixedWide, styles.listColumnDigestStrip]}>
-              <DigestPager batches={digestBatches} columns={2} />
+              <DigestPager
+                batches={digestBatches}
+                columns={2}
+                onRefresh={() => void onRefresh()}
+                refreshing={refreshing}
+              />
             </View>
           ) : null}
           {isFocused ? (

@@ -96,35 +96,6 @@ export function makeNewsStyles(
       fontWeight: ft.emphasisWeight,
       color: theme.green,
     },
-    titleListToggleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      alignSelf: 'flex-end',
-      gap: 6,
-      marginBottom: 10,
-      paddingVertical: 6,
-      paddingHorizontal: 10,
-      borderRadius: 999,
-      backgroundColor: theme.bgElevated,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border,
-    },
-    titleListToggleRowActive: {
-      backgroundColor: theme.greenDim,
-      borderColor: theme.greenBorder,
-    },
-    titleListToggleRowPressed: {
-      opacity: 0.86,
-    },
-    titleListToggleText: {
-      fontSize: ft.ff(FEED_SUMMARY_PX),
-      lineHeight: sf(15),
-      fontWeight: ft.bodyWeight,
-      color: theme.textMuted,
-    },
-    titleListToggleTextActive: {
-      color: theme.green,
-    },
     videoOpenAll: {
       flexDirection: 'row',
       alignItems: 'center',

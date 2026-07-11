@@ -111,7 +111,7 @@ function CompanyHighlightCard({
     <View style={styles.companyCard}>
       <View style={styles.companyHead}>
         <View style={styles.companySymbolLead}>
-          <SymbolLogo symbol={item.symbol} size={28} />
+          <SymbolLogo symbol={item.symbol} size={24} />
           <View style={styles.companySymbolBox}>
             <Text style={styles.companySymbol}>{item.symbol}</Text>
             {item.name ? (
@@ -459,9 +459,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     companyHead: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 16,
+      gap: 12,
     },
     companySymbolLead: {
       flex: 1,
@@ -476,35 +476,37 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       gap: 3,
     },
     companySymbol: {
-      fontSize: ft.signalTitleFont(17),
+      fontSize: ft.signalTitleFont(15),
       fontWeight: ft.signalTitleWeight,
       letterSpacing: -0.2,
       color: theme.green,
     },
     companyName: {
-      fontSize: ft.ff(13),
+      fontSize: ft.ff(12),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
     },
     companyQuoteBox: {
       flexShrink: 0,
       alignItems: 'flex-end',
-      borderWidth: 1,
-      paddingVertical: 10,
-      paddingHorizontal: 10,
-      borderRadius: 8,
-      gap: 2,
-      minWidth: 92,
+      borderWidth: StyleSheet.hairlineWidth,
+      paddingVertical: 5,
+      paddingHorizontal: 7,
+      borderRadius: 6,
+      gap: 1,
+      minWidth: 72,
     },
     companyPrice: {
-      fontSize: sf(15),
-      fontWeight: '900',
+      fontSize: ft.ff(12),
+      lineHeight: sf(16),
+      fontWeight: ft.emphasisWeight,
       color: theme.text,
       fontVariant: ['tabular-nums'],
     },
     companyChange: {
-      fontSize: sf(14),
-      fontWeight: '900',
+      fontSize: ft.ff(11),
+      lineHeight: sf(14),
+      fontWeight: ft.metaWeight,
       fontVariant: ['tabular-nums'],
     },
     companySummary: {

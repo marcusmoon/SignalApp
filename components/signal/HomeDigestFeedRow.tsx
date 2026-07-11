@@ -27,12 +27,15 @@ type Props = {
   sourceEntries?: SourceIconEntry[];
   badges?: ReactNode;
   bordered?: boolean;
+  /** 출처·시간 메타를 제목 위에 표시 (홈 게시판 등) */
+  metaBeforeTitle?: boolean;
   onPress?: () => void;
 };
 
 /**
  * 홈 뉴스 플로우·마켓 브리핑 공통 행 레이아웃
- * [badges?] → 제목 → [출처 아이콘 스택 · 보조텍스트 | 시간] → [요약?]
+ * [badges?] → 제목 → [요약?] → [출처 아이콘 스택 · 보조텍스트 | 시간]
+ * metaBeforeTitle 시: [badges?] → 메타 → 제목 → [요약?]
  */
 export function HomeDigestFeedRow({
   title,
@@ -45,6 +48,7 @@ export function HomeDigestFeedRow({
   sourceEntries = [],
   badges,
   bordered = false,
+  metaBeforeTitle = false,
   onPress,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
@@ -54,6 +58,26 @@ export function HomeDigestFeedRow({
   );
   const hasFooter = sourceEntries.length > 0 || Boolean(trailText?.trim()) || Boolean(timeLabel?.trim() && timeLabel !== '—');
   const trimmedSummary = summary?.trim() || '';
+
+  const footer = hasFooter ? (
+    <View style={styles.footer}>
+      <View style={styles.footerLead}>
+        {sourceEntries.length > 0 ? (
+          <SourceIconStack sources={sourceEntries} size={18} maxVisible={4} />
+        ) : null}
+        {trailText?.trim() ? (
+          <Text style={styles.trailText} numberOfLines={1}>
+            {trailText.trim()}
+          </Text>
+        ) : null}
+      </View>
+      {timeLabel && timeLabel !== '—' ? (
+        <Text style={styles.timeText} numberOfLines={1}>
+          {timeLabel}
+        </Text>
+      ) : null}
+    </View>
+  ) : null;
 
   return (
     <Pressable
@@ -66,33 +90,16 @@ export function HomeDigestFeedRow({
         onPress && pressed && styles.rowPressed,
       ]}>
       {badges ? <View style={styles.badgeRow}>{badges}</View> : null}
+      {metaBeforeTitle ? footer : null}
       <Text style={styles.title} numberOfLines={titleLines}>
         {title}
       </Text>
-      {hasFooter ? (
-        <View style={styles.footer}>
-          <View style={styles.footerLead}>
-            {sourceEntries.length > 0 ? (
-              <SourceIconStack sources={sourceEntries} size={18} maxVisible={4} />
-            ) : null}
-            {trailText?.trim() ? (
-              <Text style={styles.trailText} numberOfLines={1}>
-                {trailText.trim()}
-              </Text>
-            ) : null}
-          </View>
-          {timeLabel && timeLabel !== '—' ? (
-            <Text style={styles.timeText} numberOfLines={1}>
-              {timeLabel}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
       {trimmedSummary && summaryLines > 0 ? (
         <Text style={styles.summary} numberOfLines={summaryLines}>
           {trimmedSummary}
         </Text>
       ) : null}
+      {!metaBeforeTitle ? footer : null}
     </Pressable>
   );
 }

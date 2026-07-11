@@ -29,6 +29,9 @@ export type CommunitySourceAccent = SourceAccent;
 /** 세이브티커 공식 로고 — https://www.saveticker.com */
 export const SAVE_TICKER_LOGO_URL = 'https://www.saveticker.com/assets/images/Logo.webp';
 
+/** 네이버 카페 공식 파비콘 — https://cafe.naver.com (미주미) */
+export const NAVER_CAFE_LOGO_URL = 'https://ca-fe.pstatic.net/web-section/favicon.ico';
+
 /** 소스별 리스트·상세 accent (미주미=블루, 세이브=오렌지) */
 export function communitySourceAccent(source: string, theme: AppTheme): CommunitySourceAccent {
   if (source === 'save_user_news') {
@@ -44,6 +47,7 @@ export function communitySourceAccent(source: string, theme: AppTheme): Communit
     accent: theme.green,
     dim: theme.greenDim,
     border: theme.greenBorder,
-    glyph: '🇺🇸',
+    glyph: 'N',
+    iconUrl: NAVER_CAFE_LOGO_URL,
   };
 }

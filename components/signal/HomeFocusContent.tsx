@@ -999,7 +999,7 @@ export function HomeFocusContent({
             )}
           </View>
 
-          {!useTwoPane && selectedIsExactToday ? (
+          {selectedIsExactToday ? (
             <View style={styles.section}>
               <HomeSectionHeader
                 title={t('screenBoard')}

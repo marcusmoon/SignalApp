@@ -1138,7 +1138,7 @@ function makeStyles(
       gap: COMFORT_GAP_SM,
     },
     heroBlockCompact: {
-      gap: 4,
+      gap: COMFORT_GAP_SM,
     },
     heroHead: {
       flexDirection: 'row',
@@ -1158,8 +1158,7 @@ function makeStyles(
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingLeft: 16,
-      paddingRight: 12,
+      paddingHorizontal: 12,
       paddingVertical: COMFORT_PADDING_ROW_V,
       gap: COMFORT_GAP_SM,
       overflow: 'hidden',
@@ -1170,8 +1169,7 @@ function makeStyles(
       elevation: 1,
     },
     heroCardCompact: {
-      paddingLeft: 12,
-      paddingRight: 10,
+      paddingHorizontal: 10,
       paddingVertical: 8,
       gap: 4,
     },
@@ -1475,7 +1473,7 @@ function makeStyles(
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      padding: 16,
+      padding: 12,
     },
     emptyText: {
       fontSize: ft.ff(13),

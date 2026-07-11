@@ -28,18 +28,16 @@ import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { CommunityPostCard, communitySourceLabelId } from '@/components/community/CommunityPostCard';
-import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import {
   briefingSourceIconEntries,
   digestSourceIconEntries,
 } from '@/components/signal/SourceIconStack';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
-import { communitySourceAccent } from '@/constants/communitySources';
+import { COMMUNITY_SOURCES } from '@/constants/communitySources';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { type CommunitySourceKey } from '@/constants/communitySources';
 import {
   HOME_DIGEST_CATEGORIES,
   HOME_SIGNAL_SESSIONS,
@@ -115,15 +113,6 @@ import {
   toYmd,
   utcRangeForLocalYmd,
 } from '@/utils/date';
-
-const HOME_BOARD_SOURCES: CommunitySourceKey[] = ['naver_likeusstock_free', 'save_user_news'];
-
-function emptyBoardPosts(): Record<CommunitySourceKey, SignalApiCommunityPost[]> {
-  return {
-    naver_likeusstock_free: [],
-    save_user_news: [],
-  };
-}
 
 const ISSUE_FETCH_LIMIT = 24;
 const BRIEFING_LIMIT = 30;
@@ -313,7 +302,7 @@ export function HomeFocusContent({
   const [newsFlowDisplayCount, setNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
   const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [boardDisplayCount, setBoardDisplayCount] = useState(HOME_BOARD_DISPLAY_DEFAULT);
-  const [boardPostsBySource, setBoardPostsBySource] = useState(emptyBoardPosts);
+  const [boardPosts, setBoardPosts] = useState<SignalApiCommunityPost[]>([]);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [briefings, setBriefings] = useState<SignalApiMarketBriefing[]>([]);
@@ -333,7 +322,7 @@ export function HomeFocusContent({
     [issues, newsFlowDisplayCount],
   );
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
-    resyncDeps: [issues, briefings, todayBriefing, disclosures, calendarEvents, boardPostsBySource, loading],
+    resyncDeps: [issues, briefings, todayBriefing, disclosures, calendarEvents, boardPosts, loading],
   });
   const scrollResetKey = selectedYmd;
 
@@ -369,7 +358,7 @@ export function HomeFocusContent({
       setTodayBriefing(null);
       setDisclosures([]);
       setCalendarEvents([]);
-      setBoardPostsBySource(emptyBoardPosts());
+      setBoardPosts([]);
       setError(t('errorSignalApiShort'));
       return;
     }
@@ -380,16 +369,15 @@ export function HomeFocusContent({
       const symbols = selectedYmd === todayYmd ? watchlist.slice(0, watchlistDisplayCount) : [];
       const fetchBoardPosts =
         selectedYmd === todayYmd
-          ? Promise.all(
-              HOME_BOARD_SOURCES.map((source) =>
-                fetchSignalCommunity({ source, limit: boardDisplayCount }, { cacheMode }).catch(() => ({
-                  items: [] as SignalApiCommunityPost[],
-                  meta: { limit: boardDisplayCount, offset: 0, total: 0, hasMore: false, nextOffset: null },
-                })),
-              ),
-            )
-          : Promise.resolve([] as Array<{ items: SignalApiCommunityPost[] }>);
-      const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows, boardPages] =
+          ? fetchSignalCommunity(
+              { limit: boardDisplayCount * COMMUNITY_SOURCES.length },
+              { cacheMode },
+            ).catch(() => ({
+              items: [] as SignalApiCommunityPost[],
+              meta: { limit: boardDisplayCount, offset: 0, total: 0, hasMore: false, nextOffset: null },
+            }))
+          : Promise.resolve({ items: [] as SignalApiCommunityPost[] });
+      const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows, boardPage] =
         await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
         fetchTopIssues(selectedYmd, locale, cacheMode),
@@ -447,13 +435,9 @@ export function HomeFocusContent({
         ),
       );
       if (selectedYmd === todayYmd) {
-        const nextBoard = emptyBoardPosts();
-        HOME_BOARD_SOURCES.forEach((source, index) => {
-          nextBoard[source] = (boardPages[index]?.items ?? []).slice(0, boardDisplayCount);
-        });
-        setBoardPostsBySource(nextBoard);
+        setBoardPosts(boardPage.items ?? []);
       } else {
-        setBoardPostsBySource(emptyBoardPosts());
+        setBoardPosts([]);
       }
     } catch (e) {
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
@@ -597,13 +581,6 @@ export function HomeFocusContent({
   const openBoard = useCallback(() => {
     router.navigate('/(tabs)/board' as never);
   }, [router]);
-
-  const openBoardSource = useCallback(
-    (sourceKey: CommunitySourceKey) => {
-      router.navigate(`/(tabs)/board?source=${encodeURIComponent(sourceKey)}` as never);
-    },
-    [router],
-  );
 
   const openSymbolDetail = useCallback(
     (symbol: string) => {
@@ -880,48 +857,24 @@ export function HomeFocusContent({
   const renderBoardCard = useCallback(
     () => (
       <View style={styles.heroCard}>
-        <View style={styles.boardSourceList}>
-          {HOME_BOARD_SOURCES.map((sourceKey, sourceIndex) => {
-            const posts = boardPostsBySource[sourceKey] ?? [];
-            const labelId = communitySourceLabelId(sourceKey);
-            const accent = communitySourceAccent(sourceKey, theme);
-            return (
-              <View
-                key={sourceKey}
-                style={[styles.boardSourceBlock, sourceIndex > 0 && styles.boardSourceBlockBorder]}>
-                <Pressable
-                  onPress={() => openBoardSource(sourceKey)}
-                  accessibilityRole="button"
-                  accessibilityLabel={t(labelId)}
-                  style={({ pressed }) => [styles.boardSourceHead, pressed && styles.pressed]}>
-                  <CommunitySourceMark accent={accent} size={22} />
-                  <Text style={styles.boardSourceLabel} numberOfLines={1}>
-                    {t(labelId)}
-                  </Text>
-                  <FontAwesome name="chevron-right" size={10} color={theme.textDim} />
-                </Pressable>
-                {posts.length > 0 ? (
-                  <View style={styles.boardPostList}>
-                    {posts.map((post) => (
-                      <CommunityPostCard
-                        key={post.id}
-                        item={post}
-                        sourceLabelId={labelId}
-                        showSource={false}
-                        bodyLines={1}
-                      />
-                    ))}
-                  </View>
-                ) : (
-                  <Text style={styles.boardEmptyText}>{t('homeFocusBoardEmpty')}</Text>
-                )}
+        {boardPosts.length > 0 ? (
+          <View style={styles.boardPostList}>
+            {boardPosts.map((post) => (
+              <View key={post.id} style={styles.boardRowWrap}>
+                <CommunityPostCard
+                  item={post}
+                  sourceLabelId={communitySourceLabelId(post.source)}
+                  showSource
+                />
               </View>
-            );
-          })}
-        </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.boardEmptyText}>{t('homeFocusBoardEmpty')}</Text>
+        )}
       </View>
     ),
-    [boardPostsBySource, openBoardSource, styles, t, theme.textDim],
+    [boardPosts, styles, t],
   );
 
   return (
@@ -951,7 +904,7 @@ export function HomeFocusContent({
       <WebWheelScrollView
         ref={scrollRef as never}
         scrollResetKey={scrollResetKey}
-        contentRevision={[issues, briefings, todayBriefing, disclosures, calendarEvents, boardPostsBySource, loading]}
+        contentRevision={[issues, briefings, todayBriefing, disclosures, calendarEvents, boardPosts, loading]}
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
@@ -1042,7 +995,6 @@ export function HomeFocusContent({
             <View style={styles.section}>
               <HomeSectionHeader
                 title={t('screenBoard')}
-                subtitle={t('homeFocusBoardSubtitle')}
                 onPress={openBoard}
                 accessibilityLabel={t('commonViewAll')}
               />
@@ -1311,42 +1263,17 @@ function makeStyles(
       shadowOffset: { width: 0, height: 3 },
       elevation: 1,
     },
-    boardSourceList: {
+    boardPostList: {
       gap: 0,
     },
-    boardSourceBlock: {
-      gap: COMFORT_GAP_SM,
-      paddingVertical: 8,
-    },
-    boardSourceBlockBorder: {
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.border,
-      marginTop: 4,
-      paddingTop: 12,
-    },
-    boardSourceHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      minWidth: 0,
-    },
-    boardSourceLabel: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: ft.ff(FEED_BODY_PX),
-      lineHeight: sf(17),
-      fontWeight: ft.emphasisWeight,
-      color: theme.text,
-    },
-    boardPostList: {
-      gap: COMFORT_GAP_SM,
+    boardRowWrap: {
+      marginBottom: 14,
     },
     boardEmptyText: {
       fontSize: ft.ff(FEED_SUMMARY_PX),
       lineHeight: sf(15),
       fontWeight: ft.bodyWeight,
       color: theme.textDim,
-      paddingLeft: 30,
     },
     quoteTileContent: {
       flex: 1,

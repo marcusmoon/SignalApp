@@ -450,10 +450,6 @@ export default function SignalScreen() {
     );
   }, [activeTabKey, flatTabLabel, onPickSessionTab, setActiveSubTabKey, setSubTabs, useTwoPane]);
 
-  useEffect(() => {
-    registerSignalSubTabs();
-  }, [registerSignalSubTabs]);
-
   useFocusEffect(
     useCallback(() => {
       const pendingSession =

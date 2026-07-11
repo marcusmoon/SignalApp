@@ -730,10 +730,6 @@ export function LegacyNewsFeedScreen() {
   }, [ipadSegmentOrder, onPickSegment, segment, setActiveSubTabKey, setSubTabs, t, useTwoPane]);
 
   useEffect(() => {
-    registerNewsSubTabs();
-  }, [registerNewsSubTabs]);
-
-  useEffect(() => {
     if (!useTwoPane || segment !== 'video') return;
     const next = ipadSegmentOrder[0] || DEFAULT_NEWS_SEGMENT;
     onPickSegment(next);

@@ -110,14 +110,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       height: 4,
       borderRadius: 2,
       backgroundColor: theme.border,
-      marginTop: 10,
+      marginTop: 16,
       marginBottom: 8,
     },
     modalHead: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 10,
+      marginBottom: 14,
     },
     modalTitle: {
       color: theme.text,
@@ -139,7 +139,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 8,
+      gap: 16,
     },
     modalTodayText: {
       color: theme.green,

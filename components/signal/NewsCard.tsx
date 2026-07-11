@@ -232,7 +232,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingHorizontal: ft.pad(14),
       paddingTop: ft.pad(14),
       paddingBottom: ft.pad(6),
-      marginBottom: 10,
+      marginBottom: 14,
     },
     cardGrouped: {
       backgroundColor: 'transparent',
@@ -240,8 +240,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderRadius: 0,
       marginBottom: 0,
       paddingHorizontal: ft.pad(16),
-      paddingTop: ft.pad(12),
-      paddingBottom: ft.pad(4),
+      paddingTop: ft.pad(16),
+      paddingBottom: ft.pad(8),
       position: 'relative',
     },
     rowPress: {
@@ -376,7 +376,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontSize: ft.ff(15),
       fontWeight: ft.titleWeight,
       marginBottom: ft.pad(6),
-      lineHeight: ft.ff(21),
+      lineHeight: ft.ff(22),
     },
     titleLast: {
       marginBottom: 0,
@@ -386,7 +386,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minWidth: 0,
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 4,
+      gap: 6,
       alignItems: 'center',
       alignContent: 'center',
       justifyContent: 'flex-start',
@@ -423,8 +423,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderTopColor: theme.border,
     },
     footerGrouped: {
-      marginTop: 2,
-      paddingTop: 4,
+      marginTop: 4,
+      paddingTop: 8,
       borderTopWidth: 0,
     },
   });

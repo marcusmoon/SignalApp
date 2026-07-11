@@ -58,7 +58,7 @@ function makeStyles(theme: AppTheme) {
       borderWidth: 1,
       borderColor: theme.border,
       padding: 14,
-      marginBottom: 10,
+      marginBottom: 14,
     },
     line: {
       height: 12,

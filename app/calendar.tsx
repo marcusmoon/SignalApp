@@ -523,7 +523,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     daySection: {
       paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
-      paddingBottom: 4,
+      paddingBottom: 8,
     },
     listLoadingRow: {
       alignItems: 'center',
@@ -565,7 +565,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 7,
-      marginTop: 10,
+      marginTop: 16,
     },
     filterChip: {
       minHeight: 30,
@@ -605,20 +605,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderWidth: 1,
       borderColor: theme.border,
       paddingHorizontal: 10,
-      paddingVertical: 8,
+      paddingVertical: 10,
       marginBottom: 6,
     },
     cardRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 10,
+      gap: 16,
     },
     titleBlock: { flex: 1, minWidth: 0 },
     titleLine: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'flex-start',
-      gap: 6,
+      gap: 8,
     },
     typeTag: {
       borderWidth: 1,
@@ -700,14 +700,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       height: 4,
       borderRadius: 2,
       backgroundColor: theme.border,
-      marginTop: 10,
+      marginTop: 16,
       marginBottom: 8,
     },
     modalHead: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 10,
+      marginBottom: 14,
     },
     modalTitle: {
       color: theme.text,

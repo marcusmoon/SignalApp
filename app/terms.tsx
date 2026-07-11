@@ -97,14 +97,14 @@ export default function TermsScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    content: { padding: 16, gap: 12 },
+    content: { padding: 16, gap: 20 },
     card: {
       borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       padding: 16,
-      gap: 8,
+      gap: 16,
     },
     kicker: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
     title: { color: theme.text, fontSize: sf(22), lineHeight: sf(29), fontWeight: '900' },

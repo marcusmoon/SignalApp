@@ -81,7 +81,7 @@ function makeStyles(
       paddingRight: ft.pad(14),
       paddingTop: ft.pad(12),
       paddingBottom: ft.pad(12),
-      gap: 6,
+      gap: 8,
       overflow: 'hidden',
     },
     accentBar: {

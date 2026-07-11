@@ -29,7 +29,7 @@ export function HorizontalCarouselShell({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 10,
+    gap: 16,
   },
   track: {
     position: 'relative',

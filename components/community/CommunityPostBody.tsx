@@ -50,7 +50,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       gap: 0,
     },
     blockGap: {
-      marginTop: 12,
+      marginTop: 16,
     },
     blockGapTight: {
       marginTop: 8,

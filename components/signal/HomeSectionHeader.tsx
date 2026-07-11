@@ -59,14 +59,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 12,
+      gap: 20,
     },
     titleRow: {
       flex: 1,
       minWidth: 0,
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 8,
+      gap: 16,
     },
     titleCol: {
       flex: 1,
@@ -77,7 +77,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       minWidth: 0,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 16,
     },
     title: {
       fontSize: sf(16),

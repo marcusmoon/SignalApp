@@ -338,12 +338,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingVertical: 6,
-      gap: 12,
+      gap: 20,
     },
     prefLabel: { fontSize: sf(14), fontWeight: '600', color: theme.text, flex: 1 },
     prefBlock: { marginTop: 4, marginBottom: 4 },
     prefHint: { fontSize: sf(11), fontWeight: '500', color: theme.textDim, lineHeight: sf(15), marginTop: 2, marginBottom: 4 },
-    notificationStack: { gap: 10, marginBottom: 20 },
+    notificationStack: { gap: 16, marginBottom: 20 },
     notificationCard: {
       padding: 12,
       borderRadius: 12,
@@ -355,7 +355,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 12,
+      gap: 20,
     },
     notificationText: { flex: 1, minWidth: 0 },
     notificationTitle: { fontSize: sf(14), fontWeight: '900', color: theme.text },
@@ -367,14 +367,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginTop: 3,
     },
     notificationSubRow: {
-      marginTop: 12,
+      marginTop: 16,
       paddingTop: 12,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 12,
+      gap: 20,
     },
     notificationSubRowDisabled: { opacity: 0.45 },
     notificationSubLabel: { flex: 1, fontSize: sf(13), fontWeight: '800', color: theme.textMuted },
@@ -408,11 +408,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.text,
       marginBottom: 8,
     },
-    muted: { fontSize: sf(14), fontWeight: '500', color: theme.textMuted, marginBottom: 12 },
+    muted: { fontSize: sf(14), fontWeight: '500', color: theme.textMuted, marginBottom: 16 },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 10,
+      paddingVertical: 12,
       paddingHorizontal: 12,
       marginBottom: 6,
       borderRadius: 12,
@@ -423,21 +423,21 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     handleText: { flex: 1, fontSize: sf(14), color: theme.text, fontWeight: '600' },
     removeBtn: { padding: 8 },
     hint: { fontSize: sf(12), fontWeight: '500', color: theme.textDim, marginBottom: 8 },
-    addRow: { flexDirection: 'row', gap: 8, marginBottom: 20, alignItems: 'center' },
+    addRow: { flexDirection: 'row', gap: 16, marginBottom: 20, alignItems: 'center' },
     input: {
       flex: 1,
       borderWidth: 1,
       borderColor: theme.border,
       borderRadius: 8,
       paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingVertical: 12,
       fontSize: sf(15),
       color: theme.text,
       backgroundColor: theme.card,
     },
     addBtn: {
       paddingHorizontal: 16,
-      paddingVertical: 10,
+      paddingVertical: 12,
       borderRadius: 8,
       backgroundColor: theme.green,
     },
@@ -452,7 +452,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     resetBtnText: { fontSize: sf(13), fontWeight: '700', color: theme.danger },
     displayCard: {
-      marginBottom: 12,
+      marginBottom: 16,
       borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.border,
@@ -485,12 +485,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     themePreviewBar: {
       height: 10,
       borderRadius: 5,
-      marginBottom: 10,
+      marginBottom: 14,
     },
     themePreviewMockRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 16,
       marginBottom: 8,
     },
     themePreviewMockDot: {
@@ -517,9 +517,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      gap: 8,
+      gap: 16,
       marginTop: 4,
-      marginBottom: 10,
+      marginBottom: 14,
     },
     themeSwatchRowLast: {
       marginBottom: 16,
@@ -588,7 +588,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     accentModalTitle: {
       paddingHorizontal: 8,
-      paddingVertical: 8,
+      paddingVertical: 10,
       fontSize: sf(15),
       fontWeight: '800',
       color: theme.text,
@@ -645,7 +645,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     accentModalFooterActions: {
       flexDirection: 'row',
-      gap: 6,
+      gap: 8,
       paddingHorizontal: 8,
       paddingTop: 10,
       paddingBottom: 6,
@@ -654,7 +654,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
     },
     accentModalCancelBtn: {
-      paddingVertical: 10,
+      paddingVertical: 12,
       alignItems: 'center',
       borderRadius: 9,
       borderWidth: 1,
@@ -667,7 +667,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.text,
     },
     accentModalApplyBtn: {
-      paddingVertical: 10,
+      paddingVertical: 12,
       alignItems: 'center',
       borderRadius: 9,
       backgroundColor: theme.green,
@@ -691,11 +691,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.border,
       padding: 4,
-      gap: 4,
+      gap: 6,
     },
     langSegment: {
       flex: 1,
-      paddingVertical: 10,
+      paddingVertical: 12,
       borderRadius: 9,
       alignItems: 'center',
       justifyContent: 'center',
@@ -746,13 +746,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 10,
+      gap: 16,
       paddingVertical: 12,
       paddingHorizontal: 14,
     },
     settingsFooterPressCompact: {
-      gap: 8,
-      paddingVertical: 8,
+      gap: 16,
+      paddingVertical: 10,
       paddingHorizontal: 12,
       alignSelf: 'center',
       flexGrow: 0,
@@ -781,7 +781,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '500',
       color: theme.textDim,
       lineHeight: sf(17),
-      marginBottom: 10,
+      marginBottom: 14,
     },
     cacheClearBtn: {
       marginTop: 8,
@@ -794,8 +794,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     cacheClearBtnText: { fontSize: sf(13), fontWeight: '800', color: theme.green },
     cacheClearSuccess: {
-      marginTop: 10,
-      paddingVertical: 10,
+      marginTop: 16,
+      paddingVertical: 12,
       paddingHorizontal: 12,
       borderRadius: 8,
       backgroundColor: theme.greenDim,
@@ -811,7 +811,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 10,
+      marginBottom: 14,
     },
     limitRowLast: {
       marginBottom: 0,
@@ -824,15 +824,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     quotesChangeColorSegment: {
       flexDirection: 'column',
-      gap: 8,
-      marginBottom: 12,
+      gap: 16,
+      marginBottom: 16,
     },
     quotesChangeColorOption: {
       borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
-      paddingVertical: 10,
+      paddingVertical: 12,
       paddingHorizontal: 12,
     },
     quotesChangeColorOptionActive: {
@@ -858,7 +858,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 16,
+      gap: 20,
       marginTop: 4,
     },
     quotesChangeColorPreviewChip: {
@@ -869,8 +869,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     limitPickerTrigger: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      paddingVertical: 8,
+      gap: 16,
+      paddingVertical: 10,
       paddingHorizontal: 12,
       borderRadius: 8,
       borderWidth: 1,
@@ -956,14 +956,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.text,
     },
     segmentOrderDragHandle: {
-      paddingVertical: 8,
+      paddingVertical: 10,
       paddingHorizontal: 12,
       marginRight: -4,
     },
     appIconGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 10,
+      gap: 16,
       marginTop: 2,
     },
     appIconOption: {
@@ -975,7 +975,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
       padding: 12,
-      gap: 10,
+      gap: 16,
     },
     appIconOptionActive: {
       borderColor: theme.green,
@@ -1433,7 +1433,7 @@ clearCalendarCache();
               <Text style={styles.displayCardKicker}>{t('settingsQuotesDisplaySection')}</Text>
               <Text style={styles.prefHint}>{t('settingsQuotesLead')}</Text>
 
-              <Text style={[styles.displayCardKicker, { marginTop: 12 }]}>
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
                 {t('settingsQuotesSegmentOrderKicker')}
               </Text>
               <Text style={styles.prefHint}>{t('settingsQuotesSegmentOrderHint')}</Text>
@@ -1593,7 +1593,7 @@ clearCalendarCache();
               <Text style={styles.displayCardKicker}>{t('settingsNewsDisplaySection')}</Text>
               <Text style={styles.prefHint}>{t('settingsNewsTabLead')}</Text>
 
-              <Text style={[styles.displayCardKicker, { marginTop: 12 }]}>
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
                 {t('settingsNewsSegmentOrderKicker')}
               </Text>
               <Text style={styles.prefHint}>{t('settingsNewsSegmentOrderHint')}</Text>
@@ -1655,7 +1655,7 @@ clearCalendarCache();
                   <Text style={styles.handleText}>
                     {t('settingsNewsHashtagDisplayValue', { max: newsHashtagDisplayMax })}
                   </Text>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flexDirection: 'row', gap: 16 }}>
                     <Pressable
                       onPress={() => void bumpNewsHashtagDisplayMax(-1)}
                       disabled={newsHashtagDisplayMax <= MIN_NEWS_HASHTAG_DISPLAY_MAX}
@@ -1728,7 +1728,7 @@ clearCalendarCache();
                 <Text style={styles.displayCardKicker}>{t('settingsNotificationsSection')}</Text>
                 <Text style={styles.prefHint}>{t('settingsNotificationsLead')}</Text>
 
-                <Text style={[styles.displayCardKicker, { marginTop: 12 }]}>
+                <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
                   {t('settingsNotificationsPushSection')}
                 </Text>
                 <View style={[styles.notificationHeader, { marginTop: 8 }]}>
@@ -1806,7 +1806,7 @@ clearCalendarCache();
               <Text style={styles.displayCardKicker}>{t('settingsSignalServerSection')}</Text>
               <Text style={styles.prefHint}>{t('settingsSignalServerShortNote')}</Text>
               <Text
-                style={[styles.handleText, { marginTop: 10, marginBottom: 6 }]}
+                style={[styles.handleText, { marginTop: 16, marginBottom: 6 }]}
                 selectable
                 accessibilityRole="text"
                 accessibilityLabel={formatMessage(t('settingsSignalServerUrlA11y'), {
@@ -1815,7 +1815,7 @@ clearCalendarCache();
                 {getEffectiveSignalApiBaseUrl() || '—'}
               </Text>
               {!signalServerPrefsReady ? (
-                <Text style={[styles.muted, { marginTop: 10 }]}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 16 }]}>{t('commonLoading')}</Text>
               ) : (
                 <>
                   <Text style={[styles.displayCardKicker, { marginTop: 8 }]}>
@@ -1850,7 +1850,7 @@ clearCalendarCache();
                   </View>
                   {signalServerVerifying ? (
                     <View
-                      style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                      style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 16 }}
                       accessibilityLiveRegion="polite">
                       <ActivityIndicator size="small" color={theme.text} />
                       <Text style={styles.muted}>{t('settingsSignalServerVerifying')}</Text>
@@ -1892,7 +1892,7 @@ clearCalendarCache();
                         count: String(homeNewsFlowDisplayCount),
                       })}
                     </Text>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <View style={{ flexDirection: 'row', gap: 16 }}>
                       <Pressable
                         onPress={() => void bumpHomeNewsFlowDisplayCount(-1)}
                         disabled={homeNewsFlowDisplayCount <= HOME_NEWS_FLOW_DISPLAY_MIN}
@@ -1926,7 +1926,7 @@ clearCalendarCache();
                         count: String(homeWatchlistDisplayCount),
                       })}
                     </Text>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <View style={{ flexDirection: 'row', gap: 16 }}>
                       <Pressable
                         onPress={() => void bumpHomeWatchlistDisplayCount(-1)}
                         disabled={homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN}
@@ -2063,7 +2063,7 @@ clearCalendarCache();
                       </Pressable>
                     ))}
                   </View>
-                  <Text style={[styles.prefHint, { marginTop: 10 }]}>
+                  <Text style={[styles.prefHint, { marginTop: 16 }]}>
                     {t('settingsAppIconNativeNote')}
                   </Text>
                 </>

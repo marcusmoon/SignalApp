@@ -335,7 +335,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     segText: segmentTab.segText,
     segTextActive: segmentTab.segTextActive,
     list: { ...webScrollViewportStyle },
-    rowWrap: { marginBottom: 10 },
+    rowWrap: { marginBottom: 14 },
     loadingBox: {
       flex: 1,
       alignItems: 'center',

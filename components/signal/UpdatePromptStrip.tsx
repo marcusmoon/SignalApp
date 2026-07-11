@@ -11,7 +11,7 @@ const stripStyles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 4,
+    paddingBottom: 8,
   },
 });
 
@@ -100,7 +100,7 @@ function makeCardStyles(theme: AppTheme) {
   return StyleSheet.create({
     card: {
       width: '100%',
-      paddingVertical: 10,
+      paddingVertical: 12,
       paddingHorizontal: 14,
       borderRadius: 12,
       borderWidth: 2,
@@ -135,7 +135,7 @@ const contentRowStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 16,
     width: '100%',
   },
 });

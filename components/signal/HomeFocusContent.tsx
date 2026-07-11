@@ -369,12 +369,14 @@ export function HomeFocusContent({
       const symbols = selectedYmd === todayYmd ? watchlist.slice(0, watchlistDisplayCount) : [];
       const fetchBoardPosts =
         selectedYmd === todayYmd
-          ? fetchSignalCommunity(
-              { limit: boardDisplayCount * COMMUNITY_SOURCES.length },
-              { cacheMode },
-            ).catch(() => ({
-              items: [] as SignalApiCommunityPost[],
-              meta: { limit: boardDisplayCount, offset: 0, total: 0, hasMore: false, nextOffset: null },
+          ? Promise.all(
+              COMMUNITY_SOURCES.map((source) =>
+                fetchSignalCommunity({ source, limit: boardDisplayCount }, { cacheMode }).catch(
+                  () => ({ items: [] as SignalApiCommunityPost[] }),
+                ),
+              ),
+            ).then((pages) => ({
+              items: COMMUNITY_SOURCES.flatMap((_, index) => pages[index]?.items ?? []),
             }))
           : Promise.resolve({ items: [] as SignalApiCommunityPost[] });
       const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows, boardPage] =

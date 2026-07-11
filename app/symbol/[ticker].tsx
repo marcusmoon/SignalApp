@@ -194,8 +194,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       padding: 16,
       marginBottom: 14,
     },
+    heroHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 10,
+    },
+    heroTitleCol: {
+      flex: 1,
+      minWidth: 0,
+    },
     company: { fontSize: sf(26), fontWeight: '900', color: theme.text, marginBottom: 6 },
-    companyMeta: { fontSize: sf(12), fontWeight: '800', color: theme.textMuted, marginBottom: 14 },
+    companyMeta: { fontSize: sf(12), fontWeight: '800', color: theme.textMuted, marginBottom: 0 },
     companySkeleton: {
       width: '72%',
       height: 28,

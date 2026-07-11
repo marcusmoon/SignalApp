@@ -657,57 +657,54 @@ export function HomeFocusContent({
 
   const renderIssueCard = useCallback(
     (rows: IssueRow[]) => (
-      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
+      <View style={[styles.heroCard, styles.heroCardCompact, showIssueSummary && styles.heroCardSummary]}>
         <HomeSectionAccentLine section="issues" opacity={0.55} />
         <View style={styles.issueGroupList}>
-          {rows.map((row, index) => (
+          {rows.map((row, index) => {
+            const sourceEntries = digestSourceIconEntries(row.item.sourceRefs, row.item.sources);
+            const inlineTopic =
+              [row.item.topics[0], row.item.symbols[0]].filter(Boolean).join(' · ') || '';
+            return (
             <Pressable
               key={row.item.id}
               onPress={() => openIssue(row)}
               accessibilityRole="button"
               style={({ pressed }) => [
                 styles.issueGroupItem,
+                styles.issueGroupItemCompact,
                 index < rows.length - 1 && styles.issueGroupItemBorder,
                 pressed && styles.pressed,
               ]}>
-              <View style={styles.issueRowTop}>
-                <View style={styles.issueMetaInline}>
-                  <View style={styles.issueCategoryMark}>
-                    <FontAwesome name={homeDigestCategoryIcon(row.category)} size={11} color={theme.textMuted} />
-                    <Text style={styles.issueCategoryText}>{t(NEWS_SEGMENT_LABEL[row.category])}</Text>
-                  </View>
-                  {[row.item.topics[0], row.item.symbols[0]].filter(Boolean).length > 0 ? (
-                    <Text style={styles.issueInlineMetaText} numberOfLines={1}>
-                      {[row.item.topics[0], row.item.symbols[0]].filter(Boolean).join(' · ')}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
               <Text style={styles.issueGroupTitle} numberOfLines={2}>
                 {row.item.title}
               </Text>
-              {digestSourceIconEntries(row.item.sourceRefs, row.item.sources).length > 0 ? (
-                <View style={styles.sourceMetaRow}>
-                  <SourceIconStack
-                    sources={digestSourceIconEntries(row.item.sourceRefs, row.item.sources)}
-                    size={20}
-                  />
-                  <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                    {formatFeedItemTimeLabel(newsDigestCreatedIso(row.item), locale)}
-                  </Text>
+              <View style={styles.issueCompactMeta}>
+                <View style={styles.issueCompactMetaLead}>
+                  <View style={styles.issueCategoryMark}>
+                    <FontAwesome name={homeDigestCategoryIcon(row.category)} size={10} color={theme.textMuted} />
+                    <Text style={styles.issueCategoryText}>{t(NEWS_SEGMENT_LABEL[row.category])}</Text>
+                  </View>
+                  {sourceEntries.length > 0 ? (
+                    <SourceIconStack sources={sourceEntries} size={18} maxVisible={3} />
+                  ) : null}
+                  {inlineTopic ? (
+                    <Text style={styles.issueInlineMetaText} numberOfLines={1}>
+                      {inlineTopic}
+                    </Text>
+                  ) : null}
                 </View>
-              ) : (
-                <Text style={styles.issueGroupMetaTextStandalone} numberOfLines={1}>
+                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
                   {formatFeedItemTimeLabel(newsDigestCreatedIso(row.item), locale)}
                 </Text>
-              )}
+              </View>
               {showIssueSummary && row.item.summary ? (
                 <Text style={styles.issueGroupSummary} numberOfLines={1}>
                   {row.item.summary}
                 </Text>
               ) : null}
             </Pressable>
-          ))}
+            );
+          })}
         </View>
       </View>
     ),
@@ -906,7 +903,7 @@ export function HomeFocusContent({
               </View>
             ) : null}
 
-            <View style={styles.heroBlock}>
+            <View style={[styles.heroBlock, styles.heroBlockCompact]}>
               <HomeSectionHeader
                 title={t('newsIssuesTitle')}
                 badge={<HomeAiBadge />}
@@ -1114,6 +1111,9 @@ function makeStyles(
     heroBlock: {
       gap: COMFORT_GAP_SM,
     },
+    heroBlockCompact: {
+      gap: 4,
+    },
     heroHead: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1143,6 +1143,12 @@ function makeStyles(
       shadowOffset: { width: 0, height: 5 },
       elevation: 1,
     },
+    heroCardCompact: {
+      paddingLeft: 12,
+      paddingRight: 10,
+      paddingVertical: 8,
+      gap: 4,
+    },
     heroCardSummary: {
       minHeight: 0,
     },
@@ -1162,21 +1168,21 @@ function makeStyles(
     issueCategoryMark: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: COMFORT_GAP_SM,
+      gap: 4,
       minWidth: 0,
-      flexShrink: 1,
+      flexShrink: 0,
       alignSelf: 'flex-start',
       borderRadius: 999,
-      paddingHorizontal: 7,
-      paddingVertical: 2,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
       backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.border,
     },
     issueCategoryText: {
       color: theme.textMuted,
-      fontSize: ft.ff(10),
-      lineHeight: sf(15),
+      fontSize: ft.ff(9),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
     issueGroupList: {
@@ -1187,56 +1193,66 @@ function makeStyles(
       paddingVertical: ft.row(6),
       borderRadius: UI_RADIUS_CARD,
     },
+    issueGroupItemCompact: {
+      gap: 3,
+      paddingVertical: 5,
+    },
     issueGroupItemBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
     issueGroupTitle: {
       fontSize: ft.ff(14),
-      lineHeight: sf(19),
+      lineHeight: sf(18),
       fontWeight: ft.titleWeight,
       color: theme.text,
     },
+    issueCompactMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+      minWidth: 0,
+    },
+    issueCompactMetaLead: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
     issueGroupSummary: {
-      fontSize: ft.ff(12),
-      lineHeight: sf(17),
+      fontSize: ft.ff(11),
+      lineHeight: sf(15),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
+      marginTop: 1,
     },
     overviewMiniList: {
       gap: 2,
       marginTop: 2,
     },
     issueGroupMetaText: {
-      flex: 1,
-      minWidth: 0,
-      textAlign: 'right',
+      flexShrink: 0,
       fontSize: ft.ff(10),
-      lineHeight: sf(14),
+      lineHeight: sf(13),
       fontWeight: ft.metaWeight,
       color: theme.textDim,
     },
-    issueGroupMetaTextStandalone: {
-      fontSize: ft.ff(10),
-      lineHeight: sf(14),
+    issueInlineMetaText: {
+      minWidth: 0,
+      flexShrink: 1,
+      fontSize: ft.ff(9),
+      lineHeight: sf(12),
       fontWeight: ft.metaWeight,
       color: theme.textDim,
-      marginTop: 2,
     },
     sourceMetaRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      marginTop: 4,
+      marginTop: 2,
       minWidth: 0,
-    },
-    issueInlineMetaText: {
-      minWidth: 0,
-      flexShrink: 1,
-      fontSize: ft.ff(10),
-      lineHeight: sf(14),
-      fontWeight: ft.metaWeight,
-      color: theme.textDim,
     },
     section: {
       gap: COMFORT_GAP_LG,

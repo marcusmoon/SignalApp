@@ -1,6 +1,7 @@
 import type { AppTheme } from '@/constants/theme';
 import type { SourceAccent } from '@/constants/sourceAccent';
 import { accentAlpha } from '@/constants/sourceAccent';
+import { externalSourceIconUrlForCommunityKey } from '@/constants/sourceIconUrls';
 
 export const COMMUNITY_SOURCE_ALL = 'all' as const;
 
@@ -26,21 +27,16 @@ export function communityShowsOriginalLink(source: string): boolean {
 
 export type CommunitySourceAccent = SourceAccent;
 
-/** 세이브티커 공식 로고 — https://www.saveticker.com */
-export const SAVE_TICKER_LOGO_URL = 'https://www.saveticker.com/assets/images/Logo.webp';
-
-/** 네이버 카페 공식 파비콘 — https://cafe.naver.com (미주미) */
-export const NAVER_CAFE_LOGO_URL = 'https://ca-fe.pstatic.net/web-section/favicon.ico';
-
 /** 소스별 리스트·상세 accent (미주미=블루, 세이브=오렌지) */
 export function communitySourceAccent(source: string, theme: AppTheme): CommunitySourceAccent {
+  const iconUrl = externalSourceIconUrlForCommunityKey(source);
   if (source === 'save_user_news') {
     return {
       accent: theme.accentOrange,
       dim: theme.warningDim,
       border: accentAlpha(theme.accentOrange, theme.colorScheme === 'dark' ? 0.55 : 0.35),
       glyph: 'S',
-      iconUrl: SAVE_TICKER_LOGO_URL,
+      iconUrl,
     };
   }
   return {
@@ -48,6 +44,6 @@ export function communitySourceAccent(source: string, theme: AppTheme): Communit
     dim: theme.greenDim,
     border: theme.greenBorder,
     glyph: 'N',
-    iconUrl: NAVER_CAFE_LOGO_URL,
+    iconUrl,
   };
 }

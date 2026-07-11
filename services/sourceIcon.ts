@@ -1,10 +1,9 @@
-const failedIconUrls = new Set<string>();
+import {
+  externalSourceIconUrlForDomain,
+  googleFaviconIconUrl,
+} from '@/constants/sourceIconUrls';
 
-/** Google 파비콘 품질·오매칭이 있는 출처는 공식 아이콘 URL을 직접 쓴다. */
-const SOURCE_ICON_URL_OVERRIDES: Record<string, string> = {
-  'financialjuice.com': 'https://www.financialjuice.com/assets/comp-images/comp_0.png',
-  'www.financialjuice.com': 'https://www.financialjuice.com/assets/comp-images/comp_0.png',
-};
+const failedIconUrls = new Set<string>();
 
 export function markSourceIconFailed(url: string): void {
   failedIconUrls.add(url);
@@ -24,10 +23,6 @@ export function domainFromUrl(url: string | null | undefined): string | null {
   } catch {
     return null;
   }
-}
-
-export function sourceFaviconUrl(domain: string): string {
-  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
 }
 
 function guessSourceDomain(sourceName: string): string | null {
@@ -63,11 +58,9 @@ export function resolveSourceIconUrl(
 ): string | null {
   const domain = mappedDomain || domainFromUrl(sourceUrl) || guessSourceDomain(sourceName);
   if (!domain) return null;
-  const normalized = domain.trim().toLowerCase();
-  const bare = normalized.replace(/^www\./, '');
-  const override = SOURCE_ICON_URL_OVERRIDES[normalized] || SOURCE_ICON_URL_OVERRIDES[bare];
+  const override = externalSourceIconUrlForDomain(domain);
   if (override) return override;
-  const url = sourceFaviconUrl(domain);
+  const url = googleFaviconIconUrl(domain);
   if (isSourceIconFailed(url)) return null;
   return url;
 }

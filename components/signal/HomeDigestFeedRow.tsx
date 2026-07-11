@@ -34,7 +34,8 @@ type Props = {
 
 /**
  * 홈 뉴스 플로우·마켓 브리핑 공통 행 레이아웃
- * [badges?] → 제목 → [출처 아이콘 스택 · 보조텍스트 | 시간] → [요약?]
+ * [badges?] → 제목 → [요약?] → [출처 아이콘 스택 · 보조텍스트 | 시간]
+ * metaBeforeTitle 시: [badges?] → 메타 → 제목 → [요약?]
  */
 export function HomeDigestFeedRow({
   title,
@@ -93,12 +94,12 @@ export function HomeDigestFeedRow({
       <Text style={styles.title} numberOfLines={titleLines}>
         {title}
       </Text>
-      {!metaBeforeTitle ? footer : null}
       {trimmedSummary && summaryLines > 0 ? (
         <Text style={styles.summary} numberOfLines={summaryLines}>
           {trimmedSummary}
         </Text>
       ) : null}
+      {!metaBeforeTitle ? footer : null}
     </Pressable>
   );
 }

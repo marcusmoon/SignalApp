@@ -4,9 +4,8 @@ import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import {
   DIGEST_STRIP_BADGE_ROW_HEIGHT,
   DIGEST_STRIP_BADGE_ROW_HEIGHT_PAIR,
-  DIGEST_STRIP_CARD_MIN_HEIGHT,
-  DIGEST_STRIP_CARD_MIN_HEIGHT_PAIR,
   DIGEST_STRIP_FOOTER_MIN_HEIGHT,
+  digestStripCardMinHeight,
 } from '@/constants/digestStripLayout';
 import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
@@ -25,11 +24,13 @@ export function makeDigestStripCardStyles(
   const titleSize = pairLayout ? ft.ff(14) : ft.ff(15);
   const titleLine = pairLayout ? ft.ff(19) : ft.ff(21);
   const badgeHeight = pairLayout ? DIGEST_STRIP_BADGE_ROW_HEIGHT_PAIR : DIGEST_STRIP_BADGE_ROW_HEIGHT;
+  const cardMinHeight = digestStripCardMinHeight(pairLayout, ft);
+  const sectionGap = pairLayout ? 4 : 5;
 
   return StyleSheet.create({
     card: {
       flex: 1,
-      minHeight: pairLayout ? DIGEST_STRIP_CARD_MIN_HEIGHT_PAIR : DIGEST_STRIP_CARD_MIN_HEIGHT,
+      minHeight: cardMinHeight,
       paddingLeft: pairLayout ? 14 : 18,
       paddingRight: pairLayout ? ft.pad(11) : ft.pad(13),
       paddingVertical: pairLayout ? ft.pad(8) : ft.pad(9),
@@ -37,7 +38,7 @@ export function makeDigestStripCardStyles(
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      gap: pairLayout ? 4 : 5,
+      gap: sectionGap,
       overflow: 'hidden',
       ...(pairLayout
         ? {}
@@ -64,6 +65,7 @@ export function makeDigestStripCardStyles(
       alignItems: 'center',
       gap: 5,
       height: badgeHeight,
+      flexShrink: 0,
       overflow: 'hidden',
     },
     topicChip: {
@@ -96,8 +98,7 @@ export function makeDigestStripCardStyles(
       color: '#FFFFFF',
     },
     titleBody: {
-      flex: 1,
-      justifyContent: 'center',
+      flexShrink: 0,
       minHeight: titleLine * 2,
     },
     title: {
@@ -112,6 +113,7 @@ export function makeDigestStripCardStyles(
       justifyContent: 'space-between',
       gap: 8,
       minHeight: DIGEST_STRIP_FOOTER_MIN_HEIGHT,
+      flexShrink: 0,
     },
     footer: {
       fontSize: ft.ff(11),

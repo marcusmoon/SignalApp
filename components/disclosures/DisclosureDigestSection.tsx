@@ -12,9 +12,9 @@ import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news
 import { homeSectionAccentColor, type HomeAccentSection } from '@/constants/homeSectionAccent';
 import {
   DIGEST_CARD_GAP,
-  DIGEST_STRIP_CARD_MIN_HEIGHT,
   DISCLOSURE_DIGEST_TAG_MAX_PAIR,
   DISCLOSURE_DIGEST_TAG_MAX_SINGLE,
+  digestStripCardMinHeight,
   digestStripCardWidth,
   digestStripScrollPadding,
 } from '@/constants/digestStripLayout';
@@ -152,15 +152,16 @@ export function DisclosureDigestSection({
   const cardWidth = digestStripCardWidth(containerWidth, pairLayout, items.length);
   const scrollPadding = digestStripScrollPadding(pairLayout, items.length);
   const resolvedAccent = accentSection ? homeSectionAccentColor(accentSection, theme) : accentColor;
+  const stripMinHeight = digestStripCardMinHeight(pairLayout, feedTypo);
   const styles = useMemo(
     () => ({
-      ...makeStripStyles(scrollPadding),
+      ...makeStripStyles(scrollPadding, stripMinHeight),
       ...makeDigestStripCardStyles(theme, scaleFont, feedTypo, {
         pairLayout,
         accentColor: resolvedAccent || theme.warning,
       }),
     }),
-    [theme, scaleFont, feedTypo, resolvedAccent, pairLayout, scrollPadding],
+    [theme, scaleFont, feedTypo, resolvedAccent, pairLayout, scrollPadding, stripMinHeight],
   );
 
   const openSources = useCallback((item: SignalApiDisclosureDigestItem) => {
@@ -238,11 +239,14 @@ export function DisclosureDigestSection({
   );
 }
 
-function makeStripStyles(scrollPadding: ReturnType<typeof digestStripScrollPadding>) {
+function makeStripStyles(
+  scrollPadding: ReturnType<typeof digestStripScrollPadding>,
+  minHeight: number,
+) {
   return StyleSheet.create({
     container: {
       marginBottom: 0,
-      minHeight: DIGEST_STRIP_CARD_MIN_HEIGHT,
+      minHeight,
     },
     scrollContent: {
       flexDirection: 'row',

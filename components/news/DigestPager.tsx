@@ -13,8 +13,7 @@ import { WebHorizontalScrollStrip, type WebHorizontalScrollStripHandle } from '@
 import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
 import {
   DIGEST_CARD_GAP,
-  DIGEST_STRIP_CARD_MIN_HEIGHT,
-  DIGEST_STRIP_CARD_MIN_HEIGHT_PAIR,
+  digestStripCardMinHeight,
   digestStripCardWidth,
   digestStripScrollPadding,
 } from '@/constants/digestStripLayout';
@@ -135,15 +134,16 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoT
   const [sourcesDigest, setSourcesDigest] = useState<NewsDigestItem | null>(null);
   const cardWidth = digestStripCardWidth(containerWidth, pairLayout, batches.length);
   const scrollPadding = digestStripScrollPadding(pairLayout, batches.length);
+  const stripMinHeight = digestStripCardMinHeight(pairLayout, feedTypo);
   const styles = useMemo(
     () => ({
-      ...makeStripStyles(scrollPadding),
+      ...makeStripStyles(scrollPadding, stripMinHeight),
       ...makeDigestStripCardStyles(theme, scaleFont, feedTypo, {
         pairLayout,
         accentColor: theme.green,
       }),
     }),
-    [theme, scaleFont, feedTypo, pairLayout, scrollPadding],
+    [theme, scaleFont, feedTypo, pairLayout, scrollPadding, stripMinHeight],
   );
 
   const openSources = useCallback((digest: NewsDigestItem) => {
@@ -220,11 +220,14 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoT
   );
 }
 
-function makeStripStyles(scrollPadding: ReturnType<typeof digestStripScrollPadding>) {
+function makeStripStyles(
+  scrollPadding: ReturnType<typeof digestStripScrollPadding>,
+  minHeight: number,
+) {
   return StyleSheet.create({
     container: {
       marginBottom: 0,
-      minHeight: DIGEST_STRIP_CARD_MIN_HEIGHT,
+      minHeight,
     },
     scrollContent: {
       flexDirection: 'row',

@@ -5,7 +5,6 @@ import {
   Linking,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   UIManager,
@@ -13,14 +12,12 @@ import {
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
+import { WebHorizontalScrollStrip } from '@/components/layout/WebHorizontalScrollStrip';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
-import { webHorizontalCarouselScrollProps } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useWebHorizontalWheelScroll } from '@/hooks/useWebHorizontalWheelScroll';
 import type { NewsDigestItem } from '@/domain/news';
 import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { AppLocale } from '@/locales/messages';
@@ -36,6 +33,9 @@ const EXPAND_LAYOUT = LayoutAnimation.create(180, LayoutAnimation.Types.easeOut,
 
 const CARD_GAP = 10;
 const CARD_EDGE_PAD = 12;
+/** wide: 다음 카드가 살짝 보이도록 (SaveTicker 스타일) */
+const PAIR_CARD_WIDTH_RATIO = 0.48;
+const SINGLE_CARD_WIDTH_RATIO = 0.88;
 
 type DigestCardProps = {
   digest: NewsDigestItem;
@@ -181,14 +181,15 @@ type Props = {
 
 function digestCardWidth(containerWidth: number, pairLayout: boolean): number {
   if (containerWidth <= 0) return 0;
-  if (pairLayout) return Math.floor((containerWidth - CARD_GAP) / 2);
-  return Math.max(0, containerWidth - CARD_EDGE_PAD * 2);
+  if (pairLayout) {
+    return Math.floor((containerWidth - CARD_GAP) * PAIR_CARD_WIDTH_RATIO);
+  }
+  return Math.max(0, Math.floor(containerWidth * SINGLE_CARD_WIDTH_RATIO));
 }
 
 export function DigestPager({ batches, columns = 1 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const pairLayout = columns === 2;
-  const scrollRef = useRef<ScrollView | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const cardWidth = digestCardWidth(containerWidth, pairLayout);
@@ -196,8 +197,6 @@ export function DigestPager({ batches, columns = 1 }: Props) {
     () => makeStyles(theme, scaleFont, feedTypo, pairLayout),
     [theme, scaleFont, feedTypo, pairLayout],
   );
-
-  useWebHorizontalWheelScroll(scrollRef, batches.length > 1);
 
   const toggleExpand = useCallback((id: string) => {
     if (!pairLayout) {
@@ -219,31 +218,23 @@ export function DigestPager({ batches, columns = 1 }: Props) {
         const next = Math.max(0, Math.round(event.nativeEvent.layout.width));
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
-      <HorizontalCarouselShell pageIndex={0} pageCount={1}>
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          nestedScrollEnabled
-          {...webHorizontalCarouselScrollProps}
-          onScrollBeginDrag={collapseOnScroll}
-          directionalLockEnabled
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.scrollContent}>
-          {cardWidth > 0 &&
-            batches.map((digest) => (
-              <View key={digest.id} style={[styles.cardSlot, { width: cardWidth }]}>
-                <DigestCard
-                  digest={digest}
-                  isExpanded={expandedId === digest.id}
-                  onToggle={toggleExpand}
-                  styles={styles}
-                  theme={theme}
-                  pairLayout={pairLayout}
-                />
-              </View>
-            ))}
-        </ScrollView>
-      </HorizontalCarouselShell>
+      <WebHorizontalScrollStrip
+        onScrollBeginDrag={collapseOnScroll}
+        contentContainerStyle={styles.scrollContent}>
+        {cardWidth > 0 &&
+          batches.map((digest) => (
+            <View key={digest.id} style={[styles.cardSlot, { width: cardWidth }]}>
+              <DigestCard
+                digest={digest}
+                isExpanded={expandedId === digest.id}
+                onToggle={toggleExpand}
+                styles={styles}
+                theme={theme}
+                pairLayout={pairLayout}
+              />
+            </View>
+          ))}
+      </WebHorizontalScrollStrip>
     </View>
   );
 }
@@ -262,7 +253,8 @@ function makeStyles(
       flexDirection: 'row',
       alignItems: 'stretch',
       gap: CARD_GAP,
-      paddingHorizontal: pairLayout ? 0 : CARD_EDGE_PAD,
+      paddingHorizontal: CARD_EDGE_PAD,
+      paddingRight: CARD_EDGE_PAD + 4,
     },
     cardSlot: {
       flexShrink: 0,

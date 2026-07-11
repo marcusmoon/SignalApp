@@ -8,7 +8,6 @@ import {
   Linking,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   UIManager,
@@ -16,14 +15,12 @@ import {
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-import { HorizontalCarouselShell } from '@/components/layout/HorizontalCarouselShell';
+import { WebHorizontalScrollStrip } from '@/components/layout/WebHorizontalScrollStrip';
 import { CONTENT_ACCENT_LINE_WIDTH, homeSectionAccentColor, type HomeAccentSection } from '@/constants/homeSectionAccent';
-import { webHorizontalCarouselScrollProps } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useWebHorizontalWheelScroll } from '@/hooks/useWebHorizontalWheelScroll';
 import type { SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import type { AppLocale } from '@/locales/messages';
 import { disclosureDigestCreatedIso } from '@/domain/digests/createdAt';
@@ -32,6 +29,7 @@ import { formatFeedItemTimeLabel } from '@/utils/date';
 const TAP_MOVE_THRESHOLD = 8;
 const CARD_GAP = 10;
 const CARD_EDGE_PAD = 12;
+const CARD_WIDTH_RATIO = 0.88;
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -174,17 +172,14 @@ type Props = {
 
 export function DisclosureDigestSection({ items, loading, accentColor, accentSection }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
-  const scrollRef = useRef<ScrollView | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const cardWidth = Math.max(0, containerWidth - CARD_EDGE_PAD * 2);
+  const cardWidth = Math.max(0, Math.floor(containerWidth * CARD_WIDTH_RATIO));
   const resolvedAccent = accentSection ? homeSectionAccentColor(accentSection, theme) : accentColor;
   const styles = useMemo(
     () => makeStyles(theme, scaleFont, feedTypo, resolvedAccent),
     [theme, scaleFont, feedTypo, resolvedAccent],
   );
-
-  useWebHorizontalWheelScroll(scrollRef, items.length > 1);
 
   const toggleExpand = useCallback((id: string) => {
     LayoutAnimation.configureNext(EXPAND_LAYOUT);
@@ -205,30 +200,22 @@ export function DisclosureDigestSection({ items, loading, accentColor, accentSec
         const next = Math.max(0, Math.round(event.nativeEvent.layout.width));
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
-      <HorizontalCarouselShell pageIndex={0} pageCount={1}>
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          nestedScrollEnabled
-          {...webHorizontalCarouselScrollProps}
-          onScrollBeginDrag={collapseOnScroll}
-          directionalLockEnabled
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.scrollContent}>
-          {cardWidth > 0 &&
-            items.map((item) => (
-              <View key={item.id} style={[styles.cardSlot, { width: cardWidth }]}>
-                <DigestCard
-                  item={item}
-                  isExpanded={expandedId === item.id}
-                  onToggle={toggleExpand}
-                  styles={styles}
-                  theme={theme}
-                />
-              </View>
-            ))}
-        </ScrollView>
-      </HorizontalCarouselShell>
+      <WebHorizontalScrollStrip
+        onScrollBeginDrag={collapseOnScroll}
+        contentContainerStyle={styles.scrollContent}>
+        {cardWidth > 0 &&
+          items.map((item) => (
+            <View key={item.id} style={[styles.cardSlot, { width: cardWidth }]}>
+              <DigestCard
+                item={item}
+                isExpanded={expandedId === item.id}
+                onToggle={toggleExpand}
+                styles={styles}
+                theme={theme}
+              />
+            </View>
+          ))}
+      </WebHorizontalScrollStrip>
     </View>
   );
 }
@@ -248,6 +235,7 @@ function makeStyles(
       alignItems: 'stretch',
       gap: CARD_GAP,
       paddingHorizontal: CARD_EDGE_PAD,
+      paddingRight: CARD_EDGE_PAD + 4,
     },
     cardSlot: {
       flexShrink: 0,

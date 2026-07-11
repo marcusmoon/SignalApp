@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -8,7 +8,7 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { DigestRefreshTail } from '@/components/feed/DigestRefreshTail';
-import { WebHorizontalScrollStrip } from '@/components/layout/WebHorizontalScrollStrip';
+import { WebHorizontalScrollStrip, type WebHorizontalScrollStripHandle } from '@/components/layout/WebHorizontalScrollStrip';
 import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import {
@@ -120,6 +120,7 @@ type Props = {
 export function DigestPager({ batches, columns = 1, onRefresh, refreshing }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const pairLayout = columns === 2;
+  const stripRef = useRef<WebHorizontalScrollStripHandle>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [sourcesDigest, setSourcesDigest] = useState<NewsDigestItem | null>(null);
   const cardWidth = digestStripCardWidth(containerWidth, pairLayout, batches.length);
@@ -141,6 +142,12 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing }: Pro
     setSourcesDigest(null);
   }, []);
 
+  const handleRefresh = useCallback(() => {
+    stripRef.current?.scrollToStart();
+    setSourcesDigest(null);
+    onRefresh?.();
+  }, [onRefresh]);
+
   const sourceRows = useMemo(
     () => (sourcesDigest ? digestSourceRows(sourcesDigest) : []),
     [sourcesDigest],
@@ -156,6 +163,7 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing }: Pro
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
       <WebHorizontalScrollStrip
+        ref={stripRef}
         onScrollBeginDrag={closeSourcesOnScroll}
         contentContainerStyle={styles.scrollContent}>
         {cardWidth > 0 &&
@@ -171,7 +179,7 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing }: Pro
             </View>
           ))}
         {onRefresh ? (
-          <DigestRefreshTail onRefresh={onRefresh} refreshing={refreshing} />
+          <DigestRefreshTail onRefresh={handleRefresh} refreshing={refreshing} />
         ) : null}
       </WebHorizontalScrollStrip>
       <DigestSourcesSheet

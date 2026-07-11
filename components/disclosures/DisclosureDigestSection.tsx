@@ -1,12 +1,12 @@
 /**
  * 공시 탭 상단 - 뉴스 주요 이슈(DigestPager)와 동일한 자유 가로 스크롤 스트립
  */
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { DigestRefreshTail } from '@/components/feed/DigestRefreshTail';
-import { WebHorizontalScrollStrip } from '@/components/layout/WebHorizontalScrollStrip';
+import { WebHorizontalScrollStrip, type WebHorizontalScrollStripHandle } from '@/components/layout/WebHorizontalScrollStrip';
 import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
 import { CONTENT_ACCENT_LINE_WIDTH, homeSectionAccentColor, type HomeAccentSection } from '@/constants/homeSectionAccent';
 import {
@@ -126,6 +126,7 @@ export function DisclosureDigestSection({
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const pairLayout = columns === 2;
+  const stripRef = useRef<WebHorizontalScrollStripHandle>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [sourcesItem, setSourcesItem] = useState<SignalApiDisclosureDigestItem | null>(null);
   const cardWidth = digestStripCardWidth(containerWidth, pairLayout, items.length);
@@ -148,6 +149,12 @@ export function DisclosureDigestSection({
     setSourcesItem(null);
   }, []);
 
+  const handleRefresh = useCallback(() => {
+    stripRef.current?.scrollToStart();
+    setSourcesItem(null);
+    onRefresh?.();
+  }, [onRefresh]);
+
   const sourceRows = useMemo(
     () => (sourcesItem ? disclosureSourceRows(sourcesItem) : []),
     [sourcesItem],
@@ -164,6 +171,7 @@ export function DisclosureDigestSection({
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
       <WebHorizontalScrollStrip
+        ref={stripRef}
         onScrollBeginDrag={closeSourcesOnScroll}
         contentContainerStyle={styles.scrollContent}>
         {cardWidth > 0 &&
@@ -179,7 +187,7 @@ export function DisclosureDigestSection({
             </View>
           ))}
         {onRefresh ? (
-          <DigestRefreshTail onRefresh={onRefresh} refreshing={refreshing} />
+          <DigestRefreshTail onRefresh={handleRefresh} refreshing={refreshing} />
         ) : null}
       </WebHorizontalScrollStrip>
       <DigestSourcesSheet

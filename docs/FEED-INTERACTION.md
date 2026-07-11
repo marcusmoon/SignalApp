@@ -120,7 +120,7 @@ compact 1열은 스트립 `paddingHorizontal: 0` — `topFixed`의 `SCREEN_FIXED
 
 #### 스트립 끝 refresh
 
-카드 끝에 좁은 refresh 타일(`components/feed/DigestRefreshTail.tsx`)을 둔다. 탭 시 화면 `onRefresh`(PTR·헤더 탭·chip과 동일)를 호출한다. `refreshing` 중에는 스피너로 바뀌고 비활성화된다.
+카드 끝에 좁은 refresh 타일(`components/feed/DigestRefreshTail.tsx`)을 둔다. 탭 시 화면 `onRefresh`(PTR·헤더 탭·chip과 동일)를 호출하고 **가로 스트립을 맨 앞으로** 되돌린다. `refreshing` 중에는 스피너로 바뀌고 비활성화된다.
 
 #### wide 여백 (iPad·웹)
 

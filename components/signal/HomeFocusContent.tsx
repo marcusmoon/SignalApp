@@ -25,7 +25,6 @@ import {
 } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
-import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
 import {
@@ -666,7 +665,6 @@ export function HomeFocusContent({
             showIssueSummary && styles.heroCardSummary,
             pressed && styles.pressed,
           ]}>
-          <HomeSectionAccentLine section="todayBriefing" />
           <View style={styles.issueGroupList}>
             <View style={styles.issueGroupItem}>
               {leadText ? (
@@ -699,7 +697,6 @@ export function HomeFocusContent({
   const renderIssueCard = useCallback(
     (rows: IssueRow[]) => (
       <View style={[styles.heroCard, styles.heroCardCompact, showIssueSummary && styles.heroCardSummary]}>
-        <HomeSectionAccentLine section="issues" opacity={0.55} />
         <View style={styles.issueGroupList}>
           {rows.map((row, index) => {
             const sourceEntries = digestSourceIconEntries(row.item.sourceRefs, row.item.sources);
@@ -733,7 +730,6 @@ export function HomeFocusContent({
   const renderSignalCard = useCallback(
     (rows: SignalApiMarketBriefing[]) => (
       <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
-        <HomeSectionAccentLine section="signal" />
         <View style={styles.issueGroupList}>
           {rows.map((row, index) => {
             const session = HOME_SIGNAL_SESSIONS.find(
@@ -770,7 +766,6 @@ export function HomeFocusContent({
   const renderDisclosureCard = useCallback(
     (rows: SignalApiDisclosureDigestItem[]) => (
       <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
-        <HomeSectionAccentLine section="disclosure" />
         <View style={styles.issueGroupList}>
           {rows.map((row, index) => (
             <Pressable
@@ -964,7 +959,6 @@ export function HomeFocusContent({
                 renderIssueCard(homeIssues)
               ) : (
                 <View style={styles.emptyCard}>
-                  <HomeSectionAccentLine section="issues" opacity={0.55} />
                   <Text style={styles.emptyText}>{t('ipadHomeIssuesEmpty')}</Text>
                 </View>
               )}
@@ -982,7 +976,6 @@ export function HomeFocusContent({
               renderSignalCard(briefings)
             ) : (
               <View style={styles.emptyCard}>
-                <HomeSectionAccentLine section="signal" />
                 <Text style={styles.emptyText}>
                   {t('homeFocusSignalEmpty')}
                 </Text>
@@ -1001,7 +994,6 @@ export function HomeFocusContent({
               renderDisclosureCard(disclosures)
             ) : (
               <View style={styles.emptyCard}>
-                <HomeSectionAccentLine section="disclosure" />
                 <Text style={styles.emptyText}>{t('disclosureFlowEmpty')}</Text>
               </View>
             )}
@@ -1479,14 +1471,11 @@ function makeStyles(
       color: theme.textMuted,
     },
     emptyCard: {
-      position: 'relative',
-      overflow: 'hidden',
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       padding: 16,
-      paddingLeft: 18,
     },
     emptyText: {
       fontSize: ft.ff(13),

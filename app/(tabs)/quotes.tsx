@@ -426,6 +426,11 @@ export default function QuotesScreen() {
     );
   }, [onPickSegment, segment, segmentOrder, setActiveSubTabKey, setSubTabs, t, useTwoPane]);
 
+  useEffect(() => {
+    if (!useTwoPane || !isFocused) return;
+    registerQuoteSubTabs();
+  }, [isFocused, registerQuoteSubTabs, useTwoPane]);
+
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;

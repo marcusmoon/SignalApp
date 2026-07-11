@@ -724,6 +724,9 @@ export function LegacyNewsFeedScreen() {
     setRouteParams({ segment: key === DEFAULT_NEWS_SEGMENT ? undefined : key });
   }, [segment, setActiveSubTabKey, setRouteParams, useTwoPane]);
 
+  const onPickSegmentRef = useRef(onPickSegment);
+  onPickSegmentRef.current = onPickSegment;
+
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
 
   const ipadSegmentOrder = useMemo(
@@ -744,6 +747,11 @@ export function LegacyNewsFeedScreen() {
   }, [ipadSegmentOrder, onPickSegment, segment, setActiveSubTabKey, setSubTabs, t, useTwoPane]);
 
   useEffect(() => {
+    if (!useTwoPane || !isFocused) return;
+    registerNewsSubTabs();
+  }, [isFocused, registerNewsSubTabs, useTwoPane]);
+
+  useEffect(() => {
     if (!useTwoPane || segment !== 'video') return;
     const next = ipadSegmentOrder[0] || DEFAULT_NEWS_SEGMENT;
     onPickSegment(next);
@@ -762,7 +770,7 @@ export function LegacyNewsFeedScreen() {
 
       if (target && target !== 'video') {
         segmentHydratedRef.current = true;
-        onPickSegment(target, { force: true });
+        onPickSegmentRef.current(target, { force: true });
         return;
       }
 
@@ -770,7 +778,7 @@ export function LegacyNewsFeedScreen() {
         segmentHydratedRef.current = true;
         void loadNewsSegment().then((s) => setSegment(s));
       }
-    }, [ipadNav, onPickSegment, routeParams.segment, useTwoPane]),
+    }, [ipadNav, routeParams.segment, useTwoPane]),
   );
 
   useFocusEffect(

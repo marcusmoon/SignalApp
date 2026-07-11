@@ -205,6 +205,11 @@ export default function BoardScreen() {
     );
   }, [changeSource, setActiveSubTabKey, setSubTabs, source, t, useTwoPane]);
 
+  useEffect(() => {
+    if (!useTwoPane || !isFocused) return;
+    registerBoardSubTabs();
+  }, [isFocused, registerBoardSubTabs, useTwoPane]);
+
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;

@@ -87,7 +87,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     safe: { flex: 1, backgroundColor: theme.bg },
     content: { padding: 16, gap: 20 },
     headerCard: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.card,
@@ -98,7 +98,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     title: { color: theme.text, fontSize: sf(20), lineHeight: sf(27), fontWeight: '900' },
     summary: { color: theme.textMuted, fontSize: sf(12), lineHeight: sf(18), fontWeight: '700' },
     rowCard: {
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,

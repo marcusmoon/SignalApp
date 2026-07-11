@@ -112,7 +112,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, compact: boolean
     iconBtn: {
       width: 36,
       height: 36,
-      borderRadius: 18,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.bgElevated,

@@ -436,7 +436,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexDirection: 'row',
       gap: 6,
       padding: 4,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -461,7 +461,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     listLoadingRow: { alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
     errorBox: {
       padding: 12,
-      borderRadius: 14,
+      borderRadius: 8,
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
       borderColor: theme.border,
@@ -474,7 +474,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     empty: {
       padding: 18,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -486,7 +486,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     issueList: { gap: 16 },
     card: {
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -563,7 +563,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     sourceList: {
       overflow: 'hidden',
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,

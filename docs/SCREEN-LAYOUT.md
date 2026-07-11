@@ -6,6 +6,8 @@
 
 **Comfortable density:** 전역 여유 밀도는 `constants/comfortDensity.ts` + `screenLayout.ts` 상수 bump로 적용한다. 롤백 시 해당 커밋을 `git revert` 하면 된다.
 
+**Corner radius:** 덜 둥근 모서리는 `constants/uiCornerRadius.ts` + `scripts/reduce-corner-radius.mjs` 로 적용한다. pill 칩(`999`)·아주 작은 radius는 유지한다.
+
 ## 반응형 모드
 
 `useResponsiveLayout()` (`hooks/useResponsiveLayout.ts`):

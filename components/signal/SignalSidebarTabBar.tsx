@@ -382,7 +382,7 @@ function makeStyles(
       gap: 20,
       paddingHorizontal: 12,
       paddingVertical: 12,
-      borderRadius: 12,
+      borderRadius: 8,
     },
     accountButtonActive: {
       backgroundColor: theme.bgElevated,
@@ -393,7 +393,7 @@ function makeStyles(
       gap: 20,
       paddingHorizontal: 12,
       paddingVertical: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       marginBottom: 4,
     },
     tabItemActive: {
@@ -435,7 +435,7 @@ function makeStyles(
       gap: 16,
       paddingHorizontal: 10,
       paddingVertical: 10,
-      borderRadius: 10,
+      borderRadius: 8,
       marginBottom: 2,
     },
     subTabItemActive: {

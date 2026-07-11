@@ -200,7 +200,7 @@ function makeStyles(
       justifyContent: 'center',
     },
     errorBox: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.danger,
       backgroundColor: theme.dangerDim,
@@ -229,7 +229,7 @@ function makeStyles(
     heroCard: {
       position: 'relative',
       overflow: 'hidden',
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -251,7 +251,7 @@ function makeStyles(
       color: theme.textMuted,
     },
     sectionCard: {
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -292,7 +292,7 @@ function makeStyles(
       flexDirection: 'row',
       alignItems: 'center',
       gap: 16,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,

@@ -187,7 +187,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     scroll: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 32 },
     hero: {
       backgroundColor: theme.card,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       padding: 16,
@@ -250,7 +250,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     section: { fontSize: sf(16), fontWeight: '800', color: theme.text, marginBottom: 14 },
     sectionCard: {
       backgroundColor: theme.card,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       padding: 14,
@@ -276,7 +276,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     signalScoreBadge: {
       minWidth: 62,
       alignItems: 'center',
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
@@ -300,7 +300,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     signalStat: {
       flex: 1,
       minWidth: 0,
-      borderRadius: 10,
+      borderRadius: 8,
       backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.border,
@@ -314,7 +314,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 10,
+      borderRadius: 8,
       paddingVertical: 11,
       borderWidth: 1,
       borderColor: theme.greenBorder,
@@ -324,7 +324,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 10,
+      borderRadius: 8,
       paddingVertical: 11,
       borderWidth: 1,
       backgroundColor: theme.bgElevated,
@@ -340,7 +340,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingHorizontal: 24,
     },
     disclosureCard: {
-      borderRadius: 10,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -387,7 +387,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.bodyWeight,
     },
     newsCard: {
-      borderRadius: 10,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -419,7 +419,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       marginTop: 16,
     },
     errorBox: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: '#FFD6DA',
       backgroundColor: theme.dangerDim,

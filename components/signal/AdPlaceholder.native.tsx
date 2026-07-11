@@ -118,7 +118,7 @@ function FallbackAdPlaceholder({ theme }: { theme: AppTheme }) {
 
 const styles = StyleSheet.create({
   wrap: {
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     padding: 14,
     marginBottom: 14,

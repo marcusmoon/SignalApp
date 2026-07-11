@@ -76,7 +76,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
   return StyleSheet.create({
     card: {
       backgroundColor: theme.card,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       padding: ft.pad(10),

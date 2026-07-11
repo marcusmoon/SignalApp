@@ -94,7 +94,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     error: {
       margin: 16,
       padding: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       color: theme.danger,
       backgroundColor: theme.dangerDim,
       fontSize: sf(13),

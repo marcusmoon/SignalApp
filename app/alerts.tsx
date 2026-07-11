@@ -427,7 +427,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     candidateSection: {
       marginBottom: 14,
       padding: 14,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 2,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
@@ -445,7 +445,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     candidateCard: {
       paddingVertical: 12,
       paddingHorizontal: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.card,
@@ -462,7 +462,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     emptyBox: {
       paddingVertical: 24,
       paddingHorizontal: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -471,7 +471,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     emptyText: { fontSize: sf(13), color: theme.textMuted, lineHeight: sf(20) },
     alertCard: {
       backgroundColor: theme.card,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       padding: 14,
@@ -479,7 +479,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     alertCardPressed: { opacity: 0.78 },
     swipeRow: {
       marginBottom: 14,
-      borderRadius: 12,
+      borderRadius: 8,
       overflow: 'hidden',
     },
     swipeRight: {
@@ -525,7 +525,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     authGate: { flex: 1, justifyContent: 'center', paddingHorizontal: 16 },
     authGateTopBar: { alignItems: 'flex-end', marginBottom: 16 },
     authGateCard: {
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.card,
@@ -537,7 +537,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     authGateBody: { color: theme.textMuted, fontSize: sf(13), lineHeight: sf(19) },
     authGateButton: {
       minHeight: 44,
-      borderRadius: 12,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.green,

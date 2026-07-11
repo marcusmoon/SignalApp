@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
 import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -226,7 +227,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
   return StyleSheet.create({
     card: {
       backgroundColor: theme.card,
-      borderRadius: 12,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       paddingHorizontal: ft.pad(14),

@@ -15,6 +15,7 @@ import {
   COMFORT_GAP_SM,
   COMFORT_PADDING_ROW_V,
 } from '@/constants/comfortDensity';
+import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
@@ -1068,7 +1069,7 @@ function makeStyles(
       gap: COMFORT_GAP_PAGE,
     },
     errorBox: {
-      borderRadius: 14,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.danger,
       backgroundColor: theme.dangerDim,
@@ -1105,7 +1106,7 @@ function makeStyles(
     },
     heroCard: {
       position: 'relative',
-      borderRadius: 16,
+      borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -1162,7 +1163,7 @@ function makeStyles(
     issueGroupItem: {
       gap: COMFORT_GAP_SM,
       paddingVertical: ft.row(6),
-      borderRadius: 10,
+      borderRadius: UI_RADIUS_CARD,
     },
     issueGroupItemBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -1210,7 +1211,7 @@ function makeStyles(
     quoteTile: {
       width: '48%',
       minHeight: 54,
-      borderRadius: 14,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.colorScheme === 'dark' ? theme.bgElevated : theme.card,
@@ -1224,7 +1225,7 @@ function makeStyles(
     boardEntryTile: {
       width: '48%',
       minHeight: 52,
-      borderRadius: 16,
+      borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.colorScheme === 'dark' ? theme.bgElevated : theme.card,
@@ -1284,7 +1285,7 @@ function makeStyles(
     },
     priceBox: {
       minWidth: 88,
-      borderRadius: 12,
+      borderRadius: UI_RADIUS_CARD,
       paddingHorizontal: 10,
       paddingVertical: 10,
       alignItems: 'flex-end',
@@ -1419,7 +1420,7 @@ function makeStyles(
     emptyCard: {
       position: 'relative',
       overflow: 'hidden',
-      borderRadius: 18,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,

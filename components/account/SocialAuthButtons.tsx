@@ -85,7 +85,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     stack: { gap: 16 },
     button: {
       minHeight: 48,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,

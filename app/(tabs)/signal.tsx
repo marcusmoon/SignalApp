@@ -682,7 +682,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     segTextActive: segmentTab.segTextActive,
     segTextDisabled: segmentTab.segTextDisabled,
     emptyCard: {
-      borderRadius: 18,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -707,7 +707,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginHorizontal: 16,
       marginBottom: 8,
       padding: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.border,
@@ -756,7 +756,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     modalFoot: { paddingTop: 10 },
     modalTodayBtn: {
       minHeight: 42,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,

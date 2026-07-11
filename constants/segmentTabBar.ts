@@ -3,12 +3,16 @@
  * 레이아웃 여백(marginBottom 등)은 화면마다 다를 수 있으나, pill·색상은 여기 기준으로 통일한다.
  */
 import type { AppTheme } from '@/constants/theme';
+import {
+  UI_RADIUS_SEGMENT_BTN,
+  UI_RADIUS_SEGMENT_OUTER,
+} from '@/constants/uiCornerRadius';
 
-export const SEGMENT_TAB_OUTER_RADIUS = 10;
+export const SEGMENT_TAB_OUTER_RADIUS = UI_RADIUS_SEGMENT_OUTER;
 export const SEGMENT_TAB_PADDING = 4;
 export const SEGMENT_TAB_GAP = 4;
 
-export const SEGMENT_TAB_BTN_RADIUS = 8;
+export const SEGMENT_TAB_BTN_RADIUS = UI_RADIUS_SEGMENT_BTN;
 export const SEGMENT_TAB_BTN_PADDING_V = 10;
 
 /** 라벨 — 시세 화면 세그먼트와 동일 */

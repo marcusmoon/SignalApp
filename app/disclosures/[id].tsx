@@ -148,7 +148,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     scroll: { padding: 16, gap: 20 },
     error: {
       padding: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       color: theme.danger,
       backgroundColor: theme.dangerDim,
       fontSize: sf(13),
@@ -156,7 +156,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     empty: { color: theme.textMuted, fontSize: sf(14), fontWeight: '800', textAlign: 'center', padding: 20 },
     hero: {
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -188,7 +188,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     heroTitle: { color: theme.text, fontSize: sf(20), lineHeight: sf(27), fontWeight: '900' },
     company: { marginTop: 8, color: theme.textMuted, fontSize: sf(13), fontWeight: '800' },
     card: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -201,7 +201,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     summary: { color: theme.text, fontSize: sf(15), lineHeight: sf(24), fontWeight: '700' },
     primaryBtn: {
       minHeight: 48,
-      borderRadius: 13,
+      borderRadius: 8,
       backgroundColor: theme.green,
       alignItems: 'center',
       justifyContent: 'center',

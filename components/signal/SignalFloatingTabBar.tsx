@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 18,
+    borderRadius: 8,
   },
   itemPressed: {
     opacity: 0.78,

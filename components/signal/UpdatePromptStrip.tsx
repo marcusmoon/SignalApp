@@ -102,7 +102,7 @@ function makeCardStyles(theme: AppTheme) {
       width: '100%',
       paddingVertical: 12,
       paddingHorizontal: 14,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 2,
       borderColor: cardBorder,
       backgroundColor: cardBg,

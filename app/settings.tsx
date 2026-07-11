@@ -315,7 +315,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     tabTextActive: segmentTab.segTextActive,
     card: {
       padding: 12,
-      borderRadius: 14,
+      borderRadius: 8,
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
@@ -346,7 +346,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     notificationStack: { gap: 16, marginBottom: 20 },
     notificationCard: {
       padding: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
@@ -415,7 +415,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingVertical: 12,
       paddingHorizontal: 12,
       marginBottom: 6,
-      borderRadius: 12,
+      borderRadius: 8,
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
@@ -453,7 +453,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     resetBtnText: { fontSize: sf(13), fontWeight: '700', color: theme.danger },
     displayCard: {
       marginBottom: 16,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -469,7 +469,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginBottom: 8,
     },
     themePreviewShell: {
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -580,7 +580,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       zIndex: 1,
       width: '100%',
       maxWidth: 340,
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -687,7 +687,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     langSegmentedTrack: {
       flexDirection: 'row',
       backgroundColor: theme.bgElevated,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       padding: 4,
@@ -760,12 +760,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     settingsFooterAvatar: {
       width: 36,
       height: 36,
-      borderRadius: 18,
+      borderRadius: 8,
     },
     settingsFooterAvatarCompact: {
       width: 28,
       height: 28,
-      borderRadius: 14,
+      borderRadius: 8,
     },
     settingsFooterText: {
       fontSize: sf(12),
@@ -828,7 +828,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginBottom: 16,
     },
     quotesChangeColorOption: {
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -896,7 +896,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       width: '100%',
       maxWidth: 320,
       maxHeight: '56%',
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bg,
@@ -970,7 +970,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       width: '48%',
       minWidth: 128,
       flexGrow: 1,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -985,7 +985,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     appIconPreview: {
       width: 46,
       height: 46,
-      borderRadius: 13,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       overflow: 'hidden',

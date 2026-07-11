@@ -3,6 +3,10 @@ import { StyleSheet } from 'react-native';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { COMFORT_GAP_SM } from '@/constants/comfortDensity';
 import {
+  UI_RADIUS_DIGEST_PAIR,
+  UI_RADIUS_DIGEST_SINGLE,
+} from '@/constants/uiCornerRadius';
+import {
   DIGEST_STRIP_BADGE_ROW_HEIGHT,
   DIGEST_STRIP_BADGE_ROW_HEIGHT_PAIR,
   DIGEST_STRIP_FOOTER_MIN_HEIGHT,
@@ -35,7 +39,7 @@ export function makeDigestStripCardStyles(
       paddingLeft: pairLayout ? 14 : 18,
       paddingRight: pairLayout ? ft.pad(11) : ft.pad(13),
       paddingVertical: pairLayout ? ft.pad(10) : ft.pad(11),
-      borderRadius: pairLayout ? 12 : 16,
+      borderRadius: pairLayout ? UI_RADIUS_DIGEST_PAIR : UI_RADIUS_DIGEST_SINGLE,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -129,7 +133,7 @@ export function makeDigestStripCardStyles(
       height: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 14,
+      borderRadius: 8,
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,

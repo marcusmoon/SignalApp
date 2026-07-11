@@ -99,7 +99,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     safe: { flex: 1, backgroundColor: theme.bg },
     content: { padding: 16, gap: 20 },
     card: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,

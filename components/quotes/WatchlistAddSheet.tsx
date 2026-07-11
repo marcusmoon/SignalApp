@@ -133,7 +133,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     input: {
       borderWidth: 1,
       borderColor: theme.border,
-      borderRadius: 10,
+      borderRadius: 8,
       paddingHorizontal: 12,
       paddingVertical: 11,
       fontSize: sf(15),
@@ -143,7 +143,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     addBtn: {
       minHeight: 46,
-      borderRadius: 10,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.greenDim,

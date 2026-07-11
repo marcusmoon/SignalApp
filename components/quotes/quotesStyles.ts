@@ -50,7 +50,7 @@ export function makeQuotesStyles(
       marginHorizontal: 16,
       marginBottom: 8,
       padding: 12,
-      borderRadius: 14,
+      borderRadius: 8,
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
       borderColor: '#FFD6DA',

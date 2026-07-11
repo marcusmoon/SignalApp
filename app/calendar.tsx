@@ -537,7 +537,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     emptyDayBox: {
       marginTop: 4,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -592,7 +592,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     errBox: {
       padding: 10,
-      borderRadius: 14,
+      borderRadius: 8,
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
       borderColor: '#FFD6DA',
@@ -601,7 +601,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     errText: { fontSize: sf(11), color: theme.danger, lineHeight: sf(16) },
     card: {
       backgroundColor: theme.card,
-      borderRadius: 10,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       paddingHorizontal: 10,
@@ -722,7 +722,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     modalFoot: { paddingTop: 10 },
     modalTodayBtn: {
       minHeight: 42,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,

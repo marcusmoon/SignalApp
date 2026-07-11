@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 
+import { UI_RADIUS_TAB_BAR_FLOAT } from '@/constants/uiCornerRadius';
+
 /**
  * 하단 탭바 — 좌우 inset + 홈 인디케이터 위 lift + 둥근 플로팅 캡슐.
  * `app/(tabs)/_layout.tsx`와 스크롤 하단 패딩·FAB 위치에 맞출 것.
@@ -55,7 +57,7 @@ export const TAB_BAR_FLOAT_MARGIN_BOTTOM_ANDROID = 3;
 /** iOS: `slackTabBarBottomOffset` 에 더하는 추가 lift */
 export const TAB_BAR_FLOAT_MARGIN_BOTTOM_IOS = 8;
 /** 플로팅 캡슐 모서리 — 높이와 함께 키워 pill 형태 유지 */
-export const TAB_BAR_FLOAT_RADIUS = 30;
+export const TAB_BAR_FLOAT_RADIUS = UI_RADIUS_TAB_BAR_FLOAT;
 /** 아이콘+라벨 행 높이(캡슐 내부, uikit padding 5×2 + 아이콘 25 + 라벨 ~15) */
 export const TAB_BAR_FLOAT_HEIGHT = 54;
 

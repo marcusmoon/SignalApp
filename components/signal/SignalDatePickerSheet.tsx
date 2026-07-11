@@ -132,7 +132,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     modalFoot: { paddingTop: 10 },
     modalTodayBtn: {
       minHeight: 42,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,

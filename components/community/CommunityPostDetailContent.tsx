@@ -170,7 +170,7 @@ function makeStyles(
       paddingTop: 16,
     },
     bodyCard: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,

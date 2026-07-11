@@ -191,7 +191,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 16,
       paddingVertical: 12,
       paddingHorizontal: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,

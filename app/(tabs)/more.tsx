@@ -303,7 +303,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, hubTileLayout: H
       flexDirection: 'row',
       alignItems: 'center',
       gap: 16,
-      borderRadius: 13,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,

@@ -651,7 +651,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       marginBottom: 14,
       paddingVertical: 10,
       paddingHorizontal: 10,
-      borderRadius: 10,
+      borderRadius: 8,
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,
@@ -672,7 +672,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     error: {
       marginBottom: 16,
       padding: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       color: theme.danger,
       backgroundColor: theme.dangerDim,
       fontSize: sf(13),
@@ -680,7 +680,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     empty: {
       padding: 18,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       color: theme.textMuted,
@@ -690,7 +690,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       textAlign: 'center',
     },
     card: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -747,7 +747,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     detailPane: {
       flex: 0.55,
       minWidth: 0,
-      borderRadius: 18,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -776,7 +776,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: '800',
     },
     detailCard: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -815,7 +815,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     detailOpenBtn: {
       minHeight: 44,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,

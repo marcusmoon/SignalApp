@@ -361,7 +361,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginHorizontal: 16,
       marginBottom: 8,
       padding: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.danger,
       backgroundColor: theme.dangerDim,

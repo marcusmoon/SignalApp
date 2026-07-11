@@ -16,9 +16,11 @@ import { formatRelativeFromIso } from '@/utils/date';
 type Props = {
   item: SignalApiCommunityPost;
   sourceLabelId: MessageId;
+  /** 전체 탭 등 출처 구분이 필요할 때만 표시 */
+  showSource?: boolean;
 };
 
-export function CommunityPostCard({ item, sourceLabelId }: Props) {
+export function CommunityPostCard({ item, sourceLabelId, showSource = true }: Props) {
   const router = useRouter();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
@@ -35,8 +37,8 @@ export function CommunityPostCard({ item, sourceLabelId }: Props) {
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <View pointerEvents="none" style={styles.accentBar} />
       <View style={styles.metaRow}>
-        <SourceBadge label={t(sourceLabelId)} accent={accent} />
-        <View style={styles.timePill}>
+        {showSource ? <SourceBadge label={t(sourceLabelId)} accent={accent} variant="news" /> : null}
+        <View style={[styles.timePill, !showSource && styles.timePillLead]}>
           <Text style={styles.time}>{timeLabel}</Text>
         </View>
       </View>
@@ -98,35 +100,18 @@ function makeStyles(
       gap: ft.pad(8),
       marginBottom: 2,
     },
-    sourcePill: {
-      flexShrink: 1,
-      minWidth: 0,
-      flexDirection: 'row',
-      alignItems: 'center',
-      alignSelf: 'flex-start',
-      maxWidth: '62%',
-      paddingHorizontal: ft.pad(10),
-      paddingVertical: ft.pad(4),
-      borderRadius: 999,
-      backgroundColor: accent.dim,
-      borderWidth: 1,
-      borderColor: accent.border,
-    },
-    sourceName: {
-      flexShrink: 1,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
-      fontWeight: ft.emphasisWeight,
-      color: accent.accent,
-    },
     timePill: {
       flexShrink: 0,
+      marginLeft: 'auto',
       paddingHorizontal: ft.pad(8),
       paddingVertical: ft.pad(3),
       borderRadius: 999,
       backgroundColor: theme.bgElevated,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
+    },
+    timePillLead: {
+      marginLeft: 0,
     },
     time: {
       fontSize: ft.ff(10),

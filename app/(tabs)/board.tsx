@@ -223,10 +223,14 @@ export default function BoardScreen() {
   const renderItem = useCallback(
     ({ item }: { item: SignalApiCommunityPost }) => (
       <View style={styles.rowWrap}>
-        <CommunityPostCard item={item} sourceLabelId={communitySourceLabelId(item.source)} />
+        <CommunityPostCard
+          item={item}
+          sourceLabelId={communitySourceLabelId(item.source)}
+          showSource={source === COMMUNITY_SOURCE_ALL}
+        />
       </View>
     ),
-    [styles.rowWrap],
+    [source, styles.rowWrap],
   );
 
   return (

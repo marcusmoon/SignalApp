@@ -5,6 +5,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CommunityPostBody } from '@/components/community/CommunityPostBody';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
+import { SourceBadge } from '@/components/signal/SourceBadge';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { communityShowsOriginalLink, communitySourceAccent } from '@/constants/communitySources';
@@ -44,9 +45,7 @@ export function CommunityPostDetailContent({ item, bottomPad = 24, refreshing = 
       <View style={styles.headerFixed}>
         <View style={styles.headerInner}>
           <View style={styles.metaRow}>
-            <View style={styles.sourcePill}>
-              <Text style={styles.source}>{t(sourceLabelId)}</Text>
-            </View>
+            <SourceBadge label={t(sourceLabelId)} accent={accent} variant="news" />
             <Text style={styles.time}>{timeLabel}</Text>
           </View>
           <View style={styles.titleRow}>
@@ -112,24 +111,7 @@ function makeStyles(
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 20,
-    },
-    sourcePill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flexShrink: 0,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: accent.border,
-      backgroundColor: accent.dim,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-    },
-    source: {
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
-      fontWeight: ft.emphasisWeight,
-      color: accent.accent,
+      gap: 12,
     },
     time: {
       flex: 1,

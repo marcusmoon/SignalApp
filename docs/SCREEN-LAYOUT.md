@@ -65,6 +65,7 @@ PTR, 새 소식 chip, digest 갱신, 폴링, 캐시 모드는 **[FEED-INTERACTIO
 레이아웃 관점만 요약:
 
 - digest·세그먼트·날짜·OTA는 **스크롤 밖** (`topFixed`).
+- digest 가로 스크롤: **자유 스크롤 스트립** (`WebHorizontalScrollStrip`) — 페이지 스냅·휠 가로채기 금지. 상세는 [FEED-INTERACTION.md §5](./FEED-INTERACTION.md#5-고정-digest).
 - chip·OTA strip은 **리스트 바로 위** (`UpdatePromptStrip`).
 - `ListHeaderComponent`에는 digest·필터·로딩을 넣지 않는다.
 

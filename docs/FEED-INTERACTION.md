@@ -94,6 +94,63 @@ digest-only 새로고침 UI는 두지 않는다.
 
 적용: **뉴스** (`DigestPager`), **공시** (`DisclosureDigestSection`).
 
+### 가로 스크롤 (자유 스크롤 스트립)
+
+다이제스트는 **페이지·카드 단위 스냅 캐러셀이 아니다**. 카드가 가로 스트립으로 나열되고, 사용자가 드래그·스와이프한 **만큼만** 이동한다 (SaveTicker 등 일반 웹 가로 리스트와 동일한 UX).
+
+| 플랫폼 | 구현 | 스크롤 방식 |
+|---|---|---|
+| **웹** | `WebHorizontalScrollStrip` → DOM `overflow-x: auto` | 브라우저 관성·트랙패드 가로 스와이프·드래그 |
+| **앱** | 동일 컴포넌트 → `ScrollView` horizontal | 손가락 스와이프, `decelerationRate="normal"` + bounce |
+
+공통 컴포넌트: `components/layout/WebHorizontalScrollStrip.tsx`  
+웹 CSS: `app/+html.tsx` — `[data-signal-horizontal-carousel="true"]` (스크롤바 숨김, `touch-action: pan-x`)
+
+#### 카드 너비 (peek)
+
+다음 카드가 살짝 보이도록 너비를 잡는다 (`DigestPager`):
+
+| 레이아웃 | 조건 | 카드 너비 |
+|---|---|---|
+| 1열 | iPhone·compact | 컨테이너 × **0.88** |
+| 2열 | iPad·wide (`columns={2}`) | (컨테이너 − gap) × **0.48** |
+
+공시(`DisclosureDigestSection`)는 1열 기준 **0.88**만 사용한다.  
+가로 패딩: `CARD_EDGE_PAD` 12, 카드 간격: `CARD_GAP` 10.
+
+#### DO
+
+- 다이제스트 가로 스크롤은 **`WebHorizontalScrollStrip`만** 사용한다.
+- 웹에서는 **네이티브 overflow-x**로 두고 브라우저 스크롤 물리를 그대로 쓴다.
+- 스크롤 시작 시 펼쳐진 카드는 접는다 (`onScrollBeginDrag` → `expandedId` clear).
+- 다이제스트는 계속 **`topFixed`** (리스트 `ListHeaderComponent` 금지).
+
+#### DON'T
+
+- **페이지 스냅** (`snapToInterval`, CSS `scroll-snap-type: mandatory`, 루프 클론 페이지)을 쓰지 않는다.
+- **점 인디케이터(dots)** · 카드 단위 자동 넘김을 두지 않는다.
+- 웹에서 휠을 `preventDefault`로 가로채 **`scrollLeft`를 직접 더하지 않는다** (끊김·눈 fatigue 원인).
+- 세로 휠을 가로 스크롤에 억지로 매핑하지 않는다 — 웹은 **가로 드래그·트랙패드 좌우**가 기본.
+- 다이제스트 전용 `useWebHorizontalWheelScroll` 같은 휠 훅을 다시 만들지 않는다.
+
+#### 참조 구현
+
+| 화면 | 파일 |
+|---|---|
+| 뉴스 다이제스트 | `components/news/DigestPager.tsx` |
+| 공시 다이제스트 | `components/disclosures/DisclosureDigestSection.tsx` |
+| 가로 스트립 셸 | `components/layout/WebHorizontalScrollStrip.tsx` |
+| wide 2열 마운트 | `components/news/LegacyNewsFeedScreen.tsx` — `useTwoPane`일 때 `columns={2}` |
+
+#### 안티패턴 (digest 스크롤)
+
+| 증상 | 원인 | 해결 |
+|---|---|---|
+| 웹에서 좌우 스크롤 안 됨 | RN `ScrollView` + 휠 가로채기 | `WebHorizontalScrollStrip` (overflow-x) |
+| 스크롤이 딱딱·카드 단위로만 움직임 | `snapToInterval` / scroll-snap | 자유 스크롤, 스냅 제거 |
+| 트랙패드·드래그가 부드럽지 않음 | `scrollLeft += delta` 즉시 반영 | 웹 네이티브 overflow, 휠 훅 제거 |
+| wide에서 카드 한 장만 덩그러니 | 카드 너비 = 50% 고정 | 0.48 비율로 다음 카드 peek |
+
 ## 6. 새 소식 chip
 
 ### UI
@@ -188,8 +245,9 @@ if (latestId !== seen) markScopeHasNewContent(scope);
 6. [ ] iPhone `SignalHeader onBrandPress` = PTR
 7. [ ] wide `useRegisterWebHeaderRefresh`
 8. [ ] 고정 UI → `topFixed`, digest는 PTR/chip과 동시 갱신
-9. [ ] 서브탭 scope가 다르면 chip state도 scope별
-10. [ ] 웹: `scrollResetKey` · `useWebFlatListLoadMore` (FlatList)
+9. [ ] digest 가로 스크롤 → `WebHorizontalScrollStrip` (스냅·휠 훅·dots 금지)
+10. [ ] 서브탭 scope가 다르면 chip state도 scope별
+11. [ ] 웹: `scrollResetKey` · `useWebFlatListLoadMore` (FlatList)
 
 ## 10. 안티패턴 (재발 방지)
 
@@ -198,6 +256,8 @@ if (latestId !== seen) markScopeHasNewContent(scope);
 | PTR 중 스크롤이 위로 튐 | refresh 시 scroll hook / list clear | PTR와 필터 scroll 분리 |
 | 필터 후 loadMore할 때마다 위로 | `resyncDeps`가 pagination마다 scroll | `awaitingListResyncRef` 패턴 |
 | digest가 PTR과 함께 스크롤 | digest를 `ListHeaderComponent`에 배치 | `topFixed`로 이동 |
+| digest 웹 가로 스크롤 끊김 | RN ScrollView + 휠 `scrollLeft` 조작 | `WebHorizontalScrollStrip` |
+| digest가 카드 단위로만 넘어감 | `snapToInterval` / scroll-snap | 자유 스크롤 스트립 |
 | 한 탭 chip 누르면 전 탭 chip 사라짐 | 전역 `newContentAvailable` | scope별 Set |
 | 와치리스트에 글로벌 chip | 글로벌만 폴링 | segment별 poll |
 | PTR 끊김 | refresh 시작 시 pagination/hasMore 리셋 | `isRefresh` 분기 |
@@ -215,4 +275,7 @@ if (latestId !== seen) markScopeHasNewContent(scope);
 | wide 헤더 PTR | `contexts/WebHeaderRefreshContext.tsx` |
 | PTR UI | `components/signal/ThemedRefreshControl.tsx` |
 | chip UI | `components/signal/UpdatePromptStrip.tsx`, `FeedNewContentChip.tsx` |
+| digest 가로 스트립 | `components/layout/WebHorizontalScrollStrip.tsx` |
+| 뉴스 digest | `components/news/DigestPager.tsx` |
+| 공시 digest | `components/disclosures/DisclosureDigestSection.tsx` |
 | 탭 배지 | `contexts/FeedUnreadBadgesContext.tsx`, `services/feedUnreadBadges.ts` |

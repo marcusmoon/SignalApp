@@ -69,7 +69,7 @@
 - PTR·헤더 탭: `onRefreshBase` → `signalCacheMode(true)`, **스크롤 위치 유지**
 - 필터·탭·날짜 변경: `useScrollToTopOnChange` (PTR과 분리)
 - 새 소식 chip: 리스트 위 strip, **scope별** state, 폴링은 chip만 (자동 fetch 금지)
-- digest: `topFixed`, PTR/chip과 동시 `bypass` 갱신
+- digest: `topFixed`, PTR/chip과 동시 `bypass` 갱신. 가로 스크롤은 `WebHorizontalScrollStrip` 자유 스크롤 — [FEED-INTERACTION.md §5](./FEED-INTERACTION.md#5-고정-digest)
 
 ## 실행
 

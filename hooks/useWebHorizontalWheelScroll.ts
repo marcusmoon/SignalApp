@@ -7,18 +7,10 @@ function getScrollableNode(scrollRef: RefObject<ScrollView | null>): HTMLElement
   return scrollView.getScrollableNode() as HTMLElement | null;
 }
 
-function snapScrollLeft(node: HTMLElement, pageWidth: number, animated: boolean) {
-  if (pageWidth <= 0) return;
-  const maxIndex = Math.max(0, Math.round((node.scrollWidth - node.clientWidth) / pageWidth));
-  const index = Math.max(0, Math.min(Math.round(node.scrollLeft / pageWidth), maxIndex));
-  node.scrollTo({ left: index * pageWidth, behavior: animated ? 'smooth' : 'auto' });
-}
-
-/** Map wheel to horizontal scroll on web; optional page snap after gesture ends. */
+/** Map wheel deltas to free horizontal scroll on web (no page snapping). */
 export function useWebHorizontalWheelScroll(
   scrollRef: RefObject<ScrollView | null>,
   enabled: boolean,
-  pageWidth = 0,
 ) {
   useEffect(() => {
     if (Platform.OS !== 'web' || !enabled) return;
@@ -26,80 +18,26 @@ export function useWebHorizontalWheelScroll(
     const node = getScrollableNode(scrollRef);
     if (!node || typeof node.addEventListener !== 'function') return;
 
-    let wheelSnapTimer: ReturnType<typeof setTimeout> | null = null;
-    let pointerActive = false;
-
-    const clearWheelSnapTimer = () => {
-      if (!wheelSnapTimer) return;
-      clearTimeout(wheelSnapTimer);
-      wheelSnapTimer = null;
-    };
-
-    const scheduleWheelSnap = () => {
-      if (pageWidth <= 0 || pointerActive) return;
-      clearWheelSnapTimer();
-      wheelSnapTimer = setTimeout(() => {
-        snapScrollLeft(node, pageWidth, true);
-        wheelSnapTimer = null;
-      }, 120);
-    };
-
     const onWheel = (ev: WheelEvent) => {
       if (node.scrollWidth <= node.clientWidth) return;
 
-      const horizontalDelta =
-        Math.abs(ev.deltaX) > Math.abs(ev.deltaY) ? ev.deltaX : ev.shiftKey ? ev.deltaY : 0;
-      if (horizontalDelta === 0) return;
+      const delta =
+        Math.abs(ev.deltaX) > Math.abs(ev.deltaY)
+          ? ev.deltaX
+          : ev.shiftKey
+            ? ev.deltaY
+            : ev.deltaY;
+      if (delta === 0) return;
 
       const atStart = node.scrollLeft <= 0;
       const atEnd = node.scrollLeft + node.clientWidth >= node.scrollWidth - 1;
-      if ((horizontalDelta < 0 && atStart) || (horizontalDelta > 0 && atEnd)) return;
+      if ((delta < 0 && atStart) || (delta > 0 && atEnd)) return;
 
       ev.preventDefault();
-      node.scrollLeft += horizontalDelta;
-      scheduleWheelSnap();
-    };
-
-    const onPointerDown = () => {
-      pointerActive = true;
-      clearWheelSnapTimer();
-    };
-
-    const onPointerUp = () => {
-      pointerActive = false;
-      if (pageWidth > 0) {
-        snapScrollLeft(node, pageWidth, true);
-      }
+      node.scrollLeft += delta;
     };
 
     node.addEventListener('wheel', onWheel, { passive: false });
-    node.addEventListener('pointerdown', onPointerDown, { passive: true });
-    node.addEventListener('pointerup', onPointerUp, { passive: true });
-    node.addEventListener('pointercancel', onPointerUp, { passive: true });
-
-    return () => {
-      clearWheelSnapTimer();
-      node.removeEventListener('wheel', onWheel);
-      node.removeEventListener('pointerdown', onPointerDown);
-      node.removeEventListener('pointerup', onPointerUp);
-      node.removeEventListener('pointercancel', onPointerUp);
-    };
-  }, [scrollRef, enabled, pageWidth]);
-}
-
-export function snapWebCarouselToOffset(
-  scrollRef: RefObject<ScrollView | null>,
-  offsetX: number,
-  pageWidth: number,
-  animated: boolean,
-) {
-  if (Platform.OS !== 'web' || pageWidth <= 0) return offsetX;
-  const node = getScrollableNode(scrollRef);
-  if (!node) return offsetX;
-
-  const maxIndex = Math.max(0, Math.round((node.scrollWidth - node.clientWidth) / pageWidth));
-  const index = Math.max(0, Math.min(Math.round(offsetX / pageWidth), maxIndex));
-  const targetX = index * pageWidth;
-  node.scrollTo({ left: targetX, behavior: animated ? 'smooth' : 'auto' });
-  return targetX;
+    return () => node.removeEventListener('wheel', onWheel);
+  }, [scrollRef, enabled]);
 }

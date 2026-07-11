@@ -3,8 +3,6 @@ import {
   GestureResponderEvent,
   LayoutAnimation,
   Linking,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Platform,
   Pressable,
   ScrollView,
@@ -22,7 +20,7 @@ import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useWebHorizontalWheelScroll, snapWebCarouselToOffset } from '@/hooks/useWebHorizontalWheelScroll';
+import { useWebHorizontalWheelScroll } from '@/hooks/useWebHorizontalWheelScroll';
 import type { NewsDigestItem } from '@/domain/news';
 import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { AppLocale } from '@/locales/messages';
@@ -36,13 +34,8 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const EXPAND_LAYOUT = LayoutAnimation.create(180, LayoutAnimation.Types.easeOut, LayoutAnimation.Properties.opacity);
 
-function runAfterFrame(callback: () => void) {
-  if (typeof requestAnimationFrame === 'function') {
-    requestAnimationFrame(callback);
-    return;
-  }
-  setTimeout(callback, 0);
-}
+const CARD_GAP = 10;
+const CARD_EDGE_PAD = 12;
 
 type DigestCardProps = {
   digest: NewsDigestItem;
@@ -186,148 +179,25 @@ type Props = {
   columns?: 1 | 2;
 };
 
-function chunkDigests(items: NewsDigestItem[], columns: 1 | 2): NewsDigestItem[][] {
-  if (columns === 1) return items.map((item) => [item]);
-  const pages: NewsDigestItem[][] = [];
-  for (let i = 0; i < items.length; i += 2) {
-    pages.push(items.slice(i, i + 2));
-  }
-  return pages;
+function digestCardWidth(containerWidth: number, pairLayout: boolean): number {
+  if (containerWidth <= 0) return 0;
+  if (pairLayout) return Math.floor((containerWidth - CARD_GAP) / 2);
+  return Math.max(0, containerWidth - CARD_EDGE_PAD * 2);
 }
 
 export function DigestPager({ batches, columns = 1 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const pairLayout = columns === 2;
-  const isWebCarousel = Platform.OS === 'web';
-  const loopCarousel = !isWebCarousel;
   const scrollRef = useRef<ScrollView | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
-  const pageWidth = Math.max(0, containerWidth || 0);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [dotIndex, setDotIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const loopResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cardWidth = digestCardWidth(containerWidth, pairLayout);
   const styles = useMemo(
     () => makeStyles(theme, scaleFont, feedTypo, pairLayout),
     [theme, scaleFont, feedTypo, pairLayout],
   );
-  const digestPages = useMemo(() => chunkDigests(batches, columns), [batches, columns]);
-  const pageCount = digestPages.length;
-  const carouselPages = useMemo(() => {
-    if (!loopCarousel || pageCount <= 1) return digestPages;
-    return [digestPages[pageCount - 1], ...digestPages, digestPages[0]];
-  }, [digestPages, loopCarousel, pageCount]);
 
-  useWebHorizontalWheelScroll(scrollRef, pageCount > 1, pageWidth);
-
-  const jumpToVisualPage = useCallback((visualIndex: number) => {
-    if (pageWidth <= 0) return;
-    const x = pageWidth * visualIndex;
-    const reset = () => scrollRef.current?.scrollTo({ x, animated: false });
-    reset();
-    runAfterFrame(reset);
-    setTimeout(reset, 50);
-    setTimeout(reset, 150);
-  }, [pageWidth]);
-
-  const clearScheduledLoopReset = useCallback(() => {
-    if (!loopResetTimerRef.current) return;
-    clearTimeout(loopResetTimerRef.current);
-    loopResetTimerRef.current = null;
-  }, []);
-
-  const scheduleLoopReset = useCallback(
-    (visualIndex: number, logicalIndex: number) => {
-      clearScheduledLoopReset();
-      loopResetTimerRef.current = setTimeout(() => {
-        jumpToVisualPage(visualIndex);
-        setPageIndex(logicalIndex);
-        setDotIndex(logicalIndex);
-        setExpandedId(null);
-        loopResetTimerRef.current = null;
-      }, 90);
-    },
-    [clearScheduledLoopReset, jumpToVisualPage],
-  );
-
-  useEffect(() => () => clearScheduledLoopReset(), [clearScheduledLoopReset]);
-
-  useEffect(() => {
-    if (pageWidth <= 0 || pageCount <= 1) return;
-    jumpToVisualPage(loopCarousel ? 1 : 0);
-    setPageIndex(0);
-    setDotIndex(0);
-    setExpandedId(null);
-  }, [digestPages, jumpToVisualPage, loopCarousel, pageCount, pageWidth]);
-
-  const syncPageIndex = useCallback(
-    (offsetX: number, resetExpand: boolean) => {
-      if (pageWidth <= 0) return;
-      const rawIndex = Math.max(0, Math.round(offsetX / pageWidth));
-      if (loopCarousel && pageCount > 1 && rawIndex <= 0) {
-        clearScheduledLoopReset();
-        const index = pageCount - 1;
-        jumpToVisualPage(pageCount);
-        setPageIndex(index);
-        setDotIndex(index);
-        if (resetExpand) setExpandedId(null);
-        return;
-      }
-      if (loopCarousel && pageCount > 1 && rawIndex >= pageCount + 1) {
-        clearScheduledLoopReset();
-        jumpToVisualPage(1);
-        setPageIndex(0);
-        setDotIndex(0);
-        if (resetExpand) setExpandedId(null);
-        return;
-      }
-      clearScheduledLoopReset();
-      const index = loopCarousel && pageCount > 1
-        ? Math.max(0, Math.min(rawIndex - 1, pageCount - 1))
-        : Math.max(0, Math.min(rawIndex, pageCount - 1));
-      setPageIndex(index);
-      setDotIndex(index);
-      if (resetExpand) setExpandedId(null);
-    },
-    [pageWidth, pageCount, loopCarousel, jumpToVisualPage, clearScheduledLoopReset],
-  );
-
-  const handleScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (pageWidth <= 0) return;
-      const rawIndex = Math.max(0, Math.round(e.nativeEvent.contentOffset.x / pageWidth));
-      if (loopCarousel && pageCount > 1 && rawIndex <= 0) {
-        const index = pageCount - 1;
-        setDotIndex((prev) => (prev === index ? prev : index));
-        scheduleLoopReset(pageCount, index);
-        return;
-      }
-      if (loopCarousel && pageCount > 1 && rawIndex >= pageCount + 1) {
-        setDotIndex((prev) => (prev === 0 ? prev : 0));
-        scheduleLoopReset(1, 0);
-        return;
-      }
-      clearScheduledLoopReset();
-      const index = loopCarousel && pageCount > 1
-        ? Math.max(0, Math.min(rawIndex - 1, pageCount - 1))
-        : Math.max(0, Math.min(rawIndex, pageCount - 1));
-      setDotIndex((prev) => (prev === index ? prev : index));
-    },
-    [pageWidth, pageCount, loopCarousel, clearScheduledLoopReset, scheduleLoopReset],
-  );
-
-  const handleScrollEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const offsetX = e.nativeEvent.contentOffset.x;
-      if (isWebCarousel && pageWidth > 0) {
-        const snappedX = snapWebCarouselToOffset(scrollRef, offsetX, pageWidth, true);
-        syncPageIndex(snappedX, true);
-        return;
-      }
-      syncPageIndex(offsetX, true);
-    },
-    [isWebCarousel, pageWidth, syncPageIndex],
-  );
+  useWebHorizontalWheelScroll(scrollRef, batches.length > 1);
 
   const toggleExpand = useCallback((id: string) => {
     if (!pairLayout) {
@@ -335,6 +205,10 @@ export function DigestPager({ batches, columns = 1 }: Props) {
     }
     setExpandedId((prev) => (prev === id ? null : id));
   }, [pairLayout]);
+
+  const collapseOnScroll = useCallback(() => {
+    setExpandedId(null);
+  }, []);
 
   if (batches.length === 0) return null;
 
@@ -345,77 +219,29 @@ export function DigestPager({ batches, columns = 1 }: Props) {
         const next = Math.max(0, Math.round(event.nativeEvent.layout.width));
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
-      <HorizontalCarouselShell
-        pageIndex={pageIndex}
-        pageCount={pageCount}
-        loop={loopCarousel}
-        footer={
-          pageCount > 1 ? (
-            <View style={styles.dotsRow}>
-              {digestPages.map((_, i) => (
-                <View key={i} style={[styles.dot, i === dotIndex && styles.dotActive]} />
-              ))}
-            </View>
-          ) : null
-        }>
+      <HorizontalCarouselShell pageIndex={0} pageCount={1}>
         <ScrollView
           ref={scrollRef}
           horizontal
           nestedScrollEnabled
           {...webHorizontalCarouselScrollProps}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          onMomentumScrollEnd={handleScrollEnd}
-          onScrollEndDrag={handleScrollEnd}
+          onScrollBeginDrag={collapseOnScroll}
           directionalLockEnabled
-          decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
-          snapToInterval={!isWebCarousel && pageWidth > 0 ? pageWidth : undefined}
-          snapToAlignment="start"
-          disableIntervalMomentum={!isWebCarousel}
-          keyboardShouldPersistTaps="handled">
-          {pageWidth > 0 &&
-            carouselPages.map((pageItems, index) => {
-              const realIndex = loopCarousel && pageCount > 1
-                ? index <= 0
-                  ? pageCount - 1
-                  : index >= pageCount + 1
-                    ? 0
-                    : index - 1
-                : index;
-              return (
-                <View
-                  key={`${pageItems.map((item) => item.id).join('-')}-${index}`}
-                  {...(isWebCarousel
-                    ? { dataSet: { signalHorizontalCarouselPage: 'true' } }
-                    : {})}
-                  style={[
-                    styles.page,
-                    pairLayout && styles.pageTwoUp,
-                    { width: pageWidth },
-                  ]}>
-                  {pageItems.map((digest) => {
-                    const isExpanded = expandedId === digest.id && pageIndex === realIndex;
-                    const columnStyle = pairLayout
-                      ? pageItems.length === 1
-                        ? styles.pageColumnSingle
-                        : styles.pageColumn
-                      : undefined;
-                    return (
-                      <View key={digest.id} style={columnStyle}>
-                        <DigestCard
-                          digest={digest}
-                          isExpanded={isExpanded}
-                          onToggle={toggleExpand}
-                          styles={styles}
-                          theme={theme}
-                          pairLayout={pairLayout}
-                        />
-                      </View>
-                    );
-                  })}
-                </View>
-              );
-            })}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}>
+          {cardWidth > 0 &&
+            batches.map((digest) => (
+              <View key={digest.id} style={[styles.cardSlot, { width: cardWidth }]}>
+                <DigestCard
+                  digest={digest}
+                  isExpanded={expandedId === digest.id}
+                  onToggle={toggleExpand}
+                  styles={styles}
+                  theme={theme}
+                  pairLayout={pairLayout}
+                />
+              </View>
+            ))}
         </ScrollView>
       </HorizontalCarouselShell>
     </View>
@@ -432,21 +258,14 @@ function makeStyles(
     container: {
       marginBottom: 8,
     },
-    page: {
-      gap: 8,
-    },
-    pageTwoUp: {
+    scrollContent: {
       flexDirection: 'row',
       alignItems: 'stretch',
-      gap: 10,
+      gap: CARD_GAP,
+      paddingHorizontal: pairLayout ? 0 : CARD_EDGE_PAD,
     },
-    pageColumn: {
-      flex: 1,
-      minWidth: 0,
-    },
-    pageColumnSingle: {
-      width: '48%',
-      maxWidth: '48%',
+    cardSlot: {
+      flexShrink: 0,
     },
     card: {
       paddingLeft: 18,
@@ -580,24 +399,6 @@ function makeStyles(
       lineHeight: sf(14),
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
-    },
-    dotsRow: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 5,
-    },
-    dot: {
-      width: 5,
-      height: 5,
-      borderRadius: 999,
-      backgroundColor: theme.border,
-    },
-    dotActive: {
-      width: 14,
-      height: 5,
-      borderRadius: 999,
-      backgroundColor: theme.green,
     },
   });
 }

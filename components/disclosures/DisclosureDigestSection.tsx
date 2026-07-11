@@ -1,13 +1,11 @@
 /**
- * 공시 탭 상단 - 뉴스 주요 이슈(DigestPager)와 동일한 레이아웃
+ * 공시 탭 상단 - 뉴스 주요 이슈(DigestPager)와 동일한 자유 가로 스크롤 스트립
  */
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import {
   GestureResponderEvent,
   LayoutAnimation,
   Linking,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Platform,
   Pressable,
   ScrollView,
@@ -32,6 +30,8 @@ import { disclosureDigestCreatedIso } from '@/domain/digests/createdAt';
 import { formatFeedItemTimeLabel } from '@/utils/date';
 
 const TAP_MOVE_THRESHOLD = 8;
+const CARD_GAP = 10;
+const CARD_EDGE_PAD = 12;
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -176,11 +176,8 @@ export function DisclosureDigestSection({ items, loading, accentColor, accentSec
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const scrollRef = useRef<ScrollView | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
-  const pageWidth = Math.max(0, containerWidth || 0);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [dotIndex, setDotIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const loopItems = useMemo(() => (items.length > 1 ? [...items, items[0]] : items), [items]);
+  const cardWidth = Math.max(0, containerWidth - CARD_EDGE_PAD * 2);
   const resolvedAccent = accentSection ? homeSectionAccentColor(accentSection, theme) : accentColor;
   const styles = useMemo(
     () => makeStyles(theme, scaleFont, feedTypo, resolvedAccent),
@@ -189,53 +186,13 @@ export function DisclosureDigestSection({ items, loading, accentColor, accentSec
 
   useWebHorizontalWheelScroll(scrollRef, items.length > 1);
 
-  const resetLoopToStart = useCallback(() => {
-    const reset = () => scrollRef.current?.scrollTo({ x: 0, animated: false });
-    reset();
-    requestAnimationFrame(reset);
-    setTimeout(reset, 50);
-    setTimeout(reset, 150);
-  }, []);
-
-  const syncPageIndex = useCallback(
-    (offsetX: number, resetExpand: boolean) => {
-      if (pageWidth <= 0) return;
-      const rawIndex = Math.round(offsetX / pageWidth);
-      if (items.length > 1 && rawIndex >= items.length) {
-        resetLoopToStart();
-        setPageIndex(0);
-        setDotIndex(0);
-        if (resetExpand) setExpandedId(null);
-        return;
-      }
-      const index = Math.max(0, Math.min(rawIndex, items.length - 1));
-      setPageIndex(index);
-      setDotIndex(index);
-      if (resetExpand) setExpandedId(null);
-    },
-    [pageWidth, items.length, resetLoopToStart],
-  );
-
-  const handleScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (pageWidth <= 0) return;
-      const rawIndex = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
-      const index = items.length > 1 && rawIndex >= items.length ? 0 : Math.max(0, Math.min(rawIndex, items.length - 1));
-      setDotIndex((prev) => (prev === index ? prev : index));
-    },
-    [pageWidth, items.length],
-  );
-
-  const handleScrollEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      syncPageIndex(e.nativeEvent.contentOffset.x, true);
-    },
-    [syncPageIndex],
-  );
-
   const toggleExpand = useCallback((id: string) => {
     LayoutAnimation.configureNext(EXPAND_LAYOUT);
     setExpandedId((prev) => (prev === id ? null : id));
+  }, []);
+
+  const collapseOnScroll = useCallback(() => {
+    setExpandedId(null);
   }, []);
 
   if (loading && items.length === 0) return null;
@@ -248,50 +205,28 @@ export function DisclosureDigestSection({ items, loading, accentColor, accentSec
         const next = Math.max(0, Math.round(event.nativeEvent.layout.width));
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
-      <HorizontalCarouselShell
-        pageIndex={pageIndex}
-        pageCount={items.length}
-        loop
-        footer={
-          items.length > 1 ? (
-            <View style={styles.dotsRow}>
-              {items.map((_, i) => (
-                <View key={i} style={[styles.dot, i === dotIndex && styles.dotActive]} />
-              ))}
-            </View>
-          ) : null
-        }>
+      <HorizontalCarouselShell pageIndex={0} pageCount={1}>
         <ScrollView
           ref={scrollRef}
           horizontal
           nestedScrollEnabled
           {...webHorizontalCarouselScrollProps}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          onMomentumScrollEnd={handleScrollEnd}
-          onScrollEndDrag={handleScrollEnd}
+          onScrollBeginDrag={collapseOnScroll}
           directionalLockEnabled
-          decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
-          snapToInterval={pageWidth > 0 ? pageWidth : undefined}
-          snapToAlignment="start"
-          disableIntervalMomentum
-          keyboardShouldPersistTaps="handled">
-          {pageWidth > 0 &&
-            loopItems.map((item, index) => {
-              const isLoopClone = index >= items.length;
-              const isExpanded = !isLoopClone && expandedId === item.id && pageIndex === index;
-              return (
-                <View key={`${item.id}-${index}`} style={[styles.page, { width: pageWidth }]}>
-                  <DigestCard
-                    item={item}
-                    isExpanded={isExpanded}
-                    onToggle={toggleExpand}
-                    styles={styles}
-                    theme={theme}
-                  />
-                </View>
-              );
-            })}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}>
+          {cardWidth > 0 &&
+            items.map((item) => (
+              <View key={item.id} style={[styles.cardSlot, { width: cardWidth }]}>
+                <DigestCard
+                  item={item}
+                  isExpanded={expandedId === item.id}
+                  onToggle={toggleExpand}
+                  styles={styles}
+                  theme={theme}
+                />
+              </View>
+            ))}
         </ScrollView>
       </HorizontalCarouselShell>
     </View>
@@ -308,8 +243,14 @@ function makeStyles(
     container: {
       marginBottom: 10,
     },
-    page: {
-      gap: 8,
+    scrollContent: {
+      flexDirection: 'row',
+      alignItems: 'stretch',
+      gap: CARD_GAP,
+      paddingHorizontal: CARD_EDGE_PAD,
+    },
+    cardSlot: {
+      flexShrink: 0,
     },
     card: {
       paddingLeft: 18,
@@ -406,24 +347,6 @@ function makeStyles(
       lineHeight: sf(14),
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
-    },
-    dotsRow: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 5,
-    },
-    dot: {
-      width: 5,
-      height: 5,
-      borderRadius: 999,
-      backgroundColor: theme.border,
-    },
-    dotActive: {
-      width: 14,
-      height: 5,
-      borderRadius: 999,
-      backgroundColor: theme.green,
     },
   });
 }

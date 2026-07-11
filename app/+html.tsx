@@ -147,20 +147,17 @@ body {
   background-color: var(--signal-bg);
 }
 
-/* Hide scrollbars on horizontal card carousels; snap pages on web. */
+/* Hide scrollbars on horizontal digest strips; free scroll (no snap). */
 [data-signal-horizontal-carousel="true"] {
   scrollbar-width: none;
   -ms-overflow-style: none;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
+  overflow-x: auto;
   overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
 }
 [data-signal-horizontal-carousel="true"]::-webkit-scrollbar {
   display: none;
-}
-[data-signal-horizontal-carousel-page="true"] {
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
 }
 
 /* Mobile Safari can miss RN Web's initial fixed/absolute measurements until resize.

@@ -50,6 +50,7 @@ type DigestCardProps = {
   onToggle: (id: string) => void;
   styles: ReturnType<typeof makeStyles>;
   theme: AppTheme;
+  pairLayout?: boolean;
 };
 
 const DigestCard = memo(function DigestCard({
@@ -58,6 +59,7 @@ const DigestCard = memo(function DigestCard({
   onToggle,
   styles,
   theme,
+  pairLayout = false,
 }: DigestCardProps) {
   const { t, locale } = useLocale();
   const pressStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -90,20 +92,24 @@ const DigestCard = memo(function DigestCard({
     <Pressable
       onPress={handlePress}
       onPressIn={handlePressIn}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      style={({ pressed }) => [
+        styles.card,
+        pairLayout && styles.cardPair,
+        pressed && styles.cardPressed,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={digest.title}
       accessibilityState={{ expanded: isExpanded }}
     >
-      <View style={styles.accentLine} />
+      <View style={[styles.accentLine, pairLayout && styles.accentLinePair]} />
       {digest.aiGenerated || digest.topics.length > 0 ? (
         <View style={styles.badgeRow}>
           {digest.aiGenerated ? (
-            <View style={styles.aiBadge}>
+            <View style={[styles.aiBadge, pairLayout && styles.aiBadgePair]}>
               <Text style={styles.aiBadgeText}>✦ AI</Text>
             </View>
           ) : null}
-          {digest.topics.slice(0, 4).map((topic) => (
+          {digest.topics.slice(0, pairLayout ? 2 : 4).map((topic) => (
             <Text key={topic} style={styles.topicChip} numberOfLines={1}>
               {topic}
             </Text>
@@ -111,7 +117,7 @@ const DigestCard = memo(function DigestCard({
         </View>
       ) : null}
 
-      <Text style={styles.title} numberOfLines={2}>
+      <Text style={[styles.title, pairLayout && styles.titlePair]} numberOfLines={2}>
         {digest.title}
       </Text>
 
@@ -191,6 +197,8 @@ function chunkDigests(items: NewsDigestItem[], columns: 1 | 2): NewsDigestItem[]
 
 export function DigestPager({ batches, columns = 1 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
+  const pairLayout = columns === 2;
+  const loopCarousel = Platform.OS !== 'web';
   const scrollRef = useRef<ScrollView | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const pageWidth = Math.max(0, containerWidth || 0);
@@ -198,13 +206,16 @@ export function DigestPager({ batches, columns = 1 }: Props) {
   const [dotIndex, setDotIndex] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const loopResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
+  const styles = useMemo(
+    () => makeStyles(theme, scaleFont, feedTypo, pairLayout),
+    [theme, scaleFont, feedTypo, pairLayout],
+  );
   const digestPages = useMemo(() => chunkDigests(batches, columns), [batches, columns]);
   const pageCount = digestPages.length;
   const carouselPages = useMemo(() => {
-    if (pageCount <= 1) return digestPages;
+    if (!loopCarousel || pageCount <= 1) return digestPages;
     return [digestPages[pageCount - 1], ...digestPages, digestPages[0]];
-  }, [digestPages, pageCount]);
+  }, [digestPages, loopCarousel, pageCount]);
 
   useWebHorizontalWheelScroll(scrollRef, pageCount > 1);
 
@@ -242,17 +253,17 @@ export function DigestPager({ batches, columns = 1 }: Props) {
 
   useEffect(() => {
     if (pageWidth <= 0 || pageCount <= 1) return;
-    jumpToVisualPage(1);
+    jumpToVisualPage(loopCarousel ? 1 : 0);
     setPageIndex(0);
     setDotIndex(0);
     setExpandedId(null);
-  }, [digestPages, jumpToVisualPage, pageCount, pageWidth]);
+  }, [digestPages, jumpToVisualPage, loopCarousel, pageCount, pageWidth]);
 
   const syncPageIndex = useCallback(
     (offsetX: number, resetExpand: boolean) => {
       if (pageWidth <= 0) return;
       const rawIndex = Math.max(0, Math.round(offsetX / pageWidth));
-      if (pageCount > 1 && rawIndex <= 0) {
+      if (loopCarousel && pageCount > 1 && rawIndex <= 0) {
         clearScheduledLoopReset();
         const index = pageCount - 1;
         jumpToVisualPage(pageCount);
@@ -261,7 +272,7 @@ export function DigestPager({ batches, columns = 1 }: Props) {
         if (resetExpand) setExpandedId(null);
         return;
       }
-      if (pageCount > 1 && rawIndex >= pageCount + 1) {
+      if (loopCarousel && pageCount > 1 && rawIndex >= pageCount + 1) {
         clearScheduledLoopReset();
         jumpToVisualPage(1);
         setPageIndex(0);
@@ -270,38 +281,38 @@ export function DigestPager({ batches, columns = 1 }: Props) {
         return;
       }
       clearScheduledLoopReset();
-      const index = pageCount > 1
+      const index = loopCarousel && pageCount > 1
         ? Math.max(0, Math.min(rawIndex - 1, pageCount - 1))
         : Math.max(0, Math.min(rawIndex, pageCount - 1));
       setPageIndex(index);
       setDotIndex(index);
       if (resetExpand) setExpandedId(null);
     },
-    [pageWidth, pageCount, jumpToVisualPage, clearScheduledLoopReset],
+    [pageWidth, pageCount, loopCarousel, jumpToVisualPage, clearScheduledLoopReset],
   );
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (pageWidth <= 0) return;
       const rawIndex = Math.max(0, Math.round(e.nativeEvent.contentOffset.x / pageWidth));
-      if (pageCount > 1 && rawIndex <= 0) {
+      if (loopCarousel && pageCount > 1 && rawIndex <= 0) {
         const index = pageCount - 1;
         setDotIndex((prev) => (prev === index ? prev : index));
         scheduleLoopReset(pageCount, index);
         return;
       }
-      if (pageCount > 1 && rawIndex >= pageCount + 1) {
+      if (loopCarousel && pageCount > 1 && rawIndex >= pageCount + 1) {
         setDotIndex((prev) => (prev === 0 ? prev : 0));
         scheduleLoopReset(1, 0);
         return;
       }
       clearScheduledLoopReset();
-      const index = pageCount > 1
+      const index = loopCarousel && pageCount > 1
         ? Math.max(0, Math.min(rawIndex - 1, pageCount - 1))
         : Math.max(0, Math.min(rawIndex, pageCount - 1));
       setDotIndex((prev) => (prev === index ? prev : index));
     },
-    [pageWidth, pageCount, clearScheduledLoopReset, scheduleLoopReset],
+    [pageWidth, pageCount, loopCarousel, clearScheduledLoopReset, scheduleLoopReset],
   );
 
   const handleScrollEnd = useCallback(
@@ -312,9 +323,11 @@ export function DigestPager({ batches, columns = 1 }: Props) {
   );
 
   const toggleExpand = useCallback((id: string) => {
-    LayoutAnimation.configureNext(EXPAND_LAYOUT);
+    if (!pairLayout) {
+      LayoutAnimation.configureNext(EXPAND_LAYOUT);
+    }
     setExpandedId((prev) => (prev === id ? null : id));
-  }, []);
+  }, [pairLayout]);
 
   if (batches.length === 0) return null;
 
@@ -328,7 +341,7 @@ export function DigestPager({ batches, columns = 1 }: Props) {
       <HorizontalCarouselShell
         pageIndex={pageIndex}
         pageCount={pageCount}
-        loop
+        loop={loopCarousel}
         footer={
           pageCount > 1 ? (
             <View style={styles.dotsRow}>
@@ -355,7 +368,7 @@ export function DigestPager({ batches, columns = 1 }: Props) {
           keyboardShouldPersistTaps="handled">
           {pageWidth > 0 &&
             carouselPages.map((pageItems, index) => {
-              const realIndex = pageCount > 1
+              const realIndex = loopCarousel && pageCount > 1
                 ? index <= 0
                   ? pageCount - 1
                   : index >= pageCount + 1
@@ -365,14 +378,21 @@ export function DigestPager({ batches, columns = 1 }: Props) {
               return (
                 <View
                   key={`${pageItems.map((item) => item.id).join('-')}-${index}`}
-                  style={[styles.page, columns === 2 && styles.pageTwoUp, { width: pageWidth }]}>
+                  style={[
+                    styles.page,
+                    pairLayout && styles.pageTwoUp,
+                    pairLayout && Platform.OS === 'web' && styles.pageTwoUpWeb,
+                    { width: pageWidth },
+                  ]}>
                   {pageItems.map((digest) => {
                     const isExpanded = expandedId === digest.id && pageIndex === realIndex;
                     const columnStyle =
-                      columns === 2
+                      pairLayout
                         ? pageItems.length === 1
                           ? styles.pageColumnSingle
-                          : styles.pageColumn
+                          : Platform.OS === 'web'
+                            ? styles.pageColumnWeb
+                            : styles.pageColumn
                         : undefined;
                     return (
                       <View key={digest.id} style={columnStyle}>
@@ -382,6 +402,7 @@ export function DigestPager({ batches, columns = 1 }: Props) {
                           onToggle={toggleExpand}
                           styles={styles}
                           theme={theme}
+                          pairLayout={pairLayout}
                         />
                       </View>
                     );
@@ -395,7 +416,12 @@ export function DigestPager({ batches, columns = 1 }: Props) {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
+function makeStyles(
+  theme: AppTheme,
+  sf: (n: number) => number,
+  ft: FeedContentTypography,
+  pairLayout: boolean,
+) {
   return StyleSheet.create({
     container: {
       marginBottom: 8,
@@ -406,14 +432,25 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     pageTwoUp: {
       flexDirection: 'row',
       alignItems: 'stretch',
+      gap: 10,
+    },
+    pageTwoUpWeb: {
+      justifyContent: 'center',
     },
     pageColumn: {
       flex: 1,
       minWidth: 0,
     },
+    pageColumnWeb: {
+      flexGrow: 0,
+      flexShrink: 1,
+      width: '46%',
+      maxWidth: 380,
+      minWidth: 0,
+    },
     pageColumnSingle: {
-      width: '48%',
-      maxWidth: '48%',
+      width: pairLayout && Platform.OS === 'web' ? '46%' : '48%',
+      maxWidth: pairLayout && Platform.OS === 'web' ? 380 : '48%',
     },
     card: {
       paddingLeft: 18,
@@ -431,6 +468,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       shadowOffset: { width: 0, height: 5 },
       elevation: 1,
     },
+    cardPair: {
+      paddingLeft: 14,
+      paddingRight: ft.pad(11),
+      paddingVertical: ft.pad(9),
+      borderRadius: 12,
+      gap: 5,
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 0,
+    },
     accentLine: {
       position: 'absolute',
       left: 0,
@@ -438,6 +486,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       bottom: 0,
       width: CONTENT_ACCENT_LINE_WIDTH,
       backgroundColor: theme.green,
+    },
+    accentLinePair: {
+      opacity: 0.45,
     },
     cardPressed: {
       opacity: 0.88,
@@ -455,6 +506,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       backgroundColor: theme.accentBlue,
       borderWidth: 1,
       borderColor: theme.accentBlue,
+    },
+    aiBadgePair: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
     },
     aiBadgeText: {
       fontSize: sf(10),
@@ -481,6 +536,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minHeight: ft.ff(21) * 2,
       fontWeight: ft.titleWeight,
       color: theme.text,
+    },
+    titlePair: {
+      fontSize: ft.ff(14),
+      lineHeight: ft.ff(19),
+      minHeight: undefined,
     },
     footerRow: {
       flexDirection: 'row',

@@ -115,9 +115,10 @@ type Props = {
   columns?: 1 | 2;
   onRefresh?: () => void;
   refreshing?: boolean;
+  onGoToList?: () => void;
 };
 
-export function DigestPager({ batches, columns = 1, onRefresh, refreshing }: Props) {
+export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoToList }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const pairLayout = columns === 2;
   const stripRef = useRef<WebHorizontalScrollStripHandle>(null);
@@ -141,6 +142,12 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing }: Pro
   const closeSourcesOnScroll = useCallback(() => {
     setSourcesDigest(null);
   }, []);
+
+  const handleGoToList = useCallback(() => {
+    stripRef.current?.scrollToStart();
+    setSourcesDigest(null);
+    onGoToList?.();
+  }, [onGoToList]);
 
   const handleRefresh = useCallback(() => {
     stripRef.current?.scrollToStart();
@@ -178,8 +185,12 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing }: Pro
               />
             </View>
           ))}
-        {onRefresh ? (
-          <DigestRefreshTail onRefresh={handleRefresh} refreshing={refreshing} />
+        {onRefresh || onGoToList ? (
+          <DigestRefreshTail
+            onRefresh={onRefresh ? handleRefresh : undefined}
+            refreshing={refreshing}
+            onGoToList={onGoToList ? handleGoToList : undefined}
+          />
         ) : null}
       </WebHorizontalScrollStrip>
       <DigestSourcesSheet

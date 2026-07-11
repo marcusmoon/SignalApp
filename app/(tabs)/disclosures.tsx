@@ -149,9 +149,12 @@ export default function DisclosuresScreen() {
     [clearFilterNewContent],
   );
 
-  const { ref: listRef } = useScrollToTopOnChange([filter, symbolFilter], {
+  const { ref: listRef, scrollToTop: scrollListToTop } = useScrollToTopOnChange([filter, symbolFilter], {
     resyncDeps: [items, digestItems],
   });
+  const goToDisclosureList = useCallback(() => {
+    scrollListToTop(true);
+  }, [scrollListToTop]);
   const listScrollResetKey = `${filter}:${symbolFilter ?? ''}`;
 
   const currentQuery = useMemo<ListQuery>(
@@ -517,6 +520,7 @@ export default function DisclosuresScreen() {
                 loading={digestLoading && digestItems.length === 0}
                 onRefresh={() => void onRefresh()}
                 refreshing={refreshing}
+                onGoToList={goToDisclosureList}
               />
             ) : null}
           </View>
@@ -536,6 +540,7 @@ export default function DisclosuresScreen() {
                     columns={2}
                     onRefresh={() => void onRefresh()}
                     refreshing={refreshing}
+                    onGoToList={goToDisclosureList}
                   />
                 </View>
               ) : null}

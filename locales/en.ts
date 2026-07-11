@@ -651,6 +651,7 @@ export const en = {
   feedDigestSourcesButton: 'Sources',
   feedDigestExpand: 'Show more',
   feedDigestCollapse: 'Collapse',
+  feedDigestTailGoToListA11y: 'Go to list',
   feedTagFilterActive: 'Tag: {{tag}}',
   feedTagFilterClear: 'Clear tag',
   feedLoadingMore: 'Loading…',

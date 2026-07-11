@@ -125,6 +125,7 @@ type Props = {
   columns?: 1 | 2;
   onRefresh?: () => void;
   refreshing?: boolean;
+  onGoToList?: () => void;
 };
 
 export function DisclosureDigestSection({
@@ -135,6 +136,7 @@ export function DisclosureDigestSection({
   columns = 1,
   onRefresh,
   refreshing,
+  onGoToList,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const pairLayout = columns === 2;
@@ -160,6 +162,12 @@ export function DisclosureDigestSection({
   const closeSourcesOnScroll = useCallback(() => {
     setSourcesItem(null);
   }, []);
+
+  const handleGoToList = useCallback(() => {
+    stripRef.current?.scrollToStart();
+    setSourcesItem(null);
+    onGoToList?.();
+  }, [onGoToList]);
 
   const handleRefresh = useCallback(() => {
     stripRef.current?.scrollToStart();
@@ -198,8 +206,12 @@ export function DisclosureDigestSection({
               />
             </View>
           ))}
-        {onRefresh ? (
-          <DigestRefreshTail onRefresh={handleRefresh} refreshing={refreshing} />
+        {onRefresh || onGoToList ? (
+          <DigestRefreshTail
+            onRefresh={onRefresh ? handleRefresh : undefined}
+            refreshing={refreshing}
+            onGoToList={onGoToList ? handleGoToList : undefined}
+          />
         ) : null}
       </WebHorizontalScrollStrip>
       <DigestSourcesSheet

@@ -7,30 +7,50 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 type Props = {
-  onRefresh: () => void;
+  onRefresh?: () => void;
   refreshing?: boolean;
+  onGoToList?: () => void;
 };
 
-export function DigestRefreshTail({ onRefresh, refreshing = false }: Props) {
+export function DigestRefreshTail({ onRefresh, refreshing = false, onGoToList }: Props) {
   const { theme } = useSignalTheme();
   const { t } = useLocale();
   const styles = makeStyles(theme);
+  const showRefresh = Boolean(onRefresh);
+  const showList = Boolean(onGoToList);
+
+  if (!showRefresh && !showList) return null;
 
   return (
     <View style={styles.slot}>
-      <Pressable
-        onPress={onRefresh}
-        disabled={refreshing}
-        style={({ pressed }) => [styles.btn, pressed && !refreshing && styles.btnPressed]}
-        accessibilityRole="button"
-        accessibilityLabel={t('fabRefreshA11y')}
-        accessibilityState={{ busy: refreshing }}>
-        {refreshing ? (
-          <ActivityIndicator size="small" color={theme.green} />
-        ) : (
-          <FontAwesome name="refresh" size={16} color={theme.textMuted} />
-        )}
-      </Pressable>
+      {showList ? (
+        <Pressable
+          onPress={onGoToList}
+          style={({ pressed }) => [styles.btn, styles.btnList, pressed && styles.btnPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={t('feedDigestTailGoToListA11y')}>
+          <FontAwesome name="list-ul" size={15} color={theme.textMuted} />
+        </Pressable>
+      ) : null}
+      {showRefresh ? (
+        <Pressable
+          onPress={onRefresh}
+          disabled={refreshing}
+          style={({ pressed }) => [
+            styles.btn,
+            showList && styles.btnRefresh,
+            pressed && !refreshing && styles.btnPressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={t('fabRefreshA11y')}
+          accessibilityState={{ busy: refreshing }}>
+          {refreshing ? (
+            <ActivityIndicator size="small" color={theme.green} />
+          ) : (
+            <FontAwesome name="refresh" size={16} color={theme.textMuted} />
+          )}
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -41,16 +61,23 @@ function makeStyles(theme: AppTheme) {
       width: DIGEST_REFRESH_TAIL_WIDTH,
       flexShrink: 0,
       alignSelf: 'stretch',
+      gap: 8,
     },
     btn: {
       flex: 1,
-      minHeight: 72,
+      minHeight: 52,
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: 14,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
+    },
+    btnList: {
+      flex: 1,
+    },
+    btnRefresh: {
+      flex: 1,
     },
     btnPressed: {
       opacity: 0.88,

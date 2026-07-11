@@ -221,9 +221,12 @@ export function LegacyNewsFeedScreen() {
     [clearSegmentNewContent],
   );
 
-  const { ref: feedListRef } = useScrollToTopOnChange([segment, activeTag], {
+  const { ref: feedListRef, scrollToTop: scrollFeedToTop } = useScrollToTopOnChange([segment, activeTag], {
     resyncDeps: [items, videoItems],
   });
+  const goToFeedList = useCallback(() => {
+    scrollFeedToTop(true);
+  }, [scrollFeedToTop]);
   const feedScrollResetKey = useMemo(() => [segment, activeTag].join('|'), [segment, activeTag]);
 
   useEffect(() => {
@@ -918,6 +921,7 @@ export function LegacyNewsFeedScreen() {
               batches={digestBatches}
               onRefresh={() => void onRefresh()}
               refreshing={refreshing}
+              onGoToList={goToFeedList}
             />
           ) : null}
           </View>
@@ -931,6 +935,7 @@ export function LegacyNewsFeedScreen() {
                 columns={2}
                 onRefresh={() => void onRefresh()}
                 refreshing={refreshing}
+                onGoToList={goToFeedList}
               />
             </View>
           ) : null}

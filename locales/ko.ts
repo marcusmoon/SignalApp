@@ -647,6 +647,7 @@ export const ko = {
   feedDigestSourcesButton: '출처',
   feedDigestExpand: '더보기',
   feedDigestCollapse: '접기',
+  feedDigestTailGoToListA11y: '목록으로 이동',
   feedTagFilterActive: '태그: {{tag}}',
   feedTagFilterClear: '태그 해제',
   feedLoadingMore: '불러오는 중…',

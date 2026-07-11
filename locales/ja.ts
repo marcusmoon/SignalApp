@@ -651,6 +651,7 @@ export const ja = {
   feedDigestSourcesButton: '出所',
   feedDigestExpand: 'もっと見る',
   feedDigestCollapse: '閉じる',
+  feedDigestTailGoToListA11y: '一覧へ移動',
   feedTagFilterActive: 'タグ: {{tag}}',
   feedTagFilterClear: 'タグを解除',
   feedLoadingMore: '読み込み中…',

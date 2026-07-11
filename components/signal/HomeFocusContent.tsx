@@ -24,8 +24,8 @@ import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import {
   briefingSourceIconEntries,
   digestSourceIconEntries,
-  SourceIconStack,
 } from '@/components/signal/SourceIconStack';
+import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { communitySourceAccent } from '@/constants/communitySources';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -662,47 +662,25 @@ export function HomeFocusContent({
         <View style={styles.issueGroupList}>
           {rows.map((row, index) => {
             const sourceEntries = digestSourceIconEntries(row.item.sourceRefs, row.item.sources);
-            const inlineTopic =
-              [row.item.topics[0], row.item.symbols[0]].filter(Boolean).join(' · ') || '';
+            const trailText = [row.item.topics[0], row.item.symbols[0]].filter(Boolean).join(' · ');
             return (
-            <Pressable
-              key={row.item.id}
-              onPress={() => openIssue(row)}
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.issueGroupItem,
-                styles.issueGroupItemCompact,
-                index < rows.length - 1 && styles.issueGroupItemBorder,
-                pressed && styles.pressed,
-              ]}>
-              <Text style={styles.issueGroupTitle} numberOfLines={2}>
-                {row.item.title}
-              </Text>
-              <View style={styles.issueCompactMeta}>
-                <View style={styles.issueCompactMetaLead}>
+              <HomeDigestFeedRow
+                key={row.item.id}
+                title={row.item.title}
+                titleLines={2}
+                timeLabel={formatFeedItemTimeLabel(newsDigestCreatedIso(row.item), locale)}
+                trailText={trailText || null}
+                summary={showIssueSummary ? row.item.summary : null}
+                sourceEntries={sourceEntries}
+                bordered={index < rows.length - 1}
+                onPress={() => openIssue(row)}
+                badges={
                   <View style={styles.issueCategoryMark}>
                     <FontAwesome name={homeDigestCategoryIcon(row.category)} size={10} color={theme.textMuted} />
                     <Text style={styles.issueCategoryText}>{t(NEWS_SEGMENT_LABEL[row.category])}</Text>
                   </View>
-                  {sourceEntries.length > 0 ? (
-                    <SourceIconStack sources={sourceEntries} size={18} maxVisible={3} />
-                  ) : null}
-                  {inlineTopic ? (
-                    <Text style={styles.issueInlineMetaText} numberOfLines={1}>
-                      {inlineTopic}
-                    </Text>
-                  ) : null}
-                </View>
-                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                  {formatFeedItemTimeLabel(newsDigestCreatedIso(row.item), locale)}
-                </Text>
-              </View>
-              {showIssueSummary && row.item.summary ? (
-                <Text style={styles.issueGroupSummary} numberOfLines={1}>
-                  {row.item.summary}
-                </Text>
-              ) : null}
-            </Pressable>
+                }
+              />
             );
           })}
         </View>
@@ -713,46 +691,38 @@ export function HomeFocusContent({
 
   const renderSignalCard = useCallback(
     (rows: SignalApiMarketBriefing[]) => (
-      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
+      <View style={[styles.heroCard, styles.heroCardCompact, showIssueSummary && styles.heroCardSummary]}>
         <HomeSectionAccentLine section="signal" />
         <View style={styles.issueGroupList}>
           {rows.map((row, index) => {
             const session = HOME_SIGNAL_SESSIONS.find(
               (candidate) => candidate.market === row.market && candidate.session === row.session,
             );
+            const sourceEntries = briefingSourceIconEntries(row.sourceRefs);
             return (
-              <Pressable
+              <HomeDigestFeedRow
                 key={row.id}
+                title={briefingLeadText(row)}
+                titleLines={showIssueSummary ? 3 : 2}
+                timeLabel={formatFeedItemTimeLabel(sortBriefingTime(row), locale)}
+                sourceEntries={sourceEntries}
+                bordered={index < rows.length - 1}
                 onPress={() => openSignal(row)}
-                accessibilityRole="button"
-                style={({ pressed }) => [
-                  styles.issueGroupItem,
-                  index < rows.length - 1 && styles.issueGroupItemBorder,
-                  pressed && styles.pressed,
-                ]}>
-                <View style={styles.issueRowTop}>
-                  <View style={styles.signalPillRow}>
+                badges={
+                  <>
                     <Text style={styles.marketPill}>{marketLabel(row.market)}</Text>
                     <Text style={styles.sessionBadge}>
                       {session ? t(session.labelId as MessageId) : t('briefingSessionEmptyTitle')}
                     </Text>
-                  </View>
-                </View>
-                <Text style={styles.signalText} numberOfLines={showIssueSummary ? 4 : 3}>
-                  {briefingLeadText(row)}
-                </Text>
-                {briefingSourceIconEntries(row.sourceRefs).length > 0 ? (
-                  <View style={styles.sourceMetaRow}>
-                    <SourceIconStack sources={briefingSourceIconEntries(row.sourceRefs)} size={20} />
-                  </View>
-                ) : null}
-              </Pressable>
+                  </>
+                }
+              />
             );
           })}
         </View>
       </View>
     ),
-    [openSignal, showIssueSummary, styles, t],
+    [openSignal, showIssueSummary, styles, locale, t],
   );
 
   const renderDisclosureCard = useCallback(
@@ -921,7 +891,7 @@ export function HomeFocusContent({
             </View>
           </View>
 
-          <View style={styles.section}>
+          <View style={[styles.section, styles.heroBlockCompact]}>
             <HomeSectionHeader
               title={t('homeFocusSignalTitle')}
               badge={<HomeAiBadge />}
@@ -1158,13 +1128,6 @@ function makeStyles(
       justifyContent: 'space-between',
       gap: COMFORT_GAP_SM,
     },
-    issueMetaInline: {
-      minWidth: 0,
-      flexShrink: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: COMFORT_GAP_SM,
-    },
     issueCategoryMark: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -1193,10 +1156,6 @@ function makeStyles(
       paddingVertical: ft.row(6),
       borderRadius: UI_RADIUS_CARD,
     },
-    issueGroupItemCompact: {
-      gap: 3,
-      paddingVertical: 5,
-    },
     issueGroupItemBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
@@ -1206,20 +1165,6 @@ function makeStyles(
       lineHeight: sf(18),
       fontWeight: ft.titleWeight,
       color: theme.text,
-    },
-    issueCompactMeta: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 8,
-      minWidth: 0,
-    },
-    issueCompactMetaLead: {
-      flex: 1,
-      minWidth: 0,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
     },
     issueGroupSummary: {
       fontSize: ft.ff(11),
@@ -1246,13 +1191,6 @@ function makeStyles(
       lineHeight: sf(12),
       fontWeight: ft.metaWeight,
       color: theme.textDim,
-    },
-    sourceMetaRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginTop: 2,
-      minWidth: 0,
     },
     section: {
       gap: COMFORT_GAP_LG,
@@ -1364,35 +1302,28 @@ function makeStyles(
       lineHeight: sf(16),
       fontWeight: ft.emphasisWeight,
     },
-    signalPillRow: {
-      minWidth: 0,
-      flexShrink: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: COMFORT_GAP_SM,
-    },
     marketPill: {
       alignSelf: 'flex-start',
       borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
       backgroundColor: theme.bgElevated,
       color: theme.textMuted,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
+      fontSize: ft.ff(9),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
     sessionBadge: {
       alignSelf: 'flex-start',
       borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 9,
-      paddingVertical: 4,
+      paddingHorizontal: 7,
+      paddingVertical: 1,
       backgroundColor: theme.greenDim,
       color: theme.green,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
+      fontSize: ft.ff(9),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
     disclosurePillRow: {
@@ -1494,9 +1425,6 @@ function makeStyles(
       lineHeight: sf(19),
       fontWeight: ft.bodyWeight,
       color: theme.textDim,
-    },
-    dimmedText: {
-      color: theme.textMuted,
     },
     pressed: {
       opacity: 0.72,

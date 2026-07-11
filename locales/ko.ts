@@ -507,7 +507,7 @@ export const ko = {
   settingsNewsTabLead: '뉴스 화면에서 쓰는 옵션입니다. 이 기기에만 저장됩니다.',
   settingsNewsSegmentOrderKicker: '뉴스 탭 순서',
   settingsNewsSegmentOrderHint:
-    '뉴스 화면 상단의 글로벌·코인·내 관심·영상 순서입니다. 오른쪽 ≡을 드래그해 바꿉니다.',
+    '뉴스 화면 상단의 글로벌·코인·관심·영상 순서입니다. 오른쪽 ≡을 드래그해 바꿉니다.',
   settingsNewsSegmentDragHandleA11y: '{{name}} 순서 바꾸기(드래그)',
   settingsNewsHashtagDisplayKicker: '뉴스 해시태그 표시',
   settingsNewsHashtagDisplayHint:
@@ -625,7 +625,7 @@ export const ko = {
   feedWatchSymbolFilterHint: '선택한 종목과 연결된 뉴스만 보여줍니다.',
   feedWatchSymbolFilterSection: '관심종목',
   feedWatchSourceFilterTitle: '관심뉴스 출처',
-  feedWatchSourceFilterHint: '내 관심 뉴스 안에서 볼 출처를 선택합니다.',
+  feedWatchSourceFilterHint: '관심 뉴스 안에서 볼 출처를 선택합니다.',
   feedNewsFilterTitle: '뉴스 제공사',
   feedNewsFilterIncluded: '포함 출처',
   feedNewsFilterSelectAll: '전체 선택',

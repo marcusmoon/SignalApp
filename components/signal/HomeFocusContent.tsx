@@ -21,6 +21,11 @@ import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
+import {
+  briefingSourceIconEntries,
+  digestSourceIconEntries,
+  SourceIconStack,
+} from '@/components/signal/SourceIconStack';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { communitySourceAccent } from '@/constants/communitySources';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -677,13 +682,25 @@ export function HomeFocusContent({
                     </Text>
                   ) : null}
                 </View>
-                <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                  {formatFeedItemTimeLabel(newsDigestCreatedIso(row.item), locale)}
-                </Text>
               </View>
               <Text style={styles.issueGroupTitle} numberOfLines={2}>
                 {row.item.title}
               </Text>
+              {digestSourceIconEntries(row.item.sourceRefs, row.item.sources).length > 0 ? (
+                <View style={styles.sourceMetaRow}>
+                  <SourceIconStack
+                    sources={digestSourceIconEntries(row.item.sourceRefs, row.item.sources)}
+                    size={20}
+                  />
+                  <Text style={styles.issueGroupMetaText} numberOfLines={1}>
+                    {formatFeedItemTimeLabel(newsDigestCreatedIso(row.item), locale)}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.issueGroupMetaTextStandalone} numberOfLines={1}>
+                  {formatFeedItemTimeLabel(newsDigestCreatedIso(row.item), locale)}
+                </Text>
+              )}
               {showIssueSummary && row.item.summary ? (
                 <Text style={styles.issueGroupSummary} numberOfLines={1}>
                   {row.item.summary}
@@ -723,15 +740,15 @@ export function HomeFocusContent({
                       {session ? t(session.labelId as MessageId) : t('briefingSessionEmptyTitle')}
                     </Text>
                   </View>
-                  {row.sourceRefs.length > 0 ? (
-                    <Text style={styles.issueGroupMetaText} numberOfLines={1}>
-                      {t('homeFocusSourceCount', { count: String(row.sourceRefs.length) })}
-                    </Text>
-                  ) : null}
                 </View>
                 <Text style={styles.signalText} numberOfLines={showIssueSummary ? 4 : 3}>
                   {briefingLeadText(row)}
                 </Text>
+                {briefingSourceIconEntries(row.sourceRefs).length > 0 ? (
+                  <View style={styles.sourceMetaRow}>
+                    <SourceIconStack sources={briefingSourceIconEntries(row.sourceRefs)} size={20} />
+                  </View>
+                ) : null}
               </Pressable>
             );
           })}
@@ -1191,10 +1208,27 @@ function makeStyles(
       marginTop: 2,
     },
     issueGroupMetaText: {
+      flex: 1,
+      minWidth: 0,
+      textAlign: 'right',
       fontSize: ft.ff(10),
       lineHeight: sf(14),
       fontWeight: ft.metaWeight,
       color: theme.textDim,
+    },
+    issueGroupMetaTextStandalone: {
+      fontSize: ft.ff(10),
+      lineHeight: sf(14),
+      fontWeight: ft.metaWeight,
+      color: theme.textDim,
+      marginTop: 2,
+    },
+    sourceMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 4,
+      minWidth: 0,
     },
     issueInlineMetaText: {
       minWidth: 0,

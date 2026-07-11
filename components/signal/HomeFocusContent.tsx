@@ -27,7 +27,7 @@ import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
-import { CommunityPostCard, communitySourceLabelId } from '@/components/community/CommunityPostCard';
+import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
 import {
   briefingSourceIconEntries,
   digestSourceIconEntries,
@@ -856,17 +856,22 @@ export function HomeFocusContent({
 
   const renderBoardCard = useCallback(
     () => (
-      <View style={styles.heroCard}>
+      <View style={[styles.heroCard, styles.heroCardCompact]}>
         {boardPosts.length > 0 ? (
-          <View style={styles.boardPostList}>
-            {boardPosts.map((post) => (
-              <View key={post.id} style={styles.boardRowWrap}>
-                <CommunityPostCard
-                  item={post}
-                  sourceLabelId={communitySourceLabelId(post.source)}
-                  showSource
-                />
-              </View>
+          <View style={styles.issueGroupList}>
+            {boardPosts.map((post, index) => (
+              <HomeDigestFeedRow
+                key={post.id}
+                title={post.title}
+                titleLines={2}
+                timeLabel={formatFeedItemTimeLabel(post.publishedAt, locale)}
+                trailText={t(communitySourceLabelId(post.source))}
+                summary={post.body?.trim() || null}
+                summaryLines={1}
+                metaBeforeTitle
+                bordered={index < boardPosts.length - 1}
+                onPress={() => router.push(`/community/${encodeURIComponent(post.id)}`)}
+              />
             ))}
           </View>
         ) : (
@@ -874,7 +879,7 @@ export function HomeFocusContent({
         )}
       </View>
     ),
-    [boardPosts, styles, t],
+    [boardPosts, locale, router, styles, t],
   );
 
   return (
@@ -1262,12 +1267,6 @@ function makeStyles(
       shadowRadius: 6,
       shadowOffset: { width: 0, height: 3 },
       elevation: 1,
-    },
-    boardPostList: {
-      gap: 0,
-    },
-    boardRowWrap: {
-      marginBottom: 14,
     },
     boardEmptyText: {
       fontSize: ft.ff(FEED_SUMMARY_PX),

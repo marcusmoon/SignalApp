@@ -24,6 +24,7 @@ import {
   SCREEN_LIST_CONTENT_PADDING_TOP,
   stackScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import type { AppTheme } from '@/constants/theme';
 import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -500,6 +501,7 @@ export default function CalendarScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
     scroll: {
@@ -511,15 +513,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingBottom: stackScreenScrollBottomPadding(0),
     },
     fixedTop: {
+      ...fixedHeader.strip,
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
-      paddingHorizontal: 16,
-      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
-      paddingBottom: 8,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-      backgroundColor: theme.bg,
     },
     daySection: {
       paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,

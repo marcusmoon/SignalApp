@@ -77,7 +77,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       minWidth: 0,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 16,
+      gap: 8,
     },
     title: {
       fontSize: sf(16),

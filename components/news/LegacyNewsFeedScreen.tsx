@@ -1471,7 +1471,7 @@ export function LegacyNewsFeedScreen() {
         <View style={styles.listColumn}>
           {showDigest && useTwoPane ? (
             <View style={[styles.topFixed, styles.listColumnDigestStrip]}>
-              <DigestPager batches={digestBatches} />
+              <DigestPager batches={digestBatches} columns={2} />
             </View>
           ) : null}
           {isFocused ? (

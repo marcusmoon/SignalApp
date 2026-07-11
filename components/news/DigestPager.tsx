@@ -176,9 +176,20 @@ const DigestCard = memo(function DigestCard({
 
 type Props = {
   batches: NewsDigestItem[];
+  /** iPad·wide 웹 등 넓은 화면에서 한 페이지에 2장씩 표시 */
+  columns?: 1 | 2;
 };
 
-export function DigestPager({ batches }: Props) {
+function chunkDigests(items: NewsDigestItem[], columns: 1 | 2): NewsDigestItem[][] {
+  if (columns === 1) return items.map((item) => [item]);
+  const pages: NewsDigestItem[][] = [];
+  for (let i = 0; i < items.length; i += 2) {
+    pages.push(items.slice(i, i + 2));
+  }
+  return pages;
+}
+
+export function DigestPager({ batches, columns = 1 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const scrollRef = useRef<ScrollView | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -188,12 +199,14 @@ export function DigestPager({ batches }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const loopResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
+  const digestPages = useMemo(() => chunkDigests(batches, columns), [batches, columns]);
+  const pageCount = digestPages.length;
   const carouselPages = useMemo(() => {
-    if (batches.length <= 1) return batches;
-    return [batches[batches.length - 1], ...batches, batches[0]];
-  }, [batches]);
+    if (pageCount <= 1) return digestPages;
+    return [digestPages[pageCount - 1], ...digestPages, digestPages[0]];
+  }, [digestPages, pageCount]);
 
-  useWebHorizontalWheelScroll(scrollRef, batches.length > 1);
+  useWebHorizontalWheelScroll(scrollRef, pageCount > 1);
 
   const jumpToVisualPage = useCallback((visualIndex: number) => {
     if (pageWidth <= 0) return;
@@ -228,27 +241,27 @@ export function DigestPager({ batches }: Props) {
   useEffect(() => () => clearScheduledLoopReset(), [clearScheduledLoopReset]);
 
   useEffect(() => {
-    if (pageWidth <= 0 || batches.length <= 1) return;
+    if (pageWidth <= 0 || pageCount <= 1) return;
     jumpToVisualPage(1);
     setPageIndex(0);
     setDotIndex(0);
     setExpandedId(null);
-  }, [batches, jumpToVisualPage, pageWidth]);
+  }, [digestPages, jumpToVisualPage, pageCount, pageWidth]);
 
   const syncPageIndex = useCallback(
     (offsetX: number, resetExpand: boolean) => {
       if (pageWidth <= 0) return;
       const rawIndex = Math.max(0, Math.round(offsetX / pageWidth));
-      if (batches.length > 1 && rawIndex <= 0) {
+      if (pageCount > 1 && rawIndex <= 0) {
         clearScheduledLoopReset();
-        const index = batches.length - 1;
-        jumpToVisualPage(batches.length);
+        const index = pageCount - 1;
+        jumpToVisualPage(pageCount);
         setPageIndex(index);
         setDotIndex(index);
         if (resetExpand) setExpandedId(null);
         return;
       }
-      if (batches.length > 1 && rawIndex >= batches.length + 1) {
+      if (pageCount > 1 && rawIndex >= pageCount + 1) {
         clearScheduledLoopReset();
         jumpToVisualPage(1);
         setPageIndex(0);
@@ -257,38 +270,38 @@ export function DigestPager({ batches }: Props) {
         return;
       }
       clearScheduledLoopReset();
-      const index = batches.length > 1
-        ? Math.max(0, Math.min(rawIndex - 1, batches.length - 1))
-        : Math.max(0, Math.min(rawIndex, batches.length - 1));
+      const index = pageCount > 1
+        ? Math.max(0, Math.min(rawIndex - 1, pageCount - 1))
+        : Math.max(0, Math.min(rawIndex, pageCount - 1));
       setPageIndex(index);
       setDotIndex(index);
       if (resetExpand) setExpandedId(null);
     },
-    [pageWidth, batches.length, jumpToVisualPage, clearScheduledLoopReset],
+    [pageWidth, pageCount, jumpToVisualPage, clearScheduledLoopReset],
   );
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       if (pageWidth <= 0) return;
       const rawIndex = Math.max(0, Math.round(e.nativeEvent.contentOffset.x / pageWidth));
-      if (batches.length > 1 && rawIndex <= 0) {
-        const index = batches.length - 1;
+      if (pageCount > 1 && rawIndex <= 0) {
+        const index = pageCount - 1;
         setDotIndex((prev) => (prev === index ? prev : index));
-        scheduleLoopReset(batches.length, index);
+        scheduleLoopReset(pageCount, index);
         return;
       }
-      if (batches.length > 1 && rawIndex >= batches.length + 1) {
+      if (pageCount > 1 && rawIndex >= pageCount + 1) {
         setDotIndex((prev) => (prev === 0 ? prev : 0));
         scheduleLoopReset(1, 0);
         return;
       }
       clearScheduledLoopReset();
-      const index = batches.length > 1
-        ? Math.max(0, Math.min(rawIndex - 1, batches.length - 1))
-        : Math.max(0, Math.min(rawIndex, batches.length - 1));
+      const index = pageCount > 1
+        ? Math.max(0, Math.min(rawIndex - 1, pageCount - 1))
+        : Math.max(0, Math.min(rawIndex, pageCount - 1));
       setDotIndex((prev) => (prev === index ? prev : index));
     },
-    [pageWidth, batches.length, clearScheduledLoopReset, scheduleLoopReset],
+    [pageWidth, pageCount, clearScheduledLoopReset, scheduleLoopReset],
   );
 
   const handleScrollEnd = useCallback(
@@ -314,12 +327,12 @@ export function DigestPager({ batches }: Props) {
       }}>
       <HorizontalCarouselShell
         pageIndex={pageIndex}
-        pageCount={batches.length}
+        pageCount={pageCount}
         loop
         footer={
-          batches.length > 1 ? (
+          pageCount > 1 ? (
             <View style={styles.dotsRow}>
-              {batches.map((_, i) => (
+              {digestPages.map((_, i) => (
                 <View key={i} style={[styles.dot, i === dotIndex && styles.dotActive]} />
               ))}
             </View>
@@ -341,24 +354,38 @@ export function DigestPager({ batches }: Props) {
           disableIntervalMomentum
           keyboardShouldPersistTaps="handled">
           {pageWidth > 0 &&
-            carouselPages.map((digest, index) => {
-              const realIndex = batches.length > 1
+            carouselPages.map((pageItems, index) => {
+              const realIndex = pageCount > 1
                 ? index <= 0
-                  ? batches.length - 1
-                  : index >= batches.length + 1
+                  ? pageCount - 1
+                  : index >= pageCount + 1
                     ? 0
                     : index - 1
                 : index;
-              const isExpanded = expandedId === digest.id && pageIndex === realIndex;
               return (
-                <View key={`${digest.id}-${index}`} style={[styles.page, { width: pageWidth }]}>
-                  <DigestCard
-                    digest={digest}
-                    isExpanded={isExpanded}
-                    onToggle={toggleExpand}
-                    styles={styles}
-                    theme={theme}
-                  />
+                <View
+                  key={`${pageItems.map((item) => item.id).join('-')}-${index}`}
+                  style={[styles.page, columns === 2 && styles.pageTwoUp, { width: pageWidth }]}>
+                  {pageItems.map((digest) => {
+                    const isExpanded = expandedId === digest.id && pageIndex === realIndex;
+                    const columnStyle =
+                      columns === 2
+                        ? pageItems.length === 1
+                          ? styles.pageColumnSingle
+                          : styles.pageColumn
+                        : undefined;
+                    return (
+                      <View key={digest.id} style={columnStyle}>
+                        <DigestCard
+                          digest={digest}
+                          isExpanded={isExpanded}
+                          onToggle={toggleExpand}
+                          styles={styles}
+                          theme={theme}
+                        />
+                      </View>
+                    );
+                  })}
                 </View>
               );
             })}
@@ -375,6 +402,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     page: {
       gap: 8,
+    },
+    pageTwoUp: {
+      flexDirection: 'row',
+      alignItems: 'stretch',
+    },
+    pageColumn: {
+      flex: 1,
+      minWidth: 0,
+    },
+    pageColumnSingle: {
+      width: '48%',
+      maxWidth: '48%',
     },
     card: {
       paddingLeft: 18,

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
+import { AiBadge } from '@/components/signal/AiBadge';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
@@ -283,11 +284,7 @@ export function NewsIssuesContent({
                       sourceEntries={sourceEntries}
                       badges={
                         <>
-                          {item.aiGenerated ? (
-                            <View style={styles.aiBadge}>
-                              <Text style={styles.aiBadgeText}>AI</Text>
-                            </View>
-                          ) : null}
+                          {item.aiGenerated ? <AiBadge /> : null}
                           {category === 'all' && itemCat ? (
                             <View style={styles.categoryMark}>
                               <FontAwesome
@@ -515,15 +512,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingVertical: ft.pad(10),
       gap: 6,
     },
-    aiBadge: {
-      minHeight: 20,
-      paddingHorizontal: 6,
-      borderRadius: 999,
-      backgroundColor: theme.green,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    aiBadgeText: { color: '#FFFFFF', fontSize: ft.ff(FEED_BADGE_PX), lineHeight: sf(13), fontWeight: '900' },
     categoryMark: {
       flexDirection: 'row',
       alignItems: 'center',

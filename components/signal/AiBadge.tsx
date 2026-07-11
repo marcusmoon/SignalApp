@@ -1,22 +1,33 @@
 import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
 import { accentAlpha } from '@/constants/sourceAccent';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
-export function HomeAiBadge() {
+type Props = {
+  style?: StyleProp<ViewStyle>;
+};
+
+/** AI 생성 콘텐츠 표시용 공통 뱃지 */
+export function AiBadge({ style }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   return (
-    <View style={styles.chip} accessibilityLabel={t('homeAiGeneratedA11y')} accessibilityRole="text">
+    <View
+      style={[styles.chip, style]}
+      accessibilityLabel={t('homeAiGeneratedA11y')}
+      accessibilityRole="text">
       <Text style={styles.text}>AI</Text>
     </View>
   );
 }
+
+/** @deprecated Use `AiBadge` */
+export const HomeAiBadge = AiBadge;
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   const accent = theme.accentBlue;
@@ -31,6 +42,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: accentAlpha(accent, isDark ? 0.32 : 0.2),
       alignItems: 'center',
       justifyContent: 'center',
+      flexShrink: 0,
     },
     text: {
       color: accentAlpha(accent, isDark ? 0.92 : 0.82),

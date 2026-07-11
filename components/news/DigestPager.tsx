@@ -8,6 +8,7 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { DigestRefreshTail } from '@/components/feed/DigestRefreshTail';
+import { AiBadge } from '@/components/signal/AiBadge';
 import { makeDigestStripCardStyles } from '@/components/feed/digestStripCardStyles';
 import { WebHorizontalScrollStrip, type WebHorizontalScrollStripHandle } from '@/components/layout/WebHorizontalScrollStrip';
 import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
@@ -85,11 +86,7 @@ const DigestCard = memo(function DigestCard({
     <View style={styles.card}>
       <View style={styles.accentLine} />
       <View style={styles.badgeRow}>
-        {digest.aiGenerated ? (
-          <View style={styles.aiBadge}>
-            <Text style={styles.aiBadgeText}>✦ AI</Text>
-          </View>
-        ) : null}
+        {digest.aiGenerated ? <AiBadge /> : null}
         {topicChips.map((topic) => (
           <Text key={topic} style={styles.topicChip} numberOfLines={1}>
             {topic}

@@ -228,8 +228,6 @@ export default function DisclosuresScreen() {
     }, [symbolFilter]),
   );
 
-  const emptyText = t('disclosuresEmpty');
-
   useEffect(() => {
     if (!useTwoPane) return;
     if (!items.length) {

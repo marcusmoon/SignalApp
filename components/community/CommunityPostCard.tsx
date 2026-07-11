@@ -37,7 +37,9 @@ export function CommunityPostCard({ item, sourceLabelId, showSource = true }: Pr
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <View pointerEvents="none" style={styles.accentBar} />
       <View style={styles.metaRow}>
-        {showSource ? <SourceBadge label={t(sourceLabelId)} accent={accent} variant="news" /> : null}
+        {showSource ? (
+          <SourceBadge label={t(sourceLabelId)} accent={accent} variant="news" iconOnly />
+        ) : null}
         <View style={[styles.timePill, !showSource && styles.timePillLead]}>
           <Text style={styles.time}>{timeLabel}</Text>
         </View>

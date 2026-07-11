@@ -1008,8 +1008,6 @@ export function LegacyNewsFeedScreen() {
               <View style={edges ? groupedFeedRowShell(theme, edges) : undefined}>
                 <NewsCard
                   layout="grouped"
-                  timeline
-                  timelineLast={edges?.isLast ?? true}
                   item={item.news}
                   compactMeta
                   titleToggle={segment === 'global' || segment === 'crypto'}

@@ -13,6 +13,7 @@ import type { FeedContentTypography } from '@/services/feedContentWeightPreferen
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { NewsItem } from '@/types/signal';
+
 type Props = {
   item: NewsItem;
   /** 0이면 태그 행 숨김 */
@@ -20,9 +21,6 @@ type Props = {
   onTagPress?: (label: string) => void;
   /** `grouped`: 홈 관련 근거처럼 한 카드 안 행 구분(개별 테두리 없음) */
   layout?: 'card' | 'grouped';
-  /** 속보 피드형 좌측 타임라인 레일 */
-  timeline?: boolean;
-  timelineLast?: boolean;
   /** 관심뉴스처럼 컨텍스트가 이미 명확한 목록에서는 메타를 한 줄로 압축 */
   compactMeta?: boolean;
   /** 글로벌·크립토 등에서 메타 행 제목 토글 아이콘 노출 */
@@ -38,8 +36,6 @@ export function NewsCard({
   maxHashtagsToShow = 4,
   onTagPress,
   layout = 'card',
-  timeline = false,
-  timelineLast = true,
   compactMeta = false,
   titleToggle = false,
   titleShowAlternate,
@@ -91,7 +87,6 @@ export function NewsCard({
       : [];
 
   const grouped = layout === 'grouped';
-  const timelineTimeLabel = item.timeLabel?.trim() || '—';
   const articleUrl = item.url?.trim() ?? '';
   const canOpenArticle = articleUrl.length > 0;
   const rowPressEnabled = Boolean(onPress) || canOpenArticle;
@@ -113,7 +108,9 @@ export function NewsCard({
       ? t('newsTitleShowTranslation')
       : t('newsTitleShowOriginal');
 
-  const sourceContent = <SourceBadge label={sourceName} accent={sourceAccent} variant="news" />;
+  const sourceContent = (
+    <SourceBadge label={sourceName} accent={sourceAccent} variant="news" iconOnly />
+  );
 
   const flashBadge = isFlash ? (
     <View style={styles.sourcePill} accessibilityLabel={t('newsFlashBadge')}>
@@ -163,28 +160,7 @@ export function NewsCard({
     <Text style={[styles.title, tags.length === 0 && styles.titleLast]}>{displayTitle}</Text>
   );
 
-  const metaBlock = timeline ? (
-    <View style={styles.timelineMetaRow}>
-      <Text style={styles.timelineTimeInline} numberOfLines={1}>
-        {timelineTimeLabel}
-      </Text>
-      {flashBadge}
-      {titleToggleBtn}
-      {canOpenSymbol ? (
-        <Pressable onPress={() => router.push(`/symbol/${symbol}`)} hitSlop={8} style={styles.compactTickerWrap}>
-          <View style={styles.tickerLead}>
-            <SymbolLogo symbol={symbol} size={16} />
-            <Text style={styles.compactTicker} numberOfLines={1}>
-              {headerLabel}
-            </Text>
-          </View>
-        </Pressable>
-      ) : (
-        sourceContent
-      )}
-      {canOpenSymbol ? sourceContent : null}
-    </View>
-  ) : compactMeta ? (
+  const metaBlock = compactMeta ? (
     <View style={styles.compactMetaRow}>
       {flashBadge}
       {titleToggleBtn}
@@ -201,8 +177,9 @@ export function NewsCard({
           </View>
         </Pressable>
       ) : null}
+      {sourceContent}
       <Text style={styles.compactMetaText} numberOfLines={1}>
-        {[canOpenSymbol ? sourceName : headerLabel, item.timeLabel].filter(Boolean).join(' · ')}
+        {item.timeLabel}
       </Text>
     </View>
   ) : (
@@ -254,42 +231,18 @@ export function NewsCard({
     ) : null;
 
   return (
-    <View style={[styles.card, grouped && styles.cardGrouped, timeline && styles.cardTimeline]}>
-      {timeline ? (
-        <View style={styles.timelineRow}>
-          <View style={styles.timelineRail}>
-            <View style={[styles.timelineNode, isFlash && styles.timelineNodeFlash]} />
-            {!timelineLast ? <View style={styles.timelineLine} /> : null}
-          </View>
-          <View style={styles.timelineBody}>
-            <Pressable
-              onPress={openArticle}
-              disabled={!rowPressEnabled}
-              style={({ pressed }) => [styles.rowPress, rowPressEnabled && pressed && styles.rowPressPressed]}
-              accessibilityRole={rowPressEnabled ? 'button' : undefined}
-              accessibilityLabel={rowPressEnabled ? rowA11yLabel : undefined}
-              accessibilityHint={rowPressEnabled ? t('newsReadMore') : undefined}>
-              {metaBlock}
-              {titleBlock}
-            </Pressable>
-            {tagsBlock}
-          </View>
-        </View>
-      ) : (
-        <>
-          <Pressable
-            onPress={openArticle}
-            disabled={!rowPressEnabled}
-            style={({ pressed }) => [styles.rowPress, rowPressEnabled && pressed && styles.rowPressPressed]}
-            accessibilityRole={rowPressEnabled ? 'button' : undefined}
-            accessibilityLabel={rowPressEnabled ? rowA11yLabel : undefined}
-            accessibilityHint={rowPressEnabled ? t('newsReadMore') : undefined}>
-            {metaBlock}
-            {titleBlock}
-          </Pressable>
-          {tagsBlock}
-        </>
-      )}
+    <View style={[styles.card, grouped && styles.cardGrouped]}>
+      <Pressable
+        onPress={openArticle}
+        disabled={!rowPressEnabled}
+        style={({ pressed }) => [styles.rowPress, rowPressEnabled && pressed && styles.rowPressPressed]}
+        accessibilityRole={rowPressEnabled ? 'button' : undefined}
+        accessibilityLabel={rowPressEnabled ? rowA11yLabel : undefined}
+        accessibilityHint={rowPressEnabled ? t('newsReadMore') : undefined}>
+        {metaBlock}
+        {titleBlock}
+      </Pressable>
+      {tagsBlock}
     </View>
   );
 }
@@ -315,62 +268,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingTop: ft.pad(16),
       paddingBottom: ft.pad(8),
       position: 'relative',
-    },
-    cardTimeline: {
-      paddingTop: ft.pad(8),
-      paddingBottom: ft.pad(6),
-    },
-    timelineRow: {
-      flexDirection: 'row',
-      alignItems: 'stretch',
-      gap: 8,
-    },
-    timelineRail: {
-      width: 12,
-      alignItems: 'center',
-      flexShrink: 0,
-      paddingTop: 2,
-    },
-    timelineNode: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.textDim,
-    },
-    timelineNodeFlash: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-      backgroundColor: theme.accentOrange,
-    },
-    timelineLine: {
-      width: 1,
-      flexGrow: 1,
-      marginTop: 3,
-      marginBottom: -2,
-      minHeight: 12,
-      backgroundColor: theme.border,
-    },
-    timelineBody: {
-      flex: 1,
-      minWidth: 0,
-    },
-    timelineTimeInline: {
-      flexShrink: 0,
-      fontSize: ft.ff(10),
-      lineHeight: ft.ff(14),
-      fontWeight: ft.metaWeight,
-      color: theme.textDim,
-    },
-    timelineMetaRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: ft.pad(5),
-      marginBottom: ft.pad(4),
-      minWidth: 0,
     },
     rowPress: {
       alignSelf: 'stretch',
@@ -451,6 +348,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontSize: ft.ff(11),
       lineHeight: ft.ff(16),
       fontWeight: ft.metaWeight,
+      textAlign: 'right',
     },
     titleToggleBtn: {
       flexShrink: 0,
@@ -510,8 +408,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.text,
       fontSize: ft.ff(15),
       fontWeight: ft.titleWeight,
-      marginBottom: ft.pad(4),
-      lineHeight: ft.ff(21),
+      marginBottom: ft.pad(6),
+      lineHeight: ft.ff(22),
     },
     titleLast: {
       marginBottom: 0,

@@ -41,9 +41,11 @@ export function SourceBadge({
       style={[
         styles.pill,
         iconOnly && styles.pillIconOnly,
-        isNews
-          ? { backgroundColor: theme.greenDim, borderColor: theme.greenBorder }
-          : { backgroundColor: accent.dim, borderColor: accent.border },
+        iconOnly && isNews && styles.pillIconOnlyNews,
+        !iconOnly &&
+          (isNews
+            ? { backgroundColor: theme.greenDim, borderColor: theme.greenBorder }
+            : { backgroundColor: accent.dim, borderColor: accent.border }),
         style,
       ]}
       accessibilityLabel={label}>
@@ -51,6 +53,7 @@ export function SourceBadge({
         style={[
           styles.mark,
           !showIcon && !isNews && { backgroundColor: accent.accent, borderColor: accent.border },
+          !showIcon && isNews && { backgroundColor: accent.dim, borderColor: accent.border },
         ]}>
         {showIcon && iconUrl ? (
           <Image
@@ -65,7 +68,9 @@ export function SourceBadge({
             }}
           />
         ) : (
-          <Text style={styles.glyph} numberOfLines={1}>
+          <Text
+            style={[styles.glyph, isNews && !showIcon && { color: accent.accent }]}
+            numberOfLines={1}>
             {accent.glyph}
           </Text>
         )}
@@ -100,6 +105,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, isNews: boolean)
     },
     pillIconOnly: {
       paddingRight: 4,
+    },
+    pillIconOnlyNews: {
+      paddingLeft: 0,
+      paddingRight: 0,
+      paddingVertical: 0,
+      borderWidth: 0,
+      backgroundColor: 'transparent',
     },
     mark: {
       width: markSize,

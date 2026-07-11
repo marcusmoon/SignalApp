@@ -724,7 +724,7 @@ export function LegacyNewsFeedScreen() {
   }, [activeTag, feedReloadNonce, isFocused, load, locale, segment, t]);
 
   const recoveryItems = segment === 'video' ? videoItems : items;
-  useTabScreenLoadingRecovery(recoveryItems, setLoading);
+  useTabScreenLoadingRecovery<NewsItem | YoutubeItem>(recoveryItems, setLoading);
 
   const onPickSegment = useCallback((key: NewsSegmentKey, options?: { force?: boolean }) => {
     if (!options?.force && segment === key) {

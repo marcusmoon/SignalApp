@@ -31,7 +31,6 @@ import { NewsCard } from '@/components/signal/NewsCard';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { newsSegmentAccent } from '@/constants/segmentAccent';
-import { SegmentFilterChip } from '@/components/signal/SegmentFilterChip';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
@@ -938,11 +937,9 @@ export function LegacyNewsFeedScreen() {
                       ]}
                       accessibilityRole="button"
                       accessibilityState={{ selected: active }}>
-                      <SegmentFilterChip
-                        label={t(NEWS_SEGMENT_LABEL[key])}
-                        accent={accent}
-                        active={active}
-                      />
+                      <Text style={[styles.segText, active && styles.segTextActive]}>
+                        {t(NEWS_SEGMENT_LABEL[key])}
+                      </Text>
                     </Pressable>
                   );
                 })()}

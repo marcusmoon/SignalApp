@@ -21,7 +21,6 @@ import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WatchlistAddSheet } from '@/components/quotes/WatchlistAddSheet';
 import { makeQuotesStyles } from '@/components/quotes/quotesStyles';
 import { quoteSegmentAccent } from '@/constants/segmentAccent';
-import { SegmentFilterChip } from '@/components/signal/SegmentFilterChip';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalHeader } from '@/components/signal/SignalHeader';
@@ -609,11 +608,9 @@ export default function QuotesScreen() {
                       active && { backgroundColor: accent.accent },
                     ]}
                     accessibilityState={{ selected: active }}>
-                    <SegmentFilterChip
-                      label={t(QUOTE_SEGMENT_LABEL[key])}
-                      accent={accent}
-                      active={active}
-                    />
+                    <Text style={[styles.segText, active && styles.segTextActive]}>
+                      {t(QUOTE_SEGMENT_LABEL[key])}
+                    </Text>
                   </Pressable>
                 );
               })()}

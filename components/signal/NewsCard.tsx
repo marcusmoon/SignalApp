@@ -13,8 +13,6 @@ import type { FeedContentTypography } from '@/services/feedContentWeightPreferen
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { NewsItem } from '@/types/signal';
-import { formatNewsTimelineTimeLabel } from '@/utils/date';
-
 type Props = {
   item: NewsItem;
   /** 0이면 태그 행 숨김 */
@@ -93,10 +91,7 @@ export function NewsCard({
       : [];
 
   const grouped = layout === 'grouped';
-  const timelineLabel = useMemo(
-    () => formatNewsTimelineTimeLabel(item.publishedAt, locale),
-    [item.publishedAt, locale],
-  );
+  const timelineTimeLabel = item.timeLabel?.trim() || '—';
   const articleUrl = item.url?.trim() ?? '';
   const canOpenArticle = articleUrl.length > 0;
   const rowPressEnabled = Boolean(onPress) || canOpenArticle;
@@ -118,7 +113,7 @@ export function NewsCard({
       ? t('newsTitleShowTranslation')
       : t('newsTitleShowOriginal');
 
-  const sourceContent = <SourceBadge label={sourceName} accent={sourceAccent} />;
+  const sourceContent = <SourceBadge label={sourceName} accent={sourceAccent} variant="news" />;
 
   const flashBadge = isFlash ? (
     <View style={styles.sourcePill} accessibilityLabel={t('newsFlashBadge')}>
@@ -170,19 +165,24 @@ export function NewsCard({
 
   const metaBlock = timeline ? (
     <View style={styles.timelineMetaRow}>
+      <Text style={styles.timelineTimeInline} numberOfLines={1}>
+        {timelineTimeLabel}
+      </Text>
       {flashBadge}
       {titleToggleBtn}
       {canOpenSymbol ? (
         <Pressable onPress={() => router.push(`/symbol/${symbol}`)} hitSlop={8} style={styles.compactTickerWrap}>
           <View style={styles.tickerLead}>
-            <SymbolLogo symbol={symbol} size={18} />
+            <SymbolLogo symbol={symbol} size={16} />
             <Text style={styles.compactTicker} numberOfLines={1}>
               {headerLabel}
             </Text>
           </View>
         </Pressable>
-      ) : null}
-      {sourceContent}
+      ) : (
+        sourceContent
+      )}
+      {canOpenSymbol ? sourceContent : null}
     </View>
   ) : compactMeta ? (
     <View style={styles.compactMetaRow}>
@@ -258,13 +258,7 @@ export function NewsCard({
       {timeline ? (
         <View style={styles.timelineRow}>
           <View style={styles.timelineRail}>
-            <View style={[styles.timelineNode, isFlash && styles.timelineNodeFlash]}>
-              <FontAwesome
-                name={isFlash ? 'bolt' : 'circle'}
-                size={isFlash ? 10 : 6}
-                color={isFlash ? theme.accentOrange : theme.textDim}
-              />
-            </View>
+            <View style={[styles.timelineNode, isFlash && styles.timelineNodeFlash]} />
             {!timelineLast ? <View style={styles.timelineLine} /> : null}
           </View>
           <View style={styles.timelineBody}>
@@ -275,7 +269,6 @@ export function NewsCard({
               accessibilityRole={rowPressEnabled ? 'button' : undefined}
               accessibilityLabel={rowPressEnabled ? rowA11yLabel : undefined}
               accessibilityHint={rowPressEnabled ? t('newsReadMore') : undefined}>
-              <Text style={styles.timelineTime}>{timelineLabel}</Text>
               {metaBlock}
               {titleBlock}
             </Pressable>
@@ -324,59 +317,59 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       position: 'relative',
     },
     cardTimeline: {
-      paddingTop: ft.pad(12),
-      paddingBottom: ft.pad(10),
+      paddingTop: ft.pad(8),
+      paddingBottom: ft.pad(6),
     },
     timelineRow: {
       flexDirection: 'row',
       alignItems: 'stretch',
-      gap: 10,
+      gap: 8,
     },
     timelineRail: {
-      width: 18,
+      width: 12,
       alignItems: 'center',
       flexShrink: 0,
+      paddingTop: 2,
     },
     timelineNode: {
-      width: 18,
-      height: 18,
-      borderRadius: 9,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.bgElevated,
-      borderWidth: 1,
-      borderColor: theme.border,
+      backgroundColor: theme.textDim,
     },
     timelineNodeFlash: {
-      backgroundColor: theme.warningDim,
-      borderColor: theme.accentOrange,
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: theme.accentOrange,
     },
     timelineLine: {
-      width: 2,
+      width: 1,
       flexGrow: 1,
-      marginTop: 4,
-      marginBottom: -4,
-      minHeight: 28,
-      borderRadius: 999,
+      marginTop: 3,
+      marginBottom: -2,
+      minHeight: 12,
       backgroundColor: theme.border,
     },
     timelineBody: {
       flex: 1,
       minWidth: 0,
     },
-    timelineTime: {
-      fontSize: ft.ff(11),
-      lineHeight: ft.ff(16),
+    timelineTimeInline: {
+      flexShrink: 0,
+      fontSize: ft.ff(10),
+      lineHeight: ft.ff(14),
       fontWeight: ft.metaWeight,
       color: theme.textDim,
-      marginBottom: ft.pad(6),
     },
     timelineMetaRow: {
       flexDirection: 'row',
       alignItems: 'center',
       flexWrap: 'wrap',
-      gap: ft.pad(6),
-      marginBottom: ft.pad(8),
+      gap: ft.pad(5),
+      marginBottom: ft.pad(4),
       minWidth: 0,
     },
     rowPress: {
@@ -517,8 +510,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.text,
       fontSize: ft.ff(15),
       fontWeight: ft.titleWeight,
-      marginBottom: ft.pad(6),
-      lineHeight: ft.ff(22),
+      marginBottom: ft.pad(4),
+      lineHeight: ft.ff(21),
     },
     titleLast: {
       marginBottom: 0,

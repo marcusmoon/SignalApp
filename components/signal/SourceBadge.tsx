@@ -12,12 +12,21 @@ type Props = {
   accent: SourceAccent;
   /** 라벨 숨기고 마크만 */
   iconOnly?: boolean;
+  /** accent: 컬러 배지(커뮤니티 등) · news: 뉴스 출처 pill(아이콘+중립 텍스트) */
+  variant?: 'accent' | 'news';
   style?: StyleProp<ViewStyle>;
 };
 
-export function SourceBadge({ label, accent, iconOnly = false, style }: Props) {
+export function SourceBadge({
+  label,
+  accent,
+  iconOnly = false,
+  variant = 'accent',
+  style,
+}: Props) {
   const { theme, scaleFont } = useSignalTheme();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const isNews = variant === 'news';
+  const styles = useMemo(() => makeStyles(theme, scaleFont, isNews), [theme, scaleFont, isNews]);
   const iconUrl = accent.iconUrl?.trim() || null;
   const [iconFailed, setIconFailed] = useState(!iconUrl);
 
@@ -32,14 +41,16 @@ export function SourceBadge({ label, accent, iconOnly = false, style }: Props) {
       style={[
         styles.pill,
         iconOnly && styles.pillIconOnly,
-        { backgroundColor: accent.dim, borderColor: accent.border },
+        isNews
+          ? { backgroundColor: theme.greenDim, borderColor: theme.greenBorder }
+          : { backgroundColor: accent.dim, borderColor: accent.border },
         style,
       ]}
       accessibilityLabel={label}>
       <View
         style={[
           styles.mark,
-          !showIcon && { backgroundColor: accent.accent, borderColor: accent.border },
+          !showIcon && !isNews && { backgroundColor: accent.accent, borderColor: accent.border },
         ]}>
         {showIcon && iconUrl ? (
           <Image
@@ -60,7 +71,9 @@ export function SourceBadge({ label, accent, iconOnly = false, style }: Props) {
         )}
       </View>
       {iconOnly ? null : (
-        <Text style={[styles.label, { color: accent.accent }]} numberOfLines={1}>
+        <Text
+          style={[styles.label, isNews ? styles.labelNews : { color: accent.accent }]}
+          numberOfLines={1}>
           {label}
         </Text>
       )}
@@ -68,7 +81,8 @@ export function SourceBadge({ label, accent, iconOnly = false, style }: Props) {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, isNews: boolean) {
+  const markSize = isNews ? 16 : 20;
   return StyleSheet.create({
     pill: {
       flexShrink: 1,
@@ -77,10 +91,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignItems: 'center',
       alignSelf: 'flex-start',
       maxWidth: '100%',
-      gap: 6,
-      paddingLeft: 4,
-      paddingRight: 10,
-      paddingVertical: 3,
+      gap: isNews ? 5 : 6,
+      paddingLeft: isNews ? 5 : 4,
+      paddingRight: isNews ? 8 : 10,
+      paddingVertical: isNews ? 3 : 3,
       borderRadius: 999,
       borderWidth: 1,
     },
@@ -88,9 +102,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingRight: 4,
     },
     mark: {
-      width: 20,
-      height: 20,
-      borderRadius: 6,
+      width: markSize,
+      height: markSize,
+      borderRadius: isNews ? 5 : 6,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
@@ -100,21 +114,24 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexShrink: 0,
     },
     icon: {
-      width: 20,
-      height: 20,
+      width: markSize,
+      height: markSize,
     },
     glyph: {
-      fontSize: sf(9),
-      lineHeight: sf(11),
+      fontSize: sf(isNews ? 8 : 9),
+      lineHeight: sf(isNews ? 10 : 11),
       fontWeight: '900',
       color: '#FFFFFF',
       letterSpacing: -0.2,
     },
     label: {
       flexShrink: 1,
-      fontSize: sf(11),
-      lineHeight: sf(15),
-      fontWeight: '800',
+      fontSize: sf(isNews ? 12 : 11),
+      lineHeight: sf(isNews ? 16 : 15),
+      fontWeight: isNews ? '400' : '800',
+    },
+    labelNews: {
+      color: theme.text,
     },
   });
 }

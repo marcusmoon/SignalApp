@@ -41,7 +41,7 @@
 - **새로고침** `cacheMode: 'bypass'` (`signalCacheMode(true)`): 당겨서 새로고침만 네트워크 강제.
 - **폴링·배지** (`newsUnreadPreference`, `disclosureUnreadPreference`, `signalUnreadPreference`, `alertsUnreadPreference`): 최신 id 확인만 `bypass`.
 - 화면마다 `listCacheRef`·`peekQuotes` 등 **중복 캐시를 두지 않는다** — API 레이어(`integrations/signal-api/cache/`)에 위임.
-- 필터(All/속보/소스·시장·세션 등)는 **각각 별도 API 호출**로 가져오고, 재선택·재진입은 `signalCacheMode()` 캐시 hit으로 즉시 표시한다. 전체 리스트를 받아 클라이언트에서 거르지 않는다.
+- 필터(세그먼트·날짜 등)는 **각각 별도 API 호출**로 가져오고, 재선택·재진입은 `signalCacheMode()` 캐시 hit으로 즉시 표시한다. 뉴스·공시 탭의 All/속보/출처·시장·공시유형 칩 필터는 제거했다.
 
 캐시 모듈(`integrations/signal-api/cache/`):
 

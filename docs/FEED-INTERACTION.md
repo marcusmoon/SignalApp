@@ -15,7 +15,7 @@
 | **헤더 탭** | iPhone `SignalHeader` 브랜드 탭 · iPad·wide 웹 전역 헤더 로고 탭 |
 | **chip** | `FeedNewContentChip` — 백그라운드 폴링으로 새 항목이 있을 때 리스트 위에 표시 |
 | **digest** | 뉴스 `DigestPager` · 공시 `DisclosureDigestSection` (고정 스트립) |
-| **scope** | 세그먼트·시장·회차·필터 등 **독립 데이터 단위** |
+| **scope** | 세그먼트·날짜 등 **독립 데이터 단위** (뉴스·공시 탭의 All/속보/출처·시장·공시유형 필터는 제거) |
 
 ## 2. 데이터 로딩 3모드
 
@@ -201,7 +201,7 @@ chip·`latestSeenId`는 **scope마다 독립**이다. 한 scope에서 새로고�
 | 화면 | scope |
 |---|---|
 | 뉴스 | `global` · `korea` · `crypto` · `watch` · `video` |
-| 공시 | `us` · `kr` (종목 필터 모드에서는 chip 없음) |
+| 공시 | 단일 통합 피드 (종목 deep link 필터만 유지) |
 | 마켓 | `us-overnight` · `kr-morning` · `kr-lunch` · `kr-close` (과거 날짜에서는 chip 없음) |
 | 알림함 | 단일 inbox (필터 탭별 chip 없음 — 의도) |
 

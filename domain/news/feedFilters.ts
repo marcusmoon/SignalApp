@@ -7,8 +7,6 @@ export const FEED_PAGE_KOREA = 20;
 export const FEED_PAGE_WATCH = 40;
 export const FEED_PAGE_CRYPTO = 25;
 export const FEED_PAGE_VIDEO = 20;
-export const SOURCE_PROBE_LIMIT = 100;
-export const EMPTY_FILTER_SENTINEL = '__signal_no_match__';
 
 export const NEWS_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
   watch: 'feedSegmentWatch',
@@ -17,63 +15,6 @@ export const NEWS_SEGMENT_LABEL: Record<NewsSegmentKey, MessageId> = {
   crypto: 'feedSegmentCrypto',
   video: 'feedSegmentVideo',
 };
-
-export type NewsQuickFilterKind = 'all' | 'flash' | 'sources';
-export type WatchFilterKind = 'all' | 'symbols';
-
-export const NEWS_QUICK_FILTERS: { key: NewsQuickFilterKind; labelId: MessageId }[] = [
-  { key: 'all', labelId: 'feedWatchFilterAll' },
-  { key: 'flash', labelId: 'feedWatchFilterFlash' },
-  { key: 'sources', labelId: 'feedWatchFilterSources' },
-];
-
-export const WATCH_FILTERS: { key: WatchFilterKind; labelId: MessageId }[] = [
-  { key: 'all', labelId: 'feedWatchFilterAll' },
-  { key: 'symbols', labelId: 'feedWatchFilterSymbols' },
-];
-
-export function signalSourceLabel(item: SignalApiNewsItem): string {
-  const source = String(item.sourceName || '').trim();
-  return source.length > 0 ? source : 'Unknown';
-}
-
-export function uniqueSignalSources(items: SignalApiNewsItem[]): string[] {
-  return [...new Set(items.map(signalSourceLabel))].sort((a, b) => a.localeCompare(b));
-}
-
-export function buildSourcesFromCatalog(params: {
-  rawSources: string[];
-  catalog: { name: string; enabled: boolean; order: number }[];
-}): string[] {
-  const { rawSources, catalog } = params;
-  const enabledCatalog = (catalog || [])
-    .filter((source) => source && source.enabled)
-    .slice()
-    .sort(
-      (a, b) =>
-        (Number(a.order) || 0) - (Number(b.order) || 0) ||
-        String(a.name).localeCompare(String(b.name)),
-    )
-    .map((source) => String(source.name || '').trim())
-    .filter((source) => source.length > 0);
-
-  const set = new Set(enabledCatalog);
-  const extras = rawSources.filter((source) => !set.has(source));
-  const out = [...enabledCatalog, ...extras];
-  return out.length > 0 ? out : rawSources;
-}
-
-export function normalizeNullableSelection(options: string[], selected: string[] | null): string[] {
-  if (selected == null) return options;
-  const allowed = new Set(options);
-  return selected.filter((item) => allowed.has(item));
-}
-
-export function sourceFilterParam(options: string[], selected: string[] | null): string | undefined {
-  const normalized = normalizeNullableSelection(options, selected);
-  if (normalized.length === options.length) return undefined;
-  return normalized.length > 0 ? normalized.join(',') : EMPTY_FILTER_SENTINEL;
-}
 
 function cleanFeedText(value: unknown): string {
   return String(value || '').trim();

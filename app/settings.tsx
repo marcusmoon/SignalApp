@@ -116,6 +116,13 @@ import {
   type MainEntryKey,
 } from '@/services/mainEntryPreference';
 import {
+  HOME_NEWS_FLOW_DISPLAY_MAX,
+  HOME_NEWS_FLOW_DISPLAY_MIN,
+  HOME_NEWS_FLOW_DISPLAY_DEFAULT,
+  loadHomeNewsFlowDisplayCount,
+  saveHomeNewsFlowDisplayCount,
+} from '@/services/homeNewsFlowDisplayPreference';
+import {
   HOME_WATCHLIST_DISPLAY_MAX,
   HOME_WATCHLIST_DISPLAY_MIN,
   HOME_WATCHLIST_DISPLAY_DEFAULT,
@@ -1075,6 +1082,8 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   const [moreRefLinksReady, setMoreRefLinksReady] = useState(false);
   const [mainEntry, setMainEntry] = useState<MainEntryKey>('home');
   const [mainEntryReady, setMainEntryReady] = useState(false);
+  const [homeNewsFlowDisplayCount, setHomeNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
+  const [homeNewsFlowDisplayReady, setHomeNewsFlowDisplayReady] = useState(false);
   const [homeWatchlistDisplayCount, setHomeWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [homeWatchlistDisplayReady, setHomeWatchlistDisplayReady] = useState(false);
   const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
@@ -1273,6 +1282,22 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     setMainEntryReady(true);
   }, []);
 
+  const reloadHomeNewsFlowDisplayPref = useCallback(async () => {
+    const v = await loadHomeNewsFlowDisplayCount();
+    setHomeNewsFlowDisplayCount(v);
+    setHomeNewsFlowDisplayReady(true);
+  }, []);
+
+  const bumpHomeNewsFlowDisplayCount = useCallback(async (delta: number) => {
+    const v = await loadHomeNewsFlowDisplayCount();
+    const next = Math.min(
+      HOME_NEWS_FLOW_DISPLAY_MAX,
+      Math.max(HOME_NEWS_FLOW_DISPLAY_MIN, v + delta),
+    );
+    await saveHomeNewsFlowDisplayCount(next);
+    setHomeNewsFlowDisplayCount(next);
+  }, []);
+
   const reloadHomeWatchlistDisplayPref = useCallback(async () => {
     const v = await loadHomeWatchlistDisplayCount();
     setHomeWatchlistDisplayCount(v);
@@ -1311,6 +1336,7 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     void reloadSignalServerPrefs();
     void reloadMoreReferenceLinksPref();
     void reloadMainEntryPref();
+    void reloadHomeNewsFlowDisplayPref();
     void reloadHomeWatchlistDisplayPref();
     void reloadAppIconPref();
     void reloadTabBarOpacityPref();
@@ -1324,6 +1350,7 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     reloadSignalServerPrefs,
     reloadMoreReferenceLinksPref,
     reloadMainEntryPref,
+    reloadHomeNewsFlowDisplayPref,
     reloadHomeWatchlistDisplayPref,
     reloadAppIconPref,
     reloadTabBarOpacityPref,
@@ -1829,31 +1856,87 @@ clearCalendarCache();
         {selectedTab === 'display' ? (
           <>
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsThemeLanguageSection')}</Text>
-              <View style={styles.langSegmentedTrack}>
-                {LOCALE_ORDER.map((loc) => (
-                  <Pressable
-                    key={loc}
-                    onPress={() => void setLocale(loc)}
-                    style={[styles.langSegment, locale === loc && styles.langSegmentActive]}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: locale === loc }}
-                    accessibilityLabel={t(LOCALE_LABEL[loc])}>
-                    <Text
-                      style={[styles.langSegmentText, locale === loc && styles.langSegmentTextActive]}>
-                      {t(LOCALE_LABEL[loc])}
+              <Text style={styles.displayCardKicker}>{t('settingsHomeDisplaySection')}</Text>
+              {!homeNewsFlowDisplayReady || !homeWatchlistDisplayReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <>
+                  <Text style={[styles.displayCardKicker, { marginTop: 0 }]}>{t('settingsHomeNewsFlowDisplaySection')}</Text>
+                  <Text style={styles.prefHint}>{t('settingsHomeNewsFlowDisplayHint')}</Text>
+                  <View style={[styles.row, { marginTop: 8 }]}>
+                    <Text style={styles.handleText}>
+                      {t('settingsHomeNewsFlowDisplayValue', {
+                        count: String(homeNewsFlowDisplayCount),
+                      })}
                     </Text>
-                  </Pressable>
-                ))}
-              </View>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <Pressable
+                        onPress={() => void bumpHomeNewsFlowDisplayCount(-1)}
+                        disabled={homeNewsFlowDisplayCount <= HOME_NEWS_FLOW_DISPLAY_MIN}
+                        style={({ pressed }) => [
+                          styles.addBtn,
+                          (homeNewsFlowDisplayCount <= HOME_NEWS_FLOW_DISPLAY_MIN || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.addBtnText}>−</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void bumpHomeNewsFlowDisplayCount(1)}
+                        disabled={homeNewsFlowDisplayCount >= HOME_NEWS_FLOW_DISPLAY_MAX}
+                        style={({ pressed }) => [
+                          styles.addBtn,
+                          (homeNewsFlowDisplayCount >= HOME_NEWS_FLOW_DISPLAY_MAX || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.addBtnText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                    {t('settingsHomeWatchlistDisplaySection')}
+                  </Text>
+                  <Text style={styles.prefHint}>{t('settingsHomeWatchlistDisplayHint')}</Text>
+                  <View style={[styles.row, { marginTop: 8 }]}>
+                    <Text style={styles.handleText}>
+                      {t('settingsHomeWatchlistDisplayValue', {
+                        count: String(homeWatchlistDisplayCount),
+                      })}
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <Pressable
+                        onPress={() => void bumpHomeWatchlistDisplayCount(-1)}
+                        disabled={homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN}
+                        style={({ pressed }) => [
+                          styles.addBtn,
+                          (homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.addBtnText}>−</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void bumpHomeWatchlistDisplayCount(1)}
+                        disabled={homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX}
+                        style={({ pressed }) => [
+                          styles.addBtn,
+                          (homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.addBtnText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </>
+              )}
             </View>
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsMainEntrySection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsMainEntryHint')}</Text>
               {!mainEntryReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
-                <View style={styles.langSegmentedTrack}>
+                <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
                   {MAIN_ENTRY_DISPLAY_ORDER.map((entry) => (
                     <Pressable
                       key={entry}
@@ -1879,40 +1962,23 @@ clearCalendarCache();
             </View>
 
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsHomeWatchlistDisplaySection')}</Text>
-              {!homeWatchlistDisplayReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
-              ) : (
-                <View style={[styles.row, { marginTop: 8 }]}>
-                  <Text style={styles.handleText}>
-                    {t('settingsHomeWatchlistDisplayValue', {
-                      count: String(homeWatchlistDisplayCount),
-                    })}
-                  </Text>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <Pressable
-                      onPress={() => void bumpHomeWatchlistDisplayCount(-1)}
-                      disabled={homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN}
-                      style={({ pressed }) => [
-                        styles.addBtn,
-                        (homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN || pressed) && { opacity: 0.55 },
-                      ]}
-                      accessibilityRole="button">
-                      <Text style={styles.addBtnText}>−</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => void bumpHomeWatchlistDisplayCount(1)}
-                      disabled={homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX}
-                      style={({ pressed }) => [
-                        styles.addBtn,
-                        (homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX || pressed) && { opacity: 0.55 },
-                      ]}
-                      accessibilityRole="button">
-                      <Text style={styles.addBtnText}>+</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              )}
+              <Text style={styles.displayCardKicker}>{t('settingsThemeLanguageSection')}</Text>
+              <View style={styles.langSegmentedTrack}>
+                {LOCALE_ORDER.map((loc) => (
+                  <Pressable
+                    key={loc}
+                    onPress={() => void setLocale(loc)}
+                    style={[styles.langSegment, locale === loc && styles.langSegmentActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: locale === loc }}
+                    accessibilityLabel={t(LOCALE_LABEL[loc])}>
+                    <Text
+                      style={[styles.langSegmentText, locale === loc && styles.langSegmentTextActive]}>
+                      {t(LOCALE_LABEL[loc])}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
 
             <View style={styles.displayCard}>

@@ -9,7 +9,7 @@ export const DIGEST_PAIR_CARD_WIDTH_RATIO = 0.48;
 export const DIGEST_REFRESH_TAIL_WIDTH = 52;
 /** 공시 다이제스트 카드 태그(칩) 최대 개수 */
 export const DISCLOSURE_DIGEST_TAG_MAX_SINGLE = 3;
-export const DISCLOSURE_DIGEST_TAG_MAX_PAIR = 2;
+export const DISCLOSURE_DIGEST_TAG_MAX_PAIR = 1;
 
 export function digestStripCardWidth(
   containerWidth: number,

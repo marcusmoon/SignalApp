@@ -18,6 +18,7 @@ import {
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
+import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';

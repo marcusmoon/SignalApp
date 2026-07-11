@@ -124,9 +124,10 @@ type Props = {
   onRefresh?: () => void;
   refreshing?: boolean;
   onGoToList?: () => void;
+  goToListA11y?: string;
 };
 
-export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoToList }: Props) {
+export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoToList, goToListA11y }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const pairLayout = columns === 2;
   const stripRef = useRef<WebHorizontalScrollStripHandle>(null);
@@ -204,6 +205,7 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoT
             onRefresh={onRefresh ? handleRefresh : undefined}
             refreshing={refreshing}
             onGoToList={onGoToList ? handleGoToList : undefined}
+            goToListA11y={goToListA11y}
           />
         ) : null}
       </WebHorizontalScrollStrip>

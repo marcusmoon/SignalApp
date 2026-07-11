@@ -1,6 +1,11 @@
 import type { MessageId } from '@/locales/messages';
 import type { NewsSegmentKey } from '@/constants/newsSegment';
 
+export function newsSegmentToIssuesCategory(segment: NewsSegmentKey): NewsIssuesCategory {
+  if (segment === 'global' || segment === 'korea' || segment === 'crypto') return segment;
+  return 'all';
+}
+
 export type HomeDigestCategory = Extract<NewsSegmentKey, 'global' | 'korea' | 'crypto'>;
 
 export type NewsIssuesCategory = HomeDigestCategory | 'all';

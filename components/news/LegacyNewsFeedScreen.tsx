@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, type Href } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
@@ -23,6 +23,7 @@ import {
   WEB_FLATLIST_WINDOW,
 } from '@/constants/webLayout';
 import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER, parseNewsSegmentKey, type NewsSegmentKey } from '@/constants/newsSegment';
+import { newsSegmentToIssuesCategory } from '@/constants/ipadHomeNav';
 import { AdPlaceholder } from '@/components/signal/AdPlaceholder';
 import { groupedFeedRowEdges, groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import { NewsCard } from '@/components/signal/NewsCard';
@@ -84,6 +85,7 @@ import {
   signalYoutubeToYoutubeItem,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
+import { toYmd } from '@/utils/date';
 import type { SignalApiNewsDigestItem, SignalApiNewsItem, SignalApiYoutubeVideo, SignalNewsListMeta } from '@/integrations/signal-api/types';
 import type { NewsItem, YoutubeItem } from '@/types/signal';
 
@@ -225,8 +227,17 @@ export function LegacyNewsFeedScreen() {
     resyncDeps: [items, videoItems],
   });
   const goToFeedList = useCallback(() => {
-    scrollFeedToTop(true);
-  }, [scrollFeedToTop]);
+    const date = toYmd(new Date());
+    const category = newsSegmentToIssuesCategory(segment);
+    if (ipadNav.isAvailable) {
+      ipadNav.showNewsIssues({ category, date, digestId: null });
+      return;
+    }
+    router.push({
+      pathname: '/news-issues',
+      params: { category, date },
+    } as Href);
+  }, [ipadNav, router, segment]);
   const feedScrollResetKey = useMemo(() => [segment, activeTag].join('|'), [segment, activeTag]);
 
   useEffect(() => {
@@ -922,6 +933,7 @@ export function LegacyNewsFeedScreen() {
               onRefresh={() => void onRefresh()}
               refreshing={refreshing}
               onGoToList={goToFeedList}
+              goToListA11y={t('feedDigestTailGoToNewsFlowA11y')}
             />
           ) : null}
           </View>
@@ -936,6 +948,7 @@ export function LegacyNewsFeedScreen() {
                 onRefresh={() => void onRefresh()}
                 refreshing={refreshing}
                 onGoToList={goToFeedList}
+                goToListA11y={t('feedDigestTailGoToNewsFlowA11y')}
               />
             </View>
           ) : null}

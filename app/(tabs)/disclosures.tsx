@@ -28,6 +28,7 @@ import {
 } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -42,7 +43,7 @@ import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
 import { markDisclosureFeedSeen } from '@/services/disclosureUnreadPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
-import { formatFeedItemTimeLabel } from '@/utils/date';
+import { formatFeedItemTimeLabel, toYmd } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { firstRouteParam } from '@/utils/routeSearchParams';
@@ -103,6 +104,7 @@ export default function DisclosuresScreen() {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const { useTwoPane } = useResponsiveLayout();
+  const ipadNav = useIpadSidebarNav();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const [filter, setFilter] = useState<FilterKey>(() => parseDisclosureMarketParam(marketParam));
@@ -153,8 +155,17 @@ export default function DisclosuresScreen() {
     resyncDeps: [items, digestItems],
   });
   const goToDisclosureList = useCallback(() => {
-    scrollListToTop(true);
-  }, [scrollListToTop]);
+    const date = toYmd(new Date());
+    const market = filter;
+    if (ipadNav.isAvailable) {
+      ipadNav.showDisclosureFlow({ date, market, digestId: null });
+      return;
+    }
+    router.push({
+      pathname: '/disclosure-flow',
+      params: { date, market },
+    } as Href);
+  }, [filter, ipadNav, router]);
   const listScrollResetKey = `${filter}:${symbolFilter ?? ''}`;
 
   const currentQuery = useMemo<ListQuery>(
@@ -521,6 +532,7 @@ export default function DisclosuresScreen() {
                 onRefresh={() => void onRefresh()}
                 refreshing={refreshing}
                 onGoToList={goToDisclosureList}
+                goToListA11y={t('feedDigestTailGoToDisclosureFlowA11y')}
               />
             ) : null}
           </View>
@@ -541,6 +553,7 @@ export default function DisclosuresScreen() {
                     onRefresh={() => void onRefresh()}
                     refreshing={refreshing}
                     onGoToList={goToDisclosureList}
+                    goToListA11y={t('feedDigestTailGoToDisclosureFlowA11y')}
                   />
                 </View>
               ) : null}

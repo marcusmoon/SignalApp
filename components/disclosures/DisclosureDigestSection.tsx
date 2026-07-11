@@ -130,6 +130,7 @@ type Props = {
   onRefresh?: () => void;
   refreshing?: boolean;
   onGoToList?: () => void;
+  goToListA11y?: string;
 };
 
 export function DisclosureDigestSection({
@@ -141,6 +142,7 @@ export function DisclosureDigestSection({
   onRefresh,
   refreshing,
   onGoToList,
+  goToListA11y,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const pairLayout = columns === 2;
@@ -221,6 +223,7 @@ export function DisclosureDigestSection({
             onRefresh={onRefresh ? handleRefresh : undefined}
             refreshing={refreshing}
             onGoToList={onGoToList ? handleGoToList : undefined}
+            goToListA11y={goToListA11y}
           />
         ) : null}
       </WebHorizontalScrollStrip>

@@ -10,9 +10,10 @@ type Props = {
   onRefresh?: () => void;
   refreshing?: boolean;
   onGoToList?: () => void;
+  goToListA11y?: string;
 };
 
-export function DigestRefreshTail({ onRefresh, refreshing = false, onGoToList }: Props) {
+export function DigestRefreshTail({ onRefresh, refreshing = false, onGoToList, goToListA11y }: Props) {
   const { theme } = useSignalTheme();
   const { t } = useLocale();
   const styles = makeStyles(theme);
@@ -28,7 +29,7 @@ export function DigestRefreshTail({ onRefresh, refreshing = false, onGoToList }:
           onPress={onGoToList}
           style={({ pressed }) => [styles.btn, styles.btnList, pressed && styles.btnPressed]}
           accessibilityRole="button"
-          accessibilityLabel={t('feedDigestTailGoToListA11y')}>
+          accessibilityLabel={goToListA11y ?? t('feedDigestTailGoToListA11y')}>
           <FontAwesome name="list-ul" size={15} color={theme.textMuted} />
         </Pressable>
       ) : null}

@@ -141,14 +141,13 @@ export default function SignalScreen() {
     isFlatTabKey(routeSessionInit) ? routeSessionInit : null,
   );
   const [marketBriefings, setMarketBriefings] = useState<SignalApiMarketBriefing[]>([]);
-  const marketBriefingsRef = useRef(marketBriefings);
-  marketBriefingsRef.current = marketBriefings;
   const [changeColorConvention, setChangeColorConvention] = useState<QuotesChangeColorConvention>(
     QUOTES_CHANGE_COLOR_CONVENTION_DEFAULT,
   );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loadedYmdRef = useRef<string | null>(null);
   const [newContentTabs, setNewContentTabs] = useState(() => new Set<FlatTabKey>());
   const latestSeenIdByTabRef = useRef<Partial<Record<FlatTabKey, string>>>({});
 
@@ -238,11 +237,15 @@ export default function SignalScreen() {
 
   useEffect(() => {
     let cancelled = false;
+    const ymdChanged = loadedYmdRef.current !== selectedYmd;
+    setLoading(true);
+    if (ymdChanged) {
+      setMarketBriefings([]);
+    }
     void (async () => {
-      const hadBriefings = marketBriefingsRef.current.length > 0;
-      if (!hadBriefings) setLoading(true);
       try {
         await load();
+        if (!cancelled) loadedYmdRef.current = selectedYmd;
       } catch (e) {
         if (!cancelled) setError(formatSignalApiError(e, t, 'briefingErrorLoad'));
       } finally {
@@ -252,7 +255,22 @@ export default function SignalScreen() {
     return () => {
       cancelled = true;
     };
-  }, [load, t]);
+  }, [load, selectedYmd, t]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const session = firstRouteParam(routeParams.session);
+      const date = firstRouteParam(routeParams.date);
+      if (isFlatTabKey(session)) {
+        setSelectedTabKey(session);
+      }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        const clamped = date > todayYmdRef.current ? todayYmdRef.current : date;
+        setSelectedYmd((prev) => (prev === clamped ? prev : clamped));
+        setCalendarMonth(monthFromYmd(clamped));
+      }
+    }, [routeParams.date, routeParams.session]),
+  );
 
   /** 오늘 날짜 화면에서만 백그라운드 폴링으로 세션별 새 브리핑 chip 표시 */
   useEffect(() => {
@@ -389,11 +407,16 @@ export default function SignalScreen() {
   }, [marketBriefings]);
 
   useEffect(() => {
+    const session = firstRouteParam(routeParams.session);
+    if (isFlatTabKey(session)) {
+      setSelectedTabKey(session);
+      return;
+    }
     setSelectedTabKey(null);
-  }, [selectedYmd]);
+  }, [selectedYmd, routeParams.session]);
 
   const activeTabKey = useMemo((): FlatTabKey | null => {
-    if (selectedTabKey && briefingByTabKey.has(selectedTabKey)) return selectedTabKey;
+    if (selectedTabKey) return selectedTabKey;
     // Auto-select: last tab (most recent session) that has data
     for (let i = FLAT_TABS.length - 1; i >= 0; i--) {
       if (briefingByTabKey.has(FLAT_TABS[i].key)) return FLAT_TABS[i].key;
@@ -575,6 +598,10 @@ export default function SignalScreen() {
                 scaleFont={scaleFont}
                 changeColorConvention={changeColorConvention}
               />
+            ) : loading ? (
+              <View style={styles.center}>
+                <SignalLoadingIndicator message={t('commonLoading')} />
+              </View>
             ) : (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyTitle}>

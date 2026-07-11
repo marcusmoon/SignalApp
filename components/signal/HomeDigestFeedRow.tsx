@@ -126,8 +126,8 @@ function makeStyles(
     title: {
       fontSize: isSignal ? ft.signalBodyFont(FEED_SIGNAL_PREVIEW_PX) : ft.ff(FEED_DIGEST_TITLE_PX),
       lineHeight: isSignal ? sf(21) : sf(18),
-      fontWeight: isSignal ? ft.signalBodyWeight : ft.titleWeight,
-      color: isSignal ? theme.textMuted : theme.text,
+      fontWeight: ft.titleWeight,
+      color: theme.text,
     },
     footer: {
       flexDirection: 'row',

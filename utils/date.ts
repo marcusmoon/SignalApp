@@ -69,14 +69,23 @@ export function formatInstantLabel(iso: string | null | undefined, locale: AppLo
   return `${datePart} ${timePart}`;
 }
 
-/** 피드·흐름 카드용: 상대 시각 + 절대 시각 (예: 2시간 전 · 7/10 14:30) */
+/** 24시간 초과 시 로컬 날짜 (올해는 월·일, 이전 연도는 연도 포함) */
+export function formatPastDateLabel(iso: string | null | undefined, locale: AppLocale): string {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return String(iso).slice(0, 10);
+  const now = new Date();
+  const opts: Intl.DateTimeFormatOptions =
+    date.getFullYear() === now.getFullYear()
+      ? { month: 'numeric', day: 'numeric' }
+      : { year: 'numeric', month: 'numeric', day: 'numeric' };
+  return formatLocalInstantDate(iso, locale, opts);
+}
+
+/** 피드·흐름 카드용: 24시간 이내 상대 시각, 이후 날짜 */
 export function formatFeedItemTimeLabel(iso: string | null | undefined, locale: AppLocale): string {
   if (!iso) return '—';
-  const relative = formatRelativeFromIso(iso, locale);
-  const absolute = formatInstantLabel(iso, locale);
-  if (!relative || relative === '—') return absolute;
-  if (!absolute || absolute === '—') return relative;
-  return `${relative} · ${absolute}`;
+  return formatRelativeFromIso(iso, locale);
 }
 
 export function addDays(d: Date, days: number): Date {
@@ -224,16 +233,7 @@ export function formatRelativeTime(iso: string, locale: AppLocale): string {
       if (locale === 'ja') return `${diffHour}時間前`;
       return `${diffHour} hr ago`;
     }
-    const diffDay = Math.floor(diffHour / 24);
-    if (diffDay < 7) {
-      if (locale === 'ko') return `${diffDay}일 전`;
-      if (locale === 'ja') return `${diffDay}日前`;
-      return `${diffDay} days ago`;
-    }
-    const diffWeek = Math.floor(diffDay / 7);
-    if (locale === 'ko') return `${diffWeek}주 전`;
-    if (locale === 'ja') return `${diffWeek}週間前`;
-    return `${diffWeek} wk ago`;
+    return formatPastDateLabel(iso, locale);
   };
 
   try {
@@ -243,10 +243,7 @@ export function formatRelativeTime(iso: string, locale: AppLocale): string {
     if (diffMin < 60) return rtf.format(-diffMin, 'minute');
     const diffHour = Math.floor(diffMin / 60);
     if (diffHour < 24) return rtf.format(-diffHour, 'hour');
-    const diffDay = Math.floor(diffHour / 24);
-    if (diffDay < 7) return rtf.format(-diffDay, 'day');
-    const diffWeek = Math.floor(diffDay / 7);
-    return rtf.format(-diffWeek, 'week');
+    return formatPastDateLabel(iso, locale);
   } catch {
     return fallback();
   }

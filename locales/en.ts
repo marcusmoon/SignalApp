@@ -435,6 +435,7 @@ export const en = {
   youtubeModalTitle: 'Curated channels',
   a11yYoutubeFilter: 'Open curated channel filter',
 
+  settingsQuotesDisplaySection: 'Quotes screen',
   settingsQuotesLead: 'US tickers used for the Watch segment on the Quotes tab. Saved on this device.',
   settingsQuotesSectionAdd: 'Add ticker',
   settingsQuotesHintTicker: 'US ticker (e.g. AAPL, SPY)',
@@ -465,7 +466,8 @@ export const en = {
 
   settingsThemeLead:
     'In Display, change appearance, language, font size, and accent color. Changes apply immediately.',
-  settingsAppearanceSection: 'Appearance',
+  settingsAppearanceGroupSection: 'Look & feel',
+  settingsAppearanceSection: 'Theme mode',
   settingsAppearanceSystem: 'System',
   settingsAppearanceLight: 'Light',
   settingsAppearanceDark: 'Dark',
@@ -487,6 +489,8 @@ export const en = {
   settingsDisplayPreviewLabel: 'Preview',
   settingsDisplaySelectedTheme: 'Selected: {{name}}',
 
+  settingsSignalServerSection: 'Signal API',
+  settingsSignalServerModeSection: 'Connection mode',
   settingsSignalServerShortNote: 'A mode change saves only after /health succeeds.',
   settingsSignalServerUrlA11y: 'Signal API base URL, {{url}}',
   settingsSignalServerProbeFailTitle: 'Connection check failed',
@@ -502,6 +506,7 @@ export const en = {
   settingsSignalServerCustomPlaceholder: 'https://example.com',
   settingsSignalServerCustomEmpty: 'Enter a URL.',
 
+  settingsNewsDisplaySection: 'News screen',
   settingsNewsTabLead: 'Options for the News screen. Stored on this device only.',
   settingsNewsSegmentOrderKicker: 'News tab order',
   settingsNewsSegmentOrderHint:
@@ -518,6 +523,9 @@ export const en = {
   settingsScopeMega: 'Mega-cap',
   settingsScopeWatch: 'Watchlist',
 
+  settingsNotificationsSection: 'Notifications',
+  settingsNotificationsPushSection: 'Push notifications',
+  settingsNotificationsLocalSection: 'Local alerts',
   settingsNotificationsLead:
     'Control server push, market briefing push, and on-device macro calendar reminders separately.',
   settingsPushEnabled: 'Push notifications',

@@ -435,6 +435,7 @@ export const ja = {
   youtubeModalTitle: 'キュレーションチャンネル',
   a11yYoutubeFilter: 'キュレーションチャンネルフィルタを開く',
 
+  settingsQuotesDisplaySection: '相場画面',
   settingsQuotesLead: '相場タブ「ウォッチ」用の米国株ティッカーです。この端末に保存されます。',
   settingsQuotesSectionAdd: 'ティッカーを追加',
   settingsQuotesHintTicker: '米国ティッカー（例: AAPL, SPY）',
@@ -465,6 +466,7 @@ export const ja = {
 
   settingsThemeLead:
     '表示では画面モード・言語・文字サイズ・アクセント色を変更できます。変更はすぐに反映されます。',
+  settingsAppearanceGroupSection: '外観',
   settingsAppearanceSection: '画面モード',
   settingsAppearanceSystem: 'システム',
   settingsAppearanceLight: 'ライト',
@@ -487,6 +489,8 @@ export const ja = {
   settingsDisplayPreviewLabel: 'プレビュー',
   settingsDisplaySelectedTheme: '選択: {{name}}',
 
+  settingsSignalServerSection: 'Signal API',
+  settingsSignalServerModeSection: '接続モード',
   settingsSignalServerShortNote: 'モード変更は /health が成功したときだけ保存されます。',
   settingsSignalServerUrlA11y: 'Signal API のベース URL、{{url}}',
   settingsSignalServerProbeFailTitle: '接続確認に失敗',
@@ -502,6 +506,7 @@ export const ja = {
   settingsSignalServerCustomPlaceholder: 'https://example.com',
   settingsSignalServerCustomEmpty: 'URL を入力してください。',
 
+  settingsNewsDisplaySection: 'ニュース画面',
   settingsNewsTabLead: 'ニュース画面のオプションです。この端末にのみ保存されます。',
   settingsNewsSegmentOrderKicker: 'ニュースタブの順序',
   settingsNewsSegmentOrderHint:
@@ -518,6 +523,9 @@ export const ja = {
   settingsScopeMega: 'メガキャップ',
   settingsScopeWatch: 'ウォッチ',
 
+  settingsNotificationsSection: '通知',
+  settingsNotificationsPushSection: 'プッシュ通知',
+  settingsNotificationsLocalSection: 'ローカル通知',
   settingsNotificationsLead:
     'サーバープッシュ、市場ブリーフィングプッシュ、端末の経済カレンダーリマインダーを個別にオン/オフできます。',
   settingsPushEnabled: 'プッシュ通知',

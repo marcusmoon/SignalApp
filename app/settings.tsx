@@ -1430,12 +1430,111 @@ clearCalendarCache();
         {selectedTab === 'quotes' ? (
           <>
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsQuotesChangeColorKicker')}</Text>
-              {!quotesChangeColorReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              <Text style={styles.displayCardKicker}>{t('settingsQuotesDisplaySection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsQuotesLead')}</Text>
+
+              <Text style={[styles.displayCardKicker, { marginTop: 12 }]}>
+                {t('settingsQuotesSegmentOrderKicker')}
+              </Text>
+              <Text style={styles.prefHint}>{t('settingsQuotesSegmentOrderHint')}</Text>
+              {!quotesSegmentOrderReady ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
+              ) : (
+                <View style={[styles.quotesSegmentOrderListWrap, { marginTop: 8 }]}>
+                  <DraggableFlatList
+                    data={quotesSegmentOrder}
+                    scrollEnabled={false}
+                    removeClippedSubviews={false}
+                    style={{ height: QUOTES_SEGMENT_ORDER_LIST_HEIGHT }}
+                    containerStyle={{ flexGrow: 0 }}
+                    contentContainerStyle={styles.quotesSegmentOrderListContent}
+                    keyExtractor={(item) => item}
+                    onDragEnd={({ data }) => {
+                      setQuotesSegmentOrder(data);
+                      void saveQuotesSegmentOrder(data);
+                    }}
+                    renderItem={({ item, drag, isActive, getIndex }) => {
+                      const idx = getIndex() ?? 0;
+                      const isLast = idx === quotesSegmentOrder.length - 1;
+                      return (
+                        <ScaleDecorator>
+                          <View
+                            style={[
+                              styles.segmentOrderRow,
+                              !isLast && styles.segmentOrderRowGap,
+                              isActive && styles.segmentOrderRowActive,
+                            ]}>
+                            <Text style={styles.segmentOrderLabel}>{t(QUOTE_SEGMENT_LABEL[item])}</Text>
+                            <GHPressable
+                              style={styles.segmentOrderDragHandle}
+                              {...(Platform.OS === 'web'
+                                ? { onPressIn: drag }
+                                : { onLongPress: drag, delayLongPress: 200 })}
+                              accessibilityRole="button"
+                              accessibilityLabel={formatMessage(t('settingsQuotesSegmentDragHandleA11y'), {
+                                name: t(QUOTE_SEGMENT_LABEL[item]),
+                              })}>
+                              <FontAwesome name="bars" size={16} color={theme.textMuted} />
+                            </GHPressable>
+                          </View>
+                        </ScaleDecorator>
+                      );
+                    }}
+                  />
+                </View>
+              )}
+
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>{t('settingsQuotesLimitsKicker')}</Text>
+              <Text style={styles.prefHint}>{t('settingsQuotesListLimitsHint')}</Text>
+              {!quotesLimitsReady ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
                 <>
-                  <View style={styles.quotesChangeColorSegment}>
+                  <View style={[styles.limitRow, { marginTop: 8 }]}>
+                    <Text style={styles.prefLabel}>{t('settingsQuotesPopularCountLabel')}</Text>
+                    <Pressable
+                      onPress={() => setQuotesLimitPicker('popular')}
+                      style={styles.limitPickerTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settingsQuotesPopularCountLabel')}>
+                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.popularMax}</Text>
+                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                    </Pressable>
+                  </View>
+                  <View style={styles.limitRow}>
+                    <Text style={styles.prefLabel}>{t('settingsQuotesMcapCountLabel')}</Text>
+                    <Pressable
+                      onPress={() => setQuotesLimitPicker('mcap')}
+                      style={styles.limitPickerTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settingsQuotesMcapCountLabel')}>
+                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.mcapMax}</Text>
+                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                    </Pressable>
+                  </View>
+                  <View style={[styles.limitRow, styles.limitRowLast]}>
+                    <Text style={styles.prefLabel}>{t('settingsQuotesCoinCountLabel')}</Text>
+                    <Pressable
+                      onPress={() => setQuotesLimitPicker('coin')}
+                      style={styles.limitPickerTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settingsQuotesCoinCountLabel')}>
+                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.coinMax}</Text>
+                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                    </Pressable>
+                  </View>
+                </>
+              )}
+
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                {t('settingsQuotesChangeColorKicker')}
+              </Text>
+              <Text style={styles.prefHint}>{t('settingsQuotesChangeColorHint')}</Text>
+              {!quotesChangeColorReady ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
+              ) : (
+                <>
+                  <View style={[styles.quotesChangeColorSegment, { marginTop: 8 }]}>
                     {QUOTES_CHANGE_COLOR_CONVENTION_ORDER.map((convention) => {
                       const selected = quotesChangeColorConvention === convention;
                       return (
@@ -1485,110 +1584,23 @@ clearCalendarCache();
                 </>
               )}
             </View>
-
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsQuotesSegmentOrderKicker')}</Text>
-              {!quotesSegmentOrderReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
-              ) : (
-                <View style={styles.quotesSegmentOrderListWrap}>
-                  <DraggableFlatList
-                    data={quotesSegmentOrder}
-                    scrollEnabled={false}
-                    removeClippedSubviews={false}
-                    style={{ height: QUOTES_SEGMENT_ORDER_LIST_HEIGHT }}
-                    containerStyle={{ flexGrow: 0 }}
-                    contentContainerStyle={styles.quotesSegmentOrderListContent}
-                    keyExtractor={(item) => item}
-                    onDragEnd={({ data }) => {
-                      setQuotesSegmentOrder(data);
-                      void saveQuotesSegmentOrder(data);
-                    }}
-                    renderItem={({ item, drag, isActive, getIndex }) => {
-                      const idx = getIndex() ?? 0;
-                      const isLast = idx === quotesSegmentOrder.length - 1;
-                      return (
-                        <ScaleDecorator>
-                          <View
-                            style={[
-                              styles.segmentOrderRow,
-                              !isLast && styles.segmentOrderRowGap,
-                              isActive && styles.segmentOrderRowActive,
-                            ]}>
-                            <Text style={styles.segmentOrderLabel}>{t(QUOTE_SEGMENT_LABEL[item])}</Text>
-                            <GHPressable
-                              style={styles.segmentOrderDragHandle}
-                              {...(Platform.OS === 'web'
-                                ? { onPressIn: drag }
-                                : { onLongPress: drag, delayLongPress: 200 })}
-                              accessibilityRole="button"
-                              accessibilityLabel={formatMessage(t('settingsQuotesSegmentDragHandleA11y'), {
-                                name: t(QUOTE_SEGMENT_LABEL[item]),
-                              })}>
-                              <FontAwesome name="bars" size={16} color={theme.textMuted} />
-                            </GHPressable>
-                          </View>
-                        </ScaleDecorator>
-                      );
-                    }}
-                  />
-                </View>
-              )}
-            </View>
-
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsQuotesLimitsKicker')}</Text>
-              {!quotesLimitsReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
-              ) : (
-                <>
-                  <View style={styles.limitRow}>
-                    <Text style={styles.prefLabel}>{t('settingsQuotesPopularCountLabel')}</Text>
-                    <Pressable
-                      onPress={() => setQuotesLimitPicker('popular')}
-                      style={styles.limitPickerTrigger}
-                      accessibilityRole="button"
-                      accessibilityLabel={t('settingsQuotesPopularCountLabel')}>
-                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.popularMax}</Text>
-                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
-                    </Pressable>
-                  </View>
-                  <View style={styles.limitRow}>
-                    <Text style={styles.prefLabel}>{t('settingsQuotesMcapCountLabel')}</Text>
-                    <Pressable
-                      onPress={() => setQuotesLimitPicker('mcap')}
-                      style={styles.limitPickerTrigger}
-                      accessibilityRole="button"
-                      accessibilityLabel={t('settingsQuotesMcapCountLabel')}>
-                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.mcapMax}</Text>
-                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
-                    </Pressable>
-                  </View>
-                  <View style={[styles.limitRow, styles.limitRowLast]}>
-                    <Text style={styles.prefLabel}>{t('settingsQuotesCoinCountLabel')}</Text>
-                    <Pressable
-                      onPress={() => setQuotesLimitPicker('coin')}
-                      style={styles.limitPickerTrigger}
-                      accessibilityRole="button"
-                      accessibilityLabel={t('settingsQuotesCoinCountLabel')}>
-                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.coinMax}</Text>
-                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
-                    </Pressable>
-                  </View>
-                </>
-              )}
-            </View>
           </>
         ) : null}
 
         {selectedTab === 'news' ? (
           <>
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsNewsSegmentOrderKicker')}</Text>
+              <Text style={styles.displayCardKicker}>{t('settingsNewsDisplaySection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsNewsTabLead')}</Text>
+
+              <Text style={[styles.displayCardKicker, { marginTop: 12 }]}>
+                {t('settingsNewsSegmentOrderKicker')}
+              </Text>
+              <Text style={styles.prefHint}>{t('settingsNewsSegmentOrderHint')}</Text>
               {!newsSegmentOrderReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
-                <View style={styles.quotesSegmentOrderListWrap}>
+                <View style={[styles.quotesSegmentOrderListWrap, { marginTop: 8 }]}>
                   <DraggableFlatList
                     data={newsSegmentOrder}
                     scrollEnabled={false}
@@ -1631,12 +1643,13 @@ clearCalendarCache();
                   />
                 </View>
               )}
-            </View>
 
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsNewsHashtagDisplayKicker')}</Text>
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                {t('settingsNewsHashtagDisplayKicker')}
+              </Text>
+              <Text style={styles.prefHint}>{t('settingsNewsHashtagDisplayHint')}</Text>
               {!newsHashtagDisplayReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
                 <View style={[styles.row, { marginTop: 8 }]}>
                   <Text style={styles.handleText}>
@@ -1666,12 +1679,13 @@ clearCalendarCache();
                   </View>
                 </View>
               )}
-            </View>
 
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsNewsUnreadCheckKicker')}</Text>
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                {t('settingsNewsUnreadCheckKicker')}
+              </Text>
+              <Text style={styles.prefHint}>{t('settingsNewsUnreadCheckHint')}</Text>
               {!newsUnreadIntervalReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
                 <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
                   {NEWS_UNREAD_CHECK_INTERVAL_OPTIONS.map((minutes) => (
@@ -1702,7 +1716,6 @@ clearCalendarCache();
                 </View>
               )}
             </View>
-
           </>
         ) : null}
 
@@ -1711,73 +1724,76 @@ clearCalendarCache();
             {!prefsReady ? (
               <Text style={styles.muted}>{t('commonLoading')}</Text>
             ) : (
-              <View style={styles.notificationStack}>
-                {/* 서버 푸시 카드 */}
-                <View style={styles.notificationCard}>
-                  <View style={styles.notificationHeader}>
-                    <View style={[styles.notifIconBadge, { backgroundColor: theme.greenDim, borderColor: theme.greenBorder }]}>
-                      <FontAwesome name="bell" size={18} color={theme.green} />
-                    </View>
-                    <View style={styles.notificationText}>
-                      <Text style={styles.notificationTitle}>{t('settingsPushEnabled')}</Text>
-                      <Text style={styles.notificationHint}>{t('settingsPushEnabledHint')}</Text>
-                    </View>
-                    <Switch
-                      value={pushEnabled}
-                      onValueChange={async (v) => {
-                        setPushEnabled(v);
-                        await saveNotificationPrefs({ pushEnabled: v });
-                        if (v) void registerPushDeviceIfPossible();
-                      }}
-                      trackColor={{ false: '#333', true: theme.green + '88' }}
-                      thumbColor={pushEnabled ? theme.green : '#888'}
-                    />
+              <View style={styles.displayCard}>
+                <Text style={styles.displayCardKicker}>{t('settingsNotificationsSection')}</Text>
+                <Text style={styles.prefHint}>{t('settingsNotificationsLead')}</Text>
+
+                <Text style={[styles.displayCardKicker, { marginTop: 12 }]}>
+                  {t('settingsNotificationsPushSection')}
+                </Text>
+                <View style={[styles.notificationHeader, { marginTop: 8 }]}>
+                  <View style={[styles.notifIconBadge, { backgroundColor: theme.greenDim, borderColor: theme.greenBorder }]}>
+                    <FontAwesome name="bell" size={18} color={theme.green} />
                   </View>
-                  <View style={[styles.notificationSubRow, !pushEnabled && styles.notificationSubRowDisabled]}>
-                    <FontAwesome name="bar-chart" size={12} color={theme.textMuted} style={styles.notifSubIcon} />
-                    <View style={styles.notificationText}>
-                      <Text style={styles.notificationSubLabel}>{t('settingsBriefingPushEnabled')}</Text>
-                      <Text style={styles.notificationSubHint}>{t('settingsBriefingPushEnabledHint')}</Text>
-                    </View>
-                    <Switch
-                      value={briefingPushEnabled}
-                      disabled={!pushEnabled}
-                      onValueChange={async (v) => {
-                        setBriefingPushEnabled(v);
-                        await saveNotificationPrefs({ briefingPushEnabled: v });
-                      }}
-                      trackColor={{ false: '#333', true: theme.green + '88' }}
-                      thumbColor={briefingPushEnabled && pushEnabled ? theme.green : '#888'}
-                    />
+                  <View style={styles.notificationText}>
+                    <Text style={styles.notificationTitle}>{t('settingsPushEnabled')}</Text>
+                    <Text style={styles.notificationHint}>{t('settingsPushEnabledHint')}</Text>
                   </View>
+                  <Switch
+                    value={pushEnabled}
+                    onValueChange={async (v) => {
+                      setPushEnabled(v);
+                      await saveNotificationPrefs({ pushEnabled: v });
+                      if (v) void registerPushDeviceIfPossible();
+                    }}
+                    trackColor={{ false: '#333', true: theme.green + '88' }}
+                    thumbColor={pushEnabled ? theme.green : '#888'}
+                  />
+                </View>
+                <View style={[styles.notificationSubRow, !pushEnabled && styles.notificationSubRowDisabled]}>
+                  <FontAwesome name="bar-chart" size={12} color={theme.textMuted} style={styles.notifSubIcon} />
+                  <View style={styles.notificationText}>
+                    <Text style={styles.notificationSubLabel}>{t('settingsBriefingPushEnabled')}</Text>
+                    <Text style={styles.notificationSubHint}>{t('settingsBriefingPushEnabledHint')}</Text>
+                  </View>
+                  <Switch
+                    value={briefingPushEnabled}
+                    disabled={!pushEnabled}
+                    onValueChange={async (v) => {
+                      setBriefingPushEnabled(v);
+                      await saveNotificationPrefs({ briefingPushEnabled: v });
+                    }}
+                    trackColor={{ false: '#333', true: theme.green + '88' }}
+                    thumbColor={briefingPushEnabled && pushEnabled ? theme.green : '#888'}
+                  />
                 </View>
 
-                {/* 로컬 알림 · 경제 캘린더 카드 */}
-                <View style={styles.notificationCard}>
-                  <View style={styles.notificationHeader}>
-                    <View style={styles.notifIconBadge}>
-                      <FontAwesome name="calendar" size={16} color={theme.textDim} />
-                    </View>
-                    <View style={styles.notificationText}>
-                      <Text style={styles.notificationTitle}>{t('settingsLocalMacroCalendar')}</Text>
-                      <Text style={styles.notificationHint}>{t('settingsLocalMacroCalendarHint')}</Text>
-                    </View>
-                    <Switch
-                      value={localMacroCalendar}
-                      onValueChange={async (v) => {
-                        setLocalMacroCalendar(v);
-                        const next = {
-                          pushEnabled,
-                          briefingPushEnabled,
-                          localMacroCalendar: v,
-                        };
-                        await saveNotificationPrefs(next);
-                        await syncLocalCalendarNotifications(next);
-                      }}
-                      trackColor={{ false: '#333', true: theme.green + '88' }}
-                      thumbColor={localMacroCalendar ? theme.green : '#888'}
-                    />
+                <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                  {t('settingsNotificationsLocalSection')}
+                </Text>
+                <View style={[styles.notificationHeader, { marginTop: 8 }]}>
+                  <View style={styles.notifIconBadge}>
+                    <FontAwesome name="calendar" size={16} color={theme.textDim} />
                   </View>
+                  <View style={styles.notificationText}>
+                    <Text style={styles.notificationTitle}>{t('settingsLocalMacroCalendar')}</Text>
+                    <Text style={styles.notificationHint}>{t('settingsLocalMacroCalendarHint')}</Text>
+                  </View>
+                  <Switch
+                    value={localMacroCalendar}
+                    onValueChange={async (v) => {
+                      setLocalMacroCalendar(v);
+                      const next = {
+                        pushEnabled,
+                        briefingPushEnabled,
+                        localMacroCalendar: v,
+                      };
+                      await saveNotificationPrefs(next);
+                      await syncLocalCalendarNotifications(next);
+                    }}
+                    trackColor={{ false: '#333', true: theme.green + '88' }}
+                    thumbColor={localMacroCalendar ? theme.green : '#888'}
+                  />
                 </View>
               </View>
             )}
@@ -1787,8 +1803,10 @@ clearCalendarCache();
         {selectedTab === 'server' ? (
           <>
             <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsSignalServerSection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsSignalServerShortNote')}</Text>
               <Text
-                style={[styles.handleText, { marginBottom: 6 }]}
+                style={[styles.handleText, { marginTop: 10, marginBottom: 6 }]}
                 selectable
                 accessibilityRole="text"
                 accessibilityLabel={formatMessage(t('settingsSignalServerUrlA11y'), {
@@ -1800,7 +1818,10 @@ clearCalendarCache();
                 <Text style={[styles.muted, { marginTop: 10 }]}>{t('commonLoading')}</Text>
               ) : (
                 <>
-                  <View style={[styles.langSegmentedTrack, { marginTop: 0, flexWrap: 'wrap' }]}>
+                  <Text style={[styles.displayCardKicker, { marginTop: 8 }]}>
+                    {t('settingsSignalServerModeSection')}
+                  </Text>
+                  <View style={[styles.langSegmentedTrack, { marginTop: 8, flexWrap: 'wrap' }]}>
                     {SIGNAL_SERVER_MODES.map((m) => (
                       <Pressable
                         key={m}
@@ -1835,7 +1856,9 @@ clearCalendarCache();
                       <Text style={styles.muted}>{t('settingsSignalServerVerifying')}</Text>
                     </View>
                   ) : null}
-                  <Text style={[styles.prefHint, { marginTop: 12 }]}>{t('settingsSignalServerCustomLabel')}</Text>
+                  <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                    {t('settingsSignalServerCustomLabel')}
+                  </Text>
                   <TextInput
                     value={signalCustomDraft}
                     onChangeText={setSignalCustomDraft}
@@ -1845,7 +1868,7 @@ clearCalendarCache();
                     autoCapitalize="none"
                     autoCorrect={false}
                     keyboardType="url"
-                    style={[styles.input, { marginTop: 6 }]}
+                    style={[styles.input, { marginTop: 8 }]}
                   />
                 </>
               )}
@@ -1982,7 +2005,9 @@ clearCalendarCache();
             </View>
 
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsAppearanceSection')}</Text>
+              <Text style={styles.displayCardKicker}>{t('settingsAppearanceGroupSection')}</Text>
+
+              <Text style={[styles.displayCardKicker, { marginTop: 0 }]}>{t('settingsAppearanceSection')}</Text>
               <View style={styles.langSegmentedTrack}>
                 {APPEARANCE_MODE_ORDER.map((mode) => (
                   <Pressable
@@ -2002,15 +2027,14 @@ clearCalendarCache();
                   </Pressable>
                 ))}
               </View>
-            </View>
 
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsAppIconSection')}</Text>
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>{t('settingsAppIconSection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsAppIconHint')}</Text>
               {!appIconReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
                 <>
-                  <View style={styles.appIconGrid}>
+                  <View style={[styles.appIconGrid, { marginTop: 8 }]}>
                     {APP_ICON_VARIANTS.map((variant) => (
                       <Pressable
                         key={variant.id}
@@ -2044,14 +2068,15 @@ clearCalendarCache();
                   </Text>
                 </>
               )}
-            </View>
 
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsTabBarOpacitySection')}</Text>
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                {t('settingsTabBarOpacitySection')}
+              </Text>
+              <Text style={styles.prefHint}>{t('settingsTabBarOpacityHint')}</Text>
               {!tabBarOpacityReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
-                <View style={styles.langSegmentedTrack}>
+                <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
                   {TAB_BAR_OPACITY_ORDER.map((level) => (
                     <Pressable
                       key={level}
@@ -2083,7 +2108,8 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsFontSizeSection')}</Text>
-              <View style={styles.langSegmentedTrack}>
+              <Text style={styles.prefHint}>{t('settingsFontSizeHint')}</Text>
+              <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
                 {FONT_SIZE_PRESET_ORDER.map((id) => (
                   <Pressable
                     key={id}
@@ -2108,7 +2134,8 @@ clearCalendarCache();
               <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
                 {t('settingsFeedContentWeightSection')}
               </Text>
-              <View style={styles.langSegmentedTrack}>
+              <Text style={styles.prefHint}>{t('settingsFeedContentWeightHint')}</Text>
+              <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
                 {FEED_CONTENT_WEIGHT_ORDER.map((id) => (
                   <Pressable
                     key={id}
@@ -2131,10 +2158,11 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsMoreReferenceLinksKicker')}</Text>
+              <Text style={styles.prefHint}>{t('settingsMoreReferenceLinksHint')}</Text>
               {!moreRefLinksReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
-                <View style={styles.prefRow}>
+                <View style={[styles.prefRow, { marginTop: 8 }]}>
                   <Text style={styles.prefLabel}>{t('settingsMoreReferenceLinksSwitch')}</Text>
                   <Switch
                     value={moreRefLinksVisible}

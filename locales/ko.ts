@@ -433,6 +433,7 @@ export const ko = {
   youtubeModalTitle: '큐레이션 채널',
   a11yYoutubeFilter: '큐레이션 채널 필터 열기',
 
+  settingsQuotesDisplaySection: '시세 화면',
   settingsQuotesLead: '시세 탭 「관심」에 쓰는 미국 주식 티커입니다. 이 기기에 저장됩니다.',
   settingsQuotesSectionAdd: '티커 추가',
   settingsQuotesHintTicker: '미국 티커 (예: AAPL, SPY)',
@@ -463,6 +464,7 @@ export const ko = {
 
   settingsThemeLead:
     '표시 설정에서 화면 모드, 언어, 글꼴 크기, 강조색을 바꿀 수 있습니다. 변경 사항은 즉시 적용됩니다.',
+  settingsAppearanceGroupSection: '외관',
   settingsAppearanceSection: '화면 모드',
   settingsAppearanceSystem: '시스템',
   settingsAppearanceLight: '라이트',
@@ -485,6 +487,8 @@ export const ko = {
   settingsDisplayPreviewLabel: '미리보기',
   settingsDisplaySelectedTheme: '선택: {{name}}',
 
+  settingsSignalServerSection: 'Signal API',
+  settingsSignalServerModeSection: '연결 모드',
   settingsSignalServerShortNote: '모드 전환은 /health 통과 시에만 저장됩니다.',
   settingsSignalServerUrlA11y: 'Signal API 주소, {{url}}',
   settingsSignalServerProbeFailTitle: '연결 실패',
@@ -499,6 +503,7 @@ export const ko = {
   settingsSignalServerCustomPlaceholder: 'https://example.com',
   settingsSignalServerCustomEmpty: 'URL을 입력해 주세요.',
 
+  settingsNewsDisplaySection: '뉴스 화면',
   settingsNewsTabLead: '뉴스 화면에서 쓰는 옵션입니다. 이 기기에만 저장됩니다.',
   settingsNewsSegmentOrderKicker: '뉴스 탭 순서',
   settingsNewsSegmentOrderHint:
@@ -515,6 +520,9 @@ export const ko = {
   settingsScopeMega: '메가캡',
   settingsScopeWatch: '관심종목',
 
+  settingsNotificationsSection: '알림',
+  settingsNotificationsPushSection: '푸시 알림',
+  settingsNotificationsLocalSection: '로컬 알림',
   settingsNotificationsLead:
     '서버 푸시, 시장 브리핑 푸시, 경제 일정 로컬 알림을 각각 켜고 끌 수 있습니다.',
   settingsPushEnabled: '푸시 알림',

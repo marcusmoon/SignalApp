@@ -24,13 +24,16 @@ import {
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_LIST_HEADER_PADDING_BOTTOM,
   SCREEN_LIST_HEADER_PADDING_TOP,
+  getSegmentTabBarStyles,
 } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
+import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useScrollToTopOnChange } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useTabPressCycleSegment } from '@/hooks/useTabPressCycleSegment';
 import { fetchSignalDisclosures } from '@/integrations/signal-api/disclosures';
 import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
@@ -40,12 +43,27 @@ import { hasSignalApi } from '@/services/env';
 import { markDisclosureFeedSeen } from '@/services/disclosureUnreadPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { formatFeedItemTimeLabel } from '@/utils/date';
-import type { AppLocale } from '@/locales/messages';
+import type { AppLocale, MessageId } from '@/locales/messages';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
+import { firstRouteParam } from '@/utils/routeSearchParams';
+
+type FilterKey = 'us' | 'kr';
 
 type ListQuery = {
+  filter: FilterKey;
   symbolFilter: string;
 };
+
+const FILTER_ORDER: FilterKey[] = ['us', 'kr'];
+
+const FILTERS: { key: FilterKey; label: MessageId }[] = [
+  { key: 'us', label: 'disclosuresFilterUs' },
+  { key: 'kr', label: 'disclosuresFilterKr' },
+];
+
+function parseDisclosureMarketParam(raw: string | string[] | undefined): FilterKey {
+  return firstRouteParam(raw) === 'kr' ? 'kr' : 'us';
+}
 
 function disclosureTime(item: SignalApiDisclosure, locale: string): string {
   return formatFeedItemTimeLabel(item.filedAt, locale as AppLocale);
@@ -69,8 +87,9 @@ function providerLabel(item: SignalApiDisclosure): string {
 }
 
 export default function DisclosuresScreen() {
-  const { symbol: symbolParam } = useLocalSearchParams<{
+  const { symbol: symbolParam, market: marketParam } = useLocalSearchParams<{
     symbol?: string | string[];
+    market?: string | string[];
   }>();
   const symbolFilter = useMemo(
     () => String(Array.isArray(symbolParam) ? symbolParam[0] : symbolParam || '').trim().toUpperCase(),
@@ -84,7 +103,9 @@ export default function DisclosuresScreen() {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const { useTwoPane } = useResponsiveLayout();
+  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
+  const [filter, setFilter] = useState<FilterKey>(() => parseDisclosureMarketParam(marketParam));
   const [items, setItems] = useState<SignalApiDisclosure[]>([]);
   const [digestItems, setDigestItems] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [digestLoading, setDigestLoading] = useState(false);
@@ -93,44 +114,59 @@ export default function DisclosuresScreen() {
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [newContentAvailable, setNewContentAvailable] = useState(false);
-  const latestSeenIdRef = useRef<string | null>(null);
+  const [newContentFilters, setNewContentFilters] = useState(() => new Set<FilterKey>());
+  const latestSeenIdByFilterRef = useRef<Partial<Record<FilterKey, string>>>({});
   const digestItemsRef = useRef<SignalApiDisclosureDigestItem[]>([]);
   const hasInitialLoadRef = useRef(false);
   const loadSeqRef = useRef(0);
   digestItemsRef.current = digestItems;
 
-  const markHasNewContent = useCallback(() => {
-    setNewContentAvailable(true);
+  const markFilterHasNewContent = useCallback((key: FilterKey) => {
+    setNewContentFilters((prev) => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
   }, []);
 
-  const clearNewContent = useCallback(() => {
-    setNewContentAvailable(false);
+  const clearFilterNewContent = useCallback((key: FilterKey) => {
+    setNewContentFilters((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
   }, []);
 
-  const syncLatestSeen = useCallback(
-    (latestId: string | null | undefined) => {
+  const syncFilterLatestSeen = useCallback(
+    (key: FilterKey, latestId: string | null | undefined) => {
       const id = latestId?.trim();
       if (!id) return;
-      latestSeenIdRef.current = id;
-      clearNewContent();
+      latestSeenIdByFilterRef.current[key] = id;
+      clearFilterNewContent(key);
     },
-    [clearNewContent],
+    [clearFilterNewContent],
   );
 
-  const { ref: listRef } = useScrollToTopOnChange([symbolFilter], {
+  const { ref: listRef } = useScrollToTopOnChange([filter, symbolFilter], {
     resyncDeps: [items, digestItems],
   });
-  const listScrollResetKey = symbolFilter ?? '';
+  const listScrollResetKey = `${filter}:${symbolFilter ?? ''}`;
 
-  const currentQuery = useMemo<ListQuery>(() => ({ symbolFilter }), [symbolFilter]);
+  const currentQuery = useMemo<ListQuery>(
+    () => ({ filter, symbolFilter }),
+    [filter, symbolFilter],
+  );
 
   const loadDigests = useCallback(async (refresh?: boolean) => {
     if (!hasSignalApi() || symbolFilter) return;
     if (digestItemsRef.current.length === 0) setDigestLoading(true);
     try {
+      const market = filter === 'us' ? 'us' : 'kr';
       const page = await fetchSignalDisclosureDigests(
         {
+          market,
           limit: 16,
           batches: 1,
         },
@@ -142,7 +178,7 @@ export default function DisclosuresScreen() {
     } finally {
       setDigestLoading(false);
     }
-  }, [symbolFilter]);
+  }, [filter, symbolFilter]);
 
   const queryDisclosureList = useCallback(
     async (query: ListQuery, refresh?: boolean): Promise<SignalApiDisclosure[]> => {
@@ -150,9 +186,11 @@ export default function DisclosuresScreen() {
         throw new Error(t('errorSignalApiShort'));
       }
 
+      const market = query.symbolFilter ? undefined : query.filter === 'us' ? 'us' : 'kr';
       const symbols = query.symbolFilter || undefined;
       const page = await fetchSignalDisclosures(
         {
+          market,
           symbols,
           limit: 60,
         },
@@ -172,20 +210,24 @@ export default function DisclosuresScreen() {
     if (symbolFilter || !hasSignalApi()) return;
     const POLL_MS = 3 * 60 * 1000;
     const poll = async () => {
-      try {
-        const page = await fetchSignalDisclosures({ limit: 1, offset: 0 }, { cacheMode: 'bypass' });
-        const latestId = page.items[0]?.id ?? null;
-        if (!latestId) return;
-        const seen = latestSeenIdRef.current;
-        if (!seen) return;
-        if (latestId !== seen) markHasNewContent();
-      } catch {
-        /* ignore polling errors */
-      }
+      await Promise.all(
+        FILTER_ORDER.map(async (market) => {
+          try {
+            const page = await fetchSignalDisclosures({ market, limit: 1, offset: 0 }, { cacheMode: 'bypass' });
+            const latestId = page.items[0]?.id ?? null;
+            if (!latestId) return;
+            const seen = latestSeenIdByFilterRef.current[market];
+            if (!seen) return;
+            if (latestId !== seen) markFilterHasNewContent(market);
+          } catch {
+            /* ignore polling errors */
+          }
+        }),
+      );
     };
     const id = setInterval(() => void poll(), POLL_MS);
     return () => clearInterval(id);
-  }, [markHasNewContent, symbolFilter]);
+  }, [markFilterHasNewContent, symbolFilter]);
 
   useEffect(() => {
     const query = currentQuery;
@@ -200,7 +242,7 @@ export default function DisclosuresScreen() {
         if (cancelled || seq !== loadSeqRef.current) return;
         setItems(rows);
         setError(null);
-        syncLatestSeen(rows[0]?.id);
+        syncFilterLatestSeen(query.filter, rows[0]?.id);
       } catch (e) {
         if (cancelled || seq !== loadSeqRef.current) return;
         if (!hasSignalApi()) {
@@ -218,7 +260,7 @@ export default function DisclosuresScreen() {
     return () => {
       cancelled = true;
     };
-  }, [currentQuery, queryDisclosureList, syncLatestSeen, t]);
+  }, [currentQuery, queryDisclosureList, syncFilterLatestSeen, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -241,7 +283,7 @@ export default function DisclosuresScreen() {
 
   const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
-    clearNewContent();
+    clearFilterNewContent(currentQuery.filter);
     const seq = ++loadSeqRef.current;
     const query = currentQuery;
     try {
@@ -249,7 +291,7 @@ export default function DisclosuresScreen() {
       if (seq !== loadSeqRef.current) return;
       setItems(latest);
       setError(null);
-      syncLatestSeen(latest[0]?.id);
+      syncFilterLatestSeen(query.filter, latest[0]?.id);
       await loadDigests(true);
     } catch (e) {
       if (seq !== loadSeqRef.current) return;
@@ -259,10 +301,47 @@ export default function DisclosuresScreen() {
         setRefreshing(false);
       }
     }
-  }, [clearNewContent, currentQuery, loadDigests, queryDisclosureList, syncLatestSeen, t]);
+  }, [clearFilterNewContent, currentQuery, loadDigests, queryDisclosureList, syncFilterLatestSeen, t]);
 
   const onRefresh = onRefreshBase;
   useRegisterWebHeaderRefresh(() => void onRefresh());
+
+  const onPickFilter = useCallback(
+    (key: FilterKey) => {
+      if (filter === key) return;
+      setError(null);
+      setFilter(key);
+      if (useTwoPane) setActiveSubTabKey(key);
+      setRouteParams({
+        market: key === 'us' ? undefined : key,
+      });
+    },
+    [filter, setActiveSubTabKey, setRouteParams, useTwoPane],
+  );
+
+  useTabPressCycleSegment(symbolFilter ? null : filter, FILTER_ORDER, onPickFilter);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!useTwoPane || symbolFilter) {
+        clearSubTabs();
+        return;
+      }
+      setActiveSubTabKey(filter);
+      setSubTabs(
+        FILTERS.map((item) => ({
+          key: item.key,
+          label: t(item.label),
+          onPress: () => onPickFilter(item.key),
+        })),
+      );
+      return () => clearSubTabs();
+    }, [clearSubTabs, filter, onPickFilter, setActiveSubTabKey, setSubTabs, symbolFilter, t, useTwoPane]),
+  );
+
+  useEffect(() => {
+    setFilter(parseDisclosureMarketParam(marketParam));
+  }, [marketParam]);
 
   const clearSymbolFilter = useCallback(() => {
     setRouteParams({ symbol: undefined });
@@ -277,6 +356,7 @@ export default function DisclosuresScreen() {
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const showDigest = !symbolFilter;
+  const newContentAvailable = !symbolFilter && newContentFilters.has(filter);
 
   const listHeaderEl = useMemo(
     () => (
@@ -411,14 +491,33 @@ export default function DisclosuresScreen() {
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {!useTwoPane && showDigest ? (
+        {!useTwoPane ? (
           <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
-            <DisclosureDigestSection
-              items={digestItems}
-              loading={digestLoading && digestItems.length === 0}
-              onRefresh={() => void onRefresh()}
-              refreshing={refreshing}
-            />
+            {!symbolFilter ? (
+              <View style={styles.segment}>
+                {FILTERS.map((f) => {
+                  const selected = filter === f.key;
+                  return (
+                    <Pressable
+                      key={f.key}
+                      onPress={() => onPickFilter(f.key)}
+                      style={[styles.segBtn, selected && styles.segBtnActive]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}>
+                      <Text style={[styles.segText, selected && styles.segTextActive]}>{t(f.label)}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+            {showDigest ? (
+              <DisclosureDigestSection
+                items={digestItems}
+                loading={digestLoading && digestItems.length === 0}
+                onRefresh={() => void onRefresh()}
+                refreshing={refreshing}
+              />
+            ) : null}
           </View>
         ) : null}
         {!initialLoadDone && loading ? (
@@ -473,6 +572,7 @@ export default function DisclosuresScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
   const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
     safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
@@ -519,6 +619,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingTop: SCREEN_LIST_HEADER_PADDING_TOP,
       paddingBottom: SCREEN_LIST_HEADER_PADDING_BOTTOM,
     },
+    segment: segmentTab.segment,
+    segBtn: segmentTab.segBtn,
+    segBtnActive: segmentTab.segBtnActive,
+    segText: segmentTab.segText,
+    segTextActive: segmentTab.segTextActive,
     symbolFilterRow: {
       flexDirection: 'row',
       alignItems: 'center',

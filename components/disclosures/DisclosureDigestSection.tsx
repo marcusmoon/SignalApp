@@ -11,6 +11,8 @@ import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news
 import { CONTENT_ACCENT_LINE_WIDTH, homeSectionAccentColor, type HomeAccentSection } from '@/constants/homeSectionAccent';
 import {
   DIGEST_CARD_GAP,
+  DISCLOSURE_DIGEST_TAG_MAX_PAIR,
+  DISCLOSURE_DIGEST_TAG_MAX_SINGLE,
   digestStripCardWidth,
   digestStripScrollPadding,
 } from '@/constants/digestStripLayout';
@@ -37,6 +39,20 @@ function marketChipLabel(market: string, locale: string): string {
   return locale === 'ko' ? '미국' : locale === 'ja' ? '米国' : 'US';
 }
 
+function buildTopicChips(
+  item: SignalApiDisclosureDigestItem,
+  locale: string,
+  pairLayout: boolean,
+): string[] {
+  const maxTags = pairLayout ? DISCLOSURE_DIGEST_TAG_MAX_PAIR : DISCLOSURE_DIGEST_TAG_MAX_SINGLE;
+  const candidates = [
+    marketChipLabel(item.market, locale),
+    ...item.symbols,
+    ...item.forms,
+  ].filter(Boolean);
+  return [...new Set(candidates)].slice(0, maxTags);
+}
+
 type DigestCardProps = {
   item: SignalApiDisclosureDigestItem;
   onOpenSources: (item: SignalApiDisclosureDigestItem) => void;
@@ -58,27 +74,23 @@ const DigestCard = memo(function DigestCard({
     symbols: String(item.symbols.length),
   });
   const createdLabel = formatFeedItemTimeLabel(disclosureDigestCreatedIso(item), locale as AppLocale);
-  const topicChips = [
-    ...new Set([
-      marketChipLabel(item.market, locale),
-      ...item.symbols.slice(0, pairLayout ? 2 : 3),
-      ...item.forms.slice(0, pairLayout ? 1 : 2),
-    ]),
-  ].filter(Boolean);
+  const topicChips = buildTopicChips(item, locale, pairLayout);
   const showSources = item.sourceRefs.length > 0;
 
   return (
     <View style={[styles.card, pairLayout && styles.cardPair]}>
       <View style={[styles.accentLine, pairLayout && styles.accentLinePair]} />
       {topicChips.length > 0 ? (
-        <View style={styles.badgeRow}>
+        <View style={[styles.badgeRow, pairLayout && styles.badgeRowPair]}>
           {topicChips.map((chip, index) => (
             <Text key={`${chip}-${index}`} style={styles.topicChip} numberOfLines={1}>
               {chip}
             </Text>
           ))}
         </View>
-      ) : null}
+      ) : (
+        <View style={[styles.badgeRow, pairLayout && styles.badgeRowPair]} />
+      )}
 
       <Text style={[styles.title, pairLayout && styles.titlePair]} numberOfLines={2}>
         {item.title}
@@ -165,7 +177,7 @@ export function DisclosureDigestSection({
 
   return (
     <View
-      style={styles.container}
+      style={[styles.container, pairLayout && styles.containerPair]}
       onLayout={(event) => {
         const next = Math.max(0, Math.round(event.nativeEvent.layout.width));
         setContainerWidth((prev) => (prev === next ? prev : next));
@@ -211,6 +223,10 @@ function makeStyles(
   return StyleSheet.create({
     container: {
       marginBottom: 0,
+      minHeight: 118,
+    },
+    containerPair: {
+      minHeight: 104,
     },
     scrollContent: {
       flexDirection: 'row',
@@ -223,6 +239,8 @@ function makeStyles(
       flexShrink: 0,
     },
     card: {
+      flex: 1,
+      minHeight: 118,
       paddingLeft: 18,
       paddingRight: ft.pad(13),
       paddingVertical: ft.pad(11),
@@ -239,6 +257,7 @@ function makeStyles(
       elevation: 1,
     },
     cardPair: {
+      minHeight: 104,
       paddingLeft: 14,
       paddingRight: ft.pad(11),
       paddingVertical: ft.pad(9),
@@ -262,9 +281,14 @@ function makeStyles(
     },
     badgeRow: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
+      flexWrap: 'nowrap',
       gap: 5,
       alignItems: 'center',
+      height: 22,
+      overflow: 'hidden',
+    },
+    badgeRowPair: {
+      height: 20,
     },
     topicChip: {
       overflow: 'hidden',
@@ -289,7 +313,7 @@ function makeStyles(
     titlePair: {
       fontSize: ft.ff(14),
       lineHeight: ft.ff(19),
-      minHeight: undefined,
+      minHeight: ft.ff(19) * 2,
     },
     footerRow: {
       flexDirection: 'row',

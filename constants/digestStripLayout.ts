@@ -7,6 +7,9 @@ export const DIGEST_SINGLE_NEXT_CARD_PEEK = 36;
 export const DIGEST_PAIR_CARD_WIDTH_RATIO = 0.48;
 /** 스트립 끝 refresh 타일 너비 */
 export const DIGEST_REFRESH_TAIL_WIDTH = 52;
+/** 공시 다이제스트 카드 태그(칩) 최대 개수 */
+export const DISCLOSURE_DIGEST_TAG_MAX_SINGLE = 3;
+export const DISCLOSURE_DIGEST_TAG_MAX_PAIR = 2;
 
 export function digestStripCardWidth(
   containerWidth: number,

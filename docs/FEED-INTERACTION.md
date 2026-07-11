@@ -118,6 +118,8 @@ digest-only API 갱신 UI는 두지 않는다. 스트립 **끝 refresh 타일**(
 compact 1열은 스트립 `paddingHorizontal: 0` — `topFixed`의 `SCREEN_FIXED_HEADER_PADDING_HORIZONTAL`(16)만 사용.  
 하단 여백은 다이제스트 `marginBottom` 없이 `topFixed` `paddingBottom`(12) + `gap`(8)만 따른다.
 
+**공시 다이제스트** (`DisclosureDigestSection`): 카드·스트립 **높이 고정**, 태그(칩)는 `DISCLOSURE_DIGEST_TAG_MAX_SINGLE`(3) / `DISCLOSURE_DIGEST_TAG_MAX_PAIR`(2)로 한 줄만 표시한다. 공시 탭 상단은 **미국 SEC / 한국 DART** 세그먼트로 시장을 구분한다(유형 칩 필터는 없음).
+
 #### 스트립 끝 refresh
 
 카드 끝에 좁은 refresh 타일(`components/feed/DigestRefreshTail.tsx`)을 둔다. 탭 시 화면 `onRefresh`(PTR·헤더 탭·chip과 동일)를 호출하고 **가로 스트립을 맨 앞으로** 되돌린다. `refreshing` 중에는 스피너로 바뀌고 비활성화된다.

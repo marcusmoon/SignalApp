@@ -20,7 +20,8 @@ import { MasterDetailLayout } from '@/components/layout/MasterDetailLayout';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WatchlistAddSheet } from '@/components/quotes/WatchlistAddSheet';
 import { makeQuotesStyles } from '@/components/quotes/quotesStyles';
-import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
+import { quoteSegmentAccent } from '@/constants/segmentAccent';
+import { SegmentFilterChip } from '@/components/signal/SegmentFilterChip';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SymbolDetailPane } from '@/components/symbol/SymbolDetailPane';
@@ -595,14 +596,26 @@ export default function QuotesScreen() {
           {segmentOrder.map((key) => (
             <Fragment key={key}>
               {key === 'coin' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
-              <Pressable
-                onPress={() => onPickSegment(key)}
-                style={[styles.segBtn, key === 'coin' && styles.segBtnCompact, segment === key && styles.segBtnActive]}
-                accessibilityState={{ selected: segment === key }}>
-                <Text style={[styles.segText, segment === key && styles.segTextActive]}>
-                  {t(QUOTE_SEGMENT_LABEL[key])}
-                </Text>
-              </Pressable>
+              {(() => {
+                const accent = quoteSegmentAccent(key, theme);
+                const active = segment === key;
+                return (
+                  <Pressable
+                    onPress={() => onPickSegment(key)}
+                    style={[
+                      styles.segBtn,
+                      key === 'coin' && styles.segBtnCompact,
+                      active && { backgroundColor: accent.accent },
+                    ]}
+                    accessibilityState={{ selected: active }}>
+                    <SegmentFilterChip
+                      label={t(QUOTE_SEGMENT_LABEL[key])}
+                      accent={accent}
+                      active={active}
+                    />
+                  </Pressable>
+                );
+              })()}
             </Fragment>
           ))}
         </View>

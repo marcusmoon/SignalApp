@@ -108,6 +108,7 @@ export function signalNewsToNewsItem(item: SignalApiNewsItem, locale: AppLocale)
     originalSummary: item.originalSummary,
     alternateTitle,
     source: item.sourceName,
+    publishedAt: item.publishedAt,
     timeLabel: item.publishedAt ? formatRelativeFromIso(item.publishedAt, locale) : '—',
     url: item.sourceUrl,
     isFlash: isFlashNews(item),

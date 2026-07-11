@@ -38,6 +38,7 @@ export function getSegmentTabBarStyles(theme: AppTheme, sf: (n: number) => numbe
     segBtn: {
       flex: 1,
       paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
+      paddingHorizontal: 8,
       borderRadius: SEGMENT_TAB_BTN_RADIUS,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,

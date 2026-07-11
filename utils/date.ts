@@ -88,6 +88,23 @@ export function formatFeedItemTimeLabel(iso: string | null | undefined, locale: 
   return formatRelativeFromIso(iso, locale);
 }
 
+/** 속보·타임라인 행: 상대 시각 | 절대 시각 */
+export function formatNewsTimelineTimeLabel(iso: string | null | undefined, locale: AppLocale): string {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (!Number.isFinite(date.getTime())) return '—';
+  const rel = formatRelativeFromIso(iso, locale);
+  const loc = localeTagForAppLocale(locale);
+  const abs = new Intl.DateTimeFormat(loc, {
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: locale === 'en',
+  }).format(date);
+  return `${rel} | ${abs}`;
+}
+
 export function addDays(d: Date, days: number): Date {
   const x = new Date(d);
   x.setDate(x.getDate() + days);

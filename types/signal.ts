@@ -8,6 +8,8 @@ export type NewsItem = {
   alternateTitle?: string;
   /** 기사 매체·출처명 (표시용) */
   source: string;
+  /** ISO — 타임라인·상세 시각 표시 */
+  publishedAt?: string | null;
   timeLabel: string;
   url: string;
   /** 속보·긴급 보도 강조 표시 */

@@ -60,7 +60,9 @@ export function SignalDateNavigator({
         accessibilityRole={onPressLabel ? 'button' : undefined}
         accessibilityLabel={labelA11y}
         style={({ pressed }) => [styles.datePickerCenter, pressed && onPressLabel && styles.dateActionBtnPressed]}>
-        <FontAwesome name="calendar" size={12} color={theme.green} />
+        <View style={styles.dateIconMark}>
+          <FontAwesome name="calendar" size={12} color={theme.green} />
+        </View>
         <Text style={styles.datePickerValue} numberOfLines={1}>
           {label}
         </Text>
@@ -139,6 +141,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'center',
       gap: 7,
       paddingHorizontal: 10,
+    },
+    dateIconMark: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
     },
     datePickerValue: {
       color: theme.text,

@@ -29,7 +29,8 @@ import { groupedFeedRowEdges, groupedFeedRowShell } from '@/components/signal/gr
 import { NewsCard } from '@/components/signal/NewsCard';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
-import { DigestPager } from '@/components/news/DigestPager';
+import { newsSegmentAccent } from '@/constants/segmentAccent';
+import { SegmentFilterChip } from '@/components/signal/SegmentFilterChip';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
@@ -923,15 +924,27 @@ export function LegacyNewsFeedScreen() {
             {segmentOrder.map((key) => (
               <Fragment key={key}>
                 {key === 'video' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
-                <Pressable
-                  onPress={() => onPickSegment(key)}
-                  style={[styles.segBtn, key === 'video' && styles.segBtnVideo, segment === key && styles.segBtnActive]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: segment === key }}>
-                  <Text style={[styles.segText, segment === key && styles.segTextActive]}>
-                    {t(NEWS_SEGMENT_LABEL[key])}
-                  </Text>
-                </Pressable>
+                {(() => {
+                  const accent = newsSegmentAccent(key, theme);
+                  const active = segment === key;
+                  return (
+                    <Pressable
+                      onPress={() => onPickSegment(key)}
+                      style={[
+                        styles.segBtn,
+                        key === 'video' && styles.segBtnVideo,
+                        active && { backgroundColor: accent.accent },
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}>
+                      <SegmentFilterChip
+                        label={t(NEWS_SEGMENT_LABEL[key])}
+                        accent={accent}
+                        active={active}
+                      />
+                    </Pressable>
+                  );
+                })()}
               </Fragment>
             ))}
           </View> : null}
@@ -997,6 +1010,8 @@ export function LegacyNewsFeedScreen() {
               <View style={edges ? groupedFeedRowShell(theme, edges) : undefined}>
                 <NewsCard
                   layout="grouped"
+                  timeline
+                  timelineLast={edges?.isLast ?? true}
                   item={item.news}
                   compactMeta
                   titleToggle={segment === 'global' || segment === 'crypto'}

@@ -62,6 +62,11 @@ import type {
 import type { MessageId } from '@/locales/messages';
 import { hasSignalApi } from '@/services/env';
 import {
+  HOME_NEWS_FLOW_DISPLAY_DEFAULT,
+  loadHomeNewsFlowDisplayCount,
+  subscribeHomeNewsFlowDisplayCountChanged,
+} from '@/services/homeNewsFlowDisplayPreference';
+import {
   HOME_WATCHLIST_DISPLAY_DEFAULT,
   loadHomeWatchlistDisplayCount,
   subscribeHomeWatchlistDisplayCountChanged,
@@ -83,7 +88,6 @@ import {
 const HOME_BOARD_SOURCES: CommunitySourceKey[] = ['naver_likeusstock_free', 'save_user_news'];
 
 const ISSUE_FETCH_LIMIT = 24;
-const HOME_ISSUE_LIMIT = 6;
 const BRIEFING_LIMIT = 30;
 const HOME_SIGNAL_LIMIT = 4;
 const DISCLOSURE_LIMIT = 3;
@@ -263,6 +267,7 @@ export function HomeFocusContent({
   const [refreshing, setRefreshing] = useState(false);
   useResetRefreshingOnTabBlur(setRefreshing);
   const [error, setError] = useState<string | null>(null);
+  const [newsFlowDisplayCount, setNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
   const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
@@ -276,8 +281,11 @@ export function HomeFocusContent({
   );
   const hiddenCalendarCount = Math.max(0, calendarEvents.length - visibleCalendarEvents.length);
   const homeIssues = useMemo(
-    () => [...issues].sort((a, b) => issueSortTime(b).localeCompare(issueSortTime(a)) || b.item.count - a.item.count).slice(0, HOME_ISSUE_LIMIT),
-    [issues],
+    () =>
+      [...issues]
+        .sort((a, b) => issueSortTime(b).localeCompare(issueSortTime(a)) || b.item.count - a.item.count)
+        .slice(0, newsFlowDisplayCount),
+    [issues, newsFlowDisplayCount],
   );
   const { ref: scrollRef } = useScrollToTopOnChange([selectedYmd], {
     resyncDeps: [issues, briefings, todayBriefing, disclosures, calendarEvents, loading],
@@ -419,13 +427,29 @@ export function HomeFocusContent({
 
   useEffect(() => {
     let cancelled = false;
-    const refreshCount = async () => {
+    const refreshNewsFlowCount = async () => {
+      const next = await loadHomeNewsFlowDisplayCount();
+      if (!cancelled) setNewsFlowDisplayCount(next);
+    };
+    void refreshNewsFlowCount();
+    const unsubscribe = subscribeHomeNewsFlowDisplayCountChanged(() => {
+      void refreshNewsFlowCount();
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refreshWatchlistCount = async () => {
       const next = await loadHomeWatchlistDisplayCount();
       if (!cancelled) setWatchlistDisplayCount(next);
     };
-    void refreshCount();
+    void refreshWatchlistCount();
     const unsubscribe = subscribeHomeWatchlistDisplayCountChanged(() => {
-      void refreshCount();
+      void refreshWatchlistCount();
     });
     return () => {
       cancelled = true;

@@ -73,7 +73,7 @@ function SourceIconMark({
         <Image
           source={{ uri: iconUrl }}
           style={{ width: size - 6, height: size - 6, borderRadius: radius - 3 }}
-          contentFit="cover"
+          contentFit="contain"
           cachePolicy="memory-disk"
           transition={80}
           onError={() => {

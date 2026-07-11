@@ -1,5 +1,11 @@
 const failedIconUrls = new Set<string>();
 
+/** Google 파비콘 품질·오매칭이 있는 출처는 공식 아이콘 URL을 직접 쓴다. */
+const SOURCE_ICON_URL_OVERRIDES: Record<string, string> = {
+  'financialjuice.com': 'https://www.financialjuice.com/assets/comp-images/comp_0.png',
+  'www.financialjuice.com': 'https://www.financialjuice.com/assets/comp-images/comp_0.png',
+};
+
 export function markSourceIconFailed(url: string): void {
   failedIconUrls.add(url);
 }
@@ -57,6 +63,10 @@ export function resolveSourceIconUrl(
 ): string | null {
   const domain = mappedDomain || domainFromUrl(sourceUrl) || guessSourceDomain(sourceName);
   if (!domain) return null;
+  const normalized = domain.trim().toLowerCase();
+  const bare = normalized.replace(/^www\./, '');
+  const override = SOURCE_ICON_URL_OVERRIDES[normalized] || SOURCE_ICON_URL_OVERRIDES[bare];
+  if (override) return override;
   const url = sourceFaviconUrl(domain);
   if (isSourceIconFailed(url)) return null;
   return url;

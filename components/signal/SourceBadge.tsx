@@ -59,7 +59,7 @@ export function SourceBadge({
           <Image
             source={{ uri: iconUrl }}
             style={styles.icon}
-            contentFit="cover"
+            contentFit="contain"
             cachePolicy="memory-disk"
             transition={100}
             onError={() => {

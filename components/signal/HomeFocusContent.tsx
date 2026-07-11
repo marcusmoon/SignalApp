@@ -20,6 +20,7 @@ import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
+import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { communitySourceAccent } from '@/constants/communitySources';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -961,13 +962,7 @@ export function HomeFocusContent({
                       accessibilityRole="button"
                       accessibilityLabel={t(labelId)}
                       style={({ pressed }) => [styles.boardEntryTile, pressed && styles.pressed]}>
-                      <View
-                        style={[
-                          styles.boardMark,
-                          { backgroundColor: accent.dim, borderColor: accent.border },
-                        ]}>
-                        <Text style={[styles.boardGlyph, { color: accent.accent }]}>{accent.glyph}</Text>
-                      </View>
+                      <CommunitySourceMark accent={accent} size={36} />
                     </Pressable>
                   );
                 })}
@@ -1248,19 +1243,6 @@ function makeStyles(
       shadowRadius: 6,
       shadowOffset: { width: 0, height: 3 },
       elevation: 1,
-    },
-    boardMark: {
-      width: 36,
-      height: 36,
-      borderRadius: 10,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderWidth: 1,
-    },
-    boardGlyph: {
-      fontSize: sf(15),
-      lineHeight: sf(18),
-      fontWeight: '900',
     },
     quoteTileContent: {
       flex: 1,

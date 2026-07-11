@@ -26,6 +26,9 @@ export function communityShowsOriginalLink(source: string): boolean {
 
 export type CommunitySourceAccent = SourceAccent;
 
+/** 세이브티커 공식 로고 — https://www.saveticker.com */
+export const SAVE_TICKER_LOGO_URL = 'https://www.saveticker.com/assets/images/Logo.webp';
+
 /** 소스별 리스트·상세 accent (미주미=블루, 세이브=오렌지) */
 export function communitySourceAccent(source: string, theme: AppTheme): CommunitySourceAccent {
   if (source === 'save_user_news') {
@@ -33,7 +36,8 @@ export function communitySourceAccent(source: string, theme: AppTheme): Communit
       accent: theme.accentOrange,
       dim: theme.warningDim,
       border: accentAlpha(theme.accentOrange, theme.colorScheme === 'dark' ? 0.55 : 0.35),
-      glyph: '💾',
+      glyph: 'S',
+      iconUrl: SAVE_TICKER_LOGO_URL,
     };
   }
   return {

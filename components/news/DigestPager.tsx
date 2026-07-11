@@ -22,7 +22,7 @@ import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useWebHorizontalWheelScroll } from '@/hooks/useWebHorizontalWheelScroll';
+import { useWebHorizontalWheelScroll, snapWebCarouselToOffset } from '@/hooks/useWebHorizontalWheelScroll';
 import type { NewsDigestItem } from '@/domain/news';
 import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { AppLocale } from '@/locales/messages';
@@ -198,7 +198,8 @@ function chunkDigests(items: NewsDigestItem[], columns: 1 | 2): NewsDigestItem[]
 export function DigestPager({ batches, columns = 1 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const pairLayout = columns === 2;
-  const loopCarousel = Platform.OS !== 'web';
+  const isWebCarousel = Platform.OS === 'web';
+  const loopCarousel = !isWebCarousel;
   const scrollRef = useRef<ScrollView | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const pageWidth = Math.max(0, containerWidth || 0);
@@ -217,7 +218,7 @@ export function DigestPager({ batches, columns = 1 }: Props) {
     return [digestPages[pageCount - 1], ...digestPages, digestPages[0]];
   }, [digestPages, loopCarousel, pageCount]);
 
-  useWebHorizontalWheelScroll(scrollRef, pageCount > 1);
+  useWebHorizontalWheelScroll(scrollRef, pageCount > 1, pageWidth);
 
   const jumpToVisualPage = useCallback((visualIndex: number) => {
     if (pageWidth <= 0) return;
@@ -317,9 +318,15 @@ export function DigestPager({ batches, columns = 1 }: Props) {
 
   const handleScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      syncPageIndex(e.nativeEvent.contentOffset.x, true);
+      const offsetX = e.nativeEvent.contentOffset.x;
+      if (isWebCarousel && pageWidth > 0) {
+        const snappedX = snapWebCarouselToOffset(scrollRef, offsetX, pageWidth, true);
+        syncPageIndex(snappedX, true);
+        return;
+      }
+      syncPageIndex(offsetX, true);
     },
-    [syncPageIndex],
+    [isWebCarousel, pageWidth, syncPageIndex],
   );
 
   const toggleExpand = useCallback((id: string) => {
@@ -362,9 +369,9 @@ export function DigestPager({ batches, columns = 1 }: Props) {
           onScrollEndDrag={handleScrollEnd}
           directionalLockEnabled
           decelerationRate={Platform.OS === 'ios' ? 'fast' : 0.9}
-          snapToInterval={pageWidth > 0 ? pageWidth : undefined}
+          snapToInterval={!isWebCarousel && pageWidth > 0 ? pageWidth : undefined}
           snapToAlignment="start"
-          disableIntervalMomentum
+          disableIntervalMomentum={!isWebCarousel}
           keyboardShouldPersistTaps="handled">
           {pageWidth > 0 &&
             carouselPages.map((pageItems, index) => {
@@ -378,22 +385,21 @@ export function DigestPager({ batches, columns = 1 }: Props) {
               return (
                 <View
                   key={`${pageItems.map((item) => item.id).join('-')}-${index}`}
+                  {...(isWebCarousel
+                    ? { dataSet: { signalHorizontalCarouselPage: 'true' } }
+                    : {})}
                   style={[
                     styles.page,
                     pairLayout && styles.pageTwoUp,
-                    pairLayout && Platform.OS === 'web' && styles.pageTwoUpWeb,
                     { width: pageWidth },
                   ]}>
                   {pageItems.map((digest) => {
                     const isExpanded = expandedId === digest.id && pageIndex === realIndex;
-                    const columnStyle =
-                      pairLayout
-                        ? pageItems.length === 1
-                          ? styles.pageColumnSingle
-                          : Platform.OS === 'web'
-                            ? styles.pageColumnWeb
-                            : styles.pageColumn
-                        : undefined;
+                    const columnStyle = pairLayout
+                      ? pageItems.length === 1
+                        ? styles.pageColumnSingle
+                        : styles.pageColumn
+                      : undefined;
                     return (
                       <View key={digest.id} style={columnStyle}>
                         <DigestCard
@@ -434,23 +440,13 @@ function makeStyles(
       alignItems: 'stretch',
       gap: 10,
     },
-    pageTwoUpWeb: {
-      justifyContent: 'center',
-    },
     pageColumn: {
       flex: 1,
       minWidth: 0,
     },
-    pageColumnWeb: {
-      flexGrow: 0,
-      flexShrink: 1,
-      width: '46%',
-      maxWidth: 380,
-      minWidth: 0,
-    },
     pageColumnSingle: {
-      width: pairLayout && Platform.OS === 'web' ? '46%' : '48%',
-      maxWidth: pairLayout && Platform.OS === 'web' ? 380 : '48%',
+      width: '48%',
+      maxWidth: '48%',
     },
     card: {
       paddingLeft: 18,

@@ -164,7 +164,7 @@ export function LegacyNewsFeedScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const { useTwoPane, isPad } = useResponsiveLayout();
+  const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
   const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
   const [segment, setSegment] = useState<NewsSegmentKey>(() => {
@@ -1471,7 +1471,7 @@ export function LegacyNewsFeedScreen() {
         <View style={styles.listColumn}>
           {showDigest && useTwoPane ? (
             <View style={[styles.topFixed, styles.listColumnDigestStrip]}>
-              <DigestPager batches={digestBatches} columns={isPad ? 2 : 1} />
+              <DigestPager batches={digestBatches} columns={2} />
             </View>
           ) : null}
           {isFocused ? (

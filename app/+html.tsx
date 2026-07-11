@@ -147,13 +147,20 @@ body {
   background-color: var(--signal-bg);
 }
 
-/* Hide scrollbars on horizontal card carousels (navigation uses overlay arrows). */
+/* Hide scrollbars on horizontal card carousels; snap pages on web. */
 [data-signal-horizontal-carousel="true"] {
   scrollbar-width: none;
   -ms-overflow-style: none;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
 }
 [data-signal-horizontal-carousel="true"]::-webkit-scrollbar {
   display: none;
+}
+[data-signal-horizontal-carousel-page="true"] {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 /* Mobile Safari can miss RN Web's initial fixed/absolute measurements until resize.

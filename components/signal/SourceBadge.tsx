@@ -1,9 +1,11 @@
-import { useMemo } from 'react';
+import { Image } from 'expo-image';
+import { useMemo, useState, useEffect } from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import type { SourceAccent } from '@/constants/sourceAccent';
 import type { AppTheme } from '@/constants/theme';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { markSourceIconFailed } from '@/services/sourceIcon';
 
 type Props = {
   label: string;
@@ -16,6 +18,14 @@ type Props = {
 export function SourceBadge({ label, accent, iconOnly = false, style }: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const iconUrl = accent.iconUrl?.trim() || null;
+  const [iconFailed, setIconFailed] = useState(!iconUrl);
+
+  useEffect(() => {
+    setIconFailed(!iconUrl);
+  }, [iconUrl, label]);
+
+  const showIcon = Boolean(iconUrl) && !iconFailed;
 
   return (
     <View
@@ -26,10 +36,28 @@ export function SourceBadge({ label, accent, iconOnly = false, style }: Props) {
         style,
       ]}
       accessibilityLabel={label}>
-      <View style={[styles.mark, { backgroundColor: accent.accent, borderColor: accent.border }]}>
-        <Text style={styles.glyph} numberOfLines={1}>
-          {accent.glyph}
-        </Text>
+      <View
+        style={[
+          styles.mark,
+          !showIcon && { backgroundColor: accent.accent, borderColor: accent.border },
+        ]}>
+        {showIcon && iconUrl ? (
+          <Image
+            source={{ uri: iconUrl }}
+            style={styles.icon}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={100}
+            onError={() => {
+              markSourceIconFailed(iconUrl);
+              setIconFailed(true);
+            }}
+          />
+        ) : (
+          <Text style={styles.glyph} numberOfLines={1}>
+            {accent.glyph}
+          </Text>
+        )}
       </View>
       {iconOnly ? null : (
         <Text style={[styles.label, { color: accent.accent }]} numberOfLines={1}>
@@ -66,7 +94,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      overflow: 'hidden',
       flexShrink: 0,
+    },
+    icon: {
+      width: 20,
+      height: 20,
     },
     glyph: {
       fontSize: sf(9),

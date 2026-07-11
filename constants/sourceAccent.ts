@@ -5,6 +5,8 @@ export type SourceAccent = {
   dim: string;
   border: string;
   glyph: string;
+  /** 파비콘 URL — 실패 시 glyph fallback */
+  iconUrl?: string | null;
 };
 
 const FALLBACK_PALETTE = [

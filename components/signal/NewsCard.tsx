@@ -54,7 +54,10 @@ export function NewsCard({
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
 
   const sourceName = item.source?.trim() || '—';
-  const sourceAccent = useMemo(() => newsSourceAccent(sourceName, theme), [sourceName, theme]);
+  const sourceAccent = useMemo(
+    () => newsSourceAccent(sourceName, theme, item.url),
+    [sourceName, theme, item.url],
+  );
   const isFlash = Boolean(item.isFlash);
   const symbol = item.ticker?.trim().toUpperCase() ?? '';
   const showSourceInHeader =

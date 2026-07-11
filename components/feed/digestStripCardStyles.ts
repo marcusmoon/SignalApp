@@ -94,21 +94,6 @@ export function makeDigestStripCardStyles(
       fontWeight: ft.emphasisWeight,
       color: theme.textMuted,
     },
-    aiBadge: {
-      flexShrink: 0,
-      paddingHorizontal: pairLayout ? 6 : 8,
-      paddingVertical: 2,
-      borderRadius: 999,
-      backgroundColor: theme.accentBlue,
-      borderWidth: 1,
-      borderColor: theme.accentBlue,
-    },
-    aiBadgeText: {
-      fontSize: ft.ff(FEED_CHIP_PX),
-      lineHeight: sf(15),
-      fontWeight: '900',
-      color: '#FFFFFF',
-    },
     titleBody: {
       flexShrink: 0,
       minHeight: titleLine * 2,

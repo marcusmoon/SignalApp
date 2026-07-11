@@ -24,7 +24,7 @@ import {
   FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
-import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
+import { AiBadge } from '@/components/signal/AiBadge';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
 import {
@@ -940,7 +940,7 @@ export function HomeFocusContent({
               <View style={styles.heroBlock}>
                 <HomeSectionHeader
                   title={t('ipadHomeTitle')}
-                  badge={<HomeAiBadge />}
+                  badge={<AiBadge />}
                   onPress={openTodayBriefing}
                   accessibilityLabel={t('commonViewAll')}
                 />
@@ -951,7 +951,7 @@ export function HomeFocusContent({
             <View style={[styles.heroBlock, styles.heroBlockCompact]}>
               <HomeSectionHeader
                 title={t('newsIssuesTitle')}
-                badge={<HomeAiBadge />}
+                badge={<AiBadge />}
                 onPress={() => openIssue()}
                 accessibilityLabel={t('commonViewAll')}
               />
@@ -968,7 +968,7 @@ export function HomeFocusContent({
           <View style={[styles.section, styles.heroBlockCompact]}>
             <HomeSectionHeader
               title={t('homeFocusSignalTitle')}
-              badge={<HomeAiBadge />}
+              badge={<AiBadge />}
               onPress={briefings.length > 0 ? openSignal : undefined}
               accessibilityLabel={briefings.length > 0 ? t('commonViewAll') : undefined}
             />
@@ -986,7 +986,7 @@ export function HomeFocusContent({
           <View style={styles.section}>
             <HomeSectionHeader
               title={t('disclosureFlowTitle')}
-              badge={<HomeAiBadge />}
+              badge={<AiBadge />}
               onPress={() => openDisclosureFlow()}
               accessibilityLabel={t('commonViewAll')}
             />

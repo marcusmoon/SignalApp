@@ -609,7 +609,7 @@ export const ko = {
   insightOpenCalendar: '날짜 선택',
   insightCalendarTitle: '날짜 선택',
   insightCalendarToday: '오늘로 이동',
-  feedSegmentWatch: '내 관심',
+  feedSegmentWatch: '관심',
   feedSegmentGlobal: '글로벌',
   feedSegmentKorea: '한국',
   feedSegmentCrypto: '코인',

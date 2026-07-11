@@ -38,7 +38,7 @@ export function CommunityPostCard({ item, sourceLabelId, showSource = true }: Pr
       <View pointerEvents="none" style={styles.accentBar} />
       <View style={styles.metaRow}>
         {showSource ? (
-          <SourceBadge label={t(sourceLabelId)} accent={accent} variant="news" iconOnly />
+          <SourceBadge label={t(sourceLabelId)} accent={accent} variant="news" />
         ) : null}
         <View style={[styles.timePill, !showSource && styles.timePillLead]}>
           <Text style={styles.time}>{timeLabel}</Text>
@@ -101,6 +101,8 @@ function makeStyles(
       justifyContent: 'space-between',
       gap: ft.pad(8),
       marginBottom: 2,
+      minWidth: 0,
+      overflow: 'hidden',
     },
     timePill: {
       flexShrink: 0,

@@ -45,7 +45,7 @@ export function CommunityPostDetailContent({ item, bottomPad = 24, refreshing = 
       <View style={styles.headerFixed}>
         <View style={styles.headerInner}>
           <View style={styles.metaRow}>
-            <SourceBadge label={t(sourceLabelId)} accent={accent} variant="news" iconOnly />
+            <SourceBadge label={t(sourceLabelId)} accent={accent} variant="news" />
             <Text style={styles.time}>{timeLabel}</Text>
           </View>
           <View style={styles.titleRow}>

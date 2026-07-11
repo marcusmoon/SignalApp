@@ -599,7 +599,11 @@ export default function QuotesScreen() {
                 onPress={() => onPickSegment(key)}
                 style={[styles.segBtn, key === 'coin' && styles.segBtnCompact, segment === key && styles.segBtnActive]}
                 accessibilityState={{ selected: segment === key }}>
-                <Text style={[styles.segText, segment === key && styles.segTextActive]}>
+                <Text
+                  style={[styles.segText, segment === key && styles.segTextActive]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.85}>
                   {t(QUOTE_SEGMENT_LABEL[key])}
                 </Text>
               </Pressable>

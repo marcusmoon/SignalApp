@@ -108,9 +108,7 @@ export function NewsCard({
       ? t('newsTitleShowTranslation')
       : t('newsTitleShowOriginal');
 
-  const sourceContent = (
-    <SourceBadge label={sourceName} accent={sourceAccent} variant="news" iconOnly />
-  );
+  const sourceContent = <SourceBadge label={sourceName} accent={sourceAccent} variant="news" />;
 
   const flashBadge = isFlash ? (
     <View style={styles.sourcePill} accessibilityLabel={t('newsFlashBadge')}>
@@ -143,7 +141,6 @@ export function NewsCard({
   const renderSourceInMeta = () => (
     <View style={styles.sourceRowCompact}>
       {flashBadge}
-      {titleToggleBtn}
       {sourceContent}
     </View>
   );
@@ -151,19 +148,22 @@ export function NewsCard({
   const renderSourceBelowMeta = () => (
     <View style={styles.sourceRow}>
       {flashBadge}
-      {titleToggleBtn}
       {sourceContent}
     </View>
   );
 
   const titleBlock = (
-    <Text style={[styles.title, tags.length === 0 && styles.titleLast]}>{displayTitle}</Text>
+    <View style={styles.titleRow}>
+      {titleToggleBtn}
+      <Text style={[styles.title, tags.length === 0 && styles.titleLast]} numberOfLines={3}>
+        {displayTitle}
+      </Text>
+    </View>
   );
 
   const metaBlock = compactMeta ? (
     <View style={styles.compactMetaRow}>
       {flashBadge}
-      {titleToggleBtn}
       {canOpenSymbol ? (
         <Pressable
           onPress={() => router.push(`/symbol/${symbol}`)}
@@ -177,10 +177,14 @@ export function NewsCard({
           </View>
         </Pressable>
       ) : null}
-      {sourceContent}
-      <Text style={styles.compactMetaText} numberOfLines={1}>
-        {item.timeLabel}
-      </Text>
+      <View style={styles.compactMetaMain}>
+        {sourceContent}
+      </View>
+      <View style={styles.timePill}>
+        <Text style={styles.time} numberOfLines={1}>
+          {item.timeLabel}
+        </Text>
+      </View>
     </View>
   ) : (
     <>
@@ -201,7 +205,6 @@ export function NewsCard({
           renderSourceInMeta()
         )}
         <View style={styles.metaTrail}>
-          {canOpenSymbol ? titleToggleBtn : null}
           <View style={styles.timePill}>
             <Text style={styles.time}>{item.timeLabel}</Text>
           </View>
@@ -326,13 +329,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     compactMetaRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      flexWrap: 'nowrap',
       gap: ft.pad(6),
       marginBottom: ft.pad(7),
       minWidth: 0,
+      overflow: 'hidden',
     },
     compactTickerWrap: {
       flexShrink: 0,
-      maxWidth: '28%',
+      maxWidth: '30%',
     },
     compactTicker: {
       color: theme.green,
@@ -341,19 +346,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.emphasisWeight,
       letterSpacing: 0.2,
     },
-    compactMetaText: {
+    compactMetaMain: {
       flex: 1,
       minWidth: 0,
-      color: theme.textMuted,
-      fontSize: ft.ff(11),
-      lineHeight: ft.ff(16),
-      fontWeight: ft.metaWeight,
-      textAlign: 'right',
+      flexShrink: 1,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: ft.pad(6),
+      minWidth: 0,
     },
     titleToggleBtn: {
       flexShrink: 0,
       width: 24,
       height: 24,
+      marginTop: 1,
       borderRadius: 999,
       alignItems: 'center',
       justifyContent: 'center',
@@ -382,7 +390,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       alignSelf: 'center',
       flexDirection: 'row',
       alignItems: 'center',
-      flexWrap: 'wrap',
+      flexWrap: 'nowrap',
       gap: ft.pad(6),
     },
     sourcePill: {
@@ -405,6 +413,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       maxWidth: '100%',
     },
     title: {
+      flex: 1,
+      minWidth: 0,
       color: theme.text,
       fontSize: ft.ff(15),
       fontWeight: ft.titleWeight,

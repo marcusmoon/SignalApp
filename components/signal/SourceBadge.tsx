@@ -44,7 +44,7 @@ export function SourceBadge({
         iconOnly && isNews && styles.pillIconOnlyNews,
         !iconOnly &&
           (isNews
-            ? { backgroundColor: theme.greenDim, borderColor: theme.greenBorder }
+            ? styles.pillNews
             : { backgroundColor: accent.dim, borderColor: accent.border }),
         style,
       ]}
@@ -103,6 +103,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, isNews: boolean)
       borderRadius: 999,
       borderWidth: 1,
     },
+    pillNews: {
+      backgroundColor: 'transparent',
+      borderWidth: 0,
+      paddingLeft: 0,
+      paddingRight: 0,
+      paddingVertical: 0,
+      gap: 4,
+    },
     pillIconOnly: {
       paddingRight: 4,
     },
@@ -138,12 +146,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, isNews: boolean)
     },
     label: {
       flexShrink: 1,
-      fontSize: sf(isNews ? 12 : 11),
-      lineHeight: sf(isNews ? 16 : 15),
-      fontWeight: isNews ? '400' : '800',
+      fontSize: sf(isNews ? 11 : 11),
+      lineHeight: sf(isNews ? 15 : 15),
+      fontWeight: isNews ? '500' : '800',
     },
     labelNews: {
-      color: theme.text,
+      color: theme.textMuted,
     },
   });
 }

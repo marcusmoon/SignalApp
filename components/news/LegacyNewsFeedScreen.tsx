@@ -928,7 +928,11 @@ export function LegacyNewsFeedScreen() {
                   style={[styles.segBtn, key === 'video' && styles.segBtnVideo, segment === key && styles.segBtnActive]}
                   accessibilityRole="button"
                   accessibilityState={{ selected: segment === key }}>
-                  <Text style={[styles.segText, segment === key && styles.segTextActive]}>
+                  <Text
+                    style={[styles.segText, segment === key && styles.segTextActive]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}>
                     {t(NEWS_SEGMENT_LABEL[key])}
                   </Text>
                 </Pressable>

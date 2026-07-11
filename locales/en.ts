@@ -510,7 +510,7 @@ export const en = {
   settingsNewsTabLead: 'Options for the News screen. Stored on this device only.',
   settingsNewsSegmentOrderKicker: 'News tab order',
   settingsNewsSegmentOrderHint:
-    'Order of Global, Crypto, My watch, and Video on the News screen. Drag the ≡ handle to reorder.',
+    'Order of Global, Crypto, Watch, and Video on the News screen. Drag the ≡ handle to reorder.',
   settingsNewsSegmentDragHandleA11y: 'Reorder {{name}} (drag)',
   settingsNewsHashtagDisplayKicker: 'News hashtag chips',
   settingsNewsHashtagDisplayHint:
@@ -613,7 +613,7 @@ export const en = {
   insightOpenCalendar: 'Pick date',
   insightCalendarTitle: 'Choose date',
   insightCalendarToday: 'Back to today',
-  feedSegmentWatch: 'My watch',
+  feedSegmentWatch: 'Watch',
   feedSegmentGlobal: 'Global',
   feedSegmentKorea: 'Korea',
   feedSegmentCrypto: 'Crypto',
@@ -629,7 +629,7 @@ export const en = {
   feedWatchSymbolFilterHint: 'Show only news linked to selected symbols.',
   feedWatchSymbolFilterSection: 'Watchlist',
   feedWatchSourceFilterTitle: 'Watch news sources',
-  feedWatchSourceFilterHint: 'Choose sources to show inside My watch.',
+  feedWatchSourceFilterHint: 'Choose sources to show inside Watch.',
   feedNewsFilterTitle: 'News sources',
   feedNewsFilterIncluded: 'Included',
   feedNewsFilterSelectAll: 'Select all',

@@ -30,7 +30,6 @@ import { DigestPager } from '@/components/news/DigestPager';
 import { NewsCard } from '@/components/signal/NewsCard';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
-import { newsSegmentAccent } from '@/constants/segmentAccent';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
@@ -924,25 +923,15 @@ export function LegacyNewsFeedScreen() {
             {segmentOrder.map((key) => (
               <Fragment key={key}>
                 {key === 'video' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
-                {(() => {
-                  const accent = newsSegmentAccent(key, theme);
-                  const active = segment === key;
-                  return (
-                    <Pressable
-                      onPress={() => onPickSegment(key)}
-                      style={[
-                        styles.segBtn,
-                        key === 'video' && styles.segBtnVideo,
-                        active && { backgroundColor: accent.accent },
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}>
-                      <Text style={[styles.segText, active && styles.segTextActive]}>
-                        {t(NEWS_SEGMENT_LABEL[key])}
-                      </Text>
-                    </Pressable>
-                  );
-                })()}
+                <Pressable
+                  onPress={() => onPickSegment(key)}
+                  style={[styles.segBtn, key === 'video' && styles.segBtnVideo, segment === key && styles.segBtnActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: segment === key }}>
+                  <Text style={[styles.segText, segment === key && styles.segTextActive]}>
+                    {t(NEWS_SEGMENT_LABEL[key])}
+                  </Text>
+                </Pressable>
               </Fragment>
             ))}
           </View> : null}

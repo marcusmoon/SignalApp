@@ -20,7 +20,6 @@ import { MasterDetailLayout } from '@/components/layout/MasterDetailLayout';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WatchlistAddSheet } from '@/components/quotes/WatchlistAddSheet';
 import { makeQuotesStyles } from '@/components/quotes/quotesStyles';
-import { quoteSegmentAccent } from '@/constants/segmentAccent';
 import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalHeader } from '@/components/signal/SignalHeader';
@@ -596,24 +595,14 @@ export default function QuotesScreen() {
           {segmentOrder.map((key) => (
             <Fragment key={key}>
               {key === 'coin' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
-              {(() => {
-                const accent = quoteSegmentAccent(key, theme);
-                const active = segment === key;
-                return (
-                  <Pressable
-                    onPress={() => onPickSegment(key)}
-                    style={[
-                      styles.segBtn,
-                      key === 'coin' && styles.segBtnCompact,
-                      active && { backgroundColor: accent.accent },
-                    ]}
-                    accessibilityState={{ selected: active }}>
-                    <Text style={[styles.segText, active && styles.segTextActive]}>
-                      {t(QUOTE_SEGMENT_LABEL[key])}
-                    </Text>
-                  </Pressable>
-                );
-              })()}
+              <Pressable
+                onPress={() => onPickSegment(key)}
+                style={[styles.segBtn, key === 'coin' && styles.segBtnCompact, segment === key && styles.segBtnActive]}
+                accessibilityState={{ selected: segment === key }}>
+                <Text style={[styles.segText, segment === key && styles.segTextActive]}>
+                  {t(QUOTE_SEGMENT_LABEL[key])}
+                </Text>
+              </Pressable>
             </Fragment>
           ))}
         </View>

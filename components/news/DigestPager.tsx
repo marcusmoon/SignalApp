@@ -20,10 +20,12 @@ import type { AppLocale } from '@/locales/messages';
 import { formatFeedItemTimeLabel } from '@/utils/date';
 
 const CARD_GAP = 10;
+/** wide 스트립 가로 inset (compact는 topFixed padding과 맞춤) */
 const CARD_EDGE_PAD = 12;
-/** wide: 다음 카드가 살짝 보이도록 (SaveTicker 스타일) */
+/** iPhone 1열: 다음 카드가 보이는 peek 폭 */
+const SINGLE_NEXT_CARD_PEEK = 36;
+/** wide: 다음 카드가 살짝 보이도록 */
 const PAIR_CARD_WIDTH_RATIO = 0.48;
-const SINGLE_CARD_WIDTH_RATIO = 0.88;
 
 function digestSourceRows(digest: NewsDigestItem): DigestSourceSheetRow[] {
   if (digest.sourceRefs.length > 0) {
@@ -115,12 +117,13 @@ type Props = {
   columns?: 1 | 2;
 };
 
-function digestCardWidth(containerWidth: number, pairLayout: boolean): number {
+function digestCardWidth(containerWidth: number, pairLayout: boolean, itemCount: number): number {
   if (containerWidth <= 0) return 0;
   if (pairLayout) {
     return Math.floor((containerWidth - CARD_GAP) * PAIR_CARD_WIDTH_RATIO);
   }
-  return Math.max(0, Math.floor(containerWidth * SINGLE_CARD_WIDTH_RATIO));
+  if (itemCount <= 1) return containerWidth;
+  return Math.max(0, containerWidth - SINGLE_NEXT_CARD_PEEK);
 }
 
 export function DigestPager({ batches, columns = 1 }: Props) {
@@ -128,10 +131,10 @@ export function DigestPager({ batches, columns = 1 }: Props) {
   const pairLayout = columns === 2;
   const [containerWidth, setContainerWidth] = useState(0);
   const [sourcesDigest, setSourcesDigest] = useState<NewsDigestItem | null>(null);
-  const cardWidth = digestCardWidth(containerWidth, pairLayout);
+  const cardWidth = digestCardWidth(containerWidth, pairLayout, batches.length);
   const styles = useMemo(
-    () => makeStyles(theme, scaleFont, feedTypo, pairLayout),
-    [theme, scaleFont, feedTypo, pairLayout],
+    () => makeStyles(theme, scaleFont, feedTypo, pairLayout, batches.length),
+    [theme, scaleFont, feedTypo, pairLayout, batches.length],
   );
 
   const openSources = useCallback((digest: NewsDigestItem) => {
@@ -191,17 +194,19 @@ function makeStyles(
   sf: (n: number) => number,
   ft: FeedContentTypography,
   pairLayout: boolean,
+  itemCount: number,
 ) {
+  const showSinglePeek = !pairLayout && itemCount > 1;
   return StyleSheet.create({
     container: {
-      marginBottom: 8,
+      marginBottom: 0,
     },
     scrollContent: {
       flexDirection: 'row',
       alignItems: 'stretch',
       gap: CARD_GAP,
-      paddingHorizontal: CARD_EDGE_PAD,
-      paddingRight: CARD_EDGE_PAD + 4,
+      paddingHorizontal: pairLayout ? CARD_EDGE_PAD : 0,
+      paddingRight: pairLayout ? CARD_EDGE_PAD + 4 : showSinglePeek ? SINGLE_NEXT_CARD_PEEK : 0,
     },
     cardSlot: {
       flexShrink: 0,

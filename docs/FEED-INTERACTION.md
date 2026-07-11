@@ -112,11 +112,11 @@ digest-only 새로고침 UI는 두지 않는다.
 
 | 레이아웃 | 조건 | 카드 너비 |
 |---|---|---|
-| 1열 | iPhone·compact | 컨테이너 × **0.88** |
+| 1열 | iPhone·compact | **컨테이너 전폭** (부모 `topFixed` padding 16과 정렬). 항목 2개 이상이면 카드 너비 = 컨테이너 − **36px peek** 로 다음 카드 노출 |
 | 2열 | iPad·wide (`columns={2}`) | (컨테이너 − gap) × **0.48** |
 
-공시(`DisclosureDigestSection`)는 1열 기준 **0.88**만 사용한다.  
-가로 패딩: `CARD_EDGE_PAD` 12, 카드 간격: `CARD_GAP` 10.
+compact 1열은 스트립 `paddingHorizontal: 0` — `topFixed`의 `SCREEN_FIXED_HEADER_PADDING_HORIZONTAL`(16)만 사용.  
+하단 여백은 `DigestPager` `marginBottom` 없이 `topFixed` `paddingBottom`(12) + `gap`(8)만 따른다.
 
 #### wide 여백 (iPad·웹)
 

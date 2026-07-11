@@ -5,6 +5,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
+import {
+  FEED_ARTICLE_TITLE_PX,
+  FEED_BODY_PX,
+  FEED_CHIP_PX,
+  FEED_META_TIME_PX,
+  FEED_SUMMARY_PX,
+} from '@/constants/feedTypography';
 import { newsSourceAccent } from '@/constants/newsSourceAccent';
 import type { AppTheme } from '@/constants/theme';
 import { SourceBadge } from '@/components/signal/SourceBadge';
@@ -311,7 +318,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     ticker: {
       flexShrink: 1,
       color: theme.green,
-      fontSize: ft.ff(13),
+      fontSize: ft.ff(FEED_BODY_PX),
       fontWeight: ft.emphasisWeight,
       letterSpacing: 0.5,
     },
@@ -326,7 +333,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     time: {
       color: theme.textMuted,
-      fontSize: ft.ff(10),
+      fontSize: ft.ff(FEED_META_TIME_PX),
       fontWeight: ft.metaWeight,
     },
     compactMetaRow: {
@@ -344,7 +351,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     compactTicker: {
       color: theme.green,
-      fontSize: ft.ff(12),
+      fontSize: ft.ff(FEED_BODY_PX),
       lineHeight: ft.ff(16),
       fontWeight: ft.emphasisWeight,
       letterSpacing: 0.2,
@@ -368,7 +375,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       opacity: 0.82,
     },
     titleToggleLinkText: {
-      fontSize: ft.ff(11),
+      fontSize: ft.ff(FEED_SUMMARY_PX),
       lineHeight: ft.ff(15),
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
@@ -408,14 +415,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     sourceName: {
       flexShrink: 1,
-      fontSize: ft.ff(12),
+      fontSize: ft.ff(FEED_BODY_PX),
       fontWeight: ft.bodyWeight,
       color: theme.text,
       maxWidth: '100%',
     },
     title: {
       color: theme.text,
-      fontSize: ft.ff(15),
+      fontSize: ft.ff(FEED_ARTICLE_TITLE_PX),
       fontWeight: ft.titleWeight,
       marginBottom: 0,
       lineHeight: ft.ff(22),
@@ -450,7 +457,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderColor: 'rgba(77, 159, 255, 0.45)',
     },
     tagChipText: {
-      fontSize: ft.ff(10),
+      fontSize: ft.ff(FEED_CHIP_PX),
       lineHeight: ft.ff(14),
       fontWeight: ft.metaWeight,
       letterSpacing: 0.1,

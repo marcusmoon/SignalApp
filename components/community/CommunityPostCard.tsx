@@ -2,7 +2,10 @@ import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
+import {
+  FEED_ARTICLE_TITLE_PX,
+  FEED_PREVIEW_BODY_PX,
+} from '@/constants/feedTypography';
 import { communitySourceAccent, type CommunitySourceKey } from '@/constants/communitySources';
 import { SourceBadge } from '@/components/signal/SourceBadge';
 import type { AppTheme } from '@/constants/theme';
@@ -118,19 +121,19 @@ function makeStyles(
       marginLeft: 0,
     },
     time: {
-      fontSize: ft.ff(10),
+      fontSize: ft.ff(FEED_META_TIME_PX),
       lineHeight: sf(14),
       fontWeight: ft.metaWeight,
       color: theme.textMuted,
     },
     title: {
-      fontSize: ft.ff(15),
+      fontSize: ft.ff(FEED_ARTICLE_TITLE_PX),
       lineHeight: sf(21),
       fontWeight: ft.titleWeight,
       color: theme.text,
     },
     body: {
-      fontSize: ft.ff(13),
+      fontSize: ft.ff(FEED_PREVIEW_BODY_PX),
       lineHeight: sf(19),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,

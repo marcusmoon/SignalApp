@@ -10,6 +10,13 @@ import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { digestSourceIconEntries } from '@/components/signal/SourceIconStack';
+import {
+  FEED_BADGE_PX,
+  FEED_BODY_PX,
+  FEED_META_TIME_PX,
+  FEED_PREVIEW_BODY_PX,
+  FEED_SUMMARY_PX,
+} from '@/constants/feedTypography';
 import { HOME_DIGEST_CATEGORIES, NEWS_ISSUES_CATEGORY_ORDER, homeDigestCategoryIcon, type HomeDigestCategory, type NewsIssuesCategory } from '@/constants/ipadHomeNav';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import {
@@ -516,7 +523,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       alignItems: 'center',
       justifyContent: 'center',
     },
-    aiBadgeText: { color: '#FFFFFF', fontSize: sf(9), lineHeight: sf(13), fontWeight: '900' },
+    aiBadgeText: { color: '#FFFFFF', fontSize: ft.ff(FEED_BADGE_PX), lineHeight: sf(13), fontWeight: '900' },
     categoryMark: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -533,7 +540,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     categoryText: {
       color: theme.textMuted,
-      fontSize: ft.ff(9),
+      fontSize: ft.ff(FEED_BADGE_PX),
       lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
@@ -542,7 +549,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flex: 1,
       minWidth: 0,
       color: theme.textDim,
-      fontSize: ft.ff(12),
+      fontSize: ft.ff(FEED_BODY_PX),
       fontWeight: ft.metaWeight,
     },
     sourceToggle: {
@@ -553,8 +560,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     sourceToggleText: {
       color: theme.green,
-      fontSize: ft.ff(12),
-      lineHeight: ft.ff(16),
+      fontSize: ft.ff(FEED_BODY_PX),
+      lineHeight: sf(16),
       fontWeight: ft.emphasisWeight,
     },
     sourceList: {
@@ -576,20 +583,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     sourceTextCol: { flex: 1, minWidth: 0, gap: 2 },
     sourceTitle: {
       color: theme.text,
-      fontSize: ft.ff(13),
-      lineHeight: ft.ff(18),
+      fontSize: ft.ff(FEED_PREVIEW_BODY_PX),
+      lineHeight: sf(18),
       fontWeight: ft.bodyWeight,
     },
     sourceName: {
       color: theme.textMuted,
-      fontSize: ft.ff(11),
-      lineHeight: ft.ff(15),
+      fontSize: ft.ff(FEED_SUMMARY_PX),
+      lineHeight: sf(15),
       fontWeight: ft.metaWeight,
     },
     sourceTime: {
       color: theme.textDim,
-      fontSize: ft.ff(10),
-      lineHeight: ft.ff(14),
+      fontSize: ft.ff(FEED_META_TIME_PX),
+      lineHeight: sf(14),
       fontWeight: ft.metaWeight,
     },
     pressed: { opacity: 0.75 },

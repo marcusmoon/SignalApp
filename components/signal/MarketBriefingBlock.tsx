@@ -6,6 +6,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { AppTheme } from '@/constants/theme';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
+import { FEED_PREVIEW_BODY_PX } from '@/constants/feedTypography';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
@@ -430,8 +431,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderBottomColor: theme.border,
     },
     sectorTrend: {
-      fontSize: sf(15),
-      fontWeight: '900',
+      fontSize: ft.ff(15),
+      fontWeight: ft.titleWeight,
       width: 20,
       textAlign: 'center',
     },
@@ -542,8 +543,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.textDim,
     },
     link: {
-      fontSize: sf(13),
-      fontWeight: '800',
+      fontSize: ft.ff(FEED_PREVIEW_BODY_PX),
+      fontWeight: ft.emphasisWeight,
       color: theme.green,
       marginTop: 2,
     },

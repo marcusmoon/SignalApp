@@ -3,6 +3,13 @@ import { StyleSheet } from 'react-native';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { COMFORT_GAP_SM } from '@/constants/comfortDensity';
 import {
+  FEED_ARTICLE_TITLE_PX,
+  FEED_BADGE_PX,
+  FEED_CHIP_PX,
+  FEED_DIGEST_TITLE_PX,
+  FEED_META_TIME_PX,
+} from '@/constants/feedTypography';
+import {
   UI_RADIUS_DIGEST_PAIR,
   UI_RADIUS_DIGEST_SINGLE,
 } from '@/constants/uiCornerRadius';
@@ -26,8 +33,8 @@ export function makeDigestStripCardStyles(
   ft: FeedContentTypography,
   { pairLayout, accentColor }: DigestStripCardStyleOptions,
 ) {
-  const titleSize = pairLayout ? ft.ff(14) : ft.ff(15);
-  const titleLine = pairLayout ? ft.ff(19) : ft.ff(21);
+  const titleSize = pairLayout ? ft.ff(FEED_DIGEST_TITLE_PX) : ft.ff(FEED_ARTICLE_TITLE_PX);
+  const titleLine = pairLayout ? sf(19) : sf(21);
   const badgeHeight = pairLayout ? DIGEST_STRIP_BADGE_ROW_HEIGHT_PAIR : DIGEST_STRIP_BADGE_ROW_HEIGHT;
   const cardMinHeight = digestStripCardMinHeight(pairLayout, ft);
   const sectionGap = pairLayout ? 6 : 7;
@@ -82,7 +89,7 @@ export function makeDigestStripCardStyles(
       backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.border,
-      fontSize: ft.ff(10),
+      fontSize: ft.ff(FEED_CHIP_PX),
       lineHeight: sf(15),
       fontWeight: ft.emphasisWeight,
       color: theme.textMuted,
@@ -97,7 +104,7 @@ export function makeDigestStripCardStyles(
       borderColor: theme.accentBlue,
     },
     aiBadgeText: {
-      fontSize: sf(10),
+      fontSize: ft.ff(FEED_CHIP_PX),
       lineHeight: sf(15),
       fontWeight: '900',
       color: '#FFFFFF',
@@ -128,7 +135,7 @@ export function makeDigestStripCardStyles(
       gap: 6,
     },
     footer: {
-      fontSize: ft.ff(11),
+      fontSize: ft.ff(FEED_META_TIME_PX),
       lineHeight: sf(15),
       fontWeight: ft.metaWeight,
       color: theme.textDim,

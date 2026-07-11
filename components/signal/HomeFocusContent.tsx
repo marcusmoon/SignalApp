@@ -15,6 +15,14 @@ import {
   COMFORT_GAP_SM,
   COMFORT_PADDING_ROW_V,
 } from '@/constants/comfortDensity';
+import {
+  FEED_BADGE_PX,
+  FEED_BODY_PX,
+  FEED_DIGEST_TITLE_PX,
+  FEED_META_TIME_PX,
+  FEED_META_TRAIL_PX,
+  FEED_SUMMARY_PX,
+} from '@/constants/feedTypography';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
@@ -691,7 +699,7 @@ export function HomeFocusContent({
 
   const renderSignalCard = useCallback(
     (rows: SignalApiMarketBriefing[]) => (
-      <View style={[styles.heroCard, styles.heroCardCompact, showIssueSummary && styles.heroCardSummary]}>
+      <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
         <HomeSectionAccentLine section="signal" />
         <View style={styles.issueGroupList}>
           {rows.map((row, index) => {
@@ -702,8 +710,9 @@ export function HomeFocusContent({
             return (
               <HomeDigestFeedRow
                 key={row.id}
+                variant="signal"
                 title={briefingLeadText(row)}
-                titleLines={showIssueSummary ? 3 : 2}
+                titleLines={showIssueSummary ? 4 : 3}
                 timeLabel={formatFeedItemTimeLabel(sortBriefingTime(row), locale)}
                 sourceEntries={sourceEntries}
                 bordered={index < rows.length - 1}
@@ -1144,7 +1153,7 @@ function makeStyles(
     },
     issueCategoryText: {
       color: theme.textMuted,
-      fontSize: ft.ff(9),
+      fontSize: ft.ff(FEED_BADGE_PX),
       lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
@@ -1161,13 +1170,13 @@ function makeStyles(
       borderBottomColor: theme.border,
     },
     issueGroupTitle: {
-      fontSize: ft.ff(14),
+      fontSize: ft.ff(FEED_DIGEST_TITLE_PX),
       lineHeight: sf(18),
       fontWeight: ft.titleWeight,
       color: theme.text,
     },
     issueGroupSummary: {
-      fontSize: ft.ff(11),
+      fontSize: ft.ff(FEED_SUMMARY_PX),
       lineHeight: sf(15),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
@@ -1179,7 +1188,7 @@ function makeStyles(
     },
     issueGroupMetaText: {
       flexShrink: 0,
-      fontSize: ft.ff(10),
+      fontSize: ft.ff(FEED_META_TIME_PX),
       lineHeight: sf(13),
       fontWeight: ft.metaWeight,
       color: theme.textDim,
@@ -1187,7 +1196,7 @@ function makeStyles(
     issueInlineMetaText: {
       minWidth: 0,
       flexShrink: 1,
-      fontSize: ft.ff(9),
+      fontSize: ft.ff(FEED_META_TRAIL_PX),
       lineHeight: sf(12),
       fontWeight: ft.metaWeight,
       color: theme.textDim,
@@ -1310,7 +1319,7 @@ function makeStyles(
       paddingVertical: 1,
       backgroundColor: theme.bgElevated,
       color: theme.textMuted,
-      fontSize: ft.ff(9),
+      fontSize: ft.ff(FEED_BADGE_PX),
       lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
@@ -1322,7 +1331,7 @@ function makeStyles(
       paddingVertical: 1,
       backgroundColor: theme.greenDim,
       color: theme.green,
-      fontSize: ft.ff(9),
+      fontSize: ft.ff(FEED_BADGE_PX),
       lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
@@ -1338,24 +1347,24 @@ function makeStyles(
       alignSelf: 'flex-start',
       borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
       backgroundColor: theme.warningDim,
       color: theme.warning,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
     disclosureFormPill: {
       alignSelf: 'flex-start',
       borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 9,
-      paddingVertical: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
       backgroundColor: theme.bgElevated,
       color: theme.textMuted,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
       maxWidth: 120,
     },
@@ -1371,24 +1380,24 @@ function makeStyles(
       alignSelf: 'flex-start',
       borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
       backgroundColor: theme.greenDim,
       color: theme.green,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
     calendarTypePill: {
       alignSelf: 'flex-start',
       borderRadius: 999,
       overflow: 'hidden',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
       backgroundColor: theme.bgElevated,
       color: theme.textMuted,
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
     calendarMoreRow: {

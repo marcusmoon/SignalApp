@@ -3,13 +3,22 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SourceIconStack, type SourceIconEntry } from '@/components/signal/SourceIconStack';
+import {
+  FEED_DIGEST_TITLE_PX,
+  FEED_META_TIME_PX,
+  FEED_META_TRAIL_PX,
+  FEED_SIGNAL_PREVIEW_PX,
+  FEED_SUMMARY_PX,
+} from '@/constants/feedTypography';
 import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
 type Props = {
   title: string;
-  titleLines?: 2 | 3;
+  titleLines?: 2 | 3 | 4;
+  /** digest: 뉴스 이슈 행 / signal: 홈 마켓 브리핑 미리보기 */
+  variant?: 'digest' | 'signal';
   timeLabel?: string | null;
   trailText?: string | null;
   summary?: string | null;
@@ -28,6 +37,7 @@ type Props = {
 export function HomeDigestFeedRow({
   title,
   titleLines = 2,
+  variant = 'digest',
   timeLabel,
   trailText,
   summary,
@@ -38,7 +48,10 @@ export function HomeDigestFeedRow({
   onPress,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
-  const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
+  const styles = useMemo(
+    () => makeStyles(theme, scaleFont, feedTypo, variant),
+    [theme, scaleFont, feedTypo, variant],
+  );
   const hasFooter = sourceEntries.length > 0 || Boolean(trailText?.trim()) || Boolean(timeLabel?.trim() && timeLabel !== '—');
   const trimmedSummary = summary?.trim() || '';
 
@@ -84,7 +97,13 @@ export function HomeDigestFeedRow({
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
+function makeStyles(
+  theme: AppTheme,
+  sf: (n: number) => number,
+  ft: FeedContentTypography,
+  variant: 'digest' | 'signal',
+) {
+  const isSignal = variant === 'signal';
   return StyleSheet.create({
     row: {
       gap: 3,
@@ -105,10 +124,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minWidth: 0,
     },
     title: {
-      fontSize: ft.ff(14),
-      lineHeight: sf(18),
-      fontWeight: ft.titleWeight,
-      color: theme.text,
+      fontSize: isSignal ? ft.signalBodyFont(FEED_SIGNAL_PREVIEW_PX) : ft.ff(FEED_DIGEST_TITLE_PX),
+      lineHeight: isSignal ? sf(21) : sf(18),
+      fontWeight: isSignal ? ft.signalBodyWeight : ft.titleWeight,
+      color: isSignal ? theme.textMuted : theme.text,
     },
     footer: {
       flexDirection: 'row',
@@ -127,20 +146,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     trailText: {
       flex: 1,
       minWidth: 0,
-      fontSize: ft.ff(9),
+      fontSize: ft.ff(FEED_META_TRAIL_PX),
       lineHeight: sf(12),
       fontWeight: ft.metaWeight,
       color: theme.textDim,
     },
     timeText: {
       flexShrink: 0,
-      fontSize: ft.ff(10),
+      fontSize: ft.ff(FEED_META_TIME_PX),
       lineHeight: sf(13),
       fontWeight: ft.metaWeight,
       color: theme.textDim,
     },
     summary: {
-      fontSize: ft.ff(11),
+      fontSize: ft.ff(FEED_SUMMARY_PX),
       lineHeight: sf(15),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,

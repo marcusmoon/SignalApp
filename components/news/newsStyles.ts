@@ -14,8 +14,20 @@ import {
   SCREEN_LIST_HEADER_PADDING_TOP,
 } from '@/constants/segmentTabBar';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
+import {
+  FEED_ARTICLE_TITLE_PX,
+  FEED_BODY_PX,
+  FEED_META_TIME_PX,
+  FEED_PREVIEW_BODY_PX,
+  FEED_SUMMARY_PX,
+} from '@/constants/feedTypography';
+import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 
-export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
+export function makeNewsStyles(
+  theme: AppTheme,
+  sf: (n: number) => number,
+  ft: FeedContentTypography,
+) {
   const segmentTab = getSegmentTabBarStyles(theme, sf);
   const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
@@ -75,13 +87,13 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
     tagFilterText: {
       flex: 1,
       minWidth: 0,
-      fontSize: sf(12),
-      fontWeight: '800',
+      fontSize: ft.ff(FEED_BODY_PX),
+      fontWeight: ft.emphasisWeight,
       color: theme.text,
     },
     tagFilterClear: {
-      fontSize: sf(12),
-      fontWeight: '800',
+      fontSize: ft.ff(FEED_BODY_PX),
+      fontWeight: ft.emphasisWeight,
       color: theme.green,
     },
     titleListToggleRow: {
@@ -105,9 +117,9 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       opacity: 0.86,
     },
     titleListToggleText: {
-      fontSize: sf(11),
+      fontSize: ft.ff(FEED_SUMMARY_PX),
       lineHeight: sf(15),
-      fontWeight: '700',
+      fontWeight: ft.bodyWeight,
       color: theme.textMuted,
     },
     titleListToggleTextActive: {
@@ -141,9 +153,9 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
     videoOpenAllTitle: {
       flex: 1,
       minWidth: 0,
-      fontSize: sf(13),
+      fontSize: ft.ff(FEED_PREVIEW_BODY_PX),
       lineHeight: sf(18),
-      fontWeight: '900',
+      fontWeight: ft.titleWeight,
       color: theme.text,
     },
     digestCard: {
@@ -182,9 +194,9 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.greenBorder,
     },
     digestKickerText: {
-      fontSize: sf(11),
+      fontSize: ft.ff(FEED_SUMMARY_PX),
       lineHeight: sf(15),
-      fontWeight: '900',
+      fontWeight: ft.titleWeight,
       color: theme.green,
     },
     digestHeaderMeta: {
@@ -195,21 +207,21 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     digestCount: {
       flexShrink: 0,
-      fontSize: sf(11),
+      fontSize: ft.ff(FEED_SUMMARY_PX),
       lineHeight: sf(15),
-      fontWeight: '800',
+      fontWeight: ft.emphasisWeight,
       color: theme.textDim,
     },
     digestTitle: {
-      fontSize: sf(15),
+      fontSize: ft.ff(FEED_ARTICLE_TITLE_PX),
       lineHeight: sf(21),
-      fontWeight: '900',
+      fontWeight: ft.titleWeight,
       color: theme.text,
     },
     digestSummary: {
-      fontSize: sf(12),
+      fontSize: ft.ff(FEED_BODY_PX),
       lineHeight: sf(18),
-      fontWeight: '700',
+      fontWeight: ft.bodyWeight,
       color: theme.textMuted,
     },
     digestChipRow: {
@@ -226,9 +238,9 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,
-      fontSize: sf(11),
+      fontSize: ft.ff(FEED_SUMMARY_PX),
       lineHeight: sf(16),
-      fontWeight: '900',
+      fontWeight: ft.titleWeight,
       color: theme.green,
     },
     digestSourceChip: {
@@ -241,9 +253,9 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.border,
-      fontSize: sf(11),
+      fontSize: ft.ff(FEED_SUMMARY_PX),
       lineHeight: sf(16),
-      fontWeight: '800',
+      fontWeight: ft.emphasisWeight,
       color: theme.textMuted,
     },
     digestMoreList: {
@@ -261,15 +273,15 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 2,
     },
     digestMoreTitle: {
-      fontSize: sf(13),
+      fontSize: ft.ff(FEED_PREVIEW_BODY_PX),
       lineHeight: sf(18),
-      fontWeight: '900',
+      fontWeight: ft.titleWeight,
       color: theme.text,
     },
     digestMoreMeta: {
-      fontSize: sf(11),
+      fontSize: ft.ff(FEED_SUMMARY_PX),
       lineHeight: sf(16),
-      fontWeight: '700',
+      fontWeight: ft.bodyWeight,
       color: theme.textMuted,
     },
     digestToggle: {
@@ -286,9 +298,9 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       opacity: 0.82,
     },
     digestToggleText: {
-      fontSize: sf(12),
+      fontSize: ft.ff(FEED_BODY_PX),
       lineHeight: sf(17),
-      fontWeight: '900',
+      fontWeight: ft.titleWeight,
       color: theme.green,
     },
     watchFilterRow: {
@@ -312,9 +324,9 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.greenDim,
     },
     watchFilterText: {
-      fontSize: sf(12),
+      fontSize: ft.ff(FEED_BODY_PX),
       lineHeight: sf(17),
-      fontWeight: '800',
+      fontWeight: ft.emphasisWeight,
       color: theme.textDim,
     },
     watchFilterTextActive: {
@@ -328,7 +340,8 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingVertical: 16,
     },
     footerLoadingText: {
-      fontSize: sf(12),
+      fontSize: ft.ff(FEED_BODY_PX),
+      fontWeight: ft.bodyWeight,
       color: theme.textMuted,
     },
     footerLoadMoreButton: {
@@ -340,8 +353,8 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.green,
     },
     footerLoadMoreText: {
-      fontSize: sf(13),
-      fontWeight: '900',
+      fontSize: ft.ff(FEED_PREVIEW_BODY_PX),
+      fontWeight: ft.titleWeight,
       color: theme.bg,
     },
     segment: segmentTab.segment,
@@ -360,12 +373,14 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       marginBottom: 16,
     },
     errText: {
-      fontSize: sf(12),
+      fontSize: ft.ff(FEED_BODY_PX),
       color: theme.danger,
       lineHeight: sf(18),
+      fontWeight: ft.bodyWeight,
     },
     empty: {
-      fontSize: sf(13),
+      fontSize: ft.ff(FEED_PREVIEW_BODY_PX),
+      fontWeight: ft.bodyWeight,
       color: theme.textMuted,
       marginTop: 8,
     },

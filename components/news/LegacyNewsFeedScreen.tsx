@@ -143,9 +143,9 @@ export function LegacyNewsFeedScreen() {
   const router = useRouter();
   const setRouteParams = useSafeSetRouteParams();
   const routeParams = useLocalSearchParams<{ segment?: string }>();
-  const { theme, scaleFont } = useSignalTheme();
+  const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
-  const styles = useMemo(() => makeNewsStyles(theme, scaleFont), [theme, scaleFont]);
+  const styles = useMemo(() => makeNewsStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();

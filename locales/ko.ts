@@ -645,6 +645,8 @@ export const ko = {
   feedDigestSummary: '뉴스 {{count}}건 · 출처 {{sources}}곳',
   feedDigestSourcesTitle: '출처',
   feedDigestSourcesButton: '출처',
+  feedDigestDetailTitle: '상세',
+  feedDigestDetailA11y: '상세 보기',
   feedDigestExpand: '더보기',
   feedDigestCollapse: '접기',
   feedDigestTailGoToListA11y: '목록으로 이동',

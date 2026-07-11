@@ -75,7 +75,7 @@ const DigestCard = memo(function DigestCard({
   });
   const createdLabel = formatFeedItemTimeLabel(disclosureDigestCreatedIso(item), locale as AppLocale);
   const topicChips = buildTopicChips(item, locale, pairLayout);
-  const showSources = item.sourceRefs.length > 0;
+  const showDetail = Boolean(item.title?.trim() || item.summary?.trim() || item.sourceRefs.length > 0);
 
   return (
     <View style={[styles.card, pairLayout && styles.cardPair]}>
@@ -101,14 +101,13 @@ const DigestCard = memo(function DigestCard({
           {summaryText}
           {createdLabel !== '—' ? ` · ${createdLabel}` : ''}
         </Text>
-        {showSources ? (
+        {showDetail ? (
           <Pressable
             onPress={() => onOpenSources(item)}
-            style={({ pressed }) => [styles.sourcesBtn, pressed && styles.sourcesBtnPressed]}
+            style={({ pressed }) => [styles.detailBtn, pressed && styles.detailBtnPressed]}
             accessibilityRole="button"
-            accessibilityLabel={t('feedDigestSourcesButton')}>
-            <Text style={styles.sourcesBtnText}>{t('feedDigestSourcesButton')}</Text>
-            <FontAwesome name="list-ul" size={10} color={theme.green} />
+            accessibilityLabel={t('feedDigestDetailA11y')}>
+            <FontAwesome name="info-circle" size={15} color={theme.green} />
           </Pressable>
         ) : null}
       </View>
@@ -217,6 +216,7 @@ export function DisclosureDigestSection({
       <DigestSourcesSheet
         visible={sourcesItem != null}
         digestTitle={sourcesItem?.title ?? ''}
+        digestSummary={sourcesItem?.summary?.trim() || undefined}
         rows={sourceRows}
         onClose={closeSources}
       />
@@ -341,26 +341,19 @@ function makeStyles(
       flex: 1,
       minWidth: 0,
     },
-    sourcesBtn: {
-      flexDirection: 'row',
+    detailBtn: {
+      width: 30,
+      height: 30,
       alignItems: 'center',
-      gap: 5,
-      paddingHorizontal: 8,
-      paddingVertical: 5,
-      borderRadius: 8,
+      justifyContent: 'center',
+      borderRadius: 15,
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       flexShrink: 0,
     },
-    sourcesBtnPressed: {
+    detailBtnPressed: {
       opacity: 0.88,
-    },
-    sourcesBtnText: {
-      fontSize: ft.ff(10),
-      lineHeight: sf(14),
-      fontWeight: '800',
-      color: theme.green,
     },
   });
 }

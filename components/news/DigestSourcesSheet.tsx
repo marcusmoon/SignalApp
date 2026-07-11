@@ -17,15 +17,24 @@ export type DigestSourceSheetRow = {
 type Props = {
   visible: boolean;
   digestTitle: string;
+  digestSummary?: string;
   rows: DigestSourceSheetRow[];
   onClose: () => void;
 };
 
-export function DigestSourcesSheet({ visible, digestTitle, rows, onClose }: Props) {
+export function DigestSourcesSheet({
+  visible,
+  digestTitle,
+  digestSummary,
+  rows,
+  onClose,
+}: Props) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const summary = digestSummary?.trim() || '';
+  const hasSources = rows.length > 0;
 
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
@@ -39,12 +48,7 @@ export function DigestSourcesSheet({ visible, digestTitle, rows, onClose }: Prop
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
           <View style={styles.grab} />
           <View style={styles.head}>
-            <View style={styles.headText}>
-              <Text style={styles.sheetTitle}>{t('feedDigestSourcesTitle')}</Text>
-              <Text style={styles.digestTitle} numberOfLines={2}>
-                {digestTitle}
-              </Text>
-            </View>
+            <Text style={styles.sheetTitle}>{t('feedDigestDetailTitle')}</Text>
             <Pressable
               onPress={onClose}
               style={({ pressed }) => [styles.closeBtn, pressed && styles.closeBtnPressed]}
@@ -59,34 +63,41 @@ export function DigestSourcesSheet({ visible, digestTitle, rows, onClose }: Prop
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
-            {rows.map((row) => {
-              const refUrl = row.url || undefined;
-              return (
-                <Pressable
-                  key={row.key}
-                  onPress={
-                    refUrl
-                      ? () => {
-                          void Linking.openURL(refUrl).catch(() => null);
-                        }
-                      : undefined
-                  }
-                  style={({ pressed }) => [styles.row, pressed && refUrl && styles.rowPressed]}
-                  accessibilityRole={refUrl ? 'link' : 'text'}>
-                  <View style={styles.rowTextCol}>
-                    <Text style={[styles.rowTitle, refUrl && styles.rowTitleLink]} numberOfLines={3}>
-                      {row.title}
-                    </Text>
-                    {row.subtitle ? (
-                      <Text style={styles.rowSubtitle} numberOfLines={1}>
-                        {row.subtitle}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {refUrl ? <FontAwesome name="external-link" size={12} color={theme.accentBlue} /> : null}
-                </Pressable>
-              );
-            })}
+            <Text style={styles.digestTitle}>{digestTitle}</Text>
+            {summary ? <Text style={styles.digestSummary}>{summary}</Text> : null}
+            {hasSources ? (
+              <>
+                <Text style={styles.sourcesSection}>{t('feedDigestSourcesTitle')}</Text>
+                {rows.map((row) => {
+                  const refUrl = row.url || undefined;
+                  return (
+                    <Pressable
+                      key={row.key}
+                      onPress={
+                        refUrl
+                          ? () => {
+                              void Linking.openURL(refUrl).catch(() => null);
+                            }
+                          : undefined
+                      }
+                      style={({ pressed }) => [styles.row, pressed && refUrl && styles.rowPressed]}
+                      accessibilityRole={refUrl ? 'link' : 'text'}>
+                      <View style={styles.rowTextCol}>
+                        <Text style={[styles.rowTitle, refUrl && styles.rowTitleLink]} numberOfLines={3}>
+                          {row.title}
+                        </Text>
+                        {row.subtitle ? (
+                          <Text style={styles.rowSubtitle} numberOfLines={1}>
+                            {row.subtitle}
+                          </Text>
+                        ) : null}
+                      </View>
+                      {refUrl ? <FontAwesome name="external-link" size={12} color={theme.accentBlue} /> : null}
+                    </Pressable>
+                  );
+                })}
+              </>
+            ) : null}
           </ScrollView>
         </View>
       </View>
@@ -122,27 +133,36 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     head: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'space-between',
       gap: 12,
       marginBottom: 12,
-    },
-    headText: {
-      flex: 1,
-      minWidth: 0,
-      gap: 4,
     },
     sheetTitle: {
       fontSize: sf(12),
       fontWeight: '800',
       color: theme.textMuted,
       letterSpacing: 0.15,
+      flex: 1,
     },
     digestTitle: {
-      fontSize: sf(16),
+      fontSize: sf(17),
       fontWeight: '800',
       color: theme.text,
-      lineHeight: sf(22),
+      lineHeight: sf(24),
+    },
+    digestSummary: {
+      fontSize: sf(14),
+      fontWeight: '600',
+      color: theme.textMuted,
+      lineHeight: sf(21),
+    },
+    sourcesSection: {
+      fontSize: sf(12),
+      fontWeight: '800',
+      color: theme.textDim,
+      letterSpacing: 0.12,
+      marginTop: 4,
     },
     closeBtn: {
       width: 40,
@@ -159,11 +179,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     scroll: {
       flexGrow: 0,
-      maxHeight: 420,
+      maxHeight: 480,
     },
     scrollContent: {
       paddingBottom: 4,
-      gap: 8,
+      gap: 12,
     },
     row: {
       flexDirection: 'row',

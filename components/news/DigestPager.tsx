@@ -40,8 +40,8 @@ function digestSourceRows(digest: NewsDigestItem): DigestSourceSheetRow[] {
   }));
 }
 
-function hasDigestSources(digest: NewsDigestItem): boolean {
-  return digest.sourceRefs.length > 0 || digest.sources.length > 0;
+function hasDigestDetail(digest: NewsDigestItem): boolean {
+  return Boolean(digest.title?.trim() || digest.summary?.trim() || digest.sourceRefs.length || digest.sources.length);
 }
 
 type DigestCardProps = {
@@ -65,7 +65,7 @@ const DigestCard = memo(function DigestCard({
     sources: String(digest.sources.length),
   });
   const createdLabel = formatFeedItemTimeLabel(newsDigestCreatedIso(digest), locale as AppLocale);
-  const showSources = hasDigestSources(digest);
+  const showDetail = hasDigestDetail(digest);
 
   return (
     <View style={[styles.card, pairLayout && styles.cardPair]}>
@@ -94,14 +94,13 @@ const DigestCard = memo(function DigestCard({
           {summaryText}
           {createdLabel !== '—' ? ` · ${createdLabel}` : ''}
         </Text>
-        {showSources ? (
+        {showDetail ? (
           <Pressable
             onPress={() => onOpenSources(digest)}
-            style={({ pressed }) => [styles.sourcesBtn, pressed && styles.sourcesBtnPressed]}
+            style={({ pressed }) => [styles.detailBtn, pressed && styles.detailBtnPressed]}
             accessibilityRole="button"
-            accessibilityLabel={t('feedDigestSourcesButton')}>
-            <Text style={styles.sourcesBtnText}>{t('feedDigestSourcesButton')}</Text>
-            <FontAwesome name="list-ul" size={10} color={theme.green} />
+            accessibilityLabel={t('feedDigestDetailA11y')}>
+            <FontAwesome name="info-circle" size={15} color={theme.green} />
           </Pressable>
         ) : null}
       </View>
@@ -196,6 +195,7 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoT
       <DigestSourcesSheet
         visible={sourcesDigest != null}
         digestTitle={sourcesDigest?.title ?? ''}
+        digestSummary={sourcesDigest?.summary?.trim() || undefined}
         rows={sourceRows}
         onClose={closeSources}
       />
@@ -325,26 +325,19 @@ function makeStyles(
       flex: 1,
       minWidth: 0,
     },
-    sourcesBtn: {
-      flexDirection: 'row',
+    detailBtn: {
+      width: 30,
+      height: 30,
       alignItems: 'center',
-      gap: 5,
-      paddingHorizontal: 8,
-      paddingVertical: 5,
-      borderRadius: 8,
+      justifyContent: 'center',
+      borderRadius: 15,
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       flexShrink: 0,
     },
-    sourcesBtnPressed: {
+    detailBtnPressed: {
       opacity: 0.88,
-    },
-    sourcesBtnText: {
-      fontSize: ft.ff(10),
-      lineHeight: sf(14),
-      fontWeight: '800',
-      color: theme.green,
     },
   });
 }

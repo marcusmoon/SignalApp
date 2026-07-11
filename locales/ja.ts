@@ -649,6 +649,8 @@ export const ja = {
   feedDigestSummary: 'ニュース {{count}}件 · 出所 {{sources}}件',
   feedDigestSourcesTitle: '出所',
   feedDigestSourcesButton: '出所',
+  feedDigestDetailTitle: '詳細',
+  feedDigestDetailA11y: '詳細を見る',
   feedDigestExpand: 'もっと見る',
   feedDigestCollapse: '閉じる',
   feedDigestTailGoToListA11y: '一覧へ移動',

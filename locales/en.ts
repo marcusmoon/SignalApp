@@ -649,6 +649,8 @@ export const en = {
   feedDigestSummary: '{{count}} headlines · {{sources}} sources',
   feedDigestSourcesTitle: 'Sources',
   feedDigestSourcesButton: 'Sources',
+  feedDigestDetailTitle: 'Issue details',
+  feedDigestDetailA11y: 'View issue details',
   feedDigestExpand: 'Show more',
   feedDigestCollapse: 'Collapse',
   feedDigestTailGoToListA11y: 'Go to list',

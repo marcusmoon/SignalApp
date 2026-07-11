@@ -41,12 +41,12 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import {
   HOME_DIGEST_CATEGORIES,
   HOME_SIGNAL_SESSIONS,
-  homeDigestCategoryIcon,
   type DisclosureFlowMarket,
   type HomeDigestCategory,
   type NewsIssuesCategory,
   type SignalSessionKey,
 } from '@/constants/ipadHomeNav';
+import { marketBriefingAccent, newsSegmentAccent } from '@/constants/segmentAccent';
 import type { AppTheme } from '@/constants/theme';
 import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
@@ -216,13 +216,6 @@ function formatPrice(row: QuoteRow): string {
   const value = row.quote?.currentPrice;
   if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
   return isKoreaStockQuote(row) ? formatKrw(value) : formatUsd(value);
-}
-
-function marketLabel(market: string): string {
-  const key = String(market || '').trim().toLowerCase();
-  if (key === 'us') return 'US';
-  if (key === 'kr') return 'KR';
-  return key ? key.toUpperCase() : 'SIGNAL';
 }
 
 function disclosureMarketLabel(market: string, locale: string): string {
@@ -714,10 +707,16 @@ export function HomeFocusContent({
                 sourceEntries={sourceEntries}
                 bordered={index < rows.length - 1}
                 onPress={() => openIssue(row)}
-                badges={
-                  <View style={styles.issueCategoryMark}>
-                    <FontAwesome name={homeDigestCategoryIcon(row.category)} size={10} color={theme.textMuted} />
-                    <Text style={styles.issueCategoryText}>{t(NEWS_SEGMENT_LABEL[row.category])}</Text>
+                footerLead={
+                  <View
+                    accessible
+                    accessibilityRole="image"
+                    accessibilityLabel={t(NEWS_SEGMENT_LABEL[row.category])}>
+                    <CommunitySourceMark
+                      accent={newsSegmentAccent(row.category, theme)}
+                      size={18}
+                      style={styles.boardSourceMark}
+                    />
                   </View>
                 }
               />
@@ -726,7 +725,7 @@ export function HomeFocusContent({
         </View>
       </View>
     ),
-    [openIssue, showIssueSummary, styles, locale, t, theme.textMuted],
+    [openIssue, showIssueSummary, styles, locale, t, theme],
   );
 
   const renderSignalCard = useCallback(
@@ -738,6 +737,13 @@ export function HomeFocusContent({
               (candidate) => candidate.market === row.market && candidate.session === row.session,
             );
             const sourceEntries = briefingSourceIconEntries(row.sourceRefs);
+            const sessionLabel = session
+              ? t(session.labelId as MessageId)
+              : t('briefingSessionEmptyTitle');
+            const marketA11y =
+              String(row.market || '').trim().toLowerCase() === 'kr'
+                ? disclosureMarketLabel('kr', locale)
+                : disclosureMarketLabel('us', locale);
             return (
               <HomeDigestFeedRow
                 key={row.id}
@@ -745,16 +751,18 @@ export function HomeFocusContent({
                 title={briefingLeadText(row)}
                 titleLines={showIssueSummary ? 4 : 3}
                 timeLabel={formatFeedItemTimeLabel(sortBriefingTime(row), locale)}
+                trailText={sessionLabel}
                 sourceEntries={sourceEntries}
                 bordered={index < rows.length - 1}
                 onPress={() => openSignal(row)}
-                badges={
-                  <>
-                    <Text style={styles.marketPill}>{marketLabel(row.market)}</Text>
-                    <Text style={styles.sessionBadge}>
-                      {session ? t(session.labelId as MessageId) : t('briefingSessionEmptyTitle')}
-                    </Text>
-                  </>
+                footerLead={
+                  <View accessible accessibilityRole="image" accessibilityLabel={marketA11y}>
+                    <CommunitySourceMark
+                      accent={marketBriefingAccent(row.market, theme)}
+                      size={18}
+                      style={styles.boardSourceMark}
+                    />
+                  </View>
                 }
               />
             );
@@ -762,7 +770,7 @@ export function HomeFocusContent({
         </View>
       </View>
     ),
-    [openSignal, showIssueSummary, styles, locale, t],
+    [locale, openSignal, showIssueSummary, styles, t, theme],
   );
 
   const renderDisclosureCard = useCallback(
@@ -1184,26 +1192,6 @@ function makeStyles(
       justifyContent: 'space-between',
       gap: COMFORT_GAP_SM,
     },
-    issueCategoryMark: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      minWidth: 0,
-      flexShrink: 0,
-      alignSelf: 'flex-start',
-      borderRadius: 999,
-      paddingHorizontal: 6,
-      paddingVertical: 1,
-      backgroundColor: theme.bgElevated,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    issueCategoryText: {
-      color: theme.textMuted,
-      fontSize: ft.ff(FEED_BADGE_PX),
-      lineHeight: sf(13),
-      fontWeight: ft.emphasisWeight,
-    },
     issueGroupList: {
       gap: 0,
     },
@@ -1364,30 +1352,6 @@ function makeStyles(
       marginTop: 2,
       fontSize: ft.ff(12),
       lineHeight: sf(16),
-      fontWeight: ft.emphasisWeight,
-    },
-    marketPill: {
-      alignSelf: 'flex-start',
-      borderRadius: 999,
-      overflow: 'hidden',
-      paddingHorizontal: 6,
-      paddingVertical: 1,
-      backgroundColor: theme.bgElevated,
-      color: theme.textMuted,
-      fontSize: ft.ff(FEED_BADGE_PX),
-      lineHeight: sf(13),
-      fontWeight: ft.emphasisWeight,
-    },
-    sessionBadge: {
-      alignSelf: 'flex-start',
-      borderRadius: 999,
-      overflow: 'hidden',
-      paddingHorizontal: 7,
-      paddingVertical: 1,
-      backgroundColor: theme.greenDim,
-      color: theme.green,
-      fontSize: ft.ff(FEED_BADGE_PX),
-      lineHeight: sf(13),
       fontWeight: ft.emphasisWeight,
     },
     disclosurePillRow: {

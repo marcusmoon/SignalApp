@@ -46,6 +46,13 @@ export function newsSegmentAccent(key: NewsSegmentKey, theme: AppTheme): SourceA
   }
 }
 
+export function marketBriefingAccent(market: string, theme: AppTheme): SourceAccent {
+  const key = String(market || '').trim().toLowerCase();
+  if (key === 'kr') return newsSegmentAccent('korea', theme);
+  if (key === 'us') return newsSegmentAccent('global', theme);
+  return newsSegmentAccent('global', theme);
+}
+
 export function quoteSegmentAccent(key: QuoteSegmentKey, theme: AppTheme): SourceAccent {
   switch (key) {
     case 'popular':

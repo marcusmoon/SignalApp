@@ -248,6 +248,32 @@ export async function findNewsItemIds(ids = []) {
   return new Set(result.rows.map((row) => row.id));
 }
 
+export async function fetchPublicNewsByIds(ids = [], locale = 'ko') {
+  const safeIds = [...new Set(ids.map((id) => cleanText(id)).filter(Boolean))];
+  const map = new Map();
+  if (safeIds.length === 0) return map;
+  const loc = cleanText(locale) || 'ko';
+  const result = await queryKysely(
+    `
+      SELECT n.payload, t.payload AS translation_payload, t_ko.payload AS ko_translation_payload
+      FROM news_items n
+      LEFT JOIN news_translations t ON t.news_item_id = n.id AND t.locale = $1
+      LEFT JOIN news_translations t_ko ON t_ko.news_item_id = n.id AND t_ko.locale = 'ko' AND $1 = 'en'
+      WHERE n.id = ANY($2::text[])
+    `,
+    [loc, safeIds],
+  );
+  for (const row of result.rows) {
+    const item = payloadFromRow(row);
+    const translation = payloadFromRow({ payload: row.translation_payload });
+    const koTranslation = payloadFromRow({ payload: row.ko_translation_payload });
+    if (!item) continue;
+    const translations = [translation, koTranslation].filter(Boolean);
+    map.set(item.id, publicNews(item, translations, loc));
+  }
+  return map;
+}
+
 export async function queryPendingNewsTranslationRows(options = {}) {
   const { limit, offset } = pageOptions(options, 50);
   const targetLocale = cleanText(options.targetLocale) || 'ko';

@@ -423,7 +423,7 @@ export function LegacyNewsFeedScreen() {
             },
             { cacheMode },
           ),
-          fetchSignalNewsDigests({ category: 'crypto', limit: 30, batches: 10 }, { cacheMode }).catch(() => null),
+          fetchSignalNewsDigests({ category: 'crypto', limit: 30, batches: 10, locale }, { cacheMode }).catch(() => null),
         ]);
         const { items: rows, meta } = newsPage;
         const dedupedRows = syncServerRows(rows);
@@ -450,7 +450,7 @@ export function LegacyNewsFeedScreen() {
             },
             { cacheMode },
           ),
-          fetchSignalNewsDigests({ category: 'korea', limit: 30, batches: 10 }, { cacheMode }).catch(() => null),
+          fetchSignalNewsDigests({ category: 'korea', limit: 30, batches: 10, locale }, { cacheMode }).catch(() => null),
         ]);
         const { items: rows, meta } = newsPage;
         const dedupedRows = syncServerRows(rows);
@@ -476,7 +476,7 @@ export function LegacyNewsFeedScreen() {
           },
           { cacheMode },
         ),
-        fetchSignalNewsDigests({ category: 'global', limit: 30, batches: 10 }, { cacheMode }).catch(() => null),
+        fetchSignalNewsDigests({ category: 'global', limit: 30, batches: 10, locale }, { cacheMode }).catch(() => null),
       ]);
       const { items: rows, meta } = newsPage;
       const dedupedRows = syncServerRows(rows);

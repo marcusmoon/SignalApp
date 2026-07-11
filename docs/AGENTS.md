@@ -12,6 +12,7 @@
 | [SERVER.md](./SERVER.md) | Signal Server·DB·Job 운영 |
 | [NOTIFICATION-INBOX.md](./NOTIFICATION-INBOX.md) | 알림센터 서버·앱 계약 |
 | [NEWS-ISSUE-AUTOMATION.md](./NEWS-ISSUE-AUTOMATION.md) | 뉴스 이슈 ingest JSON |
+| [DIGEST-SOURCE-REF-HYDRATION.md](./DIGEST-SOURCE-REF-HYDRATION.md) | 다이제스트 출처 참조키 조회·locale hydrate |
 | [NEWS-TRANSLATION-AUTOMATION.md](./NEWS-TRANSLATION-AUTOMATION.md) | 뉴스 번역 pending·ingest JSON |
 | [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) | 오늘의 브리핑 ingest |
 | [MARKET-BRIEFING-AUTOMATION.md](./MARKET-BRIEFING-AUTOMATION.md) | 시장 브리핑 ingest |

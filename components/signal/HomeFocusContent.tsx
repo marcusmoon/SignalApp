@@ -145,7 +145,11 @@ function uniqueVisibleBriefings(rows: SignalApiMarketBriefing[]): SignalApiMarke
   return unique;
 }
 
-async function fetchTopIssues(date: string, cacheMode: ReturnType<typeof signalCacheMode>): Promise<IssueRow[]> {
+async function fetchTopIssues(
+  date: string,
+  locale: string,
+  cacheMode: ReturnType<typeof signalCacheMode>,
+): Promise<IssueRow[]> {
   const range = utcRangeForLocalYmd(date);
   const results = await Promise.all(
     HOME_DIGEST_CATEGORIES.map(async (category) => {
@@ -155,6 +159,7 @@ async function fetchTopIssues(date: string, cacheMode: ReturnType<typeof signalC
           ...range,
           limit: ISSUE_FETCH_LIMIT,
           batches: 20,
+          locale,
         },
         { cacheMode },
       ).catch(() => ({ items: [] as SignalApiNewsDigestItem[] }));
@@ -334,7 +339,7 @@ export function HomeFocusContent({
       const symbols = selectedYmd === todayYmd ? watchlist.slice(0, watchlistDisplayCount) : [];
       const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows] = await Promise.all([
         fetchTodayBriefingWithFallback(selectedYmd, locale, cacheMode),
-        fetchTopIssues(selectedYmd, cacheMode),
+        fetchTopIssues(selectedYmd, locale, cacheMode),
         symbols.length > 0
           ? fetchSignalMarketQuotes({ symbols, limit: symbols.length }, { cacheMode }).catch(
               () => [] as SignalApiMarketQuote[],
@@ -344,7 +349,7 @@ export function HomeFocusContent({
           () => [],
         ),
         fetchSignalDisclosureDigests(
-          { ...utcRangeForLocalYmd(selectedYmd), limit: DISCLOSURE_LIMIT, batches: 1 },
+          { ...utcRangeForLocalYmd(selectedYmd), limit: DISCLOSURE_LIMIT, batches: 1, locale },
           { cacheMode },
         ).catch(() => ({ items: [] })),
         fetchSignalCalendar(

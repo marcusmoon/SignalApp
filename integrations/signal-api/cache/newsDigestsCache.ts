@@ -11,6 +11,7 @@ export function buildSignalNewsDigestsCacheKey(params?: {
   from?: string;
   to?: string;
   batches?: number;
+  locale?: string;
 }): string {
   const p = {
     category: String(params?.category || '').trim(),
@@ -19,8 +20,9 @@ export function buildSignalNewsDigestsCacheKey(params?: {
     from: String(params?.from || '').trim(),
     to: String(params?.to || '').trim(),
     batches: Number(params?.batches) || 0,
+    locale: String(params?.locale || '').trim() || 'ko',
   };
-  return `news-digests|${p.category}|${p.limit}|${p.offset}|${p.from}|${p.to}|${p.batches}`;
+  return `news-digests|${p.category}|${p.limit}|${p.offset}|${p.from}|${p.to}|${p.batches}|${p.locale}`;
 }
 
 export function peekSignalNewsDigestsCache(key: string): NewsDigestCacheValue | null {

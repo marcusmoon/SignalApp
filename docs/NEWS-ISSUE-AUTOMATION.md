@@ -56,7 +56,7 @@ GET /v1/news?category=crypto&from=<UTC_FROM>&to=<UTC_TO>&limit=120&offset=0&loca
 - `generatedDate`: UTC 기준 생성일 `YYYY-MM-DD`
 - `generatedAt`: UTC ISO 시각
 - `groupKey`: 사람이 읽을 수 있는 묶음 키
-- `sourceRefs`: 원문 뉴스 목록
+- `sourceRefs`: 원문 뉴스 목록 — 분석 시 참조용. **앱 표시**는 `id`로 `news_items`·번역을 조회해 hydrate한다([`DIGEST-SOURCE-REF-HYDRATION.md`](./DIGEST-SOURCE-REF-HYDRATION.md)). v2 ingest에서는 `type`+`id`만 넣어도 된다.
 
 권장 필드:
 

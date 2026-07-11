@@ -176,6 +176,7 @@ export function DisclosureFlowContent({
         ...(market !== 'all' ? { market } : {}),
         limit: 80,
         batches: 20,
+        locale,
       });
       setItems(sortDigests(page.items));
     } catch (e) {
@@ -184,7 +185,7 @@ export function DisclosureFlowContent({
     } finally {
       setLoading(false);
     }
-  }, [market, selectedYmd, t]);
+  }, [locale, market, selectedYmd, t]);
 
   useEffect(() => {
     void load();

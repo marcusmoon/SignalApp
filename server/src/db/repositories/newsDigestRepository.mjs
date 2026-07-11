@@ -1,4 +1,5 @@
 import { queryKysely } from '../kysely/client.mjs';
+import { hydrateNewsDigestItems } from '../../sources/resolveSourceRefs.mjs';
 import {
   cleanText,
   pageOptions,
@@ -83,7 +84,10 @@ export async function queryPublicNewsDigestRows(options = {}) {
     params,
   );
   const rows = result.rows.map(payloadFromRow).filter(Boolean).map(publicDigest);
-  const pageRows = rows.slice(0, limit);
+  const hydrated = await hydrateNewsDigestItems(rows, {
+    locale: cleanText(options.locale) || 'ko',
+  });
+  const pageRows = hydrated.slice(0, limit);
   const hasMore = rows.length > limit;
   return {
     rows: pageRows,

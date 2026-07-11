@@ -35,6 +35,7 @@ export async function fetchSignalDisclosureDigests(
     from?: string;
     to?: string;
     batches?: number;
+    locale?: string;
   } = {},
   options?: { cacheMode?: SignalCacheMode },
 ): Promise<SignalDisclosureDigestPage> {

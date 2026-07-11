@@ -169,6 +169,7 @@ export default function DisclosuresScreen() {
           market,
           limit: 16,
           batches: 1,
+          locale,
         },
         { cacheMode: signalCacheMode(refresh) },
       );
@@ -178,7 +179,7 @@ export default function DisclosuresScreen() {
     } finally {
       setDigestLoading(false);
     }
-  }, [filter, symbolFilter]);
+  }, [filter, locale, symbolFilter]);
 
   const queryDisclosureList = useCallback(
     async (query: ListQuery, refresh?: boolean): Promise<SignalApiDisclosure[]> => {

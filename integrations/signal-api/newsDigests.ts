@@ -41,6 +41,7 @@ export async function fetchSignalNewsDigests(
     from?: string;
     to?: string;
     batches?: number;
+    locale?: string;
   } = {},
   options?: { cacheMode?: SignalCacheMode },
 ): Promise<SignalNewsDigestPage> {

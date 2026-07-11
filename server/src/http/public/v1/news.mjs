@@ -262,6 +262,7 @@ export async function handlePublicNewsRoutes({ req, res, url, pathname }) {
       limit: url.searchParams.get('limit') || '4',
       offset: url.searchParams.get('offset') || '0',
       batches: url.searchParams.get('batches') || '1',
+      locale: url.searchParams.get('locale') || 'ko',
     });
     json(res, 200, {
       data: page.rows,

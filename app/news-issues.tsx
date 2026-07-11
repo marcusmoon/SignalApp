@@ -150,6 +150,7 @@ export function NewsIssuesContent({
               ...utcRangeForLocalYmd(selectedYmd),
               limit: 80,
               batches: 20,
+              locale,
             }).catch(() => ({ items: [] as SignalApiNewsDigestItem[] })),
           ),
         );
@@ -160,6 +161,7 @@ export function NewsIssuesContent({
           ...utcRangeForLocalYmd(selectedYmd),
           limit: 80,
           batches: 20,
+          locale,
         });
         setItems(sortDigests(page.items));
       }
@@ -169,7 +171,7 @@ export function NewsIssuesContent({
     } finally {
       setLoading(false);
     }
-  }, [category, selectedYmd, t]);
+  }, [category, locale, selectedYmd, t]);
 
   useEffect(() => {
     void load();

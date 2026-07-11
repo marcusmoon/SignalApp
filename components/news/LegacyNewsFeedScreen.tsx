@@ -847,6 +847,8 @@ export function LegacyNewsFeedScreen() {
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const fabBottom = fabStackBottom(tabBarHeight, insets.bottom);
   const useNewsTitleFab = showNewsTitleListToggle && Platform.OS !== 'web' && !useTwoPane;
+  const useNewsTitleHeaderToggle = showNewsTitleListToggle && (Platform.OS === 'web' || useTwoPane);
+  const useNewsTitleListMode = showNewsTitleListToggle;
   const showDigest = segment !== 'video' && segment !== 'watch';
   const newContentAvailable =
     newContentSegments.has(segment) && !(segment === 'watch' && watchSymbolOptions.length === 0);
@@ -889,6 +891,36 @@ export function LegacyNewsFeedScreen() {
           </Pressable>
         ) : null}
 
+        {useNewsTitleHeaderToggle ? (
+          <Pressable
+            onPress={toggleNewsTitleDisplayMode}
+            accessibilityRole="button"
+            accessibilityState={{ selected: newsTitleShowAlternate }}
+            accessibilityLabel={newsTitleListToggleA11y}
+            style={({ pressed }) => [
+              styles.titleListToggleRow,
+              newsTitleShowAlternate && styles.titleListToggleRowActive,
+              pressed && styles.titleListToggleRowPressed,
+            ]}>
+            <FontAwesome
+              name={newsTitleAlternateIsTranslation ? 'language' : 'globe'}
+              size={12}
+              color={newsTitleShowAlternate ? theme.green : theme.textMuted}
+            />
+            <Text
+              style={[
+                styles.titleListToggleText,
+                newsTitleShowAlternate && styles.titleListToggleTextActive,
+              ]}>
+              {newsTitleShowAlternate
+                ? t('newsTitleListShowLocalized')
+                : newsTitleAlternateIsTranslation
+                  ? t('newsTitleListShowTranslation')
+                  : t('newsTitleListShowOriginal')}
+            </Text>
+          </Pressable>
+        ) : null}
+
         {loading && listData.length === 0 ? (
           <View style={styles.skeletonBlock}>
             <SkeletonFeed />
@@ -903,11 +935,17 @@ export function LegacyNewsFeedScreen() {
       error,
       listData.length,
       loading,
+      newsTitleAlternateIsTranslation,
+      newsTitleListToggleA11y,
+      newsTitleShowAlternate,
       segment,
       styles,
       t,
-      theme.textDim,
       theme.green,
+      theme.textDim,
+      theme.textMuted,
+      toggleNewsTitleDisplayMode,
+      useNewsTitleHeaderToggle,
       router,
     ],
   );
@@ -1004,9 +1042,7 @@ export function LegacyNewsFeedScreen() {
                   item={item.news}
                   compactMeta
                   titleToggle={segment === 'global' || segment === 'crypto'}
-                  titleShowAlternate={
-                    useNewsTitleFab ? newsTitleShowAlternate : undefined
-                  }
+                  titleShowAlternate={useNewsTitleListMode ? newsTitleShowAlternate : undefined}
                   maxHashtagsToShow={segment === 'watch' ? 0 : maxHashtagDisplay}
                   onTagPress={(label) => {
                     const next = label.trim();

@@ -122,19 +122,22 @@ export function NewsCard({
     <Pressable
       onPress={() => setLocalShowAlternate((value) => !value)}
       hitSlop={8}
-      style={({ pressed }) => [
-        styles.titleToggleBtn,
-        showingAlternate && styles.titleToggleBtnActive,
-        pressed && styles.titleToggleBtnPressed,
-      ]}
+      style={({ pressed }) => [styles.titleToggleLink, pressed && styles.titleToggleLinkPressed]}
       accessibilityRole="button"
       accessibilityState={{ selected: showingAlternate }}
       accessibilityLabel={titleToggleA11y}>
       <FontAwesome
         name={alternateIsTranslation ? 'language' : 'globe'}
-        size={12}
+        size={11}
         color={showingAlternate ? theme.green : theme.textMuted}
       />
+      <Text style={[styles.titleToggleLinkText, showingAlternate && styles.titleToggleLinkTextActive]}>
+        {showingAlternate
+          ? t('newsTitleShowLocalized')
+          : alternateIsTranslation
+            ? t('newsTitleShowTranslation')
+            : t('newsTitleShowOriginal')}
+      </Text>
     </Pressable>
   ) : null;
 
@@ -153,11 +156,11 @@ export function NewsCard({
   );
 
   const titleBlock = (
-    <View style={styles.titleRow}>
-      {titleToggleBtn}
-      <Text style={[styles.title, tags.length === 0 && styles.titleLast]} numberOfLines={3}>
+    <View style={styles.titleBlock}>
+      <Text style={[styles.title, tags.length === 0 && !titleToggleBtn && styles.titleLast]} numberOfLines={3}>
         {displayTitle}
       </Text>
+      {titleToggleBtn}
     </View>
   );
 
@@ -351,30 +354,28 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minWidth: 0,
       flexShrink: 1,
     },
-    titleRow: {
+    titleBlock: {
+      gap: ft.pad(4),
+    },
+    titleToggleLink: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: ft.pad(6),
-      minWidth: 0,
-    },
-    titleToggleBtn: {
-      flexShrink: 0,
-      width: 24,
-      height: 24,
-      marginTop: 1,
-      borderRadius: 999,
       alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.bgElevated,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border,
+      alignSelf: 'flex-start',
+      gap: 5,
+      marginBottom: ft.pad(4),
     },
-    titleToggleBtnActive: {
-      backgroundColor: theme.greenDim,
-      borderColor: theme.greenBorder,
-    },
-    titleToggleBtnPressed: {
+    titleToggleLinkPressed: {
       opacity: 0.82,
+    },
+    titleToggleLinkText: {
+      fontSize: ft.ff(11),
+      lineHeight: ft.ff(15),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
+    },
+    titleToggleLinkTextActive: {
+      color: theme.green,
+      fontWeight: ft.emphasisWeight,
     },
     sourceRow: {
       flexDirection: 'row',
@@ -413,16 +414,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       maxWidth: '100%',
     },
     title: {
-      flex: 1,
-      minWidth: 0,
       color: theme.text,
       fontSize: ft.ff(15),
       fontWeight: ft.titleWeight,
-      marginBottom: ft.pad(6),
+      marginBottom: 0,
       lineHeight: ft.ff(22),
     },
     titleLast: {
-      marginBottom: 0,
+      marginBottom: ft.pad(6),
     },
     footerTagsCol: {
       flex: 1,

@@ -84,6 +84,35 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '800',
       color: theme.green,
     },
+    titleListToggleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-end',
+      gap: 6,
+      marginBottom: 10,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      backgroundColor: theme.bgElevated,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    titleListToggleRowActive: {
+      backgroundColor: theme.greenDim,
+      borderColor: theme.greenBorder,
+    },
+    titleListToggleRowPressed: {
+      opacity: 0.86,
+    },
+    titleListToggleText: {
+      fontSize: sf(11),
+      lineHeight: sf(15),
+      fontWeight: '700',
+      color: theme.textMuted,
+    },
+    titleListToggleTextActive: {
+      color: theme.green,
+    },
     videoOpenAll: {
       flexDirection: 'row',
       alignItems: 'center',

@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
+import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { AppTheme } from '@/constants/theme';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -109,13 +110,16 @@ function CompanyHighlightCard({
   return (
     <View style={styles.companyCard}>
       <View style={styles.companyHead}>
-        <View style={styles.companySymbolBox}>
-          <Text style={styles.companySymbol}>{item.symbol}</Text>
-          {item.name ? (
-            <Text style={styles.companyName} numberOfLines={1}>
-              {item.name}
-            </Text>
-          ) : null}
+        <View style={styles.companySymbolLead}>
+          <SymbolLogo symbol={item.symbol} size={28} />
+          <View style={styles.companySymbolBox}>
+            <Text style={styles.companySymbol}>{item.symbol}</Text>
+            {item.name ? (
+              <Text style={styles.companyName} numberOfLines={1}>
+                {item.name}
+              </Text>
+            ) : null}
+          </View>
         </View>
         {(hasPrice || hasChange) && (
           <View
@@ -458,6 +462,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       gap: 16,
+    },
+    companySymbolLead: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
     },
     companySymbolBox: {
       flex: 1,

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.signalapp.auto-ios-ota</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/zsh</string>
+      <string>/Users/marcusmoon/SignalApp/scripts/auto-ios-ota-deploy.zsh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/marcusmoon/SignalApp</string>
+
+    <key>StartInterval</key>
+    <integer>600</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/marcusmoon/Library/Logs/SignalApp/auto-ios-ota-launchd.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/marcusmoon/Library/Logs/SignalApp/auto-ios-ota-launchd.log</string>
+  </dict>
+</plist>

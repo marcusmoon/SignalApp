@@ -22,6 +22,7 @@ import { WatchlistAddSheet } from '@/components/quotes/WatchlistAddSheet';
 import { makeQuotesStyles } from '@/components/quotes/quotesStyles';
 import { quoteSegmentAccent } from '@/constants/segmentAccent';
 import { SegmentFilterChip } from '@/components/signal/SegmentFilterChip';
+import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SymbolDetailPane } from '@/components/symbol/SymbolDetailPane';

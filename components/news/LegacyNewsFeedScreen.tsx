@@ -26,6 +26,7 @@ import { DEFAULT_NEWS_SEGMENT, NEWS_SEGMENT_ORDER, parseNewsSegmentKey, type New
 import { newsSegmentToIssuesCategory } from '@/constants/ipadHomeNav';
 import { AdPlaceholder } from '@/components/signal/AdPlaceholder';
 import { groupedFeedRowEdges, groupedFeedRowShell } from '@/components/signal/groupedFeedList';
+import { DigestPager } from '@/components/news/DigestPager';
 import { NewsCard } from '@/components/signal/NewsCard';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';

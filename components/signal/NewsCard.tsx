@@ -12,6 +12,7 @@ import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import type { NewsItem } from '@/types/signal';
 import { formatNewsTimelineTimeLabel } from '@/utils/date';
 
 type Props = {
@@ -82,7 +83,12 @@ export function NewsCard({
     maxHashtagsToShow > 0
       ? (item.hashtags || [])
           .slice()
-          .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
+          .sort(
+            (
+              a: NonNullable<NewsItem['hashtags']>[number],
+              b: NonNullable<NewsItem['hashtags']>[number],
+            ) => (Number(a.order) || 0) - (Number(b.order) || 0),
+          )
           .slice(0, maxHashtagsToShow)
       : [];
 
@@ -232,7 +238,7 @@ export function NewsCard({
     tags.length > 0 ? (
       <View style={[styles.footer, grouped && styles.footerGrouped]}>
         <View style={styles.footerTagsCol}>
-          {tags.map((tag) => (
+          {tags.map((tag: NonNullable<NewsItem['hashtags']>[number]) => (
             <Pressable
               key={`${item.id}-${tag.label}`}
               onPress={() => onTagPress?.(tag.label)}

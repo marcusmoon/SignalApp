@@ -868,7 +868,7 @@ export function HomeFocusContent({
                 summaryLines={1}
                 footerLead={
                   <View style={styles.boardFooterLead}>
-                    <CommunitySourceMark accent={sourceAccent} size={18} />
+                    <CommunitySourceMark accent={sourceAccent} size={18} style={styles.boardSourceMark} />
                     <Text style={styles.boardSourceLabel} numberOfLines={1}>
                       {sourceLabel}
                     </Text>
@@ -1281,6 +1281,10 @@ function makeStyles(
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
+    },
+    boardSourceMark: {
+      borderWidth: 0,
+      backgroundColor: 'transparent',
     },
     boardSourceLabel: {
       flex: 1,

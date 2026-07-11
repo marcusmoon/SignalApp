@@ -18,8 +18,8 @@ import {
   colorWithAlpha,
   glassEdgeColors,
 } from '@/components/signal/GlassSurface';
-import { SignalFloatingTabBar } from '@/components/signal/SignalFloatingTabBar';
 import { AppQuickActions } from '@/components/AppQuickActions';
+import { SignalFloatingTabBar } from '@/components/signal/SignalFloatingTabBar';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { SignalSidebarTabBar } from '@/components/signal/SignalSidebarTabBar';
 import { SlackTabBarButton } from '@/components/SlackTabBarButton';

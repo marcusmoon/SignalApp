@@ -7,6 +7,12 @@ export const DIGEST_SINGLE_NEXT_CARD_PEEK = 36;
 export const DIGEST_PAIR_CARD_WIDTH_RATIO = 0.48;
 /** 스트립 끝 refresh 타일 너비 */
 export const DIGEST_REFRESH_TAIL_WIDTH = 52;
+/** 다이제스트 카드 공통 높이 (뉴스·공시 동일) */
+export const DIGEST_STRIP_CARD_MIN_HEIGHT = 106;
+export const DIGEST_STRIP_CARD_MIN_HEIGHT_PAIR = 94;
+export const DIGEST_STRIP_BADGE_ROW_HEIGHT = 20;
+export const DIGEST_STRIP_BADGE_ROW_HEIGHT_PAIR = 18;
+export const DIGEST_STRIP_FOOTER_MIN_HEIGHT = 28;
 /** 공시 다이제스트 카드 태그(칩) 최대 개수 */
 export const DISCLOSURE_DIGEST_TAG_MAX_SINGLE = 3;
 export const DISCLOSURE_DIGEST_TAG_MAX_PAIR = 1;

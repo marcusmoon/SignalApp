@@ -8,11 +8,13 @@ import {
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { DigestRefreshTail } from '@/components/feed/DigestRefreshTail';
+import { makeDigestStripCardStyles } from '@/components/feed/digestStripCardStyles';
 import { WebHorizontalScrollStrip, type WebHorizontalScrollStripHandle } from '@/components/layout/WebHorizontalScrollStrip';
 import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
-import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import {
   DIGEST_CARD_GAP,
+  DIGEST_STRIP_CARD_MIN_HEIGHT,
+  DIGEST_STRIP_CARD_MIN_HEIGHT_PAIR,
   digestStripCardWidth,
   digestStripScrollPadding,
 } from '@/constants/digestStripLayout';
@@ -47,7 +49,7 @@ function hasDigestDetail(digest: NewsDigestItem): boolean {
 type DigestCardProps = {
   digest: NewsDigestItem;
   onOpenSources: (digest: NewsDigestItem) => void;
-  styles: ReturnType<typeof makeStyles>;
+  styles: ReturnType<typeof makeDigestStripCardStyles>;
   theme: AppTheme;
   pairLayout?: boolean;
 };
@@ -66,28 +68,35 @@ const DigestCard = memo(function DigestCard({
   });
   const createdLabel = formatFeedItemTimeLabel(newsDigestCreatedIso(digest), locale as AppLocale);
   const showDetail = hasDigestDetail(digest);
+  const topicChips = digest.topics.slice(0, pairLayout ? 2 : 3);
+  const showCountChip = !digest.aiGenerated && topicChips.length === 0 && digest.count > 0;
 
   return (
-    <View style={[styles.card, pairLayout && styles.cardPair]}>
-      <View style={[styles.accentLine, pairLayout && styles.accentLinePair]} />
-      {digest.aiGenerated || digest.topics.length > 0 ? (
-        <View style={styles.badgeRow}>
-          {digest.aiGenerated ? (
-            <View style={[styles.aiBadge, pairLayout && styles.aiBadgePair]}>
-              <Text style={styles.aiBadgeText}>✦ AI</Text>
-            </View>
-          ) : null}
-          {digest.topics.slice(0, pairLayout ? 2 : 4).map((topic) => (
-            <Text key={topic} style={styles.topicChip} numberOfLines={1}>
-              {topic}
-            </Text>
-          ))}
-        </View>
-      ) : null}
+    <View style={styles.card}>
+      <View style={styles.accentLine} />
+      <View style={styles.badgeRow}>
+        {digest.aiGenerated ? (
+          <View style={styles.aiBadge}>
+            <Text style={styles.aiBadgeText}>✦ AI</Text>
+          </View>
+        ) : null}
+        {topicChips.map((topic) => (
+          <Text key={topic} style={styles.topicChip} numberOfLines={1}>
+            {topic}
+          </Text>
+        ))}
+        {showCountChip ? (
+          <Text style={styles.topicChip} numberOfLines={1}>
+            {t('feedDigestCount', { count: String(digest.count) })}
+          </Text>
+        ) : null}
+      </View>
 
-      <Text style={[styles.title, pairLayout && styles.titlePair]} numberOfLines={2}>
-        {digest.title}
-      </Text>
+      <View style={styles.titleBody}>
+        <Text style={styles.title} numberOfLines={2}>
+          {digest.title}
+        </Text>
+      </View>
 
       <View style={styles.footerRow}>
         <Text style={styles.footer} numberOfLines={1}>
@@ -100,7 +109,7 @@ const DigestCard = memo(function DigestCard({
             style={({ pressed }) => [styles.detailBtn, pressed && styles.detailBtnPressed]}
             accessibilityRole="button"
             accessibilityLabel={t('feedDigestDetailA11y')}>
-            <FontAwesome name="info-circle" size={15} color={theme.green} />
+            <FontAwesome name="info-circle" size={14} color={theme.green} />
           </Pressable>
         ) : null}
       </View>
@@ -126,7 +135,13 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoT
   const cardWidth = digestStripCardWidth(containerWidth, pairLayout, batches.length);
   const scrollPadding = digestStripScrollPadding(pairLayout, batches.length);
   const styles = useMemo(
-    () => makeStyles(theme, scaleFont, feedTypo, pairLayout, scrollPadding),
+    () => ({
+      ...makeStripStyles(scrollPadding),
+      ...makeDigestStripCardStyles(theme, scaleFont, feedTypo, {
+        pairLayout,
+        accentColor: theme.green,
+      }),
+    }),
     [theme, scaleFont, feedTypo, pairLayout, scrollPadding],
   );
 
@@ -203,16 +218,11 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoT
   );
 }
 
-function makeStyles(
-  theme: AppTheme,
-  sf: (n: number) => number,
-  ft: FeedContentTypography,
-  pairLayout: boolean,
-  scrollPadding: ReturnType<typeof digestStripScrollPadding>,
-) {
+function makeStripStyles(scrollPadding: ReturnType<typeof digestStripScrollPadding>) {
   return StyleSheet.create({
     container: {
       marginBottom: 0,
+      minHeight: DIGEST_STRIP_CARD_MIN_HEIGHT,
     },
     scrollContent: {
       flexDirection: 'row',
@@ -223,121 +233,7 @@ function makeStyles(
     },
     cardSlot: {
       flexShrink: 0,
-    },
-    card: {
-      paddingLeft: 18,
-      paddingRight: ft.pad(13),
-      paddingVertical: ft.pad(11),
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      gap: 6,
-      overflow: 'hidden',
-      shadowColor: '#000000',
-      shadowOpacity: 0.04,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 5 },
-      elevation: 1,
-    },
-    cardPair: {
-      paddingLeft: 14,
-      paddingRight: ft.pad(11),
-      paddingVertical: ft.pad(9),
-      borderRadius: 12,
-      gap: 5,
-      shadowOpacity: 0,
-      shadowRadius: 0,
-      shadowOffset: { width: 0, height: 0 },
-      elevation: 0,
-    },
-    accentLine: {
-      position: 'absolute',
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: CONTENT_ACCENT_LINE_WIDTH,
-      backgroundColor: theme.green,
-    },
-    accentLinePair: {
-      opacity: 0.45,
-    },
-    badgeRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 5,
-      alignItems: 'center',
-    },
-    aiBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 999,
-      backgroundColor: theme.accentBlue,
-      borderWidth: 1,
-      borderColor: theme.accentBlue,
-    },
-    aiBadgePair: {
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-    },
-    aiBadgeText: {
-      fontSize: sf(10),
-      lineHeight: sf(15),
-      fontWeight: '900',
-      color: '#FFFFFF',
-    },
-    topicChip: {
-      overflow: 'hidden',
-      paddingHorizontal: 7,
-      paddingVertical: 2,
-      borderRadius: 999,
-      backgroundColor: theme.bgElevated,
-      borderWidth: 1,
-      borderColor: theme.border,
-      fontSize: ft.ff(10),
-      lineHeight: sf(15),
-      fontWeight: ft.emphasisWeight,
-      color: theme.textMuted,
-    },
-    title: {
-      fontSize: ft.ff(15),
-      lineHeight: ft.ff(21),
-      minHeight: ft.ff(21) * 2,
-      fontWeight: ft.titleWeight,
-      color: theme.text,
-    },
-    titlePair: {
-      fontSize: ft.ff(14),
-      lineHeight: ft.ff(19),
-      minHeight: undefined,
-    },
-    footerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 8,
-    },
-    footer: {
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
-      fontWeight: ft.metaWeight,
-      color: theme.textDim,
-      flex: 1,
-      minWidth: 0,
-    },
-    detailBtn: {
-      width: 30,
-      height: 30,
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: 15,
-      backgroundColor: theme.greenDim,
-      borderWidth: 1,
-      borderColor: theme.greenBorder,
-      flexShrink: 0,
-    },
-    detailBtnPressed: {
-      opacity: 0.88,
+      alignSelf: 'stretch',
     },
   });
 }

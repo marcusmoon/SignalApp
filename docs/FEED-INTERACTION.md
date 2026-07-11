@@ -118,11 +118,24 @@ digest-only 새로고침 UI는 두지 않는다.
 공시(`DisclosureDigestSection`)는 1열 기준 **0.88**만 사용한다.  
 가로 패딩: `CARD_EDGE_PAD` 12, 카드 간격: `CARD_GAP` 10.
 
+#### wide 여백 (iPad·웹)
+
+다이제스트 `topFixed` 블록은 **`topFixedWide`**(`SCREEN_WIDE_CONTENT_PADDING_TOP` = 12px)를 함께 씁니다.  
+`listColumnDigestStrip`에서 `paddingTop: 0`으로 덮어쓰지 않습니다 (`newsStyles.ts`).
+
+#### 출처 보기
+
+카드 **인라인 펼치기**(chevron·카드 탭 확장)는 쓰지 않는다. 출처가 있으면 카드 우측 **「출처」** 버튼 → 하단 시트 `DigestSourcesSheet` (`SelectionFilterSheet`와 동일한 slide-up Modal).
+
+- 컴포넌트: `components/news/DigestSourcesSheet.tsx`
+- 뉴스: `DigestPager` · 공시: `DisclosureDigestSection`
+- 가로 스크롤 시작 시 열린 시트는 닫는다
+
 #### DO
 
 - 다이제스트 가로 스크롤은 **`WebHorizontalScrollStrip`만** 사용한다.
 - 웹에서는 **네이티브 overflow-x**로 두고 브라우저 스크롤 물리를 그대로 쓴다.
-- 스크롤 시작 시 펼쳐진 카드는 접는다 (`onScrollBeginDrag` → `expandedId` clear).
+- 스크롤 시작 시 펼쳐진 카드는 접는다 (`onScrollBeginDrag` → 출처 시트 닫기).
 - 다이제스트는 계속 **`topFixed`** (리스트 `ListHeaderComponent` 금지).
 
 #### DON'T
@@ -140,6 +153,7 @@ digest-only 새로고침 UI는 두지 않는다.
 | 뉴스 다이제스트 | `components/news/DigestPager.tsx` |
 | 공시 다이제스트 | `components/disclosures/DisclosureDigestSection.tsx` |
 | 가로 스트립 셸 | `components/layout/WebHorizontalScrollStrip.tsx` |
+| 출처 시트 | `components/news/DigestSourcesSheet.tsx` |
 | wide 2열 마운트 | `components/news/LegacyNewsFeedScreen.tsx` — `useTwoPane`일 때 `columns={2}` |
 
 #### 안티패턴 (digest 스크롤)

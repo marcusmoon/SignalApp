@@ -635,6 +635,8 @@ export const ja = {
   feedDigestKicker: '主要イシュー',
   feedDigestCount: 'ニュース {{count}}件',
   feedDigestSummary: 'ニュース {{count}}件 · 出所 {{sources}}件',
+  feedDigestSourcesTitle: '出所',
+  feedDigestSourcesButton: '出所',
   feedDigestExpand: 'もっと見る',
   feedDigestCollapse: '閉じる',
   feedTagFilterActive: 'タグ: {{tag}}',

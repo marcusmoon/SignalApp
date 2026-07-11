@@ -54,7 +54,6 @@ export function makeNewsStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     listColumnDigestStrip: {
       flexShrink: 0,
-      paddingTop: 0,
       paddingHorizontal: 0,
     },
     skeletonBlock: {

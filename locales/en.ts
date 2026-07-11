@@ -635,6 +635,8 @@ export const en = {
   feedDigestKicker: 'Top issue',
   feedDigestCount: '{{count}} headlines',
   feedDigestSummary: '{{count}} headlines · {{sources}} sources',
+  feedDigestSourcesTitle: 'Sources',
+  feedDigestSourcesButton: 'Sources',
   feedDigestExpand: 'Show more',
   feedDigestCollapse: 'Collapse',
   feedTagFilterActive: 'Tag: {{tag}}',

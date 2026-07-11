@@ -631,6 +631,8 @@ export const ko = {
   feedDigestKicker: '주요 이슈',
   feedDigestCount: '뉴스 {{count}}건',
   feedDigestSummary: '뉴스 {{count}}건 · 출처 {{sources}}곳',
+  feedDigestSourcesTitle: '출처',
+  feedDigestSourcesButton: '출처',
   feedDigestExpand: '더보기',
   feedDigestCollapse: '접기',
   feedTagFilterActive: '태그: {{tag}}',

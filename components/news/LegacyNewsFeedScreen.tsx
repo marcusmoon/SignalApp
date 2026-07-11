@@ -1470,7 +1470,7 @@ export function LegacyNewsFeedScreen() {
 
         <View style={styles.listColumn}>
           {showDigest && useTwoPane ? (
-            <View style={[styles.topFixed, styles.listColumnDigestStrip]}>
+            <View style={[styles.topFixed, styles.topFixedWide, styles.listColumnDigestStrip]}>
               <DigestPager batches={digestBatches} columns={2} />
             </View>
           ) : null}

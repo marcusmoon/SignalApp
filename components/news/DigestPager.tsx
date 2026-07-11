@@ -1,18 +1,14 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import {
-  GestureResponderEvent,
-  LayoutAnimation,
-  Linking,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
-  UIManager,
   View,
 } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { WebHorizontalScrollStrip } from '@/components/layout/WebHorizontalScrollStrip';
+import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
@@ -23,24 +19,34 @@ import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { AppLocale } from '@/locales/messages';
 import { formatFeedItemTimeLabel } from '@/utils/date';
 
-const TAP_MOVE_THRESHOLD = 8;
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
-const EXPAND_LAYOUT = LayoutAnimation.create(180, LayoutAnimation.Types.easeOut, LayoutAnimation.Properties.opacity);
-
 const CARD_GAP = 10;
 const CARD_EDGE_PAD = 12;
 /** wide: 다음 카드가 살짝 보이도록 (SaveTicker 스타일) */
 const PAIR_CARD_WIDTH_RATIO = 0.48;
 const SINGLE_CARD_WIDTH_RATIO = 0.88;
 
+function digestSourceRows(digest: NewsDigestItem): DigestSourceSheetRow[] {
+  if (digest.sourceRefs.length > 0) {
+    return digest.sourceRefs.map((ref, index) => ({
+      key: ref.id || `${digest.id}-ref-${index}`,
+      title: ref.title || ref.sourceName || ref.url || '',
+      subtitle: ref.sourceName || undefined,
+      url: ref.url,
+    }));
+  }
+  return digest.sources.map((src, index) => ({
+    key: `${digest.id}-src-${index}`,
+    title: src,
+  }));
+}
+
+function hasDigestSources(digest: NewsDigestItem): boolean {
+  return digest.sourceRefs.length > 0 || digest.sources.length > 0;
+}
+
 type DigestCardProps = {
   digest: NewsDigestItem;
-  isExpanded: boolean;
-  onToggle: (id: string) => void;
+  onOpenSources: (digest: NewsDigestItem) => void;
   styles: ReturnType<typeof makeStyles>;
   theme: AppTheme;
   pairLayout?: boolean;
@@ -48,52 +54,21 @@ type DigestCardProps = {
 
 const DigestCard = memo(function DigestCard({
   digest,
-  isExpanded,
-  onToggle,
+  onOpenSources,
   styles,
   theme,
   pairLayout = false,
 }: DigestCardProps) {
   const { t, locale } = useLocale();
-  const pressStartRef = useRef<{ x: number; y: number } | null>(null);
   const summaryText = t('feedDigestSummary', {
     count: String(digest.count),
     sources: String(digest.sources.length),
   });
   const createdLabel = formatFeedItemTimeLabel(newsDigestCreatedIso(digest), locale as AppLocale);
-  const handlePressIn = useCallback((event: GestureResponderEvent) => {
-    pressStartRef.current = {
-      x: event.nativeEvent.pageX,
-      y: event.nativeEvent.pageY,
-    };
-  }, []);
-  const handlePress = useCallback(
-    (event: GestureResponderEvent) => {
-      const start = pressStartRef.current;
-      pressStartRef.current = null;
-      if (start) {
-        const dx = Math.abs(event.nativeEvent.pageX - start.x);
-        const dy = Math.abs(event.nativeEvent.pageY - start.y);
-        if (dx > TAP_MOVE_THRESHOLD || dy > TAP_MOVE_THRESHOLD) return;
-      }
-      onToggle(digest.id);
-    },
-    [digest.id, onToggle],
-  );
+  const showSources = hasDigestSources(digest);
 
   return (
-    <Pressable
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      style={({ pressed }) => [
-        styles.card,
-        pairLayout && styles.cardPair,
-        pressed && styles.cardPressed,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={digest.title}
-      accessibilityState={{ expanded: isExpanded }}
-    >
+    <View style={[styles.card, pairLayout && styles.cardPair]}>
       <View style={[styles.accentLine, pairLayout && styles.accentLinePair]} />
       {digest.aiGenerated || digest.topics.length > 0 ? (
         <View style={styles.badgeRow}>
@@ -114,62 +89,23 @@ const DigestCard = memo(function DigestCard({
         {digest.title}
       </Text>
 
-      {isExpanded && (digest.sourceRefs.length > 0 || digest.sources.length > 0) ? (
-        <View style={styles.sourceList}>
-          {digest.sourceRefs.length > 0
-            ? digest.sourceRefs.slice(0, 5).map((ref, i) => {
-                const refUrl = ref.url || undefined;
-                return (
-                <Pressable
-                  key={i}
-                  onPress={
-                    refUrl
-                      ? (e) => {
-                          e.stopPropagation?.();
-                          void Linking.openURL(refUrl).catch(() => null);
-                        }
-                      : undefined
-                  }
-                  style={({ pressed }) => [styles.sourceRow, pressed && refUrl && styles.sourceRowPressed]}
-                  accessibilityRole={refUrl ? 'link' : 'text'}
-                >
-                  <View style={styles.sourceTextCol}>
-                    <Text
-                      style={[styles.sourceTitle, refUrl && styles.sourceTitleLink]}
-                      numberOfLines={2}
-                    >
-                      {ref.title || ref.sourceName || refUrl || ''}
-                    </Text>
-                    {ref.sourceName ? (
-                      <Text style={styles.sourceName} numberOfLines={1}>
-                        {ref.sourceName}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {refUrl ? (
-                    <FontAwesome name="external-link" size={10} color={theme.accentBlue} />
-                  ) : null}
-                </Pressable>
-                );
-              })
-            : digest.sources.slice(0, 5).map((src, i) => (
-                <View key={i} style={styles.sourceRow}>
-                  <Text style={styles.sourceName} numberOfLines={1}>
-                    {src}
-                  </Text>
-                </View>
-              ))}
-        </View>
-      ) : null}
-
       <View style={styles.footerRow}>
-        <Text style={styles.footer}>
+        <Text style={styles.footer} numberOfLines={1}>
           {summaryText}
           {createdLabel !== '—' ? ` · ${createdLabel}` : ''}
         </Text>
-        <FontAwesome name={isExpanded ? 'chevron-up' : 'chevron-down'} size={11} color={theme.textDim} />
+        {showSources ? (
+          <Pressable
+            onPress={() => onOpenSources(digest)}
+            style={({ pressed }) => [styles.sourcesBtn, pressed && styles.sourcesBtnPressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t('feedDigestSourcesButton')}>
+            <Text style={styles.sourcesBtnText}>{t('feedDigestSourcesButton')}</Text>
+            <FontAwesome name="list-ul" size={10} color={theme.green} />
+          </Pressable>
+        ) : null}
       </View>
-    </Pressable>
+    </View>
   );
 });
 
@@ -191,23 +127,29 @@ export function DigestPager({ batches, columns = 1 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const pairLayout = columns === 2;
   const [containerWidth, setContainerWidth] = useState(0);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [sourcesDigest, setSourcesDigest] = useState<NewsDigestItem | null>(null);
   const cardWidth = digestCardWidth(containerWidth, pairLayout);
   const styles = useMemo(
     () => makeStyles(theme, scaleFont, feedTypo, pairLayout),
     [theme, scaleFont, feedTypo, pairLayout],
   );
 
-  const toggleExpand = useCallback((id: string) => {
-    if (!pairLayout) {
-      LayoutAnimation.configureNext(EXPAND_LAYOUT);
-    }
-    setExpandedId((prev) => (prev === id ? null : id));
-  }, [pairLayout]);
-
-  const collapseOnScroll = useCallback(() => {
-    setExpandedId(null);
+  const openSources = useCallback((digest: NewsDigestItem) => {
+    setSourcesDigest(digest);
   }, []);
+
+  const closeSources = useCallback(() => {
+    setSourcesDigest(null);
+  }, []);
+
+  const closeSourcesOnScroll = useCallback(() => {
+    setSourcesDigest(null);
+  }, []);
+
+  const sourceRows = useMemo(
+    () => (sourcesDigest ? digestSourceRows(sourcesDigest) : []),
+    [sourcesDigest],
+  );
 
   if (batches.length === 0) return null;
 
@@ -219,15 +161,14 @@ export function DigestPager({ batches, columns = 1 }: Props) {
         setContainerWidth((prev) => (prev === next ? prev : next));
       }}>
       <WebHorizontalScrollStrip
-        onScrollBeginDrag={collapseOnScroll}
+        onScrollBeginDrag={closeSourcesOnScroll}
         contentContainerStyle={styles.scrollContent}>
         {cardWidth > 0 &&
           batches.map((digest) => (
             <View key={digest.id} style={[styles.cardSlot, { width: cardWidth }]}>
               <DigestCard
                 digest={digest}
-                isExpanded={expandedId === digest.id}
-                onToggle={toggleExpand}
+                onOpenSources={openSources}
                 styles={styles}
                 theme={theme}
                 pairLayout={pairLayout}
@@ -235,6 +176,12 @@ export function DigestPager({ batches, columns = 1 }: Props) {
             </View>
           ))}
       </WebHorizontalScrollStrip>
+      <DigestSourcesSheet
+        visible={sourcesDigest != null}
+        digestTitle={sourcesDigest?.title ?? ''}
+        rows={sourceRows}
+        onClose={closeSources}
+      />
     </View>
   );
 }
@@ -297,9 +244,6 @@ function makeStyles(
     accentLinePair: {
       opacity: 0.45,
     },
-    cardPressed: {
-      opacity: 0.88,
-    },
     badgeRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -361,36 +305,28 @@ function makeStyles(
       fontWeight: ft.metaWeight,
       color: theme.textDim,
       flex: 1,
+      minWidth: 0,
     },
-    sourceList: {
-      gap: 6,
-    },
-    sourceRow: {
+    sourcesBtn: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 6,
+      alignItems: 'center',
+      gap: 5,
+      paddingHorizontal: 8,
+      paddingVertical: 5,
+      borderRadius: 8,
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      flexShrink: 0,
     },
-    sourceRowPressed: {
-      opacity: 0.7,
+    sourcesBtnPressed: {
+      opacity: 0.88,
     },
-    sourceTextCol: {
-      flex: 1,
-      gap: 1,
-    },
-    sourceTitle: {
-      fontSize: ft.ff(12),
-      lineHeight: ft.ff(17),
-      fontWeight: ft.bodyWeight,
-      color: theme.text,
-    },
-    sourceTitleLink: {
-      color: theme.accentBlue,
-    },
-    sourceName: {
+    sourcesBtnText: {
       fontSize: ft.ff(10),
       lineHeight: sf(14),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
+      fontWeight: '800',
+      color: theme.green,
     },
   });
 }

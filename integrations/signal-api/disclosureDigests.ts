@@ -1,5 +1,11 @@
 import { signalApi } from '@/integrations/signal-api/httpClient';
+import type { SignalCacheMode } from '@/integrations/signal-api/cacheMode';
 import type { SignalApiDisclosureDigestItem, SignalNewsListMeta } from '@/integrations/signal-api/types';
+import {
+  buildSignalDisclosureDigestsCacheKey,
+  peekSignalDisclosureDigestsCache,
+  storeSignalDisclosureDigestsCache,
+} from '@/integrations/signal-api/cache/disclosureDigestsCache';
 
 export type SignalDisclosureDigestPage = {
   items: SignalApiDisclosureDigestItem[];
@@ -29,15 +35,25 @@ export async function fetchSignalDisclosureDigests(
     from?: string;
     to?: string;
     batches?: number;
+    locale?: string;
   } = {},
+  options?: { cacheMode?: SignalCacheMode },
 ): Promise<SignalDisclosureDigestPage> {
+  const cacheMode = options?.cacheMode || 'use';
+  const cacheKey = buildSignalDisclosureDigestsCacheKey(params);
+  if (cacheMode !== 'bypass') {
+    const hit = peekSignalDisclosureDigestsCache(cacheKey);
+    if (hit) return hit;
+  }
   const json = await signalApi<{
     data: SignalApiDisclosureDigestItem[];
     meta?: Partial<SignalNewsListMeta>;
   }>('/v1/disclosure-digests', params, { timeoutMs: 4000, attempts: 1 });
   const rows = Array.isArray(json.data) ? json.data : [];
-  return {
+  const value = {
     items: rows,
     meta: normalizeMeta({ ...json, data: rows }, params),
   };
+  if (cacheMode !== 'bypass') storeSignalDisclosureDigestsCache(cacheKey, value);
+  return value;
 }

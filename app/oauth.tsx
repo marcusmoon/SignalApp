@@ -1,13 +1,16 @@
 import * as WebBrowser from 'expo-web-browser';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
-WebBrowser.maybeCompleteAuthSession();
+const authCompletion = WebBrowser.maybeCompleteAuthSession({
+  // Server may rewrite `/oauth` → `/web/oauth`; still same origin and session handle.
+  skipRedirectCheck: Platform.OS === 'web',
+});
 
 export default function OAuthReturnScreen() {
   const router = useRouter();
@@ -16,6 +19,15 @@ export default function OAuthReturnScreen() {
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   useEffect(() => {
+    if (__DEV__ && authCompletion.type === 'failed') {
+      console.warn('[oauth]', authCompletion.message);
+    }
+
+    // OAuth popup: parent tab completes login; do not show account inside the popup.
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.opener) {
+      return;
+    }
+
     const timer = setTimeout(() => {
       router.replace('/account');
     }, 450);

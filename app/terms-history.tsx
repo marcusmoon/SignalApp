@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -49,7 +50,7 @@ export default function TermsHistoryScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <Stack.Screen options={{ title: t('termsHistoryScreenTitle') }} />
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 28 + insets.bottom }]}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) }]}>
         <View style={styles.headerCard}>
           <Text style={styles.kicker}>{t('termsHistoryKicker')}</Text>
           <Text style={styles.title}>{t('termsHistoryTitle')}</Text>
@@ -84,28 +85,28 @@ export default function TermsHistoryScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    content: { padding: 16, gap: 12 },
+    content: { padding: 16, gap: 20 },
     headerCard: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.card,
       padding: 16,
-      gap: 8,
+      gap: 16,
     },
     kicker: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
     title: { color: theme.text, fontSize: sf(20), lineHeight: sf(27), fontWeight: '900' },
     summary: { color: theme.textMuted, fontSize: sf(12), lineHeight: sf(18), fontWeight: '700' },
     rowCard: {
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       padding: 14,
-      gap: 8,
+      gap: 16,
     },
     rowPressed: { opacity: 0.76 },
-    rowTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    rowTop: { flexDirection: 'row', alignItems: 'center', gap: 16 },
     rowTitle: { flex: 1, color: theme.text, fontSize: sf(14), lineHeight: sf(20), fontWeight: '900' },
     badge: {
       borderRadius: 999,

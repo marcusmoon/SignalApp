@@ -20,8 +20,12 @@ import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import {
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  stackScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
-import { useResetRefreshingOnTabBlur } from '@/hooks';
+import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
@@ -30,6 +34,7 @@ import {
   signalCalendarToCalendarEvent,
 } from '@/integrations/signal-api';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
+import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { hasSignalApi } from '@/services/env';
 import {
   CALENDAR_EVENT_TYPE_ORDER,
@@ -151,6 +156,8 @@ export default function CalendarScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const [monthEvents, setMonthEvents] = useState<CalendarEvent[]>([]);
+  const monthEventsRef = useRef<CalendarEvent[]>([]);
+  monthEventsRef.current = monthEvents;
   const [enabledTypes, setEnabledTypes] = useState(
     () => new Set<CalendarEventTypeKey>(CALENDAR_EVENT_TYPE_ORDER),
   );
@@ -159,7 +166,6 @@ export default function CalendarScreen() {
   const [calendarVisible, setCalendarVisible] = useState(false);
 
   const loadSeqRef = useRef(0);
-  const listRef = useRef<FlatList<CalendarEvent>>(null);
 
   useEffect(() => {
     void loadCalendarEventTypeFilter().then((saved) => {
@@ -170,13 +176,18 @@ export default function CalendarScreen() {
   }, []);
 
   const typeParam = selectedCalendarType(enabledTypes);
+  const { ref: listRef } = useScrollToTopOnChange([selectedYmd, typeParam], {
+    skipInitial: false,
+    resyncDeps: [monthEvents, selectedYmd],
+  });
+  const listScrollResetKey = `${selectedYmd}:${typeParam}`;
 
   const fetchMonthData = useCallback(
     async (year: number, month: number, forceRefresh?: boolean) => {
       const { from, to } = monthBounds(year, month);
       const raw = await fetchSignalCalendar(
         { from, to, type: typeParam, limit: CALENDAR_MONTH_QUERY_LIMIT },
-        { cacheMode: forceRefresh ? 'bypass' : 'use' },
+        { cacheMode: signalCacheMode(forceRefresh) },
       );
       return raw.map(rawToCalendarEvent).filter((ev): ev is CalendarEvent => ev != null);
     },
@@ -189,9 +200,9 @@ export default function CalendarScreen() {
     const seq = loadSeqRef.current + 1;
     loadSeqRef.current = seq;
     (async () => {
-      setLoading(true);
+      const hadEvents = monthEventsRef.current.length > 0;
+      if (!hadEvents) setLoading(true);
       setError(null);
-      setMonthEvents([]);
       try {
         const events = await fetchMonthData(viewMonth.year, viewMonth.month);
         if (cancelled || loadSeqRef.current !== seq) return;
@@ -202,13 +213,15 @@ export default function CalendarScreen() {
           setMonthEvents([]);
         }
       } finally {
-        if (!cancelled && loadSeqRef.current === seq) setLoading(false);
+        if (!cancelled && loadSeqRef.current === seq) {
+          setLoading(false);
+        }
       }
     })();
     return () => { cancelled = true; };
   }, [fetchMonthData, t, viewMonth.year, viewMonth.month]);
 
-  const onRefresh = useCallback(async () => {
+  const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
     try {
       const events = await fetchMonthData(viewMonth.year, viewMonth.month, true);
@@ -219,6 +232,8 @@ export default function CalendarScreen() {
       setRefreshing(false);
     }
   }, [fetchMonthData, viewMonth.year, viewMonth.month, t]);
+
+  const onRefresh = onRefreshBase;
 
   const filteredEvents = useMemo(
     () => monthEvents.filter((e) => enabledTypes.has(e.type)),
@@ -245,10 +260,6 @@ export default function CalendarScreen() {
 
   const emptyFiltered = !loading && !error && monthEvents.length > 0 && filteredEvents.length === 0;
   const allEventTypesSelected = enabledTypes.size === CALENDAR_EVENT_TYPE_ORDER.length;
-
-  useEffect(() => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: false });
-  }, [selectedYmd]);
 
   const onToggleEventType = useCallback((type: CalendarEventTypeKey) => {
     const next = new Set<CalendarEventTypeKey>([type]);
@@ -311,7 +322,7 @@ export default function CalendarScreen() {
   );
 
   const renderListEmpty = useCallback(() => {
-    if (loading) {
+    if (loading && selectedDayEvents.length === 0) {
       return (
         <View style={styles.emptyDayBox}>
           <SignalLoadingIndicator message={t('commonLoading')} />
@@ -326,7 +337,7 @@ export default function CalendarScreen() {
         </Text>
       </View>
     );
-  }, [emptyFiltered, error, loading, styles.emptyDayBox, styles.emptyDayText, t]);
+  }, [emptyFiltered, error, loading, selectedDayEvents.length, styles.emptyDayBox, styles.emptyDayText, t]);
 
   const renderEventItem = useCallback<ListRenderItem<CalendarEvent>>(
     ({ item }) => <CalendarEventCard ev={item} theme={theme} cardStyles={styles} t={t} locale={locale} />,
@@ -355,7 +366,7 @@ export default function CalendarScreen() {
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         {isFocused ? <OtaUpdateBanner /> : null}
         <WebWheelScrollView
-          contentContainerStyle={[styles.scroll, { paddingBottom: 28 + insets.bottom }]}
+          contentContainerStyle={[styles.scroll, { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) }]}
           showsVerticalScrollIndicator={false}>
           <View style={styles.errBox}>
             <Text style={styles.errText}>{t('errorSignalApiShort')}</Text>
@@ -417,15 +428,16 @@ export default function CalendarScreen() {
       </View>
 
       <WebWheelFlatList
-        ref={listRef}
+        scrollResetKey={listScrollResetKey}
+        ref={listRef as never}
         style={styles.listScroll}
-        data={loading ? [] : selectedDayEvents}
+        data={loading && selectedDayEvents.length === 0 ? [] : selectedDayEvents}
         keyExtractor={listKeyExtractor}
         renderItem={renderEventItem}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={renderListEmpty}
         ListFooterComponent={
-          <View style={{ paddingBottom: 28 + insets.bottom + 56 }}>
+          <View style={{ paddingBottom: stackScreenScrollBottomPadding(insets.bottom) + 56 }}>
             <SignalBannerAd />
           </View>
         }
@@ -495,23 +507,28 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
       paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 28,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+      paddingBottom: stackScreenScrollBottomPadding(0),
     },
     fixedTop: {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
       paddingHorizontal: 16,
-      paddingTop: 8,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
       paddingBottom: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
       backgroundColor: theme.bg,
     },
     daySection: {
-      paddingTop: 8,
-      paddingBottom: 4,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+      paddingBottom: 8,
+    },
+    listLoadingRow: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingBottom: 8,
     },
     daySectionMeta: {
       fontSize: ft.ff(11),
@@ -520,7 +537,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     emptyDayBox: {
       marginTop: 4,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -548,7 +565,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 7,
-      marginTop: 10,
+      marginTop: 16,
     },
     filterChip: {
       minHeight: 30,
@@ -575,7 +592,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     errBox: {
       padding: 10,
-      borderRadius: 14,
+      borderRadius: 8,
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
       borderColor: '#FFD6DA',
@@ -584,24 +601,24 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     errText: { fontSize: sf(11), color: theme.danger, lineHeight: sf(16) },
     card: {
       backgroundColor: theme.card,
-      borderRadius: 10,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       paddingHorizontal: 10,
-      paddingVertical: 8,
+      paddingVertical: 10,
       marginBottom: 6,
     },
     cardRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 10,
+      gap: 16,
     },
     titleBlock: { flex: 1, minWidth: 0 },
     titleLine: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       alignItems: 'flex-start',
-      gap: 6,
+      gap: 8,
     },
     typeTag: {
       borderWidth: 1,
@@ -683,14 +700,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       height: 4,
       borderRadius: 2,
       backgroundColor: theme.border,
-      marginTop: 10,
+      marginTop: 16,
       marginBottom: 8,
     },
     modalHead: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 10,
+      marginBottom: 14,
     },
     modalTitle: {
       color: theme.text,
@@ -705,7 +722,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     modalFoot: { paddingTop: 10 },
     modalTodayBtn: {
       minHeight: 42,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,

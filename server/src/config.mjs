@@ -81,6 +81,7 @@ export const config = {
   verySlowRequestMs: Number(process.env.SIGNAL_VERY_SLOW_REQUEST_MS || 5000),
   httpLogAll: boolEnv('SIGNAL_HTTP_LOG_ALL', false),
   jobLockTtlMs: Number(process.env.SIGNAL_JOB_LOCK_TTL_MS || 2 * 60 * 60 * 1000),
+  jobLockMaintenanceIntervalMs: Number(process.env.SIGNAL_JOB_LOCK_MAINTENANCE_MS || 60_000),
   /** RS256 app user access tokens (issuer/audience must match verification). */
   jwtIssuer: String(process.env.SIGNAL_JWT_ISSUER || 'signal-api').trim() || 'signal-api',
   jwtAudience: String(process.env.SIGNAL_JWT_AUDIENCE || 'signal-app').trim() || 'signal-app',
@@ -95,6 +96,10 @@ export const config = {
   ninjasKey: process.env.NINJAS_KEY || '',
   secUserAgent: process.env.SEC_USER_AGENT || process.env.SIGNAL_SEC_USER_AGENT || '',
   dartApiKey: process.env.DART_API_KEY || process.env.OPENDART_API_KEY || '',
+  tossinvestClientId: process.env.TOSSINVEST_CLIENT_ID || '',
+  tossinvestClientSecret: process.env.TOSSINVEST_CLIENT_SECRET || '',
+  tossinvestAccountSeq: process.env.TOSSINVEST_ACCOUNT_SEQ || '',
+  tossinvestApiBaseUrl: process.env.TOSSINVEST_API_BASE_URL || '',
   translationProvider: process.env.TRANSLATION_PROVIDER || 'mock',
   translationModel: process.env.TRANSLATION_MODEL || 'mock-ko-news-v1',
 };

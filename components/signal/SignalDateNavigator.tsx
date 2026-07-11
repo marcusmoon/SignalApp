@@ -60,7 +60,9 @@ export function SignalDateNavigator({
         accessibilityRole={onPressLabel ? 'button' : undefined}
         accessibilityLabel={labelA11y}
         style={({ pressed }) => [styles.datePickerCenter, pressed && onPressLabel && styles.dateActionBtnPressed]}>
-        <FontAwesome name="calendar" size={12} color={theme.green} />
+        <View style={styles.dateIconMark}>
+          <FontAwesome name="calendar" size={12} color={theme.green} />
+        </View>
         <Text style={styles.datePickerValue} numberOfLines={1}>
           {label}
         </Text>
@@ -102,10 +104,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     datePicker: {
       padding: 8,
-      gap: 8,
+      gap: 16,
       borderWidth: 1,
       borderColor: theme.greenBorder,
-      borderRadius: 13,
+      borderRadius: 8,
       backgroundColor: digestBg,
       flexDirection: 'row',
       alignItems: 'center',
@@ -113,7 +115,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     dateArrow: {
       width: 34,
       height: 34,
-      borderRadius: 10,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
@@ -130,7 +132,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
       minWidth: 0,
       height: 34,
-      borderRadius: 10,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.bgElevated,
@@ -139,6 +141,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'center',
       gap: 7,
       paddingHorizontal: 10,
+    },
+    dateIconMark: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
     },
     datePickerValue: {
       color: theme.text,
@@ -151,7 +163,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     dateTodayBtn: {
       width: 34,
       height: 34,
-      borderRadius: 10,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,

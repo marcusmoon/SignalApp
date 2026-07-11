@@ -1,4 +1,5 @@
 import { config } from '../../config.mjs';
+import { resolveDisclosureTypeCategory } from '../../disclosures/typeCategory.mjs';
 
 const COMPANY_TICKERS_URL = 'https://www.sec.gov/files/company_tickers.json';
 const SUBMISSIONS_URL = 'https://data.sec.gov/submissions/CIK{CIK}.json';
@@ -244,6 +245,11 @@ function normalizeFiling({ symbol, cik, companyName, filing, items = [] }) {
     symbol,
     companyName,
     formType: form,
+    typeCategory: resolveDisclosureTypeCategory({
+      provider: 'sec',
+      market: 'us',
+      formType: form,
+    }),
     title: filingTitle({ symbol, companyName, form, primaryDocDescription: filing.primaryDocDescription, items }),
     summary: filingSummary({ companyName, symbol, form, filingDate: filing.filingDate, reportDate: filing.reportDate, items }),
     sourceName: 'SEC EDGAR',

@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RectButton } from 'react-native-gesture-handler';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,19 +8,35 @@ import { useRouter } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import {
+  SCREEN_FIXED_HEADER_PADDING_BOTTOM,
+  SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
+  SCREEN_FIXED_HEADER_PADDING_TOP,
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  stackScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
+import { webShellBackground } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
+import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
+import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { useResetRefreshingOnTabBlur } from '@/hooks';
-import { loadNotificationHistory, loadDismissedNotificationIds, removeNotificationById, type StoredNotification } from '@/services/notificationHistory';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
+import { useResetRefreshingOnTabBlur, useScrollToTopOnChange } from '@/hooks';
+import { checkAlertsHasUnread, loadAlertsFromServer, markAlertsSeen } from '@/services/alertsUnreadPreference';
+import type { StoredNotification } from '@/services/notificationHistory';
 import { hasSignalApi } from '@/services/env';
 import { loadAppAuthSession, getSessionAccessToken, type StoredAppAuthSession } from '@/services/appAuthSession';
-import { fetchSignalNotifications } from '@/integrations/signal-api/notifications';
+import { deleteSignalNotifications } from '@/integrations/signal-api/notifications';
+import { clearSignalNotificationsCache } from '@/integrations/signal-api/cache/notificationsCache';
+import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { formatRelativeTime } from '@/utils/date';
 
-import { alertMatchesFilter, type AlertsFilter } from '@/domain/alerts/notificationCategory';
+import { alertTypeMessageId, type AlertsFilter } from '@/domain/alerts/notificationCategory';
+import { navigateToAlert, resolveAlertHref } from '@/domain/alerts/alertNavigation';
 
 export default function AlertsScreen() {
   const { theme, scaleFont } = useSignalTheme();
@@ -29,14 +45,18 @@ export default function AlertsScreen() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const router = useRouter();
+  const ipadNav = useIpadSidebarNav();
   const [items, setItems] = useState<StoredNotification[]>([]);
   const [authSession, setAuthSession] = useState<StoredAppAuthSession | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [newContentAvailable, setNewContentAvailable] = useState(false);
   const [filter, setFilter] = useState<AlertsFilter>('all');
+  const { ref: listRef } = useScrollToTopOnChange([filter], { resyncDeps: [items] });
+  const listScrollResetKey = filter;
   useResetRefreshingOnTabBlur(setRefreshing);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (activeFilter: AlertsFilter = filter, forceRefresh = false) => {
     const savedSession = await loadAppAuthSession();
     setAuthSession(savedSession);
     setAuthChecked(true);
@@ -45,46 +65,55 @@ export default function AlertsScreen() {
       setItems([]);
       return;
     }
-    const [list, serverNotifications, dismissed] = await Promise.all([
-      loadNotificationHistory(),
-      hasSignalApi() ? fetchSignalNotifications(access, 50).catch(() => []) : Promise.resolve([]),
-      loadDismissedNotificationIds(),
-    ]);
-    const serverItems: StoredNotification[] = serverNotifications.map((item) => ({
-      id: `server:${item.id}`,
-      title: item.title,
-      body: item.body,
-      receivedAt: item.scheduledAt || item.createdAt || new Date().toISOString(),
-      high: item.priority === 'high',
-      type: item.type,
-    }));
-    const seen = new Set<string>();
-    setItems(
-      [...serverItems, ...list]
-        .filter((item) => {
-          if (dismissed.has(item.id)) return false;
-          if (seen.has(item.id)) return false;
-          seen.add(item.id);
-          return true;
-        })
-        .sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime()),
-    );
-  }, []);
+    if (!hasSignalApi()) {
+      setItems([]);
+      return;
+    }
+    setItems(await loadAlertsFromServer(access, activeFilter, { cacheMode: signalCacheMode(forceRefresh) }));
+  }, [filter]);
 
   useFocusEffect(
     useCallback(() => {
-      void reload();
+      void (async () => {
+        setNewContentAvailable(false);
+        await reload();
+        await markAlertsSeen();
+      })();
     }, [reload]),
   );
 
-  const onRefresh = useCallback(async () => {
+  /** 알림함 포커스 중 새 알림 도착 시 chip (탭 배지는 suppress로 숨김) */
+  useEffect(() => {
+    const access = getSessionAccessToken(authSession);
+    if (!isFocused || !access || !hasSignalApi()) {
+      setNewContentAvailable(false);
+      return;
+    }
+    const POLL_MS = 3 * 60 * 1000;
+    const poll = async () => {
+      try {
+        const hasUnread = await checkAlertsHasUnread();
+        if (hasUnread) setNewContentAvailable(true);
+      } catch {
+        /* ignore polling errors */
+      }
+    };
+    const id = setInterval(() => void poll(), POLL_MS);
+    return () => clearInterval(id);
+  }, [authSession, isFocused]);
+
+  const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
+    setNewContentAvailable(false);
     try {
-      await reload();
+      await reload(filter, true);
+      await markAlertsSeen();
     } finally {
       setRefreshing(false);
     }
-  }, [reload]);
+  }, [filter, reload]);
+
+  const onRefresh = onRefreshBase;
 
   const alertFilters = useMemo(
     () =>
@@ -92,8 +121,7 @@ export default function AlertsScreen() {
         { key: 'all', label: t('alertsFilterAll') },
         { key: 'high', label: t('alertsFilterHigh') },
         { key: 'signal', label: t('alertsFilterSignal') },
-        { key: 'notice', label: t('alertsFilterNotice') },
-        { key: 'account', label: t('alertsFilterAccount') },
+        { key: 'system', label: t('alertsFilterSystem') },
       ] as const,
     [t],
   );
@@ -102,31 +130,73 @@ export default function AlertsScreen() {
     router.push('/settings?tab=notifications');
   }, [router]);
 
-  const settingsButton = useMemo(
+  const onDeleteAllAlerts = useCallback(() => {
+    if (items.length === 0) return;
+    Alert.alert(t('alertsDeleteAllConfirmTitle'), t('alertsDeleteAllConfirmBody'), [
+      { text: t('commonCancel'), style: 'cancel' },
+      {
+        text: t('alertsSwipeDelete'),
+        style: 'destructive',
+        onPress: () => {
+          const access = getSessionAccessToken(authSession);
+          setItems([]);
+          if (access && hasSignalApi()) {
+            void deleteSignalNotifications(access, { all: true }).catch(() => {});
+            clearSignalNotificationsCache();
+          }
+        },
+      },
+    ]);
+  }, [authSession, items.length, t]);
+
+  const notificationSettingsButton = useMemo(
     () => (
       <Pressable
         onPress={openNotificationSettings}
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={t('alertsOpenSettings')}
-        style={({ pressed }) => [styles.filterSettingsBtn, pressed && styles.filterSettingsBtnPressed]}>
+        style={({ pressed }) => [styles.filterHeaderBtn, pressed && styles.filterHeaderBtnPressed]}>
         <FontAwesome name="cog" size={18} color={theme.textMuted} />
       </Pressable>
     ),
-    [openNotificationSettings, styles.filterSettingsBtn, styles.filterSettingsBtnPressed, t, theme.textMuted],
+    [openNotificationSettings, styles, t, theme.textMuted],
+  );
+
+  const headerActions = useMemo(
+    () => (
+      <View style={styles.filterHeaderActions}>
+        {items.length > 0 ? (
+          <Pressable
+            onPress={onDeleteAllAlerts}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t('alertsDeleteAllA11y')}
+            style={({ pressed }) => [styles.filterHeaderBtn, pressed && styles.filterHeaderBtnPressed]}>
+            <FontAwesome name="trash-o" size={18} color={theme.textMuted} />
+          </Pressable>
+        ) : null}
+        {notificationSettingsButton}
+      </View>
+    ),
+    [items.length, notificationSettingsButton, onDeleteAllAlerts, styles, t],
   );
 
   const onDeleteAlert = useCallback(async (id: string) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
-    await removeNotificationById(id);
-  }, []);
+    const access = getSessionAccessToken(authSession);
+    if (access && hasSignalApi()) {
+      await deleteSignalNotifications(access, { ids: [id] }).catch(() => {});
+      clearSignalNotificationsCache();
+    }
+  }, [authSession]);
 
-  const filteredItems = useMemo(
-    () => items.filter((item) => alertMatchesFilter(item, filter)),
-    [filter, items],
-  );
+  const filteredItems = items;
 
-  const listHeader = useMemo(
+  const listEmptyMessage =
+    items.length === 0 ? (filter === 'all' ? t('alertsEmpty') : t('alertsFilterEmpty')) : null;
+
+  const alertsTopFixed = useMemo(
     () => (
       <>
         <View style={styles.filterRow}>
@@ -136,7 +206,10 @@ export default function AlertsScreen() {
               return (
                 <Pressable
                   key={item.key}
-                  onPress={() => setFilter(item.key)}
+                  onPress={() => {
+                    setFilter(item.key);
+                    void reload(item.key);
+                  }}
                   style={[styles.filterTab, selected && styles.filterTabActive]}
                   accessibilityRole="tab"
                   accessibilityState={{ selected }}>
@@ -145,19 +218,30 @@ export default function AlertsScreen() {
               );
             })}
           </View>
-          {settingsButton}
+          {headerActions}
         </View>
       </>
     ),
-    [alertFilters, filter, settingsButton, styles, t],
+    [alertFilters, filter, headerActions, styles, t],
+  );
+
+  const onOpenAlert = useCallback(
+    (item: StoredNotification) => {
+      navigateToAlert(router, ipadNav, item);
+    },
+    [ipadNav, router],
   );
 
   const renderAlert = useCallback(
     ({ item: a }: { item: StoredNotification }) => {
+      const href = resolveAlertHref(a);
+      const typeLabel = t(alertTypeMessageId(a));
       const card = (
         <View style={styles.alertCard}>
           <View style={styles.alertTop}>
-            <Text style={styles.alertTitle}>{a.title}</Text>
+            <View style={styles.typeBadge}>
+              <Text style={styles.typeBadgeText}>{typeLabel}</Text>
+            </View>
             {a.high ? (
               <View style={styles.high}>
                 <Text style={styles.highText}>{t('alertsHighBadge')}</Text>
@@ -166,6 +250,7 @@ export default function AlertsScreen() {
               <Text style={styles.time}>{formatRelativeTime(a.receivedAt, locale)}</Text>
             )}
           </View>
+          <Text style={styles.alertTitle}>{a.title}</Text>
           <Text style={styles.alertBody}>{a.body}</Text>
           {a.high ? <Text style={styles.timeRight}>{formatRelativeTime(a.receivedAt, locale)}</Text> : null}
         </View>
@@ -186,14 +271,24 @@ export default function AlertsScreen() {
               </RectButton>
             </View>
           )}>
-          {card}
+          {href ? (
+            <Pressable
+              onPress={() => onOpenAlert(a)}
+              style={({ pressed }) => [pressed && styles.alertCardPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={`${typeLabel}. ${a.title}`}>
+              {card}
+            </Pressable>
+          ) : (
+            card
+          )}
         </ReanimatedSwipeable>
       );
     },
-    [locale, onDeleteAlert, styles, t],
+    [locale, onDeleteAlert, onOpenAlert, styles, t],
   );
 
-  const bottomPad = 28 + insets.bottom;
+  const bottomPad = stackScreenScrollBottomPadding(insets.bottom);
 
   if (!authChecked) {
     return (
@@ -210,7 +305,7 @@ export default function AlertsScreen() {
       <SafeAreaView style={styles.safe} edges={['bottom']}>
         {isFocused ? <OtaUpdateBanner /> : null}
         <View style={[styles.authGate, { paddingBottom: bottomPad }]}>
-          <View style={styles.authGateTopBar}>{settingsButton}</View>
+          <View style={styles.authGateTopBar}>{notificationSettingsButton}</View>
           <View style={styles.authGateCard}>
             <Text style={styles.authGateKicker}>{t('screenAlerts')}</Text>
             <Text style={styles.authGateTitle}>{t('alertsLoginRequiredTitle')}</Text>
@@ -231,66 +326,82 @@ export default function AlertsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       {isFocused ? <OtaUpdateBanner /> : null}
-      <FlatList
-        data={filteredItems}
-        keyExtractor={(a) => a.id}
-        renderItem={renderAlert}
-        ListHeaderComponent={listHeader}
-        ListEmptyComponent={
-          filteredItems.length > 0 ? null : (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>{items.length > 0 ? t('alertsFilterEmpty') : t('alertsEmpty')}</Text>
-            </View>
-          )
-        }
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: bottomPad },
-          filteredItems.length === 0 ? styles.listContentEmpty : null,
-        ]}
-        style={styles.list}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        removeClippedSubviews={Platform.OS === 'android'}
-        initialNumToRender={12}
-        windowSize={7}
-      />
+      <View style={styles.mainColumn}>
+        <View style={styles.topFixed}>{alertsTopFixed}</View>
+        {isFocused ? (
+          <FeedNewContentChip
+            visible={newContentAvailable}
+            refreshing={refreshing}
+            message={t('feedNewContentAvailable')}
+            onPress={() => void onRefresh()}
+          />
+        ) : null}
+        <WebWheelFlatList
+          scrollResetKey={listScrollResetKey}
+          ref={listRef as never}
+          data={filteredItems}
+          keyExtractor={(a) => a.id}
+          renderItem={renderAlert}
+          ListEmptyComponent={
+            listEmptyMessage ? (
+              <View style={styles.emptyBox}>
+                <Text style={styles.emptyText}>{listEmptyMessage}</Text>
+              </View>
+            ) : null
+          }
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: bottomPad },
+            filteredItems.length === 0 ? styles.listContentEmpty : null,
+          ]}
+          style={styles.list}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          removeClippedSubviews={Platform.OS === 'android'}
+          initialNumToRender={12}
+          windowSize={7}
+        />
+      </View>
     </SafeAreaView>
   );
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.bg },
-    list: {
+    safe: { flex: 1, backgroundColor: webShellBackground(theme.bg) },
+    mainColumn: {
       flex: 1,
       minHeight: 0,
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
     },
-    listContent: { paddingHorizontal: 16, paddingTop: 8 },
+    topFixed: fixedHeader.strip,
+    list: {
+      flex: 1,
+      minHeight: 0,
+    },
+    listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
     listContentEmpty: { flexGrow: 1 },
     filterRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 8,
-      marginBottom: 14,
+      gap: 16,
     },
-    filterTabs: {
-      flex: 1,
+    filterHeaderActions: {
       flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
+      alignItems: 'center',
+      gap: 2,
+      flexShrink: 0,
     },
-    filterSettingsBtn: {
+    filterHeaderBtn: {
       minWidth: 36,
       minHeight: 36,
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: 0,
     },
-    filterSettingsBtnPressed: { opacity: 0.65 },
+    filterHeaderBtnPressed: { opacity: 0.65 },
     filterTab: {
       minHeight: 36,
       paddingHorizontal: 12,
@@ -307,10 +418,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     filterTabText: { fontSize: sf(12), fontWeight: '800', color: theme.textMuted },
     filterTabTextActive: { color: theme.green },
+    filterTabs: {
+      flex: 1,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 16,
+    },
     candidateSection: {
       marginBottom: 14,
       padding: 14,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 2,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
@@ -319,16 +436,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 10,
+      gap: 16,
       marginBottom: 4,
     },
     candidateTitle: { flex: 1, fontSize: sf(14), fontWeight: '900', color: theme.text },
     candidateLink: { fontSize: sf(12), fontWeight: '800', color: theme.green },
-    candidateHint: { fontSize: sf(11), color: theme.textMuted, lineHeight: sf(16), marginBottom: 10 },
+    candidateHint: { fontSize: sf(11), color: theme.textMuted, lineHeight: sf(16), marginBottom: 14 },
     candidateCard: {
       paddingVertical: 12,
       paddingHorizontal: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.card,
@@ -336,32 +453,33 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     candidateCardPressed: { opacity: 0.78 },
     candidateMetaRow: {
-      marginTop: 9,
+      marginTop: 16,
       flexDirection: 'row',
       justifyContent: 'space-between',
-      gap: 10,
+      gap: 16,
     },
     candidateMeta: { flexShrink: 1, fontSize: sf(11), color: theme.textDim, fontWeight: '700' },
     emptyBox: {
       paddingVertical: 24,
       paddingHorizontal: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      marginBottom: 12,
+      marginBottom: 16,
     },
     emptyText: { fontSize: sf(13), color: theme.textMuted, lineHeight: sf(20) },
     alertCard: {
       backgroundColor: theme.card,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       padding: 14,
     },
+    alertCardPressed: { opacity: 0.78 },
     swipeRow: {
-      marginBottom: 10,
-      borderRadius: 12,
+      marginBottom: 14,
+      borderRadius: 8,
       overflow: 'hidden',
     },
     swipeRight: {
@@ -380,8 +498,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(15),
       fontWeight: '800',
     },
-    alertTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-    alertTitle: { fontSize: sf(13), fontWeight: '700', color: theme.text, flex: 1, paddingRight: 8 },
+    alertTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    typeBadge: {
+      backgroundColor: theme.greenDim,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 999,
+    },
+    typeBadgeText: { fontSize: sf(10), fontWeight: '900', color: theme.green },
+    alertTitle: { fontSize: sf(13), fontWeight: '700', color: theme.text, marginBottom: 6 },
     alertBody: { fontSize: sf(12), color: theme.textMuted, lineHeight: sf(18) },
     time: { fontSize: sf(11), color: theme.textDim },
     timeRight: { fontSize: sf(11), color: theme.textDim, marginTop: 6 },
@@ -396,21 +523,21 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     highText: { fontSize: sf(10), fontWeight: '900', color: '#FF6B6B' },
     loadingCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     authGate: { flex: 1, justifyContent: 'center', paddingHorizontal: 16 },
-    authGateTopBar: { alignItems: 'flex-end', marginBottom: 12 },
+    authGateTopBar: { alignItems: 'flex-end', marginBottom: 16 },
     authGateCard: {
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.card,
       padding: 18,
-      gap: 10,
+      gap: 16,
     },
     authGateKicker: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
     authGateTitle: { color: theme.text, fontSize: sf(21), lineHeight: sf(27), fontWeight: '900' },
     authGateBody: { color: theme.textMuted, fontSize: sf(13), lineHeight: sf(19) },
     authGateButton: {
       minHeight: 44,
-      borderRadius: 12,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.green,

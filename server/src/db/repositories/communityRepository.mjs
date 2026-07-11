@@ -12,6 +12,33 @@ const ROW_COLUMNS = `
   published_at, fetched_at, updated_at
 `;
 
+const NAVER_LIKEUSSTOCK_CLUB_ID = '28497937';
+
+function naverCafeMobileUrl(articleId) {
+  const id = cleanText(articleId);
+  return id ? `https://m.cafe.naver.com/ca-fe/web/cafes/${NAVER_LIKEUSSTOCK_CLUB_ID}/articles/${id}` : null;
+}
+
+function publicSourceUrl(row) {
+  const raw = cleanText(row?.source_url);
+  if (row?.source === 'naver_likeusstock_free') {
+    if (!raw) return naverCafeMobileUrl(row?.provider_item_id);
+    try {
+      const parsed = new URL(raw);
+      const articleId = parsed.searchParams.get('articleid') || parsed.pathname.match(/\/articles\/([^/?#]+)/)?.[1];
+      return naverCafeMobileUrl(articleId || row?.provider_item_id) || raw;
+    } catch {
+      return naverCafeMobileUrl(row?.provider_item_id) || raw;
+    }
+  }
+  if (row?.source === 'save_user_news') {
+    if (raw) return raw.replace('/community/detail/', '/community/');
+    const postId = cleanText(row?.provider_item_id);
+    return postId ? `https://www.saveticker.com/community/${postId}` : null;
+  }
+  return raw || null;
+}
+
 function publicCommunityPost(row) {
   if (!row) return null;
   return {
@@ -20,7 +47,7 @@ function publicCommunityPost(row) {
     provider: row.provider || null,
     title: row.title || '',
     body: row.body || '',
-    sourceUrl: row.source_url || null,
+    sourceUrl: publicSourceUrl(row),
     publishedAt: parseToUtcIsoOrNull(row.published_at),
     fetchedAt: parseToUtcIsoOrNull(row.fetched_at),
     updatedAt: parseToUtcIsoOrNull(row.updated_at),
@@ -28,6 +55,24 @@ function publicCommunityPost(row) {
 }
 
 export const COMMUNITY_SOURCES = ['naver_likeusstock_free', 'save_user_news'];
+
+/** Drop rows for `source` that were not in the latest ingest window. */
+export async function pruneCommunityPostsForSource(source, providerItemIds = []) {
+  const cleanSource = cleanText(source);
+  if (!cleanSource) return { deleted: 0 };
+  const keepIds = [...new Set((providerItemIds || []).map((id) => cleanText(id)).filter(Boolean))];
+  if (keepIds.length === 0) return { deleted: 0 };
+
+  const result = await queryKysely(
+    `
+      DELETE FROM community_posts
+      WHERE source = $1
+        AND NOT (provider_item_id = ANY($2::text[]))
+    `,
+    [cleanSource, keepIds],
+  );
+  return { deleted: Number(result.rowCount) || 0 };
+}
 
 export async function queryPublicCommunityRows(options = {}) {
   const { limit, offset } = pageOptions(options, 30);
@@ -77,4 +122,19 @@ export async function queryPublicCommunityRows(options = {}) {
     hasMore,
     nextOffset: hasMore ? offset + pageRows.length : null,
   };
+}
+
+export async function queryPublicCommunityPostByIdRow(id) {
+  const key = cleanText(id);
+  if (!key) return null;
+  const result = await queryKysely(
+    `
+      SELECT ${ROW_COLUMNS}
+      FROM community_posts
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [key],
+  );
+  return publicCommunityPost(result.rows[0]);
 }

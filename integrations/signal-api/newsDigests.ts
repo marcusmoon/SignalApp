@@ -1,5 +1,11 @@
 import { signalApi } from '@/integrations/signal-api/httpClient';
+import type { SignalCacheMode } from '@/integrations/signal-api/cacheMode';
 import type { SignalApiNewsDigestItem, SignalNewsListMeta } from '@/integrations/signal-api/types';
+import {
+  buildSignalNewsDigestsCacheKey,
+  peekSignalNewsDigestsCache,
+  storeSignalNewsDigestsCache,
+} from '@/integrations/signal-api/cache/newsDigestsCache';
 
 export type SignalNewsDigestPage = {
   items: SignalApiNewsDigestItem[];
@@ -35,16 +41,26 @@ export async function fetchSignalNewsDigests(
     from?: string;
     to?: string;
     batches?: number;
+    locale?: string;
   } = {},
+  options?: { cacheMode?: SignalCacheMode },
 ): Promise<SignalNewsDigestPage> {
+  const cacheMode = options?.cacheMode || 'use';
+  const cacheKey = buildSignalNewsDigestsCacheKey(params);
+  if (cacheMode !== 'bypass') {
+    const hit = peekSignalNewsDigestsCache(cacheKey);
+    if (hit) return hit;
+  }
   const json = await signalApi<{ data: SignalApiNewsDigestItem[]; meta?: Partial<SignalNewsListMeta> }>(
     '/v1/news-digests',
     params,
     { timeoutMs: 4000, attempts: 1 },
   );
   const rows = Array.isArray(json.data) ? json.data : [];
-  return {
+  const value = {
     items: rows,
     meta: normalizeMeta({ ...json, data: rows }, params),
   };
+  if (cacheMode !== 'bypass') storeSignalNewsDigestsCache(cacheKey, value);
+  return value;
 }

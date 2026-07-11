@@ -16,6 +16,7 @@ function providerName() {
 }
 
 function expoMessageFor(notification, device) {
+  const payload = notification.payload && typeof notification.payload === 'object' ? notification.payload : {};
   return {
     to: device.pushToken,
     sound: 'default',
@@ -29,6 +30,14 @@ function expoMessageFor(notification, device) {
       sourceType: notification.sourceType || '',
       sourceId: notification.sourceId || '',
       symbols: Array.isArray(notification.symbols) ? notification.symbols : [],
+      payload: {
+        briefingDate: payload.briefingDate || null,
+        generatedDate: payload.generatedDate || null,
+        digestId: payload.digestId || null,
+        category: payload.category || null,
+        market: payload.market || null,
+        session: payload.session || null,
+      },
     },
   };
 }
@@ -63,6 +72,7 @@ async function sendNotification(notification) {
       status: 'skipped',
       provider,
       errorMessage: 'NO_ACTIVE_PUSH_DEVICE',
+      devices,
     };
   }
   if (provider === 'mock') {
@@ -70,6 +80,7 @@ async function sendNotification(notification) {
       status: 'sent',
       provider,
       providerMessageId: `mock:${notification.id}:${devices.length}`,
+      devices,
     };
   }
   if (provider === 'expo') {
@@ -78,12 +89,14 @@ async function sendNotification(notification) {
       status: 'sent',
       provider,
       providerMessageId: result.providerMessageId,
+      devices,
     };
   }
   return {
     status: 'failed',
     provider,
     errorMessage: `UNSUPPORTED_PUSH_PROVIDER:${provider}`,
+    devices,
   };
 }
 
@@ -98,8 +111,12 @@ export async function processNotificationOutbox({ limit = config.notificationSen
       if (result.status === 'sent') summary.sent += 1;
       else if (result.status === 'skipped') summary.skipped += 1;
       else summary.failed += 1;
+      const preservePublished = notification.status === 'published';
+      const pushOutcome = result.status === 'sent' ? 'sent' : 'skipped';
       await updateNotificationSendState(notification.id, {
-        status: result.status,
+        preservePublished,
+        status: preservePublished ? 'published' : result.status,
+        pushDelivery: preservePublished ? pushOutcome : undefined,
         provider: result.provider,
         providerMessageId: result.providerMessageId || null,
         errorMessage: result.errorMessage || null,
@@ -109,7 +126,9 @@ export async function processNotificationOutbox({ limit = config.notificationSen
     } catch (error) {
       summary.failed += 1;
       await updateNotificationSendState(notification.id, {
-        status: 'failed',
+        preservePublished: notification.status === 'published',
+        status: notification.status === 'published' ? 'published' : 'failed',
+        pushDelivery: notification.status === 'published' ? 'skipped' : undefined,
         provider,
         errorMessage: error instanceof Error ? error.message : String(error),
         attempts,

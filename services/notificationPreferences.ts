@@ -5,11 +5,13 @@ const KEY = '@signal/notification_prefs_v1';
 export type NotificationPrefs = {
   /** OS 권한 + 서버 디바이스 등록 마스터 */
   pushEnabled: boolean;
-  /** market_briefing 푸시 수신 */
+  /** market wrap · news flow · market briefing 푸시 수신 */
   briefingPushEnabled: boolean;
   /** 기기 로컬 알림: CPI·FOMC 등 경제 캘린더(다음 10일, 하루 1회 요약 시각) */
   localMacroCalendar: boolean;
 };
+
+export type ServerNotificationPrefs = Pick<NotificationPrefs, 'pushEnabled' | 'briefingPushEnabled'>;
 
 const DEFAULTS: NotificationPrefs = {
   pushEnabled: true,
@@ -25,10 +27,16 @@ export function shouldRecordIncomingPush(
   if (!prefs.pushEnabled) return false;
   const normalizedType = String(type || '').toLowerCase();
   const normalizedSource = String(sourceType || '').toLowerCase();
-  if (normalizedType === 'insight_signal' || normalizedSource === 'insight') {
-    return false;
-  }
-  if (normalizedType === 'market_briefing' || normalizedSource === 'market_briefing') {
+  const isBriefingPush =
+    normalizedType === 'market_briefing' ||
+    normalizedSource === 'market_briefing' ||
+    normalizedType === 'today_briefing' ||
+    normalizedSource === 'today_briefing' ||
+    normalizedType === 'news_digest' ||
+    normalizedSource === 'news_digest' ||
+    normalizedType === 'disclosure_digest' ||
+    normalizedSource === 'disclosure_digest';
+  if (isBriefingPush) {
     return prefs.briefingPushEnabled;
   }
   return true;
@@ -41,7 +49,6 @@ export async function loadNotificationPrefs(): Promise<NotificationPrefs> {
     const p = JSON.parse(raw) as Partial<NotificationPrefs> & {
       earningsOnly?: boolean;
       localWatchlistEarnings?: boolean;
-      insightPushEnabled?: boolean;
       signalAlertsEnabled?: boolean;
       signalWatchlistOnly?: boolean;
     };
@@ -59,5 +66,29 @@ export async function loadNotificationPrefs(): Promise<NotificationPrefs> {
 
 export async function saveNotificationPrefs(next: Partial<NotificationPrefs>): Promise<void> {
   const cur = await loadNotificationPrefs();
-  await AsyncStorage.setItem(KEY, JSON.stringify({ ...cur, ...next }));
+  const merged = { ...cur, ...next };
+  await AsyncStorage.setItem(KEY, JSON.stringify(merged));
+  void syncServerNotificationPrefs(merged);
+}
+
+async function syncServerNotificationPrefs(prefs: NotificationPrefs): Promise<void> {
+  try {
+    const { hasSignalApi } = await import('@/services/env');
+    if (!hasSignalApi()) return;
+    const { getSessionAccessToken, loadAppAuthSession } = await import('@/services/appAuthSession');
+    const { updateSignalNotificationPrefs } = await import('@/integrations/signal-api/notifications');
+    const session = await loadAppAuthSession();
+    const access = getSessionAccessToken(session);
+    if (!access) return;
+    await updateSignalNotificationPrefs(access, {
+      pushEnabled: prefs.pushEnabled,
+      briefingPushEnabled: prefs.briefingPushEnabled,
+    });
+  } catch {
+    /* local prefs remain source of truth for UI */
+  }
+}
+
+export async function syncNotificationPrefsFromLocal(): Promise<void> {
+  await syncServerNotificationPrefs(await loadNotificationPrefs());
 }

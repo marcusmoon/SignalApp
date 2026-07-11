@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { HomeFocusContent } from '@/components/signal/HomeFocusContent';
 import { APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { SCREEN_WIDE_SCROLL_BOTTOM_BASE } from '@/constants/screenLayout';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 
 export function IpadHomeScreen() {
@@ -20,7 +21,7 @@ export function IpadHomeScreen() {
       selectedYmd={selectedYmd}
       todayYmd={todayYmd}
       onSelectedYmdChange={setSelectedYmd}
-      scrollContentPaddingBottom={32}
+      scrollContentPaddingBottom={SCREEN_WIDE_SCROLL_BOTTOM_BASE}
       contentMaxWidth={APP_WIDE_CONTENT_MAX_WIDTH}
       showIssueSummary
     />

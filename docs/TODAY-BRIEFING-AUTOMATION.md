@@ -14,6 +14,8 @@
 - URL: `/v1/today-briefings/ingest`
 - Header: `x-signal-automation-token: $SIGNAL_AUTOMATION_INGEST_TOKEN`
 
+요청 본문 최상위에 `notifyInbox`(알림센터 적재)와 `sendPush`(기기 푸시)를 둔다. 기본값 `true`, 서로 독립.
+
 ## 조회 Endpoint
 
 ```text
@@ -21,10 +23,14 @@ GET /v1/today-briefing?date=<UTC_YYYY-MM-DD>&locale=ko
 GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
 ```
 
+`sourceRefs`는 ingest 시 `type`+`id`만 저장하고 read 시 hydrate한다([`DIGEST-SOURCE-REF-HYDRATION.md`](./DIGEST-SOURCE-REF-HYDRATION.md)).
+
 ## 최소 Payload
 
 ```json
 {
+  "notifyInbox": true,
+  "sendPush": true,
   "id": "today-briefing:2026-07-03:ko",
   "locale": "ko",
   "title": "오늘의 브리핑",
@@ -39,11 +45,9 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
   "marketSnapshot": {},
   "sourceRefs": [
     {
-      "kind": "digest",
-      "title": "코스피 8000 붕괴 하루 만에 6% 급반등",
-      "url": "https://example.com/story",
-      "sourceName": "Example News",
-      "publishedAt": "2026-07-03T08:51:38Z"
+      "type": "news",
+      "id": "codex-news:global:abc123",
+      "relation": "primary"
     }
   ],
   "relatedDigestIds": [],
@@ -52,7 +56,8 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
   "generatedAt": "2026-07-03T14:00:00Z",
   "publishedAt": "2026-07-03T14:00:00Z",
   "status": "published",
-  "pushCandidate": false
+  "pushTitle": "마감 브리핑 도착",
+  "pushBody": "오늘 시장을 한눈에 정리했습니다."
 }
 ```
 
@@ -61,4 +66,5 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
 - 매일 23:00 KST 실행을 기본으로 한다.
 - dry-run 확인 전에는 `/v1/today-briefings/ingest`를 호출하지 않는다.
 - Signal Server GET API 응답에 없는 출처, URL, 수치, 제목은 만들지 않는다.
-- 확인 후 ingest할 때도 `sendPush`는 사용하지 않는다. 오늘의 브리핑은 홈 노출용이며 푸시는 별도 정책으로 다룬다.
+- 확인 후 ingest 시 `notifyInbox=true`(기본)이면 알림함에 적재된다. `sendPush=false`로 푸시만 건너뛸 수 있다. 두 플래그는 독립이다.
+- 푸시 `deepLink`는 `/today-briefing?date=<briefingDate>`이다.

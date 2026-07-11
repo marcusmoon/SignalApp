@@ -102,6 +102,10 @@ function groupJobsByAreaStage(jobs) {
   return areas;
 }
 
+function isCommunityIngestJob(job) {
+  return job?.domain === 'community' || job?.area === 'community';
+}
+
 function renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources = [] }) {
   const readonlyValue = (label, value) => `
     <div class="jobReadonlyItem">
@@ -164,6 +168,38 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources = []
         ? [String(job.params.rssSourceId)]
         : [],
   );
+  const communityPageSize = Math.min(50, Math.max(5, Number(job.params?.pageSize) || 30));
+  const communitySourceHint =
+    job.handler === 'likeusstock_free'
+      ? textFor('jobCommunitySourceNaver')
+      : job.handler === 'user_news'
+        ? textFor('jobCommunitySourceSave')
+        : textFor('jobCommunitySourceGeneric');
+  const communityEditor = isCommunityIngestJob(job)
+    ? `
+        <div class="jobSpecialEditor jobCommunityEditor">
+          <div class="jobSpecialEditorHead">
+            <div>
+              <strong>${esc(textFor('jobCommunityTitle'))}</strong>
+              <p class="muted">${esc(communitySourceHint)}</p>
+            </div>
+          </div>
+          <div class="jobCommunityMetaGrid">
+            <label class="fieldLabel">${esc(textFor('jobCommunityPageSize'))}
+              <select data-job-community-pagesize="${esc(job.jobKey)}">
+                ${[5, 10, 15, 20, 30, 40, 50]
+                  .map(
+                    (size) =>
+                      `<option value="${size}" ${communityPageSize === size ? 'selected' : ''}>${esc(textFor('jobCommunityPageSizeOption').replace('{{count}}', String(size)))}</option>`,
+                  )
+                  .join('')}
+              </select>
+            </label>
+            <p class="muted jobCommunityHint">${esc(textFor('jobCommunityPageSizeHint'))}</p>
+          </div>
+        </div>
+      `
+    : '';
   const rssSelector =
     job.provider === 'rss'
       ? `
@@ -244,6 +280,7 @@ function renderJobEditPanel({ job, esc, textFor, jobDisplayName, rssSources = []
           ${readonlyValue('Operation', job.operation || 'latest')}
         </div>
         ${rssSelector}
+        ${communityEditor}
         ${afterHoursEditor}
       </div>
 
@@ -275,10 +312,20 @@ function jobLastRunStatusText(job, textFor) {
   return status;
 }
 
-function jobLockText(job, textFor) {
+function jobLockText(job, textFor, textForVars, formatDateTime) {
   if (!job?.lock?.locked) return '';
-  if (job.lock.canForceUnlock) return textFor('jobLockStale');
-  return textFor('jobLockActive');
+  if (job.lock.canForceUnlock) {
+    const reasonKey = {
+      expired: 'jobLockReasonExpired',
+      quiet_ttl: 'jobLockReasonQuiet',
+      running_ttl: 'jobLockReasonRunning',
+      orphaned_lock: 'jobLockReasonOrphan',
+      completed_run: 'jobLockReasonCompletedRun',
+    }[job.lock.reason];
+    return reasonKey ? textFor(reasonKey) : textFor('jobLockStale');
+  }
+  const expiresAt = job.lock.expiresAt ? formatDateTime(job.lock.expiresAt) : '-';
+  return textForVars('jobLockActiveUntil', { time: expiresAt });
 }
 
 function jobForceUnlockButton(job, esc, textFor) {
@@ -305,6 +352,10 @@ function jobConfigSummary(job, rssSources, textFor) {
       .replace('{{count}}', count)
       .replace('{{usdkrw}}', params.fallbackUsdKrw ? String(params.fallbackUsdKrw) : '-');
   }
+  if (isCommunityIngestJob(job)) {
+    const pageSize = Math.min(50, Math.max(5, Number(params.pageSize) || 30));
+    return textFor('jobConfigCommunitySummary').replace('{{count}}', String(pageSize));
+  }
   const keys = Object.keys(params).filter((key) => params[key] !== undefined && params[key] !== null && params[key] !== '');
   return keys.length > 0 ? textFor('jobConfigParamsSummary').replace('{{count}}', keys.length) : textFor('jobConfigNoParams');
 }
@@ -319,13 +370,13 @@ function jobHealthClass(job) {
 
 function renderJobSummary({ jobsAll, jobsFiltered, esc, textFor, textForVars }) {
   const enabled = jobsAll.filter((j) => j.enabled).length;
-  const locked = jobsAll.filter((j) => j?.lock?.locked).length;
+  const activeLocks = jobsAll.filter((j) => j?.lock?.locked).length;
   const staleLocks = jobsAll.filter((j) => j?.lock?.canForceUnlock).length;
   const failed = jobsAll.filter((j) => String(j.latestRunStatus || '') === 'failed').length;
   const cards = [
     [textFor('jobOpsTotal'), jobsAll.length],
     [textFor('jobOpsEnabled'), enabled],
-    [textFor('jobOpsLocked'), locked],
+    [textFor('jobOpsLocked'), activeLocks],
     [textFor('jobOpsStaleLocks'), staleLocks],
     [textFor('jobOpsFailed'), failed],
   ];
@@ -351,9 +402,9 @@ function renderJobSummary({ jobsAll, jobsFiltered, esc, textFor, textForVars }) 
   `;
 }
 
-function renderJobCard({ job, selected, esc, textFor, jobDisplayName, operationBadge, areaBadge, stageBadge, providerBadge, jobIntervalLabel, formatDateTime, rssSources }) {
+function renderJobCard({ job, selected, esc, textFor, textForVars, jobDisplayName, operationBadge, areaBadge, stageBadge, providerBadge, jobIntervalLabel, formatDateTime, rssSources }) {
   const lastRunStatus = jobLastRunStatusText(job, textFor);
-  const lock = jobLockText(job, textFor);
+  const lock = jobLockText(job, textFor, textForVars, formatDateTime);
   const lastRun = jobLastRunAt(job);
   const checked = selected.has(job.jobKey);
   return `
@@ -585,6 +636,7 @@ export async function loadJobsView(ctx) {
                                     selected,
                                     esc,
                                     textFor,
+                                    textForVars,
                                     jobDisplayName,
                                     operationBadge,
                                     areaBadge,

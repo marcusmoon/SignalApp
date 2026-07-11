@@ -5,10 +5,9 @@ import {
   registerNewsUnreadBackgroundFetch,
   syncNewsUnreadBackgroundFetchRegistration,
 } from '@/tasks/newsUnreadBackgroundTask';
+import { refreshFeedUnreadBadgesInBackground } from '@/services/feedUnreadBadges';
 import { hasSignalApi } from '@/services/env';
 import { loadLocale } from '@/services/localePreference';
-import { refreshNewsUnreadFromServer } from '@/services/newsUnreadPreference';
-import { refreshSignalUnreadFromServer } from '@/services/signalUnreadPreference';
 
 let appStateSub: { remove: () => void } | null = null;
 let intervalSub: (() => void) | null = null;
@@ -16,10 +15,7 @@ let intervalSub: (() => void) | null = null;
 async function runBackgroundNewsCheck(): Promise<void> {
   if (!hasSignalApi()) return;
   const locale = await loadLocale();
-  await Promise.allSettled([
-    refreshNewsUnreadFromServer(locale),
-    refreshSignalUnreadFromServer(),
-  ]);
+  await refreshFeedUnreadBadgesInBackground(locale);
 }
 
 function onAppStateChange(next: AppStateStatus): void {

@@ -1,13 +1,74 @@
+const NOTIFICATION_TYPE_OPTIONS = [
+  'service_notice',
+  'app_update',
+  'market_alert',
+  'earnings_reminder',
+  'market_briefing',
+  'today_briefing',
+  'news_digest',
+  'disclosure_digest',
+];
+
+const NOTIFICATION_CATEGORY_OPTIONS = ['all', 'high', 'signal', 'system'];
+
 function typeOptions(esc, selected = 'service_notice') {
-  return ['service_notice', 'app_update', 'insight_signal', 'market_alert', 'earnings_reminder']
-    .map((type) => `<option value="${esc(type)}" ${type === selected ? 'selected' : ''}>${esc(type)}</option>`)
-    .join('');
+  return NOTIFICATION_TYPE_OPTIONS.map(
+    (type) => `<option value="${esc(type)}" ${type === selected ? 'selected' : ''}>${esc(type)}</option>`,
+  ).join('');
+}
+
+function categoryFilterButtons(prefix, active, { esc, textFor }) {
+  const labels = {
+    all: textFor('appNotificationsCategoryAll'),
+    high: textFor('appNotificationsCategoryHigh'),
+    signal: textFor('appNotificationsCategorySignal'),
+    system: textFor('appNotificationsCategorySystem'),
+  };
+  return `
+    <div class="segmented notificationCategoryFilters">
+      ${NOTIFICATION_CATEGORY_OPTIONS.map(
+        (key) => `
+          <button
+            type="button"
+            class="segBtn ${active === key ? 'active' : ''}"
+            data-${prefix}-filter="${esc(key)}"
+          >${esc(labels[key] || key)}</button>
+        `,
+      ).join('')}
+    </div>
+  `;
 }
 
 function maskToken(token) {
   const text = String(token || '');
   if (text.length <= 14) return text || '-';
   return `${text.slice(0, 8)}...${text.slice(-6)}`;
+}
+
+function inboxRows(rows, { esc, textFor, formatDateTime }) {
+  if (!rows.length) return `<p class="muted">${esc(textFor('appUsersNotificationsEmpty'))}</p>`;
+  return `
+    <div class="notificationMiniList">
+      ${rows
+        .map(
+          (item) => `
+            <article class="notificationMiniCard statusSide ${item.readAt ? 'statusSide--sent' : 'statusSide--queued'}">
+              <div class="notificationMiniHead">
+                <strong>${esc(item.title || '-')}</strong>
+                <span class="pill pillStatus ${item.readAt ? 'pillStatus--muted' : 'pillStatus--ok'}">${esc(item.readAt ? textFor('appUsersInboxRead') : textFor('appUsersInboxUnread'))}</span>
+              </div>
+              <p class="summary">${esc(item.body || '')}</p>
+              <div class="row muted">
+                <span>${esc(item.type || '-')}</span>
+                <span>${esc(item.priority || 'normal')}</span>
+                <span>${esc(formatDateTime(item.deliveredAt || item.createdAt))}</span>
+              </div>
+            </article>
+          `,
+        )
+        .join('')}
+    </div>
+  `;
 }
 
 function notificationRows(rows, { esc, textFor, formatDateTime }) {
@@ -219,7 +280,7 @@ function detailTabButtons(activeTab, { esc, textFor }) {
     .join('');
 }
 
-function detailTabPanel(activeTab, data, helpers) {
+function detailTabPanel(activeTab, data, helpers, inboxPager) {
   const { esc, textFor } = helpers;
   const titleByTab = {
     notifications: textFor('appUsersNotificationsTitle'),
@@ -230,7 +291,7 @@ function detailTabPanel(activeTab, data, helpers) {
     events: textFor('appUsersEventsTitle'),
   };
   const contentByTab = {
-    notifications: notificationRows(data.notifications, helpers),
+    notifications: `${inboxRows(data.notifications, helpers)}${inboxPager || ''}`,
     terms: consentRows(data.terms, helpers),
     devices: deviceRows(data.devices, helpers),
     sessions: sessionRows(data.sessions, helpers),
@@ -348,7 +409,10 @@ function renderUserManagement({
   body,
   rows,
   selected,
-  notificationRowsData,
+  inboxRowsData,
+  inboxPage,
+  inboxTotalPages,
+  inboxFilter,
   termRowsData,
   identityRowsData,
   deviceRowsData,
@@ -414,7 +478,7 @@ function renderUserManagement({
               ${detailTabPanel(
                 safeDetailTab,
                 {
-                  notifications: notificationRowsData,
+                  notifications: inboxRowsData,
                   terms: termRowsData,
                   identities: identityRowsData,
                   devices: deviceRowsData,
@@ -422,6 +486,14 @@ function renderUserManagement({
                   events: eventRowsData,
                 },
                 { esc, textFor, formatDateTime },
+                safeDetailTab === 'notifications'
+                  ? `
+                    <div class="filterBar compactFilterBar">
+                      ${categoryFilterButtons('app-user-inbox', inboxFilter || 'all', { esc, textFor })}
+                    </div>
+                    ${pager({ page: inboxPage, totalPages: inboxTotalPages, prefix: 'app-user-inbox', esc })}
+                  `
+                  : '',
               )}
             `
             : `<p class="muted">${esc(textFor('appUsersEmpty'))}</p>`
@@ -526,7 +598,7 @@ function notificationStatusClass(status) {
   return 'pillStatus--muted';
 }
 
-function renderNotificationSearch({ body, rows, q, status, type, targetType, pageSize, esc, textFor, textForVars, formatDateTime }) {
+function renderNotificationSearch({ body, rows, q, status, type, targetType, category, pageSize, esc, textFor, textForVars, formatDateTime }) {
   return `
     <section class="card settingsControlCard">
       <div class="cardHead">
@@ -562,6 +634,7 @@ function renderNotificationSearch({ body, rows, q, status, type, targetType, pag
           </select>
           <button class="secondary" id="searchAppNotificationsBtn">${esc(textFor('btnSearch'))}</button>
         </div>
+        ${categoryFilterButtons('app-notifications', category || 'all', { esc, textFor })}
       </div>
       <div class="tableScroll">
         <table class="settingsTable">
@@ -689,7 +762,7 @@ export async function loadAppUsersView(ctx) {
   const selected = rows.find((row) => row.id === state.appUsersSelectedId) || rows[0] || null;
   state.appUsersSelectedId = selected?.id || '';
 
-  let selectedNotifications = { data: [] };
+  let selectedInbox = { data: [], page: 1, totalPages: 1 };
   let selectedTerms = { data: [] };
   let selectedIdentities = { data: [] };
   let selectedDevices = { data: [] };
@@ -697,8 +770,13 @@ export async function loadAppUsersView(ctx) {
   let selectedEvents = { data: [] };
   if (selected?.id) {
     const userId = encodeURIComponent(selected.id);
-    [selectedNotifications, selectedTerms, selectedIdentities, selectedDevices, selectedSessions, selectedEvents] = await Promise.all([
-      api(`/admin/api/app-users/${userId}/notifications?pageSize=10`),
+    const inboxParams = new URLSearchParams({
+      page: String(state.appUserInboxPage || 1),
+      pageSize: '10',
+      filter: String(state.appUserInboxFilter || 'all'),
+    });
+    [selectedInbox, selectedTerms, selectedIdentities, selectedDevices, selectedSessions, selectedEvents] = await Promise.all([
+      api(`/admin/api/app-users/${userId}/inbox?${inboxParams.toString()}`),
       api(`/admin/api/app-users/${userId}/terms`),
       api(`/admin/api/app-users/${userId}/identities`),
       api(`/admin/api/app-users/${userId}/devices`),
@@ -739,13 +817,22 @@ export async function loadAppUsersView(ctx) {
     const status = String($('appNotificationsStatus')?.value ?? state.appNotificationsStatus ?? '');
     const type = String($('appNotificationsType')?.value ?? state.appNotificationsType ?? '');
     const targetType = String($('appNotificationsTargetType')?.value ?? state.appNotificationsTargetType ?? '');
+    const category = String(state.appNotificationsCategory || 'all');
     const nPageSize = String($('appNotificationsPageSize')?.value || state.appNotificationsPageSize || '30');
-    Object.assign(state, { appNotificationsQuery: nq, appNotificationsStatus: status, appNotificationsType: type, appNotificationsTargetType: targetType, appNotificationsPageSize: nPageSize });
+    Object.assign(state, {
+      appNotificationsQuery: nq,
+      appNotificationsStatus: status,
+      appNotificationsType: type,
+      appNotificationsTargetType: targetType,
+      appNotificationsPageSize: nPageSize,
+      appNotificationsCategory: category,
+    });
     const params = new URLSearchParams({ page: String(state.appNotificationsPage || 1), pageSize: nPageSize });
     if (nq) params.set('q', nq);
     if (status) params.set('status', status);
     if (type) params.set('type', type);
     if (targetType) params.set('targetType', targetType);
+    if (category && category !== 'all') params.set('filter', category);
     const notificationBody = await api(`/admin/api/notifications?${params.toString()}`);
     $('appUsers').innerHTML = renderNotificationSearch({
       body: notificationBody,
@@ -754,6 +841,7 @@ export async function loadAppUsersView(ctx) {
       status,
       type,
       targetType,
+      category,
       pageSize: nPageSize,
       esc,
       textFor,
@@ -773,7 +861,10 @@ export async function loadAppUsersView(ctx) {
     body,
     rows,
     selected,
-    notificationRowsData: Array.isArray(selectedNotifications.data) ? selectedNotifications.data : [],
+    inboxRowsData: Array.isArray(selectedInbox.data) ? selectedInbox.data : [],
+    inboxPage: selectedInbox.page || 1,
+    inboxTotalPages: selectedInbox.totalPages || 1,
+    inboxFilter: state.appUserInboxFilter || 'all',
     termRowsData: Array.isArray(selectedTerms.data) ? selectedTerms.data : [],
     identityRowsData: Array.isArray(selectedIdentities.data) ? selectedIdentities.data : [],
     deviceRowsData: Array.isArray(selectedDevices.data) ? selectedDevices.data : [],
@@ -788,4 +879,5 @@ export async function loadAppUsersView(ctx) {
     textForVars,
     formatDateTime,
   });
+  state.appUserInboxTotalPages = selectedInbox.totalPages || 1;
 }

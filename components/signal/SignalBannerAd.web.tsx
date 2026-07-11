@@ -38,12 +38,12 @@ const styles = StyleSheet.create({
   wrap: {
     marginTop: 8,
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
   },
   wrapLarge: {
     paddingVertical: 14,
-    borderRadius: 13,
+    borderRadius: 8,
   },
   placeholderLarge: {
     minHeight: 250,

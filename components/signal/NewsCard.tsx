@@ -1,10 +1,21 @@
 import * as WebBrowser from 'expo-web-browser';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
+import {
+  FEED_ARTICLE_TITLE_PX,
+  FEED_BODY_PX,
+  FEED_CHIP_PX,
+  FEED_META_TIME_PX,
+  FEED_SUMMARY_PX,
+} from '@/constants/feedTypography';
+import { newsSourceAccent } from '@/constants/newsSourceAccent';
 import type { AppTheme } from '@/constants/theme';
-import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
+import { SourceBadge } from '@/components/signal/SourceBadge';
+import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -19,8 +30,10 @@ type Props = {
   layout?: 'card' | 'grouped';
   /** 관심뉴스처럼 컨텍스트가 이미 명확한 목록에서는 메타를 한 줄로 압축 */
   compactMeta?: boolean;
-  /** 목록 첫 뉴스 등 사용자가 먼저 봐야 하는 항목을 더 크게 강조 */
-  featured?: boolean;
+  /** 글로벌·크립토 등에서 메타 행 제목 토글 아이콘 노출 */
+  titleToggle?: boolean;
+  /** 목록 전체 제목 표시 모드(지정 시 카드별 토글 숨김) */
+  titleShowAlternate?: boolean;
   /** 미지정 시 URL이 있으면 원문 브라우저 오픈 (추후 상세 화면으로 교체 예정) */
   onPress?: () => void;
 };
@@ -31,15 +44,22 @@ export function NewsCard({
   onTagPress,
   layout = 'card',
   compactMeta = false,
-  featured = false,
+  titleToggle = false,
+  titleShowAlternate,
   onPress,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const router = useRouter();
+  const listTitleMode = titleShowAlternate !== undefined;
+  const [localShowAlternate, setLocalShowAlternate] = useState(false);
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
 
   const sourceName = item.source?.trim() || '—';
+  const sourceAccent = useMemo(
+    () => newsSourceAccent(sourceName, theme, item.url),
+    [sourceName, theme, item.url],
+  );
   const isFlash = Boolean(item.isFlash);
   const symbol = item.ticker?.trim().toUpperCase() ?? '';
   const showSourceInHeader =
@@ -47,11 +67,29 @@ export function NewsCard({
   const canOpenSymbol = !showSourceInHeader;
   const headerLabel = showSourceInHeader ? sourceName : item.ticker;
 
+  const alternateTitle = item.alternateTitle?.trim() ?? '';
+  const hasTitleToggle = titleToggle && alternateTitle.length > 0;
+  const showAlternate = listTitleMode ? Boolean(titleShowAlternate) : localShowAlternate;
+  const showingAlternate = hasTitleToggle && showAlternate;
+  const displayTitle = showingAlternate ? alternateTitle : item.titleKo;
+  const alternateIsTranslation = locale === 'en';
+  const showPerItemToggle = hasTitleToggle && !listTitleMode;
+
+  useEffect(() => {
+    if (listTitleMode) return;
+    setLocalShowAlternate(false);
+  }, [item.id, listTitleMode]);
+
   const tags =
     maxHashtagsToShow > 0
       ? (item.hashtags || [])
           .slice()
-          .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
+          .sort(
+            (
+              a: NonNullable<NewsItem['hashtags']>[number],
+              b: NonNullable<NewsItem['hashtags']>[number],
+            ) => (Number(a.order) || 0) - (Number(b.order) || 0),
+          )
           .slice(0, maxHashtagsToShow)
       : [];
 
@@ -69,30 +107,144 @@ export function NewsCard({
     void WebBrowser.openBrowserAsync(articleUrl);
   }, [articleUrl, canOpenArticle, onPress]);
 
-  const rowA11yLabel = [item.titleKo, sourceName, item.timeLabel].filter(Boolean).join(', ');
+  const rowA11yLabel = [displayTitle, sourceName, item.timeLabel].filter(Boolean).join(', ');
 
-  const sourceContent = (
-    <View style={styles.sourcePill}>
+  const titleToggleA11y = showingAlternate
+    ? t('newsTitleShowLocalized')
+    : alternateIsTranslation
+      ? t('newsTitleShowTranslation')
+      : t('newsTitleShowOriginal');
+
+  const sourceContent = <SourceBadge label={sourceName} accent={sourceAccent} variant="news" />;
+
+  const flashBadge = isFlash ? (
+    <View style={styles.sourcePill} accessibilityLabel={t('newsFlashBadge')}>
       <Text style={styles.sourceName} numberOfLines={1}>
-        {sourceName}
+        {t('newsFlashBadge')}
       </Text>
+    </View>
+  ) : null;
+
+  const titleToggleBtn = showPerItemToggle ? (
+    <Pressable
+      onPress={() => setLocalShowAlternate((value) => !value)}
+      hitSlop={8}
+      style={({ pressed }) => [styles.titleToggleLink, pressed && styles.titleToggleLinkPressed]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: showingAlternate }}
+      accessibilityLabel={titleToggleA11y}>
+      <FontAwesome
+        name={alternateIsTranslation ? 'language' : 'globe'}
+        size={11}
+        color={showingAlternate ? theme.green : theme.textMuted}
+      />
+      <Text style={[styles.titleToggleLinkText, showingAlternate && styles.titleToggleLinkTextActive]}>
+        {showingAlternate
+          ? t('newsTitleShowLocalized')
+          : alternateIsTranslation
+            ? t('newsTitleShowTranslation')
+            : t('newsTitleShowOriginal')}
+      </Text>
+    </Pressable>
+  ) : null;
+
+  const renderSourceInMeta = () => (
+    <View style={styles.sourceRowCompact}>
+      {flashBadge}
+      {sourceContent}
     </View>
   );
 
-  const renderSourceInMeta = () => <View style={styles.sourceRowCompact}>{sourceContent}</View>;
+  const renderSourceBelowMeta = () => (
+    <View style={styles.sourceRow}>
+      {flashBadge}
+      {sourceContent}
+    </View>
+  );
 
-  const renderSourceBelowMeta = () => <View style={styles.sourceRow}>{sourceContent}</View>;
+  const titleBlock = (
+    <View style={styles.titleBlock}>
+      <Text style={[styles.title, tags.length === 0 && !titleToggleBtn && styles.titleLast]} numberOfLines={3}>
+        {displayTitle}
+      </Text>
+      {titleToggleBtn}
+    </View>
+  );
+
+  const metaBlock = compactMeta ? (
+    <View style={styles.compactMetaRow}>
+      {flashBadge}
+      {canOpenSymbol ? (
+        <Pressable
+          onPress={() => router.push(`/symbol/${symbol}`)}
+          hitSlop={8}
+          style={styles.compactTickerWrap}>
+          <View style={styles.tickerLead}>
+            <SymbolLogo symbol={symbol} size={18} />
+            <Text style={styles.compactTicker} numberOfLines={1}>
+              {headerLabel}
+            </Text>
+          </View>
+        </Pressable>
+      ) : null}
+      <View style={styles.compactMetaMain}>
+        {sourceContent}
+      </View>
+      <View style={styles.timePill}>
+        <Text style={styles.time} numberOfLines={1}>
+          {item.timeLabel}
+        </Text>
+      </View>
+    </View>
+  ) : (
+    <>
+      <View style={[styles.metaRow, showSourceInHeader && styles.metaRowWithSource]}>
+        {canOpenSymbol ? (
+          <Pressable
+            onPress={() => router.push(`/symbol/${symbol}`)}
+            hitSlop={8}
+            style={styles.metaLead}>
+            <View style={styles.tickerLead}>
+              <SymbolLogo symbol={symbol} size={20} />
+              <Text style={styles.ticker} numberOfLines={1}>
+                {headerLabel}
+              </Text>
+            </View>
+          </Pressable>
+        ) : (
+          renderSourceInMeta()
+        )}
+        <View style={styles.metaTrail}>
+          <View style={styles.timePill}>
+            <Text style={styles.time}>{item.timeLabel}</Text>
+          </View>
+        </View>
+      </View>
+      {canOpenSymbol ? renderSourceBelowMeta() : null}
+    </>
+  );
+
+  const tagsBlock =
+    tags.length > 0 ? (
+      <View style={[styles.footer, grouped && styles.footerGrouped]}>
+        <View style={styles.footerTagsCol}>
+          {tags.map((tag: NonNullable<NewsItem['hashtags']>[number]) => (
+            <Pressable
+              key={`${item.id}-${tag.label}`}
+              onPress={() => onTagPress?.(tag.label)}
+              disabled={!onTagPress}
+              style={({ pressed }) => [styles.tagChip, pressed && onTagPress && styles.tagChipPressed]}
+              accessibilityRole={onTagPress ? 'button' : 'text'}
+              accessibilityLabel={tag.label}>
+              <Text style={styles.tagChipText}>#{tag.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    ) : null;
 
   return (
-    <View
-      style={[
-        styles.card,
-        grouped && styles.cardGrouped,
-        featured && styles.cardFeatured,
-        featured && grouped && styles.cardFeaturedGrouped,
-        isFlash && (grouped ? styles.cardFlashGrouped : styles.cardFlash),
-      ]}>
-      {(isFlash || featured) && grouped ? <View pointerEvents="none" style={[styles.flashSideLine, featured && !isFlash && styles.featuredSideLine]} /> : null}
+    <View style={[styles.card, grouped && styles.cardGrouped]}>
       <Pressable
         onPress={openArticle}
         disabled={!rowPressEnabled}
@@ -100,70 +252,10 @@ export function NewsCard({
         accessibilityRole={rowPressEnabled ? 'button' : undefined}
         accessibilityLabel={rowPressEnabled ? rowA11yLabel : undefined}
         accessibilityHint={rowPressEnabled ? t('newsReadMore') : undefined}>
-        {isFlash ? (
-          <View style={styles.flashBadgeWrap} accessibilityLabel={t('newsFlashBadge')}>
-            <View style={styles.flashBadge}>
-              <Text style={styles.flashBadgeText}>{t('newsFlashBadge')}</Text>
-            </View>
-          </View>
-        ) : null}
-        {compactMeta ? (
-          <View style={styles.compactMetaRow}>
-            {canOpenSymbol ? (
-              <Pressable
-                onPress={() => router.push(`/symbol/${symbol}`)}
-                hitSlop={8}
-                style={styles.compactTickerWrap}>
-                <Text style={styles.compactTicker} numberOfLines={1}>
-                  {headerLabel}
-                </Text>
-              </Pressable>
-            ) : null}
-            <Text style={styles.compactMetaText} numberOfLines={1}>
-              {[canOpenSymbol ? sourceName : headerLabel, item.timeLabel].filter(Boolean).join(' · ')}
-            </Text>
-          </View>
-        ) : (
-          <>
-            <View style={[styles.metaRow, showSourceInHeader && styles.metaRowWithSource]}>
-              {canOpenSymbol ? (
-                <Pressable
-                  onPress={() => router.push(`/symbol/${symbol}`)}
-                  hitSlop={8}
-                  style={styles.metaLead}>
-                  <Text style={styles.ticker} numberOfLines={1}>
-                    {headerLabel}
-                  </Text>
-                </Pressable>
-              ) : (
-                renderSourceInMeta()
-              )}
-              <View style={styles.timePill}>
-                <Text style={styles.time}>{item.timeLabel}</Text>
-              </View>
-            </View>
-            {canOpenSymbol ? renderSourceBelowMeta() : null}
-          </>
-        )}
-        <Text style={[styles.title, featured && styles.titleFeatured, tags.length === 0 && styles.titleLast]}>{item.titleKo}</Text>
+        {metaBlock}
+        {titleBlock}
       </Pressable>
-      {tags.length > 0 ? (
-        <View style={[styles.footer, grouped && styles.footerGrouped]}>
-          <View style={styles.footerTagsCol}>
-            {tags.map((tag) => (
-              <Pressable
-                key={`${item.id}-${tag.label}`}
-                onPress={() => onTagPress?.(tag.label)}
-                disabled={!onTagPress}
-                style={({ pressed }) => [styles.tagChip, pressed && onTagPress && styles.tagChipPressed]}
-                accessibilityRole={onTagPress ? 'button' : 'text'}
-                accessibilityLabel={tag.label}>
-                <Text style={styles.tagChipText}>#{tag.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-      ) : null}
+      {tagsBlock}
     </View>
   );
 }
@@ -172,13 +264,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
   return StyleSheet.create({
     card: {
       backgroundColor: theme.card,
-      borderRadius: 12,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       paddingHorizontal: ft.pad(14),
       paddingTop: ft.pad(14),
       paddingBottom: ft.pad(6),
-      marginBottom: 10,
+      marginBottom: 14,
     },
     cardGrouped: {
       backgroundColor: 'transparent',
@@ -186,65 +278,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderRadius: 0,
       marginBottom: 0,
       paddingHorizontal: ft.pad(16),
-      paddingTop: ft.pad(12),
-      paddingBottom: ft.pad(4),
-      position: 'relative',
-    },
-    cardFeatured: {
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-      paddingTop: ft.pad(16),
-      paddingBottom: ft.pad(9),
-    },
-    cardFeaturedGrouped: {
-      backgroundColor: theme.greenDim,
       paddingTop: ft.pad(16),
       paddingBottom: ft.pad(8),
-    },
-    cardFlash: {
-      borderColor: theme.danger,
-      borderLeftWidth: CONTENT_ACCENT_LINE_WIDTH,
-      borderLeftColor: theme.danger,
-      backgroundColor: theme.dangerDim,
-    },
-    cardFlashGrouped: {
-      backgroundColor: theme.dangerDim,
-    },
-    flashSideLine: {
-      position: 'absolute',
-      left: 0,
-      top: ft.pad(10),
-      bottom: ft.pad(10),
-      width: CONTENT_ACCENT_LINE_WIDTH,
-      borderRadius: 999,
-      backgroundColor: theme.danger,
-    },
-    featuredSideLine: {
-      backgroundColor: theme.green,
+      position: 'relative',
     },
     rowPress: {
       alignSelf: 'stretch',
     },
     rowPressPressed: {
       opacity: 0.92,
-    },
-    flashBadgeWrap: {
-      marginBottom: 10,
-    },
-    flashBadge: {
-      alignSelf: 'flex-start',
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 6,
-      backgroundColor: theme.dangerDim,
-      borderWidth: 1,
-      borderColor: theme.danger,
-    },
-    flashBadgeText: {
-      fontSize: ft.ff(11),
-      fontWeight: ft.emphasisWeight,
-      color: theme.danger,
-      letterSpacing: 0.8,
     },
     metaRow: {
       flexDirection: 'row',
@@ -260,10 +302,23 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flex: 1,
       minWidth: 0,
     },
+    tickerLead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minWidth: 0,
+      flexShrink: 1,
+    },
+    metaTrail: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: ft.pad(6),
+      flexShrink: 0,
+    },
     ticker: {
       flexShrink: 1,
       color: theme.green,
-      fontSize: ft.ff(13),
+      fontSize: ft.ff(FEED_BODY_PX),
       fontWeight: ft.emphasisWeight,
       letterSpacing: 0.5,
     },
@@ -278,34 +333,56 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     time: {
       color: theme.textMuted,
-      fontSize: ft.ff(10),
+      fontSize: ft.ff(FEED_META_TIME_PX),
       fontWeight: ft.metaWeight,
     },
     compactMetaRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      flexWrap: 'nowrap',
       gap: ft.pad(6),
       marginBottom: ft.pad(7),
       minWidth: 0,
+      overflow: 'hidden',
     },
     compactTickerWrap: {
       flexShrink: 0,
-      maxWidth: '28%',
+      maxWidth: '30%',
     },
     compactTicker: {
       color: theme.green,
-      fontSize: ft.ff(12),
+      fontSize: ft.ff(FEED_BODY_PX),
       lineHeight: ft.ff(16),
       fontWeight: ft.emphasisWeight,
       letterSpacing: 0.2,
     },
-    compactMetaText: {
+    compactMetaMain: {
       flex: 1,
       minWidth: 0,
-      color: theme.textMuted,
-      fontSize: ft.ff(11),
-      lineHeight: ft.ff(16),
+      flexShrink: 1,
+    },
+    titleBlock: {
+      gap: ft.pad(4),
+    },
+    titleToggleLink: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 5,
+      marginBottom: ft.pad(4),
+    },
+    titleToggleLinkPressed: {
+      opacity: 0.82,
+    },
+    titleToggleLinkText: {
+      fontSize: ft.ff(FEED_SUMMARY_PX),
+      lineHeight: ft.ff(15),
       fontWeight: ft.metaWeight,
+      color: theme.textMuted,
+    },
+    titleToggleLinkTextActive: {
+      color: theme.green,
+      fontWeight: ft.emphasisWeight,
     },
     sourceRow: {
       flexDirection: 'row',
@@ -319,6 +396,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minWidth: 0,
       marginBottom: 0,
       alignSelf: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'nowrap',
+      gap: ft.pad(6),
     },
     sourcePill: {
       flexDirection: 'row',
@@ -334,31 +415,27 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     sourceName: {
       flexShrink: 1,
-      fontSize: ft.ff(12),
+      fontSize: ft.ff(FEED_BODY_PX),
       fontWeight: ft.bodyWeight,
       color: theme.text,
       maxWidth: '100%',
     },
     title: {
       color: theme.text,
-      fontSize: ft.ff(15),
+      fontSize: ft.ff(FEED_ARTICLE_TITLE_PX),
       fontWeight: ft.titleWeight,
-      marginBottom: ft.pad(6),
-      lineHeight: ft.ff(21),
-    },
-    titleFeatured: {
-      fontSize: ft.ff(17),
-      lineHeight: ft.ff(24),
+      marginBottom: 0,
+      lineHeight: ft.ff(22),
     },
     titleLast: {
-      marginBottom: 0,
+      marginBottom: ft.pad(6),
     },
     footerTagsCol: {
       flex: 1,
       minWidth: 0,
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 4,
+      gap: 6,
       alignItems: 'center',
       alignContent: 'center',
       justifyContent: 'flex-start',
@@ -380,7 +457,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderColor: 'rgba(77, 159, 255, 0.45)',
     },
     tagChipText: {
-      fontSize: ft.ff(10),
+      fontSize: ft.ff(FEED_CHIP_PX),
       lineHeight: ft.ff(14),
       fontWeight: ft.metaWeight,
       letterSpacing: 0.1,
@@ -395,8 +472,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderTopColor: theme.border,
     },
     footerGrouped: {
-      marginTop: 2,
-      paddingTop: 4,
+      marginTop: 4,
+      paddingTop: 8,
       borderTopWidth: 0,
     },
   });

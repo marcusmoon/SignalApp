@@ -68,11 +68,45 @@ export async function acquirePollingJobLockRow(jobKey, { token, lockedAt, expire
 }
 
 export async function deletePollingJobLock(jobKey, token) {
+  const key = cleanText(jobKey);
+  const lockToken = cleanText(token);
+  if (!key || !lockToken) return false;
   const result = await getKyselyDb()
     .deleteFrom('polling_job_locks')
-    .where('job_key', '=', cleanText(jobKey))
-    .where('lock_token', '=', cleanText(token))
+    .where('job_key', '=', key)
+    .where('lock_token', '=', lockToken)
     .executeTakeFirst();
   return Number(result?.numDeletedRows || 0) > 0;
+}
+
+export async function deletePollingJobLockByJobKey(jobKey) {
+  const key = cleanText(jobKey);
+  if (!key) return false;
+  const result = await getKyselyDb()
+    .deleteFrom('polling_job_locks')
+    .where('job_key', '=', key)
+    .executeTakeFirst();
+  return Number(result?.numDeletedRows || 0) > 0;
+}
+
+export async function deleteExpiredPollingJobLocks(now = Date.now()) {
+  const result = await getKyselyDb()
+    .deleteFrom('polling_job_locks')
+    .where('expires_at', '<=', new Date(now).toISOString())
+    .executeTakeFirst();
+  return Number(result?.numDeletedRows || 0);
+}
+
+export async function renewPollingJobLockRow(jobKey, token, expiresAt) {
+  const key = cleanText(jobKey);
+  const lockToken = cleanText(token);
+  if (!key || !lockToken) return false;
+  const result = await getKyselyDb()
+    .updateTable('polling_job_locks')
+    .set({ expires_at: expiresAt })
+    .where('job_key', '=', key)
+    .where('lock_token', '=', lockToken)
+    .executeTakeFirst();
+  return Number(result?.numUpdatedRows || 0) > 0;
 }
 

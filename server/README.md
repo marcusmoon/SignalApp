@@ -50,7 +50,7 @@ npm run web:export
 - `ADMIN_USERS`: `admin_users` 테이블이 비어 있을 때만 쓰는 초기 seed.
 - `SIGNAL_JWT_PRIVATE_KEY_B64`: 앱 사용자 JWT 발급용 private key.
 - `SIGNAL_SCHEDULER_ENABLED`: API/worker 실행 역할 분리.
-- `SIGNAL_NOTIFICATION_SENDER_ENABLED`: worker의 알림 outbox 발송 루프.
+- `SIGNAL_NOTIFICATION_SENDER_ENABLED`: worker의 알림 푸시 발송 루프.
 - `SIGNAL_NOTIFICATION_PUSH_PROVIDER`: `mock` 또는 `expo`.
 - `SIGNAL_HTTP_LOG_ALL`: 운영 기본은 `false`; 느린 요청과 오류만 로그로 남긴다.
 
@@ -71,8 +71,7 @@ Provider key는 env seed로 넣을 수 있지만, 일반 운영은 Admin 설정�
 - `src/http/`: public/admin HTTP route. 도메인별 파일로 분리한다.
 - `src/jobs/`: 수집 job runner/scheduler.
 - `src/providers/`: 외부 provider 호출과 정규화.
-- `src/insights/`: 저장 데이터 기반 오늘의 시그널 생성 규칙.
-- `src/notifications/`: 알림 outbox sender.
+- `src/notifications/`: 알림 템플릿·푸시 sender.
 - `src/db/`: Postgres client, Kysely helpers, feature repository, public query helper.
 - `src/db.mjs`: DB 공개 facade. 외부 모듈은 이 파일을 우선 사용한다.
 
@@ -86,7 +85,7 @@ Provider key는 env seed로 넣을 수 있지만, 일반 운영은 Admin 설정�
 - 수집/실행: `polling_jobs`, `polling_job_runs`, `polling_job_locks`
 - 콘텐츠: `news_items`, `news_translations`, `calendar_events`, `youtube_videos`
 - 시장 데이터: `market_quotes`, `coin_markets`
-- 인사이트/알림: `insight_items`, `notification_items`
+- 알림: `notification_items`
 - 사용자: `admin_users`, `app_users`, `app_user_sessions`, `app_user_devices`, `app_user_identities`, `app_user_terms_acceptances`, `app_user_account_events`
 
 새 DB가 비어 있으면 서버가 런타임 seed를 만들지 않는다. Job·Provider·RSS·시장 리스트·약관·캘린더 코드 매핑은 Flyway baseline seed에 포함된다.

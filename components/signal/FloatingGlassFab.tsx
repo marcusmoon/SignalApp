@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react';
+import type { ComponentProps, RefObject } from 'react';
 import { useCallback, useMemo, useRef } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -9,6 +9,7 @@ import { isWeb, WEB_SIGNAL_CSS } from '@/constants/webLayout';
 import { useWebDomPressFallback } from '@/hooks/useWebDomPressFallback';
 import { useTabBarGlassStyle } from '@/hooks/useTabBarGlassStyle';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { scrollToTopWithRetry, type ScrollToTopTarget } from '@/utils/scrollToTop';
 
 /** 탭바 콘텐츠 높이(54)와 맞춘 원형 FAB */
 export const FLOATING_GLASS_FAB_SIZE = 56;
@@ -23,9 +24,21 @@ type Props = {
   iconName: FaName;
   accessibilityLabel: string;
   disabled?: boolean;
+  /** 토글·필터 등 선택된 상태 */
+  active?: boolean;
+  /** List to scroll to top before refresh (FAB). */
+  listRef?: RefObject<ScrollToTopTarget>;
 };
 
-export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel, disabled }: Props) {
+export function FloatingGlassFab({
+  bottom,
+  onPress,
+  iconName,
+  accessibilityLabel,
+  disabled,
+  active = false,
+  listRef,
+}: Props) {
   const { theme } = useSignalTheme();
   const { backgroundColor, edge, effectiveColorScheme } = useTabBarGlassStyle();
   const { width } = useWindowDimensions();
@@ -35,25 +48,35 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
   const fabShadow = useMemo(() => floatingFabShadow(effectiveColorScheme), [effectiveColorScheme]);
   const right = Math.max(APP_CONTENT_SIDE_PADDING, (width - APP_CONTENT_MAX_WIDTH) / 2 + APP_CONTENT_SIDE_PADDING);
   const effectiveDisabled = isWeb ? false : Boolean(disabled);
-  const surfaceBackground = isWeb ? WEB_SIGNAL_CSS.card : backgroundColor;
-  const surfaceEdge = isWeb
-    ? { ring: WEB_SIGNAL_CSS.border, topHighlight: WEB_SIGNAL_CSS.topHighlight }
-    : edge;
-  const iconColor = isWeb ? WEB_SIGNAL_CSS.green : theme.green;
+  const surfaceBackground = active
+    ? theme.greenDim
+    : isWeb
+      ? WEB_SIGNAL_CSS.card
+      : backgroundColor;
+  const surfaceEdge = active
+    ? { ring: theme.greenBorder, topHighlight: theme.greenBorder }
+    : isWeb
+      ? { ring: WEB_SIGNAL_CSS.border, topHighlight: WEB_SIGNAL_CSS.topHighlight }
+      : edge;
+  const iconColor = active ? theme.green : theme.textMuted;
+  const firePress = useCallback(() => {
+    if (listRef) scrollToTopWithRetry(listRef, false);
+    onPress();
+  }, [listRef, onPress]);
   const triggerPress = useCallback(() => {
     if (effectiveDisabled) return;
     if (Date.now() - lastPressAtRef.current < 120) return;
     lastPressAtRef.current = Date.now();
-    onPress();
-  }, [effectiveDisabled, onPress]);
+    firePress();
+  }, [effectiveDisabled, firePress]);
   const triggerWebFallback = useCallback((event?: { preventDefault?: () => void; stopPropagation?: () => void }) => {
     if (effectiveDisabled) return;
     if (Date.now() - lastPressAtRef.current < 250) return;
     event?.preventDefault?.();
     event?.stopPropagation?.();
     lastPressAtRef.current = Date.now();
-    onPress();
-  }, [effectiveDisabled, onPress]);
+    firePress();
+  }, [effectiveDisabled, firePress]);
   const webDataProps = isWeb
     ? ({
         dataSet: { signalFloatingFab: 'true' },
@@ -78,11 +101,12 @@ export function FloatingGlassFab({ bottom, onPress, iconName, accessibilityLabel
           isWeb ? styles.webFab : null,
           fabShadow,
           { bottom, right, borderRadius: radius },
+          active ? [styles.fabActive, { borderColor: theme.greenBorder }] : null,
           effectiveDisabled ? styles.fabDisabled : null,
           pressed && !effectiveDisabled ? styles.fabPressed : null,
         ]}
         accessibilityRole="button"
-        accessibilityState={{ disabled: effectiveDisabled }}
+        accessibilityState={{ disabled: effectiveDisabled, selected: active }}
         accessibilityLabel={accessibilityLabel}>
         <GlassSurfaceBackground
           backgroundColor={surfaceBackground}
@@ -120,6 +144,9 @@ const styles = StyleSheet.create({
   fabPressed: {
     opacity: 0.88,
     transform: [{ scale: 0.96 }],
+  },
+  fabActive: {
+    borderWidth: 1,
   },
   fabDisabled: {
     opacity: 0.45,

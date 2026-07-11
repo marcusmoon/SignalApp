@@ -13,7 +13,9 @@ SIGNAL 앱 세션은 모든 로그인 방식에서 Signal Server가 발급한 JW
 
 ## Kakao
 
-앱은 Kakao Native SDK를 사용한다. KakaoTalk 로그인을 우선 시도하고, 불가능하면 카카오계정 로그인으로 전환한다.
+### iOS / Android
+
+네이티브 앱은 Kakao Native SDK를 사용한다. KakaoTalk 로그인을 우선 시도하고, 불가능하면 카카오계정 로그인으로 전환한다. 액세스 토큰은 서버 `verifyKakaoAccessToken`으로 검증한다.
 
 설정:
 
@@ -24,9 +26,32 @@ SIGNAL 앱 세션은 모든 로그인 방식에서 Signal Server가 발급한 JW
 
 주의:
 
-- Kakao REST redirect에 `signalapp://oauth`를 넣지 않는다.
+- 네이티브 흐름은 Redirect URI가 필요 없다.
 - `KOE101`은 native key, URL scheme, bundle/package 등록 불일치가 주된 원인이다.
 - Xcode 직접 빌드 전 `node scripts/syncKakaoNativeConfig.mjs` 또는 `npm run ios` 흐름을 사용한다.
+
+### Web
+
+웹은 Native SDK 대신 Kakao REST OAuth authorization code 흐름을 사용한다. 앱이 `code`와 `redirectUri`를 서버로 보내면 서버가 `exchangeKakaoCode`로 토큰 교환·프로필 조회를 한다.
+
+Kakao Developers (동일 앱):
+
+- **플랫폼 → Web** 추가
+- **사이트 도메인**: 개발 `http://localhost:8081`, 운영 `https://<서비스 도메인>`
+- **Redirect URI** (앱이 실제로 쓰는 값과 **완전히** 일치):
+  - 로컬 `npm run web`: `http://localhost:8081/oauth`
+  - 운영 (`SIGNAL_WEB_BASE_PATH=/web`): `https://<도메인>/web/oauth`
+
+Admin:
+
+- REST API key (네이티브 `KAKAO_NATIVE_APP_KEY`와 **같은 카카오 앱**)
+- Kakao 콘솔에서 Client Secret 사용 ON이면 Admin에도 client secret 입력
+
+주의:
+
+- 웹 Redirect URI에 `signalapp://oauth`를 넣지 않는다.
+- iOS만 설정해 두고 Web 플랫폼·Redirect URI를 빠뜨리면 웹에서만 실패한다.
+- `KOE006` / `APP_USER_SOCIAL_KAKAO_UPSTREAM`은 Redirect URI 불일치 또는 REST key·client secret 불일치가 흔한 원인이다.
 
 ## Naver
 

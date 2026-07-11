@@ -8,6 +8,7 @@ import { SocialAuthButtons } from '@/components/account/SocialAuthButtons';
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { makeAccountStyles } from '@/components/account/accountStyles';
+import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import type { MessageId } from '@/locales/messages';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -59,6 +60,7 @@ import {
 import { loadNotificationPrefs, type NotificationPrefs } from '@/services/notificationPreferences';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 
 type AccountTab = 'home' | 'profile' | 'security' | 'info';
 type Mode = 'login' | 'register';
@@ -100,6 +102,8 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   const [pendingSocialProvider, setPendingSocialProvider] = useState<SocialProviderKey | null>(null);
   const [socialSignupDraft, setSocialSignupDraft] = useState<SocialSignupDraft | null>(null);
   const [accountTab, setAccountTab] = useState<AccountTab>('home');
+  const { ref: accountScrollRef } = useScrollToTopOnChange([accountTab]);
+  const scrollResetKey = accountTab;
   const [emailAuthExpanded, setEmailAuthExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -723,11 +727,36 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
       {!embedded ? (
         <Stack.Screen options={{ title: t('screenAccount'), headerShown: !useIpadSidebar }} />
       ) : null}
+      {user ? (
+        <View style={styles.topFixed}>
+          <View style={[styles.tabBar, embedded && styles.tabBarEmbedded]} accessibilityRole="tablist">
+          {accountTabs.map((tab) => {
+            const selected = accountTab === tab.key;
+            return (
+              <Pressable
+                key={tab.key}
+                onPress={() => setAccountTab(tab.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                style={[styles.tabBtn, selected && styles.tabBtnActive]}>
+                <Text style={[styles.tabText, selected && styles.tabTextActive]} numberOfLines={1}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+          </View>
+        </View>
+      ) : null}
       <WebWheelScrollView
+        ref={accountScrollRef as never}
+        scrollResetKey={scrollResetKey}
+        style={styles.scrollFlex}
         contentContainerStyle={[
           styles.content,
           embedded && styles.contentEmbedded,
-          { paddingBottom: 28 + insets.bottom },
+          !user && styles.contentAuth,
+          { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) },
         ]}>
         {!user ? (
           <View style={styles.hero}>
@@ -752,22 +781,6 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
 
         {user ? (
           <>
-            <View style={styles.accountTabs} accessibilityRole="tablist">
-              {accountTabs.map((tab) => {
-                const selected = accountTab === tab.key;
-                return (
-                  <Pressable
-                    key={tab.key}
-                    onPress={() => setAccountTab(tab.key)}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected }}
-                    style={[styles.accountTab, selected && styles.accountTabActive]}>
-                    <Text style={[styles.accountTabText, selected && styles.accountTabTextActive]}>{tab.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
             {accountTab === 'home' ? (
               <>
             <View style={[styles.card, styles.profileHeroCard]}>

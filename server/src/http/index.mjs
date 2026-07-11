@@ -16,7 +16,6 @@ import { handleWebStaticRoutes } from './webStatic.mjs';
 import { handlePublicAuthRoutes } from './public/v1/auth.mjs';
 import { handlePublicCalendarRoutes } from './public/v1/calendar.mjs';
 import { handlePublicDisclosureRoutes } from './public/v1/disclosures.mjs';
-import { handlePublicInsightRoutes } from './public/v1/insights.mjs';
 import { handlePublicLegalRoutes } from './public/v1/legal.mjs';
 import { handlePublicMarketBriefingRoutes } from './public/v1/marketBriefings.mjs';
 import { handleMarketDataProxyRoutes } from './public/v1/marketDataProxy.mjs';
@@ -40,7 +39,6 @@ const PUBLIC_ROUTE_HANDLERS = [
   handlePublicNewsRoutes,
   handlePublicDisclosureRoutes,
   handlePublicCalendarRoutes,
-  handlePublicInsightRoutes,
   handlePublicYoutubeRoutes,
   handlePublicCommunityRoutes,
   handlePublicMarketRoutes,

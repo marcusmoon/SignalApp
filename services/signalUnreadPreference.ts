@@ -52,7 +52,7 @@ export async function saveLastSeenSignalBriefingId(id: string): Promise<void> {
 
 /** 최신 시장 브리핑 id — 시그널 탭 배지·읽음 처리 기준 */
 export async function fetchLatestSignalBriefingId(): Promise<string | null> {
-  const rows = await fetchSignalMarketBriefings({ limit: 1, offset: 0 });
+  const rows = await fetchSignalMarketBriefings({ limit: 1, offset: 0 }, { cacheMode: 'bypass' });
   const id = rows[0]?.id?.trim();
   return id || null;
 }

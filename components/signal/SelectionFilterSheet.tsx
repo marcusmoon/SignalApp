@@ -121,7 +121,7 @@ export function selectionFilterRowStyles(theme: AppTheme, sf: (n: number) => num
       paddingVertical: 13,
       paddingHorizontal: 12,
       marginBottom: 8,
-      borderRadius: 12,
+      borderRadius: 8,
       backgroundColor: theme.bgElevated,
       borderWidth: 1,
       borderColor: theme.border,
@@ -171,14 +171,14 @@ function makeSheetStyles(theme: AppTheme, sf: (n: number) => number) {
       height: 4,
       borderRadius: 2,
       backgroundColor: theme.border,
-      marginTop: 10,
+      marginTop: 16,
       marginBottom: 8,
     },
     head: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
-      gap: 12,
+      gap: 20,
       marginBottom: 6,
     },
     title: {
@@ -191,7 +191,7 @@ function makeSheetStyles(theme: AppTheme, sf: (n: number) => number) {
     closeBtn: {
       width: 44,
       height: 44,
-      borderRadius: 22,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.greenDim,
@@ -205,19 +205,19 @@ function makeSheetStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(12),
       color: theme.textMuted,
       lineHeight: sf(18),
-      marginBottom: 10,
+      marginBottom: 14,
     },
     scroll: {
       flexGrow: 0,
       maxHeight: 390,
     },
     scrollContent: {
-      paddingBottom: 4,
+      paddingBottom: 8,
     },
     doneBtn: {
       marginTop: 14,
       minHeight: 54,
-      borderRadius: 14,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.green,
@@ -236,13 +236,13 @@ function makeSheetStyles(theme: AppTheme, sf: (n: number) => number) {
 function makeToolbarStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     wrap: {
-      gap: 10,
-      marginBottom: 10,
+      gap: 16,
+      marginBottom: 14,
     },
     labelBlock: {
       flexDirection: 'row',
       alignItems: 'baseline',
-      gap: 10,
+      gap: 16,
       minWidth: 0,
     },
     sectionLabel: {
@@ -260,13 +260,13 @@ function makeToolbarStyles(theme: AppTheme, sf: (n: number) => number) {
     actions: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 16,
     },
     chip: {
       flex: 1,
       paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderRadius: 12,
+      paddingVertical: 12,
+      borderRadius: 8,
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,

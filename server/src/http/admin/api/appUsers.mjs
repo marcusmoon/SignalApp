@@ -8,12 +8,33 @@ import {
   listAppUserTermAcceptances,
   listAppUsers,
   queryNotifications,
+  queryUserNotificationInboxAdminPage,
   updateAppUserAdmin,
   updateAppUserDeviceAdmin,
   upsertNotification,
 } from '../../../db.mjs';
-import { createNotificationItem } from '../../../notifications/outbox.mjs';
+import { createNotificationItem } from '../../../notifications/notificationItem.mjs';
 import { json, readBody } from '../../shared.mjs';
+
+function compactInboxItem(item) {
+  return {
+    id: item.id,
+    notificationId: item.notificationId,
+    type: item.type || '',
+    channel: item.channel || 'push',
+    status: item.status || 'sent',
+    priority: item.priority || 'normal',
+    title: item.title || '',
+    body: item.body || '',
+    sourceType: item.sourceType || '',
+    sourceId: item.sourceId || '',
+    deepLink: item.deepLink || '',
+    deliveredAt: item.deliveredAt || null,
+    readAt: item.readAt || null,
+    scheduledAt: item.scheduledAt || null,
+    createdAt: item.createdAt || null,
+  };
+}
 
 function compactNotification(item) {
   return {
@@ -142,6 +163,28 @@ export async function handleAdminAppUsersRoutes({ req, res, url, pathname }) {
     });
     json(res, 200, {
       data: page.rows.map(compactNotification),
+      page: page.page,
+      pageSize: page.pageSize,
+      total: page.total,
+      totalPages: page.totalPages,
+    });
+    return true;
+  }
+
+  const inboxUserId = userIdFromPath(pathname, '/inbox');
+  if (req.method === 'GET' && inboxUserId) {
+    const user = await getAppUser(inboxUserId);
+    if (!user) {
+      json(res, 404, { error: 'APP_USER_NOT_FOUND' });
+      return true;
+    }
+    const page = await queryUserNotificationInboxAdminPage(inboxUserId, {
+      page: url.searchParams.get('page') || '1',
+      pageSize: url.searchParams.get('pageSize') || '20',
+      filter: url.searchParams.get('filter') || 'all',
+    });
+    json(res, 200, {
+      data: page.rows.map(compactInboxItem),
       page: page.page,
       pageSize: page.pageSize,
       total: page.total,

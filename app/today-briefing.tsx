@@ -12,8 +12,10 @@ import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { fetchSignalTodayBriefing } from '@/integrations/signal-api/todayBriefings';
+import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import type { SignalApiTodayBriefing } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
@@ -24,10 +26,14 @@ function parseDateParam(value: unknown): string {
   return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : toYmd(new Date());
 }
 
-async function fetchTodayBriefingWithFallback(date: string, locale: string): Promise<SignalApiTodayBriefing | null> {
-  const primary = await fetchSignalTodayBriefing({ date, locale }).catch(() => null);
+async function fetchTodayBriefingWithFallback(
+  date: string,
+  locale: string,
+  cacheMode: ReturnType<typeof signalCacheMode>,
+): Promise<SignalApiTodayBriefing | null> {
+  const primary = await fetchSignalTodayBriefing({ date, locale }, { cacheMode }).catch(() => null);
   if (primary || locale === 'ko') return primary;
-  return fetchSignalTodayBriefing({ date, locale: 'ko' }).catch(() => null);
+  return fetchSignalTodayBriefing({ date, locale: 'ko' }, { cacheMode }).catch(() => null);
 }
 
 export default function TodayBriefingScreen() {
@@ -40,6 +46,8 @@ export default function TodayBriefingScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { ref: scrollRef } = useScrollToTopOnChange([date], { resyncDeps: [item, loading] });
+  const scrollResetKey = date;
 
   const dateLabel = useMemo(
     () =>
@@ -52,7 +60,7 @@ export default function TodayBriefingScreen() {
     [date, locale],
   );
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (forceRefresh?: boolean) => {
     if (!hasSignalApi()) {
       setItem(null);
       setError(t('errorSignalApiShort'));
@@ -61,7 +69,7 @@ export default function TodayBriefingScreen() {
     }
     setError(null);
     try {
-      setItem(await fetchTodayBriefingWithFallback(date, locale));
+      setItem(await fetchTodayBriefingWithFallback(date, locale, signalCacheMode(forceRefresh)));
     } catch (e) {
       setError(formatSignalApiError(e, t, 'todayBriefingLoadError'));
     } finally {
@@ -77,7 +85,7 @@ export default function TodayBriefingScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await load();
+      await load(true);
     } finally {
       setRefreshing(false);
     }
@@ -95,6 +103,9 @@ export default function TodayBriefingScreen() {
         </View>
       ) : (
         <WebWheelScrollView
+          ref={scrollRef as never}
+          scrollResetKey={scrollResetKey}
+          contentRevision={item}
           style={styles.scroll}
           contentContainerStyle={styles.content}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}>
@@ -189,7 +200,7 @@ function makeStyles(
       justifyContent: 'center',
     },
     errorBox: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.danger,
       backgroundColor: theme.dangerDim,
@@ -218,14 +229,14 @@ function makeStyles(
     heroCard: {
       position: 'relative',
       overflow: 'hidden',
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       paddingLeft: 18,
       paddingRight: 14,
       paddingVertical: 14,
-      gap: 10,
+      gap: 16,
     },
     headline: {
       fontSize: ft.ff(17),
@@ -240,13 +251,13 @@ function makeStyles(
       color: theme.textMuted,
     },
     sectionCard: {
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       paddingHorizontal: 14,
       paddingVertical: 12,
-      gap: 10,
+      gap: 16,
     },
     sectionTitle: {
       fontSize: ft.ff(13),
@@ -255,12 +266,12 @@ function makeStyles(
       color: theme.text,
     },
     pointList: {
-      gap: 8,
+      gap: 16,
     },
     pointRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 8,
+      gap: 16,
     },
     pointBullet: {
       fontSize: ft.ff(14),
@@ -275,18 +286,18 @@ function makeStyles(
       color: theme.textMuted,
     },
     sourceList: {
-      gap: 8,
+      gap: 16,
     },
     sourceRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      borderRadius: 12,
+      gap: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
       paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingVertical: 12,
     },
     sourceTextCol: {
       flex: 1,

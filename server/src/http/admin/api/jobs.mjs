@@ -1,7 +1,5 @@
-import { config } from '../../../config.mjs';
 import {
   getPollingJob,
-  getPollingJobLock,
   listCollectionPayloads,
   listYoutubeVideos,
   listPollingJobLocks,
@@ -10,13 +8,27 @@ import {
   nowIso,
   patchPollingJob,
   queryPublicCalendar,
-  releasePollingJobLock,
 } from '../../../db.mjs';
 import { httpMetricsSnapshot } from '../../../httpMetrics.mjs';
+import { isPendingPushDelivery } from '../../../notifications/notificationItem.mjs';
 import { enrichJobWithCatalog } from '../../../jobs/catalog.mjs';
+import { jobLockState, resolveActiveRunningRun, runTiming } from '../../../jobs/jobLock.mjs';
+import { forceReleaseStaleJobLock, reconcileJobLocksAndRuns } from '../../../jobs/jobLockMaintenance.mjs';
 import { getJobPreset, listJobPresets, runJobPreset } from '../../../jobs/presets.mjs';
 import { runPollingJob } from '../../../jobs/runner.mjs';
 import { cleanNewsTitleForDisplay, json, paginate, readBody } from '../../shared.mjs';
+
+function normalizeCommunityJobParams(job, params) {
+  if (!params || typeof params !== 'object') return params;
+  const domain = String(job?.domain || job?.area || '').trim().toLowerCase();
+  if (domain !== 'community') return params;
+  const next = { ...params };
+  if (next.pageSize != null) {
+    const pageSize = Number(next.pageSize);
+    next.pageSize = Number.isFinite(pageSize) ? Math.min(50, Math.max(5, Math.round(pageSize))) : 30;
+  }
+  return next;
+}
 
 function enrichJobRun(item, jobs) {
   const job = jobs.find((candidate) => candidate.jobKey === item.jobKey);
@@ -76,28 +88,6 @@ function validTime(value) {
   return Number.isFinite(ms) && ms > 0 ? ms : null;
 }
 
-function runTiming(run, job = null) {
-  const now = Date.now();
-  const startedMs = validTime(run?.startedAt);
-  const finishedMs = validTime(run?.finishedAt);
-  const lastSignalMs = validTime(run?.progressUpdatedAt) || finishedMs || startedMs;
-  const elapsedMs =
-    run?.status === 'running' && startedMs != null
-      ? now - startedMs
-      : Number.isFinite(Number(run?.durationMs))
-        ? Number(run.durationMs)
-        : finishedMs != null && startedMs != null
-          ? finishedMs - startedMs
-          : null;
-  const quietMs = run?.status === 'running' && lastSignalMs != null ? now - lastSignalMs : null;
-  const intervalMs = Math.max(0, Number(job?.intervalSeconds || run?.intervalSeconds || 0) * 1000);
-  const stuckThresholdMs = Math.max(5 * 60 * 1000, intervalMs > 0 ? intervalMs * 1.5 : 0);
-  const stuck =
-    run?.status === 'running' &&
-    ((elapsedMs != null && elapsedMs > stuckThresholdMs) || (quietMs != null && quietMs > 5 * 60 * 1000));
-  return { elapsedMs, quietMs, stuck, lastSignalAt: lastSignalMs == null ? null : new Date(lastSignalMs).toISOString() };
-}
-
 function dateOnlyToIso(value) {
   const text = String(value || '').slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? `${text}T00:00:00.000Z` : null;
@@ -141,41 +131,6 @@ function compactRun(run, job = null) {
   };
 }
 
-function jobLockStaleThresholdMs(job) {
-  const ttlMs = Math.max(60_000, Number(config.jobLockTtlMs || 0));
-  const staleSeconds = Number(job?.staleLockSeconds);
-  if (Number.isFinite(staleSeconds) && staleSeconds > 0) return Math.max(60_000, staleSeconds * 1000);
-  const lockSeconds = Number(job?.lockTtlSeconds);
-  if (Number.isFinite(lockSeconds) && lockSeconds > 0) return Math.max(60_000, lockSeconds * 1000);
-  return ttlMs;
-}
-
-function jobLockState({ job, lock, latestRun }) {
-  if (!lock) {
-    return { locked: false, canForceUnlock: false, reason: null, lockedAt: null, expiresAt: null, staleAfterMs: null };
-  }
-  const timing = runTiming(latestRun, job);
-  const staleAfterMs = jobLockStaleThresholdMs(job);
-  const expiresMs = validTime(lock.expiresAt);
-  const expired = expiresMs != null && expiresMs <= Date.now();
-  const running = latestRun?.status === 'running';
-  const elapsedStale = running && Number.isFinite(Number(timing.elapsedMs)) && Number(timing.elapsedMs) >= staleAfterMs;
-  const quietStale = running && Number.isFinite(Number(timing.quietMs)) && Number(timing.quietMs) >= staleAfterMs;
-  const canForceUnlock = expired || elapsedStale || quietStale;
-  let reason = 'active';
-  if (expired) reason = 'expired';
-  else if (quietStale) reason = 'quiet_ttl';
-  else if (elapsedStale) reason = 'running_ttl';
-  return {
-    locked: true,
-    canForceUnlock,
-    reason,
-    lockedAt: lock.lockedAt || null,
-    expiresAt: lock.expiresAt || null,
-    staleAfterMs,
-  };
-}
-
 function areaJobMatch(area, run) {
   if (area.id === 'marketQuotes') {
     return (
@@ -191,7 +146,7 @@ function areaJobMatch(area, run) {
 
 function areaJobDefinitionMatch(area, job) {
   const jobArea = String(job?.area || job?.domain || '').trim();
-  if (area.id === 'signal') return jobArea === 'signal' || job?.domain === 'insights';
+  if (area.id === 'signal') return jobArea === 'signal';
   if (area.id === 'marketQuotes') {
     return jobArea === 'market' && (job.handler === 'market_quotes' || job.handler === 'market_quotes_mcap');
   }
@@ -355,7 +310,7 @@ function dashboardSummary(db) {
       marketQuotes: db.marketQuotes.length,
       coinMarkets: db.coinMarkets.length,
       notifications: db.notificationItems.length,
-      queuedNotifications: db.notificationItems.filter((item) => item.channel === 'push' && item.status === 'queued').length,
+      queuedNotifications: db.notificationItems.filter((item) => isPendingPushDelivery(item)).length,
       jobs: db.pollingJobs.length,
       enabledJobs: db.pollingJobs.filter((job) => job.enabled).length,
       recentFailedRuns: recentRuns.filter((run) => run.status === 'failed').length,
@@ -410,20 +365,35 @@ async function readDashboardSummaryContext() {
 
 export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
   if (req.method === 'GET' && pathname === '/admin/api/jobs') {
+    await reconcileJobLocksAndRuns().catch((error) => {
+      console.warn('[admin/jobs] lock reconcile failed', error?.message || error);
+    });
     const jobs = await listPollingJobs();
     const runs = await listPollingJobRuns({ limit: 200 });
     const recentRuns = runs.map((run) => enrichJobRun(run, jobs));
+    const runsByJob = new Map();
+    for (const run of recentRuns) {
+      if (!runsByJob.has(run.jobKey)) runsByJob.set(run.jobKey, []);
+      runsByJob.get(run.jobKey).push(run);
+    }
     const lockByJob = new Map((await listPollingJobLocks()).map((lock) => [lock.jobKey, lock]));
     const data = jobs.map((job) => {
       const enriched = enrichJobWithCatalog(job);
-      const latestRun = recentRuns.find((run) => run.jobKey === job.jobKey) || null;
+      const jobRuns = runsByJob.get(job.jobKey) || [];
+      const latestRun = jobRuns[0] || null;
+      const activeRunningRun = resolveActiveRunningRun(latestRun, jobRuns);
       return {
         ...enriched,
         latestRunAt: latestRun?.finishedAt || latestRun?.startedAt || job.lastRunAt || null,
         latestRunStatus: latestRun?.status || null,
         latestRunTrigger: latestRun?.trigger || null,
         latestRunErrorMessage: latestRun?.errorMessage || null,
-        lock: jobLockState({ job: enriched, lock: lockByJob.get(job.jobKey) || null, latestRun }),
+        lock: jobLockState({
+          job: enriched,
+          lock: lockByJob.get(job.jobKey) || null,
+          latestRun,
+          activeRunningRun,
+        }),
       };
     });
     json(res, 200, { data, runs: runs.slice(0, 50), presets: listJobPresets() });
@@ -495,24 +465,25 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
   const jobLockMatch = pathname.match(/^\/admin\/api\/jobs\/([^/]+)\/lock$/);
   if (req.method === 'DELETE' && jobLockMatch) {
     const jobKey = decodeURIComponent(jobLockMatch[1]);
-    const job = await getPollingJob(jobKey);
-    if (!job) {
-      json(res, 404, { error: `JOB_NOT_FOUND:${jobKey}` });
-      return true;
+    try {
+      const result = await forceReleaseStaleJobLock(jobKey);
+      json(res, 200, { data: { released: result.released, failedRuns: result.failedRuns, jobKey, lock: result.state } });
+    } catch (error) {
+      const message = String(error?.message || '');
+      if (message.startsWith('JOB_NOT_FOUND:')) {
+        json(res, 404, { error: message });
+        return true;
+      }
+      if (message === 'JOB_LOCK_NOT_FOUND') {
+        json(res, 404, { error: message });
+        return true;
+      }
+      if (message === 'JOB_LOCK_NOT_STALE') {
+        json(res, 409, { error: message, data: error.state || null });
+        return true;
+      }
+      throw error;
     }
-    const lock = await getPollingJobLock(jobKey);
-    if (!lock) {
-      json(res, 404, { error: 'JOB_LOCK_NOT_FOUND' });
-      return true;
-    }
-    const latestRun = (await listPollingJobRuns({ jobKey, limit: 1 }))[0] || null;
-    const state = jobLockState({ job, lock, latestRun });
-    if (!state.canForceUnlock) {
-      json(res, 409, { error: 'JOB_LOCK_NOT_STALE', data: state });
-      return true;
-    }
-    const released = await releasePollingJobLock(jobKey, lock.lockToken);
-    json(res, 200, { data: { released, jobKey, lock: state } });
     return true;
   }
 
@@ -533,7 +504,9 @@ export async function handleAdminJobsRoutes({ req, res, url, pathname }) {
     if (Number.isFinite(Number(patch.staleLockSeconds)) && Number(patch.staleLockSeconds) > 0) {
       next.staleLockSeconds = Number(patch.staleLockSeconds);
     }
-    if (patch.params && typeof patch.params === 'object') next.params = patch.params;
+    if (patch.params && typeof patch.params === 'object') {
+      next.params = normalizeCommunityJobParams(job, patch.params);
+    }
     next.updatedAt = nowIso();
     const updated = await patchPollingJob(jobKey, next);
     json(res, 200, { data: updated });

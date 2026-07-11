@@ -1,9 +1,12 @@
 import { StyleSheet, type ViewStyle } from 'react-native';
 
+import { COMFORT_MARGIN_GROUP } from '@/constants/comfortDensity';
 import type { AppTheme } from '@/constants/theme';
 
+import { UI_RADIUS_GROUPED_FEED } from '@/constants/uiCornerRadius';
+
 /** 홈 `evidenceList` · `signalList`와 동일한 플로팅 카드 둥근 모서리 */
-export const GROUPED_FEED_RADIUS = 22;
+export const GROUPED_FEED_RADIUS = UI_RADIUS_GROUPED_FEED;
 
 export type GroupedFeedRowEdges = {
   isFirst: boolean;
@@ -57,7 +60,7 @@ export function groupedFeedRowShell(
           borderBottomColor: theme.border,
           borderBottomLeftRadius: GROUPED_FEED_RADIUS,
           borderBottomRightRadius: GROUPED_FEED_RADIUS,
-          marginBottom: 12,
+          marginBottom: COMFORT_MARGIN_GROUP,
         }
       : {
           borderBottomWidth: 1,

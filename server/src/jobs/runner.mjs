@@ -11,6 +11,7 @@ import {
   readSingletonPayload,
   releasePollingJobLock,
   upsertCollectionRows,
+  pruneCommunityPostsForSource,
   upsertById,
   upsertPollingJobRun,
 } from '../db.mjs';
@@ -20,10 +21,9 @@ import { fetchFinnhubEarningsCalendar, fetchFinnhubEconomicCalendar, fetchFinnhu
 import { fetchCoinGeckoMarkets } from '../providers/market/coingecko.mjs';
 import { fetchYahooDailyPriceSeries } from '../providers/market/yahooDailyBars.mjs';
 import { fetchMarketQuotes, fetchMcapQuotes, fetchMcapUniverse } from '../providers/market/index.mjs';
-import { generateNewsDigestItems } from '../digests/newsDigest.mjs';
-import { fetchFinancialJuiceRssNews } from '../providers/news/financialJuiceRss.mjs';
-import { fetchFinnhubMarketNews } from '../providers/news/finnhub.mjs';
-import { fetchNewswireRssNews } from '../providers/news/rssNews.mjs';
+import { fetchFinancialJuiceRssNews, reconcileFinancialJuiceNewsItems } from '../providers/news/financialJuiceRss.mjs';
+import { fetchFinnhubMarketNews, reconcileFinnhubNewsItems } from '../providers/news/finnhub.mjs';
+import { fetchNewswireRssNews, reconcileRssNewsItems } from '../providers/news/rssNews.mjs';
 import { fetchDartFilings } from '../providers/news/dartFilings.mjs';
 import { fetchSecEdgarFilings } from '../providers/news/secEdgar.mjs';
 import { translateNews } from '../providers/translation/index.mjs';
@@ -32,6 +32,13 @@ import { fetchSaveUserNews } from '../providers/community/saveUserNews.mjs';
 import { fetchYoutubeEconomy, fetchYoutubeVideosByIds } from '../providers/youtube/youtube.mjs';
 import { normalizeYoutubeCurationHandles } from '../youtubeCuration.mjs';
 import { phasesForJob, paramsForPhase, runModeForJob } from './jobPhases.mjs';
+import {
+  createJobRunProgress,
+  createMcapProgressHandler,
+  jobHasStoredNewsReconcile,
+  jobNeedsFreshContext,
+  jobUsesMcapProgress,
+} from './jobRunProgress.mjs';
 import { ensureRssSourcesCatalog, getRssSource, rssSourceParams } from '../db/rssSources.mjs';
 
 function addSecondsIso(seconds) {
@@ -117,8 +124,12 @@ async function readJobContext(job) {
   if (provider === 'rss') {
     context.rssSources = await listCollectionPayloads('rssSources');
   }
+  if (jobHasStoredNewsReconcile(job)) {
+    context.newsItems = await listCollectionPayloads('newsItems');
+  }
   if (
     provider === 'sec' ||
+    provider === 'dart' ||
     (provider === 'finnhub' &&
       (handler === 'market_quotes' || handler === 'market_quotes_mcap' || handler === 'market_quotes_mcap_universe')) ||
     (provider === 'yahoo' && handler === 'daily_bars')
@@ -132,9 +143,6 @@ async function readJobContext(job) {
     ]);
     context.appSettings = appSettings || {};
     context.youtubeVideos = youtubeVideos;
-  }
-  if (provider === 'signal' && handler === 'news_digest') {
-    context.newsItems = await listCollectionPayloads('newsItems');
   }
 
   return context;
@@ -155,66 +163,7 @@ async function ensureNewsSourcesForRows(newsItems) {
   if (changed) await upsertCollectionRows('newsSources', db.newsSources);
 }
 
-async function autoTranslateNewsDirect(newsItems) {
-  const settings = (await listCollectionPayloads('translationSettings')).filter((s) => s.enabled && s.autoTranslateNews);
-  if (settings.length === 0 || !Array.isArray(newsItems) || newsItems.length === 0) return;
-  const existingTranslations = await listCollectionPayloads('newsTranslations');
-  const byId = new Map(existingTranslations.map((row) => [row.id, row]));
-  const translationRows = [];
-
-  for (const item of newsItems) {
-    for (const setting of settings) {
-      const id = translationId(item.id, setting.locale);
-      const existing = byId.get(id);
-      if (existing?.status === 'completed' || existing?.status === 'manual') continue;
-      try {
-        const translated = await translateNews({
-          newsItem: item,
-          locale: setting.locale,
-          provider: setting.provider,
-        });
-        const { hashtagLabels = [], ...trRest } = translated;
-        translationRows.push({
-          id,
-          newsItemId: item.id,
-          ...trRest,
-          editedByAdminId: null,
-          editedAt: null,
-        });
-        if (trRest.status === 'completed') {
-          const nextItem = { ...item };
-          mergeAutoHashtagsIntoNewsItem(nextItem, hashtagLabels);
-          await patchCollectionPayload('newsItems', item.id, {
-            hashtags: nextItem.hashtags,
-            autoHashtags: nextItem.autoHashtags,
-            hashtagLabels: nextItem.hashtagLabels,
-            updatedAt: nowIso(),
-          });
-        }
-      } catch (error) {
-        translationRows.push({
-          id,
-          newsItemId: item.id,
-          locale: setting.locale,
-          provider: setting.provider,
-          model: setting.model,
-          status: 'failed',
-          title: '',
-          summary: '',
-          content: '',
-          errorMessage: error instanceof Error ? error.message : String(error),
-          translatedAt: null,
-          editedByAdminId: null,
-          editedAt: null,
-        });
-      }
-    }
-  }
-
-  if (translationRows.length > 0) await upsertCollectionRows('newsTranslations', translationRows);
-}
-
-async function saveNewsRows(rows) {
+async function saveNewsRows(rows, { onHeartbeat } = {}) {
   const savedAt = nowIso();
   const safeRows = rows.map((row) => ({
     ...row,
@@ -223,7 +172,6 @@ async function saveNewsRows(rows) {
   }));
   await upsertCollectionRows('newsItems', safeRows);
   await ensureNewsSourcesForRows(safeRows);
-  await autoTranslateNewsDirect(safeRows);
 }
 
 async function saveDisclosureRows(rows) {
@@ -248,12 +196,23 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
   const effective = { ...job, params };
 
   if (effective.provider === 'finnhub' && effective.handler === 'market_news') {
+    if (phase === 'reconcile') {
+      const newsItems = dbBefore.newsItems || (await listCollectionPayloads('newsItems'));
+      const category = params?.category || 'general';
+      const limit = Math.max(1, Math.min(200, Number(params?.limit || 100) || 100));
+      return { kind: 'news', rows: reconcileFinnhubNewsItems(newsItems, { category, limit }) };
+    }
     return { kind: 'news', rows: await fetchFinnhubMarketNews(params) };
   }
   if (effective.provider === 'rss' && effective.handler === 'financial_juice') {
     const sourceId = params?.rssSourceId || (Array.isArray(params?.rssSourceIds) ? params.rssSourceIds[0] : null);
     const source = getRssSource(dbBefore, sourceId);
     if (!source || source.enabled === false) throw new Error('RSS_SOURCE_NOT_CONFIGURED');
+    if (phase === 'reconcile') {
+      const newsItems = dbBefore.newsItems || (await listCollectionPayloads('newsItems'));
+      const limit = Math.max(1, Math.min(200, Number(params?.limit || 60) || 60));
+      return { kind: 'news', rows: reconcileFinancialJuiceNewsItems(newsItems, limit) };
+    }
     return { kind: 'news', rows: await fetchFinancialJuiceRssNews(rssSourceParams(source, params || {})) };
   }
   if (effective.provider === 'rss' && effective.handler === 'newswire_rss') {
@@ -264,6 +223,12 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
         : [];
     const sources = ids.map((id) => getRssSource(dbBefore, id)).filter((source) => source && source.enabled !== false);
     if (sources.length === 0) throw new Error('RSS_SOURCE_NOT_CONFIGURED');
+    if (phase === 'reconcile') {
+      const newsItems = dbBefore.newsItems || (await listCollectionPayloads('newsItems'));
+      const limit = Math.max(1, Math.min(200, Number(params?.limit || 60) || 60));
+      const providerIds = sources.map((source) => source.providerId || source.id).filter(Boolean);
+      return { kind: 'news', rows: reconcileRssNewsItems(newsItems, { providerIds, limit }) };
+    }
     const rows = [];
     ensureRssSourcesCatalog(dbBefore);
     for (const source of sources) {
@@ -363,9 +328,6 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
       }),
     };
   }
-  if (effective.provider === 'signal' && effective.handler === 'news_digest') {
-    return { kind: 'newsDigests', rows: generateNewsDigestItems(dbBefore, params || {}) };
-  }
   if (effective.provider === 'naver_cafe' && effective.handler === 'likeusstock_free') {
     return { kind: 'community', rows: await fetchNaverCafeLikeusstockFree(params || {}) };
   }
@@ -375,25 +337,35 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
   throw new Error(`UNKNOWN_JOB_HANDLER:${job.provider}:${job.handler}`);
 }
 
-async function persistHandlerResult(result, rows) {
+async function persistHandlerResult(result, rows, { onHeartbeat } = {}) {
   const directCollectionByKind = {
     calendar: 'calendarEvents',
     marketQuotes: 'marketQuotes',
     marketList: 'marketLists',
     priceSeries: 'priceSeries',
     coinMarkets: 'coinMarkets',
-    newsDigests: 'newsDigestItems',
     community: 'communityPosts',
   };
   const directCollection = directCollectionByKind[result.kind];
   if (directCollection) {
     const savedAt = nowIso();
-    await upsertCollectionRows(
-      directCollection,
-      rows.map((row) => ({ ...row, updatedAt: row.updatedAt || savedAt, createdAt: row.createdAt || savedAt })),
-    );
+    const safeRows = rows.map((row) => ({ ...row, updatedAt: row.updatedAt || savedAt, createdAt: row.createdAt || savedAt }));
+    await upsertCollectionRows(directCollection, safeRows);
+    if (result.kind === 'community') {
+      const idsBySource = new Map();
+      for (const row of safeRows) {
+        const source = row.source;
+        const providerItemId = row.providerItemId;
+        if (!source || !providerItemId) continue;
+        if (!idsBySource.has(source)) idsBySource.set(source, []);
+        idsBySource.get(source).push(providerItemId);
+      }
+      for (const [source, providerItemIds] of idsBySource) {
+        await pruneCommunityPostsForSource(source, providerItemIds);
+      }
+    }
   } else if (result.kind === 'news') {
-    await saveNewsRows(rows);
+    await saveNewsRows(rows, { onHeartbeat });
   } else if (result.kind === 'disclosures') {
     await saveDisclosureRows(rows);
   } else if (result.kind === 'youtube') {
@@ -484,45 +456,16 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
       updatedAt: run.startedAt,
     });
 
-    let lastProgressAt = 0;
-    let lastProgressPercent = -1;
-    const onProgress =
-      jobKey === 'market_quotes_mcap'
-        ? async ({ phase, done, total, symbol } = {}) => {
-            const safeDone = Math.max(0, Number(done) || 0);
-            const safeTotal = Math.max(0, Number(total) || 0);
-            const now = Date.now();
-
-            let percent = 0;
-            if (phase === 'profiles') percent = safeTotal > 0 ? Math.round((safeDone / safeTotal) * 50) : 0;
-            else if (phase === 'quotes') percent = safeTotal > 0 ? 50 + Math.round((safeDone / safeTotal) * 50) : 50;
-            else if (phase === 'transcripts') percent = safeTotal > 0 ? Math.round((safeDone / safeTotal) * 100) : 0;
-
-            const percentDelta = Math.abs(percent - lastProgressPercent);
-            const shouldPersist =
-              percent !== lastProgressPercent &&
-              (now - lastProgressAt > 5000 ||
-                percent === 0 ||
-                percent === 100 ||
-                safeDone === safeTotal ||
-                percentDelta >= 10);
-
-            if (shouldPersist) {
-              lastProgressAt = now;
-              lastProgressPercent = percent;
-              console.log(
-                `[job:${jobKey}] progress ${percent}% (${phase || 'unknown'} ${safeDone}/${safeTotal})${symbol ? ` ${symbol}` : ''}`,
-              );
-              await patchPollingJobRun(run.id, {
-                progressPhase: phase || null,
-                progressDone: safeDone,
-                progressTotal: safeTotal,
-                progressPercent: percent,
-                progressUpdatedAt: nowIso(),
-              });
-            }
-          }
-        : null;
+    const { touch: touchRunProgress } = createJobRunProgress({
+      jobKey,
+      job,
+      lock,
+      runId: run.id,
+      jobLockTtlMs,
+    });
+    const onProgress = jobUsesMcapProgress(job.handler)
+      ? createMcapProgressHandler({ jobKey, touch: touchRunProgress })
+      : null;
 
     let dbBefore = await readJobContext(job);
     const phases = phasesForJob(job, runModeForJob(job, mode));
@@ -532,12 +475,15 @@ export async function runPollingJob(jobKey, { force = false, trigger = 'schedule
     let lastKind = null;
     for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex += 1) {
       const phase = phases[phaseIndex];
-      if (phase === 'reconcile' && job.provider === 'youtube') {
+      if (jobNeedsFreshContext(job, phase)) {
         dbBefore = await readJobContext(job);
       }
+      await touchRunProgress({ progressPhase: phase });
       const result = await executeHandler(job, dbBefore, { onProgress, phase });
       const rows = result.rows || [];
-      await persistHandlerResult(result, rows);
+      await persistHandlerResult(result, rows, {
+        onHeartbeat: () => touchRunProgress({ progressPhase: phase }),
+      });
       totalItems += rows.length;
       lastKind = result.kind;
       if (onProgress && phases.length > 1) {

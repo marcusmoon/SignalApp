@@ -14,7 +14,7 @@ import {
 } from '../../../db.mjs';
 import { normalizeSocialLoginRedirectPath } from '../../../auth/socialAuthConfig.mjs';
 import { MARKET_LIST_KEYS, normalizeMarketSymbols, publicMarketList } from '../../../marketLists.mjs';
-import { listProviderSettingsPublic, updateProviderSetting } from '../../../providerSettings.mjs';
+import { listProviderSettingsPublic, PATCHABLE_PROVIDER_SETTING_IDS, updateProviderSetting } from '../../../providerSettings.mjs';
 import { translateNews } from '../../../providers/translation/index.mjs';
 import { normalizeYoutubeCurationHandles, normalizeYoutubeHandle } from '../../../youtubeCuration.mjs';
 import {
@@ -24,8 +24,6 @@ import {
 } from '../../../db/youtubeChannels.mjs';
 import { ensureRssSourcesCatalog, normalizeRssSource, publicRssSource } from '../../../db/rssSources.mjs';
 import { json, readBody } from '../../shared.mjs';
-
-const SUPPORTED_PROVIDERS = ['finnhub', 'openai', 'claude', 'youtube', 'ninjas', 'coingecko', 'sec', 'rss'];
 
 /** Admin API only: never return raw third-party client secrets to the browser. */
 function redactAppSettingsForAdminGet(settings) {
@@ -475,7 +473,7 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
   const providerSettingMatch = pathname.match(/^\/admin\/api\/provider-settings\/([^/]+)$/);
   if (req.method === 'PATCH' && providerSettingMatch) {
     const provider = decodeURIComponent(providerSettingMatch[1]);
-    if (!SUPPORTED_PROVIDERS.includes(provider)) {
+    if (!PATCHABLE_PROVIDER_SETTING_IDS.includes(provider)) {
       json(res, 400, { error: 'UNKNOWN_PROVIDER' });
       return true;
     }
@@ -509,15 +507,10 @@ export async function handleAdminSettingsRoutes({ req, res, url, pathname, admin
     const locale = decodeURIComponent(settingMatch[1]);
     const patch = await readBody(req);
     const settings = await listCollectionPayloads('translationSettings');
-    const current = settings.find((s) => s.locale === locale) || { locale, provider: 'mock', enabled: false, autoTranslateNews: false };
-    const next = { ...current };
-    for (const key of ['provider']) {
-      if (typeof patch[key] === 'string') next[key] = patch[key];
-    }
+    const current = settings.find((s) => s.locale === locale) || { locale, provider: 'openai', autoTranslateNews: false };
+    const next = { ...current, provider: typeof patch.provider === 'string' ? patch.provider : current.provider };
+    next.autoTranslateNews = false;
     next.model = null;
-    for (const key of ['enabled', 'autoTranslateNews']) {
-      if (typeof patch[key] === 'boolean') next[key] = patch[key];
-    }
     next.updatedAt = nowIso();
     const updated = await patchCollectionPayload('translationSettings', locale, next);
     json(res, 200, { data: updated });

@@ -118,10 +118,10 @@ function FallbackAdPlaceholder({ theme }: { theme: AppTheme }) {
 
 const styles = StyleSheet.create({
   wrap: {
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     padding: 14,
-    marginBottom: 10,
+    marginBottom: 14,
     overflow: 'hidden',
   },
   badge: {
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
   },
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
   icon: { width: 40, height: 40, borderRadius: 8 },
   textCol: { flex: 1, minWidth: 0 },
   headline: { fontSize: 15, fontWeight: '800', marginBottom: 4 },
@@ -144,15 +144,15 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: 120,
     borderRadius: 8,
-    marginTop: 10,
+    marginTop: 16,
     backgroundColor: '#E5E8EB',
   },
   cta: {
-    marginTop: 10,
+    marginTop: 16,
     alignSelf: 'flex-start',
     borderRadius: 8,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 10,
     fontSize: 13,
     fontWeight: '800',
     color: '#FFFFFF',

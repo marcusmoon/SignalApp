@@ -4,6 +4,12 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
+import {
+  FEED_ARTICLE_TITLE_PX,
+  FEED_BODY_PX,
+  FEED_CHIP_PX,
+  FEED_SUMMARY_PX,
+} from '@/constants/feedTypography';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -76,11 +82,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
   return StyleSheet.create({
     card: {
       backgroundColor: theme.card,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       padding: ft.pad(10),
-      marginBottom: 10,
+      marginBottom: 14,
     },
     cardGrouped: {
       backgroundColor: 'transparent',
@@ -116,7 +122,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       position: 'absolute',
       bottom: 4,
       right: 4,
-      fontSize: ft.ff(10),
+      fontSize: ft.ff(FEED_CHIP_PX),
       fontWeight: ft.emphasisWeight,
       color: '#fff',
       backgroundColor: 'rgba(0,0,0,0.75)',
@@ -135,7 +141,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 8,
+      gap: 16,
       marginBottom: 4,
     },
     topicWrap: {
@@ -144,7 +150,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     topic: {
       alignSelf: 'flex-start',
-      fontSize: ft.ff(10),
+      fontSize: ft.ff(FEED_CHIP_PX),
       fontWeight: ft.emphasisWeight,
       color: theme.green,
       backgroundColor: theme.greenDim,
@@ -156,27 +162,27 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       overflow: 'hidden',
     },
     title: {
-      fontSize: ft.ff(14),
+      fontSize: ft.ff(FEED_ARTICLE_TITLE_PX),
       fontWeight: ft.titleWeight,
       color: theme.text,
-      lineHeight: ft.ff(19),
+      lineHeight: sf(21),
       marginBottom: 4,
     },
     channel: {
-      fontSize: ft.ff(12),
+      fontSize: ft.ff(FEED_BODY_PX),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
       marginBottom: 2,
     },
     meta: {
-      fontSize: ft.ff(11),
+      fontSize: ft.ff(FEED_SUMMARY_PX),
       fontWeight: ft.metaWeight,
       color: theme.textDim,
     },
     linkChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: 6,
       flexShrink: 0,
       paddingVertical: 2,
       paddingLeft: 2,
@@ -185,7 +191,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       opacity: 0.85,
     },
     linkText: {
-      fontSize: ft.ff(10),
+      fontSize: ft.ff(FEED_CHIP_PX),
       fontWeight: ft.emphasisWeight,
       color: theme.green,
     },

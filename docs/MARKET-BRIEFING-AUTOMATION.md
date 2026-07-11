@@ -6,7 +6,7 @@
 
 - 국내 오전(`morning`): 매 영업일 오전 7:30 KST — 장 시작 전
 - 국내 오후(`lunch`): 매 영업일 오후 12:10 KST — 점심
-- 국내 저녁(`evening`): 매 영업일 오후 6:00 KST — 장 마감 후
+- 국내 마감(`close`): 매 영업일 장 종료 후 — 마감 브리핑
 - 미국 밤사이(`overnight`): 매 영업일 오전 6:30 KST
 
 ## 국내 session 기준
@@ -17,9 +17,10 @@
 |---|---|---|
 | `morning` | 장 시작 전 | 장 시작 전 관전 포인트 |
 | `lunch` | 점심 | 오전장 흐름과 오후장 변수 |
-| `evening` | 저녁 | 장 마감 요약과 다음 거래일 체크포인트 |
+| `close` | 마감 | 장 종료 후 마감 브리핑 (`kr` 전용) |
+| `overnight` | 미국 밤사이 | 직전 미국장 종가 · 밤사이 뉴스 (`us` 전용) |
 
-앱 **시그널** 탭 국내 필터(오전/오후/저녁)는 위 `session` 값과 1:1로 대응한다.
+앱 **시장** 탭 회차(미장 · 장전 · 장중 · 마감)는 위 `session` 값과 1:1로 대응한다. 총 4회차다.
 
 ## Ingest Endpoint
 
@@ -27,10 +28,19 @@
 - URL: `/v1/market-briefings/ingest`
 - Header: `x-signal-automation-token: $SIGNAL_AUTOMATION_INGEST_TOKEN`
 
+요청 본문 최상위(또는 `briefing` 객체와 형제)에 알림 플래그를 둔다. 기본값은 둘 다 `true`이며 서로 독립이다.
+
+| 필드 | 역할 |
+|---|---|
+| `notifyInbox` | 알림센터(`notification_items`) 적재 |
+| `sendPush` | 기기 푸시 큐 (`payload.pushDelivery: pending`) |
+
 ## 최소 Payload
 
 ```json
 {
+  "notifyInbox": true,
+  "sendPush": true,
   "id": "kr-2026-06-14-morning",
   "market": "kr",
   "session": "morning",
@@ -60,16 +70,13 @@
   ],
   "sourceRefs": [
     {
-      "kind": "news",
-      "title": "반도체 업황 관련 기사",
-      "url": "https://example.com/story",
-      "sourceName": "Example News",
-      "publishedAt": "2026-06-13T21:40:00Z"
+      "type": "news",
+      "id": "codex-news:global:abc123",
+      "relation": "primary"
     }
   ],
   "publishedAt": "2026-06-13T22:30:00Z",
   "briefingDate": "2026-06-14",
-  "pushCandidate": true,
   "pushTitle": "국내 아침 브리핑 도착",
   "pushBody": "장 시작 전 핵심 이슈를 확인하세요."
 }
@@ -86,7 +93,7 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/market-briefings/ingest" \
 
 ## Codex 자동화 프롬프트 가이드
 
-국내 브리핑 자동화는 회차별로 `market=kr`, `session=morning|lunch|evening`만 바꾸고 같은 형식으로 작성한다.
+국내 브리핑 자동화는 회차별로 `market=kr`, `session=morning|lunch|close`만 바꾸고 같은 형식으로 작성한다.
 미국 브리핑 자동화는 `market=us`, `session=overnight`로 작성한다.
 
 - 최신 기사와 시세는 반드시 웹 검증
@@ -98,6 +105,8 @@ curl -X POST "$SIGNAL_SERVER_URL/v1/market-briefings/ingest" \
 
 ## 앱 표시
 
-- 앱 **시그널** 탭이 `/v1/market-briefings` 목록 API를 날짜·시장 필터로 읽는다.
+- 앱 **시장** 탭이 `/v1/market-briefings?locale=` 목록 API를 날짜·시장 필터로 읽는다.
+- `sourceRefs`는 ingest 시 `type`+`id`만 저장하고 read 시 hydrate한다([`DIGEST-SOURCE-REF-HYDRATION.md`](./DIGEST-SOURCE-REF-HYDRATION.md)).
 - 브리핑 전문은 탭 안에서 바로 표시한다(별도 상세 화면 없음).
-- `pushCandidate=true` ingest 시 푸시 `deepLink`는 `/signal`이다.
+- ingest 요청: `notifyInbox`(알림함), `sendPush`(기기 푸시) — 독립 플래그, 기본값 `true`
+- 알림 `deepLink`는 `/signal`이다.

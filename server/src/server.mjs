@@ -4,6 +4,7 @@ import { config } from './config.mjs';
 import { hasAdminUsers } from './db.mjs';
 import { handleRequest } from './http.mjs';
 import { recordHttpRequest } from './httpMetrics.mjs';
+import { startJobLockMaintenance } from './jobs/jobLockMaintenance.mjs';
 import { startScheduler } from './jobs/scheduler.mjs';
 
 const server = http.createServer((req, res) => {
@@ -42,6 +43,7 @@ server.listen(config.port, config.host, () => {
     .catch((error) => console.warn('[server] Failed to inspect admin users:', error?.message || error));
 });
 
+const stopJobLockMaintenance = startJobLockMaintenance({ intervalMs: config.jobLockMaintenanceIntervalMs });
 const stopScheduler = config.schedulerEnabled
   ? startScheduler()
   : () => {};
@@ -51,6 +53,7 @@ if (!config.schedulerEnabled) {
 }
 
 process.on('SIGINT', () => {
+  stopJobLockMaintenance();
   stopScheduler();
   server.close(() => process.exit(0));
 });

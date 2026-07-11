@@ -1,19 +1,7 @@
-import { useEffect, useState } from 'react';
-
-/** Web: follow OS light/dark preference for `system` appearance mode. */
-export function useColorScheme(): 'light' | 'dark' {
-  const [scheme, setScheme] = useState<'light' | 'dark'>(() =>
-    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
-  );
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const onChange = () => setScheme(media.matches ? 'dark' : 'light');
-    onChange();
-    media.addEventListener('change', onChange);
-    return () => media.removeEventListener('change', onChange);
-  }, []);
-
-  return scheme;
+/**
+ * SIGNAL: 다크 모드 기본 (PRD UX 정책)
+ * Native `useColorScheme` 과 동일 — web `system` 모드도 OS 가 아니라 앱 기본(다크)을 따른다.
+ */
+export function useColorScheme(): 'dark' {
+  return 'dark';
 }

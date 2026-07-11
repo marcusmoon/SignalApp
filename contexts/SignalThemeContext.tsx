@@ -3,11 +3,14 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react';
-import { Platform, useColorScheme } from 'react-native';
+import { Platform } from 'react-native';
+
+import { useWebThemeAppearanceMode } from '@/hooks/useWebThemeAppearanceMode';
 
 import type { AppTheme, ThemeColorScheme } from '@/constants/theme';
 import {
@@ -34,11 +37,12 @@ import {
   saveFontSizePreset,
 } from '@/services/fontSizePreference';
 import {
+  effectiveColorSchemeForMode,
   loadThemeAppearanceMode,
   saveThemeAppearanceMode,
   type ThemeAppearanceMode,
 } from '@/services/themeAppearancePreference';
-import { applyWebDocumentTheme, readWebThemeAppearanceMode } from '@/utils/webThemeDocument';
+import { applyWebDocumentTheme } from '@/utils/webThemeDocument';
 
 type SignalThemeContextValue = {
   appearanceMode: ThemeAppearanceMode;
@@ -65,10 +69,9 @@ type SignalThemeContextValue = {
 const SignalThemeContext = createContext<SignalThemeContextValue | null>(null);
 
 export function SignalThemeProvider({ children }: { children: ReactNode }) {
-  const systemColorScheme = useColorScheme();
-  const [appearanceMode, setAppearanceModeState] = useState<ThemeAppearanceMode>(() =>
-    Platform.OS === 'web' ? readWebThemeAppearanceMode() : 'system',
-  );
+  const webAppearanceMode = useWebThemeAppearanceMode();
+  const [appearanceMode, setAppearanceModeState] = useState<ThemeAppearanceMode>('system');
+  const resolvedAppearanceMode = Platform.OS === 'web' ? webAppearanceMode : appearanceMode;
   const [presetId, setPresetIdState] = useState<AccentPresetId>('blue');
   const [customHex, setCustomHex] = useState<string>(DEFAULT_CUSTOM_ACCENT_HEX);
   const [fontSizePreset, setFontSizePresetState] = useState<FontSizePresetId>('standard');
@@ -83,7 +86,9 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
         loadFontSizePreset(),
         loadFeedContentWeight(),
       ]);
-      setAppearanceModeState(mode);
+      if (Platform.OS !== 'web') {
+        setAppearanceModeState((current) => (current === mode ? current : mode));
+      }
       setPresetIdState(id);
       setCustomHex(hex);
       setFontSizePresetState(fontId);
@@ -91,18 +96,17 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
-  const effectiveColorScheme = useMemo<ThemeColorScheme>(() => {
-    if (appearanceMode === 'dark') return 'dark';
-    if (appearanceMode === 'light') return 'light';
-    return systemColorScheme === 'dark' ? 'dark' : 'light';
-  }, [appearanceMode, systemColorScheme]);
+  const effectiveColorScheme = useMemo<ThemeColorScheme>(
+    () => effectiveColorSchemeForMode(resolvedAppearanceMode),
+    [resolvedAppearanceMode],
+  );
 
   const theme = useMemo(
     () => getThemeForPreset(presetId, customHex, effectiveColorScheme),
     [presetId, customHex, effectiveColorScheme],
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (Platform.OS !== 'web') return;
     applyWebDocumentTheme(effectiveColorScheme, theme.bg, theme);
   }, [effectiveColorScheme, theme]);
@@ -129,7 +133,9 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
 
   const setAppearanceMode = useCallback(async (mode: ThemeAppearanceMode) => {
     await saveThemeAppearanceMode(mode);
-    setAppearanceModeState(mode);
+    if (Platform.OS !== 'web') {
+      setAppearanceModeState(mode);
+    }
   }, []);
 
   const setCustomAccent = useCallback(async (hex: string) => {
@@ -153,7 +159,7 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SignalThemeContextValue>(
     () => ({
       presetId,
-      appearanceMode,
+      appearanceMode: resolvedAppearanceMode,
       effectiveColorScheme,
       setAppearanceMode,
       customHex,
@@ -169,7 +175,7 @@ export function SignalThemeProvider({ children }: { children: ReactNode }) {
     }),
     [
       presetId,
-      appearanceMode,
+      resolvedAppearanceMode,
       effectiveColorScheme,
       setAppearanceMode,
       customHex,

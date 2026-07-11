@@ -15,16 +15,23 @@ import {
 } from './db/repositories/pollingJobsRepository.mjs';
 import {
   acquirePollingJobLockRow,
+  deleteExpiredPollingJobLocks,
   deletePollingJobLock,
+  deletePollingJobLockByJobKey,
   findPollingJobLock,
   findPollingJobLocks,
+  renewPollingJobLockRow,
 } from './db/repositories/pollingJobLocksRepository.mjs';
 import {
   listYoutubeVideoRows,
   queryPublicYoutubeChannelRows,
   queryPublicYoutubeRows,
 } from './db/repositories/youtubeRepository.mjs';
-import { queryPublicCommunityRows } from './db/repositories/communityRepository.mjs';
+import {
+  pruneCommunityPostsForSource as pruneCommunityPostsForSourceRows,
+  queryPublicCommunityPostByIdRow,
+  queryPublicCommunityRows,
+} from './db/repositories/communityRepository.mjs';
 import {
   deleteCalendarRowById,
   deleteCalendarRowsByIds,
@@ -40,6 +47,8 @@ import {
 } from './calendar/eventKey.mjs';
 import {
   queryAdminNewsRows,
+  findNewsItemIds,
+  queryPendingNewsTranslationRows,
   queryPublicNewsRows,
   queryPublicNewsSourceRows,
 } from './db/repositories/newsRepository.mjs';
@@ -69,13 +78,25 @@ import {
   verifyAdminLoginRow,
 } from './db/repositories/adminUsersRepository.mjs';
 import {
+  getAppUserNotificationPrefs,
+  updateAppUserNotificationPrefs,
+} from './db/repositories/appUserNotificationPrefsRepository.mjs';
+import {
   claimPushNotificationRows,
   queryNotificationRows,
-  queryPublicNotificationsForUserRows,
   resolvePushDeviceRows,
   updateNotificationSendStateRow,
   upsertNotificationRow,
 } from './db/repositories/notificationsRepository.mjs';
+import {
+  countUnreadUserNotificationInbox,
+  deleteUserNotificationInboxItems,
+  markUserNotificationInboxRead,
+  queryUserNotificationInboxRows,
+  queryUserNotificationInboxPage,
+  upsertUserNotificationInboxRow,
+  USER_NOTIFICATION_INBOX_MAX,
+} from './db/repositories/notificationInboxRepository.mjs';
 import {
   listAppUserTermAcceptanceRows,
   listLegalTermRows,
@@ -379,6 +400,7 @@ const collectionSpecs = [
       symbol: textOrNull(row.symbol),
       company_name: textOrNull(row.companyName),
       form_type: textOrNull(row.formType),
+      type_category: textOrNull(row.typeCategory),
       filed_at: isoOrNull(row.filedAt),
       period_end_date: dateOrNull(row.periodEndDate),
       updated_at: isoOrNull(row.updatedAt) || nowIso(),
@@ -515,25 +537,6 @@ const collectionSpecs = [
     }),
   },
   {
-    key: 'insightItems',
-    store: 'insights',
-    table: 'insight_items',
-    pk: 'id',
-    keyOf: (row) => row.id,
-    columns: (row, index) => ({
-      position: index,
-      kind: textOrNull(row.kind),
-      display_key: textOrNull(row.displayKey || row.symbol),
-      level: textOrNull(row.level),
-      score: numberOrNull(row.score),
-      generated_date: dateOrNull(row.generatedDate || row.generatedAt),
-      generated_at: isoOrNull(row.generatedAt),
-      expires_at: isoOrNull(row.expiresAt),
-      push_candidate: row.pushCandidate === true,
-      updated_at: isoOrNull(row.updatedAt) || nowIso(),
-    }),
-  },
-  {
     key: 'newsDigestItems',
     store: 'insights',
     table: 'news_digest_items',
@@ -575,7 +578,6 @@ const collectionSpecs = [
       session: textOrNull(row.session),
       briefing_date: dateOrNull(row.briefingDate || row.generatedDate || row.publishedAt),
       published_at: isoOrNull(row.publishedAt || row.generatedAt),
-      push_candidate: row.pushCandidate === true,
       updated_at: isoOrNull(row.updatedAt) || nowIso(),
     }),
   },
@@ -592,7 +594,6 @@ const collectionSpecs = [
       published_at: isoOrNull(row.publishedAt || row.generatedAt),
       generated_at: isoOrNull(row.generatedAt || row.publishedAt),
       status: textOrNull(row.status) || 'published',
-      push_candidate: row.pushCandidate === true,
       updated_at: isoOrNull(row.updatedAt) || nowIso(),
     }),
   },
@@ -944,6 +945,14 @@ export async function queryAdminNews(options = {}) {
   return queryAdminNewsRows(options);
 }
 
+export async function queryPendingNewsTranslations(options = {}) {
+  return queryPendingNewsTranslationRows(options);
+}
+
+export async function findNewsItemsByIds(ids = []) {
+  return findNewsItemIds(ids);
+}
+
 export async function queryPublicDisclosures(options = {}) {
   return cachedPublicRead('publicDisclosures', options, () => queryPublicDisclosureRows(options), 15000);
 }
@@ -962,6 +971,19 @@ export async function queryPublicYoutube(options = {}) {
 
 export async function queryPublicCommunity(options = {}) {
   return cachedPublicRead('publicCommunity', options, () => queryPublicCommunityRows(options), 15000);
+}
+
+export async function queryPublicCommunityPostById(id) {
+  return cachedPublicRead('publicCommunityById', { id }, () => queryPublicCommunityPostByIdRow(id), 15000);
+}
+
+export async function pruneCommunityPostsForSource(source, providerItemIds = []) {
+  return withDbExclusive(async () => {
+    await ensureSeeded();
+    const result = await pruneCommunityPostsForSourceRows(source, providerItemIds);
+    clearPublicReadCache();
+    return result;
+  });
 }
 
 export async function queryPublicYoutubeChannels() {
@@ -1029,62 +1051,6 @@ export async function queryPublicPriceSeriesCandles(options = {}) {
   return cachedPublicRead('publicPriceSeriesCandles', options, () => queryPublicPriceSeriesCandlesRow(options), 30000);
 }
 
-export async function queryInsightItems(options = {}) {
-  return cachedPublicRead('insights', options, async () => {
-    const limit = safeLimit(options.limit, 20, 100);
-    const params = [];
-    const where = [];
-    const kind = cleanText(options.kind);
-    const displayKey = cleanText(options.displayKey);
-    const level = cleanText(options.level);
-    const from = cleanText(options.from);
-    const to = cleanText(options.to);
-    const date = cleanText(options.date);
-    if (kind) {
-      params.push(kind);
-      where.push(`kind = $${params.length}`);
-    }
-    if (level) {
-      params.push(level);
-      where.push(`level = $${params.length}`);
-    }
-    if (displayKey) {
-      params.push(displayKey);
-      where.push(`display_key = $${params.length}`);
-    }
-    if (date) {
-      params.push(date);
-      where.push(`generated_date = $${params.length}::date`);
-    }
-    const fromValue = sqlUtcRangeFrom(from);
-    if (fromValue) {
-      params.push(fromValue);
-      where.push(`generated_at >= $${params.length}::timestamptz`);
-    }
-    const toValue = sqlUtcRangeTo(to);
-    if (toValue) {
-      params.push(toValue);
-      where.push(`generated_at <= $${params.length}::timestamptz`);
-    }
-    if (options.pushOnly) where.push(`push_candidate = true`);
-    if (!options.includeExpired) {
-      where.push(`(expires_at IS NULL OR expires_at >= now())`);
-    }
-    params.push(limit);
-    const result = await queryKysely(
-      `
-        SELECT payload
-        FROM insight_items
-        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-        ORDER BY generated_at DESC NULLS LAST, position ASC
-        LIMIT $${params.length}
-      `,
-      params,
-    );
-    return result.rows.map(payloadFromRow).filter(Boolean);
-  }, 10000);
-}
-
 export async function listDuePollingJobs(now = Date.now()) {
   await ensureSeeded();
   const result = await queryKysely(
@@ -1131,13 +1097,34 @@ export async function acquirePollingJobLock(jobKey, { ttlMs = 2 * 60 * 60 * 1000
     const now = nowIso();
     const token = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + Math.max(60_000, Number(ttlMs) || ttlMs)).toISOString();
-    return acquirePollingJobLockRow(key, { token, lockedAt: now, expiresAt });
+    const result = await acquirePollingJobLockRow(key, { token, lockedAt: now, expiresAt });
+    if (!result?.acquired) return null;
+    return result.lock;
   });
 }
 
 export async function releasePollingJobLock(jobKey, token) {
   await ensureSeeded();
   return deletePollingJobLock(jobKey, token);
+}
+
+export async function renewPollingJobLock(jobKey, token, { ttlMs = 2 * 60 * 60 * 1000 } = {}) {
+  await ensureSeeded();
+  const key = cleanText(jobKey);
+  const lockToken = cleanText(token);
+  if (!key || !lockToken) return false;
+  const expiresAt = new Date(Date.now() + Math.max(60_000, Number(ttlMs) || ttlMs)).toISOString();
+  return renewPollingJobLockRow(key, lockToken, expiresAt);
+}
+
+export async function forceReleasePollingJobLock(jobKey) {
+  await ensureSeeded();
+  return deletePollingJobLockByJobKey(jobKey);
+}
+
+export async function purgeExpiredPollingJobLocks(now = Date.now()) {
+  await ensureSeeded();
+  return deleteExpiredPollingJobLocks(now);
 }
 
 export async function verifyAdminLogin(loginId, password) {
@@ -1955,9 +1942,33 @@ export async function queryNotifications(options = {}) {
   return queryNotificationRows(options);
 }
 
-export async function queryPublicNotificationsForUser(userId, options = {}) {
-  return queryPublicNotificationsForUserRows(userId, options);
+export async function queryUserNotificationInbox(userId, options = {}) {
+  return queryUserNotificationInboxRows(userId, options);
 }
+
+export async function queryUserNotificationInboxAdminPage(userId, options = {}) {
+  return queryUserNotificationInboxPage(userId, options);
+}
+
+export async function countUserNotificationInboxUnread(userId) {
+  return countUnreadUserNotificationInbox(userId);
+}
+
+export async function markUserNotificationInboxReadState(userId, options = {}) {
+  return markUserNotificationInboxRead(userId, options);
+}
+
+export async function deleteUserNotificationInbox(userId, options = {}) {
+  return deleteUserNotificationInboxItems(userId, options);
+}
+
+export async function deliverUserNotificationInbox(userId, notificationId, deliveredAt) {
+  return upsertUserNotificationInboxRow(userId, notificationId, { deliveredAt });
+}
+
+export { getAppUserNotificationPrefs, updateAppUserNotificationPrefs };
+
+export { USER_NOTIFICATION_INBOX_MAX };
 
 export async function claimPushNotificationsForDelivery({ limit = 20, now = nowIso(), provider = 'mock' } = {}) {
   return withDbExclusive(() => claimPushNotificationRows({ limit, now, provider }));

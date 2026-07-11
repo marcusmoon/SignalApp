@@ -1,8 +1,9 @@
 import { queryKysely, withKyselyTransaction } from '../kysely/client.mjs';
 import { nowIso } from '../time.mjs';
+import { shouldDeliverPushToUser } from '../../notifications/notificationPreferences.mjs';
+import { buildNotificationCategoryClause } from '../../notifications/notificationCategory.mjs';
 import {
   cleanText,
-  pageOptions,
   payloadFromRow,
   safeLimit,
 } from './publicHelpers.mjs';
@@ -105,6 +106,10 @@ export async function upsertNotificationRow(next) {
                 END,
                 'errorMessage', notification_items.payload->>'errorMessage'
               )
+          WHEN notification_items.status = 'published'
+            AND notification_items.payload->>'pushDelivery' IN ('sent', 'skipped')
+            THEN excluded.payload
+              || jsonb_build_object('pushDelivery', notification_items.payload->>'pushDelivery')
           ELSE excluded.payload
         END,
         updated_at = excluded.updated_at
@@ -138,21 +143,54 @@ export async function queryNotificationRows(options = {}) {
   const offset = (page - 1) * pageSize;
   const params = [];
   const where = [];
+  const alias = 'n';
+
   if (options.appUserId) {
     params.push(cleanText(options.appUserId));
-    where.push(`app_user_id = $${params.length}`);
+    where.push(`${alias}.app_user_id = $${params.length}`);
   }
   if (options.status) {
     params.push(cleanText(options.status));
-    where.push(`status = $${params.length}`);
+    where.push(`${alias}.status = $${params.length}`);
   }
+  if (options.type) {
+    params.push(cleanText(options.type));
+    where.push(`LOWER(COALESCE(${alias}.type, '')) = LOWER($${params.length})`);
+  }
+  if (options.channel) {
+    params.push(cleanText(options.channel));
+    where.push(`LOWER(COALESCE(${alias}.channel, '')) = LOWER($${params.length})`);
+  }
+  if (options.sourceType) {
+    params.push(cleanText(options.sourceType));
+    where.push(`LOWER(COALESCE(${alias}.source_type, '')) = LOWER($${params.length})`);
+  }
+  if (options.targetType) {
+    params.push(cleanText(options.targetType));
+    where.push(`LOWER(COALESCE(${alias}.target_type, '')) = LOWER($${params.length})`);
+  }
+  const q = cleanText(options.q);
+  if (q) {
+    params.push(`%${q}%`);
+    const idx = params.length;
+    where.push(`(
+      ${alias}.title ILIKE $${idx}
+      OR COALESCE(${alias}.payload->>'body', '') ILIKE $${idx}
+      OR ${alias}.app_user_id ILIKE $${idx}
+      OR ${alias}.source_id ILIKE $${idx}
+      OR ${alias}.id ILIKE $${idx}
+    )`);
+  }
+  const categoryClause = buildNotificationCategoryClause(options.filter, alias, params);
+  if (categoryClause) where.push(categoryClause.replace(/^AND\s+/, ''));
+
   params.push(pageSize + 1, offset);
   const result = await queryKysely(
     `
-      SELECT payload
-      FROM notification_items
+      SELECT ${alias}.payload
+      FROM notification_items ${alias}
       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-      ORDER BY COALESCE(scheduled_at, NULLIF(payload->>'createdAt', '')::timestamptz, updated_at) DESC NULLS LAST
+      ORDER BY COALESCE(${alias}.scheduled_at, NULLIF(${alias}.payload->>'createdAt', '')::timestamptz, ${alias}.updated_at) DESC NULLS LAST
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `,
     params,
@@ -168,21 +206,20 @@ export async function queryNotificationRows(options = {}) {
   };
 }
 
-export async function queryPublicNotificationsForUserRows(userId, options = {}) {
-  const { limit } = pageOptions(options, 50);
-  const rows = await queryNotificationRows({ appUserId: userId, pageSize: limit });
-  return rows.rows;
-}
-
 export async function claimPushNotificationRows({ limit = 20, now = nowIso(), provider = 'mock' } = {}) {
   return withKyselyTransaction(async (client) => {
     const result = await client.query(
       `
         SELECT *
         FROM notification_items
-        WHERE status = 'queued' AND channel = 'push'
+        WHERE channel = 'push'
           AND (scheduled_at IS NULL OR scheduled_at <= $1)
           AND (expires_at IS NULL OR expires_at > $1)
+          AND COALESCE(payload->>'pushDelivery', '') NOT IN ('sending', 'sent', 'skipped', 'none')
+          AND (
+            (status = 'queued' AND COALESCE(payload->>'pushDelivery', 'pending') = 'pending')
+            OR (status = 'published' AND payload->>'pushDelivery' = 'pending')
+          )
         ORDER BY COALESCE(scheduled_at, updated_at) ASC
         LIMIT $2
         FOR UPDATE SKIP LOCKED
@@ -192,10 +229,18 @@ export async function claimPushNotificationRows({ limit = 20, now = nowIso(), pr
     const claimed = [];
     for (const row of result.rows) {
       const payload = row.payload && typeof row.payload === 'object' ? row.payload : {};
-      const next = { ...payload, status: 'sending', provider, attempts: Number(payload.attempts) || 0, updatedAt: now };
+      const preservePublished = row.status === 'published';
+      const next = {
+        ...payload,
+        pushDelivery: 'sending',
+        status: preservePublished ? 'published' : 'sending',
+        provider,
+        attempts: Number(payload.attempts) || 0,
+        updatedAt: now,
+      };
       const update = await client.query(
         'UPDATE notification_items SET status = $1, payload = $2::jsonb, updated_at = $3 WHERE id = $4 RETURNING *',
-        ['sending', jsonPayload(next), now, row.id],
+        [preservePublished ? 'published' : 'sending', jsonPayload(next), now, row.id],
       );
       claimed.push(publicNotification(update.rows[0]));
     }
@@ -211,8 +256,15 @@ export async function resolvePushDeviceRows(notification) {
     params.push(notification.appUserId);
     where += ` AND d.user_id = $${params.length}`;
   }
-  const result = await queryKysely(`SELECT d.* FROM app_user_devices d JOIN app_users u ON u.id = d.user_id WHERE ${where} AND u.active = true`, params);
-  return result.rows.map(publicDevice);
+  const result = await queryKysely(
+    `SELECT d.*, u.notification_prefs FROM app_user_devices d JOIN app_users u ON u.id = d.user_id WHERE ${where} AND u.active = true`,
+    params,
+  );
+  return result.rows
+    .filter((row) =>
+      shouldDeliverPushToUser(notification?.type, notification?.sourceType, row.notification_prefs),
+    )
+    .map(publicDevice);
 }
 
 export async function updateNotificationSendStateRow(notificationId, patch = {}) {
@@ -220,11 +272,18 @@ export async function updateNotificationSendStateRow(notificationId, patch = {})
   const row = publicNotification(existing.rows[0]);
   if (!row) return null;
   const now = nowIso();
+  const preservePublished = row.status === 'published' || patch.preservePublished === true;
+  const pushDelivery = cleanText(patch.pushDelivery);
   const next = {
     ...row,
     ...patch,
+    status: preservePublished ? 'published' : patch.status ?? row.status,
     attempts: patch.attempts ?? row.attempts,
     updatedAt: now,
+    payload: {
+      ...(row.payload && typeof row.payload === 'object' ? row.payload : {}),
+      ...(pushDelivery ? { pushDelivery } : {}),
+    },
   };
   const result = await queryKysely(
     `

@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
+import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 
@@ -23,6 +24,7 @@ export function SignalHeader({ onBrandPress, compact = false, fullWidth = false 
   const { t } = useLocale();
   const styles = useMemo(() => makeStyles(theme, scaleFont, compact, fullWidth), [compact, fullWidth, theme, scaleFont]);
   const brandAccent = theme.green;
+  const { alerts: alertsHasUnread } = useFeedUnreadBadges();
 
   const logo = (
     <>
@@ -62,8 +64,11 @@ export function SignalHeader({ onBrandPress, compact = false, fullWidth = false 
             onPress={() => router.push('/alerts')}
             style={styles.iconBtn}
             accessibilityRole="button"
-            accessibilityLabel={t('a11yAlerts')}>
-            <FontAwesome name="bell" size={18} color={theme.textMuted} />
+            accessibilityLabel={alertsHasUnread ? t('a11yAlertsUnread') : t('a11yAlerts')}>
+            <View style={styles.iconBtnInner}>
+              <FontAwesome name="bell" size={18} color={theme.textMuted} />
+              {alertsHasUnread ? <View style={styles.alertDot} /> : null}
+            </View>
           </Pressable>
           <Pressable
             onPress={() => router.push('/calendar')}
@@ -95,28 +100,46 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, compact: boolean
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 8,
+      gap: 16,
     },
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
       flexShrink: 0,
       marginRight: -2,
-      gap: 6,
+      gap: 8,
     },
     iconBtn: {
       width: 36,
       height: 36,
-      borderRadius: 18,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.bgElevated,
+    },
+    iconBtnInner: {
+      width: 18,
+      height: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+    },
+    alertDot: {
+      position: 'absolute',
+      top: -2,
+      right: -4,
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+      backgroundColor: theme.danger,
+      borderWidth: 1.5,
+      borderColor: theme.card,
     },
     logoRow: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 16,
       minWidth: 0,
     },
     logoRowPressed: {

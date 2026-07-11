@@ -1,7 +1,10 @@
 import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
-import { createNotificationItem, NOTIFICATION_TYPES } from '../../../notifications/outbox.mjs';
+import { NOTIFICATION_TYPES } from '../../../notifications/notificationItem.mjs';
+import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
+import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicMarketBriefings } from '../../../db/repositories/marketBriefingsRepository.mjs';
+import { normalizeSourceRefs } from '../../../sources/normalizeSourceRefs.mjs';
 import { parseToUtcIsoOrNull, utcDateKeyFromInstant, utcDateOnlyOrNull } from '../../../time/utc.mjs';
 import { json, readBody } from '../../shared.mjs';
 
@@ -33,7 +36,6 @@ function normalizeBriefingPayload(input) {
   const summary = cleanText(input?.summary);
   const publishedAt = parseToUtcIsoOrNull(input?.publishedAt) || new Date().toISOString();
   if (!id || !title || !headline || !ALLOWED_MARKETS.has(market) || !ALLOWED_SESSIONS.has(session)) return null;
-  const pushCandidate = input?.pushCandidate !== false;
   return {
     id,
     market,
@@ -49,10 +51,9 @@ function normalizeBriefingPayload(input) {
     })).filter((s) => s.name),
     companies: cleanArray(input?.companies).slice(0, 12),
     macro: cleanArray(input?.macro).slice(0, 8),
-    sourceRefs: cleanArray(input?.sourceRefs).slice(0, 20),
+    sourceRefs: normalizeSourceRefs(input?.sourceRefs, { limit: 20 }),
     briefingDate: normalizeBriefingDate(input?.briefingDate || input?.generatedDate, publishedAt),
     publishedAt,
-    pushCandidate,
     pushTitle: cleanText(input?.pushTitle) || title,
     pushBody: cleanText(input?.pushBody) || headline,
     createdAt: cleanText(input?.createdAt) || publishedAt,
@@ -68,31 +69,37 @@ function hasIngestAccess(req) {
   return header === configured || bearer === configured;
 }
 
-async function maybeQueueBriefingPush(briefing) {
-  if (!briefing?.pushCandidate) return null;
-  const notification = createNotificationItem({
-    id: `notification:push:market_briefing:${briefing.id}`,
-    type: NOTIFICATION_TYPES.marketBriefing,
-    title: briefing.pushTitle || briefing.title,
-    body: briefing.pushBody || briefing.headline,
-    channel: 'push',
-    status: 'queued',
-    priority: briefing.market === 'us' ? 'high' : 'normal',
-    targetType: 'all',
-    sourceType: 'market_briefing',
-    sourceId: briefing.id,
-    deepLink: '/signal',
-    symbols: cleanArray(briefing.companies).map((company) => company?.symbol).filter(Boolean),
-    sourceRefs: briefing.sourceRefs,
-    reason: `${briefing.market}/${briefing.session} market briefing updated`,
-    scheduledAt: briefing.publishedAt,
-    payload: {
-      briefingId: briefing.id,
-      market: briefing.market,
-      session: briefing.session,
-      briefingDate: briefing.briefingDate,
+async function publishBriefingNotification(briefing, queuePush) {
+  const sessionTab = `${briefing.market}-${briefing.session}`;
+  const params = new URLSearchParams();
+  if (briefing.briefingDate) params.set('date', briefing.briefingDate);
+  if (sessionTab) params.set('session', sessionTab);
+  const deepLink = params.toString() ? `/signal?${params.toString()}` : '/signal';
+  const notification = buildPublishedNotification(
+    {
+      id: `notification:push:market_briefing:${briefing.id}`,
+      type: NOTIFICATION_TYPES.marketBriefing,
+      title: briefing.pushTitle || briefing.title,
+      body: briefing.pushBody || briefing.headline,
+      channel: 'push',
+      priority: briefing.market === 'us' ? 'high' : 'normal',
+      targetType: 'all',
+      sourceType: 'market_briefing',
+      sourceId: briefing.id,
+      deepLink,
+      symbols: cleanArray(briefing.companies).map((company) => company?.symbol).filter(Boolean),
+      sourceRefs: briefing.sourceRefs,
+      reason: `${briefing.market}/${briefing.session} market briefing updated`,
+      scheduledAt: briefing.publishedAt,
+      payload: {
+        briefingId: briefing.id,
+        market: briefing.market,
+        session: briefing.session,
+        briefingDate: briefing.briefingDate,
+      },
     },
-  });
+    { queuePush },
+  );
   if (!notification) return null;
   return upsertNotificationItem(notification);
 }
@@ -115,8 +122,18 @@ export async function handlePublicMarketBriefingRoutes({ req, res, url, pathname
       return true;
     }
     await upsertCollectionRows('marketBriefings', [briefing]);
-    const notification = body?.sendPush === false ? null : await maybeQueueBriefingPush(briefing);
-    json(res, 201, { data: publicBriefing(briefing), meta: { notificationQueued: !!notification } });
+    const notifyInbox = resolveIngestNotifyInbox(body);
+    const sendPush = resolveIngestSendPush(body);
+    const notification = notifyInbox ? await publishBriefingNotification(briefing, sendPush) : null;
+    json(res, 201, {
+      data: publicBriefing(briefing),
+      meta: {
+        notifyInbox,
+        sendPush,
+        inboxPublished: !!notification,
+        pushQueued: sendPush && !!notification,
+      },
+    });
     return true;
   }
 
@@ -129,6 +146,7 @@ export async function handlePublicMarketBriefingRoutes({ req, res, url, pathname
       to: url.searchParams.get('to'),
       limit: url.searchParams.get('limit') || 10,
       offset: url.searchParams.get('offset') || 0,
+      locale: url.searchParams.get('locale') || 'ko',
     });
     json(res, 200, {
       data: page.rows.map(publicBriefing),

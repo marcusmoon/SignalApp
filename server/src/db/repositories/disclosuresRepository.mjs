@@ -1,4 +1,5 @@
 import { queryKysely } from '../kysely/client.mjs';
+import { resolveDisclosureTypeCategory } from '../../disclosures/typeCategory.mjs';
 import {
   cleanText,
   pageOptions,
@@ -15,6 +16,7 @@ function publicDisclosure(item) {
     symbol: item.symbol || null,
     companyName: item.companyName || null,
     formType: item.formType || null,
+    typeCategory: resolveDisclosureTypeCategory(item) || null,
     title: item.title || '',
     summary: item.summary || '',
     url: item.url || item.sourceUrl || null,
@@ -23,6 +25,10 @@ function publicDisclosure(item) {
     fetchedAt: item.fetchedAt || null,
     rawPayload: item.rawPayload || null,
   };
+}
+
+function effectiveTypeCategoryExpr() {
+  return `COALESCE(NULLIF(type_category, ''), NULLIF(payload->>'typeCategory', ''))`;
 }
 
 function buildDisclosureWhere(options = {}, params = []) {
@@ -41,6 +47,11 @@ function buildDisclosureWhere(options = {}, params = []) {
   if (formType) {
     params.push(formType);
     where.push(`upper(COALESCE(form_type, '')) = $${params.length}`);
+  }
+  const typeCategory = cleanText(options.typeCategory);
+  if (typeCategory) {
+    params.push(typeCategory);
+    where.push(`${effectiveTypeCategoryExpr()} = $${params.length}`);
   }
   const symbols = new Set([
     ...sqlStringList(options.symbols).map((s) => s.toUpperCase()),
@@ -109,4 +120,17 @@ export async function queryPublicDisclosureByIdRow(id) {
   const result = await queryKysely('SELECT payload FROM disclosures WHERE id = $1 LIMIT 1', [key]);
   const item = payloadFromRow(result.rows[0]);
   return item ? publicDisclosure(item) : null;
+}
+
+export async function fetchPublicDisclosuresByIds(ids = []) {
+  const safeIds = [...new Set(ids.map((id) => cleanText(id)).filter(Boolean))];
+  const map = new Map();
+  if (safeIds.length === 0) return map;
+  const result = await queryKysely('SELECT payload FROM disclosures WHERE id = ANY($1::text[])', [safeIds]);
+  for (const row of result.rows) {
+    const item = payloadFromRow(row);
+    if (!item?.id) continue;
+    map.set(item.id, publicDisclosure(item));
+  }
+  return map;
 }

@@ -3,8 +3,10 @@ import { useMemo } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
+import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { AppTheme } from '@/constants/theme';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
+import { FEED_PREVIEW_BODY_PX } from '@/constants/feedTypography';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
@@ -109,13 +111,16 @@ function CompanyHighlightCard({
   return (
     <View style={styles.companyCard}>
       <View style={styles.companyHead}>
-        <View style={styles.companySymbolBox}>
-          <Text style={styles.companySymbol}>{item.symbol}</Text>
-          {item.name ? (
-            <Text style={styles.companyName} numberOfLines={1}>
-              {item.name}
-            </Text>
-          ) : null}
+        <View style={styles.companySymbolLead}>
+          <SymbolLogo symbol={item.symbol} size={24} />
+          <View style={styles.companySymbolBox}>
+            <Text style={styles.companySymbol}>{item.symbol}</Text>
+            {item.name ? (
+              <Text style={styles.companyName} numberOfLines={1}>
+                {item.name}
+              </Text>
+            ) : null}
+          </View>
         </View>
         {(hasPrice || hasChange) && (
           <View
@@ -327,7 +332,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       gap: 20,
     },
     leadPanel: {
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: leadTint,
@@ -340,7 +345,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       marginBottom: 2,
     },
     overviewBlock: {
-      gap: 10,
+      gap: 16,
     },
     summary: {
       fontSize: ft.signalBodyFont(17),
@@ -349,12 +354,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.text,
     },
     sectionWrap: {
-      gap: 10,
+      gap: 16,
     },
     sectionHead: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 16,
     },
     sectionAccent: {
       width: CONTENT_ACCENT_LINE_WIDTH,
@@ -380,7 +385,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minWidth: 24,
       height: 24,
       paddingHorizontal: 8,
-      borderRadius: 12,
+      borderRadius: 8,
       backgroundColor: theme.bgElevated,
       alignItems: 'center',
       justifyContent: 'center',
@@ -391,12 +396,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.textMuted,
     },
     overviewList: {
-      gap: 12,
+      gap: 20,
     },
     overviewRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 12,
+      gap: 20,
     },
     overviewDot: {
       width: 8,
@@ -415,19 +420,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.text,
     },
     cardStack: {
-      gap: 10,
+      gap: 16,
     },
     sectorRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 8,
+      gap: 16,
       paddingVertical: 7,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
     },
     sectorTrend: {
-      fontSize: sf(15),
-      fontWeight: '900',
+      fontSize: ft.ff(15),
+      fontWeight: ft.titleWeight,
       width: 20,
       textAlign: 'center',
     },
@@ -446,17 +451,24 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(18),
     },
     companyCard: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
       padding: ft.pad(14),
-      gap: 10,
+      gap: 16,
     },
     companyHead: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'space-between',
+      gap: 12,
+    },
+    companySymbolLead: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: 10,
     },
     companySymbolBox: {
@@ -465,35 +477,37 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       gap: 3,
     },
     companySymbol: {
-      fontSize: ft.signalTitleFont(17),
+      fontSize: ft.signalTitleFont(15),
       fontWeight: ft.signalTitleWeight,
       letterSpacing: -0.2,
       color: theme.green,
     },
     companyName: {
-      fontSize: ft.ff(13),
+      fontSize: ft.ff(12),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
     },
     companyQuoteBox: {
       flexShrink: 0,
       alignItems: 'flex-end',
-      borderWidth: 1,
-      paddingVertical: 8,
-      paddingHorizontal: 10,
-      borderRadius: 10,
-      gap: 2,
-      minWidth: 92,
+      borderWidth: StyleSheet.hairlineWidth,
+      paddingVertical: 5,
+      paddingHorizontal: 7,
+      borderRadius: 6,
+      gap: 1,
+      minWidth: 72,
     },
     companyPrice: {
-      fontSize: sf(15),
-      fontWeight: '900',
+      fontSize: ft.ff(12),
+      lineHeight: sf(16),
+      fontWeight: ft.emphasisWeight,
       color: theme.text,
       fontVariant: ['tabular-nums'],
     },
     companyChange: {
-      fontSize: sf(14),
-      fontWeight: '900',
+      fontSize: ft.ff(11),
+      lineHeight: sf(14),
+      fontWeight: ft.metaWeight,
       fontVariant: ['tabular-nums'],
     },
     companySummary: {
@@ -501,12 +515,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(23),
       fontWeight: ft.signalBodyWeight,
       color: theme.textDim,
-      paddingTop: 4,
+      paddingTop: 8,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
     },
     macroCard: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -514,7 +528,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderLeftColor: theme.accentOrange,
       paddingVertical: ft.row(12),
       paddingHorizontal: ft.pad(14),
-      gap: 6,
+      gap: 8,
     },
     macroTitle: {
       fontSize: ft.ff(15),
@@ -529,16 +543,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.textDim,
     },
     link: {
-      fontSize: sf(13),
-      fontWeight: '800',
+      fontSize: ft.ff(FEED_PREVIEW_BODY_PX),
+      fontWeight: ft.emphasisWeight,
       color: theme.green,
       marginTop: 2,
     },
     sourceRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      borderRadius: 14,
+      gap: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,

@@ -14,6 +14,11 @@
       "type": "boolean",
       "default": true
     },
+    "notifyInbox": {
+      "type": "boolean",
+      "default": true,
+      "description": "When true, upsert notification_items for inbox. Independent of sendPush."
+    },
     "run": {
       "type": "object",
       "additionalProperties": false,
@@ -187,8 +192,9 @@
             "$ref": "#/$defs/sourceRef"
           }
         },
-        "pushCandidate": {
-          "type": "boolean"
+        "notifyInbox": {
+          "type": "boolean",
+          "description": "Per-item inbox opt-out when false; defaults to request notifyInbox"
         },
         "pushTitle": {
           "type": "string",

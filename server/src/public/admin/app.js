@@ -340,14 +340,14 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
                   ? 'areaCommunity'
                 : a === 'market'
                   ? 'areaMarket'
-                  : a === 'signal' || a === 'insights'
+                  : a === 'signal'
                     ? 'areaSignal'
                     : 'areaLegacy';
         return textFor(key);
       }
 
       function domainLabel(domain) {
-        return areaLabel(domain === 'insights' ? 'signal' : domain);
+        return areaLabel(domain);
       }
 
       function stageLabel(stage) {
@@ -401,7 +401,7 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
 
       function areaBadge(area) {
         const a = String(area || 'legacy');
-        return `<span class="pill">${esc(areaLabel(a === 'insights' ? 'signal' : a))}</span>`;
+        return `<span class="pill">${esc(areaLabel(a))}</span>`;
       }
 
       function stageBadge(stage) {
@@ -1664,6 +1664,20 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
               };
               hasParamsPatch = true;
             }
+            const communityPageSizeInput = scope.querySelector(`[data-job-community-pagesize="${key}"]`);
+            if (communityPageSizeInput) {
+              const pageSize = Number(communityPageSizeInput.value);
+              if (!Number.isFinite(pageSize) || pageSize < 5 || pageSize > 50) {
+                showToast(textFor('jobCommunityPageSizeInvalidTitle'), textFor('jobCommunityPageSizeInvalidBody'), { kind: 'error' });
+                return;
+              }
+              paramsPatch = {
+                ...((state.jobs || []).find((job) => job.jobKey === key)?.params || {}),
+                ...(paramsPatch || {}),
+                pageSize,
+              };
+              hasParamsPatch = true;
+            }
             const afterRows = [...scope.querySelectorAll(`[data-job-after-row="${key}"]`)];
             if (afterRows.length > 0) {
               const instruments = afterRows
@@ -1766,8 +1780,6 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await api(`/admin/api/translation-settings/${locale}`, {
               method: 'PATCH',
               body: JSON.stringify({
-                enabled: document.querySelector(`[data-ts-enabled="${locale}"]`).checked,
-                autoTranslateNews: document.querySelector(`[data-ts-auto="${locale}"]`).checked,
                 provider,
               }),
             });
@@ -2069,11 +2081,36 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
             await loadAppUsers();
             return;
           }
+          if (target.dataset.appUserInboxPage === 'prev' && state.appUserInboxPage > 1) {
+            state.appUserInboxPage -= 1;
+            await loadAppUsers();
+            return;
+          }
+          if (target.dataset.appUserInboxPage === 'next' && state.appUserInboxPage < state.appUserInboxTotalPages) {
+            state.appUserInboxPage += 1;
+            await loadAppUsers();
+            return;
+          }
+          const appNotificationsFilter = target instanceof Element ? target.closest('[data-app-notifications-filter]') : null;
+          if (appNotificationsFilter?.dataset?.appNotificationsFilter) {
+            state.appNotificationsCategory = appNotificationsFilter.dataset.appNotificationsFilter;
+            state.appNotificationsPage = 1;
+            await loadAppUsers();
+            return;
+          }
+          const appUserInboxFilter = target instanceof Element ? target.closest('[data-app-user-inbox-filter]') : null;
+          if (appUserInboxFilter?.dataset?.appUserInboxFilter) {
+            state.appUserInboxFilter = appUserInboxFilter.dataset.appUserInboxFilter;
+            state.appUserInboxPage = 1;
+            await loadAppUsers();
+            return;
+          }
           const appUserRowTarget = target instanceof Element ? target.closest('[data-app-user-row]') : null;
           if (appUserRowTarget?.dataset?.appUserRow) {
             const interactiveTarget = target.closest('button, input, select, textarea, label, a');
             if (!interactiveTarget) {
               state.appUsersSelectedId = appUserRowTarget.dataset.appUserRow;
+              state.appUserInboxPage = 1;
               await loadAppUsers();
               document.querySelector('.appUserDetailCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               return;
@@ -2081,12 +2118,16 @@ import { buildSearchIndexView, createSearchIndex, renderSearchResultsView } from
           }
           if (target.dataset.appUserSelect) {
             state.appUsersSelectedId = target.dataset.appUserSelect;
+            state.appUserInboxPage = 1;
             await loadAppUsers();
             document.querySelector('.appUserDetailCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             return;
           }
           if (target.dataset.appUserDetailTab) {
             state.appUsersDetailTab = target.dataset.appUserDetailTab;
+            if (target.dataset.appUserDetailTab === 'notifications') {
+              state.appUserInboxPage = 1;
+            }
             await loadAppUsers();
             return;
           }

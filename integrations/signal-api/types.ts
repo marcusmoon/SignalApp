@@ -11,6 +11,8 @@ export type SignalApiNewsItem = {
   summary: string;
   originalTitle: string;
   originalSummary: string;
+  /** 제목 토글용 대체 언어 제목 (ko/ja→원문, en→한국어 번역) */
+  alternateTitle?: string;
   sourceName: string;
   sourceUrl: string;
   imageUrl?: string | null;
@@ -108,9 +110,8 @@ export type SignalApiMarketBriefing = {
   sourceRefs: SignalApiMarketBriefingSourceRef[];
   publishedAt: string | null;
   briefingDate: string | null;
-  pushCandidate: boolean;
-  pushTitle: string;
-  pushBody: string;
+  pushTitle?: string;
+  pushBody?: string;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -139,9 +140,8 @@ export type SignalApiTodayBriefing = {
   publishedAt: string | null;
   briefingDate: string | null;
   status: string;
-  pushCandidate: boolean;
-  pushTitle: string;
-  pushBody: string;
+  pushTitle?: string;
+  pushBody?: string;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -161,6 +161,7 @@ export type SignalApiDisclosure = {
   symbol: string | null;
   companyName: string | null;
   formType: string | null;
+  typeCategory?: string | null;
   title: string;
   summary: string;
   url: string | null;
@@ -337,46 +338,6 @@ export type SignalApiCoinMarket = {
   change24h: number | null;
   changePercent24h: number | null;
   fetchedAt: string;
-};
-
-export type SignalApiInsightSourceRef = {
-  type: 'news' | 'youtube' | string;
-  id: string;
-  title: string;
-  url?: string;
-  sourceName?: string;
-  publishedAt?: string | null;
-};
-
-export type SignalApiInsight = {
-  id: string;
-  kind: 'market_brief' | 'asset_signal' | string;
-  level: 'brief' | 'watch' | 'alert' | string;
-  score: number;
-  title: string;
-  summary: string;
-  whyNow?: string;
-  actionLabel?: string;
-  signalDrivers?: string[];
-  sourceStats?: {
-    news?: number;
-    youtube?: number;
-    quote?: number;
-    earnings?: number;
-  } | null;
-  nextSteps?: string[];
-  priceMovePercent?: number | null;
-  earningsDate?: string | null;
-  symbols: string[];
-  topics: string[];
-  reasoning: string[];
-  sourceRefs: SignalApiInsightSourceRef[];
-  pushCandidate: boolean;
-  pushPriority?: 'high' | 'normal' | 'none' | string;
-  pushTitle?: string;
-  pushBody?: string;
-  generatedAt: string | null;
-  expiresAt: string | null;
 };
 
 /** `/v1/stock-profile` — shape matches server `data` payload */

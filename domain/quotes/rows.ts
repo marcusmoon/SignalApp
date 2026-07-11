@@ -2,10 +2,14 @@ import type {
   SignalApiCoinMarket,
   SignalApiMarketQuote,
 } from '@/integrations/signal-api';
-import type { QuoteCacheRow } from '@/services/cache/quotesCache';
 import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
 
-export type QuoteRow = QuoteCacheRow;
+export type QuoteRow = {
+  symbol: string;
+  name?: string;
+  quote: SignalApiMarketQuote | null;
+  error?: string;
+};
 
 export function isKoreaSymbol(symbol: string): boolean {
   return /^\d{6}$/.test(String(symbol || '').trim());

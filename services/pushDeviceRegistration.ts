@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 import { registerSignalAppDevice } from '@/integrations/signal-api/auth';
 import { hasSignalApi } from '@/services/env';
 import { getSessionAccessToken, loadAppAuthSession } from '@/services/appAuthSession';
-import { loadNotificationPrefs } from '@/services/notificationPreferences';
+import { loadNotificationPrefs, syncNotificationPrefsFromLocal } from '@/services/notificationPreferences';
 
 const LAST_REGISTERED_KEY = '@signal/push_device_last_registered_v1';
 
@@ -47,6 +47,7 @@ export async function registerPushDeviceIfPossible(): Promise<boolean> {
       pushToken,
       deviceName: Platform.select({ ios: 'iPhone', android: 'Android', default: Platform.OS }) || Platform.OS,
     });
+    await syncNotificationPrefsFromLocal();
     await AsyncStorage.setItem(LAST_REGISTERED_KEY, cacheKey);
     return true;
   } catch (error) {

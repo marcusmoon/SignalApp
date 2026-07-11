@@ -8,14 +8,12 @@ import {
   type ListRenderItemInfo,
 } from 'react-native';
 
-import {
-  getWebRefreshControlProps,
-  useWebRefreshHandlers,
-  WebRefreshStatus,
-} from '@/components/layout/webRefreshControl';
 import { isDomNearScrollEnd, syntheticScrollEventFromDom } from '@/utils/listScrollLoadMoreGate';
+import { useWebScrollResetOnKey } from '@/hooks/useWebScrollResetOnKey';
+import { createLazyWebScrollApi } from '@/utils/scrollToTop';
 
 const webListViewportStyle = {
+  position: 'relative',
   flex: 1,
   minHeight: 0,
   height: '100%',
@@ -49,6 +47,10 @@ function getDefaultKey<T>(item: T, index: number) {
   return String(index);
 }
 
+type WebWheelFlatListProps<T> = FlatListProps<T> & {
+  scrollResetKey?: string | number | null;
+};
+
 function WebWheelFlatListInner<T>(
   {
     data,
@@ -66,8 +68,11 @@ function WebWheelFlatListInner<T>(
     onLayout,
     onContentSizeChange,
     refreshControl,
+    scrollResetKey,
+    numColumns = 1,
+    columnWrapperStyle,
     ...rest
-  }: FlatListProps<T>,
+  }: WebWheelFlatListProps<T>,
   forwardedRef: React.Ref<FlatList<T>>,
 ) {
   const localRef = useRef<FlatList<T>>(null);
@@ -85,7 +90,6 @@ function WebWheelFlatListInner<T>(
   onScrollRef.current = onScroll;
   onEndReachedRef.current = onEndReached;
   onEndReachedThresholdRef.current = onEndReachedThreshold;
-  const refreshControlProps = getWebRefreshControlProps(refreshControl);
 
   const emitWebLayout = useCallback((node: HTMLElement) => {
     onLayoutRef.current?.({
@@ -128,7 +132,14 @@ function WebWheelFlatListInner<T>(
     ?? (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)?.getScrollableNode?.()
     ?? null
   ), []);
-  const webRefreshHandlers = useWebRefreshHandlers(refreshControlProps, getWebNode);
+
+  const getWebScrollNode = useCallback(
+    () =>
+      (webRef.current as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
+        ?.getScrollableNode?.() ?? null,
+    [],
+  );
+  useWebScrollResetOnKey(getWebScrollNode, scrollResetKey, data);
 
   /** Sidebar pane toggles can skip RN onLayout — observe the scroll node directly on web. */
   useEffect(() => {
@@ -236,7 +247,7 @@ function WebWheelFlatListInner<T>(
   };
 
   if (Platform.OS === 'web') {
-    const rows = Array.from(data ?? []);
+    const items = Array.from(data ?? []);
     const Separator = ItemSeparatorComponent as React.ComponentType | null | undefined;
     const emitFromWebEvent = (event: unknown) => {
       const node = getWebNode(event);
@@ -254,33 +265,15 @@ function WebWheelFlatListInner<T>(
     };
     const webEventProps = {
       onScroll: emitFromWebEvent,
-      onWheel: (event: unknown) => {
-        scheduleWebNearEndProbe(event);
-        webRefreshHandlers.onWheel(event);
-      },
-      onTouchStart: webRefreshHandlers.onTouchStart,
-      onTouchMove: webRefreshHandlers.onTouchMove,
-      onTouchEnd: (event: unknown) => {
-        scheduleWebNearEndProbe(event);
-        webRefreshHandlers.onTouchEnd();
-      },
+      onWheel: scheduleWebNearEndProbe,
+      onTouchEnd: scheduleWebNearEndProbe,
       onKeyUp: scheduleWebNearEndProbe,
     };
     const setWebRef = (instance: View | null) => {
       webRef.current = instance;
-      const node = (instance as unknown as { getScrollableNode?: () => HTMLElement | null } | null)
-        ?.getScrollableNode?.() ?? null;
-      const api = node
-        ? ({
-            getScrollableNode: () => node,
-            scrollToOffset: ({ offset, animated }: { offset: number; animated?: boolean }) => {
-              node.scrollTo({ top: offset, behavior: animated ? 'smooth' : 'auto' });
-            },
-            scrollToEnd: ({ animated }: { animated?: boolean } = {}) => {
-              node.scrollTo({ top: node.scrollHeight, behavior: animated ? 'smooth' : 'auto' });
-            },
-          } as unknown as FlatList<T>)
-        : null;
+      const api = createLazyWebScrollApi(
+        () => webRef.current as { getScrollableNode?: () => HTMLElement | null } | null,
+      ) as unknown as FlatList<T>;
 
       if (typeof forwardedRef === 'function') {
         forwardedRef(api);
@@ -289,22 +282,61 @@ function WebWheelFlatListInner<T>(
       }
     };
 
+    const webScrollKey = scrollResetKey != null ? `wwf-${scrollResetKey}` : undefined;
+
     return (
-      <View ref={setWebRef} style={[webListViewportStyle, style] as never} {...(webEventProps as Record<string, unknown>)}>
+      <View
+        key={webScrollKey}
+        ref={setWebRef}
+        style={[webListViewportStyle, style] as never}
+        {...(webEventProps as Record<string, unknown>)}>
         <View ref={webContentRef} style={contentContainerStyle}>
-          {refreshControlProps?.refreshing ? <WebRefreshStatus /> : null}
           {renderListSlot(ListHeaderComponent)}
-          {rows.length === 0 ? renderListSlot(ListEmptyComponent) : null}
-          {rows.map((item, index) => (
-            <View key={keyExtractor?.(item, index) ?? getDefaultKey(item, index)}>
-              {renderItem?.({
-                item,
-                index,
-                separators: webSeparators,
-              } as ListRenderItemInfo<T>)}
-              {Separator && index < rows.length - 1 ? <Separator /> : null}
-            </View>
-          ))}
+          {items.length === 0 ? renderListSlot(ListEmptyComponent) : null}
+          {numColumns > 1
+            ? (() => {
+                const rowViews: React.ReactElement[] = [];
+                for (let rowStart = 0; rowStart < items.length; rowStart += numColumns) {
+                  const rowItems = items.slice(rowStart, rowStart + numColumns);
+                  const rowIndex = rowStart / numColumns;
+                  rowViews.push(
+                    <View
+                      key={`web-row-${rowIndex}`}
+                      style={[{ flexDirection: 'row' }, columnWrapperStyle]}>
+                      {rowItems.map((item, colIndex) => {
+                        const index = rowStart + colIndex;
+                        return (
+                          <View
+                            key={keyExtractor?.(item, index) ?? getDefaultKey(item, index)}
+                            style={{ flex: 1, minWidth: 0 }}>
+                            {renderItem?.({
+                              item,
+                              index,
+                              separators: webSeparators,
+                            } as ListRenderItemInfo<T>)}
+                          </View>
+                        );
+                      })}
+                      {rowItems.length < numColumns
+                        ? Array.from({ length: numColumns - rowItems.length }, (_, padIndex) => (
+                            <View key={`web-pad-${rowIndex}-${padIndex}`} style={{ flex: 1, minWidth: 0 }} />
+                          ))
+                        : null}
+                    </View>,
+                  );
+                }
+                return rowViews;
+              })()
+            : items.map((item, index) => (
+                <View key={keyExtractor?.(item, index) ?? getDefaultKey(item, index)}>
+                  {renderItem?.({
+                    item,
+                    index,
+                    separators: webSeparators,
+                  } as ListRenderItemInfo<T>)}
+                  {Separator && index < items.length - 1 ? <Separator /> : null}
+                </View>
+              ))}
           <View ref={webEndSentinelRef} style={{ height: 1 }} />
           {renderListSlot(ListFooterComponent)}
         </View>
@@ -315,6 +347,8 @@ function WebWheelFlatListInner<T>(
   return (
     <FlatList
       {...rest}
+      numColumns={numColumns}
+      columnWrapperStyle={columnWrapperStyle}
       data={data}
       renderItem={renderItem}
       keyExtractor={keyExtractor}
@@ -343,5 +377,5 @@ function WebWheelFlatListInner<T>(
 }
 
 export const WebWheelFlatList = forwardRef(WebWheelFlatListInner) as <T>(
-  props: FlatListProps<T> & { ref?: React.Ref<FlatList<T>> },
+  props: WebWheelFlatListProps<T> & { ref?: React.Ref<FlatList<T>> },
 ) => React.ReactElement | null;

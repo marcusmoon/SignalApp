@@ -2,13 +2,12 @@ import * as WebBrowser from 'expo-web-browser';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useBottomTabBarHeight } from 'expo-router/js-tabs';
-import { useFocusEffect } from 'expo-router/react-navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect, useIsFocused } from 'expo-router/react-navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FeedUpdateBanner } from '@/components/signal/FeedUpdateBanner';
-import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
+import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -16,48 +15,59 @@ import { DisclosureDigestSection } from '@/components/disclosures/DisclosureDige
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
-import { webFlexFill, webScrollViewportStyle } from '@/constants/webLayout';
-import { tabBarBottomInset } from '@/constants/tabBar';
+import { webFlexFill, webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
-  SEGMENT_TAB_ACTIVE_TEXT,
-  SEGMENT_TAB_BTN_PADDING_V,
-  SEGMENT_TAB_BTN_RADIUS,
-  SEGMENT_TAB_FONT_SIZE,
-  SEGMENT_TAB_FONT_WEIGHT,
-  SEGMENT_TAB_GAP,
-  SEGMENT_TAB_LINE_HEIGHT,
-  SEGMENT_TAB_OUTER_RADIUS,
-  SEGMENT_TAB_PADDING,
+  tabScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
+import {
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  SCREEN_LIST_HEADER_PADDING_BOTTOM,
+  SCREEN_LIST_HEADER_PADDING_TOP,
+  getSegmentTabBarStyles,
 } from '@/constants/segmentTabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
-import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
+import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useScrollToTopOnChange } from '@/hooks';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useTabPressCycleSegment } from '@/hooks/useTabPressCycleSegment';
 import { fetchSignalDisclosures } from '@/integrations/signal-api/disclosures';
+import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { fetchSignalDisclosureDigests } from '@/integrations/signal-api/disclosureDigests';
 import type { SignalApiDisclosure, SignalApiDisclosureDigestItem } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import { hasSignalApi } from '@/services/env';
-import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { markDisclosureFeedSeen } from '@/services/disclosureUnreadPreference';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
-import { formatRelativeFromIso } from '@/utils/date';
+import { formatFeedItemTimeLabel, toYmd } from '@/utils/date';
 import type { AppLocale, MessageId } from '@/locales/messages';
+import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
+import { firstRouteParam } from '@/utils/routeSearchParams';
 
-type FilterKey = 'us' | 'kr' | 'watch';
+type FilterKey = 'us' | 'kr';
 
-const FILTER_ORDER: FilterKey[] = ['us', 'kr', 'watch'];
+type ListQuery = {
+  filter: FilterKey;
+  symbolFilter: string;
+};
+
+const FILTER_ORDER: FilterKey[] = ['us', 'kr'];
 
 const FILTERS: { key: FilterKey; label: MessageId }[] = [
   { key: 'us', label: 'disclosuresFilterUs' },
   { key: 'kr', label: 'disclosuresFilterKr' },
-  { key: 'watch', label: 'disclosuresFilterWatch' },
 ];
 
+function parseDisclosureMarketParam(raw: string | string[] | undefined): FilterKey {
+  return firstRouteParam(raw) === 'kr' ? 'kr' : 'us';
+}
+
 function disclosureTime(item: SignalApiDisclosure, locale: string): string {
-  return item.filedAt ? formatRelativeFromIso(item.filedAt, locale as AppLocale) : '—';
+  return formatFeedItemTimeLabel(item.filedAt, locale as AppLocale);
 }
 
 function disclosureDate(value: string | null | undefined, locale: string): string {
@@ -78,87 +88,201 @@ function providerLabel(item: SignalApiDisclosure): string {
 }
 
 export default function DisclosuresScreen() {
-  const { symbol: symbolParam } = useLocalSearchParams<{ symbol?: string | string[] }>();
+  const { symbol: symbolParam, market: marketParam } = useLocalSearchParams<{
+    symbol?: string | string[];
+    market?: string | string[];
+  }>();
   const symbolFilter = useMemo(
     () => String(Array.isArray(symbolParam) ? symbolParam[0] : symbolParam || '').trim().toUpperCase(),
     [symbolParam],
   );
   const router = useRouter();
+  const setRouteParams = useSafeSetRouteParams();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const isFocused = useIsFocused();
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const { useTwoPane } = useResponsiveLayout();
-  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
+  const ipadNav = useIpadSidebarNav();
+  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
-  const [filter, setFilter] = useState<FilterKey>('us');
+  const [filter, setFilter] = useState<FilterKey>(() => parseDisclosureMarketParam(marketParam));
   const [items, setItems] = useState<SignalApiDisclosure[]>([]);
   const [digestItems, setDigestItems] = useState<SignalApiDisclosureDigestItem[]>([]);
   const [digestLoading, setDigestLoading] = useState(false);
   const [selectedDisclosureId, setSelectedDisclosureId] = useState<string | null>(null);
-  const [watchlist, setWatchlist] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [refreshNotice, setRefreshNotice] = useState<string | null>(null);
+  const [newContentFilters, setNewContentFilters] = useState(() => new Set<FilterKey>());
+  const latestSeenIdByFilterRef = useRef<Partial<Record<FilterKey, string>>>({});
+  const digestItemsRef = useRef<SignalApiDisclosureDigestItem[]>([]);
+  const hasInitialLoadRef = useRef(false);
+  const loadSeqRef = useRef(0);
+  digestItemsRef.current = digestItems;
 
-  const loadDigests = useCallback(async () => {
+  const markFilterHasNewContent = useCallback((key: FilterKey) => {
+    setNewContentFilters((prev) => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  }, []);
+
+  const clearFilterNewContent = useCallback((key: FilterKey) => {
+    setNewContentFilters((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }, []);
+
+  const syncFilterLatestSeen = useCallback(
+    (key: FilterKey, latestId: string | null | undefined) => {
+      const id = latestId?.trim();
+      if (!id) return;
+      latestSeenIdByFilterRef.current[key] = id;
+      clearFilterNewContent(key);
+    },
+    [clearFilterNewContent],
+  );
+
+  const { ref: listRef, scrollToTop: scrollListToTop } = useScrollToTopOnChange([filter, symbolFilter], {
+    resyncDeps: [items, digestItems],
+  });
+  const goToDisclosureList = useCallback(() => {
+    const date = toYmd(new Date());
+    const market = filter;
+    if (ipadNav.isAvailable) {
+      ipadNav.showDisclosureFlow({ date, market, digestId: null });
+      return;
+    }
+    router.push({
+      pathname: '/disclosure-flow',
+      params: { date, market },
+    } as Href);
+  }, [filter, ipadNav, router]);
+  const listScrollResetKey = `${filter}:${symbolFilter ?? ''}`;
+
+  const currentQuery = useMemo<ListQuery>(
+    () => ({ filter, symbolFilter }),
+    [filter, symbolFilter],
+  );
+
+  const loadDigests = useCallback(async (refresh?: boolean) => {
     if (!hasSignalApi() || symbolFilter) return;
-    setDigestLoading(true);
+    if (digestItemsRef.current.length === 0) setDigestLoading(true);
     try {
-      const market =
-        filter === 'us' ? 'us' : filter === 'kr' ? 'kr' : undefined;
-      const page = await fetchSignalDisclosureDigests({
-        market,
-        limit: 16,
-        batches: 1,
-      });
+      const market = filter === 'us' ? 'us' : 'kr';
+      const page = await fetchSignalDisclosureDigests(
+        {
+          market,
+          limit: 16,
+          batches: 1,
+          locale,
+        },
+        { cacheMode: signalCacheMode(refresh) },
+      );
       setDigestItems(page.items);
     } catch {
       // 다이제스트 실패해도 리스트는 보여줌
     } finally {
       setDigestLoading(false);
     }
-  }, [filter, symbolFilter]);
+  }, [filter, locale, symbolFilter]);
 
-  const load = useCallback(async () => {
-    if (!hasSignalApi()) {
-      setItems([]);
-      setError(t('errorSignalApiShort'));
-      setLoading(false);
-      return [];
-    }
-    setError(null);
-    try {
-      const watch = await loadWatchlistSymbols();
-      setWatchlist(watch);
-      const market = symbolFilter ? undefined : filter === 'us' ? 'us' : filter === 'kr' ? 'kr' : undefined;
-      const symbols = symbolFilter || (filter === 'watch' ? watch.join(',') : undefined);
-      const [page] = await Promise.all([
-        fetchSignalDisclosures({ market, symbols, limit: 60 }),
-        loadDigests(),
-      ]);
-      setItems(page.items);
+  const queryDisclosureList = useCallback(
+    async (query: ListQuery, refresh?: boolean): Promise<SignalApiDisclosure[]> => {
+      if (!hasSignalApi()) {
+        throw new Error(t('errorSignalApiShort'));
+      }
+
+      const market = query.symbolFilter ? undefined : query.filter === 'us' ? 'us' : 'kr';
+      const symbols = query.symbolFilter || undefined;
+      const page = await fetchSignalDisclosures(
+        {
+          market,
+          symbols,
+          limit: 60,
+        },
+        { cacheMode: signalCacheMode(refresh) },
+      );
       return page.items;
-    } catch (e) {
-      setError(formatSignalApiError(e, t, 'disclosuresLoadError'));
-      return [];
-    } finally {
-      setLoading(false);
-    }
-  }, [filter, symbolFilter, t, loadDigests]);
+    },
+    [t],
+  );
 
   useEffect(() => {
-    setLoading(true);
-    void load();
-  }, [load]);
+    void loadDigests();
+  }, [loadDigests]);
+
+  /** 백그라운드 폴링: 3분마다 시장별 최신 공시 ID 확인 → chip 표시 (다이제스트·리스트는 탭 시 함께 갱신) */
+  useEffect(() => {
+    if (symbolFilter || !hasSignalApi()) return;
+    const POLL_MS = 3 * 60 * 1000;
+    const poll = async () => {
+      await Promise.all(
+        FILTER_ORDER.map(async (market) => {
+          try {
+            const page = await fetchSignalDisclosures({ market, limit: 1, offset: 0 }, { cacheMode: 'bypass' });
+            const latestId = page.items[0]?.id ?? null;
+            if (!latestId) return;
+            const seen = latestSeenIdByFilterRef.current[market];
+            if (!seen) return;
+            if (latestId !== seen) markFilterHasNewContent(market);
+          } catch {
+            /* ignore polling errors */
+          }
+        }),
+      );
+    };
+    const id = setInterval(() => void poll(), POLL_MS);
+    return () => clearInterval(id);
+  }, [markFilterHasNewContent, symbolFilter]);
+
+  useEffect(() => {
+    const query = currentQuery;
+
+    let cancelled = false;
+    const seq = ++loadSeqRef.current;
+    if (!hasInitialLoadRef.current) setLoading(true);
+
+    void (async () => {
+      try {
+        const rows = await queryDisclosureList(query);
+        if (cancelled || seq !== loadSeqRef.current) return;
+        setItems(rows);
+        setError(null);
+        syncFilterLatestSeen(query.filter, rows[0]?.id);
+      } catch (e) {
+        if (cancelled || seq !== loadSeqRef.current) return;
+        if (!hasSignalApi()) {
+          setItems([]);
+        }
+        setError(formatSignalApiError(e, t, 'disclosuresLoadError'));
+      } finally {
+        if (cancelled || seq !== loadSeqRef.current) return;
+        hasInitialLoadRef.current = true;
+        setLoading(false);
+        setInitialLoadDone(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentQuery, queryDisclosureList, syncFilterLatestSeen, t]);
 
   useFocusEffect(
     useCallback(() => {
-      if (!symbolFilter && items[0]?.id) {
-        void markDisclosureFeedSeen(items[0].id);
+      if (!symbolFilter) {
+        void markDisclosureFeedSeen();
       }
-    }, [items, symbolFilter]),
+    }, [symbolFilter]),
   );
 
   useEffect(() => {
@@ -172,72 +296,86 @@ export default function DisclosuresScreen() {
     }
   }, [items, selectedDisclosureId, useTwoPane]);
 
-  const onRefresh = useCallback(async () => {
-    const prevIds = new Set(items.map((item) => item.id));
+  const onRefreshBase = useCallback(async () => {
     setRefreshing(true);
-    setRefreshNotice(null);
+    clearFilterNewContent(currentQuery.filter);
+    const seq = ++loadSeqRef.current;
+    const query = currentQuery;
     try {
-      const latest = await load();
-      const latestIds = latest.map((item) => item.id);
-      const newCount = latestIds.filter((id) => !prevIds.has(id)).length;
-      if (newCount > 0) {
-        setRefreshNotice(t('disclosuresRefreshNotice', { count: String(newCount) }));
-      }
+      const latest = await queryDisclosureList(query, true);
+      if (seq !== loadSeqRef.current) return;
+      setItems(latest);
+      setError(null);
+      syncFilterLatestSeen(query.filter, latest[0]?.id);
+      await loadDigests(true);
+    } catch (e) {
+      if (seq !== loadSeqRef.current) return;
+      setError(formatSignalApiError(e, t, 'disclosuresLoadError'));
     } finally {
-      setRefreshing(false);
+      if (seq === loadSeqRef.current) {
+        setRefreshing(false);
+      }
     }
-  }, [items, load, t]);
+  }, [clearFilterNewContent, currentQuery, loadDigests, queryDisclosureList, syncFilterLatestSeen, t]);
+
+  const onRefresh = onRefreshBase;
+  useRegisterWebHeaderRefresh(() => void onRefresh());
 
   const onPickFilter = useCallback(
     (key: FilterKey) => {
       if (filter === key) return;
-      setLoading(true);
-      setItems([]);
       setError(null);
-      setRefreshNotice(null);
       setFilter(key);
+      if (useTwoPane) setActiveSubTabKey(key);
+      setRouteParams({
+        market: key === 'us' ? undefined : key,
+      });
     },
-    [filter],
+    [filter, setActiveSubTabKey, setRouteParams, useTwoPane],
   );
 
   useTabPressCycleSegment(symbolFilter ? null : filter, FILTER_ORDER, onPickFilter);
 
   useFocusEffect(
     useCallback(() => {
-      if (!useTwoPane || symbolFilter) return;
+      if (!useTwoPane || symbolFilter) {
+        clearSubTabs();
+        return;
+      }
+      setActiveSubTabKey(filter);
       setSubTabs(
         FILTERS.map((item) => ({
           key: item.key,
           label: t(item.label),
-          active: filter === item.key,
           onPress: () => onPickFilter(item.key),
         })),
       );
       return () => clearSubTabs();
-    }, [clearSubTabs, filter, onPickFilter, setSubTabs, symbolFilter, t, useTwoPane]),
+    }, [clearSubTabs, filter, onPickFilter, setActiveSubTabKey, setSubTabs, symbolFilter, t, useTwoPane]),
   );
 
-  const clearSymbolFilter = useCallback(() => {
-    router.setParams({ symbol: undefined });
-  }, [router]);
+  useEffect(() => {
+    setFilter(parseDisclosureMarketParam(marketParam));
+  }, [marketParam]);
 
-  const emptyText =
-    filter === 'watch' && watchlist.length === 0 ? t('symbolDetailNoDisclosures') : t('disclosuresEmpty');
+  const clearSymbolFilter = useCallback(() => {
+    setRouteParams({ symbol: undefined });
+  }, [setRouteParams]);
+
+  const emptyText = t('disclosuresEmpty');
 
   const selectedDisclosure = useMemo(
     () => items.find((item) => item.id === selectedDisclosureId) ?? null,
     [items, selectedDisclosureId],
   );
 
-  const bottomPad = 24 + tabBarHeight + tabBarBottomInset(insets.bottom);
-  const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
+  const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
+  const showDigest = !symbolFilter;
+  const newContentAvailable = !symbolFilter && newContentFilters.has(filter);
 
   const listHeaderEl = useMemo(
     () => (
       <View style={styles.listHeader}>
-        {!symbolFilter && filter !== 'watch' && digestItems.length > 0 ? (
-          <DisclosureDigestSection items={digestItems} loading={digestLoading} />
-        ) : null}
         {symbolFilter ? (
           <View style={styles.symbolFilterRow}>
             <Text style={styles.symbolFilterText} numberOfLines={1}>
@@ -255,7 +393,7 @@ export default function DisclosuresScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
     ),
-    [clearSymbolFilter, digestItems, digestLoading, error, filter, styles, symbolFilter, t],
+    [clearSymbolFilter, error, styles, symbolFilter, t],
   );
 
   const renderDisclosureCard = useCallback(
@@ -368,66 +506,95 @@ export default function DisclosuresScreen() {
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {!useTwoPane || refreshNotice ? <View style={styles.topFixed}>
-          {refreshNotice ? <FeedUpdateBanner variant="notice" message={refreshNotice} /> : null}
-          {!symbolFilter && !useTwoPane ? (
-            <View style={styles.segment}>
-              {FILTERS.map((f) => {
-                const selected = filter === f.key;
-                return (
-                  <Pressable
-                    key={f.key}
-                    onPress={() => onPickFilter(f.key)}
-                    style={[styles.segBtn, selected && styles.segBtnActive]}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}>
-                    <Text style={[styles.segText, selected && styles.segTextActive]}>{t(f.label)}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          ) : null}
-        </View> : null}
-        {loading ? (
+        {!useTwoPane ? (
+          <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
+            {!symbolFilter ? (
+              <View style={styles.segment}>
+                {FILTERS.map((f) => {
+                  const selected = filter === f.key;
+                  return (
+                    <Pressable
+                      key={f.key}
+                      onPress={() => onPickFilter(f.key)}
+                      style={[styles.segBtn, selected && styles.segBtnActive]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}>
+                      <Text style={[styles.segText, selected && styles.segTextActive]}>{t(f.label)}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+            {showDigest ? (
+              <DisclosureDigestSection
+                items={digestItems}
+                loading={digestLoading && digestItems.length === 0}
+                onRefresh={() => void onRefresh()}
+                refreshing={refreshing}
+                onGoToList={goToDisclosureList}
+                goToListA11y={t('feedDigestTailGoToDisclosureFlowA11y')}
+              />
+            ) : null}
+          </View>
+        ) : null}
+        {!initialLoadDone && loading ? (
           <View style={styles.loadingWrap}>
             <SignalLoadingIndicator message={t('commonLoading')} />
           </View>
         ) : (
           <View style={useTwoPane ? styles.wideBody : styles.compactBody}>
-            <WebWheelFlatList
-              data={items}
-              keyExtractor={(item) => item.id}
-              style={[styles.list, useTwoPane && styles.wideList]}
-              contentContainerStyle={[
-                useTwoPane ? styles.wideListContent : styles.listContent,
-                { paddingBottom: bottomPad },
-              ]}
-              ListHeaderComponent={listHeaderEl}
-              refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-              ListEmptyComponent={<Text style={styles.empty}>{emptyText}</Text>}
-              removeClippedSubviews={Platform.OS === 'android'}
-              renderItem={renderDisclosureCard}
-            />
+            <View style={useTwoPane ? styles.listColumnWide : styles.listColumn}>
+              {showDigest && useTwoPane ? (
+                <View style={[styles.topFixed, styles.topFixedWide, styles.listColumnDigestStrip]}>
+                  <DisclosureDigestSection
+                    items={digestItems}
+                    loading={digestLoading && digestItems.length === 0}
+                    columns={2}
+                    onRefresh={() => void onRefresh()}
+                    refreshing={refreshing}
+                    onGoToList={goToDisclosureList}
+                    goToListA11y={t('feedDigestTailGoToDisclosureFlowA11y')}
+                  />
+                </View>
+              ) : null}
+              {isFocused && !symbolFilter ? (
+                <FeedNewContentChip
+                  visible={newContentAvailable}
+                  refreshing={refreshing}
+                  message={t('feedNewContentAvailable')}
+                  onPress={() => void onRefresh()}
+                />
+              ) : null}
+              <WebWheelFlatList
+                scrollResetKey={listScrollResetKey}
+                ref={listRef as never}
+                data={items}
+                keyExtractor={(item) => item.id}
+                style={[styles.list, useTwoPane && styles.wideList]}
+                contentContainerStyle={[
+                  useTwoPane ? styles.wideListContent : styles.listContent,
+                  { paddingBottom: bottomPad },
+                ]}
+                ListHeaderComponent={listHeaderEl}
+                refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                ListEmptyComponent={<Text style={styles.empty}>{emptyText}</Text>}
+                removeClippedSubviews={Platform.OS === 'android'}
+                renderItem={renderDisclosureCard}
+              />
+            </View>
             {detailPaneEl}
           </View>
         )}
       </View>
-      {hasSignalApi() && !useTwoPane ? (
-        <FloatingGlassFab
-          bottom={fabStackBottom}
-          onPress={() => void onRefresh()}
-          iconName="sync"
-          accessibilityLabel={t('fabRefreshA11y')}
-          disabled={refreshing}
-        />
-      ) : null}
     </SafeAreaView>
   );
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentTypography) {
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
-    safe: { ...webFlexFill, backgroundColor: theme.bg },
+    safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     mainColumn: {
       ...webFlexFill,
       width: '100%',
@@ -436,72 +603,55 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     mainColumnWide: {
       ...wideContentFill,
-      paddingHorizontal: 16,
     },
-    topFixed: {
-      flexShrink: 0,
-      zIndex: 2,
-      elevation: Platform.OS === 'android' ? 2 : 0,
-      paddingHorizontal: 16,
-      paddingTop: 10,
-      paddingBottom: 12,
-      backgroundColor: theme.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
+    topFixed: fixedHeader.strip,
+    topFixedWide: fixedHeader.stripWide,
     compactBody: { ...webFlexFill },
+    listColumn: {
+      ...webFlexFill,
+    },
+    listColumnWide: {
+      flex: 0.45,
+      minWidth: 360,
+      minHeight: 0,
+    },
+    listColumnDigestStrip: {
+      flexShrink: 0,
+      paddingHorizontal: 0,
+    },
     wideBody: {
       ...webFlexFill,
       flexDirection: 'row',
-      gap: 12,
-      paddingTop: 10,
+      gap: 20,
     },
     list: { ...webScrollViewportStyle },
     wideList: {
-      flex: 0.45,
-      minWidth: 360,
-    },
-    listContent: { paddingHorizontal: 16, paddingTop: 0 },
-    wideListContent: { paddingTop: 0 },
-    listHeader: { paddingTop: 4 },
-    segment: {
-      flexDirection: 'row',
-      backgroundColor: theme.bgElevated,
-      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
-      borderWidth: 1,
-      borderColor: theme.border,
-      padding: SEGMENT_TAB_PADDING,
-      marginBottom: 0,
-      gap: SEGMENT_TAB_GAP,
-    },
-    segBtn: {
       flex: 1,
-      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
-      borderRadius: SEGMENT_TAB_BTN_RADIUS,
-      alignItems: 'center',
-      justifyContent: 'center',
+      minHeight: 0,
     },
-    segBtnActive: {
-      backgroundColor: theme.green,
+    listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
+    wideListContent: {
+      paddingHorizontal: 16,
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
     },
-    segText: {
-      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
-      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
-      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
-      color: theme.textDim,
+    listHeader: {
+      paddingTop: SCREEN_LIST_HEADER_PADDING_TOP,
+      paddingBottom: SCREEN_LIST_HEADER_PADDING_BOTTOM,
     },
-    segTextActive: {
-      color: SEGMENT_TAB_ACTIVE_TEXT,
-    },
+    segment: segmentTab.segment,
+    segBtn: segmentTab.segBtn,
+    segBtnActive: segmentTab.segBtnActive,
+    segText: segmentTab.segText,
+    segTextActive: segmentTab.segTextActive,
     symbolFilterRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 12,
-      marginBottom: 10,
-      paddingVertical: 8,
+      gap: 20,
+      marginBottom: 14,
+      paddingVertical: 10,
       paddingHorizontal: 10,
-      borderRadius: 10,
+      borderRadius: 8,
       backgroundColor: theme.greenDim,
       borderWidth: 1,
       borderColor: theme.greenBorder,
@@ -520,9 +670,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     error: {
-      marginBottom: 12,
+      marginBottom: 16,
       padding: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       color: theme.danger,
       backgroundColor: theme.dangerDim,
       fontSize: sf(13),
@@ -530,7 +680,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     empty: {
       padding: 18,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       color: theme.textMuted,
@@ -540,20 +690,20 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       textAlign: 'center',
     },
     card: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       padding: ft.pad(14),
-      marginBottom: 10,
+      marginBottom: 14,
     },
     cardSelected: {
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
     },
     cardPressed: { backgroundColor: theme.bgElevated, borderColor: theme.greenBorder },
-    cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 9 },
-    badges: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 },
+    cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16 },
+    badges: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 },
     badge: {
       color: theme.green,
       backgroundColor: theme.greenDim,
@@ -590,28 +740,28 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: ft.ff(19),
       fontWeight: ft.bodyWeight,
     },
-    cardBottom: { marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+    cardBottom: { marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
     symbol: { flex: 1, minWidth: 0, color: theme.textMuted, fontSize: ft.ff(12), fontWeight: ft.emphasisWeight },
-    openBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    openBtn: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     openText: { color: theme.green, fontSize: ft.ff(12), fontWeight: ft.emphasisWeight },
     detailPane: {
       flex: 0.55,
       minWidth: 0,
-      borderRadius: 18,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       overflow: 'hidden',
-      marginBottom: 12,
+      marginBottom: 16,
     },
     detailScroll: { flex: 1, minHeight: 0 },
     detailScrollContent: {
       padding: 18,
-      gap: 12,
+      gap: 20,
     },
     detailHero: {
-      gap: 10,
-      paddingBottom: 4,
+      gap: 16,
+      paddingBottom: 8,
     },
     detailTitle: {
       color: theme.text,
@@ -626,18 +776,18 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: '800',
     },
     detailCard: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
       padding: 14,
-      gap: 10,
+      gap: 16,
     },
     detailFactRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 12,
+      gap: 20,
     },
     detailFactLabel: {
       color: theme.textMuted,
@@ -665,14 +815,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     detailOpenBtn: {
       minHeight: 44,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 8,
+      gap: 16,
     },
     detailOpenText: {
       color: theme.green,

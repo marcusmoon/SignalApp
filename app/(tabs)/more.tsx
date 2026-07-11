@@ -13,10 +13,17 @@ import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalHeader } from '@/components/signal/SignalHeader';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
-import { tabBarBottomInset } from '@/constants/tabBar';
+import {
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+  tabScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
+import { webShellBackground } from '@/constants/webLayout';
 import type { MoreHubRouteKey } from '@/constants/moreHubOrder';
 import type { AppTheme } from '@/constants/theme';
+import { useFeedUnreadBadges } from '@/contexts/FeedUnreadBadgesContext';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { MessageId } from '@/locales/messages';
@@ -40,23 +47,55 @@ const HUB_META: Record<
   settings: { href: '/settings' as Href, icon: 'cog', titleId: 'screenSettings' },
 };
 
-const GRID_GAP = 12;
+const GRID_GAP = 8;
 const TILE_HEIGHT = 54;
+const LIST_HORIZONTAL_PAD = 32;
+/** 2열 셀 폭이 이 값 이상이면 아이콘 옆(가로), 미만이면 아래(세로) */
+const HUB_TILE_HORIZONTAL_MIN_WIDTH = 158;
 /** 허브 행 ↔ 하단 링크·광고 등 섹션 사이 */
-const SECTION_GAP = 14;
+const SECTION_GAP = 10;
+
+type HubTileLayout = 'list' | 'grid-row' | 'grid-stack';
+
+function resolveHubTileLayout(useTwoColumnHub: boolean, cellWidth: number): HubTileLayout {
+  if (!useTwoColumnHub) return 'list';
+  return cellWidth >= HUB_TILE_HORIZONTAL_MIN_WIDTH ? 'grid-row' : 'grid-stack';
+}
+
+function hubCellWidthForScreen(width: number): number {
+  const listInner = Math.min(width, APP_CONTENT_MAX_WIDTH) - LIST_HORIZONTAL_PAD;
+  return Math.max(0, (listInner - GRID_GAP) / 2);
+}
 
 export default function MoreHubScreen() {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const router = useRouter();
+  const ipadNav = useIpadSidebarNav();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
-  const { useTwoPane } = useResponsiveLayout();
-  const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+  const { width, useTwoPane, isIOS, isPad, isWeb } = useResponsiveLayout();
+  const showIpadQuickLinks = useTwoPane;
+  const useTwoColumnHub = !useTwoPane && ((isIOS && !isPad) || isWeb);
+  const hubCellWidth = useMemo(() => hubCellWidthForScreen(width), [width]);
+  const hubTileLayout = useMemo(
+    () => resolveHubTileLayout(useTwoColumnHub, hubCellWidth),
+    [hubCellWidth, useTwoColumnHub],
+  );
+  const styles = useMemo(
+    () => makeStyles(theme, scaleFont, hubTileLayout),
+    [theme, scaleFont, hubTileLayout],
+  );
   const [order, setOrder] = useState<MoreHubRouteKey[]>([]);
   const [orderReady, setOrderReady] = useState(false);
   const [refLinksVisible, setRefLinksVisible] = useState(true);
+  const { disclosure: disclosureHasUnread } = useFeedUnreadBadges();
+
+  const hubHasUnread = useCallback(
+    (item: MoreHubRouteKey) => item === 'disclosures' && disclosureHasUnread,
+    [disclosureHasUnread],
+  );
 
   const reloadOrder = useCallback(async () => {
     const o = await loadMoreHubOrder();
@@ -92,6 +131,7 @@ export default function MoreHubScreen() {
     void reloadOrder();
     void reloadRefLinksPref();
   }, [reloadOrder, reloadRefLinksPref]);
+  useRegisterWebHeaderRefresh(onHeaderRefresh);
 
   const openHubItem = useCallback(
     (item: MoreHubRouteKey) => {
@@ -100,14 +140,23 @@ export default function MoreHubScreen() {
         return;
       }
       if (item === 'disclosures') {
+        if (ipadNav.isAvailable) {
+          ipadNav.showTabs();
+        }
         router.push('/(tabs)/disclosures' as never);
         return;
       }
       if (item === 'board') {
+        if (ipadNav.isAvailable) {
+          ipadNav.showTabs();
+        }
         router.push('/(tabs)/board' as never);
         return;
       }
       if (item === 'youtube') {
+        if (ipadNav.isAvailable) {
+          ipadNav.showYoutubeTab('latest');
+        }
         router.push({ pathname: '/(tabs)/youtube', params: { from: 'more' } } as never);
         return;
       }
@@ -117,7 +166,7 @@ export default function MoreHubScreen() {
       }
       router.push({ pathname: '/settings', params: { from: 'sidebar', tab: 'display' } } as never);
     },
-    [router, useTwoPane],
+    [ipadNav, router, useTwoPane],
   );
 
   const listFooter = useMemo(
@@ -132,11 +181,17 @@ export default function MoreHubScreen() {
   const visibleOrder = useMemo(
     () =>
       useTwoPane
-        ? order.filter((item) => item !== 'account' && item !== 'youtube' && item !== 'settings')
+        ? order.filter(
+            (item) =>
+              item !== 'account' &&
+              item !== 'youtube' &&
+              item !== 'settings' &&
+              item !== 'board' &&
+              item !== 'disclosures',
+          )
         : order,
     [order, useTwoPane],
   );
-  const showIpadQuickLinks = useTwoPane;
 
   return (
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
@@ -148,14 +203,16 @@ export default function MoreHubScreen() {
         </View>
       ) : (
         <WebWheelFlatList
-          key="more-list"
+          key={hubTileLayout === 'list' ? 'more-list' : `more-grid-${hubTileLayout}`}
           data={showIpadQuickLinks ? [] : visibleOrder}
           keyExtractor={(item) => item}
+          numColumns={useTwoColumnHub ? 2 : 1}
+          columnWrapperStyle={useTwoColumnHub ? styles.gridRow : undefined}
           scrollEnabled
           style={[styles.list, useTwoPane && styles.listWide]}
           contentContainerStyle={{
-            paddingTop: 10,
-            paddingBottom: 24 + tabBarHeight + tabBarBottomInset(insets.bottom),
+            paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+            paddingBottom: tabScreenScrollBottomPadding(tabBarHeight, insets.bottom),
           }}
           ListHeaderComponent={
             showIpadQuickLinks ? (
@@ -168,21 +225,46 @@ export default function MoreHubScreen() {
           renderItem={({ item }) => {
             const meta = HUB_META[item];
             const name = t(meta.titleId);
+            const hasUnread = hubHasUnread(item);
+            const a11yLabel = hasUnread ? t('moreHubUnreadDisclosuresA11y', { name }) : name;
             return (
               <Pressable
                 onPress={() => openHubItem(item)}
                 style={({ pressed }) => [
                   styles.tile,
+                  hubTileLayout === 'grid-row' && styles.tileGridRow,
+                  hubTileLayout === 'grid-stack' && styles.tileGridStack,
                   pressed && styles.rowPressed,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={name}>
-                <View style={styles.iconCircle}>
-                  <FontAwesome name={meta.icon} size={18} color={theme.green} />
+                accessibilityLabel={a11yLabel}>
+                <View
+                  style={[
+                    styles.iconCircle,
+                    hubTileLayout !== 'list' && styles.gridIconCircle,
+                    styles.iconCircleWrap,
+                  ]}>
+                  <FontAwesome
+                    name={meta.icon}
+                    size={hubTileLayout === 'list' ? 18 : hubTileLayout === 'grid-row' ? 15 : 16}
+                    color={theme.green}
+                  />
+                  {hasUnread ? <View style={styles.unreadDot} /> : null}
                 </View>
-                <Text style={styles.rowTitle} numberOfLines={2}>
+                <Text
+                  style={[
+                    styles.rowTitle,
+                    hubTileLayout === 'grid-row' && styles.gridTitleRow,
+                    hubTileLayout === 'grid-stack' && styles.gridTitleStack,
+                  ]}
+                  numberOfLines={hubTileLayout === 'grid-stack' ? 2 : hubTileLayout === 'grid-row' ? 1 : 2}>
                   {name}
                 </Text>
+                {hasUnread && hubTileLayout !== 'grid-stack' ? (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadBadgeText}>{t('moreHubUnreadLabel')}</Text>
+                  </View>
+                ) : null}
               </Pressable>
             );
           }}
@@ -192,9 +274,9 @@ export default function MoreHubScreen() {
   );
 }
 
-function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+function makeStyles(theme: AppTheme, sf: (n: number) => number, hubTileLayout: HubTileLayout) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.bg },
+    safe: { flex: 1, backgroundColor: webShellBackground(theme.bg) },
     list: {
       flex: 1,
       width: '100%',
@@ -212,18 +294,42 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       padding: 24,
     },
     muted: { fontSize: sf(14), color: theme.textDim },
+    gridRow: {
+      flexDirection: 'row',
+      gap: GRID_GAP,
+      marginBottom: GRID_GAP,
+    },
     tile: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      borderRadius: 13,
+      gap: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       minHeight: TILE_HEIGHT,
-      paddingVertical: 8,
+      paddingVertical: 10,
       paddingHorizontal: 10,
-      marginBottom: GRID_GAP,
+      marginBottom: hubTileLayout === 'list' ? GRID_GAP : 0,
+    },
+    tileGridRow: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: 46,
+      paddingVertical: 6,
+      paddingHorizontal: 8,
+      gap: 7,
+    },
+    tileGridStack: {
+      flex: 1,
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 72,
+      paddingVertical: 10,
+      paddingHorizontal: 6,
+      gap: 8,
     },
     rowPressed: {
       backgroundColor: theme.bgElevated,
@@ -239,6 +345,39 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.greenBorder,
     },
+    iconCircleWrap: {
+      position: 'relative',
+    },
+    unreadDot: {
+      position: 'absolute',
+      top: -2,
+      right: -2,
+      width: 7,
+      height: 7,
+      borderRadius: 3.5,
+      backgroundColor: '#F04452',
+      borderWidth: 1.5,
+      borderColor: theme.card,
+    },
+    unreadBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 999,
+      backgroundColor: '#F0445218',
+      borderWidth: 1,
+      borderColor: '#F0445240',
+    },
+    unreadBadgeText: {
+      fontSize: sf(10),
+      fontWeight: '900',
+      color: '#F04452',
+      letterSpacing: 0.2,
+    },
+    gridIconCircle: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+    },
     rowTitle: {
       flex: 1,
       minWidth: 0,
@@ -246,6 +385,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '800',
       color: theme.text,
       lineHeight: sf(17),
+    },
+    gridTitleRow: {
+      fontSize: sf(12),
+      lineHeight: sf(15),
+    },
+    gridTitleStack: {
+      flex: 0,
+      textAlign: 'center',
+      fontSize: sf(11),
+      lineHeight: sf(14),
     },
     footer: {
       marginTop: SECTION_GAP,

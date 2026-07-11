@@ -70,7 +70,15 @@ export async function listAppUserRows(options = {}) {
         (SELECT MAX(s.created_at) FROM app_user_refresh_sessions s WHERE s.user_id = u.id) AS latest_session_at,
         (SELECT MAX(d.updated_at) FROM app_user_devices d WHERE d.user_id = u.id) AS latest_device_at,
         (SELECT COUNT(*) FROM notification_items n WHERE n.app_user_id = u.id) AS notification_count,
-        (SELECT COUNT(*) FROM notification_items n WHERE n.app_user_id = u.id AND n.status = 'queued') AS queued_notification_count
+        (SELECT COUNT(*) FROM notification_items n
+          WHERE n.app_user_id = u.id
+            AND n.channel = 'push'
+            AND COALESCE(n.payload->>'pushDelivery', '') NOT IN ('sending', 'sent', 'skipped', 'none')
+            AND (
+              (n.status = 'queued' AND COALESCE(n.payload->>'pushDelivery', 'pending') = 'pending')
+              OR (n.status = 'published' AND n.payload->>'pushDelivery' = 'pending')
+            )
+        ) AS queued_notification_count
       FROM app_users u
       ${whereSql}
       ORDER BY u.created_at DESC

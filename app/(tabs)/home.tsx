@@ -7,8 +7,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { HomeFocusContent } from '@/components/signal/HomeFocusContent';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalHeader } from '@/components/signal/SignalHeader';
-import { tabBarBottomInset } from '@/constants/tabBar';
-import { webFlexFill } from '@/constants/webLayout';
+import { tabScreenScrollBottomPadding } from '@/constants/screenLayout';
+import { webFlexFill, webShellBackground } from '@/constants/webLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useRollingLocalYmd } from '@/hooks/useRollingLocalYmd';
 
@@ -20,6 +20,7 @@ export default function HomeTabScreen() {
   const todayYmd = useRollingLocalYmd();
   const todayYmdRef = useRef(todayYmd);
   const [selectedYmd, setSelectedYmd] = useState(todayYmd);
+  const pullRefreshRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const prevToday = todayYmdRef.current;
@@ -28,15 +29,18 @@ export default function HomeTabScreen() {
   }, [todayYmd]);
 
   return (
-    <SafeAreaView style={{ ...webFlexFill, backgroundColor: theme.bg }} edges={['top']}>
-      <SignalHeader compact />
+      <SafeAreaView style={{ ...webFlexFill, backgroundColor: webShellBackground(theme.bg) }} edges={['top']}>
+      <SignalHeader compact onBrandPress={() => pullRefreshRef.current?.()} />
       {isFocused ? <OtaUpdateBanner /> : null}
-      <View style={webFlexFill}>
+      <View style={{ ...webFlexFill, backgroundColor: webShellBackground(theme.bg) }}>
         <HomeFocusContent
           selectedYmd={selectedYmd}
           todayYmd={todayYmd}
           onSelectedYmdChange={setSelectedYmd}
-          scrollContentPaddingBottom={24 + tabBarHeight + tabBarBottomInset(insets.bottom)}
+          scrollContentPaddingBottom={tabScreenScrollBottomPadding(tabBarHeight, insets.bottom)}
+          onPullRefreshReady={(refresh) => {
+            pullRefreshRef.current = refresh;
+          }}
         />
       </View>
     </SafeAreaView>

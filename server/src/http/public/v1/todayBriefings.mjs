@@ -1,6 +1,10 @@
-import { upsertCollectionRows } from '../../../db.mjs';
+import { upsertCollectionRows, upsertNotificationItem } from '../../../db.mjs';
+import { NOTIFICATION_TYPES } from '../../../notifications/notificationItem.mjs';
+import { resolveIngestNotifyInbox, resolveIngestSendPush } from '../../../notifications/ingestFlags.mjs';
+import { buildPublishedNotification } from '../../../notifications/publish.mjs';
 import { config } from '../../../config.mjs';
 import { queryPublicTodayBriefings } from '../../../db/repositories/todayBriefingsRepository.mjs';
+import { normalizeSourceRefs } from '../../../sources/normalizeSourceRefs.mjs';
 import { parseToUtcIsoOrNull, utcDateKeyFromInstant, utcDateOnlyOrNull } from '../../../time/utc.mjs';
 import { json, readBody } from '../../shared.mjs';
 
@@ -28,7 +32,6 @@ function normalizeTodayBriefingPayload(input) {
   const generatedAt = parseToUtcIsoOrNull(input?.generatedAt) || publishedAt;
   if (!id || !title || !headline) return null;
   const summary = cleanText(input?.summary);
-  const pushCandidate = input?.pushCandidate === true;
   return {
     id,
     locale: cleanText(input?.locale) || 'ko',
@@ -38,14 +41,13 @@ function normalizeTodayBriefingPayload(input) {
     keyPoints: cleanArray(input?.keyPoints || input?.overview).map(cleanText).filter(Boolean).slice(0, 8),
     sections: cleanArray(input?.sections).slice(0, 12),
     marketSnapshot: input?.marketSnapshot && typeof input.marketSnapshot === 'object' ? input.marketSnapshot : null,
-    sourceRefs: cleanArray(input?.sourceRefs).slice(0, 30),
+    sourceRefs: normalizeSourceRefs(input?.sourceRefs, { limit: 30 }),
     relatedDigestIds: cleanArray(input?.relatedDigestIds).map(cleanText).filter(Boolean).slice(0, 30),
     relatedMarketBriefingIds: cleanArray(input?.relatedMarketBriefingIds).map(cleanText).filter(Boolean).slice(0, 30),
     briefingDate: normalizeBriefingDate(input?.briefingDate || input?.generatedDate, publishedAt),
     generatedAt,
     publishedAt,
     status: cleanText(input?.status) || 'published',
-    pushCandidate,
     pushTitle: cleanText(input?.pushTitle) || title,
     pushBody: cleanText(input?.pushBody) || headline,
     createdAt: cleanText(input?.createdAt) || generatedAt,
@@ -59,6 +61,36 @@ function hasIngestAccess(req) {
   const header = cleanText(req.headers['x-signal-automation-token']);
   const bearer = cleanText(String(req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
   return header === configured || bearer === configured;
+}
+
+async function publishTodayBriefingNotification(briefing, queuePush) {
+  if (cleanText(briefing.status) && briefing.status !== 'published') return null;
+  const notification = buildPublishedNotification(
+    {
+      id: `notification:push:today_briefing:${briefing.id}`,
+      type: NOTIFICATION_TYPES.todayBriefing,
+      title: briefing.pushTitle || briefing.title,
+      body: briefing.pushBody || briefing.headline,
+      channel: 'push',
+      priority: 'normal',
+      targetType: 'all',
+      sourceType: 'today_briefing',
+      sourceId: briefing.id,
+      deepLink: briefing.briefingDate
+        ? `/today-briefing?date=${briefing.briefingDate}`
+        : '/today-briefing',
+      reason: `today briefing updated: ${briefing.briefingDate || briefing.locale}`,
+      scheduledAt: briefing.publishedAt,
+      payload: {
+        briefingId: briefing.id,
+        briefingDate: briefing.briefingDate,
+        locale: briefing.locale,
+      },
+    },
+    { queuePush },
+  );
+  if (!notification) return null;
+  return upsertNotificationItem(notification);
 }
 
 export async function handlePublicTodayBriefingRoutes({ req, res, url, pathname }) {
@@ -75,7 +107,18 @@ export async function handlePublicTodayBriefingRoutes({ req, res, url, pathname 
       return true;
     }
     await upsertCollectionRows('todayBriefings', [briefing]);
-    json(res, 201, { data: briefing, meta: { notificationQueued: false } });
+    const notifyInbox = resolveIngestNotifyInbox(body);
+    const sendPush = resolveIngestSendPush(body);
+    const notification = notifyInbox ? await publishTodayBriefingNotification(briefing, sendPush) : null;
+    json(res, 201, {
+      data: briefing,
+      meta: {
+        notifyInbox,
+        sendPush,
+        inboxPublished: !!notification,
+        pushQueued: sendPush && !!notification,
+      },
+    });
     return true;
   }
 

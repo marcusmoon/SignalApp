@@ -27,8 +27,14 @@ import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
-  tabBarBottomInset,
+  SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
+  SCREEN_EMBEDDED_WIDE_PADDING_TOP,
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+} from '@/constants/screenLayout';
+import { webShellBackground } from '@/constants/webLayout';
+import {
   tabBarHorizontalMargin,
   tabBarPositionBottom,
   TAB_BAR_FLOAT_RADIUS,
@@ -110,12 +116,26 @@ import {
   type MainEntryKey,
 } from '@/services/mainEntryPreference';
 import {
+  HOME_NEWS_FLOW_DISPLAY_MAX,
+  HOME_NEWS_FLOW_DISPLAY_MIN,
+  HOME_NEWS_FLOW_DISPLAY_DEFAULT,
+  loadHomeNewsFlowDisplayCount,
+  saveHomeNewsFlowDisplayCount,
+} from '@/services/homeNewsFlowDisplayPreference';
+import {
   HOME_WATCHLIST_DISPLAY_MAX,
   HOME_WATCHLIST_DISPLAY_MIN,
   HOME_WATCHLIST_DISPLAY_DEFAULT,
   loadHomeWatchlistDisplayCount,
   saveHomeWatchlistDisplayCount,
 } from '@/services/homeWatchlistDisplayPreference';
+import {
+  HOME_BOARD_DISPLAY_MAX,
+  HOME_BOARD_DISPLAY_MIN,
+  HOME_BOARD_DISPLAY_DEFAULT,
+  loadHomeBoardDisplayCount,
+  saveHomeBoardDisplayCount,
+} from '@/services/homeBoardDisplayPreference';
 import {
   loadTabBarOpacityLevel,
   saveTabBarOpacityLevel,
@@ -124,6 +144,7 @@ import {
 } from '@/services/tabBarOpacityPreference';
 import { loadWatchlistSymbols } from '@/services/quoteWatchlist';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
+import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 import {
   getEffectiveSignalApiBaseUrl,
   loadSignalServerPrefs,
@@ -143,17 +164,7 @@ import {
   SETTINGS_TABS,
   type SettingsTab,
 } from '@/constants/settingsTabs';
-import {
-  SEGMENT_TAB_ACTIVE_TEXT,
-  SEGMENT_TAB_BTN_PADDING_V,
-  SEGMENT_TAB_BTN_RADIUS,
-  SEGMENT_TAB_FONT_SIZE,
-  SEGMENT_TAB_FONT_WEIGHT,
-  SEGMENT_TAB_GAP,
-  SEGMENT_TAB_LINE_HEIGHT,
-  SEGMENT_TAB_OUTER_RADIUS,
-  SEGMENT_TAB_PADDING,
-} from '@/constants/segmentTabBar';
+import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
 
 const QUOTE_SEGMENT_LABEL: Record<QuoteSegmentKey, MessageId> = {
   watch: 'quotesSegmentWatch',
@@ -271,70 +282,47 @@ const APP_ICON_PREVIEW_IMAGE: Record<AppIconVariant, number> = {
 const TAB_BAR_OPACITY_ORDER: TabBarOpacityLevel[] = [0, 1, 2, 3, 4];
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+  const shellBg = webShellBackground(theme.bg);
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
-    safe: { flex: 1, minHeight: 0, backgroundColor: theme.bg },
-    scrollFlex: { flex: 1, minHeight: 0 },
+    safe: { flex: 1, minHeight: 0, backgroundColor: shellBg },
+    scrollFlex: { flex: 1, minHeight: 0, backgroundColor: shellBg },
     scroll: {
       width: '100%',
       maxWidth: APP_CONTENT_MAX_WIDTH,
       alignSelf: 'center',
       paddingHorizontal: 16,
-      paddingTop: 4,
       paddingBottom: 32,
+      backgroundColor: shellBg,
     },
     scrollEmbedded: {
       maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
       alignSelf: 'stretch',
+      paddingHorizontal: SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
     },
+    topFixed: fixedHeader.strip,
     tabBar: {
+      ...segmentTab.segment,
       width: '100%',
-      maxWidth: APP_CONTENT_MAX_WIDTH - 32,
-      alignSelf: 'center',
+      alignSelf: 'stretch',
       flexShrink: 0,
-      flexDirection: 'row',
       flexWrap: 'wrap',
-      marginHorizontal: 16,
-      marginTop: 10,
-      marginBottom: 6,
-      backgroundColor: theme.bgElevated,
-      borderRadius: SEGMENT_TAB_OUTER_RADIUS,
-      borderWidth: 1,
-      borderColor: theme.border,
-      padding: SEGMENT_TAB_PADDING,
-      gap: SEGMENT_TAB_GAP,
+      marginBottom: 0,
     },
     tabBtn: {
+      ...segmentTab.segBtn,
       flexGrow: 1,
       flexBasis: '30%',
       minWidth: 0,
-      paddingVertical: SEGMENT_TAB_BTN_PADDING_V,
       paddingHorizontal: 8,
-      borderRadius: SEGMENT_TAB_BTN_RADIUS,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
-    tabBtnActive: {
-      backgroundColor: theme.green,
-    },
-    tabText: {
-      fontSize: sf(SEGMENT_TAB_FONT_SIZE),
-      lineHeight: sf(SEGMENT_TAB_LINE_HEIGHT),
-      fontWeight: SEGMENT_TAB_FONT_WEIGHT,
-      color: theme.textDim,
-    },
-    tabTextActive: {
-      color: SEGMENT_TAB_ACTIVE_TEXT,
-    },
-    lead: {
-      fontSize: sf(14),
-      fontWeight: '500',
-      color: theme.textDim,
-      lineHeight: sf(21),
-      marginBottom: 16,
-    },
+    tabBtnActive: segmentTab.segBtnActive,
+    tabText: segmentTab.segText,
+    tabTextActive: segmentTab.segTextActive,
     card: {
       padding: 12,
-      borderRadius: 14,
+      borderRadius: 8,
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
@@ -357,15 +345,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingVertical: 6,
-      gap: 12,
+      gap: 20,
     },
     prefLabel: { fontSize: sf(14), fontWeight: '600', color: theme.text, flex: 1 },
     prefBlock: { marginTop: 4, marginBottom: 4 },
     prefHint: { fontSize: sf(11), fontWeight: '500', color: theme.textDim, lineHeight: sf(15), marginTop: 2, marginBottom: 4 },
-    notificationStack: { gap: 10, marginBottom: 20 },
+    notificationStack: { gap: 16, marginBottom: 20 },
     notificationCard: {
       padding: 12,
-      borderRadius: 12,
+      borderRadius: 8,
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
@@ -374,7 +362,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 12,
+      gap: 20,
     },
     notificationText: { flex: 1, minWidth: 0 },
     notificationTitle: { fontSize: sf(14), fontWeight: '900', color: theme.text },
@@ -386,14 +374,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       marginTop: 3,
     },
     notificationSubRow: {
-      marginTop: 12,
+      marginTop: 16,
       paddingTop: 12,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      gap: 12,
+      gap: 20,
     },
     notificationSubRowDisabled: { opacity: 0.45 },
     notificationSubLabel: { flex: 1, fontSize: sf(13), fontWeight: '800', color: theme.textMuted },
@@ -427,14 +415,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.text,
       marginBottom: 8,
     },
-    muted: { fontSize: sf(14), fontWeight: '500', color: theme.textMuted, marginBottom: 12 },
+    muted: { fontSize: sf(14), fontWeight: '500', color: theme.textMuted, marginBottom: 16 },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 10,
+      paddingVertical: 12,
       paddingHorizontal: 12,
       marginBottom: 6,
-      borderRadius: 12,
+      borderRadius: 8,
       backgroundColor: theme.card,
       borderWidth: 1,
       borderColor: theme.border,
@@ -442,21 +430,21 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     handleText: { flex: 1, fontSize: sf(14), color: theme.text, fontWeight: '600' },
     removeBtn: { padding: 8 },
     hint: { fontSize: sf(12), fontWeight: '500', color: theme.textDim, marginBottom: 8 },
-    addRow: { flexDirection: 'row', gap: 8, marginBottom: 20, alignItems: 'center' },
+    addRow: { flexDirection: 'row', gap: 16, marginBottom: 20, alignItems: 'center' },
     input: {
       flex: 1,
       borderWidth: 1,
       borderColor: theme.border,
       borderRadius: 8,
       paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingVertical: 12,
       fontSize: sf(15),
       color: theme.text,
       backgroundColor: theme.card,
     },
     addBtn: {
       paddingHorizontal: 16,
-      paddingVertical: 10,
+      paddingVertical: 12,
       borderRadius: 8,
       backgroundColor: theme.green,
     },
@@ -471,8 +459,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     resetBtnText: { fontSize: sf(13), fontWeight: '700', color: theme.danger },
     displayCard: {
-      marginBottom: 12,
-      borderRadius: 14,
+      marginBottom: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -485,10 +473,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.textMuted,
       letterSpacing: 1.1,
       textTransform: 'uppercase',
-      marginBottom: 10,
+      marginBottom: 8,
     },
     themePreviewShell: {
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
@@ -504,12 +492,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     themePreviewBar: {
       height: 10,
       borderRadius: 5,
-      marginBottom: 10,
+      marginBottom: 14,
     },
     themePreviewMockRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
+      gap: 16,
       marginBottom: 8,
     },
     themePreviewMockDot: {
@@ -536,9 +524,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      gap: 8,
+      gap: 16,
       marginTop: 4,
-      marginBottom: 10,
+      marginBottom: 14,
     },
     themeSwatchRowLast: {
       marginBottom: 16,
@@ -599,7 +587,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       zIndex: 1,
       width: '100%',
       maxWidth: 340,
-      borderRadius: 16,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
@@ -607,7 +595,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     accentModalTitle: {
       paddingHorizontal: 8,
-      paddingVertical: 8,
+      paddingVertical: 10,
       fontSize: sf(15),
       fontWeight: '800',
       color: theme.text,
@@ -664,7 +652,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     accentModalFooterActions: {
       flexDirection: 'row',
-      gap: 6,
+      gap: 8,
       paddingHorizontal: 8,
       paddingTop: 10,
       paddingBottom: 6,
@@ -673,7 +661,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flex: 1,
     },
     accentModalCancelBtn: {
-      paddingVertical: 10,
+      paddingVertical: 12,
       alignItems: 'center',
       borderRadius: 9,
       borderWidth: 1,
@@ -686,7 +674,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.text,
     },
     accentModalApplyBtn: {
-      paddingVertical: 10,
+      paddingVertical: 12,
       alignItems: 'center',
       borderRadius: 9,
       backgroundColor: theme.green,
@@ -706,15 +694,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     langSegmentedTrack: {
       flexDirection: 'row',
       backgroundColor: theme.bgElevated,
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       padding: 4,
-      gap: 4,
+      gap: 6,
     },
     langSegment: {
       flex: 1,
-      paddingVertical: 10,
+      paddingVertical: 12,
       borderRadius: 9,
       alignItems: 'center',
       justifyContent: 'center',
@@ -735,32 +723,72 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: '#FFFFFF',
     },
     /** 개발자 푸터 내부(플로팅 글래스 캡슐 위) */
+    settingsFooterDock: {
+      position: 'absolute',
+      pointerEvents: 'box-none',
+    },
+    settingsFooterDockCompact: {
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+    },
+    settingsFooterCapsule: {
+      borderRadius: TAB_BAR_FLOAT_RADIUS,
+      overflow: 'hidden',
+      backgroundColor: theme.card,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    settingsFooterCapsuleWide: {
+      width: '100%',
+    },
+    settingsFooterCapsuleCompact: {
+      alignSelf: 'center',
+      flexGrow: 0,
+      flexShrink: 0,
+      borderRadius: 999,
+      maxWidth: '92%',
+    },
     settingsFooterPress: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 10,
+      gap: 16,
       paddingVertical: 12,
       paddingHorizontal: 14,
+    },
+    settingsFooterPressCompact: {
+      gap: 16,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      alignSelf: 'center',
+      flexGrow: 0,
     },
     settingsFooterAvatar: {
       width: 36,
       height: 36,
-      borderRadius: 18,
+      borderRadius: 8,
+    },
+    settingsFooterAvatarCompact: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
     },
     settingsFooterText: {
-      flexShrink: 1,
       fontSize: sf(12),
       fontWeight: '600',
       color: theme.textMuted,
       letterSpacing: 0.2,
+    },
+    settingsFooterTextWide: {
+      flexShrink: 1,
     },
     cacheOneLiner: {
       fontSize: sf(12),
       fontWeight: '500',
       color: theme.textDim,
       lineHeight: sf(17),
-      marginBottom: 10,
+      marginBottom: 14,
     },
     cacheClearBtn: {
       marginTop: 8,
@@ -773,8 +801,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     cacheClearBtnText: { fontSize: sf(13), fontWeight: '800', color: theme.green },
     cacheClearSuccess: {
-      marginTop: 10,
-      paddingVertical: 10,
+      marginTop: 16,
+      paddingVertical: 12,
       paddingHorizontal: 12,
       borderRadius: 8,
       backgroundColor: theme.greenDim,
@@ -790,17 +818,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: 10,
+      marginBottom: 14,
     },
     limitRowLast: {
       marginBottom: 0,
-    },
-    quotesCardHint: {
-      fontSize: sf(12),
-      fontWeight: '500',
-      color: theme.textDim,
-      lineHeight: sf(17),
-      marginBottom: 12,
     },
     quotesSegmentOrderListWrap: {
       marginBottom: 2,
@@ -810,15 +831,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     quotesChangeColorSegment: {
       flexDirection: 'column',
-      gap: 8,
-      marginBottom: 12,
+      gap: 16,
+      marginBottom: 16,
     },
     quotesChangeColorOption: {
-      borderRadius: 12,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
-      paddingVertical: 10,
+      paddingVertical: 12,
       paddingHorizontal: 12,
     },
     quotesChangeColorOptionActive: {
@@ -844,7 +865,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 16,
+      gap: 20,
       marginTop: 4,
     },
     quotesChangeColorPreviewChip: {
@@ -855,8 +876,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     limitPickerTrigger: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      paddingVertical: 8,
+      gap: 16,
+      paddingVertical: 10,
       paddingHorizontal: 12,
       borderRadius: 8,
       borderWidth: 1,
@@ -882,7 +903,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       width: '100%',
       maxWidth: 320,
       maxHeight: '56%',
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bg,
@@ -942,26 +963,26 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.text,
     },
     segmentOrderDragHandle: {
-      paddingVertical: 8,
+      paddingVertical: 10,
       paddingHorizontal: 12,
       marginRight: -4,
     },
     appIconGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 10,
+      gap: 16,
       marginTop: 2,
     },
     appIconOption: {
       width: '48%',
       minWidth: 128,
       flexGrow: 1,
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
       padding: 12,
-      gap: 10,
+      gap: 16,
     },
     appIconOptionActive: {
       borderColor: theme.green,
@@ -971,7 +992,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     appIconPreview: {
       width: 46,
       height: 46,
-      borderRadius: 13,
+      borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       overflow: 'hidden',
@@ -993,6 +1014,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
 
 /** 하단 플로팅 개발자 바 높이(탭바 캡슐과 비슷하게) */
 const SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT = 52;
+/** iPad·넓은 웹: 하단 중앙 소형 캡슐 */
+const SETTINGS_DEV_FOOTER_COMPACT_INNER_MIN_HEIGHT = 40;
 
 type SettingsScreenProps = {
   /** iPad 사이드바 우측 패널에 그대로 삽입 */
@@ -1024,8 +1047,12 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   const router = useRouter();
   const isFocused = useIsFocused();
   const useIpadSidebar = useTwoPane && !embedded;
+  const settingsScrollTopPad =
+    embedded || useTwoPane ? SCREEN_EMBEDDED_WIDE_PADDING_TOP : SCREEN_LIST_CONTENT_PADDING_TOP;
   const [tab, setTab] = useState<SettingsTab>('display');
   const selectedTab = embedded && ipadNav.isAvailable ? ipadNav.settingsTab : tab;
+  const { ref: settingsScrollRef } = useScrollToTopOnChange([selectedTab]);
+  const scrollResetKey = selectedTab;
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [briefingPushEnabled, setBriefingPushEnabled] = useState(true);
@@ -1062,8 +1089,12 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   const [moreRefLinksReady, setMoreRefLinksReady] = useState(false);
   const [mainEntry, setMainEntry] = useState<MainEntryKey>('home');
   const [mainEntryReady, setMainEntryReady] = useState(false);
+  const [homeNewsFlowDisplayCount, setHomeNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
+  const [homeNewsFlowDisplayReady, setHomeNewsFlowDisplayReady] = useState(false);
   const [homeWatchlistDisplayCount, setHomeWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [homeWatchlistDisplayReady, setHomeWatchlistDisplayReady] = useState(false);
+  const [homeBoardDisplayCount, setHomeBoardDisplayCount] = useState(HOME_BOARD_DISPLAY_DEFAULT);
+  const [homeBoardDisplayReady, setHomeBoardDisplayReady] = useState(false);
   const [appIconVariant, setAppIconVariant] = useState<AppIconVariant>('blue');
   const [appIconReady, setAppIconReady] = useState(false);
   const [tabBarOpacityLevel, setTabBarOpacityLevel] = useState<TabBarOpacityLevel>(3);
@@ -1081,9 +1112,16 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   }, [customHex]);
 
   const { width: winW, height: winH } = useWindowDimensions();
+  const useCompactDeveloperFooter = useTwoPane;
   const floatingFooterMarginH = tabBarHorizontalMargin();
   const floatingFooterWidth = Math.min(winW - floatingFooterMarginH * 2, APP_CONTENT_MAX_WIDTH);
   const floatingFooterLeft = Math.max(floatingFooterMarginH, (winW - floatingFooterWidth) / 2);
+  const developerFooterBottom = useCompactDeveloperFooter
+    ? Math.max(16, insets.bottom + 10)
+    : tabBarPositionBottom(insets.bottom);
+  const developerFooterInnerHeight = useCompactDeveloperFooter
+    ? SETTINGS_DEV_FOOTER_COMPACT_INNER_MIN_HEIGHT
+    : SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT;
   const accentPickerLayout = useMemo(() => {
     const sheetW = Math.min(winW - 40, 340);
     const cols = ACCENT_PALETTE_COLS;
@@ -1117,10 +1155,10 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   const scrollContentBottomPad = useMemo(
     () =>
       32 +
-      tabBarBottomInset(insets.bottom) +
-      SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT +
+      developerFooterBottom +
+      developerFooterInnerHeight +
       12,
-    [insets.bottom],
+    [developerFooterBottom, developerFooterInnerHeight],
   );
 
   useEffect(() => {
@@ -1253,6 +1291,22 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     setMainEntryReady(true);
   }, []);
 
+  const reloadHomeNewsFlowDisplayPref = useCallback(async () => {
+    const v = await loadHomeNewsFlowDisplayCount();
+    setHomeNewsFlowDisplayCount(v);
+    setHomeNewsFlowDisplayReady(true);
+  }, []);
+
+  const bumpHomeNewsFlowDisplayCount = useCallback(async (delta: number) => {
+    const v = await loadHomeNewsFlowDisplayCount();
+    const next = Math.min(
+      HOME_NEWS_FLOW_DISPLAY_MAX,
+      Math.max(HOME_NEWS_FLOW_DISPLAY_MIN, v + delta),
+    );
+    await saveHomeNewsFlowDisplayCount(next);
+    setHomeNewsFlowDisplayCount(next);
+  }, []);
+
   const reloadHomeWatchlistDisplayPref = useCallback(async () => {
     const v = await loadHomeWatchlistDisplayCount();
     setHomeWatchlistDisplayCount(v);
@@ -1267,6 +1321,22 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     );
     await saveHomeWatchlistDisplayCount(next);
     setHomeWatchlistDisplayCount(next);
+  }, []);
+
+  const reloadHomeBoardDisplayPref = useCallback(async () => {
+    const v = await loadHomeBoardDisplayCount();
+    setHomeBoardDisplayCount(v);
+    setHomeBoardDisplayReady(true);
+  }, []);
+
+  const bumpHomeBoardDisplayCount = useCallback(async (delta: number) => {
+    const v = await loadHomeBoardDisplayCount();
+    const next = Math.min(
+      HOME_BOARD_DISPLAY_MAX,
+      Math.max(HOME_BOARD_DISPLAY_MIN, v + delta),
+    );
+    await saveHomeBoardDisplayCount(next);
+    setHomeBoardDisplayCount(next);
   }, []);
 
   const reloadAppIconPref = useCallback(async () => {
@@ -1291,7 +1361,9 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     void reloadSignalServerPrefs();
     void reloadMoreReferenceLinksPref();
     void reloadMainEntryPref();
+    void reloadHomeNewsFlowDisplayPref();
     void reloadHomeWatchlistDisplayPref();
+    void reloadHomeBoardDisplayPref();
     void reloadAppIconPref();
     void reloadTabBarOpacityPref();
   }, [
@@ -1304,7 +1376,9 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
     reloadSignalServerPrefs,
     reloadMoreReferenceLinksPref,
     reloadMainEntryPref,
+    reloadHomeNewsFlowDisplayPref,
     reloadHomeWatchlistDisplayPref,
+    reloadHomeBoardDisplayPref,
     reloadAppIconPref,
     reloadTabBarOpacityPref,
   ]);
@@ -1347,7 +1421,8 @@ clearCalendarCache();
     <SafeAreaView style={styles.safe} edges={[]}>
       {isFocused ? <OtaUpdateBanner /> : null}
       {!embedded && !useTwoPane ? (
-        <View style={styles.tabBar}>
+        <View style={styles.topFixed}>
+          <View style={styles.tabBar}>
           {SETTINGS_TABS.map((item) => {
             const selected = selectedTab === item.key;
             return (
@@ -1365,27 +1440,128 @@ clearCalendarCache();
               </Pressable>
             );
           })}
+          </View>
         </View>
       ) : null}
       <WebWheelScrollView
+        ref={settingsScrollRef as never}
+        scrollResetKey={scrollResetKey}
         style={styles.scrollFlex}
         contentContainerStyle={[
           styles.scroll,
-          embedded && styles.scrollEmbedded,
-          { paddingBottom: scrollContentBottomPad },
+          (embedded || useTwoPane) && styles.scrollEmbedded,
+          { paddingTop: settingsScrollTopPad, paddingBottom: scrollContentBottomPad },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         {selectedTab === 'quotes' ? (
           <>
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsQuotesChangeColorKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsQuotesChangeColorHint')}</Text>
-              {!quotesChangeColorReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              <Text style={styles.displayCardKicker}>{t('settingsQuotesDisplaySection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsQuotesLead')}</Text>
+
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                {t('settingsQuotesSegmentOrderKicker')}
+              </Text>
+              <Text style={styles.prefHint}>{t('settingsQuotesSegmentOrderHint')}</Text>
+              {!quotesSegmentOrderReady ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
+              ) : (
+                <View style={[styles.quotesSegmentOrderListWrap, { marginTop: 8 }]}>
+                  <DraggableFlatList
+                    data={quotesSegmentOrder}
+                    scrollEnabled={false}
+                    removeClippedSubviews={false}
+                    style={{ height: QUOTES_SEGMENT_ORDER_LIST_HEIGHT }}
+                    containerStyle={{ flexGrow: 0 }}
+                    contentContainerStyle={styles.quotesSegmentOrderListContent}
+                    keyExtractor={(item) => item}
+                    onDragEnd={({ data }) => {
+                      setQuotesSegmentOrder(data);
+                      void saveQuotesSegmentOrder(data);
+                    }}
+                    renderItem={({ item, drag, isActive, getIndex }) => {
+                      const idx = getIndex() ?? 0;
+                      const isLast = idx === quotesSegmentOrder.length - 1;
+                      return (
+                        <ScaleDecorator>
+                          <View
+                            style={[
+                              styles.segmentOrderRow,
+                              !isLast && styles.segmentOrderRowGap,
+                              isActive && styles.segmentOrderRowActive,
+                            ]}>
+                            <Text style={styles.segmentOrderLabel}>{t(QUOTE_SEGMENT_LABEL[item])}</Text>
+                            <GHPressable
+                              style={styles.segmentOrderDragHandle}
+                              {...(Platform.OS === 'web'
+                                ? { onPressIn: drag }
+                                : { onLongPress: drag, delayLongPress: 200 })}
+                              accessibilityRole="button"
+                              accessibilityLabel={formatMessage(t('settingsQuotesSegmentDragHandleA11y'), {
+                                name: t(QUOTE_SEGMENT_LABEL[item]),
+                              })}>
+                              <FontAwesome name="bars" size={16} color={theme.textMuted} />
+                            </GHPressable>
+                          </View>
+                        </ScaleDecorator>
+                      );
+                    }}
+                  />
+                </View>
+              )}
+
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>{t('settingsQuotesLimitsKicker')}</Text>
+              <Text style={styles.prefHint}>{t('settingsQuotesListLimitsHint')}</Text>
+              {!quotesLimitsReady ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
                 <>
-                  <View style={styles.quotesChangeColorSegment}>
+                  <View style={[styles.limitRow, { marginTop: 8 }]}>
+                    <Text style={styles.prefLabel}>{t('settingsQuotesPopularCountLabel')}</Text>
+                    <Pressable
+                      onPress={() => setQuotesLimitPicker('popular')}
+                      style={styles.limitPickerTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settingsQuotesPopularCountLabel')}>
+                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.popularMax}</Text>
+                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                    </Pressable>
+                  </View>
+                  <View style={styles.limitRow}>
+                    <Text style={styles.prefLabel}>{t('settingsQuotesMcapCountLabel')}</Text>
+                    <Pressable
+                      onPress={() => setQuotesLimitPicker('mcap')}
+                      style={styles.limitPickerTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settingsQuotesMcapCountLabel')}>
+                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.mcapMax}</Text>
+                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                    </Pressable>
+                  </View>
+                  <View style={[styles.limitRow, styles.limitRowLast]}>
+                    <Text style={styles.prefLabel}>{t('settingsQuotesCoinCountLabel')}</Text>
+                    <Pressable
+                      onPress={() => setQuotesLimitPicker('coin')}
+                      style={styles.limitPickerTrigger}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('settingsQuotesCoinCountLabel')}>
+                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.coinMax}</Text>
+                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
+                    </Pressable>
+                  </View>
+                </>
+              )}
+
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                {t('settingsQuotesChangeColorKicker')}
+              </Text>
+              <Text style={styles.prefHint}>{t('settingsQuotesChangeColorHint')}</Text>
+              {!quotesChangeColorReady ? (
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
+              ) : (
+                <>
+                  <View style={[styles.quotesChangeColorSegment, { marginTop: 8 }]}>
                     {QUOTES_CHANGE_COLOR_CONVENTION_ORDER.map((convention) => {
                       const selected = quotesChangeColorConvention === convention;
                       return (
@@ -1435,121 +1611,23 @@ clearCalendarCache();
                 </>
               )}
             </View>
-
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsQuotesSegmentOrderKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsQuotesSegmentOrderHint')}</Text>
-              {!quotesSegmentOrderReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
-              ) : (
-                <View style={styles.quotesSegmentOrderListWrap}>
-                  <DraggableFlatList
-                    data={quotesSegmentOrder}
-                    scrollEnabled={false}
-                    removeClippedSubviews={false}
-                    style={{ height: QUOTES_SEGMENT_ORDER_LIST_HEIGHT }}
-                    containerStyle={{ flexGrow: 0 }}
-                    contentContainerStyle={styles.quotesSegmentOrderListContent}
-                    keyExtractor={(item) => item}
-                    onDragEnd={({ data }) => {
-                      setQuotesSegmentOrder(data);
-                      void saveQuotesSegmentOrder(data);
-                    }}
-                    renderItem={({ item, drag, isActive, getIndex }) => {
-                      const idx = getIndex() ?? 0;
-                      const isLast = idx === quotesSegmentOrder.length - 1;
-                      return (
-                        <ScaleDecorator>
-                          <View
-                            style={[
-                              styles.segmentOrderRow,
-                              !isLast && styles.segmentOrderRowGap,
-                              isActive && styles.segmentOrderRowActive,
-                            ]}>
-                            <Text style={styles.segmentOrderLabel}>{t(QUOTE_SEGMENT_LABEL[item])}</Text>
-                            <GHPressable
-                              style={styles.segmentOrderDragHandle}
-                              {...(Platform.OS === 'web'
-                                ? { onPressIn: drag }
-                                : { onLongPress: drag, delayLongPress: 200 })}
-                              accessibilityRole="button"
-                              accessibilityLabel={formatMessage(t('settingsQuotesSegmentDragHandleA11y'), {
-                                name: t(QUOTE_SEGMENT_LABEL[item]),
-                              })}>
-                              <FontAwesome name="bars" size={16} color={theme.textMuted} />
-                            </GHPressable>
-                          </View>
-                        </ScaleDecorator>
-                      );
-                    }}
-                  />
-                </View>
-              )}
-            </View>
-
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsQuotesLimitsKicker')}</Text>
-              <Text style={styles.quotesCardHint}>
-                {formatMessage(t('settingsQuotesListLimitsHint'), {
-                  popMax: QUOTES_LIST_LIMIT_BOUNDS.popular.max,
-                  mcapMax: QUOTES_LIST_LIMIT_BOUNDS.mcap.max,
-                  coinMax: QUOTES_LIST_LIMIT_BOUNDS.coin.max,
-                })}
-              </Text>
-              {!quotesLimitsReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
-              ) : (
-                <>
-                  <View style={styles.limitRow}>
-                    <Text style={styles.prefLabel}>{t('settingsQuotesPopularCountLabel')}</Text>
-                    <Pressable
-                      onPress={() => setQuotesLimitPicker('popular')}
-                      style={styles.limitPickerTrigger}
-                      accessibilityRole="button"
-                      accessibilityLabel={t('settingsQuotesPopularCountLabel')}>
-                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.popularMax}</Text>
-                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
-                    </Pressable>
-                  </View>
-                  <View style={styles.limitRow}>
-                    <Text style={styles.prefLabel}>{t('settingsQuotesMcapCountLabel')}</Text>
-                    <Pressable
-                      onPress={() => setQuotesLimitPicker('mcap')}
-                      style={styles.limitPickerTrigger}
-                      accessibilityRole="button"
-                      accessibilityLabel={t('settingsQuotesMcapCountLabel')}>
-                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.mcapMax}</Text>
-                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
-                    </Pressable>
-                  </View>
-                  <View style={[styles.limitRow, styles.limitRowLast]}>
-                    <Text style={styles.prefLabel}>{t('settingsQuotesCoinCountLabel')}</Text>
-                    <Pressable
-                      onPress={() => setQuotesLimitPicker('coin')}
-                      style={styles.limitPickerTrigger}
-                      accessibilityRole="button"
-                      accessibilityLabel={t('settingsQuotesCoinCountLabel')}>
-                      <Text style={styles.limitPickerTriggerText}>{quotesListLimits.coinMax}</Text>
-                      <FontAwesome name="chevron-down" size={14} color={theme.green} />
-                    </Pressable>
-                  </View>
-                </>
-              )}
-            </View>
           </>
         ) : null}
 
         {selectedTab === 'news' ? (
           <>
-            <Text style={styles.lead}>{t('settingsNewsTabLead')}</Text>
-
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsNewsSegmentOrderKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsNewsSegmentOrderHint')}</Text>
+              <Text style={styles.displayCardKicker}>{t('settingsNewsDisplaySection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsNewsTabLead')}</Text>
+
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                {t('settingsNewsSegmentOrderKicker')}
+              </Text>
+              <Text style={styles.prefHint}>{t('settingsNewsSegmentOrderHint')}</Text>
               {!newsSegmentOrderReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
-                <View style={styles.quotesSegmentOrderListWrap}>
+                <View style={[styles.quotesSegmentOrderListWrap, { marginTop: 8 }]}>
                   <DraggableFlatList
                     data={newsSegmentOrder}
                     scrollEnabled={false}
@@ -1592,19 +1670,19 @@ clearCalendarCache();
                   />
                 </View>
               )}
-            </View>
 
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsNewsHashtagDisplayKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsNewsHashtagDisplayHint')}</Text>
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                {t('settingsNewsHashtagDisplayKicker')}
+              </Text>
+              <Text style={styles.prefHint}>{t('settingsNewsHashtagDisplayHint')}</Text>
               {!newsHashtagDisplayReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
                 <View style={[styles.row, { marginTop: 8 }]}>
                   <Text style={styles.handleText}>
                     {t('settingsNewsHashtagDisplayValue', { max: newsHashtagDisplayMax })}
                   </Text>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flexDirection: 'row', gap: 16 }}>
                     <Pressable
                       onPress={() => void bumpNewsHashtagDisplayMax(-1)}
                       disabled={newsHashtagDisplayMax <= MIN_NEWS_HASHTAG_DISPLAY_MAX}
@@ -1628,13 +1706,13 @@ clearCalendarCache();
                   </View>
                 </View>
               )}
-            </View>
 
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsNewsUnreadCheckKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsNewsUnreadCheckHint')}</Text>
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                {t('settingsNewsUnreadCheckKicker')}
+              </Text>
+              <Text style={styles.prefHint}>{t('settingsNewsUnreadCheckHint')}</Text>
               {!newsUnreadIntervalReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
                 <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
                   {NEWS_UNREAD_CHECK_INTERVAL_OPTIONS.map((minutes) => (
@@ -1665,83 +1743,84 @@ clearCalendarCache();
                 </View>
               )}
             </View>
-
           </>
         ) : null}
 
         {selectedTab === 'notifications' ? (
           <>
-            <Text style={styles.lead}>{t('settingsNotificationsLead')}</Text>
             {!prefsReady ? (
               <Text style={styles.muted}>{t('commonLoading')}</Text>
             ) : (
-              <View style={styles.notificationStack}>
-                {/* 서버 푸시 카드 */}
-                <View style={styles.notificationCard}>
-                  <View style={styles.notificationHeader}>
-                    <View style={[styles.notifIconBadge, { backgroundColor: theme.greenDim, borderColor: theme.greenBorder }]}>
-                      <FontAwesome name="bell" size={18} color={theme.green} />
-                    </View>
-                    <View style={styles.notificationText}>
-                      <Text style={styles.notificationTitle}>{t('settingsPushEnabled')}</Text>
-                      <Text style={styles.notificationHint}>{t('settingsPushEnabledHint')}</Text>
-                    </View>
-                    <Switch
-                      value={pushEnabled}
-                      onValueChange={async (v) => {
-                        setPushEnabled(v);
-                        await saveNotificationPrefs({ pushEnabled: v });
-                        if (v) void registerPushDeviceIfPossible();
-                      }}
-                      trackColor={{ false: '#333', true: theme.green + '88' }}
-                      thumbColor={pushEnabled ? theme.green : '#888'}
-                    />
+              <View style={styles.displayCard}>
+                <Text style={styles.displayCardKicker}>{t('settingsNotificationsSection')}</Text>
+                <Text style={styles.prefHint}>{t('settingsNotificationsLead')}</Text>
+
+                <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                  {t('settingsNotificationsPushSection')}
+                </Text>
+                <View style={[styles.notificationHeader, { marginTop: 8 }]}>
+                  <View style={[styles.notifIconBadge, { backgroundColor: theme.greenDim, borderColor: theme.greenBorder }]}>
+                    <FontAwesome name="bell" size={18} color={theme.green} />
                   </View>
-                  <View style={[styles.notificationSubRow, !pushEnabled && styles.notificationSubRowDisabled]}>
-                    <FontAwesome name="bar-chart" size={12} color={theme.textMuted} style={styles.notifSubIcon} />
-                    <View style={styles.notificationText}>
-                      <Text style={styles.notificationSubLabel}>{t('settingsBriefingPushEnabled')}</Text>
-                      <Text style={styles.notificationSubHint}>{t('settingsBriefingPushEnabledHint')}</Text>
-                    </View>
-                    <Switch
-                      value={briefingPushEnabled}
-                      disabled={!pushEnabled}
-                      onValueChange={async (v) => {
-                        setBriefingPushEnabled(v);
-                        await saveNotificationPrefs({ briefingPushEnabled: v });
-                      }}
-                      trackColor={{ false: '#333', true: theme.green + '88' }}
-                      thumbColor={briefingPushEnabled && pushEnabled ? theme.green : '#888'}
-                    />
+                  <View style={styles.notificationText}>
+                    <Text style={styles.notificationTitle}>{t('settingsPushEnabled')}</Text>
+                    <Text style={styles.notificationHint}>{t('settingsPushEnabledHint')}</Text>
                   </View>
+                  <Switch
+                    value={pushEnabled}
+                    onValueChange={async (v) => {
+                      setPushEnabled(v);
+                      await saveNotificationPrefs({ pushEnabled: v });
+                      if (v) void registerPushDeviceIfPossible();
+                    }}
+                    trackColor={{ false: '#333', true: theme.green + '88' }}
+                    thumbColor={pushEnabled ? theme.green : '#888'}
+                  />
+                </View>
+                <View style={[styles.notificationSubRow, !pushEnabled && styles.notificationSubRowDisabled]}>
+                  <FontAwesome name="bar-chart" size={12} color={theme.textMuted} style={styles.notifSubIcon} />
+                  <View style={styles.notificationText}>
+                    <Text style={styles.notificationSubLabel}>{t('settingsBriefingPushEnabled')}</Text>
+                    <Text style={styles.notificationSubHint}>{t('settingsBriefingPushEnabledHint')}</Text>
+                  </View>
+                  <Switch
+                    value={briefingPushEnabled}
+                    disabled={!pushEnabled}
+                    onValueChange={async (v) => {
+                      setBriefingPushEnabled(v);
+                      await saveNotificationPrefs({ briefingPushEnabled: v });
+                    }}
+                    trackColor={{ false: '#333', true: theme.green + '88' }}
+                    thumbColor={briefingPushEnabled && pushEnabled ? theme.green : '#888'}
+                  />
                 </View>
 
-                {/* 로컬 알림 · 경제 캘린더 카드 */}
-                <View style={styles.notificationCard}>
-                  <View style={styles.notificationHeader}>
-                    <View style={styles.notifIconBadge}>
-                      <FontAwesome name="calendar" size={16} color={theme.textDim} />
-                    </View>
-                    <View style={styles.notificationText}>
-                      <Text style={styles.notificationTitle}>{t('settingsLocalMacroCalendar')}</Text>
-                      <Text style={styles.notificationHint}>{t('settingsLocalMacroCalendarHint')}</Text>
-                    </View>
-                    <Switch
-                      value={localMacroCalendar}
-                      onValueChange={async (v) => {
-                        setLocalMacroCalendar(v);
-                        const next = {
-                          pushEnabled,
-                          briefingPushEnabled,
-                          localMacroCalendar: v,
-                        };
-                        await saveNotificationPrefs(next);
-                        await syncLocalCalendarNotifications(next);
-                      }}
-                      trackColor={{ false: '#333', true: theme.green + '88' }}
-                      thumbColor={localMacroCalendar ? theme.green : '#888'}
-                    />
+                <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                  {t('settingsNotificationsLocalSection')}
+                </Text>
+                <View style={[styles.notificationHeader, { marginTop: 8 }]}>
+                  <View style={styles.notifIconBadge}>
+                    <FontAwesome name="calendar" size={16} color={theme.textDim} />
                   </View>
+                  <View style={styles.notificationText}>
+                    <Text style={styles.notificationTitle}>{t('settingsLocalMacroCalendar')}</Text>
+                    <Text style={styles.notificationHint}>{t('settingsLocalMacroCalendarHint')}</Text>
+                  </View>
+                  <Switch
+                    value={localMacroCalendar}
+                    onValueChange={async (v) => {
+                      setLocalMacroCalendar(v);
+                      const next = {
+                        pushEnabled,
+                        briefingPushEnabled,
+                        localMacroCalendar: v,
+                      };
+                      await saveNotificationPrefs(next);
+                      await syncLocalCalendarNotifications(next);
+                    }}
+                    trackColor={{ false: '#333', true: theme.green + '88' }}
+                    thumbColor={localMacroCalendar ? theme.green : '#888'}
+                  />
                 </View>
               </View>
             )}
@@ -1751,8 +1830,10 @@ clearCalendarCache();
         {selectedTab === 'server' ? (
           <>
             <View style={styles.displayCard}>
+              <Text style={styles.displayCardKicker}>{t('settingsSignalServerSection')}</Text>
+              <Text style={styles.prefHint}>{t('settingsSignalServerShortNote')}</Text>
               <Text
-                style={[styles.handleText, { marginBottom: 6 }]}
+                style={[styles.handleText, { marginTop: 16, marginBottom: 6 }]}
                 selectable
                 accessibilityRole="text"
                 accessibilityLabel={formatMessage(t('settingsSignalServerUrlA11y'), {
@@ -1760,14 +1841,14 @@ clearCalendarCache();
                 })}>
                 {getEffectiveSignalApiBaseUrl() || '—'}
               </Text>
-              <Text style={[styles.muted, { fontSize: 12, lineHeight: 17, marginBottom: 10 }]}>
-                {t('settingsSignalServerShortNote')}
-              </Text>
               {!signalServerPrefsReady ? (
-                <Text style={[styles.muted, { marginTop: 10 }]}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 16 }]}>{t('commonLoading')}</Text>
               ) : (
                 <>
-                  <View style={[styles.langSegmentedTrack, { marginTop: 0, flexWrap: 'wrap' }]}>
+                  <Text style={[styles.displayCardKicker, { marginTop: 8 }]}>
+                    {t('settingsSignalServerModeSection')}
+                  </Text>
+                  <View style={[styles.langSegmentedTrack, { marginTop: 8, flexWrap: 'wrap' }]}>
                     {SIGNAL_SERVER_MODES.map((m) => (
                       <Pressable
                         key={m}
@@ -1796,13 +1877,15 @@ clearCalendarCache();
                   </View>
                   {signalServerVerifying ? (
                     <View
-                      style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                      style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 16 }}
                       accessibilityLiveRegion="polite">
                       <ActivityIndicator size="small" color={theme.text} />
                       <Text style={styles.muted}>{t('settingsSignalServerVerifying')}</Text>
                     </View>
                   ) : null}
-                  <Text style={[styles.prefHint, { marginTop: 12 }]}>{t('settingsSignalServerCustomLabel')}</Text>
+                  <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                    {t('settingsSignalServerCustomLabel')}
+                  </Text>
                   <TextInput
                     value={signalCustomDraft}
                     onChangeText={setSignalCustomDraft}
@@ -1812,7 +1895,7 @@ clearCalendarCache();
                     autoCapitalize="none"
                     autoCorrect={false}
                     keyboardType="url"
-                    style={[styles.input, { marginTop: 6 }]}
+                    style={[styles.input, { marginTop: 8 }]}
                   />
                 </>
               )}
@@ -1822,35 +1905,122 @@ clearCalendarCache();
 
         {selectedTab === 'display' ? (
           <>
-            <Text style={styles.lead}>{t('settingsThemeLead')}</Text>
-
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsThemeLanguageSection')}</Text>
-              <View style={styles.langSegmentedTrack}>
-                {LOCALE_ORDER.map((loc) => (
-                  <Pressable
-                    key={loc}
-                    onPress={() => void setLocale(loc)}
-                    style={[styles.langSegment, locale === loc && styles.langSegmentActive]}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: locale === loc }}
-                    accessibilityLabel={t(LOCALE_LABEL[loc])}>
-                    <Text
-                      style={[styles.langSegmentText, locale === loc && styles.langSegmentTextActive]}>
-                      {t(LOCALE_LABEL[loc])}
+              <Text style={styles.displayCardKicker}>{t('settingsHomeDisplaySection')}</Text>
+              {!homeNewsFlowDisplayReady || !homeWatchlistDisplayReady || !homeBoardDisplayReady ? (
+                <Text style={styles.muted}>{t('commonLoading')}</Text>
+              ) : (
+                <>
+                  <Text style={[styles.displayCardKicker, { marginTop: 0 }]}>{t('settingsHomeNewsFlowDisplaySection')}</Text>
+                  <Text style={styles.prefHint}>{t('settingsHomeNewsFlowDisplayHint')}</Text>
+                  <View style={[styles.row, { marginTop: 8 }]}>
+                    <Text style={styles.handleText}>
+                      {t('settingsHomeNewsFlowDisplayValue', {
+                        count: String(homeNewsFlowDisplayCount),
+                      })}
                     </Text>
-                  </Pressable>
-                ))}
-              </View>
+                    <View style={{ flexDirection: 'row', gap: 16 }}>
+                      <Pressable
+                        onPress={() => void bumpHomeNewsFlowDisplayCount(-1)}
+                        disabled={homeNewsFlowDisplayCount <= HOME_NEWS_FLOW_DISPLAY_MIN}
+                        style={({ pressed }) => [
+                          styles.addBtn,
+                          (homeNewsFlowDisplayCount <= HOME_NEWS_FLOW_DISPLAY_MIN || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.addBtnText}>−</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void bumpHomeNewsFlowDisplayCount(1)}
+                        disabled={homeNewsFlowDisplayCount >= HOME_NEWS_FLOW_DISPLAY_MAX}
+                        style={({ pressed }) => [
+                          styles.addBtn,
+                          (homeNewsFlowDisplayCount >= HOME_NEWS_FLOW_DISPLAY_MAX || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.addBtnText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                    {t('settingsHomeWatchlistDisplaySection')}
+                  </Text>
+                  <Text style={styles.prefHint}>{t('settingsHomeWatchlistDisplayHint')}</Text>
+                  <View style={[styles.row, { marginTop: 8 }]}>
+                    <Text style={styles.handleText}>
+                      {t('settingsHomeWatchlistDisplayValue', {
+                        count: String(homeWatchlistDisplayCount),
+                      })}
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 16 }}>
+                      <Pressable
+                        onPress={() => void bumpHomeWatchlistDisplayCount(-1)}
+                        disabled={homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN}
+                        style={({ pressed }) => [
+                          styles.addBtn,
+                          (homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.addBtnText}>−</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void bumpHomeWatchlistDisplayCount(1)}
+                        disabled={homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX}
+                        style={({ pressed }) => [
+                          styles.addBtn,
+                          (homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.addBtnText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                    {t('settingsHomeBoardDisplaySection')}
+                  </Text>
+                  <Text style={styles.prefHint}>{t('settingsHomeBoardDisplayHint')}</Text>
+                  <View style={[styles.row, { marginTop: 8 }]}>
+                    <Text style={styles.handleText}>
+                      {t('settingsHomeBoardDisplayValue', {
+                        count: String(homeBoardDisplayCount),
+                      })}
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 16 }}>
+                      <Pressable
+                        onPress={() => void bumpHomeBoardDisplayCount(-1)}
+                        disabled={homeBoardDisplayCount <= HOME_BOARD_DISPLAY_MIN}
+                        style={({ pressed }) => [
+                          styles.addBtn,
+                          (homeBoardDisplayCount <= HOME_BOARD_DISPLAY_MIN || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.addBtnText}>−</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void bumpHomeBoardDisplayCount(1)}
+                        disabled={homeBoardDisplayCount >= HOME_BOARD_DISPLAY_MAX}
+                        style={({ pressed }) => [
+                          styles.addBtn,
+                          (homeBoardDisplayCount >= HOME_BOARD_DISPLAY_MAX || pressed) && { opacity: 0.55 },
+                        ]}
+                        accessibilityRole="button">
+                        <Text style={styles.addBtnText}>+</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </>
+              )}
             </View>
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsMainEntrySection')}</Text>
               <Text style={styles.prefHint}>{t('settingsMainEntryHint')}</Text>
               {!mainEntryReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
-                <View style={styles.langSegmentedTrack}>
+                <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
                   {MAIN_ENTRY_DISPLAY_ORDER.map((entry) => (
                     <Pressable
                       key={entry}
@@ -1876,45 +2046,29 @@ clearCalendarCache();
             </View>
 
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsHomeWatchlistDisplaySection')}</Text>
-              <Text style={styles.prefHint}>{t('settingsHomeWatchlistDisplayHint')}</Text>
-              {!homeWatchlistDisplayReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
-              ) : (
-                <View style={[styles.row, { marginTop: 8 }]}>
-                  <Text style={styles.handleText}>
-                    {t('settingsHomeWatchlistDisplayValue', {
-                      count: String(homeWatchlistDisplayCount),
-                    })}
-                  </Text>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <Pressable
-                      onPress={() => void bumpHomeWatchlistDisplayCount(-1)}
-                      disabled={homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN}
-                      style={({ pressed }) => [
-                        styles.addBtn,
-                        (homeWatchlistDisplayCount <= HOME_WATCHLIST_DISPLAY_MIN || pressed) && { opacity: 0.55 },
-                      ]}
-                      accessibilityRole="button">
-                      <Text style={styles.addBtnText}>−</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => void bumpHomeWatchlistDisplayCount(1)}
-                      disabled={homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX}
-                      style={({ pressed }) => [
-                        styles.addBtn,
-                        (homeWatchlistDisplayCount >= HOME_WATCHLIST_DISPLAY_MAX || pressed) && { opacity: 0.55 },
-                      ]}
-                      accessibilityRole="button">
-                      <Text style={styles.addBtnText}>+</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              )}
+              <Text style={styles.displayCardKicker}>{t('settingsThemeLanguageSection')}</Text>
+              <View style={styles.langSegmentedTrack}>
+                {LOCALE_ORDER.map((loc) => (
+                  <Pressable
+                    key={loc}
+                    onPress={() => void setLocale(loc)}
+                    style={[styles.langSegment, locale === loc && styles.langSegmentActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: locale === loc }}
+                    accessibilityLabel={t(LOCALE_LABEL[loc])}>
+                    <Text
+                      style={[styles.langSegmentText, locale === loc && styles.langSegmentTextActive]}>
+                      {t(LOCALE_LABEL[loc])}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
 
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsAppearanceSection')}</Text>
+              <Text style={styles.displayCardKicker}>{t('settingsAppearanceGroupSection')}</Text>
+
+              <Text style={[styles.displayCardKicker, { marginTop: 0 }]}>{t('settingsAppearanceSection')}</Text>
               <View style={styles.langSegmentedTrack}>
                 {APPEARANCE_MODE_ORDER.map((mode) => (
                   <Pressable
@@ -1934,16 +2088,14 @@ clearCalendarCache();
                   </Pressable>
                 ))}
               </View>
-            </View>
 
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsAppIconSection')}</Text>
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>{t('settingsAppIconSection')}</Text>
               <Text style={styles.prefHint}>{t('settingsAppIconHint')}</Text>
               {!appIconReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
                 <>
-                  <View style={styles.appIconGrid}>
+                  <View style={[styles.appIconGrid, { marginTop: 8 }]}>
                     {APP_ICON_VARIANTS.map((variant) => (
                       <Pressable
                         key={variant.id}
@@ -1972,20 +2124,20 @@ clearCalendarCache();
                       </Pressable>
                     ))}
                   </View>
-                  <Text style={[styles.prefHint, { marginTop: 10 }]}>
+                  <Text style={[styles.prefHint, { marginTop: 16 }]}>
                     {t('settingsAppIconNativeNote')}
                   </Text>
                 </>
               )}
-            </View>
 
-            <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsTabBarOpacitySection')}</Text>
+              <Text style={[styles.displayCardKicker, { marginTop: 16 }]}>
+                {t('settingsTabBarOpacitySection')}
+              </Text>
               <Text style={styles.prefHint}>{t('settingsTabBarOpacityHint')}</Text>
               {!tabBarOpacityReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
-                <View style={styles.langSegmentedTrack}>
+                <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
                   {TAB_BAR_OPACITY_ORDER.map((level) => (
                     <Pressable
                       key={level}
@@ -2018,7 +2170,7 @@ clearCalendarCache();
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsFontSizeSection')}</Text>
               <Text style={styles.prefHint}>{t('settingsFontSizeHint')}</Text>
-              <View style={styles.langSegmentedTrack}>
+              <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
                 {FONT_SIZE_PRESET_ORDER.map((id) => (
                   <Pressable
                     key={id}
@@ -2044,7 +2196,7 @@ clearCalendarCache();
                 {t('settingsFeedContentWeightSection')}
               </Text>
               <Text style={styles.prefHint}>{t('settingsFeedContentWeightHint')}</Text>
-              <View style={styles.langSegmentedTrack}>
+              <View style={[styles.langSegmentedTrack, { marginTop: 8 }]}>
                 {FEED_CONTENT_WEIGHT_ORDER.map((id) => (
                   <Pressable
                     key={id}
@@ -2067,11 +2219,11 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsMoreReferenceLinksKicker')}</Text>
-              <Text style={styles.quotesCardHint}>{t('settingsMoreReferenceLinksHint')}</Text>
+              <Text style={styles.prefHint}>{t('settingsMoreReferenceLinksHint')}</Text>
               {!moreRefLinksReady ? (
-                <Text style={styles.muted}>{t('commonLoading')}</Text>
+                <Text style={[styles.muted, { marginTop: 8 }]}>{t('commonLoading')}</Text>
               ) : (
-                <View style={styles.prefRow}>
+                <View style={[styles.prefRow, { marginTop: 8 }]}>
                   <Text style={styles.prefLabel}>{t('settingsMoreReferenceLinksSwitch')}</Text>
                   <Switch
                     value={moreRefLinksVisible}
@@ -2088,7 +2240,6 @@ clearCalendarCache();
 
             <View style={styles.displayCard}>
               <Text style={styles.displayCardKicker}>{t('settingsCacheSectionTitle')}</Text>
-              <Text style={styles.prefHint}>{t('settingsCacheHint')}</Text>
               <Pressable
                 onPress={onClearAllCaches}
                 style={({ pressed }) => [styles.cacheClearBtn, pressed && { opacity: 0.88 }]}
@@ -2112,47 +2263,64 @@ clearCalendarCache();
       <View
         pointerEvents="box-none"
         style={[
-          {
-            position: 'absolute',
-            left: floatingFooterLeft,
-            width: floatingFooterWidth,
-            bottom: tabBarPositionBottom(insets.bottom),
-            borderRadius: TAB_BAR_FLOAT_RADIUS,
-            overflow: 'hidden',
-            backgroundColor: theme.card,
-            borderWidth: 1,
-            borderColor: theme.border,
-          },
-          Platform.OS === 'ios'
-            ? {
-                shadowColor: '#191F28',
-                shadowOpacity: 0.08,
-                shadowRadius: 18,
-                shadowOffset: { width: 0, height: 8 },
-              }
+          styles.settingsFooterDock,
+          useCompactDeveloperFooter
+            ? styles.settingsFooterDockCompact
             : {
-                shadowColor: '#191F28',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.1,
-                shadowRadius: 14,
-                elevation: 8,
+                left: floatingFooterLeft,
+                width: floatingFooterWidth,
               },
+          { bottom: developerFooterBottom },
         ]}>
-        <Pressable
-          onPress={() => void Linking.openURL(DEVELOPER_LINKEDIN_URL)}
-          style={({ pressed }) => [styles.settingsFooterPress, pressed && { opacity: 0.88 }]}
-          accessibilityRole="link"
-          accessibilityLabel={t('settingsDeveloperLinkedInA11y')}>
-          <Image
-            source={developerAvatar}
-            style={styles.settingsFooterAvatar}
-            accessible={false}
-            importantForAccessibility="no"
-          />
-          <Text style={styles.settingsFooterText} numberOfLines={1}>
-            {t('settingsDeveloperFooterLine')}
-          </Text>
-        </Pressable>
+        <View
+          style={[
+            styles.settingsFooterCapsule,
+            useCompactDeveloperFooter
+              ? styles.settingsFooterCapsuleCompact
+              : styles.settingsFooterCapsuleWide,
+            Platform.OS === 'ios'
+              ? {
+                  shadowColor: '#191F28',
+                  shadowOpacity: 0.08,
+                  shadowRadius: useCompactDeveloperFooter ? 12 : 18,
+                  shadowOffset: { width: 0, height: useCompactDeveloperFooter ? 4 : 8 },
+                }
+              : {
+                  shadowColor: '#191F28',
+                  shadowOffset: { width: 0, height: useCompactDeveloperFooter ? 2 : 4 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: useCompactDeveloperFooter ? 10 : 14,
+                  elevation: useCompactDeveloperFooter ? 6 : 8,
+                },
+          ]}>
+          <Pressable
+            onPress={() => void Linking.openURL(DEVELOPER_LINKEDIN_URL)}
+            style={({ pressed }) => [
+              styles.settingsFooterPress,
+              useCompactDeveloperFooter && styles.settingsFooterPressCompact,
+              pressed && { opacity: 0.88 },
+            ]}
+            accessibilityRole="link"
+            accessibilityLabel={t('settingsDeveloperLinkedInA11y')}>
+            <Image
+              source={developerAvatar}
+              style={[
+                styles.settingsFooterAvatar,
+                useCompactDeveloperFooter && styles.settingsFooterAvatarCompact,
+              ]}
+              accessible={false}
+              importantForAccessibility="no"
+            />
+            <Text
+              style={[
+                styles.settingsFooterText,
+                !useCompactDeveloperFooter && styles.settingsFooterTextWide,
+              ]}
+              numberOfLines={1}>
+              {t('settingsDeveloperFooterLine')}
+            </Text>
+          </Pressable>
+        </View>
       </View>
       <Modal
         visible={quotesLimitPicker != null}

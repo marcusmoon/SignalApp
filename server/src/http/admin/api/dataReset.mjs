@@ -9,7 +9,6 @@ const RESET_TARGETS = {
   youtubeVideos: 'youtubeVideos',
   marketQuotes: 'marketQuotes',
   coinMarkets: 'coinMarkets',
-  insightItems: 'insightItems',
   notificationItems: 'notificationItems',
   pollingJobRuns: 'pollingJobRuns',
 };

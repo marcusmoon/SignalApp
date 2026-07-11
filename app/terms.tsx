@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -72,7 +73,7 @@ export default function TermsScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
       <Stack.Screen options={{ title }} />
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 28 + insets.bottom }]}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) }]}>
         <View style={styles.card}>
           <Text style={styles.kicker}>{t('termsKicker')}</Text>
           <Text style={styles.title}>{title}</Text>
@@ -96,14 +97,14 @@ export default function TermsScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    content: { padding: 16, gap: 12 },
+    content: { padding: 16, gap: 20 },
     card: {
-      borderRadius: 14,
+      borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
       padding: 16,
-      gap: 8,
+      gap: 16,
     },
     kicker: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
     title: { color: theme.text, fontSize: sf(22), lineHeight: sf(29), fontWeight: '900' },

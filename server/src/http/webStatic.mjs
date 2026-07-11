@@ -11,6 +11,7 @@ const WEB_ROOT_APP_PATHS = new Set([
   '/',
   '/account',
   '/alerts',
+  '/board',
   '/calendar',
   '/disclosures',
   '/home',

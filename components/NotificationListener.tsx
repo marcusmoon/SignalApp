@@ -2,7 +2,10 @@ import * as Notifications from 'expo-notifications';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
-import { appendNotificationFromPayload } from '@/services/notificationHistory';
+import { deliverSignalNotification } from '@/integrations/signal-api/notifications';
+import { setAlertsUnreadCached } from '@/services/alertsUnreadPreference';
+import { getSessionAccessToken, loadAppAuthSession } from '@/services/appAuthSession';
+import { hasSignalApi } from '@/services/env';
 import {
   loadNotificationPrefs,
   shouldRecordIncomingPush,
@@ -30,8 +33,8 @@ if (Platform.OS !== 'web') {
 }
 
 /**
- * Records incoming push payloads into local history (AsyncStorage).
- * Requires FCM/APNs + expo-notifications; web is skipped.
+ * 포그라운드 push 수신 시 서버 inbox deliver + 배지 갱신.
+ * 목록은 GET /v1/notifications 단일 소스.
  */
 export function NotificationListener() {
   useEffect(() => {
@@ -44,14 +47,23 @@ export function NotificationListener() {
       const sourceType = String(data?.sourceType || '');
       void loadNotificationPrefs().then((prefs) => {
         if (!shouldRecordIncomingPush(type, sourceType, prefs)) return;
-        if (type === 'market_briefing' || sourceType === 'market_briefing') {
+        void setAlertsUnreadCached(true);
+        const notificationId = String(data?.notificationId || '').trim();
+        if (notificationId && hasSignalApi()) {
+          void loadAppAuthSession().then((session) => {
+            const access = getSessionAccessToken(session);
+            if (!access) return;
+            void deliverSignalNotification(access, notificationId).catch(() => {});
+          });
+        }
+        if (
+          type === 'market_briefing' ||
+          sourceType === 'market_briefing' ||
+          type === 'today_briefing' ||
+          sourceType === 'today_briefing'
+        ) {
           void setSignalUnreadCached(true);
         }
-        void appendNotificationFromPayload({
-          title: String(c.title ?? ''),
-          body: String(c.body ?? ''),
-          data,
-        });
       });
     };
 

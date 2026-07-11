@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { useLocalSearchParams } from 'expo-router';
 import { useBottomTabBarHeight } from "expo-router/js-tabs";
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
@@ -25,15 +26,21 @@ import {
   selectionFilterRowStyles,
 } from '@/components/signal/SelectionFilterSheet';
 import { YoutubeCard } from '@/components/signal/YoutubeCard';
-import { FloatingGlassFab } from '@/components/signal/FloatingGlassFab';
-import { SCROLL_CONTENT_LOADING_STYLE, SCROLL_LOADING_BODY_STYLE } from '@/constants/scrollLoadingLayout';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
-import { webFlexFill, webScrollViewportStyle, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
+import {
+  getSegmentTabBarStyles,
+  SCREEN_LIST_CONTENT_PADDING_TOP,
+} from '@/constants/segmentTabBar';
+import { webFlexFill, webScrollViewportStyle, webShellBackground, WEB_FLATLIST_BATCH, WEB_FLATLIST_INITIAL, WEB_FLATLIST_WINDOW } from '@/constants/webLayout';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
-import { tabBarBottomInset } from '@/constants/tabBar';
+import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
+import {
+  tabScreenScrollBottomPadding,
+} from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
-import { useResetRefreshingOnTabBlur, useTabScreenLoadingRecovery } from '@/hooks';
+import { useResetRefreshingOnTabBlur, useScrollToTopOnChange, useTabScreenLoadingRecovery } from '@/hooks';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useRegisterWebHeaderRefresh } from '@/contexts/WebHeaderRefreshContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { hasSignalApi } from '@/services/env';
@@ -43,6 +50,9 @@ import { fetchSignalYoutube, fetchSignalYoutubeChannels, signalYoutubeToYoutubeI
 import type { SignalApiYoutubeChannel, SignalYoutubeListMeta } from '@/integrations/signal-api/types';
 import { formatSignalApiError } from '@/integrations/signal-api/httpClient';
 import type { YoutubeItem } from '@/types/signal';
+import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
+import { firstRouteParam } from '@/utils/routeSearchParams';
+import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { shouldShowTabScrollFullScreenLoading } from '@/utils/tabScrollLoadingGate';
 import { useWebFlatListLoadMore } from '@/hooks/useWebFlatListLoadMore';
 import {
@@ -55,6 +65,10 @@ type SortKey = 'popular' | 'latest';
 
 const YOUTUBE_PAGE_SIZE = 30;
 
+function parseYoutubeSortParam(raw: string | string[] | undefined): SortKey {
+  return firstRouteParam(raw) === 'popular' ? 'popular' : 'latest';
+}
+
 /** 채널 배열이 동일하면 상태 갱신·load 재실행을 막기 위한 키 (탭 복귀 시 매번 새 배열 참조 방지) */
 function normalizeHandlesKey(handles: string[]): string {
   return [...handles].map((h) => h.trim().toLowerCase()).sort().join('\0');
@@ -63,13 +77,15 @@ function normalizeHandlesKey(handles: string[]): string {
 export default function YoutubeScreen() {
   const { t, locale } = useLocale();
   const { theme, scaleFont } = useSignalTheme();
+  const setRouteParams = useSafeSetRouteParams();
+  const { sort: sortParam } = useLocalSearchParams<{ sort?: string | string[] }>();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
-  const [sort, setSort] = useState<SortKey>('latest');
+  const [sort, setSort] = useState<SortKey>(() => parseYoutubeSortParam(sortParam));
   const effectiveSort = useTwoPane && ipadNav.isAvailable ? ipadNav.youtubeSort : sort;
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -99,6 +115,14 @@ export default function YoutubeScreen() {
   /** 필터 적용 시 `setSelectedHandles` 직후 useEffect load() 중복 방지 */
   const skipLoadOnSelectedHandlesRef = useRef(false);
   const syncedYoutubeSortRef = useRef(ipadNav.youtubeSort);
+
+  const { ref: ytListRef } = useScrollToTopOnChange([effectiveSort, selectedHandles], {
+    resyncDeps: [items],
+  });
+  const listScrollResetKey = useMemo(
+    () => `${effectiveSort}:${normalizeHandlesKey(selectedHandles ?? [])}`,
+    [effectiveSort, selectedHandles],
+  );
 
   useTabScreenLoadingRecovery(items, setLoading);
 
@@ -184,8 +208,11 @@ export default function YoutubeScreen() {
       if (!hadItems) {
         setLoading(true);
       }
+      const isRefresh = opts?.forceRefresh === true;
       youtubeReplacingRef.current = true;
-      setYoutubeMeta(null);
+      if (!isRefresh) {
+        setYoutubeMeta(null);
+      }
       try {
         const availableHandles = opts?.availableHandles ?? curationHandles;
         const requestedSort = opts?.sort ?? effectiveSort;
@@ -196,7 +223,7 @@ export default function YoutubeScreen() {
             sort: requestedSort,
             channelHandles: availableHandles && handles.length === availableHandles.length ? undefined : handles,
           },
-          { cacheMode: opts?.forceRefresh ? 'bypass' : 'use' },
+          { cacheMode: signalCacheMode(opts?.forceRefresh) },
         );
         setYoutubeMeta(page.meta);
         setItems(page.items.map((item) => signalYoutubeToYoutubeItem(item, locale)));
@@ -233,7 +260,7 @@ export default function YoutubeScreen() {
               ? selectedHandles
               : undefined,
         },
-        { cacheMode: 'use' },
+        { cacheMode: signalCacheMode() },
       );
       if (page.items.length === 0) {
         setYoutubeMeta((m) => (m ? { ...m, hasMore: false, nextOffset: null } : null));
@@ -263,35 +290,7 @@ export default function YoutubeScreen() {
     }
   }, [effectiveSort, selectedHandles, curationHandles, locale, applyLoadError]);
 
-  const ytListRef = useRef<FlatList<YoutubeItem>>(null);
-  const webFeedLoadMore = useWebFlatListLoadMore({
-    hasMore: Boolean(youtubeMeta?.hasMore),
-    loadingMore,
-    loading,
-    loadMore,
-    enabled: Platform.OS === 'web' && isFocused,
-  });
-
-  useEffect(() => {
-    if (selectedHandles === null) return;
-    if (skipLoadOnSelectedHandlesRef.current) {
-      skipLoadOnSelectedHandlesRef.current = false;
-      return;
-    }
-    void load();
-  }, [load, selectedHandles]);
-
-  useEffect(() => {
-    if (!useTwoPane || !ipadNav.isAvailable) return;
-    if (syncedYoutubeSortRef.current === ipadNav.youtubeSort) return;
-    syncedYoutubeSortRef.current = ipadNav.youtubeSort;
-    setSort(ipadNav.youtubeSort);
-    setLoading(true);
-    setItems([]);
-    setYoutubeMeta(null);
-  }, [ipadNav.isAvailable, ipadNav.youtubeSort, useTwoPane]);
-
-  const onRefresh = useCallback(async () => {
+  const onRefreshBase = useCallback(async () => {
     if (selectedHandles === null) return;
     setRefreshing(true);
     try {
@@ -307,6 +306,33 @@ export default function YoutubeScreen() {
     }
   }, [load, loadChannelCatalog, selectedHandles]);
 
+  const onRefresh = onRefreshBase;
+  useRegisterWebHeaderRefresh(() => void onRefresh());
+
+  const webFeedLoadMore = useWebFlatListLoadMore({
+    hasMore: Boolean(youtubeMeta?.hasMore),
+    loadingMore,
+    loading,
+    loadMore,
+    enabled: Platform.OS === 'web' && isFocused,
+  });
+
+  useEffect(() => {
+    if (selectedHandles === null) return;
+    if (skipLoadOnSelectedHandlesRef.current) {
+      skipLoadOnSelectedHandlesRef.current = false;
+      return;
+    }
+    void load();
+  }, [load, selectedHandles, effectiveSort]);
+
+  useEffect(() => {
+    if (!useTwoPane || !ipadNav.isAvailable) return;
+    if (syncedYoutubeSortRef.current === ipadNav.youtubeSort) return;
+    syncedYoutubeSortRef.current = ipadNav.youtubeSort;
+    setSort(ipadNav.youtubeSort);
+  }, [ipadNav.isAvailable, ipadNav.youtubeSort, useTwoPane]);
+
   const handlesEqual = useCallback((a: string[] | null, b: string[] | null) => {
     if (a === null || b === null) return a === b;
     if (a.length !== b.length) return false;
@@ -319,41 +345,19 @@ export default function YoutubeScreen() {
     setChannelModalVisible(true);
   }, [selectedHandles]);
 
-  const applyAllFilter = useCallback(async () => {
-    const handles = curationHandles ?? selectedHandles ?? [];
-    setSort('latest');
-    if (handles.length > 0) {
-      skipLoadOnSelectedHandlesRef.current = true;
-      setSelectedHandles(handles);
-      await saveSelectedChannels(handles);
-      await load({
-        forceRefresh: true,
-        channelHandles: handles,
-        availableHandles: curationHandles ?? handles,
-        sort: 'latest',
-      });
-      return;
-    }
-    setLoading(true);
-    setItems([]);
-    setYoutubeMeta(null);
-  }, [curationHandles, load, selectedHandles]);
-
   const applyPopularFilter = useCallback(() => {
     if (sort === 'popular') return;
-    setLoading(true);
-    setItems([]);
-    setYoutubeMeta(null);
     setSort('popular');
-  }, [sort]);
+    if (useTwoPane && ipadNav.isAvailable) ipadNav.showYoutubeTab('popular');
+    setRouteParams({ sort: 'popular' });
+  }, [ipadNav, setRouteParams, sort, useTwoPane]);
 
   const applyLatestSortFilter = useCallback(() => {
     if (sort === 'latest') return;
-    setLoading(true);
-    setItems([]);
-    setYoutubeMeta(null);
     setSort('latest');
-  }, [sort]);
+    if (useTwoPane && ipadNav.isAvailable) ipadNav.showYoutubeTab('latest');
+    setRouteParams({ sort: undefined });
+  }, [ipadNav, setRouteParams, sort, useTwoPane]);
 
   const commitChannelFilter = useCallback(async () => {
     setChannelModalVisible(false);
@@ -416,14 +420,56 @@ export default function YoutubeScreen() {
           loading,
           awaitingBootstrap: true,
         })
-      : loading;
+      : loading && items.length === 0;
 
-  const bottomPad = 28 + tabBarHeight + tabBarBottomInset(insets.bottom);
-  const fabStackBottom = tabBarHeight + tabBarBottomInset(insets.bottom) + 8;
+  const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
 
-  const youtubeListHeader = useMemo(
-    () => (
-      <>
+  const channelRowStyles = useMemo(() => selectionFilterRowStyles(theme, scaleFont), [theme, scaleFont]);
+
+  const youtubeListPanel = (
+    <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
+        <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
+          {!useTwoPane ? (
+            <View style={styles.segment}>
+              <Pressable
+                onPress={applyLatestSortFilter}
+                style={[styles.segBtn, sort === 'latest' && styles.segBtnActive]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: sort === 'latest' }}>
+                <Text style={[styles.segText, sort === 'latest' && styles.segTextActive]}>
+                  {t('youtubeSortLatest')}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={applyPopularFilter}
+                style={[styles.segBtn, sort === 'popular' && styles.segBtnActive]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: sort === 'popular' }}>
+                <Text style={[styles.segText, sort === 'popular' && styles.segTextActive]}>
+                  {t('youtubeSortPopular')}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+          <View style={styles.channelFilterRow}>
+            <Pressable
+              onPress={openChannelFilter}
+              disabled={!selectedHandles || !curationHandles}
+              style={[
+                styles.channelFilterChip,
+                !selectedHandles || !curationHandles ? styles.channelFilterChipDisabled : null,
+                channelFilterActive && styles.channelFilterChipActive,
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
+              <FontAwesome name="filter" size={11} color={channelFilterActive ? theme.green : theme.textMuted} />
+              <Text style={[styles.channelFilterText, channelFilterActive && styles.channelFilterTextActive]}>
+                {t('youtubeFilterChannel')}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
         {error ? (
           <View style={styles.errBox}>
             <Text style={styles.errText}>{error}</Text>
@@ -441,87 +487,16 @@ export default function YoutubeScreen() {
             ) : null}
           </View>
         ) : null}
+
         {showScrollLoading ? (
-          <View style={SCROLL_LOADING_BODY_STYLE}>
+          <View style={styles.loadingBox}>
             <SignalLoadingIndicator message={t('commonLoading')} />
           </View>
-        ) : null}
-      </>
-    ),
-    [error, isQuotaError, quotaResetHintLine, showScrollLoading, styles, t],
-  );
-
-  const channelRowStyles = useMemo(() => selectionFilterRowStyles(theme, scaleFont), [theme, scaleFont]);
-
-  const youtubeListPanel = (
-    <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {useTwoPane ? (
-          <View style={styles.ipadFilterWrap}>
-            <Pressable
-              onPress={openChannelFilter}
-              disabled={!selectedHandles || !curationHandles}
-              style={({ pressed }) => [
-                styles.ipadFilterBtn,
-                channelFilterActive && styles.ipadFilterBtnActive,
-                (!selectedHandles || !curationHandles) && styles.quickFilterChipDisabled,
-                pressed && { opacity: 0.78 },
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
-              <FontAwesome name="filter" size={12} color={channelFilterActive ? theme.green : theme.textMuted} />
-              <Text style={[styles.ipadFilterText, channelFilterActive && styles.ipadFilterTextActive]}>
-                {t('youtubeFilterChannel')}
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
-        {!useTwoPane ? <View style={styles.topFixed}>
-          <View style={styles.quickFilterRow}>
-            <Pressable
-              onPress={() => void applyAllFilter()}
-              style={[
-                styles.quickFilterChip,
-                sort === 'latest' && !channelFilterActive && styles.quickFilterChipActive,
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: sort === 'latest' && !channelFilterActive }}>
-              <Text
-                style={[
-                  styles.quickFilterText,
-                  sort === 'latest' && !channelFilterActive && styles.quickFilterTextActive,
-                ]}>
-                {t('feedWatchFilterAll')}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={applyPopularFilter}
-              style={[styles.quickFilterChip, sort === 'popular' && styles.quickFilterChipActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: sort === 'popular' }}>
-              <Text style={[styles.quickFilterText, sort === 'popular' && styles.quickFilterTextActive]}>
-                {t('youtubeSortPopular')}
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={openChannelFilter}
-              disabled={!selectedHandles || !curationHandles}
-              style={[
-                styles.quickFilterChip,
-                !selectedHandles || !curationHandles ? styles.quickFilterChipDisabled : null,
-                channelFilterActive && styles.quickFilterChipActive,
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
-              <Text style={[styles.quickFilterText, channelFilterActive && styles.quickFilterTextActive]}>
-                {t('youtubeFilterChannel')}
-              </Text>
-            </Pressable>
-          </View>
-        </View> : null}
-
+        ) : (
         <WebWheelFlatList
-          ref={ytListRef}
-          data={showScrollLoading ? [] : items}
+          scrollResetKey={listScrollResetKey}
+          ref={ytListRef as never}
+          data={items}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
             <View
@@ -532,9 +507,8 @@ export default function YoutubeScreen() {
               <YoutubeCard layout="grouped" item={item} />
             </View>
           )}
-          ListHeaderComponent={youtubeListHeader}
           ListEmptyComponent={
-            !error && !showScrollLoading && items.length === 0 ? (
+            !error && items.length === 0 ? (
               <Text style={styles.empty}>{emptyFeedMessage}</Text>
             ) : null
           }
@@ -562,22 +536,15 @@ export default function YoutubeScreen() {
           onLayout={webFeedLoadMore.onLayout}
           onContentSizeChange={webFeedLoadMore.onContentSizeChange}
           style={styles.list}
-          contentContainerStyle={[
-            styles.listContent,
-            showScrollLoading ? SCROLL_CONTENT_LOADING_STYLE : null,
-            { paddingBottom: bottomPad },
-          ]}
+          contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            showScrollLoading ? undefined : (
-              <ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            )
-          }
+          refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           removeClippedSubviews={Platform.OS === 'android'}
           initialNumToRender={Platform.OS === 'web' ? WEB_FLATLIST_INITIAL : 6}
           windowSize={Platform.OS === 'web' ? WEB_FLATLIST_WINDOW : 7}
           maxToRenderPerBatch={Platform.OS === 'web' ? WEB_FLATLIST_BATCH : 10}
         />
+        )}
       </View>
   );
 
@@ -587,16 +554,6 @@ export default function YoutubeScreen() {
       {isFocused ? <OtaUpdateBanner /> : null}
 
       {youtubeListPanel}
-
-      {hasSignalApi() && !useTwoPane ? (
-        <FloatingGlassFab
-          bottom={fabStackBottom}
-          onPress={() => void onRefresh()}
-          iconName="sync"
-          accessibilityLabel={t('fabRefreshA11y')}
-          disabled={refreshing}
-        />
-      ) : null}
 
       <SelectionFilterSheet
         visible={channelModalVisible}
@@ -644,8 +601,10 @@ export default function YoutubeScreen() {
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
+  const segmentTab = getSegmentTabBarStyles(theme, sf);
+  const fixedHeader = getScreenFixedHeaderStyles(theme);
   return StyleSheet.create({
-    safe: { ...webFlexFill, backgroundColor: theme.bg },
+    safe: { ...webFlexFill, backgroundColor: webShellBackground(theme.bg) },
     mainColumn: {
       ...webFlexFill,
       width: '100%',
@@ -655,55 +614,36 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     mainColumnWide: {
       ...wideContentFill,
     },
-    topFixed: {
-      flexShrink: 0,
-      paddingHorizontal: 16,
-      paddingTop: 10,
-      paddingBottom: 12,
-      backgroundColor: theme.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
+    topFixed: fixedHeader.strip,
+    topFixedWide: fixedHeader.stripWide,
+    segment: segmentTab.segment,
+    segBtn: segmentTab.segBtn,
+    segBtnActive: segmentTab.segBtnActive,
+    segText: segmentTab.segText,
+    segTextActive: segmentTab.segTextActive,
     list: { ...webScrollViewportStyle },
-    listContent: { paddingHorizontal: 16, paddingTop: 10 },
-    ipadFilterWrap: {
-      flexShrink: 0,
+    listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
+    channelFilterRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 8,
-      paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 2,
+      gap: 16,
     },
-    ipadFilterBtn: {
-      alignSelf: 'flex-start',
+    channelFilterChip: {
       minHeight: 32,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 7,
+      gap: 8,
       paddingHorizontal: 11,
       borderRadius: 999,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.card,
-    },
-    ipadFilterBtnActive: {
-      borderColor: theme.greenBorder,
-      backgroundColor: theme.greenDim,
-    },
-    ipadFilterText: {
-      fontSize: sf(12),
-      fontWeight: '900',
-      color: theme.textMuted,
-    },
-    ipadFilterTextActive: {
-      color: theme.green,
+      backgroundColor: theme.bgElevated,
     },
     backToMoreWrap: {
       flexShrink: 0,
       paddingHorizontal: 16,
       paddingTop: 12,
-      paddingBottom: 4,
+      paddingBottom: 8,
     },
     backToMoreBtn: {
       alignSelf: 'flex-start',
@@ -727,7 +667,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 10,
+      gap: 16,
       paddingVertical: 16,
     },
     footerLoadingText: {
@@ -747,48 +687,38 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       fontWeight: '900',
       color: theme.bg,
     },
-    quickFilterRow: {
-      flexDirection: 'row',
-      gap: 4,
-      padding: 4,
-      borderRadius: 16,
-      backgroundColor: theme.bgElevated,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    quickFilterChip: {
-      flex: 1,
-      minHeight: 34,
-      paddingHorizontal: 10,
-      borderRadius: 12,
-      backgroundColor: 'transparent',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    quickFilterChipActive: {
+    channelFilterChipActive: {
+      borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
     },
-    quickFilterChipDisabled: {
+    channelFilterChipDisabled: {
       opacity: 0.45,
     },
-    quickFilterText: {
+    channelFilterText: {
       fontSize: sf(12),
       lineHeight: sf(17),
       fontWeight: '800',
       color: theme.textDim,
     },
-    quickFilterTextActive: {
+    channelFilterTextActive: {
       color: theme.green,
     },
     errBox: {
+      marginHorizontal: 16,
+      marginBottom: 8,
       padding: 12,
-      borderRadius: 14,
+      borderRadius: 8,
       backgroundColor: theme.dangerDim,
       borderWidth: 1,
       borderColor: '#FFD6DA',
-      marginBottom: 12,
     },
     errText: { fontSize: sf(12), color: theme.danger, lineHeight: sf(18) },
+    loadingBox: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 48,
+    },
     errSub: {
       fontSize: sf(11),
       color: theme.textMuted,
@@ -797,7 +727,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     errLinkWrap: {
       alignSelf: 'flex-start',
-      marginTop: 10,
+      marginTop: 16,
     },
     errLink: {
       fontSize: sf(12),

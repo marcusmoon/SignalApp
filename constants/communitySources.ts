@@ -33,13 +33,13 @@ export function communitySourceAccent(source: string, theme: AppTheme): Communit
       accent: theme.accentOrange,
       dim: theme.warningDim,
       border: accentAlpha(theme.accentOrange, theme.colorScheme === 'dark' ? 0.55 : 0.35),
-      glyph: 'S',
+      glyph: '💾',
     };
   }
   return {
     accent: theme.green,
     dim: theme.greenDim,
     border: theme.greenBorder,
-    glyph: 'L',
+    glyph: '🇺🇸',
   };
 }

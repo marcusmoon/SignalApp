@@ -20,7 +20,6 @@ import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
-import { SourceBadge } from '@/components/signal/SourceBadge';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { communitySourceAccent } from '@/constants/communitySources';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -962,7 +961,13 @@ export function HomeFocusContent({
                       accessibilityRole="button"
                       accessibilityLabel={t(labelId)}
                       style={({ pressed }) => [styles.boardEntryTile, pressed && styles.pressed]}>
-                      <SourceBadge label={t(labelId)} accent={accent} />
+                      <View
+                        style={[
+                          styles.boardMark,
+                          { backgroundColor: accent.dim, borderColor: accent.border },
+                        ]}>
+                        <Text style={[styles.boardGlyph, { color: accent.accent }]}>{accent.glyph}</Text>
+                      </View>
                     </Pressable>
                   );
                 })}
@@ -1229,20 +1234,33 @@ function makeStyles(
     },
     boardEntryTile: {
       width: '48%',
-      minHeight: 52,
-      borderRadius: UI_RADIUS_CARD_LG,
+      minHeight: 54,
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.colorScheme === 'dark' ? theme.bgElevated : theme.card,
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 12,
+      paddingHorizontal: 8,
+      paddingVertical: 10,
       shadowColor: '#000000',
       shadowOpacity: 0.03,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 4 },
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 3 },
       elevation: 1,
+    },
+    boardMark: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+    },
+    boardGlyph: {
+      fontSize: sf(15),
+      lineHeight: sf(18),
+      fontWeight: '900',
     },
     quoteTileContent: {
       flex: 1,

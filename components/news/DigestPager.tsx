@@ -11,6 +11,7 @@ import { DigestRefreshTail } from '@/components/feed/DigestRefreshTail';
 import { makeDigestStripCardStyles } from '@/components/feed/digestStripCardStyles';
 import { WebHorizontalScrollStrip, type WebHorizontalScrollStripHandle } from '@/components/layout/WebHorizontalScrollStrip';
 import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
+import { digestSourceIconEntries, SourceIconStack } from '@/components/signal/SourceIconStack';
 import {
   DIGEST_CARD_GAP,
   digestStripCardMinHeight,
@@ -61,14 +62,24 @@ const DigestCard = memo(function DigestCard({
   pairLayout = false,
 }: DigestCardProps) {
   const { t, locale } = useLocale();
+  const sourceEntries = digestSourceIconEntries(digest.sourceRefs, digest.sources);
   const summaryText = t('feedDigestSummary', {
     count: String(digest.count),
     sources: String(digest.sources.length),
   });
+  const countText = t('feedDigestCount', { count: String(digest.count) });
   const createdLabel = formatFeedItemTimeLabel(newsDigestCreatedIso(digest), locale as AppLocale);
+  const footerMeta = [
+    sourceEntries.length > 0 ? countText : summaryText,
+    createdLabel !== '—' ? createdLabel : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const showDetail = hasDigestDetail(digest);
   const topicChips = digest.topics.slice(0, pairLayout ? 2 : 3);
   const showCountChip = !digest.aiGenerated && topicChips.length === 0 && digest.count > 0;
+  const iconSize = pairLayout ? 16 : 18;
+  const iconMax = pairLayout ? 3 : 4;
 
   return (
     <View style={styles.card}>
@@ -98,10 +109,14 @@ const DigestCard = memo(function DigestCard({
       </View>
 
       <View style={styles.footerRow}>
-        <Text style={styles.footer} numberOfLines={1}>
-          {summaryText}
-          {createdLabel !== '—' ? ` · ${createdLabel}` : ''}
-        </Text>
+        <View style={styles.footerLead}>
+          {sourceEntries.length > 0 ? (
+            <SourceIconStack sources={sourceEntries} size={iconSize} maxVisible={iconMax} />
+          ) : null}
+          <Text style={styles.footer} numberOfLines={1}>
+            {footerMeta}
+          </Text>
+        </View>
         {showDetail ? (
           <Pressable
             onPress={() => onOpenSources(digest)}

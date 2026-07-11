@@ -120,6 +120,13 @@ export function makeDigestStripCardStyles(
       minHeight: DIGEST_STRIP_FOOTER_MIN_HEIGHT,
       flexShrink: 0,
     },
+    footerLead: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
     footer: {
       fontSize: ft.ff(11),
       lineHeight: sf(15),

@@ -5,7 +5,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { UI_RADIUS_CARD } from '@/constants/uiCornerRadius';
+import { newsSourceAccent } from '@/constants/newsSourceAccent';
 import type { AppTheme } from '@/constants/theme';
+import { SourceBadge } from '@/components/signal/SourceBadge';
+import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -46,6 +49,7 @@ export function NewsCard({
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo), [theme, scaleFont, feedTypo]);
 
   const sourceName = item.source?.trim() || '—';
+  const sourceAccent = useMemo(() => newsSourceAccent(sourceName, theme), [sourceName, theme]);
   const isFlash = Boolean(item.isFlash);
   const symbol = item.ticker?.trim().toUpperCase() ?? '';
   const showSourceInHeader =
@@ -96,13 +100,7 @@ export function NewsCard({
       ? t('newsTitleShowTranslation')
       : t('newsTitleShowOriginal');
 
-  const sourceContent = (
-    <View style={styles.sourcePill}>
-      <Text style={styles.sourceName} numberOfLines={1}>
-        {sourceName}
-      </Text>
-    </View>
-  );
+  const sourceContent = <SourceBadge label={sourceName} accent={sourceAccent} />;
 
   const flashBadge = isFlash ? (
     <View style={styles.sourcePill} accessibilityLabel={t('newsFlashBadge')}>
@@ -166,9 +164,12 @@ export function NewsCard({
                 onPress={() => router.push(`/symbol/${symbol}`)}
                 hitSlop={8}
                 style={styles.compactTickerWrap}>
-                <Text style={styles.compactTicker} numberOfLines={1}>
-                  {headerLabel}
-                </Text>
+                <View style={styles.tickerLead}>
+                  <SymbolLogo symbol={symbol} size={18} />
+                  <Text style={styles.compactTicker} numberOfLines={1}>
+                    {headerLabel}
+                  </Text>
+                </View>
               </Pressable>
             ) : null}
             <Text style={styles.compactMetaText} numberOfLines={1}>
@@ -183,9 +184,12 @@ export function NewsCard({
                   onPress={() => router.push(`/symbol/${symbol}`)}
                   hitSlop={8}
                   style={styles.metaLead}>
-                  <Text style={styles.ticker} numberOfLines={1}>
-                    {headerLabel}
-                  </Text>
+                  <View style={styles.tickerLead}>
+                    <SymbolLogo symbol={symbol} size={20} />
+                    <Text style={styles.ticker} numberOfLines={1}>
+                      {headerLabel}
+                    </Text>
+                  </View>
                 </Pressable>
               ) : (
                 renderSourceInMeta()
@@ -264,6 +268,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     metaLead: {
       flex: 1,
       minWidth: 0,
+    },
+    tickerLead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minWidth: 0,
+      flexShrink: 1,
     },
     metaTrail: {
       flexDirection: 'row',

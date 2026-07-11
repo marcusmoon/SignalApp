@@ -6,6 +6,7 @@ import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
@@ -623,8 +624,13 @@ export default function SymbolDetailScreen() {
         refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <Text style={styles.company}>{displayCompanyName}</Text>
-          {isKorea && ticker ? <Text style={styles.companyMeta}>{ticker}</Text> : null}
+          <View style={styles.heroHead}>
+            <SymbolLogo symbol={ticker} size={40} />
+            <View style={styles.heroTitleCol}>
+              <Text style={styles.company}>{displayCompanyName}</Text>
+              {isKorea && ticker ? <Text style={styles.companyMeta}>{ticker}</Text> : null}
+            </View>
+          </View>
           <View style={styles.priceRow}>
             <Text style={styles.price}>
               {displayPrice != null ? formatMarketPrice(displayPrice, isKorea) : t('symbolDetailPriceUnavailable')}

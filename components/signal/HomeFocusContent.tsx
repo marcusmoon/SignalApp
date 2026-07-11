@@ -20,6 +20,9 @@ import { HomeAiBadge } from '@/components/signal/HomeAiBadge';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
+import { SourceBadge } from '@/components/signal/SourceBadge';
+import { SymbolLogo } from '@/components/signal/SymbolLogo';
+import { communitySourceAccent } from '@/constants/communitySources';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -951,6 +954,7 @@ export function HomeFocusContent({
               <View style={styles.quoteGrid}>
                 {HOME_BOARD_SOURCES.map((sourceKey) => {
                   const labelId = communitySourceLabelId(sourceKey);
+                  const accent = communitySourceAccent(sourceKey, theme);
                   return (
                     <Pressable
                       key={sourceKey}
@@ -958,9 +962,7 @@ export function HomeFocusContent({
                       accessibilityRole="button"
                       accessibilityLabel={t(labelId)}
                       style={({ pressed }) => [styles.boardEntryTile, pressed && styles.pressed]}>
-                      <Text style={styles.quoteSymbol} numberOfLines={1}>
-                        {t(labelId)}
-                      </Text>
+                      <SourceBadge label={t(labelId)} accent={accent} />
                     </Pressable>
                   );
                 })}
@@ -986,9 +988,12 @@ export function HomeFocusContent({
                           accessibilityLabel={row.symbol}
                           style={({ pressed }) => [styles.quoteTile, pressed && styles.pressed]}>
                           <View style={styles.quoteTileContent}>
-                            <Text style={styles.quoteSymbol} numberOfLines={1}>
-                              {row.symbol}
-                            </Text>
+                            <View style={styles.quoteTileLead}>
+                              <SymbolLogo symbol={row.symbol} size={22} />
+                              <Text style={styles.quoteSymbol} numberOfLines={1}>
+                                {row.symbol}
+                              </Text>
+                            </View>
                             <View style={styles.quoteTileFooter}>
                               <Text style={styles.priceText} numberOfLines={1}>
                                 {formatPrice(row)}
@@ -1248,6 +1253,13 @@ function makeStyles(
       paddingHorizontal: 8,
       paddingVertical: 7,
       gap: COMFORT_GAP_SM,
+    },
+    quoteTileLead: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
     },
     quoteTileFooter: {
       minWidth: 62,

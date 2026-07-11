@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { communitySourceAccent, type CommunitySourceKey } from '@/constants/communitySources';
+import { SourceBadge } from '@/components/signal/SourceBadge';
 import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -34,11 +35,7 @@ export function CommunityPostCard({ item, sourceLabelId }: Props) {
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <View pointerEvents="none" style={styles.accentBar} />
       <View style={styles.metaRow}>
-        <View style={styles.sourcePill}>
-          <Text style={styles.sourceName} numberOfLines={1}>
-            {t(sourceLabelId)}
-          </Text>
-        </View>
+        <SourceBadge label={t(sourceLabelId)} accent={accent} />
         <View style={styles.timePill}>
           <Text style={styles.time}>{timeLabel}</Text>
         </View>

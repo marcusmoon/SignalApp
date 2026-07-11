@@ -12,6 +12,7 @@ import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react
 
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import type { AppTheme } from '@/constants/theme';
 import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
@@ -199,13 +200,23 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       padding: 18,
       marginBottom: 16,
     },
+    heroHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 8,
+    },
+    heroTitleCol: {
+      flex: 1,
+      minWidth: 0,
+    },
     company: {
       fontSize: sf(17),
       fontWeight: '800',
       color: theme.text,
       marginBottom: 2,
     },
-    companyMeta: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted, marginBottom: 6 },
+    companyMeta: { fontSize: sf(11), fontWeight: '600', color: theme.textMuted, marginBottom: 0 },
     priceRow: {
       flexDirection: 'row',
       alignItems: 'flex-end',
@@ -534,10 +545,15 @@ export function SymbolDetailPane({ ticker, bottomPad = 24 }: Props) {
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           showsVerticalScrollIndicator={false}>
           <View style={styles.hero}>
-            <Text style={styles.company}>{displayCompanyName}</Text>
-            {isKorea && ticker ? (
-              <Text style={styles.companyMeta}>{ticker}</Text>
-            ) : null}
+            <View style={styles.heroHead}>
+              <SymbolLogo symbol={ticker} size={40} />
+              <View style={styles.heroTitleCol}>
+                <Text style={styles.company}>{displayCompanyName}</Text>
+                {isKorea && ticker ? (
+                  <Text style={styles.companyMeta}>{ticker}</Text>
+                ) : null}
+              </View>
+            </View>
             <View style={styles.priceRow}>
               <Text style={styles.price}>
                 {displayPrice != null

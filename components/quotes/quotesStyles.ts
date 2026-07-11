@@ -116,6 +116,7 @@ export function makeQuotesStyles(
       flexDirection: 'row',
       alignItems: 'center',
       flexWrap: 'nowrap',
+      gap: 8,
     },
     symPressable: { flexShrink: 0, minWidth: 0 },
     sym: {

@@ -4,8 +4,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   FEED_ARTICLE_TITLE_PX,
+  FEED_META_TIME_PX,
   FEED_PREVIEW_BODY_PX,
 } from '@/constants/feedTypography';
+import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { communitySourceAccent, type CommunitySourceKey } from '@/constants/communitySources';
 import { SourceBadge } from '@/components/signal/SourceBadge';
 import type { AppTheme } from '@/constants/theme';

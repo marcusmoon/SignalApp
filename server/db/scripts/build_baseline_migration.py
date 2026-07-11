@@ -56,6 +56,16 @@ def build_jobs() -> list[dict]:
             job['description'] = (
                 '인기·시총·기본 관심종목의 Yahoo 일봉 OHLCV를 저장해 종목 상세 차트에 사용합니다.'
             )
+        if key == 'market_news_mk_rss':
+            job['displayName'] = '국내 경제지 RSS 수집·보정'
+            job['description'] = '매일경제·한국경제 경제·증권 RSS를 수집한 뒤 같은 실행에서 항목을 다시 읽어 보정합니다.'
+            job.setdefault('params', {})['rssSourceIds'] = [
+                'mk_economy',
+                'mk_securities',
+                'hankyung_economy',
+                'hankyung_finance',
+            ]
+            job['updatedAt'] = '2026-07-11T00:00:00.000Z'
     return jobs
 
 
@@ -151,6 +161,18 @@ FROM rows;'''
     "feedUrl": "https://www.mk.co.kr/rss/50200011/", "category": "korea",
     "enabled": true, "hidden": false, "order": 5, "defaultLimit": 40, "daysBack": 3,
     "includeKeywords": [], "excludeKeywords": [], "updatedAt": "2026-06-19T00:00:00.000Z"
+  },
+  {
+    "id": "hankyung_economy", "name": "한국경제 경제", "providerId": "hankyung", "sourceName": "한국경제",
+    "feedUrl": "https://www.hankyung.com/feed/economy", "category": "korea",
+    "enabled": true, "hidden": false, "order": 6, "defaultLimit": 40, "daysBack": 3,
+    "includeKeywords": [], "excludeKeywords": [], "updatedAt": "2026-07-11T00:00:00.000Z"
+  },
+  {
+    "id": "hankyung_finance", "name": "한국경제 증권", "providerId": "hankyung", "sourceName": "한국경제",
+    "feedUrl": "https://www.hankyung.com/feed/finance", "category": "korea",
+    "enabled": true, "hidden": false, "order": 7, "defaultLimit": 40, "daysBack": 3,
+    "includeKeywords": [], "excludeKeywords": [], "updatedAt": "2026-07-11T00:00:00.000Z"
   }
 ]$json$::jsonb) WITH ORDINALITY
 )

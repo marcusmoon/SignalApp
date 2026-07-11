@@ -1204,10 +1204,11 @@ function makeStyles(
     quoteGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: COMFORT_GAP_MD,
+      justifyContent: 'space-between',
+      rowGap: COMFORT_GAP_MD,
     },
     quoteTile: {
-      width: '48.5%',
+      width: '48%',
       minHeight: 54,
       borderRadius: 14,
       borderWidth: 1,
@@ -1221,7 +1222,7 @@ function makeStyles(
       elevation: 1,
     },
     boardEntryTile: {
-      width: '48.5%',
+      width: '48%',
       minHeight: 52,
       borderRadius: 16,
       borderWidth: 1,

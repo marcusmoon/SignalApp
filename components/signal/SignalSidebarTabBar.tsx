@@ -117,7 +117,7 @@ export function SignalSidebarTabBar({
   const pathname = usePathname();
   const params = useLocalSearchParams<{ section?: string; tab?: string }>();
   const insets = useSafeAreaInsets();
-  const { subTabs } = useSidebarSubTabs();
+  const { subTabs, activeSubTabKey } = useSidebarSubTabs();
   const ipadNav = useIpadSidebarNav();
 
   const accountActive = pathname.startsWith('/account') || ipadNav.isAccountPaneActive;
@@ -290,25 +290,28 @@ export function SignalSidebarTabBar({
                 tab.name !== 'youtube' &&
                 subTabs.length > 0 ? (
                   <View style={styles.subTabList}>
-                    {subTabs.map((sub) => (
+                    {subTabs.map((sub) => {
+                      const subActive = activeSubTabKey === sub.key;
+                      return (
                       <Pressable
                         key={sub.key}
                         style={({ pressed }) => [
                           styles.subTabItem,
-                          sub.active && styles.subTabItemActive,
+                          subActive && styles.subTabItemActive,
                           pressed && styles.subTabItemPressed,
                         ]}
                         onPress={sub.onPress}
                         accessibilityRole="button"
-                        accessibilityState={{ selected: sub.active }}>
-                        <View style={[styles.subTabDot, sub.active && styles.subTabDotActive]} />
+                        accessibilityState={{ selected: subActive }}>
+                        <View style={[styles.subTabDot, subActive && styles.subTabDotActive]} />
                         <Text
-                          style={[styles.subTabLabel, sub.active && styles.subTabLabelActive]}
+                          style={[styles.subTabLabel, subActive && styles.subTabLabelActive]}
                           numberOfLines={1}>
                           {sub.label}
                         </Text>
                       </Pressable>
-                    ))}
+                      );
+                    })}
                   </View>
                 ) : null}
               </View>

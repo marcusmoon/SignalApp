@@ -7,35 +7,47 @@ import React, { createContext, useCallback, useContext, useState } from 'react';
 export type SidebarSubTab = {
   key: string;
   label: string;
-  active: boolean;
+  /** @deprecated activeSubTabKey를 사용한다. 하위 호환용으로만 남김 */
+  active?: boolean;
   onPress: () => void;
 };
 
 type SidebarSubTabsContextType = {
   subTabs: SidebarSubTab[];
+  activeSubTabKey: string | null;
   setSubTabs: (tabs: SidebarSubTab[]) => void;
+  setActiveSubTabKey: (key: string | null) => void;
   clearSubTabs: () => void;
 };
 
 const SidebarSubTabsContext = createContext<SidebarSubTabsContextType>({
   subTabs: [],
+  activeSubTabKey: null,
   setSubTabs: () => {},
+  setActiveSubTabKey: () => {},
   clearSubTabs: () => {},
 });
 
 export function SidebarSubTabsProvider({ children }: { children: React.ReactNode }) {
   const [subTabs, setSubTabsState] = useState<SidebarSubTab[]>([]);
+  const [activeSubTabKey, setActiveSubTabKeyState] = useState<string | null>(null);
 
   const setSubTabs = useCallback((tabs: SidebarSubTab[]) => {
     setSubTabsState(tabs);
   }, []);
 
+  const setActiveSubTabKey = useCallback((key: string | null) => {
+    setActiveSubTabKeyState(key);
+  }, []);
+
   const clearSubTabs = useCallback(() => {
     setSubTabsState([]);
+    setActiveSubTabKeyState(null);
   }, []);
 
   return (
-    <SidebarSubTabsContext.Provider value={{ subTabs, setSubTabs, clearSubTabs }}>
+    <SidebarSubTabsContext.Provider
+      value={{ subTabs, activeSubTabKey, setSubTabs, setActiveSubTabKey, clearSubTabs }}>
       {children}
     </SidebarSubTabsContext.Provider>
   );

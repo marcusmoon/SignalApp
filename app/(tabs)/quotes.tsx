@@ -111,7 +111,7 @@ export default function QuotesScreen() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
-  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
+  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [segment, setSegment] = useState<QuoteSegmentKey>(() => parseQuoteSegmentParam(segmentParam));
   const [segmentOrder, setSegmentOrder] = useState<QuoteSegmentKey[]>(DEFAULT_QUOTES_SEGMENT_ORDER);
@@ -402,27 +402,40 @@ export default function QuotesScreen() {
   const fabBottom = fabStackBottom(tabBarHeight, insets.bottom);
 
   const onPickSegment = useCallback((key: QuoteSegmentKey) => {
-    if (segment === key) return;
+    if (segment === key) {
+      if (useTwoPane) setActiveSubTabKey(key);
+      return;
+    }
     setError(null);
     setSegment(key);
+    if (useTwoPane) setActiveSubTabKey(key);
     setRouteParams({ segment: key === 'watch' ? undefined : key });
-  }, [segment, setRouteParams]);
+  }, [segment, setActiveSubTabKey, setRouteParams, useTwoPane]);
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
+
+  const registerQuoteSubTabs = useCallback(() => {
+    if (!useTwoPane) return;
+    setActiveSubTabKey(segment);
+    setSubTabs(
+      segmentOrder.map((key) => ({
+        key,
+        label: t(QUOTE_SEGMENT_LABEL[key]),
+        onPress: () => onPickSegment(key),
+      })),
+    );
+  }, [onPickSegment, segment, segmentOrder, setActiveSubTabKey, setSubTabs, t, useTwoPane]);
+
+  useEffect(() => {
+    registerQuoteSubTabs();
+  }, [registerQuoteSubTabs]);
 
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
-      setSubTabs(
-        segmentOrder.map((key) => ({
-          key,
-          label: t(QUOTE_SEGMENT_LABEL[key]),
-          active: segment === key,
-          onPress: () => onPickSegment(key),
-        })),
-      );
+      registerQuoteSubTabs();
       return () => clearSubTabs();
-    }, [clearSubTabs, onPickSegment, segment, segmentOrder, setSubTabs, t, useTwoPane]),
+    }, [clearSubTabs, registerQuoteSubTabs, useTwoPane]),
   );
 
   const renderQuoteItem = useCallback(

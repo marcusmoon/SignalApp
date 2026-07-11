@@ -149,7 +149,7 @@ export function LegacyNewsFeedScreen() {
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
-  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
+  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
   const [segment, setSegment] = useState<NewsSegmentKey>(() => {
     const fromUrl = parseNewsSegmentKey(firstRouteParam(routeParams.segment));
     return fromUrl ?? DEFAULT_NEWS_SEGMENT;
@@ -691,7 +691,10 @@ export function LegacyNewsFeedScreen() {
   );
 
   const onPickSegment = useCallback((key: NewsSegmentKey, options?: { force?: boolean }) => {
-    if (!options?.force && segment === key) return;
+    if (!options?.force && segment === key) {
+      if (useTwoPane) setActiveSubTabKey(key);
+      return;
+    }
     setLoading(true);
     setItems([]);
     setVideoItems([]);
@@ -702,9 +705,10 @@ export function LegacyNewsFeedScreen() {
     setError(null);
     if (key === 'video') setActiveTag(null);
     setSegment(key);
+    if (useTwoPane) setActiveSubTabKey(key);
     void saveNewsSegment(key);
     setRouteParams({ segment: key === DEFAULT_NEWS_SEGMENT ? undefined : key });
-  }, [segment, setRouteParams]);
+  }, [segment, setActiveSubTabKey, setRouteParams, useTwoPane]);
 
   useTabPressCycleSegment(segment, segmentOrder, onPickSegment);
 
@@ -712,6 +716,22 @@ export function LegacyNewsFeedScreen() {
     () => segmentOrder.filter((key) => key !== 'video'),
     [segmentOrder],
   );
+
+  const registerNewsSubTabs = useCallback(() => {
+    if (!useTwoPane) return;
+    setActiveSubTabKey(segment);
+    setSubTabs(
+      ipadSegmentOrder.map((key) => ({
+        key,
+        label: t(NEWS_SEGMENT_LABEL[key]),
+        onPress: () => onPickSegment(key),
+      })),
+    );
+  }, [ipadSegmentOrder, onPickSegment, segment, setActiveSubTabKey, setSubTabs, t, useTwoPane]);
+
+  useEffect(() => {
+    registerNewsSubTabs();
+  }, [registerNewsSubTabs]);
 
   useEffect(() => {
     if (!useTwoPane || segment !== 'video') return;
@@ -746,16 +766,9 @@ export function LegacyNewsFeedScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
-      setSubTabs(
-        ipadSegmentOrder.map((key) => ({
-          key,
-          label: t(NEWS_SEGMENT_LABEL[key]),
-          active: segment === key,
-          onPress: () => onPickSegment(key),
-        })),
-      );
+      registerNewsSubTabs();
       return () => clearSubTabs();
-    }, [useTwoPane, segment, ipadSegmentOrder, t, onPickSegment, setSubTabs, clearSubTabs]),
+    }, [clearSubTabs, registerNewsSubTabs, useTwoPane]),
   );
 
   const newsTitleShowAlternate = newsTitleDisplayMode === 'alternate';

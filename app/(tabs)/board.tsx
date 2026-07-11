@@ -67,7 +67,7 @@ export default function BoardScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
-  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
+  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
   const [source, setSource] = useState<CommunitySourceFilter>(COMMUNITY_SOURCE_ALL);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -165,9 +165,13 @@ export default function BoardScreen() {
 
   const changeSource = useCallback(
     (next: CommunitySourceFilter, options?: { fromRoute?: boolean }) => {
-      if (next === sourceRef.current) return;
+      if (next === sourceRef.current) {
+        if (useTwoPane) setActiveSubTabKey(next);
+        return;
+      }
       sourceRef.current = next;
       setSource(next);
+      if (useTwoPane) setActiveSubTabKey(next);
       setError(null);
       setItems([]);
       setMeta(null);
@@ -177,7 +181,7 @@ export default function BoardScreen() {
       }
       void load({ sourceFilter: next });
     },
-    [load, setRouteParams],
+    [load, setActiveSubTabKey, setRouteParams, useTwoPane],
   );
 
   useFocusEffect(
@@ -189,19 +193,28 @@ export default function BoardScreen() {
     }, [changeSource, routeParams.source]),
   );
 
+  const registerBoardSubTabs = useCallback(() => {
+    if (!useTwoPane) return;
+    setActiveSubTabKey(source);
+    setSubTabs(
+      COMMUNITY_SOURCE_ORDER.map((key) => ({
+        key,
+        label: t(SOURCE_LABEL[key]),
+        onPress: () => changeSource(key),
+      })),
+    );
+  }, [changeSource, setActiveSubTabKey, setSubTabs, source, t, useTwoPane]);
+
+  useEffect(() => {
+    registerBoardSubTabs();
+  }, [registerBoardSubTabs]);
+
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
-      setSubTabs(
-        COMMUNITY_SOURCE_ORDER.map((key) => ({
-          key,
-          label: t(SOURCE_LABEL[key]),
-          active: source === key,
-          onPress: () => changeSource(key),
-        })),
-      );
+      registerBoardSubTabs();
       return () => clearSubTabs();
-    }, [changeSource, clearSubTabs, setSubTabs, source, t, useTwoPane]),
+    }, [clearSubTabs, registerBoardSubTabs, useTwoPane]),
   );
 
   const listBottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);

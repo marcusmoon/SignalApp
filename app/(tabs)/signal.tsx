@@ -118,7 +118,7 @@ export default function SignalScreen() {
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
   const ipadNav = useIpadSidebarNav();
-  const { setSubTabs, clearSubTabs } = useSidebarSubTabs();
+  const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   const initialTodayYmd = toYmd(new Date());
@@ -432,10 +432,27 @@ export default function SignalScreen() {
   const onPickSessionTab = useCallback((key: FlatTabKey) => {
     if (!briefingByTabKey.has(key)) return;
     setSelectedTabKey(key);
+    if (useTwoPane) setActiveSubTabKey(key);
     setRouteParams({ session: key });
-  }, [briefingByTabKey, setRouteParams]);
+  }, [briefingByTabKey, setActiveSubTabKey, setRouteParams, useTwoPane]);
 
   useTabPressCycleSegment(activeTabKey, availableSessionTabKeys, onPickSessionTab);
+
+  const registerSignalSubTabs = useCallback(() => {
+    if (!useTwoPane) return;
+    if (activeTabKey) setActiveSubTabKey(activeTabKey);
+    setSubTabs(
+      FLAT_TABS.map((tab) => ({
+        key: tab.key,
+        label: flatTabLabel(tab.key),
+        onPress: () => onPickSessionTab(tab.key),
+      })),
+    );
+  }, [activeTabKey, flatTabLabel, onPickSessionTab, setActiveSubTabKey, setSubTabs, useTwoPane]);
+
+  useEffect(() => {
+    registerSignalSubTabs();
+  }, [registerSignalSubTabs]);
 
   useFocusEffect(
     useCallback(() => {
@@ -462,16 +479,9 @@ export default function SignalScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!useTwoPane) return;
-      setSubTabs(
-        FLAT_TABS.map((tab) => ({
-          key: tab.key,
-          label: flatTabLabel(tab.key),
-          active: activeTabKey === tab.key,
-          onPress: () => onPickSessionTab(tab.key),
-        })),
-      );
+      registerSignalSubTabs();
       return () => clearSubTabs();
-    }, [useTwoPane, activeTabKey, flatTabLabel, onPickSessionTab, setSubTabs, clearSubTabs]),
+    }, [clearSubTabs, registerSignalSubTabs, useTwoPane]),
   );
 
   return (

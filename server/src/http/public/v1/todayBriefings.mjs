@@ -81,6 +81,7 @@ async function publishTodayBriefingNotification(briefing, queuePush) {
         : '/today-briefing',
       reason: `today briefing updated: ${briefing.briefingDate || briefing.locale}`,
       scheduledAt: briefing.publishedAt,
+      sourceRefs: briefing.sourceRefs,
       payload: {
         briefingId: briefing.id,
         briefingDate: briefing.briefingDate,

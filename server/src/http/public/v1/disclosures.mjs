@@ -48,6 +48,7 @@ async function publishDigestNotification(item, queuePush) {
       deepLink: `/disclosure-flow?${params.toString()}`,
       reason: `disclosure digest updated: ${market}`,
       scheduledAt: item.generatedAt,
+      sourceRefs: normalizeSourceRefs(item.sourceRefs, { limit: 4 }),
       payload: { digestId: item.id, market, ...(date ? { generatedDate: date } : {}) },
     },
     { queuePush },

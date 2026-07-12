@@ -22,6 +22,7 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { FeedNewContentChip } from '@/components/signal/FeedNewContentChip';
+import { SourceIconStack } from '@/components/signal/SourceIconStack';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
@@ -36,6 +37,7 @@ import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import { formatRelativeTime } from '@/utils/date';
 
 import { alertTypeMessageId, type AlertsFilter } from '@/domain/alerts/notificationCategory';
+import { notificationSourceIconEntries } from '@/domain/alerts/notificationSourceIcons';
 import { navigateToAlert, resolveAlertHref } from '@/domain/alerts/alertNavigation';
 
 export default function AlertsScreen() {
@@ -236,6 +238,7 @@ export default function AlertsScreen() {
     ({ item: a }: { item: StoredNotification }) => {
       const href = resolveAlertHref(a);
       const typeLabel = t(alertTypeMessageId(a));
+      const sourceEntries = notificationSourceIconEntries(a);
       const card = (
         <View style={styles.alertCard}>
           <View style={styles.alertTop}>
@@ -252,7 +255,16 @@ export default function AlertsScreen() {
           </View>
           <Text style={styles.alertTitle}>{a.title}</Text>
           <Text style={styles.alertBody}>{a.body}</Text>
-          {a.high ? <Text style={styles.timeRight}>{formatRelativeTime(a.receivedAt, locale)}</Text> : null}
+          {sourceEntries.length > 0 || a.high ? (
+            <View style={styles.alertFooter}>
+              {sourceEntries.length > 0 ? (
+                <SourceIconStack sources={sourceEntries} size={18} maxVisible={4} />
+              ) : (
+                <View />
+              )}
+              {a.high ? <Text style={styles.timeRight}>{formatRelativeTime(a.receivedAt, locale)}</Text> : null}
+            </View>
+          ) : null}
         </View>
       );
 
@@ -510,8 +522,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     typeBadgeText: { fontSize: sf(10), fontWeight: '900', color: theme.green },
     alertTitle: { fontSize: sf(13), fontWeight: '700', color: theme.text, marginBottom: 6 },
     alertBody: { fontSize: sf(12), color: theme.textMuted, lineHeight: sf(18) },
+    alertFooter: {
+      marginTop: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+      minWidth: 0,
+    },
     time: { fontSize: sf(11), color: theme.textDim },
-    timeRight: { fontSize: sf(11), color: theme.textDim, marginTop: 6 },
+    timeRight: { fontSize: sf(11), color: theme.textDim },
     high: {
       backgroundColor: '#FF3B3B22',
       borderWidth: 1,

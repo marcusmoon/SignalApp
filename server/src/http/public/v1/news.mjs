@@ -136,7 +136,13 @@ async function publishDigestNotification(item, queuePush) {
       deepLink: `/news-issues?${params.toString()}`,
       reason: `news digest updated: ${category}`,
       scheduledAt: item.generatedAt,
-      payload: { digestId: item.id, category, ...(date ? { generatedDate: date } : {}) },
+      sourceRefs: normalizeSourceRefs(item.sourceRefs, { limit: 4 }),
+      payload: {
+        digestId: item.id,
+        category,
+        sources: Array.isArray(item.sources) ? item.sources.slice(0, 4) : [],
+        ...(date ? { generatedDate: date } : {}),
+      },
     },
     { queuePush },
   );

@@ -7,7 +7,7 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { MessageId } from '@/locales/messages';
-import { openExternalLink } from '@/utils/openExternalLink';
+import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
 
 const GAP = 6;
 const ROW_GAP = 16;
@@ -69,8 +69,10 @@ function LinkCell({ item, styles, theme, label }: LinkCellProps) {
     <Pressable
       style={({ pressed }) => [styles.cell, pressed && styles.cellPressed]}
       onPress={() =>
-        void openExternalLink(item.webUrl, item.appLaunchUrls, {
-          preferInAppBrowser: item.openInAppBrowser,
+        void openConfiguredExternalLink({
+          webUrl: item.webUrl,
+          appLaunchUrls: item.appLaunchUrls,
+          openInAppBrowser: item.openInAppBrowser,
         })
       }
       accessibilityRole="button"

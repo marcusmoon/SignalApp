@@ -1,4 +1,9 @@
-import { openExternalLink, yahooFinanceAppLaunchUrls } from '@/utils/openExternalLink';
+import { Platform } from 'react-native';
+
+import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
+import {
+  yahooFinanceAndroidIntentUrl,
+} from '@/utils/openExternalLink';
 
 /**
  * Yahoo Finance 웹 종목 페이지 경로.
@@ -42,12 +47,29 @@ export function yahooFinanceQuoteUrl(
 }
 
 /**
+ * 종목 상세·리스트 — iOS·iPad는 finance.yahoo.com 유니버설 링크만 사용.
+ * generic `yfinance://`는 앱 홈만 열려 해당 종목으로 가지 않음.
+ */
+export function yahooFinanceQuoteAppLaunchUrls(webUrl: string): string[] {
+  if (Platform.OS === 'ios') return [webUrl];
+  if (Platform.OS === 'android') {
+    return [yahooFinanceAndroidIntentUrl(webUrl), webUrl];
+  }
+  return [webUrl];
+}
+
+/**
  * Yahoo Finance 앱 우선(공통 `openExternalLink`), 실패 시 시스템 브라우저 → 그래도 실패하면 인앱 브라우저.
  */
-export async function openYahooFinanceQuote(symbol: string, mode: 'coin' | 'stock'): Promise<void> {
-  const url = yahooFinanceQuoteUrl(symbol, mode);
-  await openExternalLink(url, yahooFinanceAppLaunchUrls(url), {
-    preferInAppBrowserOnLinkingFailure: true,
+export async function openYahooFinanceQuote(
+  symbol: string,
+  mode: 'coin' | 'stock',
+  hint?: { yahooSymbol?: string | null },
+): Promise<void> {
+  const url = yahooFinanceQuoteUrl(symbol, mode, hint);
+  await openConfiguredExternalLink({
+    webUrl: url,
+    appLaunchUrls: yahooFinanceQuoteAppLaunchUrls(url),
   });
 }
 
@@ -60,9 +82,13 @@ export function yahooFinanceEarningsUrl(
   return `https://finance.yahoo.com/calendar/earnings?symbol=${encodeURIComponent(path)}`;
 }
 
-export async function openYahooFinanceEarnings(symbol: string): Promise<void> {
-  const url = yahooFinanceEarningsUrl(symbol);
-  await openExternalLink(url, yahooFinanceAppLaunchUrls(url), {
-    preferInAppBrowserOnLinkingFailure: true,
+export async function openYahooFinanceEarnings(
+  symbol: string,
+  hint?: { yahooSymbol?: string | null },
+): Promise<void> {
+  const url = yahooFinanceEarningsUrl(symbol, hint);
+  await openConfiguredExternalLink({
+    webUrl: url,
+    appLaunchUrls: yahooFinanceQuoteAppLaunchUrls(url),
   });
 }

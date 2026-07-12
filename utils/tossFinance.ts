@@ -1,6 +1,9 @@
-import { openExternalLink } from '@/utils/openExternalLink';
+import { Platform } from 'react-native';
 
-const TOSS_INVEST_APP_LAUNCH_URLS = [
+import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
+import { orderAppLaunchUrlsForPlatform } from '@/utils/openExternalLink';
+
+const TOSS_INVEST_HOME_APP_LAUNCH_URLS = [
   'supertoss://invest',
   'supertoss://',
   'supertoss://home',
@@ -28,14 +31,43 @@ export function tossFinanceStockUrl(symbol: string): string | null {
   return null;
 }
 
+function tossInvestAndroidIntentUrl(webUrl: string): string {
+  const enc = encodeURIComponent(webUrl);
+  const path = webUrl.replace(/^https:\/\/www\.tossinvest\.com/i, '');
+  return (
+    `intent://www.tossinvest.com${path}` +
+    `#Intent;scheme=https;package=viva.republica.toss;S.browser_fallback_url=${enc};end`
+  );
+}
+
+/** 더보기 숏링크 등 토스증권 홈 — 앱 스킴 우선 */
 export function tossFinanceAppLaunchUrls(webUrl: string): string[] {
-  return [...TOSS_INVEST_APP_LAUNCH_URLS, webUrl];
+  const base = [...TOSS_INVEST_HOME_APP_LAUNCH_URLS, webUrl];
+  if (Platform.OS === 'android') {
+    return [tossInvestAndroidIntentUrl(webUrl), ...base];
+  }
+  return orderAppLaunchUrlsForPlatform(base, webUrl);
+}
+
+/**
+ * 종목 상세 — iOS·iPad는 tossinvest.com 유니버설 링크만 사용.
+ * generic `supertoss://`는 앱 홈만 열려 종목 페이지로 가지 않음.
+ */
+export function tossFinanceStockAppLaunchUrls(webUrl: string): string[] {
+  if (Platform.OS === 'ios') {
+    return [webUrl];
+  }
+  if (Platform.OS === 'android') {
+    return [tossInvestAndroidIntentUrl(webUrl), webUrl];
+  }
+  return [webUrl];
 }
 
 export async function openTossFinanceStock(symbol: string): Promise<void> {
   const url = tossFinanceStockUrl(symbol);
   if (!url) return;
-  await openExternalLink(url, tossFinanceAppLaunchUrls(url), {
-    preferInAppBrowserOnLinkingFailure: true,
+  await openConfiguredExternalLink({
+    webUrl: url,
+    appLaunchUrls: tossFinanceStockAppLaunchUrls(url),
   });
 }

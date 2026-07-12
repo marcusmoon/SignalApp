@@ -15,6 +15,7 @@ const QUERIED_PACKAGES = [
   'com.binance.dev',
   'com.yahoo.mobile.client.android.finance',
   'com.google.android.youtube',
+  'com.nhn.android.search',
 ];
 
 /** VIEW + data:scheme(+host) — 앱 링크/브라우저 디스패치 시 매칭용 */
@@ -27,6 +28,7 @@ const VIEW_SCHEMES = [
   'bnc',
   'youtube',
   'vnd.youtube',
+  'naversearchapp',
 ];
 
 function viewIntentForScheme(scheme) {
@@ -41,6 +43,10 @@ const VIEW_INTENTS_WITH_DATA = [
   {
     action: [{ $: { 'android:name': 'android.intent.action.VIEW' } }],
     data: [{ $: { 'android:scheme': 'https', 'android:host': 'finance.yahoo.com' } }],
+  },
+  {
+    action: [{ $: { 'android:name': 'android.intent.action.VIEW' } }],
+    data: [{ $: { 'android:scheme': 'https', 'android:host': 'www.tossinvest.com' } }],
   },
 ];
 

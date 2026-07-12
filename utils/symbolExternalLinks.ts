@@ -1,7 +1,12 @@
 import type { MessageId } from '@/locales/messages';
 import { googleFinanceQuoteUrl } from '@/utils/googleFinance';
-import { naverFinanceStockUrl } from '@/utils/naverFinance';
-import { tossFinanceAppLaunchUrls, tossFinanceStockUrl } from '@/utils/tossFinance';
+import {
+  naverFinanceAppLaunchUrls,
+  naverFinanceStockUrl,
+  naverFinanceWorldStockUrl,
+} from '@/utils/naverFinance';
+import { tossFinanceStockAppLaunchUrls, tossFinanceStockUrl } from '@/utils/tossFinance';
+import { yahooFinanceQuoteAppLaunchUrls } from '@/utils/yahooFinance';
 import { yahooFinanceEarningsUrl, yahooFinanceQuoteUrl } from '@/utils/yahooFinance';
 
 export type SymbolExternalLink = {
@@ -46,7 +51,7 @@ export function buildSymbolExternalLinks(
         id: 'naver',
         labelKey: 'quotesNaverShort',
         url: naverUrl,
-        openInAppBrowser: true,
+        appLaunchUrls: naverFinanceAppLaunchUrls(naverUrl),
       });
     }
     const tossUrl = tossFinanceStockUrl(code);
@@ -55,7 +60,7 @@ export function buildSymbolExternalLinks(
         id: 'toss',
         labelKey: 'moreRefTitleTossSecurities',
         url: tossUrl,
-        appLaunchUrls: tossFinanceAppLaunchUrls(tossUrl),
+        appLaunchUrls: tossFinanceStockAppLaunchUrls(tossUrl),
       });
     }
     links.push(
@@ -90,31 +95,43 @@ export function buildSymbolExternalLinks(
   const yahooQuote = yahooFinanceQuoteUrl(trimmed, 'stock', hint);
   const yahooEarnings = yahooFinanceEarningsUrl(trimmed, hint);
   const tickerPath = usTickerPath(trimmed);
+  const naverUrl = naverFinanceWorldStockUrl(trimmed);
   const tossUrl = tossFinanceStockUrl(trimmed);
 
-  const links: SymbolExternalLink[] = [
-    {
-      id: 'yahoo',
-      labelKey: 'quotesYahooShort',
-      url: yahooQuote,
-      openInAppBrowser: true,
-    },
-    {
-      id: 'yahoo-earnings',
-      labelKey: 'symbolDetailLinkEarnings',
-      url: yahooEarnings,
-      openInAppBrowser: true,
-    },
-  ];
+  const links: SymbolExternalLink[] = [];
+
+  if (naverUrl) {
+    links.push({
+      id: 'naver',
+      labelKey: 'quotesNaverShort',
+      url: naverUrl,
+      appLaunchUrls: naverFinanceAppLaunchUrls(naverUrl),
+    });
+  }
 
   if (tossUrl) {
     links.push({
       id: 'toss',
       labelKey: 'moreRefTitleTossSecurities',
       url: tossUrl,
-      appLaunchUrls: tossFinanceAppLaunchUrls(tossUrl),
+      appLaunchUrls: tossFinanceStockAppLaunchUrls(tossUrl),
     });
   }
+
+  links.push(
+    {
+      id: 'yahoo',
+      labelKey: 'quotesYahooShort',
+      url: yahooQuote,
+      appLaunchUrls: yahooFinanceQuoteAppLaunchUrls(yahooQuote),
+    },
+    {
+      id: 'yahoo-earnings',
+      labelKey: 'symbolDetailLinkEarnings',
+      url: yahooEarnings,
+      appLaunchUrls: yahooFinanceQuoteAppLaunchUrls(yahooEarnings),
+    },
+  );
 
   links.push(
     {

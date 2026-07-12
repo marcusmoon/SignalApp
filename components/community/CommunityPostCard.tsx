@@ -9,14 +9,14 @@ import {
 } from '@/constants/feedTypography';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { communitySourceAccent, type CommunitySourceKey } from '@/constants/communitySources';
-import { SourceBadge } from '@/components/signal/SourceBadge';
+import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import type { AppTheme } from '@/constants/theme';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { SignalApiCommunityPost } from '@/integrations/signal-api/types';
 import type { MessageId } from '@/locales/messages';
-import { formatRelativeFromIso } from '@/utils/date';
+import { formatFeedItemTimeLabel } from '@/utils/date';
 
 type Props = {
   item: SignalApiCommunityPost;
@@ -33,7 +33,7 @@ export function CommunityPostCard({ item, sourceLabelId, showSource = true, body
   const { t, locale } = useLocale();
   const accent = useMemo(() => communitySourceAccent(item.source, theme), [item.source, theme]);
   const styles = useMemo(() => makeStyles(theme, scaleFont, feedTypo, accent), [theme, scaleFont, feedTypo, accent]);
-  const timeLabel = item.publishedAt ? formatRelativeFromIso(item.publishedAt, locale) : '—';
+  const timeLabel = formatFeedItemTimeLabel(item.publishedAt, locale);
 
   return (
     <Pressable
@@ -43,14 +43,6 @@ export function CommunityPostCard({ item, sourceLabelId, showSource = true, body
       accessibilityRole="button"
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
       <View pointerEvents="none" style={styles.accentBar} />
-      <View style={styles.metaRow}>
-        {showSource ? (
-          <SourceBadge label={t(sourceLabelId)} accent={accent} variant="news" />
-        ) : null}
-        <View style={[styles.timePill, !showSource && styles.timePillLead]}>
-          <Text style={styles.time}>{timeLabel}</Text>
-        </View>
-      </View>
       <Text style={styles.title} numberOfLines={2}>
         {item.title}
       </Text>
@@ -59,6 +51,23 @@ export function CommunityPostCard({ item, sourceLabelId, showSource = true, body
           {item.body}
         </Text>
       ) : null}
+      <View style={styles.footer}>
+        {showSource ? (
+          <View style={styles.footerLead}>
+            <CommunitySourceMark accent={accent} size={18} />
+            <Text style={styles.sourceLabel} numberOfLines={1}>
+              {t(sourceLabelId)}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.footerLead} />
+        )}
+        {timeLabel && timeLabel !== '—' ? (
+          <Text style={styles.time} numberOfLines={1}>
+            {timeLabel}
+          </Text>
+        ) : null}
+      </View>
     </Pressable>
   );
 }
@@ -102,33 +111,35 @@ function makeStyles(
       backgroundColor: accent.accent,
     },
     pressed: { opacity: 0.88 },
-    metaRow: {
+    footer: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: ft.pad(8),
-      marginBottom: 2,
       minWidth: 0,
-      overflow: 'hidden',
+      marginTop: 2,
     },
-    timePill: {
-      flexShrink: 0,
-      marginLeft: 'auto',
-      paddingHorizontal: ft.pad(8),
-      paddingVertical: ft.pad(3),
-      borderRadius: 999,
-      backgroundColor: theme.bgElevated,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border,
+    footerLead: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
     },
-    timePillLead: {
-      marginLeft: 0,
+    sourceLabel: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: ft.ff(FEED_META_TIME_PX),
+      lineHeight: sf(12),
+      fontWeight: ft.metaWeight,
+      color: theme.textDim,
     },
     time: {
+      flexShrink: 0,
       fontSize: ft.ff(FEED_META_TIME_PX),
-      lineHeight: sf(14),
+      lineHeight: sf(13),
       fontWeight: ft.metaWeight,
-      color: theme.textMuted,
+      color: theme.textDim,
     },
     title: {
       fontSize: ft.ff(FEED_ARTICLE_TITLE_PX),

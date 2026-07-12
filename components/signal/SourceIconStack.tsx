@@ -112,6 +112,26 @@ const markStyles = StyleSheet.create({
   },
 });
 
+export function SourceIcon({
+  sourceName,
+  url,
+  size = 22,
+}: {
+  sourceName: string;
+  url?: string | null;
+  size?: number;
+}) {
+  const { theme } = useSignalTheme();
+  return (
+    <SourceIconMark
+      sourceName={sourceName}
+      url={url}
+      size={size}
+      ringColor={theme.card}
+    />
+  );
+}
+
 export function SourceIconStack({ sources, maxVisible = 4, size = 22 }: Props) {
   const { theme } = useSignalTheme();
   const unique = useMemo(() => dedupeSources(sources), [sources]);

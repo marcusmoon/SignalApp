@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
+import { SourceIcon } from '@/components/signal/SourceIconStack';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { AppTheme } from '@/constants/theme';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
@@ -159,7 +160,12 @@ function MacroHighlightCard({
       <Text style={styles.macroBody}>{item.summary}</Text>
       {item.sourceUrl ? (
         <Pressable onPress={() => void Linking.openURL(item.sourceUrl || '')} hitSlop={6}>
-          <Text style={styles.link}>{item.sourceName || item.sourceUrl}</Text>
+          <View style={styles.macroSourceRow}>
+            {item.sourceName?.trim() ? (
+              <SourceIcon sourceName={item.sourceName} url={item.sourceUrl} size={18} />
+            ) : null}
+            <Text style={styles.link}>{item.sourceName || item.sourceUrl}</Text>
+          </View>
         </Pressable>
       ) : null}
     </View>
@@ -305,6 +311,9 @@ export function MarketBriefingBlock({
                   styles.sourceRow,
                   pressed && item.url && styles.sourceRowPressed,
                 ]}>
+                {item.sourceName?.trim() ? (
+                  <SourceIcon sourceName={item.sourceName} url={item.url} size={24} />
+                ) : null}
                 <View style={styles.sourceMain}>
                   <Text style={styles.sourceTitle}>{item.title}</Text>
                   <Text style={styles.sourceMeta}>
@@ -546,12 +555,19 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontSize: ft.ff(FEED_PREVIEW_BODY_PX),
       fontWeight: ft.emphasisWeight,
       color: theme.green,
+      flex: 1,
+      minWidth: 0,
+    },
+    macroSourceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
       marginTop: 2,
     },
     sourceRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 16,
+      gap: 12,
       borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,

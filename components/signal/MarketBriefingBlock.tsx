@@ -230,12 +230,7 @@ export function MarketBriefingBlock({
           {briefing.overview.length > 0 ? (
             <View style={styles.overviewBlock}>
               {briefing.summary ? <View style={styles.leadDivider} /> : null}
-              <View style={styles.sectionHead}>
-                <View style={styles.sectionAccent} />
-                <Text style={styles.sectionTitle} numberOfLines={1}>
-                  {t('briefingDetailOverview')}
-                </Text>
-              </View>
+              <Text style={styles.overviewKicker}>{t('briefingDetailOverview')}</Text>
               <View style={styles.overviewList}>
                 {briefing.overview.map((line, index) => (
                   <View key={`overview-${index}`} style={styles.overviewRow}>
@@ -360,7 +355,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       marginBottom: 2,
     },
     overviewBlock: {
-      gap: 16,
+      gap: 10,
+    },
+    overviewKicker: {
+      fontSize: ft.ff(12),
+      lineHeight: sf(16),
+      fontWeight: ft.metaWeight,
+      color: theme.textMuted,
+      letterSpacing: 0.1,
     },
     summary: {
       fontSize: ft.signalBodyFont(15),
@@ -400,28 +402,28 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.text,
     },
     overviewList: {
-      gap: 20,
+      gap: 10,
     },
     overviewRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 20,
+      gap: 10,
     },
     overviewDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
+      width: 6,
+      height: 6,
+      borderRadius: 3,
       backgroundColor: theme.green,
-      marginTop: sf(9),
+      marginTop: sf(8),
       flexShrink: 0,
     },
     overviewText: {
       flex: 1,
       minWidth: 0,
-      fontSize: ft.signalBodyFont(16),
-      lineHeight: sf(25),
+      fontSize: ft.signalBodyFont(15),
+      lineHeight: sf(23),
       fontWeight: ft.signalBodyWeight,
-      color: theme.text,
+      color: theme.textDim,
     },
 
     listRowBordered: {

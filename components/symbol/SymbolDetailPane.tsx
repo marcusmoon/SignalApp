@@ -5,6 +5,7 @@
  * - ticker prop 변경 시 자동으로 데이터 재조회
  */
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import * as WebBrowser from 'expo-web-browser';
 import { type Href, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -12,18 +13,14 @@ import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
-import { NewsCard } from '@/components/signal/NewsCard';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
-import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
 import {
   COMFORT_GAP_LG,
   COMFORT_GAP_PAGE,
-  COMFORT_GAP_SM,
   COMFORT_PADDING_ROW_V,
 } from '@/constants/comfortDensity';
-import { FEED_BADGE_PX } from '@/constants/feedTypography';
 import type { AppTheme } from '@/constants/theme';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
@@ -129,6 +126,12 @@ function disclosureProviderLabel(item: SignalApiDisclosure): string {
   if (item.provider === 'sec') return 'SEC';
   if (item.provider === 'dart') return 'DART';
   return String(item.provider || '—').toUpperCase();
+}
+
+function disclosureTrailLabel(item: SignalApiDisclosure): string {
+  const provider = disclosureProviderLabel(item);
+  const form = item.formType?.trim();
+  return [provider, form].filter(Boolean).join(' · ');
 }
 
 function buildSparkPoints(closes: number[], width: number, height: number): SparkPoint[] {
@@ -354,37 +357,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(19),
       fontWeight: ft.bodyWeight,
       color: theme.textDim,
-    },
-    disclosurePillRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: COMFORT_GAP_SM,
-    },
-    disclosureProviderPill: {
-      alignSelf: 'flex-start',
-      borderRadius: 999,
-      overflow: 'hidden',
-      paddingHorizontal: 6,
-      paddingVertical: 1,
-      backgroundColor: theme.warningDim,
-      color: theme.warning,
-      fontSize: ft.ff(FEED_BADGE_PX),
-      lineHeight: sf(13),
-      fontWeight: ft.emphasisWeight,
-    },
-    disclosureFormPill: {
-      alignSelf: 'flex-start',
-      borderRadius: 999,
-      overflow: 'hidden',
-      paddingHorizontal: 6,
-      paddingVertical: 1,
-      backgroundColor: theme.bgElevated,
-      color: theme.textMuted,
-      fontSize: ft.ff(FEED_BADGE_PX),
-      lineHeight: sf(13),
-      fontWeight: ft.emphasisWeight,
-      maxWidth: 120,
     },
   });
 }
@@ -658,22 +630,25 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
           <View style={styles.section}>
             <HomeSectionHeader title={t('tabNews')} showChevron={false} />
             {newsItems.length > 0 ? (
-              newsItems.map((item, index) => {
-                const edges = {
-                  isFirst: index === 0,
-                  isLast: index === newsItems.length - 1,
-                };
-                return (
-                  <View key={item.id} style={groupedFeedRowShell(theme, edges)}>
-                    <NewsCard
-                      layout="grouped"
-                      item={item}
-                      compactMeta
-                      maxHashtagsToShow={0}
+              <View style={[styles.feedCard, styles.feedCardCompact]}>
+                <View style={styles.issueGroupList}>
+                  {newsItems.map((item, index) => (
+                    <HomeDigestFeedRow
+                      key={item.id}
+                      title={item.titleKo}
+                      titleLines={2}
+                      timeLabel={item.timeLabel}
+                      trailText={item.source?.trim() || null}
+                      bordered={index < newsItems.length - 1}
+                      onPress={
+                        item.url?.trim()
+                          ? () => void WebBrowser.openBrowserAsync(item.url.trim())
+                          : undefined
+                      }
                     />
-                  </View>
-                );
-              })
+                  ))}
+                </View>
+              </View>
             ) : (
               <View style={styles.emptyCard}>
                 <Text style={styles.emptyText}>{t('symbolDetailNoNews')}</Text>
@@ -699,18 +674,7 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
                       summary={item.summary}
                       summaryLines={2}
                       timeLabel={formatFeedItemTimeLabel(item.filedAt, locale)}
-                      badges={
-                        <View style={styles.disclosurePillRow}>
-                          <Text style={styles.disclosureProviderPill}>
-                            {disclosureProviderLabel(item)}
-                          </Text>
-                          {item.formType ? (
-                            <Text style={styles.disclosureFormPill} numberOfLines={1}>
-                              {item.formType}
-                            </Text>
-                          ) : null}
-                        </View>
-                      }
+                      trailText={disclosureTrailLabel(item)}
                       bordered={index < disclosureRows.length - 1}
                       onPress={() =>
                         router.push(`/disclosures/${encodeURIComponent(item.id)}` as Href)

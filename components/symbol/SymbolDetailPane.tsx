@@ -44,14 +44,12 @@ import type {
   SignalApiStockProfile,
 } from '@/integrations/signal-api/types';
 import { signalMarketQuoteHasValidPrice } from '@/utils/signalMarketQuote';
-import { buildSignalScore } from '@/domain/signals';
 import { loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { NewsItem } from '@/types/signal';
 import { hasSignalApi } from '@/services/env';
 import { addDays, formatFeedItemTimeLabel } from '@/utils/date';
-import { signalReasonLabel } from '@/utils/signalDisplay';
-import { openNaverFinanceStock } from '@/utils/naverFinance';
-import { openYahooFinanceQuote } from '@/utils/yahooFinance';
+import { openExternalLink } from '@/utils/openExternalLink';
+import { buildSymbolExternalLinks } from '@/utils/symbolExternalLinks';
 
 // ─────────────────────────────────────────────
 // Types
@@ -279,26 +277,52 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     chartLabel: { fontSize: sf(11), fontWeight: '800', color: theme.textDim },
     chartValue: { fontSize: sf(12), fontWeight: '700', color: theme.textMuted },
     chartEmpty: { fontSize: sf(12), color: theme.textMuted, lineHeight: sf(18) },
-    actionRow: { flexDirection: 'row', gap: 16, marginTop: 14 },
-    actionBtn: {
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-      borderRadius: 8,
-      backgroundColor: theme.bgElevated,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.greenBorder,
+    heroActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      flexShrink: 0,
     },
-    actionBtnRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    actionBtnText: { fontSize: sf(12), fontWeight: '700', color: theme.green },
-    actionBtnAlt: {
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-      borderRadius: 8,
+    watchBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
       backgroundColor: theme.bgElevated,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.border,
     },
-    actionBtnTextAlt: { color: theme.textMuted },
+    watchBtnActive: {
+      backgroundColor: theme.greenDim,
+      borderColor: theme.greenBorder,
+    },
+    linkChipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    linkChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 999,
+      backgroundColor: theme.bgElevated,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    linkChipPressed: {
+      opacity: 0.78,
+      backgroundColor: theme.greenDim,
+    },
+    linkChipText: {
+      fontSize: sf(11),
+      lineHeight: sf(14),
+      fontWeight: '700',
+      color: theme.green,
+    },
     errorBox: {
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
@@ -349,40 +373,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.bodyWeight,
       color: theme.textDim,
     },
-    signalOverviewHead: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      alignItems: 'flex-start',
-      gap: COMFORT_GAP_SM,
-    },
-    signalOverviewSpacer: {
-      flex: 1,
-    },
-    signalScoreBadge: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: theme.greenDim,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      minWidth: 56,
-    },
-    signalScoreBadgeHot: { backgroundColor: '#3D1414' },
-    signalScoreBadgeQuiet: { backgroundColor: theme.bgElevated },
-    signalScoreNum: { fontSize: sf(22), fontWeight: '900', color: theme.green },
-    signalScoreNumHot: { color: '#FF6B6B' },
-    signalScoreNumQuiet: { color: theme.textMuted },
-    signalScoreLabel: { fontSize: sf(10), fontWeight: '700', color: theme.green, marginTop: 1 },
-    signalScoreLabelHot: { color: '#FF6B6B' },
-    signalStatGrid: {
-      flexDirection: 'row',
-      gap: 20,
-      marginBottom: 10,
-    },
-    signalStat: { flex: 1, alignItems: 'center' },
-    signalStatLabel: { fontSize: sf(11), color: theme.textDim, fontWeight: '600', marginBottom: 3 },
-    signalStatValue: { fontSize: sf(16), fontWeight: '800', color: theme.text },
-    signalReasonLine: { fontSize: sf(11), color: theme.textMuted, lineHeight: sf(16) },
     disclosurePillRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -443,11 +433,11 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
   const [quote, setQuote] = useState<SignalApiMarketQuote | null>(null);
   const [candles, setCandles] = useState<SignalApiStockCandles | null>(null);
   const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
-  const [signalNews, setSignalNews] = useState<SignalApiNewsItem[]>([]);
   const [disclosures, setDisclosures] = useState<SignalApiDisclosure[]>([]);
   const [watching, setWatching] = useState(false);
 
   const isKorea = useMemo(() => isKoreaSymbol(ticker), [ticker]);
+  const externalLinks = useMemo(() => buildSymbolExternalLinks(ticker), [ticker]);
   const displayPrice =
     typeof quote?.currentPrice === 'number' && Number.isFinite(quote.currentPrice)
       ? quote.currentPrice
@@ -475,7 +465,6 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
       setQuote(null);
       setCandles(null);
       setNewsItems([]);
-      setSignalNews([]);
       setDisclosures([]);
       setLoading(false);
       return;
@@ -502,7 +491,6 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
       setProfile(nextProfile);
       setQuote(nextQuote);
       setCandles(nextCandles);
-      setSignalNews(companyNews);
       setNewsItems(companyNews.map((a) => signalNewsToNewsItem(a, locale)));
       setDisclosures(disclosureRows);
     } catch (e) {
@@ -519,7 +507,6 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
     setQuote(null);
     setCandles(null);
     setNewsItems([]);
-    setSignalNews([]);
     setDisclosures([]);
     void load();
   }, [load]);
@@ -551,20 +538,6 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
   const chartColor =
     displayChange != null ? (displayChange >= 0 ? theme.green : '#E06D6D') : theme.green;
 
-  const symbolVsSma20Pct = useMemo(() => {
-    if (displayPrice == null || chartCloses.length < 20) return null;
-    const last20 = chartCloses.slice(-20);
-    const sma20 = last20.reduce((sum, close) => sum + close, 0) / last20.length;
-    const last = Number(displayPrice);
-    if (!Number.isFinite(sma20) || sma20 === 0 || !Number.isFinite(last)) return null;
-    return ((last - sma20) / sma20) * 100;
-  }, [chartCloses, displayPrice]);
-
-  const symbolSignal = useMemo(
-    () => buildSignalScore({ symbol: ticker, quote, news: signalNews, vsSmaPct: symbolVsSma20Pct }),
-    [signalNews, quote, symbolVsSma20Pct, ticker],
-  );
-
   const chartRangeLabel = useMemo(() => {
     if (chartCloses.length < 2) return t('symbolDetailChartRange1M');
     return `${formatMarketPrice(chartCloses[0]!, isKorea)} → ${formatMarketPrice(chartCloses[chartCloses.length - 1]!, isKorea)}`;
@@ -582,13 +555,6 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
     if (loading || !onDisplayNameResolved) return;
     onDisplayNameResolved(displayCompanyName);
   }, [displayCompanyName, loading, onDisplayNameResolved]);
-
-  const signalLevelLabel =
-    symbolSignal.level === 'hot'
-      ? t('symbolDetailSignalLevelHot')
-      : symbolSignal.level === 'watch'
-        ? t('symbolDetailSignalLevelWatch')
-        : t('symbolDetailSignalLevelQuiet');
 
   const disclosureRows = disclosures.slice(0, 5);
   const openAllDisclosures = useCallback(() => {
@@ -614,6 +580,26 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
                 {isKorea && ticker ? (
                   <Text style={styles.companyMeta}>{ticker}</Text>
                 ) : null}
+              </View>
+              <View style={styles.heroActions}>
+                <Pressable
+                  onPress={() => void toggleWatch()}
+                  style={({ pressed }) => [
+                    styles.watchBtn,
+                    watching && styles.watchBtnActive,
+                    pressed && { opacity: 0.8 },
+                  ]}
+                  hitSlop={6}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    watching ? t('symbolDetailWatchRemove') : t('symbolDetailWatchAdd')
+                  }>
+                  <FontAwesome
+                    name={watching ? 'star' : 'star-o'}
+                    size={14}
+                    color={watching ? theme.green : theme.textMuted}
+                  />
+                </Pressable>
               </View>
             </View>
             <View style={styles.priceRow}>
@@ -664,28 +650,32 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
                 <Text style={styles.chartEmpty}>{t('symbolDetailNoChart')}</Text>
               </View>
             )}
-            <View style={styles.actionRow}>
-              <Pressable
-                onPress={() =>
-                  void (isKorea
-                    ? openNaverFinanceStock(ticker)
-                    : openYahooFinanceQuote(ticker, 'stock'))
-                }
-                style={styles.actionBtn}>
-                <View style={styles.actionBtnRow}>
-                  <FontAwesome name="line-chart" size={12} color={theme.green} />
-                  <Text style={styles.actionBtnText}>
-                    {isKorea ? t('quotesNaverShort') : t('symbolDetailYahooOpen')}
-                  </Text>
-                </View>
-              </Pressable>
-              <Pressable onPress={() => void toggleWatch()} style={styles.actionBtnAlt}>
-                <Text style={[styles.actionBtnText, styles.actionBtnTextAlt]}>
-                  {watching ? t('symbolDetailWatchRemove') : t('symbolDetailWatchAdd')}
-                </Text>
-              </Pressable>
-            </View>
           </View>
+
+          {externalLinks.length > 0 ? (
+            <View style={styles.section}>
+              <HomeSectionHeader title={t('symbolDetailLinksTitle')} showChevron={false} />
+              <View style={styles.feedCard}>
+                <View style={styles.linkChipRow}>
+                  {externalLinks.map((link) => (
+                    <Pressable
+                      key={link.id}
+                      onPress={() =>
+                        void openExternalLink(link.url, link.appLaunchUrls, {
+                          preferInAppBrowser: link.openInAppBrowser,
+                        })
+                      }
+                      style={({ pressed }) => [styles.linkChip, pressed && styles.linkChipPressed]}
+                      accessibilityRole="link"
+                      accessibilityLabel={t(link.labelKey)}>
+                      <Text style={styles.linkChipText}>{t(link.labelKey)}</Text>
+                      <FontAwesome name="external-link" size={9} color={theme.green} />
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            </View>
+          ) : null}
 
           {error ? (
             <View style={styles.errorBox}>
@@ -694,64 +684,7 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
           ) : null}
 
           <View style={styles.section}>
-            <HomeSectionHeader
-              title={t('symbolDetailSectionTodaySignal')}
-              subtitle={signalLevelLabel}
-              showChevron={false}
-            />
-            <View style={styles.feedCard}>
-              <View style={styles.signalOverviewHead}>
-                <View style={styles.signalOverviewSpacer} />
-                <View
-                  style={[
-                    styles.signalScoreBadge,
-                    symbolSignal.level === 'hot' && styles.signalScoreBadgeHot,
-                    symbolSignal.level === 'quiet' && styles.signalScoreBadgeQuiet,
-                  ]}>
-                  <Text
-                    style={[
-                      styles.signalScoreNum,
-                      symbolSignal.level === 'hot' && styles.signalScoreNumHot,
-                      symbolSignal.level === 'quiet' && styles.signalScoreNumQuiet,
-                    ]}>
-                    {symbolSignal.score}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.signalScoreLabel,
-                      symbolSignal.level === 'hot' && styles.signalScoreLabelHot,
-                    ]}>
-                    {t('symbolDetailSignalScore')}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.signalStatGrid}>
-                <View style={styles.signalStat}>
-                  <Text style={styles.signalStatLabel}>{t('symbolDetailSignalNews')}</Text>
-                  <Text style={styles.signalStatValue}>{newsItems.length}</Text>
-                </View>
-                <View style={styles.signalStat}>
-                  <Text style={styles.signalStatLabel}>{t('symbolDetailSignalMove')}</Text>
-                  <Text
-                    style={[
-                      styles.signalStatValue,
-                      quote ? quoteChange.styleForQuote(quote) : null,
-                    ]}>
-                    {quote ? formatPct(Number(quote.changePercent ?? 0)) : '—'}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.signalReasonLine}>
-                {(symbolSignal.reasons.length > 0
-                  ? symbolSignal.reasons.slice(0, 3).map((r) => signalReasonLabel(r, t))
-                  : [t('signalReasonWatch')]
-                ).join(' · ')}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <HomeSectionHeader title={t('symbolDetailSectionNews')} showChevron={false} />
+            <HomeSectionHeader title={t('tabNews')} showChevron={false} />
             {newsItems.length > 0 ? (
               newsItems.map((item, index) => {
                 const edges = {
@@ -778,7 +711,7 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
 
           <View style={styles.section}>
             <HomeSectionHeader
-              title={t('symbolDetailSectionDisclosures')}
+              title={t('screenDisclosures')}
               onPress={disclosureRows.length > 0 ? openAllDisclosures : undefined}
               accessibilityLabel={t('symbolDetailDisclosuresAll')}
               showChevron={disclosureRows.length > 0}

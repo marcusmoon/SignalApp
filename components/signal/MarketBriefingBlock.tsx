@@ -200,7 +200,9 @@ function SectorRow({
   return (
     <View style={[styles.sectorRow, bordered && styles.listRowBordered]}>
       <Text style={[styles.sectorTrend, { color }]}>{item.trend}</Text>
-      <Text style={styles.sectorName}>{item.name}</Text>
+      <Text style={styles.sectorName} numberOfLines={1}>
+        {item.name}
+      </Text>
       <Text style={styles.sectorSummary} numberOfLines={2}>{item.summary}</Text>
     </View>
   );
@@ -393,7 +395,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minWidth: 0,
       flexShrink: 1,
       fontSize: ft.signalTitleFont(16),
-      fontWeight: ft.signalTitleWeight,
+      fontWeight: ft.titleWeight,
       letterSpacing: -0.15,
       color: theme.text,
     },
@@ -429,7 +431,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     sectorRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      gap: 16,
+      gap: 10,
       paddingVertical: 5,
     },
     sectorTrend: {
@@ -437,12 +439,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.titleWeight,
       width: 20,
       textAlign: 'center',
+      flexShrink: 0,
     },
     sectorName: {
       fontSize: ft.ff(13),
       fontWeight: ft.emphasisWeight,
       color: theme.text,
-      width: 64,
+      flexShrink: 0,
     },
     sectorSummary: {
       flex: 1,

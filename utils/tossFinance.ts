@@ -33,23 +33,29 @@ export function tossInvestAndroidIntentUrl(webUrl: string): string {
   );
 }
 
-/** 더보기 숏링크 등 토스증권 홈 — iOS는 tossinvest.com 유니버설 링크 */
-export function tossFinanceAppLaunchUrls(webUrl: string): string[] {
+const TOSS_APP_LAUNCH_URLS = ['supertoss://invest', 'supertoss://'] as const;
+
+/**
+ * 종목·더보기 — 앱 스킴·Android intent만 시도. https는 폴백에서만 연다.
+ * iOS launch 목록에 tossinvest.com을 넣으면 Safari가 먼저 열려 웹으로 보이는 경우가 많다.
+ */
+export function tossFinanceStockAppLaunchUrls(webUrl: string): string[] {
+  if (Platform.OS === 'android') {
+    return [tossInvestAndroidIntentUrl(webUrl), ...TOSS_APP_LAUNCH_URLS];
+  }
+  if (Platform.OS === 'ios') {
+    return [...TOSS_APP_LAUNCH_URLS];
+  }
+  return [webUrl];
+}
+
+export function tossFinanceHomeAppLaunchUrls(webUrl: string): string[] {
   return tossFinanceStockAppLaunchUrls(webUrl);
 }
 
-/**
- * 종목 상세 — iOS·iPad는 tossinvest.com 유니버설 링크만 사용.
- * generic `supertoss://`는 앱 홈만 열려 종목 페이지로 가지 않음.
- */
-export function tossFinanceStockAppLaunchUrls(webUrl: string): string[] {
-  if (Platform.OS === 'ios') {
-    return [webUrl];
-  }
-  if (Platform.OS === 'android') {
-    return [tossInvestAndroidIntentUrl(webUrl), webUrl];
-  }
-  return [webUrl];
+/** @deprecated Use tossFinanceStockAppLaunchUrls */
+export function tossFinanceAppLaunchUrls(webUrl: string): string[] {
+  return tossFinanceStockAppLaunchUrls(webUrl);
 }
 
 export async function openTossFinanceStock(symbol: string): Promise<void> {

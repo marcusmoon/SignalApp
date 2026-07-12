@@ -58,6 +58,11 @@ export function yahooFinanceQuoteAppLaunchUrls(webUrl: string): string[] {
   return [webUrl];
 }
 
+/** 더보기 Yahoo — 종목 상세와 동일(유니버설 링크로 앱 연동) */
+export function yahooFinanceHomeAppLaunchUrls(webUrl: string): string[] {
+  return yahooFinanceQuoteAppLaunchUrls(webUrl);
+}
+
 /**
  * Yahoo Finance 앱 우선(공통 `openExternalLink`), 실패 시 시스템 브라우저 → 그래도 실패하면 인앱 브라우저.
  */

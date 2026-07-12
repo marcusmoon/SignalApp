@@ -5,14 +5,10 @@ export type OpenExternalLinkOptions = {
   /** 항상 인앱 브라우저(expo-web-browser)로 연다. */
   preferInAppBrowser?: boolean;
   /**
-   * 마지막에 `Linking.openURL(webUrl)`까지 실패하면 인앱 브라우저로 연다.
-   * (야후 종목, 유튜브 영상 등 — 퀵 링크는 보통 false)
+   * 앱·유니버설 링크 시도 후에도 실패하면 인앱 브라우저로 연다.
+   * 네이티브(iOS·iPad·Android) 앱 우선 링크의 기본 폴백.
    */
-  /**
-   * 앱 스킴 시도 후 항상 인앱 브라우저로 폴백 (더보기 숏링크).
-   * https 유니버설 링크만으로는 iOS에서 조용히 실패하는 경우가 있어 WebBrowser로 보장한다.
-   */
-  preferInAppBrowserAfterAppAttempts?: boolean;
+  preferInAppBrowserOnLinkingFailure?: boolean;
 };
 
 function toLaunchList(launchUrls?: string | string[]): string[] {
@@ -210,7 +206,6 @@ export async function openExternalLink(
 ): Promise<void> {
   const list = toLaunchList(appLaunchUrls);
   const preferInApp = options?.preferInAppBrowser === true;
-  const preferInAppAfterApps = options?.preferInAppBrowserAfterAppAttempts === true;
   const preferBrowserOnFailure = options?.preferInAppBrowserOnLinkingFailure === true;
 
   if (Platform.OS === 'web') {
@@ -228,6 +223,7 @@ export async function openExternalLink(
       continue;
     }
     if (isHttpOrHttpsUrl(url)) {
+      if (await tryOpen(url)) return;
       try {
         if (await Linking.canOpenURL(url)) {
           await Linking.openURL(url);
@@ -236,7 +232,6 @@ export async function openExternalLink(
       } catch {
         /* 유니버설 링크 등 */
       }
-      if (await tryOpen(url)) return;
       continue;
     }
     try {
@@ -260,9 +255,5 @@ export async function openExternalLink(
     }
   }
 
-  await openWebUrlWithOptionalInApp(
-    webUrl,
-    preferInApp || preferInAppAfterApps,
-    preferBrowserOnFailure && !preferInAppAfterApps,
-  );
+  await openWebUrlWithOptionalInApp(webUrl, preferInApp, preferBrowserOnFailure);
 }

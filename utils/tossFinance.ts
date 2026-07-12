@@ -1,7 +1,5 @@
-import { Platform } from 'react-native';
-
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
-import { orderAppLaunchUrlsForPlatform } from '@/utils/openExternalLink';
+import { nativeAppLaunchUrls } from '@/utils/externalLinkLaunch';
 
 function normalizeKrxCode(symbol: string): string | null {
   const digits = String(symbol || '').replace(/\D/g, '');
@@ -36,30 +34,22 @@ export function tossInvestAndroidIntentUrl(webUrl: string): string {
 
 const TOSS_APP_LAUNCH_URLS = ['supertoss://invest', 'supertoss://'] as const;
 
-function tossIosLaunchUrls(webUrl: string): string[] {
-  return orderAppLaunchUrlsForPlatform([...TOSS_APP_LAUNCH_URLS], webUrl);
-}
-
 /**
- * 종목·더보기 — iOS는 supertoss 스킴 후 tossinvest.com 유니버설 링크.
- * Android는 intent(경로 포함)·스킴 순.
+ * 종목·더보기 — iOS·iPad: supertoss → 유니버설 링크 / Android: intent·스킴 / 웹: undefined
  */
-export function tossFinanceStockAppLaunchUrls(webUrl: string): string[] {
-  if (Platform.OS === 'android') {
-    return [tossInvestAndroidIntentUrl(webUrl), ...TOSS_APP_LAUNCH_URLS];
-  }
-  if (Platform.OS === 'ios') {
-    return tossIosLaunchUrls(webUrl);
-  }
-  return [webUrl];
+export function tossFinanceStockAppLaunchUrls(webUrl: string): string[] | undefined {
+  return nativeAppLaunchUrls(webUrl, {
+    ios: TOSS_APP_LAUNCH_URLS,
+    android: [tossInvestAndroidIntentUrl(webUrl), ...TOSS_APP_LAUNCH_URLS],
+  });
 }
 
-export function tossFinanceHomeAppLaunchUrls(webUrl: string): string[] {
+export function tossFinanceHomeAppLaunchUrls(webUrl: string): string[] | undefined {
   return tossFinanceStockAppLaunchUrls(webUrl);
 }
 
 /** @deprecated Use tossFinanceStockAppLaunchUrls */
-export function tossFinanceAppLaunchUrls(webUrl: string): string[] {
+export function tossFinanceAppLaunchUrls(webUrl: string): string[] | undefined {
   return tossFinanceStockAppLaunchUrls(webUrl);
 }
 

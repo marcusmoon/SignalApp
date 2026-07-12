@@ -90,13 +90,19 @@ type ExternalLinkDescriptor = {
 };
 ```
 
-### 열기 정책 (3가지)
+### 열기 정책 (플랫폼별)
 
-| 조건 | 동작 |
-|---|---|
-| `openInAppBrowser: true` (且 `appLaunchUrls` 없음) | **항상** `expo-web-browser` (Signal 앱 안) |
-| `appLaunchUrls` 있음 | ① 앱 스킴·intent·유니버설 링크 순 시도 → ② `Linking.openURL(webUrl)` (Safari/Chrome 또는 앱) → ③ 실패 시 인앱 브라우저 |
-| 웹 플랫폼 | 항상 인앱 브라우저 |
+| 런타임 | 조건 | 동작 |
+|---|---|---|
+| **웹** | `openInAppBrowser: true` | Signal 인앱 브라우저(오버레이) |
+| **웹** | 앱 연동 링크 (`appLaunchUrls`) | **새 탭** → 실패 시 인앱 브라우저 |
+| **iPhone·iPad** (`ios`) | `openInAppBrowser: true` | 인앱 브라우저 |
+| **iPhone·iPad** | `appLaunchUrls` 있음 | 스킴(`canOpenURL` 검증) → http(s) 유니버설 링크 → `Linking` → 인앱 폴백 |
+| **Android** | `appLaunchUrls` 있음 | intent → 스킴 → https → `Linking` → 인앱 폴백 |
+
+iPad는 React Native에서 `Platform.OS === 'ios'`로 iPhone과 동일 경로를 탄다.
+
+공통 유틸: `utils/externalLinkPlatform.ts`, `utils/externalLinkLaunch.ts`, `utils/openExternalLink.ts`
 
 ### 링크 정의 위치
 
@@ -108,16 +114,14 @@ type ExternalLinkDescriptor = {
 | 유튜브 영상 | `utils/openYoutube.ts` | `youtubeWatchAppLaunchUrls` |
 | 뉴스·공시 원문 | `NewsCard`, `disclosures` | 인앱 브라우저 직접 (피드 원문 전용) |
 
-### 서비스별 launch 규칙 (iOS·iPad)
+### 서비스별 launch 규칙 (네이티브)
 
-| 서비스 | launch | 비고 |
-|---|---|---|
-| Yahoo (종목·홈) | `finance.yahoo.com` 유니버설 링크 | `yfinance://`는 홈만 열림 |
-| 네이버 | `naversearchapp://inappbrowser?url=…` + 중계 URL | https는 launch 목록에 넣지 않음 |
-| 토스 **종목·홈** | iOS: `supertoss://` → `tossinvest.com` 유니버설 링크 | iOS는 `canOpenURL`로 스킴 검증 |
-| Upbit·Binance | 앱 스킴 (+ Android intent) | |
-
-Android 종목 URL은 `intent://…#Intent;package=…`로 경로 포함.
+| 서비스 | iPhone·iPad | Android | 웹 |
+|---|---|---|---|
+| Yahoo | `finance.yahoo.com` 유니버설 링크 | intent + https | webUrl만 (새 탭) |
+| 네이버 | `naversearchapp://inappbrowser` + 중계 http | intent + 스킴 | webUrl만 |
+| 토스 | `supertoss://` → 유니버설 링크 | intent + 스킴 | webUrl만 |
+| Upbit·Binance | 스킴 → 유니버설 링크 | intent + 스킴 | webUrl만 |
 
 ### 새 외부 링크 추가 절차
 

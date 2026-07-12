@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
+import { canAttemptNativeAppLaunch } from '@/utils/externalLinkPlatform';
 import {
   yahooFinanceAndroidIntentUrl,
 } from '@/utils/openExternalLink';
@@ -47,25 +48,21 @@ export function yahooFinanceQuoteUrl(
 }
 
 /**
- * 종목 상세·리스트 — iOS·iPad는 finance.yahoo.com 유니버설 링크만 사용.
- * generic `yfinance://`는 앱 홈만 열려 해당 종목으로 가지 않음.
+ * 종목 상세·리스트·더보기 — iOS·iPad: 유니버설 링크 / Android: intent / 웹: undefined
  */
-export function yahooFinanceQuoteAppLaunchUrls(webUrl: string): string[] {
+export function yahooFinanceQuoteAppLaunchUrls(webUrl: string): string[] | undefined {
+  if (!canAttemptNativeAppLaunch()) return undefined;
   if (Platform.OS === 'ios') return [webUrl];
   if (Platform.OS === 'android') {
     return [yahooFinanceAndroidIntentUrl(webUrl), webUrl];
   }
-  return [webUrl];
+  return undefined;
 }
 
-/** 더보기 Yahoo — 종목 상세와 동일(유니버설 링크로 앱 연동) */
-export function yahooFinanceHomeAppLaunchUrls(webUrl: string): string[] {
+export function yahooFinanceHomeAppLaunchUrls(webUrl: string): string[] | undefined {
   return yahooFinanceQuoteAppLaunchUrls(webUrl);
 }
 
-/**
- * Yahoo Finance 앱 우선(공통 `openExternalLink`), 실패 시 시스템 브라우저 → 그래도 실패하면 인앱 브라우저.
- */
 export async function openYahooFinanceQuote(
   symbol: string,
   mode: 'coin' | 'stock',

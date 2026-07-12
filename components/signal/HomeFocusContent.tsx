@@ -25,7 +25,6 @@ import {
 } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { AiBadge } from '@/components/signal/AiBadge';
-import { ExternalLinkGrid } from '@/components/common/ExternalLinkGrid';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
 import {
@@ -35,7 +34,7 @@ import {
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
-import { COMMUNITY_SOURCES, communitySourceAccent, type CommunitySourceKey } from '@/constants/communitySources';
+import { COMMUNITY_SOURCES, communitySourceAccent } from '@/constants/communitySources';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
@@ -578,19 +577,6 @@ export function HomeFocusContent({
     router.navigate('/(tabs)/board' as never);
   }, [router]);
 
-  const openBoardSource = useCallback(
-    (source: CommunitySourceKey) => {
-      if (ipadNav.isAvailable) {
-        ipadNav.showTabs();
-      }
-      router.navigate({
-        pathname: '/(tabs)/board',
-        params: { source },
-      } as never);
-    },
-    [ipadNav, router],
-  );
-
   const openSymbolDetail = useCallback(
     (symbol: string) => {
       const trimmed = symbol.trim().toUpperCase();
@@ -877,32 +863,8 @@ export function HomeFocusContent({
   const renderBoardCard = useCallback(
     () => (
       <View style={[styles.heroCard, styles.heroCardCompact]}>
-        <ExternalLinkGrid
-          items={COMMUNITY_SOURCES}
-          horizontalInset={16}
-          gap={8}
-          columnOptions={{ preferredColumns: 2, maxColumns: 2, minCellWidth: 120 }}
-          keyExtractor={(source) => source}
-          renderItem={(source) => {
-            const labelId = communitySourceLabelId(source);
-            const accent = communitySourceAccent(source, theme);
-            return (
-              <Pressable
-                onPress={() => openBoardSource(source)}
-                accessibilityRole="button"
-                accessibilityLabel={t(labelId)}
-                style={({ pressed }) => [styles.boardShortcutTile, pressed && styles.pressed]}>
-                <CommunitySourceMark accent={accent} size={22} style={styles.boardSourceMark} />
-                <Text style={styles.boardShortcutLabel} numberOfLines={1}>
-                  {t(labelId)}
-                </Text>
-                <FontAwesome name="chevron-right" size={10} color={theme.textDim} />
-              </Pressable>
-            );
-          }}
-        />
         {boardPosts.length > 0 ? (
-          <View style={[styles.issueGroupList, styles.boardPostList]}>
+          <View style={styles.issueGroupList}>
             {boardPosts.map((post, index) => {
               const sourceLabel = t(communitySourceLabelId(post.source));
               const sourceAccent = communitySourceAccent(post.source, theme);
@@ -933,7 +895,7 @@ export function HomeFocusContent({
         )}
       </View>
     ),
-    [boardPosts, locale, openBoardSource, router, styles, t, theme],
+    [boardPosts, locale, router, styles, t, theme],
   );
 
   return (
@@ -1303,32 +1265,6 @@ function makeStyles(
       fontWeight: ft.bodyWeight,
       color: theme.textDim,
       marginTop: 4,
-    },
-    boardPostList: {
-      marginTop: 8,
-      paddingTop: 8,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.border,
-    },
-    boardShortcutTile: {
-      minHeight: 44,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      borderRadius: UI_RADIUS_CARD,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.colorScheme === 'dark' ? theme.bgElevated : theme.card,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-    },
-    boardShortcutLabel: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: ft.ff(FEED_BODY_PX),
-      lineHeight: sf(17),
-      fontWeight: ft.emphasisWeight,
-      color: theme.text,
     },
     boardFooterLead: {
       flex: 1,

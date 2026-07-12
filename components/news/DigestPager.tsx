@@ -28,6 +28,15 @@ import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { AppLocale } from '@/locales/messages';
 import { formatFeedItemTimeLabel } from '@/utils/date';
 
+function digestSourceIconEntry(
+  sourceName: string | null | undefined,
+  url?: string | null,
+): SourceIconEntry[] {
+  const name = String(sourceName || '').trim();
+  if (!name) return [];
+  return [{ sourceName: name, url }];
+}
+
 function digestSourceRows(digest: NewsDigestItem, locale: AppLocale): DigestSourceSheetRow[] {
   if (digest.sourceRefs.length > 0) {
     return digest.sourceRefs.map((ref, index) => ({
@@ -36,11 +45,13 @@ function digestSourceRows(digest: NewsDigestItem, locale: AppLocale): DigestSour
       subtitle: ref.sourceName || undefined,
       url: ref.url,
       timeLabel: ref.publishedAt ? formatFeedItemTimeLabel(ref.publishedAt, locale) : null,
+      sourceEntries: digestSourceIconEntry(ref.sourceName, ref.url),
     }));
   }
   return digest.sources.map((src, index) => ({
     key: `${digest.id}-src-${index}`,
     title: src,
+    sourceEntries: digestSourceIconEntry(src),
   }));
 }
 

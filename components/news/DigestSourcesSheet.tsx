@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
+import type { SourceIconEntry } from '@/components/signal/SourceIconStack';
 import {
   COMFORT_GAP_LG,
   COMFORT_GAP_SM,
@@ -22,6 +23,8 @@ export type DigestSourceSheetRow = {
   subtitle?: string;
   url?: string | null;
   timeLabel?: string | null;
+  /** 출처명 앞 파비콘 — 다이제스트 카드·목록과 동일 */
+  sourceEntries?: SourceIconEntry[];
 };
 
 type Props = {
@@ -96,6 +99,7 @@ export function DigestSourcesSheet({
                           titleLines={3}
                           trailText={row.subtitle?.trim() || null}
                           timeLabel={row.timeLabel?.trim() || null}
+                          sourceEntries={row.sourceEntries}
                           bordered={index < rows.length - 1}
                           onPress={
                             refUrl

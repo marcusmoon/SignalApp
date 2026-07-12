@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
+import { nativeAppLaunchUrls } from '@/utils/externalLinkLaunch';
 import { canAttemptNativeAppLaunch, usesIosAppLinkPolicy } from '@/utils/externalLinkPlatform';
 import {
   yahooFinanceAndroidIntentUrl,
@@ -48,11 +49,42 @@ export function yahooFinanceQuoteUrl(
 }
 
 /**
- * 종목 상세·리스트·더보기 — iOS·iPad: 유니버설 링크 / Android: intent / 웹: undefined
+ * iOS·iPad 네이티브 — Linking.openURL(https)는 Safari로만 열리므로 커스텀 스킴만 시도.
+ * 경로가 있으면 yfinance/yahoo 스킴에 붙여 본다(미지원 시 앱 홈으로라도 이동).
+ */
+export function yahooFinanceIosAppLaunchUrls(webUrl: string): readonly string[] {
+  const urls: string[] = [];
+  try {
+    const parsed = new URL(webUrl);
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+    if (host === 'finance.yahoo.com') {
+      const path = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+      if (path.length > 1) {
+        const trimmed = path.replace(/^\//, '');
+        urls.push(`yfinance:/${trimmed}`);
+        urls.push(`yfinance://${parsed.host}${path}`);
+        urls.push(`yahoo:/${trimmed}`);
+        urls.push(`yahoo://${parsed.host}${path}`);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  urls.push('yfinance://', 'yahoo://');
+  return urls;
+}
+
+/**
+ * 종목 상세·더보기 — iOS·iPad 네이티브는 커스텀 스킴, Android는 intent.
  */
 export function yahooFinanceQuoteAppLaunchUrls(webUrl: string): string[] | undefined {
   if (!canAttemptNativeAppLaunch()) return undefined;
-  if (usesIosAppLinkPolicy()) return [webUrl];
+  if (usesIosAppLinkPolicy()) {
+    return nativeAppLaunchUrls(webUrl, {
+      ios: yahooFinanceIosAppLaunchUrls(webUrl),
+      iosAppendUniversalLink: false,
+    });
+  }
   if (Platform.OS === 'android') {
     return [yahooFinanceAndroidIntentUrl(webUrl), webUrl];
   }

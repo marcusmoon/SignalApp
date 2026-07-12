@@ -3,6 +3,9 @@
  * Google 파비콘 품질이 나쁘거나 잘못 매칭되는 경우만 여기에 고정 URL을 둔다.
  */
 
+/** Yahoo Finance 공식 파비콘 — Google favicon API 오매칭 회피 */
+export const YAHOO_FINANCE_ICON_URL = 'https://s.yimg.com/cv/apiv2/finance/YF_Favicon_32.png';
+
 /** Google 파비콘 API — 도메인별 기본 fallback */
 export const GOOGLE_FAVICON_ICON_SIZE = 64;
 

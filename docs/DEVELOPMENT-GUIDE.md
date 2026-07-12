@@ -98,7 +98,7 @@ type ExternalLinkDescriptor = {
 | **데스크톱 웹·Android Chrome** | 앱 연동 링크 (`appLaunchUrls`) | **새 탭** → 실패 시 인앱 브라우저 |
 | **iPhone·iPad Safari 웹** | `appLaunchUrls` 있음 | **https만** 새 탭(유니버설 링크) → 실패 시 인앱 폴백. `supertoss://` 등 스킴은 생략(앱 없을 때 Safari 오류 방지) |
 | **iPhone·iPad** (`ios` 네이티브) | `openInAppBrowser: true` | 인앱 브라우저 |
-| **iPhone·iPad** | `appLaunchUrls` 있음 | 스킴(`canOpenURL` 검증) → http(s) 유니버설 링크 → `Linking` → 인앱 폴백 |
+| **iPhone·iPad** | `appLaunchUrls` 있음 | 커스텀 스킴(`openURL` 우선) → `Linking` → 인앱 폴백. **https는 iOS 네이티브 launch 목록에서 제외**(타 앱에서 `openURL` 시 Safari로만 열림) |
 | **Android** (네이티브) | `appLaunchUrls` 있음 | intent → 스킴 → https → `Linking` → 인앱 폴백 |
 
 iPad 네이티브는 `Platform.OS === 'ios'`. iPad Safari는 `Platform.OS === 'web'` + `isIosWebFamily()` — 네이티브와 달리 **커스텀 스킴 없이 https만** 시도한다.
@@ -119,8 +119,8 @@ iPad 네이티브는 `Platform.OS === 'ios'`. iPad Safari는 `Platform.OS === 'w
 
 | 서비스 | iPhone·iPad 네이티브 | iPhone·iPad Safari 웹 | Android 네이티브 | 데스크톱·Android Chrome 웹 |
 |---|---|---|---|---|
-| Yahoo | `finance.yahoo.com` 유니버설 링크 | https 새 탭 | intent + https | webUrl만 (새 탭) |
-| 네이버 | `naversearchapp://inappbrowser` + 중계 http | https 새 탭 | intent + 스킴 | webUrl만 |
+| Yahoo | `yfinance://`·`yahoo://`(경로 포함 시도) | https 새 탭 | intent + https | webUrl만 (새 탭) |
+| 네이버 | `naversearchapp://inappbrowser` | https 새 탭 | intent + 스킴 | webUrl만 |
 | 토스 | `supertoss://` → 유니버설 링크 | **https 새 탭** (`tossinvest.com`) | intent + 스킴 | webUrl만 |
 | Upbit·Binance | 스킴 → 유니버설 링크 | https 새 탭 | intent + 스킴 | webUrl만 |
 

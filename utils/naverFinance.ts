@@ -59,10 +59,9 @@ export function naverFinanceAndroidIntentUrl(webUrl: string): string {
   );
 }
 
-/** 종목·더보기 — 네이버 앱 inappbrowser·중계만 시도, https는 폴백에서 */
+/** 종목·더보기 — 네이버 앱 inappbrowser만 시도(https·중계는 iOS 네이티브에서 Safari로 빠짐) */
 export function naverFinanceStockAppLaunchUrls(webUrl: string): string[] | undefined {
   const inApp = naverFinanceInAppBrowserScheme(webUrl);
-  const relay = naverFinanceRelayInAppBrowserUrl(webUrl);
 
   if (!canAttemptNativeAppLaunch()) return undefined;
 
@@ -71,7 +70,7 @@ export function naverFinanceStockAppLaunchUrls(webUrl: string): string[] | undef
   }
 
   return nativeAppLaunchUrls(webUrl, {
-    ios: [inApp, relay],
+    ios: [inApp],
     iosAppendUniversalLink: false,
   });
 }

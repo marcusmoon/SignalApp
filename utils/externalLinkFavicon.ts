@@ -1,6 +1,7 @@
 import {
   googleFaviconIconUrl,
   NAVER_CAFE_ICON_URL,
+  YAHOO_FINANCE_ICON_URL,
 } from '@/constants/sourceIconUrls';
 import { domainFromUrl } from '@/services/sourceIcon';
 
@@ -30,6 +31,9 @@ export function externalLinkFaviconUrl(
 ): string {
   if (linkId === 'likeusstock-cafe') {
     return NAVER_CAFE_ICON_URL;
+  }
+  if (linkId === 'yahoo' || linkId === 'yahoo-earnings') {
+    return YAHOO_FINANCE_ICON_URL;
   }
 
   const mapped = FAVICON_DOMAIN_BY_LINK_ID[linkId];

@@ -79,18 +79,22 @@ async function tryOpen(url: string): Promise<boolean> {
 }
 
 /**
- * iOS·iPad 커스텀 스킴 — LSApplicationQueriesSchemes 등록 여부를 canOpenURL로 확인.
- * Android는 바로 openURL 시도.
+ * iOS·iPad 커스텀 스킴 — openURL을 먼저 시도한다.
+ * canOpenURL은 긴 쿼리 스킴에서 false가 나오는 경우가 있어(Naver inappbrowser 등)
+ * 설치된 앱이 있어도 웹 폴백으로 빠질 수 있다.
  */
 async function tryOpenCustomAppUrl(url: string): Promise<boolean> {
+  if (await tryOpen(url)) return true;
   if (Platform.OS === 'ios') {
     try {
-      if (!(await Linking.canOpenURL(url))) return false;
+      if (await Linking.canOpenURL(url)) {
+        return tryOpen(url);
+      }
     } catch {
       return false;
     }
   }
-  return tryOpen(url);
+  return false;
 }
 
 /** http(s) 유니버설 링크·중계 URL — iOS에서도 canOpenURL 없이 openURL(시스템이 앱/브라우저 라우팅) */
@@ -264,7 +268,9 @@ async function tryIosWebAppLaunchUrls(list: string[], webUrl: string): Promise<b
 }
 
 async function tryNativeAppLaunchUrls(list: string[], webUrl: string): Promise<boolean> {
+  const skipHttpOnIosNative = Platform.OS === 'ios';
   for (const url of list) {
+    if (skipHttpOnIosNative && isHttpOrHttpsUrl(url)) continue;
     if (isIntentNavigationUrl(url)) {
       if (await tryOpen(url)) return true;
       continue;

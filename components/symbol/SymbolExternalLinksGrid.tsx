@@ -84,7 +84,7 @@ export function SymbolExternalLinksGrid({ links }: SymbolExternalLinksGridProps)
       horizontalInset={HORIZONTAL_INSET}
       boxPaddingHorizontal={BOX_PAD_H}
       gap={GAP}
-      columnOptions={{ preferredColumns: 3, maxColumns: 4, minCellWidth: 52 }}
+      columnOptions={{ preferredColumns: 5, maxColumns: 5, minCellWidth: 52 }}
       keyExtractor={(link) => link.id}
       style={styles.box}
       renderItem={(link) => (

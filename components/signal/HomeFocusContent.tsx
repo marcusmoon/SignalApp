@@ -574,8 +574,11 @@ export function HomeFocusContent({
   }, [ipadNav, router]);
 
   const openBoard = useCallback(() => {
+    if (ipadNav.isAvailable) {
+      ipadNav.showTabs();
+    }
     router.navigate('/(tabs)/board' as never);
-  }, [router]);
+  }, [ipadNav, router]);
 
   const openSymbolDetail = useCallback(
     (symbol: string) => {

@@ -363,8 +363,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       gap: 16,
     },
     summary: {
-      fontSize: ft.signalBodyFont(17),
-      lineHeight: sf(26),
+      fontSize: ft.signalBodyFont(15),
+      lineHeight: sf(23),
       fontWeight: ft.signalBodyWeight,
       color: theme.text,
     },

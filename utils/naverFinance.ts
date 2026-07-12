@@ -1,4 +1,7 @@
-import { openExternalLink } from '@/utils/openExternalLink';
+import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
+import { orderAppLaunchUrlsForPlatform } from '@/utils/openExternalLink';
+
+const NAVER_APP_LAUNCH_URLS = ['naversearchapp://'] as const;
 
 export function normalizeKrxStockCode(value: string): string {
   const digits = String(value || '').replace(/\D/g, '');
@@ -35,6 +38,10 @@ export function naverFinanceWorldStockUrl(
   return `https://m.stock.naver.com/worldstock/stock/${encodeURIComponent(`${path}${suffix}`)}/total`;
 }
 
+export function naverFinanceAppLaunchUrls(webUrl: string): string[] {
+  return orderAppLaunchUrlsForPlatform([...NAVER_APP_LAUNCH_URLS, webUrl], webUrl);
+}
+
 export function naverFinanceQuoteUrl(
   symbol: string,
   options?: { exchange?: NaverWorldStockExchange },
@@ -48,7 +55,8 @@ export function naverFinanceQuoteUrl(
 export async function openNaverFinanceStock(symbol: string): Promise<void> {
   const url = naverFinanceQuoteUrl(symbol);
   if (!url) return;
-  await openExternalLink(url, url, {
-    preferInAppBrowserOnLinkingFailure: true,
+  await openConfiguredExternalLink({
+    webUrl: url,
+    appLaunchUrls: naverFinanceAppLaunchUrls(url),
   });
 }

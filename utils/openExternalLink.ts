@@ -50,6 +50,7 @@ const ANDROID_SCHEME_TO_PACKAGE: Record<string, string> = {
   yahoo: 'com.yahoo.mobile.client.android.finance',
   upbit: 'com.dunamu.exchange',
   supertoss: 'viva.republica.toss',
+  naversearchapp: 'com.nhn.android.search',
   bnc: 'com.binance.dev',
   binance: 'com.binance.dev',
   youtube: 'com.google.android.youtube',
@@ -88,17 +89,47 @@ async function openWebUrlWithOptionalInApp(
   }
 }
 
+/** iOS·iPad: 커스텀 스킴 → https 순. Android·웹: 전달 목록 유지 */
+export function orderAppLaunchUrlsForPlatform(urls: string[], webUrl: string): string[] {
+  if (Platform.OS !== 'ios') return urls;
+
+  const custom: string[] = [];
+  const https: string[] = [];
+  const other: string[] = [];
+
+  for (const url of urls) {
+    const lower = url.toLowerCase();
+    if (lower.startsWith('intent:')) {
+      other.push(url);
+      continue;
+    }
+    if (lower.startsWith('http://') || lower.startsWith('https://')) {
+      https.push(url);
+      continue;
+    }
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) {
+      custom.push(url);
+      continue;
+    }
+    other.push(url);
+  }
+
+  const ordered = [...custom, ...https, ...other];
+  if (!ordered.includes(webUrl) && !https.includes(webUrl)) {
+    ordered.push(webUrl);
+  }
+  return ordered;
+}
+
 /**
  * Yahoo Finance: 앱 딥링크·https·인텐트 순으로 시도할 URL 목록 (`webUrl`은 종목/경로별 https).
  */
 export function yahooFinanceAppLaunchUrls(webUrl: string): string[] {
   const enc = encodeURIComponent(webUrl);
-  return [
-    `intent://finance.yahoo.com/#Intent;scheme=https;package=com.yahoo.mobile.client.android.finance;S.browser_fallback_url=${enc};end`,
-    webUrl,
-    'yfinance://',
-    'yahoo://',
-  ];
+  const intent =
+    `intent://finance.yahoo.com/#Intent;scheme=https;package=com.yahoo.mobile.client.android.finance;S.browser_fallback_url=${enc};end`;
+  const base = [intent, 'yfinance://', 'yahoo://', webUrl];
+  return orderAppLaunchUrlsForPlatform(base, webUrl);
 }
 
 /**
@@ -111,13 +142,14 @@ export function youtubeWatchAppLaunchUrls(videoId: string, webUrl: string): stri
     `intent://www.youtube.com/watch?v=${vid}` +
     `#Intent;scheme=https;package=com.google.android.youtube;` +
     `S.browser_fallback_url=${enc};end`;
-  return [
+  const base = [
     `youtube://watch?v=${vid}`,
     `youtube://www.youtube.com/watch?v=${vid}`,
     `vnd.youtube:${videoId}`,
     intent,
     webUrl,
   ];
+  return orderAppLaunchUrlsForPlatform(base, webUrl);
 }
 
 /**

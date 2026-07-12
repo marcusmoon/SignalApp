@@ -1,7 +1,12 @@
 import type { MessageId } from '@/locales/messages';
 import { googleFinanceQuoteUrl } from '@/utils/googleFinance';
-import { naverFinanceStockUrl, naverFinanceWorldStockUrl } from '@/utils/naverFinance';
+import {
+  naverFinanceAppLaunchUrls,
+  naverFinanceStockUrl,
+  naverFinanceWorldStockUrl,
+} from '@/utils/naverFinance';
 import { tossFinanceAppLaunchUrls, tossFinanceStockUrl } from '@/utils/tossFinance';
+import { yahooFinanceAppLaunchUrls } from '@/utils/openExternalLink';
 import { yahooFinanceEarningsUrl, yahooFinanceQuoteUrl } from '@/utils/yahooFinance';
 
 export type SymbolExternalLink = {
@@ -46,7 +51,7 @@ export function buildSymbolExternalLinks(
         id: 'naver',
         labelKey: 'quotesNaverShort',
         url: naverUrl,
-        openInAppBrowser: true,
+        appLaunchUrls: naverFinanceAppLaunchUrls(naverUrl),
       });
     }
     const tossUrl = tossFinanceStockUrl(code);
@@ -100,7 +105,7 @@ export function buildSymbolExternalLinks(
       id: 'naver',
       labelKey: 'quotesNaverShort',
       url: naverUrl,
-      openInAppBrowser: true,
+      appLaunchUrls: naverFinanceAppLaunchUrls(naverUrl),
     });
   }
 
@@ -118,13 +123,13 @@ export function buildSymbolExternalLinks(
       id: 'yahoo',
       labelKey: 'quotesYahooShort',
       url: yahooQuote,
-      openInAppBrowser: true,
+      appLaunchUrls: yahooFinanceAppLaunchUrls(yahooQuote),
     },
     {
       id: 'yahoo-earnings',
       labelKey: 'symbolDetailLinkEarnings',
       url: yahooEarnings,
-      openInAppBrowser: true,
+      appLaunchUrls: yahooFinanceAppLaunchUrls(yahooEarnings),
     },
   );
 

@@ -1,4 +1,5 @@
-import { openExternalLink, yahooFinanceAppLaunchUrls } from '@/utils/openExternalLink';
+import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
+import { yahooFinanceAppLaunchUrls } from '@/utils/openExternalLink';
 
 /**
  * Yahoo Finance 웹 종목 페이지 경로.
@@ -46,8 +47,9 @@ export function yahooFinanceQuoteUrl(
  */
 export async function openYahooFinanceQuote(symbol: string, mode: 'coin' | 'stock'): Promise<void> {
   const url = yahooFinanceQuoteUrl(symbol, mode);
-  await openExternalLink(url, yahooFinanceAppLaunchUrls(url), {
-    preferInAppBrowserOnLinkingFailure: true,
+  await openConfiguredExternalLink({
+    webUrl: url,
+    appLaunchUrls: yahooFinanceAppLaunchUrls(url),
   });
 }
 
@@ -62,7 +64,8 @@ export function yahooFinanceEarningsUrl(
 
 export async function openYahooFinanceEarnings(symbol: string): Promise<void> {
   const url = yahooFinanceEarningsUrl(symbol);
-  await openExternalLink(url, yahooFinanceAppLaunchUrls(url), {
-    preferInAppBrowserOnLinkingFailure: true,
+  await openConfiguredExternalLink({
+    webUrl: url,
+    appLaunchUrls: yahooFinanceAppLaunchUrls(url),
   });
 }

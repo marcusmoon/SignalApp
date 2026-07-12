@@ -2,7 +2,8 @@ import type { ComponentProps } from 'react';
 import type FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import type { MessageId } from '@/locales/messages';
-import { yahooFinanceAppLaunchUrls } from '@/utils/openExternalLink';
+import { orderAppLaunchUrlsForPlatform, yahooFinanceAppLaunchUrls } from '@/utils/openExternalLink';
+import { tossFinanceAppLaunchUrls } from '@/utils/tossFinance';
 
 export type ReferenceLinkGroupId = 'global' | 'exchanges';
 
@@ -14,9 +15,9 @@ export type ReferenceLinkItem = {
   /** 원 안에 표시할 짧은 브랜드 텍스트(예: Upbit, Toss) — 있으면 `icon` 대신 사용 */
   iconMark?: string;
   webUrl: string;
-  /** 퀵 링크 탭 시 인앱 브라우저로 열기 */
+  /** 퀵 링크 탭 시 인앱 브라우저로만 열기 (앱 URL 없을 때) */
   openInAppBrowser?: boolean;
-  /** 앱 우선: 순서대로 시도, 모두 실패 시 webUrl */
+  /** iOS·iPad 앱 우선 — `openConfiguredExternalLink`가 공통 처리 */
   appLaunchUrls?: string[];
 };
 
@@ -71,21 +72,27 @@ export const REFERENCE_LINK_GROUPS: ReferenceLinkGroup[] = [
         labelKey: 'moreRefTitleUpbit',
         iconMark: 'Upbit',
         webUrl: 'https://upbit.com',
-        appLaunchUrls: ['upbit://open', 'upbit://'],
+        appLaunchUrls: orderAppLaunchUrlsForPlatform(
+          ['upbit://open', 'upbit://', 'https://upbit.com'],
+          'https://upbit.com',
+        ),
       },
       {
         id: 'toss',
         labelKey: 'moreRefTitleTossSecurities',
         iconMark: 'Toss',
         webUrl: 'https://www.tossinvest.com',
-        appLaunchUrls: ['supertoss://home', 'supertoss://', 'supertoss://invest'],
+        appLaunchUrls: tossFinanceAppLaunchUrls('https://www.tossinvest.com'),
       },
       {
         id: 'binance',
         labelKey: 'moreRefTitleBinance',
         icon: 'btc',
         webUrl: 'https://www.binance.com',
-        appLaunchUrls: ['bnc://app.binance.com/', 'bnc://app.binance.com', 'binance://'],
+        appLaunchUrls: orderAppLaunchUrlsForPlatform(
+          ['bnc://app.binance.com/', 'bnc://app.binance.com', 'binance://', 'https://www.binance.com'],
+          'https://www.binance.com',
+        ),
       },
     ],
   },

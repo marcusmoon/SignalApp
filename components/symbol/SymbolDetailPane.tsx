@@ -48,7 +48,7 @@ import { loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatc
 import type { NewsItem } from '@/types/signal';
 import { hasSignalApi } from '@/services/env';
 import { addDays, formatFeedItemTimeLabel } from '@/utils/date';
-import { openExternalLink } from '@/utils/openExternalLink';
+import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
 import { buildSymbolExternalLinks } from '@/utils/symbolExternalLinks';
 
 // ─────────────────────────────────────────────
@@ -667,8 +667,10 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
                     <Pressable
                       key={link.id}
                       onPress={() =>
-                        void openExternalLink(link.url, link.appLaunchUrls, {
-                          preferInAppBrowser: link.openInAppBrowser,
+                        void openConfiguredExternalLink({
+                          webUrl: link.url,
+                          appLaunchUrls: link.appLaunchUrls,
+                          openInAppBrowser: link.openInAppBrowser,
                         })
                       }
                       style={({ pressed }) => [styles.linkChip, pressed && styles.linkChipPressed]}

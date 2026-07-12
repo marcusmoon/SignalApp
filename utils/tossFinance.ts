@@ -1,4 +1,5 @@
-import { openExternalLink } from '@/utils/openExternalLink';
+import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
+import { orderAppLaunchUrlsForPlatform } from '@/utils/openExternalLink';
 
 const TOSS_INVEST_APP_LAUNCH_URLS = [
   'supertoss://invest',
@@ -29,13 +30,14 @@ export function tossFinanceStockUrl(symbol: string): string | null {
 }
 
 export function tossFinanceAppLaunchUrls(webUrl: string): string[] {
-  return [...TOSS_INVEST_APP_LAUNCH_URLS, webUrl];
+  return orderAppLaunchUrlsForPlatform([...TOSS_INVEST_APP_LAUNCH_URLS, webUrl], webUrl);
 }
 
 export async function openTossFinanceStock(symbol: string): Promise<void> {
   const url = tossFinanceStockUrl(symbol);
   if (!url) return;
-  await openExternalLink(url, tossFinanceAppLaunchUrls(url), {
-    preferInAppBrowserOnLinkingFailure: true,
+  await openConfiguredExternalLink({
+    webUrl: url,
+    appLaunchUrls: tossFinanceAppLaunchUrls(url),
   });
 }

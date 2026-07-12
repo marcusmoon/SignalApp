@@ -3,7 +3,8 @@ import { Platform } from 'react-native';
 
 import { youtubeOpenUrl } from '@/domain/youtube';
 import type { YoutubeItem } from '@/types/signal';
-import { openExternalLink, youtubeWatchAppLaunchUrls } from '@/utils/openExternalLink';
+import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
+import { youtubeWatchAppLaunchUrls } from '@/utils/openExternalLink';
 
 /**
  * 단일 영상: `openExternalLink`(YouTube 앱 스킴·인텐트·https) 우선,
@@ -23,7 +24,8 @@ async function openYoutubeWatch(videoId: string, webUrl: string): Promise<void> 
     await WebBrowser.openBrowserAsync(webUrl);
     return;
   }
-  await openExternalLink(webUrl, youtubeWatchAppLaunchUrls(videoId, webUrl), {
-    preferInAppBrowserOnLinkingFailure: true,
+  await openConfiguredExternalLink({
+    webUrl,
+    appLaunchUrls: youtubeWatchAppLaunchUrls(videoId, webUrl),
   });
 }

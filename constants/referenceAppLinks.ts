@@ -13,6 +13,7 @@ export type ReferenceLinkItem = {
   /** 원 안에 표시할 짧은 브랜드 텍스트(예: Upbit, Toss) — 있으면 `icon` 대신 사용 */
   iconMark?: string;
   webUrl: string;
+  appLaunchUrls?: string[];
   /** 웹 전용 — 앱 시도 없이 인앱 브라우저로만 연다 */
   openInAppBrowser?: boolean;
 };

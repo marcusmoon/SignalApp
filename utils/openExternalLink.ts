@@ -9,6 +9,11 @@ export type OpenExternalLinkOptions = {
    * 네이티브(iOS·iPad·Android) 앱 우선 링크의 기본 폴백.
    */
   preferInAppBrowserOnLinkingFailure?: boolean;
+  /**
+   * 앱 스킴 시도 후 항상 인앱 브라우저로 폴백 (더보기 숏링크).
+   * https 유니버설 링크만으로는 iOS에서 조용히 실패하는 경우가 있어 WebBrowser로 보장한다.
+   */
+  preferInAppBrowserAfterAppAttempts?: boolean;
 };
 
 function toLaunchList(launchUrls?: string | string[]): string[] {

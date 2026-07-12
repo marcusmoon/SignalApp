@@ -105,9 +105,9 @@ const webStripStyle = {
   WebkitOverflowScrolling: 'touch',
   overscrollBehaviorX: 'contain',
   touchAction: 'pan-x',
-} as const;
+} as unknown as ViewStyle;
 
 const webContentStyle = {
   flexDirection: 'row',
   alignItems: 'stretch',
-} as const;
+} as ViewStyle;

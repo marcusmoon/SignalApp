@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-REPO_DIR="/Users/marcusmoon/SignalApp"
+SOURCE_REPO_DIR="/Users/marcusmoon/SignalApp"
+DEPLOY_REPO_DIR="/Users/marcusmoon/SignalApp-deploy"
 STATE_DIR="${HOME}/Library/Caches/SignalApp"
 LOCK_DIR="${STATE_DIR}/auto-ios-ota-deploy.lock"
 LOCK_PID_FILE="${LOCK_DIR}/pid"
@@ -66,28 +67,38 @@ if [[ -f "${HOME}/.zshrc" ]]; then
   source "${HOME}/.zshrc"
 fi
 
-cd "${REPO_DIR}"
+ensure_deploy_worktree() {
+  if [[ ! -e "${DEPLOY_REPO_DIR}/.git" ]]; then
+    printf '[%s] create deploy worktree: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${DEPLOY_REPO_DIR}"
+    git -C "${SOURCE_REPO_DIR}" fetch origin
+    git -C "${SOURCE_REPO_DIR}" worktree add --detach "${DEPLOY_REPO_DIR}" origin/main
+  fi
 
-if [[ -n "$(git status --porcelain)" ]]; then
-  printf '[%s] skip: worktree is dirty\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-  exit 0
-fi
+  if [[ ! -e "${DEPLOY_REPO_DIR}/node_modules" ]]; then
+    ln -s "${SOURCE_REPO_DIR}/node_modules" "${DEPLOY_REPO_DIR}/node_modules"
+  fi
+}
+
+ensure_deploy_worktree
+
+cd "${DEPLOY_REPO_DIR}"
 
 before_sha="$(git rev-parse HEAD)"
 printf '[%s] current sha: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${before_sha}"
 
-git pull --ff-only
-
-after_sha="$(git rev-parse HEAD)"
+git fetch origin
+after_sha="$(git rev-parse origin/main)"
 
 if [[ "${before_sha}" == "${after_sha}" ]]; then
   printf '[%s] no source changes\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   exit 0
 fi
 
+git reset --hard "${after_sha}"
+
 printf '[%s] updated sha: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${after_sha}"
 
-npx tsc --noEmit --pretty false
+"${SOURCE_REPO_DIR}/node_modules/.bin/tsc" --noEmit --pretty false
 
 npx eas update \
   --channel production \

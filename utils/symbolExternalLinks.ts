@@ -3,7 +3,7 @@ import { buildAppLaunchUrls } from '@/utils/externalLinkRegistry';
 import { googleFinanceQuoteUrl } from '@/utils/googleFinance';
 import { naverFinanceStockUrl, naverFinanceWorldStockUrl } from '@/utils/naverFinance';
 import { tossFinanceStockUrl } from '@/utils/tossFinance';
-import { yahooFinanceEarningsUrl, yahooFinanceQuoteUrl } from '@/utils/yahooFinance';
+import { yahooFinanceQuoteUrl } from '@/utils/yahooFinance';
 
 export type SymbolExternalLink = {
   id: string;
@@ -18,15 +18,7 @@ export type SymbolExternalLinkHint = {
 };
 
 /** 해외 종목 — 유용도 순 */
-const OVERSEAS_LINK_ORDER = [
-  'naver',
-  'toss',
-  'yahoo',
-  'yahoo-earnings',
-  'sec',
-  'google-finance',
-  'tradingview',
-] as const;
+const OVERSEAS_LINK_ORDER = ['yahoo', 'tradingview', 'naver', 'sec'] as const;
 
 /** 국내 종목 — 유용도 순 */
 const DOMESTIC_LINK_ORDER = [
@@ -118,12 +110,23 @@ export function buildSymbolExternalLinks(
   }
 
   const yahooQuote = yahooFinanceQuoteUrl(trimmed, 'stock', hint);
-  const yahooEarnings = yahooFinanceEarningsUrl(trimmed, hint);
   const tickerPath = usTickerPath(trimmed);
   const naverUrl = naverFinanceWorldStockUrl(trimmed);
-  const tossUrl = tossFinanceStockUrl(trimmed);
 
-  const links: SymbolExternalLink[] = [];
+  const links: SymbolExternalLink[] = [
+    {
+      id: 'yahoo',
+      labelKey: 'quotesYahooShort',
+      url: yahooQuote,
+      appLaunchUrls: buildAppLaunchUrls({ webUrl: yahooQuote }),
+    },
+    {
+      id: 'tradingview',
+      labelKey: 'symbolDetailLinkTradingView',
+      url: `https://www.tradingview.com/symbols/${encodeURIComponent(tickerPath)}/`,
+      openInAppBrowser: true,
+    },
+  ];
 
   if (naverUrl) {
     links.push({
@@ -134,47 +137,12 @@ export function buildSymbolExternalLinks(
     });
   }
 
-  if (tossUrl) {
-    links.push({
-      id: 'toss',
-      labelKey: 'moreRefTitleTossSecurities',
-      url: tossUrl,
-      appLaunchUrls: buildAppLaunchUrls({ webUrl: tossUrl, linkId: 'toss' }),
-    });
-  }
-
-  links.push(
-    {
-      id: 'yahoo',
-      labelKey: 'quotesYahooShort',
-      url: yahooQuote,
-      appLaunchUrls: buildAppLaunchUrls({ webUrl: yahooQuote }),
-    },
-    {
-      id: 'yahoo-earnings',
-      labelKey: 'symbolDetailLinkEarnings',
-      url: yahooEarnings,
-      appLaunchUrls: buildAppLaunchUrls({ webUrl: yahooEarnings, linkId: 'yahoo-earnings' }),
-    },
-    {
-      id: 'sec',
-      labelKey: 'symbolDetailLinkSec',
-      url: `https://www.sec.gov/edgar/search/#/q=${encodeURIComponent(trimmed)}`,
-      openInAppBrowser: true,
-    },
-    {
-      id: 'google-finance',
-      labelKey: 'symbolDetailLinkGoogleFinance',
-      url: googleFinanceQuoteUrl(trimmed, hint),
-      openInAppBrowser: true,
-    },
-    {
-      id: 'tradingview',
-      labelKey: 'symbolDetailLinkTradingView',
-      url: `https://www.tradingview.com/symbols/${encodeURIComponent(tickerPath)}/`,
-      openInAppBrowser: true,
-    },
-  );
+  links.push({
+    id: 'sec',
+    labelKey: 'symbolDetailLinkSec',
+    url: `https://www.sec.gov/edgar/search/#/q=${encodeURIComponent(trimmed)}`,
+    openInAppBrowser: true,
+  });
 
   return sortByOrder(links, OVERSEAS_LINK_ORDER);
 }

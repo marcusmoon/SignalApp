@@ -58,7 +58,7 @@ import {
   type StoredAppAuthSession,
 } from '@/services/appAuthSession';
 import { loadNotificationPrefs, type NotificationPrefs } from '@/services/notificationPreferences';
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 
@@ -754,7 +754,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         style={styles.scrollFlex}
         contentContainerStyle={[
           styles.content,
-          embedded && styles.contentEmbedded,
+          (embedded || useTwoPane) && styles.contentEmbedded,
           !user && styles.contentAuth,
           { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) },
         ]}>

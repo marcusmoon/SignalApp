@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import { SCREEN_HEADER_CONTENT_GAP } from '@/constants/screenLayout';
@@ -47,8 +47,7 @@ export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingTop: SCREEN_HEADER_CONTENT_GAP,
     },
     contentEmbedded: {
-      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
-      alignSelf: 'stretch',
+      ...wideContentFill,
     },
     hero: {
       borderRadius: 8,

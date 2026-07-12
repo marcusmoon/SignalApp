@@ -26,7 +26,7 @@ import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
-import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
 import {
   SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
@@ -297,8 +297,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: shellBg,
     },
     scrollEmbedded: {
-      maxWidth: APP_WIDE_CONTENT_MAX_WIDTH,
-      alignSelf: 'stretch',
+      ...wideContentFill,
       paddingHorizontal: SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
     },
     topFixed: fixedHeader.strip,

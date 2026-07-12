@@ -1,7 +1,7 @@
 import type { MessageId } from '@/locales/messages';
 import { googleFinanceQuoteUrl } from '@/utils/googleFinance';
 import {
-  naverFinanceAppLaunchUrls,
+  naverFinanceStockAppLaunchUrls,
   naverFinanceStockUrl,
   naverFinanceWorldStockUrl,
 } from '@/utils/naverFinance';
@@ -51,7 +51,7 @@ export function buildSymbolExternalLinks(
         id: 'naver',
         labelKey: 'quotesNaverShort',
         url: naverUrl,
-        appLaunchUrls: naverFinanceAppLaunchUrls(naverUrl),
+        appLaunchUrls: naverFinanceStockAppLaunchUrls(naverUrl),
       });
     }
     const tossUrl = tossFinanceStockUrl(code);
@@ -105,7 +105,7 @@ export function buildSymbolExternalLinks(
       id: 'naver',
       labelKey: 'quotesNaverShort',
       url: naverUrl,
-      appLaunchUrls: naverFinanceAppLaunchUrls(naverUrl),
+      appLaunchUrls: naverFinanceStockAppLaunchUrls(naverUrl),
     });
   }
 

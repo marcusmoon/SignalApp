@@ -1,7 +1,7 @@
+import { Platform } from 'react-native';
+
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
 import { orderAppLaunchUrlsForPlatform } from '@/utils/openExternalLink';
-
-const NAVER_APP_LAUNCH_URLS = ['naversearchapp://'] as const;
 
 export function normalizeKrxStockCode(value: string): string {
   const digits = String(value || '').replace(/\D/g, '');
@@ -38,8 +38,32 @@ export function naverFinanceWorldStockUrl(
   return `https://m.stock.naver.com/worldstock/stock/${encodeURIComponent(`${path}${suffix}`)}/total`;
 }
 
+/** 네이버 앱 인앱 브라우저로 증권 URL 열기 — plain `naversearchapp://`는 홈만 열림 */
+export function naverFinanceInAppBrowserScheme(webUrl: string): string {
+  const encoded = encodeURIComponent(webUrl);
+  return `naversearchapp://inappbrowser?url=${encoded}&target=new&version=6`;
+}
+
+export function naverFinanceAndroidIntentUrl(webUrl: string): string {
+  const encoded = encodeURIComponent(webUrl);
+  return (
+    `intent://inappbrowser?url=${encoded}&target=new&version=6` +
+    `#Intent;scheme=naversearchapp;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.nhn.android.search;end;`
+  );
+}
+
+/** 종목 상세·리스트 — 네이버 앱 증권 페이지로 이동 */
+export function naverFinanceStockAppLaunchUrls(webUrl: string): string[] {
+  const inApp = naverFinanceInAppBrowserScheme(webUrl);
+  if (Platform.OS === 'android') {
+    return [naverFinanceAndroidIntentUrl(webUrl), inApp, webUrl];
+  }
+  return orderAppLaunchUrlsForPlatform([inApp, webUrl], webUrl);
+}
+
+/** @deprecated Use naverFinanceStockAppLaunchUrls for stock pages */
 export function naverFinanceAppLaunchUrls(webUrl: string): string[] {
-  return orderAppLaunchUrlsForPlatform([...NAVER_APP_LAUNCH_URLS, webUrl], webUrl);
+  return naverFinanceStockAppLaunchUrls(webUrl);
 }
 
 export function naverFinanceQuoteUrl(
@@ -57,6 +81,6 @@ export async function openNaverFinanceStock(symbol: string): Promise<void> {
   if (!url) return;
   await openConfiguredExternalLink({
     webUrl: url,
-    appLaunchUrls: naverFinanceAppLaunchUrls(url),
+    appLaunchUrls: naverFinanceStockAppLaunchUrls(url),
   });
 }

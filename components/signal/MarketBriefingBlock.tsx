@@ -108,38 +108,33 @@ function CompanyHighlightRow({
 
   return (
     <View style={[styles.companyRow, bordered && styles.listRowBordered]}>
-      <View style={styles.companyHead}>
-        <View style={styles.companySymbolLead}>
-          <SymbolLogo symbol={item.symbol} size={24} />
-          <View style={styles.companySymbolBox}>
-            <Text style={styles.companySymbol}>{item.symbol}</Text>
-            {item.name ? (
-              <Text style={styles.companyName} numberOfLines={1}>
-                {item.name}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-        {(hasPrice || hasChange) && (
-          <View
-            style={[
-              styles.companyQuoteBox,
-              { backgroundColor: changeBg, borderColor: changeBorderColor },
-            ]}>
-            {hasPrice ? (
-              <Text style={[styles.companyPrice, hasChange && { color: changeColor }]}>
-                {formatBriefingPrice(item.price, market)}
-              </Text>
-            ) : null}
-            {hasChange ? (
-              <Text style={[styles.companyChange, { color: changeColor }]}>
-                {formatChangePct(item.changePercent)}
-              </Text>
-            ) : null}
-          </View>
-        )}
+      <View style={styles.companyLead}>
+        <SymbolLogo symbol={item.symbol} size={20} />
+        <Text style={styles.companySymbol} numberOfLines={1}>
+          {item.symbol}
+        </Text>
       </View>
-      <Text style={styles.companySummary}>{item.summary}</Text>
+      <Text style={styles.companySummary} numberOfLines={2}>
+        {item.summary}
+      </Text>
+      {(hasPrice || hasChange) ? (
+        <View
+          style={[
+            styles.companyQuoteBox,
+            { backgroundColor: changeBg, borderColor: changeBorderColor },
+          ]}>
+          {hasPrice ? (
+            <Text style={[styles.companyPrice, hasChange && { color: changeColor }]} numberOfLines={1}>
+              {formatBriefingPrice(item.price, market)}
+            </Text>
+          ) : null}
+          {hasChange ? (
+            <Text style={[styles.companyChange, { color: changeColor }]} numberOfLines={1}>
+              {formatChangePct(item.changePercent)}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -461,66 +456,61 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(18),
     },
     companyRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
       gap: 8,
       paddingVertical: 5,
     },
-    companyHead: {
+    companyLead: {
+      width: 68,
+      flexGrow: 0,
+      flexShrink: 0,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
-    },
-    companySymbolLead: {
-      flex: 1,
-      minWidth: 0,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-    },
-    companySymbolBox: {
-      flex: 1,
-      minWidth: 0,
-      gap: 3,
+      gap: 6,
+      paddingTop: 1,
     },
     companySymbol: {
-      fontSize: ft.signalTitleFont(15),
-      fontWeight: ft.signalTitleWeight,
+      flex: 1,
+      minWidth: 0,
+      fontSize: ft.ff(12),
+      fontWeight: ft.emphasisWeight,
       letterSpacing: -0.2,
       color: theme.green,
-    },
-    companyName: {
-      fontSize: ft.ff(12),
-      fontWeight: ft.bodyWeight,
-      color: theme.textMuted,
     },
     companyQuoteBox: {
       flexShrink: 0,
       alignItems: 'flex-end',
       borderWidth: StyleSheet.hairlineWidth,
-      paddingVertical: 5,
-      paddingHorizontal: 7,
+      paddingVertical: 4,
+      paddingHorizontal: 6,
       borderRadius: 6,
       gap: 1,
-      minWidth: 72,
+      minWidth: 64,
+      maxWidth: 88,
+      marginTop: 1,
     },
     companyPrice: {
-      fontSize: ft.ff(12),
-      lineHeight: sf(16),
+      fontSize: ft.ff(11),
+      lineHeight: sf(14),
       fontWeight: ft.emphasisWeight,
       color: theme.text,
       fontVariant: ['tabular-nums'],
     },
     companyChange: {
-      fontSize: ft.ff(11),
-      lineHeight: sf(14),
+      fontSize: ft.ff(10),
+      lineHeight: sf(13),
       fontWeight: ft.metaWeight,
       fontVariant: ['tabular-nums'],
     },
     companySummary: {
-      fontSize: ft.signalBodyFont(15),
-      lineHeight: sf(23),
-      fontWeight: ft.signalBodyWeight,
+      flex: 1,
+      flexShrink: 1,
+      minWidth: 0,
+      fontSize: ft.signalBodyFont(13),
+      fontWeight: ft.signalMetaWeight,
       color: theme.textDim,
+      lineHeight: sf(18),
     },
     sectionFeedCard: {
       borderRadius: 8,

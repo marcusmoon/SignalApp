@@ -48,7 +48,7 @@ import { loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatc
 import type { NewsItem } from '@/types/signal';
 import { hasSignalApi } from '@/services/env';
 import { addDays, formatFeedItemTimeLabel } from '@/utils/date';
-import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
+import { SymbolExternalLinksGrid } from '@/components/symbol/SymbolExternalLinksGrid';
 import { buildSymbolExternalLinks } from '@/utils/symbolExternalLinks';
 
 // ─────────────────────────────────────────────
@@ -297,32 +297,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       backgroundColor: theme.greenDim,
       borderColor: theme.greenBorder,
     },
-    linkChipRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 6,
-    },
-    linkChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 999,
-      backgroundColor: theme.bgElevated,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.border,
-    },
-    linkChipPressed: {
-      opacity: 0.78,
-      backgroundColor: theme.greenDim,
-    },
-    linkChipText: {
-      fontSize: sf(11),
-      lineHeight: sf(14),
-      fontWeight: '700',
-      color: theme.green,
-    },
     errorBox: {
       borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
@@ -356,6 +330,10 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     feedCardCompact: {
       paddingHorizontal: 10,
       paddingVertical: 8,
+    },
+    linkFeedCard: {
+      paddingHorizontal: 4,
+      paddingVertical: 4,
     },
     issueGroupList: {
       gap: 0,
@@ -661,26 +639,8 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
           {externalLinks.length > 0 ? (
             <View style={styles.section}>
               <HomeSectionHeader title={t('symbolDetailLinksTitle')} showChevron={false} />
-              <View style={styles.feedCard}>
-                <View style={styles.linkChipRow}>
-                  {externalLinks.map((link) => (
-                    <Pressable
-                      key={link.id}
-                      onPress={() =>
-                        void openConfiguredExternalLink({
-                          webUrl: link.url,
-                          appLaunchUrls: link.appLaunchUrls,
-                          openInAppBrowser: link.openInAppBrowser,
-                        })
-                      }
-                      style={({ pressed }) => [styles.linkChip, pressed && styles.linkChipPressed]}
-                      accessibilityRole="link"
-                      accessibilityLabel={t(link.labelKey)}>
-                      <Text style={styles.linkChipText}>{t(link.labelKey)}</Text>
-                      <FontAwesome name="external-link" size={9} color={theme.green} />
-                    </Pressable>
-                  ))}
-                </View>
+              <View style={[styles.feedCard, styles.linkFeedCard]}>
+                <SymbolExternalLinksGrid links={externalLinks} />
               </View>
             </View>
           ) : null}

@@ -125,8 +125,9 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 종목 상세 바로가기
 
-- 칩 행: `SymbolDetailPane` — 라벨 + external-link 아이콘
-- 앱 연동 링크(네이버·토스·Yahoo)와 웹 전용 링크(Google, TradingView 등)가 섞여 있음 → 열기 동작은 [DEVELOPMENT-GUIDE.md §외부 링크](./DEVELOPMENT-GUIDE.md#외부-링크)
+- `SymbolExternalLinksGrid` — 아이콘·브랜드 마크 + 이름, 동적 열 그리드 (셀 min 88px, 더보기 숏링크보다 큼)
+- 해외: Naver → Toss → Yahoo → Earnings → SEC → Google → TradingView
+- 국내: Naver → Toss → Google → 네이버 뉴스 → 네이버 공시 → DART
 
 ### 더보기 숏링크
 

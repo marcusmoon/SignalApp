@@ -314,6 +314,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       gap: COMFORT_GAP_LG,
     },
     feedCard: {
+      width: '100%',
+      alignSelf: 'stretch',
       borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1,
       borderColor: theme.border,

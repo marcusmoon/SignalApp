@@ -125,14 +125,15 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 종목 상세 바로가기
 
-- `SymbolExternalLinksGrid` — 파비콘(24px) + 이름, **최대 3열**·2행 내외 컴팩트 그리드
+- `SymbolExternalLinksGrid` — 파비콘(24px) + 이름, **3열 우선**(wide 4열)·`flexWrap` 그리드
 - 해외: Naver → Toss → Yahoo → Earnings → SEC → Google → TradingView
 - 국내: Naver → Toss → Google → 네이버 뉴스 → 네이버 공시 → DART
+- 열 수: `utils/externalLinkGrid.ts` (`computeExternalLinkGridColumns`)
 
 ### 더보기 숏링크
 
 - `ReferenceLinksSection` — 아이콘/마크 원 + 2줄 라벨 그리드
-- 셀 최소 폭 72px, 동적 열 수 (`computeReferenceLinkGridColumns`)
+- 셀 최소 폭 72px, 동적 열 수 (동일 `externalLinkGrid` 유틸)
 
 ## 컴포넌트 재사용
 

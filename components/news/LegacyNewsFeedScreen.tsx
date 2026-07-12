@@ -71,6 +71,7 @@ import {
   subscribeNewsSegmentOrderChanged,
 } from '@/services/newsSegmentOrderPreference';
 import { loadNewsSegment, saveNewsSegment } from '@/services/newsSegmentPreference';
+import { useAdsEnabled } from '@/services/adsRuntimeConfig';
 import { firstRouteParam } from '@/utils/routeSearchParams';
 import { useSafeSetRouteParams } from '@/utils/safeRouteParams';
 import { markNewsFeedSeen } from '@/services/newsUnreadPreference';
@@ -155,6 +156,7 @@ export function LegacyNewsFeedScreen() {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { useTwoPane } = useResponsiveLayout();
+  const adsEnabled = useAdsEnabled();
   const ipadNav = useIpadSidebarNav();
   const { setSubTabs, setActiveSubTabKey, clearSubTabs } = useSidebarSubTabs();
   const [segment, setSegment] = useState<NewsSegmentKey>(() => {
@@ -849,12 +851,12 @@ export function LegacyNewsFeedScreen() {
     }
     items.forEach((news, i) => {
       out.push({ kind: 'news', news });
-      if ((i + 1) % 5 === 0) {
+      if (adsEnabled && (i + 1) % 5 === 0) {
         out.push({ kind: 'ad', key: `ad-${news.id}` });
       }
     });
     return out;
-  }, [items, segment, videoItems]);
+  }, [adsEnabled, items, segment, videoItems]);
 
   const emptyMessage =
     !loading && listData.length === 0 && !error

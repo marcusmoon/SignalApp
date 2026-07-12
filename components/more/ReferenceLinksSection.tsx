@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ExternalLinkGrid } from '@/components/common/ExternalLinkGrid';
 import { REFERENCE_LINK_ITEMS, type ReferenceLinkItem } from '@/constants/referenceAppLinks';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -12,22 +13,8 @@ import { externalLinkFaviconUrl } from '@/utils/externalLinkFavicon';
 import { openReferenceLink } from '@/utils/referenceLinkOpen';
 
 const GAP = 6;
-const ROW_GAP = 16;
 const BOX_PAD = 10;
 const MIN_CELL_WIDTH = 72;
-
-function chunkItems<T>(items: T[], columns: number): T[][] {
-  const rows: T[][] = [];
-  for (let index = 0; index < items.length; index += columns) {
-    rows.push(items.slice(index, index + columns));
-  }
-  return rows;
-}
-
-import {
-  computeExternalLinkGridColumns,
-  externalLinkGridCellWidth,
-} from '@/utils/externalLinkGrid';
 
 type LinkCellProps = {
   item: ReferenceLinkItem;
@@ -74,65 +61,24 @@ function LinkCell({ item, styles, label }: LinkCellProps) {
   );
 }
 
-type LinkGridProps = {
-  items: ReferenceLinkItem[];
-  columns: number;
-  styles: ReturnType<typeof makeStyles>;
-  theme: AppTheme;
-  t: (id: MessageId) => string;
-};
-
-function LinkGrid({ items, columns, styles, theme, t }: LinkGridProps) {
-  const rows = useMemo(() => chunkItems(items, columns), [columns, items]);
-
-  return (
-    <View style={styles.grid}>
-      {rows.map((row, rowIndex) => (
-        <View
-          key={`row-${rowIndex}`}
-          style={[styles.gridRow, rowIndex === rows.length - 1 && styles.gridRowLast]}>
-          {row.map((item) => (
-            <View key={item.id} style={styles.gridCell}>
-              <LinkCell item={item} styles={styles} label={t(item.labelKey)} />
-            </View>
-          ))}
-        </View>
-      ))}
-    </View>
-  );
-}
-
 export function ReferenceLinksSection() {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
-  const [gridInnerWidth, setGridInnerWidth] = useState(0);
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
-  const columns = useMemo(
-    () =>
-      computeExternalLinkGridColumns(
-        gridInnerWidth > 0 ? gridInnerWidth : 280,
-        REFERENCE_LINK_ITEMS.length,
-        { gap: GAP, minCellWidth: MIN_CELL_WIDTH, maxColumns: 4, preferredColumns: 3 },
-      ),
-    [gridInnerWidth],
-  );
-
   return (
-    <View
+    <ExternalLinkGrid
+      items={REFERENCE_LINK_ITEMS}
+      horizontalInset={16}
+      boxPaddingHorizontal={BOX_PAD}
+      gap={GAP}
+      columnOptions={{ minCellWidth: MIN_CELL_WIDTH, maxColumns: 4, preferredColumns: 3 }}
+      keyExtractor={(item) => item.id}
       style={styles.box}
-      onLayout={(event) => {
-        const innerWidth = Math.max(0, event.nativeEvent.layout.width - BOX_PAD * 2);
-        setGridInnerWidth((prev) => (prev === innerWidth ? prev : innerWidth));
-      }}>
-      <LinkGrid
-        items={REFERENCE_LINK_ITEMS}
-        columns={columns}
-        styles={styles}
-        theme={theme}
-        t={t}
-      />
-    </View>
+      renderItem={(item) => (
+        <LinkCell item={item} styles={styles} label={t(item.labelKey as MessageId)} />
+      )}
+    />
   );
 }
 
@@ -144,21 +90,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.border,
       backgroundColor: theme.card,
       padding: BOX_PAD,
-    },
-    grid: {
-      width: '100%',
-    },
-    gridRow: {
-      flexDirection: 'row',
-      gap: GAP,
-      marginBottom: ROW_GAP,
-    },
-    gridRowLast: {
-      marginBottom: 0,
-    },
-    gridCell: {
-      flex: 1,
-      minWidth: 0,
     },
     cell: {
       minHeight: 74,

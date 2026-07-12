@@ -15,7 +15,8 @@ const GAP = 6;
 const BOX_PAD_H = 4;
 const BOX_PAD_V = 6;
 const FAVICON_SIZE = 24;
-const HORIZONTAL_INSET = 16 + 4 + 4;
+/** SymbolDetailPane scroll(16×2) + linkFeedCard(4×2) — 첫 레이아웃 추정용 */
+const HORIZONTAL_INSET = 20;
 
 type LinkCellProps = {
   link: SymbolExternalLink;
@@ -83,6 +84,7 @@ export function SymbolExternalLinksGrid({ links }: SymbolExternalLinksGridProps)
       horizontalInset={HORIZONTAL_INSET}
       boxPaddingHorizontal={BOX_PAD_H}
       gap={GAP}
+      columnOptions={{ preferredColumns: 3, maxColumns: 4, minCellWidth: 52 }}
       keyExtractor={(link) => link.id}
       style={styles.box}
       renderItem={(link) => (

@@ -1,15 +1,12 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { StyleSheet, useWindowDimensions, View, type ViewStyle } from 'react-native';
 
-import {
-  APP_CONTENT_MAX_WIDTH,
-  MASTER_PANEL_MIN_WIDTH,
-  MASTER_PANEL_WIDTH_RATIO,
-} from '@/constants/responsiveLayout';
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import {
   computeExternalLinkGridColumns,
+  estimateExternalLinkContentWidth,
   externalLinkGridCellWidth,
+  resolveExternalLinkGridInnerWidth,
   type ExternalLinkGridColumnOptions,
 } from '@/utils/externalLinkGrid';
 
@@ -35,37 +32,36 @@ export function ExternalLinkGrid<T>({
   style,
 }: ExternalLinkGridProps<T>) {
   const { width: windowWidth } = useWindowDimensions();
-  const { useTwoPane } = useResponsiveLayout();
+  const { useTwoPane, isWideLayout } = useResponsiveLayout();
   const [measuredWidth, setMeasuredWidth] = useState(0);
 
-  const gridInnerWidth = useMemo(() => {
-    let contentWidth = windowWidth;
-    if (useTwoPane) {
-      const masterWidth = Math.max(
-        MASTER_PANEL_MIN_WIDTH,
-        Math.round(windowWidth * MASTER_PANEL_WIDTH_RATIO),
-      );
-      contentWidth = Math.max(0, windowWidth - masterWidth);
-    } else {
-      contentWidth = Math.min(contentWidth, APP_CONTENT_MAX_WIDTH);
-    }
-    const estimated = Math.max(0, contentWidth - horizontalInset * 2 - boxPaddingHorizontal * 2);
-    const measured = measuredWidth > 0 ? measuredWidth - boxPaddingHorizontal * 2 : 0;
-    if (measured > 0 && measured >= estimated * 0.7) {
-      return measured;
-    }
-    return Math.max(estimated, 240);
-  }, [boxPaddingHorizontal, horizontalInset, measuredWidth, useTwoPane, windowWidth]);
+  const estimatedInnerWidth = useMemo(
+    () =>
+      estimateExternalLinkContentWidth({
+        windowWidth,
+        isWideLayout,
+        useTwoPane,
+        horizontalInset,
+        boxPaddingHorizontal,
+      }),
+    [boxPaddingHorizontal, horizontalInset, isWideLayout, useTwoPane, windowWidth],
+  );
+
+  const gridInnerWidth = useMemo(
+    () =>
+      resolveExternalLinkGridInnerWidth(measuredWidth, boxPaddingHorizontal, estimatedInnerWidth),
+    [boxPaddingHorizontal, estimatedInnerWidth, measuredWidth],
+  );
 
   const columns = useMemo(
     () =>
       computeExternalLinkGridColumns(gridInnerWidth, items.length, {
         gap,
-        maxColumns: useTwoPane ? 4 : 3,
+        maxColumns: 4,
         preferredColumns: 3,
         ...columnOptions,
       }),
-    [columnOptions, gap, gridInnerWidth, items.length, useTwoPane],
+    [columnOptions, gap, gridInnerWidth, items.length],
   );
 
   const cellWidth = useMemo(() => {

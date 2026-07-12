@@ -98,14 +98,27 @@ function CompanyHighlightRow({
   const changePositive = hasChange ? isQuoteChangePositive({ changePercent: item.changePercent }) : null;
   const changeColor =
     changePositive === null ? theme.textMuted : changePositive ? changeColors.up : changeColors.down;
+  const isKrMarket = market === 'kr';
+  const companyName = item.name?.trim() || '';
+  const identityLabel = isKrMarket && companyName ? companyName : item.symbol;
+  const showCompanyName = isKrMarket && Boolean(companyName);
 
   return (
     <View style={[styles.companyRow, bordered && styles.listRowBordered]}>
       <View style={styles.companyTopRow}>
-        <View style={styles.companyIdentity}>
+        <View
+          style={[
+            styles.companyIdentity,
+            showCompanyName ? styles.companyIdentityKr : null,
+          ]}>
           <SymbolLogo symbol={item.symbol} size={20} />
-          <Text style={styles.companySymbol} numberOfLines={1}>
-            {item.symbol}
+          <Text
+            style={[
+              styles.companyIdentityLabel,
+              showCompanyName ? styles.companyIdentityName : styles.companyIdentityTicker,
+            ]}
+            numberOfLines={1}>
+            {identityLabel}
           </Text>
         </View>
         {hasPrice || hasChange ? (
@@ -466,12 +479,25 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderRadius: 8,
       backgroundColor: theme.bgElevated,
     },
-    companySymbol: {
+    companyIdentityKr: {
+      flexShrink: 1,
+      minWidth: 56,
+      maxWidth: '58%',
+    },
+    companyIdentityLabel: {
       fontSize: ft.ff(12),
-      fontWeight: ft.emphasisWeight,
       letterSpacing: -0.1,
+      flexShrink: 1,
+      minWidth: 0,
+    },
+    companyIdentityTicker: {
+      fontWeight: ft.emphasisWeight,
       color: theme.green,
       fontVariant: ['tabular-nums'],
+    },
+    companyIdentityName: {
+      fontWeight: ft.bodyWeight,
+      color: theme.text,
     },
     companyQuoteInline: {
       flexDirection: 'row',

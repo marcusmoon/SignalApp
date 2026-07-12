@@ -1,65 +1,53 @@
 import { Image } from 'expo-image';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
+import {
+  MASTER_PANEL_MIN_WIDTH,
+  MASTER_PANEL_WIDTH_RATIO,
+} from '@/constants/responsiveLayout';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { MessageId } from '@/locales/messages';
 import { markSourceIconFailed } from '@/services/sourceIcon';
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
+import {
+  computeExternalLinkGridColumns,
+  externalLinkGridCellWidth,
+} from '@/utils/externalLinkGrid';
 import { externalLinkFaviconUrl } from '@/utils/externalLinkFavicon';
 import type { SymbolExternalLink } from '@/utils/symbolExternalLinks';
 
 const GAP = 6;
-const ROW_GAP = 8;
 const BOX_PAD_H = 4;
 const BOX_PAD_V = 6;
-const MAX_COLUMNS = 3;
-const MIN_CELL_WIDTH = 68;
 const FAVICON_SIZE = 24;
 
-function chunkItems<T>(items: T[], columns: number): T[][] {
-  const rows: T[][] = [];
-  for (let index = 0; index < items.length; index += columns) {
-    rows.push(items.slice(index, index + columns));
+/** SymbolDetailPane scroll(16) + feedCard(4) + box(4) */
+const HORIZONTAL_INSET = 16 + 4 + 4;
+
+function estimateGridInnerWidth(windowWidth: number, useTwoPane: boolean): number {
+  let contentWidth = windowWidth;
+  if (useTwoPane) {
+    const masterWidth = Math.max(
+      MASTER_PANEL_MIN_WIDTH,
+      Math.round(windowWidth * MASTER_PANEL_WIDTH_RATIO),
+    );
+    contentWidth = Math.max(0, windowWidth - masterWidth);
   }
-  return rows;
-}
-
-function computeGridColumns(innerWidth: number, itemCount: number): number {
-  if (innerWidth <= 0 || itemCount <= 0) return 1;
-
-  const maxColumnsByWidth = Math.max(1, Math.floor((innerWidth + GAP) / (MIN_CELL_WIDTH + GAP)));
-  const maxColumns = Math.min(MAX_COLUMNS, maxColumnsByWidth, itemCount);
-
-  let bestColumns = 1;
-  let bestScore = -Infinity;
-
-  for (let columns = maxColumns; columns >= 1; columns -= 1) {
-    const cellWidth = (innerWidth - GAP * (columns - 1)) / columns;
-    if (cellWidth < MIN_CELL_WIDTH) continue;
-
-    const remainder = itemCount % columns;
-    const orphanRatio = remainder === 0 ? 0 : remainder / columns;
-    const score = (remainder === 0 ? 1000 : 0) + (1 - orphanRatio) * 100 + columns * 10;
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestColumns = columns;
-    }
-  }
-
-  return Math.max(1, bestColumns);
+  return Math.max(0, contentWidth - HORIZONTAL_INSET * 2);
 }
 
 type LinkCellProps = {
   link: SymbolExternalLink;
   styles: ReturnType<typeof makeStyles>;
   label: string;
+  cellWidth: number;
 };
 
-function LinkCell({ link, styles, label }: LinkCellProps) {
+function LinkCell({ link, styles, label, cellWidth }: LinkCellProps) {
   const faviconUrl = useMemo(
     () => externalLinkFaviconUrl(link.id, link.url, 32),
     [link.id, link.url],
@@ -72,7 +60,11 @@ function LinkCell({ link, styles, label }: LinkCellProps) {
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.cell, pressed && styles.cellPressed]}
+      style={({ pressed }) => [
+        styles.cell,
+        { width: cellWidth, maxWidth: cellWidth },
+        pressed && styles.cellPressed,
+      ]}
       onPress={() =>
         void openConfiguredExternalLink({
           webUrl: link.url,
@@ -111,19 +103,31 @@ type SymbolExternalLinksGridProps = {
 export function SymbolExternalLinksGrid({ links }: SymbolExternalLinksGridProps) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
-  const [gridInnerWidth, setGridInnerWidth] = useState(0);
+  const { width: windowWidth } = useWindowDimensions();
+  const { useTwoPane } = useResponsiveLayout();
+  const [measuredWidth, setMeasuredWidth] = useState(0);
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+
+  const gridInnerWidth = useMemo(() => {
+    const estimated = estimateGridInnerWidth(windowWidth, useTwoPane);
+    const measured = measuredWidth > 0 ? measuredWidth - BOX_PAD_H * 2 : 0;
+    return Math.max(estimated, measured);
+  }, [measuredWidth, useTwoPane, windowWidth]);
 
   const columns = useMemo(
     () =>
-      computeGridColumns(
-        gridInnerWidth > 0 ? gridInnerWidth : 300,
-        links.length,
-      ),
-    [gridInnerWidth, links.length],
+      computeExternalLinkGridColumns(gridInnerWidth, links.length, {
+        gap: GAP,
+        maxColumns: useTwoPane ? 4 : 3,
+        preferredColumns: 3,
+      }),
+    [gridInnerWidth, links.length, useTwoPane],
   );
 
-  const rows = useMemo(() => chunkItems(links, columns), [columns, links]);
+  const cellWidth = useMemo(
+    () => externalLinkGridCellWidth(gridInnerWidth, columns, GAP),
+    [columns, gridInnerWidth],
+  );
 
   if (links.length === 0) return null;
 
@@ -131,23 +135,18 @@ export function SymbolExternalLinksGrid({ links }: SymbolExternalLinksGridProps)
     <View
       style={styles.box}
       onLayout={(event) => {
-        const innerWidth = Math.max(
-          0,
-          event.nativeEvent.layout.width - BOX_PAD_H * 2,
-        );
-        setGridInnerWidth((prev) => (prev === innerWidth ? prev : innerWidth));
+        const next = Math.max(0, event.nativeEvent.layout.width);
+        setMeasuredWidth((prev) => (prev === next ? prev : next));
       }}>
       <View style={styles.grid}>
-        {rows.map((row, rowIndex) => (
-          <View
-            key={`row-${rowIndex}`}
-            style={[styles.gridRow, rowIndex === rows.length - 1 && styles.gridRowLast]}>
-            {row.map((link) => (
-              <View key={link.id} style={styles.gridCell}>
-                <LinkCell link={link} styles={styles} label={t(link.labelKey)} />
-              </View>
-            ))}
-          </View>
+        {links.map((link) => (
+          <LinkCell
+            key={link.id}
+            link={link}
+            styles={styles}
+            label={t(link.labelKey)}
+            cellWidth={cellWidth}
+          />
         ))}
       </View>
     </View>
@@ -158,23 +157,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     box: {
       width: '100%',
+      alignSelf: 'stretch',
       paddingHorizontal: BOX_PAD_H,
       paddingVertical: BOX_PAD_V,
     },
     grid: {
       width: '100%',
-    },
-    gridRow: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       gap: GAP,
-      marginBottom: ROW_GAP,
-    },
-    gridRowLast: {
-      marginBottom: 0,
-    },
-    gridCell: {
-      flex: 1,
-      minWidth: 0,
     },
     cell: {
       minHeight: 56,
@@ -211,6 +202,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.textDim,
       textAlign: 'center',
       lineHeight: sf(12),
+      maxWidth: '100%',
     },
   });
 }

@@ -24,40 +24,10 @@ function chunkItems<T>(items: T[], columns: number): T[][] {
   return rows;
 }
 
-/** 가용 폭·항목 수에 맞춰 열 수를 고른다. 마지막 줄 빈 칸을 줄이고 셀 폭을 균등하게 채운다. */
-export function computeReferenceLinkGridColumns(
-  innerWidth: number,
-  itemCount: number,
-  gap = GAP,
-  minCellWidth = MIN_CELL_WIDTH,
-): number {
-  if (innerWidth <= 0 || itemCount <= 0) return 1;
-
-  const maxColumnsByWidth = Math.max(1, Math.floor((innerWidth + gap) / (minCellWidth + gap)));
-  const maxColumns = Math.min(maxColumnsByWidth, itemCount);
-
-  let bestColumns = 1;
-  let bestScore = -Infinity;
-
-  for (let columns = maxColumns; columns >= 1; columns -= 1) {
-    const cellWidth = (innerWidth - gap * (columns - 1)) / columns;
-    if (cellWidth < minCellWidth) continue;
-
-    const remainder = itemCount % columns;
-    const fullRows = remainder === 0;
-    const orphanRatio = remainder === 0 ? 0 : remainder / columns;
-
-    // 꽉 찬 행 우선, 동률이면 열 수가 많은 쪽(아이콘 숏컷은 촘촘한 그리드가 자연스럽다)
-    const score = (fullRows ? 1000 : 0) + (1 - orphanRatio) * 100 + columns * 10;
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestColumns = columns;
-    }
-  }
-
-  return Math.max(1, bestColumns);
-}
+import {
+  computeExternalLinkGridColumns,
+  externalLinkGridCellWidth,
+} from '@/utils/externalLinkGrid';
 
 type LinkCellProps = {
   item: ReferenceLinkItem;
@@ -140,9 +110,10 @@ export function ReferenceLinksSection() {
 
   const columns = useMemo(
     () =>
-      computeReferenceLinkGridColumns(
+      computeExternalLinkGridColumns(
         gridInnerWidth > 0 ? gridInnerWidth : 280,
         REFERENCE_LINK_ITEMS.length,
+        { gap: GAP, minCellWidth: MIN_CELL_WIDTH, maxColumns: 4, preferredColumns: 3 },
       ),
     [gridInnerWidth],
   );

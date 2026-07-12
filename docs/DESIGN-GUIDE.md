@@ -123,12 +123,17 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 - 끝 refresh 타일: `DigestRefreshTail`
 - 출처: 카드 우측 「출처」→ `DigestSourcesSheet` (인라인 펼치기 금지)
 
+### 홈 게시판 (Board)
+
+- 출처 숏컷(LikeUSStock · SAVE): **2열 그리드** — `ExternalLinkGrid` (`preferredColumns: 2`)
+- 아래에 최근 글 목록 또는 빈 상태 문구
+
 ### 종목 상세 바로가기
 
 - `SymbolExternalLinksGrid` — 파비콘(24px) + 이름, **3열 우선**(wide 4열)·`flexWrap` 그리드
 - 해외: Naver → Toss → Yahoo → Earnings → SEC → Google → TradingView
 - 국내: Naver → Toss → Google → 네이버 뉴스 → 네이버 공시 → DART
-- 열 수: `utils/externalLinkGrid.ts` (`computeExternalLinkGridColumns`)
+- `ExternalLinkGrid` — 파비콘·숏컷 공통 그리드 (`components/common/ExternalLinkGrid.tsx`)
 
 ### 더보기 숏링크
 

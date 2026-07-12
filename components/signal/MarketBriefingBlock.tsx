@@ -50,13 +50,11 @@ type Props = {
 
 function BriefingSection({
   title,
-  count,
   children,
   styles,
   accent = 'green',
 }: {
   title: string;
-  count?: number;
   children: ReactNode;
   styles: ReturnType<typeof makeStyles>;
   accent?: 'green' | 'orange' | 'muted';
@@ -71,12 +69,9 @@ function BriefingSection({
             accent === 'muted' && styles.sectionAccentMuted,
           ]}
         />
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {count != null && count > 0 ? (
-          <View style={styles.sectionCountBadge}>
-            <Text style={styles.sectionCountText}>{count}</Text>
-          </View>
-        ) : null}
+        <Text style={styles.sectionTitle} numberOfLines={1}>
+          {title}
+        </Text>
       </View>
       {children}
     </View>
@@ -235,10 +230,9 @@ export function MarketBriefingBlock({
               {briefing.summary ? <View style={styles.leadDivider} /> : null}
               <View style={styles.sectionHead}>
                 <View style={styles.sectionAccent} />
-                <Text style={styles.sectionTitle}>{t('briefingDetailOverview')}</Text>
-                <View style={styles.sectionCountBadge}>
-                  <Text style={styles.sectionCountText}>{briefing.overview.length}</Text>
-                </View>
+                <Text style={styles.sectionTitle} numberOfLines={1}>
+                  {t('briefingDetailOverview')}
+                </Text>
               </View>
               <View style={styles.overviewList}>
                 {briefing.overview.map((line, index) => (
@@ -256,7 +250,6 @@ export function MarketBriefingBlock({
       {briefing.sectors && briefing.sectors.length > 0 ? (
         <BriefingSection
           title={t('briefingDetailSectors')}
-          count={briefing.sectors.length}
           styles={styles}
           accent="green">
           <View style={styles.sectionFeedCard}>
@@ -276,7 +269,6 @@ export function MarketBriefingBlock({
       {briefing.companies.length > 0 ? (
         <BriefingSection
           title={t('briefingDetailCompanies')}
-          count={briefing.companies.length}
           styles={styles}
           accent="green">
           <View style={styles.sectionFeedCard}>
@@ -298,7 +290,6 @@ export function MarketBriefingBlock({
       {briefing.macro.length > 0 ? (
         <BriefingSection
           title={t('briefingDetailMacro')}
-          count={briefing.macro.length}
           styles={styles}
           accent="orange">
           <View style={styles.sectionFeedCard}>
@@ -317,7 +308,6 @@ export function MarketBriefingBlock({
       {briefing.sourceRefs.length > 0 ? (
         <BriefingSection
           title={t('briefingDetailSources')}
-          count={briefing.sourceRefs.length}
           styles={styles}
           accent="muted">
           <View style={styles.sectionFeedCard}>
@@ -382,13 +372,15 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     sectionHead: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 16,
+      gap: 10,
+      minWidth: 0,
     },
     sectionAccent: {
       width: CONTENT_ACCENT_LINE_WIDTH,
       height: 20,
       borderRadius: 2,
       backgroundColor: theme.green,
+      flexShrink: 0,
     },
     sectionAccentOrange: {
       backgroundColor: theme.accentOrange,
@@ -399,24 +391,11 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     sectionTitle: {
       flex: 1,
       minWidth: 0,
+      flexShrink: 1,
       fontSize: ft.signalTitleFont(16),
       fontWeight: ft.signalTitleWeight,
       letterSpacing: -0.15,
       color: theme.text,
-    },
-    sectionCountBadge: {
-      minWidth: 24,
-      height: 24,
-      paddingHorizontal: 8,
-      borderRadius: 8,
-      backgroundColor: theme.bgElevated,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    sectionCountText: {
-      fontSize: ft.ff(12),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
     },
     overviewList: {
       gap: 20,

@@ -59,12 +59,17 @@ export function yahooFinanceIosAppLaunchUrls(webUrl: string): readonly string[] 
     const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
     if (host === 'finance.yahoo.com') {
       const path = `${parsed.pathname}${parsed.search}${parsed.hash}`;
-      if (path.length > 1) {
-        const trimmed = path.replace(/^\//, '');
+      const trimmed = path.replace(/^\//, '');
+      if (trimmed.length > 0) {
         urls.push(`yfinance:/${trimmed}`);
         urls.push(`yfinance://${parsed.host}${path}`);
         urls.push(`yahoo:/${trimmed}`);
         urls.push(`yahoo://${parsed.host}${path}`);
+      } else {
+        urls.push(`yfinance://${parsed.host}/`);
+        urls.push(`yfinance://${parsed.host}`);
+        urls.push(`yahoo://${parsed.host}/`);
+        urls.push(`yahoo://${parsed.host}`);
       }
     }
   } catch {

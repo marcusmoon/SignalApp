@@ -17,12 +17,17 @@ function yahooFinanceIosAppLaunchUrls(webUrl) {
     const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
     if (host === 'finance.yahoo.com') {
       const path = `${parsed.pathname}${parsed.search}${parsed.hash}`;
-      if (path.length > 1) {
-        const trimmed = path.replace(/^\//, '');
+      const trimmed = path.replace(/^\//, '');
+      if (trimmed.length > 0) {
         urls.push(`yfinance:/${trimmed}`);
         urls.push(`yfinance://${parsed.host}${path}`);
         urls.push(`yahoo:/${trimmed}`);
         urls.push(`yahoo://${parsed.host}${path}`);
+      } else {
+        urls.push(`yfinance://${parsed.host}/`);
+        urls.push(`yfinance://${parsed.host}`);
+        urls.push(`yahoo://${parsed.host}/`);
+        urls.push(`yahoo://${parsed.host}`);
       }
     }
   } catch {
@@ -38,7 +43,8 @@ function naverFinanceInAppBrowserScheme(webUrl) {
 }
 
 const yahooHome = yahooFinanceIosAppLaunchUrls('https://finance.yahoo.com');
-assert(yahooHome.length === 2, 'Yahoo home should only use base schemes');
+assert(yahooHome.length === 6, 'Yahoo home should use host schemes plus base fallbacks');
+assert(yahooHome[0] === 'yfinance://finance.yahoo.com/', 'Yahoo home host scheme');
 assert(yahooHome.includes('yfinance://'), 'Yahoo home includes yfinance://');
 assert(!yahooHome.some((u) => u.startsWith('https://')), 'Yahoo iOS launch must not include https');
 

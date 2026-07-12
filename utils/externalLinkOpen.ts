@@ -1,12 +1,12 @@
 import { Platform } from 'react-native';
 
 import { openExternalLink, type OpenExternalLinkOptions } from '@/utils/openExternalLink';
-import { canAttemptNativeAppLaunch } from '@/utils/externalLinkPlatform';
+import { canAttemptNativeAppLaunch, isIosWebFamily, usesIosAppLinkPolicy } from '@/utils/externalLinkPlatform';
 
 /** 종목 상세·더보기 숏링크 등 공통 외부 링크 설명 */
 export type ExternalLinkDescriptor = {
   webUrl: string;
-  /** 앱 우선 시도 URL — iOS·iPad·Android만. 웹은 무시되고 webUrl만 연다. */
+  /** 앱 우선 시도 URL — iOS·iPad 네이티브·iOS Safari 웹·Android 네이티브. 데스크톱 웹은 무시. */
   appLaunchUrls?: string[];
   /**
    * 앱 시도 없이 인앱 브라우저(웹) / 새 탭(웹)으로만 연다.
@@ -23,7 +23,7 @@ export function resolveExternalLinkOpenOptions(
     return { preferInAppBrowser: true };
   }
 
-  if (Platform.OS === 'web') {
+  if (Platform.OS === 'web' && !isIosWebFamily()) {
     return { preferWebNewTab: true };
   }
 

@@ -94,15 +94,16 @@ type ExternalLinkDescriptor = {
 
 | 런타임 | 조건 | 동작 |
 |---|---|---|
-| **웹** | `openInAppBrowser: true` | Signal 인앱 브라우저(오버레이) |
-| **웹** | 앱 연동 링크 (`appLaunchUrls`) | **새 탭** → 실패 시 인앱 브라우저 |
-| **iPhone·iPad** (`ios`) | `openInAppBrowser: true` | 인앱 브라우저 |
+| **데스크톱 웹·Android Chrome** | `openInAppBrowser: true` | Signal 인앱 브라우저(오버레이) |
+| **데스크톱 웹·Android Chrome** | 앱 연동 링크 (`appLaunchUrls`) | **새 탭** → 실패 시 인앱 브라우저 |
+| **iPhone·iPad Safari 웹** | `appLaunchUrls` 있음 | **네이티브 iOS와 동일** — 스킴 → https → 인앱 폴백 |
+| **iPhone·iPad** (`ios` 네이티브) | `openInAppBrowser: true` | 인앱 브라우저 |
 | **iPhone·iPad** | `appLaunchUrls` 있음 | 스킴(`canOpenURL` 검증) → http(s) 유니버설 링크 → `Linking` → 인앱 폴백 |
-| **Android** | `appLaunchUrls` 있음 | intent → 스킴 → https → `Linking` → 인앱 폴백 |
+| **Android** (네이티브) | `appLaunchUrls` 있음 | intent → 스킴 → https → `Linking` → 인앱 폴백 |
 
-iPad는 React Native에서 `Platform.OS === 'ios'`로 iPhone과 동일 경로를 탄다.
+iPad 네이티브는 `Platform.OS === 'ios'`. iPad Safari는 `Platform.OS === 'web'`이지만 `isIosWebFamily()`로 네이티브와 **같은 앱 우선 정책**을 탄다.
 
-공통 유틸: `utils/externalLinkPlatform.ts`, `utils/externalLinkLaunch.ts`, `utils/openExternalLink.ts`
+공통 유틸: `utils/externalLinkPlatform.ts` (`isIosWebFamily`, `usesIosAppLinkPolicy`), `utils/externalLinkLaunch.ts`, `utils/openExternalLink.ts`
 
 ### 링크 정의 위치
 
@@ -114,9 +115,9 @@ iPad는 React Native에서 `Platform.OS === 'ios'`로 iPhone과 동일 경로를
 | 유튜브 영상 | `utils/openYoutube.ts` | `youtubeWatchAppLaunchUrls` |
 | 뉴스·공시 원문 | `NewsCard`, `disclosures` | 인앱 브라우저 직접 (피드 원문 전용) |
 
-### 서비스별 launch 규칙 (네이티브)
+### 서비스별 launch 규칙 (네이티브·iOS Safari 웹)
 
-| 서비스 | iPhone·iPad | Android | 웹 |
+| 서비스 | iPhone·iPad (네이티브·Safari 웹) | Android 네이티브 | 데스크톱·Android Chrome 웹 |
 |---|---|---|---|
 | Yahoo | `finance.yahoo.com` 유니버설 링크 | intent + https | webUrl만 (새 탭) |
 | 네이버 | `naversearchapp://inappbrowser` + 중계 http | intent + 스킴 | webUrl만 |

@@ -1,7 +1,7 @@
 import * as WebBrowser from 'expo-web-browser';
 import { Linking, Platform } from 'react-native';
 
-import { canAttemptNativeAppLaunch, externalLinkRuntime } from '@/utils/externalLinkPlatform';
+import { canAttemptNativeAppLaunch, externalLinkRuntime, isIosWebFamily, usesIosAppLinkPolicy } from '@/utils/externalLinkPlatform';
 
 export type OpenExternalLinkOptions = {
   /** 항상 인앱 브라우저(expo-web-browser)로 연다. */
@@ -134,9 +134,9 @@ async function openOnWeb(
   await WebBrowser.openBrowserAsync(webUrl);
 }
 
-/** iOS·iPad: 커스텀 스킴 → https 순. Android·웹: 전달 목록 유지 */
+/** iOS·iPad: 커스텀 스킴 → https 순. Android·기타 웹: 전달 목록 유지 */
 export function orderAppLaunchUrlsForPlatform(urls: string[], webUrl: string): string[] {
-  if (Platform.OS !== 'ios') return urls;
+  if (!usesIosAppLinkPolicy()) return urls;
 
   const custom: string[] = [];
   const https: string[] = [];
@@ -181,7 +181,7 @@ export function yahooFinanceAndroidIntentUrl(webUrl: string): string {
 /** 서비스 홈(더보기 숏링크) — iOS·iPad는 https 유니버설 링크, Android는 intent 후 https */
 export function webHomeAppLaunchUrls(webUrl: string, androidIntentUrl?: string): string[] | undefined {
   if (!canAttemptNativeAppLaunch()) return undefined;
-  if (Platform.OS === 'ios') return [webUrl];
+  if (usesIosAppLinkPolicy()) return [webUrl];
   if (Platform.OS === 'android' && androidIntentUrl) {
     return [androidIntentUrl, webUrl];
   }
@@ -243,6 +243,59 @@ export function youtubeWatchAppLaunchUrls(videoId: string, webUrl: string): stri
   return orderAppLaunchUrlsForPlatform(base, webUrl);
 }
 
+/** iPhone·iPad Safari — 스킴 시도 후 페이지가 숨겨지면 앱 전환으로 간주 */
+async function tryIosWebCustomScheme(url: string): Promise<boolean> {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return false;
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.clearTimeout(timer);
+      resolve(ok);
+    };
+    const onVisibility = () => {
+      if (document.hidden) done(true);
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    const timer = window.setTimeout(() => done(false), 1600);
+
+    try {
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.style.display = 'none';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+    } catch {
+      done(false);
+    }
+  });
+}
+
+async function tryIosWebOpenHttps(url: string): Promise<boolean> {
+  if (typeof window === 'undefined' || typeof window.open !== 'function') return false;
+  const popup = window.open(url, '_blank', 'noopener,noreferrer');
+  return popup != null;
+}
+
+async function tryIosWebAppLaunchUrls(list: string[], webUrl: string): Promise<boolean> {
+  for (const url of list) {
+    if (isIntentNavigationUrl(url)) continue;
+    if (isHttpOrHttpsUrl(url)) {
+      if (await tryIosWebOpenHttps(url)) return true;
+      continue;
+    }
+    if (isLikelyCustomAppUrl(url) || /^[a-z][a-z0-9+.-]*:\/\//i.test(url)) {
+      if (await tryIosWebCustomScheme(url)) return true;
+      continue;
+    }
+  }
+  return false;
+}
+
 async function tryNativeAppLaunchUrls(list: string[], webUrl: string): Promise<boolean> {
   for (const url of list) {
     if (isIntentNavigationUrl(url)) {
@@ -286,10 +339,11 @@ async function tryNativeAppLaunchUrls(list: string[], webUrl: string): Promise<b
  *
  * | 런타임 | openInAppBrowser | appLaunchUrls | 동작 |
  * |---|---|---|---|
- * | 웹 | true | — | 인앱 브라우저 |
- * | 웹 | false | 있음/없음 | 새 탭 → 실패 시 인앱 브라우저 |
- * | iOS·iPad·Android | true | — | 인앱 브라우저 |
- * | iOS·iPad·Android | false | 있음 | 스킴·intent·https → Linking → 인앱 폴백 |
+ * | 데스크톱·Android 웹 | true | — | 인앱 브라우저 |
+ * | 데스크톱·Android 웹 | false | 있음/없음 | 새 탭 → 실패 시 인앱 브라우저 |
+ * | iPhone·iPad Safari 웹 | false | 있음 | **네이티브 iOS와 동일** 스킴 → https → 인앱 폴백 |
+ * | iOS·iPad·Android 네이티브 | true | — | 인앱 브라우저 |
+ * | iOS·iPad·Android 네이티브 | false | 있음 | 스킴·intent·https → Linking → 인앱 폴백 |
  */
 export async function openExternalLink(
   webUrl: string,
@@ -301,6 +355,23 @@ export async function openExternalLink(
   const preferBrowserOnFailure = options?.preferInAppBrowserOnLinkingFailure === true;
   const preferWebNewTab = options?.preferWebNewTab === true;
   const runtime = externalLinkRuntime();
+
+  if (runtime === 'web' && isIosWebFamily()) {
+    if (preferInApp) {
+      await WebBrowser.openBrowserAsync(webUrl);
+      return;
+    }
+    if (list.length > 0) {
+      const opened = await tryIosWebAppLaunchUrls(list, webUrl);
+      if (opened) return;
+    }
+    if (preferBrowserOnFailure) {
+      await WebBrowser.openBrowserAsync(webUrl);
+      return;
+    }
+    await openOnWeb(webUrl, { preferInAppBrowser: false, preferWebNewTab: true });
+    return;
+  }
 
   if (runtime === 'web') {
     await openOnWeb(webUrl, { preferInAppBrowser: preferInApp, preferWebNewTab });

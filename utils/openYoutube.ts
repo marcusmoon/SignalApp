@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { youtubeOpenUrl } from '@/domain/youtube';
 import type { YoutubeItem } from '@/types/signal';
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
+import { isIosWebFamily } from '@/utils/externalLinkPlatform';
 import { youtubeWatchAppLaunchUrls } from '@/utils/openExternalLink';
 
 /**
@@ -20,7 +21,7 @@ export async function openYoutubeItem(item: YoutubeItem): Promise<void> {
 }
 
 async function openYoutubeWatch(videoId: string, webUrl: string): Promise<void> {
-  if (Platform.OS === 'web') {
+  if (Platform.OS === 'web' && !isIosWebFamily()) {
     await WebBrowser.openBrowserAsync(webUrl);
     return;
   }

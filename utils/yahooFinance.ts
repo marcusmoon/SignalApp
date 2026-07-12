@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
-import { canAttemptNativeAppLaunch } from '@/utils/externalLinkPlatform';
+import { canAttemptNativeAppLaunch, usesIosAppLinkPolicy } from '@/utils/externalLinkPlatform';
 import {
   yahooFinanceAndroidIntentUrl,
 } from '@/utils/openExternalLink';
@@ -52,7 +52,7 @@ export function yahooFinanceQuoteUrl(
  */
 export function yahooFinanceQuoteAppLaunchUrls(webUrl: string): string[] | undefined {
   if (!canAttemptNativeAppLaunch()) return undefined;
-  if (Platform.OS === 'ios') return [webUrl];
+  if (usesIosAppLinkPolicy()) return [webUrl];
   if (Platform.OS === 'android') {
     return [yahooFinanceAndroidIntentUrl(webUrl), webUrl];
   }

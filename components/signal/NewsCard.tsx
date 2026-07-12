@@ -62,7 +62,10 @@ export function NewsCard({
   );
   const isFlash = Boolean(item.isFlash);
   const symbol = item.ticker?.trim().toUpperCase() ?? '';
-  const canOpenSymbol = symbol.length > 0 && symbol !== 'GLOBAL' && symbol !== '—';
+  const showSourceInHeader =
+    symbol.length === 0 || symbol === 'GLOBAL' || symbol === '—';
+  const canOpenSymbol = !showSourceInHeader;
+  const headerLabel = showSourceInHeader ? sourceName : item.ticker;
 
   const alternateTitle = item.alternateTitle?.trim() ?? '';
   const hasTitleToggle = titleToggle && alternateTitle.length > 0;
@@ -145,19 +148,19 @@ export function NewsCard({
     </Pressable>
   ) : null;
 
-  const tickerRow = canOpenSymbol ? (
-    <Pressable
-      onPress={() => router.push(`/symbol/${symbol}`)}
-      hitSlop={8}
-      style={({ pressed }) => [styles.tickerRow, pressed && styles.tickerRowPressed]}>
-      <View style={styles.tickerLead}>
-        <SymbolLogo symbol={symbol} size={compactMeta ? 18 : 20} />
-        <Text style={styles.ticker} numberOfLines={1}>
-          {symbol}
-        </Text>
-      </View>
-    </Pressable>
-  ) : null;
+  const renderSourceInMeta = () => (
+    <View style={styles.sourceRowCompact}>
+      {flashBadge}
+      {sourceContent}
+    </View>
+  );
+
+  const renderSourceBelowMeta = () => (
+    <View style={styles.sourceRow}>
+      {flashBadge}
+      {sourceContent}
+    </View>
+  );
 
   const titleBlock = (
     <View style={styles.titleBlock}>
@@ -168,23 +171,62 @@ export function NewsCard({
     </View>
   );
 
-  const footerBlock = (
-    <View style={styles.footerRow}>
-      <View style={styles.footerLead}>
-        {flashBadge}
+  const metaBlock = compactMeta ? (
+    <View style={styles.compactMetaRow}>
+      {flashBadge}
+      {canOpenSymbol ? (
+        <Pressable
+          onPress={() => router.push(`/symbol/${symbol}`)}
+          hitSlop={8}
+          style={styles.compactTickerWrap}>
+          <View style={styles.tickerLead}>
+            <SymbolLogo symbol={symbol} size={18} />
+            <Text style={styles.compactTicker} numberOfLines={1}>
+              {headerLabel}
+            </Text>
+          </View>
+        </Pressable>
+      ) : null}
+      <View style={styles.compactMetaMain}>
         {sourceContent}
       </View>
-      {item.timeLabel ? (
+      <View style={styles.timePill}>
         <Text style={styles.time} numberOfLines={1}>
           {item.timeLabel}
         </Text>
-      ) : null}
+      </View>
     </View>
+  ) : (
+    <>
+      <View style={[styles.metaRow, showSourceInHeader && styles.metaRowWithSource]}>
+        {canOpenSymbol ? (
+          <Pressable
+            onPress={() => router.push(`/symbol/${symbol}`)}
+            hitSlop={8}
+            style={styles.metaLead}>
+            <View style={styles.tickerLead}>
+              <SymbolLogo symbol={symbol} size={20} />
+              <Text style={styles.ticker} numberOfLines={1}>
+                {headerLabel}
+              </Text>
+            </View>
+          </Pressable>
+        ) : (
+          renderSourceInMeta()
+        )}
+        <View style={styles.metaTrail}>
+          <View style={styles.timePill}>
+            <Text style={styles.time}>{item.timeLabel}</Text>
+          </View>
+        </View>
+      </View>
+      {canOpenSymbol ? renderSourceBelowMeta() : null}
+    </>
   );
 
   const tagsBlock =
     tags.length > 0 ? (
-      <View style={[styles.tagRow, grouped && styles.tagRowGrouped]}>
+      <View style={[styles.footer, grouped && styles.footerGrouped]}>
         <View style={styles.footerTagsCol}>
           {tags.map((tag: NonNullable<NewsItem['hashtags']>[number]) => (
             <Pressable
@@ -210,11 +252,10 @@ export function NewsCard({
         accessibilityRole={rowPressEnabled ? 'button' : undefined}
         accessibilityLabel={rowPressEnabled ? rowA11yLabel : undefined}
         accessibilityHint={rowPressEnabled ? t('newsReadMore') : undefined}>
-        {tickerRow}
+        {metaBlock}
         {titleBlock}
-        {tagsBlock}
-        {footerBlock}
       </Pressable>
+      {tagsBlock}
     </View>
   );
 }
@@ -243,17 +284,23 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     rowPress: {
       alignSelf: 'stretch',
-      gap: ft.pad(6),
     },
     rowPressPressed: {
       opacity: 0.92,
     },
-    tickerRow: {
-      alignSelf: 'flex-start',
-      maxWidth: '100%',
+    metaRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: ft.pad(8),
+      marginBottom: ft.pad(6),
     },
-    tickerRowPressed: {
-      opacity: 0.82,
+    metaRowWithSource: {
+      marginBottom: ft.pad(10),
+    },
+    metaLead: {
+      flex: 1,
+      minWidth: 0,
     },
     tickerLead: {
       flexDirection: 'row',
@@ -262,12 +309,57 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       minWidth: 0,
       flexShrink: 1,
     },
+    metaTrail: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: ft.pad(6),
+      flexShrink: 0,
+    },
     ticker: {
       flexShrink: 1,
       color: theme.green,
       fontSize: ft.ff(FEED_BODY_PX),
       fontWeight: ft.emphasisWeight,
       letterSpacing: 0.5,
+    },
+    timePill: {
+      flexShrink: 0,
+      paddingHorizontal: ft.pad(8),
+      paddingVertical: ft.pad(3),
+      borderRadius: 999,
+      backgroundColor: theme.bgElevated,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.border,
+    },
+    time: {
+      color: theme.textMuted,
+      fontSize: ft.ff(FEED_META_TIME_PX),
+      fontWeight: ft.metaWeight,
+    },
+    compactMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'nowrap',
+      gap: ft.pad(6),
+      marginBottom: ft.pad(7),
+      minWidth: 0,
+      overflow: 'hidden',
+    },
+    compactTickerWrap: {
+      flexShrink: 0,
+      maxWidth: '30%',
+    },
+    compactTicker: {
+      color: theme.green,
+      fontSize: ft.ff(FEED_BODY_PX),
+      lineHeight: ft.ff(16),
+      fontWeight: ft.emphasisWeight,
+      letterSpacing: 0.2,
+    },
+    compactMetaMain: {
+      flex: 1,
+      minWidth: 0,
+      flexShrink: 1,
     },
     titleBlock: {
       gap: ft.pad(4),
@@ -277,7 +369,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       alignItems: 'center',
       alignSelf: 'flex-start',
       gap: 5,
-      marginBottom: ft.pad(2),
+      marginBottom: ft.pad(4),
     },
     titleToggleLinkPressed: {
       opacity: 0.82,
@@ -292,20 +384,21 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.green,
       fontWeight: ft.emphasisWeight,
     },
-    footerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: ft.pad(8),
-      minWidth: 0,
-      marginTop: ft.pad(2),
-    },
-    footerLead: {
-      flex: 1,
-      minWidth: 0,
+    sourceRow: {
       flexDirection: 'row',
       alignItems: 'center',
       flexWrap: 'wrap',
+      gap: ft.pad(6),
+      marginBottom: ft.pad(10),
+    },
+    sourceRowCompact: {
+      flexShrink: 1,
+      minWidth: 0,
+      marginBottom: 0,
+      alignSelf: 'center',
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'nowrap',
       gap: ft.pad(6),
     },
     sourcePill: {
@@ -327,13 +420,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.text,
       maxWidth: '100%',
     },
-    time: {
-      flexShrink: 0,
-      color: theme.textDim,
-      fontSize: ft.ff(FEED_META_TIME_PX),
-      lineHeight: sf(13),
-      fontWeight: ft.metaWeight,
-    },
     title: {
       color: theme.text,
       fontSize: ft.ff(FEED_ARTICLE_TITLE_PX),
@@ -342,7 +428,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: ft.ff(22),
     },
     titleLast: {
-      marginBottom: 0,
+      marginBottom: ft.pad(6),
     },
     footerTagsCol: {
       flex: 1,
@@ -378,11 +464,17 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: '#9EC9FF',
       textAlignVertical: Platform.OS === 'android' ? 'center' : undefined,
     },
-    tagRow: {
-      marginTop: ft.pad(2),
+    footer: {
+      marginTop: ft.pad(6),
+      paddingTop: ft.pad(8),
+      paddingBottom: ft.pad(2),
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
     },
-    tagRowGrouped: {
-      marginTop: 2,
+    footerGrouped: {
+      marginTop: 4,
+      paddingTop: 8,
+      borderTopWidth: 0,
     },
   });
 }

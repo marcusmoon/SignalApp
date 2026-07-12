@@ -5,7 +5,7 @@ import {
   naverFinanceStockUrl,
   naverFinanceWorldStockUrl,
 } from '@/utils/naverFinance';
-import { tossFinanceAppLaunchUrls, tossFinanceStockUrl } from '@/utils/tossFinance';
+import { tossFinanceStockAppLaunchUrls, tossFinanceStockUrl } from '@/utils/tossFinance';
 import { yahooFinanceAppLaunchUrls } from '@/utils/openExternalLink';
 import { yahooFinanceEarningsUrl, yahooFinanceQuoteUrl } from '@/utils/yahooFinance';
 
@@ -60,7 +60,7 @@ export function buildSymbolExternalLinks(
         id: 'toss',
         labelKey: 'moreRefTitleTossSecurities',
         url: tossUrl,
-        appLaunchUrls: tossFinanceAppLaunchUrls(tossUrl),
+        appLaunchUrls: tossFinanceStockAppLaunchUrls(tossUrl),
       });
     }
     links.push(
@@ -114,7 +114,7 @@ export function buildSymbolExternalLinks(
       id: 'toss',
       labelKey: 'moreRefTitleTossSecurities',
       url: tossUrl,
-      appLaunchUrls: tossFinanceAppLaunchUrls(tossUrl),
+      appLaunchUrls: tossFinanceStockAppLaunchUrls(tossUrl),
     });
   }
 

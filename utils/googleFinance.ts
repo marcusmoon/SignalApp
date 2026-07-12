@@ -7,33 +7,38 @@ function usTickerPath(symbol: string): string {
   return symbol.trim().toUpperCase().replace(/\./g, '-');
 }
 
-/** Google Finance는 `TICKER:EXCHANGE` 또는 검색 쿼리가 필요함 */
+type GoogleFinanceExchange = 'KRX' | 'NASDAQ' | 'NYSE';
+
+/** Google Finance quote path — `TICKER:EXCHANGE` (예: `005930:KRX`, `AAPL:NASDAQ`) */
+export function googleFinanceQuotePath(
+  symbol: string,
+  hint?: { yahooSymbol?: string | null },
+): string | null {
+  const trimmed = String(symbol || '').trim().toUpperCase();
+  if (!trimmed) return null;
+
+  const krx = normalizeKrxCode(trimmed);
+  if (krx) {
+    return `${krx}:KRX`;
+  }
+
+  const yahoo = hint?.yahooSymbol?.trim().toUpperCase();
+  if (yahoo?.endsWith('.KS') || yahoo?.endsWith('.KQ')) {
+    const code = yahoo.replace(/\.(KS|KQ)$/i, '');
+    if (/^\d{6}$/.test(code)) return `${code}:KRX`;
+  }
+
+  const ticker = yahoo && !yahoo.includes('.') ? usTickerPath(yahoo) : usTickerPath(trimmed);
+  const exchange: GoogleFinanceExchange = 'NASDAQ';
+  return `${ticker}:${exchange}`;
+}
+
+/** Google Finance 종목 상세 — `/quote/TICKER:EXCHANGE` */
 export function googleFinanceQuoteUrl(
   symbol: string,
   hint?: { yahooSymbol?: string | null },
 ): string {
-  const trimmed = String(symbol || '').trim().toUpperCase();
-  if (!trimmed) return 'https://www.google.com/finance';
-
-  const krx = normalizeKrxCode(trimmed);
-  if (krx) {
-    const yahoo = hint?.yahooSymbol?.trim().toUpperCase();
-    if (yahoo?.endsWith('.KQ')) {
-      return `https://www.google.com/finance/quote/KOSDAQ:${encodeURIComponent(krx)}`;
-    }
-    return `https://www.google.com/finance/quote/KRX:${encodeURIComponent(krx)}`;
-  }
-
-  const yahoo = hint?.yahooSymbol?.trim().toUpperCase();
-  if (yahoo?.endsWith('.KS')) {
-    const code = yahoo.replace('.KS', '');
-    return `https://www.google.com/finance/quote/KRX:${encodeURIComponent(code)}`;
-  }
-  if (yahoo?.endsWith('.KQ')) {
-    const code = yahoo.replace('.KQ', '');
-    return `https://www.google.com/finance/quote/KOSDAQ:${encodeURIComponent(code)}`;
-  }
-
-  const query = yahoo && !yahoo.includes('.') ? yahoo : usTickerPath(trimmed);
-  return `https://www.google.com/finance/search?q=${encodeURIComponent(query)}`;
+  const path = googleFinanceQuotePath(symbol, hint);
+  if (!path) return 'https://www.google.com/finance';
+  return `https://www.google.com/finance/quote/${encodeURIComponent(path)}`;
 }

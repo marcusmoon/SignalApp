@@ -287,6 +287,7 @@ export function HomeFocusContent({
   const selectedIsToday = selectedYmd >= todayYmd;
   const selectedIsExactToday = selectedYmd === todayYmd;
   const loadedYmdRef = useRef<string | null>(null);
+  const loadGenerationRef = useRef(0);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -295,6 +296,7 @@ export function HomeFocusContent({
   const [newsFlowDisplayCount, setNewsFlowDisplayCount] = useState(HOME_NEWS_FLOW_DISPLAY_DEFAULT);
   const [watchlistDisplayCount, setWatchlistDisplayCount] = useState(HOME_WATCHLIST_DISPLAY_DEFAULT);
   const [boardDisplayCount, setBoardDisplayCount] = useState(HOME_BOARD_DISPLAY_DEFAULT);
+  const [homeDisplayPrefsReady, setHomeDisplayPrefsReady] = useState(false);
   const [boardPosts, setBoardPosts] = useState<SignalApiCommunityPost[]>([]);
   const [issues, setIssues] = useState<IssueRow[]>([]);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
@@ -344,6 +346,7 @@ export function HomeFocusContent({
   });
 
   const load = useCallback(async (forceRefresh?: boolean) => {
+    const generation = ++loadGenerationRef.current;
     if (!hasSignalApi()) {
       setIssues([]);
       setQuotes([]);
@@ -407,6 +410,7 @@ export function HomeFocusContent({
         const row = mapSignalQuoteToRow(item);
         for (const key of quoteLookupKeys(item, row)) quoteBySymbol.set(key, row);
       }
+      if (generation !== loadGenerationRef.current) return;
       setTodayBriefing(todayBriefing);
       setIssues(nextIssues);
       setQuotes(
@@ -435,6 +439,7 @@ export function HomeFocusContent({
         setBoardPosts([]);
       }
     } catch (e) {
+      if (generation !== loadGenerationRef.current) return;
       setError(formatSignalApiError(e, t, 'ipadHomeLoadError'));
     }
   }, [locale, selectedYmd, t, todayYmd, watchlistDisplayCount, boardDisplayCount]);
@@ -455,6 +460,7 @@ export function HomeFocusContent({
   useRegisterWebHeaderRefresh(() => void refresh(), showIssueSummary ? 'mount' : 'focus');
 
   useEffect(() => {
+    if (!homeDisplayPrefsReady) return;
     let cancelled = false;
     const needsInitialLoad = loadedYmdRef.current !== selectedYmd;
     if (needsInitialLoad) setLoading(true);
@@ -469,59 +475,41 @@ export function HomeFocusContent({
     return () => {
       cancelled = true;
     };
-  }, [load, selectedYmd]);
+  }, [load, selectedYmd, homeDisplayPrefsReady]);
 
   useEffect(() => {
     if (selectedYmd > todayYmd) changeSelectedYmd(todayYmd);
   }, [changeSelectedYmd, selectedYmd, todayYmd]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const refreshNewsFlowCount = async () => {
-      const next = await loadHomeNewsFlowDisplayCount();
-      if (!cancelled) setNewsFlowDisplayCount(next);
-    };
-    void refreshNewsFlowCount();
-    const unsubscribe = subscribeHomeNewsFlowDisplayCountChanged(() => {
-      void refreshNewsFlowCount();
-    });
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
+  const reloadHomeDisplayPrefs = useCallback(async () => {
+    const [newsFlow, watchlist, board] = await Promise.all([
+      loadHomeNewsFlowDisplayCount(),
+      loadHomeWatchlistDisplayCount(),
+      loadHomeBoardDisplayCount(),
+    ]);
+    setNewsFlowDisplayCount(newsFlow);
+    setWatchlistDisplayCount(watchlist);
+    setBoardDisplayCount(board);
+    setHomeDisplayPrefsReady(true);
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    const refreshWatchlistCount = async () => {
-      const next = await loadHomeWatchlistDisplayCount();
-      if (!cancelled) setWatchlistDisplayCount(next);
-    };
-    void refreshWatchlistCount();
-    const unsubscribe = subscribeHomeWatchlistDisplayCountChanged(() => {
-      void refreshWatchlistCount();
-    });
+    void reloadHomeDisplayPrefs();
+    const unsubscribers = [
+      subscribeHomeNewsFlowDisplayCountChanged(() => {
+        void reloadHomeDisplayPrefs();
+      }),
+      subscribeHomeWatchlistDisplayCountChanged(() => {
+        void reloadHomeDisplayPrefs();
+      }),
+      subscribeHomeBoardDisplayCountChanged(() => {
+        void reloadHomeDisplayPrefs();
+      }),
+    ];
     return () => {
-      cancelled = true;
-      unsubscribe();
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
     };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const refreshBoardCount = async () => {
-      const next = await loadHomeBoardDisplayCount();
-      if (!cancelled) setBoardDisplayCount(next);
-    };
-    void refreshBoardCount();
-    const unsubscribe = subscribeHomeBoardDisplayCountChanged(() => {
-      void refreshBoardCount();
-    });
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, []);
+  }, [reloadHomeDisplayPrefs]);
 
   const openIssue = useCallback(
     (row?: IssueRow) => {
@@ -1027,7 +1015,7 @@ export function HomeFocusContent({
                   {quotes.length === 0 ? (
                     <Text style={styles.emptyText}>{t('quotesEmptyWatch')}</Text>
                   ) : (
-                    quotes.map((row, index) => {
+                    quotes.slice(0, watchlistDisplayCount).map((row, index) => {
                       const pct = row.quote?.changePercent;
                       const up = typeof pct === 'number' && pct >= 0;
                       return (

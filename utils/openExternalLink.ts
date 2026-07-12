@@ -25,16 +25,16 @@ function toLaunchList(launchUrls?: string | string[]): string[] {
   );
 }
 
-/** `youtube://`, `https://` … 및 `vnd.youtube:VIDEO_ID` */
+/** `youtube://`, `yfinance:/quote/AAPL`, `vnd.youtube:VIDEO_ID`, `https://` … */
 function isLikelyCustomAppUrl(u: string): boolean {
   const lower = u.toLowerCase();
   if (lower.startsWith('http://') || lower.startsWith('https://') || lower.startsWith('intent:')) {
     return false;
   }
-  if (/^[a-z][a-z0-9+.-]*:[^/]/i.test(u) && !lower.includes('://')) {
+  if (/^[a-z][a-z0-9+.-]*:(?:\/\/|\/)/i.test(u)) {
     return true;
   }
-  return /^[a-z][a-z0-9+.-]*:\/\//i.test(u);
+  return /^[a-z][a-z0-9+.-]*:[^/]/i.test(u) && !lower.includes('://');
 }
 
 function isIntentNavigationUrl(u: string): boolean {
@@ -156,7 +156,11 @@ export function orderAppLaunchUrlsForPlatform(urls: string[], webUrl: string): s
       https.push(url);
       continue;
     }
-    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) {
+    if (/^[a-z][a-z0-9+.-]*:(?:\/\/|\/)/i.test(url)) {
+      custom.push(url);
+      continue;
+    }
+    if (/^[a-z][a-z0-9+.-]*:[^/]/i.test(url) && !lower.includes('://')) {
       custom.push(url);
       continue;
     }
@@ -248,23 +252,80 @@ export function youtubeWatchAppLaunchUrls(videoId: string, webUrl: string): stri
   return orderAppLaunchUrlsForPlatform(base, webUrl);
 }
 
-async function tryIosWebOpenHttps(url: string): Promise<boolean> {
-  if (typeof window === 'undefined' || typeof window.open !== 'function') return false;
-  const popup = window.open(url, '_blank', 'noopener,noreferrer');
-  return popup != null;
+const IOS_WEB_APP_SCHEME_TIMEOUT_MS = 500;
+
+/** iPhone·iPad Safari — 사용자 제스처 체인에서 앱 스킴·https 내비게이션 */
+function iosWebNavigateViaAnchor(url: string, options?: { newTab?: boolean }): void {
+  if (typeof document === 'undefined') return;
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.rel = 'noopener noreferrer';
+  if (options?.newTab && isHttpOrHttpsUrl(url)) {
+    anchor.target = '_blank';
+  }
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
 }
 
-/** iPhone·iPad Safari — http(s)만 연다. 커스텀 스킴은 앱 미설치 시 Safari 오류를 띄운다. */
-async function tryIosWebAppLaunchUrls(list: string[], webUrl: string): Promise<boolean> {
-  const candidates = [...list, webUrl].filter(
-    (url, index, arr) => typeof url === 'string' && url.length > 0 && arr.indexOf(url) === index,
-  );
+function waitForIosWebAppHandoff(timeoutMs: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof document === 'undefined') {
+      resolve(false);
+      return;
+    }
+    if (document.hidden) {
+      resolve(true);
+      return;
+    }
 
-  for (const url of candidates) {
-    if (isIntentNavigationUrl(url)) continue;
-    if (!isHttpOrHttpsUrl(url)) continue;
-    if (await tryIosWebOpenHttps(url)) return true;
+    let settled = false;
+    const finish = (opened: boolean) => {
+      if (settled) return;
+      settled = true;
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.clearTimeout(timer);
+      resolve(opened);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) finish(true);
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    const timer = window.setTimeout(() => finish(false), timeoutMs);
+  });
+}
+
+async function tryIosWebOpenHttps(url: string): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  iosWebNavigateViaAnchor(url);
+  return true;
+}
+
+/**
+ * iPhone·iPad Safari — 네이티브와 동일 순서(커스텀 스킴 → https).
+ * 스킴은 첫 후보만 시도하고, 앱 전환이 없으면 https로 폴백한다.
+ */
+async function tryIosWebAppLaunchUrls(list: string[], webUrl: string): Promise<boolean> {
+  const ordered = orderAppLaunchUrlsForPlatform(list.length > 0 ? list : [], webUrl);
+  const unique = ordered.filter((url, index, arr) => url.length > 0 && arr.indexOf(url) === index);
+
+  const customs = unique.filter((url) => !isIntentNavigationUrl(url) && isLikelyCustomAppUrl(url));
+  const httpsUrls = unique.filter((url) => isHttpOrHttpsUrl(url));
+  const fallbackHttps = httpsUrls[0] ?? webUrl;
+
+  if (customs.length > 0) {
+    iosWebNavigateViaAnchor(customs[0]);
+    const handedOff = await waitForIosWebAppHandoff(IOS_WEB_APP_SCHEME_TIMEOUT_MS);
+    if (handedOff) return true;
   }
+
+  if (fallbackHttps) {
+    return tryIosWebOpenHttps(fallbackHttps);
+  }
+
   return false;
 }
 
@@ -313,7 +374,7 @@ async function tryNativeAppLaunchUrls(list: string[], webUrl: string): Promise<b
  * |---|---|---|---|
  * | 데스크톱·Android 웹 | true | — | 인앱 브라우저 |
  * | 데스크톱·Android 웹 | false | 있음/없음 | 새 탭 → 실패 시 인앱 브라우저 |
- * | iPhone·iPad Safari 웹 | false | 있음 | **https만** 새 탭(유니버설 링크) → 실패 시 인앱 폴백. 스킴 생략 |
+ * | iPhone·iPad Safari 웹 | false | 있음 | 커스텀 스킴 → https(동일 탭) → 실패 시 인앱 폴백 |
  * | iOS·iPad·Android 네이티브 | true | — | 인앱 브라우저 |
  * | iOS·iPad·Android 네이티브 | false | 있음 | 커스텀 스킴 → https(유니버설) → 미지원 시 외부 브라우저 |
  */

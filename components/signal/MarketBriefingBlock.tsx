@@ -98,41 +98,32 @@ function CompanyHighlightRow({
   const changePositive = hasChange ? isQuoteChangePositive({ changePercent: item.changePercent }) : null;
   const changeColor =
     changePositive === null ? theme.textMuted : changePositive ? changeColors.up : changeColors.down;
-  const changeBg =
-    changePositive === null
-      ? theme.bgElevated
-      : changePositive
-        ? `${changeColors.up}22`
-        : `${changeColors.down}22`;
-  const changeBorderColor = changePositive === null ? theme.border : `${changeColor}55`;
 
   return (
     <View style={[styles.companyRow, bordered && styles.listRowBordered]}>
-      <View style={styles.companyLead}>
-        <SymbolLogo symbol={item.symbol} size={20} />
-        <Text style={styles.companySymbol} numberOfLines={1}>
-          {item.symbol}
-        </Text>
+      <View style={styles.companyTopRow}>
+        <View style={styles.companyIdentity}>
+          <SymbolLogo symbol={item.symbol} size={20} />
+          <Text style={styles.companySymbol} numberOfLines={1}>
+            {item.symbol}
+          </Text>
+        </View>
+        {hasPrice || hasChange ? (
+          <View style={styles.companyQuoteInline}>
+            {hasPrice ? (
+              <Text style={styles.companyPrice} numberOfLines={1}>
+                {formatBriefingPrice(item.price, market)}
+              </Text>
+            ) : null}
+            {hasChange ? (
+              <Text style={[styles.companyChange, { color: changeColor }]} numberOfLines={1}>
+                {formatChangePct(item.changePercent)}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
       </View>
       <Text style={styles.companySummary}>{item.summary}</Text>
-      {(hasPrice || hasChange) ? (
-        <View
-          style={[
-            styles.companyQuoteBox,
-            { backgroundColor: changeBg, borderColor: changeBorderColor },
-          ]}>
-          {hasPrice ? (
-            <Text style={[styles.companyPrice, hasChange && { color: changeColor }]} numberOfLines={1}>
-              {formatBriefingPrice(item.price, market)}
-            </Text>
-          ) : null}
-          {hasChange ? (
-            <Text style={[styles.companyChange, { color: changeColor }]} numberOfLines={1}>
-              {formatChangePct(item.changePercent)}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -454,62 +445,60 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(18),
     },
     companyRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 8,
-      paddingVertical: 5,
-    },
-    companyLead: {
-      width: 56,
-      minWidth: 56,
-      flexGrow: 0,
-      flexShrink: 0,
-      flexDirection: 'column',
-      alignItems: 'center',
       gap: 4,
+      paddingVertical: 7,
+    },
+    companyTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+      minWidth: 0,
+    },
+    companyIdentity: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      flexShrink: 0,
+      minWidth: 72,
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+      borderRadius: 8,
+      backgroundColor: theme.bgElevated,
     },
     companySymbol: {
-      width: '100%',
-      fontSize: ft.ff(11),
+      fontSize: ft.ff(12),
       fontWeight: ft.emphasisWeight,
       letterSpacing: -0.1,
       color: theme.green,
-      textAlign: 'center',
       fontVariant: ['tabular-nums'],
     },
-    companyQuoteBox: {
-      flexShrink: 0,
-      alignItems: 'flex-end',
-      borderWidth: StyleSheet.hairlineWidth,
-      paddingVertical: 4,
-      paddingHorizontal: 6,
-      borderRadius: 6,
-      gap: 1,
-      minWidth: 64,
-      maxWidth: 88,
-      marginTop: 1,
+    companyQuoteInline: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      justifyContent: 'flex-end',
+      gap: 6,
+      flexShrink: 1,
+      minWidth: 0,
     },
     companyPrice: {
-      fontSize: ft.ff(11),
-      lineHeight: sf(14),
+      fontSize: ft.ff(12),
+      lineHeight: sf(16),
       fontWeight: ft.emphasisWeight,
       color: theme.text,
       fontVariant: ['tabular-nums'],
     },
     companyChange: {
-      fontSize: ft.ff(10),
-      lineHeight: sf(13),
+      fontSize: ft.ff(12),
+      lineHeight: sf(16),
       fontWeight: ft.metaWeight,
       fontVariant: ['tabular-nums'],
     },
     companySummary: {
-      flex: 1,
-      flexShrink: 1,
-      minWidth: 0,
       fontSize: ft.signalBodyFont(13),
       fontWeight: ft.signalMetaWeight,
       color: theme.textDim,
-      lineHeight: sf(18),
+      lineHeight: sf(19),
     },
     sectionFeedCard: {
       borderRadius: 8,

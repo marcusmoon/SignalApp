@@ -12,7 +12,7 @@ import { AiBadge } from '@/components/signal/AiBadge';
 import { makeDigestStripCardStyles } from '@/components/feed/digestStripCardStyles';
 import { WebHorizontalScrollStrip, type WebHorizontalScrollStripHandle } from '@/components/layout/WebHorizontalScrollStrip';
 import { DigestSourcesSheet, type DigestSourceSheetRow } from '@/components/news/DigestSourcesSheet';
-import { digestSourceIconEntries, SourceIconStack } from '@/components/signal/SourceIconStack';
+import { digestSourceIconEntries, SourceIconStack, type SourceIconEntry } from '@/components/signal/SourceIconStack';
 import {
   DIGEST_CARD_GAP,
   digestStripCardMinHeight,

@@ -114,8 +114,7 @@ type ExternalLinkDescriptor = {
 |---|---|---|
 | Yahoo (종목·홈) | `finance.yahoo.com` 유니버설 링크 | `yfinance://`는 홈만 열림 |
 | 네이버 | `naversearchapp://inappbrowser?url=…` + 중계 URL | https는 launch 목록에 넣지 않음 |
-| 토스 **종목** | `tossinvest.com/stocks/…` 유니버설 링크 | `supertoss://`는 홈만 |
-| 토스 **홈**(더보기) | `supertoss://invest`, `supertoss://` | |
+| 토스 **종목·홈** | iOS: `supertoss://` → `tossinvest.com` 유니버설 링크 | iOS는 `canOpenURL`로 스킴 검증 |
 | Upbit·Binance | 앱 스킴 (+ Android intent) | |
 
 Android 종목 URL은 `intent://…#Intent;package=…`로 경로 포함.

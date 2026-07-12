@@ -333,7 +333,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     linkFeedCard: {
       paddingHorizontal: 4,
-      paddingVertical: 4,
+      paddingVertical: 2,
+      shadowOpacity: 0,
+      elevation: 0,
     },
     issueGroupList: {
       gap: 0,

@@ -1,6 +1,3 @@
-import type { ComponentProps } from 'react';
-import type FontAwesome from '@expo/vector-icons/FontAwesome';
-
 import type { MessageId } from '@/locales/messages';
 import { googleFinanceQuoteUrl } from '@/utils/googleFinance';
 import {
@@ -18,8 +15,6 @@ export type SymbolExternalLink = {
   url: string;
   appLaunchUrls?: string[];
   openInAppBrowser?: boolean;
-  icon?: ComponentProps<typeof FontAwesome>['name'];
-  iconMark?: string;
 };
 
 export type SymbolExternalLinkHint = {
@@ -86,7 +81,6 @@ export function buildSymbolExternalLinks(
         labelKey: 'quotesNaverShort',
         url: naverUrl,
         appLaunchUrls: naverFinanceStockAppLaunchUrls(naverUrl),
-        iconMark: 'Naver',
       });
     }
     const tossUrl = tossFinanceStockUrl(code);
@@ -96,7 +90,6 @@ export function buildSymbolExternalLinks(
         labelKey: 'moreRefTitleTossSecurities',
         url: tossUrl,
         appLaunchUrls: tossFinanceStockAppLaunchUrls(tossUrl),
-        iconMark: 'Toss',
       });
     }
     links.push(
@@ -105,28 +98,24 @@ export function buildSymbolExternalLinks(
         labelKey: 'symbolDetailLinkGoogleFinance',
         url: googleFinanceQuoteUrl(code, hint),
         openInAppBrowser: true,
-        icon: 'google',
       },
       {
         id: 'naver-news',
         labelKey: 'symbolDetailLinkNaverNews',
         url: `https://m.stock.naver.com/domestic/stock/${encodeURIComponent(code)}/news`,
         openInAppBrowser: true,
-        icon: 'newspaper-o',
       },
       {
         id: 'naver-dart',
         labelKey: 'symbolDetailLinkDart',
         url: `https://finance.naver.com/item/dart.naver?code=${encodeURIComponent(code)}`,
         openInAppBrowser: true,
-        icon: 'file-text-o',
       },
       {
         id: 'dart',
         labelKey: 'symbolDetailLinkDartOfficial',
         url: 'https://m.dart.fss.or.kr',
         openInAppBrowser: true,
-        iconMark: 'DART',
       },
     );
     return sortByOrder(links, DOMESTIC_LINK_ORDER);
@@ -146,7 +135,6 @@ export function buildSymbolExternalLinks(
       labelKey: 'quotesNaverShort',
       url: naverUrl,
       appLaunchUrls: naverFinanceStockAppLaunchUrls(naverUrl),
-      iconMark: 'Naver',
     });
   }
 
@@ -156,7 +144,6 @@ export function buildSymbolExternalLinks(
       labelKey: 'moreRefTitleTossSecurities',
       url: tossUrl,
       appLaunchUrls: tossFinanceStockAppLaunchUrls(tossUrl),
-      iconMark: 'Toss',
     });
   }
 
@@ -166,35 +153,30 @@ export function buildSymbolExternalLinks(
       labelKey: 'quotesYahooShort',
       url: yahooQuote,
       appLaunchUrls: yahooFinanceQuoteAppLaunchUrls(yahooQuote),
-      icon: 'yahoo',
     },
     {
       id: 'yahoo-earnings',
       labelKey: 'symbolDetailLinkEarnings',
       url: yahooEarnings,
       appLaunchUrls: yahooFinanceQuoteAppLaunchUrls(yahooEarnings),
-      icon: 'bar-chart',
     },
     {
       id: 'sec',
       labelKey: 'symbolDetailLinkSec',
       url: `https://www.sec.gov/edgar/search/#/q=${encodeURIComponent(trimmed)}`,
       openInAppBrowser: true,
-      iconMark: 'SEC',
     },
     {
       id: 'google-finance',
       labelKey: 'symbolDetailLinkGoogleFinance',
       url: googleFinanceQuoteUrl(trimmed, hint),
       openInAppBrowser: true,
-      icon: 'google',
     },
     {
       id: 'tradingview',
       labelKey: 'symbolDetailLinkTradingView',
       url: `https://www.tradingview.com/symbols/${encodeURIComponent(tickerPath)}/`,
       openInAppBrowser: true,
-      iconMark: 'TV',
     },
   );
 

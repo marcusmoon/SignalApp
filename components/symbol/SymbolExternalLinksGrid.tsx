@@ -1,20 +1,23 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useMemo, useState } from 'react';
+import { Image } from 'expo-image';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { MessageId } from '@/locales/messages';
+import { markSourceIconFailed } from '@/services/sourceIcon';
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
+import { externalLinkFaviconUrl } from '@/utils/externalLinkFavicon';
 import type { SymbolExternalLink } from '@/utils/symbolExternalLinks';
 
-const GAP = 8;
-const ROW_GAP = 14;
-const BOX_PAD_H = 8;
-const BOX_PAD_V = 12;
-/** 더보기 숏링크(72)보다 크게 — 종목 상세 바로가기 */
-const MIN_CELL_WIDTH = 88;
+const GAP = 6;
+const ROW_GAP = 8;
+const BOX_PAD_H = 4;
+const BOX_PAD_V = 6;
+const MAX_COLUMNS = 3;
+const MIN_CELL_WIDTH = 68;
+const FAVICON_SIZE = 24;
 
 function chunkItems<T>(items: T[], columns: number): T[][] {
   const rows: T[][] = [];
@@ -28,7 +31,7 @@ function computeGridColumns(innerWidth: number, itemCount: number): number {
   if (innerWidth <= 0 || itemCount <= 0) return 1;
 
   const maxColumnsByWidth = Math.max(1, Math.floor((innerWidth + GAP) / (MIN_CELL_WIDTH + GAP)));
-  const maxColumns = Math.min(maxColumnsByWidth, itemCount);
+  const maxColumns = Math.min(MAX_COLUMNS, maxColumnsByWidth, itemCount);
 
   let bestColumns = 1;
   let bestScore = -Infinity;
@@ -53,11 +56,20 @@ function computeGridColumns(innerWidth: number, itemCount: number): number {
 type LinkCellProps = {
   link: SymbolExternalLink;
   styles: ReturnType<typeof makeStyles>;
-  theme: AppTheme;
   label: string;
 };
 
-function LinkCell({ link, styles, theme, label }: LinkCellProps) {
+function LinkCell({ link, styles, label }: LinkCellProps) {
+  const faviconUrl = useMemo(
+    () => externalLinkFaviconUrl(link.id, link.url, 32),
+    [link.id, link.url],
+  );
+  const [iconFailed, setIconFailed] = useState(false);
+
+  useEffect(() => {
+    setIconFailed(false);
+  }, [faviconUrl]);
+
   return (
     <Pressable
       style={({ pressed }) => [styles.cell, pressed && styles.cellPressed]}
@@ -70,18 +82,22 @@ function LinkCell({ link, styles, theme, label }: LinkCellProps) {
       }
       accessibilityRole="link"
       accessibilityLabel={label}>
-      <View style={styles.iconArea}>
-        {link.iconMark != null ? (
-          <Text style={styles.iconMarkText} numberOfLines={1}>
-            {link.iconMark}
-          </Text>
-        ) : link.icon != null ? (
-          <FontAwesome name={link.icon} size={30} color={theme.textDim} />
+      <View style={styles.iconWrap}>
+        {!iconFailed ? (
+          <Image
+            source={{ uri: faviconUrl }}
+            style={styles.favicon}
+            contentFit="contain"
+            onError={() => {
+              markSourceIconFailed(faviconUrl);
+              setIconFailed(true);
+            }}
+          />
         ) : (
-          <FontAwesome name="external-link" size={26} color={theme.textDim} />
+          <View style={styles.faviconFallback} />
         )}
       </View>
-      <Text style={styles.cellLabel} numberOfLines={2}>
+      <Text style={styles.cellLabel} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
@@ -128,12 +144,7 @@ export function SymbolExternalLinksGrid({ links }: SymbolExternalLinksGridProps)
             style={[styles.gridRow, rowIndex === rows.length - 1 && styles.gridRowLast]}>
             {row.map((link) => (
               <View key={link.id} style={styles.gridCell}>
-                <LinkCell
-                  link={link}
-                  styles={styles}
-                  theme={theme}
-                  label={t(link.labelKey)}
-                />
+                <LinkCell link={link} styles={styles} label={t(link.labelKey)} />
               </View>
             ))}
           </View>
@@ -166,36 +177,40 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       minWidth: 0,
     },
     cell: {
-      minHeight: 88,
+      minHeight: 56,
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: 10,
-      paddingHorizontal: 6,
-      paddingVertical: 8,
+      borderRadius: 8,
+      paddingHorizontal: 2,
+      paddingVertical: 4,
     },
     cellPressed: {
       backgroundColor: theme.greenDim,
     },
-    iconArea: {
-      width: 52,
-      height: 40,
+    iconWrap: {
+      width: FAVICON_SIZE,
+      height: FAVICON_SIZE,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 8,
+      marginBottom: 4,
     },
-    iconMarkText: {
-      fontSize: sf(12),
-      fontWeight: '900',
-      color: theme.textDim,
-      letterSpacing: -0.3,
+    favicon: {
+      width: FAVICON_SIZE,
+      height: FAVICON_SIZE,
+      borderRadius: 4,
+    },
+    faviconFallback: {
+      width: FAVICON_SIZE,
+      height: FAVICON_SIZE,
+      borderRadius: 4,
+      backgroundColor: theme.bgElevated,
     },
     cellLabel: {
-      fontSize: sf(12),
-      fontWeight: '800',
-      color: theme.text,
+      fontSize: sf(10),
+      fontWeight: '700',
+      color: theme.textDim,
       textAlign: 'center',
-      lineHeight: sf(15),
-      minHeight: Math.round(sf(30)),
+      lineHeight: sf(12),
     },
   });
 }

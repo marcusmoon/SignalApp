@@ -6,8 +6,12 @@
 /** Google 파비콘 API — 도메인별 기본 fallback */
 export const GOOGLE_FAVICON_ICON_SIZE = 64;
 
-export function googleFaviconIconUrl(domain: string): string {
-  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=${GOOGLE_FAVICON_ICON_SIZE}`;
+export function googleFaviconIconUrl(
+  domain: string,
+  size: number = GOOGLE_FAVICON_ICON_SIZE,
+): string {
+  const sz = Math.max(16, Math.min(128, Math.round(size)));
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=${sz}`;
 }
 
 /** Financial Juice 공식 앱/모바일 마크 — Google 파비콘 오매칭 회피 */

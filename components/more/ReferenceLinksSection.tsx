@@ -1,5 +1,5 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useMemo, useState } from 'react';
+import { Image } from 'expo-image';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { REFERENCE_LINK_ITEMS, type ReferenceLinkItem } from '@/constants/referenceAppLinks';
@@ -7,6 +7,8 @@ import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import type { MessageId } from '@/locales/messages';
+import { markSourceIconFailed } from '@/services/sourceIcon';
+import { externalLinkFaviconUrl } from '@/utils/externalLinkFavicon';
 import { openReferenceLink } from '@/utils/referenceLinkOpen';
 
 const GAP = 6;
@@ -60,11 +62,20 @@ export function computeReferenceLinkGridColumns(
 type LinkCellProps = {
   item: ReferenceLinkItem;
   styles: ReturnType<typeof makeStyles>;
-  theme: AppTheme;
   label: string;
 };
 
-function LinkCell({ item, styles, theme, label }: LinkCellProps) {
+function LinkCell({ item, styles, label }: LinkCellProps) {
+  const faviconUrl = useMemo(
+    () => externalLinkFaviconUrl(item.id, item.webUrl, 32),
+    [item.id, item.webUrl],
+  );
+  const [iconFailed, setIconFailed] = useState(false);
+
+  useEffect(() => {
+    setIconFailed(false);
+  }, [faviconUrl]);
+
   return (
     <Pressable
       style={({ pressed }) => [styles.cell, pressed && styles.cellPressed]}
@@ -72,12 +83,18 @@ function LinkCell({ item, styles, theme, label }: LinkCellProps) {
       accessibilityRole="button"
       accessibilityLabel={label}>
       <View style={styles.iconCircle}>
-        {item.iconMark != null ? (
-          <Text style={styles.iconMarkText} numberOfLines={1}>
-            {item.iconMark}
-          </Text>
+        {!iconFailed ? (
+          <Image
+            source={{ uri: faviconUrl }}
+            style={styles.favicon}
+            contentFit="contain"
+            onError={() => {
+              markSourceIconFailed(faviconUrl);
+              setIconFailed(true);
+            }}
+          />
         ) : (
-          <FontAwesome name={item.icon!} size={26} color={theme.textDim} />
+          <View style={styles.faviconFallback} />
         )}
       </View>
       <Text style={styles.cellLabel} numberOfLines={2}>
@@ -106,7 +123,7 @@ function LinkGrid({ items, columns, styles, theme, t }: LinkGridProps) {
           style={[styles.gridRow, rowIndex === rows.length - 1 && styles.gridRowLast]}>
           {row.map((item) => (
             <View key={item.id} style={styles.gridCell}>
-              <LinkCell item={item} styles={styles} theme={theme} label={t(item.labelKey)} />
+              <LinkCell item={item} styles={styles} label={t(item.labelKey)} />
             </View>
           ))}
         </View>
@@ -184,19 +201,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.greenDim,
     },
     iconCircle: {
-      width: 46,
-      height: 36,
-      borderRadius: 0,
+      width: 28,
+      height: 28,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: 6,
-      paddingHorizontal: 0,
     },
-    iconMarkText: {
-      fontSize: sf(11),
-      fontWeight: '900',
-      color: theme.textDim,
-      letterSpacing: -0.2,
+    favicon: {
+      width: 24,
+      height: 24,
+      borderRadius: 4,
+    },
+    faviconFallback: {
+      width: 24,
+      height: 24,
+      borderRadius: 4,
+      backgroundColor: theme.bgElevated,
     },
     cellLabel: {
       flex: 1,

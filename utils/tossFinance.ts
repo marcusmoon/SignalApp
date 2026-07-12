@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
+import { orderAppLaunchUrlsForPlatform } from '@/utils/openExternalLink';
 
 function normalizeKrxCode(symbol: string): string | null {
   const digits = String(symbol || '').replace(/\D/g, '');
@@ -35,37 +36,26 @@ export function tossInvestAndroidIntentUrl(webUrl: string): string {
 
 const TOSS_APP_LAUNCH_URLS = ['supertoss://invest', 'supertoss://'] as const;
 
-function isTossStockDetailUrl(webUrl: string): boolean {
-  return /\/stocks\/[^/]+/i.test(webUrl);
+function tossIosLaunchUrls(webUrl: string): string[] {
+  return orderAppLaunchUrlsForPlatform([...TOSS_APP_LAUNCH_URLS], webUrl);
 }
 
 /**
- * 종목 상세 — iOS·iPad는 tossinvest.com 유니버설 링크로 해당 종목까지 이동 시도.
- * generic `supertoss://`는 앱 홈만 열려 종목 경로가 무시된다.
- * 더보기 홈·Android는 intent·스킴 우선.
+ * 종목·더보기 — iOS는 supertoss 스킴 후 tossinvest.com 유니버설 링크.
+ * Android는 intent(경로 포함)·스킴 순.
  */
 export function tossFinanceStockAppLaunchUrls(webUrl: string): string[] {
   if (Platform.OS === 'android') {
     return [tossInvestAndroidIntentUrl(webUrl), ...TOSS_APP_LAUNCH_URLS];
   }
   if (Platform.OS === 'ios') {
-    if (isTossStockDetailUrl(webUrl)) {
-      return [webUrl];
-    }
-    return [...TOSS_APP_LAUNCH_URLS];
+    return tossIosLaunchUrls(webUrl);
   }
   return [webUrl];
 }
 
-/** 더보기 토스증권 홈 — 앱 스킴 우선(특정 종목 경로 없음) */
 export function tossFinanceHomeAppLaunchUrls(webUrl: string): string[] {
-  if (Platform.OS === 'android') {
-    return [tossInvestAndroidIntentUrl(webUrl), ...TOSS_APP_LAUNCH_URLS];
-  }
-  if (Platform.OS === 'ios') {
-    return [...TOSS_APP_LAUNCH_URLS];
-  }
-  return [webUrl];
+  return tossFinanceStockAppLaunchUrls(webUrl);
 }
 
 /** @deprecated Use tossFinanceStockAppLaunchUrls */

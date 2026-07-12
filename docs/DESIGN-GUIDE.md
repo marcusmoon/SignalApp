@@ -125,7 +125,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 종목 상세 바로가기
 
-- `SymbolExternalLinksGrid` — 아이콘·브랜드 마크 + 이름, 동적 열 그리드 (셀 min 88px, 더보기 숏링크보다 큼)
+- `SymbolExternalLinksGrid` — 파비콘(24px) + 이름, **최대 3열**·2행 내외 컴팩트 그리드
 - 해외: Naver → Toss → Yahoo → Earnings → SEC → Google → TradingView
 - 국내: Naver → Toss → Google → 네이버 뉴스 → 네이버 공시 → DART
 

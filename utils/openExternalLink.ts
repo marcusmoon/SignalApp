@@ -9,11 +9,6 @@ export type OpenExternalLinkOptions = {
    * 네이티브(iOS·iPad·Android) 앱 우선 링크의 기본 폴백.
    */
   preferInAppBrowserOnLinkingFailure?: boolean;
-  /**
-   * 앱 스킴 시도 후 항상 인앱 브라우저로 폴백 (더보기 숏링크).
-   * https 유니버설 링크만으로는 iOS에서 조용히 실패하는 경우가 있어 WebBrowser로 보장한다.
-   */
-  preferInAppBrowserAfterAppAttempts?: boolean;
 };
 
 function toLaunchList(launchUrls?: string | string[]): string[] {
@@ -74,6 +69,18 @@ async function tryOpen(url: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** iOS는 LSApplicationQueriesSchemes 없으면 canOpenURL이 false — 스킴 허위 성공 방지 */
+async function tryOpenCustomAppUrl(url: string): Promise<boolean> {
+  if (Platform.OS === 'ios') {
+    try {
+      if (!(await Linking.canOpenURL(url))) return false;
+    } catch {
+      return false;
+    }
+  }
+  return tryOpen(url);
 }
 
 async function openWebUrlWithOptionalInApp(
@@ -224,7 +231,7 @@ export async function openExternalLink(
       continue;
     }
     if (isLikelyCustomAppUrl(url)) {
-      if (await tryOpen(url)) return;
+      if (await tryOpenCustomAppUrl(url)) return;
       continue;
     }
     if (isHttpOrHttpsUrl(url)) {

@@ -125,8 +125,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 홈 게시판 (Board)
 
-- 출처 숏컷(LikeUSStock · SAVE): **2열 그리드** — `ExternalLinkGrid` (`preferredColumns: 2`)
-- 아래에 최근 글 목록 또는 빈 상태 문구
+- 최근 글 목록 또는 빈 상태 문구 (출처 숏컷 없음)
 
 ### 종목 상세 바로가기
 

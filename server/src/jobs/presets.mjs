@@ -52,6 +52,7 @@ export const JOB_PRESETS = {
     jobKeys: [
       'market_quotes_popular',
       'market_quotes_watchlist',
+      'market_quotes_korea_watchlist',
       'market_quotes_mcap_universe',
       'market_quotes_mcap',
       'market_coins_top',

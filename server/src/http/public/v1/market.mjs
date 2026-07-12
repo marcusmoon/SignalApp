@@ -155,7 +155,7 @@ export async function handlePublicMarketRoutes({ req, res, url, pathname }) {
           }
         }
 
-        const needFetch = [...new Set([...missing, ...stale])].filter((sym) => !/^\d{6}$/.test(sym));
+        const needFetch = [...new Set([...missing, ...stale])];
         if (needFetch.length > 0) {
           try {
             const seg = url.searchParams.get('segment') || 'watch';

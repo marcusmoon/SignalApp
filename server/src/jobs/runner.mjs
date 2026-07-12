@@ -132,7 +132,7 @@ async function readJobContext(job) {
     provider === 'dart' ||
     (provider === 'finnhub' &&
       (handler === 'market_quotes' || handler === 'market_quotes_mcap' || handler === 'market_quotes_mcap_universe')) ||
-    (provider === 'yahoo' && handler === 'daily_bars')
+    (provider === 'yahoo' && (handler === 'daily_bars' || handler === 'market_quotes'))
   ) {
     context.marketLists = await listCollectionPayloads('marketLists');
   }
@@ -327,6 +327,15 @@ async function executeHandler(job, dbBefore, { onProgress, phase = 'latest' } = 
         instruments: dailyBarInstruments(dbBefore, params || {}),
       }),
     };
+  }
+  if (effective.provider === 'yahoo' && effective.handler === 'market_quotes') {
+    const listKey = params?.listKey || 'korea_watchlist';
+    const symbols = listKey
+      ? marketListSymbols(dbBefore, listKey)
+      : Array.isArray(params?.symbols) && params.symbols.length > 0
+        ? params.symbols
+        : [];
+    return { kind: 'marketQuotes', rows: await fetchMarketQuotes({ ...(params || {}), symbols }) };
   }
   if (effective.provider === 'naver_cafe' && effective.handler === 'likeusstock_free') {
     return { kind: 'community', rows: await fetchNaverCafeLikeusstockFree(params || {}) };

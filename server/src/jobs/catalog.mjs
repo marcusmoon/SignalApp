@@ -24,6 +24,7 @@ export const JOB_CATALOG = {
   market_quotes_mcap_universe: { area: 'market', stage: 'maintain' },
   market_coins_top: { area: 'market', stage: 'ingest' },
   market_price_series_daily: { area: 'market', stage: 'ingest' },
+  market_quotes_korea_watchlist: { area: 'market', stage: 'ingest' },
   quant_price_series_kr: { area: 'legacy', stage: 'ingest', legacy: true },
   quant_signals_kr: { area: 'legacy', stage: 'enrich', legacy: true },
   community_naver_likeusstock_free: { area: 'community', stage: 'ingest' },

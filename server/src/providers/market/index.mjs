@@ -5,20 +5,40 @@ import {
   fetchFinnhubProfile2,
   fetchFinnhubStockCandles,
 } from './finnhub.mjs';
+import {
+  fetchYahooKrxMarketQuotes,
+  fetchYahooKrxStockCandles,
+  fetchYahooKrxStockProfile,
+  isKrxSymbol,
+} from './yahooKrx.mjs';
 import { getProviderSetting } from '../../providerSettings.mjs';
 
 async function activeEquityMarketProvider() {
-  // Today only Finnhub is implemented, but this indirection is intentional:
-  // when we add another provider, we switch/route here and keep the rest of the server stable.
   const finnhub = await getProviderSetting('finnhub');
   if (finnhub.enabled) return 'finnhub';
   throw new Error('MARKET_PROVIDER_DISABLED');
 }
 
+function partitionSymbols(symbols = []) {
+  const normalized = [...new Set(symbols.map((s) => String(s || '').trim().toUpperCase()).filter(Boolean))];
+  const krx = normalized.filter(isKrxSymbol);
+  const us = normalized.filter((sym) => !isKrxSymbol(sym));
+  return { krx, us };
+}
+
 export async function fetchMarketQuotes({ symbols = [], segment = 'popular' } = {}) {
-  const provider = await activeEquityMarketProvider();
-  if (provider === 'finnhub') return fetchFinnhubMarketQuotes({ symbols, segment });
-  throw new Error(`MARKET_PROVIDER_NOT_IMPLEMENTED:${provider}`);
+  const { krx, us } = partitionSymbols(symbols);
+  const rows = [];
+
+  if (us.length > 0) {
+    const provider = await activeEquityMarketProvider();
+    if (provider === 'finnhub') rows.push(...(await fetchFinnhubMarketQuotes({ symbols: us, segment })));
+    else throw new Error(`MARKET_PROVIDER_NOT_IMPLEMENTED:${provider}`);
+  }
+  if (krx.length > 0) {
+    rows.push(...(await fetchYahooKrxMarketQuotes({ symbols: krx, segment })));
+  }
+  return rows;
 }
 
 export async function fetchMcapQuotes({ topN = 20, symbols = [], onProgress = null } = {}) {
@@ -34,13 +54,19 @@ export async function fetchMcapUniverse({ topN = 20, symbols = [], targetListKey
 }
 
 export async function fetchStockProfile(symbol) {
+  const sym = String(symbol || '').trim().toUpperCase();
+  if (isKrxSymbol(sym)) return fetchYahooKrxStockProfile(sym);
+
   const provider = await activeEquityMarketProvider();
-  if (provider === 'finnhub') return fetchFinnhubProfile2(symbol);
+  if (provider === 'finnhub') return fetchFinnhubProfile2(sym);
   throw new Error(`MARKET_PROVIDER_NOT_IMPLEMENTED:${provider}`);
 }
 
 export async function fetchStockCandles(symbol, params = {}) {
+  const sym = String(symbol || '').trim().toUpperCase();
+  if (isKrxSymbol(sym)) return fetchYahooKrxStockCandles(sym, params);
+
   const provider = await activeEquityMarketProvider();
-  if (provider === 'finnhub') return fetchFinnhubStockCandles(symbol, params);
+  if (provider === 'finnhub') return fetchFinnhubStockCandles(sym, params);
   throw new Error(`MARKET_PROVIDER_NOT_IMPLEMENTED:${provider}`);
 }

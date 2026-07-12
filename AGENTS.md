@@ -13,6 +13,7 @@
 | [docs/SCREEN-LAYOUT.md](./docs/SCREEN-LAYOUT.md) | 앱 화면 레이아웃·여백 기준 (iPhone / iPad / web) |
 | [docs/FEED-INTERACTION.md](./docs/FEED-INTERACTION.md) | PTR·chip·폴링·피드 캐시 상호작용 규칙 |
 | [docs/SERVER.md](./docs/SERVER.md) | 서버, DB, Job 운영 |
+| [docs/KRX-MARKET-DATA.md](./docs/KRX-MARKET-DATA.md) | 한국 종목 시세·차트 수집 |
 | [docs/NEWS-ISSUE-AUTOMATION.md](./docs/NEWS-ISSUE-AUTOMATION.md) | Codex 예약 기반 뉴스 이슈 묶음 JSON 계약 |
 | [docs/DIGEST-SOURCE-REF-HYDRATION.md](./docs/DIGEST-SOURCE-REF-HYDRATION.md) | 다이제스트·브리핑 출처 참조키 조회 |
 | [docs/NEWS-TRANSLATION-AUTOMATION.md](./docs/NEWS-TRANSLATION-AUTOMATION.md) | Codex 예약 기반 뉴스 번역 pending·ingest 계약 |

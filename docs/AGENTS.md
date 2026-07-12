@@ -22,6 +22,7 @@
 | [SOCIAL-AUTH.md](./SOCIAL-AUTH.md) | 소셜 로그인·JWT |
 | [SIGNAL-ADMIN-UIUX.md](./SIGNAL-ADMIN-UIUX.md) | Admin UI 기준 |
 | [RELEASE-CHECKLIST.md](./RELEASE-CHECKLIST.md) | 출시 전 점검 |
+| [KRX-MARKET-DATA.md](./KRX-MARKET-DATA.md) | 한국 종목 시세·차트 수집 |
 | [TODO.md](./TODO.md) | 후속 과제 |
 | [XCODE-EXTERNAL-DRIVE.md](./XCODE-EXTERNAL-DRIVE.md) | (선택) Xcode 캐시 외장 디스크 |
 

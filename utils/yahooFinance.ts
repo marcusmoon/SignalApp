@@ -9,6 +9,19 @@ export function usTickerToYahooPath(ticker: string): string {
   return ticker.trim().toUpperCase().replace(/\./g, '-');
 }
 
+/** 시세 payload의 yahooSymbol(예: 005930.KS) 우선, 없으면 티커에서 추론 */
+export function resolveYahooFinanceSymbol(
+  symbol: string,
+  hint?: { yahooSymbol?: string | null },
+): string {
+  const fromQuote = String(hint?.yahooSymbol || '').trim();
+  if (fromQuote) return fromQuote;
+
+  const trimmed = String(symbol || '').trim().toUpperCase();
+  if (/^\d{6}$/.test(trimmed)) return `${trimmed}.KS`;
+  return usTickerToYahooPath(trimmed);
+}
+
 export function coinSymbolToYahooPair(symbol: string): string {
   const s = symbol.trim().toUpperCase();
   if (!s || s === '—') return 'BTC-USD';
@@ -16,8 +29,15 @@ export function coinSymbolToYahooPair(symbol: string): string {
   return `${s}-USD`;
 }
 
-export function yahooFinanceQuoteUrl(symbol: string, mode: 'coin' | 'stock'): string {
-  const path = mode === 'coin' ? coinSymbolToYahooPair(symbol) : usTickerToYahooPath(symbol);
+export function yahooFinanceQuoteUrl(
+  symbol: string,
+  mode: 'coin' | 'stock',
+  hint?: { yahooSymbol?: string | null },
+): string {
+  const path =
+    mode === 'coin'
+      ? coinSymbolToYahooPair(symbol)
+      : resolveYahooFinanceSymbol(symbol, hint);
   return `https://finance.yahoo.com/quote/${encodeURIComponent(path)}`;
 }
 
@@ -32,8 +52,11 @@ export async function openYahooFinanceQuote(symbol: string, mode: 'coin' | 'stoc
 }
 
 /** 실적 캘린더 — `/quote/.../earnings` 경로는 Yahoo에서 더 이상 유효하지 않음 */
-export function yahooFinanceEarningsUrl(symbol: string): string {
-  const path = usTickerToYahooPath(symbol);
+export function yahooFinanceEarningsUrl(
+  symbol: string,
+  hint?: { yahooSymbol?: string | null },
+): string {
+  const path = resolveYahooFinanceSymbol(symbol, hint).replace(/\.(KS|KQ)$/i, '');
   return `https://finance.yahoo.com/calendar/earnings?symbol=${encodeURIComponent(path)}`;
 }
 

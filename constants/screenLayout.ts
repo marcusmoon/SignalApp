@@ -42,8 +42,8 @@ export const SCREEN_WIDE_SCROLL_BOTTOM_BASE = 32;
 /** FAB를 탭바 위에 띄울 때 추가 lift */
 export const SCREEN_FAB_ABOVE_TAB_OFFSET = 8;
 
-/** 뉴스 제목 번역 FAB — 탭바에 더 가깝게(일반 FAB보다 약간 아래) */
-export const SCREEN_NEWS_TITLE_FAB_ABOVE_TAB_OFFSET = 0;
+/** 뉴스 제목 번역 FAB — 탭바 캡슐과 FAB 사이 간격 (0이면 붙어 보임) */
+export const SCREEN_NEWS_TITLE_FAB_ABOVE_TAB_OFFSET = 12;
 
 export function tabScreenScrollBottomPadding(
   tabBarHeight: number,

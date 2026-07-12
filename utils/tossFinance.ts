@@ -1,7 +1,6 @@
 import { Platform } from 'react-native';
 
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
-import { orderAppLaunchUrlsForPlatform } from '@/utils/openExternalLink';
 
 function normalizeKrxCode(symbol: string): string | null {
   const digits = String(symbol || '').replace(/\D/g, '');
@@ -25,7 +24,7 @@ export function tossFinanceStockUrl(symbol: string): string | null {
   return null;
 }
 
-function tossInvestAndroidIntentUrl(webUrl: string): string {
+export function tossInvestAndroidIntentUrl(webUrl: string): string {
   const enc = encodeURIComponent(webUrl);
   const path = webUrl.replace(/^https:\/\/www\.tossinvest\.com/i, '');
   return (

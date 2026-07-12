@@ -8,7 +8,11 @@ export type OpenExternalLinkOptions = {
    * 마지막에 `Linking.openURL(webUrl)`까지 실패하면 인앱 브라우저로 연다.
    * (야후 종목, 유튜브 영상 등 — 퀵 링크는 보통 false)
    */
-  preferInAppBrowserOnLinkingFailure?: boolean;
+  /**
+   * 앱 스킴 시도 후 항상 인앱 브라우저로 폴백 (더보기 숏링크).
+   * https 유니버설 링크만으로는 iOS에서 조용히 실패하는 경우가 있어 WebBrowser로 보장한다.
+   */
+  preferInAppBrowserAfterAppAttempts?: boolean;
 };
 
 function toLaunchList(launchUrls?: string | string[]): string[] {
@@ -206,7 +210,13 @@ export async function openExternalLink(
 ): Promise<void> {
   const list = toLaunchList(appLaunchUrls);
   const preferInApp = options?.preferInAppBrowser === true;
+  const preferInAppAfterApps = options?.preferInAppBrowserAfterAppAttempts === true;
   const preferBrowserOnFailure = options?.preferInAppBrowserOnLinkingFailure === true;
+
+  if (Platform.OS === 'web') {
+    await WebBrowser.openBrowserAsync(webUrl);
+    return;
+  }
 
   for (const url of list) {
     if (isIntentNavigationUrl(url)) {
@@ -250,5 +260,9 @@ export async function openExternalLink(
     }
   }
 
-  await openWebUrlWithOptionalInApp(webUrl, preferInApp, preferBrowserOnFailure);
+  await openWebUrlWithOptionalInApp(
+    webUrl,
+    preferInApp || preferInAppAfterApps,
+    preferBrowserOnFailure && !preferInAppAfterApps,
+  );
 }

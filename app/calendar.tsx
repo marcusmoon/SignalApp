@@ -16,6 +16,7 @@ import { InvestMonthCalendar } from '@/components/signal/InvestMonthCalendar';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { SourceIconStack } from '@/components/signal/SourceIconStack';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
@@ -44,6 +45,7 @@ import {
   type CalendarEventTypeKey,
 } from '@/services/calendarEventTypeFilterPreference';
 import type { AppLocale, MessageId } from '@/locales/messages';
+import { calendarProviderSourceEntries } from '@/domain/calendar/calendarProviderIcon';
 import type { CalendarEvent } from '@/types/signal';
 import { localeTagForAppLocale, toYmd, calendarEventDisplayYmd } from '@/utils/date';
 
@@ -676,6 +678,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.emphasisWeight,
       color: theme.textDim,
     },
+    sourceFooter: {
+      marginTop: 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
     modalBackdrop: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.58)',
@@ -767,6 +775,7 @@ const CalendarEventCard = memo(function CalendarEventCard({
   const surprise = calendarSurpriseLabel(ev, t);
   const isEarnings = ev.type === 'earnings';
   const isHoliday = ev.type === 'holiday';
+  const sourceEntries = calendarProviderSourceEntries(ev.provider);
 
   const typeTagStyle = isEarnings
     ? { borderColor: theme.green + '88', backgroundColor: theme.green + '18' }
@@ -860,6 +869,11 @@ const CalendarEventCard = memo(function CalendarEventCard({
             </View>
           ) : null}
           {surprise ? <Text style={styles.surpriseText}>{surprise}</Text> : null}
+          {sourceEntries.length > 0 ? (
+            <View style={styles.sourceFooter}>
+              <SourceIconStack sources={sourceEntries} size={18} maxVisible={2} />
+            </View>
+          ) : null}
         </View>
         <Text style={styles.time}>{calendarEventTimeLabel(ev, locale)}</Text>
       </View>

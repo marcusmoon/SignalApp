@@ -90,6 +90,7 @@ export function signalCalendarToCalendarEvent(item: SignalApiCalendarEvent): Cal
       eventAt: item.eventAt,
       timezone: item.timezone,
       title: item.title,
+      provider: item.provider || null,
       type: 'earnings',
       actual: item.actual,
       estimate: item.estimate,
@@ -109,6 +110,7 @@ export function signalCalendarToCalendarEvent(item: SignalApiCalendarEvent): Cal
       eventAt: item.eventAt,
       timezone: item.timezone,
       title: item.title,
+      provider: item.provider || null,
       type: 'holiday',
       country: item.country || undefined,
     };
@@ -121,6 +123,7 @@ export function signalCalendarToCalendarEvent(item: SignalApiCalendarEvent): Cal
     eventAt: item.eventAt,
     timezone: item.timezone,
     title: item.title,
+    provider: item.provider || null,
     type: item.type,
     impact: item.impact || undefined,
     actual: item.actual,

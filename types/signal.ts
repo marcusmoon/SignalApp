@@ -25,6 +25,8 @@ export type CalendarEvent = {
   eventAt?: string | null;
   timezone?: string | null;
   title: string;
+  /** Finnhub 등 일정 데이터 제공자 */
+  provider?: string | null;
   type: 'macro' | 'fed' | 'fomc' | 'earnings' | 'holiday';
   impact?: 'low' | 'medium' | 'high';
   actual?: number | null;

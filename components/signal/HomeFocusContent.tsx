@@ -30,7 +30,9 @@ import { communitySourceLabelId } from '@/components/community/CommunityPostCard
 import {
   briefingSourceIconEntries,
   digestSourceIconEntries,
+  SourceIconStack,
 } from '@/components/signal/SourceIconStack';
+import { calendarProviderSourceEntries } from '@/domain/calendar/calendarProviderIcon';
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
@@ -813,7 +815,9 @@ export function HomeFocusContent({
     (rows: CalendarEvent[]) => (
       <View style={[styles.heroCard, showIssueSummary && styles.heroCardSummary]}>
         <View style={styles.issueGroupList}>
-          {rows.map((event, index) => (
+          {rows.map((event, index) => {
+            const sourceEntries = calendarProviderSourceEntries(event.provider);
+            return (
             <Pressable
               key={event.id}
               onPress={openCalendar}
@@ -840,8 +844,14 @@ export function HomeFocusContent({
               <Text style={styles.issueGroupTitle} numberOfLines={2}>
                 {event.title}
               </Text>
+              {sourceEntries.length > 0 ? (
+                <View style={styles.calendarSourceFooter}>
+                  <SourceIconStack sources={sourceEntries} size={18} maxVisible={2} />
+                </View>
+              ) : null}
             </Pressable>
-          ))}
+            );
+          })}
         </View>
       </View>
     ),
@@ -1197,6 +1207,12 @@ function makeStyles(
       lineHeight: sf(18),
       fontWeight: ft.titleWeight,
       color: theme.text,
+    },
+    calendarSourceFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 2,
     },
     issueGroupSummary: {
       fontSize: ft.ff(FEED_SUMMARY_PX),

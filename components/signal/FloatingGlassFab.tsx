@@ -1,6 +1,6 @@
 import type { ComponentProps, RefObject } from 'react';
 import { useCallback, useMemo, useRef } from 'react';
-import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 
 import { GlassSurfaceBackground, floatingFabShadow } from '@/components/signal/GlassSurface';
@@ -8,6 +8,7 @@ import { APP_CONTENT_MAX_WIDTH, APP_CONTENT_SIDE_PADDING } from '@/constants/res
 import { isWeb, WEB_SIGNAL_CSS } from '@/constants/webLayout';
 import { useWebDomPressFallback } from '@/hooks/useWebDomPressFallback';
 import { useTabBarGlassStyle } from '@/hooks/useTabBarGlassStyle';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { scrollToTopWithRetry, type ScrollToTopTarget } from '@/utils/scrollToTop';
 
@@ -41,12 +42,19 @@ export function FloatingGlassFab({
 }: Props) {
   const { theme } = useSignalTheme();
   const { backgroundColor, edge, effectiveColorScheme } = useTabBarGlassStyle();
-  const { width } = useWindowDimensions();
+  const { useTwoPane, width } = useResponsiveLayout();
   const lastPressAtRef = useRef(0);
   const fabRef = useRef<View | null>(null);
   const radius = FLOATING_GLASS_FAB_SIZE / 2;
   const fabShadow = useMemo(() => floatingFabShadow(effectiveColorScheme), [effectiveColorScheme]);
-  const right = Math.max(APP_CONTENT_SIDE_PADDING, (width - APP_CONTENT_MAX_WIDTH) / 2 + APP_CONTENT_SIDE_PADDING);
+  /** wide(iPad·웹): 콘텐츠 pane 우측 inset. phone: 720px 중앙 컬럼 우측. */
+  const right = useMemo(
+    () =>
+      useTwoPane
+        ? APP_CONTENT_SIDE_PADDING
+        : Math.max(APP_CONTENT_SIDE_PADDING, (width - APP_CONTENT_MAX_WIDTH) / 2 + APP_CONTENT_SIDE_PADDING),
+    [useTwoPane, width],
+  );
   const effectiveDisabled = isWeb ? false : Boolean(disabled);
   const surfaceBackground = active
     ? theme.greenDim

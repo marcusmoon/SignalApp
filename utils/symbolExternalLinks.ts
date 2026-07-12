@@ -1,7 +1,7 @@
 import type { MessageId } from '@/locales/messages';
+import { googleFinanceQuoteUrl } from '@/utils/googleFinance';
 import { naverFinanceStockUrl } from '@/utils/naverFinance';
 import { tossFinanceAppLaunchUrls, tossFinanceStockUrl } from '@/utils/tossFinance';
-import { yahooFinanceAppLaunchUrls } from '@/utils/openExternalLink';
 import { yahooFinanceEarningsUrl, yahooFinanceQuoteUrl } from '@/utils/yahooFinance';
 
 export type SymbolExternalLink = {
@@ -10,6 +10,10 @@ export type SymbolExternalLink = {
   url: string;
   appLaunchUrls?: string[];
   openInAppBrowser?: boolean;
+};
+
+export type SymbolExternalLinkHint = {
+  yahooSymbol?: string | null;
 };
 
 function isKoreaSymbol(symbol: string): boolean {
@@ -25,7 +29,10 @@ function usTickerPath(symbol: string): string {
   return symbol.trim().toUpperCase().replace(/\./g, '-');
 }
 
-export function buildSymbolExternalLinks(symbol: string): SymbolExternalLink[] {
+export function buildSymbolExternalLinks(
+  symbol: string,
+  hint?: SymbolExternalLinkHint,
+): SymbolExternalLink[] {
   const trimmed = String(symbol || '').trim().toUpperCase();
   if (!trimmed) return [];
 
@@ -53,6 +60,12 @@ export function buildSymbolExternalLinks(symbol: string): SymbolExternalLink[] {
     }
     links.push(
       {
+        id: 'google-finance',
+        labelKey: 'symbolDetailLinkGoogleFinance',
+        url: googleFinanceQuoteUrl(code, hint),
+        openInAppBrowser: true,
+      },
+      {
         id: 'naver-news',
         labelKey: 'symbolDetailLinkNaverNews',
         url: `https://m.stock.naver.com/domestic/stock/${encodeURIComponent(code)}/news`,
@@ -74,8 +87,8 @@ export function buildSymbolExternalLinks(symbol: string): SymbolExternalLink[] {
     return links;
   }
 
-  const yahooQuote = yahooFinanceQuoteUrl(trimmed, 'stock');
-  const yahooEarnings = yahooFinanceEarningsUrl(trimmed);
+  const yahooQuote = yahooFinanceQuoteUrl(trimmed, 'stock', hint);
+  const yahooEarnings = yahooFinanceEarningsUrl(trimmed, hint);
   const tickerPath = usTickerPath(trimmed);
   const tossUrl = tossFinanceStockUrl(trimmed);
 
@@ -84,7 +97,7 @@ export function buildSymbolExternalLinks(symbol: string): SymbolExternalLink[] {
       id: 'yahoo',
       labelKey: 'quotesYahooShort',
       url: yahooQuote,
-      appLaunchUrls: yahooFinanceAppLaunchUrls(yahooQuote),
+      openInAppBrowser: true,
     },
     {
       id: 'yahoo-earnings',
@@ -113,7 +126,7 @@ export function buildSymbolExternalLinks(symbol: string): SymbolExternalLink[] {
     {
       id: 'google-finance',
       labelKey: 'symbolDetailLinkGoogleFinance',
-      url: `https://www.google.com/finance/quote/${encodeURIComponent(tickerPath)}`,
+      url: googleFinanceQuoteUrl(trimmed, hint),
       openInAppBrowser: true,
     },
     {

@@ -437,7 +437,13 @@ export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved
   const [watching, setWatching] = useState(false);
 
   const isKorea = useMemo(() => isKoreaSymbol(ticker), [ticker]);
-  const externalLinks = useMemo(() => buildSymbolExternalLinks(ticker), [ticker]);
+  const externalLinks = useMemo(
+    () =>
+      buildSymbolExternalLinks(ticker, {
+        yahooSymbol: quote?.regularSession?.yahooSymbol,
+      }),
+    [quote?.regularSession?.yahooSymbol, ticker],
+  );
   const displayPrice =
     typeof quote?.currentPrice === 'number' && Number.isFinite(quote.currentPrice)
       ? quote.currentPrice

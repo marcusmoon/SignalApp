@@ -1,10 +1,10 @@
 import { Platform } from 'react-native';
 
-import { canAttemptNativeAppLaunch } from '@/utils/externalLinkPlatform';
+import { canAttemptNativeAppLaunch, usesIosAppLinkPolicy } from '@/utils/externalLinkPlatform';
 import { orderAppLaunchUrlsForPlatform } from '@/utils/openExternalLink';
 
 /**
- * 네이티브 전용 launch 목록 — 웹은 `undefined`(openExternalLink가 webUrl만 처리).
+ * 네이티브·iOS Safari 웹 launch 목록 — 데스크톱·Android Chrome 웹은 `undefined`.
  * iOS·iPad는 `orderAppLaunchUrlsForPlatform`으로 스킴 → https 유니버설 링크 순 정렬.
  */
 export function nativeAppLaunchUrls(
@@ -22,7 +22,7 @@ export function nativeAppLaunchUrls(
     return [...spec.android];
   }
 
-  if (Platform.OS === 'ios' && spec.ios?.length) {
+  if (usesIosAppLinkPolicy() && spec.ios?.length) {
     if (spec.iosAppendUniversalLink === false) {
       return [...spec.ios];
     }

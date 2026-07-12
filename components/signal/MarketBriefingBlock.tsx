@@ -114,9 +114,7 @@ function CompanyHighlightRow({
           {item.symbol}
         </Text>
       </View>
-      <Text style={styles.companySummary} numberOfLines={2}>
-        {item.summary}
-      </Text>
+      <Text style={styles.companySummary}>{item.summary}</Text>
       {(hasPrice || hasChange) ? (
         <View
           style={[
@@ -462,21 +460,22 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       paddingVertical: 5,
     },
     companyLead: {
-      width: 68,
+      width: 56,
+      minWidth: 56,
       flexGrow: 0,
       flexShrink: 0,
-      flexDirection: 'row',
+      flexDirection: 'column',
       alignItems: 'center',
-      gap: 6,
-      paddingTop: 1,
+      gap: 4,
     },
     companySymbol: {
-      flex: 1,
-      minWidth: 0,
-      fontSize: ft.ff(12),
+      width: '100%',
+      fontSize: ft.ff(11),
       fontWeight: ft.emphasisWeight,
-      letterSpacing: -0.2,
+      letterSpacing: -0.1,
       color: theme.green,
+      textAlign: 'center',
+      fontVariant: ['tabular-nums'],
     },
     companyQuoteBox: {
       flexShrink: 0,

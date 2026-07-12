@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-import { SourceIcon } from '@/components/signal/SourceIconStack';
+import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
+import { SourceIcon, briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { AppTheme } from '@/constants/theme';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
@@ -22,7 +22,7 @@ import type {
   SignalApiMarketBriefingMacroItem,
   SignalApiMarketBriefingSector,
 } from '@/integrations/signal-api/types';
-import { formatInstantLabel } from '@/utils/date';
+import { formatFeedItemTimeLabel } from '@/utils/date';
 
 function formatBriefingPrice(price: number | null | undefined, market: string): string {
   if (price == null || !Number.isFinite(price)) return '—';
@@ -299,31 +299,24 @@ export function MarketBriefingBlock({
           count={briefing.sourceRefs.length}
           styles={styles}
           accent="muted">
-          <View style={styles.cardStack}>
+          <View style={styles.sourceFeedCard}>
             {briefing.sourceRefs.map((item, index) => (
-              <Pressable
+              <HomeDigestFeedRow
                 key={`${item.title}-${index}`}
-                disabled={!item.url}
-                onPress={() => {
-                  if (item.url) void Linking.openURL(item.url);
-                }}
-                style={({ pressed }) => [
-                  styles.sourceRow,
-                  pressed && item.url && styles.sourceRowPressed,
-                ]}>
-                {item.sourceName?.trim() ? (
-                  <SourceIcon sourceName={item.sourceName} url={item.url} size={24} />
-                ) : null}
-                <View style={styles.sourceMain}>
-                  <Text style={styles.sourceTitle}>{item.title}</Text>
-                  <Text style={styles.sourceMeta}>
-                    {[item.sourceName, formatInstantLabel(item.publishedAt || item.checkedAt, locale)]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </Text>
-                </View>
-                {item.url ? <FontAwesome name="external-link" size={12} color={theme.textMuted} /> : null}
-              </Pressable>
+                title={item.title}
+                titleLines={3}
+                trailText={item.sourceName?.trim() || null}
+                timeLabel={formatFeedItemTimeLabel(item.publishedAt || item.checkedAt, locale)}
+                sourceEntries={briefingSourceIconEntries([item])}
+                bordered={index < briefing.sourceRefs.length - 1}
+                onPress={
+                  item.url
+                    ? () => {
+                        void Linking.openURL(item.url!);
+                      }
+                    : undefined
+                }
+              />
             ))}
           </View>
         </BriefingSection>
@@ -564,35 +557,14 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       gap: 8,
       marginTop: 2,
     },
-    sourceRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
+    sourceFeedCard: {
       borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-    },
-    sourceRowPressed: {
-      opacity: 0.82,
-    },
-    sourceMain: {
-      flex: 1,
-      minWidth: 0,
-      gap: 3,
-    },
-    sourceTitle: {
-      fontSize: ft.ff(14),
-      fontWeight: ft.bodyWeight,
-      color: theme.text,
-      lineHeight: sf(20),
-    },
-    sourceMeta: {
-      fontSize: ft.ff(12),
-      fontWeight: ft.metaWeight,
-      color: theme.textMuted,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      overflow: 'hidden',
     },
   });
 }

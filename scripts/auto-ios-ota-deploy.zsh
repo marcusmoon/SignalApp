@@ -3,13 +3,13 @@
 set -euo pipefail
 
 REPO_DIR="/Users/marcusmoon/SignalApp"
-LOCK_DIR="${REPO_DIR}/.tmp/auto-ios-ota-deploy.lock"
+STATE_DIR="${HOME}/Library/Caches/SignalApp"
+LOCK_DIR="${STATE_DIR}/auto-ios-ota-deploy.lock"
 LOCK_PID_FILE="${LOCK_DIR}/pid"
-WORK_DIR="${REPO_DIR}/.tmp"
 LOG_DIR="${HOME}/Library/Logs/SignalApp"
 LOG_FILE="${LOG_DIR}/auto-ios-ota-deploy.log"
 
-mkdir -p "${WORK_DIR}" "${LOG_DIR}"
+mkdir -p "${STATE_DIR}" "${LOG_DIR}"
 
 if ! mkdir "${LOCK_DIR}" 2>/dev/null; then
   existing_pid=""

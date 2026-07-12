@@ -133,9 +133,46 @@ export function yahooFinanceAndroidIntentUrl(webUrl: string): string {
   );
 }
 
+/** 서비스 홈(더보기 숏링크) — iOS·iPad는 https 유니버설 링크, Android는 intent 후 https */
+export function webHomeAppLaunchUrls(webUrl: string, androidIntentUrl?: string): string[] {
+  if (Platform.OS === 'ios') return [webUrl];
+  if (Platform.OS === 'android' && androidIntentUrl) {
+    return [androidIntentUrl, webUrl];
+  }
+  return [webUrl];
+}
+
+export function upbitAndroidIntentUrl(webUrl: string): string {
+  const enc = encodeURIComponent(webUrl);
+  const path = webUrl.replace(/^https:\/\/upbit\.com/i, '');
+  return (
+    `intent://upbit.com${path}` +
+    `#Intent;scheme=https;package=com.dunamu.exchange;S.browser_fallback_url=${enc};end`
+  );
+}
+
+export function binanceAndroidIntentUrl(webUrl: string): string {
+  const enc = encodeURIComponent(webUrl);
+  const path = webUrl.replace(/^https:\/\/www\.binance\.com/i, '');
+  return (
+    `intent://www.binance.com${path}` +
+    `#Intent;scheme=https;package=com.binance.dev;S.browser_fallback_url=${enc};end`
+  );
+}
+
+export function upbitHomeAppLaunchUrls(webUrl: string): string[] {
+  return webHomeAppLaunchUrls(webUrl, upbitAndroidIntentUrl(webUrl));
+}
+
+export function binanceHomeAppLaunchUrls(webUrl: string): string[] {
+  return webHomeAppLaunchUrls(webUrl, binanceAndroidIntentUrl(webUrl));
+}
+
+/**
+ * Yahoo Finance 홈·더보기 숏링크 — iOS는 유니버설 링크, Android는 intent.
+ */
 export function yahooFinanceAppLaunchUrls(webUrl: string): string[] {
-  const base = [yahooFinanceAndroidIntentUrl(webUrl), 'yfinance://', 'yahoo://', webUrl];
-  return orderAppLaunchUrlsForPlatform(base, webUrl);
+  return webHomeAppLaunchUrls(webUrl, yahooFinanceAndroidIntentUrl(webUrl));
 }
 
 /**

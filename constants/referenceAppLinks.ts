@@ -2,7 +2,12 @@ import type { ComponentProps } from 'react';
 import type FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import type { MessageId } from '@/locales/messages';
-import { orderAppLaunchUrlsForPlatform, yahooFinanceAppLaunchUrls } from '@/utils/openExternalLink';
+import { naverFinanceStockAppLaunchUrls } from '@/utils/naverFinance';
+import {
+  binanceHomeAppLaunchUrls,
+  upbitHomeAppLaunchUrls,
+  yahooFinanceAppLaunchUrls,
+} from '@/utils/openExternalLink';
 import { tossFinanceAppLaunchUrls } from '@/utils/tossFinance';
 
 export type ReferenceLinkGroupId = 'global' | 'exchanges';
@@ -42,25 +47,28 @@ export const REFERENCE_LINK_GROUPS: ReferenceLinkGroup[] = [
         labelKey: 'moreRefTitleGoogleFinance',
         icon: 'google',
         webUrl: 'https://www.google.com/finance',
+        openInAppBrowser: true,
       },
       {
         id: 'bloomberg',
         labelKey: 'moreRefTitleBloomberg',
         icon: 'newspaper-o',
         webUrl: 'https://www.bloomberg.com',
+        openInAppBrowser: true,
       },
       {
         id: 'investing',
         labelKey: 'moreRefTitleInvesting',
         icon: 'globe',
         webUrl: 'https://www.investing.com',
+        openInAppBrowser: true,
       },
       {
         id: 'likeusstock-cafe',
         labelKey: 'moreRefTitleLikeUsStock',
         iconMark: 'Cafe',
         webUrl: 'https://m.cafe.naver.com/likeusstock',
-        openInAppBrowser: true,
+        appLaunchUrls: naverFinanceStockAppLaunchUrls('https://m.cafe.naver.com/likeusstock'),
       },
     ],
   },
@@ -72,10 +80,7 @@ export const REFERENCE_LINK_GROUPS: ReferenceLinkGroup[] = [
         labelKey: 'moreRefTitleUpbit',
         iconMark: 'Upbit',
         webUrl: 'https://upbit.com',
-        appLaunchUrls: orderAppLaunchUrlsForPlatform(
-          ['upbit://open', 'upbit://', 'https://upbit.com'],
-          'https://upbit.com',
-        ),
+        appLaunchUrls: upbitHomeAppLaunchUrls('https://upbit.com'),
       },
       {
         id: 'toss',
@@ -89,10 +94,7 @@ export const REFERENCE_LINK_GROUPS: ReferenceLinkGroup[] = [
         labelKey: 'moreRefTitleBinance',
         icon: 'btc',
         webUrl: 'https://www.binance.com',
-        appLaunchUrls: orderAppLaunchUrlsForPlatform(
-          ['bnc://app.binance.com/', 'bnc://app.binance.com', 'binance://', 'https://www.binance.com'],
-          'https://www.binance.com',
-        ),
+        appLaunchUrls: binanceHomeAppLaunchUrls('https://www.binance.com'),
       },
     ],
   },

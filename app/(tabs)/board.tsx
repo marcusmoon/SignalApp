@@ -226,7 +226,7 @@ export default function BoardScreen() {
         <CommunityPostCard
           item={item}
           sourceLabelId={communitySourceLabelId(item.source)}
-          showSource={source === COMMUNITY_SOURCE_ALL}
+          showSource={source === COMMUNITY_SOURCE_ALL || source === 'save_user_news'}
         />
       </View>
     ),

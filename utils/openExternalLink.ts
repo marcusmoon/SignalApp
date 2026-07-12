@@ -219,7 +219,8 @@ export function binanceHomeAppLaunchUrls(webUrl: string): string[] | undefined {
 }
 
 /**
- * Yahoo Finance 홈·더보기 숏링크 — iOS는 유니버설 링크, Android는 intent.
+ * Yahoo Finance 홈·더보기 숏링크 — Android intent. iOS는 `yahooFinanceHomeAppLaunchUrls`.
+ * @deprecated `yahooFinance.ts`의 `yahooFinanceHomeAppLaunchUrls` 사용
  */
 export function yahooFinanceAppLaunchUrls(webUrl: string): string[] | undefined {
   return webHomeAppLaunchUrls(webUrl, yahooFinanceAndroidIntentUrl(webUrl));

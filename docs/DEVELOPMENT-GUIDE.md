@@ -125,7 +125,7 @@ iPad 네이티브는 `Platform.OS === 'ios'`. iPad Safari는 `Platform.OS === 'w
 
 | 서비스 | iPhone·iPad 네이티브 | iPhone·iPad Safari 웹 | Android 네이티브 | 데스크톱·Android Chrome 웹 |
 |---|---|---|---|---|
-| Yahoo | `yfinance://`·`yahoo://` → https | https 새 탭 | intent + https | webUrl만 (새 탭) |
+| Yahoo | `yfinance://finance.yahoo.com/`·경로 스킴 → https | https 새 탭 | intent + https | webUrl만 (새 탭) |
 | 네이버 | `naversearchapp://inappbrowser` → (폴백 https) | https 새 탭 | intent + 스킴 | webUrl만 |
 | 토스 | `supertoss://` → 유니버설 링크 | **https 새 탭** (`tossinvest.com`) | intent + 스킴 | webUrl만 |
 | Upbit·Binance | 스킴 → 유니버설 링크 | https 새 탭 | intent + 스킴 | webUrl만 |

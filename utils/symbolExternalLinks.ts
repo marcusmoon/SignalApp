@@ -6,7 +6,7 @@ import {
   naverFinanceWorldStockUrl,
 } from '@/utils/naverFinance';
 import { tossFinanceStockAppLaunchUrls, tossFinanceStockUrl } from '@/utils/tossFinance';
-import { yahooFinanceAppLaunchUrls } from '@/utils/openExternalLink';
+import { yahooFinanceQuoteAppLaunchUrls } from '@/utils/yahooFinance';
 import { yahooFinanceEarningsUrl, yahooFinanceQuoteUrl } from '@/utils/yahooFinance';
 
 export type SymbolExternalLink = {
@@ -123,13 +123,13 @@ export function buildSymbolExternalLinks(
       id: 'yahoo',
       labelKey: 'quotesYahooShort',
       url: yahooQuote,
-      appLaunchUrls: yahooFinanceAppLaunchUrls(yahooQuote),
+      appLaunchUrls: yahooFinanceQuoteAppLaunchUrls(yahooQuote),
     },
     {
       id: 'yahoo-earnings',
       labelKey: 'symbolDetailLinkEarnings',
       url: yahooEarnings,
-      appLaunchUrls: yahooFinanceAppLaunchUrls(yahooEarnings),
+      appLaunchUrls: yahooFinanceQuoteAppLaunchUrls(yahooEarnings),
     },
   );
 

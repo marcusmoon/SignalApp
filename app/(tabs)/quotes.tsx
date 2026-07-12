@@ -361,7 +361,9 @@ export default function QuotesScreen() {
         void openNaverFinanceStock(r.quote?.krxSymbol || sym);
         return;
       }
-      void openYahooFinanceQuote(sym, segment === 'coin' ? 'coin' : 'stock');
+      void openYahooFinanceQuote(sym, segment === 'coin' ? 'coin' : 'stock', {
+        yahooSymbol: r.quote?.regularSession?.yahooSymbol,
+      });
     },
     [segment],
   );

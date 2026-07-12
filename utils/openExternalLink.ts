@@ -122,13 +122,19 @@ export function orderAppLaunchUrlsForPlatform(urls: string[], webUrl: string): s
 }
 
 /**
- * Yahoo Finance: 앱 딥링크·https·인텐트 순으로 시도할 URL 목록 (`webUrl`은 종목/경로별 https).
+ * Yahoo Finance 홈·더보기 숏링크 — 앱 스킴 우선.
  */
-export function yahooFinanceAppLaunchUrls(webUrl: string): string[] {
+export function yahooFinanceAndroidIntentUrl(webUrl: string): string {
   const enc = encodeURIComponent(webUrl);
-  const intent =
-    `intent://finance.yahoo.com/#Intent;scheme=https;package=com.yahoo.mobile.client.android.finance;S.browser_fallback_url=${enc};end`;
-  const base = [intent, 'yfinance://', 'yahoo://', webUrl];
+  const path = webUrl.replace(/^https:\/\/finance\.yahoo\.com/i, '');
+  return (
+    `intent://finance.yahoo.com${path}` +
+    `#Intent;scheme=https;package=com.yahoo.mobile.client.android.finance;S.browser_fallback_url=${enc};end`
+  );
+}
+
+export function yahooFinanceAppLaunchUrls(webUrl: string): string[] {
+  const base = [yahooFinanceAndroidIntentUrl(webUrl), 'yfinance://', 'yahoo://', webUrl];
   return orderAppLaunchUrlsForPlatform(base, webUrl);
 }
 

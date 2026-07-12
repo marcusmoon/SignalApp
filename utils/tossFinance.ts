@@ -3,12 +3,6 @@ import { Platform } from 'react-native';
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
 import { orderAppLaunchUrlsForPlatform } from '@/utils/openExternalLink';
 
-const TOSS_INVEST_HOME_APP_LAUNCH_URLS = [
-  'supertoss://invest',
-  'supertoss://',
-  'supertoss://home',
-] as const;
-
 function normalizeKrxCode(symbol: string): string | null {
   const digits = String(symbol || '').replace(/\D/g, '');
   return digits.length >= 6 ? digits.slice(0, 6) : null;
@@ -40,13 +34,9 @@ function tossInvestAndroidIntentUrl(webUrl: string): string {
   );
 }
 
-/** 더보기 숏링크 등 토스증권 홈 — 앱 스킴 우선 */
+/** 더보기 숏링크 등 토스증권 홈 — iOS는 tossinvest.com 유니버설 링크 */
 export function tossFinanceAppLaunchUrls(webUrl: string): string[] {
-  const base = [...TOSS_INVEST_HOME_APP_LAUNCH_URLS, webUrl];
-  if (Platform.OS === 'android') {
-    return [tossInvestAndroidIntentUrl(webUrl), ...base];
-  }
-  return orderAppLaunchUrlsForPlatform(base, webUrl);
+  return tossFinanceStockAppLaunchUrls(webUrl);
 }
 
 /**

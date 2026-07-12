@@ -152,6 +152,14 @@ function sortBriefingTime(row: SignalApiMarketBriefing): string {
   return String(row.publishedAt || row.updatedAt || row.createdAt || row.briefingDate || '');
 }
 
+function boardPostSortTime(post: SignalApiCommunityPost): string {
+  return String(post.publishedAt || post.fetchedAt || post.updatedAt || '');
+}
+
+function sortBoardPostsByNewest(posts: SignalApiCommunityPost[]): SignalApiCommunityPost[] {
+  return [...posts].sort((a, b) => boardPostSortTime(b).localeCompare(boardPostSortTime(a)));
+}
+
 function briefingLeadText(row: SignalApiMarketBriefing): string {
   const summary = String(row.summary || row.headline || '').trim();
   if (summary) return summary;
@@ -374,7 +382,9 @@ export function HomeFocusContent({
                 ),
               ),
             ).then((pages) => ({
-              items: COMMUNITY_SOURCES.flatMap((_, index) => pages[index]?.items ?? []),
+              items: sortBoardPostsByNewest(
+                COMMUNITY_SOURCES.flatMap((_, index) => pages[index]?.items ?? []),
+              ),
             }))
           : Promise.resolve({ items: [] as SignalApiCommunityPost[] });
       const [todayBriefing, nextIssues, quoteRows, briefings, disclosurePage, calendarRows, boardPage] =

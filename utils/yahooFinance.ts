@@ -48,6 +48,41 @@ export function yahooFinanceQuoteUrl(
   return `https://finance.yahoo.com/quote/${encodeURIComponent(path)}`;
 }
 
+/** iOS 커스텀 스킴 순서 — host 포함 URL 우선, `?`가 있는 짧은 path 스킴은 제외 */
+function orderYahooIosLaunchUrls(urls: readonly string[]): string[] {
+  const hostQualified: string[] = [];
+  const pathShort: string[] = [];
+  const bare: string[] = [];
+
+  for (const url of urls) {
+    if (url === 'yfinance://' || url === 'yahoo://') {
+      bare.push(url);
+      continue;
+    }
+    if (/^[a-z]+:\/\/finance\.yahoo\.com/i.test(url)) {
+      hostQualified.push(url);
+      continue;
+    }
+    if (url.includes('?')) {
+      continue;
+    }
+    pathShort.push(url);
+  }
+
+  return [...hostQualified, ...pathShort, ...bare];
+}
+
+function yahooSymbolFromEarningsCalendarUrl(webUrl: string): string | null {
+  try {
+    const parsed = new URL(webUrl);
+    if (!parsed.pathname.toLowerCase().includes('/calendar/earnings')) return null;
+    const symbol = parsed.searchParams.get('symbol')?.trim();
+    return symbol || null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * iOS·iPad 네이티브 — 타 앱에서 Linking.openURL(https)만 쓰면 Safari로 빠지는 경우가 많아
  * 커스텀 스킴을 먼저 시도하고, 이어서 https 유니버설 링크를 시도한다.
@@ -76,7 +111,7 @@ export function yahooFinanceIosAppLaunchUrls(webUrl: string): readonly string[] 
     /* ignore */
   }
   urls.push('yfinance://', 'yahoo://');
-  return urls;
+  return orderYahooIosLaunchUrls(urls);
 }
 
 /**
@@ -98,6 +133,36 @@ export function yahooFinanceQuoteAppLaunchUrls(webUrl: string): string[] | undef
 
 export function yahooFinanceHomeAppLaunchUrls(webUrl: string): string[] | undefined {
   return yahooFinanceQuoteAppLaunchUrls(webUrl);
+}
+
+/** 실적 캘린더 — 쿼리 스트링 URL은 host 스킴 우선, 앱 미지원 시 quote 심볼로 폴백 */
+export function yahooFinanceEarningsAppLaunchUrls(webUrl: string): string[] | undefined {
+  if (!canAttemptNativeAppLaunch()) return undefined;
+
+  if (usesIosAppLinkPolicy()) {
+    const calendarIos = yahooFinanceIosAppLaunchUrls(webUrl);
+    const symbol = yahooSymbolFromEarningsCalendarUrl(webUrl);
+    let ios = calendarIos;
+    if (symbol) {
+      const quoteUrl = yahooFinanceQuoteUrl(symbol, 'stock');
+      const quoteIos = yahooFinanceIosAppLaunchUrls(quoteUrl).filter(
+        (url) => url !== 'yfinance://' && url !== 'yahoo://',
+      );
+      const hostCalendar = calendarIos.filter((url) => /^[a-z]+:\/\/finance\.yahoo\.com/i.test(url));
+      const restCalendar = calendarIos.filter((url) => !/^[a-z]+:\/\/finance\.yahoo\.com/i.test(url));
+      ios = [...hostCalendar, ...quoteIos, ...restCalendar];
+    }
+    return nativeAppLaunchUrls(webUrl, {
+      ios,
+      iosAppendUniversalLink: true,
+    });
+  }
+
+  if (Platform.OS === 'android') {
+    return [yahooFinanceAndroidIntentUrl(webUrl), webUrl];
+  }
+
+  return undefined;
 }
 
 export async function openYahooFinanceQuote(
@@ -128,6 +193,6 @@ export async function openYahooFinanceEarnings(
   const url = yahooFinanceEarningsUrl(symbol, hint);
   await openConfiguredExternalLink({
     webUrl: url,
-    appLaunchUrls: yahooFinanceQuoteAppLaunchUrls(url),
+    appLaunchUrls: yahooFinanceEarningsAppLaunchUrls(url),
   });
 }

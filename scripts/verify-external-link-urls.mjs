@@ -10,6 +10,25 @@ function assert(condition, message) {
   }
 }
 
+function orderYahooIosLaunchUrls(urls) {
+  const hostQualified = [];
+  const pathShort = [];
+  const bare = [];
+  for (const url of urls) {
+    if (url === 'yfinance://' || url === 'yahoo://') {
+      bare.push(url);
+      continue;
+    }
+    if (/^[a-z]+:\/\/finance\.yahoo\.com/i.test(url)) {
+      hostQualified.push(url);
+      continue;
+    }
+    if (url.includes('?')) continue;
+    pathShort.push(url);
+  }
+  return [...hostQualified, ...pathShort, ...bare];
+}
+
 function yahooFinanceIosAppLaunchUrls(webUrl) {
   const urls = [];
   try {
@@ -34,7 +53,7 @@ function yahooFinanceIosAppLaunchUrls(webUrl) {
     /* ignore */
   }
   urls.push('yfinance://', 'yahoo://');
-  return urls;
+  return orderYahooIosLaunchUrls(urls);
 }
 
 function naverFinanceInAppBrowserScheme(webUrl) {
@@ -49,9 +68,22 @@ assert(yahooHome.includes('yfinance://'), 'Yahoo home includes yfinance://');
 assert(!yahooHome.some((u) => u.startsWith('https://')), 'Yahoo iOS launch must not include https');
 
 const yahooQuote = yahooFinanceIosAppLaunchUrls('https://finance.yahoo.com/quote/AAPL');
-assert(yahooQuote[0] === 'yfinance:/quote/AAPL', 'Yahoo quote path scheme');
+assert(yahooQuote[0] === 'yfinance://finance.yahoo.com/quote/AAPL', 'Yahoo quote host scheme first');
+assert(yahooQuote.includes('yfinance:/quote/AAPL'), 'Yahoo quote path scheme');
 assert(yahooQuote.includes('yfinance://'), 'Yahoo quote includes app home fallback');
-assert(!yahooQuote.some((u) => u.startsWith('https://')), 'Yahoo quote launch must not include https');
+assert(!yahooQuote.some((u) => u.startsWith('https://')), 'Yahoo iOS launch must not include https');
+
+const yahooEarnings = yahooFinanceIosAppLaunchUrls(
+  'https://finance.yahoo.com/calendar/earnings?symbol=NVDA',
+);
+assert(
+  yahooEarnings[0] === 'yfinance://finance.yahoo.com/calendar/earnings?symbol=NVDA',
+  'Yahoo earnings host scheme first',
+);
+assert(
+  !yahooEarnings.includes('yfinance:/calendar/earnings?symbol=NVDA'),
+  'Yahoo earnings skips ambiguous short scheme with query',
+);
 
 const naverStock = naverFinanceInAppBrowserScheme(
   'https://m.stock.naver.com/domestic/stock/005930/total',

@@ -15,6 +15,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import {
   fabStackBottom,
+  SCREEN_NEWS_TITLE_FAB_ABOVE_TAB_OFFSET,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import {
@@ -869,8 +870,8 @@ export function LegacyNewsFeedScreen() {
 
   const bottomPad = tabScreenScrollBottomPadding(tabBarHeight, insets.bottom);
   const newsTitleFabBottom = useTwoPane
-    ? fabStackBottom(0, insets.bottom)
-    : fabStackBottom(tabBarHeight, insets.bottom);
+    ? fabStackBottom(0, insets.bottom, SCREEN_NEWS_TITLE_FAB_ABOVE_TAB_OFFSET)
+    : fabStackBottom(tabBarHeight, insets.bottom, SCREEN_NEWS_TITLE_FAB_ABOVE_TAB_OFFSET);
   const useNewsTitleFab = showNewsTitleListToggle;
   const useNewsTitleListMode = showNewsTitleListToggle;
   const showDigest = segment !== 'video' && segment !== 'watch';

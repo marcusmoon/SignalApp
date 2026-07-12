@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
-import { SourceIcon, briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
+import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import type { AppTheme } from '@/constants/theme';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
-import { FEED_PREVIEW_BODY_PX } from '@/constants/feedTypography';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import type { AppLocale } from '@/locales/messages';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
 import {
   getQuoteChangeColors,
@@ -147,28 +147,38 @@ function CompanyHighlightCard({
   );
 }
 
-function MacroHighlightCard({
+function MacroHighlightRow({
   item,
-  styles,
+  bordered,
+  locale,
 }: {
   item: SignalApiMarketBriefingMacroItem;
-  styles: ReturnType<typeof makeStyles>;
+  bordered: boolean;
+  locale: AppLocale;
 }) {
+  const sourceName = item.sourceName?.trim() || null;
+  const sourceUrl = item.sourceUrl?.trim() || null;
+
   return (
-    <View style={styles.macroCard}>
-      <Text style={styles.macroTitle}>{item.title}</Text>
-      <Text style={styles.macroBody}>{item.summary}</Text>
-      {item.sourceUrl ? (
-        <Pressable onPress={() => void Linking.openURL(item.sourceUrl || '')} hitSlop={6}>
-          <View style={styles.macroSourceRow}>
-            {item.sourceName?.trim() ? (
-              <SourceIcon sourceName={item.sourceName} url={item.sourceUrl} size={18} />
-            ) : null}
-            <Text style={styles.link}>{item.sourceName || item.sourceUrl}</Text>
-          </View>
-        </Pressable>
-      ) : null}
-    </View>
+    <HomeDigestFeedRow
+      title={item.title}
+      titleLines={2}
+      summary={item.summary}
+      summaryLines={2}
+      trailText={sourceName}
+      timeLabel={formatFeedItemTimeLabel(item.publishedAt || item.checkedAt, locale)}
+      sourceEntries={
+        sourceName ? briefingSourceIconEntries([{ sourceName, url: sourceUrl }]) : []
+      }
+      bordered={bordered}
+      onPress={
+        sourceUrl
+          ? () => {
+              void Linking.openURL(sourceUrl);
+            }
+          : undefined
+      }
+    />
   );
 }
 
@@ -285,9 +295,14 @@ export function MarketBriefingBlock({
           count={briefing.macro.length}
           styles={styles}
           accent="orange">
-          <View style={styles.cardStack}>
+          <View style={styles.sectionFeedCard}>
             {briefing.macro.map((item, index) => (
-              <MacroHighlightCard key={`${item.title}-${index}`} item={item} styles={styles} />
+              <MacroHighlightRow
+                key={`${item.title}-${index}`}
+                item={item}
+                locale={locale}
+                bordered={index < briefing.macro.length - 1}
+              />
             ))}
           </View>
         </BriefingSection>
@@ -299,7 +314,7 @@ export function MarketBriefingBlock({
           count={briefing.sourceRefs.length}
           styles={styles}
           accent="muted">
-          <View style={styles.sourceFeedCard}>
+          <View style={styles.sectionFeedCard}>
             {briefing.sourceRefs.map((item, index) => (
               <HomeDigestFeedRow
                 key={`${item.title}-${index}`}
@@ -521,43 +536,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.border,
     },
-    macroCard: {
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      borderLeftWidth: CONTENT_ACCENT_LINE_WIDTH,
-      borderLeftColor: theme.accentOrange,
-      paddingVertical: ft.row(12),
-      paddingHorizontal: ft.pad(14),
-      gap: 8,
-    },
-    macroTitle: {
-      fontSize: ft.ff(15),
-      fontWeight: ft.titleWeight,
-      color: theme.text,
-      lineHeight: sf(22),
-    },
-    macroBody: {
-      fontSize: ft.signalBodyFont(15),
-      lineHeight: sf(23),
-      fontWeight: ft.signalBodyWeight,
-      color: theme.textDim,
-    },
-    link: {
-      fontSize: ft.ff(FEED_PREVIEW_BODY_PX),
-      fontWeight: ft.emphasisWeight,
-      color: theme.green,
-      flex: 1,
-      minWidth: 0,
-    },
-    macroSourceRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginTop: 2,
-    },
-    sourceFeedCard: {
+    sectionFeedCard: {
       borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,

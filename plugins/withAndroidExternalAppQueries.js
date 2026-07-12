@@ -48,6 +48,10 @@ const VIEW_INTENTS_WITH_DATA = [
     action: [{ $: { 'android:name': 'android.intent.action.VIEW' } }],
     data: [{ $: { 'android:scheme': 'https', 'android:host': 'www.tossinvest.com' } }],
   },
+  {
+    action: [{ $: { 'android:name': 'android.intent.action.VIEW' } }],
+    data: [{ $: { 'android:scheme': 'https', 'android:host': 'm.stock.naver.com' } }],
+  },
 ];
 
 function intentDataKey(intent) {

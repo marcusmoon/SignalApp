@@ -8,16 +8,16 @@ import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { AiBadge } from '@/components/signal/AiBadge';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
+import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
+import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { digestSourceIconEntries } from '@/components/signal/SourceIconStack';
 import {
   FEED_BADGE_PX,
   FEED_BODY_PX,
-  FEED_META_TIME_PX,
-  FEED_PREVIEW_BODY_PX,
-  FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
+import { COMFORT_GAP_SM, COMFORT_PADDING_ROW_V } from '@/constants/comfortDensity';
 import { HOME_DIGEST_CATEGORIES, NEWS_ISSUES_CATEGORY_ORDER, homeDigestCategoryIcon, type HomeDigestCategory, type NewsIssuesCategory } from '@/constants/ipadHomeNav';
 import { APP_CONTENT_MAX_WIDTH, APP_WIDE_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import {
@@ -27,6 +27,7 @@ import {
   SCREEN_WIDE_SCROLL_BOTTOM_BASE,
 } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
+import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { NEWS_SEGMENT_LABEL } from '@/domain/news/feedFilters';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -273,7 +274,10 @@ export function NewsIssuesContent({
                 const sourceEntries = digestSourceIconEntries(item.sourceRefs, item.sources);
                 const trailText = [item.topics[0], item.symbols[0]].filter(Boolean).join(' · ');
                 return (
-                  <View key={item.id} style={styles.card}>
+                  <View
+                    key={item.id}
+                    style={[styles.card, expanded && styles.cardExpanded]}>
+                    <HomeSectionAccentLine section="issues" style={styles.cardAccent} />
                     <HomeDigestFeedRow
                       title={item.title}
                       titleLines={2}
@@ -316,25 +320,31 @@ export function NewsIssuesContent({
                       </Pressable>
                     </View>
                     {expanded ? (
-                      <View style={styles.sourceList}>
-                        {(item.sourceRefs || []).slice(0, 8).map((ref, index) => (
-                          <Pressable
-                            key={`${item.id}-${index}`}
-                            onPress={ref.url ? () => void Linking.openURL(ref.url!).catch(() => null) : undefined}
-                            accessibilityRole={ref.url ? 'link' : 'text'}
-                            style={({ pressed }) => [styles.sourceRow, pressed && ref.url && styles.pressed]}>
-                            <View style={styles.sourceTextCol}>
-                              <Text style={styles.sourceTitle}>{ref.title || ref.sourceName || ref.url || ''}</Text>
-                              {ref.sourceName ? <Text style={styles.sourceName}>{ref.sourceName}</Text> : null}
-                              {ref.publishedAt ? (
-                                <Text style={styles.sourceTime}>
-                                  {formatFeedItemTimeLabel(ref.publishedAt, locale)}
-                                </Text>
-                              ) : null}
-                            </View>
-                            {ref.url ? <FontAwesome name="external-link" size={10} color={theme.green} /> : null}
-                          </Pressable>
-                        ))}
+                      <View style={styles.detailSection}>
+                        <HomeSectionHeader title={t('feedDigestSourcesTitle')} showChevron={false} />
+                        <View style={[styles.feedCard, styles.feedCardCompact]}>
+                          <View style={styles.sourceList}>
+                            {(item.sourceRefs || []).slice(0, 8).map((ref, index, rows) => (
+                              <HomeDigestFeedRow
+                                key={`${item.id}-${index}`}
+                                title={ref.title || ref.sourceName || ref.url || ''}
+                                titleLines={3}
+                                trailText={ref.sourceName?.trim() || null}
+                                timeLabel={
+                                  ref.publishedAt
+                                    ? formatFeedItemTimeLabel(ref.publishedAt, locale)
+                                    : null
+                                }
+                                bordered={index < rows.length - 1}
+                                onPress={
+                                  ref.url
+                                    ? () => void Linking.openURL(ref.url!).catch(() => null)
+                                    : undefined
+                                }
+                              />
+                            ))}
+                          </View>
+                        </View>
                       </View>
                     ) : null}
                   </View>
@@ -502,15 +512,25 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: '800',
       textAlign: 'center',
     },
-    issueList: { gap: 12 },
+    issueList: { gap: 16 },
     card: {
-      borderRadius: 8,
+      position: 'relative',
+      overflow: 'hidden',
+      borderRadius: UI_RADIUS_CARD_LG,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      paddingHorizontal: ft.pad(12),
-      paddingVertical: ft.pad(10),
-      gap: 6,
+      paddingLeft: 18,
+      paddingRight: ft.pad(14),
+      paddingVertical: ft.pad(14),
+      gap: COMFORT_GAP_SM,
+    },
+    cardExpanded: {
+      borderColor: theme.greenBorder,
+    },
+    cardAccent: {
+      borderTopLeftRadius: UI_RADIUS_CARD_LG,
+      borderBottomLeftRadius: UI_RADIUS_CARD_LG,
     },
     categoryMark: {
       flexDirection: 'row',
@@ -552,40 +572,24 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(16),
       fontWeight: ft.emphasisWeight,
     },
-    sourceList: {
-      overflow: 'hidden',
-      borderRadius: 8,
+    detailSection: {
+      gap: COMFORT_GAP_SM,
+      marginTop: COMFORT_GAP_SM,
+    },
+    feedCard: {
+      borderRadius: UI_RADIUS_CARD,
       borderWidth: 1,
       borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-    },
-    sourceRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
+      backgroundColor: theme.colorScheme === 'dark' ? theme.bgElevated : theme.card,
       paddingHorizontal: 10,
-      paddingVertical: 12,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
+      paddingVertical: COMFORT_PADDING_ROW_V,
+      overflow: 'hidden',
     },
-    sourceTextCol: { flex: 1, minWidth: 0, gap: 2 },
-    sourceTitle: {
-      color: theme.text,
-      fontSize: ft.ff(FEED_PREVIEW_BODY_PX),
-      lineHeight: sf(18),
-      fontWeight: ft.bodyWeight,
+    feedCardCompact: {
+      paddingVertical: 8,
     },
-    sourceName: {
-      color: theme.textMuted,
-      fontSize: ft.ff(FEED_SUMMARY_PX),
-      lineHeight: sf(15),
-      fontWeight: ft.metaWeight,
-    },
-    sourceTime: {
-      color: theme.textDim,
-      fontSize: ft.ff(FEED_META_TIME_PX),
-      lineHeight: sf(14),
-      fontWeight: ft.metaWeight,
+    sourceList: {
+      gap: 0,
     },
     pressed: { opacity: 0.75 },
   });

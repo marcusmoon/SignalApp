@@ -4,17 +4,28 @@
  * - iPad 2-패널 레이아웃(quotes)에서 우측 디테일로 재사용
  * - ticker prop 변경 시 자동으로 데이터 재조회
  */
-import * as WebBrowser from 'expo-web-browser';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { type Href, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
+import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
+import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
+import { NewsCard } from '@/components/signal/NewsCard';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { groupedFeedRowShell } from '@/components/signal/groupedFeedList';
+import {
+  COMFORT_GAP_LG,
+  COMFORT_GAP_PAGE,
+  COMFORT_GAP_SM,
+  COMFORT_PADDING_ROW_V,
+} from '@/constants/comfortDensity';
+import { FEED_BADGE_PX } from '@/constants/feedTypography';
 import type { AppTheme } from '@/constants/theme';
+import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
 import { useQuoteChangeColors } from '@/hooks/useQuoteChangeColors';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -37,7 +48,7 @@ import { buildSignalScore } from '@/domain/signals';
 import { loadWatchlistSymbols, saveWatchlistSymbols } from '@/services/quoteWatchlist';
 import type { NewsItem } from '@/types/signal';
 import { hasSignalApi } from '@/services/env';
-import { addDays, formatLocalInstantDate } from '@/utils/date';
+import { addDays, formatFeedItemTimeLabel } from '@/utils/date';
 import { signalReasonLabel } from '@/utils/signalDisplay';
 import { openNaverFinanceStock } from '@/utils/naverFinance';
 import { openYahooFinanceQuote } from '@/utils/yahooFinance';
@@ -114,6 +125,12 @@ function normalizeCompanyName(name: string | undefined, ticker: string): string 
   if (!trimmed) return null;
   if (trimmed.toUpperCase() === ticker.trim().toUpperCase()) return null;
   return trimmed;
+}
+
+function disclosureProviderLabel(item: SignalApiDisclosure): string {
+  if (item.provider === 'sec') return 'SEC';
+  if (item.provider === 'dart') return 'DART';
+  return String(item.provider || '—').toUpperCase();
 }
 
 function buildSparkPoints(closes: number[], width: number, height: number): SparkPoint[] {
@@ -193,12 +210,24 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
   return StyleSheet.create({
     root: { flex: 1 },
     centeredLoadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    scroll: { paddingHorizontal: 16, paddingTop: 12 },
-    hero: {
-      borderRadius: 8,
-      backgroundColor: theme.bgElevated,
+    scroll: {
+      flexGrow: 1,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      gap: COMFORT_GAP_PAGE,
+    },
+    heroCard: {
+      borderRadius: UI_RADIUS_CARD_LG,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
       padding: 18,
-      marginBottom: 16,
+      overflow: 'hidden',
+      shadowColor: '#000000',
+      shadowOpacity: 0.04,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 5 },
+      elevation: 1,
     },
     heroHead: {
       flexDirection: 'row',
@@ -271,34 +300,64 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     actionBtnTextAlt: { color: theme.textMuted },
     errorBox: {
-      borderRadius: 8,
-      backgroundColor: theme.bgElevated,
-      padding: 14,
-      marginBottom: 16,
+      borderRadius: UI_RADIUS_CARD,
+      borderWidth: 1,
+      borderColor: theme.danger,
+      backgroundColor: theme.dangerDim,
+      padding: 12,
     },
-    errorText: { fontSize: sf(13), color: theme.textMuted, lineHeight: sf(20) },
-    sectionCard: {
-      borderRadius: 8,
-      backgroundColor: theme.bgElevated,
-      padding: 18,
-      marginBottom: 16,
+    errorText: {
+      fontSize: sf(13),
+      lineHeight: sf(18),
+      fontWeight: '800',
+      color: theme.danger,
     },
-    sectionHeaderRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 14,
+    section: {
+      gap: COMFORT_GAP_LG,
     },
-    section: { fontSize: sf(16), fontWeight: '800', color: theme.text, marginBottom: 0 },
-    sectionLink: { fontSize: sf(13), fontWeight: '700', color: theme.green },
+    feedCard: {
+      borderRadius: UI_RADIUS_CARD_LG,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      paddingHorizontal: 12,
+      paddingVertical: COMFORT_PADDING_ROW_V,
+      overflow: 'hidden',
+      shadowColor: '#000000',
+      shadowOpacity: 0.04,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 5 },
+      elevation: 1,
+    },
+    feedCardCompact: {
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+    },
+    issueGroupList: {
+      gap: 0,
+    },
+    emptyCard: {
+      borderRadius: UI_RADIUS_CARD,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      padding: 12,
+    },
+    emptyText: {
+      fontSize: ft.ff(13),
+      lineHeight: sf(19),
+      fontWeight: ft.bodyWeight,
+      color: theme.textDim,
+    },
     signalOverviewHead: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-end',
       alignItems: 'flex-start',
-      marginBottom: 16,
+      gap: COMFORT_GAP_SM,
     },
-    signalOverviewCopy: { flex: 1 },
-    signalOverviewSub: { fontSize: sf(12), color: theme.textMuted, marginTop: 4 },
+    signalOverviewSpacer: {
+      flex: 1,
+    },
     signalScoreBadge: {
       alignItems: 'center',
       justifyContent: 'center',
@@ -318,58 +377,43 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     signalStatGrid: {
       flexDirection: 'row',
       gap: 20,
-      marginBottom: 14,
+      marginBottom: 10,
     },
     signalStat: { flex: 1, alignItems: 'center' },
     signalStatLabel: { fontSize: sf(11), color: theme.textDim, fontWeight: '600', marginBottom: 3 },
     signalStatValue: { fontSize: sf(16), fontWeight: '800', color: theme.text },
     signalReasonLine: { fontSize: sf(11), color: theme.textMuted, lineHeight: sf(16) },
-    disclosureCard: {
-      paddingVertical: 12,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.border,
+    disclosurePillRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: COMFORT_GAP_SM,
     },
-    disclosureMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-    disclosureBadge: {
-      fontSize: sf(10),
-      fontWeight: '800',
-      color: theme.green,
-      backgroundColor: theme.greenDim,
+    disclosureProviderPill: {
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      overflow: 'hidden',
       paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
+      paddingVertical: 1,
+      backgroundColor: theme.warningDim,
+      color: theme.warning,
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(13),
+      fontWeight: ft.emphasisWeight,
     },
-    disclosureType: { fontSize: sf(11), color: theme.textMuted, fontWeight: '600', flex: 1 },
-    disclosureTime: { fontSize: sf(11), color: theme.textDim },
-    disclosureTitle: {
-      fontSize: ft.ff(13),
-      fontWeight: ft.titleWeight,
-      color: theme.text,
-      lineHeight: ft.ff(19),
-    },
-    disclosureSummary: {
-      fontSize: ft.ff(11),
-      fontWeight: ft.bodyWeight,
+    disclosureFormPill: {
+      alignSelf: 'flex-start',
+      borderRadius: 999,
+      overflow: 'hidden',
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+      backgroundColor: theme.bgElevated,
       color: theme.textMuted,
-      lineHeight: ft.ff(16),
-      marginTop: 3,
+      fontSize: ft.ff(FEED_BADGE_PX),
+      lineHeight: sf(13),
+      fontWeight: ft.emphasisWeight,
+      maxWidth: 120,
     },
-    newsCard: {
-      paddingVertical: ft.row(10),
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.border,
-    },
-    newsMeta: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 3 },
-    newsSource: { fontSize: ft.ff(11), fontWeight: ft.emphasisWeight, color: theme.green },
-    newsTime: { fontSize: ft.ff(11), fontWeight: ft.metaWeight, color: theme.textDim },
-    newsTitle: {
-      fontSize: ft.ff(13),
-      fontWeight: ft.bodyWeight,
-      color: theme.text,
-      lineHeight: ft.ff(19),
-    },
-    sourceFootnote: { fontSize: sf(10), color: theme.textDim, marginTop: 8, lineHeight: sf(15) },
-    empty: { fontSize: sf(13), color: theme.textMuted, lineHeight: sf(20), paddingVertical: 6 },
   });
 }
 
@@ -381,9 +425,11 @@ type Props = {
   ticker: string;
   /** 하단 여백 (기본 24) */
   bottomPad?: number;
+  /** 네비게이션 헤더 등에 표시할 회사명 전달 */
+  onDisplayNameResolved?: (name: string) => void;
 };
 
-export function SymbolDetailPane({ ticker, bottomPad = 24 }: Props) {
+export function SymbolDetailPane({ ticker, bottomPad = 24, onDisplayNameResolved }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
   const { t, locale } = useLocale();
   const router = useRouter();
@@ -466,7 +512,6 @@ export function SymbolDetailPane({ ticker, bottomPad = 24 }: Props) {
     }
   }, [locale, ticker, t]);
 
-  // ticker가 바뀌면 즉시 재조회
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -533,6 +578,23 @@ export function SymbolDetailPane({ ticker, bottomPad = 24 }: Props) {
   );
   const displayCompanyName = companyName ?? (isKorea ? ticker : t('symbolDetailCompanyUnknown'));
 
+  useEffect(() => {
+    if (loading || !onDisplayNameResolved) return;
+    onDisplayNameResolved(displayCompanyName);
+  }, [displayCompanyName, loading, onDisplayNameResolved]);
+
+  const signalLevelLabel =
+    symbolSignal.level === 'hot'
+      ? t('symbolDetailSignalLevelHot')
+      : symbolSignal.level === 'watch'
+        ? t('symbolDetailSignalLevelWatch')
+        : t('symbolDetailSignalLevelQuiet');
+
+  const disclosureRows = disclosures.slice(0, 5);
+  const openAllDisclosures = useCallback(() => {
+    router.push(`/disclosures?symbol=${encodeURIComponent(ticker)}` as Href);
+  }, [router, ticker]);
+
   return (
     <View style={styles.root}>
       {loading ? (
@@ -544,7 +606,7 @@ export function SymbolDetailPane({ ticker, bottomPad = 24 }: Props) {
           contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}
           refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           showsVerticalScrollIndicator={false}>
-          <View style={styles.hero}>
+          <View style={styles.heroCard}>
             <View style={styles.heroHead}>
               <SymbolLogo symbol={ticker} size={40} />
               <View style={styles.heroTitleCol}>
@@ -631,143 +693,132 @@ export function SymbolDetailPane({ ticker, bottomPad = 24 }: Props) {
             </View>
           ) : null}
 
-          <View style={styles.sectionCard}>
-            <View style={styles.signalOverviewHead}>
-              <View style={styles.signalOverviewCopy}>
-                <Text style={styles.section}>{t('symbolDetailSignalOverview')}</Text>
-                <Text style={styles.signalOverviewSub}>
-                  {symbolSignal.level === 'hot'
-                    ? t('symbolDetailSignalLevelHot')
-                    : symbolSignal.level === 'watch'
-                      ? t('symbolDetailSignalLevelWatch')
-                      : t('symbolDetailSignalLevelQuiet')}
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.signalScoreBadge,
-                  symbolSignal.level === 'hot' && styles.signalScoreBadgeHot,
-                  symbolSignal.level === 'quiet' && styles.signalScoreBadgeQuiet,
-                ]}>
-                <Text
+          <View style={styles.section}>
+            <HomeSectionHeader
+              title={t('symbolDetailSectionTodaySignal')}
+              subtitle={signalLevelLabel}
+              showChevron={false}
+            />
+            <View style={styles.feedCard}>
+              <View style={styles.signalOverviewHead}>
+                <View style={styles.signalOverviewSpacer} />
+                <View
                   style={[
-                    styles.signalScoreNum,
-                    symbolSignal.level === 'hot' && styles.signalScoreNumHot,
-                    symbolSignal.level === 'quiet' && styles.signalScoreNumQuiet,
+                    styles.signalScoreBadge,
+                    symbolSignal.level === 'hot' && styles.signalScoreBadgeHot,
+                    symbolSignal.level === 'quiet' && styles.signalScoreBadgeQuiet,
                   ]}>
-                  {symbolSignal.score}
-                </Text>
-                <Text
-                  style={[
-                    styles.signalScoreLabel,
-                    symbolSignal.level === 'hot' && styles.signalScoreLabelHot,
-                  ]}>
-                  {t('symbolDetailSignalScore')}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.signalStatGrid}>
-              <View style={styles.signalStat}>
-                <Text style={styles.signalStatLabel}>{t('symbolDetailSignalNews')}</Text>
-                <Text style={styles.signalStatValue}>{newsItems.length}</Text>
-              </View>
-              <View style={styles.signalStat}>
-                <Text style={styles.signalStatLabel}>{t('symbolDetailSignalMove')}</Text>
-                <Text
-                  style={[
-                    styles.signalStatValue,
-                    quote ? quoteChange.styleForQuote(quote) : null,
-                  ]}>
-                  {quote ? formatPct(Number(quote.changePercent ?? 0)) : '—'}
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.signalReasonLine}>
-              {(symbolSignal.reasons.length > 0
-                ? symbolSignal.reasons.slice(0, 3).map((r) => signalReasonLabel(r, t))
-                : [t('signalReasonWatch')]
-              ).join(' · ')}
-            </Text>
-          </View>
-
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.section}>{t('symbolDetailSectionDisclosures')}</Text>
-              {disclosures.length > 0 ? (
-                <Pressable
-                  onPress={() =>
-                    router.push(
-                      `/disclosures?symbol=${encodeURIComponent(ticker)}` as Href,
-                    )
-                  }
-                  hitSlop={10}>
-                  <Text style={styles.sectionLink}>{t('symbolDetailDisclosuresAll')}</Text>
-                </Pressable>
-              ) : null}
-            </View>
-            {disclosures.length > 0 ? (
-              disclosures.slice(0, 5).map((item) => (
-                <Pressable
-                  key={item.id}
-                  onPress={() =>
-                    router.push(`/disclosures/${encodeURIComponent(item.id)}` as Href)
-                  }
-                  style={styles.disclosureCard}>
-                  <View style={styles.disclosureMeta}>
-                    <Text style={styles.disclosureBadge}>
-                      {item.provider === 'sec'
-                        ? 'SEC'
-                        : item.provider === 'dart'
-                          ? 'DART'
-                          : '공시'}
-                    </Text>
-                    {item.formType ? (
-                      <Text style={styles.disclosureType} numberOfLines={1}>
-                        {item.formType}
-                      </Text>
-                    ) : null}
-                    <Text style={styles.disclosureTime}>
-                      {formatLocalInstantDate(item.filedAt, locale, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </Text>
-                  </View>
-                  <Text style={styles.disclosureTitle} numberOfLines={2}>
-                    {item.title}
+                  <Text
+                    style={[
+                      styles.signalScoreNum,
+                      symbolSignal.level === 'hot' && styles.signalScoreNumHot,
+                      symbolSignal.level === 'quiet' && styles.signalScoreNumQuiet,
+                    ]}>
+                    {symbolSignal.score}
                   </Text>
-                  {item.summary ? (
-                    <Text style={styles.disclosureSummary} numberOfLines={2}>
-                      {item.summary}
-                    </Text>
-                  ) : null}
-                </Pressable>
-              ))
+                  <Text
+                    style={[
+                      styles.signalScoreLabel,
+                      symbolSignal.level === 'hot' && styles.signalScoreLabelHot,
+                    ]}>
+                    {t('symbolDetailSignalScore')}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.signalStatGrid}>
+                <View style={styles.signalStat}>
+                  <Text style={styles.signalStatLabel}>{t('symbolDetailSignalNews')}</Text>
+                  <Text style={styles.signalStatValue}>{newsItems.length}</Text>
+                </View>
+                <View style={styles.signalStat}>
+                  <Text style={styles.signalStatLabel}>{t('symbolDetailSignalMove')}</Text>
+                  <Text
+                    style={[
+                      styles.signalStatValue,
+                      quote ? quoteChange.styleForQuote(quote) : null,
+                    ]}>
+                    {quote ? formatPct(Number(quote.changePercent ?? 0)) : '—'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.signalReasonLine}>
+                {(symbolSignal.reasons.length > 0
+                  ? symbolSignal.reasons.slice(0, 3).map((r) => signalReasonLabel(r, t))
+                  : [t('signalReasonWatch')]
+                ).join(' · ')}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <HomeSectionHeader title={t('symbolDetailSectionNews')} showChevron={false} />
+            {newsItems.length > 0 ? (
+              newsItems.map((item, index) => {
+                const edges = {
+                  isFirst: index === 0,
+                  isLast: index === newsItems.length - 1,
+                };
+                return (
+                  <View key={item.id} style={groupedFeedRowShell(theme, edges)}>
+                    <NewsCard
+                      layout="grouped"
+                      item={item}
+                      compactMeta
+                      maxHashtagsToShow={0}
+                    />
+                  </View>
+                );
+              })
             ) : (
-              <Text style={styles.empty}>{t('symbolDetailNoDisclosures')}</Text>
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>{t('symbolDetailNoNews')}</Text>
+              </View>
             )}
           </View>
 
-          <View style={styles.sectionCard}>
-            <Text style={styles.section}>{t('symbolDetailSectionNews')}</Text>
-            {newsItems.length > 0 ? (
-              newsItems.map((item) => (
-                <Pressable
-                  key={item.id}
-                  onPress={() => void WebBrowser.openBrowserAsync(item.url)}
-                  style={styles.newsCard}>
-                  <View style={styles.newsMeta}>
-                    <Text style={styles.newsSource}>{item.source || '—'}</Text>
-                    <Text style={styles.newsTime}>{item.timeLabel || '—'}</Text>
-                  </View>
-                  <Text style={styles.newsTitle}>{item.titleKo}</Text>
-                </Pressable>
-              ))
+          <View style={styles.section}>
+            <HomeSectionHeader
+              title={t('symbolDetailSectionDisclosures')}
+              onPress={disclosureRows.length > 0 ? openAllDisclosures : undefined}
+              accessibilityLabel={t('symbolDetailDisclosuresAll')}
+              showChevron={disclosureRows.length > 0}
+            />
+            {disclosureRows.length > 0 ? (
+              <View style={[styles.feedCard, styles.feedCardCompact]}>
+                <View style={styles.issueGroupList}>
+                  {disclosureRows.map((item, index) => (
+                    <HomeDigestFeedRow
+                      key={item.id}
+                      title={item.title}
+                      titleLines={2}
+                      summary={item.summary}
+                      summaryLines={2}
+                      timeLabel={formatFeedItemTimeLabel(item.filedAt, locale)}
+                      badges={
+                        <View style={styles.disclosurePillRow}>
+                          <Text style={styles.disclosureProviderPill}>
+                            {disclosureProviderLabel(item)}
+                          </Text>
+                          {item.formType ? (
+                            <Text style={styles.disclosureFormPill} numberOfLines={1}>
+                              {item.formType}
+                            </Text>
+                          ) : null}
+                        </View>
+                      }
+                      bordered={index < disclosureRows.length - 1}
+                      onPress={() =>
+                        router.push(`/disclosures/${encodeURIComponent(item.id)}` as Href)
+                      }
+                    />
+                  ))}
+                </View>
+              </View>
             ) : (
-              <Text style={styles.empty}>{t('symbolDetailNoNews')}</Text>
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>{t('symbolDetailNoDisclosures')}</Text>
+              </View>
             )}
-            <Text style={styles.sourceFootnote}>{t('symbolDetailNewsSourceShort')}</Text>
           </View>
         </WebWheelScrollView>
       )}

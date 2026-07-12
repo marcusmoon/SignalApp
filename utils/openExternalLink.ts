@@ -2,10 +2,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Linking, Platform } from 'react-native';
 
 import { canAttemptNativeAppLaunch, externalLinkRuntime, isIosWebFamily, usesIosAppLinkPolicy } from '@/utils/externalLinkPlatform';
-import {
-  isYahooFinanceWebUrl,
-  yahooFinanceIosWebSafariLaunchUrl,
-} from '@/utils/yahooFinance';
+import { isYahooFinanceWebUrl } from '@/utils/yahooFinance';
 
 export type OpenExternalLinkOptions = {
   /** 항상 인앱 브라우저(expo-web-browser)로 연다. */
@@ -329,22 +326,15 @@ function iosWebOpenHttpsInNewTab(url: string): boolean {
 }
 
 /**
- * iPhone Safari + Yahoo — host 스킴 → 동일 탭 https(유니버설 링크) → 새 탭 https.
- * 새 탭만 쓰면 iOS가 앱으로 넘기지 않고 Safari 웹만 열리는 경우가 많다.
+ * iPhone Safari + Yahoo — 커스텀 스킴(`yfinance://`)은 Safari에서 항상 invalid 알림.
+ * 동일 탭 https 유니버설 링크만 시도한다(앱 설치 시 Yahoo 앱으로 넘김, Signal URL 유지).
  */
 async function tryIosWebYahooLaunch(webUrl: string): Promise<boolean> {
-  const scheme = yahooFinanceIosWebSafariLaunchUrl(webUrl);
-  if (scheme) {
-    iosWebNavigateViaAnchor(scheme);
-    if (await waitForIosWebAppHandoff(IOS_WEB_APP_SCHEME_TIMEOUT_MS)) return true;
-  }
+  if (!isHttpOrHttpsUrl(webUrl)) return false;
 
-  if (isHttpOrHttpsUrl(webUrl)) {
-    iosWebNavigateViaAnchor(webUrl);
-    if (await waitForIosWebAppHandoff(IOS_WEB_APP_SCHEME_TIMEOUT_MS)) return true;
-  }
-
-  return iosWebOpenHttpsInNewTab(webUrl);
+  iosWebNavigateViaAnchor(webUrl);
+  await waitForIosWebAppHandoff(IOS_WEB_APP_SCHEME_TIMEOUT_MS);
+  return true;
 }
 
 /**

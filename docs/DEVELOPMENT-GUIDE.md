@@ -96,7 +96,7 @@ type ExternalLinkDescriptor = {
 |---|---|---|
 | **데스크톱 웹·Android Chrome** | `openInAppBrowser: true` | Signal 인앱 브라우저(오버레이) |
 | **데스크톱 웹·Android Chrome** | 앱 연동 링크 (`appLaunchUrls`) | **새 탭** → 실패 시 인앱 브라우저 |
-| **iPhone·iPad Safari 웹** | `appLaunchUrls` 있음 | Yahoo: host 스킴·동일 탭 https(유니버설). 기타: 허용 스킴 → https **새 탭** |
+| **iPhone·iPad Safari 웹** | `appLaunchUrls` 있음 | Yahoo: 동일 탭 https(유니버설). 기타: 허용 스킴 → https **새 탭** |
 | **iPhone·iPad** (`ios` 네이티브) | `openInAppBrowser: true` | 인앱 브라우저 |
 | **iPhone·iPad** | `appLaunchUrls` 있음 | **커스텀 스킴 → https** 순. iOS 네이티브에서 `openURL(https)`만 단독으로 쓰면 유니버설 링크가 Safari로만 열리는 경우가 많아 스킴을 먼저 시도한다. 최종 폴백은 외부 브라우저 |
 | **Android** (네이티브) | `appLaunchUrls` 있음 | intent → 스킴 → https → `Linking` → 인앱 폴백 |
@@ -140,7 +140,7 @@ buildAppLaunchUrls({ webUrl, linkId?: 'yahoo' | 'naver' | 'toss' | ... })
 
 | 서비스 | iPhone·iPad 네이티브 | iPhone·iPad Safari 웹 | Android 네이티브 | 데스크톱·Android Chrome 웹 |
 |---|---|---|---|---|
-| Yahoo | `yfinance://finance.yahoo.com/`·경로 스킴 → https | host 스킴 → **동일 탭** https(유니버설) → 새 탭 | intent + https | webUrl만 (새 탭) |
+| Yahoo | `yfinance://finance.yahoo.com/`·경로 스킴 → https | **동일 탭 https** 유니버설 링크 (스킴 생략) | intent + https | webUrl만 (새 탭) |
 | 네이버 | `naversearchapp://inappbrowser` → (폴백 https) | 스킴 시도 → 실패 시 https **새 탭** | intent + 스킴 | webUrl만 |
 | 토스 | `supertoss://` → 유니버설 링크 | 스킴 시도 → 실패 시 https **새 탭** | intent + 스킴 | webUrl만 |
 | Upbit·Binance | 스킴 → 유니버설 링크 | https 새 탭 | intent + 스킴 | webUrl만 |

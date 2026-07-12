@@ -96,12 +96,12 @@ type ExternalLinkDescriptor = {
 |---|---|---|
 | **데스크톱 웹·Android Chrome** | `openInAppBrowser: true` | Signal 인앱 브라우저(오버레이) |
 | **데스크톱 웹·Android Chrome** | 앱 연동 링크 (`appLaunchUrls`) | **새 탭** → 실패 시 인앱 브라우저 |
-| **iPhone·iPad Safari 웹** | `appLaunchUrls` 있음 | **네이티브 iOS와 동일** — 스킴 → https → 인앱 폴백 |
+| **iPhone·iPad Safari 웹** | `appLaunchUrls` 있음 | **https만** 새 탭(유니버설 링크) → 실패 시 인앱 폴백. `supertoss://` 등 스킴은 생략(앱 없을 때 Safari 오류 방지) |
 | **iPhone·iPad** (`ios` 네이티브) | `openInAppBrowser: true` | 인앱 브라우저 |
 | **iPhone·iPad** | `appLaunchUrls` 있음 | 스킴(`canOpenURL` 검증) → http(s) 유니버설 링크 → `Linking` → 인앱 폴백 |
 | **Android** (네이티브) | `appLaunchUrls` 있음 | intent → 스킴 → https → `Linking` → 인앱 폴백 |
 
-iPad 네이티브는 `Platform.OS === 'ios'`. iPad Safari는 `Platform.OS === 'web'`이지만 `isIosWebFamily()`로 네이티브와 **같은 앱 우선 정책**을 탄다.
+iPad 네이티브는 `Platform.OS === 'ios'`. iPad Safari는 `Platform.OS === 'web'` + `isIosWebFamily()` — 네이티브와 달리 **커스텀 스킴 없이 https만** 시도한다.
 
 공통 유틸: `utils/externalLinkPlatform.ts` (`isIosWebFamily`, `usesIosAppLinkPolicy`), `utils/externalLinkLaunch.ts`, `utils/openExternalLink.ts`
 
@@ -117,12 +117,12 @@ iPad 네이티브는 `Platform.OS === 'ios'`. iPad Safari는 `Platform.OS === 'w
 
 ### 서비스별 launch 규칙 (네이티브·iOS Safari 웹)
 
-| 서비스 | iPhone·iPad (네이티브·Safari 웹) | Android 네이티브 | 데스크톱·Android Chrome 웹 |
-|---|---|---|---|
-| Yahoo | `finance.yahoo.com` 유니버설 링크 | intent + https | webUrl만 (새 탭) |
-| 네이버 | `naversearchapp://inappbrowser` + 중계 http | intent + 스킴 | webUrl만 |
-| 토스 | `supertoss://` → 유니버설 링크 | intent + 스킴 | webUrl만 |
-| Upbit·Binance | 스킴 → 유니버설 링크 | intent + 스킴 | webUrl만 |
+| 서비스 | iPhone·iPad 네이티브 | iPhone·iPad Safari 웹 | Android 네이티브 | 데스크톱·Android Chrome 웹 |
+|---|---|---|---|---|
+| Yahoo | `finance.yahoo.com` 유니버설 링크 | https 새 탭 | intent + https | webUrl만 (새 탭) |
+| 네이버 | `naversearchapp://inappbrowser` + 중계 http | https 새 탭 | intent + 스킴 | webUrl만 |
+| 토스 | `supertoss://` → 유니버설 링크 | **https 새 탭** (`tossinvest.com`) | intent + 스킴 | webUrl만 |
+| Upbit·Binance | 스킴 → 유니버설 링크 | https 새 탭 | intent + 스킴 | webUrl만 |
 
 ### 새 외부 링크 추가 절차
 

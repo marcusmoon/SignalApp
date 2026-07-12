@@ -35,7 +35,8 @@ export function tossInvestAndroidIntentUrl(webUrl: string): string {
 const TOSS_APP_LAUNCH_URLS = ['supertoss://invest', 'supertoss://'] as const;
 
 /**
- * 종목·더보기 — iOS·iPad: supertoss → 유니버설 링크 / Android: intent·스킴 / 웹: undefined
+ * 종목·더보기 — iOS·iPad 네이티브: supertoss → 유니버설 링크.
+ * iOS Safari 웹은 openExternalLink에서 https만 시도(스킴 목록은 무시됨).
  */
 export function tossFinanceStockAppLaunchUrls(webUrl: string): string[] | undefined {
   return nativeAppLaunchUrls(webUrl, {

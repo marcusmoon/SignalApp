@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 
+import { buildAppLaunchUrls } from '@/utils/externalLinkRegistry';
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
 import { nativeAppLaunchUrls } from '@/utils/externalLinkLaunch';
 import { canAttemptNativeAppLaunch, usesIosAppLinkPolicy } from '@/utils/externalLinkPlatform';
@@ -131,8 +132,19 @@ export function yahooFinanceQuoteAppLaunchUrls(webUrl: string): string[] | undef
   return undefined;
 }
 
-export function yahooFinanceHomeAppLaunchUrls(webUrl: string): string[] | undefined {
+/**
+ * Yahoo Finance — webUrl 경로에 따라 launch 규칙 자동 선택 (홈·quote·earnings).
+ * 신규 Yahoo 링크는 webUrl만 맞추면 되고, earnings는 `/calendar/earnings` 경로로 판별한다.
+ */
+export function yahooFinanceAppLaunchUrls(webUrl: string): string[] | undefined {
+  if (yahooSymbolFromEarningsCalendarUrl(webUrl)) {
+    return yahooFinanceEarningsAppLaunchUrls(webUrl);
+  }
   return yahooFinanceQuoteAppLaunchUrls(webUrl);
+}
+
+export function yahooFinanceHomeAppLaunchUrls(webUrl: string): string[] | undefined {
+  return yahooFinanceAppLaunchUrls(webUrl);
 }
 
 /** 실적 캘린더 — 쿼리 스트링 URL은 host 스킴 우선, 앱 미지원 시 quote 심볼로 폴백 */
@@ -173,7 +185,7 @@ export async function openYahooFinanceQuote(
   const url = yahooFinanceQuoteUrl(symbol, mode, hint);
   await openConfiguredExternalLink({
     webUrl: url,
-    appLaunchUrls: yahooFinanceQuoteAppLaunchUrls(url),
+    appLaunchUrls: buildAppLaunchUrls({ webUrl: url, linkId: 'yahoo' }),
   });
 }
 
@@ -193,6 +205,6 @@ export async function openYahooFinanceEarnings(
   const url = yahooFinanceEarningsUrl(symbol, hint);
   await openConfiguredExternalLink({
     webUrl: url,
-    appLaunchUrls: yahooFinanceEarningsAppLaunchUrls(url),
+    appLaunchUrls: buildAppLaunchUrls({ webUrl: url, linkId: 'yahoo-earnings' }),
   });
 }

@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 
+import { buildAppLaunchUrls } from '@/utils/externalLinkRegistry';
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
 import { nativeAppLaunchUrls } from '@/utils/externalLinkLaunch';
 import { canAttemptNativeAppLaunch } from '@/utils/externalLinkPlatform';
@@ -95,6 +96,6 @@ export async function openNaverFinanceStock(symbol: string): Promise<void> {
   if (!url) return;
   await openConfiguredExternalLink({
     webUrl: url,
-    appLaunchUrls: naverFinanceStockAppLaunchUrls(url),
+    appLaunchUrls: buildAppLaunchUrls({ webUrl: url, linkId: 'naver' }),
   });
 }

@@ -1,12 +1,8 @@
 import type { MessageId } from '@/locales/messages';
+import { buildAppLaunchUrls } from '@/utils/externalLinkRegistry';
 import { googleFinanceQuoteUrl } from '@/utils/googleFinance';
-import {
-  naverFinanceStockAppLaunchUrls,
-  naverFinanceStockUrl,
-  naverFinanceWorldStockUrl,
-} from '@/utils/naverFinance';
-import { tossFinanceStockAppLaunchUrls, tossFinanceStockUrl } from '@/utils/tossFinance';
-import { yahooFinanceEarningsAppLaunchUrls, yahooFinanceQuoteAppLaunchUrls } from '@/utils/yahooFinance';
+import { naverFinanceStockUrl, naverFinanceWorldStockUrl } from '@/utils/naverFinance';
+import { tossFinanceStockUrl } from '@/utils/tossFinance';
 import { yahooFinanceEarningsUrl, yahooFinanceQuoteUrl } from '@/utils/yahooFinance';
 
 export type SymbolExternalLink = {
@@ -80,7 +76,7 @@ export function buildSymbolExternalLinks(
         id: 'naver',
         labelKey: 'quotesNaverShort',
         url: naverUrl,
-        appLaunchUrls: naverFinanceStockAppLaunchUrls(naverUrl),
+        appLaunchUrls: buildAppLaunchUrls({ webUrl: naverUrl, linkId: 'naver' }),
       });
     }
     const tossUrl = tossFinanceStockUrl(code);
@@ -89,7 +85,7 @@ export function buildSymbolExternalLinks(
         id: 'toss',
         labelKey: 'moreRefTitleTossSecurities',
         url: tossUrl,
-        appLaunchUrls: tossFinanceStockAppLaunchUrls(tossUrl),
+        appLaunchUrls: buildAppLaunchUrls({ webUrl: tossUrl, linkId: 'toss' }),
       });
     }
     links.push(
@@ -134,7 +130,7 @@ export function buildSymbolExternalLinks(
       id: 'naver',
       labelKey: 'quotesNaverShort',
       url: naverUrl,
-      appLaunchUrls: naverFinanceStockAppLaunchUrls(naverUrl),
+      appLaunchUrls: buildAppLaunchUrls({ webUrl: naverUrl, linkId: 'naver' }),
     });
   }
 
@@ -143,7 +139,7 @@ export function buildSymbolExternalLinks(
       id: 'toss',
       labelKey: 'moreRefTitleTossSecurities',
       url: tossUrl,
-      appLaunchUrls: tossFinanceStockAppLaunchUrls(tossUrl),
+      appLaunchUrls: buildAppLaunchUrls({ webUrl: tossUrl, linkId: 'toss' }),
     });
   }
 
@@ -152,13 +148,13 @@ export function buildSymbolExternalLinks(
       id: 'yahoo',
       labelKey: 'quotesYahooShort',
       url: yahooQuote,
-      appLaunchUrls: yahooFinanceQuoteAppLaunchUrls(yahooQuote),
+      appLaunchUrls: buildAppLaunchUrls({ webUrl: yahooQuote }),
     },
     {
       id: 'yahoo-earnings',
       labelKey: 'symbolDetailLinkEarnings',
       url: yahooEarnings,
-      appLaunchUrls: yahooFinanceEarningsAppLaunchUrls(yahooEarnings),
+      appLaunchUrls: buildAppLaunchUrls({ webUrl: yahooEarnings, linkId: 'yahoo-earnings' }),
     },
     {
       id: 'sec',

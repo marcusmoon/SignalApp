@@ -1,3 +1,4 @@
+import { buildAppLaunchUrls } from '@/utils/externalLinkRegistry';
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
 import { nativeAppLaunchUrls } from '@/utils/externalLinkLaunch';
 
@@ -59,6 +60,6 @@ export async function openTossFinanceStock(symbol: string): Promise<void> {
   if (!url) return;
   await openConfiguredExternalLink({
     webUrl: url,
-    appLaunchUrls: tossFinanceStockAppLaunchUrls(url),
+    appLaunchUrls: buildAppLaunchUrls({ webUrl: url, linkId: 'toss' }),
   });
 }

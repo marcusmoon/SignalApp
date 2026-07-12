@@ -91,6 +91,38 @@ const naverStock = naverFinanceInAppBrowserScheme(
 assert(naverStock.startsWith('naversearchapp://inappbrowser?'), 'Naver inappbrowser scheme');
 assert(naverStock.includes(encodeURIComponent('https://m.stock.naver.com')), 'Naver encodes target URL');
 
+/** Registry host 매칭 — `externalLinkRegistry.ts`와 동일 규칙 */
+const REGISTRY_HOSTS = {
+  'finance.yahoo.com': 'yahoo',
+  'm.stock.naver.com': 'naver',
+  'm.cafe.naver.com': 'naver',
+  'tossinvest.com': 'toss',
+  'upbit.com': 'upbit',
+  'binance.com': 'binance',
+};
+
+function registryHostFor(webUrl) {
+  try {
+    const host = new URL(webUrl).hostname.toLowerCase().replace(/^www\./, '');
+    return REGISTRY_HOSTS[host] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+assert(registryHostFor('https://finance.yahoo.com/quote/NVDA') === 'yahoo', 'Registry host: Yahoo');
+assert(
+  registryHostFor('https://finance.yahoo.com/calendar/earnings?symbol=NVDA') === 'yahoo',
+  'Registry host: Yahoo earnings',
+);
+assert(
+  registryHostFor('https://m.stock.naver.com/domestic/stock/005930/total') === 'naver',
+  'Registry host: Naver stock',
+);
+assert(registryHostFor('https://www.tossinvest.com/stocks/AAPL/order') === 'toss', 'Registry host: Toss');
+assert(registryHostFor('https://upbit.com') === 'upbit', 'Registry host: Upbit');
+assert(registryHostFor('https://www.google.com/finance') === null, 'Registry host: no app link');
+
 console.log('OK: external link URL builders');
 console.log('  yahoo home:', yahooHome.join(' | '));
 console.log('  yahoo quote:', yahooQuote.slice(0, 3).join(' | '), '...');

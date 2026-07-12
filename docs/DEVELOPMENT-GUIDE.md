@@ -113,13 +113,28 @@ iPad 네이티브는 `Platform.OS === 'ios'`. iPad Safari는 `Platform.OS === 'w
 
 ### 링크 정의 위치
 
-| 용도 | 정의 | 열기 |
-|---|---|---|
-| 종목 상세 바로가기 | `utils/symbolExternalLinks.ts` → `buildSymbolExternalLinks()` | `SymbolDetailPane` → `openConfiguredExternalLink` |
-| 더보기 숏링크 | `constants/referenceAppLinks.ts` | `utils/referenceLinkOpen.ts` → `openReferenceLink` |
-| Yahoo·네이버·토스 단일 | `utils/yahooFinance.ts`, `naverFinance.ts`, `tossFinance.ts` | 각 `open*()` 헬퍼 |
-| 유튜브 영상 | `utils/openYoutube.ts` | `youtubeWatchAppLaunchUrls` |
-| 뉴스·공시 원문 | `NewsCard`, `disclosures` | 인앱 브라우저 직접 (피드 원문 전용) |
+| 용도 | 정의 | launch URL | 열기 |
+|---|---|---|---|
+| 종목 상세 바로가기 | `utils/symbolExternalLinks.ts` → `buildSymbolExternalLinks()` | `buildAppLaunchUrls({ webUrl, linkId })` | `SymbolDetailPane` → `openConfiguredExternalLink` |
+| 더보기 숏링크 | `constants/referenceAppLinks.ts` | `buildAppLaunchUrls({ webUrl, linkId: item.id })` | `utils/referenceLinkOpen.ts` → `openReferenceLink` |
+| 앱 연동 레지스트리 | `utils/externalLinkRegistry.ts` | id·host → `*AppLaunchUrls` 빌더 | 종목·더보기·`open*` 헬퍼 공통 |
+| Yahoo·네이버·토스 단일 | `utils/yahooFinance.ts`, `naverFinance.ts`, `tossFinance.ts` | 레지스트리 위임 | 각 `open*()` 헬퍼 |
+| 유튜브 영상 | `utils/openYoutube.ts` | `youtubeWatchAppLaunchUrls` | `openYoutube` |
+| 뉴스·공시 원문 | `NewsCard`, `disclosures` | — | 인앱 브라우저 직접 (피드 원문 전용) |
+
+### 앱 launch URL 레지스트리 (`externalLinkRegistry.ts`)
+
+**새 링크·환경별 분기를 한곳에 모은다.** 종목 상세·더보기·서비스별 `open*()` 헬퍼는 `buildAppLaunchUrls`만 호출하고, iOS 스킴·Android intent·host별 규칙은 레지스트리와 provider 파일에만 둔다.
+
+```ts
+buildAppLaunchUrls({ webUrl, linkId?: 'yahoo' | 'naver' | 'toss' | ... })
+```
+
+- `linkId`가 있으면 `LINK_ID_BUILDERS`에서 빌더 조회 (더보기·종목 id와 동일)
+- 없으면 `webUrl` host 자동 매칭 (`finance.yahoo.com`, `m.stock.naver.com`, `tossinvest.com` 등)
+- 열기 순서·플랫폼 폴백은 `openExternalLink`가 처리 (레지스트리는 URL 목록만 반환)
+
+등록된 id: `registeredAppLinkIds()` — Yahoo quote·earnings는 동일 빌더가 경로로 자동 분기.
 
 ### 서비스별 launch 규칙 (네이티브·iOS Safari 웹)
 
@@ -132,12 +147,15 @@ iPad 네이티브는 `Platform.OS === 'ios'`. iPad Safari는 `Platform.OS === 'w
 
 ### 새 외부 링크 추가 절차
 
-1. `webUrl` 결정 (https)
-2. 앱 연동 가능하면 `*AppLaunchUrls(webUrl)` 함수 추가 또는 기존 함수 재사용
-3. `openInAppBrowser: true`는 **웹 전용** 서비스만 (Google Finance, Bloomberg 등)
-4. iOS 스킴 추가 시 `app.json` → `LSApplicationQueriesSchemes`
-5. Android 호스트·스킴은 `plugins/withAndroidExternalAppQueries.js`
-6. **네이티브 manifest 변경 후 EAS/prebuild 재빌드 필요**
+1. `webUrl` 결정 (https) — `referenceAppLinks.ts` 또는 `symbolExternalLinks.ts`
+2. **앱 연동 가능하면** `utils/externalLinkRegistry.ts`의 `LINK_ID_BUILDERS`에 id 한 줄 등록 (또는 host만으로 자동 매칭되면 생략)
+3. 서비스별 스킴·intent 규칙이 필요하면 provider 파일에 `*AppLaunchUrls(webUrl)` 추가 후 레지스트리에서 참조 (Yahoo처럼 경로 자동 분기 가능)
+4. 종목·더보기·`open*()`에서는 `buildAppLaunchUrls({ webUrl, linkId })`만 사용 — 화면별로 `*AppLaunchUrls` 직접 호출 금지
+5. `openInAppBrowser: true`는 **웹 전용** 서비스만 (Google Finance, Bloomberg 등)
+6. iOS 스킴 추가 시 `app.json` → `LSApplicationQueriesSchemes`
+7. Android 호스트·스킴은 `plugins/withAndroidExternalAppQueries.js`
+8. **네이티브 manifest 변경 후 EAS/prebuild 재빌드 필요**
+9. `node scripts/verify-external-link-urls.mjs`로 launch URL 스모크 테스트
 
 ## 네이티브·빌드
 
@@ -175,7 +193,7 @@ iPad 네이티브는 `Platform.OS === 'ios'`. iPad Safari는 `Platform.OS === 'w
 | 더보기 | `app/(tabs)/more.tsx`, `components/more/ReferenceLinksSection.tsx` |
 | 종목 상세 | `app/symbol/[ticker].tsx`, `components/symbol/SymbolDetailPane.tsx` |
 | 알림함 | `app/alerts.tsx`, [NOTIFICATION-INBOX.md](./NOTIFICATION-INBOX.md) |
-| 외부 링크 | `utils/openExternalLink.ts`, `utils/externalLinkOpen.ts` |
+| 외부 링크 | `utils/externalLinkRegistry.ts`, `utils/openExternalLink.ts`, `utils/externalLinkOpen.ts` |
 | 레이아웃 상수 | `constants/screenLayout.ts` |
 | Signal API | `integrations/signal-api/` |
 

@@ -28,13 +28,14 @@ import { newsDigestCreatedIso } from '@/domain/digests/createdAt';
 import type { AppLocale } from '@/locales/messages';
 import { formatFeedItemTimeLabel } from '@/utils/date';
 
-function digestSourceRows(digest: NewsDigestItem): DigestSourceSheetRow[] {
+function digestSourceRows(digest: NewsDigestItem, locale: AppLocale): DigestSourceSheetRow[] {
   if (digest.sourceRefs.length > 0) {
     return digest.sourceRefs.map((ref, index) => ({
       key: ref.id || `${digest.id}-ref-${index}`,
       title: ref.title || ref.sourceName || ref.url || '',
       subtitle: ref.sourceName || undefined,
       url: ref.url,
+      timeLabel: ref.publishedAt ? formatFeedItemTimeLabel(ref.publishedAt, locale) : null,
     }));
   }
   return digest.sources.map((src, index) => ({
@@ -140,6 +141,7 @@ type Props = {
 
 export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoToList, goToListA11y }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
+  const { locale } = useLocale();
   const pairLayout = columns === 2;
   const stripRef = useRef<WebHorizontalScrollStripHandle>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -183,8 +185,8 @@ export function DigestPager({ batches, columns = 1, onRefresh, refreshing, onGoT
   }, [onRefresh]);
 
   const sourceRows = useMemo(
-    () => (sourcesDigest ? digestSourceRows(sourcesDigest) : []),
-    [sourcesDigest],
+    () => (sourcesDigest ? digestSourceRows(sourcesDigest, locale as AppLocale) : []),
+    [locale, sourcesDigest],
   );
 
   if (batches.length === 0) return null;

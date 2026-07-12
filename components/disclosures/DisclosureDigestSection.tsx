@@ -26,12 +26,13 @@ import type { AppLocale } from '@/locales/messages';
 import { disclosureDigestCreatedIso } from '@/domain/digests/createdAt';
 import { formatFeedItemTimeLabel } from '@/utils/date';
 
-function disclosureSourceRows(item: SignalApiDisclosureDigestItem): DigestSourceSheetRow[] {
+function disclosureSourceRows(item: SignalApiDisclosureDigestItem, locale: AppLocale): DigestSourceSheetRow[] {
   return item.sourceRefs.map((ref) => ({
     key: ref.id,
     title: ref.title || ref.companyName,
     subtitle: [ref.symbol, ref.formType].filter(Boolean).join(' · ') || undefined,
     url: ref.url,
+    timeLabel: ref.filedAt ? formatFeedItemTimeLabel(ref.filedAt, locale) : null,
   }));
 }
 
@@ -145,6 +146,7 @@ export function DisclosureDigestSection({
   goToListA11y,
 }: Props) {
   const { theme, scaleFont, feedTypo } = useSignalTheme();
+  const { locale } = useLocale();
   const pairLayout = columns === 2;
   const stripRef = useRef<WebHorizontalScrollStripHandle>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -189,8 +191,8 @@ export function DisclosureDigestSection({
   }, [onRefresh]);
 
   const sourceRows = useMemo(
-    () => (sourcesItem ? disclosureSourceRows(sourcesItem) : []),
-    [sourcesItem],
+    () => (sourcesItem ? disclosureSourceRows(sourcesItem, locale as AppLocale) : []),
+    [locale, sourcesItem],
   );
 
   if (loading && items.length === 0) return null;

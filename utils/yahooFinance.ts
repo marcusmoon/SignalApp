@@ -49,8 +49,8 @@ export function yahooFinanceQuoteUrl(
 }
 
 /**
- * iOS·iPad 네이티브 — Linking.openURL(https)는 Safari로만 열리므로 커스텀 스킴만 시도.
- * 경로가 있으면 yfinance/yahoo 스킴에 붙여 본다(미지원 시 앱 홈으로라도 이동).
+ * iOS·iPad 네이티브 — 타 앱에서 Linking.openURL(https)만 쓰면 Safari로 빠지는 경우가 많아
+ * 커스텀 스킴을 먼저 시도하고, 이어서 https 유니버설 링크를 시도한다.
  */
 export function yahooFinanceIosAppLaunchUrls(webUrl: string): readonly string[] {
   const urls: string[] = [];
@@ -82,7 +82,7 @@ export function yahooFinanceQuoteAppLaunchUrls(webUrl: string): string[] | undef
   if (usesIosAppLinkPolicy()) {
     return nativeAppLaunchUrls(webUrl, {
       ios: yahooFinanceIosAppLaunchUrls(webUrl),
-      iosAppendUniversalLink: false,
+      iosAppendUniversalLink: true,
     });
   }
   if (Platform.OS === 'android') {

@@ -268,9 +268,7 @@ async function tryIosWebAppLaunchUrls(list: string[], webUrl: string): Promise<b
 }
 
 async function tryNativeAppLaunchUrls(list: string[], webUrl: string): Promise<boolean> {
-  const skipHttpOnIosNative = Platform.OS === 'ios';
   for (const url of list) {
-    if (skipHttpOnIosNative && isHttpOrHttpsUrl(url)) continue;
     if (isIntentNavigationUrl(url)) {
       if (await tryOpen(url)) return true;
       continue;
@@ -316,7 +314,7 @@ async function tryNativeAppLaunchUrls(list: string[], webUrl: string): Promise<b
  * | 데스크톱·Android 웹 | false | 있음/없음 | 새 탭 → 실패 시 인앱 브라우저 |
  * | iPhone·iPad Safari 웹 | false | 있음 | **https만** 새 탭(유니버설 링크) → 실패 시 인앱 폴백. 스킴 생략 |
  * | iOS·iPad·Android 네이티브 | true | — | 인앱 브라우저 |
- * | iOS·iPad·Android 네이티브 | false | 있음 | 스킴·intent·https → Linking → 인앱 폴백 |
+ * | iOS·iPad·Android 네이티브 | false | 있음 | 커스텀 스킴 → https(유니버설) → 미지원 시 외부 브라우저 |
  */
 export async function openExternalLink(
   webUrl: string,

@@ -98,10 +98,16 @@ type ExternalLinkDescriptor = {
 | **데스크톱 웹·Android Chrome** | 앱 연동 링크 (`appLaunchUrls`) | **새 탭** → 실패 시 인앱 브라우저 |
 | **iPhone·iPad Safari 웹** | `appLaunchUrls` 있음 | **https만** 새 탭(유니버설 링크) → 실패 시 인앱 폴백. `supertoss://` 등 스킴은 생략(앱 없을 때 Safari 오류 방지) |
 | **iPhone·iPad** (`ios` 네이티브) | `openInAppBrowser: true` | 인앱 브라우저 |
-| **iPhone·iPad** | `appLaunchUrls` 있음 | 커스텀 스킴(`openURL` 우선) → `Linking` → 인앱 폴백. **https는 iOS 네이티브 launch 목록에서 제외**(타 앱에서 `openURL` 시 Safari로만 열림) |
+| **iPhone·iPad** | `appLaunchUrls` 있음 | **커스텀 스킴 → https** 순. iOS 네이티브에서 `openURL(https)`만 단독으로 쓰면 유니버설 링크가 Safari로만 열리는 경우가 많아 스킴을 먼저 시도한다. 최종 폴백은 외부 브라우저 |
 | **Android** (네이티브) | `appLaunchUrls` 있음 | intent → 스킴 → https → `Linking` → 인앱 폴백 |
 
 iPad 네이티브는 `Platform.OS === 'ios'`. iPad Safari는 `Platform.OS === 'web'` + `isIosWebFamily()` — 네이티브와 달리 **커스텀 스킴 없이 https만** 시도한다.
+
+#### 유니버설 링크(https) — 기대 동작 vs iOS 제약
+
+많은 앱이 Associated Domains로 **https 딥링크**를 등록한다. 사용자가 Safari·메시지·메일에서 https를 탭하면 앱이 설치된 경우 앱으로, 없으면 브라우저로 열리는 것이 정상이다.
+
+다만 **SIGNAL 네이티브 앱 안에서** `Linking.openURL(https)`로 같은 URL을 열면, iOS는 “다른 앱으로 보낸다”는 신호로 해석해 **대상 앱이 아니라 Safari(외부 브라우저)** 로 보내는 경우가 많다(RN·Apple 이슈로 알려짐). 그래서 Yahoo·네이버·토스 등은 **공식 커스텀 스킴을 먼저** 시도하고, 실패·미지원 시 **webUrl(https) → 외부 브라우저** 순으로 폴백한다. Android는 `intent://`에 `package`·`browser_fallback_url`이 있어 https만으로도 앱/웹 분기가 잘 된다.
 
 공통 유틸: `utils/externalLinkPlatform.ts` (`isIosWebFamily`, `usesIosAppLinkPolicy`), `utils/externalLinkLaunch.ts`, `utils/openExternalLink.ts`
 
@@ -119,8 +125,8 @@ iPad 네이티브는 `Platform.OS === 'ios'`. iPad Safari는 `Platform.OS === 'w
 
 | 서비스 | iPhone·iPad 네이티브 | iPhone·iPad Safari 웹 | Android 네이티브 | 데스크톱·Android Chrome 웹 |
 |---|---|---|---|---|
-| Yahoo | `yfinance://`·`yahoo://`(경로 포함 시도) | https 새 탭 | intent + https | webUrl만 (새 탭) |
-| 네이버 | `naversearchapp://inappbrowser` | https 새 탭 | intent + 스킴 | webUrl만 |
+| Yahoo | `yfinance://`·`yahoo://` → https | https 새 탭 | intent + https | webUrl만 (새 탭) |
+| 네이버 | `naversearchapp://inappbrowser` → (폴백 https) | https 새 탭 | intent + 스킴 | webUrl만 |
 | 토스 | `supertoss://` → 유니버설 링크 | **https 새 탭** (`tossinvest.com`) | intent + 스킴 | webUrl만 |
 | Upbit·Binance | 스킴 → 유니버설 링크 | https 새 탭 | intent + 스킴 | webUrl만 |
 

@@ -252,7 +252,21 @@ export function youtubeWatchAppLaunchUrls(videoId: string, webUrl: string): stri
   return orderAppLaunchUrlsForPlatform(base, webUrl);
 }
 
-const IOS_WEB_APP_SCHEME_TIMEOUT_MS = 500;
+const IOS_WEB_APP_SCHEME_TIMEOUT_MS = 1200;
+
+/** iPhone Safari — 커스텀 스킴 시도 시 Safari "invalid address" 알림을 띄우는 스킴 */
+const IOS_WEB_BLOCKED_CUSTOM_SCHEMES = new Set([
+  'yfinance',
+  'yahoo',
+  'youtube',
+  'vnd.youtube',
+]);
+
+function iosWebAllowsCustomScheme(url: string): boolean {
+  const scheme = parseUrlScheme(url);
+  if (!scheme) return false;
+  return !IOS_WEB_BLOCKED_CUSTOM_SCHEMES.has(scheme);
+}
 
 /** iPhone·iPad Safari — 사용자 제스처 체인에서 앱 스킴·https 내비게이션 */
 function iosWebNavigateViaAnchor(url: string, options?: { newTab?: boolean }): void {
@@ -285,6 +299,8 @@ function waitForIosWebAppHandoff(timeoutMs: number): Promise<boolean> {
       if (settled) return;
       settled = true;
       document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('blur', onBlur);
       window.clearTimeout(timer);
       resolve(opened);
     };
@@ -292,27 +308,35 @@ function waitForIosWebAppHandoff(timeoutMs: number): Promise<boolean> {
     const onVisibilityChange = () => {
       if (document.hidden) finish(true);
     };
+    const onPageHide = () => finish(true);
+    const onBlur = () => finish(true);
 
     document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('blur', onBlur);
     const timer = window.setTimeout(() => finish(false), timeoutMs);
   });
 }
 
-async function tryIosWebOpenHttps(url: string): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
-  iosWebNavigateViaAnchor(url);
+function iosWebOpenHttpsInNewTab(url: string): boolean {
+  if (typeof window === 'undefined' || !isHttpOrHttpsUrl(url)) return false;
+  iosWebNavigateViaAnchor(url, { newTab: true });
   return true;
 }
 
 /**
- * iPhone·iPad Safari — 네이티브와 동일 순서(커스텀 스킴 → https).
- * 스킴은 첫 후보만 시도하고, 앱 전환이 없으면 https로 폴백한다.
+ * iPhone·iPad Safari — https 유니버설 링크만 새 탭에서 연다.
+ * - Yahoo 등 `yfinance://` 스킴은 Safari에서 invalid 알림만 띄우므로 생략
+ * - 토스·네이버 등 허용 스킴은 앱 전환 감지 후 실패 시에만 https 새 탭 (Signal 탭 유지)
  */
 async function tryIosWebAppLaunchUrls(list: string[], webUrl: string): Promise<boolean> {
   const ordered = orderAppLaunchUrlsForPlatform(list.length > 0 ? list : [], webUrl);
   const unique = ordered.filter((url, index, arr) => url.length > 0 && arr.indexOf(url) === index);
 
-  const customs = unique.filter((url) => !isIntentNavigationUrl(url) && isLikelyCustomAppUrl(url));
+  const customs = unique.filter(
+    (url) =>
+      !isIntentNavigationUrl(url) && isLikelyCustomAppUrl(url) && iosWebAllowsCustomScheme(url),
+  );
   const httpsUrls = unique.filter((url) => isHttpOrHttpsUrl(url));
   const fallbackHttps = httpsUrls[0] ?? webUrl;
 
@@ -322,11 +346,7 @@ async function tryIosWebAppLaunchUrls(list: string[], webUrl: string): Promise<b
     if (handedOff) return true;
   }
 
-  if (fallbackHttps) {
-    return tryIosWebOpenHttps(fallbackHttps);
-  }
-
-  return false;
+  return iosWebOpenHttpsInNewTab(fallbackHttps);
 }
 
 async function tryNativeAppLaunchUrls(list: string[], webUrl: string): Promise<boolean> {
@@ -374,7 +394,7 @@ async function tryNativeAppLaunchUrls(list: string[], webUrl: string): Promise<b
  * |---|---|---|---|
  * | 데스크톱·Android 웹 | true | — | 인앱 브라우저 |
  * | 데스크톱·Android 웹 | false | 있음/없음 | 새 탭 → 실패 시 인앱 브라우저 |
- * | iPhone·iPad Safari 웹 | false | 있음 | 커스텀 스킴 → https(동일 탭) → 실패 시 인앱 폴백 |
+ * | iPhone·iPad Safari 웹 | false | 있음 | 허용 스킴(토스·네이버 등) → https **새 탭** → 실패 시 인앱 폴백. Yahoo 스킴 생략 |
  * | iOS·iPad·Android 네이티브 | true | — | 인앱 브라우저 |
  * | iOS·iPad·Android 네이티브 | false | 있음 | 커스텀 스킴 → https(유니버설) → 미지원 시 외부 브라우저 |
  */

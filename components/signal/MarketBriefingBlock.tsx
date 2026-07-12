@@ -83,18 +83,20 @@ function BriefingSection({
   );
 }
 
-function CompanyHighlightCard({
+function CompanyHighlightRow({
   item,
   market,
   theme,
   styles,
   changeColors,
+  bordered,
 }: {
   item: SignalApiMarketBriefingCompany;
   market: string;
   theme: AppTheme;
   styles: ReturnType<typeof makeStyles>;
   changeColors: { up: string; down: string };
+  bordered: boolean;
 }) {
   const hasPrice = item.price != null && Number.isFinite(item.price);
   const hasChange = item.changePercent != null && Number.isFinite(item.changePercent);
@@ -110,7 +112,7 @@ function CompanyHighlightCard({
   const changeBorderColor = changePositive === null ? theme.border : `${changeColor}55`;
 
   return (
-    <View style={styles.companyCard}>
+    <View style={[styles.companyRow, bordered && styles.listRowBordered]}>
       <View style={styles.companyHead}>
         <View style={styles.companySymbolLead}>
           <SymbolLogo symbol={item.symbol} size={24} />
@@ -192,14 +194,16 @@ function SectorRow({
   item,
   theme,
   styles,
+  bordered,
 }: {
   item: SignalApiMarketBriefingSector;
   theme: AppTheme;
   styles: ReturnType<typeof makeStyles>;
+  bordered: boolean;
 }) {
   const color = trendColor(item.trend, theme);
   return (
-    <View style={styles.sectorRow}>
+    <View style={[styles.sectorRow, bordered && styles.listRowBordered]}>
       <Text style={[styles.sectorTrend, { color }]}>{item.trend}</Text>
       <Text style={styles.sectorName}>{item.name}</Text>
       <Text style={styles.sectorSummary} numberOfLines={2}>{item.summary}</Text>
@@ -255,13 +259,14 @@ export function MarketBriefingBlock({
           count={briefing.sectors.length}
           styles={styles}
           accent="green">
-          <View style={styles.cardStack}>
+          <View style={styles.sectionFeedCard}>
             {briefing.sectors.map((item, index) => (
               <SectorRow
                 key={`${item.name}-${index}`}
                 item={item}
                 theme={theme}
                 styles={styles}
+                bordered={index < briefing.sectors!.length - 1}
               />
             ))}
           </View>
@@ -274,15 +279,16 @@ export function MarketBriefingBlock({
           count={briefing.companies.length}
           styles={styles}
           accent="green">
-          <View style={styles.cardStack}>
+          <View style={styles.sectionFeedCard}>
             {briefing.companies.map((item, index) => (
-              <CompanyHighlightCard
+              <CompanyHighlightRow
                 key={`${item.symbol}-${index}`}
                 item={item}
                 market={briefing.market}
                 theme={theme}
                 styles={styles}
                 changeColors={changeColors}
+                bordered={index < briefing.companies.length - 1}
               />
             ))}
           </View>
@@ -436,16 +442,16 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontWeight: ft.signalBodyWeight,
       color: theme.text,
     },
-    cardStack: {
-      gap: 16,
+
+    listRowBordered: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
     },
     sectorRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 16,
-      paddingVertical: 7,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
+      paddingVertical: 5,
     },
     sectorTrend: {
       fontSize: ft.ff(15),
@@ -467,13 +473,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.textDim,
       lineHeight: sf(18),
     },
-    companyCard: {
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      padding: ft.pad(14),
-      gap: 16,
+    companyRow: {
+      gap: 8,
+      paddingVertical: 5,
     },
     companyHead: {
       flexDirection: 'row',
@@ -532,9 +534,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       lineHeight: sf(23),
       fontWeight: ft.signalBodyWeight,
       color: theme.textDim,
-      paddingTop: 8,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: theme.border,
     },
     sectionFeedCard: {
       borderRadius: 8,

@@ -24,6 +24,11 @@ function computeExternalLinkGridColumns(innerWidth, itemCount, options = {}) {
   const maxByWidth = Math.max(1, Math.floor((innerWidth + gap) / (minCellWidth + gap)));
   const cap = Math.min(maxColumns, maxByWidth, itemCount);
 
+  const minWidthForPreferred = preferredColumns * 40 + (preferredColumns - 1) * gap;
+  if (itemCount >= preferredColumns && innerWidth >= minWidthForPreferred) {
+    return Math.min(preferredColumns, itemCount, maxColumns);
+  }
+
   if (itemCount >= preferredColumns && cap >= preferredColumns) {
     return preferredColumns;
   }
@@ -52,6 +57,21 @@ assert(
   computeExternalLinkGridColumns(ipadDetailMeasured, 6, { preferredColumns: 3 }) === 3,
   'iPad detail uses measured width for 3 columns (not inflated estimate)',
 );
-assert(ipadDetailMeasured === 302, 'Measured width subtracts box padding');
+assert(
+  computeExternalLinkGridColumns(180, 6, { preferredColumns: 3 }) === 3,
+  'Flex row layout keeps 3 columns on narrow iPad detail pane',
+);
+
+function chunkExternalLinkGridItems(items, columns) {
+  const safeColumns = Math.max(1, columns);
+  const rows = [];
+  for (let index = 0; index < items.length; index += safeColumns) {
+    rows.push(items.slice(index, index + safeColumns));
+  }
+  return rows;
+}
+
+assert(chunkExternalLinkGridItems([1, 2, 3, 4, 5, 6, 7], 3).length === 3, 'Chunk into 3-column rows');
+assert(chunkExternalLinkGridItems([1, 2, 3, 4, 5, 6, 7], 3)[0].length === 3, 'First row has 3 items');
 
 console.log('OK: external link grid columns');

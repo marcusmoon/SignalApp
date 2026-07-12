@@ -3,9 +3,9 @@ import { StyleSheet, useWindowDimensions, View, type ViewStyle } from 'react-nat
 
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import {
+  chunkExternalLinkGridItems,
   computeExternalLinkGridColumns,
   estimateExternalLinkContentWidth,
-  externalLinkGridCellWidth,
   resolveExternalLinkGridInnerWidth,
   type ExternalLinkGridColumnOptions,
 } from '@/utils/externalLinkGrid';
@@ -14,10 +14,11 @@ type ExternalLinkGridProps<T> = {
   items: readonly T[];
   horizontalInset?: number;
   gap?: number;
+  rowGap?: number;
   boxPaddingHorizontal?: number;
   columnOptions?: ExternalLinkGridColumnOptions;
   keyExtractor: (item: T) => string;
-  renderItem: (item: T, cellWidth: number) => React.ReactNode;
+  renderItem: (item: T) => React.ReactNode;
   style?: ViewStyle;
 };
 
@@ -25,6 +26,7 @@ export function ExternalLinkGrid<T>({
   items,
   horizontalInset = 0,
   gap = 6,
+  rowGap = 6,
   boxPaddingHorizontal = 0,
   columnOptions,
   keyExtractor,
@@ -64,10 +66,7 @@ export function ExternalLinkGrid<T>({
     [columnOptions, gap, gridInnerWidth, items.length],
   );
 
-  const cellWidth = useMemo(() => {
-    const width = externalLinkGridCellWidth(gridInnerWidth, columns, gap);
-    return width > 0 ? width : gridInnerWidth / Math.max(1, columns);
-  }, [columns, gap, gridInnerWidth]);
+  const rows = useMemo(() => chunkExternalLinkGridItems(items, columns), [columns, items]);
 
   if (items.length === 0) return null;
 
@@ -78,10 +77,19 @@ export function ExternalLinkGrid<T>({
         const next = Math.max(0, event.nativeEvent.layout.width);
         setMeasuredWidth((prev) => (prev === next ? prev : next));
       }}>
-      <View style={[styles.grid, { gap }]}>
-        {items.map((item) => (
-          <View key={keyExtractor(item)} style={{ width: cellWidth, maxWidth: cellWidth }}>
-            {renderItem(item, cellWidth)}
+      <View style={styles.grid}>
+        {rows.map((row, rowIndex) => (
+          <View
+            key={`row-${rowIndex}`}
+            style={[
+              styles.gridRow,
+              { gap, marginBottom: rowIndex === rows.length - 1 ? 0 : rowGap },
+            ]}>
+            {row.map((item) => (
+              <View key={keyExtractor(item)} style={styles.gridCell}>
+                {renderItem(item)}
+              </View>
+            ))}
           </View>
         ))}
       </View>
@@ -96,7 +104,13 @@ const styles = StyleSheet.create({
   },
   grid: {
     width: '100%',
+  },
+  gridRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    width: '100%',
+  },
+  gridCell: {
+    flex: 1,
+    minWidth: 0,
   },
 });

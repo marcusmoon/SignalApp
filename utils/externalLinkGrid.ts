@@ -45,6 +45,12 @@ export function computeExternalLinkGridColumns(
   const maxByWidth = Math.max(1, Math.floor((innerWidth + gap) / (minCellWidth + gap)));
   const cap = Math.min(maxColumns, maxByWidth, itemCount);
 
+  // flex:1 행 레이아웃 — 항목만 충분하고 최소 폭만 넘으면 선호 열 수 유지
+  const minWidthForPreferred = preferredColumns * 40 + (preferredColumns - 1) * gap;
+  if (itemCount >= preferredColumns && innerWidth >= minWidthForPreferred) {
+    return Math.min(preferredColumns, itemCount, maxColumns);
+  }
+
   if (itemCount >= preferredColumns && cap >= preferredColumns) {
     return preferredColumns;
   }
@@ -59,6 +65,16 @@ export function externalLinkGridCellWidth(
 ): number {
   if (innerWidth <= 0 || columns <= 0) return 0;
   return (innerWidth - gap * (columns - 1)) / columns;
+}
+
+/** N열 고정 행 레이아웃용 — flex:1 셀이 폭에 맞게 줄어든다 */
+export function chunkExternalLinkGridItems<T>(items: readonly T[], columns: number): T[][] {
+  const safeColumns = Math.max(1, columns);
+  const rows: T[][] = [];
+  for (let index = 0; index < items.length; index += safeColumns) {
+    rows.push(items.slice(index, index + safeColumns));
+  }
+  return rows;
 }
 
 /** iPad 사이드바·2-패널·콘텐츠 max-width를 반영한 그리드 추정 폭 */

@@ -85,6 +85,14 @@ assert(
   'Yahoo earnings skips ambiguous short scheme with query',
 );
 
+const yahooWebSafariHome = (() => {
+  for (const url of yahooFinanceIosAppLaunchUrls('https://finance.yahoo.com')) {
+    if (/^yfinance:\/\/finance\.yahoo\.com/i.test(url)) return url;
+  }
+  return null;
+})();
+assert(yahooWebSafariHome === 'yfinance://finance.yahoo.com/', 'Yahoo Safari web uses host scheme only');
+
 const naverStock = naverFinanceInAppBrowserScheme(
   'https://m.stock.naver.com/domestic/stock/005930/total',
 );

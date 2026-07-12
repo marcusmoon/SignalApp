@@ -115,6 +115,24 @@ export function yahooFinanceIosAppLaunchUrls(webUrl: string): readonly string[] 
   return orderYahooIosLaunchUrls(urls);
 }
 
+export function isYahooFinanceWebUrl(webUrl: string): boolean {
+  try {
+    return new URL(webUrl).hostname.toLowerCase().replace(/^www\./, '') === 'finance.yahoo.com';
+  } catch {
+    return false;
+  }
+}
+
+/** iPhone Safari — `yfinance://finance.yahoo.com/...` host 스킴만 (bare·짧은 path는 invalid 유발) */
+export function yahooFinanceIosWebSafariLaunchUrl(webUrl: string): string | null {
+  for (const url of yahooFinanceIosAppLaunchUrls(webUrl)) {
+    if (/^yfinance:\/\/finance\.yahoo\.com/i.test(url) || /^yahoo:\/\/finance\.yahoo\.com/i.test(url)) {
+      return url;
+    }
+  }
+  return null;
+}
+
 /**
  * 종목 상세·더보기 — iOS·iPad 네이티브는 커스텀 스킴, Android는 intent.
  */

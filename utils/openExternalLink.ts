@@ -2,6 +2,10 @@ import * as WebBrowser from 'expo-web-browser';
 import { Linking, Platform } from 'react-native';
 
 import { canAttemptNativeAppLaunch, externalLinkRuntime, isIosWebFamily, usesIosAppLinkPolicy } from '@/utils/externalLinkPlatform';
+import {
+  isYahooFinanceWebUrl,
+  yahooFinanceIosWebSafariLaunchUrl,
+} from '@/utils/yahooFinance';
 
 export type OpenExternalLinkOptions = {
   /** 항상 인앱 브라우저(expo-web-browser)로 연다. */
@@ -325,11 +329,32 @@ function iosWebOpenHttpsInNewTab(url: string): boolean {
 }
 
 /**
- * iPhone·iPad Safari — https 유니버설 링크만 새 탭에서 연다.
- * - Yahoo 등 `yfinance://` 스킴은 Safari에서 invalid 알림만 띄우므로 생략
- * - 토스·네이버 등 허용 스킴은 앱 전환 감지 후 실패 시에만 https 새 탭 (Signal 탭 유지)
+ * iPhone Safari + Yahoo — host 스킴 → 동일 탭 https(유니버설 링크) → 새 탭 https.
+ * 새 탭만 쓰면 iOS가 앱으로 넘기지 않고 Safari 웹만 열리는 경우가 많다.
+ */
+async function tryIosWebYahooLaunch(webUrl: string): Promise<boolean> {
+  const scheme = yahooFinanceIosWebSafariLaunchUrl(webUrl);
+  if (scheme) {
+    iosWebNavigateViaAnchor(scheme);
+    if (await waitForIosWebAppHandoff(IOS_WEB_APP_SCHEME_TIMEOUT_MS)) return true;
+  }
+
+  if (isHttpOrHttpsUrl(webUrl)) {
+    iosWebNavigateViaAnchor(webUrl);
+    if (await waitForIosWebAppHandoff(IOS_WEB_APP_SCHEME_TIMEOUT_MS)) return true;
+  }
+
+  return iosWebOpenHttpsInNewTab(webUrl);
+}
+
+/**
+ * iPhone·iPad Safari — 토스·네이버 등 허용 스킴 후 https 새 탭. Yahoo는 별도 처리.
  */
 async function tryIosWebAppLaunchUrls(list: string[], webUrl: string): Promise<boolean> {
+  if (isYahooFinanceWebUrl(webUrl)) {
+    return tryIosWebYahooLaunch(webUrl);
+  }
+
   const ordered = orderAppLaunchUrlsForPlatform(list.length > 0 ? list : [], webUrl);
   const unique = ordered.filter((url, index, arr) => url.length > 0 && arr.indexOf(url) === index);
 

@@ -4,6 +4,7 @@ set -euo pipefail
 
 REPO_DIR="/Users/marcusmoon/SignalApp"
 LOCK_DIR="${REPO_DIR}/.tmp/auto-ios-ota-deploy.lock"
+LOCK_PID_FILE="${LOCK_DIR}/pid"
 WORK_DIR="${REPO_DIR}/.tmp"
 LOG_DIR="${HOME}/Library/Logs/SignalApp"
 LOG_FILE="${LOG_DIR}/auto-ios-ota-deploy.log"
@@ -11,13 +12,37 @@ LOG_FILE="${LOG_DIR}/auto-ios-ota-deploy.log"
 mkdir -p "${WORK_DIR}" "${LOG_DIR}"
 
 if ! mkdir "${LOCK_DIR}" 2>/dev/null; then
+  existing_pid=""
+  if [[ -f "${LOCK_PID_FILE}" ]]; then
+    existing_pid="$(<"${LOCK_PID_FILE}")"
+  fi
+
+  if [[ -n "${existing_pid}" ]] && kill -0 "${existing_pid}" 2>/dev/null; then
+    {
+      printf '[%s] skip: previous run still active (pid=%s)\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${existing_pid}"
+    } >> "${LOG_FILE}"
+    exit 0
+  fi
+
+  rm -f "${LOCK_PID_FILE}" 2>/dev/null || true
+  rmdir "${LOCK_DIR}" 2>/dev/null || true
+
+  if ! mkdir "${LOCK_DIR}" 2>/dev/null; then
+    {
+      printf '[%s] skip: unable to acquire lock\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    } >> "${LOG_FILE}"
+    exit 0
+  fi
+
   {
-    printf '[%s] skip: previous run still active\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    printf '[%s] recovered stale lock\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   } >> "${LOG_FILE}"
-  exit 0
 fi
 
+printf '%s\n' "$$" > "${LOCK_PID_FILE}"
+
 cleanup() {
+  rm -f "${LOCK_PID_FILE}" 2>/dev/null || true
   rmdir "${LOCK_DIR}" 2>/dev/null || true
 }
 

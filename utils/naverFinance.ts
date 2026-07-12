@@ -1,7 +1,6 @@
 import { Platform } from 'react-native';
 
 import { openConfiguredExternalLink } from '@/utils/externalLinkOpen';
-import { orderAppLaunchUrlsForPlatform } from '@/utils/openExternalLink';
 
 export function normalizeKrxStockCode(value: string): string {
   const digits = String(value || '').replace(/\D/g, '');
@@ -44,6 +43,12 @@ export function naverFinanceInAppBrowserScheme(webUrl: string): string {
   return `naversearchapp://inappbrowser?url=${encoded}&target=new&version=6`;
 }
 
+/** 네이버 앱 중계 URL — iOS·iPad에서 커스텀 스킴이 막힐 때 보조 */
+export function naverFinanceRelayInAppBrowserUrl(webUrl: string): string {
+  const encoded = encodeURIComponent(webUrl);
+  return `http://naverapp.naver.com/inappbrowser/?url=${encoded}&target=new&version=6`;
+}
+
 export function naverFinanceAndroidIntentUrl(webUrl: string): string {
   const encoded = encodeURIComponent(webUrl);
   return (
@@ -52,13 +57,13 @@ export function naverFinanceAndroidIntentUrl(webUrl: string): string {
   );
 }
 
-/** 종목 상세·리스트 — 네이버 앱 증권 페이지로 이동 */
+/** 종목·더보기 — 네이버 앱 inappbrowser·중계 URL만 시도, https는 폴백에서 */
 export function naverFinanceStockAppLaunchUrls(webUrl: string): string[] {
   const inApp = naverFinanceInAppBrowserScheme(webUrl);
   if (Platform.OS === 'android') {
-    return [naverFinanceAndroidIntentUrl(webUrl), inApp, webUrl];
+    return [naverFinanceAndroidIntentUrl(webUrl), inApp];
   }
-  return orderAppLaunchUrlsForPlatform([inApp, webUrl], webUrl);
+  return [inApp, naverFinanceRelayInAppBrowserUrl(webUrl)];
 }
 
 /** @deprecated Use naverFinanceStockAppLaunchUrls for stock pages */

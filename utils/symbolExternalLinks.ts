@@ -1,5 +1,6 @@
 import type { MessageId } from '@/locales/messages';
 import { naverFinanceStockUrl } from '@/utils/naverFinance';
+import { tossFinanceAppLaunchUrls, tossFinanceStockUrl } from '@/utils/tossFinance';
 import { yahooFinanceAppLaunchUrls } from '@/utils/openExternalLink';
 import { yahooFinanceEarningsUrl, yahooFinanceQuoteUrl } from '@/utils/yahooFinance';
 
@@ -41,6 +42,15 @@ export function buildSymbolExternalLinks(symbol: string): SymbolExternalLink[] {
         openInAppBrowser: true,
       });
     }
+    const tossUrl = tossFinanceStockUrl(code);
+    if (tossUrl) {
+      links.push({
+        id: 'toss',
+        labelKey: 'moreRefTitleTossSecurities',
+        url: tossUrl,
+        appLaunchUrls: tossFinanceAppLaunchUrls(tossUrl),
+      });
+    }
     links.push(
       {
         id: 'naver-news',
@@ -67,8 +77,9 @@ export function buildSymbolExternalLinks(symbol: string): SymbolExternalLink[] {
   const yahooQuote = yahooFinanceQuoteUrl(trimmed, 'stock');
   const yahooEarnings = yahooFinanceEarningsUrl(trimmed);
   const tickerPath = usTickerPath(trimmed);
+  const tossUrl = tossFinanceStockUrl(trimmed);
 
-  return [
+  const links: SymbolExternalLink[] = [
     {
       id: 'yahoo',
       labelKey: 'quotesYahooShort',
@@ -79,8 +90,20 @@ export function buildSymbolExternalLinks(symbol: string): SymbolExternalLink[] {
       id: 'yahoo-earnings',
       labelKey: 'symbolDetailLinkEarnings',
       url: yahooEarnings,
-      appLaunchUrls: yahooFinanceAppLaunchUrls(yahooEarnings),
+      openInAppBrowser: true,
     },
+  ];
+
+  if (tossUrl) {
+    links.push({
+      id: 'toss',
+      labelKey: 'moreRefTitleTossSecurities',
+      url: tossUrl,
+      appLaunchUrls: tossFinanceAppLaunchUrls(tossUrl),
+    });
+  }
+
+  links.push(
     {
       id: 'sec',
       labelKey: 'symbolDetailLinkSec',
@@ -99,5 +122,7 @@ export function buildSymbolExternalLinks(symbol: string): SymbolExternalLink[] {
       url: `https://www.tradingview.com/symbols/${encodeURIComponent(tickerPath)}/`,
       openInAppBrowser: true,
     },
-  ];
+  );
+
+  return links;
 }

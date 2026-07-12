@@ -31,10 +31,10 @@ export async function openYahooFinanceQuote(symbol: string, mode: 'coin' | 'stoc
   });
 }
 
-/** 실적·실적콜·트랜스크립트 등 종목별 실적 허브 (티커 페이지의 Earnings 탭) */
+/** 실적 캘린더 — `/quote/.../earnings` 경로는 Yahoo에서 더 이상 유효하지 않음 */
 export function yahooFinanceEarningsUrl(symbol: string): string {
   const path = usTickerToYahooPath(symbol);
-  return `https://finance.yahoo.com/quote/${encodeURIComponent(path)}/earnings`;
+  return `https://finance.yahoo.com/calendar/earnings?symbol=${encodeURIComponent(path)}`;
 }
 
 export async function openYahooFinanceEarnings(symbol: string): Promise<void> {

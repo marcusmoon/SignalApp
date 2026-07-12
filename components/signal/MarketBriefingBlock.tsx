@@ -445,10 +445,13 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       fontSize: ft.ff(13),
       fontWeight: ft.emphasisWeight,
       color: theme.text,
+      width: 88,
+      flexGrow: 0,
       flexShrink: 0,
     },
     sectorSummary: {
       flex: 1,
+      flexShrink: 1,
       minWidth: 0,
       fontSize: ft.signalBodyFont(13),
       fontWeight: ft.signalMetaWeight,

@@ -28,6 +28,8 @@ exec >> "${LOG_FILE}" 2>&1
 printf '\n[%s] start auto OTA deploy\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
+export CI=1
+export EXPO_NO_TELEMETRY=1
 
 if [[ -f "${HOME}/.zprofile" ]]; then
   # shellcheck disable=SC1090

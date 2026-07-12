@@ -4,6 +4,8 @@
 
 | 문서 | 용도 |
 |---|---|
+| [docs/DESIGN-GUIDE.md](./docs/DESIGN-GUIDE.md) | **앱 UI·UX** — 테마, 타이포, 레이아웃, 컴포넌트 |
+| [docs/DEVELOPMENT-GUIDE.md](./docs/DEVELOPMENT-GUIDE.md) | **앱 개발** — 디렉터리, API, 캐시, 외부 링크 |
 | [docs/AGENTS.md](./docs/AGENTS.md) | 작업 규칙·온보딩·문서 목록 |
 | [docs/SIGNAL-PRD.md](./docs/SIGNAL-PRD.md) | 제품 방향 |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | 앱/서버 구조 |

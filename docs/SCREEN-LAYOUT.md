@@ -1,12 +1,12 @@
 # 화면 레이아웃 기준
 
-앱 화면의 Safe Area, 헤더, 여백, 스크롤 하단 패딩은 **`constants/screenLayout.ts`** 와 이 문서를 기준으로 맞춘다.
+앱 화면의 Safe Area, 헤더, 여백, 스크롤 하단 패딩은 **`constants/screenLayout.ts`** 와 이 문서를 기준으로 맞춘다. UI 원칙·테마·컴포넌트 개요는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md)를 본다.
 
 구현 상수·헬퍼는 코드가 단일 출처(source of truth)이며, 이 문서는 규칙과 패턴을 설명한다.
 
-**Comfortable density:** 전역 여유 밀도는 `constants/comfortDensity.ts` + `screenLayout.ts` 상수 bump로 적용한다. 롤백 시 해당 커밋을 `git revert` 하면 된다.
+**Comfortable density:** 전역 여유 밀도는 `constants/comfortDensity.ts` + `screenLayout.ts` 상수로 적용한다.
 
-**Corner radius:** 덜 둥근 모서리는 `constants/uiCornerRadius.ts` + `scripts/reduce-corner-radius.mjs` 로 적용한다. pill 칩(`999`)·아주 작은 radius는 유지한다.
+**Corner radius:** 덜 둥근 모서리는 `constants/uiCornerRadius.ts`로 적용한다. pill 칩(`999`)·아주 작은 radius는 유지한다.
 
 ## 반응형 모드
 

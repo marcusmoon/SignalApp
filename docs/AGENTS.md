@@ -4,6 +4,8 @@
 
 | 문서 | 용도 |
 |---|---|
+| [DESIGN-GUIDE.md](./DESIGN-GUIDE.md) | **앱 UI·UX** — 테마, 타이포, 레이아웃, 컴포넌트 |
+| [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md) | **앱 개발** — 디렉터리, API, 캐시, 외부 링크, 로케일 |
 | [FEED-INTERACTION.md](./FEED-INTERACTION.md) | PTR·chip·폴링·피드 캐시 상호작용 |
 | [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md) | Safe Area·여백·고정 헤더·2-pane 레이아웃 |
 | [DATE-TIME.md](./DATE-TIME.md) | UTC·API·표시 시간 규칙 |
@@ -29,7 +31,8 @@
 - 앱 피처 데이터 HTTP는 `integrations/signal-api/`에 둔다.
 - 화면은 `app/`, 공용 UI는 `components/`, 제품 규칙은 `domain/`, 로컬 설정과 세션은 `services/`에 둔다.
 - 서버는 `server/src/http/`, `server/src/db/`, `server/src/jobs/`, `server/src/providers/` 기준으로 나눈다.
-- 문서는 현재 기준만 유지한다. 과거 이력은 남기지 않는다.
+- 문서는 **현재 기준만** 유지한다. 변경 이력·과거 안은 남기지 않는다.
+- UI 작업 전 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), 코드·연동 작업 전 [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md)를 본다.
 - **날짜·시간**은 [DATE-TIME.md](./DATE-TIME.md)를 따른다. 서버는 UTC, 앱 API는 UTC ISO, 표시는 로케일·기기 타임존.
 - **화면 레이아웃·여백**은 [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)와 `constants/screenLayout.ts`를 따른다.
 - **PTR·chip·폴링·피드 캐시 상호작용**은 [FEED-INTERACTION.md](./FEED-INTERACTION.md)를 따른다.

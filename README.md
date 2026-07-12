@@ -30,8 +30,20 @@ npm run server:dev
 
 ## 문서
 
+### 가이드
+
+- [디자인 가이드](./docs/DESIGN-GUIDE.md) — 테마, 타이포, 레이아웃, 피드 UI
+- [개발 가이드](./docs/DEVELOPMENT-GUIDE.md) — 디렉터리, API, 캐시, 외부 링크, 로케일
+
+### 제품·구조
+
 - [제품 요구사항](./docs/SIGNAL-PRD.md)
 - [앱/서버 아키텍처](./docs/ARCHITECTURE.md)
+- [화면 레이아웃](./docs/SCREEN-LAYOUT.md)
+- [피드 상호작용](./docs/FEED-INTERACTION.md)
+
+### 운영
+
 - [서버 운영](./docs/SERVER.md)
 - [Expo/EAS 운영](./docs/EXPO-EAS-OPERATIONS.md)
 - [소셜 로그인](./docs/SOCIAL-AUTH.md)

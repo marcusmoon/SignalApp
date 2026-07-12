@@ -1,6 +1,6 @@
 # 피드 상호작용 규칙
 
-리스트·피드 화면의 **당겨서 새로고침(PTR)**, **필터·탭 변경**, **새 소식 chip**, **캐시**, **폴링** 규칙이다.
+리스트·피드 화면의 **당겨서 새로고침(PTR)**, **필터·탭 변경**, **새 소식 chip**, **캐시**, **폴링** 규칙이다. 개발 진입점은 [DEVELOPMENT-GUIDE.md](./DEVELOPMENT-GUIDE.md), UI 개요는 [DESIGN-GUIDE.md](./DESIGN-GUIDE.md)를 본다.
 
 레이아웃·여백·Safe Area는 [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)를 따른다.  
 데이터 캐시 TTL 표는 [AGENTS.md](./AGENTS.md#피드-api-캐시)를 따른다.

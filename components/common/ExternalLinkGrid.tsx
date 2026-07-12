@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { StyleSheet, useWindowDimensions, View, type ViewStyle } from 'react-native';
 
 import {
+  APP_CONTENT_MAX_WIDTH,
   MASTER_PANEL_MIN_WIDTH,
   MASTER_PANEL_WIDTH_RATIO,
 } from '@/constants/responsiveLayout';
@@ -45,10 +46,15 @@ export function ExternalLinkGrid<T>({
         Math.round(windowWidth * MASTER_PANEL_WIDTH_RATIO),
       );
       contentWidth = Math.max(0, windowWidth - masterWidth);
+    } else {
+      contentWidth = Math.min(contentWidth, APP_CONTENT_MAX_WIDTH);
     }
     const estimated = Math.max(0, contentWidth - horizontalInset * 2 - boxPaddingHorizontal * 2);
     const measured = measuredWidth > 0 ? measuredWidth - boxPaddingHorizontal * 2 : 0;
-    return Math.max(estimated, measured, 240);
+    if (measured > 0 && measured >= estimated * 0.7) {
+      return measured;
+    }
+    return Math.max(estimated, 240);
   }, [boxPaddingHorizontal, horizontalInset, measuredWidth, useTwoPane, windowWidth]);
 
   const columns = useMemo(

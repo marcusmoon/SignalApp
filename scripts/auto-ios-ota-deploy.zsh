@@ -67,6 +67,41 @@ if [[ -f "${HOME}/.zshrc" ]]; then
   source "${HOME}/.zshrc"
 fi
 
+read_repo_env_value() {
+  local key="$1"
+  local env_file line value
+  for env_file in "${SOURCE_REPO_DIR}/.env" "${SOURCE_REPO_DIR}/.env.local"; do
+    [[ -f "${env_file}" ]] || continue
+    line="$(grep -E "^${key}=" "${env_file}" | tail -n 1 || true)"
+    [[ -n "${line}" ]] || continue
+    value="${line#*=}"
+    value="${value%\"}"
+    value="${value#\"}"
+    value="${value%\'}"
+    value="${value#\'}"
+    printf '%s' "${value}"
+    return 0
+  done
+  return 1
+}
+
+load_repo_env() {
+  local project_id
+  if [[ -z "${EAS_PROJECT_ID:-}" ]]; then
+    project_id="$(read_repo_env_value EAS_PROJECT_ID || true)"
+    if [[ -n "${project_id}" ]]; then
+      export EAS_PROJECT_ID="${project_id}"
+    fi
+  fi
+
+  if [[ -z "${EXPO_PROJECT_ID:-}" ]]; then
+    project_id="$(read_repo_env_value EXPO_PROJECT_ID || true)"
+    if [[ -n "${project_id}" ]]; then
+      export EXPO_PROJECT_ID="${project_id}"
+    fi
+  fi
+}
+
 ensure_deploy_worktree() {
   if [[ ! -e "${DEPLOY_REPO_DIR}/.git" ]]; then
     printf '[%s] create deploy worktree: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "${DEPLOY_REPO_DIR}"
@@ -78,6 +113,13 @@ ensure_deploy_worktree() {
     ln -s "${SOURCE_REPO_DIR}/node_modules" "${DEPLOY_REPO_DIR}/node_modules"
   fi
 }
+
+load_repo_env
+
+if [[ -z "${EAS_PROJECT_ID:-}" && -z "${EXPO_PROJECT_ID:-}" ]]; then
+  printf '[%s] skip: EAS project id is not configured in source repo env\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  exit 1
+fi
 
 ensure_deploy_worktree
 

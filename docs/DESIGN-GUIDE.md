@@ -136,7 +136,7 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 더보기 숏링크
 
-- `ReferenceLinksSection` — 아이콘/마크 원 + 2줄 라벨 그리드
+- `ReferenceLinksSection` — 아이콘/마크 원 + 2줄 라벨, **3열 우선** (`onLayout` 실측 + 행 단위 flex)
 - 셀 최소 폭 72px, 동적 열 수 (동일 `externalLinkGrid` 유틸)
 
 ## 컴포넌트 재사용

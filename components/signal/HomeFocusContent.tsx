@@ -1218,7 +1218,7 @@ function makeStyles(
     },
     issueGroupTitle: {
       fontSize: ft.ff(FEED_DIGEST_TITLE_PX),
-      lineHeight: sf(18),
+      lineHeight: sf(20),
       fontWeight: ft.titleWeight,
       color: theme.text,
     },
@@ -1242,17 +1242,17 @@ function makeStyles(
     issueGroupMetaText: {
       flexShrink: 0,
       fontSize: ft.ff(FEED_META_TIME_PX),
-      lineHeight: sf(13),
+      lineHeight: sf(14),
       fontWeight: ft.metaWeight,
-      color: theme.textDim,
+      color: theme.textMuted,
     },
     issueInlineMetaText: {
       minWidth: 0,
       flexShrink: 1,
-      fontSize: ft.ff(FEED_META_TRAIL_PX),
-      lineHeight: sf(12),
+      fontSize: ft.ff(FEED_META_TIME_PX),
+      lineHeight: sf(14),
       fontWeight: ft.metaWeight,
-      color: theme.textDim,
+      color: theme.textMuted,
     },
     section: {
       gap: COMFORT_GAP_LG,
@@ -1298,10 +1298,10 @@ function makeStyles(
     boardSourceLabel: {
       flex: 1,
       minWidth: 0,
-      fontSize: ft.ff(FEED_META_TRAIL_PX),
-      lineHeight: sf(12),
+      fontSize: ft.ff(FEED_META_TIME_PX),
+      lineHeight: sf(14),
       fontWeight: ft.metaWeight,
-      color: theme.textDim,
+      color: theme.textMuted,
     },
     quoteTileContent: {
       flex: 1,

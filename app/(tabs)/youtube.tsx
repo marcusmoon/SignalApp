@@ -428,30 +428,34 @@ export default function YoutubeScreen() {
 
   const youtubeListPanel = (
     <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
-          {!useTwoPane ? (
-            <View style={styles.segment}>
-              <Pressable
-                onPress={applyLatestSortFilter}
-                style={[styles.segBtn, sort === 'latest' && styles.segBtnActive]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: sort === 'latest' }}>
-                <Text style={[styles.segText, sort === 'latest' && styles.segTextActive]}>
-                  {t('youtubeSortLatest')}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={applyPopularFilter}
-                style={[styles.segBtn, sort === 'popular' && styles.segBtnActive]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: sort === 'popular' }}>
-                <Text style={[styles.segText, sort === 'popular' && styles.segTextActive]}>
-                  {t('youtubeSortPopular')}
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
-          <View style={styles.channelFilterRow}>
+        <View style={[styles.topFixedStack, useTwoPane && styles.topFixedStackWide]}>
+          <View style={styles.topFixedToolbar}>
+            {!useTwoPane ? (
+              <View style={styles.topFixedSubmenu}>
+                <View style={styles.segment}>
+                  <Pressable
+                    onPress={applyLatestSortFilter}
+                    style={[styles.segBtn, sort === 'latest' && styles.segBtnActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: sort === 'latest' }}>
+                    <Text style={[styles.segText, sort === 'latest' && styles.segTextActive]}>
+                      {t('youtubeSortLatest')}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={applyPopularFilter}
+                    style={[styles.segBtn, sort === 'popular' && styles.segBtnActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: sort === 'popular' }}>
+                    <Text style={[styles.segText, sort === 'popular' && styles.segTextActive]}>
+                      {t('youtubeSortPopular')}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.topFixedToolbarSpacer} />
+            )}
             <Pressable
               onPress={openChannelFilter}
               disabled={!selectedHandles || !curationHandles}
@@ -614,8 +618,23 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     mainColumnWide: {
       ...wideContentFill,
     },
-    topFixed: fixedHeader.strip,
-    topFixedWide: fixedHeader.stripWide,
+    topFixedStack: fixedHeader.fixedStack,
+    topFixedStackWide: fixedHeader.fixedStackWide,
+    topFixedToolbar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      paddingHorizontal: 16,
+    },
+    topFixedSubmenu: {
+      ...fixedHeader.submenuStrip,
+      flex: 1,
+      minWidth: 0,
+    },
+    topFixedToolbarSpacer: {
+      flex: 1,
+      minWidth: 0,
+    },
     segment: segmentTab.segment,
     segBtn: segmentTab.segBtn,
     segBtnActive: segmentTab.segBtnActive,
@@ -623,11 +642,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     segTextActive: segmentTab.segTextActive,
     list: { ...webScrollViewportStyle },
     listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
-    channelFilterRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 16,
-    },
     channelFilterChip: {
       minHeight: 32,
       flexDirection: 'row',
@@ -638,6 +652,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.bgElevated,
+      flexShrink: 0,
     },
     backToMoreWrap: {
       flexShrink: 0,

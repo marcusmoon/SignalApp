@@ -13,6 +13,9 @@ export const SCREEN_FIXED_HEADER_PADDING_TOP = SCREEN_HEADER_CONTENT_GAP;
 export const SCREEN_FIXED_HEADER_PADDING_BOTTOM = 16;
 export const SCREEN_FIXED_HEADER_PADDING_HORIZONTAL = 16;
 
+/** 다이제스트 슬롯 하단 — 리스트와의 간격(고정 스택 마지막) */
+export const SCREEN_FIXED_DIGEST_PADDING_BOTTOM = 4;
+
 /** 고정 헤더 아래 스크롤 리스트 상단 */
 export const SCREEN_LIST_CONTENT_PADDING_TOP = 12;
 

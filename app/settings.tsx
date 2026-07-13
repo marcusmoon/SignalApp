@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,7 +19,7 @@ import { Pressable as GHPressable } from 'react-native-gesture-handler';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
@@ -974,14 +974,22 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const params = useLocalSearchParams<{ tab?: string; from?: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
   const isFocused = useIsFocused();
   const useIpadSidebar = useTwoPane && !embedded;
+  const fromAccount = params.from === 'account';
   const settingsScrollTopPad =
     embedded || useTwoPane ? SCREEN_EMBEDDED_WIDE_PADDING_TOP : SCREEN_LIST_CONTENT_PADDING_TOP;
   const [tab, setTab] = useState<SettingsTab>('display');
   const selectedTab = embedded && ipadNav.isAvailable ? ipadNav.settingsTab : tab;
   const { ref: settingsScrollRef } = useScrollToTopOnChange([selectedTab]);
   const scrollResetKey = selectedTab;
+
+  useLayoutEffect(() => {
+    if (!fromAccount || embedded || useTwoPane) return;
+    const labelId = SETTINGS_TABS.find((item) => item.key === selectedTab)?.labelId ?? 'screenSettings';
+    navigation.setOptions({ title: t(labelId) });
+  }, [embedded, fromAccount, navigation, selectedTab, t, useTwoPane]);
 
   const [pushEnabled, setPushEnabled] = useState(true);
   const [briefingPushEnabled, setBriefingPushEnabled] = useState(true);
@@ -1335,7 +1343,7 @@ clearCalendarCache();
     /** 상단 edge 없음 — 스택 헤더가 이미 안전 영역을 처리해 `edges.top`을 쓰면 헤더 아래 빈 여백이 커짐 */
     <SafeAreaView style={styles.safe} edges={[]}>
       {isFocused ? <OtaUpdateBanner /> : null}
-      {!embedded && !useTwoPane ? (
+      {!embedded && !useTwoPane && !fromAccount ? (
         <View style={styles.topFixed}>
           <View style={styles.tabBar}>
           {SETTINGS_TABS.map((item) => {
@@ -2332,7 +2340,13 @@ clearCalendarCache();
       title={t(
         SETTINGS_TABS.find((item) => item.key === selectedTab)?.labelId ?? 'screenSettings',
       )}
-      backHref={params.from === 'more' ? '/(tabs)/more' : '/(tabs)/news'}>
+      backHref={
+        params.from === 'account'
+          ? '/account'
+          : params.from === 'more'
+            ? '/(tabs)/more'
+            : '/(tabs)/news'
+      }>
       {screen}
     </IpadSidebarScreen>
   ) : (

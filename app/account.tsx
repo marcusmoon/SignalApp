@@ -92,7 +92,7 @@ const SETTINGS_TAB_LABEL: Record<SettingsTab, MessageId> = {
   notifications: 'settingsTabNotifications',
   news: 'settingsTabNews',
   quotes: 'settingsTabQuotes',
-  server: 'settingsTabServer',
+  server: 'settingsTabDevMode',
 };
 
 const SETTINGS_HUB_META: Record<
@@ -694,7 +694,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         title: t(SETTINGS_TAB_LABEL[tab]),
         body: t(SETTINGS_HUB_META[tab].descId),
         trailing: tab === 'notifications' ? pushLabel : undefined,
-        onPress: () => router.push(`/settings?tab=${tab}` as Href),
+        onPress: () => router.push({ pathname: '/settings', params: { tab, from: 'account' } }),
       })),
     };
   }, [notificationPrefs?.pushEnabled, router, t]);
@@ -712,13 +712,6 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             title: t('accountActivityAlerts'),
             body: t('accountActivityAlertsDesc'),
             onPress: () => router.push('/alerts'),
-          },
-          {
-            key: 'signals',
-            icon: 'bolt',
-            title: t('accountActivitySignals'),
-            body: t('accountActivitySignalsDesc'),
-            onPress: () => router.push('/signal' as Href),
           },
         ],
       },

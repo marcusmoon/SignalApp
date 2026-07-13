@@ -21,6 +21,7 @@ import {
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import {
+  SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_LIST_HEADER_PADDING_BOTTOM,
   SCREEN_LIST_HEADER_PADDING_TOP,
@@ -373,8 +374,9 @@ export default function DisclosuresScreen() {
   const showDigest = !symbolFilter;
   const newContentAvailable = !symbolFilter && newContentFilters.has(filter);
 
-  const listHeaderEl = useMemo(
-    () => (
+  const listHeaderEl = useMemo(() => {
+    if (!symbolFilter && !error) return null;
+    return (
       <View style={styles.listHeader}>
         {symbolFilter ? (
           <View style={styles.symbolFilterRow}>
@@ -392,9 +394,8 @@ export default function DisclosuresScreen() {
         ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
-    ),
-    [clearSymbolFilter, error, styles, symbolFilter, t],
-  );
+    );
+  }, [clearSymbolFilter, error, styles, symbolFilter, t]);
 
   const renderDisclosureCard = useCallback(
     ({ item }: { item: SignalApiDisclosure }) => {
@@ -577,7 +578,12 @@ export default function DisclosuresScreen() {
                 style={[styles.list, useTwoPane && styles.wideList]}
                 contentContainerStyle={[
                   useTwoPane ? styles.wideListContent : styles.listContent,
-                  { paddingBottom: bottomPad },
+                  {
+                    paddingTop: showDigest
+                      ? SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP
+                      : SCREEN_LIST_CONTENT_PADDING_TOP,
+                    paddingBottom: bottomPad,
+                  },
                 ]}
                 ListHeaderComponent={listHeaderEl}
                 refreshControl={<ThemedRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -639,10 +645,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       flex: 1,
       minHeight: 0,
     },
-    listContent: { paddingHorizontal: 16, paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP },
+    listContent: { paddingHorizontal: 16 },
     wideListContent: {
       paddingHorizontal: 16,
-      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
     },
     listHeader: {
       paddingTop: SCREEN_LIST_HEADER_PADDING_TOP,

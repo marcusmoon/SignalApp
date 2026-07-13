@@ -15,6 +15,8 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 import {
   fabStackBottom,
+  SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP,
+  SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_NEWS_TITLE_FAB_ABOVE_TAB_OFFSET,
   tabScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
@@ -878,8 +880,14 @@ export function LegacyNewsFeedScreen() {
   const newContentAvailable =
     newContentSegments.has(segment) && !(segment === 'watch' && watchSymbolOptions.length === 0);
 
-  const listHeaderEl = useMemo(
-    () => (
+  const listHeaderEl = useMemo(() => {
+    const hasContent =
+      Boolean(activeTag) ||
+      Boolean(error) ||
+      segment === 'video' ||
+      (loading && listData.length === 0);
+    if (!hasContent) return null;
+    return (
       <View style={styles.listHeader}>
         {activeTag ? (
           <View style={styles.tagFilterRow}>
@@ -924,8 +932,8 @@ export function LegacyNewsFeedScreen() {
           </View>
         ) : null}
       </View>
-    ),
-    [
+    );
+  }, [
       activeTag,
       error,
       listData.length,
@@ -1077,7 +1085,15 @@ export function LegacyNewsFeedScreen() {
           onLayout={webFeedLoadMore.onLayout}
           onContentSizeChange={webFeedLoadMore.onContentSizeChange}
           style={styles.list}
-          contentContainerStyle={[styles.listContent, { paddingBottom: bottomPad }]}
+          contentContainerStyle={[
+            styles.listContent,
+            {
+              paddingTop: showDigest
+                ? SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP
+                : SCREEN_LIST_CONTENT_PADDING_TOP,
+              paddingBottom: bottomPad,
+            },
+          ]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             loading && listData.length === 0 ? undefined : (

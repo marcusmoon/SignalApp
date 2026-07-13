@@ -56,7 +56,7 @@ function DockCell({ item, styles, label }: DockCellProps) {
   );
 }
 
-/** iPad·웹 사이드바 — My info 위 슬림 퀵 링크 바 */
+/** iPad·웹 사이드바 하단 — 슬림 퀵 링크 바 */
 export function SidebarReferenceLinksDock() {
   const { theme } = useSignalTheme();
   const { t } = useLocale();

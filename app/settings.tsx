@@ -2344,7 +2344,7 @@ clearCalendarCache();
         params.from === 'account'
           ? '/account'
           : params.from === 'more'
-            ? '/(tabs)/more'
+            ? '/account'
             : '/(tabs)/news'
       }>
       {screen}

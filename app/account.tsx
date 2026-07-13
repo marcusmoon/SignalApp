@@ -6,6 +6,7 @@ import Constants from 'expo-constants';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SocialAuthButtons } from '@/components/account/SocialAuthButtons';
+import { SocialProviderFavicon } from '@/components/account/SocialProviderFavicon';
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { makeAccountStyles } from '@/components/account/accountStyles';
@@ -765,16 +766,6 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
     return base;
   }, []);
 
-  const socialProviderIcon = useCallback(
-    (provider: SocialProviderKey): ComponentProps<typeof FontAwesome5>['name'] => {
-      if (provider === 'apple') return 'apple';
-      if (provider === 'google') return 'google';
-      if (provider === 'kakao') return 'comment';
-      return 'link';
-    },
-    [],
-  );
-
   const isSocialProviderEnabled = useCallback(
     (provider: SocialProviderKey) => socialCatalog?.providers[provider]?.enabled === true,
     [socialCatalog],
@@ -1122,13 +1113,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
                             index === socialProviders.length - 1 && styles.providerRowLast,
                             !enabled && styles.providerRowDisabled,
                           ]}>
-                          <View style={styles.activityIcon}>
-                            <FontAwesome5
-                              name={socialProviderIcon(prov)}
-                              size={15}
-                              color={enabled ? theme.green : theme.textMuted}
-                            />
-                          </View>
+                          <SocialProviderFavicon provider={prov} dimmed={!enabled} theme={theme} />
                           <View style={styles.activityText}>
                             <Text style={styles.activityTitle}>{label}</Text>
                             <Text style={styles.activityDesc} numberOfLines={1}>

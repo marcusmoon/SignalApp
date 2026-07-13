@@ -220,6 +220,8 @@ export const en = {
   accountHubAccountSection: 'Account',
   accountHubDisplaySettingsDesc: 'Adjust theme and display options.',
   accountHubVersion: 'Version {{version}}',
+  accountHubTermsTitle: 'Terms',
+  accountHubTermsDesc: 'View terms of service, privacy policy, and consent history.',
   accountSecurityTitle: 'Sign-in and security',
   accountSecurityLead: 'Manage sign-in methods and password in one place.',
   accountServiceInfoTitle: 'Service information',

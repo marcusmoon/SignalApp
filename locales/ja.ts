@@ -220,6 +220,8 @@ export const ja = {
   accountHubAccountSection: 'アカウント',
   accountHubDisplaySettingsDesc: 'テーマと表示オプションを調整します。',
   accountHubVersion: 'バージョン {{version}}',
+  accountHubTermsTitle: '規約',
+  accountHubTermsDesc: '利用規約、プライバシーポリシー、同意履歴を確認します。',
   accountSecurityTitle: 'ログインとセキュリティ',
   accountSecurityLead: 'ログイン方法とパスワードをまとめて管理します。',
   accountServiceInfoTitle: 'サービス情報',

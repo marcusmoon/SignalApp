@@ -190,7 +190,7 @@ function RootLayoutNav() {
           'news-issues': t('newsIssuesTitle'),
           'disclosure-flow': t('disclosureFlowTitle'),
           terms: t('termsScreenTitle'),
-          'terms-history': t('termsHistoryScreenTitle'),
+          'terms-history': t('accountHubTermsTitle'),
           oauth: t('screenAccount'),
           'symbol/[ticker]': t('screenSymbolDetail'),
           'disclosures/[id]': t('disclosuresDetailTitle'),

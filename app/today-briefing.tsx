@@ -1,13 +1,15 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
+import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
 import { HomeSectionAccentLine } from '@/components/signal/HomeSectionAccentLine';
 import { SignalLoadingIndicator } from '@/components/signal/SignalLoadingIndicator';
+import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
+import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
@@ -19,7 +21,7 @@ import { signalCacheMode } from '@/integrations/signal-api/cacheMode';
 import type { SignalApiTodayBriefing } from '@/integrations/signal-api/types';
 import { hasSignalApi } from '@/services/env';
 import type { FeedContentTypography } from '@/services/feedContentWeightPreference';
-import { formatLocalYmdLabel, toYmd } from '@/utils/date';
+import { formatLocalYmdLabel, formatFeedItemTimeLabel, toYmd } from '@/utils/date';
 
 function parseDateParam(value: unknown): string {
   const raw = String(Array.isArray(value) ? value[0] : value || '').slice(0, 10);
@@ -144,21 +146,29 @@ export default function TodayBriefingScreen() {
               ) : null}
 
               {item.sourceRefs.length > 0 ? (
-                <View style={styles.sectionCard}>
-                  <Text style={styles.sectionTitle}>{t('todayBriefingSources')}</Text>
-                  <View style={styles.sourceList}>
+                <View style={styles.sectionWrap}>
+                  <View style={styles.sectionHead}>
+                    <View style={[styles.sectionAccent, styles.sectionAccentMuted]} />
+                    <Text style={styles.sectionHeading}>{t('todayBriefingSources')}</Text>
+                  </View>
+                  <View style={styles.sectionFeedCard}>
                     {item.sourceRefs.map((ref, index) => (
-                      <Pressable
+                      <HomeDigestFeedRow
                         key={`${item.id}-source-${index}`}
-                        onPress={ref.url ? () => void Linking.openURL(ref.url!).catch(() => null) : undefined}
-                        accessibilityRole={ref.url ? 'link' : 'text'}
-                        style={({ pressed }) => [styles.sourceRow, pressed && ref.url && styles.pressed]}>
-                        <View style={styles.sourceTextCol}>
-                          <Text style={styles.sourceTitle}>{ref.title || ref.sourceName || ref.url || ''}</Text>
-                          {ref.sourceName ? <Text style={styles.sourceName}>{ref.sourceName}</Text> : null}
-                        </View>
-                        {ref.url ? <FontAwesome name="external-link" size={11} color={theme.green} /> : null}
-                      </Pressable>
+                        title={ref.title || ref.sourceName || ref.url || ''}
+                        titleLines={3}
+                        trailText={ref.sourceName?.trim() || null}
+                        timeLabel={formatFeedItemTimeLabel(ref.publishedAt, locale)}
+                        sourceEntries={briefingSourceIconEntries([ref])}
+                        bordered={index < item.sourceRefs.length - 1}
+                        onPress={
+                          ref.url
+                            ? () => {
+                                void Linking.openURL(ref.url!);
+                              }
+                            : undefined
+                        }
+                      />
                     ))}
                   </View>
                 </View>
@@ -265,6 +275,42 @@ function makeStyles(
       fontWeight: ft.emphasisWeight,
       color: theme.text,
     },
+    sectionWrap: {
+      gap: 16,
+    },
+    sectionHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      minWidth: 0,
+    },
+    sectionAccent: {
+      width: CONTENT_ACCENT_LINE_WIDTH,
+      height: 20,
+      borderRadius: 2,
+      backgroundColor: theme.green,
+      flexShrink: 0,
+    },
+    sectionAccentMuted: {
+      backgroundColor: theme.textMuted,
+    },
+    sectionHeading: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: ft.signalTitleFont(16),
+      fontWeight: ft.titleWeight,
+      letterSpacing: -0.15,
+      color: theme.text,
+    },
+    sectionFeedCard: {
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      overflow: 'hidden',
+    },
     pointList: {
       gap: 16,
     },
@@ -284,40 +330,6 @@ function makeStyles(
       lineHeight: sf(21),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
-    },
-    sourceList: {
-      gap: 16,
-    },
-    sourceRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.bgElevated,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-    },
-    sourceTextCol: {
-      flex: 1,
-      minWidth: 0,
-      gap: 2,
-    },
-    sourceTitle: {
-      fontSize: ft.ff(13),
-      lineHeight: sf(18),
-      fontWeight: ft.titleWeight,
-      color: theme.text,
-    },
-    sourceName: {
-      fontSize: ft.ff(11),
-      lineHeight: sf(15),
-      fontWeight: ft.metaWeight,
-      color: theme.textDim,
-    },
-    pressed: {
-      opacity: 0.72,
     },
   });
 }

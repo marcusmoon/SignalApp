@@ -1753,8 +1753,8 @@ clearCalendarCache();
         {selectedTab === 'server' ? (
           <>
             <View style={styles.displayCard}>
-              <Text style={styles.displayCardKicker}>{t('settingsSignalServerSection')}</Text>
-              <Text style={styles.prefHint}>{t('settingsSignalServerShortNote')}</Text>
+              <Text style={styles.displayCardKicker}>{t('settingsTabDevMode')}</Text>
+              <Text style={styles.prefHint}>{t('settingsDevModeLead')}</Text>
               <Text
                 style={[styles.handleText, { marginTop: 16, marginBottom: 6 }]}
                 selectable

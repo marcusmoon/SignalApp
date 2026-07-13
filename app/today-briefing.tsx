@@ -11,6 +11,7 @@ import { briefingSourceIconEntries } from '@/components/signal/SourceIconStack';
 import { ThemedRefreshControl } from '@/components/signal/ThemedRefreshControl';
 import { CONTENT_ACCENT_LINE_WIDTH } from '@/constants/homeSectionAccent';
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
+import { SCREEN_HEADER_CONTENT_GAP } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -98,7 +99,10 @@ export default function TodayBriefingScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <Stack.Screen options={{ title: dateLabel }} />
+      <Stack.Screen options={{ title: t('todayBriefingDetailKicker') }} />
+      <View style={styles.dateBar}>
+        <Text style={styles.dateHeader}>{dateLabel}</Text>
+      </View>
       {loading ? (
         <View style={styles.loadingWrap}>
           <SignalLoadingIndicator message={t('commonLoading')} />
@@ -123,8 +127,6 @@ export default function TodayBriefingScreen() {
 
           {item ? (
             <>
-              <Text style={styles.kickerText}>{t('todayBriefingDetailKicker')}</Text>
-
               <View style={styles.heroCard}>
                 <HomeSectionAccentLine section="todayBriefing" />
                 {leadText ? <Text style={styles.headline}>{leadText}</Text> : null}
@@ -196,13 +198,29 @@ function makeStyles(
       flex: 1,
       backgroundColor: theme.bg,
     },
+    dateBar: {
+      width: '100%',
+      maxWidth: APP_CONTENT_MAX_WIDTH,
+      alignSelf: 'center',
+      paddingHorizontal: 16,
+      paddingTop: SCREEN_HEADER_CONTENT_GAP,
+      paddingBottom: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    dateHeader: {
+      fontSize: sf(14),
+      lineHeight: sf(20),
+      fontWeight: '600',
+      color: theme.textMuted,
+    },
     scroll: {
       flex: 1,
     },
     content: {
       flexGrow: 1,
       paddingHorizontal: 16,
-      paddingTop: 12,
+      paddingTop: 14,
       paddingBottom: 28,
       gap: 14,
       maxWidth: APP_CONTENT_MAX_WIDTH,
@@ -234,12 +252,6 @@ function makeStyles(
       color: theme.textDim,
       textAlign: 'center',
       paddingVertical: 24,
-    },
-    kickerText: {
-      fontSize: sf(13),
-      lineHeight: sf(18),
-      fontWeight: '600',
-      color: theme.textDim,
     },
     heroCard: {
       position: 'relative',

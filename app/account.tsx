@@ -102,7 +102,7 @@ const SETTINGS_HUB_META: Record<
   display: { icon: 'palette', descId: 'accountHubDisplaySettingsDesc' },
   news: { icon: 'newspaper', descId: 'accountHubSettingsNewsDesc' },
   quotes: { icon: 'chart-line', descId: 'accountHubSettingsQuotesDesc' },
-  notifications: { icon: 'bell', descId: 'accountActivityNotificationSettingsDesc' },
+  notifications: { icon: 'bell', descId: 'accountHubSettingsNotificationsDesc' },
   server: { icon: 'server', descId: 'accountHubSettingsServerDesc' },
 };
 
@@ -687,7 +687,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
       : t('accountStatusPushOff');
     return {
       id: 'settings',
-      title: t('screenSettings'),
+      title: t('accountHubSettingsSection'),
       items: SETTINGS_TAB_ORDER.map((tab) => ({
         key: tab,
         icon: SETTINGS_HUB_META[tab].icon,
@@ -1178,8 +1178,11 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
                 </Text>
               </View>
               <Text style={styles.subSectionLead}>
-                {user.hasPassword ? t('accountPasswordSectionDesc') : t('accountPasswordRequiredForUnlink')}
+                {user.hasPassword ? t('accountPasswordSectionDesc') : t('accountPasswordSetLead')}
               </Text>
+              {!user.hasPassword ? (
+                <Text style={styles.mutedText}>{t('accountPasswordRequiredForUnlink')}</Text>
+              ) : null}
               <TextInput
                 value={newPassword}
                 onChangeText={setNewPassword}

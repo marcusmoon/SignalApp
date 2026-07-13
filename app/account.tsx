@@ -728,6 +728,14 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             onPress: () => setAccountPane('profile'),
           },
           {
+            key: 'password',
+            icon: 'key',
+            title: t('accountPasswordMenuTitle'),
+            body: t('accountPasswordMenuDesc'),
+            trailing: user?.hasPassword ? t('accountPasswordEnabled') : t('accountPasswordNotSet'),
+            onPress: () => setAccountPane('password'),
+          },
+          {
             key: 'social',
             icon: 'link',
             title: t('accountSocialLinkMenuTitle'),
@@ -737,14 +745,6 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
                 ? t('accountSocialLinkedCount').replace('{{count}}', String(linkedIdentities.length))
                 : undefined,
             onPress: () => setAccountPane('social'),
-          },
-          {
-            key: 'password',
-            icon: 'key',
-            title: t('accountPasswordMenuTitle'),
-            body: t('accountPasswordMenuDesc'),
-            trailing: user?.hasPassword ? t('accountPasswordEnabled') : t('accountPasswordNotSet'),
-            onPress: () => setAccountPane('password'),
           },
           {
             key: 'terms',

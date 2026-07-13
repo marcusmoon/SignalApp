@@ -39,6 +39,7 @@ import {
 import { calendarProviderSourceEntries } from '@/domain/calendar/calendarProviderIcon';
 import { CommunitySourceMark } from '@/components/signal/CommunitySourceMark';
 import { HomeDigestFeedRow } from '@/components/signal/HomeDigestFeedRow';
+import { cardListRowSeparatorStyle } from '@/components/signal/groupedFeedList';
 import { SymbolLogo } from '@/components/signal/SymbolLogo';
 import { COMMUNITY_SOURCES, communitySourceAccent } from '@/constants/communitySources';
 import { SignalDateNavigator } from '@/components/signal/SignalDateNavigator';
@@ -1218,10 +1219,7 @@ function makeStyles(
       paddingVertical: ft.row(6),
       borderRadius: UI_RADIUS_CARD,
     },
-    issueGroupItemBorder: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
+    issueGroupItemBorder: cardListRowSeparatorStyle(theme),
     issueGroupTitle: {
       fontSize: ft.ff(FEED_DIGEST_TITLE_PX),
       lineHeight: sf(20),

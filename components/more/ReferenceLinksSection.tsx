@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { REFERENCE_LINK_ITEMS, type ReferenceLinkItem } from '@/constants/referenceAppLinks';
 import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
@@ -21,7 +21,8 @@ import { openReferenceLink } from '@/utils/referenceLinkOpen';
 const GAP = 6;
 const ROW_GAP = 8;
 const BOX_PAD = 8;
-const MIN_CELL_WIDTH = 64;
+const MIN_CELL_WIDTH = 56;
+const PREFERRED_COLUMNS = 4;
 
 function chunkItems<T>(items: T[], columns: number): T[][] {
   const rows: T[][] = [];
@@ -69,7 +70,7 @@ function LinkCell({ item, styles, label }: LinkCellProps) {
           <View style={styles.faviconFallback} />
         )}
       </View>
-      <Text style={styles.cellLabel} numberOfLines={2}>
+      <Text style={styles.cellLabel} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
@@ -106,8 +107,7 @@ function LinkGrid({ items, columns, styles, t }: LinkGridProps) {
 export function ReferenceLinksSection() {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
-  const { width: windowWidth } = useWindowDimensions();
-  const { useTwoPane, isWideLayout } = useResponsiveLayout();
+  const { useTwoPane, isWideLayout, width: windowWidth } = useResponsiveLayout();
   const [measuredWidth, setMeasuredWidth] = useState(0);
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
@@ -128,17 +128,15 @@ export function ReferenceLinksSection() {
     [estimatedInnerWidth, measuredWidth],
   );
 
-  const preferredColumns = useTwoPane || windowWidth >= 560 ? 4 : 3;
-
   const columns = useMemo(
     () =>
       computeExternalLinkGridColumns(gridInnerWidth, REFERENCE_LINK_ITEMS.length, {
         gap: GAP,
         minCellWidth: MIN_CELL_WIDTH,
-        maxColumns: 4,
-        preferredColumns,
+        maxColumns: PREFERRED_COLUMNS,
+        preferredColumns: PREFERRED_COLUMNS,
       }),
-    [gridInnerWidth, preferredColumns],
+    [gridInnerWidth],
   );
 
   return (
@@ -214,7 +212,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.textDim,
       textAlign: 'center',
       lineHeight: sf(14),
-      minHeight: Math.round(sf(22)),
+      minHeight: Math.round(sf(14)),
     },
   });
 }

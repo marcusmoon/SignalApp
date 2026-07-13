@@ -16,7 +16,7 @@ import { useSignalTheme } from '@/contexts/SignalThemeContext';
 type Props = {
   title: string;
   titleLines?: 2 | 3 | 4;
-  /** digest: 뉴스 이슈 행 / signal: 홈 마켓 브리핑 미리보기 */
+  /** digest: 뉴스 흐름 행 / signal: 홈 마켓 브리핑 미리보기 */
   variant?: 'digest' | 'signal';
   timeLabel?: string | null;
   trailText?: string | null;

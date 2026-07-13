@@ -1006,7 +1006,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
                       onPress={withdraw}
                       hitSlop={6}
                       accessibilityRole="button">
-                      <Text style={[styles.hubFooterLink, styles.hubFooterDanger]}>{t('accountWithdraw')}</Text>
+                      <Text style={styles.hubFooterLink}>{t('accountWithdraw')}</Text>
                     </Pressable>
                   </View>
                   <Text style={styles.hubVersionText}>

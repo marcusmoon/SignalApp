@@ -383,9 +383,6 @@ export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(12),
       fontWeight: '600',
     },
-    hubFooterDanger: {
-      color: theme.danger,
-    },
     hubFooterSep: {
       color: theme.textDim,
       fontSize: sf(12),

@@ -506,9 +506,9 @@ export default function DisclosuresScreen() {
     <SafeAreaView style={styles.safe} edges={useTwoPane ? [] : ['top']}>
       {!useTwoPane ? <SignalHeader compact onBrandPress={() => void onRefresh()} /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
-        {!useTwoPane ? (
-          <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
-            {!symbolFilter ? (
+        {!useTwoPane && !symbolFilter ? (
+          <View style={styles.topFixedStack}>
+            <View style={styles.topFixedSubmenu}>
               <View style={styles.segment}>
                 {FILTERS.map((f) => {
                   const selected = filter === f.key;
@@ -524,16 +524,18 @@ export default function DisclosuresScreen() {
                   );
                 })}
               </View>
-            ) : null}
+            </View>
             {showDigest ? (
-              <DisclosureDigestSection
-                items={digestItems}
-                loading={digestLoading && digestItems.length === 0}
-                onRefresh={() => void onRefresh()}
-                refreshing={refreshing}
-                onGoToList={goToDisclosureList}
-                goToListA11y={t('feedDigestTailGoToDisclosureFlowA11y')}
-              />
+              <View style={styles.topFixedDigest}>
+                <DisclosureDigestSection
+                  items={digestItems}
+                  loading={digestLoading && digestItems.length === 0}
+                  onRefresh={() => void onRefresh()}
+                  refreshing={refreshing}
+                  onGoToList={goToDisclosureList}
+                  goToListA11y={t('feedDigestTailGoToDisclosureFlowA11y')}
+                />
+              </View>
             ) : null}
           </View>
         ) : null}
@@ -545,16 +547,18 @@ export default function DisclosuresScreen() {
           <View style={useTwoPane ? styles.wideBody : styles.compactBody}>
             <View style={useTwoPane ? styles.listColumnWide : styles.listColumn}>
               {showDigest && useTwoPane ? (
-                <View style={[styles.topFixed, styles.topFixedWide, styles.listColumnDigestStrip]}>
-                  <DisclosureDigestSection
-                    items={digestItems}
-                    loading={digestLoading && digestItems.length === 0}
-                    columns={2}
-                    onRefresh={() => void onRefresh()}
-                    refreshing={refreshing}
-                    onGoToList={goToDisclosureList}
-                    goToListA11y={t('feedDigestTailGoToDisclosureFlowA11y')}
-                  />
+                <View style={[styles.topFixedStack, styles.topFixedStackWide, styles.listColumnDigestStrip]}>
+                  <View style={[styles.topFixedDigest, styles.topFixedDigestWide]}>
+                    <DisclosureDigestSection
+                      items={digestItems}
+                      loading={digestLoading && digestItems.length === 0}
+                      columns={2}
+                      onRefresh={() => void onRefresh()}
+                      refreshing={refreshing}
+                      onGoToList={goToDisclosureList}
+                      goToListA11y={t('feedDigestTailGoToDisclosureFlowA11y')}
+                    />
+                  </View>
                 </View>
               ) : null}
               {isFocused && !symbolFilter ? (
@@ -606,6 +610,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     },
     topFixed: fixedHeader.strip,
     topFixedWide: fixedHeader.stripWide,
+    topFixedStack: fixedHeader.fixedStack,
+    topFixedStackWide: fixedHeader.fixedStackWide,
+    topFixedSubmenu: fixedHeader.submenuStrip,
+    topFixedSubmenuWide: fixedHeader.submenuStripWide,
+    topFixedDigest: fixedHeader.digestSlot,
+    topFixedDigestWide: fixedHeader.digestSlotWide,
     compactBody: { ...webFlexFill },
     listColumn: {
       ...webFlexFill,

@@ -945,50 +945,56 @@ export function LegacyNewsFeedScreen() {
       {isFocused ? <OtaUpdateBanner /> : null}
       <View style={[styles.mainColumn, useTwoPane && styles.mainColumnWide]}>
         {!useTwoPane ? (
-          <View style={[styles.topFixed, useTwoPane && styles.topFixedWide]}>
-          {!useTwoPane ? <View style={styles.segment}>
-            {segmentOrder.map((key) => (
-              <Fragment key={key}>
-                {key === 'video' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
-                <Pressable
-                  onPress={() => onPickSegment(key)}
-                  style={[styles.segBtn, key === 'video' && styles.segBtnVideo, segment === key && styles.segBtnActive]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: segment === key }}>
-                  <Text
-                    style={[styles.segText, segment === key && styles.segTextActive]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.85}>
-                    {t(NEWS_SEGMENT_LABEL[key])}
-                  </Text>
-                </Pressable>
-              </Fragment>
-            ))}
-          </View> : null}
-          {showDigest && !useTwoPane ? (
-            <DigestPager
-              batches={digestBatches}
-              onRefresh={() => void onRefresh()}
-              refreshing={refreshing}
-              onGoToList={goToFeedList}
-              goToListA11y={t('feedDigestTailGoToNewsFlowA11y')}
-            />
-          ) : null}
+          <View style={styles.topFixedStack}>
+            <View style={styles.topFixedSubmenu}>
+              <View style={styles.segment}>
+                {segmentOrder.map((key) => (
+                  <Fragment key={key}>
+                    {key === 'video' ? <View pointerEvents="none" style={styles.segmentDivider} /> : null}
+                    <Pressable
+                      onPress={() => onPickSegment(key)}
+                      style={[styles.segBtn, key === 'video' && styles.segBtnVideo, segment === key && styles.segBtnActive]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: segment === key }}>
+                      <Text
+                        style={[styles.segText, segment === key && styles.segTextActive]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.85}>
+                        {t(NEWS_SEGMENT_LABEL[key])}
+                      </Text>
+                    </Pressable>
+                  </Fragment>
+                ))}
+              </View>
+            </View>
+            {showDigest ? (
+              <View style={styles.topFixedDigest}>
+                <DigestPager
+                  batches={digestBatches}
+                  onRefresh={() => void onRefresh()}
+                  refreshing={refreshing}
+                  onGoToList={goToFeedList}
+                  goToListA11y={t('feedDigestTailGoToNewsFlowA11y')}
+                />
+              </View>
+            ) : null}
           </View>
         ) : null}
 
         <View style={styles.listColumn}>
           {showDigest && useTwoPane ? (
-            <View style={[styles.topFixed, styles.topFixedWide, styles.listColumnDigestStrip]}>
-              <DigestPager
-                batches={digestBatches}
-                columns={2}
-                onRefresh={() => void onRefresh()}
-                refreshing={refreshing}
-                onGoToList={goToFeedList}
-                goToListA11y={t('feedDigestTailGoToNewsFlowA11y')}
-              />
+            <View style={[styles.topFixedStack, styles.topFixedStackWide, styles.listColumnDigestStrip]}>
+              <View style={[styles.topFixedDigest, styles.topFixedDigestWide]}>
+                <DigestPager
+                  batches={digestBatches}
+                  columns={2}
+                  onRefresh={() => void onRefresh()}
+                  refreshing={refreshing}
+                  onGoToList={goToFeedList}
+                  goToListA11y={t('feedDigestTailGoToNewsFlowA11y')}
+                />
+              </View>
             </View>
           ) : null}
           {isFocused ? (

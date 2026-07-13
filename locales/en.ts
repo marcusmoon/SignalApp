@@ -340,6 +340,8 @@ export const en = {
   accountSocialLinkedDesc: 'Social identities connect to your SIGNAL account; SIGNAL still issues the app session token.',
   accountSocialLinkedEmpty: 'No linked social accounts.',
   accountSocialDisconnect: 'Disconnect',
+  accountSocialDisconnectConfirmTitle: 'Disconnect this social account?',
+  accountSocialDisconnectConfirmBody: 'You will no longer be able to sign in with {{provider}}.',
   accountIdentityDisconnectError: 'Could not disconnect this social account. Set a password first if it is your last sign-in method.',
   accountPasswordSectionTitle: 'Password',
   accountPasswordSectionDesc: 'Change your email sign-in password.',

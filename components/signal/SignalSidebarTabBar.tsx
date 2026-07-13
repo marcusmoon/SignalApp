@@ -1,13 +1,16 @@
 /**
  * iPad 전용 좌측 사이드바 내비게이션.
  * - 메인 탭(홈·뉴스·공시·시장·시세·유튜브·게시판·더보기)을 세로로 표시
- * - 설정 세부 항목·퀵 링크와 계정 진입점을 iPad에 맞게 분리
+ * - 설정 세부 항목과 계정 진입점을 iPad에 맞게 분리
+ * - 퀵 링크는 My info 위 슬림 도크에 표시 (더보기 본문에는 두지 않음)
  */
 import { useLocalSearchParams, usePathname, useRouter } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SidebarReferenceLinksDock } from '@/components/more/SidebarReferenceLinksDock';
 import { SIDEBAR_WIDTH } from '@/constants/responsiveLayout';
 import { SCREEN_SIDEBAR_SUBTAB_MARGIN_BOTTOM } from '@/constants/segmentTabBar';
 import { UI_FONT_WEIGHT_EMPHASIS } from '@/constants/uiFontWeight';
@@ -17,6 +20,10 @@ import { useLocale } from '@/contexts/LocaleContext';
 import { useIpadSidebarNav, type YoutubeSortKey } from '@/contexts/IpadSidebarNavContext';
 import { useSidebarSubTabs } from '@/contexts/SidebarSubTabsContext';
 import type { MessageId } from '@/locales/messages';
+import {
+  loadMoreReferenceLinksVisible,
+  subscribeMoreReferenceLinksVisibilityChanged,
+} from '@/services/moreReferenceLinksPreference';
 
 type TabDef = {
   name: string;
@@ -27,11 +34,10 @@ type TabDef = {
 
 type SidebarSubDef = {
   key: string;
-  kind: 'settings' | 'navigate' | 'youtube';
+  kind: 'settings' | 'youtube';
   route: string;
   icon:
     | 'youtube'
-    | 'external-link-alt'
     | 'palette'
     | 'bell'
     | 'newspaper'
@@ -87,17 +93,7 @@ const SETTINGS_SUB_TABS: SidebarSubDef[] = SETTINGS_TABS.map((item) => ({
   labelId: item.labelId,
 }));
 
-const MORE_SUB_TABS: SidebarSubDef[] = [
-  ...SETTINGS_SUB_TABS,
-  {
-    key: 'quick',
-    kind: 'navigate',
-    route: '/(tabs)/more',
-    icon: 'external-link-alt',
-    labelId: 'moreRefLinksKicker',
-    params: { section: 'quick' },
-  },
-];
+const MORE_SUB_TABS: SidebarSubDef[] = SETTINGS_SUB_TABS;
 
 const MORE_AUX_PATHS = ['/alerts', '/calendar'];
 
@@ -116,10 +112,22 @@ export function SignalSidebarTabBar({
   const { t } = useLocale();
   const router = useRouter();
   const pathname = usePathname();
-  const params = useLocalSearchParams<{ section?: string; tab?: string }>();
+  const params = useLocalSearchParams<{ tab?: string }>();
   const insets = useSafeAreaInsets();
   const { subTabs, activeSubTabKey } = useSidebarSubTabs();
   const ipadNav = useIpadSidebarNav();
+  const [refLinksVisible, setRefLinksVisible] = useState(true);
+
+  const reloadRefLinksPref = useCallback(async () => {
+    setRefLinksVisible(await loadMoreReferenceLinksVisible());
+  }, []);
+
+  useEffect(() => {
+    void reloadRefLinksPref();
+    return subscribeMoreReferenceLinksVisibilityChanged(() => {
+      void reloadRefLinksPref();
+    });
+  }, [reloadRefLinksPref]);
 
   const accountActive = pathname.startsWith('/account') || ipadNav.isAccountPaneActive;
   const homeActive = ipadNav.isHomePaneActive && !accountActive && !ipadNav.isSettingsPaneActive;
@@ -145,16 +153,22 @@ export function SignalSidebarTabBar({
               pathname.startsWith(`/${tab.name}`) || pathname === tab.route.replace('/(tabs)', ''),
           )?.name ?? 'news';
 
-  const activeMoreSubKey =
-    activeTabName === 'more'
-      ? activeSettingsSubKey || (params.section === 'quick' || !params.section ? 'quick' : null)
-      : null;
+  const activeMoreSubKey = activeTabName === 'more' ? activeSettingsSubKey : null;
   const activeYoutubeSubKey: YoutubeSortKey | null =
     activeTabName === 'youtube' && ipadNav.isAvailable ? ipadNav.youtubeSort : null;
 
   const styles = makeStyles(theme, scaleFont, insets.bottom);
 
   const navigateMainTab = (tab: TabDef) => {
+    if (tab.name === 'more') {
+      if (ipadNav.isAvailable) {
+        ipadNav.showSettings('display');
+        return;
+      }
+      ipadNav.showTabs();
+      router.navigate(tab.route as Parameters<typeof router.navigate>[0]);
+      return;
+    }
     if (tab.name === 'youtube') {
       if (ipadNav.isAvailable) {
         ipadNav.showYoutubeTab('latest');
@@ -191,14 +205,7 @@ export function SignalSidebarTabBar({
                   pathname: sub.route,
                   params: { sort: sortKey === 'latest' ? undefined : sortKey },
                 } as Parameters<typeof router.navigate>[0]);
-                return;
               }
-              ipadNav.showTabs();
-              router.navigate(
-                sub.params
-                  ? ({ pathname: sub.route, params: sub.params } as Parameters<typeof router.navigate>[0])
-                  : (sub.route as Parameters<typeof router.navigate>[0]),
-              );
             }}
             accessibilityRole="button"
             accessibilityState={{ selected: subActive }}>
@@ -321,6 +328,7 @@ export function SignalSidebarTabBar({
         </ScrollView>
       </View>
       <View style={styles.accountDock}>
+        {refLinksVisible ? <SidebarReferenceLinksDock /> : null}
         <Pressable
           style={({ pressed }) => [
             styles.accountButton,

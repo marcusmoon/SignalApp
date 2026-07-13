@@ -59,8 +59,9 @@ export const ko = {
   moreRefTitleTossSecurities: '토스',
   moreRefTitleBinance: '바이낸스',
   moreRefTitleCoinbase: '코인베이스',
-  settingsMoreReferenceLinksKicker: '더보기 퀵 링크',
-  settingsMoreReferenceLinksHint: '퀵 링크 아이콘을 더보기 탭 하단에 표시합니다.',
+  settingsMoreReferenceLinksKicker: '퀵 링크',
+  settingsMoreReferenceLinksHint:
+    '폰에서는 더보기 하단에, 웹·iPad에서는 좌측 My info 위에 표시합니다.',
   settingsMoreReferenceLinksSwitch: '퀵 링크 표시',
   settingsMainEntrySection: '첫 화면',
   settingsMainEntryHint: '앱을 열 때 처음 보여줄 화면을 선택합니다.',

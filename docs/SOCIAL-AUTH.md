@@ -76,3 +76,12 @@ Admin 설정:
 ## Apple
 
 Sign in with Apple은 유료 Apple Developer Program과 capability 설정이 필요하다. 개인 Team 빌드에서는 entitlement를 제거하는 plugin을 사용한다. 운영 빌드에서만 `SIGNAL_IOS_APPLE_SIGN_IN_ENABLED=1`로 켠다.
+
+## My info 소셜 연동
+
+`app/account.tsx` — **소셜 연동** pane.
+
+- 목록: 카카오·네이버·구글(＋iOS Apple). 서버 `GET /v1/auth/social/providers`의 `enabled`가 false면 「준비 중」으로 비활성 표시.
+- **연결 해제**: 확인 다이얼로그 후 API 호출.
+- **마지막 로그인 수단 보호**: `password_hash`가 없고 연결된 소셜이 1개뿐이면 해제 불가(클라이언트 선차단 + 서버 `APP_USER_PASSWORD_REQUIRED_BEFORE_UNLINK`).
+- 가입·로그인 화면의 `SocialAuthButtons`도 동일 catalog `enabled` 규칙을 따른다.

@@ -71,6 +71,13 @@ PTR, 필터 시 scroll-to-top, chip, digest, 폴링 규칙: **[FEED-INTERACTION.
 3. 화면: `const { t } = useLocale()` → `t('someKey')`
 4. 날짜 표시는 `utils/date.ts` 헬퍼 사용 (직접 `toLocaleString` 지양)
 
+## My info · 설정
+
+- **My info** (`app/account.tsx`): 로그인 후 허브. 환경 설정은 `router.push({ pathname: '/settings', params: { tab, from: 'account' } })`.
+- **설정 탭 순서**: `constants/settingsTabs.ts` — `display` · `notifications` · `news` · `quotes` · `server`(개발 모드).
+- **허브 메뉴 설명**(`accountHub*Desc`)과 설정 화면 lead(`settings*Lead`) 문구는 동일 의미로 유지한다.
+- **소셜 연동**: 해제 전 확인 다이얼로그. 비밀번호 미설정 + 마지막 소셜이면 해제 불가([SOCIAL-AUTH.md](./SOCIAL-AUTH.md)). 서버 비활성 공급자는 목록에 「준비 중」으로 표시.
+
 ## 외부 링크
 
 종목 상세·더보기·유튜브 등 **모든 외부 URL**은 아래 스택을 통한다. `Linking.openURL` / `WebBrowser`를 화면에서 직접 호출하지 않는다.
@@ -186,15 +193,18 @@ buildAppLaunchUrls({ webUrl, linkId?: 'yahoo' | 'naver' | 'toss' | ... })
 | 기능 | 파일 |
 |---|---|
 | 홈 | `app/(tabs)/home.tsx`, `components/signal/HomeFocusContent.tsx` |
-| 뉴스 | `app/(tabs)/news.tsx` |
+| 시장 | `app/(tabs)/signal.tsx`, `components/signal/MarketBriefingBlock.tsx` |
+| 뉴스 | `app/(tabs)/news.tsx`, `components/news/LegacyNewsFeedScreen.tsx` |
 | 공시 | `app/(tabs)/disclosures.tsx` |
-| 시장 | `app/(tabs)/signal.tsx` |
 | 시세 | `app/(tabs)/quotes.tsx` |
-| 더보기 | `app/(tabs)/more.tsx`, `components/more/ReferenceLinksSection.tsx` |
+| 더보기 | `app/(tabs)/more.tsx`, `components/more/DeveloperFooterDock.tsx` |
+| 마감 브리핑 상세 | `app/today-briefing.tsx` |
+| 설정 | `app/settings.tsx` |
+| My info | `app/account.tsx` |
 | 종목 상세 | `app/symbol/[ticker].tsx`, `components/symbol/SymbolDetailPane.tsx` |
 | 알림함 | `app/alerts.tsx`, [NOTIFICATION-INBOX.md](./NOTIFICATION-INBOX.md) |
 | 외부 링크 | `utils/externalLinkRegistry.ts`, `utils/openExternalLink.ts`, `utils/externalLinkOpen.ts` |
-| 레이아웃 상수 | `constants/screenLayout.ts` |
+| 레이아웃 상수 | `constants/screenLayout.ts`, `constants/screenFixedHeader.ts` |
 | Signal API | `integrations/signal-api/` |
 
 ## 출시·자동화

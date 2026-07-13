@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { SourceIconStack, type SourceIconEntry } from '@/components/signal/SourceIconStack';
+import { cardListRowSeparatorStyle } from '@/components/signal/groupedFeedList';
 import {
   FEED_DIGEST_TITLE_PX,
   FEED_META_TIME_PX,
@@ -117,12 +118,9 @@ function makeStyles(
   return StyleSheet.create({
     row: {
       gap: 4,
-      paddingVertical: 6,
+      paddingVertical: 7,
     },
-    rowBordered: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.border,
-    },
+    rowBordered: cardListRowSeparatorStyle(theme),
     rowPressed: {
       opacity: 0.88,
     },

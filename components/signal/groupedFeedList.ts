@@ -18,6 +18,14 @@ export function groupedFeedSeparatorColor(theme: AppTheme): string {
   return theme.colorScheme === 'dark' ? '#3E3E4E' : '#D1D6DB';
 }
 
+/** 홈·카드 내부 리스트 행 구분선 (다이제스트·공시·캘린더 등) */
+export function cardListRowSeparatorStyle(theme: AppTheme): Pick<ViewStyle, 'borderBottomWidth' | 'borderBottomColor'> {
+  return {
+    borderBottomWidth: 1,
+    borderBottomColor: groupedFeedSeparatorColor(theme),
+  };
+}
+
 /** FlatList 행 — 광고 등으로 끊긴 구간마다 상·하단 라운드 재적용 */
 export function groupedFeedRowEdges(
   rows: readonly { kind: string }[],

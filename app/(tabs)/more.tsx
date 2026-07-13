@@ -90,7 +90,6 @@ export default function MoreHubScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const isFocused = useIsFocused();
   const { width, useTwoPane, isIOS, isPad, isWeb } = useResponsiveLayout();
-  const showIpadQuickLinks = useTwoPane;
   const useCompactDeveloperFooter = useTwoPane;
   const { scrollBottomPad: developerFooterScrollPad } = useDeveloperFooterLayout(
     useCompactDeveloperFooter,
@@ -191,13 +190,14 @@ export default function MoreHubScreen() {
   );
 
   const listFooter = useMemo(
-    () => (
-      <View style={styles.footer}>
-        {refLinksVisible ? <ReferenceLinksSection /> : null}
-        <SignalBannerAd variant="large" style={styles.footerAd} />
-      </View>
-    ),
-    [refLinksVisible, styles.footer, styles.footerAd],
+    () =>
+      useTwoPane ? null : (
+        <View style={styles.footer}>
+          {refLinksVisible ? <ReferenceLinksSection /> : null}
+          <SignalBannerAd variant="large" style={styles.footerAd} />
+        </View>
+      ),
+    [refLinksVisible, styles.footer, styles.footerAd, useTwoPane],
   );
   const visibleOrder = useMemo(
     () =>
@@ -224,7 +224,7 @@ export default function MoreHubScreen() {
       ) : (
         <WebWheelFlatList
           key={hubTileLayout === 'list' ? 'more-list' : `more-grid-${hubTileLayout}`}
-          data={showIpadQuickLinks ? [] : visibleOrder}
+          data={visibleOrder}
           keyExtractor={(item) => item}
           numColumns={hubGridColumns}
           columnWrapperStyle={useGridHub ? styles.gridRow : undefined}
@@ -237,14 +237,7 @@ export default function MoreHubScreen() {
               developerFooterScrollPad,
             ),
           }}
-          ListHeaderComponent={
-            showIpadQuickLinks ? (
-              <View style={styles.quickOnlyWrap}>
-                {refLinksVisible ? <ReferenceLinksSection /> : null}
-              </View>
-            ) : null
-          }
-          ListFooterComponent={showIpadQuickLinks ? <SignalBannerAd variant="large" style={styles.footerAd} /> : listFooter}
+          ListFooterComponent={listFooter}
           renderItem={({ item }) => {
             const meta = HUB_META[item];
             const name = t(meta.titleId);
@@ -423,9 +416,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, hubTileLayout: H
     footer: {
       marginTop: SECTION_GAP,
       gap: SECTION_GAP,
-    },
-    quickOnlyWrap: {
-      marginBottom: SECTION_GAP,
     },
     footerAd: {
       marginTop: 0,

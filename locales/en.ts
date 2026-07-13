@@ -61,8 +61,9 @@ export const en = {
   moreRefTitleTossSecurities: 'Toss',
   moreRefTitleBinance: 'Binance',
   moreRefTitleCoinbase: 'Coinbase',
-  settingsMoreReferenceLinksKicker: 'More tab quick links',
-  settingsMoreReferenceLinksHint: 'Shows quick-link icons at the bottom of the More tab.',
+  settingsMoreReferenceLinksKicker: 'Quick links',
+  settingsMoreReferenceLinksHint:
+    'Shown at the bottom of More on phones, and above My info in the left sidebar on web and iPad.',
   settingsMoreReferenceLinksSwitch: 'Show quick links',
   settingsMainEntrySection: 'Start screen',
   settingsMainEntryHint: 'Choose the first screen to show when the app opens.',

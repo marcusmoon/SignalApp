@@ -46,7 +46,6 @@ type SidebarSubDef = {
     | 'list'
     | 'fire';
   labelId: MessageId;
-  params?: Record<string, string>;
 };
 
 const SIDEBAR_TABS: TabDef[] = [

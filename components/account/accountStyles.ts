@@ -503,6 +503,9 @@ export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
     providerRowLast: {
       borderBottomWidth: 0,
     },
+    providerRowDisabled: {
+      opacity: 0.55,
+    },
     subSection: {
       borderRadius: 8,
       borderWidth: 1,
@@ -576,6 +579,19 @@ export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
       flexShrink: 0,
     },
     smallPrimaryText: { color: theme.green, fontSize: sf(10), fontWeight: '700' },
+    smallDisabledBtn: {
+      minHeight: 30,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      flexShrink: 0,
+    },
+    smallDisabledText: { color: theme.textMuted, fontSize: sf(10), fontWeight: '700' },
     secondaryBtn: {
       minHeight: 40,
       borderRadius: 11,

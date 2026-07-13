@@ -775,9 +775,9 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
     [],
   );
 
-  const enabledSocialProviders = useMemo(
-    () => socialProviders.filter((prov) => socialCatalog?.providers[prov]?.enabled),
-    [socialCatalog, socialProviders],
+  const isSocialProviderEnabled = useCallback(
+    (provider: SocialProviderKey) => socialCatalog?.providers[provider]?.enabled === true,
+    [socialCatalog],
   );
 
   const socialProviderLabel = useCallback(
@@ -1106,29 +1106,37 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
                 <Text style={styles.sectionLead}>{t('accountSocialLinkHint')}</Text>
                 {!socialCatalog ? (
                   <Text style={styles.mutedText}>{t('commonLoading')}</Text>
-                ) : enabledSocialProviders.length === 0 ? (
+                ) : socialProviders.length === 0 ? (
                   <Text style={styles.mutedText}>{t('accountSocialLinkNone')}</Text>
                 ) : (
                   <View style={styles.providerList}>
-                    {enabledSocialProviders.map((prov, index) => {
+                    {socialProviders.map((prov, index) => {
                       const identity = linkedIdentities.find((item) => item.provider === prov);
                       const label = socialProviderLabel(prov);
+                      const enabled = isSocialProviderEnabled(prov);
                       return (
                         <View
                           key={prov}
                           style={[
                             styles.providerRow,
-                            index === enabledSocialProviders.length - 1 && styles.providerRowLast,
+                            index === socialProviders.length - 1 && styles.providerRowLast,
+                            !enabled && styles.providerRowDisabled,
                           ]}>
                           <View style={styles.activityIcon}>
-                            <FontAwesome5 name={socialProviderIcon(prov)} size={15} color={theme.green} />
+                            <FontAwesome5
+                              name={socialProviderIcon(prov)}
+                              size={15}
+                              color={enabled ? theme.green : theme.textMuted}
+                            />
                           </View>
                           <View style={styles.activityText}>
                             <Text style={styles.activityTitle}>{label}</Text>
                             <Text style={styles.activityDesc} numberOfLines={1}>
                               {identity
                                 ? identity.email || identity.displayName || identity.providerUserId
-                                : t('accountSocialNotLinked')}
+                                : enabled
+                                  ? t('accountSocialNotLinked')
+                                  : t('commonComingSoon')}
                             </Text>
                           </View>
                           {identity ? (
@@ -1138,13 +1146,17 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
                               style={styles.smallOutlineBtn}>
                               <Text style={styles.smallOutlineText}>{t('accountSocialDisconnect')}</Text>
                             </Pressable>
-                          ) : (
+                          ) : enabled ? (
                             <Pressable
                               disabled={saving}
                               onPress={() => void linkSocialAccount(prov)}
                               style={styles.smallPrimaryBtn}>
                               <Text style={styles.smallPrimaryText}>{t('accountSocialLinkMore')}</Text>
                             </Pressable>
+                          ) : (
+                            <View style={styles.smallDisabledBtn}>
+                              <Text style={styles.smallDisabledText}>{t('commonComingSoon')}</Text>
+                            </View>
                           )}
                         </View>
                       );

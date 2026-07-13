@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
-import { Alert, Image, Platform, Pressable, Text, TextInput, View } from 'react-native';
-import { Stack, useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ComponentProps } from 'react';
+import { Alert, BackHandler, Image, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter, useNavigation, type Href } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import Constants from 'expo-constants';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -88,12 +88,15 @@ type AccountScreenProps = {
 
 export default function AccountScreen({ embedded = false }: AccountScreenProps) {
   const router = useRouter();
+  const navigation = useNavigation();
   const { theme, scaleFont } = useSignalTheme();
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
   const { useTwoPane } = useResponsiveLayout();
   const params = useLocalSearchParams<{ from?: string }>();
   const useIpadSidebar = useTwoPane && !embedded;
+  const showStackHeader = !embedded && !useIpadSidebar;
+  const showPaneTitleInContent = embedded;
   const styles = useMemo(() => makeAccountStyles(theme, scaleFont), [theme, scaleFont]);
   const [session, setSession] = useState<StoredAppAuthSession | null>(null);
   const [mode, setMode] = useState<Mode>('login');
@@ -761,28 +764,57 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
     [startSocialLogin, startSocialSignup],
   );
 
+  const returnToAccountHub = useCallback(() => {
+    setAccountPane('hub');
+  }, []);
+
+  const accountHeaderTitle = useMemo(() => {
+    if (accountPane === 'profile') return t('accountProfileSectionTitle');
+    if (accountPane === 'security') return t('accountSecurityTitle');
+    return t('screenAccount');
+  }, [accountPane, t]);
+
+  useLayoutEffect(() => {
+    if (!showStackHeader || !user) return;
+
+    if (accountPane === 'hub') {
+      navigation.setOptions({
+        title: accountHeaderTitle,
+        headerBackVisible: true,
+        headerLeft: undefined,
+      });
+      return;
+    }
+
+    navigation.setOptions({
+      title: accountHeaderTitle,
+      headerBackVisible: false,
+      headerLeft: () => (
+        <Pressable
+          onPress={returnToAccountHub}
+          hitSlop={8}
+          style={{ marginLeft: 4, padding: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel={t('commonBack')}>
+          <FontAwesome5 name="chevron-left" size={18} color={theme.green} />
+        </Pressable>
+      ),
+    });
+  }, [accountHeaderTitle, accountPane, navigation, returnToAccountHub, showStackHeader, t, theme.green, user]);
+
+  useEffect(() => {
+    if (!user || accountPane === 'hub') return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      returnToAccountHub();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [accountPane, returnToAccountHub, user]);
+
   const screen = (
     <SafeAreaView style={styles.safe} edges={embedded ? [] : ['bottom']}>
       {!embedded ? (
-        <Stack.Screen options={{ title: t('screenAccount'), headerShown: !useIpadSidebar }} />
-      ) : null}
-      {user && accountPane !== 'hub' ? (
-        <View style={styles.topFixed}>
-          <View style={styles.paneTopBar}>
-            <Pressable
-              onPress={() => setAccountPane('hub')}
-              accessibilityRole="button"
-              accessibilityLabel={t('commonBack')}
-              style={({ pressed }) => [styles.paneBackBtn, pressed && styles.activityRowPressed]}>
-              <FontAwesome5 name="chevron-left" size={12} color={theme.green} />
-              <Text style={styles.paneBackText}>{t('commonBack')}</Text>
-            </Pressable>
-            <Text style={styles.paneTitle} numberOfLines={1}>
-              {accountPane === 'profile' ? t('accountProfileSectionTitle') : t('accountSecurityTitle')}
-            </Text>
-            <View style={styles.paneSpacer} />
-          </View>
-        </View>
+        <Stack.Screen options={{ title: accountHeaderTitle, headerShown: showStackHeader }} />
       ) : null}
       <WebWheelScrollView
         ref={accountScrollRef as never}
@@ -817,6 +849,17 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
 
         {user ? (
           <>
+            {embedded && accountPane !== 'hub' ? (
+              <Pressable
+                onPress={returnToAccountHub}
+                accessibilityRole="button"
+                accessibilityLabel={t('commonBack')}
+                style={({ pressed }) => [styles.embeddedBackRow, pressed && styles.activityRowPressed]}>
+                <FontAwesome5 name="chevron-left" size={12} color={theme.green} />
+                <Text style={styles.paneBackText}>{t('commonBack')}</Text>
+              </Pressable>
+            ) : null}
+
             {accountPane === 'hub' ? (
               <>
                 <View style={styles.profileHub}>
@@ -968,7 +1011,9 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>{t('accountProfileSectionTitle')}</Text>
+              {showPaneTitleInContent ? (
+                <Text style={styles.sectionTitle}>{t('accountProfileSectionTitle')}</Text>
+              ) : null}
               <TextInput
                 value={nickname}
                 onChangeText={setNickname}
@@ -993,7 +1038,9 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
 
             {accountPane === 'security' ? (
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>{t('accountSecurityTitle')}</Text>
+              {showPaneTitleInContent ? (
+                <Text style={styles.sectionTitle}>{t('accountSecurityTitle')}</Text>
+              ) : null}
               <View style={styles.subSection}>
                 <View style={styles.subSectionHeader}>
                   <Text style={styles.subSectionTitle}>{t('accountSocialLinkedTitle')}</Text>

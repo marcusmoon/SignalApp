@@ -213,6 +213,14 @@ export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
       width: 72,
       flexShrink: 0,
     },
+    embeddedBackRow: {
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 4,
+      paddingVertical: 4,
+    },
     profileHub: {
       alignItems: 'center',
       paddingTop: 8,

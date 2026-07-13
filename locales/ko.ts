@@ -338,6 +338,9 @@ export const ko = {
   accountSocialLinkedDesc: '소셜 로그인은 SIGNAL 계정에 연결되고, 로그인 토큰은 SIGNAL 서버가 발급합니다.',
   accountSocialLinkedEmpty: '연결된 소셜 계정이 없습니다.',
   accountSocialDisconnect: '연결 해제',
+  accountSocialDisconnectConfirmTitle: '소셜 연동을 해제할까요?',
+  accountSocialDisconnectConfirmBody:
+    '{{provider}} 연동을 해제하면 해당 계정으로 더 이상 로그인할 수 없습니다.',
   accountIdentityDisconnectError: '소셜 연결을 해제하지 못했습니다. 마지막 로그인 수단이면 비밀번호를 먼저 설정해야 합니다.',
   accountPasswordSectionTitle: '비밀번호',
   accountPasswordSectionDesc: '이메일 로그인 비밀번호를 변경합니다.',

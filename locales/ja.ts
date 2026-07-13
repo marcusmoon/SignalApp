@@ -340,6 +340,8 @@ export const ja = {
   accountSocialLinkedDesc: 'ソーシャル identity は SIGNAL アカウントに連携され、アプリのセッショントークンは SIGNAL が発行します。',
   accountSocialLinkedEmpty: '連携済みのソーシャルアカウントはありません。',
   accountSocialDisconnect: '連携解除',
+  accountSocialDisconnectConfirmTitle: 'ソーシャル連携を解除しますか？',
+  accountSocialDisconnectConfirmBody: '{{provider}}でのログインができなくなります。',
   accountIdentityDisconnectError: 'ソーシャル連携を解除できません。最後のログイン手段の場合は先にパスワードを設定してください。',
   accountPasswordSectionTitle: 'パスワード',
   accountPasswordSectionDesc: 'メールログイン用パスワードを変更します。',

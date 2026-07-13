@@ -645,7 +645,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
     ]);
   }, [session, t]);
 
-  const disconnectIdentity = useCallback(
+  const performDisconnectIdentity = useCallback(
     async (identity: SignalUserIdentity) => {
       const access = getSessionAccessToken(session);
       if (!access) return;
@@ -790,6 +790,31 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             ? t('accountSocialGoogle')
             : t('accountSocialApple'),
     [t],
+  );
+
+  const promptDisconnectIdentity = useCallback(
+    (identity: SignalUserIdentity) => {
+      if (!user?.hasPassword && linkedIdentities.length <= 1) {
+        Alert.alert(t('commonNotice'), t('accountPasswordRequiredForUnlink'));
+        return;
+      }
+      const providerLabel = socialProviderLabel(identity.provider as SocialProviderKey);
+      Alert.alert(
+        t('accountSocialDisconnectConfirmTitle'),
+        t('accountSocialDisconnectConfirmBody').replace('{{provider}}', providerLabel),
+        [
+          { text: t('commonCancel'), style: 'cancel' },
+          {
+            text: t('accountSocialDisconnect'),
+            style: 'destructive',
+            onPress: () => {
+              void performDisconnectIdentity(identity);
+            },
+          },
+        ],
+      );
+    },
+    [linkedIdentities.length, performDisconnectIdentity, socialProviderLabel, t, user?.hasPassword],
   );
 
   const onSocialAuthPress = useCallback(
@@ -1109,7 +1134,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
                           {identity ? (
                             <Pressable
                               disabled={saving}
-                              onPress={() => void disconnectIdentity(identity)}
+                              onPress={() => promptDisconnectIdentity(identity)}
                               style={styles.smallOutlineBtn}>
                               <Text style={styles.smallOutlineText}>{t('accountSocialDisconnect')}</Text>
                             </Pressable>

@@ -6,7 +6,6 @@ import { SourceIconStack, type SourceIconEntry } from '@/components/signal/Sourc
 import {
   FEED_DIGEST_TITLE_PX,
   FEED_META_TIME_PX,
-  FEED_META_TRAIL_PX,
   FEED_SIGNAL_PREVIEW_PX,
   FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
@@ -114,10 +113,11 @@ function makeStyles(
   variant: 'digest' | 'signal',
 ) {
   const isSignal = variant === 'signal';
+  const metaSize = ft.ff(FEED_META_TIME_PX);
   return StyleSheet.create({
     row: {
-      gap: 3,
-      paddingVertical: 5,
+      gap: 4,
+      paddingVertical: 6,
     },
     rowBordered: {
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -135,8 +135,8 @@ function makeStyles(
     },
     title: {
       fontSize: isSignal ? ft.signalBodyFont(FEED_SIGNAL_PREVIEW_PX) : ft.ff(FEED_DIGEST_TITLE_PX),
-      lineHeight: isSignal ? sf(21) : sf(18),
-      fontWeight: ft.titleWeight,
+      lineHeight: isSignal ? sf(22) : sf(20),
+      fontWeight: isSignal ? ft.signalTitleWeight : ft.titleWeight,
       color: theme.text,
     },
     footer: {
@@ -145,6 +145,7 @@ function makeStyles(
       justifyContent: 'space-between',
       gap: 8,
       minWidth: 0,
+      marginTop: 2,
     },
     footerLead: {
       flex: 1,
@@ -156,21 +157,21 @@ function makeStyles(
     trailText: {
       flex: 1,
       minWidth: 0,
-      fontSize: ft.ff(FEED_META_TRAIL_PX),
-      lineHeight: sf(12),
+      fontSize: metaSize,
+      lineHeight: sf(14),
       fontWeight: ft.metaWeight,
-      color: theme.textDim,
+      color: theme.textMuted,
     },
     timeText: {
       flexShrink: 0,
-      fontSize: ft.ff(FEED_META_TIME_PX),
-      lineHeight: sf(13),
+      fontSize: metaSize,
+      lineHeight: sf(14),
       fontWeight: ft.metaWeight,
-      color: theme.textDim,
+      color: theme.textMuted,
     },
     summary: {
       fontSize: ft.ff(FEED_SUMMARY_PX),
-      lineHeight: sf(15),
+      lineHeight: sf(16),
       fontWeight: ft.bodyWeight,
       color: theme.textMuted,
     },

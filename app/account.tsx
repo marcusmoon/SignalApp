@@ -63,7 +63,7 @@ import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLa
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 
-type AccountPane = 'hub' | 'profile' | 'security';
+type AccountPane = 'hub' | 'profile' | 'social' | 'password';
 type Mode = 'login' | 'register';
 type RegisterStep = 'terms' | 'method' | 'info';
 
@@ -727,11 +727,23 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             onPress: () => setAccountPane('profile'),
           },
           {
-            key: 'security',
-            icon: 'shield-alt',
-            title: t('accountSecurityTitle'),
-            body: t('accountSecurityLead'),
-            onPress: () => setAccountPane('security'),
+            key: 'social',
+            icon: 'link',
+            title: t('accountSocialLinkMenuTitle'),
+            body: t('accountSocialLinkMenuDesc'),
+            trailing:
+              linkedIdentities.length > 0
+                ? t('accountSocialLinkedCount').replace('{{count}}', String(linkedIdentities.length))
+                : undefined,
+            onPress: () => setAccountPane('social'),
+          },
+          {
+            key: 'password',
+            icon: 'key',
+            title: t('accountPasswordMenuTitle'),
+            body: t('accountPasswordMenuDesc'),
+            trailing: user?.hasPassword ? t('accountPasswordEnabled') : t('accountPasswordNotSet'),
+            onPress: () => setAccountPane('password'),
           },
           {
             key: 'terms',
@@ -743,7 +755,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         ],
       },
     ];
-  }, [router, settingsHubSection, t]);
+  }, [linkedIdentities.length, router, settingsHubSection, t, user?.hasPassword]);
 
   const socialProviders = useMemo(() => {
     const base = ['kakao', 'naver', 'google'] as const;
@@ -752,6 +764,21 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
     }
     return base;
   }, []);
+
+  const socialProviderIcon = useCallback(
+    (provider: SocialProviderKey): ComponentProps<typeof FontAwesome5>['name'] => {
+      if (provider === 'apple') return 'apple';
+      if (provider === 'google') return 'google';
+      if (provider === 'kakao') return 'comment';
+      return 'link';
+    },
+    [],
+  );
+
+  const enabledSocialProviders = useMemo(
+    () => socialProviders.filter((prov) => socialCatalog?.providers[prov]?.enabled),
+    [socialCatalog, socialProviders],
+  );
 
   const socialProviderLabel = useCallback(
     (provider: SocialProviderKey) =>
@@ -778,7 +805,8 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
 
   const accountHeaderTitle = useMemo(() => {
     if (accountPane === 'profile') return t('accountProfileSectionTitle');
-    if (accountPane === 'security') return t('accountSecurityTitle');
+    if (accountPane === 'social') return t('accountSocialLinkMenuTitle');
+    if (accountPane === 'password') return t('accountPasswordMenuTitle');
     return t('screenAccount');
   }, [accountPane, t]);
 
@@ -1045,114 +1073,87 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
               </>
             ) : null}
 
-            {accountPane === 'security' ? (
-            <View style={styles.card}>
-              {showPaneTitleInContent ? (
-                <Text style={styles.sectionTitle}>{t('accountSecurityTitle')}</Text>
-              ) : null}
-              <View style={styles.subSection}>
-                <View style={styles.subSectionHeader}>
-                  <Text style={styles.subSectionTitle}>{t('accountSocialLinkedTitle')}</Text>
-                  <Text style={styles.subSectionMeta}>
-                    {t('accountSocialLinkedCount').replace('{{count}}', String(linkedIdentities.length))}
-                  </Text>
-                </View>
-                {linkedIdentities.length === 0 ? (
-                  <Text style={styles.mutedText}>{t('accountSocialLinkedEmpty')}</Text>
+            {accountPane === 'social' ? (
+              <View style={styles.card}>
+                {showPaneTitleInContent ? (
+                  <Text style={styles.sectionTitle}>{t('accountSocialLinkMenuTitle')}</Text>
+                ) : null}
+                <Text style={styles.sectionLead}>{t('accountSocialLinkHint')}</Text>
+                {!socialCatalog ? (
+                  <Text style={styles.mutedText}>{t('commonLoading')}</Text>
+                ) : enabledSocialProviders.length === 0 ? (
+                  <Text style={styles.mutedText}>{t('accountSocialLinkNone')}</Text>
                 ) : (
-                  <View style={styles.identityStack}>
-                    {linkedIdentities.map((identity) => (
-                      <View key={identity.id} style={styles.identityRow}>
-                        <View style={styles.activityIcon}>
-                          <FontAwesome5
-                            name={
-                              identity.provider === 'apple'
-                                ? 'apple'
-                                : identity.provider === 'google'
-                                  ? 'google'
-                                  : identity.provider === 'kakao'
-                                    ? 'comment'
-                                    : 'link'
-                            }
-                            size={15}
-                            color={theme.green}
-                          />
+                  <View style={styles.providerList}>
+                    {enabledSocialProviders.map((prov, index) => {
+                      const identity = linkedIdentities.find((item) => item.provider === prov);
+                      const label = socialProviderLabel(prov);
+                      return (
+                        <View
+                          key={prov}
+                          style={[
+                            styles.providerRow,
+                            index === enabledSocialProviders.length - 1 && styles.providerRowLast,
+                          ]}>
+                          <View style={styles.activityIcon}>
+                            <FontAwesome5 name={socialProviderIcon(prov)} size={15} color={theme.green} />
+                          </View>
+                          <View style={styles.activityText}>
+                            <Text style={styles.activityTitle}>{label}</Text>
+                            <Text style={styles.activityDesc} numberOfLines={1}>
+                              {identity
+                                ? identity.email || identity.displayName || identity.providerUserId
+                                : t('accountSocialNotLinked')}
+                            </Text>
+                          </View>
+                          {identity ? (
+                            <Pressable
+                              disabled={saving}
+                              onPress={() => void disconnectIdentity(identity)}
+                              style={styles.smallOutlineBtn}>
+                              <Text style={styles.smallOutlineText}>{t('accountSocialDisconnect')}</Text>
+                            </Pressable>
+                          ) : (
+                            <Pressable
+                              disabled={saving}
+                              onPress={() => void linkSocialAccount(prov)}
+                              style={styles.smallPrimaryBtn}>
+                              <Text style={styles.smallPrimaryText}>{t('accountSocialLinkMore')}</Text>
+                            </Pressable>
+                          )}
                         </View>
-                        <View style={styles.activityText}>
-                          <Text style={styles.activityTitle}>{identity.provider}</Text>
-                          <Text style={styles.activityDesc} numberOfLines={1}>
-                            {identity.email || identity.displayName || identity.providerUserId}
-                          </Text>
-                        </View>
-                        <Pressable disabled={saving} onPress={() => void disconnectIdentity(identity)} style={styles.smallOutlineBtn}>
-                          <Text style={styles.smallOutlineText}>{t('accountSocialDisconnect')}</Text>
-                        </Pressable>
-                      </View>
-                    ))}
+                      );
+                    })}
                   </View>
                 )}
-                <View style={styles.socialLinkStack}>
-                  {socialProviders.some(
-                    (prov) =>
-                      socialCatalog?.providers[prov]?.enabled &&
-                      !linkedIdentities.some((i) => i.provider === prov),
-                  ) ? (
-                    <View style={styles.linkChipRow}>
-                      {socialProviders.map((prov) => {
-                        const cfg = socialCatalog?.providers[prov];
-                        const linked = linkedIdentities.some((i) => i.provider === prov);
-                        if (linked || !cfg?.enabled) return null;
-                        const label =
-                          prov === 'kakao'
-                            ? t('accountSocialKakao')
-                            : prov === 'naver'
-                              ? t('accountSocialNaver')
-                              : prov === 'google'
-                                ? t('accountSocialGoogle')
-                                : t('accountSocialApple');
-                        return (
-                          <Pressable
-                            key={prov}
-                            disabled={saving}
-                            onPress={() => void linkSocialAccount(prov)}
-                            style={({ pressed }) => [styles.linkChip, pressed && styles.activityRowPressed]}
-                            accessibilityRole="button"
-                            accessibilityLabel={`${label} ${t('accountSocialLinkMore')}`}>
-                            <Text style={styles.linkChipText}>
-                              {label} {t('accountSocialLinkMore')}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  ) : socialCatalog ? (
-                    <Text style={styles.mutedText}>{t('accountSocialLinkNone')}</Text>
-                  ) : null}
-                </View>
               </View>
+            ) : null}
 
-              <View style={styles.subSection}>
-                <View style={styles.subSectionHeader}>
-                  <Text style={styles.subSectionTitle}>{t('accountPasswordSectionTitle')}</Text>
-                  <Text style={styles.subSectionMeta}>
-                    {user.hasPassword ? t('accountPasswordEnabled') : t('accountPasswordNotSet')}
-                  </Text>
-                </View>
-                <Text style={styles.subSectionLead}>
-                  {user.hasPassword ? t('accountPasswordSectionDesc') : t('accountPasswordRequiredForUnlink')}
+            {accountPane === 'password' ? (
+            <View style={styles.card}>
+              {showPaneTitleInContent ? (
+                <Text style={styles.sectionTitle}>{t('accountPasswordMenuTitle')}</Text>
+              ) : null}
+              <View style={styles.subSectionHeader}>
+                <Text style={styles.subSectionTitle}>{t('accountPasswordSectionTitle')}</Text>
+                <Text style={styles.subSectionMeta}>
+                  {user.hasPassword ? t('accountPasswordEnabled') : t('accountPasswordNotSet')}
                 </Text>
-                <TextInput
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder={t('accountNewPasswordPlaceholder')}
-                  placeholderTextColor={theme.textDim}
-                  secureTextEntry
-                  style={styles.input}
-                />
-                <Pressable disabled={saving || newPassword.length < 8} onPress={() => void savePassword()} style={styles.secondaryBtn}>
-                  <Text style={styles.secondaryText}>{saving ? t('commonLoading') : t('accountPasswordSaveButton')}</Text>
-                </Pressable>
               </View>
+              <Text style={styles.subSectionLead}>
+                {user.hasPassword ? t('accountPasswordSectionDesc') : t('accountPasswordRequiredForUnlink')}
+              </Text>
+              <TextInput
+                value={newPassword}
+                onChangeText={setNewPassword}
+                placeholder={t('accountNewPasswordPlaceholder')}
+                placeholderTextColor={theme.textDim}
+                secureTextEntry
+                style={styles.input}
+              />
+              <Pressable disabled={saving || newPassword.length < 8} onPress={() => void savePassword()} style={styles.secondaryBtn}>
+                <Text style={styles.secondaryText}>{saving ? t('commonLoading') : t('accountPasswordSaveButton')}</Text>
+              </Pressable>
             </View>
             ) : null}
 

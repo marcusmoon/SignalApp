@@ -132,14 +132,19 @@ export default function TodayBriefingScreen() {
               </View>
 
               {item.keyPoints.length > 0 ? (
-                <View style={styles.sectionCard}>
-                  <Text style={styles.sectionTitle}>{t('todayBriefingKeyPoints')}</Text>
-                  <View style={styles.pointList}>
+                <View style={styles.sectionWrap}>
+                  <View style={styles.sectionHead}>
+                    <View style={styles.sectionAccent} />
+                    <Text style={styles.sectionHeading}>{t('todayBriefingKeyPoints')}</Text>
+                  </View>
+                  <View style={styles.sectionFeedCard}>
                     {item.keyPoints.map((point, index) => (
-                      <View key={`${item.id}-point-${index}`} style={styles.pointRow}>
-                        <Text style={styles.pointBullet}>•</Text>
-                        <Text style={styles.pointText}>{point}</Text>
-                      </View>
+                      <HomeDigestFeedRow
+                        key={`${item.id}-point-${index}`}
+                        title={point}
+                        titleLines={4}
+                        bordered={index < item.keyPoints.length - 1}
+                      />
                     ))}
                   </View>
                 </View>
@@ -260,21 +265,6 @@ function makeStyles(
       fontWeight: ft.signalBodyWeight,
       color: theme.textMuted,
     },
-    sectionCard: {
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: theme.border,
-      backgroundColor: theme.card,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      gap: 16,
-    },
-    sectionTitle: {
-      fontSize: ft.ff(13),
-      lineHeight: sf(18),
-      fontWeight: ft.emphasisWeight,
-      color: theme.text,
-    },
     sectionWrap: {
       gap: 16,
     },
@@ -310,26 +300,6 @@ function makeStyles(
       paddingHorizontal: 10,
       paddingVertical: 8,
       overflow: 'hidden',
-    },
-    pointList: {
-      gap: 16,
-    },
-    pointRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 16,
-    },
-    pointBullet: {
-      fontSize: ft.ff(14),
-      lineHeight: sf(21),
-      color: theme.textMuted,
-    },
-    pointText: {
-      flex: 1,
-      fontSize: ft.ff(14),
-      lineHeight: sf(21),
-      fontWeight: ft.bodyWeight,
-      color: theme.textMuted,
     },
   });
 }

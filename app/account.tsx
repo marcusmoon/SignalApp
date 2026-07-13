@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { Alert, Image, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import Constants from 'expo-constants';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SocialAuthButtons } from '@/components/account/SocialAuthButtons';
@@ -61,9 +62,24 @@ import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLa
 import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import { useScrollToTopOnChange } from '@/hooks/useScrollToTopOnChange';
 
-type AccountTab = 'home' | 'profile' | 'security' | 'info';
+type AccountPane = 'hub' | 'profile' | 'security';
 type Mode = 'login' | 'register';
 type RegisterStep = 'terms' | 'method' | 'info';
+
+type HubMenuItem = {
+  key: string;
+  icon: ComponentProps<typeof FontAwesome5>['name'];
+  title: string;
+  body?: string;
+  trailing?: string;
+  onPress: () => void;
+};
+
+type HubMenuSection = {
+  id: string;
+  title: string;
+  items: HubMenuItem[];
+};
 
 type AccountScreenProps = {
   /** iPad 사이드바 우측 패널에 그대로 삽입 */
@@ -100,9 +116,9 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   const [registerStep, setRegisterStep] = useState<RegisterStep>('terms');
   const [pendingSocialProvider, setPendingSocialProvider] = useState<SocialProviderKey | null>(null);
   const [socialSignupDraft, setSocialSignupDraft] = useState<SocialSignupDraft | null>(null);
-  const [accountTab, setAccountTab] = useState<AccountTab>('home');
-  const { ref: accountScrollRef } = useScrollToTopOnChange([accountTab]);
-  const scrollResetKey = accountTab;
+  const [accountPane, setAccountPane] = useState<AccountPane>('hub');
+  const { ref: accountScrollRef } = useScrollToTopOnChange([accountPane]);
+  const scrollResetKey = accountPane;
   const [emailAuthExpanded, setEmailAuthExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,6 +129,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   const serviceTerm = legalTerms.find((term) => term.type === 'service');
   const privacyTerm = legalTerms.find((term) => term.type === 'privacy');
   const copyrightYear = new Date().getFullYear();
+  const appVersion = Constants.expoConfig?.version?.trim() || '—';
   const joinedAtLabel = useMemo(() => {
     return formatJoinedAtLabel(user, locale, t);
   }, [locale, t, user]);
@@ -641,40 +658,93 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
     }
   }, [newPassword, session, t]);
 
-  const activityLinks = useMemo(
-    () => [
+  const hubSections = useMemo((): HubMenuSection[] => {
+    const pushLabel = notificationPrefs?.pushEnabled
+      ? t('accountStatusPushOn')
+      : t('accountStatusPushOff');
+    return [
       {
-        key: 'alerts',
-        icon: 'bell',
-        title: t('accountActivityAlerts'),
-        onPress: () => router.push('/alerts'),
+        id: 'settings',
+        title: t('accountHubSettingsSection'),
+        items: [
+          {
+            key: 'notifications',
+            icon: 'bell',
+            title: t('accountActivityNotificationSettings'),
+            body: t('accountActivityNotificationSettingsDesc'),
+            trailing: pushLabel,
+            onPress: () => router.push('/settings?tab=notifications'),
+          },
+          {
+            key: 'display',
+            icon: 'palette',
+            title: t('settingsTabDisplay'),
+            body: t('accountHubDisplaySettingsDesc'),
+            onPress: () => router.push('/settings?tab=display'),
+          },
+        ],
       },
       {
-        key: 'signals',
-        icon: 'bolt',
-        title: t('accountActivitySignals'),
-        onPress: () => router.push('/signal' as Href),
+        id: 'activity',
+        title: t('accountActivityTitle'),
+        items: [
+          {
+            key: 'alerts',
+            icon: 'bell',
+            title: t('accountActivityAlerts'),
+            body: t('accountActivityAlertsDesc'),
+            onPress: () => router.push('/alerts'),
+          },
+          {
+            key: 'signals',
+            icon: 'bolt',
+            title: t('accountActivitySignals'),
+            body: t('accountActivitySignalsDesc'),
+            onPress: () => router.push('/signal' as Href),
+          },
+        ],
       },
       {
-        key: 'notificationSettings',
-        icon: 'cog',
-        title: t('accountActivityNotificationSettings'),
-        onPress: () => router.push('/settings?tab=notifications'),
+        id: 'account',
+        title: t('accountHubAccountSection'),
+        items: [
+          {
+            key: 'profile',
+            icon: 'user-edit',
+            title: t('accountProfileSectionTitle'),
+            body: t('accountProfileEditLead'),
+            onPress: () => setAccountPane('profile'),
+          },
+          {
+            key: 'security',
+            icon: 'shield-alt',
+            title: t('accountSecurityTitle'),
+            body: t('accountSecurityLead'),
+            onPress: () => setAccountPane('security'),
+          },
+          {
+            key: 'terms-service',
+            icon: 'file-alt',
+            title: t('termsServiceTitle'),
+            onPress: () => openTerms('service'),
+          },
+          {
+            key: 'terms-privacy',
+            icon: 'user-shield',
+            title: t('termsPrivacyTitle'),
+            onPress: () => openTerms('privacy'),
+          },
+          {
+            key: 'terms-history',
+            icon: 'history',
+            title: t('accountActivityTermsHistory'),
+            body: t('accountActivityTermsHistoryDesc'),
+            onPress: () => router.push('/terms-history' as never),
+          },
+        ],
       },
-    ],
-    [router, t],
-  );
-
-  const accountTabs = useMemo(
-    () =>
-      [
-        { key: 'home', label: t('accountTabHome') },
-        { key: 'profile', label: t('accountProfileSectionTitle') },
-        { key: 'security', label: t('accountTabSecurity') },
-        { key: 'info', label: t('accountTabInfo') },
-      ] as const,
-    [t],
-  );
+    ];
+  }, [notificationPrefs?.pushEnabled, openTerms, router, t]);
 
   const socialProviders = useMemo(() => {
     const base = ['kakao', 'naver', 'google'] as const;
@@ -708,24 +778,21 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
       {!embedded ? (
         <Stack.Screen options={{ title: t('screenAccount'), headerShown: !useIpadSidebar }} />
       ) : null}
-      {user ? (
+      {user && accountPane !== 'hub' ? (
         <View style={styles.topFixed}>
-          <View style={[styles.tabBar, embedded && styles.tabBarEmbedded]} accessibilityRole="tablist">
-          {accountTabs.map((tab) => {
-            const selected = accountTab === tab.key;
-            return (
-              <Pressable
-                key={tab.key}
-                onPress={() => setAccountTab(tab.key)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                style={[styles.tabBtn, selected && styles.tabBtnActive]}>
-                <Text style={[styles.tabText, selected && styles.tabTextActive]} numberOfLines={1}>
-                  {tab.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+          <View style={styles.paneTopBar}>
+            <Pressable
+              onPress={() => setAccountPane('hub')}
+              accessibilityRole="button"
+              accessibilityLabel={t('commonBack')}
+              style={({ pressed }) => [styles.paneBackBtn, pressed && styles.activityRowPressed]}>
+              <FontAwesome5 name="chevron-left" size={12} color={theme.green} />
+              <Text style={styles.paneBackText}>{t('commonBack')}</Text>
+            </Pressable>
+            <Text style={styles.paneTitle} numberOfLines={1}>
+              {accountPane === 'profile' ? t('accountProfileSectionTitle') : t('accountSecurityTitle')}
+            </Text>
+            <View style={styles.paneSpacer} />
           </View>
         </View>
       ) : null}
@@ -762,88 +829,113 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
 
         {user ? (
           <>
-            {accountTab === 'home' ? (
+            {accountPane === 'hub' ? (
               <>
-            <View style={[styles.card, styles.profileHeroCard]}>
-              <View style={styles.profileRow}>
-                {profileImageUrl ? (
-                  <Image source={{ uri: profileImageUrl }} style={styles.avatar} />
-                ) : (
-                  <View style={styles.avatarFallback}>
-                    <Text style={styles.avatarText}>{user.nickname.slice(0, 1).toUpperCase()}</Text>
-                  </View>
-                )}
-                <View style={styles.profileText}>
-                  <Text style={styles.profileName}>{user.nickname}</Text>
-                  <Text style={styles.profileEmail}>{user.email}</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>{t('accountStatusTitle')}</Text>
-              <View style={styles.statusStack}>
-                <View style={styles.statusRow}>
-                  <View style={styles.statusIcon}>
-                    <FontAwesome5 name="calendar-check" size={12} color={theme.green} />
-                  </View>
-                  <Text style={styles.statusLabel}>{t('accountStatusJoined')}</Text>
-                  <Text style={styles.statusValue} numberOfLines={1}>{joinedAtLabel}</Text>
-                </View>
-                <View style={styles.statusRow}>
-                  <View style={styles.statusIcon}>
-                    <FontAwesome5 name="key" size={12} color={theme.green} />
-                  </View>
-                  <Text style={styles.statusLabel}>{t('accountStatusSignIn')}</Text>
-                  <Text style={styles.statusValue} numberOfLines={1}>{signInMethodLabel}</Text>
-                </View>
-                <Pressable
-                  onPress={() => router.push('/settings?tab=notifications')}
-                  style={({ pressed }) => [styles.statusRow, styles.statusRowLast, pressed && styles.activityRowPressed]}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('accountStatusPush')}>
-                  <View style={styles.statusIcon}>
-                    <FontAwesome5 name="bell" size={12} color={theme.green} />
-                  </View>
-                  <Text style={styles.statusLabel}>{t('accountStatusPush')}</Text>
-                  <View style={styles.statusValueRow}>
-                    <Text style={styles.statusValue} numberOfLines={1}>
-                      {notificationPrefs?.pushEnabled ? t('accountStatusPushOn') : t('accountStatusPushOff')}
-                    </Text>
-                    <FontAwesome5 name="chevron-right" size={10} color={theme.textDim} />
-                  </View>
-                </Pressable>
-              </View>
-            </View>
-
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>{t('accountActivityTitle')}</Text>
-              <View style={styles.activityLinkStack}>
-                {activityLinks.map((item, index) => (
-                  <Pressable
-                    key={item.key}
-                    onPress={item.onPress}
-                    style={({ pressed }) => [
-                      styles.activityLinkRow,
-                      index === activityLinks.length - 1 && styles.activityLinkRowLast,
-                      pressed && styles.activityRowPressed,
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel={item.title}>
-                    <View style={styles.activityIcon}>
-                      <FontAwesome5 name={item.icon} size={14} color={theme.green} />
+                <View style={styles.profileHub}>
+                  {profileImageUrl ? (
+                    <Image source={{ uri: profileImageUrl }} style={styles.profileHubAvatar} />
+                  ) : (
+                    <View style={styles.profileHubAvatarFallback}>
+                      <Text style={styles.profileHubAvatarText}>{user.nickname.slice(0, 1).toUpperCase()}</Text>
                     </View>
-                    <Text style={styles.activityTitle} numberOfLines={1}>{item.title}</Text>
-                    <FontAwesome5 name="chevron-right" size={10} color={theme.textDim} />
-                  </Pressable>
-                ))}
-              </View>
-            </View>
+                  )}
+                  <View style={styles.profileHubNameRow}>
+                    <Text style={styles.profileHubName}>{user.nickname}</Text>
+                    <Pressable
+                      onPress={() => setAccountPane('profile')}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('accountProfileSectionTitle')}
+                      style={({ pressed }) => [styles.profileEditBtn, pressed && styles.activityRowPressed]}>
+                      <FontAwesome5 name="pen" size={11} color={theme.green} />
+                    </Pressable>
+                  </View>
+                  <Text style={styles.profileHubEmail} numberOfLines={1}>
+                    {user.email}
+                  </Text>
+                  <View style={styles.profileHubMetaRow}>
+                    <View style={styles.profileHubMetaPill}>
+                      <Text style={styles.profileHubMetaText} numberOfLines={1}>
+                        {signInMethodLabel}
+                      </Text>
+                    </View>
+                    <View style={styles.profileHubMetaPill}>
+                      <Text style={styles.profileHubMetaText} numberOfLines={1}>
+                        {t('accountStatusJoined')}: {joinedAtLabel}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
 
+                {hubSections.map((section) => (
+                  <View key={section.id} style={styles.hubSection}>
+                    <Text style={styles.hubSectionKicker}>{section.title}</Text>
+                    <View style={styles.hubMenuStack}>
+                      {section.items.map((item, index) => (
+                        <Pressable
+                          key={item.key}
+                          onPress={item.onPress}
+                          style={({ pressed }) => [
+                            styles.hubMenuRow,
+                            index === section.items.length - 1 && styles.hubMenuRowLast,
+                            pressed && styles.activityRowPressed,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={item.title}>
+                          <View style={styles.hubMenuIcon}>
+                            <FontAwesome5 name={item.icon} size={14} color={theme.green} />
+                          </View>
+                          <View style={styles.hubMenuText}>
+                            <Text style={styles.hubMenuTitle} numberOfLines={1}>
+                              {item.title}
+                            </Text>
+                            {item.body ? (
+                              <Text style={styles.hubMenuBody} numberOfLines={2}>
+                                {item.body}
+                              </Text>
+                            ) : null}
+                          </View>
+                          {item.trailing ? (
+                            <Text style={styles.hubMenuTrailing} numberOfLines={1}>
+                              {item.trailing}
+                            </Text>
+                          ) : null}
+                          <FontAwesome5 name="chevron-right" size={10} color={theme.textDim} />
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                ))}
+
+                <View style={styles.hubFooter}>
+                  <View style={styles.hubFooterActions}>
+                    <Pressable
+                      disabled={saving}
+                      onPress={() => void logout()}
+                      hitSlop={6}
+                      accessibilityRole="button">
+                      <Text style={styles.hubFooterLink}>{t('accountLogout')}</Text>
+                    </Pressable>
+                    <Text style={styles.hubFooterSep}>|</Text>
+                    <Pressable
+                      disabled={saving}
+                      onPress={withdraw}
+                      hitSlop={6}
+                      accessibilityRole="button">
+                      <Text style={[styles.hubFooterLink, styles.hubFooterDanger]}>{t('accountWithdraw')}</Text>
+                    </Pressable>
+                  </View>
+                  <Text style={styles.hubVersionText}>
+                    {t('accountHubVersion', { version: appVersion })}
+                  </Text>
+                  <Text style={styles.copyrightText}>
+                    {t('accountFooterCopyright').replace('{{year}}', String(copyrightYear))}
+                  </Text>
+                </View>
               </>
             ) : null}
 
-            {accountTab === 'profile' ? (
+            {accountPane === 'profile' ? (
               <>
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t('accountEmailChangeTitle')}</Text>
@@ -911,7 +1003,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
               </>
             ) : null}
 
-            {accountTab === 'security' ? (
+            {accountPane === 'security' ? (
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t('accountSecurityTitle')}</Text>
               <View style={styles.subSection}>
@@ -1018,48 +1110,6 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
                 </Pressable>
               </View>
             </View>
-            ) : null}
-
-            {accountTab === 'info' ? (
-              <View style={styles.card}>
-                <Text style={styles.sectionTitle}>{t('accountServiceInfoTitle')}</Text>
-                <View style={styles.legalActionStack}>
-                  <Pressable
-                    onPress={() => openTerms('service')}
-                    style={({ pressed }) => [styles.legalActionRow, pressed && styles.activityRowPressed]}
-                    accessibilityRole="button">
-                    <Text style={styles.legalActionTitle}>{t('termsServiceTitle')}</Text>
-                    <FontAwesome5 name="chevron-right" size={12} color={theme.textDim} />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => openTerms('privacy')}
-                    style={({ pressed }) => [styles.legalActionRow, pressed && styles.activityRowPressed]}
-                    accessibilityRole="button">
-                    <Text style={styles.legalActionTitle}>{t('termsPrivacyTitle')}</Text>
-                    <FontAwesome5 name="chevron-right" size={12} color={theme.textDim} />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => router.push('/terms-history' as never)}
-                    style={({ pressed }) => [styles.legalActionRow, styles.legalActionRowLast, pressed && styles.activityRowPressed]}
-                    accessibilityRole="button">
-                    <Text style={styles.legalActionTitle}>{t('accountActivityTermsHistory')}</Text>
-                    <FontAwesome5 name="chevron-right" size={12} color={theme.textDim} />
-                  </Pressable>
-                </View>
-                <View style={styles.accountFooter}>
-                  <View style={styles.footerActionRow}>
-                    <Pressable disabled={saving} onPress={() => void logout()} style={styles.footerActionBtn}>
-                      <Text style={styles.footerActionText}>{t('accountLogout')}</Text>
-                    </Pressable>
-                    <Pressable disabled={saving} onPress={withdraw} style={[styles.footerActionBtn, styles.withdrawBtn]}>
-                      <Text style={[styles.footerActionText, styles.withdrawText]}>{t('accountWithdraw')}</Text>
-                    </Pressable>
-                  </View>
-                  <Text style={styles.copyrightText}>
-                    {t('accountFooterCopyright').replace('{{year}}', String(copyrightYear))}
-                  </Text>
-                </View>
-              </View>
             ) : null}
 
           </>

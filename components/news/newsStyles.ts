@@ -46,6 +46,12 @@ export function makeNewsStyles(
     },
     topFixed: fixedHeader.strip,
     topFixedWide: fixedHeader.stripWide,
+    topFixedStack: fixedHeader.fixedStack,
+    topFixedStackWide: fixedHeader.fixedStackWide,
+    topFixedSubmenu: fixedHeader.submenuStrip,
+    topFixedSubmenuWide: fixedHeader.submenuStripWide,
+    topFixedDigest: fixedHeader.digestSlot,
+    topFixedDigestWide: fixedHeader.digestSlotWide,
     list: {
       ...webScrollViewportStyle,
     },

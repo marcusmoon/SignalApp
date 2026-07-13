@@ -330,6 +330,7 @@ export function NewsIssuesContent({
                                 title={ref.title || ref.sourceName || ref.url || ''}
                                 titleLines={3}
                                 trailText={ref.sourceName?.trim() || null}
+                                sourceEntries={digestSourceIconEntries([ref])}
                                 timeLabel={
                                   ref.publishedAt
                                     ? formatFeedItemTimeLabel(ref.publishedAt, locale)

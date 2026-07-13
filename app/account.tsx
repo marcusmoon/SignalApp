@@ -723,28 +723,16 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             onPress: () => setAccountPane('security'),
           },
           {
-            key: 'terms-service',
+            key: 'terms',
             icon: 'file-alt',
-            title: t('termsServiceTitle'),
-            onPress: () => openTerms('service'),
-          },
-          {
-            key: 'terms-privacy',
-            icon: 'user-shield',
-            title: t('termsPrivacyTitle'),
-            onPress: () => openTerms('privacy'),
-          },
-          {
-            key: 'terms-history',
-            icon: 'history',
-            title: t('accountActivityTermsHistory'),
-            body: t('accountActivityTermsHistoryDesc'),
+            title: t('accountHubTermsTitle'),
+            body: t('accountHubTermsDesc'),
             onPress: () => router.push('/terms-history' as never),
           },
         ],
       },
     ];
-  }, [notificationPrefs?.pushEnabled, openTerms, router, t]);
+  }, [notificationPrefs?.pushEnabled, router, t]);
 
   const socialProviders = useMemo(() => {
     const base = ['kakao', 'naver', 'google'] as const;

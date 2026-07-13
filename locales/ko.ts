@@ -218,6 +218,8 @@ export const ko = {
   accountHubAccountSection: '계정',
   accountHubDisplaySettingsDesc: '화면 테마와 표시 옵션을 조정합니다.',
   accountHubVersion: '버전 {{version}}',
+  accountHubTermsTitle: '약관',
+  accountHubTermsDesc: '이용약관, 개인정보처리방침, 동의 이력을 확인합니다.',
   accountSecurityTitle: '로그인 및 보안',
   accountSecurityLead: '로그인 수단과 비밀번호를 한곳에서 관리합니다.',
   accountServiceInfoTitle: '서비스 정보',

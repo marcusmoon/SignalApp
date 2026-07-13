@@ -58,7 +58,7 @@ fetchXxx(params, { cacheMode: signalCacheMode(true) });
 
 | 화면 | 파일 |
 |---|---|
-| 뉴스 (가장 복잡) | `app/(tabs)/news.tsx` — `load(forceRefresh)`, digest, segment chip |
+| 뉴스 (가장 복잡) | `components/news/LegacyNewsFeedScreen.tsx` — `load(forceRefresh)`, digest, segment chip (`app/(tabs)/news.tsx`는 래퍼) |
 | 공시 | `app/(tabs)/disclosures.tsx` |
 | 마켓 | `app/(tabs)/signal.tsx` |
 | 게시판 | `app/(tabs)/board.tsx` |
@@ -115,8 +115,9 @@ digest-only API 갱신 UI는 두지 않는다. 스트립 **끝 refresh 타일**(
 | 1열 | iPhone·compact | **컨테이너 전폭** (부모 `topFixed` padding 16과 정렬). 항목 2개 이상이면 카드 너비 = 컨테이너 − **36px peek** 로 다음 카드 노출 |
 | 2열 | iPad·wide (`columns={2}`) | (컨테이너 − gap) × **0.48** |
 
-compact 1열은 스트립 `paddingHorizontal: 0` — `topFixed`의 `SCREEN_FIXED_HEADER_PADDING_HORIZONTAL`(16)만 사용.  
-하단 여백은 다이제스트 `marginBottom` 없이 `topFixed` `paddingBottom`(12) + `gap`(8)만 따른다.
+compact 1열은 스트립 `paddingHorizontal: 0` — `topFixed`의 `SCREEN_FIXED_HEADER_PADDING_HORIZONTAL`(16)만 사용.
+
+**다이제스트↔리스트 여백**: `SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP`(12) = `COMFORT_TOP_FIXED_GAP`. 다이제스트 슬롯 하단 패딩(`SCREEN_FIXED_DIGEST_PADDING_BOTTOM`)은 0. `ListHeaderComponent`에 표시할 내용이 없으면 `null`을 반환한다.
 
 **공시 다이제스트** (`DisclosureDigestSection`): 카드·스트립 **높이 고정**, 태그(칩)는 `DISCLOSURE_DIGEST_TAG_MAX_SINGLE`(3) / `DISCLOSURE_DIGEST_TAG_MAX_PAIR`(1, iPad·웹 2열)로 한 줄만 표시한다. 공시 탭 상단은 **미국 SEC / 한국 DART** 세그먼트로 시장을 구분한다(유형 칩 필터는 없음).
 
@@ -283,6 +284,7 @@ if (latestId !== seen) markScopeHasNewContent(scope);
 | 와치리스트에 글로벌 chip | 글로벌만 폴링 | segment별 poll |
 | PTR 끊김 | refresh 시작 시 pagination/hasMore 리셋 | `isRefresh` 분기 |
 | 탭 복귀 후 스피너 stuck | `refreshing` state 잔류 | `useResetRefreshingOnTabBlur` |
+| 다이제스트↔리스트 간격 과다 | 빈 `ListHeaderComponent`가 `paddingTop` 유지 | 내용 없으면 `null` 반환 |
 
 ## 11. 관련 파일
 

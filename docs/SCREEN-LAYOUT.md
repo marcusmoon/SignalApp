@@ -40,13 +40,33 @@
 |---|---:|---|
 | `SCREEN_HEADER_CONTENT_GAP` | 12 | `SignalHeader` 아래 → 날짜 바·세그먼트 등 **첫 고정 UI** |
 | `SCREEN_FIXED_HEADER_PADDING_TOP` | 12 | `topFixed` 블록 상단 (=`HEADER_CONTENT_GAP`) |
-| `SCREEN_FIXED_HEADER_PADDING_BOTTOM` | 16 | `topFixed` 블록 하단 |
-| `SCREEN_LIST_CONTENT_PADDING_TOP` | 12 | 고정 UI 아래 **스크롤 리스트** 상단 |
+| `SCREEN_FIXED_HEADER_PADDING_BOTTOM` | 16 | `topFixed` 블록 하단 (단일 스트립) |
+| `SCREEN_FIXED_DIGEST_PADDING_BOTTOM` | 0 | 다이제스트 슬롯 하단 |
+| `SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP` | 12 | 다이제스트 아래 **스크롤 리스트** 상단 (`COMFORT_TOP_FIXED_GAP`과 동일) |
+| `SCREEN_LIST_CONTENT_PADDING_TOP` | 12 | 고정 UI 아래 **스크롤 리스트** 상단 (다이제스트 없을 때) |
 | `SCREEN_WIDE_CONTENT_PADDING_TOP` | 16 | wide 2-pane 본문 컬럼 상단 |
 | `SCREEN_EMBEDDED_WIDE_PADDING_TOP` | 18 | 사이드바 임베디드 스택 본문 상단 |
 | `SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL` | 20 | 사이드바 임베디드 스택 가로 |
 
-### 레이어 구조 (iPhone 탭)
+### 레이어 구조 (iPhone 탭 — 뉴스·공시)
+
+```
+SafeAreaView edges={['top']}
+  SignalHeader compact
+  [OtaUpdateBanner]
+  topFixedStack (gap: COMFORT_TOP_FIXED_GAP = 12)
+    topFixedSubmenu (submenuStrip — theme.card + 하단 구분선)
+      세그먼트 pill
+    topFixedDigest (digestSlot — 배경 없음)
+      DigestPager / DisclosureDigestSection
+  [FeedNewContentChip]
+  FlatList  ← SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP (다이제스트 있을 때)
+  SignalFloatingTabBar
+```
+
+다이제스트가 없는 세그먼트(뉴스 관심·영상, 공시 종목 필터 등)는 `SCREEN_LIST_CONTENT_PADDING_TOP`(12)을 쓴다.
+
+### 레이어 구조 (iPhone 탭 — 일반)
 
 ```
 SafeAreaView edges={['top']}
@@ -59,8 +79,11 @@ SafeAreaView edges={['top']}
 ```
 
 - **`topFixed` 패턴**: 뉴스·시세·공시·유튜브·게시판·홈·시장 — `getScreenFixedHeaderStyles()` 스트립(`theme.card` + 하단 구분선)으로 스크롤 밖 고정. 알림함(`app/alerts.tsx`) 등 스택 화면도 동일 스트립 패턴.
+- **뉴스·공시 고정 스택**: 세그먼트는 `submenuStrip`(카드 배경), 다이제스트는 `digestSlot`(배경 없음)으로 분리. `fixedStack` 내부 gap은 `COMFORT_TOP_FIXED_GAP`(12).
 - **날짜 바 패턴**: 홈·시장·캘린더 — `SignalDateNavigator`를 고정 스트립(`topFixed` / `fixedTop`) 안에 배치.
-- **스택 서브탭**: 설정·My info — pill 바를 `topFixed` 스트립 안에 배치 (`settings.tsx`, `account.tsx`).
+- **설정**: More 탭에는 없음. **My info** 허브의 「환경 설정」에서 `app/settings?from=account`로 진입 — 이때 설정 상단 pill 서브탭은 숨긴다.
+- **My info**: 허브(`hub`) + 서브 pane(`profile` · `social` · `password`). iPhone 스택 헤더는 pane 제목, wide·embedded는 본문 상단 제목.
+- **마감 브리핑 상세** (`app/today-briefing.tsx`): Expo Stack 제목 = 「마감 브리핑」, 날짜는 헤더 바로 아래 고정 `dateBar`.
 
 ## Pull-to-refresh · chip · digest (상호작용)
 
@@ -71,7 +94,7 @@ PTR, 새 소식 chip, digest 갱신, 폴링, 캐시 모드는 **[FEED-INTERACTIO
 - digest·세그먼트·날짜·OTA는 **스크롤 밖** (`topFixed`).
 - digest 가로 스크롤: **자유 스크롤 스트립** (`WebHorizontalScrollStrip`) — 페이지 스냅·휠 가로채기 금지. 상세는 [FEED-INTERACTION.md §5](./FEED-INTERACTION.md#5-고정-digest).
 - chip·OTA strip은 **리스트 바로 위** (`UpdatePromptStrip`).
-- `ListHeaderComponent`에는 digest·필터·로딩을 넣지 않는다.
+- `ListHeaderComponent`에는 digest·필터·로딩을 넣지 않는다. 내용이 없으면 `null`을 반환해 빈 상단 패딩을 두지 않는다.
 
 ## 하단 스크롤 패딩
 
@@ -137,7 +160,7 @@ bottom: fabStackBottom(tabBarHeight, insets.bottom);
 2. Safe Area `edges` 표준 적용
 3. iPhone만 `SignalHeader compact` (wide는 중복 금지)
 4. 고정 UI 있으면 `getScreenFixedHeaderStyles()` → `topFixed` + `SCREEN_FIXED_HEADER_*`
-5. 리스트 `paddingTop`: `SCREEN_LIST_CONTENT_PADDING_TOP`
+5. 리스트 `paddingTop`: 다이제스트 있으면 `SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP`, 없으면 `SCREEN_LIST_CONTENT_PADDING_TOP`
 6. 하단: `tabScreenScrollBottomPadding` / `stackScreenScrollBottomPadding` / `SCREEN_WIDE_SCROLL_BOTTOM_BASE`
 7. 가로: `APP_CONTENT_SIDE_PADDING` (리터럴 `16` 지양)
 8. FAB: `fabStackBottom` (예: 시세 관심 탭 추가 버튼)

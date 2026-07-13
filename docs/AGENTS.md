@@ -103,7 +103,7 @@ npx tsc --noEmit
 |---|---|
 | 홈 | `app/(tabs)/home.tsx`, `components/signal/HomeFocusContent.tsx` |
 | 시장 | `app/(tabs)/signal.tsx`, `components/signal/MarketBriefingBlock.tsx` |
-| 뉴스 | `app/(tabs)/news.tsx`, `components/signal/NewsCard.tsx` |
+| 뉴스 | `app/(tabs)/news.tsx`, `components/news/LegacyNewsFeedScreen.tsx`, `components/signal/NewsCard.tsx` |
 | 공시 | `app/(tabs)/disclosures.tsx` |
 | 게시판 | `app/(tabs)/board.tsx` |
 | 시세 | `app/(tabs)/quotes.tsx` |
@@ -111,10 +111,12 @@ npx tsc --noEmit
 | 유튜브 | `app/(tabs)/youtube.tsx` |
 | 캘린더 | `app/calendar.tsx`, `components/signal/InvestMonthCalendar.tsx` |
 | 알림함 | [NOTIFICATION-INBOX.md](./NOTIFICATION-INBOX.md), `app/alerts.tsx` |
-| 피드 UX | [FEED-INTERACTION.md](./FEED-INTERACTION.md) |
-| 뉴스 이슈 자동화 | [NEWS-ISSUE-AUTOMATION.md](./NEWS-ISSUE-AUTOMATION.md), [schemas/news-issue-digest.v1.schema.json](./schemas/news-issue-digest.v1.schema.json) |
-| 오늘의 브리핑 자동화 | [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) |
+| 마감 브리핑 상세 | `app/today-briefing.tsx` |
+| 설정 | `app/settings.tsx`, `constants/settingsTabs.ts` |
 | 계정 | `app/account.tsx`, `services/appAuthSession.ts` |
+| 피드 UX | [FEED-INTERACTION.md](./FEED-INTERACTION.md) |
+| 뉴스 이슈 자동화 | [NEWS-ISSUE-AUTOMATION.md](./NEWS-ISSUE-AUTOMATION.md) |
+| 마감 브리핑 자동화 | [TODAY-BRIEFING-AUTOMATION.md](./TODAY-BRIEFING-AUTOMATION.md) |
 | Signal API | `integrations/signal-api/` |
 | Admin | `server/src/public/admin/` |
 | DB | `server/src/db/` |

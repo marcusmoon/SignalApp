@@ -68,3 +68,9 @@ GET /v1/today-briefings?from=<UTC_FROM>&to=<UTC_TO>&locale=ko&limit=10&offset=0
 - Signal Server GET API 응답에 없는 출처, URL, 수치, 제목은 만들지 않는다.
 - 확인 후 ingest 시 `notifyInbox=true`(기본)이면 알림함에 적재된다. `sendPush=false`로 푸시만 건너뛸 수 있다. 두 플래그는 독립이다.
 - 푸시 `deepLink`는 `/today-briefing?date=<briefingDate>`이다.
+
+## 앱 UI
+
+- 홈 카드: `components/signal/HomeFocusContent.tsx`
+- 상세 화면: `app/today-briefing.tsx` — Stack 제목 「마감 브리핑」, 날짜는 헤더 아래 `dateBar`. 본문 섹션(핵심 포인트·출처)은 `HomeDigestFeedRow` 스타일.
+- 레이아웃·여백: [DESIGN-GUIDE.md](./DESIGN-GUIDE.md), [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)

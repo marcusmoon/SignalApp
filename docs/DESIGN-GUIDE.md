@@ -68,6 +68,11 @@ pill 칩(`borderRadius: 999`)·아주 작은 radius는 예외로 유지한다.
 
 ### 화면 여백 (`constants/screenLayout.ts`)
 
+| 상수 | px | 용도 |
+|---|---:|---|
+| `SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP` | 12 | 다이제스트 아래 리스트 상단 |
+| `SCREEN_LIST_CONTENT_PADDING_TOP` | 12 | 고정 UI 아래 리스트 상단 (다이제스트 없을 때) |
+
 상세 수치·헬퍼는 [SCREEN-LAYOUT.md](./SCREEN-LAYOUT.md)를 따른다. 리터럴 `16`·`paddingBottom` 합산을 화면에 직접 쓰지 않는다.
 
 ## 반응형 레이아웃
@@ -92,11 +97,20 @@ pill 칩(`borderRadius: 999`)·아주 작은 radius는 예외로 유지한다.
 getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 ```
 
-- 배경 `theme.card` + 하단 hairline `theme.border`
+- 단일 스트립: 배경 `theme.card` + 하단 hairline `theme.border`
 - 패딩: `SCREEN_FIXED_HEADER_*` + 내부 `COMFORT_TOP_FIXED_GAP`
-- wide: `stripWide`로 상단만 `SCREEN_WIDE_CONTENT_PADDING_TOP`
+- wide: `stripWide` / `fixedStackWide`로 상단만 `SCREEN_WIDE_CONTENT_PADDING_TOP`
 
-적용 화면: 뉴스·공시·시세·유튜브·게시판·홈·시장·알림함·설정·계정 등.
+**뉴스·공시 분리 스택** (`topFixedStack`):
+
+| 슬롯 | 스타일 | 배경 |
+|---|---|---|
+| `topFixedSubmenu` | `submenuStrip` | `theme.card` + 구분선 |
+| `topFixedDigest` | `digestSlot` | 없음 (투명) |
+
+다이제스트↔리스트 간격은 `SCREEN_DIGEST_LIST_CONTENT_PADDING_TOP`(12) = 세그먼트↔다이제스트 `COMFORT_TOP_FIXED_GAP`과 동일.
+
+적용 화면: 뉴스·공시·시세·유튜브·게시판·홈·시장·알림함·설정 등.
 
 ### 세그먼트 pill
 
@@ -126,6 +140,21 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 ### 홈 게시판 (Board)
 
 - 최근 글 목록 또는 빈 상태 문구 (출처 숏컷 없음)
+
+### 더보기 · My info
+
+- **더보기** (`app/(tabs)/more.tsx`): 게시판·공시·유튜브·My info 숏컷, 참고 링크, 광고. 설정 메뉴는 없음.
+- **My info** (`app/account.tsx`): 허브 — 환경 설정(표시·알림·뉴스·시세·개발 모드), 내 활동(알림), 계정(프로필·소셜 연동·비밀번호·약관).
+- **설정** (`app/settings.tsx`): More가 아닌 My info에서 진입. `from=account`이면 상단 pill 서브탭 숨김. 탭 순서는 `constants/settingsTabs.ts` (`display` → `notifications` → `news` → `quotes` → `server`).
+- **개발자 캡슐**: `DeveloperFooterDock` — More 탭 하단 탭바 위 Marcus·LinkedIn (개발 모드에서만).
+
+### 마감 브리핑 상세
+
+`app/today-briefing.tsx` — 홈 카드 「전체 보기」 진입.
+
+- Stack 헤더 제목: `todayBriefingDetailKicker` (마감 브리핑)
+- 날짜: 헤더 바로 아래 고정 `dateBar` (본문 kicker 중복 없음)
+- 본문: 히어로 카드 → 핵심 포인트 · 출처 (`HomeDigestFeedRow` 스타일)
 
 ### 종목 상세 바로가기
 

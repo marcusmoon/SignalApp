@@ -10,6 +10,7 @@ import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
 import { makeAccountStyles } from '@/components/account/accountStyles';
 import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
+import { SETTINGS_TAB_ORDER, type SettingsTab } from '@/constants/settingsTabs';
 import { useLocale } from '@/contexts/LocaleContext';
 import type { MessageId } from '@/locales/messages';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -84,6 +85,25 @@ type HubMenuSection = {
 type AccountScreenProps = {
   /** iPad 사이드바 우측 패널에 그대로 삽입 */
   embedded?: boolean;
+};
+
+const SETTINGS_TAB_LABEL: Record<SettingsTab, MessageId> = {
+  display: 'settingsTabDisplay',
+  notifications: 'settingsTabNotifications',
+  news: 'settingsTabNews',
+  quotes: 'settingsTabQuotes',
+  server: 'settingsTabServer',
+};
+
+const SETTINGS_HUB_META: Record<
+  SettingsTab,
+  { icon: ComponentProps<typeof FontAwesome5>['name']; descId: MessageId }
+> = {
+  display: { icon: 'palette', descId: 'accountHubDisplaySettingsDesc' },
+  news: { icon: 'newspaper', descId: 'accountHubSettingsNewsDesc' },
+  quotes: { icon: 'chart-line', descId: 'accountHubSettingsQuotesDesc' },
+  notifications: { icon: 'bell', descId: 'accountActivityNotificationSettingsDesc' },
+  server: { icon: 'server', descId: 'accountHubSettingsServerDesc' },
 };
 
 export default function AccountScreen({ embedded = false }: AccountScreenProps) {
@@ -661,32 +681,27 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
     }
   }, [newPassword, session, t]);
 
-  const hubSections = useMemo((): HubMenuSection[] => {
+  const settingsHubSection = useMemo((): HubMenuSection => {
     const pushLabel = notificationPrefs?.pushEnabled
       ? t('accountStatusPushOn')
       : t('accountStatusPushOff');
+    return {
+      id: 'settings',
+      title: t('screenSettings'),
+      items: SETTINGS_TAB_ORDER.map((tab) => ({
+        key: tab,
+        icon: SETTINGS_HUB_META[tab].icon,
+        title: t(SETTINGS_TAB_LABEL[tab]),
+        body: t(SETTINGS_HUB_META[tab].descId),
+        trailing: tab === 'notifications' ? pushLabel : undefined,
+        onPress: () => router.push(`/settings?tab=${tab}` as Href),
+      })),
+    };
+  }, [notificationPrefs?.pushEnabled, router, t]);
+
+  const hubSections = useMemo((): HubMenuSection[] => {
     return [
-      {
-        id: 'settings',
-        title: t('accountHubSettingsSection'),
-        items: [
-          {
-            key: 'notifications',
-            icon: 'bell',
-            title: t('accountActivityNotificationSettings'),
-            body: t('accountActivityNotificationSettingsDesc'),
-            trailing: pushLabel,
-            onPress: () => router.push('/settings?tab=notifications'),
-          },
-          {
-            key: 'display',
-            icon: 'palette',
-            title: t('settingsTabDisplay'),
-            body: t('accountHubDisplaySettingsDesc'),
-            onPress: () => router.push('/settings?tab=display'),
-          },
-        ],
-      },
+      settingsHubSection,
       {
         id: 'activity',
         title: t('accountActivityTitle'),
@@ -735,7 +750,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         ],
       },
     ];
-  }, [notificationPrefs?.pushEnabled, router, t]);
+  }, [router, settingsHubSection, t]);
 
   const socialProviders = useMemo(() => {
     const base = ['kakao', 'naver', 'google'] as const;
@@ -1430,6 +1445,43 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
                 </View>
               </View>
             )}
+            <View style={styles.hubSection}>
+              <Text style={styles.hubSectionKicker}>{settingsHubSection.title}</Text>
+              <View style={styles.hubMenuStack}>
+                {settingsHubSection.items.map((item, index) => (
+                  <Pressable
+                    key={item.key}
+                    onPress={item.onPress}
+                    style={({ pressed }) => [
+                      styles.hubMenuRow,
+                      index === settingsHubSection.items.length - 1 && styles.hubMenuRowLast,
+                      pressed && styles.activityRowPressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.title}>
+                    <View style={styles.hubMenuIcon}>
+                      <FontAwesome5 name={item.icon} size={14} color={theme.green} />
+                    </View>
+                    <View style={styles.hubMenuText}>
+                      <Text style={styles.hubMenuTitle} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      {item.body ? (
+                        <Text style={styles.hubMenuBody} numberOfLines={2}>
+                          {item.body}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {item.trailing ? (
+                      <Text style={styles.hubMenuTrailing} numberOfLines={1}>
+                        {item.trailing}
+                      </Text>
+                    ) : null}
+                    <FontAwesome5 name="chevron-right" size={10} color={theme.textDim} />
+                  </Pressable>
+                ))}
+              </View>
+            </View>
           </>
         )}
       </WebWheelScrollView>

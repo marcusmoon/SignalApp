@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ReferenceLinksSection } from '@/components/more/ReferenceLinksSection';
+import { DeveloperFooterDock, useDeveloperFooterLayout } from '@/components/more/DeveloperFooterDock';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
@@ -44,7 +45,6 @@ const HUB_META: Record<
   disclosures: { href: '/(tabs)/disclosures' as Href, icon: 'file-text-o', titleId: 'tabDisclosures' },
   youtube: { href: '/(tabs)/youtube' as Href, icon: 'youtube-play', titleId: 'tabYoutube' },
   account: { href: '/account' as Href, icon: 'user-circle', titleId: 'screenAccount' },
-  settings: { href: '/settings' as Href, icon: 'cog', titleId: 'screenSettings' },
 };
 
 const GRID_GAP = 8;
@@ -91,6 +91,8 @@ export default function MoreHubScreen() {
   const isFocused = useIsFocused();
   const { width, useTwoPane, isIOS, isPad, isWeb } = useResponsiveLayout();
   const showIpadQuickLinks = useTwoPane;
+  const useCompactDeveloperFooter = useTwoPane;
+  const { scrollBottomPad: developerFooterScrollPad } = useDeveloperFooterLayout(useCompactDeveloperFooter);
   const useGridHub = !useTwoPane && ((isIOS && !isPad) || isWeb);
   const hubGridColumns = useMemo(() => resolveHubGridColumns(width, useGridHub), [useGridHub, width]);
   const hubCellWidth = useMemo(
@@ -180,9 +182,7 @@ export default function MoreHubScreen() {
       }
       if (item === 'account') {
         router.push({ pathname: '/account', params: { from: 'more' } } as never);
-        return;
       }
-      router.push({ pathname: '/settings', params: { from: 'sidebar', tab: 'display' } } as never);
     },
     [ipadNav, router, useTwoPane],
   );
@@ -203,7 +203,6 @@ export default function MoreHubScreen() {
             (item) =>
               item !== 'account' &&
               item !== 'youtube' &&
-              item !== 'settings' &&
               item !== 'board' &&
               item !== 'disclosures',
           )
@@ -230,7 +229,10 @@ export default function MoreHubScreen() {
           style={[styles.list, useTwoPane && styles.listWide]}
           contentContainerStyle={{
             paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
-            paddingBottom: tabScreenScrollBottomPadding(tabBarHeight, insets.bottom),
+            paddingBottom: Math.max(
+              tabScreenScrollBottomPadding(tabBarHeight, insets.bottom),
+              developerFooterScrollPad,
+            ),
           }}
           ListHeaderComponent={
             showIpadQuickLinks ? (
@@ -288,6 +290,7 @@ export default function MoreHubScreen() {
           }}
         />
       )}
+      <DeveloperFooterDock compact={useCompactDeveloperFooter} />
     </SafeAreaView>
   );
 }

@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Linking,
   Modal,
   Platform,
   Pressable,
@@ -21,10 +20,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFocusEffect, useIsFocused } from "expo-router/react-navigation";
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import developerAvatar from '@/assets/images/developer-avatar.png';
+import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { IpadSidebarScreen } from '@/components/layout/IpadSidebarScreen';
 import { WebWheelScrollView } from '@/components/layout/WebWheelScrollView';
-import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
 import { NEWS_SEGMENT_ORDER, type NewsSegmentKey } from '@/constants/newsSegment';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
@@ -32,17 +30,12 @@ import {
   SCREEN_EMBEDDED_WIDE_PADDING_HORIZONTAL,
   SCREEN_EMBEDDED_WIDE_PADDING_TOP,
   SCREEN_LIST_CONTENT_PADDING_TOP,
+  stackScreenScrollBottomPadding,
 } from '@/constants/screenLayout';
 import { webShellBackground } from '@/constants/webLayout';
-import {
-  tabBarHorizontalMargin,
-  tabBarPositionBottom,
-  TAB_BAR_FLOAT_RADIUS,
-} from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
-import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import { formatMessage, type AppLocale, type MessageId } from '@/locales/messages';
 import {
@@ -721,67 +714,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     langSegmentTextActive: {
       color: '#FFFFFF',
     },
-    /** 개발자 푸터 내부(플로팅 글래스 캡슐 위) */
-    settingsFooterDock: {
-      position: 'absolute',
-      pointerEvents: 'box-none',
-    },
-    settingsFooterDockCompact: {
-      left: 0,
-      right: 0,
-      alignItems: 'center',
-    },
-    settingsFooterCapsule: {
-      borderRadius: TAB_BAR_FLOAT_RADIUS,
-      overflow: 'hidden',
-      backgroundColor: theme.card,
-      borderWidth: 1,
-      borderColor: theme.border,
-    },
-    settingsFooterCapsuleWide: {
-      width: '100%',
-    },
-    settingsFooterCapsuleCompact: {
-      alignSelf: 'center',
-      flexGrow: 0,
-      flexShrink: 0,
-      borderRadius: 999,
-      maxWidth: '92%',
-    },
-    settingsFooterPress: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 16,
-      paddingVertical: 12,
-      paddingHorizontal: 14,
-    },
-    settingsFooterPressCompact: {
-      gap: 16,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      alignSelf: 'center',
-      flexGrow: 0,
-    },
-    settingsFooterAvatar: {
-      width: 36,
-      height: 36,
-      borderRadius: 8,
-    },
-    settingsFooterAvatarCompact: {
-      width: 28,
-      height: 28,
-      borderRadius: 8,
-    },
-    settingsFooterText: {
-      fontSize: sf(12),
-      fontWeight: '600',
-      color: theme.textMuted,
-      letterSpacing: 0.2,
-    },
-    settingsFooterTextWide: {
-      flexShrink: 1,
-    },
     cacheOneLiner: {
       fontSize: sf(12),
       fontWeight: '500',
@@ -1014,11 +946,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   });
 }
 
-/** 하단 플로팅 개발자 바 높이(탭바 캡슐과 비슷하게) */
-const SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT = 52;
-/** iPad·넓은 웹: 하단 중앙 소형 캡슐 */
-const SETTINGS_DEV_FOOTER_COMPACT_INNER_MIN_HEIGHT = 40;
-
 type SettingsScreenProps = {
   /** iPad 사이드바 우측 패널에 그대로 삽입 */
   embedded?: boolean;
@@ -1114,16 +1041,6 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   }, [customHex]);
 
   const { width: winW, height: winH } = useWindowDimensions();
-  const useCompactDeveloperFooter = useTwoPane;
-  const floatingFooterMarginH = tabBarHorizontalMargin();
-  const floatingFooterWidth = Math.min(winW - floatingFooterMarginH * 2, APP_CONTENT_MAX_WIDTH);
-  const floatingFooterLeft = Math.max(floatingFooterMarginH, (winW - floatingFooterWidth) / 2);
-  const developerFooterBottom = useCompactDeveloperFooter
-    ? Math.max(16, insets.bottom + 10)
-    : tabBarPositionBottom(insets.bottom);
-  const developerFooterInnerHeight = useCompactDeveloperFooter
-    ? SETTINGS_DEV_FOOTER_COMPACT_INNER_MIN_HEIGHT
-    : SETTINGS_DEV_FOOTER_INNER_MIN_HEIGHT;
   const accentPickerLayout = useMemo(() => {
     const sheetW = Math.min(winW - 40, 340);
     const cols = ACCENT_PALETTE_COLS;
@@ -1155,12 +1072,8 @@ export default function SettingsScreen({ embedded = false }: SettingsScreenProps
   );
 
   const scrollContentBottomPad = useMemo(
-    () =>
-      32 +
-      developerFooterBottom +
-      developerFooterInnerHeight +
-      12,
-    [developerFooterBottom, developerFooterInnerHeight],
+    () => stackScreenScrollBottomPadding(insets.bottom),
+    [insets.bottom],
   );
 
   useEffect(() => {
@@ -2262,68 +2175,6 @@ clearCalendarCache();
         ) : null}
 
       </WebWheelScrollView>
-      <View
-        pointerEvents="box-none"
-        style={[
-          styles.settingsFooterDock,
-          useCompactDeveloperFooter
-            ? styles.settingsFooterDockCompact
-            : {
-                left: floatingFooterLeft,
-                width: floatingFooterWidth,
-              },
-          { bottom: developerFooterBottom },
-        ]}>
-        <View
-          style={[
-            styles.settingsFooterCapsule,
-            useCompactDeveloperFooter
-              ? styles.settingsFooterCapsuleCompact
-              : styles.settingsFooterCapsuleWide,
-            Platform.OS === 'ios'
-              ? {
-                  shadowColor: '#191F28',
-                  shadowOpacity: 0.08,
-                  shadowRadius: useCompactDeveloperFooter ? 12 : 18,
-                  shadowOffset: { width: 0, height: useCompactDeveloperFooter ? 4 : 8 },
-                }
-              : {
-                  shadowColor: '#191F28',
-                  shadowOffset: { width: 0, height: useCompactDeveloperFooter ? 2 : 4 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: useCompactDeveloperFooter ? 10 : 14,
-                  elevation: useCompactDeveloperFooter ? 6 : 8,
-                },
-          ]}>
-          <Pressable
-            onPress={() => void Linking.openURL(DEVELOPER_LINKEDIN_URL)}
-            style={({ pressed }) => [
-              styles.settingsFooterPress,
-              useCompactDeveloperFooter && styles.settingsFooterPressCompact,
-              pressed && { opacity: 0.88 },
-            ]}
-            accessibilityRole="link"
-            accessibilityLabel={t('settingsDeveloperLinkedInA11y')}>
-            <Image
-              source={developerAvatar}
-              style={[
-                styles.settingsFooterAvatar,
-                useCompactDeveloperFooter && styles.settingsFooterAvatarCompact,
-              ]}
-              accessible={false}
-              importantForAccessibility="no"
-            />
-            <Text
-              style={[
-                styles.settingsFooterText,
-                !useCompactDeveloperFooter && styles.settingsFooterTextWide,
-              ]}
-              numberOfLines={1}>
-              {t('settingsDeveloperFooterLine')}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
       <Modal
         visible={quotesLimitPicker != null}
         transparent

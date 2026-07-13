@@ -209,7 +209,7 @@ export const en = {
   accountAuthLead: 'Sync watchlists and alerts to your account.',
   accountProfileTitle: 'My account',
   accountProfileLead: 'Alerts and push delivery will be stored and managed against this user.',
-  accountProfileEditLead: 'Update your nickname and profile image.',
+  accountProfileEditLead: 'Update email, nickname, and profile image.',
   accountPasswordEnabled: 'Password set',
   accountPasswordNotSet: 'No password',
   accountSocialLinkedCount: '{{count}} social',
@@ -218,9 +218,10 @@ export const en = {
   accountTabInfo: 'Info',
   accountHubSettingsSection: 'Settings',
   accountHubAccountSection: 'Account',
-  accountHubDisplaySettingsDesc: 'Adjust theme and display options.',
-  accountHubSettingsNewsDesc: 'Adjust news tab order and hashtag display.',
-  accountHubSettingsQuotesDesc: 'Manage watchlist and quotes screen options.',
+  accountHubDisplaySettingsDesc: 'Adjust theme, font size, and home display options.',
+  accountHubSettingsNewsDesc: 'Adjust news tab order, hashtag display, and unread check interval.',
+  accountHubSettingsQuotesDesc: 'Adjust quotes tab order, list limits, and change colors.',
+  accountHubSettingsNotificationsDesc: 'Tune push, briefing, and local notifications.',
   accountHubSettingsServerDesc: 'Change developer mode and Signal API connection.',
   accountHubVersion: 'Version {{version}}',
   accountHubTermsTitle: 'Terms',
@@ -231,6 +232,7 @@ export const en = {
   accountSocialLinkMenuDesc: 'Disconnect linked accounts or connect available providers.',
   accountPasswordMenuTitle: 'Password',
   accountPasswordMenuDesc: 'Set or change your email sign-in password.',
+  accountPasswordSetLead: 'Set an email sign-in password.',
   accountSocialNotLinked: 'Not linked',
   accountServiceInfoTitle: 'Service information',
   accountServiceInfoLead: 'Terms documents and account-level actions.',
@@ -323,7 +325,7 @@ export const en = {
   accountEmailSignupInfoTitle: 'Sign up with email',
   accountEmailSignupInfoLead: 'Enter the basic information used for email sign-in.',
   accountSocialLinkTitle: 'Link a social account',
-  accountSocialLinkHint: 'While signed in with email, you can link social providers to the same SIGNAL account.',
+  accountSocialLinkHint: 'Disconnect linked social accounts or connect new ones.',
   accountSocialLinkMore: 'Link',
   accountSocialLinkNone: 'No social providers are available to link. Enable them in server admin settings.',
   accountEmailDivider: 'or sign in with email',
@@ -455,7 +457,8 @@ export const en = {
   a11yYoutubeFilter: 'Open curated channel filter',
 
   settingsQuotesDisplaySection: 'Quotes screen',
-  settingsQuotesLead: 'US tickers used for the Watch segment on the Quotes tab. Saved on this device.',
+  settingsQuotesLead:
+    'Quotes screen options such as tab order, list limits, and change colors. Stored on this device only.',
   settingsQuotesSectionAdd: 'Add ticker',
   settingsQuotesHintTicker: 'US ticker (e.g. AAPL, SPY)',
   settingsQuotesPlaceholderTicker: 'Ticker',
@@ -510,6 +513,7 @@ export const en = {
 
   settingsSignalServerSection: 'Signal API',
   settingsSignalServerModeSection: 'Connection mode',
+  settingsDevModeLead: 'Change the Signal API connection mode and server URL. Saves only after /health succeeds.',
   settingsSignalServerShortNote: 'A mode change saves only after /health succeeds.',
   settingsSignalServerUrlA11y: 'Signal API base URL, {{url}}',
   settingsSignalServerProbeFailTitle: 'Connection check failed',
@@ -526,7 +530,8 @@ export const en = {
   settingsSignalServerCustomEmpty: 'Enter a URL.',
 
   settingsNewsDisplaySection: 'News screen',
-  settingsNewsTabLead: 'Options for the News screen. Stored on this device only.',
+  settingsNewsTabLead:
+    'Adjust news tab order, hashtag display, and unread check interval. Stored on this device only.',
   settingsNewsSegmentOrderKicker: 'News tab order',
   settingsNewsSegmentOrderHint:
     'Order of Global, Crypto, Watch, and Video on the News screen. Drag the ≡ handle to reorder.',

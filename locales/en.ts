@@ -444,6 +444,7 @@ export const en = {
   youtubeSortLatest: 'Latest',
   youtubeSortPopular: 'Popular',
   youtubeFilterChannel: 'Channel',
+  youtubeFilterChannelCount: 'Channel {{selected}}/{{total}}',
   youtubeOpenLinkA11y: 'Open in YouTube',
   youtubeMetaViewsLine: '{{views}} views · {{published}}',
   youtubeEmptyFeed: 'No videos to show. Try refreshing in a moment.',

@@ -443,6 +443,7 @@ export const ko = {
   youtubeSortLatest: '최신',
   youtubeSortPopular: '인기',
   youtubeFilterChannel: '채널',
+  youtubeFilterChannelCount: '채널 {{selected}}/{{total}}',
   youtubeOpenLinkA11y: 'YouTube에서 열기',
   youtubeMetaViewsLine: '조회 {{views}} · {{published}}',
   youtubeEmptyFeed: '표시할 영상이 없습니다. 잠시 후 새로고침해 보세요.',

@@ -379,6 +379,16 @@ export default function YoutubeScreen() {
       selectedHandles.length < curationHandles.length,
   );
 
+  const channelFilterLabel = useMemo(() => {
+    if (!channelFilterActive || !selectedHandles || !curationHandles) {
+      return t('youtubeFilterChannel');
+    }
+    return t('youtubeFilterChannelCount', {
+      selected: selectedHandles.length,
+      total: curationHandles.length,
+    });
+  }, [channelFilterActive, curationHandles, selectedHandles, t]);
+
   const toggleChannel = useCallback((handle: string) => {
     setFilterDraftHandles((prev) => {
       if (!prev) return prev;
@@ -464,10 +474,11 @@ export default function YoutubeScreen() {
                   channelFilterActive && styles.channelFilterChipActive,
                 ]}
                 accessibilityRole="button"
+                accessibilityLabel={channelFilterLabel}
                 accessibilityState={{ selected: channelFilterActive, disabled: !selectedHandles || !curationHandles }}>
                 <FontAwesome name="filter" size={11} color={channelFilterActive ? theme.green : theme.textMuted} />
                 <Text style={[styles.channelFilterText, channelFilterActive && styles.channelFilterTextActive]}>
-                  {t('youtubeFilterChannel')}
+                  {channelFilterLabel}
                 </Text>
               </Pressable>
             </View>

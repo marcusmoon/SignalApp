@@ -444,6 +444,7 @@ export const ja = {
   youtubeSortLatest: '最新',
   youtubeSortPopular: '人気',
   youtubeFilterChannel: 'チャンネル',
+  youtubeFilterChannelCount: 'チャンネル {{selected}}/{{total}}',
   youtubeOpenLinkA11y: 'YouTubeで開く',
   youtubeMetaViewsLine: '再生 {{views}} · {{published}}',
   youtubeEmptyFeed: '表示する動画がありません。しばらくしてから更新してください。',

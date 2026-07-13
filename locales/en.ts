@@ -63,7 +63,7 @@ export const en = {
   moreRefTitleCoinbase: 'Coinbase',
   settingsMoreReferenceLinksKicker: 'Quick links',
   settingsMoreReferenceLinksHint:
-    'Shown at the bottom of More on phones, and above My info in the left sidebar on web and iPad.',
+    'Shown at the bottom of More on phones, and in the left sidebar dock on web and iPad.',
   settingsMoreReferenceLinksSwitch: 'Show quick links',
   settingsMainEntrySection: 'Start screen',
   settingsMainEntryHint: 'Choose the first screen to show when the app opens.',

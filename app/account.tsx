@@ -13,6 +13,7 @@ import { makeAccountStyles } from '@/components/account/accountStyles';
 import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
 import { SETTINGS_TAB_ORDER, type SettingsTab } from '@/constants/settingsTabs';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useIpadSidebarNav } from '@/contexts/IpadSidebarNavContext';
 import type { MessageId } from '@/locales/messages';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
 import {
@@ -114,6 +115,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
   const { t, locale } = useLocale();
   const insets = useSafeAreaInsets();
   const { useTwoPane } = useResponsiveLayout();
+  const ipadNav = useIpadSidebarNav();
   const params = useLocalSearchParams<{ from?: string }>();
   const useIpadSidebar = useTwoPane && !embedded;
   const showStackHeader = !embedded && !useIpadSidebar;
@@ -695,10 +697,16 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         title: t(SETTINGS_TAB_LABEL[tab]),
         body: t(SETTINGS_HUB_META[tab].descId),
         trailing: tab === 'notifications' ? pushLabel : undefined,
-        onPress: () => router.push({ pathname: '/settings', params: { tab, from: 'account' } }),
+        onPress: () => {
+          if (embedded && ipadNav.isAvailable) {
+            ipadNav.showSettings(tab);
+            return;
+          }
+          router.push({ pathname: '/settings', params: { tab, from: 'account' } });
+        },
       })),
     };
-  }, [notificationPrefs?.pushEnabled, router, t]);
+  }, [embedded, ipadNav, notificationPrefs?.pushEnabled, router, t]);
 
   const hubSections = useMemo((): HubMenuSection[] => {
     return [

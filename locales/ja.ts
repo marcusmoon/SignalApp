@@ -63,7 +63,7 @@ export const ja = {
   moreRefTitleCoinbase: 'Coinbase',
   settingsMoreReferenceLinksKicker: 'クイックリンク',
   settingsMoreReferenceLinksHint:
-    'スマホではその他タブ下部、Web・iPadでは左サイドバーの My info の上に表示します。',
+    'スマホではその他タブ下部、Web・iPadでは左サイドバー下部に表示します。',
   settingsMoreReferenceLinksSwitch: 'クイックリンクを表示',
   settingsMainEntrySection: '最初の画面',
   settingsMainEntryHint: 'アプリ起動時に最初に表示する画面を選びます。',

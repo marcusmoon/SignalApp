@@ -143,10 +143,11 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 더보기 · My info
 
-- **더보기** (`app/(tabs)/more.tsx`): iPhone — 게시판·공시·유튜브·My info 숏컷 + 참고 링크 + 광고. 설정 메뉴는 없음. 웹·iPad — 허브/퀵링크 본문 없음(사이드바로 이동).
+- **더보기** (`app/(tabs)/more.tsx`): **iPhone만** — 게시판·공시·유튜브·My info 숏컷 + 참고 링크 + 광고. 설정 메뉴는 없음.
+- **웹·iPad 사이드바**: More 항목 없음. 순서 — 홈 · 뉴스 · 시장 · 시세 · 공시 · 유튜브 · 게시판 · **내 정보**. 설정은 내 정보 허브에서 진입.
 - **My info** (`app/account.tsx`): 허브 — 환경 설정(표시·알림·뉴스·시세·개발 모드), 내 활동(알림), 계정(프로필·소셜 연동·비밀번호·약관).
-- **설정** (`app/settings.tsx`): More가 아닌 My info에서 진입(iPhone). 웹·iPad는 사이드바 More 하위로 진입. `from=account`이면 상단 pill 서브탭 숨김. 탭 순서는 `constants/settingsTabs.ts` (`display` → `notifications` → `news` → `quotes` → `server`).
-- **개발자 캡슐**: `DeveloperFooterDock` — More 탭 하단 탭바 위 Marcus·LinkedIn (개발 모드에서만).
+- **설정** (`app/settings.tsx`): My info에서 진입. `from=account`이면 상단 pill 서브탭 숨김(iPhone). 웹·iPad embedded는 `ipadNav.showSettings`. 탭 순서는 `constants/settingsTabs.ts`.
+- **개발자 캡슐**: `DeveloperFooterDock` — More 탭 하단 탭바 위 Marcus·LinkedIn (개발 모드에서만, iPhone).
 
 ### 마감 브리핑 상세
 
@@ -165,10 +166,9 @@ getScreenFixedHeaderStyles(theme) // constants/screenFixedHeader.ts
 
 ### 더보기 숏링크 · 사이드바 퀵 링크
 
-- **iPhone**: `ReferenceLinksSection` — 아이콘 + 라벨, 4열 우선 (`onLayout` 실측 + 행 단위 flex). 더보기 하단에 표시.
-- **웹·iPad**: `SidebarReferenceLinksDock` — 파비콘만 4열 슬림 바. 좌측 사이드바 **My info 바로 위**.
+- **iPhone**: `ReferenceLinksSection` — 아이콘 + 라벨, 4열 우선. 더보기 하단에 표시.
+- **웹·iPad**: `SidebarReferenceLinksDock` — 파비콘만 4열 슬림 바. 좌측 사이드바 **하단 도크**.
 - 표시 여부: 설정 → 표시의 퀵 링크 토글 (`moreReferenceLinksPreference`).
-- `SignalSidebarTabBar`에서 More 탭 선택은 설정(display)으로 연다. More 하위 「퀵 링크」 내비 항목은 없음.
 
 ## 컴포넌트 재사용
 

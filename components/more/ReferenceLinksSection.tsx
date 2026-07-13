@@ -1,21 +1,27 @@
 import { Image } from 'expo-image';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { REFERENCE_LINK_ITEMS, type ReferenceLinkItem } from '@/constants/referenceAppLinks';
+import { APP_CONTENT_SIDE_PADDING } from '@/constants/responsiveLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
+import { useResponsiveLayout } from '@/hooks/useResponsiveLayout';
 import type { MessageId } from '@/locales/messages';
 import { markSourceIconFailed } from '@/services/sourceIcon';
-import { computeExternalLinkGridColumns } from '@/utils/externalLinkGrid';
+import {
+  computeExternalLinkGridColumns,
+  estimateExternalLinkContentWidth,
+  resolveExternalLinkGridInnerWidth,
+} from '@/utils/externalLinkGrid';
 import { externalLinkFaviconUrl } from '@/utils/externalLinkFavicon';
 import { openReferenceLink } from '@/utils/referenceLinkOpen';
 
 const GAP = 6;
-const ROW_GAP = 16;
-const BOX_PAD = 10;
-const MIN_CELL_WIDTH = 72;
+const ROW_GAP = 8;
+const BOX_PAD = 8;
+const MIN_CELL_WIDTH = 64;
 
 function chunkItems<T>(items: T[], columns: number): T[][] {
   const rows: T[][] = [];
@@ -100,25 +106,47 @@ function LinkGrid({ items, columns, styles, t }: LinkGridProps) {
 export function ReferenceLinksSection() {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
-  const [gridInnerWidth, setGridInnerWidth] = useState(0);
+  const { width: windowWidth } = useWindowDimensions();
+  const { useTwoPane, isWideLayout } = useResponsiveLayout();
+  const [measuredWidth, setMeasuredWidth] = useState(0);
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
+
+  const estimatedInnerWidth = useMemo(
+    () =>
+      estimateExternalLinkContentWidth({
+        windowWidth,
+        isWideLayout,
+        useTwoPane,
+        horizontalInset: APP_CONTENT_SIDE_PADDING,
+        boxPaddingHorizontal: BOX_PAD,
+      }),
+    [isWideLayout, useTwoPane, windowWidth],
+  );
+
+  const gridInnerWidth = useMemo(
+    () => resolveExternalLinkGridInnerWidth(measuredWidth, BOX_PAD, estimatedInnerWidth),
+    [estimatedInnerWidth, measuredWidth],
+  );
+
+  const preferredColumns = useTwoPane || windowWidth >= 560 ? 4 : 3;
 
   const columns = useMemo(
     () =>
-      computeExternalLinkGridColumns(
-        gridInnerWidth > 0 ? gridInnerWidth : 280,
-        REFERENCE_LINK_ITEMS.length,
-        { gap: GAP, minCellWidth: MIN_CELL_WIDTH, maxColumns: 4, preferredColumns: 3 },
-      ),
-    [gridInnerWidth],
+      computeExternalLinkGridColumns(gridInnerWidth, REFERENCE_LINK_ITEMS.length, {
+        gap: GAP,
+        minCellWidth: MIN_CELL_WIDTH,
+        maxColumns: 4,
+        preferredColumns,
+      }),
+    [gridInnerWidth, preferredColumns],
   );
 
   return (
     <View
       style={styles.box}
       onLayout={(event) => {
-        const innerWidth = Math.max(0, event.nativeEvent.layout.width - BOX_PAD * 2);
-        setGridInnerWidth((prev) => (prev === innerWidth ? prev : innerWidth));
+        const outerWidth = Math.max(0, event.nativeEvent.layout.width);
+        setMeasuredWidth((prev) => (prev === outerWidth ? prev : outerWidth));
       }}>
       <LinkGrid items={REFERENCE_LINK_ITEMS} columns={columns} styles={styles} t={t} />
     </View>
@@ -150,12 +178,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       minWidth: 0,
     },
     cell: {
-      minHeight: 74,
+      minHeight: 62,
       alignItems: 'center',
       justifyContent: 'center',
       borderRadius: 8,
-      paddingHorizontal: 5,
-      paddingVertical: 6,
+      paddingHorizontal: 4,
+      paddingVertical: 4,
     },
     cellPressed: {
       backgroundColor: theme.greenDim,
@@ -165,7 +193,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       height: 28,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 6,
+      marginBottom: 4,
     },
     favicon: {
       width: 24,
@@ -186,7 +214,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       color: theme.textDim,
       textAlign: 'center',
       lineHeight: sf(14),
-      minHeight: Math.round(sf(24)),
+      minHeight: Math.round(sf(22)),
     },
   });
 }

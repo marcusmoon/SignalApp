@@ -9,7 +9,6 @@ import type { AppTheme } from '@/constants/theme';
 import { webFlexFill, webScrollViewportStyle } from '@/constants/webLayout';
 import {
   getSegmentTabBarStyles,
-  SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_LIST_HEADER_PADDING_BOTTOM,
   SCREEN_LIST_HEADER_PADDING_TOP,
 } from '@/constants/segmentTabBar';
@@ -57,7 +56,6 @@ export function makeNewsStyles(
     },
     listContent: {
       paddingHorizontal: 16,
-      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
     },
     adBetweenGroups: {
       marginVertical: 16,

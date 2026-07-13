@@ -7,6 +7,7 @@ const ALL_KEYS: MoreHubRouteKey[] = [...MORE_HUB_ROUTE_ORDER_DEFAULT];
 
 function migrateHubKey(raw: unknown): MoreHubRouteKey | null {
   if (raw === 'todayBriefing') return 'disclosures';
+  if (raw === 'settings') return null;
   if (ALL_KEYS.includes(raw as MoreHubRouteKey)) return raw as MoreHubRouteKey;
   return null;
 }

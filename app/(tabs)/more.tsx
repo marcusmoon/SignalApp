@@ -92,7 +92,10 @@ export default function MoreHubScreen() {
   const { width, useTwoPane, isIOS, isPad, isWeb } = useResponsiveLayout();
   const showIpadQuickLinks = useTwoPane;
   const useCompactDeveloperFooter = useTwoPane;
-  const { scrollBottomPad: developerFooterScrollPad } = useDeveloperFooterLayout(useCompactDeveloperFooter);
+  const { scrollBottomPad: developerFooterScrollPad } = useDeveloperFooterLayout(
+    useCompactDeveloperFooter,
+    useCompactDeveloperFooter ? 0 : tabBarHeight,
+  );
   const useGridHub = !useTwoPane && ((isIOS && !isPad) || isWeb);
   const hubGridColumns = useMemo(() => resolveHubGridColumns(width, useGridHub), [useGridHub, width]);
   const hubCellWidth = useMemo(
@@ -290,14 +293,14 @@ export default function MoreHubScreen() {
           }}
         />
       )}
-      <DeveloperFooterDock compact={useCompactDeveloperFooter} />
+      <DeveloperFooterDock compact={useCompactDeveloperFooter} tabBarHeight={tabBarHeight} />
     </SafeAreaView>
   );
 }
 
 function makeStyles(theme: AppTheme, sf: (n: number) => number, hubTileLayout: HubTileLayout) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: webShellBackground(theme.bg) },
+    safe: { flex: 1, backgroundColor: webShellBackground(theme.bg), overflow: 'visible' as const },
     list: {
       flex: 1,
       width: '100%',

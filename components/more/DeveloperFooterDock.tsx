@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import developerAvatar from '@/assets/images/developer-avatar.png';
 import { DEVELOPER_LINKEDIN_URL } from '@/constants/developer';
 import { APP_CONTENT_MAX_WIDTH } from '@/constants/responsiveLayout';
-import { tabBarHorizontalMargin, tabBarPositionBottom, TAB_BAR_FLOAT_RADIUS } from '@/constants/tabBar';
+import { tabBarBottomInset, tabBarHorizontalMargin, TAB_BAR_FLOAT_RADIUS } from '@/constants/tabBar';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
@@ -16,24 +16,30 @@ export const DEVELOPER_FOOTER_COMPACT_INNER_MIN_HEIGHT = 40;
 type DeveloperFooterDockProps = {
   /** iPad·넓은 웹: 하단 중앙 소형 캡슐 */
   compact?: boolean;
+  /** 탭 화면: 플로팅 탭바 높이 */
+  tabBarHeight?: number;
 };
 
-export function useDeveloperFooterLayout(compact = false) {
+const DEVELOPER_FOOTER_ABOVE_TAB_GAP = 8;
+
+export function useDeveloperFooterLayout(compact = false, tabBarHeight = 0) {
   const insets = useSafeAreaInsets();
 
   return useMemo(() => {
-    const bottom = compact ? Math.max(16, insets.bottom + 10) : tabBarPositionBottom(insets.bottom);
+    const bottom = compact
+      ? Math.max(16, insets.bottom + 10)
+      : tabBarHeight + tabBarBottomInset(insets.bottom) + DEVELOPER_FOOTER_ABOVE_TAB_GAP;
     const innerHeight = compact ? DEVELOPER_FOOTER_COMPACT_INNER_MIN_HEIGHT : DEVELOPER_FOOTER_INNER_MIN_HEIGHT;
     const scrollBottomPad = 32 + bottom + innerHeight + 12;
     return { bottom, innerHeight, scrollBottomPad };
-  }, [compact, insets.bottom]);
+  }, [compact, insets.bottom, tabBarHeight]);
 }
 
-export function DeveloperFooterDock({ compact = false }: DeveloperFooterDockProps) {
+export function DeveloperFooterDock({ compact = false, tabBarHeight = 0 }: DeveloperFooterDockProps) {
   const { theme, scaleFont } = useSignalTheme();
   const { t } = useLocale();
   const { width: winW } = useWindowDimensions();
-  const { bottom } = useDeveloperFooterLayout(compact);
+  const { bottom } = useDeveloperFooterLayout(compact, tabBarHeight);
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
 
   const floatingFooterMarginH = tabBarHorizontalMargin();
@@ -97,6 +103,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     dock: {
       position: 'absolute',
       pointerEvents: 'box-none',
+      zIndex: 20,
     },
     dockCompact: {
       left: 0,

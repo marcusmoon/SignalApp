@@ -6,6 +6,7 @@ import {
   SCREEN_FIXED_HEADER_PADDING_BOTTOM,
   SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
   SCREEN_FIXED_HEADER_PADDING_TOP,
+  SCREEN_FIXED_DIGEST_PADDING_BOTTOM,
   SCREEN_LIST_CONTENT_PADDING_TOP,
   SCREEN_WIDE_CONTENT_PADDING_TOP,
 } from '@/constants/screenLayout';
@@ -58,11 +59,11 @@ export function getScreenFixedHeaderStyles(theme: AppTheme) {
     /** 다이제스트 슬롯 — 카드 배경 없음 */
     digestSlot: {
       paddingHorizontal: SCREEN_FIXED_HEADER_PADDING_HORIZONTAL,
-      paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
+      paddingBottom: SCREEN_FIXED_DIGEST_PADDING_BOTTOM,
     },
     digestSlotWide: {
       paddingHorizontal: 0,
-      paddingBottom: SCREEN_FIXED_HEADER_PADDING_BOTTOM,
+      paddingBottom: SCREEN_FIXED_DIGEST_PADDING_BOTTOM,
     },
   } as const;
 }

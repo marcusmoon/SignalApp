@@ -4,9 +4,9 @@ export type SettingsTab = 'display' | 'notifications' | 'news' | 'quotes' | 'ser
 
 export const SETTINGS_TAB_ORDER: SettingsTab[] = [
   'display',
+  'notifications',
   'news',
   'quotes',
-  'notifications',
   'server',
 ];
 
@@ -15,7 +15,7 @@ export const SETTINGS_TABS: { key: SettingsTab; labelId: MessageId }[] = [
   { key: 'notifications', labelId: 'settingsTabNotifications' },
   { key: 'news', labelId: 'settingsTabNews' },
   { key: 'quotes', labelId: 'settingsTabQuotes' },
-  { key: 'server', labelId: 'settingsTabServer' },
+  { key: 'server', labelId: 'settingsTabDevMode' },
 ];
 
 export function isSettingsTab(value: string | undefined): value is SettingsTab {

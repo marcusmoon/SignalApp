@@ -18,7 +18,7 @@ export const SEGMENT_TAB_BTN_PADDING_V = 10;
 /** 라벨 — 시세 화면 세그먼트와 동일 */
 export const SEGMENT_TAB_FONT_SIZE = 13;
 export const SEGMENT_TAB_LINE_HEIGHT = 17;
-export const SEGMENT_TAB_FONT_WEIGHT = '800' as const;
+export const SEGMENT_TAB_FONT_WEIGHT = '700' as const;
 
 export const SEGMENT_TAB_ACTIVE_TEXT = '#FFFFFF';
 

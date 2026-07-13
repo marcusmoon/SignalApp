@@ -89,7 +89,7 @@ export function makeQuotesStyles(
     swipeDeleteText: {
       color: '#FFFFFF',
       fontSize: sf(15),
-      fontWeight: '800',
+      fontWeight: '600',
     },
     cardTop: {
       flexDirection: 'row',

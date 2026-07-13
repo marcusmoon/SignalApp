@@ -107,7 +107,7 @@ const markStyles = StyleSheet.create({
     overflow: 'hidden',
   },
   glyph: {
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -0.2,
   },
 });
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   overflowText: {
-    fontWeight: '800',
+    fontWeight: '600',
     color: '#9AA3B2',
   },
 });

@@ -192,7 +192,7 @@ function makeStyles(theme: AppTheme, compact: boolean) {
     },
     monthTitle: {
       fontSize: compact ? 13 : 16,
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.text,
       flex: 1,
       textAlign: 'center',
@@ -227,8 +227,8 @@ function makeStyles(theme: AppTheme, compact: boolean) {
     cellPressed: { opacity: 0.85 },
     cellDisabled: { opacity: 0.32 },
     dayNum: { fontSize: compact ? 11 : 13, fontWeight: '700', color: theme.text },
-    dayNumSelected: { color: '#FFFFFF', fontWeight: '800' },
-    dayNumToday: { fontWeight: '900', color: theme.text },
+    dayNumSelected: { color: '#FFFFFF', fontWeight: '600' },
+    dayNumToday: { fontWeight: '700', color: theme.text },
     dayNumDisabled: { color: theme.textDim },
     todayMarker: {
       position: 'absolute',

@@ -720,7 +720,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     emptyTitle: {
       fontSize: sf(18),
       lineHeight: sf(25),
-      fontWeight: '900',
+      fontWeight: '700',
       color: theme.text,
       marginBottom: 8,
     },
@@ -773,12 +773,12 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     modalTitle: {
       color: theme.text,
       fontSize: sf(17),
-      fontWeight: '900',
+      fontWeight: '700',
     },
     modalClose: {
       color: theme.green,
       fontSize: sf(14),
-      fontWeight: '900',
+      fontWeight: '700',
     },
     modalFoot: { paddingTop: 10 },
     modalTodayBtn: {
@@ -793,7 +793,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     modalTodayText: {
       color: theme.green,
       fontSize: sf(14),
-      fontWeight: '900',
+      fontWeight: '700',
     },
   });
 }

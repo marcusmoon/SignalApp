@@ -369,7 +369,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, hubTileLayout: H
     },
     unreadBadgeText: {
       fontSize: sf(10),
-      fontWeight: '900',
+      fontWeight: '700',
       color: '#F04452',
       letterSpacing: 0.2,
     },
@@ -382,7 +382,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, hubTileLayout: H
       flex: 1,
       minWidth: 0,
       fontSize: sf(13),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.text,
       lineHeight: sf(17),
     },

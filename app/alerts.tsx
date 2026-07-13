@@ -428,7 +428,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
     },
-    filterTabText: { fontSize: sf(12), fontWeight: '800', color: theme.textMuted },
+    filterTabText: { fontSize: sf(12), fontWeight: '600', color: theme.textMuted },
     filterTabTextActive: { color: theme.green },
     filterTabs: {
       flex: 1,
@@ -451,8 +451,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 16,
       marginBottom: 4,
     },
-    candidateTitle: { flex: 1, fontSize: sf(14), fontWeight: '900', color: theme.text },
-    candidateLink: { fontSize: sf(12), fontWeight: '800', color: theme.green },
+    candidateTitle: { flex: 1, fontSize: sf(14), fontWeight: '700', color: theme.text },
+    candidateLink: { fontSize: sf(12), fontWeight: '600', color: theme.green },
     candidateHint: { fontSize: sf(11), color: theme.textMuted, lineHeight: sf(16), marginBottom: 14 },
     candidateCard: {
       paddingVertical: 12,
@@ -508,7 +508,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     swipeDeleteText: {
       color: '#FFFFFF',
       fontSize: sf(15),
-      fontWeight: '800',
+      fontWeight: '600',
     },
     alertTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
     typeBadge: {
@@ -519,7 +519,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingVertical: 3,
       borderRadius: 999,
     },
-    typeBadgeText: { fontSize: sf(10), fontWeight: '900', color: theme.green },
+    typeBadgeText: { fontSize: sf(10), fontWeight: '700', color: theme.green },
     alertTitle: { fontSize: sf(13), fontWeight: '700', color: theme.text, marginBottom: 6 },
     alertBody: { fontSize: sf(12), color: theme.textMuted, lineHeight: sf(18) },
     alertFooter: {
@@ -540,7 +540,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingVertical: 2,
       borderRadius: 6,
     },
-    highText: { fontSize: sf(10), fontWeight: '900', color: '#FF6B6B' },
+    highText: { fontSize: sf(10), fontWeight: '700', color: '#FF6B6B' },
     loadingCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     authGate: { flex: 1, justifyContent: 'center', paddingHorizontal: 16 },
     authGateTopBar: { alignItems: 'flex-end', marginBottom: 16 },
@@ -552,8 +552,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       padding: 18,
       gap: 16,
     },
-    authGateKicker: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
-    authGateTitle: { color: theme.text, fontSize: sf(21), lineHeight: sf(27), fontWeight: '900' },
+    authGateKicker: { color: theme.green, fontSize: sf(11), fontWeight: '700' },
+    authGateTitle: { color: theme.text, fontSize: sf(21), lineHeight: sf(27), fontWeight: '700' },
     authGateBody: { color: theme.textMuted, fontSize: sf(13), lineHeight: sf(19) },
     authGateButton: {
       minHeight: 44,
@@ -563,6 +563,6 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       backgroundColor: theme.green,
       marginTop: 4,
     },
-    authGateButtonText: { color: '#06100B', fontSize: sf(14), fontWeight: '900' },
+    authGateButtonText: { color: '#06100B', fontSize: sf(14), fontWeight: '700' },
   });
 }

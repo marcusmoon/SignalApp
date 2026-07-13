@@ -94,8 +94,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       padding: 16,
       gap: 16,
     },
-    kicker: { color: theme.green, fontSize: sf(11), fontWeight: '900' },
-    title: { color: theme.text, fontSize: sf(20), lineHeight: sf(27), fontWeight: '900' },
+    kicker: { color: theme.green, fontSize: sf(11), fontWeight: '700' },
+    title: { color: theme.text, fontSize: sf(20), lineHeight: sf(27), fontWeight: '700' },
     summary: { color: theme.textMuted, fontSize: sf(12), lineHeight: sf(18), fontWeight: '700' },
     rowCard: {
       borderRadius: 8,
@@ -107,7 +107,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     rowPressed: { opacity: 0.76 },
     rowTop: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-    rowTitle: { flex: 1, color: theme.text, fontSize: sf(14), lineHeight: sf(20), fontWeight: '900' },
+    rowTitle: { flex: 1, color: theme.text, fontSize: sf(14), lineHeight: sf(20), fontWeight: '700' },
     badge: {
       borderRadius: 999,
       borderWidth: 1,
@@ -116,9 +116,9 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 8,
       paddingVertical: 3,
     },
-    badgeText: { color: theme.green, fontSize: sf(10), fontWeight: '900' },
+    badgeText: { color: theme.green, fontSize: sf(10), fontWeight: '700' },
     meta: { color: theme.textDim, fontSize: sf(11), fontWeight: '700' },
     empty: { color: theme.textMuted, textAlign: 'center', marginTop: 20, fontSize: sf(13), fontWeight: '700' },
-    error: { color: theme.danger, fontSize: sf(12), lineHeight: sf(18), fontWeight: '800' },
+    error: { color: theme.danger, fontSize: sf(12), lineHeight: sf(18), fontWeight: '600' },
   });
 }

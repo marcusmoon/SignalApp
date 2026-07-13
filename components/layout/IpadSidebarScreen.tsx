@@ -106,7 +106,7 @@ function makeStyles(
     },
     backText: {
       fontSize: sf(13),
-      fontWeight: '900',
+      fontWeight: '700',
       color: theme.green,
     },
     title: {
@@ -114,7 +114,7 @@ function makeStyles(
       textAlign: 'center',
       fontSize: sf(18),
       lineHeight: sf(24),
-      fontWeight: '900',
+      fontWeight: '700',
       color: theme.text,
     },
     spacer: {

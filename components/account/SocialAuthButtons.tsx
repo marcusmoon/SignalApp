@@ -113,8 +113,8 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     brandNaver: { backgroundColor: '#03C75A', borderColor: 'rgba(255,255,255,0.2)' },
     brandGoogle: { backgroundColor: '#FFFFFF', borderColor: '#E2E6EA' },
     brandApple: { backgroundColor: theme.text, borderColor: theme.text },
-    brandLetter: { color: '#FFFFFF', fontSize: sf(15), fontWeight: '900' },
-    label: { color: theme.text, fontSize: sf(14), fontWeight: '900' },
+    brandLetter: { color: '#FFFFFF', fontSize: sf(15), fontWeight: '700' },
+    label: { color: theme.text, fontSize: sf(14), fontWeight: '700' },
     labelDark: { color: '#191600' },
     labelLight: { color: '#FFFFFF' },
   });

@@ -660,7 +660,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     backToMoreBtnPressed: { opacity: 0.72 },
     backToMoreText: {
       fontSize: sf(12),
-      fontWeight: '900',
+      fontWeight: '700',
       color: theme.green,
     },
     footerLoading: {
@@ -684,7 +684,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     footerLoadMoreText: {
       fontSize: sf(13),
-      fontWeight: '900',
+      fontWeight: '700',
       color: theme.bg,
     },
     channelFilterChipActive: {
@@ -697,7 +697,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     channelFilterText: {
       fontSize: sf(12),
       lineHeight: sf(17),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.textDim,
     },
     channelFilterTextActive: {

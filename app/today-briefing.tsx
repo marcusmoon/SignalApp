@@ -209,7 +209,7 @@ function makeStyles(
     errorText: {
       fontSize: sf(13),
       lineHeight: sf(18),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.danger,
     },
     emptyText: {
@@ -223,7 +223,7 @@ function makeStyles(
     kickerText: {
       fontSize: sf(13),
       lineHeight: sf(18),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.textDim,
     },
     heroCard: {

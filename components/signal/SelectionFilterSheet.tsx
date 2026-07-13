@@ -184,7 +184,7 @@ function makeSheetStyles(theme: AppTheme, sf: (n: number) => number) {
     title: {
       flex: 1,
       fontSize: sf(18),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.text,
       lineHeight: sf(24),
     },
@@ -227,7 +227,7 @@ function makeSheetStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     doneBtnText: {
       fontSize: sf(16),
-      fontWeight: '800',
+      fontWeight: '600',
       color: '#FFFFFF',
     },
   });
@@ -247,7 +247,7 @@ function makeToolbarStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     sectionLabel: {
       fontSize: sf(12),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.textMuted,
       letterSpacing: 0.15,
     },
@@ -276,7 +276,7 @@ function makeToolbarStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     chipText: {
       fontSize: sf(12),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.green,
     },
   });

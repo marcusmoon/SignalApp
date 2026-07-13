@@ -24,6 +24,10 @@ import {
   FEED_SUMMARY_PX,
 } from '@/constants/feedTypography';
 import { UI_RADIUS_CARD, UI_RADIUS_CARD_LG } from '@/constants/uiCornerRadius';
+import {
+  UI_FONT_WEIGHT_EMPHASIS,
+  UI_FONT_WEIGHT_SECTION,
+} from '@/constants/uiFontWeight';
 import { AiBadge } from '@/components/signal/AiBadge';
 import { HomeSectionHeader } from '@/components/signal/HomeSectionHeader';
 import { communitySourceLabelId } from '@/components/community/CommunityPostCard';
@@ -1141,7 +1145,7 @@ function makeStyles(
     errorText: {
       fontSize: sf(13),
       lineHeight: sf(18),
-      fontWeight: '800',
+      fontWeight: UI_FONT_WEIGHT_EMPHASIS,
       color: theme.danger,
     },
     loadingBox: {
@@ -1167,7 +1171,7 @@ function makeStyles(
     heroKicker: {
       fontSize: sf(18),
       lineHeight: sf(24),
-      fontWeight: '900',
+      fontWeight: UI_FONT_WEIGHT_SECTION,
       color: theme.text,
     },
     heroCard: {

@@ -65,7 +65,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.text,
       fontSize: ft.ff(13),
       lineHeight: sf(20),
-      fontWeight: '800',
+      fontWeight: '600',
     },
     bullet: {
       color: theme.textMuted,

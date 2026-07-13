@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   badge: {
     alignSelf: 'flex-start',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
     marginBottom: 6,
     letterSpacing: 0.5,
   },

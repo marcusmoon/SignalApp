@@ -395,7 +395,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     paneBackText: {
       fontSize: sf(13),
       lineHeight: sf(17),
-      fontWeight: '900',
+      fontWeight: '700',
       color: theme.green,
     },
     paneTitle: {
@@ -403,7 +403,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       textAlign: 'center',
       fontSize: sf(18),
       lineHeight: sf(24),
-      fontWeight: '900',
+      fontWeight: '700',
       color: theme.text,
     },
     paneSpacer: {
@@ -431,7 +431,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     categoryTabText: {
       fontSize: sf(13),
       lineHeight: sf(17),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.textDim,
     },
     categoryTabTextActive: { color: '#FFFFFF' },
@@ -448,7 +448,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
     errorText: {
       fontSize: sf(12),
       lineHeight: sf(18),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.danger,
     },
     empty: {
@@ -460,7 +460,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, ft: FeedContentT
       color: theme.textMuted,
       fontSize: sf(14),
       lineHeight: sf(20),
-      fontWeight: '800',
+      fontWeight: '600',
       textAlign: 'center',
     },
     issueList: { gap: 16 },

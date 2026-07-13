@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
   badge: {
     alignSelf: 'flex-start',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
     color: SIGNAL.textDim,
     marginBottom: 8,
     letterSpacing: 0.5,

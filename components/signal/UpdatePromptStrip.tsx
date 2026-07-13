@@ -87,7 +87,7 @@ export function useUpdatePromptMessageStyle(align: 'center' | 'left' = 'center')
       fontSize: scaleFont(13),
       lineHeight: scaleFont(18),
       color: pillText,
-      fontWeight: '800' as const,
+      fontWeight: '600' as const,
       textAlign: align,
     };
   }, [align, scaleFont, theme]);
@@ -125,7 +125,7 @@ function makePillContentStyles(theme: AppTheme, sf: (n: number) => number) {
       fontSize: sf(13),
       lineHeight: sf(18),
       color: pillText,
-      fontWeight: '800' as const,
+      fontWeight: '600' as const,
       textAlign: 'center' as const,
     },
   };

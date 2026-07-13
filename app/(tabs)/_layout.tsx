@@ -176,7 +176,7 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontSize: 11,
           lineHeight: 13,
-          fontWeight: Platform.OS === 'ios' ? '800' : '700',
+          fontWeight: Platform.OS === 'ios' ? '700' : '600',
           letterSpacing: Platform.OS === 'ios' ? -0.15 : 0,
           marginTop: 2,
           marginBottom: 0,

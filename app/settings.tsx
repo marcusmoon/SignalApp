@@ -329,7 +329,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     cardTitle: {
       fontSize: sf(13),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.textMuted,
       marginBottom: 6,
     },
@@ -364,7 +364,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 20,
     },
     notificationText: { flex: 1, minWidth: 0 },
-    notificationTitle: { fontSize: sf(14), fontWeight: '900', color: theme.text },
+    notificationTitle: { fontSize: sf(14), fontWeight: '700', color: theme.text },
     notificationHint: {
       fontSize: sf(11),
       fontWeight: '600',
@@ -383,7 +383,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       gap: 20,
     },
     notificationSubRowDisabled: { opacity: 0.45 },
-    notificationSubLabel: { flex: 1, fontSize: sf(13), fontWeight: '800', color: theme.textMuted },
+    notificationSubLabel: { flex: 1, fontSize: sf(13), fontWeight: '600', color: theme.textMuted },
     notificationSubHint: {
       fontSize: sf(11),
       fontWeight: '600',
@@ -410,7 +410,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     section: {
       fontSize: sf(14),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.text,
       marginBottom: 8,
     },
@@ -447,7 +447,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderRadius: 8,
       backgroundColor: theme.green,
     },
-    addBtnText: { fontSize: sf(14), fontWeight: '800', color: '#FFFFFF' },
+    addBtnText: { fontSize: sf(14), fontWeight: '600', color: '#FFFFFF' },
     resetBtn: {
       paddingVertical: 12,
       alignItems: 'center',
@@ -468,7 +468,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     displayCardKicker: {
       fontSize: sf(11),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.textMuted,
       letterSpacing: 1.1,
       textTransform: 'uppercase',
@@ -484,7 +484,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     themePreviewLabel: {
       fontSize: sf(11),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.textDim,
       marginBottom: 8,
     },
@@ -596,7 +596,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 8,
       paddingVertical: 10,
       fontSize: sf(15),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.text,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
@@ -669,7 +669,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     accentModalCancelBtnText: {
       fontSize: sf(13),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.text,
     },
     accentModalApplyBtn: {
@@ -680,7 +680,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     accentModalApplyBtnText: {
       fontSize: sf(13),
-      fontWeight: '800',
+      fontWeight: '600',
       color: '#FFFFFF',
     },
     displayAccentName: {
@@ -714,7 +714,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     langSegmentText: {
       fontSize: sf(13),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.textDim,
       textAlign: 'center',
     },
@@ -798,7 +798,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       borderColor: theme.greenBorder,
       backgroundColor: theme.greenDim,
     },
-    cacheClearBtnText: { fontSize: sf(13), fontWeight: '800', color: theme.green },
+    cacheClearBtnText: { fontSize: sf(13), fontWeight: '600', color: theme.green },
     cacheClearSuccess: {
       marginTop: 16,
       paddingVertical: 12,
@@ -847,7 +847,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     quotesChangeColorOptionTitle: {
       fontSize: sf(14),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.text,
     },
     quotesChangeColorOptionTitleActive: {
@@ -869,7 +869,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     quotesChangeColorPreviewChip: {
       fontSize: sf(15),
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.2,
     },
     limitPickerTrigger: {
@@ -887,7 +887,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     limitPickerTriggerText: {
       fontSize: sf(15),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.text,
     },
     limitPickerBackdrop: {
@@ -912,7 +912,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
       paddingHorizontal: 16,
       paddingVertical: 12,
       fontSize: sf(15),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.text,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: theme.border,
@@ -958,7 +958,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     segmentOrderLabel: {
       flex: 1,
       fontSize: sf(15),
-      fontWeight: '800',
+      fontWeight: '600',
       color: theme.text,
     },
     segmentOrderDragHandle: {
@@ -1008,7 +1008,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number) {
     appIconLabel: {
       fontSize: sf(13),
       lineHeight: sf(18),
-      fontWeight: '900',
+      fontWeight: '700',
       color: theme.text,
     },
   });

@@ -140,7 +140,7 @@ function makeStyles(theme: AppTheme, sf: (n: number) => number, isNews: boolean)
     glyph: {
       fontSize: sf(isNews ? 8 : 9),
       lineHeight: sf(isNews ? 10 : 11),
-      fontWeight: '900',
+      fontWeight: '700',
       color: '#FFFFFF',
       letterSpacing: -0.2,
     },

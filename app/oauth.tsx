@@ -59,7 +59,7 @@ function makeStyles(theme: ReturnType<typeof useSignalTheme>['theme'], scaleFont
     title: {
       color: theme.text,
       fontSize: scaleFont(18),
-      fontWeight: '900',
+      fontWeight: '700',
       textAlign: 'center',
     },
     body: {

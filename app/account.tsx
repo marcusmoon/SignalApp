@@ -832,6 +832,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
           styles.content,
           (embedded || useTwoPane) && styles.contentEmbedded,
           !user && styles.contentAuth,
+          user && accountPane !== 'hub' && ((embedded || useTwoPane) ? styles.contentSubPaneWide : styles.contentSubPane),
           { paddingBottom: stackScreenScrollBottomPadding(insets.bottom) },
         ]}>
         {!user ? (

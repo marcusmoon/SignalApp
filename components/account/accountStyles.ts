@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
-import { SCREEN_HEADER_CONTENT_GAP } from '@/constants/screenLayout';
+import { SCREEN_HEADER_CONTENT_GAP, SCREEN_EMBEDDED_WIDE_PADDING_TOP, SCREEN_LIST_CONTENT_PADDING_TOP } from '@/constants/screenLayout';
 import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 
@@ -45,6 +45,13 @@ export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     contentAuth: {
       paddingTop: SCREEN_HEADER_CONTENT_GAP,
+    },
+    /** 프로필·로그인/보안 등 스택 서브 화면 — 헤더 아래 여백 */
+    contentSubPane: {
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+    },
+    contentSubPaneWide: {
+      paddingTop: SCREEN_EMBEDDED_WIDE_PADDING_TOP,
     },
     contentEmbedded: {
       ...wideContentFill,

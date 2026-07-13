@@ -44,12 +44,16 @@ function resolveExternalLinkGridInnerWidth(measuredOuterWidth, boxPaddingHorizon
 }
 
 assert(
-  computeExternalLinkGridColumns(320, 6, { preferredColumns: 3 }) === 3,
-  'iPhone-width grid prefers 3 columns',
+  computeExternalLinkGridColumns(320, 8, { minCellWidth: 56, preferredColumns: 4, maxColumns: 4 }) === 4,
+  'iPhone-width grid prefers 4 columns',
 );
 assert(
-  computeExternalLinkGridColumns(280, 6, { preferredColumns: 3 }) === 3,
-  'Narrow detail pane still fits 3 columns',
+  computeExternalLinkGridColumns(280, 8, { minCellWidth: 56, preferredColumns: 4, maxColumns: 4 }) === 4,
+  'Narrow phone width still fits 4 columns with short labels',
+);
+assert(
+  computeExternalLinkGridColumns(320, 6, { preferredColumns: 3 }) === 3,
+  'Legacy 3-column preference unchanged',
 );
 
 const ipadDetailMeasured = resolveExternalLinkGridInnerWidth(310, 4, 620);

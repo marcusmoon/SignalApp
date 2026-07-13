@@ -221,7 +221,7 @@ export const en = {
   accountHubDisplaySettingsDesc: 'Adjust theme and display options.',
   accountHubVersion: 'Version {{version}}',
   accountHubTermsTitle: 'Terms',
-  accountHubTermsDesc: 'View terms of service, privacy policy, and consent history.',
+  accountHubTermsDesc: 'View the terms of service and privacy policy.',
   accountSecurityTitle: 'Sign-in and security',
   accountSecurityLead: 'Manage sign-in methods and password in one place.',
   accountServiceInfoTitle: 'Service information',

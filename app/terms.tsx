@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,8 +7,15 @@ import { stackScreenScrollBottomPadding } from '@/constants/screenLayout';
 import type { AppTheme } from '@/constants/theme';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useSignalTheme } from '@/contexts/SignalThemeContext';
-import { fetchSignalLegalTerms, type SignalLegalTerm } from '@/integrations/signal-api';
+import {
+  fetchSignalLegalTerms,
+  fetchSignalMyTerms,
+  formatSignalApiError,
+  type SignalLegalTerm,
+  type SignalUserTermAcceptance,
+} from '@/integrations/signal-api';
 import { hasSignalApi } from '@/services/env';
+import { getSessionAccessToken, loadAppAuthSession } from '@/services/appAuthSession';
 
 type TermsType = 'service' | 'privacy';
 
@@ -20,6 +27,9 @@ export default function TermsScreen() {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(theme, scaleFont), [theme, scaleFont]);
   const [terms, setTerms] = useState<SignalLegalTerm[]>([]);
+  const [acceptanceRows, setAcceptanceRows] = useState<SignalUserTermAcceptance[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const fallback = useMemo<SignalLegalTerm[]>(
     () => [
       {
@@ -66,6 +76,30 @@ export default function TermsScreen() {
     };
   }, [fallback, locale]);
 
+  const loadAcceptanceHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const session = await loadAppAuthSession();
+      const access = getSessionAccessToken(session);
+      if (!access || !hasSignalApi()) {
+        setAcceptanceRows([]);
+        return;
+      }
+      const rows = await fetchSignalMyTerms(access);
+      setAcceptanceRows(rows.filter((row) => row.type === termsType));
+    } catch (e) {
+      setAcceptanceRows([]);
+      setHistoryError(formatSignalApiError(e, t, 'termsHistoryError'));
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [t, termsType]);
+
+  useEffect(() => {
+    void loadAcceptanceHistory();
+  }, [loadAcceptanceHistory]);
+
   const term = (terms.length > 0 ? terms : fallback).find((item) => item.type === termsType) || fallback[0];
   const title = term.title;
   const body = term.body;
@@ -89,6 +123,34 @@ export default function TermsScreen() {
             </Text>
           ))}
         </View>
+
+        <View style={styles.historySection}>
+          <Text style={styles.historyKicker}>{t('accountActivityTermsHistory')}</Text>
+          {historyError ? <Text style={styles.historyError}>{historyError}</Text> : null}
+          {historyLoading ? <Text style={styles.historyEmpty}>{t('commonLoading')}</Text> : null}
+          {!historyLoading && acceptanceRows.length === 0 ? (
+            <Text style={styles.historyEmpty}>{t('termsHistoryEmpty')}</Text>
+          ) : null}
+          {!historyLoading && acceptanceRows.length > 0 ? (
+            <View style={styles.historyStack}>
+              {acceptanceRows.map((item, index) => (
+                <View
+                  key={item.id}
+                  style={[styles.historyRow, index === acceptanceRows.length - 1 && styles.historyRowLast]}>
+                  <View style={styles.historyTop}>
+                    <Text style={styles.historyVersion}>v{item.version}</Text>
+                    <View style={styles.historyBadge}>
+                      <Text style={styles.historyBadgeText}>{item.locale.toUpperCase()}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.historyMeta}>
+                    {t('termsHistoryAcceptedAt').replace('{{date}}', item.acceptedAt.slice(0, 10))}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -97,18 +159,88 @@ export default function TermsScreen() {
 function makeStyles(theme: AppTheme, sf: (n: number) => number) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.bg },
-    content: { padding: 16, gap: 20 },
+    content: { padding: 16, gap: 12 },
     card: {
       borderRadius: 8,
       borderWidth: 1,
       borderColor: theme.border,
       backgroundColor: theme.card,
-      padding: 16,
-      gap: 16,
+      padding: 14,
+      gap: 10,
     },
     kicker: { color: theme.green, fontSize: sf(11), fontWeight: '700' },
-    title: { color: theme.text, fontSize: sf(22), lineHeight: sf(29), fontWeight: '700' },
-    updated: { color: theme.textDim, fontSize: sf(11), fontWeight: '700' },
-    paragraph: { color: theme.textMuted, fontSize: sf(13), lineHeight: sf(21), fontWeight: '600' },
+    title: { color: theme.text, fontSize: sf(20), lineHeight: sf(26), fontWeight: '700' },
+    updated: { color: theme.textDim, fontSize: sf(11), fontWeight: '600' },
+    paragraph: { color: theme.textMuted, fontSize: sf(13), lineHeight: sf(21), fontWeight: '500' },
+    historySection: {
+      gap: 8,
+    },
+    historyKicker: {
+      paddingHorizontal: 4,
+      fontSize: sf(12),
+      lineHeight: sf(16),
+      fontWeight: '600',
+      color: theme.textMuted,
+    },
+    historyStack: {
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.card,
+      overflow: 'hidden',
+    },
+    historyRow: {
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      gap: 4,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    historyRowLast: {
+      borderBottomWidth: 0,
+    },
+    historyTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    historyVersion: {
+      color: theme.text,
+      fontSize: sf(13),
+      fontWeight: '700',
+    },
+    historyBadge: {
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    historyBadgeText: {
+      color: theme.green,
+      fontSize: sf(10),
+      fontWeight: '700',
+    },
+    historyMeta: {
+      color: theme.textDim,
+      fontSize: sf(11),
+      fontWeight: '600',
+    },
+    historyEmpty: {
+      color: theme.textMuted,
+      textAlign: 'center',
+      paddingVertical: 10,
+      fontSize: sf(12),
+      fontWeight: '600',
+    },
+    historyError: {
+      color: theme.danger,
+      fontSize: sf(12),
+      lineHeight: sf(18),
+      fontWeight: '600',
+      paddingHorizontal: 4,
+    },
   });
 }

@@ -757,10 +757,10 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
     ];
   }, [linkedIdentities.length, router, settingsHubSection, t, user?.hasPassword]);
 
-  const socialProviders = useMemo(() => {
-    const base = ['kakao', 'naver', 'google'] as const;
+  const socialProviders = useMemo<SocialProviderKey[]>(() => {
+    const base: SocialProviderKey[] = ['kakao', 'naver', 'google'];
     if (Platform.OS === 'ios' && isIosAppleSignInNativeEnabled()) {
-      return [...base, 'apple'] as const;
+      return [...base, 'apple'];
     }
     return base;
   }, []);

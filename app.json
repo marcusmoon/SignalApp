@@ -42,10 +42,11 @@
           "supertoss",
           "binance",
           "bnc",
-          "naversearchapp"
-        ]
-      }
-    },
+        "naversearchapp"
+      ],
+      "ITSAppUsesNonExemptEncryption": false
+    }
+  },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",

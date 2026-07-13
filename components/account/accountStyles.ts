@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 import { APP_CONTENT_MAX_WIDTH, wideContentFill } from '@/constants/responsiveLayout';
 import { getSegmentTabBarStyles } from '@/constants/segmentTabBar';
 import { getScreenFixedHeaderStyles } from '@/constants/screenFixedHeader';
-import { SCREEN_HEADER_CONTENT_GAP } from '@/constants/screenLayout';
+import { SCREEN_HEADER_CONTENT_GAP, SCREEN_EMBEDDED_WIDE_PADDING_TOP, SCREEN_LIST_CONTENT_PADDING_TOP } from '@/constants/screenLayout';
 import { webScrollViewportStyle, webShellBackground } from '@/constants/webLayout';
 import type { AppTheme } from '@/constants/theme';
 
@@ -45,6 +45,13 @@ export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
     },
     contentAuth: {
       paddingTop: SCREEN_HEADER_CONTENT_GAP,
+    },
+    /** 프로필·로그인/보안 등 스택 서브 화면 — 헤더 아래 여백 */
+    contentSubPane: {
+      paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
+    },
+    contentSubPaneWide: {
+      paddingTop: SCREEN_EMBEDDED_WIDE_PADDING_TOP,
     },
     contentEmbedded: {
       ...wideContentFill,
@@ -476,6 +483,26 @@ export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
     activityDesc: { color: theme.textMuted, fontSize: sf(11), lineHeight: sf(16), marginTop: 2 },
     mutedText: { color: theme.textMuted, fontSize: sf(12), lineHeight: sf(18), fontWeight: '700' },
     identityStack: { gap: 16 },
+    providerList: {
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+      backgroundColor: theme.bgElevated,
+      overflow: 'hidden',
+    },
+    providerRow: {
+      minHeight: 52,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.border,
+    },
+    providerRowLast: {
+      borderBottomWidth: 0,
+    },
     subSection: {
       borderRadius: 8,
       borderWidth: 1,
@@ -536,6 +563,19 @@ export function makeAccountStyles(theme: AppTheme, sf: (n: number) => number) {
       justifyContent: 'center',
     },
     smallOutlineText: { color: theme.textMuted, fontSize: sf(10), fontWeight: '700' },
+    smallPrimaryBtn: {
+      minHeight: 30,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.greenBorder,
+      backgroundColor: theme.greenDim,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      flexShrink: 0,
+    },
+    smallPrimaryText: { color: theme.green, fontSize: sf(10), fontWeight: '700' },
     secondaryBtn: {
       minHeight: 40,
       borderRadius: 11,

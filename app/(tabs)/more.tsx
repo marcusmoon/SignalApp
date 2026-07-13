@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ReferenceLinksSection } from '@/components/more/ReferenceLinksSection';
+import { DeveloperFooterDock, useDeveloperFooterLayout } from '@/components/more/DeveloperFooterDock';
 import { WebWheelFlatList } from '@/components/layout/WebWheelFlatList';
 import { OtaUpdateBanner } from '@/components/OtaUpdateBanner';
 import { SignalBannerAd } from '@/components/signal/SignalBannerAd';
@@ -90,6 +91,8 @@ export default function MoreHubScreen() {
   const isFocused = useIsFocused();
   const { width, useTwoPane, isIOS, isPad, isWeb } = useResponsiveLayout();
   const showIpadQuickLinks = useTwoPane;
+  const useCompactDeveloperFooter = useTwoPane;
+  const { scrollBottomPad: developerFooterScrollPad } = useDeveloperFooterLayout(useCompactDeveloperFooter);
   const useGridHub = !useTwoPane && ((isIOS && !isPad) || isWeb);
   const hubGridColumns = useMemo(() => resolveHubGridColumns(width, useGridHub), [useGridHub, width]);
   const hubCellWidth = useMemo(
@@ -226,7 +229,10 @@ export default function MoreHubScreen() {
           style={[styles.list, useTwoPane && styles.listWide]}
           contentContainerStyle={{
             paddingTop: SCREEN_LIST_CONTENT_PADDING_TOP,
-            paddingBottom: tabScreenScrollBottomPadding(tabBarHeight, insets.bottom),
+            paddingBottom: Math.max(
+              tabScreenScrollBottomPadding(tabBarHeight, insets.bottom),
+              developerFooterScrollPad,
+            ),
           }}
           ListHeaderComponent={
             showIpadQuickLinks ? (
@@ -284,6 +290,7 @@ export default function MoreHubScreen() {
           }}
         />
       )}
+      <DeveloperFooterDock compact={useCompactDeveloperFooter} />
     </SafeAreaView>
   );
 }

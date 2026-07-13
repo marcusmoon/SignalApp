@@ -30,7 +30,6 @@ import {
   linkSignalSocial,
   previewSignalSocialSignup,
   requestSignalMyEmailChange,
-  requestSignalPushTest,
   type SignalLegalTerm,
   type SignalAppUser,
   type SignalUserIdentity,
@@ -565,21 +564,6 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
     }
   }, [emailChangeCode, emailChangeRequestId, session, t]);
 
-  const sendPushTest = useCallback(async () => {
-    const access = getSessionAccessToken(session);
-    if (!access) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await requestSignalPushTest(access);
-      setEmailChangeNotice(t('accountPushTestQueued'));
-    } catch (e) {
-      setError(formatSignalApiError(e, t, 'accountPushTestError'));
-    } finally {
-      setSaving(false);
-    }
-  }, [session, t]);
-
   const logout = useCallback(async () => {
     const access = getSessionAccessToken(session);
     setSaving(true);
@@ -663,21 +647,18 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
         key: 'alerts',
         icon: 'bell',
         title: t('accountActivityAlerts'),
-        body: t('accountActivityAlertsDesc'),
         onPress: () => router.push('/alerts'),
       },
       {
         key: 'signals',
         icon: 'bolt',
         title: t('accountActivitySignals'),
-        body: t('accountActivitySignalsDesc'),
         onPress: () => router.push('/signal' as Href),
       },
       {
         key: 'notificationSettings',
         icon: 'cog',
         title: t('accountActivityNotificationSettings'),
-        body: t('accountActivityNotificationSettingsDesc'),
         onPress: () => router.push('/settings?tab=notifications'),
       },
     ],
@@ -797,75 +778,63 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
                   <Text style={styles.profileEmail}>{user.email}</Text>
                 </View>
               </View>
-              <View style={styles.accountMetaRow}>
-                <View style={styles.accountMetaPill}>
-                  <FontAwesome5 name={user.hasPassword ? 'lock' : 'unlock'} size={10} color={theme.green} />
-                  <Text style={styles.accountMetaText}>
-                    {user.hasPassword ? t('accountPasswordEnabled') : t('accountPasswordNotSet')}
-                  </Text>
-                </View>
-                <View style={styles.accountMetaPill}>
-                  <FontAwesome5 name="link" size={10} color={theme.green} />
-                  <Text style={styles.accountMetaText}>
-                    {t('accountSocialLinkedCount').replace('{{count}}', String(linkedIdentities.length))}
-                  </Text>
-                </View>
-              </View>
             </View>
 
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t('accountStatusTitle')}</Text>
-              <Text style={styles.sectionLead}>{t('accountStatusLead')}</Text>
               <View style={styles.statusStack}>
                 <View style={styles.statusRow}>
                   <View style={styles.statusIcon}>
-                    <FontAwesome5 name="calendar-check" size={13} color={theme.green} />
+                    <FontAwesome5 name="calendar-check" size={12} color={theme.green} />
                   </View>
                   <Text style={styles.statusLabel}>{t('accountStatusJoined')}</Text>
                   <Text style={styles.statusValue} numberOfLines={1}>{joinedAtLabel}</Text>
                 </View>
                 <View style={styles.statusRow}>
                   <View style={styles.statusIcon}>
-                    <FontAwesome5 name="key" size={13} color={theme.green} />
+                    <FontAwesome5 name="key" size={12} color={theme.green} />
                   </View>
                   <Text style={styles.statusLabel}>{t('accountStatusSignIn')}</Text>
                   <Text style={styles.statusValue} numberOfLines={1}>{signInMethodLabel}</Text>
                 </View>
                 <Pressable
                   onPress={() => router.push('/settings?tab=notifications')}
-                  style={({ pressed }) => [styles.statusRow, pressed && styles.activityRowPressed]}
+                  style={({ pressed }) => [styles.statusRow, styles.statusRowLast, pressed && styles.activityRowPressed]}
                   accessibilityRole="button"
                   accessibilityLabel={t('accountStatusPush')}>
                   <View style={styles.statusIcon}>
-                    <FontAwesome5 name="bell" size={13} color={theme.green} />
+                    <FontAwesome5 name="bell" size={12} color={theme.green} />
                   </View>
                   <Text style={styles.statusLabel}>{t('accountStatusPush')}</Text>
-                  <Text style={styles.statusValue} numberOfLines={1}>
-                    {notificationPrefs?.pushEnabled ? t('accountStatusPushOn') : t('accountStatusPushOff')}
-                  </Text>
+                  <View style={styles.statusValueRow}>
+                    <Text style={styles.statusValue} numberOfLines={1}>
+                      {notificationPrefs?.pushEnabled ? t('accountStatusPushOn') : t('accountStatusPushOff')}
+                    </Text>
+                    <FontAwesome5 name="chevron-right" size={10} color={theme.textDim} />
+                  </View>
                 </Pressable>
               </View>
-              <Pressable disabled={saving} onPress={() => void sendPushTest()} style={styles.secondaryBtn}>
-                <Text style={styles.secondaryText}>{saving ? t('commonLoading') : t('accountPushTestButton')}</Text>
-              </Pressable>
             </View>
 
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t('accountActivityTitle')}</Text>
-              <Text style={styles.sectionLead}>{t('accountActivityLead')}</Text>
-              <View style={styles.quickGrid}>
-                {activityLinks.map((item) => (
+              <View style={styles.activityLinkStack}>
+                {activityLinks.map((item, index) => (
                   <Pressable
                     key={item.key}
                     onPress={item.onPress}
-                    style={({ pressed }) => [styles.quickTile, pressed && styles.activityRowPressed]}
+                    style={({ pressed }) => [
+                      styles.activityLinkRow,
+                      index === activityLinks.length - 1 && styles.activityLinkRowLast,
+                      pressed && styles.activityRowPressed,
+                    ]}
                     accessibilityRole="button"
                     accessibilityLabel={item.title}>
-                    <View style={styles.quickIcon}>
-                      <FontAwesome5 name={item.icon} size={15} color={theme.green} />
+                    <View style={styles.activityIcon}>
+                      <FontAwesome5 name={item.icon} size={14} color={theme.green} />
                     </View>
-                    <Text style={styles.quickTitle} numberOfLines={1}>{item.title}</Text>
-                    <Text style={styles.quickDesc} numberOfLines={2}>{item.body}</Text>
+                    <Text style={styles.activityTitle} numberOfLines={1}>{item.title}</Text>
+                    <FontAwesome5 name="chevron-right" size={10} color={theme.textDim} />
                   </Pressable>
                 ))}
               </View>
@@ -920,7 +889,6 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
 
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t('accountProfileSectionTitle')}</Text>
-              <Text style={styles.sectionLead}>{t('accountProfileEditLead')}</Text>
               <TextInput
                 value={nickname}
                 onChangeText={setNickname}
@@ -946,8 +914,6 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             {accountTab === 'security' ? (
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>{t('accountSecurityTitle')}</Text>
-              <Text style={styles.sectionLead}>{t('accountSecurityLead')}</Text>
-
               <View style={styles.subSection}>
                 <View style={styles.subSectionHeader}>
                   <Text style={styles.subSectionTitle}>{t('accountSocialLinkedTitle')}</Text>
@@ -1057,7 +1023,6 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
             {accountTab === 'info' ? (
               <View style={styles.card}>
                 <Text style={styles.sectionTitle}>{t('accountServiceInfoTitle')}</Text>
-                <Text style={styles.sectionLead}>{t('accountServiceInfoLead')}</Text>
                 <View style={styles.legalActionStack}>
                   <Pressable
                     onPress={() => openTerms('service')}
@@ -1075,7 +1040,7 @@ export default function AccountScreen({ embedded = false }: AccountScreenProps) 
                   </Pressable>
                   <Pressable
                     onPress={() => router.push('/terms-history' as never)}
-                    style={({ pressed }) => [styles.legalActionRow, pressed && styles.activityRowPressed]}
+                    style={({ pressed }) => [styles.legalActionRow, styles.legalActionRowLast, pressed && styles.activityRowPressed]}
                     accessibilityRole="button">
                     <Text style={styles.legalActionTitle}>{t('accountActivityTermsHistory')}</Text>
                     <FontAwesome5 name="chevron-right" size={12} color={theme.textDim} />
